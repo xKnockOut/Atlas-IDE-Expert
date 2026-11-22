@@ -22,7 +22,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Style.Palette;
 
 type
   TAtlasBadge = record
@@ -94,7 +94,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Core.Completion.Matching,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

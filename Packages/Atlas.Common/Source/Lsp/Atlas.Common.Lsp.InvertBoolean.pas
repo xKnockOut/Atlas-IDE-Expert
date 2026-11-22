@@ -84,7 +84,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.InvertBoolean,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
@@ -1647,7 +1647,7 @@ begin
   end;
   if Result <> nil then
   begin
-    CheckParses(mUnit, TChangeSignature.ApplyEdits(mUnit.Text, Result));
+    CheckParses(mUnit, TTextChanges.Apply(mUnit.Text, Result));
   end;
 end;
 

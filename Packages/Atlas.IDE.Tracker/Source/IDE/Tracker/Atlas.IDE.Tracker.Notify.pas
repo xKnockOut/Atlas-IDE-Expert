@@ -39,7 +39,7 @@ uses
   Atlas.Core.Tracker.Notify,
   Atlas.UI.Notifications.Notice,
   Atlas.IDE.Tracker.IssueContext,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Tracker.Contract.MyIssues;
 
 type
@@ -155,9 +155,9 @@ uses
   System.Types,
   System.DateUtils,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,

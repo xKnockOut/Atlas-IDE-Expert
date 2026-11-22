@@ -48,7 +48,7 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeMinimapFolds.TEvents }
 

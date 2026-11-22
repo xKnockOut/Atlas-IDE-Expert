@@ -44,7 +44,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Timing,
   Atlas.Core.Completion.Word,
   Atlas.Core.Completion.Ranking,

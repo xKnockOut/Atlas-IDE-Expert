@@ -26,7 +26,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.Core.Status.Contract,
@@ -97,14 +97,14 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Windows,
   System.Types,
   System.IOUtils,
   System.DateUtils,
   System.TypInfo,
   Vcl.Forms,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Diagnostics.Strings,

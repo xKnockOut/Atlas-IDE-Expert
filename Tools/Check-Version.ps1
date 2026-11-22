@@ -7,7 +7,7 @@
     Installer), plugin.json des Claude-Code-Plugins und marketplace.json. Mit -Expected (z. B. aus dem
     Release-Tag) muss auch diese übereinstimmen. CHANGELOG.md braucht einen
     Abschnitt "## [<Version>]". Atlas.Common.Product.Version.pas und
-    Atlas.Core.Product.Version.pas dürfen keine eigene Versionszeichenkette tragen. Die
+    Atlas.Plugin.Product.Version.pas dürfen keine eigene Versionszeichenkette tragen. Die
     Versionsressource aller ausgelieferten Projekte (.dproj unter Packages/ und Application/) muss zur
     Version passen (Update-VersionInfo.ps1 -Check: Dateiversion, Produktversion, Herausgeber, ProgramID,
     {$R *.res} in .dpk/.dpr).
@@ -32,7 +32,7 @@ $Server = [regex]::Match((Get-Content -Raw $Unit), "Version\s*=\s*'([^']+)'").Gr
 # Server und IDE-Plugin verweisen auf TAtlasVersion; eine eigene Zeichenkette wäre eine zweite Quelle.
 $Copies = @(
     'Packages/Atlas.Common/Source/Product/Atlas.Common.Product.Version.pas',
-    'Packages/Atlas.IDE.Base/Source/Core/Product/Atlas.Core.Product.Version.pas'
+    'Packages/Atlas.Plugin/Source/Product/Atlas.Plugin.Product.Version.pas'
 )
 $Changelog = Get-Content -Raw (Join-Path $Root 'CHANGELOG.md')
 $Plugin = (Get-Content -Raw (Join-Path $Root 'Editors/ClaudeCode/atlas/.claude-plugin/plugin.json') | ConvertFrom-Json).version

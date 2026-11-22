@@ -9,14 +9,14 @@ interface
 
 uses
   Atlas.Core.Documentation.Layout,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Signature.Format;
 
 {$SCOPEDENUMS ON}
 
 type
-  /// <summary>Sprache der Oberfläche; dieselbe für Core (Atlas.Core.Localization.Language, #1458).</summary>
-  TAtlasLanguage = Atlas.Core.Localization.Language.TAtlasLanguage;
+  /// <summary>Sprache der Oberfläche; dieselbe für Core (Atlas.Plugin.Localization.Language, #1458).</summary>
+  TAtlasLanguage = Atlas.Plugin.Localization.Language.TAtlasLanguage;
 
   TAtlasTextId = (
     OptionalDefault, NoOverloadWith, MoreOverloads, ChipAll, ChipMethods, ChipProperties, ChipEvents, ChipTypes,

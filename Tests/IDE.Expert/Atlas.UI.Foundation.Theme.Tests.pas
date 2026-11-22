@@ -53,8 +53,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.Themes,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme;
 
 { TAtlasUiThemeTests }

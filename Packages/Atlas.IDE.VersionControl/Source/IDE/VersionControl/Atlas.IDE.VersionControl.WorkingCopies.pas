@@ -71,7 +71,7 @@ uses
   Vcl.Controls,
   Vcl.Dialogs,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.Pull,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,

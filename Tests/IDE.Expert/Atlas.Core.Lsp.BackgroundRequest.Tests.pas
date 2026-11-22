@@ -31,7 +31,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Tests.Wait;

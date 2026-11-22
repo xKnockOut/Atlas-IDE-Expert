@@ -226,8 +226,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   System.Math,
   Vcl.Forms,
   Atlas.Core.Settings.StatusBarItems,
@@ -738,8 +738,8 @@ begin
   mDot := Measure.DotSize;
   Canvas.Brush.Style := bsSolid;
   // Signalfarbe der Leistenfläche mit Rand (#1255).
-  Canvas.Brush.Color := ToColor(TAtlasStatusSignal.Pick(Colors.Signals, AState).Fill);
-  Canvas.Pen.Color := ToColor(TAtlasStatusSignal.Pick(Colors.Signals, AState).Ring);
+  Canvas.Brush.Color := ToColor(TAtlasStatusSignal.ForState(Colors.Signals, AState).Fill);
+  Canvas.Pen.Color := ToColor(TAtlasStatusSignal.ForState(Colors.Signals, AState).Ring);
   Canvas.Ellipse(ALeft, ACenter - mDot div 2, ALeft + mDot, ACenter - mDot div 2 + mDot);
 end;
 
@@ -773,12 +773,12 @@ begin
     ARect.Left + Bar.Scale(cSlotPadding) + mWidth, ARect.Top + (ARect.Height - mHeight) div 2 + mHeight);
   Canvas.Brush.Style := bsSolid;
   // Plakettenfarbe mit lesbarer Zahl darauf (#1255): hell dunkle Fläche mit Weiß, dunkel helle Fläche mit Dunkel.
-  Canvas.Brush.Color := ToColor(TAtlasStatusSignal.Pick(Colors.Signals, Bar.FView.BadgeState).Solid);
-  Canvas.Pen.Color := ToColor(TAtlasStatusSignal.Pick(Colors.Signals, Bar.FView.BadgeState).Solid);
+  Canvas.Brush.Color := ToColor(TAtlasStatusSignal.ForState(Colors.Signals, Bar.FView.BadgeState).Solid);
+  Canvas.Pen.Color := ToColor(TAtlasStatusSignal.ForState(Colors.Signals, Bar.FView.BadgeState).Solid);
   Canvas.RoundRect(mPill.Left, mPill.Top, mPill.Right, mPill.Bottom, mHeight, mHeight);
   Canvas.Font := Bar.Font;
   Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := ToColor(TAtlasStatusSignal.Pick(Colors.Signals, Bar.FView.BadgeState).OnSolid);
+  Canvas.Font.Color := ToColor(TAtlasStatusSignal.ForState(Colors.Signals, Bar.FView.BadgeState).OnSolid);
   Canvas.Brush.Style := bsClear;
   DrawText(Canvas.Handle, PChar(mText), -1, mPill, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   Canvas.Font := Bar.Font;

@@ -286,7 +286,7 @@ uses
   Atlas.Core.VersionControl.BranchNames,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.Scaling;

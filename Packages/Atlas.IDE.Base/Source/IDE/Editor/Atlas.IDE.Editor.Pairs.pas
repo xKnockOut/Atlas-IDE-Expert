@@ -43,7 +43,7 @@
 interface
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
@@ -52,7 +52,7 @@ uses
   Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.RoutineNesting,
   Atlas.Core.Problems.Store,
@@ -211,7 +211,7 @@ implementation
 uses
   Atlas.Core.Editor.Guides,
   Atlas.Core.Editor.GuideStroke,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Foundation.EditorBuffer,

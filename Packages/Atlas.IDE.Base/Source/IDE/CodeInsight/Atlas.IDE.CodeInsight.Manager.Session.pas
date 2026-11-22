@@ -106,10 +106,10 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.TimeLimit,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Lsp.ProjectContext.Contract,
   Atlas.IDE.Foundation.Settings,
@@ -122,7 +122,7 @@ uses
   Atlas.Core.Lsp.IdeTypes,
   Atlas.Core.Lsp.IdeMembers,
   System.Diagnostics,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Diagnostics.Deadline;
 
 {$SCOPEDENUMS ON}

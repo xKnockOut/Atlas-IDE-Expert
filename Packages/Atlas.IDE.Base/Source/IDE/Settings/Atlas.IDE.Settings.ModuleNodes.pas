@@ -54,7 +54,7 @@ uses
   Vcl.Graphics,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Watch,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Settings.Strings;
 
 type

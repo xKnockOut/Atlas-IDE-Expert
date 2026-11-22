@@ -192,7 +192,7 @@ implementation
 uses
   System.Math,
   System.Diagnostics,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Foundation.Debugger;
 

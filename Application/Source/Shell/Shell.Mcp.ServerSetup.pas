@@ -35,11 +35,11 @@ uses
   Atlas.Common.Mcp.BatchTool,
   Atlas.Common.Localization.Texts,
   Core.Workspace,
-  Shell.Mcp.Context,
+  Core.Mcp.Context,
   Shell.Mcp.RefactorSources,
-  Shell.Mcp.Tools,
-  Shell.Mcp.Changes,
-  Shell.Mcp.Conventions;
+  Core.Mcp.Tools,
+  Core.Mcp.Changes,
+  Core.Mcp.Conventions;
 
 type
 {$SCOPEDENUMS ON}
@@ -189,7 +189,7 @@ begin
   Result.ReadText := ReadSourceText;
   Result.ResolveFile := ResolveFileOf(AServices.Guard);
   Result.ResolveUnit := UnitFileOf(AServices.Index, AServices.Group, AServices.Guard);
-  Result.Changes := ChangesOf(AServices.Group, AServices.Root);
+  Result.Changes := ChangesOf(TMcpServices.HostAdapters, AServices.Group, AServices.Root);
   Result.Register;
 end;
 

@@ -34,8 +34,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.Menus,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal,
   Atlas.Core.Notifications.Contract,
   Atlas.UI.Foundation.Dialog;
 
@@ -160,8 +160,8 @@ implementation
 uses
   System.Math,
   System.DateUtils,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings,

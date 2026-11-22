@@ -78,7 +78,7 @@ uses
   System.Types,
   ToolsAPI,
   Atlas.Core.Designer.Layers,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,

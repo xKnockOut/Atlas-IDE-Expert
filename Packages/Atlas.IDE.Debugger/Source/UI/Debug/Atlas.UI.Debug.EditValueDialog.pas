@@ -58,7 +58,7 @@ implementation
 
 uses
   Vcl.Dialogs,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.Values.Strings;
 
 const

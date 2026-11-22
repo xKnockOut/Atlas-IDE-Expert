@@ -56,7 +56,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Text.Lines,
   Atlas.Tests.SourceText;
@@ -146,7 +146,7 @@ begin
     end;
     if Result and (AAction.Disabled = '') then
     begin
-      AResult := TChangeSignature.ApplyEdits(AText, AAction.Edits);
+      AResult := TTextChanges.Apply(AText, AAction.Edits);
       mCheck := TPascalParser.Parse(AResult);
       try
         Assert.AreEqual(0, Integer(Length(mCheck.Diagnostics)), 'Ergebnis parst nicht: ' + AResult);

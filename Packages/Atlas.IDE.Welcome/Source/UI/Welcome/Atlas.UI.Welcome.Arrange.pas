@@ -167,7 +167,7 @@ implementation
 uses
   Vcl.Forms,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Foundation.Controls,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Foundation.Theme;

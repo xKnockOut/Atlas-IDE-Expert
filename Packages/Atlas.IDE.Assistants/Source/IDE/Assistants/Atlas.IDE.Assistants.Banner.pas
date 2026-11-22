@@ -48,7 +48,7 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
   Atlas.UI.Assistants.Strings;
 

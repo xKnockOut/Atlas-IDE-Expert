@@ -55,9 +55,9 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Text.Columns,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorRefresh;

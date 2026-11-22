@@ -39,7 +39,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Lsp.StringLiteralCommands;
 
 const

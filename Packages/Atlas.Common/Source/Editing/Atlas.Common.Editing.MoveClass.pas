@@ -108,7 +108,7 @@ uses
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.TypeComments,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
@@ -1568,7 +1568,7 @@ begin
   begin
     Exit;
   end;
-  if not ParsesCleanly(TChangeSignature.ApplyEdits(Source.Text, Plan.OriginEdits)) then
+  if not ParsesCleanly(TTextChanges.Apply(Source.Text, Plan.OriginEdits)) then
   begin
     Result := cTexts[TEditingMoveClassText.TheOriginalUnitNoLonger].Text;
   end

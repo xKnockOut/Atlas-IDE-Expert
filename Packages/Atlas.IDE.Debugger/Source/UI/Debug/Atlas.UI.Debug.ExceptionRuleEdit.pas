@@ -77,7 +77,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal;
+  Atlas.Plugin.Style.Signal;
 
 const
   cWidth = 560;

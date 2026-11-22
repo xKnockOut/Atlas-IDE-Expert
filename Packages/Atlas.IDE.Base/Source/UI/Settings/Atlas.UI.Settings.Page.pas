@@ -130,7 +130,7 @@ uses
   Atlas.UI.Settings.Page.Transfer,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Strings,
-  Atlas.Core.Style.Symbol,
+  Atlas.Plugin.Style.Symbol,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.UI.Foundation.WrapLabel;
 

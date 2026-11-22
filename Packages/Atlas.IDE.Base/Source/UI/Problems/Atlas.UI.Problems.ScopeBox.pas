@@ -16,7 +16,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.StdCtrls,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Problems.ScopeProjects;
 
 type

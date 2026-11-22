@@ -66,7 +66,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Capture,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.TextEdits;
 
@@ -233,7 +233,7 @@ begin
   Assert.AreEqual(32, mFound[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Wert in die lokale Variable AnzahlKopie kopieren', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Laden('procedure Laden(var Anzahl: Integer);'#10'var'#10'  AnzahlKopie: Integer;',
     '  AnzahlKopie := Anzahl;'#10'  TTask.Run(procedure begin Inc(AnzahlKopie); end);'#10 +
     '  Anzahl := AnzahlKopie;'#10), mFixed);
@@ -243,7 +243,7 @@ begin
     '  I := 0;'#10'  TThread.Queue(nil, procedure begin Memo.Lines.Add(Text); end);'#10);
   mFound := CaptureFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Laden('procedure Zeigen(var Text: string);'#10'var'#10'  I: Integer;'#10'  TextKopie: string;',
     '  I := 0;'#10'  TextKopie := Text;'#10'  TThread.Queue(nil, procedure begin Memo.Lines.Add(TextKopie); end);'#10 +
     '  Text := TextKopie;'#10), mFixed);
@@ -251,7 +251,7 @@ begin
   mSource := Laden('function Zeigen(var Text: string): Boolean;', '  F := function: Boolean begin Result := Text = ''''; end;'#10);
   mFound := CaptureFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Laden('function Zeigen(var Text: string): Boolean;'#10'var'#10'  TextKopie: string;',
     '  TextKopie := Text;'#10'  F := function: Boolean begin Result := TextKopie = ''''; end;'#10), mFixed);
 end;
@@ -277,7 +277,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Result der umgebenden Funktion kann nicht erfasst werden (wie E2555).', mFound[0].Message);
   Assert.AreEqual('Wert in die lokale Variable Ergebnis kopieren', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Laden('function Lesen: string;'#10'var'#10'  Ergebnis: string;',
     '  TThread.Synchronize(nil, procedure begin Ergebnis := Edit1.Text; end);'#10'  Result := Ergebnis;'#10), mFixed);
   Assert.AreEqual(0, Integer(Length(CaptureFindings(mFixed))), mFixed);

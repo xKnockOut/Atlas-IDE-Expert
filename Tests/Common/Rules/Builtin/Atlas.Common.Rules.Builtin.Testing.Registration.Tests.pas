@@ -45,7 +45,7 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Builtin.Testing.Registration,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 const
@@ -149,13 +149,13 @@ begin
     Messages(mFound));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual(TestUnit('  [TestFixture]'#10'  TRechnerTests = class'#10'  end;'#10, 'initialization'#10 +
-    '  TDUnitX.RegisterTestFixture(TRechnerTests);'#10#10'end.'), TChangeSignature.ApplyEdits(mSource,
+    '  TDUnitX.RegisterTestFixture(TRechnerTests);'#10#10'end.'), TTextChanges.Apply(mSource,
     mFound[0].Fixes[0].Edits));
   // Mit finalization kommt initialization davor.
   mSource := TestUnit('  [TestFixture]'#10'  TRechnerTests = class'#10'  end;'#10, 'finalization'#10'end.');
   Assert.AreEqual(TestUnit('  [TestFixture]'#10'  TRechnerTests = class'#10'  end;'#10, 'initialization'#10 +
     '  TDUnitX.RegisterTestFixture(TRechnerTests);'#10#10'finalization'#10'end.'),
-    TChangeSignature.ApplyEdits(mSource, Findings(mSource, cPlainRunner)[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, Findings(mSource, cPlainRunner)[0].Fixes[0].Edits));
 end;
 
 procedure TDUnitXFixtureNotRegisteredTests.FixAppendsToExistingInitialization;
@@ -169,11 +169,11 @@ begin
   Assert.AreEqual('9: TB wird nie registriert: DUnitX kennt die Klasse nicht, ihre Tests laufen nie.',
     Messages(mFound));
   Assert.AreEqual(TestUnit(mTypes, 'initialization'#10'  TDUnitX.RegisterTestFixture(TA);'#10 +
-    '  TDUnitX.RegisterTestFixture(TB);'#10'end.'), TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
+    '  TDUnitX.RegisterTestFixture(TB);'#10'end.'), TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits));
   // Letzte Anweisung ohne Semikolon.
   mSource := TestUnit(mTypes, 'initialization'#10'  TDUnitX.RegisterTestFixture(TA)'#10'end.');
   Assert.AreEqual(TestUnit(mTypes, 'initialization'#10'  TDUnitX.RegisterTestFixture(TA);'#10 +
-    '  TDUnitX.RegisterTestFixture(TB);'#10'end.'), TChangeSignature.ApplyEdits(mSource,
+    '  TDUnitX.RegisterTestFixture(TB);'#10'end.'), TTextChanges.Apply(mSource,
     Findings(mSource, cPlainRunner)[0].Fixes[0].Edits));
 end;
 
@@ -223,7 +223,7 @@ begin
     'Tests laufen nie.', Messages(mFound));
   Assert.AreEqual(2, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual(StringReplace(mSource, '  TA = class', '  [TestFixture]'#10'  TA = class', []),
-    TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits));
   Assert.IsTrue(mFound[0].Fixes[1].Alternative);
 end;
 
@@ -281,10 +281,10 @@ begin
     mOther := mFound[0].Fixes[0].OtherFiles[0];
     Assert.AreEqual(Base + 'Tests.dpr', mOther.FileName);
     Assert.AreEqual(StringReplace(mDpr, '''Alt.Tests.pas''', '''Alt.Tests.pas'','#10 +
-      '  Fall.Tests in ''Src\Fall.Tests.pas''', []), TChangeSignature.ApplyEdits(mDpr, mOther.Edits));
+      '  Fall.Tests in ''Src\Fall.Tests.pas''', []), TTextChanges.Apply(mDpr, mOther.Edits));
     mOther := mFound[0].Fixes[0].OtherFiles[1];
     Assert.AreEqual(StringReplace(mDproj, '"Alt.Tests.pas"/>'#10, '"Alt.Tests.pas"/>'#10 +
-      '        <DCCReference Include="Src\Fall.Tests.pas"/>'#10, []), TChangeSignature.ApplyEdits(mDproj,
+      '        <DCCReference Include="Src\Fall.Tests.pas"/>'#10, []), TTextChanges.Apply(mDproj,
       mOther.Edits));
     // Zwei Testprojekte: Meldung ohne Korrektur.
     mFound := ProjectFindings(mSource, [MakeProject(Base + 'Tests.dproj', True, [Base + 'Tests.dpr']),

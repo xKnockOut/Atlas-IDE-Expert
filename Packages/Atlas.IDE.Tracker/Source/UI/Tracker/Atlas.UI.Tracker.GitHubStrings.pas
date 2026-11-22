@@ -11,7 +11,7 @@
 interface
 
 uses
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Tracker.Contract;
 
 {$SCOPEDENUMS ON}

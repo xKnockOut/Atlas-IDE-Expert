@@ -129,7 +129,7 @@ implementation
 uses
   System.UITypes,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Links,

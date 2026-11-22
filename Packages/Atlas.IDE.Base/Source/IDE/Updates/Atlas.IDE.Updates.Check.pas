@@ -114,9 +114,9 @@ uses
   System.IOUtils,
   Vcl.Forms,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Updates.Offer,
@@ -125,7 +125,7 @@ uses
   Atlas.Text.UpdateRun,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 { TAtlasIdeUpdates }
 

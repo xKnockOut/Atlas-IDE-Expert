@@ -72,7 +72,7 @@ uses
   System.Classes,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Designer.Measure,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ViewStrings,

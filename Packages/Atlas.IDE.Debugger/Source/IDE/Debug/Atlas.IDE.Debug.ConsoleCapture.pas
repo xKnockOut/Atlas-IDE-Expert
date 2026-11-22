@@ -161,7 +161,7 @@ implementation
 uses
   System.IOUtils,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Foundation.Calls,
   Atlas.Core.StartProfiles.Store,
   Atlas.IDE.Foundation.Debugger,

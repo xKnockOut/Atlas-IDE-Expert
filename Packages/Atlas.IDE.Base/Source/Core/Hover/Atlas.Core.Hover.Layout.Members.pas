@@ -8,7 +8,7 @@ interface
 
 uses
   System.Types,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.View,
@@ -67,7 +67,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   System.SysUtils,
   System.Math,
   System.StrUtils;

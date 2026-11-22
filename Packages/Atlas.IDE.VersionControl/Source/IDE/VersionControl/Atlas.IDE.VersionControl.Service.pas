@@ -126,14 +126,14 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   System.Classes,
   System.SyncObjs,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Detection,
   Atlas.Core.VersionControl.Plan,
   Atlas.Core.Diagnostics.BackgroundJobs,

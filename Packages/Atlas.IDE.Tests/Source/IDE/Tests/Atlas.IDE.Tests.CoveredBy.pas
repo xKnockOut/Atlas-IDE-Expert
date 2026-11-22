@@ -34,8 +34,8 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.CoveredBy,
   Atlas.IDE.Tests.Runner,
@@ -133,8 +133,8 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Deadline,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Lsp.Session.Json,

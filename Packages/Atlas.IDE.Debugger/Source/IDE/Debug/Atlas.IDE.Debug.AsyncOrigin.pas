@@ -116,7 +116,7 @@ implementation
 
 uses
   Atlas.Core.Status.Registry,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.AsyncOriginFlow,
   Atlas.UI.Results.Items,
   Atlas.IDE.Foundation.Files,

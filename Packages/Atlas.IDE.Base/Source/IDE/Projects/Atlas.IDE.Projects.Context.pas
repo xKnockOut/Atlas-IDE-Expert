@@ -75,7 +75,7 @@ uses
   Atlas.Core.Versions.Project,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Text.Files;
 
 /// <summary>Konfiguration AConfiguration ('' = aktive), für APlatform deren Plattformkonfiguration; nil ohne.

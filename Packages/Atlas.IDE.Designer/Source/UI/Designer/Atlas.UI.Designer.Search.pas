@@ -38,8 +38,8 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Designer.Components,
   Atlas.UI.Foundation.Dialog;
 
@@ -219,8 +219,8 @@ implementation
 uses
   System.Math,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Designer.Strings;
 

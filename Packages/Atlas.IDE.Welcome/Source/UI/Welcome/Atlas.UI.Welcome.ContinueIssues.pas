@@ -100,8 +100,8 @@ uses
   System.UITypes,
   Vcl.Forms,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
   Atlas.Text.Uris;
 

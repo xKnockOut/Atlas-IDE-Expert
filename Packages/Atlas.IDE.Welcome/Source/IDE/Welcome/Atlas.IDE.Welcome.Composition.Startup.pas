@@ -34,7 +34,7 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Status.Lines,
   Atlas.Core.Welcome.Sections,

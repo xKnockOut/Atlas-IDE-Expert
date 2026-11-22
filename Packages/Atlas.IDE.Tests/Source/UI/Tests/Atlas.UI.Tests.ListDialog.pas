@@ -78,7 +78,7 @@ uses
   System.SysUtils,
   System.UITypes,
   Vcl.Forms,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Tests.Strings;
 
 { TAtlasTestsListDialog }

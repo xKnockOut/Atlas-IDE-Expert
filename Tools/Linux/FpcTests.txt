@@ -77,6 +77,7 @@ Atlas.Common.Diagnostics.ServerPackage.Tests
 Atlas.Common.Diagnostics.StackGuard.Tests
 Atlas.Common.Documents.Contract.Tests
 Atlas.Common.Documents.TextDocument.Tests
+Atlas.Common.Documents.TextChanges.Tests
 Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
 Atlas.Common.Editing.AssignFields.Tests
@@ -146,7 +147,7 @@ Atlas.Common.Editing.SmartIndent.Tests
 Atlas.Common.Editing.SmartPaste.Tests
 Atlas.Common.Editing.SqlText.Tests
 Atlas.Common.Editing.StatementText.Tests
-Atlas.Common.Editing.StringLiterals.Tests
+Atlas.Common.Pascal.StringLiterals.Tests
 Atlas.Common.Editing.SuggestionContext.Tests
 Atlas.Common.Editing.SuggestConst.Tests
 Atlas.Common.Editing.TestCommands.Tests
@@ -289,8 +290,8 @@ Atlas.Common.Mcp.StatisticsText.Tests
 Atlas.Common.Mcp.HistoryTools.Tests
 Core.SymbolHistory.Tests
 Core.Workspace.Parts.Tests
-Shell.Mcp.HistoryTools.Tests
-Shell.Mcp.Tools.Tests
+Core.Mcp.HistoryTools.Tests
+Core.Mcp.Tools.Tests
 Atlas.Common.Mcp.TestTools.Tests
 Atlas.Common.Mcp.ProfileTools.Tests
 Atlas.Common.Mcp.LastTests.Tests
@@ -330,6 +331,7 @@ Atlas.Common.Pascal.Preprocessor.Expressions.Tests
 Atlas.Common.Pascal.Preprocessor.Tests
 Atlas.Common.Pascal.PureRoutines.Tests
 Atlas.Common.Pascal.RoutineSignatures.Tests
+Atlas.Common.Pascal.Signatures.Tests
 Atlas.Common.Pascal.SyntaxChecks.Tests
 Atlas.Common.Pascal.SyntaxNodes.Tests
 Atlas.Common.Pascal.SyntaxTree.Tests
@@ -436,8 +438,8 @@ Atlas.Common.Rules.Builtin.Testing.Registration.Tests
 Atlas.Common.Rules.Builtin.Testing.TearDown.Tests
 Atlas.Common.Rules.Builtin.Testing.Attributes.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
-Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
-Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.Tests
+Atlas.Common.Testing.TestCaseTable.Tests
+Atlas.Common.Testing.TestCaseTrivia.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeDeclarations.Scan.Tests
@@ -535,6 +537,7 @@ Atlas.Core.Problems.Marks.Tests
 Atlas.Core.Editor.LineTracking.Tests
 Atlas.Core.Status.FieldPlan.Tests
 Atlas.Core.Status.FieldFlow.Tests
+Atlas.Core.Status.Signal.Tests
 Atlas.Core.EditorToolbar.Plan.Tests
 Atlas.Core.Editor.PeekPlan.Tests
 Atlas.Core.Settings.NodeScope.Tests
@@ -553,7 +556,8 @@ Atlas.Core.Debug.Forecast.Tests
 Atlas.Core.Debug.EditValue.Tests
 Atlas.Core.Debug.HoverTree.Tests
 Atlas.Core.Debug.Pins.Tests
-Atlas.Core.Style.Listeners.Tests
+Atlas.Plugin.Style.Listeners.Tests
+Atlas.Plugin.Style.Signal.Tests
 Atlas.Core.Debug.MemoryTimeline.Tests
 Atlas.Core.Debug.Profiler.Tests
 Atlas.Core.Debug.ObjectCount.Tests
@@ -824,8 +828,8 @@ Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
 
 # Server (Shell)
-Shell.Mcp.IssueTools.Tests
-Shell.Mcp.IssueText.Tests
+Core.Mcp.IssueTools.Tests
+Core.Mcp.IssueText.Tests
 Atlas.Core.Designer.Names.Tests
 Atlas.Core.Designer.FormStore.Tests
 Atlas.Core.Designer.GridSnap.Tests

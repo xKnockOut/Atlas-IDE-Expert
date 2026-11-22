@@ -34,7 +34,7 @@ uses
   System.Variants,
   System.Win.Registry,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.Guides,
   Atlas.Core.Outline.NavigationOption,
   Atlas.IDE.Foundation.Settings;

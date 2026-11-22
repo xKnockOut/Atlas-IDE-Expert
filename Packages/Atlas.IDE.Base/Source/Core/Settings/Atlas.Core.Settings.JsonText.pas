@@ -39,7 +39,7 @@ implementation
 uses
   Atlas.Text.Lines,
   Atlas.Text.Jsonc,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}

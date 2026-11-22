@@ -62,7 +62,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Lens,
@@ -192,9 +192,9 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Style.Palette,
   Atlas.Text.Columns,
   Atlas.UI.Tests.Strings,
   Atlas.Core.Editor.Elements,

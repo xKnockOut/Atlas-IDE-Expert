@@ -14,9 +14,9 @@ interface
 uses
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Syntax,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Syntax,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Editor.Minimap;

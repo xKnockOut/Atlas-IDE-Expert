@@ -111,7 +111,7 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Designer.ToolStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Foundation.Settings;

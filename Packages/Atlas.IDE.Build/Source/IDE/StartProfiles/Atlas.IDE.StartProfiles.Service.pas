@@ -108,7 +108,7 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   Atlas.Core.StartProfiles.Picker,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,

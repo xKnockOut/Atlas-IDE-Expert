@@ -26,7 +26,7 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 /// <summary>Error Insight des Moduls zu AFileName; False ohne Modul bzw. ohne IOTAModuleErrors.</summary>
 function ReadErrors(const AFileName: string; out AList: TOTAErrors): Boolean;

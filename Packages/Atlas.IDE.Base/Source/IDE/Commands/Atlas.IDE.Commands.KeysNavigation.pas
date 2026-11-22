@@ -28,7 +28,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.QuickOpen,

@@ -71,7 +71,7 @@ implementation
 uses
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

@@ -127,8 +127,8 @@ implementation
 
 uses
   System.UITypes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
   Atlas.UI.Welcome.Strings,

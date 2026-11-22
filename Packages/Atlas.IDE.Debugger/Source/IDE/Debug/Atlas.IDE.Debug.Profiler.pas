@@ -104,7 +104,7 @@ uses
   System.IOUtils,
   ToolsAPI,
   Atlas.Core.Debug.ProfilerFlow,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.StartProfiles.Store,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,

@@ -65,7 +65,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Files;
 

@@ -53,9 +53,9 @@ uses
   System.SysUtils,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Popup.Accessibility,
-  Atlas.UI.Popup.Strings;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.UI.Popup.Strings,
+  Atlas.UI.Popup.Accessibility;
 
 { TAtlasCrumbCardTip }
 

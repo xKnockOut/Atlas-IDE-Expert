@@ -25,6 +25,14 @@ type
   /// <summary>Einstellungen der Datei (atlas.json ihres Arbeitsbereichs).</summary>
   TMcpRefactorSettingsFunc = reference to function(const AFileName: string): TServerSettings;
 
+  /// <summary>refactor über den Code-Aktionen des Servers; lebt so lange wie die Werkzeuge, die es halten.</summary>
+  IMcpRefactorHost = interface
+    ['{2BD0AEF6-9A39-4A3E-8966-B708304A4EA2}']
+    /// <summary>refactor für ARequest; ARequest.FileName ist mit seinem Text für den Aufruf geöffnet. Liest die Datei
+    /// über AEdit.ReadText; EMcpToolError, wenn sie nicht lesbar ist.</summary>
+    function Run(AEdit: TMcpEditTools; const ARequest: TMcpRefactorRequest): string;
+  end;
+
   /// <summary>Was refactor vom MCP-Lauf braucht.</summary>
   TMcpRefactorHostServices = record
     Logger: ILogger;
@@ -39,14 +47,6 @@ type
     DelphiVersionFor: TShellUriTextFunc;
     NewNamesFor: TShellNewNamesFunc;
     ProjectFor: TShellProjectFunc;
-  end;
-
-  /// <summary>refactor über den Code-Aktionen des Servers; lebt so lange wie die Werkzeuge, die es halten.</summary>
-  IMcpRefactorHost = interface
-    ['{2BD0AEF6-9A39-4A3E-8966-B708304A4EA2}']
-    /// <summary>refactor für ARequest; ARequest.FileName ist mit seinem Text für den Aufruf geöffnet. Liest die Datei
-    /// über AEdit.ReadText; EMcpToolError, wenn sie nicht lesbar ist.</summary>
-    function Run(AEdit: TMcpEditTools; const ARequest: TMcpRefactorRequest): string;
   end;
 
   TMcpRefactorHost = class(TInterfacedObject, IMcpRefactorHost)

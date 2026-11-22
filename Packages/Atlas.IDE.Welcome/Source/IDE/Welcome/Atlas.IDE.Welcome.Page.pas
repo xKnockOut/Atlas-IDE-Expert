@@ -59,7 +59,7 @@ uses
   Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.WelcomePage,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   TPlugin = class;

@@ -85,8 +85,8 @@ implementation
 uses
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,

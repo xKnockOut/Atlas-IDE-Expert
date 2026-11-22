@@ -97,7 +97,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   System.Math,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json;
 
 { TAtlasTip }

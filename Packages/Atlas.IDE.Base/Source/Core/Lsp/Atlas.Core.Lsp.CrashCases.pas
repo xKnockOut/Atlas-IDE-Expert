@@ -111,7 +111,7 @@ implementation
 uses
   System.IOUtils,
   System.Generics.Defaults,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json,
   Atlas.Text.Files;
 

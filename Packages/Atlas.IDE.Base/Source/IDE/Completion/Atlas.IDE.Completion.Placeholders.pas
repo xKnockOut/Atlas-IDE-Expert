@@ -100,12 +100,12 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Text.Columns,
   Atlas.Core.Editor.PlaceholderPlan,
   Atlas.Core.Lsp.TextOffsets,

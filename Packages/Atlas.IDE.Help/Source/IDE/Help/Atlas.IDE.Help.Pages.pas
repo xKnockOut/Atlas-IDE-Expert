@@ -29,7 +29,7 @@ uses
   Winapi.ShellAPI,
   Atlas.Text.Product.Version,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Help.Strings,
   Atlas.IDE.Foundation.Host,

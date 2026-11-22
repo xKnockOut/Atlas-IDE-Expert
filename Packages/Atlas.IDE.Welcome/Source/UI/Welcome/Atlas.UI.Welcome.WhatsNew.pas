@@ -118,8 +118,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Winapi.Windows,
   System.Math,
   Atlas.UI.Strings,

@@ -40,7 +40,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Pascal.Signatures;
 
 /// <summary>Token, das an AOffset beginnt; -1 ohne.</summary>
 function TokenStartingAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
@@ -101,7 +101,7 @@ begin
   Result := mClose > 0;
   if Result then
   begin
-    for mParameter in TChangeSignature.ParseParameters(Copy(ASignature, mOpen + 1, mClose - mOpen - 1)) do
+    for mParameter in TPascalSignatures.ParseParameters(Copy(ASignature, mOpen + 1, mClose - mOpen - 1)) do
     begin
       AModes := AModes + [LowerCase(Trim(mParameter.Modifier))];
     end;

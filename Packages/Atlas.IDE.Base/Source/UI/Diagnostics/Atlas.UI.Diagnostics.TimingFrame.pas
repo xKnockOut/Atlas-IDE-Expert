@@ -22,7 +22,7 @@ uses
   Vcl.StdCtrls,
   Vcl.Forms,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Diagnostics.Timing;
 
 type
@@ -73,7 +73,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Winapi.Windows,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Foundation.Theme;

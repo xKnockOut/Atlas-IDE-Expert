@@ -158,7 +158,7 @@ uses
   Winapi.Windows,
   Vcl.Forms,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.EditorWindows,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,

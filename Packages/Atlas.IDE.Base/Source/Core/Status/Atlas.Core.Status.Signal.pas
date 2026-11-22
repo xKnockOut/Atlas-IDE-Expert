@@ -1,26 +1,23 @@
 ﻿unit Atlas.Core.Status.Signal;
 
-// Signalfarbe zum Zustand einer Statuszeile (#1255): Grün → Ok, Gelb → Warnung,
-// Rot → Fehler, sonst ohne Aussage. Liegt beim Status, nicht bei den Farben:
-// Status verwendet Style, Style kennt keine Statuszustände.
+// Signalfarbe zum Zustand einer Statuszeile (#1255): Grün ist in Ordnung, Gelb Warnung bzw. läuft, Rot Fehler,
+// alles andere ohne Aussage. Die Zuordnung gehört zum Status; die Signalfarben selbst kennen keine Statuszeilen.
 
 interface
 
 uses
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.Core.Status.Contract;
 
 type
   TAtlasStatusSignal = record
-    /// <summary>Bedeutung der Signalfarbe für AState.</summary>
+    /// <summary>Bedeutung der Signalfarbe zu einem Zustand.</summary>
     class function KindOf(AState: TAtlasStatusState): TAtlasSignalKind; static;
-    /// <summary>Signal aus ASignals zum Zustand AState.</summary>
-    class function Pick(const ASignals: TAtlasSignals; AState: TAtlasStatusState): TAtlasSignal; static;
+    /// <summary>Signal aus ASignals zum Zustand einer Statuszeile.</summary>
+    class function ForState(const ASignals: TAtlasSignals; AState: TAtlasStatusState): TAtlasSignal; static;
   end;
 
 implementation
-
-{ TAtlasStatusSignal }
 
 class function TAtlasStatusSignal.KindOf(AState: TAtlasStatusState): TAtlasSignalKind;
 begin
@@ -36,7 +33,7 @@ begin
   end;
 end;
 
-class function TAtlasStatusSignal.Pick(const ASignals: TAtlasSignals; AState: TAtlasStatusState): TAtlasSignal;
+class function TAtlasStatusSignal.ForState(const ASignals: TAtlasSignals; AState: TAtlasStatusState): TAtlasSignal;
 begin
   Result := ASignals.Get(KindOf(AState));
 end;

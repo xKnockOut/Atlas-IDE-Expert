@@ -24,7 +24,7 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Status.Contract,
   Atlas.UI.Foundation.Dialog;
 
@@ -75,10 +75,11 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Status.Registry,
+  Atlas.Core.Status.Signal,
   Atlas.UI.Foundation.Controls,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings,
@@ -319,8 +320,8 @@ var
 begin
   mRadius := ScaleValue(cDotRadius);
   // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
-  Canvas.Pen.Color := ToColor(TAtlasStatusSignal.Pick(Colors.Signals, AState).Ring);
-  Canvas.Brush.Color := ToColor(TAtlasStatusSignal.Pick(Colors.Signals, AState).Fill);
+  Canvas.Pen.Color := ToColor(TAtlasStatusSignal.ForState(Colors.Signals, AState).Ring);
+  Canvas.Brush.Color := ToColor(TAtlasStatusSignal.ForState(Colors.Signals, AState).Fill);
   Canvas.Brush.Style := bsSolid;
   Canvas.Ellipse(ACenter.X - mRadius, ACenter.Y - mRadius, ACenter.X + mRadius + 1, ACenter.Y + mRadius + 1);
 end;

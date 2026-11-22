@@ -28,7 +28,7 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Status.Contract,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Foundation.Dialog;
@@ -147,7 +147,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
+  Atlas.Core.Status.Signal,
   System.Math,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Setup.Strings,
@@ -650,8 +651,8 @@ end;
 procedure TAtlasSetupPainter.Dot(const ACenter: TPoint; ARadius: Integer; AState: TAtlasStatusState);
 begin
   // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
-  Window.Canvas.Pen.Color := ToColor(TAtlasStatusSignal.Pick(Window.FColors.Signals, AState).Ring);
-  Window.Canvas.Brush.Color := ToColor(TAtlasStatusSignal.Pick(Window.FColors.Signals, AState).Fill);
+  Window.Canvas.Pen.Color := ToColor(TAtlasStatusSignal.ForState(Window.FColors.Signals, AState).Ring);
+  Window.Canvas.Brush.Color := ToColor(TAtlasStatusSignal.ForState(Window.FColors.Signals, AState).Fill);
   Window.Canvas.Brush.Style := bsSolid;
   Window.Canvas.Ellipse(ACenter.X - ARadius, ACenter.Y - ARadius, ACenter.X + ARadius + 1, ACenter.Y + ARadius + 1);
 end;
@@ -719,8 +720,8 @@ begin
     mFill.Right := AArea.Left + MulDiv(AArea.Width, APercent, 100);
     if APercent >= 100 then
     begin
-      Window.Canvas.Brush.Color := ToColor(TAtlasStatusSignal.Pick(Window.FColors.Signals,
-        TAtlasStatusState.Green).Fill);
+      Window.Canvas.Brush.Color :=
+        ToColor(TAtlasStatusSignal.ForState(Window.FColors.Signals, TAtlasStatusState.Green).Fill);
     end
     else
     begin

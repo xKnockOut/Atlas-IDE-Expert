@@ -39,7 +39,7 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.Metrics.DuplicateCatalog,
   Atlas.Common.Rules.Catalog,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Plugin,

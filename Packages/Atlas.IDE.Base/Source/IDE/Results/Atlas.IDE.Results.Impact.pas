@@ -16,7 +16,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Testlauf: Datei aus dem Testprojekt und Namen für --run.</summary>
@@ -55,9 +55,9 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,

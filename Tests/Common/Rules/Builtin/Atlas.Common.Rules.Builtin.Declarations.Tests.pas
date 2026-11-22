@@ -232,7 +232,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Declarations,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -1049,11 +1049,11 @@ begin
   Assert.AreEqual(6, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Feld an den Anfang des Abschnitts verschieben', mFindings[0].Fixes[0].Title);
-  mText := TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(Kunde(cMembers), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Kunde('  private'#10'    FName: string;'#10'    function GetName: string;'#10), mText);
   TRuleAssert.Silent(TFieldAfterMethodRule.Create, mText);
   Assert.AreEqual('var davor setzen', mFindings[0].Fixes[1].Title);
-  mText := TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[1].Edits);
+  mText := TTextChanges.Apply(Kunde(cMembers), mFindings[0].Fixes[1].Edits);
   Assert.AreEqual(Kunde('  private'#10'    function GetName: string;'#10'    var FName: string;'#10), mText);
   TRuleAssert.Silent(TFieldAfterMethodRule.Create, mText);
 end;
@@ -1073,11 +1073,11 @@ begin
   Assert.AreEqual(Kunde('  private'#10'    // Puffer'#10'    [Weak] FPuffer: TObject;'#10 +
     '    /// <summary>Name</summary>'#10'    [Stored]'#10'    property Name: string read FName;'#10 +
     '    procedure Setzen;'#10'    FA, FB: Integer;'#10),
-    TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(Kunde(cMembers), mFindings[0].Fixes[0].Edits));
   Assert.AreEqual(Kunde('  private'#10'    /// <summary>Name</summary>'#10'    [Stored]'#10 +
     '    property Name: string read FName;'#10'    procedure Setzen;'#10'    // Puffer'#10 +
     '    var [Weak] FPuffer: TObject;'#10'    FA, FB: Integer;'#10),
-    TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[1].Edits));
+    TTextChanges.Apply(Kunde(cMembers), mFindings[0].Fixes[1].Edits));
   // Record: var zuerst, weil Verschieben das Speicherlayout ändert.
   mFindings := TRuleAssert.Findings(TFieldAfterMethodRule.Create, cRec);
   Assert.AreEqual(1, Integer(Length(mFindings)));
@@ -1144,7 +1144,7 @@ begin
   Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(14, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('overload; an alle Deklarationen anhängen', mFindings[0].Fixes[0].Title);
-  mText := TChangeSignature.ApplyEdits(Kunde(cMembers), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(Kunde(cMembers), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Kunde('    procedure Laden(const Datei: string); overload;'#10 +
     '    procedure Laden(Strom: TStream); overload;'#10), mText);
   TRuleAssert.Silent(TOverloadDirectiveMissingRule.Create, mText);
@@ -1161,7 +1161,7 @@ begin
   Assert.AreEqual('Laden ist überladen, die frühere Deklaration in Zeile 5 trägt kein overload (wie E2267).',
     mFindings[0].Message);
   Assert.AreEqual(Kunde('    procedure Laden(const Datei: string); overload; virtual;'#10 +
-    '    procedure Laden(Strom: TStream); overload;'#10), TChangeSignature.ApplyEdits(Kunde(
+    '    procedure Laden(Strom: TStream); overload;'#10), TTextChanges.Apply(Kunde(
     '    procedure Laden(const Datei: string); virtual;'#10'    procedure Laden(Strom: TStream); overload;'#10),
     mFindings[0].Fixes[0].Edits));
   // Gleiche Parameter (E2252) und gleiches Ergebnis (E2301), auch mit anderen Namen.
@@ -1181,7 +1181,7 @@ begin
   Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual('unit U;'#10'interface'#10'procedure Global(A: Integer); overload;'#10'implementation'#10 +
     'procedure Global(A: Integer);'#10'begin'#10'end;'#10'procedure Global(const S: string); overload;'#10'begin'#10 +
-    'end;'#10'end.', TChangeSignature.ApplyEdits('unit U;'#10'interface'#10'procedure Global(A: Integer);'#10 +
+    'end;'#10'end.', TTextChanges.Apply('unit U;'#10'interface'#10'procedure Global(A: Integer);'#10 +
     'implementation'#10'procedure Global(A: Integer);'#10'begin'#10'end;'#10'procedure Global(const S: string);'#10 +
     'begin'#10'end;'#10'end.', mFindings[0].Fixes[0].Edits));
   // Verschachtelte Routinen bilden einen eigenen Bereich.
@@ -1371,19 +1371,19 @@ begin
   Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
   // Einzige Variable: der var-Abschnitt geht mit.
   Assert.AreEqual('Zweite Deklaration entfernen', mFindings[0].Fixes[0].Title);
-  mText := TChangeSignature.ApplyEdits(Rechnung('var'#10'  Betrag: Currency;'#10), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(Rechnung('var'#10'  Betrag: Currency;'#10), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Rechnung(''), mText);
   TRuleAssert.Silent(TDuplicateDeclarationRule.Create, mText);
   // Unter mehreren: nur die Zeile bzw. der Name.
   mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Summe: Currency;'#10 +
     '  Betrag: Currency;'#10));
-  Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TChangeSignature.ApplyEdits(Rechnung('var'#10 +
+  Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TTextChanges.Apply(Rechnung('var'#10 +
     '  Summe: Currency;'#10'  Betrag: Currency;'#10), mFindings[0].Fixes[0].Edits));
   mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Betrag, Summe: Currency;'#10));
-  Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TChangeSignature.ApplyEdits(Rechnung('var'#10 +
+  Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TTextChanges.Apply(Rechnung('var'#10 +
     '  Betrag, Summe: Currency;'#10), mFindings[0].Fixes[0].Edits));
   mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, Rechnung('var'#10'  Summe, Betrag: Currency;'#10));
-  Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TChangeSignature.ApplyEdits(Rechnung('var'#10 +
+  Assert.AreEqual(Rechnung('var'#10'  Summe: Currency;'#10), TTextChanges.Apply(Rechnung('var'#10 +
     '  Summe, Betrag: Currency;'#10), mFindings[0].Fixes[0].Edits));
 end;
 
@@ -1443,10 +1443,10 @@ begin
   Assert.AreEqual('Unit System.Classes steht schon im uses des interface (wie E2004).', mFindings[1].Message);
   Assert.AreEqual('Doppelten Eintrag entfernen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes;'#10 +
-    'implementation'#10'uses'#10'  System.Classes;'#10'end.', TChangeSignature.ApplyEdits(cSource,
+    'implementation'#10'uses'#10'  System.Classes;'#10'end.', TTextChanges.Apply(cSource,
     mFindings[0].Fixes[0].Edits));
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  System.SysUtils, System.Classes, System.SysUtils;'#10 +
-    'implementation'#10'end.', TChangeSignature.ApplyEdits(cSource, mFindings[1].Fixes[0].Edits));
+    'implementation'#10'end.', TTextChanges.Apply(cSource, mFindings[1].Fixes[0].Edits));
   // checkUses = false schaltet nur diesen Teil ab.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TDuplicateDeclarationRule.Create, cSource,
     '{"rules": {"duplicate-declaration": {"checkUses": false}}}', 'U.pas'))));
@@ -1538,8 +1538,8 @@ begin
   Assert.AreEqual('ShortString verwenden (höchstens 255 Zeichen)', mFindings[0].Fixes[0].Title);
   Assert.AreEqual('Text in den festen Teil verschieben', mFindings[0].Fixes[1].Title);
   Assert.AreEqual(Wert('      waZahl: (Zahl: Double);'#10'      waText: (Text: ShortString);'#10),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
-  mSource := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits);
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
+  mSource := TTextChanges.Apply(mSource, mFindings[0].Fixes[1].Edits);
   Assert.AreEqual('unit U;'#10'interface'#10'type'#10'  TArt = (waZahl, waText);'#10'  TWert = record'#10 +
     '    Text: string;'#10'    case Art: TArt of'#10'      waZahl: (Zahl: Double);'#10'      waText: ();'#10 +
     '  end;'#10'implementation'#10'end.', mSource);
@@ -1581,9 +1581,9 @@ begin
   Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('Name,Text in den festen Teil verschieben', mFindings[0].Fixes[1].Title);
   Assert.AreEqual(Wert('      waZahl: (Zahl: Double);'#10'      waText: (Wert: string; N: Integer);'#10).Replace(
-    '    case', '    Name, Text: string;'#10'    case'), TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits));
+    '    case', '    Name, Text: string;'#10'    case'), TTextChanges.Apply(mSource, mFindings[0].Fixes[1].Edits));
   Assert.AreEqual(Wert('      waZahl: (Zahl: Double; Name, Text: string);'#10'      waText: (N: Integer);'#10).Replace(
-    '    case', '    Wert: string;'#10'    case'), TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[1].Edits));
+    '    case', '    Wert: string;'#10'    case'), TTextChanges.Apply(mSource, mFindings[1].Fixes[1].Edits));
   // Verschachtelter varianter Teil: nur ShortString.
   mFindings := TRuleAssert.Findings(TVariantRecordManagedFieldRule.Create, Wert('      waZahl: (Zahl: Double);'#10 +
     '      waText: (case Boolean of'#10'        True: (Text: string));'#10));
@@ -1605,10 +1605,10 @@ begin
   Assert.AreEqual('T: record einschränken', mFindings[0].Fixes[1].Title);
   TRuleAssert.Silent(TVariantRecordManagedFieldRule.Create, Typen('  TBox<T: record> = record'#10 +
     '    case Integer of'#10'      0: (Wert: T);'#10'  end;'#10));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits).Contains('TBox<T: record> = record'));
+  Assert.IsTrue(TTextChanges.Apply(mSource, mFindings[0].Fixes[1].Edits).Contains('TBox<T: record> = record'));
   Assert.AreEqual('string braucht Finalisierung und ist in einem Dateityp nicht erlaubt (wie E2155).',
     mFindings[1].Message);
-  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits).Contains('file of ShortString;'));
+  Assert.IsTrue(TTextChanges.Apply(mSource, mFindings[1].Fixes[0].Edits).Contains('file of ShortString;'));
   Assert.AreEqual('TZaehler braucht Initialisierung und ist in einem Dateityp nicht erlaubt (wie E2417).',
     mFindings[2].Message);
   // <K, V> ohne Einschränkung: Meldung ohne Korrektur zum Einschränken.
@@ -1757,7 +1757,7 @@ begin
   mFindings := DefaultFindings(ASource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
-  Result := TChangeSignature.ApplyEdits(ASource, mFindings[0].Fixes[0].Edits);
+  Result := TTextChanges.Apply(ASource, mFindings[0].Fixes[0].Edits);
   mTree := TPascalParser.Parse(Result);
   try
     Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), Result);

@@ -74,7 +74,7 @@ uses
   Vcl.Forms,
   Vcl.Controls,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.TextChanges,

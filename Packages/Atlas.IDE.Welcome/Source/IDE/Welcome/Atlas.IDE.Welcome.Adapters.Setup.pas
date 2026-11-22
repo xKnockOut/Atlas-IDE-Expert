@@ -132,9 +132,9 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.PathCheck,
@@ -149,7 +149,7 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.UI.Welcome.Setup;
 
 { Hilfen }

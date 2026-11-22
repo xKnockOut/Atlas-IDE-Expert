@@ -145,7 +145,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.MethodBreakpoints.Strings;
 
 const

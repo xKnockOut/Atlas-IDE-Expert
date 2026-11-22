@@ -101,7 +101,7 @@ implementation
 uses
   System.StrUtils,
   System.RegularExpressions,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Editing.SqlText,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,

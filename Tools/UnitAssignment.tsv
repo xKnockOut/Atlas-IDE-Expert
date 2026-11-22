@@ -169,10 +169,7 @@ Atlas.IDE.Base	Atlas.Core.Diagnostics.Edition	Core/Diagnostics/Atlas.Core.Diagno
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ExitWatch	Core/Diagnostics/Atlas.Core.Diagnostics.ExitWatch.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.Export	Core/Diagnostics/Atlas.Core.Diagnostics.Export.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.FeatureTable	Core/Diagnostics/Atlas.Core.Diagnostics.FeatureTable.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Guard	Core/Diagnostics/Atlas.Core.Diagnostics.Guard.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.Hangs	Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.LogRedaction	Core/Diagnostics/Atlas.Core.Diagnostics.LogRedaction.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.MainThread	Core/Diagnostics/Atlas.Core.Diagnostics.MainThread.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ModuleHost	Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHost.pas	gemeinsame Beschreibung, Zulassung und Abmeldung der Module, #1455
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ModuleHosting	Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas	Module und ihre Teile in der Feature-Tabelle, #1455
 Atlas.IDE.Base	Atlas.Core.Diagnostics.Package	Core/Diagnostics/Atlas.Core.Diagnostics.Package.pas	Ordner `Core/Diagnostics`
@@ -181,16 +178,13 @@ Atlas.IDE.Base	Atlas.Core.Diagnostics.PluginTimings	Core/Diagnostics/Atlas.Core.
 Atlas.IDE.Base	Atlas.Core.Diagnostics.Processes	Core/Diagnostics/Atlas.Core.Diagnostics.Processes.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.SafeMode	Core/Diagnostics/Atlas.Core.Diagnostics.SafeMode.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ServerPackage	Core/Diagnostics/Atlas.Core.Diagnostics.ServerPackage.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Shutdown	Core/Diagnostics/Atlas.Core.Diagnostics.Shutdown.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.StackRing	Core/Diagnostics/Atlas.Core.Diagnostics.StackRing.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.StartTimes	Core/Diagnostics/Atlas.Core.Diagnostics.StartTimes.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.Teardown	Core/Diagnostics/Atlas.Core.Diagnostics.Teardown.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ThreadList	Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.TimeLimit	Core/Diagnostics/Atlas.Core.Diagnostics.TimeLimit.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.Timing	Core/Diagnostics/Atlas.Core.Diagnostics.Timing.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.UnloadSafety	Core/Diagnostics/Atlas.Core.Diagnostics.UnloadSafety.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.UserIdle	Core/Diagnostics/Atlas.Core.Diagnostics.UserIdle.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.WorkerSlot	Core/Diagnostics/Atlas.Core.Diagnostics.WorkerSlot.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Dock.Plan	Core/Dock/Atlas.Core.Dock.Plan.pas	Ordner `Core/Dock`
 Atlas.IDE.Base	Atlas.Core.Documentation.Contract	Core/Documentation/Atlas.Core.Documentation.Contract.pas	Ordner `Core/Documentation`
 Atlas.IDE.Base	Atlas.Core.Documentation.Layout	Core/Documentation/Atlas.Core.Documentation.Layout.pas	Ordner `Core/Documentation`
@@ -316,7 +310,6 @@ Atlas.IDE.Base	Atlas.Core.Hover.Texts	Core/Hover/Atlas.Core.Hover.Texts.pas	Ordn
 Atlas.IDE.Base	Atlas.Core.Hover.View	Core/Hover/Atlas.Core.Hover.View.pas	Ordner `Core/Hover`
 Atlas.IDE.Base	Atlas.Core.InlayHints.Store	Core/InlayHints/Atlas.Core.InlayHints.Store.pas	Ordner `Core/InlayHints`
 Atlas.IDE.Base	Atlas.Core.KnownErrors.Contract	Core/KnownErrors/Atlas.Core.KnownErrors.Contract.pas	Daten der bekannten Fehler beim Exception-Halt (Halt, Treffer, Antwort) für Debugger und Tracker, die Interfaces in `Atlas.IDE.Contracts.KnownErrors` (#2460)
-Atlas.IDE.Base	Atlas.Core.Localization.Language	Core/Localization/Atlas.Core.Localization.Language.pas	Sprache der Plugin-Texte für Core und UI, Texttabellen der Units (#1458)
 Atlas.IDE.Base	Atlas.Core.Lsp.AccessChains	Core/Lsp/Atlas.Core.Lsp.AccessChains.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Lsp.BackgroundRequest	Core/Lsp/Atlas.Core.Lsp.BackgroundRequest.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Lsp.Client	Core/Lsp/Atlas.Core.Lsp.Client.pas	Ordner `Core/Lsp`
@@ -390,7 +383,6 @@ Atlas.IDE.Base	Atlas.Core.Problems.ScopeProjects	Core/Problems/Atlas.Core.Proble
 Atlas.IDE.Base	Atlas.Core.Problems.Store	Core/Problems/Atlas.Core.Problems.Store.pas	Ordner `Core/Problems`
 Atlas.IDE.Base	Atlas.Core.Problems.Switches	Core/Problems/Atlas.Core.Problems.Switches.pas	Ordner `Core/Problems`
 Atlas.IDE.Base	Atlas.Core.Processes.OutputLines	Core/Processes/Atlas.Core.Processes.OutputLines.pas	Zeilen aus der Ausgabe eines Prozesses für die Projektaufgaben (Modul Build) und die Konsolenausgabe (Modul Debugger), #581
-Atlas.IDE.Base	Atlas.Core.Product.Version	Core/Product/Atlas.Core.Product.Version.pas	Ordner `Core/Product`
 Atlas.IDE.Base	Atlas.Core.Projects.Baseline	Core/Projects/Atlas.Core.Projects.Baseline.pas	Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455
 Atlas.IDE.Base	Atlas.Core.Projects.Contract.Summary	Core/Projects/Atlas.Core.Projects.Contract.Summary.pas	Datentypen der Projekt-Zusammenfassung und der Einrichtung als Vertrag; Willkommensseite und Tracker tragen sie in ihren Schnittstellen, #1443
 Atlas.IDE.Base	Atlas.Core.Projects.Matching	Core/Projects/Atlas.Core.Projects.Matching.pas	Ordner `Core/Projects`
@@ -490,14 +482,6 @@ Atlas.IDE.Base	Atlas.Core.Status.Server	Core/Status/Atlas.Core.Status.Server.pas
 Atlas.IDE.Base	Atlas.Core.Status.Signal	Core/Status/Atlas.Core.Status.Signal.pas	Ordner `Core/Status`
 Atlas.IDE.Base	Atlas.Core.StatusBar.Content	Core/StatusBar/Atlas.Core.StatusBar.Content.pas	Ordner `Core/StatusBar`
 Atlas.IDE.Base	Atlas.Core.StatusBar.Layout	Core/StatusBar/Atlas.Core.StatusBar.Layout.pas	Ordner `Core/StatusBar`
-Atlas.IDE.Base	Atlas.Core.Style.Color	Core/Style/Atlas.Core.Style.Color.pas	Ordner `Core/Style`
-Atlas.IDE.Base	Atlas.Core.Style.Listeners	Core/Style/Atlas.Core.Style.Listeners.pas	Abonnenten des Themenwechsels (#2061)
-Atlas.IDE.Base	Atlas.Core.Style.Palette	Core/Style/Atlas.Core.Style.Palette.pas	Ordner `Core/Style`
-Atlas.IDE.Base	Atlas.Core.Style.Scaling	Core/Style/Atlas.Core.Style.Scaling.pas	Ordner `Core/Style`
-Atlas.IDE.Base	Atlas.Core.Style.Signal	Core/Style/Atlas.Core.Style.Signal.pas	Ordner `Core/Style`
-Atlas.IDE.Base	Atlas.Core.Style.Symbol	Core/Style/Atlas.Core.Style.Symbol.pas	Ordner `Core/Style`
-Atlas.IDE.Base	Atlas.Core.Style.Syntax	Core/Style/Atlas.Core.Style.Syntax.pas	Ordner `Core/Style`
-Atlas.IDE.Base	Atlas.Core.Style.Wrap	Core/Style/Atlas.Core.Style.Wrap.pas	Ordner `Core/Style`
 Atlas.IDE.Base	Atlas.Core.SymbolPath.Model	Core/SymbolPath/Atlas.Core.SymbolPath.Model.pas	Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455
 Atlas.IDE.Base	Atlas.Core.Undo.Contract	Core/Undo/Atlas.Core.Undo.Contract.pas	Ordner `Core/Undo`
 Atlas.IDE.Base	Atlas.Core.Undo.Journal	Core/Undo/Atlas.Core.Undo.Journal.pas	Ordner `Core/Undo`
@@ -1143,6 +1127,7 @@ Atlas.IDE.Debugger	Atlas.IDE.Debug.AccessViolation	IDE/Debug/Atlas.IDE.Debug.Acc
 Atlas.IDE.Debugger	Atlas.IDE.Debug.AccessViolationUnderline	IDE/Debug/Atlas.IDE.Debug.AccessViolationUnderline.pas	Ordner `IDE/Debug`
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.AssistantControl	IDE/Debug/Atlas.IDE.Debug.Adapters.AssistantControl.pas	Steuerung des Debuggers für KI-Assistenten (IAtlasDebugControl), #1874
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.KnownErrorsView	IDE/Debug/Atlas.IDE.Debug.Adapters.KnownErrorsView.pas	Empfänger der Meldung des Trackers für bekannte Fehler (IAtlasKnownErrorsView), #2460
+Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.Module	IDE/Debug/Atlas.IDE.Debug.Adapters.Module.pas	Modulklasse des Debuggers: IAtlasModule, Befehle, Menüeinträge, Tasten, Einstellungen, Thema
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.ProcessMemory	IDE/Debug/Atlas.IDE.Debug.Adapters.ProcessMemory.pas	Ordner `IDE/Debug`; Speicher des Programms für die Objektzählung (IAtlasProcessMemory)
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.Report	IDE/Debug/Atlas.IDE.Debug.Adapters.Report.pas	Bericht über die Debug-Sitzung für andere Module (IAtlasDebugReportSource), #1276
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.SessionTarget	IDE/Debug/Atlas.IDE.Debug.Adapters.SessionTarget.pas	Ziel der Debug-Sitzung für die Phasen (IAtlasDebugTarget) über IOTADebuggerServices, #1443

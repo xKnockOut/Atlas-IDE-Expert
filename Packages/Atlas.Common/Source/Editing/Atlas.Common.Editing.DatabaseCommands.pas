@@ -27,7 +27,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Editing.SqlText,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts;

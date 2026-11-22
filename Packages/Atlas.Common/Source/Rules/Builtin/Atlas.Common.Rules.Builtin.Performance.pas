@@ -56,7 +56,6 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.Performance.StringResets,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,

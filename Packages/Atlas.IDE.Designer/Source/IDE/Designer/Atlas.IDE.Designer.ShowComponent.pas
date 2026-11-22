@@ -53,7 +53,7 @@ uses
   Vcl.Menus,
   DesignIntf,
   Atlas.Core.Designer.Components,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.SearchItems,

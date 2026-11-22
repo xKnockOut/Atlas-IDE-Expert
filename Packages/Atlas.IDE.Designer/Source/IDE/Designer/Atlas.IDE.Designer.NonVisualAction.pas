@@ -34,7 +34,7 @@ uses
   System.SysUtils,
   Vcl.ActnList,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeNonVisualAction }
 

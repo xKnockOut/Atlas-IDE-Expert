@@ -54,7 +54,7 @@ uses
   ToolsAPI,
   ToolsAPI.AI,
 {$ENDIF}
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Assistants.Contract.IdeAi,
   Atlas.Core.Assistants.IdeProviders;
 

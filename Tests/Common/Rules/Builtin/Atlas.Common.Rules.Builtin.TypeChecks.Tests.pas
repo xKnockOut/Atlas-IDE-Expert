@@ -149,7 +149,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Index mit System (TObject, TArray&lt;T&gt;).</summary>
@@ -162,7 +162,7 @@ end;
 
 function Apply(const AText: string; const AFix: TRuleFix): string;
 begin
-  Result := TChangeSignature.ApplyEdits(AText, AFix.Edits);
+  Result := TTextChanges.Apply(AText, AFix.Edits);
 end;
 
 { TDynamicArrayMisuseTests }

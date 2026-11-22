@@ -40,7 +40,7 @@ uses
   ToolsAPI,
   DesignIntf,
   Atlas.Core.Designer.ButtonBar,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,

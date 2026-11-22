@@ -38,7 +38,7 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.Hangs;
 

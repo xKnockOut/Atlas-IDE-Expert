@@ -56,7 +56,7 @@ implementation
 
 uses
   System.UITypes,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Tests.Strings;
 
 { TAtlasTestsSlowestDialog }

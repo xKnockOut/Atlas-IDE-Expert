@@ -42,7 +42,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Menus,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Commands,

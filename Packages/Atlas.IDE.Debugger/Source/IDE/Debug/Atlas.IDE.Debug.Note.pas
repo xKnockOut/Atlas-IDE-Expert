@@ -49,7 +49,7 @@ implementation
 uses
   System.IOUtils,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Report,

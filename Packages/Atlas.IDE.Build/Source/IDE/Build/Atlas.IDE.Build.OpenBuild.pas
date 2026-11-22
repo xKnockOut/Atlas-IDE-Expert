@@ -122,7 +122,7 @@ implementation
 uses
   Atlas.Core.Build.OpenBuildSettings,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Notifications.Center,

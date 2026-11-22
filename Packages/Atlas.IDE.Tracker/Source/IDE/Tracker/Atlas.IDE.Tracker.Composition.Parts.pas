@@ -52,7 +52,7 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Ci.Contract,
   Atlas.IDE.Foundation.Host,

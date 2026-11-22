@@ -46,7 +46,7 @@ uses
   System.Types,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,

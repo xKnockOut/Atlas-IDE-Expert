@@ -21,8 +21,8 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette;
 
 {$SCOPEDENUMS ON}
 

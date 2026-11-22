@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Status.Signal.Tests;
 
-// Signalfarbe zum Zustand einer Statuszeile.
+// Zuordnung der Statuszustände zu den Signalfarben (#1255).
 
 interface
 
@@ -12,29 +12,36 @@ type
   TAtlasStatusSignalTests = class
   public
     [Test]
-    procedure StatusStatesMapToSignals;
+    procedure StatesMapToKinds;
+    [Test]
+    procedure ForStateTakesSignalOfKind;
   end;
 
 implementation
 
 uses
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Signal;
 
-{ TAtlasStatusSignalTests }
-
-procedure TAtlasStatusSignalTests.StatusStatesMapToSignals;
-var
-  mSignals: TAtlasSignals;
+procedure TAtlasStatusSignalTests.StatesMapToKinds;
 begin
   Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Ok, TAtlasStatusSignal.KindOf(TAtlasStatusState.Green));
   Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Warn, TAtlasStatusSignal.KindOf(TAtlasStatusState.Yellow));
   Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Error, TAtlasStatusSignal.KindOf(TAtlasStatusState.Red));
   Assert.AreEqual<TAtlasSignalKind>(TAtlasSignalKind.Idle, TAtlasStatusSignal.KindOf(TAtlasStatusState.Neutral));
+end;
+
+procedure TAtlasStatusSignalTests.ForStateTakesSignalOfKind;
+var
+  mSignals: TAtlasSignals;
+begin
   mSignals := TAtlasSignals.Light;
-  Assert.AreEqual(mSignals.Get(TAtlasSignalKind.Error).Fill, TAtlasStatusSignal.Pick(mSignals,
-    TAtlasStatusState.Red).Fill);
+  Assert.AreEqual(mSignals.Get(TAtlasSignalKind.Error).Fill,
+    TAtlasStatusSignal.ForState(mSignals, TAtlasStatusState.Red).Fill);
+  mSignals := TAtlasSignals.Dark;
+  Assert.AreEqual(mSignals.Get(TAtlasSignalKind.Ok).Ring,
+    TAtlasStatusSignal.ForState(mSignals, TAtlasStatusState.Green).Ring);
 end;
 
 initialization

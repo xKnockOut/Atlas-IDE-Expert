@@ -50,7 +50,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

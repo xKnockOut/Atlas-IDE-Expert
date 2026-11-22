@@ -13,6 +13,8 @@
     - Atlas.IDE.Base (Kern des Plugins, bis #1456 Atlas.IDE.Expert): eigenständig; darin Schichten (#406):
         Atlas.Core.* ohne VCL, Open Tools API, Atlas.UI.* und Atlas.IDE.*
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
+    - Atlas.Plugin  : Platform-Package des Plugins ohne host-spezifisches Framework (RTL, Winapi.*, Atlas.Text,
+        Atlas.WinBase); nur Quelltext unter Packages/Atlas.Plugin/Source, den Base mitübersetzt (kein dpk)
     - Atlas.Core.VersionControl.* (Versionsverwaltung, #571): übersetzt auch der Server
         mit; darum nur RTL, Winapi, Atlas.Text.*, Atlas.WinBase.* und eigene Atlas.Core.VersionControl.*-Units
 
@@ -21,6 +23,7 @@
     '..\Atlas.Text\Source\…' bzw. '..\Atlas.WinBase\Source\…'). Geprüft wird, dass
       - das Plugin außer eigenen Units (Source\…) nur Units dieser beiden enthält,
       - es genau die Units aus Atlas.Text.dpk und Atlas.WinBase.dpk enthält (sonst W1033),
+      - es jede Unit unter Packages/Atlas.Plugin/Source enthält (ohne eigenes dpk),
       - Atlas.Tests.dpr und AtlasServer.dpr keine Quellen der beiden einbinden
         (sie linken die DCUs aus Dcu\Atlas.Text bzw. Dcu\Atlas.WinBase; zwei Fassungen vermeiden).
 
@@ -215,6 +218,17 @@ $Packages = @(
         Reason           = 'eigenständig ohne Atlas.Common und Atlas.Windows'
     }
 )
+# Platform-Packages des Plugins ohne eigenes dpk: Base übersetzt ihre Quellen mit (contains).
+$Packages += @{
+    Name             = 'Atlas.Plugin'
+    Path             = 'Packages/Atlas.Plugin'
+    AllowedRequires  = @()
+    ForbiddenPrefix  = @('Vcl.', 'FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.',
+                         'Atlas.Vcl.', 'Setup.', 'ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', 'DesignWindows',
+                         'PropInspAPI', 'DockForm')
+    ForbiddenUnits   = $LegacyVclUnits
+    Reason           = 'frei von VCL, Open Tools API und Fachcode von Base (nur RTL, Windows-API, Atlas.Text, Atlas.WinBase)'
+}
 # Module requiren nur Base, das auch die Verträge zwischen Modulen enthält (Regel 9).
 foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
     $requires = @('rtl', 'vcl', 'vclwinx', 'designide', $PluginBaseFolder)
@@ -594,7 +608,8 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
-$RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
+$RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Plugin', 'Atlas.Core',
+    'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
 # Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
 $HostedFeatures = @()
@@ -899,8 +914,9 @@ foreach ($package in $Packages) {
     }
 }
 
-# Atlas.Text und Atlas.WinBase im Plugin: als Quelltext, genau mit den Units ihres dpk.
-$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase')
+# Atlas.Text und Atlas.WinBase im Plugin: als Quelltext, genau mit den Units ihres dpk. Platform-Packages ohne dpk
+# (Atlas.Plugin): genau mit allen Units unter ihrem Ordner Source.
+$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin')
 $pluginDpkName = "Packages/$PluginBaseFolder/$PluginBaseFolder.dpk"
 $pluginDpk = Join-Path $Root $pluginDpkName
 if (Test-Path $pluginDpk) {
@@ -917,14 +933,20 @@ if (Test-Path $pluginDpk) {
     }
     foreach ($package in $SharedSourcePackages) {
         $sharedDpk = Join-Path $Root "Packages/$package/$package.dpk"
-        if (-not (Test-Path $sharedDpk)) { continue }
-        $sharedUnits = @(Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($sharedDpk))) | ForEach-Object { $_.Name })
+        $sharedSource = Join-Path $Root "Packages/$package/Source"
+        if (Test-Path $sharedDpk) {
+            $sharedUnits = @(Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($sharedDpk))) |
+                ForEach-Object { $_.Name })
+        } elseif (Test-Path $sharedSource) {
+            $sharedUnits = @(Get-ChildItem -Path $sharedSource -Recurse -File -Filter '*.pas' |
+                ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.Name) })
+        } else { continue }
         $pluginSharedUnits = @($pluginEntries | Where-Object { $_.Name.StartsWith("$package.") } | ForEach-Object { $_.Name })
         foreach ($name in $sharedUnits | Where-Object { $pluginSharedUnits -notcontains $_ }) {
-            $violations += "${pluginDpkName}: $name fehlt unter contains (steht in $package.dpk; sonst W1033)"
+            $violations += "${pluginDpkName}: $name fehlt unter contains (steht in $package; sonst W1033)"
         }
         foreach ($name in $pluginSharedUnits | Where-Object { $sharedUnits -notcontains $_ }) {
-            $violations += "${pluginDpkName}: $name steht nicht in $package.dpk"
+            $violations += "${pluginDpkName}: $name gibt es in $package nicht"
         }
     }
 }

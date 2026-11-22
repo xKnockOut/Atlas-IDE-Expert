@@ -139,7 +139,7 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.BarPlan,

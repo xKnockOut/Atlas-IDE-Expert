@@ -76,7 +76,7 @@ implementation
 uses
   Vcl.Graphics,
   Atlas.UI.Editor.Strings,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Foundation.ListView,

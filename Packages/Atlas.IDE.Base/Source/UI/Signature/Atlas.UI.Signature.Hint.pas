@@ -36,7 +36,7 @@ uses
   Vcl.Controls,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Format,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Popup.Window,
   Atlas.UI.Popup.Styled;
 
@@ -128,7 +128,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Atlas.UI.Strings,
   Atlas.UI.Popup.Accessibility,

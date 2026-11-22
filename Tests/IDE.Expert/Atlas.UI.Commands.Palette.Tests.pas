@@ -21,7 +21,7 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Commands.Palette;
 

@@ -22,10 +22,10 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.LensAsk,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Diagnostics.Deadline;
 
 type

@@ -51,7 +51,6 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.InvertBoolean,
   Atlas.Text.Json,

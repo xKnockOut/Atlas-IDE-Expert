@@ -37,7 +37,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Scaling,
+  Atlas.Plugin.Style.Scaling,
   Atlas.UI.Foundation.Scaling;
 
 const

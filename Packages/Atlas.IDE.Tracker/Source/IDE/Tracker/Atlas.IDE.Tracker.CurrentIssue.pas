@@ -39,7 +39,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.CurrentIssue,
   Atlas.Core.Tracker.CurrentIssuePlan,
   Atlas.Core.Tracker.Files,

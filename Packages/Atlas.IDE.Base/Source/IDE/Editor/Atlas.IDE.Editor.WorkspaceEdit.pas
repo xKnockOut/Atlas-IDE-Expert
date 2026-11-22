@@ -96,7 +96,7 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

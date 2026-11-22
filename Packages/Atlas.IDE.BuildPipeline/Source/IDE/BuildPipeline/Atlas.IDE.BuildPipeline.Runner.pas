@@ -102,7 +102,7 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.BuildPipeline.Plan,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Build.CheckOnSave,
   Atlas.UI.BuildPipeline.Strings;

@@ -41,8 +41,8 @@ function ActionsView: TAtlasHoverView;
 implementation
 
 uses
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Wrap;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Wrap;
 
 { TFakeMeasure }
 

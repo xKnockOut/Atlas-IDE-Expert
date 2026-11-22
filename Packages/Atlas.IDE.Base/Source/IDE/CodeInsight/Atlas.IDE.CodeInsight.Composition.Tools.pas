@@ -75,7 +75,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Status.Registry,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Setup.Checklist,
   Atlas.IDE.Foundation.Settings,
