@@ -198,6 +198,8 @@ begin
   end;
   // Typen aus den Packages der IDE: unresolved-type und unresolved-identifier schweigen für sie.
   Result.IdeTypes := ASetup.IdeTypes;
+  // Korrekturen aus Refactorings (Klassen-Aktionen …), vom Host über Adapter.
+  Result.Refactorings := ASetup.Refactorings;
 end;
 
 end.

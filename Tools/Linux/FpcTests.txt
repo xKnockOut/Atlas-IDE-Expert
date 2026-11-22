@@ -828,6 +828,8 @@ Atlas.Core.Editor.Pairs.Tests
 
 # Server (Shell)
 Adapters.Rules.IdeTypes.Tests
+Adapters.Rules.Refactorings.Tests
+Atlas.Common.Editing.Providers.ClassActions.Tests
 Adapters.Lsp.InheritanceDepths.Tests
 Core.Mcp.IssueTools.Tests
 Core.Mcp.IssueText.Tests
