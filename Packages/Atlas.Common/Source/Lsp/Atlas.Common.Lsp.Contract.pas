@@ -10,8 +10,10 @@ interface
 uses
   System.JSON,
   Atlas.Common.Diagnostics.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Metrics.Contract;
+  Atlas.Common.Metrics.Contract,
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Zusätzliche Fehlercodes des Language Server Protocol.</summary>
@@ -106,6 +108,34 @@ type
     ['{2E6CB6E2-A65B-416D-BB3B-154AA0138F25}']
     /// <summary>Je Klasse mit eigenen Vorfahren ein Eintrag; AIndex nil = nur die Datei.</summary>
     function Depths(const AFileName, AText: string; const AIndex: ISymbolIndex): TArray<TStructureMetrics>;
+  end;
+
+  /// <summary>Prüfregeln für ein Dokument der Diagnose (textDocument/publishDiagnostics und Pull); der Host baut
+  /// das Umfeld der Regeln. Läuft im Hintergrund-Thread.</summary>
+  ILspDocumentRules = interface
+    ['{F2D4E2D7-65DE-4E71-A07C-012689A3199D}']
+    /// <summary>Syntaxfehler im Baum von ADocument unter ADefines (gemeinsamer Zwischenspeicher, #845) als Treffer
+    /// der Regel syntax (#1022): Schweregrad und Gruppe aus der Konfiguration, ohne Umfeld Fehler.</summary>
+    function SyntaxFindings(const ADocument: ITextDocument; const ADefines: TArray<string>): TArray<TRuleFinding>;
+    /// <summary>Sprachmerkmale, die ADelphiVersion noch nicht kennt, als Treffer der Regel language-feature
+    /// (#109, #1126); nicht in AInactive.</summary>
+    function LanguageFeatureFindings(const ADocument: ITextDocument; const ADefines: TArray<string>;
+      const ADelphiVersion: string; const AInactive: TArray<TTextRange>): TArray<TRuleFinding>;
+    /// <summary>Treffer der Prüfregeln ohne die bekannten der Baseline (#97), über den gemeinsamen Speicher der
+    /// Treffer; leer ohne Regeln. Abbruch zwischen den Regeln mit ERuleCheckCancelled.</summary>
+    function RuleFindings(const ADocument: ITextDocument; const ADefines: TArray<string>): TArray<TRuleFinding>;
+    /// <summary>Zeigt der Editor ungenutzte uses (Regel unused-uses, #1135)? Ohne Umfeld ja.</summary>
+    function UnusedUsesShown: Boolean;
+    /// <summary>Zeigt der Editor „nur in der implementation gebraucht“ (uses-only-in-implementation, #1136)? Ohne
+    /// Umfeld ja.</summary>
+    function OnlyImplementationShown: Boolean;
+  end;
+
+  /// <summary>Prüfregeln der Diagnose je Dokument; ohne Anbieter meldet die Diagnose keine Treffer.</summary>
+  ILspRuleDiagnostics = interface
+    ['{7B7B6495-22F6-4A8E-BCF0-8164981D7119}']
+    /// <summary>Prüfung für AUri; ACancelled (nil = nie) bricht zwischen den Regeln ab. Nie nil.</summary>
+    function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): ILspDocumentRules;
   end;
 
   /// <summary>Antwort von atlas.server.ownership (#1877); der Host fragt die Prüfregeln.</summary>
