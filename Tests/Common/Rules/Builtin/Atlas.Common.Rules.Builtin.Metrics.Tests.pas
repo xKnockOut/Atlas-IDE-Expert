@@ -74,7 +74,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 function InUnit(const ABody: string): string;
@@ -342,7 +342,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Bedingung in Funktion auslagern', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(cSixOperands, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(cSixOperands, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, 'function ExtractedCondition(const Kunde: TKunde; const Betrag: Currency; ' +
     'const Gesperrt: Boolean; const Datum: TDate; const Start: TDate; const Ende: TDate): Boolean;'#10'begin'#10 +
     '  Result := (Kunde.Aktiv) and (Kunde.Land = ''DE'') and (Betrag > 0) and'#10 +

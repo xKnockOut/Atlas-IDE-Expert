@@ -1,6 +1,6 @@
-﻿unit Shell.Mcp.Changes;
+﻿unit Core.Mcp.Changes;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Units und Änderungen für die Prompts (#1357): Auflösung von
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Units und Änderungen für die Prompts (#1357): Auflösung von
 // Unit-Namen und Pfaden (#99) und die geänderten Dateien samt Befunden für prepare_commit.
 
 interface
@@ -10,7 +10,8 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.Prompts,
   Atlas.Common.Index.Contract,
-  Core.WorkspaceGroup;
+  Core.WorkspaceGroup,
+  Core.Mcp.Context;
 
 /// <summary>Unit-Name oder Pfad → Datei, geprüft wie Pfadparameter (#99): Units außerhalb des Arbeitsbereichs
 /// und seiner Bibliothekspfade ergeben einen Fehler mit Begründung (#1357).</summary>
@@ -19,7 +20,8 @@ function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; AGu
 /// <summary>Änderungen laut Git oder SVN für prepare_commit (#1357): geänderte Dateien unter ARoot und ihre Befunde
 /// in geänderten Zeilen wie --changed-lines, dazu der Commit-Präfix, den das Plugin für das aktuelle Issue in
 /// &lt;gitdir&gt;/atlas-commit-prefix schreibt (#765).</summary>
-function ChangesOf(AGroup: TCoreWorkspaceGroup; const ARoot: string): TMcpChangesFunc;
+function ChangesOf(const AAdapters: TMcpHostAdapters; AGroup: TCoreWorkspaceGroup; const ARoot: string):
+  TMcpChangesFunc;
 
 implementation
 
@@ -28,16 +30,13 @@ uses
   System.StrUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.History.ChangedFiles,
-  Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.Tracker.CommitHook,
-  Shell.Mcp.IssueTools,
+  Core.Mcp.IssueTools,
   Core.VersionControlChanges,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Builtin,
-  Shell.Composition.Platform,
-  Shell.Mcp.Context,
   Atlas.Common.Localization.Texts;
 
 type
@@ -134,7 +133,8 @@ begin
 end;
 
 /// <summary>Änderungen unter ARoot gegenüber ABase samt Befunden und Commit-Präfix.</summary>
-function ChangeSetOf(AGroup: TCoreWorkspaceGroup; const ARoot, ABase: string): TMcpChangeSet;
+function ChangeSetOf(const AAdapters: TMcpHostAdapters; AGroup: TCoreWorkspaceGroup; const ARoot, ABase: string):
+  TMcpChangeSet;
 var
   mAccess: TCoreVcsAccess;
   mVcs: TVcsChanges;
@@ -145,7 +145,7 @@ begin
   Result.Files := nil;
   Result.Base := BaseOrHead(ABase);
   // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
-  mAccess := TShellPlatformAdapters.VcsAccess;
+  mAccess := AAdapters.VcsAccess();
   if not LoadChanges(mAccess, AGroup.Main.Configuration.Settings, ARoot, ABase, mVcs, Result.Error) then
   begin
     Exit;
@@ -163,7 +163,7 @@ begin
     if mVcs is TGitChanges then
     begin
       // Direkt gelesen: Der Dateizugriff des Tracker-Moduls (TAtlasTrackerFiles) ist im Server nicht angemeldet.
-      Result.CommitPrefix := ReadGitDirFile(TAtlasGitVersionControl.GitDir(mVcs.RepoRoot),
+      Result.CommitPrefix := ReadGitDirFile(AAdapters.GitDir(mVcs.RepoRoot),
         TAtlasCommitHook.cPrefixFile, cMaxPrefixBytes);
     end;
   finally
@@ -174,19 +174,22 @@ end;
 /// <summary>Änderungen laut Git oder SVN für prepare_commit (#1357): geänderte Dateien unter ARoot und ihre Befunde
 /// in geänderten Zeilen wie --changed-lines, dazu der Commit-Präfix, den das Plugin für das aktuelle Issue in
 /// &lt;gitdir&gt;/atlas-commit-prefix schreibt (#765).</summary>
-function ChangesOf(AGroup: TCoreWorkspaceGroup; const ARoot: string): TMcpChangesFunc;
+function ChangesOf(const AAdapters: TMcpHostAdapters; AGroup: TCoreWorkspaceGroup; const ARoot: string):
+  TMcpChangesFunc;
 var
   mRoot: string;
+  mAdapters: TMcpHostAdapters;
 begin
   mRoot := ARoot;
+  mAdapters := AAdapters;
   Result :=
     function(const ABase: string): TMcpChangeSet
     begin
-      Result := ChangeSetOf(AGroup, mRoot, ABase);
+      Result := ChangeSetOf(mAdapters, AGroup, mRoot, ABase);
     end;
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.Changes', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.Changes', cTexts);
 
 end.

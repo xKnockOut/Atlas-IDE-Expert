@@ -32,7 +32,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.SmartPaste;
 
 const
@@ -130,7 +130,7 @@ begin
     Exit('-');
   end;
   AMoved := string.Join('|', mUses_.ToImplementation);
-  Result := TChangeSignature.ApplyEdits(AText, mUses_.Edits);
+  Result := TTextChanges.Apply(AText, mUses_.Edits);
 end;
 
 { TSmartPasteTests }

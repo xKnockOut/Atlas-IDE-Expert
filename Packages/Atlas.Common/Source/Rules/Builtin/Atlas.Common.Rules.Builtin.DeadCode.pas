@@ -153,7 +153,7 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Semantics.UsesUsage,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
@@ -333,11 +333,11 @@ begin
   if AContext.SortUses then
   begin
     // Wie „uses aufräumen“ mit sortUses: erst verschieben, dann sortieren, als eine kleinste Ersetzung.
-    mNewText := TChangeSignature.ApplyEdits(AContext.Text, mEdits);
+    mNewText := TTextChanges.Apply(AContext.Text, mEdits);
     if TUsesClauses.Organize(TPascalLexer.Tokenize(mNewText), mNewText, True, mLineBreak, mSortEdits,
       AContext.SortUsesByNamespace) then
     begin
-      mNewText := TChangeSignature.ApplyEdits(mNewText, mSortEdits);
+      mNewText := TTextChanges.Apply(mNewText, mSortEdits);
     end;
     mEdits := TArray<TTextEdit>.Create(SmallestEdit(AContext.Text, mNewText));
   end;

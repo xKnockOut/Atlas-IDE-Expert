@@ -30,6 +30,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.ClassActions,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
@@ -65,7 +66,7 @@ begin
 end;
 
 type
-  TChangeParameters = TArray<Atlas.Common.Editing.ChangeSignature.TSignatureParameter>;
+  TChangeParameters = TArray<Atlas.Common.Pascal.Signatures.TSignatureParameter>;
 
   /// <summary>Rumpf zu einer Deklaration: Kopf und Knoten; Found, wenn es ihn eindeutig gibt.</summary>
   TBodyMatch = record
@@ -188,7 +189,7 @@ begin
   for mNode in FBodies do
   begin
     if SameText(StringReplace(mNode.Name, ' ', '', [rfReplaceAll]), AName) and
-      TChangeSignature.ReadHeader(FContext.Text, FTokens, NameToken(mNode), mCandidate) and
+      TPascalSignatures.ReadHeader(FContext.Text, FTokens, NameToken(mNode), mCandidate) and
       (mCandidate.StartToken > ADecl.LastToken) and
       ((mCandidate.OpenToken < 0) or (ParamKey(mCandidate.Parameters) = ParamKey(ADecl.Parameters))) then
     begin
@@ -253,7 +254,7 @@ var
 
   function Routine(const AHeader: TSignatureHeader; const AQualified, ADirectives: string): string;
   begin
-    Result := TChangeSignature.HeaderText(AHeader, AQualified, mPrefix, False) + ADirectives + FLineBreak + 'begin' +
+    Result := TPascalSignatures.HeaderText(AHeader, AQualified, mPrefix, False) + ADirectives + FLineBreak + 'begin' +
       FLineBreak + '  ' + TChangeSignature.ForwardCall(AHeader, mPrefix, mChanges) + FLineBreak + 'end;' + FLineBreak +
       FLineBreak;
   end;
@@ -262,7 +263,7 @@ var
   function Changes(ACount: Integer): TArray<TParameterChange>;
   var
     mIndex: Integer;
-    mParameter: Atlas.Common.Editing.ChangeSignature.TSignatureParameter;
+    mParameter: Atlas.Common.Pascal.Signatures.TSignatureParameter;
   begin
     Result := nil;
     for mIndex := 0 to High(ADecl.Parameters) do
@@ -320,12 +321,12 @@ begin
     if ADeclIsBody then
     begin
       mRoutines := mRoutines + FLineBreak + FLineBreak + TrimRight(Routine(ADecl, ADecl.QualifiedName,
-        TChangeSignature.OverloadDirectives(ADecl, False)));
+        TPascalSignatures.OverloadDirectives(ADecl, False)));
     end
     else
     begin
-      mDeclarations := mDeclarations + TChangeSignature.HeaderText(ADecl, mName, mPrefix, False) +
-        TChangeSignature.OverloadDirectives(ADecl, False) + FLineBreak + mIndent;
+      mDeclarations := mDeclarations + TPascalSignatures.HeaderText(ADecl, mName, mPrefix, False) +
+        TPascalSignatures.OverloadDirectives(ADecl, False) + FLineBreak + mIndent;
       if ABody.Found then
       begin
         mRoutines := mRoutines + Routine(ABody.Header, ABody.Header.QualifiedName, '');
@@ -494,7 +495,7 @@ var
   mFixes: TArray<TRuleFix>;
 begin
   mParams := AHeader.FindChild(TSyntaxKind.Parameters);
-  if (mParams = nil) or not TChangeSignature.ReadHeader(FContext.Text, FTokens, NameToken(AHeader), mDecl) then
+  if (mParams = nil) or not TPascalSignatures.ReadHeader(FContext.Text, FTokens, NameToken(AHeader), mDecl) then
   begin
     Exit;
   end;
@@ -575,7 +576,7 @@ var
 begin
   Result := (AOther <> AHeader) and (AOther.Parent.FindChild(TSyntaxKind.Block) = nil) and
     SameText(AOther.Name, AHeader.Name) and (AOther.StartOffset < AHeader.StartOffset);
-  Result := Result and TChangeSignature.ReadHeader(FContext.Text, FTokens, NameToken(AOther), mEarlier) and
+  Result := Result and TPascalSignatures.ReadHeader(FContext.Text, FTokens, NameToken(AOther), mEarlier) and
     ((ADecl.OpenToken < 0) or (ParamKey(ADecl.Parameters) = ParamKey(mEarlier.Parameters)));
 end;
 
@@ -587,7 +588,7 @@ var
 begin
   Result := False;
   if (AHeader.Parent.FindChild(TSyntaxKind.Block) = nil) or
-    not TChangeSignature.ReadHeader(FContext.Text, FTokens, NameToken(AHeader), mDecl) then
+    not TPascalSignatures.ReadHeader(FContext.Text, FTokens, NameToken(AHeader), mDecl) then
   begin
     Exit;
   end;

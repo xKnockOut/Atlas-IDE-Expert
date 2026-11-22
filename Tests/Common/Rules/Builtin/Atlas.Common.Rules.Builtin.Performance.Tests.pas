@@ -108,7 +108,7 @@ uses
   Atlas.Common.Rules.Builtin.Performance.ManagedParams,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
   Atlas.Common.Rules.Profiles;
 
@@ -393,7 +393,7 @@ var
   mTree: TSyntaxTree;
 begin
   Assert.AreEqual(1, Integer(Length(AFinding.Fixes)));
-  Result := TChangeSignature.ApplyEdits(ASource, AFinding.Fixes[0].Edits);
+  Result := TTextChanges.Apply(ASource, AFinding.Fixes[0].Edits);
   mTree := TPascalParser.Parse(Result);
   try
     Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), Result);

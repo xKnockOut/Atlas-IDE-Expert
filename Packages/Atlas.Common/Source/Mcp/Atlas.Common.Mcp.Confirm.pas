@@ -11,7 +11,7 @@
 // Choose liefert die Nummer der gewählten Antwort, cNotAsked ohne Weg und cNoAnswer, wenn gefragt, aber nicht
 // geantwortet wurde (abgelehnt, Zeit abgelaufen); dann wählt das Werkzeug den vorsichtigen Ausgang.
 // Hier stehen Auswahl des Wegs, Aufbau der Anfrage an den Client und Lesen seiner Antwort; das Senden und Warten
-// macht IJsonRpcOutgoing, die IDE fragt der Aufrufer (Shell.Mcp.Ide).
+// macht IJsonRpcOutgoing, die IDE fragt der Aufrufer (Core.Mcp.Ide).
 
 interface
 

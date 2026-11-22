@@ -50,7 +50,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.SourceText;
 
@@ -78,7 +78,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('try … finally Liste.Free end einfügen', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Source('  Liste: TStringList;'#10, '  Liste := TStringList.Create;'#10'  try'#10 +
     '    Liste.Add(''a'');'#10'    Ziel.Text := Liste.Text;'#10'  finally'#10'    Liste.Free;'#10'  end;'#10), mFixed);
   TTestSource.AssertParses(mFixed);
@@ -95,7 +95,7 @@ begin
   mFound := TRuleAssert.Findings(TLocalObjectNotFreedRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.Contains(mFound[0].Message, 'Liste erhält ein neues TList');
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Source('  Zahl: Integer;'#10, '  var Liste := TList<Integer>.Create;'#10'  try'#10 +
     '    Liste.Add(1);'#10'    Zahl := Liste.Count;'#10'  finally'#10'    Liste.Free;'#10'  end;'#10), mFixed);
   TRuleAssert.Silent(TLocalObjectNotFreedRule.Create, mFixed);
@@ -211,7 +211,7 @@ begin
   Assert.AreEqual('35: L erhält von NeueListe ein neues Objekt, das die Routine weder freigibt noch weitergibt ' +
     '(Speicherleck).|', TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(cCreatedResultNotFreedRuleId, mFound[0].RuleId);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(FactorySource('  L: TStringList;'#10, '  L := NeueListe(''a'');'#10'  try'#10 +
     '    Ziel.Assign(L);'#10'  finally'#10'    L.Free;'#10'  end;'#10), mFixed);
   TRuleAssert.Silent(TCreatedResultNotFreedRule.Create, mFixed);

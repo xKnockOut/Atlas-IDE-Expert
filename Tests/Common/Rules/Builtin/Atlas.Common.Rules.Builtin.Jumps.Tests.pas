@@ -59,7 +59,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Jumps,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 function Suche(const AStatements: string): string;
@@ -91,7 +91,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Break durch Exit ersetzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  mText := TChangeSignature.ApplyEdits(Suche(cStatements), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(Suche(cStatements), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Suche(cFixed), mText);
   TRuleAssert.Silent(TJumpOutsideAllowedScopeRule.Create, mText);
 end;

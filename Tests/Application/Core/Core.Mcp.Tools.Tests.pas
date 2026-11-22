@@ -1,4 +1,4 @@
-﻿unit Shell.Mcp.Tools.Tests;
+﻿unit Core.Mcp.Tools.Tests;
 
 // Aufteilung des MCP-Modus (Shell.Mcp.*): Jede Werkzeuggruppe meldet ihre Werkzeuge an, zusammen ohne doppelte
 // Namen; ContextTool reicht den Kontext durch; Dienste und Änderungen lassen sich ohne Laden anlegen; der
@@ -57,23 +57,26 @@ uses
   Atlas.Common.Mcp.Prompts,
   Atlas.Common.Localization.Texts,
   Core.CommandLine,
-  Shell.Mcp.Context,
-  Shell.Mcp.Ide,
+  Core.Mcp.Context,
+  Core.Mcp.Ide,
   Shell.Mcp.Services,
   Shell.Mcp.Startup,
-  Shell.Mcp.Tools,
-  Shell.Mcp.NavigationTools,
-  Shell.Mcp.BuildTestTools,
-  Shell.Mcp.DebugTools,
-  Shell.Mcp.IdeContextTools,
-  Shell.Mcp.QuestionTools,
-  Shell.Mcp.ReportTools,
-  Shell.Mcp.CheckTools,
-  Shell.Mcp.ArchitectureTools,
-  Shell.Mcp.EditingTools,
-  Shell.Mcp.ProjectTools,
-  Shell.Mcp.ChangeTools,
-  Shell.Mcp.Changes,
+  Core.Mcp.Tools,
+  Core.Mcp.NavigationTools,
+  Core.Mcp.BuildTestTools,
+  Core.Mcp.BuildTools,
+  Core.Mcp.TestRunTools,
+  Core.Mcp.TestDesignTools,
+  Core.Mcp.DebugTools,
+  Core.Mcp.IdeContextTools,
+  Core.Mcp.QuestionTools,
+  Core.Mcp.ReportTools,
+  Core.Mcp.CheckTools,
+  Core.Mcp.ArchitectureTools,
+  Core.Mcp.EditingTools,
+  Core.Mcp.ProjectTools,
+  Core.Mcp.ChangeTools,
+  Core.Mcp.Changes,
   Core.Workspace.Listings;
 
 type
@@ -197,6 +200,11 @@ begin
   Assert.AreEqual(' get_last_build get_last_tests build_project run_tests get_profile get_mutants ' +
     'suggest_test_cases explain_compiler_message ',
     Joined(NamesOf(RegisterBuildTestTools)));
+  Assert.AreEqual(' get_last_build ', Joined(NamesOf(AddGetLastBuild)));
+  Assert.AreEqual(' explain_compiler_message ', Joined(NamesOf(AddExplainCompilerMessage)));
+  Assert.AreEqual(' get_mutants ', Joined(NamesOf(AddGetMutants)));
+  Assert.AreEqual(' suggest_test_cases ', Joined(NamesOf(AddSuggestTestCases)));
+  Assert.AreEqual(' run_tests ', Joined(NamesOf(AddRunTests)));
   Assert.AreEqual(' debug_start debug_stop set_breakpoint remove_breakpoint debug_continue debug_step debug_state ' +
     'debug_evaluate ', Joined(NamesOf(RegisterDebugTools)));
   Assert.AreEqual(' get_ide_context ', Joined(NamesOf(RegisterIdeContextTools)));
@@ -332,7 +340,7 @@ begin
   try
     mServices := TMcpServices.Create(mFolder, mLogger);
     try
-      mChanges := ChangesOf(mServices.Group, mFolder)('');
+      mChanges := ChangesOf(TMcpServices.HostAdapters, mServices.Group, mFolder)('');
       Assert.AreEqual('HEAD', mChanges.Base);
       Assert.AreNotEqual('', mChanges.Error, 'ohne Git oder SVN ein Grund');
       Assert.AreEqual(0, Integer(Length(mChanges.Files)));

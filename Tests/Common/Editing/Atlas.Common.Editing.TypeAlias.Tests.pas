@@ -54,7 +54,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.TypeAlias,
   Atlas.Common.Editing.TypeAlias.Texts;
 
@@ -98,7 +98,7 @@ begin
     mIndex := PosEx(AMarker, AText, mIndex + 1);
     if mIndex = 0 then
     begin
-      raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+      Assert.Fail(Format('"%s" nicht gefunden', [AMarker]));
     end;
     Inc(mFound);
   until mFound = AOccurrence;
@@ -142,7 +142,7 @@ begin
       TTypeAliasRequest.Create(PositionOf(AText, AMarker, 1), AName, AScope, TTypeAliasLookup.FromTree), AResult,
       AReason) then
     begin
-      Result := TChangeSignature.ApplyEdits(AText, EditsOf(AResult, 'Kunden.pas'));
+      Result := TTextChanges.Apply(AText, EditsOf(AResult, 'Kunden.pas'));
     end;
   finally
     mTree.Free;
@@ -351,7 +351,7 @@ begin
       mFremdTree)], TTypeAliasRequest.Create(PositionOf(cUnitKunden, 'TList<TKunde>;', 1), 'TKundenListe',
       TTypeAliasScope.Project, TTypeAliasLookup.FromTree), mOutcome, mReason), mReason);
     Assert.AreEqual(6, mOutcome.Places);
-    Assert.IsTrue(Pos('X: TKundenListe;', TChangeSignature.ApplyEdits(cNutzer, EditsOf(mOutcome, 'Nutzer.pas'))) > 0);
+    Assert.IsTrue(Pos('X: TKundenListe;', TTextChanges.Apply(cNutzer, EditsOf(mOutcome, 'Nutzer.pas'))) > 0);
     // Fremd bindet Kunden nicht ein und deklariert TKunde selbst.
     Assert.AreEqual(0, Integer(Length(EditsOf(mOutcome, 'Fremd.pas'))));
     Assert.AreEqual(1, Integer(Length(mOutcome.Warnings)));
@@ -386,7 +386,7 @@ begin
     end;
     Assert.IsTrue(TTypeAlias.InlineAlias(TTypeAliasSource.Create('U.pas', cSource, mTree, mOffsets), nil,
       PositionOf(cSource, 'TListe =', 1), TTypeAliasLookup.FromTree, mOutcome, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, EditsOf(mOutcome, 'U.pas'));
+    mText := TTextChanges.Apply(cSource, EditsOf(mOutcome, 'U.pas'));
     Assert.AreEqual(5, mOutcome.Places);
     Assert.AreEqual(0, Count(mText, 'TListe'));
     Assert.AreEqual(2, Count(mText, 'FListe := TList<TKunde>.Create;'));
@@ -414,7 +414,7 @@ begin
       [PosEx('TWerte', cSource, 1) - 1, PosEx('TWerte;', cSource, 1) - 1, PosEx('TWerte)', cSource, 1) - 1,
       PosEx('TWerte)', cSource, PosEx('TWerte)', cSource, 1) + 1) - 1]), nil, PositionOf(cSource, 'TWerte =', 1),
       TTypeAliasLookup.FromTree, mOutcome, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, EditsOf(mOutcome, 'U.pas'));
+    mText := TTextChanges.Apply(cSource, EditsOf(mOutcome, 'U.pas'));
     Assert.AreEqual(1, mOutcome.Places);
     Assert.IsTrue(Pos('W: array of Double;', mText) > 0, mText);
     Assert.IsTrue(Pos('TWerte = array of Double;', mText) > 0, mText);

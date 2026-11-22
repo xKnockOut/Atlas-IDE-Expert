@@ -38,7 +38,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.TypeChecks.Types,

@@ -87,7 +87,7 @@ uses
   Atlas.Common.Semantics.TypeCompatibility,
   Atlas.Common.Semantics.TypeIdentity,
   Atlas.Common.Semantics.RtlMethodReferences,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Builtin.Conversions,
   Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes,

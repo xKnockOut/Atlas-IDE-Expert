@@ -51,7 +51,7 @@ uses
   System.IOUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.CompilerFixes,
   Atlas.Tests.Files;
 
@@ -99,7 +99,7 @@ begin
     end;
     if Length(mFixes) > 0 then
     begin
-      Result := TChangeSignature.ApplyEdits(AText, mFixes[0].Edits);
+      Result := TTextChanges.Apply(AText, mFixes[0].Edits);
     end;
   finally
     mTree.Free;
@@ -268,7 +268,7 @@ begin
       '''S''')], 'W1057', Context, mFix));
     Assert.AreEqual('Alle W1057 in der Datei beheben (2)', mFix.Title);
     Assert.AreEqual(StringReplace(StringReplace(mText, 'S := A;', 'S := string(A);', []), 'T := A;', 'T := string(A);',
-      []), TChangeSignature.ApplyEdits(mText, mFix.Edits));
+      []), TTextChanges.Apply(mText, mFix.Edits));
     Assert.IsFalse(TCompilerFixes.FixAll(mText, mTree, [TFixMessage.Create('W1057', 9, -1, 'x ''A'' y ''string''')],
       'W1057', Context, mFix), 'eine Meldung reicht nicht');
     Assert.IsFalse(TCompilerFixes.FixAll(mText, mTree, nil, 'E2003', Context, mFix), 'E2003 hat eine Auswahl');

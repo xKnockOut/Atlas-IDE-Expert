@@ -233,7 +233,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.TextEdits;
 
@@ -586,7 +586,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Schleife rückwärts (downto) umschreiben', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  mText := TChangeSignature.ApplyEdits(ListBody(cLoop), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(ListBody(cLoop), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(ListBody(cFixed), mText);
   mTree := TPascalParser.Parse(mText);
   try
@@ -711,7 +711,7 @@ begin
   Assert.AreEqual(13, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('Free statt Destroy', mFindings[0].Fixes[0].Title);
   Assert.IsTrue(mFindings[0].Fixes[0].Safe);
-  mText := TChangeSignature.ApplyEdits(Body('  Verbindung.Destroy;'#10), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(Body('  Verbindung.Destroy;'#10), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Body('  Verbindung.Free;'#10), mText);
   TRuleAssert.Silent(TDestroyCalledDirectlyRule.Create, mText);
   // Mit Klammern und über eine Typumwandlung ebenso.
@@ -762,7 +762,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Fehlende Werte ergänzen (2)', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Bestellung('  case Bestellung.Status of'#10'    bsNeu: Anlegen;'#10'    bsBezahlt: Versenden;'#10 +
     '    bsStorniert: ;'#10'    bsZurueck: ;'#10'  end;'), mFixed);
   TRuleAssert.Silent(TCaseMissingEnumValueRule.Create, mFixed);
@@ -784,7 +784,7 @@ begin
     'end.';
   mFindings := TRuleAssert.Findings(TCaseMissingEnumValueRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.IsTrue(Pos('TAmpel.Gelb: ;', TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits)) > 0);
+  Assert.IsTrue(Pos('TAmpel.Gelb: ;', TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits)) > 0);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCaseMissingEnumValueRule.Create,
     Bestellung('  case Stand of'#10'    bsNeu: ;'#10'  end;'), '{"rules": {"case-missing-enum-value": "off"}}',
     'U.pas'))));
@@ -800,7 +800,7 @@ begin
   Assert.AreEqual('Fehlende Werte von TBestellStatus: bsZurueck.', mFindings[0].Message);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   TRuleAssert.Silent(TCaseMissingEnumValueRule.Create,
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TStatementPatternRulesTests.CaseMissingEnumValueSilentCases;
@@ -845,7 +845,7 @@ begin
     '{"minConfidence": "low", "rules": {"case-missing-enum-value": {"requireElse": true}}}', 'U.pas');
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Fehlende Werte von TBestellStatus: bsBezahlt, bsStorniert, bsZurueck.', mFindings[0].Message);
-  Assert.IsTrue(Pos('bsZurueck: ;'#10'  else', TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits)) > 0);
+  Assert.IsTrue(Pos('bsZurueck: ;'#10'  else', TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits)) > 0);
   TConfigurationParser.Parse('{"rules": {"case-missing-enum-value": {"requireElse": "ja"}}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual('"requireElse" muss true oder false sein', mIssues[0].Message);
@@ -867,7 +867,7 @@ begin
   Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(8, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('qryPositionen.Next; am Ende des Rumpfs einfügen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Body('  qryPositionen.First;'#10'  while not qryPositionen.Eof do'#10'  begin'#10 +
     '    Summe := Summe + qryPositionen.FieldByName(''Betrag'').AsCurrency;'#10'    qryPositionen.Next;'#10 +
     '  end;'#10), mFixed);
@@ -952,7 +952,7 @@ begin
   Assert.AreEqual(11, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(15, mFindings[0].Range.EndPos.Character);
   Assert.AreEqual('tblKunde.Post mit try … except Cancel ergänzen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Body('  tblKunde.Edit;'#10'  try'#10'    tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);'#10 +
     '    tblKunde.Post;'#10'  except'#10'    tblKunde.Cancel;'#10'    raise;'#10'  end;'#10'  Protokollieren;'#10), mFixed);
   mTree := TPascalParser.Parse(mFixed);
@@ -1054,7 +1054,7 @@ begin
   Assert.AreEqual(13, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(29, mFindings[0].Range.EndPos.Character);
   Assert.AreEqual('try … except Verbindung.Rollback; raise; end erzeugen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Body('  Verbindung.StartTransaction;'#10'  try'#10'    Buchen(Auftrag);'#10'    Verbindung.Commit;'#10 +
     '  except'#10'    Verbindung.Rollback;'#10'    raise;'#10'  end;'#10), mFixed);
   TRuleAssert.Silent(TTransactionWithoutRollbackRule.Create, mFixed);
@@ -1077,7 +1077,7 @@ begin
     '  try'#10'    Buchen;'#10'    Sql.CommitFreeAndNil(T);'#10'  except'#10'    Sql.RollbackFreeAndNil(T);'#10 +
     '    raise;'#10'  end;'#10'  A.StartTransaction;'#10'  Buchen;'#10'  B.StartTransaction;'#10'  try'#10 +
     '    Buchen;'#10'    B.Commit;'#10'  except'#10'    A.Rollback;'#10'    raise;'#10'  end;'#10),
-    TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[1].Fixes[0].Edits));
   Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)));
   Assert.AreEqual(0, Integer(Length(mFindings[3].Fixes)));
   Assert.AreEqual(3, Integer(Length(TTransactionWithoutRollbackRule.Pairs(''))));
@@ -1148,7 +1148,7 @@ begin
   Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(12, mFindings[0].Range.EndPos.Character);
   Assert.AreEqual('= durch := ersetzen', mFindings[0].Fixes[0].Title);
-  mText := TChangeSignature.ApplyEdits(Konto(cStatements), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(Konto(cStatements), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Konto(cFixed), mText);
   TRuleAssert.Silent(TComparisonAsStatementRule.Create, mText);
 end;
@@ -1166,7 +1166,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[4].Fixes)));
   Assert.AreEqual(Konto('  FAktiv := True;'#10'  FWerte[I] = 2;'#10'  P^ = 3;'#10 +
     '  if Neu then Self.FName = '''';'#10'  (Result = 1);'#10),
-    TChangeSignature.ApplyEdits(Konto('  FAktiv = True;'#10'  FWerte[I] = 2;'#10'  P^ = 3;'#10 +
+    TTextChanges.Apply(Konto('  FAktiv = True;'#10'  FWerte[I] = 2;'#10'  P^ = 3;'#10 +
     '  if Neu then Self.FName = '''';'#10'  (Result = 1);'#10), mFindings[0].Fixes[0].Edits));
   // Aufruf links, andere Vergleiche und Ausdrücke: ohne Korrektur.
   mFindings := TRuleAssert.Findings(TComparisonAsStatementRule.Create, Konto('  Laden(1) = 2;'#10 +
@@ -1228,7 +1228,7 @@ begin
   Assert.AreEqual(13, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(4, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('Zweig mit doppeltem Wert entfernen', mFindings[0].Fixes[0].Title);
-  mText := TChangeSignature.ApplyEdits(Vorgang(cStatements), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(Vorgang(cStatements), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Vorgang('  case Status of'#10'    stNeu, stOffen: Bearbeiten;'#10'    stGeschlossen: Archivieren;'#10 +
     '  end;'#10), mText);
   TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, mText);
@@ -1237,12 +1237,12 @@ begin
     '    stNeu: Bearbeiten;'#10'    stOffen, stNeu: Erinnern;'#10'  end;'#10));
   Assert.AreEqual('Doppelten Wert aus dem späteren Zweig entfernen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10'    stOffen: Erinnern;'#10'  end;'#10),
-    TChangeSignature.ApplyEdits(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10 +
+    TTextChanges.Apply(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10 +
     '    stOffen, stNeu: Erinnern;'#10'  end;'#10), mFindings[0].Fixes[0].Edits));
   mFindings := TRuleAssert.Findings(TDuplicateCaseLabelRule.Create, Vorgang('  case Status of'#10 +
     '    stNeu: Bearbeiten;'#10'    stNeu, stOffen: Erinnern;'#10'  end;'#10));
   Assert.AreEqual(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10'    stOffen: Erinnern;'#10'  end;'#10),
-    TChangeSignature.ApplyEdits(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10 +
+    TTextChanges.Apply(Vorgang('  case Status of'#10'    stNeu: Bearbeiten;'#10 +
     '    stNeu, stOffen: Erinnern;'#10'  end;'#10), mFindings[0].Fixes[0].Edits));
 end;
 
@@ -1278,7 +1278,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('2 kommt schon in Zeile 7 vor (wie E2027).', mFindings[0].Message);
   Assert.AreEqual(StringReplace(cSource, #10'      2: (Seite: Double);', '', []),
-    TChangeSignature.ApplyEdits(cSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(cSource, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TStatementPatternRulesTests.DuplicateCaseLabelFromIndex;
@@ -1660,7 +1660,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('[weak] FBesitzer verwenden', mFindings[0].Fixes[0].Title);
   Assert.AreEqual('[unsafe] FBesitzer verwenden', mFindings[0].Fixes[1].Title);
-  mSource := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mSource := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Teil('    [weak] FBesitzer: IBesitzer;'#10, 'begin'#10'  FBesitzer := Besitzer;'#10), mSource);
   TRuleAssert.Silent(TUntypedPointerRefcountRule.Create, mSource);
 end;
@@ -1677,9 +1677,9 @@ begin
   mFindings := TRuleAssert.Findings(TUntypedPointerRefcountRule.Create, mSource);
   Assert.AreEqual(4, Integer(Length(mFindings)));
   Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits).Contains(
+  Assert.IsTrue(TTextChanges.Apply(mSource, mFindings[0].Fixes[1].Edits).Contains(
     '[unsafe] FBesitzer: IBesitzer;'#10'    FAnderer: IInterface;'));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits).Contains('  FBesitzer := nil;'));
+  Assert.IsTrue(TTextChanges.Apply(mSource, mFindings[0].Fixes[1].Edits).Contains('  FBesitzer := nil;'));
   Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
   Assert.AreEqual(0, Integer(Length(mFindings[2].Fixes)));
   Assert.AreEqual('Die Zuweisung über Pointer umgeht die Referenzzählung (wie W1070); besser [weak] Self.FBesitzer.',

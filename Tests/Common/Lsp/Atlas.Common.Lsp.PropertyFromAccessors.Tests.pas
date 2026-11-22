@@ -46,7 +46,6 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.PropertyFromAccessors,

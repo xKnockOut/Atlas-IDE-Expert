@@ -60,7 +60,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Inlining,
   Atlas.Tests.SourceText;
 
@@ -146,7 +146,7 @@ begin
     begin
       Exit('-');
     end;
-    Result := TChangeSignature.ApplyEdits(mText, mAction.Edits);
+    Result := TTextChanges.Apply(mText, mAction.Edits);
     TTestSource.AssertParses(Result);
   finally
     mTree.Free;
@@ -193,7 +193,7 @@ begin
       Exit('-');
     end;
     ATitle := mAction.Title;
-    Result := TChangeSignature.ApplyEdits(mText, mAction.Edits);
+    Result := TTextChanges.Apply(mText, mAction.Edits);
     TTestSource.AssertParses(Result);
   finally
     mTree.Free;
@@ -462,7 +462,7 @@ begin
       TInlineCallee.Create(TInlineSource.Create('c.pas', mCalleeText, mCallee),
       TInlineRefactoring.FindRoutines(mCallee, 'Clamp')[0]), mOptions, mAction, mReason), mReason);
     Assert.AreEqual(Unit_(['procedure P(Y: Integer);', 'begin', '  Y := Min(Y, Limit);', 'end;']),
-      TChangeSignature.ApplyEdits(mCallerText, mAction.Edits));
+      TTextChanges.Apply(mCallerText, mAction.Edits));
     // Limit bedeutet am Aufruf etwas anderes.
     mOptions.Lookup := FakeLookup(mCaller);
     Assert.IsFalse(TInlineRefactoring.InlineMethod(TInlineSource.Create('p.pas', mCallerText, mCaller), mPosition,

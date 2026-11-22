@@ -140,13 +140,13 @@ implementation
 
 uses
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Documents.TextChanges,
   System.SysUtils,
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.TypeAlias.Texts,
@@ -803,7 +803,7 @@ begin
     begin
       Continue;
     end;
-    mTree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(mChange.Text, mChange.Edits));
+    mTree := TSyntaxTreeCache.Parse(TTextChanges.Apply(mChange.Text, mChange.Edits));
     try
       if Length(mTree.Diagnostics) > Length(mChange.Tree.Diagnostics) then
       begin

@@ -156,7 +156,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.SmallStack,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Configuration.Parser,
   Atlas.Tests.TextEdits;
 
@@ -503,7 +503,7 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual(8, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual('In ACaption umbenennen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Kunde('ACaption', '  ACaption := ACaption + '' (geladen)'';'), mFixed);
   TRuleAssert.Silent(TShadowedNameRule.Create, mFixed);
 end;

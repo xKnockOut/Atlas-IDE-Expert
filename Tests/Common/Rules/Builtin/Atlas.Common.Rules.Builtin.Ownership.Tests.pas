@@ -113,7 +113,7 @@ uses
   Atlas.Common.Rules.Builtin.Ownership.RawMemory,
   Atlas.Common.Rules.Builtin.Ownership.StringListObjects,
   Atlas.Common.Rules.Builtin.Ownership.ComponentInterface,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.TextEdits,
   Atlas.Tests.SourceText;
@@ -1004,7 +1004,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Abmeldung vor der Freigabe einfügen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Haupt('TForm', '', '  Bus.Anmelden(FAnsicht as IBeobachter);'#10,
     '  Bus.Abmelden(FAnsicht as IBeobachter);'#10'  FAnsicht.Free;'#10), mFixed);
   mTree := TPascalParser.Parse(mFixed);
@@ -1030,7 +1030,7 @@ begin
     'ein ungültiges IBeobachter.', mFindings[0].Message);
   Assert.AreEqual(Haupt('TForm', '    FBeobachter: IBeobachter;'#10, '  FBeobachter := FAnsicht;'#10,
     '  FBeobachter := nil;'#10'  FreeAndNil(FAnsicht);'#10),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Liste von Interfaces ohne "as"; Release; Self.FAnsicht; Gegenstück am unbekannten TList: keine Korrektur.
   mFindings := TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Haupt('TForm',
     '    FListe: TList<IBeobachter>;'#10, '  FListe.Add(Self.FAnsicht);'#10, '  FAnsicht.Release;'#10));

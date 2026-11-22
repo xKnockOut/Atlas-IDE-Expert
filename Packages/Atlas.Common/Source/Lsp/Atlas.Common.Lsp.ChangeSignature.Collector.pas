@@ -16,7 +16,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Lsp.References;
 
 const
@@ -254,12 +254,12 @@ begin
     begin
       Continue;
     end;
-    if not TChangeSignature.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
+    if not TPascalSignatures.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
       mSymbol.SelectionRange.StartPos), mHeader) or not IsBodyOf(mHeader, AMember.Decl) then
     begin
       Continue;
     end;
-    mLast := TChangeSignature.BodyEnd(AUnit.Tree, mHeader);
+    mLast := TPascalSignatures.BodyEnd(AUnit.Tree, mHeader);
     if mLast >= 0 then
     begin
       AMember.HasBody := True;
@@ -283,13 +283,13 @@ begin
   Result.Name := ADecl.Name;
   Result.IsRoot := AIsRoot;
   Result.BodyLast := -1;
-  if not TChangeSignature.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
+  if not TPascalSignatures.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
     ADecl.SelectionRange.StartPos), Result.Decl) then
   begin
     raise SignatureError(cTexts[TCollectorText.TheHeaderOfCannotBe].Fmt([ADecl.QualifiedName]));
   end;
   // Routine nur im implementation-Teil: der Kopf des Rumpfs ist die Deklaration.
-  mLast := TChangeSignature.BodyEnd(AUnit.Tree, Result.Decl);
+  mLast := TPascalSignatures.BodyEnd(AUnit.Tree, Result.Decl);
   if mLast >= 0 then
   begin
     Result.DeclIsBody := True;
@@ -344,7 +344,7 @@ begin
     AMember.FileName := AUnit.FileName;
     AMember.Name := AEventType;
     AMember.BodyLast := -1;
-    if TChangeSignature.ReadProcedureType(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
+    if TPascalSignatures.ReadProcedureType(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
       mSymbol.SelectionRange.StartPos), AMember.Decl) then
     begin
       Exit(True);
@@ -945,7 +945,7 @@ begin
   begin
     Exit;
   end;
-  case TChangeSignature.UseOf(mOther.Tokens, mToken, AHasRequired) of
+  case TPascalSignatures.UseOf(mOther.Tokens, mToken, AHasRequired) of
     TSignatureUse.Accessor:
       Accessors := Accessors + [PlaceOf(ALocation)];
     TSignatureUse.Pointer_:

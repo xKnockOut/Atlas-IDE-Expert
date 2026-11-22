@@ -1,6 +1,6 @@
-﻿unit Shell.Mcp.ArchitectureTools;
+﻿unit Core.Mcp.ArchitectureTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Architekturübersicht (get_architecture, #1118) und
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Architekturübersicht (get_architecture, #1118) und
 // Pfadsuche zwischen Symbolen (find_path, #1117).
 
 interface
@@ -12,7 +12,7 @@ uses
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.Service,
   Core.Workspace,
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>find_path über einen eigenen Uses-Graphen samt Bibliotheks-Units. In eigener Routine, damit die
 /// anonyme Methode nicht den Rahmen von Run einfängt (Leck unter Delphi).</summary>
@@ -335,6 +335,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.ArchitectureTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.ArchitectureTools', cTexts);
 
 end.

@@ -39,7 +39,7 @@ uses
   System.StrUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Builtin.Testing.Asserts,
   Atlas.Tests.RuleAssert;
 
@@ -78,7 +78,7 @@ begin
   mFound := Findings(ARule, ABody);
   if (Length(mFound) = 1) and (Length(mFound[0].Fixes) > 0) then
   begin
-    Result := Trim(SplitString(TChangeSignature.ApplyEdits(TestUnit(ABody), mFound[0].Fixes[0].Edits),
+    Result := Trim(SplitString(TTextChanges.Apply(TestUnit(ABody), mFound[0].Fixes[0].Edits),
       #10)[cBodyLine]);
   end;
 end;

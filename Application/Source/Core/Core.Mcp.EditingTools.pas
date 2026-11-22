@@ -1,13 +1,13 @@
-﻿unit Shell.Mcp.EditingTools;
+﻿unit Core.Mcp.EditingTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), schreibende Werkzeuge (rename_symbol, apply_code_action,
+// Host-Rolle Core: MCP-Modus (--mcp, #48), schreibende Werkzeuge (rename_symbol, apply_code_action,
 // fix_findings, format_code, extract_method, refactor); mit dryRun nur der Diff. Geschützte Dateien (#2608), Befunde
 // nach dem Schreiben (#2603) und die Ressource delphi://edits/last.
 
 interface
 
 uses
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>Meldet rename_symbol, apply_code_action, fix_findings, format_code, extract_method und refactor an.
 /// </summary>
@@ -416,7 +416,7 @@ function ToolRefactor(const AContext: TMcpToolContext; const AArguments: TJSONOb
 var
   mRequest: TMcpRefactorRequest;
 begin
-  if AContext.Refactor = nil then
+  if not Assigned(AContext.Refactor) then
   begin
     raise EMcpToolError.Create(cTexts[TMcpEditingText.RefactorNoHost].Text);
   end;
@@ -432,7 +432,7 @@ begin
   mRequest.DryRun := DryRunOf(AArguments);
   mRequest.Json := SameText(TMcpArgs.OptionalString(AArguments, 'format'), 'json');
   AContext.Edit.Namespaces := AContext.Group.Main.State.Namespaces;
-  Result := AContext.Refactor.Run(AContext.Edit, mRequest);
+  Result := AContext.Refactor(AContext.Edit, mRequest);
 end;
 
 procedure AddRefactor(const AContext: TMcpToolContext);
@@ -568,6 +568,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.EditingTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.EditingTools', cTexts);
 
 end.

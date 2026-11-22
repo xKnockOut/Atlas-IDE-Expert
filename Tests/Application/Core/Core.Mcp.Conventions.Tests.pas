@@ -1,4 +1,4 @@
-﻿unit Shell.Mcp.Conventions.Tests;
+﻿unit Core.Mcp.Conventions.Tests;
 
 // Ressource „Projektkonventionen“ des MCP-Modus (#272): Uri, Markdown und Name in der Sprache der Oberfläche
 // (#1458).
@@ -29,7 +29,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Mcp.Server,
-  Shell.Mcp.Conventions;
+  Core.Mcp.Conventions;
 
 { TMcpConventionsTests }
 
