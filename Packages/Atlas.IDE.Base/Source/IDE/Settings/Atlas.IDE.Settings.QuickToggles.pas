@@ -21,7 +21,7 @@ uses
   System.Classes,
   System.Types,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Settings.QuickToggles,
   Atlas.IDE.Foundation.Keys,
   Atlas.Core.Commands.Contract;

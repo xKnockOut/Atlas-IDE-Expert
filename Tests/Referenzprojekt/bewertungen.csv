@@ -68,7 +68,7 @@ unused-parameter,Atlas.Core.Forms.Text.pas,34,falsch,2026-10-17
 unused-parameter,Atlas.IDE.Build.Runner.pas,298,richtig,2026-10-17
 unused-parameter,Atlas.IDE.Build.Runner.pas,298,richtig,2026-10-17
 unused-parameter,Atlas.IDE.Signature.Editor.pas,566,richtig,2026-10-17
-unused-parameter,Atlas.UI.Popup.Styled.pas,151,richtig,2026-10-17
+unused-parameter,Atlas.Vcl.Popup.Styled.pas,151,richtig,2026-10-17
 unused-parameter,Atlas.UI.Welcome.Continue.pas,720,richtig,2026-10-17
 unused-parameter,Atlas.UI.Welcome.Issues.pas,315,richtig,2026-10-17
 unused-parameter,Atlas.UI.Welcome.State.pas,356,richtig,2026-10-17

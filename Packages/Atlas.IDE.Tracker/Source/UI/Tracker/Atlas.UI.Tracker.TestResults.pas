@@ -38,7 +38,7 @@ uses
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
-  Atlas.UI.Style.Canvas,
+  Atlas.Vcl.Theme.Canvas,
   Atlas.UI.Tracker.TileView,
   Atlas.Core.Tracker.Contract.TestResults,
   Atlas.UI.Tracker.Contract.TestResults;
@@ -273,7 +273,7 @@ uses
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.TestResults.Strings,
   Atlas.Core.Tracker.TestResults,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   // Dieselben Töne wie die Marken im Bereich „Projekte“: lesbar im hellen und im dunklen Thema.

@@ -63,7 +63,7 @@ uses
   Vcl.Dialogs,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Höhe der Kennzahlen des Index (vier Zeilen Text).</summary>

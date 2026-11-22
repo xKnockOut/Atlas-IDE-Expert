@@ -93,9 +93,9 @@ implementation
 uses
   System.UITypes,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Rules.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cButtonWidth = 210;

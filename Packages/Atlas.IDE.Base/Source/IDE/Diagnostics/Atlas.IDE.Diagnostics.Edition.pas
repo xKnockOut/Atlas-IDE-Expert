@@ -53,7 +53,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Diagnostics.Strings;
 
 /// <summary>Ordner der Installation; '' unbekannt.</summary>

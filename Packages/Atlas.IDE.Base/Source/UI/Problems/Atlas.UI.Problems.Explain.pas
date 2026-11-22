@@ -34,7 +34,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Problems.Explanation,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Katalogtext einer Regel (Atlas.Core.Problems.Explanation).</summary>
@@ -105,7 +105,7 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Graphics,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Strings,
   Atlas.UI.Problems.Strings;
 

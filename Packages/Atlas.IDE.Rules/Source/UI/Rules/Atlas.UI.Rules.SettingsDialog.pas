@@ -64,7 +64,7 @@ uses
   Vcl.StdCtrls,
   Vcl.Graphics,
   Atlas.Core.Rules.Table,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

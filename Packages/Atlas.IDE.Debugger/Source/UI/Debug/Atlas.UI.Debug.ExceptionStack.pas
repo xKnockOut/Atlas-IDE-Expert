@@ -69,8 +69,8 @@ uses
   Winapi.Windows,
   Vcl.Themes,
   Atlas.UI.Debug.Exceptions.Strings,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Service;
 
 /// <summary>Farbe AColor im Stil von AList, nicht im globalen: Die IDE themt ihre Fenster je Formular.</summary>
 { TAtlasDebugExceptionStack }

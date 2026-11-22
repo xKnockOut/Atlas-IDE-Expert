@@ -10,7 +10,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Settings.Reassigned,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type

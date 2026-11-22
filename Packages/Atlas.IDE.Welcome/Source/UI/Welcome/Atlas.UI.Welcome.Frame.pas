@@ -24,10 +24,10 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.UI.Style.Canvas;
+  Atlas.Vcl.Theme.Canvas;
 
 type
-  /// <summary>Zeichenfläche der Bereiche ohne Flackern (Atlas.UI.Style.Canvas).</summary>
+  /// <summary>Zeichenfläche der Bereiche ohne Flackern (Atlas.Vcl.Theme.Canvas).</summary>
   TAtlasWelcomeCanvas = TAtlasStyledCanvas;
 
   /// <summary>Steuerelement der Willkommensseite, das Tasten vor den Tastenkürzeln des Hauptfensters in HandleKey
@@ -120,7 +120,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Foundation.Controls;
+  Atlas.Vcl.Controls.Helpers;
 
 {$R *.dfm}
 

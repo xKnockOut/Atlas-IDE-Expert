@@ -16,7 +16,7 @@ uses
   Atlas.Core.Projects.VersionControl,
   Atlas.Core.VersionControl.ServerCheck,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.VersionControl.SettingsPart;
 
 type

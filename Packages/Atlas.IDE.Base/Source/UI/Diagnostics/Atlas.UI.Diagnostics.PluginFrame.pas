@@ -79,8 +79,8 @@ uses
   Atlas.Core.Diagnostics.PluginReport,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginRows,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

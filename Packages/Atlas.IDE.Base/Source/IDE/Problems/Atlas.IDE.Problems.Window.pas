@@ -50,7 +50,7 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.UI.Strings,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.IDE.Contracts.Help,

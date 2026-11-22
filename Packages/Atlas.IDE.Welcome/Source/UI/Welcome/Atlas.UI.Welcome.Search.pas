@@ -107,7 +107,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Atlas.Plugin.Style.Color,
-  Atlas.UI.Foundation.Controls,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Welcome.Strings;
 
 const

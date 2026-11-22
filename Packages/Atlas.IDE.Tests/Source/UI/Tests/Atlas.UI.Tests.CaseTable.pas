@@ -24,7 +24,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Grids,
   Atlas.Core.Tests.CaseTable,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Zeilen an den Server schicken; die Antwort kommt mit AGeneration zurück.</summary>

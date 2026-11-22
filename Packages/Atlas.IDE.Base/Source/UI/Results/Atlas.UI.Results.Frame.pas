@@ -18,7 +18,7 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.UI.Results.View,
   Atlas.UI.Results.Entries,
   Atlas.UI.Results.Hierarchy,

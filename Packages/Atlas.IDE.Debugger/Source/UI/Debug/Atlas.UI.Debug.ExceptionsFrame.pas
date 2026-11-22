@@ -130,10 +130,10 @@ implementation
 uses
   Winapi.Windows,
   Atlas.UI.Debug.Exceptions.Strings,
-  Atlas.UI.Foundation.Controls,
-  Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

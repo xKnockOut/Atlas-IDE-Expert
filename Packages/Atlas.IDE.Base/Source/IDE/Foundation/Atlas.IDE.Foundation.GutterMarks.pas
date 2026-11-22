@@ -47,7 +47,7 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.GutterMarks,
   Atlas.Core.Modules.Watch,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   /// <summary>Eine Art von Markierung in der Rinne. Alle Aufrufe im Hauptthread; Ausnahmen fängt

@@ -182,9 +182,9 @@ uses
   Winapi.Windows,
   Atlas.Plugin.Style.Color,
   Atlas.UI.Tracker.Flow.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling,
-  Atlas.UI.Foundation.Controls;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Controls.Helpers;
 
 {$R *.dfm}
 
