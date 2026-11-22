@@ -86,7 +86,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.Unavailable,
   Atlas.Core.Debug.NoSourceFlow,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,

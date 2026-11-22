@@ -52,7 +52,7 @@ uses
   Vcl.Graphics,
   Vcl.StdCtrls,
   Atlas.Core.Tracker.Contract,
-  Atlas.UI.Style.Canvas,
+  Atlas.Vcl.Theme.Canvas,
   Atlas.UI.Tracker.MyIssues.Text,
   Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.TileView,
@@ -278,10 +278,10 @@ uses
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.UI.Foundation.Scaling,
+  Atlas.Vcl.Theme.Scaling,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Theme.Service;
 
 const
   cMenuLine = '-';

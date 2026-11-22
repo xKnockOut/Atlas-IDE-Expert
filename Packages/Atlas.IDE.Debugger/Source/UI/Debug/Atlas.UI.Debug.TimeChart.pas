@@ -117,7 +117,7 @@ uses
   System.Math,
   Vcl.Forms,
   Atlas.Plugin.Style.Color,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Teilstriche der Wertachse.</summary>

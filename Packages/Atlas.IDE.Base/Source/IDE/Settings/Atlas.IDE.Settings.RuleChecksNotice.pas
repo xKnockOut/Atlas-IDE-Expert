@@ -58,7 +58,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Settings.QuickToggles,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Settings.Strings;
 
 const

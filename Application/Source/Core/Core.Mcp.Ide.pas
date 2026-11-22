@@ -13,7 +13,7 @@ uses
   Atlas.Common.Mcp.IdeDebug,
   Atlas.Common.Mcp.IdeQuestions,
   Atlas.Text.IdeContext,
-  Atlas.Common.Lsp.IdeBuild;
+  Atlas.Common.Compiler.IdeBuild;
 
 /// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
 /// IDE.</summary>

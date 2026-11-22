@@ -21,7 +21,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Designer.Dialog;
 
 type

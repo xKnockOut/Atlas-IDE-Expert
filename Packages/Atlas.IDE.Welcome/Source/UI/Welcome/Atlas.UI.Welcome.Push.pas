@@ -16,7 +16,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Welcome.Unsaved,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasPushDialog = class(TAtlasDialog)
@@ -49,8 +49,8 @@ uses
   System.DateUtils,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

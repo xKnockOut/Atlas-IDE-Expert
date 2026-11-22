@@ -40,7 +40,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.UI.Foundation.WndProcHook;
+  Atlas.Vcl.Controls.WndProcHook;
 
 type
   TAtlasIdeDockWindow = class(TComponent)
@@ -123,7 +123,7 @@ uses
   Vcl.ComCtrls,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Dock.Plan,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.IDE.Foundation.Symbol;
 
 type

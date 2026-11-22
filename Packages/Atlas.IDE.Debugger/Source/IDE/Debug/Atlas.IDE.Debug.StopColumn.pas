@@ -23,7 +23,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Debug.RunToColumnFlow,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   /// <summary>Gezeichnete Zeile der Spalte (Datei, Zeile ab 0, Rechteck in Koordinaten des Editors).</summary>

@@ -288,7 +288,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.Report.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CoveredBy.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Implementations.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ImplementationSites.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.ImplementationSites.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlayHints.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MessageHandlers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeLens.pas"/>
@@ -720,7 +720,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Core.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.PublishedMembers.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeInfoClasses.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.Info.pas"/>
@@ -741,7 +741,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordHighlights.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WatchedFiles.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IndexRefresh.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeBuild.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.IdeBuild.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeProject.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Providers.IdeTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.Source.pas"/>

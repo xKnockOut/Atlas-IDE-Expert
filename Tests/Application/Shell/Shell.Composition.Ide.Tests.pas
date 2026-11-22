@@ -44,7 +44,7 @@ uses
   System.JSON,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.JsonRpc.TestSupport;
 
@@ -117,15 +117,15 @@ end;
 
 procedure TShellIdeTests.ForwardsMessages;
 begin
-  Notify(TLspIdeBuild.cMessagesMethod, '{"messages":[{"file":"A.pas","line":3,"column":1,"severity":"error",' +
+  Notify(TIdeBuildTracker.cMessagesMethod, '{"messages":[{"file":"A.pas","line":3,"column":1,"severity":"error",' +
     '"code":"E2003","text":"x"}]}');
   Assert.AreEqual(1, FMessages);
 end;
 
 procedure TShellIdeTests.ForwardsCompiling;
 begin
-  Notify(TLspIdeBuild.cStartedMethod, '{"group":true,"kind":"make"}');
-  Notify(TLspIdeBuild.cFinishedMethod, '{"group":true,"success":true}');
+  Notify(TIdeBuildTracker.cStartedMethod, '{"group":true,"kind":"make"}');
+  Notify(TIdeBuildTracker.cFinishedMethod, '{"group":true,"success":true}');
   Assert.AreEqual('True;False;', FEvents);
 end;
 

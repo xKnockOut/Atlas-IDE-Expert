@@ -58,7 +58,7 @@ uses
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Strings,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Setup.Strings,
   Atlas.UI.Setup.Window;
 

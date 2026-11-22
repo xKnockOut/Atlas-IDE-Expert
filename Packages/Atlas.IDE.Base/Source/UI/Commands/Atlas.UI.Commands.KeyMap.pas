@@ -30,8 +30,8 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListView;
 
 type
   /// <summary>Grundlage des Fensters: Texte der Spalten und Hinweise sowie die Ereignisse der Knöpfe.</summary>
@@ -134,7 +134,7 @@ uses
   Vcl.Themes,
   Winapi.Windows,
   Atlas.Plugin.Style.Signal,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings;
 

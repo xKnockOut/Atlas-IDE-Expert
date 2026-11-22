@@ -145,8 +145,8 @@ uses
   System.Math,
   Vcl.Imaging.pngimage,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service,
   Atlas.Text.Files;
 
 { TAtlasDiscoverPicture }

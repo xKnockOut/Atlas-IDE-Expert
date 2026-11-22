@@ -32,7 +32,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Rules.Ownership,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   TAtlasIdeOwnershipHints = class

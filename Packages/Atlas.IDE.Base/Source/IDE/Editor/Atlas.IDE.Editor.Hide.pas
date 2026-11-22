@@ -111,7 +111,7 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorBuffer,

@@ -53,7 +53,7 @@ uses
   Atlas.Core.Editor.Peek,
   Atlas.Core.Editor.PeekPlan,
   Atlas.UI.Results.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Editor.Peek,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Foundation.EditorBuffer,

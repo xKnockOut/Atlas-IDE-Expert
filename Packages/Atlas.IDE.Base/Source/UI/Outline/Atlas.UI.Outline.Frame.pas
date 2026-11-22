@@ -172,11 +172,11 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.UI.Outline.Strings,
-  Atlas.UI.Foundation.Controls,
-  Atlas.UI.Foundation.ListBox,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.Menus;
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Vcl.Controls.ListBox,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.Menus;
 
 {$R *.dfm}
 

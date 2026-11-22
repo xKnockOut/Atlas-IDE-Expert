@@ -15,7 +15,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasSetupPreviewDialog = class(TAtlasDialog)
@@ -45,8 +45,8 @@ implementation
 
 uses
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

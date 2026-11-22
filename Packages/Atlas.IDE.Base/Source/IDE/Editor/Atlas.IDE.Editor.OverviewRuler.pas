@@ -60,7 +60,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.SelectionMatches,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.TitledTip,
+  Atlas.Vcl.Popup.TitledTip,
   Atlas.UI.Editor.OverviewRuler,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,

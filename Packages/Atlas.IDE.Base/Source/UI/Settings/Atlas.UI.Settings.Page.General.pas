@@ -9,7 +9,7 @@ uses
   System.SysUtils,
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -89,7 +89,7 @@ uses
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Notifications.Window,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Knopf „…“ rechts neben dem Pfad des Servers: Breite und Lücke zum Feld.</summary>

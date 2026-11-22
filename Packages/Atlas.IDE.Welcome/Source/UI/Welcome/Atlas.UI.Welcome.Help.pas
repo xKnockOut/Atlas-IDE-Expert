@@ -62,7 +62,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 { TAtlasWelcomeHelpFrame }
 

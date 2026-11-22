@@ -161,9 +161,9 @@ uses
   Vcl.Themes,
   Atlas.UI.Bookmarks.Strings,
   Atlas.Core.Marks.Ids,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

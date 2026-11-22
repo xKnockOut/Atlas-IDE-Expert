@@ -15,7 +15,7 @@ uses
   Vcl.Graphics,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasIdeStyle = class

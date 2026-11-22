@@ -22,7 +22,7 @@ uses
   Vcl.Controls,
   Atlas.Plugin.Style.Syntax,
   Atlas.Core.Editor.Peek,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasPeekWindow = class(TAtlasPopupWindow)
@@ -78,8 +78,8 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Styled,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Styled,
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 8;

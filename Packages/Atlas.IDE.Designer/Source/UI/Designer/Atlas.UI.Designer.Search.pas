@@ -41,7 +41,7 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Designer.Components,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -221,7 +221,7 @@ uses
   Vcl.Clipbrd,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Designer.Strings;
 
 const

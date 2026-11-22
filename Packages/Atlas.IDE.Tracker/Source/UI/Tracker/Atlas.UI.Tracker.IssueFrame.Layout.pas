@@ -79,7 +79,7 @@ uses
   System.UITypes,
   Winapi.Windows,
   Atlas.Plugin.Style.Color,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   /// <summary>Abstand von Top zwischen zwei Teilen: alTop ordnet nach Top, Lücken lassen Platz.</summary>

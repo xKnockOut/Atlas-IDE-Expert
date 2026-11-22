@@ -72,7 +72,7 @@ uses
   Vcl.Themes,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 { TAtlasEvalTreeView }
 

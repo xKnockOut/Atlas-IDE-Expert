@@ -154,7 +154,7 @@ uses
   Atlas.Plugin.Style.Color,
   Winapi.Windows,
   Atlas.Core.Diagnostics.PluginReport,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   cTabFlags = DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_CENTER;

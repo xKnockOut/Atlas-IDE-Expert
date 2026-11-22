@@ -45,7 +45,7 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Choices,
   Atlas.Core.Settings.Validation,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Auswahl für ein Feld (Pfad); leer = keine eigene Auswahl.</summary>
@@ -213,8 +213,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Plugin.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.Text.Json;
 
 const

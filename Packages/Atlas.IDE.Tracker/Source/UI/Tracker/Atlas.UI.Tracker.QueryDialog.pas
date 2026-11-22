@@ -27,8 +27,8 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Templates,
-  Atlas.UI.Settings.ChoiceBox,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Options.ChoiceBox,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.Core.Tracker.Contract.MyIssues;
 
 type

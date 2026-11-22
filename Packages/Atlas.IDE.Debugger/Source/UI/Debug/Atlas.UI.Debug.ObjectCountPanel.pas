@@ -65,9 +65,9 @@ uses
   Winapi.Windows,
   Atlas.Core.Debug.MemoryTimeline,
   Atlas.UI.Debug.Memory.Strings,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.Text.Numbers,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Maße in logischen Pixeln.</summary>

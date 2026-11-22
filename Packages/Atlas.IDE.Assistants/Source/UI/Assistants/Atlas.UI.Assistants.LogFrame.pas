@@ -101,11 +101,11 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Assistants.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 
