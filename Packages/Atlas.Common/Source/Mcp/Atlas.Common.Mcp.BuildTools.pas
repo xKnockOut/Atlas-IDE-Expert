@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Mcp.BuildTools;
 
 // Letzter Build aus der IDE für KI-Assistenten (MCP) (#556). Der LSP-Server bekommt
-// die Build-Ergebnisse vom IDE-Plugin (TLspIdeBuild, #527/#528) und legt sie
+// die Build-Ergebnisse vom IDE-Plugin (TIdeBuildTracker, #527/#528) und legt sie
 // als JSON-Datei im Atlas-Cache ab (TIndexCacheDirectory.BuildFileFor); der
 // MCP-Prozess liest sie für das Werkzeug get_last_build. Nur lesend; Meldungen
 // zu Dateien außerhalb des Arbeitsordners bleiben weg (#99), gezählt. Meldungen, zu denen Atlas eine Erklärung
@@ -12,7 +12,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.IdeBuild;
+  Atlas.Common.Compiler.IdeBuild;
 
 type
   TMcpBuildTools = class

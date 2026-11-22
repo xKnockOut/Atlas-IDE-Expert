@@ -113,7 +113,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.IssueLookups,
-  Atlas.UI.Foundation.Menus;
+  Atlas.Vcl.Controls.Menus;
 
 const
   cTipStates: array[TAtlasBlameKeyState] of TAtlasIssueTipState = (TAtlasIssueTipState.Loading,

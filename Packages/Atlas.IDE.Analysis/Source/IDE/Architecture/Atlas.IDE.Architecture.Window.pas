@@ -49,7 +49,7 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.DockWindow;

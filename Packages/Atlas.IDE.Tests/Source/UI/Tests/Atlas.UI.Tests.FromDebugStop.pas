@@ -23,7 +23,7 @@ uses
   Vcl.StdCtrls,
   Vcl.CheckLst,
   Atlas.Core.Tests.FromDebugStop,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasTestFromDebugDialog = class(TAtlasDialog)

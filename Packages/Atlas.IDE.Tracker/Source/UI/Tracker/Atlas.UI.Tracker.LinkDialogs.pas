@@ -24,7 +24,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasSubtaskDialog = class(TAtlasDialog)
@@ -108,7 +108,7 @@ uses
   Vcl.Dialogs,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

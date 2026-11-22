@@ -29,7 +29,7 @@ uses
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.SnippetCatalog,
   Atlas.Plugin.Style.Symbol,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.UI.Settings.SnippetsPage,
   Atlas.UI.Settings.ServerPage;
 

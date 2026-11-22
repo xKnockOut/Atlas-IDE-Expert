@@ -244,12 +244,12 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   Vcl.Clipbrd,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.Board.Strings,
   Atlas.UI.Tracker.BoardPainter,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Foundation.Scaling,
-  Atlas.UI.Foundation.Controls;
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Controls.Helpers;
 
 {$R *.dfm}
 

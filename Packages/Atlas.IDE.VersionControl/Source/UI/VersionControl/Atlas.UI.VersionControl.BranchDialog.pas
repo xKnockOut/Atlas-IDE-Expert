@@ -46,7 +46,7 @@ uses
   Vcl.Graphics,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.BranchPlan,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasBranchDialog = class;
@@ -287,9 +287,9 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Plugin.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

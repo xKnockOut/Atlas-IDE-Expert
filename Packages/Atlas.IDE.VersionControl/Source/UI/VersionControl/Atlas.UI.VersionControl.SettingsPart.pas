@@ -19,7 +19,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.Vcl.Options.ChoiceBox;
 
 const
   cVcsButtonGap = 6;
@@ -93,8 +93,8 @@ implementation
 uses
   System.SysUtils,
   Vcl.Graphics,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Service;
 
 const
   cRowButtonTop = 3;

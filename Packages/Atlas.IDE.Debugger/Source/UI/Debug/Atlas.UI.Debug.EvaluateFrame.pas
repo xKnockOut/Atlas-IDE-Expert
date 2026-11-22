@@ -79,8 +79,8 @@ uses
   Vcl.Graphics,
   Vcl.ExtCtrls,
   Atlas.UI.Debug.Evaluate.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

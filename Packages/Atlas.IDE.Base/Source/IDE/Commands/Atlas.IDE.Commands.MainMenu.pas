@@ -210,7 +210,7 @@ implementation
 
 uses
   Atlas.UI.Commands.Strings,
-  Atlas.UI.Foundation.Menus,
+  Atlas.Vcl.Controls.Menus,
   Atlas.Plugin.Diagnostics.Guard,
   ToolsAPI,
   Atlas.IDE.Settings.Project,

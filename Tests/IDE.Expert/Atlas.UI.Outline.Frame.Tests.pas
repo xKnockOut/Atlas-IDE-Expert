@@ -53,7 +53,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
-  Atlas.UI.Foundation.ListBox,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.Core.Outline.TestSupport;
 
 const

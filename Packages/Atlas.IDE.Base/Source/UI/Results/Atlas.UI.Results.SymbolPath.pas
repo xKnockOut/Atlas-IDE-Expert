@@ -58,7 +58,7 @@ implementation
 uses
   Vcl.Controls,
   Atlas.UI.Results.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   /// <summary>Breite des Knopfs für die Karte bei 96 dpi.</summary>

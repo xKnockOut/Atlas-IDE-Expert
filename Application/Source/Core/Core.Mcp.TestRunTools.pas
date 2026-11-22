@@ -37,7 +37,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.DUnitX.CommandLine,
   Atlas.Text.TestResults,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Mutation.Report,

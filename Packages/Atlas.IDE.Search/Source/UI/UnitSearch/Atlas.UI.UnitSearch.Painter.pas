@@ -122,7 +122,7 @@ uses
   Atlas.Core.UnitSearch.UseUnit,
   Atlas.Core.Completion.Presentation,
   Atlas.UI.Strings,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Search.Strings;
 
 const

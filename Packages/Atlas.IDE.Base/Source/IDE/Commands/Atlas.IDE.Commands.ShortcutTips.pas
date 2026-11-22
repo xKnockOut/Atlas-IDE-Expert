@@ -139,7 +139,7 @@ uses
   Atlas.Core.Commands.Tips,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,

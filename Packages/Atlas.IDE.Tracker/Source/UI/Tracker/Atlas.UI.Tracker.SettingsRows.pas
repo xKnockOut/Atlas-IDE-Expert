@@ -21,7 +21,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.SettingsTables,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.QueryDialog,
   Atlas.Core.Tracker.Contract.MyIssues;
@@ -179,10 +179,10 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.ListView,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.ListView,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   cLabelTop = 5;

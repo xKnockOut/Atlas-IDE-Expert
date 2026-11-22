@@ -32,7 +32,7 @@ uses
   Vcl.Menus,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.WorkingCopies,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasWorkingCopyEvent = procedure(Sender: TObject; AIndex: Integer) of object;
@@ -143,8 +143,8 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

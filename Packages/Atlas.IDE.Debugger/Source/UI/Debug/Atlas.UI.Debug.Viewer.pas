@@ -35,8 +35,8 @@ uses
   Vcl.Graphics,
   Vcl.Menus,
   Atlas.Core.Debug.Visualizers,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView,
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListView,
   Atlas.UI.Debug.ViewerImage;
 
 type
@@ -96,7 +96,7 @@ uses
   System.Math,
   Vcl.Clipbrd,
   Atlas.UI.Debug.Values.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   cViewerWidth = 560;

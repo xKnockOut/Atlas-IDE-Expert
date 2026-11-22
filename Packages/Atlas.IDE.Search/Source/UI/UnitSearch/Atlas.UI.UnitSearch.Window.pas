@@ -45,7 +45,7 @@ uses
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.State,
   Atlas.Core.UnitSearch.UseUnit,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Painter;
 

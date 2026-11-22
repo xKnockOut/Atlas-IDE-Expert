@@ -15,7 +15,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
-  Atlas.Common.Lsp.ImplementationSites;
+  Atlas.Common.Index.ImplementationSites;
 
 type
   TMcpImplementationTools = class

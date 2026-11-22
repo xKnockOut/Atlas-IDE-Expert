@@ -125,7 +125,7 @@ uses
   Vcl.Clipbrd,
   Vcl.Themes,
   Atlas.Plugin.Style.Color,
-  Atlas.UI.Foundation.Menus,
+  Atlas.Vcl.Controls.Menus,
   Atlas.UI.Debug.Console.Strings;
 
 {$R *.dfm}

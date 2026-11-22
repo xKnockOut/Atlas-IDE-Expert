@@ -17,7 +17,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Assistants.Questions,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasQuestionAnswerProc = reference to procedure(const AId, AAnswer: string);
@@ -79,7 +79,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Assistants.Strings;
 
 const

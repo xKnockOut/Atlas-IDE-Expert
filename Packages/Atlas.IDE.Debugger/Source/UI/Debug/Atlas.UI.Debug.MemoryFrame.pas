@@ -92,8 +92,8 @@ implementation
 uses
   Winapi.Windows,
   Atlas.UI.Debug.Memory.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

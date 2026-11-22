@@ -27,7 +27,7 @@ uses
   Atlas.Core.Debug.Variables,
   Atlas.UI.Debug.EvaluateTreeView,
   Atlas.UI.Debug.VariablesParts,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 type
   TAtlasDebugVariablesFrame = class(TFrame)
@@ -93,7 +93,7 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Atlas.UI.Debug.VariablesStrings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

@@ -18,10 +18,11 @@ Der Schnitt folgt Rollen (Platform-Package, Host, Hosted-Feature; innerhalb eine
 | `Atlas.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Common`, `Atlas.WinBase` | VCL, FMX |
 | `Atlas.Linux` | Platform-Package nur als Quelltext für den Linux-Bau des Servers mit Free Pascal (#1109); kein `.dpk` | RTL, FPC-Units für Linux (`BaseUnix`, `Process`, `Pipes`), `Atlas.Common` | Windows, VCL, FMX, `Atlas.Windows` |
 | `Atlas.Plugin` | Platform-Package des Plugins ohne host-spezifisches Framework, nur als Quelltext in `Atlas.IDE.Base` (`contains … in '..\Atlas.Plugin\…'`); kein `.dpk`. Heute: Farben und Palette (`Style`), Sicherung, Hauptthread-Warteschlange und Arbeiter (`Diagnostics`), Sprache (`Localization`) und Version (`Product`) | RTL, `Winapi.*`, `Atlas.Text`, `Atlas.WinBase` | VCL, FMX, Open Tools API, `Atlas.Common`, `Atlas.Windows`, `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
+| `Atlas.Vcl` | Platform-Package des Plugins, das VCL kapselt, nur als Quelltext in `Atlas.IDE.Base` (`contains … in '..\Atlas.Vcl\…'`); kein `.dpk`. Steuerelemente (`Controls`: Liste, Listenansicht, umbrechende Beschriftung, Menüeinträge, Fensterprozedur-Haken), `TAtlasDialog` und Frames (`Forms`), Thema und Skalierung (`Theme`), Atlas-Symbol (`Images`), Popup-Fenster und Tooltips (`Popup`), Bausteine der Optionsseiten (`Options`) | RTL, `Winapi.*`, VCL, `Atlas.Text`, `Atlas.WinBase`, `Atlas.Plugin` | FMX, Open Tools API, `Atlas.Common`, `Atlas.Windows`, `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `AtlasServer` | Anwendung (Host) | beide Packages, RTL, Windows, unter Linux `Atlas.Linux` statt `Atlas.Windows` (nur in `Platform.Server`); die Versionsverwaltung des Plugins (`Atlas.Core.VersionControl.*`, #571) als Quelltext | VCL (Konsolenanwendung) |
 | `AtlasUpdate` | Anwendung (Host) für Installation und Updates (#1519); Einstieg und Zusammensetzung in `Application/Source/Shell/Shell.Update*.pas`, Dialog der Erstinstallation im Hosted-Feature `Update` (`Application/Source/Features/Update`), Logik in `Atlas.Common.Updates.*`, Adapter in `Atlas.Windows.Updates.Adapters.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows | VCL (Konsolenanwendung) |
 | `AtlasMonitor` | Anwendung (Host) mit Fenster (#1901): alle laufenden Server aus ihren Statusdateien, Symbol im Infobereich; Reiter „Prüfen“ (#1900) startet je Ziel einen unsichtbaren Kindprozess von AtlasServer in einem Job mit „beim Schließen beenden“ und liest SARIF bzw. Text/HTML zurück; Einstieg in `Application/Source/Shell/Shell.Monitor.pas`, Fenster im Hosted-Feature `Monitor` (`Application/Source/Features/Monitor`), Logik in `Atlas.Common.Monitor.*`, Prozesse und System in `Atlas.Windows.Monitor.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows, VCL (nur im Hosted-Feature `Monitor`) | FMX |
-| `Atlas.IDE.Base` | Design-Time-Package für RAD Studio (Win32 und Win64) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API), `Atlas.Text.*`, `Atlas.WinBase.*` und `Atlas.Plugin.*` als Quelltext (`contains … in '..\Atlas.Text\…'`, `'..\Atlas.WinBase\…'` bzw. `'..\Atlas.Plugin\…'`) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
+| `Atlas.IDE.Base` | Design-Time-Package für RAD Studio (Win32 und Win64) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API), `Atlas.Text.*`, `Atlas.WinBase.*`, `Atlas.Plugin.*` und `Atlas.Vcl.*` als Quelltext (`contains … in '..\Atlas.Text\…'`, `'..\Atlas.WinBase\…'`, `'..\Atlas.Plugin\…'` bzw. `'..\Atlas.Vcl\…'`) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
 | `Atlas.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 
 Abhängigkeitsrichtung:
@@ -31,12 +32,12 @@ AtlasServer ──► Atlas.Windows ──► Atlas.Common ──► Atlas.Text 
      │               │                 ▲               ▲
      │               └──► Atlas.WinBase ───────────────┘
      └─────────────────────────────────┘
-Atlas.IDE.Base ··► Atlas.Plugin, Atlas.Text, Atlas.WinBase (Quelltext, kein requires)
+Atlas.IDE.Base ··► Atlas.Vcl ──► Atlas.Plugin ──► Atlas.Text, Atlas.WinBase (Quelltext, kein requires)
 ```
 
-Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-, requires- und contains-Klauseln). Das Skript läuft lokal und in der GitHub Action „Package-Abhängigkeiten“. Zu Atlas.Text, Atlas.WinBase und Atlas.Plugin prüft es zusätzlich:
+Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-, requires- und contains-Klauseln). Das Skript läuft lokal und in der GitHub Action „Package-Abhängigkeiten“. Zu Atlas.Text, Atlas.WinBase, Atlas.Plugin und Atlas.Vcl prüft es zusätzlich:
 
-- Das Plugin enthält genau die Units aus `Atlas.Text.dpk` und `Atlas.WinBase.dpk` (sonst W1033) und jede Unit unter `Packages/Atlas.Plugin/Source` (ohne eigenes dpk); außer eigenen Units nur solche aus `..\Atlas.Text\Source`, `..\Atlas.WinBase\Source` und `..\Atlas.Plugin\Source`.
+- Das Plugin enthält genau die Units aus `Atlas.Text.dpk` und `Atlas.WinBase.dpk` (sonst W1033) und jede Unit unter `Packages/Atlas.Plugin/Source` und `Packages/Atlas.Vcl/Source` (ohne eigenes dpk); außer eigenen Units nur solche aus `..\Atlas.Text\Source`, `..\Atlas.WinBase\Source`, `..\Atlas.Plugin\Source` und `..\Atlas.Vcl\Source`.
 - `Atlas.Tests.dpr` und `AtlasServer.dpr` binden beide nicht als Quelltext ein; sie linken die DCUs aus `Dcu/Atlas.Text` bzw. `Dcu/Atlas.WinBase`.
 - **Prozessstart:** Kindprozesse startet nur `TAtlasProcessLauncher` (`Atlas.WinBase.Process`). Er vererbt über `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` genau die Standard-Handles des Kindes; Pipes und Dateien legen die Aufrufer nicht vererbbar an. `forbidden-symbol` in `atlas.json` sperrt `CreateProcess` außerhalb dieser Unit.
 - **Kopien-Sperre:** Außerhalb von `Packages/Atlas.Text` entsteht keine neue Routine wie `LineBreakOf`, `SplitLines`, `IndentOf`, `IsWordChar`, `IsIdentChar`, `IsUtf8`, `PercentDecode` oder `DecodeEntities`. Ausnahmen (Fassaden mit eigenem Typ, öffentliche Weiterleitungen, SQL-Bezeichner, Block Rules) stehen mit Grund in `$AllowedLocal`; die Liste soll nur schrumpfen.
@@ -90,6 +91,8 @@ Packages/
     Source/<Feature>/              Gegenstücke der Windows-Adapter für den Linux-Bau (FPC)
   Atlas.Plugin/
     Source/<Feature>/              Platform-Features des Plugins ohne VCL und Open Tools API (Quelltext in Atlas.IDE.Base)
+  Atlas.Vcl/
+    Source/<Feature>/              Steuerelemente, Dialoge, Thema, Popups des Plugins (VCL, Quelltext in Atlas.IDE.Base)
   Atlas.IDE.Base/
     Atlas.IDE.Base.dpk/.dproj
     Source/Core/  Source/UI/  Source/IDE/   (Schichten des Plugins, #406)
@@ -120,7 +123,7 @@ Die Anwendung und das Testprojekt binden die Packages statisch ein: Sie finden d
 Ausgabeartefakt.Feature.Rolle.Sache
 ```
 
-- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Text`, `Atlas.WinBase`, `Atlas.Common`, `Atlas.Windows`, `Atlas.Linux`, `Atlas.Plugin`, `Atlas.IDE.Base`
+- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Text`, `Atlas.WinBase`, `Atlas.Common`, `Atlas.Windows`, `Atlas.Linux`, `Atlas.Plugin`, `Atlas.Vcl`, `Atlas.IDE.Base`
 - `Atlas.Text`-Units heißen `Atlas.Text.<Feature>` (Feature-Wurzel ohne Rolle, z. B. `Atlas.Text.Lines`); sie enthalten nur reine Funktionen und Records ohne Zustand, ohne `inline` und ohne Standardparameter, keine Contracts oder Provider
 - Units der Anwendung tragen kein Präfix, z. B. `Shell.Application`
 - Units im Wurzelverzeichnis eines Features tragen keinen Rollenbezeichner, z. B. `Atlas.Common.Product.Version`
@@ -204,7 +207,7 @@ Jedes Plugin-Package (`Packages/Atlas.IDE.*`) hat eine eigene `atlas.json` und `
 Auch über implementation-uses bilden die Units unter `Packages/` und `Application/` keinen Zyklus: `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet nichts. Eine Unit eines Zyklus ließe sich weder allein testen noch austauschen. Die Muster dafür:
 
 - Gemeinsame Typen eines Features stehen in seiner Contract-Unit. `Atlas.Common.Editing.Contract` trägt die Typen der Schnellbefehle (`TSlashContext`, `TSlashCommand`, `ISlashHost`, `TSlashSettings` …) und den Kontext der uses-Aktionen (`TUsesContext`). Die Befehls-Units (`*Commands`) binden nur den Contract ein und melden ihre Befehle über `TSlashRegister`; nur das Register `Atlas.Common.Editing.SlashCommands` bindet alle Befehls-Units ein. Es bleibt eine Root-Unit, weil Lsp, Rules und `ClassActions` es nutzen (eine Composition dürften sie nach der Matrix nicht einbinden).
-- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Atlas.Common.Lsp.Contract`, die Formularprüfung in `Atlas.Common.Lsp.FormMentions`, JSON-Strings schreiben und JSON nachsichtig lesen in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Core.Lsp.Uris`, die Steuerelemente `Atlas.UI.Settings.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
+- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Atlas.Common.Lsp.Contract`, die Formularprüfung in `Atlas.Common.Lsp.FormMentions`, JSON-Strings schreiben und JSON nachsichtig lesen in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Core.Lsp.Uris`, die Steuerelemente `Atlas.Vcl.Options.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
 - Eine Funktion gehört zu ihren Daten: Die Nutzung je Befehl fragt `TAtlasIdeCommandUsage.UsageOf`, nicht die Tastenkürzel-Tipps; der Rückruf „Testen“ des Abfragedialogs (`TAtlasQueryTestEvent`) steht beim Dialog, nicht auf der Seite, die ihn öffnet.
 
 ### Genehmigte Ausnahmen
@@ -219,7 +222,7 @@ Die Liste steht einmal in `atlas.json` (`allow` der beiden Regeln) und gilt für
 | `Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree` | `ITreeUnits` (#1322) gehört zu genau einem Syntaxbaum und muss ihn wiedererkennen; aus demselben Grund wie bei `Rules.Contract`. |
 | `Atlas.Common.Documents.Contract -> Atlas.Text.Lines` | `TTextPosition` ist derselbe Typ wie in `Atlas.Text`; `Atlas.Text` hat nur zustandslose Funktionen und Records. |
 | `Atlas.Core.Lsp.Contract -> Atlas.Text.Json`, `Atlas.Core.Projects.Contract -> Atlas.Text.Json` | Die Verträge reichen JSON-Werte des Protokolls weiter; `Atlas.Text.Json` ist die gemeinsame JSON-Schicht aus zustandslosen Lese- und Schreibhelfern. |
-| VCL in Verträgen der UI-Schicht (`Atlas.UI.*` → `Vcl.*`, im Skript `$ContractFrameworkAllow`) | Verträge der Schicht `Atlas.UI` reichen Steuerelemente, die Base und Module mit derselben VCL bauen (`Atlas.UI.Settings.Contract`: die Bausteine einer Optionsseite). Eigene Interfaces je Steuerelement wären nur Hüllen. Der Code kommentiert die Ausnahme am uses. |
+| `Atlas.UI.Settings.Contract -> Vcl.Controls` (im Skript `$ContractFrameworkAllow`) | Der Vertrag reicht die Bausteine einer Optionsseite, die Base und Module mit derselben VCL bauen. Er zieht nach `Atlas.Vcl`, sobald der Vertrag zwischen Modulen, auf dem er aufbaut (`Atlas.Core.Modules.Contract`), in Base seinen Platz als Foundation hat. Eigene Interfaces je Steuerelement wären nur Hüllen. Der Code kommentiert die Ausnahme am uses. |
 | `Atlas.Common.Dfm.Contract.TDfm*` (Contract-Inhalt) | `TDfmObject` und `TDfmDocument` sind reine Datenklassen eines Baums (Besitz der Kinder, kein Verhalten); Verschieben änderte rund 20 Units ohne Abhängigkeitsgewinn. |
 
 **Composition in der Rolle eines Hosts:** Das Plugin hat keine eigene Namensgruppe für den Host. Seine Kompositionswurzel (`Atlas.IDE.CodeInsight.Composition.*` in Base) und die Composition jedes Moduls übernehmen dessen Aufgabe und erzeugen die Providers und Adapters fremder Features, die nach der Matrix nur ein Host erzeugen dürfte. Erlaubt ist genau das, nie Internals:

@@ -35,7 +35,7 @@ uses
   Vcl.ExtCtrls,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Designer.Layout,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasFormPreviewData = record
@@ -143,7 +143,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Designer.ViewStrings,
   Atlas.UI.Designer.Strings;
 

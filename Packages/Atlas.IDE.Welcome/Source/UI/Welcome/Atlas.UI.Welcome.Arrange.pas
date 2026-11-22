@@ -168,9 +168,9 @@ uses
   Vcl.Forms,
   Vcl.Themes,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Foundation.Controls,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 { TAtlasArrangePart }
 

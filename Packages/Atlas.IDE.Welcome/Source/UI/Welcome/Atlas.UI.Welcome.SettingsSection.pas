@@ -26,7 +26,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.SettingsLayouts;

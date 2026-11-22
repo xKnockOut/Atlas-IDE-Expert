@@ -7,6 +7,7 @@
     "Atlas.Windows",
     "Atlas.Linux",
     "Atlas.Plugin",
+    "Atlas.Vcl",
     "Atlas.Core",
     "Atlas.UI",
     "Atlas.IDE"
@@ -1229,6 +1230,23 @@
       "to": "Gamma.Sache",
       "allowed": true,
       "note": "Units ohne Präfix außerhalb der Listen gelten als extern"
+    },
+    {
+      "from": "Atlas.Vcl.Popup.Window",
+      "to": "Atlas.Plugin.Style.Palette",
+      "allowed": true,
+      "note": "Atlas.Vcl baut auf Atlas.Plugin auf"
+    },
+    {
+      "from": "Atlas.Vcl.Popup.Accessibility",
+      "to": "Atlas.Vcl.Popup.Contract",
+      "allowed": true
+    },
+    {
+      "from": "Atlas.UI.Popup.CrumbCard",
+      "to": "Atlas.Vcl.Popup.Internals.Sache",
+      "allowed": false,
+      "note": "gleicher Feature-Name in Atlas.UI und Atlas.Vcl ist ein fremdes Feature"
     }
   ]
 }

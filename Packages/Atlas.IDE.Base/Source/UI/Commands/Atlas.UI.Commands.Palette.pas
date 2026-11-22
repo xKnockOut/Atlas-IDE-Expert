@@ -40,7 +40,7 @@ uses
   Vcl.ExtCtrls,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Commands.Palette,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Zeichnen der Palette: Maße, Eingabefeld, Zeilen mit Hervorhebung, Abzeichen, Überschrift und Status

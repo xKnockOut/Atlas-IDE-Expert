@@ -17,7 +17,7 @@ uses
   Vcl.Menus,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.SettingsTables,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Tracker.SettingsPaths,
   Atlas.UI.Tracker.SettingsRows;
 

@@ -119,7 +119,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.EventBreak.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Debug.StopBar,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,

@@ -38,7 +38,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasQuickToggleRow = record

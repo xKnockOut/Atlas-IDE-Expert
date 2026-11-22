@@ -37,7 +37,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Style.Signal,
   Atlas.Core.Notifications.Contract,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasNotificationModeEvent = reference to procedure(const ASource: string; AMode: TAtlasNotificationMode);
@@ -163,7 +163,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Notifications.Sources,
-  Atlas.UI.Popup.Draw,
+  Atlas.Vcl.Popup.Draw,
   Atlas.UI.Strings,
   Atlas.UI.Notifications.Strings;
 

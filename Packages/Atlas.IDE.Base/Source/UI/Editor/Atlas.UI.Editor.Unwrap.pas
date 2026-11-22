@@ -25,7 +25,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Editor.Unwrap,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasUnwrapIndexEvent = reference to procedure(AIndex: Integer);
@@ -82,7 +82,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;
