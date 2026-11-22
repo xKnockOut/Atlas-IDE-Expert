@@ -103,7 +103,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.Extract,
+  Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
@@ -1410,7 +1410,8 @@ type
     FReport: IRuleReport;
     FAllowed: TArray<Double>;
     FSettings: TFormatSettings;
-    FExtractor: TConstantExtractor;
+    /// <summary>„Konstante extrahieren“ des Laufs, beim ersten Literal angelegt; nil ohne Refactorings.</summary>
+    FExtractor: IRuleConstantExtraction;
     function Text(ANode: TSyntaxNode): string;
     function NumberValue(const ALiteral: string; out AValue: Double): Boolean;
     function IsAllowed(AValue: Double): Boolean;
@@ -1545,7 +1546,6 @@ var
   mValue: Double;
   mAction: TCodeAction;
   mFixes: TArray<TRuleFix>;
-  mOptions: TExtractOptions;
 begin
   if not NumberValue(Text(ALiteral), mValue) then
   begin
@@ -1564,14 +1564,12 @@ begin
     Exit;
   end;
   mFixes := nil;
-  if FExtractor = nil then
+  if (FExtractor = nil) and (FContext.Refactorings.Extract <> nil) then
   begin
-    mOptions := TExtractOptions.Default;
     // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
-    mOptions.Names := FContext.NewNames;
-    FExtractor := TConstantExtractor.Create(FContext.Text, FContext.Tree, mOptions);
+    FExtractor := FContext.Refactorings.Extract.ConstantExtraction(FContext.Text, FContext.NewNames);
   end;
-  if FExtractor.Run(TTextRange.Create(mNode.StartPos, mNode.EndPos), False, mAction) then
+  if (FExtractor <> nil) and FExtractor.Run(TTextRange.Create(mNode.StartPos, mNode.EndPos), mAction) then
   begin
     mFixes := [TRuleFix.Create(cTexts[TStyleText.IntroduceConstant].Text, mAction.Edits)];
   end;
@@ -1643,11 +1641,7 @@ begin
   FAllowed := TRuleOptions.Numbers(FContext.Options, 'allowed', mDefaults);
   FSettings := TFormatSettings.Invariant;
   FExtractor := nil;
-  try
-    Visit(FContext.Tree.Root, False);
-  finally
-    FExtractor.Free;
-  end;
+  Visit(FContext.Tree.Root, False);
 end;
 
 procedure TMagicNumberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
