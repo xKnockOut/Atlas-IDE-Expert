@@ -812,12 +812,16 @@ end;
 
 { IAtlasVcsLineHistory (#1275) }
 
+const
+  /// <summary>Höchstzahl der Ziffern einer Revisionsnummer: Neun Ziffern passen immer in Integer.</summary>
+  cMaxRevisionDigits = 9;
+
 /// <summary>Revisionsnummer: nur Ziffern, höchstens neun.</summary>
 function IsRevision(const AText: string): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := (AText <> '') and (Length(AText) <= 9);
+  Result := (AText <> '') and (Length(AText) <= cMaxRevisionDigits);
   if Result then
   begin
     for mIndex := 1 to Length(AText) do
@@ -1001,7 +1005,7 @@ begin
   // Glob-Zeichen hätten in --search eine Bedeutung; Kennungen haben keine.
   for mIndex := 1 to Length(AText) do
   begin
-    if (Ord(AText[mIndex]) < 32) or CharInSet(AText[mIndex], ['*', '?', '[', ']', '\']) then
+    if (AText[mIndex] < ' ') or CharInSet(AText[mIndex], ['*', '?', '[', ']', '\']) then
     begin
       Exit(TAtlasVcsOutcome.Failed);
     end;

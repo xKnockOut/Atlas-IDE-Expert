@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Scopes;
+﻿unit Atlas.Common.Findings.Scopes;
 
 // Umgebende Routine eines Regeltreffers (#97), Teil des Baseline-Schlüssels:
 // - In einer Routine mit Rumpf der voll qualifizierte Name aus dem Kopf,

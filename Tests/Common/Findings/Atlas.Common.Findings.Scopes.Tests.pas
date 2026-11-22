@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Scopes.Tests;
+﻿unit Atlas.Common.Findings.Scopes.Tests;
 
 // Tests für die umgebende Routine eines Treffers (#97, Baseline-Schlüssel).
 
@@ -31,7 +31,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Scopes;
+  Atlas.Common.Findings.Scopes;
 
 const
   cUnitText =

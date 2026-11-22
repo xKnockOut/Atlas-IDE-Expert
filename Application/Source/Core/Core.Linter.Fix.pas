@@ -89,7 +89,7 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.History.ChangedFiles,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Diagnostics.CheckProfile,
   Core.Linter.Output,
   Core.Linter.Settings,

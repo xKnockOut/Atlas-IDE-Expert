@@ -58,6 +58,12 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings;
 
+const
+  /// <summary>Höhe der Angaben zum aktuellen Projekt (bis zu vier Zeilen).</summary>
+  cProjectInfoHeight = 70;
+  /// <summary>Wie oft (ms) die Seite nachsieht, ob sich das aktuelle Projekt geändert hat.</summary>
+  cWatchInterval = 250;
+
 /// <summary>Woher die Art der Versionsverwaltung kommt, mit dem Hauptbranch, wenn bekannt.</summary>
 function VcsSourceText(const AState: TAtlasVcsProjectState): string;
 begin
@@ -125,9 +131,9 @@ begin
   Host.AddNumber('vcs.timeoutSeconds', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsTimeout));
   // Aktuelles Projekt: nur Anzeige, beim ersten Zeigen einmal im Hintergrund abgefragt.
   AddTitle(TAtlasVcsTextId.SettingsVcsProjectTitle);
-  FVcsProjectInfo := AddWrappedLabel(70, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectNone));
+  FVcsProjectInfo := AddWrappedLabel(cProjectInfoHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectNone));
   FWatch := TTimer.Create(FPage);
-  FWatch.Interval := 250;
+  FWatch.Interval := cWatchInterval;
   FWatch.OnTimer := WatchTimer;
 end;
 
