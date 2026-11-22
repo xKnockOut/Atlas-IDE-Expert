@@ -89,7 +89,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Lsp.SyntaxDiagnostics;
+  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Tests.LspRules;
 
 const
   cCrlf = #13#10;
@@ -468,7 +469,8 @@ var
   mParams: TJSONObject;
 begin
   mStore := TDocumentStore.Create;
-  mParams := TLspSyntaxDiagnostics.BuildParams(mStore.Open('file:///c:/p18.pas', 'objectpascal', 1, cCases[17]));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mStore.Open('file:///c:/p18.pas', 'objectpascal', 1, cCases[17]), nil, '',
+    TTestLspRules.PlainDocument);
   try
     Assert.AreEqual(0, mParams.GetValue<TJSONArray>('diagnostics').Count, mParams.ToJSON);
   finally
