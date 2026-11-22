@@ -13,20 +13,6 @@
     },
     "narrowing-assignment": "off",
     "method-order": "off",
-    "ota-entry-without-guard": {
-      "guards": [
-        "TAtlasGuard.Run(TAtlasFeature.Menu, ",
-        "TAtlasGuard.RunProvider",
-        "TAtlasGuard.Wrap"
-      ]
-    },
-    "register-does-work": {
-      "entries": [
-        "Register",
-        "RegisterModule",
-        "*.RegisterModule"
-      ]
-    },
     "architecture-role-import": {
       "severity": "warning",
       "exclude": [
@@ -185,6 +171,20 @@
         "*Logger.Error",
         "*Logger.Warning",
         "TLinterOutput.Error"
+      ]
+    },
+    "ota-entry-without-guard": {
+      "guards": [
+        "TAtlasGuard.Run(TAtlasFeature.Menu, ",
+        "TAtlasGuard.RunProvider",
+        "TAtlasGuard.Wrap"
+      ]
+    },
+    "register-does-work": {
+      "entries": [
+        "Register",
+        "RegisterModule",
+        "*.RegisterModule"
       ]
     }
   }

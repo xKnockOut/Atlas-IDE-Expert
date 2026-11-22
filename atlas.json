@@ -20,6 +20,8 @@
     "metric-uses-count": "off",
     "metric-inheritance-depth": "off",
     "catch-all-without-raise": {"severity": "warning", "exclude": ["Tests/**", "Tools/**"], "allowExceptionUse": true, "reporters": ["TAtlasGuard.*", "TReporting.Failed", "TAtlasDataFile.ReportNotWritten", "TAtlasIdeHost.Message", "TAtlasIdeHost.Warning", "TAtlasIdeHost.Log", "Say", "*.Say", "*Logger.Error", "*Logger.Warning", "TLinterOutput.Error"]},
+    "ota-entry-without-guard": {"guards": ["TAtlasGuard.Run(TAtlasFeature.Menu, ", "TAtlasGuard.RunProvider", "TAtlasGuard.Wrap"]},
+    "register-does-work": {"entries": ["Register", "RegisterModule", "*.RegisterModule"]},
     "narrowing-assignment": "off",
     "generic-exception-raised": {"exclude": ["Tests/**"]},
     "format-without-settings": {"exclude": ["Tests/**"]},
