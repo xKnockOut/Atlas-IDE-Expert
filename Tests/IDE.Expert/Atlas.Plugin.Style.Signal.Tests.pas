@@ -2,7 +2,7 @@
 
 // Signalfarben je Design (#1255): Kontrast zu den Flächen der Leisten, Zeichen
 // und Plaketten lesbar, Ok/Warnung/Fehler deutlich verschieden und Palette. Die Zuordnung der
-// Statuszustände prüft Atlas.Core.Status.Signal.Tests.
+// Statuszustände prüft Atlas.Plugin.Status.Signal.Tests.
 
 interface
 

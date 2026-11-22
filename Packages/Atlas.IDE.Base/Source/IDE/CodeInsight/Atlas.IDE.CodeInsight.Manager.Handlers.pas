@@ -10,7 +10,7 @@ uses
   System.SysUtils,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Lsp.CrashCases,
-  Atlas.Core.Notifications.Contract;
+  Atlas.Plugin.Notifications.Contract;
 
 type
   /// <summary>Was der Eintrag „Server neu gestartet“ nennt.</summary>
@@ -64,8 +64,8 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Problems.Controller,

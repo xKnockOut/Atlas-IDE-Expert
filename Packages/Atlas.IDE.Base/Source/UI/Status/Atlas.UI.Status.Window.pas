@@ -25,7 +25,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Vcl.Forms.Dialog;
 
 type
@@ -78,8 +78,8 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Status.Signal,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Status.Signal,
   Atlas.Vcl.Controls.Helpers,
   Atlas.Vcl.Popup.Draw,
   Atlas.UI.Strings;

@@ -84,7 +84,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Favorites,
-  Atlas.Core.Diagnostics.Timing,
+  Atlas.Plugin.Diagnostics.Timing,
   Atlas.Vcl.Popup.Draw,
   Atlas.UI.Strings,
   Atlas.UI.Completion.Strings,

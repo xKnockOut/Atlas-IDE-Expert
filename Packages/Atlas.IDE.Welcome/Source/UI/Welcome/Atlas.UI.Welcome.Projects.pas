@@ -173,7 +173,7 @@ uses
   Atlas.UI.Welcome.Strings,
   Atlas.Core.Projects.Summary,
   Atlas.Text.Arrays,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 type
   /// <summary>Zeichnet die Zeilen des Bereichs: Punkt, Name, Branch, zweite Zeile, Stand der Schnellaktion und

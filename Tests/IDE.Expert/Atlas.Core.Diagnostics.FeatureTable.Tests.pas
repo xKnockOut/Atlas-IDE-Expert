@@ -41,7 +41,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.StartTimes,
+  Atlas.Plugin.Diagnostics.StartTimes,
   Atlas.Core.Diagnostics.FeatureTable;
 
 type

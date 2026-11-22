@@ -30,7 +30,7 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.InlineValuePainter,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 

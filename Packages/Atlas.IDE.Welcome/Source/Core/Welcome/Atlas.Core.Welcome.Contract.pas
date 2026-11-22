@@ -10,7 +10,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Projects.Contract.Summary,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.VersionControl.Contract;
 
 type

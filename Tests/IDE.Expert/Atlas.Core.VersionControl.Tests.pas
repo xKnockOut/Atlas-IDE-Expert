@@ -102,7 +102,7 @@ uses
   Atlas.Core.VersionControl.Null,
   Atlas.Core.VersionControl.Composition,
   Atlas.Core.VersionControl.BranchPlan,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.Core.VersionControl.TestSupport;
 
 type

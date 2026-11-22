@@ -136,7 +136,7 @@ uses
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Detection,
   Atlas.Core.VersionControl.Plan,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   System.Generics.Collections,
   Winapi.Windows,
   Vcl.ExtCtrls,

@@ -263,7 +263,7 @@ uses
   Atlas.Vcl.Theme.Service,
   Atlas.Vcl.Controls.ListView,
   Atlas.Vcl.Theme.Scaling,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.Vcl.Controls.Menus,
   Atlas.Vcl.Controls.Helpers,
   Atlas.Core.Architecture.Resolution;

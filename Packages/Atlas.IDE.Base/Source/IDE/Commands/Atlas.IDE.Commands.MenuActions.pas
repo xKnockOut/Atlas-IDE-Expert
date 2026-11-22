@@ -76,7 +76,7 @@ implementation
 uses
   Vcl.Clipbrd,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Processes,
+  Atlas.Plugin.Diagnostics.Processes,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.DataFlow,
   Atlas.UI.Diagnostics.ProcessesDialog,

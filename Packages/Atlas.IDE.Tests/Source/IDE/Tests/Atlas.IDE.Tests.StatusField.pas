@@ -74,7 +74,7 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Text.TestResults,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,

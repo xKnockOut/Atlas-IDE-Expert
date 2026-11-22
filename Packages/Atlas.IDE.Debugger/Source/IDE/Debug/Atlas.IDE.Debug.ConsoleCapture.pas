@@ -162,7 +162,7 @@ uses
   System.IOUtils,
   Winapi.Windows,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.Core.StartProfiles.Store,
   Atlas.ToolsApi.Debugger.Services,
   Atlas.IDE.Foundation.Host,

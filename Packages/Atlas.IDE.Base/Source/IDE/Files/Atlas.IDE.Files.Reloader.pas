@@ -28,7 +28,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Plugin.Files.ExternalChanges,
-  Atlas.Core.Notifications.Contract;
+  Atlas.Plugin.Notifications.Contract;
 
 type
   TAtlasFileReloader = class
@@ -67,12 +67,12 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Plugin.Files.TextDiff,
   Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Files.EncodingDefault,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.Foundation.Host,
   Atlas.UI.Notifications.Strings;
 

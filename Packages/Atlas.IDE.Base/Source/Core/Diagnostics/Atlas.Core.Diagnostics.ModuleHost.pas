@@ -74,7 +74,7 @@ uses
   Atlas.Text.Product.Version,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Plugin.Diagnostics.TimeLimit,
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Registry;
 

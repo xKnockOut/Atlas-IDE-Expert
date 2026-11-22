@@ -132,7 +132,7 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.Time.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Diagnostics.UserIdle;
+  Atlas.Plugin.Diagnostics.UserIdle;
 
 type
 {$SCOPEDENUMS ON}

@@ -10,7 +10,7 @@ interface
 uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Contract.MyIssues,
-  Atlas.Core.Foundation.Contract;
+  Atlas.Plugin.Calls.Contract;
 
 type
   /// <summary>Aktionen an einer Zeile: an einem wieder geöffneten Issue (#2127) Weiterarbeiten auf dem alten

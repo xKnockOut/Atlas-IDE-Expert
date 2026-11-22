@@ -17,7 +17,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.Vcl.Images.Symbol,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Search;

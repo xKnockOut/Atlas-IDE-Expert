@@ -51,7 +51,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRuns,
   Atlas.IDE.Welcome.QuickActions.Keys,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract,
   Atlas.IDE.Welcome.Neighbors,
   Atlas.Core.Projects.Contract.Summary;
