@@ -81,7 +81,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
-  Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Mcp.Contract.Formatting,
+  Shell.Composition.Mcp,
   Atlas.Common.Mcp.Confirm,
   Atlas.Common.Mcp.EditTools;
 
@@ -199,6 +200,7 @@ begin
       Result := nil;
     end,
     nil);
+  Result.Formatting := TMcpComposition.Formatting;
 end;
 
 function Edits: TArray<TMcpFileEdit>;
@@ -797,13 +799,13 @@ begin
   mFiles := TMemoryFiles.Create;
   mEdit := Tools(mFiles);
   try
-    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', cSchief, TFormatScope.All);
+    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', cSchief, TMcpFormatLines.All);
     Assert.Contains(mText, '2 Abweichungen');
     Assert.Contains(mText, 'Zeile 6: Einrückung 3 statt 2');
     Assert.Contains(mText, #10'  P;'#10'  P;'#10);
     Assert.AreEqual(0, mFiles.Writes);
     Assert.Contains(mEdit.FormatCode(TFormatStyle.Default, 'U.pas', 'unit U;'#10'interface'#10'implementation'#10 +
-      'end.', TFormatScope.All), 'Keine Abweichung');
+      'end.', TMcpFormatLines.All), 'Keine Abweichung');
   finally
     mEdit.Free;
     mFiles.Free;
@@ -820,18 +822,18 @@ begin
   mEdit := Tools(mFiles);
   try
     mFiles.Files.Add('U.pas', cSchief);
-    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, True);
+    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.All, True);
     Assert.Contains(mText, 'Vorschau');
     Assert.Contains(mText, '-    P;');
     Assert.AreEqual(0, mFiles.Writes);
     // Nur Zeile 7 (0-basiert 6).
-    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.Lines([TFormatLineSpan.Create(6, 6)]), False);
+    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.Range(6, 6), False);
     Assert.AreEqual(1, mFiles.Writes);
     Assert.AreEqual(StringReplace(cSchief, '     P;', '  P;', []), mFiles.Files['U.pas']);
-    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, False);
+    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.All, False);
     Assert.AreEqual(StringReplace(StringReplace(cSchief, '     P;', '  P;', []), '   P;', '  P;', []),
       mFiles.Files['U.pas']);
-    Assert.Contains(mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, False), 'keine Abweichung');
+    Assert.Contains(mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.All, False), 'keine Abweichung');
     Assert.AreEqual(2, mFiles.Writes);
   finally
     mEdit.Free;
@@ -852,7 +854,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, False);
+        mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.All, False);
       end, EMcpToolError);
     Assert.AreEqual(0, mFiles.Writes);
   finally

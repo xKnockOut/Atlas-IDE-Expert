@@ -207,10 +207,13 @@ begin
 end;
 
 class function TAtlasIdeSearchEditor.TabWidth: Integer;
+const
+  /// <summary>Tabulatorweite ohne offenen Editor.</summary>
+  cDefaultTabWidth = 8;
 var
   mView: IOTAEditView;
 begin
-  Result := 8;
+  Result := cDefaultTabWidth;
   if TopView(mView) then
   begin
     Result := TAtlasEditorBuffer.TabWidth(mView.Buffer);

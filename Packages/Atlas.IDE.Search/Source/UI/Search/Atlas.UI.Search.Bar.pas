@@ -174,6 +174,10 @@ begin
 end;
 
 procedure TAtlasSearchBar.FitWidths;
+const
+  // Zur Textbreite: Kästchen samt Abstand bzw. Rand des Knopfs (logische Pixel).
+  cCheckBoxExtra = 24;
+  cButtonExtra = 20;
 var
   mBoxes: TArray<TCheckBox>;
   mBox: TCheckBox;
@@ -184,13 +188,13 @@ begin
   mBoxes := [FParts.CaseBox, FParts.WholeBox, FParts.IdentifierBox, FParts.RegexBox];
   for mBox in mBoxes do
   begin
-    mBox.Width := Canvas.TextWidth(mBox.Caption) + ScaleValue(24);
+    mBox.Width := Canvas.TextWidth(mBox.Caption) + ScaleValue(cCheckBoxExtra);
   end;
   mButtons := [FParts.ListButton, FParts.CancelButton, FParts.ReplaceOneButton, FParts.ReplaceAllButton,
     FParts.ChooseButton];
   for mButton in mButtons do
   begin
-    mButton.Width := Canvas.TextWidth(mButton.Caption) + ScaleValue(20);
+    mButton.Width := Canvas.TextWidth(mButton.Caption) + ScaleValue(cButtonExtra);
   end;
 end;
 

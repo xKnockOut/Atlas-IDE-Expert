@@ -174,7 +174,7 @@ implementation
 
 uses
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   System.Math,
   System.StrUtils,
   System.Generics.Collections,
@@ -865,7 +865,7 @@ begin
       mProcessed: TPreprocessorResult;
       mTree: TSyntaxTree;
     begin
-      mTree := TSyntaxTreeCache.ParseActive(AText, ASource.Options, nil, mProcessed);
+      mTree := TSyntaxTreeCache.ParseActive(AText, TPascalPreprocessor.SourceOptions(ASource), nil, mProcessed);
       try
         Result := Length(mTree.Diagnostics);
       finally

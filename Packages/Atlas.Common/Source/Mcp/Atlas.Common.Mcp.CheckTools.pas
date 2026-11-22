@@ -12,7 +12,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.References,
   Atlas.Common.Todos.Contract,
@@ -64,10 +64,9 @@ type
 implementation
 
 uses
-  Atlas.Common.Findings.Contract,
   System.Classes,
   System.StrUtils,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Output,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Metrics.Contract,

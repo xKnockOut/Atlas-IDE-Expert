@@ -511,16 +511,21 @@ begin
   end;
 end;
 
+const
+  /// <summary>Anfang und Ende eines mehrzeiligen Strings.</summary>
+  cTripleQuote = '''''''';
+  cTripleQuoteLength = Length(cTripleQuote);
+
 function TCodeMasker.StepMultiString: Boolean;
 var
   mStart: Integer;
 begin
   // Ende: Zeile, die (nach Einzug) mit ''' beginnt.
-  Result := Copy(TrimLeft(FLine), 1, 3) = '''''''';
+  Result := Copy(TrimLeft(FLine), 1, cTripleQuoteLength) = cTripleQuote;
   if Result then
   begin
     FState := TCodeState.Code;
-    mStart := Pos('''''''', FLine) + 3;
+    mStart := Pos(cTripleQuote, FLine) + cTripleQuoteLength;
     Mask(1, mStart - 1);
     FAt := mStart;
   end
@@ -535,7 +540,7 @@ var
   mStart: Integer;
 begin
   // Mehrzeiliger String: ''' und dahinter nichts mehr in der Zeile.
-  Result := not ((Copy(FLine, FAt, 3) = '''''''') and RestIsBlank(FAt + 3));
+  Result := not ((Copy(FLine, FAt, cTripleQuoteLength) = cTripleQuote) and RestIsBlank(FAt + cTripleQuoteLength));
   if Result then
   begin
     mStart := FAt;

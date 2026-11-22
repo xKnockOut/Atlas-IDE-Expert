@@ -8,7 +8,7 @@
 // verschiebt. Gleiche Treffer in gleichen Zeilen werden gezählt: kommt einer
 // hinzu, wird der neue gemeldet.
 //
-// Umgebende Routine (Atlas.Common.Rules.Scopes): voll qualifizierter Name wie
+// Umgebende Routine (Atlas.Common.Findings.Scopes): voll qualifizierter Name wie
 // "TFoo.Bar", außerhalb einer Routine der Unit-Abschnitt. Zwei gleiche Zeilen
 // "X.Free;" in verschiedenen Routinen sind damit verschiedene Einträge;
 // wandert ein Treffer in eine andere Routine, gilt er als neu.
@@ -49,7 +49,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Scopes;
+  Atlas.Common.Findings.Scopes;
 
 const
   cBaselineFileName = 'atlas-baseline.json';

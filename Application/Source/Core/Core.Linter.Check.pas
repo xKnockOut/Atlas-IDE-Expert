@@ -17,7 +17,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.Baseline,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.SuppressionStats,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Todos.Contract,

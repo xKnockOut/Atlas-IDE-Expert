@@ -598,7 +598,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Prompt.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.FormatOutput.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Scopes.Tests.pas"/>
+        <DCCReference Include="Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Options.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.WarnSwitches.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.SuppressionStats.Tests.pas"/>
@@ -2475,6 +2475,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Contract.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Messages.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.IdeBuild.Tests.pas"/>
+        <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.MessageTexts.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeProject.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Providers.IdeTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeUnits.Tests.pas"/>
@@ -2667,6 +2668,16 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Settings.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.RuleContext.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Ide.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Mcp.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Extract.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.Extract.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.Extract.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Formatting.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.Formatting.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.Formatting.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.CompilerFixes.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.CompilerFixes.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.CompilerFixes.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Configuration.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FileChanges.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Sources.pas"/>

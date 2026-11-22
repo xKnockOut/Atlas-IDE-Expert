@@ -12,7 +12,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Befunde von AText (Inhalt von AFileName) wie get_diagnostics.</summary>
