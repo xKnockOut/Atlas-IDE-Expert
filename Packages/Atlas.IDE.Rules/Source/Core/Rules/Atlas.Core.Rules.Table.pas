@@ -164,6 +164,10 @@ uses
   System.Math,
   Atlas.Text.Json;
 
+const
+  // Ganze Zahlen darunter stehen in Double genau und werden als Ganzzahl geschrieben.
+  cMaxWholeFloat = 1E15;
+
 function SeverityOf(AValue: TJSONValue; out AHasOptions: Boolean): string;
 begin
   Result := '';
@@ -552,7 +556,7 @@ begin
       begin
         Exit(False);
       end;
-      if (Frac(mFloat) = 0) and (Abs(mFloat) < 1E15) then
+      if (Frac(mFloat) = 0) and (Abs(mFloat) < cMaxWholeFloat) then
       begin
         mItems.AddElement(TJSONNumber.Create(Trunc(mFloat)));
       end

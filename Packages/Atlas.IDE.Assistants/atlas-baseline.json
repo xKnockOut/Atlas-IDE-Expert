@@ -1,6 +1,4 @@
 {
   "version": 1,
-  "findings": [
-    {"path": "Source/IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeBuildInbox.Create", "context": "881dd7f5"}
-  ]
+  "findings": []
 }

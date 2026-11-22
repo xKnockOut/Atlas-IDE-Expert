@@ -63,6 +63,10 @@ implementation
 uses
   System.StrUtils;
 
+const
+  // Meldungsnummer des Compilers: Buchstabe und vier Ziffern (E2003).
+  cCompilerCodeLength = 5;
+
 type
   /// <summary>Ein Wert je Zeile von cWindows: Die Grenze der Tabelle ergibt sich daraus, ein neues Fenster braucht
   /// einen Wert hier und eine Zeile dort (Reihenfolge gleich). Zwei Zweige, die je ein Fenster ergänzen, ergeben so
@@ -153,7 +157,7 @@ function IsCompilerCode(const ACode: string): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := (Length(ACode) = 5) and CharInSet(UpCase(ACode[1]), ['E', 'F', 'H', 'W', 'X']);
+  Result := (Length(ACode) = cCompilerCodeLength) and CharInSet(UpCase(ACode[1]), ['E', 'F', 'H', 'W', 'X']);
   for mIndex := 2 to Length(ACode) do
   begin
     Result := Result and CharInSet(ACode[mIndex], ['0'..'9']);

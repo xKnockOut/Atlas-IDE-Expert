@@ -66,6 +66,15 @@ uses
 const
   cGap = 8;
   cDialogWidth = 860;
+  // Weitere Maße in logischen Pixeln: Dialoghöhe, Knopfleiste, Knöpfe, Liste der Dateien; Auswahltext etwas tiefer
+  // als die Knöpfe, damit er mittig zu ihnen steht.
+  cDialogHeight = 520;
+  cBottomHeight = 44;
+  cButtonHeight = 28;
+  cFilesWidth = 280;
+  cLabelTop = 6;
+  // Schriftgröße der Vorschau in Punkt.
+  cDiffFontSize = 9;
 
 { TAtlasBulkFixDialog }
 
@@ -77,7 +86,7 @@ begin
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu, biMaximize];
   KeyPreview := True;
-  ClientHeight := ScaleValue(520);
+  ClientHeight := ScaleValue(cDialogHeight);
 
   CreateSummary;
   CreateButtons;
@@ -120,14 +129,14 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := ScaleValue(44);
+  mBottom.Height := ScaleValue(cBottomHeight);
   mBottom.BevelOuter := bvNone;
   mBottom.ShowCaption := False;
   FCancel := TButton.Create(Self);
   FCancel.Parent := mBottom;
   FCancel.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.FixPreviewCancel);
   FCancel.Width := ScaleValue(100);
-  FCancel.Height := ScaleValue(28);
+  FCancel.Height := ScaleValue(cButtonHeight);
   FCancel.Top := ScaleValue(cGap);
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
   FCancel.Anchors := [akTop, akRight];
@@ -137,7 +146,7 @@ begin
   FApply.Parent := mBottom;
   FApply.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.FixPreviewApply);
   FApply.Width := ScaleValue(100);
-  FApply.Height := ScaleValue(28);
+  FApply.Height := ScaleValue(cButtonHeight);
   FApply.Top := ScaleValue(cGap);
   FApply.Left := FCancel.Left - FApply.Width - ScaleValue(cGap);
   FApply.Anchors := [akTop, akRight];
@@ -146,7 +155,7 @@ begin
   FSelection := TLabel.Create(Self);
   FSelection.Parent := mBottom;
   FSelection.Left := ScaleValue(cGap);
-  FSelection.Top := ScaleValue(cGap + 6);
+  FSelection.Top := ScaleValue(cGap + cLabelTop);
   FSelection.ShowAccelChar := False;
 end;
 
@@ -160,7 +169,7 @@ begin
   FFiles.Align := alLeft;
   FFiles.AlignWithMargins := True;
   FFiles.Margins.SetBounds(ScaleValue(cGap), 0, 0, 0);
-  FFiles.Width := ScaleValue(280);
+  FFiles.Width := ScaleValue(cFilesWidth);
   FFiles.OnClick := FilesClick;
   FFiles.OnClickCheck := FilesClickCheck;
   mSplitter := TSplitter.Create(Self);
@@ -176,7 +185,7 @@ begin
   FDiff.ScrollBars := ssBoth;
   FDiff.WordWrap := False;
   FDiff.Font.Name := 'Consolas';
-  FDiff.Font.Size := 9;
+  FDiff.Font.Size := cDiffFontSize;
 end;
 
 function TAtlasBulkFixDialog.FileCaption(AIndex: Integer): string;

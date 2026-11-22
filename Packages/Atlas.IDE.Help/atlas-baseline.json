@@ -1,6 +1,4 @@
 {
   "version": 1,
-  "findings": [
-    {"path": "Source/Core/Help/Atlas.Core.Help.Links.pas", "rule": "magic-number", "fingerprint": "1a833b5e", "count": 1, "routine": "IsCompilerCode", "context": "5ac6ef52"}
-  ]
+  "findings": []
 }

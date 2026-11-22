@@ -237,6 +237,27 @@ const
   cSubIndent = 18;
   /// <summary>Höhe der Beispiel-Memos bei kurzen Beispielen.</summary>
   cMinMemoHeight = 72;
+  /// <summary>Weitere Maße in logischen Pixeln: Beschriftung vor Auswahl und Optionen, Auswahlfelder, Leiste oben,
+  /// Kästchen, Zeile einer Option, Tabelle einer Option und ihre Spalten, Rand unter den Zeilen eines Memos.</summary>
+  cCaptionWidth = 160;
+  cChoiceWidth = 200;
+  cTopBarHeight = 26;
+  cCheckHeight = 20;
+  cOptionRowHeight = 24;
+  cTableHeight = 150;
+  cTableColumnWidth = 120;
+  cMemoPadding = 8;
+  /// <summary>Zeilenhöhe eines Memos: fünf Viertel der Schrifthöhe.</summary>
+  cLineSpacing = 5;
+  cLineSpacingOf = 4;
+  /// <summary>Abstand der Top-Werte gestapelter bzw. der Zeilen von Optionen: hält nur die Reihenfolge.</summary>
+  cStackStep = 1000;
+  cOptionOrderStep = 30;
+  /// <summary>Farben wie im Fenster „Regel erklären“: Hinweis „experimentell“, schlechtes und gutes Beispiel.
+  /// </summary>
+  cMarkColor = $000080C0;
+  cBadColor = $003C3CD8;
+  cGoodColor = $0050A030;
   /// <summary>Auswahl des Schweregrads; Eintrag 0 ist die Vorgabe.</summary>
   cSeverityValues: array[0..5] of string = ('', 'error', 'warning', 'info', 'hint', 'off');
   cGroupTexts: array[0..14] of TAtlasRulesTextId =
@@ -436,7 +457,7 @@ begin
   mCaption.Parent := ALine;
   mCaption.Align := alLeft;
   mCaption.AutoSize := False;
-  mCaption.Width := mCaption.ScaleValue(160);
+  mCaption.Width := mCaption.ScaleValue(cCaptionWidth);
   mCaption.Layout := tlCenter;
   mCaption.ShowAccelChar := False;
   mCaption.Caption := AOption.Name + ':';
@@ -499,7 +520,7 @@ var
 begin
   // Das ganze Beispiel zeigen statt vier Zeilen mit Rollbalken; sehr lange Beispiele bleiben rollbar.
   mLines := EnsureRange(AMemo.Lines.Count, 1, cMaxLines);
-  mLineHeight := MulDiv(Abs(AMemo.Font.Height), 5, 4);
+  mLineHeight := MulDiv(Abs(AMemo.Font.Height), cLineSpacing, cLineSpacingOf);
   mBars := ssHorizontal;
   if AMemo.Lines.Count > cMaxLines then
   begin
@@ -512,13 +533,13 @@ begin
   end;
   // Nie kleiner als bisher: Kurze Beispiele behalten ihre gewohnte Höhe.
   AMemo.Height := Max(AMemo.ScaleValue(cMinMemoHeight),
-    mLines * mLineHeight + GetSystemMetrics(SM_CYHSCROLL) + AMemo.ScaleValue(8));
+    mLines * mLineHeight + GetSystemMetrics(SM_CYHSCROLL) + AMemo.ScaleValue(cMemoPadding));
 end;
 
 procedure TAtlasRulesLayout.Stack(AParent: TWinControl; AControl: TControl);
 begin
   // Ein Zähler für alle Behälter: Nur die Reihenfolge innerhalb eines Behälters zählt.
-  Inc(FNextTop, 1000);
+  Inc(FNextTop, cStackStep);
   AControl.Parent := AParent;
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
@@ -568,7 +589,7 @@ const
 begin
   inherited Create(AOwner);
   FTopBar := TAtlasRulesBox.Create(Self);
-  FTopBar.Height := FTopBar.ScaleValue(26);
+  FTopBar.Height := FTopBar.ScaleValue(cTopBarHeight);
   Stack(Self, FTopBar);
   FSearch := TEdit.Create(Self);
   FSearch.Parent := FTopBar;
@@ -579,14 +600,14 @@ begin
   FGroupChoice.Align := alRight;
   FGroupChoice.AlignWithMargins := True;
   TAtlasControlScaling.SetMargins(FGroupChoice, cGap, 0, 0, 0);
-  FGroupChoice.Width := FGroupChoice.ScaleValue(200);
+  FGroupChoice.Width := FGroupChoice.ScaleValue(cChoiceWidth);
   FGroupChoice.Style := csDropDownList;
   FMaster := TCheckBox.Create(Self);
-  FMaster.Height := FMaster.ScaleValue(20);
+  FMaster.Height := FMaster.ScaleValue(cCheckHeight);
   FMaster.Visible := False;
   Stack(Self, FMaster);
   FTypeLevel := TCheckBox.Create(Self);
-  FTypeLevel.Height := FTypeLevel.ScaleValue(20);
+  FTypeLevel.Height := FTypeLevel.ScaleValue(cCheckHeight);
   FTypeLevel.Visible := False;
   FTypeLevel.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesTypeLevel);
   FTypeLevel.AlignWithMargins := True;
@@ -694,24 +715,24 @@ begin
   FTitle := AddLabel(FDetails, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesNoSelection));
   FTitle.Font.Style := [fsBold];
   FMark := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExperimental));
-  FMark.Font.Color := $000080C0;
+  FMark.Font.Color := cMarkColor;
   FMark.Visible := False;
   FDescription := TAtlasWrapLabel.Create(Self);
   Stack(FDetails, FDescription);
   FSeverityRow := TAtlasRulesBox.Create(Self);
-  FSeverityRow.Height := FSeverityRow.ScaleValue(24);
+  FSeverityRow.Height := FSeverityRow.ScaleValue(cOptionRowHeight);
   Stack(FDetails, FSeverityRow);
   mCaption := TLabel.Create(Self);
   mCaption.Parent := FSeverityRow;
   mCaption.Align := alLeft;
   mCaption.Layout := tlCenter;
-  mCaption.Width := mCaption.ScaleValue(160);
+  mCaption.Width := mCaption.ScaleValue(cCaptionWidth);
   mCaption.AutoSize := False;
   mCaption.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesSeverity);
   FSeverity := TComboBox.Create(Self);
   FSeverity.Parent := FSeverityRow;
   FSeverity.Align := alLeft;
-  FSeverity.Width := FSeverity.ScaleValue(200);
+  FSeverity.Width := FSeverity.ScaleValue(cChoiceWidth);
   FSeverity.Style := csDropDownList;
   FExcludeLabel := AddLabel(FDetails, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesExclude));
   FExclude := TEdit.Create(Self);
@@ -725,10 +746,10 @@ begin
   FInvalid.Font.Color := clRed;
   FInvalid.Visible := False;
   FBadLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExplainBad));
-  FBadLabel.Font.Color := $003C3CD8;
+  FBadLabel.Font.Color := cBadColor;
   FBad := AddMemo(FDetails);
   FGoodLabel := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExplainGood));
-  FGoodLabel.Font.Color := $0050A030;
+  FGoodLabel.Font.Color := cGoodColor;
   FGood := AddMemo(FDetails);
 end;
 
@@ -752,15 +773,15 @@ begin
     mLine.Parent := FOptionsBox;
     mLine.Align := alTop;
     mLine.AlignWithMargins := True;
-    mLine.Height := mLine.ScaleValue(24);
-    mLine.Top := mIndex * 30;
+    mLine.Height := mLine.ScaleValue(cOptionRowHeight);
+    mLine.Top := mIndex * cOptionOrderStep;
     if SameText(mOption.Kind, 'boolean') then
     begin
       mControl := NewOptionCheck(Self, mLine, mOption, OptionChange);
     end
     else if SameText(mOption.Kind, 'object-list') and (mOption.Columns <> nil) then
     begin
-      mLine.Height := mLine.ScaleValue(150);
+      mLine.Height := mLine.ScaleValue(cTableHeight);
       mControl := BuildTable(mLine, mOption, mIndex);
     end
     else
@@ -802,7 +823,7 @@ begin
   for mCol := 0 to High(AOption.Columns) do
   begin
     mGrid.Cells[mCol, 0] := AOption.Columns[mCol].Name;
-    mGrid.ColWidths[mCol] := 120;
+    mGrid.ColWidths[mCol] := mGrid.ScaleValue(cTableColumnWidth);
   end;
   for mRow := 0 to High(mCells) do
   begin

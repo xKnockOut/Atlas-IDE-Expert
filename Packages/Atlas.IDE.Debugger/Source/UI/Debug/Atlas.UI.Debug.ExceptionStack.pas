@@ -77,16 +77,18 @@ uses
 
 constructor TAtlasDebugExceptionStack.CreateIn(AParent: TWinControl);
 const
-  // Spaltenbreiten bei 96 dpi.
+  // Spaltenbreiten, Höhe der Liste und kleinste Höhe am Teiler bei 96 dpi.
   cFrameWidth = 330;
   cLocationWidth = 170;
+  cListHeight = 140;
+  cSplitterMinSize = 40;
 begin
   inherited Create(AParent);
   FList := TListView.Create(Self);
   FList.Parent := AParent;
   FList.Align := alBottom;
   FList.AlignWithMargins := True;
-  FList.Height := MulDiv(140, AParent.CurrentPPI, 96);
+  FList.Height := MulDiv(cListHeight, AParent.CurrentPPI, 96);
   FList.ViewStyle := vsReport;
   FList.RowSelect := True;
   FList.HideSelection := False;
@@ -106,7 +108,7 @@ begin
   FSplitter.Parent := AParent;
   FSplitter.Align := alBottom;
   FSplitter.Top := FList.Top - 1;
-  FSplitter.MinSize := MulDiv(40, AParent.CurrentPPI, 96);
+  FSplitter.MinSize := MulDiv(cSplitterMinSize, AParent.CurrentPPI, 96);
 end;
 
 procedure TAtlasDebugExceptionStack.SetJustMyCode(AValue: Boolean);

@@ -123,6 +123,12 @@ uses
   Atlas.Vcl.Controls.Menus,
   Atlas.Vcl.Theme.Service;
 
+const
+  // Spaltenbreiten bei 96 dpi; Wert und Projektwert gleich breit.
+  cNameWidth = 170;
+  cValueWidth = 60;
+  cOriginWidth = 220;
+
 {$R *.dfm}
 
 function AddColumn(AList: TListView; const ACaption: string; AWidth, APPI: Integer): TListColumn;
@@ -177,10 +183,13 @@ begin
   FParts.List.MultiSelect := False;
   FParts.List.ColumnClick := False;
   FParts.List.PopupMenu := FParts.Menu;
-  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnName), 170, CurrentPPI);
-  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnValue), 60, CurrentPPI);
-  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnProject), 60, CurrentPPI);
-  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnOrigin), 220, CurrentPPI);
+  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnName), cNameWidth, CurrentPPI);
+  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnValue), cValueWidth,
+    CurrentPPI);
+  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnProject), cValueWidth,
+    CurrentPPI);
+  AddColumn(FParts.List, TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesColumnOrigin), cOriginWidth,
+    CurrentPPI);
   FParts.List.OnDblClick := ListDblClick;
   FParts.List.OnKeyDown := ListKeyDown;
   FParts.List.OnCustomDrawItem := ListCustomDrawItem;

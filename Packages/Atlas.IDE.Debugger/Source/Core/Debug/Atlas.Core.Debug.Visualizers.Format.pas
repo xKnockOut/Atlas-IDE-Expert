@@ -42,6 +42,10 @@ type
     cSeparator = ' · ';
     /// <summary>Bytes je Zeile der Hex-Ansicht.</summary>
     cHexLineBytes = 16;
+    /// <summary>RGB-Anteil einer Farbe ohne Alpha bzw. Systembit.</summary>
+    cRgbMask = $FFFFFF;
+    /// <summary>Umfang von TColor: Systemfarben sind negativ, mit diesem Wert addiert ohne Vorzeichen.</summary>
+    cColorRange = $100000000;
     /// <summary>Ersatztext einer Sammlung: angezeigter Wert und Count wie die Eigenschaft im Quelltext.</summary>
     cCountText = '%s · Count = %d';
     /// <summary>Größe eines Speicherblocks (Einheit in beiden Sprachen gleich).</summary>
@@ -121,6 +125,23 @@ type
   end;
 
 const
+  // Erstes Zeichen nach dem druckbaren ASCII-Bereich (DEL).
+  cAsciiDelete = 127;
+  // Lage der Farbanteile in TColor ($00BBGGRR) und in Pixeln mit Alpha ($AARRGGBB).
+  cRedShift = 16;
+  cAlphaShift = 24;
+  cGreenMask = $FF00;
+  // Hexstellen einer Farbe mit Alpha bzw. Systembit und einer reinen RGB-Farbe.
+  cColorDigits = 8;
+  cRgbDigits = 6;
+  // DIB-Pixel: Bits je Pixel mit und ohne Alpha, Alpha als viertes Byte (Blau, Grün, Rot, Alpha).
+  cBitsPerByte = 8;
+  cRgbBits = 24;
+  cRgbaBits = 32;
+  cAlphaIndex = 3;
+  // Bytes von TGUID.D4.
+  cGuidTailBytes = 8;
+
   // Feste Farben der VCL (RGB).
   cStandardColors: array[0..19] of TNamedValue = (
     (Name: 'clBlack'; Value: $000000), (Name: 'clMaroon'; Value: $800000), (Name: 'clGreen'; Value: $008000),
@@ -367,7 +388,7 @@ begin
     begin
       Break;
     end;
-    if (mField.Name <> '') or not ParseInteger(mField.Value, mValue) or (mValue < 0) or (mValue > 255) then
+    if (mField.Name <> '') or not ParseInteger(mField.Value, mValue) or (mValue < 0) or (mValue > High(Byte)) then
     begin
       ABytes := nil;
       Exit(False);
@@ -403,7 +424,7 @@ end;
 
 function Printable(AValue: Byte): Char;
 begin
-  if (AValue >= 32) and (AValue < 127) then
+  if (AValue >= Ord(' ')) and (AValue < cAsciiDelete) then
   begin
     Result := Char(AValue);
   end
@@ -454,9 +475,9 @@ begin
   mHex := TStringBuilder.Create;
   mText := TStringBuilder.Create;
   try
-    for mIndex := AOffset to AOffset + 15 do
+    for mIndex := AOffset to AOffset + cHexLineBytes - 1 do
     begin
-      if mIndex = AOffset + 8 then
+      if mIndex = AOffset + cHexLineBytes div 2 then
       begin
         mHex.Append(' ');
       end;
@@ -484,7 +505,7 @@ end;
 
 class function TAtlasVisualizerFormat.HexLineCount(ALength: Integer): Integer;
 begin
-  Result := (ALength + 15) div 16;
+  Result := (ALength + cHexLineBytes - 1) div cHexLineBytes;
 end;
 
 class function TAtlasVisualizerFormat.CompactJson(const AText: string): string;
@@ -594,7 +615,7 @@ end;
 
 function SwapRedBlue(AValue: Cardinal): Cardinal;
 begin
-  Result := ((AValue and $FF) shl 16) or (AValue and $FF00) or ((AValue shr 16) and $FF);
+  Result := ((AValue and $FF) shl cRedShift) or (AValue and cGreenMask) or ((AValue shr cRedShift) and $FF);
 end;
 
 class function TAtlasVisualizerFormat.RgbToColor(ARgb: Cardinal): Cardinal;
@@ -606,7 +627,7 @@ end;
 class function TAtlasVisualizerFormat.ColorRgb(AValue: Int64; out ARgb: Cardinal): Boolean;
 begin
   ARgb := 0;
-  Result := (AValue >= 0) and (AValue <= $FFFFFF);
+  Result := (AValue >= 0) and (AValue <= cRgbMask);
   if Result then
   begin
     ARgb := SwapRedBlue(Cardinal(AValue));
@@ -645,7 +666,7 @@ begin
   // TColor ist vorzeichenbehaftet: Systemfarben kommen als -16777201 usw.
   if mValue < 0 then
   begin
-    mValue := mValue + $100000000;
+    mValue := mValue + cColorRange;
   end;
   if mValue = cClNone then
   begin
@@ -675,18 +696,18 @@ begin
   mValue := AValue;
   if mValue < 0 then
   begin
-    mValue := mValue + $100000000;
+    mValue := mValue + cColorRange;
   end;
   if not ColorRgb(mValue, mRgb) then
   begin
     Result := mName;
     if Result = '' then
     begin
-      Result := '$' + IntToHex(mValue, 8);
+      Result := '$' + IntToHex(mValue, cColorDigits);
     end;
     Exit;
   end;
-  Result := '$' + IntToHex(mRgb, 6);
+  Result := '$' + IntToHex(mRgb, cRgbDigits);
   if mName <> '' then
   begin
     Result := mName + cSeparator + Result;
@@ -699,18 +720,18 @@ var
   mIndex: Integer;
 begin
   mValue := Cardinal(AValue and $FFFFFFFF);
-  Result := '$' + IntToHex(mValue, 8);
+  Result := '$' + IntToHex(mValue, cColorDigits);
   if mValue = 0 then
   begin
     Exit('claNull');
   end;
-  if (mValue shr 24) <> $FF then
+  if (mValue shr cAlphaShift) <> $FF then
   begin
     Exit;
   end;
   for mIndex := Low(cWebColors) to High(cWebColors) do
   begin
-    if cWebColors[mIndex].Value = (mValue and $FFFFFF) then
+    if cWebColors[mIndex].Value = (mValue and cRgbMask) then
     begin
       Exit('cla' + cWebColors[mIndex].Name + cSeparator + Result);
     end;
@@ -741,14 +762,14 @@ begin
   begin
     Exit;
   end;
-  if not FieldValue(mFields, 'D4', mText) or not ParseFields(mText, mBytes) or (Length(mBytes) <> 8) then
+  if not FieldValue(mFields, 'D4', mText) or not ParseFields(mText, mBytes) or (Length(mBytes) <> cGuidTailBytes) then
   begin
     Exit;
   end;
   mGuid.D1 := Cardinal(mD1);
   mGuid.D2 := Word(mD2);
   mGuid.D3 := Word(mD3);
-  for mIndex := 0 to 7 do
+  for mIndex := 0 to cGuidTailBytes - 1 do
   begin
     if not ParseInteger(mBytes[mIndex].Value, mValue) then
     begin
@@ -861,13 +882,15 @@ begin
   mWidth := ALayout.Width;
   mHeight := ALayout.Height;
   mWidthBytes := ALayout.WidthBytes;
-  Result := (mWidth > 0) and (mHeight > 0) and ((ALayout.BitsPerPixel = 24) or (ALayout.BitsPerPixel = 32)) and
-    (mWidthBytes >= mWidth * (ALayout.BitsPerPixel div 8)) and (Int64(mWidthBytes) * mHeight <= Length(ABits));
+  Result := (mWidth > 0) and (mHeight > 0) and
+    ((ALayout.BitsPerPixel = cRgbBits) or (ALayout.BitsPerPixel = cRgbaBits)) and
+    (mWidthBytes >= mWidth * (ALayout.BitsPerPixel div cBitsPerByte)) and
+    (Int64(mWidthBytes) * mHeight <= Length(ABits));
   if not Result then
   begin
     Exit;
   end;
-  mStep := ALayout.BitsPerPixel div 8;
+  mStep := ALayout.BitsPerPixel div cBitsPerByte;
   SetLength(APixels, mWidth * mHeight);
   for Y := 0 to mHeight - 1 do
   begin
@@ -884,12 +907,12 @@ begin
       // DIB: Blau, Grün, Rot (, Alpha).
       mOffset := mRow * mWidthBytes + X * mStep;
       mAlpha := $FF;
-      if mStep = 4 then
+      if mStep = cRgbaBits div cBitsPerByte then
       begin
-        mAlpha := ABits[mOffset + 3];
+        mAlpha := ABits[mOffset + cAlphaIndex];
       end;
-      APixels[Y * mWidth + X] := (mAlpha shl 24) or (Cardinal(ABits[mOffset + 2]) shl 16) or
-        (Cardinal(ABits[mOffset + 1]) shl 8) or ABits[mOffset];
+      APixels[Y * mWidth + X] := (mAlpha shl cAlphaShift) or (Cardinal(ABits[mOffset + 2]) shl cRedShift) or
+        (Cardinal(ABits[mOffset + 1]) shl cBitsPerByte) or ABits[mOffset];
     end;
   end;
 end;
