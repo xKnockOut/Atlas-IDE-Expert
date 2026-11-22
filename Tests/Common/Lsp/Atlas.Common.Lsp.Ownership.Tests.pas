@@ -103,6 +103,8 @@ var
 begin
   mAnswer := Run(nil, mSites);
   try
+    // Nur uri und sites, wie die Antwort der Prüfregeln ohne Text.
+    Assert.AreEqual(2, Integer(mAnswer.Count));
     Assert.AreEqual(cUri, Text(mAnswer, 'uri'));
     Assert.AreEqual(0, Integer(mSites.Count));
   finally
