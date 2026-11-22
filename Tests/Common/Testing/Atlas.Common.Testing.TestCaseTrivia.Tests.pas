@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.Tests;
+﻿unit Atlas.Common.Testing.TestCaseTrivia.Tests;
 
 // Tests des Umfelds der TestCase-Attribute: Kommentare in eigener Zeile, davor und dahinter, über dem ersten und
 // hinter dem letzten Fall, bedingte Direktiven um genau einen Fall (auch über dem ersten bzw. unter dem letzten),
@@ -43,7 +43,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia,
+  Atlas.Common.Testing.TestCaseTrivia,
   Atlas.Text.Lines;
 
 /// <summary>Klasse mit den Zeilen ABody vor der Methode Pruefe; ABody beginnt in Zeile 4.</summary>
