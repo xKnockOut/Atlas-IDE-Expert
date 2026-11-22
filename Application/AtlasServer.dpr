@@ -84,6 +84,7 @@ uses
   Adapters.Rules.Refactorings in 'Source\Adapters\Adapters.Rules.Refactorings.pas',
   Adapters.Lsp.InheritanceDepths in 'Source\Adapters\Adapters.Lsp.InheritanceDepths.pas',
   Adapters.Lsp.OwnershipReport in 'Source\Adapters\Adapters.Lsp.OwnershipReport.pas',
+  Adapters.Lsp.RuleDiagnostics in 'Source\Adapters\Adapters.Lsp.RuleDiagnostics.pas',
   Shell.Composition.FeatureWiring in 'Source\Shell\Shell.Composition.FeatureWiring.pas',
   Shell.Composition.CommandWiring in 'Source\Shell\Shell.Composition.CommandWiring.pas',
   Shell.Composition.ClientStart in 'Source\Shell\Shell.Composition.ClientStart.pas',

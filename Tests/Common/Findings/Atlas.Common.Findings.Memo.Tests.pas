@@ -71,6 +71,7 @@ uses
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.CodeActions,
+  Atlas.Tests.LspRules,
   Atlas.Common.Findings.Memo;
 
 const
@@ -241,7 +242,7 @@ begin
   mStore := TDocumentStore.Create;
   mDocument := mStore.Open(TDocumentUris.FromPath(cFileName), 'objectpascal', 1, cText);
   mMemo := TRuleFindingsMemo.Create;
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith(mMemo));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', TTestLspRules.Document(RulesWith(mMemo)));
   try
     Assert.IsTrue(mMemo.TryGet(cFileName, cText, mFound), 'die Diagnose legt ihre Treffer ab');
   finally
