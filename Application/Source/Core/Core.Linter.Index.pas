@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Index;
+﻿unit Core.Linter.Index;
 
-// Internals-Rolle Shell: Symbolindex des Linter-Modus (#1112). Wie im Server und im MCP-Modus baut --check den
+// Host-Rolle Core: Symbolindex des Linter-Modus (#1112). Wie im Server und im MCP-Modus baut --check den
 // Index des Projekts (Ordner, .dproj oder Ordner der Datei, mit index.projectGroup die ganze Gruppe) und liest
 // dabei den gemeinsamen Index-Cache (--index-cache, sonst der Ordner des Servers).
 
@@ -12,7 +12,8 @@ uses
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.CheckMemory,
   Core.CommandLine,
-  Core.WorkspaceGroup;
+  Core.WorkspaceGroup,
+  Core.Linter.Host;
 
 type
   TLinterIndex = class
@@ -24,7 +25,8 @@ type
     /// Speicher in ATimings ein (#1356). Mit AMemory (#1480) misst es den Speicher, wenn der Index des
     /// Zielprojekts und wenn der aller Projekte fertig ist; nil erlaubt.</summary>
     class function Load(const AOptions: TCommandLineOptions; const AConfigRoot: string;
-      var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack): TCoreWorkspaceGroup; static;
+      var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack; const AHost: TCoreLinterHost): TCoreWorkspaceGroup;
+      static;
     /// <summary>Projekt einer geprüften Datei: Package aus APackages, Formulare der Programme, Formulardatei
     /// daneben und mit AGroup Index und Projektdienste (#1112) wie im Server.</summary>
     class function ProjectOf(const AFileName: string; const APackages: TArray<TPackageSource>;
@@ -47,16 +49,10 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Processes,
-  Atlas.Common.Documents.Contract,
-  Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Logging.Contract,
-  Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Logging.Providers.StreamSink,
   Platform.Server,
   Core.Bootstrap,
-  Shell.Linter.Output,
-  Atlas.Common.Localization.Texts,
-  Shell.Composition.Platform;
+  Core.Linter.Output,
+  Atlas.Common.Localization.Texts;
 
 type
 {$SCOPEDENUMS ON}
@@ -69,35 +65,6 @@ const
     En: 'Symbol index not ready after %d minutes; checking with the index built so far'),
     (De: 'Kein Projekt gefunden; Prüfung ohne Symbolindex'; En: 'No project found; checking without symbol index'),
     (De: 'Symbolindex: %d Units in %.1f s'; En: 'Symbol index: %d units in %.1f s'));
-
-/// <summary>Logger nur für Warnungen und Fehler auf stderr; stdout gehört dem Ergebnis.</summary>
-function ErrorLogger: ILogger;
-var
-  mLogger: TLogger;
-begin
-  mLogger := TLogger.Create;
-  Result := mLogger;
-  mLogger.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
-end;
-
-/// <summary>Gruppe über AConfigRoot mit AIndex. Als anonyme Methode statt TCoreBootstrap.ReadSourceText: Free
-/// Pascal (Linux-Bau) bricht an der Umwandlung einer Klassenmethode in eine Methodenreferenz intern ab.</summary>
-function NewGroup(const AConfigRoot: string; const AIndex: ISymbolIndex): TCoreWorkspaceGroup;
-var
-  mStore: IDocumentStore;
-begin
-  mStore := TDocumentStore.Create(
-    function(const APath: string): string
-    begin
-      Result := TServerPlatform.CanonicalizePath(APath);
-    end);
-  Result := TCoreWorkspaceGroup.Create(ExcludeTrailingPathDelimiter(AConfigRoot), mStore, ErrorLogger, AIndex,
-    'atlas-check-index', TShellPlatformAdapters.WorkspaceFactories,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
-    end);
-end;
 
 /// <summary>Projektdatei, Cache-Ordner und Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).</summary>
 procedure Configure(AGroup: TCoreWorkspaceGroup; const AOptions: TCommandLineOptions);
@@ -174,13 +141,13 @@ end;
 { TLinterIndex }
 
 class function TLinterIndex.Load(const AOptions: TCommandLineOptions; const AConfigRoot: string;
-  var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack): TCoreWorkspaceGroup;
+  var ATimings: TCheckTimings; AMemory: TCheckMemoryTrack; const AHost: TCoreLinterHost): TCoreWorkspaceGroup;
 var
   mIndex: ISymbolIndex;
   mWatch: TStopwatch;
 begin
   mIndex := TSymbolIndex.Create;
-  Result := NewGroup(AConfigRoot, mIndex);
+  Result := AHost.NewGroup(AConfigRoot, mIndex);
   try
     Configure(Result, AOptions);
     TrackIndex(Result, AMemory);
@@ -243,6 +210,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Index', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Index', cTexts);
 
 end.

@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.AffectedTests;
+﻿unit Core.Linter.AffectedTests;
 
-// Internals-Rolle Shell: --affected-tests (#1353). Statt der Prüfung die DUnitX-Tests, die eine Änderung gegenüber
+// Host-Rolle Core: --affected-tests (#1353). Statt der Prüfung die DUnitX-Tests, die eine Änderung gegenüber
 // der Basis betrifft; Ziel ist das Testprojekt (.dproj), die Projektgruppe (.groupproj) oder ein Ordner.
 
 interface
@@ -8,7 +8,8 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.References,
-  Core.CommandLine;
+  Core.CommandLine,
+  Core.Linter.Host;
 
 type
   TLinterAffectedTests = class
@@ -19,7 +20,7 @@ type
       cExitAllTests = 2;
     /// <summary>Betroffene Tests als text, json oder dunitx (--format) auf stdout bzw. in --output. Exit-Code 0;
     /// 2, wenn alle Tests nötig sind; 3 bei Fehlern oder mit tests.affected = false.</summary>
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
     /// <summary>Testprogramme: das Ziel bzw. die Projekte der Gruppe, sonst testUnits.project, sonst alle
     /// DUnitX-Programme unter AAllFiles.</summary>
     class function ProgramsOf(const ATarget, AConfigRoot: string; const ASettings: TServerSettings;
@@ -39,13 +40,12 @@ uses
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests.Report,
   Atlas.Common.Lsp.AffectedTests.Types,
-  Shell.Composition.Platform,
   Core.Bootstrap,
   Core.AffectedTests,
-  Shell.Linter.Output,
-  Shell.Linter.Settings,
-  Shell.Linter.Files,
-  Shell.Linter.Index,
+  Core.Linter.Output,
+  Core.Linter.Settings,
+  Core.Linter.Files,
+  Core.Linter.Index,
   Atlas.Common.Localization.Texts,
   Core.VersionControlChanges;
 
@@ -110,7 +110,7 @@ end;
 
 /// <summary>Analyse über den Index von AGroup gegenüber --affected-base.</summary>
 function Analyze(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget; const ASettings: TServerSettings;
-  AGroup: TCoreWorkspaceGroup): TAffectedResult;
+  AGroup: TCoreWorkspaceGroup; const AHost: TCoreLinterHost): TAffectedResult;
 var
   mReadText: TReferenceReadText;
   mQuery: TCoreAffectedQuery;
@@ -126,7 +126,7 @@ begin
   mQuery.Base := AOptions.AffectedBase;
   mQuery.IncludeUncommitted := AOptions.IncludeUncommitted;
   // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
-  mAccess := TShellPlatformAdapters.VcsAccess;
+  mAccess := AHost.Vcs();
   mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
   try
     mResolver.Namespaces := AGroup.Main.State.Namespaces;
@@ -167,8 +167,8 @@ begin
 end;
 
 /// <summary>Einstellungen, Index und Analyse; Exit-Code.</summary>
-function Report(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget; AFormat: TAffectedFormat):
-  Integer;
+function Report(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget; AFormat: TAffectedFormat;
+  const AHost: TCoreLinterHost): Integer;
 var
   mSettings: TServerSettings;
   mGroup: TCoreWorkspaceGroup;
@@ -184,16 +184,17 @@ begin
   TFileEncodingDefaults.SetFolder(ATarget.ConfigRoot, mSettings.DefaultEncoding);
   // Zeiten nur für --timings beim Prüfen; hier unbenutzt.
   mTimings := Default(TCheckTimings);
-  mGroup := TLinterIndex.Load(AOptions, ATarget.ConfigRoot, mTimings, nil);
+  mGroup := TLinterIndex.Load(AOptions, ATarget.ConfigRoot, mTimings, nil, AHost);
   try
-    mFound := Analyze(AOptions, ATarget, mSettings, mGroup);
+    mFound := Analyze(AOptions, ATarget, mSettings, mGroup, AHost);
     Result := Finish(AOptions, mFound, AFormat);
   finally
     TLinterIndex.Release(mGroup);
   end;
 end;
 
-class function TLinterAffectedTests.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterAffectedTests.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost):
+  Integer;
 var
   mFormat: TAffectedFormat;
   mTarget: TLinterTarget;
@@ -209,7 +210,7 @@ begin
     Exit(TFindingsOutput.cExitFailure);
   end;
   try
-    Result := Report(AOptions, mTarget, mFormat);
+    Result := Report(AOptions, mTarget, mFormat, AHost);
   except
     on E: Exception do
     begin
@@ -220,6 +221,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.AffectedTests', cTexts);
+  TAtlasTextTables.Add('Core.Linter.AffectedTests', cTexts);
 
 end.

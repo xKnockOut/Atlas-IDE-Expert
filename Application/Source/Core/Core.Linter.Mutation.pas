@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Mutation;
+﻿unit Core.Linter.Mutation;
 
-// Internals-Rolle Shell: --mutate (#1460). Erzeugt die Mutanten einer Unit
+// Host-Rolle Core: --mutate (#1460). Erzeugt die Mutanten einer Unit
 // ohne zu bauen (Atlas.Common.Mutation.Generator) und gibt sie als Markdown
 // (Standard), JSON oder Patch (--format text, json, diff) auf stdout bzw. in
 // --output aus. Dieselben Mutanten liefert das MCP-Werkzeug get_mutants.
@@ -16,12 +16,13 @@ interface
 
 uses
   Atlas.Common.Mutation.Contract,
-  Core.CommandLine;
+  Core.CommandLine,
+  Core.Linter.Host;
 
 type
   TLinterMutation = class
   public
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
     /// <summary>Auswahl aus --routine und --operators; False mit Fehlertext bei unbekannten Operatoren.</summary>
     class function OptionsOf(const AOptions: TCommandLineOptions; out AMutation: TMutationOptions;
       out AError: string): Boolean; static;
@@ -36,10 +37,10 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Output,
   Atlas.Common.Mutation.Report,
-  Shell.Linter.Output,
-  Shell.Linter.Settings,
-  Shell.Linter.Files,
-  Shell.Linter.Reports,
+  Core.Linter.Output,
+  Core.Linter.Settings,
+  Core.Linter.Files,
+  Core.Linter.Reports,
   Atlas.Common.Localization.Texts;
 
 type
@@ -96,7 +97,8 @@ begin
 end;
 
 /// <summary>Symbole für AFileName aus dem Projekt in --check (nur .dproj); sonst leer.</summary>
-function DefinesOf(const AOptions: TCommandLineOptions; const AFileName: string): TArray<string>;
+function DefinesOf(const AOptions: TCommandLineOptions; const AFileName: string; const AHost: TCoreLinterHost):
+  TArray<string>;
 var
   mTarget: TLinterTarget;
   mSettings: TServerSettings;
@@ -110,13 +112,13 @@ begin
     Exit;
   end;
   mSettings := TLinterSettings.Load(mTarget.ConfigRoot);
-  TLinterFiles.Collect(mTarget.Target, mSettings, mRoot, mSources);
+  TLinterFiles.Collect(mTarget.Target, mSettings, AHost.InstalledVersions, mRoot, mSources);
   Result := mSources(AFileName).Defines;
 end;
 
 /// <summary>Mutanten von ATarget ausgeben; Exit-Code.</summary>
 function Answer(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget;
-  AFormat: TMutationOutputFormat): Integer;
+  AFormat: TMutationOutputFormat; const AHost: TCoreLinterHost): Integer;
 var
   mSettings: TServerSettings;
   mMutation: TMutationOptions;
@@ -135,13 +137,13 @@ begin
     TLinterOutput.Error(cTexts[TLinterMutationText.Unreadable].Fmt([ATarget.Target]));
     Exit(TFindingsOutput.cExitFailure);
   end;
-  mMutation.Defines := DefinesOf(AOptions, mFileName);
+  mMutation.Defines := DefinesOf(AOptions, mFileName, AHost);
   TLinterOutput.Write(AOptions, TMutationReport.Render(TLinterReports.SlashPath(ExtractFileName(mFileName)), mText,
     mMutation, AFormat));
   Result := TFindingsOutput.cExitClean;
 end;
 
-class function TLinterMutation.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterMutation.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer;
 var
   mFormat: TMutationOutputFormat;
   mTarget: TLinterTarget;
@@ -162,7 +164,7 @@ begin
     Exit(TFindingsOutput.cExitFailure);
   end;
   try
-    Result := Answer(AOptions, mTarget, mFormat);
+    Result := Answer(AOptions, mTarget, mFormat, AHost);
   except
     on E: Exception do
     begin
@@ -173,6 +175,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Mutation', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Mutation', cTexts);
 
 end.

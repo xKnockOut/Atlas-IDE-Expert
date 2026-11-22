@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Reports;
+﻿unit Core.Linter.Reports;
 
-// Internals-Rolle Shell: Berichte des Linter-Modus statt der Treffer: Code-Metriken (#66) mit Grenzwerten aus
+// Host-Rolle Core: Berichte des Linter-Modus statt der Treffer: Code-Metriken (#66) mit Grenzwerten aus
 // atlas.json (Regeln metric-*, Option "max") und offene TODO-Einträge (#68) mit Marken aus atlas.json (Regel
 // todo-comment, Option "keywords"), jeweils als Markdown oder JSON.
 

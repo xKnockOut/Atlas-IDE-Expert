@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Changes;
+﻿unit Core.Linter.Changes;
 
-// Internals-Rolle Shell: Änderungen laut Versionsverwaltung für den Linter-Modus. Mit --changed bzw. --diff nur die
+// Host-Rolle Core: Änderungen laut Versionsverwaltung für den Linter-Modus. Mit --changed bzw. --diff nur die
 // geänderten Dateien laut Git (#157) bzw. SVN (#276), mit --changed-lines nur Treffer in geänderten Zeilen.
 
 interface
@@ -10,14 +10,16 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.FormatCheck,
   Core.CommandLine,
-  Core.VersionControlChanges;
+  Core.VersionControlChanges,
+  Core.Linter.Host;
 
 type
   TLinterChanges = class
   public
     /// <summary>Versionsverwaltung über AConfigRoot nach vcs.provider (#571) mit eigenen Programmpfaden und
     /// Zeitlimit wie im Plugin (#1285).</summary>
-    class function Detect(const AConfigRoot: string; const ASettings: TServerSettings): TVcsChanges; static;
+    class function Detect(const AConfigRoot: string; const ASettings: TServerSettings; const AHost: TCoreLinterHost):
+      TVcsChanges; static;
     /// <summary>Teilmenge von AFiles nach den Änderungen; AGit bleibt für --changed-lines geladen.</summary>
     class function Select(const AOptions: TCommandLineOptions; const AFiles: TArray<string>;
       AGit: TVcsChanges): TArray<string>; static;
@@ -36,8 +38,7 @@ uses
   System.Classes,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.History.ChangedFiles,
-  Shell.Composition.Platform,
-  Shell.Linter.Output,
+  Core.Linter.Output,
   Atlas.Common.Localization.Texts;
 
 type
@@ -51,12 +52,13 @@ const
 
 { TLinterChanges }
 
-class function TLinterChanges.Detect(const AConfigRoot: string; const ASettings: TServerSettings): TVcsChanges;
+class function TLinterChanges.Detect(const AConfigRoot: string; const ASettings: TServerSettings;
+  const AHost: TCoreLinterHost): TVcsChanges;
 var
   mAccess: TCoreVcsAccess;
 begin
   // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
-  mAccess := TShellPlatformAdapters.VcsAccess;
+  mAccess := AHost.Vcs();
   Result := TVcsChanges.Detect(mAccess, AConfigRoot, ASettings.VcsProvider, ASettings.VcsGitPath,
     ASettings.VcsSvnPath, ASettings.VcsTimeoutSeconds);
 end;
@@ -129,6 +131,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Changes', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Changes', cTexts);
 
 end.

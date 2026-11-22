@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Instructions;
+﻿unit Core.Linter.Instructions;
 
-// Internals-Rolle Shell: --write-instructions und --check-instructions (#2615), Anweisungsdateien für KI-Assistenten
+// Host-Rolle Core: --write-instructions und --check-instructions (#2615), Anweisungsdateien für KI-Assistenten
 // ohne Editor. Ordner aus --check (Standard: aktueller Ordner), atlas.json darin oder darüber wie bei --check. Je
 // Datei eine Zeile auf stderr. Exit-Code: --check-instructions 1, wenn ein Abschnitt fehlt oder veraltet ist;
 // --write-instructions 3, wenn eine Datei nicht geschrieben werden konnte; sonst 0.
@@ -8,12 +8,13 @@
 interface
 
 uses
-  Core.CommandLine;
+  Core.CommandLine,
+  Core.Linter.Host;
 
 type
   TLinterInstructions = class
   public
-    class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    class function Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost): Integer; static;
   end;
 
 implementation
@@ -25,9 +26,8 @@ uses
   Atlas.Common.Rules.Instructions,
   Atlas.Common.Lsp.Instructions,
   Atlas.Common.Localization.Texts,
-  Shell.Linter.Output,
-  Shell.Linter.Settings,
-  Shell.Composition.Instructions;
+  Core.Linter.Output,
+  Core.Linter.Settings;
 
 {$SCOPEDENUMS ON}
 
@@ -70,7 +70,8 @@ end;
 
 { TLinterInstructions }
 
-class function TLinterInstructions.Run(const AOptions: TCommandLineOptions): Integer;
+class function TLinterInstructions.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost):
+  Integer;
 var
   mTarget: TLinterTarget;
   mSettings: TServerSettings;
@@ -91,7 +92,7 @@ begin
   // Pfade relativ zum Ordner der atlas.json wie im Server, ohne Datei zum Ordner des Ziels.
   mRoot := ExtractFileDir(TLinterSettings.ConfigFileOf(mTarget.ConfigRoot));
   // --check-instructions geht vor: Wer beides angibt, will nur wissen, ob es stimmt.
-  mFiles := TShellInstructions.Run(mRoot, mSettings,
+  mFiles := AHost.Instructions(mRoot, mSettings,
     AOptions.WriteInstructions and not AOptions.CheckInstructions);
   Result := TFindingsOutput.cExitClean;
   for mFile in mFiles do
@@ -108,6 +109,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Instructions', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Instructions', cTexts);
 
 end.

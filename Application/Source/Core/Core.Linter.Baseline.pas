@@ -1,6 +1,6 @@
-﻿unit Shell.Linter.Baseline;
+﻿unit Core.Linter.Baseline;
 
-// Internals-Rolle Shell: Baseline des Linter-Modus (#97). Bekannte Treffer aus --baseline, sonst
+// Host-Rolle Core: Baseline des Linter-Modus (#97). Bekannte Treffer aus --baseline, sonst
 // atlas-baseline.json neben atlas.json, werden ausgeblendet; --update-baseline schreibt sie neu und nennt auf
 // stderr die Zähler und, bevor sie herausfallen, die Einträge ohne Datei.
 
@@ -54,7 +54,7 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.History.ChangedFiles,
-  Shell.Linter.Output,
+  Core.Linter.Output,
   Atlas.Common.Localization.Texts;
 
 type
@@ -239,6 +239,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Linter.Baseline', cTexts);
+  TAtlasTextTables.Add('Core.Linter.Baseline', cTexts);
 
 end.
