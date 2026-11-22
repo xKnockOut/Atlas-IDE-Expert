@@ -55,7 +55,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.BuildTools,

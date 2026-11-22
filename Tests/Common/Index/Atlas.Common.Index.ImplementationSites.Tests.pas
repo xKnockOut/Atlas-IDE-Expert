@@ -1,11 +1,11 @@
-﻿unit Atlas.Common.Lsp.ImplementationSites.Tests;
+﻿unit Atlas.Common.Index.ImplementationSites.Tests;
 
 interface
 
 uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.ImplementationSites;
+  Atlas.Common.Index.ImplementationSites;
 
 type
   [TestFixture]

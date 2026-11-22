@@ -14,7 +14,7 @@ uses
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.HoverTypes,
-  Atlas.Common.Lsp.PublishedMembers,
+  Atlas.Common.Index.PublishedMembers,
   Atlas.Common.Lsp.Hover.UnitContents,
   Atlas.Common.Rationale.Contract;
 

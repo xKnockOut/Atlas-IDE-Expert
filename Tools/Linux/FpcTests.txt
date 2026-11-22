@@ -277,7 +277,7 @@ Atlas.Common.Mcp.ExtractTools.Tests
 Atlas.Common.Mcp.RefactorTools.Tests
 Atlas.Common.Mcp.ProtectedFiles.Tests
 Atlas.Common.Mcp.EditFindings.Tests
-Atlas.Common.Lsp.ImplementationSites.Tests
+Atlas.Common.Index.ImplementationSites.Tests
 Atlas.Common.Mcp.ImplementationTools.Tests
 Atlas.Common.Mcp.BatchTool.Tests
 Atlas.Common.Mcp.Prompts.Tests

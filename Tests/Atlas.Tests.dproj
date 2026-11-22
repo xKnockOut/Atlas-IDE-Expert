@@ -203,7 +203,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TreeUnits.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Attributes.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PublishedMembers.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.PublishedMembers.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeInfoClasses.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hover.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hover.Parts.Tests.pas"/>
@@ -317,7 +317,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AffectedTests.Report.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CoveredBy.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ImplementationSites.Tests.pas"/>
+        <DCCReference Include="Common\Index\Atlas.Common.Index.ImplementationSites.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DeepTrees.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CodeLens.Tests.pas"/>
@@ -2462,7 +2462,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Messages.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Contract.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Messages.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeBuild.Tests.pas"/>
+        <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.IdeBuild.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeProject.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Providers.IdeTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeUnits.Tests.pas"/>
