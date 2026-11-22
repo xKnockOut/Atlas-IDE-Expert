@@ -65,7 +65,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Semantics.Ancestry,
@@ -1356,12 +1356,12 @@ begin
     end;
   end;
   if not TPascalUses.IsUsed(mUsed, mDialogs, FContext.Namespaces) and
-    TUsesClauses.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, mDialogs, FLineBreak, mUsesEdit) then
+    TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, mDialogs, FLineBreak, mUsesEdit) then
   begin
     mEdits := [mUsesEdit] + mEdits;
   end;
   if not TPascalUses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) and
-    TUsesClauses.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', FLineBreak, mUsesEdit) then
+    TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', FLineBreak, mUsesEdit) then
   begin
     mEdits := [mUsesEdit] + mEdits;
   end;

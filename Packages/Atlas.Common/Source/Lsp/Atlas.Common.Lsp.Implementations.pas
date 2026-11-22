@@ -69,7 +69,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Lsp.ImplementationSites,
+  Atlas.Common.Index.ImplementationSites,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

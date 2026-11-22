@@ -149,7 +149,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
@@ -334,7 +334,7 @@ begin
   begin
     // Wie „uses aufräumen“ mit sortUses: erst verschieben, dann sortieren, als eine kleinste Ersetzung.
     mNewText := TTextChanges.Apply(AContext.Text, mEdits);
-    if TUsesClauses.Organize(TPascalLexer.Tokenize(mNewText), mNewText, True, mLineBreak, mSortEdits,
+    if TPascalUsesEdits.Organize(TPascalLexer.Tokenize(mNewText), mNewText, True, mLineBreak, mSortEdits,
       AContext.SortUsesByNamespace) then
     begin
       mNewText := TTextChanges.Apply(mNewText, mSortEdits);

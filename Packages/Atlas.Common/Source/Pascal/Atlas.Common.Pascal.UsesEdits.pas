@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.UsesClause;
+﻿unit Atlas.Common.Pascal.UsesEdits;
 
 // uses-Listen ergänzen und umschreiben (#180), ohne Protokollbezug; gelesen werden sie mit
 // TPascalUses (Atlas.Common.Pascal.UsesClauses).
@@ -26,7 +26,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Pascal.Contract;
 
 type
@@ -48,7 +47,7 @@ type
     cDefaultLineLength = 120;
   end;
 
-  TUsesClauses = class
+  TPascalUsesEdits = class
   public
     /// <summary>Schreibt die schlichten Listen nach AOptions um; False ohne Änderung.</summary>
     class function Rewrite(const ATokens: TArray<TPascalToken>; const AText: string; const AOptions: TUsesRewrite;
@@ -77,7 +76,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.UsesGroups,
+  Atlas.Common.Pascal.UsesGroups,
   System.StrUtils;
 
 type
@@ -176,7 +175,7 @@ begin
   end;
 end;
 
-class function TUsesClauses.AddUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;
+class function TPascalUsesEdits.AddUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;
   const AUnitName, ALineBreak: string; out AEdit: TTextEdit): Boolean;
 var
   mStart, mUsesIndex, mSemicolon, mLastName: Integer;
@@ -225,7 +224,7 @@ begin
   Result := True;
 end;
 
-class function TUsesClauses.AddMissingUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;
+class function TPascalUsesEdits.AddMissingUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;
   const AUnitName: string; const ANamespaces: TArray<string>; const ALineBreak: string;
   out AEdit: TTextEdit): Boolean;
 var
@@ -241,7 +240,7 @@ begin
   Result := AddUnit(ATokens, AOffset, AUnitName, ALineBreak, AEdit);
 end;
 
-class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
+class function TPascalUsesEdits.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
   const ALineBreak: string; out AEdits: TArray<TTextEdit>; AByNamespace: Boolean): Boolean;
 var
   mOptions: TUsesRewrite;
@@ -335,7 +334,7 @@ begin
 end;
 
 type
-  /// <summary>Zustand von TUsesClauses.Rewrite über alle Listen der Datei.</summary>
+  /// <summary>Zustand von TPascalUsesEdits.Rewrite über alle Listen der Datei.</summary>
   TUsesRewriter = record
     Tokens: TArray<TPascalToken>;
     Text: string;
@@ -567,7 +566,7 @@ begin
   end;
 end;
 
-class function TUsesClauses.Rewrite(const ATokens: TArray<TPascalToken>; const AText: string;
+class function TPascalUsesEdits.Rewrite(const ATokens: TArray<TPascalToken>; const AText: string;
   const AOptions: TUsesRewrite; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 var
   mIndex, mSemicolon: Integer;
@@ -608,7 +607,7 @@ begin
   Result := AEdits <> nil;
 end;
 
-class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
+class function TPascalUsesEdits.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;
   const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 begin
   Result := Organize(ATokens, AText, ASort, ALineBreak, AEdits, False);

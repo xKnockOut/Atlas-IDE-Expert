@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.UsesGroups.Tests;
+﻿unit Atlas.Common.Pascal.UsesGroups.Tests;
 
 // Tests für die Gruppen der uses nach Herkunft (#2794).
 
@@ -30,8 +30,8 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.UsesGroups;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.UsesGroups;
 
 function FileAt(AOrigin: TUsesFileOrigin; const AInstallPath: string): TUsesUnitFile;
 begin

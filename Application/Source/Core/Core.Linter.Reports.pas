@@ -36,8 +36,8 @@ uses
   Atlas.Common.Metrics.Report,
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Builtin.Metrics,
-  Atlas.Common.Rules.Builtin.Todos;
+  Atlas.Common.Metrics.Limits,
+  Atlas.Common.Todos.Keywords;
 
 { TLinterReports }
 
@@ -55,7 +55,7 @@ class function TLinterReports.TodosOf(const ARelativePath, AText: string;
   const ASettings: TServerSettings): TArray<TFileTodos>;
 begin
   Result := TTodoScanner.Filter([TFileTodos.Create(SlashPath(ARelativePath), TTodoScanner.ForText(AText,
-    TTodoRules.Keywords(ASettings)))], TTodoFilter.Default);
+    TTodoKeywords.FromSettings(ASettings)))], TTodoFilter.Default);
 end;
 
 class function TLinterReports.MetricsText(const AMetrics: TArray<TFileMetrics>; const ASettings: TServerSettings;
@@ -63,11 +63,11 @@ class function TLinterReports.MetricsText(const AMetrics: TArray<TFileMetrics>; 
 begin
   if AJson then
   begin
-    Result := TMetricsReport.Json(AMetrics, TMetricRules.Limits(ASettings));
+    Result := TMetricsReport.Json(AMetrics, TMetricSettings.Limits(ASettings));
   end
   else
   begin
-    Result := TMetricsReport.Markdown(AMetrics, TMetricRules.Limits(ASettings), ATitle);
+    Result := TMetricsReport.Markdown(AMetrics, TMetricSettings.Limits(ASettings), ATitle);
   end;
 end;
 

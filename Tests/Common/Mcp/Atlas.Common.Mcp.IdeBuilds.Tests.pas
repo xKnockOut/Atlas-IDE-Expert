@@ -46,7 +46,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.IdeInbox,
   Atlas.Common.Mcp.IdeBuilds,

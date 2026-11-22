@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.PublishedMembers;
+﻿unit Atlas.Common.Index.PublishedMembers;
 
 // published-Properties und Ereignisse einer Komponentenklasse für den Hover,
 // inklusive geerbter, mit Typ, default-Wert und deklarierender Klasse (#110).
@@ -1301,7 +1301,7 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.PublishedMembers', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Index.PublishedMembers', cTexts);
   GCacheLock := TCriticalSection.Create;
   GCache := TDictionary<string, TPublishedCacheEntry>.Create;
 

@@ -161,9 +161,9 @@ Atlas.Common.Editing.TypeComments.Tests
 Atlas.Common.Editing.UnitRename.Tests
 Atlas.Common.Editing.UnitTemplates.Tests
 Atlas.Common.Editing.Unwrap.Tests
-Atlas.Common.Editing.UsesClause.Tests
+Atlas.Common.Pascal.UsesEdits.Tests
 Atlas.Common.Pascal.UsesClauses.Tests
-Atlas.Common.Editing.UsesGroups.Tests
+Atlas.Common.Pascal.UsesGroups.Tests
 Atlas.Common.Editing.UsesCommand.Tests
 Atlas.Common.Editing.VarBlock.Tests
 Atlas.Common.Editing.WithResolution.Tests
@@ -279,7 +279,7 @@ Atlas.Common.Mcp.ExtractTools.Tests
 Atlas.Common.Mcp.RefactorTools.Tests
 Atlas.Common.Mcp.ProtectedFiles.Tests
 Atlas.Common.Mcp.EditFindings.Tests
-Atlas.Common.Lsp.ImplementationSites.Tests
+Atlas.Common.Index.ImplementationSites.Tests
 Atlas.Common.Mcp.ImplementationTools.Tests
 Atlas.Common.Mcp.BatchTool.Tests
 Atlas.Common.Mcp.Prompts.Tests
@@ -300,6 +300,7 @@ Atlas.Common.Mcp.ReportTools.Tests
 Atlas.Common.Diagnostics.RuntimeReport.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
+Atlas.Common.Metrics.Limits.Tests
 Atlas.Common.Metrics.UnitRoutines.Tests
 Atlas.Common.Metrics.DuplicateBodies.Tests
 Atlas.Common.Metrics.DuplicateBaseline.Tests
@@ -487,6 +488,7 @@ Atlas.Common.Semantics.TypeCompatibility.Tests
 Atlas.Common.Semantics.TypeKinds.Tests
 Atlas.Common.Semantics.UnresolvedNames.Tests
 Atlas.Common.Todos.Report.Tests
+Atlas.Common.Todos.Keywords.Tests
 Atlas.Common.Todos.Scanner.Tests
 Atlas.Common.Updates.Apply.Tests
 Atlas.Common.Updates.ManifestSignature.Tests
@@ -828,6 +830,7 @@ Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
 
 # Server (Shell)
+Adapters.Rules.IdeTypes.Tests
 Core.Mcp.IssueTools.Tests
 Core.Mcp.IssueText.Tests
 Atlas.Core.Designer.Names.Tests

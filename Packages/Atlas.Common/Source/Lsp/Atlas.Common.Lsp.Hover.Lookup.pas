@@ -51,7 +51,7 @@ uses
   Atlas.Common.Lsp.MessageHandlers,
   Atlas.Common.Lsp.HoverValues,
   Atlas.Common.Lsp.HoverTypes,
-  Atlas.Common.Lsp.PublishedMembers,
+  Atlas.Common.Index.PublishedMembers,
   Atlas.Common.Lsp.Hover.UnitContents,
   Atlas.Common.Lsp.Rationale,
   Atlas.Common.Rationale.Contract,

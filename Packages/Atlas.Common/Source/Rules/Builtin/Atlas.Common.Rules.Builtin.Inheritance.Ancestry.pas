@@ -53,7 +53,6 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.ClassActions,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,

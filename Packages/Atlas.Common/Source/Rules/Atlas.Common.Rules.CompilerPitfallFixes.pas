@@ -28,7 +28,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.Chars,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses;
 
 const
@@ -69,7 +69,7 @@ begin
   AEdits := nil;
   Result := (ATree <> nil) and (AUnit <> '') and
     not TPascalUses.IsUsed(TPascalUses.UsedUnits(ATree.Tokens), AUnit, nil) and
-    TUsesClauses.AddUnit(ATree.Tokens, TLineTable.Build(AText).LineStart(ALine), AUnit, TTextLines.LineBreakOf(AText),
+    TPascalUsesEdits.AddUnit(ATree.Tokens, TLineTable.Build(AText).LineStart(ALine), AUnit, TTextLines.LineBreakOf(AText),
     mEdit);
   if Result then
   begin

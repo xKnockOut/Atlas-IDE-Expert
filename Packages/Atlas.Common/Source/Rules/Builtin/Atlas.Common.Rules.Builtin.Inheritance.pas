@@ -136,7 +136,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Builtin.Naming,
-  Atlas.Common.Editing.ClassActions,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.Ancestry;
 

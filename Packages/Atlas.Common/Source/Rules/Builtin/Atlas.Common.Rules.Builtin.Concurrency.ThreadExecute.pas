@@ -56,7 +56,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
@@ -216,7 +216,7 @@ begin
     mLineBreak + mIndent + mStep + 'end;' + mLineBreak;
   AEdits := [TRuleEdit.Create(TTextRange.Create(ABody.StartPos.Line + 1, 0, ABody.EndPos.Line, 0), mText)];
   if not TPascalUses.IsUsed(TPascalUses.UsedUnits(AContext.Tree.Tokens), 'System.SysUtils', AContext.Namespaces) and
-    TUsesClauses.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', mLineBreak, mUsesEdit) then
+    TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', mLineBreak, mUsesEdit) then
   begin
     AEdits := [mUsesEdit] + AEdits;
   end;

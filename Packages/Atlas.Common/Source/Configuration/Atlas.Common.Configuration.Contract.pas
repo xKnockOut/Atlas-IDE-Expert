@@ -48,6 +48,8 @@ type
     Severity: TRuleSeverity;
     /// <summary>Weitere Optionen der Regel als JSON-Objekt (Text), sonst ''.</summary>
     Options: string;
+    /// <summary>Optionen der Regel AId aus ARules (Groß-/Kleinschreibung egal), sonst ''.</summary>
+    class function OptionsOf(const ARules: TArray<TRuleSetting>; const AId: string): string; static;
   end;
 
   /// <summary>Regelprofil (#146): eingebaut (standard, fast, strict, security, style) oder
@@ -974,6 +976,22 @@ function MatchesGlob(const APattern, APath: string): Boolean;
 function BdsVersionOf(const AText: string): string;
 
 implementation
+
+{ TRuleSetting }
+
+class function TRuleSetting.OptionsOf(const ARules: TArray<TRuleSetting>; const AId: string): string;
+var
+  mRule: TRuleSetting;
+begin
+  for mRule in ARules do
+  begin
+    if SameText(mRule.Id, AId) then
+    begin
+      Exit(mRule.Options);
+    end;
+  end;
+  Result := '';
+end;
 
 { TRuleIdAliases }
 

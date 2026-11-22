@@ -147,7 +147,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.TypeAlias.Texts,
   Atlas.Common.Editing.TypeAlias.Names,
@@ -1563,7 +1563,7 @@ begin
     begin
       Continue;
     end;
-    if not TUsesClauses.AddUnit(ASource.Tree.Tokens, AFirstSite, mUnitName, mLineBreak, mUsesEdit) then
+    if not TPascalUsesEdits.AddUnit(ASource.Tree.Tokens, AFirstSite, mUnitName, mLineBreak, mUsesEdit) then
     begin
       Exit(cTexts[TEditingTypeAliasText.UsesForCannotBeAdded].Fmt([ExtractFileName(ASource.FileName), mUnitName]));
     end;

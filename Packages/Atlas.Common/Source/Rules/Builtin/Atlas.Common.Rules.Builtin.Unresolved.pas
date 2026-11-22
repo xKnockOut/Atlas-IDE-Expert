@@ -125,7 +125,7 @@ uses
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Options,
   Atlas.Common.Projects.DprojEditor,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -769,7 +769,7 @@ begin
   Result := nil;
   for mUnitName in AUnits do
   begin
-    if TUsesClauses.AddUnit(ATokens, AOffset, mUnitName, ALineBreak, mEdit) then
+    if TPascalUsesEdits.AddUnit(ATokens, AOffset, mUnitName, ALineBreak, mEdit) then
     begin
       Result := Result + [TRuleFix.Create(cTexts[TUnresolvedText.AddUses].Fmt([mUnitName]), [mEdit])];
     end;

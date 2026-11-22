@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.IdeBuild;
+﻿unit Atlas.Common.Compiler.IdeBuild;
 
 // Build-Ergebnisse aus der IDE (#527, #528). Das IDE-Plugin meldet
 // atlas/compileStarted, atlas/compileFinished (Ereignisse) und
@@ -41,7 +41,7 @@ type
   TIdeBuildChangedEvent = reference to procedure(const ABuild: TIdeBuild);
   TIdeBuildCompilingEvent = reference to procedure(ARunning: Boolean);
 
-  TLspIdeBuild = class
+  TIdeBuildTracker = class
   public const
     cStartedMethod = 'atlas/compileStarted';
     cFinishedMethod = 'atlas/compileFinished';
@@ -79,23 +79,23 @@ type
 
 implementation
 
-{ TLspIdeBuild }
+{ TIdeBuildTracker }
 
-constructor TLspIdeBuild.Create;
+constructor TIdeBuildTracker.Create;
 begin
   inherited Create;
   FLock := TObject.Create;
   FRunning := TDictionary<string, Boolean>.Create;
 end;
 
-destructor TLspIdeBuild.Destroy;
+destructor TIdeBuildTracker.Destroy;
 begin
   FRunning.Free;
   FLock.Free;
   inherited;
 end;
 
-procedure TLspIdeBuild.Changed;
+procedure TIdeBuildTracker.Changed;
 begin
   if Assigned(FOnChanged) then
   begin
@@ -123,7 +123,7 @@ begin
   end;
 end;
 
-procedure TLspIdeBuild.Track(const AParams: TJSONValue; ARunning: Boolean);
+procedure TIdeBuildTracker.Track(const AParams: TJSONValue; ARunning: Boolean);
 var
   mKey: string;
   mBefore, mAfter: Boolean;
@@ -170,7 +170,7 @@ begin
   end;
 end;
 
-procedure TLspIdeBuild.HandleFinished(const AParams: TJSONValue);
+procedure TIdeBuildTracker.HandleFinished(const AParams: TJSONValue);
 var
   mParams: TJSONObject;
 begin
@@ -205,7 +205,7 @@ begin
   Changed;
 end;
 
-procedure TLspIdeBuild.HandleMessages(const AParams: TJSONValue);
+procedure TIdeBuildTracker.HandleMessages(const AParams: TJSONValue);
 var
   mMessages: TArray<TCompilerMessage>;
 begin
@@ -245,7 +245,7 @@ begin
   Changed;
 end;
 
-procedure TLspIdeBuild.Attach(ADispatcher: TJsonRpcDispatcher);
+procedure TIdeBuildTracker.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // Der Beginn zählt nur für Compiling (#1247); das Ende und die Meldungen tragen alles Nötige.
   ADispatcher.RegisterNotification(cStartedMethod,
@@ -257,7 +257,7 @@ begin
   ADispatcher.RegisterNotification(cMessagesMethod, HandleMessages);
 end;
 
-class function TLspIdeBuild.ParseMessages(const AParams: TJSONValue): TArray<TCompilerMessage>;
+class function TIdeBuildTracker.ParseMessages(const AParams: TJSONValue): TArray<TCompilerMessage>;
 var
   mItems: TJSONArray;
   mValue: TJSONValue;
@@ -291,7 +291,7 @@ begin
   end;
 end;
 
-function TLspIdeBuild.LastBuild: TIdeBuild;
+function TIdeBuildTracker.LastBuild: TIdeBuild;
 begin
   TMonitor.Enter(FLock);
   try
@@ -301,7 +301,7 @@ begin
   end;
 end;
 
-function TLspIdeBuild.Compiling: Boolean;
+function TIdeBuildTracker.Compiling: Boolean;
 begin
   TMonitor.Enter(FLock);
   try
