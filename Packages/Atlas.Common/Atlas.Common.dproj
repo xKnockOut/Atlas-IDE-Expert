@@ -104,6 +104,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Lifecycle.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Adapters.LogMessageSink.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.Contract.pas"/>
+        <DCCReference Include="Source\Documents\Atlas.Common.Documents.FileBatch.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextDocument.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.FileEncoding.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.pas"/>
@@ -173,6 +174,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Refactorings.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Api.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.BulkFix.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.OwnershipReport.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.DocumentChecks.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.DocumentActions.pas"/>
@@ -803,6 +805,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Extract.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Formatting.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.CompilerFixes.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.BulkFix.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CheckTools.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Prompt.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas"/>

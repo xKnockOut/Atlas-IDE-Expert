@@ -98,6 +98,48 @@ type
     function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): IRuleDocumentActions;
   end;
 
+  /// <summary>Eine Datei für die Sammelkorrektur (#1352).</summary>
+  TRuleBulkFixInput = record
+    /// <summary>Absoluter Pfad; daraus Projekt und Symbole der Datei.</summary>
+    FileName: string;
+    /// <summary>Pfad relativ zum Arbeitsordner wie bei der Prüfung (Ausschlüsse, Baseline) und im Diff.</summary>
+    RelativePath: string;
+    Text: string;
+  end;
+
+  /// <summary>Ergebnis der Sammelkorrektur für eine Datei.</summary>
+  TRuleBulkFixOutput = record
+    FileName: string;
+    OldText: string;
+    /// <summary>Text nach den Korrekturen; gleich OldText, wenn nichts geändert oder verworfen wurde.</summary>
+    NewText: string;
+    /// <summary>Text geändert und nicht verworfen.</summary>
+    Changed: Boolean;
+    /// <summary>Vereinigter Diff mit RelativePath (/ als Trenner); leer ohne Änderung.</summary>
+    Diff: string;
+  end;
+
+  TRuleBulkFixRun = record
+    Files: TArray<TRuleBulkFixOutput>;
+    /// <summary>Zusammenfassung (Dateien, Korrekturen je Regel, übersprungene Treffer, verworfene Dateien) als
+    /// Vorschau, Zeilen mit sLineBreak.</summary>
+    PreviewSummary: string;
+    /// <summary>Dieselbe Zusammenfassung nach dem Schreiben.</summary>
+    WrittenSummary: string;
+  end;
+
+  /// <summary>Sammelkorrektur (#1352, fix_findings): die sicheren Korrekturen ausgewählter Regeln auf ganze Dateien;
+  /// schreibt nichts. Regeln, Projekt und Symbole der Dateien hat der Anbieter.</summary>
+  IRuleBulkFix = interface
+    ['{1365E479-94DA-4A69-A2B7-C322663650D7}']
+    /// <summary>Korrigiert AFiles mit den Regeln AFixRules ("all" = alle) ab der Konfidenz AMinConfidence ("medium",
+    /// "high"; '' = fix.minConfidence aus ASettings, nur anheben). False mit Grund in AError bei ungültigem
+    /// AMinConfidence.</summary>
+    function Run(const AFiles: TArray<TRuleBulkFixInput>; const AFixRules: TArray<string>;
+      const AMinConfidence: string; const ASettings: TServerSettings; out ARun: TRuleBulkFixRun;
+      out AError: string): Boolean;
+  end;
+
 implementation
 
 end.

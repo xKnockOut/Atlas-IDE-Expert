@@ -41,6 +41,7 @@ type
 implementation
 
 uses
+  Shell.Composition.Mcp,
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
@@ -127,6 +128,7 @@ begin
       Result := nil;
     end,
     nil);
+  Result.BulkFix := TMcpComposition.BulkFix(nil, nil);
 end;
 
 function TwoFileEdits: TArray<TMcpFileEdit>;

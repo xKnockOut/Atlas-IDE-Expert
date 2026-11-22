@@ -303,6 +303,7 @@ begin
   Result.SettingsFor := ACode.SettingsFor;
   Result.Extract := TMcpComposition.Extract;
   Result.Formatting := TMcpComposition.Formatting;
+  Result.BulkFix := TMcpComposition.BulkFix(ACode.CheckProject, ACode.CheckSource);
   Result.Audit := AuditOf(ALogger);
 end;
 

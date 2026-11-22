@@ -201,6 +201,7 @@ begin
     end,
     nil);
   Result.Formatting := TMcpComposition.Formatting;
+  Result.BulkFix := TMcpComposition.BulkFix(nil, nil);
 end;
 
 function Edits: TArray<TMcpFileEdit>;
