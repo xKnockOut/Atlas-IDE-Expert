@@ -9,7 +9,7 @@
 //
 // Match ordnet die Fallen einer Meldung: zuerst die, deren Merkmal an der Stelle zu sehen ist, dann die übrigen
 // Fallen derselben Nummer als weitere mögliche Ursachen. Die allgemeine Erklärung je Nummer steht im
-// TCompilerMessageCatalog; die Korrekturen ohne Falle in TCompilerFixes.
+// TCompilerMessageCatalog; die Korrekturen ohne Falle in TCompilerFixes (Editing).
 
 interface
 
@@ -101,7 +101,7 @@ uses
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Text.Chars,
-  Atlas.Common.Editing.CompilerFixes;
+  Atlas.Common.Compiler.MessageTexts;
 
 type
   TPitfallData = record
@@ -627,7 +627,7 @@ var
 begin
   Result := nil;
   mOthers := nil;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   mLines := nil;
   if (ASource <> '') and (AMessage.Line >= 0) then
   begin
