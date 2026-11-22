@@ -130,6 +130,7 @@ contains
   Atlas.Vcl.Controls.Menus in '..\Atlas.Vcl\Source\Controls\Atlas.Vcl.Controls.Menus.pas',
   Atlas.Vcl.Controls.WndProcHook in '..\Atlas.Vcl\Source\Controls\Atlas.Vcl.Controls.WndProcHook.pas',
   Atlas.Vcl.Controls.WrapLabel in '..\Atlas.Vcl\Source\Controls\Atlas.Vcl.Controls.WrapLabel.pas',
+  Atlas.Vcl.Controls.ZoomView in '..\Atlas.Vcl\Source\Controls\Atlas.Vcl.Controls.ZoomView.pas',
   Atlas.Vcl.Forms.Dialog in '..\Atlas.Vcl\Source\Forms\Atlas.Vcl.Forms.Dialog.pas',
   Atlas.Vcl.Forms.FillFrame in '..\Atlas.Vcl\Source\Forms\Atlas.Vcl.Forms.FillFrame.pas',
   Atlas.Vcl.Images.Symbol in '..\Atlas.Vcl\Source\Images\Atlas.Vcl.Images.Symbol.pas',

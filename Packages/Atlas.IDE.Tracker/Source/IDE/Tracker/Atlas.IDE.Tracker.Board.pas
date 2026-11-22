@@ -96,6 +96,10 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.BoardWindow;
 
+const
+  /// <summary>So lange wartet Stop höchstens auf eine laufende Abfrage.</summary>
+  cStopTimeoutMs = 1000;
+
 { TAtlasIdeBoard }
 
 constructor TAtlasIdeBoard.Create(const AHooks: TAtlasBoardHooks; const ACacheFolder: string);
@@ -398,7 +402,7 @@ begin
   FStarted := False;
   FLoad.Stop;
   FMove.Stop;
-  FWorker.Stop(1000);
+  FWorker.Stop(cStopTimeoutMs);
   TAtlasIdeBoardWindow.Release;
   FHooks := Default(TAtlasBoardHooks);
   FMessage.Clear;

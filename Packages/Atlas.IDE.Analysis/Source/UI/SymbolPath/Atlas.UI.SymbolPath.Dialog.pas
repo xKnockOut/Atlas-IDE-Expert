@@ -77,6 +77,7 @@ uses
   Winapi.Windows,
   System.Math,
   Atlas.UI.Analysis.Strings,
+  Atlas.UI.Analysis.FormLayout,
   Atlas.Plugin.Style.Signal,
   Atlas.Vcl.Theme.Service;
 
@@ -85,45 +86,30 @@ const
   cMaxSteps = 16;
   // Höhe der Vorschlagsliste bei 96 dpi.
   cSuggestionsHeight = 160;
+  // Breite der Eingabefelder und des Felds „Höchstens Schritte“ bei 96 dpi.
+  cEditWidth = 360;
+  cStepsWidth = 50;
 
 { TAtlasSymbolPathDialog }
 
-type
-  /// <summary>Abstände des Dialogs in Bildpunkten (nach CurrentPPI).</summary>
-  TDialogLayout = record
-    Gap: Integer;
-    LabelWidth: Integer;
-    EditWidth: Integer;
-    /// <summary>Abstand zwischen zwei Zeilen.</summary>
-    Spacing: Integer;
-  end;
-
-function LayoutOf(ADialog: TAtlasSymbolPathDialog): TDialogLayout;
-begin
-  Result.Gap := MulDiv(12, ADialog.CurrentPPI, 96);
-  Result.LabelWidth := MulDiv(130, ADialog.CurrentPPI, 96);
-  Result.EditWidth := MulDiv(360, ADialog.CurrentPPI, 96);
-  Result.Spacing := MulDiv(8, ADialog.CurrentPPI, 96);
-end;
-
 // Nicht "AddLabel": Im Konstruktor verdeckt die geerbte Methode AddLabel des Dialogs den Namen (E2010/E2034).
-function AddFieldLabel(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; const AText: string;
+function AddFieldLabel(ADialog: TAtlasSymbolPathDialog; const ALayout: TAtlasFormLayout; const AText: string;
   ATop: Integer; AFocus: TWinControl): TLabel;
 begin
   Result := TLabel.Create(ADialog);
   Result.Parent := ADialog;
   Result.Left := ALayout.Gap;
-  Result.Top := ATop + MulDiv(3, ADialog.CurrentPPI, 96);
+  Result.Top := ATop + ALayout.LabelOffset;
   Result.Caption := AText;
   Result.FocusControl := AFocus;
 end;
 
-function NewEdit(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; ATop: Integer;
+function NewEdit(ADialog: TAtlasSymbolPathDialog; const ALayout: TAtlasFormLayout; ATop: Integer;
   ASuggestions: TAtlasSymbolPathSuggestions): TEdit;
 begin
   Result := TEdit.Create(ADialog);
   Result.Parent := ADialog;
-  Result.Left := ALayout.Gap + ALayout.LabelWidth;
+  Result.Left := ALayout.FieldLeft;
   Result.Top := ATop;
   Result.Width := ALayout.EditWidth;
   Result.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathInputHint);
@@ -131,13 +117,13 @@ begin
 end;
 
 /// <summary>„Höchstens Schritte“ mit Drehfeld und „Alle gleich kurzen Wege“ ab AY; AY steht danach darunter.</summary>
-procedure BuildOptions(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; var AY: Integer);
+procedure BuildOptions(ADialog: TAtlasSymbolPathDialog; const ALayout: TAtlasFormLayout; var AY: Integer);
 begin
   ADialog.FSteps := TEdit.Create(ADialog);
   ADialog.FSteps.Parent := ADialog;
-  ADialog.FSteps.Left := ALayout.Gap + ALayout.LabelWidth;
+  ADialog.FSteps.Left := ALayout.FieldLeft;
   ADialog.FSteps.Top := AY;
-  ADialog.FSteps.Width := MulDiv(50, ADialog.CurrentPPI, 96);
+  ADialog.FSteps.Width := MulDiv(cStepsWidth, ADialog.CurrentPPI, 96);
   ADialog.FSteps.NumbersOnly := True;
   ADialog.FSteps.OnEnter := ADialog.FSuggestions.ControlEnter;
   ADialog.FStepsUpDown := TUpDown.Create(ADialog);
@@ -151,7 +137,7 @@ begin
   Inc(AY, ADialog.FSteps.Height + ALayout.Spacing);
   ADialog.FAll := TCheckBox.Create(ADialog);
   ADialog.FAll.Parent := ADialog;
-  ADialog.FAll.Left := ALayout.Gap + ALayout.LabelWidth;
+  ADialog.FAll.Left := ALayout.FieldLeft;
   ADialog.FAll.Top := AY;
   ADialog.FAll.Width := ALayout.EditWidth;
   ADialog.FAll.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathAll);
@@ -160,7 +146,7 @@ begin
 end;
 
 /// <summary>Meldungszeile und die Knöpfe „Suchen“ und „Abbrechen“ ab AY; danach die Höhe des Dialogs.</summary>
-procedure BuildButtons(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout; AY: Integer);
+procedure BuildButtons(ADialog: TAtlasSymbolPathDialog; const ALayout: TAtlasFormLayout; AY: Integer);
 begin
   ADialog.FMessage := TLabel.Create(ADialog);
   ADialog.FMessage.Parent := ADialog;
@@ -192,13 +178,13 @@ end;
 
 constructor TAtlasSymbolPathDialog.CreateDialog(AOwner: TComponent; const ASuggest: TAtlasSymbolPathSuggest);
 var
-  mLayout: TDialogLayout;
+  mLayout: TAtlasFormLayout;
   mY: Integer;
 begin
   inherited CreateDialog(AOwner, '', 0);
   Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathCaption);
-  mLayout := LayoutOf(Self);
-  ClientWidth := mLayout.Gap * 2 + mLayout.LabelWidth + mLayout.EditWidth;
+  mLayout := TAtlasFormLayout.Create(cEditWidth, CurrentPPI);
+  ClientWidth := mLayout.ClientWidth;
   // Liste über den Feldern darunter, erst beim Tippen sichtbar.
   FSuggestions := TAtlasSymbolPathSuggestions.CreateIn(Self, ASuggest, mLayout.EditWidth,
     MulDiv(cSuggestionsHeight, CurrentPPI, 96));

@@ -53,51 +53,35 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   Atlas.UI.Analysis.Strings,
+  Atlas.UI.Analysis.FormLayout,
   Atlas.Plugin.Style.Signal,
   Atlas.Vcl.Theme.Service;
 
 const
-  cGap = 12;
-  cLabelWidth = 130;
+  // Breite der Eingabefelder und Abstand unter einer Hinweiszeile bei 96 dpi.
   cEditWidth = 320;
-  cSpacing = 8;
+  cInfoSpacing = 4;
 
-type
-  /// <summary>Abstände nach CurrentPPI.</summary>
-  TDialogLayout = record
-    Gap: Integer;
-    LabelWidth: Integer;
-    EditWidth: Integer;
-    Spacing: Integer;
-  end;
-
-function LayoutOf(ADialog: TForm): TDialogLayout;
-begin
-  Result.Gap := MulDiv(cGap, ADialog.CurrentPPI, 96);
-  Result.LabelWidth := MulDiv(cLabelWidth, ADialog.CurrentPPI, 96);
-  Result.EditWidth := MulDiv(cEditWidth, ADialog.CurrentPPI, 96);
-  Result.Spacing := MulDiv(cSpacing, ADialog.CurrentPPI, 96);
-end;
-
-procedure AddLabel(ADialog: TForm; const ALayout: TDialogLayout; AText: TAtlasAnalysisTextId; AFocus: TWinControl);
+procedure AddLabel(ADialog: TForm; const ALayout: TAtlasFormLayout; AText: TAtlasAnalysisTextId;
+  AFocus: TWinControl);
 var
   mLabel: TLabel;
 begin
   mLabel := TLabel.Create(ADialog);
   mLabel.Parent := ADialog;
   mLabel.Left := ALayout.Gap;
-  mLabel.Top := AFocus.Top + MulDiv(3, ADialog.CurrentPPI, 96);
+  mLabel.Top := AFocus.Top + ALayout.LabelOffset;
   mLabel.Caption := TAtlasAnalysisStrings.Text(AText);
   mLabel.FocusControl := AFocus;
 end;
 
-function NewInfo(ADialog: TForm; const ALayout: TDialogLayout; var AY: Integer): TLabel;
+function NewInfo(ADialog: TForm; const ALayout: TAtlasFormLayout; var AY: Integer): TLabel;
 begin
   Result := TLabel.Create(ADialog);
   Result.Parent := ADialog;
   Result.ShowAccelChar := False;
   Result.SetBounds(ALayout.Gap, AY, ALayout.LabelWidth + ALayout.EditWidth, Result.Height);
-  Inc(AY, Result.Height + MulDiv(4, ADialog.CurrentPPI, 96));
+  Inc(AY, Result.Height + MulDiv(cInfoSpacing, ADialog.CurrentPPI, 96));
 end;
 
 type
@@ -110,11 +94,11 @@ type
   end;
 
 /// <summary>AControl in der Zeile AY mit Beschriftung AText; AY rückt um die Höhe und ASpacing weiter.</summary>
-procedure PlaceRow(ADialog: TForm; const ALayout: TDialogLayout; AControl: TWinControl; AText: TAtlasAnalysisTextId;
+procedure PlaceRow(ADialog: TForm; const ALayout: TAtlasFormLayout; AControl: TWinControl; AText: TAtlasAnalysisTextId;
   ASpacing: Integer; var AY: Integer);
 begin
   AControl.Parent := ADialog;
-  AControl.SetBounds(ALayout.Gap + ALayout.LabelWidth, AY, ALayout.EditWidth, AControl.Height);
+  AControl.SetBounds(ALayout.FieldLeft, AY, ALayout.EditWidth, AControl.Height);
   AddLabel(ADialog, ALayout, AText, AControl);
   Inc(AY, AControl.Height + ASpacing);
 end;
@@ -143,7 +127,7 @@ begin
 end;
 
 /// <summary>Felder Ausgabeartefakt, Feature, Rolle und Sache ab AY.</summary>
-function BuildFields(ADialog: TAtlasRoleUnitDialog; const ALayout: TDialogLayout; const APrefixes: TArray<string>;
+function BuildFields(ADialog: TAtlasRoleUnitDialog; const ALayout: TAtlasFormLayout; const APrefixes: TArray<string>;
   var AY: Integer): TRoleUnitFields;
 begin
   // Einträge erst mit Parent: die Liste einer ComboBox braucht das Fenster.
@@ -165,13 +149,13 @@ end;
 
 constructor TAtlasRoleUnitDialog.CreateDialog(AOwner: TComponent; const APrefixes: TArray<string>);
 var
-  mLayout: TDialogLayout;
+  mLayout: TAtlasFormLayout;
   mY: Integer;
   mFields: TRoleUnitFields;
 begin
   inherited CreateDialog(AOwner, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.RoleUnitCommand), 0);
-  mLayout := LayoutOf(Self);
-  ClientWidth := mLayout.Gap * 2 + mLayout.LabelWidth + mLayout.EditWidth;
+  mLayout := TAtlasFormLayout.Create(cEditWidth, CurrentPPI);
+  ClientWidth := mLayout.ClientWidth;
   mY := mLayout.Gap;
   mFields := BuildFields(Self, mLayout, APrefixes, mY);
   FPrefix := mFields.Prefix;

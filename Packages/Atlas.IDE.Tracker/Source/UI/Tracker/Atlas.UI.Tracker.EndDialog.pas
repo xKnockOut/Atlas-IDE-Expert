@@ -326,6 +326,7 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Graphics,
+  Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Transitions,
   Atlas.Core.Tracker.TimeLog,
@@ -1514,7 +1515,7 @@ begin
     TAtlasCiFetchError.None:
       Exit('');
     TAtlasCiFetchError.Unauthorized:
-      if AResult.Status = 403 then
+      if AResult.Status = TAtlasHttpStatus.cForbidden then
       begin
         Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerWriteForbidden, [AKey, AResult.Status]);
       end

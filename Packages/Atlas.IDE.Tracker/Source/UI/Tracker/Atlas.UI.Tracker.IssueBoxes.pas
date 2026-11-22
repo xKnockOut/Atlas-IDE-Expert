@@ -177,6 +177,23 @@ uses
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueTip;
 
+const
+  // Maße in logischen Pixeln (96 dpi).
+  /// <summary>Höhe eines Bildes, solange es lädt, und Mindesthöhe danach.</summary>
+  cImageLoadingHeight = 24;
+  cMinImageHeight = 8;
+  /// <summary>Höhe der Plakettenleiste ohne Plaketten.</summary>
+  cEmptyBadgeHeight = 4;
+  cBadgeRadius = 8;
+  cBadgePadding = 6;
+  cBadgeGap = 4;
+  /// <summary>Zusätzliche Höhe einer Plakette über der Texthöhe.</summary>
+  cBadgeExtraHeight = 4;
+  /// <summary>Rand um das Bild im Bildfenster und Abstand des Fensters zum Rand des Arbeitsbereichs.</summary>
+  cImageWindowExtraWidth = 40;
+  cImageWindowExtraHeight = 60;
+  cImageWindowScreenMargin = 80;
+
 function ToColor(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
@@ -188,7 +205,7 @@ constructor TAtlasIssueImageBox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FColors := TAtlasColors.Light;
-  Height := ScaleValue(24);
+  Height := ScaleValue(cImageLoadingHeight);
   Cursor := crHandPoint;
 end;
 
@@ -249,7 +266,7 @@ begin
   begin
     mHeight := MulDiv(FGraphic.Height, ClientWidth, FGraphic.Width);
   end;
-  mHeight := Max(mHeight, 8);
+  mHeight := Max(mHeight, ScaleValue(cMinImageHeight));
   if Height <> mHeight then
   begin
     Height := mHeight;
@@ -274,7 +291,7 @@ begin
   FColors := TAtlasColors.Light;
   FHintIndex := -1;
   ShowHint := True;
-  Height := ScaleValue(4);
+  Height := ScaleValue(cEmptyBadgeHeight);
 end;
 
 procedure TAtlasIssueBadgeBar.Paint;
@@ -289,7 +306,7 @@ begin
     Arrange;
   end;
   Canvas.Font := Font;
-  mRadius := MulDiv(8, CurrentPPI, 96);
+  mRadius := ScaleValue(cBadgeRadius);
   for mIndex := 0 to High(FRects) do
   begin
     mRect := FRects[mIndex];
@@ -346,13 +363,13 @@ begin
   FRects := nil;
   if not HandleAllocated then
   begin
-    Height := ScaleValue(4);
+    Height := ScaleValue(cEmptyBadgeHeight);
     Exit;
   end;
   Canvas.Font := Font;
-  mPad := MulDiv(6, CurrentPPI, 96);
-  mGap := MulDiv(4, CurrentPPI, 96);
-  mHeight := Canvas.TextHeight('Wg') + MulDiv(4, CurrentPPI, 96);
+  mPad := ScaleValue(cBadgePadding);
+  mGap := ScaleValue(cBadgeGap);
+  mHeight := Canvas.TextHeight('Wg') + ScaleValue(cBadgeExtraHeight);
   mX := 0;
   mY := 0;
   for mIndex := 0 to High(FTexts) do
@@ -368,7 +385,7 @@ begin
   end;
   if Length(FTexts) = 0 then
   begin
-    Height := ScaleValue(4);
+    Height := ScaleValue(cEmptyBadgeHeight);
   end
   else if Height <> mY + mHeight + mGap then
   begin
@@ -673,8 +690,10 @@ begin
   mForm := TAtlasIssueImageWindow.CreateDialog(nil, mSource.Alt, 0);
   mForm.BorderStyle := bsSizeable;
   mForm.Position := poScreenCenter;
-  mForm.Width := Min(mSource.Graphic.Width + mForm.ScaleValue(40), Screen.WorkAreaWidth - mForm.ScaleValue(80));
-  mForm.Height := Min(mSource.Graphic.Height + mForm.ScaleValue(60), Screen.WorkAreaHeight - mForm.ScaleValue(80));
+  mForm.Width := Min(mSource.Graphic.Width + mForm.ScaleValue(cImageWindowExtraWidth),
+    Screen.WorkAreaWidth - mForm.ScaleValue(cImageWindowScreenMargin));
+  mForm.Height := Min(mSource.Graphic.Height + mForm.ScaleValue(cImageWindowExtraHeight),
+    Screen.WorkAreaHeight - mForm.ScaleValue(cImageWindowScreenMargin));
   mBox := TScrollBox.Create(mForm);
   mBox.Parent := mForm;
   mBox.Align := alClient;
