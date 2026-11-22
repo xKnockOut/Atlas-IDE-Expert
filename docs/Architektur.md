@@ -67,7 +67,7 @@ Features dürfen `Semantics` verwenden. Was zwei Hosted-Features teilen, liegt i
 `Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das der Host verbindet.
 
 Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
-`atlas.json` (Stand des Umbaus: 354 Kanten, ein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
+`atlas.json` (Stand des Umbaus: 326 Kanten, kein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
 
 | Von | Nach | Erlaubt | Stand |
 |---|---|---|---|
@@ -76,8 +76,7 @@ Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel 
 | `Rules` | `Editing` | nein | Korrekturen nutzen heute Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen) |
 | `Editing`, `Rules` | ein Hosted-Feature weiter oben | nein | schon heute ohne Kante: gemeinsame Wertetypen liegen tiefer (`TTextEdit` in `Documents.Contract`, `TDeclaredTypes` in `Pascal.DeclaredTypes`), Links ins Wiki im Index (`Index.DocWiki`), die Unit-Suche bei den Regeln (`Rules.Providers.UnitLookup`) |
 | `Lsp`, `Rules`, `Editing`, `Mcp` | `Semantics` | ja | Namensauflösung und Datenfluss sind Platform |
-| `Semantics` | `Lsp`, `Rules`, `Mcp` | nein | schon heute ohne Kante |
-| `Semantics` | `Editing` | nein | heute noch drei Units (`Semantics.UsesUsage`, `Semantics.Reassigned`, `Semantics.ResolvedSignatures`) auf Editing-Bausteinen (uses-Listen, Routinenrumpf, lokale Namen, Signaturen); der Zyklus `Editing, Semantics` steht befristet unter `known`, bis die Bausteine nach `Pascal` ziehen |
+| `Semantics` | `Lsp`, `Rules`, `Editing`, `Mcp` | nein | ohne Kante |
 
 ### Keine Zyklen zwischen Features
 
