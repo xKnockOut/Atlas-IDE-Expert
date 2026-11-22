@@ -144,7 +144,7 @@ uses
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Settings.ModuleSwitches,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Wrap;
+﻿unit Atlas.Plugin.Style.Wrap;
 
 // Umbruch an Leerzeichen über kumulierte Breiten: Die Breite eines
 // Bereichs ist die Differenz zweier Präfixsummen; gemessen wird der Text nur

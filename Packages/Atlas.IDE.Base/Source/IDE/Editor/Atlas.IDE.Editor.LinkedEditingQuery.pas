@@ -15,7 +15,7 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.LinkedEditing,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TAtlasLinkedSessionFunc = reference to function: TLspSession;
@@ -75,8 +75,8 @@ implementation
 uses
   System.JSON,
   Atlas.Text.Chars,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Editor.Surfaces;
 

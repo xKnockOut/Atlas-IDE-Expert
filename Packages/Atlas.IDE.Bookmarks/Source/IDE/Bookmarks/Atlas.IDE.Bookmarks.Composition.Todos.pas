@@ -22,7 +22,7 @@ uses
   System.SysUtils,
   System.JSON,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Results.Model,
   Atlas.Core.Projects.Todos,

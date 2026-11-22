@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Localization.Language;
+﻿unit Atlas.Plugin.Localization.Language;
 
 // Sprache der Plugin-Texte (#446, #1458) für alle Schichten. Die IDE-Schicht
 // setzt sie beim Laden nach der Sprache der IDE (TAtlasStrings.Language ist

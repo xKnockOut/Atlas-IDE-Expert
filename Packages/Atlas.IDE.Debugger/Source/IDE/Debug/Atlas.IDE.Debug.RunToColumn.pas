@@ -64,7 +64,7 @@ implementation
 uses
   ToolsAPI,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.RunToColumnFlow,
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Debug.RunTo,

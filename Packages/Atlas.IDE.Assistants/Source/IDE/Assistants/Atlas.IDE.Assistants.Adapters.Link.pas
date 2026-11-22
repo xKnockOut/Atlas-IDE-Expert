@@ -177,7 +177,7 @@ uses
   Winapi.Windows,
   System.StrUtils,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,

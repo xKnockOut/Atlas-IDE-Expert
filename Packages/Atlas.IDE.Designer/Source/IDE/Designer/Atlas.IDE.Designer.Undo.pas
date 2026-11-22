@@ -111,8 +111,8 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Foundation.Settings,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.Shutdown;
+﻿unit Atlas.Plugin.Diagnostics.Shutdown;
 
 // Gemeinsames Abbruchsignal aller Hintergrund-Threads des Plugins (#493).
 // Beim Schließen der IDE und beim Entladen des Packages setzt die Komposition

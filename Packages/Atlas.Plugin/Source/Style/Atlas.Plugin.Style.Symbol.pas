@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Symbol;
+﻿unit Atlas.Plugin.Style.Symbol;
 
 // Atlas-Symbol G1a (#751): welche Bildgröße und welche Variante wo gezeigt
 // wird. Die Bilder liegen als PNG-Ressourcen (RCDATA) im Plugin, je Variante
@@ -11,7 +11,7 @@
 interface
 
 uses
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color;
 
 type
 {$SCOPEDENUMS ON}
@@ -46,7 +46,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Scaling;
+  Atlas.Plugin.Style.Scaling;
 
 const
   cSizes: array[0..TAtlasSymbol.cSizeCount - 1] of Integer = (16, 20, 24, 32, 40, 48, 64, 128, 256);

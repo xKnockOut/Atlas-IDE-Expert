@@ -43,7 +43,7 @@ uses
   System.Win.Registry,
   Winapi.Windows,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.WorkingCopies,
   Atlas.Core.Tracker.PathSuggestions,

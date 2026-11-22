@@ -124,7 +124,7 @@ implementation
 uses
   Vcl.Clipbrd,
   Vcl.Themes,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Foundation.Menus,
   Atlas.UI.Debug.Console.Strings;
 

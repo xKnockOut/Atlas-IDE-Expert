@@ -117,10 +117,10 @@ implementation
 
 uses
   System.Diagnostics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.MainThread.Tests;
+﻿unit Atlas.Plugin.Diagnostics.MainThread.Tests;
 
 // Einreihen in den Hauptthread über TAtlasMainThread:
 // Einträge überleben das Freigeben des einreihenden Arbeiters, nicht aber
@@ -60,8 +60,8 @@ uses
   System.Classes,
   System.IOUtils,
   System.Diagnostics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread;
 
 /// <summary>Wartet ohne TThread.WaitFor (das arbeitet im Hauptthread die Warteschlange ab).</summary>
 procedure WaitFinished(AThread: TThread);

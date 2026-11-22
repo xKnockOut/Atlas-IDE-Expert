@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.FieldFlow,
   Atlas.IDE.Status.Lines,
@@ -61,7 +61,7 @@ uses
   System.JSON,
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
   Atlas.Core.Status.Server,

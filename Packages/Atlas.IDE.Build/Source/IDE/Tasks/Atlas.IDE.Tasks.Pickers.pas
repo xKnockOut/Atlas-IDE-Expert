@@ -30,7 +30,7 @@ uses
   System.Types,
   Vcl.Forms,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Build.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Tasks.Texts,

@@ -42,8 +42,8 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.UnloadSafety,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.UnloadSafety,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Diagnostics.BackgroundJobs;
 
 /// <summary>Zugestellte Ergebnisse abarbeiten, bis ADone gesetzt ist oder AMs vergangen sind.</summary>

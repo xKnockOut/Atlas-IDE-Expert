@@ -50,7 +50,7 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,

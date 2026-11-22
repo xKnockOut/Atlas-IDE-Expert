@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Signal;
+﻿unit Atlas.Plugin.Style.Signal;
 
 // Signalfarben je Design (#1255): Zustandspunkte (Statusfeld, Atlas-Statusleiste,
 // Statusfenster, Einrichtung), Plaketten und Befundsymbole. Nicht die Textfarben
@@ -14,13 +14,13 @@
 // - Mark: Zeichen auf der Füllung (Kreuz, „i“, Ausrufezeichen); Solid und
 //   OnSolid: Plakette mit Zahl darauf.
 // Die Farben gehören zur Palette der Fläche, auf der sie liegen
-// (TAtlasColors.Signals; für Leisten ForChrome mit der Fläche der Leiste).
+// (TAtlasColors.Signals; für Leisten ForChrome mit der Fläche der Leiste). Welcher Zustand einer
+// Statuszeile welches Signal bekommt, ordnet TAtlasStatusSignal (Atlas.Core.Status.Signal) zu.
 
 interface
 
 uses
-  Atlas.Core.Style.Color,
-  Atlas.Core.Status.Contract;
+  Atlas.Plugin.Style.Color;
 
 type
 {$SCOPEDENUMS ON}
@@ -44,11 +44,8 @@ type
   TAtlasSignals = record
     Items: array[TAtlasSignalKind] of TAtlasSignal;
     function Get(AKind: TAtlasSignalKind): TAtlasSignal;
-    /// <summary>Signal zum Zustand einer Statuszeile.</summary>
-    function ForStatus(AState: TAtlasStatusState): TAtlasSignal;
     class function Light: TAtlasSignals; static;
     class function Dark: TAtlasSignals; static;
-    class function KindOf(AState: TAtlasStatusState): TAtlasSignalKind; static;
   end;
 
 implementation
@@ -69,11 +66,6 @@ begin
   Result := Items[AKind];
 end;
 
-function TAtlasSignals.ForStatus(AState: TAtlasStatusState): TAtlasSignal;
-begin
-  Result := Items[KindOf(AState)];
-end;
-
 class function TAtlasSignals.Light: TAtlasSignals;
 begin
   Result.Items[TAtlasSignalKind.Ok] := Signal('#22C55E', '#15803D', '#FFFFFF', '#15803D', '#FFFFFF');
@@ -92,20 +84,6 @@ begin
   Result.Items[TAtlasSignalKind.Error] := Signal('#F87171', '#F87171', '#15181D', '#F87171', '#15181D');
   Result.Items[TAtlasSignalKind.Idle] := Signal('#9AA3B2', '#9AA3B2', '#15181D', '#9AA3B2', '#15181D');
   Result.Items[TAtlasSignalKind.Info] := Signal('#60A5FA', '#60A5FA', '#15181D', '#60A5FA', '#15181D');
-end;
-
-class function TAtlasSignals.KindOf(AState: TAtlasStatusState): TAtlasSignalKind;
-begin
-  case AState of
-    TAtlasStatusState.Green:
-      Result := TAtlasSignalKind.Ok;
-    TAtlasStatusState.Yellow:
-      Result := TAtlasSignalKind.Warn;
-    TAtlasStatusState.Red:
-      Result := TAtlasSignalKind.Error;
-  else
-    Result := TAtlasSignalKind.Idle;
-  end;
 end;
 
 end.

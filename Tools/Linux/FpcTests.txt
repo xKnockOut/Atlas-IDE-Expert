@@ -531,6 +531,7 @@ Atlas.Core.Problems.Marks.Tests
 Atlas.Core.Editor.LineTracking.Tests
 Atlas.Core.Status.FieldPlan.Tests
 Atlas.Core.Status.FieldFlow.Tests
+Atlas.Core.Status.Signal.Tests
 Atlas.Core.EditorToolbar.Plan.Tests
 Atlas.Core.Editor.PeekPlan.Tests
 Atlas.Core.Settings.NodeScope.Tests
@@ -549,7 +550,8 @@ Atlas.Core.Debug.Forecast.Tests
 Atlas.Core.Debug.EditValue.Tests
 Atlas.Core.Debug.HoverTree.Tests
 Atlas.Core.Debug.Pins.Tests
-Atlas.Core.Style.Listeners.Tests
+Atlas.Plugin.Style.Listeners.Tests
+Atlas.Plugin.Style.Signal.Tests
 Atlas.Core.Debug.MemoryTimeline.Tests
 Atlas.Core.Debug.Profiler.Tests
 Atlas.Core.Debug.ObjectCount.Tests

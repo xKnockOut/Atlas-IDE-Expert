@@ -99,7 +99,7 @@ uses
   System.JSON,
   System.Generics.Defaults,
   System.Math,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json,
   Atlas.Text.Chars;
 

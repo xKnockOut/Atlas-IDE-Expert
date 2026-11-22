@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Scaling;
+﻿unit Atlas.Plugin.Style.Scaling;
 
 // Zoom des Editors für die Atlas-Fenster (#445). Die Open Tools API meldet
 // den Zoom (Strg+Mausrad) nicht; die Editorschrift bleibt gleich groß

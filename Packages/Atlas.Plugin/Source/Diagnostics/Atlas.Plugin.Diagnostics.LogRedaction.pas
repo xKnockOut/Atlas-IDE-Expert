@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.LogRedaction;
+﻿unit Atlas.Plugin.Diagnostics.LogRedaction;
 
 // Anonymes Plugin-Protokoll (atlas.log, #1478), ohne VCL und Open Tools API.
 // Die Stelle, an der eine Zeile entsteht, kennzeichnet Namen, Pfade und

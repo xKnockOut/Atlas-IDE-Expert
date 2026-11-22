@@ -100,7 +100,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Foundation.Debugger,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeMethodBreakpoints.TListener }
 

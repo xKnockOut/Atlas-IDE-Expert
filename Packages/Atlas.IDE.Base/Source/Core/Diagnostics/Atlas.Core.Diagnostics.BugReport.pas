@@ -80,7 +80,7 @@ uses
   System.JSON,
   System.IOUtils,
   Atlas.Text.Anonymize,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

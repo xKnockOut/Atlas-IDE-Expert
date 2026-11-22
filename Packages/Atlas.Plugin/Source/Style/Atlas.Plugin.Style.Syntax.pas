@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Syntax;
+﻿unit Atlas.Plugin.Style.Syntax;
 
 // Einfache Syntaxfärbung für Deklarationen und Signaturen in Detailpanel und
 // Parameter-Hint: Schlüsselwörter (samt Direktiven wie overload und dem Typ

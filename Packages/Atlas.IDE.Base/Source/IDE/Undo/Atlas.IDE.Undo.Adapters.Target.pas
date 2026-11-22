@@ -51,7 +51,7 @@ uses
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Undo.Changes,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

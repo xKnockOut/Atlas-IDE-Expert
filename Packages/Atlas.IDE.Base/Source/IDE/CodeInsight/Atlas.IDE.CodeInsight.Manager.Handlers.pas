@@ -59,7 +59,7 @@ uses
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Crashes,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
@@ -69,7 +69,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Problems.Controller,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.IDE.Foundation.Host;
 
 {$SCOPEDENUMS ON}

@@ -108,7 +108,7 @@ uses
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Commands.KeyScan,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,

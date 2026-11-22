@@ -82,7 +82,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cBufferSize = 4096;

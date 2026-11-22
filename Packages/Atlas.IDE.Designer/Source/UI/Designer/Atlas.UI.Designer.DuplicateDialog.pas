@@ -84,7 +84,7 @@ uses
   System.Math,
   Vcl.Graphics,
   Atlas.UI.Designer.Strings,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Foundation.Dialog;
 

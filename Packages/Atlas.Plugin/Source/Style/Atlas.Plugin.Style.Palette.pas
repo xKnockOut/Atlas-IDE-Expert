@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Style.Palette;
+﻿unit Atlas.Plugin.Style.Palette;
 
 // Farbrollen von Atlas (#411, #421) nach dem Entwurf "Atlas-Oberfläche":
 // fester Akzent in griechischem Blau, alles andere je nach Hell- oder
@@ -9,8 +9,8 @@
 interface
 
 uses
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Signal;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Signal;
 
 type
   /// <summary>Art eines Badges in der Liste (#421); bestimmt dessen Farben.</summary>

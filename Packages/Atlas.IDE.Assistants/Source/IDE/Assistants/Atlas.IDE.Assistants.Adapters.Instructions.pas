@@ -37,7 +37,7 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Uris,
   Atlas.Core.Assistants.Instructions,
   Atlas.IDE.Foundation.Host,

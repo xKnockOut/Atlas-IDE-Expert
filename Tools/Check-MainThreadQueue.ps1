@@ -6,7 +6,7 @@
     TThread.Queue(nil, …) und TThread.ForceQueue(nil, …) gehören keinem Thread:
     Beim Entladen des Packages räumt niemand die Einträge weg, und
     CheckSynchronize ruft sie danach in nicht mehr geladenem Code auf. Im Plugin
-    reiht deshalb nur TAtlasMainThread (Atlas.Core.Diagnostics.MainThread) ein;
+    reiht deshalb nur TAtlasMainThread (Atlas.Plugin.Diagnostics.MainThread) ein;
     dessen Besitzer-Thread hält die Komposition beim Entladen an.
 
     Geprüft werden alle Quelltexte unter Packages/Atlas.IDE.*/Source/.

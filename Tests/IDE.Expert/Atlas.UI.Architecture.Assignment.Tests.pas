@@ -42,7 +42,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Architecture.MapState,
   Atlas.Core.Architecture.Model,
   Atlas.Core.Architecture.Resolution,

@@ -92,7 +92,7 @@ uses
   Winapi.ShellAPI,
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,

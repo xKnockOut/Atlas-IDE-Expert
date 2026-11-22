@@ -65,7 +65,7 @@ implementation
 
 uses
   System.Generics.Defaults,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 { TAtlasObservedFile }
 

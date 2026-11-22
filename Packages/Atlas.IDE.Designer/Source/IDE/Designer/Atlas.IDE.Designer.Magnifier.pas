@@ -116,7 +116,7 @@ uses
   Vcl.Forms,
   Vcl.Clipbrd,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ToolStrings,
   Atlas.IDE.Designer.Access,

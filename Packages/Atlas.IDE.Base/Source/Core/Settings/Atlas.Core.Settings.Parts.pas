@@ -117,7 +117,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Text.LogMarks,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

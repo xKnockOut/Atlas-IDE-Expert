@@ -26,7 +26,7 @@ implementation
 uses
   Atlas.Text.Lines,
   Atlas.Text.Diff,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

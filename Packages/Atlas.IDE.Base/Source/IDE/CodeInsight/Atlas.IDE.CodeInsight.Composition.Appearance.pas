@@ -21,8 +21,8 @@ implementation
 
 uses
   Vcl.Controls,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Foundation.Theme,
   Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Foundation.EditorStyle,

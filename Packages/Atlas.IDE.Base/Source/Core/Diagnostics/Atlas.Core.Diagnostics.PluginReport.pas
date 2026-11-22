@@ -12,7 +12,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.PluginTimings;
 
 type
@@ -61,7 +61,7 @@ uses
   System.Math,
   System.Generics.Defaults,
   System.Generics.Collections,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

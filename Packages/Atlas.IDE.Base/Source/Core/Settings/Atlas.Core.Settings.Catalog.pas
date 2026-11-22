@@ -185,7 +185,7 @@ uses
   Atlas.Core.Settings.SchemaCheck,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.PluginSchemaData,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}

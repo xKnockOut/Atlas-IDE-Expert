@@ -52,7 +52,7 @@ implementation
 
 uses
   Atlas.IDE.Foundation.Debugger,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeBreakpoints }
 

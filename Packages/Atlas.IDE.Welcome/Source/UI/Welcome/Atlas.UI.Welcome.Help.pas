@@ -59,8 +59,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Foundation.Theme;
 

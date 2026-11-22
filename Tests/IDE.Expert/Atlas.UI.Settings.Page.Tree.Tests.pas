@@ -39,7 +39,7 @@ uses
   System.Classes,
   System.UITypes,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Settings.Page,
   System.StrUtils,
   Vcl.Graphics,

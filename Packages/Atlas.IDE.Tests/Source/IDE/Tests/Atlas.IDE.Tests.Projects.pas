@@ -55,7 +55,7 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tests.ProjectChoice,
   Atlas.UI.Tests.Strings,
   Atlas.UI.Commands.Palette,

@@ -37,8 +37,8 @@ implementation
 uses
   Winapi.Windows,
   Vcl.ExtCtrls,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Bookmarks.Quick,
   Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.KeyHook,

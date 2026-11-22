@@ -36,7 +36,7 @@
     "architecture-role-import": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
+      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin", "Atlas.Core", "Atlas.UI",
         "Atlas.IDE"],
       "allow": [
         "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
@@ -61,7 +61,7 @@
     "architecture-contract-content": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
+      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin", "Atlas.Core", "Atlas.UI",
         "Atlas.IDE"],
       "allow": ["Atlas.Common.Dfm.Contract.TDfm*"]
     },

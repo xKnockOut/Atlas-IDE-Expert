@@ -41,7 +41,7 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.State,
   Atlas.Core.UnitSearch.UseUnit,
@@ -110,8 +110,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Vcl.Graphics,
   Vcl.Clipbrd,

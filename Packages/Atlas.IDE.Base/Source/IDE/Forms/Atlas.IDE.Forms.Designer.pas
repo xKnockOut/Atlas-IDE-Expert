@@ -108,11 +108,11 @@ implementation
 
 uses
   System.TypInfo,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Forms.Text,
   Atlas.Core.Forms.PropertyValues,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.IDE.Foundation.DesignerView,
   Atlas.Core.Foundation.Calls;
 

@@ -8,8 +8,8 @@ uses
   System.Classes,
   System.UITypes,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Settings.Page.Host;
 

@@ -40,7 +40,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Crashes,
   Atlas.Core.Lsp.Session,

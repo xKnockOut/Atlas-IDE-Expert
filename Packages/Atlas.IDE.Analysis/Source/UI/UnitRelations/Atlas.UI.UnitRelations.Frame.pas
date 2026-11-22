@@ -177,9 +177,9 @@ uses
   Winapi.Windows,
   Vcl.Clipbrd,
   Vcl.Themes,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Symbol,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Symbol,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Foundation.Menus;
 

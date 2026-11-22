@@ -23,7 +23,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.MutationShadow,
@@ -57,9 +57,9 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tests.MutationFlow,
   Atlas.Text.DUnitX.CommandLine,

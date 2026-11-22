@@ -55,7 +55,7 @@ implementation
 
 uses
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Diagnostics.PluginTimings,
   Atlas.Core.Diagnostics.PluginReport,

@@ -96,7 +96,7 @@ uses
   Winapi.Windows,
   Vcl.Clipbrd,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.MemoryWindow,
   Atlas.IDE.Debug.ObjectCount,

@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Tests.ExplorerWindow;
 
 { TAtlasIdeTestExplorerTicker }

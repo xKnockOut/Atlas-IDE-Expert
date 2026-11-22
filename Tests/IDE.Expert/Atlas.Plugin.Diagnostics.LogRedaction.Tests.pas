@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.LogRedaction.Tests;
+﻿unit Atlas.Plugin.Diagnostics.LogRedaction.Tests;
 
 interface
 
@@ -44,8 +44,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Text.LogMarks,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.LogRedaction,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.LogRedaction,
   Atlas.Tests.TempFolder;
 
 const

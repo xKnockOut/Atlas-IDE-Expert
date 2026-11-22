@@ -65,8 +65,8 @@ uses
 {$IFDEF ATLAS_TOOLSAPI_AI}
   ToolsAPI.AI,
 {$ENDIF}
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.IDE.Settings.OptionsDialog;
 
 const

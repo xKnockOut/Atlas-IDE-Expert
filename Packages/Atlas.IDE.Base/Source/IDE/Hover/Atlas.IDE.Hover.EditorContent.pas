@@ -237,7 +237,7 @@ uses
   Winapi.ShellAPI,
   Vcl.Forms,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Plan,
   Atlas.IDE.Foundation.Settings,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.MainThread;
+﻿unit Atlas.Plugin.Diagnostics.MainThread;
 
 // Einreihen in den Hauptthread der IDE, ohne dass ein Eintrag das Entladen des
 // Packages überlebt. TThread.Queue(nil, …) und
@@ -31,7 +31,7 @@ uses
   System.Classes,
   System.SyncObjs,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   TAtlasMainThread = class
@@ -106,8 +106,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 const
   /// <summary>Platz der Methode Invoke in der Schnittstellentabelle einer anonymen Methode (nach QueryInterface,

@@ -70,8 +70,8 @@ uses
   System.SysUtils,
   System.UITypes,
   Vcl.Themes,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Foundation.Theme;
 
 { TAtlasEvalTreeView }

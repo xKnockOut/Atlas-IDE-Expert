@@ -71,7 +71,7 @@ uses
   ToolsAPI,
   Atlas.Text.Lines,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
   Atlas.UI.Tracker.Issue.Strings,

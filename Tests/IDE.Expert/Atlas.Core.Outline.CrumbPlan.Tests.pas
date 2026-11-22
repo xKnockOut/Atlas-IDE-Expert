@@ -37,7 +37,7 @@ implementation
 
 uses
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.Core.Outline.CrumbPlan;

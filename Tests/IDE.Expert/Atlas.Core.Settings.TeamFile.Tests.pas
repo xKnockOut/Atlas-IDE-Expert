@@ -70,7 +70,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 const
   cFileName = 'C:\Repo\App\.atlas';

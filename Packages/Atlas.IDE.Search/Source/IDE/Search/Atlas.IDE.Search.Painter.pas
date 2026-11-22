@@ -51,7 +51,7 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.Pairs,
   Atlas.Text.Lines,
   Atlas.IDE.Foundation.EditorBuffer,

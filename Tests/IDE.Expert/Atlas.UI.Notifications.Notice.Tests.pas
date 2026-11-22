@@ -24,7 +24,7 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Notifications.Notice;
 
 { TAtlasNoticeWindowTests }

@@ -23,7 +23,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.UI.Editor.LearnedSuggestions;
 
 { TAtlasLearnedTextsTests }

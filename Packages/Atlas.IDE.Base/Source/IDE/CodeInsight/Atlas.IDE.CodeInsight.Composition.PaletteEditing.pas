@@ -21,7 +21,7 @@ uses
   Atlas.UI.Editor.RegionFolds,
   Atlas.UI.Editor.LearnedSuggestions,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.LineMove,
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Foundation.Settings,

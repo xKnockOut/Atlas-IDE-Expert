@@ -48,7 +48,7 @@ uses
   System.Classes,
   Vcl.ActnList,
   Vcl.Menus,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Commands.MenuSlots;
 

@@ -205,14 +205,14 @@ implementation
 
 uses
   Atlas.Core.Settings.Schema,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Settings.PageNames,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.Text.Json;

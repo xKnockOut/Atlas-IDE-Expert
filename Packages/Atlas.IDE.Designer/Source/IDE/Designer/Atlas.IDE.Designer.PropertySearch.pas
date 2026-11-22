@@ -48,7 +48,7 @@ uses
   ToolsAPI,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.Files.TextFile,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Designer.FormModel,
   Atlas.Core.Designer.PropertySearch,
   Atlas.UI.Results.Items,

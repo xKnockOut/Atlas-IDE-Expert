@@ -199,7 +199,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.GitHubStrings,

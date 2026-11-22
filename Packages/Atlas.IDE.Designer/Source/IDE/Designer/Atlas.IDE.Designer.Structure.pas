@@ -123,7 +123,7 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.Model,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cTick = 300;

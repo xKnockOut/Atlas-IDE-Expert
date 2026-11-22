@@ -146,7 +146,7 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Bookmarks.Quick,
   Atlas.Core.Bookmarks.Plan,

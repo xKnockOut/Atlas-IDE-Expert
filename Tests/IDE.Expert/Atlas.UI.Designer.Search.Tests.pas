@@ -48,7 +48,7 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.Clipbrd,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Foundation.Theme;
 
 { TAtlasComponentSearchWindowTests }

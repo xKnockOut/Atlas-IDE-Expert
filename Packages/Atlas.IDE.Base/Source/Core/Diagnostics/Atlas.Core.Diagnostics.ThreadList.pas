@@ -46,8 +46,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 { TAtlasThreadList }
 

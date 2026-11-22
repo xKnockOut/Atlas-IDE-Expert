@@ -39,7 +39,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

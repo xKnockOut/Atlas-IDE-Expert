@@ -72,7 +72,7 @@ uses
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.BoardPlan,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.Board.Strings,

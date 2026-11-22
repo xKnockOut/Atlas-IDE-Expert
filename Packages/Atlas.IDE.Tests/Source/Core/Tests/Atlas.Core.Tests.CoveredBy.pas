@@ -13,8 +13,8 @@ uses
   System.SysUtils,
   System.Types,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tests.Run;
 
 type

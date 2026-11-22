@@ -34,7 +34,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Hover.IdeHelpInsight;
 
 const

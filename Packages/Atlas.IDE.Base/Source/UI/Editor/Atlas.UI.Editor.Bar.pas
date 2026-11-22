@@ -38,7 +38,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Style.Palette;
 
 type
   TAtlasEditorBar = class(TCustomControl)

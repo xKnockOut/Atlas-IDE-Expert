@@ -14,7 +14,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Style.Signal;
+  Atlas.Plugin.Style.Signal;
 
 type
   TAtlasFindingIcon = class

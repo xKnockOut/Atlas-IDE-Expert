@@ -77,12 +77,12 @@ implementation
 uses
   System.Generics.Collections,
   System.Diagnostics,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

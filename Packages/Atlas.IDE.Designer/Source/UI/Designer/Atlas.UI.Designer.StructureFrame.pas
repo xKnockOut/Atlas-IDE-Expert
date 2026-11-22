@@ -110,7 +110,7 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Designer.ViewStrings,
   Atlas.UI.Foundation.Dialog;

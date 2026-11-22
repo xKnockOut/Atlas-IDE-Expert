@@ -110,7 +110,7 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.ShortcutTips,

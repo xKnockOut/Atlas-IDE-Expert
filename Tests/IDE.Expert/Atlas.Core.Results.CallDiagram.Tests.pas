@@ -47,7 +47,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Results.CallDiagram,
   Atlas.Core.Lsp.TestSupport;
 

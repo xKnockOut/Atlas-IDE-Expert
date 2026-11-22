@@ -44,7 +44,7 @@ uses
   System.Math,
   System.StrUtils,
   System.Classes,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
