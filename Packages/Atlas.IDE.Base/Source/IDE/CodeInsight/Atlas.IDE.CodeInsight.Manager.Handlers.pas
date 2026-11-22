@@ -57,7 +57,7 @@ uses
   Winapi.ShellAPI,
   System.Generics.Collections,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.CodeInsight.Strings,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Lsp.Crashes,

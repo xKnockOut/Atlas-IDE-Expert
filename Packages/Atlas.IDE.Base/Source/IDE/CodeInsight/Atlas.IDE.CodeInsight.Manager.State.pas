@@ -133,7 +133,7 @@ procedure RetireManager(AManager: TObject);
 implementation
 
 uses
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.CodeInsight.Strings,
   Atlas.Plugin.Notifications.Center,
   Atlas.Plugin.Notifications.Sources,

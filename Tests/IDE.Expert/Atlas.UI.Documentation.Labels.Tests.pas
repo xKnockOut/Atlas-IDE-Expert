@@ -19,7 +19,7 @@ implementation
 
 uses
   Atlas.Core.Documentation.Layout,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Documentation.Labels;
 
 procedure TAtlasDocLabelTextsTests.German;

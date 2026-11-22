@@ -49,7 +49,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Vcl.Images.Symbol,
   Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Problems.Findings,

@@ -110,7 +110,7 @@ implementation
 
 uses
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.PluginSchemaData,
+  Atlas.Plugin.Settings.PluginSchemaData,
   Atlas.Text.Json;
 
 function CaptionOf(ASchema: TJSONObject; AEnglish: Boolean): string;

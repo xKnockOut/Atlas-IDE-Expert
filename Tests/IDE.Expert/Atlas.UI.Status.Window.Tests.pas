@@ -37,7 +37,7 @@ uses
   Atlas.Plugin.Status.Registry,
   Vcl.Graphics,
   Atlas.Vcl.Theme.Service,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Status.Window,
   Atlas.Plugin.Status.Signal;
 

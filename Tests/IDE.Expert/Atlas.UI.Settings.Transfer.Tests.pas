@@ -49,7 +49,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Transfer,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport,

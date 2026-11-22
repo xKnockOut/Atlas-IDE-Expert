@@ -29,7 +29,7 @@ implementation
 uses
   Atlas.IDE.Problems.Service,
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Settings.PaletteSearch,

@@ -33,7 +33,7 @@ implementation
 uses
   System.SysUtils,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.StateDialog;
 
 { TAtlasTrackerStateDialogTests }

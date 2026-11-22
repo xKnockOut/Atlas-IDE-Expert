@@ -35,7 +35,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Plugin.Style.Color,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Settings.Reassigned,
+  Atlas.Plugin.Settings.Reassigned,
   Atlas.Core.Editor.Reassigned,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Plugin.Diagnostics.Deadline,

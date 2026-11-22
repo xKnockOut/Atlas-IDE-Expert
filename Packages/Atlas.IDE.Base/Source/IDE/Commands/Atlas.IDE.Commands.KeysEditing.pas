@@ -43,7 +43,7 @@ uses
   System.Classes,
   Vcl.Menus,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Problems.Service,

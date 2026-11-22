@@ -48,7 +48,7 @@ uses
   Atlas.IDE.Search.Commands,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Query.Service,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Search.Strings,
   Atlas.Core.Modules.Contributions;
 

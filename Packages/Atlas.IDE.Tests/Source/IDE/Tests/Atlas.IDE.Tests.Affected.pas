@@ -87,7 +87,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tests.AffectedHook,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,

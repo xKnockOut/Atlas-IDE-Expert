@@ -102,7 +102,7 @@ uses
   Atlas.Vcl.Popup.Draw,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Documentation.Labels,
   Atlas.UI.Completion.Strings;
 

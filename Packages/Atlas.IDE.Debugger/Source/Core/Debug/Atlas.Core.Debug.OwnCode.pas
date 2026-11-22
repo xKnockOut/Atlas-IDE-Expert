@@ -77,7 +77,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.FolderList,
+  Atlas.Plugin.Settings.FolderList,
   Atlas.Text.Arrays;
 
 function NormalFolder(const AFolder: string): string;

@@ -89,7 +89,7 @@ uses
   Atlas.Core.Settings.NodeScope,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Overview,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Groups,
   Atlas.Core.Settings.ModuleSwitches,
   Atlas.Core.Modules.Registry,

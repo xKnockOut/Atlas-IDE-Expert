@@ -57,7 +57,7 @@ uses
   Vcl.Graphics,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.ExternalRules,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Vcl.Theme.Scaling;
 

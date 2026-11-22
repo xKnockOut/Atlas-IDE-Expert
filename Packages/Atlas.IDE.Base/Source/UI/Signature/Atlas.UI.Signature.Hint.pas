@@ -130,7 +130,7 @@ implementation
 uses
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Signature.FormatText,
   Atlas.Vcl.Popup.Accessibility,
   Atlas.Core.Signature.Controller;

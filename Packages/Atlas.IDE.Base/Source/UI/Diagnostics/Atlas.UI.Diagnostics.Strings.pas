@@ -2,7 +2,7 @@
 
 // Oberflächentexte des Features Diagnose (Diagnosefenster, Fehlerbericht, Prüfung auf einen Kommandozeilen-
 // Compiler) auf Deutsch und Englisch. Die Sprache bestimmt `TAtlasStrings.Language`; jeder Aufruf liest sie neu.
-// Eigene Unit, damit ein neuer Text des Features nicht `Atlas.UI.Strings` ändert.
+// Eigene Unit, damit ein neuer Text des Features nicht `Atlas.Plugin.Localization.Strings` ändert.
 
 interface
 
@@ -50,7 +50,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasDiagnosticsTextId] of string = (

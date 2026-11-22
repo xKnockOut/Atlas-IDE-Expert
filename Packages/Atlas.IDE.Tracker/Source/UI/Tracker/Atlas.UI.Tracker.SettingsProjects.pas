@@ -84,7 +84,7 @@ uses
   System.SysUtils,
   Vcl.Graphics,
   Vcl.Dialogs,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Settings.Strings;
 
 const

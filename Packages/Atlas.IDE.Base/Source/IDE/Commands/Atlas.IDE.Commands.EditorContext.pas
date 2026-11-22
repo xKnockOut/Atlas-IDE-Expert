@@ -90,7 +90,7 @@ implementation
 
 uses
   Atlas.Text.Lines,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.Plugin.Notifications.MessageSink;
 

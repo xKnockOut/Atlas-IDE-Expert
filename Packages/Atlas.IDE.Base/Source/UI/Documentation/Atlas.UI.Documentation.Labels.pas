@@ -18,7 +18,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 { TAtlasDocLabelTexts }
 

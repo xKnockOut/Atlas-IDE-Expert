@@ -20,7 +20,7 @@ implementation
 uses
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Format,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Signature.FormatText;
 
 procedure TAtlasSignatureFormatTextTests.Lines;

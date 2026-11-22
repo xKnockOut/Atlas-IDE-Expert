@@ -79,7 +79,7 @@ uses
   System.Classes,
   System.Actions,
   Vcl.ActnList,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.Host,
   Atlas.Plugin.Diagnostics.Guard;

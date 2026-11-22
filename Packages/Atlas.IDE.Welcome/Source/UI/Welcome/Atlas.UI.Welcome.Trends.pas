@@ -125,7 +125,7 @@ uses
   System.DateUtils,
   Vcl.Themes,
   Atlas.Vcl.Controls.Helpers,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings;
 
 const

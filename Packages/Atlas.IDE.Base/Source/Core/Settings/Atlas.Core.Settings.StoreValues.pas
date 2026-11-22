@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.History;
 
 type

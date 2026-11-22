@@ -48,7 +48,7 @@ uses
   Atlas.Plugin.Notifications.Center,
   Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Editor.Minimap,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Vcl.Popup.Window,
   Atlas.UI.Editor.Minimap,

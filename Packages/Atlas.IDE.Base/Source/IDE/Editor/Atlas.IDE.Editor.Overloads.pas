@@ -43,7 +43,7 @@ uses
   System.JSON,
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Completion.ServerPlaceholders,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Editor.WorkspaceEdit,

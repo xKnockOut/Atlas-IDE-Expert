@@ -259,7 +259,7 @@ uses
   System.StrUtils,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Documentation.Labels,
   Atlas.UI.Hover.Strings,
   Atlas.Vcl.Popup.Draw,

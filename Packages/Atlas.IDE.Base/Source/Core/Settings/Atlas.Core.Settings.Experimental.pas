@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog;
+  Atlas.Plugin.Settings.Catalog;
 
 type
   TAtlasExperimental = class

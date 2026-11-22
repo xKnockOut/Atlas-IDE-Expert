@@ -76,7 +76,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.ProblemsUpdate;
+  Atlas.Plugin.Settings.ProblemsUpdate;
 
 { TAtlasPluginRulesSettings }
 

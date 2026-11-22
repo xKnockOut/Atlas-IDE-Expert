@@ -94,7 +94,7 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Core.Debug.InstanceBreakpoint,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,

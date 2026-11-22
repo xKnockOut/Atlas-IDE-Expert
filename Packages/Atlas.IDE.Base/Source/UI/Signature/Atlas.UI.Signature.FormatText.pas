@@ -25,7 +25,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Core.Signature.Contract,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   /// <summary>Arten von Literalen, wie der Server sie nennt, und ihre Beschriftung.</summary>

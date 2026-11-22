@@ -92,7 +92,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Settings,

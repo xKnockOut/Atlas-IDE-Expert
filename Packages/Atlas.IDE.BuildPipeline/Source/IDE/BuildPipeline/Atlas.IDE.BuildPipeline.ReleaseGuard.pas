@@ -70,7 +70,7 @@ uses
   Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.IDE.Projects.Context,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.BuildPipeline.Strings;
 
 function NowUtc: TDateTime;

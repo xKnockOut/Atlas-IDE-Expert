@@ -59,7 +59,7 @@ uses
   System.Math,
   System.UITypes,
   Winapi.Windows,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Analysis.Strings,
   Atlas.Core.Architecture.Resolution;
 

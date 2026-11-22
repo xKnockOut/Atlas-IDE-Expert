@@ -72,7 +72,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,

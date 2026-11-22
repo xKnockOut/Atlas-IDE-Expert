@@ -49,7 +49,7 @@ uses
   Vcl.Forms,
   Vcl.ComCtrls,
   Atlas.UI.Settings.Marks,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,

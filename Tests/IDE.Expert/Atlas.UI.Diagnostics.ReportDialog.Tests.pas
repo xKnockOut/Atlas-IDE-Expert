@@ -44,7 +44,7 @@ uses
   System.StrUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Diagnostics.Package,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.ReportDialog,
   Atlas.Tests.TempFolder;

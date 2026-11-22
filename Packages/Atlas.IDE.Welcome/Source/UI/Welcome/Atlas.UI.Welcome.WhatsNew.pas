@@ -122,7 +122,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Winapi.Windows,
   System.Math,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Vcl.Theme.Service;

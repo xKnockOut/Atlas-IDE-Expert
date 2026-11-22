@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Projects.VersionControl,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Tools,

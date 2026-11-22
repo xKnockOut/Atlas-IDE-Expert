@@ -63,12 +63,12 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Results.Commands,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.TestResults.Strings;
 
 const

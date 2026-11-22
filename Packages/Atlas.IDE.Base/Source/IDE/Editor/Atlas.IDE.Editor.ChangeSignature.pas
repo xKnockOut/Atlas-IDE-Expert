@@ -33,7 +33,7 @@ implementation
 
 uses
   System.JSON,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.ChangeSignature,

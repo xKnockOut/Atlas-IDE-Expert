@@ -30,7 +30,7 @@ uses
   System.Types,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Debug.DataBreak,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.StopBar,
   Atlas.UI.Debug.DataBreak;
 

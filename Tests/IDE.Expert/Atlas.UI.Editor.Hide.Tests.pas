@@ -55,7 +55,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Editor.Hide,
   Atlas.UI.Settings.Page,

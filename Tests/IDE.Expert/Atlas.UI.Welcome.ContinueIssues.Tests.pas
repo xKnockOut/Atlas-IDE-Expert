@@ -30,7 +30,7 @@ uses
   System.DateUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueIssues,
   Atlas.Core.Welcome.Saved,

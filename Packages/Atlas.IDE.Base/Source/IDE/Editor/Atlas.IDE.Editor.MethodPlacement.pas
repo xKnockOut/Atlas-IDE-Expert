@@ -94,7 +94,7 @@ uses
   Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,

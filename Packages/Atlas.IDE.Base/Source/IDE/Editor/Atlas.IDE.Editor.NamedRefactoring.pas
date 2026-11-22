@@ -18,7 +18,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.WorkspacePlan;

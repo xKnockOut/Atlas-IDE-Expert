@@ -135,7 +135,7 @@ uses
   Winapi.Windows,
   Atlas.Plugin.Style.Signal,
   Atlas.Vcl.Theme.Service,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.Strings;
 
 const

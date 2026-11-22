@@ -164,7 +164,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Notifications.Sources,
   Atlas.Vcl.Popup.Draw,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Notifications.Strings;
 
 const
