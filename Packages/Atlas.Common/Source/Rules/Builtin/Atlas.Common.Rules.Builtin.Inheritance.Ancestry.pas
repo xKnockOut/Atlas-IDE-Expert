@@ -195,7 +195,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.ClassActions,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
 

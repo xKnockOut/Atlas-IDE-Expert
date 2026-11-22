@@ -29,7 +29,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Naming,
-  Atlas.Common.Editing.ClassActions,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Localization.Texts,

@@ -34,7 +34,6 @@ uses
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Editing.ConditionalExpression,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;
 
