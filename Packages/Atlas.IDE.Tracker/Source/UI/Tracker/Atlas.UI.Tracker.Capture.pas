@@ -106,6 +106,8 @@ const
   cPngSignature: array[0..7] of Byte = ($89, $50, $4E, $47, $0D, $0A, $1A, $0A);
   // Fehlt in Winapi.Windows: Bildschirmkopie samt überlagerter Fenster.
   cCAPTUREBLT = $40000000;
+  /// <summary>Takt der Fensterauswahl (Tick).</summary>
+  cTickMs = 50;
 
 type
   // Fehlt in Winapi.Windows: Daten des systemweiten Maus-Hooks (WH_MOUSE_LL).
@@ -387,7 +389,7 @@ begin
   if FTimer = nil then
   begin
     FTimer := TTimer.Create(nil);
-    FTimer.Interval := 50;
+    FTimer.Interval := cTickMs;
     FTimer.OnTimer := Tick;
   end;
   FTimer.Enabled := True;

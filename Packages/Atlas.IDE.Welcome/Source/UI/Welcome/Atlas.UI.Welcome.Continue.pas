@@ -243,7 +243,7 @@ uses
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Text.Uris,
   Atlas.Text.Arrays,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.Vcl.Theme.Service;
 
 const

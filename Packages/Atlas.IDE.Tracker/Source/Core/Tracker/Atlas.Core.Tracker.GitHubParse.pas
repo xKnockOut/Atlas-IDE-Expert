@@ -148,7 +148,7 @@ begin
   end;
   if Result <> '' then
   begin
-    Result := TAtlasGitHubJson.Shorten(Result, 40);
+    Result := TAtlasGitHubJson.Shorten(Result, TAtlasTrackerTextLimits.cLabel);
   end;
 end;
 
@@ -530,9 +530,9 @@ begin
   ADetails.Updated := TJsonRead.IsoTime(ARoot, 'updated_at', True);
   ADetails.Labels := IssueLabelsOf(ARoot.Values['labels'], MaxInt);
   ADetails.Assignee := TAtlasGitHubJson.AssigneesOf(ARoot);
-  ADetails.Sprint := NestedText(ARoot, 'milestone', 'title', 60);
+  ADetails.Sprint := NestedText(ARoot, 'milestone', 'title', TAtlasTrackerTextLimits.cName);
   // Issue-Typen (Bug, Feature …) der Organisation.
-  ADetails.Kind := NestedText(ARoot, 'type', 'name', 40);
+  ADetails.Kind := NestedText(ARoot, 'type', 'name', TAtlasTrackerTextLimits.cLabel);
 end;
 
 class function TAtlasGitHubParse.ParseDetails(const AJson: string; out ADetails: TAtlasTrackerDetails;
@@ -714,7 +714,7 @@ begin
   AAttachment.Name := TAtlasGitHubJson.Shorten(ALink.Text, TAtlasTrackerTextLimits.cTitle);
   if AAttachment.Name = '' then
   begin
-    AAttachment.Name := Copy(ALink.Url, LastDelimiter('/', ALink.Url) + 1, 200);
+    AAttachment.Name := Copy(ALink.Url, LastDelimiter('/', ALink.Url) + 1, TAtlasTrackerTextLimits.cTitle);
   end;
   AAttachment.Size := -1;
   AAttachment.Url := ALink.Url;
@@ -1007,6 +1007,10 @@ end;
 
 /// <summary>"owner/repo" und Nummer aus ".../repos/owner/repo/issues/12"; False bei anderer Adresse.</summary>
 function IssueOfApiUrl(const AUrl: string; out ARepository: string; out ANumber: Integer): Boolean;
+const
+  // Abstand der Teile hinter "repos": owner, repo, "issues", Nummer.
+  cIssuesPart = 3;
+  cNumberPart = 4;
 var
   mParts: TArray<string>;
   mIndex: Integer;
@@ -1015,10 +1019,10 @@ begin
   ARepository := '';
   ANumber := 0;
   mParts := AUrl.Split(['/']);
-  for mIndex := 0 to High(mParts) - 4 do
+  for mIndex := 0 to High(mParts) - cNumberPart do
   begin
-    if (mParts[mIndex] = 'repos') and (mParts[mIndex + 3] = 'issues') and
-      TryStrToInt(mParts[mIndex + 4], ANumber) and (ANumber > 0) then
+    if (mParts[mIndex] = 'repos') and (mParts[mIndex + cIssuesPart] = 'issues') and
+      TryStrToInt(mParts[mIndex + cNumberPart], ANumber) and (ANumber > 0) then
     begin
       ARepository := mParts[mIndex + 1] + '/' + mParts[mIndex + 2];
       Exit(True);

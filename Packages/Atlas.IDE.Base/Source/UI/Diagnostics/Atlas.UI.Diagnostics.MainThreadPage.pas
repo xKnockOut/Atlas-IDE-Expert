@@ -18,8 +18,8 @@ uses
   Vcl.ExtCtrls,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Diagnostics.PluginReport,
+  Atlas.Plugin.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.PluginReport,
   Atlas.UI.Diagnostics.Grid,
   Atlas.UI.Diagnostics.PluginParts;
 

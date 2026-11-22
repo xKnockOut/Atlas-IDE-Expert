@@ -18,7 +18,7 @@ uses
   Atlas.IDE.Setup.Checklist,
   Atlas.Core.Commands.Contract,
   Atlas.Core.Setup.Contract,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Status.FieldFlow;
 
 /// <summary>Fabriken der IDE-Adapter einsetzen: Einstellungsspeicher in der Registry, Sicht des Planers, Puffer

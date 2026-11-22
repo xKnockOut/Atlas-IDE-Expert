@@ -15,7 +15,7 @@ uses
   Vcl.Controls,
   System.SysUtils,
   Vcl.ExtCtrls,
-  Atlas.Core.Foundation.Contract;
+  Atlas.Plugin.Calls.Contract;
 
 type
   TAtlasTrackerTileView = class(TCustomPanel)
@@ -47,7 +47,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.Vcl.Controls.Helpers;
 
 { TAtlasTrackerTileView }

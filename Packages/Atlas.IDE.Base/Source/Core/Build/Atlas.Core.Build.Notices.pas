@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,
-  Atlas.Core.Notifications.Contract;
+  Atlas.Plugin.Notifications.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -65,7 +65,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Notifications.Sources;
+  Atlas.Plugin.Notifications.Sources;
 
 { TAtlasBuildNotices }
 

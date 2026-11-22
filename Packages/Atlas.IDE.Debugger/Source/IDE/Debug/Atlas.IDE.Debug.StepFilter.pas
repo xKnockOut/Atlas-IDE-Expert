@@ -38,7 +38,7 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Trace,
   Atlas.UI.Debug.StepFilterFrame,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 

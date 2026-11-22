@@ -13,8 +13,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Notifications.Listeners,
-  Atlas.Core.Notifications.OrderedItems,
+  Atlas.Plugin.Notifications.Listeners,
+  Atlas.Plugin.Notifications.OrderedItems,
   Atlas.Core.Welcome.Contract;
 
 type

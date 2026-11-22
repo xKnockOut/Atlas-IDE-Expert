@@ -247,7 +247,7 @@ implementation
 uses
   System.Math,
   System.SysUtils,
-  Atlas.Core.Notifications.Sources;
+  Atlas.Plugin.Notifications.Sources;
 
 { TAtlasPluginGeneralServerSettings }
 

@@ -115,7 +115,7 @@ uses
   Atlas.IDE.Debug.LaunchProbe,
   Atlas.IDE.Debug.ProfileWindow,
   Atlas.UI.Debug.Profile.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 { TAtlasIdeDebugProfiler.TTicker }
 

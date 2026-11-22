@@ -76,7 +76,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Board,
   Atlas.IDE.Status.Lines,
@@ -189,7 +189,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Layout,
   Atlas.Core.Welcome.Layouts,

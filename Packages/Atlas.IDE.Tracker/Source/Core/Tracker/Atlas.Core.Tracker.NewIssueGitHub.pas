@@ -177,8 +177,6 @@ const
   cBitsPerByte = 8;
   /// <summary>Puffer der noch nicht ausgegebenen Bits (drei Bytes).</summary>
   cBitWindow = $FFFFFF;
-  /// <summary>HTTP-Antwort „OK“.</summary>
-  cHttpOk = 200;
 
 { TAtlasGitHubMilestone }
 
@@ -711,7 +709,8 @@ var
 begin
   AText := '';
   Result := (AUrl <> '') and (TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs) > 1) and
-    ATransport.Get(AUrl, TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs), mStatus, AText, mError) and (mStatus = cHttpOk);
+    ATransport.Get(AUrl, TAtlasGitHubApi.Remaining(AWatch, ATimeoutMs), mStatus, AText, mError) and
+    (mStatus = TAtlasHttpStatus.cOk);
 end;
 
 /// <summary>Vorlagen aus dem Repository: Ordnerliste, dann jede Vorlage und config.yml.</summary>

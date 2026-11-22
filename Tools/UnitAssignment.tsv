@@ -23,6 +23,7 @@ Atlas.IDE.Analysis	Atlas.IDE.Hotspots.Window	IDE/Hotspots/Atlas.IDE.Hotspots.Win
 Atlas.IDE.Analysis	Atlas.IDE.SymbolPath.Service	IDE/SymbolPath/Atlas.IDE.SymbolPath.Service.pas	Ordner `IDE/SymbolPath`
 Atlas.IDE.Analysis	Atlas.IDE.UnitRelations.Service	IDE/UnitRelations/Atlas.IDE.UnitRelations.Service.pas	Ordner `IDE/UnitRelations`
 Atlas.IDE.Analysis	Atlas.IDE.UnitRelations.Window	IDE/UnitRelations/Atlas.IDE.UnitRelations.Window.pas	Ordner `IDE/UnitRelations`
+Atlas.IDE.Analysis	Atlas.UI.Analysis.FormLayout	UI/Analysis/Atlas.UI.Analysis.FormLayout.pas	Ordner `UI/Analysis`; gemeinsame Maße der Eingabedialoge des Moduls
 Atlas.IDE.Analysis	Atlas.UI.Analysis.SettingsSection	UI/Analysis/Atlas.UI.Analysis.SettingsSection.pas	Ordner `UI/Analysis`; Einstellungen des Moduls als Abschnitte (#1456)
 Atlas.IDE.Analysis	Atlas.UI.Analysis.Strings	UI/Analysis/Atlas.UI.Analysis.Strings.pas	Texte des Moduls (Analyse), Sprache von Base, #1455
 Atlas.IDE.Analysis	Atlas.UI.Architecture.Assignment	UI/Architecture/Atlas.UI.Architecture.Assignment.pas	Ordner `UI/Architecture`
@@ -159,30 +160,10 @@ Atlas.IDE.Base	Atlas.Core.Completion.Width	Core/Completion/Atlas.Core.Completion
 Atlas.IDE.Base	Atlas.Core.Credentials.Contract	Core/Credentials/Atlas.Core.Credentials.Contract.pas	Anmeldespeicher für Schlüssel und Token als Schnittstelle; Module Tracker und KI-Assistenten, #1922
 Atlas.IDE.Base	Atlas.Core.Credentials.Providers.Windows	Core/Credentials/Atlas.Core.Credentials.Providers.Windows.pas	Anmeldespeicher von Windows, einmal für alle Module (Build-Server, Issue-Tracker, KI-Anbieter), #1922
 Atlas.IDE.Base	Atlas.Core.DebugControl.Types	Core/DebugControl/Atlas.Core.DebugControl.Types.pas	Daten der Debugger-Steuerung für KI-Assistenten: Debugger, Eingang der KI-Assistenten und Vertrag (#1874)
-Atlas.IDE.Base	Atlas.Core.Diagnostics.AsyncWait	Core/Diagnostics/Atlas.Core.Diagnostics.AsyncWait.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.BackgroundJobs	Core/Diagnostics/Atlas.Core.Diagnostics.BackgroundJobs.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.BoundedStream	Core/Diagnostics/Atlas.Core.Diagnostics.BoundedStream.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.BugReport	Core/Diagnostics/Atlas.Core.Diagnostics.BugReport.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Edition	Core/Diagnostics/Atlas.Core.Diagnostics.Edition.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.ExitWatch	Core/Diagnostics/Atlas.Core.Diagnostics.ExitWatch.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Export	Core/Diagnostics/Atlas.Core.Diagnostics.Export.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.FeatureTable	Core/Diagnostics/Atlas.Core.Diagnostics.FeatureTable.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Hangs	Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ModuleHost	Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHost.pas	gemeinsame Beschreibung, Zulassung und Abmeldung der Module, #1455
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ModuleHosting	Core/Diagnostics/Atlas.Core.Diagnostics.ModuleHosting.pas	Module und ihre Teile in der Feature-Tabelle, #1455
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Package	Core/Diagnostics/Atlas.Core.Diagnostics.Package.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.PluginReport	Core/Diagnostics/Atlas.Core.Diagnostics.PluginReport.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.PluginTimings	Core/Diagnostics/Atlas.Core.Diagnostics.PluginTimings.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Processes	Core/Diagnostics/Atlas.Core.Diagnostics.Processes.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.SafeMode	Core/Diagnostics/Atlas.Core.Diagnostics.SafeMode.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.ServerPackage	Core/Diagnostics/Atlas.Core.Diagnostics.ServerPackage.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.StackRing	Core/Diagnostics/Atlas.Core.Diagnostics.StackRing.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.StartTimes	Core/Diagnostics/Atlas.Core.Diagnostics.StartTimes.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Teardown	Core/Diagnostics/Atlas.Core.Diagnostics.Teardown.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.ThreadList	Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.TimeLimit	Core/Diagnostics/Atlas.Core.Diagnostics.TimeLimit.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Timing	Core/Diagnostics/Atlas.Core.Diagnostics.Timing.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.UserIdle	Core/Diagnostics/Atlas.Core.Diagnostics.UserIdle.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Documentation.Contract	Core/Documentation/Atlas.Core.Documentation.Contract.pas	Ordner `Core/Documentation`
 Atlas.IDE.Base	Atlas.Core.Documentation.Layout	Core/Documentation/Atlas.Core.Documentation.Layout.pas	Ordner `Core/Documentation`
 Atlas.IDE.Base	Atlas.Core.Documentation.Typeset	Core/Documentation/Atlas.Core.Documentation.Typeset.pas	Ordner `Core/Documentation`
@@ -269,8 +250,6 @@ Atlas.IDE.Base	Atlas.Core.EditorToolbar.Sections	Core/EditorToolbar/Atlas.Core.E
 Atlas.IDE.Base	Atlas.Core.Forms.Changes	Core/Forms/Atlas.Core.Forms.Changes.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Forms.PropertyValues	Core/Forms/Atlas.Core.Forms.PropertyValues.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Forms.Text	Core/Forms/Atlas.Core.Forms.Text.pas	Ordner `Core/Forms`
-Atlas.IDE.Base	Atlas.Core.Foundation.Calls	Core/Foundation/Atlas.Core.Foundation.Calls.pas	Gesetzte oder leere Rückrufe für Base und Module aufrufen
-Atlas.IDE.Base	Atlas.Core.Foundation.Contract	Core/Foundation/Atlas.Core.Foundation.Contract.pas	Quelle eines Bereichs, die erfährt, dass er gezeigt wird (`IAtlasShownSource`)
 Atlas.IDE.Base	Atlas.Core.Generate.Choice	Core/Generate/Atlas.Core.Generate.Choice.pas	Ordner `Core/Generate`: Auswahl mit Suchfeld, #1821
 Atlas.IDE.Base	Atlas.Core.Generate.FileTemplates	Core/Generate/Atlas.Core.Generate.FileTemplates.pas	Ordner `Core/Generate`
 Atlas.IDE.Base	Atlas.Core.Generate.Gallery	Core/Generate/Atlas.Core.Generate.Gallery.pas	Ordner `Core/Generate`: Assistenten der Objektgalerie, #1821
@@ -321,12 +300,6 @@ Atlas.IDE.Base	Atlas.Core.Modules.KnownPackages	Core/Modules/Atlas.Core.Modules.
 Atlas.IDE.Base	Atlas.Core.Modules.Registration	Core/Modules/Atlas.Core.Modules.Registration.pas	Ordner `Core/Modules`, #1455
 Atlas.IDE.Base	Atlas.Core.Modules.Registry	Core/Modules/Atlas.Core.Modules.Registry.pas	Registry der Module (Regel 1), #1455
 Atlas.IDE.Base	Atlas.Core.Modules.Watch	Core/Modules/Atlas.Core.Modules.Watch.pas	Liste bereitgestellter Objekte, folgt der Registry, #1455
-Atlas.IDE.Base	Atlas.Core.Notifications.Center	Core/Notifications/Atlas.Core.Notifications.Center.pas	Ordner `Core/Notifications`
-Atlas.IDE.Base	Atlas.Core.Notifications.Contract	Core/Notifications/Atlas.Core.Notifications.Contract.pas	Ordner `Core/Notifications`
-Atlas.IDE.Base	Atlas.Core.Notifications.Listeners	Core/Notifications/Atlas.Core.Notifications.Listeners.pas	Ordner `Core/Notifications`
-Atlas.IDE.Base	Atlas.Core.Notifications.MessageSink	Core/Notifications/Atlas.Core.Notifications.MessageSink.pas	Ordner `Core/Notifications`
-Atlas.IDE.Base	Atlas.Core.Notifications.OrderedItems	Core/Notifications/Atlas.Core.Notifications.OrderedItems.pas	Ordner `Core/Notifications`
-Atlas.IDE.Base	Atlas.Core.Notifications.Sources	Core/Notifications/Atlas.Core.Notifications.Sources.pas	Ordner `Core/Notifications`
 Atlas.IDE.Base	Atlas.Core.Outline.Breadcrumbs	Core/Outline/Atlas.Core.Outline.Breadcrumbs.pas	Ordner `Core/Outline`
 Atlas.IDE.Base	Atlas.Core.Outline.Conditionals	Core/Outline/Atlas.Core.Outline.Conditionals.pas	Ordner `Core/Outline`
 Atlas.IDE.Base	Atlas.Core.Outline.CrumbMenu	Core/Outline/Atlas.Core.Outline.CrumbMenu.pas	Ordner `Core/Outline`
@@ -452,14 +425,8 @@ Atlas.IDE.Base	Atlas.Core.Signature.EditorPlan	Core/Signature/Atlas.Core.Signatu
 Atlas.IDE.Base	Atlas.Core.Signature.Format	Core/Signature/Atlas.Core.Signature.Format.pas	Ordner `Core/Signature`
 Atlas.IDE.Base	Atlas.Core.Signature.Providers.Server	Core/Signature/Atlas.Core.Signature.Providers.Server.pas	Ordner `Core/Signature`
 Atlas.IDE.Base	Atlas.Core.StartProfiles.Store	Core/StartProfiles/Atlas.Core.StartProfiles.Store.pas	Lokale Datei der Startoptionen; Base liest und schreibt darin die vorübergehenden Startparameter, #1455
-Atlas.IDE.Base	Atlas.Core.Status.Contract	Core/Status/Atlas.Core.Status.Contract.pas	Ordner `Core/Status`
 Atlas.IDE.Base	Atlas.Core.Status.FieldFlow	Core/Status/Atlas.Core.Status.FieldFlow.pas	Ordner `Core/Status`
 Atlas.IDE.Base	Atlas.Core.Status.FieldPlan	Core/Status/Atlas.Core.Status.FieldPlan.pas	Ordner `Core/Status`
-Atlas.IDE.Base	Atlas.Core.Status.IndexStore	Core/Status/Atlas.Core.Status.IndexStore.pas	Ordner `Core/Status`
-Atlas.IDE.Base	Atlas.Core.Status.Lines	Core/Status/Atlas.Core.Status.Lines.pas	Ordner `Core/Status`
-Atlas.IDE.Base	Atlas.Core.Status.Registry	Core/Status/Atlas.Core.Status.Registry.pas	Ordner `Core/Status`
-Atlas.IDE.Base	Atlas.Core.Status.Server	Core/Status/Atlas.Core.Status.Server.pas	Ordner `Core/Status`
-Atlas.IDE.Base	Atlas.Core.Status.Signal	Core/Status/Atlas.Core.Status.Signal.pas	Ordner `Core/Status`
 Atlas.IDE.Base	Atlas.Core.StatusBar.Content	Core/StatusBar/Atlas.Core.StatusBar.Content.pas	Ordner `Core/StatusBar`
 Atlas.IDE.Base	Atlas.Core.StatusBar.Layout	Core/StatusBar/Atlas.Core.StatusBar.Layout.pas	Ordner `Core/StatusBar`
 Atlas.IDE.Base	Atlas.Core.SymbolPath.Model	Core/SymbolPath/Atlas.Core.SymbolPath.Model.pas	Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455

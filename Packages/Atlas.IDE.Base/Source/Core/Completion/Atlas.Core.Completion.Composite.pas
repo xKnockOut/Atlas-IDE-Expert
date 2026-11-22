@@ -29,7 +29,7 @@ uses
   System.SyncObjs,
   Atlas.Core.Completion.Contract,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.TimeLimit;
+  Atlas.Plugin.Diagnostics.TimeLimit;
 
 type
   TAtlasCompletionProviders = class(TInterfacedObject, IAtlasCompletionProvider)
@@ -115,8 +115,8 @@ implementation
 uses
   System.Classes,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Diagnostics.Timing,
+  Atlas.Plugin.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.Timing,
   Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}

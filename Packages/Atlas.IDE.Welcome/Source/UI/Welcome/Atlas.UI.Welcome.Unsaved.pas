@@ -132,7 +132,7 @@ uses
   System.DateUtils,
   Vcl.Themes,
   Atlas.UI.Welcome.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 const
   cSeparator = ' · ';

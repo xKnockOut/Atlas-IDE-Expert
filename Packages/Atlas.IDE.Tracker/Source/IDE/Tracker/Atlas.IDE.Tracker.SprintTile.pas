@@ -29,7 +29,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.SprintLoad,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.UI.Tracker.Contract.Sprint;
 

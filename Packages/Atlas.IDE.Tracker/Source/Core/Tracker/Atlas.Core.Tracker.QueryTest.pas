@@ -245,16 +245,16 @@ begin
   end;
   Result.HttpStatus := AStatus;
   case AStatus of
-    200:
+    TAtlasHttpStatus.cOk:
       ReadFound(Result, AProvider, AText);
-    400, 422:
+    TAtlasHttpStatus.cBadRequest, TAtlasHttpStatus.cUnprocessable:
       begin
         Result.Outcome := TAtlasTrackerQueryOutcome.QueryRejected;
         Result.TrackerMessage := TrackerMessage(AText);
       end;
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result.Outcome := TAtlasTrackerQueryOutcome.Rejected;
-    404:
+    TAtlasHttpStatus.cNotFound:
       Result.Outcome := TAtlasTrackerQueryOutcome.ProjectUnknown;
   else
     if LooksLikeHtml(AText) then
@@ -286,8 +286,8 @@ begin
   end;
   mTarget := ATarget;
   mTarget.Query := TAtlasTrackerTemplates.QueryOf(AProvider.Name, ALanguage, TAtlasTrackerTemplateKind.AssignedToMe);
-  if ATransport.Get(AProvider.ListUrl(mTarget, 1), ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) and
-    AProvider.ParseList(mText, 1, mIssues) then
+  if ATransport.Get(AProvider.ListUrl(mTarget, 1), ATimeoutMs, mStatus, mText, mError) and
+    (mStatus = TAtlasHttpStatus.cOk) and AProvider.ParseList(mText, 1, mIssues) then
   begin
     Result := Length(mIssues);
   end;
@@ -312,7 +312,7 @@ begin
     Exit;
   end;
   mWatch := TStopwatch.StartNew;
-  if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) then
+  if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = TAtlasHttpStatus.cOk) then
   begin
     Result := LanguageOfLocale(mText);
   end;

@@ -16,7 +16,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.BugReport;
+  Atlas.Plugin.Diagnostics.BugReport;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) an den laufenden Server im Hintergrund (#874); ADone im

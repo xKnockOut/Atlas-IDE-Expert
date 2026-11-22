@@ -123,14 +123,14 @@ uses
   Atlas.Core.Build.OpenBuildSettings,
   Winapi.Windows,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.CheckOnSave,
   Atlas.UI.Build.Strings,
-  Atlas.Core.Diagnostics.UserIdle;
+  Atlas.Plugin.Diagnostics.UserIdle;
 
 const
   /// <summary>Tätigkeit für die Hänger-Diagnose (Protokoll).</summary>

@@ -33,9 +33,9 @@ implementation
 
 uses
   Atlas.ToolsApi.Windows.DockWindow,
-  Atlas.Core.Diagnostics.BugReport,
-  Atlas.Core.Diagnostics.Package,
-  Atlas.Core.Diagnostics.ServerPackage,
+  Atlas.Plugin.Diagnostics.BugReport,
+  Atlas.Plugin.Diagnostics.Package,
+  Atlas.Plugin.Diagnostics.ServerPackage,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Diagnostics.Strings;

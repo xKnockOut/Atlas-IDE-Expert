@@ -46,7 +46,7 @@ uses
   Atlas.Core.Welcome.Setup,
   Atlas.IDE.Welcome.Setup.Paths,
   Atlas.IDE.Welcome.Setup.ProjectEvents,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
 
 type

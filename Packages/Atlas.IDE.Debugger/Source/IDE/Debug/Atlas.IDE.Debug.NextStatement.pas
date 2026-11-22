@@ -18,7 +18,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Debug.NextStatement,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasIdeNextStatement = class

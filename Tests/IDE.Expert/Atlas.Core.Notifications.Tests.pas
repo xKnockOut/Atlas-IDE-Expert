@@ -12,7 +12,7 @@ uses
   DUnitX.TestFramework,
   System.SysUtils,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Notifications.Center;
+  Atlas.Plugin.Notifications.Center;
 
 type
   [TestFixture]
@@ -90,8 +90,8 @@ implementation
 
 uses
   Atlas.Core.Build.Verdict,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Build.Notices;
 
 const

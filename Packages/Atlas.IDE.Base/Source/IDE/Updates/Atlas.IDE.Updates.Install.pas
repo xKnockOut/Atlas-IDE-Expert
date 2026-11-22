@@ -84,7 +84,7 @@ uses
   Atlas.Plugin.Files.DataFile,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Updates.Texts,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 /// <summary>Hinweis für ein aus dem Quelltext gebautes Update (nicht an den Herausgeber gebunden); sonst ''.</summary>
 function SourceNote(const AStage: TUpdateStage): string;

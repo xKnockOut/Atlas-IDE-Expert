@@ -174,7 +174,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.Plugin.Localization.Language,
   Atlas.Plugin.Diagnostics.Guard;
 

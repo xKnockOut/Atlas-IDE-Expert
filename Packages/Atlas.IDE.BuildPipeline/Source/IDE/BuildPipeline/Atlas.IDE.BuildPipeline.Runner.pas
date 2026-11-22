@@ -103,7 +103,7 @@ uses
   Winapi.Windows,
   Atlas.Core.BuildPipeline.Plan,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.IDE.Build.CheckOnSave,
   Atlas.UI.BuildPipeline.Strings;
 

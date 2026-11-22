@@ -124,7 +124,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Plugin.Files.WatchedChanges,
   Atlas.Core.Lsp.ProjectContext.Contract,
-  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.Core.Lsp.Framing,
   Atlas.Core.Lsp.Contract;
 

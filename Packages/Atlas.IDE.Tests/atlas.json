@@ -149,7 +149,7 @@
           "name": "Winapi.Windows.GetTickCount",
           "message": "32-Bit-Zähler läuft nach 49,7 Tagen über, TAtlasTicks bzw. TAtlasDeadline verwenden",
           "units": [
-            "!Atlas.Core.Diagnostics.UserIdle"
+            "!Atlas.Plugin.Diagnostics.UserIdle"
           ]
         },
         {

@@ -69,7 +69,7 @@ implementation
 
 uses
   System.SyncObjs,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread;
 

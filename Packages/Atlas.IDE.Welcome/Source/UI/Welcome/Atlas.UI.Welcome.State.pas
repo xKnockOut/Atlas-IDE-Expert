@@ -28,7 +28,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Welcome.State,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Contract;

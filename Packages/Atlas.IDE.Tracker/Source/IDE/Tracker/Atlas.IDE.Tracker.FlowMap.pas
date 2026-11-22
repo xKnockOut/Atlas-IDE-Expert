@@ -25,7 +25,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.FlowMap,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.FlowFrame;
 
 type

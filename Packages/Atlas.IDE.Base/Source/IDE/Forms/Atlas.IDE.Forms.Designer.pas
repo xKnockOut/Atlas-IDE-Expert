@@ -114,7 +114,7 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Plugin.Localization.Language,
   Atlas.ToolsApi.Designer.View,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 {$SCOPEDENUMS ON}
 

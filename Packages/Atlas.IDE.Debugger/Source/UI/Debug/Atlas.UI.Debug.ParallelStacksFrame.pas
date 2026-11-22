@@ -71,7 +71,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Debug.Threads.Strings,
   Atlas.UI.Debug.ParallelStacks;

@@ -26,7 +26,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Debug.DialogCompletion,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract,
@@ -115,7 +115,7 @@ uses
   Vcl.Dialogs,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Files.DataFile,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Debug.Reattach,
   Atlas.Core.Debug.ReattachFlow,
   Atlas.IDE.Foundation.Settings,
@@ -125,7 +125,7 @@ uses
   Atlas.UI.Debug.ProcessChoice,
   Atlas.UI.Debug.Session.Strings,
   Atlas.UI.Debug.Settings.Strings,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.ToolsApi.Files.Service;
 
 const

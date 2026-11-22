@@ -34,7 +34,7 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Settings.PaletteSearch,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Generate.Commands,

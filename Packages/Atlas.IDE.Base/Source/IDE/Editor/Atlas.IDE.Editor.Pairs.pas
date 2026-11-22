@@ -213,7 +213,7 @@ uses
   Atlas.Core.Editor.GuideStroke,
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.ToolsApi.Editor.Refresh,
   Atlas.ToolsApi.Theme.Style,

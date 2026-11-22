@@ -48,7 +48,7 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Tools,
   Atlas.Core.VersionControl.Switches,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.Core.VersionControl.Composition,
   Atlas.Core.VersionControl.Providers.ProcessRunner,
   Atlas.Core.Welcome.Unsaved,
