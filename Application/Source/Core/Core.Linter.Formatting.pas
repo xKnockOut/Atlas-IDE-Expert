@@ -46,6 +46,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Pascal.Preprocessor,
   System.IOUtils,
   Atlas.Common.Rules.Output,
   Atlas.Common.Editing.FormatCheck,
@@ -182,7 +183,7 @@ begin
   end;
   mStyle := TLspFormatting.Resolve(nil, AFileName, ARun.Settings.Formatting, ReadEditorConfigFunc());
   AItem := TFormattedFile.Create(ARelativePath, TFormatCheck.Run(mText, mStyle, mScope,
-    ARun.Sources(AFileName).Options));
+    TPascalPreprocessor.SourceOptions(ARun.Sources(AFileName))));
   if ARun.Options.FormatWrite and AItem.Outcome.Changed then
     try
       TLinterFormatting.WriteFormatted(AFileName, AItem.Outcome.Formatted, mFormat);

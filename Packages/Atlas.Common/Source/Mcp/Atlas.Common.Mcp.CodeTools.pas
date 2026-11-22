@@ -387,7 +387,7 @@ var
   mProcessed: TPreprocessorResult;
 begin
   // Nur die aktiven Zweige (#860): Namen eines anderen Zielsystems sind dort nicht auflösbar.
-  mTree := TSyntaxTreeCache.ParseActive(AText, ASource.Options, nil, mProcessed);
+  mTree := TSyntaxTreeCache.ParseActive(AText, TPascalPreprocessor.SourceOptions(ASource), nil, mProcessed);
   try
     mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try

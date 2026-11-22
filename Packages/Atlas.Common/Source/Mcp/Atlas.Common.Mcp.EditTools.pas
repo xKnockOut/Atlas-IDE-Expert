@@ -246,6 +246,7 @@ implementation
 
 uses
   System.StrUtils,
+  Atlas.Common.Pascal.Preprocessor,
   System.Generics.Defaults,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -1336,7 +1337,7 @@ end;
 function FormatOrFail(const AStyle: TFormatStyle; const AFileName, AText: string; const AScope: TFormatScope;
   const ASource: TCheckSource): TFormatOutcome;
 begin
-  Result := TFormatCheck.Run(AText, AStyle, AScope, ASource.Options);
+  Result := TFormatCheck.Run(AText, AStyle, AScope, TPascalPreprocessor.SourceOptions(ASource));
   if Result.HasSyntaxError then
   begin
     raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.SyntaxErrorInLineNot].Text,

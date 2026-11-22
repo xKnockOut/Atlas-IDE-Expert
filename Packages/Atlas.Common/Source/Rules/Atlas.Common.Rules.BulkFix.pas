@@ -865,7 +865,7 @@ begin
       mProcessed: TPreprocessorResult;
       mTree: TSyntaxTree;
     begin
-      mTree := TSyntaxTreeCache.ParseActive(AText, ASource.Options, nil, mProcessed);
+      mTree := TSyntaxTreeCache.ParseActive(AText, TPascalPreprocessor.SourceOptions(ASource), nil, mProcessed);
       try
         Result := Length(mTree.Diagnostics);
       finally
