@@ -94,7 +94,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Files.Service,
   Atlas.ToolsApi.Editor.Refresh,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 /// <summary>Liste der Notizen für das Ergebnisfenster mit Bearbeiten und Löschen.</summary>
 function ListOf(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;

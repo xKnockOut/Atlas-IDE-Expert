@@ -108,6 +108,10 @@ uses
   Atlas.Core.Completion.Matching,
   Atlas.Core.Editor.SourceFiles;
 
+const
+  /// <summary>Länge der Wurzel eines Laufwerkspfads („C:\“).</summary>
+  cDriveRootLength = 3;
+
 { TAtlasWelcomeHit }
 
 class function TAtlasWelcomeHit.Create(AGroup: TAtlasWelcomeSearchGroup; const ACaption, ADetail,
@@ -332,7 +336,8 @@ end;
 /// <summary>Absoluter Windows-Pfad (C:\… oder \\Server\…); relative Einträge taugen nicht zum Öffnen.</summary>
 function IsAbsolute(const APath: string): Boolean;
 begin
-  Result := ((Length(APath) >= 3) and (APath[2] = ':') and CharInSet(APath[3], ['\', '/'])) or
+  Result := ((Length(APath) >= cDriveRootLength) and (APath[cDriveRootLength - 1] = ':') and
+    CharInSet(APath[cDriveRootLength], ['\', '/'])) or
     APath.StartsWith('\\');
 end;
 

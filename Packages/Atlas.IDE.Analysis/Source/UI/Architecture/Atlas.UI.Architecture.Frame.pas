@@ -263,7 +263,7 @@ uses
   Atlas.Vcl.Theme.Service,
   Atlas.Vcl.Controls.ListView,
   Atlas.Vcl.Theme.Scaling,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.Vcl.Controls.Menus,
   Atlas.Vcl.Controls.Helpers,
   Atlas.Core.Architecture.Resolution;
@@ -288,6 +288,30 @@ const
   cCrossSubsystemWidth = 180;
   cReasonWidth = 160;
   cLocationWidth = 200;
+  /// <summary>Breiten der Knöpfe und Felder in den Leisten bei 96 dpi.</summary>
+  cRefreshWidth = 110;
+  cSaveReportWidth = 130;
+  cSaveStateWidth = 120;
+  cCompareWidth = 130;
+  cScopeWidth = 130;
+  cLibraryUnitsWidth = 120;
+  cSliderWidth = 140;
+  cFitWidth = 90;
+  cNamesWidth = 120;
+  cImplementationWidth = 140;
+  cMarkCyclesWidth = 130;
+  cShowChangesWidth = 150;
+  cSubsystemsButtonWidth = 110;
+  cExplainButtonWidth = 28;
+  cClearComparisonWidth = 140;
+  /// <summary>Teilsysteme bzw. Abschnitte des Vergleichs bis zu so vielen Einträgen aufgeklappt, größere zu.</summary>
+  cExpandedMembers = 12;
+  cExpandedChanges = 20;
+  /// <summary>Feld der Zuordnung: Rand neben der Bildlaufleiste und Mindestbreite bei 96 dpi, höchstens dieser
+  /// Anteil der Seite in Prozent.</summary>
+  cAssignmentMargin = 8;
+  cAssignmentMinWidth = 120;
+  cAssignmentMaxPercent = 40;
   /// <summary>Unterer Teil der Index-Generation: Zahl der Änderungen; der obere kennzeichnet nur den Index.
   /// </summary>
   cChangeCountMask = $7FFFFFFF;
@@ -464,23 +488,23 @@ begin
   mEvents := AFrame.FState.Events;
   AFrame.FParts.Top := NewFlowBar(AFrame, AFrame);
   TAtlasControlScaling.SetPadding(AFrame.FParts.Top, 2, 2, 2, 2);
-  AFrame.FParts.Refresh := NewButton(AFrame, AFrame.FParts.Top, nil, TAtlasAnalysisTextId.ArchitectureRefresh, 110,
-    mEvents.RefreshClick);
+  AFrame.FParts.Refresh := NewButton(AFrame, AFrame.FParts.Top, nil, TAtlasAnalysisTextId.ArchitectureRefresh,
+    cRefreshWidth, mEvents.RefreshClick);
   AFrame.FParts.Save := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.Refresh,
-    TAtlasAnalysisTextId.ArchitectureSaveReport, 130, mEvents.SaveClick);
+    TAtlasAnalysisTextId.ArchitectureSaveReport, cSaveReportWidth, mEvents.SaveClick);
   AFrame.FParts.SaveState := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.Save,
-    TAtlasAnalysisTextId.ArchitectureSaveState, 120, mEvents.SaveStateClick);
+    TAtlasAnalysisTextId.ArchitectureSaveState, cSaveStateWidth, mEvents.SaveStateClick);
   AFrame.FParts.Compare := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.SaveState,
-    TAtlasAnalysisTextId.ArchitectureCompare, 130, mEvents.CompareClick);
+    TAtlasAnalysisTextId.ArchitectureCompare, cCompareWidth, mEvents.CompareClick);
   AFrame.FParts.Scope := TComboBox.Create(AFrame);
   PlaceLeft(AFrame.FParts.Scope, AFrame.FParts.Top, AFrame.FParts.Compare);
   AFrame.FParts.Scope.Style := csDropDownList;
-  AFrame.FParts.Scope.Width := AFrame.FParts.Scope.ScaleValue(130);
+  AFrame.FParts.Scope.Width := AFrame.FParts.Scope.ScaleValue(cScopeWidth);
   AFrame.FParts.Scope.OnChange := mEvents.ScopeChange;
   AFrame.FParts.LibraryUnits := TCheckBox.Create(AFrame);
   PlaceLeft(AFrame.FParts.LibraryUnits, AFrame.FParts.Top, AFrame.FParts.Scope);
   AFrame.FParts.LibraryUnits.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLibrary);
-  AFrame.FParts.LibraryUnits.Width := AFrame.FParts.LibraryUnits.ScaleValue(120);
+  AFrame.FParts.LibraryUnits.Width := AFrame.FParts.LibraryUnits.ScaleValue(cLibraryUnitsWidth);
   AFrame.FParts.LibraryUnits.OnClick := mEvents.LibraryClick;
 end;
 
@@ -493,7 +517,7 @@ begin
   mCaption.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionCaption);
   mSlider := TAtlasResolutionSlider.Create(AFrame);
   PlaceLeft(mSlider, AFrame.FParts.Top, mCaption);
-  mSlider.Width := mSlider.ScaleValue(140);
+  mSlider.Width := mSlider.ScaleValue(cSliderWidth);
   mSlider.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionHint);
   mSlider.ShowHint := True;
   mSlider.OnTracking := ResolutionTracking(AFrame);
@@ -552,18 +576,19 @@ begin
   mEvents := AFrame.FState.Events;
   mBar := NewBar(AFrame, ASheet);
   AFrame.FParts.MapBar := mBar;
-  AFrame.FParts.Fit := NewButton(AFrame, mBar, nil, TAtlasAnalysisTextId.ArchitectureFit, 90, mEvents.FitClick);
-  AFrame.FParts.Names := NewFlagCheck(AFrame, AFrame.FParts.Fit, TAtlasAnalysisTextId.ArchitectureNames, 120,
-    TAtlasArchMapFlag.ShowNames);
+  AFrame.FParts.Fit := NewButton(AFrame, mBar, nil, TAtlasAnalysisTextId.ArchitectureFit, cFitWidth,
+    mEvents.FitClick);
+  AFrame.FParts.Names := NewFlagCheck(AFrame, AFrame.FParts.Fit, TAtlasAnalysisTextId.ArchitectureNames,
+    cNamesWidth, TAtlasArchMapFlag.ShowNames);
   AFrame.FParts.ImplementationUses := NewFlagCheck(AFrame, AFrame.FParts.Names,
-    TAtlasAnalysisTextId.ArchitectureImplementation, 140, TAtlasArchMapFlag.ShowImplementation);
+    TAtlasAnalysisTextId.ArchitectureImplementation, cImplementationWidth, TAtlasArchMapFlag.ShowImplementation);
   AFrame.FParts.MarkCycles := NewFlagCheck(AFrame, AFrame.FParts.ImplementationUses,
-    TAtlasAnalysisTextId.ArchitectureMarkCycles, 130, TAtlasArchMapFlag.MarkCycles);
+    TAtlasAnalysisTextId.ArchitectureMarkCycles, cMarkCyclesWidth, TAtlasArchMapFlag.MarkCycles);
   AFrame.FParts.Changes := NewFlagCheck(AFrame, AFrame.FParts.MarkCycles, TAtlasAnalysisTextId.ArchitectureShowChanges,
-    150, TAtlasArchMapFlag.ShowChanges);
+    cShowChangesWidth, TAtlasArchMapFlag.ShowChanges);
   AFrame.FParts.Changes.Enabled := False;
   AFrame.FParts.SubsystemsButton := NewButton(AFrame, mBar, AFrame.FParts.Changes,
-    TAtlasAnalysisTextId.ArchitectureSubsystemsButton, 110, mEvents.SubsystemsClick);
+    TAtlasAnalysisTextId.ArchitectureSubsystemsButton, cSubsystemsButtonWidth, mEvents.SubsystemsClick);
   AFrame.FParts.SubsystemsMenu := TPopupMenu.Create(AFrame);
 end;
 
@@ -641,8 +666,8 @@ begin
   // Fragezeichen mit der Erklärung, wie die Teilsysteme entstehen (#1368); nur mit Zuordnung vom Server.
   AFrame.FParts.SubsystemsBar := NewBar(AFrame, mSheet);
   AFrame.FParts.SubsystemsBar.Visible := False;
-  mButton := NewButton(AFrame, AFrame.FParts.SubsystemsBar, nil, TAtlasAnalysisTextId.ArchitectureExplainButton, 28,
-    AFrame.FState.Events.ExplainClick);
+  mButton := NewButton(AFrame, AFrame.FParts.SubsystemsBar, nil, TAtlasAnalysisTextId.ArchitectureExplainButton,
+    cExplainButtonWidth, AFrame.FState.Events.ExplainClick);
   mButton.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
   mButton.ShowHint := True;
   AFrame.FParts.ExplainButton := mButton;
@@ -675,8 +700,8 @@ var
 begin
   mSheet := NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabComparison);
   AFrame.FParts.CompareBar := NewBar(AFrame, mSheet);
-  mButton := NewButton(AFrame, AFrame.FParts.CompareBar, nil, TAtlasAnalysisTextId.ArchitectureClearComparison, 140,
-    AFrame.FState.Events.ClearCompareClick);
+  mButton := NewButton(AFrame, AFrame.FParts.CompareBar, nil, TAtlasAnalysisTextId.ArchitectureClearComparison,
+    cClearComparisonWidth, AFrame.FState.Events.ClearCompareClick);
   mButton.Align := alRight;
   mButton.Enabled := False;
   AFrame.FParts.ClearCompare := mButton;
@@ -814,7 +839,7 @@ begin
       Pointer(NativeInt(-1 - mMember));
   end;
   // Kleine Teilsysteme aufgeklappt, große zu.
-  mGroup.Expanded := Length(AMembers) <= 12;
+  mGroup.Expanded := Length(AMembers) <= cExpandedMembers;
 end;
 
 procedure FillSubsystems(AFrame: TArchFrame);
@@ -989,7 +1014,7 @@ begin
     mItems.AddChild(mGroup, TArchTexts.ChangeCaption(ASection.Kind, mChange)).Data :=
       Pointer(NativeInt(-1 - Max(-1, mChange.Unit_)));
   end;
-  mGroup.Expanded := Length(mShown) <= 20;
+  mGroup.Expanded := Length(mShown) <= cExpandedChanges;
 end;
 
 procedure FillComparisonTree(AFrame: TArchFrame);
@@ -1096,9 +1121,12 @@ begin
   mControls.Assignment.SetBounds(0, 0, mSize.cx + 1, mSize.cy + 1);
   if not mControls.AssignmentBox.Visible then
   begin
-    // Breite nach dem Inhalt (Platz für die Bildlaufleiste), höchstens 40 % der Seite; danach gilt die Ziehleiste.
-    mControls.AssignmentBox.Width := Min(mSize.cx + GetSystemMetrics(SM_CXVSCROLL) + AFrame.ScaleValue(8),
-      Max(AFrame.ScaleValue(120), mControls.AssignmentBox.Parent.Width * 2 div 5));
+    // Breite nach dem Inhalt (Platz für die Bildlaufleiste), höchstens cAssignmentMaxPercent der Seite; danach gilt
+    // die Ziehleiste.
+    mControls.AssignmentBox.Width := Min(
+      mSize.cx + GetSystemMetrics(SM_CXVSCROLL) + AFrame.ScaleValue(cAssignmentMargin),
+      Max(AFrame.ScaleValue(cAssignmentMinWidth),
+        mControls.AssignmentBox.Parent.Width * cAssignmentMaxPercent div 100));
     mControls.AssignmentBox.Visible := True;
     mControls.AssignmentSplit.Left := mControls.AssignmentBox.Left + mControls.AssignmentBox.Width + 1;
     mControls.AssignmentSplit.Visible := True;

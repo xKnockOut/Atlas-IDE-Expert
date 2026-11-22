@@ -37,7 +37,7 @@ uses
   Atlas.Core.Debug.EventBreak,
   Atlas.Core.Debug.EventBreakWatch,
   Atlas.UI.Debug.EventBreak,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasEventBreakSessionFunc = reference to function: TLspSession;

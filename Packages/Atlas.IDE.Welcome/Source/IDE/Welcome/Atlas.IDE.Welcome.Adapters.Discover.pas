@@ -33,7 +33,7 @@ uses
   Atlas.Core.Commands.Tips,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Discover,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
 
 type

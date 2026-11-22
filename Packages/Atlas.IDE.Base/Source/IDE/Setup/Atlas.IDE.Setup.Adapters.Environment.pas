@@ -46,7 +46,7 @@ uses
   Atlas.Plugin.Product.Version,
   Atlas.Core.Projects.Contract,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.UI.Strings,
   Atlas.UI.Setup.Strings,
   Atlas.IDE.Commands.KeyMap,

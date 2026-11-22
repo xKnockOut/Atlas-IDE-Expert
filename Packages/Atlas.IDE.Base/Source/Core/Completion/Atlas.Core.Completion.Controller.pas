@@ -273,7 +273,7 @@ implementation
 uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Timing,
+  Atlas.Plugin.Diagnostics.Timing,
   System.Math,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Presentation,

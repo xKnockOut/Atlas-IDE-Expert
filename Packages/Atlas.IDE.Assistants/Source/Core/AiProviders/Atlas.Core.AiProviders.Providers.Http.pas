@@ -16,7 +16,7 @@ uses
   System.Classes,
   System.Net.URLClient,
   System.Net.HttpClient,
-  Atlas.Core.Diagnostics.BoundedStream,
+  Atlas.Plugin.Diagnostics.BoundedStream,
   Atlas.Core.AiProviders.Contract;
 
 type
@@ -48,7 +48,7 @@ uses
   System.Types,
   System.Math,
   Atlas.Plugin.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.AsyncWait;
+  Atlas.Plugin.Diagnostics.AsyncWait;
 
 { TAtlasAiHttpClient }
 

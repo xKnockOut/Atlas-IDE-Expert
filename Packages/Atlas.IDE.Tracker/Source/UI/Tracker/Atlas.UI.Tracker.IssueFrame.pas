@@ -160,7 +160,7 @@ uses
   Atlas.Core.Tracker.AiSummary,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueBoxes,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 {$R *.dfm}
 

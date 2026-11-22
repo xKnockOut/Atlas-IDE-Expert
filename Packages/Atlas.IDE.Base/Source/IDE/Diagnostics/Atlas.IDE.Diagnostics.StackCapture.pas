@@ -21,7 +21,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Hangs;
+  Atlas.Plugin.Diagnostics.Hangs;
 
 type
   TAtlasIdeStackCapture = class
@@ -49,7 +49,7 @@ uses
   System.SyncObjs,
   Atlas.Text.MapFile,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.StackRing,
+  Atlas.Plugin.Diagnostics.StackRing,
   Atlas.Plugin.Files.TextFile;
 
 type

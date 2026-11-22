@@ -32,7 +32,7 @@ uses
   Atlas.Core.Tracker.Attach,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasIssueAttachHooks = record

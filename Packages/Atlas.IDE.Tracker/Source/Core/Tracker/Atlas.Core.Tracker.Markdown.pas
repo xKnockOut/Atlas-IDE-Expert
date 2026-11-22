@@ -124,13 +124,20 @@ const
   cTaskOpen = '☐';
   cTaskDone = '☑';
   cQuoteMarker = '│';
-  // Grenzen nach CommonMark.
+  /// <summary>Spalten eines Tabulators beim Zählen der Einrückung.</summary>
   cTabWidth = 4;
-  cMaxIndent = 3;
+  /// <summary>Ab dieser Einrückung ist eine Zeile eingerückter Code; Blöcke dürfen weniger haben.</summary>
   cCodeIndent = 4;
-  cMinMarkers = 3;
+  cMaxBlockIndent = cCodeIndent - 1;
+  /// <summary>Mindestzahl der Zeichen eines Codezauns und einer Trennlinie.</summary>
+  cMinFenceLength = 3;
+  cMinRuleMarks = 3;
   cMaxHeadingLevel = 6;
-  cMaxOrderedDigits = 9;
+  /// <summary>Höchstens so viele Ziffern hat die Nummer eines Listenpunkts.</summary>
+  cMaxListDigits = 9;
+  /// <summary>Aufgabenkästchen „[ ]“ bzw. „[x]“.</summary>
+  cTaskBoxLength = 3;
+  cImageStart = '![';
 
 { TAtlasMarkdownLink }
 
@@ -178,12 +185,12 @@ begin
   Result := False;
   AFence := '';
   ALanguage := '';
-  if Indent(ALine) > cMaxIndent then
+  if Indent(ALine) > cMaxBlockIndent then
   begin
     Exit;
   end;
   mText := TrimLeft(ALine);
-  if Length(mText) < cMinMarkers then
+  if Length(mText) < cMinFenceLength then
   begin
     Exit;
   end;
@@ -197,7 +204,7 @@ begin
   begin
     Inc(mCount);
   end;
-  if mCount < cMinMarkers then
+  if mCount < cMinFenceLength then
   begin
     Exit;
   end;
@@ -218,7 +225,7 @@ var
   mText: string;
 begin
   mText := Trim(ALine);
-  Result := (Indent(ALine) <= cMaxIndent) and (Length(mText) >= Length(AFence)) and
+  Result := (Indent(ALine) <= cMaxBlockIndent) and (Length(mText) >= Length(AFence)) and
     (mText = StringOfChar(AFence[1], Length(mText)));
 end;
 
@@ -229,7 +236,7 @@ begin
   Result := False;
   ALevel := 0;
   AText := '';
-  if Indent(ALine) > cMaxIndent then
+  if Indent(ALine) > cMaxBlockIndent then
   begin
     Exit;
   end;
@@ -263,7 +270,7 @@ var
   mIndex, mCount: Integer;
 begin
   Result := False;
-  if Indent(ALine) > cMaxIndent then
+  if Indent(ALine) > cMaxBlockIndent then
   begin
     Exit;
   end;
@@ -289,7 +296,7 @@ begin
       Exit;
     end;
   end;
-  Result := mCount >= cMinMarkers;
+  Result := mCount >= cMinRuleMarks;
 end;
 
 function QuoteOf(const ALine: string; out AText: string): Boolean;
@@ -298,7 +305,7 @@ var
 begin
   AText := '';
   mText := TrimLeft(ALine);
-  Result := (Indent(ALine) <= cMaxIndent) and (mText <> '') and (mText[1] = '>');
+  Result := (Indent(ALine) <= cMaxBlockIndent) and (mText <> '') and (mText[1] = '>');
   if not Result then
   begin
     Exit;
@@ -330,7 +337,7 @@ begin
     Exit;
   end;
   mDigits := 0;
-  while (mDigits < Length(AText)) and (mDigits < cMaxOrderedDigits) and CharInSet(AText[mDigits + 1], ['0'..'9']) do
+  while (mDigits < Length(AText)) and (mDigits < cMaxListDigits) and CharInSet(AText[mDigits + 1], ['0'..'9']) do
   begin
     Inc(mDigits);
   end;
@@ -358,7 +365,7 @@ begin
   end;
   if Result <> TAtlasMarkdownTask.None then
   begin
-    AText := Trim(Copy(AText, Length('[ ]') + 1, MaxInt));
+    AText := Trim(Copy(AText, cTaskBoxLength + 1, MaxInt));
   end;
 end;
 
@@ -523,7 +530,7 @@ var
   mClose, mStop: Integer;
 begin
   mText := Trim(ALine);
-  if HtmlImageOf(mText, AAlt, AUrl) or not StartsStr('![', mText) then
+  if HtmlImageOf(mText, AAlt, AUrl) or not StartsStr(cImageStart, mText) then
   begin
     Exit(AUrl <> '');
   end;
@@ -538,7 +545,7 @@ begin
   begin
     Exit(False);
   end;
-  AAlt := Copy(mText, Length('![') + 1, mClose - Length('![') - 1);
+  AAlt := Copy(mText, Length(cImageStart) + 1, mClose - Length(cImageStart) - 1);
   AUrl := Trim(Copy(mText, mClose + 2, mStop - mClose - 2));
   // Titel nach der Adresse: ![a](bild.png "Titel").
   if Pos(' ', AUrl) > 0 then

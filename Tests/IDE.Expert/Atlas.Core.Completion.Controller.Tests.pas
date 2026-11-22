@@ -87,7 +87,7 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Providers.Fixed,
-  Atlas.Core.Diagnostics.Timing,
+  Atlas.Plugin.Diagnostics.Timing,
   Atlas.Tests.Wait;
 
 type

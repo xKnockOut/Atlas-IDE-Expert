@@ -36,7 +36,7 @@ uses
   System.Types,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Welcome.Sections,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.IDE.Contracts.Tests,

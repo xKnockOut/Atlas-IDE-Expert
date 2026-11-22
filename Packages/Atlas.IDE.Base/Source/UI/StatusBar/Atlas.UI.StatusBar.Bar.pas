@@ -45,7 +45,7 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Menus,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
   Atlas.Core.StatusBar.Layout,
@@ -234,7 +234,7 @@ uses
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.EditorToolbar.Glyphs,
   Atlas.UI.Problems.KindIcon,
-  Atlas.Core.Status.Signal;
+  Atlas.Plugin.Status.Signal;
 
 const
   /// <summary>Zähler von links nach rechts; Index wie in KindSpans.</summary>

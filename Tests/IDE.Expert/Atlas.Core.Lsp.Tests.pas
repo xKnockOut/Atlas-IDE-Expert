@@ -125,7 +125,7 @@ uses
   Atlas.Plugin.Files.WatchedChanges,
   Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.Core.Lsp.Framing,
   Atlas.Core.Lsp.Contract;
 

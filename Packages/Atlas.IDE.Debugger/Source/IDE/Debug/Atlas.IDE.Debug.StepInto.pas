@@ -35,7 +35,7 @@ uses
   Atlas.Core.Debug.StepInto,
   Atlas.Core.Debug.StepIntoJump,
   Atlas.UI.Debug.StepInto,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.IDE.Editor.CaretPopup;
 
 type

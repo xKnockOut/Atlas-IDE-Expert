@@ -26,7 +26,7 @@ uses
   Atlas.UI.Debug.MethodBreakpoints,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.BreakpointListMenu,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 

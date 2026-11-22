@@ -96,7 +96,7 @@ uses
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.StepsBar,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 const
   cDebugConfiguration = 'Debug';

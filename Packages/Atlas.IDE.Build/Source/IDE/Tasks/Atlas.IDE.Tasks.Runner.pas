@@ -164,7 +164,7 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Files.DataFile,

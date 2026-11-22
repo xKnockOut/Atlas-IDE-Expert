@@ -141,6 +141,7 @@
         <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas"/>
         <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Suggestions.pas"/>
         <DCCReference Include="Source\UI\Analysis\Atlas.UI.Analysis.SettingsSection.pas"/>
+        <DCCReference Include="Source\UI\Analysis\Atlas.UI.Analysis.FormLayout.pas"/>
         <DCCReference Include="Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas"/>
         <DCCReference Include="Source\IDE\Analysis\Atlas.IDE.Analysis.MetricsLens.pas"/>
         <DCCReference Include="Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas">

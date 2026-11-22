@@ -22,7 +22,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Core.Diagnostics.Hangs;
+  Atlas.Plugin.Diagnostics.Hangs;
 
 type
   TAtlasHangProc = reference to procedure(const AHang: TAtlasHang);

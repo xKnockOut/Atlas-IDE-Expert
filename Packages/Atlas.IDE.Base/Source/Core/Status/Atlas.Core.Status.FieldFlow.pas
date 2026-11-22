@@ -33,7 +33,7 @@ uses
   System.SysUtils,
   System.Types,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Status.Contract;
+  Atlas.Plugin.Status.Contract;
 
 type
   /// <summary>Liefert die aktuellen Einstellungen des Plugins.</summary>
@@ -117,8 +117,8 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Status.FieldPlan;
 
 /// <summary>AOnClick mit APoint unter dem Wächter; nichts ohne Handler.</summary>

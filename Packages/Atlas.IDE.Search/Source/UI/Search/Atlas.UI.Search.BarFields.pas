@@ -74,7 +74,7 @@ implementation
 
 uses
   Atlas.UI.Search.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 { TAtlasSearchBarFields }
 

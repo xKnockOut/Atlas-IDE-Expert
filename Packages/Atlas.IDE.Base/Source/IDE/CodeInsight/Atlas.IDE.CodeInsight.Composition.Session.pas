@@ -13,7 +13,7 @@ uses
   Atlas.Core.Lsp.CrashCases,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.IDE.Commands.Palette,

@@ -146,6 +146,9 @@ uses
   Atlas.Core.Tracker.QueryTest,
   Atlas.Text.Json;
 
+const
+  cHttps = 'https://';
+
 { TAtlasTrackerConnection }
 
 /// <summary>Adresse ohne Leerraum außen und ohne „/“ am Ende.</summary>
@@ -387,11 +390,11 @@ begin
   begin
     Exit(TAtlasTrackerUrlCheck.Empty);
   end;
-  if not SameText(Copy(mUrl, 1, 8), 'https://') then
+  if not SameText(Copy(mUrl, 1, Length(cHttps)), cHttps) then
   begin
     Exit(TAtlasTrackerUrlCheck.NotHttps);
   end;
-  mHost := Copy(mUrl, 9, MaxInt);
+  mHost := Copy(mUrl, Length(cHttps) + 1, MaxInt);
   mSlash := Pos('/', mHost);
   if mSlash > 0 then
   begin
@@ -502,7 +505,7 @@ begin
     Exit(TAtlasTrackerTokenState.Unreachable);
   end;
   case AStatus of
-    200:
+    TAtlasHttpStatus.cOk:
       // Eine Anmeldeseite oder ein Proxy antwortet auch mit 200; geprüft ist nur, wer den Benutzer nennt.
       if HasLogin(AText) then
       begin
@@ -512,7 +515,7 @@ begin
       begin
         Result := TAtlasTrackerTokenState.Unexpected;
       end;
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result := TAtlasTrackerTokenState.Rejected;
   else
     Result := TAtlasTrackerTokenState.Unexpected;

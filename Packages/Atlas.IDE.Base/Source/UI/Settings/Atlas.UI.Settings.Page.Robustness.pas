@@ -42,7 +42,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,

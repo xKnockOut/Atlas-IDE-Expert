@@ -26,16 +26,25 @@ implementation
 uses
   System.SysUtils;
 
+const
+  /// <summary>Stunden der Tageszeiten (siehe TAtlasDayTime); übrige Stunden sind Nacht.</summary>
+  cMorningFrom = 5;
+  cMorningTo = 10;
+  cDayFrom = 11;
+  cDayTo = 17;
+  cEveningFrom = 18;
+  cEveningTo = 23;
+
 { TAtlasWelcomeGreeting }
 
 class function TAtlasWelcomeGreeting.DayTimeOf(AHour: Integer): TAtlasDayTime;
 begin
   case AHour of
-    5..10:
+    cMorningFrom..cMorningTo:
       Result := TAtlasDayTime.Morning;
-    11..17:
+    cDayFrom..cDayTo:
       Result := TAtlasDayTime.Day;
-    18..23:
+    cEveningFrom..cEveningTo:
       Result := TAtlasDayTime.Evening;
   else
     Result := TAtlasDayTime.Night;

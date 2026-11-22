@@ -34,10 +34,10 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Vcl.Menus,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Status.IndexStore,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Status.IndexStore,
   Atlas.Plugin.Files.Format;
 
 type
