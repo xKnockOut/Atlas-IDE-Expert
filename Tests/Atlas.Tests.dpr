@@ -2824,7 +2824,7 @@ uses
   Atlas.Common.Editing.FreeFields.Types.Tests in 'Common\Editing\Atlas.Common.Editing.FreeFields.Types.Tests.pas',
   Atlas.Common.Editing.PropertyFromAccessors.Tests in 'Common\Editing\Atlas.Common.Editing.PropertyFromAccessors.Tests.pas',
   Atlas.Common.Lsp.PropertyFromAccessors.Tests in 'Common\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.Tests.pas',
-  Atlas.Common.Editing.ClassLayout.Tests in 'Common\Editing\Atlas.Common.Editing.ClassLayout.Tests.pas',
+  Atlas.Common.Pascal.ClassLayout.Tests in 'Common\Pascal\Atlas.Common.Pascal.ClassLayout.Tests.pas',
   Atlas.Common.Editing.ExtractInterface.Tests in 'Common\Editing\Atlas.Common.Editing.ExtractInterface.Tests.pas',
   Atlas.Common.Lsp.ExtractInterface.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExtractInterface.Tests.pas',
   Atlas.Common.Editing.ExtractSuperclass.Tests in 'Common\Editing\Atlas.Common.Editing.ExtractSuperclass.Tests.pas',

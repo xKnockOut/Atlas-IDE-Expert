@@ -34,7 +34,7 @@ implementation
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Editing.InlineAccessor,
   Atlas.Common.Localization.Texts;
 

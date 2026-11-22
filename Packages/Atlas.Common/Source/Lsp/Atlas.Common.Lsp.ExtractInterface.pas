@@ -80,7 +80,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Documents.TextChanges,
