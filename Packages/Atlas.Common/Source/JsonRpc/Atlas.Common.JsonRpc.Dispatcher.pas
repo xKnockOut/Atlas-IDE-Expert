@@ -85,6 +85,8 @@ type
     /// laufen darf; ein vorhandener Handler (auch ein normaler) wird ersetzt.
     /// </summary>
     procedure RegisterConcurrentRequest(const AMethod: string; const AHandler: TJsonRpcConcurrentRequestHandler);
+    /// <summary>Wie RegisterConcurrentRequest für einen Handler, der das Abbruchsignal nicht braucht.</summary>
+    procedure RegisterConcurrentPlain(const AMethod: string; const AHandler: TJsonRpcRequestHandler);
     /// <summary>Registriert den Handler einer Benachrichtigung; ein vorhandener wird ersetzt.</summary>
     procedure RegisterNotification(const AMethod: string; const AHandler: TJsonRpcNotificationHandler);
     /// <summary>
@@ -655,6 +657,18 @@ begin
   FRequestHandlers.Remove(AMethod);
   FConcurrentWhen.Remove(AMethod);
   FConcurrentHandlers.AddOrSetValue(AMethod, AHandler);
+end;
+
+procedure TJsonRpcDispatcher.RegisterConcurrentPlain(const AMethod: string; const AHandler: TJsonRpcRequestHandler);
+var
+  mHandler: TJsonRpcRequestHandler;
+begin
+  mHandler := AHandler;
+  RegisterConcurrentRequest(AMethod,
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    begin
+      Result := mHandler(AParams);
+    end);
 end;
 
 procedure TJsonRpcDispatcher.RegisterNotification(const AMethod: string; const AHandler: TJsonRpcNotificationHandler);

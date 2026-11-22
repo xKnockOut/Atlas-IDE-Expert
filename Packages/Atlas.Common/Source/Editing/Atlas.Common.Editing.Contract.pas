@@ -217,6 +217,8 @@ type
     Summary: string;
     Example: string;
     Execute: TSlashExecute;
+    class function Create(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
+      static;
   end;
 
   /// <summary>Trägt einen Befehl ins Register ein; so melden die Befehls-Units ihre Befehle, ohne das Register
@@ -244,6 +246,17 @@ implementation
 
 uses
   System.StrUtils;
+
+{ TSlashCommand }
+
+class function TSlashCommand.Create(const AName, ASummary, AExample: string;
+  const AExecute: TSlashExecute): TSlashCommand;
+begin
+  Result.Name := AName;
+  Result.Summary := ASummary;
+  Result.Example := AExample;
+  Result.Execute := AExecute;
+end;
 
 { TUsesContext }
 

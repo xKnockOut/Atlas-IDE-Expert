@@ -23,6 +23,8 @@ type
     procedure UnwrappedDropsParens;
     [Test]
     procedure RunHoldsScopeOfContext;
+    [Test]
+    procedure ExpressionRunKnowsDeclaredType;
   end;
 
 implementation
@@ -95,6 +97,18 @@ type
 function TTypedScopeRunProbe.Scope: TTypedScope;
 begin
   Result := FScope;
+end;
+
+type
+  /// <summary>Macht den Typnamen eines Laufs mit Ausdruckstypen für den Test sichtbar.</summary>
+  TTypedExpressionRunProbe = class(TTypedExpressionRun)
+  public
+    function TypeOfNode(ANode: TSyntaxNode): string;
+  end;
+
+function TTypedExpressionRunProbe.TypeOfNode(ANode: TSyntaxNode): string;
+begin
+  Result := TypeNameOf(ANode);
 end;
 
 { TTypedScopeTests }
@@ -188,6 +202,24 @@ begin
       // Der Lauf legt den Typbereich der Unit an; Destroy gibt ihn frei (der Leckmonitor prüft das).
       Assert.IsNotNull(mRun.Scope);
       Assert.AreEqual('mZahl + 1', mRun.Scope.Text(TSyntaxNodes.Unparen(Find(mTree.Root, TSyntaxKind.ParenExpr, '', 0))));
+    finally
+      mRun.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TTypedScopeTests.ExpressionRunKnowsDeclaredType;
+var
+  mTree: TSyntaxTree;
+  mRun: TTypedExpressionRunProbe;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mRun := TTypedExpressionRunProbe.Create(Context(mTree), nil);
+    try
+      Assert.AreEqual('Integer', mRun.TypeOfNode(Find(mTree.Root, TSyntaxKind.Identifier, 'mZahl', 0)));
     finally
       mRun.Free;
     end;

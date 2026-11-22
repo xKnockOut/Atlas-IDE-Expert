@@ -10,19 +10,15 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
   Process,
-  Atlas.Common.Compiler.Contract;
+  Atlas.Common.Compiler.Contract,
+  Atlas.Common.Compiler.ProcessRuns;
 
 type
   TProcessRunner = class(TInterfacedObject, ICompilerProcess)
   private
-    FLock: TObject;
-    FRunning: TList<TProcess>;
-    FCancelled: Boolean;
-    function Track(AProcess: TProcess): Boolean;
-    procedure Untrack(AProcess: TProcess);
-    function WasCancelled: Boolean;
+    /// <summary>Laufende Prozesse für Cancel.</summary>
+    FProcesses: TCompilerProcessList<TProcess>;
   public
     constructor Create;
     destructor Destroy; override;
@@ -42,104 +38,27 @@ const
 constructor TProcessRunner.Create;
 begin
   inherited Create;
-  FLock := TObject.Create;
-  FRunning := TList<TProcess>.Create;
+  FProcesses := TCompilerProcessList<TProcess>.Create;
 end;
 
 destructor TProcessRunner.Destroy;
 begin
-  FRunning.Free;
-  FLock.Free;
+  FProcesses.Free;
   inherited;
 end;
 
-function TProcessRunner.Track(AProcess: TProcess): Boolean;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := not FCancelled;
-    if Result then
-    begin
-      FRunning.Add(AProcess);
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TProcessRunner.Untrack(AProcess: TProcess);
-begin
-  TMonitor.Enter(FLock);
-  try
-    FRunning.Remove(AProcess);
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-function TProcessRunner.WasCancelled: Boolean;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FCancelled;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
 procedure TProcessRunner.Cancel;
-var
-  mRunning: TProcess;
 begin
-  TMonitor.Enter(FLock);
-  try
-    FCancelled := True;
-    // Unter der Sperre: Run entfernt einen Prozess erst (Untrack), bevor es ihn freigibt.
-    for mRunning in FRunning do
+  FProcesses.Cancel(
+    procedure(const AProcess: TProcess)
     begin
-      mRunning.Terminate(cCancelledExitCode);
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
+      AProcess.Terminate(cCancelledExitCode);
+    end);
 end;
 
 procedure RaiseCancelled(const ARequest: TCompilerRequest);
 begin
   raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
-end;
-
-/// <summary>Zeile ABytes[AFrom .. AFrom + ACount - 1] (UTF-8, ohne #13 am Ende) an AOnLine.</summary>
-procedure EmitLine(const ABytes: TBytes; AFrom, ACount: Integer; const AOnLine: TCompilerLineEvent);
-var
-  mLine: string;
-begin
-  mLine := TEncoding.UTF8.GetString(ABytes, AFrom, ACount);
-  if (mLine <> '') and (mLine[Length(mLine)] = #13) then
-  begin
-    SetLength(mLine, Length(mLine) - 1);
-  end;
-  if Assigned(AOnLine) then
-  begin
-    AOnLine(mLine);
-  end;
-end;
-
-/// <summary>Alle vollständigen Zeilen aus APending ausgeben; der angefangene Rest bleibt in APending.</summary>
-procedure EmitCompleteLines(var APending: TBytes; const AOnLine: TCompilerLineEvent);
-var
-  mStart, mLineEnd: Integer;
-begin
-  mStart := 0;
-  for mLineEnd := 0 to High(APending) do
-  begin
-    if APending[mLineEnd] = 10 then
-    begin
-      EmitLine(APending, mStart, mLineEnd - mStart, AOnLine);
-      mStart := mLineEnd + 1;
-    end;
-  end;
-  APending := Copy(APending, mStart, MaxInt);
 end;
 
 /// <summary>Liest die Ausgabe des Kindprozesses bis zum Ende und gibt sie zeilenweise an AOnLine.</summary>
@@ -159,11 +78,11 @@ begin
     mStart := Length(mPending);
     SetLength(mPending, mStart + mBytesRead);
     Move(mBuffer[0], mPending[mStart], mBytesRead);
-    EmitCompleteLines(mPending, AOnLine);
+    TCompilerOutputLines.EmitComplete(mPending, TEncoding.UTF8, AOnLine);
   until False;
   if Length(mPending) > 0 then
   begin
-    EmitLine(mPending, 0, Length(mPending), AOnLine);
+    TCompilerOutputLines.Emit(mPending, 0, Length(mPending), TEncoding.UTF8, AOnLine);
   end;
 end;
 
@@ -196,14 +115,14 @@ function TProcessRunner.Run(const ARequest: TCompilerRequest; const AOnLine: TCo
 var
   mChild: TProcess;
 begin
-  if WasCancelled then
+  if FProcesses.WasCancelled then
   begin
     RaiseCancelled(ARequest);
   end;
   mChild := TProcess.Create(nil);
   try
     StartChild(mChild, ARequest);
-    if not Track(mChild) then
+    if not FProcesses.Track(mChild) then
     begin
       mChild.Terminate(cCancelledExitCode);
     end;
@@ -212,9 +131,9 @@ begin
       mChild.WaitOnExit;
       Result := mChild.ExitCode;
     finally
-      Untrack(mChild);
+      FProcesses.Untrack(mChild);
     end;
-    if WasCancelled then
+    if FProcesses.WasCancelled then
     begin
       RaiseCancelled(ARequest);
     end;

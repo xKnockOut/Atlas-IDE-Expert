@@ -37,12 +37,15 @@ type
     procedure ListSplitAndSearched;
     [Test]
     procedure SectionKeywords;
+    [Test]
+    procedure SameTypesFolderKeyRelativeTo;
   end;
 
 implementation
 
 uses
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  System.SysUtils;
 
 { TTextNamesTests }
 
@@ -147,6 +150,20 @@ procedure TTextNamesTests.SectionKeywords;
 begin
   Assert.AreEqual('interface', TTextNames.SectionKeyword(True));
   Assert.AreEqual('implementation', TTextNames.SectionKeyword(False));
+end;
+
+procedure TTextNamesTests.SameTypesFolderKeyRelativeTo;
+begin
+  Assert.IsTrue(TTextNames.SameTypes(TArray<string>.Create('TList<Integer>', 'string'),
+    TArray<string>.Create('tlist< integer >', 'String')));
+  Assert.IsFalse(TTextNames.SameTypes(TArray<string>.Create('Integer'), TArray<string>.Create('Integer', 'Byte')));
+  Assert.IsFalse(TTextNames.SameTypes(TArray<string>.Create('Integer'), TArray<string>.Create('Int64')));
+  Assert.AreEqual('c:\projekte\atlas', TTextNames.FolderKey('C:/Projekte/Atlas/'));
+  Assert.AreEqual('\', TTextNames.FolderKey('\'));
+  Assert.AreEqual('Src' + PathDelim + 'A.pas',
+    TTextNames.RelativeTo('Root', 'Root' + PathDelim + 'Src' + PathDelim + 'A.pas'));
+  Assert.AreEqual('Anders' + PathDelim + 'A.pas', TTextNames.RelativeTo('Root', 'Anders' + PathDelim + 'A.pas'));
+  Assert.AreEqual('A.pas', TTextNames.RelativeTo('', 'A.pas'));
 end;
 
 initialization

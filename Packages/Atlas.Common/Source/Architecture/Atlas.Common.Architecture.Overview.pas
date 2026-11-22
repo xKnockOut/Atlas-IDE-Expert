@@ -335,18 +335,6 @@ begin
   Result := AIndex < AOtherIndex;
 end;
 
-/// <summary>Die Nummern 0..ACount-1.</summary>
-function AllIndices(ACount: Integer): TArray<Integer>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, ACount);
-  for mIndex := 0 to ACount - 1 do
-  begin
-    Result[mIndex] := mIndex;
-  end;
-end;
-
 /// <summary>AMembers nach Zentralität sortieren: die zentralste Unit zuerst.</summary>
 procedure SortByCentrality(const AUnits: TArray<TOverviewUnit>; var AMembers: TArray<Integer>);
 var
@@ -827,7 +815,7 @@ begin
     end;
     FResult.Units[mIndex] := mItem;
   end;
-  FResult.Central := AllIndices(Length(FResult.Units));
+  FResult.Central := TTextArrays.Indices(Length(FResult.Units));
   SortByCentrality(FResult.Units, FResult.Central);
 end;
 
@@ -1094,7 +1082,7 @@ begin
   SetLength(FPartKey, Length(FResult.Subsystems));
   mParts := UnitParts(FResult.Units);
   mFamilies := FamilyUnits(FResult.Subsystems, FFamily);
-  mGlobal := TSubsystemNaming.PartCounts(mParts, AllIndices(Length(FResult.Units)));
+  mGlobal := TSubsystemNaming.PartCounts(mParts, TTextArrays.Indices(Length(FResult.Units)));
   try
     for mIndex := 0 to High(FResult.Subsystems) do
     begin

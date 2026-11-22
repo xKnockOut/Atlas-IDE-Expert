@@ -115,15 +115,6 @@ begin
   Result.Options.Tests := TCoreAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms, AReadText);
 end;
 
-function EnsureUnitOf(AGroup: TCoreWorkspaceGroup): TEnsureUnitFunc;
-begin
-  Result :=
-    function(const AUnitName: string): Boolean
-    begin
-      Result := AGroup.EnsureUnit(AUnitName);
-    end;
-end;
-
 /// <summary>Betroffene Tests über den Index der Gruppe; Fehler der Versionsverwaltung als EMcpToolError.</summary>
 function FindAffected(AGroup: TCoreWorkspaceGroup; const ASettings: TServerSettings;
   const AQuery: TCoreAffectedQuery; const ARequest: TAffectedRequest; const AReadText: TReferenceReadText):
@@ -134,7 +125,7 @@ var
 begin
   // In einer Interface-Variablen: als const-Argument würde das Objekt nie freigegeben.
   mAccess := TShellPlatformAdapters.VcsAccess;
-  mResolver := TNameResolver.Create(AGroup.Index, EnsureUnitOf(AGroup));
+  mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
   try
     mResolver.Namespaces := AGroup.Main.State.Namespaces;
     try

@@ -56,7 +56,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.IncludeFiles,
   Core.Linter.Output,
-  Atlas.Text.Files;
+  Core.Workspace.Listings;
 
 { TLinterFiles }
 
@@ -225,23 +225,8 @@ begin
 end;
 
 class function TLinterFiles.ReadText(const AFileName: string; out AText: string): Boolean;
-var
-  mFormat: TFileFormat;
 begin
-  try
-    AText := TFileEncoding.LoadFromFile(AFileName, mFormat);
-    Result := True;
-  except
-    on E: Exception do
-    begin
-      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
-      begin
-        raise;
-      end;
-      AText := '';
-      Result := False;
-    end;
-  end;
+  Result := TCoreFileAccess.ReadText(AFileName, AText);
 end;
 
 class function TLinterFiles.IndexOf(const AFiles: TArray<string>; const ASources: TCheckSourceFunc): ISymbolIndex;

@@ -29,7 +29,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Index.TypeMembers;
+  Atlas.Common.Index.TypeMembers,
+  Atlas.Text.Names;
 
 const
   cKunden =
@@ -126,8 +127,8 @@ end;
 
 procedure TTypeMembersTests.ShortName;
 begin
-  Assert.AreEqual('TList', TTypeMembers.ShortName('System.Generics.Collections.TList<T>'));
-  Assert.AreEqual('TKunde', TTypeMembers.ShortName('TKunde'));
+  Assert.AreEqual('TList', TTextNames.BareTypeName('System.Generics.Collections.TList<T>'));
+  Assert.AreEqual('TKunde', TTextNames.BareTypeName('TKunde'));
 end;
 
 initialization

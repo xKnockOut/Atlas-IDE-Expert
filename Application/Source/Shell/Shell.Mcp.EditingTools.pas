@@ -37,7 +37,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
   Core.Texts,
-  Core.WorkspaceGroup;
+  Core.WorkspaceGroup,
+  Atlas.Text.Names;
 
 type
 {$SCOPEDENUMS ON}
@@ -502,7 +503,7 @@ begin
         Exit;
       end;
       Result := TFileChecker.CheckText(BuiltinRules, AGroup.Main.Configuration.Settings,
-        TMcpCheckTools.RelativeTo(ARoot, AFileName), AText, TCheckOrigin.ForFile(AProject, ASource, AFileName),
+        TTextNames.RelativeTo(ARoot, AFileName), AText, TCheckOrigin.ForFile(AProject, ASource, AFileName),
         mScopes);
     end;
 end;

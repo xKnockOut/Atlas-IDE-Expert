@@ -109,20 +109,6 @@ begin
   end;
 end;
 
-function IsField(ASource: TCommandSource; const AName: string): Boolean;
-var
-  mSymbol: TIndexSymbol;
-begin
-  for mSymbol in ASource.UnitIndex.Symbols do
-  begin
-    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Name, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function ExecuteTry(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   mSource: TCommandSource;
@@ -147,7 +133,7 @@ begin
         Break;
       end;
     end;
-    if (mVariable = '') or IsField(mSource, mVariable) then
+    if (mVariable = '') or mSource.HasField(mVariable) then
     begin
       Exit(Fail(cTexts[TWrapCommandsText.NoLocalObjectIsCreated].Text, AReason));
     end;
@@ -613,34 +599,28 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterWrapCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('try', cTexts[TWrapCommandsText.TryFinallyFreeAroundThe].Text, '/try', ExecuteTry));
-  ARegister(Command('lock', cTexts[TWrapCommandsText.LockTheFollowingStatements].Text, '/lock', ExecuteLock));
-  ARegister(Command('sync', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadQueue].Text, '/sync',
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('try', cTexts[TWrapCommandsText.TryFinallyFreeAroundThe].Text, '/try', ExecuteTry));
+  ARegister(TSlashCommand.Create('lock', cTexts[TWrapCommandsText.LockTheFollowingStatements].Text, '/lock',
+      ExecuteLock));
+  ARegister(TSlashCommand.Create('sync', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadQueue].Text, '/sync',
+      function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Queue', AEdits, AReason);
     end));
-  ARegister(Command('sync!', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadSynchronize].Text, '/sync!',
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('sync!', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadSynchronize].Text,
+      '/sync!', function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Synchronize', AEdits, AReason);
     end));
-  ARegister(Command('ifdef', cTexts[TWrapCommandsText.FollowingStatementsInIFDEF].Text, '/ifdef DEBUG', ExecuteIfdef));
-  ARegister(Command('except', cTexts[TWrapCommandsText.GuardTheFollowingStatementsWith].Text, '/except',
-    ExecuteExcept));
-  ARegister(Command('region', cTexts[TWrapCommandsText.FollowingStatementsInREGION].Text,
-    cTexts[TWrapCommandsText.RegionLoad].Text, ExecuteRegion));
-  ARegister(Command('case', cTexts[TWrapCommandsText.AddTheMissingValuesOf].Text, '/case', ExecuteCase));
+  ARegister(TSlashCommand.Create('ifdef', cTexts[TWrapCommandsText.FollowingStatementsInIFDEF].Text, '/ifdef DEBUG',
+      ExecuteIfdef));
+  ARegister(TSlashCommand.Create('except', cTexts[TWrapCommandsText.GuardTheFollowingStatementsWith].Text, '/except',
+      ExecuteExcept));
+  ARegister(TSlashCommand.Create('region', cTexts[TWrapCommandsText.FollowingStatementsInREGION].Text,
+      cTexts[TWrapCommandsText.RegionLoad].Text, ExecuteRegion));
+  ARegister(TSlashCommand.Create('case', cTexts[TWrapCommandsText.AddTheMissingValuesOf].Text, '/case', ExecuteCase));
 end;
 
 initialization

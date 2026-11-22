@@ -115,11 +115,7 @@ const
 
 class function TCoreAffectedTests.FileReader: TReferenceReadText;
 begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
-    end;
+  Result := TCoreBootstrap.SourceReader();
 end;
 
 class function TCoreAffectedTests.OffMessage: string;

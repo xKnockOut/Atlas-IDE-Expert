@@ -145,19 +145,6 @@ begin
   Result := TJSONNumber(mValue).AsDouble;
 end;
 
-/// <summary>Pfad aus einer file-URI oder unverändert, wenn AText schon ein Pfad ist.</summary>
-function PathOf(const AText: string): string;
-begin
-  if StartsText('file:', AText) then
-  begin
-    Result := TDocumentUris.ToPath(AText);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 { TLspArchitecture }
 
 constructor TLspArchitecture.Create(AService: TArchitectureService; const ASourceFor: TLspArchitectureSourceFunc);
@@ -179,7 +166,7 @@ begin
   ARoot := '';
   AEnabled := False;
   mFileName := TJsonRead.TrimmedText(AParams, 'uri');
-  mFileName := PathOf(mFileName);
+  mFileName := TDocumentUris.PathOrSelf(mFileName);
   mScope := TJsonRead.TrimmedText(AParams, 'scope');
   if (mScope <> '') and (mScope <> 'project') and (mScope <> 'projectGroup') then
   begin
@@ -211,11 +198,7 @@ procedure TLspArchitecture.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // Bei einigen tausend Units dauert die Rechnung Sekundenbruchteile: nebenläufig, damit Editoranfragen nicht
   // warten.
-  ADispatcher.RegisterConcurrentRequest(cMethod,
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    begin
-      Result := Request(AParams);
-    end);
+  ADispatcher.RegisterConcurrentPlain(cMethod, Request);
 end;
 
 function TLspArchitecture.Execute(const AArguments: TJSONArray): TJSONValue;
@@ -251,7 +234,7 @@ end;
 /// '' ohne Vergleich. Relativ zum Projekt.</summary>
 function BaselineFile(const AParams: TJSONObject; const ARoot: string; const ASettings: TServerSettings): string;
 begin
-  Result := PathOf(TJsonRead.TrimmedText(AParams, 'compareWith'));
+  Result := TDocumentUris.PathOrSelf(TJsonRead.TrimmedText(AParams, 'compareWith'));
   if (Result = '') and TJsonRead.FlagOr(AParams, 'compare', True) then
   begin
     Result := ASettings.ArchitectureBaseline;
@@ -498,7 +481,7 @@ begin
   Result := '';
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
   begin
-    Result := PathOf(AArguments.Items[1].Value);
+    Result := TDocumentUris.PathOrSelf(AArguments.Items[1].Value);
   end;
   if Result = '' then
   begin

@@ -382,25 +382,7 @@ end;
 
 type
   /// <summary>Eine Datei für das Nachziehen; gibt einen selbst geparsten Baum frei.</summary>
-  TSyncFile = class
-  public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    OwnsTree: Boolean;
-    destructor Destroy; override;
-  end;
-
-{ TSyncFile }
-
-destructor TSyncFile.Destroy;
-begin
-  if OwnsTree then
-  begin
-    Tree.Free;
-  end;
-  inherited;
-end;
+  TSyncFile = TLspSourceFile;
 
 function Where(const AFileName, AText: string; AOffset: Integer): string;
 begin

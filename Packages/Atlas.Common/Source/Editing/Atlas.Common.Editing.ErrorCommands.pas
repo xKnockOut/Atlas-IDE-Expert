@@ -342,21 +342,12 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterErrorCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('guard', cTexts[TErrorCommandsText.InsertNilChecksForParameters].Text,
-    cTexts[TErrorCommandsText.GuardACustomer].Text,
-    ExecuteGuard));
-  ARegister(Command('raise', cTexts[TErrorCommandsText.RaiseAnException].Text,
-    cTexts[TErrorCommandsText.RaiseEImportErrorFileMissing].Text, ExecuteRaise));
+  ARegister(TSlashCommand.Create('guard', cTexts[TErrorCommandsText.InsertNilChecksForParameters].Text,
+      cTexts[TErrorCommandsText.GuardACustomer].Text, ExecuteGuard));
+  ARegister(TSlashCommand.Create('raise', cTexts[TErrorCommandsText.RaiseAnException].Text,
+      cTexts[TErrorCommandsText.RaiseEImportErrorFileMissing].Text, ExecuteRaise));
 end;
 
 initialization

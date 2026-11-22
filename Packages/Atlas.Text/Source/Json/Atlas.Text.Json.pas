@@ -42,6 +42,8 @@ type
     class function Strings(const AItems: array of string): TJSONArray; static;
     /// <summary>AValue unter AName in AObject; ein leerer Wert bleibt weg.</summary>
     class procedure AddText(AObject: TJSONObject; const AName, AValue: string); static;
+    /// <summary>true unter AName in AObject, wenn AValue; sonst bleibt der Eintrag weg.</summary>
+    class procedure AddFlag(AObject: TJSONObject; const AName: string; AValue: Boolean); static;
     /// <summary>Zeitpunkt AValue (UTC) als ISO 8601 mit „Z“; '' für 0 und davor. Gegenstück zu
     /// TJsonRead.IsoTime.</summary>
     class function IsoTime(AValue: TDateTime): string; static;
@@ -75,6 +77,8 @@ type
     class function ParseArray(const AJson: string): TJSONArray; static;
     /// <summary>AValue als Objekt, sonst nil.</summary>
     class function AsObject(AValue: TJSONValue): TJSONObject; static;
+    /// <summary>Erstes Element von AArray, wenn es ein String ist; sonst (auch ohne Array) ''.</summary>
+    class function FirstText(AArray: TJSONArray): string; static;
     /// <summary>Der Wert AName in AObject; nil, wenn AObject nil ist oder den Namen nicht hat.</summary>
     class function Value(AObject: TJSONObject; const AName: string): TJSONValue; static;
     /// <summary>Zeichenkette AName, sonst ''. Eine Zahl liefert ihren Text (TJSONNumber erbt bis Delphi 12
@@ -228,6 +232,14 @@ begin
   end;
 end;
 
+class procedure TJsonBuild.AddFlag(AObject: TJSONObject; const AName: string; AValue: Boolean);
+begin
+  if AValue then
+  begin
+    AObject.AddPair(AName, TJSONBool.Create(True));
+  end;
+end;
+
 class function TJsonBuild.IsoTime(AValue: TDateTime): string;
 begin
   Result := '';
@@ -351,6 +363,15 @@ begin
   if AValue is TJSONObject then
   begin
     Result := TJSONObject(AValue);
+  end;
+end;
+
+class function TJsonRead.FirstText(AArray: TJSONArray): string;
+begin
+  Result := '';
+  if (AArray <> nil) and (AArray.Count > 0) and (AArray.Items[0] is TJSONString) then
+  begin
+    Result := AArray.Items[0].Value;
   end;
 end;
 

@@ -52,7 +52,8 @@ uses
   Core.Linter.Settings,
   Core.Linter.Files,
   Core.Linter.Index,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Core.Workspace.Listings;
 
 type
 {$SCOPEDENUMS ON}
@@ -99,15 +100,6 @@ begin
   end;
 end;
 
-function ReaderFunc(): TReferenceReadText;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := TLinterFiles.ReadText(AFileName, AText);
-    end;
-end;
-
 /// <summary>Eingaben der Abfrage-Datenquelle für --check: ohne Namensräume und Nachladen von Units.</summary>
 function QueryInput(const AIndex: ISymbolIndex; const ARoot: string; const AFiles: TArray<string>): TLspQueryInput;
 begin
@@ -115,7 +107,7 @@ begin
   Result.Index := AIndex;
   Result.Root := ARoot;
   Result.Files := AFiles;
-  Result.ReadText := ReaderFunc();
+  Result.ReadText := TCoreFileAccess.ReadTextFunc();
 end;
 
 /// <summary>Abfragedienst über AIndex und AFiles; eigene Routine, damit der Dienst nicht den Rahmen festhält, in

@@ -48,7 +48,8 @@ uses
   Atlas.Common.Architecture.UsesLocator,
   Core.Linter.Output,
   Core.Linter.Files,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Core.Workspace.Listings;
 
 type
 {$SCOPEDENUMS ON}
@@ -63,15 +64,6 @@ const
     En: '--architecture expects a .md, .html or .json file'),
     (De: 'Architekturübersicht ist ausgeschaltet (architecture.enabled in settings.json)';
     En: 'Architecture overview is turned off (architecture.enabled in settings.json)'));
-
-function ReaderFunc(): TUsesTextReader;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := TLinterFiles.ReadText(AFileName, AText);
-    end;
-end;
 
 function DefinesFunc(const ASources: TCheckSourceFunc): TUsesDefinesFunc;
 begin
@@ -95,7 +87,7 @@ var
 begin
   mIndex := TLinterFiles.IndexOf(TLinterFiles.Collect(ATarget.Target, ASettings, AHost.InstalledVersions, mRoot,
     mSources), mSources);
-  mService := TArchitectureService.Create(mIndex, ReaderFunc(), DefinesFunc(mSources));
+  mService := TArchitectureService.Create(mIndex, TCoreFileAccess.ReadTextFunc(), DefinesFunc(mSources));
   try
     mRequest := TArchitectureRequest.FromSettings(ASettings);
     mRequest.Root := mRoot;

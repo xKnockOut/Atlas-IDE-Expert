@@ -20,7 +20,7 @@ uses
   Shell.Composition.Contract;
 
 type
-  TShellTestUnitReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TShellTestUnitReadText = TDocumentReadText;
   /// <summary>Arbeitsbereich zur Datei; nur unter der Sperre der Arbeitsbereiche aufzurufen.</summary>
   TShellTestUnitPickFunc = reference to function(const AFileName: string): TCoreWorkspace;
 
@@ -145,10 +145,7 @@ end;
 
 function TShellTestUnits.SourceTextOrEmpty(const AFileName: string): string;
 begin
-  if not FServices.ReadText(AFileName, Result) then
-  begin
-    Result := '';
-  end;
+  Result := TDocumentReads.TextOrEmpty(FServices.ReadText, AFileName);
 end;
 
 function TShellTestUnits.DocumentOrFileExists(const AFileName: string): Boolean;

@@ -28,7 +28,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   {$SCOPEDENUMS ON}
@@ -45,14 +46,11 @@ type
     TypeName: string;
   end;
 
-  TLspInlineValues = class
+  TLspInlineValues = class(TLspIndexFeature)
   public const
     cMethod = 'textDocument/inlineValue';
     cMaxValues = 500;
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function GetNamespaces: TArray<string>;
@@ -195,10 +193,7 @@ end;
 constructor TLspInlineValues.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AEnsureUnit);
 end;
 
 function TLspInlineValues.GetNamespaces: TArray<string>;
