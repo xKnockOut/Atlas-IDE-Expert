@@ -36,8 +36,8 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Reassigned,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

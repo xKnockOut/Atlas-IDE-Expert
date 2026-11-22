@@ -45,7 +45,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.Extract.Shared,
   Atlas.Common.Editing.Extract.Method,

@@ -19,7 +19,7 @@ procedure RegisterHotspotTools(const AContext: TMcpToolContext);
 implementation
 
 uses
-  Shell.WorkspaceGroup,
+  Core.WorkspaceGroup,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Hotspots.Service,
   System.JSON,
@@ -116,7 +116,7 @@ begin
   Result.Options.Tests := TShellAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms, AReadText);
 end;
 
-function EnsureUnitOf(AGroup: TShellWorkspaceGroup): TEnsureUnitFunc;
+function EnsureUnitOf(AGroup: TCoreWorkspaceGroup): TEnsureUnitFunc;
 begin
   Result :=
     function(const AUnitName: string): Boolean
@@ -126,7 +126,7 @@ begin
 end;
 
 /// <summary>Betroffene Tests über den Index der Gruppe; Fehler der Versionsverwaltung als EMcpToolError.</summary>
-function FindAffected(AGroup: TShellWorkspaceGroup; const ASettings: TServerSettings;
+function FindAffected(AGroup: TCoreWorkspaceGroup; const ASettings: TServerSettings;
   const AQuery: TShellAffectedQuery; const ARequest: TAffectedRequest; const AReadText: TReferenceReadText):
   TAffectedResult;
 var

@@ -1,4 +1,4 @@
-﻿unit Shell.Workspace.Parts.Tests;
+﻿unit Core.Workspace.Parts.Tests;
 
 // Teile des Arbeitsbereichs: Ordnerlisten, Vorgaben und Ereignisse, Projektwahl (#46, #615), Stand des Projekts,
 // Index-Cache (#49, #62), Indexauftrag (#648), Regelprojekte (#1112, #1378), Aufträge (#40, #550), Packages und
@@ -11,7 +11,7 @@ uses
 
 type
   [TestFixture]
-  TShellWorkspacePartsTests = class
+  TCoreWorkspacePartsTests = class
   private
     FFolder: string;
   public
@@ -65,22 +65,22 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Projects.MissingUnit,
-  Atlas.Common.Projects.Adapters.UnitLookup,
+  Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Checker,
   Core.Compiler,
-  Shell.Workspace.Listings,
-  Shell.Workspace.Setup,
-  Shell.Workspace.Build,
-  Shell.Workspace.State,
-  Shell.Workspace.Cache,
-  Shell.Workspace.Requests,
-  Shell.Workspace.RuleProjects,
-  Shell.Workspace.Jobs,
-  Shell.Workspace.Packages,
-  Shell.Workspace.Loader;
+  Core.Workspace.Listings,
+  Core.Workspace.Setup,
+  Core.Workspace.Build,
+  Core.Workspace.State,
+  Core.Workspace.Cache,
+  Core.Workspace.Requests,
+  Core.Workspace.RuleProjects,
+  Core.Workspace.Jobs,
+  Core.Workspace.Packages,
+  Core.Workspace.Loader;
 
 function ProjectWith(const AConfigs, APlatforms: TArray<string>): TProjectInfo;
 begin
@@ -91,15 +91,15 @@ begin
   Result.Platforms := APlatforms;
 end;
 
-{ TShellWorkspacePartsTests }
+{ TCoreWorkspacePartsTests }
 
-procedure TShellWorkspacePartsTests.SetUp;
+procedure TCoreWorkspacePartsTests.SetUp;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'atlas-ws-parts-' + TGUID.NewGuid.ToString);
   TDirectory.CreateDirectory(FFolder);
 end;
 
-procedure TShellWorkspacePartsTests.TearDown;
+procedure TCoreWorkspacePartsTests.TearDown;
 begin
   TSharedUnitListings.Clear;
   if TDirectory.Exists(FFolder) then
@@ -109,7 +109,7 @@ begin
   FFolder := '';
 end;
 
-procedure TShellWorkspacePartsTests.ListingsAndFileAccess;
+procedure TCoreWorkspacePartsTests.ListingsAndFileAccess;
 var
   mText: string;
 begin
@@ -120,27 +120,27 @@ begin
   Assert.AreEqual(2, Integer(Length(TSharedUnitListings.ListUnitFiles(FFolder))), '.pas und .dcu');
   Assert.AreEqual(2, Integer(Length(TSharedUnitListings.ListUnitFilesFunc()(FFolder))), 'als Rückruf');
   Assert.AreEqual(0, Integer(Length(TSharedUnitListings.List(TPath.Combine(FFolder, 'Fehlt')))));
-  Assert.AreEqual(1, Integer(Length(TShellFileAccess.Folders(FFolder))), 'Unterordner');
-  Assert.AreEqual(1, Integer(Length(TShellFileAccess.PasFilesFunc()(FFolder))));
-  Assert.IsTrue(TShellFileAccess.ExistsFunc()(TPath.Combine(FFolder, 'A.pas')));
-  Assert.IsTrue(TShellFileAccess.ReadTextFunc()(TPath.Combine(FFolder, 'A.pas'), mText));
+  Assert.AreEqual(1, Integer(Length(TCoreFileAccess.Folders(FFolder))), 'Unterordner');
+  Assert.AreEqual(1, Integer(Length(TCoreFileAccess.PasFilesFunc()(FFolder))));
+  Assert.IsTrue(TCoreFileAccess.ExistsFunc()(TPath.Combine(FFolder, 'A.pas')));
+  Assert.IsTrue(TCoreFileAccess.ReadTextFunc()(TPath.Combine(FFolder, 'A.pas'), mText));
   Assert.AreEqual('unit A;', mText);
-  Assert.IsFalse(TShellFileAccess.ReadText(TPath.Combine(FFolder, 'Fehlt.pas'), mText));
+  Assert.IsFalse(TCoreFileAccess.ReadText(TPath.Combine(FFolder, 'Fehlt.pas'), mText));
   Assert.AreEqual('', mText);
 end;
 
-procedure TShellWorkspacePartsTests.SetupDefaultsAndEvents;
+procedure TCoreWorkspacePartsTests.SetupDefaultsAndEvents;
 var
-  mSetup: TShellWorkspaceSetup;
-  mEvents: TShellWorkspaceEvents;
+  mSetup: TCoreWorkspaceSetup;
+  mEvents: TCoreWorkspaceEvents;
   mContext: TIdeProjectContext;
   mSeen: string;
 begin
   mSetup := nil;
   mEvents := nil;
   try
-    mSetup := TShellWorkspaceSetup.Create;
-    mEvents := TShellWorkspaceEvents.Create;
+    mSetup := TCoreWorkspaceSetup.Create;
+    mEvents := TCoreWorkspaceEvents.Create;
     Assert.AreNotEqual('', mSetup.CacheRoot, 'Vorgabe-Ordner der Caches');
     Assert.AreEqual(0, Integer(Length(mSetup.PackageFolders)), 'Ohne Rückruf keine Ordner');
     Assert.IsFalse(mSetup.IdeContext('P.dproj', mContext), 'Ohne IDE-Projekte kein Kontext');
@@ -160,10 +160,10 @@ begin
   end;
 end;
 
-procedure TShellWorkspacePartsTests.BuildChoiceSelectsAndDrops;
+procedure TCoreWorkspacePartsTests.BuildChoiceSelectsAndDrops;
 var
-  mSetup: TShellWorkspaceSetup;
-  mBuild: TShellBuildChoice;
+  mSetup: TCoreWorkspaceSetup;
+  mBuild: TCoreBuildChoice;
   mLogger: ILogger;
   mOptions: TDprojOptions;
   mError: string;
@@ -171,9 +171,9 @@ begin
   mSetup := nil;
   mBuild := nil;
   try
-    mSetup := TShellWorkspaceSetup.Create;
+    mSetup := TCoreWorkspaceSetup.Create;
     mLogger := TLogger.Create;
-    mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
+    mBuild := TCoreBuildChoice.Create('Test', mLogger, mSetup);
     Assert.IsFalse(mBuild.Chosen);
     Assert.IsFalse(mBuild.Select(ProjectWith(['Debug'], ['Win32']), 'Release', '', nil, False, mError));
     Assert.AreNotEqual('', mError, 'Grund für die unbekannte Konfiguration');
@@ -195,10 +195,10 @@ begin
   end;
 end;
 
-procedure TShellWorkspacePartsTests.BuildChoiceNormalizesDefines;
+procedure TCoreWorkspacePartsTests.BuildChoiceNormalizesDefines;
 var
-  mSetup: TShellWorkspaceSetup;
-  mBuild: TShellBuildChoice;
+  mSetup: TCoreWorkspaceSetup;
+  mBuild: TCoreBuildChoice;
   mLogger: ILogger;
   mProject: TProjectInfo;
   mError: string;
@@ -206,10 +206,10 @@ begin
   mSetup := nil;
   mBuild := nil;
   try
-    mSetup := TShellWorkspaceSetup.Create;
+    mSetup := TCoreWorkspaceSetup.Create;
     mLogger := TLogger.Create;
-    mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
-    Assert.AreEqual('DEBUG;TRACE', string.Join(';', TShellBuildChoice.NormalizedDefines([' debug', 'TRACE', '',
+    mBuild := TCoreBuildChoice.Create('Test', mLogger, mSetup);
+    Assert.AreEqual('DEBUG;TRACE', string.Join(';', TCoreBuildChoice.NormalizedDefines([' debug', 'TRACE', '',
       'Debug '])));
     mProject := ProjectWith(nil, nil);
     mProject.Defines := TArray<string>.Create('ALT');
@@ -224,31 +224,31 @@ begin
   end;
 end;
 
-procedure TShellWorkspacePartsTests.StateKnowsFilesAndProject;
+procedure TCoreWorkspacePartsTests.StateKnowsFilesAndProject;
 var
-  mSetup: TShellWorkspaceSetup;
-  mState: TShellProjectState;
-  mFiles: TShellIndexedFiles;
-  mInstall: TShellInstallInfo;
+  mSetup: TCoreWorkspaceSetup;
+  mState: TCoreProjectState;
+  mFiles: TCoreIndexedFiles;
+  mInstall: TCoreInstallInfo;
   mProject: TProjectInfo;
   mDefines: TArray<string>;
 begin
   mSetup := nil;
   mState := nil;
   try
-    mSetup := TShellWorkspaceSetup.Create;
-    mState := TShellProjectState.Create(mSetup);
+    mSetup := TCoreWorkspaceSetup.Create;
+    mState := TCoreProjectState.Create(mSetup);
     Assert.IsFalse(mState.Project(mProject), 'Vor dem Laden kein Projekt');
     Assert.IsFalse(mState.Defines(mDefines));
     Assert.AreEqual(Int64(-1), mState.Stats.LastIndexMs, 'Noch kein Lauf');
     mSetup.ProjectFile := 'Fest.dproj';
     Assert.AreEqual('Fest.dproj', mState.ProjectFileName, 'Feste Projektdatei vor dem Laden');
     mSetup.ProjectFile := '';
-    mInstall := Default(TShellInstallInfo);
+    mInstall := Default(TCoreInstallInfo);
     mInstall.LibraryPaths := TArray<string>.Create('Lib');
     mState.SetProject(ProjectWith(nil, nil), mInstall);
     Assert.AreEqual('P.dproj', mState.ProjectFileName);
-    mFiles := Default(TShellIndexedFiles);
+    mFiles := Default(TCoreIndexedFiles);
     mFiles.Defines := TArray<string>.Create('X');
     mFiles.SearchPaths := TArray<string>.Create('Such');
     mFiles.ProjectFiles := TArray<string>.Create('C:\P\Haupt.pas');
@@ -266,23 +266,23 @@ begin
   end;
 end;
 
-procedure TShellWorkspacePartsTests.CacheDiscardsFiles;
+procedure TCoreWorkspacePartsTests.CacheDiscardsFiles;
 var
-  mFiles: TShellCacheFiles;
+  mFiles: TCoreCacheFiles;
   mLogger: ILogger;
-  mSetup: TShellWorkspaceSetup;
-  mEvents: TShellWorkspaceEvents;
-  mCache: TShellWorkspaceCache;
+  mSetup: TCoreWorkspaceSetup;
+  mEvents: TCoreWorkspaceEvents;
+  mCache: TCoreWorkspaceCache;
   mCacheFile: string;
   mProcesses: TArray<TIndexProcessInfo>;
 begin
-  mFiles := TShellCacheFiles.Create(TPath.Combine(FFolder, 'p.idx'), TPath.Combine(FFolder, 'l.idx'),
+  mFiles := TCoreCacheFiles.Create(TPath.Combine(FFolder, 'p.idx'), TPath.Combine(FFolder, 'l.idx'),
     TPath.Combine(FFolder, 's.idx'));
   TFile.WriteAllText(mFiles.ProjectFile, 'x');
   TFile.WriteAllText(mFiles.LibraryFile, 'x');
   TFile.WriteAllText(mFiles.SearchFile, 'x');
   mLogger := TLogger.Create;
-  TShellWorkspaceCache.DiscardFiles(mFiles, mLogger)();
+  TCoreWorkspaceCache.DiscardFiles(mFiles, mLogger)();
   Assert.IsFalse(TFile.Exists(mFiles.ProjectFile));
   Assert.IsFalse(TFile.Exists(mFiles.LibraryFile));
   Assert.IsFalse(TFile.Exists(mFiles.SearchFile));
@@ -290,9 +290,9 @@ begin
   mEvents := nil;
   mCache := nil;
   try
-    mSetup := TShellWorkspaceSetup.Create;
-    mEvents := TShellWorkspaceEvents.Create;
-    mCache := TShellWorkspaceCache.Create('Test', mLogger, mSetup, mEvents);
+    mSetup := TCoreWorkspaceSetup.Create;
+    mEvents := TCoreWorkspaceEvents.Create;
+    mCache := TCoreWorkspaceCache.Create('Test', mLogger, mSetup, mEvents);
     Assert.IsFalse(mCache.Processes(mCacheFile, mProcesses), 'Ohne Cache keine Prozesse');
     Assert.IsFalse(mCache.Writes);
     mCache.SetFiles(mFiles);
@@ -304,27 +304,27 @@ begin
   end;
 end;
 
-procedure TShellWorkspacePartsTests.RequestsKeyAndExclude;
+procedure TCoreWorkspacePartsTests.RequestsKeyAndExclude;
 var
-  mFiles: TShellIndexFiles;
+  mFiles: TCoreIndexFiles;
   mKey: string;
   mProject: TProjectInfo;
 begin
-  Assert.IsTrue(TShellIndexRequests.ExcludedOf(['**/Gen/**'])('C:/P/Gen/A.pas'), 'Muster trifft');
-  Assert.IsFalse(TShellIndexRequests.ExcludedOf(['**/Gen/**'])('C:/P/Src/A.pas'));
-  Assert.IsFalse(TShellIndexRequests.ExcludedOf(nil)('C:/P/Src/A.pas'), 'Ohne Muster nichts ausgeschlossen');
-  mFiles := Default(TShellIndexFiles);
+  Assert.IsTrue(TCoreIndexRequests.ExcludedOf(['**/Gen/**'])('C:/P/Gen/A.pas'), 'Muster trifft');
+  Assert.IsFalse(TCoreIndexRequests.ExcludedOf(['**/Gen/**'])('C:/P/Src/A.pas'));
+  Assert.IsFalse(TCoreIndexRequests.ExcludedOf(nil)('C:/P/Src/A.pas'), 'Ohne Muster nichts ausgeschlossen');
+  mFiles := Default(TCoreIndexFiles);
   mFiles.Files := TArray<string>.Create('a.pas');
   mKey := mFiles.Key('sig');
   mFiles.SearchFiles := TArray<string>.Create('b.pas');
   Assert.AreNotEqual(mKey, mFiles.Key('sig'), 'Neue Suchpfad-Unit ändert den Schlüssel');
   mProject := Default(TProjectInfo);
-  Assert.AreEqual('C:\Ordner', TShellIndexRequests.CacheOriginOf(mProject, 'C:\Ordner'), 'Ohne Projekt der Ordner');
+  Assert.AreEqual('C:\Ordner', TCoreIndexRequests.CacheOriginOf(mProject, 'C:\Ordner'), 'Ohne Projekt der Ordner');
   mProject.FileName := 'P.dproj';
-  Assert.AreEqual('P.dproj', TShellIndexRequests.CacheOriginOf(mProject, 'C:\Ordner'));
+  Assert.AreEqual('P.dproj', TCoreIndexRequests.CacheOriginOf(mProject, 'C:\Ordner'));
 end;
 
-procedure TShellWorkspacePartsTests.RuleProjectsMembersAndWarnings;
+procedure TCoreWorkspacePartsTests.RuleProjectsMembersAndWarnings;
 var
   mProject: TProjectInfo;
   mUnit: TProjectUnit;
@@ -335,50 +335,51 @@ begin
   mProject.Units := [mUnit];
   mProject.Properties := [TPair<string, string>.Create('DCC_ConsoleTarget', 'true'),
     TPair<string, string>.Create('DCC_WARNINGS', ' TRUE '), TPair<string, string>.Create('Sonst', 'x')];
-  Assert.IsTrue(TShellRuleProjects.IsMember(mProject, 'u.pas'));
-  Assert.IsTrue(TShellRuleProjects.IsMember(mProject, 'P.dpr'), 'Hauptquelltext gehört dazu');
-  Assert.IsFalse(TShellRuleProjects.IsMember(mProject, 'V.pas'));
-  Assert.AreEqual('true', TShellRuleProjects.ConsoleTargetOf(mProject));
-  Assert.AreEqual('WARNINGS=true', string.Join(';', TShellRuleProjects.ProjectWarningsOf(mProject)));
+  Assert.IsTrue(TCoreRuleProjects.IsMember(mProject, 'u.pas'));
+  Assert.IsTrue(TCoreRuleProjects.IsMember(mProject, 'P.dpr'), 'Hauptquelltext gehört dazu');
+  Assert.IsFalse(TCoreRuleProjects.IsMember(mProject, 'V.pas'));
+  Assert.AreEqual('true', TCoreRuleProjects.ConsoleTargetOf(mProject));
+  Assert.AreEqual('WARNINGS=true', string.Join(';', TCoreRuleProjects.ProjectWarningsOf(mProject)));
 end;
 
-procedure TShellWorkspacePartsTests.JobsWithoutInstallation;
+procedure TCoreWorkspacePartsTests.JobsWithoutInstallation;
 var
   mJob: TCoreCompileJob;
   mError: string;
   mSetup: TMissingUnitSetup;
 begin
-  Assert.IsFalse(TShellWorkspaceJobs.CompileJobOf(ProjectWith(nil, nil), Default(TShellInstallInfo),
+  Assert.IsFalse(TCoreWorkspaceJobs.CompileJobOf(ProjectWith(nil, nil), Default(TCoreInstallInfo),
     Default(TCompilerSettings), mJob, mError));
   Assert.AreEqual('Delphi-Installation nicht gefunden', mError);
-  mSetup := TShellWorkspaceJobs.MissingUnitSetupOf(ProjectWith(nil, nil), Default(TShellInstallInfo));
+  mSetup := TCoreWorkspaceJobs.MissingUnitSetupOf(ProjectWith(nil, nil), Default(TCoreInstallInfo),
+    Default(TCoreWorkspaceFactories));
   Assert.AreEqual('P.dproj', mSetup.Project.FileName);
   Assert.AreEqual(0, Integer(Length(mSetup.Platforms)), 'Ohne Installation keine Plattformen');
   Assert.AreEqual(0, Integer(Length(mSetup.Targets)), 'Ohne Konfigurationen keine Ziele');
 end;
 
-procedure TShellWorkspacePartsTests.GroupOutputsSkipOwnAndUnreadable;
+procedure TCoreWorkspacePartsTests.GroupOutputsSkipOwnAndUnreadable;
 var
   mLogger: ILogger;
   mOutputs: TArray<TUnitLookupGroupOutput>;
 begin
   mLogger := TLogger.Create;
-  Assert.AreEqual(0, Integer(Length(TShellPackageLookups.GroupOutputsFor('Eigen.dproj', ['Eigen.dproj',
+  Assert.AreEqual(0, Integer(Length(TCorePackageLookups.GroupOutputsFor('Eigen.dproj', ['Eigen.dproj',
     TPath.Combine(FFolder, 'Fehlt.dproj')], Default(TDprojOptions), mLogger))));
   // Package der Gruppe ohne Ausgabeordner: zählt mit seinem Namen für requires.
   TFile.WriteAllText(TPath.Combine(FFolder, 'Atlas.Text.dproj'), '<Project/>', TEncoding.UTF8);
-  mOutputs := TShellPackageLookups.GroupOutputsFor('Eigen.dproj', [TPath.Combine(FFolder, 'Atlas.Text.dproj')],
+  mOutputs := TCorePackageLookups.GroupOutputsFor('Eigen.dproj', [TPath.Combine(FFolder, 'Atlas.Text.dproj')],
     Default(TDprojOptions), mLogger);
   Assert.AreEqual(1, Integer(Length(mOutputs)));
   Assert.AreEqual('Atlas.Text', mOutputs[0].ProjectName);
   Assert.AreEqual('', mOutputs[0].DcuFolder);
 end;
 
-procedure TShellWorkspacePartsTests.LoaderFindsProjectFile;
+procedure TCoreWorkspacePartsTests.LoaderFindsProjectFile;
 var
-  mSetup: TShellWorkspaceSetup;
-  mBuild: TShellBuildChoice;
-  mLoader: TShellProjectLoader;
+  mSetup: TCoreWorkspaceSetup;
+  mBuild: TCoreBuildChoice;
+  mLoader: TCoreProjectLoader;
   mLogger: ILogger;
   mSettings: TServerSettings;
 begin
@@ -387,10 +388,10 @@ begin
   mBuild := nil;
   mLoader := nil;
   try
-    mSetup := TShellWorkspaceSetup.Create;
+    mSetup := TCoreWorkspaceSetup.Create;
     mLogger := TLogger.Create;
-    mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
-    mLoader := TShellProjectLoader.Create('Test', FFolder, '', mLogger, mSetup, mBuild);
+    mBuild := TCoreBuildChoice.Create('Test', mLogger, mSetup);
+    mLoader := TCoreProjectLoader.Create('Test', FFolder, '', mLogger, mSetup, mBuild);
     mSettings := Default(TServerSettings);
     Assert.AreEqual(TPath.Combine(FFolder, 'Einzig.dproj'), mLoader.FindProjectFile(mSettings));
     mSetup.ProjectFile := TPath.Combine(FFolder, 'Fehlt.dproj');
@@ -402,11 +403,11 @@ begin
   end;
 end;
 
-procedure TShellWorkspacePartsTests.LoaderResolvesProjectAgainstConfigFolder;
+procedure TCoreWorkspacePartsTests.LoaderResolvesProjectAgainstConfigFolder;
 var
-  mSetup: TShellWorkspaceSetup;
-  mBuild: TShellBuildChoice;
-  mLoader: TShellProjectLoader;
+  mSetup: TCoreWorkspaceSetup;
+  mBuild: TCoreBuildChoice;
+  mLoader: TCoreProjectLoader;
   mLogger: ILogger;
   mSettings: TServerSettings;
   mSub: string;
@@ -418,10 +419,10 @@ begin
   mBuild := nil;
   mLoader := nil;
   try
-    mSetup := TShellWorkspaceSetup.Create;
+    mSetup := TCoreWorkspaceSetup.Create;
     mLogger := TLogger.Create;
-    mBuild := TShellBuildChoice.Create('Test', mLogger, mSetup);
-    mLoader := TShellProjectLoader.Create('Test', mSub, IncludeTrailingPathDelimiter(FFolder), mLogger, mSetup,
+    mBuild := TCoreBuildChoice.Create('Test', mLogger, mSetup);
+    mLoader := TCoreProjectLoader.Create('Test', mSub, IncludeTrailingPathDelimiter(FFolder), mLogger, mSetup,
       mBuild);
     mSettings := Default(TServerSettings);
     mSettings.Project := 'Gruppe.dproj';
@@ -434,6 +435,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellWorkspacePartsTests);
+  TDUnitX.RegisterTestFixture(TCoreWorkspacePartsTests);
 
 end.

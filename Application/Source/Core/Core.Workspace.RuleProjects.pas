@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.RuleProjects;
+﻿unit Core.Workspace.RuleProjects;
 
-// Internals-Rolle Shell: Projektkontext einer Datei für die Prüfregeln (#926, #943, #956, #1055, #1112), aus
+// Host-Rolle Core: Projektkontext einer Datei für die Prüfregeln (#926, #943, #956, #1055, #1112), aus
 // einem oder mehreren geladenen Projekten, und die Dienste eines Arbeitsbereichs für die Prüfregeln (#1112).
 
 interface
@@ -11,11 +11,11 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.ProjectFiles,
-  Shell.Workspace.Setup,
-  Shell.Workspace.State;
+  Core.Workspace.Setup,
+  Core.Workspace.State;
 
 type
-  TShellRuleProjects = class
+  TCoreRuleProjects = class
   public
     /// <summary>Anwendungsart, Projektname und automatisch erzeugte Formulare für AFileName aus AProject
     /// (#926, #943, #956, #1055); sonst nur der Dateiname. Liest die .dpr über AReadText.</summary>
@@ -42,7 +42,7 @@ type
     /// Namespaces, Unit-Suche, Packages und die Namenskonvention aus dem Projektkontext der IDE. Ein Weg für
     /// LSP-Server, MCP und Linter; projektweite Dienste (ProjectFiles, Nachladen über alle Arbeitsbereiche)
     /// ergänzt, wer mehrere Arbeitsbereiche hält. Threadsicher.</summary>
-    class function ServicesOf(AState: TShellProjectState; ASetup: TShellWorkspaceSetup; const AIndex: ISymbolIndex;
+    class function ServicesOf(AState: TCoreProjectState; ASetup: TCoreWorkspaceSetup; const AIndex: ISymbolIndex;
       const AEnsureUnit: TEnsureUnitFunc): TRuleServices; static;
   end;
 
@@ -55,11 +55,11 @@ uses
   Atlas.Common.Rules.WarnSwitches,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
-  Shell.Workspace.Packages;
+  Core.Workspace.Packages;
 
-{ TShellRuleProjects }
+{ TCoreRuleProjects }
 
-class function TShellRuleProjects.RuleProjectOf(const AProject: TProjectInfo; const AFileName: string;
+class function TCoreRuleProjects.RuleProjectOf(const AProject: TProjectInfo; const AFileName: string;
   const AReadText: TRuleProjectReadText): TCheckProject;
 var
   mMainText: string;
@@ -80,7 +80,7 @@ begin
   Result.ProjectMainSource := AProject.MainSource;
 end;
 
-class function TShellRuleProjects.RuleProjectOf(const AProjects: TArray<TProjectInfo>; const AFileName: string;
+class function TCoreRuleProjects.RuleProjectOf(const AProjects: TArray<TProjectInfo>; const AFileName: string;
   const AReadText: TRuleProjectReadText): TCheckProject;
 var
   mProjects: TArray<TCheckProject>;
@@ -94,7 +94,7 @@ begin
   Result := MergeRuleProjects(mProjects, AFileName);
 end;
 
-class function TShellRuleProjects.MergeRuleProjects(const AProjects: TArray<TCheckProject>;
+class function TCoreRuleProjects.MergeRuleProjects(const AProjects: TArray<TCheckProject>;
   const AFileName: string): TCheckProject;
 var
   mProject: TCheckProject;
@@ -123,7 +123,7 @@ begin
   end;
 end;
 
-class function TShellRuleProjects.IsMember(const AProject: TProjectInfo; const AFileName: string): Boolean;
+class function TCoreRuleProjects.IsMember(const AProject: TProjectInfo; const AFileName: string): Boolean;
 var
   mUnit: TProjectUnit;
 begin
@@ -134,7 +134,7 @@ begin
   end;
 end;
 
-class function TShellRuleProjects.ConsoleTargetOf(const AProject: TProjectInfo): string;
+class function TCoreRuleProjects.ConsoleTargetOf(const AProject: TProjectInfo): string;
 var
   mPair: TPair<string, string>;
 begin
@@ -148,7 +148,7 @@ begin
   end;
 end;
 
-class function TShellRuleProjects.ProjectWarningsOf(const AProject: TProjectInfo): TArray<string>;
+class function TCoreRuleProjects.ProjectWarningsOf(const AProject: TProjectInfo): TArray<string>;
 var
   mPair: TPair<string, string>;
   mEntry: string;
@@ -164,7 +164,7 @@ begin
   end;
 end;
 
-class function TShellRuleProjects.ServicesOf(AState: TShellProjectState; ASetup: TShellWorkspaceSetup;
+class function TCoreRuleProjects.ServicesOf(AState: TCoreProjectState; ASetup: TCoreWorkspaceSetup;
   const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc): TRuleServices;
 var
   mHold: IPackageLocatorHold;
@@ -184,8 +184,8 @@ begin
   mHold := AState.Packages;
   if mHold <> nil then
   begin
-    Result.PackageProvides := TShellPackageLookups.Provides(mHold);
-    Result.PackageRequires := TShellPackageLookups.RuleRequires(mHold);
+    Result.PackageProvides := TCorePackageLookups.Provides(mHold);
+    Result.PackageRequires := TCorePackageLookups.RuleRequires(mHold);
   end;
   // Präfixe der Projektdatei .atlas für naming-prefix und die Korrektur von shadowed-name (#1111).
   if ASetup.IdeContext(AState.ProjectFileName, mContext) then

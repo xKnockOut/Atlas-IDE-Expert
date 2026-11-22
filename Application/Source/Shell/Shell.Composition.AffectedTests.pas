@@ -70,7 +70,7 @@ uses
   Core.Bootstrap,
   Shell.Composition.Platform,
   Shell.VersionControlChanges,
-  Shell.Workspace,
+  Core.Workspace,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 
@@ -162,7 +162,7 @@ end;
 class function TShellAffectedTestsRequest.QueryFor(const AServices: TShellAffectedTestsServices;
   AParams: TJSONObject; const AUri: string): TShellAffectedQuery;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := Default(TShellAffectedQuery);
   System.TMonitor.Enter(AServices.Workspaces.Lock);

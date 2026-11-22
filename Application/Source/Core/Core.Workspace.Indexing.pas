@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Indexing;
+﻿unit Core.Workspace.Indexing;
 
-// Internals-Rolle Shell: Indexaufbau eines Arbeitsbereichs. Startet den Aufbau eines geladenen Projekts in den
+// Host-Rolle Core: Indexaufbau eines Arbeitsbereichs. Startet den Aufbau eines geladenen Projekts in den
 // gemeinsamen Symbolindex (#648), mit Unit-Suche (#1016), Packages (#46), Cache-Sperre (#62, #184) und
 // Fortschritt, und meldet Ende, Fehler und Cache-Ereignisse an Protokoll, Diagnoselog (#647) und Zustand.
 
@@ -19,33 +19,33 @@ uses
   Atlas.Common.Index.Builder,
   Atlas.Common.Index.Service,
   Atlas.Common.Index.Scheduler,
-  Shell.Workspace.Setup,
-  Shell.Workspace.State,
-  Shell.Workspace.Cache,
-  Shell.Workspace.Loader,
-  Shell.Workspace.Encodings;
+  Core.Workspace.Setup,
+  Core.Workspace.State,
+  Core.Workspace.Cache,
+  Core.Workspace.Loader,
+  Core.Workspace.Encodings;
 
 type
   /// <summary>Teile des Arbeitsbereichs, mit denen der Aufbau arbeitet; sie gehören dem Arbeitsbereich.</summary>
-  TShellIndexingParts = record
+  TCoreIndexingParts = record
     Name: string;
     Root: string;
     Logger: ILogger;
     Transport: IJsonRpcTransport;
     Index: ISymbolIndex;
     ProgressToken: string;
-    Setup: TShellWorkspaceSetup;
-    Events: TShellWorkspaceEvents;
-    State: TShellProjectState;
-    Cache: TShellWorkspaceCache;
+    Setup: TCoreWorkspaceSetup;
+    Events: TCoreWorkspaceEvents;
+    State: TCoreProjectState;
+    Cache: TCoreWorkspaceCache;
   end;
 
-  TShellWorkspaceIndexing = class
+  TCoreWorkspaceIndexing = class
   private
-    FParts: TShellIndexingParts;
+    FParts: TCoreIndexingParts;
     FService: TIndexService;
     FProgress: TLspWorkDoneProgress;
-    FEncodings: TShellEncodingReport;
+    FEncodings: TCoreEncodingReport;
     FResolver: TUnitResolver;
     /// <summary>Frühere Resolver: Der alte Builder bedient EnsureUnit, bis der neue veröffentlicht ist,
     /// und ruft sie dabei noch auf. Freigabe erst mit dem Arbeitsbereich.</summary>
@@ -63,18 +63,18 @@ type
     procedure Failed(const AError: Exception);
     procedure IndexEvent(const AText: string);
     /// <summary>Package-Locator und Unit-Suche des Projekts in den Zustand (#46, #1016).</summary>
-    function PublishLookups(const ALoaded: TShellLoadedProject): TPackageLocator;
-    function NewResolver(const ALoaded: TShellLoadedProject): TUnitResolver;
+    function PublishLookups(const ALoaded: TCoreLoadedProject): TPackageLocator;
+    function NewResolver(const ALoaded: TCoreLoadedProject): TUnitResolver;
     /// <summary>Sperre, Warten auf den Schreiber (#62) und Verwerfen (#49) des Caches.</summary>
-    procedure PrepareCache(const ALoaded: TShellLoadedProject; const ASettings: TServerSettings;
+    procedure PrepareCache(const ALoaded: TCoreLoadedProject; const ASettings: TServerSettings;
       var ARequest: TIndexRequest);
-    procedure Publish(const ALoaded: TShellLoadedProject; const ARequest: TIndexRequest);
+    procedure Publish(const ALoaded: TCoreLoadedProject; const ARequest: TIndexRequest);
   public
-    constructor Create(const AParts: TShellIndexingParts);
+    constructor Create(const AParts: TCoreIndexingParts);
     destructor Destroy; override;
     /// <summary>Startet den Aufbau für ALoaded; False, wenn sich Schlüssel und Unit-Listen seit dem letzten nicht
     /// geändert haben. Bricht einen laufenden Aufbau ab, ohne auf ihn zu warten (#874).</summary>
-    function Start(const ALoaded: TShellLoadedProject; const ASettings: TServerSettings): Boolean;
+    function Start(const ALoaded: TCoreLoadedProject; const ASettings: TServerSettings): Boolean;
     /// <summary>Nächster Start baut auch bei gleichem Schlüssel neu auf.</summary>
     procedure Forget;
     /// <summary>Nächster Start verwirft den Cache (#49).</summary>
@@ -96,16 +96,15 @@ type
 implementation
 
 uses
-  Shell.Workspace.Requests,
+  Core.Workspace.Requests,
   System.StrUtils,
-  Atlas.Common.Index.Providers.DiskFileSystem,
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Index.Processes,
   Atlas.Common.Index.ProjectFiles,
   Atlas.Common.Projects.UnitAliases,
   Atlas.Common.Diagnostics.ShutdownLeaks,
-  Shell.Workspace.Listings,
-  Shell.Workspace.Packages,
+  Core.Workspace.Listings,
+  Core.Workspace.Packages,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Reporting;
@@ -169,31 +168,31 @@ begin
     end;
 end;
 
-{ TShellWorkspaceIndexing }
+{ TCoreWorkspaceIndexing }
 
-constructor TShellWorkspaceIndexing.Create(const AParts: TShellIndexingParts);
+constructor TCoreWorkspaceIndexing.Create(const AParts: TCoreIndexingParts);
 begin
   inherited Create;
   FParts := AParts;
   FRetiredResolvers := TObjectList<TUnitResolver>.Create(True);
-  FEncodings := TShellEncodingReport.Create(AParts.Name, AParts.Root, AParts.Logger, AParts.Transport, AParts.Index);
-  FService := TIndexService.Create(AParts.Index, TDiskIndexFileSystem.Create);
+  FEncodings := TCoreEncodingReport.Create(AParts.Name, AParts.Root, AParts.Logger, AParts.Transport, AParts.Index);
+  FService := TIndexService.Create(AParts.Index, AParts.Setup.Factories.IndexFileSystem());
   FProgress := TLspWorkDoneProgress.Create(AParts.Transport, AParts.ProgressToken);
   Attach;
 end;
 
-destructor TShellWorkspaceIndexing.Destroy;
+destructor TCoreWorkspaceIndexing.Destroy;
 begin
   FService.Free;
   FProgress.Free;
   FResolver.Free;
   FRetiredResolvers.Free;
   FEncodings.Free;
-  FParts := Default(TShellIndexingParts);
+  FParts := Default(TCoreIndexingParts);
   inherited;
 end;
 
-procedure TShellWorkspaceIndexing.Attach;
+procedure TCoreWorkspaceIndexing.Attach;
 begin
   FService.OnProgress := FProgress.AsIndexProgress();
   FService.OnProjectReady :=
@@ -228,7 +227,7 @@ begin
     end;
 end;
 
-procedure TShellWorkspaceIndexing.ProjectReady(const AResult: TIndexBuildResult; AElapsedMs: Int64);
+procedure TCoreWorkspaceIndexing.ProjectReady(const AResult: TIndexBuildResult; AElapsedMs: Int64);
 begin
   FParts.State.ProjectPending := False;
   IndexEvent(Format('index project#%d projectStage %d ms parsed %d cached %d missing %d',
@@ -236,7 +235,7 @@ begin
   FParts.Events.ProjectReady;
 end;
 
-procedure TShellWorkspaceIndexing.Finished(const AResult: TIndexBuildResult; AElapsedMs: Int64);
+procedure TCoreWorkspaceIndexing.Finished(const AResult: TIndexBuildResult; AElapsedMs: Int64);
 begin
   // Abgebrochen (Neustart): Der neue Aufbau hat ProjectPending schon wieder gesetzt.
   if not AResult.Cancelled then
@@ -269,7 +268,7 @@ begin
   FParts.Events.IndexFinished;
 end;
 
-procedure TShellWorkspaceIndexing.CacheWritten(ALibrary: Boolean; AUnits: Integer; ABytes, AElapsedMs: Int64);
+procedure TCoreWorkspaceIndexing.CacheWritten(ALibrary: Boolean; AUnits: Integer; ABytes, AElapsedMs: Int64);
 begin
   // Wie oft und wie groß geschrieben wird; ohne Pfad. Das Zeilenformat ist festgelegt
   // (#1478, docs/Diagnose.md): Einheiten außer „MB“ am Ende klein, damit ^\S+ index project#\d+ \w+ [\d a-z]+ mem \d+
@@ -280,7 +279,7 @@ begin
      TShutdownLeaks.AllocatedBytes div (1024 * 1024)]));
 end;
 
-procedure TShellWorkspaceIndexing.CacheRejected(const AFileName, AReason: string);
+procedure TCoreWorkspaceIndexing.CacheRejected(const AFileName, AReason: string);
 begin
   // Still neu aufbauen (#492): nur ins Log, keine Meldung an den Benutzer. Ohne Pfad: Das Log bleibt
   // anonym (der Cache liegt im Benutzerprofil). Welcher Cache und warum, steht auch im Diagnose-Log: Ohne
@@ -292,7 +291,7 @@ begin
   FParts.Cache.Report(TIndexProcessInfo.cStateBuilding, FParts.Cache.Writes, Format('Cache verworfen (%s)', [AReason]));
 end;
 
-procedure TShellWorkspaceIndexing.CacheNotWritten(const AFileName, AReason: string);
+procedure TCoreWorkspaceIndexing.CacheNotWritten(const AFileName, AReason: string);
 var
   mKind: string;
 begin
@@ -303,7 +302,7 @@ begin
   IndexEvent('index cache not written ' + mKind);
 end;
 
-procedure TShellWorkspaceIndexing.Failed(const AError: Exception);
+procedure TCoreWorkspaceIndexing.Failed(const AError: Exception);
 begin
   // Sonst bliebe workspace/diagnostic bis zum nächsten Reload bei indexLoading.
   // Start hält den alten Lauf an, bevor es ProjectPending setzt: Das hier trifft nur den eigenen.
@@ -322,38 +321,39 @@ begin
   FParts.Events.IndexFinished;
 end;
 
-procedure TShellWorkspaceIndexing.IndexEvent(const AText: string);
+procedure TCoreWorkspaceIndexing.IndexEvent(const AText: string);
 begin
   FParts.Events.IndexEvent(AText);
 end;
 
-function TShellWorkspaceIndexing.PublishLookups(const ALoaded: TShellLoadedProject): TPackageLocator;
+function TCoreWorkspaceIndexing.PublishLookups(const ALoaded: TCoreLoadedProject): TPackageLocator;
 var
-  mSource: TShellUnitLookupSource;
+  mSource: TCoreUnitLookupSource;
 begin
   // requires-Packages (#46): Quelle .dpk in den Ordnern der Gruppe, im Projektordner und in den Suchpfaden,
   // übersetzt .dcp in den Bibliothekspfaden.
   Result := TPackageLocator.Create(FParts.Setup.PackageFolders + [ExtractFileDir(ALoaded.ProjectFile)] +
     ALoaded.Project.SearchPaths + ALoaded.CompilerLibraryPaths);
-  mSource := Default(TShellUnitLookupSource);
+  mSource := Default(TCoreUnitLookupSource);
   mSource.Project := ALoaded.Project;
   mSource.Installation := ALoaded.Installation;
   mSource.LibraryPaths := ALoaded.CompilerLibraryPaths;
   mSource.Packages := TPackageLocatorHold.Create(Result);
   mSource.Index := FParts.Index;
+  mSource.CreateLookup := FParts.Setup.Factories.UnitLookup;
   // Unit-Aliase der .dproj (DCC_UnitAlias) für Namensauflösung und Vorschläge; die Vorgaben kennt der Index.
   FParts.Index.AddUnitAliases(TUnitAliases.OfProject(ALoaded.Project));
   if Assigned(FParts.Setup.OnGroupProjects) then
   begin
-    mSource.GroupOutputsOf := TShellPackageLookups.GroupOutputsOf(FParts.Setup.OnGroupProjects,
+    mSource.GroupOutputsOf := TCorePackageLookups.GroupOutputsOf(FParts.Setup.OnGroupProjects,
       ALoaded.ProjectFile, ALoaded.Options, FParts.Logger);
   end;
-  FParts.State.SetLookups(mSource.Packages, TShellPackageLookups.UnitLookupFor(mSource));
+  FParts.State.SetLookups(mSource.Packages, TCorePackageLookups.UnitLookupFor(mSource));
 end;
 
-function TShellWorkspaceIndexing.NewResolver(const ALoaded: TShellLoadedProject): TUnitResolver;
+function TCoreWorkspaceIndexing.NewResolver(const ALoaded: TCoreLoadedProject): TUnitResolver;
 begin
-  Result := TUnitResolver.Create(ALoaded.Project, ALoaded.LibraryPaths, TShellFileAccess.ExistsFunc());
+  Result := TUnitResolver.Create(ALoaded.Project, ALoaded.LibraryPaths, TCoreFileAccess.ExistsFunc());
   // Ordner einmal auflisten, über alle Projekte geteilt (CPU beim Start).
   Result.ListUnits := TSharedUnitListings.ListFunc();
   // Nicht freigeben: Anfragen können den alten Builder noch nutzen (EnsureUnit ohne Sperre, #647).
@@ -364,13 +364,13 @@ begin
   FResolver := Result;
 end;
 
-procedure TShellWorkspaceIndexing.PrepareCache(const ALoaded: TShellLoadedProject; const ASettings: TServerSettings;
+procedure TCoreWorkspaceIndexing.PrepareCache(const ALoaded: TCoreLoadedProject; const ASettings: TServerSettings;
   var ARequest: TIndexRequest);
 var
-  mFiles: TShellCacheFiles;
+  mFiles: TCoreCacheFiles;
 begin
-  mFiles := TShellCacheFiles.Create(ARequest.CacheFile, ARequest.LibraryCacheFile, ARequest.SearchCacheFile);
-  ARequest.ReadOnlyCache := not FParts.Cache.Lock(mFiles, TShellIndexRequests.CacheOriginOf(ALoaded.Project,
+  mFiles := TCoreCacheFiles.Create(ARequest.CacheFile, ARequest.LibraryCacheFile, ARequest.SearchCacheFile);
+  ARequest.ReadOnlyCache := not FParts.Cache.Lock(mFiles, TCoreIndexRequests.CacheOriginOf(ALoaded.Project,
     FParts.Root), ASettings);
   if ARequest.ReadOnlyCache then
   begin
@@ -386,14 +386,14 @@ begin
     // Im Index-Thread nach dem Ende des alten Aufbaus löschen: Sonst schriebe er den Cache danach wieder.
     if not ARequest.ReadOnlyCache then
     begin
-      ARequest.Prepare := TShellWorkspaceCache.DiscardFiles(mFiles, FParts.Logger);
+      ARequest.Prepare := TCoreWorkspaceCache.DiscardFiles(mFiles, FParts.Logger);
     end;
   end;
 end;
 
-procedure TShellWorkspaceIndexing.Publish(const ALoaded: TShellLoadedProject; const ARequest: TIndexRequest);
+procedure TCoreWorkspaceIndexing.Publish(const ALoaded: TCoreLoadedProject; const ARequest: TIndexRequest);
 var
-  mFiles: TShellIndexedFiles;
+  mFiles: TCoreIndexedFiles;
 begin
   mFiles.Defines := ARequest.Defines;
   mFiles.Namespaces := ALoaded.Project.Namespaces;
@@ -401,18 +401,18 @@ begin
   mFiles.ProjectFiles := ARequest.Files;
   mFiles.SearchFiles := ARequest.SearchFiles;
   FParts.State.SetIndexedFiles(mFiles);
-  FParts.Cache.SetFiles(TShellCacheFiles.Create(ARequest.CacheFile, ARequest.LibraryCacheFile, ''));
+  FParts.Cache.SetFiles(TCoreCacheFiles.Create(ARequest.CacheFile, ARequest.LibraryCacheFile, ''));
 end;
 
-function TShellWorkspaceIndexing.Start(const ALoaded: TShellLoadedProject; const ASettings: TServerSettings): Boolean;
+function TCoreWorkspaceIndexing.Start(const ALoaded: TCoreLoadedProject; const ASettings: TServerSettings): Boolean;
 var
-  mFiles: TShellIndexFiles;
-  mTarget: TShellRequestTarget;
+  mFiles: TCoreIndexFiles;
+  mTarget: TCoreRequestTarget;
   mRequest: TIndexRequest;
   mKey: string;
 begin
-  mFiles := TShellIndexRequests.FilesOf(ALoaded, ASettings);
-  TShellIndexRequests.AddPackageFiles(ALoaded.Project, PublishLookups(ALoaded), mFiles, FParts.Logger, FParts.Name);
+  mFiles := TCoreIndexRequests.FilesOf(ALoaded, ASettings);
+  TCoreIndexRequests.AddPackageFiles(ALoaded.Project, PublishLookups(ALoaded), mFiles, FParts.Logger, FParts.Name);
   mKey := mFiles.Key(TIndexProjectFiles.Signature(ALoaded.Project, ALoaded.Version));
   Result := mKey <> FSignature;
   if not Result then
@@ -423,7 +423,7 @@ begin
   mTarget.CacheRoot := FParts.Setup.CacheRoot;
   mTarget.Priority := FParts.Setup.Priority;
   mTarget.Usages := ASettings.IndexUsages;
-  mRequest := TShellIndexRequests.RequestOf(ALoaded, mFiles, mTarget);
+  mRequest := TCoreIndexRequests.RequestOf(ALoaded, mFiles, mTarget);
   mRequest.ResolveUnit := ResolveUnitOf(NewResolver(ALoaded));
   FService.Scheduler := FParts.Setup.Scheduler;
   PrepareCache(ALoaded, ASettings, mRequest);
@@ -439,27 +439,27 @@ begin
   FService.Start(mRequest);
 end;
 
-procedure TShellWorkspaceIndexing.Forget;
+procedure TCoreWorkspaceIndexing.Forget;
 begin
   FSignature := '';
 end;
 
-procedure TShellWorkspaceIndexing.DiscardNext;
+procedure TCoreWorkspaceIndexing.DiscardNext;
 begin
   FDiscardCache := True;
 end;
 
-procedure TShellWorkspaceIndexing.Stop;
+procedure TCoreWorkspaceIndexing.Stop;
 begin
   FService.Stop;
 end;
 
-function TShellWorkspaceIndexing.EnsureUnit(const AUnitName: string): Boolean;
+function TCoreWorkspaceIndexing.EnsureUnit(const AUnitName: string): Boolean;
 begin
   Result := FService.EnsureUnit(AUnitName);
 end;
 
-function TShellWorkspaceIndexing.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+function TCoreWorkspaceIndexing.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
 begin
   Result := FService.ApplyChanges(AChanges);
   if Result > 0 then
@@ -468,7 +468,7 @@ begin
   end;
 end;
 
-function TShellWorkspaceIndexing.ApplyText(const AFileName, AText: string): Boolean;
+function TCoreWorkspaceIndexing.ApplyText(const AFileName, AText: string): Boolean;
 begin
   Result := FService.ApplyText(AFileName, AText);
   if Result then
@@ -477,7 +477,7 @@ begin
   end;
 end;
 
-function TShellWorkspaceIndexing.Loading: Integer;
+function TCoreWorkspaceIndexing.Loading: Integer;
 begin
   Result := -1;
   if FProgress.Active then
@@ -486,22 +486,22 @@ begin
   end;
 end;
 
-function TShellWorkspaceIndexing.Stage: TIndexStageState;
+function TCoreWorkspaceIndexing.Stage: TIndexStageState;
 begin
   Result := FService.StageState;
 end;
 
-function TShellWorkspaceIndexing.ProgressToken: string;
+function TCoreWorkspaceIndexing.ProgressToken: string;
 begin
   Result := FParts.ProgressToken;
 end;
 
-function TShellWorkspaceIndexing.Index: ISymbolIndex;
+function TCoreWorkspaceIndexing.Index: ISymbolIndex;
 begin
   Result := FParts.Index;
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Workspace.Indexing', cTexts);
+  TAtlasTextTables.Add('Core.Workspace.Indexing', cTexts);
 
 end.

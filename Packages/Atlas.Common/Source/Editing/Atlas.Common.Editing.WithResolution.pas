@@ -75,7 +75,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

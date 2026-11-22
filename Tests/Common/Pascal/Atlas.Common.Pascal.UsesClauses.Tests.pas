@@ -27,12 +27,18 @@ type
     procedure PlainUnit_IsNotTestUnit;
     [Test]
     procedure TestInsightNamespace_IsTestUnit;
+    [Test]
+    procedure ActiveTokens_DropsTokensOfInactiveRanges;
+    [Test]
+    procedure ActiveTokens_WithoutRanges_KeepsAll;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.UsesClauses;
 
@@ -134,6 +140,28 @@ procedure TPascalUsesTests.TestInsightNamespace_IsTestUnit;
 begin
   Assert.IsTrue(TPascalUses.IsTestUnit(TPascalLexer.Tokenize(
     'program Tests;'#10'uses TestInsight.DUnitX;'#10'begin end.')));
+end;
+
+procedure TPascalUsesTests.ActiveTokens_DropsTokensOfInactiveRanges;
+var
+  mActive: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
+  mInactive: TArray<TTextRange>;
+begin
+  // Zeile 1 "uses B;" ist inaktiv: Ihre Token beginnen im Bereich, das Ende ist ausgenommen.
+  mTokens := TPascalLexer.Tokenize('uses A;'#10'uses B;'#10'uses C;');
+  mInactive := [TTextRange.Create(1, 0, 2, 0)];
+  mActive := TPascalUses.ActiveTokens(mTokens, mInactive);
+  Assert.AreEqual('A C', string.Join(' ', TPascalUses.UsedUnits(mActive)));
+  Assert.IsTrue(Length(mActive) < Length(mTokens), 'Token der inaktiven Zeile entfallen');
+end;
+
+procedure TPascalUsesTests.ActiveTokens_WithoutRanges_KeepsAll;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  mTokens := TPascalLexer.Tokenize('uses A;'#10'uses B;');
+  Assert.AreEqual(Integer(Length(mTokens)), Integer(Length(TPascalUses.ActiveTokens(mTokens, nil))));
 end;
 
 initialization

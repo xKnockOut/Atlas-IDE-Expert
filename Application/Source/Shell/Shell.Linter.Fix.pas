@@ -23,7 +23,7 @@ uses
   Atlas.Common.Rules.BulkFix,
   Core.CommandLine,
   Shell.VersionControlChanges,
-  Shell.WorkspaceGroup;
+  Core.WorkspaceGroup;
 
 type
   /// <summary>Was die Prüfung einer Datei für die Sammelkorrektur braucht.</summary>
@@ -52,7 +52,7 @@ type
     FFixOptions: TBulkFixOptions;
     FBaseline: IRuleBaseline;
     FGit: TVcsChanges;
-    FGroup: TShellWorkspaceGroup;
+    FGroup: TCoreWorkspaceGroup;
     FRoot: string;
     FPackages: TArray<TPackageSource>;
     FPrograms: TArray<string>;
@@ -86,7 +86,7 @@ uses
   System.IOUtils,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Diagnostics.CheckProfile,
   Shell.Linter.Output,

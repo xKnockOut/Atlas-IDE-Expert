@@ -10,7 +10,8 @@ interface
 uses
   System.SysUtils,
   System.Math,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Projects.Contract;
 
 type
   TProjectPaths = class
@@ -39,6 +40,9 @@ type
     /// </summary>
     class function ExpandVariables(const AText: string; const AVariables: TArray<TPair<string,
       string>>): string; static;
+    /// <summary>DCU-Ausgabeordner (DCC_DcuOutput) von AProject mit eingesetzter Plattform und Konfiguration,
+    /// absolut zum Projektordner; '' ohne.</summary>
+    class function DcuOutputOf(const AProject: TProjectInfo): string; static;
   end;
 
 implementation
@@ -338,6 +342,30 @@ begin
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+class function TProjectPaths.DcuOutputOf(const AProject: TProjectInfo): string;
+var
+  mPair: TPair<string, string>;
+begin
+  Result := '';
+  for mPair in AProject.Properties do
+  begin
+    if SameText(mPair.Key, 'DCC_DcuOutput') then
+    begin
+      Result := mPair.Value;
+    end;
+  end;
+  if Result = '' then
+  begin
+    Exit;
+  end;
+  Result := StringReplace(Result, '$(Platform)', AProject.Platform, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '$(Config)', AProject.Config, [rfReplaceAll, rfIgnoreCase]);
+  if (AProject.FileName <> '') and not IsAbsolute(Result) then
+  begin
+    Result := Combine(DirectoryOf(AProject.FileName), Result);
   end;
 end;
 

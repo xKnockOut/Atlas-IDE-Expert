@@ -7,7 +7,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,
   Shell.Composition.Sources;
@@ -64,7 +64,8 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,
-  Shell.Workspace.Setup;
+  Core.Workspace.Setup,
+  Shell.Composition.Platform;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -96,9 +97,9 @@ end;
 
 procedure TShellSourcesTests.AddWorkspace;
 begin
-  FRegistry.Add(TShellWorkspace.Create(FRoot, 'Ordner', TShellWorkspaceServices.Create(TDocumentStore.Create,
+  FRegistry.Add(TCoreWorkspace.Create(FRoot, 'Ordner', TCoreWorkspaceServices.Create(TDocumentStore.Create,
     TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
-    'atlas-test-index')));
+    'atlas-test-index', TShellPlatformAdapters.WorkspaceFactories)));
 end;
 
 procedure TShellSourcesTests.Setup;
