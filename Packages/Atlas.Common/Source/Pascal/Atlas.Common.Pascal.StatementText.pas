@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.StatementText;
+﻿unit Atlas.Common.Pascal.StatementText;
 
 // Anweisungen aus dem Syntaxbaum als Text für Umformungen (Kette L: #646,
 // #656, #684): Ein Zweig liefert seine Anweisungen (begin … end ausgepackt),

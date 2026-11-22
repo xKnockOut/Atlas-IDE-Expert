@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.StatementText.Tests;
+﻿unit Atlas.Common.Pascal.StatementText.Tests;
 
 // Tests für die Anweisungsbausteine der Umformungen (Kette L): Anweisungen
 // eines Zweigs, Text mit Kommentaren, neu eingerückt, Zweige mit und ohne
@@ -31,7 +31,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.StatementText;
+  Atlas.Common.Pascal.StatementText;
 
 function MainBlock(ATree: TSyntaxTree): TSyntaxNode;
 begin

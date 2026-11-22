@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.TypeComments.Tests;
+﻿unit Atlas.Common.Pascal.TypeComments.Tests;
 
 // Kommentar über dem Abschnitt eines Typs (#1835): Formen erkennen und
 // schreiben, Typnamen beim Umbenennen finden (#1838).
@@ -34,7 +34,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Editing.TypeComments;
+  Atlas.Common.Pascal.TypeComments;
 
 function Lines(const AText: string): TArray<string>;
 begin

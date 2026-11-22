@@ -146,7 +146,7 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Dfm.ComponentRename,
-  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Pascal.TypeComments,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;

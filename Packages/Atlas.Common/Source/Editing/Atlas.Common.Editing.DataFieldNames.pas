@@ -102,7 +102,7 @@ uses
   System.StrUtils,
   System.RegularExpressions,
   Atlas.Common.Pascal.StringLiterals,
-  Atlas.Common.Editing.SqlText,
+  Atlas.Common.Dfm.SqlText,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormFiles;

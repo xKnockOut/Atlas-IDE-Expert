@@ -205,7 +205,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Text.Lines,
-  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Editing.BodySpacing,
   Atlas.Common.Localization.Texts;
 
