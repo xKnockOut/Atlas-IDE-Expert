@@ -36,6 +36,31 @@ type
     function Report(const AUri: string): TJSONObject;
   end;
 
+  /// <summary>Angaben des Regelkatalogs zu einer Regel für Anzeigen (Fenster „Atlas-Prüfung“, Befund-Hover, #909).
+  /// </summary>
+  TRuleCatalogFacts = record
+    /// <summary>Name der Kategorie.</summary>
+    Category: string;
+    /// <summary>Name der Gruppe, z. B. „Compiler vorab“ (#1024).</summary>
+    Group: string;
+    /// <summary>Compilermeldungen, die die Regel vorwegnimmt (#1024); leer ohne.</summary>
+    CompilerCodes: TArray<string>;
+  end;
+
+  /// <summary>Regelkatalog für Anzeigen in anderen Features: Kennungen, Angaben je Regel, Hilfeseite.</summary>
+  IRuleCatalogInfo = interface
+    ['{2F7D9A31-6C4B-4E8A-B1D5-93E0C7A2F468}']
+    /// <summary>Kennungen aller eingebauten Regeln, z. B. für /ignore (#293).</summary>
+    function RuleIds: TArray<string>;
+    /// <summary>Angaben zu ARuleId; False, wenn der Katalog die Regel nicht kennt.</summary>
+    function TryDescribe(const ARuleId: string; out AFacts: TRuleCatalogFacts): Boolean;
+    /// <summary>Hilfeseite zu ARuleId.</summary>
+    function HelpUri(const ARuleId: string): string;
+    /// <summary>Zeigt der Editor AFinding durchgestrichen (veraltetes Symbol, #38; nicht platform, library oder
+    /// experimental, #1018)?</summary>
+    function StruckThrough(const AFinding: TRuleFinding): Boolean;
+  end;
+
   /// <summary>Prüfregeln für ein Dokument der Diagnose im Editor; das Umfeld (Regeln, Einstellungen, Baseline)
   /// hat der Anbieter für die Datei gebaut.</summary>
   IRuleDocumentCheck = interface
@@ -55,6 +80,8 @@ type
     /// <summary>Zeigt der Editor „nur in der implementation gebraucht“ (uses-only-in-implementation, #1136)? Ohne
     /// Umfeld ja.</summary>
     function OnlyImplementationShown: Boolean;
+    /// <summary>Regelkatalog für die Anzeige der Treffer (Hilfeseite, Kategorie, Gruppe); nil ohne.</summary>
+    function Catalog: IRuleCatalogInfo;
   end;
 
   /// <summary>Prüfregeln der Diagnose je Dokument.</summary>

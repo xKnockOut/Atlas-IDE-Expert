@@ -9,6 +9,7 @@ interface
 
 uses
   Atlas.Common.Editing.Contract,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionRequest;
 
@@ -16,10 +17,11 @@ type
   TCompletionSlash = class
   public
     /// <summary>"/name" am Zeilenanfang (#293): die passenden, nicht abgeschalteten (ADisabled) Befehle; hinter
-    /// dem Namen die Argumente des Befehls, für /ignore die Regeln aus ARuleIdsAt (#297). False außerhalb einer
-    /// Codezeile oder ohne Vorschläge.</summary>
+    /// dem Namen die Argumente des Befehls, für /ignore die Regeln aus ARuleIdsAt (#297), ohne Auskunft alle aus
+    /// ACatalog (nil = keine). False außerhalb einer Codezeile oder ohne Vorschläge.</summary>
     class function SlashItems(ARequest: TCompletionRequest; const ADisabled: TArray<string>;
-      const ARuleIdsAt: TSlashRuleIdsFunc; out AItems: TCompletionItems): Boolean; static;
+      const ARuleIdsAt: TSlashRuleIdsFunc; const ACatalog: ILspRuleCatalog; out AItems: TCompletionItems): Boolean;
+      static;
     /// <summary>Bedingte Symbole nach {$IFDEF , {$IFNDEF , {$DEFINE , {$UNDEF und in Defined( (#102): Herkunft als
     /// Detail, Symbole, die hier nicht gelten, abgeschwächt am Ende.</summary>
     class function SymbolItems(ARequest: TCompletionRequest; const AContext: TConditionalContext;
@@ -38,8 +40,6 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.SlashMenu,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Lsp.CompilerDirectives,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Values,
@@ -54,32 +54,20 @@ const
   cTexts: array[TSlashText] of TAtlasText = (
     (De: 'Compiler-Warnung'; En: 'Compiler warning'));
 
-/// <summary>Kennungen des eingebauten Regelkatalogs für /ignore (#293); sonst leer.</summary>
-function RuleIds(AKind: TSlashArgumentKind): TArray<string>;
-var
-  mCatalog: TRuleCatalog;
-  mEntry: TRuleCatalogEntry;
+/// <summary>Kennungen des eingebauten Regelkatalogs für /ignore (#293); sonst oder ohne ACatalog leer.</summary>
+function RuleIds(AKind: TSlashArgumentKind; const ACatalog: ILspRuleCatalog): TArray<string>;
 begin
   Result := nil;
-  if AKind <> TSlashArgumentKind.Rules then
+  if (AKind = TSlashArgumentKind.Rules) and (ACatalog <> nil) then
   begin
-    Exit;
-  end;
-  mCatalog := TRuleCatalog.Create(RuleCatalogBaseJson);
-  try
-    for mEntry in mCatalog.Entries do
-    begin
-      Result := Result + [mEntry.Id];
-    end;
-  finally
-    mCatalog.Free;
+    Result := ACatalog.RuleIds;
   end;
 end;
 
 /// <summary>Für /ignore nur die Regeln, die in der Zeile unter dem Befehl treffen (#297); ohne Auskunft der
 /// Katalog.</summary>
 function RuleIdsBelow(ARequest: TCompletionRequest; AKind: TSlashArgumentKind;
-  const ARuleIdsAt: TSlashRuleIdsFunc): TArray<string>;
+  const ARuleIdsAt: TSlashRuleIdsFunc; const ACatalog: ILspRuleCatalog): TArray<string>;
 var
   mLines: TArray<string>;
   mLineBreak: string;
@@ -99,7 +87,7 @@ begin
       Exit;
     end;
   end;
-  Result := RuleIds(AKind);
+  Result := RuleIds(AKind, ACatalog);
 end;
 
 /// <summary>Steht der Cursor in einer Codezeile (nicht in Kommentar oder String)?</summary>
@@ -150,14 +138,15 @@ end;
 /// <summary>Hinter "/name ": die Argumente des Befehls; danach vervollständigen die Befehle selbst (#294 ff.),
 /// /sort und /filter mit Sammlungen und Mitgliedern des Elementtyps (#319).</summary>
 function ArgumentItems(ARequest: TCompletionRequest; const AName, AArguments: string;
-  const ARuleIdsAt: TSlashRuleIdsFunc; out AItems: TCompletionItems): Boolean;
+  const ARuleIdsAt: TSlashRuleIdsFunc; const ACatalog: ILspRuleCatalog; out AItems: TCompletionItems): Boolean;
 var
   mKind: TSlashArgumentKind;
 begin
   AItems := Default(TCompletionItems);
   mKind := TSlashMenu.ArgumentKind(AName, AArguments);
   AItems.Items := ChoiceItems(ARequest, AName, mKind, TSlashMenu.ArgumentChoices(ARequest.Text,
-    ARequest.Position.Line, AName, AArguments, ARequest.Index, RuleIdsBelow(ARequest, mKind, ARuleIdsAt)));
+    ARequest.Position.Line, AName, AArguments, ARequest.Index, RuleIdsBelow(ARequest, mKind, ARuleIdsAt,
+    ACatalog)));
   Result := Length(AItems.Items) > 0;
 end;
 
@@ -182,7 +171,7 @@ end;
 { TCompletionSlash }
 
 class function TCompletionSlash.SlashItems(ARequest: TCompletionRequest; const ADisabled: TArray<string>;
-  const ARuleIdsAt: TSlashRuleIdsFunc; out AItems: TCompletionItems): Boolean;
+  const ARuleIdsAt: TSlashRuleIdsFunc; const ACatalog: ILspRuleCatalog; out AItems: TCompletionItems): Boolean;
 var
   mBefore, mName, mArguments: string;
 begin
@@ -197,7 +186,7 @@ begin
   if (mArguments <> '') or ((Trim(mBefore) <> '/') and (mBefore[Length(mBefore)] = ' ')) then
   begin
     Result := not MatchText(mName, ADisabled) and InCodeLine(ARequest) and
-      ArgumentItems(ARequest, mName, mArguments, ARuleIdsAt, AItems);
+      ArgumentItems(ARequest, mName, mArguments, ARuleIdsAt, ACatalog, AItems);
     Exit;
   end;
   Result := InCodeLine(ARequest);

@@ -82,6 +82,7 @@ uses
   Adapters.Lsp.OwnershipReport in 'Source\Adapters\Adapters.Lsp.OwnershipReport.pas',
   Adapters.Lsp.RuleDiagnostics in 'Source\Adapters\Adapters.Lsp.RuleDiagnostics.pas',
   Adapters.Lsp.RuleActions in 'Source\Adapters\Adapters.Lsp.RuleActions.pas',
+  Adapters.Lsp.RuleCatalog in 'Source\Adapters\Adapters.Lsp.RuleCatalog.pas',
   Shell.Composition.FeatureWiring in 'Source\Shell\Shell.Composition.FeatureWiring.pas',
   Shell.Composition.CommandWiring in 'Source\Shell\Shell.Composition.CommandWiring.pas',
   Shell.Composition.ClientStart in 'Source\Shell\Shell.Composition.ClientStart.pas',

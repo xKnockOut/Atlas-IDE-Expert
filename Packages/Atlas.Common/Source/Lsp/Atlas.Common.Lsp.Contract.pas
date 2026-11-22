@@ -112,6 +112,28 @@ type
     function Depths(const AFileName, AText: string; const AIndex: ISymbolIndex): TArray<TStructureMetrics>;
   end;
 
+  /// <summary>Angaben des Regelkatalogs zu einer Regel für data eines Befunds (#909, #1024).</summary>
+  TLspRuleFacts = record
+    Category: string;
+    Group: string;
+    /// <summary>Compilermeldungen, die die Regel vorwegnimmt; leer ohne.</summary>
+    CompilerCodes: TArray<string>;
+  end;
+
+  /// <summary>Regelkatalog für Befunde und Vervollständigung des Sprachservers; der Host fragt die Prüfregeln.
+  /// </summary>
+  ILspRuleCatalog = interface
+    ['{8B3E5C17-A9D2-4F60-8E4B-C1D7F2A96B35}']
+    /// <summary>Kennungen aller eingebauten Regeln (/ignore, #293).</summary>
+    function RuleIds: TArray<string>;
+    /// <summary>Angaben zu ARuleId; False, wenn der Katalog die Regel nicht kennt.</summary>
+    function TryDescribe(const ARuleId: string; out AFacts: TLspRuleFacts): Boolean;
+    /// <summary>Hilfeseite zu ARuleId (codeDescription.href).</summary>
+    function HelpUri(const ARuleId: string): string;
+    /// <summary>Befund durchgestrichen zeigen (DiagnosticTag.Deprecated, #38, #1018)?</summary>
+    function StruckThrough(const AFinding: TRuleFinding): Boolean;
+  end;
+
   /// <summary>Prüfregeln für ein Dokument der Diagnose (textDocument/publishDiagnostics und Pull); der Host baut
   /// das Umfeld der Regeln. Läuft im Hintergrund-Thread.</summary>
   ILspDocumentRules = interface
@@ -131,6 +153,8 @@ type
     /// <summary>Zeigt der Editor „nur in der implementation gebraucht“ (uses-only-in-implementation, #1136)? Ohne
     /// Umfeld ja.</summary>
     function OnlyImplementationShown: Boolean;
+    /// <summary>Regelkatalog für die Anzeige der Treffer; nil ohne.</summary>
+    function Catalog: ILspRuleCatalog;
   end;
 
   /// <summary>Prüfregeln der Diagnose je Dokument; ohne Anbieter meldet die Diagnose keine Treffer.</summary>

@@ -82,6 +82,13 @@ type
   /// <summary>Die Prüfung wurde über TRuleCancelled abgebrochen; es gibt kein Ergebnis.</summary>
   ERuleCheckCancelled = class(Exception);
 
+const
+  /// <summary>Regel der ungenutzten uses (#1135); der Editor zeigt die Einträge selbst und fragt die Unterdrückung
+  /// unter dieser Kennung.</summary>
+  cUnusedUsesFindingId = 'unused-uses';
+  /// <summary>Regel der uses, die nur die implementation braucht (#1136); wie cUnusedUsesFindingId.</summary>
+  cUsesOnlyInImplementationFindingId = 'uses-only-in-implementation';
+
 /// <summary>Kennwort der Konfidenz: "hoch", "mittel", "niedrig".</summary>
 function ConfidenceText(AConfidence: TRuleConfidence): string;
 /// <summary>

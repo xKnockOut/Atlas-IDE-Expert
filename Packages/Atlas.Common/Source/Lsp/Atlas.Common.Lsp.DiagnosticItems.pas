@@ -18,7 +18,8 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Editing.UsesActions,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Lsp.Contract;
 
 type
   TLspDiagnosticItems = class
@@ -38,8 +39,9 @@ type
     class function UsesInitializationMessage: string; static;
     class function UsesAllowlistMessage: string; static;
     class function UsesImplementationMessage: string; static;
-    /// <summary>Ein Regeltreffer als LSP-Diagnostic (code = Regelkennung). Der Aufrufer übernimmt das Objekt.</summary>
-    class function FindingToJson(const AFinding: TRuleFinding): TJSONObject; static;
+    /// <summary>Ein Regeltreffer als LSP-Diagnostic (code = Regelkennung); Hilfeseite, Kategorie, Gruppe und
+    /// Durchstreichen aus ACatalog (nil = ohne). Der Aufrufer übernimmt das Objekt.</summary>
+    class function FindingToJson(const AFinding: TRuleFinding; const ACatalog: ILspRuleCatalog): TJSONObject; static;
     /// <summary>Compilermeldung als LSP-Diagnostic; ALineText (falls bekannt) begrenzt den Bereich.
     /// Der Aufrufer übernimmt das Objekt.</summary>
     class function CompilerMessageToJson(const AMessage: TCompilerMessage; const ALineText: string;
@@ -75,12 +77,8 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.Math,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Builtin.Deprecated,
-  Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
@@ -168,22 +166,22 @@ end;
 
 /// <summary>Fenster „Atlas-Prüfung“ und Befund-Hover (#909): Kategorie und Gruppe aus dem Katalog; Gruppe
 /// „Compiler vorab“ (#1024) mit den Codes für den Abgleich mit dcc und die Spalte „Compiler“ im Plugin.</summary>
-procedure AddCatalogData(AData: TJSONObject; const ARuleId: string);
+procedure AddCatalogData(AData: TJSONObject; const ARuleId: string; const ACatalog: ILspRuleCatalog);
 var
-  mEntry: TRuleCatalogEntry;
+  mFacts: TLspRuleFacts;
   mCodes: TJSONArray;
   mCode: string;
 begin
-  if not TRuleCatalog.Shared.TryFind(ARuleId, mEntry) then
+  if (ACatalog = nil) or not ACatalog.TryDescribe(ARuleId, mFacts) then
   begin
     Exit;
   end;
-  AData.AddPair('category', TRuleCatalog.CategoryName(mEntry.Category));
-  AData.AddPair('group', TRuleCatalog.GroupName(mEntry.Group));
-  if Length(mEntry.CompilerCodes) > 0 then
+  AData.AddPair('category', mFacts.Category);
+  AData.AddPair('group', mFacts.Group);
+  if Length(mFacts.CompilerCodes) > 0 then
   begin
     mCodes := TJSONArray.Create;
-    for mCode in mEntry.CompilerCodes do
+    for mCode in mFacts.CompilerCodes do
     begin
       mCodes.Add(mCode);
     end;
@@ -191,10 +189,10 @@ begin
   end;
 end;
 
-function FindingData(const AFinding: TRuleFinding): TJSONObject;
+function FindingData(const AFinding: TRuleFinding; const ACatalog: ILspRuleCatalog): TJSONObject;
 begin
   Result := TJSONObject.Create(TJSONPair.Create('confidence', ConfidenceName(AFinding.Confidence)));
-  AddCatalogData(Result, AFinding.RuleId);
+  AddCatalogData(Result, AFinding.RuleId, ACatalog);
   // Wie Rules.CodeActions: bevorzugt ist nur die erste Korrektur, wenn sie keine Alternative ist.
   if (Length(AFinding.Fixes) > 0) and not AFinding.Fixes[0].Alternative then
   begin
@@ -304,24 +302,27 @@ end;
 
 { TLspDiagnosticItems }
 
-class function TLspDiagnosticItems.FindingToJson(const AFinding: TRuleFinding): TJSONObject;
+class function TLspDiagnosticItems.FindingToJson(const AFinding: TRuleFinding;
+  const ACatalog: ILspRuleCatalog): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('range', TLspPositions.RangeToJson(AFinding.Range));
   Result.AddPair('severity', TJSONNumber.Create(SeverityOf(AFinding.Severity)));
   Result.AddPair('code', AFinding.RuleId);
-  Result.AddPair('codeDescription', TJSONObject.Create(
-    TJSONPair.Create('href', TRuleCatalog.HelpUri(AFinding.RuleId))));
+  if ACatalog <> nil then
+  begin
+    Result.AddPair('codeDescription', TJSONObject.Create(TJSONPair.Create('href', ACatalog.HelpUri(AFinding.RuleId))));
+  end;
   Result.AddPair('source', cSource);
   // Konfidenz als eigenes Feld, der Meldungstext bleibt unverändert (#144).
   Result.AddPair('message', AFinding.Message);
-  Result.AddPair('data', FindingData(AFinding));
+  Result.AddPair('data', FindingData(AFinding, ACatalog));
   if AFinding.Related <> nil then
   begin
     Result.AddPair('relatedInformation', RelatedJson(AFinding.Related));
   end;
   // Veraltete Symbole durchgestrichen (#38), aber nicht platform, library oder experimental (#1018).
-  if (AFinding.RuleId = cDeprecatedSymbolRuleId) and TDeprecatedSymbolRule.IsDeprecation(AFinding.Message) then
+  if (ACatalog <> nil) and ACatalog.StruckThrough(AFinding) then
   begin
     Result.AddPair('tags', TagsOf(cTagDeprecated));
   end;
@@ -452,9 +453,9 @@ class function TLspDiagnosticItems.UsesRuleOf(AState: TUsesEntryState): string;
 begin
   case AState of
     TUsesEntryState.Unused:
-      Result := cUnusedUsesRuleId;
+      Result := cUnusedUsesFindingId;
     TUsesEntryState.OnlyImplementation:
-      Result := cUsesOnlyInImplementationRuleId;
+      Result := cUsesOnlyInImplementationFindingId;
   else
     Result := '';
   end;

@@ -330,7 +330,8 @@ begin
   mDisabled := nil;
   Result := AnsweredIf((not Assigned(AAnswer.Hooks.SlashCommandsFor) or
     AAnswer.Hooks.SlashCommandsFor(ARequest.Uri, mDisabled)) and
-    TCompletionSlash.SlashItems(ARequest, mDisabled, AAnswer.Hooks.RuleIdsFor, AAnswer.Exclusive));
+    TCompletionSlash.SlashItems(ARequest, mDisabled, AAnswer.Hooks.RuleIdsFor, AAnswer.Hooks.RuleCatalog,
+      AAnswer.Exclusive));
 end;
 
 function DirectiveCase(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome;
