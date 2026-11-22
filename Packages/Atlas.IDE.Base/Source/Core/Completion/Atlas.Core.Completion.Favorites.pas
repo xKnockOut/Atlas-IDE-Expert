@@ -23,7 +23,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 {$SCOPEDENUMS ON}
 

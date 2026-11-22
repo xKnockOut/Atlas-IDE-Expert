@@ -88,7 +88,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasEvalPlace }
 

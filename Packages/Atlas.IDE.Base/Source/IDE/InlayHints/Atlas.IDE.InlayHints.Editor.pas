@@ -62,7 +62,7 @@ uses
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Editor.InlayPlan,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -163,7 +163,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Elements,
@@ -172,8 +172,8 @@ uses
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.CodeView;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Editor.CodeView;
 
 /// <summary>Zeichnet ALabels als Pillen ab AX (Höhe AHeight ab ATop) und rückt AX hinter die letzte; liefert die
 /// Fläche aller Pillen, leer ohne.</summary>

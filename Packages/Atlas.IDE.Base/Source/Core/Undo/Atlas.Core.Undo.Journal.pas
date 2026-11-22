@@ -25,7 +25,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Undo.Contract;
 
 type
@@ -113,7 +113,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Files.TextDiff,
+  Atlas.Plugin.Files.TextDiff,
   Atlas.Core.Undo.LinePatch,
   Atlas.Core.Notifications.MessageSink;
 

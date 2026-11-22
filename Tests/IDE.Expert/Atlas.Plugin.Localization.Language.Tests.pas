@@ -58,8 +58,8 @@ uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Documentation.Layout,
-  Atlas.Core.Files.ExternalChanges,
-  Atlas.Core.Files.Format,
+  Atlas.Plugin.Files.ExternalChanges,
+  Atlas.Plugin.Files.Format,
   Atlas.Plugin.Localization.Language,
   Atlas.UI.Strings,
   Atlas.UI.Strings.Tests;

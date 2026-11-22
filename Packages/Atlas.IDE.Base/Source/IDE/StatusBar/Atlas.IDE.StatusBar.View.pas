@@ -57,7 +57,7 @@ uses
   Atlas.Core.Problems.Findings,
   Atlas.UI.Strings,
   Atlas.UI.StatusBar.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Problems.Controller,

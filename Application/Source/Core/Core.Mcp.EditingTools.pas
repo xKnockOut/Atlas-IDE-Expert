@@ -22,7 +22,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
-  Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Mcp.Contract.Formatting,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Mcp.ExtractTools,
   Atlas.Common.Mcp.RefactorTools,
@@ -31,9 +31,9 @@ uses
   Atlas.Common.Mcp.ProtectedFiles,
   Atlas.Common.Mcp.EditFindings,
   Atlas.Common.Mcp.CheckTools,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
   Core.Texts,
@@ -295,11 +295,11 @@ function ToolFormatCode(const AContext: TMcpToolContext; const AArguments: TJSON
 var
   mFileName, mText: string;
   mStartLine, mEndLine: Integer;
-  mScope: TFormatScope;
+  mLines: TMcpFormatLines;
   mStyle: TFormatStyle;
 begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
-  mScope := TFormatScope.All;
+  mLines := TMcpFormatLines.All;
   if AArguments.TryGetValue<Integer>('startLine', mStartLine) then
   begin
     if not AArguments.TryGetValue<Integer>('endLine', mEndLine) then
@@ -310,16 +310,16 @@ begin
     begin
       raise EMcpToolError.Create(cTexts[TMcpEditingText.LineRange].Text);
     end;
-    mScope := TFormatScope.Lines([TFormatLineSpan.Create(mStartLine - 1, mEndLine - 1)]);
+    mLines := TMcpFormatLines.Range(mStartLine - 1, mEndLine - 1);
   end;
   mStyle := StyleFor(AContext, mFileName);
   if AArguments.TryGetValue<string>('text', mText) then
   begin
-    Result := AContext.Edit.FormatCode(mStyle, mFileName, mText, mScope);
+    Result := AContext.Edit.FormatCode(mStyle, mFileName, mText, mLines);
   end
   else
   begin
-    Result := AContext.Edit.FormatCode(mStyle, mFileName, mScope, DryRunOf(AArguments));
+    Result := AContext.Edit.FormatCode(mStyle, mFileName, mLines, DryRunOf(AArguments));
   end;
 end;
 

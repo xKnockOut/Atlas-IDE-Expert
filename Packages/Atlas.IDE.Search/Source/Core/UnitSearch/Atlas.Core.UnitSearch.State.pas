@@ -19,7 +19,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.Sections,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 const
   /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>

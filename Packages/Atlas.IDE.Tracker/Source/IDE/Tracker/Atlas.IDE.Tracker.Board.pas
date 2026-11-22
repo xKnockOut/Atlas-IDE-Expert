@@ -92,7 +92,7 @@ uses
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.Board.Strings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.BoardWindow;
 

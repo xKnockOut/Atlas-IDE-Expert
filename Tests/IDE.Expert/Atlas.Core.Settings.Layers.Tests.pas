@@ -56,7 +56,7 @@ uses
   Atlas.Core.Settings.Choices,
   Atlas.Core.Settings.Validation,
   Atlas.Core.Settings.Baseline,
-  Atlas.Core.Files.TextFile;
+  Atlas.Plugin.Files.TextFile;
 
 const
   cLB = #13#10;

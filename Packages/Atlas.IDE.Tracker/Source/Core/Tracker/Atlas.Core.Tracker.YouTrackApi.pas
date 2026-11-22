@@ -166,7 +166,7 @@ uses
   Atlas.Core.Tracker.Templates,
   Atlas.Core.Tracker.Internals.YouTrackJson,
   Atlas.Text.Json,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasYouTrackApi }
 

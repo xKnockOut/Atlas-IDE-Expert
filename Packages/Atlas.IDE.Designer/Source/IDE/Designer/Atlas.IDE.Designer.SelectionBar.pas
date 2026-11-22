@@ -31,7 +31,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.SelectionBar,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.PropertyPainter,
   Atlas.IDE.Designer.Tool;
 
@@ -135,7 +135,7 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Designer.FitText,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 const

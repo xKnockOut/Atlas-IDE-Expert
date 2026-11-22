@@ -115,7 +115,7 @@ uses
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Visualizers,
   Atlas.UI.Debug.Values.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cVisualizerIdentifier = 'Atlas.Visualizer.DisplayRules';

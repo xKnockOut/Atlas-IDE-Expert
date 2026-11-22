@@ -116,7 +116,7 @@ uses
   Atlas.Core.VersionControl.BranchPlan,
   Atlas.IDE.Contracts.BuildRequests,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWorkLink,

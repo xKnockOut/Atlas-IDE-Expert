@@ -41,8 +41,8 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Contract,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.UI.BuildPipeline.Strings;
 

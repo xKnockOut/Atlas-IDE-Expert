@@ -92,7 +92,7 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Notifications.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Host;
 

@@ -19,7 +19,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 type
   TAtlasTestProjectChoice = record

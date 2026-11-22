@@ -51,7 +51,7 @@ uses
   Atlas.Core.Debug.BreakpointRules,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,
@@ -64,7 +64,7 @@ uses
   Atlas.IDE.Debug.BreakpointsWindow,
   Atlas.UI.Debug.BreakpointsFrame,
   Atlas.UI.Debug.Breakpoints.Strings,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 const
   cRefreshMs = 150;

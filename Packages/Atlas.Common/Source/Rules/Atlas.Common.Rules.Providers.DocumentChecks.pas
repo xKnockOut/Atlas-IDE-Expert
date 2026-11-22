@@ -50,7 +50,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Builtin.DeadCode;
 
 { TRuleDocumentChecks }

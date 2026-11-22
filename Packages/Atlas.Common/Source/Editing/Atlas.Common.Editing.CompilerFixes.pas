@@ -28,24 +28,12 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Editing.Contract.CompilerFixes;
 
 type
-  /// <summary>Eine Compilermeldung; Line und Column ab 0, Column -1 ohne Spalte.</summary>
-  TFixMessage = record
-    Code: string;
-    Line: Integer;
-    Column: Integer;
-    Text: string;
-    class function Create(const ACode: string; ALine, AColumn: Integer; const AText: string): TFixMessage; static;
-  end;
-
-  TCompilerFix = record
-    Code: string;
-    Title: string;
-    Edits: TArray<TTextEdit>;
-    Preferred: Boolean;
-  end;
+  TFixMessage = Atlas.Common.Editing.Contract.CompilerFixes.TFixMessage;
+  TCompilerFix = Atlas.Common.Editing.Contract.CompilerFixes.TCompilerFix;
 
   TCompilerFixContext = record
     /// <summary>Units, die einen Bezeichner deklarieren; nil = keine E2003-Korrektur.</summary>
@@ -59,8 +47,6 @@ type
     class function Codes: TArray<string>; static;
     /// <summary>Hat ACode eine Korrektur, die FixAll für die ganze Datei anwenden kann?</summary>
     class function CanFixAll(const ACode: string): Boolean; static;
-    /// <summary>Namen in Hochkommas aus dem Meldungstext, in Reihenfolge.</summary>
-    class function QuotedNames(const AText: string): TArray<string>; static;
     /// <summary>Units in der Reihenfolge, in der E2003 sie anbietet.</summary>
     class function RankUnits(const AUnits: TArray<string>): TArray<string>; static;
     /// <summary>Korrekturen für AMessage im Text AText (Baum ATree).</summary>
@@ -76,6 +62,7 @@ implementation
 
 uses
   Atlas.Common.Semantics.UsesActions,
+  Atlas.Common.Compiler.MessageTexts,
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
@@ -111,16 +98,6 @@ const
   // Namespaces der RTL und der Bibliotheken von Delphi: bei E2003 zuerst.
   cLibraryNamespaces: array[0..12] of string = ('System', 'Winapi', 'Vcl', 'FMX', 'Data', 'Xml', 'Web', 'Soap',
     'REST', 'Datasnap', 'FireDAC', 'IBX', 'Posix');
-
-{ TFixMessage }
-
-class function TFixMessage.Create(const ACode: string; ALine, AColumn: Integer; const AText: string): TFixMessage;
-begin
-  Result.Code := UpperCase(Trim(ACode));
-  Result.Line := ALine;
-  Result.Column := AColumn;
-  Result.Text := AText;
-end;
 
 { Hilfen }
 
@@ -198,32 +175,6 @@ begin
   Result := MatchText(Trim(ACode), cFixAllCodes);
 end;
 
-class function TCompilerFixes.QuotedNames(const AText: string): TArray<string>;
-var
-  mIndex, mStart: Integer;
-begin
-  Result := nil;
-  mIndex := 1;
-  while mIndex <= Length(AText) do
-  begin
-    if AText[mIndex] = '''' then
-    begin
-      mStart := mIndex + 1;
-      mIndex := mStart;
-      while (mIndex <= Length(AText)) and (AText[mIndex] <> '''') do
-      begin
-        Inc(mIndex);
-      end;
-      if mIndex > Length(AText) then
-      begin
-        Break;
-      end;
-      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
-    end;
-    Inc(mIndex);
-  end;
-end;
-
 function LibraryRank(const AUnit: string): Integer;
 var
   mDot: Integer;
@@ -286,7 +237,7 @@ var
   mUnitName: string;
 begin
   Result := nil;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   if Length(mNames) < 2 then
   begin
     Exit;
@@ -317,7 +268,7 @@ var
   mFound: Boolean;
 begin
   Result := nil;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   if (Length(mNames) = 0) or not Assigned(AContext.Declaring) then
   begin
     Exit;
@@ -443,7 +394,7 @@ var
   mName: string;
 begin
   Result := nil;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   if Length(mNames) = 0 then
   begin
     Exit;
@@ -605,7 +556,7 @@ var
   mChosen: TSyntaxNode;
 begin
   Result := nil;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   if Length(mNames) < 2 then
   begin
     Exit;
@@ -704,7 +655,7 @@ begin
     begin
       Continue;
     end;
-    mNames := TCompilerFixes.QuotedNames(mMessage.Text);
+    mNames := TCompilerMessageTexts.QuotedNames(mMessage.Text);
     if (Length(mNames) >= 2) and (IndexText(mNames[High(mNames)], Result) < 0) then
     begin
       Result := Result + [mNames[High(mNames)]];

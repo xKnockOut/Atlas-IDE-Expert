@@ -66,7 +66,7 @@ uses
   Atlas.UI.Outline.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Outline.SectionEdit,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings;
 

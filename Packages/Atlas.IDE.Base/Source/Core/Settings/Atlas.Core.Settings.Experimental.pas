@@ -53,7 +53,7 @@ implementation
 uses
   System.JSON,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Text.Json,
   Atlas.Plugin.Localization.Language;
 

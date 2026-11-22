@@ -70,7 +70,7 @@ uses
   Atlas.Core.Completion.Parentheses,
   Atlas.Core.Lsp.Client,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.Text.Lines;
 
 const

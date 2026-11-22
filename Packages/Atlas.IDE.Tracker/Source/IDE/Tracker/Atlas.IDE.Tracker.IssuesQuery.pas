@@ -84,7 +84,7 @@ uses
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Projects,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cLogAborted = 'Meine Issues: Abfrage beim Tracker mit %s abgebrochen';

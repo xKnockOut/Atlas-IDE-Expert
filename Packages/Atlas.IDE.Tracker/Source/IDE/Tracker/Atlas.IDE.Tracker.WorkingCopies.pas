@@ -66,7 +66,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Projects,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;
 

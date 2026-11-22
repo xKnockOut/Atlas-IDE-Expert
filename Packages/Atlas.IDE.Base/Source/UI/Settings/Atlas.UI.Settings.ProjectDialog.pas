@@ -208,7 +208,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Settings.PageNames,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,

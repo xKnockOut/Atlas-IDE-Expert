@@ -90,7 +90,7 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Designer.KeptForm,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Theme.Style;
 
 { TAtlasIdeHandleTool }
 

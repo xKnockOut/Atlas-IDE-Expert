@@ -128,13 +128,13 @@ uses
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.Recursion,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.LineTracker,
-  Atlas.IDE.Foundation.EditorWindows,
-  Atlas.IDE.Foundation.DesignerView,
+  Atlas.ToolsApi.Editor.Windows,
+  Atlas.ToolsApi.Designer.View,
   Atlas.Core.Editor.LineTracking;
 
 { TAtlasIdeGutterColumnState }

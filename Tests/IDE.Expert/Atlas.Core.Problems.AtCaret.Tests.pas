@@ -27,7 +27,7 @@ implementation
 
 uses
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.AtCaret,
   Atlas.Tests.EditorFilesFake;

@@ -97,7 +97,7 @@ uses
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Debug.ObjectMarks.Strings,

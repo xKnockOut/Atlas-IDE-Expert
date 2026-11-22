@@ -12,7 +12,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 type
 {$SCOPEDENUMS ON}

@@ -130,7 +130,7 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
   Atlas.UI.Setup.Strings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 { TAtlasIdeSetupChecklist }

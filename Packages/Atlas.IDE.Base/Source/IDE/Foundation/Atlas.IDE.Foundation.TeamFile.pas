@@ -99,12 +99,12 @@ uses
   System.IOUtils,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Foundation.Strings,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.OpenWatch;
+  Atlas.ToolsApi.Files.OpenWatch;
 
 const
   cCheckMs = 2000;

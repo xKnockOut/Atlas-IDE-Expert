@@ -178,7 +178,7 @@ uses
   System.StrUtils,
   Atlas.Core.Status.Contract,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Assistants.EditPlan,

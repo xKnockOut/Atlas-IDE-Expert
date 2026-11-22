@@ -98,14 +98,14 @@ uses
   System.Hash,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Files.DataFile,
-  Atlas.IDE.Foundation.Files,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.BreakpointRules,
   Atlas.UI.Debug.BreakpointAnchors,
   Atlas.UI.Debug.Breakpoints.Strings,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 /// <summary>Quelltext-Haltepunkte der IDE je Datei (Schlüssel: Dateiname wie in der IDE), Zeilen ab 0.</summary>
 function BreakpointsByFile: TDictionary<string, TArray<Integer>>;

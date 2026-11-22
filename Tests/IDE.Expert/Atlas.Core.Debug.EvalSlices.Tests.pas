@@ -74,7 +74,7 @@ implementation
 
 uses
   Atlas.Core.Debug.EvaluateRows,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasEvalSlicesTests }
 

@@ -12,7 +12,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Setup.Checklist,
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.IDE.Contracts.GhostSuggestions,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Setup.Checklist,

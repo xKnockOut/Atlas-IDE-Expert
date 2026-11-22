@@ -141,7 +141,7 @@ uses
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Tracker.LinkDialogs,
   Atlas.UI.Tracker.SprintDialog,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.IssueWorkLink,

@@ -111,7 +111,7 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Files.Format,
+  Atlas.Plugin.Files.Format,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Settings.Plugin,

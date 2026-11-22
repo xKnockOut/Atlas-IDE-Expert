@@ -121,7 +121,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Tests.Mutants;
 
 /// <summary>Rückruf des Builds an AFlow für den Lauf ARun; eigene Routine: fängt nur, was sie braucht.</summary>

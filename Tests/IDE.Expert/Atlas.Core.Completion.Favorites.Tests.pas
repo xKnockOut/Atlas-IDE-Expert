@@ -62,7 +62,7 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Controller,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Tests.Wait,
   Atlas.Core.Completion.TestSupport;

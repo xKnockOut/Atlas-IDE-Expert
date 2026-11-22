@@ -111,7 +111,7 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Lsp.Uris,
+  Atlas.Plugin.Lsp.Uris,
   Atlas.Text.Lines,
   Atlas.Plugin.Localization.Language;
 

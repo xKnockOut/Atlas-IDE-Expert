@@ -99,9 +99,9 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.GutterColumn,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.GutterColumns;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Gutter.Columns;
 
 const
   /// <summary>Kleinste Kantenlänge des Pfeils und Abstand zum Rand der Zelle (Pixel).</summary>

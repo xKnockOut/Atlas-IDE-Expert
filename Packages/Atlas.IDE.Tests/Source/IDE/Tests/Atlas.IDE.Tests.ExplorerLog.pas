@@ -39,7 +39,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Tests.Strings;
 

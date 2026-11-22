@@ -242,6 +242,7 @@ begin
   end;
   mRequest.Json := SameText(TMcpArgs.OptionalString(AArguments, 'format'), 'json');
   mRequest.ReadText := WorkspaceReader(AContext.Root);
+  mRequest.CompilerFixes := AContext.Adapters.CompilerFixes;
   Result := TMcpCompilerMessageTools.Explain(mRequest);
 end;
 

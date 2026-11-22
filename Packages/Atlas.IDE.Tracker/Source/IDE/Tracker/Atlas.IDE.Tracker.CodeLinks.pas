@@ -139,9 +139,9 @@ uses
   Atlas.Core.Tracker.CodeLinkPlan,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.Vcl.Controls.Menus;
 
 function CanStart(const AHooks: TAtlasCodeLinksHooks): Boolean;

@@ -109,10 +109,10 @@ uses
   Vcl.Dialogs,
   Atlas.Core.StartProfiles.Picker,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.UI.Commands.Palette;

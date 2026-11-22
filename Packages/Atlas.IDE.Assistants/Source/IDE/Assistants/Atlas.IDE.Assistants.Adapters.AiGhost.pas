@@ -63,7 +63,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Text.Json,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Uris,
+  Atlas.Plugin.Lsp.Uris,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.AiProviders.Catalog,
   Atlas.Plugin.Diagnostics.Guard,

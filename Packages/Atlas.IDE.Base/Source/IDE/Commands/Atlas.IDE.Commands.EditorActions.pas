@@ -63,7 +63,7 @@ uses
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
   Atlas.UI.Editor.ActionChoices,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.WorkspaceEdit,

@@ -41,7 +41,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Bookmarks.Quick,
   Atlas.UI.Bookmarks.Strings,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Bookmarks.QuickService,
   Atlas.IDE.Foundation.Host;

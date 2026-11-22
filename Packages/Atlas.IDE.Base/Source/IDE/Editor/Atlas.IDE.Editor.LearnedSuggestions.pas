@@ -68,8 +68,8 @@ uses
   System.JSON,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Lsp.Uris,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Lsp.Uris,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.UI.Editor.LearnedSuggestions;

@@ -122,13 +122,13 @@ uses
   Atlas.Vcl.Popup.Window,
   Atlas.UI.Debug.StopBar,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.RunMenu,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Caret;
 
 const
   cMenuItemName = 'AtlasBreakOnNextEventItem';

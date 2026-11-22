@@ -82,7 +82,7 @@ uses
   Vcl.Menus,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.Plan,
@@ -90,10 +90,10 @@ uses
   Atlas.UI.Search.Strings,
   Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Window,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.ActionHook,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Commands.ActionHook,
+  Atlas.ToolsApi.Editor.Buffer;
 
 type
   /// <summary>Hängt sich an OnExecute der IDE-Aktion „Units“, „Unit verwenden“ oder „Formulare“ und gibt sie

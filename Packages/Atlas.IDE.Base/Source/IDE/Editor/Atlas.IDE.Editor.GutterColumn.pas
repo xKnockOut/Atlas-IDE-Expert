@@ -138,13 +138,13 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.GutterPanel,
   Atlas.UI.Editor.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.GutterColumns,
+  Atlas.ToolsApi.Gutter.Columns,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh;
 
 type
   /// <summary>Maße eines Symbols in seiner Zelle.</summary>

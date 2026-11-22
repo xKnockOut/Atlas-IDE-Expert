@@ -52,7 +52,7 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.Vcl.Popup.Window,
   Atlas.UI.Diagnostics.Strings;
 

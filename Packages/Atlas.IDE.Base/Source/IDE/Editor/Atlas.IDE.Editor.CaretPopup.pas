@@ -95,8 +95,8 @@ uses
   System.SysUtils,
   Winapi.Messages,
   ToolsAPI,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh;
 
 function IsModifierKey(AKey: Word): Boolean;
 begin

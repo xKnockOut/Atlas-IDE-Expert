@@ -58,9 +58,9 @@ uses
   System.Generics.Collections,
   DockForm,
   Atlas.Core.Editor.SnapshotPolicy,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.Core.Lsp.TextOffsets,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.Plugin.Editor.TextOffsets,
   Atlas.Core.Editor.LineMove,
   Atlas.Plugin.Diagnostics.Guard;
 

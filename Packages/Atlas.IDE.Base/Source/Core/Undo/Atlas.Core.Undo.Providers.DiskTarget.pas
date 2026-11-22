@@ -10,7 +10,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Undo.Contract;
 
 type
@@ -36,7 +36,7 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Core.Files.EncodingDefault;
+  Atlas.Plugin.Files.EncodingDefault;
 
 { TAtlasUndoDiskTarget }
 

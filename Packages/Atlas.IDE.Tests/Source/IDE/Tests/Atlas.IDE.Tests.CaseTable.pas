@@ -68,7 +68,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.TestResults,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Uris,
+  Atlas.Plugin.Lsp.Uris,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Tests.Run,

@@ -46,7 +46,7 @@ uses
   ToolsAPI,
   Atlas.UI.Debug.Logpoints.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TValuesDock = class(TInterfacedObject, INTACustomDockableForm)

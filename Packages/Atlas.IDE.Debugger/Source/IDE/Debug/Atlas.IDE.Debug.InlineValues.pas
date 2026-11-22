@@ -142,13 +142,13 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Debug.CallStack,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Unavailable,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasIdeDebugInlineValues.TEvents }
 

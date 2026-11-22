@@ -67,7 +67,7 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Core.Editor.LineAnchor,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Notes.Store,
   Atlas.Core.Projects.Summary,
   Atlas.Tests.TempFolder;

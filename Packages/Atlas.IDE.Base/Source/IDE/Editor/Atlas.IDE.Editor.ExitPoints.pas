@@ -126,10 +126,10 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.PaintedLine;
 
 { TAtlasIdeExitPoints.TEvents }
