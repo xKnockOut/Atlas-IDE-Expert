@@ -62,6 +62,8 @@ type
     /// <summary>Letzter Fehler des Betriebssystems (GetLastOSError gibt es nur unter FPC, Delphi kennt dafür
     /// System.GetLastError).</summary>
     class function LastOSError: Integer; static;
+    /// <summary>Inhalt von AFileName als UTF-8; '' ohne Datei oder wenn sie nicht lesbar ist.</summary>
+    class function ReadQuietly(const AFileName: string): string; static;
   end;
 
 implementation
@@ -243,6 +245,21 @@ begin
       end;
       Result := False;
     end;
+  end;
+end;
+
+class function TTextFiles.ReadQuietly(const AFileName: string): string;
+begin
+  Result := '';
+  try
+    if (AFileName <> '') and TFile.Exists(AFileName) then
+    begin
+      Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
+    end;
+  except
+    // lsp-ignore: catch-all-without-raise -- unlesbare Datei gilt als leer; der Aufrufer nimmt dann Vorgaben
+    on Exception do
+      Result := '';
   end;
 end;
 

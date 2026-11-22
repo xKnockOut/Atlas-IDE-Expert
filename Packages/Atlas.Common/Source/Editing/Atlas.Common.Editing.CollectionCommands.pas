@@ -987,30 +987,18 @@ begin
   Result := ExecuteDict(AContext, True, AEdits, AReason);
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterCollectionCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('list', cTexts[TCollectionCommandsText.ListAsFieldOrLocal].Text,
-    cTexts[TCollectionCommandsText.ListFCustomersTCustomer].Text,
-    ExecuteList));
-  ARegister(Command('dict', cTexts[TCollectionCommandsText.DictionaryAsFieldOrLocal].Text,
-    cTexts[TCollectionCommandsText.DictFCacheStringTCustomer].Text,
-    ExecuteDictPlain));
-  ARegister(Command('dict!', cTexts[TCollectionCommandsText.DictionaryWithCaseInsensitiveKeys].Text,
-    cTexts[TCollectionCommandsText.DictFCacheStringTCustomer2].Text, ExecuteDictIgnoreCase));
-  ARegister(Command('sort', cTexts[TCollectionCommandsText.SortAListByField].Text,
-    cTexts[TCollectionCommandsText.SortCustomersRevenue].Text,
-    ExecuteSort));
-  ARegister(Command('filter', cTexts[TCollectionCommandsText.MatchesOfAConditionInto].Text,
-    cTexts[TCollectionCommandsText.FilterCustomersActive].Text,
-    ExecuteFilter));
+  ARegister(TSlashCommand.Create('list', cTexts[TCollectionCommandsText.ListAsFieldOrLocal].Text,
+      cTexts[TCollectionCommandsText.ListFCustomersTCustomer].Text, ExecuteList));
+  ARegister(TSlashCommand.Create('dict', cTexts[TCollectionCommandsText.DictionaryAsFieldOrLocal].Text,
+      cTexts[TCollectionCommandsText.DictFCacheStringTCustomer].Text, ExecuteDictPlain));
+  ARegister(TSlashCommand.Create('dict!', cTexts[TCollectionCommandsText.DictionaryWithCaseInsensitiveKeys].Text,
+      cTexts[TCollectionCommandsText.DictFCacheStringTCustomer2].Text, ExecuteDictIgnoreCase));
+  ARegister(TSlashCommand.Create('sort', cTexts[TCollectionCommandsText.SortAListByField].Text,
+      cTexts[TCollectionCommandsText.SortCustomersRevenue].Text, ExecuteSort));
+  ARegister(TSlashCommand.Create('filter', cTexts[TCollectionCommandsText.MatchesOfAConditionInto].Text,
+      cTexts[TCollectionCommandsText.FilterCustomersActive].Text, ExecuteFilter));
 end;
 
 initialization

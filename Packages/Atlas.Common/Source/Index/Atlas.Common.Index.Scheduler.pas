@@ -410,12 +410,7 @@ end;
 
 function TIndexScheduler.Count: Integer;
 begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FEntries.Count;
-  finally
-    TMonitor.Exit(FLock);
-  end;
+  Result := TTextLocked.CountMonitored<Int64, TEntry>(FLock, FEntries);
 end;
 
 function TIndexScheduler.Queue: TIndexSchedulerQueue;

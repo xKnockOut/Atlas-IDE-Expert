@@ -8,12 +8,13 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Rules.Contract;
 
 type
   /// <summary>Liest eine Textdatei; False, wenn sie fehlt.</summary>
-  TUnitLookupReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TUnitLookupReadText = TDocumentReadText;
 
   /// <summary>Anderes Projekt der Gruppe: Ordner, in den es übersetzt, und seine Units.</summary>
   TUnitLookupGroupOutput = record

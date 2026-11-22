@@ -24,7 +24,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Metrics.Contract,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   TCodeLensKind = (References, Overrides, Descendants, Messages, Metrics);
@@ -64,17 +65,12 @@ type
     Targets: TArray<TCodeLensLocation>;
   end;
 
-  TLspCodeLens = class
+  TLspCodeLens = class(TLspProjectFeature)
   public const
     cLensMethod = 'textDocument/codeLens';
     cResolveMethod = 'codeLens/resolve';
     cShowLocationsCommand = 'atlas.showLocations';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
-    FReadText: TReferenceReadText;
-    FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FMetricsFor: TCodeLensMetricsFunc;
     function NewResolver: TNameResolver;
@@ -172,17 +168,6 @@ begin
   Result.Range := ARange;
 end;
 
-function UnitOf(const AIndex: ISymbolIndex; const ACurrent: TUnitIndex; const AFileName: string;
-  out AUnit: TUnitIndex): Boolean;
-begin
-  if SameText(AFileName, ACurrent.FileName) then
-  begin
-    AUnit := ACurrent;
-    Exit(True);
-  end;
-  Result := AIndex.FindFile(AFileName, AUnit);
-end;
-
 /// <summary>Nächster Vorfahr, der AName deklariert; False, wenn keiner im Index steht.</summary>
 function FindOverridden(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ACurrent: TUnitIndex;
   const AType: TIndexSymbol; const AName: string; out AFound: TCodeLensOverride): Boolean;
@@ -205,7 +190,7 @@ begin
     end;
     mName := mAncestors[0];
     if (Pos('<', mName) > 0) or not AResolver.ResolveTypeFrom(mFromUnit, mName, mAncestor) or
-      not UnitOf(AIndex, ACurrent, mAncestor.FileName, mOwnerUnit) then
+      not UnitOfFile(AIndex, ACurrent, mAncestor.FileName, mOwnerUnit) then
     begin
       Exit;
     end;
@@ -272,12 +257,7 @@ end;
 constructor TLspCodeLens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
 constructor TLspCodeLens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;

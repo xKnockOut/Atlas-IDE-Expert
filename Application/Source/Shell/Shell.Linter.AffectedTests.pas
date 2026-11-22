@@ -96,16 +96,6 @@ begin
   end;
 end;
 
-/// <summary>Typisierte Variable: TNameResolver.Create ist überladen.</summary>
-function EnsureUnitFunc(AGroup: TCoreWorkspaceGroup): TEnsureUnitFunc;
-begin
-  Result :=
-    function(const AUnitName: string): Boolean
-    begin
-      Result := AGroup.EnsureUnit(AUnitName);
-    end;
-end;
-
 /// <summary>Auftrag der Analyse: Dateien der Gruppe, Testprogramme und der Testbereich.</summary>
 function RequestOf(AGroup: TCoreWorkspaceGroup; const ASettings: TServerSettings; const APrograms: TArray<string>;
   const AReadText: TReferenceReadText): TAffectedRequest;
@@ -137,7 +127,7 @@ begin
   mQuery.IncludeUncommitted := AOptions.IncludeUncommitted;
   // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
   mAccess := TShellPlatformAdapters.VcsAccess;
-  mResolver := TNameResolver.Create(AGroup.Index, EnsureUnitFunc(AGroup));
+  mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
   try
     mResolver.Namespaces := AGroup.Main.State.Namespaces;
     Result := TCoreAffectedTests.Run(mAccess, ASettings, mQuery,

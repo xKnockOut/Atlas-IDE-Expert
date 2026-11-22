@@ -29,7 +29,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Text.Lines,
   System.StrUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Documents.Contract,
@@ -423,15 +422,12 @@ end;
 type
   /// <summary>Prüfung einer Unit für handle-leak; hält die Tabelle, die Routine, ihren Graphen und ihre lokalen
   /// Variablen.</summary>
-  THandleCheck = class
+  THandleCheck = class(TFlowFileCheck)
   strict private
-    FContext: TRuleContext;
-    FReport: IRuleReport;
     FTable: TArray<THandlePair>;
     FRoutine: TSyntaxNode;
     FGraph: TControlFlowGraph;
     FLocals: TArray<string>;
-    FLineBreak: string;
     function PairOf(const AName: string; out APair: THandlePair): Boolean;
     function NewHandle(const APair: THandlePair; ACall: TSyntaxNode; const ARoot, APath: string): TOpenedHandle;
     procedure AddArgumentHandles(const APair: THandlePair; ACall: TSyntaxNode; AIndex: Integer;
@@ -459,19 +455,10 @@ type
     procedure CheckNode(ANode: TFlowNode);
     procedure CheckRoutine(const ACache: IRuleDerivedCache; ARoutine: TSyntaxNode);
   public
-    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
   end;
 
 { THandleCheck }
-
-constructor THandleCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
-begin
-  inherited Create;
-  FContext := AContext;
-  FReport := AReport;
-  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
-end;
 
 function THandleCheck.PairOf(const AName: string; out APair: THandlePair): Boolean;
 var

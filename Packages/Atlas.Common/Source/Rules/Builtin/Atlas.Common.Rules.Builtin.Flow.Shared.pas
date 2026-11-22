@@ -28,6 +28,17 @@ const
     TSyntaxKind.ExceptionHandler, TSyntaxKind.FinallyBlock, TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement,
     TSyntaxKind.LabeledStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.EmptyStatement];
 
+type
+  /// <summary>Gemeinsamer Kopf der Flussprüfungen je Datei: Kontext, Ausgabe und Zeilenumbruch des Textes.</summary>
+  TFlowFileCheck = class
+  protected
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FLineBreak: string;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 /// <summary>Bezeichner, an dem eine Kette wie Result.Feld oder Result[I] hängt.</summary>
 function RootName(ANode: TSyntaxNode): string;
@@ -93,7 +104,18 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Text.Lines;
+
+{ TFlowFileCheck }
+
+constructor TFlowFileCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
+end;
 
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 begin

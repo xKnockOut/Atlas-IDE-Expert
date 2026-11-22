@@ -122,7 +122,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Pascal.Parser;
+  Atlas.Common.Pascal.Parser,
+  Atlas.Text.Chars;
 
 const
   cTreeKey = 'pascal.syntaxtree';
@@ -507,19 +508,6 @@ begin
   Result.Bytes := TInterlocked.CompareExchange(LiveBytes, 0, 0);
 end;
 
-function StringBytes(const AValue: string): Int64;
-begin
-  // Kopf (Referenzzähler, Länge, Codepage) plus UTF-16-Zeichen und Endnull, wie Index.Memory.
-  if AValue = '' then
-  begin
-    Result := 0;
-  end
-  else
-  begin
-    Result := 12 + (Length(AValue) + 1) * SizeOf(Char);
-  end;
-end;
-
 class function TSyntaxTreeCache.EstimatedBytes(ATree: TSyntaxTree): Int64;
 var
   mBytes: Int64;
@@ -533,14 +521,14 @@ begin
   mBytes := TSyntaxTree.InstanceSize + 16 + Int64(Length(ATree.Tokens)) * SizeOf(TPascalToken);
   for mToken in ATree.Tokens do
   begin
-    Inc(mBytes, StringBytes(mToken.Text));
+    Inc(mBytes, TTextChars.StringBytes(mToken.Text));
   end;
   if ATree.Root <> nil then
   begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
-        Inc(mBytes, TSyntaxNode.InstanceSize + StringBytes(ANode.Name));
+        Inc(mBytes, TSyntaxNode.InstanceSize + TTextChars.StringBytes(ANode.Name));
         // Kinderliste: Objekt und Array der Zeiger.
         if ANode.ChildCount > 0 then
         begin

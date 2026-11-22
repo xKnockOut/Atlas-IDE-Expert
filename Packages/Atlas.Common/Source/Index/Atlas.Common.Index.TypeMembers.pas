@@ -43,14 +43,13 @@ type
       out AMembers: TArray<TTypeMember>): Boolean; static;
     /// <summary>Gibt es AName (ohne Groß-/Kleinschreibung) unter AMembers?</summary>
     class function Contains(const AMembers: TArray<TTypeMember>; const AName: string): Boolean; static;
-    /// <summary>Letzter Namensteil ohne Typargumente.</summary>
-    class function ShortName(const ATypeName: string): string; static;
   end;
 
 implementation
 
 uses
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Names;
 
 { TTypeMembers }
 
@@ -66,23 +65,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-class function TTypeMembers.ShortName(const ATypeName: string): string;
-var
-  mAngle, mDot: Integer;
-begin
-  Result := Trim(ATypeName);
-  mAngle := Pos('<', Result);
-  if mAngle > 0 then
-  begin
-    Result := Copy(Result, 1, mAngle - 1);
-  end;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
 end;
 
 /// <summary>Sucht die Klasse AName erst in ALocal, dann im Index.</summary>
@@ -171,7 +153,7 @@ begin
       mAncestor := '';
       if Length(mCurrent.Ancestors) > 0 then
       begin
-        mAncestor := ShortName(mCurrent.Ancestors[0]);
+        mAncestor := TTextNames.BareTypeName(mCurrent.Ancestors[0]);
       end;
       if (mAncestor = '') or SameText(mAncestor, 'TObject') then
       begin

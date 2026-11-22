@@ -20,6 +20,10 @@ type
     class function PositionToJson(const APosition: TTextPosition): TJSONObject; static;
     /// <summary>Der Aufrufer übernimmt das Objekt.</summary>
     class function RangeToJson(const ARange: TTextRange): TJSONObject; static;
+    /// <summary>Liste von Range; der Aufrufer übernimmt das Array.</summary>
+    class function RangesToJson(const ARanges: TArray<TTextRange>): TJSONArray; static;
+    /// <summary>Liste von TextEdit {"range", "newText"}; der Aufrufer übernimmt das Array.</summary>
+    class function EditsToJson(const AEdits: TArray<TTextEdit>): TJSONArray; static;
   end;
 
 implementation
@@ -97,6 +101,32 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('start', PositionToJson(ARange.StartPos));
   Result.AddPair('end', PositionToJson(ARange.EndPos));
+end;
+
+class function TLspPositions.RangesToJson(const ARanges: TArray<TTextRange>): TJSONArray;
+var
+  mRange: TTextRange;
+begin
+  Result := TJSONArray.Create;
+  for mRange in ARanges do
+  begin
+    Result.AddElement(RangeToJson(mRange));
+  end;
+end;
+
+class function TLspPositions.EditsToJson(const AEdits: TArray<TTextEdit>): TJSONArray;
+var
+  mEdit: TTextEdit;
+  mItem: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for mEdit in AEdits do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    Result.AddElement(mItem);
+  end;
 end;
 
 initialization

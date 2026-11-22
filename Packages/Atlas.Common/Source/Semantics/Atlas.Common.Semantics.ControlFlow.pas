@@ -130,6 +130,9 @@ type
     /// <summary>Wie oben mit ALookup = nil.</summary>
     class function Build(ARoutine: TSyntaxNode): TControlFlowGraph; overload; static;
     function NodeOf(ASyntax: TSyntaxNode): TFlowNode;
+    /// <summary>Flussknoten der Anweisung um ASyntax: NodeOf von ASyntax oder des nächsten Vorfahren mit Knoten;
+    /// nil ohne.</summary>
+    function EnclosingNodeOf(ASyntax: TSyntaxNode): TFlowNode;
     function IsReachable(ANode: TFlowNode): TFlowAnswer;
     /// <summary>Wird A auf jedem Weg vom Anfang zu B durchlaufen?</summary>
     function Dominates(A, B: TFlowNode): TFlowAnswer;
@@ -1547,6 +1550,19 @@ begin
     end;
   end;
   Result := nil;
+end;
+
+function TControlFlowGraph.EnclosingNodeOf(ASyntax: TSyntaxNode): TFlowNode;
+var
+  mSyntax: TSyntaxNode;
+begin
+  Result := nil;
+  mSyntax := ASyntax;
+  while (mSyntax <> nil) and (Result = nil) do
+  begin
+    Result := NodeOf(mSyntax);
+    mSyntax := mSyntax.Parent;
+  end;
 end;
 
 function TControlFlowGraph.IsReachable(ANode: TFlowNode): TFlowAnswer;

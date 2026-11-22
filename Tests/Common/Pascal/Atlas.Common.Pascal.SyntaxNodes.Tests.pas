@@ -30,6 +30,8 @@ type
     procedure EmptyBlocksAndFirstChild;
     [Test]
     procedure RoutinePathOfNestedRoutine;
+    [Test]
+    procedure BlockPathAndOneLineText;
   end;
 
 implementation
@@ -73,6 +75,21 @@ begin
     end;
   end;
   Result := nil;
+end;
+
+/// <summary>Steht ANode hinter dem ersten Eintrag von APath?</summary>
+function OnPath(const APath: TArray<TSyntaxNode>; ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 1 to High(APath) do
+  begin
+    if APath[mIndex] = ANode then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 { TSyntaxNodesTests }
@@ -237,6 +254,33 @@ begin
   try
     Assert.AreEqual('Aussen.Innen', TSyntaxNodes.RoutinePath(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Innen')));
     Assert.AreEqual('Aussen', TSyntaxNodes.RoutinePath(Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Aussen')));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TSyntaxNodesTests.BlockPathAndOneLineText;
+var
+  mTree: TSyntaxTree;
+  mInner: TSyntaxNode;
+  mPath: TArray<TSyntaxNode>;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mInner := Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Innen');
+    Assert.IsNotNull(TSyntaxNodes.BlockOf(mInner));
+    Assert.AreEqual(Ord(TSyntaxKind.Block), Ord(TSyntaxNodes.BlockOf(mInner).Kind));
+    Assert.IsNull(TSyntaxNodes.BlockOf(nil));
+    // Zeile 10 ist "X := ((Y));" in Innen, das in Aussen liegt.
+    mPath := TSyntaxNodes.LinePath(mTree.Root, 10);
+    Assert.AreSame(mTree.Root, mPath[0]);
+    Assert.IsTrue(OnPath(mPath, mInner), 'Innen liegt auf dem Weg');
+    Assert.IsTrue(OnPath(mPath, Find(mTree.Root, TSyntaxKind.RoutineDecl, 'Aussen')));
+    Assert.AreEqual('procedure Innen; begin X := ((Y)); Self.F := A.B[1]^; Ziel := Unit1.Wert; end;',
+      TSyntaxNodes.OneLineText(cSource, mInner, 200));
+    Assert.AreEqual('procedure…', TSyntaxNodes.OneLineText(cSource, mInner, 10));
+    Assert.AreEqual('', TSyntaxNodes.OneLineText(cSource, nil, 10));
+    mPath := nil;
   finally
     mTree.Free;
   end;

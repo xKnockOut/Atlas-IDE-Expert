@@ -132,7 +132,8 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Editing.TextChanges;
 
 {$SCOPEDENUMS ON}
 
@@ -1025,18 +1026,6 @@ begin
     AEdit);
 end;
 
-/// <summary>AText mit AEdit angewandt.</summary>
-function Applied(const AText: string; const AEdit: TTextEdit): string;
-var
-  mTable: TLineTable;
-  mStart, mStop: Integer;
-begin
-  mTable := TLineTable.Build(AText);
-  mStart := mTable.OffsetAt(AEdit.Range.StartPos);
-  mStop := mTable.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
-end;
-
 /// <summary>Deklaration des Tests ADraft vor der Zeile AEndLine ("end" der Klasse), eine Ebene tiefer, mit
 /// [Test] bzw. seinen Attributen.</summary>
 function DeclarationText(const ADraft: TTestDraft; const ALineBreak, AEndLine: string): string;
@@ -1109,7 +1098,7 @@ begin
   ANewText := string.Join(mLineBreak, mLines);
   if mNeedsUses then
   begin
-    ANewText := Applied(ANewText, mUsesEdit);
+    ANewText := TTextChanges.Apply(ANewText, TArray<TTextEdit>.Create(mUsesEdit));
   end;
   AName := mDraft.TestName;
   Result := True;

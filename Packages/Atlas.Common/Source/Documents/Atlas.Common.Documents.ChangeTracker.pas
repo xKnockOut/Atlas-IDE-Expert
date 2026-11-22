@@ -5,12 +5,15 @@
 // oder verschwunden sind (#227: atlas.json und die globale Benutzerdatei, die
 // der Server selbst beobachtet). Wie der Stempel entsteht, bestimmt der
 // Aufrufer; '' heißt „gibt es nicht“. Threadsicher.
+// Dazu der gemeinsame Kopf der Beobachter-Threads unter Windows und Linux.
 
 interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Classes,
+  System.Generics.Collections,
+  Atlas.Common.Logging.Contract;
 
 type
   /// <summary>Stempel einer Datei; '' wenn es sie nicht gibt.</summary>
@@ -35,7 +38,40 @@ type
     function Directories: TArray<string>;
   end;
 
+type
+  /// <summary>Geänderte, neue oder verschwundene Dateien seit dem letzten Abgleich.</summary>
+  TFileWatcherChanged = reference to procedure(const AFiles: TArray<string>);
+
+  /// <summary>Kopf der Beobachter-Threads der Plattformen: Tracker, die Signale für Stop und neue Dateiliste
+  /// (Ereignis bzw. Handle der Plattform), Meldung und Protokoll. Startet angehalten, gibt sich nicht selbst frei.
+  /// </summary>
+  TFileWatchThread<TSignal> = class(TThread)
+  protected
+    FTracker: TFileChangeTracker;
+    FStop: TSignal;
+    FReconfigure: TSignal;
+    FOnChanged: TFileWatcherChanged;
+    FLogger: ILogger;
+  public
+    constructor Create(ATracker: TFileChangeTracker; AStop, AReconfigure: TSignal;
+      const AOnChanged: TFileWatcherChanged; const ALogger: ILogger);
+  end;
+
 implementation
+
+{ TFileWatchThread<TSignal> }
+
+constructor TFileWatchThread<TSignal>.Create(ATracker: TFileChangeTracker; AStop, AReconfigure: TSignal;
+  const AOnChanged: TFileWatcherChanged; const ALogger: ILogger);
+begin
+  inherited Create(True);
+  FreeOnTerminate := False;
+  FTracker := ATracker;
+  FStop := AStop;
+  FReconfigure := AReconfigure;
+  FOnChanged := AOnChanged;
+  FLogger := ALogger;
+end;
 
 { TFileChangeTracker }
 

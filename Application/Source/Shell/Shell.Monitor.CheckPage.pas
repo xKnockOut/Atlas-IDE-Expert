@@ -181,7 +181,8 @@ uses
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Monitor.Results,
   Atlas.Common.Monitor.Texts,
-  Atlas.Windows.Monitor.System;
+  Atlas.Windows.Monitor.System,
+  Atlas.Text.Files;
 
 const
   cTickMs = 500;
@@ -209,22 +210,6 @@ begin
   if (Result <> '') and not DirectoryExists(Result) then
   begin
     Result := '';
-  end;
-end;
-
-/// <summary>Inhalt von AFileName; '' wenn sie fehlt oder nicht lesbar ist.</summary>
-function ReadText(const AFileName: string): string;
-begin
-  Result := '';
-  try
-    if (AFileName <> '') and TFile.Exists(AFileName) then
-    begin
-      Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
-    end;
-  except
-    // lsp-ignore: catch-all-without-raise -- eine unlesbare Ausgabe zeigt der Reiter als leer
-    on Exception do
-      Result := '';
   end;
 end;
 
@@ -269,21 +254,21 @@ begin
   if AQueue.Runs[AIndex].State = TMonitorRunState.Failed then
   begin
     AQueue.Runs[AIndex].ErrorText := Trim(AQueue.Runs[AIndex].ErrorText + sLineBreak +
-      ReadText(AQueue.Runs[AIndex].LogFile));
+      TTextFiles.ReadQuietly(AQueue.Runs[AIndex].LogFile));
     Exit;
   end;
   if TMonitorCommands.OutputKind(AQueue.Command) <> TMonitorOutputKind.Findings then
   begin
     Exit;
   end;
-  if TMonitorResults.ParseSarif(ReadText(AQueue.Runs[AIndex].OutputFile), AQueue.Runs[AIndex].Target, mFindings,
+  if TMonitorResults.ParseSarif(TTextFiles.ReadQuietly(AQueue.Runs[AIndex].OutputFile), AQueue.Runs[AIndex].Target, mFindings,
     mError) then
   begin
     AQueue.Runs[AIndex].Findings := mFindings;
   end
   else
   begin
-    AQueue.Runs[AIndex].ErrorText := mError + sLineBreak + ReadText(AQueue.Runs[AIndex].LogFile);
+    AQueue.Runs[AIndex].ErrorText := mError + sLineBreak + TTextFiles.ReadQuietly(AQueue.Runs[AIndex].LogFile);
   end;
 end;
 
@@ -452,7 +437,7 @@ begin
     mDialog.Options := [ofFileMustExist, ofEnableSizing];
     if mDialog.Execute and not FIsBusy() then
     begin
-      FTargets := TMonitorTargetList.FromText(ReadText(mDialog.FileName));
+      FTargets := TMonitorTargetList.FromText(TTextFiles.ReadQuietly(mDialog.FileName));
       Fill;
     end;
   finally
@@ -715,7 +700,7 @@ begin
       mTexts := nil;
       for mRun in AQueue.Runs do
       begin
-        mTexts := mTexts + [ReadText(mRun.OutputFile)];
+        mTexts := mTexts + [TTextFiles.ReadQuietly(mRun.OutputFile)];
       end;
       SaveText(mDialog.FileName, TMonitorResults.MergeSarif(mTexts), FOnInform);
     end
@@ -766,7 +751,7 @@ begin
     end;
     if SameText(ExtractFileExt(mDialog.FileName), '.html') then
     begin
-      SaveText(mDialog.FileName, ReadText(AQueue.Runs[AIndex].OutputFile), FOnInform);
+      SaveText(mDialog.FileName, TTextFiles.ReadQuietly(AQueue.Runs[AIndex].OutputFile), FOnInform);
     end
     else if FChild.Start(FServer, TMonitorCommands.Arguments(AQueue.Command, AQueue.Runs[AIndex].Target,
       AOptions, mDialog.FileName, TAtlasLocale.Code(TAtlasLocale.Language)),
@@ -927,7 +912,7 @@ begin
     Exit;
   end;
   mText := Trim(TMonitorRunQueue.StateText(FQueue.Command, mRun) + sLineBreak + mRun.ErrorText +
-    sLineBreak + ReadText(mRun.OutputFile) + sLineBreak + ReadText(TMonitorCommands.TimingsFileOf(mRun.OutputFile)));
+    sLineBreak + TTextFiles.ReadQuietly(mRun.OutputFile) + sLineBreak + TTextFiles.ReadQuietly(TMonitorCommands.TimingsFileOf(mRun.OutputFile)));
   if (mKind = TMonitorOutputKind.Html) and (mRun.State = TMonitorRunState.Done) then
   begin
     mText := TMonitorRunQueue.StateText(FQueue.Command, mRun);

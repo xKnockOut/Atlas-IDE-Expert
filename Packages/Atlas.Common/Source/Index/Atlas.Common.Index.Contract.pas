@@ -99,7 +99,11 @@ type
     /// <summary>Begründungen (#1123) über der Deklaration und bei Routinen im Rumpf, je Eintrag
     /// TRationale.Encode (Marke, Zeile, Text); alle möglichen Marken, gefiltert wird bei der Anzeige.</summary>
     Rationale: TArray<string>;
+    /// <summary>Container.Name bzw. Name.</summary>
     function QualifiedName: string;
+    /// <summary>"AContainer.AName"; ohne Container nur AName. Für Verträge, die Atlas.Text nicht einbinden
+    /// (TQueryRow).</summary>
+    class function QualifiedOf(const AContainer, AName: string): string; static;
     /// <summary>Trägt die Direktive ADirective (ohne Groß-/Kleinschreibung)?</summary>
     function HasDirective(const ADirective: string): Boolean;
   public const
@@ -485,13 +489,15 @@ end;
 
 function TIndexSymbol.QualifiedName: string;
 begin
-  if Container = '' then
+  Result := QualifiedOf(Container, Name);
+end;
+
+class function TIndexSymbol.QualifiedOf(const AContainer, AName: string): string;
+begin
+  Result := AName;
+  if AContainer <> '' then
   begin
-    Result := Name;
-  end
-  else
-  begin
-    Result := Container + '.' + Name;
+    Result := AContainer + '.' + AName;
   end;
 end;
 

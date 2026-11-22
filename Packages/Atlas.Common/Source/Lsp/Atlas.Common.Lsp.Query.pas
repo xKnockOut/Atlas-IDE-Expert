@@ -85,7 +85,8 @@ uses
   Atlas.Common.Query.Output,
   System.Generics.Collections,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -102,18 +103,6 @@ const
     (De: 'Katalog ist kein gültiges JSON'; En: 'Catalog is not valid JSON'));
 
 {$SCOPEDENUMS OFF}
-
-function PathOf(const AText: string): string;
-begin
-  if StartsText('file:', AText) then
-  begin
-    Result := TDocumentUris.ToPath(AText);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
 
 function ParamsOf(const AParams: TJSONValue): TJSONObject;
 begin
@@ -137,29 +126,6 @@ begin
     function: Boolean
     begin
       Result := ACancellation.IsCancellationRequested;
-    end;
-end;
-
-function QualifiedOf(const AItem: THierarchyItem): string;
-begin
-  if AItem.Container <> '' then
-  begin
-    Result := AItem.Container + '.' + AItem.Name;
-  end
-  else
-  begin
-    Result := AItem.Name;
-  end;
-end;
-
-/// <summary>TQueryReadText über AReadText; eigene Routine, damit die Methodenreferenz nur AReadText festhält.
-/// </summary>
-function QueryReadTextOf(const AReadText: TReferenceReadText): TQueryReadText;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := AReadText(AFileName, AText);
     end;
 end;
 
@@ -257,7 +223,7 @@ begin
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TQueryText.FormatIsJsonMarkdownCsv].Text);
   end;
-  if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(TJsonRead.TrimmedText(AParams, 'uri')), mSettings, mRoot)) then
+  if not (Assigned(FSettingsFor) and FSettingsFor(TDocumentUris.PathOrSelf(TJsonRead.TrimmedText(AParams, 'uri')), mSettings, mRoot)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TQueryText.NoProjectLoaded].Text);
   end;
@@ -294,7 +260,7 @@ var
   mValue: TJSONValue;
 begin
   if not (Assigned(FSettingsFor) and
-    FSettingsFor(PathOf(TJsonRead.TrimmedText(ParamsOf(AParams), 'uri')), mSettings, mRoot)) then
+    FSettingsFor(TDocumentUris.PathOrSelf(TJsonRead.TrimmedText(ParamsOf(AParams), 'uri')), mSettings, mRoot)) then
   begin
     mSettings := TServerSettings.Default;
   end;
@@ -377,7 +343,7 @@ begin
       for mCall in mCalls do
       begin
         mEntry := Default(TQueryCall);
-        mEntry.Name := QualifiedOf(mCall.Item);
+        mEntry.Name := TTextNames.Qualified(mCall.Item.Container, mCall.Item.Name);
         mEntry.UnitName := mCall.Item.UnitName;
         mEntry.FileName := mCall.Item.FileName;
         if AIncoming then
@@ -402,7 +368,7 @@ begin
   Result.Root := AInput.Root;
   Result.Files := AInput.Files;
   Result.Namespaces := AInput.Namespaces;
-  Result.ReadText := QueryReadTextOf(AInput.ReadText);
+  Result.ReadText := AInput.ReadText;
   Result.Calls := Calls(AInput.Index, AInput.EnsureUnit, AInput.Namespaces, AInput.Files, AInput.ReadText,
     AReferences);
 end;

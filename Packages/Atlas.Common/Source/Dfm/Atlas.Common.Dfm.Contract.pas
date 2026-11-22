@@ -46,6 +46,8 @@ type
     Properties: TArray<TDfmProperty>;
     constructor Create;
     destructor Destroy; override;
+    /// <summary>Dieses Objekt oder das erste darunter (Tiefensuche) mit dem Namen AName; nil ohne.</summary>
+    function FindNamed(const AName: string): TDfmObject;
     property Children: TObjectList<TDfmObject> read FChildren;
   end;
 
@@ -99,6 +101,25 @@ begin
 end;
 
 { TDfmObject }
+
+function TDfmObject.FindNamed(const AName: string): TDfmObject;
+var
+  mChild: TDfmObject;
+begin
+  if SameText(Name, AName) then
+  begin
+    Exit(Self);
+  end;
+  for mChild in Children do
+  begin
+    Result := mChild.FindNamed(AName);
+    if Result <> nil then
+    begin
+      Exit;
+    end;
+  end;
+  Result := nil;
+end;
 
 constructor TDfmObject.Create;
 begin

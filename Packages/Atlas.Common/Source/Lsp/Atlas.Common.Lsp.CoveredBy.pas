@@ -396,21 +396,6 @@ end;
 
 { Tests je Methode }
 
-/// <summary>Stelle des Tests ATestIndex in AFound.Places; -1, wenn das Symbol selbst der Test ist.</summary>
-function PlaceOfTest(const AFound: TImpactResult; ATestIndex: Integer): Integer;
-var
-  mStep: Integer;
-begin
-  for mStep := 0 to High(AFound.Places) do
-  begin
-    if AFound.Places[mStep].Test = ATestIndex then
-    begin
-      Exit(mStep);
-    end;
-  end;
-  Result := -1;
-end;
-
 /// <summary>Ist ein Schritt von der Stelle APlace zurück zum Symbol erschlossen?</summary>
 function PathInferred(const AFound: TImpactResult; APlace: Integer): Boolean;
 var
@@ -449,7 +434,7 @@ begin
       mTest.FileName := AFound.Tests[mIndex].FileName;
       mTest.Line := AFound.Tests[mIndex].Line;
       mTest.Level := AFound.Tests[mIndex].Level;
-      mTest.Inferred := PathInferred(AFound, PlaceOfTest(AFound, mIndex));
+      mTest.Inferred := PathInferred(AFound, AFound.PlaceOfTest(mIndex));
       Result := Result + [mTest];
     end;
   finally

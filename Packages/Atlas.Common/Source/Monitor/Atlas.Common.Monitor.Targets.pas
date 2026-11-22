@@ -250,15 +250,6 @@ begin
   Result.Command := TMonitorCommand.Check;
 end;
 
-/// <summary>Setzt AName nur, wenn AValue an ist.</summary>
-procedure PutFlag(AObject: TJSONObject; const AName: string; AValue: Boolean);
-begin
-  if AValue then
-  begin
-    AObject.AddPair(AName, TJSONBool.Create(True));
-  end;
-end;
-
 function OptionsToJson(const AOptions: TMonitorOptions; AObject: TJSONObject): TJSONObject;
 begin
   Result := AObject;
@@ -266,15 +257,15 @@ begin
   TJsonBuild.AddText(Result, 'rules', AOptions.Rules);
   TJsonBuild.AddText(Result, 'profile', AOptions.Profile);
   TJsonBuild.AddText(Result, 'units', AOptions.Units);
-  PutFlag(Result, 'changed', AOptions.Changed);
+  TJsonBuild.AddFlag(Result, 'changed', AOptions.Changed);
   TJsonBuild.AddText(Result, 'changedBase', AOptions.ChangedBase);
   TJsonBuild.AddText(Result, 'diff', AOptions.DiffRef);
-  PutFlag(Result, 'includeUncommitted', AOptions.IncludeUncommitted);
-  PutFlag(Result, 'changedLines', AOptions.ChangedLines);
+  TJsonBuild.AddFlag(Result, 'includeUncommitted', AOptions.IncludeUncommitted);
+  TJsonBuild.AddFlag(Result, 'changedLines', AOptions.ChangedLines);
   TJsonBuild.AddText(Result, 'baseline', AOptions.Baseline);
-  PutFlag(Result, 'updateBaseline', AOptions.UpdateBaseline);
-  PutFlag(Result, 'noIndex', AOptions.NoIndex);
-  PutFlag(Result, 'timings', AOptions.Timings);
+  TJsonBuild.AddFlag(Result, 'updateBaseline', AOptions.UpdateBaseline);
+  TJsonBuild.AddFlag(Result, 'noIndex', AOptions.NoIndex);
+  TJsonBuild.AddFlag(Result, 'timings', AOptions.Timings);
   TJsonBuild.AddText(Result, 'fixRules', AOptions.FixRules);
   TJsonBuild.AddText(Result, 'affectedBase', AOptions.AffectedBase);
   TJsonBuild.AddText(Result, 'query', AOptions.Query);
