@@ -95,11 +95,11 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Chars,
   Atlas.Text.Lines,
@@ -471,7 +471,7 @@ var
     mEdits := [TRuleEdit.Create(TTextRange.Create(APlus.StartPos, APlus.EndPos),
       Format('TPath.Combine(%s, %s)', [SourceText(mText, APlus[0]), SourceText(mText, APlus[1])]))];
     if not TPascalUses.IsUsed(mUsed, 'System.IOUtils', AContext.Namespaces) and
-      TUsesClauses.AddUnit(AContext.Tree.Tokens, APlus.StartOffset, 'System.IOUtils', mLineBreak, mUsesEdit) then
+      TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, APlus.StartOffset, 'System.IOUtils', mLineBreak, mUsesEdit) then
     begin
       mEdits := mEdits + [mUsesEdit];
     end;
@@ -902,7 +902,7 @@ begin
   end;
   Result := [TRuleEdit.Create(TTextRange.Create(ACompare.StartPos, ACompare.EndPos), mNewText)];
   if not TPascalUses.IsUsed(AUsed, 'System.SysUtils', AContext.Namespaces) and
-    TUsesClauses.AddUnit(AContext.Tree.Tokens, ACompare.StartOffset, 'System.SysUtils',
+    TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, ACompare.StartOffset, 'System.SysUtils',
     TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
   begin
     Result := Result + [mUsesEdit];

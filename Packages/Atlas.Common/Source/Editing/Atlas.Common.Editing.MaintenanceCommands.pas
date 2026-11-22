@@ -38,8 +38,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.UsesGroups,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesGroups,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.GitUser,
   Atlas.Common.Editing.ClassCommands,
@@ -169,7 +169,7 @@ begin
     // Sortieren, doppelte und ungenutzte streichen in einem Durchgang.
     mOptions := SortUsesOptions(AContext);
     mOptions.Drop := UnusedUnitsOf(AContext, mText, mTokens);
-    if not TUsesClauses.Rewrite(mTokens, mText, mOptions, mSource.LineBreak, mEdits) then
+    if not TPascalUsesEdits.Rewrite(mTokens, mText, mOptions, mSource.LineBreak, mEdits) then
     begin
       mEdits := nil;
     end;

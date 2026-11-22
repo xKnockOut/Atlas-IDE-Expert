@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Builtin.Testing.TestCaseTable;
+﻿unit Atlas.Common.Testing.TestCaseTable;
 
 // [TestCase]-Attribute einer Testmethode als Tabelle (#1879): lesen und zurückschreiben.
 //   - Lesen: Je Testmethode mit [TestCase] eine Tabelle mit einer Spalte je Parameter (Name, Typ, Art wie
@@ -10,7 +10,7 @@
 //     NamedTestCase), Attributnamen, Trennzeichen und weitere Argumente (Trim); neue Zeilen übernehmen sie von
 //     der letzten Zeile.
 //   - Kommentare zwischen, über und hinter den Fällen gehören zu einem Attribut und wandern mit ihm, ebenso
-//     bedingte Direktiven, die genau einen Fall umschließen (Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia).
+//     bedingte Direktiven, die genau einen Fall umschließen (Atlas.Common.Testing.TestCaseTrivia).
 //   - Bearbeitbar ist die Tabelle nur, wenn jedes [TestCase] allein in seinen Klammern steht, die Attribute
 //     lesbar sind (Literale) und zwischen ihnen nur Leerraum, Kommentare, solche Direktiven und andere ganze
 //     Attribute stehen; andere Attribute dazwischen ([Test], [Category]) wandern beim Schreiben mit ihren
@@ -23,8 +23,8 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Builtin.Testing.TestCases,
-  Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia;
+  Atlas.Common.Testing.TestCases,
+  Atlas.Common.Testing.TestCaseTrivia;
 
 type
 {$SCOPEDENUMS ON}
@@ -126,8 +126,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.StringLiterals,
-  Atlas.Common.Rules.Builtin.Testing.Classes,
+  Atlas.Common.Pascal.StringLiterals,
+  Atlas.Common.Testing.Classes,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Lines;
 
@@ -646,6 +646,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Testing.TestCaseTable', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Testing.TestCaseTable', cTexts);
 
 end.

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.StringLiterals.Tests;
+﻿unit Atlas.Common.Pascal.StringLiterals.Tests;
 
 // Tests für Klartext und String-Literal (#312): Sonderzeichen, leere Zeilen,
 // jede Einstellung und der Round-Trip Literal → Klartext → Literal.
@@ -43,7 +43,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.StringLiterals;
+  Atlas.Common.Pascal.StringLiterals;
 
 /// <summary>StringLiteralActions mit den Token von AText.</summary>
 function LiteralActions(const AText: string; const ARange: TTextRange): TArray<TCodeAction>;

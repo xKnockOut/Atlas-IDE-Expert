@@ -61,7 +61,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
@@ -866,7 +866,7 @@ begin
   begin
     Exit;
   end;
-  if TUsesClauses.AddUnit(AContext.Tree.Tokens, ACreation.Assignment.StartOffset, 'System.SysUtils',
+  if TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, ACreation.Assignment.StartOffset, 'System.SysUtils',
     TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
   begin
     AEdits := AEdits + [mUsesEdit];

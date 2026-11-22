@@ -1126,6 +1126,7 @@ Atlas.IDE.Debugger	Atlas.IDE.Debug.AccessViolation	IDE/Debug/Atlas.IDE.Debug.Acc
 Atlas.IDE.Debugger	Atlas.IDE.Debug.AccessViolationUnderline	IDE/Debug/Atlas.IDE.Debug.AccessViolationUnderline.pas	Ordner `IDE/Debug`
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.AssistantControl	IDE/Debug/Atlas.IDE.Debug.Adapters.AssistantControl.pas	Steuerung des Debuggers für KI-Assistenten (IAtlasDebugControl), #1874
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.KnownErrorsView	IDE/Debug/Atlas.IDE.Debug.Adapters.KnownErrorsView.pas	Empfänger der Meldung des Trackers für bekannte Fehler (IAtlasKnownErrorsView), #2460
+Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.Module	IDE/Debug/Atlas.IDE.Debug.Adapters.Module.pas	Modulklasse des Debuggers: IAtlasModule, Befehle, Menüeinträge, Tasten, Einstellungen, Thema
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.ProcessMemory	IDE/Debug/Atlas.IDE.Debug.Adapters.ProcessMemory.pas	Ordner `IDE/Debug`; Speicher des Programms für die Objektzählung (IAtlasProcessMemory)
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.Report	IDE/Debug/Atlas.IDE.Debug.Adapters.Report.pas	Bericht über die Debug-Sitzung für andere Module (IAtlasDebugReportSource), #1276
 Atlas.IDE.Debugger	Atlas.IDE.Debug.Adapters.SessionTarget	IDE/Debug/Atlas.IDE.Debug.Adapters.SessionTarget.pas	Ziel der Debug-Sitzung für die Phasen (IAtlasDebugTarget) über IOTADebuggerServices, #1443
@@ -1582,7 +1583,10 @@ Atlas.IDE.Tests	Atlas.Core.Tests.StatusField	Core/Tests/Atlas.Core.Tests.StatusF
 Atlas.IDE.Tests	Atlas.Core.Tests.UnitMatch	Core/Tests/Atlas.Core.Tests.UnitMatch.pas	Ordner `Core/Tests`
 Atlas.IDE.Tests	Atlas.Core.Tests.UnitScans	Core/Tests/Atlas.Core.Tests.UnitScans.pas	Ordner `Core/Tests`; gelesene Testunits des Fensters „Atlas-Tests“ mit Zwischenspeicher je Änderungszeit
 Atlas.IDE.Tests	Atlas.Core.Tests.Untested	Core/Tests/Atlas.Core.Tests.Untested.pas	Ordner `Core/Tests`
+Atlas.IDE.Tests	Atlas.IDE.Tests.Adapters.Module	IDE/Tests/Atlas.IDE.Tests.Adapters.Module.pas	Modulklasse der Tests: IAtlasModule, Befehle, Menüeinträge, Tasten, Einstellungen, Thema
 Atlas.IDE.Tests	Atlas.IDE.Tests.Adapters.MutationShadowProject	IDE/Tests/Atlas.IDE.Tests.Adapters.MutationShadowProject.pas	Schattenprojekt des Mutationslaufs in der IDE (IAtlasMutationShadowProject), #1443
+Atlas.IDE.Tests	Atlas.IDE.Tests.Adapters.Runs	IDE/Tests/Atlas.IDE.Tests.Adapters.Runs.pas	IAtlasTestRunner, IAtlasTestsSource, Tests nach dem Build und beim Speichern
+Atlas.IDE.Tests	Atlas.IDE.Tests.Adapters.Values	IDE/Tests/Atlas.IDE.Tests.Adapters.Values.pas	IAtlasTestValues über den Vergleich des letzten Laufs
 Atlas.IDE.Tests	Atlas.IDE.Tests.Affected	IDE/Tests/Atlas.IDE.Tests.Affected.pas	Ordner `IDE/Tests`
 Atlas.IDE.Tests	Atlas.IDE.Tests.ApprovalFiles	IDE/Tests/Atlas.IDE.Tests.ApprovalFiles.pas	Ordner `IDE/Tests`
 Atlas.IDE.Tests	Atlas.IDE.Tests.BoundaryCases	IDE/Tests/Atlas.IDE.Tests.BoundaryCases.pas	Ordner `IDE/Tests`
@@ -1883,7 +1887,10 @@ Atlas.IDE.VersionControl	Atlas.Core.VersionControl.Plan	Core/VersionControl/Atla
 Atlas.IDE.VersionControl	Atlas.Core.VersionControl.Providers.Git	Core/VersionControl/Atlas.Core.VersionControl.Providers.Git.pas	Ordner `Core/VersionControl`
 Atlas.IDE.VersionControl	Atlas.Core.VersionControl.Providers.Svn	Core/VersionControl/Atlas.Core.VersionControl.Providers.Svn.pas	Ordner `Core/VersionControl`
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Commands	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Commands.pas	Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905)
+Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Dialogs	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Dialogs.pas	IAtlasVcsDialogs über Branch-Dialog und Arbeitskopien
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.LineChanges	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.LineChanges.pas	Änderungsmarken für Base und Tracker (`IAtlasLineChanges`, #1905)
+Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Module	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Module.pas	Modulklasse der Versionsverwaltung: IAtlasModule, Einstellungen und Thema übernehmen
+Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Service	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Service.pas	IAtlasVcsService über TAtlasIdeVcsCore
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Settings	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Settings.pas	Anbieter und Haken des Abschnitts Versionsverwaltung (#1905)
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Branching	IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas	Ordner `IDE/VersionControl`
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Composition	IDE/VersionControl/Atlas.IDE.VersionControl.Composition.pas	Ordner `IDE/VersionControl`

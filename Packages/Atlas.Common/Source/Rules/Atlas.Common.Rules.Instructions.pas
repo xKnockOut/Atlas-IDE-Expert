@@ -51,7 +51,7 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Conventions,
-  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Metrics.Limits,
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Rules.Builtin.ForbiddenSymbols;
 
@@ -146,15 +146,15 @@ var
 begin
   AIds := nil;
   AValues := nil;
-  mLimits := TMetricRules.Limits(ASettings);
+  mLimits := TMetricSettings.Limits(ASettings);
   for mKind := Low(TMetricKind) to High(TMetricKind) do
   begin
-    AIds := AIds + [TMetricRules.RuleId(mKind)];
+    AIds := AIds + [TMetricSettings.RuleId(mKind)];
     AValues := AValues + [mLimits.Values[mKind]];
   end;
   for mStructure := Low(TStructureKind) to High(TStructureKind) do
   begin
-    AIds := AIds + [TMetricRules.RuleId(mStructure)];
+    AIds := AIds + [TMetricSettings.RuleId(mStructure)];
     AValues := AValues + [mLimits.Structure[mStructure]];
   end;
 end;

@@ -170,7 +170,7 @@ uses
   System.Math,
   System.Generics.Collections,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.TokenCursor,
@@ -988,7 +988,7 @@ begin
   end;
   mOptions := Default(TUsesRewrite);
   mOptions.Drop := AUnits;
-  Result := TUsesClauses.Rewrite(ATokens, AText, mOptions, ALineBreak, AEdits);
+  Result := TPascalUsesEdits.Rewrite(ATokens, AText, mOptions, ALineBreak, AEdits);
 end;
 
 class function TUsesActions.MoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
@@ -1012,7 +1012,7 @@ begin
     end;
   end;
   if (mImplementation_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
-    not TUsesClauses.AddUnit(ATokens, ATokens[mImplementation_].Offset + 1, string.Join(', ', AUnits),
+    not TPascalUsesEdits.AddUnit(ATokens, ATokens[mImplementation_].Offset + 1, string.Join(', ', AUnits),
     ALineBreak, mAdded) then
   begin
     AEdits := nil;
@@ -1043,7 +1043,7 @@ begin
     end;
   end;
   if (mInterface_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
-    not TUsesClauses.AddUnit(ATokens, ATokens[mInterface_].Offset + 1, string.Join(', ', AUnits),
+    not TPascalUsesEdits.AddUnit(ATokens, ATokens[mInterface_].Offset + 1, string.Join(', ', AUnits),
     ALineBreak, mAdded) then
   begin
     AEdits := nil;
@@ -1231,7 +1231,7 @@ procedure AddSectionEdit(const ATokens: TArray<TPascalToken>; AOffset: Integer; 
 var
   mEdit: TTextEdit;
 begin
-  if (Length(AUnits) > 0) and TUsesClauses.AddUnit(ATokens, AOffset, string.Join(', ', AUnits), ALineBreak,
+  if (Length(AUnits) > 0) and TPascalUsesEdits.AddUnit(ATokens, AOffset, string.Join(', ', AUnits), ALineBreak,
     mEdit) then
   begin
     AEdits := AEdits + [mEdit];

@@ -1,7 +1,7 @@
-﻿unit Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia;
+﻿unit Atlas.Common.Testing.TestCaseTrivia;
 
 // Kommentare und bedingte Direktiven um die [TestCase]-Attribute einer Testmethode, damit die TestCase-Tabelle
-// (Atlas.Common.Rules.Builtin.Testing.TestCaseTable) sie beim Schreiben mitnimmt.
+// (Atlas.Common.Testing.TestCaseTable) sie beim Schreiben mitnimmt.
 //   - Jedes Attribut vom ersten bis zum letzten [TestCase] bekommt, was um es herum steht: eigene Zeilen davor
 //     (Leading), Text in seiner Zeile davor (Prefix) und dahinter (Trailing) und eigene Zeilen danach (After).
 //     Zwischen zwei Attributen gehört, was in der Zeile des ersten steht, zu diesem (Kommentar am Zeilenende);

@@ -105,7 +105,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
@@ -119,7 +118,6 @@ uses
   Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Projects.Adapters.UnitLookup,
   Atlas.Common.Rules.Builtin.Unresolved,
-  Atlas.Common.Lsp.Adapters.IdeTypes,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.TextEdits;
 
@@ -802,21 +800,26 @@ begin
     '  TVendorAlt = class'#10'  end;'#10'implementation'#10'end.', 'C:\Vendor\Vendor.Grid.pas', nil));
 end;
 
+type
+  /// <summary>Typen der IDE: TVendorGrid in Vendor.Grid.</summary>
+  TVendorIdeTypes = class(TInterfacedObject, IRuleIdeTypes)
+  public
+    function UnitsOf(const ATypeName: string): TArray<string>;
+  end;
+
+function TVendorIdeTypes.UnitsOf(const ATypeName: string): TArray<string>;
+begin
+  Result := nil;
+  if SameText(ATypeName, 'TVendorGrid') then
+  begin
+    Result := TArray<string>.Create('Vendor.Grid');
+  end;
+end;
+
 /// <summary>Katalog der IDE: TVendorGrid in Vendor.Grid.</summary>
 function VendorTypes: IRuleIdeTypes;
-var
-  mCatalog: TIdeTypeCatalog;
-  mValue: TJSONValue;
 begin
-  mCatalog := TIdeTypeCatalog.Create;
-  Result := mCatalog;
-  mValue := TJSONObject.ParseJSONValue('{"units":[{"unit":"Vendor.Grid","types":[{"name":"TVendorGrid",' +
-    '"parent":"Vcl.Controls.TCustomControl"}]}]}');
-  try
-    mCatalog.Replace(mValue);
-  finally
-    mValue.Free;
-  end;
+  Result := TVendorIdeTypes.Create;
 end;
 
 /// <summary>Die Regel unresolved-identifier aus der Registrierung der Unit.</summary>

@@ -28,7 +28,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Editing.AssignmentSwap;
 
 type
@@ -83,7 +83,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.GuardFree,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -580,7 +580,7 @@ var
   mEdits: TArray<TTextEdit>;
 begin
   AAction := Default(TCodeAction);
-  Result := TUsesClauses.Rewrite(TPascalLexer.Tokenize(AText), AText, AOptions, TTextLines.LineBreakOf(AText),
+  Result := TPascalUsesEdits.Rewrite(TPascalLexer.Tokenize(AText), AText, AOptions, TTextLines.LineBreakOf(AText),
     mEdits);
   if Result then
   begin
@@ -757,7 +757,7 @@ begin
   for mUnitName in TUsesActions.MissingUnits(FTokens, ATree, FRange.StartPos, FContext.Declaring,
     FContext.Namespaces) do
   begin
-    if TUsesClauses.AddUnit(FTokens, OffsetNear(FTokens, FRange.StartPos), mUnitName, FLineBreak, mEdit) then
+    if TPascalUsesEdits.AddUnit(FTokens, OffsetNear(FTokens, FRange.StartPos), mUnitName, FLineBreak, mEdit) then
     begin
       Add(NewAction(cTexts[TEditingCodeActionsText.AddToUses].Fmt([mUnitName]), cQuickFixKind, [mEdit], ''));
     end;

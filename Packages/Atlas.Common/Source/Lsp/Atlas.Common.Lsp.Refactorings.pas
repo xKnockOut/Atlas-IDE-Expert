@@ -131,7 +131,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.CaseCompletion,
@@ -594,7 +594,7 @@ begin
     for mUnitName in FUnits do
     begin
       if not SameText(mUnitName, AOwner.UnitName) and not TPascalUses.IsUsed(mUses, mUnitName,
-        FContext.Namespaces) and TUsesClauses.AddUnit(mOtherTree.Tokens, mClassBody.StartOffset, mUnitName,
+        FContext.Namespaces) and TPascalUsesEdits.AddUnit(mOtherTree.Tokens, mClassBody.StartOffset, mUnitName,
         mLineBreak, mEdit) then
       begin
         mEdits := mEdits + [mEdit];

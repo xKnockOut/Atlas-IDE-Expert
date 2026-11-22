@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.UsesGroups;
+﻿unit Atlas.Common.Pascal.UsesGroups;
 
 // Gruppen der uses nach Herkunft der Unit (#2794), in dieser Reihenfolge:
 //
@@ -16,7 +16,7 @@
 interface
 
 uses
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Pascal.Contract;
 
 type
   TUsesGroups = class
@@ -187,6 +187,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.UsesGroups', cGroupTexts);
+  TAtlasTextTables.Add('Atlas.Common.Pascal.UsesGroups', cGroupTexts);
 
 end.

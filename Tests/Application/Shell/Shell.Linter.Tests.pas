@@ -135,7 +135,6 @@ uses
   Shell.Composition.Platform,
   Core.VersionControlChanges,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.FormatCheck,
   Core.CommandLine,
   Shell.Linter,
   Core.Linter.Check,

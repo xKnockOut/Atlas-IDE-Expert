@@ -145,7 +145,7 @@ Atlas.Common.Editing.SmartIndent.Tests
 Atlas.Common.Editing.SmartPaste.Tests
 Atlas.Common.Editing.SqlText.Tests
 Atlas.Common.Editing.StatementText.Tests
-Atlas.Common.Editing.StringLiterals.Tests
+Atlas.Common.Pascal.StringLiterals.Tests
 Atlas.Common.Editing.SuggestionContext.Tests
 Atlas.Common.Editing.SuggestConst.Tests
 Atlas.Common.Editing.TestCommands.Tests
@@ -159,9 +159,9 @@ Atlas.Common.Editing.TypeComments.Tests
 Atlas.Common.Editing.UnitRename.Tests
 Atlas.Common.Editing.UnitTemplates.Tests
 Atlas.Common.Editing.Unwrap.Tests
-Atlas.Common.Editing.UsesClause.Tests
+Atlas.Common.Pascal.UsesEdits.Tests
 Atlas.Common.Pascal.UsesClauses.Tests
-Atlas.Common.Editing.UsesGroups.Tests
+Atlas.Common.Pascal.UsesGroups.Tests
 Atlas.Common.Editing.UsesCommand.Tests
 Atlas.Common.Editing.VarBlock.Tests
 Atlas.Common.Editing.WithResolution.Tests
@@ -298,6 +298,7 @@ Atlas.Common.Mcp.ReportTools.Tests
 Atlas.Common.Diagnostics.RuntimeReport.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
+Atlas.Common.Metrics.Limits.Tests
 Atlas.Common.Metrics.UnitRoutines.Tests
 Atlas.Common.Metrics.DuplicateBodies.Tests
 Atlas.Common.Metrics.DuplicateBaseline.Tests
@@ -434,8 +435,8 @@ Atlas.Common.Rules.Builtin.Testing.Registration.Tests
 Atlas.Common.Rules.Builtin.Testing.TearDown.Tests
 Atlas.Common.Rules.Builtin.Testing.Attributes.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
-Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
-Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.Tests
+Atlas.Common.Testing.TestCaseTable.Tests
+Atlas.Common.Testing.TestCaseTrivia.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeDeclarations.Scan.Tests
@@ -483,6 +484,7 @@ Atlas.Common.Semantics.TypeCompatibility.Tests
 Atlas.Common.Semantics.TypeKinds.Tests
 Atlas.Common.Semantics.UnresolvedNames.Tests
 Atlas.Common.Todos.Report.Tests
+Atlas.Common.Todos.Keywords.Tests
 Atlas.Common.Todos.Scanner.Tests
 Atlas.Common.Updates.Apply.Tests
 Atlas.Common.Updates.ManifestSignature.Tests
@@ -823,6 +825,7 @@ Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
 
 # Server (Shell)
+Adapters.Rules.IdeTypes.Tests
 Core.Mcp.IssueTools.Tests
 Core.Mcp.IssueText.Tests
 Atlas.Core.Designer.Names.Tests

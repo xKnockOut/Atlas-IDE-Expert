@@ -4,14 +4,15 @@
 // langsamste Tests (#1772) → Erwartet und erhalten (#1779) → letzter Testlauf für KI-Assistenten (#2409) →
 // Stände der veralteten Ergebnisse (#1770). Dazu die Befehle „Veraltete Tests ausführen“, „Erwartet und erhalten
 // vergleichen“, „Langsamste Tests zeigen“ und „Liegengebliebene .received-Dateien löschen“ (#1881) sowie die
-// Werte für „Vergleichen“ im Befund-Hover und an der Testmarke.
+// Werte für „Vergleichen“ im Befund-Hover und an der Testmarke (über Atlas.IDE.Tests.Adapters.Values).
 
 interface
 
 uses
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Debug,
-  Atlas.IDE.Tests.Runner;
+  Atlas.IDE.Tests.Runner,
+  Atlas.IDE.Tests.Compare;
 
 /// <summary>Kette der Auswertungen für ATests anlegen (ATests lebt länger); nach den wackelnden Tests, deren
 /// Verlauf der letzte Testlauf abfragt.</summary>
@@ -32,12 +33,9 @@ function SlowestVisible: Boolean;
 procedure ShowSlowest;
 function ApprovalFilesVisible: Boolean;
 procedure CleanApprovalFiles;
-/// <summary>Werte eines Fehlschlags in Zeile ALine der Testunit im Editor.</summary>
-function ResultHasValuesAt(ALine: Integer): Boolean;
-procedure CompareResultAt(ALine: Integer);
-/// <summary>Werte eines Fehlschlags des Tests AFullName.</summary>
-function ResultHasValues(const AFullName: string): Boolean;
-procedure CompareResult(const AFullName: string);
+/// <summary>Erwartet und erhalten der Fehlschläge (#1779) für IAtlasTestValues; nil, solange die Kette fehlt.
+/// </summary>
+function ResultCompare: TAtlasIdeTestCompare;
 
 implementation
 
@@ -46,7 +44,6 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Stale,
-  Atlas.IDE.Tests.Compare,
   Atlas.IDE.Tests.LastRun,
   Atlas.IDE.Tests.Slowest,
   Atlas.IDE.Tests.Composition.Explorer;
@@ -155,30 +152,9 @@ begin
   end;
 end;
 
-function ResultHasValuesAt(ALine: Integer): Boolean;
+function ResultCompare: TAtlasIdeTestCompare;
 begin
-  Result := (GCompare <> nil) and GCompare.HasValuesAt(ALine);
-end;
-
-procedure CompareResultAt(ALine: Integer);
-begin
-  if GCompare <> nil then
-  begin
-    GCompare.CompareAt(ALine);
-  end;
-end;
-
-function ResultHasValues(const AFullName: string): Boolean;
-begin
-  Result := (GCompare <> nil) and GCompare.HasValues(AFullName);
-end;
-
-procedure CompareResult(const AFullName: string);
-begin
-  if GCompare <> nil then
-  begin
-    GCompare.CompareTest(AFullName);
-  end;
+  Result := GCompare;
 end;
 
 end.
