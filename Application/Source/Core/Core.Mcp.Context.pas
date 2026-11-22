@@ -13,6 +13,7 @@ uses
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.EditTools,
+  Atlas.Common.Mcp.Contract.CompilerFixes,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Lsp.SymbolPath.Search,
@@ -48,6 +49,8 @@ type
     VcsAccess: TFunc<TCoreVcsAccess>;
     /// <summary>Git-Verzeichnis des Ordners ('' ohne Git).</summary>
     GitDir: TFunc<string, string>;
+    /// <summary>Sichere Korrekturen zu Compilermeldungen (explain_compiler_message).</summary>
+    CompilerFixes: IMcpCompilerFixes;
   end;
 
   /// <summary>Was die Werkzeuge des MCP-Modus brauchen; ToolNames füllt nur Server (die Werkzeuge greifen erst

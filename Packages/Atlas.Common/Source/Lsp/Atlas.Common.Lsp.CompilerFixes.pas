@@ -45,6 +45,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Compiler.MessageTexts,
   Atlas.Common.Lsp.CodeActions;
 
 { TLspCompilerFixes }
@@ -114,7 +115,7 @@ begin
   begin
     Exit(True);
   end;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   Result := (Length(mNames) = 0) or not OnName(ARequest.Tree, ARequest.Range.StartPos, mNames[0]);
 end;
 
