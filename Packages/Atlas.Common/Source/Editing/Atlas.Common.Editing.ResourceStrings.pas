@@ -89,7 +89,7 @@ implementation
 uses
   System.StrUtils,
   System.Character,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 

@@ -34,7 +34,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Editing.Modernizer,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts;
