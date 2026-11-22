@@ -26,6 +26,9 @@ type
     /// <summary>Mit Memo, aber ohne abgelegte Treffer und ohne laufenden Lauf: kein eigener Lauf.</summary>
     [Test]
     procedure CachedFindingsWithEmptyMemoGivesNothing;
+    /// <summary>Umfeld vom Anbieter; ohne Anbieter oder bei False die Vorgaben.</summary>
+    [Test]
+    procedure LookupGivesProviderContext;
   end;
 
 implementation
@@ -174,6 +177,29 @@ begin
   end;
   Assert.IsFalse(mFound);
   Assert.AreEqual(0, Integer(Length(mFindings)));
+end;
+
+procedure TRuleCheckContextTests.LookupGivesProviderContext;
+var
+  mContext: TRuleCheckContext;
+  mAnswer: Boolean;
+  mProvider: TRuleContextProvider;
+begin
+  mAnswer := True;
+  mProvider :=
+    function(const AUri: string; out AResult: TRuleCheckContext): Boolean
+    begin
+      AResult := Default(TRuleCheckContext);
+      AResult.RelativePath := AUri;
+      Result := mAnswer;
+    end;
+  Assert.IsTrue(TRuleContexts.Lookup(mProvider, 'A.pas', mContext));
+  Assert.AreEqual('A.pas', mContext.RelativePath);
+  mAnswer := False;
+  Assert.IsFalse(TRuleContexts.Lookup(mProvider, 'A.pas', mContext));
+  Assert.AreEqual('', mContext.RelativePath);
+  Assert.IsFalse(TRuleContexts.Lookup(nil, 'A.pas', mContext));
+  Assert.AreEqual('', mContext.RelativePath);
 end;
 
 initialization

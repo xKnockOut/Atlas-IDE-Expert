@@ -1,7 +1,7 @@
 ﻿unit Atlas.Tests.LspRules;
 
-// Prüfregeln für die Diagnose des Sprachservers in Tests: dieselbe Verdrahtung wie in der Komposition
-// (TRuleDocumentChecks über den Host-Adapter), mit einem Umfeld aus dem Test.
+// Prüfregeln für Diagnose und Code-Aktionen des Sprachservers in Tests: dieselbe Verdrahtung wie in der Komposition
+// (TRuleDocumentChecks bzw. TRuleCodeActionsProvider über den Host-Adapter), mit einem Umfeld aus dem Test.
 
 interface
 
@@ -22,6 +22,10 @@ type
     class function Document(const AContext: TRuleCheckContext): ILspDocumentRules; static;
     /// <summary>Prüfung eines Dokuments ohne Umfeld.</summary>
     class function PlainDocument: ILspDocumentRules; static;
+    /// <summary>Prüfregeln der Code-Aktionen aus AProvider (nil = ohne Umfeld).</summary>
+    class function Actions(const AProvider: TRuleContextProvider): ILspRuleActions; static;
+    /// <summary>Code-Aktionen ohne Umfeld: Syntaxfehler mit Korrektur, keine Regeln.</summary>
+    class function PlainActions: ILspRuleActions; static;
   end;
 
 implementation
@@ -29,7 +33,9 @@ implementation
 uses
   Atlas.Common.Rules.Contract.Api,
   Atlas.Common.Rules.Providers.DocumentChecks,
-  Adapters.Lsp.RuleDiagnostics;
+  Atlas.Common.Rules.Providers.DocumentActions,
+  Adapters.Lsp.RuleDiagnostics,
+  Adapters.Lsp.RuleActions;
 
 class function TTestLspRules.Fixed(const AContext: TRuleCheckContext): TRuleContextProvider;
 begin
@@ -62,6 +68,19 @@ end;
 class function TTestLspRules.PlainDocument: ILspDocumentRules;
 begin
   Result := Plain.ForDocument('', nil);
+end;
+
+class function TTestLspRules.Actions(const AProvider: TRuleContextProvider): ILspRuleActions;
+var
+  mActions: IRuleCodeActions;
+begin
+  mActions := TRuleCodeActionsProvider.Create(AProvider);
+  Result := TLspRuleActionsAdapter.Wrap(mActions);
+end;
+
+class function TTestLspRules.PlainActions: ILspRuleActions;
+begin
+  Result := Actions(nil);
 end;
 
 end.

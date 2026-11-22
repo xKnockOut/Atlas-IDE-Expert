@@ -58,7 +58,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.CodeActions.Contract;
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Tests.LspRules;
 
 const
   cLB = #13#10;
@@ -120,7 +121,7 @@ begin
   FStore := TDocumentStore.Create;
   FSettings := TRefactoringSettings.Default;
   FId := 0;
-  FActions := TLspCodeActions.Create(FStore, nil);
+  FActions := TLspCodeActions.Create(FStore, TTestLspRules.PlainActions);
   FActions.RefactoringFor :=
     function(const AUri: string): TRefactoringSettings
     begin

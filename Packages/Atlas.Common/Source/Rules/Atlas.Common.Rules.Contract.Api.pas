@@ -12,6 +12,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Metrics.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Findings.Contract;
 
 type
@@ -61,6 +63,39 @@ type
     /// <summary>Prüfung für AUri; ACancelled (nil = nie) bricht zwischen den Regeln ab. Nie nil: ohne Umfeld
     /// gelten die Vorgaben, und es laufen keine Regeln.</summary>
     function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): IRuleDocumentCheck;
+  end;
+
+  /// <summary>Prüfregeln eines Dokuments für die Code-Aktionen (Glühbirne, source.fixAll, #42, #182); das Umfeld
+  /// hat der Anbieter für die Datei gebaut. Der Baum ist der gemeinsame der Datei (TSyntaxTreeCache.Get).</summary>
+  IRuleDocumentActions = interface
+    ['{5C0F2B8E-3D41-4F6A-9B7E-2A8D6C1E4F93}']
+    /// <summary>Syntaxfehler des Baums von ADocument mit ihrer Korrektur (#1022); ohne Umfeld mit den Vorgaben.
+    /// </summary>
+    function SyntaxFindings(const ADocument: ITextDocument): TArray<TRuleFinding>;
+    /// <summary>Treffer der Prüfregeln aus dem gemeinsamen Speicher, sonst selbst gerechnet und abgelegt; leer ohne
+    /// Regeln. Das Warten auf einen fremden Lauf endet mit ERuleCheckCancelled.</summary>
+    function SharedRuleFindings(const ADocument: ITextDocument): TArray<TRuleFinding>;
+    /// <summary>Treffer der Prüfregeln nur aus dem gemeinsamen Speicher (abgelegt oder laufender Lauf am selben
+    /// Text), ohne eigenen Lauf; False ohne beides. Ohne Regeln True und leer.</summary>
+    function CachedRuleFindings(const ADocument: ITextDocument; out AFindings: TArray<TRuleFinding>): Boolean;
+    /// <summary>Korrekturen und Unterdrückungen zu den Treffern in ARange; mit ATryFinally auch try/finally um
+    /// Create-Zuweisungen der Startzeile im Formatstil AStyle.</summary>
+    function Fixes(const AFindings: TArray<TRuleFinding>; const ADocument: ITextDocument; const ARange: TTextRange;
+      const AStyle: TFormatStyle; ATryFinally: Boolean): TArray<TCodeAction>;
+    /// <summary>Alle sicheren Korrekturen in einer Aktion; False ohne sichere Korrektur.</summary>
+    function FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean;
+    /// <summary>Befund als Auftrag für KI-Assistenten (#158, #2570), derselbe Text wie in explain_finding.</summary>
+    function Prompt(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+    /// <summary>Index des Umfelds; nil ohne.</summary>
+    function Index: ISymbolIndex;
+  end;
+
+  /// <summary>Prüfregeln der Code-Aktionen je Dokument.</summary>
+  IRuleCodeActions = interface
+    ['{B6E1A47D-90C2-4E35-8F1B-7D3A2C5E9046}']
+    /// <summary>Aktionen für AUri; ACancelled (nil = nie) beendet das Warten auf einen fremden Lauf. Nie nil: ohne
+    /// Umfeld gelten die Vorgaben, und es laufen keine Regeln.</summary>
+    function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): IRuleDocumentActions;
   end;
 
 implementation

@@ -127,7 +127,7 @@ begin
   mActions := nil;
   mDispatcher := nil;
   try
-    mActions := TLspCodeActions.Create(mStore, mProvider);
+    mActions := TLspCodeActions.Create(mStore, TTestLspRules.Actions(mProvider));
     mDispatcher := TJsonRpcDispatcher.Create;
     mActions.Attach(mDispatcher);
     mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/codeAction",' +
