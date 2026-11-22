@@ -1,13 +1,13 @@
-﻿unit Shell.Mcp.DebugTools;
+﻿unit Core.Mcp.DebugTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge zum Debuggen in der laufenden IDE für KI-Assistenten
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge zum Debuggen in der laufenden IDE für KI-Assistenten
 // (#1874): debug_start, debug_stop, set_breakpoint, remove_breakpoint, debug_continue, debug_step, debug_state und
-// debug_evaluate. Argumente prüft Atlas.Common.Mcp.IdeDebug, den Austausch mit dem Plugin Shell.Mcp.Ide.
+// debug_evaluate. Argumente prüft Atlas.Common.Mcp.IdeDebug, den Austausch mit dem Plugin Core.Mcp.Ide.
 
 interface
 
 uses
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>Meldet die acht Debug-Werkzeuge an.</summary>
 procedure RegisterDebugTools(const AContext: TMcpToolContext);
@@ -20,7 +20,7 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.IdeDebug,
-  Shell.Mcp.Ide,
+  Core.Mcp.Ide,
   Atlas.Common.Localization.Texts;
 
 type
@@ -232,6 +232,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.DebugTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.DebugTools', cTexts);
 
 end.

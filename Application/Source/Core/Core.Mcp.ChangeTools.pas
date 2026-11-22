@@ -1,6 +1,6 @@
-﻿unit Shell.Mcp.ChangeTools;
+﻿unit Core.Mcp.ChangeTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge rund um Änderungen: betroffene Tests (#1353),
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge rund um Änderungen: betroffene Tests (#1353),
 // Hotspots aus Änderungshäufigkeit (#1354).
 
 interface
@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Mcp.Paths,
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>get_affected_tests (#1353): betroffene Tests der Änderungen gegenüber einer Basis; das Ergebnis im
 /// Format json passt mit "run" direkt in run_tests.tests.</summary>
@@ -33,7 +33,6 @@ uses
   Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Report,
   Atlas.Common.Lsp.Hotspots,
-  Shell.Composition.Platform,
   Core.AffectedTests,
   Core.Hotspots,
   Atlas.Common.Localization.Texts,
@@ -116,20 +115,17 @@ begin
 end;
 
 /// <summary>Betroffene Tests über den Index der Gruppe; Fehler der Versionsverwaltung als EMcpToolError.</summary>
-function FindAffected(AGroup: TCoreWorkspaceGroup; const ASettings: TServerSettings;
+function FindAffected(const AAccess: TCoreVcsAccess; AGroup: TCoreWorkspaceGroup; const ASettings: TServerSettings;
   const AQuery: TCoreAffectedQuery; const ARequest: TAffectedRequest; const AReadText: TReferenceReadText):
   TAffectedResult;
 var
   mResolver: TNameResolver;
-  mAccess: TCoreVcsAccess;
 begin
-  // In einer Interface-Variablen: als const-Argument würde das Objekt nie freigegeben.
-  mAccess := TShellPlatformAdapters.VcsAccess;
   mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
   try
     mResolver.Namespaces := AGroup.Main.State.Namespaces;
     try
-      Result := TCoreAffectedTests.Run(mAccess, ASettings, AQuery,
+      Result := TCoreAffectedTests.Run(AAccess, ASettings, AQuery,
         TCoreAffectedSources.New(mResolver, AGroup.Index, AReadText), ARequest, nil);
     except
       on E: EVcsChanges do
@@ -163,6 +159,7 @@ var
   mFormat: TAffectedFormat;
   mReadText: TReferenceReadText;
   mFound: TAffectedResult;
+  mAccess: TCoreVcsAccess;
 begin
   mSettings := AContext.Group.Main.Configuration.Settings;
   if not mSettings.Tests.Affected then
@@ -174,7 +171,9 @@ begin
     raise EMcpToolError.Create(TCoreTexts.Choice('format', ['text', 'json', 'dunitx']));
   end;
   mReadText := TCoreAffectedTests.FileReader();
-  mFound := FindAffected(AContext.Group, mSettings, AffectedQueryOf(AContext.Root, AArguments),
+  // Über eine Variable halten: als const-Argument würde der Probelauf nie freigegeben.
+  mAccess := AContext.Adapters.VcsAccess();
+  mFound := FindAffected(mAccess, AContext.Group, mSettings, AffectedQueryOf(AContext.Root, AArguments),
     AffectedRequestOf(AContext, mSettings, mReadText), mReadText);
   if mFormat = TAffectedFormat.DUnitX then
   begin
@@ -301,7 +300,7 @@ begin
   mLimit := HotspotLimitOf(AArguments);
   mRequest := HotspotRequestOf(AContext, mSettings, AArguments);
   // Ohne Versionsverwaltung ein Hinweis statt einer leeren Liste.
-  if not TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, AContext.Root, mSettings, mVcs, mError) then
+  if not TCoreHotspotVcs.Detect(AContext.Adapters.VcsAccess(), AContext.Root, mSettings, mVcs, mError) then
   begin
     Exit(cTexts[TMcpChangeText.NoHotspots].Fmt([mError]));
   end;
@@ -339,6 +338,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.ChangeTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.ChangeTools', cTexts);
 
 end.

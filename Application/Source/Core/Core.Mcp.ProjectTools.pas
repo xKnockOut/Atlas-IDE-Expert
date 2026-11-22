@@ -1,12 +1,12 @@
-﻿unit Shell.Mcp.ProjectTools;
+﻿unit Core.Mcp.ProjectTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge über das ganze Projekt: Status (#1356), Code-Abfragen
-// (#1351), toter Code, betroffene Tests (#1353), Hotspots (#1354) siehe Shell.Mcp.ChangeTools.
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge über das ganze Projekt: Status (#1356), Code-Abfragen
+// (#1351), toter Code, betroffene Tests (#1353), Hotspots (#1354) siehe Core.Mcp.ChangeTools.
 
 interface
 
 uses
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>get_server_status (#1356): Status des Servers der IDE aus der Statusdatei, sonst dieses Prozesses.
 /// </summary>
@@ -393,6 +393,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.ProjectTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.ProjectTools', cTexts);
 
 end.

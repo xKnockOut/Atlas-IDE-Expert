@@ -9,7 +9,7 @@ interface
 uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Mcp.EditTools,
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 type
   TMcpRefactorSources = class
@@ -39,7 +39,8 @@ uses
   Core.Workspace,
   Core.WorkspaceGroup,
   Shell.Composition.Refactorings.Services,
-  Shell.Mcp.RefactorHost;
+  Shell.Mcp.RefactorHost,
+  Atlas.Common.Mcp.RefactorTools;
 
 /// <summary>Neue Datei aus refactor (#2150): UTF-8 mit BOM und CRLF wie neue Units der IDE, Ordner wird angelegt.
 /// </summary>
@@ -162,11 +163,21 @@ begin
   Result := TMcpRefactorHost.Create(mServices);
 end;
 
+/// <summary>refactor über AHost; die Methodenreferenz hält AHost so lange wie die Werkzeuge.</summary>
+function RefactorOf(const AHost: IMcpRefactorHost): TMcpRefactorFunc;
+begin
+  Result :=
+    function(AEdit: TMcpEditTools; const ARequest: TMcpRefactorRequest): string
+    begin
+      Result := AHost.Run(AEdit, ARequest);
+    end;
+end;
+
 { TMcpRefactorSources }
 
 class procedure TMcpRefactorSources.Attach(var AContext: TMcpToolContext; const ALogger: ILogger);
 begin
-  AContext.Refactor := NewHost(AContext.Index, AContext.Group, ALogger);
+  AContext.Refactor := RefactorOf(NewHost(AContext.Index, AContext.Group, ALogger));
   AContext.Edit.Files := FileOperations;
 end;
 

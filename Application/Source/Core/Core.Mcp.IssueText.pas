@@ -1,4 +1,4 @@
-﻿unit Shell.Mcp.IssueText;
+﻿unit Core.Mcp.IssueText;
 
 // Ausgabe von get_current_issue (#2051) als lesbarer Text oder als JSON des
 // gewählten Abschnitts. Die Datei selbst (Atlas.Core.Tracker.CurrentIssue) liegt
@@ -302,6 +302,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.IssueText', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.IssueText', cTexts);
 
 end.

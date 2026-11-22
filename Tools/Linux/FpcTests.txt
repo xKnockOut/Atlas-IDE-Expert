@@ -288,8 +288,8 @@ Atlas.Common.Mcp.StatisticsText.Tests
 Atlas.Common.Mcp.HistoryTools.Tests
 Core.SymbolHistory.Tests
 Core.Workspace.Parts.Tests
-Shell.Mcp.HistoryTools.Tests
-Shell.Mcp.Tools.Tests
+Core.Mcp.HistoryTools.Tests
+Core.Mcp.Tools.Tests
 Atlas.Common.Mcp.TestTools.Tests
 Atlas.Common.Mcp.ProfileTools.Tests
 Atlas.Common.Mcp.LastTests.Tests
@@ -823,8 +823,8 @@ Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
 
 # Server (Shell)
-Shell.Mcp.IssueTools.Tests
-Shell.Mcp.IssueText.Tests
+Core.Mcp.IssueTools.Tests
+Core.Mcp.IssueText.Tests
 Atlas.Core.Designer.Names.Tests
 Atlas.Core.Designer.FormStore.Tests
 Atlas.Core.Designer.GridSnap.Tests

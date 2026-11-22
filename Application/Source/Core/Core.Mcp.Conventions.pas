@@ -1,6 +1,6 @@
-﻿unit Shell.Mcp.Conventions;
+﻿unit Core.Mcp.Conventions;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Ressource „Projektkonventionen“ (#272): Regelprofil, Formatstil,
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Ressource „Projektkonventionen“ (#272): Regelprofil, Formatstil,
 // Benennungsregeln, aktive Prüfregeln und geschützte Dateien (#2608) des Projekts als Markdown. Name und
 // Beschreibung der Ressource in der Sprache der Oberfläche (#1458). Eigene Unit, damit Shell.Mcp die Prüfregeln
 // nicht kennen muss.
@@ -78,6 +78,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.Conventions', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.Conventions', cTexts);
 
 end.

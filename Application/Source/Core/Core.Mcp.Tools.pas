@@ -1,11 +1,11 @@
-﻿unit Shell.Mcp.Tools;
+﻿unit Core.Mcp.Tools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), meldet alle Werkzeuge in der Reihenfolge von tools/list an.
+// Host-Rolle Core: MCP-Modus (--mcp, #48), meldet alle Werkzeuge in der Reihenfolge von tools/list an.
 
 interface
 
 uses
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>Meldet alle Werkzeuge mit Kontext an; CheckSource und CheckProject kommen aus AContext.Group.</summary>
 procedure RegisterContextTools(const AContext: TMcpToolContext);
@@ -13,19 +13,19 @@ procedure RegisterContextTools(const AContext: TMcpToolContext);
 implementation
 
 uses
-  Shell.Mcp.NavigationTools,
-  Shell.Mcp.BuildTestTools,
-  Shell.Mcp.DebugTools,
-  Shell.Mcp.IdeContextTools,
-  Shell.Mcp.QuestionTools,
-  Shell.Mcp.ReportTools,
-  Shell.Mcp.CheckTools,
-  Shell.Mcp.ArchitectureTools,
-  Shell.Mcp.EditingTools,
-  Shell.Mcp.ProjectTools,
-  Shell.Mcp.ChangeTools,
-  Shell.Mcp.HistoryTools,
-  Shell.Mcp.IssueTools;
+  Core.Mcp.NavigationTools,
+  Core.Mcp.BuildTestTools,
+  Core.Mcp.DebugTools,
+  Core.Mcp.IdeContextTools,
+  Core.Mcp.QuestionTools,
+  Core.Mcp.ReportTools,
+  Core.Mcp.CheckTools,
+  Core.Mcp.ArchitectureTools,
+  Core.Mcp.EditingTools,
+  Core.Mcp.ProjectTools,
+  Core.Mcp.ChangeTools,
+  Core.Mcp.HistoryTools,
+  Core.Mcp.IssueTools;
 
 procedure RegisterContextTools(const AContext: TMcpToolContext);
 var

@@ -1,13 +1,13 @@
-﻿unit Shell.Mcp.HistoryTools;
+﻿unit Core.Mcp.HistoryTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeug get_symbol_history (#2641): Geschichte einer Routine oder
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeug get_symbol_history (#2641): Geschichte einer Routine oder
 // eines Typs aus Git bzw. SVN (vcs.provider), über Umbenennen und Verschieben (nur Git). Zeitlimit
 // requestTimeoutMs und Abbruch über notifications/cancelled; ohne Versionsverwaltung ein Hinweis.
 
 interface
 
 uses
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>get_symbol_history (#2641).</summary>
 procedure RegisterSymbolHistoryTool(const AContext: TMcpToolContext);
@@ -26,8 +26,7 @@ uses
   Atlas.Common.Mcp.HistoryTools,
   Atlas.Common.Localization.Texts,
   Core.SymbolHistory,
-  Core.Texts,
-  Shell.Composition.Platform;
+  Core.Texts;
 
 type
 {$SCOPEDENUMS ON}
@@ -113,7 +112,8 @@ begin
   mArgs.TimeoutMs := mSettings.RequestTimeoutMs;
   mArgs.Cancelled := CancelledOf(TJsonRpcCurrentRequest.Token);
   // Ohne Versionsverwaltung ein Hinweis statt eines Fehlers.
-  if not TCoreSymbolHistoryVcs.DetectHistory(TShellPlatformAdapters.VcsAccess, AContext.Root, mSettings, mVcs, mError) then
+  if not TCoreSymbolHistoryVcs.DetectHistory(AContext.Adapters.VcsAccess(), AContext.Root, mSettings, mVcs,
+    mError) then
   begin
     Exit(TMcpHistoryTools.NoVcs(mError));
   end;
@@ -158,6 +158,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.HistoryTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.HistoryTools', cTexts);
 
 end.

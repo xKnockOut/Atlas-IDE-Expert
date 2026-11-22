@@ -1,6 +1,6 @@
-﻿unit Shell.Mcp.IssueTools;
+﻿unit Core.Mcp.IssueTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), das begonnene Tracker-Issue für KI-Assistenten (#2051):
+// Host-Rolle Core: MCP-Modus (--mcp, #48), das begonnene Tracker-Issue für KI-Assistenten (#2051):
 // get_current_issue liest <gitdir>/atlas-current-issue.json, die das Plugin neben atlas-commit-prefix schreibt
 // (Atlas.Core.Tracker.CurrentIssue), und gibt sie als Text oder JSON aus. Nur lesend; der Server fragt den Tracker
 // nie selbst (keine Zugangsdaten im Server-Prozess). <gitdir> findet er wie prepare_commit: die Arbeitskopie über
@@ -9,30 +9,30 @@
 interface
 
 uses
+  System.SysUtils,
   System.JSON,
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>get_current_issue (#2051).</summary>
 procedure RegisterIssueTools(const AContext: TMcpToolContext);
-/// <summary>&lt;gitdir&gt; der Git-Arbeitskopie, in der AFolder liegt; '' ohne.</summary>
-function GitDirAbove(const AFolder: string): string;
+/// <summary>&lt;gitdir&gt; der Git-Arbeitskopie, in der AFolder liegt (AGitDir prüft je Ordner); '' ohne.</summary>
+function GitDirAbove(const AGitDir: TFunc<string, string>; const AFolder: string): string;
 /// <summary>Datei AName aus AGitDir als UTF-8 (BOM übergangen), höchstens AMaxBytes; '' ohne bzw. zu groß.</summary>
 function ReadGitDirFile(const AGitDir, AName: string; AMaxBytes: Integer): string;
 /// <summary>Antwort von get_current_issue für den Projektordner ARoot; ANow (UTC) für „vor 5 Min.“. Wirft
 /// EMcpToolError bei falschen Argumenten oder kaputter Datei.</summary>
-function CurrentIssueOf(const ARoot: string; const AArguments: TJSONObject; ANow: TDateTime): string;
+function CurrentIssueOf(const AGitDir: TFunc<string, string>; const ARoot: string; const AArguments: TJSONObject;
+  ANow: TDateTime): string;
 
 implementation
 
 uses
-  System.SysUtils,
   System.Classes,
   System.DateUtils,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Localization.Texts,
-  Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.Tracker.CurrentIssue,
-  Shell.Mcp.IssueText,
+  Core.Mcp.IssueText,
   Core.Texts;
 
 type
@@ -69,7 +69,7 @@ const
   cMaxFileBytes = 4 * 1024 * 1024;
   cMaxDepth = 32;
 
-function GitDirAbove(const AFolder: string): string;
+function GitDirAbove(const AGitDir: TFunc<string, string>; const AFolder: string): string;
 var
   mFolder, mParent: string;
   mDepth: Integer;
@@ -82,7 +82,7 @@ begin
     begin
       Exit;
     end;
-    Result := TAtlasGitVersionControl.GitDir(mFolder);
+    Result := AGitDir(mFolder);
     if Result <> '' then
     begin
       Exit;
@@ -156,7 +156,8 @@ begin
   AJson := SameText(mFormat, 'json');
 end;
 
-function CurrentIssueOf(const ARoot: string; const AArguments: TJSONObject; ANow: TDateTime): string;
+function CurrentIssueOf(const AGitDir: TFunc<string, string>; const ARoot: string; const AArguments: TJSONObject;
+  ANow: TDateTime): string;
 var
   mSection: TAtlasCurrentIssueSection;
   mJson: Boolean;
@@ -164,7 +165,7 @@ var
   mIssue: TAtlasCurrentIssue;
 begin
   ParseArguments(AArguments, mSection, mJson);
-  mGitDir := GitDirAbove(ARoot);
+  mGitDir := GitDirAbove(AGitDir, ARoot);
   if mGitDir = '' then
   begin
     Exit(cTexts[TMcpIssueText.NoGit].Fmt([ARoot, TAtlasCurrentIssue.cFileName]));
@@ -190,7 +191,7 @@ end;
 
 function ToolGetCurrentIssue(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := CurrentIssueOf(AContext.Root, AArguments, TTimeZone.Local.ToUniversalTime(Now));
+  Result := CurrentIssueOf(AContext.Adapters.GitDir, AContext.Root, AArguments, TTimeZone.Local.ToUniversalTime(Now));
 end;
 
 procedure RegisterIssueTools(const AContext: TMcpToolContext);
@@ -204,6 +205,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.IssueTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.IssueTools', cTexts);
 
 end.

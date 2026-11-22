@@ -1,12 +1,12 @@
-﻿unit Shell.Mcp.IdeContextTools;
+﻿unit Core.Mcp.IdeContextTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Zustand der laufenden IDE für KI-Assistenten (get_ide_context, #2050):
-// wo der Entwickler gerade ist. Die Dateien liest Shell.Mcp.Ide, Auswahl und Ausgabe Atlas.Common.Mcp.IdeContext.
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Zustand der laufenden IDE für KI-Assistenten (get_ide_context, #2050):
+// wo der Entwickler gerade ist. Die Dateien liest Core.Mcp.Ide, Auswahl und Ausgabe Atlas.Common.Mcp.IdeContext.
 
 interface
 
 uses
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>Meldet get_ide_context an.</summary>
 procedure RegisterIdeContextTools(const AContext: TMcpToolContext);
@@ -22,7 +22,7 @@ uses
   Atlas.Text.IdeContext,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Timestamps,
-  Shell.Mcp.Ide;
+  Core.Mcp.Ide;
 
 type
 {$SCOPEDENUMS ON}
@@ -87,6 +87,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.IdeContextTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.IdeContextTools', cTexts);
 
 end.

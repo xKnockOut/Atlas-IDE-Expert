@@ -1,12 +1,12 @@
-﻿unit Shell.Mcp.NavigationTools;
+﻿unit Core.Mcp.NavigationTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge zur Navigation im Symbolindex:
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge zur Navigation im Symbolindex:
 // Symbole, Deklarationen, Hierarchien, Verweise, Umsetzungen (#2635), Auswirkungen und qualifizierte Namen.
 
 interface
 
 uses
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>Meldet find_symbol bis get_impact, find_implementations und qualified_name an.</summary>
 procedure RegisterNavigationTools(const AContext: TMcpToolContext);
@@ -371,6 +371,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.NavigationTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.NavigationTools', cTexts);
 
 end.
