@@ -100,7 +100,7 @@ implementation
 
 uses
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Pascal.Preprocessor,

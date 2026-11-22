@@ -33,7 +33,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.BulkFix;
 

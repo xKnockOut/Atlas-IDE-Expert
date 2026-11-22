@@ -155,7 +155,7 @@ contains
   Atlas.Common.Rules.Filter in 'Source\Rules\Atlas.Common.Rules.Filter.pas',
   Atlas.Common.Rules.Output in 'Source\Rules\Atlas.Common.Rules.Output.pas',
   Atlas.Common.Rules.FormatOutput in 'Source\Rules\Atlas.Common.Rules.FormatOutput.pas',
-  Atlas.Common.Rules.Baseline in 'Source\Rules\Atlas.Common.Rules.Baseline.pas',
+  Atlas.Common.Findings.Baseline in 'Source\Findings\Atlas.Common.Findings.Baseline.pas',
   Atlas.Common.Findings.Scopes in 'Source\Findings\Atlas.Common.Findings.Scopes.pas',
   Atlas.Common.Rules.Options in 'Source\Rules\Atlas.Common.Rules.Options.pas',
   Atlas.Common.Rules.SuppressionStats in 'Source\Rules\Atlas.Common.Rules.SuppressionStats.pas',

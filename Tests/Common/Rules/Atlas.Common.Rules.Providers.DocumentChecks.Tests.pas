@@ -34,7 +34,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.CheckContext,
   Atlas.Common.Rules.Providers.DocumentChecks,
   Atlas.Tests.LspRules;

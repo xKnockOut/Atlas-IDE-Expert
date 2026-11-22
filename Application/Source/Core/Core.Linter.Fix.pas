@@ -19,7 +19,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.Output,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.BulkFix,
   Core.CommandLine,
   Core.VersionControlChanges,

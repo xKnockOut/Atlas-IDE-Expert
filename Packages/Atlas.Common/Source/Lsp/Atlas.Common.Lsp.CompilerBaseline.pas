@@ -30,7 +30,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Baseline;
 

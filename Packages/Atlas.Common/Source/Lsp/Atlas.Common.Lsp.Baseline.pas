@@ -35,7 +35,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Lsp.Metrics;
 
 type
