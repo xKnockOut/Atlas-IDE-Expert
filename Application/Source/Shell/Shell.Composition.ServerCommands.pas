@@ -99,6 +99,7 @@ uses
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.SettingsCommands,
+  Atlas.Common.Rules.SettingsCatalog,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.FormFiles,
   Platform.Server,
@@ -160,7 +161,7 @@ var
   mCatalog: TJSONObject;
 begin
   // Experimentelle Regeln (#834) markiert die Einstellungsseite (#909) aus "profiles" des Regelkatalogs (#145).
-  mCatalog := TLspSettingsCommands.Catalog(TLspSettingsCommands.CatalogEntries(AArguments),
+  mCatalog := TRuleSettingsCatalog.Json(TRuleSettingsCatalog.Entries(TJsonRead.FirstText(AArguments)),
     FServices.GlobalSettingsFile());
   // Erklärungen der Compilermeldungen (#54) für Hover und „Erklären“ des Plugins.
   TLspSettingsCommands.AddMessages(mCatalog, AArguments);

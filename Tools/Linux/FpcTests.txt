@@ -463,6 +463,7 @@ Atlas.Common.Rules.Providers.OwnershipReport.Tests
 Atlas.Common.Rules.Providers.DocumentChecks.Tests
 Atlas.Common.Rules.Providers.DocumentActions.Tests
 Atlas.Common.Rules.Providers.CatalogInfo.Tests
+Atlas.Common.Rules.SettingsCatalog.Tests
 Atlas.Common.Rules.CheckContext.Tests
 Atlas.Common.Rules.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests

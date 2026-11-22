@@ -559,6 +559,7 @@ uses
   Atlas.Common.Rules.Providers.DocumentChecks.Tests in 'Common\Rules\Atlas.Common.Rules.Providers.DocumentChecks.Tests.pas',
   Atlas.Common.Rules.Providers.DocumentActions.Tests in 'Common\Rules\Atlas.Common.Rules.Providers.DocumentActions.Tests.pas',
   Atlas.Common.Rules.Providers.CatalogInfo.Tests in 'Common\Rules\Atlas.Common.Rules.Providers.CatalogInfo.Tests.pas',
+  Atlas.Common.Rules.SettingsCatalog.Tests in 'Common\Rules\Atlas.Common.Rules.SettingsCatalog.Tests.pas',
   Atlas.Common.Rules.CheckContext.Tests in 'Common\Rules\Atlas.Common.Rules.CheckContext.Tests.pas',
   Atlas.Common.Rules.Derived.Tests in 'Common\Rules\Atlas.Common.Rules.Derived.Tests.pas',
   Atlas.Common.Rules.TypedScope.Tests in 'Common\Rules\Atlas.Common.Rules.TypedScope.Tests.pas',

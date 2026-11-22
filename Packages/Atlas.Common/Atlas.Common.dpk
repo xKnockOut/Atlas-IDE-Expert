@@ -139,6 +139,7 @@ contains
   Atlas.Common.Rules.Providers.DocumentChecks in 'Source\Rules\Atlas.Common.Rules.Providers.DocumentChecks.pas',
   Atlas.Common.Rules.Providers.DocumentActions in 'Source\Rules\Atlas.Common.Rules.Providers.DocumentActions.pas',
   Atlas.Common.Rules.Providers.CatalogInfo in 'Source\Rules\Atlas.Common.Rules.Providers.CatalogInfo.pas',
+  Atlas.Common.Rules.SettingsCatalog in 'Source\Rules\Atlas.Common.Rules.SettingsCatalog.pas',
   Atlas.Common.Rules.CheckContext in 'Source\Rules\Atlas.Common.Rules.CheckContext.pas',
   Atlas.Common.Rules.Derived in 'Source\Rules\Atlas.Common.Rules.Derived.pas',
   Atlas.Common.Rules.TypedScope in 'Source\Rules\Atlas.Common.Rules.TypedScope.pas',

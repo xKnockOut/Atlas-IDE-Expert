@@ -8,22 +8,16 @@
 //                                           Ort "global" (settings.json)
 //                                           oder "project" (Vorgabe) meldet
 //                                           Schlüssel am falschen Ort
-//   atlas.server.settingsCatalog [Sprache] Regeln des Katalogs mit Name,
-//                                           Kategorie, Vorgabe, Gruppe,
-//                                           Beschreibung, Beispielen,
-//                                           Optionen und Kennzeichen
-//                                           „experimentell“ (#909) und
-//                                           „Sammelkorrektur“ (safeFix, #1352)
-//                                           sowie Pfad
-//                                           der globalen Datei und Version
-//                                           des Servers
+//   atlas.server.settingsCatalog [Sprache] die Regeln baut die Komposition
+//                                           (TRuleSettingsCatalog), hier kommen
+//                                           die Erklärungen der Compilermeldungen
+//                                           dazu (AddMessages)
 
 interface
 
 uses
   System.SysUtils,
-  System.JSON,
-  Atlas.Common.Rules.Catalog;
+  System.JSON;
 
 type
   TLspSettingsCommands = class
@@ -34,15 +28,6 @@ type
     /// <summary>{"valid": Boolean, "issues": [{"line", "character", "message", "error"}]}; Zeilen ab 0. AArguments[1]
     /// = "global" prüft den Text als globale Datei, sonst als atlas.json.</summary>
     class function Check(const AArguments: TJSONArray): TJSONObject; static;
-    /// <summary>{"rules": [{"id", "name", "category", "severity", "group", "description", "bad", "good",
-    /// "options": [{"name", "type", "columns" (nur object-list), "default", "description"}], "experimental",
-    /// "safeFix" (#1352)}],
-    /// "globalFile", "version"}. "experimental" (#834, #909) kommt aus "profiles" des Regelkatalogs (#145).
-    /// </summary>
-    class function Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string): TJSONObject;
-      static;
-    /// <summary>Katalog in der Sprache aus AArguments[0] ("de", "en"; sonst englisch).</summary>
-    class function CatalogEntries(const AArguments: TJSONArray): TArray<TRuleCatalogEntry>; static;
     /// <summary>Erklärungen der Compilermeldungen (#54) als "messages": [{"code", "name", "description", "cause",
     /// "bad", "good", "docWiki"}] in ACatalog; Sprache aus AArguments[0], Delphi-Version (BDS-Nummer wie "37.0")
     /// für den DocWiki-Link aus AArguments[1], ohne Angabe das neueste Release.</summary>
@@ -56,31 +41,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
-  Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Rules.MessageCatalog,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.Output,
-  Atlas.Common.Product.Version,
   Atlas.Text.Json;
-
-/// <summary>Spalten einer Option der Art "object-list" (#1133): [{"name": …, "list": true}].</summary>
-function ColumnsJson(const AColumns: TArray<TRuleOptionColumn>): TJSONArray;
-var
-  mColumn: TRuleOptionColumn;
-  mObject: TJSONObject;
-begin
-  Result := TJSONArray.Create;
-  for mColumn in AColumns do
-  begin
-    mObject := TJSONObject.Create;
-    mObject.AddPair('name', mColumn.Name);
-    if mColumn.List then
-    begin
-      mObject.AddPair('list', TJSONBool.Create(True));
-    end;
-    Result.AddElement(mObject);
-  end;
-end;
 
 { TLspSettingsCommands }
 
@@ -122,92 +85,6 @@ begin
   Result.AddPair('issues', mItems);
 end;
 
-class function TLspSettingsCommands.CatalogEntries(const AArguments: TJSONArray): TArray<TRuleCatalogEntry>;
-var
-  mCatalog: TRuleCatalog;
-begin
-  mCatalog := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson(TJsonRead.FirstText(AArguments)));
-  try
-    Result := mCatalog.Entries;
-  finally
-    mCatalog.Free;
-  end;
-end;
-
-
-/// <summary>Option einer Regel mit Art, Spalten, Vorgabe und Beschreibung.</summary>
-function OptionJson(const AOption: TRuleOption): TJSONObject;
-var
-  mDefault: TJSONValue;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('name', AOption.Name);
-  Result.AddPair('type', AOption.Kind);
-  if AOption.Columns <> nil then
-  begin
-    Result.AddPair('columns', ColumnsJson(AOption.Columns));
-  end;
-  mDefault := nil;
-  if AOption.DefaultJson <> '' then
-  begin
-    mDefault := TJSONObject.ParseJSONValue(AOption.DefaultJson);
-  end;
-  if mDefault <> nil then
-  begin
-    Result.AddPair('default', mDefault);
-  end;
-  Result.AddPair('description', AOption.Description);
-end;
-
-function OptionsJson(const AOptions: TArray<TRuleOption>): TJSONArray;
-var
-  mOption: TRuleOption;
-begin
-  Result := TJSONArray.Create;
-  for mOption in AOptions do
-  begin
-    Result.AddElement(OptionJson(mOption));
-  end;
-end;
-
-/// <summary>Eintrag einer Regel im Katalog.</summary>
-function RuleJson(const AEntry: TRuleCatalogEntry): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('id', AEntry.Id);
-  Result.AddPair('name', AEntry.Name);
-  Result.AddPair('category', TRuleCatalog.CategoryName(AEntry.Category));
-  Result.AddPair('severity', TFindingsOutput.SeverityName(AEntry.DefaultSeverity));
-  Result.AddPair('group', TRuleCatalog.GroupName(AEntry.Group));
-  Result.AddPair('description', AEntry.Description);
-  Result.AddPair('bad', AEntry.Bad);
-  Result.AddPair('good', AEntry.Good);
-  Result.AddPair('options', OptionsJson(AEntry.Options));
-  if AEntry.OverriddenBy <> nil then
-  begin
-    Result.AddPair('overriddenBy', TJsonBuild.Strings(AEntry.OverriddenBy));
-  end;
-  TJsonBuild.AddFlag(Result, 'experimental', AEntry.Experimental);
-  // Sammelkorrektur (#1352): Das Plugin bietet „Alle sicheren Treffer korrigieren …“ nur dafür an.
-  TJsonBuild.AddFlag(Result, 'safeFix', AEntry.SafeFix);
-end;
-
-class function TLspSettingsCommands.Catalog(const AEntries: TArray<TRuleCatalogEntry>;
-  const AGlobalFile: string): TJSONObject;
-var
-  mRules: TJSONArray;
-  mEntry: TRuleCatalogEntry;
-begin
-  mRules := TJSONArray.Create;
-  for mEntry in AEntries do
-  begin
-    mRules.AddElement(RuleJson(mEntry));
-  end;
-  Result := TJSONObject.Create;
-  Result.AddPair('rules', mRules);
-  Result.AddPair('globalFile', AGlobalFile);
-  Result.AddPair('version', TProductVersion.cVersion);
-end;
 
 /// <summary>Zweites Argument als Text (Delphi-Version); '' ohne.</summary>
 function SecondString(const AArguments: TJSONArray): string;
