@@ -1,4 +1,4 @@
-﻿unit Shell.VersionControlChanges.Tests;
+﻿unit Core.VersionControlChanges.Tests;
 
 // Tests für geänderte Dateien und Zeilen aus Git (#157) und SVN (#276) nach
 // vcs.provider (#571) (#415): Detect mit Ordnern, die .git bzw. .svn enthalten,
@@ -14,7 +14,7 @@ uses
 
 type
   [TestFixture]
-  TShellVcsChangesTests = class
+  TCoreVcsChangesTests = class
   private
     FFolder: string;
     /// <summary>Echter Fund von git und svn vor dem Test; TearDown stellt ihn nach Preset wieder her.</summary>
@@ -68,7 +68,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.History.ChangedFiles,
-  Shell.VersionControlChanges;
+  Core.VersionControlChanges,
+  Shell.Composition.Platform;
 
 type
   /// <summary>Prozess mit festen Antworten je Argumentliste (ohne Programm, durch Leerzeichen getrennt);
@@ -165,6 +166,13 @@ begin
   Result := TFakeProcess.Create;
 end;
 
+/// <summary>Zugriff wie im Server, aber mit AProcess für die Kommandozeile.</summary>
+function AccessOf(const AProcess: ICompilerProcess): TCoreVcsAccess;
+begin
+  Result := TShellPlatformAdapters.VcsAccess;
+  Result.Process := AProcess;
+end;
+
 /// <summary>Meldung von EVcsChanges aus Detect; '' ohne Ausnahme.</summary>
 function DetectError(const AFolder, AProvider: string): string;
 var
@@ -172,7 +180,7 @@ var
 begin
   Result := '';
   try
-    mChanges := TVcsChanges.Detect(NoProcess, AFolder, AProvider);
+    mChanges := TVcsChanges.Detect(AccessOf(NoProcess), AFolder, AProvider);
     mChanges.Free;
   except
     on E: EVcsChanges do
@@ -187,7 +195,7 @@ var
 begin
   Result := '';
   try
-    mChanges := TVcsChanges.Detect(NoProcess, AFolder, AProvider);
+    mChanges := TVcsChanges.Detect(AccessOf(NoProcess), AFolder, AProvider);
     try
       Result := mChanges.Name + ':' + mChanges.ClassName;
     finally
@@ -216,9 +224,9 @@ begin
   Result := IncludeTrailingPathDelimiter(ARoot) + StringReplace(ARelative, '/', PathDelim, [rfReplaceAll]);
 end;
 
-{ TShellVcsChangesTests }
+{ TCoreVcsChangesTests }
 
-procedure TShellVcsChangesTests.Setup;
+procedure TCoreVcsChangesTests.Setup;
 var
   mKind: TAtlasVcsKind;
 begin
@@ -230,7 +238,7 @@ begin
   ForceDirectories(TPath.Combine(FFolder, 'Sub'));
 end;
 
-procedure TShellVcsChangesTests.TearDown;
+procedure TCoreVcsChangesTests.TearDown;
 var
   mKind: TAtlasVcsKind;
 begin
@@ -248,13 +256,13 @@ begin
   FFolder := '';
 end;
 
-procedure TShellVcsChangesTests.DetectOffRaises;
+procedure TCoreVcsChangesTests.DetectOffRaises;
 begin
   ForceDirectories(TPath.Combine(FFolder, '.git'));
   Assert.AreEqual('Versionsverwaltung abgeschaltet (vcs.provider = off)', DetectError(FFolder, 'off'));
 end;
 
-procedure TShellVcsChangesTests.DetectFindsGitInParentFolder;
+procedure TCoreVcsChangesTests.DetectFindsGitInParentFolder;
 var
   mChanges: TVcsChanges;
 begin
@@ -262,7 +270,7 @@ begin
   Assert.AreEqual('Git:TGitChanges', DetectedName(TPath.Combine(FFolder, 'Sub'), 'auto'));
   Assert.AreEqual('Git:TGitChanges', DetectedName(TPath.Combine(FFolder, 'Sub'), 'git'));
   // Ohne vcs.provider wie auto.
-  mChanges := TVcsChanges.Detect(NoProcess, TPath.Combine(FFolder, 'Sub'));
+  mChanges := TVcsChanges.Detect(AccessOf(NoProcess), TPath.Combine(FFolder, 'Sub'));
   try
     Assert.IsTrue(mChanges is TGitChanges);
   finally
@@ -270,14 +278,14 @@ begin
   end;
 end;
 
-procedure TShellVcsChangesTests.DetectAcceptsGitFile;
+procedure TCoreVcsChangesTests.DetectAcceptsGitFile;
 begin
   // In Worktrees und Submodulen ist .git eine Datei.
   TFile.WriteAllText(TPath.Combine(FFolder, '.git'), 'gitdir: ../haupt/.git/worktrees/x');
   Assert.AreEqual('Git:TGitChanges', DetectedName(TPath.Combine(FFolder, 'Sub'), 'auto'));
 end;
 
-procedure TShellVcsChangesTests.DetectPrefersGitInSameFolder;
+procedure TCoreVcsChangesTests.DetectPrefersGitInSameFolder;
 begin
   TAtlasVcsTools.Preset(TAtlasVcsKind.Svn, TPath.Combine(FFolder, 'svn.exe'));
   ForceDirectories(TPath.Combine(FFolder, '.git'));
@@ -285,7 +293,7 @@ begin
   Assert.AreEqual('Git:TGitChanges', DetectedName(FFolder, 'auto'));
 end;
 
-procedure TShellVcsChangesTests.DetectNearestWorkingCopyWins;
+procedure TCoreVcsChangesTests.DetectNearestWorkingCopyWins;
 begin
   TAtlasVcsTools.Preset(TAtlasVcsKind.Svn, TPath.Combine(FFolder, 'svn.exe'));
   ForceDirectories(TPath.Combine(FFolder, '.git'));
@@ -294,7 +302,7 @@ begin
   Assert.AreEqual('Git:TGitChanges', DetectedName(FFolder, 'auto'));
 end;
 
-procedure TShellVcsChangesTests.DetectProviderRestrictsKind;
+procedure TCoreVcsChangesTests.DetectProviderRestrictsKind;
 begin
   TAtlasVcsTools.Preset(TAtlasVcsKind.Svn, TPath.Combine(FFolder, 'svn.exe'));
   ForceDirectories(TPath.Combine(FFolder, '.svn'));
@@ -308,7 +316,7 @@ begin
   Assert.Contains(DetectError(TPath.Combine(FFolder, 'Sub'), 'svn'), 'vcs.provider = svn');
 end;
 
-procedure TShellVcsChangesTests.DetectWithoutWorkingCopyRaises;
+procedure TCoreVcsChangesTests.DetectWithoutWorkingCopyRaises;
 begin
   // Setzt voraus, dass der Temp-Ordner selbst in keiner Arbeitskopie liegt.
   Assert.Contains(DetectError(FFolder, 'auto'), 'weder in einem Git-Repository noch in einer SVN-Arbeitskopie');
@@ -316,7 +324,7 @@ begin
   Assert.Contains(DetectError(FFolder, 'svn'), 'in keiner Arbeitskopie für vcs.provider = svn');
 end;
 
-procedure TShellVcsChangesTests.DetectSvnWithoutSvnRaises;
+procedure TCoreVcsChangesTests.DetectSvnWithoutSvnRaises;
 begin
   TAtlasVcsTools.Preset(TAtlasVcsKind.Svn, '');
   ForceDirectories(TPath.Combine(FFolder, '.svn'));
@@ -324,7 +332,7 @@ begin
   Assert.Contains(DetectError(FFolder, 'auto'), FFolder);
 end;
 
-procedure TShellVcsChangesTests.GitComparesWithHead;
+procedure TCoreVcsChangesTests.GitComparesWithHead;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
@@ -357,7 +365,7 @@ begin
   end;
 end;
 
-procedure TShellVcsChangesTests.GitUsesMergeBase;
+procedure TCoreVcsChangesTests.GitUsesMergeBase;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
@@ -381,7 +389,7 @@ begin
   end;
 end;
 
-procedure TShellVcsChangesTests.GitWithUncommittedAndLines;
+procedure TCoreVcsChangesTests.GitWithUncommittedAndLines;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
@@ -427,7 +435,7 @@ begin
   mLines := Default(TChangedLines);
 end;
 
-procedure TShellVcsChangesTests.GitWithoutRepositoryRaises;
+procedure TCoreVcsChangesTests.GitWithoutRepositoryRaises;
 var
   mChanges: TGitChanges;
 begin
@@ -439,7 +447,7 @@ begin
   end;
 end;
 
-procedure TShellVcsChangesTests.GitFailingCommandRaises;
+procedure TCoreVcsChangesTests.GitFailingCommandRaises;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
@@ -461,7 +469,7 @@ begin
   end;
 end;
 
-procedure TShellVcsChangesTests.GitWithoutMergeBaseRaises;
+procedure TCoreVcsChangesTests.GitWithoutMergeBaseRaises;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
@@ -478,7 +486,7 @@ begin
   end;
 end;
 
-procedure TShellVcsChangesTests.SvnComparesWithRevision;
+procedure TCoreVcsChangesTests.SvnComparesWithRevision;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
@@ -494,7 +502,7 @@ begin
     '--- Src/A.pas'#9'(revision 123)', '+++ Src/A.pas'#9'(working copy)', '@@ -1,3 +1,4 @@', ' a', '+b', '+c', ' d']);
   mWorkingCopy.Kind := TAtlasVcsKind.Svn;
   mWorkingCopy.Root := FFolder;
-  mChanges := TSvnChanges.Create(mKeep, TPath.Combine(FFolder, 'Sub'), mWorkingCopy, 'svn', 60000);
+  mChanges := TSvnChanges.Create(AccessOf(mKeep), TPath.Combine(FFolder, 'Sub'), mWorkingCopy, 'svn', 60000);
   try
     mChanges.Load('123', False, False, False, True);
     Assert.AreEqual('SVN', mChanges.Name);
@@ -518,7 +526,7 @@ begin
   mWorkingCopy := Default(TAtlasVcsWorkingCopy);
 end;
 
-procedure TShellVcsChangesTests.SvnUsesDetectedPath;
+procedure TCoreVcsChangesTests.SvnUsesDetectedPath;
 var
   mProcess: TFakeProcess;
   mKeep: ICompilerProcess;
@@ -533,7 +541,7 @@ begin
   mProcess.Answer('--non-interactive diff --summarize -r 7', ['M       A.pas']);
   mWorkingCopy.Kind := TAtlasVcsKind.Svn;
   mWorkingCopy.Root := FFolder;
-  mChanges := TSvnChanges.Create(mKeep, FFolder, mWorkingCopy, mSvn, 60000);
+  mChanges := TSvnChanges.Create(AccessOf(mKeep), FFolder, mWorkingCopy, mSvn, 60000);
   try
     mChanges.Load('7', False, False, False, False);
     Assert.AreEqual(1, Integer(mProcess.Calls.Count));
@@ -545,12 +553,12 @@ begin
   mWorkingCopy := Default(TAtlasVcsWorkingCopy);
 end;
 
-procedure TShellVcsChangesTests.FindProgramKeepsUnknownName;
+procedure TCoreVcsChangesTests.FindProgramKeepsUnknownName;
 begin
   Assert.AreEqual('atlas-gibt-es-nicht-4711', TVcsChanges.FindProgram('atlas-gibt-es-nicht-4711'));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellVcsChangesTests);
+  TDUnitX.RegisterTestFixture(TCoreVcsChangesTests);
 
 end.

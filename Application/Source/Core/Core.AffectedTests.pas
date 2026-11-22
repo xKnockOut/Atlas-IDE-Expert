@@ -1,6 +1,6 @@
-﻿unit Shell.AffectedTests;
+﻿unit Core.AffectedTests;
 
-// Host-Rolle Shell: betroffene Tests einer Änderung (#1353) für
+// Host-Rolle Core: betroffene Tests einer Änderung (#1353) für
 // --affected-tests, das MCP-Werkzeug get_affected_tests und die LSP-Anfrage
 // atlas/affectedTests. Holt den Unterschied wie --changed über TVcsChanges
 // (Git oder SVN nach vcs.provider, mit geänderten Zeilen) und übergibt ihn an
@@ -16,7 +16,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Compiler.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.JsonRpc.Contract,
@@ -25,13 +24,13 @@ uses
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests,
   Atlas.Common.Lsp.AffectedTests.Types,
-  Shell.VersionControlChanges;
+  Core.VersionControlChanges;
 
 type
   /// <summary>tests.affected ist aus.</summary>
   EAffectedTestsOff = class(Exception);
 
-  TShellAffectedQuery = record
+  TCoreAffectedQuery = record
     /// <summary>Ordner in der Arbeitskopie; dort laufen git bzw. svn.</summary>
     WorkingDir: string;
     /// <summary>Ref bzw. Revision; '' = main (Git) bzw. BASE (SVN).</summary>
@@ -48,15 +47,15 @@ type
   end;
 
   /// <summary>Woraus die Analyse liest: Namensauflösung, Symbolindex und Dateitexte.</summary>
-  TShellAffectedSources = record
+  TCoreAffectedSources = record
     Resolver: TNameResolver;
     Index: ISymbolIndex;
     ReadText: TReferenceReadText;
     class function New(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-      const AReadText: TReferenceReadText): TShellAffectedSources; static;
+      const AReadText: TReferenceReadText): TCoreAffectedSources; static;
   end;
 
-  TShellAffectedTests = class
+  TCoreAffectedTests = class
   public const
     cDefaultGitBase = 'main';
     /// <summary>Basis für SinceCommit unter Git (#1775).</summary>
@@ -74,7 +73,7 @@ type
     class function OnlyFiles(const AInputs: TArray<TAffectedInput>;
       const AFiles: TArray<string>): TArray<TAffectedInput>; static;
     /// <summary>Vergleichsbasis: AQuery.Base, sonst HEAD mit SinceCommit, sonst main (#1775).</summary>
-    class function RefOf(const AQuery: TShellAffectedQuery): string; static;
+    class function RefOf(const AQuery: TCoreAffectedQuery): string; static;
     /// <summary>Liest Dateien wie der Server (TCoreBootstrap.ReadSourceText), für TestPrograms und TestScope.
     /// </summary>
     class function FileReader: TReferenceReadText; static;
@@ -87,8 +86,8 @@ type
     /// <summary>Ermittelt die betroffenen Tests. ARequest bringt Projektdateien, Testprogramme und Optionen (Tiefe
     /// wird aus AQuery bzw. tests.affectedDepth gesetzt); EAffectedTestsOff, wenn die Funktion aus ist,
     /// EVcsChanges ohne Arbeitskopie.</summary>
-    class function Run(const AProcess: ICompilerProcess; const ASettings: TServerSettings;
-      const AQuery: TShellAffectedQuery; const ASources: TShellAffectedSources; const ARequest: TAffectedRequest;
+    class function Run(const AAccess: TCoreVcsAccess; const ASettings: TServerSettings;
+      const AQuery: TCoreAffectedQuery; const ASources: TCoreAffectedSources; const ARequest: TAffectedRequest;
       const ACancellation: IJsonRpcCancellationToken): TAffectedResult; static;
   end;
 
@@ -103,18 +102,18 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TShellAffectedText = (Off, TooManyForRun);
+  TCoreAffectedText = (Off, TooManyForRun);
 {$SCOPEDENUMS OFF}
 
 const
-  cTexts: array[TShellAffectedText] of TAtlasText = (
+  cTexts: array[TCoreAffectedText] of TAtlasText = (
     (De: 'Betroffene Tests sind ausgeschaltet (tests.affected)';
     En: 'Affected tests are turned off (tests.affected)'),
     (De: 'zu viele Tests für ein --run-Argument'; En: 'too many tests for one --run argument'));
 
-{ TShellAffectedTests }
+{ TCoreAffectedTests }
 
-class function TShellAffectedTests.FileReader: TReferenceReadText;
+class function TCoreAffectedTests.FileReader: TReferenceReadText;
 begin
   Result :=
     function(const AFileName: string; out AText: string): Boolean
@@ -123,27 +122,27 @@ begin
     end;
 end;
 
-class function TShellAffectedTests.OffMessage: string;
+class function TCoreAffectedTests.OffMessage: string;
 begin
-  Result := cTexts[TShellAffectedText.Off].Text;
+  Result := cTexts[TCoreAffectedText.Off].Text;
 end;
 
-class function TShellAffectedTests.TooManyForRun: string;
+class function TCoreAffectedTests.TooManyForRun: string;
 begin
-  Result := cTexts[TShellAffectedText.TooManyForRun].Text;
+  Result := cTexts[TCoreAffectedText.TooManyForRun].Text;
 end;
 
-{ TShellAffectedSources }
+{ TCoreAffectedSources }
 
-class function TShellAffectedSources.New(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AReadText: TReferenceReadText): TShellAffectedSources;
+class function TCoreAffectedSources.New(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText): TCoreAffectedSources;
 begin
   Result.Resolver := AResolver;
   Result.Index := AIndex;
   Result.ReadText := AReadText;
 end;
 
-class function TShellAffectedTests.Inputs(AChanges: TVcsChanges): TArray<TAffectedInput>;
+class function TCoreAffectedTests.Inputs(AChanges: TVcsChanges): TArray<TAffectedInput>;
 var
   mFile: string;
   mInput: TAffectedInput;
@@ -166,7 +165,7 @@ begin
   Result := StringReplace(AFileName, '/', '\', [rfReplaceAll]);
 end;
 
-class function TShellAffectedTests.OnlyFiles(const AInputs: TArray<TAffectedInput>;
+class function TCoreAffectedTests.OnlyFiles(const AInputs: TArray<TAffectedInput>;
   const AFiles: TArray<string>): TArray<TAffectedInput>;
 var
   mInput: TAffectedInput;
@@ -191,7 +190,7 @@ begin
   end;
 end;
 
-class function TShellAffectedTests.RefOf(const AQuery: TShellAffectedQuery): string;
+class function TCoreAffectedTests.RefOf(const AQuery: TCoreAffectedQuery): string;
 begin
   Result := AQuery.Base;
   if Result <> '' then
@@ -208,7 +207,7 @@ begin
   end;
 end;
 
-class function TShellAffectedTests.TestPrograms(const AFiles: TArray<string>;
+class function TCoreAffectedTests.TestPrograms(const AFiles: TArray<string>;
   const AReadText: TReferenceReadText): TArray<string>;
 var
   mFile, mText: string;
@@ -224,7 +223,7 @@ begin
   end;
 end;
 
-class function TShellAffectedTests.TestScope(const APattern: string; const APrograms: TArray<string>;
+class function TCoreAffectedTests.TestScope(const APattern: string; const APrograms: TArray<string>;
   const AReadText: TReferenceReadText): TImpactTestScope;
 var
   mProgram, mText: string;
@@ -239,8 +238,8 @@ begin
   end;
 end;
 
-class function TShellAffectedTests.Run(const AProcess: ICompilerProcess; const ASettings: TServerSettings;
-  const AQuery: TShellAffectedQuery; const ASources: TShellAffectedSources; const ARequest: TAffectedRequest;
+class function TCoreAffectedTests.Run(const AAccess: TCoreVcsAccess; const ASettings: TServerSettings;
+  const AQuery: TCoreAffectedQuery; const ASources: TCoreAffectedSources; const ARequest: TAffectedRequest;
   const ACancellation: IJsonRpcCancellationToken): TAffectedResult;
 var
   mChanges: TVcsChanges;
@@ -260,7 +259,7 @@ begin
   begin
     mRequest.Options.Depth := TImpactAnalysis.ClampDepth(ASettings.Tests.AffectedDepth);
   end;
-  mChanges := TVcsChanges.Detect(AProcess, AQuery.WorkingDir, ASettings.VcsProvider, ASettings.VcsGitPath,
+  mChanges := TVcsChanges.Detect(AAccess, AQuery.WorkingDir, ASettings.VcsProvider, ASettings.VcsGitPath,
     ASettings.VcsSvnPath, ASettings.VcsTimeoutSeconds);
   try
     mRef := RefOf(AQuery);
@@ -284,6 +283,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.AffectedTests', cTexts);
+  TAtlasTextTables.Add('Core.AffectedTests', cTexts);
 
 end.

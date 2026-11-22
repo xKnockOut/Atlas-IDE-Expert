@@ -1,6 +1,6 @@
-﻿unit Shell.Hotspots;
+﻿unit Core.Hotspots;
 
-// Host-Rolle Shell: Versionsverwaltung für die Hotspots (#1354). Setzt
+// Host-Rolle Core: Versionsverwaltung für die Hotspots (#1354). Setzt
 // IHotspotVcs mit git bzw. svn über IAtlasVcsRunner um (wie die
 // Zeilenhistorie im Plugin, Atlas.Core.VersionControl.*); die Ausgaben zerlegt
 // THotspotHistory.
@@ -23,10 +23,11 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.Core.VersionControl.Contract,
+  Core.VersionControlChanges;
 
 type
-  TShellHotspotVcs = class(TInterfacedObject, IHotspotVcs)
+  TCoreHotspotVcs = class(TInterfacedObject, IHotspotVcs)
   public const
     /// <summary>Höchstens so viele Commits je Methode (git log -L --max-count, SVN durchsuchte Revisionen).</summary>
     cMaxLineRevisions = 200;
@@ -55,8 +56,8 @@ type
     /// <summary>Versionsverwaltung für AFolder nach vcs.* in ASettings; False mit AError ohne Arbeitskopie, bei
     /// vcs.provider = off oder fehlendem Programm. Legt ein Objekt der Klasse an, an der Detect aufgerufen wird.
     /// </summary>
-    class function Detect(const AFolder: string; const ASettings: TServerSettings; out AVcs: IHotspotVcs;
-      out AError: string): Boolean;
+    class function Detect(const AAccess: TCoreVcsAccess; const AFolder: string; const ASettings: TServerSettings;
+      out AVcs: IHotspotVcs; out AError: string): Boolean;
     function Kind: THotspotVcsKind;
     function Root: string;
     function Head: string;
@@ -71,10 +72,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Core.VersionControl.Detection,
-  Atlas.Core.VersionControl.Composition,
   Atlas.Common.Hotspots.History,
-  Shell.Composition.Platform,
-  Shell.VersionControlChanges,
   Atlas.Common.Localization.Texts;
 
 type
@@ -93,9 +91,9 @@ const
   /// <summary>Der Verlauf eines Jahres großer Repositorys braucht mehr als die üblichen Abfragen.</summary>
   cLogTimeoutMs = 300000;
 
-{ TShellHotspotVcs }
+{ TCoreHotspotVcs }
 
-constructor TShellHotspotVcs.Create(AKind: THotspotVcsKind; const ARoot, AExecutable: string;
+constructor TCoreHotspotVcs.Create(AKind: THotspotVcsKind; const ARoot, AExecutable: string;
   const ARunner: IAtlasVcsRunner; const ALines: IAtlasVcsLineHistory; ATimeoutMs: Cardinal);
 begin
   inherited Create;
@@ -143,7 +141,7 @@ begin
   end;
 end;
 
-function TShellHotspotVcs.Run(const AArguments: TArray<string>; ATimeoutMs: Cardinal;
+function TCoreHotspotVcs.Run(const AArguments: TArray<string>; ATimeoutMs: Cardinal;
   out AText, AError: string): Boolean;
 var
   mExitCode: Integer;
@@ -152,7 +150,7 @@ begin
   Result := Run(AArguments, ATimeoutMs, AText, AError, mExitCode, mErrorText);
 end;
 
-function TShellHotspotVcs.Run(const AArguments: TArray<string>; ATimeoutMs: Cardinal; out AText, AError: string;
+function TCoreHotspotVcs.Run(const AArguments: TArray<string>; ATimeoutMs: Cardinal; out AText, AError: string;
   out AExitCode: Integer; out AErrorText: string): Boolean;
 var
   mResult: TAtlasVcsRunResult;
@@ -199,7 +197,7 @@ begin
   end;
 end;
 
-function TShellHotspotVcs.SvnPrefix(out APrefix, AError: string): Boolean;
+function TCoreHotspotVcs.SvnPrefix(out APrefix, AError: string): Boolean;
 var
   mText: string;
 begin
@@ -229,7 +227,7 @@ begin
   APrefix := mText;
 end;
 
-function TShellHotspotVcs.GitTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
+function TCoreHotspotVcs.GitTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
 var
   mRevision, mError, mErrorText: string;
   mExitCode: Integer;
@@ -253,7 +251,7 @@ begin
   end;
 end;
 
-function TShellHotspotVcs.SvnTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
+function TCoreHotspotVcs.SvnTextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
 var
   mError, mPrefix, mErrorText: string;
   mExitCode: Integer;
@@ -281,8 +279,8 @@ begin
   end;
 end;
 
-class function TShellHotspotVcs.Detect(const AFolder: string; const ASettings: TServerSettings;
-  out AVcs: IHotspotVcs; out AError: string): Boolean;
+class function TCoreHotspotVcs.Detect(const AAccess: TCoreVcsAccess; const AFolder: string;
+  const ASettings: TServerSettings; out AVcs: IHotspotVcs; out AError: string): Boolean;
 var
   mProvider: TAtlasVcsProvider;
   mWorkingCopy: TAtlasVcsWorkingCopy;
@@ -320,8 +318,8 @@ begin
     Exit(False);
   end;
   mTimeoutMs := TimeoutMsOf(ASettings);
-  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
-  if not Supports(TAtlasVersionControl.ForWorkingCopy(mWorkingCopy, mRunner, mExecutable, mTimeoutMs),
+  mRunner := AAccess.Runner;
+  if not Supports(AAccess.Open(mWorkingCopy, mRunner, mExecutable, mTimeoutMs),
     IAtlasVcsLineHistory, mLines) then
   begin
     mLines := nil;
@@ -330,17 +328,17 @@ begin
   Result := True;
 end;
 
-function TShellHotspotVcs.Kind: THotspotVcsKind;
+function TCoreHotspotVcs.Kind: THotspotVcsKind;
 begin
   Result := FKind;
 end;
 
-function TShellHotspotVcs.Root: string;
+function TCoreHotspotVcs.Root: string;
 begin
   Result := FRoot;
 end;
 
-function TShellHotspotVcs.Head: string;
+function TCoreHotspotVcs.Head: string;
 var
   mText, mError: string;
 begin
@@ -359,7 +357,7 @@ begin
   Result := Trim(mText);
 end;
 
-function TShellHotspotVcs.Log(ASince: TDateTime; out ACommits: TArray<THotspotCommit>; out AError: string): Boolean;
+function TCoreHotspotVcs.Log(ASince: TDateTime; out ACommits: TArray<THotspotCommit>; out AError: string): Boolean;
 var
   mText, mPrefix: string;
 begin
@@ -383,7 +381,7 @@ begin
   end;
 end;
 
-function TShellHotspotVcs.LineLog(const AFileName: string; AFirstLine, ALastLine: Integer; ASince: TDateTime;
+function TCoreHotspotVcs.LineLog(const AFileName: string; AFirstLine, ALastLine: Integer; ASince: TDateTime;
   out ACommits: TArray<THotspotLineCommit>): Boolean;
 var
   mCommits: TArray<TAtlasVcsLineCommit>;
@@ -420,7 +418,7 @@ begin
   end;
 end;
 
-function TShellHotspotVcs.TextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
+function TCoreHotspotVcs.TextAt(const AFileName: string; ADate: TDateTime; out AText: string): THotspotTextState;
 begin
   AText := '';
   if (AFileName = '') or StartsStr('-', AFileName) then
@@ -442,6 +440,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Hotspots', cTexts);
+  TAtlasTextTables.Add('Core.Hotspots', cTexts);
 
 end.

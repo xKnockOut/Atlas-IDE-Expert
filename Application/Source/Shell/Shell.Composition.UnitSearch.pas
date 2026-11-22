@@ -63,7 +63,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Editing.TestUnits,
   Core.Workspace,
-  Shell.VersionControlChanges;
+  Core.VersionControlChanges;
 
 /// <summary>Gibt es die Datei auf der Platte?</summary>
 function FileOnDisk(AFileName: string): Boolean;

@@ -1,4 +1,4 @@
-﻿unit Shell.Commands.Tests;
+﻿unit Core.Commands.Tests;
 
 // Fachlogik der Befehle atlas.selectBuild, Formulare umwandeln und Index löschen
 // außerhalb von TServerComposition.
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TShellCommandsTests = class
+  TCoreCommandsTests = class
   public
     [Test]
     procedure SelectBuildArgs_Empty_NoChanges;
@@ -42,17 +42,17 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,
-  Shell.Commands.Build,
-  Shell.Commands.Index;
+  Core.Commands.Build,
+  Core.Commands.Index;
 
 function Args(const AJson: string): TJSONArray;
 begin
   Result := TJSONObject.ParseJSONValue(AJson) as TJSONArray;
 end;
 
-{ TShellCommandsTests }
+{ TCoreCommandsTests }
 
-procedure TShellCommandsTests.SelectBuildArgs_Empty_NoChanges;
+procedure TCoreCommandsTests.SelectBuildArgs_Empty_NoChanges;
 var
   mParsed: TSelectBuildArgs;
 begin
@@ -61,7 +61,7 @@ begin
   Assert.AreEqual('', mParsed.Uri);
 end;
 
-procedure TShellCommandsTests.SelectBuildArgs_ReadsAllFields;
+procedure TCoreCommandsTests.SelectBuildArgs_ReadsAllFields;
 var
   mList: TJSONArray;
   mParsed: TSelectBuildArgs;
@@ -80,7 +80,7 @@ begin
   Assert.IsTrue(mParsed.Changes);
 end;
 
-procedure TShellCommandsTests.SelectBuildArgs_EmptyDefinesStillReplace;
+procedure TCoreCommandsTests.SelectBuildArgs_EmptyDefinesStillReplace;
 var
   mList: TJSONArray;
   mParsed: TSelectBuildArgs;
@@ -95,7 +95,7 @@ begin
   Assert.IsTrue(mParsed.Changes);
 end;
 
-procedure TShellCommandsTests.ProjectItem_PrefersChosenValues;
+procedure TCoreCommandsTests.ProjectItem_PrefersChosenValues;
 var
   mProject: TProjectInfo;
   mChosen: TSelectBuildArgs;
@@ -121,7 +121,7 @@ begin
   end;
 end;
 
-procedure TShellCommandsTests.FormFiles_UriGivesThatFile;
+procedure TCoreCommandsTests.FormFiles_UriGivesThatFile;
 var
   mList: TJSONArray;
   mFiles: TArray<string>;
@@ -140,7 +140,7 @@ begin
   Assert.IsTrue(mFiles[0].EndsWith('Main.dfm'));
 end;
 
-procedure TShellCommandsTests.FormFiles_CollectsExistingForms;
+procedure TCoreCommandsTests.FormFiles_CollectsExistingForms;
 var
   mFiles: TArray<string>;
 begin
@@ -154,7 +154,7 @@ begin
   Assert.AreEqual('C.fmx', mFiles[1]);
 end;
 
-procedure TShellCommandsTests.IndexAnswer_HasCounts;
+procedure TCoreCommandsTests.IndexAnswer_HasCounts;
 var
   mAnswer: TJSONObject;
 begin
@@ -167,7 +167,7 @@ begin
   end;
 end;
 
-procedure TShellCommandsTests.ClearCaches_RemovesCacheFiles;
+procedure TCoreCommandsTests.ClearCaches_RemovesCacheFiles;
 var
   mRoot: string;
   mFreed: Int64;
@@ -187,7 +187,7 @@ begin
   end;
 end;
 
-procedure TShellCommandsTests.SelectProjectArgs_QueryClearAndChoose;
+procedure TCoreCommandsTests.SelectProjectArgs_QueryClearAndChoose;
 var
   mList: TJSONArray;
   mParsed: TSelectProjectArgs;
@@ -217,7 +217,7 @@ begin
   Assert.AreEqual('Kern', mParsed.Project);
 end;
 
-procedure TShellCommandsTests.ProjectChoices_NamesSelectedAndActive;
+procedure TCoreCommandsTests.ProjectChoices_NamesSelectedAndActive;
 var
   mItems: TArray<TProjectChoiceItem>;
   mAnswer: TJSONObject;
@@ -243,6 +243,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellCommandsTests);
+  TDUnitX.RegisterTestFixture(TCoreCommandsTests);
 
 end.
