@@ -84,7 +84,8 @@ type
 
 const
   /// <summary>Regel der ungenutzten uses (#1135); der Editor zeigt die Einträge selbst und fragt die Unterdrückung
-  /// unter dieser Kennung.</summary>
+  /// unter dieser Kennung. Gleich cUnusedUsesRuleId der Regel (Rules.Builtin.DeadCode, Test FindingIdsMatchRuleIds).
+  /// </summary>
   cUnusedUsesFindingId = 'unused-uses';
   /// <summary>Regel der uses, die nur die implementation braucht (#1136); wie cUnusedUsesFindingId.</summary>
   cUsesOnlyInImplementationFindingId = 'uses-only-in-implementation';

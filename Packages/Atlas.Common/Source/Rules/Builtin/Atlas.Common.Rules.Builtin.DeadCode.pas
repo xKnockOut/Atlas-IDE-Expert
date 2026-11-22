@@ -79,7 +79,6 @@
 interface
 
 uses
-  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
 
@@ -87,8 +86,8 @@ const
   cUsesCycleRuleId = 'uses-cycle';
   cUnusedDeclarationRuleId = 'unused-declaration';
   cUnusedUnitRuleId = 'unused-unit';
-  cUnusedUsesRuleId = cUnusedUsesFindingId;
-  cUsesOnlyInImplementationRuleId = cUsesOnlyInImplementationFindingId;
+  cUnusedUsesRuleId = 'unused-uses';
+  cUsesOnlyInImplementationRuleId = 'uses-only-in-implementation';
 
 type
   TUsesCycleRule = class(TInterfacedObject, IRule, IRuleCondition)
