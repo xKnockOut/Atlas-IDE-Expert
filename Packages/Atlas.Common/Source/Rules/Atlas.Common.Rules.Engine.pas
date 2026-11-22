@@ -137,7 +137,7 @@ uses
   Atlas.Common.Rules.Builtin.SavedQueries,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Common.Semantics.Contract,
   Atlas.Common.Semantics.TreeUnits;
 

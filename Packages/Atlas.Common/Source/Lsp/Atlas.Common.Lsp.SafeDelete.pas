@@ -98,7 +98,7 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormFiles,
-  Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Editing.InlineAccessor,
   Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Documents.TextChanges,

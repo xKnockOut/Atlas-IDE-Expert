@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ClassLayout.Tests;
+﻿unit Atlas.Common.Pascal.ClassLayout.Tests;
 
 // Tests für die gemeinsamen Bausteine der Klassenumbauten (#664, #713, #675,
 // #717, #716): Klassenaufbau lesen (Kopf, Vorfahren, Mitglieder, Abschnitte,
@@ -47,7 +47,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Pascal.ClassLayout,
   Atlas.Tests.SourceText;
 
 const
