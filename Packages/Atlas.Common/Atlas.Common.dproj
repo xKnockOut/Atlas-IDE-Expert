@@ -121,10 +121,12 @@
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitResolver.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitAliases.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.UnitLookup.pas"/>
+        <DCCReference Include="Source\CodeActions\Atlas.Common.CodeActions.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.OutputParser.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.CommandLine.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Results.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.ProcessRuns.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Edition.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Backend.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.Contract.pas"/>
@@ -427,6 +429,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.Texts.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SourceFiles.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.Names.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.Texts.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TypeAlias.pas"/>
@@ -464,7 +467,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FreeFields.Types.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TextChanges.pas"/>
+        <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextChanges.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassLayout.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExtractInterface.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceChanges.pas"/>
@@ -931,6 +934,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Positions.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Debouncer.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Cancellation.pas"/>
+        <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Feature.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.Namespaces.pas"/>
         <DCCReference Include="Source\Lsp\Internals\Atlas.Common.Lsp.Internals.FormCache.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentSymbols.pas"/>

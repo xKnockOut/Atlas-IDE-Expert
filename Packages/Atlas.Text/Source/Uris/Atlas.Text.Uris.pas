@@ -182,8 +182,7 @@ class function TTextUris.BaseName(const APath: string): string;
 begin
   // Selbst trennen: ExtractFileName trennt unter Windows nur an '\', ChangeFileExt erst danach, sonst gälte ein
   // Punkt im Ordnernamen als Endung.
-  Result := StringReplace(APath, '\', '/', [rfReplaceAll]);
-  Result := ChangeFileExt(Copy(Result, LastDelimiter('/', Result) + 1, MaxInt), '');
+  Result := ChangeFileExt(FileNameOf(APath), '');
 end;
 
 class function TTextUris.FileNameOf(const APath: string): string;

@@ -137,7 +137,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.GenericLists.Kinds,
   Atlas.Common.Editing.GenericLists,
   Atlas.Common.Localization.Texts,

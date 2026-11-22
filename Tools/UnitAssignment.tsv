@@ -12,6 +12,7 @@ Atlas.IDE.Analysis	Atlas.Core.Hotspots.Model	Core/Hotspots/Atlas.Core.Hotspots.M
 Atlas.IDE.Analysis	Atlas.Core.UnitRelations.InterfaceCost	Core/UnitRelations/Atlas.Core.UnitRelations.InterfaceCost.pas	Ordner `Core/UnitRelations`
 Atlas.IDE.Analysis	Atlas.Core.UnitRelations.Model	Core/UnitRelations/Atlas.Core.UnitRelations.Model.pas	Ordner `Core/UnitRelations`
 Atlas.IDE.Analysis	Atlas.Core.UnitRelations.Plan	Core/UnitRelations/Atlas.Core.UnitRelations.Plan.pas	Ordner `Core/UnitRelations`
+Atlas.IDE.Analysis	Atlas.IDE.Analysis.Adapters.Module	IDE/Analysis/Atlas.IDE.Analysis.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle und Menüeinträge der Analyse, Einstellungen und Thema an die Fenster
 Atlas.IDE.Analysis	Atlas.IDE.Analysis.Composition	IDE/Analysis/Atlas.IDE.Analysis.Composition.pas	Anmeldung des Moduls `atlas.analysis`, #1455
 Atlas.IDE.Analysis	Atlas.IDE.Analysis.MetricsLens	IDE/Analysis/Atlas.IDE.Analysis.MetricsLens.pas	Ordner `IDE/Analysis`; Code Lens mit Code-Metriken (#66), bis #1756 in Base
 Atlas.IDE.Analysis	Atlas.IDE.Architecture.RoleUnit	IDE/Architecture/Atlas.IDE.Architecture.RoleUnit.pas	Ordner `IDE/Architecture`: Unit nach Architekturrolle, #1821
@@ -69,6 +70,7 @@ Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.IdePlugin	IDE/Assistants/Atla
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.IdeProviders	IDE/Assistants/Atlas.IDE.Assistants.Adapters.IdeProviders.pas	Ordner `IDE/Assistants`, Adapter über ToolsAPI.AI, #2744
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.Instructions	IDE/Assistants/Atlas.IDE.Assistants.Adapters.Instructions.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.Link	IDE/Assistants/Atlas.IDE.Assistants.Adapters.Link.pas	Ordner `IDE/Assistants`, Assistenten-Kopplung: erfüllt den Vertrag der Kopplung für die IDE, #2377
+Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.Module	IDE/Assistants/Atlas.IDE.Assistants.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle Pause, Auswahl an den Assistenten und KI-Protokoll, Taste, letzter Build für den IDE-Zustand
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.TextRequests	IDE/Assistants/Atlas.IDE.Assistants.Adapters.TextRequests.pas	Ordner `IDE/Assistants`, Anfragen an einen Anbieter der IDE hinter dem Vertrag, #2744
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.TextSource	IDE/Assistants/Atlas.IDE.Assistants.Adapters.TextSource.pas	Ordner `IDE/Assistants`, Quelle für einfache Aufgaben (eigener Anbieter oder IDE), #2744
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.AiErrors	IDE/Assistants/Atlas.IDE.Assistants.AiErrors.pas	Ordner `IDE/Assistants`: Texte zu den Fehlern der KI-Anbieter
@@ -76,6 +78,7 @@ Atlas.IDE.Assistants	Atlas.IDE.Assistants.AiProbe	IDE/Assistants/Atlas.IDE.Assis
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Banner	IDE/Assistants/Atlas.IDE.Assistants.Banner.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.BuildInbox	IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition	IDE/Assistants/Atlas.IDE.Assistants.Composition.pas	Ordner `IDE/Assistants`
+Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition.Debug	IDE/Assistants/Atlas.IDE.Assistants.Composition.Debug.pas	Teil AssistantDebug: Eingang der MCP-Werkzeuge debug_* und Leiste „KI-Assistent debuggt“
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition.HostAdapters	IDE/Assistants/Atlas.IDE.Assistants.Composition.HostAdapters.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.ContextExport	IDE/Assistants/Atlas.IDE.Assistants.ContextExport.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.DailyCount	IDE/Assistants/Atlas.IDE.Assistants.DailyCount.pas	Ordner `IDE/Assistants`, gemeinsamer Tageszähler der KI-Anfragen
@@ -1003,6 +1006,7 @@ Atlas.IDE.Build	Atlas.IDE.Build.OpenBuild	IDE/Build/Atlas.IDE.Build.OpenBuild.pa
 Atlas.IDE.Build	Atlas.IDE.Build.RunningProcesses	IDE/Build/Atlas.IDE.Build.RunningProcesses.pas	Ordner `IDE/Build`; Prozesse für #551 (Windows)
 Atlas.IDE.Build	Atlas.IDE.Build.RunningProgram	IDE/Build/Atlas.IDE.Build.RunningProgram.pas	Ordner `IDE/Build`; Teilnehmer an den Compile-Ereignissen (#551)
 Atlas.IDE.Build	Atlas.IDE.Build.SwitchesWindow	IDE/Build/Atlas.IDE.Build.SwitchesWindow.pas	Ordner `IDE/Build`
+Atlas.IDE.Build	Atlas.IDE.BuildTools.Adapters.Module	IDE/BuildTools/Atlas.IDE.BuildTools.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle und Menü der Build-Werkzeuge, Startprofile und Projektaufgaben für andere Module (`IAtlasBuildToolsSource`)
 Atlas.IDE.Build	Atlas.IDE.BuildTools.Adapters.TaskLauncher	IDE/BuildTools/Atlas.IDE.BuildTools.Adapters.TaskLauncher.pas	IAtlasTaskLauncher der IDE: ein Thread je Lauf, #1443
 Atlas.IDE.Build	Atlas.IDE.BuildTools.Composition	IDE/BuildTools/Atlas.IDE.BuildTools.Composition.pas	Anmeldung des Moduls `atlas.build`, #1455
 Atlas.IDE.Build	Atlas.IDE.StartProfiles.Service	IDE/StartProfiles/Atlas.IDE.StartProfiles.Service.pas	Ordner `IDE/StartProfiles`

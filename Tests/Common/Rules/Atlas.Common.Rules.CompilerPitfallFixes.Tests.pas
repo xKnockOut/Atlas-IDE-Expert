@@ -35,7 +35,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.CompilerPitfalls,
   Atlas.Common.Rules.CompilerPitfallFixes;
 

@@ -99,14 +99,6 @@ begin
   Result := '';
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 { /record }
 
 type
@@ -840,13 +832,14 @@ end;
 
 procedure RegisterRecordCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('record', cTexts[TRecordCommandsText.CreateARecordWithConstructor].Text,
-    cTexts[TRecordCommandsText.RecordTPointXYInteger].Text,
-    ExecuteRecord));
-  ARegister(Command('operator', cTexts[TRecordCommandsText.CreateAClassOperatorFor].Text, '/operator = + Implicit',
-    ExecuteOperator));
-  ARegister(Command('equals', cTexts[TRecordCommandsText.CreateEqualsAndGetHashCodeOr].Text, '/equals', ExecuteEquals));
-  ARegister(Command('clone', cTexts[TRecordCommandsText.CreateCloneWithFreeingOn].Text, '/clone', ExecuteClone));
+  ARegister(TSlashCommand.Create('record', cTexts[TRecordCommandsText.CreateARecordWithConstructor].Text,
+      cTexts[TRecordCommandsText.RecordTPointXYInteger].Text, ExecuteRecord));
+  ARegister(TSlashCommand.Create('operator', cTexts[TRecordCommandsText.CreateAClassOperatorFor].Text,
+      '/operator = + Implicit', ExecuteOperator));
+  ARegister(TSlashCommand.Create('equals', cTexts[TRecordCommandsText.CreateEqualsAndGetHashCodeOr].Text, '/equals',
+      ExecuteEquals));
+  ARegister(TSlashCommand.Create('clone', cTexts[TRecordCommandsText.CreateCloneWithFreeingOn].Text, '/clone',
+      ExecuteClone));
 end;
 
 initialization

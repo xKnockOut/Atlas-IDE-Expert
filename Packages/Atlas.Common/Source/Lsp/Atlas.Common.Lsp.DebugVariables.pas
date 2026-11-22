@@ -58,7 +58,6 @@ type
     procedure CollectCall(ANode: TSyntaxNode);
     procedure Collect(ANode: TSyntaxNode);
     procedure CollectStatement(AStatement: TSyntaxNode);
-    function Path(ALine: Integer): TArray<TSyntaxNode>;
     function StatementAt(ALine: Integer; out ARoutine: TSyntaxNode): TSyntaxNode;
     procedure AddLocalsOf(ARoutine: TSyntaxNode);
     procedure AddScopedLocals(ARoutine: TSyntaxNode; ALine: Integer);
@@ -84,7 +83,8 @@ uses
   System.StrUtils,
   Atlas.Text.Json,
   Atlas.Text.Lines,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cStatementKinds = [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.IfStatement,
@@ -363,30 +363,6 @@ begin
   end;
 end;
 
-function TLspDebugVariables.Path(ALine: Integer): TArray<TSyntaxNode>;
-var
-  mNode, mNext: TSyntaxNode;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mNode := FTree.Root;
-  while mNode <> nil do
-  begin
-    Result := Result + [mNode];
-    // Reichen mehrere Kinder in die Zeile, gilt das letzte (wie bei „Warum bin ich hier?“).
-    mNext := nil;
-    for mIndex := mNode.ChildCount - 1 downto 0 do
-    begin
-      if Contains(mNode.Children[mIndex], ALine) then
-      begin
-        mNext := mNode.Children[mIndex];
-        Break;
-      end;
-    end;
-    mNode := mNext;
-  end;
-end;
-
 function TLspDebugVariables.StatementAt(ALine: Integer; out ARoutine: TSyntaxNode): TSyntaxNode;
 var
   mPath: TArray<TSyntaxNode>;
@@ -398,7 +374,7 @@ begin
   begin
     Exit;
   end;
-  mPath := Path(ALine);
+  mPath := TSyntaxNodes.LinePath(FTree.Root, ALine);
   for mIndex := High(mPath) downto 0 do
   begin
     if (Result = nil) and (mPath[mIndex].Kind in cStatementKinds) then

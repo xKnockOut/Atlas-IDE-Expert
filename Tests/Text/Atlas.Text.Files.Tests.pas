@@ -40,6 +40,8 @@ type
     procedure OpenExclusiveMissingFolderFails;
     [Test]
     procedure IsFileErrorOnlyForFileSystem;
+    [Test]
+    procedure ReadQuietlyGivesEmptyWithoutFile;
   end;
 
 implementation
@@ -252,6 +254,17 @@ begin
   Check(EArgumentOutOfRangeException.Create('x'), False);
   Check(EAccessViolation.Create('x'), False);
   Check(EConvertError.Create('x'), False);
+end;
+
+procedure TTextFilesTests.ReadQuietlyGivesEmptyWithoutFile;
+var
+  mFile: string;
+begin
+  mFile := PathOf('a.txt');
+  Assert.AreEqual('', TTextFiles.ReadQuietly(mFile));
+  Assert.AreEqual('', TTextFiles.ReadQuietly(''));
+  TFile.WriteAllText(mFile, 'Grüße', TEncoding.UTF8);
+  Assert.AreEqual('Grüße', TTextFiles.ReadQuietly(mFile));
 end;
 
 initialization

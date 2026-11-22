@@ -88,19 +88,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-/// <summary>Pfad aus einer file-URI oder unverändert, wenn AText schon ein Pfad ist.</summary>
-function PathOf(const AText: string): string;
-begin
-  if StartsText('file:', AText) then
-  begin
-    Result := TDocumentUris.ToPath(AText);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 /// <summary>Uses-Graph mit Bibliotheks-Units: Sie sind Start oder Ziel eines Wegs.</summary>
 function GraphOptions(const ANamespaces: TArray<string>): TUsesGraphOptions;
 begin
@@ -251,7 +238,7 @@ begin
   begin
     mParams := nil;
   end;
-  if not (Assigned(FSourceFor) and FSourceFor(PathOf(TJsonRead.TrimmedText(mParams, 'uri')), mSettings, mNamespaces)) then
+  if not (Assigned(FSourceFor) and FSourceFor(TDocumentUris.PathOrSelf(TJsonRead.TrimmedText(mParams, 'uri')), mSettings, mNamespaces)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSymbolPathText.NoProjectLoaded].Text);
   end;

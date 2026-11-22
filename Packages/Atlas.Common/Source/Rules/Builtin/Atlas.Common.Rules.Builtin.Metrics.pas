@@ -111,7 +111,7 @@ uses
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Editing.Extract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Engine,

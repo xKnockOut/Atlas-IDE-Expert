@@ -25,8 +25,9 @@ uses
   Atlas.Common.History.Service,
   Atlas.Common.Mcp.HistoryTools,
   Atlas.Common.Localization.Texts,
-  Shell.SymbolHistory,
-  Core.Texts;
+  Core.SymbolHistory,
+  Core.Texts,
+  Shell.Composition.Platform;
 
 type
 {$SCOPEDENUMS ON}
@@ -112,7 +113,7 @@ begin
   mArgs.TimeoutMs := mSettings.RequestTimeoutMs;
   mArgs.Cancelled := CancelledOf(TJsonRpcCurrentRequest.Token);
   // Ohne Versionsverwaltung ein Hinweis statt eines Fehlers.
-  if not TShellSymbolHistoryVcs.DetectHistory(AContext.Root, mSettings, mVcs, mError) then
+  if not TCoreSymbolHistoryVcs.DetectHistory(TShellPlatformAdapters.VcsAccess, AContext.Root, mSettings, mVcs, mError) then
   begin
     Exit(TMcpHistoryTools.NoVcs(mError));
   end;

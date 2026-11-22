@@ -30,7 +30,6 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Rules.Builtin.Naming,
-  Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Semantics.Ancestry,

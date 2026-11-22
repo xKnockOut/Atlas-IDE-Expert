@@ -52,7 +52,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ClassLayout,
   Atlas.Common.Editing.MemberTransfer,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.SafeDelete,
   Atlas.Tests.SourceText;
 

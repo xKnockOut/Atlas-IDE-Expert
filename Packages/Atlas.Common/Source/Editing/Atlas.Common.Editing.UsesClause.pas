@@ -57,6 +57,10 @@ type
     /// False, wenn kein passender Abschnitt gefunden wird.</summary>
     class function AddUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer; const AUnitName: string;
       const ALineBreak: string; out AEdit: TTextEdit): Boolean; static;
+    /// <summary>Wie AddUnit, aber False, wenn AUnitName schon eingebunden ist (auch über ANamespaces oder ohne
+    /// Namespace).</summary>
+    class function AddMissingUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer; const AUnitName: string;
+      const ANamespaces: TArray<string>; const ALineBreak: string; out AEdit: TTextEdit): Boolean; static;
     /// <summary>Räumt die uses-Listen auf (#182): doppelte Einträge entfernen, auch solche im
     /// implementation-uses, die schon im interface stehen; mit ASort alphabetisch sortieren.
     /// Listen mit Direktiven oder //-Kommentaren bleiben unangetastet. False ohne Änderung.</summary>
@@ -219,6 +223,22 @@ begin
   AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mStart].EndPos, ATokens[mStart].EndPos),
     ALineBreak + ALineBreak + 'uses' + ALineBreak + '  ' + AUnitName + ';');
   Result := True;
+end;
+
+class function TUsesClauses.AddMissingUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;
+  const AUnitName: string; const ANamespaces: TArray<string>; const ALineBreak: string;
+  out AEdit: TTextEdit): Boolean;
+var
+  mUsed: TArray<string>;
+  mShort: string;
+begin
+  mUsed := TPascalUses.UsedUnits(ATokens);
+  mShort := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
+  if TPascalUses.IsUsed(mUsed, AUnitName, ANamespaces) or TPascalUses.IsUsed(mUsed, mShort, nil) then
+  begin
+    Exit(False);
+  end;
+  Result := AddUnit(ATokens, AOffset, AUnitName, ALineBreak, AEdit);
 end;
 
 class function TUsesClauses.Organize(const ATokens: TArray<TPascalToken>; const AText: string; ASort: Boolean;

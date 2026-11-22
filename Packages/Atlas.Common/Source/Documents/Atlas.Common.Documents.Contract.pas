@@ -31,6 +31,9 @@ type
     class function AnyContains(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean; static;
     /// <summary>Wie Contains, aber EndPos eingeschlossen (Cursor direkt hinter dem Bereich zählt mit).</summary>
     function Encloses(const APosition: TTextPosition): Boolean;
+    /// <summary>Text des Bereichs in ALines in einer Zeile: die erste Zeile ab StartPos, die weiteren getrimmt
+    /// mit einem Leerzeichen angehängt (bis EndPos.Line, ohne die Spalte zu beachten).</summary>
+    function OneLineIn(const ALines: TArray<string>): string;
     /// <summary>Umschließt einer der Bereiche ARanges APosition (Encloses)?</summary>
     class function AnyEncloses(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean; static;
   end;
@@ -98,6 +101,17 @@ type
   /// </summary>
   TDocumentListener = reference to procedure(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 
+  /// <summary>Text der Datei AFileName (geöffnete Dokumente zuerst); False, wenn sie nicht lesbar ist. Gemeinsamer
+  /// Typ, damit Leser ohne Umweg zwischen den Features wandern (Delphi 12 hält gleich gebaute Typen für
+  /// verschieden).</summary>
+  TDocumentReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+
+  TDocumentReads = record
+  public
+    /// <summary>Text von AFileName über AReadText; '' wenn sie nicht lesbar ist.</summary>
+    class function TextOrEmpty(const AReadText: TDocumentReadText; const AFileName: string): string; static;
+  end;
+
   /// <summary>Fehler bei der Dokumentverwaltung, z. B. Änderung an einem nicht geöffneten Dokument.</summary>
   EDocumentError = class(Exception);
 
@@ -155,6 +169,28 @@ begin
   Result := False;
 end;
 
+function TTextRange.OneLineIn(const ALines: TArray<string>): string;
+var
+  mLine: Integer;
+begin
+  Result := '';
+  for mLine := StartPos.Line to EndPos.Line do
+  begin
+    if (mLine < 0) or (mLine > High(ALines)) then
+    begin
+      Break;
+    end;
+    if mLine = StartPos.Line then
+    begin
+      Result := Copy(ALines[mLine], StartPos.Character + 1, MaxInt);
+    end
+    else
+    begin
+      Result := Result + ' ' + Trim(ALines[mLine]);
+    end;
+  end;
+end;
+
 function TTextRange.Encloses(const APosition: TTextPosition): Boolean;
 begin
   Result := (TTextPosition.Compare(StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, EndPos) <= 0);
@@ -172,6 +208,16 @@ begin
     end;
   end;
   Result := False;
+end;
+
+{ TDocumentReads }
+
+class function TDocumentReads.TextOrEmpty(const AReadText: TDocumentReadText; const AFileName: string): string;
+begin
+  if not AReadText(AFileName, Result) then
+  begin
+    Result := '';
+  end;
 end;
 
 { TTextEdit }

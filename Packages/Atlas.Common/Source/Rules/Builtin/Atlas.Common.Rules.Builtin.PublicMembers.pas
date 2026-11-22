@@ -258,18 +258,6 @@ begin
   end;
 end;
 
-function QualifiedOf(const ASymbol: TIndexSymbol): string;
-begin
-  if ASymbol.Container <> '' then
-  begin
-    Result := ASymbol.Container + '.' + ASymbol.Name;
-  end
-  else
-  begin
-    Result := ASymbol.Name;
-  end;
-end;
-
 /// <summary>Ist ARoutine (Rumpf im implementation-Teil) die Umsetzung von ASymbol? Bei Überladungen zählen nur
 /// gleiche Parametertypen; der Rumpf einer anderen Überladung ruft ASymbol auf, das ist eine Verwendung.</summary>
 function IsOwnOverload(const ASymbol: TIndexSymbol; ARoutine: TSyntaxNode): Boolean;
@@ -981,7 +969,7 @@ var
   mIsType: Boolean;
 begin
   Result := nil;
-  mWanted := QualifiedOf(ASymbol);
+  mWanted := ASymbol.QualifiedName;
   mIsType := IsTypeSymbol(ASymbol);
   if mIsType then
   begin
@@ -1202,11 +1190,11 @@ begin
   case UsageOf(ASymbol, mTestProject) of
     TUsage.Unused:
       FReport.AddWithDetails(ASymbol.SelectionRange, cTexts[TPublicMembersText.NeverUsed].Fmt(
-        [KindText(ASymbol), QualifiedOf(ASymbol)]), FArea.SearchedText(FOptions.WholeGroup), TRuleConfidence.Medium,
+        [KindText(ASymbol), ASymbol.QualifiedName]), FArea.SearchedText(FOptions.WholeGroup), TRuleConfidence.Medium,
         [IgnoreFix(ASymbol)]);
     TUsage.OnlyTests:
       FReport.AddWithDetails(ASymbol.SelectionRange, cTexts[TPublicMembersText.OnlyUsedIn].Fmt(
-        [KindText(ASymbol), QualifiedOf(ASymbol), mTestProject]), FArea.SearchedText(FOptions.WholeGroup),
+        [KindText(ASymbol), ASymbol.QualifiedName, mTestProject]), FArea.SearchedText(FOptions.WholeGroup),
         TRuleConfidence.Medium, [IgnoreFix(ASymbol)]);
   else
     // Verwendet: nichts zu melden.

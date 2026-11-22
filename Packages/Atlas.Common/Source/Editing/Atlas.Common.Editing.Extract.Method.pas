@@ -21,7 +21,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.FlowSignatures,
   Atlas.Common.Pascal.RoutineLocals,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract.Shared;
 
 type

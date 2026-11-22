@@ -16,12 +16,32 @@ type
     procedure EnclosesIncludesEnd;
     [Test]
     procedure AnyEnclosesChecksAllRanges;
+    [Test]
+    procedure OneLineInJoinsLines;
+    [Test]
+    procedure TextOrEmptyWithoutFile;
   end;
 
 implementation
 
 uses
-  Atlas.Common.Documents.Contract;
+  Atlas.Common.Documents.Contract,
+  System.SysUtils;
+
+/// <summary>Leser, der nur AFileName kennt (ohne Groß-/Kleinschreibung) und AText liefert.</summary>
+function ReaderFor(const AFileName, AText: string): TDocumentReadText;
+begin
+  Result :=
+    function(const AName: string; out AResult: string): Boolean
+    begin
+      Result := SameText(AName, AFileName);
+      AResult := '';
+      if Result then
+      begin
+        AResult := AText;
+      end;
+    end;
+end;
 
 { TTextRangeTests }
 
@@ -48,6 +68,23 @@ begin
   Assert.IsTrue(TTextRange.AnyEncloses(mRanges, TTextPosition.Create(6, 0)));
   Assert.IsFalse(TTextRange.AnyEncloses(mRanges, TTextPosition.Create(3, 0)));
   mRanges := nil;
+end;
+
+procedure TTextRangeTests.OneLineInJoinsLines;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TArray<string>.Create('  X := Foo(', '    1,', '    2);', 'Rest');
+  Assert.AreEqual('Foo( 1, 2);', TTextRange.Create(0, 7, 2, 6).OneLineIn(mLines));
+  Assert.AreEqual('Rest', TTextRange.Create(3, 0, 9, 0).OneLineIn(mLines), 'hinter dem Ende abgeschnitten');
+  Assert.AreEqual('', TTextRange.Create(7, 0, 8, 0).OneLineIn(mLines));
+  mLines := nil;
+end;
+
+procedure TTextRangeTests.TextOrEmptyWithoutFile;
+begin
+  Assert.AreEqual('Inhalt', TDocumentReads.TextOrEmpty(ReaderFor('A.pas', 'Inhalt'), 'a.pas'));
+  Assert.AreEqual('', TDocumentReads.TextOrEmpty(ReaderFor('A.pas', 'Inhalt'), 'B.pas'));
 end;
 
 initialization

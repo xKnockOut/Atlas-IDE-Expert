@@ -77,6 +77,7 @@ contains
   Atlas.UI.SymbolPath.Dialog in 'Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas',
   Atlas.UI.SymbolPath.Suggestions in 'Source\UI\SymbolPath\Atlas.UI.SymbolPath.Suggestions.pas',
   Atlas.IDE.SymbolPath.Service in 'Source\IDE\SymbolPath\Atlas.IDE.SymbolPath.Service.pas',
+  Atlas.IDE.Analysis.Adapters.Module in 'Source\IDE\Analysis\Atlas.IDE.Analysis.Adapters.Module.pas',
   Atlas.IDE.Analysis.Composition in 'Source\IDE\Analysis\Atlas.IDE.Analysis.Composition.pas',
   Atlas.UI.Analysis.SettingsSection in 'Source\UI\Analysis\Atlas.UI.Analysis.SettingsSection.pas',
   Atlas.Core.Analysis.MetricsLens in 'Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas',

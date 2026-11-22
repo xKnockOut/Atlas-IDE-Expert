@@ -88,7 +88,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Builtin.Migration,
   Atlas.Common.Rules.Builtin.Migration.Shared,
   Atlas.Common.Rules.Builtin.Migration.Win64,

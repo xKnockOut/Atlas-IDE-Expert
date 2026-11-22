@@ -40,7 +40,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.MethodMatching;
 
@@ -885,7 +885,7 @@ begin
   end;
   // Verglichen wird der Kopf ohne Kommentare und Direktiven (#1324).
   mText := CleanTail(ATree.Tokens, mTail.NameToken + 1, mTail.LastToken, AShape.Conditional);
-  AShape.Kind := KindOfHeader(TRoutineSignatures.Head(TMethodText.RangeText(ALines, ASymbol.Range), mRest));
+  AShape.Kind := KindOfHeader(TRoutineSignatures.Head(ASymbol.Range.OneLineIn(ALines), mRest));
   if SplitParameters(mText, mGroups, mAfter) then
   begin
     for mGroup in mGroups do
@@ -1000,7 +1000,7 @@ var
 begin
   for mSymbol in AUnit.Symbols do
   begin
-    if (mSymbol.Kind in cTypeKinds) and SameText(TMethodText.TypeNameOf(mSymbol), ATypeName) then
+    if (mSymbol.Kind in cTypeKinds) and SameText(mSymbol.QualifiedName, ATypeName) then
     begin
       AType := mSymbol;
       Exit(True);
@@ -1361,7 +1361,7 @@ begin
         Continue;
       end;
       mKey := LowerCase(mSymbols[mIndex].Name) + TRoutineSignatures.ParameterKey(
-        TRoutineSignatures.Head(TMethodText.RangeText(AMatching.Lines, mSymbols[mIndex].Range), mRest));
+        TRoutineSignatures.Head(mSymbols[mIndex].Range.OneLineIn(AMatching.Lines), mRest));
       if not mImplemented.TryGetValue(mKey, mCount) then
       begin
         mCount := 0;
@@ -1373,8 +1373,7 @@ begin
     SetLength(ABodies.Missing, mDeclaration);
     for mIndex := 0 to mDeclaration - 1 do
     begin
-      mHeader := TRoutineSignatures.Head(TMethodText.RangeText(AMatching.Lines,
-        ABodies.Plan.Declarations[mIndex].Range), mRest);
+      mHeader := TRoutineSignatures.Head(ABodies.Plan.Declarations[mIndex].Range.OneLineIn(AMatching.Lines), mRest);
       ABodies.Missing[mIndex] := not TMethodText.HasWord(mRest, 'abstract') and
         not TakeImplemented(mImplemented, ABodies.Plan.Declarations[mIndex], mHeader);
     end;
@@ -1413,7 +1412,7 @@ begin
   Result := '';
   for mSymbol in APlan.Missing do
   begin
-    mHeader := QualifiedHeader(TRoutineSignatures.Head(TMethodText.RangeText(ALines, mSymbol.Range), mRest),
+    mHeader := QualifiedHeader(TRoutineSignatures.Head(mSymbol.Range.OneLineIn(ALines), mRest),
       mSymbol.Name, APlan.TypeName);
     if mHeader <> '' then
     begin
@@ -1756,7 +1755,7 @@ begin
   end;
   mBodies := TTypeBodies.Create;
   FTypeBodies.Add(mKey, mBodies);
-  mBodies.Plan.TypeName := TMethodText.TypeNameOf(AType);
+  mBodies.Plan.TypeName := AType.QualifiedName;
   CollectTypeMethods(FMatching, AType, mBodies);
   mBodies.Shape := TTypeShape.Read(FMatching.UnitIndex, FMatching.Lines, mBodies.Plan.TypeName);
   for mIndex := 0 to High(mBodies.Plan.Declarations) do

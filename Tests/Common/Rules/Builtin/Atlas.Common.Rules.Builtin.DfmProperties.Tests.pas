@@ -62,7 +62,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,

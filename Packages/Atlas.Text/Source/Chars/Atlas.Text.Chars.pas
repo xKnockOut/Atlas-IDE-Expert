@@ -34,12 +34,20 @@ type
     class function IdentEnd(const AText: string; AIndex: Integer): Integer; static;
     /// <summary>Position (ab 1) hinter den ASCII-Bezeichnerzeichen (IsAsciiIdentChar) ab AIndex.</summary>
     class function AsciiIdentEnd(const AText: string; AIndex: Integer): Integer; static;
+    /// <summary>Geschätzter Speicherbedarf von AValue in Byte (für Speicherbudgets); 0 für ''.</summary>
+    class function StringBytes(const AValue: string): Int64; static;
+    /// <summary>Position (ab 1) des ersten Zeichens hinter einer BOM (#$FEFF) am Anfang; ohne BOM 1.</summary>
+    class function StartAfterBom(const AText: string): Integer; static;
   end;
 
 implementation
 
 uses
   Atlas.Text.Encoding;
+
+const
+  /// <summary>Kopf eines Delphi-string: Referenzzähler, Länge, Codepage und Elementgröße.</summary>
+  cStringHeaderBytes = 12;
 
 { TTextChars }
 
@@ -131,6 +139,27 @@ begin
   while (Result <= Length(AText)) and IsAsciiIdentChar(AText[Result]) do
   begin
     Inc(Result);
+  end;
+end;
+
+class function TTextChars.StringBytes(const AValue: string): Int64;
+begin
+  if AValue = '' then
+  begin
+    Result := 0;
+  end
+  else
+  begin
+    Result := cStringHeaderBytes + (Length(AValue) + 1) * SizeOf(Char);
+  end;
+end;
+
+class function TTextChars.StartAfterBom(const AText: string): Integer;
+begin
+  Result := 1;
+  if (AText <> '') and (AText[1] = #$FEFF) then
+  begin
+    Result := 2;
   end;
 end;
 

@@ -99,21 +99,14 @@ uses
   Atlas.Common.Projects.Contract,
   System.StrUtils,
   Atlas.Common.Projects.Paths,
-  Atlas.Text.Arrays;
+  Atlas.Text.Arrays,
+  Atlas.Text.Names;
 
 /// <summary>Ordner als Vergleichsschlüssel: "\" als Trenner, ohne Trenner am Ende, klein.</summary>
-function FolderKey(const AFolder: string): string;
-begin
-  Result := LowerCase(StringReplace(AFolder, '/', '\', [rfReplaceAll]));
-  while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-end;
 
 function SameFolder(const A, B: string): Boolean;
 begin
-  Result := FolderKey(A) = FolderKey(B);
+  Result := TTextNames.FolderKey(A) = TTextNames.FolderKey(B);
 end;
 
 function HasMacro(const APath: string): Boolean;
@@ -303,7 +296,7 @@ function TUnitLookup.Listing(const AFolder: string): TDictionary<string, string>
 var
   mKey, mFileName, mExtension: string;
 begin
-  mKey := FolderKey(AFolder);
+  mKey := TTextNames.FolderKey(AFolder);
   TMonitor.Enter(FLock);
   try
     if FListings.TryGetValue(mKey, Result) then

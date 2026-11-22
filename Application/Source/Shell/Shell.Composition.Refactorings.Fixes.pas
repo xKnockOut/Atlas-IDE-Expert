@@ -41,7 +41,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CompilerFixes,
   Atlas.Common.Editing.SuggestConst,
   Atlas.Common.Editing.VarBlock,

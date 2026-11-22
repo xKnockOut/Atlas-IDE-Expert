@@ -29,6 +29,8 @@ type
     procedure AsciiIdentEndStopsAtUmlaut;
     [Test]
     procedure HexDigitValueBothCases;
+    [Test]
+    procedure StringBytesAndBom;
   end;
 
 implementation
@@ -121,6 +123,15 @@ begin
   Assert.AreEqual(10, TTextChars.HexDigitValue('a'));
   Assert.AreEqual(15, TTextChars.HexDigitValue('F'));
   Assert.AreEqual(-1, TTextChars.HexDigitValue('g'));
+end;
+
+procedure TTextCharsTests.StringBytesAndBom;
+begin
+  Assert.AreEqual(Int64(0), TTextChars.StringBytes(''));
+  Assert.AreEqual(Int64(12 + 4 * SizeOf(Char)), TTextChars.StringBytes('abc'));
+  Assert.AreEqual(1, TTextChars.StartAfterBom('unit'));
+  Assert.AreEqual(1, TTextChars.StartAfterBom(''));
+  Assert.AreEqual(2, TTextChars.StartAfterBom(#$FEFF'unit'));
 end;
 
 initialization

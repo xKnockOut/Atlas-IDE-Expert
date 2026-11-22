@@ -1109,11 +1109,7 @@ end;
 /// <summary>Holt den Graphen der Routine bei Bedarf; nur ein vollständiger taugt.</summary>
 function TUnusedAssignmentCheck.GraphComplete: Boolean;
 begin
-  if FGraph = nil then
-  begin
-    FGraph := TRuleDerived.Graph(FCache, FContext, FRoutine);
-  end;
-  Result := FGraph.Complete;
+  Result := TRuleDerived.GraphComplete(FCache, FContext, FRoutine, FGraph);
 end;
 
 /// <summary>Zuweisungen im finally stehen je Ausgang einmal im Graphen; ungelesen ist AWrite nur, wenn der Wert
@@ -1229,13 +1225,8 @@ begin
 end;
 
 procedure TUnusedAssignmentCheck.Run;
-var
-  mRoutine: TSyntaxNode;
 begin
-  for mRoutine in TRuleDerived.Routines(FCache, FContext) do
-  begin
-    CheckRoutine(mRoutine);
-  end;
+  TRuleDerived.EachRoutine(FCache, FContext, CheckRoutine);
 end;
 
 procedure TUnusedAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

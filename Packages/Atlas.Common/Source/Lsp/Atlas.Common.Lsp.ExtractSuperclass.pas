@@ -85,7 +85,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ClassLayout,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.ExtractInterface,
   Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Editing.ExtractSuperclass,

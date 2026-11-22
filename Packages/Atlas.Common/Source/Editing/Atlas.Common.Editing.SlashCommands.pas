@@ -424,23 +424,6 @@ begin
   Result := AfterEnter(AText, APosition, TSlashEnvironment.Create(ANamespaces, ADisabled), AEdits);
 end;
 
-/// <summary>Einrückung je Ebene nach AStyle: Tabulator, IndentSize Leerzeichen oder zwei.</summary>
-function LevelUnitOf(const AStyle: TFormatStyle): string;
-begin
-  if AStyle.UseTabs then
-  begin
-    Result := #9;
-  end
-  else if AStyle.IndentSize >= 1 then
-  begin
-    Result := StringOfChar(' ', AStyle.IndentSize);
-  end
-  else
-  begin
-    Result := '  ';
-  end;
-end;
-
 /// <summary>Zeile APart einer Änderung mit dem Zusatz zur Einrückung ABase in Ebenen zu ALevelUnit; unverändert bei
 /// Leerzeilen, anderer Einrückung oder Tabulatoren im Zusatz.</summary>
 function ReindentedPart(const APart, ABase, ALevelUnit: string): string;
@@ -502,7 +485,7 @@ var
   mIndex: Integer;
 begin
   Result := Copy(AEdits);
-  mLevelUnit := LevelUnitOf(AStyle);
+  mLevelUnit := AStyle.IndentUnit;
   if mLevelUnit = '  ' then
   begin
     Exit;
