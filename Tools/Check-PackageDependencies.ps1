@@ -1664,8 +1664,9 @@ if ($KnownReport.Count -gt 0) {
 
 # Rollen Adapters und Providers (#1443): Wer ein Interface eines anderen Features implementiert, ist ein Adapter
 # und nimmt es aus dessen Contract; Providers implementieren den eigenen Contract. Verträge zwischen Modulen
-# (Atlas.IDE.Contracts.*) zählen als fremder Contract jedes Moduls. Composition, Hosting und Host-Units
-# (Shell, Foundation …) setzen zusammen und sind ausgenommen, Regel 4 (Interface im Contract) gilt auch für sie.
+# (Atlas.IDE.Contracts.*) zählen als fremder Contract jedes Moduls, auch für die Composition: Modulklassen stehen in
+# Atlas.IDE.<Modul>.Adapters.Module. Hosting und Host-Units (Shell, Foundation …) setzen zusammen und sind
+# ausgenommen, Regel 4 (Interface im Contract) gilt auch für sie.
 # Bekannte Altfälle stehen in Tools/AdapterRoles.known.txt; neue sind Fehler, behobene müssen dort raus.
 $AdapterRolesFile = Join-Path $Root 'Tools/AdapterRoles.known.txt'
 
@@ -1785,7 +1786,7 @@ function Get-AdapterRoleFindings([string] $BaseDir) {
                 $findings += [pscustomobject]@{ Key = "providers-foreign $suffix"
                     Text = "${where}: $what – fremdes Feature, das ist die Rolle Adapters ($ownFeature.Adapters.*)" }
             }
-            elseif ($own.Role -in @('Root', 'Internals', 'Contract') -and -not $same) {
+            elseif ($own.Role -in @('Root', 'Internals', 'Contract', 'Composition') -and -not $same) {
                 $findings += [pscustomobject]@{ Key = "adapter-name $suffix"
                     Text = "${where}: $what – fremdes Feature, gehört in eine Unit $ownFeature.Adapters.*" }
             }

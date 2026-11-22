@@ -210,6 +210,10 @@ try {
         Add-Implementer 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
     }
 
+    Test-Fails 'Composition implementiert einen fremden Contract' 'gehört in eine Unit Atlas.IDE.Undo.Adapters.*' {
+        Add-Implementer 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Composition.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
+    }
+
     Test-Fails 'Unit ohne Rolle implementiert einen fremden Contract über einen Alias' 'gehört in eine Unit Atlas.IDE.Undo.Adapters.*' {
         Add-Assigned 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Probe' @()
         Set-CopyText "$Source/IDE/Undo/Atlas.IDE.Undo.Probe.pas" ("unit Atlas.IDE.Undo.Probe;`r`n`r`ninterface`r`n`r`n" +
