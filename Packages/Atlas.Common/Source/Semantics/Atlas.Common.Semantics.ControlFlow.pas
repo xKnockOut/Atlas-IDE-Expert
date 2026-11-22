@@ -45,7 +45,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow.Signatures;
+  Atlas.Common.Pascal.FlowSignatures;
 
 type
   TFlowNodeKind = (Entry, Exit, RaiseExit, Statement, Condition, Join);

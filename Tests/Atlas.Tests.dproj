@@ -160,7 +160,7 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.Content.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.Builder.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas"/>
-        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ControlFlow.Signatures.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.FlowSignatures.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Recursion.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ExitPoints.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExitPoints.Tests.pas"/>

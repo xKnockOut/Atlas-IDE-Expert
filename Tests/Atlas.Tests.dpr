@@ -125,7 +125,7 @@ uses
   Atlas.Common.Index.Content.Tests in 'Common\Index\Atlas.Common.Index.Content.Tests.pas',
   Atlas.Common.Index.Builder.Tests in 'Common\Index\Atlas.Common.Index.Builder.Tests.pas',
   Atlas.Common.Semantics.ControlFlow.Tests in 'Common\Semantics\Atlas.Common.Semantics.ControlFlow.Tests.pas',
-  Atlas.Common.Semantics.ControlFlow.Signatures.Tests in 'Common\Semantics\Atlas.Common.Semantics.ControlFlow.Signatures.Tests.pas',
+  Atlas.Common.Pascal.FlowSignatures.Tests in 'Common\Pascal\Atlas.Common.Pascal.FlowSignatures.Tests.pas',
   Atlas.Common.Semantics.Recursion.Tests in 'Common\Semantics\Atlas.Common.Semantics.Recursion.Tests.pas',
   Atlas.Common.Semantics.ExitPoints.Tests in 'Common\Semantics\Atlas.Common.Semantics.ExitPoints.Tests.pas',
   Atlas.Common.Lsp.ExitPoints.Tests in 'Common\Lsp\Atlas.Common.Lsp.ExitPoints.Tests.pas',

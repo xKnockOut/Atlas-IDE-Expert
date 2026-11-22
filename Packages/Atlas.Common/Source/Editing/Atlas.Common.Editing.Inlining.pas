@@ -82,7 +82,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.ControlFlow,
-  Atlas.Common.Semantics.ControlFlow.Signatures,
+  Atlas.Common.Pascal.FlowSignatures,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Pascal.PureRoutines,
