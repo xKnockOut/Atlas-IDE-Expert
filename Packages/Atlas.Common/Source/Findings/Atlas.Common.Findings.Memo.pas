@@ -1,10 +1,10 @@
-﻿unit Atlas.Common.Lsp.FindingsMemo;
+﻿unit Atlas.Common.Findings.Memo;
 
 // Treffer der Prüfregeln je Datei und Text, damit textDocument/codeAction die Regeln nicht noch einmal rechnet
 // (2.0-stable: Die Atlas-Spalte fragt bei jeder Cursorbewegung nach der Glühbirne; jede Anfrage rechnete alle
 // Regeln der Datei neu, stand dabei hinter dem Prüflauf an und lief in den Wächter des Servers).
-// - Put: Die Diagnose legt nach jedem vollständigen Lauf die Treffer ab (vor der Baseline, wie RuleFindings),
-//   die Code-Aktion nach einem eigenen Lauf ebenso. Ein abgebrochener Lauf legt nichts ab.
+// - Put: Die Diagnose legt nach jedem vollständigen Lauf die Treffer ab (vor der Baseline, wie
+//   TRuleCheckContext.Findings), die Code-Aktion nach einem eigenen Lauf ebenso. Ein abgebrochener Lauf legt nichts ab.
 // - TryGet: nur bei genau demselben Text. Ändern sich Einstellungen oder Index, prüft die Diagnose die offenen
 //   Dokumente ohnehin neu (RefreshLater) und ersetzt den Eintrag; bis dahin zeigen Glühbirne und Diagnose
 //   denselben Stand.

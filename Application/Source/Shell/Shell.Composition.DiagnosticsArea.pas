@@ -15,6 +15,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.WorkspaceCheck,
   Shell.Composition.Core,
