@@ -18,7 +18,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Query.Contract,
-  Atlas.Common.Semantics.Contract;
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Rules.Contract.Refactorings;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
@@ -330,6 +331,8 @@ type
     Queries: ICodeQueries;
     /// <summary>Typen der laufenden IDE ohne Quelltext (IRuleIdeTypes); nil = ohne IDE.</summary>
     IdeTypes: IRuleIdeTypes;
+    /// <summary>Refactorings für Korrekturen (TRuleRefactorings); je Eintrag nil = diese Korrektur nicht anbieten.</summary>
+    Refactorings: TRuleRefactorings;
     /// <summary>Dateiname für die Namensauflösung (TNameResolver): FileName, sonst RelativePath, sonst
     /// UnitName mit ".pas".</summary>
     function ResolverFileName: string;
@@ -364,6 +367,8 @@ type
     Queries: ICodeQueries;
     /// <summary>Typen der laufenden IDE ohne Quelltext; nil = ohne IDE.</summary>
     IdeTypes: IRuleIdeTypes;
+    /// <summary>Refactorings für Korrekturen, vom Host über Adapter; je Eintrag nil = nicht verfügbar.</summary>
+    Refactorings: TRuleRefactorings;
     /// <summary>Trägt die Dienste in AContext ein.</summary>
     procedure ApplyTo(var AContext: TRuleContext);
   end;
@@ -510,6 +515,7 @@ begin
   AContext.ProjectWarnings := ProjectWarnings;
   AContext.Queries := Queries;
   AContext.IdeTypes := IdeTypes;
+  AContext.Refactorings := Refactorings;
 end;
 
 { TRuleDescriptor }

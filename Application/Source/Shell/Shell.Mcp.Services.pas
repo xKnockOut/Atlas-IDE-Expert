@@ -74,7 +74,8 @@ uses
   Atlas.Core.VersionControl.Providers.Git,
   Core.VersionControlChanges,
   Shell.Composition.Platform,
-  Core.Bootstrap;
+  Core.Bootstrap,
+  Shell.Composition.RuleRefactorings;
 
 function NewProcess: ICompilerProcess;
 begin
@@ -321,6 +322,7 @@ begin
   mIdentity.Kind := TIndexProcessInfo.cKindMcp;
   mIdentity.Client := 'MCP-Client';
   Result.Group.ProcessIdentity := mIdentity;
+  Result.Group.Refactorings := TShellRuleRefactorings.Create;
   Result.Tools := NewIndexTools(Result.Index, Result.Group.Main, ARoot);
   Result.Code := NewCodeTools(Result.Index, Result.Group, ARoot);
   Result.Guard := NewGuard(Result.Group.Main, ARoot);

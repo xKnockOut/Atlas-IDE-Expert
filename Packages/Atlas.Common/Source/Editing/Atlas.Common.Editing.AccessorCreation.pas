@@ -24,27 +24,10 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Common.Editing.CommandSource;
 
 type
-  {$SCOPEDENUMS ON}
-  TAccessorKind = (Field, Getter, Setter);
-  {$SCOPEDENUMS OFF}
-
-  TAccessorPlan = record
-    Kind: TAccessorKind;
-    /// <summary>Name der Eigenschaft (Caption).</summary>
-    PropertyName: string;
-    PropertyType: string;
-    /// <summary>Indexparameter ohne Klammern ("Index: Integer"); '' ohne.</summary>
-    IndexParameters: string;
-    /// <summary>Abschnitt der Methoden: private oder protected.</summary>
-    MethodSection: string;
-    /// <summary>Name des neuen Mitglieds: FCaption, GetCaption, SetCaption.</summary>
-    function Name: string;
-    function FieldName: string;
-  end;
-
   TAccessorCreation = class
   public
     /// <summary>Deklaration ohne Einrückung: "FCaption: string;", "function GetCaption: string;",
@@ -72,25 +55,6 @@ uses
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.ClassMembers;
-
-{ TAccessorPlan }
-
-function TAccessorPlan.Name: string;
-begin
-  case Kind of
-    TAccessorKind.Getter:
-      Result := 'Get' + PropertyName;
-    TAccessorKind.Setter:
-      Result := 'Set' + PropertyName;
-  else
-    Result := FieldName;
-  end;
-end;
-
-function TAccessorPlan.FieldName: string;
-begin
-  Result := 'F' + PropertyName;
-end;
 
 { TAccessorCreation }
 
