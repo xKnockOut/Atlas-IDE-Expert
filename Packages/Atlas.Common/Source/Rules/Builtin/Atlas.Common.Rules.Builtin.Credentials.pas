@@ -63,7 +63,7 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Editing.SqlText,
+  Atlas.Common.Dfm.SqlText,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

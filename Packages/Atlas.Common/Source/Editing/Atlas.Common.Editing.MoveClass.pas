@@ -109,7 +109,7 @@ uses
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.SyntaxNodes,

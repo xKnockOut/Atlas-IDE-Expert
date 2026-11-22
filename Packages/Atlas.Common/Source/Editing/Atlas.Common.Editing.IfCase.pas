@@ -28,7 +28,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.StatementText;
+  Atlas.Common.Pascal.StatementText;
 
 type
   /// <summary>Art des verglichenen Ausdrucks: unbekannt, nicht ordinal, Ganzzahl, Zeichen (Char, WideChar) oder

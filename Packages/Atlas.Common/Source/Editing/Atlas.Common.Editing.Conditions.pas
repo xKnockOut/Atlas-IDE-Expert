@@ -20,7 +20,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.StatementText;
+  Atlas.Common.Pascal.StatementText;
 
 type
   TConditions = class

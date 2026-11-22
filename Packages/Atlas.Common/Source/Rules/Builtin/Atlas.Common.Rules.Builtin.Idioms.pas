@@ -103,7 +103,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.UsesEdits,
-  Atlas.Common.Editing.StatementText,
+  Atlas.Common.Pascal.StatementText,
   Atlas.Common.Editing.IfCase,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,

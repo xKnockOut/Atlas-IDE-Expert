@@ -116,7 +116,7 @@ uses
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Editing.StatementText,
+  Atlas.Common.Pascal.StatementText,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.ConditionalExpression,
   Atlas.Text.Lines,

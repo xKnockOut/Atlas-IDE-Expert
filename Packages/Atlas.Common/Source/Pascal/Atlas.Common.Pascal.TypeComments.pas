@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.TypeComments;
+﻿unit Atlas.Common.Pascal.TypeComments;
 
 // Kommentar über dem Abschnitt eines Typs im implementation-Teil (#1835).
 // Vier Formen (classCompletion.typeComment):

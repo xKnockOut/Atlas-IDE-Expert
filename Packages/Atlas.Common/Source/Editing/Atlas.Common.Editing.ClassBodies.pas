@@ -21,7 +21,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.TypeComments;
+  Atlas.Common.Pascal.TypeComments;
 
 type
   /// <summary>Einstellungen der Klassenvervollständigung, wie die Erzeuger sie brauchen.</summary>

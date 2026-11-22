@@ -9,7 +9,9 @@ interface
 
 uses
   System.JSON,
-  Atlas.Common.Diagnostics.Contract;
+  Atlas.Common.Diagnostics.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Metrics.Contract;
 
 type
   /// <summary>Zusätzliche Fehlercodes des Language Server Protocol.</summary>
@@ -96,6 +98,14 @@ type
     UnitName: string;
     /// <summary>Direkter Vorfahr einer Klasse mit Unit (Vcl.Controls.TCustomControl); '' ohne Angabe.</summary>
     Parent: string;
+  end;
+
+  /// <summary>Vererbungstiefe der Klassen einer Datei (#980) für Code Lens und atlas.server.metrics; der Host
+  /// rechnet sie wie die Regel metric-inheritance-depth.</summary>
+  ILspInheritanceDepths = interface
+    ['{2E6CB6E2-A65B-416D-BB3B-154AA0138F25}']
+    /// <summary>Je Klasse mit eigenen Vorfahren ein Eintrag; AIndex nil = nur die Datei.</summary>
+    function Depths(const AFileName, AText: string; const AIndex: ISymbolIndex): TArray<TStructureMetrics>;
   end;
 
   /// <summary>Typen der laufenden IDE (atlas/ideTypes); threadsicher. Ohne Plugin leer.</summary>
