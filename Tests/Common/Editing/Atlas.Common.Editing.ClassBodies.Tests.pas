@@ -34,7 +34,7 @@ uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Editing.ClassBodies;
 
 const

@@ -1,6 +1,6 @@
-﻿unit Shell.Update.Install;
+﻿unit Update.Install;
 
-// Host-Rolle Shell von AtlasUpdate.exe (#1519), Befehl install: Erstinstallation
+// Hosted-Feature Update von AtlasUpdate.exe (#1519), Befehl install: Erstinstallation
 // aus dem entpackten Release-Paket im Dialog auf der Konsole.
 // 1. IDE und Profil wählen (alle installierten Delphi-Versionen, eigene
 //    Profile aus bds -r, klassische oder 64-Bit-IDE).
@@ -17,12 +17,21 @@
 interface
 
 uses
-  Atlas.Text.UpdateRun;
+  Atlas.Text.UpdateRun,
+  Atlas.Common.Updates.Contract;
 
 type
-  TShellUpdateInstall = class
+  /// <summary>Update-System mit allen Adaptern; ALogFile '' = nur Konsole (die Shell setzt es zusammen).</summary>
+  TUpdateSystemFactory = reference to function(const ALogFile: string): TUpdateSystem;
+
+  TUpdateInstall = class
   public
-    class function Run(const AArgs: TUpdateArguments): Integer; static;
+    /// <summary>Erstinstallation im Dialog; ANewSystem legt das Update-System an.</summary>
+    class function Run(const AArgs: TUpdateArguments; const ANewSystem: TUpdateSystemFactory): Integer; static;
+    /// <summary>Text auf die Konsole (stderr) mit Zeilenende.</summary>
+    class procedure Say(const AText: string); static;
+    /// <summary>%LOCALAPPDATA%\Atlas\Updates.</summary>
+    class function UpdatesRoot: string; static;
   end;
 
 implementation
@@ -32,11 +41,9 @@ uses
   Atlas.Text.Updates,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Product.Version,
-  Atlas.Common.Updates.Contract,
   Atlas.Common.Updates.Ides,
   Atlas.Common.Updates.Prepare,
-  Atlas.Common.Updates.Apply,
-  Shell.Update.System;
+  Atlas.Common.Updates.Apply;
 
 type
 {$SCOPEDENUMS ON}
@@ -122,12 +129,12 @@ begin
   mChoices := TUpdateIdes.Choices(ASystem.Registry, ASystem.Files);
   if Length(mChoices) = 0 then
   begin
-    TShellUpdateSystem.Say(cTexts[TInstallText.NoIde].Text);
+    TUpdateInstall.Say(cTexts[TInstallText.NoIde].Text);
     Exit(False);
   end;
   for mIndex := 0 to High(mChoices) do
   begin
-    TShellUpdateSystem.Say(Format('  %d) %s, %s', [mIndex + 1, mChoices[mIndex].Caption,
+    TUpdateInstall.Say(Format('  %d) %s, %s', [mIndex + 1, mChoices[mIndex].Caption,
       PlatformCaption(mChoices[mIndex].Platform)]));
   end;
   mNumber := 1;
@@ -165,10 +172,10 @@ var
   mCandidate: TUpdateCandidate;
 begin
   Result := nil;
-  TShellUpdateSystem.Say(cTexts[TInstallText.Modules].Text);
+  TUpdateInstall.Say(cTexts[TInstallText.Modules].Text);
   for mCandidate in ACandidates do
   begin
-    TShellUpdateSystem.Say('  ' + mCandidate.Name);
+    TUpdateInstall.Say('  ' + mCandidate.Name);
   end;
   // Alle heißt alle, auch früher abgewählte Module im Zielordner.
   if Agrees(cTexts[TInstallText.AllModules].Text) then
@@ -238,7 +245,7 @@ begin
   mInput := Default(TUpdateApplyInput);
   mInput.FilesDir := AFilesDir;
   mInput.WorkDir := AArgs.Staging;
-  mInput.RootDir := TShellUpdateSystem.UpdatesRoot;
+  mInput.RootDir := TUpdateInstall.UpdatesRoot;
   mInput.Version := TProductVersion.cVersion;
   mInput.Candidates := ACandidates;
   mInstallation := TUpdateInstallation.Create(ASystem, AArgs, mInput);
@@ -246,11 +253,11 @@ begin
     Result := mInstallation.Run;
     if Result = 0 then
     begin
-      TShellUpdateSystem.Say(cTexts[TInstallText.Installed].Fmt([TProductVersion.cVersion]));
+      TUpdateInstall.Say(cTexts[TInstallText.Installed].Fmt([TProductVersion.cVersion]));
     end
     else
     begin
-      TShellUpdateSystem.Say(cTexts[TInstallText.Failed].Fmt([mInstallation.Outcome.Reason,
+      TUpdateInstall.Say(cTexts[TInstallText.Failed].Fmt([mInstallation.Outcome.Reason,
         mInstallation.Outcome.Detail]));
     end;
   finally
@@ -265,7 +272,7 @@ var
 begin
   if not ASystem.Files.FileExists(TUpdateLayout.Join(ExtractFileDir(ParamStr(0)), TUpdateLayout.cServerExe)) then
   begin
-    TShellUpdateSystem.Say(cTexts[TInstallText.NotUnpacked].Text);
+    TUpdateInstall.Say(cTexts[TInstallText.NotUnpacked].Text);
     Exit(1);
   end;
   if not ChooseIde(ASystem, AArgs) then
@@ -275,7 +282,7 @@ begin
   AArgs.Target := ChooseTarget(AArgs.Target);
   if not ASystem.Files.CanWrite(AArgs.Target) then
   begin
-    TShellUpdateSystem.Say(cTexts[TInstallText.NotWritable].Fmt([AArgs.Target]));
+    TUpdateInstall.Say(cTexts[TInstallText.NotWritable].Fmt([AArgs.Target]));
     Exit(1);
   end;
   mFilesDir := FilesFor(ASystem, AArgs);
@@ -292,25 +299,35 @@ begin
   Result := Swap(ASystem, AArgs, mFilesDir, mCandidates);
 end;
 
-{ TShellUpdateInstall }
+{ TUpdateInstall }
 
-class function TShellUpdateInstall.Run(const AArgs: TUpdateArguments): Integer;
+class procedure TUpdateInstall.Say(const AText: string);
+begin
+  Writeln(ErrOutput, AText);
+end;
+
+class function TUpdateInstall.UpdatesRoot: string;
+begin
+  Result := IncludeTrailingPathDelimiter(GetEnvironmentVariable('LOCALAPPDATA')) + 'Atlas\Updates';
+end;
+
+class function TUpdateInstall.Run(const AArgs: TUpdateArguments; const ANewSystem: TUpdateSystemFactory): Integer;
 var
   mArgs: TUpdateArguments;
   mSystem: TUpdateSystem;
 begin
   mArgs := AArgs;
   mArgs.Command := 'install';
-  mArgs.Staging := TUpdateLayout.Join(TShellUpdateSystem.UpdatesRoot, 'install');
+  mArgs.Staging := TUpdateLayout.Join(TUpdateInstall.UpdatesRoot, 'install');
   mArgs.NewModules := TUpdateNewModules.Install;
-  mSystem := TShellUpdateSystem.NewSystem(TUpdateLayout.Join(mArgs.Staging, TUpdateLayout.cLogFile));
-  TShellUpdateSystem.Say(cTexts[TInstallText.Welcome].Fmt([TProductVersion.cVersion]));
+  mSystem := ANewSystem(TUpdateLayout.Join(mArgs.Staging, TUpdateLayout.cLogFile));
+  TUpdateInstall.Say(cTexts[TInstallText.Welcome].Fmt([TProductVersion.cVersion]));
   try
     Result := Install(mSystem, mArgs);
   except
     on mError: EUpdateError do
     begin
-      TShellUpdateSystem.Say(cTexts[TInstallText.Failed].Fmt([mError.Code, mError.Detail]));
+      TUpdateInstall.Say(cTexts[TInstallText.Failed].Fmt([mError.Code, mError.Detail]));
       Result := 1;
     end;
   end;
@@ -318,6 +335,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Update.Install', cTexts);
+  TAtlasTextTables.Add('Update.Install', cTexts);
 
 end.

@@ -55,7 +55,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.StatementText,
+  Atlas.Common.Pascal.StatementText,
   Atlas.Common.Editing.IfCase,
   Atlas.Text.Lines,
   Atlas.Tests.TextEdits;

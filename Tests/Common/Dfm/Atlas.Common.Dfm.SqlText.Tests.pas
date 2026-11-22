@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.SqlText.Tests;
+﻿unit Atlas.Common.Dfm.SqlText.Tests;
 
 // Tests für den SQL-Text der Datenbank-Schnellbefehle (#302).
 
@@ -27,7 +27,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Editing.SqlText;
+  Atlas.Common.Dfm.SqlText;
 
 function Joined(const AItems: TArray<string>): string;
 begin

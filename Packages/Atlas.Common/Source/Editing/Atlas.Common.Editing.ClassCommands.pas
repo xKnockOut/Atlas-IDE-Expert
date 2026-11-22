@@ -61,7 +61,7 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassBodies,
-  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
