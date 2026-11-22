@@ -73,7 +73,7 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SmartIndent,
-  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Pascal.TypeComments,
   Core.Workspace;
 
 { TShellFileOptions }

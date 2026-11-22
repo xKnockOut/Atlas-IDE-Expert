@@ -1003,6 +1003,7 @@
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Unwrap.pas"/>
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.ExpressionType.pas"/>
         <DCCReference Include="Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Adapters.BuildNotifications.pas"/>
         <DCCReference Include="Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Sections.pas"/>
         <DCCReference Include="Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Plan.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.ToolbarItems.pas"/>

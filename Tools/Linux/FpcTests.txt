@@ -143,8 +143,8 @@ Atlas.Common.Editing.RoutineParts.Tests
 Atlas.Common.Editing.SafeDelete.Tests
 Atlas.Common.Editing.SmartIndent.Tests
 Atlas.Common.Editing.SmartPaste.Tests
-Atlas.Common.Editing.SqlText.Tests
-Atlas.Common.Editing.StatementText.Tests
+Atlas.Common.Dfm.SqlText.Tests
+Atlas.Common.Pascal.StatementText.Tests
 Atlas.Common.Pascal.StringLiterals.Tests
 Atlas.Common.Editing.SuggestionContext.Tests
 Atlas.Common.Editing.SuggestConst.Tests
@@ -155,7 +155,7 @@ Atlas.Common.Editing.TestFromDebug.Tests
 Atlas.Common.Editing.TestUnits.Tests
 Atlas.Common.Editing.TypeAlias.Tests
 Atlas.Common.Editing.TypeAlias.Names.Tests
-Atlas.Common.Editing.TypeComments.Tests
+Atlas.Common.Pascal.TypeComments.Tests
 Atlas.Common.Editing.UnitRename.Tests
 Atlas.Common.Editing.UnitTemplates.Tests
 Atlas.Common.Editing.Unwrap.Tests

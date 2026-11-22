@@ -54,7 +54,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.StatementText,
+  Atlas.Common.Pascal.StatementText,
   Atlas.Common.Editing.Conditions,
   Atlas.Text.Lines,
   Atlas.Tests.TextEdits;

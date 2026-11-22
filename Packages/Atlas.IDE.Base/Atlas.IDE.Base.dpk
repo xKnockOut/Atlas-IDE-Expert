@@ -914,6 +914,7 @@ contains
   Atlas.UI.Editor.Unwrap in 'Source\UI\Editor\Atlas.UI.Editor.Unwrap.pas',
   Atlas.UI.Editor.ExpressionType in 'Source\UI\Editor\Atlas.UI.Editor.ExpressionType.pas',
   Atlas.IDE.Notifications.Service in 'Source\IDE\Notifications\Atlas.IDE.Notifications.Service.pas',
+  Atlas.IDE.CodeInsight.Adapters.BuildNotifications in 'Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Adapters.BuildNotifications.pas',
   Atlas.Core.EditorToolbar.Sections in 'Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Sections.pas',
   Atlas.Core.EditorToolbar.Plan in 'Source\Core\EditorToolbar\Atlas.Core.EditorToolbar.Plan.pas',
   Atlas.Core.Settings.ToolbarItems in 'Source\Core\Settings\Atlas.Core.Settings.ToolbarItems.pas',
