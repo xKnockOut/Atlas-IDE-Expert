@@ -127,6 +127,9 @@
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.LineChanges.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Adapters.LineChanges.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Adapters.Commands.pas"/>
+        <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Adapters.Module.pas"/>
+        <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Adapters.Service.pas"/>
+        <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Adapters.Dialogs.pas"/>
         <DCCReference Include="Source\IDE\VersionControl\Atlas.IDE.VersionControl.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
