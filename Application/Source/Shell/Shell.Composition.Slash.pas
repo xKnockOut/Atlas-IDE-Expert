@@ -14,7 +14,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.ResourceStringCommands,
   Core.SlashHost;
@@ -306,7 +306,7 @@ begin
   // Erklärung in der Sprache der Texte (#1458); der geteilte Katalog gehört dem Prozess.
   mCatalog := TRuleCatalog.Localized;
   try
-    for mFinding in TLspSyntaxDiagnostics.RuleFindings(AText, mTree, mContext) do
+    for mFinding in mContext.Findings(AText, mTree) do
     begin
       if (mFinding.Range.StartPos.Line <> ALine) or SameText(mFinding.RuleId, 'slash-command') then
       begin
@@ -345,7 +345,7 @@ begin
   end;
   mTree := TSyntaxTreeCache.Parse(AText);
   try
-    for mFinding in TLspSyntaxDiagnostics.RuleFindings(AText, mTree, mContext) do
+    for mFinding in mContext.Findings(AText, mTree) do
     begin
       if (mFinding.Range.StartPos.Line = ALine) and not SameText(mFinding.RuleId, 'slash-command') and
         not MatchText(mFinding.RuleId, AIds) then

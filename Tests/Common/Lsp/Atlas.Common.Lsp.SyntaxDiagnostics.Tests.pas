@@ -118,6 +118,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.DiagnosticItems;
 
 function CompilerMessage(ALine, AColumn: Integer; ASeverity: TCompilerSeverity): TCompilerMessage;
