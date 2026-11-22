@@ -74,7 +74,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer;
 
 { TAtlasIdeRegionFolds.TIdeNotifier }
 

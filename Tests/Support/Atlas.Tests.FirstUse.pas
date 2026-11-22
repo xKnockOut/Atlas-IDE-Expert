@@ -40,7 +40,7 @@ uses
   Atlas.Common.Metrics.DuplicateCatalog,
   Atlas.Common.Rules.Catalog,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Transfer,

@@ -59,7 +59,7 @@ implementation
 uses
   System.IOUtils,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Welcome.HostLayout,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Strings,

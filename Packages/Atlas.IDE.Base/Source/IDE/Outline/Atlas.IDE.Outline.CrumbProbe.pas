@@ -41,7 +41,7 @@ uses
   System.Types,
   Vcl.Controls,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorWindows;
+  Atlas.ToolsApi.Editor.Windows;
 
 const
   // Texte des Protokolls (Diagnose, nicht übersetzt wie die übrigen Einträge von TAtlasGuard.Log).

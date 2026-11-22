@@ -133,8 +133,8 @@ uses
   System.Math,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Parentheses,
-  Atlas.Core.Completion.Word,
-  Atlas.Core.Lsp.TextOffsets;
+  Atlas.Plugin.Editor.Word,
+  Atlas.Plugin.Editor.TextOffsets;
 
 /// <summary>Stabil nach Start sortieren (bei Gleichstand bleibt die Änderung am Wort vorn).</summary>
 procedure SortByStart(var AEdits: TAtlasCommitEdits);

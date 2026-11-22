@@ -158,7 +158,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.MouseButtons,
   Atlas.IDE.Contracts.MouseHistory,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWindow;
 

@@ -37,7 +37,7 @@ uses
   Atlas.UI.Designer.Handles,
   Atlas.IDE.Designer.HandleTool,
   Atlas.IDE.Designer.KeptForm,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   TAtlasIdeGapHandles = class;

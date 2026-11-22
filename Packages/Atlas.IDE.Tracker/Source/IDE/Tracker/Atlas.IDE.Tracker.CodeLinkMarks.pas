@@ -97,9 +97,9 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Tracker.IssueLookups;
 
 { TAtlasCodeLinkPainter }

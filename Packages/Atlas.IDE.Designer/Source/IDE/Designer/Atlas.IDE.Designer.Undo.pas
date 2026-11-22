@@ -34,7 +34,7 @@ uses
   Atlas.Core.Designer.UndoFlow,
   Atlas.Core.Designer.Contract,
   Atlas.UI.Designer.Bar,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type

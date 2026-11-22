@@ -198,14 +198,14 @@ uses
   Atlas.Core.Editor.Pairs,
   Atlas.UI.Tests.Strings,
   Atlas.Core.Editor.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Text.Lines,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.ToolsApi.Theme.Style;
 
 { TAtlasIdeTestsLens.TEvents }
 

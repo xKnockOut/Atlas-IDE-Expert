@@ -45,7 +45,7 @@ uses
   Atlas.Core.Problems.IdeErrors,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 type
   /// <summary>Letzte Prüfung einer Datei für die Statuszeile (#909); FileName '' = noch keine.</summary>

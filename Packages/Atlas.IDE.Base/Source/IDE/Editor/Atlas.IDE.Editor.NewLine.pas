@@ -33,7 +33,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Foundation.Navigation;

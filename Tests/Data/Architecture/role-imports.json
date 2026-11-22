@@ -8,6 +8,7 @@
     "Atlas.Linux",
     "Atlas.Plugin",
     "Atlas.Vcl",
+    "Atlas.ToolsApi",
     "Atlas.Core",
     "Atlas.UI",
     "Atlas.IDE"
@@ -1247,6 +1248,24 @@
       "to": "Atlas.Vcl.Popup.Internals.Sache",
       "allowed": false,
       "note": "gleicher Feature-Name in Atlas.UI und Atlas.Vcl ist ein fremdes Feature"
+    },
+    {
+      "from": "Atlas.ToolsApi.Windows.DockWindow",
+      "to": "Atlas.Vcl.Images.Symbol",
+      "allowed": true,
+      "note": "Atlas.ToolsApi baut auf Atlas.Vcl auf"
+    },
+    {
+      "from": "Atlas.ToolsApi.EditorBars.Host",
+      "to": "Atlas.ToolsApi.Editor.Buffer",
+      "allowed": true,
+      "note": "Platform-Features eines Artefakts nutzen ihre Wurzeln"
+    },
+    {
+      "from": "Atlas.IDE.Editor.Sache",
+      "to": "Atlas.ToolsApi.Editor.Internals.Sache",
+      "allowed": false,
+      "note": "gleicher Feature-Name in Atlas.IDE und Atlas.ToolsApi ist ein fremdes Feature"
     }
   ]
 }

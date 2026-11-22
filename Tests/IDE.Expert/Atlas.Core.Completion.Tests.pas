@@ -120,7 +120,7 @@ uses
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Core.Completion.Providers.Server,
-  Atlas.Core.Completion.Word,
+  Atlas.Plugin.Editor.Word,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Ranking,

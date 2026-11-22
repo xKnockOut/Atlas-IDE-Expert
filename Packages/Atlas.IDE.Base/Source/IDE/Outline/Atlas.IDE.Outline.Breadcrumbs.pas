@@ -129,14 +129,14 @@ uses
   Atlas.IDE.Outline.NavigationHiding,
   Atlas.IDE.Outline.CrumbProbe,
   Atlas.IDE.Outline.CrumbLists,
-  Atlas.IDE.Foundation.EditorBarHost,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.EditorBars.Host,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
-  Atlas.IDE.Foundation.EditorWindows;
+  Atlas.ToolsApi.Editor.Windows;
 
 const
   cTickMs = 150;
@@ -420,7 +420,7 @@ var
 begin
   mBar := TAtlasBreadcrumbBar.Create(nil);
   mHost := FHost;
-  mBar.SetColors(TAtlasIdeStyle.BarColors);
+  mBar.SetColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
   mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
   mSetup := BarTexts;
   mSetup.OnOpenMenu := ListEvent(Self, mBar, TAtlasCrumbList.Siblings);
@@ -674,7 +674,7 @@ procedure TBreadcrumbsState.ApplyTheme;
 var
   mColors: TAtlasColors;
 begin
-  mColors := TAtlasIdeStyle.BarColors;
+  mColors := TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors);
   FHost.ForEach(
     procedure(ABar: TControl)
     begin

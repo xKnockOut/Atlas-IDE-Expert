@@ -36,7 +36,7 @@
 // der Datei; „Letzte Atlas-Änderung zurücknehmen“ nimmt sie in allen Dateien
 // auf einmal zurück. Die Aktion beschreibt AAction.
 // Geplant wird ohne IDE in Atlas.Core.Editor.WorkspacePlan (S-03b); hier bleiben Puffer,
-// Designer, Projekte und das Schreiben. Dateihelfer stehen in Atlas.IDE.Foundation.Files.
+// Designer, Projekte und das Schreiben. Dateihelfer stehen in Atlas.ToolsApi.Files.Service.
 // Nur im Hauptthread aufrufen.
 
 interface
@@ -88,11 +88,11 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Files.EncodingDefault,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Files.EncodingDefault,
   Atlas.Core.Forms.Changes,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Forms.Designer,
   Atlas.IDE.Undo.Changes,

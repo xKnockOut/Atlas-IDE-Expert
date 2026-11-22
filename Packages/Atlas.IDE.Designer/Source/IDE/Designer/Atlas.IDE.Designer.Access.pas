@@ -82,7 +82,7 @@ uses
   System.Variants,
   Vcl.Forms,
   Atlas.Core.Forms.Text,
-  Atlas.IDE.Foundation.DesignerView;
+  Atlas.ToolsApi.Designer.View;
 
 const
   /// <summary>Eigenschaft eines Labels mit dem zugehörigen Eingabefeld.</summary>

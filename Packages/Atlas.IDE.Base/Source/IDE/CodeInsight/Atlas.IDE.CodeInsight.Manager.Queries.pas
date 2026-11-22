@@ -48,10 +48,10 @@ uses
   System.StrUtils,
   Atlas.Text.DebugDisplay,
   Atlas.Core.Hover.DebugValue,
-  Atlas.Core.Completion.Word,
+  Atlas.Plugin.Editor.Word,
   Atlas.Core.Lsp.IdeMembers,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Hover.DebugValue;
 
 { TAtlasCodeInsightQueries }

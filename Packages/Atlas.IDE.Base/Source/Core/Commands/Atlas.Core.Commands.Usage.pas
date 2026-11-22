@@ -192,7 +192,7 @@ uses
   System.JSON,
   System.Generics.Defaults,
   System.Math,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Text.Json,
   Atlas.Text.Timestamps;
 

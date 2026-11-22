@@ -42,7 +42,7 @@ uses
   Atlas.Core.VersionControl.ToolCheck,
   Atlas.Core.VersionControl.ServerCheck,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.TeamFile;
 
 /// <summary>Aktives Projekt, geöffnete .groupproj (wenn es darin ist) und die Zeile aus dem Abschnitt vcs der .atlas

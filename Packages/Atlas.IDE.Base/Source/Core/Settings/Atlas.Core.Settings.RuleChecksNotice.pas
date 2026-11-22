@@ -43,7 +43,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Plugin.Settings.JsonText;
 
 { TAtlasRuleChecksNotice }
 

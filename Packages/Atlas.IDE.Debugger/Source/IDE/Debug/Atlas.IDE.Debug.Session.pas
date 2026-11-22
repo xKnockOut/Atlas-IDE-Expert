@@ -194,7 +194,7 @@ uses
   System.Diagnostics,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 function IsStoppedState(AState: TOTAProcessState): Boolean;
 begin

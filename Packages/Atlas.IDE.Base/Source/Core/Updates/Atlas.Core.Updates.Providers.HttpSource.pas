@@ -29,7 +29,7 @@ uses
   System.Math,
   System.Net.HttpClient,
   System.Net.URLClient,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Diagnostics.AsyncWait,
   Atlas.Core.Diagnostics.BoundedStream;
 

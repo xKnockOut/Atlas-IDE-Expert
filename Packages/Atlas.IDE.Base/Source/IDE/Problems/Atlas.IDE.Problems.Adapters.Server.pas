@@ -129,7 +129,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Problems.Store;
 

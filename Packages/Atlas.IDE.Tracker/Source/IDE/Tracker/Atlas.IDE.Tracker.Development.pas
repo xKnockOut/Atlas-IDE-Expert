@@ -122,7 +122,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Development.Strings,
   Atlas.UI.Undo.DiffView,

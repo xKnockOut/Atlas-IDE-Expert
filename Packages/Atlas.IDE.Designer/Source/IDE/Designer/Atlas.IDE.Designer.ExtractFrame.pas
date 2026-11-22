@@ -59,14 +59,14 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Designer.ExtractFrame,
   Atlas.UI.Designer.ExtractDialog,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.DockWindow,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Windows.DockWindow,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Undo.Changes,
   Atlas.Core.Designer.Names;
 

@@ -8,15 +8,15 @@
     nach dem Projektwechsel gesperrt). Deshalb gilt im IDE-Plugin:
 
     - Andockbare Fenster legt nur TAtlasIdeDockWindow an
-      (Atlas.IDE.Foundation.DockWindow): CreateDockableForm und
+      (Atlas.ToolsApi.Windows.DockWindow): CreateDockableForm und
       RegisterDockableForm stehen nur dort. Jede Unit mit einer Klasse, die
       INTACustomDockableForm umsetzt, erzeugt TAtlasIdeDockWindow.
     - Leisten im Editorfenster verwaltet TAtlasEditorBarHost
-      (Atlas.IDE.Foundation.EditorBarHost): Nur dort wird das Editor-
+      (Atlas.ToolsApi.EditorBars.Host): Nur dort wird das Editor-
       Steuerelement über FindComponent('Editor') gesucht; die Dienste nehmen
       EditorOf, TopEditor bzw. FocusEditor des Hosts.
     - Den Editor neu zeichnen lässt nur TAtlasIdeEditorRefresh
-      (Atlas.IDE.Foundation.EditorRefresh): InvalidateTopEditor legt ohne
+      (Atlas.ToolsApi.Editor.Refresh): InvalidateTopEditor legt ohne
       offenes Editorfenster ein neues an, beim Beenden der IDE mit Absturz
       nach dem Entladen fremder Experten (#1233).
     - Zeigen, Verstecken und Sichtbarkeit eines Dockfensters laufen über
@@ -88,13 +88,15 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
-$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
+# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source, dazu die Platform-Packages des
+# Plugins, die Base als Quelltext mitübersetzt (Atlas.Plugin, Atlas.Vcl, Atlas.ToolsApi).
+$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory |
+    Where-Object { $_.Name -like 'Atlas.IDE.*' -or $_.Name -in @('Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi') } |
     Where-Object { Test-Path (Join-Path $_.FullName 'Source') } |
     ForEach-Object { "Packages/$($_.Name)/Source" })
-$DockUnit = 'Atlas.IDE.Foundation.DockWindow.pas'
-$BarUnit = 'Atlas.IDE.Foundation.EditorWindows.pas'
-$RefreshUnit = 'Atlas.IDE.Foundation.EditorRefresh.pas'
+$DockUnit = 'Atlas.ToolsApi.Windows.DockWindow.pas'
+$BarUnit = 'Atlas.ToolsApi.Editor.Windows.pas'
+$RefreshUnit = 'Atlas.ToolsApi.Editor.Refresh.pas'
 $DialogUnit = 'Atlas.Vcl.Forms.Dialog.pas'
 $ThemeUnit = 'Atlas.Vcl.Theme.Service.pas'
 $WrapLabelUnit = 'Atlas.Vcl.Controls.WrapLabel.pas'

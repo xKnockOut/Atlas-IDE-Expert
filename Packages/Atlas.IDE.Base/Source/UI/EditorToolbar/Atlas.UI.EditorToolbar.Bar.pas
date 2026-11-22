@@ -41,7 +41,7 @@ uses
   Vcl.Menus,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.EditorToolbar.Layout,
-  Atlas.UI.Editor.Bar;
+  Atlas.Vcl.Controls.EditorBar;
 
 type
   TAtlasToolbarButton = record

@@ -17,7 +17,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Actions,
-  Atlas.IDE.Foundation.ActionHook;
+  Atlas.ToolsApi.Commands.ActionHook;
 
 type
   /// <summary>Hängt an der IDE-Aktion „Auswerten/Ändern“.</summary>

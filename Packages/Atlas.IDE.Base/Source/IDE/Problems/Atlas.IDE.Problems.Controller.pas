@@ -37,7 +37,7 @@ uses
   Atlas.Core.Problems.Flow,
   Atlas.IDE.Problems.Painter,
   Atlas.IDE.Problems.MessageList,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 type
   /// <summary>Sitzung, auf Wunsch gestartet; nil, wenn keine läuft bzw. der Start scheitert.</summary>

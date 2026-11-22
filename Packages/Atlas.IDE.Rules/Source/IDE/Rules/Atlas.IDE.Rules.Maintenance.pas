@@ -39,7 +39,7 @@ uses
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Strings,
   Atlas.UI.Rules.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   /// <summary>Kommandozeile von AtlasServer: Projekt, dann die Optionen.</summary>

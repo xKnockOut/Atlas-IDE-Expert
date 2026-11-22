@@ -91,15 +91,15 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.MethodBreakpoints.Strings,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.MethodGroupFlow,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.IDE.Foundation.Debugger,
+  Atlas.ToolsApi.Debugger.Services,
   Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeMethodBreakpoints.TListener }

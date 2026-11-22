@@ -48,7 +48,7 @@ uses
   Atlas.Core.Rules.CustomLayer,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.IDE.Rules.Baseline,

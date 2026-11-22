@@ -44,7 +44,7 @@ uses
   Vcl.ActnList,
   Vcl.Forms,
   Vcl.Menus,
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions;

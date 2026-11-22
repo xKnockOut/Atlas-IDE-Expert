@@ -69,8 +69,8 @@ uses
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Debug.RunTo,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.RunTo;

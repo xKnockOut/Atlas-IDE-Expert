@@ -53,7 +53,7 @@ uses
   System.Types,
   Atlas.Core.Status.FieldFlow,
   Atlas.IDE.StatusBar.View,
-  Atlas.IDE.Foundation.EditorBarHost;
+  Atlas.ToolsApi.EditorBars.Host;
 
 type
   TAtlasIdeStatusBar = class
@@ -102,13 +102,13 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
-  Atlas.Core.Editor.BarDock,
+  Atlas.ToolsApi.EditorBars.Order,
   Atlas.UI.StatusBar.Strings,
   Atlas.UI.StatusBar.Bar,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.Service,

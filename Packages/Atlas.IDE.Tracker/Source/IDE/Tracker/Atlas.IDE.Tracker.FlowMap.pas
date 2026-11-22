@@ -87,7 +87,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Flow.Strings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.FlowWindow;
 

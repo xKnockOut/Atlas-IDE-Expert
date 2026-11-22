@@ -39,15 +39,15 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.Core.Lsp.Session.Json,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Assistants.LinkState,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorTabs,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Tabs,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Files.DirtyExport,

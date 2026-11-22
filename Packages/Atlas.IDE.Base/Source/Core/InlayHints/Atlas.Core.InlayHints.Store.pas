@@ -31,7 +31,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.Entries;
+  Atlas.Plugin.Files.Entries;
 
 type
   TAtlasInlayHint = record

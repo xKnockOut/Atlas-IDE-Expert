@@ -76,7 +76,7 @@ implementation
 
 uses
   Atlas.Core.Editor.LineAnchor,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   System.Classes,
   System.DateUtils,
   System.UITypes,
@@ -92,8 +92,8 @@ uses
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.Core.Foundation.Calls;
 
 /// <summary>Liste der Notizen für das Ergebnisfenster mit Bearbeiten und Löschen.</summary>

@@ -130,15 +130,15 @@ uses
   System.Classes,
   System.DateUtils,
   Atlas.Text.Lines,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.VersionControl.LineChangesPlan,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Contracts.VersionControl;
 

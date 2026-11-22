@@ -119,7 +119,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.AsyncOriginFlow,
   Atlas.UI.Results.Items,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Settings,

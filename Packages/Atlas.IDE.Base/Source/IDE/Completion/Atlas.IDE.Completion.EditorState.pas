@@ -20,12 +20,12 @@ uses
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Parentheses,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.Preview,
   Atlas.IDE.Completion.Placeholders,
   Atlas.UI.Completion.Popup,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   /// <summary>Protokoll für die Diagnose (Registry-Wert Diagnose).</summary>
@@ -186,7 +186,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer;
 
 const
   /// <summary>Takt, in dem die offene Liste Cursor, Details und Vorschau prüft.</summary>

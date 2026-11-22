@@ -108,7 +108,7 @@ uses
   Vcl.Controls,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,

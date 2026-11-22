@@ -96,8 +96,8 @@ uses
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.DockWindow,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Windows.DockWindow,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation;
 
 const

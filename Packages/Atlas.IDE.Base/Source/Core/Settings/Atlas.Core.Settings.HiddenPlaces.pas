@@ -85,7 +85,7 @@ implementation
 uses
   System.JSON,
   Atlas.Text.Lines,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Text.Json;
 
 const

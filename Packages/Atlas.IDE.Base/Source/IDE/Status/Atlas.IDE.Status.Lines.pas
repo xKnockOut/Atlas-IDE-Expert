@@ -38,7 +38,7 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
   Atlas.Core.Status.IndexStore,
-  Atlas.Core.Files.Format;
+  Atlas.Plugin.Files.Format;
 
 type
   TAtlasIndexingFunc = reference to function(out APercent: Integer): Boolean;
@@ -130,7 +130,7 @@ uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}

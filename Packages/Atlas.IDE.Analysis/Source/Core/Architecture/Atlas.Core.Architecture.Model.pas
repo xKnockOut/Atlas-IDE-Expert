@@ -300,7 +300,7 @@ uses
   System.Math,
   System.Generics.Defaults,
   System.Generics.Collections,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Text.Json,
   Atlas.Text.Arrays,
   Atlas.Core.Architecture.Resolution,

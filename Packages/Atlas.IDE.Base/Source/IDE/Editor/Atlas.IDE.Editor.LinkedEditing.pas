@@ -131,12 +131,12 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.Surfaces,
   Atlas.IDE.Editor.PaintedLine,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 /// <summary>Antwort an die laufende Instanz; nach dem Abbau verworfen.</summary>
 function DeliverToInstance: TAtlasLinkedDeliverProc;

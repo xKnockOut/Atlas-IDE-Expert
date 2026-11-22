@@ -128,7 +128,7 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Core.Editor.LineAnchor,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Bookmarks.Store,
   Atlas.Core.Marks.Ids,

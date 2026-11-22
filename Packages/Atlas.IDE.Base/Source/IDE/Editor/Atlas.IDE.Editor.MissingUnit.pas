@@ -39,7 +39,7 @@ uses
   ToolsAPI,
   Atlas.UI.Editor.Strings,
   Atlas.Core.Editor.MissingUnit,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 /// <summary>Konfiguration AName des Projekts; '' = Basis. nil, wenn es sie nicht gibt.</summary>
 function ConfigurationOf(const AProject: IOTAProject; const AName: string): IOTABuildConfiguration;

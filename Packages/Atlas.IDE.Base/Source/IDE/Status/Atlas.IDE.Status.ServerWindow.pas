@@ -70,8 +70,8 @@ uses
   Atlas.Vcl.Images.Symbol,
   Atlas.UI.Status.ServerFrame,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 const
   cRefreshMs = 5000;

@@ -105,7 +105,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Editor.RegionFolds,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot;
 
 /// <summary>Spalte des Editors (1-basiert) zu APosition im Text ALines.</summary>

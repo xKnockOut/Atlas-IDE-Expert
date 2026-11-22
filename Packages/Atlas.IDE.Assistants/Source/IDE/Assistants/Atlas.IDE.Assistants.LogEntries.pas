@@ -30,7 +30,7 @@ uses
   ToolsAPI,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.StatusBar.Content,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Outline.Cache;
 
 { TAtlasIdeLogEntries }

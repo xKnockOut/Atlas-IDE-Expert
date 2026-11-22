@@ -67,7 +67,7 @@ uses
   Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.Model,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.IDE.Foundation.Settings;
 
 const

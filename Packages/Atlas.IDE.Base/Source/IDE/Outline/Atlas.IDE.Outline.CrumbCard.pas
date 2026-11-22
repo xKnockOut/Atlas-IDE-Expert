@@ -37,7 +37,7 @@ implementation
 
 uses
   Atlas.Core.Editor.CrumbCard,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Theme.Style;
 
 { TAtlasIdeCrumbCard }
 

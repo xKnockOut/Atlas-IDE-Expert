@@ -32,7 +32,7 @@ uses
   Atlas.Core.Designer.DataBindings,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.BindingBar,
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.ToolsApi.EditorBars.Host,
   Atlas.IDE.Designer.PaletteImages;
 
 type
@@ -67,14 +67,15 @@ uses
   System.TypInfo,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Editor.BarDock,
+  Atlas.ToolsApi.EditorBars.Order,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.ButtonStates,
-  Atlas.IDE.Foundation.DesignerView,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Designer.View,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.IDE.Foundation.Settings;
 
 const
   cTick = 400;
@@ -229,7 +230,7 @@ begin
   Result := TAtlasBindingBar.Create(nil);
   mHost := FHost;
   mPalette := FPalette;
-  Result.ApplyColors(TAtlasIdeStyle.BarColors);
+  Result.ApplyColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
   Result.Images := FPalette.Images;
   Result.OnImage :=
     function(AClassName: string): Integer
@@ -408,7 +409,7 @@ procedure TAtlasIdeDataBindings.ApplyTheme;
 var
   mColors: TAtlasColors;
 begin
-  mColors := TAtlasIdeStyle.BarColors;
+  mColors := TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors);
   FHost.ForEach(
     procedure(ABar: TControl)
     begin

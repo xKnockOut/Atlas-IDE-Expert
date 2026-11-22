@@ -50,7 +50,7 @@ uses
   ToolsAPI,
   Atlas.UI.Welcome.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TStartDock = class(TInterfacedObject, INTACustomDockableForm)

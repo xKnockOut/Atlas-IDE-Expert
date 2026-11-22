@@ -78,7 +78,7 @@ implementation
 uses
   System.IOUtils,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.IDE.Foundation.Settings;
 
 function LocalAppData: string;

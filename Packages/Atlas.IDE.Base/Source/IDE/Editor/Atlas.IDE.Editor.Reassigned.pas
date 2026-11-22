@@ -38,7 +38,7 @@ uses
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Editor.Reassigned,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
@@ -122,10 +122,10 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.PaintedLine;
 
 { TAtlasIdeReassigned.TEvents }

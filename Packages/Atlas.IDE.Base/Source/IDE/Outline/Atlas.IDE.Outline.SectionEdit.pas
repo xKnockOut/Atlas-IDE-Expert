@@ -45,7 +45,7 @@ uses
   Atlas.Core.Outline.VisibilitySections,
   Atlas.Core.Outline.SectionEdit,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Outline.Cache;
 

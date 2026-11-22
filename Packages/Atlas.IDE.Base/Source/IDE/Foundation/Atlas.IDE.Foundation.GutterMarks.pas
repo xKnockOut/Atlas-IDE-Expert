@@ -189,10 +189,10 @@ uses
   Winapi.Windows,
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh;
 
 function LayerActive(const ALayer: IAtlasGutterLayer): Boolean;
 begin

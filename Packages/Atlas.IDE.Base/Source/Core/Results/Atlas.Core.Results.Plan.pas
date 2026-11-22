@@ -37,7 +37,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Completion.Word,
+  Atlas.Plugin.Editor.Word,
   Atlas.Core.Lsp.Session.Json,
   Atlas.Core.Results.Model;
 

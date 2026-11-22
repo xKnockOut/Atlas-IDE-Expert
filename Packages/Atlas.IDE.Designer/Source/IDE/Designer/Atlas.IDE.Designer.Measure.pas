@@ -79,7 +79,7 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Designer.Model,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 function NamesOf(const AControls: TArray<TControl>): string;

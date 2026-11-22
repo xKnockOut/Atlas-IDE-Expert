@@ -23,7 +23,7 @@ type
 implementation
 
 uses
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.Plugin.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Diagnostics.Export,
