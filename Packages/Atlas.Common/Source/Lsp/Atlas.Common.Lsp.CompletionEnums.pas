@@ -70,7 +70,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Text.Names,
-  Atlas.Common.Editing.CaseCompletion;
+  Atlas.Common.Pascal.CaseCompletion;
 
 /// <summary>Letztes Token vor APosition ohne Kommentare; APrefix: Index des Bezeichners, in oder hinter dem der
 /// Cursor steht (das getippte Wort), sonst -1. Ergebnis ist das Token davor.</summary>

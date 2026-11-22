@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.DocComments;
+﻿unit Atlas.Common.Pascal.DocComments;
 
 // Gerüst für Dokumentationskommentare (#88). Nach dem dritten "/" in einer
 // sonst leeren Zeile direkt über einer Deklaration entsteht
@@ -811,6 +811,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.DocComments', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Pascal.DocComments', cTexts);
 
 end.

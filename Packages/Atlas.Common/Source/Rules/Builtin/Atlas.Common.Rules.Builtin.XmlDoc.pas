@@ -71,7 +71,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.DocComments,
+  Atlas.Common.Pascal.DocComments,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,

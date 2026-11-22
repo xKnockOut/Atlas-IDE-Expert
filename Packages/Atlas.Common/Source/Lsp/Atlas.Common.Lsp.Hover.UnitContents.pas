@@ -80,7 +80,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Lsp.IdeUnits,
   Atlas.Common.Localization.Texts;
 

@@ -60,7 +60,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Semantics.InlineCallees,
   Atlas.Common.Semantics.UsesUsage;
 

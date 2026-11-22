@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.UsesActions;
+﻿unit Atlas.Common.Semantics.UsesActions;
 
 // uses-Aktionen (#284), ohne Protokollbezug: ungenutzte Units entfernen,
 // Units ins implementation-uses verschieben und fehlende Units vorschlagen.
@@ -38,7 +38,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Semantics.Contract;
 
 type
   {$SCOPEDENUMS ON}

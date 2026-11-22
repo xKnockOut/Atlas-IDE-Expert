@@ -9,7 +9,7 @@
 // über das Register aus (#293, "slashCommands"; #254 "usesCommand" bleibt Alias).
 // Den Blockabschluss aus #179 gibt es nicht: Den erledigt die IDE selbst.
 // Nach dem dritten "/" über einer Deklaration entsteht das Gerüst des
-// Dokumentationskommentars (#88, Atlas.Common.Editing.DocComments).
+// Dokumentationskommentars (#88, Atlas.Common.Pascal.DocComments).
 
 interface
 
@@ -96,7 +96,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.Formatter,
-  Atlas.Common.Editing.DocComments,
+  Atlas.Common.Pascal.DocComments,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

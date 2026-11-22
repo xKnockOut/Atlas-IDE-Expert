@@ -79,7 +79,7 @@ Atlas.Common.Documents.TextChanges.Tests
 Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
 Atlas.Common.Editing.AssignFields.Tests
-Atlas.Common.Editing.CaseCompletion.Tests
+Atlas.Common.Pascal.CaseCompletion.Tests
 Atlas.Common.Editing.ChangeSignature.Tests
 Atlas.Common.Editing.ClassBodies.Tests
 Atlas.Common.Editing.BodySpacing.Tests
@@ -98,7 +98,7 @@ Atlas.Common.Editing.CreateMethod.Tests
 Atlas.Common.Editing.DataFieldNames.Tests
 Atlas.Common.Editing.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests
-Atlas.Common.Editing.DocComments.Tests
+Atlas.Common.Pascal.DocComments.Tests
 Atlas.Common.Editing.EnumTables.Tests
 Atlas.Common.Editing.ExpressionText.Tests
 Atlas.Common.Editing.Extract.Duplicates.Tests
@@ -110,7 +110,7 @@ Atlas.Common.Editing.FormatCheck.Tests
 Atlas.Common.Editing.Formatter.Indent.Tests
 Atlas.Common.Editing.Formatter.Layout.Tests
 Atlas.Common.Editing.Formatter.Tests
-Atlas.Common.Editing.ForwardDeclarations.Tests
+Atlas.Common.Pascal.ForwardDeclarations.Tests
 Atlas.Common.Semantics.OwnedFields.Tests
 Atlas.Common.Editing.FreeFields.Tests
 Atlas.Common.Editing.GenericLists.Parts.Tests

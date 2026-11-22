@@ -40,7 +40,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesGroups,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.GitUser,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.CommandSource,

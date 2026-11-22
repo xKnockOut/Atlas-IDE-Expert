@@ -14,7 +14,7 @@
 //     einer Auswahl bis zu deren Ende; steht dort schon "X.Free;", wandert es
 //     ins finally. Einrückung nach dem Formatstil (#43).
 //   - uses-Aktionen (#284): fehlende Unit ergänzen, ungenutzte entfernen,
-//     ins implementation verschieben (Logik in Editing.UsesActions)
+//     ins implementation verschieben (Logik in Semantics.UsesActions)
 //   - Zuweisungen umkehren (#313, Logik in Editing.AssignmentSwap)
 //   - "Als String-Literal" und "Als Klartext kopieren" (#312, Logik in Editing.StringLiterals)
 
@@ -75,7 +75,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   System.Math,
   System.StrUtils,
   System.RegularExpressions,
