@@ -215,6 +215,11 @@ const
   // Bereichsprüfung (-Cr) sonst einen Fehler beim Auswerten der Konstanten.
   cFreedPatterns64: array[0..2] of UInt64 = (UInt64($8080808080808080), UInt64($FEEEFEEEFEEEFEEE),
     UInt64($DDDDDDDDDDDDDDDD));
+  cHexRadix = 16;
+  cHexDigits32 = 8;
+  cHexDigits64 = 16;
+  cPointerSize64 = 8;
+  c0xPrefix = '0x';
 
 function LowerTrim(const AText: string): string;
 begin
@@ -237,20 +242,20 @@ begin
   begin
     Inc(APos);
   end;
-  while (APos <= Length(AText)) and (mDigits < 16) do
+  while (APos <= Length(AText)) and (mDigits < cHexDigits64) do
   begin
     mCh := AText[APos];
     if CharInSet(mCh, ['0'..'9']) then
     begin
-      AValue := AValue * 16 + UInt64(Ord(mCh) - Ord('0'));
+      AValue := AValue * cHexRadix + UInt64(Ord(mCh) - Ord('0'));
     end
     else if CharInSet(mCh, ['a'..'f']) then
     begin
-      AValue := AValue * 16 + UInt64(Ord(mCh) - Ord('a') + 10);
+      AValue := AValue * cHexRadix + UInt64(Ord(mCh) - Ord('a') + 10);
     end
     else if CharInSet(mCh, ['A'..'F']) then
     begin
-      AValue := AValue * 16 + UInt64(Ord(mCh) - Ord('A') + 10);
+      AValue := AValue * cHexRadix + UInt64(Ord(mCh) - Ord('A') + 10);
     end
     else
     begin
@@ -356,11 +361,11 @@ begin
   end;
   if mText[1] = '$' then
   begin
-    Exit(ReadHex(mText, 1, AValue) and (Length(mText) <= 17));
+    Exit(ReadHex(mText, 1, AValue) and (Length(mText) <= cHexDigits64 + Length('$')));
   end;
-  if StartsText('0x', mText) then
+  if StartsText(c0xPrefix, mText) then
   begin
-    Exit(ReadHex(mText, 3, AValue) and (Length(mText) <= 18));
+    Exit(ReadHex(mText, Length(c0xPrefix) + 1, AValue) and (Length(mText) <= cHexDigits64 + Length(c0xPrefix)));
   end;
   Result := TryStrToInt64(mText, mSigned);
   if Result then
@@ -390,7 +395,7 @@ class function TAtlasAvValues.IsFreedPattern(AValue: UInt64; APointerSize: Integ
 var
   mPattern: UInt64;
 begin
-  if APointerSize = 8 then
+  if APointerSize = cPointerSize64 then
   begin
     for mPattern in cFreedPatterns64 do
     begin
@@ -422,7 +427,7 @@ begin
       Exit(True);
     end;
   end;
-  if APointerSize = 8 then
+  if APointerSize = cPointerSize64 then
   begin
     for mPattern in cFreedPatterns64 do
     begin
@@ -439,11 +444,11 @@ class function TAtlasAvValues.HexText(AValue: UInt64): string;
 begin
   if AValue <= $FFFFFFFF then
   begin
-    Result := '$' + IntToHex(AValue, 8);
+    Result := '$' + IntToHex(AValue, cHexDigits32);
   end
   else
   begin
-    Result := '$' + IntToHex(AValue, 16);
+    Result := '$' + IntToHex(AValue, cHexDigits64);
   end;
 end;
 

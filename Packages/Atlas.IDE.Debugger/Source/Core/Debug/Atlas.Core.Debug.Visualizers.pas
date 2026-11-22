@@ -133,6 +133,10 @@ const
   cEmptyHash = -1;
   // Höchstens so viele Plätze eines Dictionaries durchsuchen, bis die ersten Paare gefunden sind.
   cMaxDictionarySlots = 256;
+  // Höchstlängen im Ersatztext: Name eines Elements, Wert eines Elements ohne Namen, Feldwert einer Datenmenge.
+  cItemNameLength = 40;
+  cItemValueLength = 24;
+  cFieldValueLength = 30;
 
 type
   /// <summary>Ein Wert, für den es mehrere Ausdrücke gibt; %0:s ist der Ausdruck, %1:d der Index.</summary>
@@ -453,7 +457,7 @@ begin
   Result := Trim(AValue);
   if not TAtlasVisualizerFormat.IsStructured(Result) then
   begin
-    Exit(TAtlasVisualizerFormat.Shorten(Result, 40));
+    Exit(TAtlasVisualizerFormat.Shorten(Result, cItemNameLength));
   end;
   for mName in AEvaluator.Options.NameFields do
   begin
@@ -461,14 +465,14 @@ begin
       Probe('%0:s.' + mName, TAtlasVisualizerEvaluation.Properties)], 0, mText) and
       not TAtlasVisualizerFormat.IsStructured(mText) then
     begin
-      Exit(TAtlasVisualizerFormat.Shorten(TAtlasVisualizerFormat.Unquote(mText), 40));
+      Exit(TAtlasVisualizerFormat.Shorten(TAtlasVisualizerFormat.Unquote(mText), cItemNameLength));
     end;
   end;
   if AEvaluator.FirstOf(AItemExpression, [Probe('%0:s.ToString', TAtlasVisualizerEvaluation.Calls)], 0, mText) then
   begin
-    Exit(TAtlasVisualizerFormat.Shorten(TAtlasVisualizerFormat.Unquote(mText), 40));
+    Exit(TAtlasVisualizerFormat.Shorten(TAtlasVisualizerFormat.Unquote(mText), cItemNameLength));
   end;
-  Result := TAtlasVisualizerFormat.Shorten(Result, 24);
+  Result := TAtlasVisualizerFormat.Shorten(Result, cItemValueLength);
 end;
 
 function ListItems(var AEvaluator: TEvaluator; ACount: Int64; AMax: Integer): TArray<string>;
@@ -765,7 +769,7 @@ begin
   if SameText(ABase, 'TAlphaColor') then
   begin
     AText := TAtlasVisualizerFormat.AlphaColorText(mValue);
-    ARgb := Cardinal(mValue and $FFFFFF);
+    ARgb := Cardinal(mValue and TAtlasVisualizerFormat.cRgbMask);
     AHasRgb := True;
   end
   else
@@ -773,7 +777,7 @@ begin
     AText := TAtlasVisualizerFormat.ColorText(mValue);
     if mValue < 0 then
     begin
-      mValue := mValue + $100000000;
+      mValue := mValue + TAtlasVisualizerFormat.cColorRange;
     end;
     AHasRgb := TAtlasVisualizerFormat.ColorRgb(mValue, ARgb);
   end;
@@ -830,7 +834,8 @@ begin
   mItems := nil;
   for mIndex := 0 to High(mDataSet.Names) do
   begin
-    mItems := mItems + [mDataSet.Names[mIndex] + ' = ' + TAtlasVisualizerFormat.Shorten(mDataSet.Values[mIndex], 30)];
+    mItems := mItems + [mDataSet.Names[mIndex] + ' = ' +
+      TAtlasVisualizerFormat.Shorten(mDataSet.Values[mIndex], cFieldValueLength)];
   end;
   if Length(mItems) > 0 then
   begin

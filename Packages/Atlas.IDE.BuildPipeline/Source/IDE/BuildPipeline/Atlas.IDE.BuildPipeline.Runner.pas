@@ -108,6 +108,8 @@ uses
   Atlas.UI.BuildPipeline.Strings;
 
 const
+  // Takt, in dem der Lauf den Fortschritt bestätigt und auf die Meldungen wartet.
+  cTickMs = 250;
   /// <summary>Tätigkeit für die Hänger-Diagnose (Protokoll).</summary>
   cActivity = 'Build für KI-Assistent';
 
@@ -173,7 +175,7 @@ begin
   // Die Ereignisse halten den Wächter; Destroy meldet ihn ab und gibt ihn so frei (Regel 3).
   FEvents.Add(FWatcher);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := False;
 end;

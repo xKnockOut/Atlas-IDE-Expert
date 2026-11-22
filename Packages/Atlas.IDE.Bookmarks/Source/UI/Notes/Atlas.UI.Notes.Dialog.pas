@@ -65,6 +65,8 @@ uses
 
 const
   cGap = 8;
+  // Höhe der Knopfleiste unten, logische Pixel.
+  cBottomHeight = 44;
   cDialogWidth = 520;
   cDialogHeight = 300;
 
@@ -94,7 +96,7 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := ScaleValue(44);
+  mBottom.Height := ScaleValue(cBottomHeight);
   mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Speichern“; „Löschen“ links außen.
   FCancel := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogCancel),
