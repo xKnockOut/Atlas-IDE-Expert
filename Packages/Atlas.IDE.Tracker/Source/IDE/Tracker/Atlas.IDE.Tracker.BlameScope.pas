@@ -78,7 +78,7 @@ uses
   Atlas.UI.Tracker.IssueTip,
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.IssueLookups;

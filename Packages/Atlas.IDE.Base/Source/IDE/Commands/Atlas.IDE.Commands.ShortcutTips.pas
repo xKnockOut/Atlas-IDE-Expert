@@ -143,8 +143,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorWindows,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Windows,
   Atlas.IDE.Commands.KeyMap;
 
 /// <summary>Angehaltene Debug-Sitzung (Haltepunkt, Ausnahme).</summary>

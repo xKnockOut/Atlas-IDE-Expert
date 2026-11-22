@@ -39,7 +39,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.IDE.Foundation.EditorBarHost;
+  Atlas.ToolsApi.EditorBars.Host;
 
 type
   TAtlasIdeDesignerBar = class
@@ -91,8 +91,8 @@ uses
   Atlas.IDE.Designer.SearchItems,
   Atlas.IDE.Designer.ShowComponent,
   Atlas.IDE.Designer.TabOrder,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -476,7 +476,7 @@ var
 begin
   mBar := TAtlasDesignerBar.Create(nil);
   mHost := FHost;
-  mBar.ApplyColors(TAtlasIdeStyle.BarColors);
+  mBar.ApplyColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
   mBar.SetButtons(Buttons);
   mBar.OnDisabled :=
     procedure(ASender: TObject)
@@ -846,7 +846,7 @@ procedure TDesignerBarState.ApplyTheme;
 var
   mColors: TAtlasColors;
 begin
-  mColors := TAtlasIdeStyle.BarColors;
+  mColors := TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors);
   FHost.ForEach(
     procedure(ABar: TControl)
     begin

@@ -46,7 +46,7 @@ uses
   ToolsAPI,
   Atlas.UI.Diagnostics.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TTimingDock = class(TInterfacedObject, INTACustomDockableForm)

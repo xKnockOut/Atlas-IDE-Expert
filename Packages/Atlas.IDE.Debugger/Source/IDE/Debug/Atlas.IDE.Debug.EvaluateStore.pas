@@ -15,7 +15,7 @@
 interface
 
 uses
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Debug.DialogCompletion;
 
 type

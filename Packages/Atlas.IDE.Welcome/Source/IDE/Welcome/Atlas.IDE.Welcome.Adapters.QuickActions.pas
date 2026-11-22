@@ -158,7 +158,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Commands.ShortcutTips,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.IDE.Projects.Summaries;
 
 function Settings: TAtlasPluginSettings;

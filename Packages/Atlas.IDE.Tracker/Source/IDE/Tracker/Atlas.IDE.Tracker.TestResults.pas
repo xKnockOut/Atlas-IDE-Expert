@@ -144,7 +144,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Tracker.TestResults.Strings,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Projects.Summaries,
   Atlas.UI.Tracker.TestResults,
   Atlas.Core.Projects.Summary,

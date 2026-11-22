@@ -45,7 +45,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Search.Scopes,
   Atlas.Text.Lines,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer;
 
 /// <summary>Zeile ARow (0-basiert) oder '' außerhalb.</summary>
 function LineAt(const ALines: TArray<string>; ARow: Integer): string;

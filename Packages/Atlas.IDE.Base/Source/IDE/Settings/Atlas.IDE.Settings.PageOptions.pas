@@ -61,7 +61,7 @@ uses
   Atlas.UI.Settings.Page.EditorView,
   Atlas.UI.Settings.Page.TeamFile,
   Atlas.UI.Settings.Page.Transfer,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 /// <summary>Text der Antwort auf „Index neu aufbauen“.</summary>
 function RebuildText(AAnswer: TJSONValue): string;

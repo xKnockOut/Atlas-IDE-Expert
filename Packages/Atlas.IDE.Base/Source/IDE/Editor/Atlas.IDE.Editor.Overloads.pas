@@ -45,7 +45,7 @@ uses
   Atlas.Core.Completion.ServerPlaceholders,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit;
 

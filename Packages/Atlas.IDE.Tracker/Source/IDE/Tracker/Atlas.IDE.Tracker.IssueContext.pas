@@ -84,7 +84,7 @@ implementation
 uses
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.IDE.Tracker.IssueWindow;
 
 { TAtlasIdeIssueContext }

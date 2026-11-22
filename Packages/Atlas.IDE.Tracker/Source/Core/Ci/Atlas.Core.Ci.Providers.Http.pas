@@ -36,7 +36,7 @@ uses
   System.Net.HttpClient,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Diagnostics.BoundedStream;
 
 type

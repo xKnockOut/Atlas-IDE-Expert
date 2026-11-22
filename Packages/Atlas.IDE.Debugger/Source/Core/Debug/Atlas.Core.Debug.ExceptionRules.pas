@@ -141,7 +141,7 @@ uses
   System.Generics.Collections,
   Atlas.Text.Json,
   Atlas.Text.Lines,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Debug.OwnCode,
   Atlas.Core.Debug.RoutinePattern,
   System.RegularExpressionsCore;

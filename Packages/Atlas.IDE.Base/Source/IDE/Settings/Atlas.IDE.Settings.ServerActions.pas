@@ -31,7 +31,7 @@ uses
   Atlas.Plugin.Localization.Language,
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Settings.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   // Exit-Code des Servers bei einem Fehler des Werkzeugs und sein Text in der Meldung.

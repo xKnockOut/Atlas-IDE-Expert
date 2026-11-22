@@ -91,7 +91,7 @@ implementation
 uses
   Atlas.Text.Lines,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.Core.Notifications.MessageSink;
 
 /// <summary>Zeile und Spalte des Editors (1-basiert) als Position des Servers.</summary>

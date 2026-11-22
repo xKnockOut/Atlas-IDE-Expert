@@ -88,7 +88,7 @@ uses
   System.Diagnostics,
   Atlas.Core.Tracker.Templates,
   Atlas.Text.Json,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasTrackerQueryTestResult }
 

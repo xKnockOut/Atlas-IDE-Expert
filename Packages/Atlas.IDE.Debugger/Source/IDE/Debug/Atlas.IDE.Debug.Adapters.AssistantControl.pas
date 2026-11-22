@@ -84,7 +84,7 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Variables,
   Atlas.UI.Debug.Session.Strings,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 const
   cRunModes: array[TAtlasDebugControlStep] of TOTARunMode = (ormStmtStepInto, ormStmtStepOver, ormRunUntilReturn,

@@ -26,7 +26,7 @@ uses
   Atlas.Core.Editor.LensAsk,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Style.Color,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) im Hintergrund an den laufenden Server (RunServerCommandAsync des
@@ -110,9 +110,9 @@ uses
   Winapi.Windows,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.CodeView;
+  Atlas.ToolsApi.Editor.CodeView;
 
 { TAtlasLensPoll }
 

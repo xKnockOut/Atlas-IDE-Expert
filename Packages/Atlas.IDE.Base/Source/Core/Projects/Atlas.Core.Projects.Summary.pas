@@ -254,7 +254,7 @@ uses
   System.Classes,
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Projects.Summary.Json,
   Atlas.Text.Json,
   Atlas.Text.Arrays;

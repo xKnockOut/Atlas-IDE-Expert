@@ -48,7 +48,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.Core.Assistants.EditPlan,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Tests.EditorFilesFake;

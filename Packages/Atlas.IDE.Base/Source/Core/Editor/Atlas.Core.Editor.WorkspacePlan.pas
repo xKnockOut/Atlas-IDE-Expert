@@ -15,7 +15,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Editor.Contract;

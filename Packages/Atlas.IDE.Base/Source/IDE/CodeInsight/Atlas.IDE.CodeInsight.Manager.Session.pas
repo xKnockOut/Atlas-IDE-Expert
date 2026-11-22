@@ -16,8 +16,8 @@ uses
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Files.Contract,
-  Atlas.Core.Files.WatchedChanges,
+  Atlas.Plugin.Files.Contract,
+  Atlas.Plugin.Files.WatchedChanges,
   Atlas.IDE.CodeInsight.Manager.State;
 
 type
@@ -123,7 +123,7 @@ uses
   Atlas.Core.Lsp.IdeMembers,
   System.Diagnostics,
   Atlas.Plugin.Localization.Language,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 {$SCOPEDENUMS ON}
 

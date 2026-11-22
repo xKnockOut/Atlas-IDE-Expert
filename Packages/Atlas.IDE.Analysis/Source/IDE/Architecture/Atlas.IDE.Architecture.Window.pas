@@ -52,7 +52,7 @@ uses
   Atlas.Vcl.Images.Symbol,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TArchitectureDock = class(TInterfacedObject, INTACustomDockableForm)

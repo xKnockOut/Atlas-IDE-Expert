@@ -28,8 +28,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.Contract,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.Contract,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Settings.TeamFile,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,

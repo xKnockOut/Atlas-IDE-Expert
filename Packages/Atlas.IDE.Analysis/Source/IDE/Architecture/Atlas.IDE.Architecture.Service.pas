@@ -86,7 +86,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Architecture.Window,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   /// <summary>Große Projektgruppen brauchen beim ersten Mal einige Sekunden (Index, Fundstellen).</summary>

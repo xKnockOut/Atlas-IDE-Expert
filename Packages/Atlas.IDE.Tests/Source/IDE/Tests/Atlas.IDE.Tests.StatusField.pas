@@ -78,11 +78,11 @@ uses
   Atlas.Text.TestResults,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Projects,
   Atlas.UI.Tests.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 type
 {$SCOPEDENUMS ON}

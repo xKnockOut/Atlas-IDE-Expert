@@ -31,9 +31,9 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Rules.Table,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Navigation,

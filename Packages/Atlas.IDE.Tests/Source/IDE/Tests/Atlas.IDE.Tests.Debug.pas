@@ -108,18 +108,18 @@ uses
   Winapi.Windows,
   System.IOUtils,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.IDE.Tests.Projects,
-  Atlas.IDE.Foundation.Debugger,
+  Atlas.ToolsApi.Debugger.Services,
   Atlas.Text.Files;
 
 function ProjectName(const AFileName: string): string;

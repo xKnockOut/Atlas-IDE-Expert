@@ -73,7 +73,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.UI.Search.Bar,
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.ToolsApi.EditorBars.Host,
   Atlas.IDE.Search.Painter;
 
 type
@@ -145,9 +145,9 @@ uses
   Atlas.Core.Search.BarPlan,
   Atlas.Core.Search.Results,
   Atlas.Text.Lines,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.IDE.Search.MessageList,
   Atlas.IDE.Search.FileSearch,
   Atlas.IDE.Search.ReplaceWindow,
@@ -158,7 +158,7 @@ uses
   Atlas.IDE.Search.AcrossFiles,
   Atlas.IDE.Search.Stepping,
   Atlas.IDE.Search.Replacing,
-  Atlas.IDE.Foundation.EditorWindows;
+  Atlas.ToolsApi.Editor.Windows;
 
 const
   // Takt bei offener Leiste und Frist, in der ein Fokusverlust nach dem Klick als zurückgeholt gilt.

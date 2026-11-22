@@ -107,7 +107,7 @@ uses
   Atlas.IDE.Designer.Anchors,
   Atlas.IDE.Designer.DuplicateRow,
   Atlas.IDE.Designer.Surface,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Designer.Names;
 

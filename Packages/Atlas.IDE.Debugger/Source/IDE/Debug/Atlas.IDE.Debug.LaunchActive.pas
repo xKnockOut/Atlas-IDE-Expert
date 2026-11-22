@@ -29,8 +29,8 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Files.DataFile,
-  Atlas.IDE.Foundation.Files;
+  Atlas.Plugin.Files.DataFile,
+  Atlas.ToolsApi.Files.Service;
 
 const
   cActiveWhat = 'debug launch groups';

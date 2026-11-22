@@ -55,16 +55,16 @@ uses
   Atlas.UI.Results.Strings,
   Atlas.Vcl.Popup.Window,
   Atlas.UI.Editor.Peek,
-  Atlas.IDE.Foundation.KeyHook,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Keys.Hook,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Foundation.Caret,
+  Atlas.ToolsApi.Editor.Caret,
   Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 const
   cWatchMs = 200;

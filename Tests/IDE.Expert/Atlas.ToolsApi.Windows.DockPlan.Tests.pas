@@ -1,0 +1,126 @@
+﻿unit Atlas.ToolsApi.Windows.DockPlan.Tests;
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TAtlasDockPlanTests = class
+  public
+    [Test]
+    procedure CreatesWhenNoForm;
+    [Test]
+    procedure CreatesWhenFormGoneButFrameLeft;
+    [Test]
+    procedure RecreatesFormWithoutFrame;
+    [Test]
+    procedure RevealsLivingWindow;
+    [Test]
+    procedure UnavailableWithoutServices;
+    [Test]
+    procedure RevealsWithoutServicesWhenAlive;
+    [Test]
+    procedure FrameNotUsableWithoutForm;
+    [Test]
+    procedure ShownNeedsAllHosts;
+    [Test]
+    procedure DocksToDefaultOnlyOnce;
+    [Test]
+    procedure FormNameIsIdentifier;
+    [Test]
+    procedure FormNameEmptyWhenAlreadyNamed;
+    [Test]
+    procedure FormNameEmptyForInvalidIdentifier;
+  end;
+
+implementation
+
+uses
+  Atlas.ToolsApi.Windows.DockPlan;
+
+{ TAtlasDockPlanTests }
+
+procedure TAtlasDockPlanTests.CreatesWhenNoForm;
+begin
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.CreateForm, TAtlasDockPlan.ShowStep(True, False, False));
+end;
+
+procedure TAtlasDockPlanTests.CreatesWhenFormGoneButFrameLeft;
+begin
+  // Die IDE hat die Form freigegeben, der Frame-Zeiger ist veraltet: neu anlegen statt toten Frame benutzen.
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.CreateForm, TAtlasDockPlan.ShowStep(True, False, True));
+end;
+
+procedure TAtlasDockPlanTests.RecreatesFormWithoutFrame;
+begin
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.RecreateForm, TAtlasDockPlan.ShowStep(True, True, False));
+end;
+
+procedure TAtlasDockPlanTests.RevealsLivingWindow;
+begin
+  // Nach dem Schließen über das X lebt die Form noch (versteckt): nur wieder sichtbar machen.
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.RevealForm, TAtlasDockPlan.ShowStep(True, True, True));
+end;
+
+procedure TAtlasDockPlanTests.UnavailableWithoutServices;
+begin
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.Unavailable, TAtlasDockPlan.ShowStep(False, False, False));
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.Unavailable, TAtlasDockPlan.ShowStep(False, True, False));
+end;
+
+procedure TAtlasDockPlanTests.RevealsWithoutServicesWhenAlive;
+begin
+  Assert.AreEqual<TAtlasDockStep>(TAtlasDockStep.RevealForm, TAtlasDockPlan.ShowStep(False, True, True));
+end;
+
+procedure TAtlasDockPlanTests.FrameNotUsableWithoutForm;
+begin
+  Assert.IsFalse(TAtlasDockPlan.FrameUsable(False, True));
+  Assert.IsFalse(TAtlasDockPlan.FrameUsable(True, False));
+  Assert.IsTrue(TAtlasDockPlan.FrameUsable(True, True));
+end;
+
+procedure TAtlasDockPlanTests.ShownNeedsAllHosts;
+begin
+  Assert.IsTrue(TAtlasDockPlan.Shown(True, []));
+  Assert.IsTrue(TAtlasDockPlan.Shown(True, [True, True]));
+  // Angedockt in einem versteckten Dock-Fenster: Form.Visible allein täuscht.
+  Assert.IsFalse(TAtlasDockPlan.Shown(True, [True, False]));
+  Assert.IsFalse(TAtlasDockPlan.Shown(False, [True]));
+end;
+
+procedure TAtlasDockPlanTests.DocksToDefaultOnlyOnce;
+begin
+  // Erstes Anlegen, schwebend, Ziel angedockt: an den Vorgabeplatz.
+  Assert.IsTrue(TAtlasDockPlan.DockToDefault(True, True, False, True));
+  // Schon einmal platziert, vom Desktop angedockt, nur gezeigt oder ohne angedocktes Ziel: nichts tun.
+  Assert.IsFalse(TAtlasDockPlan.DockToDefault(True, True, True, True));
+  Assert.IsFalse(TAtlasDockPlan.DockToDefault(True, False, False, True));
+  Assert.IsFalse(TAtlasDockPlan.DockToDefault(False, True, False, True));
+  Assert.IsFalse(TAtlasDockPlan.DockToDefault(True, True, False, False));
+end;
+
+procedure TAtlasDockPlanTests.FormNameIsIdentifier;
+begin
+  // Die IDE vergibt OTADockForm_<N> nach Reihenfolge; der Desktop braucht einen festen Namen.
+  Assert.AreEqual('AtlasOutline', TAtlasDockPlan.FormName('AtlasOutline', 'OTADockForm_4'));
+end;
+
+procedure TAtlasDockPlanTests.FormNameEmptyWhenAlreadyNamed;
+begin
+  Assert.AreEqual('', TAtlasDockPlan.FormName('AtlasOutline', 'AtlasOutline'));
+end;
+
+procedure TAtlasDockPlanTests.FormNameEmptyForInvalidIdentifier;
+begin
+  Assert.AreEqual('', TAtlasDockPlan.FormName('', 'OTADockForm_1'));
+  Assert.AreEqual('', TAtlasDockPlan.FormName('Atlas.Outline', 'OTADockForm_1'));
+  Assert.AreEqual('', TAtlasDockPlan.FormName('1Atlas', 'OTADockForm_1'));
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasDockPlanTests);
+
+end.

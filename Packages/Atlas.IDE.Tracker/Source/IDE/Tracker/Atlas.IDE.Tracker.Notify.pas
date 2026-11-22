@@ -166,7 +166,7 @@ uses
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.Vcl.Popup.Window,
   Atlas.UI.Tracker.Notify,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Diagnostics.UserIdle;
 

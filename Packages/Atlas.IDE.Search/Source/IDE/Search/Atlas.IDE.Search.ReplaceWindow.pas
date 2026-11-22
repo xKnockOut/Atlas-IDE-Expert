@@ -49,7 +49,7 @@ uses
   ToolsAPI,
   Atlas.UI.Search.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TReplaceDock = class(TInterfacedObject, INTACustomDockableForm)

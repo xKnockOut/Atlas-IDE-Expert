@@ -149,12 +149,12 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.Surfaces,
   Atlas.IDE.Editor.WrapSelection,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 const
   // Fehlt in älteren Fassungen von Winapi.Windows.

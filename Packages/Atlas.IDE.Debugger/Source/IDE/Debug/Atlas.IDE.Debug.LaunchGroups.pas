@@ -110,7 +110,7 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
   Atlas.Core.Debug.Reattach,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.IDE.Foundation.TeamFile,
@@ -119,7 +119,7 @@ uses
   Atlas.UI.Debug.LaunchGroupsDialog,
   Atlas.UI.Debug.Session.Strings,
   Atlas.Core.Foundation.Calls,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 const
   cStatusId = 'atlas.debug.launchGroups';

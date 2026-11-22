@@ -52,7 +52,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasIdeDebugValueRequest }
 

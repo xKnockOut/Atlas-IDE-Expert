@@ -131,7 +131,7 @@ uses
   System.SyncObjs,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Detection,

@@ -41,7 +41,7 @@ uses
   System.Classes,
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Files.TextFile;
+  Atlas.Plugin.Files.TextFile;
 
 const
   /// <summary>So lange gelten die Dateien der Gruppe ohne neue Abfrage.</summary>

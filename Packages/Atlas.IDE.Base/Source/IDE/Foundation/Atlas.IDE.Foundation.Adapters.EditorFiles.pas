@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 type
   TAtlasIdeEditorFiles = class(TInterfacedObject, IAtlasEditorFiles)
@@ -22,8 +22,8 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service;
 
 { TAtlasIdeEditorFiles }
 

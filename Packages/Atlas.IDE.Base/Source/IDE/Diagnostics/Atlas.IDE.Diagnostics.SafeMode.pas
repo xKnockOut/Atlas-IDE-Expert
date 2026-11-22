@@ -111,7 +111,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.Edition,
   Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 const
   // Winapi.Windows kennt die Konstante nicht (ab Windows Vista).

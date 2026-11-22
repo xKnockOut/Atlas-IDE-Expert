@@ -95,7 +95,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Summary.Json,
   Atlas.Core.Projects.Summary.Sections,

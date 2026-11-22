@@ -11,7 +11,7 @@ uses
   System.SysUtils,
   Vcl.Controls,
   Atlas.UI.Assistants.DebugBar,
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.ToolsApi.EditorBars.Host,
   Atlas.IDE.Assistants.DebugInbox;
 
 type
@@ -39,7 +39,8 @@ implementation
 uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Style.Palette,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.IDE.Foundation.Settings,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.UI.Assistants.Strings;
 
@@ -84,7 +85,7 @@ var
 begin
   mBar := TAtlasAssistantDebugBar.Create(nil);
   mHost := FHost;
-  mBar.SetColors(TAtlasIdeStyle.BarColors);
+  mBar.SetColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
   mBar.SetView(ViewOf(FInbox()));
   mBar.OnButton :=
     procedure(AButton: TAtlasAssistantDebugButton)
@@ -190,7 +191,7 @@ procedure TAtlasIdeAssistantDebugBar.ApplyTheme;
 var
   mColors: TAtlasColors;
 begin
-  mColors := TAtlasIdeStyle.BarColors;
+  mColors := TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors);
   FHost.ForEach(
     procedure(ABar: TControl)
     begin

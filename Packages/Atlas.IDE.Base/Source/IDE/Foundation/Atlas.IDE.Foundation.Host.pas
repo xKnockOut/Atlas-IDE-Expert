@@ -31,7 +31,7 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) im Hintergrund an den laufenden Server; ADone bekommt das

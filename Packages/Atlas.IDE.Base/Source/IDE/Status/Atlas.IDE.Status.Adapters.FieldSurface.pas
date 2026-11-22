@@ -171,12 +171,12 @@ uses
   ToolsAPI,
   Atlas.Core.Status.FieldPlan,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.Plugin.Style.Symbol,
   Atlas.Plugin.Style.Signal,
   Atlas.Core.Status.Signal,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.Symbol;
+  Atlas.ToolsApi.Theme.Symbol;
 
 const
   cWM_ATLAS_STATUS = WM_USER + 591;

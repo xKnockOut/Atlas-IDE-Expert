@@ -24,7 +24,7 @@ interface
 uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.MutationShadow,
   Atlas.Core.Tests.Contract,

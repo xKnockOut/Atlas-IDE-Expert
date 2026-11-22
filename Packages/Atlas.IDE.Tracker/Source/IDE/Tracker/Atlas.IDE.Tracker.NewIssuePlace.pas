@@ -38,7 +38,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Core.Editor.MethodToggle,
   Atlas.UI.Tracker.NewIssue.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   System.Math;
 

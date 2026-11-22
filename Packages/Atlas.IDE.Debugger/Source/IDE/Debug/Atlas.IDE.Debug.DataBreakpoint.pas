@@ -102,12 +102,12 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Core.Debug.InstanceBreakpoint,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Debug.DataBreakpoints.Strings,
-  Atlas.IDE.Foundation.Debugger,
+  Atlas.ToolsApi.Debugger.Services,
   Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeDataBreakpoint.TListener }

@@ -150,8 +150,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.StepFilterWindow;
 

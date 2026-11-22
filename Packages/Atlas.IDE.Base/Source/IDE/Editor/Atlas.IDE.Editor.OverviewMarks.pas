@@ -34,7 +34,7 @@ uses
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Contracts.LineChanges,
-  Atlas.IDE.Foundation.Debugger,
+  Atlas.ToolsApi.Debugger.Services,
   Atlas.Core.Editor.Contract;
 
 const

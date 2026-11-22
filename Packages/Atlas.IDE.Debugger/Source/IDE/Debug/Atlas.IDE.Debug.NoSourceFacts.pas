@@ -45,7 +45,7 @@ uses
   System.IOUtils,
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Projects.Contract,
   Atlas.Core.Projects.PathCheck,
   Atlas.Core.Debug.Unavailable,

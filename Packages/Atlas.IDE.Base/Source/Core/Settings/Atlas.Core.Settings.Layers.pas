@@ -89,7 +89,7 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Plugin.Settings.JsonText;
 
 { TAtlasSettingsModel }
 

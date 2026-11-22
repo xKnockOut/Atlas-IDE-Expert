@@ -17,7 +17,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 type
   TAtlasUsage = class

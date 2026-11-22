@@ -96,15 +96,15 @@ implementation
 uses
   System.IOUtils,
   Atlas.Core.Debug.CallStack,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.GutterMarks,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.UI.Debug.BreakpointRules,
   Atlas.UI.Debug.Breakpoints.Strings,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 { TAtlasIdeBreakpointRules.TListener }
 

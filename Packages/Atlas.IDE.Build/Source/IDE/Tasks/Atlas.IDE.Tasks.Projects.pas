@@ -67,7 +67,7 @@ implementation
 uses
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Tasks.Runs,
   Atlas.IDE.Problems.Controller,

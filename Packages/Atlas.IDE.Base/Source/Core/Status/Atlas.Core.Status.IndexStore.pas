@@ -80,7 +80,7 @@ uses
   System.IOUtils,
   System.DateUtils,
   System.JSON,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Text.Json,
   Atlas.Plugin.Diagnostics.Guard;
 
