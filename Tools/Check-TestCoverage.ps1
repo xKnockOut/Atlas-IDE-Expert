@@ -91,7 +91,7 @@ $Exempt = @{
     'Monitor.ReportPage'                          = 'VCL-Reiter Bericht mit eingebettetem Browser (WebView2), ohne eigene Logik'
     'Atlas.Windows.Monitor.System'                      = 'Prozesse, Registry (Autostart) und ShellExecute des Systems'
     'Atlas.Windows.Monitor.ChildProcess'                = 'Kindprozess mit CreateProcess und Job-Objekt des Systems'
-    'Shell.Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
+    'Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
     'Atlas.Windows.Profiling.Adapters.Sampler'          = 'hält Threads eines fremden Prozesses an (SuspendThread, StackWalk64); Zusammenfassen und Auflösen testet Atlas.Common.Profiling.Sampling'
 }
 

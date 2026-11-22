@@ -36,7 +36,7 @@
     "architecture-role-import": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "hostedFeatures": ["Replay", "Monitor"],
+      "hostedFeatures": ["Replay", "Monitor", "Update"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
         "Atlas.IDE"],
       "allow": [
@@ -62,7 +62,7 @@
     "architecture-contract-content": {
       "severity": "warning",
       "exclude": ["Tests/**"],
-      "hostedFeatures": ["Replay", "Monitor"],
+      "hostedFeatures": ["Replay", "Monitor", "Update"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
         "Atlas.IDE"],
       "allow": ["Atlas.Common.Dfm.Contract.TDfm*"]

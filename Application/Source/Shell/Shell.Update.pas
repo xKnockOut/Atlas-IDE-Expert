@@ -10,7 +10,7 @@
 //   HKEY_CURRENT_USER und träfe die Known Packages des Benutzers nicht. Das
 //   Ergebnis ist dann elevation, und das Plugin rät zur Installation unter
 //   %LOCALAPPDATA%\Programs\Atlas.
-// - install: Erstinstallation aus dem entpackten Paket (Shell.Update.Install).
+// - install: Erstinstallation aus dem entpackten Paket (Update.Install).
 // Die Adapter setzt Shell.Update.System zusammen.
 
 interface
@@ -34,7 +34,7 @@ uses
   Atlas.Common.Updates.Apply,
   Core.Bootstrap,
   Shell.Update.System,
-  Shell.Update.Install;
+  Update.Install;
 
 type
 {$SCOPEDENUMS ON}
@@ -54,6 +54,12 @@ const
     (De: 'Das Update ist nicht vorbereitet.'; En: 'The update has not been prepared.'),
     (De: 'In %s darf AtlasUpdate nicht schreiben.'; En: 'AtlasUpdate may not write to %s.'),
     (De: 'Eingabetaste schließt das Fenster.'; En: 'Press Enter to close this window.'));
+
+/// <summary>Update-System mit den Windows-Adaptern (für TUpdateInstall.Run).</summary>
+function NewUpdateSystem(const ALogFile: string): TUpdateSystem;
+begin
+  Result := TShellUpdateSystem.NewSystem(ALogFile);
+end;
 
 function CommandArgs: TArray<string>;
 var
@@ -140,7 +146,7 @@ begin
   if Result <> 0 then
   begin
     // Die Konsole schließt sonst sofort, und niemand liest den Grund.
-    TShellUpdateSystem.Say(cTexts[TShellUpdateText.PressEnter].Text);
+    TUpdateInstall.Say(cTexts[TShellUpdateText.PressEnter].Text);
     Readln;
   end;
 end;
@@ -165,11 +171,11 @@ begin
   end
   else if SameText(mArgs.Command, 'install') or (mArgs.Command = '') then
   begin
-    Result := TShellUpdateInstall.Run(mArgs);
+    Result := TUpdateInstall.Run(mArgs, NewUpdateSystem);
   end
   else
   begin
-    TShellUpdateSystem.Say(cTexts[TShellUpdateText.Usage].Text);
+    TUpdateInstall.Say(cTexts[TShellUpdateText.Usage].Text);
     Result := 2;
   end;
 end;
