@@ -73,7 +73,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.InlineCallees,
@@ -462,7 +462,7 @@ begin
   end;
   mMissing := String.Join(', ', mMissings);
   mFixes := nil;
-  if TUsesClauses.AddUnit(FContext.Tree.Tokens, AOffset, mMissing, FLineBreak, mEdit) then
+  if TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, AOffset, mMissing, FLineBreak, mEdit) then
   begin
     mFixes := [TRuleFix.Create(cTexts[TInliningText.AddUses].Fmt([mMissing]), [mEdit], True)];
   end;

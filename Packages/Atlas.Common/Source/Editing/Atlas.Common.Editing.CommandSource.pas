@@ -115,7 +115,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
@@ -715,7 +715,7 @@ begin
   for mIndex := 0 to High(AUnits) do
   begin
     if (AUnits[mIndex] <> '') and not TPascalUses.IsUsed(mUsed, AUnits[mIndex], AContext.Namespaces) and
-      TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnits[mIndex], ASource.LineBreak, mEdit) then
+      TPascalUsesEdits.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnits[mIndex], ASource.LineBreak, mEdit) then
     begin
       // Alle Units landen an derselben Stelle: Texte zu einem Edit zusammenfassen.
       if not mFound then

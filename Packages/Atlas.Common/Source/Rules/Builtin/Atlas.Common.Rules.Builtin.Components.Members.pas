@@ -38,7 +38,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
@@ -695,7 +695,7 @@ begin
   mEdits := [TRuleEdit.Create(TTextRange.Create(mPosition, mPosition), StringOfChar(' ', AHeader.StartPos.Character) +
     'function GetHashCode: Integer; override;' + FModel.LineBreak)];
   if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FContext.Tree.Tokens), 'System.Hash', FContext.Namespaces) and
-    TUsesClauses.AddUnit(FContext.Tree.Tokens, mEquals_.Decl.StartOffset, 'System.Hash', FModel.LineBreak,
+    TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, mEquals_.Decl.StartOffset, 'System.Hash', FModel.LineBreak,
     mUsesEdit) then
   begin
     if mUsesEdit.Range.StartPos.Line < AHeader.StartPos.Line then

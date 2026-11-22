@@ -81,7 +81,7 @@ uses
   Atlas.Common.Projects.Paths,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MoveClass,
@@ -535,7 +535,7 @@ begin
     // Fehlende uses der Ziel-Unit in einem Schritt (eine Einfügung), dann das Interface.
     mTargetUses := MissingUses(mTargetTree, FNeeded);
     mEdits := [mEdit];
-    if (mTargetUses <> nil) and TUsesClauses.AddUnit(mTargetTree.Tokens, 0, string.Join(', ', mTargetUses),
+    if (mTargetUses <> nil) and TPascalUsesEdits.AddUnit(mTargetTree.Tokens, 0, string.Join(', ', mTargetUses),
       TTextLines.LineBreakOf(mTargetText), mEdit) then
     begin
       mEdits := mEdits + [mEdit];
@@ -561,7 +561,7 @@ begin
   end;
   // Die Unit der Klasse bindet die Ziel-Unit ein (im Abschnitt der Klasse).
   if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FTree.Tokens), FUnitName, nil) and
-    TUsesClauses.AddUnit(FTree.Tokens, FPlan.ClassOffset, FUnitName, FLineBreak, mEdit) then
+    TPascalUsesEdits.AddUnit(FTree.Tokens, FPlan.ClassOffset, FUnitName, FLineBreak, mEdit) then
   begin
     FClassEdits := FClassEdits + [mEdit];
   end;

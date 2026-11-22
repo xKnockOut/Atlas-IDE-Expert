@@ -102,8 +102,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Editing.StatementText,
   Atlas.Common.Editing.IfCase,
   Atlas.Common.Semantics.NameResolver,
@@ -1217,7 +1216,7 @@ begin
   end;
   mText := mText + FLineBreak + mIndent + 'end';
   mEdits := [TRuleEdit.Create(NodeRange(AHead), mText)];
-  if TUsesClauses.AddMissingUnit(FTokens, AHead.StartOffset, 'System.StrUtils', FContext.Namespaces,
+  if TPascalUsesEdits.AddMissingUnit(FTokens, AHead.StartOffset, 'System.StrUtils', FContext.Namespaces,
     TTextLines.LineBreakOf(FContext.Text), mExtra) then
   begin
     mEdits := mEdits + [mExtra];

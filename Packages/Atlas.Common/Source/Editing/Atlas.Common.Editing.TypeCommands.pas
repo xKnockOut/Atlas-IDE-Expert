@@ -56,7 +56,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Localization.Texts,
@@ -619,7 +619,7 @@ var
   mUsesEdit: TTextEdit;
 begin
   if not TPascalUses.IsUsed(TPascalUses.UsedUnits(ASource.Tree.Tokens), AUnitName, AContext.Namespaces) and
-    TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnitName, ASource.LineBreak, mUsesEdit) then
+    TPascalUsesEdits.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnitName, ASource.LineBreak, mUsesEdit) then
   begin
     AEdits := AEdits + [mUsesEdit];
   end;
