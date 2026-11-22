@@ -14,10 +14,6 @@ type
   public
     /// <summary>Alle Adapter; ALogFile '' = nur Konsole.</summary>
     class function NewSystem(const ALogFile: string): TUpdateSystem; static;
-    /// <summary>Text auf die Konsole (stderr) mit Zeilenende.</summary>
-    class procedure Say(const AText: string); static;
-    /// <summary>%LOCALAPPDATA%\Atlas\Updates.</summary>
-    class function UpdatesRoot: string; static;
   end;
 
 implementation
@@ -32,26 +28,17 @@ uses
   Atlas.Windows.Updates.Adapters.Trust,
   Atlas.Windows.Updates.Adapters.Network,
   Atlas.Windows.Updates.Adapters.Archive,
-  Atlas.Windows.Updates.Adapters.Builder;
+  Atlas.Windows.Updates.Adapters.Builder,
+  Update.Install;
 
 { TShellUpdateSystem }
-
-class procedure TShellUpdateSystem.Say(const AText: string);
-begin
-  Writeln(ErrOutput, AText);
-end;
-
-class function TShellUpdateSystem.UpdatesRoot: string;
-begin
-  Result := IncludeTrailingPathDelimiter(GetEnvironmentVariable('LOCALAPPDATA')) + 'Atlas\Updates';
-end;
 
 function NewLog(const AFiles: IUpdateFiles; const ALogFile: string): TUpdateLog;
 begin
   Result :=
     procedure(const AText: string)
     begin
-      TShellUpdateSystem.Say(AText);
+      TUpdateInstall.Say(AText);
       if ALogFile <> '' then
       begin
         AFiles.AppendText(ALogFile, DateToISO8601(Now, False) + ' ' + AText + #13#10);

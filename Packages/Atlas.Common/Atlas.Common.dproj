@@ -169,6 +169,8 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Service.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Contract.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Api.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Derived.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.TypedScope.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.WarnSwitches.pas"/>
@@ -368,7 +370,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionType.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodOrder.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeComments.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TypeComments.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassBodies.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodMatching.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.BodySpacing.pas"/>
@@ -412,7 +414,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignFields.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExpressionText.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.StatementText.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.StatementText.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.IfCase.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Conditions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.BoundaryCases.pas"/>
@@ -519,7 +521,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocComments.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MemberOrder.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ProjectCommands.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SqlText.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.SqlText.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DataFieldNames.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GuardFree.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DatabaseCommands.pas"/>

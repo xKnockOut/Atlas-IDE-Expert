@@ -52,7 +52,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.TypeComments;
+  Atlas.Common.Pascal.TypeComments;
 
 type
   {$SCOPEDENUMS ON}

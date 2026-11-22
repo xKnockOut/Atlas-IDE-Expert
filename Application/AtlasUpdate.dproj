@@ -65,7 +65,7 @@
         <DCCReference Include="Source\Core\Core.Bootstrap.pas"/>
         <DCCReference Include="Source\Shell\Shell.Update.pas"/>
         <DCCReference Include="Source\Shell\Shell.Update.System.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Update.Install.pas"/>
+        <DCCReference Include="Source\Features\Update\Update.Install.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

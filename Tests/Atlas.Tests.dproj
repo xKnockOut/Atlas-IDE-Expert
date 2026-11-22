@@ -176,7 +176,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodMatching.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeComments.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TypeComments.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassBodies.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.BodySpacing.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MethodOrder.Tests.pas"/>
@@ -258,7 +258,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Parts.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StringLiterals.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExpressionText.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.StatementText.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StatementText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.IfCase.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Conditions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.BoundaryCases.Tests.pas"/>
@@ -696,7 +696,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocComments.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MemberOrder.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ProjectCommands.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.SqlText.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.SqlText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DataFieldNames.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.GuardFree.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DatabaseCommands.Tests.pas"/>
@@ -2619,8 +2619,10 @@
         <DCCReference Include="Application\Shell\Shell.Composition.Platform.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Core\Core.CrashCases.pas"/>
         <DCCReference Include="Application\Core\Core.CrashCases.Tests.pas"/>
-        <DCCReference Include="..\Application\Source\Shell\Shell.Replay.pas"/>
-        <DCCReference Include="Application\Shell\Shell.Replay.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Features\Replay\Replay.Player.pas"/>
+        <DCCReference Include="..\Application\Source\Features\Replay\Replay.Contract.pas"/>
+        <DCCReference Include="..\Application\Source\Features\Replay\Replay.Providers.Transport.pas"/>
+        <DCCReference Include="Application\Features\Replay\Replay.Player.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Compile.pas"/>
         <DCCReference Include="Application\Shell\Shell.Composition.Compile.Tests.pas"/>
@@ -2684,6 +2686,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CoreWiring.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Rules.IdeTypes.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Rules.IdeTypes.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.InheritanceDepths.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.InheritanceDepths.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ClientStart.pas"/>

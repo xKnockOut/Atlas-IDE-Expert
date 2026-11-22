@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.SqlText;
+﻿unit Atlas.Common.Dfm.SqlText;
 
 // SQL-Text für die Datenbank-Schnellbefehle (#302), ohne Befehlsbezug:
 // Parameter (:Name) finden, lange Abfragen auf Zeilen verteilen, den SQL-Text

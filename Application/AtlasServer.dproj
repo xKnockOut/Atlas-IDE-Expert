@@ -122,6 +122,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.ProtocolWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CoreWiring.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Rules.IdeTypes.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Lsp.InheritanceDepths.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.ClientStart.pas"/>
@@ -216,7 +217,9 @@
         <DCCReference Include="Source\Shell\Shell.Diagnostics.pas"/>
         <DCCReference Include="Source\Core\Core.Bootstrap.pas"/>
         <DCCReference Include="Source\Core\Core.CrashCases.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Replay.pas"/>
+        <DCCReference Include="Source\Features\Replay\Replay.Player.pas"/>
+        <DCCReference Include="Source\Features\Replay\Replay.Contract.pas"/>
+        <DCCReference Include="Source\Features\Replay\Replay.Providers.Transport.pas"/>
         <DCCReference Include="Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Source\Core\Core.Commands.Build.pas"/>
         <DCCReference Include="Source\Core\Core.Commands.Index.pas"/>

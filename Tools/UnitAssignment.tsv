@@ -496,6 +496,7 @@ Atlas.IDE.Base	Atlas.IDE.Build.LastMessages	IDE/Build/Atlas.IDE.Build.LastMessag
 Atlas.IDE.Base	Atlas.IDE.Build.MessageView	IDE/Build/Atlas.IDE.Build.MessageView.pas	Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern
 Atlas.IDE.Base	Atlas.IDE.Build.Notifier	IDE/Build/Atlas.IDE.Build.Notifier.pas	Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern
 Atlas.IDE.Base	Atlas.IDE.Build.Target	IDE/Build/Atlas.IDE.Build.Target.pas	Build-Auswahl für den Server; Probleme und Projekt-Einstellungen (Base), #1455
+Atlas.IDE.Base	Atlas.IDE.CodeInsight.Adapters.BuildNotifications	IDE/CodeInsight/Atlas.IDE.CodeInsight.Adapters.BuildNotifications.pas	Bewertung eines Builds an die Benachrichtigungszentrale (IAtlasBuildVerdictListener)
 Atlas.IDE.Base	Atlas.IDE.CodeInsight.Composition	IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.pas	Ordner `IDE/CodeInsight`
 Atlas.IDE.Base	Atlas.IDE.CodeInsight.Composition.Appearance	IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Appearance.pas	Ordner `IDE/CodeInsight`
 Atlas.IDE.Base	Atlas.IDE.CodeInsight.Composition.Background	IDE/CodeInsight/Atlas.IDE.CodeInsight.Composition.Background.pas	Ordner `IDE/CodeInsight`

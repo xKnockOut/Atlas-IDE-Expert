@@ -24,7 +24,7 @@ uses
   Atlas.Common.Monitor.Settings,
   Atlas.Windows.Monitor.System,
   Core.Bootstrap,
-  Shell.Monitor.MainForm;
+  Monitor.MainForm;
 
 const
   cMutexName = 'Local\AtlasMonitor';
