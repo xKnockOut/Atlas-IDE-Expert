@@ -36,7 +36,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts;
 
@@ -123,7 +123,7 @@ begin
     Exit;
   end;
   mMonitor := MonitorFor(mUsed);
-  if TUsesClauses.AddUnit(AContext.Tree.Tokens, TLineTable.Build(AContext.Text).OffsetAt(mFramework.Range.StartPos),
+  if TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, TLineTable.Build(AContext.Text).OffsetAt(mFramework.Range.StartPos),
     mMonitor, TTextLines.LineBreakOf(AContext.Text), mEdit) then
   begin
     AReport.Add(mFramework.Range, cTexts[TLeakMonitorText.NoMonitor].Fmt([mMonitor]), TRuleConfidence.High,

@@ -121,7 +121,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Constants,
@@ -1445,7 +1445,7 @@ begin
     [FScope.Text(mSelector), string.Join(', ', mLiterals)]))] + mEdits;
   if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FTokens), 'System.StrUtils', FContext.Namespaces) then
   begin
-    if not TUsesClauses.AddUnit(FTokens, ACase.StartOffset, 'System.StrUtils', TTextLines.LineBreakOf(FContext.Text),
+    if not TPascalUsesEdits.AddUnit(FTokens, ACase.StartOffset, 'System.StrUtils', TTextLines.LineBreakOf(FContext.Text),
       mUsesEdit) then
     begin
       Exit;

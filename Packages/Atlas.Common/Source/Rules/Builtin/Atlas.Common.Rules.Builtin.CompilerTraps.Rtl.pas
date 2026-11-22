@@ -62,7 +62,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Rules.TypedScope,
@@ -308,7 +308,7 @@ var
   mEdit: TTextEdit;
 begin
   Result := nil;
-  if TUsesClauses.AddUnit(AContext.Tree.Tokens, AContext.Tree.Tokens[AIndex].Offset, cWindowsUnits[0],
+  if TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, AContext.Tree.Tokens[AIndex].Offset, cWindowsUnits[0],
     TTextLines.LineBreakOf(AContext.Text), mEdit) then
   begin
     Result := [TRuleFix.Create(cTexts[TRtlTrapText.UsesFix].Text, [mEdit], False)];

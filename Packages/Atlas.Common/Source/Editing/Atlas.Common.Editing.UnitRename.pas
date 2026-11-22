@@ -34,7 +34,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Names;
@@ -158,7 +158,7 @@ begin
   begin
     mOptions := Default(TUsesRewrite);
     mOptions.Drop := [AOldName];
-    if not TUsesClauses.Rewrite(ATokens, AText, mOptions, TTextLines.LineBreakOf(AText), Result) then
+    if not TPascalUsesEdits.Rewrite(ATokens, AText, mOptions, TTextLines.LineBreakOf(AText), Result) then
     begin
       Result := nil;
     end;

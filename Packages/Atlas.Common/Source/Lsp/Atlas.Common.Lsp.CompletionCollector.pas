@@ -178,7 +178,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.NameIndex,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
@@ -464,7 +464,7 @@ begin
   begin
     if not TPascalUses.IsUsed(ACollector.FUsed, mUnitName, ACollector.FRequest.Resolver.Namespaces) and
       not TPascalUses.IsUsed(ACollector.FUsed, mUnitName, ['System']) and
-      TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, mUnitName, #13#10, mEdit) then
+      TPascalUsesEdits.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, mUnitName, #13#10, mEdit) then
     begin
       AItem.AdditionalEdits := AItem.AdditionalEdits + [mEdit];
     end;
@@ -1010,7 +1010,7 @@ begin
         Continue;
       end;
       // Fest #13#10 wie bisher (eigener Befund: uses-Eintrag in LF-Dateien, siehe CHANGELOG).
-      if not TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, mUnitInfo.UnitName,
+      if not TPascalUsesEdits.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, mUnitInfo.UnitName,
         #13#10, mEdit) then
       begin
         Exit;
@@ -1121,7 +1121,7 @@ begin
     Exit(ACollector.Add(AType.Name, AType.UnitName, cKindClass, Default(TResolvedSymbol)));
   end;
   // Fest #13#10 wie bei AddImports.
-  Result := TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, AType.UnitName,
+  Result := TPascalUsesEdits.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, AType.UnitName,
     #13#10, mEdit) and ACollector.Add(AType.Name, AType.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
     cKindClass, cPenaltyLibraryImport, Default(TResolvedSymbol), [mEdit]);
 end;
@@ -1277,7 +1277,7 @@ begin
   end
   else if (AMode = TCompletionSameNames.cInsertAdd) or (AMode = TCompletionSameNames.cInsertPrefixAdd) then
   begin
-    Result := TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset,
+    Result := TPascalUsesEdits.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset,
       AVariant.UnitInfo.UnitName, ACollector.FRequest.LineBreak, mEdit);
     if Result then
     begin
@@ -1656,7 +1656,7 @@ begin
       begin
         Continue;
       end;
-      if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, mUnitInfo.UnitName, #13#10, mEdit) then
+      if not TPascalUsesEdits.AddUnit(FRequest.Tree.Tokens, FContext.Offset, mUnitInfo.UnitName, #13#10, mEdit) then
       begin
         Exit;
       end;

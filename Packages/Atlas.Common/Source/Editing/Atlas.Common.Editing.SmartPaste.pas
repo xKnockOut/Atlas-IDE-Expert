@@ -72,7 +72,7 @@ implementation
 uses
   Atlas.Common.Editing.UsesActions,
   System.Math,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   System.StrUtils,
   Atlas.Common.Pascal.TokenCursor;
@@ -211,13 +211,13 @@ begin
   AUses.Added := AUses.Added + [AName];
 end;
 
-/// <summary>Trägt AUnits (durch Komma getrennt) über TUsesClauses.AddUnit beim Abschnitt an AOffset ein.</summary>
+/// <summary>Trägt AUnits (durch Komma getrennt) über TPascalUsesEdits.AddUnit beim Abschnitt an AOffset ein.</summary>
 procedure AddUnitsEdit(const ATarget: TSmartPasteTarget; AOffset: Integer; const AUnits: TArray<string>;
   var AEdits: TArray<TTextEdit>);
 var
   mEdit: TTextEdit;
 begin
-  if (Length(AUnits) > 0) and TUsesClauses.AddUnit(ATarget.Tokens, AOffset, string.Join(', ', AUnits),
+  if (Length(AUnits) > 0) and TPascalUsesEdits.AddUnit(ATarget.Tokens, AOffset, string.Join(', ', AUnits),
     ATarget.LineBreak, mEdit) then
   begin
     AEdits := AEdits + [mEdit];

@@ -15,31 +15,10 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Projects.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Contract;
 
 type
-  // Gruppen der uses nach Herkunft (#2794); Logik in Atlas.Common.Editing.UsesGroups.
-{$SCOPEDENUMS ON}
-  /// <summary>Gruppe eines uses-Eintrags, in der Reihenfolge der Ausgabe.</summary>
-  TUsesGroup = (RuntimeLibrary, DelphiComponents, Framework, LibraryPath, ProjectGroup, Project);
-
-  /// <summary>Darstellung der Gruppen: Kommentar über jeder Gruppe oder nur eine neue Zeile.</summary>
-  TUsesGroupStyle = (Comments, Lines);
-
-  /// <summary>Wo der Host die Datei der Unit gefunden hat.</summary>
-  TUsesFileOrigin = (Unknown, Installation, LibraryPath, ProjectGroup, OwnProject);
-{$SCOPEDENUMS OFF}
-
-  /// <summary>Fundort einer Unit, vom Host bestimmt.</summary>
-  TUsesUnitFile = record
-    Origin: TUsesFileOrigin;
-    /// <summary>Bei Installation: Pfad der Datei relativ zum Ordner der Installation ($(BDS)), sonst ''.</summary>
-    InstallPath: string;
-  end;
-
-  /// <summary>Gruppe zu einem Unit-Namen.</summary>
-  TUsesGroupFunc = reference to function(const AUnitName: string): TUsesGroup;
-
   // Ergebnis der Namensauflösung für uses (TUsesUsage); die Typen liegen im Contract von Semantics.
   TUsesUnitInfo = Atlas.Common.Semantics.Contract.TUsesUnitInfo;
   TUsesUnitInfoFunc = Atlas.Common.Semantics.Contract.TUsesUnitInfoFunc;

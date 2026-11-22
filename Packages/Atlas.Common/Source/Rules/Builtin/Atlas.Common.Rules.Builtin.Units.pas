@@ -154,7 +154,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.DirectiveNames,
@@ -1323,7 +1323,7 @@ begin
   end;
   mUnitName := VariantsUnitName(mUsed);
   mFixes := nil;
-  if TUsesClauses.AddUnit(mTokens, mFirst.StartOffset, mUnitName, TTextLines.LineBreakOf(AContext.Text), mEdit) then
+  if TPascalUsesEdits.AddUnit(mTokens, mFirst.StartOffset, mUnitName, TTextLines.LineBreakOf(AContext.Text), mEdit) then
   begin
     mFixes := [TRuleFix.Create(cTexts[TUnitsText.AddToUses].Fmt([mUnitName]), [mEdit], True)];
   end;
