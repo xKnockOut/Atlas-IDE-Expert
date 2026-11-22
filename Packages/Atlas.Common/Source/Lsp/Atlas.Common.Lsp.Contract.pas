@@ -108,6 +108,13 @@ type
     function Depths(const AFileName, AText: string; const AIndex: ISymbolIndex): TArray<TStructureMetrics>;
   end;
 
+  /// <summary>Antwort von atlas.server.ownership (#1877); der Host fragt die Prüfregeln.</summary>
+  ILspOwnershipReport = interface
+    ['{08AF5196-3412-4413-90D5-C220EA8A7A51}']
+    /// <summary>{ uri, sites: [...] } zu AUri; der Aufrufer übernimmt das Objekt.</summary>
+    function Report(const AUri: string): TJSONObject;
+  end;
+
   /// <summary>Typen der laufenden IDE (atlas/ideTypes); threadsicher. Ohne Plugin leer.</summary>
   ILspIdeTypes = interface
     ['{9EEBF436-AD07-4D64-B8AB-436A346A4F28}']
