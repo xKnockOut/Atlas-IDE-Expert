@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes;
+  Atlas.Common.ClassActions.Contract;
 
 type
   /// <summary>Klassen-Aktionen als Korrektur: Methode überschreiben, Interface implementieren, Feld oder

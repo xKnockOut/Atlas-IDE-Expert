@@ -109,7 +109,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes,
+  Atlas.Common.ClassActions.Contract,
   Atlas.Text.Fuzzy,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.Attributes;

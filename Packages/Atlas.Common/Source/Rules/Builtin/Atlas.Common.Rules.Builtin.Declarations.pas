@@ -162,7 +162,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes,
+  Atlas.Common.ClassActions.Contract,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.MethodMatching,
   Atlas.Common.Pascal.SyntaxTree,

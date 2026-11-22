@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes,
+  Atlas.Common.ClassActions.Contract,
   Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Editing.Contract.ClassActions;
 

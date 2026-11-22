@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.CodeActions.Contract.Classes;
+﻿unit Atlas.Common.ClassActions.Contract;
 
 // Werte der Klassen-Aktionen (Methode überschreiben, Interface implementieren, Feld oder Zugriffsmethode
 // anlegen), die Prüfregeln als Korrektur anbieten und Editing erzeugt. Beide Seiten tauschen nur diese Werte und
