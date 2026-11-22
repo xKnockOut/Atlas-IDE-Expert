@@ -37,7 +37,7 @@ uses
   Shell.Linter.Output,
   Shell.Linter.Files,
   Atlas.Common.Localization.Texts,
-  Shell.Workspace.Listings;
+  Core.Workspace.Listings;
 
 type
 {$SCOPEDENUMS ON}
@@ -66,7 +66,7 @@ var
   mRequest: THotspotRequest;
 begin
   mIndex := TLinterFiles.IndexOf(TLinterFiles.Collect(ATarget.Target, ASettings, mRoot, mSources), mSources);
-  mService := THotspotService.Create(mIndex, TShellFileAccess.ReadTextFunc());
+  mService := THotspotService.Create(mIndex, TCoreFileAccess.ReadTextFunc());
   try
     mRequest := THotspotRequest.FromSettings(ASettings);
     // Der Bericht zeigt beide Tabellen: Units und die Methoden der obersten Kandidaten.

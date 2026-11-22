@@ -1,4 +1,4 @@
-﻿unit Shell.Workspace.Indexing.Tests;
+﻿unit Core.Workspace.Indexing.Tests;
 
 // Indexaufbau des Arbeitsbereichs: Ein neuer Aufbau läuft noch nicht, der Bericht der Kodierungen ohne Dateien
 // meldet nichts.
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TShellWorkspaceIndexingTests = class
+  TCoreWorkspaceIndexingTests = class
   public
     /// <summary>Ein neuer Aufbau läuft noch nicht; Kodierungen ohne Dateien melden nichts.</summary>
     [Test]
@@ -27,39 +27,41 @@ uses
   Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
-  Shell.Workspace.Setup,
-  Shell.Workspace.State,
-  Shell.Workspace.Cache,
-  Shell.Workspace.Encodings,
-  Shell.Workspace.Indexing;
+  Core.Workspace.Setup,
+  Core.Workspace.State,
+  Core.Workspace.Cache,
+  Core.Workspace.Encodings,
+  Core.Workspace.Indexing,
+  Shell.Composition.Platform;
 
-{ TShellWorkspaceIndexingTests }
+{ TCoreWorkspaceIndexingTests }
 
-procedure TShellWorkspaceIndexingTests.IndexingStartsIdle;
+procedure TCoreWorkspaceIndexingTests.IndexingStartsIdle;
 var
-  mParts: TShellIndexingParts;
-  mIndexing: TShellWorkspaceIndexing;
-  mReport: TShellEncodingReport;
+  mParts: TCoreIndexingParts;
+  mIndexing: TCoreWorkspaceIndexing;
+  mReport: TCoreEncodingReport;
   mIndex: ISymbolIndex;
   mLogger: ILogger;
 begin
   mIndex := TSymbolIndex.Create;
   mLogger := TLogger.Create;
-  mParts := Default(TShellIndexingParts);
+  mParts := Default(TCoreIndexingParts);
   mParts.Name := 'Test';
   mParts.Logger := mLogger;
   mParts.Transport := TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True);
   mParts.Index := mIndex;
   mParts.ProgressToken := 'atlas-test-index';
-  mParts.Setup := TShellWorkspaceSetup.Create;
-  mParts.Events := TShellWorkspaceEvents.Create;
-  mParts.State := TShellProjectState.Create(mParts.Setup);
-  mParts.Cache := TShellWorkspaceCache.Create('Test', mLogger, mParts.Setup, mParts.Events);
+  mParts.Setup := TCoreWorkspaceSetup.Create;
+  mParts.Setup.Factories := TShellPlatformAdapters.WorkspaceFactories;
+  mParts.Events := TCoreWorkspaceEvents.Create;
+  mParts.State := TCoreProjectState.Create(mParts.Setup);
+  mParts.Cache := TCoreWorkspaceCache.Create('Test', mLogger, mParts.Setup, mParts.Events);
   mIndexing := nil;
   mReport := nil;
   try
-    mIndexing := TShellWorkspaceIndexing.Create(mParts);
-    mReport := TShellEncodingReport.Create('Test', TPath.GetTempPath, mLogger, nil, mIndex);
+    mIndexing := TCoreWorkspaceIndexing.Create(mParts);
+    mReport := TCoreEncodingReport.Create('Test', TPath.GetTempPath, mLogger, nil, mIndex);
     Assert.AreEqual(-1, mIndexing.Loading, 'Kein Aufbau läuft');
     Assert.AreSame(mIndex, mIndexing.Index);
     mReport.Report(nil);
@@ -70,11 +72,11 @@ begin
     mParts.State.Free;
     mParts.Events.Free;
     mParts.Setup.Free;
-    mParts := Default(TShellIndexingParts);
+    mParts := Default(TCoreIndexingParts);
   end;
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellWorkspaceIndexingTests);
+  TDUnitX.RegisterTestFixture(TCoreWorkspaceIndexingTests);
 
 end.

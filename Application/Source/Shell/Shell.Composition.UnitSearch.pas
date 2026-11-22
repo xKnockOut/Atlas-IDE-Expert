@@ -63,7 +63,7 @@ uses
   System.JSON,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Editing.TestUnits,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.VersionControlChanges;
 
 /// <summary>Gibt es die Datei auf der Platte?</summary>
@@ -119,9 +119,9 @@ var
 begin
   mResult := nil;
   FServices.VisitWorkspaces(
-    procedure(const AWorkspaces: TArray<TShellWorkspace>)
+    procedure(const AWorkspaces: TArray<TCoreWorkspace>)
     var
-      mWorkspace: TShellWorkspace;
+      mWorkspace: TCoreWorkspace;
       mInfo: TProjectInfo;
       mProject: TUnitSearchProject;
       mText: string;
@@ -232,9 +232,9 @@ var
 begin
   mForeign := False;
   FServices.VisitWorkspaces(
-    procedure(const AWorkspaces: TArray<TShellWorkspace>)
+    procedure(const AWorkspaces: TArray<TCoreWorkspace>)
     var
-      mWorkspace: TShellWorkspace;
+      mWorkspace: TCoreWorkspace;
       mDerived, mOwn: Boolean;
     begin
       mDerived := False;

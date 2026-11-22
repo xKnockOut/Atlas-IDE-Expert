@@ -55,7 +55,7 @@ uses
   Atlas.Common.Pascal.IncludeFiles,
   Shell.Composition.Platform,
   Shell.Linter.Output,
-  Shell.Workspace.Listings;
+  Core.Workspace.Listings;
 
 { TLinterFiles }
 
@@ -225,7 +225,7 @@ end;
 
 class function TLinterFiles.ReadText(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := TShellFileAccess.ReadText(AFileName, AText);
+  Result := TCoreFileAccess.ReadText(AFileName, AText);
 end;
 
 class function TLinterFiles.IndexOf(const AFiles: TArray<string>; const ASources: TCheckSourceFunc): ISymbolIndex;

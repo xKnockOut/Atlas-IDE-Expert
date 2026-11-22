@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Shell.Workspace,
+  Core.Workspace,
   Core.CrashCases,
   Shell.Composition.Core,
   Shell.Composition.Compile,
@@ -41,7 +41,7 @@ type
     class procedure IndexEvent(const AServices: TShellDocumentEventServices; AKind: TDocumentEventKind;
       const AFileName, AText: string); static;
     class procedure SourceSaved(const AServices: TShellDocumentEventServices; const AFileName: string); static;
-    class function LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TShellWorkspace; static;
+    class function LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TCoreWorkspace; static;
   public
     /// <summary>Meldet am Dokumentspeicher einen Hörer an, der AServices festhält.</summary>
     class procedure Attach(const ADocuments: IDocumentStore; const AServices: TShellDocumentEventServices); static;
@@ -66,7 +66,7 @@ class procedure TShellDocumentEvents.IndexEvent(const AServices: TShellDocumentE
   AKind: TDocumentEventKind; const AFileName, AText: string);
 var
   mFileChanges: TShellFileChanges;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
   mFileChanges := AServices.FileChanges();
@@ -95,7 +95,7 @@ class procedure TShellDocumentEvents.SourceSaved(const AServices: TShellDocument
   const AFileName: string);
 var
   mCore: TShellCore;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mOnSave: Boolean;
   mChoice: TCompilerBackendChoice;
 begin
@@ -119,7 +119,7 @@ begin
   end;
 end;
 
-class function TShellDocumentEvents.LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TShellWorkspace;
+class function TShellDocumentEvents.LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TCoreWorkspace;
 begin
   System.TMonitor.Enter(ACore.Workspaces.Lock);
   try

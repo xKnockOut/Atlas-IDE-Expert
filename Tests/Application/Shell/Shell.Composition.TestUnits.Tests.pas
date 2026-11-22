@@ -6,7 +6,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract,
   Shell.Composition.TestUnits;
 
@@ -16,7 +16,7 @@ type
   private
     FPicked: string;
     procedure VisitNone(const AVisit: TShellWorkspacesProc);
-    function PickNone(const AFileName: string): TShellWorkspace;
+    function PickNone(const AFileName: string): TCoreWorkspace;
     function NoText(const AFileName: string; out AText: string): Boolean;
     function NewServices: TShellTestUnitServices;
   public
@@ -51,7 +51,7 @@ begin
   AVisit(nil);
 end;
 
-function TShellTestUnitsTests.PickNone(const AFileName: string): TShellWorkspace;
+function TShellTestUnitsTests.PickNone(const AFileName: string): TCoreWorkspace;
 begin
   FPicked := AFileName;
   Result := nil;

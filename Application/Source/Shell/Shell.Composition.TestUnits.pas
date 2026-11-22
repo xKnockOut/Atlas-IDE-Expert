@@ -16,13 +16,13 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.TestFromDebug,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract;
 
 type
   TShellTestUnitReadText = TDocumentReadText;
   /// <summary>Arbeitsbereich zur Datei; nur unter der Sperre der Arbeitsbereiche aufzurufen.</summary>
-  TShellTestUnitPickFunc = reference to function(const AFileName: string): TShellWorkspace;
+  TShellTestUnitPickFunc = reference to function(const AFileName: string): TCoreWorkspace;
 
   /// <summary>Was die Testunits von der Komposition brauchen.</summary>
   TShellTestUnitServices = record
@@ -116,9 +116,9 @@ begin
   mContext := AContext;
   mCandidates := nil;
   FServices.VisitWorkspaces(
-    procedure(const AWorkspaces: TArray<TShellWorkspace>)
+    procedure(const AWorkspaces: TArray<TCoreWorkspace>)
     var
-      mWorkspace, mOther: TShellWorkspace;
+      mWorkspace, mOther: TCoreWorkspace;
       mInfo: TProjectInfo;
     begin
       mWorkspace := FServices.PickWorkspace(AFileName);

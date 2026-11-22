@@ -34,7 +34,7 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.BatchTool,
   Atlas.Common.Localization.Texts,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Mcp.Context,
   Shell.Mcp.RefactorSources,
   Shell.Mcp.Tools,
@@ -84,7 +84,7 @@ begin
   end;
 end;
 
-function DisabledToolsOf(AWorkspace: TShellWorkspace): TFunc<TArray<string>>;
+function DisabledToolsOf(AWorkspace: TCoreWorkspace): TFunc<TArray<string>>;
 begin
   Result :=
     function: TArray<string>
@@ -131,7 +131,7 @@ begin
 end;
 
 /// <summary>Grenzen von batch (#2638): requestTimeoutMs und Abbruch über notifications/cancelled.</summary>
-function BatchLimitsOf(AWorkspace: TShellWorkspace): TFunc<TMcpBatchLimits>;
+function BatchLimitsOf(AWorkspace: TCoreWorkspace): TFunc<TMcpBatchLimits>;
 begin
   Result :=
     function: TMcpBatchLimits
@@ -165,7 +165,7 @@ begin
   AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
 end;
 
-function PromptSettingsOf(AWorkspace: TShellWorkspace): TFunc<TServerSettings>;
+function PromptSettingsOf(AWorkspace: TCoreWorkspace): TFunc<TServerSettings>;
 begin
   Result :=
     function: TServerSettings

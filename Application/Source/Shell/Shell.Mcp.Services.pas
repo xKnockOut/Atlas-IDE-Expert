@@ -21,8 +21,8 @@ uses
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Hotspots.Service,
-  Shell.Workspace,
-  Shell.WorkspaceGroup,
+  Core.Workspace,
+  Core.WorkspaceGroup,
   Shell.Mcp.Context;
 
 type
@@ -33,7 +33,7 @@ type
     Store: IDocumentStore;
     /// <summary>Hauptprojekt und übrige Projekte der Gruppe in einem Index (Plugin-Units hinter dem Testprojekt).
     /// </summary>
-    Group: TShellWorkspaceGroup;
+    Group: TCoreWorkspaceGroup;
     Tools: TMcpIndexTools;
     Code: TMcpCodeTools;
     Guard: TMcpPathGuard;
@@ -45,7 +45,7 @@ type
     /// <summary>Legt Index, Gruppe und Dienste für den Ordner ARoot an; noch ohne Laden.</summary>
     class function Create(const ARoot: string; const ALogger: ILogger): TMcpServices; static;
     procedure Free;
-    function Workspace: TShellWorkspace;
+    function Workspace: TCoreWorkspace;
     /// <summary>Alle Dateien der Gruppe (für Werkzeuge, die erst beim Aufruf lesen).</summary>
     function AllFiles: TFunc<TArray<string>>;
     /// <summary>Kontext der Werkzeuge mit AServer.</summary>
@@ -68,6 +68,7 @@ uses
   Platform.Server,
   Shell.Mcp.Ide,
   Shell.Mcp.ArchitectureTools,
+  Shell.Composition.Platform,
   Core.Bootstrap;
 
 function NewStore: IDocumentStore;
@@ -79,7 +80,7 @@ begin
     end);
 end;
 
-function AllFilesOf(AGroup: TShellWorkspaceGroup): TFunc<TArray<string>>;
+function AllFilesOf(AGroup: TCoreWorkspaceGroup): TFunc<TArray<string>>;
 begin
   Result :=
     function: TArray<string>
@@ -88,7 +89,7 @@ begin
     end;
 end;
 
-function EnsureUnitOf(AGroup: TShellWorkspaceGroup): TFunc<string, Boolean>;
+function EnsureUnitOf(AGroup: TCoreWorkspaceGroup): TFunc<string, Boolean>;
 begin
   Result :=
     function(AUnitName: string): Boolean
@@ -97,7 +98,7 @@ begin
     end;
 end;
 
-function ReferenceFilesOf(AGroup: TShellWorkspaceGroup): TReferenceFilesProvider;
+function ReferenceFilesOf(AGroup: TCoreWorkspaceGroup): TReferenceFilesProvider;
 begin
   Result :=
     function: TArray<string>
@@ -107,7 +108,7 @@ begin
 end;
 
 /// <summary>Defines des Projekts, zu dem die Datei gehört (Projektgruppe, #1112).</summary>
-function DefinesOf(AGroup: TShellWorkspaceGroup): TUsesDefinesFunc;
+function DefinesOf(AGroup: TCoreWorkspaceGroup): TUsesDefinesFunc;
 begin
   Result :=
     function(const AFileName: string): TArray<string>
@@ -134,7 +135,7 @@ begin
   end;
 end;
 
-function NewIndexTools(const AIndex: ISymbolIndex; AWorkspace: TShellWorkspace; const ARoot: string):
+function NewIndexTools(const AIndex: ISymbolIndex; AWorkspace: TCoreWorkspace; const ARoot: string):
   TMcpIndexTools;
 var
   mRoot: string;
@@ -199,7 +200,7 @@ end;
 
 /// <summary>Auswirkungsanalyse (#1120): Tiefe aus navigation, Testunits aus testUnits und dem Testprogramm.
 /// </summary>
-function ImpactOptionsOf(AWorkspace: TShellWorkspace; const ARoot: string): TImpactOptionsProvider;
+function ImpactOptionsOf(AWorkspace: TCoreWorkspace; const ARoot: string): TImpactOptionsProvider;
 var
   mRoot: string;
 begin
@@ -220,7 +221,7 @@ begin
 end;
 
 /// <summary>Treffersicherheit wie im Editor (#1119).</summary>
-function ReferenceSettingsOf(AWorkspace: TShellWorkspace): TReferenceSettingsProvider;
+function ReferenceSettingsOf(AWorkspace: TCoreWorkspace): TReferenceSettingsProvider;
 begin
   Result :=
     function(const AUri: string): TReferenceSettings
@@ -229,7 +230,7 @@ begin
     end;
 end;
 
-function NewCodeTools(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; const ARoot: string):
+function NewCodeTools(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; const ARoot: string):
   TMcpCodeTools;
 begin
   Result := TMcpCodeTools.Create(AIndex, ReadSourceText, ReferenceFilesOf(AGroup), AGroup.UnitLoader());
@@ -242,7 +243,7 @@ begin
 end;
 
 /// <summary>Pfadregeln (#99): Arbeitsordner und Include-Pfade, Verknüpfungen aufgelöst.</summary>
-function NewGuard(AWorkspace: TShellWorkspace; const ARoot: string): TMcpPathGuard;
+function NewGuard(AWorkspace: TCoreWorkspace; const ARoot: string): TMcpPathGuard;
 begin
   Result := TMcpPathGuard.Create(ARoot,
     function: TArray<string>
@@ -267,7 +268,7 @@ begin
     end;
 end;
 
-function NewEditTools(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; ACode: TMcpCodeTools;
+function NewEditTools(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; ACode: TMcpCodeTools;
   const ALogger: ILogger): TMcpEditTools;
 begin
   Result := TMcpEditTools.Create(AIndex, ReadSourceText, WriteSourceText, AllFilesOf(AGroup),
@@ -292,8 +293,8 @@ begin
   Result.Root := ARoot;
   Result.Index := TSymbolIndex.Create;
   Result.Store := NewStore;
-  Result.Group := TShellWorkspaceGroup.Create(ARoot, Result.Store, ALogger, Result.Index, 'atlas-mcp-index',
-    ReadSourceText);
+  Result.Group := TCoreWorkspaceGroup.Create(ARoot, Result.Store, ALogger, Result.Index, 'atlas-mcp-index',
+    TShellPlatformAdapters.WorkspaceFactories, ReadSourceText);
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62); den Namen des MCP-Clients trägt initialize nach (#1883).
   mIdentity := Default(TIndexProcessInfo);
   mIdentity.Pid := TServerPlatform.CurrentProcessId;
@@ -329,7 +330,7 @@ begin
   Group.Free;
 end;
 
-function TMcpServices.Workspace: TShellWorkspace;
+function TMcpServices.Workspace: TCoreWorkspace;
 begin
   Result := Group.Main;
 end;

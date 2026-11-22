@@ -9,7 +9,7 @@ interface
 
 uses
   Atlas.Common.Mcp.Server,
-  Shell.Workspace;
+  Core.Workspace;
 
 type
   TMcpConventions = class
@@ -18,7 +18,7 @@ type
     const cUri = 'delphi://conventions';
     /// <summary>Meldet die Ressource an AServer an; gelesen wird erst beim Abruf, mit den Einstellungen von
     /// AWorkspace zu diesem Zeitpunkt.</summary>
-    class procedure Register(AServer: TMcpServer; AWorkspace: TShellWorkspace); static;
+    class procedure Register(AServer: TMcpServer; AWorkspace: TCoreWorkspace); static;
   end;
 
 implementation
@@ -47,7 +47,7 @@ const
 
 /// <summary>Projektkonventionen (#272) als Markdown; eigene Routine, damit die anonyme Methode nur AWorkspace
 /// einfängt.</summary>
-function ConventionsOf(AWorkspace: TShellWorkspace): TFunc<string>;
+function ConventionsOf(AWorkspace: TCoreWorkspace): TFunc<string>;
 begin
   Result :=
     function: string
@@ -71,7 +71,7 @@ end;
 
 { TMcpConventions }
 
-class procedure TMcpConventions.Register(AServer: TMcpServer; AWorkspace: TShellWorkspace);
+class procedure TMcpConventions.Register(AServer: TMcpServer; AWorkspace: TCoreWorkspace);
 begin
   AServer.AddResource(cUri, cTexts[TMcpConventionsText.Name].Text, cTexts[TMcpConventionsText.Description].Text,
     'text/markdown', ConventionsOf(AWorkspace));

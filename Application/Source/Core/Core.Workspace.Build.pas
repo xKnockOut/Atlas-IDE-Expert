@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Build;
+﻿unit Core.Workspace.Build;
 
-// Internals-Rolle Shell: per Befehl gewählte Konfiguration und Plattform eines Arbeitsbereichs (#46), gemerkt
+// Host-Rolle Core: per Befehl gewählte Konfiguration und Plattform eines Arbeitsbereichs (#46), gemerkt
 // über Neustarts, und die Symbole aus den Projektoptionen der IDE (#615), auch ungespeichert.
 
 interface
@@ -10,15 +10,15 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
-  Shell.Workspace.Setup;
+  Core.Workspace.Setup;
 
 type
   /// <summary>Threadsicher.</summary>
-  TShellBuildChoice = class
+  TCoreBuildChoice = class
   private
     FName: string;
     FLogger: ILogger;
-    FSetup: TShellWorkspaceSetup;
+    FSetup: TCoreWorkspaceSetup;
     FLock: TObject;
     // '' = Einstellung.
     FConfig: string;
@@ -30,7 +30,7 @@ type
     FRestored: Boolean;
     function TakeRestore(const AConfig, APlatform: string): Boolean;
   public
-    constructor Create(const AName: string; const ALogger: ILogger; ASetup: TShellWorkspaceSetup);
+    constructor Create(const AName: string; const ALogger: ILogger; ASetup: TCoreWorkspaceSetup);
     destructor Destroy; override;
     /// <summary>Übernimmt einmal die gemerkte Konfiguration und Plattform von AProjectFile (#46).</summary>
     procedure Restore(const AProjectFile: string);
@@ -57,9 +57,9 @@ uses
   Atlas.Common.Projects.Selection,
   Atlas.Text.LogMarks;
 
-{ TShellBuildChoice }
+{ TCoreBuildChoice }
 
-constructor TShellBuildChoice.Create(const AName: string; const ALogger: ILogger; ASetup: TShellWorkspaceSetup);
+constructor TCoreBuildChoice.Create(const AName: string; const ALogger: ILogger; ASetup: TCoreWorkspaceSetup);
 begin
   inherited Create;
   FName := AName;
@@ -68,14 +68,14 @@ begin
   FLock := TObject.Create;
 end;
 
-destructor TShellBuildChoice.Destroy;
+destructor TCoreBuildChoice.Destroy;
 begin
   FLock.Free;
   FLogger := nil;
   inherited;
 end;
 
-function TShellBuildChoice.TakeRestore(const AConfig, APlatform: string): Boolean;
+function TCoreBuildChoice.TakeRestore(const AConfig, APlatform: string): Boolean;
 begin
   TMonitor.Enter(FLock);
   try
@@ -98,7 +98,7 @@ begin
   end;
 end;
 
-procedure TShellBuildChoice.Restore(const AProjectFile: string);
+procedure TCoreBuildChoice.Restore(const AProjectFile: string);
 var
   mChoice: TProjectBuildChoice;
 begin
@@ -120,7 +120,7 @@ begin
   end;
 end;
 
-function TShellBuildChoice.DropUnknown(const AProject: TProjectInfo): Boolean;
+function TCoreBuildChoice.DropUnknown(const AProject: TProjectInfo): Boolean;
 var
   mError: string;
 begin
@@ -152,7 +152,7 @@ begin
   end;
 end;
 
-function TShellBuildChoice.Select(const AProject: TProjectInfo; const AConfig, APlatform: string;
+function TCoreBuildChoice.Select(const AProject: TProjectInfo; const AConfig, APlatform: string;
   const ADefines: TArray<string>; AHasDefines: Boolean; out AError: string): Boolean;
 var
   mDefines: TArray<string>;
@@ -188,7 +188,7 @@ begin
   end;
 end;
 
-procedure TShellBuildChoice.ApplyTo(var AOptions: TDprojOptions);
+procedure TCoreBuildChoice.ApplyTo(var AOptions: TDprojOptions);
 begin
   TMonitor.Enter(FLock);
   try
@@ -205,7 +205,7 @@ begin
   end;
 end;
 
-procedure TShellBuildChoice.ApplyDefines(var AProject: TProjectInfo);
+procedure TCoreBuildChoice.ApplyDefines(var AProject: TProjectInfo);
 begin
   TMonitor.Enter(FLock);
   try
@@ -218,7 +218,7 @@ begin
   end;
 end;
 
-function TShellBuildChoice.Chosen: Boolean;
+function TCoreBuildChoice.Chosen: Boolean;
 begin
   TMonitor.Enter(FLock);
   try
@@ -228,7 +228,7 @@ begin
   end;
 end;
 
-class function TShellBuildChoice.NormalizedDefines(const ADefines: TArray<string>): TArray<string>;
+class function TCoreBuildChoice.NormalizedDefines(const ADefines: TArray<string>): TArray<string>;
 var
   mDefine: string;
 begin

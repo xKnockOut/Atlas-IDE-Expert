@@ -29,7 +29,7 @@ type
 implementation
 
 uses
-  Shell.WorkspaceGroup,
+  Core.WorkspaceGroup,
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Compiler.Contract,
@@ -97,7 +97,7 @@ begin
 end;
 
 /// <summary>Auftrag der Analyse: Dateien der Gruppe, Testprogramme und der Testbereich.</summary>
-function RequestOf(AGroup: TShellWorkspaceGroup; const ASettings: TServerSettings; const APrograms: TArray<string>;
+function RequestOf(AGroup: TCoreWorkspaceGroup; const ASettings: TServerSettings; const APrograms: TArray<string>;
   const AReadText: TReferenceReadText): TAffectedRequest;
 begin
   Result := Default(TAffectedRequest);
@@ -110,7 +110,7 @@ end;
 
 /// <summary>Analyse über den Index von AGroup gegenüber --affected-base.</summary>
 function Analyze(const AOptions: TCommandLineOptions; const ATarget: TLinterTarget; const ASettings: TServerSettings;
-  AGroup: TShellWorkspaceGroup): TAffectedResult;
+  AGroup: TCoreWorkspaceGroup): TAffectedResult;
 var
   mReadText: TReferenceReadText;
   mQuery: TShellAffectedQuery;
@@ -171,7 +171,7 @@ function Report(const AOptions: TCommandLineOptions; const ATarget: TLinterTarge
   Integer;
 var
   mSettings: TServerSettings;
-  mGroup: TShellWorkspaceGroup;
+  mGroup: TCoreWorkspaceGroup;
   mTimings: TCheckTimings;
   mFound: TAffectedResult;
 begin

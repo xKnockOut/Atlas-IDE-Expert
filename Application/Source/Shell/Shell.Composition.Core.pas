@@ -15,7 +15,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Platform.Server,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,
   Shell.Composition.Configuration,
@@ -73,7 +73,7 @@ type
     function RuleContextServices: TShellRuleContextServices;
     function SourcesServices: TShellSourcesServices;
     /// <summary>Noch nicht gesehene Projektdateien von AWorkspace, mit excludeTests ohne Testunits.</summary>
-    function FilesOf(AWorkspace: TShellWorkspace; ASeen: TDictionary<string, Boolean>): TArray<string>;
+    function FilesOf(AWorkspace: TCoreWorkspace; ASeen: TDictionary<string, Boolean>): TArray<string>;
     /// <summary>Hat die Unit laut Index ein Test-Framework im uses?</summary>
     function IsIndexedTestUnit(const AFileName: string): Boolean;
   public
@@ -225,7 +225,7 @@ begin
     end;
 end;
 
-function TShellCore.FilesOf(AWorkspace: TShellWorkspace;
+function TShellCore.FilesOf(AWorkspace: TCoreWorkspace;
   ASeen: TDictionary<string, Boolean>): TArray<string>;
 var
   mFileName: string;
@@ -266,7 +266,7 @@ end;
 
 procedure TShellCore.StopIndexThreads;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   for mWorkspace in FWorkspaces.Items do
   begin
@@ -299,7 +299,7 @@ end;
 
 function TShellCore.ProjectFiles: TArray<string>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mDocument: ITextDocument;
   mFileName: string;
 begin
@@ -325,7 +325,7 @@ end;
 
 function TShellCore.CheckFiles: TArray<string>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mDocument: ITextDocument;
   mSeen: TDictionary<string, Boolean>;
 begin

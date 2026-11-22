@@ -47,7 +47,7 @@ uses
   Shell.Linter.Output,
   Shell.Linter.Files,
   Atlas.Common.Localization.Texts,
-  Shell.Workspace.Listings;
+  Core.Workspace.Listings;
 
 type
 {$SCOPEDENUMS ON}
@@ -84,7 +84,7 @@ var
   mRequest: TArchitectureRequest;
 begin
   mIndex := TLinterFiles.IndexOf(TLinterFiles.Collect(ATarget.Target, ASettings, mRoot, mSources), mSources);
-  mService := TArchitectureService.Create(mIndex, TShellFileAccess.ReadTextFunc(), DefinesFunc(mSources));
+  mService := TArchitectureService.Create(mIndex, TCoreFileAccess.ReadTextFunc(), DefinesFunc(mSources));
   try
     mRequest := TArchitectureRequest.FromSettings(ASettings);
     mRequest.Root := mRoot;
