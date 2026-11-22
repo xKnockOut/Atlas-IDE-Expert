@@ -23,7 +23,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Symbol,
+  Atlas.ToolsApi.Theme.Symbol,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Settings.Project,

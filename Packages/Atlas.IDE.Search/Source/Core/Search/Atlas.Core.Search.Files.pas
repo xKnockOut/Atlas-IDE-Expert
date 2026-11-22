@@ -87,8 +87,8 @@ implementation
 
 uses
   Atlas.Text.Lines,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Files.EncodingDefault;
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Files.EncodingDefault;
 
 { TAtlasSearchSource }
 

@@ -34,7 +34,7 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Plugin.Localization.Language,
   Atlas.Text.Json;
 

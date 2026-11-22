@@ -84,14 +84,14 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Results.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Host,
   Atlas.Core.Notifications.MessageSink;
 

@@ -56,7 +56,7 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Text.Arrays,
   Atlas.Text.Json;
 

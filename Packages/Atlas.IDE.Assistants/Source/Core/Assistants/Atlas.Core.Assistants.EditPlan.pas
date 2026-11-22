@@ -21,7 +21,7 @@ interface
 
 uses
   Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 type
   /// <summary>Was der Eingang mit einem Auftrag tut.</summary>

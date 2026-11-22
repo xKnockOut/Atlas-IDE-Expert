@@ -80,7 +80,7 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Atlas.Plugin.Style.Palette,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.UI.Build.Strings,
   Atlas.UI.Tasks.Texts,
   Atlas.Plugin.Diagnostics.Guard;

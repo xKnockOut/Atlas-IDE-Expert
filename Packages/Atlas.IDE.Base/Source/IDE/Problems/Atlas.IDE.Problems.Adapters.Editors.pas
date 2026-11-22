@@ -31,10 +31,10 @@ uses
   System.Classes,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Files.TextFile,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.CodeView,
+  Atlas.ToolsApi.Editor.CodeView,
   Atlas.IDE.Problems.IdeErrors,
   Atlas.IDE.Problems.Controller;
 

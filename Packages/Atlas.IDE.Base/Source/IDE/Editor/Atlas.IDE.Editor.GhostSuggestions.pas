@@ -35,7 +35,7 @@ uses
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.Editor.LearnedSuggestions,
   Atlas.IDE.Contracts.GhostSuggestions,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Completion.Preview;
 
 type
@@ -147,7 +147,7 @@ uses
   Atlas.Core.Editor.SmartIndent,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.IDE.Foundation.Navigation,

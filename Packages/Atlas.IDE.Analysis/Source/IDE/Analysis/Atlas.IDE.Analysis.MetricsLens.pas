@@ -84,8 +84,8 @@ uses
   Atlas.IDE.Editor.MetricsSource,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Theme.Style;
 
 { TAtlasAnalysisMetricsLens.TEvents }
 

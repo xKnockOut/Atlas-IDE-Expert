@@ -72,7 +72,7 @@ uses
   System.Generics.Collections,
   System.Diagnostics,
   System.Math,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 const
   cRoot = 'C:\Arbeit\Atlas-IDE-Expert-claude-project-thread-j9xhhv';

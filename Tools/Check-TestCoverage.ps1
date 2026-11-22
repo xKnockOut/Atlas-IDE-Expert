@@ -52,6 +52,7 @@ $SourceDirs = @(
     'Packages/Atlas.WinBase',
     'Packages/Atlas.Common/Source',
     'Packages/Atlas.Windows/Source',
+    'Packages/Atlas.Plugin/Source',
     'Application/Source'
 )
 # Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
@@ -67,7 +68,7 @@ $Exempt = @{
     'Atlas.Windows.Diagnostics.DebugOutput'             = 'Hülle um OutputDebugString'
     'Atlas.Windows.Process.ParentWatcher'               = 'wartet auf das Ende des Elternprozesses'
     'Atlas.Windows.Console.StdStreams'                  = 'Handles der Konsole (stdin/stdout)'
-    'Atlas.Core.Files.Providers.FolderWatcher'          = 'Ordnerbeobachtung des Systems (ReadDirectoryChangesW)'
+    'Atlas.Plugin.Files.Providers.FolderWatcher'          = 'Ordnerbeobachtung des Systems (ReadDirectoryChangesW)'
     'Atlas.Core.Results.CallDiagramTemplate'            = 'erzeugt; Update-ArchitectureMap.ps1 prüft sie gegen Aufrufdiagramm.html'
     'Atlas.Core.Updates.Providers.HttpSource'           = 'HTTP-Zugriff; die Auswertung testet Atlas.Core.Updates'
     'Atlas.Core.Ci.Providers.Http'                      = 'HTTP-Zugriff; die Anbieter testen Atlas.Core.Ci.Providers.*'

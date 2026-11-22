@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Editor.Contract;
@@ -33,7 +33,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 { TAtlasIdeEditEnvironment }
 

@@ -64,7 +64,7 @@ uses
   Vcl.Graphics,
   Vcl.ExtCtrls,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.UI.Editor.Bar;
+  Atlas.Vcl.Controls.EditorBar;
 
 type
   /// <summary>Menü zum Glied AIndex öffnen; APoint ist die linke untere Ecke des Glieds am Bildschirm.</summary>

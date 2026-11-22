@@ -115,7 +115,7 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Style.Signal,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.UI.Tests.Strings;
 
 /// <summary>Gitter der Fälle in AParent; bearbeitbar mit AEditable, sonst nur Zeilen wählen.</summary>

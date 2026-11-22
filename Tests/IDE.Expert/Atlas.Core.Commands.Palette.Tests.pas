@@ -50,7 +50,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.Contract;
 

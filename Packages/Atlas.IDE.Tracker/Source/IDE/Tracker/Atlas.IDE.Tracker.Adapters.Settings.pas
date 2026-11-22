@@ -62,7 +62,7 @@ uses
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.SettingsPlan,
   Atlas.Core.Tracker.Workflow,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Tracker.PathSuggestions,

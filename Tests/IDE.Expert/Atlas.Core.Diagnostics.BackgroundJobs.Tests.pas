@@ -41,7 +41,7 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Plugin.Diagnostics.UnloadSafety,
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Diagnostics.BackgroundJobs;

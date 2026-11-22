@@ -95,8 +95,8 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.Vcl.Popup.Window,
   Atlas.UI.Debug.OpenedFiles.Strings;

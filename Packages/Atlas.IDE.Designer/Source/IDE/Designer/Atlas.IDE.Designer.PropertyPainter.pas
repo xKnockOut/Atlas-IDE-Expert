@@ -23,7 +23,7 @@ uses
   System.Classes,
   System.TypInfo,
   Atlas.Core.Designer.PropertyPainter,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type

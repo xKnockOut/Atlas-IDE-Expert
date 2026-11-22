@@ -99,7 +99,7 @@ uses
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.WorkspaceEdit;

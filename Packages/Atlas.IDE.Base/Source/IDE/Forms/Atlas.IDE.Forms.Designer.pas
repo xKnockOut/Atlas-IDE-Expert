@@ -113,7 +113,7 @@ uses
   Atlas.Core.Forms.PropertyValues,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Plugin.Localization.Language,
-  Atlas.IDE.Foundation.DesignerView,
+  Atlas.ToolsApi.Designer.View,
   Atlas.Core.Foundation.Calls;
 
 {$SCOPEDENUMS ON}

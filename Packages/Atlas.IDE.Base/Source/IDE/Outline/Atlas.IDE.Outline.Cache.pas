@@ -80,7 +80,7 @@ uses
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.Lsp.Client,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.CodeView;
+  Atlas.ToolsApi.Editor.CodeView;
 
 const
   /// <summary>Tipppause, nach der neu gefragt wird.</summary>

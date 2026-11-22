@@ -108,11 +108,11 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.PaintedLine;
 
 function OptionsKey(const AOptions: TAtlasSelectionMatchOptions): string;

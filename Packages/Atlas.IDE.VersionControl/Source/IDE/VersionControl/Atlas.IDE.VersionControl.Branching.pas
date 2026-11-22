@@ -133,8 +133,8 @@ uses
   Atlas.Core.VersionControl.Plan,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.IDE.Foundation.DockWindow,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Windows.DockWindow,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.VersionControl.Service;
 

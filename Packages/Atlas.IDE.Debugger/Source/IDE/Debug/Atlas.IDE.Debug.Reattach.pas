@@ -114,7 +114,7 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Status.Registry,
   Atlas.Core.Debug.Reattach,
   Atlas.Core.Debug.ReattachFlow,
@@ -126,7 +126,7 @@ uses
   Atlas.UI.Debug.Session.Strings,
   Atlas.UI.Debug.Settings.Strings,
   Atlas.Core.Foundation.Calls,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cHistoryWhat = 'debug reattach';

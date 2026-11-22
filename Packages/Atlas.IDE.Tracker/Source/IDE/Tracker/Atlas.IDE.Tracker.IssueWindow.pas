@@ -46,7 +46,7 @@ uses
   ToolsAPI,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TIssueDock = class(TInterfacedObject, INTACustomDockableForm)

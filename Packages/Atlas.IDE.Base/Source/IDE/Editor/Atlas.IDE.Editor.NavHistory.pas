@@ -58,8 +58,8 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Host;

@@ -127,12 +127,12 @@ uses
   Atlas.Core.Editor.Guides,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.StickyPaint,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.Core.Editor.GuideStroke;
 
 const

@@ -62,8 +62,8 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Refresh;
 
 { TAtlasIdeFormatMarks.TEvents }
 

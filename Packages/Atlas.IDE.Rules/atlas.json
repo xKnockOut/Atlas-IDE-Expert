@@ -40,6 +40,7 @@
         "Atlas.Linux",
         "Atlas.Plugin",
         "Atlas.Vcl",
+        "Atlas.ToolsApi",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"
@@ -51,6 +52,7 @@
         "Atlas.Core.Lsp.Contract -> Atlas.Text.Json",
         "Atlas.Core.Projects.Contract -> Atlas.Text.Json",
         "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Plugin.Files.Providers.FolderWatcher",
         "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.IDE.Undo.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.IdeAdapters -> Atlas.IDE.*.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.UiAdapters -> Atlas.UI.*.Adapters.*",
@@ -77,6 +79,7 @@
         "Atlas.Linux",
         "Atlas.Plugin",
         "Atlas.Vcl",
+        "Atlas.ToolsApi",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"

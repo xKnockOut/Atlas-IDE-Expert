@@ -50,7 +50,7 @@ uses
   System.IOUtils,
   Vcl.Clipbrd,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Report,
   Atlas.UI.Debug.Note.Strings;

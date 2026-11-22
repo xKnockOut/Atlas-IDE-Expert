@@ -226,7 +226,7 @@ uses
   Atlas.Text.Checkin,
   Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Settings.QueryMigration,
   Atlas.Core.Settings.ProblemsUpdate,
   Atlas.Plugin.Localization.Language,

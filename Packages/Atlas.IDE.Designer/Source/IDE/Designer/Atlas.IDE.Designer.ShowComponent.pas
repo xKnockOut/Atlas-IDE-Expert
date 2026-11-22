@@ -57,9 +57,9 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.SearchItems,
-  Atlas.IDE.Foundation.DesignerView,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.ToolsApi.Designer.View,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Caret;
 
 type
   /// <summary>Menüeintrag mit seinem Ziel.</summary>

@@ -37,8 +37,10 @@ $ErrorActionPreference = 'Stop'
 # "// lsp-ignore: forbidden-symbol" in derselben Zeile.
 $Exempt = '//\s*(mainthread-ok|lsp-ignore:[^\r\n]*\bforbidden-symbol\b)'
 
-# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
-$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
+# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source, dazu die Platform-Packages des
+# Plugins, die Base als Quelltext mitübersetzt (Atlas.Plugin, Atlas.Vcl, Atlas.ToolsApi).
+$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory |
+    Where-Object { $_.Name -like 'Atlas.IDE.*' -or $_.Name -in @('Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi') } |
     Where-Object { Test-Path (Join-Path $_.FullName 'Source') } |
     ForEach-Object { "Packages/$($_.Name)/Source" })
 

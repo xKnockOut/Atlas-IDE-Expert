@@ -156,7 +156,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Tracker.CommentPlan,
   Atlas.Core.VersionControl.Contract,
   Atlas.IDE.Foundation.Settings,

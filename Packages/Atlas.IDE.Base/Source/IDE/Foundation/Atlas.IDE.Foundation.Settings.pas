@@ -36,7 +36,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
@@ -128,10 +128,10 @@ uses
   Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.Experimental,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.UI.Strings,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 type
   /// <summary>Zustand von TAtlasIdeSettings (gelesene, wirksame Werte, Schnellschalter, Stände, Katalogteile).

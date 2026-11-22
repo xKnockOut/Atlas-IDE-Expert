@@ -106,7 +106,7 @@ uses
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Internals.GitHubJson,
   Atlas.Text.Json,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Text.Names;
 
 { TAtlasGitHubApi }

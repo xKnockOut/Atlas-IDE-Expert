@@ -114,11 +114,11 @@ uses
   Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.StructureSwitch,
-  Atlas.IDE.Foundation.Caret,
+  Atlas.ToolsApi.Editor.Caret,
   Atlas.IDE.Editor.HideTeamFile;
 
 { TAtlasIdeHide }

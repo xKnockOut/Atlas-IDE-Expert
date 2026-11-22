@@ -42,7 +42,7 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.EditorToolbar.Sections,
   Atlas.UI.EditorToolbar.Customize,
-  Atlas.IDE.Foundation.EditorBarHost;
+  Atlas.ToolsApi.EditorBars.Host;
 
 type
   TAtlasIdeEditorToolbar = class
@@ -109,9 +109,9 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.EditorToolbar.Bar,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
@@ -349,7 +349,7 @@ var
 begin
   mBar := TAtlasEditorToolbar.Create(nil);
   mHost := FHost;
-  mBar.SetColors(TAtlasIdeStyle.BarColors);
+  mBar.SetColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
   mBar.Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
   mBar.MoreHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarMore);
   mBar.GearHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarCustomizeCommand);
@@ -735,7 +735,7 @@ begin
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
-      TAtlasEditorToolbar(ABar).SetColors(TAtlasIdeStyle.BarColors);
+      TAtlasEditorToolbar(ABar).SetColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
     end);
 end;
 

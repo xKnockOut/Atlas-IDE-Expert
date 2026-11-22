@@ -37,7 +37,7 @@ type
 implementation
 
 uses
-  Atlas.IDE.Foundation.DesignerView;
+  Atlas.ToolsApi.Designer.View;
 
 { TAtlasIdeDesignSurface }
 

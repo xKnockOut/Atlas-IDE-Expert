@@ -46,7 +46,7 @@ uses
   ToolsAPI,
   Atlas.UI.Tracker.Board.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TBoardDock = class(TInterfacedObject, INTACustomDockableForm)

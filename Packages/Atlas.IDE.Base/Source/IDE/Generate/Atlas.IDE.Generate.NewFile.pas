@@ -48,7 +48,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Generate.Strings,
   Atlas.UI.Generate.Window,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 type

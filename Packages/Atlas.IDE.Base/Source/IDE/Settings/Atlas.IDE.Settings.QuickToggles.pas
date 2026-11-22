@@ -77,12 +77,12 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Foundation.StructureSwitch,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Foundation.Host,
   Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 const
   cAnswerSession = 100;

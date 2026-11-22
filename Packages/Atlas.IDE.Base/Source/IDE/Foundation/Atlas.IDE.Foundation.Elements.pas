@@ -129,7 +129,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.TeamFile,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh;
 
 { TAtlasIdeElements.TEvents }
 

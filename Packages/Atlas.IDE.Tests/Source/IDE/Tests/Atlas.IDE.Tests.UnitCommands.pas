@@ -37,7 +37,7 @@ uses
   Atlas.Core.Commands.ProjectSelection,
   Atlas.Text.DUnitX,
   Atlas.IDE.Problems.Files,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Commands.Editor,
   Atlas.UI.Generate.Choice,

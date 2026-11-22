@@ -110,7 +110,7 @@ uses
   System.Math,
   System.Win.Registry,
   ToolsAPI,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 const

@@ -50,7 +50,7 @@ uses
   Atlas.Text.MapFile,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.StackRing,
-  Atlas.Core.Files.TextFile;
+  Atlas.Plugin.Files.TextFile;
 
 type
   // Eigene Fassungen von EXCEPTION_RECORD/EXCEPTION_POINTERS: SysUtils und Winapi.Windows deklarieren

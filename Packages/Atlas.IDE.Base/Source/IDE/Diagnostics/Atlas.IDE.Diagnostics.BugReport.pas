@@ -50,7 +50,7 @@ type
 implementation
 
 uses
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   System.IOUtils,
   ToolsAPI,
   Atlas.Plugin.Product.Version,

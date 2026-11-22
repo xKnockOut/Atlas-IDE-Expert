@@ -55,7 +55,7 @@ uses
   Atlas.Core.Problems.Findings,
   Atlas.IDE.Contracts.Help,
   Atlas.IDE.ElementHelp.Keys,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TProblemsDock = class(TInterfacedObject, INTACustomDockableForm)
