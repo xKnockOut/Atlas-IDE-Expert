@@ -38,7 +38,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.Menus,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Welcome.QuickActions;
 
 { TAtlasQuickActionKeys }

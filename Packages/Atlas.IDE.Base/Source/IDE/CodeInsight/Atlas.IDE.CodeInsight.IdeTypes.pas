@@ -36,7 +36,7 @@ uses
   System.Rtti,
   ToolsAPI,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeTypeCollector }
 

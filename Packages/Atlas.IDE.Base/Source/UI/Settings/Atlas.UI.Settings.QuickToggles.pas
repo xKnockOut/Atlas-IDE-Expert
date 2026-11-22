@@ -36,7 +36,7 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.QuickToggles,
   Atlas.UI.Foundation.Dialog;
 
@@ -152,9 +152,9 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.PageNames,
   Atlas.UI.Strings,

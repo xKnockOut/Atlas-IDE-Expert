@@ -89,7 +89,7 @@ uses
   System.UITypes,
   Vcl.Graphics,
   Atlas.UI.Designer.ViewStrings,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme;
 
 const

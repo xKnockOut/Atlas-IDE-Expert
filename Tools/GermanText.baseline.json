@@ -17,7 +17,7 @@
   "Packages/Atlas.IDE.Base/Source/Core/Completion/Atlas.Core.Completion.Composite.pas": 2,
   "Packages/Atlas.IDE.Base/Source/Core/Completion/Providers/Atlas.Core.Completion.Providers.Server.pas": 3,
   "Packages/Atlas.IDE.Base/Source/Core/Diagnostics/Atlas.Core.Diagnostics.FeatureTable.pas": 1,
-  "Packages/Atlas.IDE.Base/Source/Core/Diagnostics/Atlas.Core.Diagnostics.Guard.pas": 7,
+  "Packages/Atlas.Plugin/Source/Diagnostics/Atlas.Plugin.Diagnostics.Guard.pas": 7,
   "Packages/Atlas.IDE.Base/Source/Core/Diagnostics/Atlas.Core.Diagnostics.Hangs.pas": 2,
   "Packages/Atlas.IDE.Base/Source/Core/Diagnostics/Atlas.Core.Diagnostics.Package.pas": 7,
   "Packages/Atlas.IDE.Base/Source/Core/Diagnostics/Atlas.Core.Diagnostics.SafeMode.pas": 1,

@@ -58,7 +58,7 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cPad = 10;

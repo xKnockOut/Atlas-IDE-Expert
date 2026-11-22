@@ -89,11 +89,11 @@ implementation
 
 uses
   System.UITypes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Vcl.Themes,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.UI.Welcome.Strings;
 
 { TAtlasWelcomeStateFrame }

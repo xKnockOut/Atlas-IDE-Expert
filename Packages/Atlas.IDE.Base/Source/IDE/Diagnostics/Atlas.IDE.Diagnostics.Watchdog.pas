@@ -79,7 +79,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Diagnostics.StackCapture,
   System.Diagnostics,
   Vcl.Forms;

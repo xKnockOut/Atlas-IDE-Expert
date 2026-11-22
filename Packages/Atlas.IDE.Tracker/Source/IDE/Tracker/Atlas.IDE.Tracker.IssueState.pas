@@ -114,7 +114,7 @@ uses
   System.Classes,
   System.UITypes,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.Issue.Strings,

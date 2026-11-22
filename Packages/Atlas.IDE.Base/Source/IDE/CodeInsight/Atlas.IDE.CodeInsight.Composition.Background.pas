@@ -38,7 +38,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.UI.CodeInsight.Strings,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Diagnostics.Hangs,

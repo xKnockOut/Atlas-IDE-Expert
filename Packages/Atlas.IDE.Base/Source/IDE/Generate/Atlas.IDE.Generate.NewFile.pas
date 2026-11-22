@@ -42,7 +42,7 @@ implementation
 uses
   System.Types,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Generate.Menu,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,

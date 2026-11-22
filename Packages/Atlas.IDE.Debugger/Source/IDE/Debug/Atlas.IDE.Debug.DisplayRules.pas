@@ -106,7 +106,7 @@ uses
   System.Generics.Collections,
   Winapi.Windows,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Lsp.Client,
   Atlas.Text.DebugDisplay,

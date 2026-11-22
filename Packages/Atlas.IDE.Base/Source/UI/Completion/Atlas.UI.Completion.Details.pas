@@ -27,7 +27,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Documentation.Contract,
   Atlas.UI.Documentation.View,
@@ -97,7 +97,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   System.Math,
   Atlas.UI.Popup.Draw,
   Atlas.Core.Documentation.Layout,

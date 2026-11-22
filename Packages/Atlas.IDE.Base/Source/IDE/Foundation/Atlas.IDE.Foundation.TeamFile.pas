@@ -98,7 +98,7 @@ uses
   Winapi.Windows,
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Foundation.Strings,

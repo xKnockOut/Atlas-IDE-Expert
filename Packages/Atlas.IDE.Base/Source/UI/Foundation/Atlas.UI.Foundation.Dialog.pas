@@ -53,8 +53,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal;
 
 type
 {$SCOPEDENUMS ON}
@@ -248,8 +248,8 @@ uses
   System.Math,
   System.UITypes,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Foundation.Theme;
 
 { TAtlasButtonRow }

@@ -114,7 +114,7 @@ uses
   Vcl.Forms,
   ToolsAPI,
   DesignIntf,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,

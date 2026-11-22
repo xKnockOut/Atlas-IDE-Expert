@@ -62,7 +62,7 @@ uses
   Atlas.Core.Diagnostics.Deadline,
   Atlas.Core.Lsp.TextOffsets,
   Atlas.Core.Editor.LineMove,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   TEntry = record

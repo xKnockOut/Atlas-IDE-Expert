@@ -74,7 +74,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeBuildTarget.TRequest }
 

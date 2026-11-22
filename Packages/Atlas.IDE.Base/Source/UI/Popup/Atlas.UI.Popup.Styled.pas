@@ -15,8 +15,8 @@ interface
 uses
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Syntax;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Syntax;
 
 type
   /// <summary>Wohin gezeichnet wird: Leinwand, Farben und Eckradius der Akzentfläche.</summary>
@@ -77,10 +77,10 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Winapi.Windows,
   System.Math,
-  Atlas.Core.Style.Wrap;
+  Atlas.Plugin.Style.Wrap;
 
 /// <summary>ACuts[0..ACount) aufsteigend: Einfügesortierung, die Liste ist winzig.</summary>
 procedure SortCuts(var ACuts: TArray<Integer>; ACount: Integer);

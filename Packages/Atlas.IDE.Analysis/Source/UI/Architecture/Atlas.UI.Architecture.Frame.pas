@@ -256,7 +256,7 @@ uses
   System.Types,
   Vcl.Dialogs,
   Atlas.Core.Architecture.MapState,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Architecture.Assignment,
   Atlas.UI.Architecture.Texts,
   Atlas.UI.Analysis.Strings,

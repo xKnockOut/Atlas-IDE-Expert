@@ -39,7 +39,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color;
 
 const
   /// <summary>Einzug je Ebene und Abstand der Zeilen bei 96 dpi.</summary>

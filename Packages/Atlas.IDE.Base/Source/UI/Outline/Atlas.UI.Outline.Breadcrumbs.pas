@@ -244,8 +244,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   System.Math,
   Vcl.Forms,
   Atlas.Core.Outline.Interfaces;

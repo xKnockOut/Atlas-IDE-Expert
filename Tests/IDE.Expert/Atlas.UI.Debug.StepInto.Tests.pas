@@ -27,7 +27,7 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Debug.StepInto,
   Atlas.UI.Strings,
   Atlas.UI.Debug.StepInto;

@@ -96,7 +96,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.ExceptionRuleEdit;
 
 const

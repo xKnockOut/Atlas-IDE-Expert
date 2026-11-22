@@ -66,7 +66,7 @@ uses
   Atlas.Core.Lsp.Uris,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.AiProviders.Catalog,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.AiErrors,
   Atlas.IDE.Assistants.DailyCount,

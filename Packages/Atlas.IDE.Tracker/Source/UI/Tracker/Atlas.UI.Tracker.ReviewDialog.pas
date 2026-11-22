@@ -129,7 +129,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.Core.Tracker.Transitions,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Foundation.Scaling;

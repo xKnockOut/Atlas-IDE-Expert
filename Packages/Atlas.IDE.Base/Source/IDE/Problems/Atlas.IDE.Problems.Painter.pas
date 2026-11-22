@@ -101,11 +101,11 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Winapi.Windows,
   System.Math,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Colors,
   Atlas.Core.Editor.Pairs,
   Atlas.IDE.Foundation.EditorBuffer,

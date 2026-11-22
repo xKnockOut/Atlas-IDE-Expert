@@ -29,7 +29,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.VersionControl.Contract;
@@ -170,7 +170,7 @@ uses
   System.Math,
   System.DateUtils,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Foundation.WrapLabel,
   Atlas.UI.Tracker.Development.Strings,
   Atlas.UI.Tracker.GitHubStrings,

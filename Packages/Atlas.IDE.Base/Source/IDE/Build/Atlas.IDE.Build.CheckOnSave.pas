@@ -83,7 +83,7 @@ implementation
 
 uses
   Atlas.IDE.Foundation.Keys,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Winapi.Windows,
   Vcl.Forms,
   Vcl.Controls,
@@ -97,7 +97,7 @@ uses
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.IDE.Foundation.Host;
 
 {$SCOPEDENUMS ON}

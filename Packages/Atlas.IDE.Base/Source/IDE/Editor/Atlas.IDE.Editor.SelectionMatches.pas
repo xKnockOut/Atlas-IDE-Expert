@@ -32,7 +32,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Editor.SelectionMatches,
   Atlas.UI.Foundation.EditorFont;
 
@@ -101,8 +101,8 @@ implementation
 uses
   System.Math,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,

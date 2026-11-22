@@ -23,7 +23,7 @@ uses
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.PaletteSearchPlan,
   Atlas.IDE.Tracker.IssueContext,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Antwort auf die aktuelle Anfrage; AAnswer sagt, was damit geschieht.</summary>
@@ -93,9 +93,9 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown;
 
 /// <summary>Issue zur Kennung bzw. Suche nach Text; False mit AError.</summary>
 function FetchIssues(const AJob: TAtlasIdeIssueSearchFetch.TSearchJob; out AIssues: TArray<TAtlasTrackerIssue>;

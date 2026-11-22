@@ -87,8 +87,8 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Architecture.Assignment,
   Atlas.UI.Foundation.Theme;
 

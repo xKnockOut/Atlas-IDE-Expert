@@ -130,7 +130,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Problems.Store;
 
 { TAtlasIdeProblemsServer.TDocumentWorker }

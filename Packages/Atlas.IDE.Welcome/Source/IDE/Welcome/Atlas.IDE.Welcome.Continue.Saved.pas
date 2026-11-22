@@ -29,7 +29,7 @@ uses
   System.SysUtils,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Welcome.IndexFiles,

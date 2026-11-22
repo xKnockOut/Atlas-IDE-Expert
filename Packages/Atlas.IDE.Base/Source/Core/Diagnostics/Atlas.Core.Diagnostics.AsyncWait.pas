@@ -66,7 +66,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Shutdown;
+  Atlas.Plugin.Diagnostics.Shutdown;
 
 { TAtlasAsyncWait }
 

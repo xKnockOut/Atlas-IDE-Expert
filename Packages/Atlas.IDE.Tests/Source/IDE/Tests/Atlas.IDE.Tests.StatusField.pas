@@ -76,7 +76,7 @@ uses
   ToolsAPI,
   Atlas.Core.Status.Contract,
   Atlas.Text.TestResults,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,

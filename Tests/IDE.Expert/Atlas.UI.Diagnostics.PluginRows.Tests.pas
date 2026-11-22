@@ -37,7 +37,7 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.PluginTimings,
   Atlas.Core.Diagnostics.PluginReport,
   Atlas.UI.Diagnostics.Grid,

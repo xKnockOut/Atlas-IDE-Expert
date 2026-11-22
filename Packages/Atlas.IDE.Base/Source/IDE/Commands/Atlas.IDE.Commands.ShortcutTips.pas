@@ -127,14 +127,14 @@ implementation
 
 uses
   Atlas.Core.Commands.ShortcutTips,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Messages,
   System.Types,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.ActnList,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.Tips,
   Atlas.Core.Notifications.Center,

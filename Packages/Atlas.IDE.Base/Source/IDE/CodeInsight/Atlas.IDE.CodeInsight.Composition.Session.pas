@@ -14,7 +14,7 @@ uses
   Atlas.Core.Problems.Findings,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.CodeInsight.Manager;
@@ -112,7 +112,7 @@ uses
   Atlas.IDE.Diagnostics.BugReport,
   Atlas.IDE.CodeInsight.Composition.HostAdapters,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Diagnostics.UnloadSafety;
+  Atlas.Plugin.Diagnostics.UnloadSafety;
 
 const
   cMessageGroup = 'Atlas';

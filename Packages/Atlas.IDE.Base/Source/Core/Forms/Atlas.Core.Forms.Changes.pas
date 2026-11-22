@@ -61,7 +61,7 @@ implementation
 
 uses
   Atlas.Text.Lines,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 const
   /// <summary>Trenner zwischen Eigenschaft und Wert in einer Zeile des Formulartexts.</summary>

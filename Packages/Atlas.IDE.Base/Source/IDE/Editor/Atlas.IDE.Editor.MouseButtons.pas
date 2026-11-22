@@ -30,7 +30,7 @@ uses
   System.Classes,
   Vcl.Forms,
   Vcl.AppEvnts,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.MouseButtons,
   Atlas.IDE.Contracts.MouseHistory,
   Atlas.IDE.Foundation.Settings,

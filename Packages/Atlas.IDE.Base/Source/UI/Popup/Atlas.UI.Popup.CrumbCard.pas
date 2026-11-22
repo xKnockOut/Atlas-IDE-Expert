@@ -53,7 +53,7 @@ uses
   System.SysUtils,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Outline.Strings,
   Atlas.UI.Popup.Accessibility;
 

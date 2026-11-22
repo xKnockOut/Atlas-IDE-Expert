@@ -133,8 +133,8 @@ implementation
 uses
   Vcl.Clipbrd,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.CodeLinkPlan,
   Atlas.UI.Tracker.Issue.Strings,

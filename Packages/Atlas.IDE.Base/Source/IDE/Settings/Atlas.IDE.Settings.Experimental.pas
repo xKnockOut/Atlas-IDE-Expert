@@ -33,7 +33,7 @@ implementation
 
 uses
   Atlas.Core.Settings.Experimental,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Strings;
 

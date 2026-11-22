@@ -6,7 +6,7 @@
 interface
 
 uses
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Texts,
   Atlas.Core.Hover.View;

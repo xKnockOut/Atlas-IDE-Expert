@@ -22,7 +22,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Designer.Scale,
   Atlas.UI.Designer.FormPreview;
 

@@ -55,7 +55,7 @@ uses
   System.JSON,
   Atlas.Core.Settings.JsonText,
   Atlas.Text.Json,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

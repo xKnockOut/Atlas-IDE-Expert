@@ -21,7 +21,7 @@ uses
   Vcl.ActnList,
   Vcl.Forms,
   Vcl.Menus,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueFrame.Types;

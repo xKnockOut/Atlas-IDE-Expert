@@ -64,7 +64,7 @@ uses
   Winapi.Windows,
   Winapi.Winsock2,
   Atlas.WinBase.Process,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cProcessTerminate = $0001;

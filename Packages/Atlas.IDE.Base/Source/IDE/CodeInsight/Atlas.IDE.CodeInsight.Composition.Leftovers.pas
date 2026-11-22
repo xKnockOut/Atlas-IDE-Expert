@@ -21,7 +21,7 @@ uses
   System.Generics.Collections,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry;
 
 type

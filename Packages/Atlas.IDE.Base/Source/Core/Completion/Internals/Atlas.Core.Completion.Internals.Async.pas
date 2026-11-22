@@ -17,7 +17,7 @@ uses
   System.Classes,
   System.SyncObjs,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ThreadList;
 
 type
@@ -83,7 +83,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Text.Reporting;
 
 { TAtlasAsyncCompletionProvider }

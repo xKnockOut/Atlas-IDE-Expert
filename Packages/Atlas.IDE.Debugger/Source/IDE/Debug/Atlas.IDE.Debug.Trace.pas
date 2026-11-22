@@ -90,7 +90,7 @@ uses
   Vcl.ActnList,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Debug.Session;
 
 { TAtlasIdeDebugTrace.THook }

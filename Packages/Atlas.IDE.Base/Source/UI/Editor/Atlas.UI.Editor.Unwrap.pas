@@ -78,8 +78,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Accessibility;

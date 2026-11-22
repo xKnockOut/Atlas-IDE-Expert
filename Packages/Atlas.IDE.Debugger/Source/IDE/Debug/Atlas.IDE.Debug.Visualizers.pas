@@ -137,7 +137,7 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.VisualizerFlow,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Evaluator,
