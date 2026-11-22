@@ -59,7 +59,7 @@ end;
 class function TShellReplayServer.Run(const ACase: TCrashCase; APlace: TReplayPlace;
   const ALogger: ILogger): TReplayResult;
 begin
-  Result := TReplayPlayer.Run(ACase, APlace, ALogger, Server(), TReplayTransport.Factory);
+  Result := TReplayPlayer.Run(ACase, APlace, ALogger, Server(), TReplayTransport.Factory());
 end;
 
 class function TShellReplayServer.Main(const AFileName: string): Integer;
@@ -71,7 +71,7 @@ begin
   mLoggerImpl := TLogger.Create;
   mLogger := mLoggerImpl;
   mLoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
-  mResult := TReplayPlayer.Run(AFileName, mLogger, Server(), TReplayTransport.Factory);
+  mResult := TReplayPlayer.Run(AFileName, mLogger, Server(), TReplayTransport.Factory());
   mLogger.Warning(mResult.Text);
   Result := TReplayPlayer.ExitCodeOf(mResult);
 end;
