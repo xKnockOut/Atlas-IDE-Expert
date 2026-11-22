@@ -74,7 +74,8 @@ uses
   Atlas.Common.Editing.ForwardDeclarations,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.RoutineSignatures;
 
 {$SCOPEDENUMS ON}
 
@@ -206,7 +207,6 @@ type
     function IsBody(ARoutine: TSyntaxNode): Boolean;
     function Satisfied(AContainer: TSyntaxNode; AFrom: Integer; ADecl: TSyntaxNode): Boolean;
     function HeadStop(AFirst: Integer): Integer;
-    procedure TrackDefault(AChar: Char; var ADepth: Integer; var ASkipping: Boolean);
     function CompactHead(const AText: string): string;
     function HeadText(AHeader: TSyntaxNode): string;
     function CreateBody(ADecl: TSyntaxNode): TArray<TRuleFix>;
@@ -347,25 +347,6 @@ begin
   Result := -1;
 end;
 
-/// <summary>Klammertiefe ADepth zum Zeichen AChar nachführen; ASkipping: innerhalb eines Standardwerts
-/// (ab "=" in der Parameterliste bis ";" oder zur schließenden Klammer).</summary>
-procedure TUnsatisfiedForwardScan.TrackDefault(AChar: Char; var ADepth: Integer; var ASkipping: Boolean);
-begin
-  case AChar of
-    '(', '[':
-      Inc(ADepth);
-    ')', ']':
-      begin
-        Dec(ADepth);
-        ASkipping := ASkipping and (ADepth <> 0);
-      end;
-    ';':
-      ASkipping := ASkipping and (ADepth <> 1);
-    '=':
-      ASkipping := ASkipping or (ADepth = 1);
-  end;
-end;
-
 /// <summary>AText ohne Standardwerte, Leerraum zu einem Leerzeichen zusammengefasst.</summary>
 function TUnsatisfiedForwardScan.CompactHead(const AText: string): string;
 var
@@ -385,7 +366,7 @@ begin
     end;
     if not mQuoted then
     begin
-      TrackDefault(AText[mIndex], mDepth, mSkipping);
+      TRoutineSignatures.TrackDefault(AText[mIndex], mDepth, mSkipping);
     end;
     if mSkipping then
     begin

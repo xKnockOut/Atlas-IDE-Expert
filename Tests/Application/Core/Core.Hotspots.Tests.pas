@@ -1,4 +1,4 @@
-﻿unit Shell.Hotspots.Tests;
+﻿unit Core.Hotspots.Tests;
 
 // Hotspots mit echtem git und svn (#1354): Die Tests legen eine
 // Git-Arbeitskopie bzw. ein SVN-Repository unter file:/// mit demselben
@@ -15,7 +15,7 @@ uses
 
 type
   [TestFixture]
-  TShellHotspotsTests = class
+  TCoreHotspotsTests = class
   public
     [Test]
     procedure DetectWithoutWorkingCopyGivesReason;
@@ -40,9 +40,9 @@ uses
   Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Service,
   Shell.Composition.Platform,
-  Shell.VersionControlChanges,
-  Shell.VersionControl.TestSupport,
-  Shell.Hotspots;
+  Core.VersionControlChanges,
+  Core.VersionControl.TestSupport,
+  Core.Hotspots;
 
 function NewFolder(const AName: string): string;
 begin
@@ -146,9 +146,9 @@ begin
   Result := Default(THotspotEntry);
 end;
 
-{ TShellHotspotsTests }
+{ TCoreHotspotsTests }
 
-procedure TShellHotspotsTests.DetectWithoutWorkingCopyGivesReason;
+procedure TCoreHotspotsTests.DetectWithoutWorkingCopyGivesReason;
 var
   mFolder, mError: string;
   mVcs: IHotspotVcs;
@@ -156,12 +156,12 @@ var
 begin
   mFolder := NewFolder('ohne');
   try
-    Assert.IsFalse(TShellHotspotVcs.Detect(mFolder, TServerSettings.Default, mVcs, mError));
+    Assert.IsFalse(TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, mFolder, TServerSettings.Default, mVcs, mError));
     Assert.IsNull(mVcs);
     Assert.IsTrue(mError.Contains('weder in einem Git-Repository noch in einer SVN-Arbeitskopie'), mError);
     mSettings := TServerSettings.Default;
     mSettings.VcsProvider := 'off';
-    Assert.IsFalse(TShellHotspotVcs.Detect(mFolder, mSettings, mVcs, mError));
+    Assert.IsFalse(TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, mFolder, mSettings, mVcs, mError));
     Assert.IsTrue(mError.Contains('vcs.provider = off'), mError);
   finally
     RemoveFolder(mFolder);
@@ -242,7 +242,7 @@ begin
   Assert.AreEqual<THotspotTextState>(THotspotTextState.Unknown, AVcs.TextAt('Src/Neu.pas', IncDay(Now, -2), mText));
 end;
 
-procedure TShellHotspotsTests.GitHistoryFollowsRenameAndMatchesGitLog;
+procedure TCoreHotspotsTests.GitHistoryFollowsRenameAndMatchesGitLog;
 var
   mGit, mFolder, mError: string;
   mRunner: IAtlasVcsRunner;
@@ -262,7 +262,7 @@ begin
   try
     InitGit(mRunner, mGit, mFolder, 'Atlas Test');
     CommitGitSteps(mRunner, mGit, mFolder);
-    Assert.IsTrue(TShellHotspotVcs.Detect(TPath.Combine(mFolder, 'Src'), TServerSettings.Default, mVcs, mError),
+    Assert.IsTrue(TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, TPath.Combine(mFolder, 'Src'), TServerSettings.Default, mVcs, mError),
       mError);
     AssertGitHistory(mVcs, mRunner, mGit, mFolder);
 
@@ -368,7 +368,7 @@ begin
   Assert.AreEqual(Integer(Length(AGitResult.Coupling)), Integer(Length(ASvnResult.Coupling)));
 end;
 
-procedure TShellHotspotsTests.SvnGivesSameValuesAsGit;
+procedure TCoreHotspotsTests.SvnGivesSameValuesAsGit;
 var
   mGit, mSvn, mSvnAdmin, mFolder, mGitFolder, mWorkingCopy, mError: string;
   mRunner: IAtlasVcsRunner;
@@ -389,8 +389,8 @@ begin
     CreateSvnWorkingCopy(mRunner, mSvn, mSvnAdmin, mFolder, TPath.Combine(mFolder, 'repo'), mWorkingCopy);
     CommitBothSteps(mRunner, mGit, mSvn, mGitFolder, mWorkingCopy);
     Exec(mRunner, mSvn, ['update', '-q', '--non-interactive'], mWorkingCopy);
-    Assert.IsTrue(TShellHotspotVcs.Detect(mGitFolder, TServerSettings.Default, mGitVcs, mError), mError);
-    Assert.IsTrue(TShellHotspotVcs.Detect(mWorkingCopy, TServerSettings.Default, mSvnVcs, mError), mError);
+    Assert.IsTrue(TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, mGitFolder, TServerSettings.Default, mGitVcs, mError), mError);
+    Assert.IsTrue(TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, mWorkingCopy, TServerSettings.Default, mSvnVcs, mError), mError);
     Assert.AreEqual<THotspotVcsKind>(THotspotVcsKind.Svn, mSvnVcs.Kind);
     Assert.AreEqual('6', mSvnVcs.Head, 'Ablage = r1, fünf Schritte');
     mGitResult := Analyze(mGitFolder, mGitVcs);
@@ -405,6 +405,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellHotspotsTests);
+  TDUnitX.RegisterTestFixture(TCoreHotspotsTests);
 
 end.

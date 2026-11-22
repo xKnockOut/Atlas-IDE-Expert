@@ -54,6 +54,9 @@ type
     constructor Create(const AInput: TAnonymousInput);
     destructor Destroy; override;
     function Run(out AAction: TCodeAction; out AReason: string): Boolean;
+    /// <summary>Einbetten für AInput in einem Zug: anlegen, Run, freigeben.</summary>
+    class function Execute(const AInput: TAnonymousInput; out AAction: TCodeAction; out AReason: string): Boolean;
+      static;
   end;
 
 implementation
@@ -572,6 +575,19 @@ begin
   if Result then
   begin
     AAction := Action;
+  end;
+end;
+
+class function TAnonymousEmbedding.Execute(const AInput: TAnonymousInput; out AAction: TCodeAction;
+  out AReason: string): Boolean;
+var
+  mEmbedding: TAnonymousEmbedding;
+begin
+  mEmbedding := TAnonymousEmbedding.Create(AInput);
+  try
+    Result := mEmbedding.Run(AAction, AReason);
+  finally
+    mEmbedding.Free;
   end;
 end;
 

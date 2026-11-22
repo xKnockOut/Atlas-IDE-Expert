@@ -14,13 +14,12 @@ uses
   Atlas.Common.JsonRpc.Contract;
 
 type
-  TJsonRpcStreamTransport = class(TInterfacedObject, IJsonRpcTransport)
-  private const
+  /// <summary>Gemeinsame Grundlage der Transporte über zwei Streams: gepufferte Eingabe und eine Ausgabe, auf die
+  /// immer nur ein Thread schreibt.</summary>
+  TJsonRpcBufferedTransport = class(TInterfacedObject)
+  protected const
     cBufferSize = 64 * 1024;
-    cMaxHeaderLineLength = 8 * 1024;
-    cMaxContentLength = 256 * 1024 * 1024;
-    cContentLengthHeader = 'Content-Length:';
-  private
+  protected
     FInput: TStream;
     FOutput: TStream;
     FOwnsStreams: Boolean;
@@ -29,17 +28,27 @@ type
     FBufferLen: Integer;
     FWriteLock: TCriticalSection;
     function FillBuffer: Boolean;
+    /// <summary>Nächstes Byte der Eingabe; False am Ende.</summary>
     function TryReadByte(out AByte: Byte): Boolean;
+    /// <summary>Schreibt AData in einem Stück, damit sich Nachrichten mehrerer Threads nicht mischen.</summary>
+    procedure WriteBytes(const AData: TBytes);
+  public
+    /// <summary>AInput liefert die Nachrichten der Gegenseite, AOutput nimmt die eigenen auf. Bei AOwnsStreams
+    /// gibt der Transport beide Streams frei.</summary>
+    constructor Create(AInput, AOutput: TStream; AOwnsStreams: Boolean);
+    destructor Destroy; override;
+  end;
+
+  TJsonRpcStreamTransport = class(TJsonRpcBufferedTransport, IJsonRpcTransport)
+  private const
+    cMaxHeaderLineLength = 8 * 1024;
+    cMaxContentLength = 256 * 1024 * 1024;
+    cContentLengthHeader = 'Content-Length:';
+  private
     function ReadHeaderLine(AAtMessageStart: Boolean): string;
     function ReadBody(ACount: Integer): TBytes;
     function ReadContentLength: Integer;
   public
-    /// <summary>
-    /// AInput liefert die Nachrichten der Gegenseite, AOutput nimmt die eigenen auf.
-    /// Bei AOwnsStreams gibt der Transport beide Streams frei.
-    /// </summary>
-    constructor Create(AInput, AOutput: TStream; AOwnsStreams: Boolean);
-    destructor Destroy; override;
     function ReadMessage: TJSONObject;
     procedure WriteMessage(const AMessage: TJSONObject);
   end;
@@ -71,9 +80,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TJsonRpcStreamTransport }
+{ TJsonRpcBufferedTransport }
 
-constructor TJsonRpcStreamTransport.Create(AInput, AOutput: TStream; AOwnsStreams: Boolean);
+constructor TJsonRpcBufferedTransport.Create(AInput, AOutput: TStream; AOwnsStreams: Boolean);
 begin
   inherited Create;
   FInput := AInput;
@@ -83,7 +92,7 @@ begin
   FWriteLock := TCriticalSection.Create;
 end;
 
-destructor TJsonRpcStreamTransport.Destroy;
+destructor TJsonRpcBufferedTransport.Destroy;
 begin
   FWriteLock.Free;
   if FOwnsStreams then
@@ -94,7 +103,7 @@ begin
   inherited;
 end;
 
-function TJsonRpcStreamTransport.FillBuffer: Boolean;
+function TJsonRpcBufferedTransport.FillBuffer: Boolean;
 var
   mCount: Integer;
 begin
@@ -105,7 +114,7 @@ begin
   Result := FBufferLen > 0;
 end;
 
-function TJsonRpcStreamTransport.TryReadByte(out AByte: Byte): Boolean;
+function TJsonRpcBufferedTransport.TryReadByte(out AByte: Byte): Boolean;
 begin
   if (FBufferPos >= FBufferLen) and not FillBuffer then
   begin
@@ -115,6 +124,18 @@ begin
   Inc(FBufferPos);
   Result := True;
 end;
+
+procedure TJsonRpcBufferedTransport.WriteBytes(const AData: TBytes);
+begin
+  FWriteLock.Enter;
+  try
+    FOutput.WriteBuffer(AData, Length(AData));
+  finally
+    FWriteLock.Leave;
+  end;
+end;
+
+{ TJsonRpcStreamTransport }
 
 function TJsonRpcStreamTransport.ReadHeaderLine(AAtMessageStart: Boolean): string;
 var
@@ -244,12 +265,7 @@ begin
   mBody := TEncoding.UTF8.GetBytes(AMessage.ToJSON);
   mData := TEncoding.ASCII.GetBytes(Format('Content-Length: %d'#13#10#13#10, [Length(mBody)])) + mBody;
   // Header und Inhalt in einem Stück, damit sich Nachrichten mehrerer Threads nicht mischen.
-  FWriteLock.Enter;
-  try
-    FOutput.WriteBuffer(mData, Length(mData));
-  finally
-    FWriteLock.Leave;
-  end;
+  WriteBytes(mData);
 end;
 
 initialization

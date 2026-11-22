@@ -119,26 +119,10 @@ type
   TUnclearResult = (Value, Pointer_, Unknown);
   {$SCOPEDENUMS OFF}
 
-  TSourceFile = class
+  TSourceFile = class(TLspSourceFile)
   public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    OwnsTree: Boolean;
     Edits: TArray<TTextEdit>;
-    destructor Destroy; override;
   end;
-
-{ TSourceFile }
-
-destructor TSourceFile.Destroy;
-begin
-  if OwnsTree then
-  begin
-    Tree.Free;
-  end;
-  inherited;
-end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin

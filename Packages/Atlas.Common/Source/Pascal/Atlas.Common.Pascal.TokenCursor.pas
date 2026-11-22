@@ -88,6 +88,9 @@ function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Int
 /// <summary>Steht vor dem Token an AIndex (Kommentare und Direktiven übersprungen) ein Punkt, ist es also das
 /// Mitglied hinter X.?</summary>
 function AfterDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+/// <summary>Offsets der Bezeichner AName (ohne Groß-/Kleinschreibung), außer direkt hinter function bzw.
+/// procedure (dem Namen im Kopf): die Verwendungen einer Routine.</summary>
+function NameUseOffsets(const ATokens: TArray<TPascalToken>; const AName: string): TArray<Integer>;
 /// <summary>+1 für ( und [, -1 für ) und ], sonst 0: Tiefe der Klammern beim Lauf über die Token.</summary>
 function BracketDelta(const AToken: TPascalToken): Integer;
 /// <summary>Text der Code-Token von AFirst bis vor AStop ohne Zwischenraum (Kommentare und Direktiven
@@ -276,6 +279,22 @@ var
 begin
   mBefore := PreviousCode(ATokens, AIndex);
   Result := (mBefore >= 0) and ATokens[mBefore].IsSymbol('.');
+end;
+
+function NameUseOffsets(const ATokens: TArray<TPascalToken>; const AName: string): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, AName) and
+      not ((mIndex > 0) and (ATokens[mIndex - 1].IsKeyword('function') or
+      ATokens[mIndex - 1].IsKeyword('procedure'))) then
+    begin
+      Result := Result + [ATokens[mIndex].Offset];
+    end;
+  end;
 end;
 
 function BracketDelta(const AToken: TPascalToken): Integer;

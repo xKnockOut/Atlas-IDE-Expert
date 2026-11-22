@@ -22,7 +22,7 @@ uses
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.BulkFix,
   Core.CommandLine,
-  Shell.VersionControlChanges,
+  Core.VersionControlChanges,
   Core.WorkspaceGroup;
 
 type

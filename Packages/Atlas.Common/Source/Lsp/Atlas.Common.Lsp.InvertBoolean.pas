@@ -93,7 +93,9 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -157,32 +159,18 @@ const
   cFormExtensions: array[0..1] of string = ('.dfm', '.fmx');
 
 type
-  TSourceFile = class
+  TSourceFile = class(TLspSourceFile)
   public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    OwnsTree: Boolean;
     Lines: TLineTable;
     Targets: TInvertTargets;
     Extra: TArray<TTextEdit>;
     Resolver: TNameResolver;
-    destructor Destroy; override;
     function Offset(const APosition: TTextPosition): Integer;
     function TokenAt(const APosition: TTextPosition): Integer;
     function IsVarArgument(ACall: TSyntaxNode; AArgument: Integer): Boolean;
   end;
 
 { TSourceFile }
-
-destructor TSourceFile.Destroy;
-begin
-  if OwnsTree then
-  begin
-    Tree.Free;
-  end;
-  inherited;
-end;
 
 /// <summary>Ansatz für TLspChangeSignature.Family an APosition, ohne Abbruch.</summary>
 function FamilySource(AResolver: TNameResolver; const AContext: TInvertBooleanContext; ATree: TSyntaxTree;
@@ -753,10 +741,7 @@ end;
 
 procedure TInvertPlan.Warn(const AText: string);
 begin
-  if IndexStr(AText, Warnings) < 0 then
-  begin
-    Warnings := Warnings + [AText];
-  end;
+  TTextArrays.AddText(Warnings, AText);
 end;
 
 procedure TInvertPlan.AddVariable(const ASymbol: TResolvedSymbol; const ANewName: string; AAccessorCheck: Boolean);
@@ -1738,7 +1723,7 @@ var
   mPlaces, mFiles: Integer;
   mWarnings: TArray<string>;
 begin
-  if not TLspRename.IsValidName(AContext.NewName) then
+  if not TPascalLexer.IsIdentifierName(AContext.NewName) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspInvertBooleanText.IsNotAValidIdentifier].Fmt([AContext.NewName]));

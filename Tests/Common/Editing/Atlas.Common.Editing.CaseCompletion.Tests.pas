@@ -29,6 +29,8 @@ type
     /// <summary>#50: Mit else-Teil kommen die Werte davor; Präfix und Fälle ohne Angebot.</summary>
     [Test]
     procedure CompletesBeforeElseAndRejects;
+    [Test]
+    procedure CoveredMarksLabelsAndRanges;
   end;
 
 implementation
@@ -272,6 +274,20 @@ begin
   // Eine Marke, die kein Wert ist.
   Assert.AreEqual('-', CompleteText('procedure P(A: TAlign);'#10'begin'#10'  case A of'#10'    1: X;'#10'  end;'#10 +
     'end;'#10, '', mCount, mHasElse));
+end;
+
+procedure TCaseCompletionTests.CoveredMarksLabelsAndRanges;
+var
+  mCovered: TArray<Boolean>;
+begin
+  Assert.IsTrue(TCaseCompletion.Covered(AllValues, TArray<string>.Create('TShape.skLine..skRect'), mCovered));
+  Assert.AreEqual(4, Integer(Length(mCovered)));
+  Assert.IsFalse(mCovered[0]);
+  Assert.IsTrue(mCovered[1]);
+  Assert.IsTrue(mCovered[2]);
+  Assert.IsFalse(mCovered[3]);
+  Assert.IsFalse(TCaseCompletion.Covered(AllValues, TArray<string>.Create('skUnbekannt'), mCovered));
+  mCovered := nil;
 end;
 
 initialization

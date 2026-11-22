@@ -46,6 +46,8 @@ type
     [Test]
     procedure TextAndFreeGivesTextAndFrees;
     [Test]
+    procedure AddFlagOnlyWhenTrue;
+    [Test]
     procedure UriLineIsArrayOfUriAndLine;
   end;
 
@@ -116,6 +118,8 @@ type
     procedure ReadsIsoTime;
     [Test]
     procedure IsoTimeIsZeroForOtherValues;
+    [Test]
+    procedure FirstTextOfArray;
   end;
 
 implementation
@@ -573,6 +577,43 @@ begin
   Assert.IsNull(TJsonRead.ParseArray('{"a": 1}'));
   Assert.IsNull(TJsonRead.ParseArray('[1,'));
   Assert.IsNull(TJsonRead.ParseArray(''));
+end;
+
+procedure TJsonBuildTests.AddFlagOnlyWhenTrue;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    TJsonBuild.AddFlag(mObject, 'aus', False);
+    TJsonBuild.AddFlag(mObject, 'an', True);
+    Assert.AreEqual('{"an":true}', mObject.ToJSON);
+  finally
+    mObject.Free;
+  end;
+end;
+
+procedure TJsonReadTests.FirstTextOfArray;
+var
+  mArray: TJSONArray;
+begin
+  Assert.AreEqual('', TJsonRead.FirstText(nil));
+  mArray := TJSONArray.Create;
+  try
+    Assert.AreEqual('', TJsonRead.FirstText(mArray));
+    mArray.Add(TJSONObject.Create);
+    Assert.AreEqual('', TJsonRead.FirstText(mArray), 'kein Text');
+  finally
+    mArray.Free;
+  end;
+  mArray := TJSONArray.Create;
+  try
+    mArray.Add('eins');
+    mArray.Add('zwei');
+    Assert.AreEqual('eins', TJsonRead.FirstText(mArray));
+  finally
+    mArray.Free;
+  end;
 end;
 
 initialization

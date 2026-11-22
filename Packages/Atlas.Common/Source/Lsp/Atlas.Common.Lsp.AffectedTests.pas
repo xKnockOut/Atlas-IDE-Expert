@@ -97,7 +97,9 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
   Atlas.Text.DUnitX.CommandLine,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names,
+  Atlas.Text.Uris;
 
 {$SCOPEDENUMS ON}
 
@@ -490,14 +492,6 @@ begin
   end;
 end;
 
-function BaseNameOf(const APath: string): string;
-var
-  mPath: string;
-begin
-  mPath := StringReplace(APath, '\', '/', [rfReplaceAll]);
-  Result := Copy(mPath, LastDelimiter('/', mPath) + 1, MaxInt);
-end;
-
 class function TAffectedTests.IncludeLines(const AText, AIncludeFile: string): TArray<Integer>;
 var
   mLines: TArray<string>;
@@ -511,8 +505,8 @@ begin
   begin
     for mName in TChangedFiles.IncludeNames(mLines[mIndex]) do
     begin
-      if SameText(BaseNameOf(mName), BaseNameOf(AIncludeFile)) or
-        ((Pos('.', BaseNameOf(mName)) = 0) and SameText(BaseNameOf(mName) + '.inc', BaseNameOf(AIncludeFile))) then
+      if SameText(TTextUris.FileNameOf(mName), TTextUris.FileNameOf(AIncludeFile)) or
+        ((Pos('.', TTextUris.FileNameOf(mName)) = 0) and SameText(TTextUris.FileNameOf(mName) + '.inc', TTextUris.FileNameOf(AIncludeFile))) then
       begin
         Result := Result + [mIndex];
         Break;
@@ -1005,18 +999,6 @@ begin
   end;
 end;
 
-function PlaceName(const AItem: THierarchyItem): string;
-begin
-  if AItem.Container <> '' then
-  begin
-    Result := AItem.Container + '.' + AItem.Name;
-  end
-  else
-  begin
-    Result := AItem.Name;
-  end;
-end;
-
 function TAffectedRun.SymbolStarts(out AChanges: TArray<TAffectedChange>): TArray<THierarchyItem>;
 var
   mWholeFiles: TDictionary<string, Boolean>;
@@ -1049,22 +1031,6 @@ begin
   end;
 end;
 
-/// <summary>Stelle des Tests ATestIndex in AFound.Places; -1, wenn das geänderte Symbol selbst der Test ist.
-/// </summary>
-function PlaceOfTest(const AFound: TImpactResult; ATestIndex: Integer): Integer;
-var
-  mStep: Integer;
-begin
-  for mStep := 0 to High(AFound.Places) do
-  begin
-    if AFound.Places[mStep].Test = ATestIndex then
-    begin
-      Exit(mStep);
-    end;
-  end;
-  Result := -1;
-end;
-
 /// <summary>Weg von der Stelle APlace über die Ursachen zurück zum geänderten Symbol, das Symbol zuerst.
 /// AInferred: ein Schritt ist nicht sicher.</summary>
 function ImpactPath(const AFound: TImpactResult; APlace: Integer; out AInferred: Boolean): TArray<string>;
@@ -1076,7 +1042,7 @@ begin
   mStep := APlace;
   while mStep >= 0 do
   begin
-    Result := TArray<string>.Create(PlaceName(AFound.Places[mStep].Item)) + Result;
+    Result := TArray<string>.Create(TTextNames.Qualified(AFound.Places[mStep].Item.Container, AFound.Places[mStep].Item.Name)) + Result;
     AInferred := AInferred or not AFound.Places[mStep].Confidence.IsSure;
     mStep := AFound.Places[mStep].Cause;
   end;
@@ -1116,7 +1082,7 @@ var
 begin
   for mTestIndex := 0 to High(AFound.Tests) do
   begin
-    mPlace := PlaceOfTest(AFound, mTestIndex);
+    mPlace := AFound.PlaceOfTest(mTestIndex);
     mReason.Change := AChange.Text;
     mReason.Path := TArray<string>.Create(AChange.Text) + ImpactPath(AFound, mPlace, mReason.Inferred);
     AddTest(ImpactTest(AFound, mTestIndex, mPlace, AStart), mReason);

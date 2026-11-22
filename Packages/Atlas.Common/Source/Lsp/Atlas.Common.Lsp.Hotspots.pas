@@ -178,19 +178,6 @@ begin
   Result := (mValue is TJSONNumber) and TryStrToInt(mValue.Value, AValue);
 end;
 
-/// <summary>Pfad aus einer file-URI oder unverändert, wenn AText schon ein Pfad ist.</summary>
-function PathOf(const AText: string): string;
-begin
-  if StartsText('file:', AText) then
-  begin
-    Result := TDocumentUris.ToPath(AText);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 { TLspHotspots }
 
 constructor TLspHotspots.Create(AService: THotspotService; const ASourceFor: TLspHotspotSourceFunc);
@@ -269,7 +256,7 @@ var
   mSettings: TServerSettings;
   mError: string;
 begin
-  if not (Assigned(FSourceFor) and FSourceFor(PathOf(TJsonRead.TrimmedText(AParams, 'uri')), ARequest, mSettings, AVcs,
+  if not (Assigned(FSourceFor) and FSourceFor(TDocumentUris.PathOrSelf(TJsonRead.TrimmedText(AParams, 'uri')), ARequest, mSettings, AVcs,
     AOutcome.VcsError)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.NoProjectLoaded].Text);
@@ -355,11 +342,7 @@ end;
 procedure TLspHotspots.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // git log über ein Jahr und git log -L je Methode dauern Sekunden: nebenläufig, damit Editoranfragen nicht warten.
-  ADispatcher.RegisterConcurrentRequest(cMethod,
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    begin
-      Result := Request(AParams);
-    end);
+  ADispatcher.RegisterConcurrentPlain(cMethod, Request);
 end;
 
 class function TLspHotspots.TryParseFormat(const AText: string; out AFormat: TLspHotspotFormat): Boolean;
@@ -620,7 +603,7 @@ begin
   Result := '';
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
   begin
-    Result := PathOf(AArguments.Items[1].Value);
+    Result := TDocumentUris.PathOrSelf(AArguments.Items[1].Value);
   end;
   if Result = '' then
   begin

@@ -70,7 +70,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.References,
-  Atlas.Tests.SourceText;
+  Atlas.Tests.SourceText,
+  Atlas.Common.Pascal.Lexer;
 
 const
   cWerkzeugFile = 'C:\P\Werkzeug.pas';
@@ -323,13 +324,13 @@ end;
 
 procedure TLspRenameTests.ValidatesNewNames;
 begin
-  Assert.IsTrue(TLspRename.IsValidName('Addiere'));
-  Assert.IsTrue(TLspRename.IsValidName('_Wert2'));
-  Assert.IsFalse(TLspRename.IsValidName(''));
-  Assert.IsFalse(TLspRename.IsValidName('begin'));
-  Assert.IsFalse(TLspRename.IsValidName('2Wert'));
-  Assert.IsFalse(TLspRename.IsValidName('A B'));
-  Assert.IsFalse(TLspRename.IsValidName('&Wert'));
+  Assert.IsTrue(TPascalLexer.IsIdentifierName('Addiere'));
+  Assert.IsTrue(TPascalLexer.IsIdentifierName('_Wert2'));
+  Assert.IsFalse(TPascalLexer.IsIdentifierName(''));
+  Assert.IsFalse(TPascalLexer.IsIdentifierName('begin'));
+  Assert.IsFalse(TPascalLexer.IsIdentifierName('2Wert'));
+  Assert.IsFalse(TPascalLexer.IsIdentifierName('A B'));
+  Assert.IsFalse(TPascalLexer.IsIdentifierName('&Wert'));
 end;
 
 procedure TLspRenameTests.PrepareReturnsNameAndRange;

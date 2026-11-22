@@ -20,7 +20,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   {$SCOPEDENUMS ON}
@@ -36,13 +37,10 @@ type
   /// <summary>Einstellungen zur Schlüsselworthervorhebung (#307) für eine Datei-URI.</summary>
   THighlightSettingsProvider = reference to function(const AUri: string): THighlightSettings;
 
-  TLspDocumentHighlights = class
+  TLspDocumentHighlights = class(TLspIndexFeature)
   public const
     cMethod = 'textDocument/documentHighlight';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     FSettingsFor: THighlightSettingsProvider;
     function HandleHighlight(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -157,10 +155,7 @@ end;
 constructor TLspDocumentHighlights.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AEnsureUnit);
 end;
 
 constructor TLspDocumentHighlights.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);

@@ -22,8 +22,6 @@ const
 /// mit Interfaces, #466). Bei gleichem Anfang gewinnt der spätere Eintrag.</summary>
 function EnclosingTypeAt(const AUnit: TUnitIndex; ALine: Integer; const AKinds: TIndexSymbolKinds;
   AMinAncestors: Integer; AInclusiveEnd: Boolean; out ASymbol: TIndexSymbol): Boolean;
-/// <summary>Name von ASymbol samt umgebendem Typ ("TAussen.TInnen").</summary>
-function QualifiedTypeName(const ASymbol: TIndexSymbol): string;
 /// <summary>AType und seine Vorfahren, nächster zuerst; nur AType, wenn er sich nicht auflösen lässt.</summary>
 function TypeChain(AResolver: TNameResolver; const AUnit: TUnitIndex; const AType: string): TArray<string>;
 
@@ -52,18 +50,6 @@ begin
       ASymbol := mSymbol;
       Result := True;
     end;
-  end;
-end;
-
-function QualifiedTypeName(const ASymbol: TIndexSymbol): string;
-begin
-  if ASymbol.Container <> '' then
-  begin
-    Result := ASymbol.Container + '.' + ASymbol.Name;
-  end
-  else
-  begin
-    Result := ASymbol.Name;
   end;
 end;
 

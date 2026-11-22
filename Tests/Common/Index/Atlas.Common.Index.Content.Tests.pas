@@ -39,6 +39,8 @@ type
     procedure ExpandWithoutUsagesMarksOffloaded;
     [Test]
     procedure BudgetOffloadsUsagesFirst;
+    [Test]
+    procedure QualifiedNameWithAndWithoutContainer;
   end;
 
   [TestFixture]
@@ -537,6 +539,20 @@ begin
   finally
     mService.Free;
   end;
+end;
+
+procedure TIndexContentTests.QualifiedNameWithAndWithoutContainer;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Assert.AreEqual('TFoo.Bar', TIndexSymbol.QualifiedOf('TFoo', 'Bar'));
+  Assert.AreEqual('Bar', TIndexSymbol.QualifiedOf('', 'Bar'));
+  mSymbol := Default(TIndexSymbol);
+  mSymbol.Name := 'Run';
+  Assert.AreEqual('Run', mSymbol.QualifiedName);
+  mSymbol.Container := 'TAussen.TInnen';
+  Assert.AreEqual('TAussen.TInnen.Run', mSymbol.QualifiedName);
+  mSymbol := Default(TIndexSymbol);
 end;
 
 initialization

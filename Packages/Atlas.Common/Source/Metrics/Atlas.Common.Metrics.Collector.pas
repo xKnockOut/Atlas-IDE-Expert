@@ -10,11 +10,12 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Metrics.Contract;
+  Atlas.Common.Metrics.Contract,
+  Atlas.Common.Documents.Contract;
 
 type
   /// <summary>Text einer Datei (geöffnetes Dokument oder Platte); False, wenn sie fehlt.</summary>
-  TMetricsReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TMetricsReadText = TDocumentReadText;
 
   TMetricsCollector = class
   private type

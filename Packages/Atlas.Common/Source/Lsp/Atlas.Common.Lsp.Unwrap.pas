@@ -42,32 +42,6 @@ uses
   Atlas.Common.Editing.WithResolution,
   Atlas.Common.Lsp.Positions;
 
-function RangesToJson(const ARanges: TArray<TTextRange>): TJSONArray;
-var
-  mRange: TTextRange;
-begin
-  Result := TJSONArray.Create;
-  for mRange in ARanges do
-  begin
-    Result.AddElement(TLspPositions.RangeToJson(mRange));
-  end;
-end;
-
-function EditsToJson(const AEdits: TArray<TTextEdit>): TJSONArray;
-var
-  mEdit: TTextEdit;
-  mItem: TJSONObject;
-begin
-  Result := TJSONArray.Create;
-  for mEdit in AEdits do
-  begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
-    mItem.AddPair('newText', mEdit.NewText);
-    Result.AddElement(mItem);
-  end;
-end;
-
 { TLspUnwrap }
 
 class function TLspUnwrap.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
@@ -131,9 +105,9 @@ begin
       mVariants.AddElement(mVariantItem);
       mVariantItem.AddPair('kind', TUnwrap.VariantName(mChoice.Kind));
       mVariantItem.AddPair('branch', TJSONNumber.Create(mChoice.Branch));
-      mVariantItem.AddPair('edits', EditsToJson(mChoice.Edits));
-      mVariantItem.AddPair('keep', RangesToJson(mChoice.Keep));
-      mVariantItem.AddPair('remove', RangesToJson(mChoice.Remove));
+      mVariantItem.AddPair('edits', TLspPositions.EditsToJson(mChoice.Edits));
+      mVariantItem.AddPair('keep', TLspPositions.RangesToJson(mChoice.Keep));
+      mVariantItem.AddPair('remove', TLspPositions.RangesToJson(mChoice.Remove));
     end;
   end;
 end;

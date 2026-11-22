@@ -90,18 +90,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function PathOf(const AText: string): string;
-begin
-  if StartsText('file:', AText) then
-  begin
-    Result := TDocumentUris.ToPath(AText);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 { TLspBulkFix }
 
 constructor TLspBulkFix.Create(const AInputFor: TLspBulkFixInputFunc);
@@ -212,7 +200,7 @@ begin
   mResults := nil;
   for mName in TJsonRead.TrimmedStrings(mArguments.GetValue('files')) do
   begin
-    if RunFile(PathOf(mName), mFixRules, mRequested, mResult) then
+    if RunFile(TDocumentUris.PathOrSelf(mName), mFixRules, mRequested, mResult) then
     begin
       mResults := mResults + [mResult];
     end;

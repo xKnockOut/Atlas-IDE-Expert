@@ -28,7 +28,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Lsp.SignatureFormat,
-  Atlas.Common.Lsp.Hover;
+  Atlas.Common.Lsp.Hover,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   TCallSite = record
@@ -92,13 +93,10 @@ type
   /// <summary>Formatroutinen für das Dokument AUri: eingebaute und eigene (#451).</summary>
   TFormatRoutinesFunc = reference to function(const AUri: string): TArray<TFormatRoutine>;
 
-  TLspSignatureHelp = class
+  TLspSignatureHelp = class(TLspIndexFeature)
   public const
     cMethod = 'textDocument/signatureHelp';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
     FReadText: THoverReadText;
     FNamespaces: TArray<string>;
     FFormatRoutinesFor: TFormatRoutinesFunc;
@@ -382,11 +380,8 @@ end;
 constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: THoverReadText; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
+  inherited Create(AStore, AIndex, AEnsureUnit);
   FReadText := AReadText;
-  FEnsureUnit := AEnsureUnit;
 end;
 
 constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;

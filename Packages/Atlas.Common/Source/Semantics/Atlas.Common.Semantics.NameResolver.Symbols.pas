@@ -231,7 +231,8 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -320,14 +321,7 @@ end;
 
 function TResolvedSymbol.QualifiedName: string;
 begin
-  if Container = '' then
-  begin
-    Result := Name;
-  end
-  else
-  begin
-    Result := Container + '.' + Name;
-  end;
+  Result := TTextNames.Qualified(Container, Name);
 end;
 
 function TResolvedSymbol.AncestorText(AIndex: Integer): string;
