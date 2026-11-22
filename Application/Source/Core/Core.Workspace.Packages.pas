@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Packages;
+﻿unit Core.Workspace.Packages;
 
-// Internals-Rolle Shell: Packages und Unit-Suche eines Arbeitsbereichs. Der Package-Locator lebt in einem Halter
+// Host-Rolle Core: Packages und Unit-Suche eines Arbeitsbereichs. Der Package-Locator lebt in einem Halter
 // (#1220), damit Prüfungen in Anfrage-Threads ihn über einen Projektwechsel hinaus nutzen können; die Unit-Suche
 // wie beim Compiler (#1016) bekommt Packages, Gruppe, Bibliothek und Index als Rückrufe.
 
@@ -12,7 +12,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Projects.DprojReader,
-  Atlas.Common.Rules.Providers.UnitLookup,
+  Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract;
 
@@ -35,7 +35,7 @@ type
 
   /// <summary>Was die Unit-Suche eines Projekts braucht (#1016): Projekt, Installation und ihre Bibliothekspfade,
   /// Packages, Index und die Ausgaben der anderen Projekte der Gruppe.</summary>
-  TShellUnitLookupSource = record
+  TCoreUnitLookupSource = record
     Project: TProjectInfo;
     /// <summary>nil ohne Installation.</summary>
     Installation: ILibraryPathProvider;
@@ -46,11 +46,13 @@ type
     Index: ISymbolIndex;
     /// <summary>nil ohne Projektgruppe.</summary>
     GroupOutputsOf: TFunc<TArray<TUnitLookupGroupOutput>>;
+    /// <summary>Erzeugt die Unit-Suche; nil = keine.</summary>
+    CreateLookup: TUnitLookupFactory;
   end;
 
   /// <summary>Rückrufe über Package-Locator, Gruppe und Index; die anonymen Methoden fangen den Halter ein, nicht
   /// den rohen Locator (#1220): Er bleibt, solange sie leben.</summary>
-  TShellPackageLookups = class
+  TCorePackageLookups = class
   public
     /// <summary>Enthält das Package die Unit? Nicht gefundene Packages sind unbekannt, damit Regeln still bleiben
     /// statt falsch zu melden.</summary>
@@ -72,7 +74,7 @@ type
       const AOptions: TDprojOptions; const ALogger: ILogger): TArray<TUnitLookupGroupOutput>; static;
     /// <summary>Unit-Suche wie beim Compiler (#1016) über die geteilten Ordnerlisten. Ohne Installation (und ohne
     /// Bibliothekspfade aus der IDE) gilt keine Unit als sicher fehlend.</summary>
-    class function UnitLookupFor(const ASource: TShellUnitLookupSource): IRuleUnitLookup; static;
+    class function UnitLookupFor(const ASource: TCoreUnitLookupSource): IRuleUnitLookup; static;
   end;
 
 implementation
@@ -82,7 +84,8 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.PackageReader,
-  Shell.Workspace.Listings,
+  Atlas.Common.Projects.Paths,
+  Core.Workspace.Listings,
   Atlas.Text.LogMarks,
   Atlas.Text.Files;
 
@@ -106,7 +109,7 @@ begin
 end;
 
 type
-  /// <summary>Gelesene Ausgaben der Gruppe (TShellPackageLookups.GroupOutputsOf).</summary>
+  /// <summary>Gelesene Ausgaben der Gruppe (TCorePackageLookups.GroupOutputsOf).</summary>
   TGroupOutputCache = class
   private
     FLock: TObject;
@@ -188,7 +191,7 @@ begin
   try
     if mKey <> FKey then
     begin
-      FOutputs := TShellPackageLookups.GroupOutputsFor(FOwnFile, mFiles, FOptions, FLogger);
+      FOutputs := TCorePackageLookups.GroupOutputsFor(FOwnFile, mFiles, FOptions, FLogger);
       FKey := mKey;
     end;
     FCheckedAt := TThread.GetTickCount64;
@@ -246,7 +249,7 @@ begin
     end;
   end;
   AOutput.ProjectName := ChangeFileExt(ExtractFileName(AFile), '');
-  AOutput.DcuFolder := TUnitLookup.DcuOutputOf(mProject);
+  AOutput.DcuFolder := TProjectPaths.DcuOutputOf(mProject);
   for mUnit in mProject.Units do
   begin
     AOutput.Units := AOutput.Units + [mUnit.Name];
@@ -312,9 +315,9 @@ begin
     end;
 end;
 
-{ TShellPackageLookups }
+{ TCorePackageLookups }
 
-class function TShellPackageLookups.Provides(const AHold: IPackageLocatorHold): TRulePackageProvides;
+class function TCorePackageLookups.Provides(const AHold: IPackageLocatorHold): TRulePackageProvides;
 begin
   Result :=
     function(const APackage, AUnitName: string): TRulePackageAnswer
@@ -333,7 +336,7 @@ begin
     end;
 end;
 
-class function TShellPackageLookups.Requires(const AHold: IPackageLocatorHold): TFunc<string, TArray<string>>;
+class function TCorePackageLookups.Requires(const AHold: IPackageLocatorHold): TFunc<string, TArray<string>>;
 begin
   Result :=
     function(APackage: string): TArray<string>
@@ -342,7 +345,7 @@ begin
     end;
 end;
 
-class function TShellPackageLookups.RuleRequires(const AHold: IPackageLocatorHold): TRulePackageRequires;
+class function TCorePackageLookups.RuleRequires(const AHold: IPackageLocatorHold): TRulePackageRequires;
 begin
   Result :=
     function(const APackage: string): TArray<string>
@@ -351,7 +354,7 @@ begin
     end;
 end;
 
-class function TShellPackageLookups.Exists(const AHold: IPackageLocatorHold): TFunc<string, Boolean>;
+class function TCorePackageLookups.Exists(const AHold: IPackageLocatorHold): TFunc<string, Boolean>;
 begin
   Result :=
     function(APackage: string): Boolean
@@ -362,7 +365,7 @@ begin
     end;
 end;
 
-class function TShellPackageLookups.GroupOutputsOf(const AFiles: TFunc<TArray<string>>; const AOwnFile: string;
+class function TCorePackageLookups.GroupOutputsOf(const AFiles: TFunc<TArray<string>>; const AOwnFile: string;
   const AOptions: TDprojOptions; const ALogger: ILogger): TFunc<TArray<TUnitLookupGroupOutput>>;
 var
   mHold: IGroupOutputCacheHold;
@@ -371,7 +374,7 @@ begin
   Result := GroupOutputsOfHold(mHold);
 end;
 
-class function TShellPackageLookups.GroupOutputsFor(const AOwnFile: string; const AFiles: TArray<string>;
+class function TCorePackageLookups.GroupOutputsFor(const AOwnFile: string; const AFiles: TArray<string>;
   const AOptions: TDprojOptions; const ALogger: ILogger): TArray<TUnitLookupGroupOutput>;
 var
   mFile: string;
@@ -394,7 +397,7 @@ begin
   end;
 end;
 
-class function TShellPackageLookups.UnitLookupFor(const ASource: TShellUnitLookupSource): IRuleUnitLookup;
+class function TCorePackageLookups.UnitLookupFor(const ASource: TCoreUnitLookupSource): IRuleUnitLookup;
 var
   mSetup: TUnitLookupSetup;
 begin
@@ -409,9 +412,9 @@ begin
   end;
   mSetup.RequiredPackages := RequiredPackagesOf(ASource.Project.MainSource);
   mSetup.ListFiles := TSharedUnitListings.ListUnitFilesFunc();
-  mSetup.ListFolders := TShellFileAccess.FoldersFunc();
-  mSetup.FileExists := TShellFileAccess.ExistsFunc();
-  mSetup.ReadText := TShellFileAccess.ReadTextFunc();
+  mSetup.ListFolders := TCoreFileAccess.FoldersFunc();
+  mSetup.FileExists := TCoreFileAccess.ExistsFunc();
+  mSetup.ReadText := TCoreFileAccess.ReadTextFunc();
   if ASource.Packages <> nil then
   begin
     mSetup.PackageProvides := Provides(ASource.Packages);
@@ -423,7 +426,11 @@ begin
     mSetup.IndexKnows := IndexKnowsOf(ASource.Index);
     mSetup.IndexUnits := IndexUnitsOf(ASource.Index);
   end;
-  Result := TUnitLookup.Create(mSetup);
+  Result := nil;
+  if Assigned(ASource.CreateLookup) then
+  begin
+    Result := ASource.CreateLookup(mSetup);
+  end;
 end;
 
 end.

@@ -138,7 +138,7 @@ uses
   Shell.Linter.Check,
   Shell.Linter.Duplicates,
   Shell.Linter.Mutation,
-  Shell.Workspace.Listings;
+  Core.Workspace.Listings;
 
 const
   cCleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;

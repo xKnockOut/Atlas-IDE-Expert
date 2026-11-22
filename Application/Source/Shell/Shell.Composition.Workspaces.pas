@@ -12,7 +12,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.ProjectFiles,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract;
 
 type
@@ -35,11 +35,11 @@ type
   TShellWorkspaceRegistry = class
   private
     FServices: TShellWorkspaceRegistryServices;
-    FItems: TObjectList<TShellWorkspace>;
+    FItems: TObjectList<TCoreWorkspace>;
     FLock: TObject;
     /// <summary>Je Arbeitsbereich die Anfragen, die ihn außerhalb der Sperre nutzen; ein entfernter wird erst
     /// freigegeben, wenn er hier fehlt.</summary>
-    FUsers: TDictionary<TShellWorkspace, Integer>;
+    FUsers: TDictionary<TCoreWorkspace, Integer>;
     /// <summary>Zuletzt gewähltes Projekt je Datei, die zu mehreren Projekten gehört (#46), fürs Log.</summary>
     FChoices: TDictionary<string, string>;
     /// <summary>Projekte aller gemeldeten Projektgruppen, schon bevor ihre Arbeitsbereiche geladen sind.</summary>
@@ -49,10 +49,10 @@ type
     FRuleProjects: TArray<TRuleProject>;
     FRuleProjectsStamp: Integer;
     FStamp: Integer;
-    function FolderWorkspace(const AFileName: string): TShellWorkspace;
-    function ChooseProject(const AFileName: string; const ACandidates: TArray<TShellWorkspace>): TShellWorkspace;
-    function PreferredProject(const ACandidates: TArray<TShellWorkspace>; out AReason: string): TShellWorkspace;
-    procedure LogChoice(const AFileName: string; ACount: Integer; AChosen: TShellWorkspace; const AReason: string);
+    function FolderWorkspace(const AFileName: string): TCoreWorkspace;
+    function ChooseProject(const AFileName: string; const ACandidates: TArray<TCoreWorkspace>): TCoreWorkspace;
+    function PreferredProject(const ACandidates: TArray<TCoreWorkspace>; out AReason: string): TCoreWorkspace;
+    procedure LogChoice(const AFileName: string; ACount: Integer; AChosen: TCoreWorkspace; const AReason: string);
     function CollectRuleProjects(out AStamp: Integer; out AMainSources: TArray<string>): TArray<TRuleProject>;
     function CachedRuleProjects(out AProjects: TArray<TRuleProject>): Boolean;
     procedure StoreRuleProjects(const AProjects: TArray<TRuleProject>; AStamp: Integer);
@@ -65,11 +65,11 @@ type
     /// <summary>Neuer Stand: Projekte für projektweite Prüfregeln neu bestimmen. Nur unter Lock.</summary>
     procedure Touch;
     /// <summary>Nimmt einen Arbeitsbereich auf (unter der Sperre).</summary>
-    procedure Add(AWorkspace: TShellWorkspace);
+    procedure Add(AWorkspace: TCoreWorkspace);
     /// <summary>Merkt die Projekte einer Gruppe; True, wenn schon Arbeitsbereiche bestehen.</summary>
     function AddGroupProjects(const AProjects: TArray<string>): Boolean;
     function HasProject(const AProjectFile: string): Boolean;
-    /// <summary>Kennzeichnet die Arbeitsbereiche des Eintrags AOrigin als abgeleitet (TShellWorkspaceSetup.Derived).
+    /// <summary>Kennzeichnet die Arbeitsbereiche des Eintrags AOrigin als abgeleitet (TCoreWorkspaceSetup.Derived).
     /// </summary>
     procedure MarkDerived(const AOrigin: string);
     /// <summary>Projekte der Gruppen und aller Arbeitsbereiche (uses-unit-not-found).</summary>
@@ -77,19 +77,19 @@ type
     /// <summary>Ordner aller Projekte, für requires-Packages als Quelle (#46).</summary>
     function PackageFolders: TArray<string>;
     /// <summary>Nimmt alle Arbeitsbereiche des Ursprungs heraus, ohne sie freizugeben.</summary>
-    function Extract(const AOrigin: string; out ARemaining: TArray<TShellWorkspace>): TArray<TShellWorkspace>;
+    function Extract(const AOrigin: string; out ARemaining: TArray<TCoreWorkspace>): TArray<TCoreWorkspace>;
     /// <summary>Gibt einen herausgenommenen Arbeitsbereich frei, sobald keine Anfrage ihn mehr nutzt.</summary>
-    procedure FreeWhenUnused(AWorkspace: TShellWorkspace);
+    procedure FreeWhenUnused(AWorkspace: TCoreWorkspace);
     /// <summary>Arbeitsbereich, zu dem die Datei gehört, oder nil.</summary>
-    function WorkspaceOf(const AFileName: string): TShellWorkspace;
+    function WorkspaceOf(const AFileName: string): TCoreWorkspace;
     /// <summary>Arbeitsbereich zur Datei, ohne passenden der einzige.</summary>
-    function Pick(const AFileName: string): TShellWorkspace;
-    function IsSelected(AWorkspace: TShellWorkspace): Boolean;
+    function Pick(const AFileName: string): TCoreWorkspace;
+    function IsSelected(AWorkspace: TCoreWorkspace): Boolean;
     /// <summary>Datei liegt in keinem Projekt, aber in der Bibliothek (diagnostics.librarySources).</summary>
     function IsLibrarySource(const AFileName: string): Boolean;
     /// <summary>Meldet Nutzer außerhalb der Sperre an; Release meldet sie (unter der Sperre) ab.</summary>
-    procedure Hold(const AWorkspaces: TArray<TShellWorkspace>);
-    procedure Release(const AWorkspaces: TArray<TShellWorkspace>);
+    procedure Hold(const AWorkspaces: TArray<TCoreWorkspace>);
+    procedure Release(const AWorkspaces: TArray<TCoreWorkspace>);
     /// <summary>Höchster Ladefortschritt aller Indexe, -1 ohne Aufbau.</summary>
     function IndexLoading: Integer;
     /// <summary>Ein Projekt wird noch indiziert.</summary>
@@ -100,7 +100,7 @@ type
     /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter der Sperre auf.</summary>
     procedure Visit(const AVisit: TShellWorkspacesProc);
     property Lock: TObject read FLock;
-    property Items: TObjectList<TShellWorkspace> read FItems;
+    property Items: TObjectList<TCoreWorkspace> read FItems;
   end;
 
 implementation
@@ -122,9 +122,9 @@ constructor TShellWorkspaceRegistry.Create(const AServices: TShellWorkspaceRegis
 begin
   inherited Create;
   FServices := AServices;
-  FItems := TObjectList<TShellWorkspace>.Create(True);
+  FItems := TObjectList<TCoreWorkspace>.Create(True);
   FLock := TObject.Create;
-  FUsers := TDictionary<TShellWorkspace, Integer>.Create;
+  FUsers := TDictionary<TCoreWorkspace, Integer>.Create;
   FChoices := TDictionary<string, string>.Create;
   FRuleProjectsStamp := -1;
 end;
@@ -138,10 +138,10 @@ begin
   inherited Destroy;
 end;
 
-function TShellWorkspaceRegistry.FolderWorkspace(const AFileName: string): TShellWorkspace;
+function TShellWorkspaceRegistry.FolderWorkspace(const AFileName: string): TCoreWorkspace;
 var
   mFolders: TArray<TWorkspaceFolder>;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mIndex: Integer;
 begin
   mFolders := nil;
@@ -158,7 +158,7 @@ begin
 end;
 
 function TShellWorkspaceRegistry.ChooseProject(const AFileName: string;
-  const ACandidates: TArray<TShellWorkspace>): TShellWorkspace;
+  const ACandidates: TArray<TCoreWorkspace>): TCoreWorkspace;
 var
   mReason: string;
 begin
@@ -166,10 +166,10 @@ begin
   LogChoice(AFileName, Length(ACandidates), Result, mReason);
 end;
 
-function TShellWorkspaceRegistry.PreferredProject(const ACandidates: TArray<TShellWorkspace>;
-  out AReason: string): TShellWorkspace;
+function TShellWorkspaceRegistry.PreferredProject(const ACandidates: TArray<TCoreWorkspace>;
+  out AReason: string): TCoreWorkspace;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mActive: string;
 begin
   for mWorkspace in ACandidates do
@@ -196,7 +196,7 @@ begin
   Result := ACandidates[0];
 end;
 
-procedure TShellWorkspaceRegistry.LogChoice(const AFileName: string; ACount: Integer; AChosen: TShellWorkspace;
+procedure TShellWorkspaceRegistry.LogChoice(const AFileName: string; ACount: Integer; AChosen: TCoreWorkspace;
   const AReason: string);
 var
   mKnown: string;
@@ -214,7 +214,7 @@ end;
 function TShellWorkspaceRegistry.CollectRuleProjects(out AStamp: Integer;
   out AMainSources: TArray<string>): TArray<TRuleProject>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mProject: TRuleProject;
   mMainSource: string;
 begin
@@ -275,9 +275,9 @@ begin
 end;
 
 /// <summary>Arbeitsbereich mit der Projektdatei AFileName oder nil.</summary>
-function ProjectFileWorkspace(const AItems: TObjectList<TShellWorkspace>; const AFileName: string): TShellWorkspace;
+function ProjectFileWorkspace(const AItems: TObjectList<TCoreWorkspace>; const AFileName: string): TCoreWorkspace;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := nil;
   for mWorkspace in AItems do
@@ -289,7 +289,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceRegistry.Add(AWorkspace: TShellWorkspace);
+procedure TShellWorkspaceRegistry.Add(AWorkspace: TCoreWorkspace);
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -313,7 +313,7 @@ end;
 
 function TShellWorkspaceRegistry.HasProject(const AProjectFile: string): Boolean;
 var
-  mExisting: TShellWorkspace;
+  mExisting: TCoreWorkspace;
 begin
   Result := False;
   System.TMonitor.Enter(FLock);
@@ -332,7 +332,7 @@ end;
 
 procedure TShellWorkspaceRegistry.MarkDerived(const AOrigin: string);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -350,7 +350,7 @@ end;
 
 function TShellWorkspaceRegistry.GroupProjectFiles: TArray<string>;
 var
-  mOther: TShellWorkspace;
+  mOther: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -376,7 +376,7 @@ begin
 end;
 
 function TShellWorkspaceRegistry.Extract(const AOrigin: string;
-  out ARemaining: TArray<TShellWorkspace>): TArray<TShellWorkspace>;
+  out ARemaining: TArray<TCoreWorkspace>): TArray<TCoreWorkspace>;
 var
   mIndex: Integer;
 begin
@@ -397,7 +397,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceRegistry.FreeWhenUnused(AWorkspace: TShellWorkspace);
+procedure TShellWorkspaceRegistry.FreeWhenUnused(AWorkspace: TCoreWorkspace);
 begin
   // Erst freigeben, wenn keine Anfrage ihn mehr außerhalb der Sperre nutzt (EnsureUnit). Neue Anfragen
   // sehen ihn nicht mehr, das Warten endet also.
@@ -413,10 +413,10 @@ begin
   AWorkspace.Free;
 end;
 
-function TShellWorkspaceRegistry.WorkspaceOf(const AFileName: string): TShellWorkspace;
+function TShellWorkspaceRegistry.WorkspaceOf(const AFileName: string): TCoreWorkspace;
 var
-  mWorkspace: TShellWorkspace;
-  mCandidates: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mCandidates: TArray<TCoreWorkspace>;
 begin
   // Die .dproj gehört zu ihrem eigenen Projekt (#46), auch wenn mehrere im selben Ordner liegen.
   if SameText(ExtractFileExt(AFileName), '.dproj') then
@@ -447,12 +447,12 @@ begin
   end;
 end;
 
-function TShellWorkspaceRegistry.Pick(const AFileName: string): TShellWorkspace;
+function TShellWorkspaceRegistry.Pick(const AFileName: string): TCoreWorkspace;
 begin
-  Result := TShellWorkspaces.Choose(WorkspaceOf(AFileName), FItems);
+  Result := TCoreWorkspaces.Choose(WorkspaceOf(AFileName), FItems);
 end;
 
-function TShellWorkspaceRegistry.IsSelected(AWorkspace: TShellWorkspace): Boolean;
+function TShellWorkspaceRegistry.IsSelected(AWorkspace: TCoreWorkspace): Boolean;
 var
   mSelected: string;
 begin
@@ -462,7 +462,7 @@ end;
 
 function TShellWorkspaceRegistry.IsLibrarySource(const AFileName: string): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mRoots, mProjectRoots: TArray<string>;
 begin
   mRoots := nil;
@@ -483,9 +483,9 @@ begin
   Result := TLibrarySources.Create(mRoots, mProjectRoots).IsLibraryFile(AFileName);
 end;
 
-procedure TShellWorkspaceRegistry.Hold(const AWorkspaces: TArray<TShellWorkspace>);
+procedure TShellWorkspaceRegistry.Hold(const AWorkspaces: TArray<TCoreWorkspace>);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mUsers: Integer;
 begin
   for mWorkspace in AWorkspaces do
@@ -501,9 +501,9 @@ begin
   end;
 end;
 
-procedure TShellWorkspaceRegistry.Release(const AWorkspaces: TArray<TShellWorkspace>);
+procedure TShellWorkspaceRegistry.Release(const AWorkspaces: TArray<TCoreWorkspace>);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mUsers: Integer;
 begin
   System.TMonitor.Enter(FLock);
@@ -528,7 +528,7 @@ end;
 
 function TShellWorkspaceRegistry.IndexLoading: Integer;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := -1;
   System.TMonitor.Enter(FLock);
@@ -544,7 +544,7 @@ end;
 
 function TShellWorkspaceRegistry.ProjectIndexPending: Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := False;
   System.TMonitor.Enter(FLock);
@@ -582,7 +582,7 @@ end;
 
 function TShellWorkspaceRegistry.RuleProjectsComplete(out AReason: string): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   AReason := '';
   System.TMonitor.Enter(FLock);

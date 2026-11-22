@@ -12,6 +12,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Profiling.Contract,
   Atlas.Core.VersionControl.Contract,
+  Core.Workspace.Setup,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
   Atlas.Windows.Projects.Adapters.DelphiInstallation;
@@ -40,11 +41,19 @@ type
       static;
     /// <summary>Prober des Stichproben-Profilers (#2057); nil unter Linux, wo es keinen gibt.</summary>
     class function ProfileSampler: IAtlasProfileSampler; static;
+    /// <summary>Installation, Dateizugriff des Index und Unit-Suche für die Arbeitsbereiche.</summary>
+    class function WorkspaceFactories: TCoreWorkspaceFactories; static;
   end;
 
 implementation
 
 uses
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Rules.Providers.UnitLookup,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Providers.DiskFileSystem,
+  Atlas.Common.Rules.Contract,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Profiling.Adapters.Sampler,
@@ -52,6 +61,26 @@ uses
 {$ELSE}
   Adapters.VersionControl.LinuxRunner;
 {$ENDIF}
+
+function InstalledVersions: TArray<string>;
+begin
+  Result := TDelphiInstallation.Versions;
+end;
+
+function InstallationOf(const AVersion: string): ILibraryPathProvider;
+begin
+  Result := TDelphiInstallation.Create(AVersion);
+end;
+
+function NewIndexFileSystem: IIndexFileSystem;
+begin
+  Result := TDiskIndexFileSystem.Create;
+end;
+
+function UnitLookupOf(const ASetup: TUnitLookupSetup): IRuleUnitLookup;
+begin
+  Result := TUnitLookup.Create(ASetup);
+end;
 
 { TShellPlatformAdapters }
 
@@ -81,6 +110,15 @@ begin
 {$ELSE}
   Result := nil;
 {$ENDIF}
+end;
+
+class function TShellPlatformAdapters.WorkspaceFactories: TCoreWorkspaceFactories;
+begin
+  Result := Default(TCoreWorkspaceFactories);
+  Result.InstalledVersions := InstalledVersions;
+  Result.Installation := InstallationOf;
+  Result.IndexFileSystem := NewIndexFileSystem;
+  Result.UnitLookup := UnitLookupOf;
 end;
 
 end.

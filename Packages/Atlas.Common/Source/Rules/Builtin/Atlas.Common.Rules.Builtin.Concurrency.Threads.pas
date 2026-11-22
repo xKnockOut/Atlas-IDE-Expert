@@ -64,7 +64,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.DeclaredTypes,

@@ -353,7 +353,7 @@ type
 
   /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
   /// Packages, Projekte der Gruppe und Namenskonvention. Ein Weg für LSP-Server, MCP und Linter: Der
-  /// Arbeitsbereich liefert sie (TShellWorkspace.RuleServices), ApplyTo trägt sie in den Regelkontext ein.
+  /// Arbeitsbereich liefert sie (TCoreWorkspace.RuleServices), ApplyTo trägt sie in den Regelkontext ein.
   /// Default = ohne Index; Regeln, die ihn brauchen, schweigen dann.</summary>
   TRuleServices = record
     /// <summary>Symbolindex für Typen aus anderen Units und der RTL (#125); nil = keiner.</summary>

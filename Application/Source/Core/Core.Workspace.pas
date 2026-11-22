@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace;
+﻿unit Core.Workspace;
 
-// Host-Rolle Shell: ein Ordner des Arbeitsbereichs mit eigener
+// Host-Rolle Core: ein Ordner des Arbeitsbereichs mit eigener
 // atlas.json, eigenem Projekt und eigenem Indexaufbau. Alle Ordner
 // schreiben in denselben Symbolindex, damit Navigation und Suche über
 // Ordnergrenzen funktionieren.
@@ -24,33 +24,33 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
   Core.Compiler,
-  Shell.Workspace.Setup,
-  Shell.Workspace.State,
-  Shell.Workspace.Build,
-  Shell.Workspace.Cache,
-  Shell.Workspace.Indexing,
-  Shell.Workspace.Jobs;
+  Core.Workspace.Setup,
+  Core.Workspace.State,
+  Core.Workspace.Build,
+  Core.Workspace.Cache,
+  Core.Workspace.Indexing,
+  Core.Workspace.Jobs;
 
 type
-  TShellWorkspace = class
+  TCoreWorkspace = class
   private
     FRoot: string;
     FName: string;
     FLogger: ILogger;
     FConfiguration: TLspConfiguration;
-    FSetup: TShellWorkspaceSetup;
-    FEvents: TShellWorkspaceEvents;
-    FState: TShellProjectState;
-    FBuild: TShellBuildChoice;
-    FCache: TShellWorkspaceCache;
-    FIndexing: TShellWorkspaceIndexing;
-    FBaseline: TShellBaselineFile;
+    FSetup: TCoreWorkspaceSetup;
+    FEvents: TCoreWorkspaceEvents;
+    FState: TCoreProjectState;
+    FBuild: TCoreBuildChoice;
+    FCache: TCoreWorkspaceCache;
+    FIndexing: TCoreWorkspaceIndexing;
+    FBaseline: TCoreBaselineFile;
     procedure SettingsChanged(const ASettings: TServerSettings);
     procedure StartIndex(const ASettings: TServerSettings);
     /// <summary>Token und laufender Aufbau für den Status (#2142).</summary>
     procedure AddIndexing(var AStatus: TWorkspaceStatus);
   public
-    constructor Create(const ARoot, AName: string; const AServices: TShellWorkspaceServices);
+    constructor Create(const ARoot, AName: string; const AServices: TCoreWorkspaceServices);
     destructor Destroy; override;
     /// <summary>Liest atlas.json des Ordners und startet den Indexaufbau.</summary>
     procedure Load; overload;
@@ -87,7 +87,7 @@ type
     function IndexStatus: TWorkspaceStatus;
     /// <summary>Projekt aus der Gruppe, das mit index.projectGroup = false noch wartet: jetzt indizieren.</summary>
     procedure Activate;
-    /// <summary>Dienste des Projekts für die Prüfregeln (#1112), siehe TShellRuleProjects.ServicesOf. Threadsicher.
+    /// <summary>Dienste des Projekts für die Prüfregeln (#1112), siehe TCoreRuleProjects.ServicesOf. Threadsicher.
     /// </summary>
     function RuleServices: TRuleServices;
     /// <summary>Projekt geladen und Index fertig (#1102, #1112)? Sonst der Grund in AReason. Ein Arbeitsbereich,
@@ -98,20 +98,20 @@ type
     property Name: string read FName;
     property Configuration: TLspConfiguration read FConfiguration;
     /// <summary>Vorgaben, vor Load zu setzen (Projektgruppe, Cache-Ordner, IDE-Projekte, Projektwahl …).</summary>
-    property Setup: TShellWorkspaceSetup read FSetup;
-    property Events: TShellWorkspaceEvents read FEvents;
+    property Setup: TCoreWorkspaceSetup read FSetup;
+    property Events: TCoreWorkspaceEvents read FEvents;
     /// <summary>Stand des geladenen Projekts: Projekt, Symbole, Namespaces, Dateien, Unit-Suche. Threadsicher.
     /// </summary>
-    property State: TShellProjectState read FState;
+    property State: TCoreProjectState read FState;
     /// <summary>Eigener Index-Cache und die daran angemeldeten Prozesse (#62).</summary>
-    property Cache: TShellWorkspaceCache read FCache;
+    property Cache: TCoreWorkspaceCache read FCache;
   end;
 
-  TShellWorkspaces = class
+  TCoreWorkspaces = class
   public
     /// <summary>Arbeitsbereich zu einer Datei: AFound, sonst bei genau einem Arbeitsbereich dieser,
     /// sonst nil. Eine Regel für alle Einstellungs- und Pfadabfragen des Servers.</summary>
-    class function Choose(AFound: TShellWorkspace; const AAll: TList<TShellWorkspace>): TShellWorkspace; static;
+    class function Choose(AFound: TCoreWorkspace; const AAll: TList<TCoreWorkspace>): TCoreWorkspace; static;
   end;
 
 implementation
@@ -123,8 +123,8 @@ uses
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Index.Scheduler,
   Core.Bootstrap,
-  Shell.Workspace.Loader,
-  Shell.Workspace.RuleProjects,
+  Core.Workspace.Loader,
+  Core.Workspace.RuleProjects,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts,
   Core.Texts;
@@ -141,8 +141,8 @@ const
     (De: 'Index wird aufgebaut'; En: 'Index is being built'));
 
 /// <summary>Teile für den Indexaufbau eines Arbeitsbereichs.</summary>
-function IndexingParts(const ARoot, AName: string; const AServices: TShellWorkspaceServices;
-  ASetup: TShellWorkspaceSetup; AEvents: TShellWorkspaceEvents; AState: TShellProjectState): TShellIndexingParts;
+function IndexingParts(const ARoot, AName: string; const AServices: TCoreWorkspaceServices;
+  ASetup: TCoreWorkspaceSetup; AEvents: TCoreWorkspaceEvents; AState: TCoreProjectState): TCoreIndexingParts;
 begin
   Result.Name := AName;
   Result.Root := ARoot;
@@ -156,25 +156,26 @@ begin
   Result.Cache := nil;
 end;
 
-{ TShellWorkspace }
+{ TCoreWorkspace }
 
-constructor TShellWorkspace.Create(const ARoot, AName: string; const AServices: TShellWorkspaceServices);
+constructor TCoreWorkspace.Create(const ARoot, AName: string; const AServices: TCoreWorkspaceServices);
 var
-  mParts: TShellIndexingParts;
+  mParts: TCoreIndexingParts;
 begin
   inherited Create;
   FRoot := ARoot;
   FName := AName;
   FLogger := AServices.Logger;
-  FSetup := TShellWorkspaceSetup.Create;
-  FEvents := TShellWorkspaceEvents.Create;
-  FState := TShellProjectState.Create(FSetup);
-  FBuild := TShellBuildChoice.Create(AName, AServices.Logger, FSetup);
-  FCache := TShellWorkspaceCache.Create(AName, AServices.Logger, FSetup, FEvents);
-  FBaseline := TShellBaselineFile.Create(ARoot, AName, AServices.Logger);
+  FSetup := TCoreWorkspaceSetup.Create;
+  FSetup.Factories := AServices.Factories;
+  FEvents := TCoreWorkspaceEvents.Create;
+  FState := TCoreProjectState.Create(FSetup);
+  FBuild := TCoreBuildChoice.Create(AName, AServices.Logger, FSetup);
+  FCache := TCoreWorkspaceCache.Create(AName, AServices.Logger, FSetup, FEvents);
+  FBaseline := TCoreBaselineFile.Create(ARoot, AName, AServices.Logger);
   mParts := IndexingParts(ARoot, AName, AServices, FSetup, FEvents, FState);
   mParts.Cache := FCache;
-  FIndexing := TShellWorkspaceIndexing.Create(mParts);
+  FIndexing := TCoreWorkspaceIndexing.Create(mParts);
   FConfiguration := TLspConfiguration.Create(AServices.Store, AServices.Transport,
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -187,7 +188,7 @@ begin
     end;
 end;
 
-destructor TShellWorkspace.Destroy;
+destructor TCoreWorkspace.Destroy;
 begin
   if FRoot <> '' then
   begin
@@ -206,7 +207,7 @@ begin
   inherited;
 end;
 
-procedure TShellWorkspace.SettingsChanged(const ASettings: TServerSettings);
+procedure TCoreWorkspace.SettingsChanged(const ASettings: TServerSettings);
 begin
   FLogger.Info(Format('Einstellungen für %s: Delphi %s, Projekt %s, %d Regeleinstellungen, %d Ausschlüsse',
     [TLogMarks.Name(FName), ASettings.DelphiVersion, TLogMarks.Path(ASettings.Project), Length(ASettings.Rules),
@@ -222,11 +223,11 @@ begin
   StartIndex(ASettings);
 end;
 
-procedure TShellWorkspace.StartIndex(const ASettings: TServerSettings);
+procedure TCoreWorkspace.StartIndex(const ASettings: TServerSettings);
 var
-  mLoader: TShellProjectLoader;
+  mLoader: TCoreProjectLoader;
   mProjectFile: string;
-  mLoaded: TShellLoadedProject;
+  mLoaded: TCoreLoadedProject;
   mLoadedOk: Boolean;
 begin
   // Mit index.projectGroup = false nur das Projekt der geöffneten Datei (#648).
@@ -237,7 +238,7 @@ begin
     FState.WithoutProject := True;
     Exit;
   end;
-  mLoader := TShellProjectLoader.Create(FName, FRoot, FConfiguration.ConfigRoot, FLogger, FSetup, FBuild);
+  mLoader := TCoreProjectLoader.Create(FName, FRoot, FConfiguration.ConfigRoot, FLogger, FSetup, FBuild);
   try
     mProjectFile := mLoader.FindProjectFile(ASettings);
     // Ohne Projekt indiziert dieser Arbeitsbereich nichts; Prüfungen sollen dann nicht auf ihn warten. Sonst liefen
@@ -259,7 +260,7 @@ begin
   end;
 end;
 
-procedure TShellWorkspace.AddIndexing(var AStatus: TWorkspaceStatus);
+procedure TCoreWorkspace.AddIndexing(var AStatus: TWorkspaceStatus);
 var
   mStage: TIndexStageState;
 begin
@@ -279,17 +280,17 @@ begin
   end;
 end;
 
-procedure TShellWorkspace.Load;
+procedure TCoreWorkspace.Load;
 begin
   FConfiguration.LoadWorkspace(FRoot);
 end;
 
-procedure TShellWorkspace.Load(const AGlobalSettings: string);
+procedure TCoreWorkspace.Load(const AGlobalSettings: string);
 begin
   FConfiguration.LoadWorkspace(FRoot, AGlobalSettings);
 end;
 
-procedure TShellWorkspace.Reload;
+procedure TCoreWorkspace.Reload;
 begin
   // StartIndex ändert Zustand ohne Sperre: Andere Threads stellen Reload über TJsonRpcConnection.Queue
   // in die Schleife.
@@ -301,45 +302,45 @@ begin
   StartIndex(FConfiguration.Settings);
 end;
 
-procedure TShellWorkspace.Rebuild;
+procedure TCoreWorkspace.Rebuild;
 begin
   FIndexing.DiscardNext;
   Reload;
 end;
 
-procedure TShellWorkspace.Stop;
+procedure TCoreWorkspace.Stop;
 begin
   FIndexing.Stop;
 end;
 
-procedure TShellWorkspace.ReleaseCache;
+procedure TCoreWorkspace.ReleaseCache;
 begin
   FIndexing.Stop;
   FCache.Release;
 end;
 
-function TShellWorkspace.EnsureUnit(const AUnitName: string): Boolean;
+function TCoreWorkspace.EnsureUnit(const AUnitName: string): Boolean;
 begin
   Result := FIndexing.EnsureUnit(AUnitName);
 end;
 
-function TShellWorkspace.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+function TCoreWorkspace.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
 begin
   Result := FIndexing.ApplyChanges(AChanges);
 end;
 
-function TShellWorkspace.ApplyText(const AFileName, AText: string): Boolean;
+function TCoreWorkspace.ApplyText(const AFileName, AText: string): Boolean;
 begin
   Result := FIndexing.ApplyText(AFileName, AText);
 end;
 
-function TShellWorkspace.Baseline: IRuleBaseline;
+function TCoreWorkspace.Baseline: IRuleBaseline;
 begin
   Result := FBaseline.Current;
 end;
 
 
-function TShellWorkspace.CompileJob(out AJob: TCoreCompileJob; out AError: string): Boolean;
+function TCoreWorkspace.CompileJob(out AJob: TCoreCompileJob; out AError: string): Boolean;
 var
   mProject: TProjectInfo;
 begin
@@ -351,11 +352,11 @@ begin
     AError := TCoreTexts.NoProject;
     Exit;
   end;
-  Result := TShellWorkspaceJobs.CompileJobOf(mProject, FState.Install, FConfiguration.Settings.Compiler, AJob,
+  Result := TCoreWorkspaceJobs.CompileJobOf(mProject, FState.Install, FConfiguration.Settings.Compiler, AJob,
     AError);
 end;
 
-function TShellWorkspace.SelectBuild(const AConfig, APlatform: string; const ADefines: TArray<string>;
+function TCoreWorkspace.SelectBuild(const AConfig, APlatform: string; const ADefines: TArray<string>;
   AHasDefines: Boolean; out AError: string): Boolean;
 var
   mProject: TProjectInfo;
@@ -381,15 +382,15 @@ begin
   Reload;
 end;
 
-function TShellWorkspace.IndexLoading: Integer;
+function TCoreWorkspace.IndexLoading: Integer;
 begin
   Result := FIndexing.Loading;
 end;
 
-function TShellWorkspace.IndexStatus: TWorkspaceStatus;
+function TCoreWorkspace.IndexStatus: TWorkspaceStatus;
 var
-  mStats: TShellIndexStats;
-  mFiles: TShellCacheFiles;
+  mStats: TCoreIndexStats;
+  mFiles: TCoreCacheFiles;
   mProject: TProjectInfo;
 begin
   Result := Default(TWorkspaceStatus);
@@ -417,7 +418,7 @@ begin
   AddIndexing(Result);
 end;
 
-procedure TShellWorkspace.Activate;
+procedure TCoreWorkspace.Activate;
 begin
   if not FSetup.Deferred or FSetup.Activated then
   begin
@@ -433,16 +434,16 @@ begin
   Reload;
 end;
 
-function TShellWorkspace.RuleServices: TRuleServices;
+function TCoreWorkspace.RuleServices: TRuleServices;
 begin
-  Result := TShellRuleProjects.ServicesOf(FState, FSetup, FIndexing.Index,
+  Result := TCoreRuleProjects.ServicesOf(FState, FSetup, FIndexing.Index,
     function(const AUnitName: string): Boolean
     begin
       Result := EnsureUnit(AUnitName);
     end);
 end;
 
-function TShellWorkspace.RuleReady(out AReason: string): Boolean;
+function TCoreWorkspace.RuleReady(out AReason: string): Boolean;
 var
   mInfo: TProjectInfo;
 begin
@@ -460,9 +461,9 @@ begin
   Result := True;
 end;
 
-{ TShellWorkspaces }
+{ TCoreWorkspaces }
 
-class function TShellWorkspaces.Choose(AFound: TShellWorkspace; const AAll: TList<TShellWorkspace>): TShellWorkspace;
+class function TCoreWorkspaces.Choose(AFound: TCoreWorkspace; const AAll: TList<TCoreWorkspace>): TCoreWorkspace;
 begin
   Result := AFound;
   if (Result = nil) and (AAll <> nil) and (AAll.Count = 1) then
@@ -472,6 +473,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Workspace', cTexts);
+  TAtlasTextTables.Add('Core.Workspace', cTexts);
 
 end.

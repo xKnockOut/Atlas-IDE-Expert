@@ -84,7 +84,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.PureRoutines,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.SyntaxNodes;
 
 { TExpressionPart }

@@ -110,9 +110,6 @@ type
     class function Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
       const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>;
       const AResolution: TUsesResolution): TArray<TUsesEntry>; overload; static;
-    /// <summary>Die Token außerhalb der Bereiche AInactive (inaktive Zweige der bedingten Kompilierung).</summary>
-    class function ActiveTokens(const ATokens: TArray<TPascalToken>;
-      const AInactive: TArray<TTextRange>): TArray<TPascalToken>; static;
     /// <summary>Ein Edit, das die Einträge an ARanges (Bereiche der Namen) streicht (#621), auch aus Listen mit
     /// Direktiven oder Kommentaren: mit dem Komma davor oder dahinter, der einzige Eintrag mit dem ganzen uses.
     /// False, wenn ein Bereich keinen Eintrag trifft oder das Komma nur über eine Direktive hinweg zu erreichen
@@ -387,20 +384,6 @@ begin
   Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
 end;
 
-function InsideAny(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
-var
-  mRange: TTextRange;
-begin
-  for mRange in ARanges do
-  begin
-    if not IsBefore(APosition, mRange.StartPos) and IsBefore(APosition, mRange.EndPos) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Liegt ARange zwischen "uses" und dem Semikolon der Liste AClause?</summary>
 function InClause(const ATokens: TArray<TPascalToken>; const AClause: TUsesClauseInfo;
   const ARange: TTextRange): Boolean;
@@ -455,7 +438,7 @@ begin
     Exit;
   end;
   // Nur der aktive Zweig: so gelten auch Listen mit {$IFDEF}.
-  mActive := ActiveTokens(ATokens, AInactive);
+  mActive := TPascalUses.ActiveTokens(ATokens, AInactive);
   mClauses := TPascalUses.Clauses(mActive);
   mReferences := TPascalUses.References(mActive);
   mSeen := nil;
@@ -484,28 +467,6 @@ begin
   finally
     mIdentifiers.Free;
   end;
-end;
-
-class function TUsesActions.ActiveTokens(const ATokens: TArray<TPascalToken>;
-  const AInactive: TArray<TTextRange>): TArray<TPascalToken>;
-var
-  mCount, mIndex: Integer;
-begin
-  if AInactive = nil then
-  begin
-    Exit(ATokens);
-  end;
-  SetLength(Result, Length(ATokens));
-  mCount := 0;
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if not InsideAny(ATokens[mIndex].StartPos, AInactive) then
-    begin
-      Result[mCount] := ATokens[mIndex];
-      Inc(mCount);
-    end;
-  end;
-  SetLength(Result, mCount);
 end;
 
 type

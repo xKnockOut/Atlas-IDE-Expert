@@ -88,7 +88,7 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 

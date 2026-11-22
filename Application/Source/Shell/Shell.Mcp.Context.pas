@@ -21,7 +21,7 @@ uses
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Configuration.Contract,
-  Shell.WorkspaceGroup,
+  Core.WorkspaceGroup,
   Shell.Mcp.RefactorHost;
 
 type
@@ -39,7 +39,7 @@ type
     Server: TMcpServer;
     Tools: TMcpIndexTools;
     Code: TMcpCodeTools;
-    Group: TShellWorkspaceGroup;
+    Group: TCoreWorkspaceGroup;
     Root: string;
     Guard: TMcpPathGuard;
     Edit: TMcpEditTools;
@@ -74,7 +74,7 @@ function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 /// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
 function LoadProject(const AFileName, AConfiguration, APlatform: string; out AInfo: TProjectInfo): Boolean;
 /// <summary>Formatregeln wie im Editor für AFileName: format.* über .editorconfig über den Vorgaben.</summary>
-function FormatStyleOf(AGroup: TShellWorkspaceGroup; const AFileName: string): TFormatStyle;
+function FormatStyleOf(AGroup: TCoreWorkspaceGroup; const AFileName: string): TFormatStyle;
 /// <summary>DUnitX-Testprojekt: Die Hauptdatei verwendet DUnitX.TestFramework (#69).</summary>
 function IsTestProject(const AFileName: string): Boolean;
 /// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
@@ -84,10 +84,10 @@ function ProjectFilesUnder(const ARoot: string): TArray<string>;
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
 /// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
-function CheckSourceOf(AGroup: TShellWorkspaceGroup): TCheckSourceFunc;
+function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TCheckSourceFunc;
 /// <summary>AGroup.RuleProject als Methodenreferenz (#1112), aus denselben Gründen wie CheckSourceOf in eigener
 /// Routine.</summary>
-function CheckProjectOf(AGroup: TShellWorkspaceGroup): TCheckProjectFunc;
+function CheckProjectOf(AGroup: TCoreWorkspaceGroup): TCheckProjectFunc;
 
 implementation
 
@@ -138,7 +138,7 @@ begin
   Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
 end;
 
-function FormatStyleOf(AGroup: TShellWorkspaceGroup; const AFileName: string): TFormatStyle;
+function FormatStyleOf(AGroup: TCoreWorkspaceGroup; const AFileName: string): TFormatStyle;
 begin
   Result := TLspFormatting.Resolve(nil, AFileName, AGroup.WorkspaceOf(AFileName).Configuration.Settings.Formatting,
     function(const AConfigFile: string; out AConfigText: string): Boolean
@@ -210,7 +210,7 @@ end;
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
 /// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
-function CheckSourceOf(AGroup: TShellWorkspaceGroup): TCheckSourceFunc;
+function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TCheckSourceFunc;
 begin
   Result :=
     function(const AFileName: string): TCheckSource
@@ -221,7 +221,7 @@ end;
 
 /// <summary>AGroup.RuleProject als Methodenreferenz (#1112), aus denselben Gründen wie CheckSourceOf in eigener
 /// Routine.</summary>
-function CheckProjectOf(AGroup: TShellWorkspaceGroup): TCheckProjectFunc;
+function CheckProjectOf(AGroup: TCoreWorkspaceGroup): TCheckProjectFunc;
 begin
   Result :=
     function(const AFileName: string): TCheckProject

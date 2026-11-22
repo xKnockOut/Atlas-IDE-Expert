@@ -23,7 +23,7 @@ uses
   System.SysUtils,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Index.Contract,
-  Shell.WorkspaceGroup,
+  Core.WorkspaceGroup,
   System.DateUtils,
   System.JSON,
   Atlas.Common.Product.Version,
@@ -232,7 +232,7 @@ begin
 end;
 
 /// <summary>Führt die Abfrage AText mit höchstens limit Zeilen (Vorgabe 200) aus.</summary>
-function RunQuery(AGroup: TShellWorkspaceGroup; const AText: string; const AArguments: TJSONObject): TQueryResult;
+function RunQuery(AGroup: TCoreWorkspaceGroup; const AText: string; const AArguments: TJSONObject): TQueryResult;
 var
   mLimit: Integer;
 begin

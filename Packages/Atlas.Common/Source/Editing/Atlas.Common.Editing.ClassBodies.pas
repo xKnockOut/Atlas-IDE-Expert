@@ -110,7 +110,7 @@ uses
   System.StrUtils,
   System.Math,
   Atlas.Text.Lines,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Pascal.RoutineBody;
 
 const
   cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,

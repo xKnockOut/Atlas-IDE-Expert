@@ -15,7 +15,7 @@ uses
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Lsp.FindingsMemo,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
 
@@ -50,7 +50,7 @@ type
     procedure WorkspaceContext(const AFileName: string; var AContext: TRuleCheckContext;
       out AProjects: TArray<TProjectInfo>; out ALibrary: Boolean);
     /// <summary>Projekt des Arbeitsbereichs und weitere Projekte mit der Datei; Aufrufer hält die Sperre.</summary>
-    function ProjectsWithFile(AWorkspace: TShellWorkspace; const AFileName: string): TArray<TProjectInfo>;
+    function ProjectsWithFile(AWorkspace: TCoreWorkspace; const AFileName: string): TArray<TProjectInfo>;
     procedure ApplyProject(const AProjects: TArray<TProjectInfo>; const AFileName: string;
       var AContext: TRuleCheckContext);
     procedure IndexServices(var AContext: TRuleCheckContext);
@@ -74,7 +74,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin,
-  Shell.Workspace.RuleProjects;
+  Core.Workspace.RuleProjects;
 
 { TShellRuleContext }
 
@@ -89,7 +89,7 @@ end;
 procedure TShellRuleContext.WorkspaceContext(const AFileName: string; var AContext: TRuleCheckContext;
   out AProjects: TArray<TProjectInfo>; out ALibrary: Boolean);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   AProjects := nil;
   System.TMonitor.Enter(FServices.Workspaces.Lock);
@@ -117,10 +117,10 @@ begin
   end;
 end;
 
-function TShellRuleContext.ProjectsWithFile(AWorkspace: TShellWorkspace;
+function TShellRuleContext.ProjectsWithFile(AWorkspace: TCoreWorkspace;
   const AFileName: string): TArray<TProjectInfo>;
 var
-  mOther: TShellWorkspace;
+  mOther: TCoreWorkspace;
   mProject: TProjectInfo;
 begin
   Result := nil;
@@ -144,7 +144,7 @@ procedure TShellRuleContext.ApplyProject(const AProjects: TArray<TProjectInfo>; 
 var
   mRuleProject: TCheckProject;
 begin
-  mRuleProject := TShellRuleProjects.RuleProjectOf(AProjects, AFileName, FServices.ReadText);
+  mRuleProject := TCoreRuleProjects.RuleProjectOf(AProjects, AFileName, FServices.ReadText);
   AContext.Application := mRuleProject.Application;
   AContext.ProjectName := mRuleProject.Name;
   AContext.AutoCreateForms := mRuleProject.AutoCreateForms;

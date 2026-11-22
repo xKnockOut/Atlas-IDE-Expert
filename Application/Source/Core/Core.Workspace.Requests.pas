@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Requests;
+﻿unit Core.Workspace.Requests;
 
-// Internals-Rolle Shell: Dateien und Indexauftrag eines geladenen Projekts. Projektdateien, alle Units der Such-
+// Host-Rolle Core: Dateien und Indexauftrag eines geladenen Projekts. Projektdateien, alle Units der Such-
 // und Bibliothekspfade (#648), Packages aus contains und requires (#46), Symbole, Include-Pfade (#264) und die
 // Cache-Dateien je Projekt, Bibliothek und Suchpfaden (#492, #647).
 
@@ -14,11 +14,11 @@ uses
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Index.ProjectFiles,
   Atlas.Common.Index.Service,
-  Shell.Workspace.Loader;
+  Core.Workspace.Loader;
 
 type
   /// <summary>Dateien eines Indexaufbaus.</summary>
-  TShellIndexFiles = record
+  TCoreIndexFiles = record
     Files: TArray<string>;
     SearchFiles: TArray<string>;
     LibraryFiles: TArray<string>;
@@ -28,27 +28,27 @@ type
   end;
 
   /// <summary>Wohin und wie ein Aufbau schreibt.</summary>
-  TShellRequestTarget = record
+  TCoreRequestTarget = record
     CacheRoot: string;
     Priority: Integer;
     Usages: Boolean;
   end;
 
-  TShellIndexRequests = class
+  TCoreIndexRequests = class
   public
     /// <summary>Trifft ein Muster aus APatterns (index.exclude) den Dateinamen?</summary>
     class function ExcludedOf(const APatterns: TArray<string>): TIndexExcluded; static;
     /// <summary>Projektdateien; mit index.searchPaths die Units der Suchpfade, mit index.libraryPaths die der
     /// Bibliothekspfade, jeweils alle, nicht nur die über uses erreichbaren (#648).</summary>
-    class function FilesOf(const ALoaded: TShellLoadedProject; const ASettings: TServerSettings): TShellIndexFiles;
+    class function FilesOf(const ALoaded: TCoreLoadedProject; const ASettings: TServerSettings): TCoreIndexFiles;
       static;
     /// <summary>Packages (#46): contains der .dpk gehört zum Projekt, auch ohne DCCReference; die Units der
     /// requires-Packages mit Quelltext kommen zu den Suchpfad-Units. Meldet die Anzahlen an ALogger.</summary>
     class procedure AddPackageFiles(const AProject: TProjectInfo; ALocator: TPackageLocator;
-      var AFiles: TShellIndexFiles; const ALogger: ILogger; const AName: string); static;
+      var AFiles: TCoreIndexFiles; const ALogger: ILogger; const AName: string); static;
     /// <summary>Auftrag für den Aufbau ohne Unit-Suche, Sperre und Vorbereitung.</summary>
-    class function RequestOf(const ALoaded: TShellLoadedProject; const AFiles: TShellIndexFiles;
-      const ATarget: TShellRequestTarget): TIndexRequest; static;
+    class function RequestOf(const ALoaded: TCoreLoadedProject; const AFiles: TCoreIndexFiles;
+      const ATarget: TCoreRequestTarget): TIndexRequest; static;
     /// <summary>Herkunft für das Aufräumen (#905): die Projektdatei, ohne sie ARoot.</summary>
     class function CacheOriginOf(const AProject: TProjectInfo; const ARoot: string): string; static;
   end;
@@ -61,20 +61,20 @@ uses
   Atlas.Common.Projects.PackageReader,
   Atlas.Common.Index.CacheDirectory,
   Core.Bootstrap,
-  Shell.Workspace.Listings,
+  Core.Workspace.Listings,
   Atlas.Text.LogMarks;
 
-{ TShellIndexFiles }
+{ TCoreIndexFiles }
 
-function TShellIndexFiles.Key(const ASignature: string): string;
+function TCoreIndexFiles.Key(const ASignature: string): string;
 begin
   Result := ASignature + '#' + AnsiUpperCase(String.Join(';', Files)) + '#' +
     AnsiUpperCase(String.Join(';', SearchFiles)) + '#' + AnsiUpperCase(String.Join(';', LibraryFiles));
 end;
 
-{ TShellIndexRequests }
+{ TCoreIndexRequests }
 
-class function TShellIndexRequests.ExcludedOf(const APatterns: TArray<string>): TIndexExcluded;
+class function TCoreIndexRequests.ExcludedOf(const APatterns: TArray<string>): TIndexExcluded;
 var
   mPatterns: TArray<string>;
 begin
@@ -92,22 +92,22 @@ begin
     end;
 end;
 
-class function TShellIndexRequests.FilesOf(const ALoaded: TShellLoadedProject;
-  const ASettings: TServerSettings): TShellIndexFiles;
+class function TCoreIndexRequests.FilesOf(const ALoaded: TCoreLoadedProject;
+  const ASettings: TServerSettings): TCoreIndexFiles;
 var
   mExcluded: TIndexExcluded;
 begin
   mExcluded := ExcludedOf(ASettings.IndexExclude);
-  Result := Default(TShellIndexFiles);
+  Result := Default(TCoreIndexFiles);
   Result.Files := TIndexProjectFiles.Files(ALoaded.Project);
   if ASettings.IndexSearchPaths then
   begin
-    Result.SearchFiles := TIndexProjectFiles.PathFiles(ALoaded.Project.SearchPaths, TShellFileAccess.PasFilesFunc(),
+    Result.SearchFiles := TIndexProjectFiles.PathFiles(ALoaded.Project.SearchPaths, TCoreFileAccess.PasFilesFunc(),
       mExcluded, Result.Files);
   end;
   if ASettings.IndexLibraryPaths then
   begin
-    Result.LibraryFiles := TIndexProjectFiles.PathFiles(ALoaded.LibraryPaths, TShellFileAccess.PasFilesFunc(),
+    Result.LibraryFiles := TIndexProjectFiles.PathFiles(ALoaded.LibraryPaths, TCoreFileAccess.PasFilesFunc(),
       mExcluded, Result.Files + Result.SearchFiles);
   end;
 end;
@@ -144,8 +144,8 @@ begin
   end;
 end;
 
-class procedure TShellIndexRequests.AddPackageFiles(const AProject: TProjectInfo; ALocator: TPackageLocator;
-  var AFiles: TShellIndexFiles; const ALogger: ILogger; const AName: string);
+class procedure TCoreIndexRequests.AddPackageFiles(const AProject: TProjectInfo; ALocator: TPackageLocator;
+  var AFiles: TCoreIndexFiles; const ALogger: ILogger; const AName: string);
 var
   mSource: TPackageSource;
   mKnown: TDictionary<string, Boolean>;
@@ -187,7 +187,7 @@ end;
 /// <summary>Bibliothek des Auftrags: RTL, VCL und FMX einmal je Compiler und Plattform, unabhängig von Projekt und
 /// Konfiguration (#647). Nur der Ordner der Installation: Eigener Code im Bibliothekspfad wird oft mit dem Projekt
 /// übersetzt. $I-Dateien wie beim Compiler: Projekt-Suchpfade, dann Bibliothekspfade (#264).</summary>
-procedure SetLibrary(const ALoaded: TShellLoadedProject; var ARequest: TIndexRequest);
+procedure SetLibrary(const ALoaded: TCoreLoadedProject; var ARequest: TIndexRequest);
 begin
   ARequest.IncludePaths := ALoaded.Project.SearchPaths;
   if ALoaded.Installation = nil then
@@ -199,8 +199,8 @@ begin
   ARequest.IncludePaths := ALoaded.Project.SearchPaths + ALoaded.CompilerLibraryPaths;
 end;
 
-class function TShellIndexRequests.RequestOf(const ALoaded: TShellLoadedProject; const AFiles: TShellIndexFiles;
-  const ATarget: TShellRequestTarget): TIndexRequest;
+class function TCoreIndexRequests.RequestOf(const ALoaded: TCoreLoadedProject; const AFiles: TCoreIndexFiles;
+  const ATarget: TCoreRequestTarget): TIndexRequest;
 begin
   Result := Default(TIndexRequest);
   Result.Files := AFiles.Files;
@@ -223,7 +223,7 @@ begin
   Result.Usages := ATarget.Usages;
 end;
 
-class function TShellIndexRequests.CacheOriginOf(const AProject: TProjectInfo; const ARoot: string): string;
+class function TCoreIndexRequests.CacheOriginOf(const AProject: TProjectInfo; const ARoot: string): string;
 begin
   Result := AProject.FileName;
   if Result = '' then

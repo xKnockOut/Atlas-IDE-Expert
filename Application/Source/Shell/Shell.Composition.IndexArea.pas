@@ -87,7 +87,7 @@ uses
   Atlas.Common.Lsp.Adapters.IdeIndex,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.Preprocessor,
-  Shell.Workspace;
+  Core.Workspace;
 
 { TShellIndexArea }
 
@@ -137,7 +137,7 @@ end;
 procedure TShellIndexArea.CollectNamespaces(out ANamespaces, ALibraryRoots: TArray<string>);
 var
   mCore: TShellCore;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mNamespace: string;
 begin
   // Die Features kennen eine Liste: die Namespaces aller Projekte ohne Doppelte.
@@ -208,8 +208,8 @@ begin
   FServices.Queue(
     procedure
     var
-      mWorkspace: TShellWorkspace;
-      mWorkspaces: TArray<TShellWorkspace>;
+      mWorkspace: TCoreWorkspace;
+      mWorkspaces: TArray<TCoreWorkspace>;
     begin
       System.TMonitor.Enter(mCore.Workspaces.Lock);
       try
