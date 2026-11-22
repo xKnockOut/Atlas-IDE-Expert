@@ -13,7 +13,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.InactiveRegions,
