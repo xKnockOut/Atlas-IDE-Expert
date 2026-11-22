@@ -23,6 +23,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Architecture.UsesService,
@@ -61,6 +62,7 @@ type
     FOthers: TObjectList<TCoreWorkspace>;
     FProcessIdentity: TIndexProcessInfo;
     FCacheRoot: string;
+    FRefactorings: TRuleRefactorings;
     FIndexWait: TCoreIndexWait;
     FLock: TObject;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102), bis Invalidate; unter FLock.</summary>
@@ -122,6 +124,8 @@ type
     property ProcessIdentity: TIndexProcessInfo read FProcessIdentity write FProcessIdentity;
     /// <summary>Vor Load setzen (#1112): Ordner der Index-Caches.</summary>
     property CacheRoot: string read FCacheRoot write FCacheRoot;
+    /// <summary>Vor Load setzen: Refactorings für die Korrekturen der Prüfregeln; je Eintrag nil = keine.</summary>
+    property Refactorings: TRuleRefactorings read FRefactorings write FRefactorings;
     /// <summary>Vor Load setzen (#1480): Index eines Arbeitsbereichs fertig, True beim Hauptarbeitsbereich; läuft
     /// im Thread des Indexaufbaus, auch nach einem erneuten Aufbau.</summary>
     property OnIndexFinished: TProc<Boolean> read FIndexWait.OnFinished write FIndexWait.OnFinished;
@@ -261,6 +265,7 @@ procedure TCoreWorkspaceGroup.Prepare(AWorkspace: TCoreWorkspace);
 begin
   AWorkspace.Setup.ProcessIdentity := FProcessIdentity;
   AWorkspace.Setup.CacheRoot := FCacheRoot;
+  AWorkspace.Setup.Refactorings := FRefactorings;
   AWorkspace.Events.OnIndexFinished :=
     procedure
     begin

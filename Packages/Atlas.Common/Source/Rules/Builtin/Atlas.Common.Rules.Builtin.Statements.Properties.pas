@@ -83,8 +83,7 @@ uses
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Editing.AccessorCreation,
+  Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
   Atlas.Common.Localization.Texts,
@@ -828,7 +827,7 @@ type
     FLocal: TUnitIndex;
     FSuspects: TDictionary<string, Integer>;
     FLocalProperties: TObjectDictionary<string, TList<string>>;
-    FActions: TClassActionContext;
+    FActions: TClassEditRequest;
     function NodeText(ANode: TSyntaxNode): string;
     function SuspectFlags(const AName: string): Integer;
     function ReadAccessor(const ASignature: string): string;
@@ -970,7 +969,8 @@ begin
   begin
     mPlan.MethodSection := 'protected';
   end;
-  if not TClassActions.CreateAccessor(FContext.Text, mLine, mPlan, FActions, mAction) then
+  if (FContext.Refactorings.Classes = nil) or
+    not FContext.Refactorings.Classes.CreateAccessor(FActions.At(mLine), mPlan, mAction) then
   begin
     Exit;
   end;
@@ -1160,7 +1160,7 @@ begin
   end;
   FFileName := FContext.ResolverFileName;
   FLines := TTextLines.SplitLines(FContext.Text);
-  FActions := TClassActionContext.Default;
+  FActions := TClassEditRequest.Create(FContext.Text, 0);
   FActions.Index := FContext.Index;
   FActions.Namespaces := FContext.Namespaces;
   FActions.DelphiVersion := FContext.DelphiVersion;

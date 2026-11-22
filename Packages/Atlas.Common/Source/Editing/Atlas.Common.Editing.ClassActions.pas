@@ -29,7 +29,7 @@ uses
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.AccessorCreation;
+  Atlas.Common.CodeActions.Contract.Classes;
 
 type
   /// <summary>Umgebung der Klassen-Aktionen: Index für Vorfahren und Interfaces aus anderen Units,
@@ -81,6 +81,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.RegularExpressions,
+  Atlas.Common.Editing.AccessorCreation,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
