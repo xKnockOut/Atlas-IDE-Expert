@@ -53,12 +53,12 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Lsp.References,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.Contract.Extract,
+  Atlas.Common.Mcp.Contract.Formatting,
   Atlas.Common.Mcp.Confirm;
 
 type
@@ -198,6 +198,7 @@ type
     FSettingsFor: TReferenceSettingsProvider;
     FChoose: TMcpChooseFunc;
     FExtract: IMcpExtract;
+    FFormatting: IMcpFormatting;
     function ConfirmInferred(const AUnchanged: TArray<TReferenceLocation>; const ANewName: string): Boolean;
     function ConfirmFixes(AFileCount: Integer): Boolean;
     function RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
@@ -228,10 +229,10 @@ type
     /// <summary>format_code mit Text (#1358): formatiert AText (geplanter Inhalt von AFileName) nach AStyle und
     /// liefert die Abweichungen und den formatierten Text; schreibt nichts.</summary>
     function FormatCode(const AStyle: TFormatStyle; const AFileName, AText: string;
-      const AScope: TFormatScope): string; overload;
+      const ALines: TMcpFormatLines): string; overload;
     /// <summary>format_code für die Datei (#1358): Vorschau als Diff bzw. mit ADryRun = False schreiben wie
     /// apply_code_action.</summary>
-    function FormatCode(const AStyle: TFormatStyle; const AFileName: string; const AScope: TFormatScope;
+    function FormatCode(const AStyle: TFormatStyle; const AFileName: string; const ALines: TMcpFormatLines;
       ADryRun: Boolean): string; overload;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     /// <summary>Symbole und Include-Dateien für die Regelprüfung (#860); nil = Vordefinitionen (Win32).</summary>
@@ -242,6 +243,8 @@ type
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
     /// <summary>„Methode extrahieren“ für extract_method (#2054); setzt der Host.</summary>
     property Extract: IMcpExtract read FExtract write FExtract;
+    /// <summary>Formatierer für format_code (#1358); setzt der Host.</summary>
+    property Formatting: IMcpFormatting read FFormatting write FFormatting;
     /// <summary>Rückfragen an den Menschen (#2620, TMcpConfirm); nil = nie fragen.</summary>
     property Choose: TMcpChooseFunc read FChoose write FChoose;
   end;
@@ -250,7 +253,6 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Pascal.Preprocessor,
   System.Generics.Defaults,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -1305,7 +1307,7 @@ begin
 end;
 
 /// <summary>Ergebnis von format_code ohne Syntaxfehler: Zahl und erste Abweichungen; '' ohne Abweichung.</summary>
-function DeviationReport(const AFileName: string; const AOutcome: TFormatOutcome): string;
+function DeviationReport(const AFileName: string; const AOutcome: TMcpFormatOutcome): string;
 const
   cShown = 20;
 var
@@ -1338,23 +1340,24 @@ begin
 end;
 
 /// <summary>Formatiert AText; EMcpToolError bei Syntaxfehlern.</summary>
-function FormatOrFail(const AStyle: TFormatStyle; const AFileName, AText: string; const AScope: TFormatScope;
-  const ASource: TCheckSource): TFormatOutcome;
+function FormatOrFail(const AFormatting: IMcpFormatting; const AStyle: TFormatStyle; const AFileName,
+  AText: string; const ALines: TMcpFormatLines; const ASource: TCheckSource): TMcpFormatOutcome;
 begin
-  Result := TFormatCheck.Run(AText, AStyle, AScope, TPascalPreprocessor.SourceOptions(ASource));
+  Result := AFormatting.Format(AText, AStyle, ALines, ASource);
   if Result.HasSyntaxError then
   begin
     raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.SyntaxErrorInLineNot].Text,
-      [ExtractFileName(AFileName), Result.SyntaxError.StartPos.Line + 1, Result.SyntaxError.Message]);
+      [ExtractFileName(AFileName), Result.SyntaxErrorLine + 1, Result.SyntaxErrorMessage]);
   end;
 end;
 
 function TMcpEditTools.FormatCode(const AStyle: TFormatStyle; const AFileName, AText: string;
-  const AScope: TFormatScope): string;
+  const ALines: TMcpFormatLines): string;
 var
-  mOutcome: TFormatOutcome;
+  mOutcome: TMcpFormatOutcome;
 begin
-  mOutcome := FormatOrFail(AStyle, AFileName, AText, AScope, TFileChecker.SourceOf(FCheckSource, AFileName));
+  mOutcome := FormatOrFail(FFormatting, AStyle, AFileName, AText, ALines,
+    TFileChecker.SourceOf(FCheckSource, AFileName));
   if not mOutcome.Changed then
   begin
     Exit(cTexts[TEditToolsText.NoDeviationFromTheFormat].Text);
@@ -1364,10 +1367,10 @@ begin
 end;
 
 function TMcpEditTools.FormatCode(const AStyle: TFormatStyle; const AFileName: string;
-  const AScope: TFormatScope; ADryRun: Boolean): string;
+  const ALines: TMcpFormatLines; ADryRun: Boolean): string;
 var
   mText: string;
-  mOutcome: TFormatOutcome;
+  mOutcome: TMcpFormatOutcome;
   mEdit: TTextEdit;
   mEdits: TArray<TMcpFileEdit>;
 begin
@@ -1375,7 +1378,8 @@ begin
   begin
     raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
   end;
-  mOutcome := FormatOrFail(AStyle, AFileName, mText, AScope, TFileChecker.SourceOf(FCheckSource, AFileName));
+  mOutcome := FormatOrFail(FFormatting, AStyle, AFileName, mText, ALines,
+    TFileChecker.SourceOf(FCheckSource, AFileName));
   if not mOutcome.Changed then
   begin
     Exit(cTexts[TEditToolsText.NoDeviationFromTheFormat2].Fmt([ExtractFileName(AFileName)]));

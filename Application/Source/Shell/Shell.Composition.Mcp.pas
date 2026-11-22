@@ -6,25 +6,34 @@
 interface
 
 uses
-  Atlas.Common.Mcp.Contract.Extract;
+  Atlas.Common.Mcp.Contract.Extract,
+  Atlas.Common.Mcp.Contract.Formatting;
 
 type
   TMcpComposition = record
     /// <summary>„Methode extrahieren“ aus Editing.</summary>
     class function Extract: IMcpExtract; static;
+    /// <summary>Formatierer aus Editing.</summary>
+    class function Formatting: IMcpFormatting; static;
   end;
 
 implementation
 
 uses
   Atlas.Common.Editing.Composition,
-  Adapters.Mcp.Extract;
+  Adapters.Mcp.Extract,
+  Adapters.Mcp.Formatting;
 
 { TMcpComposition }
 
 class function TMcpComposition.Extract: IMcpExtract;
 begin
   Result := TMcpExtractAdapter.Create(TEditingComposition.Extract);
+end;
+
+class function TMcpComposition.Formatting: IMcpFormatting;
+begin
+  Result := TMcpFormattingAdapter.Create(TEditingComposition.Formatting);
 end;
 
 end.

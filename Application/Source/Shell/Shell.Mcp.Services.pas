@@ -301,6 +301,7 @@ begin
   Result.CheckProject := ACode.CheckProject;
   Result.SettingsFor := ACode.SettingsFor;
   Result.Extract := TMcpComposition.Extract;
+  Result.Formatting := TMcpComposition.Formatting;
   Result.Audit := AuditOf(ALogger);
 end;
 
