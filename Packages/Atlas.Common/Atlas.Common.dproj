@@ -510,6 +510,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.Extract.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.Formatting.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.Formatting.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.CompilerFixes.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.CompilerFixes.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Composition.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclarationCommands.pas"/>
@@ -745,6 +747,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WatchedFiles.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IndexRefresh.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.IdeBuild.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.MessageTexts.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeProject.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Providers.IdeTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.Source.pas"/>
@@ -786,6 +789,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Extract.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Formatting.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.CompilerFixes.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CheckTools.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Prompt.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas"/>

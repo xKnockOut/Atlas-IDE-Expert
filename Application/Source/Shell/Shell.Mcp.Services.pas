@@ -388,6 +388,7 @@ begin
   Result.NewProcess := NewProcess;
   Result.VcsAccess := VcsAccess;
   Result.GitDir := GitDirOf;
+  Result.CompilerFixes := TMcpComposition.CompilerFixes;
 end;
 
 end.

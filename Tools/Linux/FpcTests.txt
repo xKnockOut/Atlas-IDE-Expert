@@ -278,6 +278,9 @@ Atlas.Common.Editing.Providers.Extract.Tests
 Adapters.Mcp.Extract.Tests
 Atlas.Common.Editing.Providers.Formatting.Tests
 Adapters.Mcp.Formatting.Tests
+Atlas.Common.Editing.Providers.CompilerFixes.Tests
+Adapters.Mcp.CompilerFixes.Tests
+Atlas.Common.Compiler.MessageTexts.Tests
 Atlas.Common.Mcp.RefactorTools.Tests
 Atlas.Common.Mcp.ProtectedFiles.Tests
 Atlas.Common.Mcp.EditFindings.Tests
