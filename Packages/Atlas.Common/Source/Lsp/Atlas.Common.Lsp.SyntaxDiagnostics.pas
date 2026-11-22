@@ -181,7 +181,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Findings.Suppressions,
-  Atlas.Common.Editing.UsesActions;
+  Atlas.Common.Semantics.UsesActions;
 
 // Übernimmt AParams.
 procedure Send(const ATransport: IJsonRpcTransport; AParams: TJSONObject);

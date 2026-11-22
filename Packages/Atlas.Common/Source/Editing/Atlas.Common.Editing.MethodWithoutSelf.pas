@@ -95,7 +95,7 @@ uses
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.MethodWithoutSelf.Texts,
   Atlas.Common.Editing.MethodWithoutSelf.Analysis,
   Atlas.Text.Names,

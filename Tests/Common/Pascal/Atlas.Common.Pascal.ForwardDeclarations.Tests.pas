@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ForwardDeclarations.Tests;
+﻿unit Atlas.Common.Pascal.ForwardDeclarations.Tests;
 
 // Tests für Forward-Deklarationen im type-Abschnitt (#685): Erkennung,
 // Forward ergänzen, Blöcke zusammenlegen, Record verschieben, überflüssige
@@ -62,7 +62,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ForwardDeclarations,
+  Atlas.Common.Pascal.ForwardDeclarations,
   Atlas.Tests.TextEdits,
   Atlas.Tests.SourceText;
 

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ForwardDeclarations;
+﻿unit Atlas.Common.Pascal.ForwardDeclarations;
 
 // Forward-Deklarationen im type-Abschnitt (#685):
 //   - Ein Typ wird in einer Typdeklaration benutzt (Feld, Parameter, Ergebnis,
@@ -1214,6 +1214,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.ForwardDeclarations', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Pascal.ForwardDeclarations', cTexts);
 
 end.

@@ -83,7 +83,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Pascal.CaseCompletion,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.CaseCompletion.Tests;
+﻿unit Atlas.Common.Pascal.CaseCompletion.Tests;
 
 // Tests für den Erzeuger fehlender case-Zweige (#449).
 
@@ -42,7 +42,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.CaseCompletion;
+  Atlas.Common.Pascal.CaseCompletion;
 
 const
   cValues: array[0..3] of string = ('skCircle', 'skLine', 'skRect', 'skTriangle');

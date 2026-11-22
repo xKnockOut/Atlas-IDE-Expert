@@ -25,8 +25,7 @@ type
   TUsesResolution = Atlas.Common.Semantics.Contract.TUsesResolution;
   TUsesResolveFunc = Atlas.Common.Semantics.Contract.TUsesResolveFunc;
 
-  /// <summary>Units, deren interface ein Symbol AName auf Unit-Ebene deklariert.</summary>
-  TUnitsDeclaringFunc = reference to function(const AName: string): TArray<string>;
+  TUnitsDeclaringFunc = Atlas.Common.Semantics.Contract.TUnitsDeclaringFunc;
 
   /// <summary>Alles, was die uses-Aktionen für ein Dokument brauchen.</summary>
   TUsesContext = record
