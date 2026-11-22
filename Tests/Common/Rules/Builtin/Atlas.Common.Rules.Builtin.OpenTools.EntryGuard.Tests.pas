@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.OpenTools.EntryGuard.Tests;
 
 // Tests für ota-entry-without-guard: Notifier ohne Schutz, mit try … except, mit Schutzroutine, leere Rümpfe und
-// reine Zuweisungen, Methoden außerhalb eines Einstiegspunkts, Tastaturbindungen, Menüeinträge und die Korrekturen.
+// reine Zuweisungen, Methoden außerhalb eines Einstiegspunkts, Tastaturbindungen, Menüeinträge, die Schutzroutinen
+// der atlas.json im Stamm und die Korrekturen.
 
 interface
 
@@ -18,6 +19,8 @@ type
     procedure TryExceptIsSilent;
     [Test]
     procedure GuardRoutineIsSilent;
+    [Test]
+    procedure RepositoryConfigKnowsGuards;
     [Test]
     procedure EmptyAndAssigningBodiesSilent;
     [Test]
@@ -44,12 +47,14 @@ implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.OpenTools.EntryGuard,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.Files;
 
 const
   cGuardConfig = '{"rules": {"ota-entry-without-guard": {"guards": ["TAtlasGuard.Run"]}}}';
@@ -120,6 +125,52 @@ begin
   Assert.AreEqual(0, Count(NotifierUnit('', '  if not TAtlasGuard.Run(TAtlasFeature.Hover, Helper) then'#10 +
     '    Cancel := True;'#10),
     '{"rules": {"ota-entry-without-guard": {"guards": ["TAtlasGuard.Run(TAtlasFeature.Hover, "]}}}'));
+end;
+
+// Inhalt der atlas.json im Stamm des Repositorys; '' ohne sie.
+function RepositoryConfig: string;
+var
+  mProject: string;
+begin
+  Result := '';
+  mProject := TTestData.Path('Atlas.Tests.dproj');
+  if mProject <> '' then
+  begin
+    mProject := TPath.Combine(ExtractFileDir(ExtractFileDir(mProject)), 'atlas.json');
+    if TFile.Exists(mProject) then
+    begin
+      Result := TFile.ReadAllText(mProject, TEncoding.UTF8);
+    end;
+  end;
+end;
+
+procedure TOtaEntryWithoutGuardRuleTests.RepositoryConfigKnowsGuards;
+const
+  cMenu = 'unit U;'#10'interface'#10'type'#10'  TExpert = class'#10'  private'#10 +
+    '    procedure Klick(Sender: TObject);'#10'  public'#10'    procedure Einhaengen;'#10'  end;'#10 +
+    'implementation'#10'procedure TExpert.Einhaengen;'#10'var'#10'  mItem: TMenuItem;'#10'begin'#10 +
+    '  mItem := TMenuItem.Create(nil);'#10'  mItem.OnClick := Klick;'#10 +
+    '  (BorlandIDEServices as INTAServices).MainMenu.Items.Add(mItem);'#10'end;'#10 +
+    'procedure TExpert.Klick(Sender: TObject);'#10'begin'#10'  TAtlasGuard.Run(TAtlasFeature.Menu,'#10 +
+    '    procedure'#10'    begin'#10'      Ausfuehren;'#10'    end);'#10'end;'#10'end.';
+var
+  mConfig, mNotifier: string;
+begin
+  // Ein Lauf über das ganze Repository (AtlasServer --check .) liest nur die atlas.json im Stamm. Kennt sie die
+  // Schutzroutinen nicht, meldet die Regel jeden Rumpf, der schon über TAtlasGuard läuft.
+  mConfig := RepositoryConfig;
+  Assert.AreNotEqual('', mConfig, 'atlas.json im Stamm nicht gefunden');
+  mNotifier := NotifierUnit('', '  TAtlasGuard.Run(TAtlasFeature.Settings,'#10'    procedure'#10'    begin'#10 +
+    '      Pruefen(FileName);'#10'    end);'#10);
+  Assert.AreEqual(1, Count(mNotifier));
+  Assert.AreEqual(0, Count(mNotifier, mConfig));
+  Assert.AreEqual(0, Count(StringReplace(mNotifier, 'TAtlasGuard.Run(TAtlasFeature.Settings,',
+    'TAtlasGuard.Wrap(TAtlasFeature.Settings,', []), mConfig));
+  // Menüeintrag in die IDE gehängt (wie ViewAtlasClick).
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.PackageFindings(TOtaEntryWithoutGuardRule.Create, cMenu, 'P', '',
+    'U.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PackageFindings(TOtaEntryWithoutGuardRule.Create, cMenu, 'P',
+    mConfig, 'U.pas'))));
 end;
 
 procedure TOtaEntryWithoutGuardRuleTests.EmptyAndAssigningBodiesSilent;
