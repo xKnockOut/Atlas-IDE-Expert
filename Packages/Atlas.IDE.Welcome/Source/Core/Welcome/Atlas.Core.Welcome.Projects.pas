@@ -88,6 +88,10 @@ uses
   Atlas.Core.Projects.Summary.Json;
 
 const
+  /// <summary>Kürzer lässt sich kein Pfad sinnvoll kürzen.</summary>
+  cMinShortLength = 4;
+  /// <summary>Ab so vielen Teilen bleiben Anfang und Ende stehen und die Mitte entfällt.</summary>
+  cMinShortParts = 3;
   cEllipsis = #$2026;
 
 { TAtlasProjectPill }
@@ -270,12 +274,12 @@ var
   mIndex: Integer;
 begin
   Result := APath;
-  if (AMaxLength < 4) or (Length(Result) <= AMaxLength) then
+  if (AMaxLength < cMinShortLength) or (Length(Result) <= AMaxLength) then
   begin
     Exit;
   end;
   mParts := StringReplace(APath, '/', '\', [rfReplaceAll]).Split(['\']);
-  if Length(mParts) < 3 then
+  if Length(mParts) < cMinShortParts then
   begin
     Exit(cEllipsis + Copy(APath, Length(APath) - AMaxLength + 2, MaxInt));
   end;

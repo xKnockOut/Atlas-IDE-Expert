@@ -114,6 +114,16 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Text.Json;
 
+const
+  /// <summary>Unter so vielen Tagen zählt das Alter in Tagen, darunter in Wochen.</summary>
+  cDaysShownAsDays = 14;
+  /// <summary>Unter so vielen Tagen zählt das Alter in Wochen.</summary>
+  cDaysShownAsWeeks = 60;
+  cDaysPerWeek = 7;
+  /// <summary>Grob gerechnet: Für „vor n Monaten“ genügt ein Monat zu 30 Tagen.</summary>
+  cDaysPerMonth = 30;
+  cDaysPerYear = 365;
+
 { TAtlasDiscoverState }
 
 function TAtlasDiscoverState.IsBlocked(const AId: string): Boolean;
@@ -295,21 +305,21 @@ begin
   begin
     Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Yesterday, 1);
   end
-  else if mDays < 14 then
+  else if mDays < cDaysShownAsDays then
   begin
     Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Days, mDays);
   end
-  else if mDays < 60 then
+  else if mDays < cDaysShownAsWeeks then
   begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, mDays div 7);
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, mDays div cDaysPerWeek);
   end
-  else if mDays < 365 then
+  else if mDays < cDaysPerYear then
   begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Months, mDays div 30);
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Months, mDays div cDaysPerMonth);
   end
   else
   begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Years, mDays div 365);
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Years, mDays div cDaysPerYear);
   end;
 end;
 

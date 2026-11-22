@@ -220,7 +220,8 @@ begin
   if Length(FView.Rows) = 0 then
   begin
     mCanvas.Font.Color := mPalette.Muted;
-    mCanvas.TextOut(ScaleValue(cIndent), RowTop(0) + ScaleValue(4), TAtlasUnsavedTexts.EmptyText(FView));
+    mCanvas.TextOut(ScaleValue(cIndent), RowTop(0) + ScaleValue(TAtlasWelcomeRow.cEmptyTop),
+      TAtlasUnsavedTexts.EmptyText(FView));
     Exit;
   end;
   LayoutButtons;
@@ -431,11 +432,11 @@ begin
   // Dieselben Töne wie die Marken im Bereich „Projekte“: lesbar im hellen und im dunklen Thema.
   case ALevel of
     TAtlasUnsavedLevel.Warning:
-      Result := TColor($001A8CC9);
+      Result := TAtlasWelcomeMarks.cWarning;
     TAtlasUnsavedLevel.Alert:
-      Result := TColor($002E22CF);
+      Result := TAtlasWelcomeMarks.cError;
   else
-    Result := TColor($0043A02E);
+    Result := TAtlasWelcomeMarks.cGood;
   end;
 end;
 
@@ -579,7 +580,7 @@ procedure TAtlasWelcomeUnsavedFrame.PaintRow(ACanvas: TCanvas; ARow: Integer; co
   AStamp: TDateTime);
 var
   mData: TAtlasUnsavedRow;
-  mLeft, mTop, mDot, mLimit: Integer;
+  mLeft, mTop, mDot, mLimit, mNameTop, mNameBottom, mDetailTop: Integer;
 begin
   mData := FView.Rows[ARow];
   mTop := RowTop(ARow);
@@ -589,27 +590,30 @@ begin
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := TAtlasUnsavedTexts.LevelColor(mData.Level);
   ACanvas.Pen.Color := ACanvas.Brush.Color;
-  ACanvas.Ellipse(mLeft, mTop + ScaleValue(6), mLeft + mDot, mTop + ScaleValue(6) + mDot);
+  ACanvas.Ellipse(mLeft, mTop + ScaleValue(TAtlasWelcomeRow.cDotTop), mLeft + mDot,
+    mTop + ScaleValue(TAtlasWelcomeRow.cDotTop) + mDot);
   ACanvas.Brush.Style := bsClear;
-  Inc(mLeft, mDot + ScaleValue(6));
+  Inc(mLeft, mDot + ScaleValue(TAtlasWelcomeRow.cDotGap));
+  mNameTop := mTop + ScaleValue(TAtlasWelcomeRow.cNameTop);
+  mNameBottom := mTop + ScaleValue(TAtlasWelcomeRow.cNameBottom);
+  mDetailTop := mTop + ScaleValue(TAtlasWelcomeRow.cDetailTop);
   mLimit := FButtonRects[ARow].Left - ScaleValue(cIndent);
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Color := APalette.Text;
   ACanvas.Font.Style := [fsBold];
-  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), mLimit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
-    mData.Name);
+  ACanvas.TextRect(Rect(mLeft, mNameTop, mLimit, mNameBottom), mLeft, mNameTop, mData.Name);
   Inc(mLeft, ACanvas.TextWidth(mData.Name));
   ACanvas.Font.Style := [];
   if (mData.Branch <> '') and (mLeft < mLimit) then
   begin
     ACanvas.Font.Color := APalette.Muted;
-    ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), mLimit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
-      cSeparator + mData.Branch);
+    ACanvas.TextRect(Rect(mLeft, mNameTop, mLimit, mNameBottom), mLeft, mNameTop, cSeparator + mData.Branch);
   end;
   // Zweite Zeile.
-  mLeft := ScaleValue(cIndent) + mDot + ScaleValue(6);
+  mLeft := ScaleValue(cIndent) + mDot + ScaleValue(TAtlasWelcomeRow.cDotGap);
   ACanvas.Font.Color := APalette.Muted;
-  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(23), mLimit, mTop + ScaleValue(41)), mLeft, mTop + ScaleValue(23),
+  ACanvas.TextRect(Rect(mLeft, mDetailTop, mLimit, mTop + ScaleValue(TAtlasWelcomeRow.cDetailBottom)), mLeft,
+    mDetailTop,
     TAtlasUnsavedTexts.DetailText(mData, AStamp));
   PaintButton(ACanvas, FButtonRects[ARow], TAtlasUnsavedTexts.ButtonText(mData.Item), APalette);
 end;
@@ -619,7 +623,8 @@ procedure TAtlasWelcomeUnsavedFrame.PaintButton(ACanvas: TCanvas; const AButton:
 begin
   ACanvas.Pen.Color := APalette.Line;
   ACanvas.Brush.Style := bsClear;
-  ACanvas.RoundRect(AButton.Left, AButton.Top, AButton.Right, AButton.Bottom, ScaleValue(6), ScaleValue(6));
+  ACanvas.RoundRect(AButton.Left, AButton.Top, AButton.Right, AButton.Bottom,
+    ScaleValue(TAtlasWelcomeRow.cButtonRadius), ScaleValue(TAtlasWelcomeRow.cButtonRadius));
   ACanvas.Font.Color := APalette.Text;
   ACanvas.TextOut(AButton.Left + (AButton.Width - ACanvas.TextWidth(AText)) div 2,
     AButton.Top + (AButton.Height - ACanvas.TextHeight(AText)) div 2, AText);
