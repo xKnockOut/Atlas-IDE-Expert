@@ -88,13 +88,22 @@ type
   /// die Höhe folgt dem Inhalt. Ersetzt alTop: Das ordnet nach Top und verliert Höhenänderungen, die ein Teil
   /// während des Ausrichtens macht (Doku, Abzeichen, Bilder und umbrechende Texte rechnen ihre Höhe in Resize
   /// bzw. CreateWnd aus der Breite). Hier bekommt jedes Teil zuerst seine Breite, erst danach zählt seine Höhe;
-  /// ändert sie sich später, richtet die Fläche über RequestAlign neu aus. Margins zählen bei AlignWithMargins.
-  /// </summary>
+  /// ändert sie sich später, richtet die Fläche über RequestAlign neu aus. Margins zählen bei AlignWithMargins,
+  /// Padding der Fläche als Innenabstand.
+  /// Abgelegt werden nur die lebenden direkten Kinder (Controls): CM_CONTROLLISTCHANGE reicht die VCL an alle
+  /// Vorfahren weiter (auch für Kinder einer Karte), und eine Karte gibt ihre Kinder ohne Meldung frei. Die
+  /// Meldung liefert deshalb nur die Reihenfolge; die Tabelle wird nur nachgeschlagen, nie durchlaufen.</summary>
   TAtlasIssueStack = class(TCustomControl)
   private
-    /// <summary>Teile in der Reihenfolge des Einhängens; nil im Destruktor.</summary>
-    FItems: TList<TControl>;
+    /// <summary>Laufende Nummer je eingehängtem Steuerelement (auch Enkel, siehe oben); nil im Destruktor.
+    /// </summary>
+    FOrder: TDictionary<TControl, Integer>;
+    FNextOrder: Integer;
     procedure CMControlListChange(var AMessage: TCMControlListChange); message CM_CONTROLLISTCHANGE;
+    /// <summary>Sichtbare, lebende direkte Kinder in der Reihenfolge des Einhängens.</summary>
+    function OrderedItems: TArray<TControl>;
+    /// <summary>Einträge ohne lebendes Kind entfernen, wenn die Tabelle deutlich größer ist als nötig.</summary>
+    procedure PruneOrder;
   protected
     procedure AlignControls(AControl: TControl; var Rect: TRect); override;
     procedure CreateWnd; override;
@@ -442,6 +451,11 @@ end;
 
 { TAtlasIssueStack }
 
+const
+  /// <summary>Spielraum der Reihenfolge-Tabelle über das Doppelte der Kinder hinaus, bevor sie aufgeräumt wird.
+  /// </summary>
+  cOrderSlack = 64;
+
 /// <summary>Abstand von AControl zu seinen Nachbarn: Margins nur mit AlignWithMargins.</summary>
 function ItemMargins(AControl: TControl): TRect;
 begin
@@ -456,33 +470,106 @@ end;
 constructor TAtlasIssueStack.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FItems := TList<TControl>.Create;
+  FOrder := TDictionary<TControl, Integer>.Create;
   ControlStyle := ControlStyle + [csAcceptsControls];
   Height := 0;
 end;
 
 destructor TAtlasIssueStack.Destroy;
 begin
-  // Die VCL hängt die Teile in inherited aus: dann nichts mehr merken.
-  FreeAndNil(FItems);
+  // Die VCL hängt die Teile in inherited aus: dann nichts mehr merken und nicht mehr ablegen.
+  FreeAndNil(FOrder);
   inherited;
 end;
 
 procedure TAtlasIssueStack.CMControlListChange(var AMessage: TCMControlListChange);
 begin
   inherited;
-  if FItems = nil then
+  if FOrder = nil then
   begin
     Exit;
   end;
+  // Nur der Zeiger als Schlüssel, nie das Steuerelement selbst: Es kann ein Enkel sein. Neu eingehängt bekommt
+  // es immer eine neue Nummer, auch wenn ein freigegebenes vorher an derselben Adresse stand.
   if AMessage.Inserting then
   begin
-    FItems.Add(AMessage.Control);
+    Inc(FNextOrder);
+    FOrder.AddOrSetValue(AMessage.Control, FNextOrder);
   end
   else
   begin
-    FItems.Remove(AMessage.Control);
+    FOrder.Remove(AMessage.Control);
   end;
+end;
+
+procedure TAtlasIssueStack.PruneOrder;
+var
+  mLive: TDictionary<TControl, Integer>;
+  mIndex, mOrder: Integer;
+begin
+  if FOrder.Count <= 2 * ControlCount + cOrderSlack then
+  begin
+    Exit;
+  end;
+  mLive := TDictionary<TControl, Integer>.Create;
+  try
+    for mIndex := 0 to ControlCount - 1 do
+    begin
+      if FOrder.TryGetValue(Controls[mIndex], mOrder) then
+      begin
+        mLive.Add(Controls[mIndex], mOrder);
+      end;
+    end;
+    FOrder.Clear;
+    for mIndex := 0 to ControlCount - 1 do
+    begin
+      if mLive.TryGetValue(Controls[mIndex], mOrder) then
+      begin
+        FOrder.Add(Controls[mIndex], mOrder);
+      end;
+    end;
+  finally
+    mLive.Free;
+  end;
+end;
+
+function TAtlasIssueStack.OrderedItems: TArray<TControl>;
+var
+  mKeys: TArray<Int64>;
+  mItem: TControl;
+  mKey: Int64;
+  mIndex, mCount, mPos, mOrder: Integer;
+begin
+  Result := nil;
+  SetLength(Result, ControlCount);
+  SetLength(mKeys, ControlCount);
+  mCount := 0;
+  for mIndex := 0 to ControlCount - 1 do
+  begin
+    mItem := Controls[mIndex];
+    if not mItem.Visible or (csDestroying in mItem.ComponentState) then
+    begin
+      Continue;
+    end;
+    // Ohne Nummer (nicht gemeldet) hinter die gemeldeten; bei Gleichstand eindeutig nach Index.
+    if not FOrder.TryGetValue(mItem, mOrder) then
+    begin
+      mOrder := MaxInt;
+    end;
+    mKey := Int64(mOrder) * ControlCount + mIndex;
+    // Einfügen sortiert: wenige Teile, stabil.
+    mPos := mCount;
+    while (mPos > 0) and (mKeys[mPos - 1] > mKey) do
+    begin
+      mKeys[mPos] := mKeys[mPos - 1];
+      Result[mPos] := Result[mPos - 1];
+      Dec(mPos);
+    end;
+    mKeys[mPos] := mKey;
+    Result[mPos] := mItem;
+    Inc(mCount);
+  end;
+  SetLength(Result, mCount);
 end;
 
 procedure TAtlasIssueStack.AlignControls(AControl: TControl; var Rect: TRect);
@@ -491,14 +578,19 @@ var
   mMargins: TRect;
   mTop, mHeight: Integer;
 begin
-  AdjustClientRect(Rect);
-  mTop := Rect.Top;
-  for mItem in FItems do
+  if FOrder = nil then
   begin
-    if not mItem.Visible then
-    begin
-      Continue;
-    end;
+    Exit;
+  end;
+  PruneOrder;
+  AdjustClientRect(Rect);
+  // Padding zieht erst TWinControl.AlignControls ab, das hier nicht läuft.
+  Inc(Rect.Left, Padding.Left);
+  Inc(Rect.Top, Padding.Top);
+  Dec(Rect.Right, Padding.Right);
+  mTop := Rect.Top;
+  for mItem in OrderedItems do
+  begin
     mMargins := ItemMargins(mItem);
     mItem.SetBounds(Rect.Left + mMargins.Left, mTop + mMargins.Top,
       Max(0, Rect.Width - mMargins.Left - mMargins.Right), mItem.Height);

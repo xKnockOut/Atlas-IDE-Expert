@@ -61,8 +61,8 @@ type
     /// <summary>#2126: „Prüfen …“ nur mit CanReview und Issue, meldet OnReview.</summary>
     [Test]
     procedure ReviewButton;
-    /// <summary>Ablage: untereinander in Anlegereihenfolge, Teile einer Karte in der Karte, Clear gibt alles frei.
-    /// </summary>
+    /// <summary>Ablage: untereinander in Anlegereihenfolge ohne Überlappung, Teile einer Karte in der Karte, Clear
+    /// gibt alles frei, danach legt die Fläche neu ab, ohne Freigegebenes anzufassen.</summary>
     [Test]
     procedure LayoutPlacesInOrderAndClears;
     /// <summary>Ablagefläche: Teile untereinander in der Reihenfolge des Einhängens, auch wenn ein Teil seine
@@ -810,6 +810,15 @@ begin
       'nach der Karte wieder der Bildlauf');
     mLayout.Clear;
     Assert.AreEqual(0, mLayout.Stack.ControlCount, 'alles frei');
+    // Neu ablegen nach dem Freigeben einer Karte samt Inhalt: Die Fläche hält nichts Freigegebenes fest.
+    mLayout.BeginUpdate;
+    try
+      mBelow := mLayout.AddText('neu', False);
+    finally
+      mLayout.EndUpdate;
+    end;
+    Assert.AreEqual(1, mLayout.Stack.ControlCount, 'nur der neue Text');
+    Assert.AreEqual(Integer(mLayout.Stack.Padding.Top + mBelow.Margins.Top), mBelow.Top, 'oben in der Fläche');
   finally
     mLayout.Free;
     mHost.Free;
