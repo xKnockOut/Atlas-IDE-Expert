@@ -75,7 +75,7 @@ if ($Packages.Count -eq 0) {
 $Built = [System.Collections.Generic.List[IO.FileInfo]]::new()
 $BinFiles = @('AtlasServer.exe', 'AtlasServer.map', 'AtlasUpdate.exe', 'AtlasMonitor.exe')
 # WebView2Loader.dll nur, wenn vorhanden (Delphi legt sie erst mit dem GetIt-Paket „EdgeView2 SDK“ unter Redist ab):
-# Ohne sie öffnet AtlasMonitor den Bericht im Standardbrowser (Shell.Monitor.ReportPage).
+# Ohne sie öffnet AtlasMonitor den Bericht im Standardbrowser (Monitor.ReportPage).
 if (Test-Path -LiteralPath (Join-Path $Bin 'WebView2Loader.dll') -PathType Leaf) {
     $BinFiles += 'WebView2Loader.dll'
 }
