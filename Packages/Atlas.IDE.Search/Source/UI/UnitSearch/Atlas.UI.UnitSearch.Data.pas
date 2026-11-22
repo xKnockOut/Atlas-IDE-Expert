@@ -254,6 +254,17 @@ const
   /// <summary>Schmalste Vorschau und schmalste Liste daneben, bei 96 dpi.</summary>
   cMinPreviewWidth = 200;
   cMinListWidth = 300;
+  // Höhen der Bereiche von oben nach unten, bei 96 dpi.
+  cHeaderHeight = 44;
+  cModeHeight = 30;
+  cChipRowHeight = 32;
+  cGroupHeight = 24;
+  cEntryHeight = 40;
+  cActionHeight = 34;
+  cFooterHeight = 24;
+  /// <summary>Kopf eines Abschnitts der Vorschau und Abstand unter seinem Inhalt, bei 96 dpi.</summary>
+  cSectionHeadHeight = 20;
+  cSectionGap = 6;
 
 { TAtlasUnitSearchMetrics }
 
@@ -264,7 +275,7 @@ end;
 
 function TAtlasUnitSearchMetrics.HeaderHeight: Integer;
 begin
-  Result := S(44);
+  Result := S(cHeaderHeight);
 end;
 
 function TAtlasUnitSearchMetrics.ModeHeight: Integer;
@@ -272,7 +283,7 @@ begin
   Result := 0;
   if Mode <> TAtlasUnitSearchMode.Search then
   begin
-    Result := S(30);
+    Result := S(cModeHeight);
   end;
 end;
 
@@ -281,23 +292,23 @@ begin
   Result := 0;
   if Filters then
   begin
-    Result := S(32);
+    Result := S(cChipRowHeight);
   end;
 end;
 
 function TAtlasUnitSearchMetrics.GroupHeight: Integer;
 begin
-  Result := S(24);
+  Result := S(cGroupHeight);
 end;
 
 function TAtlasUnitSearchMetrics.EntryHeight: Integer;
 begin
-  Result := S(40);
+  Result := S(cEntryHeight);
 end;
 
 function TAtlasUnitSearchMetrics.FooterHeight: Integer;
 begin
-  Result := S(24);
+  Result := S(cFooterHeight);
 end;
 
 function TAtlasUnitSearchMetrics.ActionHeight: Integer;
@@ -305,18 +316,18 @@ begin
   Result := 0;
   if Actions then
   begin
-    Result := S(34);
+    Result := S(cActionHeight);
   end;
 end;
 
 function TAtlasUnitSearchMetrics.SectionHeadHeight: Integer;
 begin
-  Result := S(20);
+  Result := S(cSectionHeadHeight);
 end;
 
 function TAtlasUnitSearchMetrics.SectionGap: Integer;
 begin
-  Result := S(6);
+  Result := S(cSectionGap);
 end;
 
 { TAtlasUnitSearchFilter }
