@@ -131,6 +131,8 @@ contains
   Atlas.Common.Index.Service in 'Source\Index\Atlas.Common.Index.Service.pas',
   Atlas.Common.Findings.Contract in 'Source\Findings\Atlas.Common.Findings.Contract.pas',
   Atlas.Common.Rules.Contract in 'Source\Rules\Atlas.Common.Rules.Contract.pas',
+  Atlas.Common.Rules.Contract.Api in 'Source\Rules\Atlas.Common.Rules.Contract.Api.pas',
+  Atlas.Common.Rules.Providers.InheritanceDepths in 'Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas',
   Atlas.Common.Rules.Derived in 'Source\Rules\Atlas.Common.Rules.Derived.pas',
   Atlas.Common.Rules.TypedScope in 'Source\Rules\Atlas.Common.Rules.TypedScope.pas',
   Atlas.Common.Rules.WarnSwitches in 'Source\Rules\Atlas.Common.Rules.WarnSwitches.pas',

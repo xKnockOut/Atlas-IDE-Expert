@@ -2695,6 +2695,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CoreWiring.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Rules.IdeTypes.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Rules.IdeTypes.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.InheritanceDepths.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.InheritanceDepths.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ClientStart.pas"/>
