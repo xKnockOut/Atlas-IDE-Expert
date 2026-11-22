@@ -156,7 +156,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Search,
   Atlas.UI.Welcome.Strings,

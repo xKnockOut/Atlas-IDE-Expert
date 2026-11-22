@@ -24,7 +24,7 @@ uses
   Vcl.AppEvnts,
   ToolsAPI.Editor,
   Atlas.UI.Popup.Window,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   /// <summary>Taste AKey im Editor bei stehendem Fenster; AHandled = True nimmt sie dem Editor ab.</summary>

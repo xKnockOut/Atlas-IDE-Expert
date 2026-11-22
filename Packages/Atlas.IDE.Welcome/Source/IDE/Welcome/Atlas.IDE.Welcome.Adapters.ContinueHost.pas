@@ -48,7 +48,7 @@ implementation
 uses
   Winapi.Windows,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.Sections,

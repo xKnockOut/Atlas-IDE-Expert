@@ -103,7 +103,7 @@ implementation
 uses
   Winapi.Windows,
   Atlas.WinBase.Process,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cStartFailedCode = $FFFFFFFF;

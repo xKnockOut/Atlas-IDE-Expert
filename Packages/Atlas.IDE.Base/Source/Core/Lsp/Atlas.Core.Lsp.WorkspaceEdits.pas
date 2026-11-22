@@ -113,7 +113,7 @@ uses
   System.Generics.Defaults,
   Atlas.Core.Lsp.Uris,
   Atlas.Text.Lines,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

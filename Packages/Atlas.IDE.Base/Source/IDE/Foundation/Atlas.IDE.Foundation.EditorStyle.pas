@@ -13,8 +13,8 @@ uses
   Winapi.Windows,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Popup.Window;
 
 type
@@ -52,7 +52,7 @@ uses
   System.SysUtils,
   System.Win.Registry,
   ToolsAPI,
-  Atlas.Core.Style.Scaling,
+  Atlas.Plugin.Style.Scaling,
   Atlas.IDE.Foundation.Settings;
 
 function WindowsUsesLightApps: Boolean;

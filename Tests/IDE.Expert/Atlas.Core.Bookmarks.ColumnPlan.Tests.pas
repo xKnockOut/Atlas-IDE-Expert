@@ -41,7 +41,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Bookmarks.ColumnPlan;
 
 { TAtlasQuickColumnPlanTests }

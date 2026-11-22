@@ -15,7 +15,7 @@ uses
   Winapi.Windows,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset;
 
@@ -128,7 +128,7 @@ implementation
 
 uses
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Popup.Draw,
   System.SysUtils,
   System.Math,

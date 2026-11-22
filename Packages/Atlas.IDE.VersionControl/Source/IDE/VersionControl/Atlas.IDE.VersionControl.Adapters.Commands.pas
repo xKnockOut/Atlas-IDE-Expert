@@ -23,7 +23,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.Settings,

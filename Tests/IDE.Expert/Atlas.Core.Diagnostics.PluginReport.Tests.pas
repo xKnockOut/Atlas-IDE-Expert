@@ -40,7 +40,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.PluginReport;
 
 function Feature(AFeature: TAtlasFeature; ATotalMs: Double): TAtlasFeatureTiming;

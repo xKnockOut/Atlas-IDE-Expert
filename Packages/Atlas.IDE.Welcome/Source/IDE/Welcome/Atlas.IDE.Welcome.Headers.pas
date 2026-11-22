@@ -67,7 +67,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Welcome.Greeting,
   Atlas.Core.Welcome.Sections,

@@ -42,8 +42,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Builtin.Testing.Classes,
-  Atlas.Common.Rules.Builtin.Testing.TestCases,
+  Atlas.Common.Testing.Classes,
+  Atlas.Common.Testing.TestCases,  Atlas.Common.Rules.Builtin.Testing.TestCases,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Testunit mit den Attributen AAttributes vor der Methode Pruefe(AParameters).</summary>

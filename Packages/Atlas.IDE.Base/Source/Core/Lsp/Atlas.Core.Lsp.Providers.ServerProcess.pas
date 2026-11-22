@@ -69,8 +69,8 @@ uses
   System.IOUtils,
   Atlas.Text.CommandLine,
   Atlas.WinBase.Process,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Lsp.Crashes,
   Atlas.Text.Files;
 

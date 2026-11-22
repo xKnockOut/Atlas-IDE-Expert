@@ -75,7 +75,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.TeamFile,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Tests.SourceText;
 
 /// <summary>Wie .github/ISSUE_TEMPLATE/1-fehler.yml von Atlas, gekürzt, mit Kontrollkästchen.</summary>

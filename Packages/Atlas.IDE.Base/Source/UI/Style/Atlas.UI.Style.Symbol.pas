@@ -20,7 +20,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.ImageCollection,
-  Atlas.Core.Style.Symbol;
+  Atlas.Plugin.Style.Symbol;
 
 type
   TAtlasSymbolImages = class
@@ -74,7 +74,7 @@ uses
   System.Generics.Collections,
   Winapi.Wincodec,
   Vcl.Themes,
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color;
 
 const
   /// <summary>Bildpunkte als 32 Bit BGRA mit vormultipliziertem Alpha.</summary>

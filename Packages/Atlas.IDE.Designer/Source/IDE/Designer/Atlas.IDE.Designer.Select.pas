@@ -62,7 +62,7 @@ uses
   Vcl.Controls,
   ToolsAPI,
   DesignIntf,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Designer.FormModel,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,

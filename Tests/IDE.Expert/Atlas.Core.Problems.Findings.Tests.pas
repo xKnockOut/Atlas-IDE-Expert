@@ -141,7 +141,7 @@ uses
   Atlas.Core.Problems.Findings,
   Atlas.Core.Problems.FindingsView,
   Atlas.Core.Problems.FindingsCache,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Problems.Colors;
 
 function Problem(ALine: Integer; const ACode, AMessage: string; ASeverity: TAtlasProblemSeverity): TAtlasProblem;

@@ -211,7 +211,7 @@ implementation
 uses
   Atlas.UI.Commands.Strings,
   Atlas.UI.Foundation.Menus,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   ToolsAPI,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.QuickToggles,

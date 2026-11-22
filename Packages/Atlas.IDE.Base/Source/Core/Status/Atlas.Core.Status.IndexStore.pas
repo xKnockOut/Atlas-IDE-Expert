@@ -82,7 +82,7 @@ uses
   System.JSON,
   Atlas.Core.Files.DataFile,
   Atlas.Text.Json,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 function DateText(AValue: TDateTime): string;
 begin

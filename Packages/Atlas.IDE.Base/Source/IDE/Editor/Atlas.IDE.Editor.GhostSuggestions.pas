@@ -141,7 +141,7 @@ implementation
 
 uses
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.GhostKeys,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.SmartIndent,
@@ -149,7 +149,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.EnterWatch;
 

@@ -13,7 +13,7 @@ uses
   Winapi.Messages,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Documentation.Contract,
   Atlas.UI.Documentation.View;
 
@@ -63,7 +63,7 @@ uses
   System.UITypes,
   Vcl.Forms,
   Vcl.Clipbrd,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
   Atlas.Core.Tracker.Markdown;

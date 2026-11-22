@@ -109,7 +109,7 @@ uses
   Vcl.Dialogs,
   Atlas.Core.Build.Events,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Tracker.CommentEditor,

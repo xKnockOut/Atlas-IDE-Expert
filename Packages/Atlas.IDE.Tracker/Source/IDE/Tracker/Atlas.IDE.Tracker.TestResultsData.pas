@@ -60,7 +60,7 @@ implementation
 uses
   System.SysUtils,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.TestFetch,
   Atlas.IDE.Contracts.WelcomeTiles,

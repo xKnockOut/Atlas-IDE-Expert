@@ -33,10 +33,10 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Mcp.Server,
-  Shell.Mcp.Context,
+  Core.Mcp.Context,
   Shell.Mcp.Services,
   Shell.Mcp.RefactorSources,
-  Shell.Mcp.EditingTools;
+  Core.Mcp.EditingTools;
 
 const
   cUnit = 'Probe.Kunden.pas';

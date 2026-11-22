@@ -45,7 +45,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
@@ -65,7 +65,7 @@ uses
   Atlas.IDE.Commands.MenuContext,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.ContextMenuGroups,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

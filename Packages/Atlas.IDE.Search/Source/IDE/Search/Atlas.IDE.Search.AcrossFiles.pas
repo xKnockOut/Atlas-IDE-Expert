@@ -41,7 +41,7 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.ReplaceList,
   Atlas.Core.Search.Scopes,

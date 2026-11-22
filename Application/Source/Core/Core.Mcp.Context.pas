@@ -1,0 +1,263 @@
+﻿unit Core.Mcp.Context;
+
+// Host-Rolle Core: MCP-Modus (--mcp, #48), gemeinsamer Kontext der Werkzeuge (TMcpToolContext) und
+// Hilfen zum Lesen von Quelltext und Projekten.
+
+interface
+
+uses
+  System.SysUtils,
+  System.JSON,
+  Atlas.Common.Mcp.Server,
+  Atlas.Common.Mcp.IndexTools,
+  Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Mcp.Paths,
+  Atlas.Common.Mcp.EditTools,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Architecture.Report,
+  Atlas.Common.Architecture.SymbolPath,
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Hotspots.Service,
+  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Mcp.RefactorTools,
+  Atlas.Common.Compiler.Contract,
+  Core.VersionControlChanges,
+  Core.WorkspaceGroup;
+
+type
+  /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
+  /// (absoluter Pfad eines gespeicherten Stands, #1121) der Text des Vergleichs. AResolution: Feinheit γ für
+  /// diesen Aufruf (#1366), 0 = architecture.grouping.resolution.</summary>
+  TMcpArchitectureFunc = reference to function(ASection: TArchitectureSection;
+    const AUnit, ACompareWith: string; AResolution: Double): string;
+  /// <summary>Antwort von find_path (#1117) als Text.</summary>
+  TMcpFindPathFunc = reference to function(const ARequest: TSymbolPathRequest): string;
+
+  /// <summary>refactor für ARequest (#2150); ARequest.FileName ist mit seinem Text für den Aufruf geöffnet. Liest
+  /// die Datei über AEdit.ReadText; EMcpToolError, wenn sie nicht lesbar ist. Die Shell setzt es aus den
+  /// Refactorings des Servers zusammen (TMcpRefactorSources.Attach).</summary>
+  TMcpRefactorFunc = reference to function(AEdit: TMcpEditTools; const ARequest: TMcpRefactorRequest): string;
+
+  /// <summary>Was die Werkzeuge an Adaptern brauchen; die Shell erzeugt sie (TMcpServices.HostAdapters).</summary>
+  TMcpHostAdapters = record
+    /// <summary>Neuer Prozess für Testläufe (run_tests).</summary>
+    NewProcess: TFunc<ICompilerProcess>;
+    /// <summary>Zugang zur Versionsverwaltung (Änderungen, Hotspots, Verlauf).</summary>
+    VcsAccess: TFunc<TCoreVcsAccess>;
+    /// <summary>Git-Verzeichnis des Ordners ('' ohne Git).</summary>
+    GitDir: TFunc<string, string>;
+  end;
+
+  /// <summary>Was die Werkzeuge des MCP-Modus brauchen; ToolNames füllt nur Server (die Werkzeuge greifen erst
+  /// beim Aufruf auf die Dienste zu).</summary>
+  TMcpToolContext = record
+    Server: TMcpServer;
+    Tools: TMcpIndexTools;
+    Code: TMcpCodeTools;
+    Group: TCoreWorkspaceGroup;
+    Root: string;
+    Guard: TMcpPathGuard;
+    Edit: TMcpEditTools;
+    /// <summary>Quelle von refactor (#2150, TMcpRefactorSources.Attach); nil, wenn nur die Namen der Werkzeuge
+    /// gebraucht werden.</summary>
+    Refactor: TMcpRefactorFunc;
+    Architecture: TMcpArchitectureFunc;
+    FindPath: TMcpFindPathFunc;
+    CheckSource: TCheckSourceFunc;
+    CheckProject: TCheckProjectFunc;
+    Index: ISymbolIndex;
+    Hotspots: THotspotService;
+    ImpactOptionsFor: TImpactOptionsProvider;
+    Adapters: TMcpHostAdapters;
+    /// <summary>Start des MCP-Prozesses für get_server_status.</summary>
+    Started: TDateTime;
+  end;
+
+  /// <summary>Werkzeug mit seinem Kontext; ContextTool macht daraus den Handler für TMcpServer.AddTool.</summary>
+  TMcpContextTool = function(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+
+/// <summary>Handler, der ATool mit einer Kopie von AContext aufruft.</summary>
+function ContextTool(const AContext: TMcpToolContext; ATool: TMcpContextTool): TMcpToolHandler;
+/// <summary>dryRun-Argument; Vorgabe true (#61).</summary>
+function DryRunOf(const AArguments: TJSONObject): Boolean;
+/// <summary>Eingabeschema ASchema mit den Beschreibungen in der Sprache der Texte (#1458): Jedes %s in ASchema steht
+/// für eine Beschreibung und wird der Reihe nach durch ADescriptions als JSON-Text ersetzt, so bleibt der Aufbau
+/// des Schemas für beide Sprachen derselbe. Weniger Beschreibungen als Platzhalter lassen den Rest stehen
+/// (ungültiges JSON, das die Tests der Werkzeuge melden).</summary>
+function SchemaWith(const ASchema: string; const ADescriptions: array of string): string;
+// Als gewöhnliche Funktion, weil sie als TReadText-Rückruf an mehrere Werkzeuge geht.
+function ReadSourceText(const AFileName: string; out AText: string): Boolean;
+/// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
+function LoadProject(const AFileName, AConfiguration, APlatform: string; out AInfo: TProjectInfo): Boolean;
+/// <summary>Formatregeln wie im Editor für AFileName: format.* über .editorconfig über den Vorgaben.</summary>
+function FormatStyleOf(AGroup: TCoreWorkspaceGroup; const AFileName: string): TFormatStyle;
+/// <summary>DUnitX-Testprojekt: Die Hauptdatei verwendet DUnitX.TestFramework (#69).</summary>
+function IsTestProject(const AFileName: string): Boolean;
+/// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
+function ProjectFilesUnder(const ARoot: string): TArray<string>;
+/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an
+/// der
+/// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
+/// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
+/// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
+function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TCheckSourceFunc;
+/// <summary>AGroup.RuleProject als Methodenreferenz (#1112), aus denselben Gründen wie CheckSourceOf in eigener
+/// Routine.</summary>
+function CheckProjectOf(AGroup: TCoreWorkspaceGroup): TCheckProjectFunc;
+
+implementation
+
+uses
+  System.IOUtils,
+  System.StrUtils,
+  Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Lsp.Formatting,
+  Atlas.Text.Lines,
+  Atlas.Text.DUnitX,
+  Core.Bootstrap,
+  Atlas.Text.Json,
+  Atlas.Text.Files,
+  Atlas.Common.Documents.FileEncoding;
+
+/// <summary>dryRun-Argument; Vorgabe true (#61).</summary>
+function DryRunOf(const AArguments: TJSONObject): Boolean;
+begin
+  if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('dryRun', Result) then
+  begin
+    Result := True;
+  end;
+end;
+
+function SchemaWith(const ASchema: string; const ADescriptions: array of string): string;
+var
+  mRest: string;
+  mIndex, mAt: Integer;
+begin
+  Result := '';
+  mRest := ASchema;
+  for mIndex := 0 to High(ADescriptions) do
+  begin
+    mAt := Pos('%s', mRest);
+    if mAt = 0 then
+    begin
+      Break;
+    end;
+    Result := Result + Copy(mRest, 1, mAt - 1) + TJsonText.Quote(ADescriptions[mIndex]);
+    mRest := Copy(mRest, mAt + 2, MaxInt);
+  end;
+  Result := Result + mRest;
+end;
+
+// Als gewöhnliche Funktion, weil sie als TReadText-Rückruf an mehrere Werkzeuge geht.
+function ReadSourceText(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
+end;
+
+function FormatStyleOf(AGroup: TCoreWorkspaceGroup; const AFileName: string): TFormatStyle;
+begin
+  Result := TLspFormatting.Resolve(nil, AFileName, AGroup.WorkspaceOf(AFileName).Configuration.Settings.Formatting,
+    function(const AConfigFile: string; out AConfigText: string): Boolean
+    begin
+      Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
+    end);
+end;
+
+/// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
+function LoadProject(const AFileName, AConfiguration, APlatform: string; out AInfo: TProjectInfo): Boolean;
+var
+  mOptions: TDprojOptions;
+begin
+  mOptions := Default(TDprojOptions);
+  mOptions.Config := AConfiguration;
+  mOptions.Platform := APlatform;
+  mOptions.FileExists :=
+    function(APath: string): Boolean
+    begin
+      Result := FileExists(APath);
+    end;
+  try
+    AInfo := TDprojReader.Load(AFileName, mOptions);
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError) or (E is EProjectError)) then
+      begin
+        raise;
+      end;
+      AInfo := Default(TProjectInfo);
+      Result := False;
+    end;
+  end;
+end;
+
+/// <summary>DUnitX-Testprojekt: Die Hauptdatei verwendet DUnitX.TestFramework (#69).</summary>
+function IsTestProject(const AFileName: string): Boolean;
+var
+  mInfo: TProjectInfo;
+  mText: string;
+begin
+  Result := LoadProject(AFileName, '', '', mInfo) and (mInfo.MainSource <> '') and
+    ReadSourceText(mInfo.MainSource, mText) and TDUnitXSource.UsesDUnitX(TTextLines.SplitLines(mText));
+end;
+
+/// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
+function ProjectFilesUnder(const ARoot: string): TArray<string>;
+var
+  mFileName: string;
+begin
+  Result := nil;
+  if (ARoot = '') or not TDirectory.Exists(ARoot) then
+  begin
+    Exit;
+  end;
+  for mFileName in TDirectory.GetFiles(ARoot, '*.dproj', TSearchOption.soAllDirectories) do
+  begin
+    if not ContainsText(mFileName, '\__history\') and not ContainsText(mFileName, '\__recovery\') then
+    begin
+      Result := Result + [mFileName];
+    end;
+  end;
+end;
+
+/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an
+/// der
+/// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
+/// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
+/// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
+function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TCheckSourceFunc;
+begin
+  Result :=
+    function(const AFileName: string): TCheckSource
+    begin
+      Result := AGroup.Main.State.CheckSource(AFileName);
+    end;
+end;
+
+/// <summary>AGroup.RuleProject als Methodenreferenz (#1112), aus denselben Gründen wie CheckSourceOf in eigener
+/// Routine.</summary>
+function CheckProjectOf(AGroup: TCoreWorkspaceGroup): TCheckProjectFunc;
+begin
+  Result :=
+    function(const AFileName: string): TCheckProject
+    begin
+      Result := AGroup.RuleProject(AFileName);
+    end;
+end;
+
+function ContextTool(const AContext: TMcpToolContext; ATool: TMcpContextTool): TMcpToolHandler;
+var
+  mContext: TMcpToolContext;
+begin
+  mContext := AContext;
+  Result :=
+    function(const AArguments: TJSONObject): string
+    begin
+      Result := ATool(mContext, AArguments);
+    end;
+end;
+
+end.

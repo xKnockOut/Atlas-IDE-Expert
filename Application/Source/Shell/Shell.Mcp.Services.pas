@@ -23,7 +23,7 @@ uses
   Atlas.Common.Hotspots.Service,
   Core.Workspace,
   Core.WorkspaceGroup,
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 type
   /// <summary>Alle Dienste eines MCP-Laufs; Free gibt sie in umgekehrter Reihenfolge frei.</summary>
@@ -50,6 +50,8 @@ type
     function AllFiles: TFunc<TArray<string>>;
     /// <summary>Kontext der Werkzeuge mit AServer.</summary>
     function ToolContext(AServer: TMcpServer): TMcpToolContext;
+    /// <summary>Adapter der Werkzeuge: Prozesse, Versionsverwaltung, Git-Verzeichnis.</summary>
+    class function HostAdapters: TMcpHostAdapters; static;
   end;
 
 implementation
@@ -66,10 +68,28 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Architecture.UsesGraph,
   Platform.Server,
-  Shell.Mcp.Ide,
-  Shell.Mcp.ArchitectureTools,
+  Core.Mcp.Ide,
+  Core.Mcp.ArchitectureTools,
+  Atlas.Common.Compiler.Contract,
+  Atlas.Core.VersionControl.Providers.Git,
+  Core.VersionControlChanges,
   Shell.Composition.Platform,
   Core.Bootstrap;
+
+function NewProcess: ICompilerProcess;
+begin
+  Result := TProcessRunner.Create;
+end;
+
+function VcsAccess: TCoreVcsAccess;
+begin
+  Result := TShellPlatformAdapters.VcsAccess;
+end;
+
+function GitDirOf(AFolder: string): string;
+begin
+  Result := TAtlasGitVersionControl.GitDir(AFolder);
+end;
 
 function NewStore: IDocumentStore;
 begin
@@ -355,7 +375,16 @@ begin
   Result.Index := Index;
   Result.Hotspots := Hotspots;
   Result.ImpactOptionsFor := Code.ImpactOptionsFor;
+  Result.Adapters := HostAdapters;
   Result.Started := Now;
+end;
+
+class function TMcpServices.HostAdapters: TMcpHostAdapters;
+begin
+  Result := Default(TMcpHostAdapters);
+  Result.NewProcess := NewProcess;
+  Result.VcsAccess := VcsAccess;
+  Result.GitDir := GitDirOf;
 end;
 
 end.

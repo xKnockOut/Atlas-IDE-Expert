@@ -68,7 +68,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Popup.Accessibility;
 

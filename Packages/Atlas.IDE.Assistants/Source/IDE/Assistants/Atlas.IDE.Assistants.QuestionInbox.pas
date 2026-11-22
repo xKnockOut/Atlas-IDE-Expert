@@ -68,7 +68,7 @@ uses
   System.IOUtils,
   Atlas.Text.Files,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Assistants.Inbox,

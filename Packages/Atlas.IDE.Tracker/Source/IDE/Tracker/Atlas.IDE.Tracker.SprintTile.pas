@@ -126,7 +126,7 @@ uses
   Atlas.Core.Tracker.Board,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Sprint,

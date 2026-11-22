@@ -121,7 +121,7 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Settings.Plugin,

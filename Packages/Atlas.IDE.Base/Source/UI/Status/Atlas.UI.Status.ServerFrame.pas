@@ -32,7 +32,7 @@ uses
   Vcl.Forms,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Status.Server;
 
 type
@@ -159,7 +159,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Winapi.Windows,
   System.Math,
   Atlas.UI.Status.Strings,

@@ -69,7 +69,7 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.TimePlan,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.VersionControl.Contract,

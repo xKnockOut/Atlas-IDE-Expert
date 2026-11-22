@@ -67,7 +67,7 @@ uses
   ToolsAPI,
   System.IOUtils,
   Atlas.Text.Files,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Core.Assistants.Inbox,
   Atlas.UI.Assistants.Strings;

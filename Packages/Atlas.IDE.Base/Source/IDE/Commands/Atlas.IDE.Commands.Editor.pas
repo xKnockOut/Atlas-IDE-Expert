@@ -95,7 +95,7 @@ implementation
 uses
   System.Classes,
   DockForm,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Editor.EnterWatch,

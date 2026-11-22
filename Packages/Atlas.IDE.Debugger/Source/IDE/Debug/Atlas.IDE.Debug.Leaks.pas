@@ -95,7 +95,7 @@ uses
   ToolsAPI,
   Atlas.Text.LeakReport,
   Atlas.Core.Debug.LeakFlow,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,

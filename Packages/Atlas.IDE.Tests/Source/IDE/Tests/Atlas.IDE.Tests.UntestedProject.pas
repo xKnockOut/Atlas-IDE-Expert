@@ -44,7 +44,7 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session.Json,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Tests.Strings,

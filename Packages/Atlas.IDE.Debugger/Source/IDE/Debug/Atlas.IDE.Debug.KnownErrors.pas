@@ -44,7 +44,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.IDE.Contracts.KnownErrors,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Debug.KnownErrors,
   Atlas.IDE.Debug.Session,

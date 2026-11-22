@@ -77,7 +77,7 @@ uses
   Winapi.Windows,
   System.Math,
   Atlas.UI.Analysis.Strings,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Foundation.Theme;
 
 const

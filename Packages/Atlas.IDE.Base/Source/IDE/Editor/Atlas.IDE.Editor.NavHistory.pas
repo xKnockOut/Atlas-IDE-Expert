@@ -54,7 +54,7 @@ uses
   Vcl.Forms,
   ToolsAPI,
   DockForm,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Commands.Palette,

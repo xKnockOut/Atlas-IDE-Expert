@@ -35,7 +35,7 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.Core.Debug.ExceptionBarLayout;
 

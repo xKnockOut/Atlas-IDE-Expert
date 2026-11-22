@@ -61,7 +61,7 @@ implementation
 uses
   System.UITypes,
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Popup.Accessibility;

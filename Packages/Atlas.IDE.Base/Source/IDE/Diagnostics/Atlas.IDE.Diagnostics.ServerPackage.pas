@@ -36,7 +36,7 @@ uses
   Atlas.Core.Diagnostics.BugReport,
   Atlas.Core.Diagnostics.Package,
   Atlas.Core.Diagnostics.ServerPackage,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Diagnostics.Strings;
 

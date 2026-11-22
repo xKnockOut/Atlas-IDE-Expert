@@ -145,7 +145,7 @@ uses
   System.DateUtils,
   System.StrUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Flaky,
   Atlas.IDE.Foundation.Files,

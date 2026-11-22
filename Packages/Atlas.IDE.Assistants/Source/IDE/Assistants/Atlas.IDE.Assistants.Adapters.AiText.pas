@@ -17,7 +17,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.AiProviders.Contract,
   Atlas.Core.AiProviders.Catalog,
   Atlas.IDE.Contracts.AiText;
@@ -62,8 +62,8 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.AiProviders.OpenAiCompatible,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.AiErrors,

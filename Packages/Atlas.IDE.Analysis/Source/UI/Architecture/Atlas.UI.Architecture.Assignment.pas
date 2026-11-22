@@ -17,7 +17,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Architecture.Model;
 
 type

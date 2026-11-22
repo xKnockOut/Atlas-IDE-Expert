@@ -99,7 +99,7 @@ uses
   System.Math,
   Vcl.Themes,
   Vcl.Graphics,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Foundation.WrapLabel;

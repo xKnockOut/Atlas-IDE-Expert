@@ -77,7 +77,7 @@ implementation
 uses
   System.SysUtils,
   Vcl.StdCtrls,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.StoreValues,
   Atlas.Core.Settings.PageNames,

@@ -121,7 +121,7 @@ uses
   Vcl.Graphics,
   Vcl.Themes,
   Vcl.ComCtrls,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Dock.Plan,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol;

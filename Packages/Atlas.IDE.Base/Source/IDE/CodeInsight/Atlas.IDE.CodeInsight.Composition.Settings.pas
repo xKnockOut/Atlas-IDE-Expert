@@ -18,7 +18,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,

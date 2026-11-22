@@ -58,7 +58,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Style.Syntax;
+  Atlas.Plugin.Style.Syntax;
 
 type
   /// <summary>Zelle einer Zeile mit Spalten: Läufe oder ein Text in fester Schrift und Farbe.</summary>

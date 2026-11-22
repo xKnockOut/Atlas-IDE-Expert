@@ -15,8 +15,8 @@ interface
 
 uses
   System.Types,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Text.DUnitX,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Debug;

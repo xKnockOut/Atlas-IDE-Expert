@@ -51,7 +51,7 @@ uses
   System.SysUtils,
   System.Types,
   System.JSON,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Text.DUnitX,
   Atlas.Core.Tests.Run,

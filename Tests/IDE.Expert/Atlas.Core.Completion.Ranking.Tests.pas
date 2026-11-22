@@ -108,7 +108,7 @@ uses
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Core.Completion.Providers.Server,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Tests.Wait,
   Atlas.Core.Completion.TestSupport;
 

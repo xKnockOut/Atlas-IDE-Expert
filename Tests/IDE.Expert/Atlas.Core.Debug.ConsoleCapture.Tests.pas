@@ -48,7 +48,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Debug.ConsoleCapture;
 
 function Bytes(const AText: string): TBytes;

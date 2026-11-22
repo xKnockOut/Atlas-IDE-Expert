@@ -18,7 +18,7 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Designer.Overlay;
 
 type

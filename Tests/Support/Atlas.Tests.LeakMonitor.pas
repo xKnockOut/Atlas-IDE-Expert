@@ -133,7 +133,7 @@ uses
   Atlas.Tests.AllocationTrace,
   Atlas.Tests.FirstUse,
   Atlas.Common.Localization.Texts,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit;
 
 const

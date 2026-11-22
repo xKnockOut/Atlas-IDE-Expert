@@ -96,7 +96,7 @@ uses
   Winapi.Messages,
   Winapi.Dwmapi,
   Vcl.Imaging.pngimage,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.Attach;
 
 const

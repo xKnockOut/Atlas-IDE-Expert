@@ -37,7 +37,7 @@ uses
   Atlas.UI.Generate.Strings,
   System.SysUtils,
   Winapi.Windows,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Generate.Menu,
   Atlas.UI.Generate.Window;
 

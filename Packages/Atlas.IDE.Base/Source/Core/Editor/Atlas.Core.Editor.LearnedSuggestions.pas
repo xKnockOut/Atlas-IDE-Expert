@@ -129,7 +129,7 @@ uses
   System.Math,
   Atlas.Text.Chars,
   Atlas.Core.Lsp.Uris,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

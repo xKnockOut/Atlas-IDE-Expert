@@ -109,7 +109,7 @@ uses
   System.Math,
   System.JSON,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Settings.VisualizerKinds,

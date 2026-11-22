@@ -43,7 +43,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
-  Atlas.Core.Diagnostics.UnloadSafety,
+  Atlas.Plugin.Diagnostics.UnloadSafety,
   Atlas.UI.Foundation.WndProcHook;
 
 const

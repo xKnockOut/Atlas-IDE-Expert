@@ -12,8 +12,8 @@
 interface
 
 uses
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.GutterColumn;
 

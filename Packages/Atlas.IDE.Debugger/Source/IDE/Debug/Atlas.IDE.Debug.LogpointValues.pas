@@ -74,7 +74,7 @@ implementation
 uses
   Vcl.Clipbrd,
   Atlas.Core.Debug.Logpoint,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.EventLog,
   Atlas.IDE.Debug.Logpoints,

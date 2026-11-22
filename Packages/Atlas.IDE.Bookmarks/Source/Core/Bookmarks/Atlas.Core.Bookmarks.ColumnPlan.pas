@@ -18,7 +18,7 @@
 interface
 
 uses
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color;
 
 type
   /// <summary>Was der Zeitgeber nach einem Blick auf den oberen Editor tut.</summary>

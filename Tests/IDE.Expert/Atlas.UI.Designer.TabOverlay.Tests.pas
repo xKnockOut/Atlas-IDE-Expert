@@ -38,7 +38,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Controls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Tests.RecordText;
 
 type

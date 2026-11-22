@@ -109,7 +109,7 @@ implementation
 uses
   System.Math,
   Vcl.Clipbrd,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Tests.Strings;
 

@@ -19,7 +19,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.SymbolPath.Model;
 
 type
@@ -85,7 +85,7 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.SymbolPath.Strings,
   Atlas.UI.Foundation.Theme;
 

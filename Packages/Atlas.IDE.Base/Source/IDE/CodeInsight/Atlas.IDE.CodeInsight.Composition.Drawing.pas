@@ -47,7 +47,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Problems.Contract,

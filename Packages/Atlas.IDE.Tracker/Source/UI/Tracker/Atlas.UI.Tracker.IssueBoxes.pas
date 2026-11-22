@@ -14,8 +14,8 @@ uses
   Vcl.Graphics,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Links,
   Atlas.UI.Foundation.Dialog;

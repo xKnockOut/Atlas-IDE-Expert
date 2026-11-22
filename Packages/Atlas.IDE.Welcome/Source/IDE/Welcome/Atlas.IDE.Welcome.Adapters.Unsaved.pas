@@ -103,13 +103,13 @@ implementation
 
 uses
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   System.Math,
   Winapi.Windows,
   Winapi.ShellAPI,
   System.Classes,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
   Atlas.Core.VersionControl.Contract,

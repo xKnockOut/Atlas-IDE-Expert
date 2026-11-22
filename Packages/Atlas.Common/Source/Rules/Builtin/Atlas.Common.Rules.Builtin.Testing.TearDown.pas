@@ -45,7 +45,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Rules.Builtin.Testing.Classes,
+  Atlas.Common.Testing.Classes,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;
 

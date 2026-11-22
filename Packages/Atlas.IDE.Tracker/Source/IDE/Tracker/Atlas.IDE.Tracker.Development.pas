@@ -27,7 +27,7 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.DevelopmentView,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TAtlasIssueDevelopmentProviderHook = reference to function(const ATarget: TAtlasTrackerTarget):
@@ -119,9 +119,9 @@ uses
   System.DateUtils,
   System.UITypes,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Files.TextFile,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Development.Strings,

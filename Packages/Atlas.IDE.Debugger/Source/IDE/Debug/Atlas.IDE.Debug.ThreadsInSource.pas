@@ -107,7 +107,7 @@ implementation
 uses
   Vcl.Controls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.Navigation,

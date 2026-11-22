@@ -28,7 +28,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Settings.Strings,
   Atlas.IDE.Foundation.Files;

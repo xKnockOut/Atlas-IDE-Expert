@@ -34,7 +34,7 @@ uses
   Atlas.Core.Diagnostics.FeatureTable,
   Atlas.Core.Diagnostics.ModuleHosting,
   Atlas.Core.Diagnostics.StartTimes,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,

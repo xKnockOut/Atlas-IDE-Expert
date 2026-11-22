@@ -98,7 +98,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.DataBreak.Strings,
   Atlas.UI.Popup.Accessibility;
 

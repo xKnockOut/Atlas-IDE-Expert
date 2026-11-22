@@ -64,7 +64,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.UnloadSafety;
+  Atlas.Plugin.Diagnostics.UnloadSafety;
 
 const
   // Grund im Diagnoselog, nicht übersetzt.

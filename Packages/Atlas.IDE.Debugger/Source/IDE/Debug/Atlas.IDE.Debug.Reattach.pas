@@ -113,7 +113,7 @@ uses
   System.Classes,
   System.UITypes,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Status.Registry,
   Atlas.Core.Debug.Reattach,

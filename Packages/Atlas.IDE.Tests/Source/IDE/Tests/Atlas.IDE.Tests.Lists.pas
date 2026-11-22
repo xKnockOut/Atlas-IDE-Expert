@@ -112,7 +112,7 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.JsonText,

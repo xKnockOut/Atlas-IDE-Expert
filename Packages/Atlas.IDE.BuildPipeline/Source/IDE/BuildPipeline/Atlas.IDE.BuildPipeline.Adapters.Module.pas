@@ -69,7 +69,7 @@ implementation
 uses
   System.JSON,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
