@@ -1255,7 +1255,7 @@ uses
   Atlas.Core.Tracker.Providers.Changes.Tests in 'IDE.Expert\Atlas.Core.Tracker.Providers.Changes.Tests.pas',
   Atlas.Core.Tracker.Connections.Tests in 'IDE.Expert\Atlas.Core.Tracker.Connections.Tests.pas',
   Atlas.Core.Tracker.Markdown in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Markdown.pas',
-  Atlas.Core.Tracker.Markdown.Inline in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Markdown.Inline.pas',
+  Atlas.Core.Tracker.Markdown.Spans in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Markdown.Spans.pas',
   Atlas.Core.Tracker.Markdown.Tests in 'IDE.Expert\Atlas.Core.Tracker.Markdown.Tests.pas',
   Atlas.Core.Tracker.Checklist in '..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Checklist.pas',
   Atlas.Core.Tracker.Checklist.Tests in 'IDE.Expert\Atlas.Core.Tracker.Checklist.Tests.pas',

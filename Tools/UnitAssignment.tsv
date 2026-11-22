@@ -1631,7 +1631,7 @@ Atlas.IDE.Tracker	Atlas.Core.Tracker.KnownErrors	Core/Tracker/Atlas.Core.Tracker
 Atlas.IDE.Tracker	Atlas.Core.Tracker.LinkedStart	Core/Tracker/Atlas.Core.Tracker.LinkedStart.pas	Ordner `Core/Tracker`
 Atlas.IDE.Tracker	Atlas.Core.Tracker.Links	Core/Tracker/Atlas.Core.Tracker.Links.pas	Ordner `Core/Tracker`
 Atlas.IDE.Tracker	Atlas.Core.Tracker.Markdown	Core/Tracker/Atlas.Core.Tracker.Markdown.pas	Ordner `Core/Tracker`
-Atlas.IDE.Tracker	Atlas.Core.Tracker.Markdown.Inline	Core/Tracker/Atlas.Core.Tracker.Markdown.Inline.pas	Ordner `Core/Tracker`; Fließtext eines Absatzes, die Blöcke zerlegt `Atlas.Core.Tracker.Markdown`
+Atlas.IDE.Tracker	Atlas.Core.Tracker.Markdown.Spans	Core/Tracker/Atlas.Core.Tracker.Markdown.Spans.pas	Ordner `Core/Tracker`; Fließtext eines Absatzes, die Blöcke zerlegt `Atlas.Core.Tracker.Markdown`
 Atlas.IDE.Tracker	Atlas.Core.Tracker.MyIssues	Core/Tracker/Atlas.Core.Tracker.MyIssues.pas	Ordner `Core/Tracker`, Kachel aus der Willkommensseite, #1455
 Atlas.IDE.Tracker	Atlas.Core.Tracker.MyIssuesPlan	Core/Tracker/Atlas.Core.Tracker.MyIssuesPlan.pas	Ordner `Core/Tracker`; Entscheidungen von „Meine Issues“ („Alle“, projektgebundene Stände, Aktionen an Zeilen)
 Atlas.IDE.Tracker	Atlas.Core.Tracker.Naming	Core/Tracker/Atlas.Core.Tracker.Naming.pas	Ordner `Core/Tracker`

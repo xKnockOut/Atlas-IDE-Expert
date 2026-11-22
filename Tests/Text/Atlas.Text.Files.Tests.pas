@@ -246,8 +246,8 @@ procedure TTextFilesTests.IsFileErrorOnlyForFileSystem;
 
 begin
   Check(EInOutError.Create('x'), True);
-  Check(EFOpenError.Create('x'), True);
-  Check(EFCreateError.Create('x'), True);
+  Check(EFOpenError.CreateFmt('x', []), True);
+  Check(EFCreateError.CreateFmt('x', []), True);
   Check(EOSError.Create('x'), True);
   Check(EEncodingError.Create('x'), True);
   Check(EArgumentException.Create('x'), True);

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Tracker.Markdown.Inline;
+﻿unit Atlas.Core.Tracker.Markdown.Spans;
 
 // Fließtext eines Markdown-Absatzes für das Fenster „Atlas-Issue“ (#1264), ohne VCL und Open Tools API: setzt
 // ihn in Doku-Läufe (TAtlasDoc, wie die XMLDoc in Hover und Detailpanel): **fett**, *kursiv*, ~~durchgestrichen~~,
