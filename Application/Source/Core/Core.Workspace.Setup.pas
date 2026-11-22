@@ -16,7 +16,7 @@ uses
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Rules.Contract.UnitLookup,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Index.Processes;

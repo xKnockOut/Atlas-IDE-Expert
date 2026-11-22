@@ -40,7 +40,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.UnitAliases,
-  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Rules.Contract.UnitLookup,
   Atlas.Common.Rules.Providers.UnitLookup,
   Atlas.Common.Projects.UnitResolver,
   Atlas.Common.Rules.Contract,

@@ -49,7 +49,7 @@ implementation
 
 uses
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Rules.Contract.UnitLookup,
   Atlas.Common.Rules.Providers.UnitLookup,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Providers.DiskFileSystem,

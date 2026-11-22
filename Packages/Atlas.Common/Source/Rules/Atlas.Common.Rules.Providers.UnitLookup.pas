@@ -38,7 +38,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Rules.Contract.UnitLookup,
   Atlas.Common.Projects.UnitAliases,
   Atlas.Common.Rules.Contract;
 

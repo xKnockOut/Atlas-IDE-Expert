@@ -69,7 +69,7 @@ contains
   Atlas.Common.Documents.TextDocument in 'Source\Documents\Atlas.Common.Documents.TextDocument.pas',
   Atlas.Common.Documents.FileEncoding in 'Source\Documents\Atlas.Common.Documents.FileEncoding.pas',
   Atlas.Common.Projects.Contract in 'Source\Projects\Atlas.Common.Projects.Contract.pas',
-  Atlas.Common.Projects.Contract.UnitLookup in 'Source\Projects\Atlas.Common.Projects.Contract.UnitLookup.pas',
+  Atlas.Common.Rules.Contract.UnitLookup in 'Source\Rules\Atlas.Common.Rules.Contract.UnitLookup.pas',
   Atlas.Common.Projects.Paths in 'Source\Projects\Atlas.Common.Projects.Paths.pas',
   Atlas.Common.Projects.DelphiVersions in 'Source\Projects\Atlas.Common.Projects.DelphiVersions.pas',
   Atlas.Common.Projects.Internals.Xml in 'Source\Projects\Internals\Atlas.Common.Projects.Internals.Xml.pas',
