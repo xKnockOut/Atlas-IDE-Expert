@@ -47,6 +47,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Metrics.Contract,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.InheritanceDepths,
   Atlas.Common.Lsp.MessageHandlers;
 
 const
@@ -111,6 +113,16 @@ begin
   begin
     Result := False;
   end;
+end;
+
+/// <summary>Vererbungstiefe von cUnitHaupt wie im Server (Anbieter der Prüfregeln); AIndex nil = nur die Datei.
+/// </summary>
+function HauptDepths(const AIndex: ISymbolIndex): TArray<TStructureMetrics>;
+var
+  mDepths: IRuleInheritanceDepths;
+begin
+  mDepths := TRuleInheritanceDepths.Create;
+  Result := mDepths.Depths(cHauptFile, cUnitHaupt, AIndex);
 end;
 
 { TLspCodeLensTests }
@@ -267,14 +279,14 @@ begin
     Assert.AreEqual('4 Zeilen (> 3) · Tiefe 0 · zyklomatisch 1 · kognitiv 0 · 1 Parameter · Operanden 0 · ' +
       '0 lokale · 0 Ausstiege', mEntries[4].Title);
     // Mit Index die Vererbungstiefe (#980): TFoo erbt von TBasis aus der Unit Basis, TKind von TFoo.
-    mEntries := TLspCodeLens.MetricLenses(mTree, TMetricLimits.Default, FIndex, 'C:\P\Haupt.pas');
+    mEntries := TLspCodeLens.MetricLenses(mTree, TMetricLimits.Default, HauptDepths(FIndex));
     Assert.AreEqual(9, Integer(Length(mEntries)));
     Assert.AreEqual('Vererbungstiefe 1', mEntries[7].Title);
     Assert.AreEqual(4, mEntries[7].Range.StartPos.Line);
     Assert.AreEqual('Vererbungstiefe 2', mEntries[8].Title);
     Assert.AreEqual(9, mEntries[8].Range.StartPos.Line);
     // Ohne Basis im Index bricht die Kette ab: Untergrenze, TFoo ohne bekannte eigene Vorfahren fehlt.
-    mEntries := TLspCodeLens.MetricLenses(mTree, TMetricLimits.Default, nil, 'C:\P\Haupt.pas');
+    mEntries := TLspCodeLens.MetricLenses(mTree, TMetricLimits.Default, HauptDepths(nil));
     Assert.AreEqual(8, Integer(Length(mEntries)));
     Assert.AreEqual('Vererbungstiefe mindestens 1', mEntries[7].Title);
   finally

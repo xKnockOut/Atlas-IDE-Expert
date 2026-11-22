@@ -456,6 +456,7 @@ Atlas.Common.Findings.Contract.Tests
 Atlas.Common.Rules.Contract.Tests
 Atlas.Common.Rules.Derived.Tests
 Atlas.Common.Rules.Engine.Tests
+Atlas.Common.Rules.Providers.InheritanceDepths.Tests
 Atlas.Common.Rules.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
 Atlas.Common.Rules.MessageCatalog.Tests
@@ -826,6 +827,7 @@ Atlas.Core.Editor.Pairs.Tests
 
 # Server (Shell)
 Adapters.Rules.IdeTypes.Tests
+Adapters.Lsp.InheritanceDepths.Tests
 Core.Mcp.IssueTools.Tests
 Core.Mcp.IssueText.Tests
 Atlas.Core.Designer.Names.Tests

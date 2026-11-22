@@ -23,7 +23,8 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Metrics.Collector;
+  Atlas.Common.Metrics.Collector,
+  Atlas.Common.Lsp.Contract;
 
 type
   /// <summary>Wo gemessen wird: Einstellungen, Wurzel für relative Pfade, Titel und Dateien.</summary>
@@ -51,6 +52,7 @@ type
     FSourceFor: TLspMetricsSourceFunc;
     FReadText: TMetricsReadText;
     FIndex: ISymbolIndex;
+    FInheritanceDepths: ILspInheritanceDepths;
   public
     constructor Create(const ASourceFor: TLspMetricsSourceFunc; const AReadText: TMetricsReadText);
     destructor Destroy; override;
@@ -67,6 +69,8 @@ type
     property Collector: TMetricsCollector read FCollector;
     /// <summary>Symbolindex für die Vererbungstiefe in "structure" (#980); nil ohne.</summary>
     property Index: ISymbolIndex read FIndex write FIndex;
+    /// <summary>Vererbungstiefe in "structure" (#980), nur mit Index; nil = ohne.</summary>
+    property InheritanceDepths: ILspInheritanceDepths read FInheritanceDepths write FInheritanceDepths;
   end;
 
 implementation
@@ -81,8 +85,6 @@ uses
   Atlas.Common.Metrics.Report,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Index.Extractor,
-  Atlas.Common.Rules.Builtin.Metrics,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -180,9 +182,9 @@ begin
     mTree := TSyntaxTreeCache.Parse(mText);
     try
       mItems := TMetricsCalculator.Structure(mTree);
-      if FIndex <> nil then
+      if (FIndex <> nil) and (FInheritanceDepths <> nil) then
       begin
-        mItems := mItems + TMetricRules.InheritanceDepths(mTree, FIndex, TIndexExtractor.Extract(mTree, AFileName));
+        mItems := mItems + FInheritanceDepths.Depths(AFileName, mText, FIndex);
       end;
     finally
       mTree.Free;
