@@ -41,6 +41,9 @@ type
 
   TUsesUnitInfoFunc = reference to function(const AUnitName: string): TUsesUnitInfo;
 
+  /// <summary>Units, deren interface ein Symbol AName auf Unit-Ebene deklariert.</summary>
+  TUnitsDeclaringFunc = reference to function(const AName: string): TArray<string>;
+
   /// <summary>Nutzung der uses-Einträge aus der Namensauflösung (#1925, TUsesUsage). Bezeichner, deren
   /// Deklaration feststeht, zählen nur für die Unit dieser Deklaration; die übrigen vergleicht TUsesActions mit den
   /// Namen der Units wie zuvor, aber genauer: vor einem Punkt mit TopNames, dahinter mit HelperNames. Ohne Active

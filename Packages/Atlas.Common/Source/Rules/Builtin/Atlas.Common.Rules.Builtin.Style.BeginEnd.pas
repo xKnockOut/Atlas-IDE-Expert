@@ -29,7 +29,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Editing.Formatter.Layout,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
@@ -141,7 +141,7 @@ begin
   begin
     mStyle.IndentSize := 2;
   end;
-  FIndentUnit := TFormatLayout.IndentUnit(mStyle);
+  FIndentUnit := TRoutineBody.IndentUnit(mStyle);
   FElsePlacement := mStyle.ElsePlacement;
   if mStyle.EndOfLine <> '' then
   begin
