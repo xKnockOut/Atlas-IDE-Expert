@@ -34,7 +34,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Status.FieldPlan;
 
 { TAtlasStatusFieldPlanTests }

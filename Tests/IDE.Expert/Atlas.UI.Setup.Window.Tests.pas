@@ -53,8 +53,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Strings,
   Vcl.Graphics,

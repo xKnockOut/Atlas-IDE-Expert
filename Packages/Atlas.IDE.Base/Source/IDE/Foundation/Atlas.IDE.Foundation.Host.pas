@@ -27,8 +27,8 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Completion.Snippets,
   Atlas.Plugin.Files.Contract;

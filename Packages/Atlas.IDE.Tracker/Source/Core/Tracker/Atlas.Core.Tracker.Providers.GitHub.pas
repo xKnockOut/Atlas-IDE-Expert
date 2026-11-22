@@ -466,7 +466,7 @@ begin
   if TAtlasGitHubApi.GetInTime(ACall, AWatch, TAtlasGitHubApi.IssueApiUrl(ACall.Target, AKey), mText)
     and TAtlasGitHubParse.ParseDetails(mText, mOther, mCount) then
   begin
-    Result.Title := TAtlasGitHubJson.Shorten(mOther.Title, 200);
+    Result.Title := TAtlasGitHubJson.Shorten(mOther.Title, TAtlasTrackerTextLimits.cTitle);
     Result.State := mOther.State;
     Result.StateKnown := True;
     Result.Resolved := StartsText('closed', mOther.State);
@@ -562,7 +562,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
     Exit;
@@ -586,7 +586,7 @@ begin
   begin
     Result := TAtlasTrackerWriteResult.Failed(mError, 0, '');
   end
-  else if AStatus <> 200 then
+  else if AStatus <> TAtlasHttpStatus.cOk then
   begin
     Result := TAtlasTrackerWriteResult.Failed(TAtlasGitHubApi.ErrorOfStatus(AStatus), AStatus,
       TAtlasGitHubApi.ErrorMessage(AText));
@@ -855,7 +855,7 @@ begin
   begin
     Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasGitHubApi.ErrorOfStatus(mStatus), mStatus,
       TAtlasGitHubApi.ErrorMessage(mText)));
@@ -885,7 +885,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
     Exit;
@@ -925,7 +925,7 @@ begin
     AError := mResponse.Error;
     Exit;
   end;
-  if mResponse.Status <> 200 then
+  if mResponse.Status <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mResponse.Status);
     Exit;
@@ -948,7 +948,7 @@ begin
     Exit;
   end;
   AText := mResponse.Text;
-  if (mResponse.Status <> 200) and (mResponse.Status <> 201) then
+  if (mResponse.Status <> TAtlasHttpStatus.cOk) and (mResponse.Status <> TAtlasHttpStatus.cCreated) then
   begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mResponse.Status);
     Exit;
@@ -1095,7 +1095,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
     Exit;
@@ -1128,7 +1128,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
     Exit;
@@ -1162,7 +1162,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mStatus);
     Exit;
@@ -1374,12 +1374,12 @@ begin
   begin
     AError := mResponse.Error;
   end
-  else if mResponse.Status = 304 then
+  else if mResponse.Status = TAtlasHttpStatus.cNotModified then
   begin
     // Unverändert seit der letzten Antwort.
     Result := True;
   end
-  else if mResponse.Status <> 200 then
+  else if mResponse.Status <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasGitHubApi.ErrorOfStatus(mResponse.Status);
   end

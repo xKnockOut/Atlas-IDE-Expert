@@ -21,7 +21,7 @@ uses
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.IDE.Tracker.WorkingCopies,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Tracker.Contract.MyIssues;
 
 type

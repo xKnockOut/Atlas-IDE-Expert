@@ -11,7 +11,7 @@ uses
   Atlas.Core.Generate.Contract,
   Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract,
-  Atlas.Core.Foundation.Contract;
+  Atlas.Plugin.Calls.Contract;
 
 type
   /// <summary>Ein Atlas-Bereich für „Bereich hinzufügen“ und die Leiste „Ausgeblendet“.</summary>

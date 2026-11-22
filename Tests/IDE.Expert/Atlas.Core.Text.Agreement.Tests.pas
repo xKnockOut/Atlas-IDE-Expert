@@ -48,7 +48,7 @@ uses
   Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Files.Format,
   Atlas.Core.Completion.Matching,
-  Atlas.Core.Diagnostics.BugReport;
+  Atlas.Plugin.Diagnostics.BugReport;
 
 function ServerName(AKind: TFileEncodingKind): string;
 begin

@@ -136,7 +136,7 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.Explain.Strings,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.Text.Files;
 
 const

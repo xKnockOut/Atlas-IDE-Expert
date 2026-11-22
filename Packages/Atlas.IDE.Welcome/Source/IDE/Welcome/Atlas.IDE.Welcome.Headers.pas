@@ -15,7 +15,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Welcome.AccountName,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,

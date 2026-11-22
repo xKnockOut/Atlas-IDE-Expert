@@ -23,7 +23,7 @@ uses
   Vcl.Forms,
   Vcl.ExtCtrls,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Diagnostics.Timing;
+  Atlas.Plugin.Diagnostics.Timing;
 
 type
   TAtlasTimingFrame = class(TFrame)

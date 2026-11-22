@@ -44,16 +44,16 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Style.Signal,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.UI.Strings,
   Vcl.Graphics,
   Atlas.Vcl.Theme.Service,
   Atlas.UI.Notifications.Strings,
   Atlas.UI.Notifications.Window,
-  Atlas.Core.Status.Signal;
+  Atlas.Plugin.Status.Signal;
 
 function SampleCenter: IAtlasNotificationCenter;
 begin

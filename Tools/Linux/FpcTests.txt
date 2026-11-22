@@ -510,7 +510,7 @@ Atlas.Common.Updates.Prepare.Tests
 Atlas.Common.Updates.Tests
 
 # Plugin-Kern
-Atlas.Core.Foundation.Calls.Tests
+Atlas.Plugin.Calls.Optional.Tests
 Atlas.Core.Modules.Contributions.Tests
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Assistants.EditChange.Tests
@@ -534,9 +534,9 @@ Atlas.Core.Assistants.LinkFrames.Tests
 Atlas.Core.Assistants.LinkLock.Tests
 Atlas.Core.Assistants.LinkProtocol.Tests
 Atlas.Core.Assistants.LinkState.Tests
-Atlas.Core.Notifications.MessageSink.Tests
-Atlas.Core.Notifications.Listeners.Tests
-Atlas.Core.Notifications.OrderedItems.Tests
+Atlas.Plugin.Notifications.MessageSink.Tests
+Atlas.Plugin.Notifications.Listeners.Tests
+Atlas.Plugin.Notifications.OrderedItems.Tests
 Atlas.Core.Projects.Contract.Summary.Tests
 Atlas.Core.Welcome.Contract.Tests
 Atlas.Core.Welcome.ContinueQueries.Tests
@@ -553,7 +553,7 @@ Atlas.Core.Problems.Marks.Tests
 Atlas.Core.Editor.LineTracking.Tests
 Atlas.Core.Status.FieldPlan.Tests
 Atlas.Core.Status.FieldFlow.Tests
-Atlas.Core.Status.Signal.Tests
+Atlas.Plugin.Status.Signal.Tests
 Atlas.Core.EditorToolbar.Plan.Tests
 Atlas.Core.Editor.PeekPlan.Tests
 Atlas.Core.Settings.NodeScope.Tests
@@ -660,8 +660,11 @@ Atlas.Core.Debug.ConsoleCapture.Tests
 Atlas.Core.Processes.OutputLines.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.Core.Settings.KeyCodes.Tests
+Atlas.Core.Architecture.Model.Tests
+Atlas.Core.Hotspots.Model.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests
+Atlas.UI.Analysis.FormLayout.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests
@@ -742,8 +745,8 @@ Atlas.Core.Tests.Leaks.Tests
 Atlas.Core.Tests.AssertLine.Tests
 Atlas.Core.Tests.FromDebugStop.Tests
 Atlas.Core.Tests.Compare.Tests
-Atlas.Core.Diagnostics.AsyncWait.Tests
-Atlas.Core.Diagnostics.BoundedStream.Tests
+Atlas.Plugin.Diagnostics.AsyncWait.Tests
+Atlas.Plugin.Diagnostics.BoundedStream.Tests
 Atlas.Core.Tests.Coverage.Tests
 Atlas.Core.Tests.Mutants.Tests
 Atlas.Core.Tests.MutationShadow.Tests

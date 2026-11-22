@@ -51,7 +51,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Menus,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Settings.StatusBarItems;
 

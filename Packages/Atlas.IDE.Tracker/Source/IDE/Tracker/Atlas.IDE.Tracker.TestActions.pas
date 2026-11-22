@@ -16,7 +16,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.WelcomeLink,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Tracker.Contract.TestResults;
 
 type

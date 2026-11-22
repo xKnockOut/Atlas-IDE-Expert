@@ -11,7 +11,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Welcome.Continue,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasIdeContinueCommit = record

@@ -90,6 +90,8 @@ type
 {$SCOPEDENUMS OFF}
 
 const
+  /// <summary>Länge der Trenner „und “ und „and “ zwischen Nummern.</summary>
+  cConjunctionLength = 4;
   // Reihenfolge der Gruppen im Baum.
   cGroupOrder: array[0..9] of TAtlasTrackerLinkKind = (TAtlasTrackerLinkKind.DependsOn,
     TAtlasTrackerLinkKind.Blocks, TAtlasTrackerLinkKind.Subtask, TAtlasTrackerLinkKind.Parent,
@@ -392,9 +394,10 @@ begin
     begin
       Inc(Result);
     end
-    else if SameText(Copy(ALine, Result, 4), 'und ') or SameText(Copy(ALine, Result, 4), 'and ') then
+    else if SameText(Copy(ALine, Result, cConjunctionLength), 'und ') or
+      SameText(Copy(ALine, Result, cConjunctionLength), 'and ') then
     begin
-      Inc(Result, 4);
+      Inc(Result, cConjunctionLength);
     end
     else
     begin

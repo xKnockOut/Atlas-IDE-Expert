@@ -30,7 +30,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExpressionType,
   Atlas.UI.Editor.ExpressionType,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.IDE.Editor.CaretPopup;
 
 type

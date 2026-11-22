@@ -93,7 +93,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 const
   // Beim Tippen: lieber leer als die IDE aufhalten.

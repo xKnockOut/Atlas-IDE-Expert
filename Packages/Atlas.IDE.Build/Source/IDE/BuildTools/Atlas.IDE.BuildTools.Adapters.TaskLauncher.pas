@@ -92,7 +92,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Edition,
+  Atlas.Plugin.Diagnostics.Edition,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,

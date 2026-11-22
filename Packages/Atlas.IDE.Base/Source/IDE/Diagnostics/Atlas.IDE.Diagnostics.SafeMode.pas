@@ -29,8 +29,8 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.SafeMode,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
   Atlas.UI.Diagnostics.SafeModeNotice;
 
 type
