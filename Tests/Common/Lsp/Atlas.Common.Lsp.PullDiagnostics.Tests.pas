@@ -94,6 +94,8 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
+  Atlas.Tests.LspRules,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.JsonRpc.TestSupport;
@@ -130,7 +132,7 @@ begin
   Store := TDocumentStore.Create;
   Store.Open(TDocumentUris.FromPath(cOpenFile), 'objectpascal', 1, cValid);
   mProviders := Default(TSyntaxDiagnosticsProviders);
-  mProviders.Rules := ARules;
+  mProviders.Rules := TTestLspRules.From(ARules);
   Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, mProviders, 0);
   Diagnostics.PullMode := True;
   Pull := TLspPullDiagnostics.Create(Store, Diagnostics, nil,
@@ -808,7 +810,7 @@ var
 begin
   mStore := TDocumentStore.Create;
   mProviders := Default(TSyntaxDiagnosticsProviders);
-  mProviders.Rules := FailingRules();
+  mProviders.Rules := TTestLspRules.From(FailingRules());
   mDiagnostics := nil;
   mLogged := nil;
   mPull := nil;
@@ -987,10 +989,9 @@ const
   cWorkspaceBundlescFileCount = 12;
 
 /// <summary>Regeln, bei denen jede Unit etwas Zeit braucht, wie im echten Lauf.</summary>
-function SlowRuleProviders: TSyntaxDiagnosticsProviders;
+function SlowRules: TRuleContextProvider;
 begin
-  Result := Default(TSyntaxDiagnosticsProviders);
-  Result.Rules :=
+  Result :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
       AContext := Default(TRuleCheckContext);
@@ -1003,6 +1004,12 @@ begin
           end)];
       Result := True;
     end;
+end;
+
+function SlowRuleProviders: TSyntaxDiagnosticsProviders;
+begin
+  Result := Default(TSyntaxDiagnosticsProviders);
+  Result.Rules := TTestLspRules.From(SlowRules());
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceBundlesReportsDuringRun;

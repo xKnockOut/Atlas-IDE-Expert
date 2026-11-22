@@ -17,7 +17,7 @@
 //
 // Gleichlauf mit den Regeln: „nie freigegeben“ kommt nur aus den Befunden der Regeln (field-not-freed,
 // create-without-assignment, local-object-not-freed, created-result-not-freed), die der Aufrufer für denselben
-// Text mitgibt; Felder klärt dieselbe Analyse wie field-not-freed (TFreeFields.Analyze), Owner und Typen dieselbe
+// Text mitgibt; Felder klärt dieselbe Analyse wie field-not-freed (TOwnedFields.Analyze), Owner und Typen dieselbe
 // Typauflösung (TFreeFieldTypes). So zeigen Marke und Regeln nie Verschiedenes.
 
 interface
@@ -78,8 +78,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Editing.FreeFields,
-  Atlas.Common.Editing.FreeFields.Types,
+  Atlas.Common.Semantics.OwnedFields,
+  Atlas.Common.Semantics.OwnedFields.Types,
   Atlas.Common.Rules.Builtin.Ownership,
   Atlas.Common.Rules.Internals.OwnershipTree,
   Atlas.Text.Names,
@@ -220,7 +220,7 @@ begin
   FText := AText;
   FFindings := AFindings;
   FTypes := TFreeFieldTypes.Create(ATree, AText, AIndex);
-  FFields := TFreeFields.Analyze(ATree, AText, AIndex);
+  FFields := TOwnedFields.Analyze(ATree, AText, AIndex);
 end;
 
 destructor TOwnershipScan.Destroy;

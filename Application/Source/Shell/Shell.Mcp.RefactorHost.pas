@@ -77,6 +77,9 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Pascal.LanguageFeatures,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.DocumentActions,
+  Adapters.Lsp.RuleActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Localization.Texts;
@@ -93,6 +96,8 @@ const
 { TMcpRefactorHost }
 
 constructor TMcpRefactorHost.Create(const AServices: TMcpRefactorHostServices);
+var
+  mRules: IRuleCodeActions;
 begin
   inherited Create;
   FServices := AServices;
@@ -100,7 +105,9 @@ begin
   FCommands := TLspCommands.Create;
   FRefactorings := TShellRefactorings.Create(RefactoringServices);
   FRefactorings.Register(FCommands);
-  FCodeActions := TLspCodeActions.Create(FDocuments, nil);
+  // Ohne Umfeld der Prüfregeln: Syntaxfehler mit Korrektur (#1022), keine Regeltreffer.
+  mRules := TRuleCodeActionsProvider.Create(nil);
+  FCodeActions := TLspCodeActions.Create(FDocuments, TLspRuleActionsAdapter.Wrap(mRules));
   ConfigureCodeActions;
 end;
 

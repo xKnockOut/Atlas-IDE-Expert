@@ -123,7 +123,16 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Shell.Composition.RuleRefactorings;
+
+/// <summary>Leerer Regelkontext mit den Refactorings des Hosts, damit Korrekturen wie im Betrieb entstehen.</summary>
+function NewContext: TRuleContext;
+begin
+  Result := Default(TRuleContext);
+  Result.Refactorings := TShellRuleRefactorings.Create;
+end;
+
 
 { TRuleAssert }
 
@@ -156,7 +165,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     // Wie Rules.Checker: relative Pfade haben '/', ExtractFileName kennt unter Windows nur '\'.
     mContext.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');
@@ -175,7 +184,7 @@ var
 begin
   mTree := TPascalParser.ParseActive(ASource, TPascalPreprocessor.PredefinedSymbols(APlatform, 37.0));
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.Text := ASource;
     mContext.Tree := mTree;
     Result := TRuleEngine.Run([ARule], TServerSettings.Default, mContext);
@@ -192,7 +201,7 @@ var
 begin
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.Text := ASource;
     mContext.Tree := mTree;
     mContext.Application := AApplication;
@@ -220,7 +229,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     mContext.Text := ASource;
     mContext.Tree := mTree;
@@ -255,7 +264,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.Text := ASource;
     mContext.Tree := mTree;
     mContext.FormText := AFormText;
@@ -283,7 +292,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     mContext.Text := ASource;
     mContext.Tree := mTree;
@@ -313,7 +322,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     mContext.FileName := AFileName;
     mContext.Text := ASource;
@@ -343,7 +352,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     mContext.Text := ASource;
     mContext.Tree := mTree;
@@ -414,7 +423,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.Text := ASource;
     mContext.Tree := mTree;
     Result := TRuleEngine.Run(ARules, mSettings, mContext);

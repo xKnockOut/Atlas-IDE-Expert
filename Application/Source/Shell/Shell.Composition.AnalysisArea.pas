@@ -13,6 +13,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.Impact,
   Shell.Composition.Core,
   Shell.Composition.Analysis,

@@ -13,8 +13,8 @@ uses
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Rules.ProjectFiles,
-  Atlas.Common.Lsp.FindingsMemo,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Findings.Memo,
+  Atlas.Common.Rules.CheckContext,
   Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
@@ -74,7 +74,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin,
-  Core.Workspace.RuleProjects;
+  Core.Workspace.RuleProjects,
+  Shell.Composition.RuleRefactorings;
 
 { TShellRuleContext }
 
@@ -108,6 +109,11 @@ begin
       // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
       AContext.Services.Queries := FServices.Queries();
       AProjects := ProjectsWithFile(mWorkspace, AFileName);
+    end
+    else
+    begin
+      // Ohne Arbeitsbereich dieselben Korrekturen aus Refactorings wie mit.
+      AContext.Services.Refactorings := TShellRuleRefactorings.Create;
     end;
     // RTL, VCL und Komponenten außerhalb der Projekte (diagnostics.librarySources): Wer mit Strg+Klick in
     // System.Net.HttpClient.pas springt, soll dort keine Befunde zu fremdem Code sehen.
@@ -233,7 +239,7 @@ begin
     ApplyProject(mProjects, mFileName, AContext);
   end;
   // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen. Ohne Regeln bleibt die
-  // Datei still (TLspSyntaxDiagnostics.RuleFindings).
+  // Datei still (TRuleCheckContext.Findings).
   AContext.Rules := nil;
   if not mLibrary then
   begin

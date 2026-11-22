@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.FindingsMemo.Tests;
+﻿unit Atlas.Common.Findings.Memo.Tests;
 
 // Treffer der Prüfregeln je Datei und Text (2.0-stable): Die Diagnose legt ab, die Code-Aktion liest am selben Text
 // und rechnet die Regeln nicht noch einmal; ohne abgelegte Treffer rechnet sie nur für source.fixAll selbst.
@@ -69,8 +69,10 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Lsp.FindingsMemo;
+  Atlas.Tests.LspRules,
+  Atlas.Common.Findings.Memo;
 
 const
   cLB = #13#10;
@@ -125,7 +127,7 @@ begin
   mActions := nil;
   mDispatcher := nil;
   try
-    mActions := TLspCodeActions.Create(mStore, mProvider);
+    mActions := TLspCodeActions.Create(mStore, TTestLspRules.Actions(mProvider));
     mDispatcher := TJsonRpcDispatcher.Create;
     mActions.Attach(mDispatcher);
     mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/codeAction",' +
@@ -240,7 +242,7 @@ begin
   mStore := TDocumentStore.Create;
   mDocument := mStore.Open(TDocumentUris.FromPath(cFileName), 'objectpascal', 1, cText);
   mMemo := TRuleFindingsMemo.Create;
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith(mMemo));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', TTestLspRules.Document(RulesWith(mMemo)));
   try
     Assert.IsTrue(mMemo.TryGet(cFileName, cText, mFound), 'die Diagnose legt ihre Treffer ab');
   finally

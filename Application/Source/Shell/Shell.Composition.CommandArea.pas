@@ -99,8 +99,12 @@ uses
   Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Lsp.ServerActivity,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.OwnershipReport,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Ownership,
+  Adapters.Lsp.OwnershipReport,
   Shell.Composition.DfmPropertyRules,
   Shell.Composition.LeakSetup,
   Shell.Composition.LeakCandidates,
@@ -334,7 +338,9 @@ end;
 procedure TShellCommandArea.RegisterOwnership;
 var
   mCore: TShellCore;
-  mInput: TLspOwnershipInput;
+  mInput: TRuleOwnershipInput;
+  mReport: IRuleOwnershipReport;
+  mLspReport: ILspOwnershipReport;
 begin
   mCore := FCore;
   // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
@@ -348,7 +354,9 @@ begin
         ARules := Default(TRuleCheckContext);
       end;
     end;
-  TLspOwnership.Attach(FCommands, mInput);
+  mReport := TRuleOwnershipReport.Create(mInput);
+  mLspReport := TLspOwnershipReportAdapter.Wrap(mReport);
+  TLspOwnership.Attach(FCommands, mLspReport);
 end;
 
 
