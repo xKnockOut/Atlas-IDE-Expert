@@ -1,0 +1,150 @@
+﻿unit Atlas.Common.Compiler.IdeBuild.Tests;
+
+// Tests für Build-Ergebnisse aus der IDE (#528).
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TIdeBuildTrackerTests = class
+  public
+    [Test]
+    procedure ParsesMessagesZeroBased;
+    [Test]
+    procedure RemembersLastBuildAndRaisesEvent;
+    [Test]
+    procedure TracksRunningCompiles;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.JSON,
+  System.Generics.Collections,
+  Atlas.Common.Compiler.Contract,
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Compiler.IdeBuild,
+  Atlas.Common.JsonRpc.TestSupport;
+
+const
+  cSample = '{"project":"C:\\P\\A.dproj","platform":"Win32","success":false,"messages":[' +
+    '{"file":"C:\\P\\A.dpr","line":10,"column":11,"severity":"error","code":"E2003","text":"Undeklarierter Bezeichner"},' +
+    '{"file":"C:\\P\\A.dpr","line":7,"column":3,"severity":"hint","code":"H2164","text":"Variable nicht verwendet"},' +
+    '{"file":"","line":0,"column":0,"severity":"fatal","code":"F1026","text":"Datei nicht gefunden"}]}';
+
+{ TIdeBuildTrackerTests }
+
+procedure TIdeBuildTrackerTests.ParsesMessagesZeroBased;
+var
+  mParams: TJSONValue;
+  mMessages: TArray<TCompilerMessage>;
+begin
+  mParams := TJSONObject.ParseJSONValue(cSample);
+  try
+    mMessages := TIdeBuildTracker.ParseMessages(mParams);
+  finally
+    mParams.Free;
+  end;
+  Assert.AreEqual(3, Integer(Length(mMessages)));
+  Assert.AreEqual(9, mMessages[0].Line);
+  Assert.AreEqual(10, mMessages[0].Column);
+  Assert.AreEqual(Ord(TCompilerSeverity.Error), Ord(mMessages[0].Severity));
+  Assert.AreEqual('E2003', mMessages[0].Code);
+  Assert.AreEqual(Ord(TCompilerSeverity.Hint), Ord(mMessages[1].Severity));
+  // Ohne Datei und Zeile: Zeile und Spalte -1.
+  Assert.AreEqual(-1, mMessages[2].Line);
+  Assert.AreEqual(-1, mMessages[2].Column);
+  Assert.AreEqual(Ord(TCompilerSeverity.Fatal), Ord(mMessages[2].Severity));
+end;
+
+procedure TIdeBuildTrackerTests.RemembersLastBuildAndRaisesEvent;
+var
+  mBuild: TIdeBuildTracker;
+  mDispatcher: TJsonRpcDispatcher;
+  mReceived: Integer;
+begin
+  mBuild := nil;
+  mDispatcher := nil;
+  try
+    mBuild := TIdeBuildTracker.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mReceived := -1;
+    mBuild.OnMessages :=
+      procedure(const AMessages: TArray<TCompilerMessage>)
+      begin
+        mReceived := Length(AMessages);
+      end;
+    mBuild.Attach(mDispatcher);
+    Assert.IsFalse(mBuild.LastBuild.Known);
+    TJsonRpcTestSupport.Notify(mDispatcher, TIdeBuildTracker.cFinishedMethod,
+      '{"project":"C:\\P\\A.dproj","kind":"build","configuration":"Debug","platform":"Win32","success":false,"durationMs":1234}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TIdeBuildTracker.cMessagesMethod, cSample);
+    Assert.AreEqual(3, mReceived);
+    Assert.IsTrue(mBuild.LastBuild.Known);
+    Assert.AreEqual('C:\P\A.dproj', mBuild.LastBuild.Project);
+    Assert.AreEqual('build', mBuild.LastBuild.Kind);
+    Assert.AreEqual('Debug', mBuild.LastBuild.Configuration);
+    Assert.AreEqual(Int64(1234), mBuild.LastBuild.DurationMs);
+    Assert.IsFalse(mBuild.LastBuild.Success);
+    Assert.AreEqual(3, Integer(Length(mBuild.LastBuild.Messages)));
+  finally
+    mDispatcher.Free;
+    mBuild.Free;
+  end;
+end;
+
+procedure TIdeBuildTrackerTests.TracksRunningCompiles;
+var
+  mBuild: TIdeBuildTracker;
+  mDispatcher: TJsonRpcDispatcher;
+  mEvents: string;
+begin
+  // Die Projektprüfung pausiert, solange die IDE kompiliert (#1247).
+  mBuild := nil;
+  mDispatcher := nil;
+  try
+    mBuild := TIdeBuildTracker.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
+    mEvents := '';
+    mBuild.OnCompiling :=
+      procedure(ARunning: Boolean)
+      begin
+        if ARunning then
+        begin
+          mEvents := mEvents + '+';
+        end
+        else
+        begin
+          mEvents := mEvents + '-';
+        end;
+      end;
+    mBuild.Attach(mDispatcher);
+    TJsonRpcTestSupport.Notify(mDispatcher, TIdeBuildTracker.cStartedMethod, '{"group":true,"kind":"make"}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TIdeBuildTracker.cStartedMethod, '{"project":"C:\\P\\A.dproj"}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TIdeBuildTracker.cStartedMethod, '{"project":"C:\\P\\B.dproj"}');
+    Assert.IsTrue(mBuild.Compiling);
+    TJsonRpcTestSupport.Notify(mDispatcher, TIdeBuildTracker.cFinishedMethod, '{"project":"C:\\P\\A.dproj","success":true}');
+    Assert.IsTrue(mBuild.Compiling, 'B und die Gruppe laufen noch');
+    // Fehlt das Ende von B, beendet das Ende der Gruppe alles.
+    TJsonRpcTestSupport.Notify(mDispatcher, TIdeBuildTracker.cFinishedMethod, '{"group":true,"success":true}');
+    Assert.IsFalse(mBuild.Compiling);
+    // Einzelnes Projekt im Hintergrund (#548).
+    TJsonRpcTestSupport.Notify(mDispatcher, TIdeBuildTracker.cStartedMethod, '{"project":"C:\\P\\A.dproj","background":true}');
+    Assert.IsTrue(mBuild.Compiling);
+    TJsonRpcTestSupport.Notify(mDispatcher, TIdeBuildTracker.cFinishedMethod, '{"project":"c:\\p\\a.dproj","background":true}');
+    Assert.IsFalse(mBuild.Compiling);
+    Assert.AreEqual('+-+-', mEvents);
+  finally
+    mDispatcher.Free;
+    mBuild.Free;
+  end;
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TIdeBuildTrackerTests);
+
+end.

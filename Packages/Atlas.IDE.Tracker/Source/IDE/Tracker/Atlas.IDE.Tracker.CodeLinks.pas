@@ -142,7 +142,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.UI.Foundation.Menus;
+  Atlas.Vcl.Controls.Menus;
 
 function CanStart(const AHooks: TAtlasCodeLinksHooks): Boolean;
 begin

@@ -54,7 +54,7 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Localization.Texts;
 

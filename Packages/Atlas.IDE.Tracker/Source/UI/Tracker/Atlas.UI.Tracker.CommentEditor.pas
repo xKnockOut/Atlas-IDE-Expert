@@ -264,7 +264,7 @@ uses
   Atlas.Core.Tracker.Markdown,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.DocBox,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Schriftgröße in Punkt: 72 je Zoll.</summary>

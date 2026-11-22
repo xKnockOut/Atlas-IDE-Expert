@@ -49,8 +49,8 @@ uses
   Vcl.Dialogs,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Foundation.Scaling,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Farbfeld: Größe und Abstand von Feld zu Feld (Breite und Lücke).</summary>

@@ -32,7 +32,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.CheckLst,
   Atlas.Core.Debug.MethodBreakpoints,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Server fragen; False ohne Server oder bei Fehler (AError).</summary>

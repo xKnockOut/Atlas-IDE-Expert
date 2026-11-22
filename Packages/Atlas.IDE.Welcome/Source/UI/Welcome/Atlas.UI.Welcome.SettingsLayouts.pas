@@ -17,7 +17,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.Core.Welcome.Layouts;
 
 type

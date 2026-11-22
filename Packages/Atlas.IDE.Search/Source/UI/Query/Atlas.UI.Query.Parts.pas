@@ -168,7 +168,7 @@ uses
   System.Math,
   Vcl.Forms,
   Atlas.UI.Search.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   /// <summary>So viele Zeilen hat die Vorschlagsliste höchstens sichtbar.</summary>

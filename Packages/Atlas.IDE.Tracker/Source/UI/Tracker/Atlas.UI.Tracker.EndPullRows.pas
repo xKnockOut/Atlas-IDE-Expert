@@ -23,7 +23,7 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
   Atlas.UI.Tracker.ValueBox,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Was der Abschnitt anbietet; Offered False = kein Abschnitt.</summary>

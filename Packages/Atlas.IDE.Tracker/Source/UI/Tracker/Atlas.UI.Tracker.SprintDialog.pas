@@ -15,8 +15,8 @@ uses
   System.Classes,
   Vcl.StdCtrls,
   Atlas.Core.Tracker.Contract,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.WrapLabel;
 
 type
 {$SCOPEDENUMS ON}

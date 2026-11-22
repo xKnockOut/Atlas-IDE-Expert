@@ -50,7 +50,7 @@ uses
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Strings,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Notifications.Strings,
   Atlas.UI.Notifications.Window,
   Atlas.Core.Status.Signal;

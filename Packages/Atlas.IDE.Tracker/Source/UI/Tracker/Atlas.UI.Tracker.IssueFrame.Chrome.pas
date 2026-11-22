@@ -100,10 +100,10 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.CommentEditor,
   Atlas.UI.Tracker.DevelopmentView,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   /// <summary>Maße bei 96 dpi: Knöpfe der Werkzeugleiste, Leiste, Pfeilknöpfe, Mindestbreite und Breite je Zeichen

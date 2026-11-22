@@ -41,7 +41,7 @@ uses
   Atlas.Core.Editor.ExitPointAsk,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Vcl.Theme.EditorFont;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>

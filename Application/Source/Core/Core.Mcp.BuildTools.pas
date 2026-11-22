@@ -30,7 +30,7 @@ uses
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.ProfileTools,
   Atlas.Text.Profile,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Mcp.CompilerMessageTools,
   Atlas.Common.Mcp.IndexTools,

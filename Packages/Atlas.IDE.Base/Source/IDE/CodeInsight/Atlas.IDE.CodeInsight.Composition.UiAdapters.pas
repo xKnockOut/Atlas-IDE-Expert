@@ -13,7 +13,7 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.UI.Popup.Styled,
+  Atlas.Vcl.Popup.Styled,
   Atlas.UI.Completion.Popup,
   Atlas.UI.Completion.Adapters.PopupView,
   Atlas.UI.Signature.Hint,

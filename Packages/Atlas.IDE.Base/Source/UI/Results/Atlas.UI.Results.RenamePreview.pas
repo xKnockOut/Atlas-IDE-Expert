@@ -34,7 +34,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Results.Frame,
   Atlas.UI.Results.Strings;
 

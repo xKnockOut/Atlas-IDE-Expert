@@ -28,7 +28,7 @@ uses
   Vcl.Menus,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Section,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.Core.Assistants.Contract.IdeAi;
 
 type

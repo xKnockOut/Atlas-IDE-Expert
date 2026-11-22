@@ -45,7 +45,7 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Foundation.Strings,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.IDE.Foundation.EditorStyle;
 
 type

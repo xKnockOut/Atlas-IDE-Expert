@@ -26,7 +26,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Status.Contract,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasStatusWindow = class(TAtlasPopupForm)
@@ -80,8 +80,8 @@ uses
   System.Math,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Signal,
-  Atlas.UI.Foundation.Controls,
-  Atlas.UI.Popup.Draw,
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Vcl.Popup.Draw,
   Atlas.UI.Strings;
 
 const

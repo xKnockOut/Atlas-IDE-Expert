@@ -119,7 +119,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,

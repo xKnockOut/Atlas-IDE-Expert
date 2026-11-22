@@ -83,7 +83,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Assistants.LogEntries,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Undo.DiffView,
   Atlas.UI.Assistants.Strings;
 

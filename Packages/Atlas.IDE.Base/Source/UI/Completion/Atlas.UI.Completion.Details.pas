@@ -31,7 +31,7 @@ uses
   Atlas.Core.Completion.Contract,
   Atlas.Core.Documentation.Contract,
   Atlas.UI.Documentation.View,
-  Atlas.UI.Popup.Styled;
+  Atlas.Vcl.Popup.Styled;
 
 type
   /// <summary>Wohin und womit TAtlasDetailView zeichnet: Zeichenfläche, Farben, Editorschrift (Font), Schrift der
@@ -99,7 +99,7 @@ implementation
 uses
   Atlas.Plugin.Style.Color,
   System.Math,
-  Atlas.UI.Popup.Draw,
+  Atlas.Vcl.Popup.Draw,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
   Atlas.UI.Strings,

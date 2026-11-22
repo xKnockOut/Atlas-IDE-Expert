@@ -106,7 +106,7 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.UI.Results.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Bildpunkte, ab denen ein Mausdruck als Ziehen gilt.</summary>

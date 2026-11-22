@@ -24,7 +24,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.DataBreak,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Debug.StopBar;
 
 type
@@ -100,7 +100,7 @@ implementation
 uses
   Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.DataBreak.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cDialogWidth = 480;

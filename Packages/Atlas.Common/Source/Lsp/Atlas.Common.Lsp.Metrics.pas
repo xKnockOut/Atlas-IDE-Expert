@@ -72,6 +72,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Metrics.Limits,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
@@ -169,7 +170,7 @@ var
   mItems: TArray<TStructureMetrics>;
 begin
   mStructure := '[]';
-  mLimits := TMetricRules.Limits(ASource.Settings);
+  mLimits := TMetricSettings.Limits(ASource.Settings);
   if Assigned(FReadText) and FReadText(AFileName, mText) then
   begin
     mFileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName),
@@ -203,7 +204,7 @@ var
   mFiles: TArray<TFileMetrics>;
   mLimits: TMetricLimits;
 begin
-  mLimits := TMetricRules.Limits(ASource.Settings);
+  mLimits := TMetricSettings.Limits(ASource.Settings);
   mFiles := FCollector.Collect(ASource.Files, ASource.Root, FReadText);
   case AMode of
     TLspMetricsMode.Json:

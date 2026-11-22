@@ -108,7 +108,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.DataBreak.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Debug.StopBar,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,

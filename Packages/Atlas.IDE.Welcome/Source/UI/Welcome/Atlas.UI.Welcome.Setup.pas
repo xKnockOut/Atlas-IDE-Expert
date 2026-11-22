@@ -137,7 +137,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   cCheckMark = #$2713;

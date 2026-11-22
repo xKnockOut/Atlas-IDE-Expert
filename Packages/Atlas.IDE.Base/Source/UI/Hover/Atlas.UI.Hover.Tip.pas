@@ -55,8 +55,8 @@ uses
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.View,
   Atlas.UI.Documentation.View,
-  Atlas.UI.Popup.Styled,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Styled,
+  Atlas.Vcl.Popup.Window;
 
 type
 
@@ -261,8 +261,8 @@ uses
   Atlas.Core.Documentation.Typeset,
   Atlas.UI.Strings,
   Atlas.UI.Hover.Strings,
-  Atlas.UI.Popup.Draw,
-  Atlas.UI.Popup.Accessibility,
+  Atlas.Vcl.Popup.Draw,
+  Atlas.Vcl.Popup.Accessibility,
   Atlas.Core.Hover.Layout.Input;
 
 const

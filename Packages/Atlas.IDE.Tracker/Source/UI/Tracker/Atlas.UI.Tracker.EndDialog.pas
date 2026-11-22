@@ -67,7 +67,7 @@ uses
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.CommentEditor,
   Atlas.UI.Tracker.EndPullRows,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Ergebnis des Schreibens, im Hauptthread.</summary>
@@ -333,9 +333,9 @@ uses
   Atlas.UI.Tracker.Time.Strings,
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.Plugin.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

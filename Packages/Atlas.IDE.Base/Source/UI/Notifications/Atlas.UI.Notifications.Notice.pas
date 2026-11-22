@@ -21,7 +21,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.ExtCtrls,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasNoticeWindow = class(TAtlasLayoutPopupWindow)
@@ -75,7 +75,7 @@ uses
   System.Math,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;

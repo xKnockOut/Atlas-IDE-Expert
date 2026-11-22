@@ -71,9 +71,9 @@ uses
   System.Types,
   System.Math,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasLearnedText] of string = (

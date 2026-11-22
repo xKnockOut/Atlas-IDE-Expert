@@ -21,7 +21,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Debug.LeakView,
-  Atlas.UI.Foundation.FillFrame;
+  Atlas.Vcl.Forms.FillFrame;
 
 type
   TAtlasDebugLeaksFrame = class(TAtlasFillFrame)
@@ -67,10 +67,10 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Foundation.Calls,
-  Atlas.UI.Foundation.Controls,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Debug.Leaks.Strings,
   Atlas.UI.Debug.Leaks,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

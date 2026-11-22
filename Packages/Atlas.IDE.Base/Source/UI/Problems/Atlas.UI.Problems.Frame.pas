@@ -182,7 +182,7 @@ uses
   Atlas.Core.Problems.Prompt,
   Atlas.UI.Strings,
   Atlas.UI.Problems.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

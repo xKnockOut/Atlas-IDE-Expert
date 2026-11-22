@@ -15,9 +15,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Lsp.IdeProject,
-  Atlas.Common.Lsp.Adapters.IdeTypes,
+  Atlas.Common.Lsp.Providers.IdeTypes,
   Atlas.Common.Lsp.IdeUnits,
   Core.Workspace,
   Shell.Composition.Workspaces;
@@ -51,7 +51,7 @@ type
   TShellIde = class
   private
     FServices: TShellIdeServices;
-    FBuild: TLspIdeBuild;
+    FBuild: TIdeBuildTracker;
     FProject: TLspIdeProject;
     FTypes: TLspIdeTypes;
     // Der Index ist einmal ganz aufgebaut; erst dann gilt eine Unit ohne Eintrag als ohne Quelltext.
@@ -77,7 +77,7 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Der Indexaufbau ist fertig: nach den Units ohne Quelltext fragen.</summary>
     procedure IndexFinished;
-    property Build: TLspIdeBuild read FBuild;
+    property Build: TIdeBuildTracker read FBuild;
     property Project: TLspIdeProject read FProject;
     /// <summary>Typen aus den Packages der IDE (atlas/ideTypes).</summary>
     property Types: TLspIdeTypes read FTypes;
@@ -102,7 +102,7 @@ begin
   inherited Create;
   FServices := AServices;
   // Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs wie ein eigener Compile (#528).
-  FBuild := TLspIdeBuild.Create;
+  FBuild := TIdeBuildTracker.Create;
   FBuild.OnMessages := MessagesReceived;
   // Letzten Build für den MCP-Prozess ablegen (#556): je Arbeitsordner eine Datei im Atlas-Cache.
   FBuild.OnChanged := BuildChanged;

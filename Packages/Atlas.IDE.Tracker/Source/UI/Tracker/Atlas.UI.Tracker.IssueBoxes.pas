@@ -18,7 +18,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Links,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Bild in Fensterbreite (höchstens Originalgröße); Klick vergrößert.</summary>

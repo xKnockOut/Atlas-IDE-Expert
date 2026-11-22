@@ -180,7 +180,7 @@ function ControlInside(AControl, AParent: TControl): Boolean;
 implementation
 
 uses
-  Atlas.UI.Settings.Group,
+  Atlas.Vcl.Options.Group,
   Atlas.UI.Settings.Strings;
 
 type

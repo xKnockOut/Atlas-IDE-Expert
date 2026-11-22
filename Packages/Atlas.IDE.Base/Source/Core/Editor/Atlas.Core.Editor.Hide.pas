@@ -7,7 +7,7 @@
 //   schon ein solcher Kommentar, kommt die Regel dazu, vor einer Begründung
 //   "-- …"); „In dieser Datei“ = "// lsp-ignore-file: regel" in der ersten
 //   Zeile (bzw. ergänzt einen vorhandenen). Syntax wie #147
-//   (Atlas.Common.Rules.Suppressions).
+//   (Atlas.Common.Findings.Suppressions).
 // - Andere Elemente und Befunde ohne Regel (Compiler): Eintrag "hidden" in der
 //   Projektdatei .atlas (#486), mit Anker bzw. ohne für die ganze Datei.
 // - „Überall“: die Einstellung des Elements aus (Wahrheitswert False, eine

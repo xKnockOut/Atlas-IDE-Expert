@@ -232,7 +232,7 @@ try {
         Add-Assigned 'Atlas.IDE.Base' 'Core/Projects' 'Atlas.Core.Projects.Probe.Contract' @('Vcl.Controls')
     }
 
-    Test-Passes 'Vertrag der UI-Schicht verwendet VCL' {
+    Test-Fails 'Vertrag der UI-Schicht verwendet VCL ohne Einzelausnahme' 'ein Contract bindet kein Framework ein' {
         Add-Assigned 'Atlas.IDE.Base' 'UI/Settings' 'Atlas.UI.Settings.Probe.Contract' @('Vcl.Controls')
     }
 

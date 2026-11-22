@@ -34,7 +34,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Plugin.Style.Color,
   Atlas.Core.Editor.SelectionMatches,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Vcl.Theme.EditorFont;
 
 type
   TAtlasIdeSelectionMatches = class
