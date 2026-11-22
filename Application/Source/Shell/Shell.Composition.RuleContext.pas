@@ -13,8 +13,8 @@ uses
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Rules.ProjectFiles,
-  Atlas.Common.Lsp.FindingsMemo,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Findings.Memo,
+  Atlas.Common.Rules.CheckContext,
   Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
@@ -239,7 +239,7 @@ begin
     ApplyProject(mProjects, mFileName, AContext);
   end;
   // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen. Ohne Regeln bleibt die
-  // Datei still (TLspSyntaxDiagnostics.RuleFindings).
+  // Datei still (TRuleCheckContext.Findings).
   AContext.Rules := nil;
   if not mLibrary then
   begin

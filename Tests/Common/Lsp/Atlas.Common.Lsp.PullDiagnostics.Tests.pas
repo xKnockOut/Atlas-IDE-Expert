@@ -94,6 +94,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.JsonRpc.TestSupport;

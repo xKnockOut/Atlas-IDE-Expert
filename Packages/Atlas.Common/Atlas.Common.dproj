@@ -173,6 +173,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Refactorings.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Api.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.CheckContext.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Derived.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.TypedScope.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.WarnSwitches.pas"/>
@@ -950,7 +951,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SelectionRanges.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DiagnosticItems.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FindingsMemo.pas"/>
+        <DCCReference Include="Source\Findings\Atlas.Common.Findings.Memo.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.Cache.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StatusFile.pas"/>

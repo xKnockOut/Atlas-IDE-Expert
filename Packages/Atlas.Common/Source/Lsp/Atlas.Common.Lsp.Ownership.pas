@@ -20,7 +20,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Rules.Ownership;
 
 type
@@ -140,7 +140,7 @@ begin
   mTree := TSyntaxTreeCache.Parse(AText);
   try
     Result := TOwnershipSites.Analyze(mTree, AText, ARules.Services.Index,
-      TLspSyntaxDiagnostics.RuleFindings(AText, mTree, mRules));
+      mRules.Findings(AText, mTree));
   finally
     mTree.Free;
   end;

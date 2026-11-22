@@ -535,7 +535,7 @@
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.Tests.pas"/>
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackGuard.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FindingsMemo.Tests.pas"/>
+        <DCCReference Include="Common\Findings\Atlas.Common.Findings.Memo.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.TestSupport.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.Features.Tests.pas"/>
@@ -583,6 +583,8 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ManagedTypes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.GoldenCorpus.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.CheckContext.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Contract.Tests.pas"/>
