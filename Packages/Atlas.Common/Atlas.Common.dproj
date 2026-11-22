@@ -177,6 +177,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.DocumentChecks.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.DocumentActions.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.CatalogInfo.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.FindingPrompts.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.SettingsCatalog.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.CheckContext.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Derived.pas"/>

@@ -83,6 +83,9 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Providers.DiskFileSystem,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.FindingPrompts,
+  Adapters.Lsp.FindingsPrompt,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Checker,
@@ -152,6 +155,8 @@ end;
 { TShellBaselines }
 
 constructor TShellBaselines.Create(const AServices: TShellBaselineServices);
+var
+  mPrompts: IRuleFindingPrompts;
 begin
   inherited Create;
   FServices := AServices;
@@ -166,7 +171,8 @@ begin
   FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSource, ReadText, BaselineFiles);
   FCompilerBaseline.OnWritten := Written;
   // Auftrag für KI-Assistenten (#2570): Befunde wie die Baseline-Prüfung, Text wie im Editor.
-  FFindingsPrompt := TLspFindingsPrompt.Create(CheckFor, ReadText);
+  mPrompts := TRuleFindingPrompts.Create;
+  FFindingsPrompt := TLspFindingsPrompt.Create(CheckFor, ReadText, TLspFindingsPromptAdapter.Wrap(mPrompts));
 end;
 
 destructor TShellBaselines.Destroy;

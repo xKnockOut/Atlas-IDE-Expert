@@ -125,6 +125,16 @@ type
     function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): IRuleDocumentActions;
   end;
 
+  /// <summary>Auftrag an einen KI-Assistenten aus mehreren Befunden (#2570) wie bei explain_finding.</summary>
+  IRuleFindingPrompts = interface
+    ['{43854D46-1F10-4A72-99AD-3DD884310EA6}']
+    /// <summary>Markdown zu AItems mit dem Regelkatalog in der Sprache der Texte; über ALimit Befunden ein Hinweis
+    /// auf check_code.</summary>
+    function Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
+    /// <summary>Höchstzahl Befunde eines Auftrags, wenn der Aufrufer keine nennt.</summary>
+    function DefaultLimit: Integer;
+  end;
+
 implementation
 
 end.

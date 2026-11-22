@@ -590,6 +590,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.DocumentChecks.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.DocumentActions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.CatalogInfo.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.FindingPrompts.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.SettingsCatalog.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CheckContext.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas"/>
@@ -2722,6 +2723,8 @@
         <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleActions.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.RuleCatalog.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleCatalog.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.FindingsPrompt.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.FindingsPrompt.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ClientStart.pas"/>

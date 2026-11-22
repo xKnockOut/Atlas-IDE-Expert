@@ -28,6 +28,8 @@ type
     class function PlainActions: ILspRuleActions; static;
     /// <summary>Regelkatalog wie in der Komposition.</summary>
     class function Catalog: ILspRuleCatalog; static;
+    /// <summary>Auftrag an KI-Assistenten wie in der Komposition.</summary>
+    class function FindingsPrompt: ILspFindingsPrompt; static;
   end;
 
 implementation
@@ -37,7 +39,9 @@ uses
   Atlas.Common.Rules.Providers.DocumentChecks,
   Atlas.Common.Rules.Providers.DocumentActions,
   Atlas.Common.Rules.Providers.CatalogInfo,
+  Atlas.Common.Rules.Providers.FindingPrompts,
   Adapters.Lsp.RuleCatalog,
+  Adapters.Lsp.FindingsPrompt,
   Adapters.Lsp.RuleDiagnostics,
   Adapters.Lsp.RuleActions;
 
@@ -95,6 +99,14 @@ var
 begin
   mCatalog := TRuleCatalogInfo.Create;
   Result := TLspRuleCatalogAdapter.Wrap(mCatalog);
+end;
+
+class function TTestLspRules.FindingsPrompt: ILspFindingsPrompt;
+var
+  mPrompts: IRuleFindingPrompts;
+begin
+  mPrompts := TRuleFindingPrompts.Create;
+  Result := TLspFindingsPromptAdapter.Wrap(mPrompts);
 end;
 
 end.

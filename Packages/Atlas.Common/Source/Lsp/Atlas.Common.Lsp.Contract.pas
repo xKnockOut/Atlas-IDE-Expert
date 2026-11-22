@@ -201,6 +201,15 @@ type
     function Report(const AUri: string): TJSONObject;
   end;
 
+  /// <summary>Text von atlas.server.findingsPrompt (#2570); der Host fragt die Prüfregeln.</summary>
+  ILspFindingsPrompt = interface
+    ['{E37C5400-D146-4F02-A9CD-7215525CC752}']
+    /// <summary>Markdown zu AItems, höchstens ALimit Befunde ausführlich.</summary>
+    function Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
+    /// <summary>Höchstzahl, wenn die Argumente keine nennen.</summary>
+    function DefaultLimit: Integer;
+  end;
+
   /// <summary>Typen der laufenden IDE (atlas/ideTypes); threadsicher. Ohne Plugin leer.</summary>
   ILspIdeTypes = interface
     ['{9EEBF436-AD07-4D64-B8AB-436A346A4F28}']
