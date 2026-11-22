@@ -622,6 +622,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.JsonGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.ClassActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.PropertyGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.InterfaceGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.OverrideGolden.pas"/>
@@ -2664,6 +2665,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Directives.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FileOptions.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Folders.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.RuleRefactorings.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CompileSetup.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Stdio.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.AffectedTests.pas"/>
@@ -2689,6 +2691,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CoreWiring.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Rules.IdeTypes.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Rules.IdeTypes.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Rules.Refactorings.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Rules.Refactorings.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.InheritanceDepths.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Lsp.InheritanceDepths.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.OwnershipReport.pas"/>
