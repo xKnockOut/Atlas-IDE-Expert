@@ -135,6 +135,8 @@ uses
 const
   /// <summary>Tätigkeit für die Hänger-Diagnose (Protokoll).</summary>
   cActivity = 'Bauen beim Öffnen';
+  // Takt für Start, Fortschritt und Ende des Bauens beim Öffnen.
+  cTickMs = 250;
 
 { TAtlasIdeOpenBuild.TIdeNotifier }
 
@@ -283,7 +285,7 @@ begin
     end;
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;

@@ -211,6 +211,9 @@ const
   cShiftBit = $2000;
   cCtrlBit = $4000;
   cAltBit = $8000;
+  // Funktionstasten F1 bis F24 (VK_F1 = $70).
+  cVkF1 = $70;
+  cMaxFunctionKey = 24;
 
 /// <summary>Umschalttasten aller Teile außer dem letzten; False bei einem unbekannten Teil.</summary>
 function KeyModifiers(const AParts: TArray<string>; out AModifiers: Word): Boolean;
@@ -244,9 +247,9 @@ begin
     Result := Ord(AName[1]);
   end
   else if (Length(AName) >= 2) and (AName[1] = 'F') and TryStrToInt(Copy(AName, 2, MaxInt), mNumber) and
-    (mNumber >= 1) and (mNumber <= 24) then
+    (mNumber >= 1) and (mNumber <= cMaxFunctionKey) then
   begin
-    Result := $6F + mNumber;
+    Result := cVkF1 - 1 + mNumber;
   end;
 end;
 
@@ -616,7 +619,7 @@ begin
   end;
   mKey := KeyCode(UpperCase(Trim(mParts[High(mParts)])));
   // Eine Taste ohne Strg oder Alt würde das Tippen stören (nur Funktionstasten dürfen allein stehen).
-  if (mKey = 0) or ((mModifiers and (cCtrlBit or cAltBit) = 0) and (mKey < $70)) then
+  if (mKey = 0) or ((mModifiers and (cCtrlBit or cAltBit) = 0) and (mKey < cVkF1)) then
   begin
     Exit;
   end;

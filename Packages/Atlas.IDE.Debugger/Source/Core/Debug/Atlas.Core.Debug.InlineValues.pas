@@ -121,6 +121,8 @@ const
   // Gültige Tage von TDateTime (0001-01-01 bis 9999-12-31).
   cMinDateTime = -693593.0;
   cMaxDateTime = 2958466.0;
+  // Zeichen darüber zählen als Buchstaben (Unicode-Bezeichner).
+  cLastAscii = 127;
 
 { TAtlasInlineValueItem }
 
@@ -401,7 +403,7 @@ begin
   end;
   for mIndex := 1 to Length(AName) do
   begin
-    if not (CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AName[mIndex]) > 127)) then
+    if not (CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AName[mIndex]) > cLastAscii)) then
     begin
       Exit;
     end;

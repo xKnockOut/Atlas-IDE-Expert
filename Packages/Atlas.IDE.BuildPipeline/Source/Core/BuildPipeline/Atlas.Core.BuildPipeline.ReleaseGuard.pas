@@ -225,6 +225,9 @@ uses
   Atlas.Text.Chars,
   Atlas.Core.Versions.Project;
 
+const
+  cCurrentFolder = '.\';
+
 { TAtlasReleaseSettings }
 
 class function TAtlasReleaseSettings.Create(AEnabled: Boolean; const AGate, AConfigurations,
@@ -281,9 +284,9 @@ begin
   Result := StringReplace(Result, '$(Platform)', APlatform, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '$(Config)', AConfiguration, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
-  while Result.StartsWith('.\') do
+  while Result.StartsWith(cCurrentFolder) do
   begin
-    Result := Copy(Result, 3, MaxInt);
+    Result := Copy(Result, Length(cCurrentFolder) + 1, MaxInt);
   end;
   while (Length(Result) > 1) and Result.EndsWith('\') do
   begin
