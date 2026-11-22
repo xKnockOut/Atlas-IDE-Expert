@@ -61,6 +61,15 @@ uses
   Atlas.UI.VersionControl.Strings,
   Atlas.Vcl.Theme.Scaling;
 
+const
+  /// <summary>Breite der Auswahllisten für SVN und Externals bzw. für Git (längere Einträge).</summary>
+  cSvnChoiceWidth = 260;
+  cGitChoiceWidth = 320;
+  /// <summary>Regeln für Externals: Höhe der Überschrift, des Eingabefelds und des Fehlerhinweises darunter.</summary>
+  cRulesCaptionHeight = 20;
+  cRulesHeight = 84;
+  cRulesErrorHeight = 20;
+
 { TAtlasSettingsVcsBranchPart }
 
 procedure TAtlasSettingsVcsBranchPart.Build;
@@ -76,11 +85,11 @@ begin
   FVcsBranchSvnSource := AddChoice('vcs.branch.svn.source', TAtlasVcsTextId.SettingsVcsBranchSvnSource,
     [TAtlasVcsTextId.SettingsVcsBranchSvnSourceHead, TAtlasVcsTextId.SettingsVcsBranchSvnSourceWorkingCopy],
     TArray<string>.Create('head', 'workingCopy'));
-  FVcsBranchSvnSource.Width := FVcsBranchSvnSource.ScaleValue(260);
+  FVcsBranchSvnSource.Width := FVcsBranchSvnSource.ScaleValue(cSvnChoiceWidth);
   FVcsBranchSvnAfter := AddChoice('vcs.branch.svn.after', TAtlasVcsTextId.SettingsVcsBranchSvnAfter,
     [TAtlasVcsTextId.VcsBranchAfterSwitch, TAtlasVcsTextId.VcsBranchAfterCheckout, TAtlasVcsTextId.VcsBranchAfterNone],
     TArray<string>.Create('switch', 'checkout', 'none'));
-  FVcsBranchSvnAfter.Width := FVcsBranchSvnAfter.ScaleValue(260);
+  FVcsBranchSvnAfter.Width := FVcsBranchSvnAfter.ScaleValue(cSvnChoiceWidth);
   Host.AddText('vcs.branch.svn.checkoutFolder', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnFolder));
   Host.AddText('vcs.branch.svn.message', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnMessage));
   AddNote(cNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchSvnMessageHint));
@@ -139,18 +148,18 @@ begin
   FVcsExternalsOnBranch := AddChoice('vcs.externals.onBranch', TAtlasVcsTextId.SettingsVcsExternalsOnBranch,
     [TAtlasVcsTextId.SettingsVcsExternalsOnBranchPin, TAtlasVcsTextId.SettingsVcsExternalsOnBranchKeep,
     TAtlasVcsTextId.SettingsVcsExternalsOnBranchAsk], TArray<string>.Create('pin', 'keep', 'ask'));
-  FVcsExternalsOnBranch.Width := FVcsExternalsOnBranch.ScaleValue(260);
+  FVcsExternalsOnBranch.Width := FVcsExternalsOnBranch.ScaleValue(cSvnChoiceWidth);
   FVcsExternalsSuggest := AddChoice('vcs.externals.suggestBranch', TAtlasVcsTextId.SettingsVcsExternalsSuggest,
     [TAtlasVcsTextId.SettingsVcsExternalsSuggestModified, TAtlasVcsTextId.SettingsVcsExternalsSuggestNever,
     TAtlasVcsTextId.SettingsVcsExternalsSuggestAlways], TArray<string>.Create('modified', 'never', 'always'));
-  FVcsExternalsSuggest.Width := FVcsExternalsSuggest.ScaleValue(260);
-  mPanel := AddPanel(20, [cRulesKey]);
+  FVcsExternalsSuggest.Width := FVcsExternalsSuggest.ScaleValue(cSvnChoiceWidth);
+  mPanel := AddPanel(cRulesCaptionHeight, [cRulesKey]);
   mCaption := TLabel.Create(FPage);
   mCaption.Parent := mPanel;
   mCaption.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsExternalsRules);
   mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(3);
-  mPanel := AddPanel(84, [cRulesKey]);
+  mCaption.Top := mCaption.ScaleValue(cCheckTop);
+  mPanel := AddPanel(cRulesHeight, [cRulesKey]);
   FVcsExternalsRules := TMemo.Create(FPage);
   FVcsExternalsRules.Parent := mPanel;
   TAtlasControlScaling.Place(FVcsExternalsRules, 0, 1, cRulesWidth, cRulesHeight);
@@ -158,7 +167,7 @@ begin
   FVcsExternalsRules.ScrollBars := ssVertical;
   FVcsExternalsRules.WordWrap := False;
   FVcsExternalsRules.OnChange := VcsExternalsRulesChange;
-  FVcsExternalsRulesError := AddWrappedLabel(20, '');
+  FVcsExternalsRulesError := AddWrappedLabel(cRulesErrorHeight, '');
   FVcsExternalsRulesError.Font.Color := clRed;
   Attach(FVcsExternalsRulesError.Parent, mPanel);
   AddNote(cNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsExternalsRulesHint));
@@ -167,7 +176,7 @@ begin
   FVcsExternalsUpdate := AddChoice('vcs.externals.update', TAtlasVcsTextId.SettingsVcsExternalsUpdate,
     [TAtlasVcsTextId.SettingsVcsExternalsUpdateWith, TAtlasVcsTextId.SettingsVcsExternalsUpdateWithout,
     TAtlasVcsTextId.SettingsVcsExternalsUpdateAsk], TArray<string>.Create('with', 'without', 'ask'));
-  FVcsExternalsUpdate.Width := FVcsExternalsUpdate.ScaleValue(260);
+  FVcsExternalsUpdate.Width := FVcsExternalsUpdate.ScaleValue(cSvnChoiceWidth);
 end;
 
 procedure TAtlasSettingsVcsBranchPart.AddVcsGitSection;
@@ -177,15 +186,15 @@ begin
   FVcsBranchGitBase := AddChoice('vcs.branch.git.base', TAtlasVcsTextId.SettingsVcsBranchGitBase,
     [TAtlasVcsTextId.SettingsVcsBranchGitBaseRemote, TAtlasVcsTextId.SettingsVcsBranchGitBaseLocal,
     TAtlasVcsTextId.SettingsVcsBranchGitBaseCurrent], TArray<string>.Create('remote', 'local', 'current'));
-  FVcsBranchGitBase.Width := FVcsBranchGitBase.ScaleValue(320);
+  FVcsBranchGitBase.Width := FVcsBranchGitBase.ScaleValue(cGitChoiceWidth);
   FVcsBranchGitPush := AddChoice('vcs.branch.git.push', TAtlasVcsTextId.SettingsVcsBranchGitPush,
     [TAtlasVcsTextId.SettingsVcsBranchGitPushLater, TAtlasVcsTextId.SettingsVcsBranchGitPushNow],
     TArray<string>.Create('later', 'now'));
-  FVcsBranchGitPush.Width := FVcsBranchGitPush.ScaleValue(320);
+  FVcsBranchGitPush.Width := FVcsBranchGitPush.ScaleValue(cGitChoiceWidth);
   FVcsBranchGitUncommitted := AddChoice('vcs.branch.git.uncommitted', TAtlasVcsTextId.SettingsVcsBranchGitUncommitted,
     [TAtlasVcsTextId.SettingsVcsBranchGitCarry, TAtlasVcsTextId.SettingsVcsBranchGitStash,
     TAtlasVcsTextId.SettingsVcsBranchGitAsk], TArray<string>.Create('carry', 'stash', 'ask'));
-  FVcsBranchGitUncommitted.Width := FVcsBranchGitUncommitted.ScaleValue(320);
+  FVcsBranchGitUncommitted.Width := FVcsBranchGitUncommitted.ScaleValue(cGitChoiceWidth);
   Host.AddSwitch('vcs.branch.git.worktree', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitWorktree));
   Host.AddText('vcs.branch.git.worktreeFolder', TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitWorktreeFolder));
   AddNote(cLongNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsBranchGitHint));

@@ -104,6 +104,59 @@ uses
 
 const
   cNullCommit = '0000000000000000000000000000000000000000';
+  /// <summary>Kürzester abgekürzter Hash, den git ausgibt (core.abbrev).</summary>
+  cShortHashLength = 7;
+  /// <summary>Felder eines Eintrags von git status --porcelain=v2 (durch Leerzeichen getrennt): XY bei allen,
+  /// Pfad bei "1", Kennung der Umbenennung (Xscore) und Pfad bei "2", Pfad bei "u".</summary>
+  cStatusXY = 1;
+  cStatusChangedPath = 8;
+  cStatusMoveScore = 8;
+  cStatusMovedPath = 9;
+  cStatusUnmergedPath = 10;
+  cStatusUntracked = '? ';
+  /// <summary>Teile des Abstands zum Upstream in cBranchFormat.</summary>
+  cTrackAhead = 'ahead ';
+  cTrackBehind = 'behind ';
+  /// <summary>Anfang des Reflog-Betreffs eines Stashs ohne bzw. mit Namen.</summary>
+  cStashWip = 'WIP on ';
+  cStashNamed = 'On ';
+  /// <summary>Felder von cRefFormat.</summary>
+  cRefName = 0;
+  cRefTipDate = 1;
+  cRefHead = 2;
+  cRefFieldCount = 3;
+  /// <summary>Felder von cBranchFormat.</summary>
+  cBranchName = 0;
+  cBranchUpstream = 1;
+  cBranchRemote = 2;
+  cBranchRemoteRef = 3;
+  cBranchTrack = 4;
+  cBranchTipDate = 5;
+  cBranchHead = 6;
+  cBranchFieldCount = 7;
+  /// <summary>Felder von cStashFormat.</summary>
+  cStashHash = 0;
+  cStashDate = 1;
+  cStashRef = 2;
+  cStashSubject = 3;
+  cStashFieldCount = 4;
+  /// <summary>Felder von cLogFormat; der Betreff darf fehlen.</summary>
+  cLogHash = 0;
+  cLogDate = 1;
+  cLogSummary = 2;
+  /// <summary>Felder von cHistoryFormat und cIncomingFormat: Hash, Zeit, Autor, Nachricht bzw. Betreff, ab
+  /// cCommitFiles die Dateien.</summary>
+  cCommitHash = 0;
+  cCommitDate = 1;
+  cCommitAuthor = 2;
+  cCommitText = 3;
+  cCommitFiles = 4;
+  /// <summary>Felder von cLineLogFormat; nach den mit US abgeschlossenen Feldern folgt der Unterschied.</summary>
+  cLineHash = 0;
+  cLineAuthor = 1;
+  cLineDate = 2;
+  cLineMessage = 3;
+  cLinePatch = 4;
   /// <summary>Meldungen zu unerwarteter Ausgabe der Werkzeuge: nur für Tests und Fehlersuche, die Aufrufer
   /// werten EAtlasVcsParse als Fehlschlag aus, ohne den Text zu zeigen.</summary>
   cStatusFieldUnknown = 'git status: Feld XY "%s" unbekannt';
@@ -262,14 +315,14 @@ function ReadMoved(const ARoot, AEntry: string; const AEntries: TArray<string>; 
 var
   mXY: string;
 begin
-  mXY := Field(AEntry, 1, False);
-  if Copy(Field(AEntry, 8, False), 1, 1) = 'C' then
+  mXY := Field(AEntry, cStatusXY, False);
+  if Copy(Field(AEntry, cStatusMoveScore, False), 1, 1) = 'C' then
   begin
-    Result := MakeChange(ARoot, Field(AEntry, 9, True), TAtlasVcsChangeKind.Copied, mXY);
+    Result := MakeChange(ARoot, Field(AEntry, cStatusMovedPath, True), TAtlasVcsChangeKind.Copied, mXY);
   end
   else
   begin
-    Result := MakeChange(ARoot, Field(AEntry, 9, True), TAtlasVcsChangeKind.Renamed, mXY);
+    Result := MakeChange(ARoot, Field(AEntry, cStatusMovedPath, True), TAtlasVcsChangeKind.Renamed, mXY);
   end;
   if AIndex <= High(AEntries) then
   begin
@@ -310,16 +363,17 @@ begin
         ReadStatusHeader(mEntry, AHead);
       '1':
         // 1 XY sub mH mI mW hH hI path
-        AChanges := AChanges + [MakeChange(ARoot, Field(mEntry, 8, True), KindOf(Field(mEntry, 1, False)),
-          Field(mEntry, 1, False))];
+        AChanges := AChanges + [MakeChange(ARoot, Field(mEntry, cStatusChangedPath, True),
+          KindOf(Field(mEntry, cStatusXY, False)), Field(mEntry, cStatusXY, False))];
       '2':
         AChanges := AChanges + [ReadMoved(ARoot, mEntry, mEntries, mIndex)];
       'u':
         // u XY sub m1 m2 m3 mW h1 h2 h3 path
-        AChanges := AChanges + [MakeChange(ARoot, Field(mEntry, 10, True), TAtlasVcsChangeKind.Conflicted,
-          Field(mEntry, 1, False))];
+        AChanges := AChanges + [MakeChange(ARoot, Field(mEntry, cStatusUnmergedPath, True),
+          TAtlasVcsChangeKind.Conflicted, Field(mEntry, cStatusXY, False))];
       '?':
-        AChanges := AChanges + [MakeChange(ARoot, Copy(mEntry, 3, MaxInt), TAtlasVcsChangeKind.Untracked, '.?')];
+        AChanges := AChanges + [MakeChange(ARoot, Copy(mEntry, Length(cStatusUntracked) + 1, MaxInt),
+          TAtlasVcsChangeKind.Untracked, '.?')];
       '!':
         ;
     else
@@ -365,14 +419,14 @@ var
   mKnown: Boolean;
 begin
   mKnown := APart = '';
-  if Copy(APart, 1, 6) = 'ahead ' then
+  if StartsStr(cTrackAhead, APart) then
   begin
-    mKnown := TryStrToInt(Trim(Copy(APart, 7, MaxInt)), mNumber);
+    mKnown := TryStrToInt(Trim(Copy(APart, Length(cTrackAhead) + 1, MaxInt)), mNumber);
     ABranch.Ahead := mNumber;
   end
-  else if Copy(APart, 1, 7) = 'behind ' then
+  else if StartsStr(cTrackBehind, APart) then
   begin
-    mKnown := TryStrToInt(Trim(Copy(APart, 8, MaxInt)), mNumber);
+    mKnown := TryStrToInt(Trim(Copy(APart, Length(cTrackBehind) + 1, MaxInt)), mNumber);
     ABranch.Behind := mNumber;
   end;
   if not mKnown then
@@ -418,11 +472,11 @@ begin
   for mLine in NonEmptyLines(AText) do
   begin
     mFields := mLine.Split([#0]);
-    if Length(mFields) < 3 then
+    if Length(mFields) < cRefFieldCount then
     begin
       raise EAtlasVcsParse.Create(cRefThreeFields);
     end;
-    mName := mFields[0];
+    mName := mFields[cRefName];
     mRef := Default(TAtlasVcsRef);
     if mName.StartsWith(cHeads) then
     begin
@@ -453,8 +507,8 @@ begin
     begin
       raise EAtlasVcsParse.Create(cRefNameMissing);
     end;
-    mRef.TipDate := UnixField(mFields[1]);
-    mRef.Current := Trim(mFields[2]) = '*';
+    mRef.TipDate := UnixField(mFields[cRefTipDate]);
+    mRef.Current := Trim(mFields[cRefHead]) = '*';
     Result := Result + [mRef];
   end;
 end;
@@ -470,15 +524,15 @@ var
 begin
   AStash.Message := ASubject;
   mColon := Pos(': ', ASubject);
-  mWip := StartsStr('WIP on ', ASubject);
-  if (mColon = 0) or not (mWip or StartsStr('On ', ASubject)) then
+  mWip := StartsStr(cStashWip, ASubject);
+  if (mColon = 0) or not (mWip or StartsStr(cStashNamed, ASubject)) then
   begin
     Exit;
   end;
   mRest := Copy(ASubject, mColon + 2, MaxInt);
   if mWip then
   begin
-    AStash.Branch := Copy(ASubject, 8, mColon - 8);
+    AStash.Branch := Copy(ASubject, Length(cStashWip) + 1, mColon - Length(cStashWip) - 1);
     // Kurzer Hash vorn entfällt.
     mSpace := Pos(' ', mRest);
     if mSpace > 0 then
@@ -488,7 +542,7 @@ begin
   end
   else
   begin
-    AStash.Branch := Copy(ASubject, 4, mColon - 4);
+    AStash.Branch := Copy(ASubject, Length(cStashNamed) + 1, mColon - Length(cStashNamed) - 1);
   end;
   AStash.Message := mRest;
 end;
@@ -515,20 +569,20 @@ begin
   for mLine in NonEmptyLines(AText) do
   begin
     mFields := mLine.Split([#0]);
-    if Length(mFields) < 7 then
+    if Length(mFields) < cBranchFieldCount then
     begin
       raise EAtlasVcsParse.Create(cRefSevenFields);
     end;
     mBranch := Default(TAtlasVcsBranch);
-    mBranch.Name := mFields[0];
-    mBranch.Upstream := mFields[1];
-    mBranch.Remote := mFields[2];
-    mBranch.RemoteRef := mFields[3];
+    mBranch.Name := mFields[cBranchName];
+    mBranch.Upstream := mFields[cBranchUpstream];
+    mBranch.Remote := mFields[cBranchRemote];
+    mBranch.RemoteRef := mFields[cBranchRemoteRef];
     mBranch.Ahead := -1;
     mBranch.Behind := -1;
-    ReadTrack(mFields[4], mBranch);
-    mBranch.TipDate := UnixField(mFields[5]);
-    mBranch.Current := Trim(mFields[6]) = '*';
+    ReadTrack(mFields[cBranchTrack], mBranch);
+    mBranch.TipDate := UnixField(mFields[cBranchTipDate]);
+    mBranch.Current := Trim(mFields[cBranchHead]) = '*';
     if mBranch.Name = '' then
     begin
       raise EAtlasVcsParse.Create(cRefNameMissing);
@@ -581,15 +635,15 @@ begin
   for mLine in NonEmptyLines(AText) do
   begin
     mFields := mLine.Split([#0]);
-    if Length(mFields) < 4 then
+    if Length(mFields) < cStashFieldCount then
     begin
       raise EAtlasVcsParse.Create(cStashFourFields);
     end;
     mStash := Default(TAtlasVcsStash);
-    mStash.Hash := mFields[0];
-    mStash.Date := UnixField(mFields[1]);
-    mStash.Ref := mFields[2];
-    ReadStashSubject(mFields[3], mStash);
+    mStash.Hash := mFields[cStashHash];
+    mStash.Date := UnixField(mFields[cStashDate]);
+    mStash.Ref := mFields[cStashRef];
+    ReadStashSubject(mFields[cStashSubject], mStash);
     if mStash.Hash = '' then
     begin
       raise EAtlasVcsParse.Create(cStashHashMissing);
@@ -608,15 +662,15 @@ begin
   for mLine in NonEmptyLines(AText) do
   begin
     mFields := mLine.Split([#0]);
-    if (Length(mFields) < 2) or (Length(mFields[0]) < 7) then
+    if (Length(mFields) <= cLogDate) or (Length(mFields[cLogHash]) < cShortHashLength) then
     begin
       raise EAtlasVcsParse.Create(cLogHashAndTime);
     end;
-    mCommit.Hash := mFields[0];
-    mCommit.Date := UnixField(mFields[1]);
-    if Length(mFields) > 2 then
+    mCommit.Hash := mFields[cLogHash];
+    mCommit.Date := UnixField(mFields[cLogDate]);
+    if Length(mFields) > cLogSummary then
     begin
-      mCommit.Summary := mFields[2];
+      mCommit.Summary := mFields[cLogSummary];
     end
     else
     begin
@@ -664,8 +718,8 @@ begin
   end;
 end;
 
-/// <summary>Paare aus Art und Pfad ab Feld 4; leere Einträge (Ende der Nachricht, Zeilenende davor) zählen nicht.
-/// </summary>
+/// <summary>Paare aus Art und Pfad ab Feld cCommitFiles; leere Einträge (Ende der Nachricht, Zeilenende davor)
+/// zählen nicht.</summary>
 procedure ReadHistoryFiles(const AFields: TArray<string>; const ARoot: string; AFiles: TList<TAtlasVcsLogFile>);
 var
   mIndex: Integer;
@@ -673,7 +727,7 @@ var
   mFile: TAtlasVcsLogFile;
 begin
   AFiles.Clear;
-  mIndex := 4;
+  mIndex := cCommitFiles;
   while mIndex <= High(AFields) do
   begin
     mStatus := AFields[mIndex].Trim([#10, #13]);
@@ -693,15 +747,15 @@ end;
 /// <summary>Kopf eines Commits aus git log: Hash, Zeit, Autor und Nachricht.</summary>
 function HistoryEntry(const AFields: TArray<string>): TAtlasVcsLogEntry;
 begin
-  if (Length(AFields) < 4) or (Length(AFields[0]) < 7) then
+  if (Length(AFields) < cCommitFiles) or (Length(AFields[cCommitHash]) < cShortHashLength) then
   begin
     raise EAtlasVcsParse.Create(cLogFourFields);
   end;
   Result := Default(TAtlasVcsLogEntry);
-  Result.Revision := AFields[0];
-  Result.Date := UnixField(AFields[1]);
-  Result.Author := AFields[2];
-  Result.Message := StringReplace(AFields[3], #13#10, #10, [rfReplaceAll]).TrimRight([#10, #13, ' ']);
+  Result.Revision := AFields[cCommitHash];
+  Result.Date := UnixField(AFields[cCommitDate]);
+  Result.Author := AFields[cCommitAuthor];
+  Result.Message := StringReplace(AFields[cCommitText], #13#10, #10, [rfReplaceAll]).TrimRight([#10, #13, ' ']);
   Result.Summary := SummaryOf(Result.Message);
 end;
 
@@ -794,17 +848,17 @@ begin
       Continue;
     end;
     mFields := mItem.Split([#0]);
-    if (Length(mFields) < 4) or (Length(mFields[0]) < 7) then
+    if (Length(mFields) < cCommitFiles) or (Length(mFields[cCommitHash]) < cShortHashLength) then
     begin
       raise EAtlasVcsParse.Create(cLogSubjectFields);
     end;
     mCommit := Default(TAtlasVcsIncomingCommit);
-    mCommit.Hash := mFields[0];
-    mCommit.Date := UnixField(mFields[1]);
-    mCommit.Author := mFields[2];
-    mCommit.Summary := mFields[3];
+    mCommit.Hash := mFields[cCommitHash];
+    mCommit.Date := UnixField(mFields[cCommitDate]);
+    mCommit.Author := mFields[cCommitAuthor];
+    mCommit.Summary := mFields[cCommitText];
     // Dateien: die erste nach einem Zeilenende, alle je mit NUL abgeschlossen.
-    for mIndex := 4 to High(mFields) do
+    for mIndex := cCommitFiles to High(mFields) do
     begin
       mPath := mFields[mIndex].Trim([#10, #13]);
       if mPath <> '' then
@@ -869,11 +923,11 @@ begin
     begin
       Continue;
     end;
-    // Hash, Autor, Zeit, Nachricht und der Rest (Unterschied); nur vier Trenner zählen.
-    SetLength(mFields, 5);
+    // Hash, Autor, Zeit, Nachricht und der Rest (Unterschied); nur die Trenner davor zählen.
+    SetLength(mFields, cLinePatch + 1);
     mStart := 1;
     mCount := 0;
-    while mCount < 4 do
+    while mCount < cLinePatch do
     begin
       mStop := Pos(#$1F, mItem, mStart);
       if mStop = 0 then
@@ -884,17 +938,17 @@ begin
       Inc(mCount);
       mStart := mStop + 1;
     end;
-    mFields[4] := Copy(mItem, mStart, MaxInt);
-    if (mCount < 4) or (Length(mFields[0]) < 7) then
+    mFields[cLinePatch] := Copy(mItem, mStart, MaxInt);
+    if (mCount < cLinePatch) or (Length(mFields[cLineHash]) < cShortHashLength) then
     begin
       raise EAtlasVcsParse.Create(cLineLogFields);
     end;
     mCommit := Default(TAtlasVcsLineCommit);
-    mCommit.Revision := mFields[0];
-    mCommit.Author := mFields[1];
-    mCommit.Date := UnixField(mFields[2]);
-    mCommit.Message := TrimRight(mFields[3]);
-    mCommit.Patch := TrimmedLines(mFields[4]);
+    mCommit.Revision := mFields[cLineHash];
+    mCommit.Author := mFields[cLineAuthor];
+    mCommit.Date := UnixField(mFields[cLineDate]);
+    mCommit.Message := TrimRight(mFields[cLineMessage]);
+    mCommit.Patch := TrimmedLines(mFields[cLinePatch]);
     Result[mFound] := mCommit;
     Inc(mFound);
   end;
@@ -920,7 +974,7 @@ begin
       Continue;
     end;
     mSplit := Pos(#$1F, mItem);
-    if mSplit < 8 then
+    if mSplit <= cShortHashLength then
     begin
       raise EAtlasVcsParse.Create(cLogHashAndMessage);
     end;
@@ -1044,7 +1098,7 @@ begin
   end;
   // Kopfzeile: <hash> <ursprüngliche Zeile> <Zeile> [<Anzahl>]
   mHash := Field(mLine, 0, False);
-  if (Length(mHash) < 40) or not TryStrToInt(Field(mLine, 2, False), mFinal) then
+  if (Length(mHash) < Length(cNullCommit)) or not TryStrToInt(Field(mLine, 2, False), mFinal) then
   begin
     raise EAtlasVcsParse.Create(cBlameHeaderMissing);
   end;
