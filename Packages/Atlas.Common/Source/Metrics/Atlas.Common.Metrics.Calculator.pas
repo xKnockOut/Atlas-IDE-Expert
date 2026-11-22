@@ -67,7 +67,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Metrics.UnitRoutines,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.SyntaxNodes;

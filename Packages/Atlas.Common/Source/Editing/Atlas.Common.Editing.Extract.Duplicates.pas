@@ -85,7 +85,7 @@ implementation
 
 uses
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

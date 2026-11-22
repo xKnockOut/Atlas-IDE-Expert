@@ -86,8 +86,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Reassigned,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.SyntaxNodes;

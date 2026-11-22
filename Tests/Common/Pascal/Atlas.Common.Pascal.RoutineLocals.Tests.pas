@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.RoutineLocals.Tests;
+﻿unit Atlas.Common.Pascal.RoutineLocals.Tests;
 
 // Tests für die lokalen Namen einer Routine (#50, #103): Sammeln samt
 // gruppierter Parameter, Gültigkeitsbereich von Inline-Variablen, Zugriff
@@ -35,8 +35,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals;
 
 const
   cSource =

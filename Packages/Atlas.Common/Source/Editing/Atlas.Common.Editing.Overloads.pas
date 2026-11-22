@@ -120,7 +120,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
