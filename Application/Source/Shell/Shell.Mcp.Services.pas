@@ -58,6 +58,7 @@ implementation
 
 uses
   System.IOUtils,
+  Shell.Composition.Mcp,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Processes,
   Atlas.Common.Documents.Providers.DocumentStore,
@@ -299,6 +300,7 @@ begin
   Result.CheckSource := ACode.CheckSource;
   Result.CheckProject := ACode.CheckProject;
   Result.SettingsFor := ACode.SettingsFor;
+  Result.Extract := TMcpComposition.Extract;
   Result.Audit := AuditOf(ALogger);
 end;
 

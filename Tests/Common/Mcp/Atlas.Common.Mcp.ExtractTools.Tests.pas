@@ -27,7 +27,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.EditTools,
-  Atlas.Common.Mcp.ExtractTools;
+  Atlas.Common.Mcp.ExtractTools,
+  Shell.Composition.Mcp;
 
 const
   cSource = 'unit U;'#10 +
@@ -79,6 +80,7 @@ begin
       Result := nil;
     end,
     nil);
+  Result.Extract := TMcpComposition.Extract;
 end;
 
 function Request(AStartLine, AEndLine: Integer; const AName: string; ADuplicates, ADryRun: Boolean):

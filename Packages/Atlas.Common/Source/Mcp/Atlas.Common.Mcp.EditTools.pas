@@ -58,6 +58,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Mcp.Contract,
+  Atlas.Common.Mcp.Contract.Extract,
   Atlas.Common.Mcp.Confirm;
 
 type
@@ -196,6 +197,7 @@ type
     FCheckProject: TCheckProjectFunc;
     FSettingsFor: TReferenceSettingsProvider;
     FChoose: TMcpChooseFunc;
+    FExtract: IMcpExtract;
     function ConfirmInferred(const AUnchanged: TArray<TReferenceLocation>; const ANewName: string): Boolean;
     function ConfirmFixes(AFileCount: Integer): Boolean;
     function RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
@@ -238,6 +240,8 @@ type
     property CheckProject: TCheckProjectFunc read FCheckProject write FCheckProject;
     /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
+    /// <summary>„Methode extrahieren“ für extract_method (#2054); setzt der Host.</summary>
+    property Extract: IMcpExtract read FExtract write FExtract;
     /// <summary>Rückfragen an den Menschen (#2620, TMcpConfirm); nil = nie fragen.</summary>
     property Choose: TMcpChooseFunc read FChoose write FChoose;
   end;

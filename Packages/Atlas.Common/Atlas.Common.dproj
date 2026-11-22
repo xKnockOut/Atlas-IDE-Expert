@@ -506,6 +506,9 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesCommand.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.Extract.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.Extract.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Composition.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclarationCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CommandSource.pas"/>
@@ -779,6 +782,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.StatisticsText.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Prompts.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Extract.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CheckTools.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Prompt.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas"/>

@@ -46,6 +46,8 @@ uses
   Shell.Composition.Settings in 'Source\Shell\Shell.Composition.Settings.pas',
   Shell.Composition.RuleContext in 'Source\Shell\Shell.Composition.RuleContext.pas',
   Shell.Composition.Ide in 'Source\Shell\Shell.Composition.Ide.pas',
+  Shell.Composition.Mcp in 'Source\Shell\Shell.Composition.Mcp.pas',
+  Adapters.Mcp.Extract in 'Source\Adapters\Adapters.Mcp.Extract.pas',
   Shell.Composition.Configuration in 'Source\Shell\Shell.Composition.Configuration.pas',
   Shell.Composition.FileChanges in 'Source\Shell\Shell.Composition.FileChanges.pas',
   Shell.Composition.Sources in 'Source\Shell\Shell.Composition.Sources.pas',

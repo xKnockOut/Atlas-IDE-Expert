@@ -92,6 +92,8 @@
         <DCCReference Include="Source\Shell\Shell.Composition.Settings.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.RuleContext.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Ide.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Composition.Mcp.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Mcp.Extract.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Configuration.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.FileChanges.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Sources.pas"/>

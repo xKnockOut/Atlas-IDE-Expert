@@ -2653,6 +2653,10 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Settings.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.RuleContext.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Ide.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Mcp.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Extract.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.Extract.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.Extract.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Configuration.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FileChanges.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Sources.pas"/>
