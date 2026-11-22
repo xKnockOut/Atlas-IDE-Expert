@@ -68,6 +68,10 @@ uses
   Atlas.Core.Documentation.Typeset,
   Atlas.Core.Tracker.Markdown;
 
+const
+  /// <summary>Höhe vor dem ersten Inhalt (96 dpi); danach richtet sie sich nach dem Text.</summary>
+  cInitialHeight = 16;
+
 function ToColor(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
@@ -83,7 +87,7 @@ begin
   FColors := TAtlasColors.Light;
   TabStop := True;
   DoubleBuffered := True;
-  Height := ScaleValue(16);
+  Height := ScaleValue(cInitialHeight);
 end;
 
 destructor TAtlasIssueDocBox.Destroy;

@@ -68,6 +68,14 @@ uses
   Atlas.Core.Tracker.Files,
   Atlas.Text.Json;
 
+const
+  /// <summary>FNV-1a, 32 Bit.</summary>
+  cFnvOffset = 2166136261;
+  cFnvPrime = 16777619;
+  cHashDigits = 8;
+  /// <summary>Höchstlänge des Dateinamens eines Issues im Zwischenspeicher.</summary>
+  cMaxSafeNameLength = 64;
+
 function MemoryKey(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 begin
   Result := LowerCase(ATarget.Server + '|' + ATarget.Project + '|' + Trim(AKey));
@@ -360,13 +368,13 @@ var
 begin
   // FNV-1a über die UTF-16-Zeichen; nur Unterscheidung, kein Schutz.
   mText := LowerCase(ATarget.Server + '|' + ATarget.Project);
-  mHash := 2166136261;
+  mHash := cFnvOffset;
   for mIndex := 1 to Length(mText) do
   begin
     mHash := mHash xor Ord(mText[mIndex]);
-    mHash := Cardinal(UInt64(mHash) * 16777619);
+    mHash := Cardinal(UInt64(mHash) * cFnvPrime);
   end;
-  Result := LowerCase(IntToHex(mHash, 8));
+  Result := LowerCase(IntToHex(mHash, cHashDigits));
 end;
 
 class function TAtlasTrackerIssueCache.SafeName(const AKey: string): string;
@@ -381,7 +389,7 @@ begin
       Result := Result + AKey[mIndex];
     end;
   end;
-  Result := Copy(Result, 1, 64);
+  Result := Copy(Result, 1, cMaxSafeNameLength);
 end;
 
 class function TAtlasTrackerIssueCache.ToJson(const ADetails: TAtlasTrackerDetails): string;

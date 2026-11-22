@@ -52,6 +52,10 @@ uses
   Atlas.UI.Tracker.Issue.Strings,
   System.Win.ComObj;
 
+const
+  /// <summary>Anhänge laden länger als eine Abfrage: das Zeitlimit der Vorschau mal diesen Faktor.</summary>
+  cDownloadTimeoutFactor = 3;
+
 /// <summary>Höchstens MaxImages Adressen vom Server des Tokens, ohne Doppelte.</summary>
 function LoadableUrls(const AUrls: TArray<string>; const AServer: string): TArray<string>;
 var
@@ -121,7 +125,7 @@ begin
       Result := mError <> TAtlasCiFetchError.Cancelled;
       ABytes := nil;
     end
-    else if mStatus <> 200 then
+    else if mStatus <> TAtlasHttpStatus.cOk then
     begin
       ABytes := nil;
     end;
@@ -226,8 +230,8 @@ begin
     begin
       mOk := False;
       try
-        if mDownload.GetBytes(AUrl, TAtlasIssuePreview.cTimeoutMs * 3, TAtlasIssuePreview.cMaxAttachmentBytes,
-          mStatus, mBytes, mError) and (mStatus = 200) then
+        if mDownload.GetBytes(AUrl, TAtlasIssuePreview.cTimeoutMs * cDownloadTimeoutFactor,
+          TAtlasIssuePreview.cMaxAttachmentBytes, mStatus, mBytes, mError) and (mStatus = TAtlasHttpStatus.cOk) then
         begin
           ForceDirectories(ExtractFileDir(AFile));
           TFile.WriteAllBytes(AFile, mBytes);

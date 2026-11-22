@@ -548,7 +548,7 @@ begin
   end;
   if TAtlasNotifyPlan.AsksLogin(Result.Job.Poll.Me, AJob.Provider.ProbeUrl(AJob.Target)) and
     mTransport.Get(AJob.Provider.ProbeUrl(AJob.Target), TAtlasTrackerNotify.cTimeoutMs, mStatus, mText,
-    mIgnored) and (mStatus = 200) then
+    mIgnored) and (mStatus = TAtlasHttpStatus.cOk) then
   begin
     Result.Job.Poll.Me := TAtlasTrackerNotify.LoginOf(mText);
   end;

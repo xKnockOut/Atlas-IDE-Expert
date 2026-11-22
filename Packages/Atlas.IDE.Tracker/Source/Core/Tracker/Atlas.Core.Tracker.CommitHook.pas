@@ -64,6 +64,8 @@ const
   /// <summary>So viel liest State vom Hook; die Marke steht in den ersten Zeilen.</summary>
   cMaxHookBytes = 4096;
   cMaxPrefixBytes = 1024;
+  /// <summary>So weit vorn sucht IsOwn die Marke.</summary>
+  cMarkerSearchLength = 200;
   /// <summary>Kommentar des Hooks je Sprache (False deutsch, True englisch).</summary>
   cHookComment: array[Boolean, 0..1] of string = (
     ('# Von Atlas angelegt: setzt den Präfix des aktiven Issues an den Anfang der Commit-Nachricht.', // german-ok
@@ -95,7 +97,7 @@ end;
 
 class function TAtlasCommitHook.IsOwn(const AContent: string): Boolean;
 begin
-  Result := Pos(cMarker, Copy(AContent, 1, 200)) > 0;
+  Result := Pos(cMarker, Copy(AContent, 1, cMarkerSearchLength)) > 0;
 end;
 
 class function TAtlasCommitHook.HookFile(const AHooksDir: string): string;

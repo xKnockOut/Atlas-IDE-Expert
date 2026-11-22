@@ -699,21 +699,22 @@ const
   cMinutes = '%d min';
   cHours = '%d h';
   cHoursMinutes = '%d h %d min';
+  cMinutesPerHour = 60;
 begin
   Result := '';
   if AMinutes <= 0 then
   begin
     Exit;
   end;
-  if AMinutes < 60 then
+  if AMinutes < cMinutesPerHour then
   begin
     Exit(Format(cMinutes, [AMinutes]));
   end;
-  if AMinutes mod 60 = 0 then
+  if AMinutes mod cMinutesPerHour = 0 then
   begin
-    Exit(Format(cHours, [AMinutes div 60]));
+    Exit(Format(cHours, [AMinutes div cMinutesPerHour]));
   end;
-  Result := Format(cHoursMinutes, [AMinutes div 60, AMinutes mod 60]);
+  Result := Format(cHoursMinutes, [AMinutes div cMinutesPerHour, AMinutes mod cMinutesPerHour]);
 end;
 
 class function TAtlasTrackerWorkflow.LoadValues(const AWriter: IAtlasTrackerWriter;
