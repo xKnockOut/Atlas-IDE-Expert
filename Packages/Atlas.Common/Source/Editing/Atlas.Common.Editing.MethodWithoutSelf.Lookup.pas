@@ -80,7 +80,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.SystemIntrinsics,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Pascal.TokenCursor;

@@ -73,6 +73,10 @@ type
     /// <summary>True, wenn die Liste zwischen AFirst und ALast keine Direktive und keinen //-Kommentar enthält.
     /// </summary>
     class function IsPlainList(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean; static;
+    /// <summary>ATokens ohne die Token, die in einem der Bereiche AInactive beginnen (inaktive Zweige, #621);
+    /// bei AInactive = nil ATokens selbst.</summary>
+    class function ActiveTokens(const ATokens: TArray<TPascalToken>;
+      const AInactive: TArray<TTextRange>): TArray<TPascalToken>; static;
   end;
 
 implementation
@@ -502,6 +506,29 @@ begin
     end;
   end;
   Result := False;
+end;
+
+
+class function TPascalUses.ActiveTokens(const ATokens: TArray<TPascalToken>;
+  const AInactive: TArray<TTextRange>): TArray<TPascalToken>;
+var
+  mCount, mIndex: Integer;
+begin
+  if AInactive = nil then
+  begin
+    Exit(ATokens);
+  end;
+  SetLength(Result, Length(ATokens));
+  mCount := 0;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if not TTextRange.AnyContains(AInactive, ATokens[mIndex].StartPos) then
+    begin
+      Result[mCount] := ATokens[mIndex];
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
 end;
 
 end.

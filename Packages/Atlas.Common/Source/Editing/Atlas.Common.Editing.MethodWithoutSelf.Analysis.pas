@@ -87,8 +87,8 @@ implementation
 
 uses
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Editing.RoutineLocals,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.MethodWithoutSelf.Texts;
 
 const

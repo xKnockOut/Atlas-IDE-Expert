@@ -27,60 +27,31 @@
 // Base über die Befehls-Id Atlas.UnitDependencies.
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
+// Modulklasse, Befehle und Menüeinträge stehen in Atlas.IDE.Analysis.Adapters.Module.
 
 interface
-
-uses
-  System.SysUtils,
-  Atlas.Core.Modules.Contract;
-
-type
-  TAtlasAnalysisModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
-    IAtlasAppliesSettings, IAtlasFollowsTheme)
-  public const
-    cModuleId = 'atlas.analysis';
-    cSwitch = 'analysis';
-  private
-    FActive: Boolean;
-    class function Parts: TArray<IAtlasFeaturePart>; static;
-  public
-    function Info: TAtlasModuleInfo;
-    procedure Start;
-    procedure Stop;
-    function IsActive: Boolean;
-    function Commands: TArray<TAtlasModuleCommand>;
-    function MenuEntries: TArray<TAtlasMenuEntry>;
-    procedure ApplySettings;
-    procedure ThemeChanged;
-    /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
-    /// nicht passt.</summary>
-    class function RegisterModule: Boolean; static;
-    class procedure UnregisterModule; static;
-  end;
 
 implementation
 
 uses
+  System.SysUtils,
   Atlas.UI.Analysis.SettingsSection,
   System.Types,
   System.JSON,
   Atlas.Text.Product.Version,
+  Atlas.Core.Modules.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Commands.ProjectSelection,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Commands.Editor,
   Atlas.IDE.Results.Impact,
   Atlas.IDE.Architecture.Service,
-  Atlas.IDE.Architecture.RoleUnit,
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Hotspots.Service,
   Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.Analysis.MetricsLens,
-  Atlas.UI.Strings,
-  Atlas.UI.Analysis.Strings;
+  Atlas.IDE.Analysis.Adapters.Module;
 
 const
   /// <summary>Feld im Atlas-Statusfeld für die Kosten einer interface-Änderung (#554).</summary>
@@ -271,23 +242,6 @@ begin
   Result := GSymbolPathStarted;
 end;
 
-/// <summary>„Weg von hier nach …“ im Kontextmenü des Editors; ohne Symbol am Cursor trotzdem der Dialog („Von“
-/// lässt sich dort eintippen).</summary>
-procedure SymbolPathFromHere;
-var
-  mName: string;
-begin
-  if not TAtlasIdeSymbolPath.Enabled then
-  begin
-    Exit;
-  end;
-  if not TAtlasIdeEditorCommands.QualifiedNameHere(mName) then
-  begin
-    mName := '';
-  end;
-  TAtlasIdeSymbolPath.ShowDialogFrom(mName);
-end;
-
 { Code Lens mit Code-Metriken (#66, #1756) }
 
 procedure StartMetricsLens;
@@ -305,129 +259,7 @@ begin
   Result := GMetricsLens <> nil;
 end;
 
-{ Befehle }
-
-function Command(const AId: string; ACaption: TAtlasAnalysisTextId; const ARun: TProc;
-  const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
-begin
-  Result := Default(TAtlasModuleCommand);
-  Result.Id := AId;
-  Result.Caption := TAtlasAnalysisStrings.Text(ACaption);
-  Result.Run := ARun;
-  Result.Visible := AVisible;
-end;
-
-/// <summary>Assistent „Unit nach Architekturrolle“ (#1821).</summary>
-procedure NewRoleUnit;
-begin
-  TAtlasIdeRoleUnit.Execute;
-end;
-
-function Described(const ACommand: TAtlasModuleCommand; ADescription: TAtlasAnalysisTextId): TAtlasModuleCommand;
-begin
-  Result := ACommand;
-  Result.Description := TAtlasAnalysisStrings.Text(ADescription);
-end;
-
-// Sichtbar nach Schalter und Sicherung, wie bisher im Atlas-Menü.
-function ArchitectureVisible: Boolean;
-begin
-  Result := TAtlasIdeArchitecture.Enabled;
-end;
-
-function UnitRelationsVisible: Boolean;
-begin
-  Result := TAtlasIdeUnitRelations.Enabled;
-end;
-
-function HotspotsVisible: Boolean;
-begin
-  Result := TAtlasIdeHotspots.Enabled;
-end;
-
-function SymbolPathVisible: Boolean;
-begin
-  Result := TAtlasIdeSymbolPath.Enabled;
-end;
-
-procedure ShowArchitecture;
-begin
-  TAtlasIdeArchitecture.ShowWindow;
-end;
-
-procedure ShowRanking;
-begin
-  TAtlasIdeArchitecture.ShowRanking;
-end;
-
-procedure ShowUnitRelations;
-begin
-  TAtlasIdeUnitRelations.ShowWindow;
-end;
-
-procedure ShowHotspots;
-begin
-  TAtlasIdeHotspots.ShowWindow;
-end;
-
-procedure ShowSymbolPath;
-begin
-  TAtlasIdeSymbolPath.ShowDialog;
-end;
-
-{ Projektverwaltung (#1817) }
-
-/// <summary>Im Kontextmenü der Projektverwaltung mit genau einer Unit; AFileName erst beim Ausführen gesetzt.
-/// </summary>
-function ProjectUnit(out AFileName: string): Boolean;
-begin
-  Result := TAtlasProjectContext.Active and UnitRelationsVisible and
-    TAtlasProjectContext.Current.SingleUnit(AFileName);
-end;
-
-function ProjectUnitVisible: Boolean;
-var
-  mFileName: string;
-begin
-  Result := ProjectUnit(mFileName);
-end;
-
-procedure ShowProjectUnitRelations;
-var
-  mFileName: string;
-begin
-  if ProjectUnit(mFileName) and (mFileName <> '') then
-  begin
-    TAtlasIdeUnitRelations.ShowFor(mFileName);
-  end;
-end;
-
-procedure ShowProjectDependents;
-var
-  mFileName: string;
-begin
-  if ProjectUnit(mFileName) and (mFileName <> '') then
-  begin
-    TAtlasIdeUnitRelations.ShowDependents(mFileName);
-  end;
-end;
-
-/// <summary>„Abhängige Units (n)“, sobald die Zahl bekannt ist (Auswahl mit Dateinamen, Antwort gemerkt).</summary>
-function DependentsCaption: string;
-var
-  mFileName: string;
-  mCount: Integer;
-begin
-  if ProjectUnit(mFileName) and TAtlasIdeUnitRelations.CachedDependents(mFileName, mCount) then
-  begin
-    Exit(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.ProjectDependentsCount, [mCount]));
-  end;
-  Result := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ProjectDependents);
-end;
-
-{ TAtlasAnalysisModule }
-
-class function TAtlasAnalysisModule.Parts: TArray<IAtlasFeaturePart>;
+function Parts: TArray<IAtlasFeaturePart>;
 begin
   // Wie bisher mit den Editorbefehlen ab dem abgesicherten Start; ihre Einstellungen prüfen die Teile selbst.
   Result := [
@@ -442,102 +274,6 @@ begin
       StopMetricsLens)];
 end;
 
-function TAtlasAnalysisModule.Info: TAtlasModuleInfo;
-begin
-  // Lief mit den Editorbefehlen schon im abgesicherten Start.
-  Result := TAtlasModuleHost.Info(cModuleId, 'Analyse', TAtlasVersion.cVersion, HInstance,
-    TAtlasSafeLevel.Safe, cSwitch);
-end;
-
-procedure TAtlasAnalysisModule.Start;
-begin
-  FActive := True;
-end;
-
-procedure TAtlasAnalysisModule.Stop;
-begin
-  FActive := False;
-end;
-
-function TAtlasAnalysisModule.IsActive: Boolean;
-begin
-  Result := FActive;
-end;
-
-function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
-begin
-  Result := Default(TAtlasMenuEntry);
-  Result.CommandId := ACommandId;
-  Result.Place := APlace;
-end;
-
-/// <summary>Eintrag im eigenen Untermenü des Atlas-Menüs („-“ = Trennlinie).</summary>
-function AtlasEntry(const ACommandId: string): TAtlasMenuEntry;
-begin
-  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
-  Result.Section := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.MenuGroupAnalysis);
-end;
-
-/// <summary>Eintrag unter Ansicht › Atlas mit eigenem Text.</summary>
-function ViewEntry(const ACommandId: string; ACaption: TAtlasAnalysisTextId): TAtlasMenuEntry;
-begin
-  Result := MenuEntry(ACommandId, TAtlasMenuPlace.ViewMenu);
-  Result.Caption := TAtlasAnalysisStrings.Text(ACaption);
-end;
-
-function TAtlasAnalysisModule.Commands: TArray<TAtlasModuleCommand>;
-begin
-  Result := [
-    // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
-    Command('Atlas.Architecture', TAtlasAnalysisTextId.ArchitectureCommand,
-      TAtlasGuard.Wrap(TAtlasFeature.Architecture, ShowArchitecture), ArchitectureVisible),
-    // Hotspots (#1354); nur sichtbar, solange hotspots.enabled an ist.
-    Command('Atlas.Hotspots', TAtlasAnalysisTextId.HotspotsCommand,
-      TAtlasGuard.Wrap(TAtlasFeature.Hotspots, ShowHotspots), HotspotsVisible),
-    // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
-    Command('Atlas.UnitRelations', TAtlasAnalysisTextId.UnitRelationsCommand,
-      TAtlasGuard.Wrap(TAtlasFeature.UnitRelations, ShowUnitRelations), UnitRelationsVisible),
-    // Kosten einer interface-Änderung (#554): Verwender nach Abschnitt und verschiebbare uses der Unit im Editor,
-    // dazu die teuersten Units in der Architekturübersicht.
-    Command('Atlas.UnitDependencies', TAtlasAnalysisTextId.UnitDependenciesCommand, ShowCurrentUnit,
-      UnitRelationsVisible),
-    Command('Atlas.InterfaceCostRanking', TAtlasAnalysisTextId.InterfaceCostRankingCommand,
-      TAtlasGuard.Wrap(TAtlasFeature.Architecture, ShowRanking), ArchitectureVisible),
-    // Weg zwischen Symbolen (#1117); nur sichtbar, solange navigation.symbolPath an ist.
-    Command('Atlas.SymbolPath', TAtlasAnalysisTextId.SymbolPathCommand,
-      TAtlasGuard.Wrap(TAtlasFeature.SymbolPath, ShowSymbolPath),
-      SymbolPathVisible),
-    Command('Atlas.SymbolPathFromHere', TAtlasAnalysisTextId.SymbolPathFromHere,
-      TAtlasGuard.Wrap(TAtlasFeature.SymbolPath, SymbolPathFromHere), SymbolPathVisible),
-    // Assistent in Datei › Neu › Weitere (#1821); auch in der Palette.
-    Described(Command('Atlas.NewRoleUnit', TAtlasAnalysisTextId.RoleUnitCommand,
-      TAtlasGuard.Wrap(TAtlasFeature.Generate, NewRoleUnit), nil), TAtlasAnalysisTextId.RoleUnitHint),
-    // Kontextmenü der Projektverwaltung (#1817); außerhalb unsichtbar.
-    Command('Atlas.ProjectUnitRelations', TAtlasAnalysisTextId.ProjectUnitRelations,
-      TAtlasGuard.Wrap(TAtlasFeature.UnitRelations, ShowProjectUnitRelations), ProjectUnitVisible),
-    Command('Atlas.ProjectDependents', TAtlasAnalysisTextId.ProjectDependents,
-      TAtlasGuard.Wrap(TAtlasFeature.UnitRelations, ShowProjectDependents), ProjectUnitVisible)];
-  // Text mit der Zahl der Verwender, sobald sie bekannt ist.
-  Result[High(Result)].Caption := DependentsCaption;
-end;
-
-function TAtlasAnalysisModule.MenuEntries: TArray<TAtlasMenuEntry>;
-begin
-  Result := [
-    AtlasEntry('Atlas.Architecture'),
-    AtlasEntry('Atlas.Hotspots'),
-    AtlasEntry('Atlas.UnitRelations'),
-    AtlasEntry('Atlas.SymbolPath'),
-    ViewEntry('Atlas.Architecture', TAtlasAnalysisTextId.ArchitectureViewMenu),
-    ViewEntry('Atlas.Hotspots', TAtlasAnalysisTextId.HotspotsViewMenu),
-    ViewEntry('Atlas.UnitRelations', TAtlasAnalysisTextId.UnitRelationsViewMenu),
-    MenuEntry('Atlas.SymbolPathFromHere', TAtlasMenuPlace.EditorContext),
-    MenuEntry('-', TAtlasMenuPlace.ProjectContext),
-    MenuEntry('Atlas.ProjectUnitRelations', TAtlasMenuPlace.ProjectContext),
-    MenuEntry('Atlas.ProjectDependents', TAtlasMenuPlace.ProjectContext),
-    MenuEntry('Atlas.NewRoleUnit', TAtlasMenuPlace.Gallery)];
-end;
-
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
@@ -546,26 +282,18 @@ begin
   TAtlasAnalysisEditorSection.ProvideIn(GScope);
 end;
 
-procedure TAtlasAnalysisModule.ApplySettings;
+/// <summary>codeLens.metrics (#66) an die laufende Metrik-Lens.</summary>
+procedure ApplyLensSettings;
 begin
-  // architecture.* (#1118), hotspots.* (#1354), codeLens.metrics (#66).
-  TAtlasIdeArchitecture.ApplySettings;
-  TAtlasIdeHotspots.ApplySettings;
-  TAtlasIdeUnitRelations.ApplySettings;
   if GMetricsLens <> nil then
   begin
     GMetricsLens.ApplySettings;
   end;
 end;
 
-procedure TAtlasAnalysisModule.ThemeChanged;
-begin
-  TAtlasIdeArchitecture.ThemeChanged;
-  TAtlasIdeHotspots.ThemeChanged;
-  TAtlasIdeUnitRelations.ThemeChanged;
-end;
-
-class function TAtlasAnalysisModule.RegisterModule: Boolean;
+/// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
+/// nicht passt.</summary>
+function RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
   mModule: TAtlasAnalysisModule;
@@ -574,11 +302,12 @@ var
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(TAtlasAnalysisModule.cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion,
+    GScope, mRegistry) then
   begin
     Exit;
   end;
-  mModule := TAtlasAnalysisModule.Create;
+  mModule := TAtlasAnalysisModule.Create(ApplyLensSettings);
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
@@ -593,15 +322,15 @@ begin
   Result := True;
 end;
 
-class procedure TAtlasAnalysisModule.UnregisterModule;
+procedure UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  TAtlasModuleHost.Unregister(GScope, TAtlasAnalysisModule.cModuleId, HInstance, nil);
 end;
 
 initialization
-  TAtlasAnalysisModule.RegisterModule;
+  RegisterModule;
 
 finalization
-  TAtlasAnalysisModule.UnregisterModule;
+  UnregisterModule;
 
 end.

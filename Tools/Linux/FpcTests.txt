@@ -135,7 +135,7 @@ Atlas.Common.Editing.PromoteVariable.Tests
 Atlas.Common.Editing.PropertyFromAccessors.Tests
 Atlas.Common.Editing.RaiseVisibility.Tests
 Atlas.Common.Editing.ResourceStrings.Tests
-Atlas.Common.Editing.RoutineLocals.Tests
+Atlas.Common.Pascal.RoutineLocals.Tests
 Atlas.Common.Editing.RoutineParts.Tests
 Atlas.Common.Editing.SafeDelete.Tests
 Atlas.Common.Editing.SmartIndent.Tests
