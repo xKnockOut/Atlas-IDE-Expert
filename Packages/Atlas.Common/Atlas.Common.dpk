@@ -133,6 +133,7 @@ contains
   Atlas.Common.Rules.Contract in 'Source\Rules\Atlas.Common.Rules.Contract.pas',
   Atlas.Common.Rules.Contract.Api in 'Source\Rules\Atlas.Common.Rules.Contract.Api.pas',
   Atlas.Common.Rules.Providers.InheritanceDepths in 'Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas',
+  Atlas.Common.Rules.Providers.OwnershipReport in 'Source\Rules\Atlas.Common.Rules.Providers.OwnershipReport.pas',
   Atlas.Common.Rules.CheckContext in 'Source\Rules\Atlas.Common.Rules.CheckContext.pas',
   Atlas.Common.Rules.Derived in 'Source\Rules\Atlas.Common.Rules.Derived.pas',
   Atlas.Common.Rules.TypedScope in 'Source\Rules\Atlas.Common.Rules.TypedScope.pas',

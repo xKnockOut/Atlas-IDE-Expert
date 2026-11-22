@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.Ownership.Tests;
 
-// Tests für den Befehl atlas.server.ownership (#1877): Antwort mit Zeile, Art, Freigabezeile und Zeilentext,
-// „nie freigegeben“ nur mit eingeschalteter Regel, leere Antwort ohne Text, Fehler ohne URI, nebenläufig angemeldet.
+// Tests für den Befehl atlas.server.ownership (#1877): Antwort vom Host, leere Antwort ohne Host, Fehler ohne URI,
+// nebenläufig angemeldet.
 
 interface
 
@@ -13,11 +13,9 @@ type
   TLspOwnershipTests = class
   public
     [Test]
-    procedure AnswerListsSites;
+    procedure AnswerComesFromReport;
     [Test]
-    procedure NeverOnlyWithTheRule;
-    [Test]
-    procedure UnreadableFileGivesNoSites;
+    procedure WithoutReportGivesNoSites;
     [Test]
     procedure MissingUriRaises;
     [Test]
@@ -31,63 +29,43 @@ uses
   System.JSON,
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin.FreeFields,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.Ownership,
   Atlas.Text.Json;
 
 const
-  cNl = #10;
   cUri = 'file:///C:/P/U.pas';
-  cSource = 'unit U;' + cNl + 'interface' + cNl + 'uses' + cNl + '  System.Classes;' + cNl + 'type' + cNl +
-    '  TKunde = class' + cNl + '  private' + cNl + '    FNamen: TStringList;' + cNl + '    FAlt: TStringList;' + cNl +
-    '  public' + cNl + '    constructor Create;' + cNl + '    destructor Destroy; override;' + cNl + '  end;' + cNl +
-    'implementation' + cNl + 'constructor TKunde.Create;' + cNl + 'begin' + cNl +
-    '  FNamen := TStringList.Create;  ' + cNl + '  FAlt := TStringList.Create;' + cNl + 'end;' + cNl +
-    'destructor TKunde.Destroy;' + cNl + 'begin' + cNl + '  FNamen.Free;' + cNl + 'end;' + cNl + 'end.';
 
-/// <summary>Eingabe mit cSource; AWithRule schaltet field-not-freed zu.</summary>
-function Input(AWithRule: Boolean): TLspOwnershipInput;
+type
+  /// <summary>Antwort mit der URI und einer Stelle der Art "destroy".</summary>
+  TFixedReport = class(TInterfacedObject, ILspOwnershipReport)
+  public
+    function Report(const AUri: string): TJSONObject;
+  end;
+
+function TFixedReport.Report(const AUri: string): TJSONObject;
+var
+  mSites: TJSONArray;
+  mSite: TJSONObject;
 begin
-  Result :=
-    function(const AUri: string; out AText: string; out ARules: TRuleCheckContext): Boolean
-    var
-      mRule: IRule;
-    begin
-      AText := cSource;
-      ARules := Default(TRuleCheckContext);
-      ARules.Settings := TServerSettings.Default;
-      if AWithRule then
-      begin
-        mRule := TOwnedFieldNotFreedRule.Create;
-        ARules.Rules := [mRule];
-      end;
-      Result := True;
-    end;
+  Result := TJSONObject.Create;
+  Result.AddPair('uri', AUri);
+  mSites := TJSONArray.Create;
+  Result.AddPair('sites', mSites);
+  mSite := TJSONObject.Create;
+  mSite.AddPair('kind', 'destroy');
+  mSites.AddElement(mSite);
 end;
 
-function NoFile: TLspOwnershipInput;
-begin
-  Result :=
-    function(const AUri: string; out AText: string; out ARules: TRuleCheckContext): Boolean
-    begin
-      AText := '';
-      ARules := Default(TRuleCheckContext);
-      Result := False;
-    end;
-end;
-
-function Run(const AInput: TLspOwnershipInput; out ASites: TJSONArray): TJSONObject;
+function Run(const AReport: ILspOwnershipReport; out ASites: TJSONArray): TJSONObject;
 var
   mArguments: TJSONArray;
 begin
   mArguments := TJSONArray.Create;
   try
     mArguments.Add(cUri);
-    Result := TLspOwnership.Execute(mArguments, AInput) as TJSONObject;
+    Result := TLspOwnership.Execute(mArguments, AReport) as TJSONObject;
   finally
     mArguments.Free;
   end;
@@ -101,53 +79,31 @@ end;
 
 { TLspOwnershipTests }
 
-procedure TLspOwnershipTests.AnswerListsSites;
+procedure TLspOwnershipTests.AnswerComesFromReport;
 var
+  mReport: ILspOwnershipReport;
   mAnswer: TJSONObject;
   mSites: TJSONArray;
 begin
-  mAnswer := Run(Input(True), mSites);
+  mReport := TFixedReport.Create;
+  mAnswer := Run(mReport, mSites);
   try
     Assert.AreEqual(cUri, Text(mAnswer, 'uri'));
-    Assert.AreEqual(2, Integer(mSites.Count));
-    Assert.AreEqual('16', Text(mSites.Items[0], 'line'));
-    Assert.AreEqual('12', Text(mSites.Items[0], 'character'));
-    Assert.AreEqual('  FNamen := TStringList.Create;', Text(mSites.Items[0], 'lineText'));
-    Assert.AreEqual('TStringList', Text(mSites.Items[0], 'className'));
-    Assert.AreEqual('FNamen', Text(mSites.Items[0], 'target'));
+    Assert.AreEqual(1, Integer(mSites.Count));
     Assert.AreEqual('destroy', Text(mSites.Items[0], 'kind'));
-    Assert.AreEqual('21', Text(mSites.Items[0], 'freeLine'));
-    Assert.AreEqual('Destroy', Text(mSites.Items[0], 'detail'));
-    Assert.AreEqual('', Text(mSites.Items[0], 'rule'));
-    Assert.AreEqual('never', Text(mSites.Items[1], 'kind'));
-    Assert.AreEqual('field-not-freed', Text(mSites.Items[1], 'rule'));
-    Assert.AreEqual('', Text(mSites.Items[1], 'freeLine'));
   finally
     mAnswer.Free;
   end;
 end;
 
-procedure TLspOwnershipTests.NeverOnlyWithTheRule;
+procedure TLspOwnershipTests.WithoutReportGivesNoSites;
 var
   mAnswer: TJSONObject;
   mSites: TJSONArray;
 begin
-  mAnswer := Run(Input(False), mSites);
+  mAnswer := Run(nil, mSites);
   try
-    Assert.AreEqual(2, Integer(mSites.Count));
-    Assert.AreEqual('unknown', Text(mSites.Items[1], 'kind'));
-  finally
-    mAnswer.Free;
-  end;
-end;
-
-procedure TLspOwnershipTests.UnreadableFileGivesNoSites;
-var
-  mAnswer: TJSONObject;
-  mSites: TJSONArray;
-begin
-  mAnswer := Run(NoFile(), mSites);
-  try
+    Assert.AreEqual(cUri, Text(mAnswer, 'uri'));
     Assert.AreEqual(0, Integer(mSites.Count));
   finally
     mAnswer.Free;
@@ -163,7 +119,7 @@ begin
   mArguments := TJSONArray.Create;
   try
     try
-      TLspOwnership.Execute(mArguments, NoFile()).Free;
+      TLspOwnership.Execute(mArguments, nil).Free;
     except
       on E: EJsonRpcError do
       begin
@@ -182,7 +138,7 @@ var
 begin
   mCommands := TLspCommands.Create;
   try
-    TLspOwnership.Attach(mCommands, NoFile());
+    TLspOwnership.Attach(mCommands, nil);
     Assert.IsTrue(mCommands.IsConcurrentCommand(TLspOwnership.cCommand));
   finally
     mCommands.Free;

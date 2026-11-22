@@ -77,6 +77,7 @@ uses
   Shell.Composition.CoreWiring in 'Source\Shell\Shell.Composition.CoreWiring.pas',
   Adapters.Rules.IdeTypes in 'Source\Adapters\Adapters.Rules.IdeTypes.pas',
   Adapters.Lsp.InheritanceDepths in 'Source\Adapters\Adapters.Lsp.InheritanceDepths.pas',
+  Adapters.Lsp.OwnershipReport in 'Source\Adapters\Adapters.Lsp.OwnershipReport.pas',
   Shell.Composition.FeatureWiring in 'Source\Shell\Shell.Composition.FeatureWiring.pas',
   Shell.Composition.CommandWiring in 'Source\Shell\Shell.Composition.CommandWiring.pas',
   Shell.Composition.ClientStart in 'Source\Shell\Shell.Composition.ClientStart.pas',
