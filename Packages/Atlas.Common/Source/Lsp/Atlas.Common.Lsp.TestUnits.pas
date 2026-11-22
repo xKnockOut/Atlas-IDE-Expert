@@ -143,7 +143,7 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Profiles,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.TreeUnits,
@@ -367,7 +367,7 @@ begin
     Result.UnitName := ChangeFileExt(ExtractFileName(AFileName), '');
   end;
   if TTestUnits.TestedUnitName(Result.UnitName, AContext.Settings.Pattern, mTested) and
-    TRuleProfiles.IsTestUnit(ATokens) then
+    TPascalUses.IsTestUnit(ATokens) then
   begin
     SetTested(Result, mTested, AContext);
     Exit;
