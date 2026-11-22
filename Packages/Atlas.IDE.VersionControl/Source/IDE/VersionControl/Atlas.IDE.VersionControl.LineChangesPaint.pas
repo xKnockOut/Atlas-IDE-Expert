@@ -57,7 +57,7 @@ uses
   Atlas.Core.VersionControl.LineChangesPlan,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.Navigation;
 
 { TAtlasLineChangesPaint }

@@ -52,7 +52,7 @@ uses
   Atlas.UI.Editor.Strings,
   Atlas.Vcl.Popup.Window,
   Atlas.UI.Editor.Minimap,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 const

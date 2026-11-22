@@ -45,8 +45,8 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Diagnostics.BugReport,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Files.Format,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Files.Format,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Diagnostics.BugReport;
 

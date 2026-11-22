@@ -205,7 +205,7 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Lines,
   System.StrUtils,
-  Atlas.Core.Files.TextDiff,
+  Atlas.Plugin.Files.TextDiff,
   Atlas.Core.Tracker.Naming;
 
 function IsAlnum(AChar: Char): Boolean;

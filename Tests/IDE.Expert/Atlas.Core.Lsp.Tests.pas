@@ -122,7 +122,7 @@ uses
   Atlas.Core.Lsp.Session.Json,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Files.WatchedChanges,
+  Atlas.Plugin.Files.WatchedChanges,
   Atlas.Core.Lsp.ProjectContext.Contract,
   Atlas.Core.Diagnostics.PluginTimings,
   Atlas.Core.Lsp.Framing,

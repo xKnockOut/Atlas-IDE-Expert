@@ -117,7 +117,7 @@ uses
   Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Updates.Offer,
   Atlas.UI.Updates.Selection,

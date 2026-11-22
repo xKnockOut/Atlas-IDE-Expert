@@ -13,7 +13,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Files.WatchedChanges,
+  Atlas.Plugin.Files.WatchedChanges,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Lsp.Session.Json,

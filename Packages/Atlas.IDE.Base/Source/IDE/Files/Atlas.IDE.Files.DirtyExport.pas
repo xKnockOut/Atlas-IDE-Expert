@@ -14,7 +14,7 @@
 // übergeht der Server. Beim Start räumt das Plugin die Dateien, den Zustand
 // für KI-Assistenten (ide-context-<pid>.json, #2050) und Build-Eingänge
 // (ide-builds\<pid>) abgestürzter oder hart beendeter Prozesse weg
-// (Atlas.Core.Files.ProcessLeftovers).
+// (Atlas.Plugin.Files.ProcessLeftovers).
 
 interface
 
@@ -50,8 +50,8 @@ uses
   System.IOUtils,
   System.JSON,
   ToolsAPI,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Files.ProcessLeftovers,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Files.ProcessLeftovers,
   Atlas.Text.Files;
 
 const

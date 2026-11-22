@@ -55,7 +55,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.Entries,
+  Atlas.Plugin.Files.Entries,
   Atlas.Core.Problems.Contract;
 
 type

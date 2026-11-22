@@ -20,7 +20,7 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.InboxPace,
   Atlas.Core.Assistants.Log,

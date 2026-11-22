@@ -76,7 +76,7 @@ uses
   System.IOUtils,
   System.UITypes,
   Vcl.Dialogs,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.UI.Strings,

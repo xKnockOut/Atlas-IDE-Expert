@@ -164,7 +164,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Foundation.Calls,
   Atlas.Core.StartProfiles.Store,
-  Atlas.IDE.Foundation.Debugger,
+  Atlas.ToolsApi.Debugger.Services,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,

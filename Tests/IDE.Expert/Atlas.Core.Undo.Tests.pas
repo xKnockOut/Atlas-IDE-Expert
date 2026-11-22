@@ -61,7 +61,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Undo.LinePatch,
   Atlas.Core.Undo.Journal,

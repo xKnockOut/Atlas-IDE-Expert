@@ -32,7 +32,7 @@ type
 implementation
 
 uses
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.Core.Diagnostics.BugReport,
   Atlas.Core.Diagnostics.Package,
   Atlas.Core.Diagnostics.ServerPackage,

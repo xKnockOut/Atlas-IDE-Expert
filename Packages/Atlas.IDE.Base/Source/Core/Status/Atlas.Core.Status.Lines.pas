@@ -23,7 +23,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Files.Format;
+  Atlas.Plugin.Files.Format;
 
 type
 {$SCOPEDENUMS ON}

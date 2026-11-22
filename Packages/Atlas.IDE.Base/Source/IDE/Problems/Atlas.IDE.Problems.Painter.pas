@@ -108,8 +108,8 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Colors,
   Atlas.Text.Columns,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
@@ -117,7 +117,7 @@ uses
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Problems.Marks,
   Atlas.Core.Editor.Hide,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.LineTracker;
 
 { TAtlasProblemsPainter.TEvents }

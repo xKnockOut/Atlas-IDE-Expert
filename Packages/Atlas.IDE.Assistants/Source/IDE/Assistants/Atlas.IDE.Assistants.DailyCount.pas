@@ -23,7 +23,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Assistants.AiGhost;
 
 const

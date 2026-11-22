@@ -67,8 +67,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Plan,
-  Atlas.Core.Editor.CloseRules,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Editor.CloseRules,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Hover.EditorContent,
   Atlas.IDE.Hover.IdeHelpInsight;
 
@@ -176,8 +176,8 @@ uses
   Vcl.Forms,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.View,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Outline.StickyScroll;

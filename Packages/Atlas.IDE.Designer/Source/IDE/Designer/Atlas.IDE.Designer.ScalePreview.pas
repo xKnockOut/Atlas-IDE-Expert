@@ -57,7 +57,7 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.FitText,
   Atlas.IDE.Designer.Model,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 const

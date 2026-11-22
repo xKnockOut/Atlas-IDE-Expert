@@ -17,7 +17,7 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.Core.Assistants.Log,
   Atlas.UI.Assistants.LogFrame;
 
@@ -82,7 +82,7 @@ uses
   ToolsAPI,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Assistants.EditPlan,
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Assistants.LogEntries,

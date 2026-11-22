@@ -50,8 +50,8 @@ uses
   Atlas.Core.Commands.MenuContext,
   Atlas.Core.Settings.ContextMenuGroups,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Commands.EditorContext;
 
 /// <summary>Hat das Modul ein Formular (DFM bzw. FMX im Designer)?</summary>

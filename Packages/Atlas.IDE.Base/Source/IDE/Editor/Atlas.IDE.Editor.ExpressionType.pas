@@ -103,11 +103,11 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.PaintedLine,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.ToolsApi.Editor.Caret;
 
 /// <summary>Gedrückte Taste mit Umschalt, Strg und Alt als TShortCut.</summary>
 function PressedShortCut(AKey: Word): TShortCut;

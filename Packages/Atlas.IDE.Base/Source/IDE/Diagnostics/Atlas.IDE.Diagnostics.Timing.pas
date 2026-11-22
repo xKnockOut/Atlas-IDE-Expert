@@ -109,7 +109,7 @@ uses
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Diagnostics.TimingWindow,

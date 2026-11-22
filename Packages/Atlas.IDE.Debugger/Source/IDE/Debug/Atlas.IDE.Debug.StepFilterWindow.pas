@@ -46,7 +46,7 @@ uses
   ToolsAPI,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TStepFilterDock = class(TInterfacedObject, INTACustomDockableForm)

@@ -181,7 +181,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Settings.SchemaCheck,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.PluginSchemaData,

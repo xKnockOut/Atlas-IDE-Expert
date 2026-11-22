@@ -40,7 +40,7 @@
       "exclude": ["Tests/**"],
       "hostedFeatures": ["Replay", "Monitor", "Update"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
-        "Atlas.Vcl", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
+        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
       "allow": [
         "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
@@ -48,6 +48,7 @@
         "Atlas.Core.Lsp.Contract -> Atlas.Text.Json",
         "Atlas.Core.Lsp.ProjectContext.Contract -> Atlas.Text.Json",
         "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Plugin.Files.Providers.FolderWatcher",
         "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.IDE.Undo.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.IdeAdapters -> Atlas.IDE.*.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.UiAdapters -> Atlas.UI.*.Adapters.*",
@@ -66,7 +67,7 @@
       "exclude": ["Tests/**"],
       "hostedFeatures": ["Replay", "Monitor", "Update"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
-        "Atlas.Vcl", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
+        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
       "allow": ["Atlas.Common.Dfm.Contract.TDfm*"]
     },
     "architecture-feature-cycle": {

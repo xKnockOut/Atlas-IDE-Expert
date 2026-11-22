@@ -20,7 +20,7 @@ uses
   System.Classes,
   Atlas.Core.Designer.Neighbours,
   Atlas.UI.Designer.Flash,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   TAtlasIdeDesignerNavigate = class;
@@ -66,7 +66,7 @@ uses
   DesignIntf,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Designer.Names;
 

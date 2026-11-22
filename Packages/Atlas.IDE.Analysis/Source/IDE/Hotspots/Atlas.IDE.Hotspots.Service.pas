@@ -62,11 +62,11 @@ uses
   Atlas.Core.Hotspots.Model,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Hotspots.Frame,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Hotspots.Window,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   /// <summary>Die Antwort kommt sofort (der Server rechnet im Hintergrund); länger nur bei einem Server, der

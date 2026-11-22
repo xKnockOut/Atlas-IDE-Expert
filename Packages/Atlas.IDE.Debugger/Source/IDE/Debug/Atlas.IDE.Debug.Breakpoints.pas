@@ -51,7 +51,7 @@ type
 implementation
 
 uses
-  Atlas.IDE.Foundation.Debugger,
+  Atlas.ToolsApi.Debugger.Services,
   Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeBreakpoints }

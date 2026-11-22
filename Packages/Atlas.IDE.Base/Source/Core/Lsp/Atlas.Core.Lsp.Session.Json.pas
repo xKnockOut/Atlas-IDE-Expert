@@ -179,7 +179,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.Lsp.Uris,
+  Atlas.Plugin.Lsp.Uris,
   Atlas.Text.Json;
 
 { TLspSessionJson }

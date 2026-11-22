@@ -100,7 +100,7 @@ Atlas.Common.Editing.CreateMethod.Tests
 Atlas.Common.Editing.DataFieldNames.Tests
 Atlas.Common.Editing.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests
-Atlas.Common.Editing.DocComments.Tests
+Atlas.Common.Pascal.DocComments.Tests
 Atlas.Common.Editing.EnumTables.Tests
 Atlas.Common.Editing.ExpressionText.Tests
 Atlas.Common.Editing.Extract.Duplicates.Tests
@@ -112,7 +112,7 @@ Atlas.Common.Editing.FormatCheck.Tests
 Atlas.Common.Editing.Formatter.Indent.Tests
 Atlas.Common.Editing.Formatter.Layout.Tests
 Atlas.Common.Editing.Formatter.Tests
-Atlas.Common.Editing.ForwardDeclarations.Tests
+Atlas.Common.Pascal.ForwardDeclarations.Tests
 Atlas.Common.Semantics.OwnedFields.Tests
 Atlas.Common.Editing.FreeFields.Tests
 Atlas.Common.Editing.GenericLists.Parts.Tests
@@ -573,13 +573,13 @@ Atlas.Core.Debug.Profiler.Tests
 Atlas.Core.Debug.ObjectCount.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
-Atlas.Core.Editor.BarDock.Tests
+Atlas.ToolsApi.EditorBars.Order.Tests
 Atlas.Core.Editor.GhostKeys.Tests
 Atlas.Core.Editor.ExitPointAsk.Tests
 Atlas.Core.Editor.SourceFiles.Tests
 Atlas.Core.Editor.GutterPanel.Tests
 Atlas.Core.Editor.CaretSteps.Tests
-Atlas.Core.Editor.TabOrder.Tests
+Atlas.ToolsApi.Editor.TabOrder.Tests
 Atlas.Core.Editor.LinkedKeys.Tests
 Atlas.Core.Editor.LinkedSession.Tests
 Atlas.Core.Editor.MultiCursorSession.Tests
@@ -761,10 +761,10 @@ Atlas.Core.Tests.ListText.Tests
 Atlas.Core.Tests.ListFile.Tests
 Atlas.Core.Tests.Log.Tests
 Atlas.Core.InlayHints.Store.Tests
-Atlas.Core.Files.Entries.Tests
+Atlas.Plugin.Files.Entries.Tests
 Atlas.Core.Editor.InlayPlan.Tests
 Atlas.Core.Editor.PlaceholderPlan.Tests
-Atlas.Core.Lsp.TextOffsets.Tests
+Atlas.Plugin.Editor.TextOffsets.Tests
 Atlas.Core.Completion.CommitPlan.Tests
 Atlas.Core.Debug.EvaluateRows.Tests
 Atlas.Core.Debug.EvalSlices.Tests

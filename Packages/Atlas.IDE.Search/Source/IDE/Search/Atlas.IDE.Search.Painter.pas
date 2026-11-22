@@ -54,8 +54,8 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Text.Columns,
   Atlas.Text.Lines,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Search.Editor,
   Atlas.IDE.Search.Session;
 

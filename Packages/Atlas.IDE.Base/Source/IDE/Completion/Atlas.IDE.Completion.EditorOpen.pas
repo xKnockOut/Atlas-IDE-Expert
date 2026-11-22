@@ -46,17 +46,17 @@ uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Timing,
-  Atlas.Core.Completion.Word,
+  Atlas.Plugin.Editor.Word,
   Atlas.Core.Completion.Ranking,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorWindows,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Windows,
+  Atlas.ToolsApi.Editor.Caret;
 
 /// <summary>Plattform und Konfiguration des aktiven Projekts („Win32 · Debug“, #476); '' ohne Projekt.</summary>
 function ActiveTarget: string;

@@ -39,7 +39,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Problems.Store,

@@ -117,13 +117,13 @@ uses
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.IDE.Foundation.Caret,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Editor.Caret,
+  Atlas.ToolsApi.Debugger.Services;
 
 /// <summary>Taste AKey in der offenen Liste ausführen; False, wenn die Liste sie nicht kennt.</summary>
 function ListKey(AWindow: TAtlasStepIntoWindow; AKey: Word): Boolean;

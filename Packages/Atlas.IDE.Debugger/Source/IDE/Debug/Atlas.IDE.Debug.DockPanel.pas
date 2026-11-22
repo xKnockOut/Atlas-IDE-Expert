@@ -11,7 +11,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TAtlasIdeDebugDockPanel = class

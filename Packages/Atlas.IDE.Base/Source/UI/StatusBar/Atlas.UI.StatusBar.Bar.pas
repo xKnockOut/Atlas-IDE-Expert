@@ -49,7 +49,7 @@ uses
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
   Atlas.Core.StatusBar.Layout,
-  Atlas.UI.Editor.Bar;
+  Atlas.Vcl.Controls.EditorBar;
 
 type
 {$SCOPEDENUMS ON}

@@ -9,7 +9,7 @@
 //   - Schließen (#414): Cursor verlässt das Wort oder die Zeile, Editor verliert
 //     den Fokus, IDE wird inaktiv, Editor scrollt, Ansicht wechselt.
 //   - Tasten: Nur solange das Popup offen ist, nimmt es über den gemeinsamen
-//     Tastatur-Hook (Atlas.IDE.Foundation.KeyHook) ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
+//     Tastatur-Hook (Atlas.ToolsApi.Keys.Hook) ↑ ↓ Bild↑ Bild↓ Pos1 Ende Enter Tab Esc
 //     ohne Umschalt/Strg/Alt entgegen; sonst gehen alle Tasten an den Editor.
 //   - Übernahme: ein Undo-Schritt (CreateUndoableWriter) für Name und uses-Ergänzung.
 //   - Detailpanel (#424): 80 ms nach einem Wechsel der Auswahl fragt die Quelle die
@@ -39,7 +39,7 @@ uses
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.EditorPlan,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.EditorState,
   Atlas.IDE.Completion.EditorCommit;
@@ -117,10 +117,10 @@ uses
   Atlas.Core.Completion.Preview,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Presentation,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorWindows,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Windows,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Signature.Editor,

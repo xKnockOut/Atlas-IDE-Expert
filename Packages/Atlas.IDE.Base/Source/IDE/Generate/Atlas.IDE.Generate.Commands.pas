@@ -75,7 +75,7 @@ uses
   Vcl.Controls,
   Atlas.Text.Lines,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
@@ -84,12 +84,12 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Generate.Strings,
   Atlas.UI.Generate.Window,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.IDE.Foundation.Caret,
+  Atlas.ToolsApi.Editor.Caret,
   Atlas.Core.Notifications.MessageSink;
 
 const

@@ -27,7 +27,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Contract.CommentAssist;
 

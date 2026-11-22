@@ -41,7 +41,7 @@ uses
   System.DateUtils,
   Vcl.Forms,
   Vcl.ComCtrls,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Undo.Contract,
   Atlas.UI.Undo.Strings,
   Atlas.UI.Undo.Messages,

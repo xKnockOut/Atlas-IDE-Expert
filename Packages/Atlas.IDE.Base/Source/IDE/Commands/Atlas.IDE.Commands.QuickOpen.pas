@@ -53,7 +53,7 @@ uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.ProjectContext.Contract,
   Atlas.Core.Projects.PathCheck,
@@ -63,12 +63,12 @@ uses
   Atlas.Core.Commands.QuickOpenTarget,
   Atlas.UI.Commands.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer;
 
 const
   cSymbolTimeoutMs = 1500;

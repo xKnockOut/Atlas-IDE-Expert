@@ -73,7 +73,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.IOUtils,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Text.Json;
 
 const

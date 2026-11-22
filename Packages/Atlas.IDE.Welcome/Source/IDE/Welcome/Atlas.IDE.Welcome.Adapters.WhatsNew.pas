@@ -86,7 +86,7 @@ uses
   System.Classes,
   Vcl.Menus,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,

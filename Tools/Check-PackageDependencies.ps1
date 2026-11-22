@@ -18,6 +18,9 @@
     - Atlas.Vcl     : Platform-Package des Plugins, das VCL kapselt (Steuerelemente, Dialoge, Thema, Popups); RTL,
         Winapi.*, VCL, Atlas.Text, Atlas.WinBase, Atlas.Plugin; ohne Open Tools API und Fachcode von Base;
         Quelltext unter Packages/Atlas.Vcl/Source wie Atlas.Plugin
+    - Atlas.ToolsApi: Platform-Package des Plugins, das die Open Tools API kapselt (Editorpuffer, Andockfenster,
+        Editorleisten, Neuzeichnen, Tasten, Gutter, Dateien der IDE); RTL, Winapi.*, VCL, Open Tools API, Atlas.Text,
+        Atlas.WinBase, Atlas.Plugin, Atlas.Vcl; ohne Fachcode von Base; Quelltext unter Packages/Atlas.ToolsApi/Source
     - Atlas.Core.VersionControl.* (Versionsverwaltung, #571): übersetzt auch der Server
         mit; darum nur RTL, Winapi, Atlas.Text.*, Atlas.WinBase.* und eigene Atlas.Core.VersionControl.*-Units
 
@@ -26,7 +29,8 @@
     '..\Atlas.Text\Source\…' bzw. '..\Atlas.WinBase\Source\…'). Geprüft wird, dass
       - das Plugin außer eigenen Units (Source\…) nur Units dieser beiden enthält,
       - es genau die Units aus Atlas.Text.dpk und Atlas.WinBase.dpk enthält (sonst W1033),
-      - es jede Unit unter Packages/Atlas.Plugin/Source und Packages/Atlas.Vcl/Source enthält (ohne eigenes dpk),
+      - es jede Unit unter Packages/Atlas.Plugin/Source, Packages/Atlas.Vcl/Source und
+        Packages/Atlas.ToolsApi/Source enthält (ohne eigenes dpk),
       - Atlas.Tests.dpr und AtlasServer.dpr keine Quellen der beiden einbinden
         (sie linken die DCUs aus Dcu\Atlas.Text bzw. Dcu\Atlas.WinBase; zwei Fassungen vermeiden).
 
@@ -227,7 +231,7 @@ $Packages += @{
     Path             = 'Packages/Atlas.Plugin'
     AllowedRequires  = @()
     ForbiddenPrefix  = @('Vcl.', 'FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.',
-                         'Atlas.Vcl.', 'Setup.', 'ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', 'DesignWindows',
+                         'Atlas.Vcl.', 'Atlas.ToolsApi.', 'Setup.', 'ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', 'DesignWindows',
                          'PropInspAPI', 'DockForm')
     ForbiddenUnits   = $LegacyVclUnits
     Reason           = 'frei von VCL, Open Tools API und Fachcode von Base (nur RTL, Windows-API, Atlas.Text, Atlas.WinBase)'
@@ -236,11 +240,19 @@ $Packages += @{
     Name             = 'Atlas.Vcl'
     Path             = 'Packages/Atlas.Vcl'
     AllowedRequires  = @()
-    ForbiddenPrefix  = @('FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.', 'Setup.',
-                         'ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', 'DesignWindows', 'PropInspAPI',
-                         'DockForm')
+    ForbiddenPrefix  = @('FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.',
+                         'Atlas.ToolsApi.', 'Setup.', 'ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus',
+                         'DesignWindows', 'PropInspAPI', 'DockForm')
     ForbiddenUnits   = @()
     Reason           = 'frei von Open Tools API und Fachcode von Base (nur RTL, Windows-API, VCL, Atlas.Text, Atlas.WinBase, Atlas.Plugin)'
+}
+$Packages += @{
+    Name             = 'Atlas.ToolsApi'
+    Path             = 'Packages/Atlas.ToolsApi'
+    AllowedRequires  = @()
+    ForbiddenPrefix  = @('FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.', 'Setup.')
+    ForbiddenUnits   = @()
+    Reason           = 'frei von Fachcode von Base (nur RTL, Windows-API, VCL, Open Tools API, Atlas.Text, Atlas.WinBase, Atlas.Plugin, Atlas.Vcl)'
 }
 # Module requiren nur Base, das auch die Verträge zwischen Modulen enthält (Regel 9).
 foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
@@ -262,15 +274,15 @@ $OpenToolsPrefix = @('ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', '
 $Layers = @(
     @{
         UnitPrefix      = 'Atlas.Core.'
-        ForbiddenPrefix = @('Vcl.', 'Atlas.UI.', 'Atlas.IDE.') + $OpenToolsPrefix
+        ForbiddenPrefix = @('Vcl.', 'Atlas.UI.', 'Atlas.IDE.', 'Atlas.Vcl.', 'Atlas.ToolsApi.') + $OpenToolsPrefix
         ForbiddenUnits  = $LegacyVclUnits
-        Reason          = 'frei von VCL, Open Tools API, Atlas.UI und Atlas.IDE'
+        Reason          = 'frei von VCL, Open Tools API, Atlas.UI, Atlas.IDE, Atlas.Vcl und Atlas.ToolsApi'
     },
     @{
         UnitPrefix      = 'Atlas.UI.'
-        ForbiddenPrefix = @('Atlas.IDE.') + $OpenToolsPrefix
+        ForbiddenPrefix = @('Atlas.IDE.', 'Atlas.ToolsApi.') + $OpenToolsPrefix
         ForbiddenUnits  = @()
-        Reason          = 'frei von Open Tools API und Atlas.IDE'
+        Reason          = 'frei von Open Tools API, Atlas.IDE und Atlas.ToolsApi'
     }
 )
 
@@ -313,9 +325,9 @@ $AllowedLocal = @{
     'Atlas.Core.Tracker.CodeLinks:IsWordChar'                           = 'Issue-Kennungen: Buchstaben ab #128 gehören zum Wort (äATL-1 ist keine Kennung, gegen IsAsciiIdentChar), Satzzeichen ab #128 („, “, –) nicht (gegen IsIdentChar)'
     'Atlas.Common.Rules.Builtin.Unused:IsWordChar'                      = 'verschachtelt mit Index; folgt mit Block Rules'
     'Atlas.Core.InlayHints.Store:TAtlasInlayHintStore.SplitLines'      = 'öffentliche Weiterleitung an TTextLines.SplitLines'
-    'Atlas.Core.Files.Format:TAtlasFileFormats.IsUtf8'                 = 'Fassade, leitet an TTextEncodingProbe weiter'
-    'Atlas.Core.Files.Format:TAtlasFileFormats.LineBreakOf'            = 'Fassade mit eigenem Typ TAtlasLineBreak'
-    'Atlas.Core.Files.TextFile:TAtlasTextFile.IsUtf8'                  = 'Fassade, leitet an TTextEncodingProbe weiter'
+    'Atlas.Plugin.Files.Format:TAtlasFileFormats.IsUtf8'                 = 'Fassade, leitet an TTextEncodingProbe weiter'
+    'Atlas.Plugin.Files.Format:TAtlasFileFormats.LineBreakOf'            = 'Fassade mit eigenem Typ TAtlasLineBreak'
+    'Atlas.Plugin.Files.TextFile:TAtlasTextFile.IsUtf8'                  = 'Fassade, leitet an TTextEncodingProbe weiter'
     'Atlas.Core.Undo.LinePatch:TAtlasLinePatch.SplitLines'             = 'öffentliche Weiterleitung an TTextLines.SplitKeepingBreaks'
     'Atlas.Core.Completion.Snippets:TAtlasSnippets.IndentOf'           = 'öffentliche Weiterleitung an TTextLines.IndentOf'
     'Atlas.Core.Editor.MultiCursor:TAtlasMultiCursor.LineBreakOf'      = 'öffentliche Weiterleitung an TTextLines.LineBreakOf'
@@ -441,8 +453,8 @@ $JsonParseLockNames = @('ParseObject', 'ParseValue', 'ParseJson', 'Parse', 'Pars
 
 # Erlaubte eigene Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $AllowedJsonParseLocal = @{
-    'Atlas.Core.Settings.JsonText:Parse'                   = 'Deklaration von TAtlasJsonText.Parse'
-    'Atlas.Core.Settings.JsonText:TAtlasJsonText.Parse'    = 'entfernt Kommentare (JSONC), leitet an TJsonRead.ParseObject weiter'
+    'Atlas.Plugin.Settings.JsonText:Parse'                   = 'Deklaration von TAtlasJsonText.Parse'
+    'Atlas.Plugin.Settings.JsonText:TAtlasJsonText.Parse'    = 'entfernt Kommentare (JSONC), leitet an TJsonRead.ParseObject weiter'
     'Atlas.Core.Settings.Catalog:Parse'                    = 'Deklaration von TAtlasJsonValues.Parse'
     'Atlas.Core.Settings.Catalog:TAtlasJsonValues.Parse'   = 'liest auch einzelne Zahlen, Strings und Wahrheitswerte (über ein Hüllobjekt)'
 }
@@ -540,18 +552,18 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'TopView'
         Folder  = 'Packages'
-        Home    = 'TAtlasEditorBuffer.TopView/TopSourceView in Atlas.IDE.Foundation.EditorBuffer'
+        Home    = 'TAtlasEditorBuffer.TopView/TopSourceView in Atlas.ToolsApi.Editor.Buffer'
         Allowed = @{
-            'Atlas.IDE.Foundation.EditorBuffer:TAtlasEditorBuffer.TopView' = 'die eine Fassung'
+            'Atlas.ToolsApi.Editor.Buffer:TAtlasEditorBuffer.TopView' = 'die eine Fassung'
             'Atlas.IDE.Search.Editor:TAtlasIdeSearchEditor.TopView'        = 'out-Fassung für Bedingungen, leitet weiter'
         }
     }
     [pscustomobject]@{
         Name    = 'TopSourceView'
         Folder  = 'Packages'
-        Home    = 'TAtlasEditorBuffer.TopSourceView in Atlas.IDE.Foundation.EditorBuffer'
+        Home    = 'TAtlasEditorBuffer.TopSourceView in Atlas.ToolsApi.Editor.Buffer'
         Allowed = @{
-            'Atlas.IDE.Foundation.EditorBuffer:TAtlasEditorBuffer.TopSourceView' = 'die eine Fassung'
+            'Atlas.ToolsApi.Editor.Buffer:TAtlasEditorBuffer.TopSourceView' = 'die eine Fassung'
         }
     }
     # Syntaxbaum: Knoten in Baumreihenfolge und Vorkommen eines Bezeichners nur an TSyntaxNode.
@@ -593,9 +605,9 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'ActiveProject(?:File)?'
         Folder  = 'Packages'
-        Home    = 'GetActiveProject (ToolsAPI) bzw. TAtlasIdeFiles.ActiveProjectFile in Atlas.IDE.Foundation.Files'
+        Home    = 'GetActiveProject (ToolsAPI) bzw. TAtlasIdeFiles.ActiveProjectFile in Atlas.ToolsApi.Files.Service'
         Allowed = @{
-            'Atlas.IDE.Foundation.Files:TAtlasIdeFiles.ActiveProjectFile'             = 'die eine Fassung'
+            'Atlas.ToolsApi.Files.Service:TAtlasIdeFiles.ActiveProjectFile'             = 'die eine Fassung'
             'Atlas.IDE.Foundation.StartOptions:TAtlasIdeStartOptions.ActiveProject'   = 'nur .dproj (Startoptionen)'
             'Atlas.IDE.Debug.MethodBreakpoints:TAtlasIdeMethodBreakpoints.ActiveProject' = 'Projekt der Projektgruppe zur aktiven Datei'
             'Atlas.Common.Lsp.IdeProject:TLspIdeProject.ActiveProject'                = 'Server: gemeldetes Projekt der IDE, kein ToolsAPI'
@@ -604,9 +616,9 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'ReadLines(?:Of)?'
         Folder  = 'Packages'
-        Home    = 'TAtlasIdeFiles.ReadLines/LineReader() in Atlas.IDE.Foundation.Files'
+        Home    = 'TAtlasIdeFiles.ReadLines/LineReader() in Atlas.ToolsApi.Files.Service'
         Allowed = @{
-            'Atlas.IDE.Foundation.Files:TAtlasIdeFiles.ReadLines'       = 'die eine Fassung'
+            'Atlas.ToolsApi.Files.Service:TAtlasIdeFiles.ReadLines'       = 'die eine Fassung'
             'Atlas.IDE.Welcome.Adapters.QuickActions:ReadLines'         = 'nur von der Platte (Projektdateien, nie ein offener Puffer)'
             'Atlas.Common.Lsp.SignatureHelp:THelpRun.ReadLines'         = 'Server: Zeilen der Hilfeanfrage, keine Datei'
             'Atlas.Common.Lsp.SignatureHelp:ReadLines'                  = 'Deklaration von THelpRun.ReadLines'
@@ -622,7 +634,7 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
 $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Plugin', 'Atlas.Vcl',
-    'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
+    'Atlas.ToolsApi', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
 # Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
 $HostedFeatures = @('Replay', 'Monitor', 'Update')
@@ -928,8 +940,8 @@ foreach ($package in $Packages) {
 }
 
 # Atlas.Text und Atlas.WinBase im Plugin: als Quelltext, genau mit den Units ihres dpk. Platform-Packages ohne dpk
-# (Atlas.Plugin, Atlas.Vcl): genau mit allen Units unter ihrem Ordner Source.
-$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin', 'Atlas.Vcl')
+# (Atlas.Plugin, Atlas.Vcl, Atlas.ToolsApi): genau mit allen Units unter ihrem Ordner Source.
+$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi')
 $pluginDpkName = "Packages/$PluginBaseFolder/$PluginBaseFolder.dpk"
 $pluginDpk = Join-Path $Root $pluginDpkName
 if (Test-Path $pluginDpk) {

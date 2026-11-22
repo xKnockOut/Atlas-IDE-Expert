@@ -197,11 +197,11 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.GutterColumns,
+  Atlas.ToolsApi.Gutter.Columns,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.QuickService,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh;
 
 type
   /// <summary>Ergebnis der Prüfung einer Editorzeile: daneben, getroffen, oder getroffen ohne gültige Zeile.

@@ -10,7 +10,7 @@ interface
 uses
   System.SysUtils,
   DUnitX.TestFramework,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 type
   [TestFixture]

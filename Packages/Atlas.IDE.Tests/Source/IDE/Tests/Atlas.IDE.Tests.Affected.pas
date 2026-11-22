@@ -92,7 +92,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 { TAtlasIdeAffectedTests }
 

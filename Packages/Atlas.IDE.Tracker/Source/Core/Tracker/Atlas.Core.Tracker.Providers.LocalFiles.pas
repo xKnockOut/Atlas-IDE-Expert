@@ -46,7 +46,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Text.Files,
-  Atlas.Core.Files.TextFile;
+  Atlas.Plugin.Files.TextFile;
 
 type
   /// <summary>Hält die Sperrdatei offen, bis der letzte Verweis fällt.</summary>

@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.Core.Problems.Store;
 
 type

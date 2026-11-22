@@ -33,7 +33,7 @@ uses
   ToolsAPI,
   Atlas.Core.Tests.Approval,
   Atlas.UI.Tests.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 { TAtlasIdeApprovalFiles }
 

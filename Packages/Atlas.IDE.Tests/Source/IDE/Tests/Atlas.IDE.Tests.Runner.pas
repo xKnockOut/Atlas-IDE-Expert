@@ -202,7 +202,7 @@ uses
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Leaks,
   Atlas.Core.Tests.Log,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.Text.Files;
 
 const

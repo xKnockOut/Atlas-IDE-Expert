@@ -89,7 +89,7 @@ uses
   Atlas.IDE.Tracker.NewIssuePlace,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cVcsTimeoutMs = 2000;

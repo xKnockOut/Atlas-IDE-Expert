@@ -46,7 +46,7 @@ uses
   ToolsAPI,
   Atlas.UI.Build.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TSwitchesDock = class(TInterfacedObject, INTACustomDockableForm)

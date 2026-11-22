@@ -71,7 +71,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Text.Chars,
-  Atlas.Core.Files.TextFile;
+  Atlas.Plugin.Files.TextFile;
 
 /// <summary>Besteht das Kürzel nur aus ASCII-Bezeichnerzeichen?</summary>
 function IsValidPrefix(const APrefix: string): Boolean;

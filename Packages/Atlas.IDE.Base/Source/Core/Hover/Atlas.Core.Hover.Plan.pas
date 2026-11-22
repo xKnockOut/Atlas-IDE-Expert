@@ -156,7 +156,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Core.Completion.Word,
+  Atlas.Plugin.Editor.Word,
   Atlas.Core.Hover.Declaration,
   Atlas.Core.Settings.Reassigned;
 

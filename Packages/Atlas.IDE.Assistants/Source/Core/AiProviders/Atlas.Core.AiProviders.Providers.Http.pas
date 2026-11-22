@@ -47,7 +47,7 @@ implementation
 uses
   System.Types,
   System.Math,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Diagnostics.AsyncWait;
 
 { TAtlasAiHttpClient }

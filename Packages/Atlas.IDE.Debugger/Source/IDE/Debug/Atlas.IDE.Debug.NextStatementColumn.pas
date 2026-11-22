@@ -58,7 +58,7 @@ uses
   Vcl.Forms,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.NextStatement,
   Atlas.UI.Debug.NextStatement.Strings;

@@ -33,7 +33,7 @@ implementation
 
 uses
   Atlas.UI.Designer.ViewStrings,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Theme.Style;
 
 { TAtlasIdeResizePreview }
 

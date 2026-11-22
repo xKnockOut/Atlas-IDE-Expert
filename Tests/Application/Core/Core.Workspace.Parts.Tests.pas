@@ -38,6 +38,9 @@ type
     procedure RequestsKeyAndExclude;
     [Test]
     procedure RuleProjectsMembersAndWarnings;
+    /// <summary>Präfixe aus dem Projektkontext der IDE für die Prüfregeln (#1111), mit Konstanten.</summary>
+    [Test]
+    procedure RuleProjectsNamingFromIdeContext;
     [Test]
     procedure JobsWithoutInstallation;
     /// <summary>Das eigene Projekt und nicht lesbare Gruppenprojekte tragen keine Ausgabe bei.</summary>
@@ -69,6 +72,8 @@ uses
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,
+  System.JSON,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Core.Compiler,
   Core.Workspace.Listings,
@@ -340,6 +345,27 @@ begin
   Assert.IsFalse(TCoreRuleProjects.IsMember(mProject, 'V.pas'));
   Assert.AreEqual('true', TCoreRuleProjects.ConsoleTargetOf(mProject));
   Assert.AreEqual('WARNINGS=true', string.Join(';', TCoreRuleProjects.ProjectWarningsOf(mProject)));
+end;
+
+procedure TCoreWorkspacePartsTests.RuleProjectsNamingFromIdeContext;
+var
+  mValue: TJSONValue;
+  mContext: TIdeProjectContext;
+  mNaming: TRuleNaming;
+begin
+  mValue := TJSONObject.ParseJSONValue(
+    '{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"m","constant":"c"}}');
+  try
+    mContext := TIdeProjectContext.FromJson(mValue);
+  finally
+    mValue.Free;
+  end;
+  mNaming := TCoreRuleProjects.NamingOf(mContext);
+  Assert.IsTrue(mNaming.Known[TRuleNamingKind.Field]);
+  Assert.AreEqual('F', mNaming.Prefixes[TRuleNamingKind.Field]);
+  Assert.AreEqual('m', mNaming.Prefixes[TRuleNamingKind.Local]);
+  Assert.AreEqual('c', mNaming.Prefixes[TRuleNamingKind.Constant]);
+  Assert.IsFalse(mNaming.Known[TRuleNamingKind.Parameter]);
 end;
 
 procedure TCoreWorkspacePartsTests.JobsWithoutInstallation;

@@ -47,7 +47,7 @@ implementation
 uses
   System.Math,
   System.JSON,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Plugin.Settings.JsonText;
 
 { TAtlasArchResolution }
 

@@ -105,7 +105,7 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.EventLogFlow,
   Atlas.IDE.Foundation.Navigation,

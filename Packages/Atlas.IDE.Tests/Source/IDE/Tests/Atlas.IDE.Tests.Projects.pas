@@ -53,14 +53,14 @@ uses
   System.Types,
   Vcl.Forms,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tests.ProjectChoice,
   Atlas.UI.Tests.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Host;
 
 /// <summary>Je Datei ein Eintrag der Palette; Id ist der Index.</summary>

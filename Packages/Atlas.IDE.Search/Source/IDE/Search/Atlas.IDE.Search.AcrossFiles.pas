@@ -50,7 +50,7 @@ uses
   Atlas.UI.Search.Bar,
   Atlas.UI.Search.Strings,
   Atlas.UI.Search.ReplaceFrame,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Search.MessageList,

@@ -108,7 +108,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.VersionControl.Contract;
 
 const
