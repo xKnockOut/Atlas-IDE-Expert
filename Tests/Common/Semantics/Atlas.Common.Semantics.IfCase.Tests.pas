@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.IfCase.Tests;
+﻿unit Atlas.Common.Semantics.IfCase.Tests;
 
 // Tests für „if-Kette und case umwandeln“ (#646): einfache Kette, Listen,
 // Bereiche, Aufzählungen, verschachtelte Anweisungen, Kommentare, Hin- und
@@ -56,7 +56,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.StatementText,
-  Atlas.Common.Editing.IfCase,
+  Atlas.Common.Semantics.IfCase,
   Atlas.Text.Lines,
   Atlas.Tests.TextEdits;
 

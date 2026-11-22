@@ -51,7 +51,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.InlineAccessor,
+  Atlas.Common.Semantics.InlineAccessor,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.InlineAccessor;
 

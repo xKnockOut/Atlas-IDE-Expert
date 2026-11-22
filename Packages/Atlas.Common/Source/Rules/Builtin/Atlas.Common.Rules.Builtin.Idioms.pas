@@ -104,7 +104,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.StatementText,
-  Atlas.Common.Editing.IfCase,
+  Atlas.Common.Semantics.IfCase,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,

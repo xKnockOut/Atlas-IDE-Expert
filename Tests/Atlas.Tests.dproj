@@ -260,10 +260,10 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StringLiterals.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ExpressionText.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StatementText.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.IfCase.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.IfCase.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Conditions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.BoundaryCases.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ConditionalExpression.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ConditionalExpression.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.NestedRoutines.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.RoutineParts.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AnonymousMethods.Tests.pas"/>
@@ -757,7 +757,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MoveMember.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MoveMember.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Edits.TestSupport.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.InlineAccessor.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.InlineAccessor.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlineAccessor.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.RaiseVisibility.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.RaiseVisibility.Tests.pas"/>

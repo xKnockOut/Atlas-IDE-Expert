@@ -420,10 +420,10 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ExpressionText.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.StatementText.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.IfCase.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.IfCase.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Conditions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.BoundaryCases.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ConditionalExpression.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConditionalExpression.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.NestedRoutines.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineParts.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AnonymousMethods.pas"/>
@@ -486,7 +486,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.MemberTransfer.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveMember.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveMember.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.InlineAccessor.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.InlineAccessor.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RaiseVisibility.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.RaiseVisibility.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineAccessor.pas"/>

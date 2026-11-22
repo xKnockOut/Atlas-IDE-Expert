@@ -99,7 +99,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Pascal.ClassLayout,
-  Atlas.Common.Editing.InlineAccessor,
+  Atlas.Common.Semantics.InlineAccessor,
   Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
