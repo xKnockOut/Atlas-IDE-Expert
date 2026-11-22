@@ -657,8 +657,11 @@ Atlas.Core.Debug.ConsoleCapture.Tests
 Atlas.Core.Processes.OutputLines.Tests
 Atlas.Core.Settings.BuildDebug.Tests
 Atlas.Core.Settings.KeyCodes.Tests
+Atlas.Core.Architecture.Model.Tests
+Atlas.Core.Hotspots.Model.Tests
 Atlas.UI.Debug.Deadlocks.Tests
 Atlas.UI.Debug.ParallelStacks.Tests
+Atlas.UI.Analysis.FormLayout.Tests
 Atlas.UI.Analysis.Strings.Tests
 Atlas.UI.Assistants.Strings.Tests
 Atlas.UI.Bookmarks.Strings.Tests

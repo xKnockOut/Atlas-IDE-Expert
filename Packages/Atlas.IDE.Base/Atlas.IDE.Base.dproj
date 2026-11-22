@@ -176,6 +176,7 @@
         <DCCReference Include="..\Atlas.Vcl\Source\Controls\Atlas.Vcl.Controls.Menus.pas"/>
         <DCCReference Include="..\Atlas.Vcl\Source\Controls\Atlas.Vcl.Controls.WndProcHook.pas"/>
         <DCCReference Include="..\Atlas.Vcl\Source\Controls\Atlas.Vcl.Controls.WrapLabel.pas"/>
+        <DCCReference Include="..\Atlas.Vcl\Source\Controls\Atlas.Vcl.Controls.ZoomView.pas"/>
         <DCCReference Include="..\Atlas.Vcl\Source\Forms\Atlas.Vcl.Forms.Dialog.pas"/>
         <DCCReference Include="..\Atlas.Vcl\Source\Forms\Atlas.Vcl.Forms.FillFrame.pas"/>
         <DCCReference Include="..\Atlas.Vcl\Source\Images\Atlas.Vcl.Images.Symbol.pas"/>

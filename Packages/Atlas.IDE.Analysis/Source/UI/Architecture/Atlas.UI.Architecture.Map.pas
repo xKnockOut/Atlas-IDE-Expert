@@ -31,10 +31,11 @@ uses
   Vcl.Graphics,
   Atlas.Core.Architecture.Model,
   Atlas.Core.Architecture.View,
-  Atlas.Core.Architecture.MapState;
+  Atlas.Core.Architecture.MapState,
+  Atlas.Vcl.Controls.ZoomView;
 
 type
-  TAtlasArchitectureMap = class(TCustomControl)
+  TAtlasArchitectureMap = class(TAtlasZoomView)
   private type
     /// <summary>Ziehen mit der Maus.</summary>
     TDrag = record
@@ -63,7 +64,7 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure DblClick; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
-    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
+    procedure ZoomAround(AFactor, AX, AY: Double); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -99,6 +100,13 @@ const
   cDragThreshold = 3;
   /// <summary>Anteil der eigenen Farbe bei Units, die hinter einem Weg oder Filter zurücktreten.</summary>
   cDimAlpha = 0.3;
+  /// <summary>Anteil der Linienfarbe bei Kanten zu Grundlagen-Units.</summary>
+  cFoundationEdgeAlpha = 0.4;
+  /// <summary>Breite hervorgehobener Kanten in logischen Pixeln.</summary>
+  cThickerLine = 3;
+  /// <summary>Abstand des Namens bzw. des Hinweises vom Rand des Knotens in logischen Pixeln.</summary>
+  cNameGap = 3;
+  cHoverGap = 4;
 
 type
   /// <summary>Was die Teile der Zeichnung brauchen.</summary>
@@ -107,9 +115,11 @@ type
     State: TAtlasArchitectureMapState;
     View: TAtlasArchitectureView;
     Colors: TAtlasColors;
-    /// <summary>ScaleValue(2) und ScaleValue(3) der Karte.</summary>
+    /// <summary>ScaleValue(2) und ScaleValue(cThickerLine) der Karte.</summary>
     Thick: Integer;
     Thicker: Integer;
+    /// <summary>ScaleValue(cNameGap) der Karte.</summary>
+    NameGap: Integer;
     Pathing: Boolean;
     Changes: Boolean;
   end;
@@ -205,7 +215,7 @@ begin
       Exit;
     end;
     mCanvas.Pen.Style := psDot;
-    mCanvas.Pen.Color := ToColor(TAtlasColorMath.Mix(APaint.Colors.Line, APaint.Colors.Surface, 0.4));
+    mCanvas.Pen.Color := ToColor(TAtlasColorMath.Mix(APaint.Colors.Line, APaint.Colors.Surface, cFoundationEdgeAlpha));
   end
   else
   begin
@@ -413,7 +423,7 @@ begin
       APaint.Canvas.Font.Color := ToColor(APaint.Colors.Muted);
     end;
     mRadius := Max(2, Px(APaint.State.Model.NodeRadius(mIndex) * APaint.View.Scale));
-    APaint.Canvas.TextOut(Px(APaint.View.ScreenX(mItem.X)) + mRadius + 3,
+    APaint.Canvas.TextOut(Px(APaint.View.ScreenX(mItem.X)) + mRadius + APaint.NameGap,
       Px(APaint.View.ScreenY(mItem.Y)) - APaint.Canvas.TextHeight('Ag') div 2, mItem.Name);
   end;
 end;
@@ -423,22 +433,23 @@ end;
 procedure PaintHover(const APaint: TMapPaint; const AClient: TRect; APpi: Integer);
 var
   mSize: TSize;
-  mX, mY, mRadius, mHover: Integer;
+  mX, mY, mRadius, mHover, mGap: Integer;
   mItem: TAtlasArchUnit;
 begin
+  mGap := MulDiv(cHoverGap, APpi, 96);
   mHover := APaint.State.Hover;
   mSize := TAtlasArchitectureAssignment.Measure(APaint.Canvas, APaint.State.Model, mHover, APpi);
   mItem := APaint.State.Model.Units[mHover];
   mRadius := Max(2, Px(APaint.State.Model.NodeRadius(mHover) * APaint.View.Scale));
-  mX := Px(APaint.View.ScreenX(mItem.X)) + mRadius + 4;
-  mY := Px(APaint.View.ScreenY(mItem.Y)) + mRadius + 4;
+  mX := Px(APaint.View.ScreenX(mItem.X)) + mRadius + mGap;
+  mY := Px(APaint.View.ScreenY(mItem.Y)) + mRadius + mGap;
   if mX + mSize.cx > AClient.Right then
   begin
-    mX := Px(APaint.View.ScreenX(mItem.X)) - mRadius - 4 - mSize.cx;
+    mX := Px(APaint.View.ScreenX(mItem.X)) - mRadius - mGap - mSize.cx;
   end;
   if mY + mSize.cy > AClient.Bottom then
   begin
-    mY := Px(APaint.View.ScreenY(mItem.Y)) - mRadius - 4 - mSize.cy;
+    mY := Px(APaint.View.ScreenY(mItem.Y)) - mRadius - mGap - mSize.cy;
   end;
   mX := Max(0, mX);
   mY := Max(0, mY);
@@ -488,7 +499,8 @@ begin
   mPaint.View := FView;
   mPaint.Colors := TAtlasUiTheme.WindowColors(Self);
   mPaint.Thick := ScaleValue(2);
-  mPaint.Thicker := ScaleValue(3);
+  mPaint.Thicker := ScaleValue(cThickerLine);
+  mPaint.NameGap := ScaleValue(cNameGap);
   mPaint.Pathing := FState.Path.Shown;
   mPaint.Changes := FState.HasChanges and not mPaint.Pathing;
   Canvas.Brush.Style := bsSolid;
@@ -608,9 +620,9 @@ begin
   inherited KeyDown(Key, Shift);
   case Key of
     VK_ADD, VK_OEM_PLUS:
-      ZoomBy(1.25);
+      ZoomBy(cKeyZoom);
     VK_SUBTRACT, VK_OEM_MINUS:
-      ZoomBy(1 / 1.25);
+      ZoomBy(1 / cKeyZoom);
     Ord('0'), VK_NUMPAD0:
       FitView;
     VK_RETURN:
@@ -633,21 +645,9 @@ begin
   Key := 0;
 end;
 
-function TAtlasArchitectureMap.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
-var
-  mLocal: TPoint;
+procedure TAtlasArchitectureMap.ZoomAround(AFactor, AX, AY: Double);
 begin
-  Result := True;
-  mLocal := ScreenToClient(MousePos);
-  if WheelDelta > 0 then
-  begin
-    FView.ZoomAt(1.15, mLocal.X, mLocal.Y);
-  end
-  else
-  begin
-    FView.ZoomAt(1 / 1.15, mLocal.X, mLocal.Y);
-  end;
-  Invalidate;
+  FView.ZoomAt(AFactor, AX, AY);
 end;
 
 procedure TAtlasArchitectureMap.CMMouseLeave(var Message: TMessage);

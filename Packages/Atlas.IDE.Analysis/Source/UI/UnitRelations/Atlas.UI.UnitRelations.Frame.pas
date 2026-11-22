@@ -185,6 +185,13 @@ uses
 
 {$R *.dfm}
 
+const
+  // Höhen der Titelzeile und der Leiste sowie Breiten der Tiefenauswahl in logischen Pixeln (96 dpi).
+  cHeaderHeight = 22;
+  cBarHeight = 26;
+  cAllLevelsWidth = 90;
+  cDirectWidth = 70;
+
 type
   TRelationsFrame = TAtlasUnitRelationsFrame;
   TNodeData = TAtlasUnitRelationsFrame.TNodeData;
@@ -472,7 +479,7 @@ procedure BuildHeader(AFrame: TRelationsFrame);
 var
   mHeader: TPanel;
 begin
-  mHeader := NewPanel(AFrame, 22);
+  mHeader := NewPanel(AFrame, cHeaderHeight);
   AFrame.FParts.Symbol := TAtlasSymbolImage.Create(AFrame);
   AFrame.FParts.Symbol.Parent := mHeader;
   AFrame.FParts.Symbol.LogicalSize := TAtlasSymbol.cMenuSize;
@@ -514,10 +521,10 @@ procedure BuildBar(AFrame: TRelationsFrame; AEvents: TRelationsFrame.TEvents);
 var
   mBar: TPanel;
 begin
-  mBar := NewPanel(AFrame, 26);
+  mBar := NewPanel(AFrame, cBarHeight);
   mBar.Top := AFrame.FParts.Info.Top + AFrame.FParts.Info.Height + 1;
-  AFrame.FParts.AllLevels := NewRadio(mBar, 90, TAtlasAnalysisTextId.UnitRelationsAllLevels, AEvents);
-  AFrame.FParts.Direct := NewRadio(mBar, 70, TAtlasAnalysisTextId.UnitRelationsDirect, AEvents);
+  AFrame.FParts.AllLevels := NewRadio(mBar, cAllLevelsWidth, TAtlasAnalysisTextId.UnitRelationsAllLevels, AEvents);
+  AFrame.FParts.Direct := NewRadio(mBar, cDirectWidth, TAtlasAnalysisTextId.UnitRelationsDirect, AEvents);
   AFrame.FParts.Direct.Checked := True;
   AFrame.FParts.Filter := TEdit.Create(AFrame);
   AFrame.FParts.Filter.Parent := mBar;

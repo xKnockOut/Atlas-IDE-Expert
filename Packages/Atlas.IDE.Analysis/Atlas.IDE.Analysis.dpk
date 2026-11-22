@@ -80,6 +80,7 @@ contains
   Atlas.IDE.Analysis.Adapters.Module in 'Source\IDE\Analysis\Atlas.IDE.Analysis.Adapters.Module.pas',
   Atlas.IDE.Analysis.Composition in 'Source\IDE\Analysis\Atlas.IDE.Analysis.Composition.pas',
   Atlas.UI.Analysis.SettingsSection in 'Source\UI\Analysis\Atlas.UI.Analysis.SettingsSection.pas',
+  Atlas.UI.Analysis.FormLayout in 'Source\UI\Analysis\Atlas.UI.Analysis.FormLayout.pas',
   Atlas.Core.Analysis.MetricsLens in 'Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas',
   Atlas.IDE.Analysis.MetricsLens in 'Source\IDE\Analysis\Atlas.IDE.Analysis.MetricsLens.pas';
 
