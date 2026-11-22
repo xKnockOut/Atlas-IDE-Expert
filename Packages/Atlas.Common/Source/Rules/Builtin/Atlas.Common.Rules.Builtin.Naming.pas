@@ -102,7 +102,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.EventAssignments,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused.Shared,

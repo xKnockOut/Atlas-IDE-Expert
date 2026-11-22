@@ -76,8 +76,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Pascal.PureRoutines;
 
 const

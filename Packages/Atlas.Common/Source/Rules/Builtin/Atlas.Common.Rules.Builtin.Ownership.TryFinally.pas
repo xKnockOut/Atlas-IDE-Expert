@@ -32,7 +32,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Pascal.RoutineBody;
 
 /// <summary>Letzte Anweisung desselben Blocks hinter AStatement, sonst AStatement selbst.</summary>
 function LastSiblingOf(AStatement: TSyntaxNode): TSyntaxNode;

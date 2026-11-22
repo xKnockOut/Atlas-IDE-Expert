@@ -53,7 +53,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,

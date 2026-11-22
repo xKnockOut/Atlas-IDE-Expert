@@ -42,7 +42,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Lsp.WorkDoneProgress,
-  Shell.Workspace,
+  Core.Workspace,
   Atlas.Common.Localization.Texts;
 
 type
@@ -83,7 +83,7 @@ end;
 class function TShellCompileSetup.JobFor(AWorkspaces: TShellWorkspaceRegistry; const AFileName: string;
   out AJob: TCoreCompileJob; out AError: string): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   AJob := Default(TCoreCompileJob);
   AError := '';
@@ -94,7 +94,7 @@ begin
     begin
       mWorkspace := AWorkspaces.WorkspaceOf(AFileName);
     end;
-    mWorkspace := TShellWorkspaces.Choose(mWorkspace, AWorkspaces.Items);
+    mWorkspace := TCoreWorkspaces.Choose(mWorkspace, AWorkspaces.Items);
     if mWorkspace = nil then
     begin
       AError := cTexts[TCompileSetupText.NoFolder].Text;

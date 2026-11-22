@@ -74,7 +74,7 @@ uses
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Documents.Uris,
   Core.Bootstrap,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Platform,
   Atlas.Text.LogMarks;
 
@@ -121,7 +121,7 @@ end;
 
 procedure TShellConfiguration.DidChangeConfiguration(const AParams: TJSONValue);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   FServices.Settings.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
   for mWorkspace in FServices.Workspaces.Items.ToArray do
@@ -163,7 +163,7 @@ end;
 procedure TShellConfiguration.LoadGlobalSettings;
 var
   mText: string;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   // Nicht lesbar (gerade geschrieben oder gesperrt): Warnung im Log, der Beobachter meldet die Datei erneut.
   mText := TCoreBootstrap.LoadGlobalSettings(FGlobalSettingsFile, FServices.Logger);
@@ -184,7 +184,7 @@ end;
 procedure TShellConfiguration.UpdateWatchedFiles;
 var
   mFiles: TArray<string>;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   if FFileWatcher = nil then
   begin
@@ -210,7 +210,7 @@ end;
 
 procedure TShellConfiguration.FileChanged(const AFileName: string);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   for mWorkspace in FServices.Workspaces.Items.ToArray do
   begin
@@ -223,7 +223,7 @@ end;
 
 procedure TShellConfiguration.DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FServices.Workspaces.Lock);
   try

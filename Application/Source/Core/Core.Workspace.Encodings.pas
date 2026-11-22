@@ -1,6 +1,6 @@
-﻿unit Shell.Workspace.Encodings;
+﻿unit Core.Workspace.Encodings;
 
-// Internals-Rolle Shell: Hinweis auf gemischte Kodierungen der Projektdateien (#121), ins Protokoll und einmal je
+// Host-Rolle Core: Hinweis auf gemischte Kodierungen der Projektdateien (#121), ins Protokoll und einmal je
 // Sitzung als Meldung im Editor.
 
 interface
@@ -14,7 +14,7 @@ uses
   Atlas.Common.Index.Contract;
 
 type
-  TShellEncodingReport = class
+  TCoreEncodingReport = class
   private
     FName: string;
     FRoot: string;
@@ -92,9 +92,9 @@ begin
   FSurvey.Add(TFileEncoding.ReadAllBytes(AFileName));
 end;
 
-{ TShellEncodingReport }
+{ TCoreEncodingReport }
 
-constructor TShellEncodingReport.Create(const AName, ARoot: string; const ALogger: ILogger;
+constructor TCoreEncodingReport.Create(const AName, ARoot: string; const ALogger: ILogger;
   const ATransport: IJsonRpcTransport; const AIndex: ISymbolIndex);
 begin
   inherited Create;
@@ -105,7 +105,7 @@ begin
   FIndex := AIndex;
 end;
 
-function TShellEncodingReport.Survey(const AFiles: TArray<string>): TEncodingSurvey;
+function TCoreEncodingReport.Survey(const AFiles: TArray<string>): TEncodingSurvey;
 var
   mFiles: TSurveyFiles;
   mFileName, mInclude: string;
@@ -132,7 +132,7 @@ begin
   end;
 end;
 
-procedure TShellEncodingReport.Show(const AText: string);
+procedure TCoreEncodingReport.Show(const AText: string);
 var
   mParams: TJSONObject;
   mNotification: TJSONObject;
@@ -154,7 +154,7 @@ begin
   end;
 end;
 
-procedure TShellEncodingReport.Report(const AFiles: TArray<string>);
+procedure TCoreEncodingReport.Report(const AFiles: TArray<string>);
 var
   mSurvey: TEncodingSurvey;
   mText: string;
@@ -172,6 +172,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Workspace.Encodings', cTexts);
+  TAtlasTextTables.Add('Core.Workspace.Encodings', cTexts);
 
 end.

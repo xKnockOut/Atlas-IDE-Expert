@@ -56,7 +56,7 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,

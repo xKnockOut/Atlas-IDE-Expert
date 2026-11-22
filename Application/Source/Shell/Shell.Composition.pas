@@ -6,7 +6,7 @@
 // Absturzprotokoll mit Stacktrace, Absturzfällen und Sicherheitsnetz
 // (Core.CrashCases, #1355). Jeder Ordner des Arbeitsbereichs hat
 // eigene Konfiguration, eigenes Projekt und eigenen Indexaufbau
-// (TShellWorkspace); der Symbolindex ist gemeinsam.
+// (TCoreWorkspace); der Symbolindex ist gemeinsam.
 // Die Teile hält TShellParts (Shell.Composition.Parts); verdrahtet werden sie in Shell.Composition.ProtocolWiring,
 // CoreWiring, FeatureWiring und CommandWiring, gestartet nach initialized in Shell.Composition.ClientStart.
 

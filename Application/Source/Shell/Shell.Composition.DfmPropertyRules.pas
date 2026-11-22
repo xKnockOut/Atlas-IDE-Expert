@@ -52,7 +52,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.DfmPropertyRules,
-  Shell.Workspace,
+  Core.Workspace,
   Core.Texts;
 
 { TShellDfmPropertyRules }
@@ -101,7 +101,7 @@ end;
 class function TShellDfmPropertyRules.UnitsFor(const AServices: TShellDfmPropertyRulesServices;
   const AFileName, AScope: string): TArray<string>;
 var
-  mWorkspace, mPicked: TShellWorkspace;
+  mWorkspace, mPicked: TCoreWorkspace;
 begin
   if SameText(AScope, TLspDfmPropertyRules.cScopeForm) then
   begin

@@ -1,11 +1,11 @@
-﻿unit Atlas.Windows.Editing.SystemColors;
+﻿unit Atlas.Windows.Pascal.SystemColors;
 
 // Aktuelle Systemfarben (clBtnFace usw.) für die Farbvorschau (#26).
 
 interface
 
 uses
-  Atlas.Common.Editing.Colors;
+  Atlas.Common.Pascal.Colors;
 
 /// <summary>Wert von GetSysColor(AIndex); passt zu TSystemColorProvider.</summary>
 function WindowsSystemColor(AIndex: Integer; out AColor: TRgbColor): Boolean;

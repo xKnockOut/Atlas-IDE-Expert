@@ -30,7 +30,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Editing.RoutineParts;
 
 const

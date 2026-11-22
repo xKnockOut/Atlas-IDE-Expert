@@ -14,7 +14,7 @@ uses
   Atlas.Common.Compiler.Backend,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Processes,
-  Shell.Workspace;
+  Core.Workspace;
 
 type
   TShellServerStatusFunc = reference to function(AAnonymize: Boolean): TJSONObject;
@@ -22,8 +22,8 @@ type
   TShellServerFilesFunc = reference to function: TArray<string>;
   TShellServerCompileFunc = reference to function(const AFileName: string;
     out AChoice: TCompilerBackendChoice): Boolean;
-  TShellServerWorkspacesFunc = reference to function(const AUri: string): TArray<TShellWorkspace>;
-  TShellServerSelectedFunc = reference to function(AWorkspace: TShellWorkspace): Boolean;
+  TShellServerWorkspacesFunc = reference to function(const AUri: string): TArray<TCoreWorkspace>;
+  TShellServerSelectedFunc = reference to function(AWorkspace: TCoreWorkspace): Boolean;
   TShellServerSetProjectProc = reference to procedure(const AScope, AProject: string);
   TShellServerRetryFunc = reference to function(const AUri: string): Integer;
   TShellServerRecheckProc = reference to procedure;
@@ -68,7 +68,7 @@ type
     function RunRecheck(const AArguments: TJSONArray): TJSONValue;
     function RunSelectBuild(const AArguments: TJSONArray): TJSONValue;
     function RunSelectProject(const AArguments: TJSONArray): TJSONValue;
-    function ProjectWorkspaces: TArray<TShellWorkspace>;
+    function ProjectWorkspaces: TArray<TCoreWorkspace>;
     /// <summary>Arbeitsbereiche mit Index-Cache und den Prozessen daran (#62).</summary>
     function CollectProcesses: TArray<TLspProcessWorkspace>;
   public const
@@ -217,8 +217,8 @@ end;
 
 function TShellServerCommands.RunRebuildIndex(const AArguments: TJSONArray): TJSONValue;
 var
-  mWorkspace: TShellWorkspace;
-  mTargets: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mTargets: TArray<TCoreWorkspace>;
 begin
   // Alle Ordner ohne Cache neu einlesen (#49), z. B. nach Änderungen außerhalb des Editors.
   mTargets := FServices.Workspaces('');
@@ -232,8 +232,8 @@ end;
 
 function TShellServerCommands.RunClearIndex(const AArguments: TJSONArray): TJSONValue;
 var
-  mWorkspace: TShellWorkspace;
-  mTargets: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mTargets: TArray<TCoreWorkspace>;
   mFreed: Int64;
   mRemoved: Integer;
 begin
@@ -271,8 +271,8 @@ function TShellServerCommands.RunSelectBuild(const AArguments: TJSONArray): TJSO
 var
   mArgs: TSelectBuildArgs;
   mError: string;
-  mWorkspace: TShellWorkspace;
-  mTargets: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mTargets: TArray<TCoreWorkspace>;
   mProject: TProjectInfo;
   mItems: TJSONArray;
 begin
@@ -304,7 +304,7 @@ end;
 function TShellServerCommands.RunSelectProject(const AArguments: TJSONArray): TJSONValue;
 var
   mArgs: TSelectProjectArgs;
-  mTargets: TArray<TShellWorkspace>;
+  mTargets: TArray<TCoreWorkspace>;
   mItems: TArray<TProjectChoiceItem>;
   mIndex: Integer;
   mActive: string;
@@ -346,9 +346,9 @@ begin
   Result := TBuildCommands.ProjectChoices(mItems);
 end;
 
-function TShellServerCommands.ProjectWorkspaces: TArray<TShellWorkspace>;
+function TShellServerCommands.ProjectWorkspaces: TArray<TCoreWorkspace>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := nil;
   for mWorkspace in FServices.Workspaces('') do
@@ -362,7 +362,7 @@ end;
 
 function TShellServerCommands.CollectProcesses: TArray<TLspProcessWorkspace>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mItem: TLspProcessWorkspace;
   mStatus: TWorkspaceStatus;
 begin

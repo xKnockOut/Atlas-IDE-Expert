@@ -92,7 +92,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesActions,

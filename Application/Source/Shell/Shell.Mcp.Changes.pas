@@ -10,16 +10,16 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.Prompts,
   Atlas.Common.Index.Contract,
-  Shell.WorkspaceGroup;
+  Core.WorkspaceGroup;
 
 /// <summary>Unit-Name oder Pfad → Datei, geprüft wie Pfadparameter (#99): Units außerhalb des Arbeitsbereichs
 /// und seiner Bibliothekspfade ergeben einen Fehler mit Begründung (#1357).</summary>
-function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; AGuard: TMcpPathGuard):
+function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; AGuard: TMcpPathGuard):
   TFunc<string, string>;
 /// <summary>Änderungen laut Git oder SVN für prepare_commit (#1357): geänderte Dateien unter ARoot und ihre Befunde
 /// in geänderten Zeilen wie --changed-lines, dazu der Commit-Präfix, den das Plugin für das aktuelle Issue in
 /// &lt;gitdir&gt;/atlas-commit-prefix schreibt (#765).</summary>
-function ChangesOf(AGroup: TShellWorkspaceGroup; const ARoot: string): TMcpChangesFunc;
+function ChangesOf(AGroup: TCoreWorkspaceGroup; const ARoot: string): TMcpChangesFunc;
 
 implementation
 
@@ -54,7 +54,7 @@ const
 
 /// <summary>Unit-Name oder Pfad → Datei, geprüft wie Pfadparameter (#99): Units außerhalb des Arbeitsbereichs
 /// und seiner Bibliothekspfade ergeben einen Fehler mit Begründung (#1357).</summary>
-function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; AGuard: TMcpPathGuard):
+function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; AGuard: TMcpPathGuard):
   TFunc<string, string>;
 begin
   Result :=
@@ -108,7 +108,7 @@ begin
 end;
 
 /// <summary>Geänderte Datei relativ zu ARoot mit ihren Befunden in geänderten Zeilen (wie --changed-lines).</summary>
-function ChangedFileOf(AGroup: TShellWorkspaceGroup; AVcs: TVcsChanges; const ARoot, AFile: string;
+function ChangedFileOf(AGroup: TCoreWorkspaceGroup; AVcs: TVcsChanges; const ARoot, AFile: string;
   const ACheckProject: TCheckProjectFunc): TMcpChangedFile;
 var
   mText: string;
@@ -135,7 +135,7 @@ begin
 end;
 
 /// <summary>Änderungen unter ARoot gegenüber ABase samt Befunden und Commit-Präfix.</summary>
-function ChangeSetOf(AGroup: TShellWorkspaceGroup; const ARoot, ABase: string): TMcpChangeSet;
+function ChangeSetOf(AGroup: TCoreWorkspaceGroup; const ARoot, ABase: string): TMcpChangeSet;
 var
   mProcess: ICompilerProcess;
   mVcs: TVcsChanges;
@@ -175,7 +175,7 @@ end;
 /// <summary>Änderungen laut Git oder SVN für prepare_commit (#1357): geänderte Dateien unter ARoot und ihre Befunde
 /// in geänderten Zeilen wie --changed-lines, dazu der Commit-Präfix, den das Plugin für das aktuelle Issue in
 /// &lt;gitdir&gt;/atlas-commit-prefix schreibt (#765).</summary>
-function ChangesOf(AGroup: TShellWorkspaceGroup; const ARoot: string): TMcpChangesFunc;
+function ChangesOf(AGroup: TCoreWorkspaceGroup; const ARoot: string): TMcpChangesFunc;
 var
   mRoot: string;
 begin

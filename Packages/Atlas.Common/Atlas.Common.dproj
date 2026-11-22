@@ -107,6 +107,7 @@
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextDocument.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.FileEncoding.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.UnitLookup.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Paths.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.DelphiVersions.pas"/>
         <DCCReference Include="Source\Projects\Internals\Atlas.Common.Projects.Internals.Xml.pas"/>
@@ -234,7 +235,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Registration.Ownership.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unicode.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentLinks.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Colors.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Colors.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Statistics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ReferenceConfidence.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ParameterHeaders.pas"/>
@@ -405,7 +406,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PostfixTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CaseCompletion.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignFields.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineBody.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExpressionText.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.StatementText.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.IfCase.pas"/>
@@ -435,7 +436,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PromoteVariable.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormMentions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PromoteVariable.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineLocals.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineLocals.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartPaste.pas"/>

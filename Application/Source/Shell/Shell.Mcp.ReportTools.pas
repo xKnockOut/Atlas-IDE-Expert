@@ -27,7 +27,7 @@ uses
   Atlas.Common.Diagnostics.RuntimeReport,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Text.CrashReport,
-  Shell.WorkspaceGroup;
+  Core.WorkspaceGroup;
 
 type
 {$SCOPEDENUMS ON}
@@ -130,7 +130,7 @@ end;
 function UnitFileOf(const AContext: TMcpToolContext): TReportUnitFileFunc;
 var
   mIndex: ISymbolIndex;
-  mGroup: TShellWorkspaceGroup;
+  mGroup: TCoreWorkspaceGroup;
   mRoot: string;
 begin
   mIndex := AContext.Index;

@@ -150,8 +150,8 @@ uses
   System.StrUtils,
   System.Math,
   System.Generics.Defaults,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.SyntaxNodes;
 

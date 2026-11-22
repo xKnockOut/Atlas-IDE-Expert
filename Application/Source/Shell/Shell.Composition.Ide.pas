@@ -19,7 +19,7 @@ uses
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.Adapters.IdeTypes,
   Atlas.Common.Lsp.IdeUnits,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Workspaces;
 
 type
@@ -63,7 +63,7 @@ type
     procedure BuildChanged(const ABuild: TIdeBuild);
     procedure Compiling(ARunning: Boolean);
     /// <summary>Arbeitsbereiche, deren Projekt AProject ist.</summary>
-    function WorkspacesOfProject(const AProject: string): TArray<TShellWorkspace>;
+    function WorkspacesOfProject(const AProject: string): TArray<TCoreWorkspace>;
     procedure ProjectChanged(const AContext: TIdeProjectContext);
     procedure NamingChanged(const AContext: TIdeProjectContext);
     procedure TypesChanged(ACount: Integer);
@@ -140,7 +140,7 @@ end;
 
 function TShellIde.BuildRootOf(const AProject: string): string;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FServices.Workspaces.Lock);
   try
@@ -179,9 +179,9 @@ begin
   FServices.Compiling(ARunning);
 end;
 
-function TShellIde.WorkspacesOfProject(const AProject: string): TArray<TShellWorkspace>;
+function TShellIde.WorkspacesOfProject(const AProject: string): TArray<TCoreWorkspace>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mProject: TProjectInfo;
 begin
   Result := nil;
@@ -202,7 +202,7 @@ end;
 
 procedure TShellIde.ProjectChanged(const AContext: TIdeProjectContext);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   FServices.Logger.Info(Format('Projektkontext aus der IDE: %s (%s, %s)',
     [TLogMarks.Path(ExtractFileName(AContext.Project)),

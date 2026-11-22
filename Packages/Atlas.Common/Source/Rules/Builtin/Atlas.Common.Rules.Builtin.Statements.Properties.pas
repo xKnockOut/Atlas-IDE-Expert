@@ -79,7 +79,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CodeActions,
