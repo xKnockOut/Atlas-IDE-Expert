@@ -86,7 +86,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.ExpressionText,
+  Atlas.Common.Pascal.ExpressionText,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;

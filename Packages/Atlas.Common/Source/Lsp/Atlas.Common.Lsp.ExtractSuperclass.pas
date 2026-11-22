@@ -87,7 +87,7 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.ExtractInterface,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Editing.ExtractSuperclass,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,

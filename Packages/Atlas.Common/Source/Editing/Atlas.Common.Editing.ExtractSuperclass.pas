@@ -34,7 +34,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Editing.ExtractInterface;
 
 type

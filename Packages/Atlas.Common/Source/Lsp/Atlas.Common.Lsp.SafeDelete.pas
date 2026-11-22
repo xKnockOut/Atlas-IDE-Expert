@@ -100,7 +100,7 @@ uses
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Editing.InlineAccessor,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,

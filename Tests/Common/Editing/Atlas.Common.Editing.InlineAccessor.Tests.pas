@@ -43,7 +43,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.InlineAccessor,
   Atlas.Tests.SourceText;

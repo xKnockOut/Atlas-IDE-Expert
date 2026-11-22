@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ResourceStrings;
+﻿unit Atlas.Common.Pascal.ResourceStrings;
 
 // String-Literal als resourcestring auslagern (#473, ARG-074), gemeinsam mit
 // dem Schnellbefehl /resstr (#294):

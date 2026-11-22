@@ -41,7 +41,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists.Syntax,
   Atlas.Common.Localization.Texts;
 

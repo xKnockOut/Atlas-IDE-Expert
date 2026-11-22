@@ -82,7 +82,7 @@ Atlas.Common.Editing.AssignFields.Tests
 Atlas.Common.Pascal.CaseCompletion.Tests
 Atlas.Common.Editing.ChangeSignature.Tests
 Atlas.Common.Editing.ClassBodies.Tests
-Atlas.Common.Editing.BodySpacing.Tests
+Atlas.Common.Pascal.BodySpacing.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
 Atlas.Common.Pascal.ClassLayout.Tests
 Atlas.Common.Pascal.Destructors.Tests
@@ -99,8 +99,8 @@ Atlas.Common.Editing.DataFieldNames.Tests
 Atlas.Common.Editing.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests
 Atlas.Common.Pascal.DocComments.Tests
-Atlas.Common.Editing.EnumTables.Tests
-Atlas.Common.Editing.ExpressionText.Tests
+Atlas.Common.Pascal.EnumTables.Tests
+Atlas.Common.Pascal.ExpressionText.Tests
 Atlas.Common.Editing.Extract.Duplicates.Tests
 Atlas.Common.Editing.Extract.Shared.Tests
 Atlas.Common.Editing.Extract.Tests
@@ -124,7 +124,7 @@ Atlas.Common.Editing.Inlining.Types.Tests
 Atlas.Common.Editing.InterfaceStubs.Tests
 Atlas.Common.Editing.InvertBoolean.Tests
 Atlas.Common.Editing.MemberOrder.Tests
-Atlas.Common.Editing.MemberTransfer.Tests
+Atlas.Common.Pascal.MemberTransfer.Tests
 Atlas.Common.Editing.MethodMatching.Tests
 Atlas.Common.Editing.MethodOrder.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Lookup.Tests
@@ -139,7 +139,7 @@ Atlas.Common.Editing.PostfixTemplates.Tests
 Atlas.Common.Editing.PromoteVariable.Tests
 Atlas.Common.Editing.PropertyFromAccessors.Tests
 Atlas.Common.Editing.RaiseVisibility.Tests
-Atlas.Common.Editing.ResourceStrings.Tests
+Atlas.Common.Pascal.ResourceStrings.Tests
 Atlas.Common.Pascal.RoutineLocals.Tests
 Atlas.Common.Editing.RoutineParts.Tests
 Atlas.Common.Editing.SafeDelete.Tests
