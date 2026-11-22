@@ -133,7 +133,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Documents.TextChanges;
 
 {$SCOPEDENUMS ON}
 

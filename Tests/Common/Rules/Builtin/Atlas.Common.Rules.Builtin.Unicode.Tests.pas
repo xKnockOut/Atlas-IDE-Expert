@@ -121,7 +121,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Tests.RuleAssert,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Documents.TextChanges;
 
 function UnitWith(const ABody: string): string;
 begin
