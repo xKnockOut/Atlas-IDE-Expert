@@ -305,7 +305,7 @@ end;
 
 class function TAtlasWelcomeSetup.IsGroup(const AProject: string): Boolean;
 begin
-  Result := SameText(Copy(AProject, Length(AProject) - 9, 10), '.groupproj');
+  Result := SameText(ExtractFileExt(AProject), '.groupproj');
 end;
 
 /// <summary>Ordner von AFileName mit abschließendem Trenner; '' ohne.</summary>

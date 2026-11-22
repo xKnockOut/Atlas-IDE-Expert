@@ -79,8 +79,8 @@ type
     cButtonHeight = 24;
     cButtonPadding = 16;
     cComboWidth = 170;
-    /// <summary>Grün wie die Marken der Projekte (#592), lesbar im hellen und im dunklen Thema.</summary>
-    cDoneColor = TColor($0043A02E);
+    /// <summary>Grün wie die Marken der Projekte (#592).</summary>
+    cDoneColor = TAtlasWelcomeMarks.cGood;
   private
     FSource: IAtlasSetupSource;
     FCard: TAtlasSetupCard;
@@ -142,6 +142,13 @@ uses
 const
   cCheckMark = #$2713;
   cOpenBox = #$2610;
+  /// <summary>Abstand der Zeilen zur Oberkante ihres Platzes, damit der Text mittig neben den Knöpfen steht
+  /// (logische Pixel bei 96 dpi).</summary>
+  cRowTextTop = 4;
+  /// <summary>Mindesthöhe der Karte (logische Pixel bei 96 dpi).</summary>
+  cSetupMinBodyHeight = 32;
+  /// <summary>Takt, in dem die Karte laufende Schritte nachführt (ms).</summary>
+  cTickInterval = 1000;
 
 type
   /// <summary>Überträgt die Karte auf die Steuerelemente: Farben, Schritte, Knöpfe, Ergebnisse, Funde.</summary>
@@ -468,11 +475,11 @@ var
 begin
   mMark := FFrame.FLabels.Marks[AStep];
   mText := FFrame.FLabels.Texts[AStep];
-  mMark.SetBounds(FLeft, FTop + Scaled(4), Scaled(TAtlasWelcomeSetupFrame.cMarkWidth), mMark.Height);
+  mMark.SetBounds(FLeft, FTop + Scaled(cRowTextTop), Scaled(TAtlasWelcomeSetupFrame.cMarkWidth), mMark.Height);
   FX := FTextLeft;
   Place(mText, FMeasure.Canvas.TextWidth(mText.Caption), mText.Height);
   // Text etwas tiefer, damit er mittig neben den Knöpfen steht.
-  mText.Top := FTop + Scaled(4);
+  mText.Top := FTop + Scaled(cRowTextTop);
   FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.cButtonHeight));
   case AStep of
     TAtlasSetupStep.Config:
@@ -544,7 +551,7 @@ begin
   FX := FLeft;
   Place(mNewRow, FMeasure.Canvas.TextWidth(mNewRow.Caption), mNewRow.Height);
   mNewRow.Left := FLeft;
-  mNewRow.Top := FTop + Scaled(4);
+  mNewRow.Top := FTop + Scaled(cRowTextTop);
   FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.cButtonHeight));
   FX := FLeft + FMeasure.Canvas.TextWidth(mNewRow.Caption) + Scaled(TAtlasWelcomeSetupFrame.cGap);
   for mKind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
@@ -619,7 +626,7 @@ begin
   FLabels.NewRow.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNewRow);
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := 1000;
+  FTimer.Interval := cTickInterval;
   FTimer.OnTimer := TimerTick;
   Body.OnResize := BodyResize;
   UpdateContent;
@@ -635,7 +642,7 @@ function TAtlasWelcomeSetupFrame.BodyHeight: Integer;
 begin
   // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
   Arrange;
-  Result := Max(FContentHeight, ScaleValue(32));
+  Result := Max(FContentHeight, ScaleValue(cSetupMinBodyHeight));
 end;
 
 { TAtlasSetupTexts }

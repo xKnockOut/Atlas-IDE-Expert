@@ -110,14 +110,18 @@ type
 
 implementation
 
+const
+  /// <summary>Präfix der Kennungen der Atlas-Bereiche.</summary>
+  cSectionPrefix = 'atlas.';
+
 { TAtlasWelcomeIds }
 
 class function TAtlasWelcomeIds.PluginId(const ASectionId: string): string;
 begin
   Result := ASectionId;
-  if SameText(Copy(Result, 1, 6), 'atlas.') then
+  if SameText(Copy(Result, 1, Length(cSectionPrefix)), cSectionPrefix) then
   begin
-    Delete(Result, 1, 6);
+    Delete(Result, 1, Length(cSectionPrefix));
   end;
   Result := cPluginPrefix + Result;
 end;
@@ -129,7 +133,7 @@ begin
     (Length(APluginId) > Length(cPluginPrefix)) then
   begin
     // Kennungen der Bereiche sind klein geschrieben.
-    Result := 'atlas.' + LowerCase(Copy(APluginId, Length(cPluginPrefix) + 1, MaxInt));
+    Result := cSectionPrefix + LowerCase(Copy(APluginId, Length(cPluginPrefix) + 1, MaxInt));
   end;
 end;
 

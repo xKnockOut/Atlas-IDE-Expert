@@ -161,6 +161,10 @@ uses
   Atlas.Plugin.Files.TextFile,
   Atlas.IDE.Projects.Summaries;
 
+const
+  /// <summary>ShellExecute meldet Erfolg mit einem Wert über 32, kleinere Werte sind Fehlercodes.</summary>
+  cShellExecuteErrorLimit = 32;
+
 function Settings: TAtlasPluginSettings;
 begin
   Result := TAtlasIdeSettings.Current;
@@ -293,7 +297,7 @@ var
   function Launch(const AProgram: string): Boolean;
   begin
     Result := TAtlasWelcomeQuickActions.ConsoleCommand(AProgram, mDir, mFileName, mParameters) and
-      (ShellExecute(0, 'open', PChar(mFileName), PChar(mParameters), PChar(mDir), SW_SHOWNORMAL) > 32);
+      (ShellExecute(0, 'open', PChar(mFileName), PChar(mParameters), PChar(mDir), SW_SHOWNORMAL) > cShellExecuteErrorLimit);
   end;
 
 begin
