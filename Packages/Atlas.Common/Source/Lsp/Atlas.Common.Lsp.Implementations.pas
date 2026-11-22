@@ -19,17 +19,15 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Definition;
+  Atlas.Common.Lsp.Definition,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
-  TLspImplementations = class
+  TLspImplementations = class(TLspIndexFeature)
   public const
     cMethod = 'textDocument/implementation';
     cMaxTargets = 500;
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
@@ -227,10 +225,7 @@ end;
 constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AEnsureUnit);
 end;
 
 constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);

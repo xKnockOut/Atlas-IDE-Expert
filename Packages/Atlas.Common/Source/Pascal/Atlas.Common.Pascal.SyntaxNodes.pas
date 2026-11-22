@@ -55,6 +55,14 @@ type
     class function RoutinePath(ARoutine: TSyntaxNode): string; static;
     /// <summary>Alle Knoten der Art AKind unter ARoot (samt ARoot) in der Reihenfolge von TSyntaxNode.Walk.</summary>
     class function OfKind(ARoot: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>; static;
+    /// <summary>Block (begin…end) der Routine ARoutine; nil ohne Routine oder Rumpf.</summary>
+    class function BlockOf(ARoutine: TSyntaxNode): TSyntaxNode; static;
+    /// <summary>Weg von ARoot hinab zur Zeile ALine: ARoot, dann je Stufe das letzte Kind, das die Zeile
+    /// überdeckt (wie bei „Warum bin ich hier?“).</summary>
+    class function LinePath(ARoot: TSyntaxNode; ALine: Integer): TArray<TSyntaxNode>; static;
+    /// <summary>Quelltext von ANode aus AText in einer Zeile (Zeilenumbrüche und doppelter Leerraum zu einem
+    /// Leerzeichen), höchstens AMaxLength Zeichen samt „…“; '' ohne ANode oder bei leerem Bereich.</summary>
+    class function OneLineText(const AText: string; ANode: TSyntaxNode; AMaxLength: Integer): string; static;
   end;
 
 implementation
@@ -315,6 +323,57 @@ begin
     end;
   end;
   SetLength(Result, mCount);
+end;
+
+class function TSyntaxNodes.BlockOf(ARoutine: TSyntaxNode): TSyntaxNode;
+begin
+  Result := nil;
+  if ARoutine <> nil then
+  begin
+    Result := ARoutine.FindChild(TSyntaxKind.Block);
+  end;
+end;
+
+class function TSyntaxNodes.LinePath(ARoot: TSyntaxNode; ALine: Integer): TArray<TSyntaxNode>;
+var
+  mNode, mNext: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mNode := ARoot;
+  while mNode <> nil do
+  begin
+    Result := Result + [mNode];
+    mNext := nil;
+    for mIndex := mNode.ChildCount - 1 downto 0 do
+    begin
+      if (mNode[mIndex].StartPos.Line <= ALine) and (ALine <= mNode[mIndex].EndPos.Line) then
+      begin
+        mNext := mNode[mIndex];
+        Break;
+      end;
+    end;
+    mNode := mNext;
+  end;
+end;
+
+class function TSyntaxNodes.OneLineText(const AText: string; ANode: TSyntaxNode; AMaxLength: Integer): string;
+begin
+  Result := '';
+  if (ANode = nil) or (ANode.EndOffset <= ANode.StartOffset) or (ANode.EndOffset > Length(AText)) then
+  begin
+    Exit;
+  end;
+  Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  Result := Result.Replace(#13#10, ' ').Replace(#10, ' ').Replace(#13, ' ');
+  while Pos('  ', Result) > 0 do
+  begin
+    Result := Result.Replace('  ', ' ');
+  end;
+  if Length(Result) > AMaxLength then
+  begin
+    Result := Copy(Result, 1, AMaxLength - 1) + '…';
+  end;
 end;
 
 end.

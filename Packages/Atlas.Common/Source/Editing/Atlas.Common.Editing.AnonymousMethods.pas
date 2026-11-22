@@ -45,7 +45,7 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.AnonymousMethods.Shared;
 
 type
@@ -1593,15 +1593,8 @@ end;
 
 class function TAnonymousMethods.Embed(const AInput: TAnonymousInput; out AAction: TCodeAction;
   out AReason: string): Boolean;
-var
-  mEmbedding: TAnonymousEmbedding;
 begin
-  mEmbedding := TAnonymousEmbedding.Create(AInput);
-  try
-    Result := mEmbedding.Run(AAction, AReason);
-  finally
-    mEmbedding.Free;
-  end;
+  Result := TAnonymousEmbedding.Execute(AInput, AAction, AReason);
 end;
 
 /// <summary>Baut die Umwandlung der geprüften Stelle mit dem Namen AName.</summary>

@@ -61,7 +61,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CompilerFixes,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.CompilerPitfalls,
   Atlas.Common.Rules.CompilerPitfallFixes,

@@ -880,22 +880,14 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterDocumentationCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('header', cTexts[TDocumentationCommandsText.SetTheFileHeaderOr].Text, '/header', ExecuteHeader));
-  ARegister(Command('deprecated', cTexts[TDocumentationCommandsText.MarkTheDeclarationBelowAs].Text,
-    cTexts[TDocumentationCommandsText.DeprecatedReason].Text,
-    ExecuteDeprecated));
-  ARegister(Command('region-all', cTexts[TDocumentationCommandsText.ArrangeTheMethodsOfThe].Text, '/region-all',
-    ExecuteRegionAll));
+  ARegister(TSlashCommand.Create('header', cTexts[TDocumentationCommandsText.SetTheFileHeaderOr].Text, '/header',
+      ExecuteHeader));
+  ARegister(TSlashCommand.Create('deprecated', cTexts[TDocumentationCommandsText.MarkTheDeclarationBelowAs].Text,
+      cTexts[TDocumentationCommandsText.DeprecatedReason].Text, ExecuteDeprecated));
+  ARegister(TSlashCommand.Create('region-all', cTexts[TDocumentationCommandsText.ArrangeTheMethodsOfThe].Text,
+      '/region-all', ExecuteRegionAll));
 end;
 
 initialization

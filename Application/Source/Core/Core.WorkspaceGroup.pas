@@ -97,6 +97,8 @@ type
     function AllFiles: TArray<string>;
     /// <summary>Lädt AUnitName über die Suchpfade des ersten Projekts nach, das sie findet.</summary>
     function EnsureUnit(const AUnitName: string): Boolean;
+    /// <summary>EnsureUnit als Methodenreferenz für Dienste, die nachladen.</summary>
+    function UnitLoader: TEnsureUnitFunc;
     /// <summary>Arbeitsbereich, zu dem AFileName gehört, sonst der Hauptarbeitsbereich.</summary>
     function WorkspaceOf(const AFileName: string): TCoreWorkspace;
     /// <summary>Projektkontext für die Prüfregeln (#1112): Anwendungsart, Formulare der .dpr und die Dienste
@@ -242,11 +244,7 @@ var
   mInput: TLspQueryInput;
 begin
   mInput.Index := FIndex;
-  mInput.EnsureUnit :=
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end;
+  mInput.EnsureUnit := UnitLoader();
   mInput.Root := FRoot;
   mInput.Files := AllFiles;
   mInput.Namespaces := FMain.State.Namespaces;
@@ -459,6 +457,15 @@ begin
   Result := False;
 end;
 
+function TCoreWorkspaceGroup.UnitLoader: TEnsureUnitFunc;
+begin
+  Result :=
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end;
+end;
+
 function TCoreWorkspaceGroup.WorkspaceOf(const AFileName: string): TCoreWorkspace;
 var
   mWorkspace: TCoreWorkspace;
@@ -497,11 +504,7 @@ begin
   Result := TCoreRuleProjects.RuleProjectOf(mProjects, AFileName, FReadText);
   Result.Services := mWorkspace.RuleServices;
   // Nachladen über alle Projekte der Gruppe und projektweite Regeln (#1102) wie im Server.
-  Result.Services.EnsureUnit :=
-    function(const AUnitName: string): Boolean
-    begin
-      Result := EnsureUnit(AUnitName);
-    end;
+  Result.Services.EnsureUnit := UnitLoader();
   Result.Services.ProjectFiles := RuleProjectFiles;
   // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
   Result.Services.Queries := FQueries;

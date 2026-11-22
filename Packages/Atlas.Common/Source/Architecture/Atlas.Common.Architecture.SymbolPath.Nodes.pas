@@ -61,7 +61,7 @@ type
 
   TSymbolPathKinds = set of TIndexSymbolKind;
 
-  TSymbolPathReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TSymbolPathReadText = TDocumentReadText;
   /// <summary>True, wenn die Suche abbrechen soll (MCP-Cancel, $/cancelRequest).</summary>
   TSymbolPathCancelled = reference to function: Boolean;
 

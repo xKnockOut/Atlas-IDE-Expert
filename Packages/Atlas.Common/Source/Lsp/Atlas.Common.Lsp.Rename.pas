@@ -107,8 +107,6 @@ type
     /// TLspReferences.Find samt Deklaration; ASearch nennt Datei, Stelle und das Lesen weiterer Dateien.</summary>
     class function Conflict(AResolver: TNameResolver; ATree: TSyntaxTree; const ASearch: TReferenceSearch;
       const ANewName: string; const ALocations: TArray<TReferenceLocation>): string; static;
-    /// <summary>True für einen gültigen Bezeichner, der kein reserviertes Wort ist.</summary>
-    class function IsValidName(const AName: string): Boolean; static;
     /// <summary>Alle zu ersetzenden Stellen für das Symbol an ASearch.Position (die Deklaration zählt immer
     /// mit); EJsonRpcError, wenn nicht umbenennbar oder ein betroffenes Formular binär gespeichert ist.
     /// AUnchanged erhält die erschlossenen Stellen nach ARequest.Settings, die nicht geändert werden
@@ -801,16 +799,6 @@ begin
   end;
 end;
 
-class function TLspRename.IsValidName(const AName: string): Boolean;
-var
-  mTokens: TArray<TPascalToken>;
-begin
-  mTokens := TPascalLexer.Tokenize(AName);
-  // Genau ein Bezeichner ohne &-Escape; reservierte Wörter liefert der Lexer als Keyword.
-  Result := (Length(mTokens) = 1) and (mTokens[0].Kind = TPascalTokenKind.Identifier) and
-    (mTokens[0].Text = AName) and (AName[1] <> '&');
-end;
-
 class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ASearch: TReferenceSearch; const ARequest: TRenameRequest;
   out AUnchanged: TArray<TReferenceLocation>): TArray<TRenameEdit>;
@@ -821,7 +809,7 @@ var
   mReason: string;
 begin
   AUnchanged := nil;
-  if not IsValidName(ARequest.NewName) then
+  if not TPascalLexer.IsIdentifierName(ARequest.NewName) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TRenameText.IsNotAValidIdentifier].Fmt([
       ARequest.NewName]));

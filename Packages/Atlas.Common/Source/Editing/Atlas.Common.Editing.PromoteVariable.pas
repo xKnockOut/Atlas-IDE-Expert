@@ -390,20 +390,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Alle Knoten der Art AKind unter ANode.</summary>
-function NodesOf(ANode: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>;
-var
-  mList: TList<TSyntaxNode>;
-begin
-  mList := TList<TSyntaxNode>.Create;
-  try
-    TRoutineLocals.CollectKind(ANode, AKind, mList);
-    Result := mList.ToArray;
-  finally
-    mList.Free;
-  end;
-end;
-
 /// <summary>Klassenmethode (class procedure, class function)?</summary>
 function IsClassMethod(const ATokens: TArray<TPascalToken>; AMethod: TSyntaxNode): Boolean;
 var
@@ -420,14 +406,14 @@ var
   mShort: string;
 begin
   mShort := TRoutineBody.ShortNameOf(AMethod.Name);
-  for mNode in NodesOf(TRoutineBody.BodyOf(AMethod), TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(TRoutineBody.BodyOf(AMethod), TSyntaxKind.Identifier) do
   begin
     if SameText(mNode.Name, mShort) then
     begin
       Exit(True);
     end;
   end;
-  for mNode in NodesOf(TRoutineBody.BodyOf(AMethod), TSyntaxKind.MemberAccess) do
+  for mNode in TSyntaxNodes.OfKind(TRoutineBody.BodyOf(AMethod), TSyntaxKind.MemberAccess) do
   begin
     if SameText(mNode.Name, mShort) and (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, 'Self') then
     begin
@@ -591,7 +577,7 @@ function PropertyUsing(ATree: TSyntaxTree; const ATokens: TArray<TPascalToken>; 
 var
   mProperty: TSyntaxNode;
 begin
-  for mProperty in NodesOf(ATree.Root, TSyntaxKind.PropertyDecl) do
+  for mProperty in TSyntaxNodes.OfKind(ATree.Root, TSyntaxKind.PropertyDecl) do
   begin
     if MentionsName(ATokens, mProperty, AName) then
     begin
@@ -671,7 +657,7 @@ function NestedDeclarer(const AText: string; ATree: TSyntaxTree; AMethod: TSynta
 var
   mRoutine: TSyntaxNode;
 begin
-  for mRoutine in NodesOf(AMethod, TSyntaxKind.RoutineDecl) do
+  for mRoutine in TSyntaxNodes.OfKind(AMethod, TSyntaxKind.RoutineDecl) do
   begin
     if (mRoutine <> AMethod) and DeclaresAnywhere(AText, ATree, mRoutine, AName) then
     begin
@@ -686,7 +672,7 @@ function ClassUser(ATree: TSyntaxTree; const AClassName, AName: string): TSyntax
 var
   mNode: TSyntaxNode;
 begin
-  for mNode in NodesOf(ATree.Root, TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(ATree.Root, TSyntaxKind.Identifier) do
   begin
     if SameText(mNode.Name, AName) and (TopRoutineOf(mNode) <> nil) and
       SameText(TRoutineBody.QualifierOf(TopRoutineOf(mNode).Name), AClassName) then
@@ -752,7 +738,7 @@ begin
     Exit(cTexts[TEditingPromoteVariableText.TheLocalRoutineAlreadyDeclares].Fmt([mNested.Name, AName]));
   end;
   Result := '';
-  for mNode in NodesOf(AMethod, TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(AMethod, TSyntaxKind.Identifier) do
   begin
     if SameText(mNode.Name, AName) then
     begin
@@ -996,7 +982,7 @@ begin
   References := nil;
   ACreated := False;
   AFreed := False;
-  for mNode in NodesOf(Method, TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(Method, TSyntaxKind.Identifier) do
   begin
     if IsLocalReference(mNode, ALocals) then
     begin
@@ -1125,7 +1111,7 @@ var
 begin
   References := nil;
   mTops := nil;
-  for mNode in NodesOf(Tree.Root, TSyntaxKind.Identifier) + NodesOf(Tree.Root, TSyntaxKind.MemberAccess) do
+  for mNode in TSyntaxNodes.OfKind(Tree.Root, TSyntaxKind.Identifier) + TSyntaxNodes.OfKind(Tree.Root, TSyntaxKind.MemberAccess) do
   begin
     if not SameText(mNode.Name, Name) then
     begin

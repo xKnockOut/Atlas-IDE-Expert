@@ -69,7 +69,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CodeLens,
-  Atlas.Common.Lsp.Implementations;
+  Atlas.Common.Lsp.Implementations,
+  Atlas.Common.Lsp.Internals.Feature;
 
 const
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -81,18 +82,6 @@ begin
   Result.Name := AName;
   Result.FileName := AFileName;
   Result.Range := ARange;
-end;
-
-function UnitOf(const AIndex: ISymbolIndex; const ACurrent: TUnitIndex; const AFileName: string;
-  out AUnit: TUnitIndex): Boolean;
-begin
-  // Die eigene Datei aus dem Editor, nicht aus dem Index.
-  if SameText(AFileName, ACurrent.FileName) then
-  begin
-    AUnit := ACurrent;
-    Exit(True);
-  end;
-  Result := AIndex.FindFile(AFileName, AUnit);
 end;
 
 function IsRoutineOf(const ASymbol: TIndexSymbol; const AContainer, AName: string): Boolean;
@@ -135,7 +124,7 @@ begin
     begin
       Break;
     end;
-    if UnitOf(AIndex, ACurrent, mLocation.FileName, mOwner) and
+    if UnitOfFile(AIndex, ACurrent, mLocation.FileName, mOwner) and
       OverridingBody(mOwner, mLocation.Symbol.QualifiedName, AName, mBody) then
     begin
       Result := Result + [MarkTarget(mLocation.Symbol.Name + '.' + AName, mOwner.FileName, mBody.SelectionRange)];

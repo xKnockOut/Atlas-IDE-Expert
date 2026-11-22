@@ -808,20 +808,6 @@ end;
 
 { /atomic }
 
-function IsField(ASource: TCommandSource; const AName: string): Boolean;
-var
-  mSymbol: TIndexSymbol;
-begin
-  for mSymbol in ASource.UnitIndex.Symbols do
-  begin
-    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Name, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Liest die Anweisung unter /atomic ohne Semikolon nach AStatement, ihre Einrückung nach AIndent;
 /// Grund, wenn dort keine einzeilige Anweisung steht, sonst ''.</summary>
 function AtomicIssue(ASource: TCommandSource; out AIndent, AStatement: string): string;
@@ -930,7 +916,7 @@ begin
       begin
         AReason := cTexts[TTaskCommandsText.ExpectedBelowIsIncF].Text;
       end
-      else if not IsField(mSource, mTarget) then
+      else if not mSource.HasField(mTarget) then
       begin
         AReason := cTexts[TTaskCommandsText.IsNotAFieldAtomic].Fmt([mTarget]);
       end;
@@ -947,22 +933,15 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterTaskCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('task', cTexts[TTaskCommandsText.FollowingStatementsInTTaskRun].Text, '/task', ExecuteTask));
-  ARegister(Command('parallel', cTexts[TTaskCommandsText.ForLoopBelowAsTParallel].Text, '/parallel', ExecuteParallel));
-  ARegister(Command('future', cTexts[TTaskCommandsText.FollowingStatementsAsTTaskFuture].Text,
-    cTexts[TTaskCommandsText.FutureSumInteger].Text,
-    ExecuteFuture));
-  ARegister(Command('atomic', cTexts[TTaskCommandsText.IncDecOnAField].Text, '/atomic', ExecuteAtomic));
+  ARegister(TSlashCommand.Create('task', cTexts[TTaskCommandsText.FollowingStatementsInTTaskRun].Text, '/task',
+      ExecuteTask));
+  ARegister(TSlashCommand.Create('parallel', cTexts[TTaskCommandsText.ForLoopBelowAsTParallel].Text, '/parallel',
+      ExecuteParallel));
+  ARegister(TSlashCommand.Create('future', cTexts[TTaskCommandsText.FollowingStatementsAsTTaskFuture].Text,
+      cTexts[TTaskCommandsText.FutureSumInteger].Text, ExecuteFuture));
+  ARegister(TSlashCommand.Create('atomic', cTexts[TTaskCommandsText.IncDecOnAField].Text, '/atomic', ExecuteAtomic));
 end;
 
 initialization

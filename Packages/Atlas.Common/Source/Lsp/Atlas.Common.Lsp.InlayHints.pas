@@ -25,7 +25,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Lsp.Hover;
 
 type

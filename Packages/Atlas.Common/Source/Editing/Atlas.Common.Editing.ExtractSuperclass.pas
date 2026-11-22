@@ -102,7 +102,7 @@ uses
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
 

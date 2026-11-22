@@ -101,7 +101,7 @@ uses
   Atlas.Common.Editing.ClassLayout,
   Atlas.Common.Editing.InlineAccessor,
   Atlas.Common.Editing.MemberTransfer,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.WorkspaceChanges,

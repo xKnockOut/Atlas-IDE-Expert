@@ -110,7 +110,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Rules.Builtin.Metrics,
-  Shell.Hotspots;
+  Core.Hotspots,
+  Shell.Composition.Platform;
 
 { TShellSources }
 
@@ -320,7 +321,7 @@ begin
   // Ohne Hotspots kein Prozess; ohne Arbeitskopie meldet die Antwort den Grund statt einer leeren Liste.
   if ASettings.HotspotsEnabled then
   begin
-    TShellHotspotVcs.Detect(mArchitecture.Root, ASettings, AVcs, AError);
+    TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, mArchitecture.Root, ASettings, AVcs, AError);
   end;
 end;
 

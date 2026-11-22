@@ -26,6 +26,9 @@ type
     /// </summary>
     class function ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;
       out AText: string): Boolean; overload; static;
+    /// <summary>ReadSourceText ohne Dokumentspeicher als Leser (die Überladung lässt sich nicht direkt übergeben).
+    /// </summary>
+    class function SourceReader: TDocumentReadText; static;
     /// <summary>Projekte der einzigen .groupproj in ARoot (#648); leer ohne oder mit mehreren Gruppen.</summary>
     class function GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>; static;
     /// <summary>Projekte der Projektgruppe AGroupFile; leer, wenn sie nicht lesbar ist (Warnung im Log).</summary>
@@ -86,6 +89,15 @@ begin
   begin
     AText := '';
   end;
+end;
+
+class function TCoreBootstrap.SourceReader: TDocumentReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end;
 end;
 
 class function TCoreBootstrap.ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;

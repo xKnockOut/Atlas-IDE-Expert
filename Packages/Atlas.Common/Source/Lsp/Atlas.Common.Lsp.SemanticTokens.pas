@@ -22,7 +22,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.Reassigned;
+  Atlas.Common.Semantics.Reassigned,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   /// <summary>Reihenfolge = Index in der Legende.</summary>
@@ -39,14 +40,11 @@ type
     Modifiers: TSemanticTokenModifiers;
   end;
 
-  TLspSemanticTokens = class
+  TLspSemanticTokens = class(TLspIndexFeature)
   public const
     cFullMethod = 'textDocument/semanticTokens/full';
     cRangeMethod = 'textDocument/semanticTokens/range';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
       AWithRange: Boolean): TJSONValue;
@@ -414,10 +412,7 @@ end;
 constructor TLspSemanticTokens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AEnsureUnit);
 end;
 
 constructor TLspSemanticTokens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);

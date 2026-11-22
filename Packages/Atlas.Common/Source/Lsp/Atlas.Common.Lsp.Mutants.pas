@@ -69,15 +69,8 @@ const
 { TLspMutants }
 
 class procedure TLspMutants.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
-var
-  mReadText: TLspTestCasesReadText;
 begin
-  mReadText := AReadText;
-  ACommands.RegisterConcurrent(cCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := Execute(AArguments, mReadText);
-    end);
+  TLspTestCases.AttachReading(ACommands, cCommand, Execute, AReadText);
 end;
 
 /// <summary>Zeilen der Routine ANode als JSON-Objekt.</summary>

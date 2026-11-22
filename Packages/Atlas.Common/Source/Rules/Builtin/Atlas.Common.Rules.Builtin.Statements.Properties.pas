@@ -82,7 +82,7 @@ uses
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Lines,

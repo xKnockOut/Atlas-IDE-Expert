@@ -83,7 +83,7 @@ type
     procedure RegisterReadCommands(ACommands: TLspCommands);
     /// <summary>Befehle, die etwas anstoßen: Kompilieren, Index, Neuprüfen, Build und Projekt wählen.</summary>
     procedure RegisterActionCommands(ACommands: TLspCommands);
-    /// <summary>Formulare in Text umwandeln (Logik in Shell.Commands.Build).</summary>
+    /// <summary>Formulare in Text umwandeln (Logik in Core.Commands.Build).</summary>
     procedure RegisterConvertCommand(ACommands: TLspCommands);
   end;
 
@@ -103,10 +103,11 @@ uses
   Atlas.Common.Lsp.FormFiles,
   Platform.Server,
   Core.CrashCases,
-  Shell.Commands.Build,
-  Shell.Commands.Index,
+  Core.Commands.Build,
+  Core.Commands.Index,
   Atlas.Text.LogMarks,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
 {$SCOPEDENUMS ON}
@@ -116,15 +117,6 @@ type
 const
   cTexts: array[TServerCommandText] of TAtlasText = (
     (De: 'Projekt %s ist nicht geladen.'; En: 'Project %s is not loaded.'));
-
-function FirstText(const AArguments: TJSONArray): string;
-begin
-  Result := '';
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-  begin
-    Result := AArguments.Items[0].Value;
-  end;
-end;
 
 function FormFileExists(AFileName: string): Boolean;
 begin
@@ -179,7 +171,7 @@ function TShellServerCommands.RunConvertForms(const AArguments: TJSONArray): TJS
 var
   mConverted, mBackups: Integer;
 begin
-  // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units (Logik in Shell.Commands.Build).
+  // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units (Logik in Core.Commands.Build).
   mConverted := TBuildCommands.ConvertForms(TBuildCommands.FormFiles(AArguments, FServices.ProjectSourceFiles(),
     FormFileExists), FServices.Logger, mBackups);
   FServices.Logger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
@@ -195,7 +187,7 @@ var
   mAnswer: TJSONObject;
 begin
   // Optional die URI einer Datei, deren Projekt kompiliert wird.
-  mUri := FirstText(AArguments);
+  mUri := TJsonRead.FirstText(AArguments);
   if mUri = '' then
   begin
     mStarted := FServices.Compile('', mChoice);
@@ -237,7 +229,7 @@ var
   mFreed: Int64;
   mRemoved: Integer;
 begin
-  // „Index löschen“ (#492, Logik in Shell.Commands.Index): Caches freigeben, alle löschen, neu indizieren.
+  // „Index löschen“ (#492, Logik in Core.Commands.Index): Caches freigeben, alle löschen, neu indizieren.
   mTargets := FServices.Workspaces('');
   for mWorkspace in mTargets do
   begin
@@ -255,7 +247,7 @@ end;
 
 function TShellServerCommands.RunRetryCrashCase(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TJSONNumber.Create(FServices.RetryCrashCase(FirstText(AArguments)));
+  Result := TJSONNumber.Create(FServices.RetryCrashCase(TJsonRead.FirstText(AArguments)));
 end;
 
 function TShellServerCommands.RunRecheck(const AArguments: TJSONArray): TJSONValue;
@@ -276,7 +268,7 @@ var
   mProject: TProjectInfo;
   mItems: TJSONArray;
 begin
-  // Argumente und Antwort in Shell.Commands.Build; ohne Änderung nur die aktuelle Auswahl je Projekt (#46).
+  // Argumente und Antwort in Core.Commands.Build; ohne Änderung nur die aktuelle Auswahl je Projekt (#46).
   mArgs := TSelectBuildArgs.Parse(AArguments);
   mTargets := FServices.Workspaces(mArgs.Uri);
   if mArgs.Changes then

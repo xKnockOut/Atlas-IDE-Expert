@@ -24,7 +24,7 @@ uses
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.CheckMemory,
   Core.CommandLine,
-  Shell.VersionControlChanges,
+  Core.VersionControlChanges,
   Core.WorkspaceGroup,
   Shell.Linter.Baseline;
 

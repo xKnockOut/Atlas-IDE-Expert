@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.TextChanges;
+﻿unit Atlas.Common.Documents.TextChanges;
 
 // Gemeinsamer Baustein der Umbauten über mehrere Klassen (#664, #713, #675):
 // Ein Umbau rechnet in Schritten (Änderungen anwenden, neu parsen, nächster
