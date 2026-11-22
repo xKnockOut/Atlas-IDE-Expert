@@ -79,7 +79,7 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Rules.Builtin.General,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Localization.Texts;
 
 type

@@ -16,7 +16,7 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Inlining.Types;
 
 type

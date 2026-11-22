@@ -53,7 +53,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Unit Texte mit den Schaltern AHead vor unit, den Deklarationen ADecls (var-Abschnitt von Pruefen)

@@ -141,7 +141,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Arrays,
   Atlas.Common.Pascal.TokenCursor;

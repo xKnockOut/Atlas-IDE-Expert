@@ -40,7 +40,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.WithResolution,
   Atlas.Common.Editing.Inlining,

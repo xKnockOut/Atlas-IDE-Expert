@@ -12,6 +12,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions;
 
 type

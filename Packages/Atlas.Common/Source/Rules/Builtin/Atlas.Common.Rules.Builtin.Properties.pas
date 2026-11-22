@@ -108,7 +108,7 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Fuzzy,
