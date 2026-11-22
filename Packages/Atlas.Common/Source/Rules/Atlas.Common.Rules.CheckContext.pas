@@ -68,6 +68,13 @@ type
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
   TRuleContextProvider = reference to function(const AUri: string; out AContext: TRuleCheckContext): Boolean;
 
+  TRuleContexts = class
+  public
+    /// <summary>Umfeld von AProvider für AUri; ohne eins (auch AProvider nil) die Vorgaben und False.</summary>
+    class function Lookup(const AProvider: TRuleContextProvider; const AUri: string;
+      out AContext: TRuleCheckContext): Boolean; static;
+  end;
+
 implementation
 
 uses
@@ -122,6 +129,19 @@ begin
     Exit(Findings(AText, ATree));
   end;
   Result := Memo.Obtain(FileName, AText, RuleRun(AText, ATree, Self), AWaitCancelled);
+end;
+
+{ TRuleContexts }
+
+class function TRuleContexts.Lookup(const AProvider: TRuleContextProvider; const AUri: string;
+  out AContext: TRuleCheckContext): Boolean;
+begin
+  AContext := Default(TRuleCheckContext);
+  Result := Assigned(AProvider) and AProvider(AUri, AContext);
+  if not Result then
+  begin
+    AContext := Default(TRuleCheckContext);
+  end;
 end;
 
 function TRuleCheckContext.CachedFindings(const AText: string; ATree: TSyntaxTree;

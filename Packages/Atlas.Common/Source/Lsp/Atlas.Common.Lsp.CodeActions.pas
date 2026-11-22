@@ -26,11 +26,10 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Pascal.UsesEdits,
-  Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Rules.CheckContext;
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.Lsp.SyntaxDiagnostics;
 
 type
   /// <summary>Einstellung "sortUses" für AUri als Optionen für "uses aufräumen" (#182, #284, #2794).</summary>
@@ -68,7 +67,7 @@ type
     cRuleWaitMs = 1500;
   private
     FStore: IDocumentStore;
-    FRuleProvider: TRuleContextProvider;
+    FRules: ILspRuleActions;
     FUsesOrderFor: TUsesOrderProvider;
     FUsesContextFor: TUsesContextProvider;
     FFormActions: TFormActionsFunc;
@@ -85,7 +84,8 @@ type
     function Collect(const AUri: string; const ARange: TTextRange; const AOnly: TArray<string>;
       const ACancellation: IJsonRpcCancellationToken): TJSONArray;
   public
-    constructor Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
+    /// <summary>ARules nil = ohne Prüfregeln: keine Treffer, keine Aktionen zu Treffern.</summary>
+    constructor Create(const AStore: IDocumentStore; const ARules: ILspRuleActions);
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Capability für initialize. Der Aufrufer übernimmt das Objekt.</summary>
     class function Capability: TJSONObject; static;
@@ -136,9 +136,8 @@ uses
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Lsp.Positions,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Prompt,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.DocComments,
@@ -183,11 +182,11 @@ begin
   end;
 end;
 
-constructor TLspCodeActions.Create(const AStore: IDocumentStore; const ARuleProvider: TRuleContextProvider);
+constructor TLspCodeActions.Create(const AStore: IDocumentStore; const ARules: ILspRuleActions);
 begin
   inherited Create;
   FStore := AStore;
-  FRuleProvider := ARuleProvider;
+  FRules := ARules;
 end;
 
 function TLspCodeActions.FormFileActions(const AUri, AText: string; const ARange: TTextRange): TJSONArray;
@@ -359,16 +358,6 @@ begin
   Result.AddPair('edit', mWorkspaceEdit);
 end;
 
-/// <summary>Schreibzugriff über den Index prüfen (#313); ohne Index nil.</summary>
-function ReadOnlyCheck(AHasRules: Boolean; const ARules: TRuleCheckContext; const AUri, AText: string): TReadOnlyCheck;
-begin
-  if not AHasRules then
-  begin
-    Exit(nil);
-  end;
-  Result := TAssignmentSwap.ReadOnlyCheckOf(ARules.Services.Index, TDocumentUris.ToPath(AUri), AText);
-end;
-
 type
   /// <summary>Sammelt die Aktionen einer Anfrage in einer Unit.</summary>
   TCodeActionBuilder = class
@@ -376,10 +365,11 @@ type
     FOwner: TLspCodeActions;
     FUri: string;
     FRange: TTextRange;
+    FDocument: ITextDocument;
     FText: string;
     FTree: TSyntaxTree;
-    FHasRules: Boolean;
-    FRules: TRuleCheckContext;
+    /// <summary>Prüfregeln der Datei; nil ohne.</summary>
+    FRules: ILspDocumentRuleActions;
     FFindings: TArray<TRuleFinding>;
     FWantsEditing: Boolean;
     FWantsOrganize: Boolean;
@@ -402,6 +392,8 @@ type
     procedure AddClassActions(const AStyle: TFormatStyle);
     function ClassContext(const AStyle: TFormatStyle): TClassActionContext;
     function RuleOffersFreeField: Boolean;
+    /// <summary>Index aus dem Umfeld der Prüfregeln; nil ohne.</summary>
+    function Index: ISymbolIndex;
     procedure AddFreeFieldActions(const ARefactoring: TRefactoringSettings);
     procedure AddPromptActions;
     procedure AddStringLiteralActions;
@@ -413,8 +405,8 @@ type
     /// Prompt.</summary>
     procedure AddEditingActions;
   public
-    constructor Create(AOwner: TLspCodeActions; const AUri: string; const ARange: TTextRange; const AText: string;
-      ATree: TSyntaxTree);
+    constructor Create(AOwner: TLspCodeActions; const AUri: string; const ARange: TTextRange;
+      const ADocument: ITextDocument; ATree: TSyntaxTree);
     /// <summary>Alle Aktionen; ACancellation wird geprüft, bevor das Ergebnis entsteht. Der Aufrufer übernimmt es.
     /// </summary>
     function Build(const AOnly: TArray<string>; const ACancellation: IJsonRpcCancellationToken): TJSONArray;
@@ -423,13 +415,14 @@ type
 { TCodeActionBuilder }
 
 constructor TCodeActionBuilder.Create(AOwner: TLspCodeActions; const AUri: string; const ARange: TTextRange;
-  const AText: string; ATree: TSyntaxTree);
+  const ADocument: ITextDocument; ATree: TSyntaxTree);
 begin
   inherited Create;
   FOwner := AOwner;
   FUri := AUri;
   FRange := ARange;
-  FText := AText;
+  FDocument := ADocument;
+  FText := ADocument.Text;
   FTree := ATree;
 end;
 
@@ -475,10 +468,9 @@ begin
     try
       if FWantsFixAll then
       begin
-        Result := FRules.SharedFindings(FText, FTree, WaitCancelled(FCancellation));
+        Result := FRules.SharedRuleFindings(FDocument);
       end
-      else if not FRules.CachedFindings(FText, FTree, WaitCancelled(FCancellation),
-        Result) then
+      else if not FRules.CachedRuleFindings(FDocument, Result) then
       begin
         Result := nil;
       end;
@@ -499,21 +491,15 @@ end;
 
 procedure TCodeActionBuilder.CollectFindings;
 begin
-  FHasRules := Assigned(FOwner.FRuleProvider) and FOwner.FRuleProvider(FUri, FRules);
-  if not FHasRules then
+  FFindings := nil;
+  if FOwner.FRules = nil then
   begin
-    FRules := Default(TRuleCheckContext);
+    Exit;
   end;
-  // Syntaxfehler mit der Korrektur des Parsers (#1022), auch ohne Prüfregeln; Schweregrad und Abschalten wie
-  // in den Diagnosen. Die Regeltreffer im selben Regelkontext wie in den Diagnosen (#1112).
-  if FHasRules then
-  begin
-    FFindings := TFileChecker.SyntaxFindings(FTree.Diagnostics, FRules.Settings) + RuleFindings;
-  end
-  else
-  begin
-    FFindings := TFileChecker.SyntaxFindings(FTree.Diagnostics, Default(TServerSettings));
-  end;
+  FRules := FOwner.FRules.ForDocument(FUri, WaitCancelled(FCancellation));
+  // Syntaxfehler mit der Korrektur des Parsers (#1022), auch ohne Umfeld der Prüfregeln; Schweregrad und Abschalten
+  // wie in den Diagnosen. Die Regeltreffer im selben Regelkontext wie in den Diagnosen (#1112).
+  FFindings := FRules.SyntaxFindings(FDocument) + RuleFindings;
 end;
 
 function TCodeActionBuilder.UsesActions: TArray<TCodeAction>;
@@ -576,13 +562,9 @@ end;
 
 procedure TCodeActionBuilder.AddRuleActions(const ARefactoring: TRefactoringSettings; const AStyle: TFormatStyle);
 begin
-  if ARefactoring.TryFinally then
+  if FRules <> nil then
   begin
-    Add(TRuleCodeActions.ForRange(FFindings, FText, FTree, FRange, AStyle));
-  end
-  else
-  begin
-    Add(TRuleCodeActions.ForFindings(FFindings, FText, FRange));
+    Add(FRules.Fixes(FFindings, FDocument, FRange, AStyle, ARefactoring.TryFinally));
   end;
 end;
 
@@ -619,10 +601,19 @@ begin
   end;
 end;
 
+function TCodeActionBuilder.Index: ISymbolIndex;
+begin
+  Result := nil;
+  if FRules <> nil then
+  begin
+    Result := FRules.Index;
+  end;
+end;
+
 procedure TCodeActionBuilder.AddFreeFieldActions(const ARefactoring: TRefactoringSettings);
 begin
-  // Die Aktion am Feld bringt die Regel mit, wenn sie läuft. Ohne Prüfregeln ist FRules leer, also ohne Index.
-  Add(TFreeFields.Actions(FTree, FText, FRules.Services.Index, FRange.StartPos.Line,
+  // Die Aktion am Feld bringt die Regel mit, wenn sie läuft. Ohne Prüfregeln ohne Index.
+  Add(TFreeFields.Actions(FTree, FText, Index, FRange.StartPos.Line,
     TFreeFields.StyleOf(ARefactoring.FreeFieldsStyle), not RuleOffersFreeField));
 end;
 
@@ -640,8 +631,7 @@ begin
       mAction.Title := cTexts[TLspCodeActionsText.CopyFindingAsPrompt].Fmt([mFinding.RuleId]);
       mAction.Kind := cQuickFixKind;
       mAction.Command := cCopyTextCommand;
-      mAction.CommandArguments := [TFindingPrompt.Markdown(mFinding, TDocumentUris.ToPath(FUri), FText,
-        TFindingPrompt.SharedCatalog)];
+      mAction.CommandArguments := [FRules.Prompt(mFinding, TDocumentUris.ToPath(FUri), FText)];
       Add(mAction);
     end;
   end;
@@ -712,7 +702,7 @@ begin
   begin
     Add(mAction);
   end;
-  if FWantsFixAll and TRuleCodeActions.FixAll(FFindings, mAction) then
+  if FWantsFixAll and (FRules <> nil) and FRules.FixAll(FFindings, mAction) then
   begin
     Add(mAction);
   end;
@@ -781,8 +771,8 @@ begin
     begin
       Add(mCompletion);
     end;
-    if FWantsEditing and TCodeActions.SwapAssignments(FText, FRange, ReadOnlyCheck(FHasRules, FRules, FUri, FText),
-      mAction) then
+    if FWantsEditing and TCodeActions.SwapAssignments(FText, FRange,
+      TAssignmentSwap.ReadOnlyCheckOf(Index, TDocumentUris.ToPath(FUri), FText), mAction) then
     begin
       Add(mAction);
     end;
@@ -845,7 +835,7 @@ begin
     Exit(FormFileActions(AUri, mDocument.Text, ARange));
   end;
   mShared := TSyntaxTreeCache.Get(mDocument);
-  mBuilder := TCodeActionBuilder.Create(Self, AUri, ARange, mDocument.Text, mShared.Tree);
+  mBuilder := TCodeActionBuilder.Create(Self, AUri, ARange, mDocument, mShared.Tree);
   try
     Result := mBuilder.Build(AOnly, ACancellation);
   finally
