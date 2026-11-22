@@ -31,7 +31,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.FreeFields,
+  Atlas.Common.Pascal.Destructors,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
   Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute,
@@ -255,7 +255,7 @@ begin
     Exit;
   end;
   mDecl := FindClassType(FContext.Tree.Root, AClass);
-  if (mDecl <> nil) and (mDecl.Parent <> nil) and TFreeFields.DestructorEdits(FContext.Tree, FContext.Text, AClass,
+  if (mDecl <> nil) and (mDecl.Parent <> nil) and TPascalDestructors.DestructorEdits(FContext.Tree, FContext.Text, AClass,
     mDecl.Parent.StartPos.Line, [cRemove + '(Self);'], mEdits) then
   begin
     Result := [TRuleFix.Create(cTexts[TQueueRemoveText.AddToDestructor].Text, mEdits)];

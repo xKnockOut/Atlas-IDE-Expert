@@ -55,7 +55,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.FreeFields,
+  Atlas.Common.Pascal.Destructors,
   Atlas.Common.Rules.Builtin.OpenTools.EntryGuard,
   Atlas.Common.Rules.Builtin.OpenTools.Register,
   Atlas.Common.Localization.Texts;
@@ -685,7 +685,7 @@ begin
     mDecl := FindClassDecl(FContext.Tree.Root, mClassName);
   end;
   Result := (mDecl <> nil) and MethodTarget(ACall, mDecl, ATarget, mName, mEdits) and
-    TFreeFields.DestructorEdits(FContext.Tree, FContext.Text, mClassName, mDecl.StartPos.Line,
+    TPascalDestructors.DestructorEdits(FContext.Tree, FContext.Text, mClassName, mDecl.StartPos.Line,
     [AReceiver + ACall.Pair.Close + '(' + mName + ');'], mDestroying);
   if not Result then
   begin
