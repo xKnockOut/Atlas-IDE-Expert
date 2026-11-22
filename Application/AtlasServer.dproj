@@ -122,6 +122,7 @@
         <DCCReference Include="Source\Shell\Shell.Composition.ProtocolWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CoreWiring.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Rules.IdeTypes.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Lsp.InheritanceDepths.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.ClientStart.pas"/>
