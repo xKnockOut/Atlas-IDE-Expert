@@ -1885,7 +1885,10 @@ Atlas.IDE.VersionControl	Atlas.Core.VersionControl.Plan	Core/VersionControl/Atla
 Atlas.IDE.VersionControl	Atlas.Core.VersionControl.Providers.Git	Core/VersionControl/Atlas.Core.VersionControl.Providers.Git.pas	Ordner `Core/VersionControl`
 Atlas.IDE.VersionControl	Atlas.Core.VersionControl.Providers.Svn	Core/VersionControl/Atlas.Core.VersionControl.Providers.Svn.pas	Ordner `Core/VersionControl`
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Commands	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Commands.pas	Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905)
+Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Dialogs	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Dialogs.pas	IAtlasVcsDialogs über Branch-Dialog und Arbeitskopien
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.LineChanges	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.LineChanges.pas	Änderungsmarken für Base und Tracker (`IAtlasLineChanges`, #1905)
+Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Module	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Module.pas	Modulklasse der Versionsverwaltung: IAtlasModule, Einstellungen und Thema übernehmen
+Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Service	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Service.pas	IAtlasVcsService über TAtlasIdeVcsCore
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Adapters.Settings	IDE/VersionControl/Atlas.IDE.VersionControl.Adapters.Settings.pas	Anbieter und Haken des Abschnitts Versionsverwaltung (#1905)
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Branching	IDE/VersionControl/Atlas.IDE.VersionControl.Branching.pas	Ordner `IDE/VersionControl`
 Atlas.IDE.VersionControl	Atlas.IDE.VersionControl.Composition	IDE/VersionControl/Atlas.IDE.VersionControl.Composition.pas	Ordner `IDE/VersionControl`
