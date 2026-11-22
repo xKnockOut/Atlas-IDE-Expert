@@ -50,6 +50,17 @@ type
     Current: Boolean;
   end;
 
+  /// <summary>Haltepunkt, der nicht greifen wird (#577), bei einem Start durch den Assistenten gemeldet statt im
+  /// Dialog (#2895): Stelle, Grund als Kennung (noCode, inactive, noDebugInfo, notInProject, unreadable), Text in der
+  /// Sprache der Oberfläche und die nächste Zeile mit Code (0 ohne).</summary>
+  TAtlasDebugControlWarning = record
+    FileName: string;
+    Line: Integer;
+    Reason: string;
+    Text: string;
+    NextLine: Integer;
+  end;
+
   /// <summary>Zustand der Sitzung. Bei Phase Stopped: Grund (breakpoint, step, exception, pause, other), bei einer
   /// Exception Klasse und Meldung, Stelle des obersten Rahmens mit Quelltext, Aufrufstapel, lokale Variablen des
   /// aktuellen Rahmens und Threads.</summary>
@@ -63,6 +74,9 @@ type
     Frames: TArray<TAtlasDebugControlFrame>;
     Locals: TArray<TAtlasDebugControlVariable>;
     Threads: TArray<TAtlasDebugControlThread>;
+    /// <summary>Haltepunkte, die beim letzten Start des Assistenten nicht greifen werden; nur einmal gemeldet.
+    /// </summary>
+    Warnings: TArray<TAtlasDebugControlWarning>;
   end;
 
   /// <summary>Gesetzter Haltepunkt: Kennung (ab 1), Stelle und ob die Zeile Code hat (#577).</summary>

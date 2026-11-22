@@ -9,7 +9,8 @@
 //   {"ok": true, "result": {…}}  bzw.  {"ok": false, "reason": "…"}
 // "result" je Befehl: Zustand der Sitzung (debug_start, debug_stop, debug_continue, debug_step, debug_state), der
 // gesetzte Haltepunkt (set_breakpoint), die Zahl der entfernten (remove_breakpoint) bzw. Wert und Typ
-// (debug_evaluate); Aufbau in docs/MCP.md. Zeilen sind 1-basiert. Die Argumente hat der MCP-Server schon geprüft
+// (debug_evaluate); Aufbau in docs/MCP.md. Zustände tragen nach einem Start "breakpointWarnings", wenn Haltepunkte
+// nicht greifen werden (#2895; die IDE zeigt dann keinen Dialog). Zeilen sind 1-basiert. Die Argumente hat der MCP-Server schon geprüft
 // (Atlas.Common.Mcp.IdeDebug); hier zählt nur, was das Plugin braucht. Gründe kommen in der Sprache der Oberfläche
 // als TAtlasDebugInboxTexts herein (Core kennt die Texttabellen nicht).
 
@@ -71,8 +72,9 @@ type
     /// <summary>Liest einen Auftrag; False mit Grund in AReason.</summary>
     class function ParseRequest(const AText: string; const ATexts: TAtlasDebugInboxTexts;
       out ARequest: TAtlasDebugRequest; out AReason: string): Boolean; static;
-    /// <summary>Zustand als Objekt "result": ASession, AStateName ('none', 'running', 'stopped', 'terminated') und
-    /// bei einem Halt Grund, Stelle, Rahmen, Variablen und Threads aus AState. Der Aufrufer gibt es frei.</summary>
+    /// <summary>Zustand als Objekt "result": ASession, AStateName ('none', 'running', 'stopped', 'terminated'),
+    /// Haltepunkte, die nicht greifen werden, und bei einem Halt Grund, Stelle, Rahmen, Variablen und Threads aus
+    /// AState. Der Aufrufer gibt es frei.</summary>
     class function StateJson(const ASession, AStateName: string; const AState: TAtlasDebugControlState):
       TJSONObject; static;
     class function BreakpointJson(const ABreakpoint: TAtlasDebugControlBreakpoint): TJSONObject; static;
@@ -246,6 +248,27 @@ begin
   end;
 end;
 
+function WarningsJson(const AWarnings: TArray<TAtlasDebugControlWarning>): TJSONArray;
+var
+  mWarning: TAtlasDebugControlWarning;
+  mItem: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for mWarning in AWarnings do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('file', mWarning.FileName);
+    mItem.AddPair('line', TJSONNumber.Create(mWarning.Line));
+    mItem.AddPair('reason', mWarning.Reason);
+    mItem.AddPair('text', mWarning.Text);
+    if mWarning.NextLine > 0 then
+    begin
+      mItem.AddPair('nextLine', TJSONNumber.Create(mWarning.NextLine));
+    end;
+    Result.AddElement(mItem);
+  end;
+end;
+
 /// <summary>Grund des Halts samt Exception.</summary>
 function StopJson(const AState: TAtlasDebugControlState): TJSONObject;
 begin
@@ -266,6 +289,10 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('session', ASession);
   Result.AddPair('state', AStateName);
+  if AState.Warnings <> nil then
+  begin
+    Result.AddPair('breakpointWarnings', WarningsJson(AState.Warnings));
+  end;
   if AState.Phase <> TAtlasDebugControlPhase.Stopped then
   begin
     Exit;

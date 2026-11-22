@@ -10,6 +10,10 @@
 // waitSeconds (TAtlasDebugWait); solange bleiben weitere Aufträge liegen. Endet die Sitzung des Assistenten oder
 // wird der Eingang abgebaut (Einstellung aus, Modul entladen), entfernt er die Haltepunkte der Gruppe Atlas-KI und
 // beantwortet einen wartenden Auftrag mit Grund; danach erreicht nichts mehr das Modul (Regel 3).
+// Jeder übernommene Auftrag bekommt eine Antwort (#2895): Scheitert er mit einer Exception (auch EAbort, wenn der
+// Start abgebrochen wird), lehnt der Eingang ihn mit Grund ab. Verarbeitet die IDE Nachrichten, während ein Auftrag
+// noch läuft (etwa beim Bauen vor dem Start), kommt der Takt verschachtelt: Dann führt der Eingang keinen weiteren
+// Auftrag aus, beantwortet ihn aber mit „beschäftigt“, statt ihn liegen zu lassen.
 
 interface
 
@@ -39,7 +43,11 @@ type
     FWaiting: Boolean;
     FWait: TAtlasDebugWait;
     FWaitRequest: TAtlasDebugRequest;
+    /// <summary>Ein Auftrag wird gerade ausgeführt (Takt verschachtelt).</summary>
+    FBusy: Boolean;
     procedure Tick(Sender: TObject);
+    procedure RefuseWhileBusy;
+    function NextPending(out ARequestFile: string): Boolean;
     procedure Observe(const AControl: IAtlasDebugControl);
     procedure Process(const ARequestFile: string; const AControl: IAtlasDebugControl);
     procedure Execute(const ARequest: TAtlasDebugRequest; const AControl: IAtlasDebugControl);
@@ -237,12 +245,47 @@ begin
   end;
 end;
 
+function TAtlasIdeDebugInbox.NextPending(out ARequestFile: string): Boolean;
+var
+  mPending: TArray<string>;
+begin
+  ARequestFile := '';
+  if not FPace.Due(FSignal.Changed, GetTickCount64) then
+  begin
+    Exit(False);
+  end;
+  FSignal.Reopen;
+  mPending := TAtlasFileInbox.Pending(FFolder);
+  // Nur einer je Takt: Liegen mehr, listet der nächste Takt wieder.
+  FPace.Listed(GetTickCount64, Length(mPending) > 1);
+  Result := Length(mPending) > 0;
+  if Result then
+  begin
+    ARequestFile := mPending[0];
+  end;
+end;
+
+procedure TAtlasIdeDebugInbox.RefuseWhileBusy;
+var
+  mRequestFile, mId, mText: string;
+begin
+  if NextPending(mRequestFile) and TAtlasFileInbox.Claim(mRequestFile, mId, mText) then
+  begin
+    Refuse(mId, TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.DebugBusy));
+  end;
+end;
+
 procedure TAtlasIdeDebugInbox.Tick(Sender: TObject);
 var
   mControl: IAtlasDebugControl;
-  mPending: TArray<string>;
+  mRequestFile: string;
 begin
   try
+    if FBusy then
+    begin
+      RefuseWhileBusy;
+      Exit;
+    end;
     mControl := FControl();
     Observe(mControl);
     if FWaiting then
@@ -255,17 +298,9 @@ begin
       end;
       Exit;
     end;
-    if not FPace.Due(FSignal.Changed, GetTickCount64) then
+    if NextPending(mRequestFile) then
     begin
-      Exit;
-    end;
-    FSignal.Reopen;
-    mPending := TAtlasFileInbox.Pending(FFolder);
-    // Nur einer je Takt: Liegen mehr, listet der nächste Takt wieder.
-    FPace.Listed(GetTickCount64, Length(mPending) > 1);
-    if Length(mPending) > 0 then
-    begin
-      Process(mPending[0], mControl);
+      Process(mRequestFile, mControl);
     end;
   except
     on E: Exception do
@@ -301,9 +336,26 @@ begin
     Exit;
   end;
   FGate.Note(mRequest);
+  FBusy := True;
   try
-    Execute(mRequest, AControl);
+    try
+      Execute(mRequest, AControl);
+    except
+      on EAbort do
+      begin
+        FWaiting := False;
+        Refuse(mId, TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.DebugStartAborted));
+      end;
+      on E: Exception do
+      begin
+        // Der Assistent wartet auf diese Antwort; ohne sie läge der Auftrag als .taken (#2895).
+        FWaiting := False;
+        Refuse(mId, TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.DebugFailed, [E.Message]));
+        TAtlasGuard.Report(TAtlasFeature.Debugger, E);
+      end;
+    end;
   finally
+    FBusy := False;
     Changed;
   end;
 end;

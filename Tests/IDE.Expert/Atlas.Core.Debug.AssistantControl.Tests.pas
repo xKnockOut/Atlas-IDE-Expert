@@ -30,12 +30,16 @@ type
     procedure LocationFailsWithoutSource;
     [Test]
     procedure StopReasonPrefersException;
+    /// <summary>#2895: Fund der Haltepunkt-Prüfung als Eintrag der Antwort, Zeilen ab 1.</summary>
+    [Test]
+    procedure WarningCountsLinesFromOne;
   end;
 
 implementation
 
 uses
   Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.BreakpointCheck,
   Atlas.Core.Debug.AssistantControl,
   Atlas.Core.DebugControl.Types;
 
@@ -127,6 +131,29 @@ begin
     True)]);
   Assert.AreEqual('pause', TAtlasDebugAssistantControl.cStopNames[TAtlasDebugAssistantControl.StopOf(False, False,
     False)]);
+end;
+
+procedure TAtlasDebugAssistantControlTests.WarningCountsLinesFromOne;
+var
+  mProblem: TAtlasBreakpointProblem;
+  mWarning: TAtlasDebugControlWarning;
+begin
+  mProblem := Default(TAtlasBreakpointProblem);
+  mProblem.FileName := 'C:\P\Main.pas';
+  mProblem.Line := 9;
+  mProblem.Reason := TAtlasBreakpointReason.NoCode;
+  mProblem.NextLine := 11;
+  mWarning := TAtlasDebugAssistantControl.Warning(mProblem, 'Zeile ohne Code');
+  Assert.AreEqual('C:\P\Main.pas', mWarning.FileName);
+  Assert.AreEqual(10, mWarning.Line);
+  Assert.AreEqual(12, mWarning.NextLine);
+  Assert.AreEqual('noCode', mWarning.Reason);
+  Assert.AreEqual('Zeile ohne Code', mWarning.Text);
+  mProblem.Reason := TAtlasBreakpointReason.NotInProject;
+  mProblem.NextLine := -1;
+  mWarning := TAtlasDebugAssistantControl.Warning(mProblem, '');
+  Assert.AreEqual(0, mWarning.NextLine, 'ohne nächste Codezeile');
+  Assert.AreEqual('notInProject', mWarning.Reason);
 end;
 
 end.

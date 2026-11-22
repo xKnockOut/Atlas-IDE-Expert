@@ -8,12 +8,22 @@
 interface
 
 uses
+  System.SysUtils,
   System.JSON,
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.IdeDebug,
   Atlas.Common.Mcp.IdeQuestions,
   Atlas.Text.IdeContext,
+  Atlas.Common.Mcp.IdeBuilds,
   Atlas.Common.Compiler.IdeBuild;
+
+type
+  /// <summary>Projekt öffnen, das in keiner IDE offen ist (#2895): Projektdateien unter dem Arbeitsordner (erst bei
+  /// Bedarf gelesen) und Zustimmung nach mcp.openProjects. Default = nie öffnen.</summary>
+  TMcpIdeOpen = record
+    Candidates: TFunc<TArray<string>>;
+    MayOpen: TMcpMayOpenFunc;
+  end;
 
 /// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
 /// IDE.</summary>
@@ -41,20 +51,22 @@ function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): 
 function AskQuestionInIde(const ARoot: string; const AQuestion: TMcpIdeQuestion;
   out AAnswer: string): TMcpQuestionOutcome;
 /// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
-/// auf das Ende. EMcpToolError mit dem Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat oder sie
-/// den Auftrag nicht annimmt.</summary>
-function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string): TIdeBuild;
+/// auf das Ende. Ist AProject in keiner IDE offen, öffnet es die IDE nach AOpen (#2895). EMcpToolError mit dem
+/// Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat (und es nicht öffnen darf) oder sie den Auftrag
+/// nicht annimmt.</summary>
+function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string;
+  const AOpen: TMcpIdeOpen): TIdeBuild;
 /// <summary>Debug-Werkzeug ATool (#1874) in der laufenden IDE: debug_start wählt die IDE wie build_project nach
-/// AProject, die übrigen Werkzeuge gehen an die IDE des letzten debug_start (sonst an die mit dem aktiven Projekt
-/// unter ARoot). Liefert das Ergebnis des Plugins als JSON-Text; EMcpToolError mit dem Grund.</summary>
+/// AProject (nicht offen: nach AOpen öffnen, #2895), die übrigen Werkzeuge gehen an die IDE des letzten
+/// debug_start (sonst an die mit dem aktiven Projekt unter ARoot). Liefert das Ergebnis des Plugins als JSON-Text;
+/// EMcpToolError mit dem Grund.</summary>
 function DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
-  const AResolve: TMcpIdeDebugResolve): string;
+  const AResolve: TMcpIdeDebugResolve; const AOpen: TMcpIdeOpen): string;
 
 implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  System.SysUtils,
   System.Classes,
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
@@ -62,7 +74,6 @@ uses
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeInbox,
-  Atlas.Common.Mcp.IdeBuilds,
   Platform.Server,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json,
@@ -339,7 +350,8 @@ end;
 /// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
 /// auf das Ende. EMcpToolError mit dem Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat oder sie
 /// den Auftrag nicht annimmt.</summary>
-function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string): TIdeBuild;
+function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string;
+  const AOpen: TMcpIdeOpen): TIdeBuild;
 var
   mRequest: TMcpIdeBuildRequest;
   mPid: Cardinal;
@@ -358,7 +370,8 @@ begin
   mRequest.Configuration := AConfiguration;
   mRequest.Platform := APlatform;
   mWanted := WantedProject(ARoot, AProject);
-  if not TMcpIdeBuilds.Pick(RunningIdes, ARoot, mWanted, mPid, mRequest.Project, mReason) then
+  if not TMcpIdeBuilds.PickOrOpen(RunningIdes, ARoot, mWanted, AOpen.Candidates, AOpen.MayOpen, mPid,
+    mRequest.Project, mReason) then
   begin
     raise EMcpToolError.Create(mReason);
   end;
@@ -421,7 +434,7 @@ end;
 
 /// <summary>IDE für ein Debug-Werkzeug: für debug_start nach AProject (AProjectFile = gewähltes Projekt), sonst die
 /// des letzten debug_start, solange sie läuft, ersatzweise die mit dem aktiven Projekt unter ARoot.</summary>
-function DebugIde(const ARoot, ATool, AProject: string; out AProjectFile: string): Cardinal;
+function DebugIde(const ARoot, ATool, AProject: string; const AOpen: TMcpIdeOpen; out AProjectFile: string): Cardinal;
 var
   mEntries: TArray<TMcpIdeEntry>;
   mEntry: TMcpIdeEntry;
@@ -443,16 +456,18 @@ begin
       end;
     end;
   end;
-  if not TMcpIdeBuilds.Pick(mEntries, ARoot, WantedProject(ARoot, AProject), Result, AProjectFile, mReason) then
+  if not TMcpIdeBuilds.PickOrOpen(mEntries, ARoot, WantedProject(ARoot, AProject), AOpen.Candidates, AOpen.MayOpen,
+    Result, AProjectFile, mReason) then
   begin
     raise EMcpToolError.Create(mReason);
   end;
 end;
 
 function DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
-  const AResolve: TMcpIdeDebugResolve): string;
+  const AResolve: TMcpIdeDebugResolve; const AOpen: TMcpIdeOpen): string;
 var
   mPid: Cardinal;
+  mOpen: TMcpIdeOpen;
   mProjectFile, mRequest, mReason, mInbox: string;
 begin
   // Erst die Argumente prüfen: Fehler darin meldet das Werkzeug auch ohne laufende IDE.
@@ -461,7 +476,13 @@ begin
   begin
     raise EMcpToolError.Create(mReason);
   end;
-  mPid := DebugIde(ARoot, ATool, AProject, mProjectFile);
+  // Öffnen nur für den Start; die übrigen Werkzeuge gehen an eine IDE, die schon läuft.
+  mOpen := Default(TMcpIdeOpen);
+  if ATool = TMcpIdeDebug.cStart then
+  begin
+    mOpen := AOpen;
+  end;
+  mPid := DebugIde(ARoot, ATool, AProject, mOpen, mProjectFile);
   if not TMcpIdeDebug.RequestText(TMcpIdeDebugCall.Make(ATool, AClient, mProjectFile), AArguments, AResolve,
     mRequest, mReason) then
   begin

@@ -34,7 +34,7 @@ type
     DisabledToolsMustBeAList, McpPromptLanguageIsDeOr, UnknownSettingMcp, UnknownEntryInAnArgument,
     ArgumentWithoutName, UnknownEntryInAPrompt, PromptWithoutName, UnknownContentAllowed, ProtectedMustBeAList,
     AProtectedFileIsAnObject, UnknownEntryInAProtectedFile, ProtectedFileWithoutPath, UnknownSettingAssistants,
-    InstructionFilesMustBeAList, InstructionChecksMustBeAList);
+    InstructionFilesMustBeAList, InstructionChecksMustBeAList, McpOpenProjectsIsAskAlways);
 
 const
   cTexts: array[TMcpOptionsText] of TAtlasText = (
@@ -71,7 +71,8 @@ const
     (De: '"assistants.instructions.file" muss eine Liste von Dateinamen sein';
      En: '"assistants.instructions.file" must be a list of file names'),
     (De: '"assistants.instructions.checks" muss eine Liste von Befehlen sein';
-     En: '"assistants.instructions.checks" must be a list of commands'));
+     En: '"assistants.instructions.checks" must be a list of commands'),
+    (De: '"mcp.openProjects" ist "ask", "always" oder "never"'; En: '"mcp.openProjects" is "ask", "always" or "never"'));
 
 {$SCOPEDENUMS OFF}
 
@@ -357,9 +358,29 @@ begin
   end;
 end;
 
+procedure ReadOpenProjects(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
+  var ASettings: TServerSettings);
+var
+  mValue: string;
+begin
+  if not AReader.ExpectString(AValue, AKey, mValue) then
+  begin
+    Exit;
+  end;
+  if MatchStr(mValue, ['ask', 'always', 'never']) then
+  begin
+    ASettings.McpOpenProjects := mValue;
+  end
+  else
+  begin
+    AReader.ReportNode(AValue, cTexts[TMcpOptionsText.McpOpenProjectsIsAskAlways].Text);
+  end;
+end;
+
 const
-  cMcpMembers: array[0..2] of TMemberOption = ((Key: 'disabledTools'; Read: ReadDisabledTools),
-    (Key: 'promptLanguage'; Read: ReadPromptLanguage), (Key: 'customPrompts'; Read: ReadCustomPrompts));
+  cMcpMembers: array[0..3] of TMemberOption = ((Key: 'disabledTools'; Read: ReadDisabledTools),
+    (Key: 'promptLanguage'; Read: ReadPromptLanguage), (Key: 'customPrompts'; Read: ReadCustomPrompts),
+    (Key: 'openProjects'; Read: ReadOpenProjects));
 
 procedure ReadMcp(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 var
@@ -415,6 +436,10 @@ begin
   else if AMember = 'promptLanguage' then
   begin
     ATarget.McpPromptLanguage := ASource.McpPromptLanguage;
+  end
+  else if AMember = 'openProjects' then
+  begin
+    ATarget.McpOpenProjects := ASource.McpOpenProjects;
   end
   else if AMember = 'customPrompts' then
   begin

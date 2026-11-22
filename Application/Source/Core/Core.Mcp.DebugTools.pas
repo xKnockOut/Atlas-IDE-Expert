@@ -3,6 +3,9 @@
 // Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge zum Debuggen in der laufenden IDE für KI-Assistenten
 // (#1874): debug_start, debug_stop, set_breakpoint, remove_breakpoint, debug_continue, debug_step, debug_state und
 // debug_evaluate. Argumente prüft Atlas.Common.Mcp.IdeDebug, den Austausch mit dem Plugin Core.Mcp.Ide.
+// debug_start mit "test" (#2895): Ohne "project" startet das Testprojekt unter dem Arbeitsordner, das die Fixture
+// enthält, und der Test geht mit vollem Namen (Unit.Fixture.Methode) an --run. Ist das Projekt in keiner IDE
+// offen, öffnet die IDE es nach mcp.openProjects (Core.Mcp.QuestionTools.IdeOpenOf).
 
 interface
 
@@ -20,7 +23,12 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.IdeDebug,
+  Atlas.Common.Mcp.IdeBuilds,
+  Atlas.Common.Mcp.TestTools,
+  Atlas.Common.Projects.Contract,
+  Atlas.Text.Lines,
   Core.Mcp.Ide,
+  Core.Mcp.QuestionTools,
   Atlas.Common.Localization.Texts;
 
 type
@@ -28,25 +36,33 @@ type
   TMcpDebugText = (StartTool, StartProject, StartConfiguration, StartPlatform, StartTest, StartArguments, WaitSeconds,
     StopTool, SetBreakpointTool, BreakpointFile, BreakpointLine, BreakpointCondition, BreakpointPassCount,
     RemoveBreakpointTool, RemoveId, RemoveAll, ContinueTool, StepTool, StepKind, StepFile, StepLine, StateTool,
-    StateFrames, StateLocals, EvaluateTool, EvaluateExpression, EvaluateSideEffects);
+    StateFrames, StateLocals, EvaluateTool, EvaluateExpression, EvaluateSideEffects, TestNotFound);
 {$SCOPEDENUMS OFF}
 
 const
   cTexts: array[TMcpDebugText] of TAtlasText = (
     (De: 'Startet ein Projekt im Debugger der laufenden RAD-Studio-IDE über das Atlas-Plugin (#1874) und wartet ' +
       'bis zum ersten Halt (Haltepunkt, Exception), zum Ende oder bis waitSeconds. Liefert Sitzung und Zustand ' +
-      '(running, stopped, terminated) wie debug_state. Das Projekt muss in der IDE offen sein; der Benutzer muss ' +
-      '„Debuggen durch KI-Assistenten (MCP)“ eingeschaltet haben. Haltepunkte vorher mit set_breakpoint setzen.';
+      '(running, stopped, terminated) wie debug_state. Das Projekt wird das aktive der Projektgruppe; ist es in ' +
+      'keiner IDE offen, öffnet die IDE es nach mcp.openProjects (Vorgabe: Rückfrage). Mit test ohne project ' +
+      'startet das Testprojekt, das den Test enthält. Haltepunkte, die nicht greifen werden, stehen unter ' +
+      'breakpointWarnings (kein Dialog in der IDE). Der Benutzer muss „Debuggen durch KI-Assistenten (MCP)“ ' +
+      'eingeschaltet haben. Haltepunkte vorher mit set_breakpoint setzen.';
      En: 'Starts a project in the debugger of the running RAD Studio IDE through the Atlas plugin (#1874) and ' +
       'waits for the first stop (breakpoint, exception), the end or waitSeconds. Returns session and state ' +
-      '(running, stopped, terminated) like debug_state. The project must be open in the IDE; the user must have ' +
-      'switched on "Debugging by AI assistants (MCP)". Set breakpoints with set_breakpoint first.'),
-    (De: 'Projekt (.dproj mit Pfad, Dateiname oder Name); leer = aktives Projekt der IDE';
-     En: 'Project (.dproj with path, file name or name); empty = active project of the IDE'),
+      '(running, stopped, terminated) like debug_state. The project becomes the active project of the group; if ' +
+      'no IDE has it open, the IDE opens it according to mcp.openProjects (default: ask). With test and without ' +
+      'project the test project containing the test starts. Breakpoints that will not hit are listed under ' +
+      'breakpointWarnings (no dialog in the IDE). The user must have switched on "Debugging by AI assistants ' +
+      '(MCP)". Set breakpoints with set_breakpoint first.'),
+    (De: 'Projekt (.dproj mit Pfad, Dateiname oder Name); leer = aktives Projekt der IDE, mit test das Testprojekt ' +
+      'des Tests';
+     En: 'Project (.dproj with path, file name or name); empty = active project of the IDE, with test the test ' +
+      'project of the test'),
     (De: 'z. B. Debug; leer = aktive Konfiguration'; En: 'e.g. Debug; empty = active configuration'),
     (De: 'z. B. Win32 oder Win64; leer = aktive Plattform'; En: 'e.g. Win32 or Win64; empty = active platform'),
-    (De: 'Nur diesen DUnitX-Test starten: Unit.Fixture.Methode (oder Unit.Fixture)';
-     En: 'Start only this DUnitX test: Unit.Fixture.Method (or Unit.Fixture)'),
+    (De: 'Nur diesen DUnitX-Test starten: Unit.Fixture.Methode, Fixture.Methode oder Fixture';
+     En: 'Start only this DUnitX test: Unit.Fixture.Method, Fixture.Method or Fixture'),
     (De: 'Kommandozeilenparameter des Programms'; En: 'Command line parameters of the program'),
     (De: 'So lange auf den nächsten Halt warten (Sekunden, 0 bis 300, Vorgabe 10); danach Zustand running';
      En: 'Wait this long for the next stop (seconds, 0 to 300, default 10); after that state running'),
@@ -95,26 +111,104 @@ const
       'with a reason as long as the user has not allowed them.'),
     (De: 'Ausdruck in Delphi-Syntax'; En: 'Expression in Delphi syntax'),
     (De: 'Aufrufe (Getter, Funktionen) erlauben; Vorgabe false. Braucht die Einstellung des Benutzers.';
-     En: 'Allow calls (getters, functions); default false. Needs the user''s setting.'));
+     En: 'Allow calls (getters, functions); default false. Needs the user''s setting.'),
+    (De: 'Den Test "%s" enthält kein DUnitX-Testprojekt unter dem Arbeitsordner. "project" angeben oder den Namen ' +
+      'als Unit.Fixture.Methode schreiben.';
+     En: 'No DUnitX test project below the working folder contains the test "%s". Give "project" or write the name ' +
+      'as Unit.Fixture.Method.'));
 
   cWaitProperty = '"waitSeconds":{"type":"integer","minimum":0,"maximum":300,"description":%s}';
 
-function DebugTool(const AContext: TMcpToolContext; const ATool: string; const AArguments: TJSONObject): string;
+function DebugToolFor(const AContext: TMcpToolContext; const ATool, AProject: string;
+  const AArguments: TJSONObject): string;
 var
   mGuard: TMcpPathGuard;
 begin
   mGuard := AContext.Guard;
-  Result := DebugInIde(AContext.Root, ATool, AContext.Group.ProcessIdentity.Client, TMcpArgs.OptionalString(AArguments, 'project'),
-    AArguments,
+  Result := DebugInIde(AContext.Root, ATool, AContext.Group.ProcessIdentity.Client, AProject, AArguments,
     function(AFile: string): string
     begin
       Result := mGuard.Resolve(AFile);
-    end);
+    end, IdeOpenOf(AContext));
+end;
+
+function DebugTool(const AContext: TMcpToolContext; const ATool: string; const AArguments: TJSONObject): string;
+begin
+  Result := DebugToolFor(AContext, ATool, TMcpArgs.OptionalString(AArguments, 'project'), AArguments);
+end;
+
+/// <summary>Quelldatei zeilenweise; False, wenn sie fehlt.</summary>
+function SourceLines: TMcpReadLines;
+begin
+  Result :=
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    var
+      mText: string;
+    begin
+      ALines := nil;
+      Result := ReadSourceText(AFileName, mText);
+      if Result then
+      begin
+        ALines := TTextLines.SplitLines(mText);
+      end;
+    end;
+end;
+
+/// <summary>Ausgewertete Testprojekte unter ARoot; mit AProject nur dieses.</summary>
+function TestProjectsUnder(const ARoot, AProject: string): TArray<TProjectInfo>;
+var
+  mFileName, mWanted: string;
+  mInfo: TProjectInfo;
+begin
+  Result := nil;
+  mWanted := '';
+  if AProject <> '' then
+  begin
+    mWanted := TMcpIdeBuilds.ProjectOnDisk(ProjectFilesUnder(ARoot), AProject);
+    if mWanted = '' then
+    begin
+      Exit;
+    end;
+  end;
+  for mFileName in ProjectFilesUnder(ARoot) do
+  begin
+    if ((mWanted = '') or SameFileName(mFileName, mWanted)) and IsTestProject(mFileName) and
+      LoadProject(mFileName, '', '', mInfo) then
+    begin
+      Result := Result + [mInfo];
+    end;
+  end;
 end;
 
 function ToolStart(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mProject, mTest, mFound, mFullName: string;
+  mArguments: TJSONObject;
 begin
-  Result := DebugTool(AContext, TMcpIdeDebug.cStart, AArguments);
+  mProject := TMcpArgs.OptionalString(AArguments, 'project');
+  mTest := Trim(TMcpArgs.OptionalString(AArguments, 'test'));
+  if (mTest = '') or not TMcpTestTools.FindTest(mTest, TestProjectsUnder(AContext.Root, mProject), SourceLines(),
+    mFound, mFullName) then
+  begin
+    // Ohne project startete sonst das aktive Projekt der IDE, das den Test meist nicht enthält.
+    if (mTest <> '') and (mProject = '') then
+    begin
+      raise EMcpToolError.Create(cTexts[TMcpDebugText.TestNotFound].Fmt([mTest]));
+    end;
+    Exit(DebugTool(AContext, TMcpIdeDebug.cStart, AArguments));
+  end;
+  if mProject = '' then
+  begin
+    mProject := mFound;
+  end;
+  mArguments := AArguments.Clone as TJSONObject;
+  try
+    mArguments.RemovePair('test').Free;
+    mArguments.AddPair('test', mFullName);
+    Result := DebugToolFor(AContext, TMcpIdeDebug.cStart, mProject, mArguments);
+  finally
+    mArguments.Free;
+  end;
 end;
 
 function ToolStop(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
