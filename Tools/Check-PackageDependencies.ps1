@@ -602,7 +602,7 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
 # Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
-$HostedFeatures = @()
+$HostedFeatures = @('Replay')
 $FeatureRoles = @('Contract', 'Internals', 'Providers', 'Adapters', 'Composition', 'Hosting')
 # Eigenes Feature (bzw. innerhalb einer Struktur relativ zum Träger): Rolle der Quelle -> erlaubte Rollen des Ziels
 $OwnAllowed = @{
