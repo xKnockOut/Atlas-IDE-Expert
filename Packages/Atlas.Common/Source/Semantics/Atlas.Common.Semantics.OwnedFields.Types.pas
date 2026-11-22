@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.FreeFields.Types;
+﻿unit Atlas.Common.Semantics.OwnedFields.Types;
 
 // Typauflösung für „Felder im Destruktor freigeben“ (#666): Art eines Typs
 // (Klasse, Record, Interface, anderes) und Vorfahrenkette aus der Datei und dem
@@ -64,7 +64,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.RegularExpressions,
-  Atlas.Common.Editing.ClassMembers,
+  Atlas.Common.Semantics.ComponentRoots,
   Atlas.Text.Lines,
   Atlas.Text.Names;
 

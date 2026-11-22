@@ -470,12 +470,13 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Refactorings.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclareUnknown.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ForwardDeclarations.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.FreeFields.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.FreeFields.Types.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OwnedFields.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OwnedFields.Types.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextChanges.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ClassLayout.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Destructors.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExtractInterface.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceChanges.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExtractInterface.pas"/>
@@ -543,6 +544,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GitUser.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CollectionCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.FreeFields.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitTemplates.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestUnits.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TestDrafts.pas"/>
@@ -725,6 +727,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Queries.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.Core.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ComponentRoots.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.PublishedMembers.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeInfoClasses.pas"/>

@@ -63,7 +63,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.FreeFields,
+  Atlas.Common.Semantics.OwnedFields,
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Tests.RuleAssert;
 

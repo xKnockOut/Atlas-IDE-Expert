@@ -85,6 +85,7 @@ Atlas.Common.Editing.ClassBodies.Tests
 Atlas.Common.Editing.BodySpacing.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
 Atlas.Common.Pascal.ClassLayout.Tests
+Atlas.Common.Pascal.Destructors.Tests
 Atlas.Common.Editing.CodeActions.Tests
 Atlas.Common.Pascal.Colors.Tests
 Atlas.Common.Editing.CompilerFixes.Tests
@@ -110,6 +111,7 @@ Atlas.Common.Editing.Formatter.Indent.Tests
 Atlas.Common.Editing.Formatter.Layout.Tests
 Atlas.Common.Editing.Formatter.Tests
 Atlas.Common.Editing.ForwardDeclarations.Tests
+Atlas.Common.Semantics.OwnedFields.Tests
 Atlas.Common.Editing.FreeFields.Tests
 Atlas.Common.Editing.GenericLists.Parts.Tests
 Atlas.Common.Editing.GitUser.Tests
@@ -473,6 +475,7 @@ Atlas.Common.Rules.SuppressionStats.Tests
 Atlas.Common.Rules.TypedScope.Tests
 Atlas.Common.Rules.WarnSwitches.Tests
 Atlas.Common.Semantics.ControlFlow.Tests
+Atlas.Common.Semantics.ComponentRoots.Tests
 Atlas.Common.Semantics.ControlFlow.Signatures.Tests
 Atlas.Common.Semantics.ExitPoints.Tests
 Atlas.Common.Semantics.ExpressionTypes.Operators.Tests
