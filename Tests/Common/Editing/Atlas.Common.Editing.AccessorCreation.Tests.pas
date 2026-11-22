@@ -53,6 +53,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CommandSource,
+  Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Tests.TextEdits,
   Atlas.Tests.SourceText;

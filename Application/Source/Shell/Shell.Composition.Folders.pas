@@ -114,7 +114,8 @@ uses
   Core.Workspace.Setup,
   Atlas.Text.LogMarks,
   Atlas.Text.Files,
-  Shell.Composition.Platform;
+  Shell.Composition.Platform,
+  Shell.Composition.RuleRefactorings;
 
 /// <summary>Gehört AFileName zu AWorkspace? Mit fester Projektdatei nur die Projekt- und Suchpfad-Units, sonst
 /// alles unter dem Ordner.</summary>
@@ -275,6 +276,7 @@ begin
   begin
     Result.Setup.IdeTypes := FServices.IdeTypes();
   end;
+  Result.Setup.Refactorings := TShellRuleRefactorings.Create;
   Result.Setup.Origin := AOrigin;
   Result.Setup.Selection := FServices.Selection();
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).

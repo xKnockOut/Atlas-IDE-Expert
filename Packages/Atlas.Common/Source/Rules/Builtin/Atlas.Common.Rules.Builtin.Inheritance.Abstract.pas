@@ -38,7 +38,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.ClassActions,
+  Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Semantics.Ancestry,
@@ -80,7 +80,7 @@ type
     FCache: IRuleDerivedCache;
     FAncestry: TAncestry;
     FTokens: TArray<TPascalToken>;
-    FActions: TClassActionContext;
+    FActions: TClassEditRequest;
     function ClassBefore(ADot: Integer): Integer;
     function CreatesSubclass(const ALocation: TSymbolLocation): Boolean;
     function OverrideFixes(const ALocation: TSymbolLocation; const AOpen: TArray<TIndexSymbol>;
@@ -200,7 +200,7 @@ begin
   FCache := TRuleDerived.Open(AContext);
   FTokens := TRuleDerived.CodeTokens(FCache, AContext);
   FAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(FCache, AContext));
-  FActions := TClassActionContext.Default;
+  FActions := TClassEditRequest.Create(AContext.Text, 0);
   FActions.Index := AContext.Index;
   FActions.Namespaces := AContext.Namespaces;
   FActions.DelphiVersion := AContext.DelphiVersion;
@@ -262,8 +262,9 @@ begin
   end;
   for mIndex := 0 to High(AOpen) do
   begin
-    if not SameText(AOwners[mIndex], ALocation.Symbol.Name) and TClassActions.OverrideMethod(FContext.Text,
-      ALocation.Symbol.Range.StartPos.Line, AOpen[mIndex].Name, FActions, mAction) then
+    if not SameText(AOwners[mIndex], ALocation.Symbol.Name) and (FContext.Refactorings.Classes <> nil) and
+      FContext.Refactorings.Classes.OverrideMethod(FActions.At(ALocation.Symbol.Range.StartPos.Line),
+      AOpen[mIndex].Name, mAction) then
     begin
       Result := Result + [TRuleFix.Create(cTexts[TInheritanceAbstractText.OverrideIn].Fmt([AOpen[mIndex].Name,
         ALocation.Symbol.Name]), mAction.Edits)];

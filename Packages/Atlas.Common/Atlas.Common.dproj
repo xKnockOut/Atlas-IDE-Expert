@@ -122,6 +122,7 @@
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitAliases.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.UnitLookup.pas"/>
         <DCCReference Include="Source\CodeActions\Atlas.Common.CodeActions.Contract.pas"/>
+        <DCCReference Include="Source\CodeActions\Atlas.Common.CodeActions.Contract.Classes.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.OutputParser.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.CommandLine.pas"/>
@@ -169,8 +170,10 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Service.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Contract.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Refactorings.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Api.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.OwnershipReport.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.CheckContext.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Derived.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.TypedScope.pas"/>
@@ -510,6 +513,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UsesCommand.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.ClassActions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.ClassActions.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclarationCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CommandSource.pas"/>

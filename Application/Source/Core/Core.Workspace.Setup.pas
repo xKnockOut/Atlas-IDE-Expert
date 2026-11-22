@@ -15,6 +15,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Rules.Contract.UnitLookup,
   Atlas.Common.Projects.Selection,
@@ -69,6 +70,7 @@ type
     FLoopThreadId: TThreadID;
     FIdeProjects: TLspIdeProject;
     FIdeTypes: IRuleIdeTypes;
+    FRefactorings: TRuleRefactorings;
     FOrigin: string;
     FDerived: Boolean;
     FOnPackageFolders: TFunc<TArray<string>>;
@@ -104,6 +106,8 @@ type
     /// <summary>Typen der laufenden IDE ohne Quelltext (atlas/ideTypes) für die Prüfregeln; nil ohne Plugin.
     /// </summary>
     property IdeTypes: IRuleIdeTypes read FIdeTypes write FIdeTypes;
+    /// <summary>Refactorings für die Korrekturen der Prüfregeln; je Eintrag nil = keine.</summary>
+    property Refactorings: TRuleRefactorings read FRefactorings write FRefactorings;
     /// <summary>Eintrag des Clients, aus dem der Arbeitsbereich stammt (TWorkspaceFolder.Key); zum Entfernen.</summary>
     property Origin: string read FOrigin write FOrigin;
     /// <summary>Aus einer geöffneten Datei außerhalb der Projekte der IDE abgeleitet (#175), etwa eine Datei aus
