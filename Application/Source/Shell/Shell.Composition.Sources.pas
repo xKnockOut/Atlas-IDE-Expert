@@ -109,7 +109,7 @@ uses
   Atlas.Common.Projects.Paths,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.CacheDirectory,
-  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Metrics.Limits,
   Shell.Hotspots;
 
 { TShellSources }
@@ -398,7 +398,7 @@ begin
   begin
     mSource.Settings := TServerSettings.Default;
   end;
-  ALimits := TMetricRules.Limits(mSource.Settings);
+  ALimits := TMetricSettings.Limits(mSource.Settings);
   Result := mSource.Settings.Metrics and mSource.Settings.CodeLens.Metrics;
 end;
 

@@ -24,33 +24,16 @@
 // Unterdrückung (// lsp-ignore: metric-… in der Zeile davor), Schweregrad,
 // Profile und Baseline wie bei jeder Regel. Den Grenzwert setzt die Option
 //   "rules": { "metric-cyclomatic-complexity": { "severity": "warning", "max": 10 } }
-// Code Lens und Bericht lesen dieselben Grenzwerte über TMetricRules.Limits.
+// Grenzwerte, Regel-IDs und Optionen stehen in Atlas.Common.Metrics.Limits; Code Lens und Bericht lesen sie dort.
 
 interface
 
 uses
-  Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
-
-const
-  cMethodLengthRuleId = 'metric-method-length';
-  cNestingDepthRuleId = 'metric-nesting-depth';
-  cCyclomaticComplexityRuleId = 'metric-cyclomatic-complexity';
-  cCognitiveComplexityRuleId = 'metric-cognitive-complexity';
-  cParameterCountRuleId = 'metric-parameter-count';
-  cClassSizeRuleId = 'metric-class-size';
-  cUnitLengthRuleId = 'metric-unit-length';
-  cUsesCountRuleId = 'metric-uses-count';
-  cBooleanOperandsRuleId = 'metric-boolean-operands';
-  cLocalCountRuleId = 'metric-local-count';
-  cExitPointsRuleId = 'metric-exit-points';
-  cInheritanceDepthRuleId = 'metric-inheritance-depth';
-  /// <summary>Name der Option mit dem Grenzwert.</summary>
-  cMetricLimitOption = 'max';
 
 type
   /// <summary>Meldet Methoden, deren Kennzahl über dem Grenzwert liegt.</summary>
@@ -75,14 +58,6 @@ type
 
   TMetricRules = class
   public
-    /// <summary>Regel-ID der Kennzahl, z. B. metric-cyclomatic-complexity.</summary>
-    class function RuleId(AKind: TMetricKind): string; overload; static;
-    /// <summary>Regel-ID der Kennzahl des Aufbaus, z. B. metric-class-size (#939).</summary>
-    class function RuleId(AKind: TStructureKind): string; overload; static;
-    /// <summary>Ganze Zahl ab 1 aus "max" in AOptions (JSON-Text des Regelobjekts), sonst ADefault.</summary>
-    class function LimitFromOptions(const AOptions: string; ADefault: Integer): Integer; static;
-    /// <summary>Grenzwerte aus "rules" der Einstellungen, fehlende aus TMetricLimits.Default.</summary>
-    class function Limits(const ASettings: TServerSettings): TMetricLimits; static;
     /// <summary>Meldungstext eines Treffers.</summary>
     class function Message(AKind: TMetricKind; const AName: string; AValue, ALimit: Integer): string; overload;
       static;
@@ -105,8 +80,9 @@ procedure RegisterMetricRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Metrics.Limits,
   System.SysUtils,
-  System.JSON,
   System.Generics.Collections,
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Metrics.Calculator,
@@ -114,7 +90,6 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Rules.Engine,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -177,85 +152,6 @@ const
 {$SCOPEDENUMS OFF}
 
 { TMetricRules }
-
-class function TMetricRules.RuleId(AKind: TMetricKind): string;
-begin
-  case AKind of
-    TMetricKind.MethodLength:
-      Result := cMethodLengthRuleId;
-    TMetricKind.NestingDepth:
-      Result := cNestingDepthRuleId;
-    TMetricKind.Cyclomatic:
-      Result := cCyclomaticComplexityRuleId;
-    TMetricKind.Cognitive:
-      Result := cCognitiveComplexityRuleId;
-    TMetricKind.ParameterCount:
-      Result := cParameterCountRuleId;
-    TMetricKind.BooleanOperands:
-      Result := cBooleanOperandsRuleId;
-    TMetricKind.LocalCount:
-      Result := cLocalCountRuleId;
-  else
-    Result := cExitPointsRuleId;
-  end;
-end;
-
-class function TMetricRules.RuleId(AKind: TStructureKind): string;
-begin
-  case AKind of
-    TStructureKind.ClassSize:
-      Result := cClassSizeRuleId;
-    TStructureKind.UnitLength:
-      Result := cUnitLengthRuleId;
-    TStructureKind.UsesCount:
-      Result := cUsesCountRuleId;
-  else
-    Result := cInheritanceDepthRuleId;
-  end;
-end;
-
-class function TMetricRules.LimitFromOptions(const AOptions: string; ADefault: Integer): Integer;
-var
-  mValue, mLimit: TJSONValue;
-  mNumber: Integer;
-begin
-  Result := ADefault;
-  if AOptions = '' then
-  begin
-    Exit;
-  end;
-  mValue := TJSONObject.ParseJSONValue(AOptions);
-  try
-    if not (mValue is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mLimit := TJSONObject(mValue).GetValue(cMetricLimitOption);
-    if (mLimit is TJSONNumber) and TryStrToInt(mLimit.Value, mNumber) and (mNumber >= 1) then
-    begin
-      Result := mNumber;
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
-class function TMetricRules.Limits(const ASettings: TServerSettings): TMetricLimits;
-var
-  mKind: TMetricKind;
-  mStructure: TStructureKind;
-begin
-  Result := TMetricLimits.Default;
-  for mKind := Low(TMetricKind) to High(TMetricKind) do
-  begin
-    Result.Values[mKind] := LimitFromOptions(TRuleEngine.RuleOptions(RuleId(mKind), ASettings), Result.Values[mKind]);
-  end;
-  for mStructure := Low(TStructureKind) to High(TStructureKind) do
-  begin
-    Result.Structure[mStructure] := LimitFromOptions(TRuleEngine.RuleOptions(RuleId(mStructure), ASettings),
-      Result.Structure[mStructure]);
-  end;
-end;
 
 class function TMetricRules.Message(AKind: TMetricKind; const AName: string; AValue, ALimit: Integer): string;
 begin
@@ -414,7 +310,7 @@ begin
   begin
     Exit;
   end;
-  mLimit := TMetricRules.LimitFromOptions(AContext.Options, TMetricLimits.Default.Structure[FKind]);
+  mLimit := TMetricSettings.LimitFromOptions(AContext.Options, TMetricLimits.Default.Structure[FKind]);
   if FKind = TStructureKind.InheritanceDepth then
   begin
     mItems := TMetricRules.InheritanceDepths(AContext.Tree, AContext.Index,
@@ -510,7 +406,7 @@ begin
   begin
     Exit;
   end;
-  mLimit := TMetricRules.LimitFromOptions(AContext.Options, TMetricLimits.Default.Values[FKind]);
+  mLimit := TMetricSettings.LimitFromOptions(AContext.Options, TMetricLimits.Default.Values[FKind]);
   if FKind = TMetricKind.BooleanOperands then
   begin
     CheckConditions(AContext, AReport, mLimit);

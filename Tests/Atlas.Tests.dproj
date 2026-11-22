@@ -321,6 +321,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InterfaceMethods.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Calculator.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Report.Tests.pas"/>
+        <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Limits.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.UnitRoutines.Tests.pas"/>
         <DCCReference Include="Common\Query\Atlas.Common.Query.Language.Tests.pas"/>
         <DCCReference Include="Common\Query\Atlas.Common.Query.Engine.Tests.pas"/>
@@ -332,6 +333,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Scanner.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Report.Tests.pas"/>
+        <DCCReference Include="Common\Todos\Atlas.Common.Todos.Keywords.Tests.pas"/>
         <DCCReference Include="Common\Mutation\Atlas.Common.Mutation.Generator.Tests.pas"/>
         <DCCReference Include="Common\Mutation\Atlas.Common.Mutation.Report.Tests.pas"/>
         <DCCReference Include="Common\Rationale\Atlas.Common.Rationale.Scanner.Tests.pas"/>

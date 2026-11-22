@@ -75,10 +75,10 @@ uses
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Metrics.Collector,
   Atlas.Common.Metrics.Report,
-  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Metrics.Limits,
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Todos.Keywords,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -148,7 +148,7 @@ var
   mFiles: TArray<TFileMetrics>;
   mLimits: TMetricLimits;
 begin
-  mLimits := TMetricRules.Limits(ASettings);
+  mLimits := TMetricSettings.Limits(ASettings);
   mCollector := TMetricsCollector.Create;
   try
     mFiles := mCollector.Collect(AFiles, ARoot,
@@ -179,7 +179,7 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := Assigned(AReadText) and AReadText(AFileName, AText);
-    end, TTodoRules.Keywords(ASettings)), AFilter);
+    end, TTodoKeywords.FromSettings(ASettings)), AFilter);
   if AJson then
   begin
     Result := TTodoReport.Json(mFiles);

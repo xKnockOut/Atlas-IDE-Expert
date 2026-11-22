@@ -7,7 +7,7 @@
 // Der Treffer liegt auf dem ganzen Kommentar; erledigte Einträge ({ DONE … })
 // meldet sie nie. Die Option "keywords" stellt die Marken offener Einträge
 // ein (Vorgabe TODO und FIXME); sie gilt auch, wenn die Regel aus ist, für
-// get_todos, atlas.server.todos und --todos (TTodoRules.Keywords).
+// get_todos, atlas.server.todos und --todos (Atlas.Common.Todos.Keywords).
 //
 // commented-out-code (#942): mindestens "minLines" (Vorgabe 3) aufeinander-
 // folgende Kommentarzeilen (// je Zeile oder ein mehrzeiliger { }-Kommentar),
@@ -21,15 +21,13 @@
 interface
 
 uses
-  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Todos.Keywords,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
 
 const
-  cTodoCommentRuleId = 'todo-comment';
+  cTodoCommentRuleId = Atlas.Common.Todos.Keywords.cTodoCommentRuleId;
   cCommentedOutCodeRuleId = 'commented-out-code';
-  /// <summary>Name der Option mit den Marken.</summary>
-  cTodoKeywordsOption = 'keywords';
 
 type
   /// <summary>Meldet jeden offenen TODO-Eintrag.</summary>
@@ -53,26 +51,15 @@ type
     class function LooksLikeCode(const ALine: string): Boolean; static;
   end;
 
-  TTodoRules = class
-  public
-    /// <summary>Marken aus "keywords" in AOptions (JSON-Text des Regelobjekts): nicht leere Texte aus Buchstaben,
-    /// in Großbuchstaben; fehlt die Option oder ist sie leer, TODO und FIXME.</summary>
-    class function KeywordsFromOptions(const AOptions: string): TArray<string>; static;
-    /// <summary>Marken aus "rules" der Einstellungen.</summary>
-    class function Keywords(const ASettings: TServerSettings): TArray<string>; static;
-    /// <summary>True, wenn AKeyword eine gültige Marke ist (nur Buchstaben, nicht DONE).</summary>
-    class function IsValidKeyword(const AKeyword: string): Boolean; static;
-  end;
-
 procedure RegisterTodoRules(const ARegistry: TRuleRegistry);
 
 implementation
 
 uses
+  Atlas.Common.Configuration.Contract,
   System.Generics.Collections,
   System.SysUtils,
   System.StrUtils,
-  System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -83,7 +70,6 @@ uses
   Atlas.Common.Todos.Contract,
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Engine,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -102,72 +88,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TTodoRules }
-
-class function TTodoRules.Keywords(const ASettings: TServerSettings): TArray<string>;
-begin
-  Result := KeywordsFromOptions(TRuleEngine.RuleOptions(cTodoCommentRuleId, ASettings));
-end;
-
-/// <summary>Gültige Schlüsselwörter aus der Option als JSON-Wert (Array von Strings), in Großbuchstaben.</summary>
-function KeywordsFromJson(AKeywords: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not (AKeywords is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AKeywords) do
-  begin
-    if (mItem is TJSONString) and TTodoRules.IsValidKeyword(Trim(mItem.Value)) then
-    begin
-      Result := Result + [UpperCase(Trim(mItem.Value))];
-    end;
-  end;
-end;
-
-class function TTodoRules.KeywordsFromOptions(const AOptions: string): TArray<string>;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AOptions <> '' then
-  begin
-    mValue := TJSONObject.ParseJSONValue(AOptions);
-    try
-      if mValue is TJSONObject then
-      begin
-        Result := KeywordsFromJson(TJSONObject(mValue).GetValue(cTodoKeywordsOption));
-      end;
-    finally
-      mValue.Free;
-    end;
-  end;
-  if Length(Result) = 0 then
-  begin
-    Result := TTodos.DefaultKeywords;
-  end;
-end;
-
-class function TTodoRules.IsValidKeyword(const AKeyword: string): Boolean;
-var
-  mCh: Char;
-begin
-  Result := (AKeyword <> '') and not SameText(AKeyword, TTodos.cDoneKeyword);
-  if Result then
-  begin
-    for mCh in AKeyword do
-    begin
-      if not CharInSet(mCh, ['A'..'Z', 'a'..'z']) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
 { TTodoRule }
 
 function TTodoRule.Descriptor: TRuleDescriptor;
@@ -182,7 +102,7 @@ var
   mEntry: TTodoEntry;
   mKeywords: TArray<string>;
 begin
-  mKeywords := TTodoRules.KeywordsFromOptions(AContext.Options);
+  mKeywords := TTodoKeywords.FromOptions(AContext.Options);
   if AContext.Tree <> nil then
   begin
     mEntries := TTodoScanner.FromTokens(AContext.Tree.Tokens, mKeywords);

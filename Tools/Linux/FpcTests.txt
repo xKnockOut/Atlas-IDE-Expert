@@ -294,6 +294,7 @@ Atlas.Common.Mcp.ReportTools.Tests
 Atlas.Common.Diagnostics.RuntimeReport.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
+Atlas.Common.Metrics.Limits.Tests
 Atlas.Common.Metrics.UnitRoutines.Tests
 Atlas.Common.Metrics.DuplicateBodies.Tests
 Atlas.Common.Metrics.DuplicateBaseline.Tests
@@ -478,6 +479,7 @@ Atlas.Common.Semantics.TypeCompatibility.Tests
 Atlas.Common.Semantics.TypeKinds.Tests
 Atlas.Common.Semantics.UnresolvedNames.Tests
 Atlas.Common.Todos.Report.Tests
+Atlas.Common.Todos.Keywords.Tests
 Atlas.Common.Todos.Scanner.Tests
 Atlas.Common.Updates.Apply.Tests
 Atlas.Common.Updates.ManifestSignature.Tests

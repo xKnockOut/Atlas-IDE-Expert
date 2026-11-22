@@ -493,17 +493,8 @@ begin
 end;
 
 class function TRuleEngine.RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string;
-var
-  mRule: TRuleSetting;
 begin
-  for mRule in ASettings.Rules do
-  begin
-    if SameText(mRule.Id, ARuleId) then
-    begin
-      Exit(mRule.Options);
-    end;
-  end;
-  Result := '';
+  Result := TRuleSetting.OptionsOf(ASettings.Rules, ARuleId);
 end;
 
 class function TRuleEngine.CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity;
