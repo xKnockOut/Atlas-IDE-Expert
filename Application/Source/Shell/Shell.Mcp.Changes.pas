@@ -31,8 +31,7 @@ uses
   Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.Tracker.CommitHook,
   Shell.Mcp.IssueTools,
-  Shell.VersionControlChanges,
-  Atlas.Common.Compiler.Contract,
+  Core.VersionControlChanges,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Scopes,
@@ -87,13 +86,13 @@ end;
 
 /// <summary>Erkennt Git oder SVN unter ARoot und lädt die Änderungen gegenüber ABase ('' = nicht eingecheckt
 /// gegenüber HEAD bzw. BASE); False mit dem Grund in AError.</summary>
-function LoadChanges(const AProcess: ICompilerProcess; const ASettings: TServerSettings; const ARoot, ABase: string;
+function LoadChanges(const AAccess: TCoreVcsAccess; const ASettings: TServerSettings; const ARoot, ABase: string;
   out AVcs: TVcsChanges; out AError: string): Boolean;
 begin
   AError := '';
   AVcs := nil;
   try
-    AVcs := TVcsChanges.Detect(AProcess, ARoot, ASettings.VcsProvider, ASettings.VcsGitPath, ASettings.VcsSvnPath,
+    AVcs := TVcsChanges.Detect(AAccess, ARoot, ASettings.VcsProvider, ASettings.VcsGitPath, ASettings.VcsSvnPath,
       ASettings.VcsTimeoutSeconds);
     // Ohne Basis: nicht eingecheckte Änderungen gegenüber HEAD (SVN: BASE); mit Basis seit der Abzweigung.
     AVcs.Load(BaseOrHead(ABase), ABase <> '', ABase = '', True, True);
@@ -137,7 +136,7 @@ end;
 /// <summary>Änderungen unter ARoot gegenüber ABase samt Befunden und Commit-Präfix.</summary>
 function ChangeSetOf(AGroup: TCoreWorkspaceGroup; const ARoot, ABase: string): TMcpChangeSet;
 var
-  mProcess: ICompilerProcess;
+  mAccess: TCoreVcsAccess;
   mVcs: TVcsChanges;
   mFile: string;
   mCheckProject: TCheckProjectFunc;
@@ -146,8 +145,8 @@ begin
   Result.Files := nil;
   Result.Base := BaseOrHead(ABase);
   // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
-  mProcess := TProcessRunner.Create;
-  if not LoadChanges(mProcess, AGroup.Main.Configuration.Settings, ARoot, ABase, mVcs, Result.Error) then
+  mAccess := TShellPlatformAdapters.VcsAccess;
+  if not LoadChanges(mAccess, AGroup.Main.Configuration.Settings, ARoot, ABase, mVcs, Result.Error) then
   begin
     Exit;
   end;

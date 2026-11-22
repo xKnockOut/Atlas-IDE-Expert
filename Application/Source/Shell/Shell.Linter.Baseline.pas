@@ -12,7 +12,7 @@ uses
   Atlas.Common.Rules.Filter,
   Atlas.Common.Rules.Baseline,
   Core.CommandLine,
-  Shell.VersionControlChanges;
+  Core.VersionControlChanges;
 
 type
   /// <summary>Was KeptMarks zum Filtern braucht.</summary>

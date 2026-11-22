@@ -22,49 +22,20 @@
 // Teilnehmer an den Compile-Ereignissen meldet es beim Stoppen ab.
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
+// Modulklasse, Befehle und Menüeinträge stehen in Atlas.IDE.BuildTools.Adapters.Module.
 
 interface
-
-uses
-  System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.IDE.Contracts.BuildTools;
-
-type
-  TAtlasBuildModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
-    IAtlasAppliesSettings, IAtlasFollowsTheme, IAtlasBuildToolsSource)
-  public const
-    cModuleId = 'atlas.build';
-    cSwitch = 'buildTools';
-  private
-    FActive: Boolean;
-    class function Parts: TArray<IAtlasFeaturePart>; static;
-  public
-    function Info: TAtlasModuleInfo;
-    procedure Start;
-    procedure Stop;
-    function IsActive: Boolean;
-    function Commands: TArray<TAtlasModuleCommand>;
-    function MenuEntries: TArray<TAtlasMenuEntry>;
-    procedure ApplySettings;
-    procedure ThemeChanged;
-    function StartProfiles(const AProject: string; out AActive: string): TArray<string>;
-    function RunStartProfile(const AProject, AProfile: string; out AReason: string): Boolean;
-    function TaskNames(const AProject: string): TArray<string>;
-    function RunTask(const AProject, AName: string; out AReason: string): Boolean;
-    /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
-    /// nicht passt.</summary>
-    class function RegisterModule: Boolean; static;
-    class procedure UnregisterModule; static;
-  end;
 
 implementation
 
 uses
+  System.SysUtils,
   Atlas.IDE.Contracts.BuildPipeline,
+  Atlas.IDE.Contracts.BuildTools,
   Atlas.UI.Build.SettingsSection,
   System.Types,
   Atlas.Text.Product.Version,
+  Atlas.Core.Modules.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.ModuleHost,
@@ -72,7 +43,6 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Build.Events,
-  Atlas.Core.StartProfiles.Store,
   Atlas.Core.Build.RunningProgram,
   Atlas.Core.Tasks.Providers.Process,
   Atlas.Core.Tasks.Runs,
@@ -87,13 +57,11 @@ uses
   Atlas.IDE.Tasks.Runner,
   Atlas.UI.Tasks.Texts,
   Atlas.UI.Strings,
-  Atlas.UI.Build.Strings;
+  Atlas.IDE.BuildTools.Adapters.Module;
 
 const
   cStartProfileExtra = 'startProfile';
   cCompilerSwitchesExtra = 'compilerSwitches';
-  /// <summary>Kennung der Einträge je Aufgabe im Untermenü „Build“.</summary>
-  cTaskEntryPrefix = 'Atlas.Task:';
 
 var
   GScope: IAtlasModuleScope;
@@ -105,21 +73,6 @@ var
   GRunningParticipant: TAtlasCompileParticipant;
 
 { Sichtbarkeit }
-
-function CompilerSwitchesVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.BuildCompilerSwitches;
-end;
-
-function StartProfilesVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.StartProfiles and TAtlasIdeStartProfiles.Started;
-end;
-
-function TasksVisible: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TasksEnabled and (GTasks <> nil);
-end;
 
 { Beim Öffnen bauen (#764) }
 
@@ -249,39 +202,6 @@ begin
   Result := GTasks <> nil;
 end;
 
-/// <summary>AProc der Projektaufgaben, abgesichert; ohne Läufer nichts.</summary>
-function TasksCommand(const AProc: TProc<TAtlasIdeTasks>): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      if GTasks <> nil then
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Tasks,
-          procedure
-          begin
-            AProc(GTasks);
-          end);
-      end;
-    end;
-end;
-
-function TaskMenuRun(const AName: string): TProc;
-begin
-  Result :=
-    procedure
-    begin
-      if GTasks <> nil then
-      begin
-        TAtlasGuard.Run(TAtlasFeature.Tasks,
-          procedure
-          begin
-            GTasks.RunFromMenu(AName);
-          end);
-      end;
-    end;
-end;
-
 { Laufendes Programm vor dem Build beenden (#551) }
 
 procedure StartRunningProgram;
@@ -386,51 +306,7 @@ begin
   Result := TAtlasIdeCompilerSwitches.Started;
 end;
 
-{ Befehle }
-
-function Command(const AId: string; ACaption: TAtlasBuildTextId; const ARun: TProc;
-  const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
-begin
-  Result := Default(TAtlasModuleCommand);
-  Result.Id := AId;
-  Result.Caption := TAtlasBuildStrings.Text(ACaption);
-  Result.Run := ARun;
-  Result.Visible := AVisible;
-end;
-
-procedure ChooseTask(ATasks: TAtlasIdeTasks);
-begin
-  ATasks.Choose;
-end;
-
-procedure RunChecks(ATasks: TAtlasIdeTasks);
-begin
-  ATasks.RunChecks;
-end;
-
-procedure RepeatTask(ATasks: TAtlasIdeTasks);
-begin
-  ATasks.RepeatLast;
-end;
-
-procedure CancelTasks(ATasks: TAtlasIdeTasks);
-begin
-  ATasks.CancelAll;
-end;
-
-procedure ToggleTasksOutput(ATasks: TAtlasIdeTasks);
-begin
-  ATasks.ToggleOutput;
-end;
-
-procedure ChooseTaskFindings(ATasks: TAtlasIdeTasks);
-begin
-  ATasks.ChooseFindings;
-end;
-
-{ TAtlasBuildModule }
-
-class function TAtlasBuildModule.Parts: TArray<IAtlasFeaturePart>;
+function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := [
     // Beim Öffnen bauen: nur im normalen Start, mit den Compile-Ereignissen und solange BuildOnOpen an ist.
@@ -469,145 +345,6 @@ begin
       end, CompilerSwitchesStarted, StartCompilerSwitches, StopCompilerSwitches)];
 end;
 
-function TAtlasBuildModule.Info: TAtlasModuleInfo;
-begin
-  // Die Compiler-Schalter liefen schon im abgesicherten Start; die übrigen Teile verlangen den normalen Start.
-  Result := TAtlasModuleHost.Info(cModuleId, 'Build-Werkzeuge', TAtlasVersion.cVersion, HInstance,
-    TAtlasSafeLevel.Safe, cSwitch);
-end;
-
-procedure TAtlasBuildModule.Start;
-begin
-  FActive := True;
-end;
-
-procedure TAtlasBuildModule.Stop;
-begin
-  FActive := False;
-end;
-
-function TAtlasBuildModule.IsActive: Boolean;
-begin
-  Result := FActive;
-end;
-
-/// <summary>Eintrag im Untermenü „Build“ des Atlas-Menüs („-“ = Trennlinie).</summary>
-function MenuEntry(const ACommandId: string): TAtlasMenuEntry;
-begin
-  Result := Default(TAtlasMenuEntry);
-  Result.CommandId := ACommandId;
-  Result.Place := TAtlasMenuPlace.AtlasMenu;
-  Result.Section := TAtlasBuildStrings.Text(TAtlasBuildTextId.MenuGroupBuild);
-end;
-
-/// <summary>Fenster unter Ansicht › Atlas.</summary>
-function ViewEntry(const ACommandId: string): TAtlasMenuEntry;
-begin
-  Result := Default(TAtlasMenuEntry);
-  Result.CommandId := ACommandId;
-  Result.Place := TAtlasMenuPlace.ViewMenu;
-end;
-
-/// <summary>Eintrag ohne Befehl für eine Projektaufgabe im Untermenü „Build“; ARun nil = ausgegraut.</summary>
-function TaskEntry(const AId, ACaption: string; const ARun: TProc): TAtlasMenuEntry;
-begin
-  Result := MenuEntry(AId);
-  Result.Caption := ACaption;
-  Result.Run := ARun;
-end;
-
-function TAtlasBuildModule.Commands: TArray<TAtlasModuleCommand>;
-begin
-  Result := [
-    // Wirksame Compiler-Schalter (#558); nur sichtbar, solange build.compilerSwitches an ist.
-    Command('Atlas.CompilerSwitches', TAtlasBuildTextId.CompilerSwitchesCommand,
-      TAtlasGuard.Wrap(TAtlasFeature.Build, TAtlasIdeCompilerSwitches.ShowWindow), CompilerSwitchesVisible),
-    // Projektaufgaben (#900): sichtbar, solange tasks.enabled an ist und der Läufer läuft.
-    Command('Atlas.RunTask', TAtlasBuildTextId.TasksRunCommand, TasksCommand(ChooseTask), TasksVisible),
-    Command('Atlas.RunChecks', TAtlasBuildTextId.TasksRunChecksCommand, TasksCommand(RunChecks), TasksVisible),
-    Command('Atlas.RepeatTask', TAtlasBuildTextId.TasksRepeatCommand, TasksCommand(RepeatTask), TasksVisible),
-    Command('Atlas.CancelTasks', TAtlasBuildTextId.TasksCancelCommand, TasksCommand(CancelTasks), TasksVisible),
-    Command('Atlas.TasksOutput', TAtlasBuildTextId.TasksOutputCommand, TasksCommand(ToggleTasksOutput), TasksVisible),
-    Command('Atlas.TasksFindings', TAtlasBuildTextId.TasksFindingsCommand, TasksCommand(ChooseTaskFindings),
-      TasksVisible),
-    // Startprofile (#575): Auswahl für das aktive Projekt; sichtbar, solange StartProfiles an ist.
-    Command('Atlas.StartProfile', TAtlasBuildTextId.StartProfilesCommand,
-      TAtlasGuard.Wrap(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible)];
-end;
-
-function TAtlasBuildModule.MenuEntries: TArray<TAtlasMenuEntry>;
-var
-  mItem: TAtlasTaskMenuItem;
-  mItems: TArray<TAtlasTaskMenuItem>;
-begin
-  // Wirksame Compiler-Schalter an der Cursorposition (#558), auch als Fenster unter Ansicht › Atlas.
-  Result := [MenuEntry('Atlas.CompilerSwitches'), ViewEntry('Atlas.CompilerSwitches')];
-  // Projektaufgaben (#900) hinter einer Trennlinie: ohne Läufer bzw. mit tasks.enabled aus fehlen sie; Base fragt
-  // bei jedem Öffnen.
-  if not TasksVisible then
-  begin
-    Exit;
-  end;
-  Result := Result + [MenuEntry('-')];
-  mItems := nil;
-  TAtlasGuard.Run(TAtlasFeature.Tasks,
-    procedure
-    begin
-      mItems := GTasks.MenuItems;
-    end);
-  for mItem in mItems do
-  begin
-    Result := Result + [TaskEntry(cTaskEntryPrefix + mItem.Name, mItem.Caption, TaskMenuRun(mItem.Name))];
-  end;
-  if Length(mItems) = 0 then
-  begin
-    Result := Result + [TaskEntry(cTaskEntryPrefix, TAtlasBuildStrings.Text(TAtlasBuildTextId.TasksMenuEmpty), nil)];
-  end;
-end;
-
-procedure TAtlasBuildModule.ApplySettings;
-begin
-  // tasks.onlyFindings und Tasten der Projektaufgaben (#900).
-  if GTasks <> nil then
-  begin
-    GTasks.ApplySettings;
-  end;
-  // build.compilerSwitches, build.showSwitchesInStatusBar (#558).
-  TAtlasIdeCompilerSwitches.ApplySettings;
-  // startProfiles.enabled aus: Zeitgeber und Feld weg (die Feature-Tabelle startet sie wieder);
-  // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
-  if not TAtlasIdeSettings.Current.StartProfiles then
-  begin
-    StopStartProfiles;
-  end
-  else
-  begin
-    TAtlasIdeStartProfiles.Refresh;
-  end;
-end;
-
-procedure TAtlasBuildModule.ThemeChanged;
-begin
-  TAtlasIdeCompilerSwitches.ThemeChanged;
-end;
-
-function TAtlasBuildModule.StartProfiles(const AProject: string; out AActive: string): TArray<string>;
-var
-  mEntry: TAtlasStartProfileEntry;
-begin
-  Result := nil;
-  for mEntry in TAtlasIdeStartProfiles.Profiles(AProject) do
-  begin
-    Result := Result + [mEntry.Profile.Name];
-  end;
-  AActive := TAtlasIdeStartProfiles.ActiveName(AProject);
-end;
-
-function TAtlasBuildModule.RunStartProfile(const AProject, AProfile: string; out AReason: string): Boolean;
-begin
-  Result := TAtlasIdeStartProfiles.Run(AProject, AProfile, True, AReason);
-end;
-
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
@@ -615,27 +352,22 @@ begin
   TAtlasBuildSettingsSection.ProvideIn(GScope);
 end;
 
-function TAtlasBuildModule.TaskNames(const AProject: string): TArray<string>;
+function CurrentTasks: TAtlasIdeTasks;
 begin
-  Result := nil;
-  if TasksVisible then
-  begin
-    Result := GTasks.TaskNamesOf(AProject);
-  end;
+  Result := GTasks;
 end;
 
-function TAtlasBuildModule.RunTask(const AProject, AName: string; out AReason: string): Boolean;
+/// <summary>Was die Modulklasse von der Composition braucht.</summary>
+function ModuleHooks: TAtlasBuildModuleHooks;
 begin
-  AReason := '';
-  if not TasksVisible then
-  begin
-    AReason := TAtlasBuildStrings.Text(TAtlasBuildTextId.WelcomeQuickReasonTasksOff);
-    Exit(False);
-  end;
-  Result := GTasks.RunInProject(AProject, AName, AReason);
+  Result := Default(TAtlasBuildModuleHooks);
+  Result.Tasks := CurrentTasks;
+  Result.StopStartProfiles := StopStartProfiles;
 end;
 
-class function TAtlasBuildModule.RegisterModule: Boolean;
+/// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
+/// nicht passt.</summary>
+function RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
   mModule: TAtlasBuildModule;
@@ -644,11 +376,12 @@ var
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(TAtlasBuildModule.cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion,
+    GScope, mRegistry) then
   begin
     Exit;
   end;
-  mModule := TAtlasBuildModule.Create;
+  mModule := TAtlasBuildModule.Create(ModuleHooks);
   mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
@@ -665,15 +398,15 @@ begin
   Result := True;
 end;
 
-class procedure TAtlasBuildModule.UnregisterModule;
+procedure UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  TAtlasModuleHost.Unregister(GScope, TAtlasBuildModule.cModuleId, HInstance, nil);
 end;
 
 initialization
-  TAtlasBuildModule.RegisterModule;
+  RegisterModule;
 
 finalization
-  TAtlasBuildModule.UnregisterModule;
+  UnregisterModule;
 
 end.

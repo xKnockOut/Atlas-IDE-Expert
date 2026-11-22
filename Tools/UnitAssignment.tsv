@@ -987,6 +987,7 @@ Atlas.IDE.Build	Atlas.IDE.Build.OpenBuild	IDE/Build/Atlas.IDE.Build.OpenBuild.pa
 Atlas.IDE.Build	Atlas.IDE.Build.RunningProcesses	IDE/Build/Atlas.IDE.Build.RunningProcesses.pas	Ordner `IDE/Build`; Prozesse für #551 (Windows)
 Atlas.IDE.Build	Atlas.IDE.Build.RunningProgram	IDE/Build/Atlas.IDE.Build.RunningProgram.pas	Ordner `IDE/Build`; Teilnehmer an den Compile-Ereignissen (#551)
 Atlas.IDE.Build	Atlas.IDE.Build.SwitchesWindow	IDE/Build/Atlas.IDE.Build.SwitchesWindow.pas	Ordner `IDE/Build`
+Atlas.IDE.Build	Atlas.IDE.BuildTools.Adapters.Module	IDE/BuildTools/Atlas.IDE.BuildTools.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle und Menü der Build-Werkzeuge, Startprofile und Projektaufgaben für andere Module (`IAtlasBuildToolsSource`)
 Atlas.IDE.Build	Atlas.IDE.BuildTools.Adapters.TaskLauncher	IDE/BuildTools/Atlas.IDE.BuildTools.Adapters.TaskLauncher.pas	IAtlasTaskLauncher der IDE: ein Thread je Lauf, #1443
 Atlas.IDE.Build	Atlas.IDE.BuildTools.Composition	IDE/BuildTools/Atlas.IDE.BuildTools.Composition.pas	Anmeldung des Moduls `atlas.build`, #1455
 Atlas.IDE.Build	Atlas.IDE.StartProfiles.Service	IDE/StartProfiles/Atlas.IDE.StartProfiles.Service.pas	Ordner `IDE/StartProfiles`

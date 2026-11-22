@@ -282,7 +282,7 @@ Atlas.Common.Mcp.Statistics.Tests
 Atlas.Common.Mcp.StatisticsHistory.Tests
 Atlas.Common.Mcp.StatisticsText.Tests
 Atlas.Common.Mcp.HistoryTools.Tests
-Shell.SymbolHistory.Tests
+Core.SymbolHistory.Tests
 Core.Workspace.Parts.Tests
 Shell.Mcp.HistoryTools.Tests
 Shell.Mcp.Tools.Tests
