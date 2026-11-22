@@ -1,6 +1,6 @@
-﻿unit Shell.Monitor.CheckOptions;
+﻿unit Monitor.CheckOptions;
 
-// Host-Rolle Shell von AtlasMonitor (#1900): Spalte „Optionen“ des Reiters „Prüfen“ mit Befehl, Schwere, Regeln,
+// Hosted-Feature Monitor: Spalte „Optionen“ des Reiters „Prüfen“ mit Befehl, Schwere, Regeln,
 // Profil, Auswahl der Dateien, Baseline und den Werten einzelner Befehle (Sammelkorrektur, Abfrage, Architektur-
 // Stand, Absturzfall) sowie dem Editor für Doppelklick. Liest und schreibt TMonitorCheckState; die Befehle und ihre
 // Schalter stehen in TMonitorCommands.

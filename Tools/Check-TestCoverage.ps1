@@ -85,13 +85,13 @@ $Exempt = @{
     'Shell.Update'                                      = 'Einstieg von AtlasUpdate.exe (Befehlszeile, Konsole)'
     'Shell.Update.System'                               = 'setzt nur die Windows-Adapter zusammen'
     'Shell.Monitor'                                     = 'Einstieg von AtlasMonitor.exe (eine Instanz, Fenster); Logik testet Atlas.Common.Monitor.*'
-    'Shell.Monitor.MainForm'                            = 'VCL-Fenster und Symbol im Infobereich; Regeln und Texte testet Atlas.Common.Monitor.*'
-    'Shell.Monitor.CheckOptions'                        = 'VCL-Spalte Optionen des Reiters Prüfen; Befehle und Stand testet Atlas.Common.Monitor.*'
-    'Shell.Monitor.CheckPage'                           = 'VCL-Reiter Prüfen; Aufrufe, Läufe und Ergebnisse testet Atlas.Common.Monitor.*'
-    'Shell.Monitor.ReportPage'                          = 'VCL-Reiter Bericht mit eingebettetem Browser (WebView2), ohne eigene Logik'
+    'Monitor.MainForm'                            = 'VCL-Fenster und Symbol im Infobereich; Regeln und Texte testet Atlas.Common.Monitor.*'
+    'Monitor.CheckOptions'                        = 'VCL-Spalte Optionen des Reiters Prüfen; Befehle und Stand testet Atlas.Common.Monitor.*'
+    'Monitor.CheckPage'                           = 'VCL-Reiter Prüfen; Aufrufe, Läufe und Ergebnisse testet Atlas.Common.Monitor.*'
+    'Monitor.ReportPage'                          = 'VCL-Reiter Bericht mit eingebettetem Browser (WebView2), ohne eigene Logik'
     'Atlas.Windows.Monitor.System'                      = 'Prozesse, Registry (Autostart) und ShellExecute des Systems'
     'Atlas.Windows.Monitor.ChildProcess'                = 'Kindprozess mit CreateProcess und Job-Objekt des Systems'
-    'Shell.Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
+    'Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
     'Atlas.Windows.Profiling.Adapters.Sampler'          = 'hält Threads eines fremden Prozesses an (SuspendThread, StackWalk64); Zusammenfassen und Auflösen testet Atlas.Common.Profiling.Sampling'
 }
 
