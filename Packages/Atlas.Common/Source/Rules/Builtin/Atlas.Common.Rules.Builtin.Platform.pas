@@ -68,8 +68,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
@@ -510,7 +509,7 @@ var
   begin
     mLast := ACall[ACall.ChildCount - 1];
     mEdits := [TRuleEdit.Create(TTextRange.Create(mLast.EndPos, mLast.EndPos), ', TEncoding.' + mEncoding)];
-    if TUsesClauses.AddMissingUnit(mTokens, ACall.StartOffset, 'System.SysUtils', AContext.Namespaces,
+    if TPascalUsesEdits.AddMissingUnit(mTokens, ACall.StartOffset, 'System.SysUtils', AContext.Namespaces,
       TTextLines.LineBreakOf(AContext.Text), mExtra) then
     begin
       mEdits := mEdits + [mExtra];
@@ -1020,7 +1019,7 @@ begin
   begin
     mEdits := mEdits + RenameEdits(mName, mNewName, mMeasured);
   end;
-  if TUsesClauses.AddMissingUnit(FTokens, FRoutine.StartOffset, 'System.Diagnostics', FContext.Namespaces,
+  if TPascalUsesEdits.AddMissingUnit(FTokens, FRoutine.StartOffset, 'System.Diagnostics', FContext.Namespaces,
     TTextLines.LineBreakOf(FContext.Text), mExtra) then
   begin
     mEdits := mEdits + [mExtra];

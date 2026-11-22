@@ -313,6 +313,7 @@ contains
   Atlas.IDE.Debug.BreakpointList in 'Source\IDE\Debug\Atlas.IDE.Debug.BreakpointList.pas',
   Atlas.IDE.Debug.Composition.Session in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.Session.pas',
   Atlas.IDE.Debug.Composition.CallStack in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.CallStack.pas',
+  Atlas.IDE.Debug.Adapters.Module in 'Source\IDE\Debug\Atlas.IDE.Debug.Adapters.Module.pas',
   Atlas.IDE.Debug.Composition in 'Source\IDE\Debug\Atlas.IDE.Debug.Composition.pas',
   Atlas.UI.Debug.SettingsSection in 'Source\UI\Debug\Atlas.UI.Debug.SettingsSection.pas',
   Atlas.Core.Debug.EventLog in 'Source\Core\Debug\Atlas.Core.Debug.EventLog.pas',

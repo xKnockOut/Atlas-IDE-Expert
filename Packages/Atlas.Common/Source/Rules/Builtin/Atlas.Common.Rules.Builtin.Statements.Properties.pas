@@ -11,7 +11,7 @@
 //                     schreibt Delphi in das Feld: still. Korrektur bei Properties
 //                     mit write: über eine lokale Variable zuweisen und
 //                     zurückschreiben (Variable über TRoutineBody.AddVariable, Unit
-//                     des Typs über TUsesClauses.AddUnit).
+//                     des Typs über TPascalUsesEdits.AddUnit).
 //   untyped-pointer-refcount
 //                     Pointer(X) := … mit einem Interface X (#1081, wie W1070):
 //                     die Zuweisung umgeht die Referenzzählung. Typ über
@@ -80,7 +80,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassActions,
@@ -220,7 +220,7 @@ begin
     not SameText(AType.UnitName, TPascalUses.OwnName(FTokens)) and
     not TPascalUses.IsUsed(TPascalUses.UsedUnits(FTokens), AType.UnitName, FContext.Namespaces) then
   begin
-    if not TUsesClauses.AddUnit(FTokens, AStatement.StartOffset, AType.UnitName, FLineBreak, mUsesEdit) then
+    if not TPascalUsesEdits.AddUnit(FTokens, AStatement.StartOffset, AType.UnitName, FLineBreak, mUsesEdit) then
     begin
       Exit;
     end;

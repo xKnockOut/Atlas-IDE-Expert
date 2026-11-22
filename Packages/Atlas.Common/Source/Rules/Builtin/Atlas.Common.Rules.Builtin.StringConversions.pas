@@ -90,7 +90,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.Signatures,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
@@ -723,7 +723,7 @@ begin
   begin
     Exit;
   end;
-  if TUsesClauses.AddUnit(FScope.Tokens, ANode.StartOffset, 'System.SysUtils',
+  if TPascalUsesEdits.AddUnit(FScope.Tokens, ANode.StartOffset, 'System.SysUtils',
     TTextLines.LineBreakOf(FContext.Text), mUsesEdit) then
   begin
     Result := Result + [mUsesEdit];

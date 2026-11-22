@@ -59,7 +59,7 @@ uses
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.MaintenanceCommands,
-  Atlas.Common.Editing.UsesGroups,
+  Atlas.Common.Pascal.UsesGroups,
   Atlas.Tests.SlashHost,
   Atlas.Common.Editing.SlashCommands.TestSupport,
   Atlas.Tests.TextEdits;

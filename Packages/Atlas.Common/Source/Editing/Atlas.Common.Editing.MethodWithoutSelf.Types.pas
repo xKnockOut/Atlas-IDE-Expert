@@ -11,7 +11,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SourceFiles;
 
 type

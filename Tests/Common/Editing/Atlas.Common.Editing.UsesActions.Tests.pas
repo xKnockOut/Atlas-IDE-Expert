@@ -79,7 +79,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
@@ -336,7 +336,7 @@ var
   mEdits: TArray<TRuleEdit>;
 begin
   mText := Source('Eigen, Vcl.Forms, Data.DB, Abc, Vcl.Controls, Data.Bind', '', '', '');
-  Assert.IsTrue(TUsesClauses.Organize(TPascalLexer.Tokenize(mText), mText, True, #10, mEdits, True));
+  Assert.IsTrue(TPascalUsesEdits.Organize(TPascalLexer.Tokenize(mText), mText, True, #10, mEdits, True));
   // "uses" steht in eigener Zeile, also eine Unit je Zeile.
   Assert.AreEqual(Source('Data.Bind,'#10'  Data.DB,'#10'  Vcl.Controls,'#10'  Vcl.Forms,'#10'  Abc,'#10'  Eigen', '', '', ''),
     TTestEdits.Apply(mText, mEdits));
@@ -441,7 +441,7 @@ begin
   Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(mText),
     TUsesAddRequest.Create(['Units.A', 'Units.C', 'Units.B', 'units.c', 'U'], Declaring, nil, #10), mEdits, mAdded));
   Assert.AreEqual('Units.A,Units.C', string.Join(',', mAdded));
-  // Die Einfügehilfe von TUsesClauses setzt je Unit eine Zeile und vor ein neues uses eine Leerzeile.
+  // Die Einfügehilfe von TPascalUsesEdits setzt je Unit eine Zeile und vor ein neues uses eine Leerzeile.
   Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B,'#10'  Units.A;'#10'procedure P(X: Foo);'#10 +
     'implementation'#10#10'uses'#10'  Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', TTestEdits.Apply(mText, mEdits));
   // Nichts Neues: kein Edit.

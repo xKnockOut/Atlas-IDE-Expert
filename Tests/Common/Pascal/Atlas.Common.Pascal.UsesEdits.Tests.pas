@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.UsesClause.Tests;
+﻿unit Atlas.Common.Pascal.UsesEdits.Tests;
 
 // Tests für das Lesen und Ergänzen von uses-Listen (#180).
 
@@ -56,9 +56,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.UsesGroups,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.UsesGroups,
+  Atlas.Common.Pascal.UsesEdits;
 
 const
   cUnitText =
@@ -98,7 +98,7 @@ procedure TUsesClauseTests.AppendsToSingleLineUses;
 var
   mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+  Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
     'Vcl.Forms', #10, mEdit));
   Assert.AreEqual('uses System.SysUtils, Werkzeug in ''Werkzeug.pas'', Vcl.Forms;', Apply(cUnitText, mEdit).Split([#10])[2]);
 end;
@@ -107,7 +107,7 @@ procedure TUsesClauseTests.AppendsToMultiLineUsesOnOwnLine;
 var
   mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'begin'), 'Vcl.Forms',
+  Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'begin'), 'Vcl.Forms',
     #10, mEdit));
   Assert.IsTrue(Pos('uses'#10'  Classes,'#10'  Daten.Kunden,'#10'  Vcl.Forms;'#10'procedure',
     Apply(cUnitText, mEdit)) > 0, Apply(cUnitText, mEdit));
@@ -117,9 +117,9 @@ procedure TUsesClauseTests.ChoosesImplementationSectionByOffset;
 var
   mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'Rechne'), 'X', #10, mEdit));
+  Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'Rechne'), 'X', #10, mEdit));
   Assert.AreEqual(6, mEdit.Range.StartPos.Line);
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'uses System'), 'X', #10, mEdit));
+  Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'uses System'), 'X', #10, mEdit));
   Assert.AreEqual(2, mEdit.Range.StartPos.Line);
 end;
 
@@ -129,7 +129,7 @@ const
 var
   mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'end.'), 'B', #10, mEdit));
+  Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'end.'), 'B', #10, mEdit));
   Assert.AreEqual('unit A;'#10'interface'#10'implementation'#10#10'uses'#10'  B;'#10'end.', Apply(cText, mEdit));
 end;
 
@@ -139,7 +139,7 @@ const
 var
   mEdit: TRuleEdit;
 begin
-  Assert.IsTrue(TUsesClauses.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'end.'), 'B', #10, mEdit));
+  Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'end.'), 'B', #10, mEdit));
   Assert.AreEqual('program App;'#10'uses A, B;'#10'begin'#10'end.', Apply(cText, mEdit));
 end;
 
@@ -147,8 +147,8 @@ procedure TUsesClauseTests.FailsWithoutSection;
 var
   mEdit: TRuleEdit;
 begin
-  Assert.IsFalse(TUsesClauses.AddUnit(TPascalLexer.Tokenize(''), 0, 'B', #10, mEdit));
-  Assert.IsFalse(TUsesClauses.AddUnit(TPascalLexer.Tokenize('unit A;'#10'type'), 0, 'B', #10, mEdit));
+  Assert.IsFalse(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(''), 0, 'B', #10, mEdit));
+  Assert.IsFalse(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize('unit A;'#10'type'), 0, 'B', #10, mEdit));
 end;
 
 /// <summary>Offset ab 0 zu einer Position; Zeilenwechsel #10.</summary>
@@ -187,7 +187,7 @@ function Organized(const AText: string; ASort: Boolean): string;
 var
   mEdits: TArray<TRuleEdit>;
 begin
-  if TUsesClauses.Organize(TPascalLexer.Tokenize(AText), AText, ASort, #10, mEdits) then
+  if TPascalUsesEdits.Organize(TPascalLexer.Tokenize(AText), AText, ASort, #10, mEdits) then
   begin
     Result := ApplyAll(AText, mEdits);
   end
@@ -219,7 +219,7 @@ begin
   mOptions.GroupStyle := AStyle;
   mOptions.MaxLineLength := AMaxLength;
   Result := AText;
-  if TUsesClauses.Rewrite(TPascalLexer.Tokenize(AText), AText, mOptions, #10, mEdits) then
+  if TPascalUsesEdits.Rewrite(TPascalLexer.Tokenize(AText), AText, mOptions, #10, mEdits) then
   begin
     Result := ApplyAll(AText, mEdits);
   end;
@@ -260,7 +260,7 @@ begin
   mOptions.Dedupe := True;
   mOptions.Sort := True;
   mOptions.GroupOf := NameGroups();
-  Assert.IsFalse(TUsesClauses.Rewrite(TPascalLexer.Tokenize(mText), mText, mOptions, #10, mEdits));
+  Assert.IsFalse(TPascalUsesEdits.Rewrite(TPascalLexer.Tokenize(mText), mText, mOptions, #10, mEdits));
 end;
 
 procedure TUsesClauseTests.GroupedReplacesOldLabelsKeepsOtherComments;
@@ -317,18 +317,18 @@ var
 const
   cText = 'unit A;'#10'interface'#10'uses A1, B2;'#10'implementation'#10'end.';
 begin
-  Assert.IsFalse(TUsesClauses.Organize(TPascalLexer.Tokenize(cText), cText, True, #10, mEdits));
+  Assert.IsFalse(TPascalUsesEdits.Organize(TPascalLexer.Tokenize(cText), cText, True, #10, mEdits));
 end;
 
 procedure TUsesClauseTests.AddMissingUnitSkipsUsedUnits;
 var
   mEdit: TRuleEdit;
 begin
-  Assert.IsFalse(TUsesClauses.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+  Assert.IsFalse(TPascalUsesEdits.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
     'System.SysUtils', TArray<string>.Create('System'), #10, mEdit), 'schon eingebunden');
-  Assert.IsFalse(TUsesClauses.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+  Assert.IsFalse(TPascalUsesEdits.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
     'Daten.Werkzeug', nil, #10, mEdit), 'ohne Namespace schon eingebunden');
-  Assert.IsTrue(TUsesClauses.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+  Assert.IsTrue(TPascalUsesEdits.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
     'Vcl.Forms', nil, #10, mEdit));
   Assert.AreEqual('uses System.SysUtils, Werkzeug in ''Werkzeug.pas'', Vcl.Forms;',
     Apply(cUnitText, mEdit).Split([#10])[2]);
