@@ -49,6 +49,16 @@ type
 
 implementation
 
+const
+  /// <summary>Höchstzahl der Ziffern einer Zeilenangabe: Neun Ziffern passen immer in Integer.</summary>
+  cMaxDigits = 9;
+  /// <summary>Teile der Kopfzeile "@@ -a,b +c,d @@" eines Blocks.</summary>
+  cHunkStart = '@@ -';
+  cHunkNewRange = ' +';
+  cHunkEnd = ' @@';
+  /// <summary>Platz für die ersten Blöcke, bevor die Liste wächst.</summary>
+  cInitialHunks = 4;
+
 function ReadNumber(const AText: string; var APos: Integer; out AValue: Integer): Boolean;
 var
   mStart: Integer;
@@ -58,7 +68,7 @@ begin
   begin
     Inc(APos);
   end;
-  Result := (APos > mStart) and (APos - mStart <= 9);
+  Result := (APos > mStart) and (APos - mStart <= cMaxDigits);
   if Result then
   begin
     AValue := StrToInt(Copy(AText, mStart, APos - mStart));
@@ -99,25 +109,25 @@ var
 begin
   AHunk := Default(TAtlasVcsHunk);
   Result := False;
-  if Copy(ALine, 1, 4) <> '@@ -' then
+  if not ALine.StartsWith(cHunkStart) then
   begin
     Exit;
   end;
-  mPos := 5;
+  mPos := Length(cHunkStart) + 1;
   if not ReadRange(ALine, mPos, AHunk.OldStart, AHunk.OldCount) then
   begin
     Exit;
   end;
-  if Copy(ALine, mPos, 2) <> ' +' then
+  if Copy(ALine, mPos, Length(cHunkNewRange)) <> cHunkNewRange then
   begin
     Exit;
   end;
-  Inc(mPos, 2);
+  Inc(mPos, Length(cHunkNewRange));
   if not ReadRange(ALine, mPos, AHunk.NewStart, AHunk.NewCount) then
   begin
     Exit;
   end;
-  Result := Copy(ALine, mPos, 3) = ' @@';
+  Result := Copy(ALine, mPos, Length(cHunkEnd)) = cHunkEnd;
 end;
 
 class function TAtlasVcsLineTrace.ParseHunks(const ALines: TArray<string>): TArray<TAtlasVcsHunk>;
@@ -174,7 +184,7 @@ begin
     SetLength(mHunk.Lines, mCount);
     if mFound = Length(Result) then
     begin
-      SetLength(Result, mFound * 2 + 4);
+      SetLength(Result, mFound * 2 + cInitialHunks);
     end;
     Result[mFound] := mHunk;
     Inc(mFound);
