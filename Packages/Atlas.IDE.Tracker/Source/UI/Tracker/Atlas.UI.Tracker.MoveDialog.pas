@@ -61,6 +61,8 @@ uses
 
 const
   cGap = 10;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 32;
 
 { TAtlasBoardMoveDialog }
 
@@ -127,7 +129,7 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
+  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding);
   Result.AlignWithMargins := True;
   TAtlasControlScaling.SetMargins(Result, 0, 0, cGap, 0);
 end;

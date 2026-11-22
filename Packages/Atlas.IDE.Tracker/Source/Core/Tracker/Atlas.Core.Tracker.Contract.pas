@@ -150,7 +150,9 @@ type
   /// <summary>Höchstlängen der Texte, die die Parser aus Tracker-Antworten übernehmen (Zeichen).</summary>
   TAtlasTrackerTextLimits = record
   public const
-    /// <summary>Login, Schlagwort, Beziehung.</summary>
+    /// <summary>Label, Art eines Issues.</summary>
+    cLabel = 40;
+    /// <summary>Login, Schlagwort, Beziehung, Sprint.</summary>
     cName = 60;
     /// <summary>Vollständiger Name einer Person.</summary>
     cPerson = 80;
@@ -946,6 +948,11 @@ uses
   System.Generics.Collections,
   System.StrUtils;
 
+const
+  cHttps = 'https://';
+  /// <summary>Rang eines Benutzers ohne Treffer (TAtlasTrackerUser.Rank).</summary>
+  cRankNone = 3;
+
 { TAtlasTrackerCall }
 
 class function TAtlasTrackerCall.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -1064,7 +1071,7 @@ end;
 
 function TAtlasTrackerUser.Matches(const AText: string): Boolean;
 begin
-  Result := Rank(AText) < 3;
+  Result := Rank(AText) < cRankNone;
 end;
 
 function TAtlasTrackerUser.Rank(const AText: string): Integer;
@@ -1085,7 +1092,7 @@ begin
   begin
     Exit(2);
   end;
-  Result := 3;
+  Result := cRankNone;
 end;
 
 function RankedUsers(const AUsers: TArray<TAtlasTrackerUser>; const AText: string; AMax: Integer;
@@ -1099,9 +1106,9 @@ begin
   mSeen := TDictionary<string, Boolean>.Create;
   try
     // Stabil: je Rang in der Reihenfolge der Liste (TArray.Sort ist nicht stabil).
-    for mRank := 0 to 3 do
+    for mRank := 0 to cRankNone do
     begin
-      if (mRank = 3) and not AKeepOthers then
+      if (mRank = cRankNone) and not AKeepOthers then
       begin
         Break;
       end;
@@ -1463,7 +1470,7 @@ end;
 
 function TAtlasTrackerTarget.Secure: Boolean;
 begin
-  Result := SameText(Copy(Server, 1, 8), 'https://');
+  Result := SameText(Copy(Server, 1, Length(cHttps)), cHttps);
 end;
 
 { TAtlasIssueSearchQuery }

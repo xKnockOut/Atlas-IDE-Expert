@@ -109,6 +109,11 @@ uses
   Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Text.Names;
 
+const
+  /// <summary>Länge eines Commit-Hashs: gekürzt wie `git log --oneline` bis voll (SHA-256).</summary>
+  cMinShaLength = 7;
+  cMaxShaLength = 64;
+
 { TAtlasGitHubApi }
 
 class function TAtlasGitHubApi.Base(const ATarget: TAtlasTrackerTarget): string;
@@ -201,7 +206,7 @@ function SafeSha(const ASha: string): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := (Length(ASha) >= 7) and (Length(ASha) <= 64);
+  Result := (Length(ASha) >= cMinShaLength) and (Length(ASha) <= cMaxShaLength);
   if Result then
   begin
     for mIndex := 1 to Length(ASha) do
@@ -284,14 +289,14 @@ end;
 class function TAtlasGitHubApi.ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError;
 begin
   case AStatus of
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result := TAtlasCiFetchError.Unauthorized;
-    404:
+    TAtlasHttpStatus.cNotFound:
       Result := TAtlasCiFetchError.NotFound;
-    400, 422:
+    TAtlasHttpStatus.cBadRequest, TAtlasHttpStatus.cUnprocessable:
       Result := TAtlasCiFetchError.Invalid;
     // Gelöschtes Issue (Vorschau, #1264).
-    410:
+    TAtlasHttpStatus.cGone:
       Result := TAtlasCiFetchError.NotFound;
   else
     Result := TAtlasCiFetchError.Server;
@@ -351,7 +356,7 @@ var
   mStatus: Integer;
 begin
   Result := ATransport.Get(AUrl, ATimeoutMs, mStatus, AText, AError);
-  if Result and (mStatus <> 200) then
+  if Result and (mStatus <> TAtlasHttpStatus.cOk) then
   begin
     AError := ErrorOfStatus(mStatus);
     Result := False;
@@ -554,12 +559,12 @@ begin
   finally
     mValue.Free;
   end;
-  Result := TAtlasGitHubJson.Shorten(Result, 300);
+  Result := TAtlasGitHubJson.Shorten(Result, TAtlasTrackerTextLimits.cMessage);
 end;
 
 class function TAtlasGitHubApi.Answered(AStatus: Integer): Boolean;
 begin
-  Result := (AStatus >= 200) and (AStatus <= 299);
+  Result := (AStatus >= TAtlasHttpStatus.cOk) and (AStatus <= TAtlasHttpStatus.cLastSuccess);
 end;
 
 class function TAtlasGitHubApi.BodyJson(const AText: string): string;

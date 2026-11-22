@@ -84,6 +84,7 @@ type
 implementation
 
 uses
+  System.DateUtils,
   System.Diagnostics,
   System.Generics.Collections,
   System.JSON,
@@ -658,7 +659,8 @@ begin
     begin
       for mItem in TJSONArray(TJSONObject(mValue).Values['workDays']) do
       begin
-        if (mItem is TJSONNumber) and TryStrToInt(TJSONNumber(mItem).Value, mDay) and (mDay >= 1) and (mDay <= 7) then
+        if (mItem is TJSONNumber) and TryStrToInt(TJSONNumber(mItem).Value, mDay) and (mDay >= DayMonday) and
+          (mDay <= DaySunday) then
         begin
           ADays := ADays + [mDay];
         end;

@@ -208,6 +208,10 @@ uses
   Atlas.IDE.Contracts.VersionControl,
   Atlas.Core.Tracker.CommentEditor;
 
+const
+  /// <summary>So lange wartet Stop höchstens auf ein laufendes Schreiben.</summary>
+  cStopTimeoutMs = 1000;
+
 type
   /// <summary>Der offene Beenden-Dialog für nachgeladene Werte; nil, sobald er geschlossen ist.</summary>
   IAtlasTrackerEndSession = interface
@@ -610,7 +614,7 @@ begin
   end;
   FStopped := True;
   // Höchstens die Zeitgrenze eines Schreibens; danach kommt kein Ergebnis mehr an.
-  FWorker.Stop(1000);
+  FWorker.Stop(cStopTimeoutMs);
   FTransport := nil;
   FMessage.Clear;
   FTimeText := nil;
