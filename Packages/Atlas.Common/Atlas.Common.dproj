@@ -734,7 +734,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IndexRefresh.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeBuild.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeProject.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Adapters.IdeTypes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Providers.IdeTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.Source.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Adapters.IdeIndex.pas"/>

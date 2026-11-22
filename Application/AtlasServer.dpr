@@ -75,6 +75,7 @@ uses
   Shell.Composition.Parts in 'Source\Shell\Shell.Composition.Parts.pas',
   Shell.Composition.ProtocolWiring in 'Source\Shell\Shell.Composition.ProtocolWiring.pas',
   Shell.Composition.CoreWiring in 'Source\Shell\Shell.Composition.CoreWiring.pas',
+  Adapters.Rules.IdeTypes in 'Source\Adapters\Adapters.Rules.IdeTypes.pas',
   Shell.Composition.FeatureWiring in 'Source\Shell\Shell.Composition.FeatureWiring.pas',
   Shell.Composition.CommandWiring in 'Source\Shell\Shell.Composition.CommandWiring.pas',
   Shell.Composition.ClientStart in 'Source\Shell\Shell.Composition.ClientStart.pas',

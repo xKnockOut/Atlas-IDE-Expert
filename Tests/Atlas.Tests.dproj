@@ -2455,7 +2455,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Messages.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeBuild.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeProject.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Adapters.IdeTypes.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Providers.IdeTypes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.IdeUnits.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.CheckOnSave.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.CheckOnSave.Tests.pas"/>
@@ -2670,6 +2670,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Parts.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ProtocolWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CoreWiring.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Rules.IdeTypes.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Rules.IdeTypes.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ClientStart.pas"/>
