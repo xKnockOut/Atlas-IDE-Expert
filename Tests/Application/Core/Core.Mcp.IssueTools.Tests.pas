@@ -1,4 +1,4 @@
-﻿unit Shell.Mcp.IssueTools.Tests;
+﻿unit Core.Mcp.IssueTools.Tests;
 
 // Tests von get_current_issue (#2051): Anmeldung, <gitdir> über dem Projektordner, Lesen mit BOM, Meldungen ohne
 // Git bzw. ohne begonnenes Issue, Text und JSON, falsche Argumente.
@@ -42,8 +42,9 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Localization.Texts,
   Atlas.Core.Tracker.CurrentIssue,
-  Shell.Mcp.Context,
-  Shell.Mcp.IssueTools,
+  Core.Mcp.Context,
+  Core.Mcp.IssueTools,
+  Shell.Mcp.Services,
   Atlas.Tests.TempFolder;
 
 const
@@ -68,7 +69,7 @@ var
 begin
   mArguments := Arguments(ASection, AFormat);
   try
-    Result := CurrentIssueOf(ARoot, mArguments, cNow);
+    Result := CurrentIssueOf(TMcpServices.HostAdapters.GitDir, ARoot, mArguments, cNow);
   finally
     mArguments.Free;
   end;
@@ -130,11 +131,11 @@ procedure TMcpIssueToolsTests.FindsGitDirAboveFolder;
 var
   mSub: string;
 begin
-  Assert.AreEqual('', GitDirAbove(TPath.Combine(FDir, 'fehlt')), 'ohne .git');
+  Assert.AreEqual('', GitDirAbove(TMcpServices.HostAdapters.GitDir, TPath.Combine(FDir, 'fehlt')), 'ohne .git');
   TDirectory.CreateDirectory(TPath.Combine(FDir, '.git'));
   mSub := TPath.Combine(TPath.Combine(FDir, 'Src'), 'Tief');
   TDirectory.CreateDirectory(mSub);
-  Assert.AreEqual(TPath.Combine(FDir, '.git'), GitDirAbove(mSub));
+  Assert.AreEqual(TPath.Combine(FDir, '.git'), GitDirAbove(TMcpServices.HostAdapters.GitDir, mSub));
 end;
 
 procedure TMcpIssueToolsTests.ReadsFileWithoutBom;

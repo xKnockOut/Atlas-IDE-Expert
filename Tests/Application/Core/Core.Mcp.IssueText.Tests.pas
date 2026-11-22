@@ -1,4 +1,4 @@
-﻿unit Shell.Mcp.IssueText.Tests;
+﻿unit Core.Mcp.IssueText.Tests;
 
 // Tests der Ausgabe von get_current_issue (#2051): lesbarer Text je Abschnitt, Namen der Abschnitte, JSON des
 // Abschnitts, relative Zeiten auf Deutsch und Englisch.
@@ -33,7 +33,7 @@ uses
   System.DateUtils,
   Atlas.Common.Localization.Texts,
   Atlas.Core.Tracker.CurrentIssue,
-  Shell.Mcp.IssueText;
+  Core.Mcp.IssueText;
 
 const
   cAt = 46100.25;

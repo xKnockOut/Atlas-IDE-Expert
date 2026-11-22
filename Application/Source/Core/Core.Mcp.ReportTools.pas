@@ -1,13 +1,13 @@
-﻿unit Shell.Mcp.ReportTools;
+﻿unit Core.Mcp.ReportTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge für Laufzeitberichte (#74): resolve_address löst Adressen
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge für Laufzeitberichte (#74): resolve_address löst Adressen
 // über die Map-Datei auf, analyze_report wertet einen Leck- oder Absturzbericht aus. Hier nur Dateien (Map, EXE,
 // Bericht) und Projekt; Auswertung und Ausgabe in Atlas.Common.Mcp.ReportTools.
 
 interface
 
 uses
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>Meldet resolve_address und analyze_report an.</summary>
 procedure RegisterReportTools(const AContext: TMcpToolContext);
@@ -232,6 +232,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.ReportTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.ReportTools', cTexts);
 
 end.

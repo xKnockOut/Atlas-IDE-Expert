@@ -1,4 +1,4 @@
-﻿unit Shell.Mcp.HistoryTools.Tests;
+﻿unit Core.Mcp.HistoryTools.Tests;
 
 // Anmeldung von get_symbol_history (#2641): Name und Schema des Werkzeugs, ungültige Argumente als Werkzeugfehler,
 // bevor Einstellungen oder Versionsverwaltung gelesen werden.
@@ -29,8 +29,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Mcp.Server,
-  Shell.Mcp.Context,
-  Shell.Mcp.HistoryTools;
+  Core.Mcp.Context,
+  Core.Mcp.HistoryTools;
 
 /// <summary>Server nur mit get_symbol_history; der Kontext hat keine Gruppe, gültige Aufrufe gingen fehl.</summary>
 function NewServer: TMcpServer;

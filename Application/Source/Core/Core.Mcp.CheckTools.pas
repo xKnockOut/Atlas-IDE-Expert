@@ -1,13 +1,13 @@
-﻿unit Shell.Mcp.CheckTools;
+﻿unit Core.Mcp.CheckTools;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge der Prüfregeln, Metriken und TODOs
+// Host-Rolle Core: MCP-Modus (--mcp, #48), Werkzeuge der Prüfregeln, Metriken und TODOs
 // (get_diagnostics, hook_check, get_metrics, get_todos, check_code, get_dfm_info, explain_finding,
 // search_atlas_docs).
 
 interface
 
 uses
-  Shell.Mcp.Context;
+  Core.Mcp.Context;
 
 /// <summary>Meldet die Werkzeuge der Prüfregeln, Metriken, TODOs und Formulare an.</summary>
 procedure RegisterCheckTools(const AContext: TMcpToolContext);
@@ -497,6 +497,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Shell.Mcp.CheckTools', cTexts);
+  TAtlasTextTables.Add('Core.Mcp.CheckTools', cTexts);
 
 end.

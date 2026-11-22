@@ -1,6 +1,6 @@
-﻿unit Shell.Mcp.Context;
+﻿unit Core.Mcp.Context;
 
-// Host-Rolle Shell: MCP-Modus (--mcp, #48), gemeinsamer Kontext der Werkzeuge (TMcpToolContext) und
+// Host-Rolle Core: MCP-Modus (--mcp, #48), gemeinsamer Kontext der Werkzeuge (TMcpToolContext) und
 // Hilfen zum Lesen von Quelltext und Projekten.
 
 interface
@@ -21,8 +21,10 @@ uses
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Configuration.Contract,
-  Core.WorkspaceGroup,
-  Shell.Mcp.RefactorHost;
+  Atlas.Common.Mcp.RefactorTools,
+  Atlas.Common.Compiler.Contract,
+  Core.VersionControlChanges,
+  Core.WorkspaceGroup;
 
 type
   /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
@@ -32,6 +34,21 @@ type
     const AUnit, ACompareWith: string; AResolution: Double): string;
   /// <summary>Antwort von find_path (#1117) als Text.</summary>
   TMcpFindPathFunc = reference to function(const ARequest: TSymbolPathRequest): string;
+
+  /// <summary>refactor für ARequest (#2150); ARequest.FileName ist mit seinem Text für den Aufruf geöffnet. Liest
+  /// die Datei über AEdit.ReadText; EMcpToolError, wenn sie nicht lesbar ist. Die Shell setzt es aus den
+  /// Refactorings des Servers zusammen (TMcpRefactorSources.Attach).</summary>
+  TMcpRefactorFunc = reference to function(AEdit: TMcpEditTools; const ARequest: TMcpRefactorRequest): string;
+
+  /// <summary>Was die Werkzeuge an Adaptern brauchen; die Shell erzeugt sie (TMcpServices.HostAdapters).</summary>
+  TMcpHostAdapters = record
+    /// <summary>Neuer Prozess für Testläufe (run_tests).</summary>
+    NewProcess: TFunc<ICompilerProcess>;
+    /// <summary>Zugang zur Versionsverwaltung (Änderungen, Hotspots, Verlauf).</summary>
+    VcsAccess: TFunc<TCoreVcsAccess>;
+    /// <summary>Git-Verzeichnis des Ordners ('' ohne Git).</summary>
+    GitDir: TFunc<string, string>;
+  end;
 
   /// <summary>Was die Werkzeuge des MCP-Modus brauchen; ToolNames füllt nur Server (die Werkzeuge greifen erst
   /// beim Aufruf auf die Dienste zu).</summary>
@@ -45,7 +62,7 @@ type
     Edit: TMcpEditTools;
     /// <summary>Quelle von refactor (#2150, TMcpRefactorSources.Attach); nil, wenn nur die Namen der Werkzeuge
     /// gebraucht werden.</summary>
-    Refactor: IMcpRefactorHost;
+    Refactor: TMcpRefactorFunc;
     Architecture: TMcpArchitectureFunc;
     FindPath: TMcpFindPathFunc;
     CheckSource: TCheckSourceFunc;
@@ -53,6 +70,7 @@ type
     Index: ISymbolIndex;
     Hotspots: THotspotService;
     ImpactOptionsFor: TImpactOptionsProvider;
+    Adapters: TMcpHostAdapters;
     /// <summary>Start des MCP-Prozesses für get_server_status.</summary>
     Started: TDateTime;
   end;
