@@ -1,6 +1,6 @@
-﻿unit Shell.Replay.Tests;
+﻿unit Replay.Player.Tests;
 
-// Tests für TShellReplay (#1355): Nachstellen eines Falls gegen einen
+// Tests für TReplayPlayer (#1355): Nachstellen eines Falls gegen einen
 // Testserver; reproduziert nur bei derselben Ausnahmeklasse bzw. beim
 // Watchdog-Fall bei RequestCancelled.
 
@@ -11,11 +11,11 @@ uses
   System.JSON,
   DUnitX.TestFramework,
   Atlas.Common.Diagnostics.CrashCase,
-  Shell.Replay;
+  Replay.Player;
 
 type
   [TestFixture]
-  TShellReplayTests = class
+  TReplayPlayerTests = class
   private
     function SampleCase: TCrashCase;
     /// <summary>Testserver: beantwortet die Anfrage mit AError (Code, Text) bzw. ohne Fehler bei ACode = 0.
@@ -34,6 +34,9 @@ type
     procedure IsolatedRunSendsSnapshotAndRequest;
     [Test]
     procedure UnreadableFileGivesExitCode2;
+    /// <summary>Ohne eingespielte Anfrage hat der Transport keine Antwort.</summary>
+    [Test]
+    procedure TransportWithoutRequestHasNoAnswer;
   end;
 
 implementation
@@ -42,11 +45,20 @@ uses
   System.IOUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Messages,
-  Atlas.Common.Logging.Contract;
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Logging.Providers.Logger,
+  Replay.Providers.Transport,
+  Replay.Contract;
 
-{ TShellReplayTests }
+/// <summary>Logger ohne Senke: Meldungen des Servers gehen verloren.</summary>
+function SilentLogger: ILogger;
+begin
+  Result := TLogger.Create;
+end;
 
-function TShellReplayTests.SampleCase: TCrashCase;
+{ TReplayPlayerTests }
+
+function TReplayPlayerTests.SampleCase: TCrashCase;
 begin
   Result := TCrashCase.Empty;
   Result.Method := 'textDocument/hover';
@@ -88,7 +100,7 @@ begin
   Result.AddPair('id', TJSONValue(AMessage.GetValue('id').Clone));
 end;
 
-function TShellReplayTests.FakeServer(ACode: Integer; const AText: string; out AMethods: TFunc<string>): TReplayServer;
+function TReplayPlayerTests.FakeServer(ACode: Integer; const AText: string; out AMethods: TFunc<string>): TReplayServer;
 var
   mSeen: string;
 begin
@@ -135,42 +147,42 @@ begin
     end;
 end;
 
-procedure TShellReplayTests.ReproducesSameExceptionClass;
+procedure TReplayPlayerTests.ReproducesSameExceptionClass;
 var
   mResponse: TJSONObject;
   mDetail: string;
 begin
   mResponse := ErrorResponse(TJsonRpcErrorCode.cInternalError, 'ECrashTest: künstlich');
   try
-    Assert.IsTrue(TShellReplay.Reproduces(SampleCase, mResponse, mDetail));
+    Assert.IsTrue(TReplayPlayer.Reproduces(SampleCase, mResponse, mDetail));
     Assert.IsTrue(mDetail.Contains('künstlich'));
   finally
     mResponse.Free;
   end;
 end;
 
-procedure TShellReplayTests.OtherClassIsNotReproduced;
+procedure TReplayPlayerTests.OtherClassIsNotReproduced;
 var
   mResponse: TJSONObject;
   mDetail: string;
 begin
   mResponse := ErrorResponse(TJsonRpcErrorCode.cInternalError, 'EAccessViolation: weg');
   try
-    Assert.IsFalse(TShellReplay.Reproduces(SampleCase, mResponse, mDetail));
+    Assert.IsFalse(TReplayPlayer.Reproduces(SampleCase, mResponse, mDetail));
   finally
     mResponse.Free;
   end;
   mResponse := TJSONObject.Create;
   try
     mResponse.AddPair('result', TJSONNull.Create);
-    Assert.IsFalse(TShellReplay.Reproduces(SampleCase, mResponse, mDetail));
+    Assert.IsFalse(TReplayPlayer.Reproduces(SampleCase, mResponse, mDetail));
   finally
     mResponse.Free;
   end;
-  Assert.IsFalse(TShellReplay.Reproduces(SampleCase, nil, mDetail));
+  Assert.IsFalse(TReplayPlayer.Reproduces(SampleCase, nil, mDetail));
 end;
 
-procedure TShellReplayTests.TimeoutCaseNeedsCancelled;
+procedure TReplayPlayerTests.TimeoutCaseNeedsCancelled;
 var
   mCase: TCrashCase;
   mResponse: TJSONObject;
@@ -180,51 +192,60 @@ begin
   mCase.Kind := TCrashCaseKind.Timeout;
   mResponse := ErrorResponse(TJsonRpcErrorCode.cRequestCancelled, 'Zeitlimit');
   try
-    Assert.IsTrue(TShellReplay.Reproduces(mCase, mResponse, mDetail));
+    Assert.IsTrue(TReplayPlayer.Reproduces(mCase, mResponse, mDetail));
   finally
     mResponse.Free;
   end;
 end;
 
-procedure TShellReplayTests.ExitCodes;
+procedure TReplayPlayerTests.ExitCodes;
 var
   mResult: TReplayResult;
 begin
   mResult := Default(TReplayResult);
   mResult.Outcome := TReplayOutcome.Reproduced;
-  Assert.AreEqual(TShellReplay.cExitReproduced, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TReplayPlayer.cExitReproduced, TReplayPlayer.ExitCodeOf(mResult));
   mResult.Outcome := TReplayOutcome.NotReproduced;
-  Assert.AreEqual(TShellReplay.cExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TReplayPlayer.cExitNotReproduced, TReplayPlayer.ExitCodeOf(mResult));
   Assert.IsTrue(mResult.Text.StartsWith('nicht reproduziert'));
   mResult.Outcome := TReplayOutcome.Unreadable;
-  Assert.AreEqual(TShellReplay.cExitUnreadable, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TReplayPlayer.cExitUnreadable, TReplayPlayer.ExitCodeOf(mResult));
 end;
 
-procedure TShellReplayTests.IsolatedRunSendsSnapshotAndRequest;
+procedure TReplayPlayerTests.IsolatedRunSendsSnapshotAndRequest;
 var
   mMethods: TFunc<string>;
   mResult: TReplayResult;
 begin
-  mResult := TShellReplay.Run(SampleCase, TReplayPlace.Isolated, nil,
-    FakeServer(TJsonRpcErrorCode.cInternalError, 'ECrashTest: künstlich', mMethods));
+  mResult := TReplayPlayer.Run(SampleCase, TReplayPlace.Isolated, SilentLogger,
+    FakeServer(TJsonRpcErrorCode.cInternalError, 'ECrashTest: künstlich', mMethods), TReplayTransport.Factory);
   Assert.AreEqual<TReplayOutcome>(TReplayOutcome.Reproduced, mResult.Outcome, mResult.Text);
   Assert.IsFalse(mResult.Original);
   Assert.AreEqual('initialize;initialized;textDocument/didOpen;textDocument/hover;shutdown;exit;', mMethods());
-  mResult := TShellReplay.Run(SampleCase, TReplayPlace.Isolated, nil, FakeServer(0, '', mMethods));
+  mResult := TReplayPlayer.Run(SampleCase, TReplayPlace.Isolated, SilentLogger, FakeServer(0, '', mMethods),
+    TReplayTransport.Factory);
   Assert.AreEqual<TReplayOutcome>(TReplayOutcome.NotReproduced, mResult.Outcome, mResult.Text);
 end;
 
-procedure TShellReplayTests.UnreadableFileGivesExitCode2;
+procedure TReplayPlayerTests.UnreadableFileGivesExitCode2;
 var
   mMethods: TFunc<string>;
   mResult: TReplayResult;
 begin
-  mResult := TShellReplay.Run(TPath.Combine(TPath.GetTempPath, 'gibts-nicht-' + TGUID.NewGuid.ToString + '.json'),
-    nil, FakeServer(0, '', mMethods));
-  Assert.AreEqual(TShellReplay.cExitUnreadable, TShellReplay.ExitCodeOf(mResult));
+  mResult := TReplayPlayer.Run(TPath.Combine(TPath.GetTempPath, 'gibts-nicht-' + TGUID.NewGuid.ToString + '.json'),
+    SilentLogger, FakeServer(0, '', mMethods), TReplayTransport.Factory);
+  Assert.AreEqual(TReplayPlayer.cExitUnreadable, TReplayPlayer.ExitCodeOf(mResult));
+end;
+
+procedure TReplayPlayerTests.TransportWithoutRequestHasNoAnswer;
+var
+  mTransport: IReplayTransport;
+begin
+  mTransport := TReplayTransport.Factory()(nil, 0, 10);
+  Assert.IsNull(mTransport.TakeAnswer);
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellReplayTests);
+  TDUnitX.RegisterTestFixture(TReplayPlayerTests);
 
 end.

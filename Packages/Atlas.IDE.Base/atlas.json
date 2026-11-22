@@ -32,6 +32,11 @@
       "exclude": [
         "Tests/**"
       ],
+      "hostedFeatures": [
+        "Replay",
+        "Monitor",
+        "Update"
+      ],
       "prefixes": [
         "Atlas.Text",
         "Atlas.WinBase",
@@ -68,6 +73,11 @@
       "severity": "warning",
       "exclude": [
         "Tests/**"
+      ],
+      "hostedFeatures": [
+        "Replay",
+        "Monitor",
+        "Update"
       ],
       "prefixes": [
         "Atlas.Text",

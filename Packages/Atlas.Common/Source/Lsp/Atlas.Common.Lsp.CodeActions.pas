@@ -29,7 +29,8 @@ uses
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics;
+  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext;
 
 type
   /// <summary>Einstellung "sortUses" für AUri als Optionen für "uses aufräumen" (#182, #284, #2794).</summary>
@@ -474,9 +475,9 @@ begin
     try
       if FWantsFixAll then
       begin
-        Result := TLspSyntaxDiagnostics.SharedRuleFindings(FText, FTree, FRules, WaitCancelled(FCancellation));
+        Result := FRules.SharedFindings(FText, FTree, WaitCancelled(FCancellation));
       end
-      else if not TLspSyntaxDiagnostics.CachedRuleFindings(FText, FTree, FRules, WaitCancelled(FCancellation),
+      else if not FRules.CachedFindings(FText, FTree, WaitCancelled(FCancellation),
         Result) then
       begin
         Result := nil;

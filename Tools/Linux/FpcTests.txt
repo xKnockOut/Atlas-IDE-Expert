@@ -464,6 +464,7 @@ Atlas.Common.Rules.Contract.Tests
 Atlas.Common.Rules.Derived.Tests
 Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.Providers.InheritanceDepths.Tests
+Atlas.Common.Rules.CheckContext.Tests
 Atlas.Common.Rules.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
 Atlas.Common.Rules.MessageCatalog.Tests

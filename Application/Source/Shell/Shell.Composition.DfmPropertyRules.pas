@@ -50,7 +50,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.DfmPropertyRules,
   Core.Workspace,
   Core.Texts;
@@ -139,11 +139,11 @@ begin
   begin
     Exit;
   end;
-  // Nur dfm-property; RuleFindings zieht die Baseline nicht ab, der Befehl korrigiert alle Verstöße.
+  // Nur dfm-property; TRuleCheckContext.Findings zieht die Baseline nicht ab, der Befehl korrigiert alle Verstöße.
   mContext.Rules := RulesWithId(mContext.Rules, TLspDfmPropertyRules.cRuleId);
   mTree := TSyntaxTreeCache.Parse(mText);
   try
-    AFindings := TLspSyntaxDiagnostics.RuleFindings(mText, mTree, mContext);
+    AFindings := mContext.Findings(mText, mTree);
   finally
     mTree.Free;
   end;

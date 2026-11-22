@@ -112,7 +112,7 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
     Body('  Liste.LoadFromFile(TPath.GetFullPath(Edit1.Text));'#10'  Liste.LoadFromFile(''config.ini'');'),
     cEnabled))));
-  // Eingabedaten als Inhalt, nicht als Pfad (Atlas.Common.Diagnostics.CrashCase, Shell.Replay).
+  // Eingabedaten als Inhalt, nicht als Pfad (Atlas.Common.Diagnostics.CrashCase, Replay.Player).
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TSecurityPathTraversalRule.Create,
     Body('  TFile.WriteAllText(TPath.Combine(Ordner, ''a.pas''), Fall.Text, TEncoding.UTF8);'), cEnabled))));
   // Variable namens Request aus TDirectory.GetFiles ist keine Webanfrage (Selbstlauf, Mcp.IdeBuilds.Tests).

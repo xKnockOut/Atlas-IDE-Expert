@@ -37,14 +37,13 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.DiagnosticItems,
-  Atlas.Common.Lsp.FindingsMemo,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Editing.Contract;
 
 type
@@ -57,46 +56,6 @@ type
   /// Hintergrund-Thread.</summary>
   TBuildTargetProvider = reference to function(const AUri: string; out APlatform, AConfig: string): Boolean;
 
-  /// <summary>Was die Prüfregeln für ein Dokument brauchen.</summary>
-  TRuleCheckContext = record
-    Rules: TArray<IRule>;
-    Settings: TServerSettings;
-    /// <summary>Pfad relativ zum Ordner der Konfiguration, '' wenn unbekannt.</summary>
-    RelativePath: string;
-    /// <summary>Bekannte Treffer, die ausgeblendet werden (#97); nil = keine Baseline.</summary>
-    Baseline: IRuleBaseline;
-    /// <summary>Index, Nachladen, Unit-Suche, Packages, Projekte der Gruppe und Namenskonvention (#1112);
-    /// derselbe Weg wie bei MCP und Linter.</summary>
-    Services: TRuleServices;
-    /// <summary>Formulardatei neben der Unit (#123); '' ohne.</summary>
-    FormText: string;
-    /// <summary>Pfad der Formulardatei (#309); '' ohne.</summary>
-    FormFile: string;
-    /// <summary>Dateien neben der Unit, z. B. .dcr (#114); nil = keine.</summary>
-    ReadFile: TRuleFileReader;
-    /// <summary>Gibt es eine Datei neben der Unit (#1379)? nil = unbekannt.</summary>
-    FileExists: TRuleFileExists;
-    /// <summary>Absoluter Pfad der Datei (#46).</summary>
-    FileName: string;
-    /// <summary>Anwendungsart des Projekts der Datei (#926); Unknown ohne Projekt.</summary>
-    Application: TRuleApplicationKind;
-    /// <summary>Name des Projekts ohne Endung (#943); '' ohne Projekt.</summary>
-    ProjectName: string;
-    /// <summary>Automatisch erzeugte Formulare in der Reihenfolge der .dpr (#956); nil ohne Projekt.</summary>
-    AutoCreateForms: TArray<string>;
-    /// <summary>Pfad der .dpr zu AutoCreateForms (#1055); '' ohne Projekt.</summary>
-    ProjectMainSource: string;
-    /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
-    Cancelled: TRuleCancelled;
-    /// <summary>Prüfung für den Editor (TRuleContext.Live, #896); die Komposition setzt es.</summary>
-    Live: Boolean;
-    /// <summary>Zuletzt gerechnete Treffer je Datei und Text: Die Diagnose legt ab, die Code-Aktion liest
-    /// (2.0-stable); nil = keine.</summary>
-    Memo: IRuleFindingsMemo;
-  end;
-
-  /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
-  TRuleContextProvider = reference to function(const AUri: string; out AContext: TRuleCheckContext): Boolean;
   /// <summary>Meldungen des letzten Compilerlaufs zur Datei AFileName. Hintergrund-Thread.</summary>
   TCompilerMessagesProvider = reference to function(const AFileName: string): TArray<TCompilerMessage>;
   /// <summary>Index und Einstellungen für die uses-Prüfung (#284, #621); False ohne Index.</summary>
@@ -189,19 +148,6 @@ type
     /// <summary>Wie oben mit allen Angaben aus AInput.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInput: TSyntaxDiagnosticsInput)
       : TJSONObject; overload; static;
-    /// <summary>Wie RuleFindings über ARules.Memo (#1761): Treffer am selben Text aus dem Memo, nach Warten auf
-    /// einen laufenden Lauf am selben Text oder selbst gerechnet und abgelegt. Ohne Memo wie RuleFindings.
-    /// AWaitCancelled (nil = nie) beendet nur das Warten auf einen fremden Lauf (ERuleCheckCancelled).</summary>
-    class function SharedRuleFindings(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext;
-      const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>; static;
-    /// <summary>Treffer aus dem Memo von ARules ohne eigenen Lauf (IRuleFindingsMemo.Await): abgelegte oder die eines
-    /// laufenden Laufs am selben Text. False ohne beides. Ohne Memo, Dateiname oder Regeln wie RuleFindings.</summary>
-    class function CachedRuleFindings(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext;
-      const AWaitCancelled: TRuleCancelled; out AFindings: TArray<TRuleFinding>): Boolean; static;
-    /// <summary>Treffer der Prüfregeln aus ARules für AText (Baum ATree), ohne die Baseline abzuziehen; so prüft
-    /// auch atlas.updateBaseline (#97). Leer ohne Regeln.</summary>
-    class function RuleFindings(const AText: string; ATree: TSyntaxTree;
-      const ARules: TRuleCheckContext): TArray<TRuleFinding>; static;
     /// <summary>Parameter für publishDiagnostics zu ADocument (Pascal oder Formular) mit Regeln
     /// und Compilermeldungen. Threadsicher; der Aufrufer übernimmt das Objekt.</summary>
     function Compute(const ADocument: ITextDocument): TJSONObject; overload;
@@ -234,6 +180,7 @@ uses
   System.Math,
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Lsp.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Findings.Scopes,
@@ -301,7 +248,7 @@ var
   mFinding: TRuleFinding;
 begin
   try
-    mFindings := TLspSyntaxDiagnostics.SharedRuleFindings(AText, ATree, ARules, ARules.Cancelled);
+    mFindings := ARules.SharedFindings(AText, ATree, ARules.Cancelled);
   except
     AItems.Free;
     raise;
@@ -573,17 +520,6 @@ begin
   Result.AddPair('diagnostics', mItems);
 end;
 
-class function TLspSyntaxDiagnostics.CachedRuleFindings(const AText: string; ATree: TSyntaxTree;
-  const ARules: TRuleCheckContext; const AWaitCancelled: TRuleCancelled; out AFindings: TArray<TRuleFinding>): Boolean;
-begin
-  if (ARules.Memo = nil) or (ARules.FileName = '') or (Length(ARules.Rules) = 0) then
-  begin
-    AFindings := RuleFindings(AText, ATree, ARules);
-    Exit(True);
-  end;
-  Result := ARules.Memo.Await(ARules.FileName, AText, AWaitCancelled, AFindings);
-end;
-
 /// <summary>Ist die Regel ARuleId für die Datei aus ARules an (Einstellungen, exclude, Gruppen)?</summary>
 function UsesRuleOn(const ARuleId: string; const ARules: TRuleCheckContext): Boolean;
 begin
@@ -631,35 +567,6 @@ begin
   finally
     mSuppressions.Free;
   end;
-end;
-
-class function TLspSyntaxDiagnostics.RuleFindings(const AText: string; ATree: TSyntaxTree;
-  const ARules: TRuleCheckContext): TArray<TRuleFinding>;
-var
-  mContext: TRuleContext;
-begin
-  if Length(ARules.Rules) = 0 then
-  begin
-    Exit(nil);
-  end;
-  mContext := Default(TRuleContext);
-  mContext.RelativePath := ARules.RelativePath;
-  mContext.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
-  mContext.Text := AText;
-  mContext.Tree := ATree;
-  ARules.Services.ApplyTo(mContext);
-  mContext.FormText := ARules.FormText;
-  mContext.FormFile := ARules.FormFile;
-  mContext.ReadFile := ARules.ReadFile;
-  mContext.FileExists := ARules.FileExists;
-  mContext.FileName := ARules.FileName;
-  mContext.Application := ARules.Application;
-  mContext.ProjectName := ARules.ProjectName;
-  mContext.AutoCreateForms := ARules.AutoCreateForms;
-  mContext.ProjectMainSource := ARules.ProjectMainSource;
-  mContext.Cancelled := ARules.Cancelled;
-  mContext.Live := ARules.Live;
-  Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, mContext);
 end;
 
 function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument): TJSONObject;
@@ -722,26 +629,6 @@ begin
       ScheduleParse(mDocument);
     end;
   end;
-end;
-
-/// <summary>Lauf der Prüfregeln für Obtain.</summary>
-function RuleRun(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext): TRuleFindingsRun;
-begin
-  Result :=
-    function: TArray<TRuleFinding>
-    begin
-      Result := TLspSyntaxDiagnostics.RuleFindings(AText, ATree, ARules);
-    end;
-end;
-
-class function TLspSyntaxDiagnostics.SharedRuleFindings(const AText: string; ATree: TSyntaxTree;
-  const ARules: TRuleCheckContext; const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>;
-begin
-  if (ARules.Memo = nil) or (ARules.FileName = '') or (Length(ARules.Rules) = 0) then
-  begin
-    Exit(RuleFindings(AText, ATree, ARules));
-  end;
-  Result := ARules.Memo.Obtain(ARules.FileName, AText, RuleRun(AText, ATree, ARules), AWaitCancelled);
 end;
 
 procedure TLspSyntaxDiagnostics.RefreshLater;

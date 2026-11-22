@@ -1,7 +1,7 @@
-﻿unit Shell.Monitor.CheckPage;
+﻿unit Monitor.CheckPage;
 
-// Host-Rolle Shell von AtlasMonitor (#1900): Reiter „Prüfen“ für Läufe von AtlasServer ohne IDE über mehrere Ziele.
-// Oben die Zielliste (an/aus, Art, Stand je Ziel), links die Optionen (Shell.Monitor.CheckOptions), rechts das
+// Hosted-Feature Monitor: Reiter „Prüfen“ für Läufe von AtlasServer ohne IDE über mehrere Ziele.
+// Oben die Zielliste (an/aus, Art, Stand je Ziel), links die Optionen (Monitor.CheckOptions), rechts das
 // Ergebnis: Befundliste mit Filter (Doppelklick öffnet die Stelle im Editor bzw. im zugeordneten Programm) oder der
 // Text des Befehls; HTML-Seiten zeigt der Reiter „Bericht“. Je Ziel startet ein unsichtbarer Kindprozess
 // (TMonitorChildProcess), einer nach dem anderen; Abbrechen beendet ihn, beim Schließen läuft keiner weiter. Den
@@ -23,8 +23,8 @@ uses
   Atlas.Common.Monitor.Targets,
   Atlas.Common.Monitor.Runs,
   Atlas.Windows.Monitor.ChildProcess,
-  Shell.Monitor.CheckOptions,
-  Shell.Monitor.ReportPage;
+  Monitor.CheckOptions,
+  Monitor.ReportPage;
 
 type
   TMonitorConfirm = reference to function(const AText: string): Boolean;

@@ -117,7 +117,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin.DeadCode,
