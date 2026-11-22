@@ -202,7 +202,7 @@ Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
 Atlas.Common.Lsp.AffectedTests.Report.Tests
 Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
-Atlas.Common.Lsp.Instructions.Tests
+Atlas.Common.Rules.InstructionFiles.Tests
 Atlas.Common.Rules.Instructions.Tests
 Atlas.Common.Lsp.FindingsPrompt.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests

@@ -387,7 +387,7 @@ uses
   Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests.pas',
   Atlas.Common.Rules.Builtin.Ownership.TokenScan.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TokenScan.Tests.pas',
   Atlas.Common.Lsp.Baseline.Tests in 'Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas',
-  Atlas.Common.Lsp.Instructions.Tests in 'Common\Lsp\Atlas.Common.Lsp.Instructions.Tests.pas',
+  Atlas.Common.Rules.InstructionFiles.Tests in 'Common\Rules\Atlas.Common.Rules.InstructionFiles.Tests.pas',
   Atlas.Common.Rules.Instructions.Tests in 'Common\Rules\Atlas.Common.Rules.Instructions.Tests.pas',
   Atlas.Common.Lsp.BulkFix.Tests in 'Common\Lsp\Atlas.Common.Lsp.BulkFix.Tests.pas',
   Atlas.Common.Lsp.FindingsPrompt.Tests in 'Common\Lsp\Atlas.Common.Lsp.FindingsPrompt.Tests.pas',
