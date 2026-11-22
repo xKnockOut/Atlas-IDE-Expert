@@ -89,7 +89,7 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Options,

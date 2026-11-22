@@ -42,7 +42,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Builtin.Ownership.Interfaces,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Unit mit TZaehler (TInterfacedObject, IZaehler) und der Routine Lauf.</summary>
@@ -136,7 +136,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[0].Severity));
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('[weak] an FBaum setzen', mFound[1].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[1].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[1].Fixes[0].Edits);
   Assert.AreEqual(Pair('    [weak] FBaum: IBaum;'#10), mFixed);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceCycleWithoutWeakRule.Create, mFixed,
     '{"rules": {"interface-cycle-without-weak": "hint"}}'))));

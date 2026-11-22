@@ -105,7 +105,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.GenericLists.Kinds,
   Atlas.Common.Editing.GenericLists;
 
@@ -192,7 +192,7 @@ begin
       Result.Reason := mConversion.Reason;
       if Result.Converted then
       begin
-        Result.Text := TChangeSignature.ApplyEdits(ASource, Result.Plan.Edits);
+        Result.Text := TTextChanges.Apply(ASource, Result.Plan.Edits);
       end;
     finally
       mConversion.Free;
@@ -641,7 +641,7 @@ begin
   Assert.IsTrue(mOutcome.Converted, mOutcome.Reason);
   Assert.AreEqual(1, Integer(Length(mOutcome.Plan.FileEdits)));
   Assert.AreEqual(cOtherFile, mOutcome.Plan.FileEdits[0].FileName);
-  AssertContains(TChangeSignature.ApplyEdits(mOther.Text, mOutcome.Plan.FileEdits[0].Edits), '  L.Liste[0].Free;'#10);
+  AssertContains(TTextChanges.Apply(mOther.Text, mOutcome.Plan.FileEdits[0].Edits), '  L.Liste[0].Free;'#10);
   // Andere Units ändern sich mit: nicht in source.fixAll.
   Assert.IsFalse(mOutcome.Plan.Safe);
 end;

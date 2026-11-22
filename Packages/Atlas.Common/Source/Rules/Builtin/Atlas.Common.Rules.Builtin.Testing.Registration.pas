@@ -44,7 +44,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Testing.Classes,
+  Atlas.Common.Testing.Classes,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

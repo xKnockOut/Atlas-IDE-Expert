@@ -143,7 +143,7 @@ uses
   Atlas.Common.Rules.Builtin.Unused.EmptyRoutines,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
   Atlas.Common.Rules.Profiles;
 
@@ -804,7 +804,7 @@ begin
   begin
     if mFix.Title = ATitle then
     begin
-      Result := TChangeSignature.ApplyEdits(ASource, mFix.Edits);
+      Result := TTextChanges.Apply(ASource, mFix.Edits);
     end;
   end;
   Assert.AreNotEqual('', Result, ATitle);

@@ -62,7 +62,7 @@ uses
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -578,7 +578,7 @@ begin
   mText := ASource.Lines[ALine];
   mTokens := TPascalLexer.Tokenize(mText);
   Result := (Length(mTokens) > 1) and (mTokens[0].IsKeyword('procedure') or mTokens[0].IsKeyword('function')) and
-    TChangeSignature.ReadHeader(mText, mTokens, 1, AHeader);
+    TPascalSignatures.ReadHeader(mText, mTokens, 1, AHeader);
 end;
 
 /// <summary>Grund, warum die Argumente von /testcase nicht taugen; leer, wenn AValues gefüllt ist.</summary>

@@ -88,7 +88,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Exceptions,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 const
@@ -333,7 +333,7 @@ begin
   Assert.AreEqual(10, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('on EConvertError vor on Exception verschieben', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Handler('    on E: EConvertError do'#10'      ShowMessage(''Ungültige Zahl'');'#10 +
     '    on E: Exception do'#10'      Protokoll(E.Message);'#10), mFixed);
   TRuleAssert.Silent(TExceptHandlerOrderRule.Create, mFixed);
@@ -359,7 +359,7 @@ begin
     mFindings[0].Message);
   Assert.AreEqual(Handler('    on E: EFOpenError do'#10'      begin'#10'        Abbrechen;'#10'      end;'#10 +
     '    on E: EStreamError do'#10'      Protokoll(E.Message);'#10'  else'#10'    raise;'#10),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Eigene Hierarchie aus der Unit, TObject, geschachteltes try.
   mFindings := TRuleAssert.Findings(TExceptHandlerOrderRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  EBasis = class(Exception);'#10'  EKunde = class(EBasis);'#10'implementation'#10'procedure P;'#10'begin'#10 +
@@ -422,7 +422,7 @@ begin
   Assert.AreEqual(6, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(13, mFindings[0].Range.EndPos.Character);
   Assert.AreEqual('raise E; durch raise; ersetzen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Handler('    on E: EDatenbank do'#10'    begin'#10'      Protokoll(E.Message);'#10 +
     '      raise;'#10'    end;'#10), mFixed);
   TRuleAssert.Silent(TReraiseExceptionObjectRule.Create, mFixed);
@@ -571,7 +571,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('inherited Create vor try ziehen', mFindings[0].Fixes[0].Title);
   Assert.IsTrue(mFindings[0].Fixes[0].Safe);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Dienst('  inherited Create;'#10'  try'#10'    FListe := TObject.Create;'#10'  except'#10 +
     '    FListe.Free;'#10'    raise;'#10'  end;'#10), mFixed);
   TRuleAssert.Silent(TInheritedConstructorAfterTryRule.Create, mFixed);
@@ -587,7 +587,7 @@ begin
     Dienst('  try inherited;'#10'    FListe := TObject.Create;'#10'  finally'#10'  end;'#10));
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('inherited vor try ziehen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(Dienst('  try inherited;'#10'    FListe := TObject.Create;'#10 +
+  mFixed := TTextChanges.Apply(Dienst('  try inherited;'#10'    FListe := TObject.Create;'#10 +
     '  finally'#10'  end;'#10), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Dienst('  inherited;'#10'  try'#10'    FListe := TObject.Create;'#10'  finally'#10'  end;'#10),
     mFixed);

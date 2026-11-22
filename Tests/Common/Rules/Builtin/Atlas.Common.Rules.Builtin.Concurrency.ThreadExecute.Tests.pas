@@ -45,7 +45,7 @@ uses
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Rules.Builtin.Exceptions,
   Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 const
@@ -92,7 +92,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Rumpf in try … except mit Meldung über FLogger einschließen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(WorkerUnit('    FLogger: ILogger;'#10, 'procedure TIndexWorker.Execute;'#10'begin'#10'  try'#10 +
     '    while not Terminated do'#10'      ProcessNext;'#10'  except'#10'    on E: Exception do'#10 +
     '      FLogger.Error(ClassName + ''.Execute: '' + E.Message);'#10'  end;'#10'end;'#10), mFixed);
@@ -102,7 +102,7 @@ begin
   // Fehlt System.SysUtils, ergänzt die Korrektur es.
   mSource := StringReplace(mSource, 'System.SysUtils, ', '', []);
   mFindings := TRuleAssert.Findings(TThreadExecuteWithoutExceptRule.Create, mSource);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, 'implementation'#10#10'uses'#10'  System.SysUtils;');
 end;
 

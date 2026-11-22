@@ -31,7 +31,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.UnitRename;
 
 function Renamed(const AFileName, AText, AOld, ANew: string): string;
@@ -45,7 +45,7 @@ begin
     begin
       Exit('-');
     end;
-    Result := TChangeSignature.ApplyEdits(AText, mEdits);
+    Result := TTextChanges.Apply(AText, mEdits);
   finally
     mTree.Free;
   end;

@@ -57,7 +57,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.AnonymousMethods,
   Atlas.Text.Lines,
   Atlas.Tests.SourceText;
@@ -161,7 +161,7 @@ begin
     Result := TAnonymousMethods.Execute(mInput, ARequest.Name, AConverted, AReason);
     if Result then
     begin
-      AResult := TChangeSignature.ApplyEdits(AText, AConverted.Edits);
+      AResult := TTextChanges.Apply(AText, AConverted.Edits);
       AssertParses(AResult);
     end;
   finally
@@ -183,7 +183,7 @@ begin
       AKind)), AAction, AReason);
     if Result then
     begin
-      AResult := TChangeSignature.ApplyEdits(AText, AAction.Edits);
+      AResult := TTextChanges.Apply(AText, AAction.Edits);
       AssertParses(AResult);
     end;
   finally

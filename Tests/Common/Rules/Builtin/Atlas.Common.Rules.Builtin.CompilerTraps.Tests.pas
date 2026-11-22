@@ -40,7 +40,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.CompilerTraps,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Index mit Unit Werk.Basis: TCaption (type string), TKnopf mit Caption und TZahlen.</summary>
@@ -69,8 +69,8 @@ begin
     'bzw. E2010). Erst Result zuweisen, dann Exit.|7: Exit([''c'']): Delphi liest [...] hier als Menge, nicht als ' +
     'TArray<string> (wie E2001 bzw. E2010). Erst Result zuweisen, dann Exit.|', TRuleAssert.LineMessages(mFound));
   Assert.IsTrue(mFound[0].Fixes[0].Safe);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[1].Fixes[0].Edits);
-  mFixed := TChangeSignature.ApplyEdits(mFixed, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[1].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mFixed, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(StringReplace(mSource, 'Exit([''a'', ''b''])',
     'begin Result := [''a'', ''b'']; Exit; end', []), 'Exit([''c''])', 'Result := [''c'']; Exit', []), mFixed);
   Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TExitArrayLiteralRule.Create, mFixed)));
@@ -102,7 +102,7 @@ begin
   mFound := TRuleAssert.IndexFindings(TCaptionStringHelperRule.Create, mSource, BasisIndex, '', 'U.pas');
   Assert.AreEqual('7: K.Caption ist vom Typ TCaption, einem eigenen String-Typ: StartsWith aus TStringHelper gilt ' +
     'dafür nicht (wie E2018). string(...) darum setzen.|', TRuleAssert.LineMessages(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(mSource, 'K.Caption.StartsWith', 'string(K.Caption).StartsWith', []), mFixed);
 end;
 
@@ -144,7 +144,7 @@ begin
   Assert.AreEqual('5: Winapi.Windows steht in uses hinter Vcl.Graphics: TBitmap meint hier den Record aus ' +
     'Winapi.Windows, TBitmap.Create und die Methoden scheitern (wie E2003). Winapi.Windows vor Vcl.Graphics ' +
     'einbinden.|', TRuleAssert.LineMessages(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(mSource, '  Vcl.Graphics,'#10'  Winapi.Windows;',
     '  Winapi.Windows,'#10'  Vcl.Graphics;', []), mFixed);
   Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TUsesOrderHidesTypeRule.Create, mFixed)));
@@ -176,7 +176,7 @@ begin
   mFound := TRuleAssert.IndexFindings(TInterfaceUsesMissingRule.Create, mSource, BasisIndex, '', 'U.pas');
   Assert.AreEqual('7: TZahlen kommt aus Werk.Basis, die nur im uses des implementation-Teils steht; im ' +
     'interface-Teil ist der Name unbekannt (wie E2003).|', TRuleAssert.LineMessages(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(StringReplace(mSource, '  Werk.Neben;', '  Werk.Neben, Werk.Basis;', []),
     'implementation'#10'uses'#10'  Werk.Basis;'#10, 'implementation'#10#10, []), mFixed);
   Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.IndexFindings(TInterfaceUsesMissingRule.Create, mFixed, BasisIndex, '',

@@ -52,7 +52,7 @@ uses
   Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 const
@@ -92,7 +92,7 @@ begin
   Assert.AreEqual(4, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Typ in Currency ändern', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(TypeUnit('  TPosition = record'#10'    Menge: Integer;'#10'    Preis: Currency;'#10'  end;'#10), mFixed);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMoneyAsFloatRule.Create, mFixed, cMoneyOn))));
 end;
@@ -135,7 +135,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('Summe ist Real; Currency rechnet Cent-Beträge exakt.', mFindings[0].Message);
   Assert.AreEqual('Brutto ist Single; Currency rechnet Cent-Beträge exakt.', mFindings[1].Message);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[1].Fixes[0].Edits);
   Assert.Contains(mFixed, '  var Brutto: Currency := 0;');
   // Mehrere Namen: jeder Geldname wird gemeldet, die Korrektur nur, wenn alle Geldbeträge sind.
   mFindings := TRuleAssert.Findings(TMoneyAsFloatRule.Create, TypeUnit('  TZeile = record'#10 +
@@ -174,7 +174,7 @@ begin
   Assert.AreEqual(6, Integer(Length(mFindings)));
   // Feld mit Property, die nur das Feld liest und schreibt: beide ändern.
   Assert.AreEqual('FNetto ist Double; Currency rechnet Cent-Beträge exakt.', mFindings[0].Message);
-  mFixed := TChangeSignature.ApplyEdits(cSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(cSource, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, '    FNetto: Currency;');
   Assert.Contains(mFixed, '    property Netto: Currency read FNetto write FNetto;');
   // Feld hinter einem Setter: Setter müsste mitwandern, keine Korrektur.
@@ -182,7 +182,7 @@ begin
   Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
   // Parameter der Methode: Deklaration und Implementierung.
   Assert.AreEqual('ABetrag ist Double; Currency rechnet Cent-Beträge exakt.', mFindings[2].Message);
-  mFixed := TChangeSignature.ApplyEdits(cSource, mFindings[2].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(cSource, mFindings[2].Fixes[0].Edits);
   Assert.Contains(mFixed, '    procedure Buchen(const ABetrag: Currency; AMenge: Integer);');
   Assert.Contains(mFixed, 'procedure TKasse.Buchen(const ABetrag: Currency; AMenge: Integer);');
   // Property über das Feld.
@@ -191,7 +191,7 @@ begin
   Assert.AreEqual(0, Integer(Length(mFindings[4].Fixes)));
   // Routine im interface-Teil: beide Köpfe.
   Assert.AreEqual('ANetto ist Double; Currency rechnet Cent-Beträge exakt.', mFindings[5].Message);
-  mFixed := TChangeSignature.ApplyEdits(cSource, mFindings[5].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(cSource, mFindings[5].Fixes[0].Edits);
   Assert.Contains(mFixed, 'procedure Ausgeben(ANetto: Currency);'#10'implementation');
   Assert.Contains(mFixed, 'procedure Ausgeben(ANetto: Currency);'#10'begin');
 end;
@@ -301,7 +301,7 @@ begin
   Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('In case IndexStr(…) umwandeln', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(ChainUnit('  case IndexStr(Befehl, [''neu'', ''oeffnen'', ''speichern'', ''beenden'']) of'#10 +
     '    0: Neu;'#10'    1: Oeffnen;'#10'    2: Speichern;'#10'    3: Beenden;'#10'  end;').Replace(
     '  System.SysUtils;', '  System.SysUtils,'#10'  System.StrUtils;'), mFixed);
@@ -320,7 +320,7 @@ begin
   mFindings := TRuleAssert.Findings(TStringIfChainRule.Create, mSource, cChainOn);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Vier Vergleiche desselben Strings; case IndexText(Befehl, [...]) ist kürzer.', mFindings[0].Message);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(ChainUnit('  case IndexText(Befehl, [''neu'', ''new'', ''oeffnen'', ''ende'']) of'#10 +
     '    0, 1: Neu;'#10'    2:'#10'      begin'#10'        Laden;'#10'        Zeigen;'#10'      end;'#10 +
     '    3: Beenden;'#10 +
@@ -334,7 +334,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Fünf Vergleiche desselben Strings; case IndexStr(Edit1.Text, [...]) ist kürzer.',
     mFindings[0].Message);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, '  else case IndexStr(Edit1.Text, [''a'', ''b'', ''c'', ''d'', ''e'']) of'#10'    0: A;');
   Assert.AreEqual('Zwölf', TStringIfChainRule.CountWord(12));
   Assert.AreEqual('13', TStringIfChainRule.CountWord(13));
@@ -432,7 +432,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('In case umwandeln', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(KindUnit('  case Kind of'#10'    1: Neu;'#10'    2, 3: Neu;'#10'    4..6: Neu;'#10'  else'#10 +
     '    Kind := 0;'#10'  end;'), mFixed);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPreferCaseRule.Create, mFixed, cPreferCaseOn))));

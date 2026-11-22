@@ -39,7 +39,7 @@ uses
   System.SysUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Style.MethodOrder,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 const
@@ -87,7 +87,7 @@ end;
 
 function Fixed(const ASource: string; const AFix: TRuleFix): string;
 begin
-  Result := TChangeSignature.ApplyEdits(ASource, AFix.Edits);
+  Result := TTextChanges.Apply(ASource, AFix.Edits);
 end;
 
 { TMethodOrderRuleTests }
