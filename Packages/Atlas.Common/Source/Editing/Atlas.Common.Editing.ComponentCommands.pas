@@ -31,6 +31,7 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.ComponentRoots,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Text.Lines,

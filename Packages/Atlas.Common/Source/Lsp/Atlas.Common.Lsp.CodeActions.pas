@@ -146,6 +146,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Editing.AssignmentSwap,
   Atlas.Common.Editing.Extract,
+  Atlas.Common.Pascal.Destructors,
   Atlas.Common.Editing.FreeFields,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Localization.Texts,
@@ -614,7 +615,7 @@ procedure TCodeActionBuilder.AddFreeFieldActions(const ARefactoring: TRefactorin
 begin
   // Die Aktion am Feld bringt die Regel mit, wenn sie läuft. Ohne Prüfregeln ohne Index.
   Add(TFreeFields.Actions(FTree, FText, Index, FRange.StartPos.Line,
-    TFreeFields.StyleOf(ARefactoring.FreeFieldsStyle), not RuleOffersFreeField));
+    TPascalDestructors.StyleOf(ARefactoring.FreeFieldsStyle), not RuleOffersFreeField));
 end;
 
 procedure TCodeActionBuilder.AddPromptActions;

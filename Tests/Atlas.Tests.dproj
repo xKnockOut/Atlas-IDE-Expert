@@ -199,6 +199,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Parts.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ComponentRoots.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.LanguageFeatures.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TreeUnits.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas"/>
@@ -742,11 +743,13 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SmartPaste.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DeclareUnknown.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ForwardDeclarations.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.OwnedFields.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FreeFields.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.FreeFields.Types.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.OwnedFields.Types.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ClassLayout.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Destructors.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExtractInterface.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExtractInterface.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExtractSuperclass.Tests.pas"/>
