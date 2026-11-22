@@ -71,6 +71,8 @@ type
     procedure TokenBeforeAndOffsetAtPosition;
     [Test]
     procedure NextUncommentedStopsAtDirectives;
+    [Test]
+    procedure NameUseOffsetsSkipsDeclaration;
   end;
 
 implementation
@@ -567,6 +569,18 @@ begin
   Assert.AreEqual(3, NextCode(mTokens, 1));
   Assert.AreEqual(Integer(Length(mTokens)), NextUncommented(mTokens, Length(mTokens)));
   mTokens := nil;
+end;
+
+procedure TTokenCursorTests.NameUseOffsetsSkipsDeclaration;
+var
+  mOffsets: TArray<Integer>;
+begin
+  mOffsets := NameUseOffsets(TPascalLexer.Tokenize('function Foo: Integer; begin Result := foo + Bar.Foo; end;'),
+    'Foo');
+  Assert.AreEqual(2, Integer(Length(mOffsets)));
+  Assert.AreEqual(39, mOffsets[0]);
+  Assert.AreEqual(49, mOffsets[1]);
+  mOffsets := nil;
 end;
 
 initialization

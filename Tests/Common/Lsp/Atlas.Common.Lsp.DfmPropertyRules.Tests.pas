@@ -31,7 +31,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.DfmPropertyRules;

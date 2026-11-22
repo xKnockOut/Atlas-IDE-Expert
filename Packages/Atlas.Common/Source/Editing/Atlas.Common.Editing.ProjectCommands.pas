@@ -48,7 +48,8 @@ uses
   Atlas.Common.Editing.Formatter,
   Atlas.Common.Pascal.Lexer,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Documents.TextChanges;
 
 {$SCOPEDENUMS ON}
 
@@ -430,18 +431,6 @@ end;
 
 { /unit }
 
-/// <summary>AText mit AEdit angewandt.</summary>
-function Applied(const AText: string; const AEdit: TTextEdit): string;
-var
-  mTable: TLineTable;
-  mStart, mStop: Integer;
-begin
-  mTable := TLineTable.Build(AText);
-  mStart := mTable.OffsetAt(AEdit.Range.StartPos);
-  mStop := mTable.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
-end;
-
 /// <summary>Name ohne Endung .pas; '' wenn kein gültiger (auch gepunkteter) Bezeichner.</summary>
 function UnitNameOf(const AArguments: string): string;
 begin
@@ -479,23 +468,6 @@ begin
   end;
 end;
 
-/// <summary>Einrückung je Ebene nach dem Formatstil: Tabulator, IndentSize Leerzeichen oder zwei.</summary>
-function LevelUnitOf(const AStyle: TFormatStyle): string;
-begin
-  if AStyle.UseTabs then
-  begin
-    Result := #9;
-  end
-  else if AStyle.IndentSize >= 1 then
-  begin
-    Result := StringOfChar(' ', AStyle.IndentSize);
-  end
-  else
-  begin
-    Result := '  ';
-  end;
-end;
-
 /// <summary>ALine mit ALevelUnit je zwei führenden Leerzeichen; Leerzeilen bleiben, wie sie sind.</summary>
 function ReindentedLine(const ALine, ALevelUnit: string): string;
 var
@@ -526,7 +498,7 @@ var
 begin
   mStyle := AContext.Style;
   mStyle.EndOfLine := EndOfLineFor(AContext);
-  mLevelUnit := LevelUnitOf(mStyle);
+  mLevelUnit := mStyle.IndentUnit;
   mLines := TTextLines.SplitLines(AText);
   if mLevelUnit <> '  ' then
   begin
@@ -643,13 +615,13 @@ begin
     begin
       Exit(cTexts[TProjectCommandsText.HasNoUsesOrContains].Fmt([ExtractFileName(mMainSource), AName]));
     end;
-    AFiles := AFiles + [TSlashFile.Create(mMainSource, Applied(mMainText, mEdit), False)];
+    AFiles := AFiles + [TSlashFile.Create(mMainSource, TTextChanges.Apply(mMainText, TArray<TTextEdit>.Create(mEdit)), False)];
   end;
   if TUnitTemplates.ProjectEdit(AProject.Text,
     TTestUnits.RelativePath(TProjectPaths.DirectoryOf(AProject.Info.FileName), AFileName), '', TFormKind.Form,
     False, mEdit) then
   begin
-    AFiles := AFiles + [TSlashFile.Create(AProject.Info.FileName, Applied(AProject.Text, mEdit), False)];
+    AFiles := AFiles + [TSlashFile.Create(AProject.Info.FileName, TTextChanges.Apply(AProject.Text, TArray<TTextEdit>.Create(mEdit)), False)];
   end
   else
   begin
@@ -1036,13 +1008,13 @@ begin
   if AContext.Host.ReadFile(ATarget.TestProgram, mMainText) and
     TUnitTemplates.UnitProgramEdit(mMainText, ATarget.UnitName, mRelative, mEdit) then
   begin
-    Result := Result + [TSlashFile.Create(ATarget.TestProgram, Applied(mMainText, mEdit), False)];
+    Result := Result + [TSlashFile.Create(ATarget.TestProgram, TTextChanges.Apply(mMainText, TArray<TTextEdit>.Create(mEdit)), False)];
   end;
   mProjectFile := ChangeFileExt(ATarget.TestProgram, '.dproj');
   if AContext.Host.ReadFile(mProjectFile, mProjectText) and (Pos('"' + mRelative + '"', mProjectText) = 0) and
     TUnitTemplates.ProjectEdit(mProjectText, mRelative, '', TFormKind.Form, False, mEdit) then
   begin
-    Result := Result + [TSlashFile.Create(mProjectFile, Applied(mProjectText, mEdit), False)];
+    Result := Result + [TSlashFile.Create(mProjectFile, TTextChanges.Apply(mProjectText, TArray<TTextEdit>.Create(mEdit)), False)];
   end;
 end;
 
@@ -1091,33 +1063,24 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterProjectCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('define', cTexts[TProjectCommandsText.AddASymbolToDCC].Text, '/define TEST',
-    ExecuteDefine));
-  ARegister(Command('define!', cTexts[TProjectCommandsText.AddASymbolToDCC2].Text, '/define! TEST',
-    ExecuteDefine));
-  ARegister(Command('searchpath', cTexts[TProjectCommandsText.AddAFolderToThe].Text,
-    '/searchpath Source\Common', ExecuteSearchPath));
-  ARegister(Command('config', cTexts[TProjectCommandsText.SwitchConfigurationAndPlatform].Text, '/config Release Win64',
-    ExecuteConfig));
-  ARegister(Command('dfm', cTexts[TProjectCommandsText.JumpToThePositionIn].Text, '/dfm', ExecuteDfm));
-  ARegister(Command('unit', cTexts[TProjectCommandsText.CreateANewUnitAdd].Text,
-    cTexts[TProjectCommandsText.UnitCustomersData].Text,
-    ExecuteUnit));
-  ARegister(Command('open', cTexts[TProjectCommandsText.OpenAUnitFromThe].Text, '/open System.SysUtils', ExecuteOpen));
-  ARegister(Command('component', cTexts[TProjectCommandsText.CreateANewComponentUnit].Text,
-    '/component TMyButton : TButton', ExecuteComponent));
-  ARegister(Command('test', cTexts[TProjectCommandsText.CreateADUnitXTestFor].Text,
-    '/test', ExecuteTest));
+  ARegister(TSlashCommand.Create('define', cTexts[TProjectCommandsText.AddASymbolToDCC].Text, '/define TEST',
+      ExecuteDefine));
+  ARegister(TSlashCommand.Create('define!', cTexts[TProjectCommandsText.AddASymbolToDCC2].Text, '/define! TEST',
+      ExecuteDefine));
+  ARegister(TSlashCommand.Create('searchpath', cTexts[TProjectCommandsText.AddAFolderToThe].Text,
+      '/searchpath Source\Common', ExecuteSearchPath));
+  ARegister(TSlashCommand.Create('config', cTexts[TProjectCommandsText.SwitchConfigurationAndPlatform].Text,
+      '/config Release Win64', ExecuteConfig));
+  ARegister(TSlashCommand.Create('dfm', cTexts[TProjectCommandsText.JumpToThePositionIn].Text, '/dfm', ExecuteDfm));
+  ARegister(TSlashCommand.Create('unit', cTexts[TProjectCommandsText.CreateANewUnitAdd].Text,
+      cTexts[TProjectCommandsText.UnitCustomersData].Text, ExecuteUnit));
+  ARegister(TSlashCommand.Create('open', cTexts[TProjectCommandsText.OpenAUnitFromThe].Text, '/open System.SysUtils',
+      ExecuteOpen));
+  ARegister(TSlashCommand.Create('component', cTexts[TProjectCommandsText.CreateANewComponentUnit].Text,
+      '/component TMyButton : TButton', ExecuteComponent));
+  ARegister(TSlashCommand.Create('test', cTexts[TProjectCommandsText.CreateADUnitXTestFor].Text, '/test', ExecuteTest));
 end;
 
 initialization

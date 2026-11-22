@@ -22,8 +22,6 @@ type
     [Test]
     procedure OrganizeImportsAsSourceAction;
     [Test]
-    procedure MatchesRequestedKinds;
-    [Test]
     procedure NoTryFinallyWithoutCreate;
     /// <summary>Felder (auch Self.F) bekommen keine Aktion; wem sie gehören, sieht man hier nicht (#42).</summary>
     [Test]
@@ -72,6 +70,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.Files,
@@ -281,16 +280,6 @@ begin
   Assert.AreEqual('B', mAction.Edits[0].NewText);
   Assert.IsFalse(TCodeActions.OrganizeImports('unit A;' + cLB + 'interface' + cLB + 'uses B, C;' + cLB +
     'implementation' + cLB + 'end.', True, mAction));
-end;
-
-procedure TCodeActionTests.MatchesRequestedKinds;
-begin
-  Assert.IsTrue(TCodeActions.KindRequested(cFixAllKind, nil));
-  Assert.IsTrue(TCodeActions.KindRequested(cFixAllKind, ['source']));
-  Assert.IsTrue(TCodeActions.KindRequested(cOrganizeImportsKind, ['source.organizeImports']));
-  Assert.IsFalse(TCodeActions.KindRequested(cFixAllKind, ['source.organizeImports']));
-  Assert.IsFalse(TCodeActions.KindRequested(cQuickFixKind, ['source']));
-  Assert.IsFalse(TCodeActions.KindRequested('sourceX', ['source']));
 end;
 
 procedure TCodeActionTests.NoTryFinallyWithoutCreate;

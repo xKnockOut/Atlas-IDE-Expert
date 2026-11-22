@@ -41,7 +41,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.AnonymousMethods.Shared,
   Atlas.Common.Editing.AnonymousMethods.Embed,
@@ -91,18 +91,6 @@ begin
     end;
   Result := TAnonymousInput.Create(AText, ATree,
     TLineTable.Build(AText).PositionAt(Pos('TFoo.Tick', AText) - 1), mLookup);
-end;
-
-function RunEmbedding(const AInput: TAnonymousInput; out AAction: TCodeAction; out AReason: string): Boolean;
-var
-  mEmbedding: TAnonymousEmbedding;
-begin
-  mEmbedding := TAnonymousEmbedding.Create(AInput);
-  try
-    Result := mEmbedding.Run(AAction, AReason);
-  finally
-    mEmbedding.Free;
-  end;
 end;
 
 { TAnonymousSharedTests }
@@ -236,7 +224,7 @@ begin
   mText := EmbedUnit('private');
   mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsTrue(RunEmbedding(EmbedInput(mText, mTree), mAction, mReason), mReason);
+    Assert.IsTrue(TAnonymousEmbedding.Execute(EmbedInput(mText, mTree), mAction, mReason), mReason);
     Assert.AreEqual(EmbedTitle, mAction.Title);
     Assert.AreEqual(3, Integer(Length(mAction.Edits)));
     Assert.IsTrue(Pos('procedure(const AItem: Integer)', mAction.Edits[2].NewText) > 0, mAction.Edits[2].NewText);
@@ -254,7 +242,7 @@ begin
   mText := EmbedUnit('public');
   mTree := TPascalParser.Parse(mText);
   try
-    Assert.IsFalse(RunEmbedding(EmbedInput(mText, mTree), mAction, mReason));
+    Assert.IsFalse(TAnonymousEmbedding.Execute(EmbedInput(mText, mTree), mAction, mReason));
     Assert.AreEqual('nicht privat', mReason);
     Assert.AreEqual(0, Integer(Length(mAction.Edits)));
   finally

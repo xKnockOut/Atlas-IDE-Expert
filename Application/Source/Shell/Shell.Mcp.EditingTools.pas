@@ -37,7 +37,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
   Core.Texts,
-  Shell.WorkspaceGroup;
+  Core.WorkspaceGroup,
+  Atlas.Text.Names;
 
 type
 {$SCOPEDENUMS ON}
@@ -465,7 +466,7 @@ end;
 /// <summary>Geschützte Dateien (#2608) für die schreibenden Werkzeuge, bei jedem Aufruf aus den aktuellen
 /// Einstellungen; eigene Routine, damit die anonyme Methode nur AGroup und AGuard einfängt. Ohne Gruppe (Tests) nichts
 /// geschützt.</summary>
-function ProtectedReportOf(AGroup: TShellWorkspaceGroup; AGuard: TMcpPathGuard): TMcpProtectedReport;
+function ProtectedReportOf(AGroup: TCoreWorkspaceGroup; AGuard: TMcpPathGuard): TMcpProtectedReport;
 begin
   Result :=
     function(const AFileNames: TArray<string>; ADryRun: Boolean): string
@@ -488,7 +489,7 @@ end;
 
 /// <summary>Befunde wie get_diagnostics (#2603): Regeln und overrides für den Pfad relativ zu ARoot, mit Symbolen,
 /// Include-Dateien und Index des Projekts. Ohne Gruppe (Tests) keine.</summary>
-function FindingsOf(AGroup: TShellWorkspaceGroup; const ARoot: string; const ASource: TCheckSourceFunc;
+function FindingsOf(AGroup: TCoreWorkspaceGroup; const ARoot: string; const ASource: TCheckSourceFunc;
   const AProject: TCheckProjectFunc): TMcpFindingsFunc;
 begin
   Result :=
@@ -502,13 +503,13 @@ begin
         Exit;
       end;
       Result := TFileChecker.CheckText(BuiltinRules, AGroup.Main.Configuration.Settings,
-        TMcpCheckTools.RelativeTo(ARoot, AFileName), AText, TCheckOrigin.ForFile(AProject, ASource, AFileName),
+        TTextNames.RelativeTo(ARoot, AFileName), AText, TCheckOrigin.ForFile(AProject, ASource, AFileName),
         mScopes);
     end;
 end;
 
 /// <summary>mcp.reportFindingsAfterEdit, bei jedem Aufruf neu gelesen.</summary>
-function ReportFindingsOf(AGroup: TShellWorkspaceGroup): TFunc<Boolean>;
+function ReportFindingsOf(AGroup: TCoreWorkspaceGroup): TFunc<Boolean>;
 begin
   Result :=
     function: Boolean

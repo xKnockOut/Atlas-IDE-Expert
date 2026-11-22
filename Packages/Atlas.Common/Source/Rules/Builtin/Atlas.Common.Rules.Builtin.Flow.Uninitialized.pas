@@ -78,7 +78,6 @@ type
     function MethodsOfRecord(const ATypeName: string): TArray<string>;
     function DirectMethodsOfRecord(const ATypeName: string): TArray<string>;
     function FieldMethodsOfRecord(const ATypeName: string): TArray<string>;
-    function FlowNodeOf(ANode: TSyntaxNode): TFlowNode;
     function IsFlagFor(ABlock: TSyntaxNode; const AFlag: string): Boolean;
     function ThenGuard(ABlock, AParent, AChild: TSyntaxNode): Boolean;
     function OperandGuard(ABlock, AParent, AChild: TSyntaxNode): Boolean;
@@ -668,16 +667,6 @@ begin
   end;
 end;
 
-function TUninitializedCheck.FlowNodeOf(ANode: TSyntaxNode): TFlowNode;
-begin
-  Result := nil;
-  while (ANode <> nil) and (Result = nil) do
-  begin
-    Result := FGraph.NodeOf(ANode);
-    ANode := ANode.Parent;
-  end;
-end;
-
 /// <summary>Ist AFlag ein Merker für die Variable: Jede Zuweisung an AFlag setzt den Startwert (False, nil, '')
 /// oder steht in derselben Anweisungsliste wie eine Zuweisung an die Variable (Feld := Symbol; Gefunden := True)?
 /// Dann heißt ein gesetzter Merker, dass sie einen Wert hat (#1109).</summary>
@@ -791,7 +780,7 @@ function TUninitializedCheck.ReadsUninitialized(ARoot, ANode: TSyntaxNode): Bool
 var
   mFlow: TFlowNode;
 begin
-  mFlow := FlowNodeOf(ANode);
+  mFlow := FGraph.EnclosingNodeOf(ANode);
   Result := (mFlow <> nil) and (FGraph.IsReachable(mFlow) = TFlowAnswer.Yes);
   Result := Result and FGraph.ReachingDefinitions(mFlow, FName).FromEntry and not GuardedByFlag(ARoot, ANode);
 end;
@@ -898,13 +887,8 @@ begin
 end;
 
 procedure TUninitializedCheck.Run;
-var
-  mRoutine: TSyntaxNode;
 begin
-  for mRoutine in TRuleDerived.Routines(FCache, FContext) do
-  begin
-    CheckRoutine(mRoutine);
-  end;
+  TRuleDerived.EachRoutine(FCache, FContext, CheckRoutine);
 end;
 
 initialization

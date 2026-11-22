@@ -370,6 +370,8 @@ type
     AlignComments: Boolean;
     Given: TFormatKeys;
     class function Default: TFormatStyle; static;
+    /// <summary>Eine Einrückstufe: Tab, IndentSize Leerzeichen oder (ohne Größe) zwei Leerzeichen.</summary>
+    function IndentUnit: string;
   end;
 
   /// <summary>Weg zum Compiler (#261): auto wählt nach der erkannten Ausgabe, dcc = Kommandozeilen-Compiler,
@@ -1341,6 +1343,22 @@ begin
 end;
 
 { TFormatStyle }
+
+function TFormatStyle.IndentUnit: string;
+begin
+  if UseTabs then
+  begin
+    Result := #9;
+  end
+  else if IndentSize >= 1 then
+  begin
+    Result := StringOfChar(' ', IndentSize);
+  end
+  else
+  begin
+    Result := '  ';
+  end;
+end;
 
 class function TFormatStyle.Default: TFormatStyle;
 begin

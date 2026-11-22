@@ -9,6 +9,7 @@ interface
 
 uses
   Atlas.Common.Logging.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Editing.Contract,
@@ -18,7 +19,7 @@ uses
   Shell.Composition.Contract;
 
 type
-  TShellUnitSearchReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TShellUnitSearchReadText = TDocumentReadText;
   TShellUnitSearchProcessFunc = reference to function: ICompilerProcess;
 
   /// <summary>Was die Unit-Suche von der Komposition braucht.</summary>
@@ -62,8 +63,8 @@ uses
   System.JSON,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Editing.TestUnits,
-  Shell.Workspace,
-  Shell.VersionControlChanges;
+  Core.Workspace,
+  Core.VersionControlChanges;
 
 /// <summary>Gibt es die Datei auf der Platte?</summary>
 function FileOnDisk(AFileName: string): Boolean;
@@ -118,9 +119,9 @@ var
 begin
   mResult := nil;
   FServices.VisitWorkspaces(
-    procedure(const AWorkspaces: TArray<TShellWorkspace>)
+    procedure(const AWorkspaces: TArray<TCoreWorkspace>)
     var
-      mWorkspace: TShellWorkspace;
+      mWorkspace: TCoreWorkspace;
       mInfo: TProjectInfo;
       mProject: TUnitSearchProject;
       mText: string;
@@ -168,10 +169,7 @@ end;
 
 function TShellUnitSearch.SourceText(AFileName: string): string;
 begin
-  if not FServices.ReadText(AFileName, Result) then
-  begin
-    Result := '';
-  end;
+  Result := TDocumentReads.TextOrEmpty(FServices.ReadText, AFileName);
 end;
 
 function TShellUnitSearch.GitState(AFileName: string): string;
@@ -234,9 +232,9 @@ var
 begin
   mForeign := False;
   FServices.VisitWorkspaces(
-    procedure(const AWorkspaces: TArray<TShellWorkspace>)
+    procedure(const AWorkspaces: TArray<TCoreWorkspace>)
     var
-      mWorkspace: TShellWorkspace;
+      mWorkspace: TCoreWorkspace;
       mDerived, mOwn: Boolean;
     begin
       mDerived := False;

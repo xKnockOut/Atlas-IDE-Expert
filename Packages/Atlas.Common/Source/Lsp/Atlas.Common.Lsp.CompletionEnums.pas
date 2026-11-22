@@ -69,7 +69,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Editing.CaseCompletion;
 
 /// <summary>Letztes Token vor APosition ohne Kommentare; APrefix: Index des Bezeichners, in oder hinter dem der
 /// Cursor steht (das getippte Wort), sonst -1. Ergebnis ist das Token davor.</summary>
@@ -530,62 +531,10 @@ begin
   end;
 end;
 
-/// <summary>Letzter Teil eines qualifizierten Namens: TAlign.alTop → alTop.</summary>
-function LastPart(const AName: string): string;
-begin
-  Result := AName.Substring(AName.LastIndexOf('.') + 1);
-end;
-
 class function TCompletionEnums.Checked(const AValues, APresent: TArray<string>;
   out AChecked: TArray<Boolean>): Boolean;
-
-  function IndexOfValue(const AName: string): Integer;
-  var
-    mIndex: Integer;
-  begin
-    for mIndex := 0 to High(AValues) do
-    begin
-      if SameText(AValues[mIndex], LastPart(AName)) then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-    Result := -1;
-  end;
-
-var
-  mElement: string;
-  mBounds: TArray<string>;
-  mLow_, mHigh_, mIndex: Integer;
 begin
-  SetLength(AChecked, Length(AValues));
-  for mIndex := 0 to High(AChecked) do
-  begin
-    AChecked[mIndex] := False;
-  end;
-  for mElement in APresent do
-  begin
-    mBounds := mElement.Split(['..']);
-    mLow_ := IndexOfValue(mBounds[0]);
-    mHigh_ := mLow_;
-    if Length(mBounds) = 2 then
-    begin
-      mHigh_ := IndexOfValue(mBounds[1]);
-    end
-    else if Length(mBounds) > 2 then
-    begin
-      Exit(False);
-    end;
-    if (mLow_ < 0) or (mHigh_ < 0) then
-    begin
-      Exit(False);
-    end;
-    for mIndex := mLow_ to mHigh_ do
-    begin
-      AChecked[mIndex] := True;
-    end;
-  end;
-  Result := True;
+  Result := TCaseCompletion.Covered(AValues, APresent, AChecked);
 end;
 
 end.

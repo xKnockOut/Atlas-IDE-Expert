@@ -14,7 +14,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Projects.Contract;
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Semantics.Contract;
 
 type
   // Gruppen der uses nach Herkunft (#2794); Logik in Atlas.Common.Editing.UsesGroups.
@@ -39,49 +40,11 @@ type
   /// <summary>Gruppe zu einem Unit-Namen.</summary>
   TUsesGroupFunc = reference to function(const AUnitName: string): TUsesGroup;
 
-  /// <summary>Was der Index über eine Unit weiß.</summary>
-  TUsesUnitInfo = record
-    Known: Boolean;
-    HasInitialization: Boolean;
-    /// <summary>Namen der interface-Symbole, auch Mitglieder.</summary>
-    Names: TArray<string>;
-    /// <summary>Namen der interface-Symbole auf Unit-Ebene samt Enum-Werten (#1925): nur sie braucht ein
-    /// Bezeichner, der nicht hinter einem Punkt steht, aus dem uses.</summary>
-    TopNames: TArray<string>;
-    /// <summary>Namen der Mitglieder von Class- und Record-Helpern im interface (#1925): Hinter einem Punkt
-    /// braucht nur ein Helper seine Unit im uses.</summary>
-    HelperNames: TArray<string>;
-    /// <summary>Die Formulardatei der geprüften Unit verweist auf ein Modul dieser Unit (Connection =
-    /// Form1.Connection): Der Eintrag gilt als im implementation-Teil verwendet, die IDE braucht ihn
-    /// (dfm-reference-unit-missing).</summary>
-    UsedByForm: Boolean;
-  end;
-
-  TUsesUnitInfoFunc = reference to function(const AUnitName: string): TUsesUnitInfo;
-
-  /// <summary>Nutzung der uses-Einträge aus der Namensauflösung (#1925, TUsesUsage). Bezeichner, deren
-  /// Deklaration feststeht, zählen nur für die Unit dieser Deklaration; die übrigen vergleicht TUsesActions mit den
-  /// Namen der Units wie zuvor, aber genauer: vor einem Punkt mit TopNames, dahinter mit HelperNames. Ohne Active
-  /// gilt der großzügige Namensvergleich mit allen Namen.</summary>
-  TUsesResolution = record
-  public const
-    cInterfacePart = 1;
-    cImplementationPart = 2;
-  public
-    Active: Boolean;
-    /// <summary>Offsets der Bezeichner mit bekannter Deklaration, aufsteigend.</summary>
-    Settled: TArray<Integer>;
-    /// <summary>uses-Einträge, wie sie dastehen, und je Eintrag die Teile (cInterfacePart, cImplementationPart),
-    /// in denen ihn ein aufgelöster Bezeichner oder ein Rumpf einer gerufenen inline-Routine braucht.</summary>
-    Units: TArray<string>;
-    Masks: TArray<Integer>;
-    function IsSettled(AOffset: Integer): Boolean;
-    function MaskOf(const AName: string): Integer;
-  end;
-
-  /// <summary>Nutzung der uses-Einträge von AText (Token in AInactive zählen nicht); nicht Active, wenn sich der
-  /// Text nicht auflösen lässt (Syntaxfehler, kein Index).</summary>
-  TUsesResolveFunc = reference to function(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
+  // Ergebnis der Namensauflösung für uses (TUsesUsage); die Typen liegen im Contract von Semantics.
+  TUsesUnitInfo = Atlas.Common.Semantics.Contract.TUsesUnitInfo;
+  TUsesUnitInfoFunc = Atlas.Common.Semantics.Contract.TUsesUnitInfoFunc;
+  TUsesResolution = Atlas.Common.Semantics.Contract.TUsesResolution;
+  TUsesResolveFunc = Atlas.Common.Semantics.Contract.TUsesResolveFunc;
 
   /// <summary>Units, deren interface ein Symbol AName auf Unit-Ebene deklariert.</summary>
   TUnitsDeclaringFunc = reference to function(const AName: string): TArray<string>;
@@ -254,6 +217,8 @@ type
     Summary: string;
     Example: string;
     Execute: TSlashExecute;
+    class function Create(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
+      static;
   end;
 
   /// <summary>Trägt einen Befehl ins Register ein; so melden die Befehls-Units ihre Befehle, ohne das Register
@@ -282,43 +247,15 @@ implementation
 uses
   System.StrUtils;
 
-{ TUsesResolution }
+{ TSlashCommand }
 
-function TUsesResolution.IsSettled(AOffset: Integer): Boolean;
-var
-  mLow, mHigh, mMiddle: Integer;
+class function TSlashCommand.Create(const AName, ASummary, AExample: string;
+  const AExecute: TSlashExecute): TSlashCommand;
 begin
-  mLow := 0;
-  mHigh := High(Settled);
-  while mLow <= mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if Settled[mMiddle] = AOffset then
-    begin
-      Exit(True);
-    end;
-    if Settled[mMiddle] < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle - 1;
-    end;
-  end;
-  Result := False;
-end;
-
-function TUsesResolution.MaskOf(const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  mIndex := IndexText(AName, Units);
-  if mIndex < 0 then
-  begin
-    Exit(0);
-  end;
-  Result := Masks[mIndex];
+  Result.Name := AName;
+  Result.Summary := ASummary;
+  Result.Example := AExample;
+  Result.Execute := AExecute;
 end;
 
 { TUsesContext }

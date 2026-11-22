@@ -36,8 +36,8 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Server,
-  Shell.Workspace,
-  Shell.WorkspaceGroup,
+  Core.Workspace,
+  Core.WorkspaceGroup,
   Shell.Composition.Refactorings.Services,
   Shell.Mcp.RefactorHost;
 
@@ -65,12 +65,12 @@ end;
 
 /// <summary>Präfixe neuer Namen wie im Server (TShellFileOptions.NewNamesFor): die der Namensregel des Projekts.
 /// </summary>
-function NewNamesOf(AGroup: TShellWorkspaceGroup): TShellNewNamesFunc;
+function NewNamesOf(AGroup: TCoreWorkspaceGroup): TShellNewNamesFunc;
 begin
   Result :=
     function(const AUri: string): TPascalNamePrefixes
     var
-      mWorkspace: TShellWorkspace;
+      mWorkspace: TCoreWorkspace;
       mContext: TRuleContext;
       mFileName: string;
     begin
@@ -86,12 +86,12 @@ begin
 end;
 
 /// <summary>Delphi-Version der Datei: aus dem Projekt, sonst delphiVersion in atlas.json.</summary>
-function DelphiVersionOf(AGroup: TShellWorkspaceGroup): TShellUriTextFunc;
+function DelphiVersionOf(AGroup: TCoreWorkspaceGroup): TShellUriTextFunc;
 begin
   Result :=
     function(const AUri: string): string
     var
-      mWorkspace: TShellWorkspace;
+      mWorkspace: TCoreWorkspace;
     begin
       mWorkspace := AGroup.WorkspaceOf(TDocumentUris.ToPath(AUri));
       Result := mWorkspace.State.DelphiVersion;
@@ -102,7 +102,7 @@ begin
     end;
 end;
 
-function RefactorSettingsOf(AGroup: TShellWorkspaceGroup): TMcpRefactorSettingsFunc;
+function RefactorSettingsOf(AGroup: TCoreWorkspaceGroup): TMcpRefactorSettingsFunc;
 begin
   Result :=
     function(const AFileName: string): TServerSettings
@@ -111,7 +111,7 @@ begin
     end;
 end;
 
-function RefactorProjectOf(AGroup: TShellWorkspaceGroup): TShellProjectFunc;
+function RefactorProjectOf(AGroup: TCoreWorkspaceGroup): TShellProjectFunc;
 begin
   Result :=
     function(const AFileName: string; out AProject: TProjectInfo): Boolean
@@ -121,13 +121,9 @@ begin
 end;
 
 /// <summary>Namensräume, Units und Dateien der Gruppe.</summary>
-procedure AddGroupAccess(var AServices: TMcpRefactorHostServices; AGroup: TShellWorkspaceGroup);
+procedure AddGroupAccess(var AServices: TMcpRefactorHostServices; AGroup: TCoreWorkspaceGroup);
 begin
-  AServices.EnsureUnit :=
-    function(const AUnitName: string): Boolean
-    begin
-      Result := AGroup.EnsureUnit(AUnitName);
-    end;
+  AServices.EnsureUnit := AGroup.UnitLoader();
   AServices.Namespaces :=
     function: TArray<string>
     begin
@@ -140,7 +136,7 @@ begin
     end;
 end;
 
-function RefactorStyleOf(AGroup: TShellWorkspaceGroup): TShellFormatStyleFunc;
+function RefactorStyleOf(AGroup: TCoreWorkspaceGroup): TShellFormatStyleFunc;
 begin
   Result :=
     function(const AUri: string): TFormatStyle
@@ -149,7 +145,7 @@ begin
     end;
 end;
 
-function NewHost(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; const ALogger: ILogger): IMcpRefactorHost;
+function NewHost(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; const ALogger: ILogger): IMcpRefactorHost;
 var
   mServices: TMcpRefactorHostServices;
 begin

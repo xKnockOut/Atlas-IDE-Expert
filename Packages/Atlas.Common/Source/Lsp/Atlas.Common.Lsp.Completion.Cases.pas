@@ -80,7 +80,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CreateMethod,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.DocComments,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Lsp.ConditionalSymbols,

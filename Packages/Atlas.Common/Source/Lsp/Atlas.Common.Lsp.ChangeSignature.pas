@@ -159,7 +159,8 @@ uses
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -755,8 +756,8 @@ begin
   for mSymbol in FCollector.Source(FRoot.FileName).Symbols do
   begin
     if (mSymbol.Kind in cSignatureRoutineKinds) and SameText(mSymbol.Container, FRoot.Container) and
-      SameText(mSymbol.Name, FRoot.Name) and SameParamTypes(mSymbol.ParamTypes, mNewTypes) and
-      not SameParamTypes(mSymbol.ParamTypes, FRoot.Decl.ParamTypes) then
+      SameText(mSymbol.Name, FRoot.Name) and TTextNames.SameTypes(mSymbol.ParamTypes, mNewTypes) and
+      not TTextNames.SameTypes(mSymbol.ParamTypes, FRoot.Decl.ParamTypes) then
     begin
       raise SignatureError(cTexts[TLspChangeSignatureText.TheNewSignatureCollidesWith].Fmt([FRoot.Name,
         mSymbol.SelectionRange.StartPos.Line + 1]));

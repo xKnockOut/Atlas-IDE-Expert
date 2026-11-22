@@ -74,7 +74,7 @@ uses
   Shell.Mcp.ProjectTools,
   Shell.Mcp.ChangeTools,
   Shell.Mcp.Changes,
-  Shell.Workspace.Listings;
+  Core.Workspace.Listings;
 
 type
   TRegisterProc = procedure(const AContext: TMcpToolContext);

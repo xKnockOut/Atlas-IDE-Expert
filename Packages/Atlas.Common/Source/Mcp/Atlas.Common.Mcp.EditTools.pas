@@ -55,7 +55,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.Confirm;
@@ -256,12 +256,13 @@ uses
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Lsp.Rename,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Mcp.Server,
   Atlas.Text.Lines,
   Atlas.Text.Diff,
   Atlas.Text.LogMarks,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -458,16 +459,6 @@ begin
     end;
   finally
     mPositions.Free;
-  end;
-end;
-
-/// <summary>AFileName relativ zu ARoot, wenn sie darunter liegt; sonst unverändert.</summary>
-function RelativeTo(const ARoot, AFileName: string): string;
-begin
-  Result := AFileName;
-  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
-  begin
-    Result := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
   end;
 end;
 
@@ -891,7 +882,7 @@ begin
   end;
   Result := nil;
   for mAction in TRuleCodeActions.ForRange(TFileChecker.CheckText(AScope.Rules, AScope.Settings,
-    RelativeTo(AScope.Root, AFileName), mText, TCheckOrigin.ForFile(FCheckProject, FCheckSource, AFileName),
+    TTextNames.RelativeTo(AScope.Root, AFileName), mText, TCheckOrigin.ForFile(FCheckProject, FCheckSource, AFileName),
     mScopes), mText,
     TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
   begin
@@ -928,7 +919,7 @@ begin
     begin
       mSource := TFileChecker.SourceOf(FCheckSource, mFileName);
       Result := Result + [TBulkFix.Run(mFileName, mText, AOptions, TBulkFix.CheckWith(AFixRules, AScope.Settings,
-        RelativeTo(AScope.Root, mFileName), TFileChecker.ProjectOf(FCheckProject, mFileName), mSource),
+        TTextNames.RelativeTo(AScope.Root, mFileName), TFileChecker.ProjectOf(FCheckProject, mFileName), mSource),
         TBulkFix.SyntaxErrorsWith(mSource))];
     end;
   end;
@@ -1234,7 +1225,7 @@ begin
     begin
       if mResult.Changed then
       begin
-        mReport.AppendLine.Append(TBulkFix.Diff(StringReplace(RelativeTo(ARoot, mResult.FileName), '\', '/',
+        mReport.AppendLine.Append(TBulkFix.Diff(StringReplace(TTextNames.RelativeTo(ARoot, mResult.FileName), '\', '/',
           [rfReplaceAll]), mResult));
       end;
     end;

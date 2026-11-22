@@ -7,7 +7,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Workspaces;
 
 type
@@ -16,8 +16,8 @@ type
   private
     FRegistry: TShellWorkspaceRegistry;
     FVisited: Integer;
-    function NewWorkspace(const ARoot, AName, AProjectFile, AOrigin: string): TShellWorkspace;
-    procedure CountVisited(const AWorkspaces: TArray<TShellWorkspace>);
+    function NewWorkspace(const ARoot, AName, AProjectFile, AOrigin: string): TCoreWorkspace;
+    procedure CountVisited(const AWorkspaces: TArray<TCoreWorkspace>);
   public
     [Setup]
     procedure Setup;
@@ -51,7 +51,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,
-  Shell.Workspace.Setup;
+  Core.Workspace.Setup,
+  Shell.Composition.Platform;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -72,16 +73,16 @@ end;
 { TShellWorkspaceRegistryTests }
 
 function TShellWorkspaceRegistryTests.NewWorkspace(const ARoot, AName, AProjectFile,
-  AOrigin: string): TShellWorkspace;
+  AOrigin: string): TCoreWorkspace;
 begin
-  Result := TShellWorkspace.Create(ARoot, AName, TShellWorkspaceServices.Create(TDocumentStore.Create,
+  Result := TCoreWorkspace.Create(ARoot, AName, TCoreWorkspaceServices.Create(TDocumentStore.Create,
     TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
-    'atlas-test-index'));
+    'atlas-test-index', TShellPlatformAdapters.WorkspaceFactories));
   Result.Setup.ProjectFile := AProjectFile;
   Result.Setup.Origin := AOrigin;
 end;
 
-procedure TShellWorkspaceRegistryTests.CountVisited(const AWorkspaces: TArray<TShellWorkspace>);
+procedure TShellWorkspaceRegistryTests.CountVisited(const AWorkspaces: TArray<TCoreWorkspace>);
 begin
   FVisited := Length(AWorkspaces);
 end;
@@ -107,7 +108,7 @@ end;
 procedure TShellWorkspaceRegistryTests.EmptyRegistry;
 var
   mReason: string;
-  mRemaining: TArray<TShellWorkspace>;
+  mRemaining: TArray<TCoreWorkspace>;
 begin
   Assert.IsNull(FRegistry.WorkspaceOf(TPath.Combine('ordner', 'a.pas')));
   Assert.IsNull(FRegistry.Pick('a.pas'));
@@ -136,7 +137,7 @@ end;
 
 procedure TShellWorkspaceRegistryTests.WorkspaceOfFolder;
 var
-  mFirst, mSecond: TShellWorkspace;
+  mFirst, mSecond: TCoreWorkspace;
   mRoot: string;
 begin
   mRoot := TPath.Combine(TPath.GetTempPath, 'atlas-registry');
@@ -151,9 +152,9 @@ end;
 
 procedure TShellWorkspaceRegistryTests.ExtractByOrigin;
 var
-  mRemoved, mRemaining: TArray<TShellWorkspace>;
-  mKept: TShellWorkspace;
-  mWorkspace: TShellWorkspace;
+  mRemoved, mRemaining: TArray<TCoreWorkspace>;
+  mKept: TCoreWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   FRegistry.Add(NewWorkspace('a', 'a', '', 'weg'));
   mKept := NewWorkspace('b', 'b', '', 'bleibt');
@@ -174,8 +175,8 @@ end;
 
 procedure TShellWorkspaceRegistryTests.HoldReleaseAndVisit;
 var
-  mWorkspace: TShellWorkspace;
-  mRemaining: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mRemaining: TArray<TCoreWorkspace>;
 begin
   mWorkspace := NewWorkspace('a', 'a', '', 'o');
   FRegistry.Add(mWorkspace);
@@ -184,11 +185,11 @@ begin
   Assert.AreEqual(2, FVisited);
   System.TMonitor.Enter(FRegistry.Lock);
   try
-    FRegistry.Hold(TArray<TShellWorkspace>.Create(mWorkspace));
+    FRegistry.Hold(TArray<TCoreWorkspace>.Create(mWorkspace));
   finally
     System.TMonitor.Exit(FRegistry.Lock);
   end;
-  FRegistry.Release(TArray<TShellWorkspace>.Create(mWorkspace));
+  FRegistry.Release(TArray<TCoreWorkspace>.Create(mWorkspace));
   Assert.AreEqual(1, Integer(Length(FRegistry.Extract('o', mRemaining))));
   FRegistry.FreeWhenUnused(mWorkspace);
   Assert.AreEqual(1, Integer(Length(mRemaining)));

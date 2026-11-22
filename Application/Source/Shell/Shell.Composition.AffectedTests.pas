@@ -18,7 +18,7 @@ uses
   Atlas.Common.Lsp.AffectedTests,
   Atlas.Common.Lsp.AffectedTests.Report,
   Atlas.Common.Lsp.AffectedTests.Types,
-  Shell.AffectedTests,
+  Core.AffectedTests,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
 
@@ -53,7 +53,7 @@ type
     /// <summary>Arbeitsordner des Arbeitsbereichs zu AUri und Vergleichsbasis, Ungespeichertes und Tiefe aus der
     /// Anfrage; ohne Arbeitsbereich ein Fehler der Anfrage.</summary>
     class function QueryFor(const AServices: TShellAffectedTestsServices; AParams: TJSONObject;
-      const AUri: string): TShellAffectedQuery; static;
+      const AUri: string): TCoreAffectedQuery; static;
     /// <summary>Projektdateien, Testprogramme (auch das der Testunit zu AUri) und Optionen samt Testunits.</summary>
     class function RequestFor(const AServices: TShellAffectedTestsServices; const AUri: string;
       const ASettings: TServerSettings): TAffectedRequest; static;
@@ -64,13 +64,12 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Compiler.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
   Core.Bootstrap,
   Shell.Composition.Platform,
-  Shell.VersionControlChanges,
-  Shell.Workspace,
+  Core.VersionControlChanges,
+  Core.Workspace,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 
@@ -122,10 +121,10 @@ class function TShellAffectedTestsRequest.Handle(const AServices: TShellAffected
 var
   mUri: string;
   mSettings: TServerSettings;
-  mQuery: TShellAffectedQuery;
+  mQuery: TCoreAffectedQuery;
   mRequest: TAffectedRequest;
   mResolver: TNameResolver;
-  mProcess: ICompilerProcess;
+  mAccess: TCoreVcsAccess;
   mFound: TAffectedResult;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
@@ -142,11 +141,11 @@ begin
     try
       // Eigener Prozessstarter: git/svn laufen neben einem Compilerlauf. Über eine Variable: nie ein frisches
       // Objekt an einen const-Interface-Parameter.
-      mProcess := TProcessRunner.Create;
+      mAccess := TShellPlatformAdapters.VcsAccess;
       // git bzw. svn vergleichen die gespeicherten Dateien: Die geänderten Zeilen passen nur zum Text auf der
       // Platte, nicht zu einem ungespeicherten Puffer im Editor.
-      mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery,
-        TShellAffectedSources.New(mResolver, AServices.Index, DiskSourceText), mRequest, ACancellation);
+      mFound := TCoreAffectedTests.Run(mAccess, mSettings, mQuery,
+        TCoreAffectedSources.New(mResolver, AServices.Index, DiskSourceText), mRequest, ACancellation);
     except
       on E: EAffectedTestsOff do
         raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, E.Message);
@@ -160,11 +159,11 @@ begin
 end;
 
 class function TShellAffectedTestsRequest.QueryFor(const AServices: TShellAffectedTestsServices;
-  AParams: TJSONObject; const AUri: string): TShellAffectedQuery;
+  AParams: TJSONObject; const AUri: string): TCoreAffectedQuery;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
-  Result := Default(TShellAffectedQuery);
+  Result := Default(TCoreAffectedQuery);
   System.TMonitor.Enter(AServices.Workspaces.Lock);
   try
     mWorkspace := AServices.Workspaces.Pick(TDocumentUris.ToPath(AUri));
@@ -204,7 +203,7 @@ var
 begin
   Result := Default(TAffectedRequest);
   Result.Files := AServices.ProjectFiles();
-  Result.TestPrograms := TShellAffectedTests.TestPrograms(Result.Files, AServices.ReadText);
+  Result.TestPrograms := TCoreAffectedTests.TestPrograms(Result.Files, AServices.ReadText);
   if AServices.TestUnitContext(AUri, mContext) and (mContext.TestProgram <> '') and
     (IndexText(mContext.TestProgram, Result.TestPrograms) < 0) then
   begin
@@ -212,7 +211,7 @@ begin
   end;
   // Treffersicherheit und Zeitlimit wie atlas/impact; Testunits aus allen Testprogrammen.
   Result.Options := AServices.ImpactOptions(AUri);
-  Result.Options.Tests := TShellAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms,
+  Result.Options.Tests := TCoreAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms,
     AServices.ReadText);
 end;
 

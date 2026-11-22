@@ -129,7 +129,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
 

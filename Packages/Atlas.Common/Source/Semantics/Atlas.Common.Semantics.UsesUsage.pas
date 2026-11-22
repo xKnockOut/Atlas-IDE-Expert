@@ -33,8 +33,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.Contract,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Was die Nutzung der uses-Einträge aus dem Projekt braucht.</summary>
@@ -76,7 +75,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.InlineCallees,
   Atlas.Common.Pascal.TokenCursor,
@@ -490,7 +488,7 @@ var
   mEntry: TUsageEntry;
 begin
   Result := Default(TUsesResolution);
-  FTokens := TUsesActions.ActiveTokens(FTree.Tokens, AInactive);
+  FTokens := TPascalUses.ActiveTokens(FTree.Tokens, AInactive);
   FindParts;
   AddEntries(AInfo);
   FResolver.PinTree(FTree, FFileName);

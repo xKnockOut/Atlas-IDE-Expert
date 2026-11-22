@@ -190,20 +190,12 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Updates.ManifestSignature;
-
-function KeyOf(const APath: string): string;
-begin
-  Result := LowerCase(APath.Replace('/', '\'));
-  while Result.EndsWith('\') do
-  begin
-    Result := Result.Substring(0, Length(Result) - 1);
-  end;
-end;
+  Atlas.Common.Updates.ManifestSignature,
+  Atlas.Text.Names;
 
 function Under(const APath, ADirectory: string): Boolean;
 begin
-  Result := KeyOf(APath).StartsWith(KeyOf(ADirectory) + '\');
+  Result := TTextNames.FolderKey(APath).StartsWith(TTextNames.FolderKey(ADirectory) + '\');
 end;
 
 { TFakeRegistry }
@@ -230,7 +222,7 @@ var
   mIndex: Integer;
   mPath: string;
 begin
-  if FKeys.TryGetValue(KeyOf(AKey), Result) or not ACreate then
+  if FKeys.TryGetValue(TTextNames.FolderKey(AKey), Result) or not ACreate then
   begin
     Exit;
   end;
@@ -244,10 +236,10 @@ begin
       mPath := mPath + '\';
     end;
     mPath := mPath + mParts[mIndex];
-    FNames.AddOrSetValue(KeyOf(mPath), mPath);
+    FNames.AddOrSetValue(TTextNames.FolderKey(mPath), mPath);
   end;
   Result := TList<TUpdateRegistryValue>.Create;
-  FKeys.Add(KeyOf(AKey), Result);
+  FKeys.Add(TTextNames.FolderKey(AKey), Result);
 end;
 
 function TFakeRegistry.SubKeys(const AKey: string): TArray<string>;
@@ -261,7 +253,7 @@ begin
     begin
       if Under(mPath, AKey) then
       begin
-        mRest := mPath.Substring(Length(KeyOf(AKey)) + 1);
+        mRest := mPath.Substring(Length(TTextNames.FolderKey(AKey)) + 1);
         if (Pos('\', mRest) = 0) and (mList.IndexOf(mRest) < 0) then
         begin
           mList.Add(mRest);
@@ -391,7 +383,7 @@ end;
 
 procedure TFakeFiles.CheckLocked(const AFileName: string);
 begin
-  if FLocked.Contains(KeyOf(AFileName)) or FBroken.Contains(KeyOf(AFileName)) then
+  if FLocked.Contains(TTextNames.FolderKey(AFileName)) or FBroken.Contains(TTextNames.FolderKey(AFileName)) then
   begin
     raise EInOutError.Create('gesperrt: ' + AFileName);
   end;
@@ -399,7 +391,7 @@ end;
 
 function TFakeFiles.FileExists(const AFileName: string): Boolean;
 begin
-  Result := FContent.ContainsKey(KeyOf(AFileName));
+  Result := FContent.ContainsKey(TTextNames.FolderKey(AFileName));
 end;
 
 function TFakeFiles.DirectoryExists(const ADirectory: string): Boolean;
@@ -427,7 +419,7 @@ begin
     begin
       if Under(mName, ADirectory) then
       begin
-        mList.Add(mName.Replace('/', '\').Substring(Length(KeyOf(ADirectory)) + 1));
+        mList.Add(mName.Replace('/', '\').Substring(Length(TTextNames.FolderKey(ADirectory)) + 1));
       end;
     end;
     mList.Sort;
@@ -444,7 +436,7 @@ begin
     raise EInOutError.Create('fehlt: ' + ASource);
   end;
   CheckLocked(ATarget);
-  WriteText(ATarget, FContent[KeyOf(ASource)]);
+  WriteText(ATarget, FContent[TTextNames.FolderKey(ASource)]);
 end;
 
 procedure TFakeFiles.MoveFile(const ASource, ATarget: string);
@@ -452,26 +444,26 @@ var
   mText: string;
   mLocked: Boolean;
 begin
-  if FBroken.Contains(KeyOf(ASource)) then
+  if FBroken.Contains(TTextNames.FolderKey(ASource)) then
   begin
     raise EInOutError.Create('defekt: ' + ASource);
   end;
   mText := ReadText(ASource);
-  mLocked := FLocked.Contains(KeyOf(ASource));
-  FLocked.Remove(KeyOf(ASource));
+  mLocked := FLocked.Contains(TTextNames.FolderKey(ASource));
+  FLocked.Remove(TTextNames.FolderKey(ASource));
   DeleteFile(ASource);
   WriteText(ATarget, mText);
   if mLocked then
   begin
-    FLocked.Add(KeyOf(ATarget));
+    FLocked.Add(TTextNames.FolderKey(ATarget));
   end;
 end;
 
 procedure TFakeFiles.DeleteFile(const AFileName: string);
 begin
   CheckLocked(AFileName);
-  FContent.Remove(KeyOf(AFileName));
-  FNames.Remove(KeyOf(AFileName));
+  FContent.Remove(TTextNames.FolderKey(AFileName));
+  FNames.Remove(TTextNames.FolderKey(AFileName));
 end;
 
 procedure TFakeFiles.DeleteDirectory(const ADirectory: string);
@@ -494,7 +486,7 @@ end;
 
 function TFakeFiles.ReadText(const AFileName: string): string;
 begin
-  if not FContent.TryGetValue(KeyOf(AFileName), Result) then
+  if not FContent.TryGetValue(TTextNames.FolderKey(AFileName), Result) then
   begin
     Result := '';
   end;
@@ -502,8 +494,8 @@ end;
 
 procedure TFakeFiles.WriteText(const AFileName, AText: string);
 begin
-  FContent.AddOrSetValue(KeyOf(AFileName), AText);
-  FNames.AddOrSetValue(KeyOf(AFileName), AFileName.Replace('/', '\'));
+  FContent.AddOrSetValue(TTextNames.FolderKey(AFileName), AText);
+  FNames.AddOrSetValue(TTextNames.FolderKey(AFileName), AFileName.Replace('/', '\'));
 end;
 
 procedure TFakeFiles.AppendText(const AFileName, AText: string);
@@ -513,27 +505,27 @@ end;
 
 function TFakeFiles.CanWrite(const ADirectory: string): Boolean;
 begin
-  Result := not FReadOnly.Contains(KeyOf(ADirectory));
+  Result := not FReadOnly.Contains(TTextNames.FolderKey(ADirectory));
 end;
 
 procedure TFakeFiles.Lock(const AFileName: string);
 begin
-  FLocked.Add(KeyOf(AFileName));
+  FLocked.Add(TTextNames.FolderKey(AFileName));
 end;
 
 procedure TFakeFiles.Unlock(const AFileName: string);
 begin
-  FLocked.Remove(KeyOf(AFileName));
+  FLocked.Remove(TTextNames.FolderKey(AFileName));
 end;
 
 procedure TFakeFiles.DenyWrite(const ADirectory: string);
 begin
-  FReadOnly.Add(KeyOf(ADirectory));
+  FReadOnly.Add(TTextNames.FolderKey(ADirectory));
 end;
 
 procedure TFakeFiles.Damage(const AFileName: string);
 begin
-  FBroken.Add(KeyOf(AFileName));
+  FBroken.Add(TTextNames.FolderKey(AFileName));
 end;
 
 function TFakeFiles.Count: Integer;
@@ -622,7 +614,7 @@ var
   mSignature: TUpdateSignature;
 begin
   Result := Default(TUpdateSignature);
-  if FSigners.TryGetValue(KeyOf(AFileName), mSignature) then
+  if FSigners.TryGetValue(TTextNames.FolderKey(AFileName), mSignature) then
   begin
     Result := mSignature;
   end;
@@ -655,7 +647,7 @@ procedure TFakeTrust.Sign(const AFileName, ASubject: string);
 begin
   if ASubject = '' then
   begin
-    FSigners.AddOrSetValue(KeyOf(AFileName), Default(TUpdateSignature));
+    FSigners.AddOrSetValue(TTextNames.FolderKey(AFileName), Default(TUpdateSignature));
     Exit;
   end;
   SignAs(AFileName, ASubject, ThumbprintOf(ASubject));
@@ -669,7 +661,7 @@ begin
   mSignature.Valid := True;
   mSignature.Subject := ASubject;
   mSignature.Thumbprint := AThumbprint;
-  FSigners.AddOrSetValue(KeyOf(AFileName), mSignature);
+  FSigners.AddOrSetValue(TTextNames.FolderKey(AFileName), mSignature);
 end;
 
 class function TFakeTrust.ThumbprintOf(const ASubject: string): string;

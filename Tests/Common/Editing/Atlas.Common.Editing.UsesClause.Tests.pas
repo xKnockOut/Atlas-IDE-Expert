@@ -45,6 +45,8 @@ type
     procedure GroupedWrapsLongGroups;
     [Test]
     procedure GroupedSingleGroupWithoutComment;
+    [Test]
+    procedure AddMissingUnitSkipsUsedUnits;
   end;
 
 implementation
@@ -316,6 +318,20 @@ const
   cText = 'unit A;'#10'interface'#10'uses A1, B2;'#10'implementation'#10'end.';
 begin
   Assert.IsFalse(TUsesClauses.Organize(TPascalLexer.Tokenize(cText), cText, True, #10, mEdits));
+end;
+
+procedure TUsesClauseTests.AddMissingUnitSkipsUsedUnits;
+var
+  mEdit: TRuleEdit;
+begin
+  Assert.IsFalse(TUsesClauses.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+    'System.SysUtils', TArray<string>.Create('System'), #10, mEdit), 'schon eingebunden');
+  Assert.IsFalse(TUsesClauses.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+    'Daten.Werkzeug', nil, #10, mEdit), 'ohne Namespace schon eingebunden');
+  Assert.IsTrue(TUsesClauses.AddMissingUnit(TPascalLexer.Tokenize(cUnitText), OffsetOf(cUnitText, 'interface'),
+    'Vcl.Forms', nil, #10, mEdit));
+  Assert.AreEqual('uses System.SysUtils, Werkzeug in ''Werkzeug.pas'', Vcl.Forms;',
+    Apply(cUnitText, mEdit).Split([#10])[2]);
 end;
 
 initialization

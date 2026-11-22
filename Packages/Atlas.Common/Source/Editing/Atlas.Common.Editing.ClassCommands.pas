@@ -59,7 +59,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.TypeComments,
   Atlas.Common.Editing.ClassCompletion,
@@ -1285,24 +1285,20 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterClassCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('impl', cTexts[TClassCommandsText.CreateMissingMethodBodiesOf].Text, '/impl', ExecuteImpl));
-  ARegister(Command('ctor', cTexts[TClassCommandsText.ConstructorWithTheFieldsAs].Text, '/ctor owner', ExecuteCtor));
-  ARegister(Command('dtor', cTexts[TClassCommandsText.DestructorThatFreesCreatedFields].Text, '/dtor', ExecuteDtor));
-  ARegister(Command('override', cTexts[TClassCommandsText.OverrideAVirtualMethodOf].Text, '/override Paint',
-    ExecuteOverride));
-  ARegister(Command('msg', cTexts[TClassCommandsText.CreateAMessageMethod].Text, '/msg WM_SIZE', ExecuteMsg));
-  ARegister(Command('intf', cTexts[TClassCommandsText.AttachAnInterfaceToThe].Text, '/intf IExporter',
-    ExecuteIntf));
+  ARegister(TSlashCommand.Create('impl', cTexts[TClassCommandsText.CreateMissingMethodBodiesOf].Text, '/impl',
+      ExecuteImpl));
+  ARegister(TSlashCommand.Create('ctor', cTexts[TClassCommandsText.ConstructorWithTheFieldsAs].Text, '/ctor owner',
+      ExecuteCtor));
+  ARegister(TSlashCommand.Create('dtor', cTexts[TClassCommandsText.DestructorThatFreesCreatedFields].Text, '/dtor',
+      ExecuteDtor));
+  ARegister(TSlashCommand.Create('override', cTexts[TClassCommandsText.OverrideAVirtualMethodOf].Text,
+      '/override Paint', ExecuteOverride));
+  ARegister(TSlashCommand.Create('msg', cTexts[TClassCommandsText.CreateAMessageMethod].Text, '/msg WM_SIZE',
+      ExecuteMsg));
+  ARegister(TSlashCommand.Create('intf', cTexts[TClassCommandsText.AttachAnInterfaceToThe].Text, '/intf IExporter',
+      ExecuteIntf));
 end;
 
 initialization

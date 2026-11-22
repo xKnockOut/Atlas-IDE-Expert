@@ -45,7 +45,7 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.AnonymousMethods.Shared;
 
 type
@@ -106,8 +106,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.PromoteVariable,
@@ -1593,15 +1593,8 @@ end;
 
 class function TAnonymousMethods.Embed(const AInput: TAnonymousInput; out AAction: TCodeAction;
   out AReason: string): Boolean;
-var
-  mEmbedding: TAnonymousEmbedding;
 begin
-  mEmbedding := TAnonymousEmbedding.Create(AInput);
-  try
-    Result := mEmbedding.Run(AAction, AReason);
-  finally
-    mEmbedding.Free;
-  end;
+  Result := TAnonymousEmbedding.Execute(AInput, AAction, AReason);
 end;
 
 /// <summary>Baut die Umwandlung der geprüften Stelle mit dem Namen AName.</summary>

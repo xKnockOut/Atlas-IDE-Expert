@@ -11,15 +11,15 @@ uses
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.Service,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Mcp.Context;
 
 /// <summary>find_path über einen eigenen Uses-Graphen samt Bibliotheks-Units. In eigener Routine, damit die
 /// anonyme Methode nicht den Rahmen von Run einfängt (Leck unter Delphi).</summary>
 function FindPathOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
-  AWorkspace: TShellWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
+  AWorkspace: TCoreWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
 /// <summary>get_architecture über AArchitecture für den Ordner von AWorkspace.</summary>
-function ArchitectureOf(AWorkspace: TShellWorkspace; AArchitecture: TArchitectureService;
+function ArchitectureOf(AWorkspace: TCoreWorkspace; AArchitecture: TArchitectureService;
   const AAllFiles: TFunc<TArray<string>>; const ARoot: string): TMcpArchitectureFunc;
 /// <summary>Meldet get_architecture und find_path an.</summary>
 procedure RegisterArchitectureTools(const AContext: TMcpToolContext);
@@ -113,7 +113,7 @@ end;
 
 /// <summary>Anfrage für die Architekturübersicht des Ordners; AResolution > 0 gilt nur für diesen Aufruf (#1366).
 /// </summary>
-function ArchitectureRequestOf(AWorkspace: TShellWorkspace; const AAllFiles: TFunc<TArray<string>>;
+function ArchitectureRequestOf(AWorkspace: TCoreWorkspace; const AAllFiles: TFunc<TArray<string>>;
   const ARoot: string; AResolution: Double): TArchitectureRequest;
 var
   mSettings: TServerSettings;
@@ -169,7 +169,7 @@ end;
 
 /// <summary>Text der Architekturübersicht für get_architecture über AArchitecture; in eigener Routine, damit die
 /// anonyme Methode nicht den Rahmen von Run einfängt.</summary>
-function ArchitectureOf(AWorkspace: TShellWorkspace; AArchitecture: TArchitectureService;
+function ArchitectureOf(AWorkspace: TCoreWorkspace; AArchitecture: TArchitectureService;
   const AAllFiles: TFunc<TArray<string>>; const ARoot: string): TMcpArchitectureFunc;
 var
   mRoot: string;
@@ -221,7 +221,7 @@ end;
 /// <summary>find_path über einen eigenen Uses-Graphen samt Bibliotheks-Units. In eigener Routine, damit die
 /// anonyme Methode nicht den Rahmen von Run einfängt (Leck unter Delphi).</summary>
 function FindPathOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
-  AWorkspace: TShellWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
+  AWorkspace: TCoreWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
 begin
   Result :=
     function(const ARequest: TSymbolPathRequest): string

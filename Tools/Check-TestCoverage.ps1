@@ -61,7 +61,7 @@ $SourceDirs += @($PluginSources | ForEach-Object { "$_/Core" })
 
 # Unit → Grund. Nur, was sich ohne Betriebssystem, Netz oder IDE nicht sinnvoll prüfen lässt.
 $Exempt = @{
-    'Atlas.Windows.Editing.SystemColors'                = 'GetSysColor des laufenden Systems'
+    'Atlas.Windows.Pascal.SystemColors'                = 'GetSysColor des laufenden Systems'
     'Atlas.Windows.Diagnostics.Adapters.DebugOutputSink' = 'schreibt nur über OutputDebugString'
     'Atlas.Windows.Diagnostics.ProcessInfo'             = 'liest Angaben des eigenen Prozesses vom System'
     'Atlas.Windows.Diagnostics.DebugOutput'             = 'Hülle um OutputDebugString'

@@ -18,7 +18,7 @@ uses
   Atlas.Common.Documents.ChangeTracker;
 
 type
-  TFileWatcherChanged = reference to procedure(const AFiles: TArray<string>);
+  TFileWatcherChanged = Atlas.Common.Documents.ChangeTracker.TFileWatcherChanged;
 
   TFileWatcher = class
   public const
@@ -48,13 +48,8 @@ uses
 type
   /// <summary>Beobachter-Thread: Änderungsmeldungen der Ordner des Trackers, Abgleich spätestens alle cPollMs.
   /// </summary>
-  TWatchThread = class(TThread)
+  TWatchThread = class(TFileWatchThread<THandle>)
   private
-    FTracker: TFileChangeTracker;
-    FStop: THandle;
-    FReconfigure: THandle;
-    FOnChanged: TFileWatcherChanged;
-    FLogger: ILogger;
     /// <summary>[0] Stop, [1] neue Dateiliste, dahinter je Ordner eine Änderungsmeldung.</summary>
     function OpenHandles: TArray<THandle>;
     procedure CloseHandles(const AHandles: TArray<THandle>);
@@ -66,9 +61,6 @@ type
     function Watch(const AHandles: TArray<THandle>): Boolean;
   protected
     procedure Execute; override;
-  public
-    constructor Create(ATracker: TFileChangeTracker; AStop, AReconfigure: THandle;
-      const AOnChanged: TFileWatcherChanged; const ALogger: ILogger);
   end;
 
 { TFileWatcher }
@@ -94,18 +86,6 @@ begin
 end;
 
 { TWatchThread }
-
-constructor TWatchThread.Create(ATracker: TFileChangeTracker; AStop, AReconfigure: THandle;
-  const AOnChanged: TFileWatcherChanged; const ALogger: ILogger);
-begin
-  inherited Create(True);
-  FreeOnTerminate := False;
-  FTracker := ATracker;
-  FStop := AStop;
-  FReconfigure := AReconfigure;
-  FOnChanged := AOnChanged;
-  FLogger := ALogger;
-end;
 
 procedure TWatchThread.Execute;
 var

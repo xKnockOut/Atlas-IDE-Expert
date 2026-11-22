@@ -56,8 +56,6 @@ type
     /// zu ARoot.</summary>
     class function Todos(const ASettings: TServerSettings; const ARoot: string; const AFiles: TArray<string>;
       const AReadText: TReferenceReadText; const AFilter: TTodoFilter; AJson: Boolean): string; static;
-    /// <summary>AFileName relativ zu ARoot, wenn sie darunter liegt; sonst unverändert.</summary>
-    class function RelativeTo(const ARoot, AFileName: string): string; static;
     /// <summary>Befund als "Zeile:Spalte: Schwere [Regel] [Konfidenz …] Meldung" (Zeilen und Spalten ab 1).
     /// </summary>
     class function FindingLine(const AFinding: TRuleFinding): string; static;
@@ -79,7 +77,8 @@ uses
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
   Atlas.Common.Todos.Keywords,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -190,22 +189,13 @@ begin
   end;
 end;
 
-class function TMcpCheckTools.RelativeTo(const ARoot, AFileName: string): string;
-begin
-  Result := AFileName;
-  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
-  begin
-    Result := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
-  end;
-end;
-
 /// <summary>Befunde der Regeln aus AScope in AText (Inhalt von AFileName).</summary>
 function FileFindings(const AScope: TMcpRuleScope; const AFileName, AText: string; const ASource: TCheckSourceFunc;
   const AProject: TCheckProjectFunc): TArray<TRuleFinding>;
 var
   mScopes: TFindingScopes;
 begin
-  Result := TFileChecker.CheckText(AScope.Rules, AScope.Settings, TMcpCheckTools.RelativeTo(AScope.Root, AFileName),
+  Result := TFileChecker.CheckText(AScope.Rules, AScope.Settings, TTextNames.RelativeTo(AScope.Root, AFileName),
     AText, TCheckOrigin.ForFile(AProject, ASource, AFileName), mScopes);
 end;
 

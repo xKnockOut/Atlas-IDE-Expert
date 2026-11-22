@@ -148,9 +148,9 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.TreeUnits,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.UnitTemplates,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Localization.Texts;
 

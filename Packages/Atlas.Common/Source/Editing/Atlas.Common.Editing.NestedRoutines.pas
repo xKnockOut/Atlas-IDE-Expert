@@ -39,7 +39,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.CodeActions.Contract;
 
 type
   /// <summary>Ist der Typ ATypeName an AOffset ein Record oder Interface (dann const beim reinen Lesen)?</summary>
@@ -106,12 +106,13 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -376,20 +377,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Bezeichner der Art AKind unter ANode in Quelltextreihenfolge.</summary>
-function Collected(ANode: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>;
-var
-  mList: TList<TSyntaxNode>;
-begin
-  mList := TList<TSyntaxNode>.Create;
-  try
-    TRoutineLocals.CollectKind(ANode, AKind, mList);
-    Result := mList.ToArray;
-  finally
-    mList.Free;
-  end;
-end;
-
 /// <summary>Hat der Kopf AHeader Parameter, die ParameterTexts nicht lesen konnte?</summary>
 function UnreadableParameters(AHeader: TSyntaxNode; const AParameters: TArray<TParameterText>): Boolean;
 var
@@ -652,7 +639,7 @@ begin
   Result := '';
   OuterLocals := Cache.Locals(Outer);
   Captured := nil;
-  for mNode in Collected(Inner, TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(Inner, TSyntaxKind.Identifier) do
   begin
     if TRoutineParts.Shadowed(Cache, mNode, Inner, mNode.Name, True) or SameText(mNode.Name, Inner.Name) then
     begin
@@ -680,7 +667,7 @@ var
   mNode, mChild: TSyntaxNode;
   mIndex: Integer;
 begin
-  for mNode in Collected(Inner, TSyntaxKind.TypeReference) do
+  for mNode in TSyntaxNodes.OfKind(Inner, TSyntaxKind.TypeReference) do
   begin
     for mIndex := 0 to Outer.ChildCount - 1 do
     begin
@@ -842,7 +829,7 @@ begin
   InnerEdits := nil;
   OuterEdits := nil;
   Result := '';
-  for mNode in Collected(Outer, TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(Outer, TSyntaxKind.Identifier) do
   begin
     if not SameText(mNode.Name, Inner.Name) then
     begin
@@ -1249,8 +1236,8 @@ var
 begin
   mReferences := nil;
   Recursive := False;
-  mCandidates := Collected(Request.Tree.Root, TSyntaxKind.Identifier) +
-    Collected(Request.Tree.Root, TSyntaxKind.MemberAccess);
+  mCandidates := TSyntaxNodes.OfKind(Request.Tree.Root, TSyntaxKind.Identifier) +
+    TSyntaxNodes.OfKind(Request.Tree.Root, TSyntaxKind.MemberAccess);
   for mNode in mCandidates do
   begin
     if not SameText(mNode.Name, Short) then
@@ -1399,7 +1386,7 @@ begin
   begin
     Removed[mIndex] := False;
   end;
-  Identifiers := Collected(TRoutineBody.BodyOf(Routine), TSyntaxKind.Identifier);
+  Identifiers := TSyntaxNodes.OfKind(TRoutineBody.BodyOf(Routine), TSyntaxKind.Identifier);
   CallerLocals := Cache.Locals(Caller);
   Result := '';
   // Durchgereichte Parameter: Argument ist eine Variable oder ein Parameter des Aufrufers mit demselben Typ.
@@ -1448,7 +1435,7 @@ function TEmbedding.TypeShadowIssue: string;
 var
   mNode: TSyntaxNode;
 begin
-  for mNode in Collected(Routine, TSyntaxKind.TypeReference) do
+  for mNode in TSyntaxNodes.OfKind(Routine, TSyntaxKind.TypeReference) do
   begin
     if not TRoutineParts.Shadowed(Cache, mNode, Routine, mNode.Name, True) and Cache.Declares(Caller, mNode.Name,
       CallerBody.StartOffset - 1) then

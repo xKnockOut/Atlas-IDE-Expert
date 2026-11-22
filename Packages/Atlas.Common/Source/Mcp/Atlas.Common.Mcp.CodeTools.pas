@@ -112,7 +112,8 @@ uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.CheckTools,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -911,8 +912,7 @@ begin
   mLines := TStringList.Create;
   try
     mCount := 0;
-    for mFinding in TFileChecker.CheckText(AScope.Rules, AScope.Settings, TMcpCheckTools.RelativeTo(AScope.Root,
-      AFileName), mNewText,
+    for mFinding in TFileChecker.CheckText(AScope.Rules, AScope.Settings, TTextNames.RelativeTo(AScope.Root, AFileName), mNewText,
       TCheckOrigin.Make(TFileChecker.ProjectOf(FCheckProject, AFileName), mSource), mScopes) do
     begin
       Inc(mCount);

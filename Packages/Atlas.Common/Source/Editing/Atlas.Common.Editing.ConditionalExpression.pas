@@ -91,7 +91,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.ExpressionText,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,

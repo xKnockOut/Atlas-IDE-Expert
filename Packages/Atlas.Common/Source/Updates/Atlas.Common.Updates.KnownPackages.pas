@@ -73,7 +73,8 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Updates,
-  Atlas.Common.Updates.Ides;
+  Atlas.Common.Updates.Ides,
+  Atlas.Text.Names;
 
 const
   cLegacyPrefixes: array[0..2] of string = ('Atlas.IDE.Expert', 'Argus.IDE.Expert', 'BetterDelphiLSP');
@@ -104,20 +105,11 @@ end;
 
 { TUpdateKnownPackages }
 
-function NormalPath(const APath: string): string;
-begin
-  Result := LowerCase(APath.Replace('/', '\'));
-  while Result.EndsWith('\') do
-  begin
-    Result := Result.Substring(0, Length(Result) - 1);
-  end;
-end;
-
 { TUpdateKnownPackages }
 
 class function TUpdateKnownPackages.SamePath(const A, B: string): Boolean;
 begin
-  Result := NormalPath(A) = NormalPath(B);
+  Result := TTextNames.FolderKey(A) = TTextNames.FolderKey(B);
 end;
 
 class function TUpdateKnownPackages.FolderOf(const APath: string): string;

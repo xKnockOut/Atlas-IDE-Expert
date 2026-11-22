@@ -6,11 +6,11 @@
 interface
 
 uses
-  Shell.Workspace;
+  Core.Workspace;
 
 type
   /// <summary>Arbeit an einer Momentaufnahme der Arbeitsbereiche, unter deren Sperre ausgeführt.</summary>
-  TShellWorkspacesProc = reference to procedure(const AWorkspaces: TArray<TShellWorkspace>);
+  TShellWorkspacesProc = reference to procedure(const AWorkspaces: TArray<TCoreWorkspace>);
   /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter deren Sperre auf.</summary>
   TShellVisitWorkspacesProc = reference to procedure(const AVisit: TShellWorkspacesProc);
 

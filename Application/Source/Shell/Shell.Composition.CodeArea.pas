@@ -18,7 +18,7 @@ uses
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.Refactorings,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract,
   Shell.Composition.Core,
   Shell.Composition.Editing,
@@ -73,7 +73,7 @@ type
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function ProjectFiles: TArray<string>;
     function Namespaces: TArray<string>;
-    function PickWorkspace(const AFileName: string): TShellWorkspace;
+    function PickWorkspace(const AFileName: string): TCoreWorkspace;
     function RefactoringContextFor(const AUri: string): TRefactoringContext;
     function TestUnitServices: TShellTestUnitServices;
     function NavigationServices: TShellNavigationServices;
@@ -92,7 +92,7 @@ type
     /// <summary>Was „Fehlende Unit hinzufügen“ über Projekt, Gruppe und Index wissen muss (#1247).</summary>
     function MissingUnitSetupFor(const AFileName, AUnitName: string; out ASetup: TMissingUnitSetup): Boolean;
     /// <summary>Die anderen Projekte der Gruppe; nur unter FCore.Workspaces.Lock.</summary>
-    function GroupMembersOf(AWorkspace: TShellWorkspace): TArray<TMissingUnitProject>;
+    function GroupMembersOf(AWorkspace: TCoreWorkspace): TArray<TMissingUnitProject>;
     /// <summary>Datei der Unit AName laut Index; '' = unbekannt.</summary>
     function IndexUnitFile(AName: string): string;
   public
@@ -123,7 +123,7 @@ uses
   Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Editing.UsesGroups,
   Shell.Composition.Workspaces,
-  Shell.Workspace.Jobs;
+  Core.Workspace.Jobs;
 
 /// <summary>Fundort einer Unit-Datei aus Sicht von AUri (#2794): eigenes Projekt samt Suchpfad, ein anderes
 /// Projekt der Gruppe, die Delphi-Installation oder sonst der Bibliothekspfad.</summary>
@@ -132,7 +132,7 @@ begin
   Result :=
     function(const AUri, AFileName: string): TUsesUnitFile
     var
-      mOwn, mOther: TShellWorkspace;
+      mOwn, mOther: TCoreWorkspace;
       mRoot: string;
     begin
       Result := Default(TUsesUnitFile);
@@ -214,7 +214,7 @@ begin
   Result := FNavigation.Namespaces;
 end;
 
-function TShellCodeArea.PickWorkspace(const AFileName: string): TShellWorkspace;
+function TShellCodeArea.PickWorkspace(const AFileName: string): TCoreWorkspace;
 begin
   Result := FCore.Workspaces.Pick(AFileName);
 end;
@@ -421,7 +421,7 @@ end;
 
 function TShellCodeArea.NamingPrefixFor(const AUri: string; AKind: TNamingKind): string;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mProject: TProjectInfo;
   mContext: TIdeProjectContext;
 begin
@@ -436,7 +436,7 @@ end;
 
 function TShellCodeArea.CodeActionWorkspaceOf(const AUri: string): TShellCodeActionWorkspace;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := Default(TShellCodeActionWorkspace);
   Result.MemberOrder := TMemberOrderSettings.Default;
@@ -471,7 +471,7 @@ end;
 
 function TShellCodeArea.RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   AProject := Default(TProjectInfo);
   System.TMonitor.Enter(FCore.Workspaces.Lock);
@@ -486,7 +486,7 @@ end;
 function TShellCodeArea.MissingUnitSetupFor(const AFileName, AUnitName: string;
   out ASetup: TMissingUnitSetup): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mGroup: TArray<TMissingUnitProject>;
   mProject: TProjectInfo;
 begin
@@ -500,7 +500,7 @@ begin
       Exit(False);
     end;
     mGroup := GroupMembersOf(mWorkspace);
-    FCore.Workspaces.Hold(TArray<TShellWorkspace>.Create(mWorkspace));
+    FCore.Workspaces.Hold(TArray<TCoreWorkspace>.Create(mWorkspace));
   finally
     System.TMonitor.Exit(FCore.Workspaces.Lock);
   end;
@@ -508,10 +508,11 @@ begin
     Result := mWorkspace.State.Project(mProject);
     if Result then
     begin
-      ASetup := TShellWorkspaceJobs.MissingUnitSetupOf(mProject, mWorkspace.State.Install);
+      ASetup := TCoreWorkspaceJobs.MissingUnitSetupOf(mProject, mWorkspace.State.Install,
+        mWorkspace.Setup.Factories);
     end;
   finally
-    FCore.Workspaces.Release(TArray<TShellWorkspace>.Create(mWorkspace));
+    FCore.Workspaces.Release(TArray<TCoreWorkspace>.Create(mWorkspace));
   end;
   if not Result then
   begin
@@ -523,9 +524,9 @@ begin
   ASetup.IndexFile := IndexUnitFile;
 end;
 
-function TShellCodeArea.GroupMembersOf(AWorkspace: TShellWorkspace): TArray<TMissingUnitProject>;
+function TShellCodeArea.GroupMembersOf(AWorkspace: TCoreWorkspace): TArray<TMissingUnitProject>;
 var
-  mOther: TShellWorkspace;
+  mOther: TCoreWorkspace;
   mMember: TMissingUnitProject;
   mOtherProject: TProjectInfo;
 begin

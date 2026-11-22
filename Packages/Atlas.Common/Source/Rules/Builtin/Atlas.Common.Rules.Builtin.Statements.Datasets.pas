@@ -66,7 +66,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Generics,
   Atlas.Common.Localization.Texts;

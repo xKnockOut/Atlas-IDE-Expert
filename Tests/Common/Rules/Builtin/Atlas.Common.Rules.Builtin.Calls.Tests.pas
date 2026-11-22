@@ -100,7 +100,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.Builtin.Calls,
   Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Tests.RuleAssert;

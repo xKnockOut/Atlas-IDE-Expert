@@ -12,6 +12,8 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Profiling.Contract,
   Atlas.Core.VersionControl.Contract,
+  Core.Workspace.Setup,
+  Core.VersionControlChanges,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Compiler.Adapters.ProcessRunner,
   Atlas.Windows.Projects.Adapters.DelphiInstallation;
@@ -40,11 +42,23 @@ type
       static;
     /// <summary>Prober des Stichproben-Profilers (#2057); nil unter Linux, wo es keinen gibt.</summary>
     class function ProfileSampler: IAtlasProfileSampler; static;
+    /// <summary>Installation, Dateizugriff des Index und Unit-Suche für die Arbeitsbereiche.</summary>
+    class function WorkspaceFactories: TCoreWorkspaceFactories; static;
+    /// <summary>git und svn für Kommandozeile und Server: neuer Prozess, Prozessläufer der gemeinsamen Umsetzung
+    /// (der Hauptthread darf warten, ohne Abbruch) und ihr Erzeuger.</summary>
+    class function VcsAccess: TCoreVcsAccess; static;
   end;
 
 implementation
 
 uses
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Projects.Adapters.UnitLookup,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Providers.DiskFileSystem,
+  Atlas.Common.Rules.Contract,
+  Atlas.Core.VersionControl.Composition,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Profiling.Adapters.Sampler,
@@ -52,6 +66,32 @@ uses
 {$ELSE}
   Adapters.VersionControl.LinuxRunner;
 {$ENDIF}
+
+function InstalledVersions: TArray<string>;
+begin
+  Result := TDelphiInstallation.Versions;
+end;
+
+function InstallationOf(const AVersion: string): ILibraryPathProvider;
+begin
+  Result := TDelphiInstallation.Create(AVersion);
+end;
+
+function NewIndexFileSystem: IIndexFileSystem;
+begin
+  Result := TDiskIndexFileSystem.Create;
+end;
+
+function UnitLookupOf(const ASetup: TUnitLookupSetup): IRuleUnitLookup;
+begin
+  Result := TUnitLookup.Create(ASetup);
+end;
+
+function OpenVersionControl(const AWorkingCopy: TAtlasVcsWorkingCopy; const ARunner: IAtlasVcsRunner;
+  const AExecutable: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
+begin
+  Result := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, ARunner, AExecutable, ATimeoutMs);
+end;
 
 { TShellPlatformAdapters }
 
@@ -81,6 +121,23 @@ begin
 {$ELSE}
   Result := nil;
 {$ENDIF}
+end;
+
+class function TShellPlatformAdapters.WorkspaceFactories: TCoreWorkspaceFactories;
+begin
+  Result := Default(TCoreWorkspaceFactories);
+  Result.InstalledVersions := InstalledVersions;
+  Result.Installation := InstallationOf;
+  Result.IndexFileSystem := NewIndexFileSystem;
+  Result.UnitLookup := UnitLookupOf;
+end;
+
+class function TShellPlatformAdapters.VcsAccess: TCoreVcsAccess;
+begin
+  Result := Default(TCoreVcsAccess);
+  Result.Process := TProcessRunner.Create;
+  Result.Runner := CreateVcsRunner(True, nil);
+  Result.Open := OpenVersionControl;
 end;
 
 end.

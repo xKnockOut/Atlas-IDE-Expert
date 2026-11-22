@@ -10,7 +10,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.FormatCheck,
   Core.CommandLine,
-  Shell.VersionControlChanges;
+  Core.VersionControlChanges;
 
 type
   TLinterChanges = class
@@ -34,7 +34,6 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Common.Compiler.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.History.ChangedFiles,
   Shell.Composition.Platform,
@@ -54,11 +53,11 @@ const
 
 class function TLinterChanges.Detect(const AConfigRoot: string; const ASettings: TServerSettings): TVcsChanges;
 var
-  mProcess: ICompilerProcess;
+  mAccess: TCoreVcsAccess;
 begin
   // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
-  mProcess := TProcessRunner.Create;
-  Result := TVcsChanges.Detect(mProcess, AConfigRoot, ASettings.VcsProvider, ASettings.VcsGitPath,
+  mAccess := TShellPlatformAdapters.VcsAccess;
+  Result := TVcsChanges.Detect(mAccess, AConfigRoot, ASettings.VcsProvider, ASettings.VcsGitPath,
     ASettings.VcsSvnPath, ASettings.VcsTimeoutSeconds);
 end;
 
