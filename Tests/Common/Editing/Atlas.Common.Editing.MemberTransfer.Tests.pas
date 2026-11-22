@@ -36,7 +36,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Editing.MemberTransfer,
   Atlas.Tests.SourceText;
 

@@ -33,7 +33,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Editing.MemberTransfer;
 
 type
