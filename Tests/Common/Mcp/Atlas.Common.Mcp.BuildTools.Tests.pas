@@ -33,7 +33,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Mcp.BuildTools;
 

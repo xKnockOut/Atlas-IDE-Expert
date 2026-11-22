@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.PublishedMembers.Tests;
+﻿unit Atlas.Common.Index.PublishedMembers.Tests;
 
 interface
 
@@ -58,7 +58,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.PublishedMembers;
+  Atlas.Common.Index.PublishedMembers;
 
 const
   cBasisFile = 'C:\P\Basis.pas';
