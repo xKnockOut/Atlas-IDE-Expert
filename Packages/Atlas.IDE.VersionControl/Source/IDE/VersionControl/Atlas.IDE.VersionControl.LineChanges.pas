@@ -98,14 +98,14 @@ uses
   Atlas.Core.Editor.LineTail,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.UI.Popup.TitledTip,
+  Atlas.Vcl.Popup.TitledTip,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.VersionControl.LineChangesData,
   Atlas.IDE.VersionControl.LineChangesPaint,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Vcl.Theme.EditorFont;
 
 const
   cTickMs = 150;

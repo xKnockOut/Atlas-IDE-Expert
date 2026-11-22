@@ -49,7 +49,7 @@ uses
   Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Plugin.Style.Palette,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 { TAtlasComponentSearchWindowTests }
 

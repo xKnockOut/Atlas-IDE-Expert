@@ -260,12 +260,12 @@ uses
   Atlas.UI.Architecture.Assignment,
   Atlas.UI.Architecture.Texts,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.Scaling,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Scaling,
   Atlas.Core.Foundation.Calls,
-  Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.Controls,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.Core.Architecture.Resolution;
 
 {$R *.dfm}

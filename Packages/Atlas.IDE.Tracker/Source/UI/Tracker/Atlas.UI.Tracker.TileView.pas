@@ -48,7 +48,7 @@ implementation
 
 uses
   Atlas.Core.Foundation.Calls,
-  Atlas.UI.Foundation.Controls;
+  Atlas.Vcl.Controls.Helpers;
 
 { TAtlasTrackerTileView }
 

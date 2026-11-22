@@ -21,7 +21,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.ClassLayout;
+  Atlas.Common.Pascal.ClassLayout;
 
 type
   {$SCOPEDENUMS ON}

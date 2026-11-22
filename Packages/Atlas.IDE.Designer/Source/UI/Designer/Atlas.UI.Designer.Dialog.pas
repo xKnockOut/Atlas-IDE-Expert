@@ -15,7 +15,7 @@ uses
   Vcl.Forms,
   Vcl.ExtCtrls,
   Vcl.StdCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasDesignerDialog = class(TAtlasDialog)

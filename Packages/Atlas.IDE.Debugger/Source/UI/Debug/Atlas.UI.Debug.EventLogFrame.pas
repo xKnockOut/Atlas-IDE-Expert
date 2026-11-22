@@ -119,11 +119,11 @@ uses
   Vcl.Themes,
   Atlas.Plugin.Style.Color,
   Atlas.UI.Debug.EventLog.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.Controls,
-  Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

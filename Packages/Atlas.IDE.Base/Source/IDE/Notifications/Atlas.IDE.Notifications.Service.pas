@@ -30,7 +30,7 @@ uses
   Atlas.Core.Build.Verdict,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Build.Notices,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Notifications.Window;
 
 type

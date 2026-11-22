@@ -15,6 +15,9 @@
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
     - Atlas.Plugin  : Platform-Package des Plugins ohne host-spezifisches Framework (RTL, Winapi.*, Atlas.Text,
         Atlas.WinBase); nur Quelltext unter Packages/Atlas.Plugin/Source, den Base mitübersetzt (kein dpk)
+    - Atlas.Vcl     : Platform-Package des Plugins, das VCL kapselt (Steuerelemente, Dialoge, Thema, Popups); RTL,
+        Winapi.*, VCL, Atlas.Text, Atlas.WinBase, Atlas.Plugin; ohne Open Tools API und Fachcode von Base;
+        Quelltext unter Packages/Atlas.Vcl/Source wie Atlas.Plugin
     - Atlas.Core.VersionControl.* (Versionsverwaltung, #571): übersetzt auch der Server
         mit; darum nur RTL, Winapi, Atlas.Text.*, Atlas.WinBase.* und eigene Atlas.Core.VersionControl.*-Units
 
@@ -23,7 +26,7 @@
     '..\Atlas.Text\Source\…' bzw. '..\Atlas.WinBase\Source\…'). Geprüft wird, dass
       - das Plugin außer eigenen Units (Source\…) nur Units dieser beiden enthält,
       - es genau die Units aus Atlas.Text.dpk und Atlas.WinBase.dpk enthält (sonst W1033),
-      - es jede Unit unter Packages/Atlas.Plugin/Source enthält (ohne eigenes dpk),
+      - es jede Unit unter Packages/Atlas.Plugin/Source und Packages/Atlas.Vcl/Source enthält (ohne eigenes dpk),
       - Atlas.Tests.dpr und AtlasServer.dpr keine Quellen der beiden einbinden
         (sie linken die DCUs aus Dcu\Atlas.Text bzw. Dcu\Atlas.WinBase; zwei Fassungen vermeiden).
 
@@ -228,6 +231,16 @@ $Packages += @{
                          'PropInspAPI', 'DockForm')
     ForbiddenUnits   = $LegacyVclUnits
     Reason           = 'frei von VCL, Open Tools API und Fachcode von Base (nur RTL, Windows-API, Atlas.Text, Atlas.WinBase)'
+}
+$Packages += @{
+    Name             = 'Atlas.Vcl'
+    Path             = 'Packages/Atlas.Vcl'
+    AllowedRequires  = @()
+    ForbiddenPrefix  = @('FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.', 'Setup.',
+                         'ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', 'DesignWindows', 'PropInspAPI',
+                         'DockForm')
+    ForbiddenUnits   = @()
+    Reason           = 'frei von Open Tools API und Fachcode von Base (nur RTL, Windows-API, VCL, Atlas.Text, Atlas.WinBase, Atlas.Plugin)'
 }
 # Module requiren nur Base, das auch die Verträge zwischen Modulen enthält (Regel 9).
 foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
@@ -454,7 +467,7 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'EnsureFont'
         Folder  = 'Packages'
-        Home    = 'TAtlasEditorFont in Atlas.UI.Foundation.EditorFont'
+        Home    = 'TAtlasEditorFont in Atlas.Vcl.Theme.EditorFont'
         Allowed = @{}
     }
     [pscustomobject]@{
@@ -608,8 +621,8 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
-$RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Plugin', 'Atlas.Core',
-    'Atlas.UI', 'Atlas.IDE')
+$RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Plugin', 'Atlas.Vcl',
+    'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
 # Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
 $HostedFeatures = @()
@@ -851,10 +864,10 @@ if (Test-Path $atlasJson) {
 }
 
 # Frameworks im Contract (Konzept 7.1): Ein Vertrag legt seine Konsumenten nicht auf VCL, FMX, Windows-API oder
-# Open Tools API fest. Genehmigte Sammelausnahme (docs/Architektur.md, „Genehmigte Ausnahmen“): VCL in Verträgen
-# der UI-Schicht, deren Konsumenten ohnehin VCL-Steuerelemente bauen.
+# Open Tools API fest. Genehmigte Einzelausnahme (docs/Architektur.md, „Genehmigte Ausnahmen“): Atlas.UI.Settings.Contract
+# reicht die Steuerelemente einer Optionsseite, die Base und Module mit derselben VCL bauen (Vcl.Controls).
 $ContractFrameworks = '^(?i)(Vcl|FMX|Winapi|System\.Win|ToolsAPI|DesignIntf|DesignEditors|PaletteAPI)(\.|$)'
-$ContractFrameworkAllow = @(@{ Unit = 'Atlas.UI.*'; Uses = 'Vcl.*' })
+$ContractFrameworkAllow = @(@{ Unit = 'Atlas.UI.Settings.Contract'; Uses = 'Vcl.Controls' })
 
 function Test-RoleApproved([string] $Source, [string] $Target) {
     foreach ($entry in $RoleImportAllow) {
@@ -915,8 +928,8 @@ foreach ($package in $Packages) {
 }
 
 # Atlas.Text und Atlas.WinBase im Plugin: als Quelltext, genau mit den Units ihres dpk. Platform-Packages ohne dpk
-# (Atlas.Plugin): genau mit allen Units unter ihrem Ordner Source.
-$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin')
+# (Atlas.Plugin, Atlas.Vcl): genau mit allen Units unter ihrem Ordner Source.
+$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin', 'Atlas.Vcl')
 $pluginDpkName = "Packages/$PluginBaseFolder/$PluginBaseFolder.dpk"
 $pluginDpk = Join-Path $Root $pluginDpkName
 if (Test-Path $pluginDpk) {
@@ -995,7 +1008,7 @@ foreach ($dir in @('Packages', 'Application')) {
         foreach ($unit in Get-ClauseEntries $text 'uses') {
             if ($unit.Name -notmatch $ContractFrameworks) { continue }
             if ($ContractFrameworkAllow | Where-Object { $ownUnit -like $_.Unit -and $unit.Name -like $_.Uses }) { continue }
-            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – ein Contract bindet kein Framework ein (VCL, FMX, Windows, Open Tools API); nur Verträge von Atlas.UI.* dürfen VCL verwenden"
+            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – ein Contract bindet kein Framework ein (VCL, FMX, Windows, Open Tools API); Ausnahmen mit Grund in `$ContractFrameworkAllow"
         }
         $interface = [regex]::Match($text, '(?im)^\s*implementation\b')
         $head = $text

@@ -31,7 +31,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Status.Contract,
   Atlas.Core.Setup.Checklist,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Texte der Einrichtung in der Sprache der IDE aus Befund und Werten der Prüfung.</summary>
@@ -150,7 +150,7 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Core.Status.Signal,
   System.Math,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Setup.Strings;
 
 const

@@ -9,7 +9,7 @@ interface
 uses
   Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Section,
   Atlas.UI.Settings.Page,
   Vcl.Controls,

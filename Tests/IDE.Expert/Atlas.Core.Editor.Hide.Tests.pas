@@ -49,7 +49,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,

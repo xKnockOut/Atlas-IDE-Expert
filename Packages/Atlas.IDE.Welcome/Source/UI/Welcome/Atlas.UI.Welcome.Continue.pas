@@ -240,11 +240,11 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.Text.Uris,
   Atlas.Text.Arrays,
   Atlas.Core.Foundation.Calls,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   cSeparator = ' · ';

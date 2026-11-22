@@ -40,7 +40,7 @@ uses
   Atlas.Core.Tests.Explorer,
   Atlas.UI.Tests.ExplorerDetails,
   Atlas.UI.Tests.ListBar,
-  Atlas.UI.Foundation.FillFrame;
+  Atlas.Vcl.Forms.FillFrame;
 
 type
   /// <summary>Ereignisse des Fensters; nil = keins.</summary>
@@ -173,7 +173,7 @@ implementation
 
 uses
   Atlas.UI.Tests.Strings,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.Core.Foundation.Calls;
 
 {$R *.dfm}

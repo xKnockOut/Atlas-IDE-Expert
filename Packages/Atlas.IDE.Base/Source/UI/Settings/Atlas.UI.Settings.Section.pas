@@ -14,7 +14,7 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.Vcl.Options.ChoiceBox;
 
 type
   TAtlasSettingsSection = class(TInterfacedObject, IAtlasSettingsSection)

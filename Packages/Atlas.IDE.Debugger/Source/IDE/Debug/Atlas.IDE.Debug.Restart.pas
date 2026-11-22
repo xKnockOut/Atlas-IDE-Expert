@@ -85,7 +85,7 @@ uses
   System.Types,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,

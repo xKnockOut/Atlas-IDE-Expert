@@ -45,7 +45,7 @@ uses
   Vcl.Menus,
   Vcl.ExtCtrls,
   Atlas.Core.UnitRelations.Model,
-  Atlas.UI.Style.Symbol;
+  Atlas.Vcl.Images.Symbol;
 
 type
   /// <summary>Datei öffnen; ALine = -1: nur die Unit, sonst die Stelle (0-basiert).</summary>
@@ -181,7 +181,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Style.Symbol,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Foundation.Menus;
+  Atlas.Vcl.Controls.Menus;
 
 {$R *.dfm}
 

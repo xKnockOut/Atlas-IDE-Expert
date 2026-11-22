@@ -36,7 +36,7 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Strings,
   Atlas.UI.Status.Window,
   Atlas.Core.Status.Signal;

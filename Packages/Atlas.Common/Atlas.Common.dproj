@@ -169,12 +169,14 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Service.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Contract.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Api.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Derived.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.TypedScope.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.WarnSwitches.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ManagedTypes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Registry.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Suppressions.pas"/>
+        <DCCReference Include="Source\Findings\Atlas.Common.Findings.Suppressions.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Engine.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Profiles.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Checker.pas"/>
@@ -470,7 +472,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PropertyFromAccessors.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextChanges.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassLayout.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ClassLayout.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ExtractInterface.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceChanges.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExtractInterface.pas"/>

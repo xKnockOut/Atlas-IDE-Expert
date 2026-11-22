@@ -23,7 +23,7 @@ uses
   Vcl.Controls,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Style.Palette,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.Core.Modules.Registry,

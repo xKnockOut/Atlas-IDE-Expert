@@ -87,7 +87,7 @@ uses
   Vcl.Forms,
   Atlas.Plugin.Style.Color,
   Atlas.UI.SymbolPath.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Logische Bildpunkte bei 96 dpi.</summary>

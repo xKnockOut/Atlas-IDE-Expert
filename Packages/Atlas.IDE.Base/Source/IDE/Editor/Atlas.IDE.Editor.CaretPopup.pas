@@ -23,7 +23,7 @@ uses
   Winapi.Windows,
   Vcl.AppEvnts,
   ToolsAPI.Editor,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.Plugin.Diagnostics.Guard;
 
 type

@@ -129,10 +129,10 @@ implementation
 uses
   Atlas.Core.Documentation.Contract,
   Atlas.Plugin.Style.Color,
-  Atlas.UI.Popup.Draw,
+  Atlas.Vcl.Popup.Draw,
   System.SysUtils,
   System.Math,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 const
   /// <summary>Bildschirmauflösung, auf die sich alle Maße beziehen.</summary>

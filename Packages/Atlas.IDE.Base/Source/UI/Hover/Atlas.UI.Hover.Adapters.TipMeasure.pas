@@ -10,7 +10,7 @@ interface
 uses
   System.Types,
   Vcl.Graphics,
-  Atlas.UI.Popup.Styled,
+  Atlas.Vcl.Popup.Styled,
   Atlas.Core.Hover.Contract;
 
 type

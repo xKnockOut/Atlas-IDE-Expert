@@ -32,7 +32,7 @@ uses
   Vcl.Graphics,
   Atlas.UI.Strings,
   Atlas.Core.Diagnostics.Processes,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasProcessesActions = record
@@ -127,7 +127,7 @@ implementation
 
 uses
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   // Breite der Knöpfe „Aktualisieren“ und „Schließen“ in der Fußleiste.

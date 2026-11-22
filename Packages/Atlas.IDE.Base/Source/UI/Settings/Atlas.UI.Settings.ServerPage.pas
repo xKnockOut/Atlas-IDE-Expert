@@ -65,10 +65,10 @@ type
 implementation
 
 uses
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   // Linker Rand des Knopfs für die Projekteinstellungen.

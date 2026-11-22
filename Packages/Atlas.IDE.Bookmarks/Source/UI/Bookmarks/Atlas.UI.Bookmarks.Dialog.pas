@@ -15,7 +15,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasBookmarkDialog = class(TAtlasDialog)
@@ -43,7 +43,7 @@ implementation
 
 uses
   Atlas.UI.Bookmarks.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

@@ -90,7 +90,11 @@ implementation
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.InheritanceDepths,
+  Adapters.Lsp.InheritanceDepths;
 
 { TShellAnalysis }
 
@@ -146,15 +150,24 @@ begin
 end;
 
 procedure TShellAnalysis.CreateEditorViews;
+var
+  mRuleDepths: IRuleInheritanceDepths;
+  mDepths: ILspInheritanceDepths;
 begin
+  // Vererbungstiefe (#980) für Code Lens und die Metrik-Linse des Plugins: gerechnet von den Prüfregeln, über den
+  // Host-Adapter.
+  mRuleDepths := TRuleInheritanceDepths.Create;
+  mDepths := TLspInheritanceDepthsAdapter.Wrap(mRuleDepths);
   FInlayHints := TLspInlayHints.Create(FServices.Documents, FServices.Index, ReadText,
     FServices.InlayHintSettingsFor, FServices.EnsureUnit);
   FCodeLens := TLspCodeLens.Create(FServices.Documents, FServices.Index, ReadText, FServices.ProjectFiles,
     FServices.EnsureUnit);
   FCodeLens.MetricsFor := FServices.CodeLensMetricsFor;
+  FCodeLens.InheritanceDepths := mDepths;
   FMetrics := TLspMetrics.Create(FServices.MetricsSourceFor, ReadText);
   // Vererbungstiefe in der Metrik-Linse des Plugins (#980).
   FMetrics.Index := FServices.Index;
+  FMetrics.InheritanceDepths := mDepths;
   FTodos := TLspTodos.Create(FServices.MetricsSourceFor, ReadText);
   FSemanticTokens := TLspSemanticTokens.Create(FServices.Documents, FServices.Index, FServices.EnsureUnit);
 end;

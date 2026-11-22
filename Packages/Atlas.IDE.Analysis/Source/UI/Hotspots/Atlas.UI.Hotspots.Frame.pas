@@ -171,10 +171,10 @@ uses
   System.Math,
   Vcl.Dialogs,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Foundation.Scaling,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.Menus,
-  Atlas.UI.Foundation.Controls;
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Controls.Helpers;
 
 {$R *.dfm}
 
