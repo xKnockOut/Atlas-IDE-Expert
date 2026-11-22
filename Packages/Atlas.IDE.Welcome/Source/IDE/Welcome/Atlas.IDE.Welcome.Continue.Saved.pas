@@ -31,7 +31,7 @@ uses
   Vcl.Forms,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Completion.Favorites,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Welcome.IndexFiles,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Welcome.Neighbors,

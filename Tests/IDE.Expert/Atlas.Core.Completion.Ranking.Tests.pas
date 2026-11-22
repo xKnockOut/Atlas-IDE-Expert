@@ -104,7 +104,7 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Usage,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Core.Completion.Providers.Server,

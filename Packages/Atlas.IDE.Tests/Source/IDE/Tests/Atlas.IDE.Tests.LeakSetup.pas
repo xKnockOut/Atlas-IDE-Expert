@@ -39,7 +39,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Tests.LeakSetup,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,

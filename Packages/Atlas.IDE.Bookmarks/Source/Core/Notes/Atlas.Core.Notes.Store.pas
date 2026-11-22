@@ -148,7 +148,7 @@ uses
   System.Generics.Defaults,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Summary.Json,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Marks.Ids,
   Atlas.Text.Json,
   Atlas.Text.Uris;

@@ -101,7 +101,7 @@ implementation
 uses
   System.JSON,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.DataBreakClasses,
   Atlas.Core.Settings.VisualizerKinds,
@@ -111,9 +111,9 @@ uses
   Atlas.Vcl.Popup.Window,
   Atlas.UI.Debug.StopBar,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Caret,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Caret,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.RunMenu;

@@ -30,7 +30,7 @@ uses
   Atlas.Core.Designer.SelectionSets,
   Atlas.Core.Designer.Groups,
   Atlas.UI.Designer.Outlines,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -127,13 +127,13 @@ uses
   Vcl.Dialogs,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Designer.Names;
 
 const

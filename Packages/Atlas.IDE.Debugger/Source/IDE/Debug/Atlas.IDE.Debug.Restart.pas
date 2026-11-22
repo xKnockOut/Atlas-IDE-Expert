@@ -86,14 +86,14 @@ uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Vcl.Popup.Window,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.Session.Strings,
   Atlas.Core.Foundation.Calls,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 const
   /// <summary>Zeichen hinter fertigen bzw. gescheiterten Schritten.</summary>

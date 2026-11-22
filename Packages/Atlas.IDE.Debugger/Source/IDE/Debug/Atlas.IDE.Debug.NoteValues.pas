@@ -70,7 +70,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.StopProgress,
   Atlas.Core.Debug.Variables,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.Core.Debug.WatchScopes,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.EvaluateStore,

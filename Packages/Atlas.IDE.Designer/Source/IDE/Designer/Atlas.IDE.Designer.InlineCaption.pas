@@ -29,7 +29,7 @@ uses
   Vcl.AppEvnts,
   Atlas.Core.Designer.InlineCaption,
   Atlas.UI.Designer.CaptionEditor,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -111,7 +111,7 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.FitText,
   Atlas.IDE.Designer.FormTextProps,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Designer.Outlines;
 

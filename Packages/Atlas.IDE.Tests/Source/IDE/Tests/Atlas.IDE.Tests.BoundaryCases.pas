@@ -77,7 +77,7 @@ uses
   Atlas.Text.DUnitX,
   Atlas.Text.DUnitX.CommandLine,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Uris,
+  Atlas.Plugin.Lsp.Uris,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Host,

@@ -148,7 +148,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Flaky,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Tests.Projects,

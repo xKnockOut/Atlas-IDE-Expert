@@ -47,7 +47,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Builtin.DeadCode;
 
 { TRuleDocumentChecks }
@@ -63,12 +63,7 @@ var
   mContext: TRuleCheckContext;
   mHasContext: Boolean;
 begin
-  mContext := Default(TRuleCheckContext);
-  mHasContext := Assigned(FProvider) and FProvider(AUri, mContext);
-  if not mHasContext then
-  begin
-    mContext := Default(TRuleCheckContext);
-  end;
+  mHasContext := TRuleContexts.Lookup(FProvider, AUri, mContext);
   mContext.Cancelled := ACancelled;
   Result := TRuleDocumentCheck.Create(mContext, mHasContext);
 end;

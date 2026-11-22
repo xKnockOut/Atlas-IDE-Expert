@@ -188,7 +188,7 @@ uses
   Atlas.Text.Jsonc,
   Atlas.Text.Checkin,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 function FolderOf(const AFileName: string): string;
 var

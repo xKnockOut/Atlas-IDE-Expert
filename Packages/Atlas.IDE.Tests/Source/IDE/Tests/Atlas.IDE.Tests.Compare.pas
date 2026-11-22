@@ -98,7 +98,7 @@ uses
   ToolsAPI,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Tests.Debug,

@@ -59,8 +59,8 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
 function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;

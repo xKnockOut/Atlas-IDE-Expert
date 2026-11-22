@@ -112,7 +112,7 @@ uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Rules.OwnershipPlan,
@@ -126,10 +126,10 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style;
 
 const
   cTimeoutMs = 20000;

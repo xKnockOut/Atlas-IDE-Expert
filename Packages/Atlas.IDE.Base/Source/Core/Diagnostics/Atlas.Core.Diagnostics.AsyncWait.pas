@@ -19,7 +19,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 type
 {$SCOPEDENUMS ON}

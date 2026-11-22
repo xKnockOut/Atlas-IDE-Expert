@@ -75,13 +75,13 @@ implementation
 uses
   Atlas.Core.Debug.InstanceBreakpoint,
   Atlas.Core.Settings.VisualizerKinds,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Debug.Breakpoints.Strings,
   Atlas.UI.Debug.DataBreakpoints.Strings,
   Atlas.UI.Debug.InstanceBreakpoint,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 { TAtlasIdeInstanceBreakpoint.TListener }
 

@@ -81,7 +81,7 @@ uses
   Atlas.Text.Updates,
   Atlas.Text.CommandLine,
   Atlas.WinBase.Process,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Updates.Texts,
   Atlas.Core.Notifications.MessageSink;

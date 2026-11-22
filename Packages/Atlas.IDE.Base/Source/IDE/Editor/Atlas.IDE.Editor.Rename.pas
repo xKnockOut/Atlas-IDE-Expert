@@ -45,10 +45,10 @@ uses
   Atlas.Core.Results.Model,
   Atlas.UI.Results.RenamePreview,
   Atlas.UI.Results.View,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Forms.Designer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Navigation;
 
 const

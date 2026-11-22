@@ -26,7 +26,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Designer.Usages,
   Atlas.UI.Designer.Bar,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   TAtlasIdeDesignerUsages = class

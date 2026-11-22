@@ -212,12 +212,12 @@ uses
   System.Math,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Summary.Json,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Marks.Ids,
   Atlas.Text.Json,
   Atlas.Text.Uris,
   Atlas.Text.Files,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.

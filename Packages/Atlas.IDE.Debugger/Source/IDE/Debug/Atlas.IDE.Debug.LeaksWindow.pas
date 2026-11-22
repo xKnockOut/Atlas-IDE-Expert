@@ -45,7 +45,7 @@ uses
   ToolsAPI,
   Atlas.UI.Debug.Leaks.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TLeaksDock = class(TInterfacedObject, INTACustomDockableForm)

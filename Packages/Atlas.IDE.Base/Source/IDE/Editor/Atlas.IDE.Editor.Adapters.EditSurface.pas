@@ -46,7 +46,7 @@ uses
   System.SysUtils,
   System.Math,
   Atlas.Core.Lsp.Session,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot;
 
 { TAtlasIdeEditSurface }

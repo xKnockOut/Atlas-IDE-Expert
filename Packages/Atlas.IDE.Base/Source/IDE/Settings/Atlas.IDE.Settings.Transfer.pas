@@ -74,7 +74,7 @@ uses
   Atlas.UI.Settings.Transfer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.Text.Files;
 
 function ReadText(const AFileName: string; out AText: string): Boolean;

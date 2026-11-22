@@ -77,7 +77,7 @@ uses
   Atlas.Text.Chars,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Editor.Surfaces;
 
 /// <summary>Steht an oder vor ACharacter ein Zeichen eines Bezeichners?</summary>

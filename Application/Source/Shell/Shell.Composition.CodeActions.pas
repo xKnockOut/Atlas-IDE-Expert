@@ -97,6 +97,9 @@ uses
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Documents.Uris,
   Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.DocumentActions,
+  Adapters.Lsp.RuleActions,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Semantics.UsesUsage,
   Core.Bootstrap,
@@ -147,10 +150,13 @@ end;
 { TShellCodeActions }
 
 constructor TShellCodeActions.Create(const AServices: TShellCodeActionServices);
+var
+  mRules: IRuleCodeActions;
 begin
   inherited Create;
   FServices := AServices;
-  FCodeActions := TLspCodeActions.Create(FServices.Documents, FServices.RuleContextFor);
+  mRules := TRuleCodeActionsProvider.Create(FServices.RuleContextFor);
+  FCodeActions := TLspCodeActions.Create(FServices.Documents, TLspRuleActionsAdapter.Wrap(mRules));
   FCodeActions.FormActions := FormActionsFunc();
   FCodeActions.StringLiteralFor := FServices.StringLiteralFor;
   FCodeActions.DocCommentsFor := FServices.DocCommentsFor;

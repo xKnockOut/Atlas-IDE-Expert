@@ -77,7 +77,7 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Tests.Lens,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Theme.Style;
 
 const
   cCreateTag = -1;

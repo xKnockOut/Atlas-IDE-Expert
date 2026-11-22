@@ -155,7 +155,6 @@ Atlas.IDE.Base	Atlas.Core.Completion.SnippetCatalog	Core/Completion/Atlas.Core.C
 Atlas.IDE.Base	Atlas.Core.Completion.Snippets	Core/Completion/Atlas.Core.Completion.Snippets.pas	Ordner `Core/Completion`
 Atlas.IDE.Base	Atlas.Core.Completion.Usage	Core/Completion/Atlas.Core.Completion.Usage.pas	Ordner `Core/Completion`
 Atlas.IDE.Base	Atlas.Core.Completion.Width	Core/Completion/Atlas.Core.Completion.Width.pas	Ordner `Core/Completion`
-Atlas.IDE.Base	Atlas.Core.Completion.Word	Core/Completion/Atlas.Core.Completion.Word.pas	Ordner `Core/Completion`
 Atlas.IDE.Base	Atlas.Core.Credentials.Contract	Core/Credentials/Atlas.Core.Credentials.Contract.pas	Anmeldespeicher für Schlüssel und Token als Schnittstelle; Module Tracker und KI-Assistenten, #1922
 Atlas.IDE.Base	Atlas.Core.Credentials.Providers.Windows	Core/Credentials/Atlas.Core.Credentials.Providers.Windows.pas	Anmeldespeicher von Windows, einmal für alle Module (Build-Server, Issue-Tracker, KI-Anbieter), #1922
 Atlas.IDE.Base	Atlas.Core.DebugControl.Types	Core/DebugControl/Atlas.Core.DebugControl.Types.pas	Daten der Debugger-Steuerung für KI-Assistenten: Debugger, Eingang der KI-Assistenten und Vertrag (#1874)
@@ -163,7 +162,6 @@ Atlas.IDE.Base	Atlas.Core.Diagnostics.AsyncWait	Core/Diagnostics/Atlas.Core.Diag
 Atlas.IDE.Base	Atlas.Core.Diagnostics.BackgroundJobs	Core/Diagnostics/Atlas.Core.Diagnostics.BackgroundJobs.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.BoundedStream	Core/Diagnostics/Atlas.Core.Diagnostics.BoundedStream.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.BugReport	Core/Diagnostics/Atlas.Core.Diagnostics.BugReport.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Diagnostics.Deadline	Core/Diagnostics/Atlas.Core.Diagnostics.Deadline.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.Edition	Core/Diagnostics/Atlas.Core.Diagnostics.Edition.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.ExitWatch	Core/Diagnostics/Atlas.Core.Diagnostics.ExitWatch.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.Export	Core/Diagnostics/Atlas.Core.Diagnostics.Export.pas	Ordner `Core/Diagnostics`
@@ -184,17 +182,14 @@ Atlas.IDE.Base	Atlas.Core.Diagnostics.ThreadList	Core/Diagnostics/Atlas.Core.Dia
 Atlas.IDE.Base	Atlas.Core.Diagnostics.TimeLimit	Core/Diagnostics/Atlas.Core.Diagnostics.TimeLimit.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.Timing	Core/Diagnostics/Atlas.Core.Diagnostics.Timing.pas	Ordner `Core/Diagnostics`
 Atlas.IDE.Base	Atlas.Core.Diagnostics.UserIdle	Core/Diagnostics/Atlas.Core.Diagnostics.UserIdle.pas	Ordner `Core/Diagnostics`
-Atlas.IDE.Base	Atlas.Core.Dock.Plan	Core/Dock/Atlas.Core.Dock.Plan.pas	Ordner `Core/Dock`
 Atlas.IDE.Base	Atlas.Core.Documentation.Contract	Core/Documentation/Atlas.Core.Documentation.Contract.pas	Ordner `Core/Documentation`
 Atlas.IDE.Base	Atlas.Core.Documentation.Layout	Core/Documentation/Atlas.Core.Documentation.Layout.pas	Ordner `Core/Documentation`
 Atlas.IDE.Base	Atlas.Core.Documentation.Typeset	Core/Documentation/Atlas.Core.Documentation.Typeset.pas	Ordner `Core/Documentation`
-Atlas.IDE.Base	Atlas.Core.Editor.BarDock	Core/Editor/Atlas.Core.Editor.BarDock.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.BlockComment	Core/Editor/Atlas.Core.Editor.BlockComment.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.BlockFolds	Core/Editor/Atlas.Core.Editor.BlockFolds.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.CaretSteps	Core/Editor/Atlas.Core.Editor.CaretSteps.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.ChangeSignature	Core/Editor/Atlas.Core.Editor.ChangeSignature.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.ClassExtraction	Core/Editor/Atlas.Core.Editor.ClassExtraction.pas	Ordner `Core/Editor`
-Atlas.IDE.Base	Atlas.Core.Editor.CloseRules	Core/Editor/Atlas.Core.Editor.CloseRules.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.CodeInsightKeys	Core/Editor/Atlas.Core.Editor.CodeInsightKeys.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.CommentContinuation	Core/Editor/Atlas.Core.Editor.CommentContinuation.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.Conditionals	Core/Editor/Atlas.Core.Editor.Conditionals.pas	Ordner `Core/Editor`
@@ -260,7 +255,6 @@ Atlas.IDE.Base	Atlas.Core.Editor.SnapshotPolicy	Core/Editor/Atlas.Core.Editor.Sn
 Atlas.IDE.Base	Atlas.Core.Editor.SourceFiles	Core/Editor/Atlas.Core.Editor.SourceFiles.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.StatementCompletion	Core/Editor/Atlas.Core.Editor.StatementCompletion.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.StickyPlan	Core/Editor/Atlas.Core.Editor.StickyPlan.pas	Ordner `Core/Editor`
-Atlas.IDE.Base	Atlas.Core.Editor.TabOrder	Core/Editor/Atlas.Core.Editor.TabOrder.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.TestUnit	Core/Editor/Atlas.Core.Editor.TestUnit.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.Unwrap	Core/Editor/Atlas.Core.Editor.Unwrap.pas	Ordner `Core/Editor`
 Atlas.IDE.Base	Atlas.Core.Editor.WorkspacePlan	Core/Editor/Atlas.Core.Editor.WorkspacePlan.pas	Ordner `Core/Editor`
@@ -271,17 +265,6 @@ Atlas.IDE.Base	Atlas.Core.EditorToolbar.Layout	Core/EditorToolbar/Atlas.Core.Edi
 Atlas.IDE.Base	Atlas.Core.EditorToolbar.Plan	Core/EditorToolbar/Atlas.Core.EditorToolbar.Plan.pas	Ordner `Core/EditorToolbar`
 Atlas.IDE.Base	Atlas.Core.EditorToolbar.ReturnPoint	Core/EditorToolbar/Atlas.Core.EditorToolbar.ReturnPoint.pas	Ordner `Core/EditorToolbar`
 Atlas.IDE.Base	Atlas.Core.EditorToolbar.Sections	Core/EditorToolbar/Atlas.Core.EditorToolbar.Sections.pas	Ordner `Core/EditorToolbar`
-Atlas.IDE.Base	Atlas.Core.Files.Contract	Core/Files/Atlas.Core.Files.Contract.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.DataFile	Core/Files/Atlas.Core.Files.DataFile.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.EncodingDefault	Core/Files/Atlas.Core.Files.EncodingDefault.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.Entries	Core/Files/Atlas.Core.Files.Entries.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.ExternalChanges	Core/Files/Atlas.Core.Files.ExternalChanges.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.Format	Core/Files/Atlas.Core.Files.Format.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.ProcessLeftovers	Core/Files/Atlas.Core.Files.ProcessLeftovers.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.Providers.FolderWatcher	Core/Files/Atlas.Core.Files.Providers.FolderWatcher.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.TextDiff	Core/Files/Atlas.Core.Files.TextDiff.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.TextFile	Core/Files/Atlas.Core.Files.TextFile.pas	Ordner `Core/Files`
-Atlas.IDE.Base	Atlas.Core.Files.WatchedChanges	Core/Files/Atlas.Core.Files.WatchedChanges.pas	Ordner `Core/Files`
 Atlas.IDE.Base	Atlas.Core.Forms.Changes	Core/Forms/Atlas.Core.Forms.Changes.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Forms.PropertyValues	Core/Forms/Atlas.Core.Forms.PropertyValues.pas	Ordner `Core/Forms`
 Atlas.IDE.Base	Atlas.Core.Forms.Text	Core/Forms/Atlas.Core.Forms.Text.pas	Ordner `Core/Forms`
@@ -327,8 +310,6 @@ Atlas.IDE.Base	Atlas.Core.Lsp.Session.Base	Core/Lsp/Atlas.Core.Lsp.Session.Base.
 Atlas.IDE.Base	Atlas.Core.Lsp.Session.Json	Core/Lsp/Atlas.Core.Lsp.Session.Json.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Lsp.Session.Requests	Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Lsp.TextChanges	Core/Lsp/Atlas.Core.Lsp.TextChanges.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.TextOffsets	Core/Lsp/Atlas.Core.Lsp.TextOffsets.pas	Ordner `Core/Lsp`; Stellen im Editortext (Zeichen, UTF-8-Bytes), #1967
-Atlas.IDE.Base	Atlas.Core.Lsp.Uris	Core/Lsp/Atlas.Core.Lsp.Uris.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Lsp.WorkspaceEdits	Core/Lsp/Atlas.Core.Lsp.WorkspaceEdits.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Modules.Answer	Core/Modules/Atlas.Core.Modules.Answer.pas	späte Antwort an ein Modul nur bei offenem Scope (Regel 3), #1455
 Atlas.IDE.Base	Atlas.Core.Modules.Contract	Core/Modules/Atlas.Core.Modules.Contract.pas	Allgemeine Verträge (Modul, Registry, Scope, Beiträge), #1455
@@ -418,7 +399,6 @@ Atlas.IDE.Base	Atlas.Core.Settings.FolderList	Core/Settings/Atlas.Core.Settings.
 Atlas.IDE.Base	Atlas.Core.Settings.Groups	Core/Settings/Atlas.Core.Settings.Groups.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.HiddenPlaces	Core/Settings/Atlas.Core.Settings.HiddenPlaces.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.History	Core/Settings/Atlas.Core.Settings.History.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.JsonText	Core/Settings/Atlas.Core.Settings.JsonText.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.KeyCodes	Core/Settings/Atlas.Core.Settings.KeyCodes.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Layers	Core/Settings/Atlas.Core.Settings.Layers.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.ModuleSwitches	Core/Settings/Atlas.Core.Settings.ModuleSwitches.pas	Ordner `Core/Settings`; Modul-Schalter (#1454)
@@ -688,40 +668,21 @@ Atlas.IDE.Base	Atlas.IDE.ElementHelp.Keys	IDE/ElementHelp/Atlas.IDE.ElementHelp.
 Atlas.IDE.Base	Atlas.IDE.Files.DirtyExport	IDE/Files/Atlas.IDE.Files.DirtyExport.pas	Ordner `IDE/Files`
 Atlas.IDE.Base	Atlas.IDE.Files.Reloader	IDE/Files/Atlas.IDE.Files.Reloader.pas	Ordner `IDE/Files`
 Atlas.IDE.Base	Atlas.IDE.Forms.Designer	IDE/Forms/Atlas.IDE.Forms.Designer.pas	Ordner `IDE/Forms`
-Atlas.IDE.Base	Atlas.IDE.Foundation.ActionHook	IDE/Foundation/Atlas.IDE.Foundation.ActionHook.pas	Haken an Aktionen der IDE für Base und Module
 Atlas.IDE.Base	Atlas.IDE.Foundation.Adapters.ActiveEditor	IDE/Foundation/Atlas.IDE.Foundation.Adapters.ActiveEditor.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Adapters.EditorFiles	IDE/Foundation/Atlas.IDE.Foundation.Adapters.EditorFiles.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Adapters.RegistryStore	IDE/Foundation/Atlas.IDE.Foundation.Adapters.RegistryStore.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.Caret	IDE/Foundation/Atlas.IDE.Foundation.Caret.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.CodeView	IDE/Foundation/Atlas.IDE.Foundation.CodeView.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.Debugger	IDE/Foundation/Atlas.IDE.Foundation.Debugger.pas	Ordner `IDE/Foundation`; Debugger-Dienst der IDE für Base und Module
-Atlas.IDE.Base	Atlas.IDE.Foundation.DesignerView	IDE/Foundation/Atlas.IDE.Foundation.DesignerView.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.DockWindow	IDE/Foundation/Atlas.IDE.Foundation.DockWindow.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.EditorBarDock	IDE/Foundation/Atlas.IDE.Foundation.EditorBarDock.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.EditorBarHost	IDE/Foundation/Atlas.IDE.Foundation.EditorBarHost.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.EditorBarPlacement	IDE/Foundation/Atlas.IDE.Foundation.EditorBarPlacement.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.EditorBuffer	IDE/Foundation/Atlas.IDE.Foundation.EditorBuffer.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.EditorRefresh	IDE/Foundation/Atlas.IDE.Foundation.EditorRefresh.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.EditorSettings	IDE/Foundation/Atlas.IDE.Foundation.EditorSettings.pas	Ordner `IDE/Foundation`; Schalter des Editors aus den wirksamen Einstellungen
 Atlas.IDE.Base	Atlas.IDE.Foundation.EditorSnapshot	IDE/Foundation/Atlas.IDE.Foundation.EditorSnapshot.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.EditorStyle	IDE/Foundation/Atlas.IDE.Foundation.EditorStyle.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.EditorTabs	IDE/Foundation/Atlas.IDE.Foundation.EditorTabs.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.EditorWindows	IDE/Foundation/Atlas.IDE.Foundation.EditorWindows.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Elements	IDE/Foundation/Atlas.IDE.Foundation.Elements.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.Files	IDE/Foundation/Atlas.IDE.Foundation.Files.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.GutterColumns	IDE/Foundation/Atlas.IDE.Foundation.GutterColumns.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.GutterMarks	IDE/Foundation/Atlas.IDE.Foundation.GutterMarks.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Host	IDE/Foundation/Atlas.IDE.Foundation.Host.pas	Dienste von Base für die Module (Sitzung, Serverbefehle, Meldungen, Warnungen, Log, Statusfeld), #1455
-Atlas.IDE.Base	Atlas.IDE.Foundation.KeyHook	IDE/Foundation/Atlas.IDE.Foundation.KeyHook.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Keys	IDE/Foundation/Atlas.IDE.Foundation.Keys.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.LineTracker	IDE/Foundation/Atlas.IDE.Foundation.LineTracker.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Navigation	IDE/Foundation/Atlas.IDE.Foundation.Navigation.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.OpenWatch	IDE/Foundation/Atlas.IDE.Foundation.OpenWatch.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.ResultsWindow	IDE/Foundation/Atlas.IDE.Foundation.ResultsWindow.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.Settings	IDE/Foundation/Atlas.IDE.Foundation.Settings.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.StartOptions	IDE/Foundation/Atlas.IDE.Foundation.StartOptions.pas	Startoptionen und vorübergehende Startparameter; Startprofile (Build) und „Test debuggen“ (Tests) brauchen sie, #1455
 Atlas.IDE.Base	Atlas.IDE.Foundation.StructureSwitch	IDE/Foundation/Atlas.IDE.Foundation.StructureSwitch.pas	Ordner `IDE/Foundation`
-Atlas.IDE.Base	Atlas.IDE.Foundation.Symbol	IDE/Foundation/Atlas.IDE.Foundation.Symbol.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Foundation.TeamFile	IDE/Foundation/Atlas.IDE.Foundation.TeamFile.pas	Ordner `IDE/Foundation`
 Atlas.IDE.Base	Atlas.IDE.Generate.Commands	IDE/Generate/Atlas.IDE.Generate.Commands.pas	Ordner `IDE/Generate`
 Atlas.IDE.Base	Atlas.IDE.Generate.Gallery	IDE/Generate/Atlas.IDE.Generate.Gallery.pas	Ordner `IDE/Generate`: Kategorie Atlas in Datei › Neu › Weitere, #1821
@@ -814,7 +775,6 @@ Atlas.IDE.Base	Atlas.UI.Diagnostics.Strings	UI/Diagnostics/Atlas.UI.Diagnostics.
 Atlas.IDE.Base	Atlas.UI.Diagnostics.TimingFrame	UI/Diagnostics/Atlas.UI.Diagnostics.TimingFrame.pas	Ordner `UI/Diagnostics`
 Atlas.IDE.Base	Atlas.UI.Documentation.View	UI/Documentation/Atlas.UI.Documentation.View.pas	Ordner `UI/Documentation`
 Atlas.IDE.Base	Atlas.UI.Editor.ActionChoices	UI/Editor/Atlas.UI.Editor.ActionChoices.pas	Ordner `UI/Editor`
-Atlas.IDE.Base	Atlas.UI.Editor.Bar	UI/Editor/Atlas.UI.Editor.Bar.pas	Ordner `UI/Editor`
 Atlas.IDE.Base	Atlas.UI.Editor.ChangeSignature	UI/Editor/Atlas.UI.Editor.ChangeSignature.pas	Ordner `UI/Editor`
 Atlas.IDE.Base	Atlas.UI.Editor.ExpressionType	UI/Editor/Atlas.UI.Editor.ExpressionType.pas	Ordner `UI/Editor`
 Atlas.IDE.Base	Atlas.UI.Editor.ExtractMembers	UI/Editor/Atlas.UI.Editor.ExtractMembers.pas	Ordner `UI/Editor`

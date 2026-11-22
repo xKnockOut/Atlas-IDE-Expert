@@ -65,7 +65,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Text.Json,
-  Atlas.Core.Lsp.Uris;
+  Atlas.Plugin.Lsp.Uris;
 
 { TAtlasLeakViews }
 

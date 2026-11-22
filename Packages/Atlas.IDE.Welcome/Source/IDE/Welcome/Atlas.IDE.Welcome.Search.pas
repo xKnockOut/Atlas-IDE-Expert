@@ -80,7 +80,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Welcome.IdeLayout;

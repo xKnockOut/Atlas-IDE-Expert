@@ -26,7 +26,7 @@ uses
   Vcl.Graphics,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.UI.Editor.Bar;
+  Atlas.Vcl.Controls.EditorBar;
 
 type
   TAtlasDesignerButton = record

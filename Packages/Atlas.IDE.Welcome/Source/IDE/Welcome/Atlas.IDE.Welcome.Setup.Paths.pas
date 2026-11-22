@@ -57,7 +57,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Projects.Contract,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Welcome.Saved,
   Atlas.Core.Welcome.Setup,
   Atlas.IDE.Projects.Context,

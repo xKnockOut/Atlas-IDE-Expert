@@ -84,7 +84,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.StrUtils,
   Atlas.Text.Json,
-  Atlas.Core.Lsp.Uris;
+  Atlas.Plugin.Lsp.Uris;
 
 const
   cMapNames: array[TAtlasRuntimeMapStatus] of string = ('none', 'missing', 'unchecked', 'matches', '');

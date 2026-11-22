@@ -74,7 +74,7 @@ uses
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
   Atlas.IDE.Tracker.IssueLookups,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.Core.Tracker.Contract.MyIssues;
 
 { TAtlasIdeIssueCommands }

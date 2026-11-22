@@ -91,7 +91,7 @@ uses
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer;
 
 { TAtlasIdeRecursionGutter }
 

@@ -48,7 +48,7 @@ uses
   ToolsAPI,
   Atlas.UI.Outline.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TOutlineDock = class(TInterfacedObject, INTACustomDockableForm)

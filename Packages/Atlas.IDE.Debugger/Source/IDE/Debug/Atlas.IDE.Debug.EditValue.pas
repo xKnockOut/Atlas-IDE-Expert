@@ -116,7 +116,7 @@ uses
   Atlas.Core.Debug.InlineValues,
   Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Debug.LineEnd,
   Atlas.UI.Debug.EditValueDialog,

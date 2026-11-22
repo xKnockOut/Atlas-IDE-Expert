@@ -276,6 +276,13 @@ Atlas.Common.Mcp.IdeDebug.Tests
 Atlas.Common.Mcp.DocsIndex.Tests
 Atlas.Common.Mcp.DocsTools.Tests
 Atlas.Common.Mcp.ExtractTools.Tests
+Atlas.Common.Editing.Providers.Extract.Tests
+Adapters.Mcp.Extract.Tests
+Atlas.Common.Editing.Providers.Formatting.Tests
+Adapters.Mcp.Formatting.Tests
+Atlas.Common.Editing.Providers.CompilerFixes.Tests
+Adapters.Mcp.CompilerFixes.Tests
+Atlas.Common.Compiler.MessageTexts.Tests
 Atlas.Common.Mcp.RefactorTools.Tests
 Atlas.Common.Mcp.ProtectedFiles.Tests
 Atlas.Common.Mcp.EditFindings.Tests
@@ -461,6 +468,7 @@ Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.Providers.InheritanceDepths.Tests
 Atlas.Common.Rules.Providers.OwnershipReport.Tests
 Atlas.Common.Rules.Providers.DocumentChecks.Tests
+Atlas.Common.Rules.Providers.DocumentActions.Tests
 Atlas.Common.Rules.CheckContext.Tests
 Atlas.Common.Rules.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
@@ -471,7 +479,7 @@ Atlas.Common.Rules.Options.Tests
 Atlas.Common.Rules.Output.Tests
 Atlas.Common.Rules.Prompt.Tests
 Atlas.Common.Rules.Profiles.Tests
-Atlas.Common.Rules.Scopes.Tests
+Atlas.Common.Findings.Scopes.Tests
 Atlas.Common.Rules.SuppressionStats.Tests
 Atlas.Common.Rules.TypedScope.Tests
 Atlas.Common.Rules.WarnSwitches.Tests
@@ -568,13 +576,13 @@ Atlas.Core.Debug.Profiler.Tests
 Atlas.Core.Debug.ObjectCount.Tests
 Atlas.Core.Designer.Structure.Tests
 Atlas.Core.Designer.DataBindings.Tests
-Atlas.Core.Editor.BarDock.Tests
+Atlas.ToolsApi.EditorBars.Order.Tests
 Atlas.Core.Editor.GhostKeys.Tests
 Atlas.Core.Editor.ExitPointAsk.Tests
 Atlas.Core.Editor.SourceFiles.Tests
 Atlas.Core.Editor.GutterPanel.Tests
 Atlas.Core.Editor.CaretSteps.Tests
-Atlas.Core.Editor.TabOrder.Tests
+Atlas.ToolsApi.Editor.TabOrder.Tests
 Atlas.Core.Editor.LinkedKeys.Tests
 Atlas.Core.Editor.LinkedSession.Tests
 Atlas.Core.Editor.MultiCursorSession.Tests
@@ -755,10 +763,10 @@ Atlas.Core.Tests.ListText.Tests
 Atlas.Core.Tests.ListFile.Tests
 Atlas.Core.Tests.Log.Tests
 Atlas.Core.InlayHints.Store.Tests
-Atlas.Core.Files.Entries.Tests
+Atlas.Plugin.Files.Entries.Tests
 Atlas.Core.Editor.InlayPlan.Tests
 Atlas.Core.Editor.PlaceholderPlan.Tests
-Atlas.Core.Lsp.TextOffsets.Tests
+Atlas.Plugin.Editor.TextOffsets.Tests
 Atlas.Core.Completion.CommitPlan.Tests
 Atlas.Core.Debug.EvaluateRows.Tests
 Atlas.Core.Debug.EvalSlices.Tests
@@ -838,6 +846,7 @@ Atlas.Common.Editing.Providers.ClassActions.Tests
 Adapters.Lsp.InheritanceDepths.Tests
 Adapters.Lsp.OwnershipReport.Tests
 Adapters.Lsp.RuleDiagnostics.Tests
+Adapters.Lsp.RuleActions.Tests
 Core.Mcp.IssueTools.Tests
 Core.Mcp.IssueText.Tests
 Atlas.Core.Designer.Names.Tests

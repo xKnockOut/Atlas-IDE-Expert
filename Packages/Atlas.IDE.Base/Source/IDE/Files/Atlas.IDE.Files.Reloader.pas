@@ -27,7 +27,7 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Files.ExternalChanges,
+  Atlas.Plugin.Files.ExternalChanges,
   Atlas.Core.Notifications.Contract;
 
 type
@@ -65,12 +65,12 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Winapi.Windows,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Core.Diagnostics.Hangs,
-  Atlas.Core.Files.TextDiff,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Files.EncodingDefault,
+  Atlas.Plugin.Files.TextDiff,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Files.EncodingDefault,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.IDE.Foundation.Host,

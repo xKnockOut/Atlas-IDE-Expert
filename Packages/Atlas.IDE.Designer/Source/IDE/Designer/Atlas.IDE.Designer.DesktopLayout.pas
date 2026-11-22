@@ -55,7 +55,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Designer.DesktopSwitch,
   Atlas.UI.Designer.ViewStrings,
-  Atlas.IDE.Foundation.DesignerView,
+  Atlas.ToolsApi.Designer.View,
   Atlas.IDE.Foundation.Settings;
 
 const

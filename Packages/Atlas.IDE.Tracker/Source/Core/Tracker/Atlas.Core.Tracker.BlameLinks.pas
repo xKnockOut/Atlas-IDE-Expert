@@ -95,7 +95,7 @@ uses
   System.Generics.Collections,
   Atlas.Text.Diff,
   Atlas.Text.Lines,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.MethodToggle;
 

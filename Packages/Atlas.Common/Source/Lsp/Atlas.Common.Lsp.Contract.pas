@@ -13,6 +13,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Metrics.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Findings.Contract;
 
 type
@@ -136,6 +138,36 @@ type
     ['{7B7B6495-22F6-4A8E-BCF0-8164981D7119}']
     /// <summary>Prüfung für AUri; ACancelled (nil = nie) bricht zwischen den Regeln ab. Nie nil.</summary>
     function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): ILspDocumentRules;
+  end;
+
+  /// <summary>Prüfregeln für ein Dokument der Code-Aktionen (textDocument/codeAction, #42, #182); der Host baut das
+  /// Umfeld der Regeln. Der Baum ist der gemeinsame der Datei.</summary>
+  ILspDocumentRuleActions = interface
+    ['{E3A9C5D1-7B24-4C8F-A6E0-1F9B3D7C2A58}']
+    /// <summary>Syntaxfehler mit ihrer Korrektur (#1022); ohne Umfeld mit den Vorgaben.</summary>
+    function SyntaxFindings(const ADocument: ITextDocument): TArray<TRuleFinding>;
+    /// <summary>Treffer der Prüfregeln aus dem gemeinsamen Speicher, sonst selbst gerechnet; Ende des Wartens mit
+    /// ERuleCheckCancelled.</summary>
+    function SharedRuleFindings(const ADocument: ITextDocument): TArray<TRuleFinding>;
+    /// <summary>Treffer nur aus dem gemeinsamen Speicher, ohne eigenen Lauf; False ohne.</summary>
+    function CachedRuleFindings(const ADocument: ITextDocument; out AFindings: TArray<TRuleFinding>): Boolean;
+    /// <summary>Korrekturen und Unterdrückungen in ARange, mit ATryFinally auch try/finally.</summary>
+    function Fixes(const AFindings: TArray<TRuleFinding>; const ADocument: ITextDocument; const ARange: TTextRange;
+      const AStyle: TFormatStyle; ATryFinally: Boolean): TArray<TCodeAction>;
+    /// <summary>Alle sicheren Korrekturen in einer Aktion; False ohne.</summary>
+    function FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean;
+    /// <summary>Befund als Auftrag für KI-Assistenten (#158, #2570).</summary>
+    function Prompt(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+    /// <summary>Index des Umfelds; nil ohne.</summary>
+    function Index: ISymbolIndex;
+  end;
+
+  /// <summary>Prüfregeln der Code-Aktionen je Dokument; ohne Anbieter gibt es keine Aktionen zu Treffern.</summary>
+  ILspRuleActions = interface
+    ['{4D8B2F6A-C1E7-4A39-B05D-9E3C7A1F6B24}']
+    /// <summary>Aktionen für AUri; ACancelled (nil = nie) beendet das Warten auf einen fremden Lauf. Nie nil.
+    /// </summary>
+    function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): ILspDocumentRuleActions;
   end;
 
   /// <summary>Antwort von atlas.server.ownership (#1877); der Host fragt die Prüfregeln.</summary>

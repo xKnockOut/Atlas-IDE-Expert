@@ -103,7 +103,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
@@ -113,7 +113,7 @@ uses
   Vcl.ActnList,
   Vcl.Forms,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.ShortcutTips,

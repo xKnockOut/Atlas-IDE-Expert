@@ -226,7 +226,7 @@ uses
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Commands.MenuActions,
-  Atlas.IDE.Foundation.Symbol,
+  Atlas.ToolsApi.Theme.Symbol,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.Lsp.Progress;

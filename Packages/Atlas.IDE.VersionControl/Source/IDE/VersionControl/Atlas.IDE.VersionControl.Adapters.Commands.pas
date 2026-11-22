@@ -29,7 +29,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 /// <summary>Projektdatei des aktiven Projekts mit Versionsverwaltung; '' ohne, dann die Meldung ANoVcs.</summary>
 function VcsProject(ANoVcs: TAtlasVcsTextId): string;

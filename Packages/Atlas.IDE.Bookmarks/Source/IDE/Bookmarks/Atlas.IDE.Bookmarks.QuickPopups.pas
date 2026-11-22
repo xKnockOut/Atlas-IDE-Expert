@@ -68,7 +68,7 @@ uses
   Atlas.Core.Bookmarks.Quick,
   Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.QuickService,
   Atlas.Vcl.Controls.Menus;

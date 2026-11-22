@@ -68,7 +68,7 @@ uses
   System.IOUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Providers.GitHub,

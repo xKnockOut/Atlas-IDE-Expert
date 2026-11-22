@@ -76,11 +76,11 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.UI.Debug.Breakpoints.Strings,
   Atlas.UI.Debug.BreakpointCheck,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 { TAtlasIdeBreakpointCheck.TListener }
 

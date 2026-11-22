@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type

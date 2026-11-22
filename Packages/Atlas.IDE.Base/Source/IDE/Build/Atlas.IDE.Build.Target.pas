@@ -73,7 +73,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeBuildTarget.TRequest }

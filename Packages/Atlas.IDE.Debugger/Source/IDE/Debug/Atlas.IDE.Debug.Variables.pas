@@ -139,7 +139,7 @@ uses
   Atlas.Core.Debug.StopProgress,
   Atlas.Core.Debug.VariablesFlow,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Hover.Contract.DebugValue,
   Atlas.IDE.Debug.Sources,

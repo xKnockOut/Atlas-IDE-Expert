@@ -46,7 +46,7 @@ uses
   ToolsAPI,
   Atlas.UI.Tests.Strings,
   Atlas.Vcl.Images.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TExplorerDock = class(TInterfacedObject, INTACustomDockableForm)

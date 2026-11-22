@@ -44,7 +44,7 @@ uses
   Atlas.Core.Designer.Structure,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.StructureFrame,
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.IDE.Designer.PaletteImages;
 
 type
