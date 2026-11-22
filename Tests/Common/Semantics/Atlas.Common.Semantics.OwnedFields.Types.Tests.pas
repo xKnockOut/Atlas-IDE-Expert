@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.FreeFields.Types.Tests;
+﻿unit Atlas.Common.Semantics.OwnedFields.Types.Tests;
 
 // Tests für die Typauflösung von „Felder im Destruktor freigeben“: Art eines
 // Typs, Aliase (auch aus anderen Units über den Index), Vorfahrenkette,
@@ -41,7 +41,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.FreeFields.Types;
+  Atlas.Common.Semantics.OwnedFields.Types;
 
 const
   cUnit = 'unit U;'#10'interface'#10'type'#10 +

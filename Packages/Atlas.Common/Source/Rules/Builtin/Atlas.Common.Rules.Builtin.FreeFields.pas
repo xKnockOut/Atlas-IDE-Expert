@@ -16,7 +16,7 @@
 //                             Korrektur FreeAndNil in finalization bzw. class
 //                             destructor (legt beide bei Bedarf an)
 //
-// Erkennung und Änderungen liefert TFreeFields (Editing). Mit
+// Erkennung liefert TOwnedFields (Semantics), die Änderungen TPascalDestructors. Mit
 // refactoring.freeFields aus schweigen die ersten beiden Regeln.
 
 interface
@@ -25,7 +25,7 @@ uses
   System.SysUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
-  Atlas.Common.Editing.FreeFields;
+  Atlas.Common.Semantics.OwnedFields;
 
 type
   TOwnedFieldNotFreedRule = class(TInterfacedObject, IRule)
@@ -62,6 +62,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.Destructors,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
@@ -73,7 +74,7 @@ uses
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TFreeFieldsText = (LeakTitle, Leak, UnclearTitle, Unclear, InitNotFinal, FreeInFinalization, ClassCtorNotFreed,
-    FreeInClassDestructor, StartTitle);
+    FreeInClassDestructor, StartTitle, FreeInDestructor);
 
 const
   cTexts: array[TFreeFieldsText] of TAtlasText = (
@@ -89,7 +90,8 @@ const
     (De: '%s wird im class constructor erzeugt, aber im class destructor nicht freigegeben.';
      En: '%s is created in the class constructor but not freed in the class destructor.'),
     (De: 'Im class destructor freigeben'; En: 'Free in the class destructor'),
-    (De: 'Beim Start erzeugtes Objekt wird nicht freigegeben'; En: 'Object created at startup is not freed'));
+    (De: 'Beim Start erzeugtes Objekt wird nicht freigegeben'; En: 'Object created at startup is not freed'),
+    (De: 'Im Destruktor freigeben'; En: 'Free in the destructor'));
 
 {$SCOPEDENUMS OFF}
 
@@ -119,7 +121,7 @@ begin
   begin
     mStyle := TFreeFieldsStyle.FreeAndNil;
   end;
-  for mField in TFreeFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
+  for mField in TOwnedFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
   begin
     if (mField.State <> TOwnedFieldState.NotFreed) or Ignored(mField, mIgnoreTypes) then
     begin
@@ -127,9 +129,9 @@ begin
     end;
     mFixes := nil;
     // Nicht sicher: Ob die Klasse das Objekt besitzt, weiß nur der Entwickler.
-    if TFreeFields.Edits(AContext.Tree, AContext.Text, [mField], mStyle, mEdits) then
+    if TOwnedFields.FreeEdits(AContext.Tree, AContext.Text, [mField], mStyle, mEdits) then
     begin
-      mFixes := [TRuleFix.Create(TFreeFields.FieldTitle, mEdits, False)];
+      mFixes := [TRuleFix.Create(cTexts[TFreeFieldsText.FreeInDestructor].Text, mEdits, False)];
     end;
     // Mittel: Ob das Objekt anderswo freigegeben wird, sieht die Regel nicht immer.
     AReport.Add(mField.Range, cTexts[TFreeFieldsText.Leak].Fmt([mField.Name]), TRuleConfidence.Medium, mFixes);
@@ -166,7 +168,7 @@ begin
   begin
     Exit;
   end;
-  for mField in TFreeFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
+  for mField in TOwnedFields.Analyze(AContext.Tree, AContext.Text, AContext.Index) do
   begin
     if mField.State = TOwnedFieldState.Unclear then
     begin
@@ -332,7 +334,7 @@ begin
     Exit;
   end;
   mReset := (ANode[1].Kind = TSyntaxKind.Literal) and SameText(ANode[1].Name, 'nil');
-  if mReset or (TFreeFields.ObjectCreation(FContext.Tree, FContext.Text, FContext.Index, ANode[1], mTypeName,
+  if mReset or (TOwnedFields.ObjectCreation(FContext.Tree, FContext.Text, FContext.Index, ANode[1], mTypeName,
     mOwned) and not mOwned) then
   begin
     Harmless(ANode[0]);
@@ -481,7 +483,7 @@ begin
   begin
     mDecl := AVars[mIndex];
     if (mDecl.Kind <> TSyntaxKind.VarDecl) or (DeclaredType(AContext.Text, mDecl) = '') or
-      not TFreeFields.IsObjectType(AContext.Tree, AContext.Text, AContext.Index,
+      not TOwnedFields.IsObjectType(AContext.Tree, AContext.Text, AContext.Index,
         DeclaredType(AContext.Text, mDecl)) then
     begin
       Continue;
@@ -596,7 +598,7 @@ var
   mOwned: Boolean;
 begin
   mName := AssignedName(AAssign[0], AClassDecl);
-  if (mName = '') or KnownCreation(ACreations, mName, AClassDecl) or not TFreeFields.ObjectCreation(AContext.Tree,
+  if (mName = '') or KnownCreation(ACreations, mName, AClassDecl) or not TOwnedFields.ObjectCreation(AContext.Tree,
     AContext.Text, AContext.Index, AAssign[1], mTypeName, mOwned) or mOwned then
   begin
     Exit;
@@ -844,7 +846,7 @@ begin
   end
   else
   begin
-    if not TFreeFields.ClassDestructorEdits(AContext.Tree, AContext.Text, ACreation.ClassDecl, [mStatement],
+    if not TPascalDestructors.ClassDestructorEdits(AContext.Tree, AContext.Text, ACreation.ClassDecl, [mStatement],
       Result) then
     begin
       Result := nil;
