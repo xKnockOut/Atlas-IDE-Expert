@@ -52,7 +52,7 @@ implementation
 
 uses
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.StartProfiles.Store,
   Atlas.IDE.Foundation.Settings,

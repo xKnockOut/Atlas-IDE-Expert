@@ -10,8 +10,8 @@ interface
 uses
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette;
 
 type
   TAtlasDraw = class

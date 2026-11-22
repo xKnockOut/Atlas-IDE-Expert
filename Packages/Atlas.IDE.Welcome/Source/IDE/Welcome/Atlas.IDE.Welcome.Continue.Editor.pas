@@ -40,7 +40,7 @@ uses
   System.SysUtils,
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.SourceFiles,
   Atlas.Core.Files.TextFile,
   Atlas.IDE.Foundation.EditorBuffer,

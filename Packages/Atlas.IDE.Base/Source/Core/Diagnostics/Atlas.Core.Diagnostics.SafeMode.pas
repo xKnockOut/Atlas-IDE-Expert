@@ -182,7 +182,7 @@ uses
   System.Classes,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json,
   Atlas.Text.Timestamps,
   Atlas.Text.Files;

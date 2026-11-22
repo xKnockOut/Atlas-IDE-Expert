@@ -38,7 +38,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.SmartPaste,
   Atlas.UI.Editor.SmartPaste,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TAtlasSmartPasteSessionFunc = reference to function: TLspSession;
@@ -114,8 +114,8 @@ uses
   Atlas.IDE.Foundation.Caret,
   Vcl.Clipbrd,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,

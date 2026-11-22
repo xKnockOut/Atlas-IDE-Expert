@@ -34,7 +34,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.ControlFlow.Signatures,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.RoutineLocals;
 
@@ -155,17 +155,17 @@ begin
     mEdits := nil;
     TRoutineLocals.RemoveVariables(mTree, mLocals[4].Decl, ['X'], mEdits);
     Assert.AreEqual(StringReplace(cSource, '  X, Y: Integer;', '  Y: Integer;', []),
-      TChangeSignature.ApplyEdits(cSource, mEdits));
+      TTextChanges.Apply(cSource, mEdits));
     // Die ganze Zeile.
     mEdits := nil;
     TRoutineLocals.RemoveVariables(mTree, mLocals[6].Decl, ['Z'], mEdits);
-    Assert.AreEqual(StringReplace(cSource, '  Z: Integer;'#10, '', []), TChangeSignature.ApplyEdits(cSource, mEdits));
+    Assert.AreEqual(StringReplace(cSource, '  Z: Integer;'#10, '', []), TTextChanges.Apply(cSource, mEdits));
     // Alle Einträge: auch "var".
     mEdits := nil;
     TRoutineLocals.RemoveVariables(mTree, mLocals[4].Decl, ['X', 'Y', 'Z'], mEdits);
     TRoutineLocals.RemoveVariables(mTree, mLocals[6].Decl, ['X', 'Y', 'Z'], mEdits);
     Assert.AreEqual(StringReplace(cSource, 'var'#10'  X, Y: Integer;'#10'  Z: Integer;'#10, '', []),
-      TChangeSignature.ApplyEdits(cSource, mEdits));
+      TTextChanges.Apply(cSource, mEdits));
   finally
     mTree.Free;
   end;
@@ -186,10 +186,10 @@ begin
     mLocals := TRoutineLocals.Collect(cShared, mTree, TRoutineBody.RoutineAt(mTree, Pos('Y := 1', cShared)));
     mEdits := nil;
     TRoutineLocals.RemoveVariables(mTree, mLocals[0].Decl, ['X'], mEdits);
-    Assert.AreEqual(StringReplace(cShared, 'var X: Integer;', 'var ', []), TChangeSignature.ApplyEdits(cShared, mEdits));
+    Assert.AreEqual(StringReplace(cShared, 'var X: Integer;', 'var ', []), TTextChanges.Apply(cShared, mEdits));
     mEdits := nil;
     TRoutineLocals.RemoveVariables(mTree, mLocals[1].Decl, ['Y'], mEdits);
-    Assert.AreEqual(StringReplace(cShared, 'Y: Integer; Z', 'Z', []), TChangeSignature.ApplyEdits(cShared, mEdits));
+    Assert.AreEqual(StringReplace(cShared, 'Y: Integer; Z', 'Z', []), TTextChanges.Apply(cShared, mEdits));
   finally
     mTree.Free;
   end;

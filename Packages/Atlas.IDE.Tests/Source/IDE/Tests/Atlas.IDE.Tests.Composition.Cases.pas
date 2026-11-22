@@ -49,7 +49,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Tests.CaseTable,
   Atlas.IDE.Tests.BoundaryCases,
   Atlas.IDE.Tests.UntestedProject,

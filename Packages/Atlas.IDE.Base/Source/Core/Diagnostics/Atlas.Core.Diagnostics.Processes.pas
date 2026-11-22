@@ -78,7 +78,7 @@ implementation
 uses
   System.Generics.Collections,
   System.Classes,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

@@ -13,7 +13,7 @@
 interface
 
 uses
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color;
 
 type
 {$SCOPEDENUMS ON}

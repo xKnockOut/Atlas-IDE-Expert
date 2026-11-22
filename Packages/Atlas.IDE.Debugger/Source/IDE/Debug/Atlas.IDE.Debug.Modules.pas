@@ -53,7 +53,7 @@ uses
   Winapi.Windows,
   Winapi.PsAPI,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.AccessViolation;
 

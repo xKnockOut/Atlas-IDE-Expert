@@ -139,7 +139,7 @@ uses
   System.Classes,
   ToolsAPI,
   Atlas.Core.Designer.FitContainer,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.FitText,

@@ -118,7 +118,7 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Board.Strings,
   Atlas.IDE.Tracker.BoardWindow;

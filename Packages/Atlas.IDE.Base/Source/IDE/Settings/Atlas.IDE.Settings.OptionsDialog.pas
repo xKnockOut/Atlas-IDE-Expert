@@ -53,7 +53,7 @@ uses
   Vcl.ActnList,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   /// <summary>Zugriff auf Items, das TCustomTreeView geschützt hält (Baum des Optionsdialogs ist eine eigene

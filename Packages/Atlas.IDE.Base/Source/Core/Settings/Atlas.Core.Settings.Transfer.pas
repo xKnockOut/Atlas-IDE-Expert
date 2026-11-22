@@ -224,12 +224,12 @@ implementation
 uses
   System.Generics.Defaults,
   Atlas.Text.Checkin,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.JsonText,
   Atlas.Core.Settings.QueryMigration,
   Atlas.Core.Settings.ProblemsUpdate,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json,
   Atlas.Core.Settings.Contract;
 

@@ -38,7 +38,7 @@ uses
   System.Classes,
   Winapi.Windows,
   Vcl.Menus,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Status.Registry,

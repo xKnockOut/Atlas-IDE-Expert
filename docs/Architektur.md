@@ -17,10 +17,11 @@ Der Schnitt folgt Rollen (Platform-Package, Host, Hosted-Feature; innerhalb eine
 | `Atlas.Common` | Platform-Package, derzeit zugleich Fachcode-Package des Servers (siehe [Ausnahme](#ausnahme-atlascommon-als-fachcode-package-des-servers)) | plattformunabhängige RTL (`System.*`), `Atlas.Text` | Windows (`Winapi.*`, `System.Win.*`), VCL, FMX, `Atlas.Windows` |
 | `Atlas.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Common`, `Atlas.WinBase` | VCL, FMX |
 | `Atlas.Linux` | Platform-Package nur als Quelltext für den Linux-Bau des Servers mit Free Pascal (#1109); kein `.dpk` | RTL, FPC-Units für Linux (`BaseUnix`, `Process`, `Pipes`), `Atlas.Common` | Windows, VCL, FMX, `Atlas.Windows` |
+| `Atlas.Plugin` | Platform-Package des Plugins ohne host-spezifisches Framework, nur als Quelltext in `Atlas.IDE.Base` (`contains … in '..\Atlas.Plugin\…'`); kein `.dpk`. Heute: Farben und Palette (`Style`), Sicherung, Hauptthread-Warteschlange und Arbeiter (`Diagnostics`), Sprache (`Localization`) und Version (`Product`) | RTL, `Winapi.*`, `Atlas.Text`, `Atlas.WinBase` | VCL, FMX, Open Tools API, `Atlas.Common`, `Atlas.Windows`, `Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*` |
 | `AtlasServer` | Anwendung (Host) | beide Packages, RTL, Windows, unter Linux `Atlas.Linux` statt `Atlas.Windows` (nur in `Platform.Server`); die Versionsverwaltung des Plugins (`Atlas.Core.VersionControl.*`, #571) als Quelltext | VCL (Konsolenanwendung) |
 | `AtlasUpdate` | Anwendung (Host) für Installation und Updates (#1519); Einstieg und Zusammensetzung in `Application/Source/Shell/Shell.Update*.pas`, Dialog der Erstinstallation im Hosted-Feature `Update` (`Application/Source/Features/Update`), Logik in `Atlas.Common.Updates.*`, Adapter in `Atlas.Windows.Updates.Adapters.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows | VCL (Konsolenanwendung) |
 | `AtlasMonitor` | Anwendung (Host) mit Fenster (#1901): alle laufenden Server aus ihren Statusdateien, Symbol im Infobereich; Reiter „Prüfen“ (#1900) startet je Ziel einen unsichtbaren Kindprozess von AtlasServer in einem Job mit „beim Schließen beenden“ und liest SARIF bzw. Text/HTML zurück; Einstieg in `Application/Source/Shell/Shell.Monitor.pas`, Fenster im Hosted-Feature `Monitor` (`Application/Source/Features/Monitor`), Logik in `Atlas.Common.Monitor.*`, Prozesse und System in `Atlas.Windows.Monitor.*` | `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, RTL, Windows, VCL (nur im Hosted-Feature `Monitor`) | FMX |
-| `Atlas.IDE.Base` | Design-Time-Package für RAD Studio (Win32 und Win64) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API), `Atlas.Text.*` und `Atlas.WinBase.*` als Quelltext (`contains … in '..\Atlas.Text\…'` bzw. `'..\Atlas.WinBase\…'`) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
+| `Atlas.IDE.Base` | Design-Time-Package für RAD Studio (Win32 und Win64) | RTL, `Winapi.*`, `System.Win.*`, VCL, `vclwinx` (Bildsammlung für das Atlas-Symbol, #751), `designide` (Open Tools API), `Atlas.Text.*`, `Atlas.WinBase.*` und `Atlas.Plugin.*` als Quelltext (`contains … in '..\Atlas.Text\…'`, `'..\Atlas.WinBase\…'` bzw. `'..\Atlas.Plugin\…'`) | `Atlas.Common`, `Atlas.Windows` (eigenständig, damit die IDE nur ein BPL laden muss) |
 | `Atlas.Tests` | Testprojekt (DUnitX) | alles, was getestet wird | – |
 
 Abhängigkeitsrichtung:
@@ -30,12 +31,12 @@ AtlasServer ──► Atlas.Windows ──► Atlas.Common ──► Atlas.Text 
      │               │                 ▲               ▲
      │               └──► Atlas.WinBase ───────────────┘
      └─────────────────────────────────┘
-Atlas.IDE.Base ··► Atlas.Text, Atlas.WinBase (Quelltext, kein requires)
+Atlas.IDE.Base ··► Atlas.Plugin, Atlas.Text, Atlas.WinBase (Quelltext, kein requires)
 ```
 
-Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-, requires- und contains-Klauseln). Das Skript läuft lokal und in der GitHub Action „Package-Abhängigkeiten“. Zu Atlas.Text und Atlas.WinBase prüft es zusätzlich:
+Die Regeln für die Packages prüft `Tools/Check-PackageDependencies.ps1` (uses-, requires- und contains-Klauseln). Das Skript läuft lokal und in der GitHub Action „Package-Abhängigkeiten“. Zu Atlas.Text, Atlas.WinBase und Atlas.Plugin prüft es zusätzlich:
 
-- Das Plugin enthält genau die Units aus `Atlas.Text.dpk` und `Atlas.WinBase.dpk` (sonst W1033) und außer eigenen Units nur solche aus `..\Atlas.Text\Source` und `..\Atlas.WinBase\Source`.
+- Das Plugin enthält genau die Units aus `Atlas.Text.dpk` und `Atlas.WinBase.dpk` (sonst W1033) und jede Unit unter `Packages/Atlas.Plugin/Source` (ohne eigenes dpk); außer eigenen Units nur solche aus `..\Atlas.Text\Source`, `..\Atlas.WinBase\Source` und `..\Atlas.Plugin\Source`.
 - `Atlas.Tests.dpr` und `AtlasServer.dpr` binden beide nicht als Quelltext ein; sie linken die DCUs aus `Dcu/Atlas.Text` bzw. `Dcu/Atlas.WinBase`.
 - **Prozessstart:** Kindprozesse startet nur `TAtlasProcessLauncher` (`Atlas.WinBase.Process`). Er vererbt über `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` genau die Standard-Handles des Kindes; Pipes und Dateien legen die Aufrufer nicht vererbbar an. `forbidden-symbol` in `atlas.json` sperrt `CreateProcess` außerhalb dieser Unit.
 - **Kopien-Sperre:** Außerhalb von `Packages/Atlas.Text` entsteht keine neue Routine wie `LineBreakOf`, `SplitLines`, `IndentOf`, `IsWordChar`, `IsIdentChar`, `IsUtf8`, `PercentDecode` oder `DecodeEntities`. Ausnahmen (Fassaden mit eigenem Typ, öffentliche Weiterleitungen, SQL-Bezeichner, Block Rules) stehen mit Grund in `$AllowedLocal`; die Liste soll nur schrumpfen.
@@ -87,6 +88,8 @@ Packages/
     Source/<Feature>/
   Atlas.Linux/
     Source/<Feature>/              Gegenstücke der Windows-Adapter für den Linux-Bau (FPC)
+  Atlas.Plugin/
+    Source/<Feature>/              Platform-Features des Plugins ohne VCL und Open Tools API (Quelltext in Atlas.IDE.Base)
   Atlas.IDE.Base/
     Atlas.IDE.Base.dpk/.dproj
     Source/Core/  Source/UI/  Source/IDE/   (Schichten des Plugins, #406)
@@ -117,7 +120,7 @@ Die Anwendung und das Testprojekt binden die Packages statisch ein: Sie finden d
 Ausgabeartefakt.Feature.Rolle.Sache
 ```
 
-- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Text`, `Atlas.WinBase`, `Atlas.Common`, `Atlas.Windows`, `Atlas.Linux`, `Atlas.IDE.Base`
+- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Text`, `Atlas.WinBase`, `Atlas.Common`, `Atlas.Windows`, `Atlas.Linux`, `Atlas.Plugin`, `Atlas.IDE.Base`
 - `Atlas.Text`-Units heißen `Atlas.Text.<Feature>` (Feature-Wurzel ohne Rolle, z. B. `Atlas.Text.Lines`); sie enthalten nur reine Funktionen und Records ohne Zustand, ohne `inline` und ohne Standardparameter, keine Contracts oder Provider
 - Units der Anwendung tragen kein Präfix, z. B. `Shell.Application`
 - Units im Wurzelverzeichnis eines Features tragen keinen Rollenbezeichner, z. B. `Atlas.Common.Product.Version`

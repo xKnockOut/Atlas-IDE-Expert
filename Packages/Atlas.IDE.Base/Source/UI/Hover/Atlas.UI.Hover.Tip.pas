@@ -48,7 +48,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.Controls,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.Items,
@@ -251,10 +251,10 @@ implementation
 
 uses
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Texts,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   System.StrUtils,
   Atlas.Core.Documentation.Layout,

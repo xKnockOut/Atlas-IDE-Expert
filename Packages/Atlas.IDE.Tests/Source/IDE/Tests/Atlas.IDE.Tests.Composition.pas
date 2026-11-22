@@ -108,7 +108,7 @@ implementation
 uses
   Atlas.UI.Tests.SettingsSection,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Providers.ProcessRunner,

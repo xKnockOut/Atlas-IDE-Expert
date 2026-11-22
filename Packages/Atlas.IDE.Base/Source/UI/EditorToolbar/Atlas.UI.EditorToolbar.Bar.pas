@@ -174,11 +174,11 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Settings.ToolbarItems,
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.EditorToolbar.Glyphs;
 
 const

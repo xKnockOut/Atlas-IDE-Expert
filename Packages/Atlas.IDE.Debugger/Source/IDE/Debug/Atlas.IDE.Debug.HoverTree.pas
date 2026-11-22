@@ -96,7 +96,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Evaluate,
   Atlas.UI.Debug.Values.Strings,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeDebugHoverTree }
 

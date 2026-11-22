@@ -150,7 +150,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeRestrictions.Records,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Attributes,
   Atlas.Common.Rules.Builtin.TypeRestrictions.TypeInfo,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 function OperatorFindings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -211,7 +211,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mFound)));
   Assert.AreEqual('Unbekannter Operator Substract; gemeint ist wohl Subtract (wie E2393).', mFound[0].Message);
   Assert.AreEqual('In Subtract umbenennen', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Geld('    class operator Subtract(const A, B: TGeld): TGeld;'#10,
     'class operator TGeld.Subtract(const A, B: TGeld): TGeld;'#10'begin'#10'end;'#10), mFixed);
 end;
@@ -226,7 +226,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Der Operator Negative muss 1 Parameter haben (wie E2517).', mFound[0].Message);
   Assert.AreEqual('Parameter nach Vorlage: (const A: TGeld)', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Geld('    class operator Negative(const A: TGeld): TGeld;'#10), mFixed);
   mFound := OperatorFindings(Geld('    class operator Add(const A: TGeld): TGeld;'#10));
   Assert.AreEqual(1, Integer(Length(mFound)));
@@ -264,7 +264,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Inc muss denselben Typ liefern wie den ersten Parameter, hier TGeld (wie E2519).',
     mFound[0].Message);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Geld('    class operator Inc(const A: TGeld): TGeld;'#10), mFixed);
   // Klasse mit Umwandlung in den Vorfahren: Delphi 13 lehnt den Operator in einer Klasse schon als E2123 ab
   // (Regel syntax), E2522 gibt es nicht mehr (#1382).
@@ -289,10 +289,10 @@ begin
   mFound := OperatorFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Der erste Parameter von Assign muss ein var-Parameter des eigenen Typs sein (wie E2617).', mFound[0].Message);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Geld('    class operator Assign(var Dest: TGeld; const [ref] Src: TGeld);'#10), mFixed);
   mSource := Geld('    class operator Assign(Dest: TGeld; const [ref] Src: TGeld);'#10);
-  mFixed := TChangeSignature.ApplyEdits(mSource, OperatorFindings(mSource)[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, OperatorFindings(mSource)[0].Fixes[0].Edits);
   Assert.AreEqual(Geld('    class operator Assign(var Dest: TGeld; const [ref] Src: TGeld);'#10), mFixed);
 end;
 
@@ -624,7 +624,7 @@ begin
     'deklarieren (wie E2574).', Messages(mFound));
   Assert.AreEqual(11, mFound[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(GenericUnit('  TBehaelter<T> = class'#10'  end;'#10#10'  TEigen = TBehaelter<Integer>;'#10, ''),
     mFixed);
   Assert.AreEqual('', Messages(GenericFindings(mFixed)));
@@ -671,7 +671,7 @@ begin
   Assert.AreEqual('6: Records erlauben keine virtuellen Methoden (wie E2379).', Messages(mFound));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('virtual entfernen', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(GenericUnit('  TPunkt = record'#10'    X, Y: Integer;'#10'    function Laenge: Double;'#10 +
     '  end;'#10, ''), mFixed);
   Assert.AreEqual('', Messages(RestrictionFindings(mFixed)));
@@ -699,10 +699,10 @@ begin
     '9: Records dürfen keinen Destruktor einführen (wie E2465).|' +
     '10: Klassenmethoden in Records müssen static sein (wie E2398).', Messages(mFound));
   // virtual und abstract gehen zusammen weg.
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[1].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[1].Fixes[0].Edits);
   Assert.IsTrue(Pos('    function B: Integer;'#10, mFixed) > 0, mFixed);
   Assert.AreEqual('static ergänzen', mFound[5].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[5].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[5].Fixes[0].Edits);
   Assert.IsTrue(Pos('    class procedure C; static;'#10, mFixed) > 0, mFixed);
   // Erlaubtes.
   Assert.AreEqual('', Messages(RestrictionFindings(GenericUnit('  TR = record'#10 +
@@ -1032,7 +1032,7 @@ begin
     '(wie E2133).', Messages(mFound));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('TypeInfo(TStatus) einsetzen', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StatusUnit('GetEnumName(TypeInfo(TStatus), Ord(Status))'), mFixed);
   Assert.AreEqual(0, Integer(Length(TypeInfoFindings(mFixed))), mFixed);
 end;

@@ -40,7 +40,7 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Foundation.Controls;
 
 { TAtlasCommandMenuItem }

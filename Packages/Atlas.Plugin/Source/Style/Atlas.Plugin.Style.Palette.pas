@@ -1,0 +1,364 @@
+﻿unit Atlas.Plugin.Style.Palette;
+
+// Farbrollen von Atlas (#411, #421) nach dem Entwurf "Atlas-Oberfläche":
+// fester Akzent in griechischem Blau, alles andere je nach Hell- oder
+// Dunkelmodus. Auswahl und Flächen ergeben sich wie im Entwurf durch Mischen
+// des Akzents mit dem Hintergrund. Die Oberfläche verwendet nur diese Rollen,
+// keine fest verdrahteten Farben.
+
+interface
+
+uses
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Signal;
+
+type
+  /// <summary>Art eines Badges in der Liste (#421); bestimmt dessen Farben.</summary>
+  TAtlasBadgeKind = (Function_, Procedure_, Property_, Field, Event, Constant, Type_, Variable, Unit_, Snippet,
+    Keyword, XmlDoc);
+
+  TAtlasBadgeColors = record
+    Background: TAtlasColor;
+    Text: TAtlasColor;
+  end;
+
+  /// <summary>Farben der Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
+  TAtlasPairColors = array[0..4] of TAtlasColor;
+
+  /// <summary>Farben der Platzhalter von Format und ihrer Argumente (#451), zyklisch.</summary>
+  TAtlasPlaceholderColors = array[0..5] of TAtlasColor;
+
+  /// <summary>Farben einer Inlay-Hint-Marke: aus dem Editorhintergrund gemischt.</summary>
+  TAtlasHintColors = record
+    Text: TAtlasColor;
+    Pen: TAtlasColor;
+    Fill: TAtlasColor;
+  end;
+
+  TAtlasColors = record
+    IsDark: Boolean;
+    /// <summary>Fläche der Fenster.</summary>
+    Surface: TAtlasColor;
+    /// <summary>Abgesetzte Fläche: Fußzeile, Detailpanel, Doku-Zeile im Hint.</summary>
+    Gutter: TAtlasColor;
+    Text: TAtlasColor;
+    /// <summary>Gedämpfter Text: Signaturen, Units, Beschreibungen.</summary>
+    Muted: TAtlasColor;
+    /// <summary>Trennlinien, Ränder der Tags, Scrollleiste.</summary>
+    Line: TAtlasColor;
+    /// <summary>Rahmen der Fenster, getroffene Zeichen, aktiver Parameter.</summary>
+    Accent: TAtlasColor;
+    AccentSoft: TAtlasColor;
+    /// <summary>Gewählte Zeile: Akzent zu 12 % (hell) bzw. 15 % (dunkel) über Surface.</summary>
+    Selection: TAtlasColor;
+    Keyword: TAtlasColor;
+    StringLiteral: TAtlasColor;
+    Comment: TAtlasColor;
+    Add: TAtlasColor;
+    AddSoft: TAtlasColor;
+    Warn: TAtlasColor;
+    WarnSoft: TAtlasColor;
+    Error: TAtlasColor;
+    ErrorSoft: TAtlasColor;
+    Badges: array[TAtlasBadgeKind] of TAtlasBadgeColors;
+    /// <summary>Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
+    Pairs: TAtlasPairColors;
+    /// <summary>Eigene Farbe lokaler Routinen (#1788, highlight.nestedRoutines = color).</summary>
+    NestedRoutine: TAtlasColor;
+    /// <summary>Platzhalter von Format und ihre Argumente (#451), halb durchsichtig über dem Text.</summary>
+    Placeholders: TAtlasPlaceholderColors;
+    /// <summary>Zustandspunkte, Plaketten und Befundsymbole (#1255); nicht Add/Warn/Error, die für Text gedacht
+    /// sind.</summary>
+    Signals: TAtlasSignals;
+    /// <summary>Eigene Paarfarben aus den Einstellungen: leer oder ungültig = Palette.</summary>
+    function WithPairs(const ACustom: string): TAtlasColors;
+    /// <summary>Eigene Farbe lokaler Routinen aus den Einstellungen (#1788): „#RRGGBB“; leer oder ungültig =
+    /// Palette.</summary>
+    function WithNestedRoutine(const ACustom: string): TAtlasColors;
+    /// <summary>True, wenn AText genau eine Farbe „#RRGGBB“ ist; AColor erhält sie (#1788).</summary>
+    class function ParseColor(const AText: string; out AColor: TAtlasColor): Boolean; static;
+    /// <summary>„#RRGGBB,…“ mit genau fünf Farben in Reihenfolge der Tiefe.</summary>
+    class function ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean; static;
+    class function PairsText(const APairs: TAtlasPairColors): string; static;
+    class function Light: TAtlasColors; static;
+    class function Dark: TAtlasColors; static;
+    /// <summary>Light oder Dark, je nachdem ob ABackground (Fensterfarbe der IDE) dunkel ist.</summary>
+    class function ForBackground(ABackground: TAtlasColor): TAtlasColors; static;
+    /// <summary>Farben für Leisten im Rahmen der IDE (Brotkrumenleiste): Fläche AFace und Text AText aus dem
+    /// IDE-Thema, Gedämpftes, Linien und Auswahl daraus gemischt; Badges und Akzent wie ForBackground(AFace).</summary>
+    class function ForChrome(AFace, AText: TAtlasColor): TAtlasColors; static;
+    /// <summary>Farben für andockbare Fenster mit Inhalt (Issue, Board): Fläche AWindow und Text AText aus dem
+    /// IDE-Thema (clWindow/clWindowText) wie ForChrome; Gutter leicht zum Text hin abgesetzt, damit Spalten und
+    /// Abzeichen sich von der Fläche abheben.</summary>
+    class function ForWindow(AWindow, AText: TAtlasColor): TAtlasColors; static;
+    /// <summary>Farben der Inlay-Hint-Marken auf dem Editorhintergrund ABack: Text deutlich
+    /// lesbar, Fläche leicht im Akzent abgesetzt.</summary>
+    class function InlayHint(ABack: TAtlasColor): TAtlasHintColors; static;
+  end;
+
+const
+  /// <summary>Blasse Probleme (Text seither geändert): Anteil der Schweregradfarbe über der Fläche,
+  /// gleich in Editor und Hover.</summary>
+  cAtlasMixFaded = 0.55;
+  /// <summary>Daumen der Scrollleisten: Anteil von Muted über der Fläche.</summary>
+  cAtlasMixThumb = 0.5;
+  /// <summary>Inlay-Hint-Marken: Anteile von Text bzw. Akzent über dem Editorhintergrund.</summary>
+  cAtlasMixInlayText = 0.8;
+  cAtlasMixInlayPen = 0.45;
+  cAtlasMixInlayFill = 0.2;
+  /// <summary>Leisten im Rahmen der IDE: Anteile des Textes über der Fläche für gedämpften Text und Linien.</summary>
+  cAtlasMixChromeMuted = 0.7;
+  cAtlasMixChromeLine = 0.18;
+  /// <summary>Fenster im Rahmen der IDE: Anteil des Textes über der Fläche für Gutter (Spalten, Abzeichen).</summary>
+  cAtlasMixWindowGutter = 0.06;
+  /// <summary>Chips und Tags: Innenabstand links und rechts zusammen und Eckenradius, logische Pixel.</summary>
+  cAtlasChipPad = 12;
+  cAtlasChipRadius = 4;
+  /// <summary>Kürzel in Badges (Vervollständigung, Hover, Brotkrumen): Schrifthöhe als Anteil der Badgehöhe.
+  /// </summary>
+  cAtlasBadgeFontShare = 0.62;
+
+implementation
+
+uses
+  System.SysUtils;
+
+type
+  /// <summary>Farben der Paare bzw. Platzhalter als "#RRGGBB".</summary>
+  TPairHex = array[Low(TAtlasPairColors)..High(TAtlasPairColors)] of string;
+  TPlaceholderHex = array[Low(TAtlasPlaceholderColors)..High(TAtlasPlaceholderColors)] of string;
+
+const
+  /// <summary>Auswahl: Anteil des Akzents über der Fläche im hellen und im dunklen Schema. Dunkel 15 % statt 18 %
+  /// wie im Entwurf: sonst hat der Akzent darauf weniger als 4,5 : 1.</summary>
+  cLightSelection = 0.12;
+  cDarkSelection = 0.15;
+  /// <summary>Auswahl in Leisten im Rahmen der IDE: Anteil des Akzents über der Fläche, hell und dunkel.</summary>
+  cLightChromeSelection = 0.15;
+  cDarkChromeSelection = 0.25;
+  cLightPairs: TPairHex = ('#0071E3', '#EE0000', '#007C8A', '#C000E0', '#008700');
+  cDarkPairs: TPairHex = ('#3C94FF', '#F67676', '#00A4A4', '#E250FF', '#24AA24');
+  cLightPlaceholders: TPlaceholderHex = ('#0071E3', '#D86A00', '#008700', '#C000E0', '#007C8A', '#A08000');
+  cDarkPlaceholders: TPlaceholderHex = ('#3C94FF', '#FF9A3D', '#24AA24', '#E250FF', '#00A4A4', '#D6B020');
+
+function Hex(const AHex: string): TAtlasColor;
+begin
+  Result := TAtlasColorMath.FromHex(AHex);
+end;
+
+/// <summary>Farben aus "#RRGGBB" der Reihe nach in AColors (gleich lang).</summary>
+procedure HexColors(const AHex: array of string; var AColors: array of TAtlasColor);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AHex) do
+  begin
+    AColors[mIndex] := Hex(AHex[mIndex]);
+  end;
+end;
+
+function Badge(const ABackground, AText: string): TAtlasBadgeColors;
+begin
+  Result.Background := Hex(ABackground);
+  Result.Text := Hex(AText);
+end;
+
+{ TAtlasColors }
+
+function TAtlasColors.WithPairs(const ACustom: string): TAtlasColors;
+var
+  mCustom: TAtlasPairColors;
+begin
+  Result := Self;
+  if ParsePairs(ACustom, mCustom) then
+  begin
+    Result.Pairs := mCustom;
+  end;
+end;
+
+function TAtlasColors.WithNestedRoutine(const ACustom: string): TAtlasColors;
+var
+  mColor: TAtlasColor;
+begin
+  Result := Self;
+  if ParseColor(ACustom, mColor) then
+  begin
+    Result.NestedRoutine := mColor;
+  end;
+end;
+
+class function TAtlasColors.ParseColor(const AText: string; out AColor: TAtlasColor): Boolean;
+begin
+  Result := TAtlasColorMath.TryFromHex(Trim(AText), AColor);
+end;
+
+class function TAtlasColors.ParsePairs(const AText: string; out APairs: TAtlasPairColors): Boolean;
+var
+  mParts: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := False;
+  mParts := AText.Split([',']);
+  if Length(mParts) <> Length(APairs) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(mParts) do
+  begin
+    if not TAtlasColorMath.TryFromHex(Trim(mParts[mIndex]), APairs[mIndex]) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := True;
+end;
+
+class function TAtlasColors.PairsText(const APairs: TAtlasPairColors): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to High(APairs) do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + TAtlasColorMath.ToHex(APairs[mIndex]);
+  end;
+end;
+
+class function TAtlasColors.Light: TAtlasColors;
+begin
+  Result := Default(TAtlasColors);
+  Result.IsDark := False;
+  Result.Surface := Hex('#FFFFFF');
+  Result.Gutter := Hex('#F3F5F8');
+  Result.Text := Hex('#1B2230');
+  Result.Muted := Hex('#586274');
+  Result.Line := Hex('#DCE2EA');
+  Result.Accent := Hex('#0D5EAF');
+  Result.AccentSoft := Hex('#E3EEF9');
+  Result.Selection := TAtlasColorMath.Mix(Result.Accent, Result.Surface, cLightSelection);
+  Result.Keyword := Hex('#0D5EAF');
+  Result.StringLiteral := Hex('#8A4A0B');
+  Result.Comment := Hex('#6A7384');
+  Result.Add := Hex('#1E6B3A');
+  Result.AddSoft := Hex('#E3F3E8');
+  Result.Warn := Hex('#9A5B00');
+  Result.WarnSoft := Hex('#FDF1DC');
+  Result.Error := Hex('#B42318');
+  Result.ErrorSoft := Hex('#FDE8E6');
+  Result.Badges[TAtlasBadgeKind.Function_] := Badge('#E3EEF9', '#0D4C8C');
+  Result.Badges[TAtlasBadgeKind.Procedure_] := Badge('#E6F0EC', '#24634B');
+  Result.Badges[TAtlasBadgeKind.Property_] := Badge('#FCEBDD', '#9A3412');
+  Result.Badges[TAtlasBadgeKind.Field] := Badge('#E7F1F3', '#245A66');
+  Result.Badges[TAtlasBadgeKind.Event] := Badge('#F1E8FA', '#6B2FA0');
+  Result.Badges[TAtlasBadgeKind.Constant] := Badge('#FBF3D6', '#7A5A00');
+  Result.Badges[TAtlasBadgeKind.Type_] := Badge('#CCDDF2', '#0A3F75');
+  Result.Badges[TAtlasBadgeKind.Variable] := Badge('#E7F1F3', '#245A66');
+  Result.Badges[TAtlasBadgeKind.Unit_] := Badge('#ECEFF3', '#3E4756');
+  Result.Badges[TAtlasBadgeKind.Snippet] := Badge('#ECEFF3', '#3E4756');
+  Result.Badges[TAtlasBadgeKind.Keyword] := Badge('#ECEFF3', '#3E4756');
+  Result.Badges[TAtlasBadgeKind.XmlDoc] := Badge('#ECEFF3', '#3E4756');
+  // Kräftig und gesättigt (#653): vom schwarzen bzw. dunkelblauen Text der Schlüsselwörter klar
+  // verschieden (ΔE2000 ≥ 30), untereinander ≥ 30, gegen Weiß ≥ 4,5 : 1. Tiefe 0 nicht blau, weil
+  // die IDE Schlüsselwörter im hellen Schema dunkelblau zeichnet; kein Rot neben der Fehlerfarbe.
+  // Reihenfolge beginnt bei Blau; zyklisch wie zuvor, damit Nachbarn unterscheidbar bleiben.
+  HexColors(cLightPairs, Result.Pairs);
+  // Lokale Routinen (#1788): Bernstein, keiner der Paarfarben ähnlich, gegen Weiß über 4,5 : 1.
+  Result.NestedRoutine := Hex('#A85A00');
+  // Sechs deutlich verschiedene Töne für die Platzhalter (#451); Rot fehlt, es bleibt den Fehlern.
+  HexColors(cLightPlaceholders, Result.Placeholders);
+  Result.Signals := TAtlasSignals.Light;
+end;
+
+class function TAtlasColors.Dark: TAtlasColors;
+begin
+  Result := Default(TAtlasColors);
+  Result.IsDark := True;
+  Result.Surface := Hex('#1A1E25');
+  Result.Gutter := Hex('#15181D');
+  Result.Text := Hex('#E3E7ED');
+  Result.Muted := Hex('#9AA3B2');
+  Result.Line := Hex('#2B313B');
+  Result.Accent := Hex('#5B9BE6');
+  Result.AccentSoft := Hex('#1B2D45');
+  Result.Selection := TAtlasColorMath.Mix(Result.Accent, Result.Surface, cDarkSelection);
+  Result.Keyword := Hex('#7FB0EE');
+  Result.StringLiteral := Hex('#E3B27A');
+  Result.Comment := Hex('#8A93A3');
+  Result.Add := Hex('#7FD39A');
+  Result.AddSoft := Hex('#1D3325');
+  Result.Warn := Hex('#F0C06A');
+  Result.WarnSoft := Hex('#3A2E17');
+  Result.Error := Hex('#F59A8F');
+  Result.ErrorSoft := Hex('#3E201E');
+  Result.Badges[TAtlasBadgeKind.Function_] := Badge('#1B2D45', '#9CC3F2');
+  Result.Badges[TAtlasBadgeKind.Procedure_] := Badge('#1C3329', '#86D0AE');
+  Result.Badges[TAtlasBadgeKind.Property_] := Badge('#43301F', '#F5B783');
+  Result.Badges[TAtlasBadgeKind.Field] := Badge('#1F3338', '#8FCAD6');
+  Result.Badges[TAtlasBadgeKind.Event] := Badge('#36264A', '#CBA6F2');
+  Result.Badges[TAtlasBadgeKind.Constant] := Badge('#3B3218', '#E8C96A');
+  Result.Badges[TAtlasBadgeKind.Type_] := Badge('#2A4670', '#B8D5F7');
+  Result.Badges[TAtlasBadgeKind.Variable] := Badge('#1F3338', '#8FCAD6');
+  Result.Badges[TAtlasBadgeKind.Unit_] := Badge('#272D36', '#B9C1CC');
+  Result.Badges[TAtlasBadgeKind.Snippet] := Badge('#272D36', '#B9C1CC');
+  Result.Badges[TAtlasBadgeKind.Keyword] := Badge('#272D36', '#B9C1CC');
+  Result.Badges[TAtlasBadgeKind.XmlDoc] := Badge('#272D36', '#B9C1CC');
+  // #653: Die bisherigen Pastelltöne lagen zu nah am hellen Text (Kontrast unter 1,8 : 1 und
+  // ΔE2000 unter 30); dieselben Farbtöne wie hell, gesättigt und mittelhell.
+  // Reihenfolge beginnt bei Blau; zyklisch wie zuvor, damit Nachbarn unterscheidbar bleiben.
+  HexColors(cDarkPairs, Result.Pairs);
+  Result.NestedRoutine := Hex('#E8A33D');
+  HexColors(cDarkPlaceholders, Result.Placeholders);
+  Result.Signals := TAtlasSignals.Dark;
+end;
+
+class function TAtlasColors.ForBackground(ABackground: TAtlasColor): TAtlasColors;
+begin
+  if TAtlasColorMath.IsDark(ABackground) then
+  begin
+    Result := Dark;
+  end
+  else
+  begin
+    Result := Light;
+  end;
+end;
+
+class function TAtlasColors.ForChrome(AFace, AText: TAtlasColor): TAtlasColors;
+begin
+  Result := ForBackground(AFace);
+  Result.Surface := AFace;
+  Result.Gutter := AFace;
+  Result.Text := AText;
+  Result.Muted := TAtlasColorMath.Mix(AText, AFace, cAtlasMixChromeMuted);
+  Result.Line := TAtlasColorMath.Mix(AText, AFace, cAtlasMixChromeLine);
+  if Result.IsDark then
+  begin
+    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, cDarkChromeSelection);
+  end
+  else
+  begin
+    Result.Selection := TAtlasColorMath.Mix(Result.Accent, AFace, cLightChromeSelection);
+  end;
+end;
+
+class function TAtlasColors.ForWindow(AWindow, AText: TAtlasColor): TAtlasColors;
+begin
+  Result := ForChrome(AWindow, AText);
+  Result.Gutter := TAtlasColorMath.Mix(AText, AWindow, cAtlasMixWindowGutter);
+end;
+
+class function TAtlasColors.InlayHint(ABack: TAtlasColor): TAtlasHintColors;
+var
+  mColors: TAtlasColors;
+begin
+  mColors := ForBackground(ABack);
+  Result.Text := TAtlasColorMath.Mix(mColors.Text, ABack, cAtlasMixInlayText);
+  Result.Pen := TAtlasColorMath.Mix(mColors.Accent, ABack, cAtlasMixInlayPen);
+  Result.Fill := TAtlasColorMath.Mix(mColors.Accent, ABack, cAtlasMixInlayFill);
+end;
+
+end.

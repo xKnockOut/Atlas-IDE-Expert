@@ -79,7 +79,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cRunAction = 'RunRunCommand';

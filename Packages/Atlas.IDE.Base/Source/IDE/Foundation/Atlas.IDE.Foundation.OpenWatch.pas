@@ -44,7 +44,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   DockForm,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   TEditWatch = class(TNotifierObject, INTAEditServicesNotifier)

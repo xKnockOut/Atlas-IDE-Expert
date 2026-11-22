@@ -8,8 +8,8 @@ interface
 
 uses
   System.Types,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout.Input;
@@ -107,7 +107,7 @@ implementation
 
 uses
   Atlas.Core.Hover.View,
-  Atlas.Core.Style.Scaling,
+  Atlas.Plugin.Style.Scaling,
   System.SysUtils,
   System.Math;
 

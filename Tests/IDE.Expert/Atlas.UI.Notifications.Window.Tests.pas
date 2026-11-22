@@ -41,9 +41,9 @@ uses
   System.DateUtils,
   Vcl.Forms,
   Vcl.Menus,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal,
   Atlas.Core.Status.Contract,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
@@ -52,7 +52,8 @@ uses
   Vcl.Graphics,
   Atlas.UI.Foundation.Theme,
   Atlas.UI.Notifications.Strings,
-  Atlas.UI.Notifications.Window;
+  Atlas.UI.Notifications.Window,
+  Atlas.Core.Status.Signal;
 
 function SampleCenter: IAtlasNotificationCenter;
 begin
@@ -239,13 +240,13 @@ begin
   // Dieselben kräftigen Signalfarben wie die Plakette der Statusleiste, nicht die blassen Textfarben.
   mDark := TAtlasColors.Dark;
   mLight := TAtlasColors.Light;
-  Assert.AreEqual<TAtlasColor>(mDark.Signals.ForStatus(TAtlasStatusState.Yellow).Solid,
+  Assert.AreEqual<TAtlasColor>(TAtlasStatusSignal.ForState(mDark.Signals, TAtlasStatusState.Yellow).Solid,
     TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Warning).Fill, 'Warnung dunkel');
-  Assert.AreEqual<TAtlasColor>(mDark.Signals.ForStatus(TAtlasStatusState.Red).Solid,
+  Assert.AreEqual<TAtlasColor>(TAtlasStatusSignal.ForState(mDark.Signals, TAtlasStatusState.Red).Solid,
     TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Error).Fill, 'Fehler dunkel');
   Assert.AreNotEqual<TAtlasColor>(mDark.Warn,
     TAtlasNotificationTexts.SeveritySignal(mDark, TAtlasNotificationSeverity.Warning).Fill, 'nicht die Textfarbe');
-  Assert.AreEqual<TAtlasColor>(mLight.Signals.ForStatus(TAtlasStatusState.Red).Solid,
+  Assert.AreEqual<TAtlasColor>(TAtlasStatusSignal.ForState(mLight.Signals, TAtlasStatusState.Red).Solid,
     TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Error).Solid, 'Fehler hell');
   Assert.AreEqual<TAtlasColor>(mLight.Signals.Get(TAtlasSignalKind.Info).Fill,
     TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Info).Fill, 'Info');

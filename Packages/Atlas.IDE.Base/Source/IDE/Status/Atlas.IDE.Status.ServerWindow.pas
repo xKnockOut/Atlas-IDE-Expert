@@ -65,7 +65,7 @@ uses
   Vcl.Forms,
   DesignIntf,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Status.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.UI.Status.ServerFrame,

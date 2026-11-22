@@ -65,7 +65,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Text.LogMarks;
 
 /// <summary>Fenster des Editorfensters zu AEditorParent (das Formular der IDE, nicht das Hauptfenster); 0 ohne.

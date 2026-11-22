@@ -11,7 +11,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   /// <summary>Zähler der Fragen eines Abrufs; lebt, solange ein Rückruf ihn hält.</summary>

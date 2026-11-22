@@ -22,7 +22,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Welcome.Search;
 
 type
@@ -103,10 +103,10 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Foundation.Controls,
   Atlas.UI.Welcome.Strings;
 

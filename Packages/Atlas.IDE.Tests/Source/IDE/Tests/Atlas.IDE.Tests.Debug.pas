@@ -107,7 +107,7 @@ implementation
 uses
   Winapi.Windows,
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings,

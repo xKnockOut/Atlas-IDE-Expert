@@ -12,7 +12,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Pascal.Signatures;
 
 /// <summary>Quelltext von ANode.</summary>
 function NodeText(const AContext: TRuleContext; ANode: TSyntaxNode): string;
@@ -339,7 +339,7 @@ begin
     ' ;'));
   if Result then
   begin
-    AParams := TChangeSignature.ParseParameters(Copy(ASignature, mOpen + 1, mClose - mOpen - 1));
+    AParams := TPascalSignatures.ParseParameters(Copy(ASignature, mOpen + 1, mClose - mOpen - 1));
   end;
 end;
 

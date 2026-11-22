@@ -41,7 +41,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,
   Atlas.UI.Settings.Strings,

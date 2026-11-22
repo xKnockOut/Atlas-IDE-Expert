@@ -53,7 +53,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Syntax,
+  Atlas.Plugin.Style.Syntax,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Editor.Minimap;

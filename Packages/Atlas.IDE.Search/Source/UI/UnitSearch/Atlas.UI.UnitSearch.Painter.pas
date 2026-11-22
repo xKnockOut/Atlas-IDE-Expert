@@ -19,8 +19,8 @@ uses
   System.Types,
   System.Generics.Collections,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.Sections,
   Atlas.UI.UnitSearch.Data;

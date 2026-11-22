@@ -38,7 +38,7 @@ implementation
 uses
   System.Classes,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,

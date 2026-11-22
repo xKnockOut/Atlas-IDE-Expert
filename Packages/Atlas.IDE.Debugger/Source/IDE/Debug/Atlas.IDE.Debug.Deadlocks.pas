@@ -54,7 +54,7 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.Threads,
   Atlas.UI.Results.Items,
   Atlas.IDE.Foundation.Navigation,

@@ -111,7 +111,7 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Core.Lsp.Client,

@@ -39,7 +39,7 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Overview;
 
 type

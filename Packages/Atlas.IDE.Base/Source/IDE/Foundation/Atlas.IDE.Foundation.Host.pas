@@ -23,7 +23,7 @@ uses
   System.SysUtils,
   System.Types,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Build.Events,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Lsp.Session,
@@ -205,7 +205,7 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Modules.Answer;
 
 { TAtlasServerRequest }

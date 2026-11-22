@@ -20,7 +20,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color;
 
 type
   {$SCOPEDENUMS ON}

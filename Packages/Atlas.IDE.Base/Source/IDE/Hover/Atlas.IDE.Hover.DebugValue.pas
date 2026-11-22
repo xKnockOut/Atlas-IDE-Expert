@@ -105,8 +105,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread;
 
 const
   cBufferSize = 4096;

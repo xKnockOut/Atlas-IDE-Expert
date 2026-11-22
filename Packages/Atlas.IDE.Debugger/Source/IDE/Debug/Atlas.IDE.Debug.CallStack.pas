@@ -105,7 +105,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Core.Debug.CallStack,

@@ -26,7 +26,7 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Debugger,
   Atlas.IDE.Debug.Session;
 

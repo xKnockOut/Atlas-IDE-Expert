@@ -115,7 +115,7 @@ uses
   System.UITypes,
   System.DateUtils,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.VersionControl.Contract,

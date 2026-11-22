@@ -37,7 +37,7 @@
       "severity": "warning",
       "exclude": ["Tests/**"],
       "hostedFeatures": ["Replay", "Monitor", "Update"],
-      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
+      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin", "Atlas.Core", "Atlas.UI",
         "Atlas.IDE"],
       "allow": [
         "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
@@ -63,7 +63,7 @@
       "severity": "warning",
       "exclude": ["Tests/**"],
       "hostedFeatures": ["Replay", "Monitor", "Update"],
-      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Core", "Atlas.UI",
+      "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin", "Atlas.Core", "Atlas.UI",
         "Atlas.IDE"],
       "allow": ["Atlas.Common.Dfm.Contract.TDfm*"]
     },

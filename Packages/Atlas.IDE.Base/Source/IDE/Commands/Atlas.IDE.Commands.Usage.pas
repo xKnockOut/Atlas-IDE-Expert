@@ -77,7 +77,7 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.IDE.Foundation.Settings;
 

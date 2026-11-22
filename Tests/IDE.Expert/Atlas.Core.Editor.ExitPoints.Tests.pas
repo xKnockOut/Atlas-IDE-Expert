@@ -38,7 +38,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.ExitPoints,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Settings.Plugin;

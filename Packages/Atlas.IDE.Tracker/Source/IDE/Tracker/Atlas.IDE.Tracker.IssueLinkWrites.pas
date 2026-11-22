@@ -60,9 +60,9 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.UI.Tracker.Issue.Strings,

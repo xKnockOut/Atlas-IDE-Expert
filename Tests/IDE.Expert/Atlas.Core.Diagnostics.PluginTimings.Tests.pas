@@ -80,7 +80,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasPluginTimingsTests }
 

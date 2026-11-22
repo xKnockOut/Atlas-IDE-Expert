@@ -105,7 +105,7 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Status.Registry,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,

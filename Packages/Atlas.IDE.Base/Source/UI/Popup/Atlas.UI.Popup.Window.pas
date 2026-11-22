@@ -29,10 +29,10 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.Controls,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Popup.Accessibility,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   TAtlasPopupWindow = class(TCustomControl)

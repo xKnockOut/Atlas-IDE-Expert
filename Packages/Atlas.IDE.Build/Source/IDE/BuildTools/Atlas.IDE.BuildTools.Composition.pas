@@ -36,7 +36,7 @@ uses
   System.Types,
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,

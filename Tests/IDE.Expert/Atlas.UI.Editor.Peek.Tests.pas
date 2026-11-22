@@ -30,7 +30,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Peek,
   Atlas.UI.Editor.Peek;
 

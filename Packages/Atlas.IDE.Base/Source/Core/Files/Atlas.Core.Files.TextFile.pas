@@ -96,7 +96,7 @@ uses
   Atlas.Text.Encoding,
   Atlas.WinBase.Files,
   Atlas.Text.Lines,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Files;
 
 {$SCOPEDENUMS ON}

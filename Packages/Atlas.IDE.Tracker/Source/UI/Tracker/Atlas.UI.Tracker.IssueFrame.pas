@@ -68,7 +68,7 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame.Types,

@@ -21,7 +21,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Atlas.Core.KnownErrors.Contract,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.Core.Debug.ExceptionBarLayout;
 
@@ -65,7 +65,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.UITypes,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Debug.AccessViolation.Strings,
   Atlas.UI.Debug.Exceptions.Strings;
 

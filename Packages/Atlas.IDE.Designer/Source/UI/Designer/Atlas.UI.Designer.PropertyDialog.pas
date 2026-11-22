@@ -63,7 +63,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.Core.Designer.PropertySearch,
   Atlas.UI.Designer.Strings;
 

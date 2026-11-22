@@ -73,10 +73,10 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Analysis.Strings,

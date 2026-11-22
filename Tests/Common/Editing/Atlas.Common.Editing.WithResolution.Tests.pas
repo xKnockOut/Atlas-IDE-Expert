@@ -35,7 +35,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.WithResolution,
   Atlas.Tests.SourceText;
@@ -120,7 +120,7 @@ begin
       Exit('-');
     end;
     Assert.AreEqual('with auflösen', mResolved.Action.Title);
-    Result := TChangeSignature.ApplyEdits(mText, mResolved.Action.Edits);
+    Result := TTextChanges.Apply(mText, mResolved.Action.Edits);
   finally
     mTree.Free;
   end;

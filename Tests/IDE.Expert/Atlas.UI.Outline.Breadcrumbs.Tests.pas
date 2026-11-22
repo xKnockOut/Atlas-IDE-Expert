@@ -59,7 +59,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Outline.Breadcrumbs;
 
 type

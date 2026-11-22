@@ -62,7 +62,7 @@ uses
   Atlas.Core.Build.PipelineSettings,
   Atlas.Core.BuildPipeline.Plan,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Projects.Contract,
   Atlas.Core.Projects.Summary,

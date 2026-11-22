@@ -75,7 +75,7 @@ uses
   Winapi.Windows,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Outline.LoadGuard,
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.Lsp.Client,

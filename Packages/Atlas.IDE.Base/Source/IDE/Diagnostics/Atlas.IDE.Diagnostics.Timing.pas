@@ -101,10 +101,10 @@ implementation
 uses
   System.IOUtils,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Timing,
   Atlas.Core.Diagnostics.Export,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,

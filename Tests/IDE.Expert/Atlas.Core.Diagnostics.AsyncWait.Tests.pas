@@ -55,7 +55,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.AsyncWait;
 
 const

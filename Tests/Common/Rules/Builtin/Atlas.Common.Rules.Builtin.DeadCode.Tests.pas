@@ -94,7 +94,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.ProjectFiles,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Configuration.TestSupport,
   Atlas.Tests.Files;
@@ -657,7 +657,7 @@ begin
   Assert.AreEqual('Zirkuläre Unit-Referenz: A → A (wie F2092)', mFound.Message);
   Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mFound.Severity);
   Assert.AreEqual('Eintrag entfernen'#10, FixTitles(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mData.Text(FileOf('A')), mFound.Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mData.Text(FileOf('A')), mFound.Fixes[0].Edits);
   Assert.AreEqual(0, Pos('uses', mFixed), mFixed);
   // Auch mit Projekten nur eine Meldung, nicht noch eine über den Graphen.
   mData.NoProjects := False;
@@ -695,7 +695,7 @@ begin
   mData.Live := True;
   mFound := CycleFinding(Run(mData, FileOf('C')));
   Assert.AreEqual('In implementation-uses verschieben'#10, FixTitles(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mData.Text(FileOf('C')), mFound.Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mData.Text(FileOf('C')), mFound.Fixes[0].Edits);
   Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  B,'#10'  A;'#10'end.', mFixed);
   // Die Korrektur beseitigt die Meldung.
   mData.Put(FileOf('C'), mFixed);
@@ -713,7 +713,7 @@ begin
   mData.Config := '{"sortUses": true}';
   mFound := CycleFinding(Run(mData, FileOf('C')));
   Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  A,'#10'  X;'#10'end.',
-    TChangeSignature.ApplyEdits(mData.Text(FileOf('C')), mFound.Fixes[0].Edits));
+    TTextChanges.Apply(mData.Text(FileOf('C')), mFound.Fixes[0].Edits));
   Assert.AreEqual(1, Integer(Length(mFound.Fixes[0].Edits)), 'eine kleinste Ersetzung');
 end;
 
@@ -783,9 +783,8 @@ begin
   mWatch := TStopwatch.StartNew;
   Assert.AreEqual(1, Integer(Length(Run(mData, FileOf('E1')))));
   mWatch.Stop;
-  System.Writeln(Format('uses-cycle live: Prüfung bei %d Units in %d ms (mit Aufbau von Index und Graph %d ms)',
-    [cUnitCount, LastCheckMs, mWatch.ElapsedMilliseconds]));
-  Assert.IsTrue(LastCheckMs < 200, 'zu langsam für die Prüfung beim Tippen');
+  Assert.IsTrue(LastCheckMs < 200, Format('zu langsam für die Prüfung beim Tippen: %d Units in %d ms (mit Aufbau ' +
+    'von Index und Graph %d ms)', [cUnitCount, LastCheckMs, mWatch.ElapsedMilliseconds]));
 end;
 
 procedure TDeadCodeTests.ParserReadsDeadCode;
@@ -943,8 +942,8 @@ begin
   mWatch := TStopwatch.StartNew;
   Assert.AreEqual(1, Integer(Length(Run(mData, FileOf('E1')))));
   mWatch.Stop;
-  System.Writeln(Format('uses-cycle: Prüfung bei %d Units in %d ms', [cUnitCount, mWatch.ElapsedMilliseconds]));
-  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, 'zu langsam');
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, Format('zu langsam: %d Units in %d ms', [cUnitCount,
+    mWatch.ElapsedMilliseconds]));
 end;
 
 initialization

@@ -61,7 +61,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.RtlPatterns,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -245,7 +245,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('to durch downto ersetzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(InRoutine('  for I := 10 downto 1 do'#10'    Countdown(I);'),
-    TChangeSignature.ApplyEdits(InRoutine(cBody), mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(InRoutine(cBody), mFindings[0].Fixes[0].Edits));
   // Vorzeichen, Hex, Zeichen, Inline-Variable mit und ohne Typ (auch für High … to Low).
   mFindings := TRuleAssert.Findings(TForHighToLowRule.Create, InRoutine('  for I := -1 to -5 do;'#10 +
     '  for I := $10 to 3 do;'#10'  for C := ''z'' to ''a'' do;'#10'  for C := #13 to #10 do;'#10 +

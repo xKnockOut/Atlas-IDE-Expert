@@ -48,7 +48,7 @@ uses
   System.IOUtils,
   System.SyncObjs,
   Atlas.Text.MapFile,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.StackRing,
   Atlas.Core.Files.TextFile;
 

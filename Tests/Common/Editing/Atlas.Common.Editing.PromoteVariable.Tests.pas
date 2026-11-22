@@ -48,7 +48,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.RoutineLocals,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Text.Lines,
   Atlas.Tests.SourceText;
@@ -131,7 +131,7 @@ begin
       TestLookup(mTree), TFormatStyle.Default, mName), APromoted, AReason);
     if Result then
     begin
-      AResult := TChangeSignature.ApplyEdits(AText, APromoted.Edits);
+      AResult := TTextChanges.Apply(AText, APromoted.Edits);
       mCheck := TPascalParser.Parse(AResult);
       try
         Assert.AreEqual(0, Integer(Length(mCheck.Diagnostics)), 'Ergebnis parst nicht: ' + AResult);

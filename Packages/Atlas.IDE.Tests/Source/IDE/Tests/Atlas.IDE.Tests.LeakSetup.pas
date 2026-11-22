@@ -33,7 +33,7 @@ uses
   System.JSON,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.ProjectSelection,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Lsp.WorkspaceEdits,

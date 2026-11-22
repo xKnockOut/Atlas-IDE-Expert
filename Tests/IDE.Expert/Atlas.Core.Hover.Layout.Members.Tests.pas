@@ -34,7 +34,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,

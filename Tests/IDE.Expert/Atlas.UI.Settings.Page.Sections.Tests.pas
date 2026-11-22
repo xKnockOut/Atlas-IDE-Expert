@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   System.SysUtils,
   Vcl.Controls,
   Vcl.StdCtrls,

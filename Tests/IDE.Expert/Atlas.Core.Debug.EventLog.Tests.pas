@@ -51,7 +51,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Settings.Plugin.Debug,
   Atlas.Core.Debug.EventLog;
 

@@ -64,7 +64,7 @@ implementation
 uses
   Atlas.Text.Lines,
   Atlas.Text.Encoding,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 { TAtlasFileFormat }
 

@@ -46,7 +46,7 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.MenuContext,
   Atlas.Core.Settings.ContextMenuGroups,
   Atlas.IDE.Foundation.Settings,

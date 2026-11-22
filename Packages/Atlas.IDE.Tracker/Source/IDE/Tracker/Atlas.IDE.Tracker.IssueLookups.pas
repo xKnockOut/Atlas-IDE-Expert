@@ -54,9 +54,9 @@ uses
   Atlas.Core.Ci.Contract,
   System.Classes,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Preview;
 

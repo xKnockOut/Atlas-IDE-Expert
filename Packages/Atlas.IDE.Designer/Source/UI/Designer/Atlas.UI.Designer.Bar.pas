@@ -24,7 +24,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Editor.Bar;
 

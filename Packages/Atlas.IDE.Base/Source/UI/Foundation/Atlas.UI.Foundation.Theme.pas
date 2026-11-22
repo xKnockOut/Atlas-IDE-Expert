@@ -22,9 +22,9 @@ uses
   System.SysUtils,
   Vcl.Graphics,
   Vcl.Controls,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
-  Atlas.Core.Style.Listeners;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Plugin.Style.Listeners;
 
 type
   TAtlasUiTheme = class
@@ -85,7 +85,7 @@ implementation
 uses
   System.Classes,
   Vcl.Themes,
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color;
 
 type
   TControlAccess = class(TControl);

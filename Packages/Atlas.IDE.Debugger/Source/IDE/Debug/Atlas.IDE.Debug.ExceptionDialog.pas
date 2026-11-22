@@ -97,7 +97,7 @@ implementation
 uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.ExceptionDialogFlow;
 
 type

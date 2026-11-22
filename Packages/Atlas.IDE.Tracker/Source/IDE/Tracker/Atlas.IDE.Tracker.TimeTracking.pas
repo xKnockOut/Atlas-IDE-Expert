@@ -127,7 +127,7 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.TimePlan,
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.Time.Strings,

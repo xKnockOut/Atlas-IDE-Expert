@@ -22,8 +22,8 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Overview;
 
 type

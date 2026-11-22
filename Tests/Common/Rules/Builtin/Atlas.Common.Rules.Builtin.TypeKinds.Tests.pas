@@ -64,7 +64,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.SourceText;
 
@@ -94,7 +94,7 @@ end;
 
 function Apply(const AText: string; const AFix: TRuleFix): string;
 begin
-  Result := TChangeSignature.ApplyEdits(AText, AFix.Edits);
+  Result := TTextChanges.Apply(AText, AFix.Edits);
 end;
 
 /// <summary>Unit mit Record TPunkt, Klasse TKunde, Aufzählung TFarbe und Zeiger PZahl; AStatements im Rumpf von Fall
