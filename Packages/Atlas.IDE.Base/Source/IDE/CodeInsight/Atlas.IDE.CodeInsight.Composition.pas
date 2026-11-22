@@ -22,14 +22,12 @@ uses
   Atlas.Core.Diagnostics.ExitWatch,
   Atlas.Core.Diagnostics.Teardown,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Plugin.Product.Version,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.StackCapture,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Theme.Symbol,
-  Atlas.UI.Foundation.Strings,
   Atlas.IDE.Settings.Experimental,
   Atlas.IDE.Settings.Transfer,
   Atlas.IDE.Completion.History,
@@ -61,8 +59,7 @@ begin
   TAtlasIdeStackCapture.Install;
   InstallLanguage;
   // Atlas-Symbol (#751): Startbildschirm, Info-Dialog und Bildliste immer, auch abgesichert.
-  TAtlasIdeSymbol.Register(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.SymbolTitle, [TAtlasPluginVersion.cVersion]),
-    TAtlasFoundationStrings.Text(TAtlasFoundationTextId.SymbolDescription));
+  RegisterSymbol;
 end;
 
 /// <summary>Immer, auch abgesichert: abgesicherter Start (#722) zuerst, denn davon hängt ab, was angemeldet wird;
