@@ -226,9 +226,9 @@ uses
   System.StrUtils,
   Atlas.UI.Strings,
   Atlas.UI.Rules.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Theme.Service;
 
 const
   cGap = 6;

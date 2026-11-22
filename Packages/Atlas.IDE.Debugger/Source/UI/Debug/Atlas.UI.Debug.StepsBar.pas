@@ -12,7 +12,7 @@ uses
   System.Classes,
   System.Types,
   Atlas.Plugin.Style.Palette,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasStepsBar = class(TAtlasLayoutPopupWindow)
@@ -47,7 +47,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   /// <summary>Abstand vom rechten bzw. oberen Rand des aktiven Fensters (in cPad).</summary>

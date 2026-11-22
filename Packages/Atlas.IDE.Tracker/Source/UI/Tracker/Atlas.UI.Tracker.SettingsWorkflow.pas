@@ -22,7 +22,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.Core.Tracker.Workflow,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.SettingsRows;
 
@@ -98,7 +98,7 @@ uses
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.Settings.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   cValueLeft = 280;

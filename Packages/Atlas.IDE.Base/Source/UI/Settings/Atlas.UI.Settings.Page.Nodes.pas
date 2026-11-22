@@ -11,7 +11,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Settings.Groups,
-  Atlas.UI.Settings.Group,
+  Atlas.Vcl.Options.Group,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -92,8 +92,8 @@ uses
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Settings.Marks,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Oberkante der ersten Zeile, die Place beim Aufteilen eines Bereichs setzt (alTop ordnet nach Top;

@@ -37,8 +37,8 @@ uses
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Format,
   Atlas.Plugin.Style.Color,
-  Atlas.UI.Popup.Window,
-  Atlas.UI.Popup.Styled;
+  Atlas.Vcl.Popup.Window,
+  Atlas.Vcl.Popup.Styled;
 
 type
   TAtlasIndexEvent = reference to procedure(AIndex: Integer);
@@ -131,7 +131,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Atlas.UI.Strings,
-  Atlas.UI.Popup.Accessibility,
+  Atlas.Vcl.Popup.Accessibility,
   Atlas.Core.Signature.Controller;
 
 const

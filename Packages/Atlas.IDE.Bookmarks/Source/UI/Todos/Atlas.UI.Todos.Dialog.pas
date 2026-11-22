@@ -16,7 +16,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Projects.Todos,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasTodoFilterDialog = class(TAtlasDialog)
@@ -55,7 +55,7 @@ implementation
 
 uses
   Atlas.UI.Bookmarks.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   cGap = 8;

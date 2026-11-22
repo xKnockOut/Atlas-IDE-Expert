@@ -19,8 +19,8 @@ uses
   Atlas.Core.Completion.Width,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Documentation.Layout,
-  Atlas.UI.Popup.Window,
-  Atlas.UI.Popup.Tip,
+  Atlas.Vcl.Popup.Window,
+  Atlas.Vcl.Popup.Tip,
   Atlas.UI.Completion.Details;
 
 type
@@ -196,7 +196,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Popup.Accessibility,
+  Atlas.Vcl.Popup.Accessibility,
   Atlas.UI.Completion.Strings;
 
 const

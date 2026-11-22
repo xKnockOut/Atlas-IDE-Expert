@@ -25,7 +25,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.ValueBox,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -127,9 +127,9 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.Time.Strings,
   Atlas.Plugin.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

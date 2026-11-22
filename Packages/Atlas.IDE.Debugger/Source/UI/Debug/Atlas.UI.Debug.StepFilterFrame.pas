@@ -112,8 +112,8 @@ uses
   Winapi.Windows,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 

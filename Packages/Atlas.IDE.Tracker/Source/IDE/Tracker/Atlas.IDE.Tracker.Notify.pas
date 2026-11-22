@@ -164,7 +164,7 @@ uses
   Atlas.Core.Tracker.NotifyPlan,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Tracker.Notify,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,

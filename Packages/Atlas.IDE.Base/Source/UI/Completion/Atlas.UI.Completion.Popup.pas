@@ -56,7 +56,7 @@ uses
   Vcl.Controls,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Ranking,
-  Atlas.UI.Popup.Accessibility,
+  Atlas.Vcl.Popup.Accessibility,
   Atlas.UI.Completion.PopupState,
   Atlas.UI.Completion.PopupPainter;
 
@@ -139,7 +139,7 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.UI.Completion.Strings,
   Atlas.UI.Completion.PopupTexts,
-  Atlas.UI.Popup.Contract;
+  Atlas.Vcl.Popup.Contract;
 
 const
   // Rand neben dem Text „keine Treffer für …“ in der Breite des Fensters.

@@ -18,7 +18,7 @@ uses
   System.Classes,
   Vcl.Menus,
   Atlas.Core.Bookmarks.Store,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   TAtlasIdeQuickTip = class
@@ -71,7 +71,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.QuickService,
-  Atlas.UI.Foundation.Menus;
+  Atlas.Vcl.Controls.Menus;
 
 { TAtlasIdeQuickTip }
 

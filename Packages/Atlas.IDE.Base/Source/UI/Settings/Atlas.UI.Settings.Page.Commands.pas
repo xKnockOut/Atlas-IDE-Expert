@@ -9,7 +9,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.ContextMenuGroups,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type

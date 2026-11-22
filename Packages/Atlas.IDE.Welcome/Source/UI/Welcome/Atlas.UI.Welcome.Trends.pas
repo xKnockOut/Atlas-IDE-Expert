@@ -124,7 +124,7 @@ uses
   System.UITypes,
   System.DateUtils,
   Vcl.Themes,
-  Atlas.UI.Foundation.Controls,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings;
 

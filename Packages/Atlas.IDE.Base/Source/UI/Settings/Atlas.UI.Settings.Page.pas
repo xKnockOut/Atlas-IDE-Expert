@@ -48,10 +48,10 @@ uses
   Vcl.Forms,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Search,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Tree,
   Atlas.UI.Settings.Page.Search,
-  Atlas.UI.Style.Symbol;
+  Atlas.Vcl.Images.Symbol;
 
 type
   TAtlasSettingsPage = class(TAtlasSettingsPageTree)
@@ -132,7 +132,7 @@ uses
   Atlas.UI.Settings.Strings,
   Atlas.Plugin.Style.Symbol,
   Atlas.Core.Diagnostics.Hangs,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   /// <summary>Aktionen für den Einfrier-Wächter (Protokollnamen, nicht übersetzt).</summary>

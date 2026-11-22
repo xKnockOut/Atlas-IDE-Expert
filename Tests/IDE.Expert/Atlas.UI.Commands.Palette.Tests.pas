@@ -22,7 +22,7 @@ implementation
 uses
   Vcl.Graphics,
   Atlas.Plugin.Style.Palette,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Commands.Palette;
 
 { TAtlasPaletteWindowTests }

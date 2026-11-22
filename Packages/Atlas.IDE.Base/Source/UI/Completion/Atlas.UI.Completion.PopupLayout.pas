@@ -85,7 +85,7 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Sets,
   Atlas.Core.Completion.Favorites,
-  Atlas.UI.Popup.Draw,
+  Atlas.Vcl.Popup.Draw,
   Atlas.UI.Completion.Strings,
   Atlas.UI.Completion.Details;
 

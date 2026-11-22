@@ -37,7 +37,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.IssueForms,
   Atlas.Core.Tracker.NewIssue,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Tracker.NewIssueBox,
   Atlas.UI.Tracker.NewIssueForm;
 
@@ -272,7 +272,7 @@ uses
   System.StrUtils,
   Atlas.Core.Tracker.NewIssueGitHub,
   Atlas.UI.Tracker.NewIssue.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   cGap = 8;

@@ -114,7 +114,7 @@ uses
   ToolsAPI,
   Vcl.Graphics,
   Atlas.UI.Foundation.Strings,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
 type

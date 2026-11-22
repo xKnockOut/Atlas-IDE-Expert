@@ -11,7 +11,7 @@ uses
   Vcl.StdCtrls,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.VersionControl.SettingsPart;
 
 type

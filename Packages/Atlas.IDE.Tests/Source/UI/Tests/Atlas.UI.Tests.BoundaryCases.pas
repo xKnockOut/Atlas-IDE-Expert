@@ -21,7 +21,7 @@ uses
   Vcl.StdCtrls,
   Vcl.Grids,
   Atlas.Core.Tests.BoundaryCases,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasTestsBoundaryDialog = class(TAtlasDialog)

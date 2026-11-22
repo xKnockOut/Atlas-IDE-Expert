@@ -142,7 +142,7 @@ uses
   Vcl.Dialogs,
   Atlas.UI.Tracker.Attach.Strings,
   Atlas.UI.Tracker.ImageMarkup,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;

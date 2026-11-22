@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.UI.Settings.Contract,
@@ -32,7 +32,7 @@ uses
   Vcl.Clipbrd,
   Vcl.AppEvnts,
   Vcl.ComCtrls,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Settings.Keys,
   Atlas.UI.Settings.Overview;
 

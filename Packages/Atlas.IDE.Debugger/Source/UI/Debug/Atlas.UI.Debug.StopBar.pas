@@ -14,7 +14,7 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasStopBar = class(TAtlasLayoutPopupWindow)

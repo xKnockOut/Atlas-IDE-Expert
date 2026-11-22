@@ -71,7 +71,7 @@ uses
   Vcl.Forms,
   Atlas.Plugin.Style.Color,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Teilstriche je Achse.</summary>

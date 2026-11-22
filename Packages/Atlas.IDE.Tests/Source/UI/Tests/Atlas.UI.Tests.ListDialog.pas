@@ -17,7 +17,7 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.Core.Tests.Lists,
   Atlas.Core.Tests.ListText;
 

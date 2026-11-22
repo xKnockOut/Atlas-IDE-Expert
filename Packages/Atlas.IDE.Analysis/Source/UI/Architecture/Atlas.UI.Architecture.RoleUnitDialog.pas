@@ -16,7 +16,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Atlas.Core.Architecture.RoleUnit,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasRoleUnitDialog = class(TAtlasDialog)
@@ -54,7 +54,7 @@ uses
   Vcl.Graphics,
   Atlas.UI.Analysis.Strings,
   Atlas.Plugin.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   cGap = 12;

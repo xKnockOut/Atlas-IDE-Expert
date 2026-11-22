@@ -15,8 +15,8 @@ interface
 uses
   System.Classes,
   Vcl.StdCtrls,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Tracker.CommentEditor;
 
 type
