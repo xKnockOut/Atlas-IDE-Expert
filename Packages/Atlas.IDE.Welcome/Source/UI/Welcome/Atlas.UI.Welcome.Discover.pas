@@ -149,6 +149,10 @@ uses
   Atlas.Vcl.Theme.Service,
   Atlas.Text.Files;
 
+const
+  /// <summary>Schmaler bricht der Text eines Tipps nicht um (logische Pixel bei 96 dpi).</summary>
+  cMinTipWidth = 80;
+
 { TAtlasDiscoverPicture }
 
 constructor TAtlasDiscoverPicture.Create(AImage: TImage);
@@ -371,7 +375,7 @@ function TAtlasWelcomeDiscoverFrame.BodyHeight: Integer;
 begin
   // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
   Arrange;
-  Result := Max(FContentHeight, ScaleValue(40));
+  Result := Max(FContentHeight, ScaleValue(cMinBodyHeight));
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.UpdateContent;
@@ -494,7 +498,7 @@ begin
   if FText.Visible then
   begin
     // Breite zuerst: Das Label bricht danach um und passt seine Höhe an.
-    FText.Width := Max(ARight - ATextLeft, ScaleValue(80));
+    FText.Width := Max(ARight - ATextLeft, ScaleValue(cMinTipWidth));
     // AutoSize neu setzen: Erst das misst den umbrochenen Text für die neue Breite.
     FText.AutoSize := False;
     FText.AutoSize := True;

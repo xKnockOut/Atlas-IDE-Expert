@@ -247,10 +247,15 @@ uses
   Atlas.Vcl.Theme.Service;
 
 const
+  /// <summary>Marke mit dem Stand der letzten Schnellaktion: Innenabstand links und rechts, Unterkante und
+  /// Radius der Ecken (logische Pixel bei 96 dpi).</summary>
+  cBadgePadding = 6;
+  cBadgeBottom = 19;
+  cBadgeRadius = 16;
   cSeparator = ' · ';
   cArrow = ' ' + #$203A + ' ';
   cDash = ' ' + #$2014 + ' ';
-  cNoticeColor = TColor($001A8CC9);
+  cNoticeColor = TAtlasWelcomeMarks.cWarning;
 
 type
   /// <summary>Farben des IDE-Themas (hell oder dunkel) für den Reiter „Zuletzt“.</summary>
@@ -499,14 +504,16 @@ function TContinuePainter.PaintBadge(ATop, ALimit: Integer; const AText: string;
 var
   mRect: TRect;
 begin
-  mRect := Rect(ALimit - Canvas.TextWidth(AText) - Scaled(12), ATop + Scaled(3), ALimit, ATop + Scaled(19));
+  mRect := Rect(ALimit - Canvas.TextWidth(AText) - 2 * Scaled(cBadgePadding), ATop + Scaled(TAtlasWelcomeRow.cNameTop),
+    ALimit, ATop + Scaled(cBadgeBottom));
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := TAtlasQuickActionTexts.StateColor(AState);
   Canvas.Pen.Color := Canvas.Brush.Color;
-  Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, Scaled(16), Scaled(16));
+  Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, Scaled(cBadgeRadius), Scaled(cBadgeRadius));
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Color := clWhite;
-  Canvas.TextOut(mRect.Left + Scaled(6), mRect.Top + (mRect.Height - Canvas.TextHeight(AText)) div 2, AText);
+  Canvas.TextOut(mRect.Left + Scaled(cBadgePadding), mRect.Top + (mRect.Height - Canvas.TextHeight(AText)) div 2,
+    AText);
   Result := mRect.Left - Scaled(TAtlasContinueRecentView.cIndent);
 end;
 
@@ -521,7 +528,7 @@ begin
   mAge := TAtlasContinueTexts.AgeText(View.FEntries[ARow].State.At, Stamp);
   if mAge <> '' then
   begin
-    Canvas.TextOut(ALimit - Canvas.TextWidth(mAge), ATop + Scaled(3), mAge);
+    Canvas.TextOut(ALimit - Canvas.TextWidth(mAge), ATop + Scaled(TAtlasWelcomeRow.cNameTop), mAge);
     Result := ALimit - Canvas.TextWidth(mAge) - Scaled(TAtlasContinueRecentView.cIndent);
   end;
 end;
@@ -534,8 +541,9 @@ begin
   if ARow = Active then
   begin
     // Schnellaktionen (#764): Knöpfe statt des Zeitpunkts links von „Fortsetzen“.
-    Result := View.FQuick.LayoutRow(Canvas, ARow, Rect(Scaled(TAtlasContinueRecentView.cIndent) + Scaled(80), ATop,
-      ALimit, ATop + Scaled(TAtlasContinueRecentView.cRowHeight) - Scaled(2))) -
+    Result := View.FQuick.LayoutRow(Canvas, ARow, Rect(Scaled(TAtlasContinueRecentView.cIndent) +
+      Scaled(TAtlasWelcomeRow.cQuickActionsLeft), ATop, ALimit,
+      ATop + Scaled(TAtlasContinueRecentView.cRowHeight) - Scaled(2))) -
       Scaled(TAtlasContinueRecentView.cIndent);
     Exit;
   end;
@@ -554,20 +562,23 @@ end;
 procedure TContinuePainter.PaintTexts(ARow, ATop, ALimit: Integer);
 var
   mEntry: TAtlasContinueEntry;
-  mLeft, mDetailLimit: Integer;
+  mLeft, mDetailLimit, mNameTop, mNameBottom, mDetailTop: Integer;
 begin
   mEntry := View.FEntries[ARow];
+  mNameTop := ATop + Scaled(TAtlasWelcomeRow.cNameTop);
+  mNameBottom := ATop + Scaled(TAtlasWelcomeRow.cNameBottom);
+  mDetailTop := ATop + Scaled(TAtlasWelcomeRow.cDetailTop);
   mLeft := Scaled(TAtlasContinueRecentView.cIndent);
   PlainFont;
   Canvas.Font.Color := Colors.Text;
   Canvas.Font.Style := [fsBold];
-  Canvas.TextRect(Rect(mLeft, ATop + Scaled(3), ALimit, ATop + Scaled(21)), mLeft, ATop + Scaled(3), mEntry.Name);
+  Canvas.TextRect(Rect(mLeft, mNameTop, ALimit, mNameBottom), mLeft, mNameTop, mEntry.Name);
   Inc(mLeft, Canvas.TextWidth(mEntry.Name));
   Canvas.Font.Style := [];
   if mLeft < ALimit then
   begin
     Canvas.Font.Color := Colors.Muted;
-    Canvas.TextRect(Rect(mLeft, ATop + Scaled(3), ALimit, ATop + Scaled(21)), mLeft, ATop + Scaled(3),
+    Canvas.TextRect(Rect(mLeft, mNameTop, ALimit, mNameBottom), mLeft, mNameTop,
       cSeparator + TAtlasContinueTexts.TabsText(mEntry.State.TabCount));
   end;
   // Zweite Zeile: Datei und Methode; ohne Knöpfe bis vor „Fortsetzen“.
@@ -578,7 +589,8 @@ begin
     mDetailLimit := View.FButtonRects[ARow].Left - Scaled(TAtlasContinueRecentView.cIndent);
   end;
   Canvas.Font.Color := Colors.Muted;
-  Canvas.TextRect(Rect(mLeft, ATop + Scaled(23), mDetailLimit, ATop + Scaled(41)), mLeft, ATop + Scaled(23),
+  Canvas.TextRect(Rect(mLeft, mDetailTop, mDetailLimit, ATop + Scaled(TAtlasWelcomeRow.cDetailBottom)), mLeft,
+    mDetailTop,
     TAtlasContinueTexts.DetailText(mEntry));
 end;
 
@@ -590,7 +602,8 @@ begin
   mButton := View.FButtonRects[ARow];
   Canvas.Pen.Color := Colors.Line;
   Canvas.Brush.Style := bsClear;
-  Canvas.RoundRect(mButton.Left, mButton.Top, mButton.Right, mButton.Bottom, Scaled(6), Scaled(6));
+  Canvas.RoundRect(mButton.Left, mButton.Top, mButton.Right, mButton.Bottom, Scaled(TAtlasWelcomeRow.cButtonRadius),
+    Scaled(TAtlasWelcomeRow.cButtonRadius));
   Canvas.Font.Color := Colors.Text;
   mText := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueResume);
   Canvas.TextOut(mButton.Left + (mButton.Width - Canvas.TextWidth(mText)) div 2,
@@ -703,7 +716,7 @@ begin
   if Length(View.FEntries) = 0 then
   begin
     Canvas.Font.Color := Colors.Muted;
-    Canvas.TextOut(Scaled(TAtlasContinueRecentView.cIndent), View.RowTop(0) + Scaled(4),
+    Canvas.TextOut(Scaled(TAtlasContinueRecentView.cIndent), View.RowTop(0) + Scaled(TAtlasWelcomeRow.cEmptyTop),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueEmpty));
   end;
   View.LayoutButtons;

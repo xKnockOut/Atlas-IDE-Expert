@@ -98,7 +98,7 @@ function TAtlasWelcomeHelpFrame.BodyHeight: Integer;
 begin
   // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
   Arrange;
-  Result := Max(FContentHeight, ScaleValue(40));
+  Result := Max(FContentHeight, ScaleValue(cMinBodyHeight));
 end;
 
 procedure TAtlasWelcomeHelpFrame.UpdateContent;

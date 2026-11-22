@@ -199,6 +199,12 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Window;
 
+type
+{$SCOPEDENUMS ON}
+  /// <summary>Schritte des Abgleichs, deren Dauer TAtlasIdeWelcome.Sync misst.</summary>
+  TWelcomeSyncStep = (Areas, Plugins, Window, IdeLayout, Headers);
+{$SCOPEDENUMS OFF}
+
 var
   // Lebt die Steuerung noch? Für Arbeit, die über die Nachrichtenschleife kommt.
   Instance: TAtlasIdeWelcome;
@@ -702,28 +708,32 @@ begin
       mCurrent: TAtlasPluginSettings;
       mIdePage: Boolean;
       mStart: TDateTime;
-      mLaps: array[0..4] of Int64;
+      mLaps: array[TWelcomeSyncStep] of Int64;
     begin
       mStart := Now;
       mCurrent := Settings;
       FAreas.Refresh;
-      mLaps[0] := ElapsedMs(mStart);
+      mLaps[TWelcomeSyncStep.Areas] := ElapsedMs(mStart);
       mIdePage := TAtlasIdeWelcomeIdeLayout.Wanted(mCurrent) and TAtlasIdeWelcomePage.Available;
       SyncPlugins(Self, WantedPlugins(mCurrent, mIdePage));
-      mLaps[1] := ElapsedMs(mStart);
+      mLaps[TWelcomeSyncStep.Plugins] := ElapsedMs(mStart);
       SyncWindow(Self, mCurrent);
-      mLaps[2] := ElapsedMs(mStart);
+      mLaps[TWelcomeSyncStep.Window] := ElapsedMs(mStart);
       SyncIdeLayout(Self, mCurrent, mIdePage);
-      mLaps[3] := ElapsedMs(mStart);
+      mLaps[TWelcomeSyncStep.IdeLayout] := ElapsedMs(mStart);
       FSync.ShownIde := mIdePage;
       FSync.LastLayout := mCurrent.WelcomePageLayout;
       FSync.Started := True;
       FHeaders.UpdateAll;
-      mLaps[4] := ElapsedMs(mStart);
-      if mLaps[4] >= cSlowSyncMs then
+      mLaps[TWelcomeSyncStep.Headers] := ElapsedMs(mStart);
+      if mLaps[TWelcomeSyncStep.Headers] >= cSlowSyncMs then
       begin
         TAtlasGuard.Log(Format('Welcome sync %d ms: areas %d, plugins %d, window %d, ide layout %d, headers %d ms',
-          [mLaps[4], mLaps[0], mLaps[1] - mLaps[0], mLaps[2] - mLaps[1], mLaps[3] - mLaps[2], mLaps[4] - mLaps[3]]));
+          [mLaps[TWelcomeSyncStep.Headers], mLaps[TWelcomeSyncStep.Areas],
+          mLaps[TWelcomeSyncStep.Plugins] - mLaps[TWelcomeSyncStep.Areas],
+          mLaps[TWelcomeSyncStep.Window] - mLaps[TWelcomeSyncStep.Plugins],
+          mLaps[TWelcomeSyncStep.IdeLayout] - mLaps[TWelcomeSyncStep.Window],
+          mLaps[TWelcomeSyncStep.Headers] - mLaps[TWelcomeSyncStep.IdeLayout]]));
       end;
     end);
 end;

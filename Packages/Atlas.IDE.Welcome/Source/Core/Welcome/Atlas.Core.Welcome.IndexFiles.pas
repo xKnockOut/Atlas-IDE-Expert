@@ -107,6 +107,8 @@ uses
   Atlas.Text.IndexCache;
 
 const
+  /// <summary>Felder der Präfix-Zählung je Eintrag des Indexcaches (#452).</summary>
+  cPrefixCountFields = 6;
   cFlagLibrary = 1;
 
 { TAtlasWelcomeIndexFiles }
@@ -181,7 +183,7 @@ begin
   AReader.SkipList; // uses (implementation)
   AReader.SkipList; // Include-Dateien
   AReader.SkipList; // Include-Zeitstempel
-  for mPart := 1 to 6 do
+  for mPart := 1 to cPrefixCountFields do
   begin
     AReader.ReadVar; // Präfix-Zählung (#452): je Art Anzahl und mit Präfix
   end;
