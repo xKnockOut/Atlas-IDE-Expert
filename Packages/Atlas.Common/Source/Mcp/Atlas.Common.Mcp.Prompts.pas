@@ -31,7 +31,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools;
 
