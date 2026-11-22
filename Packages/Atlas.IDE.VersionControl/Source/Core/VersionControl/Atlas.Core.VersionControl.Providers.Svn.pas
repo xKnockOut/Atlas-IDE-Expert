@@ -2,7 +2,7 @@
 
 // SVN über die Kommandozeile svn (#571; TortoiseSVN mit
 // Kommandozeilenwerkzeugen genügt). Dieselbe Umsetzung nutzt der Server für
-// --changed mit SVN (#276, Shell.VersionControlChanges). Jeder Aufruf läuft in der Wurzel
+// --changed mit SVN (#276, Core.VersionControlChanges). Jeder Aufruf läuft in der Wurzel
 // der Arbeitskopie mit --non-interactive (nie eine Rückfrage nach Kennwort
 // oder Zertifikat) und, wo möglich, --xml (UTF-8 unabhängig von der Konsole).
 // Befehle; alle lesen nur die Arbeitskopie, keiner spricht mit dem Server:

@@ -30,6 +30,8 @@ type
     /// <summary>Pfad zur URI; '' wenn es keine file-URI ist.</summary>
     class function ToPath(const AUri: string): string; static;
     class function FromPath(const APath: string): string; static;
+    /// <summary>Pfad zu einer file-URI; anderes (schon ein Pfad) unverändert.</summary>
+    class function PathOrSelf(const AText: string): string; static;
     /// <summary>Vereinheitlicht Trenner, "\\?\"-Präfix, "." und ".."; Windows-Pfade mit "\".</summary>
     class function NormalizePath(const APath: string): string; static;
     /// <summary>Schlüssel für Wörterbücher: gleiche Datei, gleicher Schlüssel.
@@ -44,6 +46,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Text.Uris;
 
 { TDocumentUris }
@@ -56,6 +59,18 @@ end;
 class function TDocumentUris.FromPath(const APath: string): string;
 begin
   Result := TTextUris.FromPath(APath);
+end;
+
+class function TDocumentUris.PathOrSelf(const AText: string): string;
+begin
+  if StartsText('file:', AText) then
+  begin
+    Result := ToPath(AText);
+  end
+  else
+  begin
+    Result := AText;
+  end;
 end;
 
 class function TDocumentUris.NormalizePath(const APath: string): string;

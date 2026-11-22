@@ -112,7 +112,8 @@ uses
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Text.Fuzzy,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.Attributes;
 
 {$SCOPEDENUMS ON}
 
@@ -1363,16 +1364,6 @@ begin
   end;
 end;
 
-/// <summary>Name einer Attributklasse ohne die Endung Attribute.</summary>
-function AttributeName(const AName: string): string;
-begin
-  Result := AName;
-  if EndsText('Attribute', Result) and (Length(Result) > Length('Attribute')) then
-  begin
-    Result := Copy(Result, 1, Length(Result) - Length('Attribute'));
-  end;
-end;
-
 /// <summary>Änderung der Klammertiefe rückwärts gelesen: +1 bei "]" und ")", -1 bei "[" und "(".</summary>
 function BackwardDepthStep(const AToken: TPascalToken): Integer;
 begin
@@ -1441,7 +1432,7 @@ var
 begin
   for mPattern in FAllowed do
   begin
-    if SameText(AttributeName(AName), AttributeName(mPattern)) then
+    if SameText(TAttributes.ShortName(AName), TAttributes.ShortName(mPattern)) then
     begin
       Exit(True);
     end;

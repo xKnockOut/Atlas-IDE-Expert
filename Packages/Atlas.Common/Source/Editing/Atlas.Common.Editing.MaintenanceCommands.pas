@@ -493,26 +493,19 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterMaintenanceCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('sortuses', cTexts[TMaintenanceCommandsText.SortUsesLists].Text, '/sortuses', ExecuteSortUses));
-  ARegister(Command('cleanuses', cTexts[TMaintenanceCommandsText.StrikeUnusedUsesOrderStays].Text, '/cleanuses',
-    ExecuteCleanUses));
-  ARegister(Command('ignore', cTexts[TMaintenanceCommandsText.SuppressARuleForThe].Text,
-    '/ignore unused-local Absicht', ExecuteIgnore));
-  ARegister(Command('todo', cTexts[TMaintenanceCommandsText.TODOCommentForTheIDE].Text,
-    cTexts[TMaintenanceCommandsText.TodoCheckErrorCase].Text,
-    ExecuteTodo));
-  ARegister(Command('doc', cTexts[TMaintenanceCommandsText.XMLDocSkeletonForThe].Text, '/doc', ExecuteDoc));
-  ARegister(Command('log', cTexts[TMaintenanceCommandsText.LogLineWithUnitAnd].Text, '/log', ExecuteLog));
+  ARegister(TSlashCommand.Create('sortuses', cTexts[TMaintenanceCommandsText.SortUsesLists].Text, '/sortuses',
+      ExecuteSortUses));
+  ARegister(TSlashCommand.Create('cleanuses', cTexts[TMaintenanceCommandsText.StrikeUnusedUsesOrderStays].Text,
+      '/cleanuses', ExecuteCleanUses));
+  ARegister(TSlashCommand.Create('ignore', cTexts[TMaintenanceCommandsText.SuppressARuleForThe].Text,
+      '/ignore unused-local Absicht', ExecuteIgnore));
+  ARegister(TSlashCommand.Create('todo', cTexts[TMaintenanceCommandsText.TODOCommentForTheIDE].Text,
+      cTexts[TMaintenanceCommandsText.TodoCheckErrorCase].Text, ExecuteTodo));
+  ARegister(TSlashCommand.Create('doc', cTexts[TMaintenanceCommandsText.XMLDocSkeletonForThe].Text, '/doc',
+      ExecuteDoc));
+  ARegister(TSlashCommand.Create('log', cTexts[TMaintenanceCommandsText.LogLineWithUnitAnd].Text, '/log', ExecuteLog));
 end;
 
 initialization

@@ -1,4 +1,4 @@
-﻿unit Shell.SlashHost.Tests;
+﻿unit Core.SlashHost.Tests;
 
 // Schnellbefehle laden nur in der Nachrichtenschleife neu; WriteFiles ohne Editor
 // schreibt auf die Platte (#297).
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TShellSlashHostTests = class
+  TCoreSlashHostTests = class
   public
     [Test]
     procedure SelectBuildRunsThroughLoopRunner;
@@ -35,15 +35,15 @@ uses
   Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.Editing.Contract,
   Core.Workspace,
-  Shell.SlashHost;
+  Core.SlashHost;
 
 /// <summary>Host ohne Ordner; ACalls zählt die Aufrufe von WorkspaceOf.</summary>
-function CreateHost(const ACalls: PInteger): TShellSlashHost;
+function CreateHost(const ACalls: PInteger): TCoreSlashHost;
 var
   mCalls: PInteger;
 begin
   mCalls := ACalls;
-  Result := TShellSlashHost.Create(TShellSlashSources.New(
+  Result := TCoreSlashHost.Create(TCoreSlashSources.New(
     function(const AUri: string): TCoreWorkspace
     begin
       Inc(mCalls^);
@@ -61,11 +61,11 @@ begin
     TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create);
 end;
 
-{ TShellSlashHostTests }
+{ TCoreSlashHostTests }
 
-procedure TShellSlashHostTests.SelectBuildRunsThroughLoopRunner;
+procedure TCoreSlashHostTests.SelectBuildRunsThroughLoopRunner;
 var
-  mHost: TShellSlashHost;
+  mHost: TCoreSlashHost;
   mRef: ISlashHost;
   mCalls: Integer;
   mQueued: TList<TProc>;
@@ -92,9 +92,9 @@ begin
   end;
 end;
 
-procedure TShellSlashHostTests.WithoutLoopRunnerRunsImmediately;
+procedure TCoreSlashHostTests.WithoutLoopRunnerRunsImmediately;
 var
-  mHost: TShellSlashHost;
+  mHost: TCoreSlashHost;
   mRef: ISlashHost;
   mCalls: Integer;
 begin
@@ -105,9 +105,9 @@ begin
   Assert.AreEqual(1, mCalls);
 end;
 
-procedure TShellSlashHostTests.WriteFilesOnDisk;
+procedure TCoreSlashHostTests.WriteFilesOnDisk;
 var
-  mHost: TShellSlashHost;
+  mHost: TCoreSlashHost;
   mRef: ISlashHost;
   mCalls: Integer;
   mFolder, mNewFile, mOldFile, mText: string;
@@ -140,9 +140,9 @@ begin
   end;
 end;
 
-procedure TShellSlashHostTests.NewFileFollowsCommandFile;
+procedure TCoreSlashHostTests.NewFileFollowsCommandFile;
 var
-  mHost: TShellSlashHost;
+  mHost: TCoreSlashHost;
   mRef: ISlashHost;
   mCalls: Integer;
   mFolder, mNewFile, mMainFile, mText: string;
@@ -172,6 +172,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellSlashHostTests);
+  TDUnitX.RegisterTestFixture(TCoreSlashHostTests);
 
 end.

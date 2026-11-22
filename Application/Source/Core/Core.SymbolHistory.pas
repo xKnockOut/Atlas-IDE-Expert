@@ -1,7 +1,7 @@
-﻿unit Shell.SymbolHistory;
+﻿unit Core.SymbolHistory;
 
-// Host-Rolle Shell: Versionsverwaltung der Symbolgeschichte (#2641). Setzt ISymbolHistoryVcs mit git bzw. svn um,
-// auf derselben Grundlage wie die Hotspots (TShellHotspotVcs: Wahl der Arbeitskopie, Programm, Zeitlimit).
+// Host-Rolle Core: Versionsverwaltung der Symbolgeschichte (#2641). Setzt ISymbolHistoryVcs mit git bzw. svn um,
+// auf derselben Grundlage wie die Hotspots (TCoreHotspotVcs: Wahl der Arbeitskopie, Programm, Zeitlimit).
 //
 //   Zeilen:   git log --format=… --max-count=N --no-ext-diff -L<a>,<b>:<Pfad> <Stand>; SVN nur im heutigen Stand
 //             über IAtlasVcsLineHistory.LineHistory (svn log --diff)
@@ -17,10 +17,11 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.History.Contract,
-  Shell.Hotspots;
+  Core.VersionControlChanges,
+  Core.Hotspots;
 
 type
-  TShellSymbolHistoryVcs = class(TShellHotspotVcs, ISymbolHistoryVcs)
+  TCoreSymbolHistoryVcs = class(TCoreHotspotVcs, ISymbolHistoryVcs)
   private
     function GitLineLog(const APath, ARevision: string; AFirstLine, ALastLine, AMaxCount: Integer;
       out ACommits: TArray<TSymbolLineCommit>): Boolean;
@@ -35,9 +36,9 @@ type
     function CommitFiles(const ARevision: string; out AFiles: TArray<THotspotFileChange>): Boolean;
     function SymbolTextAt(const APath, ARevision: string; ABefore: Boolean; out AText: string): THotspotTextState;
     /// <summary>Versionsverwaltung für AFolder nach vcs.* in ASettings; False mit AError wie
-    /// TShellHotspotVcs.Detect.</summary>
-    class function DetectHistory(const AFolder: string; const ASettings: TServerSettings;
-      out AVcs: ISymbolHistoryVcs; out AError: string): Boolean; static;
+    /// TCoreHotspotVcs.Detect.</summary>
+    class function DetectHistory(const AAccess: TCoreVcsAccess; const AFolder: string;
+      const ASettings: TServerSettings; out AVcs: ISymbolHistoryVcs; out AError: string): Boolean; static;
   end;
 
 implementation
@@ -81,24 +82,24 @@ begin
   end;
 end;
 
-{ TShellSymbolHistoryVcs }
+{ TCoreSymbolHistoryVcs }
 
-class function TShellSymbolHistoryVcs.DetectHistory(const AFolder: string; const ASettings: TServerSettings;
-  out AVcs: ISymbolHistoryVcs; out AError: string): Boolean;
+class function TCoreSymbolHistoryVcs.DetectHistory(const AAccess: TCoreVcsAccess; const AFolder: string;
+  const ASettings: TServerSettings; out AVcs: ISymbolHistoryVcs; out AError: string): Boolean;
 var
   mVcs: IHotspotVcs;
 begin
   AVcs := nil;
-  Result := TShellSymbolHistoryVcs.Detect(AFolder, ASettings, mVcs, AError) and Supports(mVcs, ISymbolHistoryVcs,
+  Result := TCoreSymbolHistoryVcs.Detect(AAccess, AFolder, ASettings, mVcs, AError) and Supports(mVcs, ISymbolHistoryVcs,
     AVcs);
 end;
 
-function TShellSymbolHistoryVcs.FullPath(const APath: string): string;
+function TCoreSymbolHistoryVcs.FullPath(const APath: string): string;
 begin
   Result := IncludeTrailingPathDelimiter(FRoot) + APath.Replace('/', PathDelim);
 end;
 
-function TShellSymbolHistoryVcs.GitLineLog(const APath, ARevision: string; AFirstLine, ALastLine,
+function TCoreSymbolHistoryVcs.GitLineLog(const APath, ARevision: string; AFirstLine, ALastLine,
   AMaxCount: Integer; out ACommits: TArray<TSymbolLineCommit>): Boolean;
 var
   mRevision, mText, mError: string;
@@ -118,7 +119,7 @@ begin
   end;
 end;
 
-function TShellSymbolHistoryVcs.SvnLineLog(const APath: string; AFirstLine, ALastLine, AMaxCount: Integer;
+function TCoreSymbolHistoryVcs.SvnLineLog(const APath: string; AFirstLine, ALastLine, AMaxCount: Integer;
   out ACommits: TArray<TSymbolLineCommit>): Boolean;
 var
   mCommits: TArray<TAtlasVcsLineCommit>;
@@ -132,7 +133,7 @@ begin
   end;
 end;
 
-function TShellSymbolHistoryVcs.SymbolLineLog(const APath, ARevision: string; AFirstLine, ALastLine,
+function TCoreSymbolHistoryVcs.SymbolLineLog(const APath, ARevision: string; AFirstLine, ALastLine,
   AMaxCount: Integer; out ACommits: TArray<TSymbolLineCommit>): Boolean;
 begin
   ACommits := nil;
@@ -150,7 +151,7 @@ begin
   end;
 end;
 
-function TShellSymbolHistoryVcs.CommitFiles(const ARevision: string; out AFiles: TArray<THotspotFileChange>): Boolean;
+function TCoreSymbolHistoryVcs.CommitFiles(const ARevision: string; out AFiles: TArray<THotspotFileChange>): Boolean;
 var
   mText, mError: string;
 begin
@@ -163,7 +164,7 @@ begin
   end;
 end;
 
-function TShellSymbolHistoryVcs.SymbolTextAt(const APath, ARevision: string; ABefore: Boolean;
+function TCoreSymbolHistoryVcs.SymbolTextAt(const APath, ARevision: string; ABefore: Boolean;
   out AText: string): THotspotTextState;
 var
   mRevision, mError, mErrorText: string;

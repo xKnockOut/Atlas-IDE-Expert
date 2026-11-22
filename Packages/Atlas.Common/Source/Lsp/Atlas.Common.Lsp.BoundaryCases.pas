@@ -126,15 +126,8 @@ end;
 { TLspBoundaryCases }
 
 class procedure TLspBoundaryCases.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
-var
-  mReadText: TLspTestCasesReadText;
 begin
-  mReadText := AReadText;
-  ACommands.RegisterConcurrent(cCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := Execute(AArguments, mReadText);
-    end);
+  TLspTestCases.AttachReading(ACommands, cCommand, Execute, AReadText);
 end;
 
 class function TLspBoundaryCases.RoutineOf(ATree: TSyntaxTree; ALine: Integer; const AName: string): TSyntaxNode;

@@ -72,29 +72,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-/// <summary>Deklaration von ARange bis zum Ende der letzten Zeile (dort stehen Direktiven wie deprecated).</summary>
-function DeclarationText(const ALines: TArray<string>; const ARange: TTextRange): string;
-var
-  mLine: Integer;
-begin
-  Result := '';
-  for mLine := ARange.StartPos.Line to ARange.EndPos.Line do
-  begin
-    if (mLine < 0) or (mLine > High(ALines)) then
-    begin
-      Break;
-    end;
-    if mLine = ARange.StartPos.Line then
-    begin
-      Result := Copy(ALines[mLine], ARange.StartPos.Character + 1, MaxInt);
-    end
-    else
-    begin
-      Result := Result + ' ' + Trim(ALines[mLine]);
-    end;
-  end;
-end;
-
 /// <summary>Ordinalzahl eines Aufzählungswerts: Position im Typ, ohne explizite Werte.</summary>
 function EnumOrdinal(const AUnit: TUnitIndex; const AMember: TIndexSymbol): Integer;
 var
@@ -431,7 +408,7 @@ begin
   FInfo.Declaration := TrimRight(Copy(FLines[mStart.Line], mStart.Character + 1, MaxInt));
   FInfo.Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(FLines, mStart.Line));
   FInfo.Documentation := FInfo.Doc.ToMarkdown;
-  FInfo.Deprecation := THoverValues.Deprecation(DeclarationText(FLines, FTarget.Range));
+  FInfo.Deprecation := THoverValues.Deprecation(FTarget.Range.OneLineIn(FLines));
   FInfo.FileName := FTarget.FileName;
   FInfo.Line := FTarget.SelectionRange.StartPos.Line;
   FInfo.Character := FTarget.SelectionRange.StartPos.Character;
@@ -472,9 +449,9 @@ begin
   case ASymbol.Kind of
     TIndexSymbolKind.Constant:
       // Ganze Deklaration: Mengen und Texte über mehrere Zeilen (Resourcestrings, #38).
-      Result := THoverValues.ConstantValue(DeclarationText(FLines, FTarget.Range));
+      Result := THoverValues.ConstantValue(FTarget.Range.OneLineIn(FLines));
     TIndexSymbolKind.TypeAlias:
-      Result := SetTypeValue(FSource.Resolver, FOwner, DeclarationText(FLines, FTarget.Range));
+      Result := SetTypeValue(FSource.Resolver, FOwner, FTarget.Range.OneLineIn(FLines));
     TIndexSymbolKind.EnumMember:
       Result := 'Ord = ' + IntToStr(EnumOrdinal(FOwner, ASymbol));
   else

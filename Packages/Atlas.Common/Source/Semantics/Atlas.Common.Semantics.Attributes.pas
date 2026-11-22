@@ -46,6 +46,8 @@ type
     class function InBracket(const ATokens: TArray<TPascalToken>; ALast: Integer): Boolean; static;
     /// <summary>Name ohne Endung Attribute ("TestCaseAttribute" → "TestCase"); "Attribute" selbst bleibt.</summary>
     class function ShortName(const AName: string): string; static;
+    /// <summary>Knoten des Namens eines Eintrags im Attribut: bei [Name(…)] der Aufgerufene, sonst AItem.</summary>
+    class function NameNode(AItem: TSyntaxNode): TSyntaxNode; static;
   end;
 
 implementation
@@ -324,11 +326,7 @@ begin
   end;
   for mIndex := 0 to AAttribute.ChildCount - 1 do
   begin
-    mItem := AAttribute[mIndex];
-    if (mItem.Kind = TSyntaxKind.Call) and (mItem.ChildCount > 0) then
-    begin
-      mItem := mItem[0];
-    end;
+    mItem := NameNode(AAttribute[mIndex]);
     mName := TSyntaxNodes.DottedName(mItem);
     if mName = '' then
     begin
@@ -424,6 +422,15 @@ begin
   if EndsText('Attribute', Result) and (Length(Result) > Length('Attribute')) then
   begin
     Result := Copy(Result, 1, Length(Result) - Length('Attribute'));
+  end;
+end;
+
+class function TAttributes.NameNode(AItem: TSyntaxNode): TSyntaxNode;
+begin
+  Result := AItem;
+  if (AItem.Kind = TSyntaxKind.Call) and (AItem.ChildCount > 0) then
+  begin
+    Result := AItem[0];
   end;
 end;
 

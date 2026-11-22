@@ -1,8 +1,8 @@
-﻿unit Shell.AffectedTests.Tests;
+﻿unit Core.AffectedTests.Tests;
 
 // Tests für die Host-Rolle der betroffenen Tests (#1353): Testprogramme unter den Projektdateien, Testunits aus
 // Muster und uses, Abschalten über tests.affected. Die Zuordnung und Verfolgung testet
-// Atlas.Common.Lsp.AffectedTests.Tests, das Holen des Unterschieds Shell.VersionControlChanges.Tests.
+// Atlas.Common.Lsp.AffectedTests.Tests, das Holen des Unterschieds Core.VersionControlChanges.Tests.
 
 interface
 
@@ -11,7 +11,7 @@ uses
 
 type
   [TestFixture]
-  TShellAffectedTestsTests = class
+  TCoreAffectedTestsTests = class
   public
     [Test]
     procedure TestProgramsAreDUnitXMainFiles;
@@ -35,7 +35,7 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests.Types,
-  Shell.AffectedTests;
+  Core.AffectedTests;
 
 const
   cTestProgram =
@@ -84,23 +84,23 @@ begin
     end;
 end;
 
-{ TShellAffectedTestsTests }
+{ TCoreAffectedTestsTests }
 
-procedure TShellAffectedTestsTests.TestProgramsAreDUnitXMainFiles;
+procedure TCoreAffectedTestsTests.TestProgramsAreDUnitXMainFiles;
 var
   mPrograms: TArray<string>;
 begin
-  mPrograms := TShellAffectedTests.TestPrograms(TArray<string>.Create('C:\P\App.dpr', 'C:\P\Tests.dpr',
+  mPrograms := TCoreAffectedTests.TestPrograms(TArray<string>.Create('C:\P\App.dpr', 'C:\P\Tests.dpr',
     'C:\P\Kasse.pas', 'C:\P\Fehlt.dpr'), ReadText());
   Assert.AreEqual(1, Integer(Length(mPrograms)));
   Assert.AreEqual('C:\P\Tests.dpr', mPrograms[0]);
 end;
 
-procedure TShellAffectedTestsTests.TestScopeJoinsAllPrograms;
+procedure TCoreAffectedTestsTests.TestScopeJoinsAllPrograms;
 var
   mScope: TImpactTestScope;
 begin
-  mScope := TShellAffectedTests.TestScope('{unit}.Tests', TArray<string>.Create('C:\P\Tests.dpr', 'C:\P\Mehr.dpr'),
+  mScope := TCoreAffectedTests.TestScope('{unit}.Tests', TArray<string>.Create('C:\P\Tests.dpr', 'C:\P\Mehr.dpr'),
     ReadText());
   Assert.IsTrue(mScope.Contains('Kasse.Tests'));
   // Nicht nach dem Muster benannt, aber im zweiten Testprogramm eingebunden.
@@ -108,26 +108,26 @@ begin
   Assert.IsFalse(mScope.Contains('Kasse'));
 end;
 
-procedure TShellAffectedTestsTests.SwitchedOffRaises;
+procedure TCoreAffectedTestsTests.SwitchedOffRaises;
 var
   mSettings: TServerSettings;
-  mQuery: TShellAffectedQuery;
+  mQuery: TCoreAffectedQuery;
   mRequest: TAffectedRequest;
   mMessage: string;
 begin
   mSettings := TServerSettings.Default;
   mSettings.Tests.Affected := False;
-  mQuery := Default(TShellAffectedQuery);
+  mQuery := Default(TCoreAffectedQuery);
   mRequest := Default(TAffectedRequest);
   mMessage := '';
   try
     // Vor jedem Aufruf von git oder svn: Prozess, Index und Resolver bleiben unbenutzt.
-    TShellAffectedTests.Run(nil, mSettings, mQuery, TShellAffectedSources.New(nil, nil, ReadText()), mRequest, nil);
+    TCoreAffectedTests.Run(Default(TCoreVcsAccess), mSettings, mQuery, TCoreAffectedSources.New(nil, nil, ReadText()), mRequest, nil);
   except
     on E: EAffectedTestsOff do
       mMessage := E.Message;
   end;
-  Assert.AreEqual(TShellAffectedTests.OffMessage, mMessage);
+  Assert.AreEqual(TCoreAffectedTests.OffMessage, mMessage);
 end;
 
 function Input(const AFileName: string): TAffectedInput;
@@ -136,35 +136,35 @@ begin
   Result.FileName := AFileName;
 end;
 
-procedure TShellAffectedTestsTests.OnlyFilesKeepsTheSavedOnes;
+procedure TCoreAffectedTestsTests.OnlyFilesKeepsTheSavedOnes;
 var
   mInputs, mKept: TArray<TAffectedInput>;
 begin
   mInputs := [Input('C:\Src\Kasse.pas'), Input('C:\Src\Lager.pas'), Input('C:\Src\Kasse.dfm')];
-  mKept := TShellAffectedTests.OnlyFiles(mInputs, ['c:/src/kasse.pas', 'C:\Src\Kasse.dfm']);
+  mKept := TCoreAffectedTests.OnlyFiles(mInputs, ['c:/src/kasse.pas', 'C:\Src\Kasse.dfm']);
   Assert.AreEqual(2, Integer(Length(mKept)));
   Assert.AreEqual('C:\Src\Kasse.pas', mKept[0].FileName);
   Assert.AreEqual('C:\Src\Kasse.dfm', mKept[1].FileName);
-  Assert.AreEqual(3, Integer(Length(TShellAffectedTests.OnlyFiles(mInputs, nil))), 'ohne Dateien alle');
-  Assert.AreEqual(0, Integer(Length(TShellAffectedTests.OnlyFiles(mInputs, ['C:\Src\Neu.pas']))),
+  Assert.AreEqual(3, Integer(Length(TCoreAffectedTests.OnlyFiles(mInputs, nil))), 'ohne Dateien alle');
+  Assert.AreEqual(0, Integer(Length(TCoreAffectedTests.OnlyFiles(mInputs, ['C:\Src\Neu.pas']))),
     'ungeändert: nichts');
   mInputs := nil;
   mKept := nil;
 end;
 
-procedure TShellAffectedTestsTests.SinceCommitComparesWithHead;
+procedure TCoreAffectedTestsTests.SinceCommitComparesWithHead;
 var
-  mQuery: TShellAffectedQuery;
+  mQuery: TCoreAffectedQuery;
 begin
-  mQuery := Default(TShellAffectedQuery);
-  Assert.AreEqual('main', TShellAffectedTests.RefOf(mQuery), 'Vorgabe: Merge-Base mit main');
+  mQuery := Default(TCoreAffectedQuery);
+  Assert.AreEqual('main', TCoreAffectedTests.RefOf(mQuery), 'Vorgabe: Merge-Base mit main');
   mQuery.SinceCommit := True;
-  Assert.AreEqual('HEAD', TShellAffectedTests.RefOf(mQuery));
+  Assert.AreEqual('HEAD', TCoreAffectedTests.RefOf(mQuery));
   mQuery.Base := 'develop';
-  Assert.AreEqual('develop', TShellAffectedTests.RefOf(mQuery), 'eigene Basis gilt');
+  Assert.AreEqual('develop', TCoreAffectedTests.RefOf(mQuery), 'eigene Basis gilt');
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellAffectedTestsTests);
+  TDUnitX.RegisterTestFixture(TCoreAffectedTestsTests);
 
 end.

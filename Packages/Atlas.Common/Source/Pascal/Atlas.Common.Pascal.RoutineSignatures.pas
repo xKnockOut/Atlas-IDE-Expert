@@ -51,6 +51,9 @@ type
     /// Zeichenketten, z. B. Parametergruppen an ";" oder Name und Standardwert an "=". Eine schließende Klammer
     /// ohne öffnende (Vergleich mit ">" im Standardwert) trennt weiter.</summary>
     class function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>; static;
+    /// <summary>Klammertiefe ADepth zum Zeichen AChar eines Kopfs nachführen; ASkipping: innerhalb eines
+    /// Standardwerts (ab "=" auf Tiefe 1 bis zum nächsten ";" bzw. zur schließenden Klammer).</summary>
+    class procedure TrackDefault(AChar: Char; var ADepth: Integer; var ASkipping: Boolean); static;
     /// <summary>Kurzform eines Routinenkopfs ohne Parameterliste und ohne Ergebnistyp (function Foo;).</summary>
     class function IsShortForm(AHeader: TSyntaxNode): Boolean; static;
     /// <summary>class constructor bzw. class destructor; ATokens sind die Token des Baums.</summary>
@@ -384,6 +387,23 @@ begin
   if mIndex > 0 then
   begin
     Result := QualifierPartsMask(mText, mIndex - 1);
+  end;
+end;
+
+class procedure TRoutineSignatures.TrackDefault(AChar: Char; var ADepth: Integer; var ASkipping: Boolean);
+begin
+  case AChar of
+    '(', '[':
+      Inc(ADepth);
+    ')', ']':
+      begin
+        Dec(ADepth);
+        ASkipping := ASkipping and (ADepth <> 0);
+      end;
+    ';':
+      ASkipping := ASkipping and (ADepth <> 1);
+    '=':
+      ASkipping := ASkipping or (ADepth = 1);
   end;
 end;
 

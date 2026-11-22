@@ -12,23 +12,14 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
-  Atlas.Common.Compiler.Contract;
+  Atlas.Common.Compiler.Contract,
+  Atlas.Common.Compiler.ProcessRuns;
 
 type
   TProcessRunner = class(TInterfacedObject, ICompilerProcess)
   private
-    FLock: TObject;
-    /// <summary>Handles laufender Prozesse; unter FLock. Cancel beendet alle (mehrere Run gleichzeitig,
-    /// z. B. Compilerlauf und git status).</summary>
-    FRunning: TList<THandle>;
-    /// <summary>Unter FLock.</summary>
-    FCancelled: Boolean;
-    /// <summary>Merkt sich AProcess für Cancel; False, wenn Cancel schon lief (der Aufrufer beendet den
-    /// Prozess dann selbst).</summary>
-    function Track(AProcess: THandle): Boolean;
-    procedure Untrack(AProcess: THandle);
-    function WasCancelled: Boolean;
+    /// <summary>Laufende Prozesse für Cancel.</summary>
+    FProcesses: TCompilerProcessList<THandle>;
     /// <summary>Verfolgt den gestarteten Prozess AProcess für Cancel, liest seine Ausgabe aus AReadPipe und
     /// liefert den Exit-Code; ECompilerCancelled nach Cancel.</summary>
     function Supervise(const ARequest: TCompilerRequest; AReadPipe, AProcess: THandle;
@@ -56,104 +47,27 @@ const
 constructor TProcessRunner.Create;
 begin
   inherited Create;
-  FLock := TObject.Create;
-  FRunning := TList<THandle>.Create;
+  FProcesses := TCompilerProcessList<THandle>.Create;
 end;
 
 destructor TProcessRunner.Destroy;
 begin
-  FRunning.Free;
-  FLock.Free;
+  FProcesses.Free;
   inherited;
 end;
 
-function TProcessRunner.Track(AProcess: THandle): Boolean;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := not FCancelled;
-    if Result then
-    begin
-      FRunning.Add(AProcess);
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TProcessRunner.Untrack(AProcess: THandle);
-begin
-  TMonitor.Enter(FLock);
-  try
-    FRunning.Remove(AProcess);
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-function TProcessRunner.WasCancelled: Boolean;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FCancelled;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
 procedure TProcessRunner.Cancel;
-var
-  mProcess: THandle;
 begin
-  TMonitor.Enter(FLock);
-  try
-    FCancelled := True;
-    // Unter der Sperre: Run entfernt ein Handle erst (Untrack), bevor es es schließt.
-    for mProcess in FRunning do
+  FProcesses.Cancel(
+    procedure(const AProcess: THandle)
     begin
-      TerminateProcess(mProcess, cCancelledExitCode);
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
+      TerminateProcess(AProcess, cCancelledExitCode);
+    end);
 end;
 
 procedure RaiseCancelled(const ARequest: TCompilerRequest);
 begin
   raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
-end;
-
-/// <summary>Zeile ABytes[AFrom .. AFrom + ACount - 1] (ANSI, ohne #13 am Ende) an AOnLine.</summary>
-procedure EmitLine(const ABytes: TBytes; AFrom, ACount: Integer; const AOnLine: TCompilerLineEvent);
-var
-  mLine: string;
-begin
-  mLine := TEncoding.ANSI.GetString(ABytes, AFrom, ACount);
-  if (mLine <> '') and (mLine[Length(mLine)] = #13) then
-  begin
-    SetLength(mLine, Length(mLine) - 1);
-  end;
-  if Assigned(AOnLine) then
-  begin
-    AOnLine(mLine);
-  end;
-end;
-
-/// <summary>Alle vollständigen Zeilen aus APending ausgeben; der angefangene Rest bleibt in APending.</summary>
-procedure EmitCompleteLines(var APending: TBytes; const AOnLine: TCompilerLineEvent);
-var
-  mStart, mLineEnd: Integer;
-begin
-  mStart := 0;
-  for mLineEnd := 0 to High(APending) do
-  begin
-    if APending[mLineEnd] = 10 then
-    begin
-      EmitLine(APending, mStart, mLineEnd - mStart, AOnLine);
-      mStart := mLineEnd + 1;
-    end;
-  end;
-  APending := Copy(APending, mStart, MaxInt);
 end;
 
 /// <summary>Liest die Pipe bis zum Ende und gibt die Ausgabe zeilenweise an AOnLine.</summary>
@@ -170,11 +84,11 @@ begin
     mStart := Length(mPending);
     SetLength(mPending, mStart + Integer(mBytesRead));
     Move(mBuffer[0], mPending[mStart], mBytesRead);
-    EmitCompleteLines(mPending, AOnLine);
+    TCompilerOutputLines.EmitComplete(mPending, TEncoding.ANSI, AOnLine);
   end;
   if Length(mPending) > 0 then
   begin
-    EmitLine(mPending, 0, Length(mPending), AOnLine);
+    TCompilerOutputLines.Emit(mPending, 0, Length(mPending), TEncoding.ANSI, AOnLine);
   end;
 end;
 
@@ -215,7 +129,7 @@ end;
 function TProcessRunner.Supervise(const ARequest: TCompilerRequest; AReadPipe, AProcess: THandle;
   const AOnLine: TCompilerLineEvent): Integer;
 begin
-  if not Track(AProcess) then
+  if not FProcesses.Track(AProcess) then
   begin
     TerminateProcess(AProcess, cCancelledExitCode);
   end;
@@ -224,9 +138,9 @@ begin
     Result := WaitForExitCode(AProcess);
   finally
     // Vor CloseHandle: Cancel darf nie ein geschlossenes Handle beenden.
-    Untrack(AProcess);
+    FProcesses.Untrack(AProcess);
   end;
-  if WasCancelled then
+  if FProcesses.WasCancelled then
   begin
     RaiseCancelled(ARequest);
   end;
@@ -237,7 +151,7 @@ var
   mReadPipe, mWritePipe: THandle;
   mProcessInfo: TProcessInformation;
 begin
-  if WasCancelled then
+  if FProcesses.WasCancelled then
   begin
     RaiseCancelled(ARequest);
   end;

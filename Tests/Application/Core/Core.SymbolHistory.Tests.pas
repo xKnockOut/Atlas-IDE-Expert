@@ -1,4 +1,4 @@
-﻿unit Shell.SymbolHistory.Tests;
+﻿unit Core.SymbolHistory.Tests;
 
 // Symbolgeschichte mit echtem git (#2641): Ein temporäres Repository mit vier Commits (Routine eingeführt, geändert,
 // in eine neue Unit verschoben und dabei umbenannt, wieder geändert; Dateien mit BOM). Geprüft werden Zeilen,
@@ -12,7 +12,7 @@ uses
 
 type
   [TestFixture]
-  TShellSymbolHistoryTests = class
+  TCoreSymbolHistoryTests = class
   public
     [Test]
     procedure DetectWithoutWorkingCopyGivesReason;
@@ -31,9 +31,9 @@ uses
   Atlas.Common.History.Contract,
   Atlas.Common.History.Service,
   Shell.Composition.Platform,
-  Shell.VersionControlChanges,
-  Shell.VersionControl.TestSupport,
-  Shell.SymbolHistory;
+  Core.VersionControlChanges,
+  Core.VersionControl.TestSupport,
+  Core.SymbolHistory;
 
 function NewFolder: string;
 begin
@@ -88,16 +88,16 @@ begin
   Commit(ARunner, AGit, AFolder, 'Start bei 2 (#4)');
 end;
 
-{ TShellSymbolHistoryTests }
+{ TCoreSymbolHistoryTests }
 
-procedure TShellSymbolHistoryTests.DetectWithoutWorkingCopyGivesReason;
+procedure TCoreSymbolHistoryTests.DetectWithoutWorkingCopyGivesReason;
 var
   mFolder, mError: string;
   mVcs: ISymbolHistoryVcs;
 begin
   mFolder := NewFolder;
   try
-    Assert.IsFalse(TShellSymbolHistoryVcs.DetectHistory(mFolder, TServerSettings.Default, mVcs, mError));
+    Assert.IsFalse(TCoreSymbolHistoryVcs.DetectHistory(TShellPlatformAdapters.VcsAccess, mFolder, TServerSettings.Default, mVcs, mError));
     Assert.IsNull(mVcs);
     Assert.AreNotEqual('', mError);
   finally
@@ -122,7 +122,7 @@ begin
   Assert.IsTrue(mCommits[0].Message.StartsWith('Start bei 2'));
 end;
 
-procedure TShellSymbolHistoryTests.GitHistoryFollowsMoveAndRename;
+procedure TCoreSymbolHistoryTests.GitHistoryFollowsMoveAndRename;
 var
   mGit, mFolder, mError, mText: string;
   mRunner: IAtlasVcsRunner;
@@ -141,7 +141,7 @@ begin
   mFolder := NewFolder;
   try
     CommitSteps(mRunner, mGit, mFolder);
-    Assert.IsTrue(TShellSymbolHistoryVcs.DetectHistory(mFolder, TServerSettings.Default, mVcs, mError), mError);
+    Assert.IsTrue(TCoreSymbolHistoryVcs.DetectHistory(TShellPlatformAdapters.VcsAccess, mFolder, TServerSettings.Default, mVcs, mError), mError);
     mRequest := Default(TSymbolHistoryRequest);
     mRequest.Symbol := 'TFoo.Summiere';
     mRequest.Path := 'Src/Neu.pas';
@@ -168,6 +168,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TShellSymbolHistoryTests);
+  TDUnitX.RegisterTestFixture(TCoreSymbolHistoryTests);
 
 end.

@@ -208,21 +208,6 @@ begin
   ADispatcher.RegisterConcurrentRequest(cMethod, HandleCodeAction);
 end;
 
-function EditsToJson(const AEdits: TArray<TTextEdit>): TJSONArray;
-var
-  mEdit: TTextEdit;
-  mItem: TJSONObject;
-begin
-  Result := TJSONArray.Create;
-  for mEdit in AEdits do
-  begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
-    mItem.AddPair('newText', mEdit.NewText);
-    Result.AddElement(mItem);
-  end;
-end;
-
 class function TLspCodeActions.Capability: TJSONObject;
 var
   mKinds: TJSONArray;
@@ -332,11 +317,11 @@ begin
   // Nur Edits in anderen Dateien (Formulardatei, #309): das Dokument bleibt unverändert.
   if (AAction.Edits <> nil) or (AAction.FileEdits = nil) then
   begin
-    Result.AddPair(AUri, EditsToJson(AAction.Edits));
+    Result.AddPair(AUri, TLspPositions.EditsToJson(AAction.Edits));
   end;
   for mFileEdits in AAction.FileEdits do
   begin
-    Result.AddPair(TDocumentUris.FromPath(mFileEdits.FileName), EditsToJson(mFileEdits.Edits));
+    Result.AddPair(TDocumentUris.FromPath(mFileEdits.FileName), TLspPositions.EditsToJson(mFileEdits.Edits));
   end;
 end;
 
@@ -881,7 +866,7 @@ var
   mChanges: TJSONObject;
 begin
   mChanges := TJSONObject.Create;
-  mChanges.AddPair(AUri, EditsToJson(AEdits));
+  mChanges.AddPair(AUri, TLspPositions.EditsToJson(AEdits));
   Result := TJSONObject.Create;
   Result.AddPair('changes', mChanges);
 end;

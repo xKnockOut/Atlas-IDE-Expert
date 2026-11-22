@@ -94,7 +94,8 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
-  Atlas.Common.Architecture.Alignment;
+  Atlas.Common.Architecture.Alignment,
+  Atlas.Text.Locked;
 
 /// <summary>Stand aus AFileName, wenn die Datei existiert und lesbar ist; AAt = letzte Änderung der Datei.</summary>
 function TryLoad(const AFileName: string; out ASnapshot: TArchitectureSnapshot; out AAt: TDateTime): Boolean;
@@ -326,12 +327,7 @@ end;
 
 function TArchitectureService.Computations: Integer;
 begin
-  System.TMonitor.Enter(FLock);
-  try
-    Result := FComputations;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
+  Result := TTextLocked.ReadMonitored<Integer>(FLock, FComputations);
 end;
 
 end.

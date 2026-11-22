@@ -63,15 +63,6 @@ uses
   Atlas.Common.Product.Version,
   Atlas.Text.Json;
 
-function FirstString(const AArguments: TJSONArray): string;
-begin
-  Result := '';
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-  begin
-    Result := AArguments.Items[0].Value;
-  end;
-end;
-
 /// <summary>Spalten einer Option der Art "object-list" (#1133): [{"name": …, "list": true}].</summary>
 function ColumnsJson(const AColumns: TArray<TRuleOptionColumn>): TJSONArray;
 var
@@ -102,14 +93,14 @@ var
   mItem: TJSONObject;
   mValid: Boolean;
 begin
-  TConfigurationParser.Parse(FirstString(AArguments), mIssues);
+  TConfigurationParser.Parse(TJsonRead.FirstText(AArguments), mIssues);
   mScope := TConfigurationScope.Project;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) and
     SameText(AArguments.Items[1].Value, 'global') then
   begin
     mScope := TConfigurationScope.Global;
   end;
-  TConfigurationScopes.Filter(FirstString(AArguments), mScope, mMisplaced);
+  TConfigurationScopes.Filter(TJsonRead.FirstText(AArguments), mScope, mMisplaced);
   mIssues := mIssues + mMisplaced;
   mItems := TJSONArray.Create;
   mValid := True;
@@ -135,7 +126,7 @@ class function TLspSettingsCommands.CatalogEntries(const AArguments: TJSONArray)
 var
   mCatalog: TRuleCatalog;
 begin
-  mCatalog := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson(FirstString(AArguments)));
+  mCatalog := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson(TJsonRead.FirstText(AArguments)));
   try
     Result := mCatalog.Entries;
   finally
@@ -179,15 +170,6 @@ begin
   end;
 end;
 
-/// <summary>Setzt AName auf true, wenn AValue gilt.</summary>
-procedure AddFlag(AObject: TJSONObject; const AName: string; AValue: Boolean);
-begin
-  if AValue then
-  begin
-    AObject.AddPair(AName, TJSONBool.Create(True));
-  end;
-end;
-
 /// <summary>Eintrag einer Regel im Katalog.</summary>
 function RuleJson(const AEntry: TRuleCatalogEntry): TJSONObject;
 begin
@@ -205,9 +187,9 @@ begin
   begin
     Result.AddPair('overriddenBy', TJsonBuild.Strings(AEntry.OverriddenBy));
   end;
-  AddFlag(Result, 'experimental', AEntry.Experimental);
+  TJsonBuild.AddFlag(Result, 'experimental', AEntry.Experimental);
   // Sammelkorrektur (#1352): Das Plugin bietet „Alle sicheren Treffer korrigieren …“ nur dafür an.
-  AddFlag(Result, 'safeFix', AEntry.SafeFix);
+  TJsonBuild.AddFlag(Result, 'safeFix', AEntry.SafeFix);
 end;
 
 class function TLspSettingsCommands.Catalog(const AEntries: TArray<TRuleCatalogEntry>;
@@ -255,7 +237,7 @@ var
   mMessages: TJSONArray;
   mEntry: TCompilerMessageEntry;
 begin
-  if not TAtlasLocale.TryParse(FirstString(AArguments), mLanguage) then
+  if not TAtlasLocale.TryParse(TJsonRead.FirstText(AArguments), mLanguage) then
   begin
     mLanguage := TTextLanguage.English;
   end;

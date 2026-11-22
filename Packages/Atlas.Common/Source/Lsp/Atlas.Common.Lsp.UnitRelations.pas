@@ -144,18 +144,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function PathOf(const AText: string): string;
-begin
-  if StartsText('file:', AText) then
-  begin
-    Result := TDocumentUris.ToPath(AText);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 function SameOptions(const A, B: TUsesGraphOptions): Boolean;
 begin
   Result := (A.IncludeLibrary = B.IncludeLibrary) and SameText(A.Root, B.Root) and
@@ -253,7 +241,7 @@ begin
   Result := '';
   if (AArguments <> nil) and (AArguments.Count > AIndex) and (AArguments.Items[AIndex] is TJSONString) then
   begin
-    Result := PathOf(Trim(AArguments.Items[AIndex].Value));
+    Result := TDocumentUris.PathOrSelf(Trim(AArguments.Items[AIndex].Value));
   end;
   if Result = '' then
   begin
@@ -263,11 +251,7 @@ end;
 
 procedure TLspUnitRelations.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(cMethod,
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    begin
-      Result := Request(AParams);
-    end);
+  ADispatcher.RegisterConcurrentPlain(cMethod, Request);
 end;
 
 function TLspUnitRelations.Request(const AParams: TJSONValue): TJSONValue;
@@ -287,7 +271,7 @@ begin
   mFileName := '';
   if mParams.GetValue('uri') is TJSONString then
   begin
-    mFileName := PathOf(Trim(mParams.GetValue('uri').Value));
+    mFileName := TDocumentUris.PathOrSelf(Trim(mParams.GetValue('uri').Value));
   end;
   if mFileName = '' then
   begin

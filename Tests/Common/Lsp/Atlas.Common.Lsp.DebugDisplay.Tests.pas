@@ -43,7 +43,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Metrics,
-  Atlas.Common.Lsp.DebugDisplay;
+  Atlas.Common.Lsp.DebugDisplay,
+  Atlas.Text.Names;
 
 const
   cKundenFile = 'C:\P\Kunden.pas';
@@ -266,9 +267,9 @@ end;
 
 procedure TLspDebugDisplayTests.ShortName;
 begin
-  Assert.AreEqual('TKunde', TLspDebugDisplay.ShortName('Kunden.TKunde'));
-  Assert.AreEqual('TList', TLspDebugDisplay.ShortName('System.Generics.Collections.TList<Kunden.TKunde>'));
-  Assert.AreEqual('TInnen', TLspDebugDisplay.ShortName(' TAussen.TInnen '));
+  Assert.AreEqual('TKunde', TTextNames.BareTypeName('Kunden.TKunde'));
+  Assert.AreEqual('TList', TTextNames.BareTypeName('System.Generics.Collections.TList<Kunden.TKunde>'));
+  Assert.AreEqual('TInnen', TTextNames.BareTypeName(' TAussen.TInnen '));
 end;
 
 initialization
