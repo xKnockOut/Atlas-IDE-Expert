@@ -239,7 +239,7 @@ uses
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Rules.Checker;

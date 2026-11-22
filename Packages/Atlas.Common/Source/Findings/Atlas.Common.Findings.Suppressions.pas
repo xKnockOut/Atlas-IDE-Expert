@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Suppressions;
+﻿unit Atlas.Common.Findings.Suppressions;
 
 // Unterdrückung einzelner Stellen per Kommentar:
 //   x := 1; // lsp-ignore: regel-a, regel-b   gilt für diese Zeile

@@ -47,7 +47,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
   Atlas.Core.Settings.HiddenPlaces,
