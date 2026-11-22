@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ClassLayout;
+﻿unit Atlas.Common.Pascal.ClassLayout;
 
 // Gemeinsamer Baustein der Umbauten über mehrere Klassen (#664 Interface
 // herauslösen, #713 Basisklasse herauslösen, #675 Mitglied verschieben, #717

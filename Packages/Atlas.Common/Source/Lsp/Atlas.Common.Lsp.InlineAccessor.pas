@@ -77,7 +77,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,

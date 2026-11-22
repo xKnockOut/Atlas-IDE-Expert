@@ -42,7 +42,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ClassLayout,
+  Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.InlineAccessor,
