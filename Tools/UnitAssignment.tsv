@@ -70,6 +70,7 @@ Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.IdePlugin	IDE/Assistants/Atla
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.IdeProviders	IDE/Assistants/Atlas.IDE.Assistants.Adapters.IdeProviders.pas	Ordner `IDE/Assistants`, Adapter über ToolsAPI.AI, #2744
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.Instructions	IDE/Assistants/Atlas.IDE.Assistants.Adapters.Instructions.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.Link	IDE/Assistants/Atlas.IDE.Assistants.Adapters.Link.pas	Ordner `IDE/Assistants`, Assistenten-Kopplung: erfüllt den Vertrag der Kopplung für die IDE, #2377
+Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.Module	IDE/Assistants/Atlas.IDE.Assistants.Adapters.Module.pas	Modulklasse: `IAtlasModule`, Befehle Pause, Auswahl an den Assistenten und KI-Protokoll, Taste, letzter Build für den IDE-Zustand
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.TextRequests	IDE/Assistants/Atlas.IDE.Assistants.Adapters.TextRequests.pas	Ordner `IDE/Assistants`, Anfragen an einen Anbieter der IDE hinter dem Vertrag, #2744
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Adapters.TextSource	IDE/Assistants/Atlas.IDE.Assistants.Adapters.TextSource.pas	Ordner `IDE/Assistants`, Quelle für einfache Aufgaben (eigener Anbieter oder IDE), #2744
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.AiErrors	IDE/Assistants/Atlas.IDE.Assistants.AiErrors.pas	Ordner `IDE/Assistants`: Texte zu den Fehlern der KI-Anbieter
@@ -77,6 +78,7 @@ Atlas.IDE.Assistants	Atlas.IDE.Assistants.AiProbe	IDE/Assistants/Atlas.IDE.Assis
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Banner	IDE/Assistants/Atlas.IDE.Assistants.Banner.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.BuildInbox	IDE/Assistants/Atlas.IDE.Assistants.BuildInbox.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition	IDE/Assistants/Atlas.IDE.Assistants.Composition.pas	Ordner `IDE/Assistants`
+Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition.Debug	IDE/Assistants/Atlas.IDE.Assistants.Composition.Debug.pas	Teil AssistantDebug: Eingang der MCP-Werkzeuge debug_* und Leiste „KI-Assistent debuggt“
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.Composition.HostAdapters	IDE/Assistants/Atlas.IDE.Assistants.Composition.HostAdapters.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.ContextExport	IDE/Assistants/Atlas.IDE.Assistants.ContextExport.pas	Ordner `IDE/Assistants`
 Atlas.IDE.Assistants	Atlas.IDE.Assistants.DailyCount	IDE/Assistants/Atlas.IDE.Assistants.DailyCount.pas	Ordner `IDE/Assistants`, gemeinsamer Tageszähler der KI-Anfragen
