@@ -28,7 +28,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.Contract;
 
 type

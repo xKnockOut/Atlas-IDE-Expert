@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.UsesActions.Tests;
+﻿unit Atlas.Common.Semantics.UsesActions.Tests;
 
 // Tests für die uses-Aktionen (#284) und die Prüfung einzelner Einträge zum
 // Abblenden (#621).
@@ -81,7 +81,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,

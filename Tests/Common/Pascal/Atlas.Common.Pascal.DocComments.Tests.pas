@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.DocComments.Tests;
+﻿unit Atlas.Common.Pascal.DocComments.Tests;
 
 // Tests für das Gerüst von Dokumentationskommentaren (#88).
 
@@ -57,7 +57,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.DocComments;
+  Atlas.Common.Pascal.DocComments;
 
 const
   cSource =

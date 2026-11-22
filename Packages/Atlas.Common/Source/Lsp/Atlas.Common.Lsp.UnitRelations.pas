@@ -101,7 +101,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Architecture.UnitRelations,
   System.Generics.Collections,

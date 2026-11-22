@@ -61,7 +61,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Compiler.MessageTexts,
   System.StrUtils,
   System.Generics.Collections,

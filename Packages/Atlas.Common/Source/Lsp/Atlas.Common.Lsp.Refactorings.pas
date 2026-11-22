@@ -134,7 +134,7 @@ uses
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CreateMethod,
-  Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Pascal.CaseCompletion,
   Atlas.Common.Pascal.StatementText,
   Atlas.Common.Editing.IfCase,
   Atlas.Common.Editing.Conditions,

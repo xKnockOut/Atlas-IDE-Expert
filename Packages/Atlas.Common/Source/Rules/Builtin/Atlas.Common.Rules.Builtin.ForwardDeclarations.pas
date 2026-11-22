@@ -71,7 +71,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Editing.ForwardDeclarations,
+  Atlas.Common.Pascal.ForwardDeclarations,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,

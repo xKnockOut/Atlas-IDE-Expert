@@ -11,6 +11,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Lsp.IdeProject,
   Core.Workspace.Setup,
   Core.Workspace.State;
 
@@ -38,6 +39,9 @@ type
     /// <summary>Warnungen der .dproj (DCC_SYMBOL_PLATFORM, DCC_UNSAFE_CODE …) für die Regeln der Gruppe Compiler
     /// vorab (#1378).</summary>
     class function ProjectWarningsOf(const AProject: TProjectInfo): TArray<string>; static;
+    /// <summary>Präfix-Vorgaben des Projektkontexts der IDE für die Prüfregeln (#1111): Felder, Parameter, lokale
+    /// Variablen und Konstanten.</summary>
+    class function NamingOf(const AContext: TIdeProjectContext): TRuleNaming; static;
     /// <summary>Dienste des Projekts für die Prüfregeln (#1112): Symbolindex, Nachladen von Units über AEnsureUnit,
     /// Namespaces, Unit-Suche, Packages und die Namenskonvention aus dem Projektkontext der IDE. Ein Weg für
     /// LSP-Server, MCP und Linter; projektweite Dienste (ProjectFiles, Nachladen über alle Arbeitsbereiche)
@@ -51,7 +55,6 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Rules.WarnSwitches,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
@@ -148,6 +151,29 @@ begin
   end;
 end;
 
+class function TCoreRuleProjects.NamingOf(const AContext: TIdeProjectContext): TRuleNaming;
+const
+  cKinds: array[TNamingKind] of TRuleNamingKind = (TRuleNamingKind.Field, TRuleNamingKind.Parameter,
+    TRuleNamingKind.Local);
+var
+  mKind: TNamingKind;
+begin
+  Result := Default(TRuleNaming);
+  for mKind := Low(TNamingKind) to High(TNamingKind) do
+  begin
+    if AContext.HasNaming[mKind] then
+    begin
+      Result.Known[cKinds[mKind]] := True;
+      Result.Prefixes[cKinds[mKind]] := AContext.Naming[mKind];
+    end;
+  end;
+  if AContext.HasConstantPrefix then
+  begin
+    Result.Known[TRuleNamingKind.Constant] := True;
+    Result.Prefixes[TRuleNamingKind.Constant] := AContext.ConstantPrefix;
+  end;
+end;
+
 class function TCoreRuleProjects.ProjectWarningsOf(const AProject: TProjectInfo): TArray<string>;
 var
   mPair: TPair<string, string>;
@@ -190,7 +216,7 @@ begin
   // Präfixe der Projektdatei .atlas für naming-prefix und die Korrektur von shadowed-name (#1111).
   if ASetup.IdeContext(AState.ProjectFileName, mContext) then
   begin
-    Result.Naming := mContext.RuleNaming;
+    Result.Naming := NamingOf(mContext);
   end;
   if AState.Project(mInfo) then
   begin

@@ -32,7 +32,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Pascal.CaseCompletion,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;

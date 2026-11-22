@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.CaseCompletion;
+﻿unit Atlas.Common.Pascal.CaseCompletion;
 
 // Fehlende Zweige einer case-Anweisung über einem Aufzählungstyp (#449), ohne Namensauflösung. Gemeinsamer
 // Erzeuger für die Vervollständigung (#449), die Code-Aktion „case vervollständigen“ (#50) und den
