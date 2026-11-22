@@ -1026,6 +1026,8 @@ uses
   Atlas.UI.Designer.Strings in '..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Strings.pas',
   Atlas.UI.Rules.Strings in '..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.Strings.pas',
   Atlas.UI.Strings.Tests in 'IDE.Expert\Atlas.UI.Strings.Tests.pas',
+  Atlas.UI.Documentation.Labels.Tests in 'IDE.Expert\Atlas.UI.Documentation.Labels.Tests.pas',
+  Atlas.UI.Signature.FormatText.Tests in 'IDE.Expert\Atlas.UI.Signature.FormatText.Tests.pas',
   Atlas.UI.CodeInsight.Strings in '..\Packages\Atlas.IDE.Base\Source\UI\CodeInsight\Atlas.UI.CodeInsight.Strings.pas',
   Atlas.UI.CodeInsight.Strings.Tests in 'IDE.Expert\Atlas.UI.CodeInsight.Strings.Tests.pas',
   Atlas.UI.Commands.Strings in '..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.Strings.pas',

@@ -19,13 +19,9 @@ type
     [Test]
     procedure ConfidenceLineForRuleFindings;
     [Test]
-    procedure DocLabelsGerman;
-    [Test]
     procedure TypeArgHeadingAndFooter;
     [Test]
     procedure UsesFooterAndCycle;
-    [Test]
-    procedure SignatureFormatLines;
     /// <summary>Abnahme #530: ein Hinweis H2164 zeigt „1 Hinweis“ in der Zusammenfassung.</summary>
     [Test]
     procedure BuildCountsSingularAndPlural;
@@ -57,9 +53,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Documentation.Layout,
-  Atlas.Core.Signature.Contract,
-  Atlas.Core.Signature.Format,
   Atlas.UI.Strings,
   Atlas.UI.Completion.Strings;
 
@@ -205,43 +198,6 @@ begin
   end;
 end;
 
-procedure TAtlasStringsTests.DocLabelsGerman;
-var
-  mSaved: TAtlasLanguage;
-  mLabels, mExpected: TAtlasDocLabels;
-begin
-  mSaved := TAtlasStrings.Language;
-  try
-    TAtlasStrings.Language := TAtlasLanguage.German;
-    mLabels := TAtlasStrings.DocLabels;
-    mExpected := TAtlasDocLabels.German;
-    Assert.AreEqual(mExpected.Params, mLabels.Params);
-    Assert.AreEqual(mExpected.TypeParams, mLabels.TypeParams);
-    Assert.AreEqual(mExpected.Returns, mLabels.Returns);
-    Assert.AreEqual(mExpected.Value, mLabels.Value);
-    Assert.AreEqual(mExpected.Exceptions, mLabels.Exceptions);
-    Assert.AreEqual(mExpected.Remarks, mLabels.Remarks);
-    Assert.AreEqual(mExpected.Example, mLabels.Example);
-    Assert.AreEqual(mExpected.SeeAlso, mLabels.SeeAlso);
-    Assert.AreEqual(mExpected.Undocumented, mLabels.Undocumented);
-    Assert.AreEqual(mExpected.More, mLabels.More);
-    Assert.AreEqual(mExpected.Less, mLabels.Less);
-    Assert.AreEqual(mExpected.CountParam, mLabels.CountParam);
-    Assert.AreEqual(mExpected.CountParams, mLabels.CountParams);
-    Assert.AreEqual(mExpected.CountTypeParam, mLabels.CountTypeParam);
-    Assert.AreEqual(mExpected.CountTypeParams, mLabels.CountTypeParams);
-    Assert.AreEqual(mExpected.CountException, mLabels.CountException);
-    Assert.AreEqual(mExpected.CountExceptions, mLabels.CountExceptions);
-    Assert.AreEqual(mExpected.ItemReturns, mLabels.ItemReturns);
-    Assert.AreEqual(mExpected.ItemValue, mLabels.ItemValue);
-    Assert.AreEqual(mExpected.ItemRemarks, mLabels.ItemRemarks);
-    Assert.AreEqual(mExpected.ItemExample, mLabels.ItemExample);
-    Assert.AreEqual(mExpected.ItemSeeAlso, mLabels.ItemSeeAlso);
-  finally
-    TAtlasStrings.Language := mSaved;
-  end;
-end;
-
 procedure TAtlasStringsTests.TypeArgHeadingAndFooter;
 var
   mSaved: TAtlasLanguage;
@@ -300,42 +256,6 @@ begin
     Assert.AreEqual('TBasis.Zeichnen ist abstrakt und fehlt', TAtlasStrings.InheritedAbstract(['TBasis.Zeichnen']));
     Assert.AreEqual('Abstrakte Vorfahrmethoden fehlen: A.X, A.Y, B.Z, …',
       TAtlasStrings.InheritedAbstract(['A.X', 'A.Y', 'B.Z', 'B.W']));
-  finally
-    TAtlasStrings.Language := mSaved;
-  end;
-end;
-
-procedure TAtlasStringsTests.SignatureFormatLines;
-var
-  mSaved: TAtlasLanguage;
-  mLine: TAtlasFormatLine;
-begin
-  mSaved := TAtlasStrings.Language;
-  try
-    TAtlasStrings.Language := TAtlasLanguage.German;
-    // Akzeptanz #451: Platzhalter 2 als ganzzahlig.
-    mLine := Default(TAtlasFormatLine);
-    mLine.Kind := TAtlasFormatLineKind.Placeholder;
-    mLine.Placeholder := 1;
-    mLine.Count := 2;
-    mLine.TypeChar := 'd';
-    Assert.AreEqual('Platzhalter 2 von 2 erwartet ganzzahlig', TAtlasStrings.SignatureFormatLine(mLine));
-    mLine.Kind := TAtlasFormatLineKind.Problem;
-    mLine.Problem := TAtlasFormatProblem.TooManyArguments;
-    mLine.Argument := 2;
-    Assert.AreEqual('Mehr Argumente als Platzhalter: Argument 3 wird nicht ausgegeben.',
-      TAtlasStrings.SignatureFormatLine(mLine));
-    mLine.Problem := TAtlasFormatProblem.TypeConflict;
-    mLine.Argument := 1;
-    mLine.PlaceholderText := '%d';
-    mLine.ProblemKind := 'string';
-    Assert.AreEqual('Platzhalter 2 (%d) erwartet ganzzahlig, Argument 2 ist ein String: EConvertError zur Laufzeit.',
-      TAtlasStrings.SignatureFormatLine(mLine));
-    TAtlasStrings.Language := TAtlasLanguage.English;
-    mLine.Kind := TAtlasFormatLineKind.Placeholder;
-    mLine.TypeChar := 's';
-    Assert.AreEqual('Placeholder 2 of 2 expects string', TAtlasStrings.SignatureFormatLine(mLine));
-    Assert.AreEqual('', TAtlasStrings.SignatureFormatLine(Default(TAtlasFormatLine)));
   finally
     TAtlasStrings.Language := mSaved;
   end;

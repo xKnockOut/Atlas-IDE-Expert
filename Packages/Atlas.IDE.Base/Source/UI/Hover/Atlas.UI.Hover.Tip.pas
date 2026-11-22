@@ -260,6 +260,7 @@ uses
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
   Atlas.UI.Strings,
+  Atlas.UI.Documentation.Labels,
   Atlas.UI.Hover.Strings,
   Atlas.Vcl.Popup.Draw,
   Atlas.Vcl.Popup.Accessibility,
@@ -593,7 +594,7 @@ begin
   end;
   HandleNeeded;
   FDoc.Build(Canvas, mContent, AWidth - Scale(cDocInset), TAtlasDocFonts.Create(Font, UIFont, PPI),
-    TAtlasStrings.DocLabels);
+    TAtlasDocLabelTexts.Current);
 end;
 
 function TAtlasHoverTipView.FitHeight(AWidth, AAvailable: Integer): Integer;

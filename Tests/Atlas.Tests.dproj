@@ -1162,6 +1162,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\UI\Designer\Atlas.UI.Designer.Strings.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\UI\Rules\Atlas.UI.Rules.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Strings.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Documentation.Labels.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Signature.FormatText.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\CodeInsight\Atlas.UI.CodeInsight.Strings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.CodeInsight.Strings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.Strings.pas"/>

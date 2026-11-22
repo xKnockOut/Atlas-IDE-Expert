@@ -8,9 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Documentation.Layout,
-  Atlas.Plugin.Localization.Language,
-  Atlas.Core.Signature.Format;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -176,13 +174,6 @@ type
     /// <summary>„vom Compiler bestätigt (E2035)“ (#1024); ohne AShowCode bzw. ohne Code nur „vom Compiler
     /// bestätigt“.</summary>
     class function CompilerConfirmed(const ACode: string; AShowCode: Boolean): string; static;
-    /// <summary>Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche; eine Stelle für Hover und
-    /// Detailpanel.</summary>
-    class function DocLabels: TAtlasDocLabels; static;
-    /// <summary>Zeile der Platzhalter im Parameter-Hint (#451); '' ohne.</summary>
-    class function SignatureFormatLine(const ALine: TAtlasFormatLine): string; static;
-    /// <summary>Art eines Typbuchstabens (d → ganzzahlig, s → String …).</summary>
-    class function FormatKind(AType: Char): string; static;
     /// <summary>Sprache aller Plugin-Texte (TAtlasTextLanguage.Current).</summary>
     class property Language: TAtlasLanguage read GetLanguage write SetLanguage;
   end;
@@ -190,7 +181,6 @@ type
 implementation
 
 uses
-  Atlas.Core.Signature.Contract,
   System.StrUtils,
   System.SysUtils;
 
@@ -198,11 +188,6 @@ const
   /// <summary>Bis zu so viele Namen stehen ausgeschrieben in einem Hinweis, darüber nur die ersten und die Anzahl.
   /// </summary>
   cMaxNamesListed = 3;
-  /// <summary>Arten von Literalen, wie der Server sie nennt, und ihre Beschriftung.</summary>
-  cLiteralKinds: array[0..4] of string = ('string', 'char', 'integer', 'float', 'boolean');
-  cLiteralKindTexts: array[0..4] of TAtlasTextId = (TAtlasTextId.FormatLiteralString,
-    TAtlasTextId.FormatLiteralChar, TAtlasTextId.FormatLiteralInteger, TAtlasTextId.FormatLiteralFloat,
-    TAtlasTextId.FormatLiteralBoolean);
   /// <summary>Arten von Typen, die der Server für ein Typargument ausblendet, und ihre Beschriftung.</summary>
   cTypeArgKinds: array[0..4] of string = ('classes', 'records', 'interfaces', 'enums', 'basic');
   cTypeArgKindTexts: array[0..4] of TAtlasTextId = (TAtlasTextId.TypeArgKindClasses,
@@ -694,18 +679,6 @@ begin
   Result := Fmt(TAtlasTextId.ProblemsConfidence, [Text(mLevel)]);
 end;
 
-function LiteralKind(const AKind: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := IndexStr(AKind, cLiteralKinds);
-  if mIndex < 0 then
-  begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.FormatLiteralOther));
-  end;
-  Result := TAtlasStrings.Text(cLiteralKindTexts[mIndex]);
-end;
-
 class function TAtlasStrings.TypeArgHeading(const AParam, AConstraint, AHint: string): string;
 var
   mExplanation: string;
@@ -842,84 +815,6 @@ begin
   else
   begin
     Result := Text(TAtlasTextId.ProblemsCompilerConfirmed);
-  end;
-end;
-
-class function TAtlasStrings.DocLabels: TAtlasDocLabels;
-begin
-  // Begründung (Rationale) steht nur in der Grundtabelle; die übrigen Beschriftungen kommen aus Texts.
-  Result := TAtlasDocLabels.Current;
-  Result.Params := Text(TAtlasTextId.DocParams);
-  Result.TypeParams := Text(TAtlasTextId.DocTypeParams);
-  Result.Returns := Text(TAtlasTextId.DocReturns);
-  Result.Value := Text(TAtlasTextId.DocValue);
-  Result.Exceptions := Text(TAtlasTextId.DocExceptions);
-  Result.Remarks := Text(TAtlasTextId.DocRemarks);
-  Result.Example := Text(TAtlasTextId.DocExample);
-  Result.SeeAlso := Text(TAtlasTextId.DocSeeAlso);
-  Result.Undocumented := Text(TAtlasTextId.DocUndocumented);
-  Result.More := Text(TAtlasTextId.DocMore);
-  Result.Less := Text(TAtlasTextId.DocLess);
-  Result.CountParam := Text(TAtlasTextId.DocCountParam);
-  Result.CountParams := Text(TAtlasTextId.DocCountParams);
-  Result.CountTypeParam := Text(TAtlasTextId.DocCountTypeParam);
-  Result.CountTypeParams := Text(TAtlasTextId.DocCountTypeParams);
-  Result.CountException := Text(TAtlasTextId.DocCountException);
-  Result.CountExceptions := Text(TAtlasTextId.DocCountExceptions);
-  Result.ItemReturns := Text(TAtlasTextId.DocItemReturns);
-  Result.ItemValue := Text(TAtlasTextId.DocItemValue);
-  Result.ItemRemarks := Text(TAtlasTextId.DocItemRemarks);
-  Result.ItemExample := Text(TAtlasTextId.DocItemExample);
-  Result.ItemSeeAlso := Text(TAtlasTextId.DocItemSeeAlso);
-end;
-
-class function TAtlasStrings.SignatureFormatLine(const ALine: TAtlasFormatLine): string;
-begin
-  case ALine.Kind of
-    TAtlasFormatLineKind.Placeholder:
-      Result := Fmt(TAtlasTextId.FormatPlaceholder, [ALine.Placeholder + 1, ALine.Count, FormatKind(ALine.TypeChar)]);
-    TAtlasFormatLineKind.Width:
-      Result := Fmt(TAtlasTextId.FormatWidth, [ALine.Placeholder + 1, ALine.Count, ALine.PlaceholderText]);
-    TAtlasFormatLineKind.Precision:
-      Result := Fmt(TAtlasTextId.FormatPrecision, [ALine.Placeholder + 1, ALine.Count, ALine.PlaceholderText]);
-    TAtlasFormatLineKind.Unused:
-      Result := Fmt(TAtlasTextId.FormatUnused, [ALine.Argument + 1, ALine.Count]);
-    TAtlasFormatLineKind.Problem:
-      case ALine.Problem of
-        TAtlasFormatProblem.Invalid:
-          Result := Fmt(TAtlasTextId.FormatInvalid, [ALine.PlaceholderText]);
-        TAtlasFormatProblem.TooManyArguments:
-          Result := Fmt(TAtlasTextId.FormatTooMany, [ALine.Argument + 1]);
-        TAtlasFormatProblem.TypeConflict:
-          Result := Fmt(TAtlasTextId.FormatConflict, [ALine.Placeholder + 1, ALine.PlaceholderText,
-            FormatKind(ALine.TypeChar), ALine.Argument + 1, LiteralKind(ALine.ProblemKind)]);
-      else
-        Result := '';
-      end;
-  else
-    Result := '';
-  end;
-end;
-
-class function TAtlasStrings.FormatKind(AType: Char): string;
-begin
-  case AType of
-    'd':
-      Result := Text(TAtlasTextId.FormatKindInteger);
-    'u':
-      Result := Text(TAtlasTextId.FormatKindUnsigned);
-    'x':
-      Result := Text(TAtlasTextId.FormatKindHex);
-    'e', 'f', 'g', 'n':
-      Result := Text(TAtlasTextId.FormatKindFloat);
-    'm':
-      Result := Text(TAtlasTextId.FormatKindMoney);
-    's':
-      Result := Text(TAtlasTextId.FormatKindString);
-    'p':
-      Result := Text(TAtlasTextId.FormatKindPointer);
-  else
-    Result := Text(TAtlasTextId.FormatKindInteger);
   end;
 end;
 

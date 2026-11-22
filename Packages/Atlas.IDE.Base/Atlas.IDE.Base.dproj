@@ -265,6 +265,8 @@
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Format.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas"/>
         <DCCReference Include="Source\UI\Signature\Atlas.UI.Signature.Hint.pas"/>
+        <DCCReference Include="Source\UI\Signature\Atlas.UI.Signature.FormatText.pas"/>
+        <DCCReference Include="Source\UI\Documentation\Atlas.UI.Documentation.Labels.pas"/>
         <DCCReference Include="Source\UI\Signature\Atlas.UI.Signature.Adapters.HintView.pas"/>
         <DCCReference Include="Source\UI\Completion\Atlas.UI.Completion.Popup.pas"/>
         <DCCReference Include="Source\UI\Completion\Atlas.UI.Completion.Adapters.PopupView.pas"/>
