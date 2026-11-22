@@ -104,6 +104,27 @@ type
     function IsCancelled: Boolean;
   end;
 
+  // Gruppen der uses nach Herkunft (#2794); Logik in Atlas.Common.Pascal.UsesGroups, die Listen
+  // schreibt Atlas.Common.Pascal.UsesEdits.
+  /// <summary>Gruppe eines uses-Eintrags, in der Reihenfolge der Ausgabe.</summary>
+  TUsesGroup = (RuntimeLibrary, DelphiComponents, Framework, LibraryPath, ProjectGroup, Project);
+
+  /// <summary>Darstellung der Gruppen: Kommentar über jeder Gruppe oder nur eine neue Zeile.</summary>
+  TUsesGroupStyle = (Comments, Lines);
+
+  /// <summary>Wo der Host die Datei der Unit gefunden hat.</summary>
+  TUsesFileOrigin = (Unknown, Installation, LibraryPath, ProjectGroup, OwnProject);
+
+  /// <summary>Fundort einer Unit, vom Host bestimmt.</summary>
+  TUsesUnitFile = record
+    Origin: TUsesFileOrigin;
+    /// <summary>Bei Installation: Pfad der Datei relativ zum Ordner der Installation ($(BDS)), sonst ''.</summary>
+    InstallPath: string;
+  end;
+
+  /// <summary>Gruppe zu einem Unit-Namen.</summary>
+  TUsesGroupFunc = reference to function(const AUnitName: string): TUsesGroup;
+
 implementation
 
 uses

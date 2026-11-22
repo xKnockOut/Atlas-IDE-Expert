@@ -171,7 +171,7 @@ uses
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.PostfixTemplates,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Text.Chars,
@@ -1072,7 +1072,7 @@ begin
     begin
       Continue;
     end;
-    if TUsesClauses.AddUnit(AUnits.Tokens, AUnits.Offset, mUnitName, ALineBreak, mEdit) then
+    if TPascalUsesEdits.AddUnit(AUnits.Tokens, AUnits.Offset, mUnitName, ALineBreak, mEdit) then
     begin
       Result := Result + [mEdit];
       mAdded := mAdded + [mUnitName];

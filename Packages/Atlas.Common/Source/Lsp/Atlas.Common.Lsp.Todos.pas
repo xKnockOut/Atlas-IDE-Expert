@@ -60,7 +60,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Metrics.Report,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Todos.Keywords,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -137,7 +137,7 @@ function TLspTodos.Answer(const ASource: TLspMetricsSource; AMode: TLspTodosMode
 var
   mFiles: TArray<TFileTodos>;
 begin
-  mFiles := TTodoScanner.Collect(ASource.Files, ASource.Root, FReadText, TTodoRules.Keywords(ASource.Settings));
+  mFiles := TTodoScanner.Collect(ASource.Files, ASource.Root, FReadText, TTodoKeywords.FromSettings(ASource.Settings));
   case AMode of
     TLspTodosMode.Json:
       Result := TTodoReport.Json(TTodoScanner.Filter(mFiles, AFilter), ASource.Root);

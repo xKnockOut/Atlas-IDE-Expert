@@ -100,7 +100,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
@@ -906,7 +906,7 @@ begin
     begin
       mPrefix := '';
     end;
-    if not TUsesClauses.AddUnit(FTokens, Token(AFirst).Offset, mPrefix + 'Math', FLineBreak, mUsesEdit) then
+    if not TPascalUsesEdits.AddUnit(FTokens, Token(AFirst).Offset, mPrefix + 'Math', FLineBreak, mUsesEdit) then
     begin
       Exit;
     end;

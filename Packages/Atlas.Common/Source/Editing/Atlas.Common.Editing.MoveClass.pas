@@ -106,7 +106,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.TypeComments,
@@ -977,7 +977,7 @@ begin
     mFound := True;
     mOffset := ATree.Tokens[AFallback].Offset;
   end;
-  if mFound and TUsesClauses.AddUnit(ATree.Tokens, mOffset, ANewUnit, TTextLines.LineBreakOf(AText), mEdit) then
+  if mFound and TPascalUsesEdits.AddUnit(ATree.Tokens, mOffset, ANewUnit, TTextLines.LineBreakOf(AText), mEdit) then
   begin
     AEdits := AEdits + [mEdit];
   end;
@@ -1551,7 +1551,7 @@ begin
     begin
       mOffset := InterfaceNode.StartOffset;
     end;
-    if not TUsesClauses.AddUnit(Source.Tree.Tokens, mOffset, Plan.NewUnit, LineBreak, mEdit) then
+    if not TPascalUsesEdits.AddUnit(Source.Tree.Tokens, mOffset, Plan.NewUnit, LineBreak, mEdit) then
     begin
       Exit(cTexts[TEditingMoveClassText.NoRoomForTheNew].Text);
     end;

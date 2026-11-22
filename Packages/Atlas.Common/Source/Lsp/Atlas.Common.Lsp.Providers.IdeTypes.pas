@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Adapters.IdeTypes;
+﻿unit Atlas.Common.Lsp.Providers.IdeTypes;
 
 // Typen aus der laufenden IDE. Die Delphi-IDE lädt jedes installierte Package als BPL in ihren Prozess; deren
 // Typen samt Unit kennt sie über die RTTI, Komponenten zusätzlich über RegisterComponents. Das gilt auch für
@@ -7,9 +7,9 @@
 //   {"units": [{"unit": "Vendor.Grid", "types": [{"name": "TVendorGrid", "parent": "Vcl.Controls.TCustomControl"},
 //     "TVendorKind", ...]}, ...]}
 // Ein Typ ist ein Name oder ein Objekt mit Namen und, bei Klassen, dem direkten Vorfahren samt Unit (parent).
-// Jede Meldung ersetzt den ganzen Stand. TIdeTypeCatalog hält ihn threadsicher und beantwortet für die
-// Prüfregeln (IRuleIdeTypes) und die Vervollständigung, in welchen Units die IDE einen Typ kennt. Ohne Plugin
-// (Linter, MCP) bleibt der Katalog leer.
+// Jede Meldung ersetzt den ganzen Stand. TIdeTypeCatalog hält ihn threadsicher und beantwortet über
+// ILspIdeTypes, in welchen Units die IDE einen Typ kennt: für die Vervollständigung und, über den Host-Adapter
+// Adapters.Rules.IdeTypes, für die Prüfregeln. Ohne Plugin (Linter, MCP) bleibt der Katalog leer.
 
 interface
 
@@ -18,12 +18,11 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.Contract;
 
 type
   /// <summary>Typen der laufenden IDE; threadsicher. Inhalt ersetzt Replace.</summary>
-  TIdeTypeCatalog = class(TInterfacedObject, IRuleIdeTypes)
+  TIdeTypeCatalog = class(TInterfacedObject, ILspIdeTypes)
   private
     FLock: TObject;
     // Typname (groß) → Units, in denen die IDE ihn kennt.
@@ -32,7 +31,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    { IRuleIdeTypes }
+    { ILspIdeTypes }
     function UnitsOf(const ATypeName: string): TArray<string>;
     /// <summary>Ersetzt den Stand durch die Einträge aus AParams (Format oben); Einträge ohne Unit oder Namen,
     /// generische Instanzen (mit &lt;) und Namen mit Punkt entfallen. Ergebnis: Zahl der Typen.</summary>
@@ -52,8 +51,8 @@ type
     cMethod = 'atlas/ideTypes';
   private
     FCatalog: TIdeTypeCatalog;
-    // Hält FCatalog am Leben, solange Regeldienste ihn über IRuleIdeTypes teilen.
-    FCatalogRef: IRuleIdeTypes;
+    // Hält FCatalog am Leben, solange andere ihn über ILspIdeTypes teilen.
+    FCatalogRef: ILspIdeTypes;
     FOnChanged: TIdeTypesChangedEvent;
     procedure HandleNotification(const AParams: TJSONValue);
   public

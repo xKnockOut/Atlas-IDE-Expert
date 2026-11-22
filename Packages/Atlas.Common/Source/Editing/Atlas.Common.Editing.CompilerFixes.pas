@@ -83,7 +83,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.DisableWarning,
@@ -268,7 +268,7 @@ var
   mOffset: Integer;
 begin
   mOffset := OffsetOf(AText, AMessage.Line);
-  if (mOffset >= 0) and TUsesClauses.AddUnit(ATokens, mOffset, AUnit, TTextLines.LineBreakOf(AText), mEdit) then
+  if (mOffset >= 0) and TPascalUsesEdits.AddUnit(ATokens, mOffset, AUnit, TTextLines.LineBreakOf(AText), mEdit) then
   begin
     AFixes := AFixes + [Fix(AMessage.Code, ATitle, [mEdit], Length(AFixes) = 0)];
   end;

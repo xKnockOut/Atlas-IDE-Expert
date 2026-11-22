@@ -52,7 +52,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.AccessorCreation,
@@ -453,7 +453,7 @@ begin
   mEntries := TResourceStrings.Entries(ATargetText, TPascalLexer.Tokenize(ATargetText));
   ATarget.Taken := ATarget.Taken + TakenResourceNames(ATarget.Target, mEntries);
   if not TPascalUses.IsUsed(TPascalUses.UsedUnits(ARequest.Tree.Tokens), ATarget.Target.UnitName,
-    ARequest.Resolver.Namespaces) and TUsesClauses.AddUnit(ARequest.Tree.Tokens, ATarget.Literal.StartOffset,
+    ARequest.Resolver.Namespaces) and TPascalUsesEdits.AddUnit(ARequest.Tree.Tokens, ATarget.Literal.StartOffset,
     ATarget.Target.UnitName, ARequest.LineBreak, mUsesEdit) then
   begin
     ATarget.UsesEdits := [mUsesEdit];

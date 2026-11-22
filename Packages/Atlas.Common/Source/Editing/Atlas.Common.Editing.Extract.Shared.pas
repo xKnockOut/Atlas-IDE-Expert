@@ -184,7 +184,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Editing.DeclareUnknown,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Localization.Texts;
 
@@ -440,7 +440,7 @@ class procedure TExtractSupport.AddUsesFor(ATree: TSyntaxTree; const AText: stri
 var
   mEdit: TTextEdit;
 begin
-  if (AType.UnitName <> '') and TUsesClauses.AddUnit(ATree.Tokens, AOffset, AType.UnitName,
+  if (AType.UnitName <> '') and TPascalUsesEdits.AddUnit(ATree.Tokens, AOffset, AType.UnitName,
     TTextLines.LineBreakOf(AText), mEdit) then
   begin
     AEdits := AEdits + [mEdit];

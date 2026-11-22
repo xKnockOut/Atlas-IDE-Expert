@@ -121,7 +121,7 @@ uses
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin.DeadCode,
-  Atlas.Common.Editing.UsesGroups,
+  Atlas.Common.Pascal.UsesGroups,
   Shell.Composition.Workspaces,
   Core.Workspace.Jobs;
 

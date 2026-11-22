@@ -81,7 +81,7 @@ uses
   Atlas.Common.Pascal.FormatStrings,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
@@ -1156,7 +1156,7 @@ procedure TConsoleCallScan.AddUnitEdit(ACall: TSyntaxNode; const AUsed: TArray<s
 var
   mEdit: TTextEdit;
 begin
-  if not TPascalUses.IsUsed(AUsed, AUnitName, FContext.Namespaces) and TUsesClauses.AddUnit(FTokens,
+  if not TPascalUses.IsUsed(AUsed, AUnitName, FContext.Namespaces) and TPascalUsesEdits.AddUnit(FTokens,
     ACall.StartOffset, AUnitName, TTextLines.LineBreakOf(FContext.Text), mEdit) then
   begin
     AEdits := AEdits + [mEdit];

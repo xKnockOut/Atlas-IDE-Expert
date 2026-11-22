@@ -82,12 +82,12 @@ uses
   System.Math,
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.DeclareUnknown,
   Atlas.Common.Editing.CaseCompletion,
   Atlas.Common.Editing.AssignFields,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
@@ -472,7 +472,7 @@ begin
   end;
   for mLocation in ALookup.Index.FindSymbols(ATypeName) do
   begin
-    if IsForeignType(ALookup.Resolver, ALookup.Tree, mLocation) and TUsesClauses.AddUnit(ALookup.Tree.Tokens,
+    if IsForeignType(ALookup.Resolver, ALookup.Tree, mLocation) and TPascalUsesEdits.AddUnit(ALookup.Tree.Tokens,
       AOffset, mLocation.UnitName, ALineBreak, mEdit) then
     begin
       Result := [mEdit];

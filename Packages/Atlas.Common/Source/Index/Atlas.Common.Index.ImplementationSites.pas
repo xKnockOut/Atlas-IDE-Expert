@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ImplementationSites;
+﻿unit Atlas.Common.Index.ImplementationSites;
 
 // Umsetzungen einer virtuellen oder Interface-Methode (#2635), gemeinsam für „Gehe zu Implementierung“
 // (TLspImplementations.Targets), die Zahl der Umsetzungen in der Aufrufhierarchie (#1122) und das

@@ -25,7 +25,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Configuration.Contract,

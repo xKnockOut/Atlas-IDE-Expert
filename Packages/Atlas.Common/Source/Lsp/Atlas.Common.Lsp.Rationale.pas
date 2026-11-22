@@ -81,7 +81,7 @@ uses
   System.IOUtils,
   Atlas.Common.Rationale.References,
   Atlas.Common.Todos.Contract,
-  Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Todos.Keywords,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Arrays;
 
@@ -114,7 +114,7 @@ class function TRationaleOptions.FromSettings(const ASettings: TServerSettings;
 begin
   Result.Enabled := ASettings.Hints.Rationale;
   Result.Markers := TLspRationale.Markers(ASettings.Hints);
-  Result.Excluded := TTodoRules.Keywords(ASettings);
+  Result.Excluded := TTodoKeywords.FromSettings(ASettings);
   Result.AdrFolder := TLspRationale.AdrFolder(ASettings.Hints.AdrFolder, ARoot);
 end;
 

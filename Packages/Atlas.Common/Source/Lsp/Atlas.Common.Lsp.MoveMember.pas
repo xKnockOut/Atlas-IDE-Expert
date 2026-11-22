@@ -80,7 +80,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MemberTransfer,
@@ -736,7 +736,7 @@ begin
     end;
   end;
   mOffset := SectionOffset(ATree, AKind);
-  if (mMissing <> nil) and (mOffset >= 0) and TUsesClauses.AddUnit(ATree.Tokens, mOffset, string.Join(', ', mMissing),
+  if (mMissing <> nil) and (mOffset >= 0) and TPascalUsesEdits.AddUnit(ATree.Tokens, mOffset, string.Join(', ', mMissing),
     ALineBreak, mEdit) then
   begin
     AEdits := AEdits + [mEdit];

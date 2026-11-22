@@ -98,6 +98,15 @@ type
     Parent: string;
   end;
 
+  /// <summary>Typen der laufenden IDE (atlas/ideTypes); threadsicher. Ohne Plugin leer.</summary>
+  ILspIdeTypes = interface
+    ['{9EEBF436-AD07-4D64-B8AB-436A346A4F28}']
+    /// <summary>Units, in denen die IDE den Typ ATypeName kennt (ohne Beachtung der Groß-/Kleinschreibung).</summary>
+    function UnitsOf(const ATypeName: string): TArray<string>;
+    /// <summary>Alle Typen mit Unit, in der Reihenfolge der Meldung.</summary>
+    function Entries: TArray<TIdeTypeEntry>;
+  end;
+
   /// <summary>Projekt und Dateien für die Suche; die Shell liest geöffnete Dokumente vor der Platte.</summary>
   ILeakCandidateFiles = interface
     ['{4C1E7B52-8D3A-4F6E-9B21-6A0D5E3C7F14}']

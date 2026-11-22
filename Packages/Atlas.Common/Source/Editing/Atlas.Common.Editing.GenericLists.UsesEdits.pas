@@ -28,7 +28,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;
@@ -293,7 +293,7 @@ procedure TUsesEditor.AddUnitTo(AOffset: Integer);
 var
   mEdit: TTextEdit;
 begin
-  if TUsesClauses.AddUnit(FTokens, AOffset, cGenericListUnit, FSource.LineBreak, mEdit) then
+  if TPascalUsesEdits.AddUnit(FTokens, AOffset, cGenericListUnit, FSource.LineBreak, mEdit) then
   begin
     FSource.AddTextEdit(mEdit);
   end;
@@ -343,7 +343,7 @@ begin
   end;
   if Length(mKept) = Length(mItems) then
   begin
-    // Nichts entfernt: nur ergänzen, hinter den letzten Eintrag wie TUsesClauses.AddUnit.
+    // Nichts entfernt: nur ergänzen, hinter den letzten Eintrag wie TPascalUsesEdits.AddUnit.
     if InsertsGeneric(AIndex) then
     begin
       AddUnitTo(FTokens[mClause.UsesIndex].Offset + 1);
