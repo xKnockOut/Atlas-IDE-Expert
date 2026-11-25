@@ -4,7 +4,9 @@
 // Atlas.Windows.Console.StdStreams. stdin, stdout und stderr sind die
 // Dateideskriptoren 0, 1 und 2. ReserveOutputForProtocol behält eine Kopie von
 // stdout für das Protokoll und legt Deskriptor 1 auf stderr, damit kein
-// Writeln einer Unit die Nachrichten von LSP oder MCP stört.
+// Writeln einer Unit die Nachrichten von LSP oder MCP stört. Hat der Client das
+// Leseende geschlossen (EPIPE), meldet der Stream für das Protokoll das als
+// EJsonRpcPeerClosed statt als allgemeinen Schreibfehler.
 
 interface
 
@@ -23,7 +25,8 @@ type
     /// <summary>Leitet die Textdatei Output (Write/Writeln) auf stderr um.</summary>
     class procedure RedirectTextOutputToStdErr; static;
     /// <summary>Stream auf das bisherige stdout für das Protokoll; danach schreibt alles andere, das auf
-    /// stdout zielt (Deskriptor 1, Writeln), nach stderr.</summary>
+    /// stdout zielt (Deskriptor 1, Writeln), nach stderr. Hat der Client die Pipe geschlossen, löst das Schreiben
+    /// EJsonRpcPeerClosed aus.</summary>
     class function ReserveOutputForProtocol: TStream; static;
   end;
 
@@ -31,7 +34,38 @@ implementation
 
 uses
   System.SysUtils,
-  BaseUnix;
+  BaseUnix,
+  Atlas.Common.JsonRpc.Contract;
+
+type
+  /// <summary>stdout für das Protokoll: wie THandleStream, aber ein vom Client geschlossenes Leseende ist
+  /// EJsonRpcPeerClosed. Andere Schreibfehler bleiben, was sie waren (WriteBuffer: EWriteError).</summary>
+  TProtocolOutputStream = class(THandleStream)
+  public
+    function Write(const ABuffer; ACount: Longint): Longint; override;
+  end;
+
+{ TProtocolOutputStream }
+
+function TProtocolOutputStream.Write(const ABuffer; ACount: Longint): Longint;
+var
+  mError: cint;
+begin
+  Result := FileWrite(Handle, ABuffer, ACount);
+  if Result >= 0 then
+  begin
+    Exit;
+  end;
+  mError := FpGetErrno;
+  // Leseende geschlossen: Die Pipe nimmt nie wieder etwas an. EPIPE kommt nur an, wenn SIGPIPE den Prozess nicht
+  // schon beendet hat.
+  if mError = ESysEPIPE then
+  begin
+    raise EJsonRpcPeerClosed.Create(SysErrorMessage(mError));
+  end;
+  // Wie THandleStream: 0 geschrieben, WriteBuffer meldet den Schreibfehler.
+  Result := 0;
+end;
 
 const
   cStdInputFd = 0;
@@ -87,7 +121,7 @@ begin
   begin
     raise EStreamError.Create('stdout lässt sich nicht für das Protokoll reservieren');
   end;
-  Result := THandleStream.Create(mProtocol);
+  Result := TProtocolOutputStream.Create(mProtocol);
   if FpFcntl(cStdErrorFd, F_GETFD) >= 0 then
   begin
     FpDup2(cStdErrorFd, cStdOutputFd);
