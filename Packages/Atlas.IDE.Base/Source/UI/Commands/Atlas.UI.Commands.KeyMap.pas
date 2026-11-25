@@ -2,14 +2,17 @@
 
 // Fenster „Atlas – Tastenkürzel“ (#520), reine VCL: oben das Suchfeld (Taste
 // wie „Strg+Umschalt+P“ oder Text aus Befehl, Kategorie, Herkunft), „Nur
-// Konflikte“ und die Anzahl; darunter die Liste mit Taste, Befehl, Herkunft
+// Konflikte“, „Auch Befehle ohne Taste“ (#2938: dazu die Palettenbefehle von
+// Atlas ohne Taste) und die Anzahl; darunter die Liste mit Taste, Befehl, Herkunft
 // (IDE, Atlas, Erweiterung), Kontext (global, Editor, Designer,
 // Willkommensseite), „Selten per Tastatur“ (Zählung der Tastenkürzel-Tipps,
 // #600: „5× Maus, 0× Tastatur“) und Hinweis. Doppelt belegte Kürzel stehen rot, der
 // Hinweis sagt, welche Belegung gewinnt und warum. Unten „Als HTML
 // exportieren“ (OnExport; die IDE-Schicht schreibt die Datei und öffnet sie im
-// Browser), „Tastenkonflikte…“ (OnSettings), „Aktualisieren“ (OnRefresh) und
-// „Schließen“. Das Fenster ist nicht modal und schließt mit Esc; es zeigt, was
+// Browser), „Tastenkonflikte…“ (OnSettings), „Aktualisieren“ (OnRefresh),
+// „Zuweisen …“ (OnAssign mit der markierten Zeile, auch per Doppelklick; nur
+// für Atlas-Zeilen, TAtlasKeyItem.Assignable, #2938) und „Schließen“. Das
+// Fenster ist nicht modal und schließt mit Esc; es zeigt, was
 // SetItems bekommt (ausgewertet mit TAtlasKeyMap.Analyze).
 // Grundlage ist TAtlasDialog: Fläche, Liste und Knöpfe zeichnet das IDE-Thema,
 // auch nach einem Themenwechsel; eigene Farbe hat nur die Schrift der
@@ -34,13 +37,28 @@ uses
   Atlas.UI.Foundation.ListView;
 
 type
+  /// <summary>Zuweisen der Taste für eine Zeile (#2938).</summary>
+  TAtlasKeyAssignEvent = reference to procedure(const AItem: TAtlasKeyItem);
+
   /// <summary>Grundlage des Fensters: Texte der Spalten und Hinweise sowie die Ereignisse der Knöpfe.</summary>
   TAtlasKeyMapForm = class(TAtlasDialog)
   private
     FOnExport: TProc;
     FOnSettings: TProc;
     FOnRefresh: TProc;
+    FOnAssign: TAtlasKeyAssignEvent;
+    FBottom: TPanel;
+    FButtons: TAtlasButtonRow;
+    FExportButton: TButton;
+    FSettingsButton: TButton;
+    FRefreshButton: TButton;
+    FAssignButton: TButton;
+    FCloseButton: TButton;
+    function AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
   protected
+    /// <summary>Fuß mit den Knöpfen; „Zuweisen …“ ohne Ereignis und gesperrt (die Ableitung kennt die Auswahl).
+    /// </summary>
+    procedure CreateBottom;
     procedure ExportClick(Sender: TObject);
     procedure SettingsClick(Sender: TObject);
     procedure RefreshClick(Sender: TObject);
@@ -60,11 +78,19 @@ type
     class function Cells(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): TArray<string>; static;
     /// <summary>Spalte „Selten per Tastatur“ (#600): „5× Maus, 0× Tastatur“, sonst leer.</summary>
     class function RarelyText(const AItem: TAtlasKeyItem): string; static;
+    /// <summary>Spalte „Taste“: der Text der Taste, ohne Taste „(keine)“ (#2938).</summary>
+    class function KeyText(const AItem: TAtlasKeyItem): string; static;
     /// <summary>„812 Kürzel, 3 Konflikte“ bzw. „12 von 812 Kürzeln, 3 Konflikte“.</summary>
     class function SummaryText(AShown, ATotal, AConflicts: Integer): string; static;
     property OnExport: TProc read FOnExport write FOnExport;
     property OnSettings: TProc read FOnSettings write FOnSettings;
     property OnRefresh: TProc read FOnRefresh write FOnRefresh;
+    property OnAssign: TAtlasKeyAssignEvent read FOnAssign write FOnAssign;
+    property ExportButton: TButton read FExportButton;
+    property SettingsButton: TButton read FSettingsButton;
+    property RefreshButton: TButton read FRefreshButton;
+    property AssignButton: TButton read FAssignButton;
+    property CloseButton: TButton read FCloseButton;
   end;
 
   TAtlasKeyMapWindow = class(TAtlasKeyMapForm)
@@ -76,29 +102,26 @@ type
     cHintMinWidth = 240;
   private
     FItems: TArray<TAtlasKeyItem>;
+    FKeyed: TArray<TAtlasKeyItem>;
+    FKeyless: TArray<TAtlasKeyItem>;
     FShown: TArray<Integer>;
     FTop: TPanel;
-    FBottom: TPanel;
     FSearch: TEdit;
     FOnlyConflicts: TCheckBox;
+    FWithoutKey: TCheckBox;
     FSummary: TLabel;
     FList: TAtlasListView;
-    FButtons: TAtlasButtonRow;
-    FExportButton: TButton;
-    FSettingsButton: TButton;
-    FRefreshButton: TButton;
-    FCloseButton: TButton;
     procedure ApplyFilter;
+    procedure AssignClick(Sender: TObject);
+    /// <summary>„Zuweisen …“ nur für eine zuweisbare markierte Zeile.</summary>
+    procedure ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure SearchChange(Sender: TObject);
     procedure OnlyConflictsClick(Sender: TObject);
     procedure ListData(Sender: TObject; Item: TListItem);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
-    function AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
     /// <summary>Kopf mit Suchfeld, „Nur Konflikte“ und Anzahl.</summary>
     procedure CreateTop;
-    /// <summary>Fuß mit den Knöpfen.</summary>
-    procedure CreateBottom;
     /// <summary>Liste mit den Spalten aus Headers.</summary>
     procedure CreateList;
   protected
@@ -112,7 +135,12 @@ type
     /// <summary>Druckbare HTML-Seite der gezeigten Zeilen; ACreated ist der Zeitpunkt als Text.</summary>
     function ExportHtml(const ACreated: string): string;
     /// <summary>Belegungen setzen (auch bei offenem Fenster); Suche und Filter bleiben.</summary>
-    procedure SetItems(const AItems: TArray<TAtlasKeyItem>);
+    procedure SetItems(const AItems: TArray<TAtlasKeyItem>); overload;
+    /// <summary>Wie SetItems, dazu die Palettenbefehle ohne Taste (#2938), gezeigt mit „Auch Befehle ohne
+    /// Taste“.</summary>
+    procedure SetItems(const AItems, AKeyless: TArray<TAtlasKeyItem>); overload;
+    /// <summary>Markierte Zeile; False ohne.</summary>
+    function SelectedItem(out AItem: TAtlasKeyItem): Boolean;
     /// <summary>Suchtext setzen, z. B. für einen Einstieg mit Taste (#600, #766).</summary>
     procedure SetQuery(const AText: string);
     property Items: TArray<TAtlasKeyItem> read FItems;
@@ -121,11 +149,8 @@ type
     property List: TAtlasListView read FList;
     property SearchEdit: TEdit read FSearch;
     property OnlyConflictsBox: TCheckBox read FOnlyConflicts;
+    property WithoutKeyBox: TCheckBox read FWithoutKey;
     property SummaryLabel: TLabel read FSummary;
-    property ExportButton: TButton read FExportButton;
-    property SettingsButton: TButton read FSettingsButton;
-    property RefreshButton: TButton read FRefreshButton;
-    property CloseButton: TButton read FCloseButton;
   end;
 
 implementation
@@ -156,6 +181,8 @@ const
   cConflictsTop = 11;
   cConflictsWidth = 180;
   cConflictsHeight = 19;
+  cWithoutKeyLeft = cConflictsLeft + cConflictsWidth + cGap;
+  cWithoutKeyWidth = 220;
   cSummaryWidth = 300;
   /// <summary>Fuß: Höhe und Abstand der Knöpfe oben und unten.</summary>
   cBottomHeight = 44;
@@ -274,6 +301,7 @@ begin
   OnClose := FormClose;
   CreateTop;
   CreateBottom;
+  FAssignButton.OnClick := AssignClick;
   CreateList;
   ApplyFilter;
 end;
@@ -303,11 +331,57 @@ end;
 
 procedure TAtlasKeyMapWindow.ApplyFilter;
 begin
+  // Ohne Taste hinten: Die Indizes der Gewinner (Winner) aus Analyze bleiben gültig.
+  FItems := FKeyed;
+  if FWithoutKey.Checked then
+  begin
+    FItems := FKeyed + FKeyless;
+  end;
   FShown := TAtlasKeyMap.Filter(FItems, FSearch.Text, FOnlyConflicts.Checked);
   FList.Items.Count := Length(FShown);
   FList.FitColumns;
   FList.Invalidate;
   FSummary.Caption := SummaryText(Length(FShown), Length(FItems), TAtlasKeyMap.ConflictCount(FItems));
+  ListSelectItem(nil, nil, False);
+end;
+
+function TAtlasKeyMapWindow.SelectedItem(out AItem: TAtlasKeyItem): Boolean;
+var
+  mRow: Integer;
+begin
+  AItem := Default(TAtlasKeyItem);
+  mRow := -1;
+  if FList.Selected <> nil then
+  begin
+    mRow := FList.Selected.Index;
+  end;
+  Result := (mRow >= 0) and (mRow <= High(FShown));
+  if Result then
+  begin
+    AItem := FItems[FShown[mRow]];
+  end;
+end;
+
+procedure TAtlasKeyMapWindow.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+var
+  mItem: TAtlasKeyItem;
+begin
+  // Die Liste entsteht nach den Knöpfen.
+  if (FAssignButton = nil) or (FList = nil) then
+  begin
+    Exit;
+  end;
+  FAssignButton.Enabled := SelectedItem(mItem) and mItem.Assignable;
+end;
+
+procedure TAtlasKeyMapWindow.AssignClick(Sender: TObject);
+var
+  mItem: TAtlasKeyItem;
+begin
+  if SelectedItem(mItem) and mItem.Assignable and Assigned(OnAssign) then
+  begin
+    OnAssign(mItem);
+  end;
 end;
 
 procedure TAtlasKeyMapWindow.SearchChange(Sender: TObject);
@@ -445,7 +519,7 @@ begin
   end;
 end;
 
-function TAtlasKeyMapWindow.AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
+function TAtlasKeyMapForm.AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
 begin
   Result := FButtons.AddButton(ACaption);
   Result.OnClick := AOnClick;
@@ -470,6 +544,12 @@ begin
     ScaleValue(cConflictsHeight));
   FOnlyConflicts.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapOnlyConflicts);
   FOnlyConflicts.OnClick := OnlyConflictsClick;
+  FWithoutKey := TCheckBox.Create(Self);
+  FWithoutKey.Parent := FTop;
+  FWithoutKey.SetBounds(ScaleValue(cWithoutKeyLeft), ScaleValue(cConflictsTop), ScaleValue(cWithoutKeyWidth),
+    ScaleValue(cConflictsHeight));
+  FWithoutKey.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapWithoutKey);
+  FWithoutKey.OnClick := OnlyConflictsClick;
   FSummary := TLabel.Create(Self);
   FSummary.Parent := FTop;
   // Rechts im Kopf, mit dem Fenster mitwachsend (alRight statt Anker: die Breite steht erst nach dem Anzeigen fest).
@@ -482,7 +562,7 @@ begin
   FSummary.Layout := tlCenter;
 end;
 
-procedure TAtlasKeyMapWindow.CreateBottom;
+procedure TAtlasKeyMapForm.CreateBottom;
 begin
   FBottom := TPanel.Create(Self);
   FBottom.Height := ScaleValue(cBottomHeight);
@@ -507,6 +587,10 @@ begin
   FExportButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapExport), ExportClick);
   FSettingsButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapConflictsButton), SettingsClick);
   FRefreshButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapRefresh), RefreshClick);
+  FAssignButton := AddButton(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapAssign), nil);
+  FAssignButton.Hint := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapNotAssignable);
+  FAssignButton.ShowHint := True;
+  FAssignButton.Enabled := False;
 end;
 
 procedure TAtlasKeyMapWindow.CreateList;
@@ -525,6 +609,8 @@ begin
   FList.HideSelection := False;
   FList.OnData := ListData;
   FList.OnCustomDrawItem := ListCustomDrawItem;
+  FList.OnSelectItem := ListSelectItem;
+  FList.OnDblClick := AssignClick;
   mHeaders := Headers;
   for mIndex := 0 to High(mHeaders) do
   begin
@@ -572,7 +658,13 @@ end;
 
 procedure TAtlasKeyMapWindow.SetItems(const AItems: TArray<TAtlasKeyItem>);
 begin
-  FItems := AItems;
+  SetItems(AItems, nil);
+end;
+
+procedure TAtlasKeyMapWindow.SetItems(const AItems, AKeyless: TArray<TAtlasKeyItem>);
+begin
+  FKeyed := AItems;
+  FKeyless := AKeyless;
   ApplyFilter;
 end;
 
@@ -613,8 +705,17 @@ end;
 
 class function TAtlasKeyMapForm.Cells(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): TArray<string>;
 begin
-  Result := [AItems[AIndex].KeyText, AItems[AIndex].Command, OriginText(AItems[AIndex]),
+  Result := [KeyText(AItems[AIndex]), AItems[AIndex].Command, OriginText(AItems[AIndex]),
     ContextText(AItems[AIndex].Context), RarelyText(AItems[AIndex]), HintText(AItems, AIndex)];
+end;
+
+class function TAtlasKeyMapForm.KeyText(const AItem: TAtlasKeyItem): string;
+begin
+  Result := AItem.KeyText;
+  if AItem.ShortCut = 0 then
+  begin
+    Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.KeyMapNoKey);
+  end;
 end;
 
 class function TAtlasKeyMapForm.RarelyText(const AItem: TAtlasKeyItem): string;

@@ -1209,6 +1209,8 @@ type
       write FEditingKeys.MultiCursorLineEndsKey;
     property MultiCursorAboveKey: Integer read FEditingKeys.MultiCursorAboveKey write FEditingKeys.MultiCursorAboveKey;
     property MultiCursorBelowKey: Integer read FEditingKeys.MultiCursorBelowKey write FEditingKeys.MultiCursorBelowKey;
+    /// <summary>Frei zugewiesene Tasten der Palettenbefehle (#2938, keys.commands; TAtlasCommandKeys).</summary>
+    property CommandKeys: string read FEditingKeys.CommandKeys write FEditingKeys.CommandKeys;
     property DebugEnabled: Boolean read FDebug.DebugEnabled write FDebug.DebugEnabled;
     property IssuesEnabled: Boolean read FIssues.IssuesEnabled write FIssues.IssuesEnabled;
     property AnalysisEnabled: Boolean read FGeneralServer.AnalysisEnabled write FGeneralServer.AnalysisEnabled;

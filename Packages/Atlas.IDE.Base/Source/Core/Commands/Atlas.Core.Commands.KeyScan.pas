@@ -19,7 +19,9 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.Core.Commands.KeyMap;
+  Atlas.Core.Commands.KeyMap,
+  Atlas.Core.Commands.Contract,
+  Atlas.Core.Commands.CustomKeys;
 
 type
   /// <summary>Konflikt einer Atlas-Taste, den die Prüfung beim Start meldet.</summary>
@@ -56,6 +58,10 @@ type
     /// einer Taste ('' = frei).</summary>
     class function AtlasItem(const AEntry: TAtlasKeyEntry; const AKeyText, ACaption: string;
       const AOwnerOf: TFunc<Word, string>): TAtlasKeyItem; static;
+    /// <summary>Zeile der frei zugewiesenen Taste eines Palettenbefehls (keys.commands, #2938). Wie die
+    /// Editorbefehle: hält die Taste, wenn sie frei ist oder APriority (Vorrang der Editorbefehle) gilt.</summary>
+    class function CommandItem(const AKey: TAtlasCommandKey; const AKeyText, ACaption: string; APriority: Boolean;
+      const AOwnerOf: TFunc<Word, string>): TAtlasKeyItem; static;
     /// <summary>Die von „Units suchen“ übernommene Aktion „Units“ (#777) als Atlas-Zeile: bewusst übernommen, also
     /// mit Vorrang; Platz in der Aktionsliste wie die Aktion selbst.</summary>
     class function UnitSearchItem(AShortCut: Word; const AKeyText, ACaption, ACategory: string;
@@ -86,6 +92,10 @@ type
     /// fremde Belegung einer Taste ('' = frei).</summary>
     class function HeldCommandKeys(const AEntries: TArray<TAtlasKeyEntry>;
       const AOwnerOf: TFunc<Word, string>): TArray<TAtlasKeyEntry>; static;
+    /// <summary>Zeilen aller frei zugewiesenen Tasten aus dem Text von keys.commands (#2938), beschriftet nach
+    /// ACommands (CommandItem); AKeyText gibt die Taste als Text.</summary>
+    class function CommandItems(const ACommandKeys: string; const ACommands: TArray<TAtlasCommand>;
+      APriority: Boolean; const AOwnerOf, AKeyText: TFunc<Word, string>): TArray<TAtlasKeyItem>; static;
     /// <summary>Zu meldende Konflikte beim Start: Atlas-Tasten mit offenem Konflikt und anderer Belegung, ohne die,
     /// die AReported schon meldet (#494).</summary>
     class function StartConflicts(const AItems: TArray<TAtlasKeyItem>;
@@ -199,9 +209,23 @@ begin
     AtlasKeyId(AEntry.Func), BindOrderOf(AEntry.Func)));
   Result.Category := TAtlasKeyMap.cAtlasName;
   Result.Func := AEntry.Func;
+  Result.CommandId := TAtlasKeyMap.CommandIdOf(AEntry.Func);
   Result.Priority := AEntry.Priority;
   Result.Active := (Result.Source = TAtlasKeySource.Window) or
     TAtlasKeyConflicts.ShouldBind(AEntry.Key, AOwnerOf(AEntry.Key), AEntry.Priority);
+end;
+
+class function TAtlasKeyScan.CommandItem(const AKey: TAtlasCommandKey; const AKeyText, ACaption: string;
+  APriority: Boolean; const AOwnerOf: TFunc<Word, string>): TAtlasKeyItem;
+begin
+  Result := TAtlasKeyItem.Create(AKey.Key, AKeyText, ACaption, TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas,
+    TAtlasKeyMap.cAtlasName, TAtlasKeyContext.Editor, TAtlasKeySource.Binding,
+    TAtlasKeyMap.cCommandIdPrefix + AKey.CommandId, TAtlasKeyMap.cEditorBindOrder));
+  Result.Category := TAtlasKeyMap.cAtlasName;
+  Result.CommandId := AKey.CommandId;
+  Result.Custom := True;
+  Result.Priority := APriority;
+  Result.Active := TAtlasKeyConflicts.ShouldBind(AKey.Key, AOwnerOf(AKey.Key), APriority);
 end;
 
 class function TAtlasKeyScan.UnitSearchItem(AShortCut: Word; const AKeyText, ACaption, ACategory: string;
@@ -417,7 +441,11 @@ begin
         Result := AItem.Id;
       end;
     TAtlasKeySource.Binding:
-      if AItem.Origin = TAtlasKeyOrigin.Atlas then
+      if AItem.Custom then
+      begin
+        Result := AItem.CommandId;
+      end
+      else if AItem.Origin = TAtlasKeyOrigin.Atlas then
       begin
         Result := TAtlasShortcutTips.AtlasCommandId(AItem.Func);
       end;
@@ -472,6 +500,19 @@ begin
     end;
   finally
     mIds.Free;
+  end;
+end;
+
+class function TAtlasKeyScan.CommandItems(const ACommandKeys: string; const ACommands: TArray<TAtlasCommand>;
+  APriority: Boolean; const AOwnerOf, AKeyText: TFunc<Word, string>): TArray<TAtlasKeyItem>;
+var
+  mKey: TAtlasCommandKey;
+begin
+  Result := nil;
+  for mKey in TAtlasCommandKeys.Parse(ACommandKeys) do
+  begin
+    Result := Result + [CommandItem(mKey, AKeyText(mKey.Key), TAtlasKeyMap.CommandCaption(ACommands, mKey.CommandId),
+      APriority, AOwnerOf)];
   end;
 end;
 
