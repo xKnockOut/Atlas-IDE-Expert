@@ -998,6 +998,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Contract.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Cancellation.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Lexer.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.MethodText.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxNodes.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxTree.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxChecks.pas"/>
