@@ -296,7 +296,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.References.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ReferenceConfidence.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ParameterHeaders.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Renames.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.TestSupport.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Server.TestSupport.pas"/>

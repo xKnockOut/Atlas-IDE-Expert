@@ -258,7 +258,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.ReferenceConfidence,
-  Atlas.Common.Lsp.Rename,
+  Atlas.Common.Semantics.Renames,
   Atlas.Common.Documents.FileBatch,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Mcp.Server,
@@ -857,7 +857,7 @@ begin
     try
       mResolver.Namespaces := FNamespaces;
       try
-        mRenames := TLspRename.Edits(mResolver, FIndex, mTree, TReferenceSearch.Create(AFileName,
+        mRenames := TRenames.Edits(mResolver, FIndex, mTree, TReferenceSearch.Create(AFileName,
           TTextPosition.Create(ALine - 1, AColumn - 1), True, FProjectFiles(), ReadText),
           TRenameRequest.Create(ANewName, True, mSettings, nil), AUnchanged);
       except

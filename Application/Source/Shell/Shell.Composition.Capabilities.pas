@@ -22,7 +22,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Lsp.TextDocumentSync,
   Atlas.Common.Lsp.Formatting,
-  Atlas.Common.Lsp.Rename,
+  Atlas.Common.Semantics.Renames,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.CodeLens,
@@ -66,7 +66,7 @@ begin
   Result.AddPair('workspaceSymbolProvider', TJSONBool.Create(True));
   Result.AddPair('documentHighlightProvider', TJSONBool.Create(True));
   Result.AddPair('referencesProvider', TJSONBool.Create(True));
-  Result.AddPair('renameProvider', TLspRename.Capability);
+  Result.AddPair('renameProvider', TRenames.Capability);
   Result.AddPair('completionProvider', TLspCompletion.Capability);
   Result.AddPair('signatureHelpProvider', TLspSignatureHelp.Capability);
   Result.AddPair('typeHierarchyProvider', TJSONBool.Create(True));
