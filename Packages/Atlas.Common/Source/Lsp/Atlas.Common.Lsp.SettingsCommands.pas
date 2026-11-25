@@ -41,7 +41,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
-  Atlas.Common.Rules.MessageCatalog,
+  Atlas.Common.Compiler.MessageCatalog,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 

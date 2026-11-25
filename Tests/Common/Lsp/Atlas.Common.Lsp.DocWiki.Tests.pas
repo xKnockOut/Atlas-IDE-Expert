@@ -12,10 +12,6 @@ type
   TDocWikiTests = class
   public
     [Test]
-    procedure MapsVersionsToReleases;
-    [Test]
-    procedure UnknownVersionUsesNewest;
-    [Test]
     procedure RecognizesLibraryUnits;
     [Test]
     procedure BuildsUrls;
@@ -27,20 +23,6 @@ uses
   Atlas.Common.Lsp.DocWiki;
 
 { TDocWikiTests }
-
-procedure TDocWikiTests.MapsVersionsToReleases;
-begin
-  Assert.AreEqual('Athens', TDocWiki.ReleaseName('23.0'));
-  Assert.AreEqual('Alexandria', TDocWiki.ReleaseName('22.0'));
-  Assert.AreEqual('Rio', TDocWiki.ReleaseName(' 20.0 '));
-  Assert.AreEqual('Florence', TDocWiki.ReleaseName('37.0'));
-end;
-
-procedure TDocWikiTests.UnknownVersionUsesNewest;
-begin
-  Assert.AreEqual('Florence', TDocWiki.ReleaseName(''));
-  Assert.AreEqual('Florence', TDocWiki.ReleaseName('99.0'));
-end;
 
 procedure TDocWikiTests.RecognizesLibraryUnits;
 begin
