@@ -2,7 +2,7 @@
 
 // Internals-Rolle Shell: Anweisungsdateien für KI-Assistenten (#2615). Befehl atlas.server.assistantInstructions
 // für das Plugin (Stand prüfen bzw. schreiben, Arbeitsbereich zur URI, sonst der einzige) und das Lesen und
-// atomare Schreiben auf der Platte, das auch die Kommandozeile nutzt. Logik in Atlas.Common.Lsp.Instructions.
+// atomare Schreiben auf der Platte, das auch die Kommandozeile nutzt. Logik in Atlas.Common.Rules.InstructionFiles.
 
 interface
 
@@ -11,7 +11,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Instructions,
+  Atlas.Common.Rules.InstructionFiles,
   Shell.Composition.Workspaces;
 
 type
@@ -83,9 +83,9 @@ end;
 class function TShellInstructions.Run(const ARoot: string; const ASettings: TServerSettings;
   AWrite: Boolean): TArray<TInstructionsFile>;
 var
-  mInstructions: TLspInstructions;
+  mInstructions: TRuleInstructionFiles;
 begin
-  mInstructions := TLspInstructions.Create(ReadInstructions, WriteInstructions);
+  mInstructions := TRuleInstructionFiles.Create(ReadInstructions, WriteInstructions);
   try
     Result := mInstructions.Run(ARoot, ASettings, BuiltinRules, AWrite);
   finally
@@ -99,21 +99,21 @@ var
   mLogger: ILogger;
 begin
   mLogger := ALogger;
-  ACommands.Register(TLspInstructions.cCommand,
+  ACommands.Register(TRuleInstructionFiles.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
       mRoot: string;
       mSettings: TServerSettings;
       mFiles: TArray<TInstructionsFile>;
     begin
-      if not TryWorkspace(AWorkspaces, TLspInstructions.UriOf(AArguments), mRoot, mSettings) then
+      if not TryWorkspace(AWorkspaces, TRuleInstructionFiles.UriOf(AArguments), mRoot, mSettings) then
       begin
-        Exit(TLspInstructions.ToJson(nil));
+        Exit(TRuleInstructionFiles.ToJson(nil));
       end;
-      mFiles := Run(mRoot, mSettings, TLspInstructions.WriteRequested(AArguments));
+      mFiles := Run(mRoot, mSettings, TRuleInstructionFiles.WriteRequested(AArguments));
       mLogger.Info(Format('Instructions for AI assistants: %d files, %d stale',
-        [Length(mFiles), TLspInstructions.StaleCount(mFiles)]));
-      Result := TLspInstructions.ToJson(mFiles);
+        [Length(mFiles), TRuleInstructionFiles.StaleCount(mFiles)]));
+      Result := TRuleInstructionFiles.ToJson(mFiles);
     end);
 end;
 

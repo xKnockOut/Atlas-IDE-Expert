@@ -1,16 +1,16 @@
 ﻿unit Atlas.IDE.VersionControl.Adapters.Dialogs;
 
 // Dialoge der Versionsverwaltung für Base (#1891): TAtlasVcsDialogsAdapter erfüllt IAtlasVcsDialogs
-// (Atlas.IDE.Contracts.VersionControl) über TAtlasIdeBranching (Branch anlegen) und TAtlasIdeWorkingCopies
+// (Atlas.IDE.Base.Foundation.VersionControl) über TAtlasIdeBranching (Branch anlegen) und TAtlasIdeWorkingCopies
 // (Arbeitskopien). Die Composition setzt ihn bei TAtlasIdeVcs ein, solange der Teil „Vcs“ läuft.
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
+  Atlas.IDE.Base.Foundation.VersionControl;
 
 type
   /// <summary>IAtlasVcsDialogs über TAtlasIdeBranching und TAtlasIdeWorkingCopies.</summary>

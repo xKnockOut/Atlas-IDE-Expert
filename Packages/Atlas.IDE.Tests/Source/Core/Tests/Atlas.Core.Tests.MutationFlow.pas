@@ -23,7 +23,7 @@
 interface
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tests.Contract,
   Atlas.Core.Tests.MutationResults,
   Atlas.Core.Tests.MutationPlan;

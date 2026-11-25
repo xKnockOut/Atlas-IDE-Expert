@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Editing.Providers.Extract;
 
 // IEditingExtract über TExtractRefactoring: parst den Text einmal und versucht mit Duplicates zuerst die
-// Extraktion samt gleicher Stellen, sonst nur die Auswahl.
+// Extraktion samt gleicher Stellen, sonst nur die Auswahl. Die Korrekturen der Prüfregeln
+// (IEditingExtractFixes) arbeiten auf dem Baum der Regel.
 
 interface
 
@@ -17,9 +18,10 @@ type
   public
     function ExtractMethod(const AText: string; const ARange: TTextRange;
       const AWish: TEditingExtractWish): TEditingExtractResult;
-    function ExtractCondition(const AText: string; const ARange: TTextRange; const AStyle: TFormatStyle;
-      out AAction: TCodeAction): Boolean;
-    function ConstantExtraction(const AText: string; const ANames: TPascalNamePrefixes): IEditingConstantExtraction;
+    function ExtractCondition(const AText: string; const ATree: IPascalSyntaxTree; const ARange: TTextRange;
+      const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+    function ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
+      const ANames: TPascalNamePrefixes): IEditingConstantExtraction;
   end;
 
 implementation
@@ -27,38 +29,37 @@ implementation
 uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Editing.Extract.Shared,
   Atlas.Common.Editing.Extract;
 
 type
-  /// <summary>Hält den Syntaxbaum des Textes und den Extraktor für alle Literale.</summary>
+  /// <summary>Hält den Extraktor für alle Literale auf dem Baum des Aufrufers.</summary>
   TEditingConstantExtraction = class(TInterfacedObject, IEditingConstantExtraction)
   private
-    FTree: TSyntaxTree;
     FExtractor: TConstantExtractor;
   public
-    constructor Create(const AText: string; const ANames: TPascalNamePrefixes);
+    constructor Create(const AText: string; ATree: TSyntaxTree; const ANames: TPascalNamePrefixes);
     destructor Destroy; override;
     function Run(const ARange: TTextRange; out AAction: TCodeAction): Boolean;
   end;
 
 { TEditingConstantExtraction }
 
-constructor TEditingConstantExtraction.Create(const AText: string; const ANames: TPascalNamePrefixes);
+constructor TEditingConstantExtraction.Create(const AText: string; ATree: TSyntaxTree;
+  const ANames: TPascalNamePrefixes);
 var
   mOptions: TExtractOptions;
 begin
   inherited Create;
   mOptions := TExtractOptions.Default;
   mOptions.Names := ANames;
-  FTree := TSyntaxTreeCache.Parse(AText);
-  FExtractor := TConstantExtractor.Create(AText, FTree, mOptions);
+  FExtractor := TConstantExtractor.Create(AText, ATree, mOptions);
 end;
 
 destructor TEditingConstantExtraction.Destroy;
 begin
   FExtractor.Free;
-  FTree.Free;
   inherited Destroy;
 end;
 
@@ -105,26 +106,33 @@ begin
   end;
 end;
 
-function TEditingExtractProvider.ExtractCondition(const AText: string; const ARange: TTextRange;
-  const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+function TEditingExtractProvider.ExtractCondition(const AText: string; const ATree: IPascalSyntaxTree;
+  const ARange: TTextRange; const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
 var
   mTree: TSyntaxTree;
   mOptions: TExtractOptions;
 begin
+  mTree := TSyntaxTreeHandles.TreeOf(ATree);
+  if mTree = nil then
+  begin
+    Exit(False);
+  end;
   mOptions := TExtractOptions.Default;
   mOptions.Style := AStyle;
-  mTree := TSyntaxTreeCache.Parse(AText);
-  try
-    Result := TExtractRefactoring.ExtractCondition(AText, mTree, ARange, mOptions, AAction);
-  finally
-    mTree.Free;
-  end;
+  Result := TExtractRefactoring.ExtractCondition(AText, mTree, ARange, mOptions, AAction);
 end;
 
-function TEditingExtractProvider.ConstantExtraction(const AText: string;
+function TEditingExtractProvider.ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
   const ANames: TPascalNamePrefixes): IEditingConstantExtraction;
+var
+  mTree: TSyntaxTree;
 begin
-  Result := TEditingConstantExtraction.Create(AText, ANames);
+  Result := nil;
+  mTree := TSyntaxTreeHandles.TreeOf(ATree);
+  if mTree <> nil then
+  begin
+    Result := TEditingConstantExtraction.Create(AText, mTree, ANames);
+  end;
 end;
 
 end.

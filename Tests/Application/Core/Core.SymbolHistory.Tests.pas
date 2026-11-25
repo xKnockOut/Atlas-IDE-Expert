@@ -25,7 +25,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.History.Contract,

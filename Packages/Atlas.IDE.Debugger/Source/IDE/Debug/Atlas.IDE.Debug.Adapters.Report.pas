@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Debug.Adapters.Report;
 
 // Bericht über die laufende Debug-Sitzung für andere Module (#1455): stellt
-// IAtlasDebugReportSource (Atlas.IDE.Contracts.DebugReport) bereit (Prozess,
+// IAtlasDebugReportSource (Atlas.IDE.Base.Foundation.DebugReport) bereit (Prozess,
 // gestartetes Projekt, Debug-Notiz #582, Exception-Verlauf #517). Der Tracker
 // („An Issue anhängen …“, #1276) fragt den Vertrag über die Registry und kennt
 // den Debugger nicht. Die Notiz kommt aus Atlas.IDE.Debug.Report.
@@ -9,7 +9,7 @@
 interface
 
 uses
-  Atlas.IDE.Contracts.DebugReport;
+  Atlas.IDE.Base.Foundation.DebugReport;
 
 type
   TAtlasIdeDebugReportSource = class(TInterfacedObject, IAtlasDebugReportSource)

@@ -30,7 +30,7 @@ implementation
 
 uses
   Atlas.Core.KnownErrors.Contract,
-  Atlas.IDE.Contracts.KnownErrors,
+  Atlas.IDE.Base.Foundation.KnownErrors,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.ExceptionBanner,

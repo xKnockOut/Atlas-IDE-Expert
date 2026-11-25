@@ -24,7 +24,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Tracker.DevelopmentView,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.Plugin.Diagnostics.WorkerSlot;
@@ -128,7 +128,7 @@ uses
   Atlas.UI.Undo.DiffView,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Tracker.WorkingCopies;
 
 { TAtlasIdeIssueDevelopment }

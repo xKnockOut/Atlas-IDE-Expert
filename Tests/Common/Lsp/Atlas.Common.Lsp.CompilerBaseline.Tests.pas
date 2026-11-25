@@ -42,7 +42,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.CompilerBaseline;

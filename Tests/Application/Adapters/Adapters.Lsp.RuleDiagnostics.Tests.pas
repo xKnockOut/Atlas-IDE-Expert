@@ -43,7 +43,7 @@ var
   mDocument: ITextDocument;
   mSyntax: TArray<TRuleFinding>;
 begin
-  mChecks := TRuleDocumentChecks.Create(nil);
+  mChecks := TRuleDocumentChecks.Create(nil, nil);
   mLsp := TLspRuleDiagnosticsAdapter.Wrap(mChecks);
   mRules := mLsp.ForDocument('file:///C:/P/A.pas', nil);
   mStore := TDocumentStore.Create;

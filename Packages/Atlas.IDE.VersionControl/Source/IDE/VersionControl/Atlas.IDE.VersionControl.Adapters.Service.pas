@@ -1,19 +1,19 @@
 ﻿unit Atlas.IDE.VersionControl.Adapters.Service;
 
 // Dienst der Versionsverwaltung für Base und andere Module (#1891): TAtlasVcsServiceAdapter erfüllt IAtlasVcsService
-// (Atlas.IDE.Contracts.VersionControl) über TAtlasIdeVcsCore. Die Composition setzt ihn bei TAtlasIdeVcs ein und
+// (Atlas.IDE.Base.Foundation.VersionControl) über TAtlasIdeVcsCore. Die Composition setzt ihn bei TAtlasIdeVcs ein und
 // stellt ihn über den Scope des Moduls bereit.
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.ToolCheck,
-  Atlas.Core.VersionControl.ServerCheck,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.ToolCheck,
+  Atlas.VersionControl.Repository.ServerCheck,
   Atlas.Core.Projects.VersionControl,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Base.Foundation.VersionControl;
 
 type
   /// <summary>IAtlasVcsService über TAtlasIdeVcsCore.</summary>

@@ -109,7 +109,8 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Tests.LspRules;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -397,6 +398,7 @@ begin
   end;
   // Ohne Auskunft der ganze Katalog.
   FCompletion.Hooks.RuleIdsFor := nil;
+  FCompletion.Hooks.RuleCatalog := TTestLspRules.Catalog;
   mAnswer := Complete(cSource);
   try
     Assert.IsTrue(ItemCount(mAnswer) > 2, Labels(mAnswer));

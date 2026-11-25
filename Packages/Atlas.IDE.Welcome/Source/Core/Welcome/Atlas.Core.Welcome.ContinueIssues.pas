@@ -17,7 +17,7 @@
 //   fallen dabei heraus.
 // - Zeilen des Reiters: Arbeitsstände der zuletzt geöffneten Projekte mit
 //   Reitern, ohne behobene Issues, neueste zuerst. Den Zustand liefert der
-//   Tracker (Vertrag Atlas.IDE.Contracts.IssueWork); ohne Antwort gilt er als
+//   Tracker (Vertrag Atlas.IDE.Base.Foundation.IssueWork); ohne Antwort gilt er als
 //   unbekannt und der Eintrag bleibt.
 // - Fortsetzen: Plan wie „Zuletzt“ (TAtlasWelcomeContinue.Plan); der Branch
 //   wird nur nach Rückfrage gewechselt, fehlt er, gibt es nur die Reiter.

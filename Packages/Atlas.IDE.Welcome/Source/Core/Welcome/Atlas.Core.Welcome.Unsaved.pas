@@ -49,8 +49,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.WorkingCopies,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.WorkingCopies,
   Atlas.Core.Welcome.Contract;
 
 type

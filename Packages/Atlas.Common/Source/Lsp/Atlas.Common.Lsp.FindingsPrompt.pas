@@ -6,8 +6,9 @@
 // Befehl atlas.server.findingsPrompt über workspace/executeCommand:
 //   Argumente [{"findings": [{"file": Pfad, "line": Zeile ab 0, "character": Spalte ab 0, "rule": Regel bzw.
 //   Meldungsnummer, "message": Meldung, "severity": "error" | "warning" | "info" | "hint", "compiler": true bei
-//   Compilermeldungen}, …], "limit": Höchstzahl (optional, Vorgabe TFindingPrompt.cDefaultLimit)}].
-//   Antwort {"text": Markdown aus TFindingPrompt.Many, "count": Anzahl Befunde}.
+//   Compilermeldungen}, …], "limit": Höchstzahl (optional, Vorgabe ILspFindingsPrompt.DefaultLimit)}].
+//   Antwort {"text": Markdown aus ILspFindingsPrompt (die Prüfregeln über den Host), "count": Anzahl Befunde};
+//   ohne Anbieter ist der Text leer.
 // Den Text liest der Server wie die Prüfung (offene Dokumente vor der Platte), damit Zeilennummern zum Editor
 // passen. Jede Datei wird einmal geprüft; ein Befund derselben Regel in derselben Zeile liefert Konfidenz und weitere
 // Stellen (#896). Fehlt er (Compilermeldung, inzwischen geänderter Text), gelten die Angaben des Plugins.
@@ -18,6 +19,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Baseline;
 
 type
@@ -27,10 +29,12 @@ type
   private
     FCheckFor: TLspBaselineCheckFunc;
     FReadText: TLspBaselineRead;
+    FPrompts: ILspFindingsPrompt;
   public
-    /// <summary>ACheckFor prüft eine Datei wie der Editor (nur Pascal-Quelltext), AReadText liest jede andere.
-    /// </summary>
-    constructor Create(const ACheckFor: TLspBaselineCheckFunc; const AReadText: TLspBaselineRead);
+    /// <summary>ACheckFor prüft eine Datei wie der Editor (nur Pascal-Quelltext), AReadText liest jede andere,
+    /// APrompts schreibt den Auftrag (nil = leerer Text).</summary>
+    constructor Create(const ACheckFor: TLspBaselineCheckFunc; const AReadText: TLspBaselineRead;
+      const APrompts: ILspFindingsPrompt);
     /// <summary>Befehl atlas.server.findingsPrompt; der Aufrufer übernimmt das Ergebnis.</summary>
     function Execute(const AArguments: TJSONArray): TJSONValue;
   end;
@@ -44,7 +48,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Rules.Prompt,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -69,11 +72,13 @@ type
 
 { TLspFindingsPrompt }
 
-constructor TLspFindingsPrompt.Create(const ACheckFor: TLspBaselineCheckFunc; const AReadText: TLspBaselineRead);
+constructor TLspFindingsPrompt.Create(const ACheckFor: TLspBaselineCheckFunc; const AReadText: TLspBaselineRead;
+  const APrompts: ILspFindingsPrompt);
 begin
   inherited Create;
   FCheckFor := ACheckFor;
   FReadText := AReadText;
+  FPrompts := APrompts;
 end;
 
 /// <summary>Befund aus den Angaben des Plugins.</summary>
@@ -168,6 +173,7 @@ var
   mItems: TArray<TFindingPromptItem>;
   mValue: TJSONValue;
   mAnswer: TJSONObject;
+  mText: string;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONObject) or
     not (TJSONObject(AArguments.Items[0]).GetValue('findings') is TJSONArray) then
@@ -189,9 +195,13 @@ begin
   finally
     mSources.Free;
   end;
+  mText := '';
+  if FPrompts <> nil then
+  begin
+    mText := FPrompts.Markdown(mItems, mArguments.GetValue<Integer>('limit', FPrompts.DefaultLimit));
+  end;
   mAnswer := TJSONObject.Create;
-  mAnswer.AddPair('text', TFindingPrompt.Many(mItems, TFindingPrompt.SharedCatalog, TFindingPrompt.cDefaultContext,
-    mArguments.GetValue<Integer>('limit', TFindingPrompt.cDefaultLimit)));
+  mAnswer.AddPair('text', mText);
   mAnswer.AddPair('count', TJSONNumber.Create(Length(mItems)));
   Result := mAnswer;
 end;

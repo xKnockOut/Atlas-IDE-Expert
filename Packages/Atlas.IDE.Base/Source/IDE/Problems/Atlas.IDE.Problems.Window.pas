@@ -53,7 +53,7 @@ uses
   Atlas.Vcl.Images.Symbol,
   Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.IDE.Contracts.Help,
+  Atlas.IDE.Base.Foundation.Help,
   Atlas.IDE.ElementHelp.Keys,
   Atlas.ToolsApi.Windows.DockWindow;
 

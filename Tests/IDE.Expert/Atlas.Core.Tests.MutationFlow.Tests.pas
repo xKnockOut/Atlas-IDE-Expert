@@ -109,7 +109,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Deadline,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 const
   cExe = 'C:\P\Shadow\Tests.exe';

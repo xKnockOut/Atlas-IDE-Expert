@@ -98,7 +98,7 @@ uses
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Welcome.Search,
   Atlas.UI.Welcome.Projects;
 

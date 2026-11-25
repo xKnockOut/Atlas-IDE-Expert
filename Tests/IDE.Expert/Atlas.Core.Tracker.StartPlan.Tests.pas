@@ -46,8 +46,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.StartPlan,
-  Atlas.Core.VersionControl.BranchPlan,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Contract.MyIssues;
 
 /// <summary>Gültiger Plan für einen neuen Branch, Stand gelesen, ohne Änderungen.</summary>

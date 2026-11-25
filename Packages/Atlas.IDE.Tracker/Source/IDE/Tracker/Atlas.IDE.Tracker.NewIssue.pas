@@ -80,14 +80,14 @@ uses
   Atlas.Plugin.Notifications.Center,
   Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.NewIssue.Strings,
   Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.NewIssuePlace,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.ToolsApi.Files.Service;
 

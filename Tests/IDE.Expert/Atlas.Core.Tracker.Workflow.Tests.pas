@@ -104,7 +104,7 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.YouTrackApi,
   Atlas.Core.Tracker.YouTrackParse;

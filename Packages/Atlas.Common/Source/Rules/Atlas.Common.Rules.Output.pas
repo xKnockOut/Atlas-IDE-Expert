@@ -80,7 +80,7 @@ uses
   Atlas.Common.Product.Version,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Catalog.Data,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Text.Json,
   System.Generics.Collections,
   Atlas.Common.Localization.Texts;

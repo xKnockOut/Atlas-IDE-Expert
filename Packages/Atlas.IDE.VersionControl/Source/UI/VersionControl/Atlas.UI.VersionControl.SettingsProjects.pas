@@ -14,7 +14,7 @@ uses
   Vcl.Menus,
   Atlas.Core.Settings.Contract,
   Atlas.Core.Projects.VersionControl,
-  Atlas.Core.VersionControl.ServerCheck,
+  Atlas.VersionControl.Repository.ServerCheck,
   Atlas.Plugin.Localization.Strings,
   Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.VersionControl.SettingsPart;
@@ -194,8 +194,8 @@ uses
   System.StrUtils,
   Vcl.Graphics,
   Vcl.Dialogs,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.ServerAccess,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.ServerAccess,
   Atlas.Plugin.Projects.Matching,
   Atlas.UI.VersionControl.SettingsKind,
   Atlas.UI.VersionControl.SettingsProject;

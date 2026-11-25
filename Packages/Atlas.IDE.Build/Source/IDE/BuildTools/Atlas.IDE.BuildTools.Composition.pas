@@ -11,7 +11,7 @@
 //   „Compiler-Schalter“ und einem Eintrag je Aufgabe),
 // - Hörer für Einstellungen und Thema,
 // - für andere Module Startprofile und Projektaufgaben
-//   (IAtlasBuildToolsSource, Atlas.IDE.Contracts.BuildTools); das Ende einer Aufgabe
+//   (IAtlasBuildToolsSource, Atlas.IDE.Base.Foundation.BuildTools); das Ende einer Aufgabe
 //   geht an jeden IAtlasTaskListener.
 // Dazu der Teilnehmer „Laufendes Programm vor dem Build beenden“ (#551,
 // build.stopRunningProgram) an den Compile-Ereignissen.
@@ -30,8 +30,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Contracts.BuildPipeline,
-  Atlas.IDE.Contracts.BuildTools,
+  Atlas.IDE.Base.Foundation.BuildPipeline,
+  Atlas.IDE.Base.Foundation.BuildTools,
   Atlas.UI.Build.SettingsSection,
   System.Types,
   Atlas.Text.Product.Version,

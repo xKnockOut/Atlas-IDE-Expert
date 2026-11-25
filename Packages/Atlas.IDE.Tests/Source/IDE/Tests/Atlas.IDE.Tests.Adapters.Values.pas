@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tests.Adapters.Values;
 
 // Erwartet und erhalten eines Fehlschlags für Base und die Willkommensseite (#1779): TAtlasTestsValues erfüllt
-// IAtlasTestValues (Atlas.IDE.Contracts.Tests) für „Vergleichen“ im Befund-Hover und auf der Kachel
+// IAtlasTestValues (Atlas.IDE.Base.Foundation.Tests) für „Vergleichen“ im Befund-Hover und auf der Kachel
 // „Testergebnisse“. Den Vergleich des letzten Laufs liefert die Composition (Atlas.IDE.Tests.Composition) über
 // ACompare; nil, solange der Teil Tests nicht läuft.
 
@@ -9,7 +9,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.IDE.Contracts.Tests,
+  Atlas.IDE.Base.Foundation.Tests,
   Atlas.IDE.Tests.Compare;
 
 type

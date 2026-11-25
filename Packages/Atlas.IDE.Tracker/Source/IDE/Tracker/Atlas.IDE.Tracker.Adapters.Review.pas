@@ -1,14 +1,14 @@
 ﻿unit Atlas.IDE.Tracker.Adapters.Review;
 
 // „Prüfen“ (#2126), Rolle Adapters: TAtlasReviewTestsListener erfüllt
-// IAtlasTestsListener aus Atlas.IDE.Contracts.Tests und meldet das Ende der
+// IAtlasTestsListener aus Atlas.IDE.Base.Foundation.Tests und meldet das Ende der
 // betroffenen Tests an TAtlasIdeIssueReview (Atlas.IDE.Tracker.Review).
 // Anlegen und Anmelden nur in der Komposition des Moduls. Hauptthread.
 
 interface
 
 uses
-  Atlas.IDE.Contracts.Tests,
+  Atlas.IDE.Base.Foundation.Tests,
   Atlas.IDE.Tracker.Review;
 
 type

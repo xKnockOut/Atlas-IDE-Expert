@@ -34,7 +34,7 @@
 //   fragt niemand den Tracker.
 // Seit #1905 im Modul Versionsverwaltung: Der Teil des Moduls installiert die Marken und meldet sie über
 // TAtlasLineChangesAdapter (Atlas.IDE.VersionControl.Adapters.LineChanges) bei TAtlasLineChangeMarks
-// (Atlas.IDE.Contracts.LineChanges) an; die Haken des Trackers liegen dort und kommen über BlameHooksChanged.
+// (Atlas.IDE.Base.Foundation.LineChanges) an; die Haken des Trackers liegen dort und kommen über BlameHooksChanged.
 // Gezeichnet wird weiter hier (Balken am Rand der Rinne, Dreieck, Text hinter dem Zeilenende): IAtlasGutterLayer
 // zeichnet nur Marken in der Rinne je Zeile.
 // Gesichert über TAtlasFeature.LineChanges. Nur im Hauptthread.
@@ -45,7 +45,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   Atlas.Core.Editor.LineChanges,
-  Atlas.IDE.Contracts.LineChanges;
+  Atlas.IDE.Base.Foundation.LineChanges;
 
 type
   TAtlasIdeLineChanges = class
@@ -81,7 +81,7 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   System.Classes,
   System.Types,
   System.Generics.Collections,

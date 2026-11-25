@@ -18,8 +18,8 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Build.Requests,
   Atlas.Core.BuildPipeline.ReleaseGuard,
-  Atlas.IDE.Contracts.BuildPipeline,
-  Atlas.IDE.Contracts.BuildRequests,
+  Atlas.IDE.Base.Foundation.BuildPipeline,
+  Atlas.IDE.Base.Foundation.BuildRequests,
   Atlas.Core.Build.Contract,
   Atlas.IDE.BuildPipeline.Runner;
 

@@ -112,6 +112,28 @@ type
     function Depths(const AFileName, AText: string; const AIndex: ISymbolIndex): TArray<TStructureMetrics>;
   end;
 
+  /// <summary>Angaben des Regelkatalogs zu einer Regel für data eines Befunds (#909, #1024).</summary>
+  TLspRuleFacts = record
+    Category: string;
+    Group: string;
+    /// <summary>Compilermeldungen, die die Regel vorwegnimmt; leer ohne.</summary>
+    CompilerCodes: TArray<string>;
+  end;
+
+  /// <summary>Regelkatalog für Befunde und Vervollständigung des Sprachservers; der Host fragt die Prüfregeln.
+  /// </summary>
+  ILspRuleCatalog = interface
+    ['{8B3E5C17-A9D2-4F60-8E4B-C1D7F2A96B35}']
+    /// <summary>Kennungen aller eingebauten Regeln (/ignore, #293).</summary>
+    function RuleIds: TArray<string>;
+    /// <summary>Angaben zu ARuleId; False, wenn der Katalog die Regel nicht kennt.</summary>
+    function TryDescribe(const ARuleId: string; out AFacts: TLspRuleFacts): Boolean;
+    /// <summary>Hilfeseite zu ARuleId (codeDescription.href).</summary>
+    function HelpUri(const ARuleId: string): string;
+    /// <summary>Befund durchgestrichen zeigen (DiagnosticTag.Deprecated, #38, #1018)?</summary>
+    function StruckThrough(const AFinding: TRuleFinding): Boolean;
+  end;
+
   /// <summary>Prüfregeln für ein Dokument der Diagnose (textDocument/publishDiagnostics und Pull); der Host baut
   /// das Umfeld der Regeln. Läuft im Hintergrund-Thread.</summary>
   ILspDocumentRules = interface
@@ -131,6 +153,8 @@ type
     /// <summary>Zeigt der Editor „nur in der implementation gebraucht“ (uses-only-in-implementation, #1136)? Ohne
     /// Umfeld ja.</summary>
     function OnlyImplementationShown: Boolean;
+    /// <summary>Regelkatalog für die Anzeige der Treffer; nil ohne.</summary>
+    function Catalog: ILspRuleCatalog;
   end;
 
   /// <summary>Prüfregeln der Diagnose je Dokument; ohne Anbieter meldet die Diagnose keine Treffer.</summary>
@@ -175,6 +199,52 @@ type
     ['{08AF5196-3412-4413-90D5-C220EA8A7A51}']
     /// <summary>{ uri, sites: [...] } zu AUri; der Aufrufer übernimmt das Objekt.</summary>
     function Report(const AUri: string): TJSONObject;
+  end;
+
+  /// <summary>Angewendete Korrekturen einer Regel in einer Datei (atlas.server.fixFindings).</summary>
+  TLspBulkFixCount = record
+    RuleId: string;
+    Count: Integer;
+  end;
+
+  /// <summary>Ergebnis der Sammelkorrektur für eine Datei.</summary>
+  TLspBulkFixFile = record
+    FileName: string;
+    OldText: string;
+    NewText: string;
+    /// <summary>Text geändert und nicht verworfen.</summary>
+    Changed: Boolean;
+    /// <summary>Verworfen, weil neue Syntaxfehler entstanden wären.</summary>
+    Rejected: Boolean;
+    FixCount: Integer;
+    Applied: TArray<TLspBulkFixCount>;
+    /// <summary>Vereinigter Diff; leer ohne Änderung.</summary>
+    Diff: string;
+  end;
+
+  TLspBulkFixRun = record
+    Files: TArray<TLspBulkFixFile>;
+    /// <summary>Zusammenfassung der Vorschau wie auf stderr des Linters.</summary>
+    Summary: string;
+  end;
+
+  /// <summary>Sammelkorrektur für atlas.server.fixFindings (#1352); der Host fragt die Prüfregeln. Schreibt nichts.
+  /// </summary>
+  ILspBulkFix = interface
+    ['{F55A58A4-D3AF-41C2-8A74-75A9F7344D16}']
+    /// <summary>Korrigiert AFileNames mit AFixRules ("all" = alle) ab AMinConfidence ('' = fix.minConfidence der
+    /// Datei); False mit Grund in AError. Nicht lesbare Dateien fehlen im Ergebnis.</summary>
+    function Run(const AFileNames: TArray<string>; const AFixRules: TArray<string>; const AMinConfidence: string;
+      out ARun: TLspBulkFixRun; out AError: string): Boolean;
+  end;
+
+  /// <summary>Text von atlas.server.findingsPrompt (#2570); der Host fragt die Prüfregeln.</summary>
+  ILspFindingsPrompt = interface
+    ['{E37C5400-D146-4F02-A9CD-7215525CC752}']
+    /// <summary>Markdown zu AItems, höchstens ALimit Befunde ausführlich.</summary>
+    function Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
+    /// <summary>Höchstzahl, wenn die Argumente keine nennen.</summary>
+    function DefaultLimit: Integer;
   end;
 
   /// <summary>Typen der laufenden IDE (atlas/ideTypes); threadsicher. Ohne Plugin leer.</summary>

@@ -21,7 +21,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Plugin.Projects.Matching,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   TAtlasVcsProjectMapping = record

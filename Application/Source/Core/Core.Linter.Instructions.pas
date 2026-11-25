@@ -24,7 +24,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Output,
   Atlas.Common.Rules.Instructions,
-  Atlas.Common.Lsp.Instructions,
+  Atlas.Common.Rules.InstructionFiles,
   Atlas.Common.Localization.Texts,
   Core.Linter.Output,
   Core.Linter.Settings;
@@ -102,7 +102,7 @@ begin
       Result := TFindingsOutput.cExitFailure;
     end;
   end;
-  if (Result = TFindingsOutput.cExitClean) and (TLspInstructions.StaleCount(mFiles) > 0) then
+  if (Result = TFindingsOutput.cExitClean) and (TRuleInstructionFiles.StaleCount(mFiles) > 0) then
   begin
     Result := TFindingsOutput.cExitFindings;
   end;

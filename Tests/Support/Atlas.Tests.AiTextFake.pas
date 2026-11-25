@@ -8,7 +8,7 @@ interface
 
 uses
   System.Generics.Collections,
-  Atlas.IDE.Contracts.AiText;
+  Atlas.IDE.Base.Foundation.AiText;
 
 type
   TAtlasFakeAiText = class(TInterfacedObject, IAtlasAiText)

@@ -29,7 +29,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Shell.Composition.Platform,
   Atlas.Tests.TempFolder;
 
