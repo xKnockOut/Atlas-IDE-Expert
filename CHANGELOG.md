@@ -8,10 +8,16 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [2.2.4] - 2026-11-25
 
+### Neu
+- Tasten für jeden Atlas-Befehl (#2938): Im Fenster *Atlas – Tastenkürzel* zeigt „Auch Befehle ohne Taste“ alle Atlas-Befehle der Befehlspalette, „Zuweisen …“ (oder Doppelklick) nimmt die nächste Taste auf, nennt eine andere Belegung und speichert in die Einstellung des Befehls bzw. in `keys.commands`. „Methode suchen …“ hat ab Werk Strg+D.
+
 ### Geändert
+- Das nächste Vorkommen der Mehrfachmarken (`keys.multiCursor.next`) liegt ab Werk auf Strg+Alt+D, weil Strg+D jetzt „Methode suchen …“ öffnet. Wer Strg+D dafür selbst gewählt hat, behält es.
 - Fehlerantworten des Servers, die auf einen Fehler im Server deuten (etwa ein interner Fehler), stehen bei Hintergrundanfragen jetzt im Fehlerprotokoll statt nur im Protokoll. Still bleiben Zeitlimit, Abbruch, veralteter Stand, begründete Ablehnung und eine beendete Verbindung.
 
 ### Behoben
+- Fenster „Atlas – Tastenkürzel“ und weitere selbst gefärbte Listen und Bäume (Debugger, Lesezeichen, Build-Schalter, Unit-Beziehungen, Einstellungen, Tracker, Versionsverwaltung, Designer) im dunklen IDE-Thema: keine weißen, leer wirkenden Zeilen mehr; als gewählt gilt nur die wirklich gewählte Zeile.
+- Listen der Atlas-Fenster flackern beim Überfahren mit der Maus nicht mehr (gepuffertes Zeichnen).
 - Bauen: Interne Compilerfehler (F2084, etwa „AV…-R00000000“ oder „GPFC0000029“, danach E_UNEXPECTED) vor allem beim Erzeugen (Umschalt+F9), auch mit abgeschalteter Prüfung nach dem Speichern. Der Einfrier-Wächter hielt jede länger als die Schwelle dauernde Unit für einen Hänger, hielt den Hauptthread mitten im Compile an und wertete den Hänger noch während des Builds aus (Map-Datei, Server, Meldungsfenster). Solange die IDE übersetzt, misst er jetzt nicht.
 - Bauen: Interne Compilerfehler (F2084, etwa „Interner Fehler: S8016“ oder „GPFC0000029“, danach E_UNEXPECTED) beim Bauen einer Projektgruppe. Die Syntaxprüfung nach dem Speichern hielt die Gruppe schon nach dem ersten fertigen Projekt für beendet und startete den Compiler mitten im laufenden Build ein zweites Mal. Sie wartet jetzt das Ende der ganzen Gruppe und eine kurze Ruhezeit ab. Atlas startet außerdem keinen eigenen Compile (Syntaxprüfung, Bauen beim Öffnen, Builds für Tests und KI-Assistenten), solange der Fortschrittsdialog des Compilers oder ein anderer modaler Dialog offen ist.
 - Prüfregel `delimited-text-without-strict`: kein Fehlalarm mehr, wenn `StrictDelimiter` in einem `with`-Block (`with Liste do StrictDelimiter := True`) oder über eine Typumwandlung (`TStringList(Liste)`, `(Liste as TStringList)`) gesetzt wird. Bei Parametern und bei Listen, die die Routine nicht selbst erzeugt (Funktionsergebnis), bleibt die Regel still, denn dort setzt der Aufrufer bzw. die erzeugende Funktion `StrictDelimiter`.
