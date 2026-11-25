@@ -2,7 +2,8 @@
 
 // Tests für Serveranfragen im Hintergrund (2.0-stable: Inlay-Hints, Glühbirne, Überschreibungen und Gliederung
 // warteten im Hauptthread): Abschluss im Hauptthread, höchstens eine Anfrage, verworfener Abschluss nach Freigabe,
-// keine Antwort des Servers als AOk = False mit Meldung.
+// keine Antwort des Servers als AOk = False mit Meldung. Die Schlange arbeitet Aufträge der Reihe nach ab; von
+// AddLatest-Aufträgen zählt nur der jüngste.
 
 interface
 
@@ -25,6 +26,10 @@ type
     procedure OtherExceptionStillFinishes;
     [Test]
     procedure ServerErrorIsReportedWithText;
+    [Test]
+    procedure QueueRunsJobsInOrder;
+    [Test]
+    procedure QueueKeepsOnlyLatestCommand;
   end;
 
 implementation
@@ -78,6 +83,37 @@ begin
       Inc(Count);
       Ok := AOk;
       Error := AError;
+    end;
+end;
+
+type
+  /// <summary>Abschlüsse, die ihren Namen der Reihe nach anhängen.</summary>
+  TOrderProbe = class
+  public
+    Count: Integer;
+    Log: string;
+    function Done(const AName: string): TAtlasRequestDone;
+  end;
+
+{ TOrderProbe }
+
+function TOrderProbe.Done(const AName: string): TAtlasRequestDone;
+begin
+  Result :=
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      Inc(Count);
+      Log := Log + AName;
+    end;
+end;
+
+/// <summary>Bedingung: die Schlange ist leer und nichts läuft mehr.</summary>
+function Drained(AQueue: TAtlasBackgroundQueue; AProbe: TOrderProbe; ACount: Integer): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := (AQueue.Waiting = 0) and (AProbe.Count >= ACount);
     end;
 end;
 
@@ -253,6 +289,72 @@ begin
   finally
     TAtlasGuard.OnFailure := mOld;
     mRequest.Free;
+    mProbe.Free;
+  end;
+end;
+
+procedure TAtlasBackgroundRequestTests.QueueRunsJobsInOrder;
+var
+  mQueue: TAtlasBackgroundQueue;
+  mGate: TEvent;
+  mProbe: TOrderProbe;
+begin
+  mProbe := nil;
+  mGate := nil;
+  mQueue := nil;
+  try
+    mProbe := TOrderProbe.Create;
+    mGate := TEvent.Create(nil, True, False, '');
+    mQueue := TAtlasBackgroundQueue.Create(TAtlasFeature.Results);
+    mQueue.Add(Blocked(mGate), mProbe.Done('A'));
+    mQueue.Add(Blocked(mGate), mProbe.Done('B'));
+    mQueue.Add(Blocked(mGate), mProbe.Done('C'));
+    Assert.AreEqual(2, mQueue.Waiting, 'einer läuft, zwei warten');
+    mGate.SetEvent;
+    Assert.IsTrue(TTestWait.Synchronized(Drained(mQueue, mProbe, 3)));
+    Assert.AreEqual('ABC', mProbe.Log);
+  finally
+    mQueue.Free;
+    mGate.Free;
+    if mProbe <> nil then
+    begin
+      mProbe.Log := '';
+    end;
+    mProbe.Free;
+  end;
+end;
+
+procedure TAtlasBackgroundRequestTests.QueueKeepsOnlyLatestCommand;
+var
+  mQueue: TAtlasBackgroundQueue;
+  mGate: TEvent;
+  mProbe: TOrderProbe;
+begin
+  mProbe := nil;
+  mGate := nil;
+  mQueue := nil;
+  try
+    mProbe := TOrderProbe.Create;
+    mGate := TEvent.Create(nil, True, False, '');
+    mQueue := TAtlasBackgroundQueue.Create(TAtlasFeature.Results);
+    // A läuft, B wartet; C ersetzt B, und das Ergebnis von A verfällt. Ein Aufklappen (Add) bleibt erhalten.
+    mQueue.AddLatest(Blocked(mGate), mProbe.Done('A'));
+    mQueue.AddLatest(Blocked(mGate), mProbe.Done('B'));
+    mQueue.Add(Blocked(mGate), mProbe.Done('x'));
+    mQueue.AddLatest(Blocked(mGate), mProbe.Done('C'));
+    Assert.AreEqual(2, mQueue.Waiting, 'B ersetzt');
+    mGate.SetEvent;
+    Assert.IsTrue(TTestWait.Synchronized(Drained(mQueue, mProbe, 2)));
+    // Nach C läuft nichts mehr; ein später Abschluss von A käme hier zu spät.
+    TTestWait.Synchronized(Drained(mQueue, mProbe, 3), 200);
+    Assert.AreEqual('xC', mProbe.Log);
+  finally
+    mQueue.Free;
+    mGate.Free;
+    if mProbe <> nil then
+    begin
+      mProbe.Log := '';
+    end;
     mProbe.Free;
   end;
 end;

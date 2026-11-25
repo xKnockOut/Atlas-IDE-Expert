@@ -1,7 +1,7 @@
-﻿unit Atlas.Common.Architecture.SymbolPath.Calls;
+﻿unit Atlas.Common.Lsp.SymbolPath.Calls;
 
 // Aufrufkanten der Pfadsuche zwischen Symbolen (#1117), Teil von
-// Atlas.Common.Architecture.SymbolPath.
+// Atlas.Common.Lsp.SymbolPath.Search.
 //
 // - Vorwärts aus dem Rumpf einer Routine über TLspHierarchies.OutgoingCalls
 //   (wie get_call_hierarchy).
@@ -17,8 +17,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Architecture.SymbolPath.Nodes,
-  Atlas.Common.Architecture.SymbolPath.Graph;
+  Atlas.Common.Lsp.SymbolPath.Nodes,
+  Atlas.Common.Lsp.SymbolPath.Graph;
 
 type
   TSymbolPathCalls = class

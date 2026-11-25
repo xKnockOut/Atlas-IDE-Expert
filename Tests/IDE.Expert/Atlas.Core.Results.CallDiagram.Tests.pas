@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Results.CallDiagram.Tests;
 
 // Aufrufdiagramm (#1122), Kern: Ebenen laden und aufklappen, Rekursion als
-// Pfeil zurück, „+ N …“ ab neun Kindern, „nur Projekt-Units“, gestrichelte
+// Pfeil zurück, späte Antworten, „+ N …“ ab neun Kindern, „nur Projekt-Units“, gestrichelte
 // Aufrufe über Interface und virtual, Kastentexte, Umrechnung der Ansicht und
 // die HTML-Datei.
 
@@ -16,6 +16,8 @@ type
   public
     [Test]
     procedure LoadsLevelByLevel;
+    [Test]
+    procedure LateAnswerAfterResetIsDropped;
     /// <summary>Mit englischer Oberfläche: lang="en", englische Beschriftung, kein Platzhalter übrig (#1458).
     /// </summary>
     [Test]
@@ -106,6 +108,32 @@ begin
     mDiagram.SetChildren(2, []);
     Assert.IsTrue(mDiagram.Toggle(2), 'zuklappen geht');
     Assert.IsFalse(mDiagram.Toggle(2), 'aufklappen ohne Kinder nicht');
+  finally
+    mDiagram.Free;
+  end;
+end;
+
+procedure TAtlasCallDiagramTests.LateAnswerAfterResetIsDropped;
+var
+  mDiagram: TAtlasCallDiagram;
+  mTicket: Integer;
+  mOld: Integer;
+begin
+  mDiagram := NewDiagram;
+  try
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
+    Assert.IsTrue(mDiagram.BeginLoad(0, mTicket));
+    Assert.IsFalse(mDiagram.BeginLoad(0, mOld), 'läuft schon');
+    Assert.IsTrue(mDiagram.FinishLoad(mTicket, 0, [Item('Laden', 'C:\P\A.pas', 10)]));
+    Assert.AreEqual(2, mDiagram.Count);
+    Assert.IsFalse(mDiagram.BeginLoad(0, mOld), 'schon geladen');
+    // Neue Wurzeln: Die Antwort für die alten verfällt.
+    Assert.IsTrue(mDiagram.BeginLoad(1, mOld));
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Neu', 'C:\P\B.pas', 1)]);
+    Assert.IsFalse(mDiagram.FinishLoad(mOld, 1, [Item('Lesen', 'C:\P\C.pas', 5)]));
+    Assert.AreEqual(1, mDiagram.Count);
+    Assert.IsTrue(mDiagram.NeedsLoad(0));
+    Assert.IsTrue(mDiagram.BeginLoad(0, mTicket), 'nach Reset wieder frei');
   finally
     mDiagram.Free;
   end;

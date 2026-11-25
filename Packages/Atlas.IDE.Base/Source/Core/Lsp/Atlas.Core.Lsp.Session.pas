@@ -46,7 +46,6 @@ uses
   Atlas.Plugin.Lsp.Contract,
   Atlas.Plugin.Lsp.DataFlow,
   Atlas.Plugin.Lsp.AccessChains,
-  Atlas.Core.InlayHints.Store,
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Plugin.Lsp.Session.Json,
   Atlas.Plugin.Lsp.Session.Base,

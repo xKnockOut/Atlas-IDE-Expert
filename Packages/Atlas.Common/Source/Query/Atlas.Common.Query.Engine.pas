@@ -60,8 +60,8 @@ uses
   Atlas.Common.Dfm.BinaryForm,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.RoutineSignatures,
-  Atlas.Common.Rules.ConsideredUsed,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.ConsideredUsed,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Query.Catalog,
   Atlas.Common.Query.Language,
   Atlas.Common.Localization.Texts;

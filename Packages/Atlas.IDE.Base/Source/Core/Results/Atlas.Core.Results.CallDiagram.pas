@@ -7,6 +7,9 @@
 //   (SetChildren). Ein Kind, das schon auf dem Weg von der Wurzel liegt, ist
 //   eine Rekursion: Es wird kein Kasten, sondern ein Pfeil zurück zum
 //   Vorfahren und lässt sich nicht weiter aufklappen.
+// - Kommen die Kinder später (Anfrage im Hintergrund), markiert BeginLoad den
+//   Knoten als ladend und gibt eine Marke; FinishLoad trägt die Antwort nur ein,
+//   solange seit BeginLoad kein Reset kam.
 // - Mehr als MaxChildren sichtbare Kinder werden zu „+ N …“ zusammengefasst;
 //   ShowAll zeigt alle.
 // - „Nur Projekt-Units“ (ProjectOnly) blendet Einträge aus, deren Datei
@@ -89,6 +92,9 @@ type
     FNodes: TArray<TAtlasCallNode>;
     FProjectOnly: Boolean;
     FIsProjectFile: TFunc<string, Boolean>;
+    /// <summary>Knoten, deren Kinder unterwegs sind; FGeneration zählt Reset.</summary>
+    FLoading: TArray<Integer>;
+    FGeneration: Integer;
     function NewNode(const AItem: TAtlasHierarchyItem; AParent: Integer): Integer;
     function IsLibrary(const AItem: TAtlasHierarchyItem): Boolean;
     function GetNode(AIndex: Integer): TAtlasCallNode;
@@ -104,6 +110,12 @@ type
     /// <summary>Geladene Kinder eintragen und aufklappen; Rekursionen werden zu Pfeilen, doppelte Einträge
     /// (gleiche Stelle) zusammengelegt.</summary>
     procedure SetChildren(ANode: Integer; const AItems: TArray<TAtlasHierarchyItem>);
+    /// <summary>Kinder von ANode werden angefragt; False, wenn nichts zu laden ist oder die Anfrage schon läuft.
+    /// ATicket gehört an FinishLoad.</summary>
+    function BeginLoad(ANode: Integer; out ATicket: Integer): Boolean;
+    /// <summary>Antwort zu BeginLoad eintragen wie SetChildren; False, wenn sie verfallen ist (Reset dazwischen).
+    /// </summary>
+    function FinishLoad(ATicket, ANode: Integer; const AItems: TArray<TAtlasHierarchyItem>): Boolean;
     /// <summary>Auf- bzw. zuklappen; False, wenn erst geladen werden muss oder nichts aufzuklappen ist.</summary>
     function Toggle(ANode: Integer): Boolean;
     /// <summary>Alle Kinder statt „+ N …“.</summary>
@@ -280,6 +292,8 @@ var
 begin
   FDirection := ADirection;
   FNodes := nil;
+  FLoading := nil;
+  Inc(FGeneration);
   for mItem in ARoots do
   begin
     NewNode(mItem, -1);
@@ -289,6 +303,48 @@ end;
 function TAtlasCallDiagram.NeedsLoad(ANode: Integer): Boolean;
 begin
   Result := (ANode >= 0) and (ANode <= High(FNodes)) and not FNodes[ANode].Loaded and (FNodes[ANode].BackTo < 0);
+end;
+
+function TAtlasCallDiagram.BeginLoad(ANode: Integer; out ATicket: Integer): Boolean;
+var
+  mNode: Integer;
+begin
+  ATicket := FGeneration;
+  Result := NeedsLoad(ANode);
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mNode in FLoading do
+  begin
+    if mNode = ANode then
+    begin
+      Result := False;
+      Exit;
+    end;
+  end;
+  FLoading := FLoading + [ANode];
+end;
+
+function TAtlasCallDiagram.FinishLoad(ATicket, ANode: Integer; const AItems: TArray<TAtlasHierarchyItem>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (ATicket = FGeneration) and NeedsLoad(ANode);
+  if ATicket = FGeneration then
+  begin
+    for mIndex := High(FLoading) downto 0 do
+    begin
+      if FLoading[mIndex] = ANode then
+      begin
+        Delete(FLoading, mIndex, 1);
+      end;
+    end;
+  end;
+  if Result then
+  begin
+    SetChildren(ANode, AItems);
+  end;
 end;
 
 procedure TAtlasCallDiagram.SetChildren(ANode: Integer; const AItems: TArray<TAtlasHierarchyItem>);

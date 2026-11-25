@@ -31,6 +31,7 @@ uses
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.RoutineSignatures;
 

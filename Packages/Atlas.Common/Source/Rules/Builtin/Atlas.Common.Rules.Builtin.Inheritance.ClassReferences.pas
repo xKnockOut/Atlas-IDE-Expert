@@ -34,6 +34,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

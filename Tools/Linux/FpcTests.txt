@@ -6,6 +6,7 @@
 # Atlas.Text
 Atlas.Text.Anonymize.Tests
 Atlas.Text.Chars.Tests
+Atlas.Text.Columns.Tests
 Atlas.Text.Arrays.Tests
 Atlas.Text.Timestamps.Tests
 Atlas.Text.Checkin.Tests
@@ -47,6 +48,7 @@ Atlas.Text.Uris.Tests
 Atlas.Common.Architecture.Alignment.Tests
 Atlas.Common.Architecture.Layout.Tests
 Atlas.Common.Architecture.Louvain.Tests
+Atlas.Common.Architecture.FeatureCycles.Tests
 Atlas.Common.Architecture.Matching.Tests
 Atlas.Common.Architecture.Overview.Foundations.Tests
 Atlas.Common.Architecture.Overview.Naming.Tests
@@ -230,7 +232,7 @@ Atlas.Common.Lsp.Completion.TypeGuards.Tests
 Atlas.Common.Lsp.CompletionEnums.Tests
 Atlas.Common.Lsp.CoveredBy.Tests
 Atlas.Common.Lsp.DisableWarning.Tests
-Atlas.Common.Lsp.DocWiki.Tests
+Atlas.Common.Index.DocWiki.Tests
 Atlas.Common.Lsp.EnclosingConditions.Tests
 Atlas.Common.Lsp.DebugVariables.Tests
 Atlas.Common.Lsp.DebugScope.Tests
@@ -370,6 +372,7 @@ Atlas.Common.Rationale.References.Tests
 Atlas.Common.Rationale.Scanner.Tests
 Atlas.Common.Findings.Baseline.Tests
 Atlas.Common.Rules.Builtin.Architecture.Tests
+Atlas.Common.Rules.Builtin.FeatureCycles.Tests
 Atlas.Common.Rules.Builtin.Assembler.Tests
 Atlas.Common.Rules.Builtin.Calls.Tests
 Atlas.Common.Rules.Builtin.Capture.Tests
@@ -417,6 +420,7 @@ Atlas.Common.Rules.Builtin.FormFields.Tests
 Atlas.Common.Rules.Builtin.ForwardDeclarations.Tests
 Atlas.Common.Rules.Builtin.General.Tests
 Atlas.Common.Rules.Builtin.IgnoredResult.Tests
+Atlas.Common.Semantics.Ancestry.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Ancestry.Tests
 Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.Tests
 Atlas.Common.Rules.Builtin.Inheritance.MemberHides.Tests
@@ -507,8 +511,8 @@ Atlas.Common.Rules.SuppressionStats.Tests
 Atlas.Common.Rules.TypedScope.Tests
 Atlas.Common.Rules.WarnSwitches.Tests
 Atlas.Common.Semantics.ControlFlow.Tests
+Atlas.Common.Pascal.FlowSignatures.Tests
 Atlas.Common.Semantics.ComponentRoots.Tests
-Atlas.Common.Semantics.ControlFlow.Signatures.Tests
 Atlas.Common.Semantics.ExitPoints.Tests
 Atlas.Common.Semantics.ExpressionTypes.Operators.Tests
 Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests
@@ -708,6 +712,7 @@ Atlas.UI.Help.Strings.Tests
 Atlas.UI.Hover.Strings.Tests
 Atlas.UI.Notifications.Strings.Tests
 Atlas.UI.Outline.Strings.Tests
+Atlas.UI.Popup.Strings.Tests
 Atlas.UI.Problems.Strings.Tests
 Atlas.UI.Results.Strings.Tests
 Atlas.UI.Rules.Strings.Tests

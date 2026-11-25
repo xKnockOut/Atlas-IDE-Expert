@@ -105,6 +105,7 @@ Atlas.IDE.Base	Atlas.Core.Build.CheckOnSave	Core/Build/Atlas.Core.Build.CheckOnS
 Atlas.IDE.Base	Atlas.Core.Build.Events	Core/Build/Atlas.Core.Build.Events.pas	Compile-Ereignisse (#527), Quelle für Compilermeldungen und Prüfen nach dem Speichern
 Atlas.IDE.Base	Atlas.Core.Build.IdleGate	Core/Build/Atlas.Core.Build.IdleGate.pas	Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455
 Atlas.IDE.Base	Atlas.Core.Build.Messages	Core/Build/Atlas.Core.Build.Messages.pas	Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern
+Atlas.IDE.Base	Atlas.Core.Build.Notices	Core/Build/Atlas.Core.Build.Notices.pas	Einträge „Build fertig“ und „Hintergrundprüfung“ der Benachrichtigungszentrale bleiben im Kern bei den Compile-Ereignissen
 Atlas.IDE.Base	Atlas.Core.Build.OpenBuildSettings	Core/Build/Atlas.Core.Build.OpenBuildSettings.pas	Werte der Einstellungen „Bauen beim Öffnen“ für Einstellungen und Optionsdialog, #1455
 Atlas.IDE.Base	Atlas.Core.Build.PipelineSettings	Core/Build/Atlas.Core.Build.PipelineSettings.pas	Werte der Einstellungen von Prüfung vor dem Kompilieren und Release-Wächter für Einstellungen und Optionsdialog, #1455
 Atlas.IDE.Base	Atlas.Core.Build.Target	Core/Build/Atlas.Core.Build.Target.pas	Konfiguration und Symbole für den Server ({$IFDEF}-Zweige, #615)
@@ -259,7 +260,6 @@ Atlas.IDE.Base	Atlas.Core.Hover.View	Core/Hover/Atlas.Core.Hover.View.pas	Ordner
 Atlas.IDE.Base	Atlas.Core.InlayHints.Store	Core/InlayHints/Atlas.Core.InlayHints.Store.pas	Ordner `Core/InlayHints`
 Atlas.IDE.Base	Atlas.Core.Lsp.Session	Core/Lsp/Atlas.Core.Lsp.Session.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Lsp.Session.Requests	Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Notifications.Build	Core/Notifications/Atlas.Core.Notifications.Build.pas	Ordner `Core/Notifications`
 Atlas.IDE.Base	Atlas.Core.Outline.Breadcrumbs	Core/Outline/Atlas.Core.Outline.Breadcrumbs.pas	Ordner `Core/Outline`
 Atlas.IDE.Base	Atlas.Core.Outline.Conditionals	Core/Outline/Atlas.Core.Outline.Conditionals.pas	Ordner `Core/Outline`
 Atlas.IDE.Base	Atlas.Core.Outline.CrumbMenu	Core/Outline/Atlas.Core.Outline.CrumbMenu.pas	Ordner `Core/Outline`
@@ -698,6 +698,7 @@ Atlas.IDE.Base	Atlas.UI.Outline.Frame	UI/Outline/Atlas.UI.Outline.Frame.pas	Ordn
 Atlas.IDE.Base	Atlas.UI.Outline.NavigationToolbar	UI/Outline/Atlas.UI.Outline.NavigationToolbar.pas	Ordner `UI/Outline`
 Atlas.IDE.Base	Atlas.UI.Outline.Strings	UI/Outline/Atlas.UI.Outline.Strings.pas	Ordner `UI/Outline`
 Atlas.IDE.Base	Atlas.UI.Popup.CrumbCard	UI/Popup/Atlas.UI.Popup.CrumbCard.pas	Kennzahlen-Karte der Brotkrumen (#1787)
+Atlas.IDE.Base	Atlas.UI.Popup.Strings	UI/Popup/Atlas.UI.Popup.Strings.pas	Texte der Kennzahlen-Karte
 Atlas.IDE.Base	Atlas.UI.Problems.Explain	UI/Problems/Atlas.UI.Problems.Explain.pas	„Regel erklären“ in „Atlas-Prüfung“ (Base), #1455
 Atlas.IDE.Base	Atlas.UI.Problems.Frame	UI/Problems/Atlas.UI.Problems.Frame.pas	Ordner `UI/Problems`
 Atlas.IDE.Base	Atlas.UI.Problems.Frame.List	UI/Problems/Atlas.UI.Problems.Frame.List.pas	Ordner `UI/Problems`
@@ -1328,7 +1329,7 @@ Atlas.IDE.Rules	Atlas.IDE.Rules.Baseline	IDE/Rules/Atlas.IDE.Rules.Baseline.pas	
 Atlas.IDE.Rules	Atlas.IDE.Rules.Composition	IDE/Rules/Atlas.IDE.Rules.Composition.pas	Anmeldung des Moduls `atlas.rules`, #1455
 Atlas.IDE.Rules	Atlas.IDE.Rules.Maintenance	IDE/Rules/Atlas.IDE.Rules.Maintenance.pas	Ordner `IDE/Rules`: Baseline und Unterdrückungen des aktiven Projekts, #1755
 Atlas.IDE.Rules	Atlas.IDE.Rules.OwnershipHints	IDE/Rules/Atlas.IDE.Rules.OwnershipHints.pas	Ordner `IDE/Rules`: Marke „Wer gibt das frei?“ im Editor, Schalter editor.ownershipHints unter ruleChecks, #1877
-Atlas.IDE.Rules	Atlas.UI.Problems.BulkFix	UI/Problems/Atlas.UI.Problems.BulkFix.pas	Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455
+Atlas.IDE.Rules	Atlas.UI.Rules.BulkFix	UI/Rules/Atlas.UI.Rules.BulkFix.pas	Sammelkorrektur (#1352) über `IAtlasBulkFixer`, #1455
 Atlas.IDE.Rules	Atlas.UI.Rules.Editor	UI/Rules/Atlas.UI.Rules.Editor.pas	Ordner `UI/Rules`: Regel-Editor, #1755
 Atlas.IDE.Rules	Atlas.UI.Rules.SettingsDialog	UI/Rules/Atlas.UI.Rules.SettingsDialog.pas	Ordner `UI/Rules`: Dialog der Einstellungsdateien mit Regel-Editor (`IAtlasSettingsDialogProvider`), #1755
 Atlas.IDE.Rules	Atlas.UI.Rules.SettingsSection	UI/Rules/Atlas.UI.Rules.SettingsSection.pas	Ordner `UI/Rules`; Einstellungen des Moduls als Abschnitte (#1456)

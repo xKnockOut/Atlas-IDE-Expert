@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Projects.Adapters.UnitLookup.Tests;
+﻿unit Atlas.Common.Rules.Providers.UnitLookup.Tests;
 
 // Tests für die Unit-Suche wie beim Compiler (#1016): .pas und .dcu, Unit-
 // Namespaces, Units des Projekts, "in 'Pfad'", requires-Packages, unsichere
@@ -51,8 +51,8 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Projects.Contract.UnitLookup,
-  Atlas.Common.Projects.Adapters.UnitLookup;
+  Atlas.Common.Rules.Contract.UnitLookup,
+  Atlas.Common.Rules.Providers.UnitLookup;
 
 /// <summary>Einrichtung mit den Dateien AFiles (vollständige Pfade) als Dateisystem.</summary>
 function Setup(const AFiles: TArray<string>): TUnitLookupSetup;

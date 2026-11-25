@@ -59,7 +59,7 @@ uses
   System.RegularExpressions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Lsp.DocWiki;
+  Atlas.Common.Index.DocWiki;
 
 const
   /// <summary>Schlüssel je Art; classref ergibt sich aus der Deklaration (KindOf).</summary>
