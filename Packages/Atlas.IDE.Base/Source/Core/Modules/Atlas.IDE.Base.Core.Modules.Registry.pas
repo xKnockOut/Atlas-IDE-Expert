@@ -31,6 +31,7 @@ uses
   System.Generics.Collections,
   Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Registration,
+  Atlas.Core.Settings.Contract,
   Atlas.Plugin.Registration.Contract;
 
 const
@@ -71,7 +72,7 @@ type
     FProvisions: TList<TProvision>;
     FListeners: TAtlasListenerList<IAtlasRegistryListener>;
     FKnown: TList<TAtlasModuleInfo>;
-    FStorage: IAtlasTextStorage;
+    FStorage: IAtlasSettingsStorage;
     FShutDown: Boolean;
     function IndexOfModule(const AModuleId: string): Integer;
     function IndexOfKnown(const AModuleId: string): Integer;
@@ -100,7 +101,7 @@ type
     function Subscribe(const AListener: IAtlasRegistryListener): IAtlasRegistration;
     /// <summary>Ablage der Einstellungen setzen (Base beim Laden): Die dort gespeicherte Liste bekannter Module
     /// kommt zuerst, bisher bekannte, die dort fehlen, folgen; das Ergebnis wird zurückgeschrieben.</summary>
-    procedure UseStorage(const AStorage: IAtlasTextStorage);
+    procedure UseStorage(const AStorage: IAtlasSettingsStorage);
     /// <summary>Alle Module rückwärts abmelden und keine neuen mehr annehmen (Finalisierung von Base, Regel 5).
     /// Ergebnis wie UnregisterModule, über alle Module.</summary>
     function ShutDown: TArray<string>;
@@ -879,7 +880,7 @@ begin
   end;
   AList.Add(AInfo);
 end;
-procedure TAtlasModuleRegistry.UseStorage(const AStorage: IAtlasTextStorage);
+procedure TAtlasModuleRegistry.UseStorage(const AStorage: IAtlasSettingsStorage);
 var
   mMerged: TList<TAtlasModuleInfo>;
   mInfo: TAtlasModuleInfo;
