@@ -70,15 +70,6 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance.Constructors;
 
 type
-  /// <summary>Liegt in Atlas.Common.Rules.Builtin.Inheritance.Ancestry.</summary>
-  TMethodDecl = Atlas.Common.Rules.Builtin.Inheritance.Ancestry.TMethodDecl;
-
-  /// <summary>Liegt in Atlas.Common.Rules.Builtin.Inheritance.Ancestry.</summary>
-  TInherited = Atlas.Common.Rules.Builtin.Inheritance.Ancestry.TInherited;
-
-  /// <summary>Liegt in Atlas.Common.Rules.Builtin.Inheritance.Ancestry.</summary>
-  TAncestry = Atlas.Common.Rules.Builtin.Inheritance.Ancestry.TAncestry;
-
   TDestroyWithoutOverrideRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
@@ -145,7 +136,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Builtin.Naming,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.Ancestry;
 
 {$SCOPEDENUMS ON}
 

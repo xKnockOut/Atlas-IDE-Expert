@@ -38,7 +38,7 @@ implementation
 uses
   System.SysUtils,
   System.Math,
-  Atlas.Core.Editor.Pairs;
+  Atlas.Text.Columns;
 
 { TAtlasInlineValuesFlow }
 
@@ -71,13 +71,13 @@ end;
 
 class function TAtlasInlineValuesFlow.ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
 begin
-  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
+  Result := Length(TTextColumns.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
 class function TAtlasInlineValuesFlow.SameLine(const AEditor, AStored: string; ATabWidth: Integer): Boolean;
 begin
-  Result := TrimRight(TAtlasPairs.DisplayLine(AEditor, ATabWidth)) =
-    TrimRight(TAtlasPairs.DisplayLine(AStored, ATabWidth));
+  Result := TrimRight(TTextColumns.DisplayLine(AEditor, ATabWidth)) =
+    TrimRight(TTextColumns.DisplayLine(AStored, ATabWidth));
 end;
 
 end.

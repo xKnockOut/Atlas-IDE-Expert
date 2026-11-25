@@ -10,7 +10,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Semantics.ControlFlow.Signatures,
+  Atlas.Common.Pascal.FlowSignatures,
   Atlas.Common.Semantics.Reassigned;
 
 type

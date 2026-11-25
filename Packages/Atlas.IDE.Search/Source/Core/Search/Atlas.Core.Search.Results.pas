@@ -68,7 +68,7 @@ implementation
 
 uses
   Atlas.Text.Chars,
-  Atlas.Core.Editor.Pairs;
+  Atlas.Text.Columns;
 
 { TAtlasSearchResults }
 
@@ -133,7 +133,7 @@ begin
       mLineText := ALines[AHits[mIndex].Line];
     end;
     Result[mIndex].Line := AHits[mIndex].Line + 1;
-    Result[mIndex].Column := TAtlasPairs.ColumnOf(mLineText, AHits[mIndex].Character, ATabWidth);
+    Result[mIndex].Column := TTextColumns.ColumnOf(mLineText, AHits[mIndex].Character, ATabWidth);
     Result[mIndex].Text := TAtlasTextSearch.HitText(ALines, AHits[mIndex]);
   end;
 end;

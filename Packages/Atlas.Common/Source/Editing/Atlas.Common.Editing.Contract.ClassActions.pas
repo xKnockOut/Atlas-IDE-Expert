@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes;
+  Atlas.Common.ClassActions.Contract;
 
 type
   /// <summary>Klassen-Aktionen; jede liefert False, wenn es an der Stelle nichts zu tun gibt.</summary>

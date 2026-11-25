@@ -164,7 +164,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes,
+  Atlas.Common.ClassActions.Contract,
   Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.MethodText,

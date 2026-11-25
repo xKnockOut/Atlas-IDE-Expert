@@ -197,8 +197,8 @@ const
   // Bedingte Übersetzung im Kopf einer Methode (#1324).
   cConditionalDirectives: array[0..7] of string = ('IF', 'IFDEF', 'IFNDEF', 'IFOPT', 'ELSE', 'ELSEIF', 'ENDIF',
     'IFEND');
-  cTypeKinds = TMethodText.cTypeKinds;
-  cMethodKinds = TMethodText.cMethodKinds;
+  cTypeKinds = TMethodMatching.cTypeKinds;
+  cMethodKinds = TMethodMatching.cMethodKinds;
 
 /// <summary>Kopf der Implementierung: Typname vor den Methodennamen.</summary>
 function QualifiedHeader(const ASignature, AMethodName, ATypeName: string): string;

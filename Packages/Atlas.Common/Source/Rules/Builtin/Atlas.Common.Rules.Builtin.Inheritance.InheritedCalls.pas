@@ -40,6 +40,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
 

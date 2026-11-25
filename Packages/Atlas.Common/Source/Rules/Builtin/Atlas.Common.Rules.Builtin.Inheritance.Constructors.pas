@@ -33,7 +33,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

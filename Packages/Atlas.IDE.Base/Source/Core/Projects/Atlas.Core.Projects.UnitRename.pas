@@ -81,8 +81,8 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Session,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Text.Uris;
 
 { TAtlasUnitRenameEvent }
 
@@ -143,13 +143,13 @@ var
 begin
   mList := TJSONArray.Create;
   try
-    mList.Add(TLspSession.PathToUri(AOldFile));
-    mList.Add(TLspSession.PathToUri(ANewFile));
+    mList.Add(TTextUris.FromPath(AOldFile));
+    mList.Add(TTextUris.FromPath(ANewFile));
     mFiles := TJSONArray.Create;
     mList.AddElement(mFiles);
     for mFileName in SourceFiles(AFiles) do
     begin
-      mFiles.Add(TLspSession.PathToUri(mFileName));
+      mFiles.Add(TTextUris.FromPath(mFileName));
     end;
     Result := mList.ToJSON;
   finally
@@ -204,7 +204,7 @@ begin
     mIdentifier := TJSONObject(mDocument.GetValue('textDocument'));
     if mIdentifier.GetValue('uri') is TJSONString then
     begin
-      Result.Files := Result.Files + [TLspSession.UriToPath(mIdentifier.GetValue('uri').Value)];
+      Result.Files := Result.Files + [TTextUris.ToPath(mIdentifier.GetValue('uri').Value)];
     end;
   end;
 end;

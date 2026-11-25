@@ -10,7 +10,7 @@ interface
 uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
+  Atlas.Common.Semantics.Ancestry;
 
 type
   TThreadExecuteWithoutExceptRule = class(TInterfacedObject, IRule)

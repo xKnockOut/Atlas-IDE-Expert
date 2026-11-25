@@ -1,0 +1,83 @@
+﻿unit Atlas.UI.Popup.Strings.Tests;
+
+// Texte des Features Popup: jede Id in beiden Sprachen, gleiche Platzhalter.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TAtlasPopupStringsTests = class
+  public
+    [Test]
+    procedure EveryTextExistsInBothLanguages;
+    [Test]
+    procedure FollowsLanguageOfBase;
+  end;
+
+implementation
+
+uses
+  Atlas.Plugin.Localization.Strings,
+  Atlas.Plugin.Localization.Strings.Tests,
+  Atlas.UI.Popup.Strings;
+
+{ TAtlasPopupStringsTests }
+
+procedure TAtlasPopupStringsTests.EveryTextExistsInBothLanguages;
+var
+  mId: TAtlasPopupTextId;
+  mGerman: string;
+  mCount: Integer;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  mCount := 0;
+  try
+    for mId := Low(TAtlasPopupTextId) to High(TAtlasPopupTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasPopupStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      AssertTextPair(mGerman, TAtlasPopupStrings.Text(mId), Ord(mId));
+      Inc(mCount);
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+  Assert.AreEqual(Ord(High(TAtlasPopupTextId)) + 1, mCount, 'jede Id geprüft');
+end;
+
+procedure TAtlasPopupStringsTests.FollowsLanguageOfBase;
+var
+  mId: TAtlasPopupTextId;
+  mGerman: string;
+  mDiffers: Integer;
+  mSaved: TAtlasLanguage;
+begin
+  // Kein eigener Sprachschalter: Ein Wechsel in Base gilt sofort auch für die Texte des Features.
+  mSaved := TAtlasStrings.Language;
+  mDiffers := 0;
+  try
+    for mId := Low(TAtlasPopupTextId) to High(TAtlasPopupTextId) do
+    begin
+      TAtlasStrings.Language := TAtlasLanguage.German;
+      mGerman := TAtlasPopupStrings.Text(mId);
+      TAtlasStrings.Language := TAtlasLanguage.English;
+      if mGerman <> TAtlasPopupStrings.Text(mId) then
+      begin
+        Inc(mDiffers);
+      end;
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+  Assert.IsTrue(mDiffers > 0, 'kein Text folgt der Sprache von Base');
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasPopupStringsTests);
+
+end.

@@ -81,7 +81,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Editor.Pairs;
+  Atlas.Text.Columns;
 
 { TAtlasPlaceholderPlan }
 
@@ -182,7 +182,7 @@ end;
 
 class function TAtlasPlaceholderPlan.FooterColumn(const ALineText: string; ATabWidth: Integer): Integer;
 begin
-  Result := Length(TAtlasPairs.DisplayLine(ALineText, ATabWidth)) + 1 + cFooterGap;
+  Result := Length(TTextColumns.DisplayLine(ALineText, ATabWidth)) + 1 + cFooterGap;
 end;
 
 end.
