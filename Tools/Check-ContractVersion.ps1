@@ -8,7 +8,8 @@
     Release genügt deshalb. Erhöhte dagegen jeder Pull Request, der einen Vertrag ändert, um eins, änderten
     parallele Pull Requests dieselbe Zeile verschieden, und jeder Merge erzeugte einen Konflikt.
 
-    Verglichen wird mit dem neuesten Release-Tag (v*):
+    Verglichen wird mit dem neuesten Release-Tag (v*), der im Stand enthalten ist (auf einem Wartungszweig wie
+    Release/v2.2.4 also v2.2.3, nicht ein jüngeres v2.3.0-rc.1 aus main):
     - Hat sich unter Packages/Atlas.IDE.Base/Source seit dem Tag etwas geändert, muss die Version größer als
       im Tag sein. Sonst ist sie auf Tag + 1 zu setzen.
     - Mit -Base <Ref> (Ziel des Pull Requests): Steht die Version im Ziel schon über der des Tags, darf der
@@ -45,7 +46,7 @@ function Get-VersionAt([string] $Ref) {
     return Get-ContractVersion $Text $Ref
 }
 
-$Tag = @(& git -C $Root tag --list 'v[0-9]*' --sort=-version:refname) | Select-Object -First 1
+$Tag = @(& git -C $Root tag --list 'v[0-9]*' --merged HEAD --sort=-version:refname) | Select-Object -First 1
 if (-not $Tag) {
     Write-Host 'FEHLER: kein Release-Tag v* gefunden; git fetch --tags ausführen (in der CI: fetch-depth 0)'
     exit 1
