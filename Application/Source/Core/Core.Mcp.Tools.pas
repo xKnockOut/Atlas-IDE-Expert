@@ -7,7 +7,7 @@ interface
 uses
   Core.Mcp.Context;
 
-/// <summary>Meldet alle Werkzeuge mit Kontext an; CheckSource kommt aus AContext.Group.</summary>
+/// <summary>Meldet alle Werkzeuge mit Kontext an; CheckSource kommt aus AContext.Workspace.</summary>
 procedure RegisterContextTools(const AContext: TMcpToolContext);
 
 implementation
@@ -33,7 +33,7 @@ var
 begin
   mContext := AContext;
   // Symbole und Include-Dateien der Gruppe wie im Server (#860).
-  mContext.CheckSource := CheckSourceOf(mContext.Group);
+  mContext.CheckSource := CheckSourceOf(mContext.Workspace);
   RegisterNavigationTools(mContext);
   RegisterBuildTestTools(mContext);
   RegisterDebugTools(mContext);

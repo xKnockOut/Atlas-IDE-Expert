@@ -99,6 +99,7 @@
         <DCCReference Include="Source\Adapters\Adapters.Mcp.BulkFix.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Mcp.TextChecks.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Mcp.RuleDocs.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Mcp.Workspace.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Mcp.DeadCode.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Mcp.Conventions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Configuration.pas"/>
@@ -180,7 +181,6 @@
         <DCCReference Include="Source\Core\Core.Linter.Check.pas"/>
         <DCCReference Include="Source\Core\Core.Linter.Reports.pas"/>
         <DCCReference Include="Source\Core\Core.SlashHost.pas"/>
-        <DCCReference Include="Source\Core\Core.Texts.pas"/>
         <DCCReference Include="Source\Core\Core.VersionControlChanges.pas"/>
         <DCCReference Include="Source\Core\Core.AffectedTests.pas"/>
         <DCCReference Include="Source\Core\Core.Hotspots.pas"/>
