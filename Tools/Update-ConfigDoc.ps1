@@ -273,6 +273,7 @@ $ControlsEn = @{
     'Auswahl, Zahlenfeld' = 'Choice, number field'
     'Bearbeiten im Fenster „Atlas-Abfrage“ („Als Regel speichern …“) oder in atlas.json' = 'Edit in the window “Atlas Query” (“Save as rule …”) or in atlas.json'
     'Datei wählen' = 'Choose file'
+    'Fenster „Atlas – Tastenkürzel“ (Zuweisen …)' = 'Window “Atlas – Keyboard shortcuts” (Assign …)'
     'Eigener Editor (Klasse und Property aus dem Index)' = 'Own editor (class and property from the index)'
     'JSON in atlas.json bzw. settings.json (Liste der Aufgaben)' = 'JSON in atlas.json or settings.json (list of tasks)'
     'JSON in atlas.json (Liste der Muster)' = 'JSON in atlas.json (list of patterns)'
