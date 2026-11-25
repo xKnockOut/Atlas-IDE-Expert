@@ -10,7 +10,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Findings.Output;
 
 type
   TSuppressionCount = record

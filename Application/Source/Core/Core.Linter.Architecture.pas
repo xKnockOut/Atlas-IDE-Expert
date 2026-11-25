@@ -41,7 +41,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,

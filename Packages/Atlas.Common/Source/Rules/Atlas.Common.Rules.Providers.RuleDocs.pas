@@ -28,31 +28,6 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Profiles;
 
-function InfoOf(const AEntry: TRuleCatalogEntry): TFindingRuleInfo;
-var
-  mIndex: Integer;
-begin
-  Result := Default(TFindingRuleInfo);
-  Result.Id := AEntry.Id;
-  Result.Name := AEntry.Name;
-  Result.Description := AEntry.Description;
-  Result.Category := TRuleCatalog.CategoryName(AEntry.Category);
-  Result.Group := TRuleCatalog.GroupName(AEntry.Group);
-  Result.GroupKey := TRuleCatalog.GroupKey(AEntry.Group);
-  Result.DefaultSeverity := AEntry.DefaultSeverity;
-  Result.Experimental := AEntry.Experimental;
-  SetLength(Result.Options, Length(AEntry.Options));
-  for mIndex := 0 to High(AEntry.Options) do
-  begin
-    Result.Options[mIndex].Name := AEntry.Options[mIndex].Name;
-    Result.Options[mIndex].DefaultJson := AEntry.Options[mIndex].DefaultJson;
-  end;
-  Result.Bad := AEntry.Bad;
-  Result.Good := AEntry.Good;
-  Result.HelpUri := TRuleCatalog.HelpUri(AEntry.Id);
-  Result.CompilerCodes := Copy(AEntry.CompilerCodes);
-end;
-
 { TRuleDocsProvider }
 
 function TRuleDocsProvider.Rules(const ALanguage: string): TArray<TFindingRuleInfo>;
@@ -70,7 +45,7 @@ begin
   SetLength(Result, Length(mEntries));
   for mIndex := 0 to High(mEntries) do
   begin
-    Result[mIndex] := InfoOf(mEntries[mIndex]);
+    Result[mIndex] := TRuleCatalog.InfoOf(mEntries[mIndex]);
   end;
 end;
 

@@ -75,6 +75,8 @@ type
     /// <summary>#2621: Jede Regel, die der Fallenkatalog der Compilermeldungen nennt, steht im Katalog.</summary>
     [Test]
     procedure PitfallRulesExist;
+    [Test]
+    procedure RuleInfosDescribeRunInEnglish;
   end;
 
 implementation
@@ -85,6 +87,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Engine,
@@ -622,6 +625,24 @@ begin
       Assert.IsTrue(TRuleCatalog.Shared.TryFind(mInfo.Rule, mEntry), mInfo.Id + ': ' + mInfo.Rule);
     end;
   end;
+end;
+
+procedure TRuleCatalogTests.RuleInfosDescribeRunInEnglish;
+var
+  mRules: TArray<TFindingRuleInfo>;
+begin
+  // Für SARIF: englische Katalogtexte, Schweregrad aus dem Lauf; ohne Katalogeintrag Name '' und eigene Beschreibung.
+  mRules := TRuleCatalog.RuleInfos([TRuleDescriptor.Create('syntax', TRuleSeverity.Warning, 'Syntax'),
+    TRuleDescriptor.Create('eigene-regel', TRuleSeverity.Hint, 'Eigene Regel')]);
+  Assert.AreEqual(2, Integer(Length(mRules)));
+  Assert.AreEqual('Syntax error', mRules[0].Name);
+  Assert.AreEqual('bug', mRules[0].Category);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mRules[0].DefaultSeverity));
+  Assert.IsTrue(EndsStr('#syntax', mRules[0].HelpUri), mRules[0].HelpUri);
+  Assert.AreEqual('', mRules[1].Name);
+  Assert.AreEqual('Eigene Regel', mRules[1].Description);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mRules[1].DefaultSeverity));
+  Assert.IsTrue(EndsStr('#eigene-regel', mRules[1].HelpUri), mRules[1].HelpUri);
 end;
 
 initialization

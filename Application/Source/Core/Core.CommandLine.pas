@@ -106,7 +106,7 @@ interface
 uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Findings.Output;
 
 type
 {$SCOPEDENUMS ON}

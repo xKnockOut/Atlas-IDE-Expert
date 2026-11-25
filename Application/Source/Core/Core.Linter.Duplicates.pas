@@ -42,7 +42,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Findings.Filter,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Text.Json,

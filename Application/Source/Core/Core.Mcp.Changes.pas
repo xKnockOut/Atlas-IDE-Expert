@@ -28,11 +28,9 @@ implementation
 uses
   Atlas.Common.Mcp.Server,
   System.StrUtils,
-  Atlas.Common.Configuration.Contract,
-  Atlas.Common.History.ChangedFiles,
   Atlas.Core.Tracker.CommitHook,
   Core.Mcp.IssueTools,
-  Core.VersionControlChanges,
+  Atlas.Common.Mcp.Contract.Vcs,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Mcp.Contract.TextChecks,
   Atlas.Common.Localization.Texts;
@@ -81,49 +79,25 @@ begin
   end;
 end;
 
-/// <summary>Erkennt Git oder SVN unter ARoot und lädt die Änderungen gegenüber ABase ('' = nicht eingecheckt
-/// gegenüber HEAD bzw. BASE); False mit dem Grund in AError.</summary>
-function LoadChanges(const AAccess: TCoreVcsAccess; const ASettings: TServerSettings; const ARoot, ABase: string;
-  out AVcs: TVcsChanges; out AError: string): Boolean;
-begin
-  AError := '';
-  AVcs := nil;
-  try
-    AVcs := TVcsChanges.Detect(AAccess, ARoot, ASettings.VcsProvider, ASettings.VcsGitPath, ASettings.VcsSvnPath,
-      ASettings.VcsTimeoutSeconds);
-    // Ohne Basis: nicht eingecheckte Änderungen gegenüber HEAD (SVN: BASE); mit Basis seit der Abzweigung.
-    AVcs.Load(BaseOrHead(ABase), ABase <> '', ABase = '', True, True);
-  except
-    on E: EVcsChanges do
-    begin
-      FreeAndNil(AVcs);
-      AError := E.Message;
-    end;
-  end;
-  Result := AVcs <> nil;
-end;
-
 /// <summary>Geänderte Datei relativ zu ARoot mit ihren Befunden in geänderten Zeilen (wie --changed-lines); ohne
 /// AChecks ohne Befunde.</summary>
-function ChangedFileOf(const AWorkspace: IMcpWorkspace; AVcs: TVcsChanges; const ARoot, AFile: string;
+function ChangedFileOf(const AWorkspace: IMcpWorkspace; const AVcs: IMcpVcsChanges; const ARoot, AFile: string;
   const AChecks: IMcpTextChecks): TMcpChangedFile;
 var
   mText: string;
-  mLines: TChangedLines;
   mFinding: TRuleFinding;
 begin
   Result := Default(TMcpChangedFile);
   Result.Path := ExtractRelativePath(IncludeTrailingPathDelimiter(ARoot), AFile);
   Result.Findings := nil;
   if (AChecks = nil) or not (MatchText(ExtractFileExt(AFile), ['.pas', '.dpr', '.dpk']) and
-    ReadSourceText(AFile, mText) and
-    TChangedFiles.LinesOf(AVcs.Lines, AVcs.RepoRoot, AFile, mLines)) then
+    ReadSourceText(AFile, mText)) then
   begin
     Exit;
   end;
   for mFinding in AChecks.Check(AFile, Result.Path, mText, AWorkspace.Settings) do
   begin
-    if mLines.Contains(mFinding.Range.StartPos.Line) then
+    if AVcs.LineChanged(AFile, mFinding.Range.StartPos.Line) then
     begin
       Result.Findings := Result.Findings + [mFinding];
     end;
@@ -134,36 +108,29 @@ end;
 function ChangeSetOf(const AAdapters: TMcpHostAdapters; const AWorkspace: IMcpWorkspace; const ARoot, ABase: string):
   TMcpChangeSet;
 var
-  mAccess: TCoreVcsAccess;
-  mVcs: TVcsChanges;
+  mVcs: IMcpVcsChanges;
   mFile: string;
 begin
   Result := Default(TMcpChangeSet);
   Result.Files := nil;
   Result.Base := BaseOrHead(ABase);
-  // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
-  mAccess := AAdapters.VcsAccess();
-  if not LoadChanges(mAccess, AWorkspace.Settings, ARoot, ABase, mVcs, Result.Error) then
+  if not AAdapters.Vcs.Changes(ARoot, ABase, AWorkspace.Settings, mVcs, Result.Error) then
   begin
     Exit;
   end;
-  try
-    Result.Vcs := mVcs.Name;
-    for mFile in mVcs.Files do
+  Result.Vcs := mVcs.Name;
+  for mFile in mVcs.Files do
+  begin
+    if TMcpPathGuard.IsInside(ARoot, mFile) then
     begin
-      if TMcpPathGuard.IsInside(ARoot, mFile) then
-      begin
-        Result.Files := Result.Files + [ChangedFileOf(AWorkspace, mVcs, ARoot, mFile, AAdapters.TextChecks)];
-      end;
+      Result.Files := Result.Files + [ChangedFileOf(AWorkspace, mVcs, ARoot, mFile, AAdapters.TextChecks)];
     end;
-    if mVcs is TGitChanges then
-    begin
-      // Direkt gelesen: Der Dateizugriff des Tracker-Moduls (TAtlasTrackerFiles) ist im Server nicht angemeldet.
-      Result.CommitPrefix := ReadGitDirFile(AAdapters.GitDir(mVcs.RepoRoot),
-        TAtlasCommitHook.cPrefixFile, cMaxPrefixBytes);
-    end;
-  finally
-    mVcs.Free;
+  end;
+  if mVcs.Git then
+  begin
+    // Direkt gelesen: Der Dateizugriff des Tracker-Moduls (TAtlasTrackerFiles) ist im Server nicht angemeldet.
+    Result.CommitPrefix := ReadGitDirFile(AAdapters.GitDir(mVcs.RepoRoot), TAtlasCommitHook.cPrefixFile,
+      cMaxPrefixBytes);
   end;
 end;
 

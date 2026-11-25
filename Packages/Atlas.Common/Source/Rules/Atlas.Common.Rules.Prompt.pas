@@ -55,7 +55,7 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Catalog.Data,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

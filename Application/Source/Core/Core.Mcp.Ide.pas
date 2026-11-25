@@ -15,7 +15,8 @@ uses
   Atlas.Common.Mcp.IdeQuestions,
   Atlas.Text.IdeContext,
   Atlas.Common.Mcp.IdeBuilds,
-  Atlas.Common.Compiler.IdeBuild;
+  Atlas.Common.Compiler.IdeBuild,
+  Atlas.Common.Mcp.Contract.Process;
 
 type
   /// <summary>Projekt öffnen, das in keiner IDE offen ist (#2895): Projektdateien unter dem Arbeitsordner (erst bei
@@ -25,43 +26,55 @@ type
     MayOpen: TMcpMayOpenFunc;
   end;
 
-/// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
-/// IDE.</summary>
-function EditorDirtyFiles: TArray<string>;
-/// <summary>Prozesse der laufenden IDEs mit Atlas-Plugin (editor-dirty-&lt;pid&gt;.json).</summary>
-function RunningIdePids: TArray<Cardinal>;
-/// <summary>Zustand je laufender IDE, deren Modul KI-Assistenten ihn bereitstellt (ide-context-&lt;pid&gt;.json,
-/// #2050); unlesbare Dateien und Dateien beendeter Prozesse fallen weg.</summary>
-function IdeContexts: TArray<TIdeContext>;
-/// <summary>
-/// Schreibt AText mit Kodierung und Zeilenenden der vorhandenen Datei (#121). Ist die Datei in einer IDE
-/// mit Atlas-Plugin offen, ändert das Plugin den Puffer und speichert (#397); sonst die Platte.
-/// </summary>
-procedure WriteSourceText(const AFileName, AText: string);
-/// <summary>Änderung an einer im Editor ungespeichert geänderten Datei (#2605): Das Plugin der IDE, in der sie offen
-/// ist, hält sie zurück, bis der Benutzer entscheidet (Held), oder wendet sie gleich an (Applied). Refused mit Grund,
-/// wenn keine IDE sie annimmt; der MCP-Server schreibt eine solche Datei nie selbst.</summary>
-function HoldSourceText(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult;
-/// <summary>ask_user (#2620): stellt die Frage aus AArguments in der IDE mit dem aktiven Projekt unter ARoot (sonst
-/// der ersten mit Atlas) und wartet auf die Antwort. Liefert den Text für den Assistenten; EMcpToolError bei
-/// ungültigen Argumenten.</summary>
-function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
-/// <summary>Stellt AQuestion in der IDE mit dem aktiven Projekt unter ARoot (sonst der ersten mit Atlas) und wartet
-/// auf die Antwort (#2620, auch für Rückfragen der schreibenden Werkzeuge); AAnswer bei Answered.</summary>
-function AskQuestionInIde(const ARoot: string; const AQuestion: TMcpIdeQuestion;
-  out AAnswer: string): TMcpQuestionOutcome;
-/// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
-/// auf das Ende. Ist AProject in keiner IDE offen, öffnet es die IDE nach AOpen (#2895). EMcpToolError mit dem
-/// Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat (und es nicht öffnen darf) oder sie den Auftrag
-/// nicht annimmt.</summary>
-function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string;
-  const AOpen: TMcpIdeOpen): TIdeBuild;
-/// <summary>Debug-Werkzeug ATool (#1874) in der laufenden IDE: debug_start wählt die IDE wie build_project nach
-/// AProject (nicht offen: nach AOpen öffnen, #2895), die übrigen Werkzeuge gehen an die IDE des letzten
-/// debug_start (sonst an die mit dem aktiven Projekt unter ARoot). Liefert das Ergebnis des Plugins als JSON-Text;
-/// EMcpToolError mit dem Grund.</summary>
-function DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
-  const AResolve: TMcpIdeDebugResolve; const AOpen: TMcpIdeOpen): string;
+  /// <summary>Verbindung zur laufenden IDE über die Dateien des Plugins; ob eine IDE läuft und das Warten auf ihre
+  /// Antwort fragt sie den Host über Process.</summary>
+  TMcpIde = record
+  private
+    FProcess: IMcpProcessHost;
+    function IdeWithOpenFile(const AFileName: string): Cardinal;
+    function RunningIdes: TArray<TMcpIdeEntry>;
+    function DebugIde(const ARoot, ATool, AProject: string; const AOpen: TMcpIdeOpen;
+      out AProjectFile: string): Cardinal;
+  public
+    class function Create(const AProcess: IMcpProcessHost): TMcpIde; static;
+    /// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
+    /// IDE.</summary>
+    function EditorDirtyFiles: TArray<string>;
+    /// <summary>Prozesse der laufenden IDEs mit Atlas-Plugin (editor-dirty-&lt;pid&gt;.json).</summary>
+    function RunningIdePids: TArray<Cardinal>;
+    /// <summary>Zustand je laufender IDE, deren Modul KI-Assistenten ihn bereitstellt (ide-context-&lt;pid&gt;.json,
+    /// #2050); unlesbare Dateien und Dateien beendeter Prozesse fallen weg.</summary>
+    function IdeContexts: TArray<TIdeContext>;
+    /// <summary>
+    /// Schreibt AText mit Kodierung und Zeilenenden der vorhandenen Datei (#121). Ist die Datei in einer IDE
+    /// mit Atlas-Plugin offen, ändert das Plugin den Puffer und speichert (#397); sonst die Platte.
+    /// </summary>
+    procedure WriteSourceText(const AFileName, AText: string);
+    /// <summary>Änderung an einer im Editor ungespeichert geänderten Datei (#2605): Das Plugin der IDE, in der sie offen
+    /// ist, hält sie zurück, bis der Benutzer entscheidet (Held), oder wendet sie gleich an (Applied). Refused mit Grund,
+    /// wenn keine IDE sie annimmt; der MCP-Server schreibt eine solche Datei nie selbst.</summary>
+    function HoldSourceText(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult;
+    /// <summary>ask_user (#2620): stellt die Frage aus AArguments in der IDE mit dem aktiven Projekt unter ARoot (sonst
+    /// der ersten mit Atlas) und wartet auf die Antwort. Liefert den Text für den Assistenten; EMcpToolError bei
+    /// ungültigen Argumenten.</summary>
+    function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
+    /// <summary>Stellt AQuestion in der IDE mit dem aktiven Projekt unter ARoot (sonst der ersten mit Atlas) und wartet
+    /// auf die Antwort (#2620, auch für Rückfragen der schreibenden Werkzeuge); AAnswer bei Answered.</summary>
+    function AskQuestionInIde(const ARoot: string; const AQuestion: TMcpIdeQuestion;
+      out AAnswer: string): TMcpQuestionOutcome;
+    /// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
+    /// auf das Ende. Ist AProject in keiner IDE offen, öffnet es die IDE nach AOpen (#2895). EMcpToolError mit dem
+    /// Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat (und es nicht öffnen darf) oder sie den Auftrag
+    /// nicht annimmt.</summary>
+    function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string;
+      const AOpen: TMcpIdeOpen): TIdeBuild;
+    /// <summary>Debug-Werkzeug ATool (#1874) in der laufenden IDE: debug_start wählt die IDE wie build_project nach
+    /// AProject (nicht offen: nach AOpen öffnen, #2895), die übrigen Werkzeuge gehen an die IDE des letzten
+    /// debug_start (sonst an die mit dem aktiven Projekt unter ARoot). Liefert das Ergebnis des Plugins als JSON-Text;
+    /// EMcpToolError mit dem Grund.</summary>
+    function DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
+      const AResolve: TMcpIdeDebugResolve; const AOpen: TMcpIdeOpen): string;
+  end;
 
 implementation
 
@@ -74,7 +87,6 @@ uses
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeInbox,
-  Platform.Server,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json,
   Atlas.Text.Files;
@@ -125,9 +137,15 @@ begin
   end;
 end;
 
+class function TMcpIde.Create(const AProcess: IMcpProcessHost): TMcpIde;
+begin
+  Result := Default(TMcpIde);
+  Result.FProcess := AProcess;
+end;
+
 /// <summary>Prozess der IDE, in der AFileName offen ist ("open" in editor-dirty-&lt;pid&gt;.json, #397); 0
 /// ohne.</summary>
-function IdeWithOpenFile(const AFileName: string): Cardinal;
+function TMcpIde.IdeWithOpenFile(const AFileName: string): Cardinal;
 var
   mFileName, mText: string;
   mJson: TJSONValue;
@@ -149,7 +167,7 @@ begin
     mJson := TJSONObject.ParseJSONValue(mText);
     try
       if not (mJson is TJSONObject) or not TJSONObject(mJson).TryGetValue<Integer>('pid', mPid) or
-        not TProcessInstances.Running(Cardinal(mPid)) or not (TJSONObject(mJson).GetValue('open') is TJSONArray) then
+        not FProcess.Running(Cardinal(mPid)) or not (TJSONObject(mJson).GetValue('open') is TJSONArray) then
       begin
         Continue;
       end;
@@ -167,7 +185,7 @@ begin
 end;
 
 /// <summary>Laufende IDEs mit Atlas-Plugin samt offenen Projekten (editor-dirty-&lt;pid&gt;.json, #261).</summary>
-function RunningIdes: TArray<TMcpIdeEntry>;
+function TMcpIde.RunningIdes: TArray<TMcpIdeEntry>;
 var
   mFileName, mText: string;
   mEntry: TMcpIdeEntry;
@@ -184,14 +202,14 @@ begin
     begin
       Continue;
     end;
-    if TMcpIdeBuilds.ParseEntry(mText, mEntry) and TProcessInstances.Running(mEntry.Pid) then
+    if TMcpIdeBuilds.ParseEntry(mText, mEntry) and FProcess.Running(mEntry.Pid) then
     begin
       Result := Result + [mEntry];
     end;
   end;
 end;
 
-function RunningIdePids: TArray<Cardinal>;
+function TMcpIde.RunningIdePids: TArray<Cardinal>;
 var
   mEntry: TMcpIdeEntry;
 begin
@@ -202,7 +220,7 @@ begin
   end;
 end;
 
-function IdeContexts: TArray<TIdeContext>;
+function TMcpIde.IdeContexts: TArray<TIdeContext>;
 var
   mFolder, mFileName, mText: string;
   mContext: TIdeContext;
@@ -219,7 +237,7 @@ begin
     begin
       Continue;
     end;
-    if TIdeContexts.Parse(mText, mContext) and TProcessInstances.Running(mContext.Pid) then
+    if TIdeContexts.Parse(mText, mContext) and FProcess.Running(mContext.Pid) then
     begin
       Result := Result + [mContext];
     end;
@@ -228,7 +246,7 @@ end;
 
 /// <summary>Im Editor der IDE ungespeichert geänderte Dateien: editor-dirty-&lt;pid&gt;.json je laufender
 /// IDE.</summary>
-function EditorDirtyFiles: TArray<string>;
+function TMcpIde.EditorDirtyFiles: TArray<string>;
 var
   mFileName, mText: string;
   mJson: TJSONValue;
@@ -249,7 +267,7 @@ begin
     mJson := TJSONObject.ParseJSONValue(mText);
     try
       if not (mJson is TJSONObject) or not TJSONObject(mJson).TryGetValue<Integer>('pid', mPid) or
-        not TProcessInstances.Running(Cardinal(mPid)) then
+        not FProcess.Running(Cardinal(mPid)) then
       begin
         Continue;
       end;
@@ -264,7 +282,7 @@ end;
 /// Schreibt AText mit Kodierung und Zeilenenden der vorhandenen Datei (#121). Ist die Datei in einer IDE
 /// mit Atlas-Plugin offen, ändert das Plugin den Puffer und speichert (#397); sonst die Platte.
 /// </summary>
-procedure WriteSourceText(const AFileName, AText: string);
+procedure TMcpIde.WriteSourceText(const AFileName, AText: string);
 var
   mFileFormat: TFileFormat;
   mExpected, mReason, mInbox: string;
@@ -276,7 +294,7 @@ begin
   begin
     mInbox := TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
     case TMcpIdeEdits.Send(mInbox, TMcpIdeEdit.Make(AFileName, mExpected, AText),
-      TServerPlatform.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
+      FProcess.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
       function: Int64
       begin
         Result := TThread.GetTickCount64;
@@ -290,7 +308,7 @@ begin
   TFileEncoding.SaveToFile(AFileName, AText, mFileFormat);
 end;
 
-function HoldSourceText(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult;
+function TMcpIde.HoldSourceText(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult;
 var
   mPid: Cardinal;
   mInbox: string;
@@ -305,7 +323,7 @@ begin
   mInbox := TMcpIdeEdits.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
   mEdit := TMcpIdeEdit.Make(AFileName, AExpected, AText);
   mEdit.Hold := True;
-  case TMcpIdeEdits.Send(mInbox, mEdit, TServerPlatform.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
+  case TMcpIdeEdits.Send(mInbox, mEdit, FProcess.FolderWait(mInbox, TMcpIdeEdits.cPollMs, cAnswerSafetyMs),
     function: Int64
     begin
       Result := TThread.GetTickCount64;
@@ -350,7 +368,7 @@ end;
 /// <summary>Baut AProject ('' = aktives Projekt) in der laufenden IDE über das Atlas-Plugin (#261) und wartet
 /// auf das Ende. EMcpToolError mit dem Grund, wenn keine IDE mit Atlas-Plugin das Projekt offen hat oder sie
 /// den Auftrag nicht annimmt.</summary>
-function BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string;
+function TMcpIde.BuildInIde(const ARoot, AProject, AMode, AConfiguration, APlatform: string;
   const AOpen: TMcpIdeOpen): TIdeBuild;
 var
   mRequest: TMcpIdeBuildRequest;
@@ -376,7 +394,7 @@ begin
     raise EMcpToolError.Create(mReason);
   end;
   mInbox := TMcpIdeBuilds.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
-  if TMcpIdeBuilds.Send(mInbox, mRequest, TServerPlatform.FolderWait(mInbox, TMcpIdeBuilds.cPollMs, cAnswerSafetyMs),
+  if TMcpIdeBuilds.Send(mInbox, mRequest, FProcess.FolderWait(mInbox, TMcpIdeBuilds.cPollMs, cAnswerSafetyMs),
     TickClock(), mBuildText, mReason) <> TMcpIdeBuildOutcome.Done then
   begin
     raise EMcpToolError.Create(mReason);
@@ -387,7 +405,7 @@ begin
   end;
 end;
 
-function AskQuestionInIde(const ARoot: string; const AQuestion: TMcpIdeQuestion;
+function TMcpIde.AskQuestionInIde(const ARoot: string; const AQuestion: TMcpIdeQuestion;
   out AAnswer: string): TMcpQuestionOutcome;
 var
   mEntries: TArray<TMcpIdeEntry>;
@@ -407,7 +425,7 @@ begin
   end;
   mInbox := TMcpIdeQuestions.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
   case TMcpIdeInbox.Exchange(mInbox, TMcpIdeQuestions.RequestText(AQuestion),
-    TMcpIdeWaiting.Make(TServerPlatform.FolderWait(mInbox, TMcpIdeQuestions.cPollMs, cAnswerSafetyMs), TickClock(),
+    TMcpIdeWaiting.Make(FProcess.FolderWait(mInbox, TMcpIdeQuestions.cPollMs, cAnswerSafetyMs), TickClock(),
     TMcpIdeQuestions.cTakeMs, TMcpIdeQuestions.AnswerMs(AQuestion)), mAnswerText) of
     TMcpIdeExchangeOutcome.NotTaken:
       Result := TMcpQuestionOutcome.NotTaken;
@@ -418,7 +436,7 @@ begin
   end;
 end;
 
-function AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
+function TMcpIde.AskInIde(const ARoot, AClient: string; const AArguments: TJSONObject): string;
 var
   mQuestion: TMcpIdeQuestion;
   mReason, mAnswer: string;
@@ -434,7 +452,7 @@ end;
 
 /// <summary>IDE für ein Debug-Werkzeug: für debug_start nach AProject (AProjectFile = gewähltes Projekt), sonst die
 /// des letzten debug_start, solange sie läuft, ersatzweise die mit dem aktiven Projekt unter ARoot.</summary>
-function DebugIde(const ARoot, ATool, AProject: string; const AOpen: TMcpIdeOpen; out AProjectFile: string): Cardinal;
+function TMcpIde.DebugIde(const ARoot, ATool, AProject: string; const AOpen: TMcpIdeOpen; out AProjectFile: string): Cardinal;
 var
   mEntries: TArray<TMcpIdeEntry>;
   mEntry: TMcpIdeEntry;
@@ -463,7 +481,7 @@ begin
   end;
 end;
 
-function DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
+function TMcpIde.DebugInIde(const ARoot, ATool, AClient, AProject: string; const AArguments: TJSONObject;
   const AResolve: TMcpIdeDebugResolve; const AOpen: TMcpIdeOpen): string;
 var
   mPid: Cardinal;
@@ -489,7 +507,7 @@ begin
     raise EMcpToolError.Create(mReason);
   end;
   mInbox := TMcpIdeDebug.InboxOf(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), mPid);
-  if TMcpIdeDebug.Send(mInbox, mRequest, TMcpIdeWaiting.Make(TServerPlatform.FolderWait(mInbox, TMcpIdeDebug.cPollMs,
+  if TMcpIdeDebug.Send(mInbox, mRequest, TMcpIdeWaiting.Make(FProcess.FolderWait(mInbox, TMcpIdeDebug.cPollMs,
     cAnswerSafetyMs), TickClock(), TMcpIdeDebug.cTakeMs, TMcpIdeDebug.AnswerMs(AArguments)), Result,
     mReason) <> TMcpIdeDebugOutcome.Done then
   begin

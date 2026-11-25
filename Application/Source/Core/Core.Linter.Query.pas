@@ -46,7 +46,7 @@ uses
   Atlas.Common.Query.Output,
   Atlas.Common.Query.Service,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Core.WorkspaceGroup,
   Core.Linter.Output,
   Core.Linter.Settings,

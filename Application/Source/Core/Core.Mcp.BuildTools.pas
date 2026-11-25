@@ -138,7 +138,7 @@ end;
 
 function ToolBuildProject(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := TMcpBuildTools.Report(BuildInIde(AContext.Root, TMcpArgs.OptionalString(AArguments, 'project'),
+  Result := TMcpBuildTools.Report(TMcpIde.Create(AContext.Adapters.Process).BuildInIde(AContext.Root, TMcpArgs.OptionalString(AArguments, 'project'),
     TMcpArgs.OptionalString(AArguments, 'mode'), TMcpArgs.OptionalString(AArguments, 'configuration'),
     TMcpArgs.OptionalString(AArguments, 'platform'), IdeOpenOf(AContext)), AContext.Root, '');
 end;

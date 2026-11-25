@@ -61,7 +61,7 @@ uses
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Query.Language,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin.SavedQueries,
   Core.Bootstrap,
