@@ -51,7 +51,8 @@ uses
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.CommandSource,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.Contract;
 
 {$SCOPEDENUMS ON}
 

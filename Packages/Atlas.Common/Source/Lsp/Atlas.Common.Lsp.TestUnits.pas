@@ -27,7 +27,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.TestUnits,
-  Atlas.Text.DUnitX.UnitNames,
   Atlas.Common.Editing.TestDrafts;
 
 type
@@ -153,7 +152,8 @@ uses
   Atlas.Common.Editing.UnitTemplates,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.DUnitX.UnitNames;
 
 {$SCOPEDENUMS ON}
 

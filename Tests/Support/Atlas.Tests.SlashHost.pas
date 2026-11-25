@@ -10,7 +10,8 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Semantics.Contract;
 
 type
   TRecordingSlashHost = class(TInterfacedObject, ISlashHost)

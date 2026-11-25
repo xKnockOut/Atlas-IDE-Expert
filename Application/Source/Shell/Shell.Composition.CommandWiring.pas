@@ -31,12 +31,12 @@ uses
   Atlas.Common.Logging.Providers.RecentSink,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Diagnostics.CheckProfile,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Backend,
   Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Shell.Composition.CommandArea;
+  Shell.Composition.CommandArea,
+  Atlas.Common.Semantics.Contract;
 
 { TShellCommandWiring }
 

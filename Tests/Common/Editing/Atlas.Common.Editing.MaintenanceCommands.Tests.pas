@@ -63,7 +63,8 @@ uses
   Atlas.Common.Pascal.UsesGroups,
   Atlas.Tests.SlashHost,
   Atlas.Common.Editing.SlashCommands.TestSupport,
-  Atlas.Tests.TextEdits;
+  Atlas.Tests.TextEdits,
+  Atlas.Common.Semantics.Contract;
 
 /// <summary>Führt die Befehlszeile ALine mit AHost aus; False mit AReason.</summary>
 function RunWith(const AText: string; ALine: Integer; const AHost: ISlashHost; out AResult, AReason: string): Boolean;

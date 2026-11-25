@@ -63,7 +63,6 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.ChangeSignature,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Semantics.InlineAccessor,
@@ -72,7 +71,8 @@ uses
   Atlas.Common.Editing.InlineAccessor.Protocol,
   Atlas.Common.Editing.SafeDelete.Protocol,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Semantics.References;
+  Atlas.Common.Semantics.References,
+  Atlas.Common.Semantics.Contract;
 
 type
 {$SCOPEDENUMS ON}

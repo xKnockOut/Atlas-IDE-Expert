@@ -39,8 +39,8 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.Lsp.TestUnits,
-  Atlas.Common.Editing.Contract,
-  Shell.Composition.ProtocolWiring;
+  Shell.Composition.ProtocolWiring,
+  Atlas.Common.Semantics.Contract;
 
 
 { TShellPartsTests }

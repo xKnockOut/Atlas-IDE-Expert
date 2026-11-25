@@ -81,11 +81,11 @@ uses
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.UsesActions,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Pascal.InactiveRegions,
-  Atlas.Tests.TextEdits;
+  Atlas.Tests.TextEdits,
+  Atlas.Common.Semantics.Contract;
 
 /// <summary>Kleiner Index: Units.A (Foo), Units.B (Bar), Units.Reg (Init), Units.C (Baz, Mitglied Qux).</summary>
 function Info(const AUnitName: string): TUsesUnitInfo;

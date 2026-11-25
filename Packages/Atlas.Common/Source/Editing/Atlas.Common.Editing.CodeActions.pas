@@ -15,11 +15,11 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.UsesEdits,
-  Atlas.Common.Editing.AssignmentSwap;
+  Atlas.Common.Editing.AssignmentSwap,
+  Atlas.Common.Semantics.Contract;
 
 type
   TCodeActions = class

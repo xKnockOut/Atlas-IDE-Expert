@@ -21,7 +21,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Ein nicht auflösbarer Bezeichner und die Units, die ihn deklarieren.</summary>

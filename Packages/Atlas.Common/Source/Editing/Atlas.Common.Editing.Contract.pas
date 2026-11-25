@@ -19,18 +19,6 @@ uses
   Atlas.Common.Semantics.Contract;
 
 type
-  // Ergebnis der Namensauflösung für uses (TUsesUsage) und Umgebung der uses-Aktionen; die Typen liegen im
-  // Contract von Semantics.
-  TUsesUnitInfo = Atlas.Common.Semantics.Contract.TUsesUnitInfo;
-  TUsesUnitInfoFunc = Atlas.Common.Semantics.Contract.TUsesUnitInfoFunc;
-  TUsesResolution = Atlas.Common.Semantics.Contract.TUsesResolution;
-  TUsesResolveFunc = Atlas.Common.Semantics.Contract.TUsesResolveFunc;
-  TUsesTreeResolveFunc = Atlas.Common.Semantics.Contract.TUsesTreeResolveFunc;
-
-  TUnitsDeclaringFunc = Atlas.Common.Semantics.Contract.TUnitsDeclaringFunc;
-
-  TUsesContext = Atlas.Common.Semantics.Contract.TUsesContext;
-
   /// <summary>Datei, die ein Befehl neu anlegt oder ganz ersetzt (/unit, #297).</summary>
   TSlashFile = record
     FileName: string;

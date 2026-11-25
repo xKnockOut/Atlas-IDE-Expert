@@ -21,9 +21,9 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Index.SymbolIndex;
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Semantics.Contract;
 
 function NoNames: TArray<string>;
 begin

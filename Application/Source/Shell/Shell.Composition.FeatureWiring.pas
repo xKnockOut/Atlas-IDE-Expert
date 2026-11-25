@@ -32,7 +32,6 @@ uses
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.TestUnits,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.FormatRoutines,
   Shell.Composition.Contract,
@@ -42,7 +41,8 @@ uses
   Shell.Composition.EditingArea,
   Shell.Composition.CodeArea,
   Shell.Composition.AnalysisArea,
-  Shell.Composition.IdeArea;
+  Shell.Composition.IdeArea,
+  Atlas.Common.Semantics.Contract;
 
 { TShellFeatureWiring }
 

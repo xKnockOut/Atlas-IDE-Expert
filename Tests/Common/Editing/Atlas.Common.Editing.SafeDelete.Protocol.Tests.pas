@@ -54,9 +54,9 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Editing.SafeDelete.Protocol;
+  Atlas.Common.Editing.SafeDelete.Protocol,
+  Atlas.Common.Semantics.Contract;
 
 const
   cShapesFile = 'C:\P\Shapes.pas';

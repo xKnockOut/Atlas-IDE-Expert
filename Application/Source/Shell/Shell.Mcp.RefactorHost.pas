@@ -73,7 +73,6 @@ implementation
 uses
   System.JSON,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Pascal.LanguageFeatures,
@@ -82,7 +81,8 @@ uses
   Adapters.Lsp.RuleActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Mcp.Server,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.Contract;
 
 type
 {$SCOPEDENUMS ON}
