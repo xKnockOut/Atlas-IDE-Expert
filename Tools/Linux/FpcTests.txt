@@ -361,6 +361,7 @@ Atlas.Common.Pascal.WarningCodes.Tests
 Atlas.Common.Pascal.XmlDoc.Tests
 Atlas.Common.Product.Version.Tests
 Atlas.Common.Projects.DelphiVersions.Tests
+Atlas.Common.Projects.GroupProjects.Tests
 Atlas.Common.Projects.DprojEditor.Tests
 Atlas.Common.Projects.MissingUnit.Tests
 Atlas.Common.Projects.PackageReader.Tests

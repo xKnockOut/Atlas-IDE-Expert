@@ -109,7 +109,9 @@
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.TextDocument.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.FileEncoding.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.UnitLookup.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.Group.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.GroupProjects.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.UnitLookup.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Paths.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.DelphiVersions.pas"/>
         <DCCReference Include="Source\Projects\Internals\Atlas.Common.Projects.Internals.Xml.pas"/>
@@ -122,7 +124,7 @@
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.DprojEditor.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitResolver.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitAliases.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.UnitLookup.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitLookup.pas"/>
         <DCCReference Include="Source\CodeActions\Atlas.Common.CodeActions.Contract.pas"/>
         <DCCReference Include="Source\ClassActions\Atlas.Common.ClassActions.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Contract.pas"/>
@@ -906,7 +908,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DuplicateBodies.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DeadCode.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConsideredUsed.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.ProjectFiles.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Adapters.GroupFiles.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.Scanner.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.pas"/>

@@ -15,7 +15,7 @@
 //
 // uses-unit-not-found (#1016, wie F2613, F1026, F1027, E2202, F2092): Units in
 // uses und contains, die der Compiler nicht findet (TRuleContext.Units, die
-// Suche steht in Atlas.Common.Rules.Providers.UnitLookup), Dateien aus "in '…'",
+// Suche steht in Atlas.Common.Projects.UnitLookup), Dateien aus "in '…'",
 // Packages aus requires und Units, die sich selbst einbinden. Fehlt die Datei
 // aus "in '…'", meldet die Regel das auch ohne Projekt (#1379). Findet die
 // Suche nicht einmal System, fehlt der Bibliothekspfad: eine Meldung F1027

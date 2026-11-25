@@ -102,7 +102,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.Common.Rules.Builtin.Performance,
   Atlas.Common.Rules.Builtin.Performance.SetLengthInLoop,
   Atlas.Common.Rules.Builtin.Performance.ManagedParams,
@@ -767,7 +767,7 @@ const
     mContext.UnitName := 'Hooks';
     mContext.Text := cHooks;
     mContext.Index := mIndex;
-    mContext.ProjectFiles := TRuleProjectFiles.Create([mProject], mIndex,
+    mContext.ProjectFiles := TProjectGroupFiles.Create([mProject], mIndex,
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;

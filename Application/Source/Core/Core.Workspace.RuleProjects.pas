@@ -8,9 +8,9 @@ interface
 uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Lsp.IdeProject,
   Core.Workspace.Setup,
   Core.Workspace.State;
@@ -21,11 +21,11 @@ type
     /// <summary>Anwendungsart, Projektname und automatisch erzeugte Formulare für AFileName aus AProject
     /// (#926, #943, #956, #1055); sonst nur der Dateiname. Liest die .dpr über AReadText.</summary>
     class function RuleProjectOf(const AProject: TProjectInfo; const AFileName: string;
-      const AReadText: TRuleProjectReadText): TCheckProject; overload; static;
+      const AReadText: TProjectReadText): TCheckProject; overload; static;
     /// <summary>RuleProjectOf über alle Projekte, die AFileName enthalten (#1112), das bevorzugte zuerst;
     /// zusammengeführt mit MergeRuleProjects.</summary>
     class function RuleProjectOf(const AProjects: TArray<TProjectInfo>; const AFileName: string;
-      const AReadText: TRuleProjectReadText): TCheckProject; overload; static;
+      const AReadText: TProjectReadText): TCheckProject; overload; static;
     /// <summary>Projektkontext einer Datei aus mehreren Projekten (#1112): Das erste Projekt, das die Datei
     /// enthält, liefert Name, Formulare und .dpr. Widersprechen sich die Anwendungsarten (eine Unit im
     /// Konsolen-Testprogramm und im IDE-Package), bleibt die Art Unknown: Art-abhängige Regeln dürfen nicht
@@ -41,7 +41,7 @@ type
     class function ProjectWarningsOf(const AProject: TProjectInfo): TArray<string>; static;
     /// <summary>Präfix-Vorgaben des Projektkontexts der IDE für die Prüfregeln (#1111): Felder, Parameter, lokale
     /// Variablen und Konstanten.</summary>
-    class function NamingOf(const AContext: TIdeProjectContext): TRuleNaming; static;
+    class function NamingOf(const AContext: TIdeProjectContext): TProjectNaming; static;
     /// <summary>Dienste des Projekts für die Prüfregeln (#1112): Symbolindex, Nachladen von Units über AEnsureUnit,
     /// Namespaces, Unit-Suche, Packages und die Namenskonvention aus dem Projektkontext der IDE. Ein Weg für
     /// LSP-Server, MCP und Linter; projektweite Dienste (ProjectFiles, Nachladen über alle Arbeitsbereiche)
@@ -63,7 +63,7 @@ uses
 { TCoreRuleProjects }
 
 class function TCoreRuleProjects.RuleProjectOf(const AProject: TProjectInfo; const AFileName: string;
-  const AReadText: TRuleProjectReadText): TCheckProject;
+  const AReadText: TProjectReadText): TCheckProject;
 var
   mMainText: string;
 begin
@@ -84,7 +84,7 @@ begin
 end;
 
 class function TCoreRuleProjects.RuleProjectOf(const AProjects: TArray<TProjectInfo>; const AFileName: string;
-  const AReadText: TRuleProjectReadText): TCheckProject;
+  const AReadText: TProjectReadText): TCheckProject;
 var
   mProjects: TArray<TCheckProject>;
   mProject: TProjectInfo;
@@ -121,7 +121,7 @@ begin
     end
     else if mProject.Application <> Result.Application then
     begin
-      Result.Application := TRuleApplicationKind.Unknown;
+      Result.Application := TApplicationKind.Unknown;
     end;
   end;
 end;
@@ -151,14 +151,14 @@ begin
   end;
 end;
 
-class function TCoreRuleProjects.NamingOf(const AContext: TIdeProjectContext): TRuleNaming;
+class function TCoreRuleProjects.NamingOf(const AContext: TIdeProjectContext): TProjectNaming;
 const
-  cKinds: array[TNamingKind] of TRuleNamingKind = (TRuleNamingKind.Field, TRuleNamingKind.Parameter,
-    TRuleNamingKind.Local);
+  cKinds: array[TNamingKind] of TProjectNamingKind = (TProjectNamingKind.Field, TProjectNamingKind.Parameter,
+    TProjectNamingKind.Local);
 var
   mKind: TNamingKind;
 begin
-  Result := Default(TRuleNaming);
+  Result := Default(TProjectNaming);
   for mKind := Low(TNamingKind) to High(TNamingKind) do
   begin
     if AContext.HasNaming[mKind] then
@@ -169,8 +169,8 @@ begin
   end;
   if AContext.HasConstantPrefix then
   begin
-    Result.Known[TRuleNamingKind.Constant] := True;
-    Result.Prefixes[TRuleNamingKind.Constant] := AContext.ConstantPrefix;
+    Result.Known[TProjectNamingKind.Constant] := True;
+    Result.Prefixes[TProjectNamingKind.Constant] := AContext.ConstantPrefix;
   end;
 end;
 

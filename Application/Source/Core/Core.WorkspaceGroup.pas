@@ -22,10 +22,10 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Projects.GroupProjects,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Query.Contract,
   Core.Workspace.Setup,
@@ -34,7 +34,7 @@ uses
 type
   /// <summary>Gemerkte Projekte der Gruppe für projektweite Regeln (#1102); Valid bis Invalidate.</summary>
   TCoreRuleProjectCache = record
-    Items: TArray<TRuleProject>;
+    Items: TArray<TGroupProject>;
     Valid: Boolean;
   end;
 
@@ -56,7 +56,7 @@ type
     FLogger: ILogger;
     FIndex: ISymbolIndex;
     FProgressToken: string;
-    FReadText: TRuleProjectReadText;
+    FReadText: TProjectReadText;
     FFactories: TCoreWorkspaceFactories;
     FMain: TCoreWorkspace;
     FOthers: TObjectList<TCoreWorkspace>;
@@ -76,7 +76,7 @@ type
     function Workspaces: TArray<TCoreWorkspace>;
     function QuerySource(out ASource: TQuerySource): Boolean;
     procedure Prepare(AWorkspace: TCoreWorkspace);
-    function RuleProjects: TArray<TRuleProject>;
+    function RuleProjects: TArray<TGroupProject>;
   public
     /// <summary>Name des Clients für alle Arbeitsbereiche, auch nach Load (#1883).</summary>
     procedure SetClient(const AClient: string);
@@ -84,7 +84,7 @@ type
     /// Arbeitsbereiche gehen ins Leere, Meldungen an ALogger.</summary>
     constructor Create(const ARoot: string; const AStore: IDocumentStore; const ALogger: ILogger;
       const AIndex: ISymbolIndex; const AProgressToken: string; const AFactories: TCoreWorkspaceFactories;
-      const AReadText: TRuleProjectReadText);
+      const AReadText: TProjectReadText);
     destructor Destroy; override;
     /// <summary>Liest atlas.json, lädt das Projekt (ProjectFile oder im Ordner gesucht) und mit
     /// index.projectGroup die übrigen Projekte der Gruppe; startet den Indexaufbau.</summary>
@@ -108,7 +108,7 @@ type
     function RuleProject(const AFileName: string): TCheckProject;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102, #64) mit dem Uses-Graphen der Gruppe; still,
     /// solange Projekte laden oder der Index läuft.</summary>
-    function RuleProjectFiles: IRuleProjectFiles;
+    function RuleProjectFiles: IProjectGroupFiles;
     /// <summary>Uses-Graph der Gruppe (#64) mit den Namensräumen des Hauptprojekts; neu aufgebaut wird er nur bei
     /// einer Änderung.</summary>
     function UsesGraph: TUsesGraphService;
@@ -195,7 +195,7 @@ end;
 
 constructor TCoreWorkspaceGroup.Create(const ARoot: string; const AStore: IDocumentStore; const ALogger: ILogger;
   const AIndex: ISymbolIndex; const AProgressToken: string; const AFactories: TCoreWorkspaceFactories;
-  const AReadText: TRuleProjectReadText);
+  const AReadText: TProjectReadText);
 begin
   inherited Create;
   FRoot := ARoot;
@@ -303,10 +303,10 @@ begin
     end;
 end;
 
-function TCoreWorkspaceGroup.RuleProjects: TArray<TRuleProject>;
+function TCoreWorkspaceGroup.RuleProjects: TArray<TGroupProject>;
 var
   mWorkspace: TCoreWorkspace;
-  mProject: TRuleProject;
+  mProject: TGroupProject;
   mMainSource: string;
 begin
   System.TMonitor.Enter(FLock);
@@ -323,7 +323,7 @@ begin
   begin
     if mWorkspace.State.RuleProject(mProject, mMainSource) then
     begin
-      Result := Result + [TRuleProjectFiles.ProjectOf(mProject.FileName, mMainSource, mProject.Sources, FReadText)];
+      Result := Result + [TGroupProjects.ProjectOf(mProject.FileName, mMainSource, mProject.Sources, FReadText)];
     end;
   end;
   System.TMonitor.Enter(FLock);
@@ -515,14 +515,18 @@ begin
   Result.Services.Queries := FQueries;
 end;
 
-function TCoreWorkspaceGroup.RuleProjectFiles: IRuleProjectFiles;
+function TCoreWorkspaceGroup.RuleProjectFiles: IProjectGroupFiles;
 begin
-  Result := TRuleProjectFiles.Create(RuleProjects, FIndex, FReadText,
-    function(out AReason: string): Boolean
-    begin
-      Result := Ready(AReason);
-    end,
-    UsesGraph);
+  Result := nil;
+  if Assigned(FFactories.GroupFiles) then
+  begin
+    Result := FFactories.GroupFiles(RuleProjects, FIndex, FReadText,
+      function(out AReason: string): Boolean
+      begin
+        Result := Ready(AReason);
+      end,
+      UsesGraph);
+  end;
 end;
 
 function TCoreWorkspaceGroup.UsesGraph: TUsesGraphService;

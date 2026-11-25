@@ -115,8 +115,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Rules.Contract.UnitLookup,
-  Atlas.Common.Rules.Providers.UnitLookup,
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Projects.UnitLookup,
   Atlas.Common.Rules.Builtin.Unresolved,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.TextEdits;
