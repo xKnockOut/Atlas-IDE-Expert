@@ -130,7 +130,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.ParameterHeaders,

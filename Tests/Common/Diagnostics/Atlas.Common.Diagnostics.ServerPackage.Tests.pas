@@ -44,7 +44,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Text.LogMarks,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Diagnostics.ServerPackage;
 
 function Input: TServerPackageInput;

@@ -22,7 +22,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Documents.TextChanges;
 
 function EditsOf(ADocument: TJSONObject): TArray<TTextEdit>;

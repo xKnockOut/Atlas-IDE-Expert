@@ -69,7 +69,7 @@ uses
   System.Generics.Collections,
   Atlas.Text.Chars,
   Atlas.Text.Lines,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

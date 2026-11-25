@@ -62,7 +62,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,

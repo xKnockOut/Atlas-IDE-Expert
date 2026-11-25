@@ -35,7 +35,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.UnitRename,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.JsonRpc.Positions;
 
 /// <summary>Änderungen einer Datei als TextDocumentEdit.</summary>
 function DocumentJson(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject;

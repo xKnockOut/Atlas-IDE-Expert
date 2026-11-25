@@ -55,7 +55,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.SafeDelete;
 
 const

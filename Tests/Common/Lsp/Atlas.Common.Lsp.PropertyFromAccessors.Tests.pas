@@ -47,7 +47,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.PropertyFromAccessors,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Text.Json,
   Atlas.Common.Lsp.Edits.TestSupport;

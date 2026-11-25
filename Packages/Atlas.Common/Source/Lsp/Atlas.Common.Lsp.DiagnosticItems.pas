@@ -76,7 +76,7 @@ uses
   System.Math,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Builtin.Deprecated,

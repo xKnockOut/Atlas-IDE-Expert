@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.StatusFile;
+﻿unit Atlas.Common.Diagnostics.StatusFile;
 
 // Statusdatei je Server (#1356, #1901): Jeder AtlasServer (LSP für die IDE, --mcp für den KI-Assistenten,
 // Kommandozeilenlauf) schreibt alle paar Sekunden %LOCALAPPDATA%\Atlas\Status\server-<pid>.json

@@ -55,7 +55,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.Processes,
   Atlas.Common.Lsp.SettingsCommands,
   Atlas.Common.Lsp.PullDiagnostics,

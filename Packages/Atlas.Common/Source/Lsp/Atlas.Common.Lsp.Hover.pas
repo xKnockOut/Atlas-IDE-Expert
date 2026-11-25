@@ -140,7 +140,7 @@ uses
   System.Diagnostics,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.CompilerDirectives,
   Atlas.Common.Lsp.KeywordReference,
   Atlas.Common.Lsp.Hover.Lookup,

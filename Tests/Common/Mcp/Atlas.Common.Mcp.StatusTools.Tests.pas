@@ -38,8 +38,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  Atlas.Common.Lsp.Status,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.JsonRpc.ServerStatus,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Mcp.Statistics,
   Atlas.Common.Mcp.StatusTools,
   Atlas.Tests.TempFolder;

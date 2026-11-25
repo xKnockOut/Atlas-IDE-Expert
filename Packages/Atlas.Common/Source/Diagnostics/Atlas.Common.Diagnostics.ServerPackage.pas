@@ -28,7 +28,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.StatusFile;
+  Atlas.Common.Diagnostics.StatusFile;
 
 type
   TServerPackageFile = record
