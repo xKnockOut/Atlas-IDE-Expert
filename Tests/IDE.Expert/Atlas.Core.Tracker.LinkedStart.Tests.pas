@@ -46,7 +46,7 @@ uses
   Atlas.Core.Tracker.Development,
   Atlas.Core.Tracker.LinkedStart,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 const
   cBranch = 'feature/7-statusfeld';

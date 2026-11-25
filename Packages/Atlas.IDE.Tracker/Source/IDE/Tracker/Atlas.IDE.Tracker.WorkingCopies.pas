@@ -16,7 +16,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   /// <summary>Gemerkter Stand einer Arbeitskopie.</summary>

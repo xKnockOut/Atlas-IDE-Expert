@@ -33,7 +33,7 @@ uses
   Vcl.Forms,
   Atlas.Plugin.Localization.Strings,
   System.DateUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Welcome.Unsaved,
   Atlas.UI.Welcome.Unsaved,
   Atlas.UI.Welcome.Push,

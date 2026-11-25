@@ -9,7 +9,7 @@
 //   {kurztitel}; danach nach den Regeln von git check-ref-format bereinigt,
 //   damit der Name für Git und SVN gültig ist.
 // - Commit-Präfix aus issues.commitPattern ({kennung} mit „#“).
-// - Gültigkeit und Basen eines Branchs: Atlas.Core.VersionControl.BranchNames (Base).
+// - Gültigkeit und Basen eines Branchs: Atlas.VersionControl.Repository.BranchNames (Base).
 // - Kennung aus einem Branch-Namen (Branch → Ticket): GitHub die Nummer als
 //   eigenes Stück („feature/753-x“ → #753), YouTrack „ATL-123“.
 
@@ -53,7 +53,7 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.BranchNames,
+  Atlas.VersionControl.Repository.BranchNames,
   Atlas.Text.Lines,
   Atlas.Text.Names;
 

@@ -55,8 +55,8 @@ implementation
 uses
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.ExternalRules,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.ExternalRules,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Vcl.Theme.Scaling;

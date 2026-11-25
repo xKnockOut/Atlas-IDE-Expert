@@ -40,7 +40,7 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Welcome.Projects,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Welcome.Contract;
 
 type

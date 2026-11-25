@@ -102,7 +102,7 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.BlameLinks,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Tracker.IssuePreview,

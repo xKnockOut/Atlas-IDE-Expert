@@ -13,7 +13,7 @@
 interface
 
 uses
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   /// <summary>Was nach „Branch anlegen“ im Hauptthread folgt.</summary>

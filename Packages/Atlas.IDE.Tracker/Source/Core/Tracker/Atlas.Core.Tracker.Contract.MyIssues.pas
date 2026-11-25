@@ -10,7 +10,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Contract;
 
 type

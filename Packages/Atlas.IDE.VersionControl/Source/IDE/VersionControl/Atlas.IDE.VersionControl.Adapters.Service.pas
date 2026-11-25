@@ -8,10 +8,10 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.ToolCheck,
-  Atlas.Core.VersionControl.ServerCheck,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.ToolCheck,
+  Atlas.VersionControl.Repository.ServerCheck,
   Atlas.Core.Projects.VersionControl,
   Atlas.IDE.Contracts.VersionControl;
 

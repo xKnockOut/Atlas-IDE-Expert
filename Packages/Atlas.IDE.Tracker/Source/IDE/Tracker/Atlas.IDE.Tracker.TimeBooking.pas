@@ -72,7 +72,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.TimePlan,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Tracker.Time.Strings,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeList,
