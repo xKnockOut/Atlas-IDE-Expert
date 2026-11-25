@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.InterfaceStubs.Tests;
+﻿unit Atlas.Common.Pascal.InterfaceStubs.Tests;
 
 // Tests für das Anlegen fehlender Interface-Methoden (#466), Teil ohne Namensauflösung.
 
@@ -27,7 +27,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.InterfaceStubs;
+  Atlas.Common.Pascal.InterfaceStubs;
 
 { TInterfaceStubsTests }
 

@@ -44,7 +44,7 @@ uses
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.DiagnosticItems,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Symbole für das Dokument AUri; False, wenn kein Projekt sie festlegt.

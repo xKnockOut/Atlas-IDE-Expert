@@ -81,7 +81,7 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormFiles,
-  Atlas.Common.Editing.DataFieldNames,
+  Atlas.Common.Dfm.DataFieldNames,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.Context,

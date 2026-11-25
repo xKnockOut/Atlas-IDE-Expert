@@ -31,7 +31,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Semantics.Contract;
 
 { TShellCodeActionsTests }
 

@@ -12,11 +12,11 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.UnitSearch,
-  Shell.Composition.Contract;
+  Shell.Composition.Contract,
+  Atlas.Common.Semantics.Contract;
 
 type
   TShellUnitSearchReadText = TDocumentReadText;

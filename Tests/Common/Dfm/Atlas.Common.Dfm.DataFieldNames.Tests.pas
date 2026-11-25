@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.DataFieldNames.Tests;
+﻿unit Atlas.Common.Dfm.DataFieldNames.Tests;
 
 // Tests für Feld- und Parameternamen in FieldByName, FindField und ParamByName (#461).
 
@@ -36,7 +36,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.DataFieldNames;
+  Atlas.Common.Dfm.DataFieldNames;
 
 const
   cForm =

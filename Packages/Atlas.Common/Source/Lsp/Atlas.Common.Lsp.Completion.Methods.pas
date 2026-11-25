@@ -46,7 +46,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.ClassCompletion,
-  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.TypeConversions,
   Atlas.Common.Lsp.Completion.Context,

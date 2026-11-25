@@ -51,9 +51,9 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Tests.LspRules;
+  Atlas.Tests.LspRules,
+  Atlas.Common.Semantics.Contract;
 
 const
   cLB = #13#10;

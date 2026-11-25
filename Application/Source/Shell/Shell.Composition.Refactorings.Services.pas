@@ -16,12 +16,12 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.Refactorings,
-  Atlas.Common.Semantics.References;
+  Atlas.Common.Semantics.References,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Liste von Namen, z. B. Dateien des Projekts oder Namensräume.</summary>

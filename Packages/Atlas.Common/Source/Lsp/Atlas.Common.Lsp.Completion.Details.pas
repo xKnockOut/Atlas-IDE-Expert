@@ -47,7 +47,7 @@ uses
   Atlas.Common.Index.Files,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Pascal.TypeTexts;
 

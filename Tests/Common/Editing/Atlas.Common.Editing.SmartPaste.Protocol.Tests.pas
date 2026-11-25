@@ -26,9 +26,9 @@ uses
   System.JSON,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SmartPaste,
-  Atlas.Common.Editing.SmartPaste.Protocol;
+  Atlas.Common.Editing.SmartPaste.Protocol,
+  Atlas.Common.Semantics.Contract;
 
 const
   cTarget =

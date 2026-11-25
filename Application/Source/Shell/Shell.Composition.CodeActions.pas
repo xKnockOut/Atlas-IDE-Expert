@@ -21,7 +21,8 @@ uses
   Rules.CheckContext,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Editing.DocumentLinks.Protocol,
-  Atlas.Common.Lsp.Colors;
+  Atlas.Common.Lsp.Colors,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Was die Code-Aktionen vom Arbeitsbereich einer Datei brauchen; Found False ohne Arbeitsbereich.

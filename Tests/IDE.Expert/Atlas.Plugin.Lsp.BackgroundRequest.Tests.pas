@@ -288,6 +288,8 @@ begin
     Assert.IsFalse(mRequest.Busy);
   finally
     TAtlasGuard.OnFailure := mOld;
+    // Der gemeldete Fehler bleibt sonst als Zeitpunkt in der Sicherung von Outline stehen (Leckmonitor).
+    TAtlasGuard.Enable(TAtlasFeature.Outline);
     mRequest.Free;
     mProbe.Free;
   end;

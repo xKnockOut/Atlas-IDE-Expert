@@ -72,7 +72,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Editing.AssignFields,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.Context,
@@ -779,7 +779,8 @@ var
         Exit(mItem);
       end;
     end;
-    raise Exception.CreateFmt('Eintrag "%s" fehlt', [AName]);
+    Result := Default(TCompletionItem);
+    Assert.Fail(Format('Eintrag "%s" fehlt', [AName]));
   end;
 
 var
