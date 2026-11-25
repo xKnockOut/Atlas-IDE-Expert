@@ -5,7 +5,8 @@
 // und „Nur Konflikte“, Knöpfe und HTML-Export der gezeigten Zeilen; Spalte
 // „Selten per Tastatur“ aus der Zählung der Tastenkürzel-Tipps (#600).
 // Das Fenster ist ein Atlas-Dialog ohne eigene Farben (Thema der IDE), die
-// Spalte „Hinweis“ füllt die übrige Breite.
+// Spalte „Hinweis“ füllt die übrige Breite. „Auch Befehle ohne Taste“ und
+// „Zuweisen …“ nur für Atlas-Zeilen (#2938).
 
 interface
 
@@ -36,6 +37,8 @@ type
     procedure RarelyByKeyboardColumn;
     [Test]
     procedure ThemedDialogWithFillingHintColumn;
+    [Test]
+    procedure KeylessRowsAndAssignOnlyForAtlas;
   end;
 
 implementation
@@ -158,6 +161,60 @@ begin
   Assert.AreEqual('', TAtlasKeyMapWindow.HintText(mItems, 2), 'ohne Konflikt kein Hinweis');
   Assert.AreEqual('', TAtlasKeyMapWindow.ReasonText(TAtlasKeyReason.None));
   Assert.Contains(TAtlasKeyMapWindow.ReasonText(TAtlasKeyReason.AtlasYields), 'überlässt');
+end;
+
+procedure TAtlasKeyMapWindowTests.KeylessRowsAndAssignOnlyForAtlas;
+var
+  mWindow: TAtlasKeyMapWindow;
+  mKeyless: TAtlasKeyItem;
+  mAssigned: string;
+  mIndex: Integer;
+begin
+  mKeyless := TAtlasKeyItem.Create(0, '', 'Gliederung', TAtlasKeyProvenance.Create(TAtlasKeyOrigin.Atlas,
+    TAtlasKeyMap.cAtlasName, TAtlasKeyContext.Editor, TAtlasKeySource.Binding, 'command:Atlas.Outline', 3));
+  mKeyless.CommandId := 'Atlas.Outline';
+  mKeyless.Custom := True;
+  mAssigned := '';
+  mWindow := TAtlasKeyMapWindow.CreateKeyMap(nil);
+  try
+    mWindow.OnAssign :=
+      procedure(const AItem: TAtlasKeyItem)
+      begin
+        mAssigned := AItem.Command;
+      end;
+    mWindow.SetItems(Sample, TArray<TAtlasKeyItem>.Create(mKeyless));
+    Assert.AreEqual(4, Integer(Length(mWindow.Shown)), 'ohne Taste erst auf Wunsch');
+    Assert.IsFalse(mWindow.AssignButton.Enabled, 'nichts markiert');
+    mWindow.WithoutKeyBox.Checked := True;
+    Assert.AreEqual(5, Integer(Length(mWindow.Shown)));
+    Assert.AreEqual('5 Kürzel, 2 Konflikte', mWindow.SummaryLabel.Caption);
+    Assert.AreEqual('(keine)', TAtlasKeyMapWindow.KeyText(mKeyless));
+    // Zeile der IDE: nicht zuweisbar.
+    for mIndex := 0 to High(mWindow.Shown) do
+    begin
+      if mWindow.Items[mWindow.Shown[mIndex]].Origin = TAtlasKeyOrigin.Ide then
+      begin
+        mWindow.List.Items[mIndex].Selected := True;
+      end;
+    end;
+    Assert.IsFalse(mWindow.AssignButton.Enabled, 'Aktion der IDE');
+    mWindow.AssignButton.Click;
+    Assert.AreEqual('', mAssigned);
+    for mIndex := 0 to High(mWindow.Shown) do
+    begin
+      if mWindow.Items[mWindow.Shown[mIndex]].CommandId = 'Atlas.Outline' then
+      begin
+        mWindow.List.Items[mIndex].Selected := True;
+      end;
+    end;
+    Assert.IsTrue(mWindow.AssignButton.Enabled, 'Palettenbefehl ohne Taste');
+    mWindow.AssignButton.Click;
+    Assert.AreEqual('Gliederung', mAssigned);
+    mWindow.WithoutKeyBox.Checked := False;
+    Assert.AreEqual(4, Integer(Length(mWindow.Shown)));
+  finally
+    mWindow.Free;
+  end;
 end;
 
 procedure TAtlasKeyMapWindowTests.SearchByKeyAndOnlyConflicts;
