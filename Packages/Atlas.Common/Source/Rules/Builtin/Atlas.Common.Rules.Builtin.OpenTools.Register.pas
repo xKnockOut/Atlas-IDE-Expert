@@ -37,7 +37,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
   Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Localization.Texts;

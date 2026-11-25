@@ -54,7 +54,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Ownership,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;

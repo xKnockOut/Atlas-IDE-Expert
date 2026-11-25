@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Projects.Contract.UnitLookup;
+﻿unit Atlas.Common.Rules.Contract.UnitLookup;
 
 // Was die Unit-Suche wie beim Compiler (TUnitLookup, #1016) über Projekt, Installation und Dateisystem wissen
 // muss. Eigene Unit, damit Aufrufer die Suche einrichten können, ohne den Adapter zu importieren; wer sie

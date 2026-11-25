@@ -11,16 +11,21 @@
 //   für seine Abfrage. Abfragen dauern auch bei einigen tausend Units nur
 //   Millisekunden. Aus dem Hauptthread der IDE wird nie gelesen: der Server
 //   rechnet im Arbeitsthread der Anfrage.
+// - Derived hält Auswertungen über den ganzen Graphen (Feature-Zyklen) je
+//   Schlüssel, bis sich der Graph ändert: Jede Datei einer Prüfung fragt
+//   dieselbe Auswertung, gerechnet wird sie einmal.
 
 interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesGraph;
 
 type
   TUsesGraphReader = reference to procedure(const AGraph: TUsesGraph);
+  TUsesGraphDerive = reference to function(const AGraph: TUsesGraph): IInterface;
 
   TUsesGraphService = class
   private
@@ -31,6 +36,8 @@ type
     FLock: TObject;
     FRebuilds: Integer;
     FUpdates: Integer;
+    /// <summary>Abgeleitete Werte je Schlüssel zur Generation FGeneration.</summary>
+    FDerived: TDictionary<string, IInterface>;
     procedure Refresh;
   public
     constructor Create(const AIndex: ISymbolIndex; const AOptions: TUsesGraphOptions);
@@ -40,6 +47,9 @@ type
     function Options: TUsesGraphOptions;
     /// <summary>Gleicht den Graphen mit dem Index ab und ruft AReader unter der Sperre auf.</summary>
     procedure Read(const AReader: TUsesGraphReader);
+    /// <summary>Wert zu AKey aus dem aktuellen Graphen: ADerive läuft unter der Sperre, je Schlüssel einmal bis
+    /// zur nächsten Änderung des Graphen.</summary>
+    function Derived(const AKey: string; const ADerive: TUsesGraphDerive): IInterface;
     /// <summary>Generation des Index, auf der der Graph zuletzt stand; -1 vor dem ersten Read.</summary>
     function Generation: Int64;
     /// <summary>Wie oft der Graph ganz neu aufgebaut bzw. inkrementell abgeglichen wurde (für Tests und das
@@ -59,10 +69,12 @@ begin
   FOptions := AOptions;
   FGeneration := -1;
   FLock := TObject.Create;
+  FDerived := TDictionary<string, IInterface>.Create(4);
 end;
 
 destructor TUsesGraphService.Destroy;
 begin
+  FDerived.Free;
   FGraph.Free;
   FLock.Free;
   inherited;
@@ -88,6 +100,7 @@ begin
     Inc(FUpdates);
   end;
   FGeneration := mCurrent;
+  FDerived.Clear;
 end;
 
 procedure TUsesGraphService.SetOptions(const AOptions: TUsesGraphOptions);
@@ -97,6 +110,7 @@ begin
     FOptions := AOptions;
     FreeAndNil(FGraph);
     FGeneration := -1;
+    FDerived.Clear;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -118,6 +132,21 @@ begin
   try
     Refresh;
     AReader(FGraph);
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+function TUsesGraphService.Derived(const AKey: string; const ADerive: TUsesGraphDerive): IInterface;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    Refresh;
+    if not FDerived.TryGetValue(AKey, Result) then
+    begin
+      Result := ADerive(FGraph);
+      FDerived.Add(AKey, Result);
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;

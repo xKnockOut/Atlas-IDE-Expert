@@ -39,7 +39,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Semantics.ControlFlow.Signatures,
+  Atlas.Common.Pascal.FlowSignatures,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ResolvedSignatures;
 

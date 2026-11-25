@@ -54,7 +54,7 @@ uses
   System.Math,
   Vcl.Graphics,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Outline.Strings,
+  Atlas.UI.Popup.Strings,
   Atlas.Vcl.Popup.Accessibility;
 
 { TAtlasCrumbCardTip }
@@ -159,7 +159,7 @@ begin
   end;
   if not ACard.Available then
   begin
-    FCaptions := [TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMetricsMissing)];
+    FCaptions := [TAtlasPopupStrings.Text(TAtlasPopupTextId.MetricsMissing)];
     FValues := [''];
   end;
   Canvas.Font := UIFont;
@@ -183,12 +183,12 @@ end;
 
 class function TAtlasCrumbCardTip.RowCaption(const ARow: TAtlasCardRow): string;
 const
-  cIds: array[TAtlasCardMetric] of TAtlasOutlineTextId = (TAtlasOutlineTextId.BreadcrumbsMetricsLines,
-    TAtlasOutlineTextId.BreadcrumbsMetricsCyclomatic, TAtlasOutlineTextId.BreadcrumbsMetricsNesting,
-    TAtlasOutlineTextId.BreadcrumbsMetricsParameters, TAtlasOutlineTextId.BreadcrumbsMetricsMembers,
-    TAtlasOutlineTextId.BreadcrumbsMetricsInheritance);
+  cIds: array[TAtlasCardMetric] of TAtlasPopupTextId = (TAtlasPopupTextId.MetricsLines,
+    TAtlasPopupTextId.MetricsCyclomatic, TAtlasPopupTextId.MetricsNesting,
+    TAtlasPopupTextId.MetricsParameters, TAtlasPopupTextId.MetricsMembers,
+    TAtlasPopupTextId.MetricsInheritance);
 begin
-  Result := TAtlasOutlineStrings.Text(cIds[ARow.Metric]);
+  Result := TAtlasPopupStrings.Text(cIds[ARow.Metric]);
 end;
 
 class function TAtlasCrumbCardTip.RowValue(const ARow: TAtlasCardRow): string;
@@ -196,7 +196,7 @@ begin
   Result := ARow.ValueText;
   if ARow.Over then
   begin
-    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMetricsLimit), [Result, ARow.Limit]);
+    Result := Format(TAtlasPopupStrings.Text(TAtlasPopupTextId.MetricsLimit), [Result, ARow.Limit]);
   end;
 end;
 

@@ -15,7 +15,7 @@
 // deadCode.keepPatterns aus den Einstellungen (#64).
 //
 // Ablauf je Kandidat:
-// - Ausnahmen über den Dienst „gilt als verwendet“ (Rules.ConsideredUsed).
+// - Ausnahmen über den Dienst „gilt als verwendet“ (Semantics.ConsideredUsed).
 // - Dateien im Suchbereich (Projekt bzw. Projektgruppe, IRuleProjectFiles):
 //   Nur Dateien, in denen der Name als Bezeichner vorkommt (Verwendungen im
 //   Index, #492), werden geparst; jedes Vorkommen außer Deklarationen und dem
@@ -73,7 +73,7 @@ uses
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.ConsideredUsed,
+  Atlas.Common.Semantics.ConsideredUsed,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;

@@ -46,7 +46,7 @@ uses
   Atlas.Common.Dfm.FormInfo,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.DocWiki,
+  Atlas.Common.Index.DocWiki,
   Atlas.Common.Lsp.WinApiDocs,
   Atlas.Common.Lsp.MessageHandlers,
   Atlas.Common.Lsp.HoverValues,

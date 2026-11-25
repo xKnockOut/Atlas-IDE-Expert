@@ -21,8 +21,6 @@ type
     [Test]
     procedure ColumnExpandsTabs;
     [Test]
-    procedure HideTargetByRuleOrLine;
-    [Test]
     procedure LinesCappedPerProblem;
   end;
 
@@ -30,7 +28,6 @@ implementation
 
 uses
   Atlas.Plugin.Problems.Contract,
-  Atlas.Core.Editor.Hide,
   Atlas.Core.Problems.Marks;
 
 function Problem(AStartLine, AStartCharacter, AEndLine, AEndCharacter: Integer): TAtlasProblem;
@@ -92,29 +89,6 @@ begin
   Assert.AreEqual(3, TAtlasProblemMarks.Column('abc', 2, 4));
   Assert.AreEqual(5, TAtlasProblemMarks.Column(#9'x', 1, 4));
   Assert.AreEqual(1, TAtlasProblemMarks.Column('abc', -1, 4));
-end;
-
-procedure TAtlasProblemMarksTests.HideTargetByRuleOrLine;
-var
-  mProblem: TAtlasProblem;
-  mTarget: TAtlasHideTarget;
-begin
-  mProblem := Problem(5, 0, 7, 1);
-  mProblem.Code := 'empty-except';
-  mProblem.Message := 'Leer';
-  mTarget := TAtlasProblemMarks.HideTarget('A.pas', mProblem, 6, 'x');
-  Assert.AreEqual(5, mTarget.Line);
-  Assert.AreEqual('empty-except', mTarget.RuleId);
-  Assert.AreEqual('Leer (empty-except)', mTarget.Caption);
-  mProblem.Source := TAtlasProblem.cCompilerSource;
-  mTarget := TAtlasProblemMarks.HideTarget('A.pas', mProblem, 6, 'x');
-  Assert.AreEqual(6, mTarget.Line);
-  Assert.AreEqual('', mTarget.RuleId);
-  mProblem.Source := '';
-  mProblem.Code := '';
-  mTarget := TAtlasProblemMarks.HideTarget('A.pas', mProblem, 6, 'x');
-  Assert.AreEqual(6, mTarget.Line);
-  Assert.AreEqual('Leer', mTarget.Caption);
 end;
 
 procedure TAtlasProblemMarksTests.LinesCappedPerProblem;

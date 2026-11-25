@@ -12,7 +12,6 @@ uses
   System.Generics.Collections,
   Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Lsp.Progress,
-  Atlas.Core.Hover.Contract,
   Atlas.Plugin.Lsp.Contract,
   Atlas.Plugin.Files.WatchedChanges,
   Atlas.Plugin.Lsp.TextChanges,
@@ -39,9 +38,9 @@ type
     /// <summary>ATimeoutMs 0 = Zeitlimit der Sitzung. Aufrufe im Hauptthread geben ein kurzes Zeitlimit mit: Die IDE
     /// steht, bis die Antwort kommt.</summary>
     function Hover(const AFileName, AText: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): string;
-    /// <summary>Hover an einem Fundort ohne Abgleich: Der Server liest nicht geöffnete Dateien selbst (#588).</summary>
-    function HoverDataAt(const AFileName: string; ALine, ACharacter: Integer;
-      ATimeoutMs: Cardinal): TAtlasHoverData;
+    /// <summary>Antwort auf textDocument/hover an einem Fundort ohne Abgleich: Der Server liest nicht geöffnete
+    /// Dateien selbst (#588). Gehört dem Aufrufer; TAtlasHoverData.FromResponse liest und gibt sie frei.</summary>
+    function HoverResponseAt(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
     /// <summary>Verwendungen des Symbols am Fundort ohne die Deklaration (textDocument/references).</summary>
     function References(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;
     /// <summary>Implementierungen des Symbols (textDocument/implementation, #400).</summary>
@@ -261,18 +260,10 @@ begin
   end;
 end;
 
-function TLspSessionRequests.HoverDataAt(const AFileName: string; ALine, ACharacter: Integer;
-  ATimeoutMs: Cardinal): TAtlasHoverData;
-var
-  mResponse: TJSONValue;
+function TLspSessionRequests.HoverResponseAt(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TJSONValue;
 begin
-  mResponse := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter),
-    TimeoutOr(ATimeoutMs));
-  try
-    Result := TAtlasHoverData.FromHover(mResponse);
-  finally
-    mResponse.Free;
-  end;
+  Result := FClient.Request('textDocument/hover', PositionParams(AFileName, ALine, ACharacter), TimeoutOr(ATimeoutMs));
 end;
 
 function TLspSessionRequests.References(const AFileName: string; ALine, ACharacter: Integer): TArray<TLspLocation>;

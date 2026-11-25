@@ -5,6 +5,9 @@
 // ein eigener Teil (TAtlasResultsPart), den die Ansicht kennt: Clear setzt alle Teile zurück; Aufklappen, Öffnen,
 // Kontextmenü, Klick und Tasten gehen der Reihe nach an die Teile, bis einer sie übernimmt. Die Teile bauen ihre
 // Steuerelemente selbst in Titelzeile (Header) bzw. Frame (Host); Besitzer ist der Frame.
+// Nachladen beim Aufklappen kommt aus dem Hintergrund: Der Teil merkt sich am Knoten eine Kennung (BeginLoad) und
+// sucht ihn mit NodeOfLoad wieder, wenn die Antwort da ist. Knotenobjekte überdauern das Warten nicht sicher (der
+// Baum legt sie beim Neuanlegen seines Fensters neu an, Clear löscht sie).
 
 interface
 
@@ -48,6 +51,8 @@ type
     FlowSource: TAtlasDataFlowSymbol;
     FlowPath: TArray<string>;
     FlowLevel: Integer;
+    /// <summary>Kennung einer laufenden Nachladung (BeginLoad); 0 ohne.</summary>
+    LoadId: Integer;
     /// <summary>Knoten der Art AKind ohne weitere Angaben.</summary>
     class function Create(AKind: TAtlasResultsNodeKind): TAtlasResultsNode; static;
     /// <summary>Knoten der Art AKind, der zu AFileName springt.</summary>
@@ -96,6 +101,7 @@ type
     FParts: TObjectList<TAtlasResultsPart>;
     FHintNode: TTreeNode;
     FOnOpen: TAtlasResultsOpen;
+    FLastLoadId: Integer;
   public
     constructor Create(AHost: TWinControl; AHeader: TPanel; ATitle: TLabel; ATree: TTreeView; AMenu: TPopupMenu);
     destructor Destroy; override;
@@ -108,6 +114,11 @@ type
     function DataOf(ANode: TTreeNode): TAtlasResultsNode;
     /// <summary>Daten von ANode ersetzen (etwa Loaded nach dem Nachladen).</summary>
     procedure Store(ANode: TTreeNode; const AData: TAtlasResultsNode);
+    /// <summary>ANode lädt nach: als geladen markieren und eine neue Kennung für NodeOfLoad merken.</summary>
+    function BeginLoad(ANode: TTreeNode): Integer;
+    /// <summary>Knoten mit der Kennung AId aus BeginLoad; nil, wenn es ihn nicht mehr gibt. Löscht die Kennung.
+    /// </summary>
+    function NodeOfLoad(AId: Integer): TTreeNode;
     /// <summary>ANode wählen; nil wählt den ersten Knoten, falls es einen gibt.</summary>
     procedure Select(ANode: TTreeNode);
     /// <summary>Zur Stelle von AData springen, falls sie eine hat.</summary>
@@ -221,6 +232,41 @@ begin
   Result := Tree.Items.AddChild(AParent, AText);
   // Index in FData; 0 wäre nil, deshalb um eins verschoben.
   Result.Data := Pointer(NativeInt(FData.Add(AData) + 1));
+end;
+
+function TAtlasResultsView.BeginLoad(ANode: TTreeNode): Integer;
+var
+  mData: TAtlasResultsNode;
+begin
+  Inc(FLastLoadId);
+  Result := FLastLoadId;
+  mData := DataOf(ANode);
+  mData.Loaded := True;
+  mData.LoadId := Result;
+  Store(ANode, mData);
+end;
+
+function TAtlasResultsView.NodeOfLoad(AId: Integer): TTreeNode;
+var
+  mNode: TTreeNode;
+  mData: TAtlasResultsNode;
+begin
+  Result := nil;
+  if AId <= 0 then
+  begin
+    Exit;
+  end;
+  for mNode in Tree.Items do
+  begin
+    mData := DataOf(mNode);
+    if mData.LoadId = AId then
+    begin
+      mData.LoadId := 0;
+      Store(mNode, mData);
+      Result := mNode;
+      Exit;
+    end;
+  end;
 end;
 
 function TAtlasResultsView.DataOf(ANode: TTreeNode): TAtlasResultsNode;

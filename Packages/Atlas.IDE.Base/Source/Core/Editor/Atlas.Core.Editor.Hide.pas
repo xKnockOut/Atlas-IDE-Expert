@@ -19,6 +19,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Settings.HiddenPlaces;
@@ -42,6 +43,10 @@ type
     /// <summary>Befund mit Regel ARuleId ('' = ohne Regel); Anker ist die Codezeile.</summary>
     class function Finding(const AFileName: string; ALine: Integer; const ARuleId, ALineText: string): TAtlasHideTarget;
       static;
+    /// <summary>Problem im Editor an der Zeile ALine (Text ALineText): ein Befund mit Regel an seiner Startzeile,
+    /// andere (Compiler, ohne Regel) je Codezeile (#628); Caption ist die Beschriftung des Problems.</summary>
+    class function ForProblem(const AFileName: string; const AProblem: TAtlasProblem; ALine: Integer;
+      const ALineText: string): TAtlasHideTarget; static;
     /// <summary>Bietet das Element den Bereich an?</summary>
     function Offers(AScope: TAtlasHideScope): Boolean;
     function SettingKey: string;
@@ -235,6 +240,20 @@ class function TAtlasHideTarget.Finding(const AFileName: string; ALine: Integer;
 begin
   Result := Create(TAtlasDrawnElement.Problems, AFileName, ALine, ALineText);
   Result.RuleId := Trim(ARuleId);
+end;
+
+class function TAtlasHideTarget.ForProblem(const AFileName: string; const AProblem: TAtlasProblem; ALine: Integer;
+  const ALineText: string): TAtlasHideTarget;
+begin
+  if not AProblem.IsCompiler and (AProblem.Code <> '') then
+  begin
+    Result := Finding(AFileName, AProblem.StartLine, AProblem.Code, ALineText);
+  end
+  else
+  begin
+    Result := Finding(AFileName, ALine, '', ALineText);
+  end;
+  Result.Caption := AProblem.Caption;
 end;
 
 function TAtlasHideTarget.Offers(AScope: TAtlasHideScope): Boolean;

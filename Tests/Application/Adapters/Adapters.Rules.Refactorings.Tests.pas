@@ -44,7 +44,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes,
+  Atlas.Common.ClassActions.Contract,
   Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Editing.Composition,
   Atlas.Tests.TextEdits,

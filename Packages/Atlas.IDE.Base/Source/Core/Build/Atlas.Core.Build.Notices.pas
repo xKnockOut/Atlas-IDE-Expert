@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Notifications.Build;
+﻿unit Atlas.Core.Build.Notices;
 
 // Einträge der Quellen „Build fertig“ (#535) und „Hintergrundprüfung“ (#548)
 // für die Benachrichtigungszentrale (#601), ohne VCL und Open Tools API: aus

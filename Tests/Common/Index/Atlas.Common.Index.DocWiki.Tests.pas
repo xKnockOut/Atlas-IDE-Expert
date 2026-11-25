@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.DocWiki.Tests;
+﻿unit Atlas.Common.Index.DocWiki.Tests;
 
 // Tests für die DocWiki-Links im Hover (#27).
 
@@ -20,7 +20,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.DocWiki;
+  Atlas.Common.Index.DocWiki;
 
 { TDocWikiTests }
 

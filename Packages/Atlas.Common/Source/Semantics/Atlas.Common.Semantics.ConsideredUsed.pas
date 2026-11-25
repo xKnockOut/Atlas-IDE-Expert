@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.ConsideredUsed;
+﻿unit Atlas.Common.Semantics.ConsideredUsed;
 
 // Dienst „gilt als verwendet“ (#1102, beschrieben in #64): Mitglieder, die der
 // Compiler, die Sprache, das Streaming oder ein Framework aufruft, ohne dass
@@ -682,6 +682,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.ConsideredUsed', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.ConsideredUsed', cTexts);
 
 end.

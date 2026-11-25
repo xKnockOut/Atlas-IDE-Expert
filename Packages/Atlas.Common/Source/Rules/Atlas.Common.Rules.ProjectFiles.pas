@@ -17,6 +17,8 @@
 //   uses-cycle und unused-unit, #64). Die Komposition reicht ihren
 //   langlebigen Dienst herein; ohne ihn baut die Instanz bei Bedarf einen
 //   eigenen über den Index (Tests, einmalige Läufe).
+// - UsesDerived reicht die Kanten zwischen Units (ohne Programme und
+//   Packages, deren contains alles verbindet) an eine Ableitung des Dienstes.
 
 interface
 
@@ -78,6 +80,7 @@ type
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function UsesPath(const AFromUnit, AToFile: string; AInterfaceOnly: Boolean): TArray<TRuleUsesStep>;
     function UsedBy(const AFileName: string; out AUsers: TArray<TRuleUsesStep>): Boolean;
+    function UsesDerived(const AKey: string; const ADerive: TRuleUsesDerive): IInterface;
     /// <summary>Projekt aus Projektdatei, Hauptquelltext und Units: Art und Testprojekt aus dem Hauptquelltext
     /// (über AReadText), Formulardateien (.dfm, sonst .fmx) neben den Units, sofern sie existieren.</summary>
     class function ProjectOf(const AProjectFile, AMainSource: string; const ASources: TArray<string>;
@@ -403,6 +406,52 @@ begin
     end);
   AUsers := mUsers;
   Result := mKnown;
+end;
+
+function TRuleProjectFiles.UsesDerived(const AKey: string; const ADerive: TRuleUsesDerive): IInterface;
+var
+  mDerive: TRuleUsesDerive;
+begin
+  Result := nil;
+  if UsesGraph = nil then
+  begin
+    Exit;
+  end;
+  mDerive := ADerive;
+  Result := UsesGraph.Derived(AKey,
+    function(const AGraph: TUsesGraph): IInterface
+    var
+      Edges: TArray<TRuleUsesEdge>;
+      Count, NodeIndex: Integer;
+      Source: TUsesNode;
+      Edge: TUsesEdge;
+    begin
+      Count := 0;
+      SetLength(Edges, AGraph.EdgeCount);
+      for NodeIndex := 0 to AGraph.NodeCount - 1 do
+      begin
+        Source := AGraph.Node(NodeIndex);
+        if not Source.Active or Source.IsProgram then
+        begin
+          Continue;
+        end;
+        for Edge in Source.Outgoing do
+        begin
+          if Count >= Length(Edges) then
+          begin
+            SetLength(Edges, 2 * Count + 16);
+          end;
+          Edges[Count].SourceUnit := Source.UnitName;
+          Edges[Count].SourceFileName := Source.FileName;
+          Edges[Count].TargetUnit := AGraph.Node(Edge.Target).UnitName;
+          Edges[Count].TargetFileName := AGraph.Node(Edge.Target).FileName;
+          Edges[Count].InInterface := Edge.Section = TUsesSection.Interface_;
+          Inc(Count);
+        end;
+      end;
+      SetLength(Edges, Count);
+      Result := mDerive(Edges);
+    end);
 end;
 
 class function TRuleProjectFiles.ProjectOf(const AProjectFile, AMainSource: string; const ASources: TArray<string>;

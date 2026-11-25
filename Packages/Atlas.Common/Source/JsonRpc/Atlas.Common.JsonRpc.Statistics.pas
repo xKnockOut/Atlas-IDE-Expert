@@ -9,7 +9,8 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Diagnostics.Contract;
 
 type
   TMethodStatistics = record
@@ -19,15 +20,6 @@ type
     MaxMs: Int64;
     Failed: Integer;
     function AverageMs: Double;
-  end;
-
-  /// <summary>Eine Anfrage im Ringpuffer (#108); ohne Inhalt.</summary>
-  TRecentRequest = record
-    /// <summary>Ende der Anfrage (lokale Zeit).</summary>
-    Finished: TDateTime;
-    Method: string;
-    ElapsedMs: Int64;
-    Failed: Boolean;
   end;
 
   IJsonRpcStatistics = interface

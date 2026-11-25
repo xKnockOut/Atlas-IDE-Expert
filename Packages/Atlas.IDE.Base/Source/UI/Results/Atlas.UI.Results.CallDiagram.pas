@@ -11,6 +11,8 @@
 // klappt zu und auf, Klick auf „+ N …“ zeigt alle, Doppelklick oder Enter
 // springt über OnOpen in den Code, Leertaste klappt auf und zu, Ziehen
 // verschiebt, Mausrad zoomt um den Mauszeiger, + und − zoomen, 0 passt ein.
+// OnLoad antwortet später (aus dem Hintergrund) oder gleich; solange ein Knoten lädt, fragt ein zweiter Klick nicht
+// erneut, und nach ShowRoots verfällt die Antwort für die vorigen Wurzeln.
 // Text wird erst mit Fenster gemessen (Paint), nie im Konstruktor.
 
 interface
@@ -26,9 +28,13 @@ uses
   Atlas.Vcl.Controls.ZoomView;
 
 type
-  /// <summary>Nächste Ebene: Aufrufer bzw. Aufgerufene von AItem in Richtung ADirection.</summary>
-  TAtlasCallLoad = reference to function(ADirection: TAtlasHierarchyDirection;
-    const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+  /// <summary>Antwort auf TAtlasCallLoad im Hauptthread; leer, wenn es nichts gibt oder die Anfrage scheiterte.
+  /// </summary>
+  TAtlasCallLoaded = reference to procedure(const AChildren: TArray<TAtlasHierarchyItem>);
+  /// <summary>Nächste Ebene: Aufrufer bzw. Aufgerufene von AItem in Richtung ADirection; ruft ADone genau einmal,
+  /// gleich oder später.</summary>
+  TAtlasCallLoad = reference to procedure(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem;
+    const ADone: TAtlasCallLoaded);
   TAtlasCallOpen = reference to procedure(const AItem: TAtlasHierarchyItem);
 
   TAtlasCallDiagramView = class(TAtlasZoomView)
@@ -55,6 +61,7 @@ type
     FHintBox: Integer;
     FDrag: TDrag;
     FHandlers: THandlers;
+    procedure Loaded(ATicket, ANode: Integer; const AChildren: TArray<TAtlasHierarchyItem>);
     function BoxRect(ABox: Integer): TRect;
     function GetProjectOnly: Boolean;
     procedure SetIsProjectFile(const AValue: TFunc<string, Boolean>);
@@ -604,33 +611,51 @@ begin
   end;
 end;
 
+procedure TAtlasCallDiagramView.Loaded(ATicket, ANode: Integer; const AChildren: TArray<TAtlasHierarchyItem>);
+begin
+  if not FDiagram.FinishLoad(ATicket, ANode, AChildren) then
+  begin
+    Exit;
+  end;
+  Relayout;
+  // Die erste Ebene kommt nach ShowRoots: erst dann lässt sich sinnvoll einpassen.
+  if (ANode = 0) and (ClientWidth > 0) and (ClientHeight > 0) then
+  begin
+    FitView;
+  end;
+end;
+
 procedure TAtlasCallDiagramView.ToggleNode(ANode: Integer);
 var
-  mChildren: TArray<TAtlasHierarchyItem>;
+  mTicket: Integer;
 begin
   if (ANode < 0) or (ANode >= FDiagram.Count) then
   begin
     Exit;
   end;
-  if FDiagram.NeedsLoad(ANode) then
-  begin
-    mChildren := nil;
-    if Assigned(FHandlers.OnLoad) then
-    begin
-      Screen.Cursor := crHourGlass;
-      try
-        mChildren := FHandlers.OnLoad(FDiagram.Direction, FDiagram[ANode].Item);
-      finally
-        Screen.Cursor := crDefault;
-      end;
-    end;
-    FDiagram.SetChildren(ANode, mChildren);
-  end
-  else
+  if not FDiagram.NeedsLoad(ANode) then
   begin
     FDiagram.Toggle(ANode);
+    Relayout;
+    Exit;
   end;
-  Relayout;
+  if not Assigned(FHandlers.OnLoad) then
+  begin
+    FDiagram.SetChildren(ANode, nil);
+    Relayout;
+    Exit;
+  end;
+  // Läuft die Anfrage schon, fragt ein zweiter Klick nicht erneut.
+  if not FDiagram.BeginLoad(ANode, mTicket) then
+  begin
+    Exit;
+  end;
+  // Antwortet OnLoad gleich, ist der Knoten danach schon geladen und gezeichnet.
+  FHandlers.OnLoad(FDiagram.Direction, FDiagram[ANode].Item,
+    procedure(const AChildren: TArray<TAtlasHierarchyItem>)
+    begin
+      Loaded(mTicket, ANode, AChildren);
+    end);
 end;
 
 procedure TAtlasCallDiagramView.ClickBox(ABox: Integer);

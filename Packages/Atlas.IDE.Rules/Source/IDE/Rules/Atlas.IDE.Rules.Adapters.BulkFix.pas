@@ -38,7 +38,7 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.UI.Problems.BulkFix,
+  Atlas.UI.Rules.BulkFix,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Rules.Strings;
 
