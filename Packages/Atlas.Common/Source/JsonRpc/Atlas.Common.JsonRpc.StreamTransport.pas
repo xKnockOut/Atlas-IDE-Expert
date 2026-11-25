@@ -27,10 +27,14 @@ type
     FBufferPos: Integer;
     FBufferLen: Integer;
     FWriteLock: TCriticalSection;
+    // Unter FWriteLock: Die Gegenseite hat geschlossen (EJsonRpcPeerClosed des Streams); nichts mehr schreiben.
+    FOutputClosed: Boolean;
     function FillBuffer: Boolean;
     /// <summary>Nächstes Byte der Eingabe; False am Ende.</summary>
     function TryReadByte(out AByte: Byte): Boolean;
-    /// <summary>Schreibt AData in einem Stück, damit sich Nachrichten mehrerer Threads nicht mischen.</summary>
+    /// <summary>Schreibt AData in einem Stück, damit sich Nachrichten mehrerer Threads nicht mischen. Hat die
+    /// Gegenseite geschlossen (EJsonRpcPeerClosed des Streams), löst dieses und jedes weitere Schreiben
+    /// EJsonRpcPeerClosed aus, ohne den Stream noch einmal anzufassen.</summary>
     procedure WriteBytes(const AData: TBytes);
   public
     /// <summary>AInput liefert die Nachrichten der Gegenseite, AOutput nimmt die eigenen auf. Bei AOwnsStreams
@@ -64,7 +68,7 @@ uses
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TStreamTransportText = (InvalidHeader, HeaderContentLengthMissing, InputClosedWithinAMessage, MessageIsNotValidJSON,
-    MessageIsNotAJSON, InputClosedWithinAHeader, HeaderLineTooLong, InputClosed, EmptyMessage);
+    MessageIsNotAJSON, InputClosedWithinAHeader, HeaderLineTooLong, InputClosed, EmptyMessage, PeerClosed);
 
 const
   cTexts: array[TStreamTransportText] of TAtlasText = (
@@ -76,7 +80,8 @@ const
     (De: 'Eingabe innerhalb eines Headers geschlossen'; En: 'Input closed within a header'),
     (De: 'Headerzeile zu lang'; En: 'Header line too long'),
     (De: 'Eingabe geschlossen'; En: 'Input closed'),
-    (De: 'Leere Nachricht'; En: 'Empty message'));
+    (De: 'Leere Nachricht'; En: 'Empty message'),
+    (De: 'Die Gegenseite hat die Verbindung geschlossen'; En: 'The peer closed the connection'));
 
 {$SCOPEDENUMS OFF}
 
@@ -129,7 +134,19 @@ procedure TJsonRpcBufferedTransport.WriteBytes(const AData: TBytes);
 begin
   FWriteLock.Enter;
   try
-    FOutput.WriteBuffer(AData, Length(AData));
+    if FOutputClosed then
+    begin
+      raise EJsonRpcPeerClosed.Create(cTexts[TStreamTransportText.PeerClosed].Text);
+    end;
+    try
+      FOutput.WriteBuffer(AData, Length(AData));
+    except
+      on EJsonRpcPeerClosed do
+      begin
+        FOutputClosed := True;
+        raise;
+      end;
+    end;
   finally
     FWriteLock.Leave;
   end;

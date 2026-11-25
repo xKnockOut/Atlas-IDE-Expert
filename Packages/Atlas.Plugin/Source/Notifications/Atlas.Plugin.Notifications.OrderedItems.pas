@@ -28,9 +28,13 @@ type
     constructor Create;
     destructor Destroy; override;
     /// <summary>AItem an seiner Stelle einfügen; ein Eintrag mit derselben Kennung wird ersetzt.</summary>
-    procedure Put(const AItem: T);
+    procedure Put(const AItem: T); overload;
+    /// <summary>Wie oben; AReplaced ist der ersetzte Eintrag (True) bzw. Default(T) (False).</summary>
+    function Put(const AItem: T; out AReplaced: T): Boolean; overload;
     /// <summary>Eintrag mit der Kennung AId entfernen; False, wenn es keinen gab.</summary>
     function Remove(const AId: string): Boolean;
+    /// <summary>Wie Remove; AItem ist der entfernte Eintrag (True) bzw. Default(T) (False).</summary>
+    function Take(const AId: string; out AItem: T): Boolean;
     /// <summary>Eintrag mit der Kennung AId; ohne ihn False und AItem = Default(T).</summary>
     function Find(const AId: string; out AItem: T): Boolean;
     /// <summary>Alle Einträge in ihrer Reihenfolge; das Array ändert sich danach nicht mehr.</summary>
@@ -85,16 +89,26 @@ end;
 
 procedure TAtlasOrderedItems<T>.Put(const AItem: T);
 var
+  mReplaced: T;
+begin
+  Put(AItem, mReplaced);
+end;
+
+function TAtlasOrderedItems<T>.Put(const AItem: T; out AReplaced: T): Boolean;
+var
   mItems: TArray<T>;
   mIndex, mExisting: Integer;
 begin
+  AReplaced := Default(T);
   FLock.Acquire;
   try
     // Neues Array: herausgegebene bleiben unverändert.
     mItems := Copy(FItems);
     mExisting := IndexOf(mItems, IdOf(AItem));
-    if mExisting >= 0 then
+    Result := mExisting >= 0;
+    if Result then
     begin
+      AReplaced := mItems[mExisting];
       Delete(mItems, mExisting, 1);
     end;
     mIndex := 0;
@@ -111,15 +125,24 @@ end;
 
 function TAtlasOrderedItems<T>.Remove(const AId: string): Boolean;
 var
+  mItem: T;
+begin
+  Result := Take(AId, mItem);
+end;
+
+function TAtlasOrderedItems<T>.Take(const AId: string; out AItem: T): Boolean;
+var
   mItems: TArray<T>;
   mIndex: Integer;
 begin
+  AItem := Default(T);
   FLock.Acquire;
   try
     mIndex := IndexOf(FItems, AId);
     Result := mIndex >= 0;
     if Result then
     begin
+      AItem := FItems[mIndex];
       mItems := Copy(FItems);
       Delete(mItems, mIndex, 1);
       FItems := mItems;
