@@ -10,6 +10,7 @@
 interface
 
 uses
+  Winapi.Windows, // Inline-Funktion ListView_GetExtendedListViewStyle (H2443)
   DUnitX.TestFramework,
   Vcl.Forms,
   Atlas.Vcl.Controls.ListView;
