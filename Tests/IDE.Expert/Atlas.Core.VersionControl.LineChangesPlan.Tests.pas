@@ -43,7 +43,7 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.VersionControl.LineChangesPlan;
 
 function BlameLine(ALine: Integer): TAtlasVcsBlameLine;

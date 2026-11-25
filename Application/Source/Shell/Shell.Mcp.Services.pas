@@ -53,7 +53,8 @@ type
     /// <summary>Adapter der Werkzeuge: Prozesse, Versionsverwaltung, Git-Verzeichnis; ohne Prüfung von Texten.
     /// </summary>
     class function HostAdapters: TMcpHostAdapters; static;
-    /// <summary>Wie HostAdapters mit der Prüfung von Texten mit Projekt und Symbolen aus AGroup.</summary>
+    /// <summary>Wie HostAdapters mit der Prüfung von Texten und find_unused_code über Projekt, Symbole und Index
+    /// aus AGroup.</summary>
     class function GroupAdapters(AGroup: TCoreWorkspaceGroup): TMcpHostAdapters; static;
   end;
 
@@ -63,6 +64,7 @@ uses
   System.IOUtils,
   Shell.Composition.Mcp,
   Atlas.Common.Rules.Checker,
+  Atlas.Common.Mcp.Contract.DeadCode,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Processes,
   Atlas.Common.Documents.Providers.DocumentStore,
@@ -76,7 +78,7 @@ uses
   Core.Mcp.Ide,
   Core.Mcp.ArchitectureTools,
   Atlas.Common.Compiler.Contract,
-  Atlas.Core.VersionControl.Providers.Git,
+  Atlas.VersionControl.Repository.Providers.Git,
   Core.VersionControlChanges,
   Shell.Composition.Platform,
   Core.Bootstrap,
@@ -303,6 +305,17 @@ begin
     end;
 end;
 
+/// <summary>Neuer Lauf von find_unused_code mit Index, Projekten und Namensräumen von AGroup beim Aufruf; in
+/// eigener Routine, damit die anonyme Methode nur AGroup einfängt.</summary>
+function DeadCodeOf(AGroup: TCoreWorkspaceGroup): TMcpDeadCodeFunc;
+begin
+  Result :=
+    function: IMcpDeadCode
+    begin
+      Result := TMcpComposition.DeadCode(AGroup.Index, AGroup.RuleProjectFiles, AGroup.Main.State.Namespaces);
+    end;
+end;
+
 function NewEditTools(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; ACode: TMcpCodeTools;
   const ALogger: ILogger): TMcpEditTools;
 begin
@@ -412,6 +425,7 @@ class function TMcpServices.GroupAdapters(AGroup: TCoreWorkspaceGroup): TMcpHost
 begin
   Result := HostAdapters;
   Result.TextChecks := TMcpComposition.TextChecks(CheckProjectOf(AGroup), CheckSourceOf(AGroup));
+  Result.DeadCode := DeadCodeOf(AGroup);
 end;
 
 end.

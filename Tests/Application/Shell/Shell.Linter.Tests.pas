@@ -131,7 +131,7 @@ uses
   System.IOUtils,
   System.Diagnostics,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Shell.Composition.Platform,
   Core.VersionControlChanges,
   Atlas.Common.Configuration.Contract,

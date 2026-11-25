@@ -13,7 +13,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
 {$SCOPEDENUMS ON}

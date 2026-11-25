@@ -211,7 +211,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Naming,
-  Atlas.Core.VersionControl.BranchNames,
+  Atlas.VersionControl.Repository.BranchNames,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,

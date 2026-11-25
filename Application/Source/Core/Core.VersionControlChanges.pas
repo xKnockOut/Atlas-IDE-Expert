@@ -34,7 +34,7 @@ uses
   System.SysUtils,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.History.ChangedFiles,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   EVcsChanges = class(Exception);
@@ -124,8 +124,8 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.Detection,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.Detection,
   Atlas.Common.Localization.Texts;
 
 type

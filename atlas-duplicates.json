@@ -2,6 +2,6 @@
   "minLines": 6,
   "groups": [
     {"hash": "3824d3a23d79b9b6", "lines": 15, "members": ["Packages/Atlas.IDE.Debugger/Source/Core/Debug/Atlas.Core.Debug.DisplayRules.pas:TAtlasDisplayRules.ShortName", "Packages/Atlas.IDE.Debugger/Source/Core/Debug/Atlas.Core.Debug.StepInto.pas:TAtlasStepInto.ShortName"]},
-    {"hash": "7db4a14159dbd8b0", "lines": 8, "members": ["Application/Source/Adapters/Adapters.VersionControl.LinuxRunner.pas:TLinuxVcsRunner.IsCancelled", "Packages/Atlas.IDE.Base/Source/Core/VersionControl/Atlas.Core.VersionControl.Providers.ProcessRunner.pas:TAtlasVcsProcessRunner.IsCancelled"]}
+    {"hash": "7db4a14159dbd8b0", "lines": 8, "members": ["Application/Source/Adapters/Adapters.VersionControl.LinuxRunner.pas:TLinuxVcsRunner.IsCancelled", "Packages/Atlas.VersionControl/Source/Repository/Atlas.VersionControl.Repository.Providers.ProcessRunner.pas:TAtlasVcsProcessRunner.IsCancelled"]}
   ]
 }

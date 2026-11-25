@@ -71,7 +71,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Queries,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,

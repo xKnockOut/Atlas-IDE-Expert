@@ -81,7 +81,7 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   System.Classes,
   System.Types,
   System.Generics.Collections,

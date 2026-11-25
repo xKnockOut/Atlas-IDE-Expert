@@ -8,8 +8,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
   Atlas.IDE.Contracts.VersionControl;
 
 type
