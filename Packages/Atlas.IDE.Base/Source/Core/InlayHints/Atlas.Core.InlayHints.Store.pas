@@ -31,31 +31,12 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Plugin.Files.Entries;
+  Atlas.Plugin.Files.Entries,
+  Atlas.Plugin.Lsp.Contract;
 
 type
-  TAtlasInlayHint = record
-    /// <summary>0-basiert.</summary>
-    Line: Integer;
-    /// <summary>0-basiert, UTF-16-Index in der Zeile.</summary>
-    Character: Integer;
-    /// <summary>Parametername ohne ":"; bei einer Endmarke deren Text ohne "//".</summary>
-    Name: string;
-    /// <summary>Endmarke hinter einem end (#620) statt Parametername.</summary>
-    EndLabel: Boolean;
-    /// <summary>Typmarke (#453): Name ist der abgeleitete Typ ohne ":".</summary>
-    TypeHint: Boolean;
-    /// <summary>Include-Symbole (#860): Name sind die Symbole durch ", " getrennt.</summary>
-    DefineHint: Boolean;
-    /// <summary>Steuerzeichen (#862): Name ist der Code wie „#3“.</summary>
-    CharHint: Boolean;
-    /// <summary>Methode ohne Self (#686): Marke am Ende des Kopfs.</summary>
-    MethodHint: Boolean;
-    /// <summary>Endmarke: Anfang des Blocks (0-basiert), zu dem ein Klick springt; nur mit HasBlock.</summary>
-    BlockLine: Integer;
-    BlockCharacter: Integer;
-    HasBlock: Boolean;
-  end;
+  // Der Eintrag steht in Atlas.Plugin.Lsp.Contract, weil die Sitzung ihn liefert; hier als Alias weiter.
+  TAtlasInlayHint = Atlas.Plugin.Lsp.Contract.TAtlasInlayHint;
 
   TAtlasInlayHintStore = class
   public const

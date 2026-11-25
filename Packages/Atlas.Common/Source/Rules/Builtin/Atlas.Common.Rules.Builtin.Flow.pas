@@ -168,7 +168,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Semantics.ControlFlow,
-  Atlas.Common.Semantics.ControlFlow.Signatures,
+  Atlas.Common.Pascal.FlowSignatures,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow.Shared,

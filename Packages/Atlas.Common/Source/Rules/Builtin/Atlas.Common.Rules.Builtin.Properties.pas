@@ -107,9 +107,9 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes,
+  Atlas.Common.ClassActions.Contract,
   Atlas.Text.Fuzzy,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.Attributes;

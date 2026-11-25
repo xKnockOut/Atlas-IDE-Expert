@@ -52,7 +52,7 @@ uses
   Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.VersionControl.LineChangesPlan,
   Atlas.Plugin.Localization.Strings,
@@ -163,7 +163,7 @@ end;
 
 class function TAtlasLineChangesPaint.EndColumn(const ALine: string; ATabWidth: Integer): Integer;
 begin
-  Result := Length(TAtlasPairs.DisplayLine(TrimRight(ALine), ATabWidth)) + 1;
+  Result := Length(TTextColumns.DisplayLine(TrimRight(ALine), ATabWidth)) + 1;
 end;
 
 class function TAtlasLineChangesPaint.OldText(const AChange: TAtlasLineChange): string;

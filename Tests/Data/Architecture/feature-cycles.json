@@ -1,0 +1,130 @@
+{
+  "description": "Gemeinsame Fallliste der Regel architecture-feature-cycle und von Tools/Check-PackageDependencies.ps1 -SelfTest. edges: uses-Einträge \"Quelle -> Ziel\"; paths: Pfad je Unit (sonst Source/<Unit>.pas); findings: erwartete Schlüssel, sortiert.",
+  "cases": [
+    {
+      "name": "Ohne Zyklus nichts",
+      "options": { "prefixes": ["Atlas.Core"] },
+      "edges": ["Atlas.Core.Lsp.Session -> Atlas.Core.Files.Entries", "Atlas.Core.Files.Entries -> Atlas.Core.Diagnostics.Guard"],
+      "findings": []
+    },
+    {
+      "name": "Gegenpaar ist ein Zyklus, auch über Contract",
+      "options": { "prefixes": ["Atlas.Core"] },
+      "edges": ["Atlas.Core.Lsp.Session -> Atlas.Core.Hover.Contract", "Atlas.Core.Hover.View -> Atlas.Core.Lsp.Contract"],
+      "findings": ["cycle Atlas.Core: Hover, Lsp"],
+      "verdicts": [
+        { "from": "Atlas.Core.Lsp.Session", "to": "Atlas.Core.Hover.Contract", "verdict": "cycle", "detail": "Atlas.Core: Hover, Lsp" },
+        { "from": "Atlas.Core.Hover.View", "to": "Atlas.Core.Lsp.Contract", "verdict": "cycle" }
+      ]
+    },
+    {
+      "name": "Zyklus über drei Features, Kante hinaus zählt nicht",
+      "options": { "prefixes": ["Atlas.UI"] },
+      "edges": ["Atlas.UI.Editor.Peek -> Atlas.UI.Popup.Window", "Atlas.UI.Popup.CrumbCard -> Atlas.UI.Outline.Strings",
+        "Atlas.UI.Outline.Breadcrumbs -> Atlas.UI.Editor.Bar", "Atlas.UI.Editor.Peek -> Atlas.UI.Foundation.Theme"],
+      "findings": ["cycle Atlas.UI: Editor, Outline, Popup"],
+      "verdicts": [
+        { "from": "Atlas.UI.Editor.Peek", "to": "Atlas.UI.Foundation.Theme", "verdict": "none" }
+      ]
+    },
+    {
+      "name": "Längstes Präfix gewinnt, verschiedene Präfixe zählen nicht",
+      "options": { "prefixes": ["Atlas.Core", "Atlas.Core.Lsp", "Atlas.UI"] },
+      "edges": ["Atlas.Core.Lsp.Session.Requests -> Atlas.Core.Lsp.Json.Reader", "Atlas.Core.Lsp.Json.Writer -> Atlas.Core.Lsp.Session.Base",
+        "Atlas.Core.Files.Entries -> Atlas.UI.Files.View", "Atlas.UI.Files.View -> Atlas.Core.Files.Entries"],
+      "findings": ["cycle Atlas.Core.Lsp: Json, Session"]
+    },
+    {
+      "name": "Groß- und Kleinschreibung zählen nicht, es gilt die Schreibweise des ersten Vorkommens",
+      "options": { "prefixes": ["atlas.common"] },
+      "edges": ["Atlas.Common.Rules.Engine -> atlas.common.lsp.Session", "Atlas.Common.Lsp.Server -> Atlas.Common.rules.Engine"],
+      "findings": ["cycle atlas.common: lsp, Rules"]
+    },
+    {
+      "name": "Ausgeschlossene Pfade zählen nicht",
+      "options": { "prefixes": ["Atlas.Core"], "exclude": ["Tests/**"] },
+      "edges": ["Atlas.Core.Lsp.Session -> Atlas.Core.Hover.Contract", "Atlas.Core.Hover.TestSupport -> Atlas.Core.Lsp.Session"],
+      "paths": { "Atlas.Core.Hover.TestSupport": "Tests/IDE.Expert/Atlas.Core.Hover.TestSupport.pas" },
+      "findings": []
+    },
+    {
+      "name": "Ausgeschlossene Unit-Namen zählen nicht",
+      "options": { "prefixes": ["Atlas.Core"], "exclude": ["*.TestSupport"] },
+      "edges": ["Atlas.Core.Lsp.Session -> Atlas.Core.Hover.Contract", "Atlas.Core.Hover.TestSupport -> Atlas.Core.Lsp.Session"],
+      "findings": []
+    },
+    {
+      "name": "Bekannter Zyklus schweigt",
+      "options": { "prefixes": ["Atlas.Core"], "known": ["Atlas.Core: Lsp, Hover"] },
+      "edges": ["Atlas.Core.Lsp.Session -> Atlas.Core.Hover.Contract", "Atlas.Core.Hover.View -> Atlas.Core.Lsp.Contract"],
+      "findings": [],
+      "verdicts": [
+        { "from": "Atlas.Core.Lsp.Session", "to": "Atlas.Core.Hover.Contract", "verdict": "none" }
+      ]
+    },
+    {
+      "name": "Kleiner gewordener Zyklus: Eintrag veraltet",
+      "options": { "prefixes": ["Atlas.Core"], "known": ["Atlas.Core: Hover, Lsp, Problems"] },
+      "edges": ["Atlas.Core.Lsp.Session -> Atlas.Core.Hover.Contract", "Atlas.Core.Hover.View -> Atlas.Core.Lsp.Contract"],
+      "findings": ["stale Atlas.Core: Hover, Lsp, Problems"],
+      "verdicts": [
+        { "from": "Atlas.Core.Lsp.Session", "to": "Atlas.Core.Hover.Contract", "verdict": "none" }
+      ]
+    },
+    {
+      "name": "Aufgelöster Zyklus: Eintrag veraltet",
+      "options": { "prefixes": ["Atlas.Core"], "known": ["Atlas.Core: Lsp, Hover"] },
+      "edges": ["Atlas.Core.Hover.View -> Atlas.Core.Lsp.Contract"],
+      "findings": ["stale Atlas.Core: Hover, Lsp"]
+    },
+    {
+      "name": "Gewachsener Zyklus wird gemeldet",
+      "options": { "prefixes": ["Atlas.Core"], "known": ["Atlas.Core: Hover, Lsp"] },
+      "edges": ["Atlas.Core.Lsp.Session -> Atlas.Core.Hover.Contract", "Atlas.Core.Hover.View -> Atlas.Core.Problems.Contract",
+        "Atlas.Core.Problems.Store -> Atlas.Core.Lsp.Contract"],
+      "findings": ["cycle Atlas.Core: Hover, Lsp, Problems", "stale Atlas.Core: Hover, Lsp"]
+    },
+    {
+      "name": "Richtung: der untere verwendet den oberen nicht, auch nicht über zwei Stufen",
+      "options": { "prefixes": ["Atlas.Common"], "directions": ["Atlas.Common: Semantics < Editing < Rules"] },
+      "edges": ["Atlas.Common.Rules.Engine -> Atlas.Common.Editing.UsesClause", "Atlas.Common.Editing.UsesClause -> Atlas.Common.Semantics.Ancestry",
+        "Atlas.Common.Semantics.Ancestry -> Atlas.Common.Rules.Contract", "Atlas.Common.Rules.Engine -> Atlas.Common.Semantics.Ancestry"],
+      "findings": ["cycle Atlas.Common: Editing, Rules, Semantics", "direction Atlas.Common.Semantics.Ancestry -> Atlas.Common.Rules.Contract"],
+      "verdicts": [
+        { "from": "Atlas.Common.Semantics.Ancestry", "to": "Atlas.Common.Rules.Contract", "verdict": "direction", "detail": "Atlas.Common: Semantics < Editing < Rules" },
+        { "from": "Atlas.Common.Editing.UsesClause", "to": "Atlas.Common.Semantics.Ancestry", "verdict": "cycle" },
+        { "from": "Atlas.Common.Rules.Engine", "to": "Atlas.Common.Semantics.Ancestry", "verdict": "cycle", "detail": "Atlas.Common: Editing, Rules, Semantics" }
+      ]
+    },
+    {
+      "name": "Richtung ohne Zyklus",
+      "options": { "prefixes": ["Atlas.Common"], "directions": ["Atlas.Common: Rules < Lsp < Mcp"] },
+      "edges": ["Atlas.Common.Rules.Engine -> Atlas.Common.Mcp.Tools", "Atlas.Common.Mcp.Tools -> Atlas.Common.Lsp.Server"],
+      "findings": ["direction Atlas.Common.Rules.Engine -> Atlas.Common.Mcp.Tools"]
+    },
+    {
+      "name": "Keine Kante zwischen zwei Features",
+      "options": { "prefixes": ["Atlas.Common"], "directions": ["Atlas.Common: Lsp | Mcp"] },
+      "edges": ["Atlas.Common.Mcp.Tools -> Atlas.Common.Lsp.Server", "Atlas.Common.Lsp.Server -> Atlas.Common.Rules.Engine"],
+      "findings": ["direction Atlas.Common.Mcp.Tools -> Atlas.Common.Lsp.Server"]
+    },
+    {
+      "name": "Bekannte Kante schweigt, veraltete wird gemeldet",
+      "options": { "prefixes": ["Atlas.Common"], "directions": ["Atlas.Common: Rules < Lsp"],
+        "knownEdges": ["Atlas.Common.Rules.Engine -> Atlas.Common.Lsp.Session", "Atlas.Common.Rules.Old -> Atlas.Common.Lsp.Session"] },
+      "edges": ["Atlas.Common.Rules.Engine -> Atlas.Common.Lsp.Session"],
+      "findings": ["staleEdge Atlas.Common.Rules.Old -> Atlas.Common.Lsp.Session"],
+      "verdicts": [
+        { "from": "Atlas.Common.Rules.Engine", "to": "Atlas.Common.Lsp.Session", "verdict": "none" }
+      ]
+    },
+    {
+      "name": "Ungültige Einträge",
+      "options": { "prefixes": ["Atlas.Common"], "known": ["Lsp, Rules", "Atlas.Common: Lsp"],
+        "directions": ["Atlas.Common: Lsp < Rules | Mcp", "Atlas.Common Lsp < Rules"], "knownEdges": ["Atlas.Common.Lsp.Server"] },
+      "edges": [],
+      "findings": ["invalid Atlas.Common Lsp < Rules", "invalid Atlas.Common.Lsp.Server", "invalid Atlas.Common: Lsp",
+        "invalid Atlas.Common: Lsp < Rules | Mcp", "invalid Lsp, Rules"]
+    }
+  ]
+}

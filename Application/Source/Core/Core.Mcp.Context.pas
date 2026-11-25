@@ -21,7 +21,7 @@ uses
   Atlas.Common.Mcp.Contract.Workspace,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
-  Atlas.Common.Architecture.SymbolPath,
+  Atlas.Common.Lsp.SymbolPath.Search,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,

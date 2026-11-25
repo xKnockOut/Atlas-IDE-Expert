@@ -64,14 +64,39 @@ Bedingungen für den späteren Umzug nach `Application/Source/Features/<Feature>
 läuft in der CI, und der Umzug geschieht
 lokal mit Compiler als rein mechanischer Commit je Feature (zuerst Namenspräfix, dann `git mv`).
 
-Featurerichtung zwischen den Fach-Features:
+Featurerichtung zwischen den Fach-Features: `Lsp`, `Rules`, `Editing` und `Mcp` werden Hosted-Features und
+verwenden einander nie (`Atlas.Common: Lsp | Rules | Editing | Mcp`). `Semantics` bleibt Platform-Feature in
+`Atlas.Common`; Platform-Features verwenden nie ein Hosted-Feature (`Atlas.Common: Semantics < Lsp` usw.), Hosted-
+Features dürfen `Semantics` verwenden. Was zwei Hosted-Features teilen, liegt in einem Platform-Feature (`Pascal`,
+`Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das der Host verbindet.
 
-| Von | Nach | Erlaubt | Grund |
+Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
+`atlas.json` (Stand des Umbaus: 128 Kanten, kein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
+
+| Von | Nach | Erlaubt | Stand |
 |---|---|---|---|
-| `Rules` | `Editing` | ja | Korrekturen nutzen Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen) |
-| `Editing` | `Rules` | nein | gemeinsame Wertetypen liegen tiefer: `TTextEdit` in `Documents.Contract` (`TRuleEdit` ist ein Alias), `TDeclaredTypes` in `Pascal.DeclaredTypes`, `IsTestUnit` in `Pascal.UsesClauses`; die Brücke Treffer → Code-Aktionen ist `Rules.CodeActions` |
+| `Lsp` | `Rules`, `Editing` | nein | heute die meisten Kanten: Der Server ruft Prüfregeln und Refactorings direkt |
+| `Mcp` | `Lsp`, `Editing` | nein | MCP-Werkzeuge nutzen heute dieselben Dienste wie die LSP-Methoden |
+| `Rules` | `Editing` | nein | Korrekturen nutzen heute Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen) |
+| `Editing`, `Rules` | ein Hosted-Feature weiter oben | nein | schon heute ohne Kante: gemeinsame Wertetypen liegen tiefer (`TTextEdit` in `Documents.Contract`, `TDeclaredTypes` in `Pascal.DeclaredTypes`), Links ins Wiki im Index (`Index.DocWiki`), die Unit-Suche bei den Regeln (`Rules.Providers.UnitLookup`) |
+| `Lsp`, `Rules`, `Editing`, `Mcp` | `Semantics` | ja | Namensauflösung und Datenfluss sind Platform |
+| `Semantics` | `Lsp`, `Rules`, `Editing`, `Mcp` | nein | ohne Kante |
 
-`Tools/Check-PackageDependencies.ps1` meldet jede Unit unter `Source/Editing`, die `Atlas.Common.Rules.*` verwendet.
+### Keine Zyklen zwischen Features
+
+Features desselben Ausgabeartefakts (`Atlas.Core.Lsp`, `Atlas.Core.Hover` …) bilden keinen Zyklus. Gezählt wird
+jeder uses-Eintrag, interface und implementation, auch auf Contract-Units: Ein Contract, der einen anderen Contract
+verwendet, bindet sein Feature ebenso an. Tests, Werkzeuge und Vorlagen zählen nicht.
+
+- `Tools/Check-FeatureCycles.ps1` prüft das ganze Repository, die Regel `architecture-feature-cycle` meldet im Editor
+  den uses-Eintrag, der einen Zyklus schließt oder gegen eine Richtung läuft. Beide lesen die Optionen der Regel aus
+  `atlas.json` und prüfen die Fallliste `Tests/Data/Architecture/feature-cycles.json`.
+- Richtungen stehen unter `directions`: `Präfix: A < B < C` (B und C dürfen A verwenden, nicht umgekehrt) und
+  `Präfix: A | B` (keine Kante zwischen A und B).
+- Bestehende Zyklen stehen unter `known`, Kanten gegen eine Richtung unter `knownEdges`. Beide Listen schrumpfen
+  nur: Ein Eintrag, der nicht mehr genau stimmt, ist ein Fehler und wird gekürzt.
+- Zyklus auflösen: die gemeinsamen Typen in das untere Feature verschieben (oft ein Contract), eine Unit in das
+  Feature verschieben, zu dem sie gehört, oder die Abhängigkeit über einen Haken umdrehen, den die Komposition setzt.
 
 ## Verzeichnisstruktur
 
@@ -345,11 +370,12 @@ Das Plugin nutzt `Atlas.Common` nicht; es spricht mit dem Server nur über LSP.
 ### Struktur der IDE-Schicht
 
 - **Grundbausteine `Atlas.IDE.Foundation.*`** (`Source/IDE/Foundation/`): Einstellungen, Editorstand, Tastenbelegung, Ergebnisfenster, Rinne, gezeichnete Elemente (#628), Strukturhervorhebung, Projekte der IDE, Navigation. Was nur die Open Tools API kapselt (Editorpuffer, Editorstil, Tastenhaken, Atlas-Symbol, Andockfenster, Editorleisten, Dateien der IDE), liegt im Platform-Package `Atlas.ToolsApi`. Sie verwenden aus der IDE-Schicht nur andere Grundbausteine und sind die Basis aller IDE-Features; ein Feature verwendet sie wie einen Contract.
-- **Keine Zyklen zwischen Features:** Die Features von `Atlas.Core` und `Atlas.IDE` hängen nur in einer Richtung voneinander ab. Gezählt wird über die uses aller Units, ohne Grundbausteine, ohne die Kompositionswurzel und ohne Verweise auf `*.Contract` (Contracts verwenden nur Contracts und schließen darum keinen Zyklus). Wo ein Feature ein anderes aufrufen muss, das schon von ihm abhängt, setzt die Kompositionswurzel einen Haken (z. B. `TAtlasEditorTestUnitLens.OnSwitchTestUnit`, `TAtlasOptionsHooks`) oder reicht eine Schnittstelle (`IAtlasCommandRegistry`) durch.
+- **Keine Zyklen zwischen Features:** Die Features von `Atlas.Core` und `Atlas.IDE` hängen nur in einer Richtung voneinander ab, gezählt über alle uses, auch auf Contracts (Abschnitt „Keine Zyklen zwischen Features“). Wo ein Feature ein anderes aufrufen muss, das schon von ihm abhängt, setzt die Kompositionswurzel einen Haken (z. B. `TAtlasEditorTestUnitLens.OnSwitchTestUnit`, `TAtlasOptionsHooks`) oder reicht eine Schnittstelle (`IAtlasCommandRegistry`) durch.
 - **Host-Rolle Core von Base `Atlas.IDE.Base.Core.*`** (`Source/Core/Modules/`): Registry der Module, Handschlag, Beiträge, Teile der Feature-Tabelle, bekannte Packages, Beobachter der Registry und späte Antworten (`…Core.Modules.*`), Modul-Host, Feature-Tabelle, abgesicherter Start und die Build-Pipeline über die Beiträge der Module (`…Core.ModuleHost`, `…ModuleHosting`, `…FeatureTable`, `…SafeMode`, `…BuildPipeline`). Features von Base sehen davon nichts (Konzept 8.1): Braucht ein Feature die Registry, reicht die Shell sie ihm (z. B. `TAtlasSettingsSectionsPart.UseRegistry` mit `TAtlasRegistrySubscribe`).
 - **Kompositionswurzel `Atlas.IDE.CodeInsight.Composition`:** Die Wurzel selbst hält nur `Register` und `Unregister` und legt die Reihenfolge fest; die Teile liegen in `Atlas.IDE.CodeInsight.Composition.<Teil>` (Adapters, Session, Status, Build, Tools, Background, Drawing, Palette …, Features, Settings, Services, Leftovers), die einander ohne Zyklus verwenden. Nur `.Adapters` erzeugt Providers, Adapters und Compositions der Core-Features (genehmigte Ausnahme oben). Die Teile des Plugins stehen in `.Features` in Startreihenfolge in einer `TAtlasFeatureTable` (`Atlas.IDE.Base.Core.FeatureTable`): je Teil die Stufe des abgesicherten Starts bzw. die Einstellung, unter der es läuft, Start und Stop. `RegisterFeatures` startet beim Laden und nach jeder Einstellungsänderung, was gewünscht ist und noch fehlt; `Unregister` baut rückwärts ab.
+- **Kompositionswurzel `Atlas.IDE.CodeInsight.Composition`:** Die Wurzel selbst hält nur `Register` und `Unregister` und legt die Reihenfolge fest; die Teile liegen in `Atlas.IDE.CodeInsight.Composition.<Teil>` (Adapters, Session, Status, Build, Tools, Background, Drawing, Palette …, Features, Settings, Services, Leftovers), die einander ohne Zyklus verwenden. Nur `.Adapters` erzeugt Providers, Adapters und Compositions der Core-Features (genehmigte Ausnahme oben). Die Teile des Plugins stehen in `.Features` in Startreihenfolge in einer `TAtlasFeatureTable` (`Atlas.Core.Diagnostics.FeatureTable`): je Teil die Stufe des abgesicherten Starts bzw. die Einstellung, unter der es läuft, Start und Stop. `RegisterFeatures` startet beim Laden und nach jeder Einstellungsänderung, was gewünscht ist und noch fehlt; `Unregister` baut rückwärts ab.
 - **Workspace-Edits:** `Atlas.Core.Editor.WorkspacePlan` (ohne Open Tools API, getestet) plant aus einem LSP-Workspace-Edit die Schritte je Datei (Puffer, Formular, Platte, Anlegen, Umbenennen, Löschen); `Atlas.IDE.Editor.WorkspaceEdit` führt den Plan in der IDE aus und protokolliert ihn als einen Satz im Änderungsprotokoll.
-- `Tools/Check-PackageDependencies.ps1` prüft beides: Grundbausteine ohne andere `Atlas.IDE.*`-Units und Feature-Zyklen (Tarjan) in `Atlas.Core` und `Atlas.IDE`.
+- `Tools/Check-PackageDependencies.ps1` prüft die Grundbausteine ohne andere `Atlas.IDE.*`-Units, `Tools/Check-FeatureCycles.ps1` die Feature-Zyklen.
 
 ### Module und Verträge des Plugins (ab 2.0)
 

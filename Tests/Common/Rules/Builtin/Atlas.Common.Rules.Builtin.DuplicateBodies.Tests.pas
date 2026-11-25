@@ -77,6 +77,7 @@ type
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function UsesPath(const AFromUnit, AToFile: string; AInterfaceOnly: Boolean): TArray<TRuleUsesStep>;
     function UsedBy(const AFileName: string; out AUsers: TArray<TRuleUsesStep>): Boolean;
+    function UsesDerived(const AKey: string; const ADerive: TRuleUsesDerive): IInterface;
   end;
 
 constructor TFakeProjectFiles.Create(AComplete: Boolean);
@@ -163,6 +164,11 @@ function TFakeProjectFiles.UsedBy(const AFileName: string; out AUsers: TArray<TR
 begin
   AUsers := nil;
   Result := False;
+end;
+
+function TFakeProjectFiles.UsesDerived(const AKey: string; const ADerive: TRuleUsesDerive): IInterface;
+begin
+  Result := nil;
 end;
 
 function UnitText(const AName, ARoutines: string): string;

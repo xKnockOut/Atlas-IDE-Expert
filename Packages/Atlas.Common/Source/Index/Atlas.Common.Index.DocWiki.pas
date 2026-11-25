@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.DocWiki;
+﻿unit Atlas.Common.Index.DocWiki;
 
 // Links zur Embarcadero DocWiki für RTL- und VCL-Symbole im Hover (#27).
 // Schema: https://docwiki.embarcadero.com/Libraries/<Release>/en/<Unit>.<Typ>.<Name>

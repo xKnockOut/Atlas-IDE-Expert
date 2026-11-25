@@ -120,7 +120,7 @@ const
     'checkReturns', 'checkFree', 'allowFirstElement', 'implementation', 'managedFields', 'frameworkMembers',
     'ignoreStrictPrivate', 'allowExceptionUse');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  cStringListRuleOptions: array[0..53] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  cStringListRuleOptions: array[0..56] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
@@ -128,7 +128,7 @@ const
     'formatMethods', 'unitKinds', 'keep', 'pureFunctions', 'factories',
     'registrationCalls', 'prefixes', 'hostRoles', 'hostedFeatures', 'deferredApis', 'patterns', 'ignoreCalls', 'guards',
     'interfaces', 'workCalls', 'workClasses', 'entries', 'reporters', 'domainPackages', 'layerPrefixes',
-    'layerPackages', 'frameworks');
+    'layerPackages', 'frameworks', 'known', 'directions', 'knownEdges');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   cDeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>

@@ -38,9 +38,10 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes,
+  Atlas.Common.ClassActions.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

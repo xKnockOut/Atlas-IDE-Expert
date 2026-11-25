@@ -60,7 +60,7 @@ uses
   Atlas.Common.Semantics.TypeInfoClasses,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;

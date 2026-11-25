@@ -34,6 +34,10 @@ type
 
   /// <summary>Ordnet die Methoden der Typen einer Datei ihren Rümpfen zu; generische Typen fehlen.</summary>
   TMethodMatching = class
+  public const
+    cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.HelperType];
+    cMethodKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_];
   private
     FLines: TArray<string>;
     FUnit: TUnitIndex;
@@ -135,7 +139,7 @@ begin
   mLast := High(FLines);
   for mIndex := 0 to High(FUnit.Symbols) do
   begin
-    if FUnit.Symbols[mIndex].Kind in TMethodText.cTypeKinds then
+    if FUnit.Symbols[mIndex].Kind in cTypeKinds then
     begin
       mLast := Max(mLast, FUnit.Symbols[mIndex].Range.EndPos.Line);
     end;
@@ -143,7 +147,7 @@ begin
   SetLength(FInType, mLast + 1);
   for mIndex := 0 to High(FUnit.Symbols) do
   begin
-    if FUnit.Symbols[mIndex].Kind in TMethodText.cTypeKinds then
+    if FUnit.Symbols[mIndex].Kind in cTypeKinds then
     begin
       FTypes.Add(mIndex);
       AddTo(FTypesByName, LowerCase(FUnit.Symbols[mIndex].QualifiedName), mIndex);
@@ -152,7 +156,7 @@ begin
         FInType[mLine] := True;
       end;
     end
-    else if FUnit.Symbols[mIndex].Kind in TMethodText.cMethodKinds then
+    else if FUnit.Symbols[mIndex].Kind in cMethodKinds then
     begin
       AddTo(FMethods, LowerCase(FUnit.Symbols[mIndex].Container), mIndex);
     end;

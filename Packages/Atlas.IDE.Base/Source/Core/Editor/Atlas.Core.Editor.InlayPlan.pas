@@ -155,7 +155,7 @@ implementation
 uses
   System.SysUtils,
   System.Math,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.Core.Editor.SourceFiles;
 
 procedure AddRow(var AHints: TAtlasInlayLine; AKind: TAtlasInlayKind; const ALabels: TArray<string>);
@@ -248,12 +248,12 @@ end;
 
 class function TAtlasInlayPlan.SameLine(const AEditorLine, AStored: string; ATabWidth: Integer): Boolean;
 begin
-  Result := TAtlasPairs.SameDisplayLine(AEditorLine, AStored, ATabWidth);
+  Result := TTextColumns.SameDisplayLine(AEditorLine, AStored, ATabWidth);
 end;
 
 class function TAtlasInlayPlan.ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
 begin
-  Result := TAtlasPairs.DisplayColumn(ALine, ACharacter, ATabWidth);
+  Result := TTextColumns.DisplayColumn(ALine, ACharacter, ATabWidth);
 end;
 
 class function TAtlasInlayPlan.TailColumn(const AStored: string; ATabWidth: Integer): Integer;

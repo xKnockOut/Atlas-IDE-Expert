@@ -841,7 +841,8 @@ begin
   FLinkRequest.Start(
     procedure
     begin
-      mData := ASession.HoverDataAt(mRef.FileName, mRef.Line, mRef.Character, 0);
+      mData := TAtlasHoverData.FromResponse(ASession.HoverResponseAt(mRef.FileName, mRef.Line, mRef.Character,
+        0));
     end,
     procedure(AOk: Boolean; const AError: string)
     begin

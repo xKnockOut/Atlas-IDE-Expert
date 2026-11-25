@@ -31,7 +31,7 @@ uses
   Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Index.LibraryUnits,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
 

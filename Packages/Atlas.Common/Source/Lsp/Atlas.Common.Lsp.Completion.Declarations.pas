@@ -55,7 +55,7 @@ uses
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.CodeActions.Contract.Classes,
+  Atlas.Common.ClassActions.Contract,
   Atlas.Common.Editing.AccessorCreation,
   Atlas.Common.Pascal.ResourceStrings,
   Atlas.Common.Editing.ContextSnippets,

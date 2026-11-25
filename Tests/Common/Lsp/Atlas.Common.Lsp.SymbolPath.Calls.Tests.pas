@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Architecture.SymbolPath.Calls.Tests;
+﻿unit Atlas.Common.Lsp.SymbolPath.Calls.Tests;
 
 // Tests der Aufrufkanten der Pfadsuche (#1117): Aufrufe aus dem Rumpf,
 // Aufrufer über die uses-Liste, ohne Quelltext keine Aufrufe, Abbruch
@@ -10,9 +10,9 @@ uses
   DUnitX.TestFramework,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Architecture.SymbolPath.Nodes,
-  Atlas.Common.Architecture.SymbolPath.Graph,
-  Atlas.Common.Architecture.SymbolPath.Calls;
+  Atlas.Common.Lsp.SymbolPath.Nodes,
+  Atlas.Common.Lsp.SymbolPath.Graph,
+  Atlas.Common.Lsp.SymbolPath.Calls;
 
 type
   [TestFixture]

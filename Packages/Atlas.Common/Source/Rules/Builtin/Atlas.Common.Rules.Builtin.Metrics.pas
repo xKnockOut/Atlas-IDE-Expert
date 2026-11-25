@@ -89,7 +89,7 @@ uses
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

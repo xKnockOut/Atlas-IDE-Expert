@@ -53,7 +53,7 @@ uses
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.Concurrency,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,

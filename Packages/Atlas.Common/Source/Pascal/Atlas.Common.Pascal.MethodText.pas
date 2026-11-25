@@ -8,16 +8,11 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Pascal.Contract;
 
 type
   /// <summary>Textbausteine für Methodenköpfe.</summary>
   TMethodText = class
-  public const
-    cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
-      TIndexSymbolKind.HelperType];
-    cMethodKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_];
   public
     class function ContainsLine(const ARange: TTextRange; ALine: Integer): Boolean; static;
     /// <summary>Steht das Wort AWord als Bezeichner oder reserviertes Wort in AText? Kommentare und Strings
