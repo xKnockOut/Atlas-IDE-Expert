@@ -12,9 +12,8 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Projects.DprojReader,
-  Atlas.Common.Rules.Contract.UnitLookup,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Index.Contract;
 
 type
   /// <summary>Hält einen TPackageLocator (#1220); der Locator wird mit dem letzten Halter frei.</summary>
@@ -56,12 +55,12 @@ type
   public
     /// <summary>Enthält das Package die Unit? Nicht gefundene Packages sind unbekannt, damit Regeln still bleiben
     /// statt falsch zu melden.</summary>
-    class function Provides(const AHold: IPackageLocatorHold): TRulePackageProvides; static;
+    class function Provides(const AHold: IPackageLocatorHold): TPackageProvides; static;
     /// <summary>Packages, die ein Package verlangt: dcc sieht auch deren Units (Atlas.Windows → Atlas.Common →
     /// Atlas.Text).</summary>
     class function Requires(const AHold: IPackageLocatorHold): TFunc<string, TArray<string>>; static;
     /// <summary>Wie Requires, als Typ der Prüfregeln.</summary>
-    class function RuleRequires(const AHold: IPackageLocatorHold): TRulePackageRequires; static;
+    class function RuleRequires(const AHold: IPackageLocatorHold): TPackageRequires; static;
     class function Exists(const AHold: IPackageLocatorHold): TFunc<string, Boolean>; static;
     /// <summary>DCU-Ausgabe und Units der anderen Projekte der Gruppe (uses-unit-not-found, 3a): bei jeder Anfrage
     /// die aktuelle Liste AFiles, gelesen werden die .dproj nur, wenn sie sich geändert hat. Die IDE meldet die
@@ -74,7 +73,7 @@ type
       const AOptions: TDprojOptions; const ALogger: ILogger): TArray<TUnitLookupGroupOutput>; static;
     /// <summary>Unit-Suche wie beim Compiler (#1016) über die geteilten Ordnerlisten. Ohne Installation (und ohne
     /// Bibliothekspfade aus der IDE) gilt keine Unit als sicher fehlend.</summary>
-    class function UnitLookupFor(const ASource: TCoreUnitLookupSource): IRuleUnitLookup; static;
+    class function UnitLookupFor(const ASource: TCoreUnitLookupSource): IUnitLookup; static;
   end;
 
 implementation
@@ -317,20 +316,20 @@ end;
 
 { TCorePackageLookups }
 
-class function TCorePackageLookups.Provides(const AHold: IPackageLocatorHold): TRulePackageProvides;
+class function TCorePackageLookups.Provides(const AHold: IPackageLocatorHold): TPackageProvides;
 begin
   Result :=
-    function(const APackage, AUnitName: string): TRulePackageAnswer
+    function(const APackage, AUnitName: string): TPackageAnswer
     var
       mContains: Boolean;
     begin
-      Result := TRulePackageAnswer.Unknown;
+      Result := TPackageAnswer.Unknown;
       if AHold.Locator.Provides(APackage, AUnitName, mContains) then
       begin
-        Result := TRulePackageAnswer.No;
+        Result := TPackageAnswer.No;
         if mContains then
         begin
-          Result := TRulePackageAnswer.Yes;
+          Result := TPackageAnswer.Yes;
         end;
       end;
     end;
@@ -345,7 +344,7 @@ begin
     end;
 end;
 
-class function TCorePackageLookups.RuleRequires(const AHold: IPackageLocatorHold): TRulePackageRequires;
+class function TCorePackageLookups.RuleRequires(const AHold: IPackageLocatorHold): TPackageRequires;
 begin
   Result :=
     function(const APackage: string): TArray<string>
@@ -397,7 +396,7 @@ begin
   end;
 end;
 
-class function TCorePackageLookups.UnitLookupFor(const ASource: TCoreUnitLookupSource): IRuleUnitLookup;
+class function TCorePackageLookups.UnitLookupFor(const ASource: TCoreUnitLookupSource): IUnitLookup;
 var
   mSetup: TUnitLookupSetup;
 begin

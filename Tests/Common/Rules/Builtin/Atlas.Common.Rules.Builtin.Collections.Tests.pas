@@ -96,7 +96,7 @@ uses
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.Common.Rules.Builtin.Collections,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.RtlStubs,
@@ -195,7 +195,7 @@ begin
       mContext.Text := mText;
       mContext.Tree := mTree;
       mContext.Index := mIndex;
-      mContext.ProjectFiles := TRuleProjectFiles.Create([mProject], mIndex,
+      mContext.ProjectFiles := TProjectGroupFiles.Create([mProject], mIndex,
         function(const AFileName: string; out AText: string): Boolean
         begin
           Result := mTexts.TryGetValue(UpperCase(AFileName), AText);

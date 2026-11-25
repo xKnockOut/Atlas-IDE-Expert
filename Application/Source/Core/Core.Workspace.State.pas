@@ -12,7 +12,8 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Builder,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Projects.Contract.Group,
+  Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Pascal.Contract,
   Core.Workspace.Setup,
   Core.Workspace.Packages;
@@ -57,7 +58,7 @@ type
     /// <summary>Projektdateien und Suchpfad-Units in Großschreibung, für ContainsFile.</summary>
     FOwnFiles: TDictionary<string, Boolean>;
     /// <summary>Unit-Suche wie beim Compiler für uses-unit-not-found (#1016), je Indexaufbau neu.</summary>
-    FUnitLookup: IRuleUnitLookup;
+    FUnitLookup: IUnitLookup;
     // Der Locator lebt, solange ihn ein Halter hat (#1220): Arbeitsbereich und die Unit-Suche, die Prüfungen in
     // Anfrage-Threads noch über die Freigabe des Arbeitsbereichs hinaus benutzen können. Frühere bleiben bis zur
     // Freigabe des Arbeitsbereichs.
@@ -72,7 +73,7 @@ type
     constructor Create(ASetup: TCoreWorkspaceSetup);
     destructor Destroy; override;
     procedure SetProject(const AProject: TProjectInfo; const AInstall: TCoreInstallInfo);
-    procedure SetLookups(const APackages: IPackageLocatorHold; const AUnitLookup: IRuleUnitLookup);
+    procedure SetLookups(const APackages: IPackageLocatorHold; const AUnitLookup: IUnitLookup);
     procedure SetIndexedFiles(const AFiles: TCoreIndexedFiles);
     /// <summary>Vollständiger Indexlauf (nicht abgebrochen) nach AElapsedMs.</summary>
     procedure Finished(const AResult: TIndexBuildResult; AElapsedMs: Int64);
@@ -99,7 +100,7 @@ type
     /// <summary>Feste Projektdatei oder die des geladenen Projekts; '' ohne Projekt.</summary>
     function ProjectFileName: string;
     /// <summary>Unit-Suche des zuletzt geladenen Projekts (#1016); nil vor dem ersten Laden.</summary>
-    function UnitLookup: IRuleUnitLookup;
+    function UnitLookup: IUnitLookup;
     /// <summary>Package-Locator des zuletzt geladenen Projekts (#46); nil vor dem ersten Laden.</summary>
     function Packages: IPackageLocatorHold;
     /// <summary>Symbole und Include-Dateien des Projekts für die Regelprüfung von AFileName (#860); ohne
@@ -107,8 +108,8 @@ type
     function CheckSource(const AFileName: string): TPascalSource;
     /// <summary>Projekt für projektweite Regeln (#1102) mit Datei und Quelltexten, dazu der Hauptquelltext;
     /// False ohne geladenes Projekt. Liest keine Dateien; Art, Test-Projekt und Formulare ergänzt
-    /// TRuleProjectFiles.ProjectOf außerhalb von Sperren.</summary>
-    function RuleProject(out AProject: TRuleProject; out AMainSource: string): Boolean;
+    /// TGroupProjects.ProjectOf außerhalb von Sperren.</summary>
+    function RuleProject(out AProject: TGroupProject; out AMainSource: string): Boolean;
     property NameFacts: IIndexNameFacts read FNameFacts;
     /// <summary>True, solange ein Aufbau die Projektstufe noch nicht hinter sich hat.</summary>
     property ProjectPending: Boolean read FProjectPending write FProjectPending;
@@ -158,7 +159,7 @@ begin
   end;
 end;
 
-procedure TCoreProjectState.SetLookups(const APackages: IPackageLocatorHold; const AUnitLookup: IRuleUnitLookup);
+procedure TCoreProjectState.SetLookups(const APackages: IPackageLocatorHold; const AUnitLookup: IUnitLookup);
 begin
   TMonitor.Enter(FLock);
   try
@@ -323,7 +324,7 @@ begin
   end;
 end;
 
-function TCoreProjectState.UnitLookup: IRuleUnitLookup;
+function TCoreProjectState.UnitLookup: IUnitLookup;
 begin
   TMonitor.Enter(FLock);
   try
@@ -354,11 +355,11 @@ begin
   Result := TPascalSource.Create(AFileName, mSymbols, TIncludeFiles.Resolver(IncludePaths));
 end;
 
-function TCoreProjectState.RuleProject(out AProject: TRuleProject; out AMainSource: string): Boolean;
+function TCoreProjectState.RuleProject(out AProject: TGroupProject; out AMainSource: string): Boolean;
 var
   mInfo: TProjectInfo;
 begin
-  AProject := Default(TRuleProject);
+  AProject := Default(TGroupProject);
   AMainSource := '';
   Result := Project(mInfo);
   if not Result then

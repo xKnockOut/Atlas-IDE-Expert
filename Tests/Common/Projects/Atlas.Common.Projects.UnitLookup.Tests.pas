@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Providers.UnitLookup.Tests;
+﻿unit Atlas.Common.Projects.UnitLookup.Tests;
 
 // Tests für die Unit-Suche wie beim Compiler (#1016): .pas und .dcu, Unit-
 // Namespaces, Units des Projekts, "in 'Pfad'", requires-Packages, unsichere
@@ -50,9 +50,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Contract.UnitLookup,
-  Atlas.Common.Rules.Providers.UnitLookup;
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Projects.UnitLookup;
 
 /// <summary>Einrichtung mit den Dateien AFiles (vollständige Pfade) als Dateisystem.</summary>
 function Setup(const AFiles: TArray<string>): TUnitLookupSetup;
@@ -112,51 +111,51 @@ end;
 
 // Ohne const: Aufrufer übergeben TUnitLookup.Create(...) direkt; nur so zählt Delphi die Referenz und gibt das
 // Objekt wieder frei.
-function Answer(ALookup: IRuleUnitLookup; const AName: string): TRuleUnitAnswer;
+function Answer(ALookup: IUnitLookup; const AName: string): TUnitAnswer;
 begin
-  Result := ALookup.Find(AName, '', 'C:\P\Main.pas', [TRuleUnitSource.Project]);
+  Result := ALookup.Find(AName, '', 'C:\P\Main.pas', [TUnitSource.Project]);
 end;
 
 { TUnitLookupTests }
 
 procedure TUnitLookupTests.FindsSourceAndCompiledUnitsWithNamespaces;var
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
 begin
   mLookup := TUnitLookup.Create(Setup(LibraryFiles + ['C:\P\Src\Rechnung.Druck.pas']));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'System.SysUtils')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'SysUtils')), 'Namespace System');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'forms')), 'Namespace Vcl, .dcu');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'Rechnung.Druck')), 'Suchpfad, .pas');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(mLookup, 'Rechnungs.Druck')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(mLookup, 'Winapi.Windows')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'System.SysUtils')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'SysUtils')), 'Namespace System');
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'forms')), 'Namespace Vcl, .dcu');
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'Rechnung.Druck')), 'Suchpfad, .pas');
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(mLookup, 'Rechnungs.Druck')));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(mLookup, 'Winapi.Windows')));
 end;
 
 procedure TUnitLookupTests.ProjectUnitsAndFolderOfFile;
 var
   mData: TUnitLookupSetup;
   mEntry: TProjectUnit;
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
 begin
   mData := Setup(LibraryFiles + ['C:\Woanders\Neben.pas']);
   mEntry.Name := 'Kunden.Daten';
   mEntry.FileName := 'C:\Q\Kunden.Daten.pas';
   mData.Project.Units := [mEntry];
   mLookup := TUnitLookup.Create(mData);
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'Kunden.Daten')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.Find('Neben', '', 'C:\Woanders\Haupt.pas',
-    [TRuleUnitSource.Project])), 'Ordner der verwendenden Datei');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(mLookup, 'Neben')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'Kunden.Daten')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.Find('Neben', '', 'C:\Woanders\Haupt.pas',
+    [TUnitSource.Project])), 'Ordner der verwendenden Datei');
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(mLookup, 'Neben')));
 end;
 
 procedure TUnitLookupTests.InPathChecksOnlyThatFile;
 var
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
 begin
   mLookup := TUnitLookup.Create(Setup(LibraryFiles + ['C:\P\Src\Haupt.Form.pas']));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.Find('Haupt.Form', 'Src\Haupt.Form.pas', 'C:\P\App.dpr',
-    [TRuleUnitSource.Project])));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(mLookup.Find('Haupt.Form', 'Haupt.Form.pas', 'C:\P\App.dpr',
-    [TRuleUnitSource.Project])), 'Datei fehlt, auch wenn die Unit im Suchpfad liegt');
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.Find('Haupt.Form', 'Src\Haupt.Form.pas', 'C:\P\App.dpr',
+    [TUnitSource.Project])));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(mLookup.Find('Haupt.Form', 'Haupt.Form.pas', 'C:\P\App.dpr',
+    [TUnitSource.Project])), 'Datei fehlt, auch wenn die Unit im Suchpfad liegt');
 end;
 
 procedure TUnitLookupTests.UnknownWithoutInstallationOrWithMacro;
@@ -165,44 +164,44 @@ var
 begin
   mData := Setup(LibraryFiles);
   mData.LibraryKnown := False;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(mData), 'Fehlt')));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(mData), 'Fehlt')));
   mData := Setup(LibraryFiles);
   mData.Project.SearchPaths := ['$(MEINE_LIB)\Source'];
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(mData), 'Fehlt')));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(mData), 'Fehlt')));
   mData := Setup(LibraryFiles);
   mData.ListFiles := nil;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(mData), 'Fehlt')));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(mData), 'Fehlt')));
   // Gefundenes bleibt gefunden.
   mData := Setup(LibraryFiles);
   mData.LibraryKnown := False;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mData), 'SysUtils')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mData), 'SysUtils')));
 end;
 
 procedure TUnitLookupTests.RequiredPackagesProvideUnits;
 var
   mData: TUnitLookupSetup;
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
 begin
   mData := Setup(LibraryFiles);
   mData.RequiredPackages := ['Komponenten', 'Fremd'];
   mData.PackageProvides :=
-    function(const APackage, AUnitName: string): TRulePackageAnswer
+    function(const APackage, AUnitName: string): TPackageAnswer
     begin
       if SameText(APackage, 'Fremd') then
       begin
-        Exit(TRulePackageAnswer.Unknown);
+        Exit(TPackageAnswer.Unknown);
       end;
       if SameText(AUnitName, 'Komp.Knopf') then
       begin
-        Exit(TRulePackageAnswer.Yes);
+        Exit(TPackageAnswer.Yes);
       end;
-      Result := TRulePackageAnswer.No;
+      Result := TPackageAnswer.No;
     end;
   mLookup := TUnitLookup.Create(mData);
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'Komp.Knopf')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(Answer(mLookup, 'Komp.Fehlt')), 'Fremd ist unbekannt');
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'Komp.Knopf')));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord(Answer(mLookup, 'Komp.Fehlt')), 'Fremd ist unbekannt');
   mData.RequiredPackages := ['Komponenten'];
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mData), 'Komp.Fehlt')));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mData), 'Komp.Fehlt')));
 end;
 
 procedure TUnitLookupTests.UnitsOfIndirectlyRequiredPackages;
@@ -213,19 +212,19 @@ begin
   mData := Setup(LibraryFiles);
   mData.RequiredPackages := ['rtl', 'Atlas.Common'];
   mData.PackageProvides :=
-    function(const APackage, AUnitName: string): TRulePackageAnswer
+    function(const APackage, AUnitName: string): TPackageAnswer
     begin
       if SameText(APackage, 'Atlas.Text') and SameText(AUnitName, 'Atlas.Text.MapFile') then
       begin
-        Exit(TRulePackageAnswer.Yes);
+        Exit(TPackageAnswer.Yes);
       end;
       if SameText(APackage, 'Fremd') then
       begin
-        Exit(TRulePackageAnswer.Unknown);
+        Exit(TPackageAnswer.Unknown);
       end;
-      Result := TRulePackageAnswer.No;
+      Result := TPackageAnswer.No;
     end;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mData), 'Atlas.Text.MapFile')),
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mData), 'Atlas.Text.MapFile')),
     'ohne requires der Packages nur die direkten');
   mData.PackageRequires :=
     function(APackage: string): TArray<string>
@@ -240,8 +239,8 @@ begin
         Result := TArray<string>.Create('rtl', 'Atlas.Common');
       end;
     end;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mData), 'Atlas.Text.MapFile')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mData), 'Atlas.Text.Fehlt')),
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mData), 'Atlas.Text.MapFile')));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mData), 'Atlas.Text.Fehlt')),
     'Ringe im requires enden');
   // Ein unbekanntes Package weiter hinten macht die Antwort unsicher.
   mData.PackageRequires :=
@@ -253,13 +252,13 @@ begin
         Result := TArray<string>.Create('Fremd');
       end;
     end;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(mData), 'Atlas.Text.Fehlt')));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(mData), 'Atlas.Text.Fehlt')));
 end;
 
 procedure TUnitLookupTests.AtlasSourceUsesIndexAndBrowsingPaths;
 var
   mData: TUnitLookupSetup;
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
 begin
   mData := Setup(LibraryFiles + ['C:\BDS\source\Quelle.Nur.pas']);
   mData.BrowsingPaths := ['C:\BDS\source'];
@@ -269,22 +268,22 @@ begin
       Result := SameText(AName, 'Im.Index');
     end;
   mLookup := TUnitLookup.Create(mData);
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(mLookup, 'Im.Index')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.Find('Im.Index', '', 'C:\P\Main.pas',
-    [TRuleUnitSource.Atlas])));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.Find('Quelle.Nur', '', 'C:\P\Main.pas',
-    [TRuleUnitSource.Project, TRuleUnitSource.Atlas])));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(mLookup.Find('Gibt.Es.Nicht', '', 'C:\P\Main.pas',
-    [TRuleUnitSource.Project, TRuleUnitSource.Atlas])));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(mLookup, 'Im.Index')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.Find('Im.Index', '', 'C:\P\Main.pas',
+    [TUnitSource.Atlas])));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.Find('Quelle.Nur', '', 'C:\P\Main.pas',
+    [TUnitSource.Project, TUnitSource.Atlas])));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(mLookup.Find('Gibt.Es.Nicht', '', 'C:\P\Main.pas',
+    [TUnitSource.Project, TUnitSource.Atlas])));
   // Nur Atlas ohne Index: keine Aussage.
   mData.IndexKnows := nil;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord((TUnitLookup.Create(mData) as IRuleUnitLookup).Find('Gibt.Es.Nicht', '',
-    'C:\P\Main.pas', [TRuleUnitSource.Atlas])));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord((TUnitLookup.Create(mData) as IUnitLookup).Find('Gibt.Es.Nicht', '',
+    'C:\P\Main.pas', [TUnitSource.Atlas])));
 end;
 
 procedure TUnitLookupTests.FolderOutsideSearchPaths;
 var
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
 begin
   mLookup := TUnitLookup.Create(Setup(LibraryFiles + ['C:\P\Src\Im.Pfad.pas', 'C:\P\Extra\Druck\Rechnung.pas',
     'C:\P\Haupt.pas']));
@@ -297,7 +296,7 @@ end;
 procedure TUnitLookupTests.KnownUnitsAndPackages;
 var
   mData: TUnitLookupSetup;
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
   mKnown: TArray<string>;
   mFileName, mText: string;
   mGroup: TUnitLookupGroupOutput;
@@ -315,30 +314,30 @@ begin
       Result := SameText(AFileName, 'C:\P\App.dproj');
     end;
   mLookup := TUnitLookup.Create(mData);
-  mKnown := mLookup.KnownUnits([TRuleUnitSource.Project]);
+  mKnown := mLookup.KnownUnits([TUnitSource.Project]);
   Assert.IsTrue(IndexText('Rechnung.Druck', mKnown) >= 0);
   Assert.IsTrue(IndexText('Vcl.Forms', mKnown) >= 0);
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindPackage('rtl')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(mLookup.FindPackage('Fehlend')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.FindPackage('rtl')));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(mLookup.FindPackage('Fehlend')));
   // Package derselben Projektgruppe: gilt als vorhanden, auch ohne .dcp und ohne Ausgabeordner.
   mGroup := Default(TUnitLookupGroupOutput);
   mGroup.ProjectName := 'Atlas.Text';
   mData.GroupOutputs := [mGroup];
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord((TUnitLookup.Create(mData) as IRuleUnitLookup).FindPackage(
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord((TUnitLookup.Create(mData) as IUnitLookup).FindPackage(
     'atlas.text')));
   mData.GroupOutputs := nil;
   Assert.IsTrue(mLookup.ReadProject(mFileName, mText));
   Assert.AreEqual('C:\P\App.dproj', mFileName);
   Assert.AreEqual('<Project/>', mText);
   mData.PackageExists := nil;
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord((TUnitLookup.Create(mData) as IRuleUnitLookup).FindPackage('Fehlend')));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord((TUnitLookup.Create(mData) as IUnitLookup).FindPackage('Fehlend')));
 end;
 
 procedure TUnitLookupTests.RepeatedQuestionsGiveSameAnswers;
 var
   mData: TUnitLookupSetup;
   mEntry: TProjectUnit;
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
   mPass: Integer;
 begin
   // Projekt-Units stehen in einer Namensliste, die Antwort der Projektordner je Unit wird gemerkt (#1342):
@@ -350,47 +349,47 @@ begin
   mLookup := TUnitLookup.Create(mData);
   for mPass := 1 to 2 do
   begin
-    Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'KUNDEN')), 'Projekt-Unit mit Namespace Vcl');
-    Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'vcl.kunden')), 'Projekt-Unit');
-    Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'SysUtils')), 'Bibliothek mit Namespace');
-    Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'rechnung.druck')), 'Suchpfad');
-    Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(mLookup, 'Fehlt')));
+    Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'KUNDEN')), 'Projekt-Unit mit Namespace Vcl');
+    Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'vcl.kunden')), 'Projekt-Unit');
+    Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'SysUtils')), 'Bibliothek mit Namespace');
+    Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'rechnung.druck')), 'Suchpfad');
+    Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(mLookup, 'Fehlt')));
   end;
 end;
 
 procedure TUnitLookupTests.FindFileLikeCompiler;
 var
   mData: TUnitLookupSetup;
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
 begin
   mData := Setup(LibraryFiles + ['C:\P\Main.inc', 'C:\P\Src\Gemeinsam.inc', 'C:\P\Inc\Version.inc',
     'C:\P\Res\Bilder.res', 'C:\BDS\lib\Bibliothek.inc', 'C:\Abs\Absolut.inc']);
   mData.Project.Properties := [TPair<string, string>.Create('DCC_IncludePath', 'Inc'),
     TPair<string, string>.Create('DCC_ResourcePath', 'C:\P\Res')];
   mLookup := TUnitLookup.Create(mData);
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Main.inc', 'C:\P\Main.pas')), 'neben der Datei');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Gemeinsam.inc', 'C:\P\Main.pas')), 'Suchpfad');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Version.inc', 'C:\P\Main.pas')),
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.FindFile('Main.inc', 'C:\P\Main.pas')), 'neben der Datei');
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.FindFile('Gemeinsam.inc', 'C:\P\Main.pas')), 'Suchpfad');
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.FindFile('Version.inc', 'C:\P\Main.pas')),
     'DCC_IncludePath relativ zur .dproj');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Bilder.res', 'C:\P\Main.pas')),
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.FindFile('Bilder.res', 'C:\P\Main.pas')),
     'DCC_ResourcePath');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Bibliothek.inc', 'C:\P\Main.pas')),
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.FindFile('Bibliothek.inc', 'C:\P\Main.pas')),
     'Bibliothekspfad');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('C:\Abs\Absolut.inc', 'C:\P\Main.pas')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(mLookup.FindFile('Fehlt.inc', 'C:\P\Main.pas')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(mLookup.FindFile('C:\Abs\Fehlt.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.FindFile('C:\Abs\Absolut.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(mLookup.FindFile('Fehlt.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(mLookup.FindFile('C:\Abs\Fehlt.inc', 'C:\P\Main.pas')));
   // Ohne Installation, mit offenem Makro oder ohne Dateizugriff keine sichere Aussage.
   mData.LibraryKnown := False;
   mLookup := TUnitLookup.Create(mData);
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(mLookup.FindFile('Fehlt.inc', 'C:\P\Main.pas')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Main.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord(mLookup.FindFile('Fehlt.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(mLookup.FindFile('Main.inc', 'C:\P\Main.pas')));
   mData.LibraryKnown := True;
   mData.Project.Properties := [TPair<string, string>.Create('DCC_IncludePath', '$(MEINE_INC)')];
   mLookup := TUnitLookup.Create(mData);
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(mLookup.FindFile('Fehlt.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord(mLookup.FindFile('Fehlt.inc', 'C:\P\Main.pas')));
   mData.FileExists := nil;
   mLookup := TUnitLookup.Create(mData);
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(mLookup.FindFile('Main.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TUnitAnswer.Unknown), Ord(mLookup.FindFile('Main.inc', 'C:\P\Main.pas')));
 end;
 
 procedure TUnitLookupTests.UnitsBuiltByGroupProjects;
@@ -398,7 +397,7 @@ var
   mSetup: TUnitLookupSetup;
   mOutput: TUnitLookupGroupOutput;
   mLate: TArray<TUnitLookupGroupOutput>;
-  mLookup: IRuleUnitLookup;
+  mLookup: IUnitLookup;
 begin
   mSetup := Setup(LibraryFiles);
   mSetup.Project.SearchPaths := ['C:\P\Src', 'C:\Out\Win32\Debug\Dcu\Common'];
@@ -410,12 +409,12 @@ begin
   mOutput.DcuFolder := 'C:\Out\Win32\Debug\Dcu\Fremd';
   mOutput.Units := ['Fremd.Unit'];
   mSetup.GroupOutputs := mSetup.GroupOutputs + [mOutput];
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mSetup), 'Common.Vergleich')),
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mSetup), 'Common.Vergleich')),
     'ohne .dcu, aber von der Gruppe gebaut');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mSetup), 'common.text')));
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mSetup), 'Fremd.Unit')),
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(mSetup), 'common.text')));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mSetup), 'Fremd.Unit')),
     'Ausgabe nicht im Suchpfad');
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mSetup), 'Common.Fehlt')));
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(mSetup), 'Common.Fehlt')));
   // Über GroupOutputsOf: Die IDE meldet die übrigen Projekte erst nach diesem an; die Suche fragt bei Bedarf.
   mLate := nil;
   mSetup.GroupOutputs := nil;
@@ -425,11 +424,11 @@ begin
       Result := mLate;
     end;
   mLookup := TUnitLookup.Create(mSetup);
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(mLookup, 'Common.Vergleich')), 'Gruppe noch leer');
+  Assert.AreEqual(Ord(TUnitAnswer.Missing), Ord(Answer(mLookup, 'Common.Vergleich')), 'Gruppe noch leer');
   mOutput.DcuFolder := 'C:\Out\Win32\Debug\Dcu\Common';
   mOutput.Units := ['Common.Vergleich'];
   mLate := [mOutput];
-  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(mLookup, 'Common.Vergleich')), 'später angemeldet');
+  Assert.AreEqual(Ord(TUnitAnswer.Found), Ord(Answer(mLookup, 'Common.Vergleich')), 'später angemeldet');
   mLookup := nil;
   mSetup.GroupOutputsOf := nil;
 end;
