@@ -88,7 +88,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Rationale.Contract,
-  Atlas.Common.Lsp.DocWiki,
+  Atlas.Common.Index.DocWiki,
   Atlas.Tests.SourceText;
 
 const

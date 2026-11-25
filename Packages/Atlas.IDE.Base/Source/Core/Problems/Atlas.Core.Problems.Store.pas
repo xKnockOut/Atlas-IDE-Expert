@@ -230,7 +230,7 @@ implementation
 uses
   System.Math,
   System.Generics.Defaults,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.Core.Problems.IdeErrors,
   Atlas.Text.Diff;
 
@@ -671,15 +671,15 @@ begin
   mFirst := 1;
   if ALine = AProblem.StartLine then
   begin
-    mFirst := TAtlasPairs.ColumnOf(AText, Min(AProblem.StartCharacter, Length(AText)), ATabWidth);
+    mFirst := TTextColumns.ColumnOf(AText, Min(AProblem.StartCharacter, Length(AText)), ATabWidth);
   end;
   if ALine = AProblem.EndLine then
   begin
-    mLast := TAtlasPairs.ColumnOf(AText, Min(AProblem.EndCharacter, Length(AText)), ATabWidth) - 1;
+    mLast := TTextColumns.ColumnOf(AText, Min(AProblem.EndCharacter, Length(AText)), ATabWidth) - 1;
   end
   else
   begin
-    mLast := TAtlasPairs.ColumnOf(AText, Length(AText), ATabWidth) - 1;
+    mLast := TTextColumns.ColumnOf(AText, Length(AText), ATabWidth) - 1;
   end;
   ASpan := TAtlasColumnSpan.Create(mFirst, mLast);
   Result := mLast >= mFirst;

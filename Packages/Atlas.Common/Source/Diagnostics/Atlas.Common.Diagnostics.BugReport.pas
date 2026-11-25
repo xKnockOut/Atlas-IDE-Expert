@@ -18,7 +18,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.JsonRpc.Statistics;
+  Atlas.Common.Diagnostics.Contract;
 
 type
   TBugReportInput = record

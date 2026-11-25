@@ -109,7 +109,7 @@ uses
   System.Math,
   Winapi.Windows,
   Atlas.Plugin.Lsp.Client,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.ToolsApi.Editor.CodeView;
@@ -274,7 +274,7 @@ const
 var
   mColumn: Integer;
 begin
-  mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(ALine,
+  mColumn := Length(TrimRight(TTextColumns.DisplayLine(ALine,
     TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) + 1;
   Result := AContext.EditorState.GetCharacterPosPx(mColumn + cGapChars, AContext.EditorLineNum);
 end;

@@ -4,6 +4,7 @@
 //   forbidden-uses                 uses-Eintrag verletzt eine Schichtregel aus atlas.json
 //   architecture-role-import       uses-Eintrag verletzt die Rollenmatrix
 //   architecture-contract-content  Contract-Unit deklariert im interface eine Klasse
+//   architecture-feature-cycle     Zyklus zwischen Features (Atlas.Common.Rules.Builtin.FeatureCycles)
 //
 // Konfiguration als Option der Regel:
 //   "rules": { "forbidden-uses": { "severity": "error", "layers": [
@@ -254,6 +255,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts,
+  Atlas.Common.Rules.Builtin.FeatureCycles,
   Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
@@ -1298,6 +1300,7 @@ begin
   ARegistry.Register(TForbiddenUsesRule.Create);
   ARegistry.Register(TRoleImportRule.Create);
   ARegistry.Register(TContractContentRule.Create);
+  ARegistry.Register(TFeatureCycleRule.Create);
 end;
 
 initialization

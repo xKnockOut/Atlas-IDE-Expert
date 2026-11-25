@@ -68,7 +68,7 @@ uses
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Pascal.SyntaxTree,

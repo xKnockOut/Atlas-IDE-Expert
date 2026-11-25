@@ -5,15 +5,12 @@
 // - CharRange: Zeichenbereich eines Problems in einer seiner Zeilen; ein leerer
 //   Bereich wird ein Zeichen, am Zeilenende das letzte.
 // - Column: Editorspalte zu einem Zeichenindex, Tabs aufgelöst.
-// - HideTarget: Ausblenden am Element (#628): Befunde mit Regel über die Regel
-//   an ihrer Startzeile, andere (Compiler) je Codezeile.
 // - Lines: Zeilen, die die Probleme belegen (je Problem höchstens MaxSpan).
 
 interface
 
 uses
-  Atlas.Plugin.Problems.Contract,
-  Atlas.Core.Editor.Hide;
+  Atlas.Plugin.Problems.Contract;
 
 type
   TAtlasProblemMarks = record
@@ -25,8 +22,6 @@ type
       ATill: Integer); static;
     /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine.</summary>
     class function Column(const ALine: string; ACharacter, ATabWidth: Integer): Integer; static;
-    class function HideTarget(const AFileName: string; const AProblem: TAtlasProblem; ALine: Integer;
-      const AText: string): TAtlasHideTarget; static;
     class function Lines(const AProblems: TArray<TAtlasProblem>): TArray<Integer>; static;
   end;
 
@@ -34,7 +29,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Editor.Pairs;
+  Atlas.Text.Columns;
 
 class procedure TAtlasProblemMarks.CharRange(const AProblem: TAtlasProblem; ALine: Integer; const AText: string;
   out AFrom, ATill: Integer);
@@ -63,21 +58,7 @@ end;
 
 class function TAtlasProblemMarks.Column(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
 begin
-  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
-end;
-
-class function TAtlasProblemMarks.HideTarget(const AFileName: string; const AProblem: TAtlasProblem; ALine: Integer;
-  const AText: string): TAtlasHideTarget;
-begin
-  if not AProblem.IsCompiler and (AProblem.Code <> '') then
-  begin
-    Result := TAtlasHideTarget.Finding(AFileName, AProblem.StartLine, AProblem.Code, AText);
-  end
-  else
-  begin
-    Result := TAtlasHideTarget.Finding(AFileName, ALine, '', AText);
-  end;
-  Result.Caption := AProblem.Caption;
+  Result := Length(TTextColumns.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
 end;
 
 class function TAtlasProblemMarks.Lines(const AProblems: TArray<TAtlasProblem>): TArray<Integer>;

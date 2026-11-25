@@ -22,7 +22,7 @@ implementation
 
 uses
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.CodeActions.Contract.Classes,
+  Atlas.Common.ClassActions.Contract,
   Atlas.Common.Editing.Contract.ClassActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Editing.Providers.ClassActions;

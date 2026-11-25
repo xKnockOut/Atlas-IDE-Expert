@@ -106,14 +106,9 @@
     Atlas.Common.Rules.Builtin.Architecture entsprechen; beide prüfen die
     Fallliste Tests/Data/Architecture/role-imports.json (-SelfTest).
 
-    Featurerichtung Rules/Editing: Rules darf Editing
-    verwenden (Korrekturen nutzen Editing-Helfer), Editing aber nicht Rules.
-    Gemeinsame Wertetypen wie TTextEdit liegen in Documents.Contract.
-
     Plugin-Struktur: Atlas.IDE.Foundation.* verwendet aus
-    der IDE-Schicht nur Atlas.IDE.Foundation.*; die Features von Atlas.Core
-    und Atlas.IDE bilden keinen Zyklus (ohne Foundation, Kompositionswurzel
-    und Verweise auf *.Contract).
+    der IDE-Schicht nur Atlas.IDE.Foundation.*. Zyklen und Richtungen
+    zwischen Features prüft Tools/Check-FeatureCycles.ps1.
 
     Modulgrenzen (#1455): Welche Unit des Plugins in welches
     Package gehört, steht als Daten in Tools/UnitAssignment.tsv (eine Zeile
@@ -1239,111 +1234,18 @@ foreach ($dir in @('Packages', 'Application')) {
     }
 }
 
-# Featurerichtung: keine Unit unter Source/Editing importiert Atlas.Common.Rules.*
-$editingDir = Join-Path $Root 'Packages/Atlas.Common/Source/Editing'
-if (Test-Path $editingDir) {
-    foreach ($file in Get-ChildItem -Path $editingDir -Recurse -File -Include '*.pas') {
-        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
-        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
-        foreach ($unit in Get-ClauseEntries $text 'uses') {
-            if ($unit.Name.StartsWith('Atlas.Common.Rules.', [StringComparison]::OrdinalIgnoreCase)) {
-                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Editing darf Rules nicht verwenden; gemeinsame Typen nach Documents.Contract oder Pascal verschieben"
-            }
-        }
-    }
-}
-
-# Grundbausteine und Feature-Zyklen des Plugins
-# - Atlas.IDE.Foundation.* (Einstellungen, Editorpuffer, Tasten, Ergebnisfenster …) sind die Basis aller
-#   IDE-Features und verwenden selbst kein anderes Atlas.IDE.* außer Foundation und Core von Base
-#   (Atlas.IDE.Base.Foundation.*, Atlas.IDE.Base.Core.*: Verträge, Registry und Modul-Host).
-# - Die Features von Atlas.Core und Atlas.IDE bilden keinen Zyklus (Tarjan über die uses aller Units).
-#   Nicht mitgezählt: Atlas.IDE.Foundation.*, die Kompositionswurzel und Verweise auf *.Contract und auf die
-#   Foundation von Base (Atlas.IDE.Base.Foundation.*; Contracts verwenden nur Contracts und schließen darum
-#   keinen Zyklus).
-$PluginSource = Join-Path $Root "Packages/$PluginBaseFolder/Source"
+# Grundbausteine des Plugins: Atlas.IDE.Foundation.* (Einstellungen, Editorpuffer, Tasten, Ergebnisfenster …) sind
+# die Basis aller IDE-Features und verwenden selbst kein anderes Atlas.IDE.* außer Foundation und Core von Base
+# (Atlas.IDE.Base.Foundation.*, Atlas.IDE.Base.Core.*: Verträge, Registry und Modul-Host). Zyklen zwischen Features
+# prüft Tools/Check-FeatureCycles.ps1.
 $PluginSources = @($PluginFolders | ForEach-Object { Join-Path $Root "Packages/$_/Source" } | Where-Object { Test-Path $_ })
-$CompositionRoots = @('Atlas.IDE.CodeInsight.Composition')
-if (Test-Path $PluginSource) {
-    $featureEdges = @{}
-    function Get-PluginFeature([string] $Name) {
-        if ($Name -match '^(?i)Atlas\.IDE\.Foundation\.') { return $null }
-        $match = [regex]::Match($Name, '^(?i)Atlas\.(Core|IDE)\.(\w+)\.')
-        if (-not $match.Success) { return $null }
-        return "Atlas.$($match.Groups[1].Value).$($match.Groups[2].Value)"
-    }
-    foreach ($file in Get-ChildItem -Path $PluginSources -Recurse -File -Include '*.pas') {
-        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
-        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
-        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
-        $entries = @(Get-ClauseEntries $text 'uses')
-        if ($ownUnit -match '^(?i)Atlas\.IDE\.Foundation\.') {
-            foreach ($unit in $entries) {
-                if ($unit.Name -match '^(?i)Atlas\.IDE\.' -and $unit.Name -notmatch '^(?i)Atlas\.IDE\.(Foundation|Base\.Foundation|Base\.Core)\.') {
-                    $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.IDE.Foundation.* verwendet aus der IDE-Schicht nur Atlas.IDE.Foundation.*, Atlas.IDE.Base.Foundation.* und Atlas.IDE.Base.Core.*"
-                }
-            }
-            continue
+foreach ($file in Get-ChildItem -Path $PluginSources -Recurse -File -Include 'Atlas.IDE.Foundation.*.pas') {
+    $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+    $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+    foreach ($unit in Get-ClauseEntries $text 'uses') {
+        if ($unit.Name -match '^(?i)Atlas\.IDE\.' -and $unit.Name -notmatch '^(?i)Atlas\.IDE\.(Foundation|Base\.Foundation|Base\.Core)\.') {
+            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.IDE.Foundation.* verwendet aus der IDE-Schicht nur Atlas.IDE.Foundation.*, Atlas.IDE.Base.Foundation.* und Atlas.IDE.Base.Core.*"
         }
-        # Die Wurzel und ihre Teile Atlas.IDE.CodeInsight.Composition.<Teil> verbinden alle Features.
-        if (@($CompositionRoots | Where-Object { $ownUnit -eq $_ -or $ownUnit -like "$_.*" }).Count -gt 0) { continue }
-        $from = Get-PluginFeature $ownUnit
-        if ($null -eq $from) { continue }
-        foreach ($unit in $entries) {
-            if ($unit.Name -match '\.Contract$' -or $unit.Name -match '^(?i)Atlas\.IDE\.Base\.Foundation\.') { continue }
-            $to = Get-PluginFeature $unit.Name
-            if ($null -eq $to -or $to -eq $from) { continue }
-            if (-not $featureEdges.ContainsKey($from)) { $featureEdges[$from] = @{} }
-            if (-not $featureEdges[$from].ContainsKey($to)) { $featureEdges[$from][$to] = "$ownUnit -> $($unit.Name)" }
-        }
-    }
-    # Tarjan, starke Zusammenhangskomponenten mit mehr als einem Feature sind Zyklen.
-    $script:tarjanIndex = 0
-    $script:tarjanStack = [Collections.Generic.Stack[string]]::new()
-    $script:tarjanOn = @{}
-    $script:tarjanNumber = @{}
-    $script:tarjanLow = @{}
-    $script:tarjanComponents = @()
-    function Invoke-Tarjan([string] $Node) {
-        $script:tarjanNumber[$Node] = $script:tarjanIndex
-        $script:tarjanLow[$Node] = $script:tarjanIndex
-        $script:tarjanIndex++
-        $script:tarjanStack.Push($Node)
-        $script:tarjanOn[$Node] = $true
-        if ($featureEdges.ContainsKey($Node)) {
-            foreach ($next in @($featureEdges[$Node].Keys)) {
-                if (-not $script:tarjanNumber.ContainsKey($next)) {
-                    Invoke-Tarjan $next
-                    $script:tarjanLow[$Node] = [Math]::Min($script:tarjanLow[$Node], $script:tarjanLow[$next])
-                }
-                elseif ($script:tarjanOn[$next]) {
-                    $script:tarjanLow[$Node] = [Math]::Min($script:tarjanLow[$Node], $script:tarjanNumber[$next])
-                }
-            }
-        }
-        if ($script:tarjanLow[$Node] -eq $script:tarjanNumber[$Node]) {
-            $component = @()
-            do {
-                $member = $script:tarjanStack.Pop()
-                $script:tarjanOn[$member] = $false
-                $component += $member
-            } while ($member -ne $Node)
-            if ($component.Count -gt 1) { $script:tarjanComponents += , $component }
-        }
-    }
-    foreach ($node in @($featureEdges.Keys | Sort-Object)) {
-        if (-not $script:tarjanNumber.ContainsKey($node)) { Invoke-Tarjan $node }
-    }
-    foreach ($component in $script:tarjanComponents) {
-        $members = @($component | Sort-Object)
-        $examples = @()
-        foreach ($from in $members) {
-            if (-not $featureEdges.ContainsKey($from)) { continue }
-            foreach ($to in @($featureEdges[$from].Keys | Sort-Object)) {
-                if ($members -contains $to) { $examples += $featureEdges[$from][$to] }
-            }
-        }
-        $violations += "Feature-Zyklus: $($members -join ', ') – $($examples -join '; ')"
     }
 }
 
@@ -1451,6 +1353,7 @@ function Find-BoundaryEntry($Entries, [string] $Source, [string] $Target, [strin
     return $null
 }
 
+$PluginSource = Join-Path $Root "Packages/$PluginBaseFolder/Source"
 $assignmentMissing = @($AssignmentFile, $FolderFile, $BoundaryFile | Where-Object { -not (Test-Path (Join-Path $Root $_)) })
 if ((Test-Path $PluginSource) -and $assignmentMissing.Count -gt 0) {
     $violations += "$($assignmentMissing -join ', '): fehlt; die Modulgrenzen (#1455) lassen sich ohne Zuordnung nicht prüfen"

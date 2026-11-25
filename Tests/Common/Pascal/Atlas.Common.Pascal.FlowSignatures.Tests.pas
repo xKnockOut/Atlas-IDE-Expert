@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Semantics.ControlFlow.Signatures.Tests;
+﻿unit Atlas.Common.Pascal.FlowSignatures.Tests;
 
 // Übergabeart der Argumente für den Kontrollfluss (#143): Standardroutinen, Routinen derselben Datei
 // (var, out, Wert), Überladungen mit verschiedener Art bleiben unbekannt, Aufrufe über Objekte ebenso;
@@ -30,7 +30,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Semantics.ControlFlow.Signatures;
+  Atlas.Common.Pascal.FlowSignatures;
 
 const
   cLB = #13#10;

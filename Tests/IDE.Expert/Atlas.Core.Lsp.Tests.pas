@@ -126,7 +126,6 @@ uses
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Plugin.Files.WatchedChanges,
   Atlas.Plugin.Projects.Contract,
-  Atlas.Core.InlayHints.Store,
   Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.Plugin.Lsp.Framing,
   Atlas.Plugin.Lsp.Contract;

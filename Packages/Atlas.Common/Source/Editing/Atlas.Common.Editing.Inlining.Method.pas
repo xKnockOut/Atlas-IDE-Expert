@@ -40,7 +40,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow,
-  Atlas.Common.Semantics.ControlFlow.Signatures,
+  Atlas.Common.Pascal.FlowSignatures,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Editing.Inlining.Syntax,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Semantics.ControlFlow.Signatures;
+﻿unit Atlas.Common.Pascal.FlowSignatures;
 
 // Wie eine Anweisung ihre Argumente übergibt, für den Kontrollfluss (Semantics.ControlFlow): Wert, var, out
 // oder unbekannt (#143), und welche Routinen nie normal zurückkehren (Direktive noreturn). Quellen sind die

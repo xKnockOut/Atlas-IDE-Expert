@@ -12,7 +12,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Projects.DprojReader,
-  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Rules.Contract.UnitLookup,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract;
 

@@ -29,7 +29,7 @@
 // in with oder erwähnt sie in einer anonymen Methode, "berührt" der Knoten die
 // Variable: Sie kann danach gesetzt sein oder nicht. Abfragen über Wege durch
 // einen solchen Knoten antworten Unknown statt No oder Yes. Die Signatur
-// liefert ein TFlowSignatureLookup (Semantics.ControlFlow.Signatures); ohne Angabe gelten die Routinen derselben
+// liefert ein TFlowSignatureLookup (Pascal.FlowSignatures); ohne Angabe gelten die Routinen derselben
 // Datei und die Standardroutinen, Aufrufe über Objekte (Obj.Methode) sind
 // unbekannt. Bei bekannter Signatur mit Wertparameter (ohne Modifizierer oder
 // const) bleibt die Aussage unverändert.
@@ -45,7 +45,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow.Signatures;
+  Atlas.Common.Pascal.FlowSignatures;
 
 type
   TFlowNodeKind = (Entry, Exit, RaiseExit, Statement, Condition, Join);

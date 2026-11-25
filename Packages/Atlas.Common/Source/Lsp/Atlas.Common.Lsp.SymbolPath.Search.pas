@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Architecture.SymbolPath;
+﻿unit Atlas.Common.Lsp.SymbolPath.Search;
 
 // Kürzester Weg zwischen zwei Symbolen oder Units (#1117): MCP-Werkzeug
 // find_path, Anfrage atlas/symbolPath und IDE-Befehl „Weg zwischen
@@ -47,19 +47,19 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.UsesService,
-  Atlas.Common.Architecture.SymbolPath.Nodes,
-  Atlas.Common.Architecture.SymbolPath.Graph,
-  Atlas.Common.Architecture.SymbolPath.Calls;
+  Atlas.Common.Lsp.SymbolPath.Nodes,
+  Atlas.Common.Lsp.SymbolPath.Graph,
+  Atlas.Common.Lsp.SymbolPath.Calls;
 
 type
   /// <summary>Kantenarten in ihrer Rangfolge bei gleich langen Wegen.</summary>
-  TSymbolPathEdgeKind = Atlas.Common.Architecture.SymbolPath.Nodes.TSymbolPathEdgeKind;
-  TSymbolPathEdgeKinds = Atlas.Common.Architecture.SymbolPath.Nodes.TSymbolPathEdgeKinds;
-  TSymbolPathNode = Atlas.Common.Architecture.SymbolPath.Nodes.TSymbolPathNode;
-  TSymbolPathStep = Atlas.Common.Architecture.SymbolPath.Nodes.TSymbolPathStep;
-  TSymbolPathRoute = Atlas.Common.Architecture.SymbolPath.Nodes.TSymbolPathRoute;
-  TSymbolPathReadText = Atlas.Common.Architecture.SymbolPath.Nodes.TSymbolPathReadText;
-  TSymbolPathCancelled = Atlas.Common.Architecture.SymbolPath.Nodes.TSymbolPathCancelled;
+  TSymbolPathEdgeKind = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathEdgeKind;
+  TSymbolPathEdgeKinds = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathEdgeKinds;
+  TSymbolPathNode = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathNode;
+  TSymbolPathStep = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathStep;
+  TSymbolPathRoute = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathRoute;
+  TSymbolPathReadText = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathReadText;
+  TSymbolPathCancelled = Atlas.Common.Lsp.SymbolPath.Nodes.TSymbolPathCancelled;
 
   TSymbolPathStatus = (Found, NoPath, Aborted, Ambiguous, NotFound);
 
@@ -1232,6 +1232,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Architecture.SymbolPath', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SymbolPath.Search', cTexts);
 
 end.

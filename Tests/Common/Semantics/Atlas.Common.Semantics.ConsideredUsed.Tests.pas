@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.ConsideredUsed.Tests;
+﻿unit Atlas.Common.Semantics.ConsideredUsed.Tests;
 
 // Tests des Dienstes „gilt als verwendet“ (#1102): je Grund ein Fall, dazu
 // unbekannte Vorfahren, Methodenzuordnung, Muster und gewöhnliche Mitglieder.
@@ -40,7 +40,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.ConsideredUsed;
+  Atlas.Common.Semantics.ConsideredUsed;
 
 const
   cLibraryText = 'unit System;'#10'interface'#10'type'#10'  TObject = class'#10'  end;'#10 +

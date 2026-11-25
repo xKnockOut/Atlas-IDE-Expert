@@ -15,6 +15,15 @@ uses
   System.SysUtils;
 
 type
+  /// <summary>Eine Anfrage im Ringpuffer (#108) für Status und Fehlerbericht; ohne Inhalt.</summary>
+  TRecentRequest = record
+    /// <summary>Ende der Anfrage (lokale Zeit).</summary>
+    Finished: TDateTime;
+    Method: string;
+    ElapsedMs: Int64;
+    Failed: Boolean;
+  end;
+
   /// <summary>Ausgang einer Anfrage.</summary>
   TDiagnosticOutcome = (Ok, Empty, Timeout, Cancelled, Error);
 
