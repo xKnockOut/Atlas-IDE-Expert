@@ -554,7 +554,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ProjectCommands.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.SqlText.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DataFieldNames.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GuardFree.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.GuardFree.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TryFinally.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DatabaseCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Bookmarks.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentationCommands.pas"/>

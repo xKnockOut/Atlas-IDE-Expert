@@ -635,7 +635,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.GitUser.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeCommands.JsonGolden.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TryFinallyGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.ClassActions.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests.pas"/>
@@ -720,7 +720,8 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ProjectCommands.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.SqlText.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DataFieldNames.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.GuardFree.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.GuardFree.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TryFinally.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DatabaseCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Bookmarks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentationCommands.Tests.pas"/>

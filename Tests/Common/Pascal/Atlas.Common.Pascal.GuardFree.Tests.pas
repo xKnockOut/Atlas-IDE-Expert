@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GuardFree.Tests;
+﻿unit Atlas.Common.Pascal.GuardFree.Tests;
 
 // Tests für „Freigabe absichern“ (#489).
 
@@ -31,7 +31,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.GuardFree;
+  Atlas.Common.Pascal.GuardFree;
 
 /// <summary>Routine mit AVar im var-Abschnitt; AStatement steht in Zeile 4, ARest danach.</summary>
 function Source(const AVar, AStatement, ARest: string): string;
