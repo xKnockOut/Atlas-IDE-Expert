@@ -51,7 +51,8 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Configuration.TestSupport;
+  Atlas.Common.Configuration.TestSupport,
+  Atlas.Common.Checks.Contract;
 
 const
   cOther = 'unit Andere;'#13#10#13#10'interface'#13#10#13#10'procedure Mach;'#13#10#13#10'implementation'#13#10#13#10 +

@@ -9,11 +9,11 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract.Group,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.IdeProject,
   Core.Workspace.Setup,
-  Core.Workspace.State;
+  Core.Workspace.State,
+  Atlas.Common.Checks.Contract;
 
 type
   TCoreRuleProjects = class
@@ -47,7 +47,7 @@ type
     /// LSP-Server, MCP und Linter; projektweite Dienste (ProjectFiles, Nachladen über alle Arbeitsbereiche)
     /// ergänzt, wer mehrere Arbeitsbereiche hält. Threadsicher.</summary>
     class function ServicesOf(AState: TCoreProjectState; ASetup: TCoreWorkspaceSetup; const AIndex: ISymbolIndex;
-      const AEnsureUnit: TEnsureUnitFunc): TRuleServices; static;
+      const AEnsureUnit: TEnsureUnitFunc): TCheckServices; static;
   end;
 
 implementation
@@ -191,13 +191,13 @@ begin
 end;
 
 class function TCoreRuleProjects.ServicesOf(AState: TCoreProjectState; ASetup: TCoreWorkspaceSetup;
-  const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc): TRuleServices;
+  const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc): TCheckServices;
 var
   mHold: IPackageLocatorHold;
   mContext: TIdeProjectContext;
   mInfo: TProjectInfo;
 begin
-  Result := Default(TRuleServices);
+  Result := Default(TCheckServices);
   Result.Index := AIndex;
   Result.EnsureUnit := AEnsureUnit;
   Result.Namespaces := AState.Namespaces;

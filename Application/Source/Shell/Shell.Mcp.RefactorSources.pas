@@ -82,7 +82,7 @@ begin
       mContext := Default(TRuleContext);
       mContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(
         mWorkspace.Configuration.ConfigRoot), mFileName);
-      mContext.Naming := mWorkspace.RuleServices.Naming;
+      mContext.Naming := mWorkspace.CheckServices.Naming;
       mContext.UnitName := ChangeFileExt(ExtractFileName(mFileName), '');
       Result := TRuleEngine.NewNames(BuiltinRules, mWorkspace.Configuration.Settings, mContext);
     end;

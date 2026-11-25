@@ -2,7 +2,7 @@
 
 // Schnittstelle von „Methode extrahieren“ (#2054) für andere Teile des Servers: Ein Host-Adapter reicht sie an
 // Konsumenten wie die MCP-Werkzeuge (Adapters.Mcp.Extract) und die Korrekturen der Prüfregeln
-// (Adapters.Rules.Refactorings) weiter. Erzeugt in Atlas.Common.Editing.Composition.
+// (Adapters.Checks.Refactorings) weiter. Erzeugt in Atlas.Common.Editing.Composition.
 
 interface
 

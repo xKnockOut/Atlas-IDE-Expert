@@ -86,7 +86,8 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.BulkFix;
+  Atlas.Common.Rules.BulkFix,
+  Atlas.Common.Checks.Contract;
 
 const
   cRule = 'x-rule';

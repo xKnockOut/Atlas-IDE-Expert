@@ -85,11 +85,12 @@ uses
   Core.VersionControlChanges,
   Shell.Composition.Platform,
   Core.Bootstrap,
-  Shell.Composition.RuleRefactorings,
+  Shell.Composition.CheckRefactorings,
   Adapters.Mcp.Workspace,
   Adapters.Mcp.Process,
   Adapters.Mcp.Vcs,
-  Adapters.Mcp.AffectedTests;
+  Adapters.Mcp.AffectedTests,
+  Atlas.Common.Checks.Contract;
 
 function NewProcess: ICompilerProcess;
 begin
@@ -391,7 +392,7 @@ begin
   mIdentity.Kind := TIndexProcessInfo.cKindMcp;
   mIdentity.Client := 'MCP-Client';
   Result.Group.ProcessIdentity := mIdentity;
-  Result.Group.Refactorings := TShellRuleRefactorings.Create;
+  Result.Group.Refactorings := TShellCheckRefactorings.Create;
   Result.McpWorkspace := TMcpWorkspaceAdapter.ForGroup(Result.Group);
   Result.Tools := NewIndexTools(Result.Index, Result.Group.Main, ARoot);
   Result.Code := NewCodeTools(Result.Index, Result.Group, ARoot);

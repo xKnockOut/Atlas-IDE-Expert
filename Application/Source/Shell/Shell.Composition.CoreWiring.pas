@@ -42,18 +42,18 @@ uses
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.WatchedFiles,
   Atlas.Common.Lsp.ServerActivity,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Configuration.Contract,
   Core.CrashCases,
-  Adapters.Rules.IdeTypes,
+  Adapters.Checks.IdeTypes,
   Shell.Composition.FileChanges,
   Shell.Composition.Folders,
   Shell.Composition.Compile,
   Shell.Composition.DiagnosticsArea,
   Shell.Composition.DocumentEvents,
-  Shell.Composition.Session;
+  Shell.Composition.Session,
+  Atlas.Common.Checks.Contract;
 
 { TShellCoreWiring }
 
@@ -142,9 +142,9 @@ end;
 function IdeTypesOf(AParts: TShellParts): TShellFoldersIdeTypesFunc;
 begin
   Result :=
-    function: IRuleIdeTypes
+    function: ICheckIdeTypes
     begin
-      Result := TRuleIdeTypesAdapter.Wrap(AParts.IdeArea.Ide.Types.Catalog);
+      Result := TCheckIdeTypesAdapter.Wrap(AParts.IdeArea.Ide.Types.Catalog);
     end;
 end;
 

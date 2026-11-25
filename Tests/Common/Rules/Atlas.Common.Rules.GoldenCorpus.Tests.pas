@@ -76,7 +76,8 @@ uses
   Atlas.Tests.RtlStubs,
   Atlas.Common.Localization.Texts,
   System.StrUtils,
-  Atlas.Tests.Files;
+  Atlas.Tests.Files,
+  Atlas.Common.Checks.Contract;
 
 function Finding(const ARuleId: string; ALine: Integer): TRuleFinding;
 begin
