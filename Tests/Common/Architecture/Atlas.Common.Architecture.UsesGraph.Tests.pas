@@ -479,20 +479,23 @@ begin
   mOptions := TUsesGraphOptions.Default;
   mOptions.Namespaces := ['System'];
   mLoaded := TUsesGraph.Create(mUnits, mOptions);
-  mStepwise := TUsesGraph.Create(mOptions);
   try
-    for mUnit in mUnits do
-    begin
-      mStepwise.Update(mUnit);
+    mStepwise := TUsesGraph.Create(mOptions);
+    try
+      for mUnit in mUnits do
+      begin
+        mStepwise.Update(mUnit);
+      end;
+      Assert.AreEqual(EdgeText(mStepwise), EdgeText(mLoaded));
+      Assert.AreEqual(mStepwise.EdgeCount, mLoaded.EdgeCount);
+      // Die offene Kante wartet weiter: Kommt App.Fehlt, verbindet sie sich.
+      mLoaded.Update(UsesUnit('App.Fehlt', nil, nil));
+      Assert.AreEqual('App.Main', Names(mLoaded, mLoaded.DirectDependents(mLoaded.IndexOf('App.Fehlt'),
+        cAllUsesSections)));
+    finally
+      mStepwise.Free;
     end;
-    Assert.AreEqual(EdgeText(mStepwise), EdgeText(mLoaded));
-    Assert.AreEqual(mStepwise.EdgeCount, mLoaded.EdgeCount);
-    // Die offene Kante wartet weiter: Kommt App.Fehlt, verbindet sie sich.
-    mLoaded.Update(UsesUnit('App.Fehlt', nil, nil));
-    Assert.AreEqual('App.Main', Names(mLoaded, mLoaded.DirectDependents(mLoaded.IndexOf('App.Fehlt'),
-      cAllUsesSections)));
   finally
-    mStepwise.Free;
     mLoaded.Free;
   end;
 end;

@@ -120,6 +120,9 @@ type
     function NamesOf(ANode: Integer): TArray<string>;
     function RecompileMarks(ANode: Integer; out ACount: Integer): TArray<Boolean>;
     /// <summary>Synchronize in einen leeren Graphen: alle Knoten anlegen, dann jeden einmal verknüpfen.</summary>
+    procedure LoadNode(const AUnit: TUnitIndex);
+    /// <summary>Incoming aller Knoten aus ihren ausgehenden Kanten, ein Feld je Ziel.</summary>
+    procedure LinkAllIncoming;
     function Load(const AUnits: TArray<TUnitIndex>): Integer;
   public
     constructor Create(const AOptions: TUsesGraphOptions); overload;
@@ -623,57 +626,47 @@ begin
   end;
 end;
 
-function TUsesGraph.Load(const AUnits: TArray<TUnitIndex>): Integer;
+procedure TUsesGraph.LoadNode(const AUnit: TUnitIndex);
 var
-  mUnit_: TUnitIndex;
+  mItem: TUsesNode;
+  mIndex_: Integer;
+  mKey: string;
+begin
+  mKey := NormalizedPath(AUnit.FileName);
+  // Dieselbe Datei doppelt in der Liste: der spätere Eintrag gilt, wie bei Update.
+  if not FByFile.TryGetValue(mKey, mIndex_) then
+  begin
+    mIndex_ := FNodes.Count;
+    FNodes.Add(Default(TUsesNode));
+    FInterfaceNames.Add(nil);
+    FImplementationNames.Add(nil);
+    FByFile.Add(mKey, mIndex_);
+  end;
+  mItem := Default(TUsesNode);
+  mItem.UnitName := AUnit.UnitName;
+  mItem.FileName := AUnit.FileName;
+  mItem.Library_ := AUnit.Library_;
+  mItem.IsProgram := IsProgramFile(AUnit.FileName);
+  mItem.HasInitialization := AUnit.HasInitialization;
+  mItem.Hash := AUnit.Hash;
+  mItem.Stamp := AUnit.Stamp;
+  mItem.Active := True;
+  FNodes[mIndex_] := mItem;
+  FInterfaceNames[mIndex_] := AUnit.InterfaceUses;
+  FImplementationNames[mIndex_] := AUnit.ImplementationUses;
+  FByName.AddOrSetValue(LowerCase(AUnit.UnitName), mIndex_);
+end;
+
+procedure TUsesGraph.LinkAllIncoming;
+var
   mItem: TUsesNode;
   mIndex_, mOrder: Integer;
-  mKey: string;
   mCounts: TArray<Integer>;
   mEdge: TUsesEdge;
   mOutgoing: TUsesEdges;
   mRef: TUsesEdgeRef;
   mIncoming: TArray<TUsesEdgeRef>;
 begin
-  // Erst alle Knoten, dann jede Unit einmal verknüpfen. Einzeln über Update löste jede neue Unit bei allen, die
-  // schon auf ihren Namen warteten, Unlink und Link aus; bei einigen tausend Units der Projektgruppe dauerte die
-  // Architekturansicht so über 10 s (Watchdog, 15.11.2026).
-  Result := 0;
-  for mUnit_ in AUnits do
-  begin
-    if not Accepts(mUnit_) then
-    begin
-      Continue;
-    end;
-    mKey := NormalizedPath(mUnit_.FileName);
-    // Dieselbe Datei doppelt in der Liste: der spätere Eintrag gilt, wie bei Update.
-    if not FByFile.TryGetValue(mKey, mIndex_) then
-    begin
-      mIndex_ := FNodes.Count;
-      FNodes.Add(Default(TUsesNode));
-      FInterfaceNames.Add(nil);
-      FImplementationNames.Add(nil);
-      FByFile.Add(mKey, mIndex_);
-    end;
-    mItem := Default(TUsesNode);
-    mItem.UnitName := mUnit_.UnitName;
-    mItem.FileName := mUnit_.FileName;
-    mItem.Library_ := mUnit_.Library_;
-    mItem.IsProgram := IsProgramFile(mUnit_.FileName);
-    mItem.HasInitialization := mUnit_.HasInitialization;
-    mItem.Hash := mUnit_.Hash;
-    mItem.Stamp := mUnit_.Stamp;
-    mItem.Active := True;
-    FNodes[mIndex_] := mItem;
-    FInterfaceNames[mIndex_] := mUnit_.InterfaceUses;
-    FImplementationNames[mIndex_] := mUnit_.ImplementationUses;
-    FByName.AddOrSetValue(LowerCase(mUnit_.UnitName), mIndex_);
-  end;
-  for mIndex_ := 0 to FNodes.Count - 1 do
-  begin
-    LinkOutgoing(mIndex_);
-    Inc(Result);
-  end;
   // Eingehende Kanten in einem Durchgang: einzeln angehängt kopierte jede Kante das ganze Feld des Ziels.
   SetLength(mCounts, FNodes.Count);
   for mIndex_ := 0 to FNodes.Count - 1 do
@@ -703,6 +696,30 @@ begin
       Inc(mCounts[mOutgoing[mOrder].Target]);
     end;
   end;
+end;
+
+function TUsesGraph.Load(const AUnits: TArray<TUnitIndex>): Integer;
+var
+  mUnit_: TUnitIndex;
+  mIndex_: Integer;
+begin
+  // Erst alle Knoten, dann jede Unit einmal verknüpfen. Einzeln über Update löste jede neue Unit bei allen, die
+  // schon auf ihren Namen warteten, Unlink und Link aus; bei einigen tausend Units der Projektgruppe dauerte die
+  // Architekturansicht so über 10 s (Watchdog, 15.11.2026).
+  Result := 0;
+  for mUnit_ in AUnits do
+  begin
+    if Accepts(mUnit_) then
+    begin
+      LoadNode(mUnit_);
+    end;
+  end;
+  for mIndex_ := 0 to FNodes.Count - 1 do
+  begin
+    LinkOutgoing(mIndex_);
+    Inc(Result);
+  end;
+  LinkAllIncoming;
 end;
 
 function TUsesGraph.Synchronize(const AUnits: TArray<TUnitIndex>): Integer;
