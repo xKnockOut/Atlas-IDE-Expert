@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.InlineAccessor;
+﻿unit Atlas.Common.Editing.InlineAccessor.Protocol;
 
 // „Triviale Zugriffsmethode durch Feld ersetzen“ über das Protokoll (#717):
 //   - Code-Aktionen auf einer Property, auf der Deklaration und im Rumpf einer
@@ -49,7 +49,7 @@ type
     Index: ISymbolIndex;
   end;
 
-  TLspInlineAccessor = class
+  TInlineAccessorProtocol = class
   public const
     cClientCommand = 'atlas.inlineAccessor';
     cApplyCommand = 'atlas.server.inlineAccessor';
@@ -79,21 +79,20 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Editing.WorkspaceChanges,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspInlineAccessorText = (ReplaceAllTrivialAccessorsOf, ReplaceAllTrivialAccessorsOf2, ThereIsNoTrivialAccessor,
+  TInlineAccessorProtocolText = (ReplaceAllTrivialAccessorsOf, ReplaceAllTrivialAccessorsOf2, ThereIsNoTrivialAccessor,
     StaysItIsStillCalled, NoTrivialAccessorFound, AfterTheChangeNoLonger, ReplaceAccessorWithField, AccessorsFiles,
     UnknownScope);
 
 const
-  cTexts: array[TLspInlineAccessorText] of TAtlasText = (
+  cTexts: array[TInlineAccessorProtocolText] of TAtlasText = (
     (De: 'Alle trivialen Zugriffsmethoden der Unit ersetzen (%d)';
      En: 'Replace all trivial accessors of the unit (%d)'),
     (De: 'Alle trivialen Zugriffsmethoden des Projekts ersetzen …';
@@ -148,7 +147,7 @@ end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, AMessage);
 end;
 
 /// <summary>Klasse an ALine: Deklaration (Kopf bis end) oder Rumpf einer ihrer Methoden; nil ohne.</summary>
@@ -203,7 +202,7 @@ begin
   end;
 end;
 
-{ TLspInlineAccessor }
+{ TInlineAccessorProtocol }
 
 /// <summary>Code-Aktion mit dem Client-Befehl für den Bereich AScope.</summary>
 function Action(const ATitle, AUri: string; const APosition: TTextPosition; const AScope: string): TJSONObject;
@@ -217,17 +216,17 @@ begin
   mArguments.Add(AScope);
   mCommand := TJSONObject.Create;
   mCommand.AddPair('title', ATitle);
-  mCommand.AddPair('command', TLspInlineAccessor.cClientCommand);
+  mCommand.AddPair('command', TInlineAccessorProtocol.cClientCommand);
   mCommand.AddPair('arguments', mArguments);
   Result := TJSONObject.Create;
   Result.AddPair('title', ATitle);
-  Result.AddPair('kind', TLspInlineAccessor.cKind);
+  Result.AddPair('kind', TInlineAccessorProtocol.cKind);
   Result.AddPair('command', mCommand);
 end;
 
-{ TLspInlineAccessor }
+{ TInlineAccessorProtocol }
 
-class function TLspInlineAccessor.Actions(const AOffer: TInlineAccessorOffer; ATree: TSyntaxTree; const AText,
+class function TInlineAccessorProtocol.Actions(const AOffer: TInlineAccessorOffer; ATree: TSyntaxTree; const AText,
   AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
 var
   mDecl: TSyntaxNode;
@@ -267,8 +266,8 @@ begin
   end;
   if mCount > 0 then
   begin
-    Result := Result + [Action(cTexts[TLspInlineAccessorText.ReplaceAllTrivialAccessorsOf].Fmt([mCount]), AUri,
-      APosition, cScopeUnit), Action(cTexts[TLspInlineAccessorText.ReplaceAllTrivialAccessorsOf2].Text, AUri, APosition,
+    Result := Result + [Action(cTexts[TInlineAccessorProtocolText.ReplaceAllTrivialAccessorsOf].Fmt([mCount]), AUri,
+      APosition, cScopeUnit), Action(cTexts[TInlineAccessorProtocolText.ReplaceAllTrivialAccessorsOf2].Text, AUri, APosition,
       cScopeProject)];
   end;
 end;
@@ -367,7 +366,7 @@ begin
   if mFound = nil then
   begin
     mLayout.Free;
-    raise Fail(IfThen(mReason = '', cTexts[TLspInlineAccessorText.ThereIsNoTrivialAccessor].Text, mReason));
+    raise Fail(IfThen(mReason = '', cTexts[TInlineAccessorProtocolText.ThereIsNoTrivialAccessor].Text, mReason));
   end;
   AUnit.Layouts.Add(mLayout);
   AUnit.Accessors.Add(mFound);
@@ -420,7 +419,7 @@ begin
     end
     else
     begin
-      FChanges.Warn(cTexts[TLspInlineAccessorText.StaysItIsStillCalled].Fmt([mAccessor.ClassName, mAccessor.Name,
+      FChanges.Warn(cTexts[TInlineAccessorProtocolText.StaysItIsStillCalled].Fmt([mAccessor.ClassName, mAccessor.Name,
         string.Join(', ', mUses)]));
     end;
   end;
@@ -448,7 +447,7 @@ begin
   end;
   if FChanges.Warnings = nil then
   begin
-    raise Fail(cTexts[TLspInlineAccessorText.NoTrivialAccessorFound].Text);
+    raise Fail(cTexts[TInlineAccessorProtocolText.NoTrivialAccessorFound].Text);
   end;
   raise Fail(string.Join(' ', FChanges.Warnings));
 end;
@@ -458,13 +457,13 @@ var
   mCurrent: TAccessorUnit;
 begin
   mCurrent := AddUnit(AFileName, AText, ATree, False);
-  if FContext.Scope = TLspInlineAccessor.cScopeHere then
+  if FContext.Scope = TInlineAccessorProtocol.cScopeHere then
   begin
     AddHere(mCurrent, APosition);
     Exit;
   end;
   AddClasses(mCurrent);
-  if FContext.Scope = TLspInlineAccessor.cScopeProject then
+  if FContext.Scope = TInlineAccessorProtocol.cScopeProject then
   begin
     AddProject(AFileName);
   end;
@@ -480,7 +479,7 @@ begin
   try
     if Length(mCheck.Diagnostics) > Length(mBefore.Diagnostics) then
     begin
-      raise Fail(cTexts[TLspInlineAccessorText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AUnit.FileName),
+      raise Fail(cTexts[TInlineAccessorProtocolText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AUnit.FileName),
         mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
     end;
   finally
@@ -523,23 +522,23 @@ begin
     AddEdits(mUnit);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', FChanges.ToJson(TLspInlineAccessor.cAnnotationId,
-    cTexts[TLspInlineAccessorText.ReplaceAccessorWithField].Text,
-    cTexts[TLspInlineAccessorText.AccessorsFiles].Fmt([mTotal, FChanges.FileCount])));
+  Result.AddPair('edit', FChanges.ToJson(TInlineAccessorProtocol.cAnnotationId,
+    cTexts[TInlineAccessorProtocolText.ReplaceAccessorWithField].Text,
+    cTexts[TInlineAccessorProtocolText.AccessorsFiles].Fmt([mTotal, FChanges.FileCount])));
   Result.AddPair('warnings', FChanges.WarningsJson);
   Result.AddPair('accessors', TJSONNumber.Create(mTotal));
   Result.AddPair('edits', TJSONNumber.Create(FChanges.EditCount));
   Result.AddPair('files', TJSONNumber.Create(FChanges.FileCount));
 end;
 
-class function TLspInlineAccessor.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+class function TInlineAccessorProtocol.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
   AText: string; const APosition: TTextPosition; const AContext: TInlineAccessorContext): TJSONObject;
 var
   mRun: TAccessorRun;
 begin
   if not MatchText(AContext.Scope, [cScopeHere, cScopeUnit, cScopeProject]) then
   begin
-    raise Fail(cTexts[TLspInlineAccessorText.UnknownScope].Fmt([AContext.Scope]));
+    raise Fail(cTexts[TInlineAccessorProtocolText.UnknownScope].Fmt([AContext.Scope]));
   end;
   mRun := TAccessorRun.Create(AResolver, AContext);
   try
@@ -551,6 +550,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.InlineAccessor', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.InlineAccessor.Protocol', cTexts);
 
 end.

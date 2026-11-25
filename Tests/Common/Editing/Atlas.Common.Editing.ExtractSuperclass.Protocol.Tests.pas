@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ExtractSuperclass.Tests;
+﻿unit Atlas.Common.Editing.ExtractSuperclass.Protocol.Tests;
 
 // Tests für „Basisklasse herauslösen“ über das Protokoll (#713): Angebot der
 // Code-Aktion, Antwort auf prepare (Vorschlag, Vorgaben aus den
@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TLspExtractSuperclassTests = class
+  TExtractSuperclassProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -50,7 +50,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.ExtractSuperclass,
+  Atlas.Common.Editing.ExtractSuperclass.Protocol,
   Atlas.Common.JsonRpc.TestSupport,
   Atlas.Common.Lsp.Edits.TestSupport;
 
@@ -187,7 +187,7 @@ begin
   mTree := TPascalParser.Parse(AText);
   mResolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspExtractSuperclass.Execute(mTree, cAusgabeFile, AText, TTextPosition.Create(5, 2), ARequest,
+    Result := TExtractSuperclassProtocol.Execute(mTree, cAusgabeFile, AText, TTextPosition.Create(5, 2), ARequest,
       WithResolver(AContext, mResolver));
   finally
     mResolver.Free;
@@ -196,47 +196,47 @@ begin
   end;
 end;
 
-{ TLspExtractSuperclassTests }
+{ TExtractSuperclassProtocolTests }
 
-procedure TLspExtractSuperclassTests.Setup;
+procedure TExtractSuperclassProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitAusgabe, cAusgabeFile, nil));
 end;
 
-procedure TLspExtractSuperclassTests.TearDown;
+procedure TExtractSuperclassProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
 
-procedure TLspExtractSuperclassTests.OffersOnClassHeader;
+procedure TExtractSuperclassProtocolTests.OffersOnClassHeader;
 var
   mTree: TSyntaxTree;
   mActions: TArray<TJSONObject>;
 begin
   mTree := TPascalParser.Parse(cUnitAusgabe);
   try
-    mActions := TLspExtractSuperclass.Actions(True, mTree, cUnitAusgabe, 'file:///C:/P/Ausgabe.pas',
+    mActions := TExtractSuperclassProtocol.Actions(True, mTree, cUnitAusgabe, 'file:///C:/P/Ausgabe.pas',
       TTextPosition.Create(5, 4));
     try
       Assert.AreEqual(1, Integer(Length(mActions)));
       Assert.AreEqual('Basisklasse aus TPdfExport herauslösen …', mActions[0].GetValue('title').Value);
-      Assert.AreEqual(TLspExtractSuperclass.cClientCommand,
+      Assert.AreEqual(TExtractSuperclassProtocol.cClientCommand,
         (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
       TJsonRpcTestSupport.FreeAll(mActions);
     end;
-    Assert.AreEqual(0, Integer(Length(TLspExtractSuperclass.Actions(False, mTree, cUnitAusgabe, 'u',
+    Assert.AreEqual(0, Integer(Length(TExtractSuperclassProtocol.Actions(False, mTree, cUnitAusgabe, 'u',
       TTextPosition.Create(5, 4)))), 'abgeschaltet');
-    Assert.AreEqual(0, Integer(Length(TLspExtractSuperclass.Actions(True, mTree, cUnitAusgabe, 'u',
+    Assert.AreEqual(0, Integer(Length(TExtractSuperclassProtocol.Actions(True, mTree, cUnitAusgabe, 'u',
       TTextPosition.Create(7, 4)))), 'nicht auf einem Mitglied');
   finally
     mTree.Free;
   end;
 end;
 
-procedure TLspExtractSuperclassTests.PrepareUsesSettings;
+procedure TExtractSuperclassProtocolTests.PrepareUsesSettings;
 var
   mTree: TSyntaxTree;
   mAnswer: TJSONObject;
@@ -246,7 +246,7 @@ begin
   mTree := TPascalParser.Parse(cUnitAusgabe);
   mAnswer := nil;
   try
-    mAnswer := TLspExtractSuperclass.Prepare(mTree, cUnitAusgabe, TTextPosition.Create(5, 2), Context(FIndex));
+    mAnswer := TExtractSuperclassProtocol.Prepare(mTree, cUnitAusgabe, TTextPosition.Create(5, 2), Context(FIndex));
     Assert.AreEqual('TExportBase', mAnswer.GetValue('name').Value);
     Assert.AreEqual('Ausgabe', mAnswer.GetValue('ownUnit').Value);
     Assert.AreEqual('', mAnswer.GetValue('unit').Value);
@@ -263,7 +263,7 @@ begin
     mSettings.Target := 'newUnit';
     mSettings.MethodMode := 'abstract';
     mSettings.NameSuffix := 'Custom';
-    mAnswer := TLspExtractSuperclass.Prepare(mTree, cUnitAusgabe, TTextPosition.Create(5, 2), mSettings);
+    mAnswer := TExtractSuperclassProtocol.Prepare(mTree, cUnitAusgabe, TTextPosition.Create(5, 2), mSettings);
     Assert.AreEqual('TCustomExport', mAnswer.GetValue('name').Value);
     Assert.AreEqual('CustomExport', mAnswer.GetValue('unit').Value);
     mCandidates := mAnswer.GetValue('candidates') as TJSONArray;
@@ -274,7 +274,7 @@ begin
   end;
 end;
 
-procedure TLspExtractSuperclassTests.SameUnit;
+procedure TExtractSuperclassProtocolTests.SameUnit;
 var
   mAnswer: TJSONObject;
   mText: string;
@@ -296,7 +296,7 @@ begin
   end;
 end;
 
-procedure TLspExtractSuperclassTests.NewUnitJoinsProject;
+procedure TExtractSuperclassProtocolTests.NewUnitJoinsProject;
 var
   mAnswer: TJSONObject;
   mCreated, mText: string;
@@ -321,7 +321,7 @@ begin
   end;
 end;
 
-procedure TLspExtractSuperclassTests.RefusesCircularReference;
+procedure TExtractSuperclassProtocolTests.RefusesCircularReference;
 var
   mText: string;
   mIndex: ISymbolIndex;
@@ -344,7 +344,7 @@ begin
       Resolver := TNameResolver.Create(mIndex, nil);
       Body := Request('TExportBase', 'ExportBase', [1]);
       try
-        TLspExtractSuperclass.Execute(Tree, cAusgabeFile, mText, TTextPosition.Create(6, 2), Body,
+        TExtractSuperclassProtocol.Execute(Tree, cAusgabeFile, mText, TTextPosition.Create(6, 2), Body,
           WithResolver(Context(mIndex), Resolver)).Free;
       finally
         Body.Free;
@@ -355,6 +355,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspExtractSuperclassTests);
+  TDUnitX.RegisterTestFixture(TExtractSuperclassProtocolTests);
 
 end.

@@ -14,7 +14,7 @@
 //   - FreedMembers: private Mitglieder, die nur noch von gelöschten
 //     Mitgliedern benutzt wurden (Folgeschritt, auch über mehrere Stufen).
 // Verwendungen im Projekt, Formulare, Überschreibungen und uses prüft die
-// Protokollschicht (TLspSafeDelete).
+// Protokollschicht (TSafeDeleteProtocol).
 
 interface
 

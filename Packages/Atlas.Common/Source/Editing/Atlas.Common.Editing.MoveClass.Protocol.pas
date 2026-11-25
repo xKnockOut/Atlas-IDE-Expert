@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.MoveClass;
+﻿unit Atlas.Common.Editing.MoveClass.Protocol;
 
 // „Klasse in eigene Unit verschieben“ über das Protokoll (#103 Teil B):
 //   - Code-Aktion „Klasse TFoo in eigene Unit verschieben …“ auf der ersten
@@ -46,7 +46,7 @@ type
     TypeComments: Boolean;
   end;
 
-  TLspMoveClass = class
+  TMoveClassProtocol = class
   public const
     cClientCommand = 'atlas.moveClass';
     cApplyCommand = 'atlas.server.moveClass';
@@ -73,20 +73,19 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Editing.WorkspaceChanges,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspMoveClassText = (ThereIsNoClassAt, UnknownOriginOfTheNew, MoveClass, MoveClassIntoItsOwn, AlreadyExists,
+  TMoveClassProtocolText = (ThereIsNoClassAt, UnknownOriginOfTheNew, MoveClass, MoveClassIntoItsOwn, AlreadyExists,
     IsAlreadyInTheProject);
 
 const
-  cTexts: array[TLspMoveClassText] of TAtlasText = (
+  cTexts: array[TMoveClassProtocolText] of TAtlasText = (
     (De: 'an dieser Stelle steht keine Klasse'; En: 'there is no class at this position'),
     (De: 'Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der Ursprungs-Unit.';
      En: 'Unknown origin of %s: the new unit takes over the uses of the original unit for it.'),
@@ -99,7 +98,7 @@ const
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TLspMoveClassText.MoveClass].Text + AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TMoveClassProtocolText.MoveClass].Text + AMessage);
 end;
 
 function IsSource(const AFileName: string): Boolean;
@@ -107,9 +106,9 @@ begin
   Result := MatchText(ExtractFileExt(AFileName), ['.pas', '.dpr', '.dpk', '.inc']);
 end;
 
-{ TLspMoveClass }
+{ TMoveClassProtocol }
 
-class function TLspMoveClass.Lookup(AResolver: TNameResolver): TMoveClassLookup;
+class function TMoveClassProtocol.Lookup(AResolver: TNameResolver): TMoveClassLookup;
 begin
   Result :=
     function(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -138,7 +137,7 @@ begin
     end;
 end;
 
-class function TLspMoveClass.Actions(AResolver: TNameResolver; ATree: TSyntaxTree;
+class function TMoveClassProtocol.Actions(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, AText, AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
 var
   mDecl: TSyntaxNode;
@@ -164,7 +163,7 @@ begin
   finally
     AResolver.UnpinTree;
   end;
-  mTitle := cTexts[TLspMoveClassText.MoveClassIntoItsOwn].Fmt([mPlan.ClassName]);
+  mTitle := cTexts[TMoveClassProtocolText.MoveClassIntoItsOwn].Fmt([mPlan.ClassName]);
   mArguments := TJSONArray.Create;
   mArguments.Add(AUri);
   mArguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -187,7 +186,7 @@ var
 begin
   if Assigned(AContext.Exists) and AContext.Exists(ANewFile) then
   begin
-    raise Failed(cTexts[TLspMoveClassText.AlreadyExists].Fmt([ExtractFileName(ANewFile)]));
+    raise Failed(cTexts[TMoveClassProtocolText.AlreadyExists].Fmt([ExtractFileName(ANewFile)]));
   end;
   if not AContext.HasProject then
   begin
@@ -197,7 +196,7 @@ begin
   begin
     if SameText(mItem.Name, APlan.NewUnit) then
     begin
-      raise Failed(cTexts[TLspMoveClassText.IsAlreadyInTheProject].Fmt([APlan.NewUnit]));
+      raise Failed(cTexts[TMoveClassProtocolText.IsAlreadyInTheProject].Fmt([APlan.NewUnit]));
     end;
   end;
 end;
@@ -265,7 +264,7 @@ begin
   end;
 end;
 
-class function TLspMoveClass.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
+class function TMoveClassProtocol.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
   const APosition: TTextPosition; const AContext: TMoveClassContext): TJSONObject;
 var
   mPlan: TMoveClassPlan;
@@ -278,7 +277,7 @@ begin
   mDecl := TMoveClass.ClassAt(ATree, APosition);
   if mDecl = nil then
   begin
-    raise Failed(cTexts[TLspMoveClassText.ThereIsNoClassAt].Text);
+    raise Failed(cTexts[TMoveClassProtocolText.ThereIsNoClassAt].Text);
   end;
   mSource := TMoveClassSource.Create(AFileName, AText, ATree);
   mSource.TypeComments := AContext.TypeComments;
@@ -306,7 +305,7 @@ begin
     mChanges.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, mNewFile, mPlan.NewUnit);
     if mPlan.Unresolved <> nil then
     begin
-      mChanges.Warn(cTexts[TLspMoveClassText.UnknownOriginOfTheNew].Fmt([string.Join(', ', mPlan.Unresolved)]));
+      mChanges.Warn(cTexts[TMoveClassProtocolText.UnknownOriginOfTheNew].Fmt([string.Join(', ', mPlan.Unresolved)]));
     end;
     Result := TJSONObject.Create;
     Result.AddPair('edit', mChanges.ToJson);
@@ -318,6 +317,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.MoveClass', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.MoveClass.Protocol', cTexts);
 
 end.

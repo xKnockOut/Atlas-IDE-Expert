@@ -463,7 +463,7 @@ $AllowedJsonFormLocal = @{
     'Atlas.Common.Lsp.SlashMenu.Tests:Field'                             = 'Test: fehlender Wert soll als Ausnahme auffallen'
     'Atlas.Common.Lsp.SlashMenu.Tests:Flag'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
     'Atlas.Common.Lsp.SlashMenu.Tests:List'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
-    'Atlas.Common.Lsp.SafeDelete.Tests:Items'                            = 'Test: setzt die Einträge eines Arrays zu einer Vergleichszeile zusammen'
+    'Atlas.Common.Editing.SafeDelete.Protocol.Tests:Items'                            = 'Test: setzt die Einträge eines Arrays zu einer Vergleichszeile zusammen'
 }
 
 # Kopien-Sperre für JSON aus Text: nur TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json.

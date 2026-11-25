@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.WorkspaceChanges.Tests;
+﻿unit Atlas.Common.Editing.WorkspaceChanges.Tests;
 
 // Gemeinsamer Baustein der Umbauten mit mehreren Dateien (#103, #664):
 // Zusammenfassen je Datei, neue Dateien, Eintrag ins Projekt (.dpr und
@@ -12,7 +12,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Common.Lsp.WorkspaceChanges;
+  Atlas.Common.Editing.WorkspaceChanges;
 
 type
   [TestFixture]

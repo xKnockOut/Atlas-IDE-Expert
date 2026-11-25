@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.InlineAccessor.Tests;
+﻿unit Atlas.Common.Editing.InlineAccessor.Protocol.Tests;
 
 // Tests für „Triviale Zugriffsmethode durch Feld ersetzen“ über das Protokoll
 // (#717): Angebot der Code-Aktionen (einzeln, Unit, Projekt, abschaltbar),
@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TLspInlineAccessorTests = class
+  TInlineAccessorProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -53,7 +53,7 @@ uses
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Semantics.InlineAccessor,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.InlineAccessor;
+  Atlas.Common.Editing.InlineAccessor.Protocol;
 
 const
   cIntfFile = 'C:\P\Titles.pas';
@@ -193,7 +193,7 @@ begin
   try
     mContext := Context(AIndex);
     mContext.Scope := AScope;
-    Result := TLspInlineAccessor.Execute(mResolver, mTree, cModelFile, cUnitModel, TTextPosition.Create(ALine, 6),
+    Result := TInlineAccessorProtocol.Execute(mResolver, mTree, cModelFile, cUnitModel, TTextPosition.Create(ALine, 6),
       mContext);
   finally
     mResolver.Free;
@@ -224,9 +224,9 @@ begin
   end;
 end;
 
-{ TLspInlineAccessorTests }
+{ TInlineAccessorProtocolTests }
 
-procedure TLspInlineAccessorTests.Setup;
+procedure TInlineAccessorProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitIntf, cIntfFile, nil));
@@ -235,12 +235,12 @@ begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
 end;
 
-procedure TLspInlineAccessorTests.TearDown;
+procedure TInlineAccessorProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
 
-procedure TLspInlineAccessorTests.OffersActions;
+procedure TInlineAccessorProtocolTests.OffersActions;
 var
   mTree: TSyntaxTree;
 
@@ -253,7 +253,7 @@ var
     mOffer.Bulk := ABulk;
     mOffer.Options := TInlineAccessorOptions.Default;
     mOffer.Index := FIndex;
-    Result := Titles(TLspInlineAccessor.Actions(mOffer, mTree, cUnitModel, 'file:///C:/P/Model.pas',
+    Result := Titles(TInlineAccessorProtocol.Actions(mOffer, mTree, cUnitModel, 'file:///C:/P/Model.pas',
       TTextPosition.Create(ALine, 6)));
   end;
 
@@ -276,12 +276,12 @@ begin
   end;
 end;
 
-procedure TLspInlineAccessorTests.ReplacesAtProperty;
+procedure TInlineAccessorProtocolTests.ReplacesAtProperty;
 var
   mAnswer: TJSONObject;
   mText: string;
 begin
-  mAnswer := Run(FIndex, 14, TLspInlineAccessor.cScopeHere);
+  mAnswer := Run(FIndex, 14, TInlineAccessorProtocol.cScopeHere);
   try
     Assert.AreEqual(2, (mAnswer.GetValue('accessors') as TJSONNumber).AsInt);
     Assert.AreEqual('', Warnings(mAnswer));
@@ -295,12 +295,12 @@ begin
   end;
 end;
 
-procedure TLspInlineAccessorTests.KeepsCalledAccessor;
+procedure TInlineAccessorProtocolTests.KeepsCalledAccessor;
 var
   mAnswer: TJSONObject;
   mText: string;
 begin
-  mAnswer := Run(FIndex, 15, TLspInlineAccessor.cScopeHere);
+  mAnswer := Run(FIndex, 15, TInlineAccessorProtocol.cScopeHere);
   try
     Assert.AreEqual(1, (mAnswer.GetValue('accessors') as TJSONNumber).AsInt);
     Assert.AreEqual('TFoo.GetCount bleibt: Es wird noch aufgerufen (Use.pas:9).|', Warnings(mAnswer));
@@ -312,26 +312,26 @@ begin
   end;
 end;
 
-procedure TLspInlineAccessorTests.RefusesWhenAllCalled;
+procedure TInlineAccessorProtocolTests.RefusesWhenAllCalled;
 begin
   Assert.WillRaiseWithMessage(
     procedure
     begin
-      Run(FIndex, 12, TLspInlineAccessor.cScopeHere).Free;
+      Run(FIndex, 12, TInlineAccessorProtocol.cScopeHere).Free;
     end, EJsonRpcError, 'TFoo.GetCount bleibt: Es wird noch aufgerufen (Use.pas:9).');
   Assert.WillRaiseWithMessage(
     procedure
     begin
-      Run(FIndex, 20, TLspInlineAccessor.cScopeHere).Free;
+      Run(FIndex, 20, TInlineAccessorProtocol.cScopeHere).Free;
     end, EJsonRpcError, 'GetTitle implementiert eine Methode von ITitled.');
 end;
 
-procedure TLspInlineAccessorTests.ReplacesWholeUnit;
+procedure TInlineAccessorProtocolTests.ReplacesWholeUnit;
 var
   mAnswer: TJSONObject;
   mText: string;
 begin
-  mAnswer := Run(FIndex, 5, TLspInlineAccessor.cScopeUnit);
+  mAnswer := Run(FIndex, 5, TInlineAccessorProtocol.cScopeUnit);
   try
     Assert.AreEqual(3, (mAnswer.GetValue('accessors') as TJSONNumber).AsInt);
     Assert.AreEqual(1, (mAnswer.GetValue('files') as TJSONNumber).AsInt);
@@ -344,12 +344,12 @@ begin
   end;
 end;
 
-procedure TLspInlineAccessorTests.ReplacesWholeProject;
+procedure TInlineAccessorProtocolTests.ReplacesWholeProject;
 var
   mAnswer: TJSONObject;
   mText: string;
 begin
-  mAnswer := Run(FIndex, 5, TLspInlineAccessor.cScopeProject);
+  mAnswer := Run(FIndex, 5, TInlineAccessorProtocol.cScopeProject);
   try
     Assert.AreEqual(4, (mAnswer.GetValue('accessors') as TJSONNumber).AsInt);
     Assert.AreEqual(2, (mAnswer.GetValue('files') as TJSONNumber).AsInt);
@@ -362,6 +362,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspInlineAccessorTests);
+  TDUnitX.RegisterTestFixture(TInlineAccessorProtocolTests);
 
 end.
