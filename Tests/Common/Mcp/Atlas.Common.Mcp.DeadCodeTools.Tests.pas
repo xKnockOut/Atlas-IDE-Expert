@@ -42,9 +42,9 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.ProjectFiles,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Mcp.Contract,
+  Shell.Composition.Mcp,
   Atlas.Common.Mcp.DeadCodeTools;
 
 const
@@ -140,8 +140,8 @@ var
 begin
   mData := Fixture(False);
   try
-    mText := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, cRoot),
-      [cMainFile, cOrphanFile], mData.Index, mData.Files, nil, False);
+    mText := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Checking(nil, TServerSettings.Default, cRoot),
+      [cMainFile, cOrphanFile], TMcpComposition.DeadCode(mData.Index, mData.Files, nil), False);
     Assert.AreEqual(
       '# Ungenutzter Code'#13#10 +
       '2 Befunde in 2 Dateien (unused-private-member, unused-public-member, unused-declaration, unused-unit).'#13#10 +
@@ -164,8 +164,8 @@ var
 begin
   mData := Fixture(False);
   try
-    mJson := TJSONObject.ParseJSONValue(TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules,
-      TServerSettings.Default, cRoot), mData.Sources, mData.Index, mData.Files, nil, True));
+    mJson := TJSONObject.ParseJSONValue(TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Checking(nil,
+      TServerSettings.Default, cRoot), mData.Sources, TMcpComposition.DeadCode(mData.Index, mData.Files, nil), True));
     try
       Assert.AreEqual(3, (mJson as TJSONObject).GetValue<Integer>('files'));
       Assert.AreEqual(2, (mJson as TJSONObject).GetValue<Integer>('total'));
@@ -189,9 +189,9 @@ var
 begin
   mData := Fixture(True);
   try
-    mText := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, cRoot),
+    mText := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Checking(nil, TServerSettings.Default, cRoot),
       [cMainFile],
-      mData.Index, mData.Files, nil, False);
+      TMcpComposition.DeadCode(mData.Index, mData.Files, nil), False);
     Assert.IsTrue(Pos('Hinweis: Index wird aufgebaut; unused-public-member und unused-unit schweigen', mText) > 0, mText);
     // Regeln innerhalb der Unit melden trotzdem.
     Assert.IsTrue(Pos('Routine Hilfe wird nirgends verwendet.', mText) > 0, mText);
@@ -208,9 +208,9 @@ var
 begin
   mData := Fixture(False);
   try
-    mText := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TConfigurationParser.Parse(
+    mText := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Checking(nil, TConfigurationParser.Parse(
       '{"rules": {"unused-private-member": "off"}, "deadCode": {"keepPatterns": ["Hilfe"]}}', mIssues), cRoot),
-      [cMainFile], mData.Index, mData.Files, nil, False);
+      [cMainFile], TMcpComposition.DeadCode(mData.Index, mData.Files, nil), False);
     Assert.IsTrue(Pos('0 Befunde in 1 Dateien', mText) > 0, mText);
     mIssues := nil;
   finally

@@ -50,8 +50,12 @@ type
     function AllFiles: TFunc<TArray<string>>;
     /// <summary>Kontext der Werkzeuge mit AServer.</summary>
     function ToolContext(AServer: TMcpServer): TMcpToolContext;
-    /// <summary>Adapter der Werkzeuge: Prozesse, Versionsverwaltung, Git-Verzeichnis.</summary>
+    /// <summary>Adapter der Werkzeuge: Prozesse, Versionsverwaltung, Git-Verzeichnis; ohne Prüfung von Texten.
+    /// </summary>
     class function HostAdapters: TMcpHostAdapters; static;
+    /// <summary>Wie HostAdapters mit der Prüfung von Texten und find_unused_code über Projekt, Symbole und Index
+    /// aus AGroup.</summary>
+    class function GroupAdapters(AGroup: TCoreWorkspaceGroup): TMcpHostAdapters; static;
   end;
 
 implementation
@@ -59,6 +63,8 @@ implementation
 uses
   System.IOUtils,
   Shell.Composition.Mcp,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Mcp.Contract.DeadCode,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Processes,
   Atlas.Common.Documents.Providers.DocumentStore,
@@ -256,10 +262,8 @@ function NewCodeTools(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; c
   TMcpCodeTools;
 begin
   Result := TMcpCodeTools.Create(AIndex, ReadSourceText, ReferenceFilesOf(AGroup), AGroup.UnitLoader());
-  // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860), Prüfregeln mit Symbolindex und
-  // Projektdiensten wie im Server (#1112).
+  // Nicht auflösbare Bezeichner mit den Symbolen und Include-Dateien des Projekts (#860).
   Result.CheckSource := CheckSourceOf(AGroup);
-  Result.CheckProject := CheckProjectOf(AGroup);
   Result.SettingsFor := ReferenceSettingsOf(AGroup.Main);
   Result.ImpactOptionsFor := ImpactOptionsOf(AGroup.Main, ARoot);
 end;
@@ -290,6 +294,28 @@ begin
     end;
 end;
 
+/// <summary>AGroup.RuleProject als Methodenreferenz (#1112): Die Prüfregeln bekommen Symbolindex und
+/// Projektdienste wie im Server. In eigener Routine, aus denselben Gründen wie CheckSourceOf.</summary>
+function CheckProjectOf(AGroup: TCoreWorkspaceGroup): TCheckProjectFunc;
+begin
+  Result :=
+    function(const AFileName: string): TCheckProject
+    begin
+      Result := AGroup.RuleProject(AFileName);
+    end;
+end;
+
+/// <summary>Neuer Lauf von find_unused_code mit Index, Projekten und Namensräumen von AGroup beim Aufruf; in
+/// eigener Routine, damit die anonyme Methode nur AGroup einfängt.</summary>
+function DeadCodeOf(AGroup: TCoreWorkspaceGroup): TMcpDeadCodeFunc;
+begin
+  Result :=
+    function: IMcpDeadCode
+    begin
+      Result := TMcpComposition.DeadCode(AGroup.Index, AGroup.RuleProjectFiles, AGroup.Main.State.Namespaces);
+    end;
+end;
+
 function NewEditTools(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; ACode: TMcpCodeTools;
   const ALogger: ILogger): TMcpEditTools;
 begin
@@ -299,11 +325,10 @@ begin
   // Ungespeicherte Dateien hält die IDE zurück, statt abzulehnen (#2605).
   Result.HoldText := HoldSourceText;
   Result.CheckSource := ACode.CheckSource;
-  Result.CheckProject := ACode.CheckProject;
   Result.SettingsFor := ACode.SettingsFor;
   Result.Extract := TMcpComposition.Extract;
   Result.Formatting := TMcpComposition.Formatting;
-  Result.BulkFix := TMcpComposition.BulkFix(ACode.CheckProject, ACode.CheckSource);
+  Result.BulkFix := TMcpComposition.BulkFix(CheckProjectOf(AGroup), ACode.CheckSource);
   Result.Audit := AuditOf(ALogger);
 end;
 
@@ -381,7 +406,7 @@ begin
   Result.Index := Index;
   Result.Hotspots := Hotspots;
   Result.ImpactOptionsFor := Code.ImpactOptionsFor;
-  Result.Adapters := HostAdapters;
+  Result.Adapters := GroupAdapters(Group);
   Result.Started := Now;
 end;
 
@@ -394,6 +419,13 @@ begin
   Result.CompilerFixes := TMcpComposition.CompilerFixes;
   Result.Conventions := TMcpComposition.Conventions;
   Result.FindingPrompts := TMcpComposition.FindingPrompts;
+end;
+
+class function TMcpServices.GroupAdapters(AGroup: TCoreWorkspaceGroup): TMcpHostAdapters;
+begin
+  Result := HostAdapters;
+  Result.TextChecks := TMcpComposition.TextChecks(CheckProjectOf(AGroup), CheckSourceOf(AGroup));
+  Result.DeadCode := DeadCodeOf(AGroup);
 end;
 
 end.

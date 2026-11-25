@@ -15,7 +15,9 @@ uses
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.Contract.CompilerFixes,
   Atlas.Common.Mcp.Contract.Conventions,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Mcp.Contract.DeadCode,
+  Atlas.Common.Mcp.Contract.TextChecks,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.SymbolPath,
   Atlas.Common.Projects.Contract,
@@ -56,6 +58,13 @@ type
     Conventions: IMcpConventions;
     /// <summary>Auftrag zu einem Befund (explain_finding).</summary>
     FindingPrompts: IMcpFindingPrompts;
+    /// <summary>Prüfung von Texten mit den eingebauten Regeln, dem Projekt und den Symbolen der Gruppe
+    /// (get_diagnostics, hook_check, check_code, apply_code_action, explain_finding, Änderungen); nil, wenn die
+    /// Adapter ohne Gruppe entstanden sind.</summary>
+    TextChecks: IMcpTextChecks;
+    /// <summary>Neuer Lauf von find_unused_code mit Index, Projekten und Namensräumen der Gruppe; nil, wenn die
+    /// Adapter ohne Gruppe entstanden sind.</summary>
+    DeadCode: TMcpDeadCodeFunc;
   end;
 
   /// <summary>Was die Werkzeuge des MCP-Modus brauchen; ToolNames füllt nur Server (die Werkzeuge greifen erst
@@ -73,8 +82,8 @@ type
     Refactor: TMcpRefactorFunc;
     Architecture: TMcpArchitectureFunc;
     FindPath: TMcpFindPathFunc;
-    CheckSource: TCheckSourceFunc;
-    CheckProject: TCheckProjectFunc;
+    /// <summary>Symbole und Include-Dateien je Datei (#860) aus Group.</summary>
+    CheckSource: TPascalSourceFunc;
     Index: ISymbolIndex;
     Hotspots: THotspotService;
     ImpactOptionsFor: TImpactOptionsProvider;
@@ -110,10 +119,7 @@ function ProjectFilesUnder(const ARoot: string): TArray<string>;
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
 /// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
-function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TCheckSourceFunc;
-/// <summary>AGroup.RuleProject als Methodenreferenz (#1112), aus denselben Gründen wie CheckSourceOf in eigener
-/// Routine.</summary>
-function CheckProjectOf(AGroup: TCoreWorkspaceGroup): TCheckProjectFunc;
+function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TPascalSourceFunc;
 
 implementation
 
@@ -236,23 +242,12 @@ end;
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
 /// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
-function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TCheckSourceFunc;
+function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TPascalSourceFunc;
 begin
   Result :=
-    function(const AFileName: string): TCheckSource
+    function(const AFileName: string): TPascalSource
     begin
       Result := AGroup.Main.State.CheckSource(AFileName);
-    end;
-end;
-
-/// <summary>AGroup.RuleProject als Methodenreferenz (#1112), aus denselben Gründen wie CheckSourceOf in eigener
-/// Routine.</summary>
-function CheckProjectOf(AGroup: TCoreWorkspaceGroup): TCheckProjectFunc;
-begin
-  Result :=
-    function(const AFileName: string): TCheckProject
-    begin
-      Result := AGroup.RuleProject(AFileName);
     end;
 end;
 

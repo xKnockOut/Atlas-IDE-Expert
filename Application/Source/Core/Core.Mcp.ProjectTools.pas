@@ -39,7 +39,6 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Diagnostics.ShutdownLeaks,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Query.Contract,
   Atlas.Common.Query.Catalog,
   Atlas.Common.Query.Output,
@@ -317,9 +316,8 @@ begin
   begin
     raise EMcpToolError.Create(TCoreTexts.NoProjectGiveFile);
   end;
-  Result := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, AContext.Index, AContext.Group.RuleProjectFiles,
-      AContext.Group.Main.State.Namespaces, SameText(mFormat, 'json'));
+  Result := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Checking(nil, AContext.Group.Main.Configuration.Settings,
+    AContext.Root), mFiles, AContext.Adapters.DeadCode(), SameText(mFormat, 'json'));
 end;
 
 procedure AddFindUnusedCode(const AContext: TMcpToolContext);
