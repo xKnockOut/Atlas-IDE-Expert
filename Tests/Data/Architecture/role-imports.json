@@ -1,5 +1,5 @@
 {
-  "description": "Fallliste der Rollenmatrix (docs/Architektur.md). Beide Umsetzungen prüfen sie: TArchitectureMatrix (Atlas.Common.Rules.Builtin.Architecture, Test MatrixCasesFromFile) und Tools/Check-PackageDependencies.ps1 -SelfTest.",
+  "description": "Fallliste der Rollenmatrix (docs/Architektur.md). Beide Umsetzungen prüfen sie: TArchitectureMatrix (Atlas.Common.Rules.Builtin.Architecture, Test MatrixCasesFromFile) und Tools/Check-PackageDependencies.ps1 -SelfTest. Atlas.IDE.Base, Atlas.IDE.Modul und Atlas.IDE.Andere sind umgestellte Fachcode-Packages (Host-Matrix, Hosted-Feature-Matrix, Modul nach Base, Frameworks), Atlas.IDE.Alt steht noch in layerPackages.",
   "prefixes": [
     "Atlas.Text",
     "Atlas.WinBase",
@@ -9,9 +9,29 @@
     "Atlas.Plugin",
     "Atlas.Vcl",
     "Atlas.ToolsApi",
+    "Atlas.IDE.Base",
+    "Atlas.IDE.Modul",
+    "Atlas.IDE.Andere",
+    "Atlas.IDE.Alt"
+  ],
+  "domainPackages": [
+    "Atlas.IDE.Base",
+    "Atlas.IDE.Modul",
+    "Atlas.IDE.Andere",
+    "Atlas.IDE.Alt"
+  ],
+  "basePackage": "Atlas.IDE.Base",
+  "layerPrefixes": [
     "Atlas.Core",
     "Atlas.UI",
     "Atlas.IDE"
+  ],
+  "layerPackages": [
+    "Atlas.IDE.Alt"
+  ],
+  "frameworks": [
+    "Vcl",
+    "ToolsAPI"
   ],
   "hostRoles": [
     "Foundation",
@@ -1266,6 +1286,2418 @@
       "to": "Atlas.ToolsApi.Editor.Internals.Sache",
       "allowed": false,
       "note": "gleicher Feature-Name in Atlas.IDE und Atlas.ToolsApi ist ein fremdes Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rollen im Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": true,
+      "note": "8.1: Base gilt beim Import aus einem Modul als Teil des Hosts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Base.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Base.Delta.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.IDE.Base.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Base.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Base.Delta.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.IDE.Base.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Adapters.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Base.Delta.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Base.Delta.Sache",
+      "allowed": true,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Base.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Delta.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Delta.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Hosted-Features nach ihrer Zeile"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Base.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Base.Delta.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.IDE.Base.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Hosted-Feature von Base wie ein eigenes"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Composition.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Composition.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Adapters.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Composition.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Adapters.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Composition.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Composition.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Contract.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Adapters.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Cache.Internals.Sache",
+      "allowed": false,
+      "note": "8.1: Host-Rolle sieht Platform-Features nach ihrer Spalte"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "allowed": false,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "allowed": true,
+      "note": "8.2: eigenes Hosted-Feature"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie, auch nicht den Contract"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Base.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature von Base ist ein fremdes Hosted-Feature, auch bei gleichem Namen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "Atlas.Core.Delta.Contract",
+      "allowed": false,
+      "note": "Schichtname ist ein Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie, auch nicht den Contract"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Base.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature von Base ist ein fremdes Hosted-Feature, auch bei gleichem Namen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.Core.Delta.Contract",
+      "allowed": false,
+      "note": "Schichtname ist ein Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie, auch nicht den Contract"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Base.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature von Base ist ein fremdes Hosted-Feature, auch bei gleichem Namen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "to": "Atlas.Core.Delta.Contract",
+      "allowed": false,
+      "note": "Schichtname ist ein Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie, auch nicht den Contract"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Base.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature von Base ist ein fremdes Hosted-Feature, auch bei gleichem Namen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "Atlas.Core.Delta.Contract",
+      "allowed": false,
+      "note": "Schichtname ist ein Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie, auch nicht den Contract"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature von Base ist ein fremdes Hosted-Feature, auch bei gleichem Namen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Adapters.Sache",
+      "to": "Atlas.Core.Delta.Contract",
+      "allowed": false,
+      "note": "Schichtname ist ein Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie, auch nicht den Contract"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Base.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature von Base ist ein fremdes Hosted-Feature, auch bei gleichem Namen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Atlas.Core.Delta.Contract",
+      "allowed": false,
+      "note": "Schichtname ist ein Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie, auch nicht den Contract"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Delta.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Features importieren einander nie"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Base.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature von Base ist ein fremdes Hosted-Feature, auch bei gleichem Namen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Core.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Base.Core.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Base.Shell.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Base.Adapters.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Modul.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: Hosted-Feature sieht vom Host nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.IDE.Base.Platform.Sache",
+      "allowed": false,
+      "note": "8.2: von Base nur Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.Plugin.Beta.Contract.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.Plugin.Beta.Sache",
+      "allowed": true,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.Plugin.Beta.Internals.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.Plugin.Beta.Providers.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.Plugin.Beta.Hosting.Sache",
+      "allowed": false,
+      "note": "8.2: Platform-Features nur Contract und Root, der Contract nur Contracts"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Atlas.Core.Delta.Contract",
+      "allowed": false,
+      "note": "Schichtname ist ein Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Core.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Core.Delta.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Atlas.Core.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Core.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Core.Delta.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Atlas.Core.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Core.Delta.Contract.Sache",
+      "allowed": true,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Core.Delta.Sache",
+      "allowed": true,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.Core.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Core.Delta.Contract.Sache",
+      "allowed": true,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Core.Delta.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Atlas.Core.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Core.Delta.Contract.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Core.Delta.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Atlas.Core.Delta.Internals.Sache",
+      "allowed": false,
+      "note": "Schichtname aus einem Fachcode-Package: Hosted-Feature von Base"
+    },
+    {
+      "from": "Atlas.IDE.Base.Shell.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": false,
+      "note": "Base importiert kein Modul"
+    },
+    {
+      "from": "Atlas.IDE.Base.Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "Base importiert kein Modul"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Andere.Foundation.Sache",
+      "allowed": false,
+      "note": "Module importieren einander nie"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Andere.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "Module importieren einander nie"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Atlas.IDE.Alt.Foundation.Sache",
+      "allowed": false,
+      "note": "auch kein Modul mit Schichtnamen"
+    },
+    {
+      "from": "Atlas.IDE.Base.Gamma.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "Base: eigenes Hosted-Feature sieht die eigene Foundation"
+    },
+    {
+      "from": "Atlas.IDE.Base.Shell.Sache",
+      "to": "Atlas.IDE.Base.Gamma.Providers.Sache",
+      "allowed": true,
+      "note": "Base: eigene Shell"
+    },
+    {
+      "from": "Atlas.Plugin.Beta.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": false,
+      "note": "Platform-Features importieren kein Fachcode-Package"
+    },
+    {
+      "from": "Atlas.Plugin.Beta.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "Platform-Features importieren kein Fachcode-Package"
+    },
+    {
+      "from": "Atlas.Common.Beta.Sache",
+      "to": "Atlas.IDE.Alt.Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "auch keines mit Schichtnamen"
+    },
+    {
+      "from": "Shell.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": false,
+      "note": "die Anwendung ist ein anderer Host"
+    },
+    {
+      "from": "Gamma.Sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": false,
+      "note": "Hosted-Feature der Anwendung sieht kein Fachcode-Package"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Shell.Sache",
+      "allowed": false,
+      "note": "Fachcode-Package sieht den Host der Anwendung nicht"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Foundation.Sache",
+      "allowed": false,
+      "note": "Fachcode-Package sieht den Host der Anwendung nicht"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Gamma.Contract.Sache",
+      "allowed": false,
+      "note": "Fachcode-Package sieht kein Hosted-Feature der Anwendung"
+    },
+    {
+      "from": "Atlas.IDE.Alt.Composition",
+      "to": "Atlas.IDE.Alt.Providers.Sache",
+      "allowed": true,
+      "note": "layerPackages: Alt wird über Atlas.IDE eingeordnet (Feature Alt)"
+    },
+    {
+      "from": "Atlas.IDE.Alt.Sache",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": true,
+      "note": "layerPackages: Ziele einer Unit mit Schichtnamen nach alter Regel (fremdes Root)"
+    },
+    {
+      "from": "Atlas.Core.Alt.Contract",
+      "to": "Atlas.IDE.Base.Foundation.Sache",
+      "allowed": false,
+      "note": "layerPackages: alte Regel, Contract sieht kein Root"
+    },
+    {
+      "from": "Atlas.IDE.Alt.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Internals.Sache",
+      "allowed": false,
+      "note": "layerPackages: alte Regel, fremde Internals"
+    },
+    {
+      "from": "Atlas.IDE.Alt.Sache",
+      "to": "Atlas.IDE.Modul.Gamma.Contract",
+      "allowed": true,
+      "note": "layerPackages: alte Regel, fremder Contract"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Alt.Sache",
+      "allowed": false,
+      "note": "Ziel mit Modulpräfix ist ein anderes Modul, auch in layerPackages"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Atlas.IDE.Basis.Sache",
+      "allowed": false,
+      "note": "Schichtname, kein Präfix Atlas.IDE.Base"
+    },
+    {
+      "from": "atlas.ide.modul.gamma.sache",
+      "to": "Atlas.IDE.Modul.Foundation.Sache",
+      "allowed": true,
+      "note": "Groß- und Kleinschreibung zählt nicht"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "Vcl.Forms",
+      "allowed": false,
+      "note": "6.1: Framework nur in Hosting und Host-Rollen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Contract.Sache",
+      "to": "ToolsAPI.Editor",
+      "allowed": false,
+      "note": "6.1: Framework nur in Hosting und Host-Rollen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Composition.Sache",
+      "to": "Vcl.Forms",
+      "allowed": false,
+      "note": "6.1: auch nicht in der Composition"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Sache",
+      "to": "ToolsAPI",
+      "allowed": false,
+      "note": "6.1: Framework über den vollen Namen"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "Vcl.Forms",
+      "allowed": true,
+      "note": "6.1: Hosting kapselt das Framework"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Hosting.Sache",
+      "to": "ToolsAPI",
+      "allowed": true,
+      "note": "6.1: Hosting kapselt das Framework"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Providers.Cache.Hosting.Sache",
+      "to": "Vcl.Forms",
+      "allowed": true,
+      "note": "6.1: Hosting einer Struktur"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Gamma.Sache",
+      "to": "VclTee.Chart",
+      "allowed": true,
+      "note": "Framework nur mit Punkt nach dem Namen"
+    },
+    {
+      "from": "Atlas.IDE.Base.Gamma.Sache",
+      "to": "Vcl.Controls",
+      "allowed": false,
+      "note": "6.1: auch in Base"
+    },
+    {
+      "from": "Atlas.Vcl.Beta.Sache",
+      "to": "Vcl.Forms",
+      "allowed": true,
+      "note": "Platform-Packages prüft das Skript nach Package"
+    },
+    {
+      "from": "Atlas.IDE.Alt.Sache",
+      "to": "ToolsAPI",
+      "allowed": true,
+      "note": "layerPackages: alte Schichtregel"
+    },
+    {
+      "from": "Atlas.Core.Alt.Sache",
+      "to": "Vcl.Forms",
+      "allowed": true,
+      "note": "layerPackages: die Schichtregel prüft das Skript nach Präfix"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Foundation.Sache",
+      "to": "Vcl.Forms",
+      "allowed": true,
+      "note": "6.1: Host-Rollen dürfen Frameworks einbinden"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Core.Sache",
+      "to": "Vcl.Forms",
+      "allowed": true,
+      "note": "6.1: Host-Rollen dürfen Frameworks einbinden"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Shell.Sache",
+      "to": "Vcl.Forms",
+      "allowed": true,
+      "note": "6.1: Host-Rollen dürfen Frameworks einbinden"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Adapters.Sache",
+      "to": "Vcl.Forms",
+      "allowed": true,
+      "note": "6.1: Host-Rollen dürfen Frameworks einbinden"
+    },
+    {
+      "from": "Atlas.IDE.Modul.Platform.Sache",
+      "to": "Vcl.Forms",
+      "allowed": true,
+      "note": "6.1: Host-Rollen dürfen Frameworks einbinden"
     }
   ]
 }

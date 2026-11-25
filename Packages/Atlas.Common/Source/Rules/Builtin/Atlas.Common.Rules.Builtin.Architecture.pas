@@ -28,6 +28,16 @@
 // Anwendung, die mit einem Namen aus "hostedFeatures" zu dessen Hosted-Features
 // (Feature.Rolle.Sache ohne Präfix, Konzept 8.1 und 8.2); alle anderen (RTL,
 // VCL, Drittanbieter) prüft die Regel nicht.
+// Fachcode-Packages (Konzept 6.2): "domainPackages" nennt Präfixe, deren Units wie eine
+// Anwendung gegliedert sind: <Package>.<Host-Rolle>.Sache (Host-Rollen im Package, 8.1) und
+// <Package>.<Feature>.<Rolle>.Sache (Hosted-Features, 8.2). "basePackage" ist das Package, das die
+// anderen aufnimmt: Beim Import aus einem anderen Fachcode-Package gilt es als Teil des Hosts, sonst
+// importieren sich Fachcode-Packages nie. "layerPrefixes" sind die Präfixe der alten Schichtnamen,
+// "layerPackages" die Fachcode-Packages, deren Units bis zu ihrer Umstellung noch danach heißen: Für
+// sie gilt das Präfix des Packages nicht, ihre Units werden über die Schichtpräfixe eingeordnet.
+// Ein Fachcode-Package sieht eine Unit mit Schichtnamen als Hosted-Feature von "basePackage".
+// "frameworks" nennt host-spezifische Frameworks (Name oder Namensanfang vor einem Punkt, z. B.
+// "Vcl", "ToolsAPI"); in Fachcode-Packages binden sie nur Host-Rollen und die Rolle Hosting ein.
 // "allow" sind genehmigte Ausnahmen: bei architecture-role-import
 // "Quelle -> Ziel" (beide Globs), bei architecture-contract-content
 // "Unit.Typ" als Glob. Dieselbe Matrix prüft Tools/Check-PackageDependencies.ps1;
@@ -84,8 +94,17 @@ type
     Positions: TArray<Integer>;
     /// <summary>Rollen an den Stellen aus Positions.</summary>
     Roles: TArray<TArchitectureRole>;
-    /// <summary>Hosted-Feature der Anwendung: Name ohne Präfix, erstes Segment aus "hostedFeatures".</summary>
+    /// <summary>Hosted-Feature der Anwendung (Name ohne Präfix, erstes Segment aus "hostedFeatures") oder eines
+    /// Fachcode-Packages.</summary>
     Hosted: Boolean;
+    /// <summary>Fachcode-Package aus "domainPackages", zu dem die Unit gehört; '' sonst.</summary>
+    Package: string;
+    /// <summary>Bei Package &lt;&gt; '': "basePackage", das für Package zum Host gehört.</summary>
+    BasePackage: string;
+    /// <summary>Eingeordnet über ein Präfix aus "layerPrefixes" (alter Schichtname).</summary>
+    Layer: Boolean;
+    /// <summary>Unit eines host-spezifischen Frameworks aus "frameworks"; Role = None.</summary>
+    Framework: Boolean;
     /// <summary>Role &lt;&gt; None.</summary>
     function Known: Boolean;
     /// <summary>Gleiches Ausgabeartefakt und gleiches Feature (ohne Groß-/Kleinschreibung).</summary>
@@ -111,6 +130,32 @@ type
     Role: TArchitectureRole;
   end;
 
+  /// <summary>Optionen beider architecture-*-Regeln.</summary>
+  TRoleImportOptions = record
+    Prefixes: TArray<string>;
+    HostRoles: TArray<string>;
+    /// <summary>Hosted-Features der Anwendung (erstes Segment ohne Präfix).</summary>
+    HostedFeatures: TArray<string>;
+    /// <summary>Genehmigte Ausnahmen; Form je Regel siehe Kopfkommentar.</summary>
+    Allow: TArray<string>;
+    /// <summary>Präfixe der Fachcode-Packages (Konzept 6.2).</summary>
+    DomainPackages: TArray<string>;
+    /// <summary>Fachcode-Package, das die anderen aufnimmt; gilt beim Import aus ihnen als Teil des Hosts.</summary>
+    BasePackage: string;
+    /// <summary>Präfixe der alten Schichtnamen.</summary>
+    LayerPrefixes: TArray<string>;
+    /// <summary>Fachcode-Packages, deren Units noch Schichtnamen tragen; ihr Präfix gilt nicht.</summary>
+    LayerPackages: TArray<string>;
+    /// <summary>Host-spezifische Frameworks: Name oder Namensanfang vor einem Punkt.</summary>
+    Frameworks: TArray<string>;
+  end;
+
+  {$SCOPEDENUMS ON}
+  /// <summary>Welche Fachcode-Packages eine Einordnung über ihr Präfix liest: Switched = alle außer
+  /// "layerPackages", All = alle, None = keines (Ziele einer Unit mit Schichtnamen).</summary>
+  TArchitectureScope = (Switched, All, None);
+  {$SCOPEDENUMS OFF}
+
   /// <summary>Importmatrix des Rollenkonzepts (docs/Architektur.md "Importregeln").</summary>
   TArchitectureMatrix = class
   private
@@ -129,10 +174,31 @@ type
     class function ForeignAllows(ARights: TArchitectureRole; const AView: TArchitectureView): Boolean; static;
     class function OwnAllows(const ASource, ATarget: TArchitectureUnit): Boolean; static;
     class function ViewName(const AView: TArchitectureView): string; static;
+    class function ActivePrefixes(const AOptions: TRoleImportOptions; AScope: TArchitectureScope): TArray<string>;
+      static;
+    class function ClassifyDomain(const AUnitName, APackage: string;
+      const AOptions: TRoleImportOptions): TArchitectureUnit; static;
+    class function IsFramework(const AUnitName: string; const AFrameworks: TArray<string>): Boolean; static;
+    class function FrameworkAllowed(const ASource: TArchitectureUnit): Boolean; static;
+    class function SameHost(const ASource, ATarget: TArchitectureUnit): Boolean; static;
+    class function DomainAllows(const ASource, ATarget: TArchitectureUnit): Boolean; static;
+    class function RoleName(const AUnit: TArchitectureUnit): string; static;
   public
     /// <summary>Ordnet AUnitName ein; Role = None für externe Units.</summary>
     class function Classify(const AUnitName: string; const APrefixes, AHostRoles,
-      AHostedFeatures: TArray<string>): TArchitectureUnit; static;
+      AHostedFeatures: TArray<string>): TArchitectureUnit; overload; static;
+    /// <summary>Ordnet AUnitName mit allen Optionen ein; AScope sagt, welche Fachcode-Packages über ihr Präfix
+    /// gelesen werden.</summary>
+    class function Classify(const AUnitName: string; const AOptions: TRoleImportOptions;
+      AScope: TArchitectureScope): TArchitectureUnit; overload; static;
+    /// <summary>Ordnet die geprüfte Unit ein: Packages aus "layerPackages" noch nach Schichtnamen.</summary>
+    class function ClassifySource(const AUnitName: string; const AOptions: TRoleImportOptions): TArchitectureUnit;
+      static;
+    /// <summary>Ordnet ein Ziel von ASource ein: Von einer Unit mit Schichtnamen aus alles nach Schichtnamen, sonst
+    /// jedes Fachcode-Package nach seinem Präfix; aus einem Fachcode-Package ist eine Unit mit Schichtnamen ein
+    /// Hosted-Feature von "basePackage".</summary>
+    class function ClassifyTarget(const ASource: TArchitectureUnit; const AUnitName: string;
+      const AOptions: TRoleImportOptions): TArchitectureUnit; static;
     /// <summary>Länge des tiefsten gemeinsamen Trägers in Segmenten; 1 = nur das Feature. Kandidaten sind die
     /// Stellen verschachtelter Rollenbezeichner und der ganze Name einer Unit mit Rolle und Sache (Cache ist
     /// Träger von Cache.Store).</summary>
@@ -150,16 +216,6 @@ type
     class function Describe(const ASource, ATarget: TArchitectureUnit): string; static;
     /// <summary>Vorgabe für "hostRoles": Foundation, Core, Shell, Adapters, Platform.</summary>
     class function DefaultHostRoles: TArray<string>; static;
-  end;
-
-  /// <summary>Optionen beider architecture-*-Regeln.</summary>
-  TRoleImportOptions = record
-    Prefixes: TArray<string>;
-    HostRoles: TArray<string>;
-    /// <summary>Hosted-Features der Anwendung (erstes Segment ohne Präfix).</summary>
-    HostedFeatures: TArray<string>;
-    /// <summary>Genehmigte Ausnahmen; Form je Regel siehe Kopfkommentar.</summary>
-    Allow: TArray<string>;
   end;
 
   TRoleImportRule = class(TInterfacedObject, IRule)
@@ -203,7 +259,7 @@ uses
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TArchitectureText = (LayerTitle, LayerViolation, Describe, RoleTitle, RoleViolation, ContractTitle, ContractClass,
-    Foreign, Own, SubContract, Nested, NestedInternals);
+    Foreign, Own, SubContract, Nested, NestedInternals, ForeignPackage, ForeignHosted, FrameworkUse);
 
 const
   cTexts: array[TArchitectureText] of TAtlasText = (
@@ -223,7 +279,11 @@ const
     (De: 'eigene'; En: 'own'),
     (De: 'Sub-Contract'; En: 'sub-contract'),
     (De: 'verschachtelte %s'; En: 'nested %s'),
-    (De: 'Internals einer Struktur'; En: 'internals of a nested structure'));
+    (De: 'Internals einer Struktur'; En: 'internals of a nested structure'),
+    (De: 'Fachcode-Package %s aus %s'; En: 'domain package %s from %s'),
+    (De: 'fremdes Hosted-Feature %s aus %s'; En: 'foreign hosted feature %s from %s'),
+    (De: 'Framework aus %s; nur Hosting und Host-Rollen binden es ein';
+     En: 'framework from %s; only hosting and host roles use it'));
 
 {$SCOPEDENUMS OFF}
 
@@ -503,16 +563,127 @@ end;
 class function TArchitectureMatrix.Classify(const AUnitName: string; const APrefixes, AHostRoles,
   AHostedFeatures: TArray<string>): TArchitectureUnit;
 var
+  mOptions: TRoleImportOptions;
+begin
+  mOptions := Default(TRoleImportOptions);
+  mOptions.Prefixes := APrefixes;
+  mOptions.HostRoles := AHostRoles;
+  mOptions.HostedFeatures := AHostedFeatures;
+  Result := Classify(AUnitName, mOptions, TArchitectureScope.Switched);
+end;
+
+class function TArchitectureMatrix.ActivePrefixes(const AOptions: TRoleImportOptions;
+  AScope: TArchitectureScope): TArray<string>;
+var
+  mPrefix: string;
+begin
+  Result := nil;
+  for mPrefix in AOptions.Prefixes + AOptions.LayerPrefixes + AOptions.DomainPackages do
+  begin
+    if not MatchText(mPrefix, AOptions.DomainPackages) or (AScope = TArchitectureScope.All) or
+      ((AScope = TArchitectureScope.Switched) and not MatchText(mPrefix, AOptions.LayerPackages)) then
+    begin
+      Result := Result + [mPrefix];
+    end;
+  end;
+end;
+
+class function TArchitectureMatrix.ClassifyDomain(const AUnitName, APackage: string;
+  const AOptions: TRoleImportOptions): TArchitectureUnit;
+var
+  mRest: TArray<string>;
+  mRole: string;
+begin
+  Result := Default(TArchitectureUnit);
+  mRest := Copy(AUnitName, Length(APackage) + 2, MaxInt).Split(['.']);
+  if (Length(mRest) = 0) or (mRest[0] = '') then
+  begin
+    Exit;
+  end;
+  // Host-Rollen im Package (Konzept 8.1), sonst ein Hosted-Feature des Packages (8.2).
+  for mRole in AOptions.HostRoles do
+  begin
+    if SameText(mRole, mRest[0]) then
+    begin
+      Result.Feature := mRole;
+      Result.Role := TArchitectureRole.Host;
+    end;
+  end;
+  if Result.Role <> TArchitectureRole.Host then
+  begin
+    Result := ClassifyFeature(AUnitName, APackage);
+    Result.Hosted := True;
+  end;
+  Result.Artefact := APackage;
+  Result.Package := APackage;
+  Result.BasePackage := AOptions.BasePackage;
+end;
+
+class function TArchitectureMatrix.IsFramework(const AUnitName: string; const AFrameworks: TArray<string>): Boolean;
+var
+  mName: string;
+begin
+  for mName in AFrameworks do
+  begin
+    if (mName <> '') and (SameText(mName, AUnitName) or StartsText(mName + '.', AUnitName)) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TArchitectureMatrix.Classify(const AUnitName: string; const AOptions: TRoleImportOptions;
+  AScope: TArchitectureScope): TArchitectureUnit;
+var
   mBest: string;
 begin
-  mBest := LongestPrefix(AUnitName, APrefixes);
-  if mBest <> '' then
+  Result := Default(TArchitectureUnit);
+  if IsFramework(AUnitName, AOptions.Frameworks) then
   begin
-    Result := ClassifyFeature(AUnitName, mBest);
+    Result.Framework := True;
+    Exit;
+  end;
+  mBest := LongestPrefix(AUnitName, ActivePrefixes(AOptions, AScope));
+  if mBest = '' then
+  begin
+    Result := ClassifyHost(AUnitName, AOptions.HostRoles, AOptions.HostedFeatures);
+  end
+  else if MatchText(mBest, AOptions.DomainPackages) then
+  begin
+    Result := ClassifyDomain(AUnitName, mBest, AOptions);
   end
   else
   begin
-    Result := ClassifyHost(AUnitName, AHostRoles, AHostedFeatures);
+    Result := ClassifyFeature(AUnitName, mBest);
+    Result.Layer := MatchText(mBest, AOptions.LayerPrefixes);
+  end;
+end;
+
+class function TArchitectureMatrix.ClassifySource(const AUnitName: string;
+  const AOptions: TRoleImportOptions): TArchitectureUnit;
+begin
+  Result := Classify(AUnitName, AOptions, TArchitectureScope.Switched);
+end;
+
+class function TArchitectureMatrix.ClassifyTarget(const ASource: TArchitectureUnit; const AUnitName: string;
+  const AOptions: TRoleImportOptions): TArchitectureUnit;
+begin
+  // Eine Unit mit Schichtnamen gehört zu einem noch nicht umgestellten Package: alte Regel auch für ihre Ziele.
+  if ASource.Layer then
+  begin
+    Result := Classify(AUnitName, AOptions, TArchitectureScope.None);
+  end
+  else
+  begin
+    Result := Classify(AUnitName, AOptions, TArchitectureScope.All);
+  end;
+  // Aus einem Fachcode-Package ist ein Schichtname eine noch nicht umbenannte Unit von Base.
+  if (ASource.Package <> '') and Result.Layer and (AOptions.BasePackage <> '') then
+  begin
+    Result.Package := AOptions.BasePackage;
+    Result.BasePackage := AOptions.BasePackage;
+    Result.Hosted := True;
   end;
 end;
 
@@ -731,11 +902,74 @@ begin
   end;
 end;
 
+class function TArchitectureMatrix.FrameworkAllowed(const ASource: TArchitectureUnit): Boolean;
+var
+  mRole: TArchitectureRole;
+begin
+  // Konzept 6.1: In einem Fachcode-Package binden nur Hosting und die Host-Rollen ein Framework des Hosts ein.
+  Result := (ASource.Package = '') or (ASource.Role = TArchitectureRole.Host);
+  for mRole in ASource.Roles do
+  begin
+    Result := Result or (mRole = TArchitectureRole.Hosting);
+  end;
+end;
+
+class function TArchitectureMatrix.SameHost(const ASource, ATarget: TArchitectureUnit): Boolean;
+begin
+  // Konzept 8.1: Der Inhalt eines Packages zählt zum Host, der es aufnimmt; Base also zum Host jedes Moduls.
+  Result := (ATarget.Package <> '') and (SameText(ATarget.Package, ASource.Package) or
+    SameText(ATarget.Package, ASource.BasePackage));
+end;
+
+class function TArchitectureMatrix.DomainAllows(const ASource, ATarget: TArchitectureUnit): Boolean;
+begin
+  // Platform-Features und die Anwendung importieren kein Fachcode-Package, Fachcode-Packages einander nicht.
+  if (ASource.Package = '') or ((ATarget.Package <> '') and not SameHost(ASource, ATarget)) then
+  begin
+    Exit(False);
+  end;
+  if ATarget.Package = '' then
+  begin
+    // Platform-Feature; Host und Hosted-Features der Anwendung sind ein anderer Host.
+    if (ATarget.Role = TArchitectureRole.Host) or ATarget.Hosted then
+    begin
+      Exit(False);
+    end;
+    if ASource.Role = TArchitectureRole.Host then
+    begin
+      Exit(HostAllows(ASource, TargetView(ATarget, 1)));
+    end;
+    Exit(ForeignAllows(SourceRights(ASource, 1), TargetView(ATarget, 1)));
+  end;
+  if ATarget.Role = TArchitectureRole.Host then
+  begin
+    if ASource.Hosted then
+    begin
+      Exit(HostRole(ATarget) = TArchitectureHostRole.Foundation);
+    end;
+    Exit(HostRole(ATarget) in cHostHostAllowed[HostRole(ASource)]);
+  end;
+  if ASource.Role = TArchitectureRole.Host then
+  begin
+    Exit(HostToHostedAllows(ASource, TargetView(ATarget, 1)));
+  end;
+  // Hosted-Features importieren einander nie (8.2), innen gilt die Matrix des Features.
+  Result := ASource.SameFeature(ATarget) and OwnAllows(ASource, ATarget);
+end;
+
 class function TArchitectureMatrix.Allowed(const ASource, ATarget: TArchitectureUnit): Boolean;
 begin
+  if ATarget.Framework then
+  begin
+    Exit(FrameworkAllowed(ASource));
+  end;
   if not (ASource.Known and ATarget.Known) then
   begin
     Exit(True);
+  end;
+  if (ASource.Package <> '') or (ATarget.Package <> '') then
+  begin
+    Exit(DomainAllows(ASource, ATarget));
   end;
   // Platform-Features importieren nie den Host (8.3), Hosted-Features nur die Foundation (8.2); Host-Rollen
   // untereinander nach 8.1.
@@ -792,11 +1026,42 @@ begin
   end;
 end;
 
+class function TArchitectureMatrix.RoleName(const AUnit: TArchitectureUnit): string;
+begin
+  Result := cRoleNames[AUnit.Role];
+  if AUnit.Role = TArchitectureRole.Host then
+  begin
+    Result := 'Host-' + cHostRoleNames[HostRole(AUnit)];
+  end;
+end;
+
+/// <summary>Feature mit Ausgabeartefakt, z. B. "Atlas.Core.Settings"; bei der Anwendung nur das Feature.</summary>
+function QualifiedFeature(const AUnit: TArchitectureUnit): string;
+begin
+  Result := AUnit.Feature;
+  if AUnit.Artefact <> '' then
+  begin
+    Result := AUnit.Artefact + '.' + AUnit.Feature;
+  end;
+end;
+
 class function TArchitectureMatrix.Describe(const ASource, ATarget: TArchitectureUnit): string;
 var
   mKind, mSource, mTarget: string;
   mLength: Integer;
 begin
+  if ATarget.Framework then
+  begin
+    Exit(cTexts[TArchitectureText.FrameworkUse].Fmt([RoleName(ASource)]));
+  end;
+  if (ATarget.Package <> '') and not ((ASource.Package <> '') and SameHost(ASource, ATarget)) then
+  begin
+    Exit(cTexts[TArchitectureText.ForeignPackage].Fmt([ATarget.Package, RoleName(ASource)]));
+  end;
+  if ATarget.Hosted and (ASource.Role <> TArchitectureRole.Host) and not ASource.SameFeature(ATarget) then
+  begin
+    Exit(cTexts[TArchitectureText.ForeignHosted].Fmt([QualifiedFeature(ATarget), RoleName(ASource)]));
+  end;
   mKind := cTexts[TArchitectureText.Foreign].Text;
   mLength := 1;
   mSource := cRoleNames[ASource.Role];
@@ -850,6 +1115,11 @@ begin
     Result.Prefixes := TJsonRead.Strings(TJSONObject(mValue), 'prefixes');
     Result.Allow := TJsonRead.Strings(TJSONObject(mValue), 'allow');
     Result.HostedFeatures := TJsonRead.Strings(TJSONObject(mValue), 'hostedFeatures');
+    Result.DomainPackages := TJsonRead.Strings(TJSONObject(mValue), 'domainPackages');
+    Result.BasePackage := TJsonRead.Text(TJSONObject(mValue), 'basePackage');
+    Result.LayerPrefixes := TJsonRead.Strings(TJSONObject(mValue), 'layerPrefixes');
+    Result.LayerPackages := TJsonRead.Strings(TJSONObject(mValue), 'layerPackages');
+    Result.Frameworks := TJsonRead.Strings(TJSONObject(mValue), 'frameworks');
     if TJSONObject(mValue).GetValue('hostRoles') <> nil then
     begin
       Result.HostRoles := TJsonRead.Strings(TJSONObject(mValue), 'hostRoles');
@@ -913,7 +1183,7 @@ begin
     Exit;
   end;
   mOwnName := OwnUnitName(AContext);
-  mSource := TArchitectureMatrix.Classify(mOwnName, mOptions.Prefixes, mOptions.HostRoles, mOptions.HostedFeatures);
+  mSource := TArchitectureMatrix.ClassifySource(mOwnName, mOptions);
   if not mSource.Known then
   begin
     Exit;
@@ -925,8 +1195,7 @@ begin
     begin
       Continue;
     end;
-    mTarget := TArchitectureMatrix.Classify(mUsed.Name, mOptions.Prefixes, mOptions.HostRoles,
-      mOptions.HostedFeatures);
+    mTarget := TArchitectureMatrix.ClassifyTarget(mSource, mUsed.Name, mOptions);
     // Genehmigte Ausnahmen gelten nie für Internals: Ein Platzhalter wie Atlas.Core.* gibt sie nicht frei.
     if TArchitectureMatrix.Allowed(mSource, mTarget) or
       (Approved(mOptions.Allow, mOwnName, mUsed.Name) and not TArchitectureMatrix.IsInternals(mTarget)) then
@@ -964,8 +1233,7 @@ function IsCheckedContract(const AContext: TRuleContext; const AOptions: TRoleIm
   const AOwnName: string): Boolean;
 begin
   Result := (AOptions.Prefixes <> nil) and not TPascalUses.IsTestUnit(AContext.Tree.Tokens) and
-    TArchitectureMatrix.Classify(AOwnName, AOptions.Prefixes, AOptions.HostRoles,
-      AOptions.HostedFeatures).IsContract;
+    TArchitectureMatrix.ClassifySource(AOwnName, AOptions).IsContract;
 end;
 
 /// <summary>True, wenn ATypeDecl eine Klasse ist, die keine Ausnahme ist und kein allow-Eintrag erlaubt.</summary>

@@ -16,6 +16,8 @@ Die Zuordnung ist Daten, kein Text: Sie steht in drei TSV-Dateien neben dem Prü
 
 Maßgeblich ist die Zeile der Unit. Weicht sie von der Ordnertabelle ab, ist sie eine der Ausnahmen unten und braucht eine eigene Begründung, nicht nur „Ordner …“. `Tools/Check-PackageDependencies.ps1` liest die drei Dateien (#1455) und schlägt fehl, wenn eine Unit keine Zeile hat, eine Zeile keine Unit mehr, eine Datei woanders liegt, eine Zeile unsortiert steht oder ein Eintrag in `Boundaries.tsv` nicht mehr vorkommt. `Tools/Check-TestCoverage.ps1` leitet daraus die Testkategorie je Modul ab.
 
+Ausgenommen sind Units eines Packages, das nicht mehr in `layerPackages` steht (Regel `architecture-role-import` in `atlas.json`): Sie tragen ihr Package im Namen (`Atlas.IDE.Tracker.Core.Board`), brauchen keine Zeile, und eine Zeile für sie ist ein Fehler.
+
 Eine neue Unit bekommt eine Zeile an ihrer sortierten Stelle, zum Beispiel:
 
 ```text
