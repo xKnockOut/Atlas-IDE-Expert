@@ -222,7 +222,7 @@ begin
   FServices := TMcpServices.Create(FFolder, FLogger);
   FServer := TMcpServer.Create('Atlas', '0');
   mContext := FServices.ToolContext(FServer);
-  TMcpRefactorSources.Attach(mContext, FLogger);
+  TMcpRefactorSources.Attach(mContext, FServices.Group, FLogger);
   RegisterEditingTools(mContext);
 end;
 

@@ -25,6 +25,10 @@ type
     procedure FrameToggleOnlyWhenAllowed;
     [Test]
     procedure FrameSwitchesDirectionAndSavesHtml;
+    [Test]
+    procedure LateLevelArrivesAndStaleIsDropped;
+    [Test]
+    procedure TreeShowsPlaceholderUntilLevelArrives;
   end;
 
 implementation
@@ -33,6 +37,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
+  Vcl.ComCtrls,
   Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Results.CallDiagram,
   Atlas.UI.Results.CallDiagram,
@@ -68,6 +73,40 @@ begin
   end;
 end;
 
+/// <summary>Wie der Server, aber sofort: Children an ADone.</summary>
+procedure LoadNow(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem;
+  const ADone: TAtlasCallLoaded);
+begin
+  ADone(Children(ADirection, AItem));
+end;
+
+type
+  /// <summary>Hält Anfragen fest, bis der Test sie beantwortet (wie eine Antwort aus dem Hintergrund).</summary>
+  TLoadProbe = class
+  public
+    Items: TArray<TAtlasHierarchyItem>;
+    Dones: TArray<TAtlasCallLoaded>;
+    function Load: TAtlasCallLoad;
+    /// <summary>Anfrage AIndex mit den Kindern ihres Eintrags beantworten.</summary>
+    procedure Answer(AIndex: Integer);
+  end;
+
+function TLoadProbe.Load: TAtlasCallLoad;
+begin
+  Result :=
+    procedure(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem; const ADone: TAtlasCallLoaded)
+    begin
+      Items := Items + [AItem];
+      SetLength(Dones, Length(Dones) + 1);
+      Dones[High(Dones)] := ADone;
+    end;
+end;
+
+procedure TLoadProbe.Answer(AIndex: Integer);
+begin
+  Dones[AIndex](Children(TAtlasHierarchyDirection.Outgoing, Items[AIndex]));
+end;
+
 function IsProject(AFileName: string): Boolean;
 begin
   Result := Pos('C:\P\', AFileName) = 1;
@@ -79,7 +118,7 @@ begin
   Result.Parent := AHost;
   Result.SetBounds(0, 0, 800, 600);
   Result.IsProjectFile := IsProject;
-  Result.OnLoad := Children;
+  Result.OnLoad := LoadNow;
 end;
 
 { TAtlasCallDiagramViewTests }
@@ -97,10 +136,10 @@ begin
     mView := NewView(mHost);
     mLoads := 0;
     mView.OnLoad :=
-      function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
+      procedure(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem; const ADone: TAtlasCallLoaded)
       begin
         Inc(mLoads);
-        Result := Children(ADirection, AItem);
+        ADone(Children(ADirection, AItem));
       end;
     mOpened := '';
     mView.OnOpen :=
@@ -192,7 +231,7 @@ begin
   try
     mFrame := TAtlasResultsFrame.Create(mHost);
     mFrame.Parent := mHost;
-    mFrame.Hierarchy.OnExpand := Children;
+    mFrame.Hierarchy.OnExpand := LoadNow;
     // Wie in NewView: ohne Projektfilter stünde IntToStr aus der RTL als vierte Box da.
     mFrame.Hierarchy.IsProjectFile := IsProject;
     mRoots := TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas', 1));
@@ -234,7 +273,7 @@ begin
   try
     mFrame := TAtlasResultsFrame.Create(mHost);
     mFrame.Parent := mHost;
-    mFrame.Hierarchy.OnExpand := Children;
+    mFrame.Hierarchy.OnExpand := LoadNow;
     mFrame.Hierarchy.DiagramAllowed := True;
     mFrame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing,
       TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas', 1)), True);
@@ -250,6 +289,81 @@ begin
     Assert.IsFalse(mHtml.Contains('src="http'), 'keine externen Verweise');
   finally
     mHost.Free;
+  end;
+end;
+
+procedure TAtlasCallDiagramViewTests.LateLevelArrivesAndStaleIsDropped;
+var
+  mHost: TForm;
+  mView: TAtlasCallDiagramView;
+  mProbe: TLoadProbe;
+begin
+  mProbe := nil;
+  mHost := TForm.CreateNew(nil);
+  try
+    mProbe := TLoadProbe.Create;
+    mView := NewView(mHost);
+    mView.OnLoad := mProbe.Load();
+    mView.ShowRoots(TAtlasHierarchyDirection.Outgoing, TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas',
+      1)));
+    Assert.AreEqual(1, Integer(Length(mProbe.Dones)), 'erste Ebene angefragt');
+    Assert.AreEqual(1, Integer(Length(mView.Layout.Boxes)), 'bis zur Antwort nur die Wurzel');
+    // Ein zweiter Klick, solange die Ebene unterwegs ist, fragt nicht erneut.
+    mView.ToggleNode(0);
+    Assert.AreEqual(1, Integer(Length(mProbe.Dones)));
+    mProbe.Answer(0);
+    Assert.AreEqual(3, Integer(Length(mView.Layout.Boxes)), 'Antwort zeichnet die Ebene');
+    // Neue Wurzeln: Die Antwort für die alten verfällt.
+    mView.ToggleNode(1);
+    Assert.AreEqual(2, Integer(Length(mProbe.Dones)));
+    mView.ShowRoots(TAtlasHierarchyDirection.Outgoing, TArray<TAtlasHierarchyItem>.Create(Item('Viele', 'C:\P\Haupt.pas',
+      1)));
+    mProbe.Answer(1);
+    Assert.AreEqual(1, Integer(Length(mView.Layout.Boxes)), 'alte Antwort ändert nichts');
+    Assert.AreEqual('Viele', mView.Diagram[0].Item.Name);
+  finally
+    mHost.Free;
+    if mProbe <> nil then
+    begin
+      mProbe.Items := nil;
+      mProbe.Dones := nil;
+    end;
+    mProbe.Free;
+  end;
+end;
+
+procedure TAtlasCallDiagramViewTests.TreeShowsPlaceholderUntilLevelArrives;
+var
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+  mProbe: TLoadProbe;
+  mRoot: TTreeNode;
+begin
+  mProbe := nil;
+  mHost := TForm.CreateNew(nil);
+  try
+    mProbe := TLoadProbe.Create;
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Hierarchy.OnExpand := mProbe.Load();
+    mFrame.Hierarchy.IsProjectFile := IsProject;
+    mFrame.Hierarchy.Show('Aufrufe von Start', TAtlasHierarchyDirection.Outgoing,
+      TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas', 1)));
+    Assert.AreEqual(1, Integer(Length(mProbe.Dones)), 'erste Ebene angefragt');
+    mRoot := mFrame.Tree.Items[0];
+    Assert.AreEqual(1, Integer(mRoot.Count), 'Platzhalter bis zur Antwort');
+    Assert.AreEqual('…', mRoot.Item[0].Text);
+    mProbe.Answer(0);
+    Assert.AreEqual(3, Integer(mRoot.Count), 'Antwort ersetzt den Platzhalter');
+    Assert.AreEqual('Laden', mRoot.Item[0].Text.Split([' '])[0]);
+  finally
+    mHost.Free;
+    if mProbe <> nil then
+    begin
+      mProbe.Items := nil;
+      mProbe.Dones := nil;
+    end;
+    mProbe.Free;
   end;
 end;
 

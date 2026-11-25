@@ -151,7 +151,7 @@ begin
   Result.References :=
     procedure(const AFileName: string; ALine, ACharacter: Integer; const AName: string)
     begin
-      TAtlasIdeResults.ShowReferences(AFileName, ALine, ACharacter, AName);
+      TAtlasIdeResults.ShowReferences(AFileName, ALine, ACharacter, AName, nil);
     end;
   Result.CurrentText :=
     function(AFileName: string): string

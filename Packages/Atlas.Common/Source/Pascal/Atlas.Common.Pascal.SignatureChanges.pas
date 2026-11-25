@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ChangeSignature;
+﻿unit Atlas.Common.Pascal.SignatureChanges;
 
 // Textbausteine für „Signatur ändern“ (#100) ohne Index und Protokoll:
 //   - neue Parameterliste für Deklaration (mit den vorhandenen Standardwerten)
@@ -426,6 +426,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.ChangeSignature', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Pascal.SignatureChanges', cTexts);
 
 end.

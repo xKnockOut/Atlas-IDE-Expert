@@ -1,0 +1,2 @@
+### Experimentell
+- Architekturregeln `architecture-role-import` und `architecture-contract-content`: neue Optionen `domainPackages`, `basePackage`, `layerPrefixes`, `layerPackages` und `frameworks`. Base und die Modul-Packages gelten als Fachcode-Packages mit eigener Host- und Hosted-Feature-Matrix, Modul nach Base wird geprüft, VCL und Open Tools API nur in Hosting und Host-Rollen. Packages in `layerPackages` (anfangs alle) folgen weiter der Schichtregel.

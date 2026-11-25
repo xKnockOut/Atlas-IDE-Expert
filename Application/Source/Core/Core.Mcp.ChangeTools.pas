@@ -19,7 +19,7 @@ procedure RegisterHotspotTools(const AContext: TMcpToolContext);
 implementation
 
 uses
-  Core.WorkspaceGroup,
+  Atlas.Common.Mcp.Contract.Workspace,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Hotspots.Service,
   System.JSON,
@@ -36,7 +36,7 @@ uses
   Core.AffectedTests,
   Core.Hotspots,
   Atlas.Common.Localization.Texts,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -107,7 +107,7 @@ function AffectedRequestOf(const AContext: TMcpToolContext; const ASettings: TSe
   const AReadText: TReferenceReadText): TAffectedRequest;
 begin
   Result := Default(TAffectedRequest);
-  Result.Files := AContext.Group.AllFiles;
+  Result.Files := AContext.Workspace.AllFiles;
   Result.TestPrograms := TCoreAffectedTests.TestPrograms(Result.Files, AReadText);
   Result.Options := AContext.ImpactOptionsFor('');
   // Testunits aus allen Testprogrammen der Gruppe.
@@ -115,18 +115,18 @@ begin
 end;
 
 /// <summary>Betroffene Tests über den Index der Gruppe; Fehler der Versionsverwaltung als EMcpToolError.</summary>
-function FindAffected(const AAccess: TCoreVcsAccess; AGroup: TCoreWorkspaceGroup; const ASettings: TServerSettings;
+function FindAffected(const AAccess: TCoreVcsAccess; const AWorkspace: IMcpWorkspace; const ASettings: TServerSettings;
   const AQuery: TCoreAffectedQuery; const ARequest: TAffectedRequest; const AReadText: TReferenceReadText):
   TAffectedResult;
 var
   mResolver: TNameResolver;
 begin
-  mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
+  mResolver := TNameResolver.Create(AWorkspace.Index, AWorkspace.UnitLoader());
   try
-    mResolver.Namespaces := AGroup.Main.State.Namespaces;
+    mResolver.Namespaces := AWorkspace.Namespaces;
     try
       Result := TCoreAffectedTests.Run(AAccess, ASettings, AQuery,
-        TCoreAffectedSources.New(mResolver, AGroup.Index, AReadText), ARequest, nil);
+        TCoreAffectedSources.New(mResolver, AWorkspace.Index, AReadText), ARequest, nil);
     except
       on E: EVcsChanges do
         raise EMcpToolError.Create(E.Message);
@@ -161,19 +161,19 @@ var
   mFound: TAffectedResult;
   mAccess: TCoreVcsAccess;
 begin
-  mSettings := AContext.Group.Main.Configuration.Settings;
+  mSettings := AContext.Workspace.Settings;
   if not mSettings.Tests.Affected then
   begin
     raise EMcpToolError.Create(TCoreAffectedTests.OffMessage);
   end;
   if not TAffectedReport.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['text', 'json', 'dunitx']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['text', 'json', 'dunitx']));
   end;
   mReadText := TCoreAffectedTests.FileReader();
   // Über eine Variable halten: als const-Argument würde der Probelauf nie freigegeben.
   mAccess := AContext.Adapters.VcsAccess();
-  mFound := FindAffected(mAccess, AContext.Group, mSettings, AffectedQueryOf(AContext.Root, AArguments),
+  mFound := FindAffected(mAccess, AContext.Workspace, mSettings, AffectedQueryOf(AContext.Root, AArguments),
     AffectedRequestOf(AContext, mSettings, mReadText), mReadText);
   if mFormat = TAffectedFormat.DUnitX then
   begin
@@ -214,7 +214,7 @@ begin
   if (Result <> '') and not SameText(Result, 'text') and not SameText(Result, 'markdown') and
     not SameText(Result, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['text', 'markdown', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['text', 'markdown', 'json']));
   end;
 end;
 
@@ -244,18 +244,18 @@ begin
   end;
   Result.Title := ExtractFileName(AContext.Root);
   Result.Root := AContext.Root;
-  Result.Namespaces := AContext.Group.Main.State.Namespaces;
+  Result.Namespaces := AContext.Workspace.Namespaces;
   if ASettings.ArchitectureScope = 'project' then
   begin
-    Result.Files := AContext.Group.Main.State.ProjectFiles;
+    Result.Files := AContext.Workspace.ProjectFiles;
   end
   else
   begin
-    Result.Files := AContext.Group.AllFiles;
+    Result.Files := AContext.Workspace.AllFiles;
   end;
   if Length(Result.Files) = 0 then
   begin
-    raise EMcpToolError.Create(TCoreTexts.NoProject);
+    raise EMcpToolError.Create(TRequestTexts.NoProject);
   end;
 end;
 
@@ -287,14 +287,14 @@ var
   mFormat, mError: string;
   mLimit: Integer;
 begin
-  mSettings := AContext.Group.Main.Configuration.Settings;
+  mSettings := AContext.Workspace.Settings;
   if not mSettings.HotspotsEnabled then
   begin
     raise EMcpToolError.Create(cTexts[TMcpChangeText.HotspotsOff].Text);
   end;
   if not THotspotReport.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), mSection) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('section', ['hotspots', 'coupling']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('section', ['hotspots', 'coupling']));
   end;
   mFormat := HotspotFormatOf(AArguments);
   mLimit := HotspotLimitOf(AArguments);

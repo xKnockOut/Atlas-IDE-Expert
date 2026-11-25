@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GuardFree;
+﻿unit Atlas.Common.Pascal.GuardFree;
 
 // Freigabe absichern (#489): Nach "Liste := TStringList.Create;" bietet die
 // Vervollständigung an, den folgenden Code in try…finally mit Freigabe
@@ -14,7 +14,7 @@
 //     zugewiesen oder an Add, Insert, Push, Enqueue, AddObject, AddPair bzw.
 //     AddOrSetValue übergeben wird (eine Liste könnte sie besitzen),
 //   - die nächste Zeile mit Inhalt nicht schon mit try beginnt.
-// Wie bei TCodeActions.TryFinally (#42), aber vorsichtiger: Ein falsches
+// Wie bei TPascalTryFinally.Offer (#42), aber vorsichtiger: Ein falsches
 // Angebot gibt ein Objekt doppelt frei.
 //
 // Zwei Formen: nur eine neue Zeile im try (Standard) und, wenn die Anweisung
