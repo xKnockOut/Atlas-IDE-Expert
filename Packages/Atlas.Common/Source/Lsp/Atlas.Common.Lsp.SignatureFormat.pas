@@ -94,7 +94,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.JsonRpc.Positions;
 
 function Significant(const AToken: TPascalToken): Boolean;
 begin

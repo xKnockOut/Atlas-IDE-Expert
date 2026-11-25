@@ -43,7 +43,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.JSON,
-  Atlas.Common.Lsp.StatusFile;
+  Atlas.Common.Diagnostics.StatusFile;
 
 { TServerActivityTests }
 

@@ -42,7 +42,7 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.TransformSink,
   Atlas.Common.Logging.Providers.RecentSink,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Logging.EntryText;

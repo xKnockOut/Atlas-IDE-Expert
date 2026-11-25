@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Status;
+﻿unit Atlas.Common.JsonRpc.ServerStatus;
 
 // Inhalt des Status-Befehls "atlas.server.status" (#28): Index, Speicher,
 // letzter Indexlauf je Ordner und Antwortzeiten je Methode. Als JSON für
@@ -667,6 +667,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Status', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.ServerStatus', cTexts);
 
 end.

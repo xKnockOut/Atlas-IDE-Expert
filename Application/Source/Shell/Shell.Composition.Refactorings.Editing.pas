@@ -37,7 +37,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Lsp.Unwrap,

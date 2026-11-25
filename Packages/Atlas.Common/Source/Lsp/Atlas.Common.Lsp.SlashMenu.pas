@@ -91,7 +91,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;

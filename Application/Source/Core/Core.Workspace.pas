@@ -19,7 +19,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Configuration,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Baseline,

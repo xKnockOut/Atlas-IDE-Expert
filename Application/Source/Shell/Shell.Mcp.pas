@@ -52,7 +52,7 @@ uses
   Atlas.Common.JsonRpc.RecentMessages,
   Atlas.Common.Lsp.Adapters.ServerActivityObserver,
   Atlas.Common.Lsp.ServerActivity,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.BatchTool,
   Atlas.Common.Mcp.Prompts,

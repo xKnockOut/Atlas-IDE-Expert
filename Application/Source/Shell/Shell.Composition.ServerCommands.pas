@@ -97,7 +97,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.CacheDirectory,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.SettingsCommands,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.FormFiles,

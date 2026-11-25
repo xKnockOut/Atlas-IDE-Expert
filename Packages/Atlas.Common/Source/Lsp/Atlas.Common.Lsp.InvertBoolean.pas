@@ -87,7 +87,7 @@ uses
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.InvertBoolean,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.Rename,
   Atlas.Text.Lines,

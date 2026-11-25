@@ -157,7 +157,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,

@@ -104,7 +104,7 @@ uses
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Index.Files,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,

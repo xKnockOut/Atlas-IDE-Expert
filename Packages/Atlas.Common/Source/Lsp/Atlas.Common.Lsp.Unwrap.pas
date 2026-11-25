@@ -40,7 +40,7 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Editing.WithResolution,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.JsonRpc.Positions;
 
 { TLspUnwrap }
 
