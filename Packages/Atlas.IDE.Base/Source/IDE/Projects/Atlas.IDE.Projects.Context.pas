@@ -29,7 +29,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Lsp.ProjectContext.Contract,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.Projects.PathCheck;
 
 type

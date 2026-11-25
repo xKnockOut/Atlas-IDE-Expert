@@ -64,7 +64,7 @@ uses
   System.DateUtils,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Files.TextFile,
-  Atlas.Core.Lsp.ProjectContext.Contract,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.ToolsApi.Files.Service,

@@ -39,7 +39,7 @@ uses
   ToolsAPI,
   Atlas.Core.Completion.LiveTemplates,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.ProjectContext.Contract,
+  Atlas.Core.Projects.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile;
 

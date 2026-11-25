@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Lsp.ProjectContext.Contract;
+﻿unit Atlas.Core.Projects.Contract;
 
 // Projektkontext für den Server (#396), ohne Open Tools API: was die IDE für
 // ein Projekt gerade verwendet (Konfiguration, Plattform, bedingte Symbole,

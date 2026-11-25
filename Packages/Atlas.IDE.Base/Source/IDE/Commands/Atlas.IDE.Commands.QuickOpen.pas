@@ -55,7 +55,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Files.DataFile,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.ProjectContext.Contract,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.Projects.PathCheck,
   Atlas.Core.Results.Model,
   Atlas.Core.Commands.Palette,

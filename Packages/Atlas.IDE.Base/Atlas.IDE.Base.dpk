@@ -720,7 +720,7 @@ contains
   Atlas.IDE.Files.DirtyExport in 'Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas',
   Atlas.Plugin.Calls.Optional in '..\Atlas.Plugin\Source\Calls\Atlas.Plugin.Calls.Optional.pas',
   Atlas.Plugin.Calls.Contract in '..\Atlas.Plugin\Source\Calls\Atlas.Plugin.Calls.Contract.pas',
-  Atlas.Core.Lsp.ProjectContext.Contract in 'Source\Core\Lsp\Atlas.Core.Lsp.ProjectContext.Contract.pas',
+  Atlas.Core.Projects.Contract in 'Source\Core\Projects\Atlas.Core.Projects.Contract.pas',
   Atlas.Core.Projects.Summary in 'Source\Core\Projects\Atlas.Core.Projects.Summary.pas',
   Atlas.Core.Projects.Summary.Json in 'Source\Core\Projects\Atlas.Core.Projects.Summary.Json.pas',
   Atlas.Core.Projects.Summary.Sections in 'Source\Core\Projects\Atlas.Core.Projects.Summary.Sections.pas',

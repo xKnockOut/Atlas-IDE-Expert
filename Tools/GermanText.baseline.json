@@ -20,7 +20,7 @@
   "Packages/Atlas.IDE.Base/Source/Core/Diagnostics/Atlas.Core.Diagnostics.SafeMode.pas": 1,
   "Packages/Atlas.IDE.Base/Source/Core/Lsp/Atlas.Core.Lsp.Providers.ServerProcess.pas": 1,
   "Packages/Atlas.IDE.Base/Source/Core/Modules/Atlas.Core.Modules.Registry.pas": 7,
-  "Packages/Atlas.IDE.Base/Source/Core/Lsp/Atlas.Core.Lsp.ProjectContext.Contract.pas": 2,
+  "Packages/Atlas.IDE.Base/Source/Core/Projects/Atlas.Core.Projects.Contract.pas": 2,
   "Packages/Atlas.IDE.Base/Source/Core/Projects/Atlas.Core.Projects.Summary.pas": 2,
   "Packages/Atlas.IDE.Base/Source/Core/Results/Atlas.Core.Results.CallDiagramTemplate.pas": 5,
   "Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.Plugin.Debug.pas": 1,

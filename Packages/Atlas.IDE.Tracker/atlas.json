@@ -41,7 +41,7 @@
         "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
         "Atlas.Core.Lsp.Contract -> Atlas.Text.Json",
-        "Atlas.Core.Lsp.ProjectContext.Contract -> Atlas.Text.Json",
+        "Atlas.Core.Projects.Contract -> Atlas.Text.Json",
         "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Plugin.Files.Providers.FolderWatcher",
         "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.IDE.Undo.Adapters.*",

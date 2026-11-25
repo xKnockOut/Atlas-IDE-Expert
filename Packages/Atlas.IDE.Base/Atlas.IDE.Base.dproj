@@ -797,7 +797,7 @@
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas"/>
         <DCCReference Include="..\Atlas.Plugin\Source\Calls\Atlas.Plugin.Calls.Optional.pas"/>
         <DCCReference Include="..\Atlas.Plugin\Source\Calls\Atlas.Plugin.Calls.Contract.pas"/>
-        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.ProjectContext.Contract.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.Json.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.Sections.pas"/>

@@ -65,7 +65,7 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.ProjectContext.Contract,
+  Atlas.Core.Projects.Contract,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Session.Json;
