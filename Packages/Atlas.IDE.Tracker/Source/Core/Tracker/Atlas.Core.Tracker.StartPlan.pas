@@ -14,7 +14,7 @@ uses
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.VersionControl.Repository.BranchPlan,
   Atlas.Core.Tracker.Contract.MyIssues;
 
 type
@@ -118,7 +118,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.SprintStart,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 { TAtlasIssueStartState }
 

@@ -54,7 +54,7 @@ end;
 
 function TMcpFindingPromptsAdapter.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string): string;
 begin
-  Result := FPrompts.Markdown(AFinding, AFileName, AText);
+  Result := FPrompts.MarkdownOf(AFinding, AFileName, AText);
 end;
 
 end.

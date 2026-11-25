@@ -72,6 +72,8 @@ type
     SlashCommandsFor: TSlashCommandsProvider;
     /// <summary>Regeln, die in einer Zeile treffen, für /ignore (#297); ohne Zuweisung der ganze Katalog.</summary>
     RuleIdsFor: TSlashRuleIdsFunc;
+    /// <summary>Regelkatalog für /ignore ohne Auskunft von RuleIdsFor; ohne Zuweisung keine Regeln.</summary>
+    RuleCatalog: ILspRuleCatalog;
     /// <summary>Postfix-Vorlagen je Dokument (#188); ohne Zuweisung an und mit Inline-Variable.</summary>
     PostfixFor: TPostfixOptionsFunc;
     /// <summary>„with auflösen“ auf dem Wort with (#50); ohne Zuweisung kein Eintrag.</summary>

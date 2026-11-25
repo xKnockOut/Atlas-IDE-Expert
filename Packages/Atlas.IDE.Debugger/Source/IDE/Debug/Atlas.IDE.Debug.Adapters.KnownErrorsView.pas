@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Debug.Adapters.KnownErrorsView;
 
 // Empfänger der Meldung des Trackers für bekannte Fehler beim Exception-Halt
-// (#2460, IAtlasKnownErrorsView aus Atlas.IDE.Contracts.KnownErrors): Hat der
+// (#2460, IAtlasKnownErrorsView aus Atlas.IDE.Base.Foundation.KnownErrors): Hat der
 // Tracker eine Suche beendet, fragt TAtlasIdeDebugKnownErrors für den
 // gezeigten Halt erneut. Die Komposition stellt ihn über den Scope des
 // Debuggers bereit. Nur im Hauptthread.
@@ -9,7 +9,7 @@
 interface
 
 uses
-  Atlas.IDE.Contracts.KnownErrors;
+  Atlas.IDE.Base.Foundation.KnownErrors;
 
 type
   /// <summary>Empfänger der Meldung des Trackers (IAtlasKnownErrorsView).</summary>

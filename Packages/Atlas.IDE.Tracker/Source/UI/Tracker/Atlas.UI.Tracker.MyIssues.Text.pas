@@ -88,7 +88,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,

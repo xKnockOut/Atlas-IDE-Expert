@@ -26,7 +26,7 @@ uses
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.InboxPace,
   Atlas.Core.Assistants.Log,
-  Atlas.IDE.Contracts.BuildRequests,
+  Atlas.IDE.Base.Foundation.BuildRequests,
   Atlas.IDE.Assistants.FolderSignal;
 
 type

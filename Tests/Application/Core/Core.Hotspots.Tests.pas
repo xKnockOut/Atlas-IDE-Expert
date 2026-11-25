@@ -31,7 +31,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,

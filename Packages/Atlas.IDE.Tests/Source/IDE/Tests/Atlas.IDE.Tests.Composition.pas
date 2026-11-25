@@ -43,13 +43,13 @@
 // - Hörer für Einstellungen und bewertete Builds (Tests nach dem Build) und für
 //   gespeicherte Dateien (betroffene Tests im Hintergrund, #1775),
 // - IAtlasTestRunner (Base: Auswirkungsanalyse #1120, Willkommensseite) und
-//   IAtlasTestsSource (Atlas.IDE.Contracts.Tests, Willkommensseite); das Ende eines
+//   IAtlasTestsSource (Atlas.IDE.Base.Foundation.Tests, Willkommensseite); das Ende eines
 //   Laufs schreibt das Modul in die Projekt-Zusammenfassung von Base
 //   (TAtlasIdeProjectSummaries, #69) und meldet es jedem IAtlasTestsListener,
 // - IAtlasTestValues (#1779): „Vergleichen“ im Befund-Hover von Base und auf
 //   der Kachel „Testergebnisse“ der Willkommensseite.
 // Gebaut wird über den Läufer der Builds auf Auftrag der Build-Pipeline
-// (IAtlasBuildJobs aus Atlas.IDE.Contracts.BuildPipeline, ohne Modul nicht), die
+// (IAtlasBuildJobs aus Atlas.IDE.Base.Foundation.BuildPipeline, ohne Modul nicht), die
 // Probleme gehen an das Problemfenster von Base; die fehlgeschlagenen Tests des
 // letzten Laufs liest das Modul aus den Projektdateien (TAtlasProjectSummaries),
 // auch ohne Willkommensseite.
@@ -66,13 +66,13 @@ uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Build.Contract,
-  Atlas.IDE.Contracts.Tests,
+  Atlas.IDE.Base.Foundation.Tests,
   Atlas.UI.Tests.SettingsSection,
   Atlas.Text.Product.Version,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Providers.ProcessRunner,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Providers.ProcessRunner,
   Atlas.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Tests.Debug, // TAtlasTestCompareHooks

@@ -1,0 +1,2 @@
+### Behoben
+- Meldungen zu meinen Issues (YouTrack): Bei deutscher Systemsprache lehnte YouTrack die Abfrage mit „for: me“ ab, Atlas meldete „unerwartete Antwort“ und fragte nur noch alle 60 Minuten. Atlas fragt jetzt in der Sprache des Servers („assignee: meine“), versucht nach einer Ablehnung die andere Sprache und merkt sich je Verbindung die passende. Fehlermeldungen nennen den HTTP-Status und den Fehlertext des Trackers; eine Antwort ohne JSON (z. B. Anmeldeseite) heißt „nicht lesbar“.

@@ -43,7 +43,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Contracts.KnownErrors,
+  Atlas.IDE.Base.Foundation.KnownErrors,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Debug.KnownErrors,

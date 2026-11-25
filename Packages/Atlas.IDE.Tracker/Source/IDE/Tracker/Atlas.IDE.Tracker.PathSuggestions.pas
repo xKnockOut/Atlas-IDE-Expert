@@ -44,10 +44,10 @@ uses
   Winapi.Windows,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.WorkingCopies,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.WorkingCopies,
   Atlas.Core.Tracker.PathSuggestions,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.UI.Tracker.Settings.Strings,
   Atlas.UI.Tracker.SuggestDialog;
 

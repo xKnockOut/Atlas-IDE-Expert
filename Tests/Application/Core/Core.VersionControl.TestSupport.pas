@@ -6,7 +6,7 @@
 interface
 
 uses
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 /// <summary>Führt AExecutable mit AArguments in AWorkingDir aus und liefert die Ausgabe ohne Leerraum am Rand;
 /// Exception bei Fehler oder Exit-Code ungleich 0.</summary>

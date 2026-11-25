@@ -4,7 +4,7 @@
 // Panel, das die Seite in die Inhaltsfläche ihres Bereichsrahmens legt.
 // Titelzeile, Griff und Spalte gehören der Seite; die Kachel zeichnet nur
 // ihren Inhalt, nennt ihre Höhe (BodyHeight) und meldet Änderungen der Höhe
-// über OnHeightChanged. Den Vertrag Atlas.IDE.Contracts.WelcomeTiles setzt
+// über OnHeightChanged. Den Vertrag Atlas.IDE.Base.Foundation.WelcomeTiles setzt
 // Atlas.IDE.Tracker.Adapters.Tiles darauf um (UI kennt Atlas.IDE nicht). Ohne Fenster
 // misst sie keinen Text und holt UpdateContent in CreateWnd nach.
 

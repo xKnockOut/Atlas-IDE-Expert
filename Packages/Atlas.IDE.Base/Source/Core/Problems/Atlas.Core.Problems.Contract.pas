@@ -5,7 +5,7 @@
 // sind 0-basiert in UTF-16-Einheiten wie im LSP.
 // TAtlasIdeError (#1819): ein Fehler aus Error Insight der IDE, roh wie in
 // TOTAError; das Modul Prüfregeln liefert ihn über IAtlasIdeErrors
-// (Atlas.IDE.Contracts.Rules), umgerechnet wird in Atlas.Core.Problems.IdeErrors.
+// (Atlas.IDE.Base.Foundation.Rules), umgerechnet wird in Atlas.Core.Problems.IdeErrors.
 
 interface
 

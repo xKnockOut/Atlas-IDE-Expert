@@ -10,7 +10,7 @@
 // build.warningsAsErrors, die zum Modul gehören) und meldet das ebenso; so
 // laufen Benachrichtigung und Tests nach dem Build (#69) auch ohne Modul.
 // Builds auf Auftrag für andere Module stehen im Vertrag
-// Atlas.IDE.Contracts.BuildPipeline.
+// Atlas.IDE.Base.Foundation.BuildPipeline.
 // TAtlasBuildPipeline fragt die Registry bei jedem Aufruf neu; ohne ARegistry
 // gilt die Registry von Base. Fehler eines Beitrags sammelt es als Text (wie
 // TAtlasModuleContributions.ApplySettings), Protokollieren ist Sache des

@@ -19,7 +19,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  Atlas.IDE.Contracts.AiText,
+  Atlas.IDE.Base.Foundation.AiText,
   Atlas.Core.Assistants.Contract.IdeAi;
 
 type

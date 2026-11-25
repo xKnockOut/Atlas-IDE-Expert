@@ -14,7 +14,7 @@
 interface
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
   Atlas.Core.Tracker.BlameLinks,
@@ -80,7 +80,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Tracker.IssueLookups;
 
 type

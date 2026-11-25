@@ -36,6 +36,31 @@ type
     function Report(const AUri: string): TJSONObject;
   end;
 
+  /// <summary>Angaben des Regelkatalogs zu einer Regel für Anzeigen (Fenster „Atlas-Prüfung“, Befund-Hover, #909).
+  /// </summary>
+  TRuleCatalogFacts = record
+    /// <summary>Name der Kategorie.</summary>
+    Category: string;
+    /// <summary>Name der Gruppe, z. B. „Compiler vorab“ (#1024).</summary>
+    Group: string;
+    /// <summary>Compilermeldungen, die die Regel vorwegnimmt (#1024); leer ohne.</summary>
+    CompilerCodes: TArray<string>;
+  end;
+
+  /// <summary>Regelkatalog für Anzeigen in anderen Features: Kennungen, Angaben je Regel, Hilfeseite.</summary>
+  IRuleCatalogInfo = interface
+    ['{2F7D9A31-6C4B-4E8A-B1D5-93E0C7A2F468}']
+    /// <summary>Kennungen aller eingebauten Regeln, z. B. für /ignore (#293).</summary>
+    function RuleIds: TArray<string>;
+    /// <summary>Angaben zu ARuleId; False, wenn der Katalog die Regel nicht kennt.</summary>
+    function TryDescribe(const ARuleId: string; out AFacts: TRuleCatalogFacts): Boolean;
+    /// <summary>Hilfeseite zu ARuleId.</summary>
+    function HelpUri(const ARuleId: string): string;
+    /// <summary>Zeigt der Editor AFinding durchgestrichen (veraltetes Symbol, #38; nicht platform, library oder
+    /// experimental, #1018)?</summary>
+    function StruckThrough(const AFinding: TRuleFinding): Boolean;
+  end;
+
   /// <summary>Prüfregeln für ein Dokument der Diagnose im Editor; das Umfeld (Regeln, Einstellungen, Baseline)
   /// hat der Anbieter für die Datei gebaut.</summary>
   IRuleDocumentCheck = interface
@@ -55,6 +80,8 @@ type
     /// <summary>Zeigt der Editor „nur in der implementation gebraucht“ (uses-only-in-implementation, #1136)? Ohne
     /// Umfeld ja.</summary>
     function OnlyImplementationShown: Boolean;
+    /// <summary>Regelkatalog für die Anzeige der Treffer (Hilfeseite, Kategorie, Gruppe); nil ohne.</summary>
+    function Catalog: IRuleCatalogInfo;
   end;
 
   /// <summary>Prüfregeln der Diagnose je Dokument.</summary>
@@ -107,6 +134,12 @@ type
     Text: string;
   end;
 
+  /// <summary>Angewendete Korrekturen einer Regel in einer Datei.</summary>
+  TRuleBulkFixCount = record
+    RuleId: string;
+    Count: Integer;
+  end;
+
   /// <summary>Ergebnis der Sammelkorrektur für eine Datei.</summary>
   TRuleBulkFixOutput = record
     FileName: string;
@@ -115,6 +148,12 @@ type
     NewText: string;
     /// <summary>Text geändert und nicht verworfen.</summary>
     Changed: Boolean;
+    /// <summary>Verworfen, weil neue Syntaxfehler entstanden wären; NewText = OldText.</summary>
+    Rejected: Boolean;
+    /// <summary>Anzahl der angewendeten Korrekturen.</summary>
+    FixCount: Integer;
+    /// <summary>Korrekturen je Regel in der Reihenfolge des ersten Auftretens.</summary>
+    Applied: TArray<TRuleBulkFixCount>;
     /// <summary>Vereinigter Diff mit RelativePath (/ als Trenner); leer ohne Änderung.</summary>
     Diff: string;
   end;
@@ -140,6 +179,36 @@ type
       out AError: string): Boolean;
   end;
 
+  /// <summary>Sammelkorrektur über Dateien des Arbeitsbereichs (#1352, atlas.server.fixFindings): Text,
+  /// Regeln, Einstellungen, Projekt und Baseline (#97) je Datei wie bei der Prüfung im Editor; schreibt nichts.
+  /// </summary>
+  IRuleWorkspaceBulkFix = interface
+    ['{252AD7D1-91BB-4E13-A999-2902E620923A}']
+    /// <summary>Korrigiert AFileNames wie IRuleBulkFix.Run; Untergrenze je Datei aus deren fix.minConfidence.
+    /// Dateien ohne Text oder ohne Umfeld fehlen im Ergebnis.</summary>
+    function Run(const AFileNames: TArray<string>; const AFixRules: TArray<string>; const AMinConfidence: string;
+      out ARun: TRuleBulkFixRun; out AError: string): Boolean;
+  end;
+
+  /// <summary>Regeln für ungenutzten Code (#64, find_unused_code) über die Dateien eines Laufs; Regeln, Index,
+  /// Projekte und Namensräume hat der Anbieter beim Anlegen bekommen.</summary>
+  IRuleDeadCode = interface
+    ['{C8069B2F-F025-4B08-9E7E-A6DE46C195C6}']
+    /// <summary>Kennungen der Regeln für ungenutzten Code in der Reihenfolge des Berichts.</summary>
+    function RuleIds: TArray<string>;
+    /// <summary>Gibt es unter den Regeln des Anbieters welche für ungenutzten Code?</summary>
+    function Available: Boolean;
+    /// <summary>Alle Projekte geladen und indiziert? Sonst Grund in AReason; die projektweiten Regeln schweigen.
+    /// </summary>
+    function Complete(out AReason: string): Boolean;
+    /// <summary>Text von AFileName, geöffnete Dokumente zuerst; False, wenn nicht lesbar.</summary>
+    function ReadText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Treffer der Regeln für ungenutzten Code in AText, dem Inhalt von AFileName; ARelativePath für
+    /// Regeln, Optionen und deadCode.keep* aus ASettings.</summary>
+    function Check(const AFileName, ARelativePath, AText: string; const ASettings: TServerSettings):
+      TArray<TRuleFinding>;
+  end;
+
   /// <summary>Prüfregeln über einen Text, etwa für get_diagnostics, hook_check, check_code und explain_finding:
   /// Syntaxfehler, Sprachmerkmale und die Treffer der Regeln. Regeln, Projekt (Symbolindex, Projektdienste, #1112)
   /// und Symbole samt Include-Dateien (#860) je Datei hat der Anbieter.</summary>
@@ -159,12 +228,17 @@ type
     function Markdown(const ASettings: TServerSettings): string;
   end;
 
-  /// <summary>Auftrag an einen Assistenten zu einem Befund (#158, explain_finding): Regel, Beschreibung, Vorher/Nachher
-  /// und Ausschnitt aus dem Text als Markdown.</summary>
+  /// <summary>Aufträge an Assistenten als Markdown: zu einem Befund (#158, explain_finding) mit Regel, Beschreibung,
+  /// Vorher/Nachher und Ausschnitt, oder aus mehreren Befunden (#2570).</summary>
   IRuleFindingPrompts = interface
     ['{311A7027-B860-4D22-8BD7-36EA64E58AE1}']
-    /// <summary>Markdown zu AFinding in AText (Datei AFileName).</summary>
-    function Markdown(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+    /// <summary>Markdown zu AFinding in AText (Datei AFileName), deutscher Katalog.</summary>
+    function MarkdownOf(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+    /// <summary>Markdown zu AItems mit dem Regelkatalog in der Sprache der Texte; über ALimit Befunden ein Hinweis
+    /// auf check_code.</summary>
+    function Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
+    /// <summary>Höchstzahl Befunde eines Auftrags, wenn der Aufrufer keine nennt.</summary>
+    function DefaultLimit: Integer;
   end;
 
 implementation

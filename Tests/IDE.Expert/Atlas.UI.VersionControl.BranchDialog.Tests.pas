@@ -62,8 +62,8 @@ uses
   Atlas.UI.VersionControl.Strings,
   System.SysUtils,
   System.UITypes,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
   Atlas.UI.VersionControl.BranchDialog;
 
 function GitFacts: TAtlasVcsBranchFacts;

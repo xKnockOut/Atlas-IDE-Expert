@@ -51,7 +51,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.DateUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Notify,

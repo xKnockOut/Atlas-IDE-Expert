@@ -42,7 +42,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Tracker.EndPull,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Tracker.PathSuggestions;
 
 { TAtlasIdeEndPull }

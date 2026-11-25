@@ -37,7 +37,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Instructions,
-  Atlas.Common.Lsp.Instructions;
+  Atlas.Common.Rules.InstructionFiles;
 
 const
   cSettings = '{"profile": "strict", "rules": {"metric-method-length": {"severity": "warning", "max": 50}, ' +
@@ -56,7 +56,7 @@ end;
 
 function SectionOf(const AJson: string): string;
 begin
-  Result := TLspInstructions.SectionFor(Settings(AJson), BuiltinRules);
+  Result := TRuleInstructionFiles.SectionFor(Settings(AJson), BuiltinRules);
 end;
 
 function Lines(const AText: string): TArray<string>;

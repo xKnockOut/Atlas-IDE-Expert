@@ -9,7 +9,8 @@
 // gelten, entscheidet die Regel (IRuleNewNames, TRuleEngine.NewNames); hier
 // liegen Wertetyp und Namensbildung, damit Rules und Editing sie teilen.
 // Dazu Wert und Teilwerte einer $IF-Bedingung (#847), die Präprozessor und
-// Ausdrucksauswerter (Pascal.Preprocessor.Expressions) teilen.
+// Ausdrucksauswerter (Pascal.Preprocessor.Expressions) teilen, und der Syntaxbaum
+// als Handle (IPascalSyntaxTree) für Schnittstellen zwischen Features.
 
 interface
 
@@ -123,6 +124,13 @@ type
     function Field(const AName: string): string;
     function Parameter(const AName: string): string;
     function Constant(const AName: string): string;
+  end;
+
+  /// <summary>Syntaxbaum einer Unit über Feature-Grenzen: Wer einen Baum hat (etwa eine Prüfregel), reicht ihn so
+  /// an andere Features weiter, ohne dass deren Contract den Baum selbst kennt. Den Baum dahinter liefert nur Pascal
+  /// (TSyntaxTreeHandles.TreeOf); der Handle besitzt ihn nicht und gilt, solange der Baum lebt.</summary>
+  IPascalSyntaxTree = interface
+    ['{7EFE0286-5C2E-4960-8BE5-443766A93893}']
   end;
 
   /// <summary>Abbruchsignal für lange Läufe, z. B. Parsen großer Dateien.</summary>

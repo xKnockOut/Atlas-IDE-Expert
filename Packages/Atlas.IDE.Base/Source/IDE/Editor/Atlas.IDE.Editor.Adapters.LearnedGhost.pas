@@ -1,15 +1,15 @@
 ﻿unit Atlas.IDE.Editor.Adapters.LearnedGhost;
 
 // Gelernte Vorschläge (#1890) als Anbieter des Schattentexts (IAtlasGhostProvider aus
-// Atlas.IDE.Contracts.GhostSuggestions): schickt Puffer, Schwellen und Zuschläge aus den Lernzählern an den Server
-// (atlas.server.suggestNext) und meldet angenommene und abgelehnte Vorschläge an die Lernzähler. Sitzung und
+// Atlas.IDE.Base.Foundation.GhostSuggestions): schickt Puffer, Schwellen und Zuschläge aus den Lernzählern an
+// den Server (atlas.server.suggestNext) und meldet angenommene und abgelehnte Vorschläge an die Lernzähler. Sitzung und
 // Lernzähler hält Atlas.IDE.Editor.LearnedSuggestions; erzeugt nur die Kompositionswurzel. Prepare im
 // Hauptthread, die Arbeit danach im Hintergrund.
 
 interface
 
 uses
-  Atlas.IDE.Contracts.GhostSuggestions;
+  Atlas.IDE.Base.Foundation.GhostSuggestions;
 
 type
   /// <summary>Vorschlag aus dem Index des Servers für den Schattentext (#1890).</summary>

@@ -74,7 +74,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Text.DUnitX,
   Atlas.Text.TestResults;
 

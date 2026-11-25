@@ -32,7 +32,7 @@ uses
   Vcl.AppEvnts,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.MouseButtons,
-  Atlas.IDE.Contracts.MouseHistory,
+  Atlas.IDE.Base.Foundation.MouseHistory,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.NavHistory;
 

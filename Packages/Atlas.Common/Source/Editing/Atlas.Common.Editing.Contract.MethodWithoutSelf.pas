@@ -10,6 +10,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.CodeActions.Contract;
 
 type
@@ -18,6 +19,8 @@ type
     /// <summary>Dateiname für die Namensauflösung.</summary>
     FileName: string;
     Text: string;
+    /// <summary>Baum zu Text, gehört dem Aufrufer.</summary>
+    Tree: IPascalSyntaxTree;
     /// <summary>Inhalt der Formulardatei; '' ohne. Ereignisse des Formulars brauchen eine Methode des Objekts.
     /// </summary>
     FormText: string;
@@ -42,8 +45,7 @@ type
 
   IEditingMethodsWithoutSelf = interface
     ['{33BF8D9C-AF8E-4735-A13B-728EE41AB3C9}']
-    /// <summary>Alle Methoden der Unit, die Self nicht brauchen; leer, wenn sich der Text nicht parsen lässt.
-    /// </summary>
+    /// <summary>Alle Methoden der Unit, die Self nicht brauchen; leer ohne Baum.</summary>
     function Scan(const AScan: TEditingMethodScan): TArray<TEditingMethodWithoutSelf>;
   end;
 

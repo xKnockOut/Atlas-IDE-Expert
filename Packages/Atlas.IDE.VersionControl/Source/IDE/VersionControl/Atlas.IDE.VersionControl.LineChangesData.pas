@@ -15,7 +15,7 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Text.Diff,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Editor.LineChanges;
 
 type
@@ -140,7 +140,7 @@ uses
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Base.Foundation.VersionControl;
 
 const
   /// <summary>So oft prüft Atlas Commit (ChangeMarker) und Speichern (Zeitstempel der Datei).</summary>

@@ -7,7 +7,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.IDE.Contracts.AiText,
+  Atlas.IDE.Base.Foundation.AiText,
   Atlas.Tests.AiTextFake,
   Atlas.IDE.Assistants.Adapters.TextSource;
 

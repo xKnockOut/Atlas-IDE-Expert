@@ -85,7 +85,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
   Atlas.Common.Findings.Scopes,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.Output,
   Atlas.Common.Rules.Builtin.Concurrency.MainThread,
   Atlas.Common.Projects.PackageReader;

@@ -10,7 +10,7 @@ uses
   System.SysUtils,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.UI.VersionControl.SettingsPart;
 
 type
@@ -54,7 +54,7 @@ implementation
 uses
   Vcl.Controls,
   Vcl.ComCtrls,
-  Atlas.Core.VersionControl.Tools,
+  Atlas.VersionControl.Repository.Tools,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings;
 

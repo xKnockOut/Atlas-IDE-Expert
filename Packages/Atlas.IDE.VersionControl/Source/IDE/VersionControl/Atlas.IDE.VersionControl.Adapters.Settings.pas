@@ -37,11 +37,11 @@ implementation
 uses
   Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Projects.VersionControl,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.ToolCheck,
-  Atlas.Core.VersionControl.ServerCheck,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.ToolCheck,
+  Atlas.VersionControl.Repository.ServerCheck,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.TeamFile;
 

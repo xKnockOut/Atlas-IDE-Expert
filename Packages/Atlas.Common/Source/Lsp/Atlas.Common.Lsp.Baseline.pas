@@ -35,7 +35,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Lsp.Metrics;
 
 type
@@ -101,7 +101,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Output,
+  Atlas.Text.Json,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -242,11 +242,11 @@ begin
     FOnWritten(mFileName);
   end;
   // Die Zähler stehen in CountersJson als eigenes Objekt; hier mit Kopf zusammengesetzt.
-  Result := '{"format": ' + IntToStr(cFormat) + ', "file": ' + TFindingsOutput.JsonString(mFileName) +
-    ', "previous": ' + TFindingsOutput.JsonString(mPrevious) + ', ';
+  Result := '{"format": ' + IntToStr(cFormat) + ', "file": ' + TJsonText.Quote(mFileName) +
+    ', "previous": ' + TJsonText.Quote(mPrevious) + ', ';
   if mSetAsideFile <> '' then
   begin
-    Result := Result + '"setAside": ' + TFindingsOutput.JsonString(mSetAsideFile) + ', ';
+    Result := Result + '"setAside": ' + TJsonText.Quote(mSetAsideFile) + ', ';
   end;
   Result := Result + '"skipped": ' + IntToStr(mSkipped) + ', ' + Copy(mOutcome.CountersJson, 2, MaxInt);
 end;

@@ -40,7 +40,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.Tracker.DevelopmentPlan,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 function LogFile(const APath, ARepositoryPath: string): TAtlasVcsLogFile;
 begin

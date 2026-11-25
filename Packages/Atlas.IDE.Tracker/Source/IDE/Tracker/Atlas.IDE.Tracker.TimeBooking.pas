@@ -72,12 +72,12 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.TimePlan,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Tracker.Time.Strings,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeList,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Base.Foundation.VersionControl;
 
 type
   /// <summary>Der offene Buchungsdialog für nachgeladene Werte; nil, sobald er geschlossen ist.</summary>

@@ -35,15 +35,20 @@ type
     class function StateText(const AState: string): string; static;
     /// <summary>Sammelmeldung „n weitere Issues geändert“.</summary>
     class function MoreTitle(ACount: Integer): string; static;
-    /// <summary>Titel der Fehlermeldung: Token abgelehnt, nicht erreichbar oder unerwartete Antwort von AServer.
+    /// <summary>Titel der Fehlermeldung: Token abgelehnt, nicht erreichbar, Abfrage abgelehnt (400), Antwort nicht
+    /// lesbar (200 ohne JSON) oder unerwartete Antwort von AServer, mit dem HTTP-Status AStatus (0 = ohne Antwort).
     /// </summary>
-    class function ErrorTitle(AError: TAtlasCiFetchError; const AServer: string): string; static;
+    class function ErrorTitle(AError: TAtlasCiFetchError; AStatus: Integer; const AServer: string): string; static;
+    /// <summary>Text der Fehlermeldung: AMessage des Trackers (falls vorhanden) und wie Atlas weiter fragt.
+    /// </summary>
+    class function ErrorText(const AMessage: string): string; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Ci.Contract,
   Atlas.UI.Tracker.MyIssues.Strings;
 
 { TAtlasTrackerNoticeText }
@@ -128,7 +133,8 @@ begin
   Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyMore, [ACount]);
 end;
 
-class function TAtlasTrackerNoticeText.ErrorTitle(AError: TAtlasCiFetchError; const AServer: string): string;
+class function TAtlasTrackerNoticeText.ErrorTitle(AError: TAtlasCiFetchError; AStatus: Integer;
+  const AServer: string): string;
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
@@ -136,7 +142,32 @@ begin
     TAtlasCiFetchError.Network, TAtlasCiFetchError.Timeout:
       Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorNetwork, [AServer]);
   else
-    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorOther, [AServer]);
+    if AStatus = TAtlasHttpStatus.cBadRequest then
+    begin
+      Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorQuery, [AServer, AStatus]);
+    end
+    else if AStatus = TAtlasHttpStatus.cOk then
+    begin
+      Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorUnreadable, [AServer]);
+    end
+    else if AStatus <> 0 then
+    begin
+      Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorStatus, [AServer, AStatus]);
+    end
+    else
+    begin
+      Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorOther, [AServer]);
+    end;
+  end;
+end;
+
+class function TAtlasTrackerNoticeText.ErrorText(const AMessage: string): string;
+begin
+  Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyErrorText);
+  if Trim(AMessage) <> '' then
+  begin
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorReason, [Trim(AMessage)]) + sLineBreak +
+      Result;
   end;
 end;
 

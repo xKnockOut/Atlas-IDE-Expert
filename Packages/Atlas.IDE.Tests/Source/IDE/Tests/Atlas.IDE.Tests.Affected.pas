@@ -85,13 +85,13 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tests.AffectedHook,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.ToolsApi.Files.Service;
 
 { TAtlasIdeAffectedTests }

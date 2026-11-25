@@ -25,7 +25,7 @@ uses
   Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Exceptions,
-  Atlas.IDE.Contracts.DebugControl;
+  Atlas.IDE.Base.Foundation.DebugControl;
 
 type
   TAtlasIdeDebugAssistantControl = class(TInterfacedObject, IAtlasDebugControl)

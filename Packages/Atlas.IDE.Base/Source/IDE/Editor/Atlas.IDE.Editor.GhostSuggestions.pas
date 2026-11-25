@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Editor.GhostSuggestions;
 
 // Schattentext-Vorschläge nach Enter (#1890) im Editor: Anzeige, Tasten und
-// Puffer für alle Anbieter aus Atlas.IDE.Contracts.GhostSuggestions (zuerst
+// Puffer für alle Anbieter aus Atlas.IDE.Base.Foundation.GhostSuggestions (zuerst
 // die gelernten Vorschläge, Atlas.IDE.Editor.LearnedSuggestions).
 // - Auslöser ist Atlas.IDE.Editor.EnterWatch nach „Muster fortsetzen“ (#671):
 //   Zeigt das Muster einen Vorschlag, fragt Atlas hier nicht. Der Handler
@@ -34,7 +34,7 @@ uses
   ToolsAPI,
   Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.Editor.LearnedSuggestions,
-  Atlas.IDE.Contracts.GhostSuggestions,
+  Atlas.IDE.Base.Foundation.GhostSuggestions,
   Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Completion.Preview;
 

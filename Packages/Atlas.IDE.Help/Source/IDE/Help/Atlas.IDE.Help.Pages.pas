@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.IDE.Contracts.Help,
+  Atlas.IDE.Base.Foundation.Help,
   Atlas.Core.Help.Links;
 
 type

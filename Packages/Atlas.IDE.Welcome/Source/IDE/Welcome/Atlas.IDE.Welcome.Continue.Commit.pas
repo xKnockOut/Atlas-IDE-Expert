@@ -27,11 +27,11 @@ implementation
 
 uses
   Atlas.Core.Results.Model,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Base.Foundation.VersionControl;
 
 /// <summary>Einträge für „Atlas-Ergebnisse“: die Dateien des Commits, die eigenen zuerst.</summary>
 function CommitEntries(const ACommit: TAtlasContinueCommit; const AFiles: TArray<string>): TArray<TAtlasResultEntry>;

@@ -39,7 +39,7 @@ uses
   System.IOUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Instructions,
-  Atlas.Common.Lsp.Instructions,
+  Atlas.Common.Rules.InstructionFiles,
   Core.CommandLine,
   Shell.Composition.Instructions,
   Core.Linter.Instructions,
@@ -88,7 +88,7 @@ begin
   Assert.IsTrue(TFile.ReadAllText(Agents, TEncoding.UTF8).Contains(TRuleInstructions.cEndMarker), 'Endmarke');
   mFiles := TShellInstructions.Run(FFolder, mSettings, False);
   Assert.AreEqual(Ord(TInstructionsState.Current), Ord(mFiles[0].State), 'zweiter Lauf aktuell');
-  Assert.AreEqual(0, TLspInstructions.StaleCount(mFiles));
+  Assert.AreEqual(0, TRuleInstructionFiles.StaleCount(mFiles));
 end;
 
 procedure TShellInstructionsTests.ReadOnlyLeavesDisk;

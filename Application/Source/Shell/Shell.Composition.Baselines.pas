@@ -18,6 +18,7 @@ uses
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Rules.CheckContext,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Preprocessor;
 
 type
@@ -49,7 +50,8 @@ type
     function MetricsSource(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
     function ReadText(const AFileName: string; out AText: string): Boolean;
     function CheckFor(const AFileName: string; out ACheck: TLspBaselineCheck): Boolean;
-    function BulkFixInputFor(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
+    function BulkFixContext(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+    function BulkFixSource(const AFileName: string): TPascalSource;
     procedure Written(AFileName: string);
     function RunBaseline(const AArguments: TJSONArray): TJSONValue;
     function RunFindingsPrompt(const AArguments: TJSONArray): TJSONValue;
@@ -83,9 +85,13 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Providers.DiskFileSystem,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.FindingPrompts,
+  Atlas.Common.Rules.Providers.BulkFix,
+  Adapters.Lsp.FindingsPrompt,
+  Adapters.Lsp.BulkFix,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Checker,
   Platform.Server,
   Atlas.Common.Localization.Texts;
 
@@ -152,6 +158,9 @@ end;
 { TShellBaselines }
 
 constructor TShellBaselines.Create(const AServices: TShellBaselineServices);
+var
+  mPrompts: IRuleFindingPrompts;
+  mBulkFix: IRuleWorkspaceBulkFix;
 begin
   inherited Create;
   FServices := AServices;
@@ -161,12 +170,14 @@ begin
   FBaseline.OnWritten := Written;
   // Sammelkorrektur für das Plugin (#1352): Text, Regeln, Projekt, Index und Baseline wie die Editor-Prüfung, aber
   // nicht Live (unused-uses meldet sich nur außerhalb des Editors) und mit den Symbolen des Projekts wie der Linter.
-  FBulkFix := TLspBulkFix.Create(BulkFixInputFor);
+  mBulkFix := TRuleBulkFixProvider.CreateForWorkspace(BulkFixContext, ReadText, BulkFixSource);
+  FBulkFix := TLspBulkFix.Create(TLspBulkFixAdapter.Wrap(mBulkFix));
   // Compilermeldungen in derselben Baseline (#530): Text wie im Editor, offene Dokumente vor der Platte.
   FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSource, ReadText, BaselineFiles);
   FCompilerBaseline.OnWritten := Written;
   // Auftrag für KI-Assistenten (#2570): Befunde wie die Baseline-Prüfung, Text wie im Editor.
-  FFindingsPrompt := TLspFindingsPrompt.Create(CheckFor, ReadText);
+  mPrompts := TRuleFindingPromptsProvider.Create;
+  FFindingsPrompt := TLspFindingsPrompt.Create(CheckFor, ReadText, TLspFindingsPromptAdapter.Wrap(mPrompts));
 end;
 
 destructor TShellBaselines.Destroy;
@@ -213,38 +224,22 @@ begin
   end;
 end;
 
-function TShellBaselines.BulkFixInputFor(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
+function TShellBaselines.BulkFixContext(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+begin
+  Result := FServices.RuleContextFor(AUri, AContext);
+end;
+
+function TShellBaselines.BulkFixSource(const AFileName: string): TPascalSource;
 var
-  mContext: TRuleCheckContext;
   mDefines: TArray<string>;
   mUri: string;
 begin
-  AInput := Default(TLspBulkFixInput);
   mUri := TDocumentUris.FromPath(AFileName);
-  Result := ReadText(AFileName, AInput.Text) and FServices.RuleContextFor(mUri, mContext);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AInput.Rules := mContext.Rules;
-  AInput.Settings := mContext.Settings;
-  AInput.RelativePath := mContext.RelativePath;
-  if AInput.RelativePath = '' then
-  begin
-    AInput.RelativePath := ExtractFileName(AFileName);
-  end;
-  AInput.Baseline := mContext.Baseline;
-  AInput.Project.Application := mContext.Application;
-  AInput.Project.Name := mContext.ProjectName;
-  AInput.Project.AutoCreateForms := mContext.AutoCreateForms;
-  AInput.Project.ProjectMainSource := mContext.ProjectMainSource;
-  AInput.Project.FileName := AFileName;
-  AInput.Project.Services := mContext.Services;
   if not FServices.DefinesFor(mUri, mDefines) then
   begin
     mDefines := nil;
   end;
-  AInput.Source := TCheckSource.Create(AFileName, mDefines, FServices.IncludeResolverFor(mUri));
+  Result := TPascalSource.Create(AFileName, mDefines, FServices.IncludeResolverFor(mUri));
 end;
 
 procedure TShellBaselines.Written(AFileName: string);

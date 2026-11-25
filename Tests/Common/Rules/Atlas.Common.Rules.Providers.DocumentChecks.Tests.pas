@@ -34,7 +34,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.CheckContext,
   Atlas.Common.Rules.Providers.DocumentChecks,
   Atlas.Tests.LspRules;
@@ -87,7 +87,7 @@ function CheckOf(const AContext: TRuleCheckContext; const ACancelled: TRuleCance
 var
   mChecks: IRuleDocumentChecks;
 begin
-  mChecks := TRuleDocumentChecks.Create(TTestLspRules.Fixed(AContext));
+  mChecks := TRuleDocumentChecks.Create(TTestLspRules.Fixed(AContext), nil);
   Result := mChecks.ForDocument('file:///C:/P/A.pas', ACancelled);
 end;
 
@@ -118,7 +118,7 @@ var
   mCheck: IRuleDocumentCheck;
   mSyntax: TArray<TRuleFinding>;
 begin
-  mChecks := TRuleDocumentChecks.Create(nil);
+  mChecks := TRuleDocumentChecks.Create(nil, nil);
   mCheck := mChecks.ForDocument('file:///C:/P/A.pas', nil);
   mSyntax := SyntaxOf(mCheck, cBroken);
   Assert.AreEqual(1, Integer(Length(mSyntax)));

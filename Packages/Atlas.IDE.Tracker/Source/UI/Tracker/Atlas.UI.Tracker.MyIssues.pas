@@ -273,7 +273,7 @@ uses
   System.DateUtils,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.Workflow.Strings,

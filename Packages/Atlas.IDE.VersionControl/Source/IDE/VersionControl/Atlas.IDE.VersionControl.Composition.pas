@@ -6,7 +6,7 @@
 // „atlas.vcs“ (Modulschalter vcs) bei der Registry von Base an und stellt über
 // dessen Scope bereit:
 // - den Teil „Vcs“ der Feature-Tabelle: Start setzt IAtlasVcsService und
-//   IAtlasVcsDialogs (Atlas.IDE.Contracts.VersionControl) bei
+//   IAtlasVcsDialogs (Atlas.IDE.Base.Foundation.VersionControl) bei
 //   TAtlasIdeVcs (Base) ein, Stop nimmt beides zurück und hält den
 //   Hintergrundlauf an (Regel 3);
 // - den Abschnitt mit dem Modulschalter vcs.enabled im Optionsdialog.
@@ -27,15 +27,15 @@ uses
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.FeatureParts,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.IDE.Contracts.VersionControl,
-  Atlas.Core.VersionControl.Composition,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.IDE.Base.Foundation.VersionControl,
+  Atlas.VersionControl.Repository.Composition,
   Atlas.IDE.VersionControl.Adapters.Commands,
   Atlas.IDE.VersionControl.LineChanges,
   Atlas.IDE.VersionControl.Adapters.LineChanges,
-  Atlas.IDE.Contracts.LineChanges,
-  Atlas.Core.VersionControl.Providers.ProcessRunner,
+  Atlas.IDE.Base.Foundation.LineChanges,
+  Atlas.VersionControl.Repository.Providers.ProcessRunner,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.VersionControl.Service,
   Atlas.IDE.VersionControl.Branching,

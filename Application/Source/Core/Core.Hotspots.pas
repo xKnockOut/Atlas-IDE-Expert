@@ -23,7 +23,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Core.VersionControlChanges;
 
 type
@@ -71,7 +71,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.VersionControl.Detection,
+  Atlas.VersionControl.Repository.Detection,
   Atlas.Common.Hotspots.History,
   Atlas.Common.Localization.Texts;
 

@@ -12,19 +12,13 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Catalog;
 
 type
-  /// <summary>Ein Befund für einen Auftrag: Datei, wie sie im Text erscheint, Quelltext und Befund.</summary>
-  TFindingPromptItem = record
-    FileName: string;
-    Text: string;
-    Finding: TRuleFinding;
-    /// <summary>Compilermeldung ohne Atlas-Regel: ohne Konfidenz und ohne Korrekturwerkzeug.</summary>
-    Compiler: Boolean;
-    class function Create(const AFinding: TRuleFinding; const AFileName, AText: string): TFindingPromptItem; static;
-  end;
+  /// <summary>Ein Befund für einen Auftrag; liegt in Atlas.Common.Findings.Contract.</summary>
+  TFindingPromptItem = Atlas.Common.Findings.Contract.TFindingPromptItem;
 
   TFindingPrompt = class
   public const
@@ -55,7 +49,6 @@ type
 implementation
 
 uses
-  Atlas.Common.Findings.Contract,
   System.Math,
   System.StrUtils,
   System.Generics.Collections,
@@ -112,17 +105,6 @@ type
     Text: string;
     Items: TArray<TFindingPromptItem>;
   end;
-
-{ TFindingPromptItem }
-
-class function TFindingPromptItem.Create(const AFinding: TRuleFinding;
-  const AFileName, AText: string): TFindingPromptItem;
-begin
-  Result := Default(TFindingPromptItem);
-  Result.Finding := AFinding;
-  Result.FileName := AFileName;
-  Result.Text := AText;
-end;
 
 { Bausteine }
 

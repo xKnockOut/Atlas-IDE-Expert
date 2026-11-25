@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.IssueWorkLink;
 
 // Arbeitsstand je Issue (#2052), Meldungen an die Willkommensseite über den
-// Vertrag Atlas.IDE.Contracts.IssueWork: „Beginnen“, „Beenden“ und „Prüfen“
+// Vertrag Atlas.IDE.Base.Foundation.IssueWork: „Beginnen“, „Beenden“ und „Prüfen“
 // (#2126) melden das bisherige Issue (Arbeitsstand sichern); nach „Beginnen“
 // bietet sie das Wiederherstellen an, nach „Weiterarbeiten“ (#2127) und dem
 // Rückweg von „Prüfen“ stellt sie ihn ohne Rückfrage her; nach dem Beenden
@@ -13,7 +13,7 @@
 interface
 
 uses
-  Atlas.IDE.Contracts.IssueWork,
+  Atlas.IDE.Base.Foundation.IssueWork,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.Core.Tracker.Contract.MyIssues;
 

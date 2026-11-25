@@ -21,8 +21,11 @@
     - Atlas.ToolsApi: Platform-Package des Plugins, das die Open Tools API kapselt (Editorpuffer, Andockfenster,
         Editorleisten, Neuzeichnen, Tasten, Gutter, Dateien der IDE); RTL, Winapi.*, VCL, Open Tools API, Atlas.Text,
         Atlas.WinBase, Atlas.Plugin, Atlas.Vcl; ohne Fachcode von Base; Quelltext unter Packages/Atlas.ToolsApi/Source
-    - Atlas.Core.VersionControl.* (Versionsverwaltung, #571): übersetzt auch der Server
-        mit; darum nur RTL, Winapi, Atlas.Text.*, Atlas.WinBase.* und eigene Atlas.Core.VersionControl.*-Units
+    - Atlas.VersionControl: Platform-Package der Versionsverwaltung (#571), Quelltext unter
+        Packages/Atlas.VersionControl/Source, den Base und der Server mitübersetzen; darum nur RTL, Winapi,
+        Atlas.Text und Atlas.WinBase
+    - Atlas.Core.VersionControl.* (Pläne des Moduls Versionsverwaltung): nur RTL, Winapi, Atlas.Text.*,
+        Atlas.WinBase.*, Atlas.VersionControl.* und eigene Atlas.Core.VersionControl.*-Units
 
     Atlas.Text und Atlas.WinBase im Plugin: Das Plugin requiret
     beide nicht, sondern übersetzt deren Units selbst mit (contains … in
@@ -117,7 +120,7 @@
     je Unit, sortiert nach Package und Unit) und
     Tools/UnitAssignment.Folders.tsv (Ordner -> Package). Jede Unit braucht
     eine Zeile. Verboten sind Base -> Modul und Modul -> anderes Modul; die
-    Verträge zwischen Modulen liegen in Base (Source/Contracts). Befristete
+    Verträge zwischen Modulen liegen in Base (Source/Foundation). Befristete
     Ausnahmen und bekannte Verstöße stehen in
     Tools/UnitAssignment.Boundaries.tsv; bekannte Verstöße werden bei jedem
     Lauf genannt, neue sind Fehler, nicht mehr vorkommende Zeilen ebenso.
@@ -258,6 +261,17 @@ $Packages += @{
     ForbiddenPrefix  = @('FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.', 'Setup.')
     ForbiddenUnits   = @()
     Reason           = 'frei von Fachcode von Base (nur RTL, Windows-API, VCL, Open Tools API, Atlas.Text, Atlas.WinBase, Atlas.Plugin, Atlas.Vcl)'
+}
+# Versionsverwaltung: übersetzt auch der Server mit (AtlasServer.dpr), darum ohne jedes Package des Plugins.
+$Packages += @{
+    Name             = 'Atlas.VersionControl'
+    Path             = 'Packages/Atlas.VersionControl'
+    AllowedRequires  = @()
+    ForbiddenPrefix  = @('Vcl.', 'FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.',
+                         'Atlas.Plugin.', 'Atlas.Vcl.', 'Atlas.ToolsApi.', 'Setup.', 'ToolsAPI', 'DesignIntf',
+                         'DesignEditors', 'DesignMenus', 'DesignWindows', 'PropInspAPI', 'DockForm')
+    ForbiddenUnits   = $LegacyVclUnits
+    Reason           = 'übersetzt auch der Server mit (nur RTL, Windows-API, Atlas.Text, Atlas.WinBase)'
 }
 # Module requiren nur Base, das auch die Verträge zwischen Modulen enthält (Regel 9).
 foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
@@ -639,7 +653,7 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
 $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Plugin', 'Atlas.Vcl',
-    'Atlas.ToolsApi', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
+    'Atlas.ToolsApi', 'Atlas.VersionControl', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
 # Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
 $HostedFeatures = @('Replay', 'Monitor', 'Update')
@@ -911,14 +925,15 @@ foreach ($package in $Packages) {
         $layer = $Layers | Where-Object { $ownUnit.StartsWith($_.UnitPrefix, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
 
         foreach ($unit in Get-ClauseEntries $text 'uses') {
-            # Geteilte Units (#571): nur Atlas.Core.VersionControl.* aus dem eigenen Feature, Atlas.Text.* und
-            # Atlas.WinBase.* (Server und Plugin haben beide).
+            # Pläne der Versionsverwaltung (#571): nur Atlas.Core.VersionControl.* aus dem eigenen Feature,
+            # Atlas.VersionControl.*, Atlas.Text.* und Atlas.WinBase.*.
             if ($ownUnit.StartsWith('Atlas.Core.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
                 $unit.Name.StartsWith('Atlas.', [StringComparison]::OrdinalIgnoreCase) -and
                 -not $unit.Name.StartsWith('Atlas.Core.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
+                -not $unit.Name.StartsWith('Atlas.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
                 -not $unit.Name.StartsWith('Atlas.Text.', [StringComparison]::OrdinalIgnoreCase) -and
                 -not $unit.Name.StartsWith('Atlas.WinBase.', [StringComparison]::OrdinalIgnoreCase)) {
-                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.Core.VersionControl.* übersetzt auch der Server mit und darf nur Atlas.Core.VersionControl.*, Atlas.Text.* und Atlas.WinBase.* verwenden"
+                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.Core.VersionControl.* darf nur Atlas.Core.VersionControl.*, Atlas.VersionControl.*, Atlas.Text.* und Atlas.WinBase.* verwenden"
             }
             $prefixHit = $package.ForbiddenPrefix | Where-Object { $unit.Name.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
             $unitHit = $package.ForbiddenUnits | Where-Object { $unit.Name -ieq $_ }
@@ -946,7 +961,7 @@ foreach ($package in $Packages) {
 
 # Atlas.Text und Atlas.WinBase im Plugin: als Quelltext, genau mit den Units ihres dpk. Platform-Packages ohne dpk
 # (Atlas.Plugin, Atlas.Vcl, Atlas.ToolsApi): genau mit allen Units unter ihrem Ordner Source.
-$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi')
+$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi', 'Atlas.VersionControl')
 $pluginDpkName = "Packages/$PluginBaseFolder/$PluginBaseFolder.dpk"
 $pluginDpk = Join-Path $Root $pluginDpkName
 if (Test-Path $pluginDpk) {
@@ -1059,8 +1074,9 @@ if (Test-Path $editingDir) {
 # - Atlas.IDE.Foundation.* (Einstellungen, Editorpuffer, Tasten, Ergebnisfenster …) sind die Basis aller
 #   IDE-Features und verwenden selbst kein anderes Atlas.IDE.*.
 # - Die Features von Atlas.Core und Atlas.IDE bilden keinen Zyklus (Tarjan über die uses aller Units).
-#   Nicht mitgezählt: Atlas.IDE.Foundation.*, die Kompositionswurzel und Verweise auf *.Contract (Contracts
-#   verwenden nur Contracts und schließen darum keinen Zyklus).
+#   Nicht mitgezählt: Atlas.IDE.Foundation.*, die Kompositionswurzel und Verweise auf *.Contract und auf die
+#   Foundation von Base (Atlas.IDE.Base.Foundation.*; Contracts verwenden nur Contracts und schließen darum
+#   keinen Zyklus).
 $PluginSource = Join-Path $Root "Packages/$PluginBaseFolder/Source"
 $PluginSources = @($PluginFolders | ForEach-Object { Join-Path $Root "Packages/$_/Source" } | Where-Object { Test-Path $_ })
 $CompositionRoots = @('Atlas.IDE.CodeInsight.Composition')
@@ -1090,7 +1106,7 @@ if (Test-Path $PluginSource) {
         $from = Get-PluginFeature $ownUnit
         if ($null -eq $from) { continue }
         foreach ($unit in $entries) {
-            if ($unit.Name -match '\.Contract$') { continue }
+            if ($unit.Name -match '\.Contract$' -or $unit.Name -match '^(?i)Atlas\.IDE\.Base\.Foundation\.') { continue }
             $to = Get-PluginFeature $unit.Name
             if ($null -eq $to -or $to -eq $from) { continue }
             if (-not $featureEdges.ContainsKey($from)) { $featureEdges[$from] = @{} }
@@ -1152,7 +1168,7 @@ if (Test-Path $PluginSource) {
 # Tools/UnitAssignment.Boundaries.tsv (befristete Ausnahmen und bekannte Verstöße). Die Entscheidung dazu steht in
 # docs/adr/0017-unit-zuordnung.md.
 # Verboten: Base -> Modul, Modul -> anderes Modul. Erlaubt: Modul -> Base (auch die Verträge zwischen
-# Modulen unter Source/Contracts von Base) und alles innerhalb eines Packages.
+# Modulen unter Source/Foundation von Base) und alles innerhalb eines Packages.
 $BasePackage = 'Atlas.IDE.Base'
 $AssignmentFile = 'Tools/UnitAssignment.tsv'
 $FolderFile = 'Tools/UnitAssignment.Folders.tsv'
@@ -1326,7 +1342,7 @@ elseif (Test-Path $PluginSource) {
                 $reason = "Base verwendet kein Modul ($to); über einen Vertrag oder eine Anmeldung lösen"
             }
             elseif ($to -ne $BasePackage) {
-                $reason = "Modul $from verwendet kein anderes Modul ($to); Querbezug über einen Vertrag in Base (Source/Contracts)"
+                $reason = "Modul $from verwendet kein anderes Modul ($to); Querbezug über einen Vertrag in Base (Source/Foundation)"
             }
             if ($reason -eq '') { continue }
             $entry = Find-BoundaryEntry $map.Allowed $name $unit.Name $to
@@ -1676,7 +1692,7 @@ if ($KnownReport.Count -gt 0) {
 
 # Rollen Adapters und Providers (#1443): Wer ein Interface eines anderen Features implementiert, ist ein Adapter
 # und nimmt es aus dessen Contract; Providers implementieren den eigenen Contract. Verträge zwischen Modulen
-# (Atlas.IDE.Contracts.*) zählen als fremder Contract jedes Moduls, auch für die Composition: Modulklassen stehen in
+# (Atlas.IDE.Base.Foundation.*) zählen als fremder Contract jedes Moduls, auch für die Composition: Modulklassen stehen in
 # Atlas.IDE.<Modul>.Adapters.Module. Hosting und Host-Units (Shell, Foundation …) setzen zusammen und sind
 # ausgenommen, Regel 4 (Interface im Contract) gilt auch für sie.
 # Bekannte Altfälle stehen in Tools/AdapterRoles.known.txt; neue sind Fehler, behobene müssen dort raus.
@@ -1693,7 +1709,7 @@ function Get-FeatureName([string] $Name) {
 }
 
 function Test-ContractUnit([string] $Name) {
-    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles $HostedFeatures)) -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
+    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles $HostedFeatures)) -or $Name -match '^(?i)Atlas\.IDE\.Base\.Foundation\.'
 }
 
 function Get-AdapterRoleFindings([string] $BaseDir) {

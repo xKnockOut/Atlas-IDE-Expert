@@ -200,12 +200,12 @@ uses
   System.Math,
   Atlas.Core.CiBuild.Contract,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.IDE.Tracker.EndPull,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.Core.Tracker.CommentEditor;
 
 const
