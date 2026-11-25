@@ -12,6 +12,12 @@
 //   Speicher). Den Ausgangsstand nimmt Atlas beim Öffnen des Designers bzw.
 //   bei der ersten Auswahl. Speichern leert den Verlauf nicht, Schließen
 //   des Formulars schon.
+// - Nie während eines Builds: Beim Bauen einer Gruppe entlädt die IDE
+//   Packages und lädt sie neu und lässt dabei über den Fortschrittsdialog
+//   Nachrichten laufen. Ein dann eingereihtes Erfassen (etwa nach einem
+//   Sprung zu einem Lesezeichen) schriebe ein Formular, dessen Klassen und
+//   RTTI gerade wechseln (Zugriffsverletzung in TWriter). Das Erfassen
+//   wartet darum auf Ruhe nach dem Build (TAtlasIdeBuildIdleGate).
 // - Strg+Z und Strg+Umschalt+Z, solange der Designer den Fokus hat und es
 //   einen Schritt gibt; sonst bleibt die Taste bei der IDE (ihr „Löschen
 //   rückgängig“).
@@ -33,6 +39,7 @@ uses
   Atlas.Core.Designer.UndoApply,
   Atlas.Core.Designer.UndoFlow,
   Atlas.Core.Designer.Surface,
+  Atlas.IDE.Build.IdleGate,
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Designer.Tool;
@@ -69,10 +76,14 @@ type
     FKeys: TKeys;
     FMenu: TPopupMenu;
     FFlow: TAtlasDesignerUndoFlow;
+    /// <summary>Hält das Erfassen zurück, solange gebaut wird.</summary>
+    FGate: TAtlasIdeBuildIdleGate;
     /// <summary>Einstellungen in den Ablauf übernehmen.</summary>
     procedure Sync;
     /// <summary>Erfassen nach dem laufenden Ereignis.</summary>
     procedure Queue;
+    /// <summary>Erfassen, wenn kein Build läuft; sonst nach dem Build.</summary>
+    procedure CaptureWhenIdle;
     /// <summary>Verlauf des Formulars im aktiven Designer; False ohne Designer oder ohne Verlauf.</summary>
     function Active(out ASurface: IAtlasDesignSurface; out AHistory: TAtlasFormUndoHistory): Boolean;
     procedure Restore(AIndex: Integer);
@@ -221,6 +232,7 @@ begin
   inherited Create(AOnMessage);
   FFlow := TAtlasDesignerUndoFlow.Create(Words, Reasons);
   FFlow.OnQueue := Queue;
+  FGate := TAtlasIdeBuildIdleGate.Create(TAtlasFeature.DesignerBar);
   Sync;
   FKeys := TKeys.Create(cKeyPriority);
   FKeys.FOwner := Self;
@@ -248,6 +260,8 @@ begin
   TAtlasKeyHook.Remove(FKeys);
   FKeys.Free;
   FMenu.Free;
+  // Erst den Wächter: Er verwirft ein zurückgehaltenes Erfassen samt Zeitgeber.
+  FGate.Free;
   FFlow.Free;
   inherited Destroy;
 end;
@@ -275,14 +289,22 @@ begin
     begin
       if FCurrent = mOwner then
       begin
-        TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-          procedure
-          begin
-            mOwner.Sync;
-            mOwner.FFlow.Capture;
-          end);
+        TAtlasGuard.Run(TAtlasFeature.DesignerBar, mOwner.CaptureWhenIdle);
       end;
     end);
+end;
+
+procedure TAtlasIdeDesignerUndo.CaptureWhenIdle;
+begin
+  // Auch ein vor dem Build eingereihtes Erfassen kann erst im Build laufen
+  // (Nachrichtenschleife des Fortschrittsdialogs); darum hier prüfen.
+  if not FGate.Idle then
+  begin
+    FGate.Run(CaptureWhenIdle);
+    Exit;
+  end;
+  Sync;
+  FFlow.Capture;
 end;
 
 function TAtlasIdeDesignerUndo.Active(out ASurface: IAtlasDesignSurface;
