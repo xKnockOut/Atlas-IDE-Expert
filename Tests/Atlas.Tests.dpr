@@ -802,6 +802,7 @@ uses
   Atlas.Common.Editing.CodeActions.TryFinallyGolden in 'Common\Editing\Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas',
   Atlas.Common.Editing.ClassActions.Tests in 'Common\Editing\Atlas.Common.Editing.ClassActions.Tests.pas',
   Atlas.Common.Editing.Providers.ClassActions.Tests in 'Common\Editing\Atlas.Common.Editing.Providers.ClassActions.Tests.pas',
+  Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests in 'Common\Editing\Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests.pas',
   Atlas.Common.Editing.ClassActions.PropertyGolden in 'Common\Editing\Atlas.Common.Editing.ClassActions.PropertyGolden.pas',
   Atlas.Common.Editing.ClassActions.InterfaceGolden in 'Common\Editing\Atlas.Common.Editing.ClassActions.InterfaceGolden.pas',
   Atlas.Common.Editing.ClassActions.OverrideGolden in 'Common\Editing\Atlas.Common.Editing.ClassActions.OverrideGolden.pas',

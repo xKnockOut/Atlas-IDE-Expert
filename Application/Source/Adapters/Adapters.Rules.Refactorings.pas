@@ -14,7 +14,8 @@ uses
   Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Editing.Contract.ClassActions,
-  Atlas.Common.Editing.Contract.Extract;
+  Atlas.Common.Editing.Contract.Extract,
+  Atlas.Common.Editing.Contract.MethodWithoutSelf;
 
 type
   /// <summary>IRuleClassRefactorings über die Klassen-Aktionen von Editing.</summary>
@@ -42,11 +43,20 @@ type
     function ConstantExtraction(const AText: string; const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
   end;
 
+  /// <summary>IRuleMethodRefactorings über die Methoden ohne Self von Editing.</summary>
+  TRuleMethodRefactoringsAdapter = class(TInterfacedObject, IRuleMethodRefactorings)
+  private
+    FMethods: IEditingMethodsWithoutSelf;
+  public
+    constructor Create(const AMethods: IEditingMethodsWithoutSelf);
+    function WithoutSelf(const AScan: TRuleMethodScan): TArray<TRuleMethodWithoutSelf>;
+  end;
+
   /// <summary>Die Refactorings für die Prüfregeln aus den APIs von Editing.</summary>
   TRuleRefactoringsAdapters = record
     /// <summary>Ein nil-Argument: diese Korrekturen nicht anbieten.</summary>
-    class function Create(const AClasses: IEditingClassActions;
-      const AExtract: IEditingExtractFixes): TRuleRefactorings; static;
+    class function Create(const AClasses: IEditingClassActions; const AExtract: IEditingExtractFixes;
+      const AMethods: IEditingMethodsWithoutSelf): TRuleRefactorings; static;
   end;
 
 implementation
@@ -120,10 +130,46 @@ begin
   Result := TRuleConstantExtractionAdapter.Create(FExtract.ConstantExtraction(AText, ANames));
 end;
 
+{ TRuleMethodRefactoringsAdapter }
+
+constructor TRuleMethodRefactoringsAdapter.Create(const AMethods: IEditingMethodsWithoutSelf);
+begin
+  inherited Create;
+  FMethods := AMethods;
+end;
+
+function TRuleMethodRefactoringsAdapter.WithoutSelf(const AScan: TRuleMethodScan): TArray<TRuleMethodWithoutSelf>;
+var
+  mScan: TEditingMethodScan;
+  mFound: TArray<TEditingMethodWithoutSelf>;
+  mIndex: Integer;
+begin
+  mScan := Default(TEditingMethodScan);
+  mScan.FileName := AScan.FileName;
+  mScan.Text := AScan.Text;
+  mScan.FormText := AScan.FormText;
+  mScan.Index := AScan.Index;
+  mScan.EnsureUnit := AScan.EnsureUnit;
+  mScan.Namespaces := AScan.Namespaces;
+  mScan.WithStatic := AScan.WithStatic;
+  mScan.Style := AScan.Style;
+  mFound := FMethods.Scan(mScan);
+  Result := nil;
+  SetLength(Result, Length(mFound));
+  for mIndex := 0 to High(mFound) do
+  begin
+    Result[mIndex].ClassName := mFound[mIndex].ClassName;
+    Result[mIndex].Name := mFound[mIndex].Name;
+    Result[mIndex].NamePosition := mFound[mIndex].NamePosition;
+    Result[mIndex].HasFix := mFound[mIndex].HasFix;
+    Result[mIndex].Fix := mFound[mIndex].Fix;
+  end;
+end;
+
 { TRuleRefactoringsAdapters }
 
 class function TRuleRefactoringsAdapters.Create(const AClasses: IEditingClassActions;
-  const AExtract: IEditingExtractFixes): TRuleRefactorings;
+  const AExtract: IEditingExtractFixes; const AMethods: IEditingMethodsWithoutSelf): TRuleRefactorings;
 begin
   Result := Default(TRuleRefactorings);
   if AClasses <> nil then
@@ -133,6 +179,10 @@ begin
   if AExtract <> nil then
   begin
     Result.Extract := TRuleExtractRefactoringsAdapter.Create(AExtract);
+  end;
+  if AMethods <> nil then
+  begin
+    Result.Methods := TRuleMethodRefactoringsAdapter.Create(AMethods);
   end;
 end;
 
