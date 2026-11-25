@@ -41,7 +41,7 @@ uses
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Editing.UnitRename.Protocol,
-  Atlas.Common.Lsp.SmartPaste,
+  Atlas.Common.Editing.SmartPaste.Protocol,
   Atlas.Common.Localization.RequestTexts,
   Atlas.Common.CodeActions.Json;
 
@@ -59,7 +59,7 @@ procedure TShellEditingRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspUnwrap.cCommand, Unwrap);
   ACommands.Register(TUnitRenameProtocol.cCommand, UnitRenamed);
-  ACommands.Register(TLspSmartPaste.cCommand, PasteUses);
+  ACommands.Register(TSmartPasteProtocol.cCommand, PasteUses);
 end;
 
 function TShellEditingRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -166,7 +166,7 @@ begin
   mDocument := Open(mUri);
   UsesContext(mUri, mContext);
   try
-    mAnswer := TLspSmartPaste.Execute(AArguments, mUri, mDocument.Text, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TSmartPasteProtocol.Execute(AArguments, mUri, mDocument.Text, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       mContext, InterfaceUses);
   except
     on E: EArgumentException do

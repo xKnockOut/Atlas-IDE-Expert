@@ -47,8 +47,8 @@ uses
   Atlas.Common.Editing.VarBlock,
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Lsp.InlayHints,
-  Atlas.Common.Lsp.DisableWarning,
-  Atlas.Common.Lsp.CompilerFixes,
+  Atlas.Common.Editing.DisableWarning.Protocol,
+  Atlas.Common.Editing.CompilerFixes.Protocol,
   Atlas.Common.Lsp.MissingUnit,
   Atlas.Common.Localization.Texts,
   Atlas.Common.CodeActions.Json;
@@ -105,7 +105,7 @@ end;
 
 procedure TShellFixRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspDisableWarning.cApplyCommand, DisableWarning);
+  ACommands.Register(TDisableWarningProtocol.cApplyCommand, DisableWarning);
 end;
 
 function TShellFixRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -141,7 +141,7 @@ begin
   mOptions.Enabled := True;
   mOptions.AskReason := mSettings.DisableWarningReason;
   mOptions.Version := DelphiVersion(AUri);
-  Result := TLspDisableWarning.Actions(mOptions, TSyntaxTreeCache.Get(mDocument, nil).Tree, AUri,
+  Result := TDisableWarningProtocol.Actions(mOptions, TSyntaxTreeCache.Get(mDocument, nil).Tree, AUri,
     ARange.StartPos.Line, ARange.EndPos.Line, mMessages);
 end;
 
@@ -154,7 +154,7 @@ begin
   mUri := AArguments.Items[0].Value;
   mDocument := Open(mUri, Settings(mUri).DisableWarning,
     Disabled(cTexts[TFixRefactoringText.DisableWarning].Text, 'refactoring.disableWarning'));
-  Result := TLspDisableWarning.Execute(AArguments, mDocument.Text, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+  Result := TDisableWarningProtocol.Execute(AArguments, mDocument.Text, TSyntaxTreeCache.Get(mDocument, nil).Tree,
     DelphiVersion(mUri));
 end;
 
@@ -187,7 +187,7 @@ begin
   mRequest.Uri := AUri;
   mRequest.Range := ARange;
   mRequest.Context := mContext;
-  Result := TLspCompilerFixes.Actions(True, mRequest, mMessages);
+  Result := TCompilerFixesProtocol.Actions(True, mRequest, mMessages);
 end;
 
 function TShellFixRefactorings.MissingUnitActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
