@@ -10,7 +10,7 @@
 //   vor dem Wechsel gehören zum vorigen Issue. Behobene Issues fallen dabei
 //   heraus.
 // - Aktives Issue und Zustand kommen vom Tracker über den Vertrag
-//   Atlas.IDE.Contracts.IssueWork (TAtlasWelcomeNeighbors); ohne Tracker gibt
+//   Atlas.IDE.Base.Foundation.IssueWork (TAtlasWelcomeNeighbors); ohne Tracker gibt
 //   es weder Reiter noch Speichern.
 // - Fortsetzen: Branch nur nach Rückfrage wechseln (Abfrage im Hintergrund);
 //   fehlt der Branch, nur die Reiter mit Hinweis. Dann Projekt öffnen, Reiter
@@ -20,7 +20,7 @@
 //   Forget verwirft den Stand eines als „nicht geplant“ oder „Duplikat“
 //   beendeten Issues (#2135).
 // TAtlasWelcomeIssueWork bietet das anderen Modulen über den Vertrag
-// Atlas.IDE.Contracts.IssueWork an (#2052): Das Modul stellt IAtlasIssueWork über seinen Scope bereit; der
+// Atlas.IDE.Base.Foundation.IssueWork an (#2052): Das Modul stellt IAtlasIssueWork über seinen Scope bereit; der
 // Tracker meldet darüber den Wechsel des aktiven Issues und bietet nach „Beginnen“ das Wiederherstellen an.
 // Das Objekt fragt bei jedem Aufruf neu nach dem Arbeitsstand der laufenden Seite und tut ohne sie nichts
 // (Regel 3).
@@ -33,7 +33,7 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueIssues,
-  Atlas.IDE.Contracts.IssueWork,
+  Atlas.IDE.Base.Foundation.IssueWork,
   Atlas.IDE.Welcome.Continue.Editor,
   Atlas.IDE.Welcome.ContinueIssueLink,
   Atlas.Plugin.Notifications.MessageSink,
@@ -121,7 +121,7 @@ uses
   Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Welcome.Neighbors,
   Atlas.IDE.Welcome.Search,

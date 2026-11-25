@@ -2,7 +2,7 @@
 
 // Modulklasse der Hilfe (#1886): erfüllt IAtlasModule und die Beiträge, die die Composition
 // (Atlas.IDE.Help.Composition) über den Scope des Moduls bereitstellt:
-// - IAtlasHelpProvider (Atlas.IDE.Contracts.Help): Base fragt ihn bei F1 in Atlas-Fenstern und auf der
+// - IAtlasHelpProvider (Atlas.IDE.Base.Foundation.Help): Base fragt ihn bei F1 in Atlas-Fenstern und auf der
 //   Optionsseite (TAtlasIdeHelp).
 // - IAtlasKeySource: F1 im Editor mit Rückfall. Steht die Einfügemarke auf einem Atlas-Befund, öffnet F1 dessen
 //   Regelseite; sonst geht die Taste an die Hilfe der IDE.
@@ -12,7 +12,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.IDE.Contracts.Help;
+  Atlas.IDE.Base.Foundation.Help;
 
 type
   TAtlasHelpModule = class(TInterfacedObject, IAtlasModule, IAtlasHelpProvider, IAtlasKeySource)

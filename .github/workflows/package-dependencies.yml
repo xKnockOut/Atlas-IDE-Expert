@@ -33,7 +33,7 @@ jobs:
           # nach jedem Merge auf main-merging läuft er immer.
           grenzen=true
           if [ -n "$basis" ] && ! git diff --name-only "$basis" HEAD | grep -qE \
-              '^(Tools/(Check|Test)-PackageDependencies\.ps1|\.github/workflows/package-dependencies\.yml|Packages/Atlas\.IDE\.Base/Source/Contracts/)' \
+              '^(Tools/(Check|Test)-PackageDependencies\.ps1|\.github/workflows/package-dependencies\.yml|Packages/Atlas\.IDE\.Base/Source/Foundation/)' \
             && [ -z "$(git diff --name-only --diff-filter=DR "$basis" HEAD -- Packages)" ]; then
             grenzen=false
           fi

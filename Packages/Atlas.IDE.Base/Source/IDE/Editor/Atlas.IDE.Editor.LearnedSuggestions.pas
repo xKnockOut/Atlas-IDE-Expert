@@ -23,7 +23,7 @@ uses
   Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.Editor.LearnedSuggestions,
   Atlas.Core.Editor.LearnedUsage,
-  Atlas.IDE.Contracts.GhostSuggestions;
+  Atlas.IDE.Base.Foundation.GhostSuggestions;
 
 type
   TAtlasIdeLearnedSuggestions = class

@@ -1003,6 +1003,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.Expressions.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Parser.Types.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TreeCache.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TreeHandles.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.IncludeFiles.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.LanguageFeatures.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Preprocessor.pas"/>

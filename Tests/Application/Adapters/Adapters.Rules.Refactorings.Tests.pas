@@ -32,6 +32,9 @@ implementation
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.CodeActions.Contract.Classes,
@@ -109,15 +112,25 @@ end;
 
 procedure TRuleRefactoringsAdapterTests.ConstantGoesToEditing;
 var
+  mTree: TSyntaxTree;
+  mExtraction: IRuleConstantExtraction;
   mAction: TCodeAction;
 begin
-  Assert.IsTrue(Refactorings.Extract.ConstantExtraction(cCall, Default(TPascalNamePrefixes)).Run(
-    TTextRange.Create(4, 10, 4, 12), mAction));
+  mTree := TSyntaxTreeCache.Parse(cCall);
+  try
+    mExtraction := Refactorings.Extract.ConstantExtraction(cCall, TSyntaxTreeHandles.Wrap(mTree),
+      Default(TPascalNamePrefixes));
+    Assert.IsTrue(mExtraction.Run(TTextRange.Create(4, 10, 4, 12), mAction));
+    mExtraction := nil;
+  finally
+    mTree.Free;
+  end;
   Assert.IsTrue(Pos('= 42;', TTestEdits.Apply(cCall, mAction.Edits)) > 0);
 end;
 
 procedure TRuleRefactoringsAdapterTests.MethodWithoutSelfGoesToEditing;
 var
+  mTree: TSyntaxTree;
   mScan: TRuleMethodScan;
   mFound: TArray<TRuleMethodWithoutSelf>;
 begin
@@ -127,7 +140,14 @@ begin
   mScan.Text := cHelper;
   mScan.WithStatic := True;
   mScan.Style := TFormatStyle.Default;
-  mFound := Refactorings.Methods.WithoutSelf(mScan);
+  mTree := TSyntaxTreeCache.Parse(cHelper);
+  try
+    mScan.Tree := TSyntaxTreeHandles.Wrap(mTree);
+    mFound := Refactorings.Methods.WithoutSelf(mScan);
+    mScan.Tree := nil;
+  finally
+    mTree.Free;
+  end;
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('THilfe', mFound[0].ClassName);
   Assert.AreEqual('Doppelt', mFound[0].Name);

@@ -26,11 +26,11 @@ const
   /// Release-Tags, auf diesen Wert + 1 setzen, sonst nicht anfassen (Tools/Check-ContractVersion.ps1). Was sich
   /// geändert hat, steht im Changelog; die Liste unten wird nicht weitergeführt.</summary>
   /// 2 (#1903): IAtlasSettingsContribution, TAtlasWelcomeTileInfo.SwitchKey/SettingsKey, neue Texte.
-  /// 3 (#1905): IAtlasLineChanges und TAtlasLineChangeMarks (Atlas.IDE.Contracts.LineChanges).
+  /// 3 (#1905): IAtlasLineChanges und TAtlasLineChangeMarks (Atlas.IDE.Base.Foundation.LineChanges).
   /// 4 (#1906): IAtlasBuildRequests.Forget.
   /// 5 (#1817): TAtlasMenuPlace.ProjectContext.
   /// 6 (#1821): TAtlasMenuPlace.Gallery.
-  /// 7 (#1819): IAtlasIdeErrors (Atlas.IDE.Contracts.Rules), TAtlasIdeError (Atlas.Core.Problems.Contract),
+  /// 7 (#1819): IAtlasIdeErrors (Atlas.IDE.Base.Foundation.Rules), TAtlasIdeError (Atlas.Core.Problems.Contract),
   /// TAtlasProblem.IdeConfirmed.
   /// 8 (#2052): IAtlasIssueWork und IAtlasIssueWorkSource, welcomePage.continue.issues(.count).
   /// 9: TAtlasMenuEntry.Group und When, TAtlasMenuContext, TAtlasMenuWhen (Kontextmenü des Editors).
@@ -41,7 +41,8 @@ const
   /// (#1770), tests.failureAtAssert, tests.failureInline (#1771), tests.compare (#1779).
   /// 14 (#1820, #587): debug.moduleOfAddress, debug.deadlocks.
   /// 15 (#1775): IAtlasFollowsSaves, tests.onSave und tests.onSave.max.
-  /// 16 (#1779): IAtlasTestValues (Atlas.IDE.Contracts.Tests), „Vergleichen“ im Hover und auf der Willkommensseite.
+  /// 16 (#1779): IAtlasTestValues (Atlas.IDE.Base.Foundation.Tests), „Vergleichen“ im Hover und auf der
+  /// Willkommensseite.
   /// 17 (#837): debug.parallelStacks(.waitRoutines, .maxThreads).
   /// 18 (#852): TAtlasDrawnElement.ThreadsInSource, debug.threadsInSource, debug.threadFreeze.
   /// 19 (#1774): tests.leaks.
@@ -50,7 +51,7 @@ const
   /// 22 (#2138): issues.github.linkBranch.
   /// 23 (#2136): issues.github.createPr, issues.github.prBase, issues.github.prBody, issues.github.prDraft.
   /// 24 (#2137): issues.create.templates, issues.github.templateFields, .atlas tracker.templateFields.
-  /// 25 (#1873): IAtlasDebugStopSource (Atlas.IDE.Contracts.DebugStop), tests.fromDebugStop(.fields, .properties,
+  /// 25 (#1873): IAtlasDebugStopSource (Atlas.IDE.Base.Foundation.DebugStop), tests.fromDebugStop(.fields, .properties,
   /// .maxArray).
   /// 26 (#1783): TAtlasDrawnElement.CodeLensUntested, codeLens.untested, tests.untested.warnPercent.
   /// 27 (#526, #1878, #2169, #868): TAtlasDebugValue.Actions, TAtlasEditorHover.OnDebugActions/OnDebugAction,

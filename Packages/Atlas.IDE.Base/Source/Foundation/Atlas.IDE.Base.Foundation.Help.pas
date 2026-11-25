@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.Help;
+﻿unit Atlas.IDE.Base.Foundation.Help;
 
 // Vertrag zwischen Base und Modulen (#1886, Modulregel 6): „Hilfe zum Element“. Ein Modul, das Hilfe
 // zeigen kann (Atlas.IDE.Help), stellt über seinen Scope eine IAtlasHelpProvider bereit. Base meldet nur die

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.BuildRequests;
+﻿unit Atlas.IDE.Base.Foundation.BuildRequests;
 
 // Vertrag zwischen Modulen (#1888, Modulregel 6): Das Modul Build-Pipeline
 // stellt über seinen Scope einen IAtlasBuildRequests bereit (ein Projekt in
@@ -7,7 +7,7 @@
 // Registry. Fehlt das Modul Build-Pipeline, lehnt der Eingang mit Grund ab.
 // Geht der Auftraggeber während eines Builds (Modul entladen, #1906), meldet er
 // sich mit Forget ab: Der Build läuft zu Ende, sein Rückruf wird verworfen (Regel 3).
-// Daten in Atlas.Core.Build.Requests; hier nur das Interface. Liegt in Base (Source/Contracts).
+// Daten in Atlas.Core.Build.Requests; hier nur das Interface. Liegt in Base (Source/Foundation).
 
 interface
 

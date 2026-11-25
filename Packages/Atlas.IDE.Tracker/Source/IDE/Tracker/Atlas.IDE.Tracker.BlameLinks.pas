@@ -39,7 +39,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.BlamePlan,
   Atlas.Core.Tracker.CodeLinks,
-  Atlas.IDE.Contracts.LineChanges,
+  Atlas.IDE.Base.Foundation.LineChanges,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameScope;
 
@@ -111,7 +111,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Tracker.IssueLookups,
   Atlas.Vcl.Controls.Menus;
 

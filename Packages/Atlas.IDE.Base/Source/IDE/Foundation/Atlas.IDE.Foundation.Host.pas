@@ -7,7 +7,7 @@
 // Willkommensseite außerdem Zustand des Servers, Befehle der Palette,
 // Tastenübersicht, Ausblenden über das Kontextmenü (#628), eigene Snippets
 // und Knöpfe für Neustart, Optionen, Logordner und Update. Builds auf Auftrag stellt das
-// Modul Build-Pipeline über IAtlasBuildJobs (Atlas.IDE.Contracts.BuildPipeline) bereit.
+// Modul Build-Pipeline über IAtlasBuildJobs (Atlas.IDE.Base.Foundation.BuildPipeline) bereit.
 // Teilnehmer, die ein Modul an den Compile-Ereignissen anmeldet, und Felder im
 // Statusfeld nimmt es beim Stoppen selbst zurück (Remove, leerer Text). Die Kompositionswurzel setzt die Quellen beim
 // Start

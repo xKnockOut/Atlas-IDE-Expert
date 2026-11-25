@@ -254,7 +254,7 @@ uses
   Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Tracker.Connections,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.IDE.Contracts.WelcomeTiles,
+  Atlas.IDE.Base.Foundation.WelcomeTiles,
   Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.MouseHistory;
+﻿unit Atlas.IDE.Base.Foundation.MouseHistory;
 
 // Vertrag zwischen Modulen (#1889, Modulregeln 4 und 6): Atlas-Fenster mit
 // eigenem Verlauf (etwa die Issue-Vorschau) melden sich hier an, damit die

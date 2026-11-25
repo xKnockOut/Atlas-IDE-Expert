@@ -105,6 +105,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.TreeHandles,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Style.Tokens,
@@ -1567,7 +1568,8 @@ begin
   if (FExtractor = nil) and (FContext.Refactorings.Extract <> nil) then
   begin
     // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
-    FExtractor := FContext.Refactorings.Extract.ConstantExtraction(FContext.Text, FContext.NewNames);
+    FExtractor := FContext.Refactorings.Extract.ConstantExtraction(FContext.Text,
+      TSyntaxTreeHandles.Wrap(FContext.Tree), FContext.NewNames);
   end;
   if (FExtractor <> nil) and FExtractor.Run(TTextRange.Create(mNode.StartPos, mNode.EndPos), mAction) then
   begin

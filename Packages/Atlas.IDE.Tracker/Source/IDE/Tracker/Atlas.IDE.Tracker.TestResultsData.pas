@@ -63,7 +63,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Tracker.TestFetch,
-  Atlas.IDE.Contracts.WelcomeTiles,
+  Atlas.IDE.Base.Foundation.WelcomeTiles,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Projects.Summaries;

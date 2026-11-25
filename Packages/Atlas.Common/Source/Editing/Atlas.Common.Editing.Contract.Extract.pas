@@ -53,11 +53,14 @@ type
   /// <summary>Extrahieren an einzelnen Stellen, wie es die Korrekturen der Prüfregeln brauchen.</summary>
   IEditingExtractFixes = interface
     ['{E03588AA-0FC6-476B-85AE-00615841B99E}']
-    /// <summary>„Bedingung in Funktion auslagern“ für die ganze Bedingung in ARange (#980).</summary>
-    function ExtractCondition(const AText: string; const ARange: TTextRange; const AStyle: TFormatStyle;
-      out AAction: TCodeAction): Boolean;
-    /// <summary>„Konstante extrahieren“ für AText; neue Namen mit den Präfixen ANames (Namensregel).</summary>
-    function ConstantExtraction(const AText: string; const ANames: TPascalNamePrefixes): IEditingConstantExtraction;
+    /// <summary>„Bedingung in Funktion auslagern“ für die ganze Bedingung in ARange (#980); ATree ist der Baum
+    /// zu AText, ohne ihn False.</summary>
+    function ExtractCondition(const AText: string; const ATree: IPascalSyntaxTree; const ARange: TTextRange;
+      const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+    /// <summary>„Konstante extrahieren“ für AText; neue Namen mit den Präfixen ANames (Namensregel);
+    /// gilt, solange der Baum hinter ATree lebt; nil ohne Baum.</summary>
+    function ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
+      const ANames: TPascalNamePrefixes): IEditingConstantExtraction;
   end;
 
 implementation

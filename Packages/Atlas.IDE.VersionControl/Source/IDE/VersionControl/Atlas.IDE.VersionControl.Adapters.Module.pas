@@ -34,7 +34,7 @@ implementation
 uses
   Atlas.Text.Product.Version,
   Atlas.Core.Diagnostics.ModuleHost,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.VersionControl.LineChanges;
 
 { TAtlasVcsModule }

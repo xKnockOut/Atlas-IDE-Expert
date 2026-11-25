@@ -55,7 +55,7 @@ uses
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Files.Service,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.VersionControl.Repository.Contract,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Welcome.Search,

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.AiText;
+﻿unit Atlas.IDE.Base.Foundation.AiText;
 
 // Vertrag zwischen Modulen (#2462, Modulregeln 6 und 9): Text vom eingestellten KI-Anbieter. Das Modul
 // KI-Assistenten stellt über seinen Scope ein IAtlasAiText bereit (Anbieter, Modell und Schlüssel aus seinen

@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.WelcomeLink;
 
 // Verbindung der Kacheln des Trackers zur Willkommensseite (#1455,
-// Modulregeln 2 und 6) über Atlas.IDE.Contracts.WelcomeTiles: Projekte und gewähltes
+// Modulregeln 2 und 6) über Atlas.IDE.Base.Foundation.WelcomeTiles: Projekte und gewähltes
 // Projekt (IAtlasWelcomeProjects), geänderte Kacheln (IAtlasWelcomeBoard).
 // Beide fragt die Verbindung bei jedem Gebrauch neu über die Haken der
 // Komposition; fehlt die Willkommensseite, ist die Liste leer, „Öffnen“ geht
@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.IDE.Contracts.WelcomeTiles;
+  Atlas.IDE.Base.Foundation.WelcomeTiles;
 
 type
   /// <summary>Wie die Verbindung die Dienste der Willkommensseite findet; jedes Feld darf fehlen.</summary>

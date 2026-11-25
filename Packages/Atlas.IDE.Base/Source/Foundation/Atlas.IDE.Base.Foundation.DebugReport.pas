@@ -1,10 +1,10 @@
-﻿unit Atlas.IDE.Contracts.DebugReport;
+﻿unit Atlas.IDE.Base.Foundation.DebugReport;
 
 // Vertrag zwischen Modulen (#1455, Modulregel 6): Ein Modul, das eine
 // Debug-Sitzung kennt (der Debugger), stellt über seinen Scope eine
 // IAtlasDebugReportSource bereit; andere Module (der Tracker für „An Issue
 // anhängen …“, #1276) fragen sie über die Registry und kommen ohne
-// Debugger aus. Nur Interfaces und Records, kein Code. Liegt in Base (Source/Contracts, #1456).
+// Debugger aus. Nur Interfaces und Records, kein Code. Liegt in Base (Source/Foundation, #1456).
 
 interface
 

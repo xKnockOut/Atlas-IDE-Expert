@@ -9,7 +9,7 @@
 interface
 
 uses
-  Atlas.IDE.Contracts.AiText,
+  Atlas.IDE.Base.Foundation.AiText,
   Atlas.UI.Assistants.SettingsSection;
 
 /// <summary>Haken der Einstellungsseite für die Schlüssel der KI-Anbieter.</summary>
