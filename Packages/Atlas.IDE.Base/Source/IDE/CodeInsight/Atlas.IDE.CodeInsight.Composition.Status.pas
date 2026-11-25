@@ -3,6 +3,8 @@
 // Atlas-Statusfeld mit seinen Zeilen (#591), Fenster „Atlas-Server“ (#1356), Fehlerzähler (#509),
 // Benachrichtigungszentrale (#601) mit Plakette und Einträgen der Sicherung (#493) und die
 // Schnellschalter (#604) am Feld. Immer angemeldet, auch im abgesicherten Start (#722).
+// Meldet sich ein Modul ab, nimmt ReleaseModuleCallbacks alles mit Code seines
+// Packages aus Zentrale, Statuszeilen und Zusatzfeldern (Regel 3).
 
 interface
 
@@ -50,6 +52,12 @@ procedure ShowServerWindow;
 /// „Protokoll öffnen“ (atlas.log mit Stacktrace): Der Fehler soll auffallen und behoben werden, statt still eine
 /// Funktion zu kosten. Aus jedem Thread; die Aktionen laufen im Hauptthread.</summary>
 procedure GuardTripped(AFeature: TAtlasFeature; const AMessage: string);
+/// <summary>Schritt 4 der Abmeldung eines Moduls (TAtlasModuleHost.OnModuleReleased), solange sein Code geladen
+/// ist: Aktionen und Beobachter der Benachrichtigungen, Statuszeilen samt Beobachtern und Zusatzfelder, deren Code
+/// im Package AModule liegt, lösen. Sonst hielte Base sie bis zum eigenen Abbau und gäbe sie erst nach dem Entladen
+/// des Moduls frei (Zugriffsverletzung), und ein Klick auf eine Aktion liefe in nicht mehr geladenem Code.
+/// </summary>
+procedure ReleaseModuleCallbacks(AModule: NativeUInt);
 /// <summary>Atlas-Protokoll gestört, aus dem Thread des Schreibers: über OutputDebugString (DebugView
 /// zeigt es, auch wenn atlas.log nichts mehr annimmt) und als Benachrichtigung; '' = schreibt wieder.</summary>
 procedure LogError(const AMessage: string);
@@ -89,6 +97,9 @@ var
   NotificationsInstance: TAtlasIdeNotifications;
   // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
   QuickTogglesInstance: TAtlasIdeQuickToggles;
+  // Gesetzte Zusatzfelder des Statusfelds samt Klicks: ReleaseModuleCallbacks entfernt die eines abgemeldeten
+  // Moduls, ohne dass das Feld selbst dafür ein Mitglied braucht.
+  StatusExtras: TArray<TAtlasStatusExtra>;
 
 function StatusField: TAtlasStatusField;
 begin
@@ -130,8 +141,35 @@ begin
   SetStatusItem(mExtra);
 end;
 
+/// <summary>AExtra in StatusExtras merken (gleiche Id ersetzen); Text '' entfernt es.</summary>
+procedure RememberExtra(const AExtra: TAtlasStatusExtra);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(StatusExtras) do
+  begin
+    if StatusExtras[mIndex].Id = AExtra.Id then
+    begin
+      if AExtra.Text = '' then
+      begin
+        Delete(StatusExtras, mIndex, 1);
+      end
+      else
+      begin
+        StatusExtras[mIndex] := AExtra;
+      end;
+      Exit;
+    end;
+  end;
+  if AExtra.Text <> '' then
+  begin
+    StatusExtras := StatusExtras + [AExtra];
+  end;
+end;
+
 procedure SetStatusItem(const AExtra: TAtlasStatusExtra);
 begin
+  RememberExtra(AExtra);
   if StatusFieldInstance <> nil then
   begin
     StatusFieldInstance.SetExtra(AExtra);
@@ -356,6 +394,7 @@ begin
     Manager.OnServerChanged := nil;
   end;
   FreeAndNil(StatusFieldInstance);
+  StatusExtras := nil;
   FreeAndNil(StatusLinesInstance);
   TAtlasStatusRegistry.ReleaseDefault;
 end;
@@ -453,6 +492,65 @@ begin
     TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.FuseTrippedTitle, [TAtlasGuard.FeatureName(mFeature)]),
     AMessage,
     [mEnable, mLog]);
+end;
+
+/// <summary>Gehört der Code hinter AReference zum Package AModule? Eigene Routine: fängt nur AModule ein.</summary>
+function OwnedByModule(AModule: NativeUInt): TFunc<Pointer, Boolean>;
+begin
+  Result :=
+    function(AReference: Pointer): Boolean
+    begin
+      Result := (AReference <> nil) and (TAtlasMainThread.CodeModuleOf(AReference) = AModule);
+    end;
+end;
+
+/// <summary>Zusatzfelder entfernen, deren Links- oder Rechtsklick AOwned gehört; Ergebnis: ihre Zahl. Sonst gäbe
+/// das Feld beim Freigeben Code eines entladenen Moduls frei.</summary>
+function ReleaseOwnedExtras(const AOwned: TFunc<Pointer, Boolean>): Integer;
+var
+  mIds: TArray<string>;
+  mExtra: TAtlasStatusExtra;
+  mId: string;
+begin
+  SetLength(mIds, Length(StatusExtras));
+  Result := 0;
+  for mExtra in StatusExtras do
+  begin
+    if (Assigned(mExtra.OnClick) and AOwned(PPointer(@mExtra.OnClick)^)) or
+      (Assigned(mExtra.OnContext) and AOwned(PPointer(@mExtra.OnContext)^)) then
+    begin
+      mIds[Result] := mExtra.Id;
+      Inc(Result);
+    end;
+  end;
+  SetLength(mIds, Result);
+  for mId in mIds do
+  begin
+    mExtra := Default(TAtlasStatusExtra);
+    mExtra.Id := mId;
+    SetStatusItem(mExtra);
+  end;
+end;
+
+procedure ReleaseModuleCallbacks(AModule: NativeUInt);
+const
+  cReleased = 'Atlas: released callbacks of module $%x: %d notifications, %d status lines, %d status fields';
+var
+  mOwned: TFunc<Pointer, Boolean>;
+  mNotifications, mLines, mFields: Integer;
+begin
+  if AModule = 0 then
+  begin
+    Exit;
+  end;
+  mOwned := OwnedByModule(AModule);
+  mNotifications := ReleaseOwnedNotifications(mOwned);
+  mLines := TAtlasStatusRegistry.ReleaseOwnedInDefault(mOwned);
+  mFields := ReleaseOwnedExtras(mOwned);
+  if mNotifications + mLines + mFields > 0 then
+  begin
+    TAtlasGuard.Log(Format(cReleased, [AModule, mNotifications, mLines, mFields]));
+  end;
 end;
 
 procedure LogError(const AMessage: string);

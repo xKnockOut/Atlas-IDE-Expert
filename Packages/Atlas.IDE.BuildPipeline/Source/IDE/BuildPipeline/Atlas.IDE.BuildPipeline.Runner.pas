@@ -284,7 +284,10 @@ end;
 /// <summary>Grund, aus dem der Läufer gerade nicht baut; '' = bereit.</summary>
 function TAtlasIdeBuildRunner.StateRefusal(const ARequest: TAtlasBuildRequest): string;
 begin
-  case TAtlasBuildPipelinePlan.Refusal(FBusy, FForeignBuild or FEvents.Background, Debugging, ARequest.Kind) of
+  // Ein offener Fortschrittsdialog bzw. modaler Dialog zählt als fremder Build: Die Anfrage käme sonst in dessen
+  // Nachrichtenschleife an, also mitten im laufenden Compileraufruf der IDE.
+  case TAtlasBuildPipelinePlan.Refusal(FBusy, FForeignBuild or FEvents.Background or TAtlasIdeCheckOnSave.CompilerBusy,
+    Debugging, ARequest.Kind) of
     TAtlasBuildRefusal.Busy:
       Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedBusy);
     TAtlasBuildRefusal.ForeignBuild:

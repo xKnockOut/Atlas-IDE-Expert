@@ -9,6 +9,9 @@
 // ausgehend; nur solange callHierarchy.diagram an ist.
 // Vor jeder Anfrage bekommt der Server den aktuellen Text der offenen Dateien.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
+// Referenzen (Befehl, Brotkrumen, „Verwendungen“ im Tooltip) fragt der Server im Hintergrund ab
+// (TAtlasBackgroundRequest); die Suche geht über das ganze Projekt und darf die IDE nicht anhalten. Kommt eine
+// neue Anfrage, während eine läuft, folgt sie danach; ihre Antwort zeigt das Ergebnisfenster.
 // Datenfluss (#690): „Woher kommt der Wert?“ und „Wohin geht der Wert?“ als Baum; jede aufgeklappte Quelle
 // fragt mit dem Pfad ihrer Vorfahren und den Filtern der ersten Anfrage nach (navigation.dataFlow).
 
@@ -18,10 +21,23 @@ uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.DataFlow,
+  Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.Results.Model;
 
 type
+  /// <summary>Referenzen sind gezeigt: Anzahl der Fundstellen, -1, wenn die Suche scheiterte.</summary>
+  TAtlasReferencesDone = TProc<Integer>;
+
   TAtlasIdeResults = class
+  private type
+    /// <summary>Wartende Referenzsuche, solange die vorige läuft.</summary>
+    TReferencesQuery = record
+      FileName: string;
+      Line: Integer;
+      Character: Integer;
+      Name: string;
+      Done: TAtlasReferencesDone;
+    end;
   private
     class var FSessionOf: TFunc<TLspSession>;
     class var FMessage: TProc<string>;
@@ -29,6 +45,13 @@ type
     class var FFlowRequest: TAtlasDataFlowRequest;
     /// <summary>Wort am Cursor zur ersten Anfrage, für den Titel eines leeren Baums.</summary>
     class var FFlowName: string;
+    class var FReferencesRequest: TAtlasBackgroundRequest;
+    class var FPendingReferences: TReferencesQuery;
+    class var FHasPendingReferences: Boolean;
+    /// <summary>Suche im Hintergrund starten; das Ergebnis zeigt ReferencesDone.</summary>
+    class procedure StartReferences(ASession: TLspSession; const AQuery: TReferencesQuery); static;
+    class procedure ReferencesDone(const AQuery: TReferencesQuery; const ALocations: TArray<TLspLocation>;
+      AOk: Boolean; const AError: string); static;
     class function Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>; static;
     /// <summary>Erste Ebene holen und zeigen; AFromFilter: kein „nichts gefunden“, der Baum leert sich nur.</summary>
     class procedure RunDataFlow(AFromFilter: Boolean); static;
@@ -62,9 +85,10 @@ type
     class procedure ShowDataFlow(ADirection: TAtlasDataFlowDirection; const AFileName: string; ALine,
       ACharacter: Integer; const AName: string); overload; static;
     class procedure SearchSymbol; static;
-    /// <summary>Referenzen auf ein Symbol an einem Fundort (z. B. aus dem Tooltip); Anzahl der Fundstellen.</summary>
-    class function ShowReferences(const AFileName: string; ALine, ACharacter: Integer; const AName: string): Integer;
-      static;
+    /// <summary>Referenzen auf ein Symbol an einem Fundort (z. B. aus dem Tooltip) im Ergebnisfenster; die Suche
+    /// läuft im Hintergrund, danach ADone (darf nil sein) mit der Anzahl der Fundstellen.</summary>
+    class procedure ShowReferences(const AFileName: string; ALine, ACharacter: Integer; const AName: string;
+      const ADone: TAtlasReferencesDone); static;
     /// <summary>Ergebnisfenster zeigen.</summary>
     class procedure ShowWindow; static;
     class procedure Open(const AFileName: string; ALine, ACharacter: Integer); static;
@@ -316,6 +340,10 @@ begin
   TAtlasIdeResultsWindow.IsProjectFile := nil;
   FFlowRequest := Default(TAtlasDataFlowRequest);
   FFlowName := '';
+  // Wartet eine laufende Suche ab (Zeitlimit oder Abbruchsignal des Entladens) und verwirft ihr Ergebnis.
+  FreeAndNil(FReferencesRequest);
+  FHasPendingReferences := False;
+  FPendingReferences := Default(TReferencesQuery);
   TAtlasIdeResultsWindow.Release;
 end;
 
@@ -390,7 +418,7 @@ var
 begin
   if AtCursor(mFileName, mLine, mCharacter, mName) then
   begin
-    ShowReferences(mFileName, mLine, mCharacter, mName);
+    ShowReferences(mFileName, mLine, mCharacter, mName, nil);
   end;
 end;
 
@@ -562,36 +590,96 @@ begin
   mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
-class function TAtlasIdeResults.ShowReferences(const AFileName: string; ALine, ACharacter: Integer;
-  const AName: string): Integer;
+class procedure TAtlasIdeResults.ShowReferences(const AFileName: string; ALine, ACharacter: Integer;
+  const AName: string; const ADone: TAtlasReferencesDone);
 var
   mCurrent: TLspSession;
-  mFound: TArray<TAtlasResultEntry>;
+  mQuery: TReferencesQuery;
 begin
-  Result := 0;
   mCurrent := Session;
   if mCurrent = nil then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  Screen.Cursor := crHourGlass;
-  try
-    try
-      mFound := Entries(mCurrent.References(AFileName, ALine, ACharacter));
-    except
-      on E: ELspClientError do
-      begin
-        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-  finally
-    Screen.Cursor := crDefault;
+  mQuery := Default(TReferencesQuery);
+  mQuery.FileName := AFileName;
+  mQuery.Line := ALine;
+  mQuery.Character := ACharacter;
+  mQuery.Name := AName;
+  mQuery.Done := ADone;
+  if FReferencesRequest = nil then
+  begin
+    FReferencesRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Results);
   end;
-  Result := Length(mFound);
-  TAtlasIdeResultsWindow.ShowReferences(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsReferences,
-    [AName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
+  if FReferencesRequest.Busy then
+  begin
+    // Die jüngste Anfrage zählt; sie folgt, sobald die laufende fertig ist.
+    FPendingReferences := mQuery;
+    FHasPendingReferences := True;
+    Exit;
+  end;
+  StartReferences(mCurrent, mQuery);
+end;
+
+class procedure TAtlasIdeResults.StartReferences(ASession: TLspSession; const AQuery: TReferencesQuery);
+var
+  mQuery: TReferencesQuery;
+  mLocations: TArray<TLspLocation>;
+begin
+  mQuery := AQuery;
+  mLocations := nil;
+  FReferencesRequest.Start(
+    procedure
+    begin
+      mLocations := ASession.References(mQuery.FileName, mQuery.Line, mQuery.Character);
+    end,
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      ReferencesDone(mQuery, mLocations, AOk, AError);
+    end);
+end;
+
+class procedure TAtlasIdeResults.ReferencesDone(const AQuery: TReferencesQuery;
+  const ALocations: TArray<TLspLocation>; AOk: Boolean; const AError: string);
+var
+  mFound: TArray<TAtlasResultEntry>;
+  mCurrent: TLspSession;
+  mCount: Integer;
+begin
+  if FHasPendingReferences then
+  begin
+    FHasPendingReferences := False;
+    mCurrent := Session;
+    if mCurrent <> nil then
+    begin
+      StartReferences(mCurrent, FPendingReferences);
+    end;
+    FPendingReferences := Default(TReferencesQuery);
+    Exit;
+  end;
+  try
+    mCount := -1;
+    if AOk then
+    begin
+      // Im Hauptthread: Die Einträge lesen den Text offener Editoren.
+      mFound := Entries(ALocations);
+      mCount := Length(mFound);
+      TAtlasIdeResultsWindow.ShowReferences(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsReferences,
+        [AQuery.Name, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
+    end
+    else
+    begin
+      Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [AError]));
+    end;
+    if Assigned(AQuery.Done) then
+    begin
+      AQuery.Done(mCount);
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Results, E);
+  end;
 end;
 
 class procedure TAtlasIdeResults.ShowWindow;

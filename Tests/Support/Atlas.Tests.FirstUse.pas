@@ -94,6 +94,56 @@ begin
   end;
 end;
 
+type
+  /// <summary>Stream, der nichts schreibt: WriteBuffer löst EWriteError aus.</summary>
+  TZeroWriteStream = class(TStream)
+  public
+    function Write(const ABuffer; ACount: Longint): Longint; overload; override;
+{$IFNDEF FPC}{$IF RTLVersion >= 37.0}{$IF SizeOf(Longint) <> SizeOf(NativeInt)}
+    function Write(const ABuffer; ACount: NativeInt): NativeInt; overload; override;
+{$IFEND}{$IFEND}{$ENDIF}
+    function Seek(const AOffset: Int64; AOrigin: TSeekOrigin): Int64; override;
+  end;
+
+function TZeroWriteStream.Write(const ABuffer; ACount: Longint): Longint;
+begin
+  Result := 0;
+end;
+
+{$IFNDEF FPC}{$IF RTLVersion >= 37.0}{$IF SizeOf(Longint) <> SizeOf(NativeInt)}
+function TZeroWriteStream.Write(const ABuffer; ACount: NativeInt): NativeInt;
+begin
+  Result := 0;
+end;
+{$IFEND}{$IFEND}{$ENDIF}
+
+function TZeroWriteStream.Seek(const AOffset: Int64; AOrigin: TSeekOrigin): Int64;
+begin
+  Result := 0;
+end;
+
+/// <summary>Schreibfehler eines Streams einmal auslösen: Die RTL lädt dabei den Ressourcen-String von EWriteError
+/// und behält ihn bis Programmende; das träfe sonst den ersten Test mit scheiterndem Schreiben (JSON-RPC-Ausgabe,
+/// OtherWriteErrorKeepsOutputOpen).</summary>
+procedure WarmUpWriteError;
+var
+  mStream: TZeroWriteStream;
+  mData: TBytes;
+begin
+  mStream := TZeroWriteStream.Create;
+  try
+    mData := TBytes.Create(1);
+    try
+      mStream.WriteBuffer(mData, Length(mData));
+    except
+      on Exception do
+        ;
+    end;
+  finally
+    mStream.Free;
+  end;
+end;
+
 /// <summary>Dateifehler einmal auslösen: Die RTL lädt dabei Ressourcen-Strings (EFOpenError, EFCreateError,
 /// EInOutError) und behält sie bis Programmende; das träfe sonst den ersten Test mit einer gesperrten oder fehlenden
 /// Datei (z. B. die Protokolldatei in TRotatingFileStream, die Sperre des Index-Caches).</summary>
@@ -743,6 +793,7 @@ begin
   WarmUpTimeZoneAndJsonPath;
   WarmUpSettingsTransfer;
   WarmUpFileErrors;
+  WarmUpWriteError;
   WarmUpOsErrorText;
   WarmUpDataFiles;
   WarmUpIndexCacheReplace;

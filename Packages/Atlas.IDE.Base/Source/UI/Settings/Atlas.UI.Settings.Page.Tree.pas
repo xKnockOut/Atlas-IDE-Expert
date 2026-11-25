@@ -86,7 +86,6 @@ type
 implementation
 
 uses
-  Vcl.Themes,
   System.SysUtils,
   System.Classes,
   Vcl.StdCtrls,
@@ -97,7 +96,8 @@ uses
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Page.Host,
-  Atlas.UI.Settings.Page.General;
+  Atlas.UI.Settings.Page.General,
+  Atlas.UI.Foundation.Theme;
 
 procedure AddUnique(var AList: TArray<string>; const AText: string);
 var
@@ -343,15 +343,10 @@ begin
   DefaultDraw := True;
   // Abgeschaltete oder gesperrte Unterpunkte grau.
   mIndex := PageIndexOf(Node);
-  if (mIndex >= 0) and (mIndex <= High(FNodePages)) and FNodePages[mIndex].Gray and not (cdsSelected in State) then
+  if (mIndex >= 0) and (mIndex <= High(FNodePages)) and FNodePages[mIndex].Gray and not Node.Selected then
   begin
-    // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
-    if not (cdsSelected in State) then
-    begin
-      Sender.Canvas.Brush.Color := StyleServices(Sender).GetSystemColor(clWindow);
-      Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clWindowText);
-    end;
-    Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clGrayText);
+    // Farben aus dem Stil, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
+    TAtlasUiTheme.RowColors(Sender.Canvas, Sender, False, True);
   end;
 end;
 

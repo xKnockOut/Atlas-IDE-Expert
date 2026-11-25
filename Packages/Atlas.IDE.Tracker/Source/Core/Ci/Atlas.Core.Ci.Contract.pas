@@ -27,6 +27,13 @@ uses
   Atlas.Core.CiBuild.Contract;
 
 type
+  /// <summary>HTTP-Statuscodes, die Tracker und CI-Anbieter auswerten.</summary>
+  TAtlasHttpStatus = record
+  public const
+    cOk = 200;
+    cBadRequest = 400;
+  end;
+
   /// <summary>Antwort einer Anfrage über IAtlasCiSend, IAtlasCiPost und IAtlasCiConditional.</summary>
   TAtlasCiResponse = record
     /// <summary>HTTP-Status; 0 ohne Antwort.</summary>

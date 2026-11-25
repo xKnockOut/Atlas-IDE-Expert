@@ -55,6 +55,15 @@ type
     class function TextColor(AKind: TAtlasSignalKind): TColor; static;
     /// <summary>True, wenn TextColor(AKind) die Farbe des Stils ist (dann zeichnet der Stil die Schrift).</summary>
     class function UsesStyleText(AKind: TAtlasSignalKind): Boolean; static;
+    /// <summary>Systemfarbe AColor (clGrayText, clHighlight …) im Stil von AControl als RGB, zum Zeichnen auf einer
+    /// Zeichenfläche. Eine Systemfarbe direkt in Canvas.Font.Color bzw. Brush.Color nimmt die Farbe von Windows,
+    /// im dunklen IDE-Thema also hell. AControl = nil: Stil der Anwendung.</summary>
+    class function SystemColor(AControl: TControl; AColor: TColor): TColor; static;
+    /// <summary>Farben einer selbst gefärbten Zeile einer Liste oder eines Baums AControl auf ACanvas: gewählt in den
+    /// Farben der Auswahl, sonst Fläche und Schrift von AControl (AGray: clGrayText), alle über den Stil. ASelected
+    /// kommt aus Item.Selected bzw. Node.Selected, nie aus cdsSelected: Das ist in der IDE bei jeder Zeile gesetzt,
+    /// die Zeile bekäme dann die helle Auswahlschrift auf dem weißen Hintergrund von Windows.</summary>
+    class procedure RowColors(ACanvas: TCanvas; AControl: TControl; ASelected, AGray: Boolean); static;
     /// <summary>Dialogschrift auf AFont übertragen (Name und Größe, Stil und Farbe bleiben).</summary>
     class procedure AssignDialogFont(AFont: TFont); static;
     /// <summary>IDE-Thema auf AControl und seine Kinder anwenden; ohne Install nichts.</summary>
@@ -73,6 +82,10 @@ implementation
 uses
   Vcl.Themes,
   Atlas.Core.Style.Color;
+
+type
+  /// <summary>Zugriff auf Color und Font, die TControl nur geschützt führt (E2362).</summary>
+  TControlAccess = class(TControl);
 
 { TAtlasUiTheme }
 
@@ -148,6 +161,30 @@ end;
 class function TAtlasUiTheme.UsesStyleText(AKind: TAtlasSignalKind): Boolean;
 begin
   Result := (AKind = TAtlasSignalKind.Info) or (AKind = TAtlasSignalKind.Idle);
+end;
+
+class function TAtlasUiTheme.SystemColor(AControl: TControl; AColor: TColor): TColor;
+begin
+  Result := ColorToRGB(StyleServices(AControl).GetSystemColor(AColor));
+end;
+
+class procedure TAtlasUiTheme.RowColors(ACanvas: TCanvas; AControl: TControl; ASelected, AGray: Boolean);
+begin
+  if ASelected then
+  begin
+    ACanvas.Brush.Color := SystemColor(AControl, clHighlight);
+    ACanvas.Font.Color := SystemColor(AControl, clHighlightText);
+    Exit;
+  end;
+  ACanvas.Brush.Color := SystemColor(AControl, TControlAccess(AControl).Color);
+  if AGray then
+  begin
+    ACanvas.Font.Color := SystemColor(AControl, clGrayText);
+  end
+  else
+  begin
+    ACanvas.Font.Color := SystemColor(AControl, TControlAccess(AControl).Font.Color);
+  end;
 end;
 
 class procedure TAtlasUiTheme.AssignDialogFont(AFont: TFont);

@@ -604,7 +604,8 @@ begin
   mSettings.MultiCursor := True;
   mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
   Assert.IsFalse(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorNext).Disabled);
-  Assert.AreEqual($4044, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorNext).Key));
+  // Strg+Alt+D: Strg+D gehört seit #2938 „Methode suchen …“.
+  Assert.AreEqual($C044, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorNext).Key));
   Assert.AreEqual($4044, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorSkip).Key));
   Assert.AreEqual($A049, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorLineEnds).Key));
   Assert.AreEqual($C026, Integer(EntryOf(mEntries, TAtlasKeyFunction.MultiCursorAbove).Key));

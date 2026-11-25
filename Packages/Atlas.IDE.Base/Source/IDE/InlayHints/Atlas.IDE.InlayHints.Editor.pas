@@ -168,7 +168,6 @@ uses
   Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Strings,
@@ -723,16 +722,10 @@ begin
   begin
     mActions := FMethodActions;
   end;
-  // Erst nach dem Mausereignis: der Editor setzt den Cursor sonst an die Klickstelle.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.InlayHints,
-    procedure
-    begin
-      TAtlasIdeNavigation.GoToLocation(mHit.FileName, mHit.TargetLine, mHit.TargetCharacter);
-      if Assigned(mActions) then
-      begin
-        mActions();
-      end;
-    end);
+  // Erst nach dem Loslassen der Maustaste: Der Editor setzt den Cursor sonst an die Klickstelle und markiert bis
+  // zur Sprungstelle.
+  TAtlasIdeNavigation.JumpAfterClick(TAtlasFeature.InlayHints, mHit.FileName, mHit.TargetLine,
+    mHit.TargetCharacter, mActions);
 end;
 
 procedure TAtlasInlayHintClicks.Remember(const AHit: TAtlasInlayPillHit);

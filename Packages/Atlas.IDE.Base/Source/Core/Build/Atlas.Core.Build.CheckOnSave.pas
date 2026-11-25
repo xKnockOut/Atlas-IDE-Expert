@@ -6,7 +6,12 @@
 // - Speichern einer Unit des aktiven Projekts merkt eine Prüfung vor; sie ist
 //   DelayMs nach dem letzten Speichern fällig (weiteres Speichern verschiebt).
 // - Während eines Builds des Benutzers und im Debugger keine Prüfung; was
-//   vorgemerkt war, bleibt vorgemerkt.
+//   vorgemerkt war, bleibt vorgemerkt. Ein Build läuft, solange eine Gruppe
+//   oder ein Projekt übersetzt wird, und bis QuietMs nach dem letzten
+//   Compile-Ereignis (TAtlasBuildIdleGate). Ein Ja/Nein reichte nicht: Beim
+//   Bauen einer Gruppe meldete schon das Ende des ersten Projekts „kein
+//   Build“, und die Prüfung startete den Compiler mitten im laufenden
+//   Gruppen-Build ein zweites Mal (interne Fehler F2084 des Compilers).
 // - Dauert eine Prüfung länger als MaxMs, ist die Automatik für das Projekt
 //   aus (einmal gemeldet); von Hand geht es weiter.
 
@@ -14,7 +19,8 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Build.IdleGate;
 
 type
   TAtlasCheckOnSave = class
@@ -24,7 +30,7 @@ type
     FPending: Boolean;
     FDueAt: Int64;
     FProject: string;
-    FBuildRunning: Boolean;
+    FBuild: TAtlasBuildIdleGate;
     FDisabled: TDictionary<string, Boolean>;
   public
     constructor Create(ADelayMs, AMaxMs: Integer); overload;
@@ -39,8 +45,13 @@ type
     function Due(ANowMs: Int64; ADebugging: Boolean): Boolean;
     /// <summary>Projekt der fälligen Prüfung; setzt die Vormerkung zurück.</summary>
     function Take: string;
-    procedure BuildStarted;
-    procedure BuildFinished;
+    /// <summary>Compile-Ereignisse des Benutzers (nicht die eigene Prüfung); ANowMs wie bei Saved.</summary>
+    procedure GroupStarted(ANowMs: Int64);
+    procedure GroupFinished(ANowMs: Int64);
+    procedure ProjectStarted(ANowMs: Int64);
+    procedure ProjectFinished(ANowMs: Int64);
+    /// <summary>Kein Build des Benutzers aktiv und die Ruhezeit danach vorbei.</summary>
+    function BuildIdle(ANowMs: Int64): Boolean;
     /// <summary>Ende einer automatischen Prüfung; True, wenn die Automatik für AProject jetzt abschaltet.</summary>
     function CheckFinished(const AProject: string; ADurationMs: Int64): Boolean;
     function IsDisabled(const AProject: string): Boolean;
@@ -50,7 +61,6 @@ type
       const AFileName: string): Boolean; static;
     property DelayMs: Integer read FDelayMs write FDelayMs;
     property MaxMs: Integer read FMaxMs write FMaxMs;
-    property BuildRunning: Boolean read FBuildRunning;
   end;
 
 implementation
@@ -63,6 +73,7 @@ begin
   FDelayMs := ADelayMs;
   FMaxMs := AMaxMs;
   FDisabled := TDictionary<string, Boolean>.Create;
+  FBuild := TAtlasBuildIdleGate.Create(0);
 end;
 
 constructor TAtlasCheckOnSave.Create(ADelayMs: Integer);
@@ -77,6 +88,7 @@ end;
 
 destructor TAtlasCheckOnSave.Destroy;
 begin
+  FBuild.Free;
   FDisabled.Free;
   inherited;
 end;
@@ -94,7 +106,7 @@ end;
 
 function TAtlasCheckOnSave.Due(ANowMs: Int64; ADebugging: Boolean): Boolean;
 begin
-  Result := FPending and (ANowMs >= FDueAt) and not FBuildRunning and not ADebugging and not IsDisabled(FProject);
+  Result := FPending and (ANowMs >= FDueAt) and BuildIdle(ANowMs) and not ADebugging and not IsDisabled(FProject);
 end;
 
 function TAtlasCheckOnSave.Take: string;
@@ -103,14 +115,29 @@ begin
   FPending := False;
 end;
 
-procedure TAtlasCheckOnSave.BuildStarted;
+procedure TAtlasCheckOnSave.GroupStarted(ANowMs: Int64);
 begin
-  FBuildRunning := True;
+  FBuild.GroupStarted(UInt64(ANowMs));
 end;
 
-procedure TAtlasCheckOnSave.BuildFinished;
+procedure TAtlasCheckOnSave.GroupFinished(ANowMs: Int64);
 begin
-  FBuildRunning := False;
+  FBuild.GroupFinished(UInt64(ANowMs));
+end;
+
+procedure TAtlasCheckOnSave.ProjectStarted(ANowMs: Int64);
+begin
+  FBuild.ProjectStarted(UInt64(ANowMs));
+end;
+
+procedure TAtlasCheckOnSave.ProjectFinished(ANowMs: Int64);
+begin
+  FBuild.ProjectFinished(UInt64(ANowMs));
+end;
+
+function TAtlasCheckOnSave.BuildIdle(ANowMs: Int64): Boolean;
+begin
+  Result := FBuild.Idle(UInt64(ANowMs));
 end;
 
 function TAtlasCheckOnSave.CheckFinished(const AProject: string; ADurationMs: Int64): Boolean;

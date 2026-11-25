@@ -189,7 +189,6 @@ implementation
 
 uses
   Atlas.UI.VersionControl.Strings,
-  Vcl.Themes,
   System.Math,
   System.StrUtils,
   Vcl.Graphics,
@@ -198,7 +197,8 @@ uses
   Atlas.Core.VersionControl.ServerAccess,
   Atlas.Core.Projects.Matching,
   Atlas.UI.VersionControl.SettingsKind,
-  Atlas.UI.VersionControl.SettingsProject;
+  Atlas.UI.VersionControl.SettingsProject,
+  Atlas.UI.Foundation.Theme;
 
 const
   /// <summary>Spalten, Felder und Knöpfe der Tabellen Projekte und Server der Versionsverwaltung (#1286, #1287).
@@ -463,13 +463,8 @@ begin
   mRows := VcsProjectRows;
   if (Item <> nil) and (Item.Index <= High(mRows)) and VcsProjectCovered(FVcsContext, mRows[Item.Index]) then
   begin
-    // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
-    if not (cdsSelected in State) then
-    begin
-      Sender.Canvas.Brush.Color := StyleServices(Sender).GetSystemColor(clWindow);
-      Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clWindowText);
-    end;
-    Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clGrayText);
+    // Farben aus dem Stil, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
+    TAtlasUiTheme.RowColors(Sender.Canvas, Sender, Item.Selected, True);
   end;
   DefaultDraw := True;
 end;

@@ -33,6 +33,13 @@
 //   unitSearch.replaceIdeDialog als Atlas-Zeile mit ihren echten Tasten, sonst
 //   als Aktion der IDE (ihr Handler liegt dann zwar in Atlas, ruft aber nur
 //   den Dialog der IDE).
+// - Tasten für alle Palettenbefehle (#2938): Collect zeigt die frei
+//   zugewiesenen Tasten (keys.commands) als Atlas-Zeilen, das Fenster mit
+//   „Auch Befehle ohne Taste“ dazu die Atlas-Befehle der Palette ohne Taste.
+//   „Zuweisen …“ öffnet TAtlasKeyAssignDialog, schreibt die Taste über
+//   TAtlasKeyMap.Assign in die gespeicherten Einstellungen (Befehle mit eigener
+//   Einstellung dorthin, die übrigen nach keys.commands) und liest neu ein;
+//   das Speichern belegt die Tasten neu.
 
 interface
 
@@ -62,6 +69,8 @@ type
     procedure Refresh;
     procedure ExportHtml;
     procedure OpenKeyConflicts;
+    /// <summary>Taste der Zeile AItem im Dialog wählen und speichern (#2938).</summary>
+    procedure AssignKey(const AItem: TAtlasKeyItem);
   public
     constructor Create;
     destructor Destroy; override;
@@ -118,7 +127,9 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Settings.Plugin,
+  Atlas.UI.Commands.KeyAssign;
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>
@@ -224,6 +235,30 @@ begin
         TAtlasKeyMapWindow.FunctionCaption(mEntry.Func), mOwnerOf));
     end;
   end;
+end;
+
+/// <summary>Taste als Text, wie die IDE sie zeigt.</summary>
+function KeyTextOf: TFunc<Word, string>;
+begin
+  Result :=
+    function(AKey: Word): string
+    begin
+      Result := ShortCutToText(TShortCut(AKey));
+    end;
+end;
+
+/// <summary>Frei zugewiesene Tasten der Palettenbefehle (keys.commands, #2938) als Atlas-Zeilen.</summary>
+procedure AddCommandKeys(AItems: TList<TAtlasKeyItem>; const ASettings: TAtlasPluginSettings);
+var
+  mOwnerOf: TFunc<Word, string>;
+begin
+  mOwnerOf :=
+    function(AKey: Word): string
+    begin
+      Result := TAtlasIdeKeys.Owner(AKey);
+    end;
+  AItems.AddRange(TAtlasKeyScan.CommandItems(ASettings.CommandKeys, TAtlasIdeHost.PaletteCommands,
+    ASettings.EditorKeysPriority, mOwnerOf, KeyTextOf()));
 end;
 
 /// <summary>Namen der Aktionen, die laufende Module für AFunc übernommen haben, in der Reihenfolge der Module.
@@ -573,11 +608,47 @@ begin
 end;
 
 procedure TAtlasIdeKeyMap.Refresh;
+var
+  mItems: TArray<TAtlasKeyItem>;
 begin
   if FWindow <> nil then
   begin
-    FWindow.SetItems(Collect);
+    mItems := Collect;
+    FWindow.SetItems(mItems, TAtlasKeyMap.KeylessItems(TAtlasIdeHost.PaletteCommands, mItems));
   end;
+end;
+
+/// <summary>Andere Belegungen einer Taste für den Zuweisungsdialog; eigene Routine, damit die Methodenreferenz
+/// nur die Zeilen hält.</summary>
+function HoldersLookup(const AItems: TArray<TAtlasKeyItem>; const AItem: TAtlasKeyItem): TFunc<Word, string>;
+begin
+  Result :=
+    function(AKey: Word): string
+    begin
+      Result := TAtlasKeyMap.HoldersOf(AItems, AItem, AKey);
+    end;
+end;
+
+procedure TAtlasIdeKeyMap.AssignKey(const AItem: TAtlasKeyItem);
+var
+  mKey: Word;
+  mSettings: TAtlasPluginSettings;
+begin
+  if (FWindow = nil) or not AItem.Assignable then
+  begin
+    Exit;
+  end;
+  mKey := AItem.ShortCut;
+  if not TAtlasKeyAssignDialog.Execute(AItem.Command, mKey, HoldersLookup(FWindow.Items, AItem)) or
+    (mKey = AItem.ShortCut) then
+  begin
+    Exit;
+  end;
+  mSettings := TAtlasIdeSettings.Stored;
+  TAtlasKeyMap.Assign(AItem, mKey, mSettings);
+  // Speichern meldet die Änderung; die Komposition belegt die Tasten daraufhin neu.
+  TAtlasIdeSettings.Update(mSettings);
+  Refresh;
 end;
 
 procedure TAtlasIdeKeyMap.ExportHtml;
@@ -652,6 +723,7 @@ begin
   mItems := TList<TAtlasKeyItem>.Create;
   mOrigins := TOrigins.Create;
   try
+    AddCommandKeys(mItems, TAtlasIdeSettings.Current);
     AddAtlasKeys(mItems, mEntries);
     AddActions(mItems, mOrigins, mEntries);
     AddKnownIdeKeys(mItems);
@@ -720,6 +792,7 @@ end;
 class function TAtlasIdeKeyMap.AtlasShortCuts: TFunc<string, string>;
 var
   mEntry: TAtlasKeyEntry;
+  mItem: TAtlasKeyItem;
   mIds, mKeys: TArray<string>;
   mOwners: TDictionary<Word, string>;
 begin
@@ -729,6 +802,16 @@ begin
   mOwners := TDictionary<Word, string>.Create;
   try
     TAtlasIdeKeys.CollectOwners(mOwners);
+    // Frei zugewiesene Tasten (#2938) zuerst: Sie gehen beim Belegen vor; nur, wenn Atlas sie hält.
+    for mItem in TAtlasKeyScan.CommandItems(TAtlasIdeSettings.Current.CommandKeys, nil,
+      TAtlasIdeSettings.Current.EditorKeysPriority, OwnerLookup(mOwners), KeyTextOf()) do
+    begin
+      if mItem.Active then
+      begin
+        mIds := mIds + [mItem.CommandId];
+        mKeys := mKeys + [mItem.KeyText];
+      end;
+    end;
     for mEntry in TAtlasKeyScan.HeldCommandKeys(AtlasEntries, OwnerLookup(mOwners)) do
     begin
       mIds := mIds + [TAtlasKeyMap.CommandIdOf(mEntry.Func)];
@@ -757,6 +840,26 @@ begin
   ShowWindow('');
 end;
 
+/// <summary>„Zuweisen …“ des Fensters: geschützt, solange es die Übersicht noch gibt.</summary>
+function AssignAction: TAtlasKeyAssignEvent;
+begin
+  Result :=
+    procedure(const AItem: TAtlasKeyItem)
+    var
+      mItem: TAtlasKeyItem;
+    begin
+      mItem := AItem;
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          if TAtlasIdeKeyMap.Instance <> nil then
+          begin
+            TAtlasIdeKeyMap.Instance.AssignKey(mItem);
+          end;
+        end);
+    end;
+end;
+
 procedure TAtlasIdeKeyMap.ShowWindow(const AQuery: string);
 begin
   if FWindow = nil then
@@ -782,6 +885,7 @@ begin
       begin
         AMap.Refresh;
       end);
+    FWindow.OnAssign := AssignAction();
   end;
   Refresh;
   if AQuery <> '' then

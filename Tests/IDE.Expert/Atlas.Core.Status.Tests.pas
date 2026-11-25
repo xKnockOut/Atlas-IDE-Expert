@@ -27,6 +27,18 @@ type
     /// <summary>#1356: Die Aktion der Zeile „Server“ gilt nur mit server.statusWindow.</summary>
     [Test]
     procedure ActionFollowsEnabled;
+    /// <summary>Abgemeldete Zeile gibt die Rückrufe des Moduls sofort frei, auch wenn Statusfeld oder Fenster sie
+    /// noch halten (sonst erst nach dem Entladen des Moduls: Zugriffsverletzung).</summary>
+    [Test]
+    procedure RemovedLineReleasesModuleCallbacks;
+    /// <summary>Wie oben, wenn eine neue Zeile mit derselben Kennung die alte ersetzt.</summary>
+    [Test]
+    procedure ReplacedLineReleasesModuleCallbacks;
+    /// <summary>Regel 3: Meldet sich ein Modul ab, nimmt die Registry seine Zeilen heraus, auch die es nicht
+    /// selbst entfernt hat: eigene Zeilenklassen des Moduls und Zeilen von Base mit seiner Aktion. Beobachter des
+    /// Moduls gehen mit; Zeilen von Base bleiben.</summary>
+    [Test]
+    procedure ReleaseOwnedTakesModuleLinesAndListeners;
     [Test]
     procedure OverallIsWorstState;
     [Test]
@@ -144,6 +156,66 @@ type
     function ReadString(const AName, ADefault: string): string;
     procedure WriteString(const AName, AValue: string);
   end;
+
+  /// <summary>Steht für etwas, das ein Modul in seinen Rückrufen hält; meldet sein Freigeben.</summary>
+  TModuleProbe = class(TInterfacedObject)
+  private
+    FFreed: PBoolean;
+  public
+    constructor Create(AFreed: PBoolean);
+    destructor Destroy; override;
+  end;
+
+{ TModuleProbe }
+
+constructor TModuleProbe.Create(AFreed: PBoolean);
+begin
+  inherited Create;
+  FFreed := AFreed;
+end;
+
+destructor TModuleProbe.Destroy;
+begin
+  FFreed^ := True;
+  inherited Destroy;
+end;
+
+/// <summary>Aktion, die AProbe hält (eigene Routine: Der Rahmen des Tests hielte sie sonst selbst).</summary>
+function ActionHolding(const AProbe: IInterface): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      if AProbe = nil then
+      begin
+        Exit;
+      end;
+    end;
+end;
+
+/// <summary>Schalter, der AProbe hält.</summary>
+function EnabledHolding(const AProbe: IInterface): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := AProbe <> nil;
+    end;
+end;
+
+/// <summary>Zeile AId mit Aktion und Schalter, die beide eine neue Probe halten; AFreed meldet deren Freigeben.
+/// </summary>
+function ProbedLine(const ARegistry: IAtlasStatusRegistry; const AId: string; AFreed: PBoolean): IAtlasStatusItem;
+var
+  mProbe: IInterface;
+  mAction: TProc;
+  mEnabled: TFunc<Boolean>;
+begin
+  mProbe := TModuleProbe.Create(AFreed);
+  mAction := ActionHolding(mProbe);
+  mEnabled := EnabledHolding(mProbe);
+  Result := TAtlasStatusLine.Create(ARegistry, AId, 0, mAction, mEnabled);
+end;
 
 { TForeignItem }
 
@@ -396,6 +468,104 @@ begin
   Assert.IsTrue(mRef.HasAction);
   mRef.Execute;
   Assert.AreEqual(1, mRuns);
+end;
+
+procedure TAtlasStatusRegistryTests.RemovedLineReleasesModuleCallbacks;
+var
+  mRegistry: IAtlasStatusRegistry;
+  mShown: TArray<IAtlasStatusItem>;
+  mFreed: Boolean;
+begin
+  mRegistry := TAtlasStatusRegistry.Create;
+  mFreed := False;
+  mRegistry.Add(ProbedLine(mRegistry, 'modul.zeile', @mFreed));
+  // Wie das Statusfeld: Es hält die Zeilen des letzten Zeichnens.
+  mShown := mRegistry.Items;
+  Assert.IsTrue(mShown[0].HasAction);
+  Assert.IsFalse(mFreed);
+  mRegistry.Remove('modul.zeile');
+  Assert.IsTrue(mFreed, 'Rückrufe beim Abmelden frei');
+  Assert.IsFalse(mShown[0].HasAction, 'gehaltene Zeile nicht mehr anklickbar');
+  mShown[0].Execute;
+  mShown := nil;
+end;
+
+procedure TAtlasStatusRegistryTests.ReplacedLineReleasesModuleCallbacks;
+var
+  mRegistry: IAtlasStatusRegistry;
+  mShown: TArray<IAtlasStatusItem>;
+  mOldFreed, mNewFreed: Boolean;
+  mNew: IAtlasStatusItem;
+begin
+  mRegistry := TAtlasStatusRegistry.Create;
+  mOldFreed := False;
+  mNewFreed := False;
+  mRegistry.Add(ProbedLine(mRegistry, 'modul.zeile', @mOldFreed));
+  mShown := mRegistry.Items;
+  mNew := ProbedLine(mRegistry, 'modul.zeile', @mNewFreed);
+  mRegistry.Add(mNew);
+  Assert.IsTrue(mOldFreed, 'ersetzte Zeile gibt ihre Rückrufe frei');
+  Assert.IsFalse(mShown[0].HasAction);
+  Assert.IsFalse(mNewFreed, 'die neue bleibt');
+  mRegistry.Add(mNew);
+  Assert.IsTrue(mNew.HasAction, 'dieselbe Zeile erneut: nicht gelöst');
+  mShown := nil;
+  mNew := nil;
+  mRegistry := nil;
+  Assert.IsTrue(mNewFreed);
+end;
+
+procedure TAtlasStatusRegistryTests.ReleaseOwnedTakesModuleLinesAndListeners;
+var
+  mRegistryObject: TAtlasStatusRegistry;
+  mRegistry: IAtlasStatusRegistry;
+  mModuleAction, mModuleListener: TProc;
+  mForeign, mModuleLine, mBaseLine: IAtlasStatusItem;
+  mOwned: TArray<Pointer>;
+  mCalls: Integer;
+begin
+  mRegistryObject := TAtlasStatusRegistry.Create;
+  mRegistry := mRegistryObject;
+  mCalls := 0;
+  mModuleAction :=
+    procedure
+    begin
+    end;
+  mModuleListener :=
+    procedure
+    begin
+      Inc(mCalls);
+    end;
+  mForeign := TForeignItem.Create;
+  mModuleLine := TAtlasStatusLine.Create(mRegistry, 'modul.zeile', 1, mModuleAction);
+  mRegistry.Add(mForeign);
+  mRegistry.Add(mModuleLine);
+  mBaseLine := TAtlasStatusLine.Create(mRegistry, 'atlas.server', 0);
+  mRegistry.Add(mBaseLine);
+  mRegistry.AddListener(mModuleListener);
+  mOwned := TArray<Pointer>.Create(Pointer(mForeign), PPointer(@mModuleAction)^, PPointer(@mModuleListener)^);
+  Assert.AreEqual(3, mRegistryObject.ReleaseOwned(
+    function(AReference: Pointer): Boolean
+    var
+      mPointer: Pointer;
+    begin
+      Result := False;
+      for mPointer in mOwned do
+      begin
+        Result := Result or (mPointer = AReference);
+      end;
+    end), 'zwei Zeilen, ein Beobachter');
+  Assert.AreEqual(1, Integer(Length(mRegistry.Items)));
+  Assert.AreEqual('atlas.server', mRegistry.Items()[0].Id);
+  Assert.IsFalse(mModuleLine.HasAction, 'herausgenommene Zeile gelöst');
+  mRegistry.Changed;
+  Assert.AreEqual(0, mCalls, 'Beobachter des Moduls abgemeldet');
+  mOwned := nil;
+  mForeign := nil;
+  mModuleLine := nil;
+  mBaseLine := nil;
+  mModuleAction := nil;
+  mModuleListener := nil;
 end;
 
 procedure TAtlasStatusRegistryTests.OverallIsWorstState;

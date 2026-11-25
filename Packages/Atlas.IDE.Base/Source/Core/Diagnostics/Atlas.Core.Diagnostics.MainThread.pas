@@ -87,6 +87,10 @@ type
     class function IsMain: Boolean; static;
     /// <summary>Modul (HInstance), in dem der Code der anonymen Methode AProc liegt; 0 ohne Methode.</summary>
     class function ModuleOf(const AProc: TThreadProcedure): NativeUInt; static;
+    /// <summary>Modul (HInstance), in dem der Code hinter AReference liegt: eine Methodenreferenz oder eine
+    /// Variable eines Interface-Typs mit eigener Methode (deren erste zählt, nicht IInterface selbst). 0 ohne.
+    /// </summary>
+    class function CodeModuleOf(const AReference): NativeUInt; static;
     /// <summary>Modul AModule meldet sich ab: seine wartenden Einträge verwerfen, neue nicht mehr annehmen.
     /// 0 wird übergangen.</summary>
     class procedure CloseModule(AModule: NativeUInt); static;
@@ -119,7 +123,7 @@ type
 
 /// <summary>Modul der Methode Invoke einer Methodenreferenz; untypisiert, damit kein @ die Referenz aufruft.
 /// </summary>
-function CodeModuleOf(const AReference): NativeUInt;
+function FirstMethodModule(const AReference): NativeUInt;
 var
   mInstance: Pointer;
   mTable: PCodeTable;
@@ -437,7 +441,12 @@ end;
 
 class function TAtlasMainThread.ModuleOf(const AProc: TThreadProcedure): NativeUInt;
 begin
-  Result := CodeModuleOf(AProc);
+  Result := FirstMethodModule(AProc);
+end;
+
+class function TAtlasMainThread.CodeModuleOf(const AReference): NativeUInt;
+begin
+  Result := FirstMethodModule(AReference);
 end;
 
 class procedure TAtlasMainThread.CloseModule(AModule: NativeUInt);

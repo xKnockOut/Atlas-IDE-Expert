@@ -23,6 +23,8 @@ type
     procedure NoAnswerGivesErrorText;
     [Test]
     procedure OtherExceptionStillFinishes;
+    [Test]
+    procedure ServerErrorIsReportedWithText;
   end;
 
 implementation
@@ -234,6 +236,40 @@ begin
     Assert.IsFalse(mProbe.Ok);
     Assert.IsFalse(mRequest.Busy, 'nach einer Ausnahme wieder frei');
   finally
+    mRequest.Free;
+    mProbe.Free;
+  end;
+end;
+
+procedure TAtlasBackgroundRequestTests.ServerErrorIsReportedWithText;
+var
+  mRequest: TAtlasBackgroundRequest;
+  mProbe: TDoneProbe;
+  mReported: string;
+  mOld: TProc<TAtlasFeature>;
+begin
+  mProbe := nil;
+  mRequest := nil;
+  mReported := '';
+  mOld := TAtlasGuard.OnFailure;
+  try
+    TAtlasGuard.OnFailure :=
+      procedure(AFeature: TAtlasFeature)
+      begin
+        mReported := 'gemeldet';
+      end;
+    mProbe := TDoneProbe.Create;
+    mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
+    mRequest.Start(Raising(ELspResponseError.CreateCode('kaputt', -32603)), mProbe.Done());
+    Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
+    Assert.IsFalse(mProbe.Ok);
+    Assert.AreEqual('kaputt', mProbe.Error, 'der Aufrufer bekommt die Meldung');
+    Assert.AreEqual('gemeldet', mReported, 'ein Fehler im Server geht ins Fehlerprotokoll');
+    Assert.IsFalse(mRequest.Busy);
+  finally
+    TAtlasGuard.OnFailure := mOld;
+    // Der gemeldete Fehler bleibt sonst als Zeitpunkt in der Sicherung von Outline stehen (Leckmonitor).
+    TAtlasGuard.Enable(TAtlasFeature.Outline);
     mRequest.Free;
     mProbe.Free;
   end;

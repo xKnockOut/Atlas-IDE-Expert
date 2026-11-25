@@ -35,6 +35,13 @@ type
     procedure RaisesInvalidRequestOnJsonArray;
     [Test]
     procedure WritesHeaderWithUtf8ByteLength;
+    /// <summary>Hat die Gegenseite geschlossen, meldet der Transport das und fasst die Ausgabe nicht mehr an.
+    /// </summary>
+    [Test]
+    procedure PeerClosedOutputStaysClosed;
+    /// <summary>Andere Schreibfehler bleiben Schreibfehler und schließen die Ausgabe nicht.</summary>
+    [Test]
+    procedure OtherWriteErrorKeepsOutputOpen;
   end;
 
 implementation
@@ -353,6 +360,83 @@ begin
     finally
       mMessages.Free;
     end;
+  finally
+    mOutput.Free;
+  end;
+end;
+
+/// <summary>Schreibt eine kleine Nachricht über ATransport.</summary>
+procedure WriteNote(const ATransport: IJsonRpcTransport);
+var
+  mMessage: TJSONObject;
+begin
+  mMessage := TJsonRpcTestSupport.Parse('{"jsonrpc":"2.0","method":"note"}');
+  try
+    ATransport.WriteMessage(mMessage);
+  finally
+    mMessage.Free;
+  end;
+end;
+
+procedure TJsonRpcStreamTransportTests.PeerClosedOutputStaysClosed;
+var
+  mOutput: TJsonRpcFailingOutput;
+  mTransport: IJsonRpcTransport;
+begin
+  mOutput := TJsonRpcFailingOutput.Create(ofPeerClosed);
+  try
+    mTransport := TJsonRpcStreamTransport.Create(nil, mOutput, False);
+    Assert.WillRaise(
+      procedure
+      begin
+        WriteNote(mTransport);
+      end,
+      EJsonRpcPeerClosed);
+    Assert.WillRaise(
+      procedure
+      begin
+        WriteNote(mTransport);
+      end,
+      EJsonRpcPeerClosed);
+    Assert.AreEqual(1, mOutput.Writes, 'nach dem Schließen nicht mehr schreiben');
+    mTransport := nil;
+  finally
+    mOutput.Free;
+  end;
+end;
+
+procedure TJsonRpcStreamTransportTests.OtherWriteErrorKeepsOutputOpen;
+var
+  mOutput: TJsonRpcFailingOutput;
+  mTransport: IJsonRpcTransport;
+  mRaised: string;
+  mFirst: Integer;
+begin
+  mOutput := TJsonRpcFailingOutput.Create(ofWriteFails);
+  try
+    mTransport := TJsonRpcStreamTransport.Create(nil, mOutput, False);
+    mRaised := '';
+    try
+      WriteNote(mTransport);
+    except
+      on E: Exception do
+        mRaised := E.ClassName;
+    end;
+    Assert.AreEqual(EWriteError.ClassName, mRaised);
+    // Wie oft WriteBuffer Write je Nachricht aufruft, hängt von der RTL ab (Delphi Win64 zweimal, FPC einmal):
+    // geprüft wird nur, dass die zweite Nachricht die Ausgabe noch erreicht.
+    mFirst := mOutput.Writes;
+    // try/except statt Assert.WillRaise: Die anonyme Methode hielte mTransport fest (Leckmonitor).
+    mRaised := '';
+    try
+      WriteNote(mTransport);
+    except
+      on E: Exception do
+        mRaised := E.ClassName;
+    end;
+    Assert.AreEqual(EWriteError.ClassName, mRaised);
+    Assert.IsTrue(mOutput.Writes > mFirst, 'ein anderer Schreibfehler schließt die Ausgabe nicht');
+    mTransport := nil;
   finally
     mOutput.Free;
   end;

@@ -3,7 +3,8 @@
 // Tests zu TAtlasIdeWelcomeTiles (#1455): Kacheln anderer Module erscheinen als
 // Bereich mit Fabrik, sobald ein Modul sie bereitstellt, und verschwinden samt
 // Steuerelementen, sobald es sie zurückzieht; Board und Projekte erreichen
-// nach dem Stopp nichts mehr.
+// nach dem Stopp nichts mehr. Kopien eines Bereichs (die Tafel hält sie bis
+// zum nächsten Rebuild) halten die zurückgezogene Kachel nicht fest.
 
 interface
 
@@ -21,6 +22,8 @@ type
     procedure RevokedTileFreesItsControls;
     [Test]
     procedure BoardAndProjectsStopWithTiles;
+    [Test]
+    procedure SectionCopyDoesNotHoldRevokedTile;
   end;
 
 implementation
@@ -54,6 +57,9 @@ type
     On_: Boolean;
     LastView: TFakeView;
     LastHost: IAtlasWelcomeTileHost;
+    /// <summary>Wird beim Freigeben True gesetzt; nil = keiner.</summary>
+    Freed: PBoolean;
+    destructor Destroy; override;
     function Info: TAtlasWelcomeTileInfo;
     function Enabled: Boolean;
     function CreateView(AOwner: TComponent; const AHost: IAtlasWelcomeTileHost): IAtlasWelcomeTileView;
@@ -86,6 +92,15 @@ begin
 end;
 
 { TFakeTile }
+
+destructor TFakeTile.Destroy;
+begin
+  if Freed <> nil then
+  begin
+    Freed^ := True;
+  end;
+  inherited Destroy;
+end;
 
 function TFakeTile.Info: TAtlasWelcomeTileInfo;
 begin
@@ -249,6 +264,48 @@ begin
   end;
   mProjects := nil;
   mBoard := nil;
+  mRegistry := nil;
+end;
+
+procedure TAtlasIdeWelcomeTilesTests.SectionCopyDoesNotHoldRevokedTile;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mSections: TAtlasWelcomeSections;
+  mTiles: TAtlasIdeWelcomeTiles;
+  mTile: TFakeTile;
+  mKeep: IAtlasWelcomeTile;
+  mProvided: IAtlasRegistration;
+  mCopy: TAtlasWelcomeSection;
+  mFreed: Boolean;
+begin
+  mRegistry := TAtlasModuleRegistry.Create;
+  mSections := nil;
+  mTiles := nil;
+  mFreed := False;
+  try
+    mSections := TAtlasWelcomeSections.Create;
+    mTiles := TAtlasIdeWelcomeTiles.Create(mRegistry, mSections);
+    mTiles.Start(NewAccess(''));
+    mTile := TFakeTile.Create;
+    mTile.Freed := @mFreed;
+    mTile.On_ := True;
+    mKeep := mTile;
+    mProvided := mRegistry.Provide(IAtlasWelcomeTile, mKeep);
+    // Wie die Tafel: eine Kopie des Bereichs, die das Abmelden überlebt.
+    Assert.IsTrue(mSections.Find(cTileId, mCopy));
+    Assert.IsTrue(mCopy.IsEnabled);
+    mProvided.Revoke;
+    mProvided := nil;
+    mKeep := nil;
+    // Das Modul hat seine Kachel losgelassen: Sie ist frei, obwohl die Kopie noch lebt (sonst gäbe die Tafel sie
+    // erst nach dem Entladen des Moduls frei).
+    Assert.IsTrue(mFreed, 'Kachel nicht mehr gehalten');
+    Assert.IsFalse(mCopy.IsEnabled, 'Kopie erreicht die Kachel nicht mehr');
+  finally
+    mTiles.Free;
+    mSections.Free;
+  end;
+  mCopy := Default(TAtlasWelcomeSection);
   mRegistry := nil;
 end;
 

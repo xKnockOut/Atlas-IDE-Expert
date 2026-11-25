@@ -84,12 +84,12 @@ type
 implementation
 
 uses
-  Vcl.Themes,
   System.SysUtils,
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.Settings.Strings;
+  Atlas.UI.Tracker.Settings.Strings,
+  Atlas.UI.Foundation.Theme;
 
 const
   cMatchColumn = 230;
@@ -354,13 +354,8 @@ begin
   mRows := Table.Rows;
   if (Item <> nil) and (Item.Index <= High(mRows)) and Table.Covered(mRows[Item.Index]) then
   begin
-    // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
-    if not (cdsSelected in State) then
-    begin
-      Sender.Canvas.Brush.Color := StyleServices(Sender).GetSystemColor(clWindow);
-      Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clWindowText);
-    end;
-    Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clGrayText);
+    // Farben aus dem Stil, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
+    TAtlasUiTheme.RowColors(Sender.Canvas, Sender, Item.Selected, True);
   end;
   DefaultDraw := True;
 end;

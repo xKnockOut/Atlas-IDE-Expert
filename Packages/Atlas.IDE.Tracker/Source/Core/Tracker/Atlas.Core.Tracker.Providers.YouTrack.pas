@@ -911,19 +911,72 @@ begin
   Result := ReadVcsChanges(mStatus, mText, ADevelopment, AError);
 end;
 
-/// <summary>Seit APoll.Since geänderte Issues; False mit AError.</summary>
-function ChangedIssues(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
-  const APoll: TAtlasTrackerPoll; out AIssues: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
+/// <summary>Seit APoll.Since geänderte Issues, Suchbegriffe in ALanguage; False mit AError, APoll.FailedStatus
+/// und APoll.FailedMessage.</summary>
+function ChangedIssuesIn(const ACall: TAtlasTrackerCall; const ALanguage: string; var APoll: TAtlasTrackerPoll;
+  out AIssues: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
 var
   mText: string;
+  mStatus: Integer;
 begin
   AIssues := nil;
-  Result := TAtlasYouTrackApi.GetText(ATransport, TAtlasYouTrackApi.ChangedIssuesUrl(ATarget, APoll.Since,
-    APoll.Scope), ATimeoutMs, mText, AError);
-  if Result and not TAtlasYouTrackParse.ParseChangedIssues(mText, APoll.Since, AIssues) then
+  Result := False;
+  APoll.FailedStatus := 0;
+  APoll.FailedMessage := '';
+  if not ACall.Transport.Get(TAtlasYouTrackApi.ChangedIssuesUrl(ACall.Target, APoll.Since, APoll.Scope, ALanguage),
+    ACall.TimeoutMs, mStatus, mText, AError) then
   begin
+    APoll.FailedStatus := mStatus;
+    Exit;
+  end;
+  if mStatus <> TAtlasHttpStatus.cOk then
+  begin
+    AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
+    APoll.FailedStatus := mStatus;
+    APoll.FailedMessage := TAtlasYouTrackApi.ErrorMessage(mText);
+    Exit;
+  end;
+  if not TAtlasYouTrackParse.ParseChangedIssues(mText, APoll.Since, AIssues) then
+  begin
+    // 200 ohne Liste: z. B. eine HTML-Seite (Anmeldung, Proxy) statt JSON.
     AError := TAtlasCiFetchError.Invalid;
-    Result := False;
+    APoll.FailedStatus := mStatus;
+    Exit;
+  end;
+  Result := True;
+end;
+
+/// <summary>Seit APoll.Since geänderte Issues. YouTrack liest Suchbegriffe in seiner Systemsprache und lehnt
+/// andere ab (400): zuerst die zuletzt gelungene bzw. erkannte Sprache, nach einer Ablehnung die andere; die
+/// gelungene merkt sich APoll.Language. False mit AError.</summary>
+function ChangedIssues(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
+  var APoll: TAtlasTrackerPoll; out AIssues: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
+var
+  mWatch: TStopwatch;
+  mKnown, mLanguage: string;
+begin
+  AIssues := nil;
+  AError := TAtlasCiFetchError.NotConfigured;
+  Result := False;
+  mWatch := TStopwatch.StartNew;
+  mKnown := APoll.Language;
+  if mKnown = '' then
+  begin
+    mKnown := ATarget.Language;
+  end;
+  for mLanguage in TAtlasYouTrackApi.QueryLanguages(mKnown) do
+  begin
+    Result := ChangedIssuesIn(TAtlasTrackerCall.Create(ATarget, ATransport, TAtlasYouTrackApi.Rest(mWatch, ATimeoutMs)),
+      mLanguage, APoll, AIssues, AError);
+    if Result then
+    begin
+      APoll.Language := mLanguage;
+      Exit;
+    end;
+    if APoll.FailedStatus <> TAtlasHttpStatus.cBadRequest then
+    begin
+      Exit;
+    end;
   end;
 end;
 

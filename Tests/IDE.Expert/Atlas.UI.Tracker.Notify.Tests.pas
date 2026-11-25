@@ -29,6 +29,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.UI.Strings,
+  Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Tracker.Notify;
 
 function Notice(const AKey: string): TAtlasTrackerNotice;
@@ -107,13 +108,26 @@ begin
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('4 weitere Issues geändert', TAtlasTrackerNoticeText.MoreTitle(4));
     Assert.AreEqual('Issue-Meldungen: Token für https://youtrack.firma.local abgelehnt',
-      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Unauthorized, 'https://youtrack.firma.local'));
+      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Unauthorized, 401, 'https://youtrack.firma.local'));
     Assert.AreEqual('Issue-Meldungen: https://github.com nicht erreichbar',
-      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Timeout, 'https://github.com'));
+      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Timeout, 0, 'https://github.com'));
     Assert.AreEqual('Issue-Meldungen: https://github.com nicht erreichbar',
-      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Network, 'https://github.com'));
+      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Network, 0, 'https://github.com'));
     Assert.AreEqual('Issue-Meldungen: unerwartete Antwort von https://github.com',
-      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Invalid, 'https://github.com'));
+      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Invalid, 0, 'https://github.com'));
+    Assert.AreEqual('Issue-Meldungen: https://youtrack.firma.local lehnt die Abfrage ab (HTTP 400)',
+      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Invalid, 400, 'https://youtrack.firma.local'));
+    Assert.AreEqual('Issue-Meldungen: Antwort von https://youtrack.firma.local nicht lesbar (kein JSON)',
+      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Invalid, 200, 'https://youtrack.firma.local'));
+    Assert.AreEqual('Issue-Meldungen: unerwartete Antwort von https://github.com (HTTP 503)',
+      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Server, 503, 'https://github.com'));
+    Assert.AreEqual(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyErrorText),
+      TAtlasTrackerNoticeText.ErrorText(' '), 'ohne Meldung des Trackers');
+    Assert.IsTrue(TAtlasTrackerNoticeText.ErrorText('Abfrage ungültig').StartsWith(
+      'Meldung des Trackers: Abfrage ungültig' + sLineBreak), 'Meldung zuerst');
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('Issue notifications: https://youtrack.firma.local rejected the query (HTTP 400)',
+      TAtlasTrackerNoticeText.ErrorTitle(TAtlasCiFetchError.Invalid, 400, 'https://youtrack.firma.local'));
   finally
     TAtlasStrings.Language := mSaved;
   end;

@@ -180,7 +180,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Symbol,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -628,19 +629,16 @@ begin
   DefaultDraw := True;
   mData := DataOf(FFrame, Node);
   // Wer hier Schrift ändert, zeichnet Hintergrund und Schrift selbst: Ohne Stilfarben wären sie clWindow und
-  // clWindowText ohne Stil, also weiß bzw. schwarz im dunklen Thema. Gewählte Zeilen behalten die Farben der Auswahl.
-  if not (cdsSelected in State) then
-  begin
-    Sender.Canvas.Brush.Color := StyleServices(FFrame).GetSystemColor(clWindow);
-    Sender.Canvas.Font.Color := StyleServices(FFrame).GetSystemColor(clWindowText);
-  end;
+  // clWindowText ohne Stil, also weiß bzw. schwarz im dunklen Thema. Gewählt laut Node.Selected (cdsSelected ist in der
+  // IDE bei jeder Zeile gesetzt).
+  TAtlasUiTheme.RowColors(Sender.Canvas, Sender, Node.Selected, False);
   if mData.Kind = TNodeKind.Section then
   begin
     Sender.Canvas.Font.Style := [fsBold];
     Exit;
   end;
   // Gewählte Zeile in den Farben der Auswahl lassen.
-  if cdsSelected in State then
+  if Node.Selected then
   begin
     Exit;
   end;

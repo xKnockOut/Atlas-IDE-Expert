@@ -4915,7 +4915,7 @@
     "MultiCursorNextKey": {
       "description": "Tastenkürzel „Wort bzw. nächstes Vorkommen markieren“ der Mehrfachmarken (0 = keins).",
       "type": "integer",
-      "default": 16452,
+      "default": 49220,
       "x-key": "keys.multiCursor.next",
       "x-area": "keys",
       "x-format": "shortcut",
@@ -4966,6 +4966,16 @@
       "x-page": "Editor",
       "x-parent": "editor.multiCursor",
       "x-issue": "#589"
+    },
+    "CommandKeys": {
+      "description": "Frei zugewiesene Tastenkürzel für Befehle der Befehlspalette ohne eigene Einstellung: „Befehlskennung=Taste“ durch „;“ getrennt, die Taste als Zahl wie bei den übrigen Tastenkürzeln (Strg+D = 16452). Zugewiesen im Fenster „Atlas – Tastenkürzel“ (Doppelklick oder „Zuweisen …“); die Taste wirkt im Editor ohne Neustart.",
+      "type": "string",
+      "default": "Atlas.FindMethod=16452",
+      "x-key": "keys.commands",
+      "x-area": "keys",
+      "x-page": "Befehle",
+      "x-control": "Fenster „Atlas – Tastenkürzel“ (Zuweisen …)",
+      "x-issue": "#2938"
     },
     "ContinueCommentsBlockPrefix": {
       "description": "Präfix neuer Zeilen in Blockkommentaren, etwa „ * “ (hinter dem Einzug der öffnenden Zeile); leer = nur einrücken, unter den Text hinter der Klammer.",

@@ -42,6 +42,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Diagnostics.Hangs,
+  Atlas.Core.Build.Events,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Files.Reloader,
@@ -59,8 +60,22 @@ const
   // Ab dieser Dauer ein Hinweis im Meldungsfenster (#501).
   cHangHintMs = 2000;
 
+type
+  /// <summary>Hält den Wächter an, solange die IDE übersetzt: Der Compiler belegt den Hauptthread, ohne dass Atlas
+  /// hängt, und den Hauptthread darf dann niemand anhalten oder in seiner Nachrichtenschleife auswerten.</summary>
+  TWatchdogCompilePause = class(TAtlasCompileParticipant)
+  private
+    FWatchdog: TAtlasWatchdog;
+  public
+    constructor Create(AWatchdog: TAtlasWatchdog);
+    procedure GroupStarted(AKind: TAtlasCompileKind); override;
+    procedure GroupFinished(ASucceeded: Boolean; ADurationMs: Int64); override;
+  end;
+
 var
   Watchdog: TAtlasWatchdog;
+  // Gehört den Compile-Ereignissen; nil ohne sie.
+  WatchdogPause: TWatchdogCompilePause;
   Hangs: TAtlasHangMonitor;
   Reloader: TAtlasFileReloader;
   Forms: TAtlasIdeForms;
@@ -105,6 +120,24 @@ begin
   MessageLine(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.HangHint, [mHang.DurationMs, mActivity]));
 end;
 
+{ TWatchdogCompilePause }
+
+constructor TWatchdogCompilePause.Create(AWatchdog: TAtlasWatchdog);
+begin
+  inherited Create;
+  FWatchdog := AWatchdog;
+end;
+
+procedure TWatchdogCompilePause.GroupStarted(AKind: TAtlasCompileKind);
+begin
+  FWatchdog.SetCompiling(True);
+end;
+
+procedure TWatchdogCompilePause.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
+begin
+  FWatchdog.SetCompiling(False);
+end;
+
 procedure StartWatchdog;
 begin
   Hangs := TAtlasHangMonitor.Create(TAtlasIdeSettings.Current.HangThresholdMs);
@@ -114,10 +147,21 @@ begin
       Result := TAtlasIdeSettings.Current.HangThresholdMs;
     end);
   Watchdog.OnHang := ReportHang;
+  if Compile <> nil then
+  begin
+    WatchdogPause := TWatchdogCompilePause.Create(Watchdog);
+    Compile.Events.Add(WatchdogPause);
+  end;
 end;
 
 procedure StopWatchdog;
 begin
+  // Vor dem Wächter: Danach erreicht ihn kein Compile-Ereignis mehr.
+  if (WatchdogPause <> nil) and (Compile <> nil) then
+  begin
+    Compile.Events.Remove(WatchdogPause);
+  end;
+  WatchdogPause := nil;
   FreeAndNil(Watchdog);
   if (Hangs <> nil) and (Hangs.Count > 0) and (Manager <> nil) then
   begin

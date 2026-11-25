@@ -381,6 +381,7 @@ begin
   mConnection := TAtlasTrackerNotify.Fresh('github|https://github.com', At(3));
   mConnection.Me := 'marco';
   mConnection.LastModified := 'Thu, 01 Jan 2026 10:03:00 GMT';
+  mConnection.Language := 'de';
   TAtlasTrackerNotify.MarkUnseen(mConnection, [Notice('#12', At(2))]);
   mConnection.Unseen[0].Project := 'beispiel/atlas';
   mFile.Put(mConnection);
@@ -395,6 +396,7 @@ begin
   Assert.AreEqual(At(3), mConnection.Since, 1 / SecsPerDay);
   Assert.AreEqual('marco', mConnection.Me);
   Assert.AreEqual('Thu, 01 Jan 2026 10:03:00 GMT', mConnection.LastModified);
+  Assert.AreEqual('de', mConnection.Language, 'Sprache der Suchbegriffe (YouTrack)');
   Assert.AreEqual(Integer(1), Integer(Length(mConnection.Unseen)));
   Assert.AreEqual('#12', mConnection.Unseen[0].Key);
   Assert.AreEqual('beispiel/atlas', mConnection.Unseen[0].Project);

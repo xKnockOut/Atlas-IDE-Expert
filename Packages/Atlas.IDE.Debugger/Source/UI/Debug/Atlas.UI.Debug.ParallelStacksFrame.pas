@@ -215,7 +215,7 @@ begin
   begin
     Sender.Canvas.Font.Style := [fsBold];
   end;
-  if FData.Nodes[mIndex].AllWaiting and not (cdsSelected in State) then
+  if FData.Nodes[mIndex].AllWaiting and not Node.Selected then
   begin
     Sender.Canvas.Font.Color := cWaitingColor;
   end;

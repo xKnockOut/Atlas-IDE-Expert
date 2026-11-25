@@ -62,6 +62,12 @@ type
   /// Text nicht auflösen lässt (Syntaxfehler, kein Index).</summary>
   TUsesResolveFunc = reference to function(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
 
+  /// <summary>Wie TUsesResolveFunc für einen schon übersetzten Baum (ohne zweites Parsen, etwa für /sortuses in
+  /// großen Units); der Baum bleibt beim Aufrufer. ATree ist ein TSyntaxTree; als TObject übergeben, weil ein
+  /// Contract den Syntaxbaum nicht einbinden darf (Rollenmatrix).</summary>
+  TUsesTreeResolveFunc = reference to function(ATree: TObject;
+    const AInactive: TArray<TTextRange>): TUsesResolution;
+
   /// <summary>Units, deren interface ein Symbol AName auf Unit-Ebene deklariert.</summary>
   TUnitsDeclaringFunc = reference to function(const AName: string): TArray<string>;
 
@@ -77,6 +83,8 @@ type
     Inactive: TArray<TTextRange>;
     /// <summary>Namensauflösung für die Datei (#1925); nil = nur Namensvergleich.</summary>
     Resolve: TUsesResolveFunc;
+    /// <summary>Wie Resolve für einen schon übersetzten Baum; nil = über Resolve mit dem Text.</summary>
+    ResolveTree: TUsesTreeResolveFunc;
     /// <summary>Resolve für AText, sonst eine Nutzung ohne Active.</summary>
     function Resolution(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
   end;
