@@ -454,7 +454,7 @@ begin
   try
     mHistory.Start(DataFor(Ref('TA', 1)));
     Assert.IsTrue(Open(mHistory, Ref('TB', 2)));
-    Assert.IsTrue(mHistory.BeginOpen(Ref('TC', 3)) = TAtlasHoverOpenStep.Fetch);
+    Assert.AreEqual<TAtlasHoverOpenStep>(TAtlasHoverOpenStep.Fetch, mHistory.BeginOpen(Ref('TC', 3)));
     Assert.IsTrue(mHistory.Pinned, 'angeheftet, solange die Antwort unterwegs ist');
     mStamp := mHistory.Stamp;
     // Während die Anfrage läuft, geht der Benutzer zurück: Die Antwort gehört zu einem anderen Stand.
@@ -480,7 +480,7 @@ begin
   mHistory := TAtlasHoverHistory.Create;
   try
     mHistory.Start(DataFor(Ref('TA', 1)));
-    Assert.IsTrue(mHistory.BeginOpen(Ref('TB', 2)) = TAtlasHoverOpenStep.Fetch);
+    Assert.AreEqual<TAtlasHoverOpenStep>(TAtlasHoverOpenStep.Fetch, mHistory.BeginOpen(Ref('TB', 2)));
     mStamp := mHistory.Stamp;
     Assert.IsFalse(mHistory.FinishOpen(Ref('TB', 2), Default(TAtlasHoverData), mStamp), 'Server liefert nichts');
     Assert.AreEqual(1, Integer(mHistory.Count));
