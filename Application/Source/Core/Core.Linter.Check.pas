@@ -13,9 +13,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Projects.PackageReader,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Checker,
   Atlas.Common.Findings.Output,
   Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Baseline,
@@ -39,8 +38,8 @@ type
     FConfigRoot: string;
     FSettings: TServerSettings;
     FFilter: TFindingFilter;
-    FRules: TArray<IRule>;
-    FDescriptors: TArray<TRuleDescriptor>;
+    FRules: TCoreLinterCheckText;
+    FRuleInfos: TArray<TFindingRuleInfo>;
     FBaselinePath: string;
     FBaseline: IRuleBaseline;
     FRoot: string;
@@ -86,8 +85,6 @@ uses
   System.IOUtils,
   System.Diagnostics,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Catalog,
   Atlas.Common.Lsp.ServerActivity,
   Core.Linter.Output,
   Core.Linter.Settings,
@@ -132,8 +129,8 @@ begin
   // Regelprofil der Kommandozeile (#146), z. B. "strict" im CI.
   TLinterSettings.ApplyProfile(FOptions, FSettings);
   FFilter := TLinterSettings.FilterOf(FOptions);
-  FRules := BuiltinRules;
-  FDescriptors := TLinterSettings.DescriptorsOf(FRules, FSettings, not FOptions.NoIndex);
+  FRules := FHost.Rules.CheckAll;
+  FRuleInfos := FHost.Rules.Infos(FSettings, not FOptions.NoIndex);
   FBaselinePath := TLinterBaseline.PathOf(FOptions, FConfigRoot);
   Result := TLinterBaseline.Load(FOptions, FBaselinePath, FBaseline);
 end;
@@ -156,7 +153,7 @@ begin
   Result := Default(TLinterMarkFilter);
   Result.Filter := FFilter;
   Result.Settings := FSettings;
-  Result.Descriptors := FDescriptors;
+  Result.Rules := FRuleInfos;
   Result.Git := AGit;
   Result.ChangedLines := AChangedLines;
 end;
@@ -208,8 +205,7 @@ begin
   mPrevious := TCheckProfiler.Attach(FProfiler);
   mWatch := TStopwatch.StartNew;
   try
-    Result := TFileChecker.CheckText(FRules, FSettings, ARelativePath, AText, TCheckOrigin.Make(mProject, ASource),
-      AScopes);
+    Result := FRules(FSettings, ARelativePath, AText, mProject, ASource, AScopes);
   finally
     TCheckProfiler.Attach(mPrevious);
     if FProfiler <> nil then
@@ -340,7 +336,7 @@ begin
   end
   else
   begin
-    Result := TFindingsOutput.Render(FFiles, FOptions.CheckFormat, TRuleCatalog.RuleInfos(FDescriptors),
+    Result := TFindingsOutput.Render(FFiles, FOptions.CheckFormat, FRuleInfos,
       TLinterSettings.SourceRootOf(FOptions, FConfigRoot));
   end;
 end;

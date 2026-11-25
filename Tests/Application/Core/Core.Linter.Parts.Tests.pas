@@ -49,7 +49,7 @@ type
     [Test]
     procedure FormattingKindOf;
     [Test]
-    procedure CheckValidateAndDescriptors;
+    procedure CheckValidate;
     [Test]
     procedure ReportsSlashPathAndMetrics;
     /// <summary>Ohne Gruppe nur Dateiname und Formulare; mit testUnits.project dessen .dpr.</summary>
@@ -71,8 +71,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Findings.BulkFix,
@@ -178,7 +178,7 @@ end;
 procedure TLinterPartsTests.FilesKindsAndFolderCollect;
 var
   mRoot: string;
-  mSources: TCheckSourceFunc;
+  mSources: TPascalSourceFunc;
 begin
   Assert.IsTrue(TLinterFiles.IsSourceFile('A.PAS'));
   Assert.IsTrue(TLinterFiles.IsSourceFile('P.dpk'));
@@ -244,18 +244,18 @@ procedure TLinterPartsTests.BaselineNewAndKeptMarks;
 var
   mMarks, mKept: TArray<TBaselineMark>;
   mFilter: TLinterMarkFilter;
-  mDescriptor: TRuleDescriptor;
+  mRule: TFindingRuleInfo;
 begin
   mMarks := TArray<TBaselineMark>.Create(MarkOf(TBaselineState.New, 'neu'),
     MarkOf(TBaselineState.Unchanged, 'alt'), MarkOf(TBaselineState.Absent, 'weg'));
   Assert.AreEqual(1, Integer(Length(TLinterBaseline.NewFindings(mMarks))));
   Assert.AreEqual('neu', TLinterBaseline.NewFindings(mMarks)[0].RuleId);
-  mDescriptor := Default(TRuleDescriptor);
-  mDescriptor.Id := 'weg';
-  mDescriptor.DefaultSeverity := TRuleSeverity.Warning;
+  mRule := Default(TFindingRuleInfo);
+  mRule.Id := 'weg';
+  mRule.DefaultSeverity := TRuleSeverity.Warning;
   mFilter := Default(TLinterMarkFilter);
   mFilter.Settings := TServerSettings.Default;
-  mFilter.Descriptors := TArray<TRuleDescriptor>.Create(mDescriptor);
+  mFilter.Rules := TArray<TFindingRuleInfo>.Create(mRule);
   mKept := TLinterBaseline.KeptMarks(mMarks, mFilter, Path('A.pas'));
   Assert.AreEqual(3, Integer(Length(mKept)));
   Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Warning, mKept[2].Finding.Severity, 'Standard-Schweregrad der Regel');
@@ -303,20 +303,12 @@ begin
     '--metrics']), mKind));
 end;
 
-procedure TLinterPartsTests.CheckValidateAndDescriptors;
-var
-  mWithout, mWith: TArray<TRuleDescriptor>;
-  mSettings: TServerSettings;
+procedure TLinterPartsTests.CheckValidate;
 begin
   Assert.IsTrue(TLinterSettings.Validate(TCommandLineOptions.Parse(['--check', FFolder])));
   Assert.IsFalse(TLinterSettings.Validate(TCommandLineOptions.Parse(['--check', FFolder, '--metrics', '--todos'])));
   Assert.IsFalse(TLinterSettings.Validate(TCommandLineOptions.Parse(['--check', FFolder, '--metrics', '--format',
     'sarif'])));
-  mSettings := TServerSettings.Default;
-  mWithout := TLinterSettings.DescriptorsOf(nil, mSettings, False);
-  Assert.AreEqual(2, Integer(Length(mWithout)), 'Syntax und Sprachstand');
-  mWith := TLinterSettings.DescriptorsOf(nil, mSettings, True);
-  Assert.AreEqual(Integer(Length(mWithout)), Integer(Length(mWith)), 'ohne gespeicherte Abfragen');
 end;
 
 procedure TLinterPartsTests.ReportsSlashPathAndMetrics;

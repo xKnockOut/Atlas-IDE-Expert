@@ -2755,6 +2755,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.DfmPropertyRules.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.LeakSetup.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Instructions.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.LinterRules.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.LeakCandidates.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.RuntimeReport.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.Core.pas"/>
@@ -2871,6 +2872,7 @@
         <DCCReference Include="..\Application\Source\Core\Core.Linter.Reports.pas"/>
         <DCCReference Include="Application\Core\Core.Linter.Parts.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Instructions.Tests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Composition.LinterRules.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Core\Core.Hotspots.pas"/>
         <DCCReference Include="..\Application\Source\Core\Core.SymbolHistory.pas"/>
         <DCCReference Include="Application\Core\Core.VersionControl.TestSupport.pas"/>

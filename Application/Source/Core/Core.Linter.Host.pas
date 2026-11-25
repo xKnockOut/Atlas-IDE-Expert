@@ -10,6 +10,10 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Findings.Contract,
+  Atlas.Common.Findings.Scopes,
+  Atlas.Common.Checks.Contract,
   Core.VersionControlChanges,
   Core.WorkspaceGroup;
 
@@ -37,6 +41,30 @@ type
   TCoreLinterInstructions = reference to function(const ARoot: string; const ASettings: TServerSettings;
     AWrite: Boolean): TArray<TCoreInstructionsFile>;
 
+  /// <summary>Prüft AText (Datei ARelativePath) mit Projekt und Symbolen; AScopes für die Baseline.</summary>
+  TCoreLinterCheckText = reference to function(const ASettings: TServerSettings; const ARelativePath, AText: string;
+    const AProject: TCheckProject; const ASource: TPascalSource; out AScopes: TFindingScopes): TArray<TRuleFinding>;
+
+  /// <summary>Prüfung mit den Regeln für die Durchgänge von --fix mit den Kennungen AFixRules ("all" bzw. eine
+  /// Kennung, die nur im Checker oder in der Engine entsteht: alle).</summary>
+  TCoreLinterFixCheck = reference to function(const AFixRules: TArray<string>): TCoreLinterCheckText;
+
+  /// <summary>Beschreibung aller Regeln für SARIF und den Standard-Schweregrad: syntax, Sprachstand, die
+  /// eingebauten Regeln und mit AWithIndex die gespeicherten Abfragen mit failIfAny aus ASettings (#1351) als Regeln
+  /// query:&lt;name&gt;.</summary>
+  TCoreLinterRuleInfos = reference to function(const ASettings: TServerSettings; AWithIndex: Boolean):
+    TArray<TFindingRuleInfo>;
+
+  /// <summary>Die eingebauten Prüfregeln für --check und --fix.</summary>
+  TCoreLinterRules = record
+    /// <summary>Prüfung mit allen Regeln.</summary>
+    CheckAll: TCoreLinterCheckText;
+    FixCheck: TCoreLinterFixCheck;
+    /// <summary>Kennungen (klein) der Regeln mit sicherer Korrektur im Katalog.</summary>
+    SafeFixRules: TFunc<TArray<string>>;
+    Infos: TCoreLinterRuleInfos;
+  end;
+
   TCoreLinterHost = record
     /// <summary>Installierte Delphi-Versionen (BDS-Nummern).</summary>
     InstalledVersions: TFunc<TArray<string>>;
@@ -44,6 +72,7 @@ type
     Vcs: TFunc<TCoreVcsAccess>;
     NewGroup: TCoreLinterGroupFactory;
     Instructions: TCoreLinterInstructions;
+    Rules: TCoreLinterRules;
   end;
 
 implementation

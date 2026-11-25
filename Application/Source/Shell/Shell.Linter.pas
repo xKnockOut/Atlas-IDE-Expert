@@ -114,7 +114,7 @@ type
     /// Core.Linter.Instructions.</summary>
     class function Instructions(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>Was die Befehle in Core.Linter.* von der Shell brauchen: Delphi-Versionen, git und svn,
-    /// Arbeitsbereiche, Anweisungsdateien.</summary>
+    /// Arbeitsbereiche, Anweisungsdateien, Prüfregeln.</summary>
     class function Host: TCoreLinterHost; static;
   end;
 
@@ -145,6 +145,7 @@ uses
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Rules.InstructionFiles,
   Atlas.Common.Rules.Instructions,
+  Shell.Composition.LinterRules,
   Platform.Server,
   Core.Bootstrap,
   Core.VersionControlChanges,
@@ -232,6 +233,7 @@ begin
   Result.Vcs := VcsAccess;
   Result.NewGroup := NewGroup;
   Result.Instructions := WriteInstructions;
+  Result.Rules := TShellLinterRules.Create;
 end;
 
 class function TLinterShell.Run(const AOptions: TCommandLineOptions): Integer;

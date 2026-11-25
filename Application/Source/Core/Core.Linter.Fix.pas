@@ -15,9 +15,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.PackageReader,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Checker,
   Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Output,
   Atlas.Common.Findings.Baseline,
@@ -31,7 +29,8 @@ uses
 type
   /// <summary>Was die Prüfung einer Datei für die Sammelkorrektur braucht.</summary>
   TLinterFixCheck = record
-    Rules: TArray<IRule>;
+    /// <summary>nil = ohne Regeln.</summary>
+    Rules: TCoreLinterCheckText;
     Settings: TServerSettings;
     RelativePath: string;
     FileName: string;
@@ -51,8 +50,8 @@ type
     FHost: TCoreLinterHost;
     FSettings: TServerSettings;
     FFilter: TFindingFilter;
-    FAllRules: TArray<IRule>;
-    FFixRules: TArray<IRule>;
+    FAllRules: TCoreLinterCheckText;
+    FFixRules: TCoreLinterCheckText;
     FFixOptions: TBulkFixOptions;
     FBaseline: IRuleBaseline;
     FGit: TVcsChanges;
@@ -88,8 +87,6 @@ uses
   Atlas.Common.Findings.Contract,
   System.SysUtils,
   System.IOUtils,
-  Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Catalog,
   Atlas.Common.History.ChangedFiles,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Diagnostics.CheckProfile,
@@ -99,8 +96,7 @@ uses
   Core.Linter.Changes,
   Core.Linter.Index,
   Core.Linter.Baseline,
-  Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.BulkFixRules;
+  Atlas.Common.Localization.Texts;
 
 type
 {$SCOPEDENUMS ON}
@@ -141,8 +137,11 @@ function FindingsOf(const ACheck: TLinterFixCheck; const AText: string): TArray<
 var
   mScopes: TFindingScopes;
 begin
-  Result := TFileChecker.CheckText(ACheck.Rules, ACheck.Settings, ACheck.RelativePath, AText,
-    TCheckOrigin.Make(ACheck.Project, ACheck.Source), mScopes);
+  if not Assigned(ACheck.Rules) then
+  begin
+    Exit(nil);
+  end;
+  Result := ACheck.Rules(ACheck.Settings, ACheck.RelativePath, AText, ACheck.Project, ACheck.Source, mScopes);
   if ACheck.Baseline <> nil then
   begin
     Result := TLinterBaseline.NewFindings(ACheck.Baseline.Classify(ACheck.RelativePath, AText, mScopes, Result));
@@ -189,10 +188,9 @@ begin
   TFileEncodingDefaults.SetFolder(AConfigRoot, FSettings.DefaultEncoding);
   TLinterSettings.ApplyProfile(FOptions, FSettings);
   FFilter := TLinterSettings.FilterOf(FOptions);
-  FAllRules := BuiltinRules;
-  FFixRules := TRuleBulkFix.RulesFor(FAllRules, FOptions.FixRules);
-  FFixOptions := TBulkFixOptions.Create(FOptions.FixRules, FSettings.FixMinConfidence,
-    TRuleBulkFix.SafeRulesOf(TRuleCatalog.Shared.Entries));
+  FAllRules := FHost.Rules.CheckAll;
+  FFixRules := FHost.Rules.FixCheck(FOptions.FixRules);
+  FFixOptions := TBulkFixOptions.Create(FOptions.FixRules, FSettings.FixMinConfidence, FHost.Rules.SafeFixRules());
   // Baseline (#97): Ihre Treffer bleiben unberührt. --fix verträgt sich nicht mit --update-baseline.
   mBaselinePath := TLinterBaseline.PathOf(FOptions, AConfigRoot);
   Result := TLinterBaseline.Load(FOptions, mBaselinePath, FBaseline);
