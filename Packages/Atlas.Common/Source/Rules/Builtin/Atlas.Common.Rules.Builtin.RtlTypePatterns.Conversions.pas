@@ -104,7 +104,7 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.NameResolver,

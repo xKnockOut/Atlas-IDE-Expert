@@ -6,7 +6,7 @@
 //   wenn classCompletion.typeComment nicht off ist und über den Rümpfen kein Typkommentar steht. Rümpfe, die beim
 //   Ordnen stehen bleiben (Region, {$IF…}, geteilte Zeile), zählen nicht als falsch. Korrekturen: nur diesen Typ
 //   ordnen wie der Befehl „Methodenrümpfe ordnen“ bzw. den Kommentar in der eingestellten Form einfügen. Prüfung
-//   und Änderungen liefert Editing über TRuleRefactorings.Order (Host-Adapter Adapters.Rules.Refactorings); ohne
+//   und Änderungen liefert Editing über TCheckRefactorings.Order (Host-Adapter Adapters.Checks.Refactorings); ohne
 //   diesen Eintrag schweigt die Regel.
 
 interface
@@ -26,9 +26,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Pascal.TreeHandles,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -70,7 +70,7 @@ begin
 end;
 
 /// <summary>Ordnung und Kommentarform aus der Option placement und classCompletion (#1834).</summary>
-function RequestOf(const AContext: TRuleContext): TRuleMethodOrderRequest;
+function RequestOf(const AContext: TRuleContext): TCheckMethodOrderRequest;
 var
   mSettings: TClassCompletionSettings;
 begin
@@ -79,7 +79,7 @@ begin
   begin
     mSettings := TClassCompletionSettings.Default;
   end;
-  Result := Default(TRuleMethodOrderRequest);
+  Result := Default(TCheckMethodOrderRequest);
   Result.Placement := TRuleOptions.Text(AContext.Options, 'placement', 'grouped');
   Result.LifecycleFirst := mSettings.LifecycleFirst;
   Result.BlankLines := mSettings.BlankLines;
@@ -96,8 +96,8 @@ end;
 
 procedure TMethodOrderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  mResult: TRuleMethodOrderReview;
-  mReview: TRuleMethodTypeReview;
+  mResult: TCheckMethodOrderReview;
+  mReview: TCheckMethodTypeReview;
 begin
   if (AContext.Tree = nil) or (AContext.Refactorings.Order = nil) then
   begin

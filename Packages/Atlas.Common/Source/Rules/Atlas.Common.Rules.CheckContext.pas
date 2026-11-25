@@ -12,7 +12,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Findings.Memo,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Findings.Baseline;
+  Atlas.Common.Findings.Baseline,
+  Atlas.Common.Checks.Contract;
 
 type
   /// <summary>Was die Prüfregeln für ein Dokument brauchen.</summary>
@@ -25,7 +26,7 @@ type
     Baseline: IRuleBaseline;
     /// <summary>Index, Nachladen, Unit-Suche, Packages, Projekte der Gruppe und Namenskonvention (#1112);
     /// derselbe Weg wie bei MCP und Linter.</summary>
-    Services: TRuleServices;
+    Services: TCheckServices;
     /// <summary>Formulardatei neben der Unit (#123); '' ohne.</summary>
     FormText: string;
     /// <summary>Pfad der Formulardatei (#309); '' ohne.</summary>
@@ -93,7 +94,7 @@ begin
   Result.UnitName := ChangeFileExt(ExtractFileName(StringReplace(RelativePath, '/', '\', [rfReplaceAll])), '');
   Result.Text := AText;
   Result.Tree := ATree;
-  Services.ApplyTo(Result);
+  Result.UseServices(Services);
   Result.FormText := FormText;
   Result.FormFile := FormFile;
   Result.ReadFile := ReadFile;

@@ -23,8 +23,6 @@ type
     procedure MentionsAny;
     [Test]
     procedure StateAtOffset;
-    [Test]
-    procedure ProjectEntries;
   end;
 
 implementation
@@ -179,16 +177,6 @@ begin
   finally
     mTree.Free;
   end;
-end;
-
-procedure TRuleWarnSwitchesTests.ProjectEntries;
-begin
-  Assert.AreEqual('SYMBOL_PLATFORM=false', TRuleWarnSwitches.ProjectEntry('DCC_SYMBOL_PLATFORM', 'false'));
-  Assert.AreEqual('UNSAFE_CODE=true', TRuleWarnSwitches.ProjectEntry('dcc_unsafe_code', ' True '));
-  Assert.AreEqual('WARNINGS=false', TRuleWarnSwitches.ProjectEntry('DCC_Warnings', 'false'));
-  Assert.AreEqual('', TRuleWarnSwitches.ProjectEntry('DCC_UnitSearchPath', 'C:\X'));
-  Assert.AreEqual('', TRuleWarnSwitches.ProjectEntry('DCC_Define', 'DEBUG'));
-  Assert.AreEqual('', TRuleWarnSwitches.ProjectEntry('SYMBOL_PLATFORM', 'false'));
 end;
 
 initialization

@@ -60,7 +60,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.SqlText,

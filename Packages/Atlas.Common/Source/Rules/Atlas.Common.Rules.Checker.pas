@@ -28,36 +28,18 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Projects.PackageReader;
+  Atlas.Common.Checks.Contract;
 
 const
   cSyntaxRuleId = 'syntax';
   cLanguageFeatureRuleId = 'language-feature';
 
 type
-  /// <summary>Projekt einer geprüften Datei (#943); Default = unbekannt.</summary>
-  TCheckProject = record
-    Application: TRuleApplicationKind;
-    /// <summary>Name ohne Endung, z. B. Atlas.IDE.Expert.</summary>
-    Name: string;
-    /// <summary>Automatisch erzeugte Formulare in der Reihenfolge der .dpr (#956).</summary>
-    AutoCreateForms: TArray<string>;
-    /// <summary>Absoluter Pfad der geprüften Datei (#1054); '' = unbekannt. Damit sehen die Regeln die
-    /// Formulardatei daneben (FormText) und lesen Dateien neben der Unit (ReadFile) wie im Server.</summary>
-    FileName: string;
-    /// <summary>Pfad der .dpr zu AutoCreateForms (#1055); '' = unbekannt.</summary>
-    ProjectMainSource: string;
-    /// <summary>Index und weitere Dienste des Projekts (#1112); Default = ohne Index.</summary>
-    Services: TRuleServices;
-  end;
-
   /// <summary>Woher die Symbole einer geprüften Datei kommen (#860); Optionen über
   /// TPascalPreprocessor.SourceOptions.</summary>
   TCheckSource = TPascalSource;
   /// <summary>Quelle der Symbole je Datei, etwa aus dem Projekt des MCP-Servers.</summary>
   TCheckSourceFunc = TPascalSourceFunc;
-  /// <summary>Projekt und Dienste (Index, #1112) je Datei, etwa aus den Arbeitsbereichen des MCP-Servers.</summary>
-  TCheckProjectFunc = reference to function(const AFileName: string): TCheckProject;
 
   /// <summary>Herkunft einer geprüften Datei: Projekt (#943) und Symbole samt Include-Dateien (#860).</summary>
   TCheckOrigin = record
@@ -130,8 +112,6 @@ type
     class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARelativePath, AText: string; const AProject: TCheckProject; out AScopes: TFindingScopes):
       TArray<TRuleFinding>; overload; static;
-    /// <summary>Das Package aus APackages, dessen contains die Unit AUnitName nennt; sonst Default.</summary>
-    class function PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string): TCheckProject;
       static;
     /// <summary>Wie oben mit den Symbolen und Include-Dateien aus ASource (#860).</summary>
     class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -404,23 +384,6 @@ begin
     TCheckOrigin.Make(AProject, TCheckSource.Default), AScopes);
 end;
 
-class function TFileChecker.PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string):
-  TCheckProject;
-var
-  mSource: TPackageSource;
-begin
-  Result := Default(TCheckProject);
-  for mSource in APackages do
-  begin
-    if mSource.IsPackage and (mSource.ContainsIndex(AUnitName) >= 0) then
-    begin
-      Result.Application := TRuleApplicationKind.Package;
-      Result.Name := mSource.Name;
-      Exit;
-    end;
-  end;
-end;
-
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string; const ASource: TCheckSource): TArray<TRuleFinding>;
 var
@@ -491,7 +454,7 @@ begin
     mContext.AutoCreateForms := AOrigin.Project.AutoCreateForms;
     mContext.ProjectMainSource := AOrigin.Project.ProjectMainSource;
     // Index und Projektdienste auf demselben Weg wie im Server (#1112).
-    AOrigin.Project.Services.ApplyTo(mContext);
+    mContext.UseServices(AOrigin.Project.Services);
     // Pfad aus dem Projekt (#1054), sonst aus der Symbolquelle (#860): Formulardatei und Nachbardateien.
     mFileName := AOrigin.Project.FileName;
     if mFileName = '' then

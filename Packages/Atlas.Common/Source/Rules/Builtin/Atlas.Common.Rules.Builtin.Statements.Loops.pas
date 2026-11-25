@@ -53,7 +53,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
   Atlas.Common.Localization.Texts;
 

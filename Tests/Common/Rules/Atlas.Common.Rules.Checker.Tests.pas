@@ -39,7 +39,10 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Builtin.Concurrency.MainThread,
-  Atlas.Common.Projects.PackageReader;
+  Atlas.Common.Projects.PackageReader,
+  Atlas.Common.Checks.Contract,
+  Atlas.Common.Projects.Facts,
+  Atlas.Common.Projects.Contract.Group;
 
 function Settings(const AJson: string): TServerSettings;
 var
@@ -131,10 +134,9 @@ var
 begin
   mPackages := [TPackageReader.Read('package Werkzeuge;'#10'requires rtl;'#10'contains'#10 +
     '  Laden in ''Laden.pas'';'#10'end.')];
-  mProject := TFileChecker.PackageOf(mPackages, 'laden');
-  Assert.AreEqual(Ord(TRuleApplicationKind.Package), Ord(mProject.Application));
-  Assert.AreEqual('Werkzeuge', mProject.Name);
-  Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TFileChecker.PackageOf(mPackages, 'Andere').Application));
+  mProject := Default(TCheckProject);
+  mProject.Application := TApplicationKind.Package;
+  mProject.Name := TProjectFacts.PackageNameOf(mPackages, 'laden');
   // queue-nil-in-package (#943) meldet nur mit Package.
   mFindings := TFileChecker.CheckText([TQueueNilInPackageRule.Create], Settings('{}'), 'Laden.pas', cSource, mProject);
   Assert.AreEqual(1, Integer(Length(mFindings)));

@@ -3,7 +3,8 @@
 // Tests für den Ablauf des Atlas-Felds gegen die Fälschung der Statuszeilen:
 // Aktualisierung auf Anforderung, Zusatzfelder mit und ohne Atlas-Panel,
 // leeres Panel (Leisten aushängen), Umzug in die Atlas-Statusleiste,
-// Plakette, Klicks, Schnellschalter, Statusfenster und Abmelden.
+// Plakette, Klicks, Schnellschalter, Statusfenster und Abmelden, dazu das
+// Entfernen der Zusatzfelder eines abgemeldeten Moduls.
 
 interface
 
@@ -51,6 +52,10 @@ type
     procedure ExtrasFollowFieldInStatusLine;
     [Test]
     procedure ExtraWithEmptyTextIsRemoved;
+    /// <summary>Regel 3: Zusatzfelder, deren Links- oder Rechtsklick dem abgemeldeten Modul gehört, verschwinden,
+    /// auch wenn das Modul sie nicht geleert hat; die übrigen bleiben.</summary>
+    [Test]
+    procedure ReleaseOwnedRemovesModuleExtras;
     [Test]
     procedure ExtrasStayWithoutAtlasPanel;
     [Test]
@@ -236,6 +241,36 @@ begin
   FFlow.Refresh;
   Assert.AreEqual(1, Integer(Length(FFake.View.Extras)));
   Assert.AreEqual('B', FFake.View.Extras[0]);
+end;
+
+procedure TAtlasStatusFieldFlowTests.ReleaseOwnedRemovesModuleExtras;
+var
+  mClick, mContext: TProc<TPoint>;
+  mExtra: TAtlasStatusExtra;
+  mModule: TArray<Pointer>;
+begin
+  mClick := Logger('klick');
+  mContext := Logger('rechts');
+  FFlow.SetExtra(TAtlasStatusExtra.Make('modul.klick', 'K', '', mClick));
+  mExtra := TAtlasStatusExtra.Make('modul.rechts', 'R', '', nil);
+  mExtra.OnContext := mContext;
+  FFlow.SetExtra(mExtra);
+  FFlow.SetExtra(TAtlasStatusExtra.Make('base', 'B', '', Logger('base')));
+  FFlow.SetExtra(TAtlasStatusExtra.Make('text', 'T', '', nil));
+  mModule := TArray<Pointer>.Create(PPointer(@mClick)^, PPointer(@mContext)^);
+  Assert.AreEqual(2, FFlow.ReleaseOwned(
+    function(AReference: Pointer): Boolean
+    begin
+      Result := (AReference = mModule[0]) or (AReference = mModule[1]);
+    end));
+  FFlow.Refresh;
+  Assert.AreEqual(2, Integer(Length(FFake.View.Extras)));
+  Assert.AreEqual('B', FFake.View.Extras[0]);
+  Assert.AreEqual('T', FFake.View.Extras[1]);
+  mExtra := Default(TAtlasStatusExtra);
+  mModule := nil;
+  mClick := nil;
+  mContext := nil;
 end;
 
 procedure TAtlasStatusFieldFlowTests.ExtrasStayWithoutAtlasPanel;

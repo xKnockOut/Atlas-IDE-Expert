@@ -99,21 +99,6 @@ end;
 
 procedure TPlatformRulesTests.UiCallApplicationKinds;
 begin
-  Assert.AreEqual(Ord(TRuleApplicationKind.Service), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'program Dienst;'#10'uses'#10'  Vcl.SvcMgr,'#10'  DatenDienst in ''DatenDienst.pas'' {Dienst: TService};'#10 +
-    'begin'#10'  Application.Run;'#10'end.')));
-  // Dienst, der auch mit Oberfläche startet.
-  Assert.AreEqual(Ord(TRuleApplicationKind.Gui), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'program Dienst;'#10'uses'#10'  Vcl.Forms,'#10'  Vcl.SvcMgr;'#10'begin'#10'end.')));
-  Assert.AreEqual(Ord(TRuleApplicationKind.Library_), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'library Rechner;'#10'uses'#10'  System.SysUtils,'#10'  Formeln in ''Formeln.pas'';'#10'begin'#10'end.')));
-  Assert.AreEqual(Ord(TRuleApplicationKind.Library_), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'library Rechner;'#10'uses'#10'  Daten in ''Daten.pas'' {Daten: TDataModule};'#10'begin'#10'end.')));
-  // DLL mit Formular: Unknown wie bisher.
-  Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'library Rechner;'#10'uses'#10'  Haupt in ''Haupt.pas'' {frmHaupt};'#10'begin'#10'end.')));
-  Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'library Rechner;'#10'uses'#10'  Vcl.Forms;'#10'begin'#10'end.')));
   // writeln-in-gui-app: auch ein Dienst hat keine Konsole.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create,
     'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  Writeln(''x'');'#10'end;'#10'end.',

@@ -49,7 +49,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;

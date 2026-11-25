@@ -55,7 +55,7 @@ uses
   Atlas.Common.Rules.Builtin.Concurrency,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;

@@ -208,7 +208,7 @@ begin
       mSettings := mWorkspace.Configuration.Settings;
       mContext.RelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mWorkspace.Configuration.ConfigRoot),
         mFileName);
-      mContext.Naming := mWorkspace.RuleServices.Naming;
+      mContext.Naming := mWorkspace.CheckServices.Naming;
     end;
   finally
     System.TMonitor.Exit(FWorkspaces.Lock);

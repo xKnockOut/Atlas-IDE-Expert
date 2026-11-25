@@ -1,4 +1,4 @@
-﻿unit Adapters.Rules.IdeTypes.Tests;
+﻿unit Adapters.Checks.IdeTypes.Tests;
 
 // Tests für den Host-Adapter, der die Typen der IDE aus dem Sprachserver den Prüfregeln gibt.
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TRuleIdeTypesAdapterTests = class
+  TCheckIdeTypesAdapterTests = class
   public
     [Test]
     procedure UnitsOfAsksTheCatalog;
@@ -24,18 +24,18 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Providers.IdeTypes,
-  Adapters.Rules.IdeTypes;
+  Adapters.Checks.IdeTypes,
+  Atlas.Common.Checks.Contract;
 
-{ TRuleIdeTypesAdapterTests }
+{ TCheckIdeTypesAdapterTests }
 
-procedure TRuleIdeTypesAdapterTests.UnitsOfAsksTheCatalog;
+procedure TCheckIdeTypesAdapterTests.UnitsOfAsksTheCatalog;
 var
   mCatalog: TIdeTypeCatalog;
   mTypes: ILspIdeTypes;
-  mRules: IRuleIdeTypes;
+  mRules: ICheckIdeTypes;
   mParams: TJSONValue;
   mUnits: TArray<string>;
 begin
@@ -47,26 +47,26 @@ begin
   finally
     mParams.Free;
   end;
-  mRules := TRuleIdeTypesAdapter.Wrap(mTypes);
+  mRules := TCheckIdeTypesAdapter.Wrap(mTypes);
   mUnits := mRules.UnitsOf('tvendorgrid');
   Assert.AreEqual(1, Integer(Length(mUnits)));
   Assert.AreEqual('Vendor.Grid', mUnits[0]);
   Assert.AreEqual(0, Integer(Length(mRules.UnitsOf('TUnknown'))));
 end;
 
-procedure TRuleIdeTypesAdapterTests.WrapOfNilIsNil;
+procedure TCheckIdeTypesAdapterTests.WrapOfNilIsNil;
 var
   mRules: IInterface;
 begin
-  mRules := TRuleIdeTypesAdapter.Wrap(nil);
+  mRules := TCheckIdeTypesAdapter.Wrap(nil);
   Assert.IsNull(mRules);
 end;
 
-procedure TRuleIdeTypesAdapterTests.WithoutTypesNoUnits;
+procedure TCheckIdeTypesAdapterTests.WithoutTypesNoUnits;
 var
-  mRules: IRuleIdeTypes;
+  mRules: ICheckIdeTypes;
 begin
-  mRules := TRuleIdeTypesAdapter.Create(nil);
+  mRules := TCheckIdeTypesAdapter.Create(nil);
   Assert.AreEqual(0, Integer(Length(mRules.UnitsOf('TVendorGrid'))));
 end;
 

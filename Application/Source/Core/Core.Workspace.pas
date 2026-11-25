@@ -21,7 +21,6 @@ uses
   Atlas.Common.Lsp.Configuration,
   Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Findings.Baseline,
   Core.Compiler,
   Core.Workspace.Setup,
@@ -29,7 +28,8 @@ uses
   Core.Workspace.Build,
   Core.Workspace.Cache,
   Core.Workspace.Indexing,
-  Core.Workspace.Jobs;
+  Core.Workspace.Jobs,
+  Atlas.Common.Checks.Contract;
 
 type
   TCoreWorkspace = class
@@ -89,7 +89,7 @@ type
     procedure Activate;
     /// <summary>Dienste des Projekts für die Prüfregeln (#1112), siehe TCoreRuleProjects.ServicesOf. Threadsicher.
     /// </summary>
-    function RuleServices: TRuleServices;
+    function CheckServices: TCheckServices;
     /// <summary>Projekt geladen und Index fertig (#1102, #1112)? Sonst der Grund in AReason. Ein Arbeitsbereich,
     /// dessen Projekt noch lädt, kann Verwendungen enthalten, die keiner kennt. Ein Arbeitsbereich ohne Projekt ist
     /// bereit, sobald der Aufbau das festgestellt hat (#1220). Threadsicher.</summary>
@@ -434,7 +434,7 @@ begin
   Reload;
 end;
 
-function TCoreWorkspace.RuleServices: TRuleServices;
+function TCoreWorkspace.CheckServices: TCheckServices;
 begin
   Result := TCoreRuleProjects.ServicesOf(FState, FSetup, FIndexing.Index,
     function(const AUnitName: string): Boolean

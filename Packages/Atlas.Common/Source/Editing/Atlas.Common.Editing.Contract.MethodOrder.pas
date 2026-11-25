@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Editing.Contract.MethodOrder;
 
 // Prüfung der Methodenordnung je Typ (#1840), die Editing anderen Features anbietet (API). Abnehmer ist die
-// Prüfregel method-order über den Host-Adapter Adapters.Rules.Refactorings; erzeugt in
+// Prüfregel method-order über den Host-Adapter Adapters.Checks.Refactorings; erzeugt in
 // Atlas.Common.Editing.Composition.
 
 interface

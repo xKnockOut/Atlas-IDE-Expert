@@ -34,6 +34,11 @@ type
     /// <summary>Wie oben, wenn eine neue Zeile mit derselben Kennung die alte ersetzt.</summary>
     [Test]
     procedure ReplacedLineReleasesModuleCallbacks;
+    /// <summary>Regel 3: Meldet sich ein Modul ab, nimmt die Registry seine Zeilen heraus, auch die es nicht
+    /// selbst entfernt hat: eigene Zeilenklassen des Moduls und Zeilen von Base mit seiner Aktion. Beobachter des
+    /// Moduls gehen mit; Zeilen von Base bleiben.</summary>
+    [Test]
+    procedure ReleaseOwnedTakesModuleLinesAndListeners;
     [Test]
     procedure OverallIsWorstState;
     [Test]
@@ -442,6 +447,59 @@ begin
   mNew := nil;
   mRegistry := nil;
   Assert.IsTrue(mNewFreed);
+end;
+
+procedure TAtlasStatusRegistryTests.ReleaseOwnedTakesModuleLinesAndListeners;
+var
+  mRegistryObject: TAtlasStatusRegistry;
+  mRegistry: IAtlasStatusRegistry;
+  mModuleAction, mModuleListener: TProc;
+  mForeign, mModuleLine, mBaseLine: IAtlasStatusItem;
+  mOwned: TArray<Pointer>;
+  mCalls: Integer;
+begin
+  mRegistryObject := TAtlasStatusRegistry.Create;
+  mRegistry := mRegistryObject;
+  mCalls := 0;
+  mModuleAction :=
+    procedure
+    begin
+    end;
+  mModuleListener :=
+    procedure
+    begin
+      Inc(mCalls);
+    end;
+  mForeign := TForeignItem.Create;
+  mModuleLine := TAtlasStatusLine.Create(mRegistry, 'modul.zeile', 1, mModuleAction);
+  mRegistry.Add(mForeign);
+  mRegistry.Add(mModuleLine);
+  mBaseLine := TAtlasStatusLine.Create(mRegistry, 'atlas.server', 0);
+  mRegistry.Add(mBaseLine);
+  mRegistry.AddListener(mModuleListener);
+  mOwned := TArray<Pointer>.Create(Pointer(mForeign), PPointer(@mModuleAction)^, PPointer(@mModuleListener)^);
+  Assert.AreEqual(3, mRegistryObject.ReleaseOwned(
+    function(AReference: Pointer): Boolean
+    var
+      mPointer: Pointer;
+    begin
+      Result := False;
+      for mPointer in mOwned do
+      begin
+        Result := Result or (mPointer = AReference);
+      end;
+    end), 'zwei Zeilen, ein Beobachter');
+  Assert.AreEqual(1, Integer(Length(mRegistry.Items)));
+  Assert.AreEqual('atlas.server', mRegistry.Items()[0].Id);
+  Assert.IsFalse(mModuleLine.HasAction, 'herausgenommene Zeile gelöst');
+  mRegistry.Changed;
+  Assert.AreEqual(0, mCalls, 'Beobachter des Moduls abgemeldet');
+  mOwned := nil;
+  mForeign := nil;
+  mModuleLine := nil;
+  mBaseLine := nil;
+  mModuleAction := nil;
+  mModuleListener := nil;
 end;
 
 procedure TAtlasStatusRegistryTests.OverallIsWorstState;

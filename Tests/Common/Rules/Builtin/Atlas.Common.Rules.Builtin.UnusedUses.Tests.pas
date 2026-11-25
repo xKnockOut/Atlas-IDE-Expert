@@ -66,7 +66,8 @@ uses
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Checks.Contract;
 
 const
   cHelper = 'unit Hilfe;'#13#10#13#10'interface'#13#10#13#10'procedure Tu;'#13#10#13#10'implementation'#13#10#13#10 +

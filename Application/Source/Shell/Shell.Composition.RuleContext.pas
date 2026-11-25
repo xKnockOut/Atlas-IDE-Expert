@@ -76,7 +76,8 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin,
   Core.Workspace.RuleProjects,
-  Shell.Composition.RuleRefactorings;
+  Shell.Composition.CheckRefactorings,
+  Atlas.Common.Checks.Contract;
 
 { TShellRuleContext }
 
@@ -106,7 +107,7 @@ begin
       AContext.Baseline := mWorkspace.Baseline;
       // Index, Namespaces, Unit-Suche, Packages und Namenskonvention auf demselben Weg wie MCP und Linter
       // (#1112).
-      AContext.Services := mWorkspace.RuleServices;
+      AContext.Services := mWorkspace.CheckServices;
       // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
       AContext.Services.Queries := FServices.Queries();
       AProjects := ProjectsWithFile(mWorkspace, AFileName);
@@ -114,7 +115,7 @@ begin
     else
     begin
       // Ohne Arbeitsbereich dieselben Korrekturen aus Refactorings wie mit.
-      AContext.Services.Refactorings := TShellRuleRefactorings.Create;
+      AContext.Services.Refactorings := TShellCheckRefactorings.Create;
     end;
     // RTL, VCL und Komponenten außerhalb der Projekte (diagnostics.librarySources): Wer mit Strg+Klick in
     // System.Net.HttpClient.pas springt, soll dort keine Befunde zu fremdem Code sehen.
