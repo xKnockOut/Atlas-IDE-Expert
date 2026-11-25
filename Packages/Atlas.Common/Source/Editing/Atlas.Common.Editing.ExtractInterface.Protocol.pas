@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ExtractInterface;
+﻿unit Atlas.Common.Editing.ExtractInterface.Protocol;
 
 // „Interface aus Klasse herauslösen“ über das Protokoll (#664):
 //   - Code-Aktion „Interface aus TFoo herauslösen …“ auf der Kopfzeile einer
@@ -47,7 +47,7 @@ type
     Resolver: TNameResolver;
   end;
 
-  TLspExtractInterface = class
+  TExtractInterfaceProtocol = class
   public const
     cClientCommand = 'atlas.extractInterface';
     cPrepareCommand = 'atlas.server.extractInterface.prepare';
@@ -85,23 +85,22 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MoveClass,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.MoveClass,
-  Atlas.Common.Lsp.PropertyFromAccessors,
-  Atlas.Common.Lsp.WorkspaceChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Editing.MoveClass.Protocol,
+  Atlas.Common.Editing.WorkspaceChanges,
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.TypeKinds;
 
 {$SCOPEDENUMS ON}
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspExtractInterfaceText = (ExtractInterface, ExtractInterfaceFrom, RequestWithNameUnitAnd, AfterTheChangeNoLonger,
+  TExtractInterfaceProtocolText = (ExtractInterface, ExtractInterfaceFrom, RequestWithNameUnitAnd, AfterTheChangeNoLonger,
     IsNotAValidUnit, ComesFromWhichWouldHave, CannotBeRead, TheNameIsAlreadyTaken, HasNoInterfacePart,
     AlreadyExistsButDoesNot, WithMethodsFiles, ExtractInterface2);
 
 const
-  cTexts: array[TLspExtractInterfaceText] of TAtlasText = (
+  cTexts: array[TExtractInterfaceProtocolText] of TAtlasText = (
     (De: 'Interface herauslösen: '; En: 'Extract interface: '),
     (De: 'Interface aus %s herauslösen …'; En: 'Extract interface from %s …'),
     (De: 'Anfrage mit name, unit und members fehlt'; En: 'Request with name, unit and members missing'),
@@ -124,7 +123,7 @@ const
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TLspExtractInterfaceText.ExtractInterface].Text +
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TExtractInterfaceProtocolText.ExtractInterface].Text +
     AMessage);
 end;
 
@@ -138,7 +137,7 @@ begin
   Result :=
     function(const ATypeName: string): Boolean
     begin
-      Result := TLspPropertyFromAccessors.IsProcedural(ATypeName, AIndex);
+      Result := TResolvedTypeKinds.IsProceduralName(ATypeName, AIndex);
     end;
 end;
 
@@ -180,9 +179,9 @@ begin
   end;
 end;
 
-{ TLspExtractInterface }
+{ TExtractInterfaceProtocol }
 
-class function TLspExtractInterface.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
+class function TExtractInterfaceProtocol.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
 var
   mInfo: TExtractInterfaceInfo;
@@ -200,7 +199,7 @@ begin
   begin
     Exit;
   end;
-  mTitle := cTexts[TLspExtractInterfaceText.ExtractInterfaceFrom].Fmt([mInfo.ClassName]);
+  mTitle := cTexts[TExtractInterfaceProtocolText.ExtractInterfaceFrom].Fmt([mInfo.ClassName]);
   mArguments := TJSONArray.Create;
   mArguments.Add(AUri);
   mArguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -215,7 +214,7 @@ begin
   Result := [mAction];
 end;
 
-class function TLspExtractInterface.AncestorsLookup(ATree: TSyntaxTree;
+class function TExtractInterfaceProtocol.AncestorsLookup(ATree: TSyntaxTree;
   const AIndex: ISymbolIndex): TClassAncestorsLookup;
 begin
   Result :=
@@ -233,7 +232,7 @@ begin
     end;
 end;
 
-class function TLspExtractInterface.Prepare(ATree: TSyntaxTree; const AText: string;
+class function TExtractInterfaceProtocol.Prepare(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TExtractInterfaceContext): TJSONObject;
 var
   mInfo: TExtractInterfaceInfo;
@@ -300,7 +299,7 @@ begin
   if not (ARequest is TJSONObject) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspExtractInterfaceText.RequestWithNameUnitAnd].Text);
+      cTexts[TExtractInterfaceProtocolText.RequestWithNameUnitAnd].Text);
   end;
   AName := '';
   AUnit := '';
@@ -358,7 +357,7 @@ begin
   try
     if Length(mCheck.Diagnostics) > ABefore then
     begin
-      raise Failed(cTexts[TLspExtractInterfaceText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
+      raise Failed(cTexts[TExtractInterfaceProtocolText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
         mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
     end;
   finally
@@ -453,7 +452,7 @@ var
 begin
   mSelf := Self;
   if not TExtractInterface.Plan(TClassSource.Create(FTree, FText, FPosition.Line), FRequest,
-    TExtractInterfaceLookups.Create(TLspExtractInterface.AncestorsLookup(FTree, FContext.Index),
+    TExtractInterfaceLookups.Create(TExtractInterfaceProtocol.AncestorsLookup(FTree, FContext.Index),
     function(const AName: string): Boolean
     begin
       Result := mSelf.Resolves(AName);
@@ -481,7 +480,7 @@ begin
   end;
   if FPlan.InInterface then
   begin
-    raise Failed(cTexts[TLspExtractInterfaceText.ComesFromWhichWouldHave].Fmt([ATypeName, FOwnUnit, FUnitName]));
+    raise Failed(cTexts[TExtractInterfaceProtocolText.ComesFromWhichWouldHave].Fmt([ATypeName, FOwnUnit, FUnitName]));
   end;
   ANeedsOwn := True;
 end;
@@ -499,7 +498,7 @@ begin
     Exit;
   end;
   mNeedsOwn := False;
-  mLookup := TLspMoveClass.Lookup(FContext.Resolver);
+  mLookup := TMoveClassProtocol.Lookup(FContext.Resolver);
   for mTypeName in FPlan.TypeNames do
   begin
     AddNeeded(mTypeName, mLookup(FTree, FFileName, [mTypeName], FPlan.ClassOffset), mNeedsOwn);
@@ -520,17 +519,17 @@ var
 begin
   if not (Assigned(FContext.ReadText) and FContext.ReadText(FTargetFile, mTargetText)) then
   begin
-    raise Failed(cTexts[TLspExtractInterfaceText.CannotBeRead].Fmt([ExtractFileName(FTargetFile)]));
+    raise Failed(cTexts[TExtractInterfaceProtocolText.CannotBeRead].Fmt([ExtractFileName(FTargetFile)]));
   end;
   mTargetTree := TSyntaxTreeCache.Parse(mTargetText);
   try
     if TClassLayout.DeclNamed(mTargetTree, FRequest.Name) <> nil then
     begin
-      raise Failed(cTexts[TLspExtractInterfaceText.TheNameIsAlreadyTaken].Fmt([FRequest.Name, FUnitName]));
+      raise Failed(cTexts[TExtractInterfaceProtocolText.TheNameIsAlreadyTaken].Fmt([FRequest.Name, FUnitName]));
     end;
     if not TExtractInterface.InsertIntoUnit(mTargetTree, mTargetText, FPlan.Declaration, mEdit) then
     begin
-      raise Failed(cTexts[TLspExtractInterfaceText.HasNoInterfacePart].Fmt([FUnitName]));
+      raise Failed(cTexts[TExtractInterfaceProtocolText.HasNoInterfacePart].Fmt([FUnitName]));
     end;
     // Fehlende uses der Ziel-Unit in einem Schritt (eine Einfügung), dann das Interface.
     mTargetUses := MissingUses(mTargetTree, FNeeded);
@@ -575,7 +574,7 @@ begin
   FTargetFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(FFileName), FUnitName + '.pas');
   if Assigned(FContext.Exists) and FContext.Exists(FTargetFile) then
   begin
-    raise Failed(cTexts[TLspExtractInterfaceText.AlreadyExistsButDoesNot].Fmt([ExtractFileName(FTargetFile)]));
+    raise Failed(cTexts[TExtractInterfaceProtocolText.AlreadyExistsButDoesNot].Fmt([ExtractFileName(FTargetFile)]));
   end;
   FChanges.CreateFile(FTargetFile, TExtractInterface.NewUnitText(FUnitName, FPlan.Declaration, FNeeded, FLineBreak));
 end;
@@ -586,10 +585,10 @@ var
   mDescription: string;
 begin
   mCount := Length(FPlan.Methods);
-  mDescription := cTexts[TLspExtractInterfaceText.WithMethodsFiles].Fmt([FRequest.Name, mCount, FChanges.FileCount]);
+  mDescription := cTexts[TExtractInterfaceProtocolText.WithMethodsFiles].Fmt([FRequest.Name, mCount, FChanges.FileCount]);
   Result := TJSONObject.Create;
-  Result.AddPair('edit', FChanges.ToJson(TLspExtractInterface.cAnnotationId,
-    cTexts[TLspExtractInterfaceText.ExtractInterface2].Text, mDescription));
+  Result.AddPair('edit', FChanges.ToJson(TExtractInterfaceProtocol.cAnnotationId,
+    cTexts[TExtractInterfaceProtocolText.ExtractInterface2].Text, mDescription));
   Result.AddPair('warnings', FChanges.WarningsJson);
   Result.AddPair('file', TDocumentUris.FromPath(FTargetFile));
   Result.AddPair('name', FRequest.Name);
@@ -611,7 +610,7 @@ begin
   FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, FOwnUnit);
   if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
   begin
-    raise Failed(cTexts[TLspExtractInterfaceText.IsNotAValidUnit].Fmt([FUnitName]));
+    raise Failed(cTexts[TExtractInterfaceProtocolText.IsNotAValidUnit].Fmt([FUnitName]));
   end;
 end;
 
@@ -641,7 +640,7 @@ begin
   Result := Answer;
 end;
 
-class function TLspExtractInterface.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
+class function TExtractInterfaceProtocol.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
   const APosition: TTextPosition; ARequest: TJSONValue; const AContext: TExtractInterfaceContext): TJSONObject;
 var
   mExtraction: TInterfaceExtraction;
@@ -656,6 +655,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.ExtractInterface', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.ExtractInterface.Protocol', cTexts);
 
 end.

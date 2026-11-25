@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ExtractInterface.Tests;
+﻿unit Atlas.Common.Editing.ExtractInterface.Protocol.Tests;
 
 // Tests für „Interface aus Klasse herauslösen“ über das Protokoll (#664):
 // Angebot der Code-Aktion, Antwort auf prepare, WorkspaceEdit in derselben
@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TLspExtractInterfaceTests = class
+  TExtractInterfaceProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -51,7 +51,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.ExtractInterface,
+  Atlas.Common.Editing.ExtractInterface.Protocol,
   Atlas.Common.JsonRpc.TestSupport,
   Atlas.Common.Lsp.Edits.TestSupport;
 
@@ -185,7 +185,7 @@ begin
   try
     mContext := AContext;
     mContext.Resolver := mResolver;
-    Result := TLspExtractInterface.Execute(mTree, cKundenFile, AText, TTextPosition.Create(5, 4), ARequest, mContext);
+    Result := TExtractInterfaceProtocol.Execute(mTree, cKundenFile, AText, TTextPosition.Create(5, 4), ARequest, mContext);
   finally
     mResolver.Free;
     mTree.Free;
@@ -193,9 +193,9 @@ begin
   end;
 end;
 
-{ TLspExtractInterfaceTests }
+{ TExtractInterfaceProtocolTests }
 
-procedure TLspExtractInterfaceTests.Setup;
+procedure TExtractInterfaceProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
@@ -203,38 +203,38 @@ begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitZiel, cZielFile, nil));
 end;
 
-procedure TLspExtractInterfaceTests.TearDown;
+procedure TExtractInterfaceProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
 
-procedure TLspExtractInterfaceTests.OffersOnClassHeader;
+procedure TExtractInterfaceProtocolTests.OffersOnClassHeader;
 var
   mTree: TSyntaxTree;
   mActions: TArray<TJSONObject>;
 begin
   mTree := TPascalParser.Parse(cUnitKunden);
   try
-    mActions := TLspExtractInterface.Actions(True, mTree, cUnitKunden, 'file:///C:/P/Kunden.pas',
+    mActions := TExtractInterfaceProtocol.Actions(True, mTree, cUnitKunden, 'file:///C:/P/Kunden.pas',
       TTextPosition.Create(5, 4));
     try
       Assert.AreEqual(1, Integer(Length(mActions)));
       Assert.AreEqual('Interface aus TCustomer herauslösen …', mActions[0].GetValue('title').Value);
-      Assert.AreEqual(TLspExtractInterface.cClientCommand,
+      Assert.AreEqual(TExtractInterfaceProtocol.cClientCommand,
         (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
       TJsonRpcTestSupport.FreeAll(mActions);
     end;
-    Assert.AreEqual(0, Integer(Length(TLspExtractInterface.Actions(False, mTree, cUnitKunden, 'u',
+    Assert.AreEqual(0, Integer(Length(TExtractInterfaceProtocol.Actions(False, mTree, cUnitKunden, 'u',
       TTextPosition.Create(5, 4)))), 'abgeschaltet');
-    Assert.AreEqual(0, Integer(Length(TLspExtractInterface.Actions(True, mTree, cUnitKunden, 'u',
+    Assert.AreEqual(0, Integer(Length(TExtractInterfaceProtocol.Actions(True, mTree, cUnitKunden, 'u',
       TTextPosition.Create(7, 4)))), 'nicht auf einem Mitglied');
   finally
     mTree.Free;
   end;
 end;
 
-procedure TLspExtractInterfaceTests.PrepareListsCandidates;
+procedure TExtractInterfaceProtocolTests.PrepareListsCandidates;
 var
   mTree: TSyntaxTree;
   mAnswer: TJSONObject;
@@ -243,7 +243,7 @@ begin
   mTree := TPascalParser.Parse(cUnitKunden);
   mAnswer := nil;
   try
-    mAnswer := TLspExtractInterface.Prepare(mTree, cUnitKunden, TTextPosition.Create(5, 2), Context(FIndex));
+    mAnswer := TExtractInterfaceProtocol.Prepare(mTree, cUnitKunden, TTextPosition.Create(5, 2), Context(FIndex));
     Assert.AreEqual('ICustomer', mAnswer.GetValue('name').Value);
     Assert.AreEqual('TCustomer', mAnswer.GetValue('className').Value);
     Assert.AreEqual('Kunden', mAnswer.GetValue('ownUnit').Value);
@@ -259,7 +259,7 @@ begin
   end;
 end;
 
-procedure TLspExtractInterfaceTests.SameUnitWithNewGuid;
+procedure TExtractInterfaceProtocolTests.SameUnitWithNewGuid;
 var
   mAnswer: TJSONObject;
   mText, mGuid1, mGuid2: string;
@@ -298,7 +298,7 @@ begin
   Assert.AreNotEqual(mGuid1, mGuid2);
 end;
 
-procedure TLspExtractInterfaceTests.ExistingUnitGetsUses;
+procedure TExtractInterfaceProtocolTests.ExistingUnitGetsUses;
 var
   mAnswer: TJSONObject;
   mText: string;
@@ -318,7 +318,7 @@ begin
   end;
 end;
 
-procedure TLspExtractInterfaceTests.NewUnitJoinsProject;
+procedure TExtractInterfaceProtocolTests.NewUnitJoinsProject;
 var
   mAnswer: TJSONObject;
   mChanges: TJSONArray;
@@ -341,7 +341,7 @@ begin
   end;
 end;
 
-procedure TLspExtractInterfaceTests.RefusesCircularReference;
+procedure TExtractInterfaceProtocolTests.RefusesCircularReference;
 var
   mText: string;
   mIndex: ISymbolIndex;
@@ -361,6 +361,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspExtractInterfaceTests);
+  TDUnitX.RegisterTestFixture(TExtractInterfaceProtocolTests);
 
 end.

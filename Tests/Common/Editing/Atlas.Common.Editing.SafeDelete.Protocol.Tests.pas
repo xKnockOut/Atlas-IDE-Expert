@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SafeDelete.Tests;
+﻿unit Atlas.Common.Editing.SafeDelete.Protocol.Tests;
 
 // Tests für „Sicher löschen“ über das Protokoll (#716): Angebot der
 // Code-Aktion, Löschen ohne Verwendungen, Verwendungen in einer anderen Unit
@@ -14,7 +14,7 @@ uses
 
 type
   [TestFixture]
-  TLspSafeDeleteTests = class
+  TSafeDeleteProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -56,7 +56,7 @@ uses
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.SafeDelete;
+  Atlas.Common.Editing.SafeDelete.Protocol;
 
 const
   cShapesFile = 'C:\P\Shapes.pas';
@@ -254,7 +254,7 @@ begin
   mTree := TPascalParser.Parse(TextOf(AFileName));
   mResolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspSafeDelete.Prepare(mResolver, mTree, AFileName, TextOf(AFileName),
+    Result := TSafeDeleteProtocol.Prepare(mResolver, mTree, AFileName, TextOf(AFileName),
       TTextPosition.Create(ALine, ACharacter), Context(AIndex));
   finally
     mResolver.Free;
@@ -274,7 +274,7 @@ begin
   mTree := TPascalParser.Parse(TextOf(AFileName));
   mResolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspSafeDelete.Execute(mResolver, mTree, AFileName, TextOf(AFileName),
+    Result := TSafeDeleteProtocol.Execute(mResolver, mTree, AFileName, TextOf(AFileName),
       TTextPosition.Create(ALine, ACharacter), mWithChoices);
   finally
     mResolver.Free;
@@ -301,9 +301,9 @@ begin
   end;
 end;
 
-{ TLspSafeDeleteTests }
+{ TSafeDeleteProtocolTests }
 
-procedure TLspSafeDeleteTests.Setup;
+procedure TSafeDeleteProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHelpers, cHelpersFile, nil));
@@ -313,12 +313,12 @@ begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
-procedure TLspSafeDeleteTests.TearDown;
+procedure TSafeDeleteProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
 
-procedure TLspSafeDeleteTests.OffersAction;
+procedure TSafeDeleteProtocolTests.OffersAction;
 var
   mTree: TSyntaxTree;
   mActions: TArray<TJSONObject>;
@@ -326,24 +326,24 @@ var
 begin
   mTree := TPascalParser.Parse(cUnitShapes);
   try
-    mActions := TLspSafeDelete.Actions(True, mTree, cUnitShapes, 'file:///C:/P/Shapes.pas', TTextPosition.Create(9, 15));
+    mActions := TSafeDeleteProtocol.Actions(True, mTree, cUnitShapes, 'file:///C:/P/Shapes.pas', TTextPosition.Create(9, 15));
     Assert.AreEqual(1, Integer(Length(mActions)));
     Assert.IsTrue(ContainsText(mActions[0].GetValue('title').Value, 'Unused'));
-    Assert.AreEqual(TLspSafeDelete.cClientCommand, (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
+    Assert.AreEqual(TSafeDeleteProtocol.cClientCommand, (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     for mAction in mActions do
     begin
       mAction.Free;
     end;
-    Assert.AreEqual(0, Integer(Length(TLspSafeDelete.Actions(False, mTree, cUnitShapes, 'file:///C:/P/Shapes.pas',
+    Assert.AreEqual(0, Integer(Length(TSafeDeleteProtocol.Actions(False, mTree, cUnitShapes, 'file:///C:/P/Shapes.pas',
       TTextPosition.Create(9, 15)))), 'abgeschaltet');
-    Assert.AreEqual(0, Integer(Length(TLspSafeDelete.Actions(True, mTree, cUnitShapes, 'file:///C:/P/Shapes.pas',
+    Assert.AreEqual(0, Integer(Length(TSafeDeleteProtocol.Actions(True, mTree, cUnitShapes, 'file:///C:/P/Shapes.pas',
       TTextPosition.Create(15, 2)))), 'implementation');
   finally
     mTree.Free;
   end;
 end;
 
-procedure TLspSafeDeleteTests.DeletesUnusedMethod;
+procedure TSafeDeleteProtocolTests.DeletesUnusedMethod;
 var
   mAnswer: TJSONObject;
   mText: string;
@@ -367,7 +367,7 @@ begin
   end;
 end;
 
-procedure TLspSafeDeleteTests.BlocksUsedMethod;
+procedure TSafeDeleteProtocolTests.BlocksUsedMethod;
 var
   mAnswer: TJSONObject;
 begin
@@ -391,7 +391,7 @@ begin
   end;
 end;
 
-procedure TLspSafeDeleteTests.HandlesOverrides;
+procedure TSafeDeleteProtocolTests.HandlesOverrides;
 var
   mAnswer: TJSONObject;
 begin
@@ -416,7 +416,7 @@ begin
   end;
 end;
 
-procedure TLspSafeDeleteTests.OffersCascade;
+procedure TSafeDeleteProtocolTests.OffersCascade;
 var
   mAnswer: TJSONObject;
   mText: string;
@@ -452,7 +452,7 @@ begin
   end;
 end;
 
-procedure TLspSafeDeleteTests.FindsFormReferences;
+procedure TSafeDeleteProtocolTests.FindsFormReferences;
 var
   mAnswer: TJSONObject;
 begin
@@ -470,7 +470,7 @@ begin
   end;
 end;
 
-procedure TLspSafeDeleteTests.DeletesWholeUnit;
+procedure TSafeDeleteProtocolTests.DeletesWholeUnit;
 var
   mAnswer: TJSONObject;
   mText: string;
@@ -495,6 +495,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspSafeDeleteTests);
+  TDUnitX.RegisterTestFixture(TSafeDeleteProtocolTests);
 
 end.

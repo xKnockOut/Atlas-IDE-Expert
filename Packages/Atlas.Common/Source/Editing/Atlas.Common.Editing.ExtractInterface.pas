@@ -27,7 +27,7 @@
 //   - Ziel: dieselbe Unit (direkt vor der Klasse samt Doku und Attributen)
 //     oder eine andere Unit. Dafür liefert der Plan den Text des Interfaces
 //     und die Namen der Typen in den Signaturen; uses, neue Unit und Projekt
-//     macht Atlas.Common.Lsp.ExtractInterface.
+//     macht Atlas.Common.Editing.ExtractInterface.Protocol.
 
 interface
 

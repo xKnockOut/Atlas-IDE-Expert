@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.MoveMember.Tests;
+﻿unit Atlas.Common.Editing.MoveMember.Protocol.Tests;
 
 // Tests für „Mitglied in Vorfahr oder Nachfahr verschieben“ über das Protokoll
 // (#675): Angebot der Code-Aktionen je nach Vorfahr und Nachfahren im Projekt,
@@ -14,7 +14,7 @@ uses
 
 type
   [TestFixture]
-  TLspMoveMemberTests = class
+  TMoveMemberProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -51,7 +51,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.MoveMember,
+  Atlas.Common.Editing.MoveMember.Protocol,
   Atlas.Common.JsonRpc.TestSupport,
   Atlas.Common.Lsp.Edits.TestSupport;
 
@@ -178,7 +178,7 @@ begin
   mTree := TPascalParser.Parse(TextOf(AFileName));
   mResolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspMoveMember.Execute(mResolver, mTree, AFileName, TextOf(AFileName), TTextPosition.Create(ALine, 6),
+    Result := TMoveMemberProtocol.Execute(mResolver, mTree, AFileName, TextOf(AFileName), TTextPosition.Create(ALine, 6),
       mContext);
   finally
     mResolver.Free;
@@ -187,9 +187,9 @@ begin
   end;
 end;
 
-{ TLspMoveMemberTests }
+{ TMoveMemberProtocolTests }
 
-procedure TLspMoveMemberTests.Setup;
+procedure TMoveMemberProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitClasses, cClassesFile, nil));
@@ -198,40 +198,40 @@ begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
 end;
 
-procedure TLspMoveMemberTests.TearDown;
+procedure TMoveMemberProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
 
-procedure TLspMoveMemberTests.OffersByHierarchy;
+procedure TMoveMemberProtocolTests.OffersByHierarchy;
 var
   mTree: TSyntaxTree;
   mActions: TArray<TJSONObject>;
 begin
   mTree := TPascalParser.Parse(cUnitKind);
   try
-    mActions := TLspMoveMember.Actions(mTree, cUnitKind, cKindFile, 'file:///C:/P/Kind.pas',
+    mActions := TMoveMemberProtocol.Actions(mTree, cUnitKind, cKindFile, 'file:///C:/P/Kind.pas',
       TTextPosition.Create(12, 6), FIndex);
     try
       // TChild hat einen Vorfahren im Projekt, aber keine Nachfahren.
       Assert.AreEqual(1, Integer(Length(mActions)));
       Assert.AreEqual('„Fill“ in Vorfahr verschieben …', mActions[0].GetValue('title').Value);
-      Assert.AreEqual(TLspMoveMember.cClientCommand,
+      Assert.AreEqual(TMoveMemberProtocol.cClientCommand,
         (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
       TJsonRpcTestSupport.FreeAll(mActions);
     end;
-    Assert.AreEqual(0, Integer(Length(TLspMoveMember.Actions(mTree, cUnitKind, cKindFile, 'u',
+    Assert.AreEqual(0, Integer(Length(TMoveMemberProtocol.Actions(mTree, cUnitKind, cKindFile, 'u',
       TTextPosition.Create(7, 4), FIndex))), 'Kopfzeile');
     // THelper hat weder Vorfahren noch Nachfahren im Projekt; leere Klasse: nichts.
-    Assert.AreEqual(0, Integer(Length(TLspMoveMember.Actions(mTree, cUnitKind, cKindFile, 'u',
+    Assert.AreEqual(0, Integer(Length(TMoveMemberProtocol.Actions(mTree, cUnitKind, cKindFile, 'u',
       TTextPosition.Create(5, 4), FIndex))), 'THelper');
   finally
     mTree.Free;
   end;
   mTree := TPascalParser.Parse(cUnitBasis);
   try
-    mActions := TLspMoveMember.Actions(mTree, cUnitBasis, cBasisFile, 'u', TTextPosition.Create(5, 6), FIndex);
+    mActions := TMoveMemberProtocol.Actions(mTree, cUnitBasis, cBasisFile, 'u', TTextPosition.Create(5, 6), FIndex);
     try
       Assert.AreEqual(1, Integer(Length(mActions)));
       Assert.AreEqual('„Show“ in Nachfahren verschieben …', mActions[0].GetValue('title').Value);
@@ -243,7 +243,7 @@ begin
   end;
 end;
 
-procedure TLspMoveMemberTests.PrepareListsTargets;
+procedure TMoveMemberProtocolTests.PrepareListsTargets;
 var
   mTree: TSyntaxTree;
   mAnswer: TJSONObject;
@@ -252,7 +252,7 @@ begin
   mTree := TPascalParser.Parse(cUnitKind);
   mAnswer := nil;
   try
-    mAnswer := TLspMoveMember.Prepare(mTree, cUnitKind, cKindFile, TTextPosition.Create(12, 6), ContextFor(FIndex, 'up'));
+    mAnswer := TMoveMemberProtocol.Prepare(mTree, cUnitKind, cKindFile, TTextPosition.Create(12, 6), ContextFor(FIndex, 'up'));
     Assert.AreEqual('TChild', mAnswer.GetValue('className').Value);
     Assert.AreEqual('Fill', mAnswer.GetValue('member').Value);
     mTargets := mAnswer.GetValue('targets') as TJSONArray;
@@ -267,7 +267,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        TLspMoveMember.Prepare(mTree, cUnitKind, cKindFile, TTextPosition.Create(12, 6), ContextFor(FIndex, 'down')).Free;
+        TMoveMemberProtocol.Prepare(mTree, cUnitKind, cKindFile, TTextPosition.Create(12, 6), ContextFor(FIndex, 'down')).Free;
       end, EJsonRpcError);
   finally
     mAnswer.Free;
@@ -275,7 +275,7 @@ begin
   end;
 end;
 
-procedure TLspMoveMemberTests.PullsUpIntoOtherUnitWithUses;
+procedure TMoveMemberProtocolTests.PullsUpIntoOtherUnitWithUses;
 var
   mAnswer: TJSONObject;
   mBasis, mKind: string;
@@ -297,7 +297,7 @@ begin
   end;
 end;
 
-procedure TLspMoveMemberTests.RefusesCircularReference;
+procedure TMoveMemberProtocolTests.RefusesCircularReference;
 var
   mMessage_: string;
 begin
@@ -312,7 +312,7 @@ begin
   Assert.IsTrue(ContainsStr(mMessage_, 'Kreisverweis'), mMessage_);
 end;
 
-procedure TLspMoveMemberTests.PushDownRefusedByForeignUse;
+procedure TMoveMemberProtocolTests.PushDownRefusedByForeignUse;
 var
   mMessage_: string;
 begin
@@ -326,7 +326,7 @@ begin
   Assert.IsTrue(ContainsStr(mMessage_, 'Main.pas:9'), mMessage_);
 end;
 
-procedure TLspMoveMemberTests.PushDownKeepsAbstract;
+procedure TMoveMemberProtocolTests.PushDownKeepsAbstract;
 var
   mAnswer: TJSONObject;
   mBasis, mKind: string;
@@ -345,6 +345,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspMoveMemberTests);
+  TDUnitX.RegisterTestFixture(TMoveMemberProtocolTests);
 
 end.

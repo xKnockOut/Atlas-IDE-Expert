@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.MoveClass.Tests;
+﻿unit Atlas.Common.Editing.MoveClass.Protocol.Tests;
 
 // Tests für „Klasse in eigene Unit verschieben“ über das Protokoll (#103 Teil
 // B): Namensauflösung über den Index, WorkspaceEdit mit neuer Datei,
@@ -12,7 +12,7 @@ uses
 
 type
   [TestFixture]
-  TLspMoveClassTests = class
+  TMoveClassProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -40,7 +40,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.MoveClass,
+  Atlas.Common.Editing.MoveClass.Protocol,
   Atlas.Common.Lsp.Edits.TestSupport;
 
 const
@@ -146,9 +146,9 @@ begin
     end;
 end;
 
-{ TLspMoveClassTests }
+{ TMoveClassProtocolTests }
 
-procedure TLspMoveClassTests.Setup;
+procedure TMoveClassProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitBasis, cBasisFile, nil));
@@ -157,7 +157,7 @@ begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitKasse, cKasseFile, nil));
 end;
 
-procedure TLspMoveClassTests.TearDown;
+procedure TMoveClassProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
@@ -192,7 +192,7 @@ begin
   end;
 end;
 
-procedure TLspMoveClassTests.MovesOverTheProject;
+procedure TMoveClassProtocolTests.MovesOverTheProject;
 var
   mTree: TSyntaxTree;
   mResolver: TNameResolver;
@@ -210,7 +210,7 @@ begin
     mMoved := Context;
     mMoved.Index := FIndex;
     mMoved.UnitName := 'Stock';
-    mAnswer := TLspMoveClass.Execute(mResolver, mTree, cLagerFile, cUnitLager, TTextPosition.Create(8, 4), mMoved);
+    mAnswer := TMoveClassProtocol.Execute(mResolver, mTree, cLagerFile, cUnitLager, TTextPosition.Create(8, 4), mMoved);
     Assert.AreEqual(0, Integer((mAnswer.GetValue('warnings') as TJSONArray).Count), mAnswer.ToJSON);
     Assert.AreEqual(TDocumentUris.FromPath('C:\P\Stock.pas'), mAnswer.GetValue('file').Value);
     mChanges := (mAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray;
@@ -233,7 +233,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        TLspMoveClass.Execute(mResolver, mTree, cLagerFile, cUnitLager, TTextPosition.Create(8, 4), mMoved).Free;
+        TMoveClassProtocol.Execute(mResolver, mTree, cLagerFile, cUnitLager, TTextPosition.Create(8, 4), mMoved).Free;
       end);
   finally
     mAnswer.Free;
@@ -242,7 +242,7 @@ begin
   end;
 end;
 
-procedure TLspMoveClassTests.OffersOnlyMovableClasses;
+procedure TMoveClassProtocolTests.OffersOnlyMovableClasses;
 var
   mTree: TSyntaxTree;
   mResolver: TNameResolver;
@@ -253,9 +253,9 @@ begin
   mResolver := TNameResolver.Create(FIndex, nil);
   mTree := TPascalParser.Parse(cUnitLager);
   try
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(mResolver, mTree, cLagerFile, cUnitLager, 'u',
+    Assert.AreEqual(0, Integer(Length(TMoveClassProtocol.Actions(mResolver, mTree, cLagerFile, cUnitLager, 'u',
       TTextPosition.Create(9, 4)))));
-    mActions := TLspMoveClass.Actions(mResolver, mTree, cLagerFile, cUnitLager, 'u', TTextPosition.Create(8, 4));
+    mActions := TMoveClassProtocol.Actions(mResolver, mTree, cLagerFile, cUnitLager, 'u', TTextPosition.Create(8, 4));
     try
       Assert.AreEqual(1, Integer(Length(mActions)));
       Assert.AreEqual('Klasse TStock in eigene Unit verschieben …', mActions[0].GetValue('title').Value);
@@ -275,7 +275,7 @@ begin
     'var'#10'  Zaehler: Integer;', []);
   mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(mResolver, mTree, cLagerFile, mText, 'u',
+    Assert.AreEqual(0, Integer(Length(TMoveClassProtocol.Actions(mResolver, mTree, cLagerFile, mText, 'u',
       TTextPosition.Create(8, 4)))));
   finally
     mTree.Free;
@@ -284,6 +284,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspMoveClassTests);
+  TDUnitX.RegisterTestFixture(TMoveClassProtocolTests);
 
 end.

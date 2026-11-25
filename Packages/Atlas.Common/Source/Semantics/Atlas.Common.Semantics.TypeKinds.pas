@@ -18,7 +18,8 @@
 interface
 
 uses
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Index.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -27,6 +28,9 @@ type
 {$SCOPEDENUMS OFF}
 
   TResolvedTypeKinds = record
+  public const
+    /// <summary>Typtext hinter "=" eines prozeduralen Alias.</summary>
+    cProceduralPattern = '=\s*(reference\s+to\s+)?(procedure|function)\b';
   public
     /// <summary>Art des eingebauten Typnamens AName (mit oder ohne "System."); Unknown, wenn er keiner ist.
     /// </summary>
@@ -48,6 +52,9 @@ type
     /// <summary>Typtext hinter dem ersten "=" bzw. ":" auf oberster Ebene des Kopfs ASignature bis zum
     /// Semikolon; '' ohne.</summary>
     class function DeclaredText(const ASignature: string): string; static;
+    /// <summary>Ist ATypeName ein prozeduraler Typ (procedure/function … of object, reference to)? Über den Text,
+    /// bekannte Methodenzeiger der RTL und Aliase im Index.</summary>
+    class function IsProceduralName(const ATypeName: string; const AIndex: ISymbolIndex): Boolean; static;
   end;
 
 implementation
@@ -55,12 +62,15 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Index.Contract,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.ExpressionTypes,
-  Atlas.Common.Semantics.ExpressionTypes.Contract;
+  Atlas.Common.Semantics.ExpressionTypes.Contract,
+  System.RegularExpressions;
 
 const
+  /// <summary>Bekannte Methodenzeiger der RTL, falls die RTL nicht im Index steht.</summary>
+  cKnownProcedural: array[0..5] of string = ('TProc', 'TFunc', 'TPredicate', 'TNotifyEvent', 'TThreadMethod',
+    'TThreadProcedure');
   // Art als Satzteil („ist eine Menge“), deutsch und englisch (#1458).
   cKindTexts: array[TResolvedTypeKind] of TAtlasText = (
     (De: 'ein Typ unbekannter Art'; En: 'a type of unknown kind'),
@@ -272,6 +282,42 @@ begin
           Exit(Trim(Result));
         end;
     end;
+end;
+
+class function TResolvedTypeKinds.IsProceduralName(const ATypeName: string; const AIndex: ISymbolIndex): Boolean;
+var
+  mName: string;
+  mLocation: TSymbolLocation;
+begin
+  if TRegEx.IsMatch(ATypeName, '^\s*(reference\s+to\s+)?(procedure|function)\b', [roIgnoreCase]) then
+  begin
+    Exit(True);
+  end;
+  mName := Trim(ATypeName);
+  if Pos('<', mName) > 0 then
+  begin
+    mName := Copy(mName, 1, Pos('<', mName) - 1);
+  end;
+  if Pos('.', mName) > 0 then
+  begin
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  end;
+  if IndexText(mName, cKnownProcedural) >= 0 then
+  begin
+    Exit(True);
+  end;
+  if AIndex <> nil then
+  begin
+    for mLocation in AIndex.FindSymbols(mName) do
+    begin
+      if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
+        TRegEx.IsMatch(mLocation.Symbol.Signature, cProceduralPattern, [roIgnoreCase]) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
 end;
 
 initialization
