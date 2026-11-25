@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.MessageCatalog;
+﻿unit Atlas.Common.Compiler.MessageCatalog;
 
 // Erklärungen zu Compilermeldungen (#54): Name, Erklärung, typische Ursache und
 // Beispiel falsch/richtig je Meldungsnummer (E2003, W1036 …). Die Nummer ist der
@@ -53,7 +53,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Index.DocWiki;
+  Atlas.Common.Compiler.Releases;
 
 type
   TExample = record
@@ -394,12 +394,12 @@ end;
 
 class function TCompilerMessageCatalog.DocWikiUrl(const ACode, ADelphiVersion: string): string;
 begin
-  Result := cDocWikiBase + TDocWiki.ReleaseName(ADelphiVersion) + '/e/index.php?search=' + UpperCase(Trim(ACode));
+  Result := cDocWikiBase + TDelphiReleases.Name(ADelphiVersion) + '/e/index.php?search=' + UpperCase(Trim(ACode));
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.MessageCatalog.Names', cNames);
-  TAtlasTextTables.Add('Atlas.Common.Rules.MessageCatalog.Descriptions', cDescriptions);
-  TAtlasTextTables.Add('Atlas.Common.Rules.MessageCatalog.Causes', cCauses);
+  TAtlasTextTables.Add('Atlas.Common.Compiler.MessageCatalog.Names', cNames);
+  TAtlasTextTables.Add('Atlas.Common.Compiler.MessageCatalog.Descriptions', cDescriptions);
+  TAtlasTextTables.Add('Atlas.Common.Compiler.MessageCatalog.Causes', cCauses);
 
 end.

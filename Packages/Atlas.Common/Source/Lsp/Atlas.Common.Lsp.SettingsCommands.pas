@@ -57,7 +57,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Rules.Catalog.Data,
-  Atlas.Common.Rules.MessageCatalog,
+  Atlas.Common.Compiler.MessageCatalog,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Output,
   Atlas.Common.Product.Version,

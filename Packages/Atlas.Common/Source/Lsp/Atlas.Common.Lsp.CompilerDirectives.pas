@@ -60,7 +60,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.DirectiveNames,
-  Atlas.Common.Index.DocWiki,
+  Atlas.Common.Compiler.Releases,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -346,7 +346,7 @@ end;
 
 class function TCompilerDirectives.Url(const ADelphiVersion, ATopic: string): string;
 begin
-  Result := cBaseUri + TDocWiki.ReleaseName(ADelphiVersion) + '/en/' + ATopic;
+  Result := cBaseUri + TDelphiReleases.Name(ADelphiVersion) + '/en/' + ATopic;
 end;
 
 function DescribeInfo(const AInfo: TDirectiveInfo; const AVersion, AState: string): string;
