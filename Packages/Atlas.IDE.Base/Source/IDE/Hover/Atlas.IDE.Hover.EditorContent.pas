@@ -217,6 +217,9 @@ type
     procedure TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction;
       AItem: Integer);
     procedure ShowUsages;
+    /// <summary>Referenzsuche fertig: Anzahl in den Tooltip, wenn er noch denselben Verlauf (AStamp) zeigt.
+    /// </summary>
+    procedure UsagesDone(AStamp, ACount: Integer);
     /// <summary>Strg+C: markierter Doku-Text, Liste der published-Mitglieder oder Deklaration.</summary>
     procedure CopyToClipboard(const AData: TAtlasHoverData);
     /// <summary>Inhalt zum Typ ARef im Hintergrund holen; das Ergebnis kommt in LinkDone.</summary>
@@ -956,16 +959,47 @@ end;
 procedure TAtlasEditorHoverActions.ShowUsages;
 var
   mData: TAtlasHoverData;
+  mOwner: TAtlasEditorHoverActions;
+  mAlive: TAtlasHoverAlive;
+  mAliveRef: IInterface;
+  mStamp: Integer;
 begin
   mData := FHistory.Current;
   if (CurrentSession = nil) or not mData.Location.HasLocation then
   begin
     Exit;
   end;
-  // Im Ergebnisfenster (#400), nach Unit gruppiert, samt Fundstellen in Formularen.
-  FUsagesCount := TAtlasIdeResults.ShowReferences(mData.Location.FileName, mData.Location.Line,
-    mData.Location.Character, mData.Title);
-  Refresh;
+  mOwner := Self;
+  mAlive := FAlive;
+  mAliveRef := FAliveRef;
+  mStamp := FHistory.Stamp;
+  // Im Ergebnisfenster (#400), nach Unit gruppiert, samt Fundstellen in Formularen. Die Suche läuft im
+  // Hintergrund; die Zahl kommt in den Tooltip, solange er denselben Verlauf zeigt.
+  TAtlasIdeResults.ShowReferences(mData.Location.FileName, mData.Location.Line, mData.Location.Character,
+    mData.Title,
+    procedure(ACount: Integer)
+    begin
+      // mAliveRef hält die Markierung, bis die Suche fertig ist; das Objekt selbst kann schon weg sein.
+      if mAlive.Alive and (mAliveRef <> nil) then
+      begin
+        mOwner.UsagesDone(mStamp, ACount);
+      end;
+    end);
+end;
+
+procedure TAtlasEditorHoverActions.UsagesDone(AStamp, ACount: Integer);
+begin
+  try
+    if not FTip.IsShown or (FHistory.Stamp <> AStamp) or (ACount < 0) then
+    begin
+      Exit;
+    end;
+    FUsagesCount := ACount;
+    Refresh;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
 end;
 
 procedure TAtlasEditorHoverActions.CopyToClipboard(const AData: TAtlasHoverData);
