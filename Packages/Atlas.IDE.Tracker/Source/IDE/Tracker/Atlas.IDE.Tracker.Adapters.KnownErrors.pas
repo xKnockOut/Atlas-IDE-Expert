@@ -24,7 +24,7 @@ uses
   Atlas.Core.Tracker.KnownErrors,
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.KnownErrors.Contract,
+  Atlas.Plugin.KnownErrors.Contract,
   Atlas.IDE.Base.Foundation.KnownErrors,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices;
@@ -73,7 +73,7 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,

@@ -93,7 +93,7 @@ uses
   System.Diagnostics,
   System.Generics.Collections,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Lsp.Client,

@@ -26,8 +26,8 @@ uses
   System.SysUtils,
   Atlas.Plugin.Settings.OverviewKinds,
   Atlas.Plugin.Lsp.Contract,
-  Atlas.Core.Editor.LineChanges,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.LineChanges,
+  Atlas.Plugin.Editor.Contract;
 
 type
   /// <summary>Gruppe für editor.overviewRulerKinds (bei den Einstellungen, damit der Parser ohne diesen Kern
@@ -35,14 +35,14 @@ type
   TAtlasOverviewKind = Atlas.Plugin.Settings.OverviewKinds.TAtlasOverviewKind;
   TAtlasOverviewKinds = Atlas.Plugin.Settings.OverviewKinds.TAtlasOverviewKinds;
 {$SCOPEDENUMS ON}
-  TAtlasOverviewMarkKind = Atlas.Core.Editor.Contract.TAtlasOverviewMarkKind;
+  TAtlasOverviewMarkKind = Atlas.Plugin.Editor.Contract.TAtlasOverviewMarkKind;
   /// <summary>Spur im Streifen.</summary>
   TAtlasOverviewLane = (Left, Middle, Right, Full);
 {$SCOPEDENUMS OFF}
 
-  TAtlasOverviewMark = Atlas.Core.Editor.Contract.TAtlasOverviewMark;
+  TAtlasOverviewMark = Atlas.Plugin.Editor.Contract.TAtlasOverviewMark;
 
-  TAtlasOverviewMarks = Atlas.Core.Editor.Contract.TAtlasOverviewMarks;
+  TAtlasOverviewMarks = Atlas.Plugin.Editor.Contract.TAtlasOverviewMarks;
 
   /// <summary>Gezeichneter Balken: Pixel von Top bis Bottom (ausschließlich) in seiner Spur.</summary>
   TAtlasOverviewBar = record

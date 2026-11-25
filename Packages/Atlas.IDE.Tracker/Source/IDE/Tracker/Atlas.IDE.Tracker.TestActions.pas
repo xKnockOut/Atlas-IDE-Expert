@@ -13,7 +13,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.Plugin.Notifications.MessageSink,

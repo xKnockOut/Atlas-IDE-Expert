@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.CiBuild.Contract;
+﻿unit Atlas.Plugin.CiBuild.Contract;
 
 // Stand des Build-Servers (CI, #763) als Daten, ohne VCL, Open Tools API und
 // Netz: Ergebnis und Testbericht des letzten Builds (TAtlasCiBuild), Fehlerart

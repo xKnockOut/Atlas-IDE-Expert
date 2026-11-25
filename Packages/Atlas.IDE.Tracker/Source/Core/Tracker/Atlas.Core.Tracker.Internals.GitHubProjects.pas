@@ -101,7 +101,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.JSON,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Internals.GitHubGraphQl,
   Atlas.Text.Json;

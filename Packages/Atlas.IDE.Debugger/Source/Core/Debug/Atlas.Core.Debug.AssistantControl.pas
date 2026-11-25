@@ -12,7 +12,7 @@ interface
 uses
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.BreakpointCheck,
-  Atlas.Core.DebugControl.Types;
+  Atlas.Plugin.DebugControl.Contract;
 
 type
   {$SCOPEDENUMS ON}

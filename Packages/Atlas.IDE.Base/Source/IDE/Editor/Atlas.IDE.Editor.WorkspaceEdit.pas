@@ -47,7 +47,7 @@ uses
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   TAtlasWorkspaceEditResult = record

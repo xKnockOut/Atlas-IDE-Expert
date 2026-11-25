@@ -134,7 +134,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.GutterPanel,
   Atlas.UI.Editor.Strings,

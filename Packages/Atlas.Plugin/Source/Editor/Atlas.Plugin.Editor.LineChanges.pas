@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Editor.LineChanges;
+﻿unit Atlas.Plugin.Editor.LineChanges;
 
 // Änderungsmarken und Zeilenhistorie (#507), ohne VCL, OTA und Prozess:
 // - Compute vergleicht den Stand im Repository (HEAD) mit dem Puffer

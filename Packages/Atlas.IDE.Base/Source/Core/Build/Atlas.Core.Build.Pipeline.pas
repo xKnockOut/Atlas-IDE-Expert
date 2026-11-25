@@ -4,7 +4,7 @@
 // Modulregel 6): Base reicht dem Modul atlas.buildpipeline die
 // gelesenen Compilermeldungen jedes Builds (#528) und den Auftrag, einen
 // Build des Benutzers zu bewerten (#530); die Folgen meldet das Modul über
-// IAtlasBuildVerdictListener (Atlas.Core.Build.Contract, Announce). Übernimmt
+// IAtlasBuildVerdictListener (Atlas.Plugin.Build.Contract, Announce). Übernimmt
 // keiner die Bewertung (Modul aus), bewertet Base nur nach dem Ergebnis des
 // Compilers (CompilerVerdict: ohne Basislinie, build.zeroHints und
 // build.warningsAsErrors, die zum Modul gehören) und meldet das ebenso; so
@@ -21,7 +21,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Contract;
+  Atlas.Plugin.Build.Contract;
 
 type
 

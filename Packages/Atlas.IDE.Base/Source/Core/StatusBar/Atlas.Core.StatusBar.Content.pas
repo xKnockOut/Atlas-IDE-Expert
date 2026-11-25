@@ -23,7 +23,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Plugin.Settings.ProblemsUpdate,
   Atlas.Core.Outline.Model,

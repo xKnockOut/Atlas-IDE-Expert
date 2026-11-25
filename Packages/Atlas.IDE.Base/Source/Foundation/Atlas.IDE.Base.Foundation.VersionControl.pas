@@ -23,7 +23,7 @@ uses
   Atlas.VersionControl.Repository.Tools,
   Atlas.VersionControl.Repository.ToolCheck,
   Atlas.VersionControl.Repository.ServerCheck,
-  Atlas.Core.Projects.VersionControl;
+  Atlas.Plugin.Projects.VersionControl;
 
 type
   /// <summary>Frage „Branch anlegen“ beim Beginnen eines Issues (#765, #1288): Ordner des Projekts, Lage der

@@ -42,7 +42,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.KnownErrors.Contract,
+  Atlas.Plugin.KnownErrors.Contract,
   Atlas.Core.Tracker.KnownErrors;
 
 function Halt: TAtlasDebugExceptionReport;

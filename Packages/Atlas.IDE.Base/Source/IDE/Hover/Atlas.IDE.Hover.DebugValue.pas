@@ -23,7 +23,7 @@ interface
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Hover.Contract.DebugValue;
+  Atlas.Plugin.Hover.Contract.DebugValue;
 
 type
   /// <summary>Ergebnis einer verzögerten Auswertung; läuft im Hauptthread.</summary>

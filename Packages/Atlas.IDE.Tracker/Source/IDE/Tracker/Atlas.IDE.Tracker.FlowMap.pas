@@ -22,7 +22,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.FlowMap,
   Atlas.Plugin.Diagnostics.BackgroundJobs,
@@ -102,7 +102,7 @@ begin
   inherited Create;
   FHooks := AHooks;
   FCacheFolder := ACacheFolder;
-  FWorker := TAtlasBackgroundJobs.Create(HInstance);
+  FWorker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Tracker);
 end;
 
 destructor TAtlasIdeFlowMap.Destroy;

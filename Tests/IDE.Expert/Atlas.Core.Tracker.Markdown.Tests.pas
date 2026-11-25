@@ -51,7 +51,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Markdown.Spans;
 

@@ -67,7 +67,8 @@ type
 implementation
 
 uses
-  Winapi.Windows;
+  Winapi.Windows,
+  Atlas.Vcl.Controls.ListBox;
 
 const
   /// <summary>Pause nach dem letzten Tastendruck, bevor Vorschläge geholt werden.</summary>
@@ -81,7 +82,7 @@ constructor TAtlasSymbolPathSuggestions.CreateIn(AParent: TWinControl; const ASu
 begin
   inherited Create(AParent);
   FSuggest := ASuggest;
-  FList := TListBox.Create(Self);
+  FList := TAtlasListBox.Create(Self);
   FList.Parent := AParent;
   FList.Visible := False;
   FList.Width := AWidth;

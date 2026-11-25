@@ -13,7 +13,8 @@
 //   Schritt (Rückgängig, Wiederholen der IDE), kehren dessen Marken zurück.
 //   Eine andere Änderung an der Hauptmarke führt sie an allen Marken aus
 //   (Mirror, eigener Schritt), eine Änderung anderswo verschiebt die Marken.
-// - Wechselt die Datei, endet die Sitzung.
+// - Wechselt die Datei, endet die Sitzung; ebenso, wenn der Puffer beim
+//   Schreiben wirft (die Ausnahme geht an den Aufrufer).
 // Tasten, Maus, Takt, Zwischenablage, Statusfeld und Zeichnen bleiben in der
 // IDE (Atlas.IDE.Editor.MultiCursor), die über AOnFinish und AOnRefresh
 // erfährt, wann die Marken enden bzw. neu gezeigt werden. Nur im Hauptthread.
@@ -24,7 +25,7 @@ uses
   System.SysUtils,
   Atlas.Core.Editor.MultiCursor,
   Atlas.Core.Editor.CaretSteps,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   TAtlasMultiCursorSession = class
@@ -190,16 +191,20 @@ begin
   begin
     Exit;
   end;
+  // Eine Ersetzung: ein Rückgängig-Schritt für alle Marken.
+  mEdits := nil;
+  SetLength(mEdits, 1);
+  mEdits[0] := TAtlasTextEdit.Create(mStart, mOldLength, mInsert);
   FWriting := True;
   try
-    // Eine Ersetzung: ein Rückgängig-Schritt für alle Marken.
-    mEdits := nil;
-    SetLength(mEdits, 1);
-    mEdits[0] := TAtlasTextEdit.Create(mStart, mOldLength, mInsert);
     FSurface.Write(AText, mEdits);
-  finally
+  except
+    // Was im Puffer steht, ist unbekannt: Die Marken passen nicht mehr sicher.
     FWriting := False;
+    Finish;
+    raise;
   end;
+  FWriting := False;
 end;
 
 procedure TAtlasMultiCursorSession.SetText(const AText: string);

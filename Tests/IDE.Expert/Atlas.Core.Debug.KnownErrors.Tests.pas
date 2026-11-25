@@ -29,7 +29,7 @@ type
 implementation
 
 uses
-  Atlas.Core.KnownErrors.Contract,
+  Atlas.Plugin.KnownErrors.Contract,
   Atlas.IDE.Base.Foundation.KnownErrors,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,

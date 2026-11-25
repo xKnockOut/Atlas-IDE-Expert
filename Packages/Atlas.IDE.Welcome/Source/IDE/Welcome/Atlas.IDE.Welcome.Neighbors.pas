@@ -16,7 +16,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.SavedPlaces.Contract,
+  Atlas.Plugin.SavedPlaces.Contract,
   Atlas.Core.Welcome.Setup,
   Atlas.IDE.Base.Foundation.IssueWork;
 

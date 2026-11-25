@@ -11,7 +11,7 @@ uses
   Atlas.Plugin.Files.TextFile,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   /// <summary>Dateien und Projekte für den Planer aus Sicht der IDE.</summary>

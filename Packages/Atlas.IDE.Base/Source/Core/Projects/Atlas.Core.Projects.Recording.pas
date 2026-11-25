@@ -15,7 +15,7 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.VersionControl.Repository.Contract;
 

@@ -32,7 +32,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Plugin.Lsp.Contract,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Results.Model;
 
 { TLspContractTests }
@@ -58,14 +58,14 @@ end;
 
 procedure TLspContractTests.AliasesAreTheSameTypes;
 var
-  mProblem: Atlas.Core.Problems.Contract.TAtlasProblem;
+  mProblem: Atlas.Plugin.Problems.Contract.TAtlasProblem;
   mDirect: Atlas.Plugin.Lsp.Contract.TAtlasProblem;
   mItem: Atlas.Core.Results.Model.TAtlasHierarchyItem;
   mSymbol: Atlas.Core.Results.Model.TAtlasSymbol;
 begin
   mDirect := Default(Atlas.Plugin.Lsp.Contract.TAtlasProblem);
   mDirect.Message := 'x';
-  mDirect.Severity := Atlas.Core.Problems.Contract.TAtlasProblemSeverity.Hint;
+  mDirect.Severity := Atlas.Plugin.Problems.Contract.TAtlasProblemSeverity.Hint;
   mProblem := mDirect;
   Assert.AreEqual('x', mProblem.Caption);
   Assert.AreEqual<Atlas.Plugin.Lsp.Contract.TAtlasProblemSeverity>(Atlas.Plugin.Lsp.Contract.TAtlasProblemSeverity.Hint,

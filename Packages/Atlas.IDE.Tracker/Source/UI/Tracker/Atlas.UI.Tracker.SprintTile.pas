@@ -25,7 +25,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.Graphics,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Vcl.Theme.Canvas,
   Atlas.UI.Tracker.TileView,
   Atlas.UI.Tracker.Contract.Sprint;

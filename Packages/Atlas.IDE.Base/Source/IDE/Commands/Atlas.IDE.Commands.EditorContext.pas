@@ -14,7 +14,7 @@ uses
   Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Problems.Contract;
+  Atlas.Plugin.Problems.Contract;
 
 type
   /// <summary>Platzhalter-Modus für eingesetzten Text (#88): ABefore = Puffertext vorher, AOffset = Anfang im

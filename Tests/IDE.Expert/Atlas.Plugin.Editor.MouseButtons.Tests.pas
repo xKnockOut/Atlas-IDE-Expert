@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Editor.MouseButtons.Tests;
+﻿unit Atlas.Plugin.Editor.MouseButtons.Tests;
 
 // Zurück-/Vor-Taste der Maus (#1889): Nachricht → Richtung im Verlauf.
 
@@ -24,7 +24,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Editor.MouseButtons;
+  Atlas.Plugin.Editor.MouseButtons;
 
 function Dir(AMessage: Cardinal; AWParam: NativeUInt; ALParam: NativeInt): Integer;
 begin

@@ -27,13 +27,13 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Contract.Summary,
+  Atlas.Plugin.Projects.Contract.Summary,
   Atlas.Core.Projects.Summary;
 
 type
-  TAtlasSetupTemplate = Atlas.Core.Projects.Contract.Summary.TAtlasSetupTemplate;
-  TAtlasSetupStep = Atlas.Core.Projects.Contract.Summary.TAtlasSetupStep;
-  TAtlasSetupFacts = Atlas.Core.Projects.Contract.Summary.TAtlasSetupFacts;
+  TAtlasSetupTemplate = Atlas.Plugin.Projects.Contract.Summary.TAtlasSetupTemplate;
+  TAtlasSetupStep = Atlas.Plugin.Projects.Contract.Summary.TAtlasSetupStep;
+  TAtlasSetupFacts = Atlas.Plugin.Projects.Contract.Summary.TAtlasSetupFacts;
 
   TAtlasSetupFileExists = reference to function(const AFileName: string): Boolean;
   TAtlasSetupReadText = reference to function(const AFileName: string; out AText: string): Boolean;

@@ -77,7 +77,7 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.EndSteps,
   Atlas.Core.Tracker.Transitions,

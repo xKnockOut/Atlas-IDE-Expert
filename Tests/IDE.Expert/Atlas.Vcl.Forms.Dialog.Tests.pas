@@ -2,7 +2,7 @@
 
 // Basis der Atlas-Dialoge (#2062): Vorgaben von CreateDialog, Abo beim
 // Themendienst bis zum Freigeben, Thema beim Zeigen und bei jedem Wechsel,
-// Zeilen von oben nach unten, Knopfbreiten nach Text, Vorgabe und Abbrechen,
+// Zeilen und Listen von oben nach unten, Knopfbreiten nach Text, Vorgabe und Abbrechen,
 // Hinweiszeile in der Textfarbe der Palette. TAtlasPopupForm: ohne Rahmen
 // in den übergebenen Farben, bei jedem Themenwechsel die Farben des Themas,
 // das IDE-Thema an den Steuerelementen nur mit ThemedControls. Ohne Breite
@@ -32,12 +32,12 @@ type
     procedure ThemeChangeAppliesAndNotifies;
     [Test]
     procedure RowsStackFromTop;
-    /// <summary>AddListBox stapelt die Liste unter die bisherigen Zeilen, in der logischen Höhe.</summary>
-    [Test]
-    procedure ListBoxStacksBelowRows;
     /// <summary>NewFooterButton: mindestens cFooterButtonMinWidth breit, rechts oben verankert, mit Klick.</summary>
     [Test]
     procedure FooterButtonHasMinimumWidth;
+    /// <summary>AddList stapelt die Liste unter die bisherigen Zeilen, in der logischen Höhe.</summary>
+    [Test]
+    procedure ListStacksBelowRows;
     [Test]
     procedure ButtonsFitTextAndRoles;
     [Test]
@@ -79,6 +79,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Style.Signal,
   Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.Vcl.Forms.Dialog;
 
 type
@@ -225,21 +226,22 @@ begin
   end;
 end;
 
-procedure TAtlasDialogTests.ListBoxStacksBelowRows;
+procedure TAtlasDialogTests.ListStacksBelowRows;
 var
   mDialog: TAtlasDialog;
   mRow: TPanel;
-  mList: TListBox;
+  mList: TAtlasListBox;
 begin
   mDialog := TAtlasDialog.CreateDialog(nil, 'Titel', 300);
   try
     mRow := mDialog.AddRow(22);
-    mList := mDialog.AddListBox(120);
+    mList := mDialog.AddList(120, 0);
     mDialog.HandleNeeded;
     Assert.AreSame(mDialog, mList.Parent, 'Parent');
     Assert.AreEqual(mDialog.ScaleValue(120), mList.Height);
     Assert.IsTrue(mList.Top > mRow.Top, Format('Top %d/%d', [mRow.Top, mList.Top]));
-    Assert.AreEqual(mDialog.ScaleValue(TAtlasDialog.cRowGap), Integer(mList.Margins.Left));
+    Assert.AreEqual(mRow.Margins.Left, mList.Margins.Left, 'Rand wie die Zeilen');
+    Assert.AreEqual(0, mList.Margins.Top);
   finally
     mDialog.Free;
   end;
