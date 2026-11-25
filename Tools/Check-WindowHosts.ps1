@@ -67,6 +67,11 @@
       Zeilen mit // window-ok und Begründung (Werte, die der Stil danach
       abbildet, Farben ohne IDE-Thema, Farbwerte für entworfene Formulare).
       Zeichenketten zählen nicht (Namen der Farben im Visualisierer).
+    - Selbst gefärbte Zeilen von Listen und Bäumen fragen nicht cdsSelected
+      ab (cds-selected): Die IDE meldet es bei jeder Zeile; wer dann nur die
+      Auswahlschrift setzt, zeichnet hell auf der weißen Fläche von Windows.
+      Gewählt ist, was Item.Selected bzw. Node.Selected sagt;
+      TAtlasUiTheme.RowColors färbt die Zeile.
     - Der Frame eines andockbaren Fensters (Ergebnis von GetFrameClass) hat
       eine DFM: {$R *.dfm} in seiner Unit und die .dfm daneben. Die IDE legt
       ihn über TCustomFrame.Create an, das ohne Ressource EResNotFound
@@ -170,7 +175,9 @@ $Rules = @(
     @{ Pattern = '(?is)\.\s*Show\s*\(\s*(\w+)\s*\)\s*;\s*if\s+\1\s+then\s+begin\s+TAtlasIdeDockWindow\s*\.\s*UpdateIcon\s*\(\s*\w+\s*\)\s*;\s*end\b'; Allowed = $DockUnit
        Message = 'Symbol nach Show(…) noch einmal gesetzt (Show setzt es beim Anlegen selbst); TAtlasIdeDockWindow.Present verwenden' },
     @{ Pattern = '(?i)\bTListBox\s*\.\s*Create\b'; Allowed = $ListBoxUnit
-       Message = 'TListBox flackert unter dem Stil der IDE (leere Fläche vor den Zeilen); TAtlasListBox verwenden' }
+       Message = 'TListBox flackert unter dem Stil der IDE (leere Fläche vor den Zeilen); TAtlasListBox verwenden' },
+    @{ Pattern = '(?i)\bcdsSelected\b'; Allowed = ''
+       Message = 'cdsSelected ist in der IDE bei jeder Zeile gesetzt (helle Auswahlschrift auf weißer Fläche); Item.Selected bzw. Node.Selected und TAtlasUiTheme.RowColors verwenden' }
 )
 
 # Dialogregeln (#2064): gezählt je Datei gegen Tools/WindowHosts.baseline.json.

@@ -97,7 +97,6 @@ uses
   Winapi.Windows,
   Winapi.CommCtrl,
   System.Math,
-  Vcl.Themes,
   Vcl.Graphics,
   Atlas.Plugin.Style.Signal,
   Atlas.UI.Editor.Strings,
@@ -775,13 +774,8 @@ procedure TAtlasExtractMembersDialog.ListCustomDraw(Sender: TCustomListView; Ite
 begin
   if (Item <> nil) and (Item.Index < FModel.Count) and not FModel[Item.Index].Enabled then
   begin
-    // Hintergrund in der Stilfarbe, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
-    if not (cdsSelected in State) then
-    begin
-      Sender.Canvas.Brush.Color := StyleServices(Sender).GetSystemColor(clWindow);
-      Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clWindowText);
-    end;
-    Sender.Canvas.Font.Color := StyleServices(Sender).GetSystemColor(clGrayText);
+    // Farben aus dem Stil, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow, clWindowText ohne Stil).
+    TAtlasUiTheme.RowColors(Sender.Canvas, Sender, Item.Selected, True);
   end;
 end;
 
