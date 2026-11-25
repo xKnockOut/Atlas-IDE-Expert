@@ -913,9 +913,8 @@ end;
 
 /// <summary>Seit APoll.Since geänderte Issues, Suchbegriffe in ALanguage; False mit AError, APoll.FailedStatus
 /// und APoll.FailedMessage.</summary>
-function ChangedIssuesIn(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  ATimeoutMs: Integer; const ALanguage: string; var APoll: TAtlasTrackerPoll; out AIssues: TArray<TAtlasTrackerChange>;
-  out AError: TAtlasCiFetchError): Boolean;
+function ChangedIssuesIn(const ACall: TAtlasTrackerCall; const ALanguage: string; var APoll: TAtlasTrackerPoll;
+  out AIssues: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
 var
   mText: string;
   mStatus: Integer;
@@ -924,8 +923,8 @@ begin
   Result := False;
   APoll.FailedStatus := 0;
   APoll.FailedMessage := '';
-  if not ATransport.Get(TAtlasYouTrackApi.ChangedIssuesUrl(ATarget, APoll.Since, APoll.Scope, ALanguage), ATimeoutMs,
-    mStatus, mText, AError) then
+  if not ACall.Transport.Get(TAtlasYouTrackApi.ChangedIssuesUrl(ACall.Target, APoll.Since, APoll.Scope, ALanguage),
+    ACall.TimeoutMs, mStatus, mText, AError) then
   begin
     APoll.FailedStatus := mStatus;
     Exit;
@@ -967,8 +966,8 @@ begin
   end;
   for mLanguage in TAtlasYouTrackApi.QueryLanguages(mKnown) do
   begin
-    Result := ChangedIssuesIn(ATarget, ATransport, TAtlasYouTrackApi.Rest(mWatch, ATimeoutMs), mLanguage, APoll,
-      AIssues, AError);
+    Result := ChangedIssuesIn(TAtlasTrackerCall.Create(ATarget, ATransport, TAtlasYouTrackApi.Rest(mWatch, ATimeoutMs)),
+      mLanguage, APoll, AIssues, AError);
     if Result then
     begin
       APoll.Language := mLanguage;
