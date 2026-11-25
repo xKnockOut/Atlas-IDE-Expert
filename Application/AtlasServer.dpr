@@ -56,6 +56,7 @@ uses
   Adapters.Mcp.Workspace in 'Source\Adapters\Adapters.Mcp.Workspace.pas',
   Adapters.Mcp.Process in 'Source\Adapters\Adapters.Mcp.Process.pas',
   Adapters.Mcp.Vcs in 'Source\Adapters\Adapters.Mcp.Vcs.pas',
+  Adapters.Mcp.AffectedTests in 'Source\Adapters\Adapters.Mcp.AffectedTests.pas',
   Adapters.Mcp.DeadCode in 'Source\Adapters\Adapters.Mcp.DeadCode.pas',
   Adapters.Mcp.Conventions in 'Source\Adapters\Adapters.Mcp.Conventions.pas',
   Shell.Composition.Configuration in 'Source\Shell\Shell.Composition.Configuration.pas',

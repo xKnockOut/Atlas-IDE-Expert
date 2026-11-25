@@ -21,6 +21,7 @@ uses
   Atlas.Common.Mcp.Contract.Workspace,
   Atlas.Common.Mcp.Contract.Process,
   Atlas.Common.Mcp.Contract.Vcs,
+  Atlas.Common.Mcp.Contract.AffectedTests,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.SymbolPath,
@@ -31,8 +32,7 @@ uses
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.RefactorTools,
-  Atlas.Common.Compiler.Contract,
-  Core.VersionControlChanges;
+  Atlas.Common.Compiler.Contract;
 
 type
   /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
@@ -57,8 +57,9 @@ type
     Process: IMcpProcessHost;
     /// <summary>Änderungen, Hotspots und Verlauf aus Git oder SVN.</summary>
     Vcs: IMcpVcs;
-    /// <summary>Zugang zur Versionsverwaltung (betroffene Tests).</summary>
-    VcsAccess: TFunc<TCoreVcsAccess>;
+    /// <summary>Betroffene Tests (get_affected_tests); nil, wenn die Adapter ohne Arbeitsbereich entstanden sind.
+    /// </summary>
+    AffectedTests: IMcpAffectedTests;
     /// <summary>Git-Verzeichnis des Ordners ('' ohne Git).</summary>
     GitDir: TFunc<string, string>;
     /// <summary>Sichere Korrekturen zu Compilermeldungen (explain_compiler_message).</summary>

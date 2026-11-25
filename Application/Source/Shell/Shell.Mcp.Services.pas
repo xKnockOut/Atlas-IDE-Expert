@@ -88,7 +88,8 @@ uses
   Shell.Composition.RuleRefactorings,
   Adapters.Mcp.Workspace,
   Adapters.Mcp.Process,
-  Adapters.Mcp.Vcs;
+  Adapters.Mcp.Vcs,
+  Adapters.Mcp.AffectedTests;
 
 function NewProcess: ICompilerProcess;
 begin
@@ -449,6 +450,7 @@ begin
   Result.Hotspots := Hotspots;
   Result.ImpactOptionsFor := Code.ImpactOptionsFor;
   Result.Adapters := GroupAdapters(Group);
+  Result.Adapters.AffectedTests := TMcpAffectedTestsAdapter.New(McpWorkspace, VcsAccess, Code.ImpactOptionsFor);
   Result.Started := Now;
 end;
 
@@ -457,7 +459,6 @@ begin
   Result := Default(TMcpHostAdapters);
   Result.NewProcess := NewProcess;
   Result.Process := TMcpProcessAdapter.New;
-  Result.VcsAccess := VcsAccess;
   Result.Vcs := TMcpVcsAdapter.New(VcsAccess);
   Result.GitDir := GitDirOf;
   Result.CompilerFixes := TMcpComposition.CompilerFixes;

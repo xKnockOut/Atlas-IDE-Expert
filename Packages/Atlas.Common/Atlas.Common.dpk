@@ -789,6 +789,7 @@ contains
   Atlas.Common.Mcp.Contract.Workspace in 'Source\Mcp\Atlas.Common.Mcp.Contract.Workspace.pas',
   Atlas.Common.Mcp.Contract.Process in 'Source\Mcp\Atlas.Common.Mcp.Contract.Process.pas',
   Atlas.Common.Mcp.Contract.Vcs in 'Source\Mcp\Atlas.Common.Mcp.Contract.Vcs.pas',
+  Atlas.Common.Mcp.Contract.AffectedTests in 'Source\Mcp\Atlas.Common.Mcp.Contract.AffectedTests.pas',
   Atlas.Common.Mcp.Contract.DeadCode in 'Source\Mcp\Atlas.Common.Mcp.Contract.DeadCode.pas',
   Atlas.Common.Mcp.Contract.Conventions in 'Source\Mcp\Atlas.Common.Mcp.Contract.Conventions.pas',
   Atlas.Common.Mcp.CheckTools in 'Source\Mcp\Atlas.Common.Mcp.CheckTools.pas',
