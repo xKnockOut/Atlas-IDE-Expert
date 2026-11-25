@@ -89,7 +89,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Lsp.Contract,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Problems.Refresh,
   Atlas.Core.Problems.InlineHints;

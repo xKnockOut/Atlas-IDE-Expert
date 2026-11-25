@@ -11,7 +11,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   TAtlasIdeEditSurface = class(TInterfacedObject, IAtlasEditSurface)

@@ -9,7 +9,7 @@
 interface
 
 uses
-  Atlas.Core.Documentation.Contract;
+  Atlas.Plugin.Documentation.Contract;
 
 type
   TAtlasMarkdownInline = record

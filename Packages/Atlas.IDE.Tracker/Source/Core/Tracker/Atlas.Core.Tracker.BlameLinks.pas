@@ -96,7 +96,7 @@ uses
   Atlas.Text.Diff,
   Atlas.Text.Lines,
   Atlas.Plugin.Files.TextFile,
-  Atlas.Core.Editor.LineChanges,
+  Atlas.Plugin.Editor.LineChanges,
   Atlas.Core.Editor.MethodToggle;
 
 const

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Editor.MouseButtons;
+﻿unit Atlas.Plugin.Editor.MouseButtons;
 
 // Zurück- und Vor-Taste der Maus (#1889), Kern ohne VCL und OTA: welche
 // Nachricht für welche Richtung im Navigationsverlauf steht.

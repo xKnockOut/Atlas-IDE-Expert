@@ -8,7 +8,7 @@ interface
 
 uses
   Winapi.Windows,
-  Atlas.Core.Editor.LineChanges,
+  Atlas.Plugin.Editor.LineChanges,
   Atlas.IDE.Base.Foundation.LineChanges;
 
 type

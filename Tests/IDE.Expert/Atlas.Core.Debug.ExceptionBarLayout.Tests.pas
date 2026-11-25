@@ -36,7 +36,7 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.KnownErrors.Contract,
+  Atlas.Plugin.KnownErrors.Contract,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.Core.Debug.ExceptionBarLayout;
 

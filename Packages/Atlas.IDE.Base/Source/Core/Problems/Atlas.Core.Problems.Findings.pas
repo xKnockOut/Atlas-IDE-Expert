@@ -35,7 +35,7 @@
 // - Fehler der IDE (#1819, problems.ideErrors): Die Befunde kommen aus
 //   WithIde des Speichers, abgeglichen mit Error Insight. Spalte „Quelle“
 //   (Atlas, Atlas + IDE, IDE) und Filter Origin (alle, nur Atlas, nur IDE).
-// - IAtlasBulkFixer (Atlas.Core.Problems.Contract): Vertrag der Sammelkorrektur
+// - IAtlasBulkFixer (Atlas.Plugin.Problems.Contract): Vertrag der Sammelkorrektur
 //   (#1352) für das Modul Prüfregeln (#1455).
 
 interface
@@ -43,26 +43,26 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin;
 
 type
   {$SCOPEDENUMS ON}
-  TAtlasFindingKind = Atlas.Core.Problems.Contract.TAtlasFindingKind;
-  TAtlasFindingCategory = Atlas.Core.Problems.Contract.TAtlasFindingCategory;
+  TAtlasFindingKind = Atlas.Plugin.Problems.Contract.TAtlasFindingKind;
+  TAtlasFindingCategory = Atlas.Plugin.Problems.Contract.TAtlasFindingCategory;
   TAtlasFindingColumn = (Icon, Kind, Category, Message, Line, Location, Rule, Compiler, Source);
   /// <summary>Filter „Quelle“ (#1819): Atlas und IDE (alle), nur Atlas, nur IDE.</summary>
   TAtlasFindingOrigin = (All, AtlasOnly, IdeOnly);
   TAtlasFindingScope = (CurrentFile, Project, Group);
   TAtlasFindingGrouping = (None, ByFile, ByRule, ByCategory);
-  TAtlasFindingTier = Atlas.Core.Problems.Contract.TAtlasFindingTier;
+  TAtlasFindingTier = Atlas.Plugin.Problems.Contract.TAtlasFindingTier;
   /// <summary>Darstellung nicht geöffneter Units (problems.window.closedUnits).</summary>
   TAtlasClosedUnits = (Dimmed, Normal, Hidden);
   {$SCOPEDENUMS OFF}
   TAtlasFindingKinds = set of TAtlasFindingKind;
 
-  TAtlasFinding = Atlas.Core.Problems.Contract.TAtlasFinding;
+  TAtlasFinding = Atlas.Plugin.Problems.Contract.TAtlasFinding;
 
   TAtlasFindingColumnState = record
     Column: TAtlasFindingColumn;

@@ -76,7 +76,7 @@ implementation
 uses
   System.Classes,
   Atlas.Core.Hover.Contract,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Hover.Plan,
   Atlas.Core.Hover.View,
   Atlas.Core.Problems.Explanation;

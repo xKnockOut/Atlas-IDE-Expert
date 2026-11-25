@@ -11,7 +11,7 @@
 interface
 
 uses
-  Atlas.Core.SavedPlaces.Contract;
+  Atlas.Plugin.SavedPlaces.Contract;
 
 type
   TAtlasIdeSavedPlaces = class(TInterfacedObject, IAtlasSavedPlacesSource)

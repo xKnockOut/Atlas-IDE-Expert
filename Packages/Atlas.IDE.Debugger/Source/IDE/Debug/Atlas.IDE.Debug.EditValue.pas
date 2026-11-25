@@ -24,7 +24,7 @@ uses
   System.SysUtils,
   System.Types,
   ToolsAPI.Editor,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.EditValue,
   Atlas.Core.Debug.EditValueFlow,
   Atlas.IDE.Foundation.Host,

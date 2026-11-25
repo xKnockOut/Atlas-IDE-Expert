@@ -13,7 +13,7 @@
 // - IAtlasCiSend (#1273): Schreiben (POST, PATCH) mit JSON, nur angemeldet;
 //   die Issue-Vorschau schreibt darüber abgehakte Checklisten zurück.
 // - TAtlasCiJob, TAtlasCiBuild und die Fehlerart liegen als Daten in Base
-//   (Atlas.Core.CiBuild.Contract, #1455), weil die Projekt-Zusammenfassung sie
+//   (Atlas.Plugin.CiBuild.Contract, #1455), weil die Projekt-Zusammenfassung sie
 //   speichert.
 // - IAtlasCiCredentialStore und IAtlasCiTransports (#1455, Rolle Providers):
 //   Anmeldespeicher und Transporte als Schnittstellen; die Umsetzungen
@@ -24,7 +24,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Plugin.CiBuild.Contract;
 
 type
   /// <summary>HTTP-Statuscodes, die Tracker und CI-Anbieter auswerten.</summary>

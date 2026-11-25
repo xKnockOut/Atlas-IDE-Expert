@@ -21,11 +21,11 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Generate.Contract,
+  Atlas.Plugin.Generate.Contract,
   Atlas.Core.Generate.Menu;
 
 type
-  TAtlasNewFileKind = Atlas.Core.Generate.Contract.TAtlasNewFileKind;
+  TAtlasNewFileKind = Atlas.Plugin.Generate.Contract.TAtlasNewFileKind;
 
   TAtlasFileTemplates = class
   public const

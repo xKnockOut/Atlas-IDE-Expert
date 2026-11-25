@@ -48,7 +48,7 @@ uses
   System.UITypes,
   System.DateUtils,
   Vcl.Controls,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.TimeLog,
   Atlas.Plugin.Localization.Strings,  Atlas.UI.Tracker.Time.Strings,

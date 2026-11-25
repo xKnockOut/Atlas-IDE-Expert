@@ -48,7 +48,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Generate.Contract,
+  Atlas.Plugin.Generate.Contract,
   Atlas.Core.Generate.Menu;
 
 function Slash(const AName, ACaption: string; AGroup: TAtlasGenerateGroup): TAtlasGenerateEntry; overload;

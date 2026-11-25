@@ -25,10 +25,10 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Build.Contract;
+  Atlas.Plugin.Build.Contract;
 
 type
-  TAtlasBuildVerdictReason = Atlas.Core.Build.Contract.TAtlasBuildVerdictReason;
+  TAtlasBuildVerdictReason = Atlas.Plugin.Build.Contract.TAtlasBuildVerdictReason;
 
   TAtlasBuildVerdictSettings = record
     /// <summary>build.zeroHints.</summary>
@@ -38,7 +38,7 @@ type
     class function Create(AZeroHints: Boolean; const AWarningsAsErrors: string): TAtlasBuildVerdictSettings; static;
   end;
 
-  TAtlasBuildVerdict = Atlas.Core.Build.Contract.TAtlasBuildVerdict;
+  TAtlasBuildVerdict = Atlas.Plugin.Build.Contract.TAtlasBuildVerdict;
 
   /// <summary>Je Meldung: steht sie in der Basislinie? nil = keine Antwort.</summary>
   TAtlasBuildBaselined = reference to procedure(const ABaselined: TArray<Boolean>);

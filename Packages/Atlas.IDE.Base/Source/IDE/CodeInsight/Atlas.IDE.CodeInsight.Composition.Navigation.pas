@@ -22,7 +22,7 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Lsp.TextChanges,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.View,
   Atlas.Core.Completion.Snippets,

@@ -19,7 +19,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Problems.Contract;
+  Atlas.Plugin.Problems.Contract;
 
 type
 {$SCOPEDENUMS ON}

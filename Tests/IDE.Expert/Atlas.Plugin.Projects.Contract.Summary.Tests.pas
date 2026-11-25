@@ -34,8 +34,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Projects.Contract.Summary;
+  Atlas.Plugin.CiBuild.Contract,
+  Atlas.Plugin.Projects.Contract.Summary;
 
 { TAtlasProjectContractSummaryTests }
 

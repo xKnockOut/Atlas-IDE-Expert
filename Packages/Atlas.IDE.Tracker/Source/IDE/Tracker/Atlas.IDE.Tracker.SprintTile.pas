@@ -124,7 +124,7 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Files,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,

@@ -31,7 +31,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   ToolsAPI,
   Atlas.UI.Problems.Strings;
 

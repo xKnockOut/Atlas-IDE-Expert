@@ -36,7 +36,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.Tracker.DevelopmentPlan,

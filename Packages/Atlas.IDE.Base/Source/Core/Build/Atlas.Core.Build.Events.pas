@@ -28,12 +28,12 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Build.Contract;
+  Atlas.Plugin.Build.Contract;
 
 type
-  TAtlasCompileKind = Atlas.Core.Build.Contract.TAtlasCompileKind;
+  TAtlasCompileKind = Atlas.Plugin.Build.Contract.TAtlasCompileKind;
 
-  TAtlasCompileProject = Atlas.Core.Build.Contract.TAtlasCompileProject;
+  TAtlasCompileProject = Atlas.Plugin.Build.Contract.TAtlasCompileProject;
 
   /// <summary>Teilnehmer an den Compile-Ereignissen; alle Methoden sind optional.</summary>
   TAtlasCompileParticipant = class

@@ -67,7 +67,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,

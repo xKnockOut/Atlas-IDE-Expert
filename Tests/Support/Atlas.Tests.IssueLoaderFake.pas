@@ -11,7 +11,7 @@ interface
 
 uses
   System.Classes,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Preview,
   Atlas.Core.Tracker.PreviewLoad;
 

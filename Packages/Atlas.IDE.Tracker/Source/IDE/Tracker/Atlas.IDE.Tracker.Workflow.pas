@@ -198,7 +198,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Tracker.Workflow.Strings,

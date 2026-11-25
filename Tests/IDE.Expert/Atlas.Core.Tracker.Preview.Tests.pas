@@ -62,7 +62,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Contract.Files,
   Atlas.Core.Tracker.Files,

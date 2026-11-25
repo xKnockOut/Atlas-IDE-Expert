@@ -11,7 +11,7 @@
 interface
 
 uses
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.IDE.Base.Foundation.Rules;
 
 type

@@ -73,7 +73,7 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Forms,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.EndSteps,
   Atlas.Core.Tracker.Workflow,

@@ -18,7 +18,7 @@ uses
   Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
 {$SCOPEDENUMS ON}

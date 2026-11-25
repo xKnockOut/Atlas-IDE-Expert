@@ -5,7 +5,7 @@
 interface
 
 uses
-  Atlas.Core.Projects.Contract.Summary;
+  Atlas.Plugin.Projects.Contract.Summary;
 
 /// <summary>Fehlgeschlagener Test ATest mit Meldung und Fundstelle.</summary>
 function Failure(const ATest, AMessage, AFile: string; ALine: Integer): TAtlasProjectTestFailure;

@@ -54,7 +54,7 @@ uses
   Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract,
   Atlas.IDE.Welcome.Neighbors,
-  Atlas.Core.Projects.Contract.Summary;
+  Atlas.Plugin.Projects.Contract.Summary;
 
 type
   /// <summary>Was die Schnellaktionen von „Projekte“ brauchen; die Composition verbindet beide.</summary>

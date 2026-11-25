@@ -44,7 +44,7 @@ interface
 uses
   Winapi.Windows,
   System.SysUtils,
-  Atlas.Core.Editor.LineChanges,
+  Atlas.Plugin.Editor.LineChanges,
   Atlas.IDE.Base.Foundation.LineChanges;
 
 type

@@ -16,7 +16,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Contract;
 
 type

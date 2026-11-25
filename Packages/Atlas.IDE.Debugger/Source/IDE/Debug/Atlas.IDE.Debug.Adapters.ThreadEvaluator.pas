@@ -9,7 +9,7 @@
 interface
 
 uses
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.ThreadEvaluator;
 
