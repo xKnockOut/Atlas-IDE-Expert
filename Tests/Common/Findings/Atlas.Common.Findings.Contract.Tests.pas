@@ -23,6 +23,8 @@ type
     procedure UnitRelationsShowsGraphOnly;
     [Test]
     procedure ConfidenceNamesAndTexts;
+    [Test]
+    procedure SeverityNames;
   end;
 
 implementation
@@ -105,6 +107,14 @@ begin
   Assert.AreEqual('niedrig', ConfidenceText(TRuleConfidence.Low));
   Assert.AreEqual('mittel', ConfidenceText(TRuleConfidence.Medium));
   Assert.AreEqual('hoch', ConfidenceText(TRuleConfidence.High));
+end;
+
+procedure TFindingsContractTests.SeverityNames;
+begin
+  Assert.AreEqual('error', SeverityName(TRuleSeverity.Error));
+  Assert.AreEqual('warning', SeverityName(TRuleSeverity.Warning));
+  Assert.AreEqual('info', SeverityName(TRuleSeverity.Information));
+  Assert.AreEqual('hint', SeverityName(TRuleSeverity.Hint));
 end;
 
 initialization

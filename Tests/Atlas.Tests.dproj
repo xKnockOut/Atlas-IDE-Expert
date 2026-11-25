@@ -490,7 +490,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TryFinally.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.TokenScan.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Baseline.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Instructions.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.InstructionFiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Instructions.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BulkFix.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FindingsPrompt.Tests.pas"/>
@@ -596,6 +596,8 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.OwnershipReport.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.DocumentChecks.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.DocumentActions.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Providers.CatalogInfo.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.SettingsCatalog.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CheckContext.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
@@ -604,7 +606,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Output.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Prompt.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatOutput.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas"/>
+        <DCCReference Include="Common\Findings\Atlas.Common.Findings.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Options.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.WarnSwitches.Tests.pas"/>
@@ -2741,6 +2743,12 @@
         <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleDiagnostics.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.RuleActions.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleActions.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.RuleCatalog.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleCatalog.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.FindingsPrompt.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.FindingsPrompt.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.BulkFix.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.BulkFix.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ClientStart.pas"/>

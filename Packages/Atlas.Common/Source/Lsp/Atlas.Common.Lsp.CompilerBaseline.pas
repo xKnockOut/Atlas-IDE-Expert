@@ -30,7 +30,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Baseline;
 
@@ -90,7 +90,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Findings.Scopes,
-  Atlas.Common.Rules.Output,
+  Atlas.Text.Json,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -330,7 +330,7 @@ begin
   end;
   Result := Format('{"format": %d, "file": %s, "previous": %s, "total": %d, "files": %d, ' +
     '"added": %d, "removed": %d, "unchanged": %d, "skipped": %d}', [cFormatVersion,
-    TFindingsOutput.JsonString(mFileName), TFindingsOutput.JsonString(mPrevious), mOutcome.Total, mOutcome.Files,
+    TJsonText.Quote(mFileName), TJsonText.Quote(mPrevious), mOutcome.Total, mOutcome.Files,
     mOutcome.Added, mOutcome.Removed, mOutcome.Unchanged, mSkipped]);
 end;
 

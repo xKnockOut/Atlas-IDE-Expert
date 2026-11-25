@@ -11,7 +11,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.MissingUnit,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Core.Compiler,
   Core.Workspace.Setup,
   Core.Workspace.State;

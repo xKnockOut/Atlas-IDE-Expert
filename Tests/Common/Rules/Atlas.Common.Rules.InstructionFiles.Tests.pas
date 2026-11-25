@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Instructions.Tests;
+﻿unit Atlas.Common.Rules.InstructionFiles.Tests;
 
 // Tests für die Anweisungsdateien für KI-Assistenten (#2615): neue Datei als UTF-8 mit LF, vorhandene Datei behält
 // BOM, Zeilenenden und Text außerhalb des Abschnitts, nur prüfen schreibt nichts, zweiter Lauf ist aktuell, Antwort
@@ -11,7 +11,7 @@ uses
 
 type
   [TestFixture]
-  TLspInstructionsTests = class
+  TRuleInstructionFilesTests = class
   public
     [Setup]
     procedure SetUp;
@@ -39,7 +39,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Instructions,
-  Atlas.Common.Lsp.Instructions;
+  Atlas.Common.Rules.InstructionFiles;
 
 var
   Files: TDictionary<string, TBytes>;
@@ -58,10 +58,10 @@ end;
 
 function Run(AWrite: Boolean): TArray<TInstructionsFile>;
 var
-  mInstructions: TLspInstructions;
+  mInstructions: TRuleInstructionFiles;
   mIssues: TArray<TConfigurationIssue>;
 begin
-  mInstructions := TLspInstructions.Create(ReadFile, WriteFile);
+  mInstructions := TRuleInstructionFiles.Create(ReadFile, WriteFile);
   try
     Result := mInstructions.Run('/p', TConfigurationParser.Parse('{"assistants": {"instructions": {"file": ' +
       '["AGENTS.md"]}}}', mIssues), BuiltinRules, AWrite);
@@ -80,19 +80,19 @@ begin
   Result := TEncoding.UTF8.GetBytes(AText);
 end;
 
-{ TLspInstructionsTests }
+{ TRuleInstructionFilesTests }
 
-procedure TLspInstructionsTests.SetUp;
+procedure TRuleInstructionFilesTests.SetUp;
 begin
   Files := TDictionary<string, TBytes>.Create;
 end;
 
-procedure TLspInstructionsTests.TearDown;
+procedure TRuleInstructionFilesTests.TearDown;
 begin
   FreeAndNil(Files);
 end;
 
-procedure TLspInstructionsTests.CreatesMissingFileWithLf;
+procedure TRuleInstructionFilesTests.CreatesMissingFileWithLf;
 var
   mFiles: TArray<TInstructionsFile>;
   mText: string;
@@ -109,7 +109,7 @@ begin
   mFiles := nil;
 end;
 
-procedure TLspInstructionsTests.KeepsBomAndLineBreaksOutside;
+procedure TRuleInstructionFilesTests.KeepsBomAndLineBreaksOutside;
 const
   cHead = '# Projekt'#13#10'Größe: frei  '#13#10;
 var
@@ -126,18 +126,18 @@ begin
   mBytes := nil;
 end;
 
-procedure TLspInstructionsTests.CheckOnlyWritesNothing;
+procedure TRuleInstructionFilesTests.CheckOnlyWritesNothing;
 var
   mFiles: TArray<TInstructionsFile>;
 begin
   mFiles := Run(False);
   Assert.AreEqual(0, Integer(Files.Count));
   Assert.IsFalse(mFiles[0].Written);
-  Assert.AreEqual(1, TLspInstructions.StaleCount(mFiles));
+  Assert.AreEqual(1, TRuleInstructionFiles.StaleCount(mFiles));
   mFiles := nil;
 end;
 
-procedure TLspInstructionsTests.SecondRunIsCurrent;
+procedure TRuleInstructionFilesTests.SecondRunIsCurrent;
 var
   mFiles: TArray<TInstructionsFile>;
   mFirst: TBytes;
@@ -147,14 +147,14 @@ begin
   mFiles := Run(True);
   Assert.AreEqual(Ord(TInstructionsState.Current), Ord(mFiles[0].State));
   Assert.IsFalse(mFiles[0].Written, 'aktueller Abschnitt wird nicht neu geschrieben');
-  Assert.AreEqual(0, TLspInstructions.StaleCount(mFiles));
+  Assert.AreEqual(0, TRuleInstructionFiles.StaleCount(mFiles));
   Assert.AreEqual(mFiles[0].NewSection, mFiles[0].OldSection);
   Assert.AreEqual(Integer(Length(mFirst)), Integer(Length(Stored)), 'unverändert');
   mFiles := nil;
   mFirst := nil;
 end;
 
-procedure TLspInstructionsTests.ArgumentsAndAnswer;
+procedure TRuleInstructionFilesTests.ArgumentsAndAnswer;
 var
   mArguments: TJSONArray;
   mAnswer: TJSONObject;
@@ -162,13 +162,13 @@ var
 begin
   mArguments := TJSONObject.ParseJSONValue('[{"uri": "file:///p/U.pas", "write": true}]') as TJSONArray;
   try
-    Assert.IsTrue(TLspInstructions.WriteRequested(mArguments));
-    Assert.AreEqual('file:///p/U.pas', TLspInstructions.UriOf(mArguments));
+    Assert.IsTrue(TRuleInstructionFiles.WriteRequested(mArguments));
+    Assert.AreEqual('file:///p/U.pas', TRuleInstructionFiles.UriOf(mArguments));
   finally
     mArguments.Free;
   end;
-  Assert.IsFalse(TLspInstructions.WriteRequested(nil));
-  mAnswer := TLspInstructions.ToJson(Run(False));
+  Assert.IsFalse(TRuleInstructionFiles.WriteRequested(nil));
+  mAnswer := TRuleInstructionFiles.ToJson(Run(False));
   try
     Assert.AreEqual(1, mAnswer.GetValue<Integer>('stale'));
     mItem := mAnswer.GetValue<TJSONArray>('files').Items[0] as TJSONObject;
@@ -181,6 +181,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspInstructionsTests);
+  TDUnitX.RegisterTestFixture(TRuleInstructionFilesTests);
 
 end.
