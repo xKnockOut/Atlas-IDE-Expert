@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.DebugControl;
+﻿unit Atlas.IDE.Base.Foundation.DebugControl;
 
 // Vertrag zwischen Modulen (#1874, Modulregel 6): Das Modul, das die Debug-Sitzung kennt (der Debugger), stellt über
 // seinen Scope eine IAtlasDebugControl bereit: Programm im Debugger starten und beenden, Haltepunkte der Gruppe

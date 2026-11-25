@@ -271,7 +271,7 @@ Atlas.IDE.Base	Atlas.Core.Hover.Plan	Core/Hover/Atlas.Core.Hover.Plan.pas	Ordner
 Atlas.IDE.Base	Atlas.Core.Hover.Texts	Core/Hover/Atlas.Core.Hover.Texts.pas	Ordner `Core/Hover`
 Atlas.IDE.Base	Atlas.Core.Hover.View	Core/Hover/Atlas.Core.Hover.View.pas	Ordner `Core/Hover`
 Atlas.IDE.Base	Atlas.Core.InlayHints.Store	Core/InlayHints/Atlas.Core.InlayHints.Store.pas	Ordner `Core/InlayHints`
-Atlas.IDE.Base	Atlas.Core.KnownErrors.Contract	Core/KnownErrors/Atlas.Core.KnownErrors.Contract.pas	Daten der bekannten Fehler beim Exception-Halt (Halt, Treffer, Antwort) für Debugger und Tracker, die Interfaces in `Atlas.IDE.Contracts.KnownErrors` (#2460)
+Atlas.IDE.Base	Atlas.Core.KnownErrors.Contract	Core/KnownErrors/Atlas.Core.KnownErrors.Contract.pas	Daten der bekannten Fehler beim Exception-Halt (Halt, Treffer, Antwort) für Debugger und Tracker, die Interfaces in `Atlas.IDE.Base.Foundation.KnownErrors` (#2460)
 Atlas.IDE.Base	Atlas.Core.Lsp.Session	Core/Lsp/Atlas.Core.Lsp.Session.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Lsp.Session.Requests	Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Modules.Answer	Core/Modules/Atlas.Core.Modules.Answer.pas	späte Antwort an ein Modul nur bei offenem Scope (Regel 3), #1455
@@ -395,6 +395,23 @@ Atlas.IDE.Base	Atlas.Core.Updates.Contract	Core/Updates/Atlas.Core.Updates.Contr
 Atlas.IDE.Base	Atlas.Core.Updates.Install	Core/Updates/Atlas.Core.Updates.Install.pas	Ordner `Core/Updates`
 Atlas.IDE.Base	Atlas.Core.Updates.Providers.HttpSource	Core/Updates/Atlas.Core.Updates.Providers.HttpSource.pas	Ordner `Core/Updates`
 Atlas.IDE.Base	Atlas.Core.Versions.Project	Core/Versions/Atlas.Core.Versions.Project.pas	Versionsnummer eines Projekts; Release-Wächter und Modul Tracker lesen sie, #1455
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.AiText	Foundation/Atlas.IDE.Base.Foundation.AiText.pas	Vertrag Text vom KI-Anbieter zwischen KI-Assistenten und anderen Modulen (#2462)
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.BuildPipeline	Foundation/Atlas.IDE.Base.Foundation.BuildPipeline.pas	Builds auf Auftrag (Build-Pipeline → Tests, Build-Werkzeuge, Willkommensseite), Vertrag zwischen Modulen, #1455
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.BuildRequests	Foundation/Atlas.IDE.Base.Foundation.BuildRequests.pas	Vertrag zwischen Modulen: Builds auf Auftrag samt Compilermeldungen für den Eingang der KI-Assistenten (#1888)
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.BuildTools	Foundation/Atlas.IDE.Base.Foundation.BuildTools.pas	Startprofile und Projektaufgaben für andere Module, Vertrag zwischen Modulen, #1455
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.DebugControl	Foundation/Atlas.IDE.Base.Foundation.DebugControl.pas	Vertrag zwischen Modulen: Debugger für KI-Assistenten steuern (Start, Haltepunkte der Gruppe Atlas-KI, Schritte, Zustand, Auswerten; #1874)
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.DebugReport	Foundation/Atlas.IDE.Base.Foundation.DebugReport.pas	Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), Vertrag zwischen Modulen, #1455
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.DebugStop	Foundation/Atlas.IDE.Base.Foundation.DebugStop.pas	Rahmen des Halts und Auswerten ohne Nebenwirkungen für „Test daraus anlegen …“ (Debugger → Tests), Vertrag zwischen Modulen, #1873
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.GhostSuggestions	Foundation/Atlas.IDE.Base.Foundation.GhostSuggestions.pas	Vertrag für Anbieter von Schattentext-Vorschlägen nach Enter (gelernte Vorschläge, später weitere), #1890
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.Help	Foundation/Atlas.IDE.Base.Foundation.Help.pas	Hilfe zum Element (Base → Hilfe, #1886), Vertrag zwischen Base und Modul
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.IssueWork	Foundation/Atlas.IDE.Base.Foundation.IssueWork.pas	Vertrag Arbeitsstand je Issue zwischen Willkommensseite und Tracker (#2052)
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.KnownErrors	Foundation/Atlas.IDE.Base.Foundation.KnownErrors.pas	Vertrag bekannte Fehler beim Exception-Halt zwischen Debugger und Tracker (#2460)
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.LineChanges	Foundation/Atlas.IDE.Base.Foundation.LineChanges.pas	Vertrag Änderungsmarken und Zeilenhistorie (#1905)
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.MouseHistory	Foundation/Atlas.IDE.Base.Foundation.MouseHistory.pas	Vertrag Fenster mit eigenem Verlauf für die Maustasten Zurück/Vor (#1889)
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.Rules	Foundation/Atlas.IDE.Base.Foundation.Rules.pas	Baseline aktualisieren (Prüfregeln → Willkommensseite) und Regel-Aktionen am Befund (Base → Prüfregeln, #1755), Vertrag zwischen Modulen, #1455
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.Tests	Foundation/Atlas.IDE.Base.Foundation.Tests.pas	Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.VersionControl	Foundation/Atlas.IDE.Base.Foundation.VersionControl.pas	Vertrag zwischen Modulen: Dienst und Dialoge der Versionsverwaltung, Zugang TAtlasIdeVcs mit Null-Objekt ohne Modul (#1891)
+Atlas.IDE.Base	Atlas.IDE.Base.Foundation.WelcomeTiles	Foundation/Atlas.IDE.Base.Foundation.WelcomeTiles.pas	Kacheln anderer Module auf der Willkommensseite, Board und Projekte der Seite (Tracker ↔ Willkommensseite), Vertrag zwischen Modulen, #1455
 Atlas.IDE.Base	Atlas.IDE.Build.CheckOnSave	IDE/Build/Atlas.IDE.Build.CheckOnSave.pas	Compilermeldungen und Prüfen nach dem Speichern bleiben im Kern
 Atlas.IDE.Base	Atlas.IDE.Build.IdleGate	IDE/Build/Atlas.IDE.Build.IdleGate.pas	Warten, bis kein Compile läuft; Diagnose-Zeitmessung (Base), #1455
 Atlas.IDE.Base	Atlas.IDE.Build.LastMessages	IDE/Build/Atlas.IDE.Build.LastMessages.pas	Compilermeldungen des letzten Builds; Modul Prüfregeln liest sie, auch ohne Build-Pipeline, #1455
@@ -472,23 +489,6 @@ Atlas.IDE.Base	Atlas.IDE.Completion.Favorites	IDE/Completion/Atlas.IDE.Completio
 Atlas.IDE.Base	Atlas.IDE.Completion.History	IDE/Completion/Atlas.IDE.Completion.History.pas	Ordner `IDE/Completion`
 Atlas.IDE.Base	Atlas.IDE.Completion.Placeholders	IDE/Completion/Atlas.IDE.Completion.Placeholders.pas	Ordner `IDE/Completion`
 Atlas.IDE.Base	Atlas.IDE.Completion.Preview	IDE/Completion/Atlas.IDE.Completion.Preview.pas	Ordner `IDE/Completion`
-Atlas.IDE.Base	Atlas.IDE.Contracts.AiText	Contracts/Atlas.IDE.Contracts.AiText.pas	Vertrag Text vom KI-Anbieter zwischen KI-Assistenten und anderen Modulen (#2462)
-Atlas.IDE.Base	Atlas.IDE.Contracts.BuildPipeline	Contracts/Atlas.IDE.Contracts.BuildPipeline.pas	Builds auf Auftrag (Build-Pipeline → Tests, Build-Werkzeuge, Willkommensseite), Vertrag zwischen Modulen, #1455
-Atlas.IDE.Base	Atlas.IDE.Contracts.BuildRequests	Contracts/Atlas.IDE.Contracts.BuildRequests.pas	Vertrag zwischen Modulen: Builds auf Auftrag samt Compilermeldungen für den Eingang der KI-Assistenten (#1888)
-Atlas.IDE.Base	Atlas.IDE.Contracts.BuildTools	Contracts/Atlas.IDE.Contracts.BuildTools.pas	Startprofile und Projektaufgaben für andere Module, Vertrag zwischen Modulen, #1455
-Atlas.IDE.Base	Atlas.IDE.Contracts.DebugControl	Contracts/Atlas.IDE.Contracts.DebugControl.pas	Vertrag zwischen Modulen: Debugger für KI-Assistenten steuern (Start, Haltepunkte der Gruppe Atlas-KI, Schritte, Zustand, Auswerten; #1874)
-Atlas.IDE.Base	Atlas.IDE.Contracts.DebugReport	Contracts/Atlas.IDE.Contracts.DebugReport.pas	Debug-Notiz und Exception-Verlauf für „An Issue anhängen …“ (Debugger → Tracker), Vertrag zwischen Modulen, #1455
-Atlas.IDE.Base	Atlas.IDE.Contracts.DebugStop	Contracts/Atlas.IDE.Contracts.DebugStop.pas	Rahmen des Halts und Auswerten ohne Nebenwirkungen für „Test daraus anlegen …“ (Debugger → Tests), Vertrag zwischen Modulen, #1873
-Atlas.IDE.Base	Atlas.IDE.Contracts.GhostSuggestions	Contracts/Atlas.IDE.Contracts.GhostSuggestions.pas	Vertrag für Anbieter von Schattentext-Vorschlägen nach Enter (gelernte Vorschläge, später weitere), #1890
-Atlas.IDE.Base	Atlas.IDE.Contracts.Help	Contracts/Atlas.IDE.Contracts.Help.pas	Hilfe zum Element (Base → Hilfe, #1886), Vertrag zwischen Base und Modul
-Atlas.IDE.Base	Atlas.IDE.Contracts.IssueWork	Contracts/Atlas.IDE.Contracts.IssueWork.pas	Vertrag Arbeitsstand je Issue zwischen Willkommensseite und Tracker (#2052)
-Atlas.IDE.Base	Atlas.IDE.Contracts.KnownErrors	Contracts/Atlas.IDE.Contracts.KnownErrors.pas	Vertrag bekannte Fehler beim Exception-Halt zwischen Debugger und Tracker (#2460)
-Atlas.IDE.Base	Atlas.IDE.Contracts.LineChanges	Contracts/Atlas.IDE.Contracts.LineChanges.pas	Vertrag Änderungsmarken und Zeilenhistorie (#1905)
-Atlas.IDE.Base	Atlas.IDE.Contracts.MouseHistory	Contracts/Atlas.IDE.Contracts.MouseHistory.pas	Vertrag Fenster mit eigenem Verlauf für die Maustasten Zurück/Vor (#1889)
-Atlas.IDE.Base	Atlas.IDE.Contracts.Rules	Contracts/Atlas.IDE.Contracts.Rules.pas	Baseline aktualisieren (Prüfregeln → Willkommensseite) und Regel-Aktionen am Befund (Base → Prüfregeln, #1755), Vertrag zwischen Modulen, #1455
-Atlas.IDE.Base	Atlas.IDE.Contracts.Tests	Contracts/Atlas.IDE.Contracts.Tests.pas	Testprojekte ausführen, Tests debuggen und finden, Ende eines Laufs; für andere Module, Vertrag zwischen Modulen, #1455
-Atlas.IDE.Base	Atlas.IDE.Contracts.VersionControl	Contracts/Atlas.IDE.Contracts.VersionControl.pas	Vertrag zwischen Modulen: Dienst und Dialoge der Versionsverwaltung, Zugang TAtlasIdeVcs mit Null-Objekt ohne Modul (#1891)
-Atlas.IDE.Base	Atlas.IDE.Contracts.WelcomeTiles	Contracts/Atlas.IDE.Contracts.WelcomeTiles.pas	Kacheln anderer Module auf der Willkommensseite, Board und Projekte der Seite (Tracker ↔ Willkommensseite), Vertrag zwischen Modulen, #1455
 Atlas.IDE.Base	Atlas.IDE.Diagnostics.BugReport	IDE/Diagnostics/Atlas.IDE.Diagnostics.BugReport.pas	Ordner `IDE/Diagnostics`
 Atlas.IDE.Base	Atlas.IDE.Diagnostics.Edition	IDE/Diagnostics/Atlas.IDE.Diagnostics.Edition.pas	Ordner `IDE/Diagnostics`
 Atlas.IDE.Base	Atlas.IDE.Diagnostics.Export	IDE/Diagnostics/Atlas.IDE.Diagnostics.Export.pas	Ordner `IDE/Diagnostics`
@@ -1591,7 +1591,7 @@ Atlas.IDE.Tracker	Atlas.IDE.Tracker.Adapters.Module	IDE/Tracker/Atlas.IDE.Tracke
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.Adapters.MyIssues	IDE/Tracker/Atlas.IDE.Tracker.Adapters.MyIssues.pas	Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasIssuesSource` aus `Atlas.UI.Tracker.Contract.MyIssues`, #1443
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.Adapters.NewIssue	IDE/Tracker/Atlas.IDE.Tracker.Adapters.NewIssue.pas	Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasIssueCreation` aus `Atlas.Core.Modules.Contract`, #1443
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.Adapters.PaletteSearch	IDE/Tracker/Atlas.IDE.Tracker.Adapters.PaletteSearch.pas	Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasPaletteSource` aus `Atlas.Core.Commands.Palette`, #1443
-Atlas.IDE.Tracker	Atlas.IDE.Tracker.Adapters.Review	IDE/Tracker/Atlas.IDE.Tracker.Adapters.Review.pas	Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasTestsListener` aus `Atlas.IDE.Contracts.Tests`, #1443
+Atlas.IDE.Tracker	Atlas.IDE.Tracker.Adapters.Review	IDE/Tracker/Atlas.IDE.Tracker.Adapters.Review.pas	Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasTestsListener` aus `Atlas.IDE.Base.Foundation.Tests`, #1443
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.Adapters.Settings	IDE/Tracker/Atlas.IDE.Tracker.Adapters.Settings.pas	Ordner `IDE/Tracker`, Rolle Adapters: Abschnitt Issue-Tracker im Optionsdialog (`IAtlasSettingsSectionProvider`), #1443
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.Adapters.Sprint	IDE/Tracker/Atlas.IDE.Tracker.Adapters.Sprint.pas	Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasSprintSource` aus `Atlas.UI.Tracker.Contract.Sprint`, #1443
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.Adapters.TestResults	IDE/Tracker/Atlas.IDE.Tracker.Adapters.TestResults.pas	Ordner `IDE/Tracker`, Rolle Adapters: erfüllt `IAtlasTestResultsSource` und `IAtlasProjectSummaryListener` aus `Atlas.UI.Tracker.TestResults` bzw. `Atlas.IDE.Projects.Summaries`, #1443
@@ -1651,7 +1651,7 @@ Atlas.IDE.Tracker	Atlas.IDE.Tracker.TestResults	IDE/Tracker/Atlas.IDE.Tracker.Te
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.TestResultsData	IDE/Tracker/Atlas.IDE.Tracker.TestResultsData.pas	Ordner `IDE/Tracker`, Daten der Kachel „Testergebnisse“ (#763, #1443)
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.TimeBooking	IDE/Tracker/Atlas.IDE.Tracker.TimeBooking.pas	Ordner `IDE/Tracker`, erfasste Zeit buchen
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.TimeTracking	IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas	Ordner `IDE/Tracker`
-Atlas.IDE.Tracker	Atlas.IDE.Tracker.WelcomeLink	IDE/Tracker/Atlas.IDE.Tracker.WelcomeLink.pas	Projekte und Meldungen der Willkommensseite über `Atlas.IDE.Contracts.WelcomeTiles`, #1455
+Atlas.IDE.Tracker	Atlas.IDE.Tracker.WelcomeLink	IDE/Tracker/Atlas.IDE.Tracker.WelcomeLink.pas	Projekte und Meldungen der Willkommensseite über `Atlas.IDE.Base.Foundation.WelcomeTiles`, #1455
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.Workflow	IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas	Ordner `IDE/Tracker`
 Atlas.IDE.Tracker	Atlas.IDE.Tracker.WorkingCopies	IDE/Tracker/Atlas.IDE.Tracker.WorkingCopies.pas	Ordner `IDE/Tracker`, Arbeitskopien je Tracker-Projekt, #1926
 Atlas.IDE.Tracker	Atlas.UI.Tracker.Attach.Strings	UI/Tracker/Atlas.UI.Tracker.Attach.Strings.pas	Texte des Features Attach (Tracker)
@@ -1789,7 +1789,7 @@ Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Settings	IDE/Welcome/Atlas.IDE.Welc
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.SettingsSection	IDE/Welcome/Atlas.IDE.Welcome.Adapters.SettingsSection.pas	Abschnitt „Willkommensseite“ im Vertrag des Optionsdialogs, #1443
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Setup	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Setup.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.State	IDE/Welcome/Atlas.IDE.Welcome.Adapters.State.pas	Ordner `IDE/Welcome`
-Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Tiles	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Tiles.pas	Kacheln anderer Module über `Atlas.IDE.Contracts.WelcomeTiles` zeigen, Board und Projekte bereitstellen, #1455
+Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Tiles	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Tiles.pas	Kacheln anderer Module über `Atlas.IDE.Base.Foundation.WelcomeTiles` zeigen, Board und Projekte bereitstellen, #1455
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Trends	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Trends.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.Unsaved	IDE/Welcome/Atlas.IDE.Welcome.Adapters.Unsaved.pas	Ordner `IDE/Welcome`
 Atlas.IDE.Welcome	Atlas.IDE.Welcome.Adapters.WhatsNew	IDE/Welcome/Atlas.IDE.Welcome.Adapters.WhatsNew.pas	Ordner `IDE/Welcome`

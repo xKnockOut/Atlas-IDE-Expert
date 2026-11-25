@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Assistants.Adapters.AiGhost;
 
 // KI-Schattentext (#1922): Anbieter für die Schattentext-Vorschläge von Base
-// (Atlas.IDE.Contracts.GhostSuggestions). Base fragt ihn nach den gelernten
+// (Atlas.IDE.Base.Foundation.GhostSuggestions). Base fragt ihn nach den gelernten
 // Vorschlägen, also nur, wenn kein gelerntes Muster passt.
 // - Prepare (Hauptthread): assistants.provider gesetzt, Datei nicht in
 //   assistants.exclude, Schlüssel hinterlegt, Tagesgrenze nicht erreicht;
@@ -25,7 +25,7 @@ uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
   Atlas.Core.AiProviders.Contract,
-  Atlas.IDE.Contracts.GhostSuggestions;
+  Atlas.IDE.Base.Foundation.GhostSuggestions;
 
 type
   TAtlasIdeAiGhost = class

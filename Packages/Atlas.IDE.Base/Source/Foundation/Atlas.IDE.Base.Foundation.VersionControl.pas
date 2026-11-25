@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.VersionControl;
+﻿unit Atlas.IDE.Base.Foundation.VersionControl;
 
 // Vertrag zwischen Modulen (#1891, Modulregel 6): Das Modul Versionsverwaltung
 // (Atlas.IDE.VersionControl) stellt über seinen Scope einen IAtlasVcsService (Arbeitskopie zu
@@ -12,7 +12,7 @@
 // Die Daten (Records, Aufzählungen, IAtlasVersionControl) stehen in
 // Atlas.VersionControl.Repository.Contract und den reinen Units unter Source/Core/Vcs von Base;
 // git und svn rufen nur die Umsetzungen im Modul auf.
-// Liegt in Base (Source/Contracts).
+// Liegt in Base (Source/Foundation).
 
 interface
 

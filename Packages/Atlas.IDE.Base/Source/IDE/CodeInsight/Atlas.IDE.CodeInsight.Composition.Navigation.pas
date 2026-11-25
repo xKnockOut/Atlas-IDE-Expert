@@ -29,7 +29,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Problems.Store,
-  Atlas.IDE.Contracts.Tests,
+  Atlas.IDE.Base.Foundation.Tests,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Results.Impact,

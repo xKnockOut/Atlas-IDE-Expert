@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Welcome.Adapters.Tiles;
 
 // Kacheln anderer Module auf der Willkommensseite (#1455, Modulregel 2,
-// 3 und 4; Vertrag Atlas.IDE.Contracts.WelcomeTiles): TAtlasIdeWelcomeTiles
+// 3 und 4; Vertrag Atlas.IDE.Base.Foundation.WelcomeTiles): TAtlasIdeWelcomeTiles
 // beobachtet die Registry auf IAtlasWelcomeTile und meldet jede Kachel als
 // Bereich (TAtlasWelcomeSections) mit Fabrik (TAtlasWelcomeViews) an. Die
 // Fabrik baut einen Bereichsrahmen mit Titelzeile und legt die Ansicht der
@@ -22,7 +22,7 @@ uses
   Atlas.Core.Modules.Watch,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Frame,
-  Atlas.IDE.Contracts.WelcomeTiles;
+  Atlas.IDE.Base.Foundation.WelcomeTiles;
 
 type
   TAtlasIdeWelcomeTiles = class;

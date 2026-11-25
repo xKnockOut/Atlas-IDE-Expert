@@ -47,7 +47,7 @@ uses
   Atlas.VersionControl.Repository.Contract,
   Atlas.VersionControl.Repository.WorkingCopies,
   Atlas.Core.Tracker.PathSuggestions,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.UI.Tracker.Settings.Strings,
   Atlas.UI.Tracker.SuggestDialog;
 

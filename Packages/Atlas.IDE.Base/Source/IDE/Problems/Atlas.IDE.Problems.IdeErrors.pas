@@ -2,7 +2,7 @@
 
 // Fehler der IDE (#1819, problems.ideErrors) für Base: Das Modul Prüfregeln
 // liest Error Insight über die Open Tools API und stellt IAtlasIdeErrors
-// bereit (Atlas.IDE.Contracts.Rules). Der Problem-Controller ruft nach jeder
+// bereit (Atlas.IDE.Base.Foundation.Rules). Der Problem-Controller ruft nach jeder
 // Prüfung einer Datei nur diese Unit; sie fragt bei jedem Aufruf die laufenden
 // Module (Regel 3: das Modul kann inzwischen fort sein) und rechnet die Werte
 // der IDE in Probleme um (Atlas.Core.Problems.IdeErrors). Ohne Modul gibt es
@@ -32,7 +32,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Problems.IdeErrors,
-  Atlas.IDE.Contracts.Rules;
+  Atlas.IDE.Base.Foundation.Rules;
 
 /// <summary>Quelle des ersten laufenden Moduls; False ohne.</summary>
 function Find(out ASource: IAtlasIdeErrors): Boolean;

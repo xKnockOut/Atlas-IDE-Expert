@@ -28,7 +28,7 @@ uses
   Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.ToolsApi.Files.Service;
 
 /// <summary>Projektdatei des aktiven Projekts mit Versionsverwaltung; '' ohne, dann die Meldung ANoVcs.</summary>

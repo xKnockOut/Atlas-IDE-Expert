@@ -40,8 +40,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract.CommentAssist,
-  Atlas.IDE.Contracts.Tests,
-  Atlas.IDE.Contracts.WelcomeTiles,
+  Atlas.IDE.Base.Foundation.Tests,
+  Atlas.IDE.Base.Foundation.WelcomeTiles,
   Atlas.IDE.Projects.Summaries,
   Atlas.UI.Tracker.Contract.MyIssues,
   Atlas.UI.Tracker.Contract.Sprint,

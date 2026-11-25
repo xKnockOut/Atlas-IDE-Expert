@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.GhostSuggestions.Tests;
+﻿unit Atlas.IDE.Base.Foundation.GhostSuggestions.Tests;
 
 // Vertrag der Schattentext-Anbieter (#1890): Reihenfolge der Anmeldung, Abmelden, eingeschaltete Anbieter.
 
@@ -23,7 +23,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.IDE.Contracts.GhostSuggestions;
+  Atlas.IDE.Base.Foundation.GhostSuggestions;
 
 type
   TFakeProvider = class(TInterfacedObject, IAtlasGhostProvider)

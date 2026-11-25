@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.VersionControl.Tests;
+﻿unit Atlas.IDE.Base.Foundation.VersionControl.Tests;
 
 // Zugang zur Versionsverwaltung (#1891): Ohne Modul antwortet TAtlasIdeVcs mit
 // dem Null-Objekt (keine Arbeitskopie, nichts im Hintergrund, keine Dialoge);
@@ -35,7 +35,7 @@ uses
   Atlas.VersionControl.Repository.Contract,
   Atlas.VersionControl.Repository.BranchPlan,
   Atlas.Core.Projects.VersionControl,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Base.Foundation.VersionControl;
 
 type
   /// <summary>Dienst eines gedachten Moduls: zählt Aufrufe, Hauptbranch „main“, Zeitlimit 5 s.</summary>

@@ -11,7 +11,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.IDE.Contracts.BuildTools,
+  Atlas.IDE.Base.Foundation.BuildTools,
   Atlas.IDE.Tasks.Runner;
 
 type

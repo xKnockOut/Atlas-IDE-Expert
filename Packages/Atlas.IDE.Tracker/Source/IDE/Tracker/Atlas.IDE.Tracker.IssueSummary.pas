@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.IssueSummary;
 
 // „Zusammenfassen“ im Fenster „Atlas-Issue“ (#2462): fragt den KI-Anbieter des
-// Moduls KI-Assistenten über den Vertrag Atlas.IDE.Contracts.AiText; der
+// Moduls KI-Assistenten über den Vertrag Atlas.IDE.Base.Foundation.AiText; der
 // Tracker kennt weder Anbieter noch Schlüssel. Ohne das Modul, ohne
 // eingerichteten Anbieter oder mit issues.aiSummary aus gibt es weder Knopf
 // noch Menüeintrag.
@@ -24,7 +24,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
   Atlas.Core.Tracker.AiSummary,
-  Atlas.IDE.Contracts.AiText,
+  Atlas.IDE.Base.Foundation.AiText,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.IDE.Tracker.IssueContext;

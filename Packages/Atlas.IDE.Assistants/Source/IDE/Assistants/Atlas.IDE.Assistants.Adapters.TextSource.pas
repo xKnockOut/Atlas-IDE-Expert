@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.IDE.Contracts.AiText;
+  Atlas.IDE.Base.Foundation.AiText;
 
 type
 {$SCOPEDENUMS ON}

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.BuildTools;
+﻿unit Atlas.IDE.Base.Foundation.BuildTools;
 
 // Vertrag zwischen Modulen (#1455, Modulregel 6): Das Modul Build
 // stellt über seinen Scope eine IAtlasBuildToolsSource bereit
@@ -6,7 +6,7 @@
 // Willkommensseite (#764) fragen sie über die Registry und kommen ohne das
 // Modul aus. Wer das Ende einer Projektaufgabe wissen will, stellt einen
 // IAtlasTaskListener bereit. Nur Interfaces und Records, kein Code. Liegt in
-// Base (Source/Contracts, #1456).
+// Base (Source/Foundation, #1456).
 
 interface
 

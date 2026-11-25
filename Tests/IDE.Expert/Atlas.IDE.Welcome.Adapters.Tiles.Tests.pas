@@ -34,7 +34,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Frame,
-  Atlas.IDE.Contracts.WelcomeTiles,
+  Atlas.IDE.Base.Foundation.WelcomeTiles,
   Atlas.IDE.Welcome.Adapters.Tiles;
 
 type

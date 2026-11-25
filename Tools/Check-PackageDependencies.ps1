@@ -115,7 +115,7 @@
     je Unit, sortiert nach Package und Unit) und
     Tools/UnitAssignment.Folders.tsv (Ordner -> Package). Jede Unit braucht
     eine Zeile. Verboten sind Base -> Modul und Modul -> anderes Modul; die
-    Verträge zwischen Modulen liegen in Base (Source/Contracts). Befristete
+    Verträge zwischen Modulen liegen in Base (Source/Foundation). Befristete
     Ausnahmen und bekannte Verstöße stehen in
     Tools/UnitAssignment.Boundaries.tsv; bekannte Verstöße werden bei jedem
     Lauf genannt, neue sind Fehler, nicht mehr vorkommende Zeilen ebenso.
@@ -1070,7 +1070,7 @@ foreach ($file in Get-ChildItem -Path $PluginSources -Recurse -File -Include 'At
 # Tools/UnitAssignment.Boundaries.tsv (befristete Ausnahmen und bekannte Verstöße). Die Entscheidung dazu steht in
 # docs/adr/0017-unit-zuordnung.md.
 # Verboten: Base -> Modul, Modul -> anderes Modul. Erlaubt: Modul -> Base (auch die Verträge zwischen
-# Modulen unter Source/Contracts von Base) und alles innerhalb eines Packages.
+# Modulen unter Source/Foundation von Base) und alles innerhalb eines Packages.
 $BasePackage = 'Atlas.IDE.Base'
 $AssignmentFile = 'Tools/UnitAssignment.tsv'
 $FolderFile = 'Tools/UnitAssignment.Folders.tsv'
@@ -1245,7 +1245,7 @@ elseif (Test-Path $PluginSource) {
                 $reason = "Base verwendet kein Modul ($to); über einen Vertrag oder eine Anmeldung lösen"
             }
             elseif ($to -ne $BasePackage) {
-                $reason = "Modul $from verwendet kein anderes Modul ($to); Querbezug über einen Vertrag in Base (Source/Contracts)"
+                $reason = "Modul $from verwendet kein anderes Modul ($to); Querbezug über einen Vertrag in Base (Source/Foundation)"
             }
             if ($reason -eq '') { continue }
             $entry = Find-BoundaryEntry $map.Allowed $name $unit.Name $to
@@ -1595,7 +1595,7 @@ if ($KnownReport.Count -gt 0) {
 
 # Rollen Adapters und Providers (#1443): Wer ein Interface eines anderen Features implementiert, ist ein Adapter
 # und nimmt es aus dessen Contract; Providers implementieren den eigenen Contract. Verträge zwischen Modulen
-# (Atlas.IDE.Contracts.*) zählen als fremder Contract jedes Moduls, auch für die Composition: Modulklassen stehen in
+# (Atlas.IDE.Base.Foundation.*) zählen als fremder Contract jedes Moduls, auch für die Composition: Modulklassen stehen in
 # Atlas.IDE.<Modul>.Adapters.Module. Hosting und Host-Units (Shell, Foundation …) setzen zusammen und sind
 # ausgenommen, Regel 4 (Interface im Contract) gilt auch für sie.
 # Bekannte Altfälle stehen in Tools/AdapterRoles.known.txt; neue sind Fehler, behobene müssen dort raus.
@@ -1612,7 +1612,7 @@ function Get-FeatureName([string] $Name) {
 }
 
 function Test-ContractUnit([string] $Name) {
-    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles $HostedFeatures)) -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
+    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles $HostedFeatures)) -or $Name -match '^(?i)Atlas\.IDE\.Base\.Foundation\.'
 }
 
 function Get-AdapterRoleFindings([string] $BaseDir) {

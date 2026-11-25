@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.Adapters.IssueWork;
 
 // Arbeitsstand je Issue (#2052), Teil des Trackers, über den Vertrag
-// Atlas.IDE.Contracts.IssueWork (Willkommensseite und Tracker kennen sich
+// Atlas.IDE.Base.Foundation.IssueWork (Willkommensseite und Tracker kennen sich
 // nicht):
 // - TAtlasTrackerIssueWork stellt IAtlasIssueWorkSource bereit, solange
 //   „Meine Issues“ läuft: aktives Issue eines Projekts (gemerkt oder aus dem
@@ -20,7 +20,7 @@ uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.IDE.Contracts.IssueWork,
+  Atlas.IDE.Base.Foundation.IssueWork,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices;
 

@@ -26,7 +26,7 @@ uses
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Commands.Editor,
-  Atlas.IDE.Contracts.LineChanges,
+  Atlas.IDE.Base.Foundation.LineChanges,
   Atlas.IDE.Editor.LineMove,
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.BlockComment,

@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.Adapters.Tiles;
 
 // Kacheln des Trackers auf der Willkommensseite (#1455), Rolle Adapters für
-// den Vertrag Atlas.IDE.Contracts.WelcomeTiles: „Meine Issues“ (#765),
+// den Vertrag Atlas.IDE.Base.Foundation.WelcomeTiles: „Meine Issues“ (#765),
 // „Sprint“ (#1277) und „Testergebnisse“ (#763). Die Komposition stellt sie
 // über den Scope des Moduls bereit und reicht die Quellen der Ansichten als
 // Adapter herein; die Willkommensseite zeigt sie mit Titelzeile, Griff und
@@ -17,7 +17,7 @@ uses
   Atlas.UI.Tracker.TileView,
   Atlas.UI.Tracker.Contract.MyIssues,
   Atlas.UI.Tracker.Contract.Sprint,
-  Atlas.IDE.Contracts.WelcomeTiles,
+  Atlas.IDE.Base.Foundation.WelcomeTiles,
   Atlas.IDE.Tracker.MyIssues,
   Atlas.UI.Tracker.Contract.TestResults;
 
