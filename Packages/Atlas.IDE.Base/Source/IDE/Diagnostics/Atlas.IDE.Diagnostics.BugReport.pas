@@ -16,7 +16,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.BugReport;
+  Atlas.Plugin.Diagnostics.BugReport;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) an den laufenden Server im Hintergrund (#874); ADone im
@@ -50,14 +50,14 @@ type
 implementation
 
 uses
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Settings.History,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Crashes,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Crashes,
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Diagnostics.Strings,
   Atlas.IDE.Foundation.Settings;

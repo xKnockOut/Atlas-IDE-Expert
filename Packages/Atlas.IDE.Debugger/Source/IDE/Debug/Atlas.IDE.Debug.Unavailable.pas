@@ -14,7 +14,7 @@
 //     (TAtlasIdeDebugSession.LaunchValue) und ob der Halt außerhalb des
 //     eigenen Codes liegt (TAtlasIdeDebugSources.OwnCode, #578).
 //   - Texte der Ursache, der Herkunft des Schalters, der geprüften Punkte und
-//     der Korrekturen kommen aus Atlas.UI.Strings.
+//     der Korrekturen kommen aus Atlas.Plugin.Localization.Strings.
 //   - Fix (Klick auf eine Korrektur im Tooltip), jede erst nach einer Vorschau
 //     mit Bestätigung (ausgeführt von TAtlasIdeDebugUnavailableFixes):
 //       RestartWithDebug: Programm zurücksetzen (Aktion der IDE wie Strg+F2),
@@ -36,7 +36,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Unavailable,
@@ -125,18 +125,19 @@ uses
   System.IOUtils,
   System.JSON,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.UnavailableNote,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.Explain.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional,
+  Atlas.Text.Files;
 
 const
   cDebugDcusOption = TAtlasUnavailableNote.cDebugDcusOption;
@@ -402,7 +403,10 @@ begin
       AFacts.ReadServer(mResponse);
     except
       // Server langsam oder weg: nur die Tatsachen des Plugins.
-      AFacts.Server := False;
+      on ELspClientError do
+      begin
+        AFacts.Server := False;
+      end;
     end;
   finally
     mResponse.Free;
@@ -538,7 +542,14 @@ begin
       end;
     except
       // Unlesbare Ergänzungen: es gelten die bekannten Texte.
-      FPatterns := nil;
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
+        FPatterns := nil;
+      end;
     end;
   end;
   Result := FPatterns;

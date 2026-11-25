@@ -43,7 +43,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.GenericLists.Usages;
 
 type
@@ -98,8 +98,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists.Syntax,
   Atlas.Common.Editing.GenericLists.Source,
   Atlas.Common.Editing.GenericLists.State,
@@ -274,7 +274,7 @@ begin
   FTarget.Declaration := ADeclaration;
   FTarget.DeclarationLine := ADeclaration.StartPos.Line;
   FTarget.Name := AName;
-  FTarget.UnitName := TUsesClauses.OwnName(ATree.Tokens);
+  FTarget.UnitName := TPascalUses.OwnName(ATree.Tokens);
   ScanDeclaration(FFiles[0]);
   if not Failed then
   begin

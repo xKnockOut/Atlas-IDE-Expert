@@ -77,12 +77,12 @@ uses
   System.SysUtils,
   System.Diagnostics,
   System.JSON,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Colors,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Lsp.Session,
+  Atlas.Plugin.Lsp.Session.Json,
   System.Generics.Collections;
 
 function Problem(ALine, ACharacter: Integer; const AMessage: string; const ASource: string;
@@ -300,7 +300,7 @@ begin
     '"items":[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":4}},"message":"m"}]}')
     as TJSONObject;
   try
-    mReport := TLspDiagnosticReport.FromJson(mJson, '');
+    mReport := TLspSessionJson.DiagnosticReport(mJson, '');
   finally
     mJson.Free;
   end;
@@ -310,7 +310,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mReport.Problems)));
   mJson := TJSONObject.ParseJSONValue('{"kind":"unchanged","resultId":"3:v2"}') as TJSONObject;
   try
-    mReport := TLspDiagnosticReport.FromJson(mJson, 'C:\P\B.pas');
+    mReport := TLspSessionJson.DiagnosticReport(mJson, 'C:\P\B.pas');
   finally
     mJson.Free;
   end;

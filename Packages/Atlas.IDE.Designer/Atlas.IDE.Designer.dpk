@@ -1,5 +1,6 @@
 ﻿package Atlas.IDE.Designer;
 
+{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -182,6 +183,7 @@ contains
   Atlas.IDE.Designer.Surface in 'Source\IDE\Designer\Atlas.IDE.Designer.Surface.pas',
   Atlas.IDE.Designer.Undo in 'Source\IDE\Designer\Atlas.IDE.Designer.Undo.pas',
   Atlas.IDE.Designer.Bar in 'Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas',
+  Atlas.IDE.Designer.Adapters.Module in 'Source\IDE\Designer\Atlas.IDE.Designer.Adapters.Module.pas',
   Atlas.IDE.Designer.Composition in 'Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas',
   Atlas.UI.Designer.SettingsSection in 'Source\UI\Designer\Atlas.UI.Designer.SettingsSection.pas';
 

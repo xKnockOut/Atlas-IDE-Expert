@@ -19,7 +19,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 type
   TAtlasTestProjectChoice = record
@@ -67,6 +67,11 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Text.Json;
+
+const
+  /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
+  cKind = 'Wahl des Testprojekts';
+
 
 { TAtlasTestProjectChoices }
 
@@ -212,7 +217,7 @@ begin
     Exit(TAtlasDataLoad.Missing);
   end;
   mChoices := nil;
-  Result := TAtlasDataFile.Load(AFile, 'Wahl des Testprojekts',
+  Result := TAtlasDataFile.Load(AFile, cKind,
     function(const AText: string): Boolean
     begin
       mChoices := Parse(AText);
@@ -251,7 +256,7 @@ begin
     Result := True;
   except
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Wahl des Testprojekts', E);
+      TAtlasDataFile.ReportNotWritten(cKind, E);
   end;
 end;
 

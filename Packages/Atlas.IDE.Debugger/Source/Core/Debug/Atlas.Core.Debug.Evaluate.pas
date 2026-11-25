@@ -76,6 +76,13 @@ type
 
   TAtlasEvalNode = class
   private
+    FValue: string;
+    FState: TAtlasEvalState;
+    FChanged: Boolean;
+    FExpanded: Boolean;
+    FChildrenLoaded: Boolean;
+    FFromParts: Boolean;
+    FPinned: Boolean;
     FParent: TAtlasEvalNode;
     FChildren: TObjectList<TAtlasEvalNode>;
     FName: string;
@@ -84,17 +91,17 @@ type
     function GetChildCount: Integer;
     function GetChild(AIndex: Integer): TAtlasEvalNode;
   public
-    Value: string;
-    State: TAtlasEvalState;
+    property Value: string read FValue write FValue;
+    property State: TAtlasEvalState read FState write FState;
     /// <summary>Seit dem letzten Halt geändert.</summary>
-    Changed: Boolean;
-    Expanded: Boolean;
+    property Changed: Boolean read FChanged write FChanged;
+    property Expanded: Boolean read FExpanded write FExpanded;
     /// <summary>Kinder geholt (Felder bzw. Teile); bis dahin nur ein Platzhalter im Baum.</summary>
-    ChildrenLoaded: Boolean;
+    property ChildrenLoaded: Boolean read FChildrenLoaded write FChildrenLoaded;
     /// <summary>Kinder aus den Teilen des Ergebnis-Strings statt eigener Auswertung.</summary>
-    FromParts: Boolean;
+    property FromParts: Boolean read FFromParts write FFromParts;
     /// <summary>Festgeheftet (Strg+Enter): bleibt über Halte und Sitzungen.</summary>
-    Pinned: Boolean;
+    property Pinned: Boolean read FPinned write FPinned;
     constructor Create(AParent: TAtlasEvalNode; const AName, AExpression, AKey: string);
     destructor Destroy; override;
     procedure ClearChildren;
@@ -139,7 +146,7 @@ type
     /// und hat Teile statt Felder, entstehen die Kinder neu.</summary>
     procedure SetResult(ANode: TAtlasEvalNode; AOk: Boolean; const AText: string);
     /// <summary>Kinder aus Feldnamen (einzeln auszuwerten).</summary>
-    procedure SetFields(ANode: TAtlasEvalNode; const AFields: TArray<string>);
+    class procedure SetFields(ANode: TAtlasEvalNode; const AFields: TArray<string>); static;
     /// <summary>Kinder aus den Teilen des Werts (ohne Server); False, wenn der Wert keine hat.</summary>
     function SetParts(ANode: TAtlasEvalNode): Boolean;
     /// <summary>Offene Knoten in Anzeigereihenfolge: Wurzeln und Kinder aufgeklappter Knoten.</summary>
@@ -180,6 +187,9 @@ const
   // Bildzeichen für Steuerzeichen: U+2400 + Code; Tab als Pfeil.
   cControlPictureBase = $2400;
   cTabPicture = #$2192;
+  cFirstPrintable = ' ';
+  cHexDigits32 = 8;
+  cHexDigits64 = 16;
 
 /// <summary>AText[AIndex] ist ein Anführungszeichen: Index (1-basiert) hinter dem schließenden ('' zählt als
 /// Inhalt); 0, wenn der String nicht endet.</summary>
@@ -362,24 +372,23 @@ end;
 /// Ziffern.</summary>
 function DecodeCharCode(const AText: string; var AIndex: Integer; out AChar: Char): Boolean;
 var
-  mDigits: string;
-  mCode: Integer;
+  mStart, mCode: Integer;
+  mHex: Boolean;
 begin
   AChar := #0;
   Inc(AIndex);
-  mDigits := '';
-  if (AIndex <= Length(AText)) and (AText[AIndex] = '$') then
+  mStart := AIndex;
+  mHex := (AIndex <= Length(AText)) and (AText[AIndex] = '$');
+  if mHex then
   begin
-    mDigits := '$';
     Inc(AIndex);
   end;
   while (AIndex <= Length(AText)) and (CharInSet(AText[AIndex], ['0'..'9']) or
-    ((mDigits <> '') and (mDigits[1] = '$') and CharInSet(AText[AIndex], ['a'..'f', 'A'..'F']))) do
+    (mHex and CharInSet(AText[AIndex], ['a'..'f', 'A'..'F']))) do
   begin
-    mDigits := mDigits + AText[AIndex];
     Inc(AIndex);
   end;
-  Result := TryStrToInt(mDigits, mCode) and (mCode >= 0) and (mCode <= $FFFF);
+  Result := TryStrToInt(Copy(AText, mStart, AIndex - mStart), mCode) and (mCode >= 0) and (mCode <= $FFFF);
   if Result then
   begin
     AChar := Char(mCode);
@@ -391,35 +400,45 @@ var
   mText: string;
   mIndex, mStop: Integer;
   mCode: Char;
+  mBuilder: TStringBuilder;
 begin
   AText := '';
   mText := Trim(AValue);
   Result := (mText <> '') and CharInSet(mText[1], ['''', '#']);
   mIndex := 1;
-  while Result and (mIndex <= Length(mText)) do
-  begin
-    if mText[mIndex] = '''' then
+  mBuilder := TStringBuilder.Create;
+  try
+    while Result and (mIndex <= Length(mText)) do
     begin
-      mStop := SkipString(mText, mIndex);
-      Result := mStop <> 0;
-      if Result then
+      if mText[mIndex] = '''' then
       begin
-        AText := AText + StringReplace(Copy(mText, mIndex + 1, mStop - mIndex - 2), '''''', '''', [rfReplaceAll]);
-        mIndex := mStop;
-      end;
-    end
-    else if mText[mIndex] = '#' then
-    begin
-      Result := DecodeCharCode(mText, mIndex, mCode);
-      if Result then
+        mStop := SkipString(mText, mIndex);
+        Result := mStop <> 0;
+        if Result then
+        begin
+          mBuilder.Append(StringReplace(Copy(mText, mIndex + 1, mStop - mIndex - 2), '''''', '''', [rfReplaceAll]));
+          mIndex := mStop;
+        end;
+      end
+      else if mText[mIndex] = '#' then
       begin
-        AText := AText + mCode;
+        Result := DecodeCharCode(mText, mIndex, mCode);
+        if Result then
+        begin
+          mBuilder.Append(mCode);
+        end;
+      end
+      else
+      begin
+        Result := False;
       end;
-    end
-    else
-    begin
-      Result := False;
     end;
+    if Result then
+    begin
+      AText := mBuilder.ToString;
+    end;
+  finally
+    mBuilder.Free;
   end;
 end;
 
@@ -573,7 +592,8 @@ begin
       C := AText[mIndex];
       if (C = #13) and (mIndex < Length(AText)) and (AText[mIndex + 1] = #10) then
       begin
-        mBuilder.Append(Char(cControlPictureBase + 13)).Append(Char(cControlPictureBase + 10)).Append(sLineBreak);
+        mBuilder.Append(Char(cControlPictureBase + Ord(#13))).Append(Char(cControlPictureBase + Ord(#10)))
+          .Append(sLineBreak);
         Inc(mIndex, 2);
         Continue;
       end;
@@ -585,7 +605,7 @@ begin
       begin
         mBuilder.Append(cTabPicture);
       end
-      else if Ord(C) < 32 then
+      else if C < cFirstPrintable then
       begin
         mBuilder.Append(Char(cControlPictureBase + Ord(C)));
       end
@@ -706,11 +726,11 @@ begin
   end;
   if (mNumber >= Low(Integer)) and (mNumber <= High(Integer)) then
   begin
-    AHex := '$' + IntToHex(Integer(mNumber), 8);
+    AHex := '$' + IntToHex(Integer(mNumber), cHexDigits32);
   end
   else
   begin
-    AHex := '$' + IntToHex(mNumber, 16);
+    AHex := '$' + IntToHex(mNumber, cHexDigits64);
   end;
   AHex := AHex + ' (' + IntToStr(mNumber) + ')';
 end;
@@ -1010,7 +1030,7 @@ begin
   end;
 end;
 
-procedure TAtlasEvalList.SetFields(ANode: TAtlasEvalNode; const AFields: TArray<string>);
+class procedure TAtlasEvalList.SetFields(ANode: TAtlasEvalNode; const AFields: TArray<string>);
 var
   mField: string;
 begin

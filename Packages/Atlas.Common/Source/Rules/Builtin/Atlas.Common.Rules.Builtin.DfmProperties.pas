@@ -847,18 +847,6 @@ begin
   end;
 end;
 
-function LeadingSpaces(const ALine: string): string;
-var
-  mCount: Integer;
-begin
-  mCount := 0;
-  while (mCount < Length(ALine)) and CharInSet(ALine[mCount + 1], [' ', #9]) do
-  begin
-    Inc(mCount);
-  end;
-  Result := Copy(ALine, 1, mCount);
-end;
-
 /// <summary>Edit in der Formulardatei: eine Zeile AName = AValue nach den Properties des Objekts einfügen.
 /// </summary>
 function InsertEdit(const AFormLines: TArray<string>; const ALineBreak: string; AObject: TDfmObject;
@@ -880,7 +868,7 @@ begin
   mIndent := '';
   if (AObject.Range.StartPos.Line >= 0) and (AObject.Range.StartPos.Line <= High(AFormLines)) then
   begin
-    mIndent := LeadingSpaces(AFormLines[AObject.Range.StartPos.Line]);
+    mIndent := TTextLines.IndentOf(AFormLines[AObject.Range.StartPos.Line]);
   end;
   Result := TRuleEdit.Create(TTextRange.Create(mLine + 1, 0, mLine + 1, 0),
     mIndent + '  ' + AName + ' = ' + AValue + ALineBreak);

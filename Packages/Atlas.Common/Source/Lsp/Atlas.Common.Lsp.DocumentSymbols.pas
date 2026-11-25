@@ -76,12 +76,13 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -557,21 +558,6 @@ begin
   end;
 end;
 
-/// <summary>Rumpf der Typdeklaration ADecl (ohne generische Parameter und Attribute); nil ohne.</summary>
-function TypeBody(ADecl: TSyntaxNode): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ADecl.ChildCount - 1 do
-  begin
-    if not (ADecl[mIndex].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
-    begin
-      Exit(ADecl[mIndex]);
-    end;
-  end;
-  Result := nil;
-end;
-
 /// <summary>Symbolart und Detail ("class", "record" …) zum Rumpf ABody (nil = unbekannt).</summary>
 function TypeKindOf(ABody: TSyntaxNode; out ADetail: string): Integer;
 begin
@@ -620,7 +606,7 @@ var
   mIndex, mKind: Integer;
   mDetail: string;
 begin
-  mBody := TypeBody(ADecl);
+  mBody := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]);
   mKind := TypeKindOf(mBody, mDetail);
   Result := NewSymbol(ADecl, ADecl.Name, mKind, mDetail);
   if mBody = nil then

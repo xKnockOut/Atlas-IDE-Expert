@@ -18,7 +18,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Status.Server;
+  Atlas.Plugin.Status.Server;
 
 type
   TAtlasIdeServerWindow = class
@@ -65,13 +65,13 @@ uses
   Vcl.Forms,
   DesignIntf,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Status.Strings,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.UI.Status.ServerFrame,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 const
   cRefreshMs = 5000;

@@ -47,6 +47,9 @@ uses
   Atlas.UI.Build.Strings;
 
 const
+  cMsPerSecond = 1000;
+  cMsPerTenth = 100;
+  cSecondsPerMinute = 60;
   cIssueTexts: array[TAtlasTaskIssueKind] of TAtlasBuildTextId = (TAtlasBuildTextId.TasksIssueUnknownMatcher,
     TAtlasBuildTextId.TasksIssueSeverityMapValue, TAtlasBuildTextId.TasksIssueMatcherWithoutRegex,
     TAtlasBuildTextId.TasksIssueMatcherType, TAtlasBuildTextId.TasksIssueArgsValue,
@@ -66,14 +69,16 @@ begin
   begin
     AMs := 0;
   end;
-  mSeconds := AMs div 1000;
-  if mSeconds < 60 then
+  mSeconds := AMs div cMsPerSecond;
+  if mSeconds < cSecondsPerMinute then
   begin
-    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksSeconds, [mSeconds, (AMs mod 1000) div 100]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksSeconds,
+      [mSeconds, (AMs mod cMsPerSecond) div cMsPerTenth]);
   end
   else
   begin
-    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksMinutes, [mSeconds div 60, mSeconds mod 60]);
+    Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.TasksMinutes,
+      [mSeconds div cSecondsPerMinute, mSeconds mod cSecondsPerMinute]);
   end;
 end;
 

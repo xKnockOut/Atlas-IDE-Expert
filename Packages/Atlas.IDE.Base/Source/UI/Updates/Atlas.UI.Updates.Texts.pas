@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Updates.Texts;
 
 // Texte der Update-Installation (#1519): Fehlercodes von AtlasUpdate.exe,
-// Stand der Vorbereitung für die Zeile „Version“ (#754), Gründe, warum das
+// Stand der Vorbereitung für die Zeile „Version“ (#754, auch „wartet auf
+// Bestätigung zum Bauen“), Gründe, warum das
 // Plugin nicht selbst installiert, und das Ergebnis nach dem Neustart.
 
 interface
@@ -20,6 +21,9 @@ type
     class function BlockText(ABlock: TAtlasUpdateBlock): string; static;
     /// <summary>Meldung nach dem Einspielen (eine oder mehrere Zeilen).</summary>
     class function OutcomeText(const AOutcome: TUpdateOutcome): string; static;
+    /// <summary>AText mit dem Hinweis zur Kennung AWarning aus state.json in einer eigenen Zeile; AText allein ohne
+    /// oder mit unbekannter Kennung.</summary>
+    class function WithWarning(const AText, AWarning: string): string; static;
   end;
 
 implementation
@@ -30,20 +34,25 @@ uses
   Atlas.UI.Updates.Strings;
 
 const
-  cCodes: array[0..17] of string = (TUpdateErrors.cManifest, TUpdateErrors.cVersionChanged, TUpdateErrors.cNoPackage,
+  // cUnexpected steht vorletzt: Unbekannte Kennungen zeigen seinen Text.
+  cCodes: array[0..21] of string = (TUpdateErrors.cManifest, TUpdateErrors.cVersionChanged, TUpdateErrors.cNoPackage,
     TUpdateErrors.cNoCompiler, TUpdateErrors.cDownload, TUpdateErrors.cHash, TUpdateErrors.cArchive,
-    TUpdateErrors.cUnsigned, TUpdateErrors.cSignature, TUpdateErrors.cBuild, TUpdateErrors.cLocked,
+    TUpdateErrors.cUnsigned, TUpdateErrors.cSignature, TUpdateErrors.cManifestUnsigned,
+    TUpdateErrors.cManifestSignature, TUpdateErrors.cBuild, TUpdateErrors.cLocked,
     TUpdateErrors.cCopyFailed, TUpdateErrors.cRegistry, TUpdateErrors.cCancelled, TUpdateErrors.cElevation,
-    TUpdateErrors.cSelection, TUpdateErrors.cUnexpected, TAtlasUpdateInstall.cStartFailed);
-  cCodeTexts: array[0..17] of TAtlasUpdatesTextId = (
+    TUpdateErrors.cSelection, TUpdateErrors.cSourceConfirm, TUpdateErrors.cHost, TUpdateErrors.cUnexpected,
+    TAtlasUpdateInstall.cStartFailed);
+  cCodeTexts: array[0..21] of TAtlasUpdatesTextId = (
     TAtlasUpdatesTextId.UpdatesErrorManifest, TAtlasUpdatesTextId.UpdatesErrorVersion,
     TAtlasUpdatesTextId.UpdatesErrorNoPackage, TAtlasUpdatesTextId.UpdatesErrorNoCompiler,
     TAtlasUpdatesTextId.UpdatesErrorDownload, TAtlasUpdatesTextId.UpdatesErrorHash,
     TAtlasUpdatesTextId.UpdatesErrorArchive, TAtlasUpdatesTextId.UpdatesErrorUnsigned,
-    TAtlasUpdatesTextId.UpdatesErrorSignature, TAtlasUpdatesTextId.UpdatesErrorBuild,
+    TAtlasUpdatesTextId.UpdatesErrorSignature, TAtlasUpdatesTextId.UpdatesErrorManifestUnsigned,
+    TAtlasUpdatesTextId.UpdatesErrorManifestSignature, TAtlasUpdatesTextId.UpdatesErrorBuild,
     TAtlasUpdatesTextId.UpdatesErrorLocked, TAtlasUpdatesTextId.UpdatesErrorCopy,
     TAtlasUpdatesTextId.UpdatesErrorRegistry, TAtlasUpdatesTextId.UpdatesErrorCancelled,
     TAtlasUpdatesTextId.UpdatesErrorElevation, TAtlasUpdatesTextId.UpdatesErrorSelection,
+    TAtlasUpdatesTextId.UpdatesErrorSourceConfirm, TAtlasUpdatesTextId.UpdatesErrorHost,
     TAtlasUpdatesTextId.UpdatesErrorUnexpected, TAtlasUpdatesTextId.UpdatesErrorStart);
 
 { TAtlasUpdateTexts }
@@ -82,7 +91,14 @@ begin
         Result := TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesStageReady);
       end;
     TUpdatePhase.Failed:
-      Result := TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesStageFailed);
+      if TAtlasUpdateInstall.AwaitsSourceConfirmation(AStage) then
+      begin
+        Result := TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesStageConfirmSource);
+      end
+      else
+      begin
+        Result := TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesStageFailed);
+      end;
   end;
 end;
 
@@ -125,6 +141,15 @@ begin
   else
     Result := TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesOutcomeFailed, [AOutcome.Version,
       ErrorText(AOutcome.Reason, AOutcome.Detail), AOutcome.LogFile]);
+  end;
+end;
+
+class function TAtlasUpdateTexts.WithWarning(const AText, AWarning: string): string;
+begin
+  Result := AText;
+  if AWarning = TUpdateErrors.cManifestUnsigned then
+  begin
+    Result := Result + sLineBreak + TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesWarningManifestUnsigned);
   end;
 end;
 

@@ -50,24 +50,14 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.DelphiSemantics,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Tests.RuleAssert;
-
-function Lines(const ALines: array of string): string;
-var
-  mLine: string;
-begin
-  Result := '';
-  for mLine in ALines do
-  begin
-    Result := Result + mLine + #10;
-  end;
-end;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.SourceText;
 
 /// <summary>Unit U mit den Zeilen ABody im implementation-Teil.</summary>
 function UnitWith(const ABody: array of string): string;
 begin
-  Result := Lines(['unit U;', 'interface', 'implementation']) + Lines(ABody) + 'end.';
+  Result := TTestSource.Lines(['unit U;', 'interface', 'implementation']) + TTestSource.Lines(ABody) + 'end.';
 end;
 
 /// <summary>Index mit Unit Werk.Ansicht: TExtra (Record), TAnsicht (Record mit dynamischem und statischem Array)
@@ -75,7 +65,7 @@ end;
 function AnsichtIndex: ISymbolIndex;
 begin
   Result := TSymbolIndex.Create;
-  Result.AddUnit(TIndexExtractor.ExtractText(Lines(['unit Werk.Ansicht;', 'interface', 'type',
+  Result.AddUnit(TIndexExtractor.ExtractText(TTestSource.Lines(['unit Werk.Ansicht;', 'interface', 'type',
     '  TExtra = record', '    State: Integer;', '  end;', '  TAnsicht = record', '    Extras: TArray<TExtra>;',
     '    Fest: array[0..2] of Integer;', '    Name: string;', '  end;', '  TKlasse = class',
     '    Extras: TArray<TExtra>;', '  end;', 'implementation']) + 'end.', 'C:\P\Werk.Ansicht.pas', nil));
@@ -83,8 +73,8 @@ end;
 
 function SharedFindings(const ABody: array of string): TArray<TRuleFinding>;
 begin
-  Result := TRuleAssert.IndexFindings(TRecordArraySharedRule.Create, Lines(['unit U;', 'interface', 'uses',
-    '  Werk.Ansicht;', 'implementation']) + Lines(ABody) + 'end.', AnsichtIndex, '', 'U.pas');
+  Result := TRuleAssert.IndexFindings(TRecordArraySharedRule.Create, TTestSource.Lines(['unit U;', 'interface', 'uses',
+    '  Werk.Ansicht;', 'implementation']) + TTestSource.Lines(ABody) + 'end.', AnsichtIndex, '', 'U.pas');
 end;
 
 { TDelphiSemanticsTests }
@@ -102,7 +92,7 @@ begin
   Assert.AreEqual('7: SetLength(Result, ...) ohne vorheriges Result := nil: Delphi übergibt Result als Variable des ' +
     'Aufrufers, SetLength behält deren alte Werte, und Result[I] liest sie (FPC beginnt leer). Erst Result := ' +
     'nil.|', TRuleAssert.LineMessages(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(mSource, '  SetLength(Result', '  Result := nil;'#10'  SetLength(Result', []), mFixed);
   TRuleAssert.Silent(TManagedResultReadRule.Create, mFixed);
   // Zählen in Result nach SetLength und Anhängen an die Länge des Aufrufers.
@@ -184,10 +174,10 @@ begin
   Assert.AreEqual('10: mKopie.Extras ist seit Zeile 10 (mKopie := AAnsicht) dasselbe Array wie in AAnsicht: ' +
     'Dynamische Arrays sind in Delphi Referenzen ohne Copy-on-Write, das Schreiben ändert auch AAnsicht. Vorher ' +
     'mKopie.Extras := Copy(mKopie.Extras).|', TRuleAssert.LineMessages(mFound));
-  mSource := Lines(['unit U;', 'interface', 'uses', '  Werk.Ansicht;', 'implementation',
+  mSource := TTestSource.Lines(['unit U;', 'interface', 'uses', '  Werk.Ansicht;', 'implementation',
     'procedure Zeige(const AAnsicht: TAnsicht);', 'var', '  mKopie: TAnsicht;', 'begin', '  mKopie := AAnsicht;',
     '  mKopie.Extras[0].State := 1;', 'end;']) + 'end.';
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('  mKopie.Extras := Copy(mKopie.Extras);'#10'  mKopie.Extras[0].State := 1;', mFixed) > 0, mFixed);
   Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.IndexFindings(TRecordArraySharedRule.Create, mFixed, AnsichtIndex, '',
     'U.pas')));
@@ -223,7 +213,7 @@ begin
   Assert.AreEqual(3, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.AreEqual('7: ExtractFileName bekommt einen Pfad mit ''/'': Unter Windows trennt Delphi nur an ''\'' ' +
     '(PathDelim), unter Linux an ''/''. Trenner vorher auf PathDelim angleichen.|', TRuleAssert.LineMessages(TArray<TRuleFinding>.Create(mFound[0])));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('StringReplace(A, ''\'', PathDelim, [rfReplaceAll])', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(mFound[1].Fixes)));
 end;

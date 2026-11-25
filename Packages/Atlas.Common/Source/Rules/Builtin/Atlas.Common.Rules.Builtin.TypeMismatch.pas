@@ -87,10 +87,11 @@ uses
   Atlas.Common.Semantics.TypeCompatibility,
   Atlas.Common.Semantics.TypeIdentity,
   Atlas.Common.Semantics.RtlMethodReferences,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.Builtin.Constants.Conversions,
-  Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes;
+  Atlas.Common.Rules.Builtin.Conversions,
+  Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -857,7 +858,7 @@ var
   mNode: TSyntaxNode;
 begin
   Result := Default(TValueType);
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if mNode = nil then
   begin
     Exit;
@@ -1216,11 +1217,11 @@ begin
   DeclaredType(mSymbol, mType, mUnit);
   if ProceduralTarget(mSymbol, mType, mShape, mProcedural) then
   begin
-    CheckProcedural(Unwrapped(ANode[1]), mShape, mProcedural);
+    CheckProcedural(TSyntaxNodes.Unparen(ANode[1]), mShape, mProcedural);
   end
   else if (ProceduralText(mSymbol, mType) = '') and mTarget.Known then
   begin
-    CheckValue(Unwrapped(ANode[1]));
+    CheckValue(TSyntaxNodes.Unparen(ANode[1]));
   end;
 end;
 
@@ -1419,7 +1420,7 @@ var
     Result := Result and ProceduralTarget(Default(TResolvedSymbol), mType, mTarget, mName);
     if Result and not MatchText(TProcShapes.NormalizedModifier(AParam.Modifier), ['var', 'out']) then
     begin
-      CheckProcedural(Unwrapped(AArgument), mTarget, mName);
+      CheckProcedural(TSyntaxNodes.Unparen(AArgument), mTarget, mName);
     end;
   end;
 
@@ -1559,7 +1560,7 @@ var
   mFound: Boolean;
   mActual: TValueType;
 begin
-  mArgument := Unwrapped(AArgument);
+  mArgument := TSyntaxNodes.Unparen(AArgument);
   if not (mArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
   begin
     Exit;
@@ -1654,7 +1655,7 @@ begin
   if mOperator = 'is' then
   begin
     // X is Integer: rechts muss eine Klasse stehen.
-    mRightNode := Unwrapped(ANode[1]);
+    mRightNode := TSyntaxNodes.Unparen(ANode[1]);
     if (mRightNode.Kind = TSyntaxKind.Identifier) and not BuiltinCast(mRightNode, mSymbol) and
       not (FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, mRightNode, mSymbol, mType, mFound) and
       mSymbol.IsType) then

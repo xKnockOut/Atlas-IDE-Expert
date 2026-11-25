@@ -46,7 +46,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
-  Atlas.Common.Editing.MethodWithoutSelf.Contract;
+  Atlas.Common.Editing.MethodWithoutSelf.Types;
 
 type
   TMethodWithoutSelf = class
@@ -92,12 +92,14 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.MethodWithoutSelf.Texts,
-  Atlas.Common.Editing.MethodWithoutSelf.Analysis;
+  Atlas.Common.Editing.MethodWithoutSelf.Analysis,
+  Atlas.Text.Names,
+  Atlas.Text.Arrays;
 
 { TMethodWithoutSelf }
 
@@ -125,15 +127,6 @@ const
   // Direktiven, die an einer freien Routine bzw. einem Helper nicht passen.
   cDroppedDirectives: array[0..8] of string = ('overload', 'reintroduce', 'final', 'static', 'virtual', 'dynamic',
     'override', 'abstract', 'message');
-
-function Capitalized(const AName: string): string;
-begin
-  Result := AName;
-  if Result <> '' then
-  begin
-    Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
-  end;
-end;
 
 function SameTypeName(const A, B: string): Boolean;
 begin
@@ -296,10 +289,7 @@ end;
 
 procedure TMethodBuild.Warn(const AText: string);
 begin
-  if IndexStr(AText, Warnings) < 0 then
-  begin
-    Warnings := Warnings + [AText];
-  end;
+  TTextArrays.AddText(Warnings, AText);
 end;
 
 procedure TMethodBuild.WarnLost(AWork: TFileWork; ALine: Integer; AReceiver: TSyntaxNode);
@@ -841,7 +831,7 @@ begin
   if SameText(mBase, AVisible) or (Assigned(Plan.Lookup.NameVisible) and Plan.Lookup.NameVisible(mBase,
     Plan.Routine.StartOffset)) then
   begin
-    mBase := 'T' + Capitalized(Plan.UnitName.Substring(Plan.UnitName.LastIndexOf('.') + 1)) + Copy(mBase, 2,
+    mBase := 'T' + TTextNames.Capitalized(Plan.UnitName.Substring(Plan.UnitName.LastIndexOf('.') + 1)) + Copy(mBase, 2,
       MaxInt);
   end;
   HelperName := TRoutineParts.FreeName(mBase, TRoutineParts.UnitNames(Plan.Tree.Root));
@@ -892,7 +882,7 @@ var
   mTree: TSyntaxTree;
 begin
   Result := '';
-  mTree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(AWork.Text, AEdits));
+  mTree := TSyntaxTreeCache.Parse(TTextChanges.Apply(AWork.Text, AEdits));
   try
     if Length(mTree.Diagnostics) > Length(AWork.Tree.Diagnostics) then
     begin
@@ -1165,7 +1155,7 @@ begin
   begin
     mName := 'String';
   end;
-  Result := 'T' + Capitalized(mName) + 'Helper';
+  Result := 'T' + TTextNames.Capitalized(mName) + 'Helper';
 end;
 
 end.

@@ -39,10 +39,11 @@ uses
   Atlas.Core.BuildPipeline.Plan,
   System.Hash,
   ToolsAPI,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.IDE.Foundation.StartOptions,
   Atlas.UI.BuildPipeline.Strings;
 
 function MessageServices(out AMessages: IOTAMessageServices; out AGroup: IOTAMessageGroup): Boolean;
@@ -58,17 +59,6 @@ begin
   if AGroup = nil then
   begin
     AGroup := AMessages.AddMessageGroup(TAtlasIdeBuildGate.cMessageGroup);
-  end;
-end;
-
-function ProjectOf(const AFileName: string): IOTAProject;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Supports(mModules.FindModule(AFileName), IOTAProject, Result);
   end;
 end;
 
@@ -108,7 +98,7 @@ var
 begin
   AUnits := nil;
   AOutputTime := 0;
-  mProject := ProjectOf(AProject.FileName);
+  mProject := TAtlasIdeStartOptions.FindProject(AProject.FileName);
   Result := mProject <> nil;
   if not Result then
   begin
@@ -161,7 +151,7 @@ begin
     Result := True;
   except
     // Zeitlimit oder Server weg: Unit nicht geprüft, der Compile läuft (#493).
-    on Exception do
+    on ELspClientError do
       Result := False;
   end;
 end;

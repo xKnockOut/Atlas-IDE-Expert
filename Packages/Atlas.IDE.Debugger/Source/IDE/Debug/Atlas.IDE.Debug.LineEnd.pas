@@ -40,8 +40,8 @@ uses
   ToolsAPI,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.LineTail,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh;
 
 const
   /// <summary>Abstand in Zeichen hinter dem letzten Zeichen der Zeile.</summary>

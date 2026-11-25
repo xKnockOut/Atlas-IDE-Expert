@@ -67,14 +67,14 @@ implementation
 
 uses
   Atlas.Common.Editing.MethodWithoutSelf,
-  Atlas.Common.Editing.MethodWithoutSelf.Contract,
+  Atlas.Common.Editing.MethodWithoutSelf.Types,
   System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.FormMentions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;

@@ -55,11 +55,12 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.BuildTools,
-  Atlas.Common.Mcp.CompilerMessageTools;
+  Atlas.Common.Mcp.CompilerMessageTools,
+  Shell.Composition.Mcp;
 
 const
   cFile = 'Source/Ref.Daten.pas';
@@ -107,6 +108,7 @@ begin
   mRequest.Messages := AMessages;
   mRequest.Json := AJson;
   mRequest.ReadText := ReaderOf(AText);
+  mRequest.CompilerFixes := TMcpComposition.CompilerFixes;
   Result := TMcpCompilerMessageTools.Explain(mRequest);
 end;
 

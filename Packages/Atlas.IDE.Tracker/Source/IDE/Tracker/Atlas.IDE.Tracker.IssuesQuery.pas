@@ -20,7 +20,7 @@ uses
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices,
   Atlas.IDE.Tracker.IssuesStatus,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Eine Abfrage: was gefragt wird und (nach Execute im Hintergrund) die Antwort.</summary>
@@ -78,13 +78,13 @@ implementation
 
 uses
   Atlas.Core.Ci.Contract,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Projects,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cLogAborted = 'Meine Issues: Abfrage beim Tracker mit %s abgebrochen';

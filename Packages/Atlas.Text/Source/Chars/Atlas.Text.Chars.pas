@@ -23,6 +23,8 @@ type
     class function CharAt(const AText: string; AIndex: Integer): Char; static;
     /// <summary>Besteht AText nur aus 0–9 und ist nicht leer?</summary>
     class function IsDigits(const AText: string): Boolean; static;
+    /// <summary>Wert der Hexadezimalziffer AC (0..15, Groß- und Kleinbuchstaben); -1 bei anderem Zeichen.</summary>
+    class function HexDigitValue(AC: Char): Integer; static;
     /// <summary>Position (ab 1) hinter dem ersten AChar ab AFrom; Length(AText) + 2, wenn keins folgt.</summary>
     class function PastNext(const AText: string; AFrom: Integer; AChar: Char): Integer; static;
     /// <summary>Position (ab 1) hinter der Folge von Zeichen aus AChars ab AIndex; AIndex, wenn dort keins
@@ -32,12 +34,20 @@ type
     class function IdentEnd(const AText: string; AIndex: Integer): Integer; static;
     /// <summary>Position (ab 1) hinter den ASCII-Bezeichnerzeichen (IsAsciiIdentChar) ab AIndex.</summary>
     class function AsciiIdentEnd(const AText: string; AIndex: Integer): Integer; static;
+    /// <summary>Geschätzter Speicherbedarf von AValue in Byte (für Speicherbudgets); 0 für ''.</summary>
+    class function StringBytes(const AValue: string): Int64; static;
+    /// <summary>Position (ab 1) des ersten Zeichens hinter einer BOM (#$FEFF) am Anfang; ohne BOM 1.</summary>
+    class function StartAfterBom(const AText: string): Integer; static;
   end;
 
 implementation
 
 uses
   Atlas.Text.Encoding;
+
+const
+  /// <summary>Kopf eines Delphi-string: Referenzzähler, Länge, Codepage und Elementgröße.</summary>
+  cStringHeaderBytes = 12;
 
 { TTextChars }
 
@@ -64,6 +74,20 @@ begin
   if (AIndex >= 1) and (AIndex <= Length(AText)) then
   begin
     Result := AText[AIndex];
+  end;
+end;
+
+class function TTextChars.HexDigitValue(AC: Char): Integer;
+begin
+  case AC of
+    '0'..'9':
+      Result := Ord(AC) - Ord('0');
+    'a'..'f':
+      Result := Ord(AC) - Ord('a') + 10;
+    'A'..'F':
+      Result := Ord(AC) - Ord('A') + 10;
+  else
+    Result := -1;
   end;
 end;
 
@@ -115,6 +139,27 @@ begin
   while (Result <= Length(AText)) and IsAsciiIdentChar(AText[Result]) do
   begin
     Inc(Result);
+  end;
+end;
+
+class function TTextChars.StringBytes(const AValue: string): Int64;
+begin
+  if AValue = '' then
+  begin
+    Result := 0;
+  end
+  else
+  begin
+    Result := cStringHeaderBytes + (Length(AValue) + 1) * SizeOf(Char);
+  end;
+end;
+
+class function TTextChars.StartAfterBom(const AText: string): Integer;
+begin
+  Result := 1;
+  if (AText <> '') and (AText[1] = #$FEFF) then
+  begin
+    Result := 2;
   end;
 end;
 

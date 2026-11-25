@@ -30,7 +30,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 const
   /// <summary>Art der Datei im Protokoll, wenn sie nicht geschrieben werden konnte.</summary>

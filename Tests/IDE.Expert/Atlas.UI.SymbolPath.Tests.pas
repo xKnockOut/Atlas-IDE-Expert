@@ -228,7 +228,7 @@ begin
     mDialog.ToEdit.Text := 'TKunden';
     mDialog.Suggest(mDialog.ToEdit);
     Assert.IsTrue(mDialog.SuggestionList.Visible);
-    Assert.AreEqual(2, mDialog.SuggestionList.Items.Count);
+    Assert.AreEqual(2, Integer(mDialog.SuggestionList.Items.Count));
     mDialog.SuggestionList.ItemIndex := 1;
     mDialog.TakeSuggestion;
     Assert.AreEqual('TKundenRepo.Laden', mDialog.ToEdit.Text);

@@ -20,7 +20,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
-  Atlas.UI.Popup.TitledTip,
+  Atlas.Vcl.Popup.TitledTip,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Tracker.IssuePreview;
 
@@ -94,12 +94,12 @@ uses
   System.DateUtils,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Tracker.IssueLookups;
 
 { TAtlasCodeLinkPainter }
@@ -247,6 +247,8 @@ begin
   mText := TAtlasIssueTip.Compose(AKey, AState, ADetails, AError, TTimeZone.Local.ToUniversalTime(Now),
     TAtlasIdeIssuePreview.Active);
   FTipKey := AKey;
+  // Farben und Schrift des IDE-Themas, sonst hell im dunklen Editor.
+  TAtlasIdeStyle.Apply(FTip, FScreen);
   FTip.ShowNote(AKey, mText, Point(FScreen.Left, FScreen.Bottom + 2));
 end;
 

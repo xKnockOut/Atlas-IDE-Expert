@@ -26,10 +26,10 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Debug.EventBreak,
-  Atlas.Core.Settings.EventBreakNames,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Settings.EventBreakNames,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.EventBreak;
 
 { TAtlasEventBreakWindowTests }

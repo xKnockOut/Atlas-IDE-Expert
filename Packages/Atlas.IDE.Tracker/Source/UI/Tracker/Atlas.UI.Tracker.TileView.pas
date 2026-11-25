@@ -14,7 +14,8 @@ uses
   System.Classes,
   Vcl.Controls,
   System.SysUtils,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.Plugin.Calls.Contract;
 
 type
   TAtlasTrackerTileView = class(TCustomPanel)
@@ -28,6 +29,8 @@ type
     procedure CreateWnd; override;
     /// <summary>Der Inhalt braucht eine andere Höhe: meldet OnHeightChanged.</summary>
     procedure HeightChanged;
+    /// <summary>Neue Quelle ASource: Inhalt neu (UpdateContent), dann ASource.Shown, wenn gesetzt.</summary>
+    procedure SourceChanged(const ASource: IAtlasShownSource);
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Hängt die Ansicht an einem Fenster? Vorher kein Messen von Text („kein übergeordnetes Fenster“);
@@ -44,7 +47,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Foundation.Controls;
+  Atlas.Plugin.Calls.Optional,
+  Atlas.Vcl.Controls.Helpers;
 
 { TAtlasTrackerTileView }
 
@@ -87,6 +91,11 @@ end;
 procedure TAtlasTrackerTileView.UpdateContent;
 begin
   Invalidate;
+end;
+
+procedure TAtlasTrackerTileView.SourceChanged(const ASource: IAtlasShownSource);
+begin
+  TAtlasCalls.ShowSource(ASource, UpdateContent);
 end;
 
 end.

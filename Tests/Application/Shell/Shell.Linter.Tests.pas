@@ -47,6 +47,9 @@ type
     /// <summary>TLinterCheck.Run ohne die Weiche von TLinterShell: fehlende Datei 3, Syntaxfehler 1.</summary>
     [Test]
     procedure CheckRunsWithoutShell;
+    /// <summary>TLinterShell.Host setzt alle Teile, die der Linter-Modus von außen braucht.</summary>
+    [Test]
+    procedure HostHasAllParts;
     /// <summary>Wie im Editor: atlas.json wird von der Datei aus nach oben gesucht bis zum Stamm des
     /// Repositorys.</summary>
     [Test]
@@ -128,17 +131,17 @@ uses
   System.IOUtils,
   System.Diagnostics,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Core.VersionControl.Contract,
-  Shell.Platform,
-  Shell.VersionControlChanges,
+  Atlas.VersionControl.Repository.Contract,
+  Shell.Composition.Platform,
+  Core.VersionControlChanges,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.FormatCheck,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.Linter,
-  Shell.Linter.Check,
-  Shell.Linter.Duplicates,
-  Shell.Linter.Mutation,
-  Shell.Workspace.Listings;
+  Core.Linter.Check,
+  Core.Linter.Host,
+  Core.Linter.Duplicates,
+  Core.Linter.Mutation,
+  Core.Workspace.Listings;
 
 const
   cCleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;
@@ -238,10 +241,21 @@ var
 begin
   mCache := TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache');
   Assert.AreEqual(3, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Fehlt.pas'), '--output', FOutput,
-    '--index-cache', mCache])));
+    '--index-cache', mCache]), TLinterShell.Host));
   Assert.AreEqual(1, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Kaputt.pas'), '--format=json',
-    '--output', FOutput, '--index-cache', mCache])));
+    '--output', FOutput, '--index-cache', mCache]), TLinterShell.Host));
   Assert.Contains(OutputText, 'Kaputt.pas');
+end;
+
+procedure TShellLinterTests.HostHasAllParts;
+var
+  mHost: TCoreLinterHost;
+begin
+  mHost := TLinterShell.Host;
+  Assert.IsTrue(Assigned(mHost.InstalledVersions), 'InstalledVersions');
+  Assert.IsTrue(Assigned(mHost.Vcs), 'Vcs');
+  Assert.IsTrue(Assigned(mHost.NewGroup), 'NewGroup');
+  Assert.IsTrue(Assigned(mHost.Instructions), 'Instructions');
 end;
 
 procedure TShellLinterTests.ConfigurationFoundInParentFolder;
@@ -433,7 +447,7 @@ begin
   begin
     Exit;
   end;
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
   mCommands := TArray<string>.Create('init -q', 'config user.name Atlas', 'config user.email test@example.org',
     'config commit.gpgsign false', 'add Src', 'commit -q -m Start');
   for mCommand in mCommands do
@@ -456,7 +470,7 @@ procedure TShellLinterTests.MutateFormatsAndExitCodes;
     begin
       TFile.Delete(FOutput);
     end;
-    Result := TLinterMutation.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput]));
+    Result := TLinterMutation.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput]), TLinterShell.Host);
   end;
 
 begin

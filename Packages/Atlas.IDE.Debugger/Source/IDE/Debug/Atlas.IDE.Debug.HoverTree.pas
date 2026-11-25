@@ -95,7 +95,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Evaluate,
-  Atlas.UI.Debug.Values.Strings;
+  Atlas.UI.Debug.Values.Strings,
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeDebugHoverTree }
 
@@ -289,7 +290,11 @@ begin
     Result := IntToStr(mThread.OSThreadID) + ':' + Trim(Result);
   except
     // Sitzung beim Lesen beendet ("disconnected session"): ohne Kontext kein Vergleich.
-    Result := '';
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Aufrufkopf nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      Result := '';
+    end;
   end;
 end;
 

@@ -17,6 +17,7 @@ uses
   Atlas.Common.Lsp.FindingsPrompt,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Pascal.Preprocessor;
 
 type
@@ -85,7 +86,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Checker,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Common.Localization.Texts;
 
 type
@@ -136,7 +137,7 @@ function SetBaselineAside(const AFileName: string; out ATarget: string): Boolean
 begin
   ATarget := AFileName + '.defekt';
   // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand.
-  Result := TShellPlatform.MoveReplacing(AFileName, ATarget);
+  Result := TServerPlatform.MoveReplacing(AFileName, ATarget);
 end;
 
 function BaselineFiles: TLspBaselineFiles;
@@ -206,7 +207,7 @@ begin
   ACheck.RelativePath := mContext.RelativePath;
   mTree := TSyntaxTreeCache.Parse(ACheck.Text);
   try
-    ACheck.Findings := TLspSyntaxDiagnostics.RuleFindings(ACheck.Text, mTree, mContext);
+    ACheck.Findings := mContext.Findings(ACheck.Text, mTree);
   finally
     mTree.Free;
   end;

@@ -143,6 +143,11 @@ uses
 const
   cLocalAppData = 'LOCALAPPDATA';
   cAtlasFolder = 'Atlas';
+  cMinutesPerHour = 60;
+  cSecondsPerMinute = 60;
+  cSecondsPerHour = cSecondsPerMinute * cMinutesPerHour;
+  /// <summary>Kaufmännisch runden: ab der Hälfte auf.</summary>
+  cRoundUp = 0.5;
 
 { TAtlasTimeIssue }
 
@@ -657,7 +662,7 @@ begin
     AStep := 1;
   end;
   // Kaufmännisch (Round rundet bei .5 zur geraden Zahl).
-  Result := Trunc(ASeconds / (60 * AStep) + 0.5) * AStep;
+  Result := Trunc(ASeconds / (cSecondsPerMinute * AStep) + cRoundUp) * AStep;
   if Result < AStep then
   begin
     Result := AStep;
@@ -670,7 +675,7 @@ begin
   begin
     ASeconds := 0;
   end;
-  Result := Format('%d:%.2d', [ASeconds div 3600, (ASeconds mod 3600) div 60]);
+  Result := Format('%d:%.2d', [ASeconds div cSecondsPerHour, (ASeconds mod cSecondsPerHour) div cSecondsPerMinute]);
 end;
 
 class function TAtlasTimeRounding.Presentation(AMinutes: Integer): string;
@@ -680,15 +685,15 @@ begin
   begin
     Exit;
   end;
-  if AMinutes < 60 then
+  if AMinutes < cMinutesPerHour then
   begin
     Exit(Format('%dm', [AMinutes]));
   end;
-  if AMinutes mod 60 = 0 then
+  if AMinutes mod cMinutesPerHour = 0 then
   begin
-    Exit(Format('%dh', [AMinutes div 60]));
+    Exit(Format('%dh', [AMinutes div cMinutesPerHour]));
   end;
-  Result := Format('%dh %dm', [AMinutes div 60, AMinutes mod 60]);
+  Result := Format('%dh %dm', [AMinutes div cMinutesPerHour, AMinutes mod cMinutesPerHour]);
 end;
 
 function ParseNumber(const AText: string; out AValue: Double): Boolean;
@@ -706,10 +711,11 @@ var
 begin
   AMinutes := 0;
   Result := TryStrToInt(Trim(Copy(AText, 1, AColon - 1)), mHours) and
-    TryStrToInt(Trim(Copy(AText, AColon + 1, MaxInt)), mRest) and (mHours >= 0) and (mRest >= 0) and (mRest <= 59);
+    TryStrToInt(Trim(Copy(AText, AColon + 1, MaxInt)), mRest) and (mHours >= 0) and (mRest >= 0) and
+    (mRest < cMinutesPerHour);
   if Result then
   begin
-    AMinutes := mHours * 60 + mRest;
+    AMinutes := mHours * cMinutesPerHour + mRest;
   end;
 end;
 
@@ -740,7 +746,7 @@ begin
   AFactor := 0;
   if MatchStr(AUnit, ['h', 'std', 'std.', 'stunde', 'stunden', 'hr', 'hrs', 'hour', 'hours']) then
   begin
-    AFactor := 60;
+    AFactor := cMinutesPerHour;
   end
   else if (AUnit = '') or MatchStr(AUnit, ['m', 'min', 'min.', 'mins', 'minuten', 'minute', 'minutes']) then
   begin
@@ -800,7 +806,7 @@ begin
     Result := ParseUnits(mText, mTotal);
     if Result then
     begin
-      AMinutes := Trunc(mTotal + 0.5);
+      AMinutes := Trunc(mTotal + cRoundUp);
     end;
   end;
   Result := Result and (AMinutes > 0) and (AMinutes <= cMaxMinutes);

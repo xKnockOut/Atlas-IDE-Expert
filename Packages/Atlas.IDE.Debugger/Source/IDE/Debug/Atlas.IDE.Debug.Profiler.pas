@@ -104,7 +104,7 @@ uses
   System.IOUtils,
   ToolsAPI,
   Atlas.Core.Debug.ProfilerFlow,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.StartProfiles.Store,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -115,7 +115,7 @@ uses
   Atlas.IDE.Debug.LaunchProbe,
   Atlas.IDE.Debug.ProfileWindow,
   Atlas.UI.Debug.Profile.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 { TAtlasIdeDebugProfiler.TTicker }
 

@@ -47,23 +47,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,
-  Atlas.Common.JsonRpc.Watchdog;
-
-function WaitUntil(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
-var
-  mDue: UInt64;
-begin
-  mDue := TThread.GetTickCount64 + ATimeoutMs;
-  while not ACondition() do
-  begin
-    if TThread.GetTickCount64 > mDue then
-    begin
-      Exit(False);
-    end;
-    TThread.Sleep(5);
-  end;
-  Result := True;
-end;
+  Atlas.Common.JsonRpc.Watchdog,
+  Atlas.Tests.Wait;
 
 { TJsonRpcWatchdogTests }
 
@@ -86,12 +71,12 @@ begin
   try
     mToken := mPending.Acquire(mId);
     mWatchdog.Watch(mId, 'test/slow');
-    Assert.IsTrue(WaitUntil(
+    Assert.IsTrue(TTestWait.Reached(
       function: Boolean
       begin
         Result := mToken.IsCancellationRequested;
       end, 2000));
-    Assert.IsTrue(WaitUntil(
+    Assert.IsTrue(TTestWait.Reached(
       function: Boolean
       begin
         Result := mTimedOut <> '';
@@ -158,7 +143,7 @@ begin
   try
     mToken := mPending.Acquire(mId);
     mWatchdog.Watch(mId, 'test/slow');
-    Assert.IsTrue(WaitUntil(
+    Assert.IsTrue(TTestWait.Reached(
       function: Boolean
       begin
         Result := mReported <> 0;
@@ -207,7 +192,7 @@ begin
           AResponse.Free;
         end;
       end);
-    Assert.IsTrue(WaitUntil(
+    Assert.IsTrue(TTestWait.Reached(
       function: Boolean
       begin
         Result := mTimeouts > 0;
@@ -256,7 +241,7 @@ begin
         TInterlocked.Increment(mAnswers);
         AResponse.Free;
       end);
-    Assert.IsTrue(WaitUntil(
+    Assert.IsTrue(TTestWait.Reached(
       function: Boolean
       begin
         Result := mTimeouts > 0;
@@ -291,7 +276,7 @@ begin
   try
     mToken := mPending.Acquire(mId);
     mWatchdog.Watch(mId, 'test/sync');
-    Assert.IsTrue(WaitUntil(
+    Assert.IsTrue(TTestWait.Reached(
       function: Boolean
       begin
         Result := mTimeouts > 0;
@@ -332,7 +317,7 @@ begin
           mGate.WaitFor(5000);
           AResponse.Free;
         end);
-      Assert.IsTrue(WaitUntil(
+      Assert.IsTrue(TTestWait.Reached(
         function: Boolean
         begin
           Result := mWriting > 0;
@@ -381,7 +366,7 @@ begin
     try
       mToken := mPending.Acquire(mId);
       mWatchdog.Watch(mId, 'test/slow');
-      Assert.IsTrue(WaitUntil(
+      Assert.IsTrue(TTestWait.Reached(
         function: Boolean
         begin
           System.TMonitor.Enter(mLock);
@@ -437,7 +422,7 @@ begin
         TInterlocked.Increment(mAnswers);
         AResponse.Free;
       end);
-    Assert.IsTrue(WaitUntil(
+    Assert.IsTrue(TTestWait.Reached(
       function: Boolean
       begin
         Result := TInterlocked.CompareExchange(mTimeouts, 0, 0) > 0;

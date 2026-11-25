@@ -50,13 +50,14 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.Ownership,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -177,15 +178,6 @@ type
     procedure Run;
   end;
 
-function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
-
 /// <summary>Äußerster Knoten um ANode, der nur aus Klammern besteht.</summary>
 function Outer(ANode: TSyntaxNode): TSyntaxNode;
 begin
@@ -291,7 +283,7 @@ begin
   AStore.InterfaceName := '';
   if AValue.Kind = TSyntaxKind.BinaryExpr then
   begin
-    AStore.ObjectNode := Unwrapped(AValue[0]);
+    AStore.ObjectNode := TSyntaxNodes.Unparen(AValue[0]);
     if (AValue[1].Kind <> TSyntaxKind.Identifier) or
       not TSelfAsInterfaceInConstructorRule.IsInterfaceType(AValue[1].Name) then
     begin

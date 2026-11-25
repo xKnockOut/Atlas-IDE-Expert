@@ -22,8 +22,8 @@ uses
   Vcl.StdCtrls,
   Vcl.Forms,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Timing;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Timing;
 
 type
   TAtlasTimingFrame = class(TFrame)
@@ -73,9 +73,10 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Winapi.Windows,
-  Atlas.UI.Diagnostics.Strings;
+  Atlas.UI.Diagnostics.Strings,
+  Atlas.Vcl.Theme.Service;
 
 const
   // Spalten der Zeitentabelle: Schritt, letzte, Mittel, Maximum, Budget.
@@ -134,7 +135,7 @@ begin
   FLegend.AutoSize := True;
   FLegend.ShowAccelChar := False;
   FLegend.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticLegend);
-  FLegend.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FLegend, clGrayText);
   FFileNames := TCheckBox.Create(Self);
   FFileNames.Parent := FBottom;
   FFileNames.AlignWithMargins := True;
@@ -155,7 +156,7 @@ begin
   FNote.Margins.Top := FNote.ScaleValue(cNoteTop);
   FNote.ShowAccelChar := False;
   FNote.Caption := '';
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FGrid := TPaintBox.Create(Self);
   FGrid.Parent := Self;
   FGrid.Align := alClient;

@@ -95,11 +95,12 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Core.Projects.Summary.Sections,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Tests.TempFolder;
 
 const
   cProject = 'C:\Projekte\Demo.dproj';
@@ -177,12 +178,7 @@ end;
 
 procedure TAtlasProjectSummaryTests.TearDown;
 begin
-  if DirectoryExists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  // Der Leckmonitor misst den Saldo von Setup und TearDown.
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasProjectSummaryTests.KeyIsStableAndIgnoresCaseAndSlashes;

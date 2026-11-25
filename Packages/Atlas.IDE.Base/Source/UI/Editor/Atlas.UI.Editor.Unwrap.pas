@@ -25,7 +25,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Editor.Unwrap,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasUnwrapIndexEvent = reference to procedure(AIndex: Integer);
@@ -78,11 +78,11 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;

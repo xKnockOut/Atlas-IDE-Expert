@@ -49,7 +49,7 @@ type
     class function IsExperimental(const ARuleId: string): Boolean; static;
     /// <summary>Alle Regelkennungen des Katalogs in Kleinbuchstaben, sortiert (#41: unknown-rule-id).</summary>
     class function KnownRuleIds: TArray<string>; static;
-    /// <summary>True, wenn die Unit ein Test-Framework einbindet; Weiterleitung an TUsesClauses.IsTestUnit.</summary>
+    /// <summary>True, wenn die Unit ein Test-Framework einbindet; Weiterleitung an TPascalUses.IsTestUnit.</summary>
     class function IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean; static;
   end;
 
@@ -57,29 +57,16 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data;
+  Atlas.Common.Rules.Catalog.Data,
+  System.StrUtils;
 
 var
   // Werden in initialization gefüllt und danach nur gelesen, daher ohne Sperre.
   Categories: TDictionary<string, string>;
   // Kennungen (klein) der experimentellen Regeln; Wert ohne Bedeutung.
   Experimentals: TDictionary<string, Boolean>;
-
-function Contains(const AItems: TArray<string>; const AText: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AItems do
-  begin
-    if SameText(mItem, AText) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
 
 /// <summary>Wendet die Einträge auf den Schweregrad an; ARuleId '*' in AItems trifft jede Regel.</summary>
 procedure ApplyRules(const AItems: TArray<TRuleSetting>; const ARuleId: string; var ASeverity: TRuleSeverity;
@@ -100,7 +87,7 @@ end;
 
 procedure ApplyCategories(const ACategories: TArray<string>; const ACategory: string; var ASeverity: TRuleSeverity);
 begin
-  if (Length(ACategories) > 0) and (ACategory <> '') and not Contains(ACategories, ACategory) then
+  if (Length(ACategories) > 0) and (ACategory <> '') and not MatchText(ACategory, ACategories) then
   begin
     ASeverity := TRuleSeverity.Off;
   end;
@@ -233,7 +220,7 @@ end;
 
 class function TRuleProfiles.IsTestUnit(const ATokens: TArray<TPascalToken>): Boolean;
 begin
-  Result := TUsesClauses.IsTestUnit(ATokens);
+  Result := TPascalUses.IsTestUnit(ATokens);
 end;
 
 procedure LoadCategories;

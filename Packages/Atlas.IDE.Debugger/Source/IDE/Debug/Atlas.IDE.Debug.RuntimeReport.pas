@@ -34,10 +34,10 @@ uses
   System.SysUtils,
   Vcl.Clipbrd,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.RuntimeReport,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.UI.Debug.RuntimeReport.Strings;
 
 const

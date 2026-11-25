@@ -20,7 +20,8 @@ uses
   Atlas.UI.Settings.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Core.Tracker.SettingsTables,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.QueryDialog,
   Atlas.Core.Tracker.Contract.MyIssues;
@@ -155,13 +156,33 @@ type
     property Owner: TComponent read FOwner;
   end;
 
+  /// <summary>Gemeinsamer Teil der Seiten des Abschnitts (Verbindungen, Projekte, Abfragen, Bausteine, Ablauf):
+  /// Zeilen, Hooks und Tabellen; FFilling ist gesetzt, während die Seite ihre Liste füllt.</summary>
+  TAtlasTrackerSettingsPart = class
+  protected
+    FRows: TAtlasTrackerSettingsRows;
+    FHooks: TAtlasTrackerSettingsHooks;
+    FTables: TAtlasTrackerSettingsTables;
+    FFilling: Boolean;
+    /// <summary>In der Liste gewählte Zeile AItem übernehmen: ASelect(Index), dann AFill. Nicht beim Füllen und
+    /// nicht beim Abwählen.</summary>
+    procedure TakeSelection(AItem: TListItem; ASelected: Boolean; const ASelect: TProc<Integer>;
+      const AFill: TProc);
+    /// <summary>Gewählte Zeile entfernen (ARemove) und die Seite neu zeigen (ARefresh), wenn AEditable.</summary>
+    class procedure RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc); static;
+  public
+    constructor Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
+      ATables: TAtlasTrackerSettingsTables);
+  end;
+
 implementation
 
 uses
   Vcl.Graphics,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Settings.Page.Sheets;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.UI.Settings.Page.Sheets,
+  Atlas.Vcl.Theme.Service;
 
 const
   cLabelTop = 5;
@@ -312,7 +333,7 @@ begin
   mHint := TAtlasWrapLabel.Create(FOwner);
   mHint.Parent := mPanel;
   mHint.Align := alClient;
-  mHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mHint, clGrayText);
   mHint.Caption := ACaption;
   Attach(mPanel, AAnchor);
 end;
@@ -368,6 +389,37 @@ begin
   if AControl.CanFocus and AControl.Showing then
   begin
     AControl.SetFocus;
+  end;
+end;
+
+{ TAtlasTrackerSettingsPart }
+
+constructor TAtlasTrackerSettingsPart.Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
+  ATables: TAtlasTrackerSettingsTables);
+begin
+  inherited Create;
+  FRows := ARows;
+  FHooks := AHooks;
+  FTables := ATables;
+end;
+
+procedure TAtlasTrackerSettingsPart.TakeSelection(AItem: TListItem; ASelected: Boolean;
+  const ASelect: TProc<Integer>; const AFill: TProc);
+begin
+  if FFilling or not ASelected or (AItem = nil) then
+  begin
+    Exit;
+  end;
+  ASelect(AItem.Index);
+  AFill();
+end;
+
+class procedure TAtlasTrackerSettingsPart.RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc);
+begin
+  if AEditable then
+  begin
+    ARemove();
+    ARefresh();
   end;
 end;
 

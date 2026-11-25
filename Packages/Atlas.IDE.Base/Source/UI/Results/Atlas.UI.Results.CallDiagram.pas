@@ -21,8 +21,9 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Results.CallDiagram;
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Core.Results.CallDiagram,
+  Atlas.Vcl.Controls.ZoomView;
 
 type
   /// <summary>Nächste Ebene: Aufrufer bzw. Aufgerufene von AItem in Richtung ADirection.</summary>
@@ -30,7 +31,7 @@ type
     const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
   TAtlasCallOpen = reference to procedure(const AItem: TAtlasHierarchyItem);
 
-  TAtlasCallDiagramView = class(TCustomControl)
+  TAtlasCallDiagramView = class(TAtlasZoomView)
   private type
     /// <summary>Ziehen mit der Maus: läuft, schon bewegt, letzte Lage.</summary>
     TDrag = record
@@ -68,7 +69,7 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure DblClick; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
-    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
+    procedure ZoomAround(AFactor, AX, AY: Double); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -103,10 +104,10 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Results.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Bildpunkte, ab denen ein Mausdruck als Ziehen gilt.</summary>
@@ -115,9 +116,6 @@ const
   cMinTextScale = 0.35;
   /// <summary>Über dieser Vergrößerung wächst die Schrift nicht weiter.</summary>
   cMaxTextScale = 1.5;
-  /// <summary>Vergrößerung je Taste (+/-) und je Schritt des Mausrads.</summary>
-  cKeyZoom = 1.25;
-  cWheelZoom = 1.15;
   /// <summary>Maße bei 96 dpi und Vergrößerung 1: Innenrand und Rundung der Kästen, Höhe des Bogens zurück,
   /// Pfeilspitze (Größe, mindestens in Bildpunkten), Abstand der Beschriftung, Breite der Linien.</summary>
   cBoxPad = 8;
@@ -542,21 +540,9 @@ begin
   Key := 0;
 end;
 
-function TAtlasCallDiagramView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
-var
-  mLocal: TPoint;
+procedure TAtlasCallDiagramView.ZoomAround(AFactor, AX, AY: Double);
 begin
-  Result := True;
-  mLocal := ScreenToClient(MousePos);
-  if WheelDelta > 0 then
-  begin
-    FView.ZoomAt(cWheelZoom, mLocal.X, mLocal.Y);
-  end
-  else
-  begin
-    FView.ZoomAt(1 / cWheelZoom, mLocal.X, mLocal.Y);
-  end;
-  Invalidate;
+  FView.ZoomAt(AFactor, AX, AY);
 end;
 
 function TAtlasCallDiagramView.BoxRect(ABox: Integer): TRect;

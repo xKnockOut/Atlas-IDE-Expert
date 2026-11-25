@@ -74,23 +74,23 @@ uses
   Vcl.Forms,
   Vcl.Controls,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Generate.Protocol,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Generate.Strings,
   Atlas.UI.Generate.Window,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.IDE.Foundation.Caret,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.ToolsApi.Editor.Caret,
+  Atlas.Plugin.Notifications.MessageSink;
 
 const
   // Wie die Code-Aktionen: Der Server darf etwas rechnen (Vorfahren, Index).

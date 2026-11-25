@@ -150,6 +150,8 @@ const
     // Zuletzt benutzte Testliste (#2167): Editorbefehl (Modul Tests).
     3,
     // Erneut anhängen: Befehl des Moduls Debugger.
+    3,
+    // Auswahl an den Assistenten: Befehl des Moduls KI-Assistenten.
     3);
   cVkSpace = $20;
   cVkReturn = $0D;

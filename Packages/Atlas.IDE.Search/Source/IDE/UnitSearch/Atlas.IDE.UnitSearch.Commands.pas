@@ -72,7 +72,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Windows,
   System.Types,
   System.IOUtils,
@@ -81,8 +81,8 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.Plan,
@@ -90,10 +90,10 @@ uses
   Atlas.UI.Search.Strings,
   Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Window,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.ActionHook,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Commands.ActionHook,
+  Atlas.ToolsApi.Editor.Buffer;
 
 type
   /// <summary>Hängt sich an OnExecute der IDE-Aktion „Units“, „Unit verwenden“ oder „Formulare“ und gibt sie
@@ -109,12 +109,17 @@ type
 
   /// <summary>Ein offenes Fenster samt Zustand und Ziel für „In uses aufnehmen“.</summary>
   TOpenSearch = class
+  private
+    FWindow: TAtlasUnitSearchWindow;
+    FState: TAtlasUnitSearchState;
+    FTarget: string;
+    FMode: TAtlasUnitSearchMode;
   public
-    Window: TAtlasUnitSearchWindow;
-    State: TAtlasUnitSearchState;
+    property Window: TAtlasUnitSearchWindow read FWindow write FWindow;
+    property State: TAtlasUnitSearchState read FState write FState;
     /// <summary>Datei des obersten Editors beim Öffnen; '' ohne.</summary>
-    Target: string;
-    Mode: TAtlasUnitSearchMode;
+    property Target: string read FTarget write FTarget;
+    property Mode: TAtlasUnitSearchMode read FMode write FMode;
     destructor Destroy; override;
   end;
 
@@ -406,7 +411,7 @@ begin
     // Die Meldung kann den Pfad enthalten; ReportNotWritten nennt nur die Klasse.
     on E: Exception do
     begin
-      TAtlasDataFile.ReportNotWritten('Zustand von Units suchen', E);
+      TAtlasDataFile.ReportNotWritten(cUnitSearchStateKind, E);
     end;
   end;
   FreeAndNil(Current);

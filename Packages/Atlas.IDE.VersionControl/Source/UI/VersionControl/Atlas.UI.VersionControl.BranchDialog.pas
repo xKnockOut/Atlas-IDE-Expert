@@ -44,9 +44,9 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasBranchDialog = class;
@@ -283,13 +283,13 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.VersionControl.BranchNames,
-  Atlas.UI.Strings,
+  Atlas.VersionControl.Repository.BranchNames,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
@@ -298,8 +298,35 @@ const
   cBelowAll = 10000;
   cExternalRow = 26;
   cExternalRowsVisible = 5;
+  /// <summary>Höhe der Kopfzeile über den Externals.</summary>
+  cExternalsHeader = 20;
   /// <summary>Höhe der Gruppe für die Externals ohne ihre Zeilen: Rahmen mit Titel und Kopfzeile.</summary>
-  cExternalsFrame = 44 + 20;
+  cExternalsFrame = 44 + cExternalsHeader;
+  /// <summary>Höhe der Gruppe, wenn die Externals unverändert mitgehen (nur Hinweis).</summary>
+  cExternalsKeptHeight = 56;
+  /// <summary>Zeilenhöhe mit Eingabefeld oder Auswahl bzw. nur mit Kästchen; Oberkante der Felder darin.</summary>
+  cFieldRow = 28;
+  cCheckRow = 24;
+  cFieldTop = 2;
+  /// <summary>Abstand unter einem Fehlerhinweis bzw. unter dem Hinweis zur Arbeitskopie.</summary>
+  cErrorBottom = 2;
+  cInfoBottom = 4;
+  /// <summary>Gruppe Git: Höhe der Überschrift, einer Zeile samt Abstand darüber (Row) und des Fehlerhinweises;
+  /// Höhe vor dem ersten UpdateHeight und um wie viel der Dialog mit ihr wächst.</summary>
+  cGitCaption = 24;
+  cGitRowStep = cFieldRow + cGap div 2;
+  cGitCheckStep = cCheckRow + cGap div 2;
+  cGitErrorHeight = 36;
+  cGitBoxHeight = 120;
+  cGitDialogGrowth = 176;
+  /// <summary>Schriftgröße (Punkt) der Liste der Schritte.</summary>
+  cStepsFontSize = 9;
+  /// <summary>Anfang eines Orts im Repository ("^/Kasse/branches/x").</summary>
+  cRepositoryRoot = '^/';
+  /// <summary>Anfangsgröße des Dialogs und Höhe der Leiste mit den Knöpfen.</summary>
+  cCreateWidth = 720;
+  cCreateHeight = 520;
+  cButtonBarHeight = 44;
   cFolderWidth = 150;
   cChoiceWidth = 200;
   // Zeilen: Beschriftung etwas unter der Oberkante des Felds, Feld- und Kästchenhöhe.
@@ -371,7 +398,7 @@ function RowEdit(AOwner: TComponent; ARow: TPanel; const AOnChange: TNotifyEvent
 begin
   Result := TEdit.Create(AOwner);
   Result.Parent := ARow;
-  PlaceInRow(Result, 2, cFieldHeight);
+  PlaceInRow(Result, cFieldTop, cFieldHeight);
   Result.Anchors := [akLeft, akTop, akRight];
   Result.OnChange := AOnChange;
 end;
@@ -382,7 +409,7 @@ begin
   Result := TComboBox.Create(AOwner);
   Result.Parent := ARow;
   Result.Style := csDropDownList;
-  PlaceInRow(Result, 2, cFieldHeight);
+  PlaceInRow(Result, cFieldTop, cFieldHeight);
   Result.Anchors := [akLeft, akTop, akRight];
   Result.OnChange := AOnChange;
 end;
@@ -401,7 +428,7 @@ end;
 /// <summary>Roter Hinweis unter einem Feld.</summary>
 function ErrorLabel(AOwner: TComponent; AParent: TWinControl; ATop: Integer): TLabel;
 begin
-  Result := NoteLabel(AOwner, AParent, ATop, 2);
+  Result := NoteLabel(AOwner, AParent, ATop, cErrorBottom);
   Result.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   // Mit seFont übergeht der Stil Font.Color.
   Result.StyleElements := Result.StyleElements - [seFont];
@@ -426,11 +453,11 @@ end;
 function LocationOf(const AText: string): string;
 begin
   Result := Trim(AText);
-  if Copy(Result, 1, 2) <> '^/' then
+  if Copy(Result, 1, Length(cRepositoryRoot)) <> cRepositoryRoot then
   begin
     Exit('');
   end;
-  Result := Copy(Result, 3, MaxInt);
+  Result := Copy(Result, Length(cRepositoryRoot) + 1, MaxInt);
   while (Result <> '') and (Result[Length(Result)] = '/') do
   begin
     Delete(Result, Length(Result), 1);
@@ -626,11 +653,11 @@ procedure TAtlasBranchNamePart.Build(const AName: string);
 var
   mPanel: TPanel;
 begin
-  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchName), 28);
+  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchName), cFieldRow);
   FNameEdit := RowEdit(FDialog, mPanel, FDialog.Changed);
   FNameEdit.Text := AName;
   FNameError := ErrorLabel(FDialog, FDialog, 0);
-  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchBase), 28);
+  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchBase), cFieldRow);
   FBaseBox := RowChoice(FDialog, mPanel, FDialog.Changed);
 end;
 
@@ -725,14 +752,14 @@ procedure TAtlasBranchGitPart.AddFetchAndPush;
 var
   mPanel: TPanel;
 begin
-  mPanel := Row(FDialog, FBox, '', 24);
+  mPanel := Row(FDialog, FBox, '', cCheckRow);
   FFetchCheck := TCheckBox.Create(FDialog);
   FFetchCheck.Parent := mPanel;
   PlaceInRow(FFetchCheck, cCheckTop, cCheckHeight);
   FFetchCheck.Anchors := [akLeft, akTop, akRight];
   FFetchCheck.Checked := FOptions.Base = TAtlasVcsGitBaseOption.Remote;
   FFetchCheck.OnClick := FDialog.Changed;
-  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPush), 28);
+  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPush), cFieldRow);
   FPushBox := RowChoice(FDialog, mPanel, FDialog.Changed);
 end;
 
@@ -741,11 +768,11 @@ const
   cBoxWidth = 240;
 begin
   // Offene Änderungen: nur mit geänderten Dateien; „nachfragen“ lässt die Auswahl leer.
-  FUncommittedPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchUncommitted), 28);
+  FUncommittedPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchUncommitted), cFieldRow);
   FUncommittedBox := TComboBox.Create(FDialog);
   FUncommittedBox.Parent := FUncommittedPanel;
   FUncommittedBox.Style := csDropDownList;
-  FUncommittedBox.SetBounds(FUncommittedBox.ScaleValue(cCaptionWidth + cGap), FUncommittedBox.ScaleValue(2),
+  FUncommittedBox.SetBounds(FUncommittedBox.ScaleValue(cCaptionWidth + cGap), FUncommittedBox.ScaleValue(cFieldTop),
     FUncommittedBox.ScaleValue(cBoxWidth), FUncommittedBox.ScaleValue(cFieldHeight));
   FUncommittedBox.OnChange := FDialog.Changed;
   FUncommittedCount := TLabel.Create(FDialog);
@@ -761,9 +788,9 @@ procedure TAtlasBranchGitPart.AddPlace;
 var
   mPanel: TPanel;
 begin
-  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlace), 28);
+  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlace), cFieldRow);
   FPlaceBox := RowChoice(FDialog, mPanel, FDialog.Changed);
-  FWorktreePanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), 28);
+  FWorktreePanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), cFieldRow);
   FWorktreeEdit := RowEdit(FDialog, FWorktreePanel, WorktreeChanged);
 end;
 
@@ -796,18 +823,18 @@ begin
     Exit;
   end;
   // Höhe nach den sichtbaren Zeilen: Überschrift, Abrufen, Server, Ablage, ggf. Änderungen, Ordner, Hinweis.
-  mHeight := 24 + 28 + 2 * 32;
+  mHeight := cGitCaption + cGitCheckStep + 2 * cGitRowStep;
   if FUncommittedPanel.Visible then
   begin
-    Inc(mHeight, 32);
+    Inc(mHeight, cGitRowStep);
   end;
   if FWorktreePanel.Visible then
   begin
-    Inc(mHeight, 32);
+    Inc(mHeight, cGitRowStep);
   end;
   if FError.Visible then
   begin
-    Inc(mHeight, 36);
+    Inc(mHeight, cGitErrorHeight);
   end;
   FBox.Height := FBox.ScaleValue(mHeight);
 end;
@@ -822,7 +849,7 @@ begin
   FBox.AlignWithMargins := True;
   TAtlasControlScaling.SetMargins(FBox, cGap, cBoxGap, cGap, cBoxGap);
   FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchGit);
-  FBox.Height := FBox.ScaleValue(120);
+  FBox.Height := FBox.ScaleValue(cGitBoxHeight);
   FBox.Visible := FDialog.FFacts.Kind = TAtlasVcsKind.Git;
   // Einträge der Auswahllisten erst mit Fenster (FillChoices).
   AddFetchAndPush;
@@ -831,7 +858,7 @@ begin
   FError := ErrorLabel(FDialog, FBox, 0);
   if FBox.Visible then
   begin
-    FDialog.Height := FDialog.Height + FDialog.ScaleValue(176);
+    FDialog.Height := FDialog.Height + FDialog.ScaleValue(cGitDialogGrowth);
     FDialog.Constraints.MinHeight := FDialog.Constraints.MinHeight + FDialog.ScaleValue(cExternalsMinHeight);
   end;
 end;
@@ -963,29 +990,29 @@ end;
 
 procedure TAtlasBranchSvnPart.AddMessage(const AMessage: string);
 begin
-  FMessagePanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchMessage), 28);
+  FMessagePanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchMessage), cFieldRow);
   FMessageEdit := RowEdit(FDialog, FMessagePanel, FDialog.Changed);
   FMessageEdit.Text := AMessage;
 end;
 
 procedure TAtlasBranchSvnPart.AddLocation;
 begin
-  FLocationPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchLocation), 28);
+  FLocationPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchLocation), cFieldRow);
   FLocationEdit := RowEdit(FDialog, FLocationPanel, LocationChanged);
   FLocationError := ErrorLabel(FDialog, FDialog, 0);
 end;
 
 procedure TAtlasBranchSvnPart.AddAfterAndFolder;
 begin
-  FAfterPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfter), 28);
+  FAfterPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfter), cFieldRow);
   FAfterBox := RowChoice(FDialog, FAfterPanel, FDialog.Changed);
-  FFolderPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), 28);
+  FFolderPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), cFieldRow);
   FFolderEdit := RowEdit(FDialog, FFolderPanel, FolderChanged);
 end;
 
 procedure TAtlasBranchSvnPart.AddMixed;
 begin
-  FMixedLabel := ErrorLabel(FDialog, FDialog, 2);
+  FMixedLabel := ErrorLabel(FDialog, FDialog, cFieldTop);
   FMixedLabel.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchMixed, [FDialog.FFacts.Revision]);
 end;
 
@@ -1131,20 +1158,20 @@ begin
   mHeader.Parent := FBox;
   mHeader.Width := AWidth;
   mHeader.Align := alTop;
-  mHeader.Height := mHeader.ScaleValue(20);
+  mHeader.Height := mHeader.ScaleValue(cExternalsHeader);
   mHeader.BevelOuter := bvNone;
   mLabel := CellLabel(FDialog, mHeader, mHeader.ScaleValue(cGap), mHeader.ScaleValue(cFolderWidth),
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
-  mLabel.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
   mLabel := CellLabel(FDialog, mHeader, mHeader.ScaleValue(cGap + cFolderWidth + cGap),
     mHeader.ScaleValue(cSourceWidth),
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsSource));
-  mLabel.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
   mLabel := CellLabel(FDialog, mHeader, mHeader.Width - mHeader.ScaleValue(cChoiceWidth + cGap),
     mHeader.ScaleValue(cChoiceWidth),
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsInBranch));
   mLabel.Anchors := [akTop, akRight];
-  mLabel.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
 end;
 
 procedure TAtlasBranchExternalsPart.AddRow(AParent: TWinControl; AIndex, AWidth: Integer);
@@ -1209,7 +1236,7 @@ begin
   // Nicht gelesen (propget gescheitert): Hinweis wie vor #1291, die Externals gehen unverändert mit.
   if (mFacts.Kind <> TAtlasVcsKind.Svn) or (Length(mFacts.SvnExternals) = 0) then
   begin
-    FBox.Height := FBox.ScaleValue(56);
+    FBox.Height := FBox.ScaleValue(cExternalsKeptHeight);
     FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternals);
     FHint.Align := alClient;
     FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsKept);
@@ -1336,7 +1363,7 @@ begin
   FMemo.ScrollBars := ssBoth;
   FMemo.WordWrap := False;
   FMemo.Font.Name := 'Consolas';
-  FMemo.Font.Size := 9;
+  FMemo.Font.Size := cStepsFontSize;
 end;
 
 procedure TAtlasBranchStepsPart.Show(AKind: TAtlasVcsKind; const ASteps: TArray<TAtlasVcsBranchStep>);
@@ -1366,7 +1393,7 @@ begin
   // Git-Optionen (#1289) gehören zur Basis: direkt darunter.
   FGit.Build(ASetup.Git, ASetup.Key);
   FSvn.Build(ASetup.Message, ASetup.Svn);
-  FInfoLabel := NoteLabel(Self, Self, 2, 4);
+  FInfoLabel := NoteLabel(Self, Self, cFieldTop, cInfoBottom);
   FExternals.Build;
   FSteps.Build;
   // Hat schon ein Steuerelement das Fenster erzwungen, kam CreateWnd zu früh: jetzt füllen. Sonst füllt CreateWnd,
@@ -1433,8 +1460,8 @@ begin
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
-  Width := ScaleValue(720);
-  Height := ScaleValue(520);
+  Width := ScaleValue(cCreateWidth);
+  Height := ScaleValue(cCreateHeight);
   Constraints.MinWidth := ScaleValue(cCreateMinWidth);
   Constraints.MinHeight := ScaleValue(cCreateMinHeight);
 end;
@@ -1447,7 +1474,7 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := mBottom.ScaleValue(44);
+  mBottom.Height := mBottom.ScaleValue(cButtonBarHeight);
   mBottom.BevelOuter := bvNone;
   FNeverAsk := TCheckBox.Create(Self);
   FNeverAsk.Parent := mBottom;

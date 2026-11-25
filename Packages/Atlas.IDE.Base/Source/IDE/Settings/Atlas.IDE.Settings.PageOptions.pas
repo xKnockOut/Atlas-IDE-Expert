@@ -42,15 +42,15 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Progress,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Progress,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Page.Index,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.IDE.Contracts.Help,
   Atlas.IDE.ElementHelp.Keys,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Completion.Favorites,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Foundation.TeamFile,
@@ -61,7 +61,7 @@ uses
   Atlas.UI.Settings.Page.EditorView,
   Atlas.UI.Settings.Page.TeamFile,
   Atlas.UI.Settings.Page.Transfer,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 /// <summary>Text der Antwort auf „Index neu aufbauen“.</summary>
 function RebuildText(AAnswer: TJSONValue): string;

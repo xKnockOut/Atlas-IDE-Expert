@@ -81,7 +81,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.SchemaCheck;
+  Atlas.Plugin.Settings.SchemaCheck;
 
 const
   cTemplateIds: array[TAtlasSetupTemplate] of string = ('existing', 'strict', 'legacy');

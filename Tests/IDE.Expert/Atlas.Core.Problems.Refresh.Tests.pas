@@ -2,7 +2,7 @@
 
 // Tests für die Aktualisierung der Prüfung (problems.update,
 // problems.liveDelayMs): Takt, Entscheidung je Art und Anforderung. Die Werte
-// der Einstellungen prüft Atlas.Core.Settings.ProblemsUpdate.Tests.
+// der Einstellungen prüft Atlas.Plugin.Settings.ProblemsUpdate.Tests.
 
 interface
 
@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.ProblemsUpdate,
+  Atlas.Plugin.Settings.ProblemsUpdate,
   Atlas.Core.Problems.Refresh;
 
 function State(AChanged, ACheckedBefore, AModified: Boolean; AQuietMs: Cardinal): TAtlasProblemsRefreshState;

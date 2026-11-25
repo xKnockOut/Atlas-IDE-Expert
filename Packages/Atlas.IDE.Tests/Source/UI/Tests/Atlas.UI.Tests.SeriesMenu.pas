@@ -61,7 +61,7 @@ implementation
 uses
   Vcl.Dialogs,
   Atlas.UI.Tests.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 const
   cLineCaption = '-';

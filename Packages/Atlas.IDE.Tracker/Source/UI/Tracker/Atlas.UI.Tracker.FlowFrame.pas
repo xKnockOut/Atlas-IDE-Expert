@@ -35,7 +35,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.FlowMap;
 
 type
@@ -180,10 +180,11 @@ implementation
 uses
   System.Math,
   Winapi.Windows,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Tracker.Flow.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Controls.Helpers;
 
 {$R *.dfm}
 
@@ -880,11 +881,7 @@ end;
 
 function TAtlasFlowFrame.StatusText: string;
 begin
-  Result := '';
-  if FParts.Status.Visible then
-  begin
-    Result := FParts.Status.Caption;
-  end;
+  Result := TAtlasControls.ShownCaption(FParts.Status);
 end;
 
 function TAtlasFlowFrame.VisibleRows: TArray<TAtlasFlowStuck>;

@@ -12,7 +12,7 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.StdCtrls,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.Core.Tests.LeakSetup;
 
 type

@@ -41,8 +41,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Results,
-  Shell.Platform,
-  Shell.Workspace,
+  Platform.Server,
+  Shell.Composition.Platform,
+  Core.Workspace,
   Shell.Composition.Core,
   Shell.Composition.Workspaces,
   Shell.Composition.Capabilities,
@@ -53,7 +54,7 @@ uses
 /// <summary>Kanonischer Pfad für den Dokumentspeicher.</summary>
 function CanonicalPath(const APath: string): string;
 begin
-  Result := TShellPlatform.CanonicalizePath(APath);
+  Result := TServerPlatform.CanonicalizePath(APath);
 end;
 
 { TShellProtocolWiring }
@@ -64,7 +65,7 @@ begin
     function(const AUri: string): TArray<string>
     var
       mCore: TShellCore;
-      mWorkspace: TShellWorkspace;
+      mWorkspace: TCoreWorkspace;
     begin
       Result := nil;
       mCore := AParts.Core;

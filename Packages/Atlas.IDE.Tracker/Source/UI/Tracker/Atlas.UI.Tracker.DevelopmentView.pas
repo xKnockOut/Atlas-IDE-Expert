@@ -29,10 +29,10 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   /// <summary>Wünsche der Ansicht an die IDE-Schicht.</summary>
@@ -170,11 +170,12 @@ uses
   System.Math,
   System.DateUtils,
   Vcl.Graphics,
-  Atlas.Core.Style.Color,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Plugin.Style.Color,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.Development.Strings,
   Atlas.UI.Tracker.GitHubStrings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.UI.Tracker.IssueBoxes;
 
 const
   /// <summary>Abstand der Oberkanten beim Stapeln: alTop ordnet nach Top, die Lücke lässt Platz für jede Höhe.
@@ -497,14 +498,6 @@ begin
   end;
 end;
 
-function WhenText(ATime: TDateTime): string;
-begin
-  Result := '';
-  if ATime > 0 then
-  begin
-    Result := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ATime), FormatSettings);
-  end;
-end;
 /// <summary>Zeile, warum Branches und Commits fehlen; '' wenn die Versionsverwaltung geantwortet hat.</summary>
 function VcsText(const ADevelopment: TAtlasIssueDevelopment): string;
 begin
@@ -553,7 +546,7 @@ begin
       mItem.Caption := mEntry.ShortRevision(FDevelopment.VcsKind);
       mItem.SubItems.Add(mEntry.Summary);
       mItem.SubItems.Add(mEntry.Author);
-      mItem.SubItems.Add(WhenText(mEntry.Date));
+      mItem.SubItems.Add(TAtlasIssueTimeText.Absolute(mEntry.Date));
     end;
   finally
     FParts.Commits.Items.EndUpdate;
@@ -677,7 +670,7 @@ begin
       mItem.Caption := Copy(mChange.Version, 1, 10);
       mItem.SubItems.Add(mChange.Text);
       mItem.SubItems.Add(mChange.Author);
-      mItem.SubItems.Add(WhenText(mChange.Date));
+      mItem.SubItems.Add(TAtlasIssueTimeText.Absolute(mChange.Date));
     end;
   finally
     Result.Items.EndUpdate;

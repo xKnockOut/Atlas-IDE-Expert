@@ -16,7 +16,7 @@
 interface
 
 uses
-  Atlas.Core.Lsp.TextChanges;
+  Atlas.Plugin.Lsp.TextChanges;
 
 type
   TAtlasSelectionSteps = class

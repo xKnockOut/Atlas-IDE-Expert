@@ -99,9 +99,13 @@ uses
   System.JSON,
   System.Generics.Defaults,
   System.Math,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json,
   Atlas.Text.Chars;
+
+const
+  /// <summary>Teile einer Versionsnummer (Major.Minor.Patch).</summary>
+  cVersionParts = 3;
 
 function Flag(AObject: TJSONObject; const AName: string): Boolean;
 begin
@@ -168,13 +172,7 @@ var
   mList: TList<TAtlasWhatsNewVersion>;
 begin
   Result := nil;
-  try
-    mRoot := TJSONObject.ParseJSONValue(AJson);
-  except
-    // Kaputte Datei: keine Karte, kein Fehler in der IDE.
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AJson);
   mList := TList<TAtlasWhatsNewVersion>.Create;
   try
     if not (mRoot is TJSONObject) then
@@ -281,7 +279,7 @@ end;
 function Padded(const AParts: TArray<string>): TArray<string>;
 begin
   Result := AParts;
-  while Length(Result) < 3 do
+  while Length(Result) < cVersionParts do
   begin
     Result := Result + ['0'];
   end;

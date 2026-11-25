@@ -8,10 +8,11 @@
 interface
 
 uses
-  Atlas.Core.Tracker.Contract.TestResults;
+  Atlas.Core.Tracker.Contract.TestResults,
+  Atlas.Plugin.Calls.Contract;
 
 type
-  IAtlasTestResultsSource = interface
+  IAtlasTestResultsSource = interface(IAtlasShownSource)
     ['{5B7E2C94-1D3A-4F68-9E05-C4A1B8D6F273}']
     function View: TAtlasTestResultsView;
     /// <summary>Zeile wählen (Projektdatei); die Liste zeigt danach deren Fehlschläge.</summary>
@@ -35,8 +36,7 @@ type
     procedure OpenProject(const ARow: TAtlasTestRow);
     /// <summary>Befehl für den Zugang eingeschaltet (Einstellung CiLogin).</summary>
     function CanEnterCredentials: Boolean;
-    /// <summary>Die Kachel wird gezeigt: bei Bedarf den Server im Hintergrund fragen.</summary>
-    procedure Shown;
+    // Shown (IAtlasShownSource): Die Kachel wird gezeigt: bei Bedarf den Server im Hintergrund fragen.
   end;
 
 implementation

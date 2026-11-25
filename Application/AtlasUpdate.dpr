@@ -1,5 +1,6 @@
 ﻿program AtlasUpdate;
 
+{$R *.res}
 {$APPTYPE CONSOLE}
 
 // Installer und Updater von Atlas (#1519): Erstinstallation aus dem
@@ -8,10 +9,10 @@
 // Atlas.Windows.Updates.Adapters.*.
 
 uses
-  Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas',
+  Core.Bootstrap in 'Source\Core\Core.Bootstrap.pas',
   Shell.Update in 'Source\Shell\Shell.Update.pas',
   Shell.Update.System in 'Source\Shell\Shell.Update.System.pas',
-  Shell.Update.Install in 'Source\Shell\Shell.Update.Install.pas';
+  Update.Install in 'Source\Features\Update\Update.Install.pas';
 
 begin
   ExitCode := TShellUpdate.Run;

@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Settings.Plugin.Assistants.Tests;
 
 // Einstellungen des KI-Anbieters (#1922): Vorgaben (aus, kein Anbieter, kleines Modell), Grenzen, unbekannter
-// Anbieter, leeres Modell und Lesen/Schreiben unter den Namen des Schemas.
+// Anbieter, leeres Modell und Lesen/Schreiben unter den Namen des Schemas. Anbieter der IDE (#2744, #2745):
+// Vorgaben aus bzw. „ide“, unbekannte Quelle wird „ide“, Name ohne Leerraum.
 
 interface
 
@@ -22,6 +23,10 @@ type
     procedure EmptyModelFallsBackToDefault;
     [Test]
     procedure PluginSettingsCarryTheValues;
+    [Test]
+    procedure IdeProviderDefaultsAreOff;
+    [Test]
+    procedure UnknownTextSourceBecomesIde;
   end;
 
 implementation
@@ -99,6 +104,32 @@ begin
   mSettings.Normalize;
   Assert.AreEqual('anthropic', mSettings.AssistantsProvider);
   Assert.IsTrue(mSettings.AssistantsInlineSuggestions);
+end;
+
+procedure TAtlasPluginAssistantsSettingsTests.IdeProviderDefaultsAreOff;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(mSettings.AssistantsIdeProvider, 'Anbieter der IDE aus');
+  Assert.IsFalse(mSettings.AssistantsRegisterInIde, 'nicht bei der IDE anmelden');
+  Assert.AreEqual('', mSettings.AssistantsIdeProviderName);
+  Assert.AreEqual('ide', mSettings.AssistantsTextSource);
+end;
+
+procedure TAtlasPluginAssistantsSettingsTests.UnknownTextSourceBecomesIde;
+var
+  mSettings: TAtlasPluginAssistantsSettings;
+begin
+  mSettings := TAtlasPluginAssistantsSettings.Defaults;
+  mSettings.AssistantsTextSource := ' Own ';
+  mSettings.AssistantsIdeProviderName := '  OpenAI  ';
+  mSettings.Normalize;
+  Assert.AreEqual('own', mSettings.AssistantsTextSource);
+  Assert.AreEqual('OpenAI', mSettings.AssistantsIdeProviderName);
+  mSettings.AssistantsTextSource := 'irgendwas';
+  mSettings.Normalize;
+  Assert.AreEqual('ide', mSettings.AssistantsTextSource);
 end;
 
 initialization

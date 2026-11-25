@@ -30,7 +30,7 @@ uses
   System.Types,
   System.Classes,
   Atlas.Core.Editor.Hide,
-  Atlas.Core.Settings.HiddenPlaces,
+  Atlas.Plugin.Settings.HiddenPlaces,
   Atlas.UI.Editor.Hide;
 
 type
@@ -102,23 +102,23 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.StructureSwitch,
-  Atlas.IDE.Foundation.Caret,
+  Atlas.ToolsApi.Editor.Caret,
   Atlas.IDE.Editor.HideTeamFile;
 
 { TAtlasIdeHide }

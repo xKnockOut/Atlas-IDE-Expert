@@ -21,7 +21,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Welcome.Sections,
-  Atlas.Core.Diagnostics.Package,
+  Atlas.Plugin.Diagnostics.Package,
   Atlas.UI.Welcome.Contract;
 
 type
@@ -69,11 +69,11 @@ uses
   System.Classes,
   System.IOUtils,
   Vcl.Clipbrd,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Updates.Check,
-  Atlas.Core.Settings.Choices,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Export,
+  Atlas.Plugin.Settings.Choices,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Export,
   Atlas.Core.Welcome.Help,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Diagnostics.ReportDialog,

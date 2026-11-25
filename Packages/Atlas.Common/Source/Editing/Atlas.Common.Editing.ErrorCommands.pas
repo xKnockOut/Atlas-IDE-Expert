@@ -30,7 +30,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts;
@@ -154,8 +155,8 @@ end;
 function AddSysUtils(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
   out AEdit: TTextEdit): Boolean;
 begin
-  Result := not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ASource.Tree.Tokens), 'System.SysUtils',
-    AContext.Namespaces) and TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), 'System.SysUtils',
+  Result := not TPascalUses.IsUsed(TPascalUses.UsedUnits(ASource.Tree.Tokens), 'System.SysUtils',
+    AContext.Namespaces) and TPascalUsesEdits.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), 'System.SysUtils',
     ASource.LineBreak, AEdit);
 end;
 
@@ -341,21 +342,12 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterErrorCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('guard', cTexts[TErrorCommandsText.InsertNilChecksForParameters].Text,
-    cTexts[TErrorCommandsText.GuardACustomer].Text,
-    ExecuteGuard));
-  ARegister(Command('raise', cTexts[TErrorCommandsText.RaiseAnException].Text,
-    cTexts[TErrorCommandsText.RaiseEImportErrorFileMissing].Text, ExecuteRaise));
+  ARegister(TSlashCommand.Create('guard', cTexts[TErrorCommandsText.InsertNilChecksForParameters].Text,
+      cTexts[TErrorCommandsText.GuardACustomer].Text, ExecuteGuard));
+  ARegister(TSlashCommand.Create('raise', cTexts[TErrorCommandsText.RaiseAnException].Text,
+      cTexts[TErrorCommandsText.RaiseEImportErrorFileMissing].Text, ExecuteRaise));
 end;
 
 initialization

@@ -39,7 +39,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.Overview;
 
@@ -192,10 +192,10 @@ begin
   mMarks := TAtlasOverview.ProblemMarks(mProblems);
   Assert.AreEqual(3, Integer(Length(mMarks)), 'ohne inaktive Zweige und uses-Einträge');
   Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Error, mMarks[0].Kind);
-  Assert.AreEqual(3, mMarks[0].Count, 'über alle Zeilen des Befunds');
+  Assert.AreEqual(3, Integer(mMarks[0].Count), 'über alle Zeilen des Befunds');
   Assert.AreEqual('m4', mMarks[0].Text);
   Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Warning, mMarks[1].Kind);
-  Assert.AreEqual(1, mMarks[1].Count, 'mindestens eine Zeile');
+  Assert.AreEqual(1, Integer(mMarks[1].Count), 'mindestens eine Zeile');
   Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Info, mMarks[2].Kind);
 end;
 
@@ -210,7 +210,7 @@ begin
   mChange.Count := 2;
   mMark := TAtlasOverview.ChangeMark(mChange, 20, 'neu', 'anders', 'weg');
   Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Modified, mMark.Kind);
-  Assert.AreEqual(2, mMark.Count);
+  Assert.AreEqual(2, Integer(mMark.Count));
   Assert.AreEqual('anders', mMark.Text);
   mChange.Kind := TAtlasLineChangeKind.Deleted;
   mChange.Line := 20;
@@ -218,7 +218,7 @@ begin
   mMark := TAtlasOverview.ChangeMark(mChange, 20, 'neu', 'anders', 'weg');
   Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Deleted, mMark.Kind);
   Assert.AreEqual(19, mMark.Line, 'am Ende auf die letzte Zeile');
-  Assert.AreEqual(1, mMark.Count);
+  Assert.AreEqual(1, Integer(mMark.Count));
   mChange.Kind := TAtlasLineChangeKind.Added;
   Assert.AreEqual('neu', TAtlasOverview.ChangeMark(mChange, 30, 'neu', 'anders', 'weg').Text);
 end;

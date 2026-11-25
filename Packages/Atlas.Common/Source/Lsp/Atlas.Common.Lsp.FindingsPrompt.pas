@@ -39,7 +39,7 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,

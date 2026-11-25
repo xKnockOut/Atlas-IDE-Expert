@@ -281,9 +281,9 @@ begin
   FValues.BeginStep;
   Assert.IsFalse(FValues.Shown(mFileName, mLine));
   Assert.AreEqual('', FValues.LineText('Kasse.pas', 40));
-  Assert.AreEqual(1, FValues.Count);
+  Assert.AreEqual(1, Integer(FValues.Count));
   FValues.Clear;
-  Assert.AreEqual(0, FValues.Count);
+  Assert.AreEqual(0, Integer(FValues.Count));
 end;
 
 procedure TAtlasReturnValuesTests.ShowWithoutResultsShowsNothing;

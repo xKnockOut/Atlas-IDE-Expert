@@ -28,7 +28,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.Contract;
 
 type
@@ -165,10 +165,10 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.FormModel,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Lsp.Positions,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.JsonRpc.Positions,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Text.Json,
   Atlas.Text.Lines;
 
@@ -1408,8 +1408,8 @@ end;
 class function TUnitSearch.AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
   const AUses: TUsesContext; ATarget: TUsesAddTarget): TJSONObject;
 var
-  mEdits: TArray<TRuleEdit>;
-  mEdit: TRuleEdit;
+  mEdits: TArray<TTextEdit>;
+  mEdit: TTextEdit;
   mAdded: TArray<string>;
   mName, mLineBreak: string;
   mChanges, mWorkspaceEdit, mItem: TJSONObject;

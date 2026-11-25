@@ -91,18 +91,18 @@ uses
   Atlas.Core.CodeInsight.Plan,
   Winapi.Windows,
   System.JSON,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.LineTracker,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.CodeInsight.Manager.Queries,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

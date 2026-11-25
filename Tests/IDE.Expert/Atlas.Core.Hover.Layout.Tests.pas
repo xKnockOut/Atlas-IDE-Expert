@@ -102,7 +102,7 @@ uses
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
   System.SysUtils,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.Contract.DebugValue,

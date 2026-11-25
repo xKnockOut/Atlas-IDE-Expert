@@ -120,7 +120,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Conditions,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 function Body(const AStatements: string): string;
@@ -162,7 +162,7 @@ begin
   Assert.AreEqual(5, mFound[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Bedingung entfernen', mFound[0].Fixes[0].Title);
-  Assert.AreEqual(Body('  Verarbeiten;'#10), TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
+  Assert.AreEqual(Body('  Verarbeiten;'#10), TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits));
 end;
 
 procedure TConstantConditionTests.FileConstantRemovesStatement;
@@ -175,7 +175,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Die Bedingung ist immer falsch (DEBUG_MODUS = False).', mFound[0].Message);
   Assert.AreEqual('Toten Zweig entfernen', mFound[0].Fixes[0].Title);
-  Assert.AreEqual(Body('  Start;'#10'  Ende;'#10), TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
+  Assert.AreEqual(Body('  Start;'#10'  Ende;'#10), TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits));
   // Vergleich mit einer Zahlkonstanten und not.
   mFound := Findings(Body('  if MAX_ANZAHL > 20 then'#10'    Exit;'#10'  if not DEBUG_MODUS and (Anzahl > 0) then'#10 +
     '    Exit;'#10));
@@ -193,7 +193,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Die Bedingung ist immer falsch (False).', mFound[0].Message);
   Assert.AreEqual(Body('  begin'#10'    Neu;'#10'    Fertig;'#10'  end;'#10),
-    TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits));
   // Teil mit and: False and X ist immer falsch.
   mFound := Findings(Body('  if False and (Anzahl > 0) then'#10'    Exit;'#10));
   Assert.AreEqual(1, Integer(Length(mFound)));
@@ -520,7 +520,7 @@ begin
   Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Anweisung entfernen', mFound[0].Fixes[0].Title);
-  Assert.AreEqual(Schreiben('  Inc(FLaenge);'#10), TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
+  Assert.AreEqual(Schreiben('  Inc(FLaenge);'#10), TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits));
   // Auch am Ende einer anonymen Methode und einer lokalen Routine.
   Assert.AreEqual(2, Integer(Length(JumpFindings(Schreiben('  TThread.Queue(nil,'#10'    procedure'#10 +
     '    begin'#10'      Inc(FLaenge);'#10'      Exit;'#10'    end);'#10'  exit;'#10)))));
@@ -537,7 +537,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Continue am Ende des Schleifenrumpfs ist überflüssig.', mFound[0].Message);
   Assert.AreEqual(Schreiben('  for mWert in FListe do'#10'  begin'#10'    Inc(FLaenge, mWert);'#10'  end;'#10),
-    TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits));
   // Im letzten Zweig eines if am Rumpfende: in begin … end mit Korrektur, als bloßer Zweig ohne.
   mFound := JumpFindings(Schreiben('  while FLaenge > 0 do'#10'  begin'#10'    Dec(FLaenge);'#10 +
     '    if FLaenge = 5 then'#10'    begin'#10'      Inc(FLaenge, 0);'#10'      Continue;'#10'    end;'#10'  end;'#10));

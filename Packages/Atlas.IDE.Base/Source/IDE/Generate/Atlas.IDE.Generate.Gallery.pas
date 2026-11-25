@@ -34,7 +34,7 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Watch,
@@ -158,7 +158,7 @@ begin
     TAtlasGuard.Log('Gallery: command ' + ACommandId + ' is gone');
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.Generate, mCommand.Run);
+  TAtlasCommandScope.Run(TAtlasFeature.Generate, mCommand.Caption, mCommand.Run);
 end;
 
 { TGalleryWizard }
@@ -186,7 +186,11 @@ end;
 
 procedure TGalleryWizard.Execute;
 begin
-  RunCommand(FItem.CommandId);
+  TAtlasGuard.Run(TAtlasFeature.Generate,
+    procedure
+    begin
+      RunCommand(FItem.CommandId);
+    end);
 end;
 
 function TGalleryWizard.GetAuthor: string;

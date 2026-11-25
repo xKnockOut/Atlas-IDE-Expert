@@ -38,59 +38,11 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Projects.UnitAliases,
   Atlas.Common.Rules.Contract;
 
 type
-  /// <summary>Liest eine Textdatei; False, wenn sie fehlt.</summary>
-  TUnitLookupReadText = reference to function(const AFileName: string; out AText: string): Boolean;
-
-  /// <summary>Anderes Projekt der Gruppe: Ordner, in den es übersetzt, und seine Units.</summary>
-  TUnitLookupGroupOutput = record
-    /// <summary>Name des Projekts ohne Endung (Atlas.Text): requires dieses Namens baut die Gruppe selbst.</summary>
-    ProjectName: string;
-    /// <summary>DCU-Ausgabeordner, absolut, mit eingesetzter Plattform und Konfiguration.</summary>
-    DcuFolder: string;
-    Units: TArray<string>;
-  end;
-
-  /// <summary>Was TUnitLookup über Projekt, Installation und Dateisystem wissen muss.</summary>
-  TUnitLookupSetup = record
-    Project: TProjectInfo;
-    /// <summary>Bibliothekspfade der Installation (Library Path) in Suchreihenfolge, absolut.</summary>
-    LibraryPaths: TArray<string>;
-    /// <summary>Installation bekannt: Ohne gilt keine Unit als sicher fehlend.</summary>
-    LibraryKnown: Boolean;
-    /// <summary>Quellpfade der Installation (Browsing Path) für die Quelle Atlas.</summary>
-    BrowsingPaths: TArray<string>;
-    /// <summary>Packages aus requires der Hauptdatei (.dpk); leer bei Programmen.</summary>
-    RequiredPackages: TArray<string>;
-    /// <summary>Dateien eines Ordners (vollständige Pfade, mindestens .pas und .dcu); leer, wenn es ihn nicht gibt.
-    /// </summary>
-    ListFiles: TFunc<string, TArray<string>>;
-    /// <summary>Unterordner eines Ordners (vollständige Pfade); nil = keine Suche außerhalb der Suchpfade.</summary>
-    ListFolders: TFunc<string, TArray<string>>;
-    FileExists: TFunc<string, Boolean>;
-    /// <summary>Text einer Datei (.dproj); nil = keine Korrektur am Suchpfad.</summary>
-    ReadText: TUnitLookupReadText;
-    /// <summary>Liefert Package APackage die Unit? nil = keine requires-Prüfung.</summary>
-    PackageProvides: TRulePackageProvides;
-    /// <summary>requires eines Packages (aus der .dpk); leer ohne Quelle. nil = nur die direkten Packages.</summary>
-    PackageRequires: TFunc<string, TArray<string>>;
-    /// <summary>Gibt es das Package (.dpk oder .dcp)? nil = unbekannt.</summary>
-    PackageExists: TFunc<string, Boolean>;
-    /// <summary>Steht die Unit im Index (Quelle Atlas)? nil = Index unbekannt.</summary>
-    IndexKnows: TFunc<string, Boolean>;
-    /// <summary>Namen der Units im Index für Vorschläge; nil = keine.</summary>
-    IndexUnits: TFunc<TArray<string>>;
-    /// <summary>Die anderen Projekte der Projektgruppe (3a).</summary>
-    GroupOutputs: TArray<TUnitLookupGroupOutput>;
-    /// <summary>Wie GroupOutputs, aber bei jeder Suche neu gefragt: Die IDE meldet die Projekte der Gruppe einzeln
-    /// und nach diesem an. nil = nur GroupOutputs.</summary>
-    GroupOutputsOf: TFunc<TArray<TUnitLookupGroupOutput>>;
-  end;
-
   TUnitLookup = class(TInterfacedObject, IRuleUnitLookup)
   private const
     /// <summary>So tief sucht FolderOutsidePaths unter dem Projektordner.</summary>
@@ -137,8 +89,6 @@ type
     function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
     function FolderOutsidePaths(const AUnitName: string): string;
     function ReadProject(out AFileName, AText: string): Boolean;
-    /// <summary>DCU-Ausgabeordner (DCC_DcuOutput) mit eingesetzter Plattform und Konfiguration; '' ohne.</summary>
-    class function DcuOutputOf(const AProject: TProjectInfo): string; static;
     /// <summary>Ordner, die der Compiler durchsucht (ohne den der verwendenden Datei).</summary>
     property ProjectFolders: TArray<string> read FProjectFolders;
   end;
@@ -146,53 +96,22 @@ type
 implementation
 
 uses
+  Atlas.Common.Projects.Contract,
   System.StrUtils,
   Atlas.Common.Projects.Paths,
-  Atlas.Text.Arrays;
+  Atlas.Text.Arrays,
+  Atlas.Text.Names;
 
 /// <summary>Ordner als Vergleichsschlüssel: "\" als Trenner, ohne Trenner am Ende, klein.</summary>
-function FolderKey(const AFolder: string): string;
-begin
-  Result := LowerCase(StringReplace(AFolder, '/', '\', [rfReplaceAll]));
-  while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-end;
 
 function SameFolder(const A, B: string): Boolean;
 begin
-  Result := FolderKey(A) = FolderKey(B);
+  Result := TTextNames.FolderKey(A) = TTextNames.FolderKey(B);
 end;
 
 function HasMacro(const APath: string): Boolean;
 begin
   Result := Pos('$(', APath) > 0;
-end;
-
-/// <summary>DCU-Ausgabeordner (DCC_DcuOutput) mit eingesetzter Plattform und Konfiguration; '' ohne.</summary>
-function DcuOutput(const AProject: TProjectInfo): string;
-var
-  mPair: TPair<string, string>;
-begin
-  Result := '';
-  for mPair in AProject.Properties do
-  begin
-    if SameText(mPair.Key, 'DCC_DcuOutput') then
-    begin
-      Result := mPair.Value;
-    end;
-  end;
-  if Result = '' then
-  begin
-    Exit;
-  end;
-  Result := StringReplace(Result, '$(Platform)', AProject.Platform, [rfReplaceAll, rfIgnoreCase]);
-  Result := StringReplace(Result, '$(Config)', AProject.Config, [rfReplaceAll, rfIgnoreCase]);
-  if (AProject.FileName <> '') and not TProjectPaths.IsAbsolute(Result) then
-  begin
-    Result := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AProject.FileName), Result);
-  end;
 end;
 
 /// <summary>Ordner aus DCC_IncludePath und DCC_ResourcePath, absolut (#1379).</summary>
@@ -235,7 +154,7 @@ begin
     Result := Result + [TProjectPaths.DirectoryOf(ASetup.Project.FileName)];
   end;
   Result := Result + ASetup.Project.SearchPaths;
-  mFolder := TUnitLookup.DcuOutputOf(ASetup.Project);
+  mFolder := TProjectPaths.DcuOutputOf(ASetup.Project);
   if mFolder <> '' then
   begin
     Result := Result + [mFolder];
@@ -377,7 +296,7 @@ function TUnitLookup.Listing(const AFolder: string): TDictionary<string, string>
 var
   mKey, mFileName, mExtension: string;
 begin
-  mKey := FolderKey(AFolder);
+  mKey := TTextNames.FolderKey(AFolder);
   TMonitor.Enter(FLock);
   try
     if FListings.TryGetValue(mKey, Result) then
@@ -832,11 +751,6 @@ begin
   AFileName := FSetup.Project.FileName;
   AText := '';
   Result := (AFileName <> '') and Assigned(FSetup.ReadText) and FSetup.ReadText(AFileName, AText);
-end;
-
-class function TUnitLookup.DcuOutputOf(const AProject: TProjectInfo): string;
-begin
-  Result := DcuOutput(AProject);
 end;
 
 end.

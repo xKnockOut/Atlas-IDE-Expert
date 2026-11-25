@@ -73,8 +73,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SmartIndent,
-  Atlas.Common.Editing.TypeComments,
-  Shell.Workspace;
+  Atlas.Common.Pascal.TypeComments,
+  Core.Workspace;
 
 { TShellFileOptions }
 
@@ -100,7 +100,7 @@ end;
 
 function TShellFileOptions.DelphiVersionFor(const AUri: string): string;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FWorkspaces.Lock);
   try
@@ -190,7 +190,7 @@ end;
 function TShellFileOptions.NewNamesFor(const AUri: string): TPascalNamePrefixes;
 var
   mFileName: string;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mSettings: TServerSettings;
   mContext: TRuleContext;
 begin

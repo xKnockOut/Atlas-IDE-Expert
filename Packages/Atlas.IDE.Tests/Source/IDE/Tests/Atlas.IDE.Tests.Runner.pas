@@ -56,7 +56,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   ToolsAPI,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Projects.Summary,
@@ -140,6 +140,9 @@ type
     /// False mit AReason, wenn „Tests ausführen“ aus ist, schon ein Lauf läuft oder AProject nicht offen ist.
     /// </summary>
     function RunProject(const AProject: string; out AReason: string): Boolean;
+    /// <summary>Wie RunProject; startet nichts, meldet es den Grund in der Meldungsansicht. Ohne AProject nichts.
+    /// </summary>
+    procedure RunProjectOrSay(const AProject: string);
     /// <summary>Tests ATests im Testprojekt der Datei AFileName im Hintergrund (#1775): ohne Frage nach dem
     /// Testprojekt (eines bzw. die gemerkte Wahl) und ohne Zeilen in der Meldungsansicht; gebaut wie mit „Vor den
     /// Tests bauen“ (mit ABuildFirst; ohne läuft die vorhandene EXE, Folgeläufe einer Serie #1782). Das Ende meldet
@@ -188,18 +191,18 @@ implementation
 uses
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Leaks,
   Atlas.Core.Tests.Log,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.Text.Files;
 
 const
@@ -489,6 +492,16 @@ begin
   Result := True;
 end;
 
+procedure TAtlasIdeTests.RunProjectOrSay(const AProject: string);
+var
+  mReason: string;
+begin
+  if (AProject <> '') and not RunProject(AProject, mReason) and (mReason <> '') then
+  begin
+    Say(mReason);
+  end;
+end;
+
 function TAtlasIdeTests.RunQuiet(const AFileName: string; const ATests: TArray<string>; out AReason: string;
   ABuildFirst: Boolean): Boolean;
 var
@@ -635,8 +648,14 @@ begin
   try
     TFile.WriteAllText(Result, '');
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 

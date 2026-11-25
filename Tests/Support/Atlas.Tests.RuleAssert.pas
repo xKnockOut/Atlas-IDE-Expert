@@ -78,6 +78,26 @@ type
     class function LineMessages(const AFound: TArray<TRuleFinding>): string; static;
     /// <summary>Treffer als "Zeile:Spalte Meldung|" je Treffer (beide ab 0).</summary>
     class function PositionMessages(const AFound: TArray<TRuleFinding>): string; static;
+    /// <summary>Meldungen der Treffer, jede gefolgt von ASuffix.</summary>
+    class function Messages(const AFound: TArray<TRuleFinding>; const ASuffix: string): string; static;
+    /// <summary>Treffer als "Zeile: Meldung", getrennt durch ASeparator; die Zeilen zählen ab AFirstLine.
+    /// </summary>
+    class function NumberedMessages(const AFound: TArray<TRuleFinding>; const ASeparator: string;
+      AFirstLine: Integer): string; static;
+    /// <summary>Prüft, dass AFound genau einen Treffer hat, und liefert dessen Meldung; die Fehlermeldung nennt
+    /// ASource und die Treffer.</summary>
+    class function OnlyMessage(const AFound: TArray<TRuleFinding>; const ASource: string): string; static;
+    /// <summary>Prüft, dass AFound leer ist; die Fehlermeldung nennt ASource und die Treffer.</summary>
+    class procedure NoFindings(const AFound: TArray<TRuleFinding>; const ASource: string); static;
+    /// <summary>Eine eingebaute Regel trägt die Kennung ARuleId.</summary>
+    class function IsBuiltin(const ARuleId: string): Boolean; static;
+  end;
+
+  /// <summary>Testregel "marker": meldet jeden Bezeichner Marker.</summary>
+  TMarkerRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
   /// <summary>Testregel ohne Treffer: ruft beim Prüfen AOnCheck auf (zählen, warten, abbrechen).</summary>
@@ -101,7 +121,18 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Rules.Engine;
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Builtin,
+  Atlas.Common.Pascal.Contract,
+  Shell.Composition.RuleRefactorings;
+
+/// <summary>Leerer Regelkontext mit den Refactorings des Hosts, damit Korrekturen wie im Betrieb entstehen.</summary>
+function NewContext: TRuleContext;
+begin
+  Result := Default(TRuleContext);
+  Result.Refactorings := TShellRuleRefactorings.Create;
+end;
+
 
 { TRuleAssert }
 
@@ -134,7 +165,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     // Wie Rules.Checker: relative Pfade haben '/', ExtractFileName kennt unter Windows nur '\'.
     mContext.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');
@@ -153,7 +184,7 @@ var
 begin
   mTree := TPascalParser.ParseActive(ASource, TPascalPreprocessor.PredefinedSymbols(APlatform, 37.0));
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.Text := ASource;
     mContext.Tree := mTree;
     Result := TRuleEngine.Run([ARule], TServerSettings.Default, mContext);
@@ -170,7 +201,7 @@ var
 begin
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.Text := ASource;
     mContext.Tree := mTree;
     mContext.Application := AApplication;
@@ -198,7 +229,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     mContext.Text := ASource;
     mContext.Tree := mTree;
@@ -233,7 +264,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.Text := ASource;
     mContext.Tree := mTree;
     mContext.FormText := AFormText;
@@ -261,7 +292,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     mContext.Text := ASource;
     mContext.Tree := mTree;
@@ -291,7 +322,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     mContext.FileName := AFileName;
     mContext.Text := ASource;
@@ -321,7 +352,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.RelativePath := ARelativePath;
     mContext.Text := ASource;
     mContext.Tree := mTree;
@@ -392,7 +423,7 @@ begin
   end;
   mTree := TPascalParser.Parse(ASource);
   try
-    mContext := Default(TRuleContext);
+    mContext := NewContext;
     mContext.Text := ASource;
     mContext.Tree := mTree;
     Result := TRuleEngine.Run(ARules, mSettings, mContext);
@@ -486,6 +517,78 @@ begin
   begin
     Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ':' + IntToStr(mFinding.Range.StartPos.Character) +
       ' ' + mFinding.Message + '|';
+  end;
+end;
+
+class function TRuleAssert.Messages(const AFound: TArray<TRuleFinding>; const ASuffix: string): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in AFound do
+  begin
+    Result := Result + mFinding.Message + ASuffix;
+  end;
+end;
+
+class function TRuleAssert.NumberedMessages(const AFound: TArray<TRuleFinding>; const ASeparator: string;
+  AFirstLine: Integer): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in AFound do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ASeparator;
+    end;
+    Result := Result + IntToStr(mFinding.Range.StartPos.Line + AFirstLine) + ': ' + mFinding.Message;
+  end;
+end;
+
+class function TRuleAssert.OnlyMessage(const AFound: TArray<TRuleFinding>; const ASource: string): string;
+begin
+  Assert.AreEqual(1, Integer(Length(AFound)), ASource + ' | ' + Messages(AFound, ' | '));
+  Result := AFound[0].Message;
+end;
+
+class procedure TRuleAssert.NoFindings(const AFound: TArray<TRuleFinding>; const ASource: string);
+begin
+  Assert.AreEqual(0, Integer(Length(AFound)), ASource + ' | ' + Messages(AFound, ' | '));
+end;
+
+class function TRuleAssert.IsBuiltin(const ARuleId: string): Boolean;
+var
+  mRule: IRule;
+begin
+  Result := False;
+  for mRule in BuiltinRules do
+  begin
+    if mRule.Descriptor.Id = ARuleId then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+{ TMarkerRule }
+
+function TMarkerRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('marker', TRuleSeverity.Warning, 'Meldet den Bezeichner Marker');
+end;
+
+procedure TMarkerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mToken: TPascalToken;
+begin
+  for mToken in AContext.Tree.Tokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'Marker') then
+    begin
+      AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), 'Marker gefunden');
+    end;
   end;
 end;
 

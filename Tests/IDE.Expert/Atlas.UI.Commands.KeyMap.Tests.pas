@@ -45,11 +45,11 @@ uses
   System.Classes,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Theme.Service,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.KeyMap;
 
 var

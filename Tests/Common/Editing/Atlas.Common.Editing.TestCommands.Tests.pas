@@ -48,7 +48,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SlashCommands,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.TestCommands;
 
 const

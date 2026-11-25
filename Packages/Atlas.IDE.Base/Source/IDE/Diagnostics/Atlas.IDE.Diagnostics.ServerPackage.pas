@@ -32,11 +32,11 @@ type
 implementation
 
 uses
-  Atlas.IDE.Foundation.DockWindow,
-  Atlas.Core.Diagnostics.BugReport,
-  Atlas.Core.Diagnostics.Package,
-  Atlas.Core.Diagnostics.ServerPackage,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.ToolsApi.Windows.DockWindow,
+  Atlas.Plugin.Diagnostics.BugReport,
+  Atlas.Plugin.Diagnostics.Package,
+  Atlas.Plugin.Diagnostics.ServerPackage,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Diagnostics.ExportDialog,
   Atlas.UI.Diagnostics.Strings;
 

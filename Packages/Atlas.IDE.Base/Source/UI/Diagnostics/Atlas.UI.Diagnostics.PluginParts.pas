@@ -24,8 +24,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Menus,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.UI.Diagnostics.Grid,
   Atlas.UI.Diagnostics.Strings;
 
@@ -151,9 +151,10 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.PluginReport;
+  Atlas.Plugin.Diagnostics.PluginReport,
+  Atlas.Vcl.Theme.Service;
 
 const
   cTabFlags = DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_CENTER;
@@ -357,7 +358,7 @@ begin
   FThreshold.Left := MulDiv(cThresholdLeft, CurrentPPI, 96);
   FNote := NewLabel;
   FNote.Left := MulDiv(cNoteLeft, CurrentPPI, 96);
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FButtonsWidth := FCopy.Width + FReset.Width + FPause.Width +
     cBarButtonCount * (FCopy.Margins.Left + FCopy.Margins.Right);
   FButtons.Width := FButtonsWidth;

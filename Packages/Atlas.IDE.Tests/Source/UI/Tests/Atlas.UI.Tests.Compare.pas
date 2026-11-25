@@ -26,7 +26,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Core.Tests.Compare,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   {$SCOPEDENUMS ON}
@@ -109,8 +109,8 @@ implementation
 uses
   System.Math,
   Vcl.Clipbrd,
-  Atlas.Core.Style.Palette,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Tests.Strings;
 
 const

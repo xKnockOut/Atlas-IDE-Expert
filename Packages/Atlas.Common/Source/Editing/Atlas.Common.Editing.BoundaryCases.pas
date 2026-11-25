@@ -82,8 +82,9 @@ uses
   System.SysUtils,
   System.Math,
   System.StrUtils,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -182,15 +183,6 @@ end;
 function BareName(const AName: string): string;
 begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
-end;
-
-function Unparen(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
 end;
 
 /// <summary>Text eines String-Literals ('a''b' → a'b, #65 → A); False bei anderem oder Steuerzeichen.</summary>
@@ -457,7 +449,7 @@ var
   mIndex: Integer;
 begin
   Result := -1;
-  mNode := Unparen(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if (mNode = nil) or (mNode.Kind <> TSyntaxKind.Identifier) then
   begin
     Exit;
@@ -486,7 +478,7 @@ var
   mNode: TSyntaxNode;
 begin
   Result := Default(TConstant);
-  mNode := Unparen(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if mNode = nil then
   begin
     Exit;
@@ -645,13 +637,13 @@ function TCollector.Sides(ANode: TSyntaxNode; out ALeft, ARight: TSyntaxNode; ou
 begin
   // Parameter bzw. Aufruf nach links, die Konstante nach rechts.
   AOp := ANode.Name;
-  ALeft := Unparen(ANode[0]);
-  ARight := Unparen(ANode[1]);
+  ALeft := TSyntaxNodes.Unparen(ANode[0]);
+  ARight := TSyntaxNodes.Unparen(ANode[1]);
   Result := (ALeft <> nil) and (ARight <> nil);
   if Result and (ParamOf(ALeft) < 0) and ((ParamOf(ARight) >= 0) or (ARight.Kind = TSyntaxKind.Call)) then
   begin
-    ALeft := Unparen(ANode[1]);
-    ARight := Unparen(ANode[0]);
+    ALeft := TSyntaxNodes.Unparen(ANode[1]);
+    ARight := TSyntaxNodes.Unparen(ANode[0]);
     AOp := Mirrored(AOp);
   end;
 end;
@@ -903,7 +895,7 @@ var
   mLabels: TArray<TSyntaxNode>;
 begin
   mParam := ParamOf(ANode[0]);
-  mSet := Unparen(ANode[1]);
+  mSet := TSyntaxNodes.Unparen(ANode[1]);
   if (mParam < 0) or (mSet = nil) or (mSet.Kind <> TSyntaxKind.SetConstructor) then
   begin
     Exit;

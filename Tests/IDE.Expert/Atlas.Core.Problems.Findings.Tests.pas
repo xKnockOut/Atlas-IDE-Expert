@@ -141,7 +141,7 @@ uses
   Atlas.Core.Problems.Findings,
   Atlas.Core.Problems.FindingsView,
   Atlas.Core.Problems.FindingsCache,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Problems.Colors;
 
 function Problem(ALine: Integer; const ACode, AMessage: string; ASeverity: TAtlasProblemSeverity): TAtlasProblem;
@@ -460,14 +460,14 @@ begin
     Assert.AreEqual(6, Integer(Length(mRows)));
     Assert.IsTrue(mRows[0].IsGroup);
     Assert.AreEqual('A.pas', mRows[0].Caption);
-    Assert.AreEqual(2, mRows[0].Count);
+    Assert.AreEqual(2, Integer(mRows[0].Count));
     Assert.IsTrue(mRows[0].Expanded);
     Assert.AreEqual('A.pas:8:3', mView.Finding(mRows[1].Finding).Location);
     Assert.AreEqual('B.pas', mRows[3].Caption);
     mView.Grouping := TAtlasFindingGrouping.ByRule;
     mRows := mView.Rows;
     Assert.AreEqual('empty-except', mRows[0].Caption);
-    Assert.AreEqual(2, mRows[0].Count);
+    Assert.AreEqual(2, Integer(mRows[0].Count));
     Assert.AreEqual('syntax', mRows[3].Caption);
     Assert.AreEqual('todo-comment', mRows[5].Caption);
     mView.Grouping := TAtlasFindingGrouping.ByCategory;
@@ -1175,7 +1175,7 @@ begin
     mStore.Update('C:\P\Zu.pas', '', False, ManyProblems(30), '', True);
     mItems := TAtlasFindings.FromStore(mStore, nil, mCounter.Reader());
     Assert.AreEqual(30, Integer(Length(mItems)));
-    Assert.AreEqual(1, mCounter.Count);
+    Assert.AreEqual(1, Integer(mCounter.Count));
     Assert.AreEqual('Zu.pas 29', mItems[29].LineText);
   finally
     mCounter.Free;
@@ -1239,18 +1239,18 @@ begin
     mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
     Assert.IsTrue(mChanged);
     Assert.AreEqual(5, Integer(Length(mItems)));
-    Assert.AreEqual(2, mCounter.Count);
+    Assert.AreEqual(2, Integer(mCounter.Count));
     // Nichts geändert: keine Platte, keine Änderung.
     mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
     Assert.IsFalse(mChanged);
     Assert.AreEqual(5, Integer(Length(mItems)));
-    Assert.AreEqual(2, mCounter.Count);
+    Assert.AreEqual(2, Integer(mCounter.Count));
     // Eine Datei neu: nur sie wird gelesen.
     mStore.Update('C:\P\B.pas', '', False, ManyProblems(4), '', True);
     mItems := mCache.Build(mStore, nil, mCounter.Reader(), mChanged);
     Assert.IsTrue(mChanged);
     Assert.AreEqual(7, Integer(Length(mItems)));
-    Assert.AreEqual(3, mCounter.Count);
+    Assert.AreEqual(3, Integer(mCounter.Count));
     // Eine Datei außerhalb der Auswahl ändert die Auswahl nicht.
     mItems := mCache.Build(mStore, ['C:\P\A.pas'], mCounter.Reader(), mChanged);
     Assert.IsTrue(mChanged);
@@ -1259,13 +1259,13 @@ begin
     mItems := mCache.Build(mStore, ['C:\P\A.pas'], mCounter.Reader(), mChanged);
     Assert.IsFalse(mChanged);
     Assert.AreEqual(3, Integer(Length(mItems)));
-    Assert.AreEqual(3, mCounter.Count);
+    Assert.AreEqual(3, Integer(mCounter.Count));
     // Clear baut alles neu.
     mCache.Clear;
     mItems := mCache.Build(mStore, ['C:\P\A.pas'], mCounter.Reader(), mChanged);
     Assert.IsTrue(mChanged);
     Assert.AreEqual(3, Integer(Length(mItems)));
-    Assert.AreEqual(4, mCounter.Count);
+    Assert.AreEqual(4, Integer(mCounter.Count));
   finally
     mCounter.Free;
     mCache.Free;

@@ -65,9 +65,9 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 type
   /// <summary>Beobachter eines Trackers; gehört zu einer Anmeldung (Seriennummer).</summary>

@@ -22,8 +22,8 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.CodeActions.Contract;
 
 const
   /// <summary>Kennungen der Aktionen in data.tag, damit die Vervollständigung sie findet.</summary>
@@ -62,8 +62,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.MemberTransfer,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Pascal.MemberTransfer,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

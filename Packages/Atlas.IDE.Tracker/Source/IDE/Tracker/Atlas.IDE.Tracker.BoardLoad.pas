@@ -18,7 +18,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.BoardPlan,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.BoardFrame;
 
@@ -118,7 +118,7 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Board.Strings,
   Atlas.IDE.Tracker.BoardWindow;

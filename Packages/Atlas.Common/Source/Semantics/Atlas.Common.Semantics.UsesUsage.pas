@@ -33,8 +33,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.Contract,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Was die Nutzung der uses-Einträge aus dem Projekt braucht.</summary>
@@ -75,10 +74,11 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.InlineCallees;
+  Atlas.Common.Semantics.InlineCallees,
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 const
   cAttributeSuffix = 'Attribute';
@@ -134,18 +134,6 @@ type
     function Run(const AInactive: TArray<TTextRange>; const AInfo: TUsesUnitInfoFunc): TUsesResolution;
   end;
 
-function Bare(const AIdentifier: string): string;
-begin
-  if (AIdentifier <> '') and (AIdentifier[1] = '&') then
-  begin
-    Result := Copy(AIdentifier, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AIdentifier;
-  end;
-end;
-
 function IsBefore(const A, B: TTextPosition): Boolean;
 begin
   Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
@@ -185,7 +173,7 @@ var
   mInfo: TUsesUnitInfo;
   mPosition: Integer;
 begin
-  for mReference in TUsesClauses.References(FTokens) do
+  for mReference in TPascalUses.References(FTokens) do
   begin
     if (mReference.List <> TUsesListKind.UsesList) or FByUnit.ContainsKey(LowerCase(mReference.Name)) then
     begin
@@ -378,7 +366,7 @@ var
   mCallee: TInlineCallee;
 begin
   mToken := FTokens[AIndex];
-  mName := Bare(mToken.Text);
+  mName := TTextNames.WithoutAmpersand(mToken.Text);
   mRelevant := IsOpenName(LowerCase(mName));
   mInline := (FCallees <> nil) and FCallees.IsCandidate(mName);
   if not (mRelevant or mInline) then
@@ -395,7 +383,7 @@ begin
   begin
     // Überladene Routinen mehrerer Units: Welche gewinnt, entscheiden die Argumente, also alle behalten.
     if (mResolved.Kind = TResolvedKind.Symbol) and (MatchText('overload', mResolved.Directives)) and
-      not TUsesActions.DotPrecedes(FTokens, AIndex) then
+      not AfterDot(FTokens, AIndex) then
     begin
       MarkDeclaring(mName, APart);
     end;
@@ -500,7 +488,7 @@ var
   mEntry: TUsageEntry;
 begin
   Result := Default(TUsesResolution);
-  FTokens := TUsesActions.ActiveTokens(FTree.Tokens, AInactive);
+  FTokens := TPascalUses.ActiveTokens(FTree.Tokens, AInactive);
   FindParts;
   AddEntries(AInfo);
   FResolver.PinTree(FTree, FFileName);
@@ -509,9 +497,9 @@ begin
     begin
       FCallees := TInlineCallees.Create(FSource.Index, FSource.EnsureUnit, FSource.TreeUnits, FSource.Namespaces,
         FSource.NameFacts, FResolver);
-      FCallees.Prepare(FResolver.ExtractedUnit(FTree, FFileName), TUsesClauses.OwnName(FTree.Tokens));
+      FCallees.Prepare(FResolver.ExtractedUnit(FTree, FFileName), TPascalUses.OwnName(FTree.Tokens));
     end;
-    mClauses := TUsesClauses.Clauses(FTokens);
+    mClauses := TPascalUses.Clauses(FTokens);
     mClauseIndex := 0;
     mIndex := 0;
     while (mIndex <= High(FTokens)) and (FOpen > 0) do

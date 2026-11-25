@@ -91,7 +91,8 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -126,15 +127,6 @@ function WithoutSeparator(const AFolder: string): string;
 begin
   Result := AFolder;
   while (Length(Result) > 1) and CharInSet(Result[Length(Result)], ['\', '/']) do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-end;
-
-function FolderKey(const AFolder: string): string;
-begin
-  Result := LowerCase(StringReplace(AFolder, '/', '\', [rfReplaceAll]));
-  while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
   begin
     Delete(Result, Length(Result), 1);
   end;
@@ -243,7 +235,7 @@ begin
   begin
     Exit;
   end;
-  mKey := FolderKey(AFolder);
+  mKey := TTextNames.FolderKey(AFolder);
   if IndexStr(mKey, FSeen) >= 0 then
   begin
     Exit;
@@ -279,7 +271,7 @@ begin
   end;
   FSearched := FSearched + [cTexts[TProjectsMissingUnitText.ProjectFolderAndSubfolders].Fmt([mRoot])];
   // Der Projektordner selbst steht immer im Suchweg des Compilers.
-  FSeen := FSeen + [FolderKey(mRoot)];
+  FSeen := FSeen + [TTextNames.FolderKey(mRoot)];
   mQueue := [mRoot];
   mDepths := [0];
   mPosition := 0;
@@ -365,7 +357,7 @@ begin
   // Was der Compiler schon durchsucht hat, zählt nicht als Fund.
   for mFolder in FSetup.Project.SearchPaths + FSetup.ActiveLibraryPaths do
   begin
-    FSeen := FSeen + [FolderKey(mFolder)];
+    FSeen := FSeen + [TTextNames.FolderKey(mFolder)];
   end;
   // 1. Projektordner und Unterordner, Breitensuche.
   LookInProjectFolder;
@@ -413,7 +405,7 @@ var
   mBase, mTarget: TArray<string>;
   mCommon, mIndex: Integer;
 begin
-  mBase := FolderKey(TProjectPaths.DirectoryOf(AProjectFile)).Split(['\']);
+  mBase := TTextNames.FolderKey(TProjectPaths.DirectoryOf(AProjectFile)).Split(['\']);
   mTarget := StringReplace(WithoutSeparator(AFolder), '/', '\', [rfReplaceAll]).Split(['\']);
   // Anderes Laufwerk bzw. andere Wurzel: absolut lassen.
   if (Length(mBase) = 0) or (Length(mTarget) = 0) or not SameText(mBase[0], mTarget[0]) then

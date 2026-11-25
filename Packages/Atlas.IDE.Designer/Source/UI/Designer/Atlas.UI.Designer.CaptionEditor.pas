@@ -26,8 +26,8 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Palette,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Wie die Eingabe endet: verworfen, übernommen, übernommen und weiter (vor, zurück), übernommen
@@ -75,7 +75,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.Designer.InlineCaption,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 { TAtlasCaptionEditor }
 

@@ -159,8 +159,8 @@ uses
   Atlas.Common.Rules.Builtin.Unused,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
@@ -591,7 +591,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Prüfung vor den Zugriff ziehen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  mText := TChangeSignature.ApplyEdits(Routine(cBody, cCheckHeader, cCheckVars), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(Routine(cBody, cCheckHeader, cCheckVars), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Routine(cFixed, cCheckHeader, cCheckVars), mText);
   mTree := TPascalParser.Parse(mText);
   try
@@ -623,7 +623,7 @@ begin
   mFindings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(cBody, cCheckHeader, cCheckVars));
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Routine(cFixed, cCheckHeader, cCheckVars),
-    TChangeSignature.ApplyEdits(Routine(cBody, cCheckHeader, cCheckVars), mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(Routine(cBody, cCheckHeader, cCheckVars), mFindings[0].Fixes[0].Edits));
   // Mit else oder nicht direkt danach: Meldung ohne Korrektur.
   mFindings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine('  Titel := Kunde.Name;'#10 +
     '  if Kunde = nil then'#10'    Titel := '''''#10'  else'#10'    Anzeigen(Kunde);', cCheckHeader, cCheckVars));
@@ -726,7 +726,7 @@ begin
   Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('FreeAndNil(FCache)', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  mText := TChangeSignature.ApplyEdits(ClassUnit(cBody), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(ClassUnit(cBody), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(ClassUnit(cFixed), mText);
   mTree := TPascalParser.Parse(mText);
   try
@@ -835,7 +835,7 @@ begin
   Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('out durch var ersetzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes[0].Edits)), 'Deklaration und Implementierung');
-  mFixed := TChangeSignature.ApplyEdits(cAnhaengen, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(cAnhaengen, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(cAnhaengen, '(out Text', '(var Text', [rfReplaceAll]), mFixed);
   TRuleAssert.Silent(TOutParamReadRule.Create, mFixed);
 end;
@@ -917,7 +917,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('In if Assigned(FZeilen) then einschließen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  mText := TChangeSignature.ApplyEdits(ImportUnit(cImportCreate, cDestroy), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(ImportUnit(cImportCreate, cDestroy), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(ImportUnit(cImportCreate, cFixed), mText);
   mTree := TPascalParser.Parse(mText);
   try
@@ -1133,7 +1133,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('In try … finally CloseHandle einschließen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  mText := TChangeSignature.ApplyEdits(Prozess(cBody), mFindings[0].Fixes[0].Edits);
+  mText := TTextChanges.Apply(Prozess(cBody), mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Prozess(cFixed), mText);
   mTree := TPascalParser.Parse(mText);
   try
@@ -1176,7 +1176,7 @@ begin
   mFindings := TRuleAssert.Findings(THandleLeakRule.Create, Datei('  DC: HDC;'#10,
     '  DC := GetDC(Wnd);'#10'  TextOut(DC, 0, 0, ''x'', 1);'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  mText := TChangeSignature.ApplyEdits(Datei('  DC: HDC;'#10, '  DC := GetDC(Wnd);'#10'  TextOut(DC, 0, 0, ''x'', 1);'),
+  mText := TTextChanges.Apply(Datei('  DC: HDC;'#10, '  DC := GetDC(Wnd);'#10'  TextOut(DC, 0, 0, ''x'', 1);'),
     mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Datei('  DC: HDC;'#10, '  DC := GetDC(Wnd);'#10'  try'#10'    TextOut(DC, 0, 0, ''x'', 1);'#10 +
     '  finally'#10'    ReleaseDC(Wnd, DC);'#10'  end;'), mText);
@@ -1185,7 +1185,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('FreeLibrary ergänzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Datei('  Lib: HMODULE;'#10, '  Lib := LoadLibrary(''x.dll'');'#10'  FreeLibrary(Lib);'),
-    TChangeSignature.ApplyEdits(Datei('  Lib: HMODULE;'#10, '  Lib := LoadLibrary(''x.dll'');'),
+    TTextChanges.Apply(Datei('  Lib: HMODULE;'#10, '  Lib := LoadLibrary(''x.dll'');'),
     mFindings[0].Fixes[0].Edits));
   // Inline-Variable und GDI-Objekt; if mit Fehlerwert 0 im else-Zweig.
   TRuleAssert.Reports(THandleLeakRule.Create, Datei('  X: Integer;'#10,

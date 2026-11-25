@@ -23,7 +23,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Settings.Plugin.Store,
   Atlas.UI.Editor.RegionFolds;
 
@@ -51,6 +51,9 @@ begin
   Assert.AreEqual('Collapse all regions', TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand));
   Assert.AreEqual('Expand all regions', TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand));
   Assert.AreEqual('collapse all', TAtlasRegionFoldsTexts.Choices[1]);
+  Assert.AreEqual('Collapse block', TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldBlockCommand));
+  Assert.AreEqual('No collapsed blocks in this file.',
+    TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.NoFoldedBlocks));
 end;
 
 initialization

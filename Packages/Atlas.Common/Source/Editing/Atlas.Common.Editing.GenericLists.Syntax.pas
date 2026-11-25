@@ -18,12 +18,6 @@ type
     class function IsNil(ANode: TSyntaxNode): Boolean; static;
     /// <summary>ANode ist der Bezeichner AName.</summary>
     class function IsIdentifierNamed(ANode: TSyntaxNode; const AName: string): Boolean; static;
-    /// <summary>Ungeklammerter Ausdruck: steigt aus ParenExpr mit genau einem Kind auf.</summary>
-    class function Unparen(ANode: TSyntaxNode): TSyntaxNode; static;
-    /// <summary>Inneres eines geklammerten Ausdrucks: steigt in ParenExpr mit genau einem Kind ab.</summary>
-    class function Inner(ANode: TSyntaxNode): TSyntaxNode; static;
-    /// <summary>Kommagetrennte Namen ANames enthalten AName.</summary>
-    class function ContainsName(const ANames, AName: string): Boolean; static;
     /// <summary>ANode ist das linke Ende einer Zuweisung (ANode := …).</summary>
     class function IsAssignTarget(ANode: TSyntaxNode): Boolean; static;
     /// <summary>Gegenüber von AOperand in einem Vergleich = oder &lt;&gt;; nil, wenn ACompare keiner ist.</summary>
@@ -38,8 +32,6 @@ type
     class function SectionOf(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode; static;
     /// <summary>AOffset liegt im interface-Abschnitt.</summary>
     class function InInterface(ATree: TSyntaxTree; AOffset: Integer): Boolean; static;
-    /// <summary>Nächste Routine um ANode; nil außerhalb.</summary>
-    class function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode; static;
     /// <summary>VarDecl im var-Abschnitt der Routine selbst; Parameter, Felder und globale Variablen zählen
     /// nicht.</summary>
     class function LocalDeclaration(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode; static;
@@ -66,7 +58,8 @@ uses
   Atlas.Common.Pascal.Contract,
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 { TGenericListSyntax }
 
@@ -91,39 +84,6 @@ end;
 class function TGenericListSyntax.IsIdentifierNamed(ANode: TSyntaxNode; const AName: string): Boolean;
 begin
   Result := (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, AName);
-end;
-
-class function TGenericListSyntax.Unparen(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Parent <> nil) and (Result.Parent.Kind = TSyntaxKind.ParenExpr) and
-    (Result.Parent.ChildCount = 1) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
-class function TGenericListSyntax.Inner(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
-
-class function TGenericListSyntax.ContainsName(const ANames, AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in SplitString(ANames, ',') do
-  begin
-    if SameText(Trim(mName), AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 class function TGenericListSyntax.IsAssignTarget(ANode: TSyntaxNode): Boolean;
@@ -190,15 +150,6 @@ begin
   Result := (mSection <> nil) and (mSection.Kind = TSyntaxKind.InterfaceSection);
 end;
 
-class function TGenericListSyntax.EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 class function TGenericListSyntax.LocalDeclaration(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode;
 var
   mIndex, mInner: Integer;
@@ -214,7 +165,7 @@ begin
     end;
     for mInner := 0 to mSection.ChildCount - 1 do
     begin
-      if (mSection[mInner].Kind = TSyntaxKind.VarDecl) and ContainsName(mSection[mInner].Name, AName) then
+      if (mSection[mInner].Kind = TSyntaxKind.VarDecl) and TTextNames.InList(mSection[mInner].Name, AName) then
       begin
         Exit(mSection[mInner]);
       end;

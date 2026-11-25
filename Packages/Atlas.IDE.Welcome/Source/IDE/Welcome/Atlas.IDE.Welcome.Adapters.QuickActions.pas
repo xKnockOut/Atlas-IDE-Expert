@@ -51,7 +51,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRuns,
   Atlas.IDE.Welcome.QuickActions.Keys,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract,
   Atlas.IDE.Welcome.Neighbors,
   Atlas.Core.Projects.Contract.Summary;
@@ -67,6 +67,8 @@ type
   end;
 
   TAtlasIdeQuickActions = class(TInterfacedObject, IAtlasQuickActionsSource)
+  private
+    FHooks: TAtlasQuickActionHooks;
   public const
     /// <summary>Takt der Prüfung, ob ein Testlauf ohne Ergebnis endete.</summary>
     cWatchMs = 500;
@@ -99,7 +101,7 @@ type
     procedure WatchTick(Sender: TObject);
     function KeyAccepted(AShortCut: Integer): Boolean;
   public
-    Hooks: TAtlasQuickActionHooks;
+    property Hooks: TAtlasQuickActionHooks read FHooks write FHooks;
     /// <summary>AProjects: Quelle von „Projekte“ (Branch und Änderungen, Ordner, Neu-Abfrage nach Pull);
     /// AMessage: Zeile in die Meldungsansicht.</summary>
     constructor Create(const AProjects: TAtlasQuickProjects; const AMessage: TProc<string>);
@@ -145,19 +147,23 @@ uses
   System.Classes,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Pull,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Pull,
   Atlas.Core.Welcome.Sections,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Commands.ShortcutTips,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.IDE.Projects.Summaries;
+
+const
+  /// <summary>ShellExecute meldet Erfolg mit einem Wert über 32, kleinere Werte sind Fehlercodes.</summary>
+  cShellExecuteErrorLimit = 32;
 
 function Settings: TAtlasPluginSettings;
 begin
@@ -172,8 +178,14 @@ begin
     Result := True;
   except
     // Nicht lesbar: zählt wie nicht vorhanden.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 
@@ -285,7 +297,7 @@ var
   function Launch(const AProgram: string): Boolean;
   begin
     Result := TAtlasWelcomeQuickActions.ConsoleCommand(AProgram, mDir, mFileName, mParameters) and
-      (ShellExecute(0, 'open', PChar(mFileName), PChar(mParameters), PChar(mDir), SW_SHOWNORMAL) > 32);
+      (ShellExecute(0, 'open', PChar(mFileName), PChar(mParameters), PChar(mDir), SW_SHOWNORMAL) > cShellExecuteErrorLimit);
   end;
 
 begin
@@ -697,8 +709,14 @@ begin
   try
     mText := TAtlasTextFile.LoadText(AProject);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Exit;
+    end;
   end;
   Result := TAtlasWelcomeQuickActions.ReadTargets(mText);
   // Vorgabe: zuletzt benutzt (Abschnitt "build" der Zusammenfassung), wenn das Projekt sie noch kennt.

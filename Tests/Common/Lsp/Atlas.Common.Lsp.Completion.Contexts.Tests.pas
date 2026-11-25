@@ -19,7 +19,6 @@ type
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
     function ItemsAt(const AText, AMarker: string): TCompletionItems;
-    function Names(const AItems: TCompletionItems): string;
     function Has(const AItems: TCompletionItems; const AName: string): Boolean;
   public
     [Setup]
@@ -72,7 +71,8 @@ uses
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.TestSupport,
   Atlas.Common.Lsp.Completion.Declarations,
-  Atlas.Common.Lsp.Completion.Details;
+  Atlas.Common.Lsp.Completion.Details,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -133,30 +133,6 @@ const
     'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
-begin
-  // Cursor hinter AMarker.
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  Inc(mIndex, Length(AMarker));
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 function InMethod(const ACode: string): string;
 begin
   Result := StringReplace(cUnitHaupt, '  { Methode }', ACode, []);
@@ -175,23 +151,11 @@ var
 begin
   mTree := TPascalParser.Parse(AText);
   try
-    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, PositionOf(AText, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, mTree, cHauptFile, TTestSource.PositionAfter(AText, AMarker),
       TCompletionMatching.Prefix);
   finally
     mTree.Free;
   end;
-end;
-
-function TLspCompletionContextTests.Names(const AItems: TCompletionItems): string;
-var
-  mItem: TCompletionItem;
-begin
-  Result := '';
-  for mItem in AItems.Items do
-  begin
-    Result := Result + mItem.Name + ' ';
-  end;
-  Result := Result.Trim;
 end;
 
 function TLspCompletionContextTests.Has(const AItems: TCompletionItems; const AName: string): Boolean;
@@ -226,11 +190,11 @@ var
   mItems: TCompletionItems;
 begin
   mItems := ItemsAt(InRoutine('  Fremd.'), 'Fremd.');
-  Assert.IsTrue(Has(mItems, 'Oeffentlich'), Names(mItems));
-  Assert.IsTrue(Has(mItems, 'Zaehler'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'Oeffentlich'), ItemNames(mItems));
+  Assert.IsTrue(Has(mItems, 'Zaehler'), ItemNames(mItems));
   // private aus einer anderen Unit nie, protected außerhalb von Nachfahren nicht.
-  Assert.IsFalse(Has(mItems, 'FGeheim'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Geschuetzt'), Names(mItems));
+  Assert.IsFalse(Has(mItems, 'FGeheim'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Geschuetzt'), ItemNames(mItems));
 end;
 
 procedure TLspCompletionContextTests.ProtectedOnlyInDescendants;
@@ -239,8 +203,8 @@ var
 begin
   // In einer Methode des Nachfahren ist protected sichtbar, private weiterhin nicht.
   mItems := ItemsAt(InMethod('  Self.'), 'Self.');
-  Assert.IsTrue(Has(mItems, 'Geschuetzt'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'FGeheim'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'Geschuetzt'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'FGeheim'), ItemNames(mItems));
 end;
 
 procedure TLspCompletionContextTests.InheritedOffersAncestorMethodsOnly;
@@ -248,13 +212,13 @@ var
   mItems: TCompletionItems;
 begin
   mItems := ItemsAt(InMethod('  inherited '), 'inherited ');
-  Assert.AreEqual('Geschuetzt Oeffentlich Anzahl', Names(mItems));
+  Assert.AreEqual('Geschuetzt Oeffentlich Anzahl', ItemNames(mItems));
   Assert.AreEqual(1, mItems.Items[0].Depth);
   // Weder lokale Variablen, Felder noch Routinen der Unit; außerhalb einer Methode nichts.
-  Assert.IsFalse(Has(mItems, 'Wert'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Zaehler'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Rechne'), Names(mItems));
-  Assert.AreEqual('', Names(ItemsAt(InRoutine('  inherited '), 'inherited ')));
+  Assert.IsFalse(Has(mItems, 'Wert'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Zaehler'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Rechne'), ItemNames(mItems));
+  Assert.AreEqual('', ItemNames(ItemsAt(InRoutine('  inherited '), 'inherited ')));
 end;
 
 procedure TLspCompletionContextTests.ClassAncestorListOffersTypesOnly;
@@ -265,13 +229,13 @@ begin
   mText := StringReplace(cUnitHaupt, '  TFoo = class(TBasis)', '  TNeu = class('#10'  end;'#10 +
     '  TFoo = class(TBasis)', []);
   mItems := ItemsAt(mText, 'TNeu = class(');
-  Assert.IsTrue(Has(mItems, 'TBasis'), Names(mItems));
-  Assert.IsTrue(Has(mItems, 'TFoo'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Rechne'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Frei'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'TBasis'), ItemNames(mItems));
+  Assert.IsTrue(Has(mItems, 'TFoo'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Rechne'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Frei'), ItemNames(mItems));
   // Ohne "class(" im Gültigkeitsbereich auch Routinen.
   mItems := ItemsAt(InMethod('  Re'), '  Re');
-  Assert.IsTrue(Has(mItems, 'Rechne'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'Rechne'), ItemNames(mItems));
 end;
 
 procedure TLspCompletionContextTests.ColonInDeclarationOffersTypes;
@@ -281,18 +245,18 @@ var
 begin
   mText := StringReplace(cUnitHaupt, '  Wert: TBasis;', '  Wert: ', []);
   mItems := ItemsAt(mText, '  Wert: ');
-  Assert.IsTrue(Has(mItems, 'TBasis'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Rechne'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Name'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'TBasis'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Rechne'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Name'), ItemNames(mItems));
   // Typ-Schlüsselwörter nur nach ":".
   mText := StringReplace(cUnitHaupt, '  Wert: TBasis;', '  Wert: str', []);
   Assert.IsTrue(Has(ItemsAt(mText, 'Wert: str'), 'string'));
   // Inline-Variable in einer Anweisung ebenfalls; case-Marke dagegen nicht.
   mItems := ItemsAt(InMethod('  var X: '), 'var X: ');
-  Assert.IsTrue(Has(mItems, 'TBasis'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Wert'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'TBasis'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Wert'), ItemNames(mItems));
   mItems := ItemsAt(InMethod('  case 1 of 1: '), 'of 1: ');
-  Assert.IsTrue(Has(mItems, 'Wert'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'Wert'), ItemNames(mItems));
 end;
 
 procedure TLspCompletionContextTests.IsNotAndNotInBehave;
@@ -301,14 +265,14 @@ var
 begin
   // Delphi 13: "is not" erwartet einen Typ.
   mItems := ItemsAt(InMethod('  if Wert is not '), 'is not ');
-  Assert.IsTrue(Has(mItems, 'TFoo'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Wert'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'TFoo'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Wert'), ItemNames(mItems));
   mItems := ItemsAt(InMethod('  if Wert is '), 'is ');
-  Assert.IsTrue(Has(mItems, 'TBasis'), Names(mItems));
-  Assert.IsFalse(Has(mItems, 'Rechne'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'TBasis'), ItemNames(mItems));
+  Assert.IsFalse(Has(mItems, 'Rechne'), ItemNames(mItems));
   // "not in" erwartet eine Menge: keine Einschränkung auf Typen.
   mItems := ItemsAt(InMethod('  if 1 not in '), 'not in ');
-  Assert.IsTrue(Has(mItems, 'Wert'), Names(mItems));
+  Assert.IsTrue(Has(mItems, 'Wert'), ItemNames(mItems));
 end;
 
 procedure TLspCompletionContextTests.NothingInMultiLineString;
@@ -317,8 +281,8 @@ var
 begin
   // Mehrzeiliger String (ab Delphi 12): mitten darin nichts anbieten, dahinter wieder.
   mText := InMethod('  Name := '''''''#10'    We'#10'    ''''''; We');
-  Assert.AreEqual('', Names(ItemsAt(mText, '    We')));
-  Assert.AreEqual('Wert', Names(ItemsAt(mText, '; We')));
+  Assert.AreEqual('', ItemNames(ItemsAt(mText, '    We')));
+  Assert.AreEqual('Wert', ItemNames(ItemsAt(mText, '; We')));
 end;
 
 procedure TLspCompletionContextTests.PropertyReadOffersMatchingGetters;
@@ -348,16 +312,16 @@ begin
   mTree := TPascalParser.Parse(cText);
   try
     Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, mTree, cText, nil),
-      PositionOf(cText, 'Wert: Integer read '), TCompletionMatching.Prefix, mItems));
+      TTestSource.PositionAfter(cText, 'Wert: Integer read '), TCompletionMatching.Prefix, mItems));
     // Felder und Funktionen vom Typ Integer, auch geerbte (Zaehler, Anzahl); kein string, kein Setter.
-    Assert.AreEqual('FWert GetWert Zaehler Anzahl', Names(mItems));
+    Assert.AreEqual('FWert GetWert Zaehler Anzahl', ItemNames(mItems));
     Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, mTree, cText, nil),
-      PositionOf(cText, 'string read '), TCompletionMatching.Prefix, mItems));
+      TTestSource.PositionAfter(cText, 'string read '), TCompletionMatching.Prefix, mItems));
     // Dazu „GetItems anlegen“ (#467) oben; ein Feld gibt es zu Indexeigenschaften nicht.
-    Assert.AreEqual('GetItems anlegen GetItem', Names(mItems));
+    Assert.AreEqual('GetItems anlegen GetItem', ItemNames(mItems));
     // Außerhalb einer property-Zeile kein Kontext.
     Assert.IsFalse(PropertyAt(LookupOf(FResolver, nil, mTree, cText, nil),
-      PositionOf(cText, 'FWert: '), TCompletionMatching.Prefix, mItems));
+      TTestSource.PositionAfter(cText, 'FWert: '), TCompletionMatching.Prefix, mItems));
   finally
     mTree.Free;
   end;
@@ -387,8 +351,8 @@ begin
   mTree := TPascalParser.Parse(cText);
   try
     Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, mTree, cText, nil),
-      PositionOf(cText, 'write Se'), TCompletionMatching.Prefix, mItems));
-    Assert.AreEqual('SetWert', Names(mItems));
+      TTestSource.PositionAfter(cText, 'write Se'), TCompletionMatching.Prefix, mItems));
+    Assert.AreEqual('SetWert', ItemNames(mItems));
   finally
     mTree.Free;
   end;
@@ -451,7 +415,7 @@ var
 begin
   // #467: Nach "read Ca" stehen „Feld FCaption anlegen“ und „GetCaption anlegen“ oben.
   mItems := AccessorItemsAt(FResolver, 'read Ca', TCompletionSettings.Default);
-  Assert.AreEqual('Feld FCaption anlegen GetCaption anlegen', Names(mItems));
+  Assert.AreEqual('Feld FCaption anlegen GetCaption anlegen', ItemNames(mItems));
   mItem := mItems.Items[0];
   Assert.AreEqual('create', mItem.Action);
   Assert.IsTrue(mItem.Pinned);
@@ -475,7 +439,7 @@ begin
   // Nach "write " ohne Feld FTitel: „Feld FTitel anlegen“, „SetTitel anlegen“ legt das Feld mit an; danach das
   // vorhandene Feld FName.
   mItems := AccessorItemsAt(FResolver, 'FName write ', TCompletionSettings.Default);
-  Assert.AreEqual('Feld FTitel anlegen SetTitel anlegen FName', Names(mItems));
+  Assert.AreEqual('Feld FTitel anlegen SetTitel anlegen FName', ItemNames(mItems));
   Assert.AreEqual('procedure SetTitel(const Value: string); + FTitel: string;', mItems.Items[1].Detail);
 end;
 
@@ -499,7 +463,7 @@ begin
   // Abgeschaltet: nur vorhandene Mitglieder.
   mSettings.CreateAccessors := False;
   mItems := AccessorItemsAt(FResolver, 'read Ca', mSettings);
-  Assert.AreEqual('', Names(mItems));
+  Assert.AreEqual('', ItemNames(mItems));
 end;
 
 procedure TLspCompletionContextTests.OverrideKeywordOffersVirtualMethods;
@@ -531,15 +495,15 @@ begin
         AText := cUnitBasis;
         Result := SameText(AFileName, cBasisFile);
       end),
-      PositionOf(cText, '    override '), mItems));
-    Assert.AreEqual('Geschuetzt Oeffentlich', Names(mItems));
+      TTestSource.PositionAfter(cText, '    override '), mItems));
+    Assert.AreEqual('Geschuetzt Oeffentlich', ItemNames(mItems));
     Assert.IsTrue(mItems.Items[1].HasTextEdit);
     Assert.AreEqual('procedure Oeffentlich; override;', mItems.Items[1].TextEdit.NewText);
     Assert.AreEqual(4, mItems.Items[1].TextEdit.Range.StartPos.Character);
     Assert.AreEqual('override Oeffentlich', mItems.Items[1].FilterText);
     // In einem Routinenrumpf kein Override-Kontext.
     Assert.IsFalse(OverrideAt(LookupOf(FResolver, nil, mTree, cText, nil),
-      PositionOf(cText,
+      TTestSource.PositionAfter(cText,
       'begin'#10'  override '), mItems));
   finally
     mTree.Free;

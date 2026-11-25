@@ -18,7 +18,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   /// <summary>Eine Taste von Atlas für eine Aktion; Rebind belegt sie nach den Regeln von #494.</summary>
@@ -101,7 +101,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Windows,
   Winapi.PsAPI,
   Vcl.ActnList,

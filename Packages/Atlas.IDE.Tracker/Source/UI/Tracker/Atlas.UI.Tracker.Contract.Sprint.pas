@@ -9,7 +9,8 @@ interface
 
 uses
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Tracker.Contract.Sprint;
+  Atlas.Core.Tracker.Contract.Sprint,
+  Atlas.Plugin.Calls.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -31,11 +32,10 @@ type
     CanAssign: Boolean;
   end;
 
-  IAtlasSprintSource = interface
+  IAtlasSprintSource = interface(IAtlasShownSource)
     ['{2F7C9B14-6E3A-4D58-8B1F-0A4C7E2D9561}']
     function View: TAtlasSprintTile;
-    /// <summary>Der Bereich wird gezeigt: bei Bedarf den Sprint im Hintergrund laden.</summary>
-    procedure Shown;
+    // Shown (IAtlasShownSource): Der Bereich wird gezeigt: bei Bedarf den Sprint im Hintergrund laden.
     /// <summary>Fenster „Atlas-Board“ (#1272).</summary>
     procedure OpenBoard;
     procedure BrowseBoard;

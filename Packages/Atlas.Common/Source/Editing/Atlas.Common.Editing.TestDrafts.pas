@@ -15,7 +15,7 @@ uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Pascal.Signatures;
 
 type
   /// <summary>Ein Wert des Tests: Parameter der Methode oder Feld des Objekts.</summary>
@@ -128,10 +128,12 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Documents.TextChanges;
 
 {$SCOPEDENUMS ON}
 
@@ -256,7 +258,7 @@ var
   mNameToken: Integer;
 begin
   mNameToken := IdentifierAt(ATokens, ADeclaration.SelectionRange.StartPos);
-  Result := TChangeSignature.ReadHeader(AText, ATokens, mNameToken, AHeader);
+  Result := TPascalSignatures.ReadHeader(AText, ATokens, mNameToken, AHeader);
 end;
 
 class function TTestDrafts.DraftAt(const AText: string; const ATokens: TArray<TPascalToken>;
@@ -1019,21 +1021,9 @@ var
   mTokens: TArray<TPascalToken>;
 begin
   mTokens := TPascalLexer.Tokenize(AText);
-  Result := (AUnitName <> '') and not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(mTokens), AUnitName, nil) and
-    TUsesClauses.AddUnit(mTokens, TLineTable.Build(AText).OffsetAt(AFixture.Range.StartPos), AUnitName, ALineBreak,
+  Result := (AUnitName <> '') and not TPascalUses.IsUsed(TPascalUses.UsedUnits(mTokens), AUnitName, nil) and
+    TPascalUsesEdits.AddUnit(mTokens, TLineTable.Build(AText).OffsetAt(AFixture.Range.StartPos), AUnitName, ALineBreak,
     AEdit);
-end;
-
-/// <summary>AText mit AEdit angewandt.</summary>
-function Applied(const AText: string; const AEdit: TTextEdit): string;
-var
-  mTable: TLineTable;
-  mStart, mStop: Integer;
-begin
-  mTable := TLineTable.Build(AText);
-  mStart := mTable.OffsetAt(AEdit.Range.StartPos);
-  mStop := mTable.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
 /// <summary>Deklaration des Tests ADraft vor der Zeile AEndLine ("end" der Klasse), eine Ebene tiefer, mit
@@ -1108,7 +1098,7 @@ begin
   ANewText := string.Join(mLineBreak, mLines);
   if mNeedsUses then
   begin
-    ANewText := Applied(ANewText, mUsesEdit);
+    ANewText := TTextChanges.Apply(ANewText, TArray<TTextEdit>.Create(mUsesEdit));
   end;
   AName := mDraft.TestName;
   Result := True;

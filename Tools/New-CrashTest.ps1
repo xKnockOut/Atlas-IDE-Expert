@@ -145,7 +145,7 @@ type
 implementation
 
 uses
-  Shell.Replay,
+  Replay.Player,
   Shell.ReplayServer.Tests;
 
 const

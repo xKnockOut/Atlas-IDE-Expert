@@ -257,7 +257,7 @@ var
   mLast: TAtlasChecklistItem;
   mTable: TLineTable;
   mText, mPrefix, mDigits, mLine: string;
-  mBox, mIndex, mNumber, mEnd: Integer;
+  mBox, mIndex, mStop, mNumber, mEnd: Integer;
 begin
   AResult := AText;
   mText := Trim(TTextLines.NormalizeLineBreaks(AItemText, ' '));
@@ -284,12 +284,12 @@ begin
   begin
     Inc(mIndex);
   end;
-  mDigits := '';
-  while (mIndex + Length(mDigits) <= Length(mPrefix)) and
-    CharInSet(mPrefix[mIndex + Length(mDigits)], ['0'..'9']) do
+  mStop := mIndex;
+  while (mStop <= Length(mPrefix)) and CharInSet(mPrefix[mStop], ['0'..'9']) do
   begin
-    mDigits := mDigits + mPrefix[mIndex + Length(mDigits)];
+    Inc(mStop);
   end;
+  mDigits := Copy(mPrefix, mIndex, mStop - mIndex);
   if (mDigits <> '') and TryStrToInt(mDigits, mNumber) then
   begin
     mPrefix := Copy(mPrefix, 1, mIndex - 1) + IntToStr(mNumber + 1) +

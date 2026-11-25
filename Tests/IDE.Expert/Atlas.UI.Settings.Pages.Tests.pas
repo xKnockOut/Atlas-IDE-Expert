@@ -28,8 +28,8 @@ uses
   Vcl.ImageCollection,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.SnippetCatalog,
-  Atlas.Core.Style.Symbol,
-  Atlas.UI.Style.Symbol,
+  Atlas.Plugin.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.UI.Settings.SnippetsPage,
   Atlas.UI.Settings.ServerPage;
 

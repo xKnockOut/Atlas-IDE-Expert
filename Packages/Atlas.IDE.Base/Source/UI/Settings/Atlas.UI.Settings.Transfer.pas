@@ -22,9 +22,9 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Transfer,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasImportPreviewFunc = reference to function(AMode: TAtlasImportMode;
@@ -113,11 +113,11 @@ implementation
 uses
   Vcl.Graphics,
   Vcl.Menus,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   // Breiten der Dialoge Export, Import und Profil.

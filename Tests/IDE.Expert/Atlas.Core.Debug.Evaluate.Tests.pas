@@ -325,7 +325,7 @@ begin
     Assert.AreEqual('A', mPinned[0]);
     Assert.AreEqual('B', mPinned[1]);
     mList.Delete(mList.IndexOf(mFirst));
-    Assert.AreEqual(2, mList.Count);
+    Assert.AreEqual(2, Integer(mList.Count));
   finally
     mList.Free;
   end;

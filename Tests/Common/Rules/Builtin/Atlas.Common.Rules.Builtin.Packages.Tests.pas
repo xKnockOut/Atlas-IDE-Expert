@@ -45,7 +45,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Builtin.Packages;
+  Atlas.Common.Rules.Builtin.Packages,
+  Atlas.Tests.RuleAssert;
 
 const
   cPackageKasse =
@@ -153,18 +154,6 @@ begin
   end;
 end;
 
-function Messages(const AFindings: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFindings do
-  begin
-    Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
-      mFinding.Message]);
-  end;
-end;
-
 { TPackageRulesTests }
 
 procedure TPackageRulesTests.ReportsImplicitUnitsWithFix;
@@ -174,7 +163,7 @@ var
   mText: string;
 begin
   mFindings := Run(cPackageKasse, Provides(False));
-  mText := Messages(mFindings);
+  mText := TRuleAssert.PositionMessages(mFindings);
   Assert.AreEqual(2, Integer(Length(mFindings)), mText);
   Assert.IsTrue(mText.Contains('5:2 "uRunden" wird implizit ins Package gezogen: uSteuer verwendet uRunden'), mText);
   // uMathe kommt über uRunden mit; gemeldet am selben contains-Eintrag.
@@ -197,8 +186,8 @@ end;
 procedure TPackageRulesTests.RequiredPackageProvidesUnit;
 begin
   // uBasis kommt aus dem Package Basis; ohne Basis in requires wäre es implizit.
-  Assert.IsFalse(Messages(Run(cPackageKasse, Provides(False))).Contains('uBasis'));
-  Assert.IsTrue(Messages(Run(cPackageKasse.Replace(', Basis;', ';'), Provides(False))).Contains(
+  Assert.IsFalse(TRuleAssert.PositionMessages(Run(cPackageKasse, Provides(False))).Contains('uBasis'));
+  Assert.IsTrue(TRuleAssert.PositionMessages(Run(cPackageKasse.Replace(', Basis;', ';'), Provides(False))).Contains(
     '"uBasis" wird implizit'));
 end;
 
@@ -218,9 +207,9 @@ begin
         Result := ['Basis'];
       end;
     end;
-  Assert.IsFalse(Messages(Run(mSource, Provides(False), mRequires)).Contains('uBasis'));
+  Assert.IsFalse(TRuleAssert.PositionMessages(Run(mSource, Provides(False), mRequires)).Contains('uBasis'));
   // Ohne die Kette (nur direkte requires) wäre uBasis implizit.
-  Assert.IsTrue(Messages(Run(mSource, Provides(False), nil)).Contains('"uBasis" wird implizit'));
+  Assert.IsTrue(TRuleAssert.PositionMessages(Run(mSource, Provides(False), nil)).Contains('"uBasis" wird implizit'));
 end;
 
 procedure TPackageRulesTests.UnknownPackageIsSilent;
@@ -229,7 +218,7 @@ var
 begin
   // Ist ein Package aus requires nicht auffindbar, könnte jede Unit darin stehen.
   mFindings := Run(cPackageKasse, Provides(True));
-  Assert.AreEqual(0, Integer(Length(mFindings)), Messages(mFindings));
+  Assert.AreEqual(0, Integer(Length(mFindings)), TRuleAssert.PositionMessages(mFindings));
 end;
 
 procedure TPackageRulesTests.SilentWithoutPackageInfo;

@@ -13,6 +13,10 @@
 //   - Fenster „Auswerten“ (#784): Auswerten auf Wunsch mit Nebenwirkungen
 //     (eseAll, Funktionsaufrufe erlaubt) und Ändern über IOTAThread.Modify,
 //     das sich auf den zuletzt ausgewerteten Ausdruck bezieht.
+//   - TAtlasIdeThreadNotifier: Notifier an einem Thread des Debuggers, auch für
+//     das Auswerten mit Zeitlimit im Modul Debugger. Endet der Thread (die IDE
+//     ruft Destroyed), meldet er sich nicht mehr ab: RemoveNotifier an einem
+//     abgebauten Thread wirft.
 
 interface
 
@@ -25,16 +29,39 @@ type
   /// <summary>Ergebnis einer verzögerten Auswertung; läuft im Hauptthread.</summary>
   TAtlasDebugValueEvent = reference to procedure(const AValue: TAtlasDebugValue);
 
+  /// <summary>Notifier an einem Thread des Debuggers (IOTAThread.AddNotifier), der weiß, ob die IDE den Thread
+  /// schon abgebaut hat. Die Ableitung setzt IOTAThreadNotifier um; nur im Hauptthread verwenden.</summary>
+  TAtlasIdeThreadNotifier = class(TNotifierObject)
+  private
+    FThread: IOTAThread;
+    FIndex: Integer;
+    FThreadGone: Boolean;
+  protected
+    /// <summary>Die IDE baut den Thread ab (aus Destroyed): Die Ableitung schließt ab, was noch aussteht.</summary>
+    procedure ThreadGone; virtual;
+  public
+    constructor Create;
+    /// <summary>An AThread anmelden; ANotifier ist dieses Objekt als IOTAThreadNotifier.</summary>
+    procedure Attach(const AThread: IOTAThread; const ANotifier: IOTAThreadNotifier);
+    /// <summary>Beim Thread abmelden, solange er besteht; ohne Anmeldung oder nach seinem Ende nichts.</summary>
+    procedure Detach;
+    { IOTANotifier: Der Thread wird abgebaut. }
+    procedure Destroyed; reintroduce;
+    /// <summary>Hat die IDE den Thread abgebaut?</summary>
+    property IsThreadGone: Boolean read FThreadGone;
+  end;
+
   TAtlasIdeDebugValues = class
   private type
-    TDeferred = class(TNotifierObject, IOTAThreadNotifier, IOTAThreadNotifier160)
+    TDeferred = class(TAtlasIdeThreadNotifier, IOTAThreadNotifier, IOTAThreadNotifier160)
     private
       FOwner: TAtlasIdeDebugValues;
       FExpression: string;
       FOnDone: TAtlasDebugValueEvent;
       FDone: Boolean;
-      FThreadGone: Boolean;
       procedure Complete(const AResult: string; AReturnCode: Integer);
+    protected
+      procedure ThreadGone; override;
     public
       constructor Create(AOwner: TAtlasIdeDebugValues; const AExpression: string;
         const AOnDone: TAtlasDebugValueEvent);
@@ -46,18 +73,13 @@ type
       { IOTAThreadNotifier160 }
       procedure EvaluateComplete(const ExprStr, ResultStr: string; CanModify: Boolean;
         ResultAddress: TOTAAddress; ResultSize: LongWord; ReturnCode: Integer); overload;
-      { IOTANotifier: Der Thread wird abgebaut. }
-      procedure Destroyed; reintroduce;
     end;
   private
     FDeferred: TDeferred;
     FDeferredRef: IOTAThreadNotifier;
-    FThread: IOTAThread;
-    FIndex: Integer;
     /// <summary>Notifier abmelden, wenn er zu ADeferred gehört.</summary>
     procedure Release(ADeferred: TDeferred);
   public
-    constructor Create;
     destructor Destroy; override;
     /// <summary>Thread des angehaltenen Prozesses; nil, wenn kein Prozess angehalten ist.</summary>
     class function StoppedThread: IOTAThread; static;
@@ -83,11 +105,12 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread;
 
 const
   cBufferSize = 4096;
+  cDetachFailed = 'Debugger: thread notifier not removed';
 
 type
   TOutcome = record
@@ -114,6 +137,56 @@ begin
       mResultSize, mResultVal, AFileName, ALine);
   end;
   Result.Text := mBuffer;
+end;
+
+{ TAtlasIdeThreadNotifier }
+
+constructor TAtlasIdeThreadNotifier.Create;
+begin
+  inherited Create;
+  FIndex := -1;
+end;
+
+procedure TAtlasIdeThreadNotifier.Attach(const AThread: IOTAThread; const ANotifier: IOTAThreadNotifier);
+begin
+  FThread := AThread;
+  FThreadGone := False;
+  FIndex := AThread.AddNotifier(ANotifier);
+end;
+
+procedure TAtlasIdeThreadNotifier.Detach;
+var
+  mThread: IOTAThread;
+  mIndex: Integer;
+begin
+  mThread := FThread;
+  mIndex := FIndex;
+  FThread := nil;
+  FIndex := -1;
+  if (mThread = nil) or (mIndex < 0) or FThreadGone then
+  begin
+    Exit;
+  end;
+  try
+    mThread.RemoveNotifier(mIndex);
+  except
+    // Bekannter Umgang mit der Open Tools API: Endet der Prozess mitten in einer Auswertung, kann die IDE den
+    // Thread abbauen, bevor Destroyed hier ankommt; RemoveNotifier wirft dann, abzumelden ist nichts mehr.
+    // Ins Protokoll, damit der Fall sichtbar bleibt.
+    on E: Exception do
+      TAtlasGuard.Log(cDetachFailed + ': ' + TAtlasGuard.ErrorText(E));
+  end;
+end;
+
+procedure TAtlasIdeThreadNotifier.Destroyed;
+begin
+  // Thread beendet: nicht mehr abmelden.
+  FThreadGone := True;
+  ThreadGone;
+end;
+
+procedure TAtlasIdeThreadNotifier.ThreadGone;
+begin
 end;
 
 { TAtlasIdeDebugValues.TDeferred }
@@ -194,20 +267,13 @@ begin
   Complete(ResultStr, ReturnCode);
 end;
 
-procedure TAtlasIdeDebugValues.TDeferred.Destroyed;
+procedure TAtlasIdeDebugValues.TDeferred.ThreadGone;
 begin
-  // Thread beendet: nicht mehr abmelden, kein Wert.
-  FThreadGone := True;
+  // Kein Wert mehr; abgemeldet wird nicht (TAtlasIdeThreadNotifier.Detach).
   Complete('', -1);
 end;
 
 { TAtlasIdeDebugValues }
-
-constructor TAtlasIdeDebugValues.Create;
-begin
-  inherited Create;
-  FIndex := -1;
-end;
 
 destructor TAtlasIdeDebugValues.Destroy;
 begin
@@ -221,17 +287,10 @@ begin
   begin
     Exit;
   end;
-  if (FThread <> nil) and (FIndex >= 0) and not FDeferred.FThreadGone then
-    try
-      FThread.RemoveNotifier(FIndex);
-    except
-      // Thread schon abgebaut: nichts mehr abzumelden.
-    end;
+  FDeferred.Detach;
   FDeferred.FOwner := nil;
   FDeferred := nil;
   FDeferredRef := nil;
-  FThread := nil;
-  FIndex := -1;
 end;
 
 class function TAtlasIdeDebugValues.StoppedThread: IOTAThread;
@@ -285,8 +344,7 @@ begin
         // Antwort kommt über den Notifier des Threads.
         FDeferred := TDeferred.Create(Self, AExpression, AOnDone);
         FDeferredRef := FDeferred;
-        FThread := mThread;
-        FIndex := mThread.AddNotifier(FDeferredRef);
+        FDeferred.Attach(mThread, FDeferredRef);
         Result := TAtlasDebugValue.Pending(AExpression);
       end;
   else

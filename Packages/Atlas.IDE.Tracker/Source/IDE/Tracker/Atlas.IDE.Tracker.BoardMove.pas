@@ -17,8 +17,8 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.Diagnostics.BackgroundJobs,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Tracker.BoardFrame,
   Atlas.IDE.Tracker.BoardLoad;
 
@@ -72,7 +72,7 @@ uses
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.BoardPlan,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.Board.Strings,

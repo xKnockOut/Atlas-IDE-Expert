@@ -225,6 +225,9 @@ uses
   Atlas.Text.Chars,
   Atlas.Core.Versions.Project;
 
+const
+  cCurrentFolder = '.\';
+
 { TAtlasReleaseSettings }
 
 class function TAtlasReleaseSettings.Create(AEnabled: Boolean; const AGate, AConfigurations,
@@ -281,9 +284,9 @@ begin
   Result := StringReplace(Result, '$(Platform)', APlatform, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '$(Config)', AConfiguration, [rfReplaceAll, rfIgnoreCase]);
   Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
-  while Result.StartsWith('.\') do
+  while Result.StartsWith(cCurrentFolder) do
   begin
-    Result := Copy(Result, 3, MaxInt);
+    Result := Copy(Result, Length(cCurrentFolder) + 1, MaxInt);
   end;
   while (Length(Result) > 1) and Result.EndsWith('\') do
   begin
@@ -299,12 +302,35 @@ end;
 type
   /// <summary>Art eines bedingten Blocks für die Leck-Prüfung.</summary>
   TGuardKind = (Neutral, IfDebug, IfNotDebug);
+  /// <summary>Direktiven, die einen bedingten Block öffnen, umschalten oder schließen; Other für alle anderen.
+  /// </summary>
+  TGuardDirective = (Other, IfDef, IfNDef, If_, IfOpt, ElseIf, Else_, EndIf, IfEnd);
 {$SCOPEDENUMS OFF}
 
+const
+  cGuardDirectives: array[TGuardDirective] of string = ('', 'IFDEF', 'IFNDEF', 'IF', 'IFOPT', 'ELSEIF', 'ELSE',
+    'ENDIF', 'IFEND');
+
+type
   TGuardFrame = record
     Kind: TGuardKind;
     InElse: Boolean;
   end;
+
+/// <summary>Direktive zum Namen AName (Großbuchstaben).</summary>
+function GuardDirectiveOf(const AName: string): TGuardDirective;
+var
+  mDirective: TGuardDirective;
+begin
+  Result := TGuardDirective.Other;
+  for mDirective := Low(TGuardDirective) to High(TGuardDirective) do
+  begin
+    if cGuardDirectives[mDirective] = AName then
+    begin
+      Result := mDirective;
+    end;
+  end;
+end;
 
 function DirectiveKind(const AExpression: string): TGuardKind;
 var
@@ -423,43 +449,39 @@ end;
 procedure TLeakScanner.HandleDirective(const AText: string);
 var
   mSpace: Integer;
-  mName, mArgument: string;
+  mDirective: TGuardDirective;
+  mArgument: string;
 begin
   mSpace := Pos(' ', AText + ' ');
-  mName := UpperCase(Copy(AText, 1, mSpace - 1));
+  mDirective := GuardDirectiveOf(UpperCase(Copy(AText, 1, mSpace - 1)));
   mArgument := Trim(Copy(AText, mSpace + 1, MaxInt));
-  if mName = 'IFDEF' then
-  begin
-    PushFrame(DefineKind(mArgument, TGuardKind.IfDebug));
-  end
-  else if mName = 'IFNDEF' then
-  begin
-    PushFrame(DefineKind(mArgument, TGuardKind.IfNotDebug));
-  end
-  else if mName = 'IF' then
-  begin
-    PushFrame(DirectiveKind(mArgument));
-  end
-  else if mName = 'IFOPT' then
-  begin
-    PushFrame(TGuardKind.Neutral);
-  end
-  else if System.Length(FFrames) = 0 then
+  // Umschalten und Schließen ohne offenen Block: nichts zu tun.
+  if (mDirective in [TGuardDirective.ElseIf, TGuardDirective.Else_, TGuardDirective.EndIf, TGuardDirective.IfEnd])
+    and (System.Length(FFrames) = 0) then
   begin
     Exit;
-  end
-  else if mName = 'ELSEIF' then
-  begin
-    FFrames[High(FFrames)].Kind := DirectiveKind(mArgument);
-    FFrames[High(FFrames)].InElse := False;
-  end
-  else if mName = 'ELSE' then
-  begin
-    FFrames[High(FFrames)].InElse := True;
-  end
-  else if (mName = 'ENDIF') or (mName = 'IFEND') then
-  begin
-    SetLength(FFrames, System.Length(FFrames) - 1);
+  end;
+  case mDirective of
+    TGuardDirective.IfDef:
+      PushFrame(DefineKind(mArgument, TGuardKind.IfDebug));
+    TGuardDirective.IfNDef:
+      PushFrame(DefineKind(mArgument, TGuardKind.IfNotDebug));
+    TGuardDirective.If_:
+      PushFrame(DirectiveKind(mArgument));
+    TGuardDirective.IfOpt:
+      PushFrame(TGuardKind.Neutral);
+    TGuardDirective.ElseIf:
+      begin
+        FFrames[High(FFrames)].Kind := DirectiveKind(mArgument);
+        FFrames[High(FFrames)].InElse := False;
+      end;
+    TGuardDirective.Else_:
+      FFrames[High(FFrames)].InElse := True;
+    TGuardDirective.EndIf, TGuardDirective.IfEnd:
+      SetLength(FFrames, System.Length(FFrames) - 1);
+    TGuardDirective.Other:
+      // Andere Direktiven ändern keinen bedingten Block.
+      ;
   end;
 end;
 
@@ -661,6 +683,8 @@ var
   end;
 
   procedure CheckLeaks;
+  const
+    cLeakReport = 'ReportMemoryLeaksOnShutdown := True';
   var
     mLine: Integer;
     mItem: TAtlasReleaseFinding;
@@ -669,7 +693,7 @@ var
     if mLine > 0 then
     begin
       mItem := Finding(TAtlasReleaseIssue.MemoryLeaks, TAtlasReleaseCheck.MemoryLeaks,
-        'ReportMemoryLeaksOnShutdown := True', False);
+        cLeakReport, False);
       mItem.FileName := AOptions.SourceFile;
       mItem.Line := mLine;
       mFindings := mFindings + [mItem];

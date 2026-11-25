@@ -21,11 +21,11 @@ implementation
 
 uses
   Vcl.Controls,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Palette,
-  Atlas.UI.Foundation.Theme,
-  Atlas.IDE.Foundation.DockWindow,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Vcl.Theme.Service,
+  Atlas.ToolsApi.Windows.DockWindow,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.ResultsWindow,

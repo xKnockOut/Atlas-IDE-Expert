@@ -74,15 +74,15 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Text.TestResults,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Projects,
   Atlas.UI.Tests.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 type
 {$SCOPEDENUMS ON}
@@ -295,13 +295,8 @@ begin
 end;
 
 procedure TAtlasIdeTestStatusField.RunAll;
-var
-  mReason: string;
 begin
-  if (FProject <> '') and not FTests.RunProject(FProject, mReason) and (mReason <> '') then
-  begin
-    FTests.Say(mReason);
-  end;
+  FTests.RunProjectOrSay(FProject);
 end;
 
 procedure TAtlasIdeTestStatusField.RunFailed;

@@ -13,10 +13,10 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.WorkspaceEdit;
 
@@ -75,7 +75,7 @@ implementation
 uses
   System.Generics.Collections,
   Vcl.Dialogs,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Results.Model,
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,

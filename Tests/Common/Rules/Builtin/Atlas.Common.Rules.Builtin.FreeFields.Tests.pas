@@ -62,8 +62,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.FreeFields,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Semantics.OwnedFields,
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Tests.RuleAssert;
 
@@ -236,10 +236,10 @@ begin
   Assert.IsFalse(mFindings[0].Fixes[0].Safe);
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10#10'uses'#10'  System.SysUtils;'#10'var'#10 +
     '  GProtokoll: TProtokoll;'#10'initialization'#10'  GProtokoll := TProtokoll.Create;'#10#10'finalization'#10 +
-    '  FreeAndNil(GProtokoll);'#10'end.', TChangeSignature.ApplyEdits(cProtokoll, mFindings[0].Fixes[0].Edits));
+    '  FreeAndNil(GProtokoll);'#10'end.', TTextChanges.Apply(cProtokoll, mFindings[0].Fixes[0].Edits));
   // Die korrigierte Form schweigt.
   TRuleAssert.Silent(TInitializationNotFinalizedRule.Create,
-    TChangeSignature.ApplyEdits(cProtokoll, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(cProtokoll, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TFreeFieldRulesTests.InitializationFreedIsSilent;
@@ -271,7 +271,7 @@ begin
   Assert.IsTrue(mFindings[0].Fixes[0].Safe);
   // Fehlendes Semikolon hinter der letzten Anweisung wird ergänzt.
   Assert.AreEqual(StringReplace(cExisting, '  GB.Free'#10, '  GB.Free;'#10'  FreeAndNil(GA);'#10, []),
-    TChangeSignature.ApplyEdits(cExisting, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(cExisting, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TFreeFieldRulesTests.HandedOverOrOwnedIsSilent;
@@ -322,9 +322,9 @@ begin
     '    class var FInstanz: TDienst;'#10'    class constructor Create;'#10'    class destructor Destroy;'#10 +
     '  end;'#10'implementation'#10'uses'#10'  System.SysUtils;'#10'class constructor TDienst.Create;'#10'begin'#10 +
     '  FInstanz := TDienst.Create;'#10'end;'#10#10'class destructor TDienst.Destroy;'#10'begin'#10 +
-    '  FreeAndNil(FInstanz);'#10'end;'#10'end.', TChangeSignature.ApplyEdits(cSingleton, mFindings[0].Fixes[0].Edits));
+    '  FreeAndNil(FInstanz);'#10'end;'#10'end.', TTextChanges.Apply(cSingleton, mFindings[0].Fixes[0].Edits));
   TRuleAssert.Silent(TInitializationNotFinalizedRule.Create,
-    TChangeSignature.ApplyEdits(cSingleton, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(cSingleton, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TFreeFieldRulesTests.ClassConstructorWithClassDestructor;
@@ -339,7 +339,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.IsTrue(mFindings[0].Fixes[0].Safe);
   Assert.AreEqual(StringReplace(mSource, 'Destroy;'#10'begin'#10'end;', 'Destroy;'#10'begin'#10 +
-    '  FreeAndNil(FInstanz);'#10'end;', []), TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    '  FreeAndNil(FInstanz);'#10'end;', []), TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Freigabe über den Klassennamen
   TRuleAssert.Silent(TInitializationNotFinalizedRule.Create, StringReplace(mSource, 'Destroy;'#10'begin'#10'end;',
     'Destroy;'#10'begin'#10'  TDienst.FInstanz.Free;'#10'end;', []));

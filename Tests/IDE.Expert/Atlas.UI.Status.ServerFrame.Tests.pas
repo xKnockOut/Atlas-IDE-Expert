@@ -8,7 +8,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 type
   [TestFixture]
@@ -34,7 +34,7 @@ uses
   Atlas.UI.Status.Strings,
   System.SysUtils,
   Vcl.Forms,
-  Atlas.Core.Status.Server,
+  Atlas.Plugin.Status.Server,
   Atlas.UI.Status.ServerFrame;
 
 function Sample: TAtlasServerSnapshot;

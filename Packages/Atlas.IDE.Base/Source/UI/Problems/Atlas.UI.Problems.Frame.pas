@@ -58,7 +58,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Problems.ScopeProjects,
-  Atlas.Core.Settings.ProblemsUpdate,
+  Atlas.Plugin.Settings.ProblemsUpdate,
   Atlas.UI.Problems.ScopeBox,
   Atlas.UI.Problems.Frame.List;
 
@@ -180,8 +180,9 @@ uses
   Vcl.Themes,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Problems.Prompt,
-  Atlas.UI.Strings,
-  Atlas.UI.Problems.Strings;
+  Atlas.Plugin.Localization.Strings,
+  Atlas.UI.Problems.Strings,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 
@@ -398,7 +399,7 @@ begin
   FStatus.AlignWithMargins := True;
   FStatus.ShowAccelChar := False;
   FStatus.EllipsisPosition := epEndEllipsis;
-  FStatus.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FStatus, clGrayText);
   FStatus.Caption := '';
 
   FImages := TImageList.Create(Self);
@@ -438,7 +439,7 @@ begin
   FEmpty.Align := alClient;
   FEmpty.AlignWithMargins := True;
   FEmpty.ShowAccelChar := False;
-  FEmpty.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FEmpty, clGrayText);
   FEmpty.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsEmpty);
   FEmpty.Visible := False;
 
@@ -886,7 +887,7 @@ begin
   end
   else
   begin
-    FLive.Font.Color := clGrayText;
+    TAtlasUiTheme.UseFontColor(FLive, clGrayText);
   end;
 end;
 

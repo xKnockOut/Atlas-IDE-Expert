@@ -17,7 +17,6 @@ type
     FStore: TAtlasExpressionHistory;
     FKept: Boolean;
     class function Store: TAtlasExpressionHistory; static;
-    class function GroupKey: string; static;
   public
     /// <summary>Name des aktiven Verbunds der Projektgruppe ('' = keiner).</summary>
     class function Name: string; static;
@@ -30,8 +29,8 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  ToolsAPI,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile,
+  Atlas.ToolsApi.Files.Service;
 
 const
   cActiveWhat = 'debug launch groups';
@@ -58,23 +57,12 @@ begin
   Result := FStore;
 end;
 
-class function TAtlasIdeLaunchActive.GroupKey: string;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.MainProjectGroup <> nil) then
-  begin
-    Result := mModules.MainProjectGroup.FileName;
-  end;
-end;
-
 class function TAtlasIdeLaunchActive.Name: string;
 var
   mItems: TArray<string>;
 begin
   Result := '';
-  mItems := Store.Items(GroupKey);
+  mItems := Store.Items(TAtlasIdeFiles.GroupFile);
   if mItems <> nil then
   begin
     Result := mItems[0];
@@ -87,11 +75,11 @@ var
 begin
   if AName = '' then
   begin
-    mChanged := Store.Remove(GroupKey, Name);
+    mChanged := Store.Remove(TAtlasIdeFiles.GroupFile, Name);
   end
   else
   begin
-    mChanged := Store.Add(GroupKey, AName);
+    mChanged := Store.Add(TAtlasIdeFiles.GroupFile, AName);
   end;
   if not mChanged or FKept then
   begin

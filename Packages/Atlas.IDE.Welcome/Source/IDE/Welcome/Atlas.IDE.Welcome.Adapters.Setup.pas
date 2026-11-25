@@ -15,7 +15,7 @@
 //   herein); danach stehen die neuen Treffer der Zusammenfassung auf 0.
 // - Schritt 4 „Suchpfade und Defines prüfen“: Projektkontext der aktiven
 //   Konfiguration (#396), Dateien des Projekts und .dproj im Hintergrund
-//   (Atlas.Core.Projects.PathCheck); das Ergebnis kommt in den Abschnitt
+//   (Atlas.Plugin.Projects.PathCheck); das Ergebnis kommt in den Abschnitt
 //   "setup" der Projekt-Zusammenfassung. Ein Klick öffnet die Projektoptionen.
 //   $(…) in Suchpfaden löst TAtlasIdeProjectContext.Macros auf (IDE vor
 //   Prozess); bleibt ein Makro unbekannt, fällt der Pfad weg und die Funde
@@ -46,7 +46,7 @@ uses
   Atlas.Core.Welcome.Setup,
   Atlas.IDE.Welcome.Setup.Paths,
   Atlas.IDE.Welcome.Setup.ProjectEvents,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
 
 type
@@ -132,14 +132,14 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Projects.PathCheck,
+  Atlas.Plugin.Projects.PathCheck,
   Atlas.Core.Projects.Baseline,
-  Atlas.Core.Settings.SchemaData,
+  Atlas.Plugin.Settings.SchemaData,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.SetupPreview,
@@ -149,7 +149,7 @@ uses
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.UI.Welcome.Setup;
 
 { Hilfen }

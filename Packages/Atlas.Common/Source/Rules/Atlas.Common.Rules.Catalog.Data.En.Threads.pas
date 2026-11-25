@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnThreads: array[0..247] of string = (
+  cCatalogLinesEnThreads: array[0..258] of string = (
     '{',
     '      "id": "thread-vcl-access",',
     '      "name": "VCL access from a thread",',
@@ -145,6 +145,23 @@ const
     '          "description": "Comment that exempts a line."',
     '        }',
     '      ],',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "queue-without-remove",',
+    '      "name": "Thread queues but never removes the entries",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "threads",',
+    '      "description": "A descendant of TThread queues into the main thread on its own thread (Queue(…), ForceQueue(…), TThread.Queue(Self, …) or TThread.Queue(CurrentThread, …)), but nobody removes the' +
+    ' entries with RemoveQueuedEvents. Whatever is still waiting when the thread stops runs afterwards with freed objects or, after the package is unloaded, in foreign memory. Removing counts in a method o' +
+    'f the class or of an ancestor in the unit, as a call with another argument than Self or nil elsewhere in the unit (the owner cleans up when stopping, TThread.RemoveQueuedEvents(FWorker)), and when ano' +
+    'ther project unit names the class and RemoveQueuedEvents (index with index.usages). Synchronize waits and is not reported; Queue(nil, …) is reported by queue-nil-in-package; an own method named Queue ' +
+    'does not count. High confidence; low when an ancestor from another unit could remove the entries. Quick fix: add RemoveQueuedEvents(Self) to the destructor before inherited (creates the destructor beh' +
+    'ind the last constructor if it is missing; not for nested classes).",',
+    '      "bad": "procedure TOrderWorker.Execute;\nbegin\n  Queue(procedure begin FForm.Caption := ''fertig'' end);\nend;\n\ndestructor TOrderWorker.Destroy;\nbegin\n  inherited;\nend;",',
+    '      "good": "procedure TOrderWorker.Execute;\nbegin\n  Queue(procedure begin FForm.Caption := ''fertig'' end);\nend;\n\ndestructor TOrderWorker.Destroy;\nbegin\n  RemoveQueuedEvents(Self);\n  inherite' +
+    'd;\nend;",',
     '      "safeFix": false',
     '    },',
     '{',

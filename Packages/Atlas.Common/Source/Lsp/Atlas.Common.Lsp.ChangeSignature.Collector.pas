@@ -16,7 +16,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Lsp.References;
 
 const
@@ -117,8 +117,6 @@ type
     function SymbolsOf(const AOwner: TSymbolLocation): TArray<TIndexSymbol>;
   end;
 
-/// <summary>Gleiche Parametertypen ohne Rücksicht auf Leerzeichen und Groß-/Kleinschreibung.</summary>
-function SameParamTypes(const A, B: TArray<string>): Boolean;
 /// <summary>Fehler für den Abbruch mit Meldung an den Benutzer.</summary>
 function SignatureError(const AMessage: string): EJsonRpcError;
 
@@ -132,7 +130,8 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -196,24 +195,6 @@ type
     procedure Run;
   end;
 
-function SameParamTypes(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for mIndex := 0 to High(A) do
-    begin
-      if not SameText(StringReplace(A[mIndex], ' ', '', [rfReplaceAll]), StringReplace(B[mIndex], ' ', '',
-        [rfReplaceAll])) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
 function SignatureError(const AMessage: string): EJsonRpcError;
 begin
   Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
@@ -255,7 +236,7 @@ end;
 /// Liste)?</summary>
 function IsBodyOf(const AHeader, ADecl: TSignatureHeader): Boolean;
 begin
-  Result := SameParamTypes(AHeader.ParamTypes, ADecl.ParamTypes) or
+  Result := TTextNames.SameTypes(AHeader.ParamTypes, ADecl.ParamTypes) or
     ((AHeader.OpenToken < 0) and (Length(ADecl.Parameters) > 0));
 end;
 
@@ -273,12 +254,12 @@ begin
     begin
       Continue;
     end;
-    if not TChangeSignature.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
+    if not TPascalSignatures.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
       mSymbol.SelectionRange.StartPos), mHeader) or not IsBodyOf(mHeader, AMember.Decl) then
     begin
       Continue;
     end;
-    mLast := TChangeSignature.BodyEnd(AUnit.Tree, mHeader);
+    mLast := TPascalSignatures.BodyEnd(AUnit.Tree, mHeader);
     if mLast >= 0 then
     begin
       AMember.HasBody := True;
@@ -302,13 +283,13 @@ begin
   Result.Name := ADecl.Name;
   Result.IsRoot := AIsRoot;
   Result.BodyLast := -1;
-  if not TChangeSignature.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
+  if not TPascalSignatures.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
     ADecl.SelectionRange.StartPos), Result.Decl) then
   begin
     raise SignatureError(cTexts[TCollectorText.TheHeaderOfCannotBe].Fmt([ADecl.QualifiedName]));
   end;
   // Routine nur im implementation-Teil: der Kopf des Rumpfs ist die Deklaration.
-  mLast := TChangeSignature.BodyEnd(AUnit.Tree, Result.Decl);
+  mLast := TPascalSignatures.BodyEnd(AUnit.Tree, Result.Decl);
   if mLast >= 0 then
   begin
     Result.DeclIsBody := True;
@@ -363,7 +344,7 @@ begin
     AMember.FileName := AUnit.FileName;
     AMember.Name := AEventType;
     AMember.BodyLast := -1;
-    if TChangeSignature.ReadProcedureType(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
+    if TPascalSignatures.ReadProcedureType(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
       mSymbol.SelectionRange.StartPos), AMember.Decl) then
     begin
       Exit(True);
@@ -705,7 +686,7 @@ begin
       for mCandidate in mCurrent.Symbols do
       begin
         if (mCandidate.Kind in cSignatureRoutineKinds) and SameText(mCandidate.Container, mSymbol.Container) and
-          SameText(mCandidate.Name, mSymbol.Name) and (SameParamTypes(mCandidate.ParamTypes, mSymbol.ParamTypes) or
+          SameText(mCandidate.Name, mSymbol.Name) and (TTextNames.SameTypes(mCandidate.ParamTypes, mSymbol.ParamTypes) or
           (Length(mSymbol.ParamTypes) = 0)) then
         begin
           ADecl := mCandidate;
@@ -738,7 +719,7 @@ begin
   for mSymbol in mUnit.Symbols do
   begin
     if (mSymbol.Kind in cSignatureRoutineKinds) and SameText(mSymbol.Container, mLocation.Symbol.QualifiedName) and
-      SameText(mSymbol.Name, AName) and SameParamTypes(mSymbol.ParamTypes, AParamTypes) then
+      SameText(mSymbol.Name, AName) and TTextNames.SameTypes(mSymbol.ParamTypes, AParamTypes) then
     begin
       ADecl := mSymbol;
       Exit(True);
@@ -964,7 +945,7 @@ begin
   begin
     Exit;
   end;
-  case TChangeSignature.UseOf(mOther.Tokens, mToken, AHasRequired) of
+  case TPascalSignatures.UseOf(mOther.Tokens, mToken, AHasRequired) of
     TSignatureUse.Accessor:
       Accessors := Accessors + [PlaceOf(ALocation)];
     TSignatureUse.Pointer_:

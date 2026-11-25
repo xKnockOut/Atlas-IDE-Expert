@@ -53,13 +53,13 @@ uses
   Vcl.Menus,
   DesignIntf,
   Atlas.Core.Designer.Components,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.SearchItems,
-  Atlas.IDE.Foundation.DesignerView,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.ToolsApi.Designer.View,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Caret;
 
 type
   /// <summary>Menüeintrag mit seinem Ziel.</summary>

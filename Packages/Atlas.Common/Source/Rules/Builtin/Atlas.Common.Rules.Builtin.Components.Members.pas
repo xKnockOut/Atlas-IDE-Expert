@@ -38,7 +38,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Components.Model,
@@ -142,7 +143,7 @@ begin
     begin
       mNode := mPending.Pop;
       mName := SelfMemberName(mNode);
-      if (mName <> '') and IsIn(mName, ANames) then
+      if (mName <> '') and MatchText(mName, ANames) then
       begin
         Exit(True);
       end;
@@ -223,7 +224,7 @@ begin
   Result := nil;
   for mProp in AModel.Properties(AInfo) do
   begin
-    if (mProp.ReadName <> '') and not IsIn(mProp.ReadName, Result) then
+    if (mProp.ReadName <> '') and not MatchText(mProp.ReadName, Result) then
     begin
       Result := Result + [mProp.ReadName];
     end;
@@ -260,11 +261,11 @@ var
     mMember: TIndexSymbol;
     mUnresolved: string;
   begin
-    if (AName = '') or SameText(AName, 'Result') or SameText(AName, 'Self') or IsIn(AName, mLocals) then
+    if (AName = '') or SameText(AName, 'Result') or SameText(AName, 'Self') or MatchText(AName, mLocals) then
     begin
       Exit(False);
     end;
-    if IsIn(AName, mMembers) then
+    if MatchText(AName, mMembers) then
     begin
       Exit(True);
     end;
@@ -284,7 +285,7 @@ var
       Result := ANode[0];
     end
     else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and
-      (ANode[0].Kind = TSyntaxKind.Identifier) and IsIn(ANode[0].Name, ['Inc', 'Dec', 'Include', 'Exclude']) then
+      (ANode[0].Kind = TSyntaxKind.Identifier) and MatchText(ANode[0].Name, ['Inc', 'Dec', 'Include', 'Exclude']) then
     begin
       Result := ANode[1];
     end
@@ -323,7 +324,7 @@ var
         if mTarget <> nil then
         begin
           mName := SelfMemberName(mTarget);
-          if IsState(mName) and not IsIn(mName, mReported) and not (mAllowLazyInit and IsLazyInit(mNode, ARoot)) then
+          if IsState(mName) and not MatchText(mName, mReported) and not (mAllowLazyInit and IsLazyInit(mNode, ARoot)) then
           begin
             mReported := mReported + [mName];
             AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos),
@@ -362,7 +363,7 @@ begin
     mMembers := StateMembers(mInfo);
     for mMethod in mModel.Methods do
     begin
-      if SameText(mMethod.ClassName, mInfo.Name) and IsIn(mMethod.MethodName, mGetters) and
+      if SameText(mMethod.ClassName, mInfo.Name) and MatchText(mMethod.MethodName, mGetters) and
         not mModel.HasToken(mMethod.Block, ['with']) then
       begin
         mLocals := MethodLocalNames(mMethod);
@@ -554,7 +555,7 @@ begin
   Result := '';
   ACollection := nil;
   if (ANode.Kind <> TSyntaxKind.MemberAccess) or not SameText(ANode.Name, 'Create') or (ANode.ChildCount <> 1) or
-    (ANode[0].Kind <> TSyntaxKind.MemberAccess) or not IsIn(ANode[0].Name, cHashedCollections) then
+    (ANode[0].Kind <> TSyntaxKind.MemberAccess) or not MatchText(ANode[0].Name, cHashedCollections) then
   begin
     Exit;
   end;
@@ -644,8 +645,8 @@ begin
     while mPending.Count > 0 do
     begin
       mNode := mPending.Pop;
-      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and IsIn(mNode.Name, AFields) and
-        not IsIn(mNode.Name, ANames) then
+      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(mNode.Name, AFields) and
+        not MatchText(mNode.Name, ANames) then
       begin
         mCompare := '';
         if (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.Call) and (mNode.Parent[0] <> mNode) then
@@ -693,8 +694,8 @@ begin
   mPosition := TTextPosition.Create(AHeader.EndPos.Line + 1, 0);
   mEdits := [TRuleEdit.Create(TTextRange.Create(mPosition, mPosition), StringOfChar(' ', AHeader.StartPos.Character) +
     'function GetHashCode: Integer; override;' + FModel.LineBreak)];
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FContext.Tree.Tokens), 'System.Hash', FContext.Namespaces) and
-    TUsesClauses.AddUnit(FContext.Tree.Tokens, mEquals_.Decl.StartOffset, 'System.Hash', FModel.LineBreak,
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FContext.Tree.Tokens), 'System.Hash', FContext.Namespaces) and
+    TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, mEquals_.Decl.StartOffset, 'System.Hash', FModel.LineBreak,
     mUsesEdit) then
   begin
     if mUsesEdit.Range.StartPos.Line < AHeader.StartPos.Line then
@@ -814,7 +815,7 @@ begin
     begin
       mNode := mPending.Pop;
       mKey := HashedCreateKey(mNode, mCollection);
-      if (mKey <> '') and IsIn(mKey, ARecords) and WithoutComparer(mNode) then
+      if (mKey <> '') and MatchText(mKey, ARecords) and WithoutComparer(mNode) then
       begin
         FReport.Add(TTextRange.Create(mCollection.StartPos, mCollection.EndPos),
           cTexts[TComponentsMembersText.RecordEqual].Fmt(

@@ -57,7 +57,7 @@ uses
   Atlas.Core.Debug.WhyHere,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Debug.LineEnd,
   Atlas.UI.Debug.Explain.Strings;
 

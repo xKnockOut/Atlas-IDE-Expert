@@ -49,8 +49,8 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.Vcl.Images.Symbol,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TStartDock = class(TInterfacedObject, INTACustomDockableForm)

@@ -53,6 +53,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Collections,
   System.Classes,
   System.DateUtils,
@@ -144,30 +145,18 @@ begin
 end;
 
 function OutcomeOfResult(const AResult: string): TAtlasCiOutcome;
+const
+  cResults: array[0..4] of string = ('SUCCESS', 'UNSTABLE', 'FAILURE', 'ABORTED', 'NOT_BUILT');
+  cOutcomes: array[0..4] of TAtlasCiOutcome = (TAtlasCiOutcome.Success, TAtlasCiOutcome.Unstable,
+    TAtlasCiOutcome.Failure, TAtlasCiOutcome.Aborted, TAtlasCiOutcome.NotBuilt);
+var
+  mIndex: Integer;
 begin
-  if SameText(AResult, 'SUCCESS') then
+  Result := TAtlasCiOutcome.Unknown;
+  mIndex := IndexText(AResult, cResults);
+  if mIndex >= 0 then
   begin
-    Result := TAtlasCiOutcome.Success;
-  end
-  else if SameText(AResult, 'UNSTABLE') then
-  begin
-    Result := TAtlasCiOutcome.Unstable;
-  end
-  else if SameText(AResult, 'FAILURE') then
-  begin
-    Result := TAtlasCiOutcome.Failure;
-  end
-  else if SameText(AResult, 'ABORTED') then
-  begin
-    Result := TAtlasCiOutcome.Aborted;
-  end
-  else if SameText(AResult, 'NOT_BUILT') then
-  begin
-    Result := TAtlasCiOutcome.NotBuilt;
-  end
-  else
-  begin
-    Result := TAtlasCiOutcome.Unknown;
+    Result := cOutcomes[mIndex];
   end;
 end;
 
@@ -377,9 +366,9 @@ end;
 class function TAtlasJenkinsProvider.ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError;
 begin
   case AStatus of
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result := TAtlasCiFetchError.Unauthorized;
-    404:
+    TAtlasHttpStatus.cNotFound:
       Result := TAtlasCiFetchError.NotFound;
   else
     Result := TAtlasCiFetchError.Server;
@@ -412,7 +401,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := ErrorOfStatus(mStatus);
   end
@@ -431,7 +420,7 @@ begin
     Exit;
   end;
   if ATransport.Get(TestReportApiUrl(AJob, ABuild.Number), Integer(mRest), mStatus, mText, AError) and
-    (mStatus = 200) then
+    (mStatus = TAtlasHttpStatus.cOk) then
   begin
     ParseTestReport(mText, ABuild);
   end;

@@ -33,13 +33,13 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Settings.Baseline,
+  Atlas.Plugin.Settings.Baseline,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.ServerActions,
   Atlas.IDE.Settings.ServerTool,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Rules.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   /// <summary>Kommandozeile von AtlasServer: Projekt, dann die Optionen.</summary>

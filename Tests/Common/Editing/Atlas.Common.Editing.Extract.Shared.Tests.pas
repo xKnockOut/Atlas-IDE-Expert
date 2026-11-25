@@ -44,22 +44,12 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Extract.Shared,
-  Atlas.Common.Editing.Extract.Method;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
+  Atlas.Common.Editing.Extract.Method,
+  Atlas.Tests.SourceText;
 
 /// <summary>Kopfanfrage für die Routine, in der AMarker steht.</summary>
 function Request(ATree: TSyntaxTree; const AText, AMarker: string): TRoutineHeadRequest;
@@ -94,7 +84,7 @@ var
   mTree: TSyntaxTree;
   mStart, mEnd: Integer;
 begin
-  mText := Join(['procedure P;', 'begin', '  X := 1;', 'end;']);
+  mText := TTestSource.Lines(['procedure P;', 'begin', '  X := 1;', 'end;']);
   mTree := TPascalParser.Parse(mText);
   try
     Assert.IsFalse(TExtractSupport.Selection(mText, mTree, TTextRange.Create(2, 2, 2, 2), mStart, mEnd));
@@ -113,7 +103,7 @@ var
   mRoutine, mInner: TSyntaxNode;
   mOffset: Integer;
 begin
-  mText := Join(['procedure P;', 'begin', '  Run(procedure', '    begin', '      Y := 2;', '    end);',
+  mText := TTestSource.Lines(['procedure P;', 'begin', '  Run(procedure', '    begin', '      Y := 2;', '    end);',
     '  X := 1;', 'end;']);
   mTree := TPascalParser.Parse(mText);
   try
@@ -137,7 +127,7 @@ var
   mTree: TSyntaxTree;
   mNames: TArray<string>;
 begin
-  mText := Join(['procedure P;', 'type', '  TLocal = Integer;', '  procedure Inner;', '  begin', '  end;',
+  mText := TTestSource.Lines(['procedure P;', 'type', '  TLocal = Integer;', '  procedure Inner;', '  begin', '  end;',
     'begin', '  Inner;', 'end;']);
   mTree := TPascalParser.Parse(mText);
   try
@@ -155,7 +145,7 @@ var
   mEdits: TArray<TTextEdit>;
   mHead: TRoutineHead;
 begin
-  mText := Join(['procedure P;', 'begin', '  X := 1;', 'end;']);
+  mText := TTestSource.Lines(['procedure P;', 'begin', '  X := 1;', 'end;']);
   mTree := TPascalParser.Parse(mText);
   try
     mEdits := nil;
@@ -175,7 +165,7 @@ var
   mEdits: TArray<TTextEdit>;
   mHead: TRoutineHead;
 begin
-  mText := Join(['unit U;', 'interface', 'type', '  TFoo = class', '  public', '    procedure P;', '  end;',
+  mText := TTestSource.Lines(['unit U;', 'interface', 'type', '  TFoo = class', '  public', '    procedure P;', '  end;',
     'implementation', 'procedure TFoo.P;', 'begin', '  X := 1;', 'end;', 'end.']);
   mTree := TPascalParser.Parse(mText);
   try
@@ -183,8 +173,8 @@ begin
     Assert.IsTrue(TExtractSupport.NewRoutineHead(mText, mTree, Request(mTree, mText, 'X :='), mEdits, mHead));
     Assert.AreEqual('procedure TFoo.ExtractedMethod(const A: Integer);'#10, mHead.Text);
     Assert.AreEqual(1, Integer(Length(mEdits)));
-    Assert.IsTrue(Pos('private', TChangeSignature.ApplyEdits(mText, mEdits)) > 0, 'private-Abschnitt');
-    Assert.IsTrue(Pos('procedure ExtractedMethod(const A: Integer);', TChangeSignature.ApplyEdits(mText,
+    Assert.IsTrue(Pos('private', TTextChanges.Apply(mText, mEdits)) > 0, 'private-Abschnitt');
+    Assert.IsTrue(Pos('procedure ExtractedMethod(const A: Integer);', TTextChanges.Apply(mText,
       mEdits)) > 0, 'Deklaration');
   finally
     mTree.Free;
@@ -198,7 +188,7 @@ var
   mEdits: TArray<TTextEdit>;
   mHead: TRoutineHead;
 begin
-  mText := Join(['unit U;', 'implementation', 'procedure TBar.P;', 'begin', '  X := 1;', 'end;', 'end.']);
+  mText := TTestSource.Lines(['unit U;', 'implementation', 'procedure TBar.P;', 'begin', '  X := 1;', 'end;', 'end.']);
   mTree := TPascalParser.Parse(mText);
   try
     mEdits := nil;
@@ -215,7 +205,7 @@ var
   mTree: TSyntaxTree;
   mSignature: TExtractSignature;
 begin
-  mText := Join(['procedure P;', 'begin', '  X := 1;', 'end;']);
+  mText := TTestSource.Lines(['procedure P;', 'begin', '  X := 1;', 'end;']);
   mTree := TPascalParser.Parse(mText);
   mSignature := TExtractSignature.Create(mText, mTree, TRoutineBody.RoutineAt(mTree, Pos('X :=', mText)),
     TExtractOptions.Default);
@@ -228,7 +218,7 @@ begin
     Assert.AreEqual('(const A: Integer; var B: string)', mSignature.ParamsText);
     Assert.AreEqual('(A, B)', mSignature.ArgsText);
     mRoutineText := mSignature.RoutineText('procedure Q;'#10, 'C := A;', '  ');
-    Assert.AreEqual(Join(['procedure Q;', 'var', '  C: Double;', 'begin', '  C := A;', 'end;', '']), mRoutineText);
+    Assert.AreEqual(TTestSource.Lines(['procedure Q;', 'var', '  C: Double;', 'begin', '  C := A;', 'end;', '']), mRoutineText);
   finally
     mSignature.Free;
     mTree.Free;
@@ -249,7 +239,7 @@ begin
   try
     if mExtraction.Run(TTextRange.Create(AFirst, 0, ALast + 1, 0), mAction, AReason) then
     begin
-      Result := TChangeSignature.ApplyEdits(AText, mAction.Edits);
+      Result := TTextChanges.Apply(AText, mAction.Edits);
     end;
   finally
     mExtraction.Free;
@@ -261,9 +251,9 @@ procedure TExtractSharedTests.MethodExtractionReportsReason;
 var
   mReason: string;
 begin
-  Assert.AreEqual('-', Extracted(Join(['procedure P;', 'begin', '  Exit;', 'end;']), 2, 2, mReason));
+  Assert.AreEqual('-', Extracted(TTestSource.Lines(['procedure P;', 'begin', '  Exit;', 'end;']), 2, 2, mReason));
   Assert.AreEqual('Exit in der Auswahl', mReason);
-  Assert.AreEqual('-', Extracted(Join(['function F: Integer;', 'begin', '  Result := 1;', 'end;']), 2, 2,
+  Assert.AreEqual('-', Extracted(TTestSource.Lines(['function F: Integer;', 'begin', '  Result := 1;', 'end;']), 2, 2,
     mReason));
   Assert.AreEqual('Result in der Auswahl', mReason);
 end;
@@ -272,7 +262,7 @@ procedure TExtractSharedTests.MethodExtractionBuildsCall;
 var
   mReason, mResult: string;
 begin
-  mResult := Extracted(Join(['procedure P(A: Integer);', 'var', '  B: Integer;', 'begin', '  B := A + 1;',
+  mResult := Extracted(TTestSource.Lines(['procedure P(A: Integer);', 'var', '  B: Integer;', 'begin', '  B := A + 1;',
     '  Use(B);', 'end;']), 4, 4, mReason);
   Assert.AreEqual('', mReason);
   Assert.IsTrue(Pos('procedure ExtractedMethod(const A: Integer; out B: Integer);', mResult) > 0, mResult);

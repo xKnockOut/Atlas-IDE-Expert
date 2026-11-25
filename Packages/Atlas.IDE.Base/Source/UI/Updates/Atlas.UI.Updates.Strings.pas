@@ -4,7 +4,7 @@
 // Optionsseite, Angebot, Auswahl der Module, Stand, Ergebnis und Fehlercodes
 // von AtlasUpdate.exe sowie die Meldung einer gescheiterten Update-Prüfung.
 // Die Sprache bestimmt TAtlasStrings.Language; die Texte der Update-Prüfung
-// (#495) bleiben in Atlas.UI.Strings.
+// (#495) bleiben in Atlas.Plugin.Localization.Strings.
 
 interface
 
@@ -24,10 +24,12 @@ type
     UpdatesOutcomeInstalled, UpdatesOutcomeAdded, UpdatesOutcomeRemoved, UpdatesOutcomeRolledBack,
     UpdatesOutcomeCancelled, UpdatesOutcomeFailed, UpdatesErrorManifest, UpdatesErrorVersion, UpdatesErrorNoPackage,
     UpdatesErrorNoCompiler, UpdatesErrorDownload, UpdatesErrorHash, UpdatesErrorArchive, UpdatesErrorUnsigned,
-    UpdatesErrorSignature, UpdatesErrorBuild, UpdatesErrorLocked, UpdatesErrorCopy, UpdatesErrorRegistry,
+    UpdatesErrorSignature, UpdatesErrorManifestUnsigned, UpdatesErrorManifestSignature, UpdatesErrorBuild,
+    UpdatesErrorLocked, UpdatesErrorCopy, UpdatesErrorRegistry,
     UpdatesErrorCancelled, UpdatesErrorElevation, UpdatesErrorSelection, UpdatesErrorUnexpected, UpdatesErrorStart,
     UpdatesCheckFailedMessage, UpdatesConsentTitle, UpdatesConsentText, UpdatesConsentYes, UpdatesConsentNo,
-    UpdatesAvailable);
+    UpdatesAvailable, UpdatesErrorSourceConfirm, UpdatesErrorHost, UpdatesStageConfirmSource, UpdatesSourceMessage,
+    UpdatesSourceTitle, UpdatesSourceText, UpdatesSourceBuild, UpdatesSourceUnbound, UpdatesWarningManifestUnsigned);
 
   TAtlasUpdatesStrings = class
   public
@@ -40,7 +42,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasUpdatesTextId] of string = (
@@ -102,6 +104,8 @@ const
      'Archiv unbrauchbar',
      'Datei nicht signiert',
      'Signatur ungültig oder von einem anderen Herausgeber',
+     'Versionsdatei nicht signiert',
+     'Versionsdatei nicht vom Herausgeber signiert oder verändert',
      'Bauen aus dem Quelltext fehlgeschlagen',
      'Datei gesperrt',
      'Kopieren fehlgeschlagen',
@@ -118,7 +122,21 @@ const
      'Soll Atlas einmal täglich nachsehen, ob eine neue Version vorliegt? Übertragen werden nur die Atlas-Version und die IDE-Version, keine Projektdaten. Atlas lädt nichts herunter und installiert nichts; ändern lässt sich das unter Tools › Optionen › Atlas.',
      'Ja, prüfen',
      'Nein',
-     'Atlas %s ist verfügbar (installiert: %s). Änderungen: %s'),
+     'Atlas %s ist verfügbar (installiert: %s). Änderungen: %s',
+     'Bauen aus dem Quelltext nicht bestätigt',
+     'Adresse außerhalb von GitHub abgelehnt',
+     'wartet auf Bestätigung zum Bauen',
+     'Atlas-Update %s: Für diese Delphi-Version gibt es kein fertiges Paket. Atlas kann es aus dem Quelltext ' +
+     'bauen; ein so gebautes Update ist nicht an den Herausgeber gebunden. Entscheiden über „Jetzt aktualisieren“.',
+     'Atlas %s aus dem Quelltext bauen?',
+     'Für diese Delphi-Version enthält das Release keine fertigen Packages. Atlas kann den Quelltext laden und ' +
+     'die Packages mit dem Delphi-Compiler bauen.' + sLineBreak + sLineBreak + 'Dieses Update ist nicht an den ' +
+     'Herausgeber gebunden: Die gebauten Packages tragen keine Signatur, den Quelltext sichert nur die Prüfsumme ' +
+     'aus der Versionsdatei. Nur bauen, wenn die Quelle vertrauenswürdig ist.',
+     'Aus dem Quelltext bauen',
+     'Aus dem Quelltext gebaut: nicht an den Herausgeber gebunden.',
+     'Hinweis: Die Versionsdatei dieses Releases ist nicht signiert. Nur Prüfsummen sichern das Update; es ist ' +
+     'nicht an den Herausgeber gebunden.'),
     ( 'Install updates:',
      'offer',
      'prepare without asking',
@@ -175,6 +193,8 @@ const
      'archive unusable',
      'file not signed',
      'signature invalid or from another publisher',
+     'version file not signed',
+     'version file not signed by the publisher or altered',
      'building from source failed',
      'file locked',
      'copying failed',
@@ -190,7 +210,21 @@ const
      'Should Atlas check once a day whether a new version is available? Only the Atlas version and the IDE version are sent, no project data. Atlas downloads and installs nothing; change this under Tools › Options › Atlas.',
      'Yes, check',
      'No',
-     'Atlas %s is available (installed: %s). Changes: %s'));
+     'Atlas %s is available (installed: %s). Changes: %s',
+     'building from source not confirmed',
+     'address outside GitHub rejected',
+     'waiting for confirmation to build',
+     'Atlas update %s: there is no ready-made package for this Delphi version. Atlas can build it from source; ' +
+     'an update built this way is not bound to the publisher. Decide via “Update now”.',
+     'Build Atlas %s from source?',
+     'The release contains no ready-made packages for this Delphi version. Atlas can download the source and ' +
+     'build the packages with the Delphi compiler.' + sLineBreak + sLineBreak + 'This update is not bound to ' +
+     'the publisher: the built packages carry no signature, and only the checksum from the version file protects ' +
+     'the source. Only build if you trust the source.',
+     'Build from source',
+     'Built from source: not bound to the publisher.',
+     'Note: the version file of this release is not signed. Only checksums protect the update; it is not bound ' +
+     'to the publisher.'));
 
 { TAtlasUpdatesStrings }
 

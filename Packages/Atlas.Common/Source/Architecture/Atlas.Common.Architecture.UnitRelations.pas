@@ -172,7 +172,6 @@ type
     class function UseInfoToJson(const AInfo: TUnitUseInfo): TJSONObject; static;
     /// <summary>JSON der Antwort von atlas/unitRelations (ohne "generation").</summary>
     class function ToJson(const ARelations: TUnitRelations): TJSONObject; static;
-    class function SectionName(ASection: TUsesSection): string; static;
   end;
 
 implementation
@@ -180,21 +179,9 @@ implementation
 uses
   System.StrUtils,
   System.Math,
-  Atlas.Common.Editing.UsesClause;
-
-function ContainsNode(ANode: Integer; const ANodes: TArray<Integer>): Boolean;
-var
-  mItem: Integer;
-begin
-  for mItem in ANodes do
-  begin
-    if mItem = ANode then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Text.Names,
+  Atlas.Text.Arrays;
 
 /// <summary>Dateiname ohne Pfad und Endung, für \ und / gleich.</summary>
 function BareName(const AFileName: string): string;
@@ -525,7 +512,7 @@ var
 begin
   for mCycle in FGraph.Cycles(cInterfaceUsesOnly) do
   begin
-    if ContainsNode(FNode, mCycle.Component) then
+    if TTextArrays.ContainsInteger(mCycle.Component, FNode) then
     begin
       for mMember in mCycle.Component do
       begin
@@ -882,18 +869,6 @@ begin
   end;
 end;
 
-class function TUnitRelationsBuilder.SectionName(ASection: TUsesSection): string;
-begin
-  if ASection = TUsesSection.Interface_ then
-  begin
-    Result := 'interface';
-  end
-  else
-  begin
-    Result := 'implementation';
-  end;
-end;
-
 function RelationJson(const ARelation: TUnitRelation): TJSONObject;
 var
   mChildren: TJSONArray;
@@ -906,7 +881,7 @@ begin
   begin
     Result.AddPair('file', ARelation.FileName);
   end;
-  Result.AddPair('section', TUnitRelationsBuilder.SectionName(ARelation.Section));
+  Result.AddPair('section', TTextNames.SectionKeyword(ARelation.Section = TUsesSection.Interface_));
   if ARelation.Library_ then
   begin
     Result.AddPair('library', TJSONBool.Create(True));

@@ -31,7 +31,7 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Common.Pascal.ResourceStrings,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -485,35 +485,28 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterDeclarationCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('var', cTexts[TDeclarationCommandsText.CreateALocalVariable].Text,
-    cTexts[TDeclarationCommandsText.VarListTStringList].Text, ExecuteVar));
-  ARegister(Command('const', cTexts[TDeclarationCommandsText.CreateALocalConstant].Text, '/const Max = 10',
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('var', cTexts[TDeclarationCommandsText.CreateALocalVariable].Text,
+      cTexts[TDeclarationCommandsText.VarListTStringList].Text, ExecuteVar));
+  ARegister(TSlashCommand.Create('const', cTexts[TDeclarationCommandsText.CreateALocalConstant].Text,
+      '/const Max = 10', function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteConst(AContext, False, AEdits, AReason);
     end));
-  ARegister(Command('const!', cTexts[TDeclarationCommandsText.CreateAConstantInThe].Text, '/const! Max = 10',
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('const!', cTexts[TDeclarationCommandsText.CreateAConstantInThe].Text,
+      '/const! Max = 10', function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteConst(AContext, True, AEdits, AReason);
     end));
-  ARegister(Command('field', cTexts[TDeclarationCommandsText.CreateAFieldInThe].Text, '/field Name: string',
-    ExecuteField));
-  ARegister(Command('prop', cTexts[TDeclarationCommandsText.CreateAPropertyWithField].Text, '/prop Name: string',
-    ExecuteProp));
-  ARegister(Command('resstr', cTexts[TDeclarationCommandsText.StringLiteralAboveAsResourcestring].Text, '/resstr',
-    ExecuteResStr));
-  ARegister(Command('guid', cTexts[TDeclarationCommandsText.InsertAGUIDIntoThe].Text, '/guid', ExecuteGuid));
+  ARegister(TSlashCommand.Create('field', cTexts[TDeclarationCommandsText.CreateAFieldInThe].Text,
+      '/field Name: string', ExecuteField));
+  ARegister(TSlashCommand.Create('prop', cTexts[TDeclarationCommandsText.CreateAPropertyWithField].Text,
+      '/prop Name: string', ExecuteProp));
+  ARegister(TSlashCommand.Create('resstr', cTexts[TDeclarationCommandsText.StringLiteralAboveAsResourcestring].Text,
+      '/resstr', ExecuteResStr));
+  ARegister(TSlashCommand.Create('guid', cTexts[TDeclarationCommandsText.InsertAGUIDIntoThe].Text, '/guid',
+      ExecuteGuid));
 end;
 
 initialization

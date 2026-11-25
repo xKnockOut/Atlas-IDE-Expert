@@ -18,12 +18,20 @@ Erzeugte Dateien tragen in `.gitattributes` die Markierung `linguist-generated`;
 1. Arbeit committen.
 2. `python3 Tools/Merge-Integration.py` mergt `origin/main-merging` ein (flache Klone vertieft es selbst) und löst:
    - erzeugte Dateien: Stand von `main-merging`, danach neu erzeugt mit den beiden Werkzeugen oben (braucht `pwsh`; fehlt es, nennt das Skript die Befehle und endet mit Code 2),
-   - reine Ergänzungen beider Seiten an derselben Stelle in `.dpr`, `.dpk`, `.dproj`, `Tools/Linux/FpcTests.txt` und Markdown (Unit-Listen, Tabellenzeilen in `docs/adr/0017-unit-zuordnung.md`, Aufzählungen): beide behalten,
+   - reine Ergänzungen beider Seiten an derselben Stelle in `.dpr`, `.dpk`, `.dproj`, `Tools/Linux/FpcTests.txt`, der Unit-Zuordnung `Tools/UnitAssignment*.tsv` (danach wieder nach Package und Unit sortiert) und Markdown (Unit-Listen, Tabellenzeilen, Aufzählungen): beide behalten,
    - Markdown-Zeilen, die sich nur in Zahlen unterscheiden: Stand von `main-merging`, die Regelzahlen erzeugt `Update-RuleCatalog.ps1` neu,
    - die Baseline wortgleicher Rümpfe `atlas-duplicates.json`: Stand von `main-merging`, danach neu geschrieben mit `AtlasServer --check . --check-duplicates --update-baseline` (gebauter Server unter `Output/` oder im PATH; fehlt er, nennt das Skript den Befehl und endet mit Code 2).
    - die Liste der Aufwärm-Routinen `Tools/TestWarmUps.baseline.json`: Stand von `main-merging`, danach neu geschrieben mit `pwsh Tools/Check-TestWarmUps.ps1 -Update`.
 
    Wer Kopien zusammenlegt, schreibt die Baseline mit demselben Befehl neu und checkt sie mit ein; sonst scheitert der Schritt „Wortgleiche Rümpfe“ der CI an den toten Einträgen. Neue Kopien gehören nicht in die Baseline: `Tools/Check-Baselines.ps1` vergleicht sie je Gruppe mit `main-merging` und meldet jede neue Gruppe und jede Gruppe mit mehr Fassungen, auch wenn die Summe sinkt. Das Merge-Skript nennt solche Gruppen schon beim Neuschreiben. Gibt es einen Grund, eine Kopie zu behalten, steht er in der Beschreibung des Pull Requests in einer Zeile `Neue Kopien: <Grund>`; danach den Lauf der Prüfung neu starten, die Befunde werden dann zu Warnungen.
+
+   Dasselbe gilt für die Klassengröße (`metric-class-size`, Grenzwert 40). Muss eine Korrektur einer vollen Klasse ein Mitglied hinzufügen, etwa kurz vor einem Release, ist ein Umbau an Ort und Stelle der falsche Zeitpunkt. Dann darf der Pull Request die Klasse in die Baseline ihres Packages aufnehmen (`AtlasServer --check Packages/<Package>/<Package>.dproj --update-baseline`, im Diff nur diesen Eintrag behalten) und trägt je Klasse eine Zeile in der Beschreibung:
+
+   ```
+   Größere Klasse: TAtlasStructureFrame – Korrektur des Takts vor dem Release, Teilung im nächsten Meilenstein
+   ```
+
+   `Tools/Check-Baselines.ps1` lässt die Summe der Einträge zu `metric-class-size` dann je begründeter Klasse um einen steigen und nennt Name und Grund als Warnung; die Klasse muss in einer Datei mit einem solchen Eintrag deklariert sein, Zeilen ohne Grund und doppelte Namen zählen nicht. Die Ausnahme ist befristet: Für die Teilung gibt es ein Issue im nächsten Meilenstein, und sie entfernt den Eintrag wieder; die Baseline darf wie jede andere nur schrumpfen. Häufen sich solche Einträge bei einer Art von Klasse, ist der Grenzwert für diese Art falsch, nicht die Klasse. Einen Record nur zum Senken der Zahl einzuführen, ist kein Ausweg (`docs/Regeln.md`, `metric-class-size`).
 
    Was übrig bleibt, sind echte Konflikte (beide Seiten ändern dieselbe Zeile, Quelltext, JSON). Das Skript nennt sie und lässt den Merge offen; von Hand lösen, `git add`, `git commit --no-edit`.
 3. Prüfungen wie gewohnt (`pwsh Tools/Check-*.ps1`, FPC-Bau und -Tests), dann pushen.
@@ -45,6 +53,10 @@ Der Workflow pusht nie mit `--force`. Hat der Thread inzwischen selbst gepusht, 
 ## Rotes main-merging
 
 Scheitert „Package-Abhängigkeiten“ oder „AtlasServer für Linux“ nach einem Push auf `main-merging`, legt der Job `melden` (`Tools/CI/Melde-Integrationsstand.py`) ein Issue mit Label „main-merging rot“ an und kommentiert den Pull Request, dessen Merge den Stand erzeugt hat. Weitere rote Läufe kommentieren das Issue; der erste grüne Lauf danach schließt es.
+
+## Units umbenennen
+
+Units umbenennen oder verschieben nur mit `python3 Tools/Rename-Units.py <Tabelle.tsv>` (je Zeile `alt<TAB>neu[<TAB>Zielordner]`, `--dry-run` zeigt nur). Das Skript verschiebt Unit, Formular und Testunits (`alt.Tests` → `neu.Tests`) mit `git mv` und zieht Namen und Pfade in allen versionierten Textdateien nach: uses-Klauseln, qualifizierte Bezeichner, `.dpk`, `.dpr`, `.dproj`, `atlas.json`, Baselines, Skripte, Doku und die Unit-Zuordnung `Tools/UnitAssignment*.tsv` (danach wieder sortiert). `CHANGELOG.md`, Release-Notizen und die übrigen ADRs bleiben, wie sie sind. Ein Pfad wird nur ersetzt, wenn er auf die verschobene Datei zeigt; was sich nicht zuordnen lässt, meldet es als Warnung. Danach `pwsh Tools/Check-PackageDependencies.ps1`, bei geänderten Fingerabdrücken die Baselines neu schreiben (`--update-baseline`), und mit Delphi bauen: FPC übersetzt die IDE-Packages nicht.
 
 ## Konstante Arrays
 

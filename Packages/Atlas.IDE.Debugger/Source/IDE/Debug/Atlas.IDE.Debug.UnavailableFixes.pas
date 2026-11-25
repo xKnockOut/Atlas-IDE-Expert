@@ -60,12 +60,12 @@ uses
   Vcl.Dialogs,
   Vcl.Menus,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Projects.Context,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Explain.Strings;
 
 const

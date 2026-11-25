@@ -26,7 +26,7 @@ uses
   Atlas.UI.Debug.MethodBreakpoints,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.BreakpointListMenu,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 
@@ -90,16 +90,17 @@ implementation
 uses
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Files.DataFile,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.MethodBreakpoints.Strings,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.MethodGroupFlow,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services,
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeMethodBreakpoints.TListener }
 
@@ -247,8 +248,10 @@ begin
       end;
     except
       // Ohne Bedingung oder Aktion hält der Haltepunkt trotzdem.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Debugger: Haltepunktbedingung fehlt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      end;
     end;
     Inc(Result);
   end;

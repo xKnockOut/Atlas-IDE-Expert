@@ -39,9 +39,9 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.MoveClass;
+  Atlas.Common.JsonRpc.Positions,
+  Atlas.Common.Lsp.MoveClass,
+  Atlas.Common.Lsp.Edits.TestSupport;
 
 const
   cBasisFile = 'C:\P\Basis.pas';
@@ -146,23 +146,6 @@ begin
     end;
 end;
 
-/// <summary>Wendet die Edits aus einem documentChanges-Eintrag auf AText an.</summary>
-function Apply(const AText: string; ADocument: TJSONObject): string;
-var
-  mItem: TJSONValue;
-  mEdits: TArray<TTextEdit>;
-  mRange: TJSONObject;
-begin
-  mEdits := nil;
-  for mItem in ADocument.GetValue('edits') as TJSONArray do
-  begin
-    mRange := TJSONObject(mItem).GetValue('range') as TJSONObject;
-    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
-      TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mItem).GetValue('newText').Value)];
-  end;
-  Result := TChangeSignature.ApplyEdits(AText, mEdits);
-end;
-
 { TLspMoveClassTests }
 
 procedure TLspMoveClassTests.Setup;
@@ -187,25 +170,25 @@ begin
     Assert.AreEqual('unit Stock;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'type'#10'  TStock = class'#10 +
       '    FItems: TItems;'#10'    function Text: string;'#10'  end;'#10#10'implementation'#10#10'uses'#10 +
       '  Helfer;'#10#10'function TStock.Text: string;'#10'begin'#10'  Log;'#10'  Result := Fmt(1);'#10'end;'#10#10 +
-      'end.'#10, Apply('', ADocument));
+      'end.'#10, ApplyDocument('', ADocument));
   end
   else if AUri = TDocumentUris.FromPath(cLagerFile) then
   begin
     Assert.AreEqual('unit Lager;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'implementation'#10#10'uses'#10 +
-      '  Helfer;'#10#10'end.'#10, Apply(cUnitLager, ADocument));
+      '  Helfer;'#10#10'end.'#10, ApplyDocument(cUnitLager, ADocument));
   end
   else if AUri = TDocumentUris.FromPath(cKasseFile) then
   begin
     Assert.AreEqual(StringReplace(StringReplace(cUnitKasse, 'uses Lager;', 'uses Lager, Stock;', []),
-      'Lager.TStock', 'Stock.TStock', []), Apply(cUnitKasse, ADocument));
+      'Lager.TStock', 'Stock.TStock', []), ApplyDocument(cUnitKasse, ADocument));
   end
   else if AUri = TDocumentUris.FromPath(cProgramFile) then
   begin
-    Assert.Contains(Apply(cTextProgram, ADocument), 'Stock in ''Stock.pas''');
+    Assert.Contains(ApplyDocument(cTextProgram, ADocument), 'Stock in ''Stock.pas''');
   end
   else if AUri = TDocumentUris.FromPath(cProjectFile) then
   begin
-    Assert.Contains(Apply(cTextProject, ADocument), '<DCCReference Include="Stock.pas"/>');
+    Assert.Contains(ApplyDocument(cTextProject, ADocument), '<DCCReference Include="Stock.pas"/>');
   end;
 end;
 

@@ -9,7 +9,7 @@ uses
   System.SysUtils,
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -83,12 +83,13 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Commands.ShortcutTips,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Sources,
-  Atlas.UI.Notifications.Window;
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Sources,
+  Atlas.UI.Notifications.Window,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Knopf „…“ rechts neben dem Pfad des Servers: Breite und Lücke zum Feld.</summary>
@@ -279,13 +280,13 @@ begin
   FServerStatus.Parent := mPanel;
   FServerStatus.Left := 0;
   FServerStatus.Top := 0;
-  FServerStatus.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FServerStatus, clGrayText);
   mPanel := AddPanel(cStatusLineHeight);
   FServerVersion := TLabel.Create(FPage);
   FServerVersion.Parent := mPanel;
   FServerVersion.Left := 0;
   FServerVersion.Top := 0;
-  FServerVersion.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FServerVersion, clGrayText);
   BindCheck('ReloadExternal', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsReload)));
   // Änderungen des Servers an nicht geöffneten Dateien (#397).
   BindCheck('OpenForEdits', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOpenForEdits)));

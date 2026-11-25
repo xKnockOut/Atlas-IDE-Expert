@@ -96,6 +96,10 @@ implementation
 uses
   System.Math;
 
+const
+  /// <summary>Spalten des Rasters der IDE-Willkommensseite im Auslieferungszustand.</summary>
+  cIdeDefaultColumns = 3;
+
 { TAtlasHostItem }
 
 class function TAtlasHostItem.Create(const APluginId: string; ARow, AColumn, ARowSpan,
@@ -425,7 +429,7 @@ end;
 class function TAtlasHostLayout.IdeDefault: TAtlasHostLayout;
 begin
   Result.Rows := 2;
-  Result.Columns := 3;
+  Result.Columns := cIdeDefaultColumns;
   Result.Items := [TAtlasHostItem.Create('Embarcadero.WelcomePagePlugin.GetItNewIn', 0, 0, 2, 1),
     TAtlasHostItem.Create('Embarcadero.WelcomePagePlugin.OpenRecent', 0, 1, 2, 1),
     TAtlasHostItem.Create('Embarcadero.WelcomePagePlugin.Learn', 0, 2, 2, 1)];

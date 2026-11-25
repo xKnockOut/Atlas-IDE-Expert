@@ -39,7 +39,6 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.IdeProject;
 
 const
@@ -176,7 +175,6 @@ var
   mDispatcher: TJsonRpcDispatcher;
   mContext: TIdeProjectContext;
   mChanged, mNamingChanged: Integer;
-  mNaming: TRuleNaming;
 begin
   mContext := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"","parameter":3}}');
   Assert.IsTrue(mContext.HasNaming[TNamingKind.Field]);
@@ -190,12 +188,7 @@ begin
   mContext := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"m","constant":"c"}}');
   Assert.IsTrue(mContext.HasConstantPrefix);
   Assert.AreEqual('c', mContext.ConstantPrefix);
-  mNaming := mContext.RuleNaming;
-  Assert.IsTrue(mNaming.Known[TRuleNamingKind.Field]);
-  Assert.AreEqual('F', mNaming.Prefixes[TRuleNamingKind.Field]);
-  Assert.AreEqual('m', mNaming.Prefixes[TRuleNamingKind.Local]);
-  Assert.AreEqual('c', mNaming.Prefixes[TRuleNamingKind.Constant]);
-  Assert.IsFalse(mNaming.Known[TRuleNamingKind.Parameter]);
+  Assert.AreEqual('m', mContext.Naming[TNamingKind.Local]);
   Assert.AreNotEqual(Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"c"}}').NamingKey,
     Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"k"}}').NamingKey);
   mStore := nil;

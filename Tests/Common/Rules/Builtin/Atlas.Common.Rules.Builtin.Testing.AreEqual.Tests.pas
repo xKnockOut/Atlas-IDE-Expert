@@ -35,7 +35,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Testing.AreEqual,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Testunit mit den Variablen AVars und den Anweisungen AStatements in einer Testmethode.</summary>
@@ -57,18 +57,8 @@ begin
 end;
 
 function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
 begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' | ';
-    end;
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message;
-  end;
+  Result := TRuleAssert.NumberedMessages(AFound, ' | ', 0);
 end;
 
 { TDUnitXAreEqualLengthTests }
@@ -85,7 +75,7 @@ begin
     Messages(mFound));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.IsTrue(mFound[0].Fixes[0].Safe);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(mSource, 'Length(mObjects)', 'Integer(Length(mObjects))', []), mFixed);
   Assert.AreEqual('', Messages(Findings(mFixed)));
 end;
@@ -118,7 +108,7 @@ begin
     'Assert.AreEqual vergleicht eine Ganzzahl mit 2 * (High(mZeilen) + 1) (NativeInt): Keine Überladung passt ' +
     'eindeutig, AreEqual<T> kann T nicht ableiten (wie E2532 unter Delphi). Integer(...) darum setzen.',
     Messages(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('Assert.AreEqual(Integer(Length(mZeilen) - 1), Integer(Length(mNeu)));', mFixed) > 0, mFixed);
   // Strings und Rechnungen nur mit Ganzzahlen bleiben still, ebenso unbekannte Seiten.
   Assert.AreEqual('', Messages(Findings(TestUnit('  mText: string;'#10'  mZeilen: TArray<string>;'#10 +

@@ -42,7 +42,7 @@ uses
   System.Types,
   System.DateUtils,
   Atlas.Core.Tracker.FlowMap,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.FlowFrame;
 
 function NowUtc: TDateTime;

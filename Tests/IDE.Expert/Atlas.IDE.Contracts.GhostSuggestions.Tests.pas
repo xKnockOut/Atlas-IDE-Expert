@@ -85,7 +85,10 @@ begin
   TAtlasGhostProviders.Add(mSecond);
   TAtlasGhostProviders.Add(mFirst);
   Assert.AreEqual(2, Integer(Length(TAtlasGhostProviders.List)), 'zweimal angemeldet zählt einmal');
-  Assert.AreSame(mSecond, TAtlasGhostProviders.List[0], 'erneutes Anmelden stellt hinten an');
+  // Vertrag (Add): Ein schon Angemeldeter bleibt an seiner Stelle; die alte Erwartung „hinten an“ hielt nur
+  // unter FPC, dessen AreSame für Interfaces nicht trennte.
+  Assert.AreSame(mFirst, TAtlasGhostProviders.List[0], 'erneutes Anmelden lässt die Stelle');
+  Assert.AreSame(mSecond, TAtlasGhostProviders.List[1]);
   TAtlasGhostProviders.Remove(mSecond);
   Assert.AreEqual(1, Integer(Length(TAtlasGhostProviders.List)));
   Assert.AreSame(mFirst, TAtlasGhostProviders.List[0]);

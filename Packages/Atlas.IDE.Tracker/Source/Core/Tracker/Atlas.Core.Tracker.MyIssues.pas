@@ -53,8 +53,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Reopened,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
   Atlas.Core.Tracker.Contract.MyIssues;
 
 type
@@ -278,10 +278,10 @@ uses
   System.Math,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.VersionControl.BranchNames,
+  Atlas.VersionControl.Repository.BranchNames,
   Atlas.Core.Tracker.Naming,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json;
 
 const
   cStartNames: array[TAtlasIssueStart] of string = ('branch', 'remember');

@@ -13,7 +13,6 @@ uses
 
 type
   [TestFixture]
-  [Category('Atlas.IDE.VersionControl')]
   TAtlasVcsLineHistoryTests = class
   public
     [Test]
@@ -49,14 +48,15 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Internals.Text,
-  Atlas.Core.VersionControl.Internals.LineTrace,
-  Atlas.Core.VersionControl.Internals.GitParser,
-  Atlas.Core.VersionControl.Internals.SvnParser,
-  Atlas.Core.VersionControl.Providers.Git,
-  Atlas.Core.VersionControl.Providers.Svn,
-  Atlas.Core.VersionControl.Providers.Null;
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Internals.Text,
+  Atlas.VersionControl.Repository.Internals.LineTrace,
+  Atlas.VersionControl.Repository.Internals.GitParser,
+  Atlas.VersionControl.Repository.Internals.SvnParser,
+  Atlas.VersionControl.Repository.Providers.Git,
+  Atlas.VersionControl.Repository.Providers.Svn,
+  Atlas.VersionControl.Repository.Null,
+  Atlas.Tests.Files;
 
 const
   cSep = '------------------------------------------------------------------------';
@@ -131,14 +131,7 @@ type
 
 function Root: string;
 begin
-  if PathDelim = '\' then
-  begin
-    Result := 'C:\Projekte\Kunde';
-  end
-  else
-  begin
-    Result := '/projekte/kunde';
-  end;
+  Result := TTestData.ProjectRoot('Kunde');
 end;
 
 function Under(const ARelative: string): string;

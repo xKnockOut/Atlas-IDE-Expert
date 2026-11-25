@@ -66,7 +66,7 @@ implementation
 uses
   Vcl.Dialogs,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
@@ -74,7 +74,7 @@ uses
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
   Atlas.IDE.Tracker.IssueLookups,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.Core.Tracker.Contract.MyIssues;
 
 { TAtlasIdeIssueCommands }

@@ -193,17 +193,18 @@ begin
 end;
 
 procedure WriteKey(ARegistry: TRegistry; const APath: string; AKey: TAtlasRegKey);
+const
+  cKeyNotWritable = 'Schlüssel %s nicht beschreibbar';
 var
   mValue: TAtlasRegValue;
   mBytes: TBytes;
   mText: string;
   mQWord: UInt64;
-  mLine: string;
   mChild: TAtlasRegKey;
 begin
   if not ARegistry.OpenKey('\' + APath, True) then
   begin
-    raise ERegistryException.CreateFmt('Schlüssel %s nicht beschreibbar', [APath]);
+    raise ERegistryException.CreateFmt(cKeyNotWritable, [APath]);
   end;
   try
     for mValue in AKey.Values do
@@ -221,12 +222,12 @@ begin
           end;
         TAtlasRegKind.MultiText:
           begin
-            mText := '';
-            for mLine in mValue.Lines do
+            // Jede Zeile mit #0 abgeschlossen, dahinter ein weiteres #0.
+            mText := string.Join(#0, mValue.Lines) + #0;
+            if Length(mValue.Lines) > 0 then
             begin
-              mText := mText + mLine + #0;
+              mText := mText + #0;
             end;
-            mText := mText + #0;
             RegSetValueEx(ARegistry.CurrentKey, PChar(mValue.Name), 0, REG_MULTI_SZ, PChar(mText),
               Length(mText) * SizeOf(Char));
           end;

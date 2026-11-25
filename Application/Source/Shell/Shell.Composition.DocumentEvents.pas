@@ -8,8 +8,8 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Shell.Workspace,
-  Shell.CrashCases,
+  Core.Workspace,
+  Core.CrashCases,
   Shell.Composition.Core,
   Shell.Composition.Compile,
   Shell.Composition.FileChanges;
@@ -18,7 +18,7 @@ type
   /// <summary>Der Kern; besteht, sobald Ereignisse kommen.</summary>
   TShellDocumentCoreFunc = reference to function: TShellCore;
   /// <summary>Absturzfälle; nil nach dem Freigeben.</summary>
-  TShellDocumentCrashCasesFunc = reference to function: TShellCrashCases;
+  TShellDocumentCrashCasesFunc = reference to function: TCoreCrashCases;
   /// <summary>Compilerläufe (#40).</summary>
   TShellDocumentCompileFunc = reference to function: TShellCompileHost;
   /// <summary>Dateiänderungen und Tipp-Pause; nil, solange sie noch nicht bestehen.</summary>
@@ -41,7 +41,7 @@ type
     class procedure IndexEvent(const AServices: TShellDocumentEventServices; AKind: TDocumentEventKind;
       const AFileName, AText: string); static;
     class procedure SourceSaved(const AServices: TShellDocumentEventServices; const AFileName: string); static;
-    class function LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TShellWorkspace; static;
+    class function LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TCoreWorkspace; static;
   public
     /// <summary>Meldet am Dokumentspeicher einen Hörer an, der AServices festhält.</summary>
     class procedure Attach(const ADocuments: IDocumentStore; const AServices: TShellDocumentEventServices); static;
@@ -66,7 +66,7 @@ class procedure TShellDocumentEvents.IndexEvent(const AServices: TShellDocumentE
   AKind: TDocumentEventKind; const AFileName, AText: string);
 var
   mFileChanges: TShellFileChanges;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
   mFileChanges := AServices.FileChanges();
@@ -95,7 +95,7 @@ class procedure TShellDocumentEvents.SourceSaved(const AServices: TShellDocument
   const AFileName: string);
 var
   mCore: TShellCore;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mOnSave: Boolean;
   mChoice: TCompilerBackendChoice;
 begin
@@ -119,7 +119,7 @@ begin
   end;
 end;
 
-class function TShellDocumentEvents.LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TShellWorkspace;
+class function TShellDocumentEvents.LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TCoreWorkspace;
 begin
   System.TMonitor.Enter(ACore.Workspaces.Lock);
   try
@@ -145,7 +145,7 @@ end;
 class procedure TShellDocumentEvents.Handle(const AServices: TShellDocumentEventServices; AKind: TDocumentEventKind;
   const ADocument: ITextDocument);
 var
-  mCrashCases: TShellCrashCases;
+  mCrashCases: TCoreCrashCases;
   mFileName: string;
 begin
   // Sicherheitsnetz (#1355): Ein geänderter Inhalt beendet das Überspringen für diese Datei.

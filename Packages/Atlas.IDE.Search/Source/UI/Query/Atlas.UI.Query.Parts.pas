@@ -31,17 +31,24 @@ type
 
   /// <summary>Ereignisse des Fensters; die IDE-Schicht setzt sie, die Teile rufen sie. Gehört dem Frame.</summary>
   TAtlasCodeQueryEvents = class(TComponent)
+  private
+    FOnRun: TProc<string>;
+    FOnCancel: TProc;
+    FOnSaveRule: TProc<string>;
+    FOnCopied: TProc<Integer>;
+    FOnOpenLocation: TProc<string, Integer, Integer>;
+    FOnSymbols: TAtlasCodeQuerySymbols;
   public
     /// <summary>Text der Eingabezeile.</summary>
-    OnRun: TProc<string>;
-    OnCancel: TProc;
+    property OnRun: TProc<string> read FOnRun write FOnRun;
+    property OnCancel: TProc read FOnCancel write FOnCancel;
     /// <summary>„Als Regel speichern …“ mit dem Text der Eingabezeile.</summary>
-    OnSaveRule: TProc<string>;
+    property OnSaveRule: TProc<string> read FOnSaveRule write FOnSaveRule;
     /// <summary>CSV liegt in der Zwischenablage; Anzahl der Zeilen.</summary>
-    OnCopied: TProc<Integer>;
+    property OnCopied: TProc<Integer> read FOnCopied write FOnCopied;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
-    OnOpenLocation: TProc<string, Integer, Integer>;
-    OnSymbols: TAtlasCodeQuerySymbols;
+    property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
+    property OnSymbols: TAtlasCodeQuerySymbols read FOnSymbols write FOnSymbols;
   end;
 
   /// <summary>Obere Leiste: Auswahl gespeicherter Abfragen und die Knöpfe; die Klicks setzt der Frame.</summary>
@@ -161,7 +168,7 @@ uses
   System.Math,
   Vcl.Forms,
   Atlas.UI.Search.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   /// <summary>So viele Zeilen hat die Vorschlagsliste höchstens sichtbar.</summary>
@@ -173,6 +180,17 @@ const
   cMaxSymbols = 30;
   /// <summary>Symbolsuche erst ab so vielen getippten Zeichen.</summary>
   cSymbolMinChars = 2;
+  // Leiste: Breite der Liste gespeicherter Abfragen und der Knöpfe (logische Pixel).
+  cSavedWidth = 220;
+  cRunWidth = 90;
+  cCancelWidth = 90;
+  cSaveRuleWidth = 140;
+  cCopyCsvWidth = 120;
+  cHelpWidth = 70;
+  // Ergebnisliste: Breite der ersten Spalte, der übrigen Spalten und der Spalte Datei (logische Pixel).
+  cFirstColumnWidth = 220;
+  cColumnWidth = 90;
+  cFileColumnWidth = 320;
 
 function CanFill(AControl: TWinControl): Boolean;
 begin
@@ -197,15 +215,15 @@ begin
   FSaved.Parent := Self;
   FSaved.AlignWithMargins := True;
   FSaved.Style := csDropDownList;
-  FSaved.Width := FSaved.ScaleValue(220);
+  FSaved.Width := FSaved.ScaleValue(cSavedWidth);
   FSaved.Hint := TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySavedHint);
   FSaved.ShowHint := True;
 
-  FRun := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRun), 90);
-  FCancel := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCancel), 90);
-  FSaveRule := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySaveRule), 140);
-  FCopyCsv := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCopyCsv), 120);
-  FHelpButton := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryHelp), 70);
+  FRun := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRun), cRunWidth);
+  FCancel := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCancel), cCancelWidth);
+  FSaveRule := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySaveRule), cSaveRuleWidth);
+  FCopyCsv := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCopyCsv), cCopyCsvWidth);
+  FHelpButton := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryHelp), cHelpWidth);
 end;
 
 function TAtlasQueryToolbar.NewButton(const ACaption: string; AWidth: Integer): TButton;
@@ -588,15 +606,15 @@ begin
     begin
       mColumn := Columns.Add;
       mColumn.Caption := FAnswer.Columns[mIndex];
-      mColumn.Width := MulDiv(90, CurrentPPI, 96);
+      mColumn.Width := ScaleValue(cColumnWidth);
       if mIndex = 0 then
       begin
-        mColumn.Width := MulDiv(220, CurrentPPI, 96);
+        mColumn.Width := ScaleValue(cFirstColumnWidth);
       end;
     end;
     mColumn := Columns.Add;
     mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryColumnFile);
-    mColumn.Width := MulDiv(320, CurrentPPI, 96);
+    mColumn.Width := ScaleValue(cFileColumnWidth);
   finally
     Columns.EndUpdate;
   end;

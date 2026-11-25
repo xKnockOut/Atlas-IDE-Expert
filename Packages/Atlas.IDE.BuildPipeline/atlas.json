@@ -11,7 +11,6 @@
     "loop-runs-at-most-once": {
       "allowFirstElement": true
     },
-    "catch-all-without-raise": "off",
     "narrowing-assignment": "off",
     "method-order": "off",
     "architecture-role-import": {
@@ -19,10 +18,21 @@
       "exclude": [
         "Tests/**"
       ],
+      "hostedFeatures": [
+        "Replay",
+        "Monitor",
+        "Update"
+      ],
       "prefixes": [
         "Atlas.Text",
+        "Atlas.WinBase",
         "Atlas.Common",
         "Atlas.Windows",
+        "Atlas.Linux",
+        "Atlas.Plugin",
+        "Atlas.Vcl",
+        "Atlas.ToolsApi",
+        "Atlas.VersionControl",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"
@@ -31,20 +41,23 @@
         "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
-        "Atlas.Core.Lsp.Contract -> Atlas.Text.Json",
-        "Atlas.Core.Projects.Contract -> Atlas.Text.Json",
-        "Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.Core.*",
-        "Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.IDE.Undo.Adapters.*",
+        "Atlas.Plugin.Lsp.Contract -> Atlas.Text.Json",
+        "Atlas.Plugin.Projects.Contract -> Atlas.Text.Json",
+        "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Plugin.Files.Providers.FolderWatcher",
+        "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.Plugin.Lsp.Providers.ServerProcess",
+        "Atlas.IDE.CodeInsight.Composition.HostAdapters -> Atlas.IDE.Undo.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.IdeAdapters -> Atlas.IDE.*.Adapters.*",
         "Atlas.IDE.CodeInsight.Composition.UiAdapters -> Atlas.UI.*.Adapters.*",
-        "Atlas.IDE.Debug.Composition -> Atlas.Core.*",
-        "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Assistants.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Assistants.Composition.Adapters -> Atlas.Core.*",
-        "Atlas.IDE.Tests.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Tracker.Composition -> Atlas.Core.*",
-        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.*",
-        "Atlas.IDE.Contracts.VersionControl -> Atlas.Core.VersionControl.Providers.Null"
+        "Atlas.IDE.CodeInsight.Composition.ProblemsAdapters -> Atlas.IDE.Problems.Adapters.*",
+        "Atlas.IDE.Assistants.Composition.HostAdapters -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.Debug.Composition -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.Tests.Composition -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*",
+        "Atlas.IDE.Tests.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.VersionControl.Repository.Composition"
       ]
     },
     "architecture-contract-content": {
@@ -52,10 +65,21 @@
       "exclude": [
         "Tests/**"
       ],
+      "hostedFeatures": [
+        "Replay",
+        "Monitor",
+        "Update"
+      ],
       "prefixes": [
         "Atlas.Text",
+        "Atlas.WinBase",
         "Atlas.Common",
         "Atlas.Windows",
+        "Atlas.Linux",
+        "Atlas.Plugin",
+        "Atlas.Vcl",
+        "Atlas.ToolsApi",
+        "Atlas.VersionControl",
         "Atlas.Core",
         "Atlas.UI",
         "Atlas.IDE"
@@ -129,7 +153,7 @@
           "name": "Winapi.Windows.GetTickCount",
           "message": "32-Bit-Zähler läuft nach 49,7 Tagen über, TAtlasTicks bzw. TAtlasDeadline verwenden",
           "units": [
-            "!Atlas.Core.Diagnostics.UserIdle"
+            "!Atlas.Plugin.Diagnostics.UserIdle"
           ]
         },
         {
@@ -143,6 +167,41 @@
             "!Atlas.WinBase.Process"
           ]
         }
+      ]
+    },
+    "catch-all-without-raise": {
+      "severity": "warning",
+      "exclude": [
+        "Tests/**",
+        "Tools/**"
+      ],
+      "allowExceptionUse": true,
+      "reporters": [
+        "TAtlasGuard.*",
+        "TReporting.Failed",
+        "TAtlasDataFile.ReportNotWritten",
+        "TAtlasIdeHost.Message",
+        "TAtlasIdeHost.Warning",
+        "TAtlasIdeHost.Log",
+        "Say",
+        "*.Say",
+        "*Logger.Error",
+        "*Logger.Warning",
+        "TLinterOutput.Error"
+      ]
+    },
+    "ota-entry-without-guard": {
+      "guards": [
+        "TAtlasGuard.Run(TAtlasFeature.Menu, ",
+        "TAtlasGuard.RunProvider",
+        "TAtlasGuard.Wrap"
+      ]
+    },
+    "register-does-work": {
+      "entries": [
+        "Register",
+        "RegisterModule",
+        "*.RegisterModule"
       ]
     }
   }

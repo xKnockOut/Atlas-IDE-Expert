@@ -80,6 +80,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.TextChanges,
   System.SysUtils,
   System.StrUtils,
   System.JSON,
@@ -88,7 +89,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Rename;
+  Atlas.Common.Lsp.Rename,
+  Atlas.Tests.SourceText;
 
 const
   cBasisFile = 'C:\P\Basis.pas';
@@ -209,28 +211,6 @@ const
     '  end'#10 +
     'end';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, I: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  mLine := 0;
-  mLineStart := 1;
-  for I := 1 to mIndex - 1 do
-  begin
-    if AText[I] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := I + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 function Count(const AText, APart: string): Integer;
 var
   mOffset: Integer;
@@ -298,7 +278,7 @@ begin
   mResolver := TNameResolver.Create(FIndex);
   mTree := TPascalParser.Parse(mText);
   try
-    Result := TLspChangeSignature.Prepare(SourceAt(mResolver, mTree, AFileName, PositionOf(mText, AMarker)));
+    Result := TLspChangeSignature.Prepare(SourceAt(mResolver, mTree, AFileName, TTestSource.PositionOf(mText, AMarker)));
   finally
     mTree.Free;
     mResolver.Free;
@@ -326,7 +306,7 @@ begin
   mResolver := TNameResolver.Create(FIndex);
   mTree := TPascalParser.Parse(mText);
   try
-    Result := TLspChangeSignature.Execute(SourceAt(mResolver, mTree, AFileName, PositionOf(mText, AMarker)), mRequest,
+    Result := TLspChangeSignature.Execute(SourceAt(mResolver, mTree, AFileName, TTestSource.PositionOf(mText, AMarker)), mRequest,
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, FReadOnly);
@@ -362,7 +342,7 @@ begin
       mEdits := mEdits + [TTextEdit.Create(mEdit.Range, mEdit.NewText)];
     end;
   end;
-  Result := TChangeSignature.ApplyEdits(TextOf(AFileName), mEdits);
+  Result := TTextChanges.Apply(TextOf(AFileName), mEdits);
 end;
 
 procedure TLspChangeSignatureTests.AssertParses(const AOutcome: TChangeSignatureOutcome);
@@ -668,7 +648,7 @@ begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
     mActions := TLspChangeSignature.Actions(True, mResolver, mTree, cHauptFile, 'file:///C:/P/Haupt.pas',
-      PositionOf(cUnitHaupt, 'Teile(6'));
+      TTestSource.PositionOf(cUnitHaupt, 'Teile(6'));
     Assert.AreEqual(1, Integer(Length(mActions)));
     try
       Assert.AreEqual(TLspChangeSignature.cClientCommand, mActions[0].GetValue<string>('command.command'));
@@ -679,10 +659,10 @@ begin
       end;
     end;
     Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(False, mResolver, mTree, cHauptFile, 'x',
-      PositionOf(cUnitHaupt, 'Teile(6')))));
+      TTestSource.PositionOf(cUnitHaupt, 'Teile(6')))));
     // Auf einer Variablen gibt es die Aktion nicht.
     Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(True, mResolver, mTree, cHauptFile, 'x',
-      PositionOf(cUnitHaupt, 'B: TBasis')))));
+      TTestSource.PositionOf(cUnitHaupt, 'B: TBasis')))));
   finally
     mTree.Free;
     mResolver.Free;

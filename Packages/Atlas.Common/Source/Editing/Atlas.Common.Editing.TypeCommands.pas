@@ -56,9 +56,11 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.ClassMembers,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -616,8 +618,8 @@ procedure AddMissingUses(ASource: TCommandSource; const AContext: TSlashContext;
 var
   mUsesEdit: TTextEdit;
 begin
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ASource.Tree.Tokens), AUnitName, AContext.Namespaces) and
-    TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnitName, ASource.LineBreak, mUsesEdit) then
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(ASource.Tree.Tokens), AUnitName, AContext.Namespaces) and
+    TPascalUsesEdits.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnitName, ASource.LineBreak, mUsesEdit) then
   begin
     AEdits := AEdits + [mUsesEdit];
   end;
@@ -909,28 +911,18 @@ begin
   Result := False;
 end;
 
-/// <summary>Letztes Token ab AIndex rückwärts, das weder Kommentar noch Direktive ist; -1 ohne.</summary>
-function SolidBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
 /// <summary>Steht das Token AIndex allein oder hinter "Self." (nicht hinter einem anderen Ausdruck mit Punkt)?
 /// </summary>
 function IsOwnAccess(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
   mBefore: Integer;
 begin
-  mBefore := SolidBefore(ATokens, AIndex - 1);
+  mBefore := PreviousCode(ATokens, AIndex);
   if (mBefore < 0) or not ATokens[mBefore].IsSymbol('.') then
   begin
     Exit(True);
   end;
-  mBefore := SolidBefore(ATokens, mBefore - 1);
+  mBefore := PreviousCode(ATokens, mBefore);
   Result := (mBefore >= 0) and SameText(ATokens[mBefore].Text, 'Self');
 end;
 
@@ -1282,41 +1274,31 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterTypeCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('enum', cTexts[TTypeCommandsText.CreateAnEnumerationTypeWith].Text,
-    cTexts[TTypeCommandsText.EnumTColorRedGreenBlue].Text,
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('enum', cTexts[TTypeCommandsText.CreateAnEnumerationTypeWith].Text,
+      cTexts[TTypeCommandsText.EnumTColorRedGreenBlue].Text, function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteEnum(AContext, True, AEdits, AReason);
     end));
-  ARegister(Command('enum!', cTexts[TTypeCommandsText.CreateAnEnumerationTypeWithout].Text,
-    cTexts[TTypeCommandsText.EnumTColorRedGreen].Text,
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('enum!', cTexts[TTypeCommandsText.CreateAnEnumerationTypeWithout].Text,
+      cTexts[TTypeCommandsText.EnumTColorRedGreen].Text, function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteEnum(AContext, False, AEdits, AReason);
     end));
-  ARegister(Command('helper', cTexts[TTypeCommandsText.CreateARecordOrClass].Text,
-    cTexts[TTypeCommandsText.HelperTColor].Text, ExecuteHelper));
-  ARegister(Command('singleton', cTexts[TTypeCommandsText.MakeTheClassASingleton].Text, '/singleton',
-    ExecuteSingleton));
-  ARegister(Command('encapsulate', cTexts[TTypeCommandsText.ConvertAFieldIntoA].Text, '/encapsulate FName',
-    ExecuteEncapsulate));
-  ARegister(Command('assign', cTexts[TTypeCommandsText.CreateAssignForAllFields].Text, '/assign', ExecuteAssign));
-  ARegister(Command('json', cTexts[TTypeCommandsText.CreateToJsonAndFromJson].Text, '/json', ExecuteJson));
-  ARegister(Command('exception', cTexts[TTypeCommandsText.CreateAnExceptionClass].Text,
-    cTexts[TTypeCommandsText.ExceptionEImportError].Text,
-    ExecuteException));
-  ARegister(Command('thread', cTexts[TTypeCommandsText.CreateATThreadDescendantWith].Text, '/thread TWorker',
-    ExecuteThread));
+  ARegister(TSlashCommand.Create('helper', cTexts[TTypeCommandsText.CreateARecordOrClass].Text,
+      cTexts[TTypeCommandsText.HelperTColor].Text, ExecuteHelper));
+  ARegister(TSlashCommand.Create('singleton', cTexts[TTypeCommandsText.MakeTheClassASingleton].Text, '/singleton',
+      ExecuteSingleton));
+  ARegister(TSlashCommand.Create('encapsulate', cTexts[TTypeCommandsText.ConvertAFieldIntoA].Text,
+      '/encapsulate FName', ExecuteEncapsulate));
+  ARegister(TSlashCommand.Create('assign', cTexts[TTypeCommandsText.CreateAssignForAllFields].Text, '/assign',
+      ExecuteAssign));
+  ARegister(TSlashCommand.Create('json', cTexts[TTypeCommandsText.CreateToJsonAndFromJson].Text, '/json', ExecuteJson));
+  ARegister(TSlashCommand.Create('exception', cTexts[TTypeCommandsText.CreateAnExceptionClass].Text,
+      cTexts[TTypeCommandsText.ExceptionEImportError].Text, ExecuteException));
+  ARegister(TSlashCommand.Create('thread', cTexts[TTypeCommandsText.CreateATThreadDescendantWith].Text,
+      '/thread TWorker', ExecuteThread));
 end;
 
 initialization

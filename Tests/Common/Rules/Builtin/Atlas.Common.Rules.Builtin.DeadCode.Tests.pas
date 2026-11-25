@@ -94,18 +94,15 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.ProjectFiles,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Rules.Builtin.DeadCode;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Rules.Builtin.DeadCode,
+  Atlas.Common.Configuration.TestSupport,
+  Atlas.Tests.Files;
 
 const
   cAppFile = 'C:\P\App.dpr';
 
 type
-  TTestFile = record
-    Name: string;
-    Text: string;
-  end;
-
   TScenario = record
     Files: TArray<TTestFile>;
     Projects: TArray<TRuleProject>;
@@ -123,35 +120,13 @@ type
 { TScenario }
 
 procedure TScenario.Put(const AName, AText: string);
-var
-  mIndex: Integer;
-  mEntry: TTestFile;
 begin
-  for mIndex := 0 to High(Files) do
-  begin
-    if SameText(Files[mIndex].Name, AName) then
-    begin
-      Files[mIndex].Text := AText;
-      Exit;
-    end;
-  end;
-  mEntry.Name := AName;
-  mEntry.Text := AText;
-  Files := Files + [mEntry];
+  TTestFiles.Put(Files, AName, AText);
 end;
 
 function TScenario.Text(const AName: string): string;
-var
-  mEntry: TTestFile;
 begin
-  Result := '';
-  for mEntry in Files do
-  begin
-    if SameText(mEntry.Name, AName) then
-    begin
-      Result := mEntry.Text;
-    end;
-  end;
+  Result := TTestFiles.Text(Files, AName);
 end;
 
 function FileOf(const AUnit: string): string;
@@ -212,21 +187,6 @@ var
   // Dauer der letzten Prüfung in Run ohne Aufbau von Index und Graph (Zeitmessung #896).
   LastCheckMs: Int64;
 
-/// <summary>Vorgaben oder die atlas.json des Szenarios.</summary>
-function ScenarioSettings(const AConfig: string): TServerSettings;
-var
-  mIssues: TArray<TConfigurationIssue>;
-begin
-  if AConfig = '' then
-  begin
-    Result := TServerSettings.Default;
-  end
-  else
-  begin
-    Result := TConfigurationParser.Parse(AConfig, mIssues);
-  end;
-end;
-
 /// <summary>Index über die Units des Szenarios; ATexts nimmt alle Dateien nach Namen auf.</summary>
 function IndexScenario(const AScenario: TScenario; const ATexts: TDictionary<string, string>): ISymbolIndex;
 var
@@ -278,7 +238,7 @@ begin
   mTexts := TDictionary<string, string>.Create;
   try
     mIndex := IndexScenario(AScenario, mTexts);
-    mSettings := ScenarioSettings(AScenario.Config);
+    mSettings := SettingsOf(AScenario.Config);
     mTree := TSyntaxTreeCache.Parse(AScenario.Text(ACheck));
     try
       mContext := Default(TRuleContext);
@@ -697,7 +657,7 @@ begin
   Assert.AreEqual('Zirkuläre Unit-Referenz: A → A (wie F2092)', mFound.Message);
   Assert.AreEqual<TRuleSeverity>(TRuleSeverity.Error, mFound.Severity);
   Assert.AreEqual('Eintrag entfernen'#10, FixTitles(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mData.Text(FileOf('A')), mFound.Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mData.Text(FileOf('A')), mFound.Fixes[0].Edits);
   Assert.AreEqual(0, Pos('uses', mFixed), mFixed);
   // Auch mit Projekten nur eine Meldung, nicht noch eine über den Graphen.
   mData.NoProjects := False;
@@ -735,7 +695,7 @@ begin
   mData.Live := True;
   mFound := CycleFinding(Run(mData, FileOf('C')));
   Assert.AreEqual('In implementation-uses verschieben'#10, FixTitles(mFound));
-  mFixed := TChangeSignature.ApplyEdits(mData.Text(FileOf('C')), mFound.Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mData.Text(FileOf('C')), mFound.Fixes[0].Edits);
   Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  B,'#10'  A;'#10'end.', mFixed);
   // Die Korrektur beseitigt die Meldung.
   mData.Put(FileOf('C'), mFixed);
@@ -753,7 +713,7 @@ begin
   mData.Config := '{"sortUses": true}';
   mFound := CycleFinding(Run(mData, FileOf('C')));
   Assert.AreEqual('unit C;'#10'interface'#10#10'implementation'#10'uses'#10'  A,'#10'  X;'#10'end.',
-    TChangeSignature.ApplyEdits(mData.Text(FileOf('C')), mFound.Fixes[0].Edits));
+    TTextChanges.Apply(mData.Text(FileOf('C')), mFound.Fixes[0].Edits));
   Assert.AreEqual(1, Integer(Length(mFound.Fixes[0].Edits)), 'eine kleinste Ersetzung');
 end;
 
@@ -823,9 +783,8 @@ begin
   mWatch := TStopwatch.StartNew;
   Assert.AreEqual(1, Integer(Length(Run(mData, FileOf('E1')))));
   mWatch.Stop;
-  System.Writeln(Format('uses-cycle live: Prüfung bei %d Units in %d ms (mit Aufbau von Index und Graph %d ms)',
-    [cUnitCount, LastCheckMs, mWatch.ElapsedMilliseconds]));
-  Assert.IsTrue(LastCheckMs < 200, 'zu langsam für die Prüfung beim Tippen');
+  Assert.IsTrue(LastCheckMs < 200, Format('zu langsam für die Prüfung beim Tippen: %d Units in %d ms (mit Aufbau ' +
+    'von Index und Graph %d ms)', [cUnitCount, LastCheckMs, mWatch.ElapsedMilliseconds]));
 end;
 
 procedure TDeadCodeTests.ParserReadsDeadCode;
@@ -846,27 +805,6 @@ begin
     '"unused-unit": {"projectKinds": "package"}}}', mIssues);
   Assert.AreEqual(3, Integer(Length(mIssues)));
   mIssues := nil;
-end;
-
-function ReferenceFolder: string;
-var
-  mDirectory: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
-    if TDirectory.Exists(Result) then
-    begin
-      Exit;
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  Result := '';
 end;
 
 function ReadSource(const AFileName: string): string;
@@ -957,7 +895,7 @@ var
   mData: TScenario;
   mSources: TArray<string>;
 begin
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
@@ -1004,8 +942,8 @@ begin
   mWatch := TStopwatch.StartNew;
   Assert.AreEqual(1, Integer(Length(Run(mData, FileOf('E1')))));
   mWatch.Stop;
-  System.Writeln(Format('uses-cycle: Prüfung bei %d Units in %d ms', [cUnitCount, mWatch.ElapsedMilliseconds]));
-  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, 'zu langsam');
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, Format('zu langsam: %d Units in %d ms', [cUnitCount,
+    mWatch.ElapsedMilliseconds]));
 end;
 
 initialization

@@ -32,7 +32,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.WorkspaceEdits;
+  Atlas.Plugin.Lsp.WorkspaceEdits;
 
 type
   {$SCOPEDENUMS ON}
@@ -169,6 +169,8 @@ uses
 
 const
   cSwitchSources: array[TAtlasSwitchSource] of string = ('default', 'project', 'directive', 'include');
+  // Zeichen darüber zählen als Buchstaben (Unicode-Bezeichner).
+  cLastAscii = 127;
 
 function SourceOf(const AText: string): TAtlasSwitchSource;
 var
@@ -217,7 +219,7 @@ end;
 
 function IsIdentifierChar(AChar: Char): Boolean;
 begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
+  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > cLastAscii);
 end;
 
 type

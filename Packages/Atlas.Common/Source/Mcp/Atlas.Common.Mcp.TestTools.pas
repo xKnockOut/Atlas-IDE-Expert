@@ -18,6 +18,9 @@
 // - Ergebnis: XML-Bericht des DUnitX-Loggers (--xmlfile, Atlas.Text.TestResults);
 //   fehlgeschlagene Tests mit erwartetem und tatsächlichem Wert, Datei und
 //   Zeile des Methodenkopfs (1-basiert).
+// - Test im Debugger (debug_start mit test, ohne project, #2895): FindTest sucht
+//   das Testprojekt, in dem die Fixture steht, und macht aus Fixture.Methode
+//   den vollen Namen Unit.Fixture.Methode für --run.
 
 interface
 
@@ -65,6 +68,12 @@ type
     /// passt auf vollen Pfad, Dateinamen oder Namen ohne Endung. False mit Grund.</summary>
     class function PickProject(const ACandidates: TArray<string>; const AWanted: string;
       const AIsTestProject: TFunc<string, Boolean>; out AProject, AReason: string): Boolean; static;
+    /// <summary>Testprojekt zu ATest (Unit.Fixture.Methode, Fixture.Methode oder Fixture) unter AProjects
+    /// (ausgewertete Testprojekte, in dieser Reihenfolge): das erste, das eine Unit mit der Fixture (und der
+    /// Methode) enthält. AFullName: Unit.Fixture[.Methode] mit den Namen wie deklariert. False ohne Treffer.
+    /// </summary>
+    class function FindTest(const ATest: string; const AProjects: TArray<TProjectInfo>;
+      const AReadLines: TMcpReadLines; out AProject, AFullName: string): Boolean; static;
     /// <summary>Wert einer Eigenschaft des ausgewerteten Projekts; '' ohne.</summary>
     class function PropertyOf(const AInfo: TProjectInfo; const AName: string): string; static;
     /// <summary>Test-EXE des ausgewerteten Projekts (Konfiguration und Plattform aus AInfo).</summary>
@@ -235,6 +244,101 @@ begin
   else
   begin
     AReason := cTexts[TTestToolsText.SeveralTestProjectsSpecifyProject].Fmt([ProjectNames(mFound)]);
+  end;
+end;
+
+/// <summary>Voller Name des Tests, wenn AUnit die Fixture AFixture (und die Methode AMethod) deklariert; sonst ''.
+/// </summary>
+function TestIn(const AUnit: TDUnitXUnit; const AFixture, AMethod: string): string;
+var
+  mFixture, mTest: Integer;
+begin
+  Result := '';
+  if not AUnit.Find(AFixture, AMethod, mFixture, mTest) or ((AMethod <> '') and (mTest < 0)) then
+  begin
+    Exit;
+  end;
+  Result := AUnit.UnitName + '.' + AUnit.Fixtures[mFixture].Name;
+  if mTest >= 0 then
+  begin
+    Result := Result + '.' + AUnit.Fixtures[mFixture].Tests[mTest].Method;
+  end;
+end;
+
+/// <summary>Enthält eine der Zeilen ANeedle (ohne Rücksicht auf Groß-/Kleinschreibung)? Spart das Zerlegen fremder
+/// Units.</summary>
+function Mentions(const ALines: TArray<string>; const ANeedle: string): Boolean;
+var
+  mLine: string;
+begin
+  for mLine in ALines do
+  begin
+    if ContainsText(mLine, ANeedle) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Sucht Fixture AFixture (Methode AMethod, '' = keine) in den Units von AProjects; AUnitName '' = jede
+/// Unit.</summary>
+function FindFixture(const AProjects: TArray<TProjectInfo>; const AUnitName, AFixture, AMethod: string;
+  const AReadLines: TMcpReadLines; out AProject, AFullName: string): Boolean;
+var
+  mProject: TProjectInfo;
+  mUnit: TProjectUnit;
+  mLines: TArray<string>;
+  mScanned: TDUnitXUnit;
+begin
+  AProject := '';
+  AFullName := '';
+  for mProject in AProjects do
+  begin
+    for mUnit in mProject.Units do
+    begin
+      if ((AUnitName <> '') and not SameText(mUnit.Name, AUnitName)) or not AReadLines(mUnit.FileName, mLines) or
+        not Mentions(mLines, AFixture) then
+      begin
+        Continue;
+      end;
+      mScanned := TDUnitXSource.Scan(mLines);
+      if mScanned.UnitName = '' then
+      begin
+        mScanned.UnitName := mUnit.Name;
+      end;
+      AFullName := TestIn(mScanned, AFixture, AMethod);
+      if AFullName <> '' then
+      begin
+        AProject := mProject.FileName;
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+class function TMcpTestTools.FindTest(const ATest: string; const AProjects: TArray<TProjectInfo>;
+  const AReadLines: TMcpReadLines; out AProject, AFullName: string): Boolean;
+var
+  mParts: TArray<string>;
+  mLast: Integer;
+begin
+  AProject := '';
+  AFullName := '';
+  mParts := Trim(ATest).Split(['.']);
+  mLast := High(mParts);
+  if (mLast < 0) or (mParts[mLast] = '') then
+  begin
+    Exit(False);
+  end;
+  // Erst „…Fixture.Methode“, dann „…Fixture“ (der letzte Teil ist die Fixture).
+  Result := (mLast >= 1) and FindFixture(AProjects, string.Join('.', mParts, 0, mLast - 1), mParts[mLast - 1],
+    mParts[mLast], AReadLines, AProject, AFullName);
+  if not Result then
+  begin
+    Result := FindFixture(AProjects, string.Join('.', mParts, 0, mLast), mParts[mLast], '', AReadLines, AProject,
+      AFullName);
   end;
 end;
 

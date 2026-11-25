@@ -9,8 +9,10 @@ sich ohne Urteil lösen lässt, und lässt alles andere als Konflikt stehen:
   Integrationsbranches übernehmen und danach mit Update-ConfigDoc.ps1 und
   Update-RuleCatalog.ps1 neu erzeugen. Von Hand gelöst wären sie sofort wieder veraltet.
 - Reine Ergänzungen beider Seiten an derselben Stelle (Listen in .dpr/.dpk/.dproj,
-  Tools/Linux/FpcTests.txt, Tabellenzeilen und Aufzählungen in Markdown): beide behalten,
-  erst die eigenen Zeilen, dann die fremden; doppelte Zeilen nur einmal.
+  Tools/Linux/FpcTests.txt, Zeilen der Unit-Zuordnung Tools/UnitAssignment*.tsv, Tabellenzeilen
+  und Aufzählungen in Markdown): beide behalten, erst die eigenen Zeilen, dann die fremden;
+  doppelte Zeilen nur einmal. Tools/UnitAssignment.tsv wird danach wieder nach Package und
+  Unit sortiert.
 - Zeilen in Markdown, die sich nur in Zahlen unterscheiden (Regelzahlen im README):
   Stand des Integrationsbranches, die Zahlen erzeugt Update-RuleCatalog.ps1 neu.
 - Die Baseline wortgleicher Rümpfe (atlas-duplicates.json): Stand des Integrationsbranches,
@@ -54,9 +56,9 @@ ABGELEITET = [
     ('docs/en/Configuration.md', 'config'),
     ('docs/Einstellungen.md', 'config'),
     ('docs/en/Settings.md', 'config'),
-    ('Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.SchemaData.pas', 'config'),
-    ('Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas', 'config'),
-    ('Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.ProfileData.pas', 'config'),
+    ('Packages/Atlas.Plugin/Source/Settings/Atlas.Plugin.Settings.SchemaData.pas', 'config'),
+    ('Packages/Atlas.Plugin/Source/Settings/Atlas.Plugin.Settings.PluginSchemaData.pas', 'config'),
+    ('Packages/Atlas.Plugin/Source/Settings/Atlas.Plugin.Settings.ProfileData.pas', 'config'),
     ('Packages/Atlas.Common/Source/Configuration/Internals/Atlas.Common.Configuration.Internals.ScopeData.pas',
      'config'),
     ('Packages/Atlas.Common/Source/Mcp/Atlas.Common.Mcp.DocsIndexData.pas', 'config'),
@@ -108,7 +110,25 @@ def atlas_server():
     return shutil.which('AtlasServer')
 
 # Dateien, in denen reine Ergänzungen beider Seiten zusammen stehen bleiben dürfen.
-ERGAENZBAR = ['*.md', '*.dpr', '*.dpk', '*.dproj', 'Tools/Linux/FpcTests.txt']
+ERGAENZBAR = ['*.md', '*.dpr', '*.dpk', '*.dproj', 'Tools/Linux/FpcTests.txt', 'Tools/UnitAssignment*.tsv']
+
+# Unit-Zuordnung: nach dem Lösen wieder nach Package und Unit sortiert (Check-PackageDependencies verlangt das;
+# Ergänzungen beider Seiten an derselben Stelle stünden sonst erst eigen, dann fremd).
+SORTIERT = ['Tools/UnitAssignment.tsv']
+
+
+def sortiere_tsv(text):
+    """Sortiert die Datenzeilen einer TSV-Datei nach den ersten beiden Spalten ohne Groß-/Kleinschreibung;
+    Kopfzeile und Kommentare (#) bleiben oben."""
+    zeilen = text.splitlines(keepends=True)
+    if not zeilen:
+        return text
+    ende = '\r\n' if zeilen[0].endswith('\r\n') else '\n'
+    kopf = [zeilen[0]] + [z for z in zeilen[1:] if z.startswith('#')]
+    daten = [z.rstrip('\r\n') for z in zeilen[1:] if z.strip() and not z.startswith('#')]
+    daten.sort(key=lambda z: tuple(s.upper() for s in z.split('\t')[:2]))
+    return ''.join(kopf) + ''.join(z + ende for z in daten)
+
 
 # Dateien, in denen Zeilen mit nur anderen Zahlen den Stand des Ziels nehmen.
 NUR_ZAHLEN = ['*.md']
@@ -138,9 +158,9 @@ def ohne_zahlen(zeilen):
 
 
 # Ein Eintrag, den beide Seiten gleich hinzufügen, steht nur einmal da: Listenpunkt oder Tabellenzeile in Markdown,
-# Element in .dproj, Unit in .dpr/.dpk, Zeile in FpcTests.txt. Andere Zeilen (Leerzeilen, Fließtext, Überschriften)
+# Element in .dproj, Unit in .dpr/.dpk, Zeile in FpcTests.txt, Zeile einer TSV-Datei. Andere Zeilen (Leerzeilen, Fließtext, Überschriften)
 # bleiben immer stehen, auch wenn beide Seiten sie haben.
-LISTENEINTRAG = re.compile(r"^\s*(\||[-*+] |\d+\. |<[A-Za-z]|[\w.]+ in |\w+(\.\w+)+[,;]?$)")
+LISTENEINTRAG = re.compile(r"^\s*(\||[-*+] |\d+\. |<[A-Za-z]|[\w.]+ in |\w+(\.\w+)+[,;]?$|[^\t\r\n]+\t)")
 
 
 def eintraege(zeilen):
@@ -283,6 +303,10 @@ def selbsttest():
         # Gleiche Tabellenzeile und gleicher Listenpunkt nur einmal, Folgezeile gehört zum Punkt.
         (block('| `A` | a |\r\n- x\r\n  weiter\r\n', '', '| `A` | a |\r\n- x\r\n  anders\r\n'), True, False,
          '| `A` | a |\r\n- x\r\n  weiter\r\n- x\r\n  anders\r\n', 0, False),
+        # Zeilen der Unit-Zuordnung (TSV): beide behalten, gleiche nur einmal.
+        (block('Atlas.IDE.Base\tA\ta.pas\tx\r\nAtlas.IDE.Base\tB\tb.pas\tx\r\n', '',
+               'Atlas.IDE.Base\tB\tb.pas\tx\r\nAtlas.IDE.Base\tC\tc.pas\tx\r\n'), True, False,
+         'Atlas.IDE.Base\tA\ta.pas\tx\r\nAtlas.IDE.Base\tB\tb.pas\tx\r\nAtlas.IDE.Base\tC\tc.pas\tx\r\n', 0, False),
         # Text verschieden trotz gleicher Zahl der Zeilen: offen.
         (block('346 Regeln, a\r\n', '345 Regeln\r\n', '347 Regeln, b\r\n'), True, True, None, 1, False),
     ]
@@ -307,6 +331,9 @@ def selbsttest():
         if erhalten != soll:
             print(f'Kopien-Fall {nr}: {erhalten} Befunde statt {soll}')
             fehler += 1
+    if sortiere_tsv('P\tU\r\nB\tb\r\nA\tz\r\nA\t_\r\nA\tC\r\n') != 'P\tU\r\nA\tC\r\nA\tz\r\nA\t_\r\nB\tb\r\n':
+        print('Sortieren der Unit-Zuordnung: falsche Reihenfolge')
+        fehler += 1
     for pfad, soll in [('docs/Einstellungen.md', 'config'),
                        ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.De.Architecture.pas', 'rules'),
                        ('atlas-duplicates.json', 'duplicates'),
@@ -401,6 +428,8 @@ def einmergen(ref, name, kein_commit):
             offen.append(pfad)
             continue
         neu, rest, zahlen_genommen = loese_bloecke(text, erg, zahlen)
+        if not rest and passt(pfad, SORTIERT):
+            neu = sortiere_tsv(neu)
         if neu != text:
             schreib(pfad, neu, bom)
         if zahlen_genommen:

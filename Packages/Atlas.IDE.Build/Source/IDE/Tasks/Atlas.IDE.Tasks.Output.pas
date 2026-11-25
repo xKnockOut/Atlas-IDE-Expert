@@ -79,10 +79,15 @@ uses
   System.Classes,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.Plugin.Style.Palette,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.UI.Build.Strings,
-  Atlas.UI.Tasks.Texts;
+  Atlas.UI.Tasks.Texts,
+  Atlas.Plugin.Diagnostics.Guard;
+
+const
+  // Rand rechts neben dem Text einer Kopfzeile.
+  cHeaderPadding = 4;
 
 type
   /// <summary>Kopfzeile mit eigener Farbe; Text und Farbe stehen beim Hinzufügen fest.</summary>
@@ -144,22 +149,26 @@ begin
 end;
 
 procedure THeaderMessage.Draw(Canvas: TCanvas; const Rect: TRect; Wrap: Boolean);
-var
-  mArea: TRect;
 begin
-  mArea := Rect;
-  Canvas.Font.Style := [fsBold];
-  if FColor <> clNone then
-  begin
-    Canvas.Font.Color := FColor;
-  end;
-  Canvas.TextRect(mArea, mArea.Left + 2, mArea.Top, FText);
+  TAtlasGuard.Run(TAtlasFeature.Tasks,
+    procedure
+    var
+      mArea: TRect;
+    begin
+      mArea := Rect;
+      Canvas.Font.Style := [fsBold];
+      if FColor <> clNone then
+      begin
+        Canvas.Font.Color := FColor;
+      end;
+      Canvas.TextRect(mArea, mArea.Left + 2, mArea.Top, FText);
+    end);
 end;
 
 function THeaderMessage.CalcRect(Canvas: TCanvas; MaxWidth: Integer; Wrap: Boolean): TRect;
 begin
   Canvas.Font.Style := [fsBold];
-  Result := System.Types.Rect(0, 0, Canvas.TextWidth(FText) + 4, Canvas.TextHeight(FText) + 2);
+  Result := System.Types.Rect(0, 0, Canvas.TextWidth(FText) + cHeaderPadding, Canvas.TextHeight(FText) + 2);
 end;
 
 { TAtlasIdeTaskOutput }

@@ -68,7 +68,9 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.ClassCommands;
+  Atlas.Common.Editing.ClassCommands,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 const
   cClassUnit =
@@ -114,59 +116,17 @@ begin
   Result := Format(cClassUnit, [ACommand]);
 end;
 
-/// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
-function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
-var
-  mLines: TArray<string>;
-  mEdit: TRuleEdit;
-  mOffsets: TArray<Integer>;
-  mIndex, mStart, mStop: Integer;
-begin
-  mLines := AText.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
-    function(const ALeft, ARight: TRuleEdit): Integer
-    begin
-      Result := (ARight.Range.StartPos.Line - ALeft.Range.StartPos.Line) * 100000 +
-        ARight.Range.StartPos.Character - ALeft.Range.StartPos.Character;
-    end));
-  Result := AText;
-  for mEdit in AEdits do
-  begin
-    mStart := mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character;
-    mStop := mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character;
-    Result := Copy(Result, 1, mStart) + mEdit.NewText + Copy(Result, mStop + 1, MaxInt);
-  end;
-end;
-
 function Expand(const ACommand: string; const AIndex: ISymbolIndex): string; overload;
 var
   mEdits: TArray<TRuleEdit>;
 begin
   Assert.IsTrue(Run(WithCommand(ACommand), 15, mEdits, AIndex), ACommand);
-  Result := Apply(WithCommand(ACommand), mEdits);
+  Result := TTestEdits.Apply(WithCommand(ACommand), mEdits);
 end;
 
 function Expand(const ACommand: string): string; overload;
 begin
   Result := Expand(ACommand, nil);
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
 end;
 
 { TClassCommandsTests }
@@ -218,7 +178,7 @@ begin
   mSource := StringReplace(mSource, 'procedure TFoo.Run;', 'constructor TFoo.Create;'#10'begin'#10 +
     '  FListe := TStringList.Create;'#10'  FName := ''x'';'#10'end;'#10#10'procedure TFoo.Run;', []);
   Assert.IsTrue(Run(mSource, 15, mEdits));
-  mText := Apply(mSource, mEdits);
+  mText := TTestEdits.Apply(mSource, mEdits);
   Assert.IsTrue(Pos('    destructor Destroy; override;', mText) > 0, mText);
   Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  FreeAndNil(FListe);'#10'  inherited;'#10'end;', mText) > 0,
     mText);
@@ -281,7 +241,7 @@ begin
       mTree.Free;
     end;
     Assert.IsTrue(Run(cSource, 5, mEdits, mIndex));
-    mText := Apply(cSource, mEdits);
+    mText := TTestEdits.Apply(cSource, mEdits);
     Assert.IsTrue(Pos('  protected'#10'    procedure Paint; override;'#10'  end;', mText) > 0, mText);
     Assert.IsTrue(Pos('procedure TBild.Paint;'#10'begin'#10'  inherited;'#10'end;', mText) > 0, mText);
     // Ohne Index kennt der Befehl TCustomControl nicht.
@@ -330,7 +290,7 @@ begin
   for mCommand in cCommands do
   begin
     mText := Expand(mCommand);
-    Assert.IsTrue(Parses(mText), mCommand + ': ' + mText);
+    Assert.IsTrue(TTestSource.Parses(mText), mCommand + ': ' + mText);
   end;
 end;
 
@@ -359,7 +319,7 @@ begin
   mSource := StringReplace(mSource, 'procedure TFoo.Run;', 'constructor TFoo.Create(AListe: TStringList);'#10'begin'#10 +
     '  FListe := AListe;'#10'end;'#10#10'procedure TFoo.Run;', []);
   Assert.IsTrue(Run(mSource, 15, mEdits));
-  mText := Apply(mSource, mEdits);
+  mText := TTestEdits.Apply(mSource, mEdits);
   Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  inherited;'#10'end;', mText) > 0, mText);
   Assert.AreEqual(0, Pos('FreeAndNil(FListe)', mText), mText);
 end;
@@ -377,13 +337,13 @@ begin
     '  FListe := TStringList.Create;'#10'  FWeitere := TStringList.Create;'#10'end;'#10#10 +
     'destructor TFoo.Destroy;'#10'begin'#10'  FListe.Free;'#10'  inherited;'#10'end;'#10#10'procedure TFoo.Run;', []);
   Assert.IsTrue(Run(mSource, 17, mEdits));
-  mText := Apply(mSource, mEdits);
+  mText := TTestEdits.Apply(mSource, mEdits);
   Assert.IsTrue(Pos('destructor TFoo.Destroy;'#10'begin'#10'  FListe.Free;'#10'  FreeAndNil(FWeitere);'#10 +
     '  inherited;'#10'end;', mText) > 0, mText);
   // Keine zweite Deklaration und kein zweiter Rumpf.
   Assert.AreEqual(1, Occurrences(mText, 'destructor Destroy; override;'), mText);
   Assert.AreEqual(1, Occurrences(mText, 'destructor TFoo.Destroy;'), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   // Alles schon freigegeben: Hinweis.
   mSource := StringReplace(mSource, '  inherited;'#10'end;'#10#10'procedure TFoo.Run;',
     '  FWeitere.Free;'#10'  inherited;'#10'end;'#10#10'procedure TFoo.Run;', []);
@@ -438,25 +398,25 @@ var
 begin
   mSource := Format(cIntfUnit, ['class(TInterfacedObject)', '/intf IExporter']);
   Assert.IsTrue(Run(mSource, 10, mEdits));
-  mText := Apply(mSource, mEdits);
+  mText := TTestEdits.Apply(mSource, mEdits);
   Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)', mText) > 0, mText);
   Assert.IsTrue(Pos('procedure Export(const AFileName: string);', mText) > 0, mText);
   Assert.IsTrue(Pos('function Count: Integer;', mText) > 0, mText);
   Assert.IsTrue(Pos('procedure TFoo.Export(const AFileName: string);', mText) > 0, mText);
   Assert.IsTrue(Pos('function TFoo.Count: Integer;', mText) > 0, mText);
   Assert.AreEqual(0, Pos('/intf', mText), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   // Schon angehängt, aber eine Methode fehlt: nur die fehlende, Kopf bleibt.
   mSource := Format(cIntfUnit, ['class(TInterfacedObject, IExporter)', '/intf IExporter']);
   mSource := StringReplace(mSource, '    procedure Run;'#10, '    procedure Run;'#10'    function Count: Integer;'#10, []);
   mSource := StringReplace(mSource, 'procedure TFoo.Run;', 'function TFoo.Count: Integer;'#10'begin'#10 +
     '  Result := 0;'#10'end;'#10#10'procedure TFoo.Run;', []);
   Assert.IsTrue(Run(mSource, 11, mEdits));
-  mText := Apply(mSource, mEdits);
+  mText := TTestEdits.Apply(mSource, mEdits);
   Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)'#10, mText) > 0, mText);
   Assert.IsTrue(Pos('procedure TFoo.Export(const AFileName: string);', mText) > 0, mText);
   Assert.AreEqual(1, Occurrences(mText, 'function TFoo.Count'), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TClassCommandsTests.IntfWithoutAncestorList;
@@ -466,9 +426,9 @@ var
 begin
   mSource := Format(cIntfUnit, ['class', '/intf IExporter']);
   Assert.IsTrue(Run(mSource, 10, mEdits));
-  mText := Apply(mSource, mEdits);
+  mText := TTestEdits.Apply(mSource, mEdits);
   Assert.IsTrue(Pos('  TFoo = class(TInterfacedObject, IExporter)'#10, mText) > 0, mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TClassCommandsTests.IntfWrongPlaceFails;

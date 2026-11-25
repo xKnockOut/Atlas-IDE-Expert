@@ -42,10 +42,10 @@ uses
   Vcl.ComCtrls,
   Vcl.Dialogs,
   Vcl.Graphics,
-  Atlas.Core.Settings.Layers,
-  Atlas.Core.Settings.Choices,
-  Atlas.Core.Settings.Validation,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Plugin.Settings.Layers,
+  Atlas.Plugin.Settings.Choices,
+  Atlas.Plugin.Settings.Validation,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Auswahl für ein Feld (Pfad); leer = keine eigene Auswahl.</summary>
@@ -204,17 +204,17 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.Schema,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Settings.Schema,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Settings.JsonText,
-  Atlas.Core.Settings.PageNames,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Settings.JsonText,
+  Atlas.Plugin.Settings.PageNames,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.Text.Json;
 
 const
@@ -431,7 +431,7 @@ begin
   FHint.Parent := Self;
   FHint.Align := alTop;
   FHint.AlignWithMargins := True;
-  FHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FHint, clGrayText);
   FHint.Visible := False;
 end;
 
@@ -702,7 +702,7 @@ begin
   mNote := Dialog.AddLabel(AText, Top);
   if AGray then
   begin
-    mNote.Font.Color := clGrayText;
+    TAtlasUiTheme.UseFontColor(mNote, clGrayText);
   end;
   Inc(Top, mNote.Height + Px(cNoteGap));
 end;
@@ -905,7 +905,7 @@ begin
   begin
     mState.SetBounds(Px(cIndent), Top, Px(cStateWidth), Px(cLineHeight));
   end;
-  mState.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mState, clGrayText);
   Dialog.FStates[Index] := mState;
   // Eine Ebene je Datei: Ohne den Schlüssel gilt immer der Standard.
   mReset := TButton.Create(Box);
@@ -1201,8 +1201,7 @@ begin
   // Mit seFont übergeht der Stil Font.Color: ungültiger Text zeichnet seine Farbe selbst.
   if FRawValid[mIndex] then
   begin
-    TMemo(Sender).StyleElements := TMemo(Sender).StyleElements + [seFont];
-    TMemo(Sender).Font.Color := clWindowText;
+    TAtlasUiTheme.UseFontColor(TMemo(Sender), clDefault);
   end
   else
   begin

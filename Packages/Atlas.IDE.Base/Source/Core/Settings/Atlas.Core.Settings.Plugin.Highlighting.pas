@@ -94,9 +94,9 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Settings.Reassigned,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Settings.Reassigned,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette;
 
 /// <summary>Eigene Paarfarben einheitlich schreiben; ungültig = leer (Standardpalette).</summary>
 function NormalPairs(const AText: string): string;

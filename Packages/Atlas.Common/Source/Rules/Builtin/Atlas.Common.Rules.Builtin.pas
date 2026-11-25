@@ -1,8 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin;
 
 // Alle eingebauten Prüfregeln an einer Stelle, für Editor und Linter. Die Anmeldung steht nach Themen in
-// Atlas.Common.Rules.Builtin.Registration.Declarations, .Statements, .Frameworks und .Ownership, damit keine Unit zu
-// viele Units einbindet.
+// Atlas.Common.Rules.Builtin.Registration.Declarations, .Statements, .Types, .Compiler, .Frameworks und .Ownership.
 
 interface
 
@@ -18,6 +17,8 @@ uses
   Atlas.Common.Rules.Registry,
   Atlas.Common.Rules.Builtin.Registration.Declarations,
   Atlas.Common.Rules.Builtin.Registration.Statements,
+  Atlas.Common.Rules.Builtin.Registration.Types,
+  Atlas.Common.Rules.Builtin.Registration.Compiler,
   Atlas.Common.Rules.Builtin.Registration.Frameworks,
   Atlas.Common.Rules.Builtin.Registration.Ownership;
 
@@ -29,6 +30,8 @@ begin
   try
     RegisterBuiltinDeclarationRules(mRegistry);
     RegisterBuiltinStatementRules(mRegistry);
+    RegisterBuiltinTypeRules(mRegistry);
+    RegisterBuiltinCompilerRules(mRegistry);
     RegisterBuiltinFrameworkRules(mRegistry);
     RegisterBuiltinOwnershipRules(mRegistry);
     Result := mRegistry.Rules;

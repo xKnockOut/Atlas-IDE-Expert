@@ -70,8 +70,8 @@ uses
   Atlas.Common.Rules.Builtin.XmlDoc.Scanner,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.UnresolvedNames,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.DocComments,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Pascal.DocComments,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
@@ -439,27 +439,11 @@ begin
   Result := False;
 end;
 
-/// <summary>Medium mit Include-Dateien: Ein cref-Ziel kann dort deklariert sein.</summary>
-function IncludeLevel(const ATokens: TArray<TPascalToken>): TRuleConfidence;
-var
-  mToken: TPascalToken;
-begin
-  Result := TRuleConfidence.High;
-  for mToken in ATokens do
-  begin
-    if (mToken.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', mToken.Text) or
-      StartsText('{$INCLUDE ', mToken.Text)) then
-    begin
-      Result := TRuleConfidence.Medium;
-    end;
-  end;
-end;
-
 /// <summary>Lassen sich cref-Ziele prüfen: Index vorhanden und alle Units aus uses bekannt?</summary>
 function CrefsKnown(const AContext: TRuleContext; const ATokens: TArray<TPascalToken>): Boolean;
 begin
   Result := TUnresolvedNames.Available(AContext.Index) and TUnresolvedNames.UsesKnown(AContext.Index,
-    TUsesClauses.UsedUnits(ATokens), AContext.Namespaces, AContext.EnsureUnit);
+    TPascalUses.UsedUnits(ATokens), AContext.Namespaces, AContext.EnsureUnit);
 end;
 
 /// <summary>Ist der Name sicher nicht prüfbar? Generische Ziele und eingebaute Namen bleiben offen.</summary>
@@ -900,7 +884,7 @@ begin
   if CrefsKnown(FContext, FTokens) then
   begin
     FCrefs := TDocCrefCheck.Create(Self, FContext, FReport, TRuleDerived.Resolver(FCache, FContext),
-      TRuleDerived.UnitIndex(FCache, FContext), IncludeLevel(FTokens));
+      TRuleDerived.UnitIndex(FCache, FContext), IncludeConfidence(FTokens));
   end;
   for mBlock in DocBlocks(FTokens, FLines) do
   begin

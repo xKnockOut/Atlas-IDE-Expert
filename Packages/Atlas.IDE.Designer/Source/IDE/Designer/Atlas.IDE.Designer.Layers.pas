@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -78,7 +78,7 @@ uses
   System.Types,
   ToolsAPI,
   Atlas.Core.Designer.Layers,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,

@@ -36,9 +36,9 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasQuickToggleRow = record
@@ -152,12 +152,12 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Settings.PageNames,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Settings.PageNames,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings;
 
 const

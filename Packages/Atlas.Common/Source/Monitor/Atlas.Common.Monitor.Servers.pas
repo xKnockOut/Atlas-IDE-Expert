@@ -10,7 +10,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Lsp.StatusFile;
+  Atlas.Common.Diagnostics.StatusFile;
 
 type
   {$SCOPEDENUMS ON}

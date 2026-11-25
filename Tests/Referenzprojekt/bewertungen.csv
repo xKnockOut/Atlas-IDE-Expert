@@ -2,11 +2,11 @@ Regel-ID,Datei,Zeile,Bewertung,Datum
 empty-except,Atlas.IDE.Commands.Palette.pas,337,richtig,2026-10-17
 float-equality,Atlas.Common.Pascal.Preprocessor.pas,391,falsch,2026-10-17
 float-equality,Atlas.Common.Pascal.Preprocessor.pas,393,falsch,2026-10-17
-float-equality,Atlas.Core.Style.Color.pas,89,falsch,2026-10-17
-float-equality,Atlas.Core.Style.Color.pas,91,falsch,2026-10-17
+float-equality,Atlas.Plugin.Style.Color.pas,89,falsch,2026-10-17
+float-equality,Atlas.Plugin.Style.Color.pas,91,falsch,2026-10-17
 format-without-settings,Atlas.Common.JsonRpc.TracingTransport.pas,103,falsch,2026-10-17
-format-without-settings,Atlas.Core.Diagnostics.Guard.pas,193,richtig,2026-10-17
-format-without-settings,Atlas.Core.Lsp.Progress.pas,351,falsch,2026-10-17
+format-without-settings,Atlas.Plugin.Diagnostics.Guard.pas,193,richtig,2026-10-17
+format-without-settings,Atlas.Plugin.Lsp.Progress.pas,351,falsch,2026-10-17
 format-without-settings,Atlas.IDE.CodeInsight.Manager.pas,1663,richtig,2026-10-17
 format-without-settings,Atlas.IDE.StartProfiles.Service.pas,763,falsch,2026-10-17
 format-without-settings,Atlas.UI.Diagnostics.ExportDialog.pas,52,falsch,2026-10-17
@@ -34,8 +34,8 @@ security-insecure-http,Atlas.Common.Editing.DocumentLinks.pas,152,falsch,2026-10
 security-insecure-http,Atlas.Common.Rules.Builtin.Security.pas,433,falsch,2026-10-17
 security-insecure-http,Atlas.Common.Rules.Builtin.Security.pas,440,falsch,2026-10-17
 security-insecure-http,Atlas.Common.Rules.Catalog.Data.pas,1042,falsch,2026-10-17
-security-insecure-http,Atlas.Core.Diagnostics.Package.pas,504,falsch,2026-10-17
-security-insecure-http,Atlas.Core.Settings.PluginSchemaData.pas,17,falsch,2026-10-17
+security-insecure-http,Atlas.Plugin.Diagnostics.Package.pas,504,falsch,2026-10-17
+security-insecure-http,Atlas.Plugin.Settings.PluginSchemaData.pas,17,falsch,2026-10-17
 security-insecure-http,Atlas.IDE.Hover.Editor.pas,745,falsch,2026-10-17
 security-sql-injection,Atlas.IDE.Bookmarks.Service.pas,358,falsch,2026-10-17
 security-sql-injection,Atlas.IDE.Notes.Service.pas,302,falsch,2026-10-17
@@ -68,7 +68,7 @@ unused-parameter,Atlas.Core.Forms.Text.pas,34,falsch,2026-10-17
 unused-parameter,Atlas.IDE.Build.Runner.pas,298,richtig,2026-10-17
 unused-parameter,Atlas.IDE.Build.Runner.pas,298,richtig,2026-10-17
 unused-parameter,Atlas.IDE.Signature.Editor.pas,566,richtig,2026-10-17
-unused-parameter,Atlas.UI.Popup.Styled.pas,151,richtig,2026-10-17
+unused-parameter,Atlas.Vcl.Popup.Styled.pas,151,richtig,2026-10-17
 unused-parameter,Atlas.UI.Welcome.Continue.pas,720,richtig,2026-10-17
 unused-parameter,Atlas.UI.Welcome.Issues.pas,315,richtig,2026-10-17
 unused-parameter,Atlas.UI.Welcome.State.pas,356,richtig,2026-10-17

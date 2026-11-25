@@ -2,8 +2,8 @@
 
 // MCP-Werkzeug extract_method (#2054): „Methode extrahieren“ für die ganzen Zeilen startLine..endLine einer Unit,
 // mit Wunschname und auf Wunsch samt textgleicher Stellen der Unit (replaceDuplicates). Die Logik liegt in
-// Atlas.Common.Editing.Extract; geschrieben wird über TMcpEditTools.Apply wie bei apply_code_action (dryRun zeigt
-// den Diff, offene Dateien gehen über das Plugin als ein Rückgängig-Schritt).
+// Editing und kommt über IMcpExtract (TMcpEditTools.Extract); geschrieben wird über TMcpEditTools.Apply wie bei
+// apply_code_action (dryRun zeigt den Diff, offene Dateien gehen über das Plugin als ein Rückgängig-Schritt).
 
 interface
 
@@ -40,10 +40,8 @@ implementation
 uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.Extract,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Mcp.Contract.Extract,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Localization.Texts;
 
@@ -89,9 +87,9 @@ begin
   Result := TTextRange.Create(ARequest.StartLine - 1, 0, ARequest.EndLine - 1, Length(mLines[ARequest.EndLine - 1]));
 end;
 
-function OptionsOf(const ARequest: TMcpExtractRequest): TExtractOptions;
+function WishOf(const ARequest: TMcpExtractRequest): TMcpExtractWish;
 begin
-  Result := TExtractOptions.Default;
+  Result := Default(TMcpExtractWish);
   Result.InlineVar := ARequest.InlineVar;
   Result.Style := ARequest.Style;
   Result.Duplicates := ARequest.ReplaceDuplicates;
@@ -100,25 +98,22 @@ end;
 
 /// <summary>Aktion samt gleicher Stellen, wenn gewünscht und vorhanden; sonst nur die Auswahl. ANote nennt, warum
 /// es keine gleichen Stellen gab.</summary>
-function PlanAction(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange;
-  const AOptions: TExtractOptions; out ANote: string): TCodeAction;
+function PlanAction(const AExtract: IMcpExtract; const AText: string; const ARange: TTextRange;
+  const AWish: TMcpExtractWish; out ANote: string): TCodeAction;
 var
-  mReason: string;
+  mPlan: TMcpExtractPlan;
 begin
   ANote := '';
-  if AOptions.Duplicates and TExtractRefactoring.ExtractMethodWithDuplicates(AText, ATree, ARange, AOptions, Result,
-    mReason) then
+  mPlan := AExtract.ExtractMethod(AText, ARange, AWish);
+  if mPlan.DuplicatesReason <> '' then
   begin
-    Exit;
+    ANote := cTexts[TExtractToolsText.NoPlaces].Fmt([mPlan.DuplicatesReason]);
   end;
-  if AOptions.Duplicates then
+  if not mPlan.Extracted then
   begin
-    ANote := cTexts[TExtractToolsText.NoPlaces].Fmt([mReason]);
+    raise EMcpToolError.CreateFmt(cTexts[TExtractToolsText.CannotExtract].Text, [mPlan.Reason]);
   end;
-  if not TExtractRefactoring.ExtractMethod(AText, ATree, ARange, AOptions, Result, mReason) then
-  begin
-    raise EMcpToolError.CreateFmt(cTexts[TExtractToolsText.CannotExtract].Text, [mReason]);
-  end;
+  Result := mPlan.Action;
 end;
 
 /// <summary>Kopfzeilen des Berichts: Titel und ersetzte Stellen.</summary>
@@ -146,7 +141,6 @@ end;
 class function TMcpExtractTools.ExtractMethod(AEdit: TMcpEditTools; const ARequest: TMcpExtractRequest): string;
 var
   mText, mNote: string;
-  mTree: TSyntaxTree;
   mAction: TCodeAction;
   mEdit: TTextEdit;
   mEdits: TArray<TMcpFileEdit>;
@@ -156,12 +150,7 @@ begin
     raise EMcpToolError.CreateFmt(cTexts[TExtractToolsText.BadName].Text, [ARequest.Name]);
   end;
   mText := ReadSource(AEdit, ARequest.FileName);
-  mTree := TSyntaxTreeCache.Parse(mText);
-  try
-    mAction := PlanAction(mText, mTree, LinesRange(mText, ARequest), OptionsOf(ARequest), mNote);
-  finally
-    mTree.Free;
-  end;
+  mAction := PlanAction(AEdit.Extract, mText, LinesRange(mText, ARequest), WishOf(ARequest), mNote);
   // Ohne Auswahl im Client gelten alle Stellen.
   mEdits := nil;
   for mEdit in mAction.Edits do

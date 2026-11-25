@@ -70,7 +70,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Commands.MenuContext,
@@ -111,13 +111,13 @@ begin
     if Assigned(mCommand.Run) then
     begin
       TAtlasIdeShortcutTips.Invoked(mId);
-      TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
+      TAtlasCommandScope.Run(TAtlasFeature.Menu, mCommand.Caption, mCommand.Run);
     end;
   end
   else if TAtlasModuleContributions.FindMenuEntry(AtlasModuleRegistry, TAtlasMenuPlace.AtlasMenu, mId, mEntry) and
     Assigned(mEntry.Run) then
   begin
-    TAtlasGuard.Run(TAtlasFeature.Menu, mEntry.Run);
+    TAtlasCommandScope.Run(TAtlasFeature.Menu, mEntry.Caption, mEntry.Run);
   end;
 end;
 
@@ -136,7 +136,7 @@ begin
     Assigned(mCommand.Run) then
   begin
     TAtlasIdeShortcutTips.Invoked(mCommand.Id);
-    TAtlasGuard.Run(TAtlasFeature.Menu, mCommand.Run);
+    TAtlasCommandScope.Run(TAtlasFeature.Menu, mCommand.Caption, mCommand.Run);
   end;
 end;
 

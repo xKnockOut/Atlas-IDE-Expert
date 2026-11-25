@@ -13,7 +13,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.Colors;
+  Atlas.Common.Pascal.Colors;
 
 type
   TLspColors = class
@@ -41,7 +41,7 @@ implementation
 uses
   System.Generics.Collections,
   System.Math,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

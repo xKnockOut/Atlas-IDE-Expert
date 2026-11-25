@@ -16,7 +16,7 @@ interface
 
 uses
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   TAtlasEndPullRequest = record
@@ -43,7 +43,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.VersionControl.Pull;
+  Atlas.VersionControl.Repository.Pull;
 
 { TAtlasEndPull }
 

@@ -46,17 +46,10 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Localization.Language,
-  Atlas.Core.Results.CallDiagram;
-
-function Item(const AName, AFileName: string; ALine: Integer): TAtlasHierarchyItem;
-begin
-  Result := Default(TAtlasHierarchyItem);
-  Result.Name := AName;
-  Result.FileName := AFileName;
-  Result.Line := ALine;
-end;
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Localization.Language,
+  Atlas.Core.Results.CallDiagram,
+  Atlas.Core.Lsp.TestSupport;
 
 function ProjectFile(const AFileName: string): Boolean;
 begin

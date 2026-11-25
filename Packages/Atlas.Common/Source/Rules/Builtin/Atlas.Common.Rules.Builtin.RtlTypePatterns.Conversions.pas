@@ -100,8 +100,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
@@ -109,7 +110,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -492,16 +494,6 @@ begin
     cTexts[TRtlTypePatternsConversionsText.UncheckedTitle].Text);
 end;
 
-/// <summary>ANode ohne umgebende Klammern.</summary>
-function WithoutParentheses(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
-
 /// <summary>Hülle wie Trim(…), durch die die Eingabe unverändert geprüft wird?</summary>
 function IsTransparentCall(ANode: TSyntaxNode): Boolean;
 begin
@@ -539,10 +531,10 @@ var
     mNode: TSyntaxNode;
   begin
     // Iterativ (tiefe Bäume sprengen den Stapel nicht): durch Klammern und Hüllen wie Trim(…) hindurch.
-    mNode := WithoutParentheses(ANode);
+    mNode := TSyntaxNodes.Unparen(ANode);
     while IsTransparentCall(mNode) do
     begin
-      mNode := WithoutParentheses(mNode[1]);
+      mNode := TSyntaxNodes.Unparen(mNode[1]);
     end;
     Result := nil;
     if IsInputNode(mNode, mSources) then
@@ -906,7 +898,7 @@ begin
     cTexts[TRtlTypePatternsConversionsText.InvalidValueCode].Text + ATypeName + ''', [' + mName + ']);'),
     TTextEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), mName)];
   // InRange steht in System.Math.
-  mUsed := TUsesClauses.UsedUnits(FTokens);
+  mUsed := TPascalUses.UsedUnits(FTokens);
   if not MatchText('System.Math', mUsed) and not MatchText('Math', mUsed) then
   begin
     mPrefix := 'System.';
@@ -914,7 +906,7 @@ begin
     begin
       mPrefix := '';
     end;
-    if not TUsesClauses.AddUnit(FTokens, Token(AFirst).Offset, mPrefix + 'Math', FLineBreak, mUsesEdit) then
+    if not TPascalUsesEdits.AddUnit(FTokens, Token(AFirst).Offset, mPrefix + 'Math', FLineBreak, mUsesEdit) then
     begin
       Exit;
     end;
@@ -1478,7 +1470,7 @@ begin
     Exit;
   end;
   FTokens := FContext.Tree.Tokens;
-  FUsed := TUsesClauses.UsedUnits(FTokens);
+  FUsed := TPascalUses.UsedUnits(FTokens);
   FFileName := FContext.ResolverFileName;
   FLines := TTextLines.SplitLines(FContext.Text);
   FLineBreak := TTextLines.LineBreakOf(FContext.Text);

@@ -68,10 +68,10 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.UI.Tracker.IssueFrame.Chrome,
   Atlas.UI.Tracker.IssueFrame.Sections,
   Atlas.UI.Tracker.IssueFrame.Deferred;
@@ -160,7 +160,7 @@ uses
   Atlas.Core.Tracker.AiSummary,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueBoxes,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 {$R *.dfm}
 

@@ -29,8 +29,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Package,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Plugin.Diagnostics.Package,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasReportActions = record
@@ -128,10 +128,10 @@ uses
   System.Math,
   Vcl.Dialogs,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   // Vorläufige Lage der Überschriften; die Ausrichtung ordnet sie danach in dieser Reihenfolge an.

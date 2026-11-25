@@ -36,9 +36,9 @@ uses
   Vcl.Controls,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Format,
-  Atlas.Core.Style.Color,
-  Atlas.UI.Popup.Window,
-  Atlas.UI.Popup.Styled;
+  Atlas.Plugin.Style.Color,
+  Atlas.Vcl.Popup.Window,
+  Atlas.Vcl.Popup.Styled;
 
 type
   TAtlasIndexEvent = reference to procedure(AIndex: Integer);
@@ -128,10 +128,11 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.UI.Strings,
-  Atlas.UI.Popup.Accessibility,
+  Atlas.Plugin.Localization.Strings,
+  Atlas.UI.Signature.FormatText,
+  Atlas.Vcl.Popup.Accessibility,
   Atlas.Core.Signature.Controller;
 
 const
@@ -396,7 +397,7 @@ end;
 
 function TAtlasSignatureHint.FormatText: string;
 begin
-  Result := TAtlasStrings.SignatureFormatLine(FFormatLine);
+  Result := TAtlasSignatureFormatText.Line(FFormatLine);
 end;
 
 function TAtlasSignatureHint.CrumbHeight: Integer;

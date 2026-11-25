@@ -80,12 +80,13 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.WorkspaceChanges,
@@ -251,7 +252,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('className', mInfo.ClassName);
   Result.AddPair('name', mInfo.SuggestedName);
-  Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
+  Result.AddPair('ownUnit', TPascalUses.OwnName(ATree.Tokens));
   mList := TJSONArray.Create;
   for mItem in mInfo.Candidates do
   begin
@@ -373,7 +374,7 @@ begin
   Result := nil;
   for mUnit in AUnits do
   begin
-    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATree.Tokens), mUnit, nil) then
+    if not TPascalUses.IsUsed(TPascalUses.UsedUnits(ATree.Tokens), mUnit, nil) then
     begin
       Result := Result + [mUnit];
     end;
@@ -425,7 +426,7 @@ begin
   FText := AText;
   FPosition := APosition;
   FContext := AContext;
-  FOwnUnit := TUsesClauses.OwnName(ATree.Tokens);
+  FOwnUnit := TPascalUses.OwnName(ATree.Tokens);
   FLineBreak := TTextLines.LineBreakOf(AText);
   FChanges := TWorkspaceChanges.Create;
 end;
@@ -534,7 +535,7 @@ begin
     // Fehlende uses der Ziel-Unit in einem Schritt (eine Einfügung), dann das Interface.
     mTargetUses := MissingUses(mTargetTree, FNeeded);
     mEdits := [mEdit];
-    if (mTargetUses <> nil) and TUsesClauses.AddUnit(mTargetTree.Tokens, 0, string.Join(', ', mTargetUses),
+    if (mTargetUses <> nil) and TPascalUsesEdits.AddUnit(mTargetTree.Tokens, 0, string.Join(', ', mTargetUses),
       TTextLines.LineBreakOf(mTargetText), mEdit) then
     begin
       mEdits := mEdits + [mEdit];
@@ -559,8 +560,8 @@ begin
     Exit;
   end;
   // Die Unit der Klasse bindet die Ziel-Unit ein (im Abschnitt der Klasse).
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FTree.Tokens), FUnitName, nil) and
-    TUsesClauses.AddUnit(FTree.Tokens, FPlan.ClassOffset, FUnitName, FLineBreak, mEdit) then
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FTree.Tokens), FUnitName, nil) and
+    TPascalUsesEdits.AddUnit(FTree.Tokens, FPlan.ClassOffset, FUnitName, FLineBreak, mEdit) then
   begin
     FClassEdits := FClassEdits + [mEdit];
   end;

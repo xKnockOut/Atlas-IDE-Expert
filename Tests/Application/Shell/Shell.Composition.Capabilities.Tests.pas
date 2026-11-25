@@ -25,8 +25,8 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.Lsp.Status,
-  Shell.CrashCases,
+  Atlas.Common.JsonRpc.ServerStatus,
+  Core.CrashCases,
   Shell.Composition.Capabilities;
 
 { TShellCapabilitiesTests }
@@ -65,7 +65,7 @@ begin
     mCapabilities.Free;
   end;
   Assert.IsTrue(string.Join(';', mNames).Contains(cStatusCommand), 'Status');
-  Assert.IsTrue(string.Join(';', mNames).Contains(TShellCrashCases.cRetryCommand), 'Neuversuch');
+  Assert.IsTrue(string.Join(';', mNames).Contains(TCoreCrashCases.cRetryCommand), 'Neuversuch');
 end;
 
 initialization

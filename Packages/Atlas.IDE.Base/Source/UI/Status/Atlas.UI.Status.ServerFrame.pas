@@ -32,8 +32,8 @@ uses
   Vcl.Forms,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Status.Server;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Status.Server;
 
 type
   /// <summary>Speicher: je Bereich ein Balken gegen den Maßstab, senkrechter Strich beim Budget, darunter
@@ -159,12 +159,13 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Winapi.Windows,
   System.Math,
   Atlas.UI.Status.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Theme.Service;
 
 const
   // Breiten der Spalten Regel, ms und Aufrufe; Breite der Knöpfe der Leiste.
@@ -259,6 +260,8 @@ var
   mPart: TAtlasServerMemoryPart;
   mIndex: Integer;
 begin
+  // Geerbt zuerst: TPaintBox.Paint löst OnPaint aus; das eigene Bild deckt den Rest.
+  inherited;
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(FColors.Surface);
@@ -553,7 +556,7 @@ begin
   FNote.AutoSize := True;
   FNote.Margins.Top := FNote.ScaleValue(cNoteTop);
   FNote.ShowAccelChar := False;
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FNote.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowHint);
 end;
 

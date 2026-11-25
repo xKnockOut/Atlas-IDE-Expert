@@ -91,9 +91,9 @@ uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Internals.Text,
-  Atlas.Core.VersionControl.Providers.Null,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Internals.Text,
+  Atlas.VersionControl.Repository.Null,
   Atlas.Core.Welcome.Unsaved;
 
 const

@@ -22,7 +22,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Ein Befehl, der in die Leiste kann (aus der Befehlspalette).</summary>
@@ -103,13 +103,13 @@ const
 implementation
 
 uses
-  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Plugin.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
   System.Math,
   System.UITypes,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.EditorToolbar.Strings,
   Atlas.UI.EditorToolbar.Glyphs;
 

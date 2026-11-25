@@ -47,7 +47,7 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Designer.Layout,
   Atlas.Core.Designer.FontsColors,
   Atlas.Core.Designer.PropertyPainter,

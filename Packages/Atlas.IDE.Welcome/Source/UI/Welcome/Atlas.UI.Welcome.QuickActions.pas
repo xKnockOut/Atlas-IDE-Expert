@@ -43,7 +43,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRows,
   Atlas.UI.Welcome.Frame,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Contract;
 
@@ -53,13 +53,11 @@ type
 
   /// <summary>Unsichtbares Steuerelement mit Fokus für die Tastatur eines Bereichs; Pfeiltasten und Enter kommen
   /// vor dem Dialog der IDE an.</summary>
-  TAtlasQuickKeySink = class(TCustomControl)
+  TAtlasQuickKeySink = class(TAtlasWelcomeKeyControl)
   private
     FOnKey: TAtlasQuickKeyEvent;
     FOnFocusChange: TNotifyEvent;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
-    procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
-    procedure CNSysKeyDown(var Message: TWMKeyDown); message CN_SYSKEYDOWN;
   protected
     procedure DoEnter; override;
     procedure DoExit; override;
@@ -67,7 +65,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Taste wie gedrückt (auch für Tests und den Vorrang über die Nachrichtenschleife).</summary>
-    function HandleKey(AKey: Word; AShift: TShiftState): Boolean;
+    function HandleKey(AKey: Word; AShift: TShiftState): Boolean; override;
     property OnKey: TAtlasQuickKeyEvent read FOnKey write FOnKey;
     property OnFocusChange: TNotifyEvent read FOnFocusChange write FOnFocusChange;
   end;
@@ -233,10 +231,15 @@ uses
   Atlas.UI.Welcome.QuickActions.Texts,
   Vcl.Forms,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
+  // Maße in logischen Pixeln bei 96 dpi.
+  /// <summary>Abstand des Trennstrichs vor ▾ von Ober- und Unterkante des Knopfs.</summary>
+  cMenuDividerInset = 4;
+  /// <summary>Abstand des Fokusrahmens vom Rand des Knopfs.</summary>
+  cFocusInset = 2;
   cSeparator = ' · ';
 
 type
@@ -408,6 +411,9 @@ end;
 constructor TAtlasQuickKeySink.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  // Vor den Tastenkürzeln des Hauptfensters: Strg+B und Strg+T gehören hier der Willkommensseite, Alt+↓ öffnet
+  // die Auswahl.
+  FSystemKeys := True;
   TabStop := True;
   ParentColor := True;
   SetBounds(0, 0, 0, 0);
@@ -440,28 +446,6 @@ procedure TAtlasQuickKeySink.WMGetDlgCode(var Message: TWMGetDlgCode);
 begin
   inherited;
   Message.Result := Message.Result or DLGC_WANTARROWS or DLGC_WANTALLKEYS;
-end;
-
-procedure TAtlasQuickKeySink.CNKeyDown(var Message: TWMKeyDown);
-begin
-  // Vor den Tastenkürzeln des Hauptfensters: Strg+B und Strg+T gehören hier der Willkommensseite.
-  if HandleKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
-  begin
-    Message.Result := 1;
-    Exit;
-  end;
-  inherited;
-end;
-
-procedure TAtlasQuickKeySink.CNSysKeyDown(var Message: TWMKeyDown);
-begin
-  // Alt+↓ öffnet die Auswahl.
-  if HandleKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
-  begin
-    Message.Result := 1;
-    Exit;
-  end;
-  inherited;
 end;
 
 function TAtlasQuickKeySink.HandleKey(AKey: Word; AShift: TShiftState): Boolean;
@@ -567,7 +551,8 @@ begin
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := Colors.Accent;
     Canvas.Pen.Color := Colors.Accent;
-    Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(6), Scaled(6));
+    Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(TAtlasWelcomeRow.cButtonRadius),
+      Scaled(TAtlasWelcomeRow.cButtonRadius));
     Canvas.Font.Color := Colors.AccentText;
     Exit;
   end;
@@ -577,7 +562,8 @@ begin
   begin
     Canvas.Pen.Color := Colors.Accent;
   end;
-  Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(6), Scaled(6));
+  Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(TAtlasWelcomeRow.cButtonRadius),
+    Scaled(TAtlasWelcomeRow.cButtonRadius));
   Canvas.Font.Color := Colors.Muted;
   if mButton.Enabled then
   begin
@@ -603,8 +589,8 @@ begin
   Canvas.TextOut(AArea.Left + (AArea.Width - mPart - Canvas.TextWidth(mText)) div 2,
     AArea.Top + (AArea.Height - Canvas.TextHeight(mText)) div 2, mText);
   Canvas.Pen.Color := Canvas.Font.Color;
-  Canvas.MoveTo(AArea.Right - mPart, AArea.Top + Scaled(4));
-  Canvas.LineTo(AArea.Right - mPart, AArea.Bottom - Scaled(4));
+  Canvas.MoveTo(AArea.Right - mPart, AArea.Top + Scaled(cMenuDividerInset));
+  Canvas.LineTo(AArea.Right - mPart, AArea.Bottom - Scaled(cMenuDividerInset));
   Canvas.TextOut(AArea.Right - mPart + (mPart - Canvas.TextWidth(TAtlasQuickActionTexts.cMenuArrow)) div 2,
     AArea.Top + (AArea.Height - Canvas.TextHeight(TAtlasQuickActionTexts.cMenuArrow)) div 2,
     TAtlasQuickActionTexts.cMenuArrow);
@@ -617,7 +603,7 @@ begin
   if Bar.FSink.Focused and (Row = Bar.FRows.Selection.KeyRow) and (AIndex = Bar.FRows.Selection.KeyButton) then
   begin
     mFocus := AArea;
-    InflateRect(mFocus, -2, -2);
+    InflateRect(mFocus, -Scaled(cFocusInset), -Scaled(cFocusInset));
     Canvas.Brush.Style := bsSolid;
     Canvas.DrawFocusRect(mFocus);
     Canvas.Brush.Style := bsClear;

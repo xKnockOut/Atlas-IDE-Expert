@@ -131,6 +131,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.DUnitX.CommandLine;
+
 const
   /// <summary>Modul und Faktor von minstd (Park und Miller, 1993).</summary>
   cMinStdModulus = 2147483647;
@@ -155,15 +158,7 @@ end;
 
 function TAtlasTestSeriesSubject.Caption: string;
 begin
-  Result := Fixture;
-  if Method <> '' then
-  begin
-    Result := Result + '.' + Method;
-  end;
-  if CaseName <> '' then
-  begin
-    Result := Result + '.' + CaseName;
-  end;
+  Result := TDUnitXCommandLine.Caption(Fixture, Method, CaseName);
 end;
 
 { TAtlasTestSeries }

@@ -53,7 +53,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Unit Texte mit den Schaltern AHead vor unit, den Deklarationen ADecls (var-Abschnitt von Pruefen)
@@ -88,14 +88,8 @@ begin
 end;
 
 function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
 begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + mFinding.Message + ' | ';
-  end;
+  Result := TRuleAssert.Messages(AFound, ' | ');
 end;
 
 function Applied(const ASource: string; const AFix: TRuleFix): string;

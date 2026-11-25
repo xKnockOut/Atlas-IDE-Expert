@@ -87,11 +87,11 @@ uses
   Atlas.Core.Editor.SourceFiles,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Editor.Buffer;
 
 const
   cMetricsCommand = 'atlas.server.metrics';

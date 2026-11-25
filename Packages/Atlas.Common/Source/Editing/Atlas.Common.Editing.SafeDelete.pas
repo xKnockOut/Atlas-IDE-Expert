@@ -21,7 +21,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.ClassLayout;
+  Atlas.Common.Pascal.ClassLayout;
 
 type
   {$SCOPEDENUMS ON}
@@ -81,10 +81,12 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -176,15 +178,6 @@ begin
   Result := False;
 end;
 
-function LastPart(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('.', Result) > 0 then
-  begin
-    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-  end;
-end;
-
 /// <summary>Erste Zeile von ANode samt Attributen (Geschwister davor) und Doku-Kommentar darüber.</summary>
 function FirstLineOf(ANode: TSyntaxNode; const ALines: TArray<string>): Integer;
 var
@@ -259,22 +252,6 @@ begin
   end;
 end;
 
-function IsInsideRoutine(ANode: TSyntaxNode): Boolean;
-var
-  mParent: TSyntaxNode;
-begin
-  mParent := ANode.Parent;
-  while mParent <> nil do
-  begin
-    if mParent.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Exit(True);
-    end;
-    mParent := mParent.Parent;
-  end;
-  Result := False;
-end;
-
 { TSafeDelete }
 
 class function TSafeDelete.ForMember(ALayout: TClassLayout; AMember: Integer): TSafeDeleteTarget;
@@ -344,16 +321,6 @@ end;
 function IsUndeletable(const AMember: TClassMember): Boolean;
 begin
   Result := (AMember.Kind = TClassMemberKind.Other) and (AMember.Node.Kind <> TSyntaxKind.RoutineHeader);
-end;
-
-/// <summary>Name ohne Typparameter ("TList&lt;T&gt;" → "TList").</summary>
-function PlainTypeName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
 end;
 
 type
@@ -436,7 +403,7 @@ var
   mLocal: Boolean;
 begin
   AReason := '';
-  mLocal := IsInsideRoutine(ARoutine);
+  mLocal := (TSyntaxNodes.Enclosing(ARoutine, [TSyntaxKind.RoutineDecl]) <> nil);
   if not mLocal and (Pos('.', ARoutine.Name) > 0) then
   begin
     Exit(MethodBody(ARoutine, ATarget, AReason));
@@ -462,7 +429,7 @@ var
 begin
   AReason := '';
   mClassName := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
-  mDecl := TClassLayout.DeclNamed(Tree, LastPart(mClassName));
+  mDecl := TClassLayout.DeclNamed(Tree, TTextNames.LastPart(mClassName));
   if mDecl = nil then
   begin
     Exit(Fail(AReason, cTexts[TEditingSafeDeleteText.TheClassIsNotIn].Fmt([mClassName])));
@@ -492,7 +459,7 @@ begin
     TSyntaxKind.TypeDecl:
       begin
         ATarget.Kind := TSafeDeleteKind.Type_;
-        ATarget.Name := PlainTypeName(AFound.Name);
+        ATarget.Name := TTextNames.WithoutGenerics(AFound.Name);
       end;
     TSyntaxKind.ConstDecl:
       begin
@@ -503,7 +470,7 @@ begin
     ATarget.Kind := TSafeDeleteKind.Variable;
     ATarget.Name := VariableName(AFound);
   end;
-  if (AFound.Kind = TSyntaxKind.VarDecl) and IsInsideRoutine(AFound) then
+  if (AFound.Kind = TSyntaxKind.VarDecl) and (TSyntaxNodes.Enclosing(AFound, [TSyntaxKind.RoutineDecl]) <> nil) then
   begin
     Exit(Fail(AReason, cTexts[TEditingSafeDeleteText.LocalVariablesAreDeletedBy].Text));
   end;

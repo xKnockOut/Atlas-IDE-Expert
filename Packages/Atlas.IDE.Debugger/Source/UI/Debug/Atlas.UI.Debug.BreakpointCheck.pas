@@ -25,7 +25,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.BreakpointCheck,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   {$SCOPEDENUMS ON}
@@ -134,14 +134,7 @@ end;
 
 procedure TAtlasBreakpointCheckDialog.CreateList;
 begin
-  FList := TListBox.Create(Self);
-  // Lage vor Align und Parent wie bei AddRow.
-  FList.Top := NextTop;
-  FList.Height := ScaleValue(cListHeight);
-  FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(ScaleValue(cRowGap), 0, ScaleValue(cRowGap), 0);
-  FList.Align := alTop;
-  FList.Parent := Self;
+  FList := AddListBox(cListHeight);
   FList.OnDblClick := ListDblClick;
   FList.OnKeyPress := ListKeyPress;
 end;

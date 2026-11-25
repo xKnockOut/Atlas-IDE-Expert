@@ -60,9 +60,9 @@ uses
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.ClassCommands,
-  Atlas.Common.Editing.RoutineLocals,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.RoutineLocals,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -505,7 +505,7 @@ begin
   mSource := TCommandSource.Create(AContext);
   try
     mRoutine := mSource.RoutineAt;
-    if (mRoutine <> nil) and TUsesClauses.IsUsed(TUsesClauses.UsedUnits(mSource.Tree.Tokens), 'Delphi.Mocks', nil)
+    if (mRoutine <> nil) and TPascalUses.IsUsed(TPascalUses.UsedUnits(mSource.Tree.Tokens), 'Delphi.Mocks', nil)
     then
     begin
       Exit(DelphiMocksEdits(mSource, mRoutine, mName, AEdits));
@@ -578,7 +578,7 @@ begin
   mText := ASource.Lines[ALine];
   mTokens := TPascalLexer.Tokenize(mText);
   Result := (Length(mTokens) > 1) and (mTokens[0].IsKeyword('procedure') or mTokens[0].IsKeyword('function')) and
-    TChangeSignature.ReadHeader(mText, mTokens, 1, AHeader);
+    TPascalSignatures.ReadHeader(mText, mTokens, 1, AHeader);
 end;
 
 /// <summary>Grund, warum die Argumente von /testcase nicht taugen; leer, wenn AValues gefüllt ist.</summary>
@@ -763,7 +763,7 @@ begin
     end;
     mType := LocalType(mSource, mRoutine, mName);
     if (mType = '') or not TTestCommandTexts.AssertLine(mName, mType, IsClassType(mSource, AContext, mType),
-      TUsesClauses.IsTestUnit(mSource.Tree.Tokens), mLine) then
+      TPascalUses.IsTestUnit(mSource.Tree.Tokens), mLine) then
     begin
       Exit(Fail(cTexts[TTestCommandsText.AssertNoType].Fmt([mName]), AReason));
     end;
@@ -774,21 +774,13 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterTestCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('mock', cTexts[TTestCommandsText.MockSummary].Text, '/mock IKundenRepo', ExecuteMock));
-  ARegister(Command('testcase', cTexts[TTestCommandsText.TestCaseSummary].Text, '/testcase ''a'', 2, True',
-    ExecuteTestCase));
-  ARegister(Command('dump', cTexts[TTestCommandsText.DumpSummary].Text, '/dump', ExecuteDump));
-  ARegister(Command('assert', cTexts[TTestCommandsText.AssertSummary].Text, '/assert', ExecuteAssert));
+  ARegister(TSlashCommand.Create('mock', cTexts[TTestCommandsText.MockSummary].Text, '/mock IKundenRepo', ExecuteMock));
+  ARegister(TSlashCommand.Create('testcase', cTexts[TTestCommandsText.TestCaseSummary].Text,
+      '/testcase ''a'', 2, True', ExecuteTestCase));
+  ARegister(TSlashCommand.Create('dump', cTexts[TTestCommandsText.DumpSummary].Text, '/dump', ExecuteDump));
+  ARegister(TSlashCommand.Create('assert', cTexts[TTestCommandsText.AssertSummary].Text, '/assert', ExecuteAssert));
 end;
 
 initialization

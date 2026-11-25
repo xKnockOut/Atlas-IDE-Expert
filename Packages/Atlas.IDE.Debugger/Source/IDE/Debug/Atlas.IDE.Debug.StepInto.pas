@@ -29,13 +29,13 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  Vcl.ExtCtrls,
+  Atlas.IDE.Debug.Session,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.StepInto,
   Atlas.Core.Debug.StepIntoJump,
   Atlas.UI.Debug.StepInto,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.IDE.Editor.CaretPopup;
 
 type
@@ -55,7 +55,7 @@ type
     FMessage: TAtlasMessageSink;
     FHooks: TAtlasIdeCaretPopupHooks;
     FWindow: TAtlasStepIntoWindow;
-    FTimer: TTimer;
+    FPace: TAtlasIdeDebugPace;
     // Offene Liste: Datei des Ausführungspunkts, Antwort und Zeilen.
     FFileName: string;
     FAnswer: TAtlasStepAnswer;
@@ -65,7 +65,6 @@ type
     /// <summary>Vorübergehende Haltepunkte auf Ziel und Folgeanweisung.</summary>
     FBreaks: TArray<IOTABreakpoint>;
     procedure KeyDown(AKey: Word; var AHandled: Boolean);
-    procedure Tick(Sender: TObject);
     function Execute: Boolean;
     /// <summary>Aufrufe der Zeile ALine von FFileName (Text AText) beim Server erfragen; False mit Meldung.</summary>
     function Query(ALine: Integer; const AText: string): Boolean;
@@ -110,21 +109,21 @@ uses
   System.Math,
   System.JSON,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Settings.VisualizerKinds,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Settings.VisualizerKinds,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.IDE.Foundation.Caret,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Editor.Caret,
+  Atlas.ToolsApi.Debugger.Services;
 
 /// <summary>Taste AKey in der offenen Liste ausführen; False, wenn die Liste sie nicht kennt.</summary>
 function ListKey(AWindow: TAtlasStepIntoWindow; AKey: Word): Boolean;
@@ -158,16 +157,13 @@ begin
   FMessage := TAtlasMessageSink.Create(AMessage);
   FJump.FollowLine := -1;
   FHooks := TAtlasIdeCaretPopupHooks.Create(TAtlasFeature.Debugger, KeyDown, Close, nil);
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := Tick;
+  FPace := TAtlasIdeDebugPace.Create(cTickMs, Step);
 end;
 
 destructor TAtlasIdeStepInto.Destroy;
 begin
   FreeAndNil(FHooks);
-  FreeAndNil(FTimer);
+  FreeAndNil(FPace);
   // Beim Entladen mitten im Sprung: keine Haltepunkte zurücklassen.
   RemoveBreakpoints;
   FreeAndNil(FWindow);
@@ -187,15 +183,6 @@ begin
     // Jede andere Taste schließt ohne Sprung und geht an den Editor.
     Close;
   end;
-end;
-
-procedure TAtlasIdeStepInto.Tick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger,
-    procedure
-    begin
-      Step;
-    end);
 end;
 
 function TAtlasIdeStepInto.Execute: Boolean;
@@ -334,7 +321,7 @@ var
 begin
   if not FJump.Running then
   begin
-    FTimer.Enabled := False;
+    FPace.Timer.Enabled := False;
     Exit;
   end;
   mServices := TAtlasIdeDebugger.Services;
@@ -418,7 +405,7 @@ begin
   end;
   FJump.Running := True;
   FJump.SeenRunning := False;
-  FTimer.Enabled := True;
+  FPace.Timer.Enabled := True;
   mProcess.Run(ormRun);
 end;
 
@@ -443,7 +430,7 @@ end;
 
 procedure TAtlasIdeStepInto.Finish;
 begin
-  FTimer.Enabled := False;
+  FPace.Timer.Enabled := False;
   FJump.Running := False;
   RemoveBreakpoints;
 end;

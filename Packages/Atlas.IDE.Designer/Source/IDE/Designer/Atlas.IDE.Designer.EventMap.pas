@@ -90,14 +90,14 @@ uses
   DesignIntf,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.Designer.FormModel,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.DockWindow,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Windows.DockWindow,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation;
 
 const

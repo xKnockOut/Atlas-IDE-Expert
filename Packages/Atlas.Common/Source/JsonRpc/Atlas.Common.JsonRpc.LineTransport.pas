@@ -9,32 +9,18 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.SyncObjs,
   System.JSON,
-  Atlas.Common.JsonRpc.Contract;
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.JsonRpc.StreamTransport;
 
 type
-  TJsonRpcLineTransport = class(TInterfacedObject, IJsonRpcTransport)
+  TJsonRpcLineTransport = class(TJsonRpcBufferedTransport, IJsonRpcTransport)
   private const
-    cBufferSize = 64 * 1024;
     cMaxLineLength = 256 * 1024 * 1024;
   private
-    FInput: TStream;
-    FOutput: TStream;
-    FOwnsStreams: Boolean;
-    FBuffer: TBytes;
-    FBufferPos: Integer;
-    FBufferLen: Integer;
-    FWriteLock: TCriticalSection;
-    function FillBuffer: Boolean;
-    /// <summary>Nächstes Byte der Eingabe; False am Ende.</summary>
-    function NextByte(out AValue: Byte): Boolean;
     /// <summary>Nächste nicht leere Zeile ohne Zeilenende; False am Ende der Eingabe.</summary>
     function ReadLine(out ALine: TBytes): Boolean;
   public
-    /// <summary>Bei AOwnsStreams gibt der Transport beide Streams frei.</summary>
-    constructor Create(AInput, AOutput: TStream; AOwnsStreams: Boolean);
-    destructor Destroy; override;
     function ReadMessage: TJSONObject;
     procedure WriteMessage(const AMessage: TJSONObject);
   end;
@@ -61,44 +47,6 @@ const
 
 { TJsonRpcLineTransport }
 
-constructor TJsonRpcLineTransport.Create(AInput, AOutput: TStream; AOwnsStreams: Boolean);
-begin
-  inherited Create;
-  FInput := AInput;
-  FOutput := AOutput;
-  FOwnsStreams := AOwnsStreams;
-  SetLength(FBuffer, cBufferSize);
-  FWriteLock := TCriticalSection.Create;
-end;
-
-destructor TJsonRpcLineTransport.Destroy;
-begin
-  FWriteLock.Free;
-  if FOwnsStreams then
-  begin
-    FInput.Free;
-    FOutput.Free;
-  end;
-  inherited;
-end;
-
-function TJsonRpcLineTransport.FillBuffer: Boolean;
-begin
-  FBufferPos := 0;
-  FBufferLen := FInput.Read(FBuffer[0], cBufferSize);
-  Result := FBufferLen > 0;
-end;
-
-function TJsonRpcLineTransport.NextByte(out AValue: Byte): Boolean;
-begin
-  Result := (FBufferPos < FBufferLen) or FillBuffer;
-  if Result then
-  begin
-    AValue := FBuffer[FBufferPos];
-    Inc(FBufferPos);
-  end;
-end;
-
 /// <summary>AValue gehört nicht in die Zeile: CR immer, Tabulator und Leerzeichen am Anfang.</summary>
 function SkipsByte(AValue: Byte; ALineSize: Int64): Boolean;
 begin
@@ -115,7 +63,7 @@ begin
   try
     mDone := False;
     // Leere Zeilen zählen nicht; die letzte Zeile ohne LF gilt noch als Nachricht.
-    while not mDone and NextByte(mValue) do
+    while not mDone and TryReadByte(mValue) do
     begin
       if mValue = 10 then
       begin
@@ -168,12 +116,7 @@ var
 begin
   // ToJSON maskiert Zeilenumbrüche in Strings, die Nachricht bleibt einzeilig.
   mData := TEncoding.UTF8.GetBytes(AMessage.ToJSON + #10);
-  FWriteLock.Enter;
-  try
-    FOutput.WriteBuffer(mData, Length(mData));
-  finally
-    FWriteLock.Leave;
-  end;
+  WriteBytes(mData);
 end;
 
 initialization

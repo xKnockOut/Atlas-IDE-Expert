@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Constants;
 
-// Regeln für Konstanten und Zahlen (#909, Gruppe Compiler vorab):
+// Regeln für Konstanten (#909, Gruppe Compiler vorab):
 //   constant-expression-error  Fehler in einem konstanten Ausdruck (#992):
 //                              Division durch null mit bekannten Operanden
 //                              (E2098), Überlauf über den Bereich von Int64
@@ -33,27 +33,6 @@
 //                              Parameter mit Standardwert ans Ende verschieben,
 //                              auch im zugehörigen Kopf derselben Datei
 //                              (Deklaration bzw. Implementierung).
-//   signed-unsigned-mix        Vorzeichenbehaftet und vorzeichenlos gemischt
-//                              (#1012): Vergleich (W1023) oder Rechnung
-//                              (W1024) eines Operanden bis 32 Bit mit Vorzeichen
-//                              und eines vorzeichenlosen 32-Bit-Operanden, und
-//                              jede Mischung mit UInt64 (Rechnung W1073,
-//                              Vergleich W1023). Typen aus der Namensauflösung,
-//                              nur bei sicher bekanntem Typ beider Operanden;
-//                              Literale zählen nicht. Korrektur: den
-//                              vorzeichenlosen Operanden in Int64 umwandeln.
-//   narrowing-assignment       Zuweisung mit möglichem Datenverlust (#1013,
-//                              standardmäßig aus): Quelltyp und Zieltyp bilden
-//                              ein Paar aus der Option types (Vorgabe
-//                              Int64>Integer und NativeInt>Integer), bei
-//                              Gleitkomma wie W1072, Extended>Double W1066.
-//                              Ganzzahlen ohne Code: W1071 meldet Delphi 13
-//                              auch mit {$WARN IMPLICIT_INTEGER_CAST_LOSS ON}
-//                              nicht (#1383).
-//                              Zuweisungen und Inline-Variablen mit Wert;
-//                              Operanden und ganzzahlige Rechnungen mit sicher
-//                              bekanntem Typ. Korrekturen: ausdrücklich
-//                              umwandeln; Zieltyp der Deklaration vergrößern.
 //   typed-constant-modified    Typisierte Konstante verändert (#1014):
 //                              Zuweisung (W1017, auch an Element oder Feld)
 //                              und Übergabe als var- oder out-Argument samt
@@ -68,13 +47,6 @@
 //                              Korrekturen: globale Konstante in eine
 //                              Variable mit Initialwert umwandeln; nil
 //                              statt 0.
-//   string-length-limit        String-Grenze überschritten (#1036): Literal,
-//                              das an string[N]/ShortString gekürzt wird
-//                              (Zuweisung, typisierte Konstante, initialisierte
-//                              Variable; W1014), ein Literal über 255 Zeichen
-//                              vor Delphi 12 (E2056) und ein resourcestring
-//                              über 4096 Zeichen (E2381). Korrekturen: Ziel als
-//                              string deklarieren; Literal teilen.
 //
 // Ausgewertet wird mit Semantics.ConstantValues (Literale, Konstanten auch aus
 // anderen Units, SizeOf/High/Low von Typen fester Größe). Konstanten aus einem
@@ -137,9 +109,9 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Constants.Types,
-  Atlas.Common.Rules.Builtin.Constants.Conversions,
   Atlas.Common.Rules.Builtin.Constants.TypedConstants,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -1029,7 +1001,7 @@ begin
   mLabels := CaseLabels(ACase);
   // Erst die Marken: 0..127 passt in jeden Typ, dann bleibt die Namensauflösung aus. Typ wie in
   // comparison-always-constant: sicher bekannt und eingebaut.
-  if not AnyWideLabel(mLabels) or not FScope.SureType(Unwrapped(ACase[0]), mSymbol, mTypeInfo) or
+  if not AnyWideLabel(mLabels) or not FScope.SureType(TSyntaxNodes.Unparen(ACase[0]), mSymbol, mTypeInfo) or
     not (mTypeInfo.Builtin or SameText(mTypeInfo.UnitName, 'System')) or
     not IntegerRange(mTypeInfo.Name, mLow, mHigh) then
   begin
@@ -1725,10 +1697,7 @@ procedure RegisterConstantRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConstantExpressionErrorRule.Create);
   ARegistry.Register(TDefaultParameterInvalidRule.Create);
-  ARegistry.Register(TSignedUnsignedMixRule.Create);
-  ARegistry.Register(TNarrowingAssignmentRule.Create);
   ARegistry.Register(TTypedConstantModifiedRule.Create);
-  ARegistry.Register(TStringLengthLimitRule.Create);
 end;
 
 initialization

@@ -22,7 +22,7 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Editing.TestDrafts,
-  Atlas.Common.Rules.Builtin.Testing.TestCaseTable;
+  Atlas.Common.Testing.TestCaseTable;
 
 type
   TLspBoundaryTestCase = record
@@ -80,7 +80,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Text.Json,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Documents.TextChanges;
 
 {$SCOPEDENUMS ON}
 
@@ -203,18 +204,6 @@ begin
   end;
 end;
 
-/// <summary>Text mit dem Edit AEdit.</summary>
-function Applied(const AText: string; const AEdit: TTextEdit): string;
-var
-  mTable: TLineTable;
-  mStart, mStop: Integer;
-begin
-  mTable := TLineTable.Build(AText);
-  mStart := mTable.OffsetAt(AEdit.Range.StartPos);
-  mStop := mTable.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
-end;
-
 /// <summary>Kommentarzeile // AComment über Zeile ALine, wenn sie dort noch nicht steht.</summary>
 function WithComment(const AText, AComment, AIndent: string; ALine: Integer): string;
 var
@@ -260,7 +249,7 @@ begin
     Result.Reason := mReason;
     Exit;
   end;
-  Result.NewText := WithComment(Applied(ATestText, mEdit), AComment, ATable.Indent, ATable.FirstLine);
+  Result.NewText := WithComment(TTextChanges.Apply(ATestText, TArray<TTextEdit>.Create(mEdit)), AComment, ATable.Indent, ATable.FirstLine);
 end;
 
 function NewMethodPlan(const ADraft: TTestDraft; const ACases: TArray<TLspBoundaryTestCase>;

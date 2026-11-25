@@ -14,7 +14,6 @@ type
   private
     FTree: TSyntaxTree;
     FCalls: TArray<TTextPosition>;
-    function LineOf(const AMarker: string): Integer;
     function Blocks(const AMarker: string; ADepth: Integer): TLspEnclosingBlocks;
     function Describe(const ABlock: TLspEnclosingBlock): string;
   public
@@ -56,7 +55,8 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Tests.SourceText;
 
 const
   cSource =
@@ -109,19 +109,6 @@ const
 
 { TLspEnclosingConditionsTests }
 
-function TLspEnclosingConditionsTests.LineOf(const AMarker: string): Integer;
-var
-  mLines: TArray<string>;
-begin
-  mLines := cSource.Split([#10]);
-  Result := 0;
-  while (Result <= High(mLines)) and (Pos(AMarker, mLines[Result]) = 0) do
-  begin
-    Inc(Result);
-  end;
-  Assert.IsTrue(Result <= High(mLines), AMarker + ' nicht gefunden');
-end;
-
 function TLspEnclosingConditionsTests.Blocks(const AMarker: string; ADepth: Integer): TLspEnclosingBlocks;
 var
   mConditions: TLspEnclosingConditions;
@@ -134,7 +121,7 @@ begin
       Result := mCalls;
     end);
   try
-    Result := mConditions.Answer(LineOf(AMarker), ADepth);
+    Result := mConditions.Answer(TTestSource.LineOf(cSource, AMarker), ADepth);
   finally
     mConditions.Free;
   end;

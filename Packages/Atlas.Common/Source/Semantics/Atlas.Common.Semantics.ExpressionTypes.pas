@@ -106,7 +106,8 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Semantics.ExpressionTypes.RecordSizes,
   Atlas.Common.Semantics.OrdinalConstants,
-  Atlas.Common.Semantics.TypeIdentity;
+  Atlas.Common.Semantics.TypeIdentity,
+  Atlas.Common.Pascal.TokenCursor;
 
 type
   /// <summary>Ergebnistyp eines Intrinsics, der nicht vom Argument abhängt.</summary>
@@ -624,20 +625,6 @@ begin
   end;
 end;
 
-/// <summary>Änderung der Klammertiefe durch AToken.</summary>
-function DepthChange(const AToken: TPascalToken): Integer;
-begin
-  Result := 0;
-  if AToken.IsSymbol('(') then
-  begin
-    Result := 1;
-  end
-  else if AToken.IsSymbol(')') then
-  begin
-    Result := -1;
-  end;
-end;
-
 /// <summary>begin bzw. ein Deklarationsabschnitt beendet den Kopf einer anonymen Methode.</summary>
 function IsSectionStart(const AToken: TPascalToken): Boolean;
 var
@@ -696,7 +683,7 @@ begin
     if (mTokens[mIndex].Offset >= ANode.StartOffset) and
       not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      mDepth := mDepth + DepthChange(mTokens[mIndex]);
+      mDepth := mDepth + BracketDelta(mTokens[mIndex]);
       if (mDepth = 0) and IsSectionStart(mTokens[mIndex]) then
       begin
         Break;

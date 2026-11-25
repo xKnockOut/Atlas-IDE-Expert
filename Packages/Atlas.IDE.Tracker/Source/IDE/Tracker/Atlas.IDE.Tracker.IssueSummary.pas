@@ -26,7 +26,7 @@ uses
   Atlas.Core.Tracker.AiSummary,
   Atlas.IDE.Contracts.AiText,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.IDE.Tracker.IssueContext;
 
 type
@@ -76,10 +76,10 @@ uses
   System.IOUtils,
   System.UITypes,
   Vcl.Dialogs,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Files,

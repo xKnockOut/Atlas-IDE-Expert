@@ -22,7 +22,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Core.Diagnostics.Hangs;
+  Atlas.Plugin.Diagnostics.Hangs;
 
 type
   TAtlasHangProc = reference to procedure(const AHang: TAtlasHang);
@@ -79,7 +79,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Diagnostics.StackCapture,
   System.Diagnostics,
   Vcl.Forms;
@@ -226,6 +226,8 @@ begin
     FThread.Terminate;
     FWake.SetEvent;
     FThread.WaitFor;
+    // Gemeldete, noch wartende Hänger liefen sonst nach dem Freigeben mit FOwner im Hauptthread.
+    TThread.RemoveQueuedEvents(FThread);
     FreeAndNil(FThread);
   end;
   if FWindow <> 0 then

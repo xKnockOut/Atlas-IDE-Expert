@@ -75,8 +75,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Editing.StringLiterals,
-  Atlas.Common.Editing.SqlText,
+  Atlas.Common.Pascal.StringLiterals,
+  Atlas.Common.Dfm.SqlText,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
@@ -1585,25 +1585,6 @@ begin
   end;
 end;
 
-function FindDfmObject(AObject: TDfmObject; const AName: string): TDfmObject;
-var
-  mChild: TDfmObject;
-begin
-  if SameText(AObject.Name, AName) then
-  begin
-    Exit(AObject);
-  end;
-  for mChild in AObject.Children do
-  begin
-    Result := FindDfmObject(mChild, AName);
-    if Result <> nil then
-    begin
-      Exit;
-    end;
-  end;
-  Result := nil;
-end;
-
 /// <summary>FieldName der persistenten Felder von ADataSet, die aus der Abfrage kommen.</summary>
 function PersistentFields(ADataSet: TDfmObject): TArray<string>;
 var
@@ -1694,7 +1675,7 @@ begin
   end;
   mName := Copy(AKey, 1, Length(AKey) - Length('.sql'));
   mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
-  mDataSet := FindDfmObject(ADocument.Root, mName);
+  mDataSet := ADocument.Root.FindNamed(mName);
   if mDataSet <> nil then
   begin
     Result := PersistentFields(mDataSet);

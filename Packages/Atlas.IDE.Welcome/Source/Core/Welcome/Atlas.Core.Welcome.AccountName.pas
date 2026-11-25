@@ -16,7 +16,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.BackgroundRequest;
+  Atlas.Plugin.Lsp.BackgroundRequest;
 
 type
   TAtlasWelcomeAccountName = class
@@ -39,7 +39,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasWelcomeAccountName }
 

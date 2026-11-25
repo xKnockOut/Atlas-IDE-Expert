@@ -27,11 +27,11 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Documentation.Contract,
   Atlas.UI.Documentation.View,
-  Atlas.UI.Popup.Styled;
+  Atlas.Vcl.Popup.Styled;
 
 type
   /// <summary>Wohin und womit TAtlasDetailView zeichnet: Zeichenfläche, Farben, Editorschrift (Font), Schrift der
@@ -97,12 +97,12 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   System.Math,
-  Atlas.UI.Popup.Draw,
+  Atlas.Vcl.Popup.Draw,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Completion.Strings;
 
 const
@@ -657,7 +657,7 @@ begin
     mExpanded := View.FDoc.Expanded;
   end;
   View.FDoc.Build(Canvas, TAtlasDocContent.Create(View.FDocData, TAtlasDocSignature.Parse(View.FDetails.Declaration),
-    mExpanded), Right - Left, TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasStrings.DocLabels);
+    mExpanded), Right - Left, TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasDocLabelTexts.Current);
   View.FDocWidth := Right - Left;
 end;
 

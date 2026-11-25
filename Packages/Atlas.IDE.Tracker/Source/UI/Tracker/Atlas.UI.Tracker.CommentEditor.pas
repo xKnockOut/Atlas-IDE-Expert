@@ -42,7 +42,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Vcl.Menus,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.CommentKeyPlan,
@@ -260,10 +260,11 @@ uses
   System.Math,
   System.DateUtils,
   System.UITypes,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Tracker.Markdown,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.DocBox;
+  Atlas.UI.Tracker.DocBox,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Schriftgröße in Punkt: 72 je Zoll.</summary>
@@ -1115,7 +1116,7 @@ begin
   FParts.DraftNote.AutoSize := True;
   FParts.DraftNote.Margins.Top := FParts.DraftNote.ScaleValue(cNoteTop);
   FParts.DraftNote.ShowAccelChar := False;
-  FParts.DraftNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FParts.DraftNote, clGrayText);
   FParts.DraftNote.Caption := '';
   FParts.DraftButton := AddBarButton(Self, FParts.Bar, cDraftWidth, '');
   FParts.DraftButton.Visible := False;

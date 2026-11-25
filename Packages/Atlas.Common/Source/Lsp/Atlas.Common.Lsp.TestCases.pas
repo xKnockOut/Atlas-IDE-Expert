@@ -2,7 +2,7 @@
 
 // Befehl atlas.server.testCases [uri, zeile, zeilen?] (#1879): Fälle ([TestCase]) der Testmethode an zeile als
 // Tabelle für das Plugin, mit den Zeilen des Plugins dazu ein Edit, das sie zurückschreibt. Logik in
-// Atlas.Common.Rules.Builtin.Testing.TestCaseTable; den Text (offenes Dokument vor der Platte) liefert die Shell.
+// Atlas.Common.Testing.TestCaseTable; den Text (offenes Dokument vor der Platte) liefert die Shell.
 //
 // Anfrage: zeile 0-basiert, irgendwo von den Attributen bis zur Deklaration der Methode. zeilen (optional):
 //   [{from, name, values: [..]}], from = Index der bisherigen Zeile (behält Form, Trennzeichen, Argumente)
@@ -21,12 +21,16 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Rules.Builtin.Testing.TestCases,
-  Atlas.Common.Rules.Builtin.Testing.TestCaseTable;
+  Atlas.Common.Testing.TestCases,
+  Atlas.Common.Testing.TestCaseTable;
 
 type
   /// <summary>Text des Dokuments AUri; False, wenn es nicht lesbar ist.</summary>
   TLspTestCasesReadText = reference to function(const AUri: string; out AText: string): Boolean;
+
+  /// <summary>Befehl, der Dokumente über AReadText liest.</summary>
+  TLspTestCasesExecute = reference to function(const AArguments: TJSONArray;
+    const AReadText: TLspTestCasesReadText): TJSONValue;
 
   TLspTestCases = class
   public const
@@ -36,6 +40,10 @@ type
   public
     /// <summary>Meldet den Befehl an (nebenläufig: liest nur).</summary>
     class procedure Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText); static;
+    /// <summary>Meldet ACommand nebenläufig an; AExecute bekommt AReadText (auch für Grenzwerte und Mutanten).
+    /// </summary>
+    class procedure AttachReading(ACommands: TLspCommands; const ACommand: string;
+      const AExecute: TLspTestCasesExecute; const AReadText: TLspTestCasesReadText); static;
     /// <summary>Tabelle als JSON. Der Aufrufer übernimmt das Objekt.</summary>
     class function TableToJson(const AUri: string; const ATable: TTestCaseTable): TJSONObject; static;
     /// <summary>Zeilen aus der Anfrage; neue übernehmen Form und Trennzeichen der letzten Zeile.</summary>
@@ -52,7 +60,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json,
   Atlas.Text.Lines;
@@ -113,16 +121,24 @@ end;
 
 { TLspTestCases }
 
-class procedure TLspTestCases.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
+class procedure TLspTestCases.AttachReading(ACommands: TLspCommands; const ACommand: string;
+  const AExecute: TLspTestCasesExecute; const AReadText: TLspTestCasesReadText);
 var
+  mExecute: TLspTestCasesExecute;
   mReadText: TLspTestCasesReadText;
 begin
+  mExecute := AExecute;
   mReadText := AReadText;
-  ACommands.RegisterConcurrent(cCommand,
+  ACommands.RegisterConcurrent(ACommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := Execute(AArguments, mReadText);
+      Result := mExecute(AArguments, mReadText);
     end);
+end;
+
+class procedure TLspTestCases.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
+begin
+  AttachReading(ACommands, cCommand, Execute, AReadText);
 end;
 
 /// <summary>Werte einer Zeile der Anfrage.</summary>

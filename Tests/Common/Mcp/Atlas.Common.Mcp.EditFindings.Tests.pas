@@ -41,13 +41,13 @@ type
 implementation
 
 uses
+  Shell.Composition.Mcp,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.EditFindings;
@@ -148,6 +148,7 @@ begin
       Result := nil;
     end,
     nil);
+  Result.BulkFix := TMcpComposition.BulkFix(nil, nil);
 end;
 
 /// <summary>Reicht an die Auswertung weiter und merkt sich das Werkzeug.</summary>
@@ -338,12 +339,14 @@ begin
         Result := 'Auswertung ' + ATool;
       end;
     mFiles.Files.Add('U.pas', cAssignedFree);
-    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'],
+    mReport := mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, ''), ['U.pas'],
       ['redundant-assigned-free'], '', True);
-    Assert.AreEqual(0, mNames.Count, 'Vorschau ohne Auswertung');
-    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'],
+    Assert.AreEqual(0, Integer(mNames.Count), 'Vorschau ohne Auswertung');
+    mReport := mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, ''), ['U.pas'],
       ['redundant-assigned-free'], '', False);
-    Assert.AreEqual(1, mNames.Count);
+    Assert.AreEqual(1, Integer(mNames.Count));
     Assert.AreEqual('U.pas', mNames[0]);
     Assert.Contains(mReport, 'Auswertung fix_findings');
   finally

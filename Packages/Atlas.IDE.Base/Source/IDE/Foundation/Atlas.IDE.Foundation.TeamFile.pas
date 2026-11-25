@@ -2,7 +2,7 @@
 
 // Projektdatei .atlas des aktiven Projekts (#486) für alle Teile des Plugins.
 // Foundation: nur Open Tools API, VCL-Zeitgeber und Atlas.Core; Lesen
-// und Prüfen in Atlas.Core.Settings.TeamFile.
+// und Prüfen in Atlas.Plugin.Settings.TeamFile.
 // - Current: gelesener Stand für das aktive Projekt; ohne Projekt, ohne Datei,
 //   mit ausgeschalteter Einstellung TeamFile oder vor Start leer (Empty). Eine
 //   fehlerhafte Datei ergibt Valid = False: Es gelten die persönlichen
@@ -37,7 +37,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.ExtCtrls,
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 type
   TAtlasIdeTeamFile = class
@@ -98,13 +98,13 @@ uses
   Winapi.Windows,
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.TextFile,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Foundation.Strings,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.OpenWatch;
+  Atlas.ToolsApi.Files.OpenWatch;
 
 const
   cCheckMs = 2000;
@@ -221,8 +221,14 @@ begin
     mContent := TAtlasTextFile.Load(AFileName);
   except
     // Gesperrt (gerade gespeichert) oder gelöscht: wie noch nicht gelesen.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Exit(False);
+    end;
   end;
   ATeam := TAtlasTeamFile.Parse(mContent.Text, AFileName,
     TAtlasTeamFile.RootOf(ExtractFileDir(AFileName), PathExists));

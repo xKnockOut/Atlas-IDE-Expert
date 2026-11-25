@@ -64,7 +64,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.DataFlow.Syntax;
+  Atlas.Common.Lsp.DataFlow.Syntax,
+  Atlas.Text.Names;
 
 function ClimbIf(ACondition: Boolean): TDataFlowClimb;
 begin
@@ -331,7 +332,7 @@ begin
   mName := AWalk.Parent[0].Name;
   Result := (AWalk.Parent[0].Kind = TSyntaxKind.Identifier) and
     EnclosingFunction(AWalk.Tree, AWalk.FileName, AWalk.Parent, ATarget) and (SameText(mName, 'Result') or
-    SameText(TDataFlowSyntax.CleanName(mName), TDataFlowSyntax.ShortName(ATarget.Name)));
+    SameText(TTextNames.WithoutAmpersand(mName), TDataFlowSyntax.ShortName(ATarget.Name)));
 end;
 
 function TDataFlowRun.DeclarationStep(var AWalk: TDataFlowWalk): TDataFlowClimb;
@@ -365,7 +366,7 @@ begin
   begin
     Exit(TDataFlowClimb.Use);
   end;
-  if TDataFlowSyntax.NameInNode(AWalk.Tree, AWalk.Parent, TDataFlowSyntax.CleanName(AWalk.Parent.Name), mPosition) and
+  if TDataFlowSyntax.NameInNode(AWalk.Tree, AWalk.Parent, TTextNames.WithoutAmpersand(AWalk.Parent.Name), mPosition) and
     ResolveSymbol(AWalk.Tree, AWalk.FileName, mPosition, mTarget) then
   begin
     AddTargetNode(AWalk.Spot(TDataFlowKind.Loop), mTarget,

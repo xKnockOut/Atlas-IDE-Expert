@@ -8,7 +8,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 type
   [TestFixture]
@@ -131,7 +131,7 @@ begin
   try
     mDialog.List.HandleNeeded;
     mDialog.Fill;
-    Assert.AreEqual(3, mDialog.List.Items.Count);
+    Assert.AreEqual(3, Integer(mDialog.List.Items.Count));
     Assert.AreEqual('1', mDialog.List.Items[2].SubItems[5], 'Treffer der Projektregel');
     mDialog.Select(2);
     Assert.IsTrue(mDialog.Buttons[TAtlasRuleListButton.Edit].Enabled, 'Regel des Projekts');
@@ -157,7 +157,7 @@ var
 begin
   mDialog := TAtlasExceptionRuleListDialog.CreateFor(nil, SampleRules, Default(TAtlasExceptionRuleHits));
   try
-    mDialog.Editor := FakeEditor;
+    mDialog.Editor := FakeEditor();
     mDialog.List.HandleNeeded;
     mDialog.Fill;
     mDialog.Buttons[TAtlasRuleListButton.New].Click;
@@ -189,7 +189,7 @@ var
 begin
   mDialog := TAtlasExceptionRuleListDialog.CreateFor(nil, SampleRules, Default(TAtlasExceptionRuleHits));
   try
-    mDialog.Editor := ToProjectEditor;
+    mDialog.Editor := ToProjectEditor();
     mDialog.List.HandleNeeded;
     mDialog.Fill;
     mDialog.Select(0);

@@ -36,7 +36,7 @@ type
     procedure FillScopes;
     procedure FillLevels;
   public
-    constructor Create(AParts: TAtlasSearchBarParts; AEvents: TAtlasSearchBarEvents);
+    constructor Create(AEvents: TAtlasSearchBarEvents);
     /// <summary>AQuery merken; in die Felder erst mit Apply (braucht ein Fenster).</summary>
     procedure Prepare(const AQuery: TAtlasSearchQuery; const ALevels: TArray<string>; AHasSelection: Boolean);
     /// <summary>Vorbereitete Suche in die Felder (braucht ein Fenster).</summary>
@@ -66,20 +66,21 @@ type
     property ReplaceShown: Boolean read FState.ReplaceShown write FState.ReplaceShown;
     /// <summary>Prepare ohne Fenster: Apply folgt in CreateWnd.</summary>
     property Pending: Boolean read FState.Pending;
+    /// <summary>Steuerelemente der Leiste; setzt die Leiste nach dem Aufbau.</summary>
+    property Parts: TAtlasSearchBarParts read FParts write FParts;
   end;
 
 implementation
 
 uses
   Atlas.UI.Search.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 { TAtlasSearchBarFields }
 
-constructor TAtlasSearchBarFields.Create(AParts: TAtlasSearchBarParts; AEvents: TAtlasSearchBarEvents);
+constructor TAtlasSearchBarFields.Create(AEvents: TAtlasSearchBarEvents);
 begin
   inherited Create;
-  FParts := AParts;
   FEvents := AEvents;
   FState := Default(TAtlasSearchBarState);
   FState.Query.Scope := TAtlasSearchScope.UnitFile;

@@ -9,7 +9,7 @@ uses
   System.JSON,
   DUnitX.TestFramework,
   Atlas.Common.Compiler.Backend,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.ServerCommands;
 
 type
@@ -24,7 +24,7 @@ type
     function Execute(const ACommand: string; AArguments: TJSONArray): TJSONValue;
     procedure Logged(const AText: string);
     function Compile(const AFileName: string; out AChoice: TCompilerBackendChoice): Boolean;
-    function NoWorkspaces(const AUri: string): TArray<TShellWorkspace>;
+    function NoWorkspaces(const AUri: string): TArray<TCoreWorkspace>;
     function Retry(const AUri: string): Integer;
     procedure Recheck;
   public
@@ -55,12 +55,12 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.Processes,
   Atlas.Common.Lsp.SettingsCommands,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.FormFiles,
-  Shell.CrashCases;
+  Core.CrashCases;
 
 type
   TLogLineProc = reference to procedure(const AText: string);
@@ -161,7 +161,7 @@ begin
   Result := False;
 end;
 
-function TShellServerCommandsTests.NoWorkspaces(const AUri: string): TArray<TShellWorkspace>;
+function TShellServerCommandsTests.NoWorkspaces(const AUri: string): TArray<TCoreWorkspace>;
 begin
   Result := nil;
 end;
@@ -208,7 +208,7 @@ begin
     end;
     for mName in TArray<string>.Create(cStatusCommand, cProcessesCommand, TLspSettingsCommands.cCheckCommand,
       TLspSettingsCommands.cCatalogCommand, TShellServerCommands.cCompileCommand,
-      TShellServerCommands.cRebuildIndexCommand, cClearIndexCommand, TShellCrashCases.cRetryCommand,
+      TShellServerCommands.cRebuildIndexCommand, cClearIndexCommand, TCoreCrashCases.cRetryCommand,
       TLspPullDiagnostics.cRecheckCommand, TShellServerCommands.cSelectBuildCommand,
       TShellServerCommands.cSelectProjectCommand, TLspFormFiles.cConvertCommand) do
     begin
@@ -270,7 +270,7 @@ var
 begin
   mArguments := TJSONArray.Create;
   mArguments.Add('file:///tmp/A.pas');
-  mAnswer := Execute(TShellCrashCases.cRetryCommand, mArguments);
+  mAnswer := Execute(TCoreCrashCases.cRetryCommand, mArguments);
   try
     Assert.AreEqual('1', mAnswer.Value);
   finally

@@ -57,6 +57,10 @@ type
     procedure IsModuleHandleOnlyForRegistered;
     [Test]
     procedure UnregisterDropsQueuedEntriesOfModule;
+    /// <summary>Ein Zeitlimit-Arbeiter, der beim Abmelden noch im Code des Moduls hängt, zählt danach für dessen
+    /// Package (Schritt 4 von TAtlasModuleHost.Unregister wartet auf ihn bzw. hält es fest).</summary>
+    [Test]
+    procedure UnregisterHandsOverHangingWorkersOfModule;
     [Test]
     procedure HooksGetModuleHandle;
     [Test]
@@ -72,8 +76,12 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  System.SyncObjs,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.TimeLimit,
+  Atlas.Plugin.Diagnostics.UnloadSafety,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Settings.Contract,
@@ -730,7 +738,8 @@ begin
   Assert.AreEqual('Mit Tab', mBack[0].Name);
   Assert.AreEqual('2.0.0', mBack[0].Version);
   Assert.AreEqual('fremd.b', mBack[1].Id);
-  Assert.AreEqual('Zwei  Zeilen', mBack[1].Name);
+  // Ein Zeilenumbruch (auch #13#10) wird ein Leerzeichen.
+  Assert.AreEqual('Zwei Zeilen', mBack[1].Name);
   Assert.AreEqual('', mBack[1].Version);
 end;
 
@@ -791,7 +800,7 @@ begin
   // Das Testprogramm spielt das Package des Moduls: Info.Handle = Modul des eingereihten Codes.
   mModule := TAtlasMainThread.ModuleOf(mProc);
   // Wie die Komposition in ihrer Initialisierung.
-  TAtlasModuleHost.ConnectMainThread;
+  TAtlasModuleHost.ConnectRegistry;
   mLog := TLog.Create;
   try
     mRegistry := TAtlasModuleRegistry.Create;
@@ -812,6 +821,51 @@ begin
     mRegistry := nil;
     mProc := nil;
     mLog.Free;
+  end;
+end;
+
+procedure TModuleRegistryTests.UnregisterHandsOverHangingWorkersOfModule;
+const
+  cModule = $5A5D0000;
+  cHangMs = 5000;
+var
+  mLog: TLog;
+  mRegistry: IAtlasModuleRegistry;
+  mRelease: TEvent;
+  mError: string;
+begin
+  TAtlasUnloadSafety.ResetForTests(
+    procedure(AModule: HMODULE)
+    begin
+    end);
+  TAtlasModuleHost.ConnectRegistry;
+  mLog := nil;
+  mRelease := TEvent.Create(nil, True, False, '');
+  try
+    mLog := TLog.Create;
+    mRegistry := TAtlasModuleRegistry.Create;
+    mRegistry.RegisterModule(TFakeModule.Create(mLog, 'atlas.a', 'A', '2.0.0', cModule) as IAtlasModule);
+    // Eine Quelle des Moduls steckt in nicht abbrechbarem Code; der Aufrufer hat aufgegeben.
+    Assert.AreEqual<TAtlasTimedOutcome>(TAtlasTimedOutcome.TimedOut, TAtlasTimeLimit.Run(
+      procedure
+      begin
+        mRelease.WaitFor(cHangMs);
+      end, mError, 50, cModule));
+    mRegistry.UnregisterModule('atlas.a');
+    Assert.AreEqual(1, TAtlasOverdueThreads.Pending(cModule), 'überfällig für das Package des Moduls');
+    mRelease.SetEvent;
+    Assert.IsTrue(TAtlasOverdueThreads.SettleBeforeUnload(cModule, 2000), 'nach seiner Rückkehr beendet');
+    Assert.IsTrue(TAtlasUnloadSafety.IsSafe(cModule));
+  finally
+    mRelease.SetEvent;
+    TAtlasOverdueThreads.SettleBeforeUnload(cModule, 2000);
+    TAtlasModuleRegistry.OnModuleClosing := nil;
+    TAtlasModuleRegistry.OnModuleOpened := nil;
+    TAtlasMainThread.OpenModule(cModule);
+    TAtlasUnloadSafety.ResetForTests(nil);
+    mRegistry := nil;
+    mLog.Free;
+    mRelease.Free;
   end;
 end;
 

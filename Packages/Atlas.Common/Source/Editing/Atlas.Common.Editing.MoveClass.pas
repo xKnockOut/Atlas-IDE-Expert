@@ -105,12 +105,15 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -161,15 +164,6 @@ type
     Stop: Integer;
   end;
 
-function CleanName(const AName: string): string;
-begin
-  Result := AName;
-  if Result.StartsWith('&') then
-  begin
-    Result := Result.Substring(1);
-  end;
-end;
-
 function MakeRange(AStart, AStop: Integer): TOffsetRange;
 begin
   Result.Start := AStart;
@@ -188,21 +182,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-/// <summary>Typknoten einer Typdeklaration (ohne GenericParams); nil ohne.</summary>
-function TypeNodeOf(ADecl: TSyntaxNode): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ADecl.ChildCount - 1 do
-  begin
-    if ADecl[mIndex].Kind <> TSyntaxKind.GenericParams then
-    begin
-      Exit(ADecl[mIndex]);
-    end;
-  end;
-  Result := nil;
 end;
 
 function IsSection(ANode: TSyntaxNode): Boolean;
@@ -412,20 +391,6 @@ begin
   AList := AList + [AName];
 end;
 
-function Contains(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 procedure AddName(ANames: TDictionary<string, Integer>; const AName: string; AOffset: Integer);
 begin
   if not ANames.ContainsKey(LowerCase(Trim(AName))) then
@@ -440,7 +405,7 @@ var
   mTypeNode: TSyntaxNode;
   mItem: Integer;
 begin
-  mTypeNode := TypeNodeOf(ADecl);
+  mTypeNode := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams]);
   if (mTypeNode = nil) or (mTypeNode.Kind <> TSyntaxKind.EnumType) then
   begin
     Exit;
@@ -575,7 +540,7 @@ begin
           TSyntaxKind.Identifier:
             if (AChild.Parent = nil) or (AChild.Parent.Kind <> TSyntaxKind.GenericParams) then
             begin
-              Need.Names := [CleanName(AChild.Name)];
+              Need.Names := [TTextNames.WithoutAmpersand(AChild.Name)];
             end;
           TSyntaxKind.TypeReference:
             if AChild.Name <> '' then
@@ -642,7 +607,7 @@ begin
   Result := nil;
   for mItem in AOriginUses do
   begin
-    if Contains(AUnits, mItem) then
+    if MatchText(mItem, AUnits) then
     begin
       Result := Result + [mItem];
     end;
@@ -692,7 +657,7 @@ begin
     end;
     mName := PreviousCode(ATokens, mName);
     if (mName < 0) or (ATokens[mName].Kind <> TPascalTokenKind.Identifier) or
-      not SameText(CleanName(ATokens[mName].Text), mParts[mPart]) then
+      not SameText(TTextNames.WithoutAmpersand(ATokens[mName].Text), mParts[mPart]) then
     begin
       Exit;
     end;
@@ -710,7 +675,7 @@ end;
 function IsClassToken(const ATokens: TArray<TPascalToken>; AIndex: Integer; const AClassName: string): Boolean;
 begin
   Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
-    SameText(CleanName(ATokens[AIndex].Text), AClassName);
+    SameText(TTextNames.WithoutAmpersand(ATokens[AIndex].Text), AClassName);
 end;
 
 /// <summary>Letzter Teil eines Namens mit Punkten (System.Classes → Classes).</summary>
@@ -723,7 +688,7 @@ function IsClassOrRecord(ADecl: TSyntaxNode): Boolean;
 var
   mTypeNode: TSyntaxNode;
 begin
-  mTypeNode := TypeNodeOf(ADecl);
+  mTypeNode := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams]);
   Result := (mTypeNode <> nil) and (mTypeNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]);
 end;
 
@@ -731,7 +696,7 @@ function IsForward(ADecl: TSyntaxNode): Boolean;
 var
   mTypeNode: TSyntaxNode;
 begin
-  mTypeNode := TypeNodeOf(ADecl);
+  mTypeNode := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams]);
   Result := (mTypeNode <> nil) and (mTypeNode.Kind = TSyntaxKind.ForwardType);
 end;
 
@@ -860,7 +825,7 @@ var
 begin
   for mName in ANames do
   begin
-    if not Contains(AExcluded, mName) then
+    if not MatchText(mName, AExcluded) then
     begin
       AddUnique(AList, mName);
     end;
@@ -985,9 +950,9 @@ function OriginUsesOffset(const ATokens: TArray<TPascalToken>; const AOriginUnit
 var
   mClause: TUsesClauseInfo;
 begin
-  for mClause in TUsesClauses.Clauses(ATokens) do
+  for mClause in TPascalUses.Clauses(ATokens) do
   begin
-    if Contains(mClause.Names, AOriginUnit) or Contains(mClause.Names, LastPart(AOriginUnit)) then
+    if MatchText(AOriginUnit, mClause.Names) or MatchText(LastPart(AOriginUnit), mClause.Names) then
     begin
       AOffset := ATokens[mClause.UsesIndex].Offset;
       Exit(True);
@@ -1012,7 +977,7 @@ begin
     mFound := True;
     mOffset := ATree.Tokens[AFallback].Offset;
   end;
-  if mFound and TUsesClauses.AddUnit(ATree.Tokens, mOffset, ANewUnit, TTextLines.LineBreakOf(AText), mEdit) then
+  if mFound and TPascalUsesEdits.AddUnit(ATree.Tokens, mOffset, ANewUnit, TTextLines.LineBreakOf(AText), mEdit) then
   begin
     AEdits := AEdits + [mEdit];
   end;
@@ -1099,10 +1064,10 @@ begin
   begin
     Exit(cTexts[TEditingMoveClassText.NoClassAtThisPosition].Text);
   end;
-  TypeNode := TypeNodeOf(Decl);
+  TypeNode := TSyntaxNodes.FirstChildExcept(Decl, [TSyntaxKind.GenericParams]);
   TypeSection := Decl.Parent;
   Section := TypeSection.Parent;
-  Plan.ClassName := CleanName(Decl.Name);
+  Plan.ClassName := TTextNames.WithoutAmpersand(Decl.Name);
   Plan.OriginUnit := Source.Tree.Root.Name;
   Plan.NewUnit := Trim(ANewUnit);
   InterfaceNode := Source.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
@@ -1138,7 +1103,7 @@ begin
   Forwards := nil;
   for mNode in TypeDecls(Source.Tree.Root) do
   begin
-    if (mNode = Decl) or not SameText(CleanName(mNode.Name), Plan.ClassName) then
+    if (mNode = Decl) or not SameText(TTextNames.WithoutAmpersand(mNode.Name), Plan.ClassName) then
     begin
       Continue;
     end;
@@ -1586,7 +1551,7 @@ begin
     begin
       mOffset := InterfaceNode.StartOffset;
     end;
-    if not TUsesClauses.AddUnit(Source.Tree.Tokens, mOffset, Plan.NewUnit, LineBreak, mEdit) then
+    if not TPascalUsesEdits.AddUnit(Source.Tree.Tokens, mOffset, Plan.NewUnit, LineBreak, mEdit) then
     begin
       Exit(cTexts[TEditingMoveClassText.NoRoomForTheNew].Text);
     end;
@@ -1603,7 +1568,7 @@ begin
   begin
     Exit;
   end;
-  if not ParsesCleanly(TChangeSignature.ApplyEdits(Source.Text, Plan.OriginEdits)) then
+  if not ParsesCleanly(TTextChanges.Apply(Source.Text, Plan.OriginEdits)) then
   begin
     Result := cTexts[TEditingMoveClassText.TheOriginalUnitNoLonger].Text;
   end
@@ -1719,7 +1684,7 @@ begin
   begin
     Exit(False);
   end;
-  if AAddUses and not Contains(TUsesClauses.UsedUnits(ATree.Tokens), ANames.NewUnit) then
+  if AAddUses and not MatchText(ANames.NewUnit, TPascalUses.UsedUnits(ATree.Tokens)) then
   begin
     mFallback := -1;
     if AReferences <> nil then

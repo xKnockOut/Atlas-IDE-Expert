@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract.Shared,
   Atlas.Common.Editing.Extract.Method;
 
@@ -36,11 +36,8 @@ type
   end;
 
   /// <summary>Sucht und prüft gleiche Stellen zu einer Auswahl.</summary>
-  TExtractDuplicates = class
+  TExtractDuplicates = class(TExtractRun)
   private
-    FText: string;
-    FTree: TSyntaxTree;
-    FOptions: TExtractOptions;
     FRange: TTextRange;
     FMain: TExtractWindow;
     FMainRoutine: TSyntaxNode;
@@ -73,7 +70,6 @@ type
     function ChoicesIn(ARoutine: TSyntaxNode): TArray<Integer>;
     function BuildAction: TCodeAction;
   public
-    constructor Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
     /// <summary>Plant die Auswahl ARange samt gleichen Stellen; False, wenn es keine gibt (Grund in AReason).
     /// </summary>
     function Run(const ARange: TTextRange; out AAction: TCodeAction; out AReason: string): Boolean;
@@ -85,7 +81,7 @@ implementation
 
 uses
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -138,14 +134,6 @@ begin
 end;
 
 { TExtractDuplicates }
-
-constructor TExtractDuplicates.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
-begin
-  inherited Create;
-  FText := AText;
-  FTree := ATree;
-  FOptions := AOptions;
-end;
 
 function TExtractDuplicates.PrepareMain: Boolean;
 var

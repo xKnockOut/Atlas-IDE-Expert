@@ -37,6 +37,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.InheritanceDepths,
+  Adapters.Lsp.InheritanceDepths,
   Atlas.Common.Lsp.Metrics;
 
 const
@@ -219,13 +222,21 @@ procedure TLspMetricsTests.FileValuesWithInheritanceDepth;
 var
   mMetrics: TLspMetrics;
   mText: string;
+  mDepths: IRuleInheritanceDepths;
 begin
   mMetrics := NewMetrics('{}');
   try
+    mDepths := TRuleInheritanceDepths.Create;
+    mMetrics.InheritanceDepths := TLspInheritanceDepthsAdapter.Wrap(mDepths);
     // Ohne Index keine Vererbungstiefe.
     mText := Run(mMetrics, cClassFile, '');
     Assert.DoesNotContain(mText, 'inheritanceDepth');
     mMetrics.Index := TSymbolIndex.Create;
+    // Ohne Anbieter ebenso.
+    mMetrics.InheritanceDepths := nil;
+    mText := Run(mMetrics, cClassFile, '');
+    Assert.DoesNotContain(mText, 'inheritanceDepth');
+    mMetrics.InheritanceDepths := TLspInheritanceDepthsAdapter.Wrap(mDepths);
     mText := Run(mMetrics, cClassFile, '');
     Assert.Contains(mText, '{"kind":"inheritanceDepth","name":"TB","line":6,"character":3,"value":1,"limit":5}');
     // TA hat keine eigenen Vorfahren, TC nur einen unbekannten: beide fehlen.

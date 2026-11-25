@@ -45,7 +45,7 @@ begin
     Assert.AreEqual<TAtlasVariablesStatusKind>(TAtlasVariablesStatusKind.NoServer, mStatus.Kind);
     mStatus := TAtlasVariablesFlow.Status(mSearch, TAtlasVariablesTab.Watch, 3, True, False);
     Assert.AreEqual<TAtlasVariablesStatusKind>(TAtlasVariablesStatusKind.Count, mStatus.Kind);
-    Assert.AreEqual(3, mStatus.Count);
+    Assert.AreEqual(3, Integer(mStatus.Count));
   finally
     mSearch.Free;
   end;

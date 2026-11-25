@@ -91,7 +91,7 @@ uses
   System.Math,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Sets,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Completion.Strings;
 
 { TAtlasCompletionTexts }

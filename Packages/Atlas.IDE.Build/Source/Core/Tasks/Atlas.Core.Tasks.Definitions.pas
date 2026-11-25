@@ -103,7 +103,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.JsonText,
+  System.StrUtils,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Text.Json;
 
 { TAtlasTaskIssue }
@@ -210,33 +211,27 @@ const
   cShiftBit = $2000;
   cCtrlBit = $4000;
   cAltBit = $8000;
+  // Funktionstasten F1 bis F24 (VK_F1 = $70).
+  cVkF1 = $70;
+  cMaxFunctionKey = 24;
 
 /// <summary>Umschalttasten aller Teile außer dem letzten; False bei einem unbekannten Teil.</summary>
 function KeyModifiers(const AParts: TArray<string>; out AModifiers: Word): Boolean;
+const
+  cNames: array[0..5] of string = ('Ctrl', 'Strg', 'Control', 'Shift', 'Umschalt', 'Alt');
+  cBits: array[0..5] of Word = (cCtrlBit, cCtrlBit, cCtrlBit, cShiftBit, cShiftBit, cAltBit);
 var
-  mIndex: Integer;
-  mPart: string;
+  mIndex, mName: Integer;
 begin
   AModifiers := 0;
   for mIndex := 0 to High(AParts) - 1 do
   begin
-    mPart := Trim(AParts[mIndex]);
-    if SameText(mPart, 'Ctrl') or SameText(mPart, 'Strg') or SameText(mPart, 'Control') then
-    begin
-      AModifiers := AModifiers or cCtrlBit;
-    end
-    else if SameText(mPart, 'Shift') or SameText(mPart, 'Umschalt') then
-    begin
-      AModifiers := AModifiers or cShiftBit;
-    end
-    else if SameText(mPart, 'Alt') then
-    begin
-      AModifiers := AModifiers or cAltBit;
-    end
-    else
+    mName := IndexText(Trim(AParts[mIndex]), cNames);
+    if mName < 0 then
     begin
       Exit(False);
     end;
+    AModifiers := AModifiers or cBits[mName];
   end;
   Result := True;
 end;
@@ -252,9 +247,9 @@ begin
     Result := Ord(AName[1]);
   end
   else if (Length(AName) >= 2) and (AName[1] = 'F') and TryStrToInt(Copy(AName, 2, MaxInt), mNumber) and
-    (mNumber >= 1) and (mNumber <= 24) then
+    (mNumber >= 1) and (mNumber <= cMaxFunctionKey) then
   begin
-    Result := $6F + mNumber;
+    Result := cVkF1 - 1 + mNumber;
   end;
 end;
 
@@ -624,7 +619,7 @@ begin
   end;
   mKey := KeyCode(UpperCase(Trim(mParts[High(mParts)])));
   // Eine Taste ohne Strg oder Alt würde das Tippen stören (nur Funktionstasten dürfen allein stehen).
-  if (mKey = 0) or ((mModifiers and (cCtrlBit or cAltBit) = 0) and (mKey < $70)) then
+  if (mKey = 0) or ((mModifiers and (cCtrlBit or cAltBit) = 0) and (mKey < cVkF1)) then
   begin
     Exit;
   end;

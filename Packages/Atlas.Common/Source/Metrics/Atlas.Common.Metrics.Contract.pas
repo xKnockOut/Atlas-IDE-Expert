@@ -34,7 +34,7 @@
 //   Unit-Länge und uses-Anzahl nur für Units: Das uses eines Programms oder
 //   einer Bibliothek zählt die Units des Projekts auf.
 // Grenzwerte (Vorgaben aus der Spezifikation, Abschnitt 4.13) stehen in
-// atlas.json bei den Regeln metric-* unter "max" (Atlas.Common.Rules.Builtin.Metrics).
+// atlas.json bei den Regeln metric-* unter "max" (Atlas.Common.Metrics.Limits).
 
 interface
 

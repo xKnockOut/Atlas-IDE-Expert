@@ -72,7 +72,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Locked;
 
 /// <summary>Benannte Komponenten unter AObject; in Frames (inline) nur der Frame selbst, seine Komponenten
 /// sind keine Felder des Formulars.</summary>
@@ -198,12 +199,7 @@ end;
 
 function TFormSnapshotCache.Count: Integer;
 begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FEntries.Count;
-  finally
-    TMonitor.Exit(FLock);
-  end;
+  Result := TTextLocked.CountMonitored<string, TEntry>(FLock, FEntries);
 end;
 
 class function TFormSnapshotCache.FromDocument(const AFormFile: string; ADocument: TDfmDocument): TFormSnapshot;

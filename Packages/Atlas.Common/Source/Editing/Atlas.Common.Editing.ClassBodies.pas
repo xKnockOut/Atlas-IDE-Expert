@@ -21,7 +21,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.TypeComments;
+  Atlas.Common.Pascal.TypeComments;
 
 type
   /// <summary>Einstellungen der Klassenvervollständigung, wie die Erzeuger sie brauchen.</summary>
@@ -110,7 +110,7 @@ uses
   System.StrUtils,
   System.Math,
   Atlas.Text.Lines,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Pascal.RoutineBody;
 
 const
   cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,

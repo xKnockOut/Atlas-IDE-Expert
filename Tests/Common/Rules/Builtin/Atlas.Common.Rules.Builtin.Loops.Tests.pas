@@ -60,7 +60,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Loops,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 function Zeilen(const AStatements: string): string;
@@ -93,7 +93,7 @@ begin
   Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Auf while-Schleife umstellen', mFindings[0].Fixes[0].Title);
-  Assert.AreEqual(Zeilen(cFixed), TChangeSignature.ApplyEdits(Zeilen(cStatements), mFindings[0].Fixes[0].Edits));
+  Assert.AreEqual(Zeilen(cFixed), TTextChanges.Apply(Zeilen(cStatements), mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TForVariableMisuseTests.AssignmentWithSingleStatementBody;
@@ -108,12 +108,12 @@ begin
   Assert.AreEqual('Schleifenvariable K darf im Rumpf nicht zugewiesen werden (wie E2081).', mFindings[0].Message);
   Assert.AreEqual(19, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(4, mFindings[0].Range.StartPos.Character);
-  Assert.AreEqual(Zeilen(cFixed), TChangeSignature.ApplyEdits(Zeilen(cStatements), mFindings[0].Fixes[0].Edits));
+  Assert.AreEqual(Zeilen(cFixed), TTextChanges.Apply(Zeilen(cStatements), mFindings[0].Fixes[0].Edits));
   // Ohne Semikolon nach der letzten Anweisung im Block ergänzt die Korrektur es.
   mFindings := TRuleAssert.Findings(TForVariableMisuseRule.Create,
     Zeilen('  for I := 1 to 3 do'#10'  begin'#10'    I := 5'#10'  end;'#10));
   Assert.AreEqual(Zeilen('  I := 1;'#10'  while I <= 3 do'#10'  begin'#10'    I := 5;'#10'    Inc(I);'#10'  end;'#10),
-    TChangeSignature.ApplyEdits(Zeilen('  for I := 1 to 3 do'#10'  begin'#10'    I := 5'#10'  end;'#10),
+    TTextChanges.Apply(Zeilen('  for I := 1 to 3 do'#10'  begin'#10'    I := 5'#10'  end;'#10),
     mFindings[0].Fixes[0].Edits));
 end;
 
@@ -125,7 +125,7 @@ begin
     Zeilen('  for I := 9 downto 0 do'#10'    Dec(I);'#10));
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Zeilen('  I := 9;'#10'  while I >= 0 do'#10'  begin'#10'    Dec(I);'#10'    Dec(I);'#10'  end;'#10),
-    TChangeSignature.ApplyEdits(Zeilen('  for I := 9 downto 0 do'#10'    Dec(I);'#10), mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(Zeilen('  for I := 9 downto 0 do'#10'    Dec(I);'#10), mFindings[0].Fixes[0].Edits));
   // Continue im Rumpf würde das Weiterzählen überspringen: keine Korrektur.
   mFindings := TRuleAssert.Findings(TForVariableMisuseRule.Create,
     Zeilen('  for I := 0 to 9 do'#10'  begin'#10'    if I = 3 then'#10'      Continue;'#10'    I := 7;'#10 +
@@ -162,7 +162,7 @@ begin
   Assert.AreEqual(6, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('for var FIndex verwenden', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Zeilen('  for var FIndex := 0 to 9 do'#10'    Zeilen.Add('''');'#10'  for GZaehler := 1 to 2 do'#10 +
-    '    Zeilen.Add('''');'#10'  GZaehler := 0;'#10), TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    '    Zeilen.Add('''');'#10'  GZaehler := 0;'#10), TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Eine globale Variable übersetzt Delphi 13 mit Warnung W1019 (Fall Cm.W1019, #1382).
   Assert.AreEqual('Schleifenvariable GZaehler ist eine globale Variable, keine einfache lokale Variable (wie W1019).',
     mFindings[1].Message);
@@ -246,7 +246,7 @@ begin
   Assert.AreEqual(8, mFindings[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Auf while-Schleife umstellen', mFindings[0].Fixes[0].Title);
-  Assert.AreEqual(Zeilen(cFixed), TChangeSignature.ApplyEdits(Zeilen(cStatements), mFindings[0].Fixes[0].Edits));
+  Assert.AreEqual(Zeilen(cFixed), TTextChanges.Apply(Zeilen(cStatements), mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TForVariableAfterLoopTests.LaterReadAndCondition;

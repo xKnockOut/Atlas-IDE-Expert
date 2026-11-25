@@ -244,7 +244,9 @@ implementation
 uses
   System.Diagnostics,
   System.SyncObjs,
-  Atlas.Common.Localization.Texts;
+  Atlas.Text.Locked,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Reporting;
 
 {$SCOPEDENUMS ON}
 
@@ -255,6 +257,9 @@ type
 const
   cTexts: array[TIndexServiceText] of TAtlasText = (
     (De: 'Schreibsperre nicht erhalten'; En: 'Write lock not obtained'));
+  /// <summary>Anfangsgröße der Tabellen gemeinsam gelesener und geschriebener Bibliotheks-Caches: eine Datei je
+  /// Bibliothek und Dateisystem; deckt übliche Projektgruppen, ohne dass die Tabellen im Betrieb wachsen.</summary>
+  cSharedCacheCapacity = 32;
 
 {$SCOPEDENUMS OFF}
 
@@ -350,12 +355,8 @@ end;
 
 class constructor TSharedCacheWrites.Create;
 begin
-  FLock := TObject.Create;
-  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
-  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
-  TMonitor.Enter(FLock);
-  TMonitor.Exit(FLock);
-  FFiles := TObjectDictionary<string, TWritten>.Create([doOwnsValues]);
+  FLock := TAtlasSharedLock.New;
+  FFiles := TObjectDictionary<string, TWritten>.Create([doOwnsValues], cSharedCacheCapacity);
 end;
 
 class destructor TSharedCacheWrites.Destroy;
@@ -401,12 +402,6 @@ begin
   begin
     AUnits.Free;
     FFiles.Remove(SharedCacheKey(AFileSystem, AFileName));
-    // Leer gewordene Tabelle gibt ihre Plätze ab (TDictionary behält sie nach Remove; TrimExcess legt wieder
-    // vier an): Sonst blieben sie nach dem ersten Aufbau bis Programmende belegt.
-    if FFiles.Count = 0 then
-    begin
-      FFiles.Clear;
-    end;
     Exit;
   end;
   mEntry := TWritten.Create;
@@ -420,10 +415,6 @@ begin
   TMonitor.Enter(FLock);
   try
     FFiles.Remove(SharedCacheKey(AFileSystem, AFileName));
-    if FFiles.Count = 0 then
-    begin
-      FFiles.Clear;
-    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -466,12 +457,8 @@ end;
 
 class constructor TSharedCacheReads.Create;
 begin
-  FLock := TObject.Create;
-  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
-  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
-  TMonitor.Enter(FLock);
-  TMonitor.Exit(FLock);
-  FFiles := TObjectDictionary<string, TShared>.Create([doOwnsValues]);
+  FLock := TAtlasSharedLock.New;
+  FFiles := TObjectDictionary<string, TShared>.Create([doOwnsValues], cSharedCacheCapacity);
 end;
 
 class destructor TSharedCacheReads.Destroy;
@@ -535,11 +522,6 @@ begin
     if mShared.FUsers <= 0 then
     begin
       FFiles.Remove(mKey);
-      // Wie in TSharedCacheWrites.Remember: Die leere Tabelle gibt ihre Plätze ab.
-      if FFiles.Count = 0 then
-      begin
-        FFiles.Clear;
-      end;
       mUnused := True;
     end;
   finally
@@ -583,11 +565,13 @@ begin
   FCancelEvent := TEvent.Create(nil, True, False, '');
   inherited Create(False);
   // Niedrige Priorität (#1236): Der Aufbau läuft im Hintergrund; IDE, Editor und Anfragen gehen vor. Der Thread
-  // startet erst nach dem Konstruktor. Nicht jede Plattform erlaubt das.
+  // startet erst nach dem Konstruktor. Nicht jede Plattform erlaubt das (EThread aus CheckThreadError).
   try
     Priority := tpLower;
   except
-    // Dann eben mit normaler Priorität; der Aufbau selbst ist davon nicht betroffen.
+    on EThread do
+      // Dann eben mit normaler Priorität; der Aufbau selbst ist davon nicht betroffen.
+      ;
   end;
 end;
 
@@ -1096,7 +1080,6 @@ begin
         FEvents.Finished(mResult, mWatch.ElapsedMilliseconds);
       end;
     except
-      // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Hintergrundlaufs; ReportError meldet
       on E: Exception do
         ReportError(E);
     end;
@@ -1222,11 +1205,12 @@ begin
   begin
     Exit;
   end;
-  try
-    FEvents.Error(AError);
-  except
-    // Sonst läge die Ausnahme ungelesen in TThread.FatalException.
-  end;
+  // Ein Fehler der Meldung läge sonst ungelesen in TThread.FatalException.
+  TReporting.Quietly(
+    procedure
+    begin
+      FEvents.Error(AError);
+    end);
 end;
 
 procedure TIndexService.Start(const ARequest: TIndexRequest);

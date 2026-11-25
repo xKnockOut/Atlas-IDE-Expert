@@ -51,7 +51,7 @@ uses
   Atlas.Common.Lsp.MessageHandlers,
   Atlas.Common.Lsp.HoverValues,
   Atlas.Common.Lsp.HoverTypes,
-  Atlas.Common.Lsp.PublishedMembers,
+  Atlas.Common.Index.PublishedMembers,
   Atlas.Common.Lsp.Hover.UnitContents,
   Atlas.Common.Lsp.Rationale,
   Atlas.Common.Rationale.Contract,
@@ -71,41 +71,6 @@ const
     (De: ' · %s mögliche Elemente'; En: ' · %s possible elements'));
 
 {$SCOPEDENUMS OFF}
-
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
-/// <summary>Deklaration von ARange bis zum Ende der letzten Zeile (dort stehen Direktiven wie deprecated).</summary>
-function DeclarationText(const ALines: TArray<string>; const ARange: TTextRange): string;
-var
-  mLine: Integer;
-begin
-  Result := '';
-  for mLine := ARange.StartPos.Line to ARange.EndPos.Line do
-  begin
-    if (mLine < 0) or (mLine > High(ALines)) then
-    begin
-      Break;
-    end;
-    if mLine = ARange.StartPos.Line then
-    begin
-      Result := Copy(ALines[mLine], ARange.StartPos.Character + 1, MaxInt);
-    end
-    else
-    begin
-      Result := Result + ' ' + Trim(ALines[mLine]);
-    end;
-  end;
-end;
 
 /// <summary>Ordinalzahl eines Aufzählungswerts: Position im Typ, ohne explizite Werte.</summary>
 function EnumOrdinal(const AUnit: TUnitIndex; const AMember: TIndexSymbol): Integer;
@@ -337,8 +302,8 @@ begin
   Result := False;
   for mToken in FTree.Tokens do
   begin
-    if (mToken.Kind = TPascalTokenKind.Number) and (ComparePositions(mToken.StartPos, FPosition) <= 0) and
-      (ComparePositions(FPosition, mToken.EndPos) < 0) then
+    if (mToken.Kind = TPascalTokenKind.Number) and (TTextPosition.Compare(mToken.StartPos, FPosition) <= 0) and
+      (TTextPosition.Compare(FPosition, mToken.EndPos) < 0) then
     begin
       if THoverValues.TryParseNumber(mToken.Text, mNumber) then
       begin
@@ -443,7 +408,7 @@ begin
   FInfo.Declaration := TrimRight(Copy(FLines[mStart.Line], mStart.Character + 1, MaxInt));
   FInfo.Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(FLines, mStart.Line));
   FInfo.Documentation := FInfo.Doc.ToMarkdown;
-  FInfo.Deprecation := THoverValues.Deprecation(DeclarationText(FLines, FTarget.Range));
+  FInfo.Deprecation := THoverValues.Deprecation(FTarget.Range.OneLineIn(FLines));
   FInfo.FileName := FTarget.FileName;
   FInfo.Line := FTarget.SelectionRange.StartPos.Line;
   FInfo.Character := FTarget.SelectionRange.StartPos.Character;
@@ -484,9 +449,9 @@ begin
   case ASymbol.Kind of
     TIndexSymbolKind.Constant:
       // Ganze Deklaration: Mengen und Texte über mehrere Zeilen (Resourcestrings, #38).
-      Result := THoverValues.ConstantValue(DeclarationText(FLines, FTarget.Range));
+      Result := THoverValues.ConstantValue(FTarget.Range.OneLineIn(FLines));
     TIndexSymbolKind.TypeAlias:
-      Result := SetTypeValue(FSource.Resolver, FOwner, DeclarationText(FLines, FTarget.Range));
+      Result := SetTypeValue(FSource.Resolver, FOwner, FTarget.Range.OneLineIn(FLines));
     TIndexSymbolKind.EnumMember:
       Result := 'Ord = ' + IntToStr(EnumOrdinal(FOwner, ASymbol));
   else

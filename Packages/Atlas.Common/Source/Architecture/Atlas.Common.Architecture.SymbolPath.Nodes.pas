@@ -61,7 +61,7 @@ type
 
   TSymbolPathKinds = set of TIndexSymbolKind;
 
-  TSymbolPathReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TSymbolPathReadText = TDocumentReadText;
   /// <summary>True, wenn die Suche abbrechen soll (MCP-Cancel, $/cancelRequest).</summary>
   TSymbolPathCancelled = reference to function: Boolean;
 
@@ -178,7 +178,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Arrays;
 
 const
   /// <summary>Wörter in Typangaben, die kein Typname sind (array of TFoo, reference to function …).</summary>
@@ -660,20 +661,6 @@ begin
     TSymbolPathNames.PositionKey(FNodes[ATarget].Position);
 end;
 
-function ContainsNode(ANode: Integer; const ANodes: TArray<Integer>): Boolean;
-var
-  mNode: Integer;
-begin
-  for mNode in ANodes do
-  begin
-    if mNode = ANode then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Teilt "Unit.TTyp.Name" in den Namen und den Container davor (nur der letzte Abschnitt). ADot: Stelle
 /// des letzten Punkts, 0 ohne.</summary>
 procedure SplitQuery(const AQuery: string; out AName, AContainer: string; out ADot: Integer);
@@ -713,7 +700,7 @@ begin
     end;
     // Deklaration und Rumpf einer Routine sind derselbe Knoten (Canonical).
     mNode := NodeOf(mLocation);
-    if (mNode >= 0) and not ContainsNode(mNode, Result) then
+    if (mNode >= 0) and not TTextArrays.ContainsInteger(Result, mNode) then
     begin
       Result := Result + [mNode];
     end;

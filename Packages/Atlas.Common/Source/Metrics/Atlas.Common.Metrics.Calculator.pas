@@ -67,8 +67,10 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.RoutineLocals,
-  Atlas.Common.Metrics.UnitRoutines;
+  Atlas.Common.Pascal.RoutineLocals,
+  Atlas.Common.Metrics.UnitRoutines,
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
@@ -118,34 +120,12 @@ begin
   Result.Anonymous := False;
 end;
 
-/// <summary>Index des ersten Tokens mit Offset ab AOffset.</summary>
-function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLeft, mRight, mMiddle: Integer;
-begin
-  mLeft := 0;
-  mRight := Length(ATokens);
-  while mLeft < mRight do
-  begin
-    mMiddle := (mLeft + mRight) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLeft := mMiddle + 1;
-    end
-    else
-    begin
-      mRight := mMiddle;
-    end;
-  end;
-  Result := mLeft;
-end;
-
 /// <summary>Steht vor ANode (ohne Kommentare und Direktiven) das Schlüsselwort else?</summary>
 function AfterElse(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): Boolean;
 var
   mIndex: Integer;
 begin
-  mIndex := FirstTokenAt(ATokens, ANode.StartOffset) - 1;
+  mIndex := TokenFrom(ATokens, ANode.StartOffset) - 1;
   while (mIndex >= 0) and ((ATokens[mIndex].Kind = TPascalTokenKind.Comment) or
     (ATokens[mIndex].Kind = TPascalTokenKind.Directive)) do
   begin
@@ -800,7 +780,7 @@ end;
 /// <summary>Erster Bezeichner im Kopf AHeader; -1 ohne.</summary>
 function FirstIdentifier(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): Integer;
 begin
-  Result := FirstTokenAt(ATokens, AHeader.StartOffset);
+  Result := TokenFrom(ATokens, AHeader.StartOffset);
   while (Result < Length(ATokens)) and (ATokens[Result].Offset < AHeader.EndOffset) and
     (ATokens[Result].Kind <> TPascalTokenKind.Identifier) do
   begin
@@ -913,7 +893,7 @@ begin
   mSkips := LocalRoutinesOf(ARoutine);
   mLines := TDictionary<Integer, Boolean>.Create;
   try
-    mIndex := FirstTokenAt(mTokens, ARoutine.StartOffset);
+    mIndex := TokenFrom(mTokens, ARoutine.StartOffset);
     while (mIndex < Length(mTokens)) and (mTokens[mIndex].Offset < ARoutine.EndOffset) do
     begin
       if IsOwnCode(mTokens[mIndex], mSkips) then
@@ -939,23 +919,6 @@ end;
 class function TMetricsCalculator.Cognitive(ATree: TSyntaxTree; ARoutine: TSyntaxNode): Integer;
 begin
   Result := Analyze(ATree, ARoutine).Cognitive;
-end;
-
-/// <summary>Name von ARoutine mit den Namen der umgebenden Routinen davor ("Außen.Innen").</summary>
-function QualifiedRoutineName(ARoutine: TSyntaxNode): string;
-var
-  mParent: TSyntaxNode;
-begin
-  Result := ARoutine.Name;
-  mParent := ARoutine.Parent;
-  while mParent <> nil do
-  begin
-    if mParent.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Result := mParent.Name + '.' + Result;
-    end;
-    mParent := mParent.Parent;
-  end;
 end;
 
 /// <summary>Parameterzahl von ARoutine; ohne Liste (procedure TFoo.Bar;) die der Deklaration. AKnown wird bei
@@ -986,7 +949,7 @@ var
   mFlow: TFlow;
 begin
   Result := Default(TRoutineMetrics);
-  Result.Name := QualifiedRoutineName(ARoutine);
+  Result.Name := TSyntaxNodes.RoutinePath(ARoutine);
   Result.Range := TTextRange.Create(ARoutine.StartPos, ARoutine.EndPos);
   Result.NameRange := TTextRange.Create(ARoutine.StartPos, ARoutine.StartPos);
   if AHeader <> nil then
@@ -1125,7 +1088,7 @@ begin
   begin
     mName := Copy(mName, 1, Pos('<', mName) - 1);
   end;
-  mPosition := FirstTokenAt(ATokens, ANode.StartOffset);
+  mPosition := TokenFrom(ATokens, ANode.StartOffset);
   while (mPosition < Length(ATokens)) and (ATokens[mPosition].Offset < ANode.EndOffset) do
   begin
     if (ATokens[mPosition].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mPosition].Text, mName) then
@@ -1242,7 +1205,7 @@ begin
   if AScan.UsesNode <> nil then
   begin
     mItem.Kind := TStructureKind.UsesCount;
-    mIndex := FirstTokenAt(mTokens, AScan.UsesNode.StartOffset);
+    mIndex := TokenFrom(mTokens, AScan.UsesNode.StartOffset);
     if mIndex < Length(mTokens) then
     begin
       mItem.NameRange := TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos);

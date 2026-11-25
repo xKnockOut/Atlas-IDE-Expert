@@ -118,7 +118,11 @@ begin
   mBody := TJSONObject.Create;
   try
     mBody.AddPair('model', AModel);
-    mBody.AddPair('max_tokens', TJSONNumber.Create(APrompt.MaxTokens));
+    // Ohne Grenze (Smart CodeInsight) weglassen: max_tokens 0 liefert bei manchen Servern eine leere Antwort.
+    if APrompt.MaxTokens > 0 then
+    begin
+      mBody.AddPair('max_tokens', TJSONNumber.Create(APrompt.MaxTokens));
+    end;
     mBody.AddPair('stream', TJSONBool.Create(False));
     mMessages := TJSONArray.Create;
     if APrompt.Instructions <> '' then

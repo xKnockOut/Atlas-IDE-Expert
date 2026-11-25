@@ -38,7 +38,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Lsp.Session,
-  Atlas.UI.Popup.TitledTip,
+  Atlas.Vcl.Popup.TitledTip,
   Atlas.IDE.Editor.GutterColumnState;
 
 type
@@ -131,20 +131,20 @@ uses
   System.Math,
   Vcl.Forms,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.GutterPanel,
   Atlas.UI.Editor.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.GutterColumns,
+  Atlas.ToolsApi.Gutter.Columns,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh;
 
 type
   /// <summary>Maße eines Symbols in seiner Zelle.</summary>
@@ -271,15 +271,18 @@ begin
     mBack := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
   end;
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    PaintSymbol(ACanvas, ARect, ASymbol, mBack);
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      PaintSymbol(ACanvas, ARect, ASymbol, mBack);
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
+    end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;

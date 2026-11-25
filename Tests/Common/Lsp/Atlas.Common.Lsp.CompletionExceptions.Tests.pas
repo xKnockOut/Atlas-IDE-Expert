@@ -71,7 +71,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.CompletionExceptions;
+  Atlas.Common.Lsp.CompletionExceptions,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -125,29 +126,6 @@ const
     'end;'#10 +
     'end.';
 
-/// <summary>Text ohne "|" und die Position des "|".</summary>
-function Split(const AMarked: string; out APosition: TTextPosition): string;
-var
-  mIndex, mLine, mCharacter: Integer;
-begin
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 1 to Pos('|', AMarked) - 1 do
-  begin
-    if AMarked[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mCharacter := 0;
-    end
-    else
-    begin
-      Inc(mCharacter);
-    end;
-  end;
-  APosition := TTextPosition.Create(mLine, mCharacter);
-  Result := StringReplace(AMarked, '|', '', []);
-end;
-
 { TCompletionExceptionsTests }
 
 function TCompletionExceptionsTests.ItemsAt(const AMarked: string; const ASettings: TCompletionSettings;
@@ -158,7 +136,7 @@ var
   mTree: TSyntaxTree;
   mRequest: TCompletionRequest;
 begin
-  mText := Split(StringReplace(cUnitHaupt, '{ Code }', AMarked, []), mPosition);
+  mText := TTestSource.Unmark(StringReplace(cUnitHaupt, '{ Code }', AMarked, []), mPosition);
   mTree := TPascalParser.Parse(mText);
   FIndex.AddUnit(TIndexExtractor.ExtractText(StringReplace(mText, '|', '', []), cHauptFile, nil));
   mRequest := TCompletionRequest.Create(mText, cHauptFile, mPosition);

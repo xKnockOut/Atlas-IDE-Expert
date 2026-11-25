@@ -59,7 +59,7 @@ implementation
 uses
   Winapi.Windows,
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Explorer,
   Atlas.IDE.Tests.Flaky,

@@ -10,6 +10,9 @@
 //      Auftrag nie gesehen, und der MCP-Server schreibt selbst. Sonst hat das
 //      Plugin ihn übernommen; dann wartet er länger auf das Ergebnis.
 // Welche Dateien offen sind, steht unter "open" in editor-dirty-<pid>.json.
+// Zurückhalten (#2605): Mit Hold bittet der MCP-Server darum, eine Änderung an einer ungespeichert geänderten Datei
+// nicht abzulehnen, sondern in der IDE warten zu lassen, bis der Benutzer entscheidet. Das Plugin antwortet dann
+// sofort mit "held"; der MCP-Server schreibt die Datei in diesem Fall nie selbst.
 
 interface
 
@@ -19,13 +22,15 @@ uses
   System.SysUtils;
 
 type
-  TMcpIdeEditOutcome = (Applied, WriteYourself, Failed);
+  TMcpIdeEditOutcome = (Applied, WriteYourself, Failed, Held);
 
   /// <summary>Änderung einer Datei: erwarteter Inhalt des Puffers und neuer Text.</summary>
   TMcpIdeEdit = record
     FileName: string;
     Expected: string;
     Text: string;
+    /// <summary>Bei ungespeicherten Änderungen im Editor zurückhalten statt ablehnen (#2605).</summary>
+    Hold: Boolean;
     class function Make(const AFileName, AExpected, AText: string): TMcpIdeEdit; static;
   end;
 
@@ -43,6 +48,7 @@ type
     /// AWait schläft kurz (Tests: übernimmt die Rolle des Plugins); AClock liefert Millisekunden.
     /// WriteYourself: Das Plugin hat den Auftrag nicht angenommen oder die Datei ist nicht mehr offen.
     /// Failed: abgelehnt (AReason), etwa weil der Puffer inzwischen geändert wurde.
+    /// Held: Die Änderung wartet in der IDE auf den Benutzer (nur mit AEdit.Hold); nicht selbst schreiben.
     /// </summary>
     class function Send(const AInbox: string; const AEdit: TMcpIdeEdit; const AWait: TProc;
       const AClock: TFunc<Int64>; out AReason: string): TMcpIdeEditOutcome; static;
@@ -72,14 +78,21 @@ begin
   Result := TPath.Combine(TPath.Combine(ABase, 'ide-edits'), IntToStr(APid));
 end;
 
-function ReadAnswer(const AFileName: string; out AApplied, ANotOpen: Boolean; out AReason: string): Boolean;
+type
+  /// <summary>Antwort des Plugins.</summary>
+  TIdeEditAnswer = record
+    Applied: Boolean;
+    NotOpen: Boolean;
+    Held: Boolean;
+    Reason: string;
+  end;
+
+function ReadAnswer(const AFileName: string; out AAnswer: TIdeEditAnswer): Boolean;
 var
   mText: string;
   mJson: TJSONValue;
 begin
-  AApplied := False;
-  ANotOpen := False;
-  AReason := '';
+  AAnswer := Default(TIdeEditAnswer);
   try
     mText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
   except
@@ -92,9 +105,10 @@ begin
     Result := mJson is TJSONObject;
     if Result then
     begin
-      AApplied := TJSONObject(mJson).GetValue<Boolean>('applied', False);
-      ANotOpen := TJSONObject(mJson).GetValue<Boolean>('notOpen', False);
-      AReason := TJSONObject(mJson).GetValue<string>('reason', '');
+      AAnswer.Applied := TJSONObject(mJson).GetValue<Boolean>('applied', False);
+      AAnswer.NotOpen := TJSONObject(mJson).GetValue<Boolean>('notOpen', False);
+      AAnswer.Held := TJSONObject(mJson).GetValue<Boolean>('held', False);
+      AAnswer.Reason := TJSONObject(mJson).GetValue<string>('reason', '');
     end;
   finally
     mJson.Free;
@@ -115,6 +129,7 @@ begin
   Result.FileName := AFileName;
   Result.Expected := AExpected;
   Result.Text := AText;
+  Result.Hold := False;
 end;
 
 function RequestText(const AEdit: TMcpIdeEdit): string;
@@ -126,6 +141,10 @@ begin
     mJson.AddPair('file', AEdit.FileName);
     mJson.AddPair('expected', AEdit.Expected);
     mJson.AddPair('text', AEdit.Text);
+    if AEdit.Hold then
+    begin
+      mJson.AddPair('hold', TJSONBool.Create(True));
+    end;
     Result := mJson.ToJSON;
   finally
     mJson.Free;
@@ -148,18 +167,24 @@ end;
 /// <summary>Ergebnis aus der Antwortdatei des Plugins.</summary>
 function OutcomeOf(const AAnswer: string; out AReason: string): TMcpIdeEditOutcome;
 var
-  mApplied, mNotOpen: Boolean;
+  mAnswer: TIdeEditAnswer;
 begin
-  if not ReadAnswer(AAnswer, mApplied, mNotOpen, AReason) then
+  AReason := '';
+  if not ReadAnswer(AAnswer, mAnswer) then
   begin
     AReason := cTexts[TIdeEditsText.AnswerOfTheIDENot].Text;
-    Result := TMcpIdeEditOutcome.Failed;
-  end
-  else if mApplied then
+    Exit(TMcpIdeEditOutcome.Failed);
+  end;
+  AReason := mAnswer.Reason;
+  if mAnswer.Applied then
   begin
     Result := TMcpIdeEditOutcome.Applied;
   end
-  else if mNotOpen then
+  else if mAnswer.Held then
+  begin
+    Result := TMcpIdeEditOutcome.Held;
+  end
+  else if mAnswer.NotOpen then
   begin
     Result := TMcpIdeEditOutcome.WriteYourself;
   end

@@ -256,14 +256,17 @@ uses
   System.Types,
   Vcl.Dialogs,
   Atlas.Core.Architecture.MapState,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Architecture.Assignment,
   Atlas.UI.Architecture.Texts,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.Scaling,
-  Atlas.Core.Foundation.Calls,
-  Atlas.UI.Foundation.Menus;
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Plugin.Calls.Optional,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Core.Architecture.Resolution;
 
 {$R *.dfm}
 
@@ -273,6 +276,42 @@ const
   cBarLabelTop = 7;
   /// <summary>Feste Breite des Filterfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
   cFilterWidth = 200;
+  /// <summary>Spaltenbreiten der Tabellen bei 96 dpi.</summary>
+  cUnitWidth = 220;
+  cSubsystemWidth = 120;
+  cDirectWidth = 100;
+  cTotalWidth = 100;
+  cUsesWidth = 80;
+  cRoleWidth = 100;
+  cFromWidth = 200;
+  cToWidth = 200;
+  cCrossSubsystemWidth = 180;
+  cReasonWidth = 160;
+  cLocationWidth = 200;
+  /// <summary>Breiten der Knöpfe und Felder in den Leisten bei 96 dpi.</summary>
+  cRefreshWidth = 110;
+  cSaveReportWidth = 130;
+  cSaveStateWidth = 120;
+  cCompareWidth = 130;
+  cScopeWidth = 130;
+  cLibraryUnitsWidth = 120;
+  cSliderWidth = 140;
+  cFitWidth = 90;
+  cNamesWidth = 120;
+  cImplementationWidth = 140;
+  cMarkCyclesWidth = 130;
+  cShowChangesWidth = 150;
+  cSubsystemsButtonWidth = 110;
+  cExplainButtonWidth = 28;
+  cClearComparisonWidth = 140;
+  /// <summary>Teilsysteme bzw. Abschnitte des Vergleichs bis zu so vielen Einträgen aufgeklappt, größere zu.</summary>
+  cExpandedMembers = 12;
+  cExpandedChanges = 20;
+  /// <summary>Feld der Zuordnung: Rand neben der Bildlaufleiste und Mindestbreite bei 96 dpi, höchstens dieser
+  /// Anteil der Seite in Prozent.</summary>
+  cAssignmentMargin = 8;
+  cAssignmentMinWidth = 120;
+  cAssignmentMaxPercent = 40;
   /// <summary>Unterer Teil der Index-Generation: Zahl der Änderungen; der obere kennzeichnet nur den Index.
   /// </summary>
   cChangeCountMask = $7FFFFFFF;
@@ -289,11 +328,8 @@ type
 
 function NewSheet(AFrame: TArchFrame; AText: TAtlasAnalysisTextId): TTabSheet;
 begin
-  Result := TTabSheet.Create(AFrame);
-  // Ohne Reiter einhängen: Ein sichtbarer Reiter braucht das Fenster des PageControls (CreateWnd zeigt ihn).
-  Result.TabVisible := False;
-  Result.PageControl := AFrame.FParts.Pages;
-  Result.Caption := TAtlasAnalysisStrings.Text(AText);
+  // Ohne Reiter einhängen; CreateWnd zeigt ihn.
+  Result := TAtlasControls.NewHiddenSheet(AFrame, AFrame.FParts.Pages, TAtlasAnalysisStrings.Text(AText));
   AFrame.FParts.Sheets := AFrame.FParts.Sheets + [Result];
 end;
 
@@ -321,13 +357,9 @@ begin
   Result.OnKeyDown := AFrame.FState.Events.TreeKeyDown;
 end;
 
-procedure AddColumn(AList: TListView; AText: TAtlasAnalysisTextId; AWidth, APpi: Integer);
-var
-  mColumn: TListColumn;
+procedure AddColumn(AList: TListView; AText: TAtlasAnalysisTextId; AWidth96: Integer);
 begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := TAtlasAnalysisStrings.Text(AText);
-  mColumn.Width := MulDiv(AWidth, APpi, 96);
+  TAtlasListView.AddColumnTo(AList, TAtlasAnalysisStrings.Text(AText), AWidth96);
 end;
 
 /// <summary>Links ausgerichtet hinter AAfter (nil: ganz links).</summary>
@@ -456,23 +488,23 @@ begin
   mEvents := AFrame.FState.Events;
   AFrame.FParts.Top := NewFlowBar(AFrame, AFrame);
   TAtlasControlScaling.SetPadding(AFrame.FParts.Top, 2, 2, 2, 2);
-  AFrame.FParts.Refresh := NewButton(AFrame, AFrame.FParts.Top, nil, TAtlasAnalysisTextId.ArchitectureRefresh, 110,
-    mEvents.RefreshClick);
+  AFrame.FParts.Refresh := NewButton(AFrame, AFrame.FParts.Top, nil, TAtlasAnalysisTextId.ArchitectureRefresh,
+    cRefreshWidth, mEvents.RefreshClick);
   AFrame.FParts.Save := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.Refresh,
-    TAtlasAnalysisTextId.ArchitectureSaveReport, 130, mEvents.SaveClick);
+    TAtlasAnalysisTextId.ArchitectureSaveReport, cSaveReportWidth, mEvents.SaveClick);
   AFrame.FParts.SaveState := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.Save,
-    TAtlasAnalysisTextId.ArchitectureSaveState, 120, mEvents.SaveStateClick);
+    TAtlasAnalysisTextId.ArchitectureSaveState, cSaveStateWidth, mEvents.SaveStateClick);
   AFrame.FParts.Compare := NewButton(AFrame, AFrame.FParts.Top, AFrame.FParts.SaveState,
-    TAtlasAnalysisTextId.ArchitectureCompare, 130, mEvents.CompareClick);
+    TAtlasAnalysisTextId.ArchitectureCompare, cCompareWidth, mEvents.CompareClick);
   AFrame.FParts.Scope := TComboBox.Create(AFrame);
   PlaceLeft(AFrame.FParts.Scope, AFrame.FParts.Top, AFrame.FParts.Compare);
   AFrame.FParts.Scope.Style := csDropDownList;
-  AFrame.FParts.Scope.Width := AFrame.FParts.Scope.ScaleValue(130);
+  AFrame.FParts.Scope.Width := AFrame.FParts.Scope.ScaleValue(cScopeWidth);
   AFrame.FParts.Scope.OnChange := mEvents.ScopeChange;
   AFrame.FParts.LibraryUnits := TCheckBox.Create(AFrame);
   PlaceLeft(AFrame.FParts.LibraryUnits, AFrame.FParts.Top, AFrame.FParts.Scope);
   AFrame.FParts.LibraryUnits.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureLibrary);
-  AFrame.FParts.LibraryUnits.Width := AFrame.FParts.LibraryUnits.ScaleValue(120);
+  AFrame.FParts.LibraryUnits.Width := AFrame.FParts.LibraryUnits.ScaleValue(cLibraryUnitsWidth);
   AFrame.FParts.LibraryUnits.OnClick := mEvents.LibraryClick;
 end;
 
@@ -485,7 +517,7 @@ begin
   mCaption.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionCaption);
   mSlider := TAtlasResolutionSlider.Create(AFrame);
   PlaceLeft(mSlider, AFrame.FParts.Top, mCaption);
-  mSlider.Width := mSlider.ScaleValue(140);
+  mSlider.Width := mSlider.ScaleValue(cSliderWidth);
   mSlider.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureResolutionHint);
   mSlider.ShowHint := True;
   mSlider.OnTracking := ResolutionTracking(AFrame);
@@ -544,18 +576,19 @@ begin
   mEvents := AFrame.FState.Events;
   mBar := NewBar(AFrame, ASheet);
   AFrame.FParts.MapBar := mBar;
-  AFrame.FParts.Fit := NewButton(AFrame, mBar, nil, TAtlasAnalysisTextId.ArchitectureFit, 90, mEvents.FitClick);
-  AFrame.FParts.Names := NewFlagCheck(AFrame, AFrame.FParts.Fit, TAtlasAnalysisTextId.ArchitectureNames, 120,
-    TAtlasArchMapFlag.ShowNames);
+  AFrame.FParts.Fit := NewButton(AFrame, mBar, nil, TAtlasAnalysisTextId.ArchitectureFit, cFitWidth,
+    mEvents.FitClick);
+  AFrame.FParts.Names := NewFlagCheck(AFrame, AFrame.FParts.Fit, TAtlasAnalysisTextId.ArchitectureNames,
+    cNamesWidth, TAtlasArchMapFlag.ShowNames);
   AFrame.FParts.ImplementationUses := NewFlagCheck(AFrame, AFrame.FParts.Names,
-    TAtlasAnalysisTextId.ArchitectureImplementation, 140, TAtlasArchMapFlag.ShowImplementation);
+    TAtlasAnalysisTextId.ArchitectureImplementation, cImplementationWidth, TAtlasArchMapFlag.ShowImplementation);
   AFrame.FParts.MarkCycles := NewFlagCheck(AFrame, AFrame.FParts.ImplementationUses,
-    TAtlasAnalysisTextId.ArchitectureMarkCycles, 130, TAtlasArchMapFlag.MarkCycles);
+    TAtlasAnalysisTextId.ArchitectureMarkCycles, cMarkCyclesWidth, TAtlasArchMapFlag.MarkCycles);
   AFrame.FParts.Changes := NewFlagCheck(AFrame, AFrame.FParts.MarkCycles, TAtlasAnalysisTextId.ArchitectureShowChanges,
-    150, TAtlasArchMapFlag.ShowChanges);
+    cShowChangesWidth, TAtlasArchMapFlag.ShowChanges);
   AFrame.FParts.Changes.Enabled := False;
   AFrame.FParts.SubsystemsButton := NewButton(AFrame, mBar, AFrame.FParts.Changes,
-    TAtlasAnalysisTextId.ArchitectureSubsystemsButton, 110, mEvents.SubsystemsClick);
+    TAtlasAnalysisTextId.ArchitectureSubsystemsButton, cSubsystemsButtonWidth, mEvents.SubsystemsClick);
   AFrame.FParts.SubsystemsMenu := TPopupMenu.Create(AFrame);
 end;
 
@@ -595,7 +628,7 @@ begin
   mSheet := NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabOverview);
   AFrame.FParts.Info := NewLabel(AFrame, mSheet, alBottom);
   AFrame.FParts.Info.EllipsisPosition := epEndEllipsis;
-  AFrame.FParts.Info.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(AFrame.FParts.Info, clGrayText);
   AFrame.FParts.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureMapHint);
   BuildAssignment(AFrame, mSheet);
   BuildMapBar(AFrame, mSheet);
@@ -610,20 +643,18 @@ end;
 procedure BuildCentral(AFrame: TArchFrame);
 var
   mList: TListView;
-  mPpi: Integer;
 begin
   mList := NewList(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCentral));
   AFrame.FParts.Central := mList;
   mList.ColumnClick := True;
   mList.OnColumnClick := AFrame.FState.Events.CentralColumnClick;
   mList.OnDblClick := AFrame.FState.Events.CentralDblClick;
-  mPpi := AFrame.CurrentPPI;
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUnit, 220, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, 120, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColDirect, 100, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTotal, 100, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUses, 80, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColRole, 100, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUnit, cUnitWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, cSubsystemWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColDirect, cDirectWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTotal, cTotalWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColUses, cUsesWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColRole, cRoleWidth);
 end;
 
 procedure BuildSubsystems(AFrame: TArchFrame);
@@ -635,14 +666,14 @@ begin
   // Fragezeichen mit der Erklärung, wie die Teilsysteme entstehen (#1368); nur mit Zuordnung vom Server.
   AFrame.FParts.SubsystemsBar := NewBar(AFrame, mSheet);
   AFrame.FParts.SubsystemsBar.Visible := False;
-  mButton := NewButton(AFrame, AFrame.FParts.SubsystemsBar, nil, TAtlasAnalysisTextId.ArchitectureExplainButton, 28,
-    AFrame.FState.Events.ExplainClick);
+  mButton := NewButton(AFrame, AFrame.FParts.SubsystemsBar, nil, TAtlasAnalysisTextId.ArchitectureExplainButton,
+    cExplainButtonWidth, AFrame.FState.Events.ExplainClick);
   mButton.Hint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
   mButton.ShowHint := True;
   AFrame.FParts.ExplainButton := mButton;
   AFrame.FParts.Explanation := NewLabel(AFrame, AFrame.FParts.SubsystemsBar, alClient);
   AFrame.FParts.Explanation.WordWrap := True; // window-ok: alClient, die Höhe kommt aus der Ausrichtung
-  AFrame.FParts.Explanation.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(AFrame.FParts.Explanation, clGrayText);
   AFrame.FParts.Explanation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
   AFrame.FParts.Subsystems := NewTree(AFrame, mSheet);
 end;
@@ -650,18 +681,16 @@ end;
 procedure BuildCyclesAndCrossLinks(AFrame: TArchFrame);
 var
   mList: TListView;
-  mPpi: Integer;
 begin
   AFrame.FParts.Cycles := NewTree(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCycles));
   mList := NewList(AFrame, NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabCrossLinks));
   AFrame.FParts.CrossLinks := mList;
   mList.OnDblClick := AFrame.FState.Events.CrossDblClick;
-  mPpi := AFrame.CurrentPPI;
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColFrom, 200, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTo, 200, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, 180, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColReason, 160, mPpi);
-  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColLocation, 200, mPpi);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColFrom, cFromWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColTo, cToWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColSubsystem, cCrossSubsystemWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColReason, cReasonWidth);
+  AddColumn(mList, TAtlasAnalysisTextId.ArchitectureColLocation, cLocationWidth);
 end;
 
 procedure BuildComparison(AFrame: TArchFrame);
@@ -671,8 +700,8 @@ var
 begin
   mSheet := NewSheet(AFrame, TAtlasAnalysisTextId.ArchitectureTabComparison);
   AFrame.FParts.CompareBar := NewBar(AFrame, mSheet);
-  mButton := NewButton(AFrame, AFrame.FParts.CompareBar, nil, TAtlasAnalysisTextId.ArchitectureClearComparison, 140,
-    AFrame.FState.Events.ClearCompareClick);
+  mButton := NewButton(AFrame, AFrame.FParts.CompareBar, nil, TAtlasAnalysisTextId.ArchitectureClearComparison,
+    cClearComparisonWidth, AFrame.FState.Events.ClearCompareClick);
   mButton.Align := alRight;
   mButton.Enabled := False;
   AFrame.FParts.ClearCompare := mButton;
@@ -810,7 +839,7 @@ begin
       Pointer(NativeInt(-1 - mMember));
   end;
   // Kleine Teilsysteme aufgeklappt, große zu.
-  mGroup.Expanded := Length(AMembers) <= 12;
+  mGroup.Expanded := Length(AMembers) <= cExpandedMembers;
 end;
 
 procedure FillSubsystems(AFrame: TArchFrame);
@@ -985,7 +1014,7 @@ begin
     mItems.AddChild(mGroup, TArchTexts.ChangeCaption(ASection.Kind, mChange)).Data :=
       Pointer(NativeInt(-1 - Max(-1, mChange.Unit_)));
   end;
-  mGroup.Expanded := Length(mShown) <= 20;
+  mGroup.Expanded := Length(mShown) <= cExpandedChanges;
 end;
 
 procedure FillComparisonTree(AFrame: TArchFrame);
@@ -1092,9 +1121,12 @@ begin
   mControls.Assignment.SetBounds(0, 0, mSize.cx + 1, mSize.cy + 1);
   if not mControls.AssignmentBox.Visible then
   begin
-    // Breite nach dem Inhalt (Platz für die Bildlaufleiste), höchstens 40 % der Seite; danach gilt die Ziehleiste.
-    mControls.AssignmentBox.Width := Min(mSize.cx + GetSystemMetrics(SM_CXVSCROLL) + AFrame.ScaleValue(8),
-      Max(AFrame.ScaleValue(120), mControls.AssignmentBox.Parent.Width * 2 div 5));
+    // Breite nach dem Inhalt (Platz für die Bildlaufleiste), höchstens cAssignmentMaxPercent der Seite; danach gilt
+    // die Ziehleiste.
+    mControls.AssignmentBox.Width := Min(
+      mSize.cx + GetSystemMetrics(SM_CXVSCROLL) + AFrame.ScaleValue(cAssignmentMargin),
+      Max(AFrame.ScaleValue(cAssignmentMinWidth),
+        mControls.AssignmentBox.Parent.Width * cAssignmentMaxPercent div 100));
     mControls.AssignmentBox.Visible := True;
     mControls.AssignmentSplit.Left := mControls.AssignmentBox.Left + mControls.AssignmentBox.Width + 1;
     mControls.AssignmentSplit.Visible := True;
@@ -1233,23 +1265,6 @@ begin
 end;
 
 { Text der Listen }
-
-function ItemsText(AList: TListView): TArray<string>;
-var
-  mIndex, mColumn: Integer;
-  mLine: string;
-begin
-  Result := nil;
-  for mIndex := 0 to AList.Items.Count - 1 do
-  begin
-    mLine := AList.Items[mIndex].Caption;
-    for mColumn := 0 to AList.Items[mIndex].SubItems.Count - 1 do
-    begin
-      mLine := mLine + #9 + AList.Items[mIndex].SubItems[mColumn];
-    end;
-    Result := Result + [mLine];
-  end;
-end;
 
 function NodesText(ATree: TTreeView): TArray<string>;
 var
@@ -1727,13 +1742,13 @@ function TAtlasArchitectureFrame.ListText(AList: TAtlasArchFrameList): TArray<st
 begin
   case AList of
     TAtlasArchFrameList.Central:
-      Result := ItemsText(FParts.Central);
+      Result := TAtlasListView.RowsText(FParts.Central);
     TAtlasArchFrameList.Subsystems:
       Result := NodesText(FParts.Subsystems);
     TAtlasArchFrameList.Cycles:
       Result := NodesText(FParts.Cycles);
     TAtlasArchFrameList.CrossLinks:
-      Result := ItemsText(FParts.CrossLinks);
+      Result := TAtlasListView.RowsText(FParts.CrossLinks);
   else
     Result := NodesText(FParts.Comparison);
   end;

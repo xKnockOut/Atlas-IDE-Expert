@@ -22,7 +22,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract;
 
@@ -320,10 +320,13 @@ end;
 { TAtlasRecentIssues }
 
 constructor TAtlasRecentIssues.Create;
+const
+  /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
+  cKind = 'Zuletzt geöffnete Issues';
 begin
   inherited Create;
   FEntries := TList<TEntry>.Create;
-  FKind := 'Zuletzt geöffnete Issues';
+  FKind := cKind;
 end;
 
 destructor TAtlasRecentIssues.Destroy;
@@ -476,21 +479,7 @@ end;
 
 function TAtlasRecentIssues.LoadFromFile(const AFileName: string): TAtlasDataLoad;
 begin
-  FEntries.Clear;
-  FKept := '';
-  Result := TAtlasDataFile.Load(AFileName, FKind,
-    function(const AText: string): Boolean
-    begin
-      Result := Parse(AText);
-    end);
-  if not TAtlasDataFile.Writable(Result) then
-  begin
-    FKept := AFileName;
-  end;
-  if Result <> TAtlasDataLoad.Loaded then
-  begin
-    FEntries.Clear;
-  end;
+  Result := TAtlasDataFile.LoadInto(AFileName, FKind, Parse, Clear, FKept);
 end;
 
 function TAtlasRecentIssues.SaveToFile(const AFileName: string): Boolean;

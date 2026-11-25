@@ -30,7 +30,7 @@ interface
 uses
   ToolsAPI,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.MutationResults,
   Atlas.Core.Tests.MutationPlan,
@@ -113,15 +113,15 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.Core.Tests.MutationShadow,
   Atlas.Core.Tests.Mutants,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Tests.Projects;
@@ -521,8 +521,14 @@ begin
     try
       FResults.LoadJson(TAtlasTextFile.LoadText(mFile));
     except
-      on Exception do
+      on E: Exception do
+      begin
+        if not TAtlasTextFile.IsReadError(E) then
+        begin
+          raise;
+        end;
         FResults.Forget('');
+      end;
     end;
   end;
   Inc(FVersion);

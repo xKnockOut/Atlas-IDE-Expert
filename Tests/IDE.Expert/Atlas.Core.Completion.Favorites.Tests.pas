@@ -62,8 +62,10 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Controller,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Completion.Providers.Fixed;
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Core.Completion.Providers.Fixed,
+  Atlas.Tests.Wait,
+  Atlas.Core.Completion.TestSupport;
 
 type
   TFavoritesView = class(TInterfacedObject, IAtlasCompletionView)
@@ -77,28 +79,6 @@ type
     function PageSize: Integer;
     procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
   end;
-
-function OrderNames(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex in AOrder do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ',';
-    end;
-    if TAtlasRanking.IsHeader(mIndex) then
-    begin
-      Result := Result + '#';
-    end
-    else
-    begin
-      Result := Result + AItems[mIndex].Name;
-    end;
-  end;
-end;
 
 { TFavoritesView }
 
@@ -156,21 +136,6 @@ begin
   Result.Prefix := APrefix;
 end;
 
-function Wait(const ACondition: TFunc<Boolean>): Boolean;
-var
-  mStart: UInt64;
-begin
-  mStart := TThread.GetTickCount64;
-  repeat
-    CheckSynchronize(5);
-    if ACondition() then
-    begin
-      Exit(True);
-    end;
-  until TThread.GetTickCount64 - mStart > 3000;
-  Result := False;
-end;
-
 function TempFile: string;
 begin
   Result := TPath.Combine(TPath.GetTempPath, 'AtlasFavorites' + IntToStr(TThread.GetTickCount64) + '.json');
@@ -209,7 +174,7 @@ end;
 procedure StartAndWait(AController: TAtlasCompletionController; const APrefix: string);
 begin
   AController.Start(Context(APrefix));
-  Assert.IsTrue(Wait(
+  Assert.IsTrue(TTestWait.Synchronized(
     function: Boolean
     begin
       Result := not AController.Loading;

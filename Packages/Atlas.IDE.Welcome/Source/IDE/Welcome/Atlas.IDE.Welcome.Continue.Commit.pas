@@ -11,7 +11,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Welcome.Continue,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasIdeContinueCommit = record
@@ -27,8 +27,8 @@ implementation
 
 uses
   Atlas.Core.Results.Model,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Contracts.VersionControl;

@@ -8,7 +8,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassBodies;
 
 type
@@ -55,8 +55,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.TypeComments,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Pascal.TypeComments,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.ClassCompletion;
 
 const

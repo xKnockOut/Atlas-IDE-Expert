@@ -35,10 +35,10 @@ uses
   Vcl.AppEvnts,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.SmartPaste,
   Atlas.UI.Editor.SmartPaste,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TAtlasSmartPasteSessionFunc = reference to function: TLspSession;
@@ -111,18 +111,18 @@ implementation
 uses
   System.Math,
   System.JSON,
-  Atlas.IDE.Foundation.Caret,
+  Atlas.ToolsApi.Editor.Caret,
   Vcl.Clipbrd,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.UI.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Plugin.Localization.Strings,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.SmartIndent;
 
@@ -240,8 +240,11 @@ begin
       end;
     except
       // Zwischenablage gerade von einem anderen Programm gesperrt: beim nächsten Mal.
-      FClipSequence := 0;
-      FClipText := '';
+      on EClipboardException do
+      begin
+        FClipSequence := 0;
+        FClipText := '';
+      end;
     end;
     FClipLines := TTextLines.SplitLines(FClipText);
   end;
@@ -288,7 +291,8 @@ begin
         end;
       except
         // Server langsam oder weg: kein Fenster, das Einfügen bleibt, wie es ist.
-        Analysis := Default(TAtlasPasteAnalysis);
+        on ELspClientError do
+          Analysis := Default(TAtlasPasteAnalysis);
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.SmartPaste,

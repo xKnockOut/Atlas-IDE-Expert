@@ -44,7 +44,7 @@ uses
   Atlas.Core.Designer.Structure,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.StructureFrame,
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.IDE.Designer.PaletteImages;
 
 type
@@ -122,7 +122,8 @@ uses
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.Model,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cTick = 300;
@@ -719,27 +720,31 @@ begin
 end;
 
 procedure TAtlasIdeStructure.MenuClick(Sender: TObject);
-var
-  mEditor: IOTAFormEditor;
-  mRoot, mComponent: TComponent;
-  mDesigner: IDesigner;
-  mComponentEditor: IComponentEditor;
 begin
-  if not (Sender is TMenuItem) or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
-  begin
-    Exit;
-  end;
-  mComponent := ComponentOf(mRoot, FMenuComponent);
-  mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
-  if (mComponent = nil) or (mDesigner = nil) then
-  begin
-    Exit;
-  end;
-  mComponentEditor := GetComponentEditor(mComponent, mDesigner);
-  if (mComponentEditor <> nil) and (TMenuItem(Sender).Tag < mComponentEditor.GetVerbCount) then
-  begin
-    mComponentEditor.ExecuteVerb(TMenuItem(Sender).Tag);
-  end;
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    var
+      mEditor: IOTAFormEditor;
+      mRoot, mComponent: TComponent;
+      mDesigner: IDesigner;
+      mComponentEditor: IComponentEditor;
+    begin
+      if not (Sender is TMenuItem) or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+      begin
+        Exit;
+      end;
+      mComponent := ComponentOf(mRoot, FMenuComponent);
+      mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
+      if (mComponent = nil) or (mDesigner = nil) then
+      begin
+        Exit;
+      end;
+      mComponentEditor := GetComponentEditor(mComponent, mDesigner);
+      if (mComponentEditor <> nil) and (TMenuItem(Sender).Tag < mComponentEditor.GetVerbCount) then
+      begin
+        mComponentEditor.ExecuteVerb(TMenuItem(Sender).Tag);
+      end;
+    end);
 end;
 
 procedure TAtlasIdeStructure.Drop;

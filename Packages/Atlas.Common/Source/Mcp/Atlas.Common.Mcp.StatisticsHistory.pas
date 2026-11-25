@@ -30,7 +30,8 @@ type
   public const
     cFileName = 'mcp-stats.jsonl';
     cKeepDays = 30;
-    cOpenAttempts = 10;
+    /// <summary>So lange wartet das Öffnen höchstens, solange ein anderer Prozess die Datei hält.</summary>
+    cOpenWaitMs = 500;
     cRetryMs = 50;
   public
     /// <summary>Datei im Ordner der Statusdateien (TServerStatusFile.FolderOf).</summary>
@@ -62,6 +63,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Text.Json,
+  Atlas.Text.Files,
   Atlas.Text.Lines;
 
 /// <summary>Ende der Sitzung einer Zeile; False bei unlesbarer Zeile.</summary>
@@ -78,32 +80,16 @@ begin
   end;
 end;
 
-/// <summary>Öffnet AFileName exklusiv (bei Bedarf neu), mit wenigen Versuchen; nil, wenn es nicht gelingt.</summary>
-function OpenExclusive(const AFileName: string; ACreate: Boolean): TFileStream;
+/// <summary>Öffnet AFileName exklusiv (bei Bedarf neu); wartet nur, solange ein anderer Prozess sie hält. nil, wenn
+/// es nicht gelingt oder die Datei fehlt und ACreate False ist.</summary>
+function OpenExclusive(const AFileName: string; ACreate: Boolean): TStream;
 var
-  mAttempt: Integer;
-  mMode: Word;
+  mError: string;
 begin
-  Result := nil;
-  for mAttempt := 1 to TMcpStatisticsHistory.cOpenAttempts do
+  if TTextFiles.OpenExclusive(AFileName, ACreate, TMcpStatisticsHistory.cOpenWaitMs, TMcpStatisticsHistory.cRetryMs,
+    Result, mError) <> TTextExclusiveOpen.Opened then
   begin
-    try
-      mMode := fmOpenReadWrite or fmShareExclusive;
-      if not FileExists(AFileName) then
-      begin
-        if not ACreate then
-        begin
-          Exit;
-        end;
-        mMode := fmCreate or fmShareExclusive;
-      end;
-      Exit(TFileStream.Create(AFileName, mMode));
-    except
-      on EFOpenError do
-        Sleep(TMcpStatisticsHistory.cRetryMs);
-      on EFCreateError do
-        Sleep(TMcpStatisticsHistory.cRetryMs);
-    end;
+    Result := nil;
   end;
 end;
 
@@ -195,7 +181,7 @@ end;
 class function TMcpStatisticsHistory.Append(const AFileName: string; const AStats: TMcpSessionStatistics;
   APid: Cardinal; ANow: TDateTime): Boolean;
 var
-  mStream: TFileStream;
+  mStream: TStream;
 begin
   Result := False;
   try
@@ -220,7 +206,7 @@ end;
 
 class function TMcpStatisticsHistory.Read(const AFileName: string; ANow: TDateTime): TArray<string>;
 var
-  mStream: TFileStream;
+  mStream: TStream;
 begin
   Result := nil;
   try

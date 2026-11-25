@@ -26,7 +26,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.SettingsLayouts;
@@ -198,7 +198,7 @@ uses
   Vcl.Menus,
   Vcl.Dialogs,
   Atlas.Core.Welcome.Trends,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.QuickActions.Texts,
   Atlas.UI.Welcome.Trends,
   Atlas.UI.Settings.Page.Sheets;
@@ -213,6 +213,12 @@ const
   cCheckWidth = 400;
   cBrowseWidth = 30;
   cBrowseGap = 6;
+  /// <summary>Knöpfe „Nutzung zurücksetzen“ und „Tipps wieder zeigen“ nebeneinander, Knopf zu den Einstellungen
+  /// einer Modul-Kachel.</summary>
+  cResetUsageWidth = 180;
+  cUnblockTipsWidth = 200;
+  cTileLinkWidth = 200;
+  cRowButtonGap = 10;
   cLayoutKey = 'welcomePage.layout';
   cSearchKey = 'welcomePage.search.key';
   cSeriesKey = 'welcomePage.trends.series';
@@ -502,10 +508,10 @@ begin
   FMore.Discover := Check('welcomePage.discover', TAtlasWelcomeTextId.SettingsWelcomeDiscover);
   FMore.TipsUsageTracking := Check('tips.usageTracking', TAtlasWelcomeTextId.SettingsTipsUsageTracking);
   mRow := FHost.AddRow(cButtonRow, nil);
-  FMore.ResetUsage := AddButton(mRow, 0, 180, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsResetUsage),
-    FHooks.ResetUsageClick);
-  FMore.UnblockTips := AddButton(mRow, 190, 200, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsUnblockTips),
-    FHooks.UnblockTipsClick);
+  FMore.ResetUsage := AddButton(mRow, 0, cResetUsageWidth,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsResetUsage), FHooks.ResetUsageClick);
+  FMore.UnblockTips := AddButton(mRow, cResetUsageWidth + cRowButtonGap, cUnblockTipsWidth,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsUnblockTips), FHooks.UnblockTipsClick);
   FHost.Attach(mRow, FMore.Discover);
 end;
 
@@ -547,8 +553,8 @@ begin
     if FHooks.TileSwitches[mIndex].SettingsKey <> '' then
     begin
       mRow := FHost.AddRow(cButtonRow, nil);
-      mLink := AddButton(mRow, 0, 200, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink),
-        FHooks.TileLinkClick);
+      mLink := AddButton(mRow, 0, cTileLinkWidth,
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink), FHooks.TileLinkClick);
       mLink.Tag := mIndex;
       FHost.Attach(mRow, mCheck);
     end;

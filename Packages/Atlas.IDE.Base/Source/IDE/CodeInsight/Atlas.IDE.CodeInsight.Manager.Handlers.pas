@@ -8,9 +8,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Lsp.CrashCases,
-  Atlas.Core.Notifications.Contract;
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.CrashCases,
+  Atlas.Plugin.Notifications.Contract;
 
 type
   /// <summary>Was der Eintrag „Server neu gestartet“ nennt.</summary>
@@ -57,19 +57,19 @@ uses
   Winapi.ShellAPI,
   System.Generics.Collections,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.CodeInsight.Strings,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Crashes,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Crashes,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Problems.Controller,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.IDE.Foundation.Host;
 
 {$SCOPEDENUMS ON}

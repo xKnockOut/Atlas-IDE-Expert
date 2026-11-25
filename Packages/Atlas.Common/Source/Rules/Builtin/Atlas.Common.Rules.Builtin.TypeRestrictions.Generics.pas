@@ -60,14 +60,15 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -994,7 +995,7 @@ var
   mParams, mTypeNode: TSyntaxNode;
 begin
   mParams := ADecl.FindChild(TSyntaxKind.GenericParams);
-  mTypeNode := TypeOfDecl(ADecl);
+  mTypeNode := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams]);
   if (mParams = nil) and (mTypeNode <> nil) then
   begin
     CheckTypedType(ADecl, mTypeNode);
@@ -1161,7 +1162,7 @@ begin
     begin
       Exit;
     end;
-    mTypeNode := TypeOfDecl(mDecl);
+    mTypeNode := TSyntaxNodes.FirstChildExcept(mDecl, [TSyntaxKind.GenericParams]);
     AddMethodHeads(mTypeNode, AMethod, AHeads);
     if (mTypeNode.Kind <> TSyntaxKind.ClassType) or (mTypeNode.ChildCount = 0) or
       (mTypeNode[0].Kind <> TSyntaxKind.TypeReference) then

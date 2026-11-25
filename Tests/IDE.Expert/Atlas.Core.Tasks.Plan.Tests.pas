@@ -38,7 +38,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.PreBuild,
   Atlas.Core.Tasks.Plan,

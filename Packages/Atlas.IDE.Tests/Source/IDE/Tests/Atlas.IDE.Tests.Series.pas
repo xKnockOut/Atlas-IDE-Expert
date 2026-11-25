@@ -100,12 +100,12 @@ implementation
 uses
   System.Math,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.Text.Lines,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tests.Strings,
   Atlas.UI.Tests.SeriesMenu;
 

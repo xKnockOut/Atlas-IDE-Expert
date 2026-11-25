@@ -71,7 +71,8 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Debug.InstanceBreakpoint,
-  Atlas.UI.Debug.ObjectMarks.Strings;
+  Atlas.UI.Debug.ObjectMarks.Strings,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 
@@ -319,7 +320,7 @@ begin
   end;
   if FMarks[mIndex].Freed then
   begin
-    Sender.Canvas.Font.Color := clGrayText;
+    Sender.Canvas.Font.Color := TAtlasUiTheme.SystemColor(Sender, clGrayText);
   end
   else
   begin

@@ -18,7 +18,10 @@
 //                       übersetzt Delphi 13 still (#1383).
 //   unit-name-conflict  Eine Unit heißt System oder SysInit (#1079, wie
 //                       E2272), oder {$NOINCLUDE X} nennt eine Unit, die die
-//                       Unit-Suche sicher nicht findet (wie E2242).
+//                       Unit-Suche sicher nicht findet (wie E2242). Ein Teil
+//                       des Namens im Kopf oder in uses/contains ist ein
+//                       reserviertes Wort wie inline oder object (wie E2029);
+//                       mit & davor bleibt er still.
 //   implicit-variants-unit  Variant oder OleVariant als Typ ohne System.Variants
 //                       in uses (#1082; dcc 13 meldet kein W1040); experimentell, also nur
 //                       eingeschaltet aktiv.
@@ -154,11 +157,13 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Rules.Builtin.Unresolved,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -166,7 +171,7 @@ type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TUnitsText = (NameTitle, ChangeNameTo, NameMismatch, InFileDeclares, ChangeTo, AfterEndTitle, CommentAfterEnd,
     CodeAfterEnd, RemoveAfterEnd, ExportsTitle, ExportLocal, ExportThreadvar, ExportNotRoutine, RemoveDuplicate,
-    ExportsGlobal, ExportedTwice, CollisionTitle, Reserved, UseName, NoInclude, VariantsTitle, AddToUses, Variants);
+    ExportsGlobal, ExportedTwice, CollisionTitle, Reserved, ReservedPart, UseName, NoInclude, VariantsTitle, AddToUses, Variants);
 
 const
   cTexts: array[TUnitsText] of TAtlasText = (
@@ -197,6 +202,10 @@ const
     (De: 'Unit-Name kollidiert (wie E2272, E2242)'; En: 'Unit name collides (like E2272, E2242)'),
     (De: 'Der Unit-Name %s ist für den Compiler reserviert (wie E2272).';
      En: 'The unit name %s is reserved for the compiler (like E2272).'),
+    (De: 'Der Teil „%s“ des Unit-Namens %s ist ein reserviertes Wort; Delphi lehnt den Namen in uses ab ' +
+      '(wie E2029). Die Unit umbenennen.';
+     En: 'The part “%s” of the unit name %s is a reserved word; Delphi rejects the name in uses (like E2029). ' +
+      'Rename the unit.'),
     (De: '%s verwenden'; En: 'Use %s'),
     (De: '{$NOINCLUDE %s}: %s ist keine bekannte Unit (wie E2242).';
      En: '{$NOINCLUDE %s}: %s is not a known unit (like E2242).'),
@@ -606,17 +615,6 @@ begin
     cTexts[TUnitsText.ExportsTitle].Text);
 end;
 
-/// <summary>Text eines String-Literals ohne Hochkommas ('' wird ').</summary>
-function Unquoted(const AText: string): string;
-begin
-  Result := AText;
-  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
-  begin
-    Result := Copy(Result, 2, Length(Result) - 2);
-  end;
-  Result := StringReplace(Result, '''''', '''', [rfReplaceAll]);
-end;
-
 type
   /// <summary>Liest die Einträge einer exports-Klausel.</summary>
   TExportsScanner = class
@@ -724,7 +722,7 @@ begin
   begin
     if (AToken.Kind = TPascalTokenKind.StringLiteral) and (FLiterals = 0) then
     begin
-      FEntry.ExportName := Unquoted(AToken.Text);
+      FEntry.ExportName := TPascalLexer.UnquotedString(AToken.Text);
     end;
     Inc(FLiterals);
   end;
@@ -930,23 +928,6 @@ begin
   end;
 end;
 
-/// <summary>Steht ANode in einer Routine?</summary>
-function InRoutine(ANode: TSyntaxNode): Boolean;
-var
-  mParent: TSyntaxNode;
-begin
-  mParent := ANode.Parent;
-  while mParent <> nil do
-  begin
-    if mParent.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Exit(True);
-    end;
-    mParent := mParent.Parent;
-  end;
-  Result := False;
-end;
-
 type
   /// <summary>Eine exports-Klausel: Token-Indizes von exports und Semikolon und ihre Einträge.</summary>
   TExportsClause = record
@@ -1062,7 +1043,7 @@ begin
   AClause.Entries := nil;
   Result := (AClause.First <= High(FTokens)) and FTokens[AClause.First].IsKeyword('exports') and
     FTokens[AClause.Last].IsSymbol(';');
-  if Result and InRoutine(ANode) then
+  if Result and (TSyntaxNodes.Enclosing(ANode, [TSyntaxKind.RoutineDecl]) <> nil) then
   begin
     FReport.Add(RangeOf(FTokens, AClause.First, AClause.First),
       cTexts[TUnitsText.ExportsGlobal].Text, TRuleConfidence.High);
@@ -1189,6 +1170,51 @@ end;
 
 { TUnitNameConflictRule }
 
+/// <summary>Erster Teil von AName (mit Punkten), der ein reserviertes Wort ist; '' ohne. Ein Teil mit &amp; davor
+/// ist ein gewöhnlicher Bezeichner.</summary>
+function ReservedNamePart(const AName: string): string;
+var
+  mPart: string;
+begin
+  Result := '';
+  for mPart in AName.Split(['.']) do
+  begin
+    if (mPart <> '') and (mPart[1] <> '&') and TPascalLexer.IsReservedWord(Trim(mPart)) then
+    begin
+      Result := Trim(mPart);
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Meldet ein reserviertes Wort im Unit-Namen AName an ARange (wie E2029).</summary>
+procedure ReportReservedPart(const AReport: IRuleReport; const AName: string; const ARange: TTextRange);
+var
+  mPart: string;
+begin
+  mPart := ReservedNamePart(AName);
+  if mPart <> '' then
+  begin
+    AReport.Add(ARange, cTexts[TUnitsText.ReservedPart].Fmt([mPart, AName]), TRuleConfidence.High);
+  end;
+end;
+
+/// <summary>Meldet reservierte Wörter im Namen des Kopfs AHeader und der Einträge in uses/contains.</summary>
+procedure ReportReservedParts(const AReport: IRuleReport; const ATokens: TArray<TPascalToken>;
+  const AHeader: TModuleHeader);
+var
+  mEntry: TUsesListEntry;
+begin
+  if AHeader.First >= 0 then
+  begin
+    ReportReservedPart(AReport, AHeader.Name, RangeOf(ATokens, AHeader.First, AHeader.Last));
+  end;
+  for mEntry in TUsesUnitNotFoundRule.Entries(ATokens) do
+  begin
+    ReportReservedPart(AReport, mEntry.Name, mEntry.Range);
+  end;
+end;
+
 function TUnitNameConflictRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cUnitNameConflictRuleId, TRuleSeverity.Error,
@@ -1218,6 +1244,7 @@ begin
     AReport.Add(RangeOf(mTokens, mHeader.First, mHeader.Last), cTexts[TUnitsText.Reserved].Fmt([mHeader.Name]),
       TRuleConfidence.High);
   end;
+  ReportReservedParts(AReport, mTokens, mHeader);
   // {$NOINCLUDE X} braucht eine Unit, die der Compiler kennt.
   if AContext.Units = nil then
   begin
@@ -1336,7 +1363,7 @@ begin
     Exit;
   end;
   mTokens := AContext.Tree.Tokens;
-  mUsed := TUsesClauses.UsedUnits(mTokens);
+  mUsed := TPascalUses.UsedUnits(mTokens);
   if MatchText(TModuleHeader.Read(mTokens).Name, ['System', 'SysInit', 'System.Variants', 'Variants']) or
     UsesVariants(mUsed) then
   begin
@@ -1349,7 +1376,7 @@ begin
   end;
   mUnitName := VariantsUnitName(mUsed);
   mFixes := nil;
-  if TUsesClauses.AddUnit(mTokens, mFirst.StartOffset, mUnitName, TTextLines.LineBreakOf(AContext.Text), mEdit) then
+  if TPascalUsesEdits.AddUnit(mTokens, mFirst.StartOffset, mUnitName, TTextLines.LineBreakOf(AContext.Text), mEdit) then
   begin
     mFixes := [TRuleFix.Create(cTexts[TUnitsText.AddToUses].Fmt([mUnitName]), [mEdit], True)];
   end;

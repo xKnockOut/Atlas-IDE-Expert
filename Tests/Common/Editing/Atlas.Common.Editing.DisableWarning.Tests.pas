@@ -43,7 +43,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.DisableWarning;
 
 const
@@ -76,7 +76,7 @@ begin
   try
     if TDisableWarning.Edits(AText, mTree, ALine, TDisableWarningRequest.Create(mSwitch, AScope, AReason), mEdits) then
     begin
-      Result := TChangeSignature.ApplyEdits(AText, mEdits);
+      Result := TTextChanges.Apply(AText, mEdits);
     end;
   finally
     mTree.Free;

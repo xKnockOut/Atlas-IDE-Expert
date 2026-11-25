@@ -25,7 +25,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.ValueBox,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -81,7 +81,6 @@ type
     FDecision: TAtlasTimeDecision;
     FItem: TAtlasTrackerWorkItem;
     FSent: Boolean;
-    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
     procedure AddDuration(AMinutes: Integer);
     procedure AddKind;
     function AddText: TPanel;
@@ -127,16 +126,25 @@ uses
   Atlas.Core.Tracker.TimeLog,
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.Time.Strings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
   // Platz links und rechts neben dem Text eines Knopfs.
   cButtonPadding = 32;
   cFieldLeft = 120;
+  // Höhen der Zeilen (logische Pixel).
+  cQuestionRowHeight = 22;
+  cFieldRowHeight = 26;
+  cLabelRowHeight = 20;
+  cNoteRowHeight = 34;
+  cDurationWidth = 80;
+  cWorkTypeWidth = 240;
+  /// <summary>Häkchen mittig zur Zeile.</summary>
+  cCheckBoxTop = 3;
 
 { TAtlasTimeRequest }
 
@@ -166,7 +174,7 @@ begin
   OnCloseQuery := DialogCloseQuery;
   mMinutes := TAtlasTimeRounding.Minutes(ARequest.Seconds, ARequest.Rounding);
 
-  mRow := AddRow(22);
+  mRow := AddRow(cQuestionRowHeight);
   FParts.Question := AddLabel(mRow, QuestionText(ARequest.Key, mMinutes));
   FParts.Question.Font.Style := [fsBold];
   AddDuration(mMinutes);
@@ -179,22 +187,17 @@ begin
   ActiveControl := FParts.Duration;
 end;
 
-function TAtlasTrackerTimeDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
-end;
-
 procedure TAtlasTrackerTimeDialog.AddDuration(AMinutes: Integer);
 var
   mRow: TPanel;
 begin
-  mRow := AddRow(26);
+  mRow := AddRow(cFieldRowHeight);
   AddLabel(mRow, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookDuration));
   FParts.Duration := TEdit.Create(Self);
   FParts.Duration.Parent := mRow;
   FParts.Duration.Left := ScaleValue(cFieldLeft);
   FParts.Duration.Top := 0;
-  FParts.Duration.Width := ScaleValue(80);
+  FParts.Duration.Width := ScaleValue(cDurationWidth);
   FParts.Duration.Text := TAtlasTimeRounding.ClockText(Int64(AMinutes) * 60);
   FParts.Duration.OnChange := DurationChange;
 end;
@@ -206,21 +209,21 @@ var
 begin
   FParts.WorkType := TAtlasValueBox.Create(Self);
   FParts.AsComment := TCheckBox.Create(Self);
-  mRow := AddRow(26);
+  mRow := AddRow(cFieldRowHeight);
   if FRequest.Mode = TAtlasTimeBookMode.WorkItem then
   begin
     AddLabel(mRow, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookWorkType));
     FParts.WorkType.Parent := mRow;
     FParts.WorkType.Left := ScaleValue(cFieldLeft);
     FParts.WorkType.Top := 0;
-    FParts.WorkType.Width := ScaleValue(240);
+    FParts.WorkType.Width := ScaleValue(cWorkTypeWidth);
   end
   else
   begin
     FParts.AsComment.Parent := mRow;
     FParts.AsComment.Caption := TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookAsComment);
     FParts.AsComment.Left := 0;
-    FParts.AsComment.Top := ScaleValue(3);
+    FParts.AsComment.Top := ScaleValue(cCheckBoxTop);
     FParts.AsComment.Width := ScaleValue(cDialogWidth - 2 * cGap);
     FParts.AsComment.Checked := False;
   end;
@@ -231,7 +234,7 @@ function TAtlasTrackerTimeDialog.AddText: TPanel;
 var
   mRow: TPanel;
 begin
-  mRow := AddRow(20);
+  mRow := AddRow(cLabelRowHeight);
   AddLabel(mRow, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookText));
   FParts.Text := TMemo.Create(Self);
   FParts.Text.Parent := Self;
@@ -244,7 +247,7 @@ begin
   FParts.Text.WantReturns := True;
   FParts.Text.Text := AdjustLineBreaks(FRequest.Text, tlbsCRLF);
 
-  Result := AddRow(34);
+  Result := AddRow(cNoteRowHeight);
   Result.Top := FParts.Text.Top + FParts.Text.Height + 1;
   FParts.Note := TAtlasWrapLabel.Create(Self);
   FParts.Note.Parent := Result;
@@ -268,13 +271,14 @@ begin
   mButtons.AlignWithMargins := True;
   TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := ATop;
-  FParts.Book := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookBook));
+  FParts.Book := NewTextButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookBook), cButtonPadding, cGap);
   FParts.Book.OnClick := BookClick;
   FParts.Book.Default := True;
-  FParts.Later := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookLater));
+  FParts.Later := NewTextButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookLater), cButtonPadding, cGap);
   FParts.Later.ModalResult := mrCancel;
   FParts.Later.Cancel := True;
-  FParts.Discard := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookDiscard));
+  FParts.Discard := NewTextButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeBookDiscard),
+    cButtonPadding, cGap);
   FParts.Discard.OnClick := DiscardClick;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
 end;
@@ -358,8 +362,7 @@ begin
   end
   else
   begin
-    FParts.Note.StyleElements := FParts.Note.StyleElements + [seFont];
-    FParts.Note.Font.Color := clWindowText;
+    TAtlasUiTheme.UseFontColor(FParts.Note, clDefault);
   end;
   FParts.Note.Caption := AText;
 end;

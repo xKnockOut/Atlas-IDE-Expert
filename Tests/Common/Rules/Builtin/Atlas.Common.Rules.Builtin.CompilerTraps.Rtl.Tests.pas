@@ -42,7 +42,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.CompilerTraps.Rtl,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Index mit Werk.Thread (deklariert OpenThread selbst) und FPCs Windows (deklariert es auch).</summary>
@@ -128,7 +128,7 @@ begin
   Assert.AreEqual('9: GetTickCount64 deklariert Delphi nur in Winapi.Windows, das hier nicht in uses steht; ' +
     'Free Pascal findet es auch in SysUtils (wie E2003). Winapi.Windows einbinden.|', TRuleAssert.LineMessages(mFound));
   Assert.IsFalse(mFound[0].Fixes[0].Safe);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.Contains(mFixed, '  System.SysUtils,'#10'  Winapi.Windows;');
   Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TWinapiUsesMissingRule.Create, mFixed)));
   // Mit Index: GetTickCount64 aus FPCs Windows bzw. SysUtils zählt nicht.
@@ -196,7 +196,7 @@ end;
 
 procedure TCompilerTrapsRtlTests.StreamWriteSilentCases;
 begin
-  // Beide Fassungen, die zweite in {$IF}-Zweigen wie Atlas.Core.Diagnostics.BoundedStream.
+  // Beide Fassungen, die zweite in {$IF}-Zweigen wie Atlas.Plugin.Diagnostics.BoundedStream.
   Assert.AreEqual('', TRuleAssert.LineMessages(TRuleAssert.Findings(TStreamWriteNativeIntRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TGrenze = class(TBytesStream)'#10'  public'#10 +
     '    function Write(const ABuffer; ACount: Longint): Longint; overload; override;'#10 +

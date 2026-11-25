@@ -22,8 +22,6 @@ type
     [Test]
     procedure OrganizeImportsAsSourceAction;
     [Test]
-    procedure MatchesRequestedKinds;
-    [Test]
     procedure NoTryFinallyWithoutCreate;
     /// <summary>Felder (auch Self.F) bekommen keine Aktion; wem sie gehören, sieht man hier nicht (#42).</summary>
     [Test]
@@ -70,39 +68,13 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,
-  Atlas.Tests.RuleAssert;
-
-type
-  /// <summary>Meldet jeden Bezeichner "Marker".</summary>
-  TMarkerRule = class(TInterfacedObject, IRule)
-  public
-    function Descriptor: TRuleDescriptor;
-    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-  end;
-
-{ TMarkerRule }
-
-function TMarkerRule.Descriptor: TRuleDescriptor;
-begin
-  Result := TRuleDescriptor.Create('marker', TRuleSeverity.Warning, 'Marker');
-end;
-
-procedure TMarkerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mToken: TPascalToken;
-begin
-  for mToken in AContext.Tree.Tokens do
-  begin
-    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, 'Marker') then
-    begin
-      AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), 'Marker gefunden');
-    end;
-  end;
-end;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.Files,
+  Atlas.Tests.SourceText;
 
 const
   cLB = #13#10;
@@ -224,46 +196,6 @@ begin
   Result := Copy(AText, 1, mOffset) + AEdit.NewText + Copy(AText, I + 1, MaxInt);
 end;
 
-/// <summary>Anzahl der Syntaxfehler in AText.</summary>
-function SyntaxErrors(const AText: string): Integer;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics);
-  finally
-    mTree.Free;
-  end;
-end;
-
-/// <summary>Datei unter Tests/ ab dem Programmordner bzw. dem aktuellen Ordner aufwärts; '' ohne.</summary>
-function TestsFile(const ARelative: string): string;
-var
-  mStarts: TArray<string>;
-  mStart, mDirectory: string;
-begin
-  mStarts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
-  for mStart in mStarts do
-  begin
-    mDirectory := mStart;
-    while mDirectory <> '' do
-    begin
-      Result := TPath.Combine(mDirectory, TPath.Combine('Tests', ARelative));
-      if TFile.Exists(Result) then
-      begin
-        Exit;
-      end;
-      if ExtractFileDir(mDirectory) = mDirectory then
-      begin
-        Break;
-      end;
-      mDirectory := ExtractFileDir(mDirectory);
-    end;
-  end;
-  Result := '';
-end;
-
 /// <summary>try/finally mit Stil AStyle für ARange; AText bleibt bei False unverändert.</summary>
 function TryWith(const AText: string; const ARange: TTextRange; const AStyle: TFormatStyle;
   out ANewText: string): Boolean;
@@ -309,7 +241,7 @@ begin
     'procedure P;' + cLB + 'var' + cLB + '  L: TStringList;' + cLB + 'begin' + cLB +
     '  L := TStringList.Create;' + cLB + '  try' + cLB + '    L.Add(''x'');' + cLB + '  finally' + cLB + '    L.Free;' + cLB +
     '  end;' + cLB + 'end;', mNewText);
-  Assert.AreEqual(0, SyntaxErrors(mNewText));
+  Assert.AreEqual(0, TTestSource.SyntaxErrors(mNewText));
 end;
 
 procedure TCodeActionTests.NoTryFinallyWhenAlreadyProtected;
@@ -335,7 +267,7 @@ begin
     '    Result.Add(nil);' + cLB + '  except' + cLB + '    Result.Free;' + cLB + '    raise;' + cLB + '  end;' + cLB + 'end;',
     mNewText);
   Assert.AreEqual(0, Pos('finally', mNewText));
-  Assert.AreEqual(0, SyntaxErrors(mNewText));
+  Assert.AreEqual(0, TTestSource.SyntaxErrors(mNewText));
 end;
 
 procedure TCodeActionTests.OrganizeImportsAsSourceAction;
@@ -348,16 +280,6 @@ begin
   Assert.AreEqual('B', mAction.Edits[0].NewText);
   Assert.IsFalse(TCodeActions.OrganizeImports('unit A;' + cLB + 'interface' + cLB + 'uses B, C;' + cLB +
     'implementation' + cLB + 'end.', True, mAction));
-end;
-
-procedure TCodeActionTests.MatchesRequestedKinds;
-begin
-  Assert.IsTrue(TCodeActions.KindRequested(cFixAllKind, nil));
-  Assert.IsTrue(TCodeActions.KindRequested(cFixAllKind, ['source']));
-  Assert.IsTrue(TCodeActions.KindRequested(cOrganizeImportsKind, ['source.organizeImports']));
-  Assert.IsFalse(TCodeActions.KindRequested(cFixAllKind, ['source.organizeImports']));
-  Assert.IsFalse(TCodeActions.KindRequested(cQuickFixKind, ['source']));
-  Assert.IsFalse(TCodeActions.KindRequested('sourceX', ['source']));
 end;
 
 procedure TCodeActionTests.NoTryFinallyWithoutCreate;
@@ -442,7 +364,7 @@ begin
   Assert.AreEqual('procedure P(B: Boolean);' + cLB + 'var' + cLB + '  L: TList;' + cLB + 'begin' + cLB + '  if B then' + cLB +
     '  begin' + cLB + '    L := TList.Create;' + cLB + '    try' + cLB + '      L.Add(nil);' + cLB + '    finally' + cLB +
     '      L.Free;' + cLB + '    end;' + cLB + '  end;' + cLB + '  Done;' + cLB + 'end;', mNewText);
-  Assert.AreEqual(0, SyntaxErrors(mNewText));
+  Assert.AreEqual(0, TTestSource.SyntaxErrors(mNewText));
 end;
 
 procedure TCodeActionTests.TryFinallyFollowsFormatStyle;
@@ -474,7 +396,7 @@ var
   mIndex: Integer;
   mAction: TCodeAction;
 begin
-  mFileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
+  mFileName := TTestData.Path(TPath.Combine('Common', TPath.Combine('Editing',
     'Atlas.Common.Editing.CodeActions.TryFinallyGolden.pas')));
   Assert.AreNotEqual('', mFileName, 'Golden-Datei nicht gefunden');
   mGolden := TFile.ReadAllText(mFileName, TEncoding.UTF8);
@@ -493,7 +415,7 @@ begin
     end;
   end;
   Assert.AreEqual(mGolden, mText);
-  Assert.AreEqual(0, SyntaxErrors(mText));
+  Assert.AreEqual(0, TTestSource.SyntaxErrors(mText));
 end;
 
 procedure TCodeActionTests.SuppressLineInsertsCommentAbove;

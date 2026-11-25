@@ -46,6 +46,8 @@ type
     class function InBracket(const ATokens: TArray<TPascalToken>; ALast: Integer): Boolean; static;
     /// <summary>Name ohne Endung Attribute ("TestCaseAttribute" → "TestCase"); "Attribute" selbst bleibt.</summary>
     class function ShortName(const AName: string): string; static;
+    /// <summary>Knoten des Namens eines Eintrags im Attribut: bei [Name(…)] der Aufgerufene, sonst AItem.</summary>
+    class function NameNode(AItem: TSyntaxNode): TSyntaxNode; static;
   end;
 
 implementation
@@ -54,7 +56,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -64,28 +67,6 @@ end;
 function Contains(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
 begin
   Result := Before(ANode.StartPos, APosition) and Before(APosition, ANode.EndPos);
-end;
-
-/// <summary>Name einer Bezeichner- bzw. Punktkette; '' bei anderen Ausdrücken.</summary>
-function DottedName(ANode: TSyntaxNode): string;
-var
-  mSuffix: string;
-begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): von rechts nach links an der Kette entlang.
-  mSuffix := '';
-  while (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) do
-  begin
-    mSuffix := '.' + ANode.Name + mSuffix;
-    ANode := ANode[0];
-  end;
-  if ANode.Kind = TSyntaxKind.Identifier then
-  begin
-    Result := ANode.Name + mSuffix;
-  end
-  else
-  begin
-    Result := '';
-  end;
 end;
 
 function FindAttribute(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
@@ -148,7 +129,7 @@ begin
     begin
       Continue;
     end;
-    AUse.Name := DottedName(mNameNode);
+    AUse.Name := TSyntaxNodes.DottedName(mNameNode);
     if AUse.Name = '' then
     begin
       Exit(False);
@@ -345,12 +326,8 @@ begin
   end;
   for mIndex := 0 to AAttribute.ChildCount - 1 do
   begin
-    mItem := AAttribute[mIndex];
-    if (mItem.Kind = TSyntaxKind.Call) and (mItem.ChildCount > 0) then
-    begin
-      mItem := mItem[0];
-    end;
-    mName := DottedName(mItem);
+    mItem := NameNode(AAttribute[mIndex]);
+    mName := TSyntaxNodes.DottedName(mItem);
     if mName = '' then
     begin
       Continue;
@@ -445,6 +422,15 @@ begin
   if EndsText('Attribute', Result) and (Length(Result) > Length('Attribute')) then
   begin
     Result := Copy(Result, 1, Length(Result) - Length('Attribute'));
+  end;
+end;
+
+class function TAttributes.NameNode(AItem: TSyntaxNode): TSyntaxNode;
+begin
+  Result := AItem;
+  if (AItem.Kind = TSyntaxKind.Call) and (AItem.ChildCount > 0) then
+  begin
+    Result := AItem[0];
   end;
 end;
 

@@ -79,6 +79,7 @@ implementation
 uses
   System.Math,
   System.Generics.Defaults,
+  Atlas.Text.Locked,
   Atlas.Text.LogMarks;
 
 const
@@ -177,13 +178,10 @@ end;
 constructor TMcpStatistics.Create(const AProject: string; AStarted: TDateTime);
 begin
   inherited Create;
-  FLock := TObject.Create;
+  FLock := TAtlasSharedLock.New;
   FCounters := TObjectDictionary<string, TCounter>.Create([doOwnsValues]);
   FProject := AProject;
   FStarted := AStarted;
-  // Monitor-Datensatz gleich anlegen, nicht beim ersten Aufruf (Leckmonitor der Tests).
-  System.TMonitor.Enter(FLock);
-  System.TMonitor.Exit(FLock);
 end;
 
 destructor TMcpStatistics.Destroy;

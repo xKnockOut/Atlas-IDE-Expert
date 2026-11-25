@@ -169,14 +169,14 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Outline.Strings,
-  Atlas.UI.Foundation.Controls,
-  Atlas.UI.Foundation.ListBox,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.Menus;
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Vcl.Controls.ListBox,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.Menus;
 
 {$R *.dfm}
 
@@ -567,7 +567,7 @@ begin
   FMessage.Align := alClient;
   FMessage.AlignWithMargins := True;
   FMessage.ShowAccelChar := False;
-  FMessage.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FMessage, clGrayText);
   FMessage.Visible := False;
 end;
 

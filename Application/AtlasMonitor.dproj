@@ -37,6 +37,13 @@
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
         <!-- Reiter „Bericht“ (#1900): TEdgeBrowser braucht WebView2Loader.dll neben der exe. -->
         <PostBuildEvent>if exist "$(BDS)\Redist\$(Platform)\WebView2Loader.dll" copy /Y "$(BDS)\Redist\$(Platform)\WebView2Loader.dll" "..\Output\$(Platform)\$(Config)\Bin\" &gt;nul</PostBuildEvent>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_MajorVer>2</VerInfo_MajorVer>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>0</VerInfo_Release>
+        <VerInfo_Build>3001</VerInfo_Build>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <VerInfo_Keys>CompanyName=xKnockOut;FileDescription=Atlas IDE Expert - $(MSBuildProjectName);FileVersion=2.3.0.3001;InternalName=$(MSBuildProjectName);LegalCopyright=Copyright (c) xKnockOut, MIT License;LegalTrademarks=;OriginalFilename=;ProgramID=io.github.xknockout.atlas.$(MSBuildProjectName);ProductName=Atlas IDE Expert;ProductVersion=2.3.0.3001;Comments=2.3.0-rc.1</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -58,12 +65,12 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="Source\Shell\Shell.Bootstrap.pas"/>
+        <DCCReference Include="Source\Core\Core.Bootstrap.pas"/>
         <DCCReference Include="Source\Shell\Shell.Monitor.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Monitor.MainForm.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Monitor.CheckOptions.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Monitor.CheckPage.pas"/>
-        <DCCReference Include="Source\Shell\Shell.Monitor.ReportPage.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.MainForm.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.CheckOptions.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.CheckPage.pas"/>
+        <DCCReference Include="Source\Features\Monitor\Monitor.ReportPage.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

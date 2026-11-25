@@ -62,7 +62,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Lens,
@@ -192,20 +192,24 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.UI.Tests.Strings,
   Atlas.Core.Editor.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Text.Lines,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.ToolsApi.Theme.Style;
+
+const
+  // Takt, in dem die Anzeige dem aktiven Editor folgt.
+  cTickMs = 250;
 
 { TAtlasIdeTestsLens.TEvents }
 
@@ -245,7 +249,7 @@ begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -581,19 +585,25 @@ var
 begin
   try
     mOldFont := TFont.Create;
-    mOldBrush := TBrush.Create;
-    mOldPen := TPen.Create;
     try
       mOldFont.Assign(ACanvas.Font);
-      mOldBrush.Assign(ACanvas.Brush);
-      mOldPen.Assign(ACanvas.Pen);
-      APaint();
+      mOldBrush := TBrush.Create;
+      try
+        mOldBrush.Assign(ACanvas.Brush);
+        mOldPen := TPen.Create;
+        try
+          mOldPen.Assign(ACanvas.Pen);
+          APaint();
+        finally
+          ACanvas.Pen.Assign(mOldPen);
+          mOldPen.Free;
+        end;
+      finally
+        ACanvas.Brush.Assign(mOldBrush);
+        mOldBrush.Free;
+      end;
     finally
       ACanvas.Font.Assign(mOldFont);
-      ACanvas.Brush.Assign(mOldBrush);
-      ACanvas.Pen.Assign(mOldPen);
-      mOldPen.Free;
-      mOldBrush.Free;
       mOldFont.Free;
     end;
   except

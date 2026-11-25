@@ -10,7 +10,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Contract,
   Atlas.IDE.Tests.Runner;

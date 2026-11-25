@@ -15,7 +15,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Atlas.Core.Debug.InlineValues,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Vcl.Theme.EditorFont;
 
 type
   /// <summary>Schrift und Farben der Werte; je Hintergrund bzw. Editorschrift einmal bestimmt.</summary>
@@ -47,8 +47,8 @@ implementation
 uses
   System.SysUtils,
   System.Math,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette;
 
 { TAtlasInlineValuePainter }
 

@@ -15,11 +15,19 @@ uses
   Winapi.Windows,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset;
 
 type
+  /// <summary>Überschriften der XMLDoc-Abschnitte in der Sprache der Oberfläche; eine Stelle für Hover und
+  /// Detailpanel.</summary>
+  TAtlasDocLabelTexts = class
+  public
+    /// <summary>Beschriftungen in der aktuellen Sprache der Oberfläche.</summary>
+    class function Current: TAtlasDocLabels; static;
+  end;
+
   /// <summary>Schriften der Doku: Editorschrift (Mono), Beschriftung (UI) und daraus je Art, Fett, Kursiv und
   /// Kapitälchen eine eigene Schrift; dazu die Zeilenhöhen und die DPI.</summary>
   TAtlasDocFontSet = class
@@ -128,11 +136,12 @@ implementation
 
 uses
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Style.Color,
-  Atlas.UI.Popup.Draw,
+  Atlas.Plugin.Localization.Strings,
+  Atlas.Plugin.Style.Color,
+  Atlas.Vcl.Popup.Draw,
   System.SysUtils,
   System.Math,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 const
   /// <summary>Bildschirmauflösung, auf die sich alle Maße beziehen.</summary>
@@ -723,6 +732,36 @@ begin
   begin
     Result := '';
   end;
+end;
+
+{ TAtlasDocLabelTexts }
+
+class function TAtlasDocLabelTexts.Current: TAtlasDocLabels;
+begin
+  // Begründung (Rationale) steht nur in der Grundtabelle; die übrigen Beschriftungen kommen aus Texts.
+  Result := TAtlasDocLabels.Current;
+  Result.Params := TAtlasStrings.Text(TAtlasTextId.DocParams);
+  Result.TypeParams := TAtlasStrings.Text(TAtlasTextId.DocTypeParams);
+  Result.Returns := TAtlasStrings.Text(TAtlasTextId.DocReturns);
+  Result.Value := TAtlasStrings.Text(TAtlasTextId.DocValue);
+  Result.Exceptions := TAtlasStrings.Text(TAtlasTextId.DocExceptions);
+  Result.Remarks := TAtlasStrings.Text(TAtlasTextId.DocRemarks);
+  Result.Example := TAtlasStrings.Text(TAtlasTextId.DocExample);
+  Result.SeeAlso := TAtlasStrings.Text(TAtlasTextId.DocSeeAlso);
+  Result.Undocumented := TAtlasStrings.Text(TAtlasTextId.DocUndocumented);
+  Result.More := TAtlasStrings.Text(TAtlasTextId.DocMore);
+  Result.Less := TAtlasStrings.Text(TAtlasTextId.DocLess);
+  Result.CountParam := TAtlasStrings.Text(TAtlasTextId.DocCountParam);
+  Result.CountParams := TAtlasStrings.Text(TAtlasTextId.DocCountParams);
+  Result.CountTypeParam := TAtlasStrings.Text(TAtlasTextId.DocCountTypeParam);
+  Result.CountTypeParams := TAtlasStrings.Text(TAtlasTextId.DocCountTypeParams);
+  Result.CountException := TAtlasStrings.Text(TAtlasTextId.DocCountException);
+  Result.CountExceptions := TAtlasStrings.Text(TAtlasTextId.DocCountExceptions);
+  Result.ItemReturns := TAtlasStrings.Text(TAtlasTextId.DocItemReturns);
+  Result.ItemValue := TAtlasStrings.Text(TAtlasTextId.DocItemValue);
+  Result.ItemRemarks := TAtlasStrings.Text(TAtlasTextId.DocItemRemarks);
+  Result.ItemExample := TAtlasStrings.Text(TAtlasTextId.DocItemExample);
+  Result.ItemSeeAlso := TAtlasStrings.Text(TAtlasTextId.DocItemSeeAlso);
 end;
 
 end.

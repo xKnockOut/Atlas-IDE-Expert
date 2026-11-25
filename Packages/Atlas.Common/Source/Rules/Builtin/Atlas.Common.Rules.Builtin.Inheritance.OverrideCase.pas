@@ -33,8 +33,6 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Naming,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ClassActions,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Localization.Texts;
 
@@ -80,24 +78,6 @@ begin
       Result := 1;
   else
     Result := 2;
-  end;
-end;
-
-function VisibilityName(AVisibility: TIndexVisibility): string;
-begin
-  case AVisibility of
-    TIndexVisibility.Published:
-      Result := 'published';
-    TIndexVisibility.Protected:
-      Result := 'protected';
-    TIndexVisibility.StrictProtected:
-      Result := 'strict protected';
-    TIndexVisibility.Private:
-      Result := 'private';
-    TIndexVisibility.StrictPrivate:
-      Result := 'strict private';
-  else
-    Result := 'public';
   end;
 end;
 
@@ -420,8 +400,8 @@ begin
   if FClass.InInterface and (VisibilityTier(AOwn.Visibility) < VisibilityTier(mTarget.Visibility)) then
   begin
     FReport.Add(AOwn.SelectionRange, cTexts[TInheritanceOverrideCaseText.LessVisible].Fmt(
-      [FClass.Name, AOwn.Name, VisibilityName(AOwn.Visibility), mOwner, mTarget.Name,
-      VisibilityName(mTarget.Visibility)]), TRuleConfidence.High);
+      [FClass.Name, AOwn.Name, VisibilityKeyword(AOwn.Visibility), mOwner, mTarget.Name,
+      VisibilityKeyword(mTarget.Visibility)]), TRuleConfidence.High);
   end;
 end;
 
@@ -572,7 +552,7 @@ begin
     begin
       AReported := AReported + [FTokens[mLevel].Text];
       FReport.Add(TokenRange(mLevel), cTexts[TInheritanceOverrideCaseText.InlineVisibility].Fmt(
-        [FClass.Name, AMethod.Name, VisibilityName(AMethod.Visibility), mHit.Name, VisibilityName(mHit.Visibility)]),
+        [FClass.Name, AMethod.Name, VisibilityKeyword(AMethod.Visibility), mHit.Name, VisibilityKeyword(mHit.Visibility)]),
         TRuleConfidence.High);
     end;
     Inc(mLevel);

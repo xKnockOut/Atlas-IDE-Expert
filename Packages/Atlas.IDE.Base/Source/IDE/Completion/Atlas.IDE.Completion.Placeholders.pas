@@ -37,7 +37,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.Placeholders,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   TAtlasEditorPlaceholders = class
@@ -100,19 +100,19 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.PlaceholderPlan,
-  Atlas.Core.Lsp.TextOffsets,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.Plugin.Editor.TextOffsets,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.UI.Completion.Strings,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.Core.Editor.EditSurface,
   Atlas.IDE.Foundation.EditorSnapshot;
 

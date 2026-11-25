@@ -24,8 +24,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.UI.Strings,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.Plugin.Localization.Strings,
+  Atlas.Vcl.Options.ChoiceBox;
 
 type
   /// <summary>Wer belegt die Taste außer Atlas? '' wenn frei.</summary>
@@ -85,8 +85,9 @@ implementation
 uses
   Atlas.UI.Settings.Strings,
   Atlas.UI.Commands.KeyMap,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Settings.Page.Sheets;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.UI.Settings.Page.Sheets,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 
@@ -244,7 +245,7 @@ begin
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysChoiceNewKey)]);
   FRows[AIndex].Choice.OnChange := ChoiceChange;
   FRows[AIndex].Status := AddLabel(mPanel, '', cKeyLeft, cRowStatusTop);
-  FRows[AIndex].Status.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FRows[AIndex].Status, clGrayText);
 end;
 
 procedure TAtlasKeysPage.KeyChange(Sender: TObject);

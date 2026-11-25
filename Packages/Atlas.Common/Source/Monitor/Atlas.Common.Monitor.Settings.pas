@@ -43,7 +43,8 @@ implementation
 uses
   System.IOUtils,
   System.JSON,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Files;
 
 const
   cSection = 'monitor';
@@ -116,25 +117,9 @@ begin
   end;
 end;
 
-/// <summary>Inhalt von AFileName; '' wenn sie fehlt oder nicht lesbar ist.</summary>
-function ReadText(const AFileName: string): string;
-begin
-  Result := '';
-  try
-    if (AFileName <> '') and TFile.Exists(AFileName) then
-    begin
-      Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
-    end;
-  except
-    // lsp-ignore: catch-all-without-raise -- unlesbare Datei: Vorgaben, das Programm startet trotzdem
-    on Exception do
-      Result := '';
-  end;
-end;
-
 class function TMonitorSettings.Load(const AFileName: string): TMonitorSettings;
 begin
-  Result := FromText(ReadText(AFileName));
+  Result := FromText(TTextFiles.ReadQuietly(AFileName));
 end;
 
 function TMonitorSettings.Save(const AFileName: string): Boolean;
@@ -149,7 +134,7 @@ begin
   try
     ForceDirectories(ExtractFileDir(AFileName));
     mTemp := AFileName + '.tmp';
-    TFile.WriteAllText(mTemp, ToText(ReadText(AFileName)), TEncoding.UTF8);
+    TFile.WriteAllText(mTemp, ToText(TTextFiles.ReadQuietly(AFileName)), TEncoding.UTF8);
     if TFile.Exists(AFileName) then
     begin
       TFile.Delete(AFileName);

@@ -28,7 +28,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Debug.ExceptionRules,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Debug.Exceptions.Strings;
 
 type
@@ -96,7 +96,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.ExceptionRuleEdit;
 
 const
@@ -131,7 +131,8 @@ begin
   inherited CreateDialog(AOwner, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugRulesTitle), cWidth);
   FRules := Copy(ARules);
   FHits := AHits;
-  FEditor := DefaultEditor;
+  // Mit (): ohne Klammern liest Delphi DefaultEditor als Routine statt als ihr Ergebnis (E2010).
+  FEditor := DefaultEditor();
   CreateList;
   CreateButtons;
   mNote := AddNote(cNoteHeight);

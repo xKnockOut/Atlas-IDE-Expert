@@ -47,22 +47,24 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Peek,
   Atlas.Core.Editor.PeekPlan,
   Atlas.UI.Results.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Editor.Peek,
-  Atlas.IDE.Foundation.KeyHook,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Keys.Hook,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.ToolsApi.Editor.Caret,
+  Atlas.Text.Files,
+  Atlas.Plugin.Files.Contract;
 
 const
   cWatchMs = 200;
@@ -325,8 +327,14 @@ begin
     mText := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
   except
     // Nicht lesbar: leerer Ausschnitt statt Fehler.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       mText := '';
+    end;
   end;
   Result := mText.Split([#13#10, #10]);
   FLines.Add(mKey, Result);

@@ -37,7 +37,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.InvertBoolean,
   Atlas.Common.Lsp.PromoteVariable,
   Atlas.Common.Lsp.AnonymousMethods,

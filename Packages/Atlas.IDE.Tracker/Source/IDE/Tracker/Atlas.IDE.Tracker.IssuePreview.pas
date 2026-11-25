@@ -41,7 +41,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.IDE.Tracker.IssueLookups,
   Atlas.IDE.Tracker.IssueChecklists,
@@ -155,10 +155,10 @@ uses
   ToolsAPI,
   Vcl.Graphics,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.MouseButtons,
   Atlas.IDE.Contracts.MouseHistory,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWindow;
 

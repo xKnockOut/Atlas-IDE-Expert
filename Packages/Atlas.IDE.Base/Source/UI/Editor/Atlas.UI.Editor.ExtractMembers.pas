@@ -31,8 +31,8 @@ uses
   Vcl.ComCtrls,
   Vcl.CheckLst,
   Atlas.Core.Editor.ClassExtraction,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListView;
 
 type
   TAtlasExtractMembersDialog = class(TAtlasDialog)
@@ -99,10 +99,10 @@ uses
   System.Math,
   Vcl.Themes,
   Vcl.Graphics,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   // Anfangsbreiten der Spalten Mitglied, Art, Sichtbarkeit und Grund (logische Pixel), bis FitToContent sie nach

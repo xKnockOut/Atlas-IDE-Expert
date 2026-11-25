@@ -16,8 +16,8 @@ uses
   Vcl.ComCtrls,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.Core.Undo.Contract;
 
 type

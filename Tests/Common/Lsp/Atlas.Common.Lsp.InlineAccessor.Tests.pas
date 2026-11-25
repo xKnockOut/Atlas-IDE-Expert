@@ -50,9 +50,9 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Editing.InlineAccessor,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Semantics.InlineAccessor,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.InlineAccessor;
 
 const

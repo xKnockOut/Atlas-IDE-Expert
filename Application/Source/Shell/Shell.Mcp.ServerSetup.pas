@@ -34,12 +34,12 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.BatchTool,
   Atlas.Common.Localization.Texts,
-  Shell.Workspace,
-  Shell.Mcp.Context,
+  Core.Workspace,
+  Core.Mcp.Context,
   Shell.Mcp.RefactorSources,
-  Shell.Mcp.Tools,
-  Shell.Mcp.Changes,
-  Shell.Mcp.Conventions;
+  Core.Mcp.Tools,
+  Core.Mcp.Changes,
+  Core.Mcp.Conventions;
 
 type
 {$SCOPEDENUMS ON}
@@ -84,7 +84,7 @@ begin
   end;
 end;
 
-function DisabledToolsOf(AWorkspace: TShellWorkspace): TFunc<TArray<string>>;
+function DisabledToolsOf(AWorkspace: TCoreWorkspace): TFunc<TArray<string>>;
 begin
   Result :=
     function: TArray<string>
@@ -131,7 +131,7 @@ begin
 end;
 
 /// <summary>Grenzen von batch (#2638): requestTimeoutMs und Abbruch über notifications/cancelled.</summary>
-function BatchLimitsOf(AWorkspace: TShellWorkspace): TFunc<TMcpBatchLimits>;
+function BatchLimitsOf(AWorkspace: TCoreWorkspace): TFunc<TMcpBatchLimits>;
 begin
   Result :=
     function: TMcpBatchLimits
@@ -161,11 +161,11 @@ begin
   AServer.Restricted := ARestricted;
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);
-  TMcpConventions.Register(AServer, AServices.Workspace);
+  TMcpConventions.Register(AServer, AServices.Workspace, mContext.Adapters.Conventions);
   AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
 end;
 
-function PromptSettingsOf(AWorkspace: TShellWorkspace): TFunc<TServerSettings>;
+function PromptSettingsOf(AWorkspace: TCoreWorkspace): TFunc<TServerSettings>;
 begin
   Result :=
     function: TServerSettings
@@ -189,7 +189,7 @@ begin
   Result.ReadText := ReadSourceText;
   Result.ResolveFile := ResolveFileOf(AServices.Guard);
   Result.ResolveUnit := UnitFileOf(AServices.Index, AServices.Group, AServices.Guard);
-  Result.Changes := ChangesOf(AServices.Group, AServices.Root);
+  Result.Changes := ChangesOf(TMcpServices.GroupAdapters(AServices.Group), AServices.Group, AServices.Root);
   Result.Register;
 end;
 

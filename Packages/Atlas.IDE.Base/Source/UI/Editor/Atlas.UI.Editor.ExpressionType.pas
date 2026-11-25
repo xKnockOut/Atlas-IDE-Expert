@@ -23,7 +23,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Editor.ExpressionType,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasExpressionTypeTip = class(TAtlasLayoutPopupWindow)
@@ -61,10 +61,10 @@ implementation
 uses
   System.UITypes,
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;

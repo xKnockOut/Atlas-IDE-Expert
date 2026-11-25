@@ -27,7 +27,7 @@ uses
   Atlas.Core.Debug.Variables,
   Atlas.UI.Debug.EvaluateTreeView,
   Atlas.UI.Debug.VariablesParts,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 type
   TAtlasDebugVariablesFrame = class(TFrame)
@@ -92,7 +92,8 @@ uses
   Winapi.Windows,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.UI.Debug.VariablesStrings;
+  Atlas.UI.Debug.VariablesStrings,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 
@@ -134,7 +135,7 @@ begin
   Result.Top := AOrder * cOrderStep;
   Result.Align := alBottom;
   Result.AlignWithMargins := True;
-  Result.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(Result, clGrayText);
   Result.Caption := AText;
   Result.Parent := AFrame;
 end;

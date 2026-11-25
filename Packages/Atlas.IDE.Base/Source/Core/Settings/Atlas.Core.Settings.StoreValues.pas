@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.History;
 
 type
@@ -50,7 +50,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

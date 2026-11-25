@@ -10,15 +10,16 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
+  System.Generics.Collections,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Links,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Bild in Fensterbreite (höchstens Originalgröße); Klick vergrößert.</summary>
@@ -83,9 +84,40 @@ type
     property Caption;
   end;
 
+  /// <summary>Teile untereinander in voller Breite, in der Reihenfolge, in der sie eingehängt werden (Parent);
+  /// die Höhe folgt dem Inhalt. Ersetzt alTop: Das ordnet nach Top und verliert Höhenänderungen, die ein Teil
+  /// während des Ausrichtens macht (Doku, Abzeichen, Bilder und umbrechende Texte rechnen ihre Höhe in Resize
+  /// bzw. CreateWnd aus der Breite). Hier bekommt jedes Teil zuerst seine Breite, erst danach zählt seine Höhe;
+  /// ändert sie sich später, richtet die Fläche über RequestAlign neu aus. Margins zählen bei AlignWithMargins,
+  /// Padding der Fläche als Innenabstand.
+  /// Abgelegt werden nur die lebenden direkten Kinder (Controls): CM_CONTROLLISTCHANGE reicht die VCL an alle
+  /// Vorfahren weiter (auch für Kinder einer Karte), und eine Karte gibt ihre Kinder ohne Meldung frei. Die
+  /// Meldung liefert deshalb nur die Reihenfolge; die Tabelle wird nur nachgeschlagen, nie durchlaufen.</summary>
+  TAtlasIssueStack = class(TCustomControl)
+  private
+    /// <summary>Laufende Nummer je eingehängtem Steuerelement (auch Enkel, siehe oben); nil im Destruktor.
+    /// </summary>
+    FOrder: TDictionary<TControl, Integer>;
+    FNextOrder: Integer;
+    procedure CMControlListChange(var AMessage: TCMControlListChange); message CM_CONTROLLISTCHANGE;
+    /// <summary>Sichtbare, lebende direkte Kinder in der Reihenfolge des Einhängens.</summary>
+    function OrderedItems: TArray<TControl>;
+    /// <summary>Einträge ohne lebendes Kind entfernen, wenn die Tabelle deutlich größer ist als nötig.</summary>
+    procedure PruneOrder;
+  protected
+    procedure AlignControls(AControl: TControl; var Rect: TRect); override;
+    procedure CreateWnd; override;
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    /// <summary>Jetzt ablegen, auch ohne Fenster (die VCL richtet erst mit Fenster aus).</summary>
+    procedure Arrange;
+  end;
+
   /// <summary>Abgesetzte Fläche mit Rahmen (Kopf des Issues, ein Kommentar); wächst mit ihrem Inhalt.
   /// Die Kinder erben die Füllfarbe über Color.</summary>
-  TAtlasIssueCard = class(TCustomControl)
+  TAtlasIssueCard = class(TAtlasIssueStack)
   public const
     /// <summary>Innenabstand bei 96 dpi: seitlich und oben/unten.</summary>
     cPadSide = 6;
@@ -148,6 +180,23 @@ uses
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.IssueTip;
 
+const
+  // Maße in logischen Pixeln (96 dpi).
+  /// <summary>Höhe eines Bildes, solange es lädt, und Mindesthöhe danach.</summary>
+  cImageLoadingHeight = 24;
+  cMinImageHeight = 8;
+  /// <summary>Höhe der Plakettenleiste ohne Plaketten.</summary>
+  cEmptyBadgeHeight = 4;
+  cBadgeRadius = 8;
+  cBadgePadding = 6;
+  cBadgeGap = 4;
+  /// <summary>Zusätzliche Höhe einer Plakette über der Texthöhe.</summary>
+  cBadgeExtraHeight = 4;
+  /// <summary>Rand um das Bild im Bildfenster und Abstand des Fensters zum Rand des Arbeitsbereichs.</summary>
+  cImageWindowExtraWidth = 40;
+  cImageWindowExtraHeight = 60;
+  cImageWindowScreenMargin = 80;
+
 function ToColor(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
@@ -159,7 +208,7 @@ constructor TAtlasIssueImageBox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FColors := TAtlasColors.Light;
-  Height := ScaleValue(24);
+  Height := ScaleValue(cImageLoadingHeight);
   Cursor := crHandPoint;
 end;
 
@@ -220,7 +269,7 @@ begin
   begin
     mHeight := MulDiv(FGraphic.Height, ClientWidth, FGraphic.Width);
   end;
-  mHeight := Max(mHeight, 8);
+  mHeight := Max(mHeight, ScaleValue(cMinImageHeight));
   if Height <> mHeight then
   begin
     Height := mHeight;
@@ -245,7 +294,7 @@ begin
   FColors := TAtlasColors.Light;
   FHintIndex := -1;
   ShowHint := True;
-  Height := ScaleValue(4);
+  Height := ScaleValue(cEmptyBadgeHeight);
 end;
 
 procedure TAtlasIssueBadgeBar.Paint;
@@ -260,7 +309,7 @@ begin
     Arrange;
   end;
   Canvas.Font := Font;
-  mRadius := MulDiv(8, CurrentPPI, 96);
+  mRadius := ScaleValue(cBadgeRadius);
   for mIndex := 0 to High(FRects) do
   begin
     mRect := FRects[mIndex];
@@ -317,13 +366,13 @@ begin
   FRects := nil;
   if not HandleAllocated then
   begin
-    Height := ScaleValue(4);
+    Height := ScaleValue(cEmptyBadgeHeight);
     Exit;
   end;
   Canvas.Font := Font;
-  mPad := MulDiv(6, CurrentPPI, 96);
-  mGap := MulDiv(4, CurrentPPI, 96);
-  mHeight := Canvas.TextHeight('Wg') + MulDiv(4, CurrentPPI, 96);
+  mPad := ScaleValue(cBadgePadding);
+  mGap := ScaleValue(cBadgeGap);
+  mHeight := Canvas.TextHeight('Wg') + ScaleValue(cBadgeExtraHeight);
   mX := 0;
   mY := 0;
   for mIndex := 0 to High(FTexts) do
@@ -339,7 +388,7 @@ begin
   end;
   if Length(FTexts) = 0 then
   begin
-    Height := ScaleValue(4);
+    Height := ScaleValue(cEmptyBadgeHeight);
   end
   else if Height <> mY + mHeight + mGap then
   begin
@@ -403,6 +452,192 @@ begin
   Invalidate;
 end;
 
+{ TAtlasIssueStack }
+
+const
+  /// <summary>Spielraum der Reihenfolge-Tabelle über das Doppelte der Kinder hinaus, bevor sie aufgeräumt wird.
+  /// </summary>
+  cOrderSlack = 64;
+
+/// <summary>Abstand von AControl zu seinen Nachbarn: Margins nur mit AlignWithMargins.</summary>
+function ItemMargins(AControl: TControl): TRect;
+begin
+  Result := TRect.Empty;
+  if AControl.AlignWithMargins then
+  begin
+    Result := TRect.Create(AControl.Margins.Left, AControl.Margins.Top, AControl.Margins.Right,
+      AControl.Margins.Bottom);
+  end;
+end;
+
+constructor TAtlasIssueStack.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FOrder := TDictionary<TControl, Integer>.Create;
+  ControlStyle := ControlStyle + [csAcceptsControls];
+  Height := 0;
+end;
+
+destructor TAtlasIssueStack.Destroy;
+begin
+  // Die VCL hängt die Teile in inherited aus: dann nichts mehr merken und nicht mehr ablegen.
+  FreeAndNil(FOrder);
+  inherited;
+end;
+
+procedure TAtlasIssueStack.CMControlListChange(var AMessage: TCMControlListChange);
+begin
+  inherited;
+  if FOrder = nil then
+  begin
+    Exit;
+  end;
+  // Nur der Zeiger als Schlüssel, nie das Steuerelement selbst: Es kann ein Enkel sein. Neu eingehängt bekommt
+  // es immer eine neue Nummer, auch wenn ein freigegebenes vorher an derselben Adresse stand.
+  if AMessage.Inserting then
+  begin
+    Inc(FNextOrder);
+    FOrder.AddOrSetValue(AMessage.Control, FNextOrder);
+  end
+  else
+  begin
+    FOrder.Remove(AMessage.Control);
+  end;
+end;
+
+procedure TAtlasIssueStack.PruneOrder;
+var
+  mLive: TDictionary<TControl, Integer>;
+  mIndex, mOrder: Integer;
+begin
+  if FOrder.Count <= 2 * ControlCount + cOrderSlack then
+  begin
+    Exit;
+  end;
+  mLive := TDictionary<TControl, Integer>.Create;
+  try
+    for mIndex := 0 to ControlCount - 1 do
+    begin
+      if FOrder.TryGetValue(Controls[mIndex], mOrder) then
+      begin
+        mLive.Add(Controls[mIndex], mOrder);
+      end;
+    end;
+    FOrder.Clear;
+    for mIndex := 0 to ControlCount - 1 do
+    begin
+      if mLive.TryGetValue(Controls[mIndex], mOrder) then
+      begin
+        FOrder.Add(Controls[mIndex], mOrder);
+      end;
+    end;
+  finally
+    mLive.Free;
+  end;
+end;
+
+function TAtlasIssueStack.OrderedItems: TArray<TControl>;
+var
+  mKeys: TArray<Int64>;
+  mItem: TControl;
+  mKey: Int64;
+  mIndex, mCount, mPos, mOrder: Integer;
+begin
+  Result := nil;
+  SetLength(Result, ControlCount);
+  SetLength(mKeys, ControlCount);
+  mCount := 0;
+  for mIndex := 0 to ControlCount - 1 do
+  begin
+    mItem := Controls[mIndex];
+    if not mItem.Visible or (csDestroying in mItem.ComponentState) then
+    begin
+      Continue;
+    end;
+    // Ohne Nummer (nicht gemeldet) hinter die gemeldeten; bei Gleichstand eindeutig nach Index.
+    if not FOrder.TryGetValue(mItem, mOrder) then
+    begin
+      mOrder := MaxInt;
+    end;
+    mKey := Int64(mOrder) * ControlCount + mIndex;
+    // Einfügen sortiert: wenige Teile, stabil.
+    mPos := mCount;
+    while (mPos > 0) and (mKeys[mPos - 1] > mKey) do
+    begin
+      mKeys[mPos] := mKeys[mPos - 1];
+      Result[mPos] := Result[mPos - 1];
+      Dec(mPos);
+    end;
+    mKeys[mPos] := mKey;
+    Result[mPos] := mItem;
+    Inc(mCount);
+  end;
+  SetLength(Result, mCount);
+end;
+
+procedure TAtlasIssueStack.AlignControls(AControl: TControl; var Rect: TRect);
+var
+  mItem: TControl;
+  mMargins: TRect;
+  mTop, mHeight: Integer;
+begin
+  if FOrder = nil then
+  begin
+    Exit;
+  end;
+  PruneOrder;
+  AdjustClientRect(Rect);
+  // Padding zieht erst TWinControl.AlignControls ab, das hier nicht läuft.
+  Inc(Rect.Left, Padding.Left);
+  Inc(Rect.Top, Padding.Top);
+  Dec(Rect.Right, Padding.Right);
+  mTop := Rect.Top;
+  for mItem in OrderedItems do
+  begin
+    mMargins := ItemMargins(mItem);
+    mItem.SetBounds(Rect.Left + mMargins.Left, mTop + mMargins.Top,
+      Max(0, Rect.Width - mMargins.Left - mMargins.Right), mItem.Height);
+    // Ohne Fenster richtet eine Karte bei neuer Breite nicht selbst aus.
+    if (mItem is TAtlasIssueStack) and not TAtlasIssueStack(mItem).HandleAllocated then
+    begin
+      TAtlasIssueStack(mItem).Arrange;
+    end;
+    // Die Höhe erst nach der Breite lesen: Das Teil rechnet sie in Resize aus der Breite.
+    mTop := mItem.Top + mItem.Height + mMargins.Bottom;
+  end;
+  mHeight := mTop + Padding.Bottom + Height - ClientHeight;
+  if Height <> mHeight then
+  begin
+    Height := mHeight;
+  end;
+end;
+
+procedure TAtlasIssueStack.Arrange;
+var
+  mRect: TRect;
+begin
+  DisableAlign;
+  try
+    mRect := ClientRect;
+    AlignControls(nil, mRect);
+  finally
+    EnableAlign;
+  end;
+end;
+
+procedure TAtlasIssueStack.CreateWnd;
+begin
+  inherited;
+  // Teile, die ohne Fenster eingehängt wurden, stehen noch alle oben.
+  Realign;
+end;
+
+procedure TAtlasIssueStack.Paint;
+begin
+  Canvas.Brush.Color := Color;
+  Canvas.FillRect(ClientRect);
+end;
+
 { TAtlasIssueCard }
 
 constructor TAtlasIssueCard.Create(AOwner: TComponent);
@@ -412,16 +647,18 @@ begin
   FBorder := TAtlasColors.Light.Line;
   ParentColor := False;
   ParentBackground := False;
-  AutoSize := True;
   Padding.SetBounds(ScaleValue(cPadSide), ScaleValue(cPadEnd), ScaleValue(cPadSide), ScaleValue(cPadEnd));
 end;
 
 procedure TAtlasIssueCard.Paint;
 begin
-  Canvas.Brush.Color := ToColor(FFill);
+  // Fläche in Color (= Füllfarbe, SetColors), darüber der Rahmen.
+  inherited;
+  Canvas.Brush.Style := bsClear;
   Canvas.Pen.Color := ToColor(FBorder);
   Canvas.Pen.Width := 1;
   Canvas.Rectangle(ClientRect);
+  Canvas.Brush.Style := bsSolid;
 end;
 
 procedure TAtlasIssueCard.SetColors(AFill, ABorder: TAtlasColor);
@@ -449,8 +686,10 @@ begin
   inherited CreateDialog(AOwner, ACaption, 0);
   BorderStyle := bsSizeable;
   Position := poScreenCenter;
-  Width := Min(AGraphic.Width + ScaleValue(40), Screen.WorkAreaWidth - ScaleValue(80));
-  Height := Min(AGraphic.Height + ScaleValue(60), Screen.WorkAreaHeight - ScaleValue(80));
+  Width := Min(AGraphic.Width + ScaleValue(cImageWindowExtraWidth),
+    Screen.WorkAreaWidth - ScaleValue(cImageWindowScreenMargin));
+  Height := Min(AGraphic.Height + ScaleValue(cImageWindowExtraHeight),
+    Screen.WorkAreaHeight - ScaleValue(cImageWindowScreenMargin));
   mBox := TScrollBox.Create(Self);
   mBox.Parent := Self;
   mBox.Align := alClient;

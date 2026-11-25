@@ -199,6 +199,20 @@ uses
 
 const
   cKindTexts: array[TAtlasUnitKind] of string = ('unit', 'form', 'frame', 'dm', 'test', 'inc');
+  /// <summary>Länge der Vorsilbe eines Filters (p:, k:, t: …) ohne Minus.</summary>
+  cFilterPrefixLength = Length('p:');
+  /// <summary>Spalten einer Zeile der Formularskizze: [Name, Typ, Caption, Left, Top, Width, Height, Tiefe].</summary>
+  cSketchName = 0;
+  cSketchType = 1;
+  cSketchCaption = 2;
+  cSketchLeft = 3;
+  cSketchTop = 4;
+  cSketchWidth = 5;
+  cSketchHeight = 6;
+  cSketchDepth = 7;
+  cSketchColumns = cSketchDepth + 1;
+  /// <summary>Länge eines Laufwerkswurzelordners (C:\); kürzer wird nicht gekürzt.</summary>
+  cDriveRootLength = Length('C:\');
 
 function ProjectMatches(const AEntry: TAtlasUnitEntry; const AFilter: string): Boolean;
 var
@@ -228,11 +242,11 @@ begin
   begin
     mToken := Copy(mToken, 2, MaxInt);
   end;
-  if (Length(mToken) < 3) or (mToken[2] <> ':') then
+  if (Length(mToken) <= cFilterPrefixLength) or (mToken[cFilterPrefixLength] <> ':') then
   begin
     Exit(False);
   end;
-  mValue := Copy(mToken, 3, MaxInt);
+  mValue := Copy(mToken, cFilterPrefixLength + 1, MaxInt);
   case UpCase(mToken[1]) of
     'P':
       Result := mValue <> '';
@@ -274,7 +288,7 @@ var
   mValue: string;
 begin
   mNegative := AToken.StartsWith('-');
-  mValue := Copy(AToken, 3 + Ord(mNegative), MaxInt);
+  mValue := Copy(AToken, cFilterPrefixLength + 1 + Ord(mNegative), MaxInt);
   if UpCase(AToken[1 + Ord(mNegative)]) <> 'P' then
   begin
     if mNegative then
@@ -405,14 +419,14 @@ end;
 function SketchItemOf(ARow: TJSONArray): TAtlasUnitSketchItem;
 begin
   Result := Default(TAtlasUnitSketchItem);
-  Result.Name := ARow.Items[0].Value;
-  Result.TypeName := ARow.Items[1].Value;
-  Result.Caption := ARow.Items[2].Value;
-  Result.Left := StrToIntDef(ARow.Items[3].Value, 0);
-  Result.Top := StrToIntDef(ARow.Items[4].Value, 0);
-  Result.Width := StrToIntDef(ARow.Items[5].Value, 0);
-  Result.Height := StrToIntDef(ARow.Items[6].Value, 0);
-  Result.Depth := StrToIntDef(ARow.Items[7].Value, 1);
+  Result.Name := ARow.Items[cSketchName].Value;
+  Result.TypeName := ARow.Items[cSketchType].Value;
+  Result.Caption := ARow.Items[cSketchCaption].Value;
+  Result.Left := StrToIntDef(ARow.Items[cSketchLeft].Value, 0);
+  Result.Top := StrToIntDef(ARow.Items[cSketchTop].Value, 0);
+  Result.Width := StrToIntDef(ARow.Items[cSketchWidth].Value, 0);
+  Result.Height := StrToIntDef(ARow.Items[cSketchHeight].Value, 0);
+  Result.Depth := StrToIntDef(ARow.Items[cSketchDepth].Value, 1);
 end;
 
 function SketchItemsOf(AForm: TJSONObject): TArray<TAtlasUnitSketchItem>;
@@ -427,7 +441,7 @@ begin
   end;
   for mItem in mItems do
   begin
-    if (mItem is TJSONArray) and (TJSONArray(mItem).Count >= 8) then
+    if (mItem is TJSONArray) and (TJSONArray(mItem).Count >= cSketchColumns) then
     begin
       Result := Result + [SketchItemOf(TJSONArray(mItem))];
     end;
@@ -1084,7 +1098,7 @@ end;
 function WithoutSlash(const AFolder: string): string;
 begin
   Result := AFolder;
-  while (Length(Result) > 3) and Result.EndsWith('\') do
+  while (Length(Result) > cDriveRootLength) and Result.EndsWith('\') do
   begin
     SetLength(Result, Length(Result) - 1);
   end;

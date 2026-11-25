@@ -1,5 +1,6 @@
 ﻿package Atlas.IDE.Build;
 
+{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -68,6 +69,7 @@ contains
   Atlas.IDE.Tasks.Runner in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Runner.pas',
   Atlas.Core.Build.OpenBuild in 'Source\Core\Build\Atlas.Core.Build.OpenBuild.pas',
   Atlas.IDE.Build.OpenBuild in 'Source\IDE\Build\Atlas.IDE.Build.OpenBuild.pas',
+  Atlas.IDE.BuildTools.Adapters.Module in 'Source\IDE\BuildTools\Atlas.IDE.BuildTools.Adapters.Module.pas',
   Atlas.IDE.BuildTools.Composition in 'Source\IDE\BuildTools\Atlas.IDE.BuildTools.Composition.pas',
   Atlas.IDE.StartProfiles.Service in 'Source\IDE\StartProfiles\Atlas.IDE.StartProfiles.Service.pas',
   Atlas.Core.Build.CompilerSwitches in 'Source\Core\Build\Atlas.Core.Build.CompilerSwitches.pas',

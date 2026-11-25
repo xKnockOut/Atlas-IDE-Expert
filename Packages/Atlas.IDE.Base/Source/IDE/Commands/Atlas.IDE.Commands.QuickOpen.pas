@@ -51,24 +51,24 @@ uses
   System.Generics.Collections,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Projects.Contract,
-  Atlas.Core.Projects.PathCheck,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Projects.Contract,
+  Atlas.Plugin.Projects.PathCheck,
   Atlas.Core.Results.Model,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.QuickOpen,
   Atlas.Core.Commands.QuickOpenTarget,
   Atlas.UI.Commands.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer;
 
 const
   cSymbolTimeoutMs = 1500;

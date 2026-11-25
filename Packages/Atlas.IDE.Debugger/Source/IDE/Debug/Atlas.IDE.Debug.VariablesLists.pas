@@ -61,6 +61,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.Evaluate.Strings;
 
 /// <summary>Reiter in der Reihenfolge der Auswertung: AFirst, dann die übrigen.</summary>

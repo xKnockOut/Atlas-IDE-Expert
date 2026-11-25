@@ -71,7 +71,7 @@ uses
   System.StrUtils,
   System.RegularExpressions,
   System.Generics.Collections,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.FormReferences,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -83,7 +83,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
@@ -911,7 +911,7 @@ begin
     Exit;
   end;
   mText := TFileEncoding.Decode(mData, mFormat_);
-  AUnits := TUsesClauses.UsedUnitsOf(mText);
+  AUnits := TPascalUses.UsedUnitsOf(mText);
   mMatch := TRegEx.Match(mText, '\b' + AClassName + '\s*=\s*class\s*\(\s*([\w.]+)', [roIgnoreCase]);
   if mMatch.Success then
   begin
@@ -1113,7 +1113,7 @@ begin
   begin
     Exit;
   end;
-  FUsedUnits := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  FUsedUnits := TPascalUses.UsedUnits(FContext.Tree.Tokens);
   FInherited_ := nil;
   CollectAncestors(mClassNode[0].Name);
   for mEvent in mOwn do

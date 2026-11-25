@@ -48,6 +48,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON;
 
@@ -309,7 +310,7 @@ begin
   try
     Assert.AreEqual('json', mValue.GetValue<string>('format'));
     mCalls := mValue.GetValue<TJSONArray>('calls');
-    Assert.AreEqual(2, mCalls.Count);
+    Assert.AreEqual(2, Integer(mCalls.Count));
     Assert.AreEqual('echo', mCalls.Items[0].GetValue<string>('tool'));
     Assert.IsTrue(mCalls.Items[0].GetValue<Boolean>('ok'));
     Assert.AreEqual('Echo A', mCalls.Items[0].GetValue<string>('result'));

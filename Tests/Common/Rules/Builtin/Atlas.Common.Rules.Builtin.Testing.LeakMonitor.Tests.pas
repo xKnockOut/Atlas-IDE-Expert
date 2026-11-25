@@ -36,7 +36,7 @@ uses
   System.StrUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Builtin.Testing.LeakMonitor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
@@ -66,7 +66,7 @@ begin
   mFound := Findings(TestProgram(AUses), 'FallTests.dpr');
   if (Length(mFound) = 1) and (Length(mFound[0].Fixes) > 0) then
   begin
-    Result := TChangeSignature.ApplyEdits(TestProgram(AUses), mFound[0].Fixes[0].Edits);
+    Result := TTextChanges.Apply(TestProgram(AUses), mFound[0].Fixes[0].Edits);
   end;
 end;
 

@@ -42,11 +42,11 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.QuickToggles;
 

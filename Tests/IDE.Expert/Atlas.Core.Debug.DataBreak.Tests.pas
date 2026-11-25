@@ -44,9 +44,10 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Settings.DataBreakClasses;
+  Atlas.Plugin.Settings.DataBreakClasses;
 
 const
   cAnswer =
@@ -126,7 +127,7 @@ begin
   mJson := TJSONObject.ParseJSONValue(TAtlasDataBreak.Arguments('file:///C:/P/P.dproj',
     TArray<TAtlasDataClass>.Create(ClassNamed('TFDConnection'), ClassNamed('TRESTRequest')))) as TJSONArray;
   try
-    Assert.AreEqual(2, mJson.Count);
+    Assert.AreEqual(2, Integer(mJson.Count));
     Assert.AreEqual('file:///C:/P/P.dproj', mJson.Items[0].Value);
     mClass := (mJson.Items[1] as TJSONArray).Items[1] as TJSONObject;
     Assert.AreEqual('TRESTRequest', mClass.GetValue<string>('name'));

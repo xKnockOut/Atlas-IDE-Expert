@@ -2,9 +2,9 @@
 
 // MCP-Werkzeuge, die Dateien mit den Prüfregeln und Kennzahlen durchgehen
 // (#48, #66, #68): get_diagnostics, hook_check, get_metrics und get_todos.
-// Befunde lesen die Dateien mit den Symbolen des Projekts und dessen
-// Include-Dateien (CheckSource, #860), wie der Editor, und geben den Regeln den
-// Symbolindex und die Projektdienste mit (CheckProject, #1112). Regeln und
+// Befunde kommen aus AScope.Checks: Der Host prüft mit den Symbolen des
+// Projekts und dessen Include-Dateien (#860), wie der Editor, und gibt den
+// Regeln den Symbolindex und die Projektdienste mit (#1112). Regeln und
 // overrides aus atlas.json gelten für den Pfad relativ zum Arbeitsordner.
 
 interface
@@ -12,8 +12,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Lsp.References,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Mcp.Contract;
@@ -23,27 +22,17 @@ type
   public const
     cMaxFindings = 200;
   public
-    /// <summary>Befunde der Prüfregeln aus AScope und Syntaxfehler je Datei; AScope.Root für relative Pfade.
-    /// </summary>
+    /// <summary>Befunde der Prüfregeln aus AScope.Checks und Syntaxfehler je Datei; AScope.Root für relative
+    /// Pfade.</summary>
     class function Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-      const AReadText: TReferenceReadText): string; overload; static;
-    /// <summary>Wie oben mit Symbolen und Include-Dateien je Datei aus ASource (#860).</summary>
-    class function Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-      const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc): string; overload; static;
-    /// <summary>Wie oben mit Projekt, Symbolindex und Projektdiensten je Datei aus AProject (#1112), wie im
-    /// Server.</summary>
-    class function Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-      const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc;
-      const AProject: TCheckProjectFunc): string; overload; static;
+      const AReadText: TReferenceReadText): string; static;
     /// <summary>hook_check: Befunde ab ASeverity (Warning: Warnungen und Fehler) einer gerade bearbeiteten
     /// Datei als Ausgabe eines PostToolUse-Hooks von Claude Code: JSON mit
     /// hookSpecificOutput.additionalContext, damit Claude die Befunde sofort sieht. Leer, wenn die Datei
     /// kein Pascal-Quelltext ist (.pas, .dpr, .dpk, .inc), sich nicht lesen lässt oder keine Befunde hat;
-    /// leere Hook-Ausgabe ändert nichts. Projekt und Symbolindex aus AProject wie bei get_diagnostics (#1112).
-    /// </summary>
+    /// leere Hook-Ausgabe ändert nichts. Geprüft wie bei get_diagnostics über AScope.Checks.</summary>
     class function HookDiagnostics(const AScope: TMcpRuleScope; const AFileName: string;
-      const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc; const AProject: TCheckProjectFunc;
-      ASeverity: TRuleSeverity): string; static;
+      const AReadText: TReferenceReadText; ASeverity: TRuleSeverity): string; static;
     /// <summary>Schwelle für hook_check aus "error", "warning" (Vorgabe bei leerem Text), "information" oder
     /// "hint"; EMcpToolError bei anderem Text.</summary>
     class function ParseHookSeverity(const AText: string): TRuleSeverity; static;
@@ -56,8 +45,6 @@ type
     /// zu ARoot.</summary>
     class function Todos(const ASettings: TServerSettings; const ARoot: string; const AFiles: TArray<string>;
       const AReadText: TReferenceReadText; const AFilter: TTodoFilter; AJson: Boolean): string; static;
-    /// <summary>AFileName relativ zu ARoot, wenn sie darunter liegt; sonst unverändert.</summary>
-    class function RelativeTo(const ARoot, AFileName: string): string; static;
     /// <summary>Befund als "Zeile:Spalte: Schwere [Regel] [Konfidenz …] Meldung" (Zeilen und Spalten ab 1).
     /// </summary>
     class function FindingLine(const AFinding: TRuleFinding): string; static;
@@ -68,17 +55,17 @@ implementation
 uses
   System.Classes,
   System.StrUtils,
-  Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Output,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Metrics.Collector,
   Atlas.Common.Metrics.Report,
-  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Metrics.Limits,
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Builtin.Todos,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Todos.Keywords,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -103,18 +90,6 @@ const
 {$SCOPEDENUMS OFF}
 
 { TMcpCheckTools }
-
-class function TMcpCheckTools.Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText): string;
-begin
-  Result := Diagnostics(AScope, AFiles, AReadText, nil);
-end;
-
-class function TMcpCheckTools.Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc): string;
-begin
-  Result := Diagnostics(AScope, AFiles, AReadText, ASource, nil);
-end;
 
 class function TMcpCheckTools.ParseHookSeverity(const AText: string): TRuleSeverity;
 begin
@@ -147,7 +122,7 @@ var
   mFiles: TArray<TFileMetrics>;
   mLimits: TMetricLimits;
 begin
-  mLimits := TMetricRules.Limits(ASettings);
+  mLimits := TMetricSettings.Limits(ASettings);
   mCollector := TMetricsCollector.Create;
   try
     mFiles := mCollector.Collect(AFiles, ARoot,
@@ -178,7 +153,7 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := Assigned(AReadText) and AReadText(AFileName, AText);
-    end, TTodoRules.Keywords(ASettings)), AFilter);
+    end, TTodoKeywords.FromSettings(ASettings)), AFilter);
   if AJson then
   begin
     Result := TTodoReport.Json(mFiles);
@@ -189,27 +164,14 @@ begin
   end;
 end;
 
-class function TMcpCheckTools.RelativeTo(const ARoot, AFileName: string): string;
+/// <summary>Befunde aus AScope.Checks in AText (Inhalt von AFileName).</summary>
+function FileFindings(const AScope: TMcpRuleScope; const AFileName, AText: string): TArray<TRuleFinding>;
 begin
-  Result := AFileName;
-  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
-  begin
-    Result := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
-  end;
-end;
-
-/// <summary>Befunde der Regeln aus AScope in AText (Inhalt von AFileName).</summary>
-function FileFindings(const AScope: TMcpRuleScope; const AFileName, AText: string; const ASource: TCheckSourceFunc;
-  const AProject: TCheckProjectFunc): TArray<TRuleFinding>;
-var
-  mScopes: TFindingScopes;
-begin
-  Result := TFileChecker.CheckText(AScope.Rules, AScope.Settings, TMcpCheckTools.RelativeTo(AScope.Root, AFileName),
-    AText, TCheckOrigin.ForFile(AProject, ASource, AFileName), mScopes);
+  Result := AScope.Checks.Check(AFileName, TTextNames.RelativeTo(AScope.Root, AFileName), AText, AScope.Settings);
 end;
 
 class function TMcpCheckTools.Diagnostics(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-  const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc; const AProject: TCheckProjectFunc): string;
+  const AReadText: TReferenceReadText): string;
 var
   mLines: TStringList;
   mFileName, mText: string;
@@ -228,7 +190,7 @@ begin
         Continue;
       end;
       Inc(mChecked);
-      for mFinding in FileFindings(AScope, mFileName, mText, ASource, AProject) do
+      for mFinding in FileFindings(AScope, mFileName, mText) do
       begin
         Inc(mCount);
         if mCount <= cMaxFindings then
@@ -279,8 +241,7 @@ begin
 end;
 
 class function TMcpCheckTools.HookDiagnostics(const AScope: TMcpRuleScope; const AFileName: string;
-  const AReadText: TReferenceReadText; const ASource: TCheckSourceFunc; const AProject: TCheckProjectFunc;
-  ASeverity: TRuleSeverity): string;
+  const AReadText: TReferenceReadText; ASeverity: TRuleSeverity): string;
 const
   cPascalExtensions: array[0..3] of string = ('.pas', '.dpr', '.dpk', '.inc');
 var
@@ -294,7 +255,7 @@ begin
     Exit;
   end;
   // Wie get_diagnostics: Regeln und overrides aus atlas.json gelten für den Pfad relativ zum Projekt.
-  mFindings := HookFindings(FileFindings(AScope, AFileName, mText, ASource, AProject), ASeverity, mCount);
+  mFindings := HookFindings(FileFindings(AScope, AFileName, mText), ASeverity, mCount);
   if mCount = 0 then
   begin
     Exit;

@@ -16,8 +16,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Style.Symbol,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Images.Symbol,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasUpdateConsent = class(TAtlasAnswerDialog)
@@ -47,9 +47,9 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Symbol,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling,
+  Atlas.Plugin.Style.Symbol,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling,
   Atlas.UI.Updates.Strings;
 
 const

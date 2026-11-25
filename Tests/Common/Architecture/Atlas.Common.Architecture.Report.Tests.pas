@@ -432,7 +432,7 @@ begin
   mUnit := UnitJson(mOverview, 'Z.Own.Mid');
   try
     mRows := mUnit.GetValue<TJSONArray>('assignment');
-    Assert.AreEqual(2, mRows.Count);
+    Assert.AreEqual(2, Integer(mRows.Count));
     Assert.AreEqual(Format('[%d,3,2]', [mOwn]), mRows.Items[0].ToJSON);
     Assert.AreEqual(Format('[%d,2,2]', [mOther]), mRows.Items[1].ToJSON);
     Assert.AreEqual(3, mUnit.GetValue<Integer>('close'));

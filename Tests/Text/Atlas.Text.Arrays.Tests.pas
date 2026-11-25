@@ -20,13 +20,19 @@ type
     [Test]
     procedure ContainsIntegerFindsValue;
     [Test]
+    procedure ContainsAnyTextIgnoresCase;
+    [Test]
     procedure SameTextsIgnoresCase;
     [Test]
     procedure IndexOfTextUsesTextOf;
     [Test]
+    procedure TextsKeepsOrder;
+    [Test]
     procedure CountOfTextFromParallelArrays;
     [Test]
     procedure AddUniqueTextUsesSeen;
+    [Test]
+    procedure IndicesCountUp;
   end;
 
 implementation
@@ -106,6 +112,25 @@ begin
   mTextOf := nil;
 end;
 
+procedure TTextArraysTests.TextsKeepsOrder;
+var
+  mTextOf: TFunc<Integer, string>;
+  mTexts: TArray<string>;
+begin
+  mTextOf :=
+    function(AValue: Integer): string
+    begin
+      Result := 'Unit' + IntToStr(AValue);
+    end;
+  mTexts := TTextArrays.Texts<Integer>(TArray<Integer>.Create(4, 7), mTextOf);
+  Assert.AreEqual(2, Integer(Length(mTexts)));
+  Assert.AreEqual('Unit4', mTexts[0]);
+  Assert.AreEqual('Unit7', mTexts[1]);
+  Assert.AreEqual(0, Integer(Length(TTextArrays.Texts<Integer>(nil, mTextOf))));
+  mTextOf := nil;
+  mTexts := nil;
+end;
+
 procedure TTextArraysTests.CountOfTextFromParallelArrays;
 begin
   Assert.AreEqual(3, TTextArrays.CountOfText(TArray<string>.Create('TODO', 'FIXME'), TArray<Integer>.Create(5, 3),
@@ -132,6 +157,24 @@ begin
     mSeen.Free;
   end;
   mList := nil;
+end;
+
+procedure TTextArraysTests.ContainsAnyTextIgnoresCase;
+begin
+  Assert.IsTrue(TTextArrays.ContainsAnyText('mKundenListe', ['liste', 'map']));
+  Assert.IsFalse(TTextArrays.ContainsAnyText('mKunde', ['liste', 'map']));
+  Assert.IsFalse(TTextArrays.ContainsAnyText('mKunde', []));
+end;
+
+procedure TTextArraysTests.IndicesCountUp;
+var
+  mIndices: TArray<Integer>;
+begin
+  mIndices := TTextArrays.Indices(3);
+  Assert.AreEqual(3, Integer(Length(mIndices)));
+  Assert.AreEqual(0, mIndices[0]);
+  Assert.AreEqual(2, mIndices[2]);
+  Assert.AreEqual(0, Integer(Length(TTextArrays.Indices(0))));
 end;
 
 initialization

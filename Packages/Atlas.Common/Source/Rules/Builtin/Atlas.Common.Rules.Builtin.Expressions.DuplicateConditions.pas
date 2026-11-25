@@ -34,8 +34,8 @@ uses
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Editing.ConditionalExpression,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -88,7 +88,6 @@ type
     FTokens: TTokens;
     FTypes: TDeclaredTypes;
     function FirstToken(AOffset: Integer): Integer;
-    function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
     function Key(ANode: TSyntaxNode): string;
     function Display(ANode: TSyntaxNode): string;
     function Impure(ANode: TSyntaxNode): Boolean;
@@ -136,22 +135,13 @@ begin
   Result := mLo;
 end;
 
-function TDuplicateConditionScan.Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
-
 // Vergleichsschlüssel: Token ohne Kommentare, Bezeichner und Schlüsselwörter klein.
 function TDuplicateConditionScan.Key(ANode: TSyntaxNode): string;
 var
   mIndex: Integer;
   mNode: TSyntaxNode;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   Result := '';
   mIndex := FirstToken(mNode.StartOffset);
   while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < mNode.EndOffset) do
@@ -175,7 +165,7 @@ function TDuplicateConditionScan.Display(ANode: TSyntaxNode): string;
 var
   mNode: TSyntaxNode;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   Result := Trim(Copy(FContext.Text, mNode.StartOffset + 1, mNode.EndOffset - mNode.StartOffset));
 end;
 
@@ -285,7 +275,7 @@ begin
     mPending.Push(ANode);
     while mPending.Count > 0 do
     begin
-      mNode := Unwrapped(mPending.Pop);
+      mNode := TSyntaxNodes.Unparen(mPending.Pop);
       if (mNode.Kind = TSyntaxKind.BinaryExpr) and SameText(mNode.Name, AOperator) and (mNode.ChildCount = 2) then
       begin
         mPending.Push(mNode[1]);
@@ -347,7 +337,7 @@ function TDuplicateConditionScan.IsFloat(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   Result := (mNode.Kind = TSyntaxKind.Identifier) and MatchText(FTypes.DeclaredType(mNode.Name, mNode.StartPos),
     cFloatTypes);
 end;

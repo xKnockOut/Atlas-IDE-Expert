@@ -57,8 +57,8 @@ uses
   ToolsAPI,
   DesignIntf,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Designer.NameSuggest,
   Atlas.UI.Designer.NameDialog,
@@ -67,7 +67,7 @@ uses
   Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.Model,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.IDE.Foundation.Settings;
 
 const

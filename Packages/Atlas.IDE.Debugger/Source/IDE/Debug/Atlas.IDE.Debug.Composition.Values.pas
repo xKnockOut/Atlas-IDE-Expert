@@ -47,9 +47,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Modules.FeatureParts,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.Core.Hover.Contract.DebugValue,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -362,7 +362,7 @@ end;
 /// <summary>Objekte markieren (#839): Etiketten im Hover über den Haken des Baums.</summary>
 procedure StartDebugObjectMarks;
 begin
-  TAtlasIdeDebugObjectMarks.Start(MessageLine);
+  TAtlasIdeDebugObjectMarks.Start(TAtlasIdeHost.Messages());
   HookHoverTree;
   TAtlasIdeDebugInlineValues.OnMarked :=
     function(const AName, AText, AFileName: string; ALine: Integer): string

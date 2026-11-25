@@ -97,6 +97,8 @@ type
     /// <summary>#1352: Untergrenze der Sammelkorrektur.</summary>
     [Test]
     procedure ReadsFixMinConfidence;
+    [Test]
+    procedure RuleOptionsById;
   end;
 
 implementation
@@ -1013,6 +1015,14 @@ begin
   Assert.IsFalse(Parse('{}', mIssues).SortUses);
   Assert.IsTrue(Parse('{"sortUses": true}', mIssues).SortUses);
   Assert.AreEqual(0, Integer(Length(mIssues)));
+  // Nach Herkunft gegliedert (#2794) mit Darstellung der Gruppen.
+  Assert.IsTrue(Parse('{"sortUses": "origin"}', mIssues).SortUsesByOrigin);
+  Assert.IsFalse(Parse('{"sortUses": "namespace"}', mIssues).SortUsesByOrigin);
+  Assert.AreEqual('comments', Parse('{}', mIssues).UsesGroupStyle);
+  Assert.AreEqual('lines', Parse('{"usesGroupStyle": "lines"}', mIssues).UsesGroupStyle);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('comments', Parse('{"usesGroupStyle": "blocks"}', mIssues).UsesGroupStyle);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 procedure TServerSettingsTests.ReadsFixMinConfidence;
 var
@@ -1031,6 +1041,20 @@ begin
   Parse('{"fix": "high"}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
+
+procedure TServerSettingsTests.RuleOptionsById;
+var
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
+begin
+  mSettings := Parse('{"rules": {"metric-uses-count": {"severity": "off", "max": 12}, "todo-comment": "hint"}}',
+    mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.Contains(TRuleSetting.OptionsOf(mSettings.Rules, 'METRIC-USES-COUNT'), '"max"');
+  Assert.AreEqual('', TRuleSetting.OptionsOf(mSettings.Rules, 'todo-comment'));
+  Assert.AreEqual('', TRuleSetting.OptionsOf(mSettings.Rules, 'unbekannt'));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConfigurationParserTests);
   TDUnitX.RegisterTestFixture(TServerSettingsTests);

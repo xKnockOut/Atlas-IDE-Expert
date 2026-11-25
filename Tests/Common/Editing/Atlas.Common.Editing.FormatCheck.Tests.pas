@@ -56,7 +56,8 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Editing.Formatter,
-  Atlas.Common.Editing.FormatCheck;
+  Atlas.Common.Editing.FormatCheck,
+  Atlas.Tests.Files;
 
 function Kinds(const ADeviations: TArray<TFormatDeviation>): string;
 var
@@ -243,28 +244,6 @@ begin
   Assert.AreEqual(mOutcome.Formatted, TFormatCheck.FormatText(mOutcome.Formatted, mStyle, TFormatScope.All));
 end;
 
-/// <summary>Ordner des Referenzprojekts, gesucht von der Test-EXE aufwärts; '' ohne.</summary>
-function ReferenceFolder: string;
-var
-  mDirectory: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
-    if TDirectory.Exists(Result) then
-    begin
-      Exit;
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  Result := '';
-end;
-
 procedure TFormatCheckTests.ReferenceProjectIsStable;
 var
   mFolder, mFileName, mText, mOnce, mUnstable: string;
@@ -273,7 +252,7 @@ var
   mStyle: TFormatStyle;
   mCount: Integer;
 begin
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden');

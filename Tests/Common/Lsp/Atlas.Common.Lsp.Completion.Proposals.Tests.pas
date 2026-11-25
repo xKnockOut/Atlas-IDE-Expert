@@ -388,18 +388,6 @@ const
     'end;'#13#10 +
     'end.';
 
-/// <summary>Namen der Einträge, durch Leerzeichen getrennt.</summary>
-function JoinedItemNames(const AItems: TArray<TCompletionItem>): string;
-var
-  mItem: TCompletionItem;
-begin
-  Result := '';
-  for mItem in AItems do
-  begin
-    Result := Result + ' ' + mItem.Name;
-  end;
-  Result := Result.Trim;
-end;
 /// <summary>Liest nur die Unit Typen.</summary>
 function TypenReader: TCompletionReadText;
 begin
@@ -425,7 +413,7 @@ begin
   // case-Zweig.
   Assert.IsTrue(EnumAt(LookupOf(AResolver, AIndex, ATree, cEnumText, AReader),
     PositionOf(cEnumText, 'skCircle: ;'#13#10'    '), mItems, mSetMode));
-  Assert.AreEqual('Fehlende Werte ergänzen (3) skCircle skRect skLine skTriangle', JoinedItemNames(mItems));
+  Assert.AreEqual('Fehlende Werte ergänzen (3) skCircle skRect skLine skTriangle', ItemNames(mItems));
   Assert.AreEqual(#13#10'    TShapeKind.skRect: $0;'#13#10'    TShapeKind.skLine: ;'#13#10'    TShapeKind.skTriangle: ;',
     mItems[0].TextEdit.NewText, 'Scoped Enum mit Typpräfix (#449)');
 end;
@@ -440,7 +428,7 @@ begin
   Assert.IsTrue(EnumAt(LookupOf(AResolver, AIndex, ATree, cEnumText, AReader),
     PositionOf(cEnumText, 'C.Anchors := [akLeft, '), mItems, mSetMode));
   Assert.IsTrue(mSetMode);
-  Assert.AreEqual('akLeft akTop akRight akBottom', JoinedItemNames(mItems));
+  Assert.AreEqual('akLeft akTop akRight akBottom', ItemNames(mItems));
   Assert.IsTrue(mItems[0].SetChecked);
   Assert.IsFalse(mItems[1].SetChecked);
   Assert.AreEqual('TAnchorKind', mItems[0].SetOf);
@@ -639,7 +627,7 @@ begin
     Assert.IsTrue(EnumAt(LookupOf(mResolver, FIndex, mTree, cEnumText, mReader),
       PositionOf(cEnumText, 'C.Align := '), mItems, mSetMode));
     Assert.IsFalse(mSetMode);
-    Assert.AreEqual('alNone alTop alClient', JoinedItemNames(mItems));
+    Assert.AreEqual('alNone alTop alClient', ItemNames(mItems));
     Assert.AreEqual(3, mItems[2].Ordinal);
     Assert.AreEqual('TAlign', mItems[0].Expected);
     Assert.IsTrue(mItems[0].Fits);

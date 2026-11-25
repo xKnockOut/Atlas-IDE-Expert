@@ -28,7 +28,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Pascal.Signatures;
 
 type
 {$SCOPEDENUMS ON}
@@ -120,10 +120,11 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -286,23 +287,13 @@ begin
   Result := ATokens[AIndex].Offset + Length(ATokens[AIndex].Text);
 end;
 
-/// <summary>Kurzname eines Kopfs: "TFoo.Bar" ergibt "Bar".</summary>
-function ShortName(const AName: string): string;
-begin
-  Result := AName;
-  if LastDelimiter('.', Result) > 0 then
-  begin
-    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-  end;
-end;
-
 /// <summary>Token des Namens im Kopf AHeader: das erste Bezeichner-Token mit dem Kurznamen.</summary>
 function NameToken(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): Integer;
 var
   mIndex: Integer;
   mName: string;
 begin
-  mName := ShortName(AHeader.Name);
+  mName := TTextNames.LastPart(AHeader.Name);
   for mIndex := 0 to High(ATokens) do
   begin
     if ATokens[mIndex].Offset >= AHeader.EndOffset then
@@ -321,26 +312,8 @@ end;
 function ReadNode(const AText: string; ATree: TSyntaxTree; AHeader: TSyntaxNode;
   out ASignature: TSignatureHeader): Boolean;
 begin
-  Result := (AHeader <> nil) and TChangeSignature.ReadHeader(AText, ATree.Tokens, NameToken(ATree.Tokens, AHeader),
+  Result := (AHeader <> nil) and TPascalSignatures.ReadHeader(AText, ATree.Tokens, NameToken(ATree.Tokens, AHeader),
     ASignature);
-end;
-
-function SameTypes(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for mIndex := 0 to High(A) do
-    begin
-      if not SameText(StringReplace(A[mIndex], ' ', '', [rfReplaceAll]),
-        StringReplace(B[mIndex], ' ', '', [rfReplaceAll])) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
 end;
 
 /// <summary>Klasse bzw. Record AName der Datei; nil ohne.</summary>
@@ -453,7 +426,7 @@ begin
       Inc(mCount);
       mSingle := mSection[mIndex];
       mSingleHeader := mHeader;
-      if SameTypes(mHeader.ParamTypes, ADecl.ParamTypes) then
+      if TTextNames.SameTypes(mHeader.ParamTypes, ADecl.ParamTypes) then
       begin
         ABody := mHeader;
         Exit(mSection[mIndex]);
@@ -486,7 +459,7 @@ begin
   end;
   for mCandidate in mCandidates do
   begin
-    if SameTypes(mCandidate.ParamTypes, ABody.ParamTypes) then
+    if TTextNames.SameTypes(mCandidate.ParamTypes, ABody.ParamTypes) then
     begin
       ADecl := mCandidate;
       Exit(True);
@@ -679,7 +652,7 @@ begin
     Exit;
   end;
   Target.HasDecl := True;
-  Target.Name := ShortName(Target.Decl.QualifiedName);
+  Target.Name := TTextNames.LastPart(Target.Decl.QualifiedName);
   mQualified := Target.Name;
   if Target.Container <> '' then
   begin
@@ -700,7 +673,7 @@ begin
   begin
     Exit;
   end;
-  Target.Name := ShortName(Target.Body.QualifiedName);
+  Target.Name := TTextNames.LastPart(Target.Body.QualifiedName);
   Result := ResolveContainer and ReadDeclOfBody;
   // Typ des letzten Parameters: aus der Deklaration, sonst aus dem Kopf der Implementierung.
   if Result and Target.HasDecl then
@@ -726,7 +699,7 @@ begin
   Target.Container := Copy(mQualified, 1, LastDelimiter('.', mQualified) - 1);
   if Pos('.', Target.Container) > 0 then
   begin
-    Target.Container := ShortName(Target.Container);
+    Target.Container := TTextNames.LastPart(Target.Container);
   end;
   TypeNode := FindType(Tree.Root, Target.Container);
   Result := TypeNode <> nil;
@@ -763,7 +736,7 @@ begin
     Exit;
   end;
   Target.BlockBegin := TRoutineBody.TokenAt(Tokens, mBlock.StartOffset);
-  Target.BodyLast := TChangeSignature.BodyEnd(Tree, Target.Body);
+  Target.BodyLast := TPascalSignatures.BodyEnd(Tree, Target.Body);
   Result := (Target.BlockBegin <= High(Tokens)) and Tokens[Target.BlockBegin].IsKeyword('begin') and
     (Target.BodyLast >= 0);
   if not Result then
@@ -799,7 +772,7 @@ begin
   mWanted := Copy(Target.Decl.ParamTypes, 0, Length(Target.Decl.Parameters) - 1);
   for mHeader in Overloads(Tree, Text, Target.Name, TypeNode) do
   begin
-    if SameTypes(mHeader.ParamTypes, mWanted) then
+    if TTextNames.SameTypes(mHeader.ParamTypes, mWanted) then
     begin
       Exit(Format(TOverloads.ExistsReason, [Target.Name, string.Join(', ', mWanted)]));
     end;
@@ -934,7 +907,7 @@ begin
   end;
   if mHasDefault or (AHeader.OpenToken < 0) then
   begin
-    Result := TChangeSignature.ParameterList(AHeader.Parameters, False);
+    Result := TPascalSignatures.ParameterList(AHeader.Parameters, False);
     if Result <> '' then
     begin
       Result := Copy(Result, 2, Length(Result) - 2);
@@ -979,7 +952,7 @@ begin
   ABuilder.Add(')' + TailText(AText, ATokens, AHeader));
   if ADirectives then
   begin
-    ABuilder.Add(TChangeSignature.OverloadDirectives(AHeader, False));
+    ABuilder.Add(TPascalSignatures.OverloadDirectives(AHeader, False));
   end;
 end;
 
@@ -1066,7 +1039,7 @@ begin
   begin
     Kept := Copy(Target.Decl.Parameters, 0, Length(Target.Decl.Parameters) - 1);
     mDropped := Target.Decl.Parameters[High(Target.Decl.Parameters)].Name;
-    Parameters := TChangeSignature.ParameterList(Kept, False);
+    Parameters := TPascalSignatures.ParameterList(Kept, False);
     if Parameters <> '' then
     begin
       Parameters := Copy(Parameters, 2, Length(Parameters) - 2);

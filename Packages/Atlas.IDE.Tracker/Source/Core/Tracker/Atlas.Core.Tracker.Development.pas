@@ -36,7 +36,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   /// <summary>Branch zum Issue; lokal und entfernt gleichen Namens zusammen.</summary>
@@ -205,7 +205,7 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Lines,
   System.StrUtils,
-  Atlas.Core.Files.TextDiff,
+  Atlas.Plugin.Files.TextDiff,
   Atlas.Core.Tracker.Naming;
 
 function IsAlnum(AChar: Char): Boolean;

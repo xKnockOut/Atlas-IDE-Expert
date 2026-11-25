@@ -72,7 +72,7 @@ uses
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.Completion,
-  Atlas.Core.Diagnostics.Export,
+  Atlas.Plugin.Diagnostics.Export,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Diagnostics.Anonymizer,

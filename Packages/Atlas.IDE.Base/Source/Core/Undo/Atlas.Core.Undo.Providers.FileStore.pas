@@ -18,7 +18,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Undo.Contract;
 
 type

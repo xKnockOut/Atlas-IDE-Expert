@@ -25,7 +25,8 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Editing.SourceFiles;
 
 type
   /// <summary>Was ersetzt wird: nur die Stelle, alle gleichen Ausdrücke der Unit oder des Projekts.</summary>
@@ -65,15 +66,7 @@ type
   end;
 
   /// <summary>Eine Datei; Offsets nur beim Auflösen: Anfang jeder Verwendung des Alias (0-basiert).</summary>
-  TTypeAliasSource = record
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    Offsets: TArray<Integer>;
-    class function Create(const AFileName, AText: string; ATree: TSyntaxTree): TTypeAliasSource; overload; static;
-    class function Create(const AFileName, AText: string; ATree: TSyntaxTree;
-      const AOffsets: TArray<Integer>): TTypeAliasSource; overload; static;
-  end;
+  TTypeAliasSource = TEditingSourceFile;
 
   TTypeAliasFileEdits = record
     FileName: string;
@@ -147,16 +140,19 @@ implementation
 
 uses
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Documents.TextChanges,
   System.SysUtils,
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.TypeAlias.Texts,
-  Atlas.Common.Editing.TypeAlias.Names;
+  Atlas.Common.Editing.TypeAlias.Names,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 { TTypeAlias }
 
@@ -214,27 +210,6 @@ end;
 function NodeText(const AText: string; ANode: TSyntaxNode): string;
 begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-end;
-
-/// <summary>Tiefster Knoten, der AOffset enthält.</summary>
-function NodeAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
-var
-  mIndex: Integer;
-  mFound: Boolean;
-begin
-  Result := ANode;
-  repeat
-    mFound := False;
-    for mIndex := 0 to Result.ChildCount - 1 do
-    begin
-      if (AOffset >= Result[mIndex].StartOffset) and (AOffset < Result[mIndex].EndOffset) then
-      begin
-        Result := Result[mIndex];
-        mFound := True;
-        Break;
-      end;
-    end;
-  until not mFound;
 end;
 
 /// <summary>Lohnt ein Alias für ANode?</summary>
@@ -422,7 +397,7 @@ begin
         begin
           if (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl,
             TSyntaxKind.RoutineDecl, TSyntaxKind.Field, TSyntaxKind.PropertyDecl]) and
-            SameText(TTypeAliasNames.LastPart(ANode.Name), AName) then
+            SameText(TTextNames.LastPart(ANode.Name), AName) then
           begin
             Taken := True;
           end;
@@ -436,22 +411,6 @@ begin
       AImplementation := False;
       Result := '';
     end;
-end;
-
-{ TTypeAliasSource }
-
-class function TTypeAliasSource.Create(const AFileName, AText: string; ATree: TSyntaxTree): TTypeAliasSource;
-begin
-  Result := Create(AFileName, AText, ATree, nil);
-end;
-
-class function TTypeAliasSource.Create(const AFileName, AText: string; ATree: TSyntaxTree;
-  const AOffsets: TArray<Integer>): TTypeAliasSource;
-begin
-  Result.FileName := AFileName;
-  Result.Text := AText;
-  Result.Tree := ATree;
-  Result.Offsets := AOffsets;
 end;
 
 { TTypeAlias }
@@ -517,7 +476,7 @@ begin
   end;
   if mName = '' then
   begin
-    mName := TTypeAliasNames.LastPart(ANode.Name);
+    mName := TTextNames.LastPart(ANode.Name);
   end;
   Result := LowerCase(mName);
   mArgs := ANode.FindChild(TSyntaxKind.GenericArgs);
@@ -660,7 +619,7 @@ begin
     Exit;
   end;
   mLines := TLineTable.Build(AText);
-  mNode := NodeAt(ATree.Root, mLines.OffsetAt(APosition));
+  mNode := TSyntaxNodes.DeepestAt(ATree.Root, mLines.OffsetAt(APosition));
   mOuter := nil;
   mInner := nil;
   while (mNode <> nil) and InTypeChain(mNode) do
@@ -805,7 +764,7 @@ begin
   Result := False;
   mImplementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
   mInImplementation := (mImplementation_ <> nil) and (AOffset >= mImplementation_.StartOffset);
-  for mReference in TUsesClauses.References(ATree.Tokens) do
+  for mReference in TPascalUses.References(ATree.Tokens) do
   begin
     if (mReference.List <> TUsesListKind.UsesList) or not (SameText(mReference.Name, AUnitName) or
       EndsText('.' + AUnitName, mReference.Name)) then
@@ -844,7 +803,7 @@ begin
     begin
       Continue;
     end;
-    mTree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(mChange.Text, mChange.Edits));
+    mTree := TSyntaxTreeCache.Parse(TTextChanges.Apply(mChange.Text, mChange.Edits));
     try
       if Length(mTree.Diagnostics) > Length(mChange.Tree.Diagnostics) then
       begin
@@ -879,7 +838,7 @@ end;
 /// <summary>Knoten in ATree, der genau den Ausdruck ATarget umfasst; nil ohne.</summary>
 function TargetNode(ATree: TSyntaxTree; const ATarget: TTypeAliasTarget): TSyntaxNode;
 begin
-  Result := NodeAt(ATree.Root, ATarget.StartOffset);
+  Result := TSyntaxNodes.DeepestAt(ATree.Root, ATarget.StartOffset);
   while (Result <> nil) and not ((Result.Kind = ATarget.Kind) and (Result.StartOffset = ATarget.StartOffset) and
     (Result.EndOffset = ATarget.EndOffset)) do
   begin
@@ -896,7 +855,7 @@ begin
   Result := True;
   for mNameNode in NamesIn(ANode) do
   begin
-    mLocal := LocalType(ATree, TTypeAliasNames.LastPart(mNameNode.Name), mForwardEnd);
+    mLocal := LocalType(ATree, TTextNames.LastPart(mNameNode.Name), mForwardEnd);
     if (mLocal <> nil) and not InInterface(mLocal) then
     begin
       Result := False;
@@ -1189,7 +1148,7 @@ begin
   Result := '';
   for mNameNode in NamesIn(Node) do
   begin
-    mLocal := LocalType(Declaring.Tree, TTypeAliasNames.LastPart(mNameNode.Name), mForwardEnd);
+    mLocal := LocalType(Declaring.Tree, TTextNames.LastPart(mNameNode.Name), mForwardEnd);
     if (mLocal = nil) or (mLocal.EndOffset <= Insert) or (mForwardEnd >= 0) and (mForwardEnd <= Insert) then
     begin
       Continue;
@@ -1286,7 +1245,7 @@ var
 begin
   if (Scope = TTypeAliasScope.Project) and (InInterface(First) or ExportNeeded) then
   begin
-    mUnitName := TUsesClauses.OwnName(Declaring.Tree.Tokens);
+    mUnitName := TPascalUses.OwnName(Declaring.Tree.Tokens);
     for mOther in Others do
     begin
       if not SameText(mOther.FileName, Declaring.FileName) and (mOther.Tree <> nil) then
@@ -1355,7 +1314,7 @@ end;
 /// <summary>Typdeklaration um AOffset; nil ohne.</summary>
 function AliasDecl(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
 begin
-  Result := NodeAt(ATree.Root, AOffset);
+  Result := TSyntaxNodes.DeepestAt(ATree.Root, AOffset);
   while (Result <> nil) and (Result.Kind <> TSyntaxKind.TypeDecl) do
   begin
     Result := Result.Parent;
@@ -1448,7 +1407,7 @@ end;
 /// Zugriff Unit.X; ATypePosition: an der Stelle steht ein Typ (kein Ausdruck).</summary>
 function UseNode(ATree: TSyntaxTree; AOffset: Integer; out ATypePosition: Boolean): TSyntaxNode;
 begin
-  Result := NodeAt(ATree.Root, AOffset);
+  Result := TSyntaxNodes.DeepestAt(ATree.Root, AOffset);
   ATypePosition := False;
   while (Result <> nil) and not (Result.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.Identifier,
     TSyntaxKind.MemberAccess]) do
@@ -1460,7 +1419,7 @@ begin
     Exit;
   end;
   ATypePosition := Result.Kind = TSyntaxKind.TypeReference;
-  // Unit.X als Ausdruck liefert NodeAt als MemberAccess selbst, X.Create dagegen den Bezeichner X darin.
+  // Unit.X als Ausdruck liefert TSyntaxNodes.DeepestAt als MemberAccess selbst, X.Create dagegen den Bezeichner X darin.
 end;
 
 type
@@ -1581,7 +1540,7 @@ begin
     AChange.Edits := AChange.Edits + [Edit(mLines, mStart, mStop, Target.TypeText)];
     PreviewLines := PreviewLines + [Where(ASource.FileName, mLines.PositionAt(mStart).Line)];
     Inc(Outcome.Places);
-    if (Result < 0) or InInterface(mUse) and not InInterface(NodeAt(ASource.Tree.Root, Result)) then
+    if (Result < 0) or InInterface(mUse) and not InInterface(TSyntaxNodes.DeepestAt(ASource.Tree.Root, Result)) then
     begin
       Result := mStart;
     end;
@@ -1599,12 +1558,12 @@ begin
   mLineBreak := TTextLines.LineBreakOf(ASource.Text);
   for mUnitName in Units do
   begin
-    if SameText(mUnitName, TUsesClauses.OwnName(ASource.Tree.Tokens)) or
-      TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ASource.Tree.Tokens), mUnitName, nil) then
+    if SameText(mUnitName, TPascalUses.OwnName(ASource.Tree.Tokens)) or
+      TPascalUses.IsUsed(TPascalUses.UsedUnits(ASource.Tree.Tokens), mUnitName, nil) then
     begin
       Continue;
     end;
-    if not TUsesClauses.AddUnit(ASource.Tree.Tokens, AFirstSite, mUnitName, mLineBreak, mUsesEdit) then
+    if not TPascalUsesEdits.AddUnit(ASource.Tree.Tokens, AFirstSite, mUnitName, mLineBreak, mUsesEdit) then
     begin
       Exit(cTexts[TEditingTypeAliasText.UsesForCannotBeAdded].Fmt([ExtractFileName(ASource.FileName), mUnitName]));
     end;

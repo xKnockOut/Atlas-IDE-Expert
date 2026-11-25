@@ -20,7 +20,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.BoardLayout;
 
@@ -75,7 +75,7 @@ implementation
 uses
   System.Math,
   Winapi.Windows,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Tracker.BoardLanes,
   Atlas.UI.Tracker.Board.Strings;
 

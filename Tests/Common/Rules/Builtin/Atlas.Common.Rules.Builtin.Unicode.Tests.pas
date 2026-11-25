@@ -120,8 +120,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Text.Lines,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Documents.TextChanges;
 
 function UnitWith(const ABody: string): string;
 begin
@@ -179,17 +179,6 @@ begin
   finally
     mTree.Free;
   end;
-end;
-
-function Apply(const AText: string; const AEdit: TTextEdit): string;
-var
-  mTable: TLineTable;
-  mStart, mStop: Integer;
-begin
-  mTable := TLineTable.Build(AText);
-  mStart := mTable.OffsetAt(AEdit.Range.StartPos);
-  mStop := mTable.OffsetAt(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
 { TUnicodeRuleTests }
@@ -376,7 +365,7 @@ begin
   mFindings := TRuleAssert.Findings(TInvisibleCharRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.IsTrue(mFindings[0].Fixes[0].Safe);
-  mFixed := Apply(mSource, mFindings[0].Fixes[0].Edits[0]);
+  mFixed := TTextChanges.Apply(mSource, TArray<TTextEdit>.Create(mFindings[0].Fixes[0].Edits[0]));
   Assert.AreEqual(UnitWith('const S = ''a''#$200B''b'';'), mFixed);
   mTree := TPascalParser.Parse(mFixed);
   try
@@ -386,7 +375,7 @@ begin
   end;
   // Am Anfang des Strings: ''#$200B'b' ist ebenso gültig.
   mSource := UnitWith('const S = ''' + Char($200B) + 'b'';');
-  mFixed := Apply(mSource, TRuleAssert.Findings(TInvisibleCharRule.Create, mSource)[0].Fixes[0].Edits[0]);
+  mFixed := TTextChanges.Apply(mSource, TArray<TTextEdit>.Create(TRuleAssert.Findings(TInvisibleCharRule.Create, mSource)[0].Fixes[0].Edits[0]));
   mTree := TPascalParser.Parse(mFixed);
   try
     Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
@@ -402,7 +391,7 @@ var
 begin
   mSource := UnitWith('// Hinweis ' + Char($202E) + 'x');
   mFindings := TRuleAssert.Findings(TBidiControlRule.Create, mSource);
-  Assert.AreEqual(UnitWith('// Hinweis x'), Apply(mSource, mFindings[0].Fixes[0].Edits[0]));
+  Assert.AreEqual(UnitWith('// Hinweis x'), TTextChanges.Apply(mSource, TArray<TTextEdit>.Create(mFindings[0].Fixes[0].Edits[0])));
   Assert.IsFalse(mFindings[0].Fixes[0].Safe);
 end;
 
@@ -432,7 +421,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('C:\P\Form1.dfm', mFindings[0].Fixes[0].FileName);
   Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''A''#8203''B'''#13#10'end',
-    Apply(mForm, mFindings[0].Fixes[0].Edits[0]));
+    TTextChanges.Apply(mForm, TArray<TTextEdit>.Create(mFindings[0].Fixes[0].Edits[0])));
   // Gemeldet an der Formularklasse.
   Assert.AreEqual(3, mFindings[0].Range.StartPos.Line);
 end;
@@ -614,7 +603,7 @@ begin
   Assert.AreEqual(20, mFindings[0].Range.EndPos.Character);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
-  mFixed := Apply(mSource, mFindings[0].Fixes[0].Edits[0]);
+  mFixed := TTextChanges.Apply(mSource, TArray<TTextEdit>.Create(mFindings[0].Fixes[0].Edits[0]));
   Assert.AreEqual(Routine('Titel := ''Bericht'';'), mFixed);
   TRuleAssert.Silent(TFileEncodingUnsupportedRule.Create, mFixed);
 end;
@@ -629,7 +618,7 @@ begin
   mFindings := TRuleAssert.Findings(TFileEncodingUnsupportedRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Routine('Titel := ''Peter' + Char($2019) + 's Bericht'';'),
-    Apply(mSource, mFindings[0].Fixes[0].Edits[0]));
+    TTextChanges.Apply(mSource, TArray<TTextEdit>.Create(mFindings[0].Fixes[0].Edits[0])));
 end;
 
 procedure TUnicodeRuleTests.DoubleQuotesBecomeString;
@@ -641,7 +630,7 @@ begin
   mFindings := TRuleAssert.Findings(TFileEncodingUnsupportedRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.Contains(mFindings[0].Message, 'Doppelte');
-  Assert.AreEqual(Routine('Titel := ''Bericht'';'), Apply(mSource, mFindings[0].Fixes[0].Edits[0]));
+  Assert.AreEqual(Routine('Titel := ''Bericht'';'), TTextChanges.Apply(mSource, TArray<TTextEdit>.Create(mFindings[0].Fixes[0].Edits[0])));
 end;
 
 procedure TUnicodeRuleTests.QuoteWithStringInsideHasNoFix;
@@ -665,7 +654,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('Zeichen ''' + Char($2013) + ''' (#$2013) ist im Quelltext nicht erlaubt (wie E2038).',
     mFindings[0].Message);
-  Assert.AreEqual(Routine('Titel := IntToStr(4 - 2) ?;'), Apply(mSource, mFindings[0].Fixes[0].Edits[0]));
+  Assert.AreEqual(Routine('Titel := IntToStr(4 - 2) ?;'), TTextChanges.Apply(mSource, TArray<TTextEdit>.Create(mFindings[0].Fixes[0].Edits[0])));
   Assert.Contains(mFindings[1].Message, '''?''');
   Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
 end;

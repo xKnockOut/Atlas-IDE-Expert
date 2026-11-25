@@ -64,15 +64,17 @@ uses
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -202,7 +204,7 @@ procedure TThreadUseAfterFreeOnTerminateRule.Check(const AContext: TRuleContext;
       mStatement := AList[mIndex];
       if mStarted then
       begin
-        if not Mentions(mStatement, mName) then
+        if not TSyntaxNodes.Mentions(mStatement, mName) then
         begin
           Continue;
         end;
@@ -435,7 +437,7 @@ begin
     end);
   for mRoutine in mRoutines do
   begin
-    if (Pos('destructor', NodeText(AContext.Text, mRoutine)) = 1) and InList(mThreads, ClassPart(mRoutine.Name)) then
+    if (Pos('destructor', NodeText(AContext.Text, mRoutine)) = 1) and MatchText(ClassPart(mRoutine.Name), mThreads) then
     begin
       mBody := mRoutine.FindChild(TSyntaxKind.Block);
       if mBody <> nil then
@@ -614,7 +616,7 @@ begin
       begin
         Continue;
       end;
-      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and not InList(ANames, mNode.Name) then
+      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and not MatchText(mNode.Name, ANames) then
       begin
         ANames := ANames + [mNode.Name];
       end;
@@ -637,7 +639,7 @@ begin
   CollectNames(ANode, mFound);
   for mName in ACandidates do
   begin
-    if InList(mFound, mName) then
+    if MatchText(mName, mFound) then
     begin
       Exit(True);
     end;
@@ -657,7 +659,7 @@ begin
   Result := True;
   for mOther := 0 to High(FRoutines) do
   begin
-    if (mOther <> AIndex) and InList(FNames[mOther], mMethod) then
+    if (mOther <> AIndex) and MatchText(mMethod, FNames[mOther]) then
     begin
       mAny := True;
       Result := Result and ContainsIndex(AReached, mOther);
@@ -844,7 +846,7 @@ begin
     for mRoutine in FRoutines do
     begin
       mOwner := ClassPart(mRoutine.Name);
-      if (mOwner <> '') and not InList(mClasses, mOwner) and mAncestry.DescendsFrom(mOwner, 'TThread') then
+      if (mOwner <> '') and not MatchText(mOwner, mClasses) and mAncestry.DescendsFrom(mOwner, 'TThread') then
       begin
         mClasses := mClasses + [mOwner];
       end;
@@ -1034,7 +1036,7 @@ var
       begin
         mPosition := mIndex;
       end
-      else if (mPosition >= 0) and Mentions(mList[mIndex], AName) then
+      else if (mPosition >= 0) and TSyntaxNodes.Mentions(mList[mIndex], AName) then
       begin
         mLast := mList[mIndex];
       end;
@@ -1344,7 +1346,7 @@ begin
   mEdits := [TRuleEdit.Create(TTextRange.Create(ABody.StartPos.Line + 1, 0, ABody.EndPos.Line, 0), mText +
     ExceptPart(mIndent, mStep))];
   // ShowMessage aus Vcl.Dialogs bzw. FMX.Dialogs, Exception aus System.SysUtils.
-  mUsed := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  mUsed := TPascalUses.UsedUnits(FContext.Tree.Tokens);
   mDialogs := 'Vcl.Dialogs';
   for mUsedUnit in mUsed do
   begin
@@ -1353,13 +1355,13 @@ begin
       mDialogs := 'FMX.Dialogs';
     end;
   end;
-  if not TUsesClauses.IsUsed(mUsed, mDialogs, FContext.Namespaces) and
-    TUsesClauses.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, mDialogs, FLineBreak, mUsesEdit) then
+  if not TPascalUses.IsUsed(mUsed, mDialogs, FContext.Namespaces) and
+    TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, mDialogs, FLineBreak, mUsesEdit) then
   begin
     mEdits := [mUsesEdit] + mEdits;
   end;
-  if not TUsesClauses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) and
-    TUsesClauses.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', FLineBreak, mUsesEdit) then
+  if not TPascalUses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) and
+    TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', FLineBreak, mUsesEdit) then
   begin
     mEdits := [mUsesEdit] + mEdits;
   end;

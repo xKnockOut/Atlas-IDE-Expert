@@ -81,33 +81,31 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   System.Classes,
   System.Types,
-  System.Math,
   System.Generics.Collections,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.LineChangesPlan,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.UI.Popup.TitledTip,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.Vcl.Popup.TitledTip,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.VersionControl.LineChangesData,
   Atlas.IDE.VersionControl.LineChangesPaint,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Vcl.Theme.EditorFont;
 
 const
   cTickMs = 150;
@@ -546,44 +544,17 @@ end;
 procedure TLineChangesState.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   AMark: TAtlasLineMark; AChange, ADeleted: Integer);
 var
-  mColors: TAtlasColors;
-  mWidth, mLeft, mSize, mSaved: Integer;
   mBar: TRect;
-  mDC: HDC;
   mRow: TMarkRow;
   mLineText: string;
 begin
-  mColors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Left + 1, ARect.Top + 1));
-  mWidth := TAtlasLineChangesPlan.BarWidth(ARect.Height);
-  // Rechts in der Rinne, mit einem Pixel Abstand zum Code.
-  mLeft := ARect.Right - mWidth - 2;
-  mBar := TRect.Create(mLeft, ARect.Top, mLeft + mWidth, ARect.Bottom);
+  mBar := TAtlasLineChangesPaint.PaintMarks(AContext.Canvas.Handle, ARect,
+    TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Left + 1, ARect.Top + 1), AMark, ADeleted >= 0,
+    (ADeleted >= 0) and (FData.Changes[ADeleted].Line >= FData.LineCount));
   mRow.Change := AChange;
-  mDC := AContext.Canvas.Handle;
-  mSaved := SaveDC(mDC);
-  try
-    if AMark = TAtlasLineMark.Added then
-    begin
-      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Add);
-    end
-    else if AMark <> TAtlasLineMark.None then
-    begin
-      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Accent);
-    end;
-    if ADeleted >= 0 then
-    begin
-      // Über der Zeile, am Dateiende unter der letzten Zeile.
-      mSize := TAtlasLineChangesPlan.DeletedSize(ARect.Height);
-      TAtlasLineChangesPaint.PaintDeleted(mDC, mLeft, mSize, ARect,
-        FData.Changes[ADeleted].Line >= FData.LineCount, mColors.Error);
-      mBar.Right := Max(mBar.Right, mLeft + mSize);
-      if AMark = TAtlasLineMark.None then
-      begin
-        mRow.Change := ADeleted;
-      end;
-    end;
-  finally
-    RestoreDC(mDC, mSaved);
+  if (ADeleted >= 0) and (AMark = TAtlasLineMark.None) then
+  begin
+    mRow.Change := ADeleted;
   end;
   mRow.FileName := AContext.FileName;
   mRow.Line := AContext.LogicalLineNum - 1;

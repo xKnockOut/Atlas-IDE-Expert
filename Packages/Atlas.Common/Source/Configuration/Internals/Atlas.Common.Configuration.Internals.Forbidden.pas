@@ -8,8 +8,8 @@
 // - jeden String, der eine Adresse mit Zugangsdaten ist (https://user:pw@…,
 //   ?token=…),
 // - absolute Pfade (Laufwerk, UNC) in den Pfad-Einstellungen des Projekts:
-//   project, testUnits.folder, testUnits.project, exclude, index.exclude und
-//   overrides[].files. Glob-Muster ab dem Projektordner ("/Generated/**")
+//   project, testUnits.folder, testUnits.sourceRoot, testUnits.project, exclude,
+//   index.exclude und overrides[].files. Glob-Muster ab dem Projektordner ("/Generated/**")
 //   bleiben erlaubt.
 // und meldet jeden Fund als Warnung mit Position. Relative Pfade, die aus dem
 // Ordner herausführen ("..\Tests"), bleiben erlaubt: atlas.json liegt oft
@@ -40,7 +40,8 @@ uses
   Atlas.Text.Checkin,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Internals.JsonTree,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -64,8 +65,8 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  cPathSettings: array[0..5] of string = ('project', 'testUnits.folder', 'testUnits.project', 'exclude[]',
-    'index.exclude[]', 'overrides[].files[]');
+  cPathSettings: array[0..6] of string = ('project', 'testUnits.folder', 'testUnits.sourceRoot', 'testUnits.project',
+    'exclude[]', 'index.exclude[]', 'overrides[].files[]');
 
 type
   TStripper = class
@@ -88,29 +89,6 @@ type
     function Run: string;
     property Issues: TArray<TConfigurationIssue> read FIssues;
   end;
-
-function QuoteKey(const AKey: string): string;
-var
-  mCh: Char;
-begin
-  Result := '"';
-  for mCh in AKey do
-  begin
-    if (mCh = '"') or (mCh = '\') then
-    begin
-      Result := Result + '\' + mCh;
-    end
-    else if Ord(mCh) < 32 then
-    begin
-      Result := Result + Format('\u%.4x', [Ord(mCh)]);
-    end
-    else
-    begin
-      Result := Result + mCh;
-    end;
-  end;
-  Result := Result + '"';
-end;
 
 function Join(const APath, AKey: string): string;
 begin
@@ -198,7 +176,7 @@ begin
     end
     else if RebuildItem(ANode[mIndex], mPath, AChanged, mChild) then
     begin
-      mParts := mParts + [QuoteKey(mKey) + ': ' + mChild];
+      mParts := mParts + [TJsonText.Quote(mKey) + ': ' + mChild];
     end;
   end;
   Result := NodeText(ANode);

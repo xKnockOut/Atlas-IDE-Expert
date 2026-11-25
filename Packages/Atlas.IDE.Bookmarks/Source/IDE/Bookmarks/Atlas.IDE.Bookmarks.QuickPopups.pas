@@ -18,7 +18,7 @@ uses
   System.Classes,
   Vcl.Menus,
   Atlas.Core.Bookmarks.Store,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   TAtlasIdeQuickTip = class
@@ -64,13 +64,14 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Bookmarks.Quick,
   Atlas.UI.Bookmarks.Strings,
   Atlas.IDE.Foundation.Settings,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.QuickService,
-  Atlas.UI.Foundation.Menus;
+  Atlas.Vcl.Controls.Menus;
 
 { TAtlasIdeQuickTip }
 
@@ -124,6 +125,8 @@ begin
     end;
     mText := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkTipFree);
   end;
+  // Farben und Schrift des IDE-Themas, sonst hell im dunklen Editor.
+  TAtlasIdeStyle.Apply(FTip, TRect.Create(AAt, AAt));
   FTip.ShowNote(mTitle, mText, AAt);
 end;
 
@@ -149,7 +152,8 @@ end;
 class procedure TAtlasIdeQuickTip.TipText(const AMarks: TArray<TAtlasBookmark>; AJumpKey: Word;
   out ATitle, AText: string);
 var
-  mMark: TAtlasBookmark;
+  mLines: TArray<string>;
+  mIndex: Integer;
 begin
   ATitle := '';
   AText := '';
@@ -169,14 +173,12 @@ begin
   begin
     ATitle := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkTipUnnumbered);
   end;
-  for mMark in AMarks do
+  SetLength(mLines, Length(AMarks));
+  for mIndex := 0 to High(AMarks) do
   begin
-    if AText <> '' then
-    begin
-      AText := AText + #10;
-    end;
-    AText := AText + TipLine(mMark, AJumpKey);
+    mLines[mIndex] := TipLine(AMarks[mIndex], AJumpKey);
   end;
+  AText := string.Join(#10, mLines);
 end;
 
 { TAtlasIdeQuickMenu }

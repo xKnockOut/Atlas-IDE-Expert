@@ -9,7 +9,7 @@
 interface
 
 uses
-  Atlas.Core.Settings.HiddenPlaces;
+  Atlas.Plugin.Settings.HiddenPlaces;
 
 type
   TAtlasIdeHideTeamFile = class
@@ -28,9 +28,9 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.Contract,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Files.Contract,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile;

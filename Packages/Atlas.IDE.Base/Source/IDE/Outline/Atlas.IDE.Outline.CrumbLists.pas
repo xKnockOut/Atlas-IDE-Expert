@@ -57,7 +57,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Outline.VisibilitySections,
   Atlas.Core.Outline.SectionEdit,
@@ -66,7 +66,7 @@ uses
   Atlas.UI.Outline.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Outline.SectionEdit,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings;
 

@@ -59,7 +59,7 @@ uses
   Atlas.Core.Build.Messages,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Build.Requests,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.Tracker.Review,

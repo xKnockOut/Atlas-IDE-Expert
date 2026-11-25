@@ -11,7 +11,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Settings.Groups,
-  Atlas.UI.Settings.Group,
+  Atlas.Vcl.Options.Group,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -88,11 +88,12 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Vcl.Graphics,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Settings.Marks,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Oberkante der ersten Zeile, die Place beim Aufteilen eines Bereichs setzt (alTop ordnet nach Top;
@@ -675,7 +676,7 @@ begin
   mDetails.Layout := tlCenter;
   mDetails.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewDetails);
   mDetails.Font.Style := [fsUnderline];
-  mDetails.Font.Color := clHotLight;
+  TAtlasUiTheme.UseFontColor(mDetails, clHotLight);
   mDetails.Cursor := crHandPoint;
   mDetails.Tag := APage;
   mDetails.OnClick := DetailsClick;

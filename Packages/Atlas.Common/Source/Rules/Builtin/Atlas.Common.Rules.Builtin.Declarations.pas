@@ -161,8 +161,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ClassActions,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.MethodMatching,
   Atlas.Common.Pascal.SyntaxTree,
@@ -529,7 +529,7 @@ type
     FResolver: TNameResolver;
     FOwnUnit: TUnitIndex;
     FHeaders: TArray<TSyntaxNode>;
-    FActions: TClassActionContext;
+    FActions: TClassEditRequest;
     function IsCandidate(const AType: TIndexSymbol): Boolean;
     function MissingNames(const AMissing: TArray<TResolvedSymbol>; const ATypeName: string;
       out ADiffers: Boolean): TArray<string>;
@@ -558,7 +558,7 @@ begin
   FLevel := Confidence(AContext);
   FOwnUnit := AResolver.ExtractedUnit(AContext.Tree, AContext.RelativePath);
   FHeaders := ResolutionHeaders(AContext.Tree);
-  FActions := TClassActionContext.Default;
+  FActions := TClassEditRequest.Create(AContext.Text, 0);
   FActions.Index := AIndex;
   FActions.Namespaces := AContext.Namespaces;
   FActions.DelphiVersion := AContext.DelphiVersion;
@@ -619,7 +619,8 @@ begin
   Result := nil;
   for mAncestor in AType.Ancestors do
   begin
-    if TClassActions.ImplementInterface(FContext.Text, AType.Range.StartPos.Line, mAncestor, FActions, mAction) then
+    if (FContext.Refactorings.Classes <> nil) and
+      FContext.Refactorings.Classes.ImplementInterface(FActions.At(AType.Range.StartPos.Line), mAncestor, mAction) then
     begin
       Result := Result + [Alternative(TRuleFix.Create(mAction.Title, mAction.Edits), Length(Result) > 0)];
     end;

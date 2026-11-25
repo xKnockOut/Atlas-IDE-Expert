@@ -2,10 +2,10 @@
 
 // Host-Rolle Shell: der vollständige Server für das Nachstellen eines
 // Absturzfalls (--replay, #1355). Legt TServerComposition gegen den Transport
-// von Shell.Replay an, mit settings.json aus dem Fall und ohne eigene
+// von Replay.Player an, mit settings.json aus dem Fall und ohne eigene
 // Absturzfälle (PrepareReplay), und schreibt das Ergebnis über den Logger auf
 // stderr. Die Logik des Nachstellens (Nachrichten, Warten, Bewertung) liegt in
-// Shell.Replay und ist dort getestet; Testunits aus Tools/New-CrashTest.ps1
+// Replay.Player und ist dort getestet; Testunits aus Tools/New-CrashTest.ps1
 // nutzen Run.
 
 interface
@@ -13,7 +13,7 @@ interface
 uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Diagnostics.CrashCase,
-  Shell.Replay;
+  Replay.Player;
 
 type
   TShellReplayServer = class
@@ -22,7 +22,7 @@ type
     class function Server: TReplayServer; static;
     /// <summary>ACase isoliert bzw. mit den Projekten des Absturzes nachstellen.</summary>
     class function Run(const ACase: TCrashCase; APlace: TReplayPlace; const ALogger: ILogger): TReplayResult; static;
-    /// <summary>Kommandozeile --replay: Ergebnis auf stderr, Exit-Code wie TShellReplay.ExitCodeOf.</summary>
+    /// <summary>Kommandozeile --replay: Ergebnis auf stderr, Exit-Code wie TReplayPlayer.ExitCodeOf.</summary>
     class function Main(const AFileName: string): Integer; static;
   end;
 
@@ -32,8 +32,9 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
-  Shell.Platform,
-  Shell.Composition;
+  Platform.Server,
+  Shell.Composition,
+  Replay.Providers.Transport;
 
 procedure RunComposition(const ATransport: IJsonRpcTransport; const ALogger: ILogger; const ASettingsFile: string);
 var
@@ -58,7 +59,7 @@ end;
 class function TShellReplayServer.Run(const ACase: TCrashCase; APlace: TReplayPlace;
   const ALogger: ILogger): TReplayResult;
 begin
-  Result := TShellReplay.Run(ACase, APlace, ALogger, Server());
+  Result := TReplayPlayer.Run(ACase, APlace, ALogger, Server(), TReplayTransport.Factory());
 end;
 
 class function TShellReplayServer.Main(const AFileName: string): Integer;
@@ -70,9 +71,9 @@ begin
   mLoggerImpl := TLogger.Create;
   mLogger := mLoggerImpl;
   mLoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
-  mResult := TShellReplay.Run(AFileName, mLogger, Server());
+  mResult := TReplayPlayer.Run(AFileName, mLogger, Server(), TReplayTransport.Factory());
   mLogger.Warning(mResult.Text);
-  Result := TShellReplay.ExitCodeOf(mResult);
+  Result := TReplayPlayer.ExitCodeOf(mResult);
 end;
 
 end.

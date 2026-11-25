@@ -36,7 +36,8 @@ uses
   System.SysUtils,
   System.Generics.Defaults,
   System.Generics.Collections,
-  Atlas.Text.Uris;
+  Atlas.Text.Uris,
+  Atlas.Text.DUnitX.CommandLine;
 
 function Matches(const ACandidate, AUnitName: string): Boolean;
 var

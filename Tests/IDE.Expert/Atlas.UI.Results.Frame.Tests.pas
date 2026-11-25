@@ -51,7 +51,7 @@ uses
   System.SysUtils,
   Vcl.Forms,
   Atlas.Core.Results.Model,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts,
   Atlas.UI.Results.Frame;

@@ -36,7 +36,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.DisableWarning;
+  Atlas.Common.Lsp.DisableWarning,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cUri = 'file:///C:/Projekt/A.pas';
@@ -84,16 +85,6 @@ begin
   end;
 end;
 
-procedure FreeAll(const AActions: TArray<TJSONObject>);
-var
-  mAction: TJSONObject;
-begin
-  for mAction in AActions do
-  begin
-    mAction.Free;
-  end;
-end;
-
 function ActionsFor(const AOptions: TDisableWarningOptions; AFirst, ALast: Integer;
   const AMessages: TArray<TCompilerMessage>): TArray<TJSONObject>;
 var
@@ -130,7 +121,7 @@ begin
       mActions[3].GetValue<TJSONObject>('command').GetValue<TJSONArray>('arguments').ToJSON);
     Assert.AreEqual('quickfix', mActions[0].GetValue<string>('kind', ''));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 
@@ -143,7 +134,7 @@ begin
     Assert.AreEqual('H2164 in Foo abschalten ({$HINTS OFF}) *|' +
       'H2164 in der ganzen Unit abschalten ({$HINTS OFF})|', Summary(mActions));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 
@@ -157,7 +148,7 @@ begin
       'W1999 in Foo abschalten ({$WARNINGS OFF}: betrifft alle Warnungen)|' +
       'W1999 in der ganzen Unit abschalten ({$WARNINGS OFF}: betrifft alle Warnungen)|', Summary(mActions));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 
@@ -179,7 +170,7 @@ begin
   try
     Assert.AreEqual(4, Integer(Length(mActions)));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 

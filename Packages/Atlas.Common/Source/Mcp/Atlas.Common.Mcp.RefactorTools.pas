@@ -66,7 +66,7 @@ uses
   System.StrUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Mcp.Server,
   Atlas.Text.Json,
   Atlas.Common.Localization.Texts;

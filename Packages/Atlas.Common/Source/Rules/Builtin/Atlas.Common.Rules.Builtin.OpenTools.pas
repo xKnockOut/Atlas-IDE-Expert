@@ -6,10 +6,15 @@
 //                             Variable, die in der Unit kein RemoveNotifier(…) erhält. Die IDE ruft den
 //                             Notifier sonst nach dem Entladen in fremdem Speicher auf. Ausgenommen sind
 //                             Register…-Aufrufe in der Prozedur Register: die IDE entfernt diese Wizards
-//                             selbst. Korrektur in Methoden: Index in ein Feld (F…Index im private-
-//                             Abschnitt), RemoveNotifier im Destruktor (legt ihn bei Bedarf an); in
+//                             selbst, ebenso Result := X.AddNotifier(…) in einer eigenen AddNotifier (der
+//                             Aufrufer bekommt den Index und meldet ab). Korrektur in Methoden: Index in
+//                             ein Feld (F…Index im private-Abschnitt), RemoveNotifier im Destruktor (legt
+//                             ihn bei Bedarf an); in
 //                             Prozeduren der Unit: globale Variable mit -1 und RemoveNotifier in
 //                             finalization. Keine Korrektur, wenn der Empfänger lokal ist.
+//   ota-entry-without-guard   Methode, die die IDE aufruft (Notifier, Wizard, Tastaturbindung, Menüeintrag),
+//                             lässt eine Ausnahme in die IDE durch (#2751; Unit OpenTools.EntryGuard).
+//   register-does-work        Register startet Arbeit statt nur anzumelden (#2752; Unit OpenTools.Register).
 
 interface
 
@@ -50,7 +55,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.FreeFields,
+  Atlas.Common.Pascal.Destructors,
+  Atlas.Common.Rules.Builtin.OpenTools.EntryGuard,
+  Atlas.Common.Rules.Builtin.OpenTools.Register,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -173,6 +180,7 @@ type
     function TextOf(AFirst, ALast: Integer): string;
     function Normalized(const AText: string): string;
     function Removed(const AClose, ATarget: string): Boolean;
+    function Forwarded(const ACall: TNotifierCall; const ATarget: string): Boolean;
     function AliasNames(const ATarget: string): TArray<string>;
     function PassesName(const AOpen: Integer; const ANames: TArray<string>): Boolean;
     function RoutineAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
@@ -677,7 +685,7 @@ begin
     mDecl := FindClassDecl(FContext.Tree.Root, mClassName);
   end;
   Result := (mDecl <> nil) and MethodTarget(ACall, mDecl, ATarget, mName, mEdits) and
-    TFreeFields.DestructorEdits(FContext.Tree, FContext.Text, mClassName, mDecl.StartPos.Line,
+    TPascalDestructors.DestructorEdits(FContext.Tree, FContext.Text, mClassName, mDecl.StartPos.Line,
     [AReceiver + ACall.Pair.Close + '(' + mName + ');'], mDestroying);
   if not Result then
   begin
@@ -819,6 +827,21 @@ begin
     TRuleConfidence.Medium, mFixes);
 end;
 
+// Weitergereicht: Result := X.AddNotifier(…) in einer Routine, die selbst AddNotifier heißt (Implementierung
+// einer Schnittstelle mit eigenem Notifier-Paar). Den Index bekommt der Aufrufer, er meldet über RemoveNotifier ab.
+function TOtaNotifierScan.Forwarded(const ACall: TNotifierCall; const ATarget: string): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  if (ACall.Routine = nil) or not SameText(Trim(ATarget), 'Result') then
+  begin
+    Exit;
+  end;
+  mName := ACall.Routine.Name;
+  Result := SameText(Copy(mName, LastDelimiter('.', mName) + 1, MaxInt), ACall.Pair.Open);
+end;
+
 procedure TOtaNotifierScan.CheckAssigned(const ACall: TNotifierCall; const AAssign: Integer);
 var
   mStart: Integer;
@@ -838,7 +861,7 @@ begin
     Exit;
   end;
   mTarget := TextOf(mStart, AAssign - 1);
-  if Removed(ACall.Pair.Close, Normalized(mTarget)) then
+  if Removed(ACall.Pair.Close, Normalized(mTarget)) or Forwarded(ACall, mTarget) then
   begin
     Exit;
   end;
@@ -911,6 +934,8 @@ end;
 procedure RegisterOpenToolsRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TOtaNotifierNotRemovedRule.Create);
+  ARegistry.Register(TOtaEntryWithoutGuardRule.Create);
+  ARegistry.Register(TRegisterDoesWorkRule.Create);
 end;
 
 initialization

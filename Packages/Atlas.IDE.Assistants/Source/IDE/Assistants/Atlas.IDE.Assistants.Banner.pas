@@ -4,6 +4,7 @@
 // Zusatzfeld mit dem, was TAtlasAssistantsActivity.View gerade sagt (Build
 // läuft, Datei geändert, Pause). Ein Klick schaltet die Pause für
 // KI-Assistenten um; die Eingänge lehnen dann neue Aufträge mit Grund ab.
+// Ein Rechtsklick öffnet das Fenster „Atlas-KI-Protokoll“ (#2049).
 // Das Feld wird alle cTickMs nachgeführt (eine angewendete Änderung
 // verschwindet nach einer Minute) und nur neu gesetzt, wenn sich etwas
 // geändert hat. Destroy entfernt das Feld, damit Base keinen Klick des Moduls
@@ -27,12 +28,14 @@ type
     FTimer: TTimer;
     FShown: string;
     FOnToggle: TProc;
+    FOnLog: TProc;
     procedure Tick(Sender: TObject);
     procedure Clicked(APoint: TPoint);
+    procedure ContextClicked(APoint: TPoint);
   public
     /// <summary>AActivity gehört der Composition und lebt länger als die Anzeige; AOnToggle schaltet die Pause um
-    /// (Klick auf das Feld).</summary>
-    constructor Create(AActivity: TAtlasAssistantsActivity; const AOnToggle: TProc);
+    /// (Klick auf das Feld), AOnLog öffnet das KI-Protokoll (Rechtsklick).</summary>
+    constructor Create(AActivity: TAtlasAssistantsActivity; const AOnToggle, AOnLog: TProc);
     destructor Destroy; override;
     /// <summary>Feld sofort nachführen (nach einem Auftrag).</summary>
     procedure Refresh;
@@ -44,8 +47,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
   Atlas.UI.Assistants.Strings;
 
@@ -61,11 +64,12 @@ end;
 
 { TAtlasIdeAssistantsBanner }
 
-constructor TAtlasIdeAssistantsBanner.Create(AActivity: TAtlasAssistantsActivity; const AOnToggle: TProc);
+constructor TAtlasIdeAssistantsBanner.Create(AActivity: TAtlasAssistantsActivity; const AOnToggle, AOnLog: TProc);
 begin
   inherited Create;
   FActivity := AActivity;
   FOnToggle := AOnToggle;
+  FOnLog := AOnLog;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
@@ -123,6 +127,7 @@ begin
   if mExtra.Text <> '' then
   begin
     mExtra.OnClick := Clicked;
+    mExtra.OnContext := ContextClicked;
   end;
   TAtlasIdeHost.SetStatusItem(mExtra);
 end;
@@ -141,6 +146,11 @@ procedure TAtlasIdeAssistantsBanner.Clicked(APoint: TPoint);
 begin
   FOnToggle();
   Refresh;
+end;
+
+procedure TAtlasIdeAssistantsBanner.ContextClicked(APoint: TPoint);
+begin
+  FOnLog();
 end;
 
 end.

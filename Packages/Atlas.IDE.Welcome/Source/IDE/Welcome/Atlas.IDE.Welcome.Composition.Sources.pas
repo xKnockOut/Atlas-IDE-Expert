@@ -125,7 +125,7 @@ begin
       end;
   end;
   Result := TAtlasIdeQuickActions.Create(mProjects, Note);
-  TAtlasWelcomeNeighbors.Connect(Result.Hooks);
+  Result.Hooks := TAtlasWelcomeNeighbors.QuickActionHooks;
 end;
 
 { TAtlasWelcomeSourcesBuild }
@@ -183,7 +183,7 @@ begin
     procedure
     begin
       AAreas.ContinueWork := TAtlasIdeContinue.Create(Warn, TAtlasIdeContinueHost.Create(Warn), CreateIssues);
-      AAreas.ContinueWork.Hooks.OnServerAccess := ShowVcsServer;
+      AAreas.ContinueWork.OnServerAccess := ShowVcsServer;
     end);
   AStep('State',
     procedure

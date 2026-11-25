@@ -78,8 +78,18 @@ type
   TUpdateSignature = record
     /// <summary>Authenticode-Signatur vorhanden, Kette gültig und nicht widerrufen.</summary>
     Valid: Boolean;
-    /// <summary>Name des Herausgebers aus dem Zertifikat; '' ohne Signatur.</summary>
+    /// <summary>Name des Herausgebers aus dem Zertifikat; '' ohne Signatur. Nur zur Anzeige: Gleiche Namen
+    /// kann jedes Zertifikat tragen.</summary>
     Subject: string;
+    /// <summary>SHA-256 des öffentlichen Schlüssels des Herausgebers (64 kleine Hexziffern); '' ohne Signatur.
+    /// Daran wird der Herausgeber erkannt; ein erneuertes Zertifikat mit demselben Schlüssel bleibt gleich.
+    /// </summary>
+    Thumbprint: string;
+    /// <summary>Gültig signiert und Herausgeber erkennbar (Name und Fingerabdruck nicht leer). Fehlt eins davon,
+    /// gilt die Datei als nicht signiert.</summary>
+    function IsComplete: Boolean;
+    /// <summary>Beide vollständig und derselbe Schlüssel; zwei leere Angaben stimmen nie überein.</summary>
+    function SameSigner(const AOther: TUpdateSignature): Boolean;
   end;
 
   IUpdateTrust = interface
@@ -87,6 +97,10 @@ type
     /// <summary>SHA-256 als 64 kleine Hexziffern.</summary>
     function Sha256(const AFileName: string): string;
     function Signature(const AFileName: string): TUpdateSignature;
+    /// <summary>AManifest (Bytes der Versionsdatei) ist mit einem der öffentlichen Schlüssel APublicKeys signiert:
+    /// ECDSA P-256 über SHA-256, ASignature mit r und s je 32 Byte, ein Schlüssel als X und Y je 32 Byte in
+    /// 128 Hexziffern.</summary>
+    function ManifestIsGenuine(const AManifest, ASignature: TBytes; const APublicKeys: TArray<string>): Boolean;
   end;
 
   TUpdateProgress = reference to procedure(APercent: Integer);
@@ -95,7 +109,8 @@ type
     ['{3D5F7A9C-6B1E-4D82-91C3-5A7D9F1B3E48}']
     /// <summary>Kleine Textdatei (Versionsdatei) lesen; False mit AError (ohne Adresse).</summary>
     function Fetch(const AUrl: string; out AText, AError: string): Boolean;
-    /// <summary>Nur https; AProgress mit 0 bis 100; False mit AError (ohne Adresse).</summary>
+    /// <summary>Nur https auf den Hosts aus TUpdateHosts; AProgress mit 0 bis 100; False mit AError (ohne
+    /// Adresse).</summary>
     function Download(const AUrl, AFileName: string; const AProgress: TUpdateProgress; out AError: string): Boolean;
   end;
 
@@ -141,6 +156,18 @@ type
   end;
 
 implementation
+
+{ TUpdateSignature }
+
+function TUpdateSignature.IsComplete: Boolean;
+begin
+  Result := Valid and (Subject <> '') and (Thumbprint <> '');
+end;
+
+function TUpdateSignature.SameSigner(const AOther: TUpdateSignature): Boolean;
+begin
+  Result := IsComplete and AOther.IsComplete and SameText(Thumbprint, AOther.Thumbprint);
+end;
 
 { EUpdateError }
 

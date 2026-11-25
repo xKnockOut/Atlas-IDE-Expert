@@ -46,8 +46,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Projects.Baseline,
   Atlas.Core.Problems.Store,
@@ -56,9 +56,10 @@ uses
   Atlas.IDE.Build.LastMessages,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Problems.Controller,
+  Atlas.IDE.CodeInsight.Adapters.BuildNotifications,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Build.Contract;
 
 {$SCOPEDENUMS ON}
@@ -83,15 +84,6 @@ const
   cMetricsCommand = 'atlas.server.metrics';
   cTodosCommand = 'atlas.server.todos';
 
-type
-  /// <summary>Bewertung eines Builds (#530) aus dem Modul Build-Pipeline bzw. nur nach dem Compiler (Modul aus) an
-  /// die Benachrichtigungszentrale (#601).</summary>
-  TNotificationsVerdictListener = class(TInterfacedObject, IAtlasBuildVerdictListener)
-  public
-    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      const AVerdict: TAtlasBuildVerdict);
-  end;
-
 var
   CompileInstance: TAtlasIdeCompileEvents;
   CheckOnSaveInstance: TAtlasIdeCheckOnSave;
@@ -110,29 +102,6 @@ end;
 function CheckOnSave: TAtlasIdeCheckOnSave;
 begin
   Result := CheckOnSaveInstance;
-end;
-
-{ TNotificationsVerdictListener }
-
-procedure TNotificationsVerdictListener.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
-  const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
-var
-  mMessages: TArray<TAtlasCompilerMessage>;
-  mProject: TAtlasCompileProject;
-  mVerdict: TAtlasBuildVerdict;
-begin
-  if Notifications = nil then
-  begin
-    Exit;
-  end;
-  mMessages := AMessages;
-  mProject := AProject;
-  mVerdict := AVerdict;
-  TAtlasGuard.Run(TAtlasFeature.Notifications,
-    procedure
-    begin
-      Notifications.BuildEvaluated(mMessages, mProject, mVerdict);
-    end);
 end;
 
 function MetricsArguments(const AProject, AMode: string): string;
@@ -463,7 +432,7 @@ begin
   CompileInstance := TAtlasIdeCompileEvents.Create(mEvents);
   LastBuildMessages := TAtlasIdeLastBuildMessages.Create;
   NotificationsVerdict := AtlasModuleRegistry.Provide(IAtlasBuildVerdictListener,
-    TNotificationsVerdictListener.Create as IAtlasBuildVerdictListener);
+    TAtlasNotificationsVerdictListener.Create(Notifications) as IAtlasBuildVerdictListener);
 end;
 
 procedure UnregisterCompileEvents;

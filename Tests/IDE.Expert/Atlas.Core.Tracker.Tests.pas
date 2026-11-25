@@ -211,7 +211,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Naming,
-  Atlas.Core.VersionControl.BranchNames,
+  Atlas.VersionControl.Repository.BranchNames,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
@@ -222,7 +222,8 @@ uses
   Atlas.Core.Tracker.GitHubParse,
   Atlas.Core.Tracker.YouTrackApi,
   Atlas.Core.Tracker.YouTrackParse,
-  Atlas.Core.Tracker.TestSupport;
+  Atlas.Core.Tracker.TestSupport,
+  Atlas.Tests.TempFolder;
 
 { TAtlasTrackerTargetTests }
 
@@ -634,11 +635,7 @@ end;
 procedure TAtlasCommitHookTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
-  if TDirectory.Exists(FDir) then
-  begin
-    TDirectory.Delete(FDir, True);
-  end;
-  FDir := '';
+  TTestTempFolder.Remove(FDir);
 end;
 
 procedure TAtlasCommitHookTests.ScriptHasMarkerAndUnixLineEnds;

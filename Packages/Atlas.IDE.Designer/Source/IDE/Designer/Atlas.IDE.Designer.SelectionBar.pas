@@ -31,7 +31,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.SelectionBar,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.PropertyPainter,
   Atlas.IDE.Designer.Tool;
 
@@ -129,13 +129,13 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ToolStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Designer.FitText,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -150,8 +150,10 @@ const
   cSwatchSize = 14;
   /// <summary>Schriftgröße der VCL, wenn das Formular keine nennt.</summary>
   cDefaultFontSize = 8;
-  cStandardColors: array[0..9] of TColor = (clWindowText, clBlack, clGrayText, clGray, clMaroon, clRed, clGreen,
-    clNavy, clBlue, clHighlight);
+  // Werte für Font.Color der Komponenten im Formular, kein Zeichnen der Leiste: Systemfarben bleiben im Formular
+  // Systemfarben und folgen dort dessen Stil.
+  cStandardColors: array[0..9] of TColor = (clWindowText, clBlack, clGrayText, clGray, clMaroon, clRed, // window-ok
+    clGreen, clNavy, clBlue, clHighlight); // window-ok
   cHints: array[TAtlasBarItem] of TAtlasDesignerToolTextId = (TAtlasDesignerToolTextId.BarFontSmaller,
     TAtlasDesignerToolTextId.BarFontSize, TAtlasDesignerToolTextId.BarFontLarger, TAtlasDesignerToolTextId.BarBold,
     TAtlasDesignerToolTextId.BarItalic, TAtlasDesignerToolTextId.BarFontColor, TAtlasDesignerToolTextId.BarFlag,
@@ -679,7 +681,8 @@ begin
   begin
     if ReadProp(FSelection.Root.Components[mIndex], 'Font.Color', '', mValue) then
     begin
-      mUsedColors := mUsedColors + [Integer(StrToIntDef(mValue, clWindowText))];
+      // Vorgabe der VCL für Font.Color, wenn die DFM keine nennt.
+      mUsedColors := mUsedColors + [Integer(StrToIntDef(mValue, clWindowText))]; // window-ok
     end;
   end;
   SetLength(mStandard, Length(cStandardColors));

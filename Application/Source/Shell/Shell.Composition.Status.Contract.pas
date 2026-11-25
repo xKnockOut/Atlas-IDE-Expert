@@ -15,14 +15,14 @@ uses
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.JsonRpc.TracingTransport,
   Atlas.Common.Diagnostics.Anonymizer,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract;
 
 type
   TShellStatusTextFunc = reference to function: string;
-  TShellStatusSelectedFunc = reference to function(AWorkspace: TShellWorkspace): Boolean;
+  TShellStatusSelectedFunc = reference to function(AWorkspace: TCoreWorkspace): Boolean;
   TShellStatusRecentLogFunc = reference to function: IRecentLogLines;
   TShellStatusTracingFunc = reference to function: TJsonRpcTracingTransport;
   TShellStatusAnonymizerFunc = reference to function: ILogAnonymizer;

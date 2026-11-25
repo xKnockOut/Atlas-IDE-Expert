@@ -15,8 +15,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Editor.Contract;
 
@@ -73,7 +73,7 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

@@ -72,7 +72,7 @@ uses
   System.Generics.Collections,
   System.Diagnostics,
   System.Math,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 const
   cRoot = 'C:\Arbeit\Atlas-IDE-Expert-claude-project-thread-j9xhhv';
@@ -486,7 +486,7 @@ begin
     mState.Width := 900;
     mState.PreviewWidth := 320;
     mState.PreviewVisible := False;
-    mState.Sections[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
+    mState.Section[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
     Assert.IsTrue(mLoaded.LoadJson(mState.ToJson));
     Assert.AreEqual<TAtlasSectionChoice>(TAtlasSectionChoice.Auto, mLoaded.Sections[TAtlasPreviewSection.Types],
       'Abschnitte gelten nur für die Sitzung (#876)');

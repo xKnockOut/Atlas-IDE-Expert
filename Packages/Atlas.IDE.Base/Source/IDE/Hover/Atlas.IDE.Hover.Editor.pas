@@ -59,7 +59,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Vcl.Controls,
   Vcl.ExtCtrls,
   ToolsAPI,
@@ -67,8 +67,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Plan,
-  Atlas.Core.Editor.CloseRules,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Editor.CloseRules,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Hover.EditorContent,
   Atlas.IDE.Hover.IdeHelpInsight;
 
@@ -170,14 +170,14 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Windows,
   Vcl.Forms,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.View,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Outline.StickyScroll;
@@ -668,7 +668,10 @@ begin
         mData := ASession.HoverDataAt(mFileName, mLine, mCharacter, 0);
       except
         // Server langsam oder weg: kein Tooltip, die IDE wartet nie darauf.
-        mData := Default(TAtlasHoverData);
+        on ELspClientError do
+        begin
+          mData := Default(TAtlasHoverData);
+        end;
       end;
       mShow :=
         procedure

@@ -56,9 +56,9 @@ uses
   Winapi.Windows,
   System.UITypes,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.NextStatement,
   Atlas.UI.Debug.NextStatement.Strings;

@@ -3,7 +3,7 @@
 // Schritt 4 „Suchpfade und Defines prüfen“ des Bereichs „<Projekt> für Atlas
 // einrichten“ (#759): im Hauptthread Projektkontext der aktiven Konfiguration
 // (#396), Dateien und Makros je Projekt sammeln, im Hintergrund Pfade
-// auflösen, .dproj und Dateien lesen und prüfen (Atlas.Core.Projects.PathCheck).
+// auflösen, .dproj und Dateien lesen und prüfen (Atlas.Plugin.Projects.PathCheck).
 // Dazu die Projekte einer Gruppe und das Lesen von Dateien, das beim Entladen
 // abbricht. Abgeteilt aus Atlas.IDE.Welcome.Adapters.Setup (Atlas-Befunde).
 
@@ -11,7 +11,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Projects.PathCheck;
+  Atlas.Plugin.Projects.PathCheck;
 
 type
   /// <summary>Ergebnis der Pfadprüfung eines Projekts (bei einer Gruppe eins je Projekt).</summary>
@@ -54,14 +54,15 @@ uses
   System.IOUtils,
   System.RegularExpressions,
   Atlas.Text.Defines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Projects.Contract,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Projects.Contract,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Welcome.Saved,
   Atlas.Core.Welcome.Setup,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Projects.Summaries;
+  Atlas.IDE.Projects.Summaries,
+  Atlas.Text.Files;
 
 /// <summary>Projekte einer geschlossenen Gruppe aus der .groupproj (nur vorhandene .dproj).</summary>
 function ClosedGroup(const AGroup: string): TArray<string>;
@@ -243,8 +244,12 @@ begin
       Result := Result + [ExtractFileName(mItem)];
     end;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
     end;
   end;
@@ -287,8 +292,12 @@ begin
     AText := TAtlasTextFile.LoadText(AFileName);
     Result := True;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Result := False;
     end;
   end;

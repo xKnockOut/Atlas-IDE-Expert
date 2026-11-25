@@ -25,6 +25,14 @@ type
   /// <summary>Einstellungen der Datei (atlas.json ihres Arbeitsbereichs).</summary>
   TMcpRefactorSettingsFunc = reference to function(const AFileName: string): TServerSettings;
 
+  /// <summary>refactor über den Code-Aktionen des Servers; lebt so lange wie die Werkzeuge, die es halten.</summary>
+  IMcpRefactorHost = interface
+    ['{2BD0AEF6-9A39-4A3E-8966-B708304A4EA2}']
+    /// <summary>refactor für ARequest; ARequest.FileName ist mit seinem Text für den Aufruf geöffnet. Liest die Datei
+    /// über AEdit.ReadText; EMcpToolError, wenn sie nicht lesbar ist.</summary>
+    function Run(AEdit: TMcpEditTools; const ARequest: TMcpRefactorRequest): string;
+  end;
+
   /// <summary>Was refactor vom MCP-Lauf braucht.</summary>
   TMcpRefactorHostServices = record
     Logger: ILogger;
@@ -39,14 +47,6 @@ type
     DelphiVersionFor: TShellUriTextFunc;
     NewNamesFor: TShellNewNamesFunc;
     ProjectFor: TShellProjectFunc;
-  end;
-
-  /// <summary>refactor über den Code-Aktionen des Servers; lebt so lange wie die Werkzeuge, die es halten.</summary>
-  IMcpRefactorHost = interface
-    ['{2BD0AEF6-9A39-4A3E-8966-B708304A4EA2}']
-    /// <summary>refactor für ARequest; ARequest.FileName ist mit seinem Text für den Aufruf geöffnet. Liest die Datei
-    /// über AEdit.ReadText; EMcpToolError, wenn sie nicht lesbar ist.</summary>
-    function Run(AEdit: TMcpEditTools; const ARequest: TMcpRefactorRequest): string;
   end;
 
   TMcpRefactorHost = class(TInterfacedObject, IMcpRefactorHost)
@@ -77,6 +77,9 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Pascal.LanguageFeatures,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.DocumentActions,
+  Adapters.Lsp.RuleActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Localization.Texts;
@@ -93,6 +96,8 @@ const
 { TMcpRefactorHost }
 
 constructor TMcpRefactorHost.Create(const AServices: TMcpRefactorHostServices);
+var
+  mRules: IRuleCodeActions;
 begin
   inherited Create;
   FServices := AServices;
@@ -100,7 +105,9 @@ begin
   FCommands := TLspCommands.Create;
   FRefactorings := TShellRefactorings.Create(RefactoringServices);
   FRefactorings.Register(FCommands);
-  FCodeActions := TLspCodeActions.Create(FDocuments, nil);
+  // Ohne Umfeld der Prüfregeln: Syntaxfehler mit Korrektur (#1022), keine Regeltreffer.
+  mRules := TRuleCodeActionsProvider.Create(nil);
+  FCodeActions := TLspCodeActions.Create(FDocuments, TLspRuleActionsAdapter.Wrap(mRules));
   ConfigureCodeActions;
 end;
 

@@ -32,29 +32,13 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Tests.SourceText;
 
 /// <summary>Text ohne "|" und die Position des "|".</summary>
 function Split(const AMarked: string; out APosition: TTextPosition): TArray<TPascalToken>;
-var
-  mIndex, mLine, mCharacter: Integer;
 begin
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 1 to Pos('|', AMarked) - 1 do
-  begin
-    if AMarked[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mCharacter := 0;
-    end
-    else
-    begin
-      Inc(mCharacter);
-    end;
-  end;
-  APosition := TTextPosition.Create(mLine, mCharacter);
-  Result := TPascalLexer.Tokenize(StringReplace(AMarked, '|', '', []));
+  Result := TPascalLexer.Tokenize(TTestSource.Unmark(AMarked, APosition));
 end;
 
 function ValueNames(const AMarked: string): string;

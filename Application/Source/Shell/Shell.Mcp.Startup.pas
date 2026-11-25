@@ -11,9 +11,9 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.RecentMessages,
-  Shell.CommandLine,
-  Shell.CrashCases,
-  Shell.Workspace;
+  Core.CommandLine,
+  Core.CrashCases,
+  Core.Workspace;
 
 /// <summary>Logger mit Warnungen auf stderr und der Logdatei aus --log; die Hinweise der Kommandozeile gleich darin.
 /// </summary>
@@ -26,9 +26,9 @@ function GlobalSettingsOf(const ARoot: string; const ALogger: ILogger): string;
 /// <summary>Absturzfälle auch im MCP-Modus (#1355): Werkzeugaufrufe haben kein Dokument, also nur der Fall, kein
 /// Überspringen. Eine Meldung an den Client gibt es nicht (MCP-Clients kennen atlas/crashCase nicht).</summary>
 function NewCrashCases(const ALogger: ILogger; const ARecent: IJsonRpcRecentMessages; const ARoot: string):
-  TShellCrashCases;
+  TCoreCrashCases;
 /// <summary>OnRequestFailed des Dispatchers: Fall sichern, wenn server.crashCases an ist.</summary>
-function RequestFailedOf(ACrashCases: TShellCrashCases; AWorkspace: TShellWorkspace): TJsonRpcRequestFailedEvent;
+function RequestFailedOf(ACrashCases: TCoreCrashCases; AWorkspace: TCoreWorkspace): TJsonRpcRequestFailedEvent;
 implementation
 
 uses
@@ -39,8 +39,8 @@ uses
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Diagnostics.Anonymizer,
-  Shell.Platform,
-  Shell.Bootstrap,
+  Platform.Server,
+  Core.Bootstrap,
   Shell.Diagnostics;
 
 /// <summary>Logger mit Warnungen auf stderr und der Logdatei aus --log; die Hinweise der Kommandozeile gleich darin.
@@ -78,9 +78,9 @@ end;
 function GlobalSettingsOf(const ARoot: string; const ALogger: ILogger): string;
 begin
   Result := '';
-  if TShellBootstrap.ProjectSettings(ARoot).McpGlobalSettings then
+  if TCoreBootstrap.ProjectSettings(ARoot).McpGlobalSettings then
   begin
-    Result := TShellBootstrap.LoadGlobalSettings(ALogger);
+    Result := TCoreBootstrap.LoadGlobalSettings(ALogger);
   end
   else
   begin
@@ -91,12 +91,12 @@ end;
 /// <summary>Absturzfälle auch im MCP-Modus (#1355): Werkzeugaufrufe haben kein Dokument, also nur der Fall, kein
 /// Überspringen. Eine Meldung an den Client gibt es nicht (MCP-Clients kennen atlas/crashCase nicht).</summary>
 function NewCrashCases(const ALogger: ILogger; const ARecent: IJsonRpcRecentMessages; const ARoot: string):
-  TShellCrashCases;
+  TCoreCrashCases;
 var
   mRoot: string;
 begin
   mRoot := ARoot;
-  Result := TShellCrashCases.Create('', ALogger, nil, ARecent);
+  Result := TCoreCrashCases.Create('', ALogger, nil, ARecent);
   Result.AtlasVersion := TProductVersion.cVersion;
   Result.ServerPath := ParamStr(0);
   Result.Client := 'MCP-Client';
@@ -104,18 +104,18 @@ begin
   Result.SettingsFiles :=
     function(const AUri: string): TArray<string>
     begin
-      Result := TArray<string>.Create(TShellBootstrap.GlobalSettingsFile,
+      Result := TArray<string>.Create(TCoreBootstrap.GlobalSettingsFile,
         ExistingOrLegacyFile(mRoot, cConfigurationFileName, cLegacyConfigurationFileName));
     end;
 end;
 
-function RequestFailedOf(ACrashCases: TShellCrashCases; AWorkspace: TShellWorkspace): TJsonRpcRequestFailedEvent;
+function RequestFailedOf(ACrashCases: TCoreCrashCases; AWorkspace: TCoreWorkspace): TJsonRpcRequestFailedEvent;
 begin
   Result :=
     procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)
     begin
       ACrashCases.Enabled := AWorkspace.Configuration.Settings.ServerCrashCases;
-      ACrashCases.RequestFailed(AMethod, AParams, AError, TShellPlatform.StackTraceOf(AError));
+      ACrashCases.RequestFailed(AMethod, AParams, AError, TServerPlatform.StackTraceOf(AError));
     end;
 end;
 

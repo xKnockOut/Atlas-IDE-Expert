@@ -8,8 +8,8 @@ interface
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
-  Shell.Workspace,
+  Atlas.Common.Rules.CheckContext,
+  Core.Workspace,
   Shell.Composition.Core,
   Shell.Composition.Editing,
   Shell.Composition.Slash;
@@ -35,7 +35,7 @@ type
     FSlash: TShellSlash;
     procedure CompleteEditing(var AServices: TShellEditingServices);
     procedure CompleteSlash(var AServices: TShellSlashServices);
-    function WorkspaceOf(const AUri: string): TShellWorkspace;
+    function WorkspaceOf(const AUri: string): TCoreWorkspace;
     function SettingsFor(const AUri: string): TServerSettings;
     function WorkspaceSettingsOf(const AUri: string; out ASettings: TServerSettings): Boolean;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
@@ -121,7 +121,7 @@ begin
   AServices.RuleContextFor := RuleContextFor;
 end;
 
-function TShellEditingArea.WorkspaceOf(const AUri: string): TShellWorkspace;
+function TShellEditingArea.WorkspaceOf(const AUri: string): TCoreWorkspace;
 var
   mCore: TShellCore;
 begin

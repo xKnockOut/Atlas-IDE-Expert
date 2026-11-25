@@ -11,7 +11,8 @@
 //   gleiche Zeilen aus dem Fenster der IDE fallen dann weg.
 // - Start und Ende der Sitzung (TAtlasIdeDebugSession) als Zeile „Prozess“;
 //   die Zeit zählt ab dem Start. Der Inhalt bleibt bis „Leeren“.
-// - Logpunkte (#583) und andere Teile schreiben über AddEntry.
+// - Logpunkte (#583) und andere Teile schreiben über AddEntry; den Werteverlauf
+//   (#2552) meldet OnLogpoint, ShowEntry springt zu einem Treffer.
 // - Gemerkte Filter je Projekt in %LOCALAPPDATA%\Atlas\debug-eventlog-filters.json.
 // - Sprung: Datei mit Zeile über TAtlasIdeDebugSources.Resolve, Unit.Routine
 //   über die Arbeitsbereichssymbole des Servers (nur, wenn er läuft).
@@ -76,6 +77,9 @@ type
     class procedure SaveToFile; static;
     class function SavedFilters: TArray<string>; static;
     class procedure ChangeFilter(const AText: string; ARemember: Boolean); static;
+  public class var
+    /// <summary>Jeder neue Logpunkt-Eintrag; setzt der Logpunkt-Verlauf (#2552).</summary>
+    OnLogpoint: TProc<TAtlasEventEntry>;
   public
     class procedure Start(const AServices: TAtlasEventLogServices); static;
     class procedure Release; static;
@@ -85,6 +89,9 @@ type
     class procedure ShowWindow; static;
     /// <summary>Eintrag anfügen (Logpunkte #583 und andere); ohne laufendes Teil nichts.</summary>
     class procedure AddEntry(AKind: TAtlasEventKind; const AThread, AText: string); static;
+    /// <summary>Fenster zeigen und den Eintrag mit Zeit AElapsedMs und Text AText wählen (Logpunkt-Verlauf #2552);
+    /// False, wenn der Filter ihn ausblendet oder es ihn nicht mehr gibt.</summary>
+    class function ShowEntry(AElapsedMs: Int64; const AText: string): Boolean; static;
     /// <summary>Die letzten AMax Zeilen (Debug-Notiz #582); ohne laufendes Teil leer.</summary>
     class function LastLines(AMax: Integer): TArray<string>; static;
   end;
@@ -96,10 +103,10 @@ uses
   System.IOUtils,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.EventLogFlow,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -148,26 +155,42 @@ end;
 
 procedure TProcessWatch.ThreadCreated(const Thread: IOTAThread);
 begin
-  TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
-    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadStarted));
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
+        TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadStarted));
+    end);
 end;
 
 procedure TProcessWatch.ThreadDestroyed(const Thread: IOTAThread);
 begin
-  TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
-    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadEnded));
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
+        TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadEnded));
+    end);
 end;
 
 procedure TProcessWatch.ProcessModuleCreated(const ProcessModule: IOTAProcessModule);
 begin
-  TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
-    TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleLoaded, [ProcessModule.GetModuleFileName]));
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
+        TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleLoaded, [ProcessModule.GetModuleFileName]));
+    end);
 end;
 
 procedure TProcessWatch.ProcessModuleDestroyed(const ProcessModule: IOTAProcessModule);
 begin
-  TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
-    TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleUnloaded, [ProcessModule.GetModuleFileName]));
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
+        TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleUnloaded, [ProcessModule.GetModuleFileName]));
+    end);
 end;
 
 procedure TProcessWatch.Destroyed;
@@ -572,16 +595,40 @@ begin
 end;
 
 class procedure TAtlasIdeDebugEventLog.AddEntry(AKind: TAtlasEventKind; const AThread, AText: string);
+var
+  mEntry: TAtlasEventEntry;
 begin
   if FLog = nil then
   begin
     Exit;
   end;
-  FLog.Add(TAtlasEventEntry.Create(TAtlasEventLogFlow.Elapsed(FStartTick, GetTickCount64), AKind, AThread, AText));
+  mEntry := TAtlasEventEntry.Create(TAtlasEventLogFlow.Elapsed(FStartTick, GetTickCount64), AKind, AThread, AText);
+  FLog.Add(mEntry);
+  if (AKind = TAtlasEventKind.Logpoint) and Assigned(OnLogpoint) then
+  begin
+    OnLogpoint(mEntry);
+  end;
   FDirty := True;
   if (FTimer <> nil) and not FTimer.Enabled then
   begin
     FTimer.Enabled := True;
+  end;
+end;
+
+class function TAtlasIdeDebugEventLog.ShowEntry(AElapsedMs: Int64; const AText: string): Boolean;
+var
+  mFrame: TAtlasDebugEventLogFrame;
+begin
+  Result := False;
+  if not Started then
+  begin
+    Exit;
+  end;
+  ShowWindow;
+  mFrame := TAtlasIdeDebugEventLogWindow.ExistingFrame;
+  if mFrame <> nil then
+  begin
+    Result := mFrame.SelectEntry(AElapsedMs, AText);
   end;
 end;
 

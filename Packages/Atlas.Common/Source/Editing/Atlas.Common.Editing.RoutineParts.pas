@@ -14,7 +14,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Pascal.RoutineLocals;
 
 type
   /// <summary>Änderung in Offsets des Dokuments.</summary>
@@ -103,7 +103,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Pascal.RoutineBody;
 
 { TOffsetEdit }
 

@@ -13,7 +13,7 @@ uses
   System.Classes,
   System.Types,
   Atlas.Core.Editor.CrumbCard,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasCrumbCardTip = class(TAtlasPopupWindow)
@@ -53,9 +53,9 @@ uses
   System.SysUtils,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Outline.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 { TAtlasCrumbCardTip }
 

@@ -110,12 +110,20 @@ type
     FUnresolved: TUsesWaiting;
     function Accepts(const AUnit: TUnitIndex): Boolean;
     function Resolve(const AName: string): Integer;
+    /// <summary>Ausgehende Kanten von ANode; offene Namen warten in FUnresolved. Incoming der Ziele bleibt.
+    /// </summary>
+    procedure LinkOutgoing(ANode: Integer);
     procedure Link(ANode: Integer);
     procedure Unlink(ANode: Integer);
     procedure ForgetUnresolved(ANode: Integer);
     procedure Relink(const ANames: TArray<string>);
     function NamesOf(ANode: Integer): TArray<string>;
     function RecompileMarks(ANode: Integer; out ACount: Integer): TArray<Boolean>;
+    /// <summary>Synchronize in einen leeren Graphen: alle Knoten anlegen, dann jeden einmal verknüpfen.</summary>
+    procedure LoadNode(const AUnit: TUnitIndex);
+    /// <summary>Incoming aller Knoten aus ihren ausgehenden Kanten, ein Feld je Ziel.</summary>
+    procedure LinkAllIncoming;
+    function Load(const AUnits: TArray<TUnitIndex>): Integer;
   public
     constructor Create(const AOptions: TUsesGraphOptions); overload;
     constructor Create(const AUnits: TArray<TUnitIndex>; const AOptions: TUsesGraphOptions); overload;
@@ -180,7 +188,8 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Defaults,
-  Atlas.Common.Configuration.Contract;
+  Atlas.Common.Configuration.Contract,
+  Atlas.Text.Arrays;
 
 function NormalizedPath(const APath: string): string;
 begin
@@ -205,20 +214,6 @@ begin
   begin
     Result := mFileName;
   end;
-end;
-
-function ContainsNode(const ANodes: TArray<Integer>; ANode: Integer): Boolean;
-var
-  mItem: Integer;
-begin
-  for mItem in ANodes do
-  begin
-    if mItem = ANode then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function IsProgramFile(const AFileName: string): Boolean;
@@ -372,14 +367,13 @@ begin
   end;
 end;
 
-procedure TUsesGraph.Link(ANode: Integer);
+procedure TUsesGraph.LinkOutgoing(ANode: Integer);
 var
-  mItem, mTarget: TUsesNode;
+  mItem: TUsesNode;
   mEdge: TUsesEdge;
   mTargetIndex, mOrder: Integer;
   mSection: TUsesSection;
   mNames: TArray<string>;
-  mRef: TUsesEdgeRef;
 begin
   mItem := FNodes[ANode];
   mItem.Outgoing := nil;
@@ -410,6 +404,16 @@ begin
     end;
   end;
   FNodes[ANode] := mItem;
+end;
+
+procedure TUsesGraph.Link(ANode: Integer);
+var
+  mItem, mTarget: TUsesNode;
+  mOrder: Integer;
+  mRef: TUsesEdgeRef;
+begin
+  LinkOutgoing(ANode);
+  mItem := FNodes[ANode];
   for mOrder := 0 to High(mItem.Outgoing) do
   begin
     mRef.Source := ANode;
@@ -442,7 +446,7 @@ begin
     end;
     for mNode in mUsers do
     begin
-      if not ContainsNode(Result, mNode) then
+      if not TTextArrays.ContainsInteger(Result, mNode) then
       begin
         Result := Result + [mNode];
       end;
@@ -591,7 +595,7 @@ begin
   mUsers := nil;
   for mRef in mItem.Incoming do
   begin
-    if not ContainsNode(mUsers, mRef.Source) then
+    if not TTextArrays.ContainsInteger(mUsers, mRef.Source) then
     begin
       mUsers := mUsers + [mRef.Source];
     end;
@@ -622,6 +626,102 @@ begin
   end;
 end;
 
+procedure TUsesGraph.LoadNode(const AUnit: TUnitIndex);
+var
+  mItem: TUsesNode;
+  mIndex_: Integer;
+  mKey: string;
+begin
+  mKey := NormalizedPath(AUnit.FileName);
+  // Dieselbe Datei doppelt in der Liste: der spätere Eintrag gilt, wie bei Update.
+  if not FByFile.TryGetValue(mKey, mIndex_) then
+  begin
+    mIndex_ := FNodes.Count;
+    FNodes.Add(Default(TUsesNode));
+    FInterfaceNames.Add(nil);
+    FImplementationNames.Add(nil);
+    FByFile.Add(mKey, mIndex_);
+  end;
+  mItem := Default(TUsesNode);
+  mItem.UnitName := AUnit.UnitName;
+  mItem.FileName := AUnit.FileName;
+  mItem.Library_ := AUnit.Library_;
+  mItem.IsProgram := IsProgramFile(AUnit.FileName);
+  mItem.HasInitialization := AUnit.HasInitialization;
+  mItem.Hash := AUnit.Hash;
+  mItem.Stamp := AUnit.Stamp;
+  mItem.Active := True;
+  FNodes[mIndex_] := mItem;
+  FInterfaceNames[mIndex_] := AUnit.InterfaceUses;
+  FImplementationNames[mIndex_] := AUnit.ImplementationUses;
+  FByName.AddOrSetValue(LowerCase(AUnit.UnitName), mIndex_);
+end;
+
+procedure TUsesGraph.LinkAllIncoming;
+var
+  mItem: TUsesNode;
+  mIndex_, mOrder: Integer;
+  mCounts: TArray<Integer>;
+  mEdge: TUsesEdge;
+  mOutgoing: TUsesEdges;
+  mRef: TUsesEdgeRef;
+  mIncoming: TArray<TUsesEdgeRef>;
+begin
+  // Eingehende Kanten in einem Durchgang: einzeln angehängt kopierte jede Kante das ganze Feld des Ziels.
+  SetLength(mCounts, FNodes.Count);
+  for mIndex_ := 0 to FNodes.Count - 1 do
+  begin
+    for mEdge in FNodes[mIndex_].Outgoing do
+    begin
+      Inc(mCounts[mEdge.Target]);
+    end;
+  end;
+  for mIndex_ := 0 to FNodes.Count - 1 do
+  begin
+    mItem := FNodes[mIndex_];
+    SetLength(mItem.Incoming, mCounts[mIndex_]);
+    FNodes[mIndex_] := mItem;
+    mCounts[mIndex_] := 0;
+  end;
+  for mIndex_ := 0 to FNodes.Count - 1 do
+  begin
+    mOutgoing := FNodes[mIndex_].Outgoing;
+    for mOrder := 0 to High(mOutgoing) do
+    begin
+      mRef.Source := mIndex_;
+      mRef.Item := mOrder;
+      // Incoming ist ein dynamisches Feld: Die Kopie des Records teilt es, Schreiben trifft den Knoten.
+      mIncoming := FNodes[mOutgoing[mOrder].Target].Incoming;
+      mIncoming[mCounts[mOutgoing[mOrder].Target]] := mRef;
+      Inc(mCounts[mOutgoing[mOrder].Target]);
+    end;
+  end;
+end;
+
+function TUsesGraph.Load(const AUnits: TArray<TUnitIndex>): Integer;
+var
+  mUnit_: TUnitIndex;
+  mIndex_: Integer;
+begin
+  // Erst alle Knoten, dann jede Unit einmal verknüpfen. Einzeln über Update löste jede neue Unit bei allen, die
+  // schon auf ihren Namen warteten, Unlink und Link aus; bei einigen tausend Units der Projektgruppe dauerte die
+  // Architekturansicht so über 10 s (Watchdog, 15.11.2026).
+  Result := 0;
+  for mUnit_ in AUnits do
+  begin
+    if Accepts(mUnit_) then
+    begin
+      LoadNode(mUnit_);
+    end;
+  end;
+  for mIndex_ := 0 to FNodes.Count - 1 do
+  begin
+    LinkOutgoing(mIndex_);
+    Inc(Result);
+  end;
+  LinkAllIncoming;
+end;
+
 function TUsesGraph.Synchronize(const AUnits: TArray<TUnitIndex>): Integer;
 var
   mSeen: TDictionary<string, Boolean>;
@@ -631,6 +731,10 @@ var
   mGone: TArray<string>;
   mFileName: string;
 begin
+  if FNodes.Count = 0 then
+  begin
+    Exit(Load(AUnits));
+  end;
   Result := 0;
   mSeen := TDictionary<string, Boolean>.Create;
   try
@@ -778,7 +882,7 @@ begin
   Result := nil;
   for mEdge in FNodes[ANode].Outgoing do
   begin
-    if EdgeAllowed(Self, mEdge, ASections) and not ContainsNode(Result, mEdge.Target) then
+    if EdgeAllowed(Self, mEdge, ASections) and not TTextArrays.ContainsInteger(Result, mEdge.Target) then
     begin
       Result := Result + [mEdge.Target];
     end;
@@ -795,7 +899,7 @@ begin
   begin
     mEdge := FNodes[mRef.Source].Outgoing[mRef.Item];
     if (mEdge.Section in ASections) and FNodes[mRef.Source].Active and
-      not ContainsNode(Result, mRef.Source) then
+      not TTextArrays.ContainsInteger(Result, mRef.Source) then
     begin
       Result := Result + [mRef.Source];
     end;

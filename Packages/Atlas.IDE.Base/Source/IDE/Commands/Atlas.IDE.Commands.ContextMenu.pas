@@ -48,7 +48,7 @@ uses
   System.Classes,
   Vcl.ActnList,
   Vcl.Menus,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Commands.MenuSlots;
 
@@ -344,7 +344,7 @@ begin
     Exit;
   end;
   TAtlasIdeShortcutTips.Invoked(mCommand.Id);
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+  TAtlasCommandScope.Run(TAtlasFeature.EditorCommands, mCommand.Caption, mCommand.Run);
 end;
 
 function TAtlasIdeContextMenu.IndexOfAction(AAction: TBasicAction): Integer;
@@ -657,81 +657,93 @@ begin
 end;
 
 procedure TAtlasIdeContextMenu.ItemExecute(Sender: TObject);
-var
-  mIndex: Integer;
-  mAction: TBasicAction;
 begin
-  // Die IDE kann statt unserer Aktion einen eigenen Menüeintrag melden; dessen Tag ist nicht unserer.
-  // Maßgeblich ist die eigene Aktion (aus FActions), sonst die verknüpfte des Menüeintrags.
-  mAction := OwnAction(Sender, FActions);
-  if mAction = nil then
-  begin
-    LogUnknownSender(Sender);
-    Exit;
-  end;
-  mIndex := IndexOfAction(mAction);
-  // Hat die Tastaturbindung denselben Tastendruck schon ausgeführt, nicht ein zweites Mal.
-  if (mAction is TAction) and not TAtlasKeyStroke.Claim(TAction(mAction).ShortCut, Cardinal(GetMessageTime)) then
-  begin
-    Exit;
-  end;
-  if (mIndex >= 0) and (FEntries[mIndex].Kind = TEntryKind.ekModuleSlot) then
-  begin
-    RunModuleSlot(mIndex);
-    Exit;
-  end;
-  if (mIndex < 0) or not Assigned(FEntries[mIndex].Proc) then
-  begin
-    TAtlasGuard.Log(Format('Kontextmenü: Eintrag %d ohne Befehl', [mIndex]));
-    Exit;
-  end;
-  if FEntries[mIndex].Id <> '' then
-  begin
-    TAtlasIdeShortcutTips.Invoked(FEntries[mIndex].Id);
-  end;
-  TAtlasGuard.Run(FEntries[mIndex].Feature, FEntries[mIndex].Proc);
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    var
+      mIndex: Integer;
+      mAction: TBasicAction;
+    begin
+      // Die IDE kann statt unserer Aktion einen eigenen Menüeintrag melden; dessen Tag ist nicht unserer.
+      // Maßgeblich ist die eigene Aktion (aus FActions), sonst die verknüpfte des Menüeintrags.
+      mAction := OwnAction(Sender, FActions);
+      if mAction = nil then
+      begin
+        LogUnknownSender(Sender);
+        Exit;
+      end;
+      mIndex := IndexOfAction(mAction);
+      // Hat die Tastaturbindung denselben Tastendruck schon ausgeführt, nicht ein zweites Mal.
+      if (mAction is TAction) and not TAtlasKeyStroke.Claim(TAction(mAction).ShortCut, Cardinal(GetMessageTime)) then
+      begin
+        Exit;
+      end;
+      if (mIndex >= 0) and (FEntries[mIndex].Kind = TEntryKind.ekModuleSlot) then
+      begin
+        RunModuleSlot(mIndex);
+        Exit;
+      end;
+      if (mIndex < 0) or not Assigned(FEntries[mIndex].Proc) then
+      begin
+        TAtlasGuard.Log(Format('Kontextmenü: Eintrag %d ohne Befehl', [mIndex]));
+        Exit;
+      end;
+      if FEntries[mIndex].Id <> '' then
+      begin
+        TAtlasIdeShortcutTips.Invoked(FEntries[mIndex].Id);
+      end;
+      TAtlasCommandScope.Run(FEntries[mIndex].Feature, FEntries[mIndex].Caption, FEntries[mIndex].Proc);
+    end);
 end;
 
 procedure TAtlasIdeContextMenu.RootExecute(Sender: TObject);
-var
-  mRootItem: TMenuItem;
 begin
-  // Die VCL ruft beim Öffnen eines Untermenüs den Klick seines Eintrags (TMenu.DispatchPopup), hier also beim
-  // Öffnen von „Atlas“: Lage lesen, Sichtbarkeit setzen, Untermenüs füllen. Ohne Handler wäre die Aktion
-  // ausgegraut.
-  if (FRoot = nil) or (OwnAction(Sender, FActions) <> FRoot) then
-  begin
-    Exit;
-  end;
-  TAtlasIdeMenuContext.Refresh;
-  UpdateVisibility;
-  mRootItem := MenuItemOf(Sender);
-  if mRootItem <> nil then
-  begin
-    FillGroups(mRootItem);
-  end;
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    var
+      mRootItem: TMenuItem;
+    begin
+      // Die VCL ruft beim Öffnen eines Untermenüs den Klick seines Eintrags (TMenu.DispatchPopup), hier also beim
+      // Öffnen von „Atlas“: Lage lesen, Sichtbarkeit setzen, Untermenüs füllen. Ohne Handler wäre die Aktion
+      // ausgegraut.
+      if (FRoot = nil) or (OwnAction(Sender, FActions) <> FRoot) then
+      begin
+        Exit;
+      end;
+      TAtlasIdeMenuContext.Refresh;
+      UpdateVisibility;
+      mRootItem := MenuItemOf(Sender);
+      if mRootItem <> nil then
+      begin
+        FillGroups(mRootItem);
+      end;
+    end);
 end;
 
 procedure TAtlasIdeContextMenu.GroupExecute(Sender: TObject);
-var
-  mItem: TMenuItem;
-  mIndex: Integer;
 begin
-  // Mit Einträgen öffnet sich gerade das Untermenü; ohne (die IDE hat das Öffnen von „Atlas“ nicht gemeldet)
-  // zeigt ein Klick die Gruppe als eigenes Menü an der Maus.
-  mItem := MenuItemOf(Sender);
-  if (mItem <> nil) and (mItem.Count > 0) then
-  begin
-    Exit;
-  end;
-  mIndex := IndexOfAction(OwnAction(Sender, FActions));
-  if (mIndex < 0) or not (FEntries[mIndex].Kind in [TEntryKind.ekGroup, TEntryKind.ekModuleGroup]) then
-  begin
-    Exit;
-  end;
-  TAtlasIdeMenuContext.Refresh;
-  UpdateVisibility;
-  TAtlasIdeContextSubmenus.Popup(FGroupPopup, ChildActions(mIndex));
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    var
+      mItem: TMenuItem;
+      mIndex: Integer;
+    begin
+      // Mit Einträgen öffnet sich gerade das Untermenü; ohne (die IDE hat das Öffnen von „Atlas“ nicht gemeldet)
+      // zeigt ein Klick die Gruppe als eigenes Menü an der Maus.
+      mItem := MenuItemOf(Sender);
+      if (mItem <> nil) and (mItem.Count > 0) then
+      begin
+        Exit;
+      end;
+      mIndex := IndexOfAction(OwnAction(Sender, FActions));
+      if (mIndex < 0) or not (FEntries[mIndex].Kind in [TEntryKind.ekGroup, TEntryKind.ekModuleGroup]) then
+      begin
+        Exit;
+      end;
+      TAtlasIdeMenuContext.Refresh;
+      UpdateVisibility;
+      TAtlasIdeContextSubmenus.Popup(FGroupPopup, ChildActions(mIndex));
+    end);
 end;
 
 procedure TAtlasIdeContextMenu.EnsureAll;

@@ -24,7 +24,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.BackgroundRequest;
+  Atlas.Plugin.Lsp.BackgroundRequest;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -121,20 +121,20 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.Recursion,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.LineTracker,
-  Atlas.IDE.Foundation.EditorWindows,
-  Atlas.IDE.Foundation.DesignerView,
+  Atlas.ToolsApi.Editor.Windows,
+  Atlas.ToolsApi.Designer.View,
   Atlas.Core.Editor.LineTracking;
 
 { TAtlasIdeGutterColumnState }

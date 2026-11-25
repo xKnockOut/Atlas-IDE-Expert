@@ -41,13 +41,17 @@
         <DCC_DcuOutput>..\..\Output\$(Platform)\$(Config)\Dcu\Atlas.Text</DCC_DcuOutput>
         <DCC_DcpOutput>..\..\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
         <DCC_BplOutput>..\..\Output\$(Platform)\$(Config)\Bpl</DCC_BplOutput>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_MajorVer>2</VerInfo_MajorVer>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>0</VerInfo_Release>
+        <VerInfo_Build>3001</VerInfo_Build>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <VerInfo_Keys>CompanyName=xKnockOut;FileDescription=Atlas IDE Expert - $(MSBuildProjectName);FileVersion=2.3.0.3001;InternalName=$(MSBuildProjectName);LegalCopyright=Copyright (c) xKnockOut, MIT License;LegalTrademarks=;OriginalFilename=;ProgramID=io.github.xknockout.atlas.$(MSBuildProjectName);ProductName=Atlas IDE Expert;ProductVersion=2.3.0.3001;Comments=2.3.0-rc.1</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
-        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-        <VerInfo_Locale>1033</VerInfo_Locale>
         <BCC_EnableBatchCompilation>true</BCC_EnableBatchCompilation>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
@@ -84,6 +88,7 @@
         <DCCReference Include="Source\Fuzzy\Atlas.Text.Fuzzy.pas"/>
         <DCCReference Include="Source\Files\Atlas.Text.Files.pas"/>
         <DCCReference Include="Source\Locked\Atlas.Text.Locked.pas"/>
+        <DCCReference Include="Source\Reporting\Atlas.Text.Reporting.pas"/>
         <DCCReference Include="Source\Csv\Atlas.Text.Csv.pas"/>
         <DCCReference Include="Source\IndexCache\Atlas.Text.IndexCache.pas"/>
         <DCCReference Include="Source\Names\Atlas.Text.Names.pas"/>
@@ -96,6 +101,7 @@
         <DCCReference Include="Source\CommandLine\Atlas.Text.CommandLine.pas"/>
         <DCCReference Include="Source\DebugDisplay\Atlas.Text.DebugDisplay.pas"/>
         <DCCReference Include="Source\DUnitX\Atlas.Text.DUnitX.pas"/>
+        <DCCReference Include="Source\DUnitX\Atlas.Text.DUnitX.CommandLine.pas"/>
         <DCCReference Include="Source\TestResults\Atlas.Text.TestResults.pas"/>
         <DCCReference Include="Source\McpStatistics\Atlas.Text.McpStatistics.pas"/>
         <DCCReference Include="Source\TestResults\Atlas.Text.TestRunFile.pas"/>

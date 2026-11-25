@@ -171,7 +171,6 @@ begin
   except
     on EAbort do
       raise;
-    // lsp-ignore: catch-all-without-raise -- der Fehler steht als Antwort in seinem Abschnitt
     on E: Exception do
     begin
       Result.Ok := False;
@@ -295,6 +294,9 @@ var
 begin
   mLines := TStringList.Create;
   try
+    // MCP-Antworten trennen Zeilen mit #10 auf allen Plattformen (wie die Kürzung oben);
+    // TStringList nimmt sonst unter Windows #13#10.
+    mLines.LineBreak := #10;
     mLines.Add(cTexts[TBatchText.Header].Fmt([FormatDateTime(cIndexTimeFormat, AIndexTime,
       TFormatSettings.Invariant), Length(AParts), AElapsedMs]));
     for mIndex := 0 to High(AParts) do

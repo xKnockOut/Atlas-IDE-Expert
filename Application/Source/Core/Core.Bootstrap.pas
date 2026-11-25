@@ -1,0 +1,306 @@
+﻿unit Core.Bootstrap;
+
+// Host-Rolle Core: gemeinsamer Aufbau für LSP-Server, MCP-Modus und Linter
+//. Bisher hatte jeder Modus eigene Kopien:
+// - Dateien lesen wie der Server (Kodierung erkennen),
+// - Projekte einer Projektgruppe im Ordner,
+// - globale Einstellungen aus %APPDATA%\Atlas\settings.json,
+// - atlas.json eines Ordners ohne Editor.
+// Die Logdatei (--log) richtet TShellDiagnostics.AddLogFile ein.
+// Bewusst ohne Windows-Units, damit die Tests auch ohne Windows laufen.
+
+interface
+
+uses
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Localization.Texts;
+
+type
+  TCoreBootstrap = class
+  public
+    /// <summary>Datei lesen wie der Server (Kodierung erkennen); False und '' ohne Datei.</summary>
+    class function ReadSourceText(const AFileName: string; out AText: string): Boolean; overload; static;
+    /// <summary>Wie oben, geöffnete Dokumente aus ADocuments haben aber Vorrang vor der Datei auf der Platte.
+    /// </summary>
+    class function ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;
+      out AText: string): Boolean; overload; static;
+    /// <summary>ReadSourceText ohne Dokumentspeicher als Leser (die Überladung lässt sich nicht direkt übergeben).
+    /// </summary>
+    class function SourceReader: TDocumentReadText; static;
+    /// <summary>Projekte der einzigen .groupproj in ARoot (#648); leer ohne oder mit mehreren Gruppen.</summary>
+    class function GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>; static;
+    /// <summary>Projekte der Projektgruppe AGroupFile; leer, wenn sie nicht lesbar ist (Warnung im Log).</summary>
+    class function LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>; static;
+    /// <summary>Ordner der Projektdateien AProjects in ihrer Reihenfolge, ohne Doppelte. Dort sucht der
+    /// TPackageLocator die Quelle eines Packages aus requires (#46): Ohne sie fehlen beim Prüfen eines einzelnen
+    /// Moduls alle Units des Basis-Packages im Index (#2309).</summary>
+    class function ProjectFolders(const AProjects: TArray<string>): TArray<string>; static;
+    /// <summary>Projekte der nächsten .groupproj in einem Ordner über AProjectFile (höchstens cGroupLevels Ebenen),
+    /// die AProjectFile enthält; leer ohne. So kennt --check &lt;Modul&gt;.dproj die Projekte der Gruppe, auch wenn
+    /// die Gruppe nicht im Ordner des Projekts liegt (#2309).</summary>
+    class function EnclosingGroupProjects(const AProjectFile: string; const ALogger: ILogger): TArray<string>;
+      static;
+    /// <summary>%APPDATA%\Atlas\settings.json; '' ohne APPDATA.</summary>
+    class function GlobalSettingsFile: string; overload; static;
+    /// <summary>settings.json unter AAppData\Atlas; '' ohne AAppData.</summary>
+    class function GlobalSettingsFile(const AAppData: string): string; overload; static;
+    /// <summary>Text der globalen settings.json oder ''. Ist sie nicht lesbar, steht eine Warnung in
+    /// ALogger; ohne ALogger geht die Ausnahme an den Aufrufer.</summary>
+    class function LoadGlobalSettings(const ALogger: ILogger): string; overload; static;
+    class function LoadGlobalSettings(const AFileName: string; const ALogger: ILogger): string; overload; static;
+    /// <summary>Einstellungen aus atlas.json (oder der früheren Datei) in ARoot, ohne globale Datei und
+    /// Editor; ohne Datei die Vorgaben.</summary>
+    class function ProjectSettings(const ARoot: string): TServerSettings; static;
+    /// <summary>Sprache der Texte ohne Client (#1458): ALocale (--locale), sonst language aus der globalen
+    /// settings.json (AGlobalText), sonst Englisch.</summary>
+    class function TextLanguage(const ALocale, AGlobalText: string): TTextLanguage; static;
+    /// <summary>Setzt die Sprache nach TextLanguage mit der globalen settings.json; eine unlesbare Datei zählt
+    /// als leer. Der LSP-Server wählt nach initialize mit der Sprache des Clients neu.</summary>
+    class procedure UseTextLanguage(const ALocale: string); static;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.IOUtils,
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Configuration.Scopes,
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Projects.GroupReader,
+  Atlas.Text.LogMarks,
+  Atlas.Text.Files;
+
+{ TCoreBootstrap }
+
+class function TCoreBootstrap.ReadSourceText(const AFileName: string; out AText: string): Boolean;
+var
+  mFileFormat: TFileFormat;
+begin
+  Result := (AFileName <> '') and FileExists(AFileName);
+  if Result then
+  begin
+    AText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+  end
+  else
+  begin
+    AText := '';
+  end;
+end;
+
+class function TCoreBootstrap.SourceReader: TDocumentReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end;
+end;
+
+class function TCoreBootstrap.ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;
+  out AText: string): Boolean;
+var
+  mDocument: ITextDocument;
+begin
+  if (ADocuments <> nil) and ADocuments.TryGet(TDocumentUris.FromPath(AFileName), mDocument) then
+  begin
+    AText := mDocument.Text;
+    Exit(True);
+  end;
+  Result := ReadSourceText(AFileName, AText);
+end;
+
+class function TCoreBootstrap.GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>;
+var
+  mGroups: TArray<string>;
+begin
+  Result := nil;
+  try
+    mGroups := TDirectory.GetFiles(ARoot, '*.groupproj');
+  except
+    // Nicht lesbare Ordner haben keine Gruppe.
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
+      mGroups := nil;
+    end;
+  end;
+  if Length(mGroups) = 1 then
+  begin
+    Result := LoadGroup(mGroups[0], ALogger);
+  end;
+end;
+
+class function TCoreBootstrap.ProjectFolders(const AProjects: TArray<string>): TArray<string>;
+var
+  mProject, mFolder: string;
+  mKnown: Boolean;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mProject in AProjects do
+  begin
+    mFolder := ExtractFileDir(mProject);
+    mKnown := mFolder = '';
+    for mIndex := 0 to High(Result) do
+    begin
+      mKnown := mKnown or SameText(Result[mIndex], mFolder);
+    end;
+    if not mKnown then
+    begin
+      Result := Result + [mFolder];
+    end;
+  end;
+end;
+
+/// <summary>Enthält AProjects die Datei AProjectFile?</summary>
+function ContainsProject(const AProjects: TArray<string>; const AProjectFile: string): Boolean;
+var
+  mProject: string;
+begin
+  Result := False;
+  for mProject in AProjects do
+  begin
+    Result := Result or SameFileName(ExpandFileName(mProject), AProjectFile);
+  end;
+end;
+
+class function TCoreBootstrap.EnclosingGroupProjects(const AProjectFile: string;
+  const ALogger: ILogger): TArray<string>;
+const
+  // Packages/<Modul>/<Modul>.dproj liegt zwei Ebenen unter der Gruppe; Luft für tiefere Ordner.
+  cGroupLevels = 4;
+var
+  mFolder, mParent, mProjectFile: string;
+  mLevel: Integer;
+begin
+  Result := nil;
+  if AProjectFile = '' then
+  begin
+    Exit;
+  end;
+  mProjectFile := ExpandFileName(AProjectFile);
+  mFolder := ExtractFileDir(mProjectFile);
+  for mLevel := 0 to cGroupLevels do
+  begin
+    Result := GroupProjects(mFolder, ALogger);
+    if ContainsProject(Result, mProjectFile) then
+    begin
+      Exit;
+    end;
+    mParent := ExtractFileDir(mFolder);
+    if (mParent = '') or SameFileName(mParent, mFolder) then
+    begin
+      Break;
+    end;
+    mFolder := mParent;
+  end;
+  Result := nil;
+end;
+
+class function TCoreBootstrap.LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>;
+begin
+  Result := nil;
+  try
+    Result := TGroupProjReader.Load(AGroupFile);
+    if ALogger <> nil then
+    begin
+      ALogger.Info(Format('Projektgruppe %s: %d Projekte', [TLogMarks.Path(AGroupFile), Length(Result)]));
+    end;
+  except
+    on E: Exception do
+    begin
+      if ALogger <> nil then
+      begin
+        ALogger.Warning(Format('Projektgruppe %s nicht lesbar: %s', [TLogMarks.Path(AGroupFile),
+          TLogMarks.Text(E.Message)]));
+      end;
+      Result := nil;
+    end;
+  end;
+end;
+
+class function TCoreBootstrap.GlobalSettingsFile: string;
+begin
+  Result := GlobalSettingsFile(GetEnvironmentVariable('APPDATA'));
+end;
+
+class function TCoreBootstrap.GlobalSettingsFile(const AAppData: string): string;
+begin
+  Result := TConfigurationScopes.GlobalFile(AAppData);
+end;
+
+class function TCoreBootstrap.LoadGlobalSettings(const ALogger: ILogger): string;
+begin
+  Result := LoadGlobalSettings(GlobalSettingsFile, ALogger);
+end;
+
+class function TCoreBootstrap.LoadGlobalSettings(const AFileName: string; const ALogger: ILogger): string;
+var
+  mFileFormat: TFileFormat;
+begin
+  Result := '';
+  if (AFileName = '') or not FileExists(AFileName) then
+  begin
+    Exit;
+  end;
+  try
+    Result := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+  except
+    // Gerade geschrieben oder gesperrt: Der Server liest sie beim nächsten Ereignis erneut.
+    on E: Exception do
+    begin
+      if ALogger = nil then
+      begin
+        raise;
+      end;
+      ALogger.Warning('Globale Einstellungen nicht lesbar: ' + TLogMarks.Text(E.Message));
+    end;
+  end;
+end;
+
+class function TCoreBootstrap.ProjectSettings(const ARoot: string): TServerSettings;
+var
+  mText: string;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  if not ReadSourceText(ExistingOrLegacyFile(ARoot, cConfigurationFileName, cLegacyConfigurationFileName), mText) then
+  begin
+    Exit(TServerSettings.Default);
+  end;
+  Result := TConfigurationParser.Parse(TConfigurationScopes.Filter(mText, TConfigurationScope.Project), mIssues);
+end;
+
+class function TCoreBootstrap.TextLanguage(const ALocale, AGlobalText: string): TTextLanguage;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  Result := TAtlasLocale.Resolve(ALocale, TConfigurationParser.Parse(AGlobalText, mIssues).Language);
+end;
+
+class procedure TCoreBootstrap.UseTextLanguage(const ALocale: string);
+var
+  mGlobal: string;
+begin
+  try
+    mGlobal := LoadGlobalSettings(nil);
+  except
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+      begin
+        raise;
+      end;
+      mGlobal := '';
+    end;
+  end;
+  TAtlasLocale.Use(TextLanguage(ALocale, mGlobal));
+end;
+
+end.

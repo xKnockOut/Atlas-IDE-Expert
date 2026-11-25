@@ -12,7 +12,7 @@ uses
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Ranking,
   Atlas.UI.Completion.Popup,
-  Atlas.UI.Popup.Contract;
+  Atlas.Vcl.Popup.Contract;
 
 type
   TAtlasCompletionPopupView = class(TInterfacedObject, IAtlasCompletionView, IAtlasCompletionSyntaxView,

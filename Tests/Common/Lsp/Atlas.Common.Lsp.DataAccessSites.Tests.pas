@@ -254,7 +254,7 @@ begin
     try
       Assert.AreEqual(1, (mAnswer as TJSONObject).GetValue<Integer>('format'));
       mSites := (mAnswer as TJSONObject).GetValue<TJSONArray>('sites');
-      Assert.AreEqual(1, mSites.Count);
+      Assert.AreEqual(1, Integer(mSites.Count));
       mSite := mSites.Items[0] as TJSONObject;
       Assert.AreEqual(cKundeFile, mSite.GetValue<string>('file'));
       Assert.AreEqual(22, mSite.GetValue<Integer>('line'));

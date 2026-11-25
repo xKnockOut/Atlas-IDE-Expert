@@ -50,7 +50,7 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,
@@ -60,7 +60,7 @@ uses
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Build.LastMessages,
   Atlas.UI.Rules.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   /// <summary>Höchstens so viele Pfade in Rückfrage und Meldung; der Rest als „… und n weitere“.</summary>

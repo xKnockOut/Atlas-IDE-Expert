@@ -28,7 +28,7 @@ uses
   System.SysUtils,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.CallStackView,
   Atlas.Core.Debug.AsyncOrigin,
@@ -115,11 +115,11 @@ type
 implementation
 
 uses
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.AsyncOriginFlow,
   Atlas.UI.Results.Items,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Settings,

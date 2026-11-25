@@ -19,6 +19,9 @@ type
     /// </summary>
     [Test]
     procedure ArrayLiteralWithReference;
+    /// <summary>Fabrik ohne () als Argument einer Routine, deren Parameter den Ergebnistyp hat (E2250/E2010).</summary>
+    [Test]
+    procedure FactoryWithoutParentheses;
     [Test]
     procedure SilentCases;
     [Test]
@@ -100,6 +103,59 @@ begin
     'AHoerer ist eine Methodenreferenz (THoerer); im Array-Literal neben + ruft Delphi sie auf (wie E2035 bzw. ' +
     'E2010). Länge mit SetLength erhöhen und das Element zuweisen.|',
     TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TMethodReferenceCalledRule.Create, cSource, mIndex, '', 'U.pas')));
+end;
+
+procedure TCompilerTrapsMethodRefsTests.FactoryWithoutParentheses;
+const
+  cTypes =
+    'unit Werk.Abspielen;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFabrik = reference to function(AZahl: Integer): string;'#10 +
+    '  TWahl = reference to function: TFabrik;'#10 +
+    '  TTransport = class'#10 +
+    '    class function Fabrik: TFabrik;'#10 +
+    '  end;'#10 +
+    '  TSpieler = class'#10 +
+    '    class procedure Lauf(const AName: string; const AFabrik: TFabrik); overload;'#10 +
+    '    class procedure Lauf(const AFabrik: TFabrik); overload;'#10 +
+    '    class procedure Waehle(const AWahl: TWahl);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.';
+  cSource =
+    'unit U;'#10 +
+    'interface'#10 +
+    'uses'#10 +
+    '  Werk.Abspielen;'#10 +
+    'procedure Start;'#10 +
+    'function Fabrik: TFabrik;'#10 +
+    'implementation'#10 +
+    'function Fabrik: TFabrik;'#10 +
+    'begin'#10 +
+    '  Result := nil;'#10 +
+    'end;'#10 +
+    'procedure Start;'#10 +
+    'begin'#10 +
+    '  TSpieler.Lauf(''a'', TTransport.Fabrik);'#10 +
+    '  TSpieler.Lauf(TTransport.Fabrik());'#10 +
+    '  TSpieler.Waehle(TTransport.Fabrik);'#10 +
+    '  TSpieler.Lauf(Fabrik);'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cTypes, 'C:\P\Werk.Abspielen.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TMethodReferenceCalledRule.Create, cSource, mIndex, '', 'U.pas');
+  // Mit (), an einen Parameter vom Typ der Funktion selbst (TWahl) und als bloßer Name bleibt es still.
+  Assert.AreEqual('13:21 TTransport.Fabrik liefert eine Methodenreferenz (TFabrik); ohne () übergibt Delphi die ' +
+    'Funktion selbst statt ihres Ergebnisses (wie E2010 bzw. E2250). TTransport.Fabrik() schreiben.|',
+    TRuleAssert.PositionMessages(mFound));
+  Assert.IsTrue(mFound[0].Fixes[0].Safe);
+  Assert.AreEqual('()', mFound[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TCompilerTrapsMethodRefsTests.SilentCases;

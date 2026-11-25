@@ -51,17 +51,17 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Editor.Minimap,
   Atlas.UI.Editor.Minimap,
-  Atlas.IDE.Foundation.EditorBarHost,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.EditorBars.Host,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
@@ -407,8 +407,12 @@ begin
         Lines := TTextLines.SplitLines(AText);
         Runs := TAtlasMinimap.Runs(Lines, AMaxColumn, ATabWidth);
       except
-        Lines := nil;
-        Runs := nil;
+        on E: Exception do
+        begin
+          TAtlasGuard.Log('Minimap: Zeilen nicht berechnet: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+          Lines := nil;
+          Runs := nil;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Minimap,

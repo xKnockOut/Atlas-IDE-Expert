@@ -25,6 +25,8 @@ type
     procedure KeyUsesCanonicalizer;
     [Test]
     procedure KeepsCaseOfUnixPaths;
+    [Test]
+    procedure PathOrSelfKeepsPaths;
   end;
 
 implementation
@@ -103,6 +105,13 @@ procedure TDocumentUrisTests.KeepsCaseOfUnixPaths;
 begin
   // AreNotEqual für Strings ignoriert sonst die Groß-/Kleinschreibung.
   Assert.AreNotEqual(TDocumentUris.Key('file:///home/a/A.pas'), TDocumentUris.Key('file:///home/a/a.pas'), False);
+end;
+
+procedure TDocumentUrisTests.PathOrSelfKeepsPaths;
+begin
+  Assert.AreEqual(TDocumentUris.ToPath('file:///C:/Projekt/A.pas'), TDocumentUris.PathOrSelf('file:///C:/Projekt/A.pas'));
+  Assert.AreEqual('C:\Projekt\A.pas', TDocumentUris.PathOrSelf('C:\Projekt\A.pas'));
+  Assert.AreEqual('', TDocumentUris.PathOrSelf(''));
 end;
 
 initialization

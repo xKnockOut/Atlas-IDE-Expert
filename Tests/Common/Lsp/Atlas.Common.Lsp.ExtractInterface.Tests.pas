@@ -50,9 +50,10 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.ExtractInterface;
+  Atlas.Common.JsonRpc.Positions,
+  Atlas.Common.Lsp.ExtractInterface,
+  Atlas.Common.JsonRpc.TestSupport,
+  Atlas.Common.Lsp.Edits.TestSupport;
 
 const
   cBasisFile = 'C:\P\Basis.pas';
@@ -168,34 +169,8 @@ end;
 
 /// <summary>Text von AFileName nach dem WorkspaceEdit in AAnswer; neue Dateien aus ihrem Inhalt.</summary>
 function After(AAnswer: TJSONObject; const AFileName: string): string;
-var
-  mItem, mEdit: TJSONValue;
-  mDocument, mRange: TJSONObject;
-  mEdits: TArray<TTextEdit>;
-  mUri: string;
 begin
-  Result := TextOf(AFileName);
-  for mItem in (AAnswer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
-  begin
-    mDocument := TJSONObject(mItem);
-    if mDocument.GetValue('textDocument') = nil then
-    begin
-      Continue;
-    end;
-    mUri := (mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
-    if not SameText(TDocumentUris.ToPath(mUri), AFileName) then
-    begin
-      Continue;
-    end;
-    mEdits := nil;
-    for mEdit in mDocument.GetValue('edits') as TJSONArray do
-    begin
-      mRange := TJSONObject(mEdit).GetValue('range') as TJSONObject;
-      mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
-        TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mEdit).GetValue('newText').Value)];
-    end;
-    Result := TTextChanges.Apply(Result, mEdits);
-  end;
+  Result := ApplyWorkspaceEdit(AAnswer, AFileName, TextOf(AFileName));
 end;
 
 function Run(const AIndex: ISymbolIndex; const AText: string; ARequest: TJSONObject;
@@ -233,16 +208,6 @@ begin
   FIndex := nil;
 end;
 
-procedure FreeAll(const AItems: TArray<TJSONObject>);
-var
-  mItem: TJSONObject;
-begin
-  for mItem in AItems do
-  begin
-    mItem.Free;
-  end;
-end;
-
 procedure TLspExtractInterfaceTests.OffersOnClassHeader;
 var
   mTree: TSyntaxTree;
@@ -258,7 +223,7 @@ begin
       Assert.AreEqual(TLspExtractInterface.cClientCommand,
         (mActions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
-      FreeAll(mActions);
+      TJsonRpcTestSupport.FreeAll(mActions);
     end;
     Assert.AreEqual(0, Integer(Length(TLspExtractInterface.Actions(False, mTree, cUnitKunden, 'u',
       TTextPosition.Create(5, 4)))), 'abgeschaltet');

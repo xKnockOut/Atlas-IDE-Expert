@@ -19,7 +19,7 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Style.Palette;
 
 type
 {$SCOPEDENUMS ON}
@@ -101,7 +101,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Winapi.Windows,
   System.Math;
 

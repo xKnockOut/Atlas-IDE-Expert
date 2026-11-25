@@ -20,7 +20,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.StatementText;
+  Atlas.Common.Pascal.StatementText;
 
 type
   TConditions = class
@@ -52,11 +52,12 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.ExpressionText,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.ExpressionText,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -460,7 +461,7 @@ begin
   begin
     Exit;
   end;
-  mOperand := TExpressionText.Strip(ANode[0]);
+  mOperand := TSyntaxNodes.Unparen(ANode[0]);
   case mOperand.Kind of
     TSyntaxKind.UnaryExpr:
       Result := SameText(mOperand.Name, 'not');

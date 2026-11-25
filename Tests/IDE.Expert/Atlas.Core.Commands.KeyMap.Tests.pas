@@ -79,7 +79,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
-  Atlas.Core.Settings.Contract;
+  Atlas.Core.Settings.Contract,
+  Atlas.Core.Settings.TestSupport;
 
 const
   cCtrlShiftP = $6050;
@@ -91,18 +92,13 @@ const
 
 type
   /// <summary>Merkt sich, was Save schreibt, und liefert es Load zurück.</summary>
-  TKeyStore = class(TInterfacedObject, IAtlasSettingsStore)
+  TKeyStore = class(TMemoryStore)
   private
     FNames: TList<string>;
-    FIntegers: TDictionary<string, Integer>;
-    FStrings: TDictionary<string, string>;
   public
     constructor Create;
     destructor Destroy; override;
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
+    procedure WriteInteger(const AName: string; AValue: Integer); override;
     /// <summary>Namen der Zahlen in der Reihenfolge von Save.</summary>
     property Names: TList<string> read FNames;
   end;
@@ -113,46 +109,21 @@ constructor TKeyStore.Create;
 begin
   inherited Create;
   FNames := TList<string>.Create;
-  FIntegers := TDictionary<string, Integer>.Create;
-  FStrings := TDictionary<string, string>.Create;
 end;
 
 destructor TKeyStore.Destroy;
 begin
-  FStrings.Free;
-  FIntegers.Free;
   FNames.Free;
   inherited;
 end;
 
-function TKeyStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
-begin
-  if not FIntegers.TryGetValue(AName, Result) then
-  begin
-    Result := ADefault;
-  end;
-end;
-
 procedure TKeyStore.WriteInteger(const AName: string; AValue: Integer);
 begin
-  if not FIntegers.ContainsKey(AName) then
+  if not FValues.ContainsKey(AName) then
   begin
     FNames.Add(AName);
   end;
-  FIntegers.AddOrSetValue(AName, AValue);
-end;
-
-function TKeyStore.ReadString(const AName, ADefault: string): string;
-begin
-  if not FStrings.TryGetValue(AName, Result) then
-  begin
-    Result := ADefault;
-  end;
-end;
-
-procedure TKeyStore.WriteString(const AName, AValue: string);
-begin
-  FStrings.AddOrSetValue(AName, AValue);
+  inherited WriteInteger(AName, AValue);
 end;
 
 function EntryOf(const AEntries: TArray<TAtlasKeyEntry>; AFunc: TAtlasKeyFunction): TAtlasKeyEntry;
@@ -456,6 +427,8 @@ begin
     mSettings.WelcomePage := True;
     mSettings.WelcomePageSearch := True;
     mSettings.MultiCursor := True;
+    // Auswahl an den Assistenten zählt nur mit Kopplung (TAtlasKeyFunction.AssistantsMention).
+    mSettings.AssistantsLink := True;
     mSettings.Save(mStoreRef);
     mCount := 0;
     for mName in mStore.Names.ToArray do
@@ -576,7 +549,7 @@ begin
       TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap,
       TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.StepIntoTarget,
       TAtlasKeyFunction.ExpressionType, TAtlasKeyFunction.SafeDelete, TAtlasKeyFunction.CheckFile,
-      TAtlasKeyFunction.SectionAppend] then
+      TAtlasKeyFunction.SectionAppend, TAtlasKeyFunction.AssistantsMention] then
     begin
       Assert.IsTrue(mEntry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(mEntry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(mEntry.Status('IDE: Klassennavigation')),

@@ -89,10 +89,11 @@ uses
   System.SysUtils,
   System.DateUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Providers.Null,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Null,
   Atlas.Core.Welcome.Projects,
-  Atlas.Core.Welcome.Continue;
+  Atlas.Core.Welcome.Continue,
+  Atlas.Tests.Lists;
 
 const
   cRoot = 'C:\Repo';
@@ -220,17 +221,8 @@ begin
 end;
 
 function TFakeVcs.Called(const AName: string): Boolean;
-var
-  mCall: string;
 begin
-  Result := False;
-  for mCall in Calls do
-  begin
-    if mCall = AName then
-    begin
-      Exit(True);
-    end;
-  end;
+  Result := TTestLists.Contains(Calls, AName);
 end;
 
 function TFakeVcs.CalledStarting(const APrefix: string): Boolean;

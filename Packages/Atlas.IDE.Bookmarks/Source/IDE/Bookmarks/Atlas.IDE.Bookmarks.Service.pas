@@ -138,7 +138,7 @@ implementation
 
 uses
   Atlas.UI.Bookmarks.Frame,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   System.Classes,
   System.Types,
   System.DateUtils,
@@ -146,20 +146,20 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Bookmarks.Quick,
   Atlas.Core.Bookmarks.Plan,
   Atlas.UI.Bookmarks.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Bookmarks.Dialog,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Bookmarks.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Host;
 
 const

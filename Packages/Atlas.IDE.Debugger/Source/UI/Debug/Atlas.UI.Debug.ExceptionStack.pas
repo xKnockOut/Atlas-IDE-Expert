@@ -68,46 +68,37 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Themes,
-  Atlas.UI.Debug.Exceptions.Strings;
-
-/// <summary>Spalte mit ACaption und AWidth (logische Pixel) an AList.</summary>
-procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := MulDiv(AWidth, AList.CurrentPPI, 96);
-end;
+  Atlas.UI.Debug.Exceptions.Strings,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Service;
 
 /// <summary>Farbe AColor im Stil von AList, nicht im globalen: Die IDE themt ihre Fenster je Formular.</summary>
-function ListColor(AList: TListView; AColor: TColor): TColor;
-begin
-  Result := ColorToRGB(StyleServices(AList).GetSystemColor(AColor));
-end;
-
 { TAtlasDebugExceptionStack }
 
 constructor TAtlasDebugExceptionStack.CreateIn(AParent: TWinControl);
 const
-  // Spaltenbreiten bei 96 dpi.
+  // Spaltenbreiten, Höhe der Liste und kleinste Höhe am Teiler bei 96 dpi.
   cFrameWidth = 330;
   cLocationWidth = 170;
+  cListHeight = 140;
+  cSplitterMinSize = 40;
 begin
   inherited Create(AParent);
   FList := TListView.Create(Self);
   FList.Parent := AParent;
   FList.Align := alBottom;
   FList.AlignWithMargins := True;
-  FList.Height := MulDiv(140, AParent.CurrentPPI, 96);
+  FList.Height := MulDiv(cListHeight, AParent.CurrentPPI, 96);
   FList.ViewStyle := vsReport;
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.ReadOnly := True;
   FList.MultiSelect := False;
   FList.ColumnClick := False;
-  AddColumn(FList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStackCaption), cFrameWidth);
-  AddColumn(FList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStackCaption), cFrameWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
   FList.OnCustomDrawItem := ListCustomDrawItem;
@@ -117,7 +108,7 @@ begin
   FSplitter.Parent := AParent;
   FSplitter.Align := alBottom;
   FSplitter.Top := FList.Top - 1;
-  FSplitter.MinSize := MulDiv(40, AParent.CurrentPPI, 96);
+  FSplitter.MinSize := MulDiv(cSplitterMinSize, AParent.CurrentPPI, 96);
 end;
 
 procedure TAtlasDebugExceptionStack.SetJustMyCode(AValue: Boolean);
@@ -261,19 +252,19 @@ class procedure TAtlasDebugExceptionStack.RowColors(ACanvas: TCanvas; AList: TLi
 begin
   if cdsSelected in AState then
   begin
-    ACanvas.Brush.Color := ListColor(AList, clHighlight);
-    ACanvas.Font.Color := ListColor(AList, clHighlightText);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, clHighlight);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clHighlightText);
   end
   else
   begin
-    ACanvas.Brush.Color := ListColor(AList, AList.Color);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, AList.Color);
     if AGray then
     begin
-      ACanvas.Font.Color := ListColor(AList, clGrayText);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clGrayText);
     end
     else
     begin
-      ACanvas.Font.Color := ListColor(AList, AList.Font.Color);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, AList.Font.Color);
     end;
   end;
 end;

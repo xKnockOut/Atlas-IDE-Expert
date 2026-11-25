@@ -75,12 +75,12 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Session,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Welcome.IdeLayout;
@@ -411,8 +411,8 @@ begin
   try
     mSymbols := mSession.WorkspaceSymbols(Trim(APattern), ATimeoutMs);
   except
-    // Server beschäftigt oder Zeit abgelaufen: diesmal ohne Symbole.
-    on Exception do
+    // Server beschäftigt, Zeit abgelaufen oder Verbindung weg: diesmal ohne Symbole.
+    on ELspClientError do
       mSymbols := nil;
   end;
   for mSymbol in mSymbols do
@@ -543,15 +543,21 @@ begin
     end);
 end;
 
+const
+  /// <summary>Registry-Schlüssel der IDE mit Projektlisten.</summary>
+  cFavoriteProjects = 'Favorite Projects';
+  cWelcomeFavorites = 'WelcomePage\Favorites';
+  cClosedProjects = 'Closed Projects';
+
 class function TAtlasIdeWelcomeSearch.RecentProjects: TArray<string>;
 begin
   // Favoriten der Willkommensseite zuerst, dann die Liste „Wieder öffnen“.
-  Result := ProjectsIn(['Favorite Projects', 'WelcomePage\Favorites', 'Closed Projects']);
+  Result := ProjectsIn([cFavoriteProjects, cWelcomeFavorites, cClosedProjects]);
 end;
 
 class function TAtlasIdeWelcomeSearch.ClosedProjects: TArray<string>;
 begin
-  Result := ProjectsIn(['Closed Projects']);
+  Result := ProjectsIn([cClosedProjects]);
 end;
 
 class function TAtlasIdeWelcomeSearch.CacheRoot: string;

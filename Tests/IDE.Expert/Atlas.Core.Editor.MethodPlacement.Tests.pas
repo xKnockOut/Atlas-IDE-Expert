@@ -32,7 +32,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.MethodPlacement;
 
 const

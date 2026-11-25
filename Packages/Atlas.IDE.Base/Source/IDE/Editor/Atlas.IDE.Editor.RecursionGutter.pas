@@ -26,9 +26,9 @@ uses
   System.JSON,
   Vcl.Graphics,
   Vcl.ExtCtrls,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Recursion,
   Atlas.Core.Lsp.Session,
@@ -91,7 +91,7 @@ uses
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer;
 
 { TAtlasIdeRecursionGutter }
 

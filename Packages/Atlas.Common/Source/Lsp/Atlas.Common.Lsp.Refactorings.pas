@@ -40,7 +40,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.WithResolution,
   Atlas.Common.Editing.Inlining,
@@ -130,14 +130,15 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CreateMethod,
-  Atlas.Common.Editing.CaseCompletion,
-  Atlas.Common.Editing.StatementText,
-  Atlas.Common.Editing.IfCase,
+  Atlas.Common.Pascal.CaseCompletion,
+  Atlas.Common.Pascal.StatementText,
+  Atlas.Common.Semantics.IfCase,
   Atlas.Common.Editing.Conditions,
-  Atlas.Common.Editing.ConditionalExpression,
+  Atlas.Common.Semantics.ConditionalExpression,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.Completion,
@@ -592,8 +593,8 @@ begin
     mClassBody := TRoutineBody.TypeBody(mOtherTree.Root, AResolved.Name);
     for mUnitName in FUnits do
     begin
-      if not SameText(mUnitName, AOwner.UnitName) and not TUsesClauses.IsUsed(mUses, mUnitName,
-        FContext.Namespaces) and TUsesClauses.AddUnit(mOtherTree.Tokens, mClassBody.StartOffset, mUnitName,
+      if not SameText(mUnitName, AOwner.UnitName) and not TPascalUses.IsUsed(mUses, mUnitName,
+        FContext.Namespaces) and TPascalUsesEdits.AddUnit(mOtherTree.Tokens, mClassBody.StartOffset, mUnitName,
         mLineBreak, mEdit) then
       begin
         mEdits := mEdits + [mEdit];

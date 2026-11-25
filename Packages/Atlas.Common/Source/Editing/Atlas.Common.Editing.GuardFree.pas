@@ -84,7 +84,8 @@ uses
   System.StrUtils,
   System.RegularExpressions,
   System.Generics.Collections,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 function Covers(ANode: TSyntaxNode; ALine: Integer): Boolean;
 begin
@@ -188,24 +189,10 @@ begin
   Result := Trim(StringReplace(Result, ';', '', [rfReplaceAll]));
 end;
 
-function HasName(const ANames, AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in SplitString(ANames, ',') do
-  begin
-    if SameText(Trim(mName), AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Merkt den Typ, wenn ADecl AName deklariert.</summary>
 procedure NoteDecl(ADecl: TSyntaxNode; const AText, AName: string; var AFound: string; var AAny: Boolean);
 begin
-  if HasName(ADecl.Name, AName) then
+  if TTextNames.InList(ADecl.Name, AName) then
   begin
     AFound := TypeOfDecl(AText, ADecl);
     AAny := True;

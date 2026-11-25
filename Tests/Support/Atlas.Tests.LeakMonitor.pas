@@ -133,8 +133,8 @@ uses
   Atlas.Tests.AllocationTrace,
   Atlas.Tests.FirstUse,
   Atlas.Common.Localization.Texts,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.TimeLimit;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.TimeLimit;
 
 const
   /// <summary>Höchstens so lange wartet der Monitor auf Freigaben anderer Threads.</summary>

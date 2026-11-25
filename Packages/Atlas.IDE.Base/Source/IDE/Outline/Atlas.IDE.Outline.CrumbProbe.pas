@@ -40,8 +40,8 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Controls,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorWindows;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.ToolsApi.Editor.Windows;
 
 const
   // Texte des Protokolls (Diagnose, nicht übersetzt wie die übrigen Einträge von TAtlasGuard.Log).

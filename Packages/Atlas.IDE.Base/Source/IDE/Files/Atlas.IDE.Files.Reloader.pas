@@ -27,8 +27,8 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Files.ExternalChanges,
-  Atlas.Core.Notifications.Contract;
+  Atlas.Plugin.Files.ExternalChanges,
+  Atlas.Plugin.Notifications.Contract;
 
 type
   TAtlasFileReloader = class
@@ -62,24 +62,38 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Winapi.Windows,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Diagnostics.Hangs,
-  Atlas.Core.Files.TextDiff,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Files.EncodingDefault,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Diagnostics.Hangs,
+  Atlas.Plugin.Files.TextDiff,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Files.EncodingDefault,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.Foundation.Host,
   Atlas.UI.Notifications.Strings;
 
-/// <summary>Text der Datei auf der Platte in ihrer Kodierung; Ausnahme, wenn sie nicht lesbar ist.</summary>
-function DiskText(const AFileName: string): string;
+/// <summary>Text der Datei auf der Platte in ihrer Kodierung; False, wenn sie fehlt, gesperrt oder nicht lesbar
+/// ist.</summary>
+function TryDiskText(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
+  AText := '';
+  try
+    AText := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
+      Result := False;
+    end;
+  end;
 end;
 
 function NowMs: Int64;
@@ -190,11 +204,9 @@ begin
   begin
     Exit;
   end;
-  try
-    mDisk := DiskText(AFileName);
-  except
-    on Exception do
-      Exit;
+  if not TryDiskText(AFileName, mDisk) then
+  begin
+    Exit;
   end;
   mLines := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(mBuffer), mDisk);
   if Length(mLines) = 0 then
@@ -388,12 +400,11 @@ begin
     Exit;
   end;
   mCurrent := TAtlasEditorBuffer.Text(mBuffer).Replace(#13, '');
-  try
-    mDisk := DiskText(AFileName).Replace(#13, '');
-  except
+  if not TryDiskText(AFileName, mDisk) then
+  begin
     Exit;
   end;
-  Result := mCurrent = mDisk;
+  Result := mCurrent = mDisk.Replace(#13, '');
 end;
 
 /// <summary>Eigene Änderungen behalten: Hinweis mit „Vergleichen“, bei „einblenden“ der Unterschied (#536).</summary>

@@ -18,7 +18,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Lsp.Lifecycle,
-  Shell.Platform,
+  Platform.Server,
   Shell.Diagnostics;
 
 type
@@ -101,7 +101,7 @@ begin
   FServices := AServices;
   FEndReason := TDiagnosticEndReason.InputClosed;
   FRequestTimeout := ARequestTimeoutMs;
-  FDiagnostics := TShellDiagnostics.Create(TShellDiagnostics.DefaultFolder, IntToStr(TShellPlatform.CurrentProcessId),
+  FDiagnostics := TShellDiagnostics.Create(TShellDiagnostics.DefaultFolder, IntToStr(TServerPlatform.CurrentProcessId),
     FServices.Documents, FServices.Index);
   FDiagnosticsRef := FDiagnostics;
   FDiagnostics.TimeoutMs := CurrentRequestTimeout;
@@ -181,7 +181,7 @@ var
 begin
   Result := Format('%s: %s%sLetzte Nachricht: %s', [AError.ClassName, TLogMarks.Text(AError.Message), sLineBreak,
     TLogMarks.Text(FServices.Dispatcher.LastMessage)]);
-  mStack := TShellPlatform.StackTraceOf(AError);
+  mStack := TServerPlatform.StackTraceOf(AError);
   if mStack <> '' then
   begin
     Result := Result + sLineBreak + mStack;

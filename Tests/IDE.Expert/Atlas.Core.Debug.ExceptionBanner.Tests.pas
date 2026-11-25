@@ -128,7 +128,7 @@ begin
   Assert.AreEqual('EConvertError', mInfo.ExceptionClass);
   Assert.AreEqual('''x'' ist kein gültiger Wert', mInfo.Message);
   Assert.AreEqual('Hauptthread 4711', mInfo.ThreadText);
-  Assert.AreEqual(3, mInfo.Count);
+  Assert.AreEqual(3, Integer(mInfo.Count));
   Assert.AreEqual(3, mInfo.FrameIndex);
   Assert.AreEqual(3, mInfo.Hidden, 'drei Ebenen über dem eigenen Code');
   Assert.AreEqual('Unit1.TForm1.Button1Click', mInfo.Routine);
@@ -164,7 +164,7 @@ begin
   Assert.AreEqual(0, mInfo.Hidden);
   Assert.AreEqual('Demo.Worker', mInfo.Routine, 'Adresse entfällt');
   Assert.AreEqual('Worker (1)', mInfo.ThreadText);
-  Assert.AreEqual(1, mInfo.Count, 'mindestens einmal');
+  Assert.AreEqual(1, Integer(mInfo.Count), 'mindestens einmal');
   Assert.AreEqual('', mInfo.LocationText);
   Assert.IsFalse(mInfo.CanIgnoreLocation);
 end;

@@ -50,56 +50,17 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.SharedState,
-  Atlas.Tests.RuleAssert;
-
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex: Integer;
-  mEdit: TRuleEdit;
-
-  function OffsetOf(const APosition: TTextPosition): Integer;
-  var
-    mLine, mPosition: Integer;
-  begin
-    mPosition := 0;
-    for mLine := 1 to APosition.Line do
-    begin
-      mPosition := Pos(#10, AText, mPosition + 1);
-    end;
-    Result := mPosition + APosition.Character;
-  end;
-
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
-      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
-  end;
-end;
-
-procedure AssertParses(const ASource: string);
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(ASource);
-  try
-    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
-  finally
-    mTree.Free;
-  end;
-end;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 /// <summary>Unit Rechnen mit der Routine Summieren: AVar als lokale Variablen, ABody als Rumpf von TParallel.For.
 /// </summary>
@@ -224,10 +185,10 @@ begin
   mFindings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('TInterlocked.Add(Summe, Werte[I]) verwenden', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Rechnen('System.Threading, System.SyncObjs', '  Summe: Integer;'#10,
     '      TInterlocked.Add(Summe, Werte[I]);'#10), mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mFixed))));
 end;
 
@@ -238,7 +199,7 @@ var
 begin
   mSource := Rechnen('System.Threading', '  Summe: Integer;'#10, '      Summe := Summe + Werte[I];'#10);
   mFindings := TRuleAssert.Findings(TParallelForSharedWriteRule.Create, mSource);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Rechnen('System.Threading, System.SyncObjs', '  Summe: Integer;'#10,
     '      TInterlocked.Add(Summe, Werte[I]);'#10), mFixed);
 end;
@@ -279,7 +240,7 @@ begin
   Assert.AreEqual('Liste wird parallel ohne Sperre verändert (Add); die Sammlung kann beschädigt werden.',
     mFindings[0].Message);
   Assert.AreEqual('Sperre mit TMonitor um Liste.Add legen', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
     '      if Werte[I] > 0 then'#10 +
     '        begin'#10 +
@@ -290,7 +251,7 @@ begin
     '            System.TMonitor.Exit(Liste);'#10 +
     '          end;'#10 +
     '        end;'#10), mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   // Direkt im Rumpf ohne begin … end.
   mSource := Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
     '      Liste.Add(Werte[I]);'#10);
@@ -301,7 +262,7 @@ begin
     '        Liste.Add(Werte[I]);'#10 +
     '      finally'#10 +
     '        System.TMonitor.Exit(Liste);'#10 +
-    '      end;'#10), ApplyFix(mSource, mFindings[0].Fixes[0]));
+    '      end;'#10), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
   // Mehrere Anweisungen in einer Zeile: keine Korrektur.
   mSource := Rechnen('System.Threading, System.Generics.Collections', '  Liste: TList<Integer>;'#10,
     '      Liste.Add(Werte[I]); Liste.Delete(0);'#10);
@@ -461,10 +422,10 @@ begin
   mFindings := TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('TInterlocked.Increment(GVerarbeitet) verwenden', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Arbeit('  while not Terminated do'#10'    if Holen then TInterlocked.Increment(GVerarbeitet);'#10),
     mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TThreadUnsafeIncrementRule.Create, mFixed))));
 end;
 

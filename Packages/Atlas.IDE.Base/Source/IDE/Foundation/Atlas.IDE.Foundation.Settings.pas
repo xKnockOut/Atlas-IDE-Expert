@@ -36,10 +36,10 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Settings.ModuleSwitches;
 
@@ -122,15 +122,16 @@ uses
   Atlas.Core.Settings.QueryMigration,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Settings.SchemaData,
-  Atlas.Core.Settings.Layers,
+  Atlas.Plugin.Settings.SchemaData,
+  Atlas.Plugin.Settings.Layers,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.Experimental,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
-  Atlas.UI.Strings,
-  Atlas.Core.Settings.Contract;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Localization.Strings,
+  Atlas.Core.Settings.Contract,
+  Atlas.Plugin.Files.Contract;
 
 type
   /// <summary>Zustand von TAtlasIdeSettings (gelesene, wirksame Werte, Schnellschalter, Stände, Katalogteile).
@@ -308,8 +309,12 @@ begin
     end;
   except
     // Gesperrt oder unlesbar: wie keine Datei für diese Sitzung, aber nicht überschreiben.
-    on Exception do
+    on E: Exception do
     begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       AContent.Text := '';
       Result := False;
     end;

@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeThreads: array[0..122] of string = (
+  cCatalogLinesDeThreads: array[0..127] of string = (
     '{',
     '      "id": "thread-vcl-access",',
     '      "name": "VCL-Zugriff aus einem Thread",',
@@ -84,6 +84,16 @@ const
     '          "description": "Kommentar, der eine Zeile ausnimmt."',
     '        }',
     '      ]',
+    '    },',
+    '{',
+    '      "id": "queue-without-remove",',
+    '      "name": "Thread reiht ein, entfernt die Einträge aber nie",',
+    '      "description": "Ein Nachfahr von TThread reiht am eigenen Thread in den Hauptthread ein (Queue(…), ForceQueue(…), TThread.Queue(Self, …) oder TThread.Queue(CurrentThread, …)), aber niemand entfe' +
+    'rnt die Einträge mit RemoveQueuedEvents. Was beim Anhalten des Threads noch wartet, läuft danach mit freigegebenen Objekten bzw. nach dem Entladen des Packages in fremdem Speicher. Als Entfernen zählt' +
+    ' ein Aufruf in einer Methode der Klasse oder eines Vorfahren der Unit, ein Aufruf mit einem anderen Argument als Self oder nil an anderer Stelle der Unit (der Besitzer räumt beim Anhalten auf, TThread' +
+    '.RemoveQueuedEvents(FWorker)) und eine andere Unit des Projekts, die Klasse und RemoveQueuedEvents nennt (Index mit index.usages). Synchronize wartet und wird nicht gemeldet; Queue(nil, …) meldet queu' +
+    'e-nil-in-package; eine eigene Methode namens Queue zählt nicht. Sicherheit hoch; niedrig, wenn ein Vorfahr aus einer anderen Unit die Einträge entfernen könnte. Korrektur: RemoveQueuedEvents(Self) im ' +
+    'Destruktor vor inherited ergänzen (legt den Destruktor hinter dem letzten Konstruktor an, wenn er fehlt; nicht bei eingebetteten Klassen)."',
     '    },',
     '{',
     '      "id": "blocking-call-in-main-thread",',

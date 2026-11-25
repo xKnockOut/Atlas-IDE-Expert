@@ -1,8 +1,9 @@
 ﻿unit Atlas.Common.Logging.Providers.Logger;
 
 // Logger, der jeden Eintrag an alle registrierten Senken verteilt, deren
-// Mindeststufe er erreicht. Fehler einer Senke werden verschluckt, damit
-// Logging nie den Server zum Absturz bringt.
+// Mindeststufe er erreicht. Fehler einer Senke enden in TReporting.Quietly
+// (gezählt, sonst ohne Empfänger), damit Logging nie den Server zum Absturz
+// bringt und die übrigen Senken weiter schreiben.
 
 interface
 
@@ -36,6 +37,19 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Text.Reporting;
+
+/// <summary>AEntry an ASink; ein Fehler der Senke stört weder andere Senken noch den Aufrufer.</summary>
+procedure WriteQuietly(const ASink: ILogSink; const AEntry: TLogEntry);
+begin
+  TReporting.Quietly(
+    procedure
+    begin
+      ASink.Write(AEntry);
+    end);
+end;
 
 { TLogger }
 
@@ -80,11 +94,9 @@ begin
     for mSinkEntry in FSinks do
     begin
       if ALevel >= mSinkEntry.MinLevel then
-        try
-          mSinkEntry.Sink.Write(mLogEntry);
-        except
-          // Fehler einer Senke dürfen weder andere Senken noch den Aufrufer stören.
-        end;
+      begin
+        WriteQuietly(mSinkEntry.Sink, mLogEntry);
+      end;
     end;
   finally
     FLock.Leave;

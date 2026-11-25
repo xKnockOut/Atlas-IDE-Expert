@@ -39,41 +39,14 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.LeakCandidates,
-  Atlas.Common.Logging.Providers.Logger,
-  Shell.Composition.LeakCandidates;
-
-function NoText(const AFileName: string; out AText: string): Boolean;
-begin
-  AText := '';
-  Result := False;
-end;
-
-function NoSelection(const AOrigin: string): string;
-begin
-  Result := '';
-end;
-
-function NoActive: string;
-begin
-  Result := '';
-end;
+  Shell.Composition.LeakCandidates,
+  Shell.Composition.TestSupport;
 
 { TShellLeakCandidatesTests }
 
 procedure TShellLeakCandidatesTests.Setup;
-var
-  mRegistry: TShellWorkspaceRegistryServices;
 begin
-  mRegistry := Default(TShellWorkspaceRegistryServices);
-  mRegistry.Logger := TLogger.Create;
-  mRegistry.SelectedProject := NoSelection;
-  mRegistry.ActiveProject := NoActive;
-  mRegistry.ReadText := NoText;
-  FRegistry := TShellWorkspaceRegistry.Create(mRegistry);
-  FServices := Default(TShellLeakSetupServices);
-  FServices.Logger := mRegistry.Logger;
-  FServices.Workspaces := FRegistry;
-  FServices.ReadText := NoText;
+  FServices := TShellTest.LeakServices(FRegistry);
 end;
 
 procedure TShellLeakCandidatesTests.TearDown;

@@ -29,9 +29,9 @@ uses
   System.Math,
   System.Net.HttpClient,
   System.Net.URLClient,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.AsyncWait,
-  Atlas.Core.Diagnostics.BoundedStream;
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.AsyncWait,
+  Atlas.Plugin.Diagnostics.BoundedStream;
 
 const
   // Die Versionsdatei ist ein paar Byte groß; mehr nimmt der Antwort-Stream nicht an.
@@ -131,9 +131,11 @@ begin
   Result := False;
   AText := '';
   AError := '';
+  // mContent im try anlegen: Scheitert es, gibt finally den Client frei (Free auf nil ist harmlos).
+  mContent := nil;
   mClient := THTTPClient.Create;
-  mContent := TAtlasBoundedStream.Create(cMaxBytes);
   try
+    mContent := TAtlasBoundedStream.Create(cMaxBytes);
     // Kurz: Ein Abbruch während des Verbindungsaufbaus wirkt erst, wenn dieser endet.
     mClient.ConnectionTimeout := TAtlasAsyncWait.ConnectTimeout(ATimeoutMs);
     mClient.ResponseTimeout := ATimeoutMs;

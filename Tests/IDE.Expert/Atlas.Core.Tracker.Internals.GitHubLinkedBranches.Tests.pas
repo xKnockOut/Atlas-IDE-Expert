@@ -47,7 +47,8 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Providers.GitHub,
-  Atlas.Core.Tracker.Internals.GitHubLinkedBranches;
+  Atlas.Core.Tracker.Internals.GitHubLinkedBranches,
+  Atlas.Core.Tracker.TestSupport;
 
 const
   cGraphQlUrl = 'https://api.github.com/graphql';
@@ -59,15 +60,13 @@ const
 
 type
   /// <summary>Antworten nach Textstück im Inhalt; merkt sich alle Inhalte.</summary>
-  TFakeLinkTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiSend)
+  TFakeLinkTransport = class(TNotFoundTransport, IAtlasCiSend)
   private
     FParts: TArray<string>;
     FTexts: TArray<string>;
   public
     Bodies: TArray<string>;
     procedure Answer(const APart, AText: string);
-    function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
     function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
       Boolean;
   end;
@@ -78,15 +77,6 @@ procedure TFakeLinkTransport.Answer(const APart, AText: string);
 begin
   FParts := FParts + [APart];
   FTexts := FTexts + [AText];
-end;
-
-function TFakeLinkTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-  out AError: TAtlasCiFetchError): Boolean;
-begin
-  AStatus := 404;
-  AText := '';
-  AError := TAtlasCiFetchError.None;
-  Result := True;
 end;
 
 function TFakeLinkTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;

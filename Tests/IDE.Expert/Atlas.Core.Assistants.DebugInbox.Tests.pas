@@ -23,6 +23,9 @@ type
     procedure WritesStoppedState;
     [Test]
     procedure WritesRunningStateWithoutDetails;
+    /// <summary>#2895: Haltepunkte, die nicht greifen werden, stehen nach einem Start in jedem Zustand.</summary>
+    [Test]
+    procedure WritesBreakpointWarnings;
     [Test]
     procedure WritesBreakpointAndEvaluation;
     [Test]
@@ -160,7 +163,7 @@ begin
     Assert.AreEqual('C:\P\Main.pas', mJson.GetValue<string>('result.location.file'));
     Assert.AreEqual(42, mJson.GetValue<Integer>('result.location.line'));
     mFrames := mJson.GetValue<TJSONArray>('result.frames');
-    Assert.AreEqual(2, mFrames.Count);
+    Assert.AreEqual(2, Integer(mFrames.Count));
     Assert.IsTrue((mFrames.Items[0] as TJSONObject).GetValue<Boolean>('own'));
     Assert.IsFalse((mFrames.Items[1] as TJSONObject).GetValue<Boolean>('own'));
     mFrames := mJson.GetValue<TJSONArray>('result.locals');
@@ -184,6 +187,45 @@ begin
     Assert.AreEqual('running', mResult.GetValue<string>('state'));
     Assert.IsNull(mResult.GetValue('stop'));
     Assert.IsNull(mResult.GetValue('frames'));
+  finally
+    mResult.Free;
+  end;
+end;
+
+procedure TAtlasDebugInboxTests.WritesBreakpointWarnings;
+var
+  mResult: TJSONObject;
+  mState: TAtlasDebugControlState;
+  mWarnings: TJSONArray;
+begin
+  mState := Default(TAtlasDebugControlState);
+  mState.Phase := TAtlasDebugControlPhase.Running;
+  SetLength(mState.Warnings, 2);
+  mState.Warnings[0].FileName := 'C:\P\Main.pas';
+  mState.Warnings[0].Line := 12;
+  mState.Warnings[0].Reason := 'noCode';
+  mState.Warnings[0].Text := 'Zeile ohne Code';
+  mState.Warnings[0].NextLine := 14;
+  mState.Warnings[1].FileName := 'C:\Q\Other.pas';
+  mState.Warnings[1].Line := 3;
+  mState.Warnings[1].Reason := 'notInProject';
+  mResult := TAtlasDebugInbox.StateJson('S1', 'running', mState);
+  try
+    mWarnings := mResult.GetValue('breakpointWarnings') as TJSONArray;
+    Assert.IsNotNull(mWarnings);
+    Assert.AreEqual(2, Integer(mWarnings.Count));
+    Assert.AreEqual('noCode', (mWarnings.Items[0] as TJSONObject).GetValue<string>('reason'));
+    Assert.AreEqual(12, (mWarnings.Items[0] as TJSONObject).GetValue<Integer>('line'));
+    Assert.AreEqual(14, (mWarnings.Items[0] as TJSONObject).GetValue<Integer>('nextLine'));
+    Assert.AreEqual('Zeile ohne Code', (mWarnings.Items[0] as TJSONObject).GetValue<string>('text'));
+    Assert.IsNull((mWarnings.Items[1] as TJSONObject).GetValue('nextLine'), 'ohne nächste Codezeile');
+  finally
+    mResult.Free;
+  end;
+  mState.Warnings := nil;
+  mResult := TAtlasDebugInbox.StateJson('S1', 'running', mState);
+  try
+    Assert.IsNull(mResult.GetValue('breakpointWarnings'), 'ohne Funde kein Feld');
   finally
     mResult.Free;
   end;

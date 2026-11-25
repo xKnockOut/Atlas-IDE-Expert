@@ -159,7 +159,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Text.Names;
 
 const
   cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -196,27 +197,12 @@ end;
 
 { Methoden der Unit }
 
-function WithoutGenerics(const AName: string): string;
-var
-  mBracket: Integer;
-begin
-  mBracket := Pos('<', AName);
-  if mBracket > 0 then
-  begin
-    Result := Copy(AName, 1, mBracket - 1);
-  end
-  else
-  begin
-    Result := AName;
-  end;
-end;
-
 /// <summary>Letzter Teil eines qualifizierten Typnamens (TAussen.TInnen → TInnen), ohne Typparameter.</summary>
 function LastTypeName(const AName: string): string;
 var
   mPlain: string;
 begin
-  mPlain := WithoutGenerics(AName);
+  mPlain := TTextNames.WithoutGenerics(AName);
   Result := Copy(mPlain, LastDelimiter('.', mPlain) + 1, MaxInt);
 end;
 
@@ -269,7 +255,7 @@ var
 begin
   for mSymbol in AUnit.Symbols do
   begin
-    if (mSymbol.Kind in cTypeKinds) and SameText(WithoutGenerics(mSymbol.Name), ATypeName) then
+    if (mSymbol.Kind in cTypeKinds) and SameText(TTextNames.WithoutGenerics(mSymbol.Name), ATypeName) then
     begin
       ASymbol := mSymbol;
       Exit(True);
@@ -410,21 +396,6 @@ end;
 
 { Tests je Methode }
 
-/// <summary>Stelle des Tests ATestIndex in AFound.Places; -1, wenn das Symbol selbst der Test ist.</summary>
-function PlaceOfTest(const AFound: TImpactResult; ATestIndex: Integer): Integer;
-var
-  mStep: Integer;
-begin
-  for mStep := 0 to High(AFound.Places) do
-  begin
-    if AFound.Places[mStep].Test = ATestIndex then
-    begin
-      Exit(mStep);
-    end;
-  end;
-  Result := -1;
-end;
-
 /// <summary>Ist ein Schritt von der Stelle APlace zurück zum Symbol erschlossen?</summary>
 function PathInferred(const AFound: TImpactResult; APlace: Integer): Boolean;
 var
@@ -463,7 +434,7 @@ begin
       mTest.FileName := AFound.Tests[mIndex].FileName;
       mTest.Line := AFound.Tests[mIndex].Line;
       mTest.Level := AFound.Tests[mIndex].Level;
-      mTest.Inferred := PathInferred(AFound, PlaceOfTest(AFound, mIndex));
+      mTest.Inferred := PathInferred(AFound, AFound.PlaceOfTest(mIndex));
       Result := Result + [mTest];
     end;
   finally

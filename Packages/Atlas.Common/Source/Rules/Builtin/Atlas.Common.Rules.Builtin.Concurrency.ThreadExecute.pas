@@ -9,7 +9,8 @@ interface
 
 uses
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
 
 type
   TThreadExecuteWithoutExceptRule = class(TInterfacedObject, IRule)
@@ -22,6 +23,29 @@ type
 /// von Execute einer Thread-Klasse umschließt?</summary>
 function IsThreadExecuteGuard(const AContext: TRuleContext; AHandler: TSyntaxNode): Boolean;
 
+/// <summary>Bearbeitungen, die den Rumpf ABody einer Methode in try … except legen und eine Ausnahme mit
+/// ALogger.Error(ClassName + '.AMethod: ' + E.Message) melden; ergänzt System.SysUtils, wenn es fehlt. False ohne
+/// ALogger, bei kurzen Rümpfen und wenn begin oder end nicht allein in ihrer Zeile stehen.</summary>
+function TryExceptEdits(const AContext: TRuleContext; ABody: TSyntaxNode; const ALogger, AMethod: string;
+  out AEdits: TArray<TRuleEdit>): Boolean;
+
+/// <summary>Erbt die Klasse AOwner der Unit (auch eingebettet, TSampler.TWorker) von TThread?</summary>
+function IsThreadClassIn(AAncestry: TAncestry; const AOwner: string): Boolean;
+
+type
+  /// <summary>Grundlage der Durchsicht einer Unit nach Thread-Klassen: Kontext, Meldungen, Routinen und Vorfahren
+  /// aus Unit und Index.</summary>
+  TThreadUnitScan = class
+  protected
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FRoutines: TArray<TSyntaxNode>;
+    FAncestry: TAncestry;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    destructor Destroy; override;
+  end;
+
 implementation
 
 uses
@@ -31,13 +55,14 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
   Atlas.Common.Rules.Builtin.Flow.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -82,39 +107,6 @@ begin
     if not (mChild.Kind in [TSyntaxKind.EmptyStatement, TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock]) then
     begin
       Result := Result + [mChild];
-    end;
-  end;
-end;
-
-/// <summary>Fängt der except-Teil von ATry alle Ausnahmen (except ohne on, on E: Exception, on TObject oder else)?
-/// </summary>
-function CatchesAll(ATry: TSyntaxNode): Boolean;
-var
-  mExcept, mChild, mType: TSyntaxNode;
-  mIndex: Integer;
-begin
-  Result := False;
-  mExcept := ATry.FindChild(TSyntaxKind.ExceptBlock);
-  if mExcept = nil then
-  begin
-    Exit;
-  end;
-  if mExcept.FindChild(TSyntaxKind.ExceptionHandler) = nil then
-  begin
-    Exit(True);
-  end;
-  for mIndex := 0 to mExcept.ChildCount - 1 do
-  begin
-    mChild := mExcept[mIndex];
-    if mChild.Kind <> TSyntaxKind.ExceptionHandler then
-    begin
-      // Anweisungen neben den Handlern: der else-Teil fängt den Rest.
-      Exit(True);
-    end;
-    mType := mChild.FindChild(TSyntaxKind.TypeReference);
-    if (mType <> nil) and MatchText(ShortName(mType.Name), ['Exception', 'TObject']) then
-    begin
-      Exit(True);
     end;
   end;
 end;
@@ -180,17 +172,92 @@ begin
     end) <> nil;
 end;
 
+// Steht das Wort an APosition allein in seiner Zeile (höchstens ein Semikolon dahinter)?
+function OnOwnLine(const ALines: TArray<string>; const APosition: TTextPosition; ALength: Integer): Boolean;
+begin
+  Result := (APosition.Line <= High(ALines)) and (Trim(Copy(ALines[APosition.Line], 1, APosition.Character)) = '') and
+    MatchText(Trim(Copy(ALines[APosition.Line], APosition.Character + ALength + 1, MaxInt)), ['', ';']);
+end;
+
+function TryExceptEdits(const AContext: TRuleContext; ABody: TSyntaxNode; const ALogger, AMethod: string;
+  out AEdits: TArray<TRuleEdit>): Boolean;
+var
+  mLines: TArray<string>;
+  mLineBreak, mIndent, mStep, mText: string;
+  mLine: Integer;
+  mUsesEdit: TRuleEdit;
+begin
+  AEdits := nil;
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+  Result := (ALogger <> '') and (ABody.EndPos.Line - ABody.StartPos.Line >= 2) and
+    OnOwnLine(mLines, ABody.StartPos, Length('begin')) and
+    OnOwnLine(mLines, TTextPosition.Create(ABody.EndPos.Line, ABody.EndPos.Character - Length('end')), Length('end'));
+  if not Result then
+  begin
+    Exit;
+  end;
+  mIndent := TTextLines.IndentOf(mLines[ABody.StartPos.Line]);
+  mStep := TRoutineBody.IndentUnit(AContext.Formatting);
+  mText := mIndent + mStep + 'try' + mLineBreak;
+  for mLine := ABody.StartPos.Line + 1 to ABody.EndPos.Line - 1 do
+  begin
+    if Trim(mLines[mLine]) = '' then
+    begin
+      mText := mText + mLines[mLine] + mLineBreak;
+    end
+    else
+    begin
+      mText := mText + mStep + mLines[mLine] + mLineBreak;
+    end;
+  end;
+  mText := mText + mIndent + mStep + 'except' + mLineBreak +
+    mIndent + mStep + mStep + 'on E: Exception do' + mLineBreak +
+    mIndent + mStep + mStep + mStep + ALogger + '.Error(ClassName + ''.' + AMethod + ': '' + E.Message);' +
+    mLineBreak + mIndent + mStep + 'end;' + mLineBreak;
+  AEdits := [TRuleEdit.Create(TTextRange.Create(ABody.StartPos.Line + 1, 0, ABody.EndPos.Line, 0), mText)];
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(AContext.Tree.Tokens), 'System.SysUtils', AContext.Namespaces) and
+    TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', mLineBreak, mUsesEdit) then
+  begin
+    AEdits := [mUsesEdit] + AEdits;
+  end;
+end;
+
+// Korrektur: Rumpf in try … except, Meldung über das Protokoll der Klasse.
+function WrapFix(const AContext: TRuleContext; ABody: TSyntaxNode; const ALogger: string): TArray<TRuleFix>;
+var
+  mEdits: TArray<TRuleEdit>;
+begin
+  Result := nil;
+  if TryExceptEdits(AContext, ABody, ALogger, 'Execute', mEdits) then
+  begin
+    Result := [TRuleFix.Create(cTexts[TThreadExecuteText.WrapTry].Fmt([ALogger]), mEdits)];
+  end;
+end;
+
+// Verschachtelte Klassen (TSampler.TWorker) stehen unter ihrem eigenen Namen mit der äußeren Klasse als Container.
+function IsThreadClassIn(AAncestry: TAncestry; const AOwner: string): Boolean;
+var
+  mNested: TSymbolLocation;
+  mParent: string;
+begin
+  if AAncestry.DescendsFrom(AOwner, 'TThread') then
+  begin
+    Exit(True);
+  end;
+  Result := (Pos('.', AOwner) > 0) and AAncestry.FindNestedType(ClassPart(AOwner), MethodPart(AOwner), mNested) and
+    (Length(mNested.Symbol.Ancestors) > 0);
+  if Result then
+  begin
+    mParent := TTextNames.BareTypeName(mNested.Symbol.Ancestors[0]);
+    Result := SameText(mParent, 'TThread') or AAncestry.DescendsFrom(mParent, 'TThread');
+  end;
+end;
+
 type
   /// <summary>Ein Lauf von TThreadExecuteWithoutExceptRule über eine Unit: Kontext, Bericht und der gemeinsame
   /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
-  TThreadExecuteScan = class
+  TThreadExecuteScan = class(TThreadUnitScan)
   private
-    FContext: TRuleContext;
-    FReport: IRuleReport;
-    FRoutines: TArray<TSyntaxNode>;
-    FAncestry: TAncestry;
-    FLines: TArray<string>;
-    FLineBreak: string;
     /// <summary>Unbekannte Routine, die der zuletzt geprüfte Rumpf aufruft (für die Meldung).</summary>
     FUnknownCall: string;
     function FindRoutine(const AName: string): TSyntaxNode;
@@ -203,21 +270,16 @@ type
     function EvaluatesFatalException(const AClass: string): Boolean;
     function EvaluatedInOtherUnits(const AClass: string): Boolean;
     function LoggerField(const AClass: string): string;
-    function OnOwnLine(const APosition: TTextPosition; ALength: Integer): Boolean;
-    function WrapFix(ABody: TSyntaxNode; const ALogger: string): TArray<TRuleFix>;
     procedure CheckExecute(ARoutine: TSyntaxNode; const AClass: string);
-    function IsThreadClass(const AOwner: string): Boolean;
   public
-    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
-    destructor Destroy; override;
     /// <summary>Thread-Klassen der Unit (aus der Unit und dem Index).</summary>
     function ThreadClassNames: TArray<string>;
     procedure Run;
   end;
 
-{ TThreadExecuteScan }
+{ TThreadUnitScan }
 
-constructor TThreadExecuteScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+constructor TThreadUnitScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
   FContext := AContext;
@@ -226,13 +288,14 @@ begin
   FAncestry := TAncestry.Create(FContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(FContext), FContext));
 end;
 
-destructor TThreadExecuteScan.Destroy;
+destructor TThreadUnitScan.Destroy;
 begin
   FAncestry.Free;
   FRoutines := nil;
-  FLines := nil;
   inherited;
 end;
+
+{ TThreadExecuteScan }
 
 function TThreadExecuteScan.FindRoutine(const AName: string): TSyntaxNode;
 var
@@ -404,7 +467,7 @@ begin
       Continue;
     end;
     mOwner := ClassPart(mRoutine.Name);
-    if (InList(mChain, mOwner) and not SameText(MethodPart(mRoutine.Name), 'Execute')) or NamesType(mRoutine, AClass) then
+    if (MatchText(mOwner, mChain) and not SameText(MethodPart(mRoutine.Name), 'Execute')) or NamesType(mRoutine, AClass) then
     begin
       Exit(True);
     end;
@@ -419,7 +482,7 @@ begin
           Result := TSyntaxSearchStep.Descend;
           if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
             (ANode[0].Kind = TSyntaxKind.MemberAccess) and SameText(ANode[0].Name, 'OnTerminate') and
-            InList(mReaders, ShortName(SourceText(FContext.Text, ANode[1]))) then
+            MatchText(ShortName(SourceText(FContext.Text, ANode[1])), mReaders) then
           begin
             Result := TSyntaxSearchStep.Found;
           end;
@@ -484,55 +547,6 @@ begin
   Result := '';
 end;
 
-// Steht das Wort an APosition allein in seiner Zeile (höchstens ein Semikolon dahinter)?
-function TThreadExecuteScan.OnOwnLine(const APosition: TTextPosition; ALength: Integer): Boolean;
-begin
-  Result := (APosition.Line <= High(FLines)) and (Trim(Copy(FLines[APosition.Line], 1, APosition.Character)) = '') and
-    MatchText(Trim(Copy(FLines[APosition.Line], APosition.Character + ALength + 1, MaxInt)), ['', ';']);
-end;
-
-// Korrektur: Rumpf in try … except, Meldung über das Protokoll der Klasse.
-function TThreadExecuteScan.WrapFix(ABody: TSyntaxNode; const ALogger: string): TArray<TRuleFix>;
-var
-  mEdits: TArray<TRuleEdit>;
-  mIndent, mStep, mText: string;
-  mLine: Integer;
-  mUsesEdit: TRuleEdit;
-begin
-  Result := nil;
-  if (ALogger = '') or (ABody.EndPos.Line - ABody.StartPos.Line < 2) or
-    not OnOwnLine(ABody.StartPos, Length('begin')) or
-    not OnOwnLine(TTextPosition.Create(ABody.EndPos.Line, ABody.EndPos.Character - Length('end')), Length('end')) then
-  begin
-    Exit;
-  end;
-  mIndent := TTextLines.IndentOf(FLines[ABody.StartPos.Line]);
-  mStep := TRoutineBody.IndentUnit(FContext.Formatting);
-  mText := mIndent + mStep + 'try' + FLineBreak;
-  for mLine := ABody.StartPos.Line + 1 to ABody.EndPos.Line - 1 do
-  begin
-    if Trim(FLines[mLine]) = '' then
-    begin
-      mText := mText + FLines[mLine] + FLineBreak;
-    end
-    else
-    begin
-      mText := mText + mStep + FLines[mLine] + FLineBreak;
-    end;
-  end;
-  mText := mText + mIndent + mStep + 'except' + FLineBreak +
-    mIndent + mStep + mStep + 'on E: Exception do' + FLineBreak +
-    mIndent + mStep + mStep + mStep + ALogger + '.Error(ClassName + ''.Execute: '' + E.Message);' + FLineBreak +
-    mIndent + mStep + 'end;' + FLineBreak;
-  mEdits := [TRuleEdit.Create(TTextRange.Create(ABody.StartPos.Line + 1, 0, ABody.EndPos.Line, 0), mText)];
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FContext.Tree.Tokens), 'System.SysUtils', FContext.Namespaces) and
-    TUsesClauses.AddUnit(FContext.Tree.Tokens, ABody.StartOffset, 'System.SysUtils', FLineBreak, mUsesEdit) then
-  begin
-    mEdits := [mUsesEdit] + mEdits;
-  end;
-  Result := [TRuleFix.Create(cTexts[TThreadExecuteText.WrapTry].Fmt([ALogger]), mEdits)];
-end;
-
 procedure TThreadExecuteScan.CheckExecute(ARoutine: TSyntaxNode; const AClass: string);
 var
   mBody: TSyntaxNode;
@@ -548,7 +562,7 @@ begin
       if not EvaluatesFatalException(AClass) then
       begin
         FReport.Add(HeaderNameRange(FContext, ARoutine), cTexts[TThreadExecuteText.Silent].Text,
-          TRuleConfidence.High, WrapFix(mBody, LoggerField(AClass)));
+          TRuleConfidence.High, WrapFix(FContext, mBody, LoggerField(AClass)));
       end;
     TExecuteGuard.Unknown:
       // Ohne Rumpf der aufgerufenen Routine nur ein schwacher Befund.
@@ -557,25 +571,6 @@ begin
         FReport.Add(HeaderNameRange(FContext, ARoutine), cTexts[TThreadExecuteText.SilentCall].Fmt([FUnknownCall]),
           TRuleConfidence.Low);
       end;
-  end;
-end;
-
-// Verschachtelte Klassen (TSampler.TWorker) stehen unter ihrem eigenen Namen mit der äußeren Klasse als Container.
-function TThreadExecuteScan.IsThreadClass(const AOwner: string): Boolean;
-var
-  mNested: TSymbolLocation;
-  mParent: string;
-begin
-  if FAncestry.DescendsFrom(AOwner, 'TThread') then
-  begin
-    Exit(True);
-  end;
-  Result := (Pos('.', AOwner) > 0) and FAncestry.FindNestedType(ClassPart(AOwner), MethodPart(AOwner), mNested) and
-    (Length(mNested.Symbol.Ancestors) > 0);
-  if Result then
-  begin
-    mParent := BareName(mNested.Symbol.Ancestors[0]);
-    Result := SameText(mParent, 'TThread') or FAncestry.DescendsFrom(mParent, 'TThread');
   end;
 end;
 
@@ -588,8 +583,8 @@ begin
   for mRoutine in FRoutines do
   begin
     mOwner := ClassPart(mRoutine.Name);
-    if (mOwner <> '') and SameText(MethodPart(mRoutine.Name), 'Execute') and not InList(Result, mOwner) and
-      IsThreadClass(mOwner) then
+    if (mOwner <> '') and SameText(MethodPart(mRoutine.Name), 'Execute') and not MatchText(mOwner, Result) and
+      IsThreadClassIn(FAncestry, mOwner) then
     begin
       Result := Result + [mOwner];
     end;
@@ -602,12 +597,11 @@ var
   mRoutine: TSyntaxNode;
   mOwner: string;
 begin
-  FLines := TTextLines.SplitLines(FContext.Text, FLineBreak);
   mClasses := ThreadClassNames;
   for mRoutine in FRoutines do
   begin
     mOwner := ClassPart(mRoutine.Name);
-    if (mOwner <> '') and SameText(MethodPart(mRoutine.Name), 'Execute') and InList(mClasses, mOwner) then
+    if (mOwner <> '') and SameText(MethodPart(mRoutine.Name), 'Execute') and MatchText(mOwner, mClasses) then
     begin
       CheckExecute(mRoutine, mOwner);
     end;
@@ -669,7 +663,7 @@ begin
   end;
   mScan := TThreadExecuteScan.Create(AContext, nil);
   try
-    Result := InList(mScan.ThreadClassNames, ClassPart(mNode.Parent.Name)) and
+    Result := MatchText(ClassPart(mNode.Parent.Name), mScan.ThreadClassNames) and
       (mScan.GuardOf(mNode.Parent, ClassPart(mNode.Parent.Name), 0) = TExecuteGuard.Guarded);
   finally
     mScan.Free;

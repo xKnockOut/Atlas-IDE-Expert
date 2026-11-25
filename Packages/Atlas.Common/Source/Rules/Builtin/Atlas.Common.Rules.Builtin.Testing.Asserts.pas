@@ -52,12 +52,12 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -106,19 +106,14 @@ type
   end;
 
   /// <summary>Eine Prüfung einer Datei für eine der beiden Regeln.</summary>
-  TAssertsCheck = class
+  TAssertsCheck = class(TTypedExpressionRun)
   private
-    FContext: TRuleContext;
-    FReport: IRuleReport;
-    FScope: TTypedScope;
-    FTypes: TExpressionTypes;
     function Source(ANode: TSyntaxNode): string;
     function Range(ANode: TSyntaxNode): TTextRange;
     function MethodOf(ACall: TSyntaxNode; out APrefix: string): string;
     function NamePosition(ANode: TSyntaxNode): TTextPosition;
     function IsDeclaredConstant(ANode: TSyntaxNode): Boolean;
     function IsConstant(ANode: TSyntaxNode): Boolean;
-    function TypeOf(ANode: TSyntaxNode): string;
     function KindOf(ANode: TSyntaxNode): TValueKind;
     function IsNullable(ANode: TSyntaxNode): Boolean;
     function IsReference(ANode: TSyntaxNode; out AKind: TIndexSymbolKind): Boolean;
@@ -131,8 +126,6 @@ type
     procedure CheckCondition(ACall: TSyntaxNode; const APrefix, AMethod: string);
     procedure CheckOrder(ACall: TSyntaxNode; const APrefix, AMethod: string);
   public
-    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
-    destructor Destroy; override;
     /// <summary>AOrder: dunitx-swapped-expected, sonst dunitx-istrue-equality.</summary>
     procedure Run(AOrder: Boolean);
   end;
@@ -153,7 +146,7 @@ end;
 function Applies(const AContext: TRuleContext): Boolean;
 begin
   Result := (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) and ContainsText(AContext.Text, 'Assert.') and
-    TUsesClauses.IsTestUnit(AContext.Tree.Tokens);
+    TPascalUses.IsTestUnit(AContext.Tree.Tokens);
 end;
 
 procedure RunCheck(const AContext: TRuleContext; const AReport: IRuleReport; AOrder: Boolean);
@@ -173,28 +166,6 @@ begin
 end;
 
 { TAssertsCheck }
-
-constructor TAssertsCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mOptions: TExpressionTypeOptions;
-begin
-  inherited Create;
-  FContext := AContext;
-  FReport := AReport;
-  FScope := TTypedScope.Create(AContext);
-  mOptions := TExpressionTypeOptions.Default;
-  mOptions.Conversions := False;
-  mOptions.ConstValue := False;
-  FTypes := TExpressionTypes.Create(FScope.Resolver, AContext.Tree, FScope.FileName, AContext.Text, AContext.Index,
-    mOptions);
-end;
-
-destructor TAssertsCheck.Destroy;
-begin
-  FTypes.Free;
-  FScope.Free;
-  inherited;
-end;
 
 function TAssertsCheck.Source(ANode: TSyntaxNode): string;
 begin
@@ -251,7 +222,7 @@ function TAssertsCheck.IsConstant(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   case mNode.Kind of
     TSyntaxKind.Literal:
       Result := True;
@@ -268,28 +239,12 @@ begin
   end;
 end;
 
-function TAssertsCheck.TypeOf(ANode: TSyntaxNode): string;
-var
-  mInfo: TExpressionTypeInfo;
-begin
-  mInfo := FTypes.Describe(ANode);
-  Result := '';
-  if mInfo.Found then
-  begin
-    Result := mInfo.TypeName;
-    if mInfo.BaseName <> '' then
-    begin
-      Result := mInfo.BaseName;
-    end;
-  end;
-end;
-
 function TAssertsCheck.KindOf(ANode: TSyntaxNode): TValueKind;
 var
   mNode: TSyntaxNode;
   mType: string;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   Result := TValueKind.Unknown;
   if (mNode.Kind = TSyntaxKind.Literal) and (mNode.Name <> '') and CharInSet(mNode.Name[1], ['''', '#']) then
   begin
@@ -301,7 +256,7 @@ begin
   begin
     Exit;
   end;
-  mType := TypeOf(mNode);
+  mType := TypeNameOf(mNode);
   if MatchText(mType, cIntegerTypes) then
   begin
     Result := TValueKind.Integer_;
@@ -320,12 +275,12 @@ function TAssertsCheck.IsNullable(ANode: TSyntaxNode): Boolean;
 var
   mSymbol, mType: TResolvedSymbol;
 begin
-  if FScope.SureType(Unwrapped(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
+  if FScope.SureType(TSyntaxNodes.Unparen(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
     (mType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType]) then
   begin
     Exit(True);
   end;
-  Result := MatchText(TypeOf(Unwrapped(ANode)), cNullableTypes);
+  Result := MatchText(TypeNameOf(TSyntaxNodes.Unparen(ANode)), cNullableTypes);
 end;
 
 function TAssertsCheck.IsReference(ANode: TSyntaxNode; out AKind: TIndexSymbolKind): Boolean;
@@ -334,7 +289,7 @@ var
 begin
   // Klasse oder Interface mit sicher bekanntem Typ: Vergleich auf Identität (AreSame, AreNotSame).
   AKind := TIndexSymbolKind.TypeAlias;
-  Result := FScope.SureType(Unwrapped(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
+  Result := FScope.SureType(TSyntaxNodes.Unparen(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) and
     (mType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType]);
   if Result then
   begin
@@ -365,12 +320,12 @@ function TAssertsCheck.IsRecord(ANode: TSyntaxNode): Boolean;
 var
   mSymbol, mType: TResolvedSymbol;
 begin
-  if FScope.SureType(Unwrapped(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) then
+  if FScope.SureType(TSyntaxNodes.Unparen(ANode), mSymbol, mType) and (mType.Kind <> TResolvedKind.None) then
   begin
     // Eingebaute Typen (Double, Integer) führt der Resolver als RecordType; Record-Helfer ebenso wenig.
     Exit((mType.SymbolKind = TIndexSymbolKind.RecordType) and not mType.Builtin and not mType.IsHelper);
   end;
-  Result := IndexedTypeIs(TypeOf(Unwrapped(ANode)), TIndexSymbolKind.RecordType);
+  Result := IndexedTypeIs(TypeNameOf(TSyntaxNodes.Unparen(ANode)), TIndexSymbolKind.RecordType);
 end;
 
 function TAssertsCheck.SuggestNull(AValue: TSyntaxNode; AIsNull: Boolean): TSuggestion;
@@ -425,12 +380,12 @@ var
   mNode: TSyntaxNode;
   mPositive, mEqual: Boolean;
 begin
-  mNode := Unwrapped(ACondition);
+  mNode := TSyntaxNodes.Unparen(ACondition);
   mPositive := APositive;
   while (mNode.Kind = TSyntaxKind.UnaryExpr) and SameText(mNode.Name, 'not') and (mNode.ChildCount = 1) do
   begin
     mPositive := not mPositive;
-    mNode := Unwrapped(mNode[0]);
+    mNode := TSyntaxNodes.Unparen(mNode[0]);
   end;
   Result := True;
   if IsAssignedCall(mNode) then

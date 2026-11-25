@@ -23,7 +23,6 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Vcl.ExtCtrls,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.NoSource,
   Atlas.Core.Debug.Phases,
@@ -44,14 +43,9 @@ type
       procedure DebugResumed; override;
       procedure DebugEnded; override;
     end;
-    TTicker = class
-    public
-      procedure Tick(Sender: TObject);
-    end;
   private class var
     FListener: IAtlasDebugListener;
-    FTicker: TTicker;
-    FTimer: TTimer;
+    FPace: TAtlasIdeDebugPace;
     FPopup: TAtlasNoSourcePopup;
     FMessage: TProc<string>;
     FStop: Integer;
@@ -88,12 +82,12 @@ uses
   System.IOUtils,
   Vcl.FileCtrl,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.Unavailable,
   Atlas.Core.Debug.NoSourceFlow,
-  Atlas.UI.Popup.Window,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.Vcl.Popup.Window,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
@@ -102,17 +96,10 @@ uses
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.StepsBar,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 const
   cDebugConfiguration = 'Debug';
-
-{ TAtlasIdeDebugNoSource.TTicker }
-
-procedure TAtlasIdeDebugNoSource.TTicker.Tick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugNoSource.Check);
-end;
 
 { TAtlasIdeDebugNoSource.TListener }
 
@@ -154,7 +141,7 @@ class procedure TAtlasIdeDebugNoSource.Schedule;
 begin
   FStop := TAtlasIdeDebugSession.StopCount;
   FRetries := 0;
-  FTimer.Enabled := True;
+  FPace.Timer.Enabled := True;
 end;
 
 class procedure TAtlasIdeDebugNoSource.Check;
@@ -162,7 +149,7 @@ var
   mThread: IOTAThread;
   mFrames: TAtlasDebugFrames;
 begin
-  FTimer.Enabled := False;
+  FPace.Timer.Enabled := False;
   // Weitergelaufen oder neuer Halt: dieser Halt gilt nicht mehr.
   if FStop <> TAtlasIdeDebugSession.StopCount then
   begin
@@ -178,7 +165,7 @@ begin
     TAtlasDebugStackRead.Wait:
       begin
         Inc(FRetries);
-        FTimer.Enabled := FRetries <= cStackRetries;
+        FPace.Timer.Enabled := FRetries <= cStackRetries;
       end;
     TAtlasDebugStackRead.Ready:
       begin
@@ -381,16 +368,9 @@ end;
 class procedure TAtlasIdeDebugNoSource.Start(const AMessage: TProc<string>);
 begin
   FMessage := AMessage;
-  if FTicker = nil then
+  if FPace = nil then
   begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
+    FPace := TAtlasIdeDebugPace.Create(cIntervalMs, Check);
   end;
   if FListener = nil then
   begin
@@ -407,8 +387,7 @@ begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
   end;
   FListener := nil;
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
+  FreeAndNil(FPace);
   FreeAndNil(FPopup);
   TAtlasIdeNoSourceFacts.Release;
   FMessage := nil;

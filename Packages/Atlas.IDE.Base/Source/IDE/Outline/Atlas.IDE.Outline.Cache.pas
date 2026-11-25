@@ -75,12 +75,12 @@ uses
   Winapi.Windows,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Outline.LoadGuard,
-  Atlas.Core.Lsp.BackgroundRequest,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.Client,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.CodeView;
+  Atlas.ToolsApi.Editor.CodeView;
 
 const
   /// <summary>Tipppause, nach der neu gefragt wird.</summary>

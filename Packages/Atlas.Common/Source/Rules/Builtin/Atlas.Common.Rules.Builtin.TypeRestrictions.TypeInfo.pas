@@ -39,12 +39,13 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -97,21 +98,6 @@ begin
   Result.TypeNode := ATypeNode;
 end;
 
-/// <summary>Kommt AName in der Namensliste ANames ("A,B") vor?</summary>
-function InNameList(const ANames, AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in SplitString(ANames, ',') do
-  begin
-    if SameText(Trim(mName), AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Erster Kindknoten, der einen Typ beschreibt (TypeReference, ArrayType …), nil ohne.</summary>
 function TypeChild(ANode: TSyntaxNode): TSyntaxNode;
 var
@@ -157,7 +143,7 @@ begin
   begin
     mDecl := ASection[mIndex];
     if (mDecl.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.TypeDecl]) and
-      InNameList(mDecl.Name, AName) then
+      TTextNames.InList(mDecl.Name, AName) then
     begin
       AResolution := DeclResolution(mDecl);
     end;
@@ -186,7 +172,7 @@ begin
     TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
       MatchDeclSection(ASection, AName, AResolution);
     TSyntaxKind.Field:
-      if InNameList(ASection.Name, AName) then
+      if TTextNames.InList(ASection.Name, AName) then
       begin
         AResolution := TNameResolution.Create(TNameMeaning.Variable, ASection, TypeChild(ASection));
       end;
@@ -235,7 +221,7 @@ begin
   for mIndex := 0 to AParameters.ChildCount - 1 do
   begin
     mParam := AParameters[mIndex];
-    if (mParam.Kind = TSyntaxKind.Parameter) and InNameList(mParam.Name, AName) then
+    if (mParam.Kind = TSyntaxKind.Parameter) and TTextNames.InList(mParam.Name, AName) then
     begin
       AResolution := TNameResolution.Create(TNameMeaning.Variable, mParam, TypeChild(mParam));
     end;
@@ -298,7 +284,7 @@ begin
   for mIndex := mPosition - 1 downto 0 do
   begin
     mDecl := ABlock[mIndex];
-    if not (mDecl.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst]) or not InNameList(mDecl.Name, AName) then
+    if not (mDecl.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst]) or not TTextNames.InList(mDecl.Name, AName) then
     begin
       Continue;
     end;

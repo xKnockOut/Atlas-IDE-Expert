@@ -96,6 +96,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Reporting;
+
 { TJsonRpcWorkerPool.TWorker }
 
 constructor TJsonRpcWorkerPool.TWorker.Create(APool: TJsonRpcWorkerPool);
@@ -117,10 +120,10 @@ begin
         try
           mWork();
         except
-          // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Arbeitsthreads; der Dispatcher meldet Fehler selbst
-          on Exception do
-          begin
-          end;
+          // Fehlergrenze des Arbeitsthreads: Der Dispatcher meldet Fehler der Anfrage selbst; was dennoch hier
+          // ankommt, geht an die Senke der Fehlermeldungen.
+          on E: Exception do
+            TReporting.Failed('JSON-RPC-Arbeitsthread', E); // german-ok Protokoll
         end;
         // Erfasstes des Auftrags nicht bis zum nächsten festhalten.
         mWork := nil;
@@ -131,10 +134,11 @@ begin
       FKeep := nil;
     end;
   except
+    // Take und Leave scheitern nur bei Speichermangel; gemeldet wird auch das.
     on E: Exception do
     begin
-      // Take und Leave scheitern nur bei Speichermangel; der Pool verschluckt Ausnahmen wie die der Aufträge.
       FKeep := nil;
+      TReporting.Failed('JSON-RPC-Arbeitsthread', E); // german-ok Protokoll
     end;
   end;
 end;
@@ -219,7 +223,9 @@ begin
     end
     else
     begin
-      // Nach IdleMs beendet oder von Close aufgegeben: Niemand sonst kennt den Thread mehr.
+      // Nach IdleMs beendet oder von Close aufgegeben: Niemand sonst kennt den Thread mehr. Er setzt es selbst,
+      // bevor Execute endet, also ohne Wettlauf mit dem Ende des Threads; der Pool läuft nur im Serverprozess,
+      // dessen Code nie entladen wird.
       AWorker.FreeOnTerminate := True;
     end;
     if FClosed then

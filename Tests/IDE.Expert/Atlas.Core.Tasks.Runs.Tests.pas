@@ -1,9 +1,9 @@
 ﻿unit Atlas.Core.Tasks.Runs.Tests;
 
-// Tests für Läufe von Projektaufgaben (#900): Zeilen aus Bytes (UTF-8,
-// Ersatz-Codepage, CR, Farbfolgen, Rest am Ende), Zählung der Befunde,
+// Tests für Läufe von Projektaufgaben (#900): Zählung der Befunde,
 // Entscheidung warn/block vor dem Build, letzter Lauf und ausgeblendete
-// Aufgaben als JSON.
+// Aufgaben als JSON. Die Zeilen aus Bytes prüft
+// Atlas.Core.Processes.OutputLines.Tests.
 
 interface
 
@@ -15,10 +15,6 @@ type
   [Category('Atlas.IDE.Build')]
   TAtlasTaskRunsTests = class
   public
-    [Test]
-    procedure LinesAreSplitAcrossChunks;
-    [Test]
-    procedure NonUtf8LinesUseTheCodePage;
     [Test]
     procedure CountsAndPassed;
     [Test]
@@ -73,69 +69,6 @@ begin
 end;
 
 { TAtlasTaskRunsTests }
-
-procedure TAtlasTaskRunsTests.LinesAreSplitAcrossChunks;
-var
-  mLines: TAtlasTaskLines;
-  mGot: TArray<string>;
-  mData: TBytes;
-begin
-  mLines := TAtlasTaskLines.Create(0);
-  try
-    mData := Bytes('eins'#13#10'zw');
-    mGot := mLines.Feed(mData, Length(mData));
-    Assert.AreEqual('eins', string.Join('|', mGot), 'CR fällt weg, „zw“ wartet');
-    mData := Bytes('ei'#10#10#27'[31mrot'#27'[0m'#10'Ende');
-    mGot := mLines.Feed(mData, Length(mData));
-    Assert.AreEqual('zwei||rot', string.Join('|', mGot), 'leere Zeile bleibt, Farbfolgen fallen weg');
-    // Nur ein Teil des Puffers gilt.
-    mData := Bytes('!xyz');
-    mGot := mLines.Feed(mData, 1);
-    Assert.AreEqual(0, Integer(Length(mGot)));
-    Assert.AreEqual('Ende!', string.Join('|', mLines.Flush));
-    Assert.AreEqual(0, Integer(Length(mLines.Flush)), 'Rest nur einmal');
-    // UTF-8 über die Grenze zweier Stücke: ü = C3 BC.
-    mData := TBytes.Create($50, $72, $C3);
-    mLines.Feed(mData, Length(mData));
-    mData := TBytes.Create($BC, $66, 10);
-    mGot := mLines.Feed(mData, Length(mData));
-    Assert.AreEqual('Prüf', string.Join('|', mGot));
-    // Fenstertitel (OSC) und einzelne Steuerzeichen am Ende.
-    Assert.AreEqual('ab', TAtlasTaskLines.Clean('a'#27']0;Titel'#7'b'));
-    Assert.AreEqual('ab', TAtlasTaskLines.Clean('a'#27']0;T'#27'\b'#27));
-    Assert.AreEqual('Fehler', TAtlasTaskLines.Clean(#27'[1;31;40mFehler'#27'[K'#13));
-  finally
-    mLines.Free;
-  end;
-end;
-
-procedure TAtlasTaskRunsTests.NonUtf8LinesUseTheCodePage;
-var
-  mLines: TAtlasTaskLines;
-  mData: TBytes;
-begin
-  // Gültiges UTF-8 gewinnt auch mit Codepage; überlange Formen und abgeschnittene Folgen nicht.
-  mLines := TAtlasTaskLines.Create(1252);
-  try
-    mData := Bytes('Prüfung ✓' + #10);
-    Assert.AreEqual('Prüfung ✓', string.Join('|', mLines.Feed(mData, Length(mData))));
-    mData := TBytes.Create($C0, $80, 10);
-    Assert.AreEqual(#$00C0#$20AC, string.Join('|', mLines.Feed(mData, Length(mData))), 'überlange Form');
-    mData := TBytes.Create($E2, $9C, 10);
-    Assert.AreEqual(#$00E2#$0153, string.Join('|', mLines.Feed(mData, Length(mData))), 'abgeschnitten');
-  finally
-    mLines.Free;
-  end;
-  // 1252: FC = ü.
-  mLines := TAtlasTaskLines.Create(1252);
-  try
-    mData := TBytes.Create($50, $72, $FC, $66, 10);
-    Assert.AreEqual('Prüf', string.Join('|', mLines.Feed(mData, Length(mData))));
-  finally
-    mLines.Free;
-  end;
-  Assert.AreEqual('ab', TAtlasTaskLines.Clean(#27'[1;32ma'#27'[0mb'#13));
-end;
 
 procedure TAtlasTaskRunsTests.CountsAndPassed;
 var

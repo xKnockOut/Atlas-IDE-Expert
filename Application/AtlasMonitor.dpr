@@ -1,16 +1,17 @@
 ﻿program AtlasMonitor;
 
+{$R *.res}
 // Eigenständiges Fenster für alle laufenden Atlas-Server mit Symbol im Infobereich (#1901), später auch für
-// Prüfläufe ohne IDE (#1900). Einstieg in Shell.Monitor, Fenster in Shell.Monitor.MainForm, Logik in
+// Prüfläufe ohne IDE (#1900). Einstieg in Shell.Monitor, Fenster in Monitor.MainForm, Logik in
 // Atlas.Common.Monitor.*, Windows-Zugriffe in Atlas.Windows.Monitor.Adapters.*.
 
 uses
-  Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas',
+  Core.Bootstrap in 'Source\Core\Core.Bootstrap.pas',
   Shell.Monitor in 'Source\Shell\Shell.Monitor.pas',
-  Shell.Monitor.MainForm in 'Source\Shell\Shell.Monitor.MainForm.pas',
-  Shell.Monitor.CheckOptions in 'Source\Shell\Shell.Monitor.CheckOptions.pas',
-  Shell.Monitor.CheckPage in 'Source\Shell\Shell.Monitor.CheckPage.pas',
-  Shell.Monitor.ReportPage in 'Source\Shell\Shell.Monitor.ReportPage.pas';
+  Monitor.MainForm in 'Source\Features\Monitor\Monitor.MainForm.pas',
+  Monitor.CheckOptions in 'Source\Features\Monitor\Monitor.CheckOptions.pas',
+  Monitor.CheckPage in 'Source\Features\Monitor\Monitor.CheckPage.pas',
+  Monitor.ReportPage in 'Source\Features\Monitor\Monitor.ReportPage.pas';
 
 // Atlas-Symbol (#751) als Programmsymbol (MAINICON).
 {$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Icon.res'}

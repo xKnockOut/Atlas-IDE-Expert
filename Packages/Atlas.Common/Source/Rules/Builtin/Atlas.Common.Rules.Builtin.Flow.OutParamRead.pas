@@ -138,7 +138,6 @@ type
     FNames: string;
     FName: string;
     FTypeName: string;
-    function FlowNodeOf(ANode: TSyntaxNode): TFlowNode;
     function Collapsed(ANode: TSyntaxNode): string;
     function ParamOutToken(AParam: TSyntaxNode; out AToken: TPascalToken): Boolean;
     function OutToken(AParams: TSyntaxNode; out AToken: TPascalToken): Boolean;
@@ -166,16 +165,6 @@ begin
   inherited Create;
   FContext := AContext;
   FReport := AReport;
-end;
-
-function TOutParamCheck.FlowNodeOf(ANode: TSyntaxNode): TFlowNode;
-begin
-  Result := nil;
-  while (ANode <> nil) and (Result = nil) do
-  begin
-    Result := FGraph.NodeOf(ANode);
-    ANode := ANode.Parent;
-  end;
 end;
 
 /// <summary>Quelltext von ANode ohne Leerzeichen und Zeilenumbrüche, klein geschrieben.</summary>
@@ -301,7 +290,7 @@ begin
   Result := IsName(ANode, FName) and not IsAssignTarget(ANode);
   if Result then
   begin
-    mFlow := FlowNodeOf(ANode);
+    mFlow := FGraph.EnclosingNodeOf(ANode);
     Result := (mFlow <> nil) and (FGraph.IsReachable(mFlow) = TFlowAnswer.Yes) and
       FGraph.ReachingDefinitions(mFlow, FName).FromEntry;
   end;
@@ -410,11 +399,7 @@ end;
 /// <summary>Legt den Graphen beim ersten Bedarf an; False, wenn er unvollständig ist.</summary>
 function TOutParamCheck.GraphComplete: Boolean;
 begin
-  if FGraph = nil then
-  begin
-    FGraph := TRuleDerived.Graph(FCache, FContext, FRoutine);
-  end;
-  Result := FGraph.Complete;
+  Result := TRuleDerived.GraphComplete(FCache, FContext, FRoutine, FGraph);
 end;
 
 procedure TOutParamCheck.CheckParam(AParam, ABlock: TSyntaxNode);

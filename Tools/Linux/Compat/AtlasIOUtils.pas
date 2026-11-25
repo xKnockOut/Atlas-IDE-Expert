@@ -78,6 +78,7 @@ type
     class function GetParent(const APath: string): string; static;
     class function GetCurrentDirectory: string; static;
     class function GetLastWriteTime(const APath: string): TDateTime; static;
+    class function GetLastWriteTimeUtc(const APath: string): TDateTime; static;
     class function GetFiles(const APath: string): TArray<string>; overload; static;
     class function GetFiles(const APath, ASearchPattern: string): TArray<string>; overload; static;
     class function GetFiles(const APath, ASearchPattern: string; ASearchOption: TSearchOption): TArray<string>;
@@ -527,6 +528,12 @@ end;
 class function TDirectory.GetCurrentDirectory: string;
 begin
   Result := GetCurrentDir;
+end;
+
+class function TDirectory.GetLastWriteTimeUtc(const APath: string): TDateTime;
+begin
+  // stat(2) gilt für Ordner wie für Dateien.
+  Result := TFile.GetLastWriteTimeUtc(APath);
 end;
 
 class function TDirectory.GetLastWriteTime(const APath: string): TDateTime;

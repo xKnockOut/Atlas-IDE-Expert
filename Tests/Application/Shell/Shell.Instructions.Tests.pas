@@ -40,10 +40,11 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Instructions,
   Atlas.Common.Lsp.Instructions,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.Composition.Instructions,
-  Shell.Linter.Instructions,
-  Shell.Linter.Settings;
+  Core.Linter.Instructions,
+  Core.Linter.Settings,
+  Shell.Linter;
 
 { TShellInstructionsTests }
 
@@ -70,7 +71,7 @@ end;
 
 function TShellInstructionsTests.RunLinter(const AFlag: string): Integer;
 begin
-  Result := TLinterInstructions.Run(TCommandLineOptions.Parse(['--check', FFolder, AFlag]));
+  Result := TLinterInstructions.Run(TCommandLineOptions.Parse(['--check', FFolder, AFlag]), TLinterShell.Host);
 end;
 
 procedure TShellInstructionsTests.WritesThenCurrent;

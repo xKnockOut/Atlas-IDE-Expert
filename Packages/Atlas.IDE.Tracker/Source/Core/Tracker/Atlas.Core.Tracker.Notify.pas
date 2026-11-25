@@ -203,6 +203,11 @@ uses
   Atlas.Core.Tracker.Files,
   Atlas.Text.Json;
 
+const
+  cMsPerMinute = 60000;
+  /// <summary>Mehr Fehlschläge zählt Failed nicht; ab hier gilt ohnehin cMaxBackoffMinutes.</summary>
+  cMaxCountedFailures = 16;
+
 { TAtlasTrackerNotice }
 
 function TAtlasTrackerNotice.Matches(const AKey, AProject: string): Boolean;
@@ -295,7 +300,7 @@ var
   mBase, mCap: UInt64;
   mStep: Integer;
 begin
-  mBase := UInt64(TAtlasTrackerNotify.Interval(AIntervalMinutes)) * 60000;
+  mBase := UInt64(TAtlasTrackerNotify.Interval(AIntervalMinutes)) * cMsPerMinute;
   if UInt64(PollSeconds) * 1000 > mBase then
   begin
     mBase := UInt64(PollSeconds) * 1000;
@@ -305,7 +310,7 @@ begin
   begin
     Exit;
   end;
-  mCap := UInt64(TAtlasTrackerNotify.cMaxBackoffMinutes) * 60000;
+  mCap := UInt64(TAtlasTrackerNotify.cMaxBackoffMinutes) * cMsPerMinute;
   if mBase >= mCap then
   begin
     Exit;
@@ -365,8 +370,7 @@ end;
 
 function TAtlasTrackerNotifySchedule.Failed: Boolean;
 begin
-  // Obergrenze genügt: ab hier gilt ohnehin MaxBackoffMinutes.
-  if Failures < 16 then
+  if Failures < cMaxCountedFailures then
   begin
     Inc(Failures);
   end;
@@ -433,7 +437,7 @@ end;
 
 class function TAtlasTrackerNotify.UserActive(AMinimized: Boolean; AIdleMs: UInt64): Boolean;
 begin
-  Result := not AMinimized and (AIdleMs < UInt64(cIdleMinutes) * 60000);
+  Result := not AMinimized and (AIdleMs < UInt64(cIdleMinutes) * cMsPerMinute);
 end;
 
 class function TAtlasTrackerNotify.Foreign(const AChanges: TArray<TAtlasTrackerChange>;

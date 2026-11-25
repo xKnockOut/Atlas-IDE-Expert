@@ -8,8 +8,8 @@ uses
   System.Classes,
   System.UITypes,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Settings.Page.Host;
 
@@ -49,7 +49,8 @@ uses
   Vcl.Dialogs,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Farbfeld: Größe und Abstand von Feld zu Feld (Breite und Lücke).</summary>
@@ -198,7 +199,7 @@ begin
   mTitle.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsHint);
   mTitle.Left := 0;
   mTitle.Top := mTitle.ScaleValue(cHeadingTop);
-  mTitle.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mTitle, clGrayText);
   mPanel := AddPanel(cButtonRowHeight);
   AddColumnButton(mPanel, 0, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsPairColorsReset),
     ResetColorsClick);

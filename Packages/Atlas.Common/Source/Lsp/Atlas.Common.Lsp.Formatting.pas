@@ -9,7 +9,7 @@
 // über das Register aus (#293, "slashCommands"; #254 "usesCommand" bleibt Alias).
 // Den Blockabschluss aus #179 gibt es nicht: Den erledigt die IDE selbst.
 // Nach dem dritten "/" über einer Deklaration entsteht das Gerüst des
-// Dokumentationskommentars (#88, Atlas.Common.Editing.DocComments).
+// Dokumentationskommentars (#88, Atlas.Common.Pascal.DocComments).
 
 interface
 
@@ -90,14 +90,13 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.Formatter,
-  Atlas.Common.Editing.DocComments,
+  Atlas.Common.Pascal.DocComments,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -177,9 +176,9 @@ begin
 end;
 
 /// <summary>Bearbeitungen AEdits als TextEdit[] nach AResult.</summary>
-procedure AddEdits(AResult: TJSONArray; const AEdits: TArray<TRuleEdit>);
+procedure AddEdits(AResult: TJSONArray; const AEdits: TArray<TTextEdit>);
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mItem: TJSONObject;
 begin
   for mEdit in AEdits do
@@ -196,7 +195,7 @@ procedure TLspFormatting.AddDocComment(const ADocument: ITextDocument; const AUr
 var
   mCancellation: IPascalCancellation;
   mShared: ISharedSyntaxTree;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Abgeschaltet: "///" bleibt, wie getippt.
   if Assigned(FDocCommentsFor) and not FDocCommentsFor(AUri) then
@@ -218,7 +217,7 @@ procedure TLspFormatting.AddSlashCommand(AParams: TJSONObject; const ADocument: 
 var
   mDisabled: TArray<string>;
   mVersion: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mEnvironment: TSlashEnvironment;
 begin
   mDisabled := nil;

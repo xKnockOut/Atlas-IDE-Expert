@@ -27,7 +27,7 @@ uses
   System.Generics.Collections,
   Vcl.Menus,
   Atlas.Core.Designer.SelectionSets,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -90,8 +90,8 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   DesignIntf,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,

@@ -76,10 +76,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Lines;
-
-type
-  TSyntaxKindSet = set of TSyntaxKind;
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cListWords: array[0..5] of string = ('List', 'Array', 'Collection', 'Queue', 'Stack', 'Set');
@@ -186,16 +184,6 @@ begin
       end;
     end;
   until not mFound;
-end;
-
-/// <summary>Nächster umgebender Knoten einer der Arten AKinds; nil ohne.</summary>
-function Enclosing(ANode: TSyntaxNode; const AKinds: TSyntaxKindSet): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and not (Result.Kind in AKinds) do
-  begin
-    Result := Result.Parent;
-  end;
 end;
 
 /// <summary>Steht ATokens[AIndex] in der Parameterliste eines Routinenkopfs?</summary>
@@ -380,8 +368,7 @@ begin
     ASite.Kind := TNamingKind.Parameter;
     Exit;
   end;
-  if ATokens[APrev].IsKeyword('var') and (Enclosing(NodeAt(ATree.Root, ASite.Offset),
-    [TSyntaxKind.Block .. TSyntaxKind.EmptyStatement]) <> nil) then
+  if ATokens[APrev].IsKeyword('var') and (TSyntaxNodes.Nearest(NodeAt(ATree.Root, ASite.Offset), [TSyntaxKind.Block .. TSyntaxKind.EmptyStatement]) <> nil) then
   begin
     // Inline-Variable in einer Anweisung.
     ASite.Kind := TNamingKind.Local;
@@ -398,12 +385,12 @@ begin
   end;
   // Der Abschnitt steht auch bei unfertigem Code an seinem Platz im Baum.
   mNode := NodeAt(ATree.Root, ATokens[mAt].Offset);
-  if (mSection = 'type') or (Enclosing(mNode, [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
+  if (mSection = 'type') or (TSyntaxNodes.Nearest(mNode, [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
     TSyntaxKind.RecordType, TSyntaxKind.HelperType]) <> nil) then
   begin
     ASite.Kind := TNamingKind.Field;
   end
-  else if Enclosing(mNode, [TSyntaxKind.RoutineDecl]) <> nil then
+  else if TSyntaxNodes.Nearest(mNode, [TSyntaxKind.RoutineDecl]) <> nil then
   begin
     ASite.Kind := TNamingKind.Local;
   end

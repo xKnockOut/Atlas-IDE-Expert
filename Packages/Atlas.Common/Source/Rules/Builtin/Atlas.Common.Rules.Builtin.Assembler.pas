@@ -58,7 +58,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.AsmStatements,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -271,16 +272,6 @@ begin
   Result := TTextRange.Create(FTokens[AStatement.FirstToken].StartPos, FTokens[AStatement.LastToken].EndPos);
 end;
 
-/// <summary>Routine, in der ANode steht; nil außerhalb einer Routine.</summary>
-function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Trägt die Deklaration ADecl des Abschnitts ASection in AVariables oder AHidden ein.</summary>
 procedure CollectDecl(ASection, ADecl: TSyntaxNode; const AVariables: TDictionary<string, Boolean>;
   const AHidden: TList<string>);
@@ -308,7 +299,7 @@ var
   mHidden: TList<string>;
 begin
   Result := TDictionary<string, Boolean>.Create;
-  mRoutine := EnclosingRoutine(ANode);
+  mRoutine := TSyntaxNodes.Enclosing(ANode, [TSyntaxKind.RoutineDecl]);
   if mRoutine = nil then
   begin
     Exit;

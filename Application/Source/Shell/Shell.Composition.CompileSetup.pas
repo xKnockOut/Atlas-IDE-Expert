@@ -9,7 +9,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Compiler.Contract,
-  Shell.Compiler,
+  Core.Compiler,
   Shell.Composition.Compile,
   Shell.Composition.Workspaces;
 
@@ -33,7 +33,7 @@ type
     class function NewHost(const AServices: TShellCompileSetupServices): TShellCompileHost; static;
     /// <summary>Auftrag für das Projekt zu AFileName ('' = einziger Ordner); False ohne Projekt oder Installation
     /// (Grund in AError).</summary>
-    class function JobFor(AWorkspaces: TShellWorkspaceRegistry; const AFileName: string; out AJob: TShellCompileJob;
+    class function JobFor(AWorkspaces: TShellWorkspaceRegistry; const AFileName: string; out AJob: TCoreCompileJob;
       out AError: string): Boolean; static;
   end;
 
@@ -42,7 +42,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Lsp.WorkDoneProgress,
-  Shell.Workspace,
+  Core.Workspace,
   Atlas.Common.Localization.Texts;
 
 type
@@ -66,13 +66,13 @@ begin
   mWorkspaces := AServices.Workspaces;
   mServices := Default(TShellCompileServices);
   // Starter Edition ohne dcc (#261): Ausgabe je Installation erkennen und merken.
-  mServices.Editions := TShellCompilerEditions.Create(AServices.Process, mLogger, TShellCompilerEditions.DefaultFile);
+  mServices.Editions := TCoreCompilerEditions.Create(AServices.Process, mLogger, TCoreCompilerEditions.DefaultFile);
   mServices.Logger := mLogger;
   mServices.Transport := AServices.Transport;
   mServices.Process := AServices.Process;
   mServices.Progress := TLspWorkDoneProgress.Create(AServices.Transport, 'atlas-compile');
   mServices.JobFor :=
-    function(const AFileName: string; out AJob: TShellCompileJob; out AError: string): Boolean
+    function(const AFileName: string; out AJob: TCoreCompileJob; out AError: string): Boolean
     begin
       Result := JobFor(mWorkspaces(), AFileName, AJob, AError);
     end;
@@ -81,11 +81,11 @@ begin
 end;
 
 class function TShellCompileSetup.JobFor(AWorkspaces: TShellWorkspaceRegistry; const AFileName: string;
-  out AJob: TShellCompileJob; out AError: string): Boolean;
+  out AJob: TCoreCompileJob; out AError: string): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
-  AJob := Default(TShellCompileJob);
+  AJob := Default(TCoreCompileJob);
   AError := '';
   System.TMonitor.Enter(AWorkspaces.Lock);
   try
@@ -94,7 +94,7 @@ begin
     begin
       mWorkspace := AWorkspaces.WorkspaceOf(AFileName);
     end;
-    mWorkspace := TShellWorkspaces.Choose(mWorkspace, AWorkspaces.Items);
+    mWorkspace := TCoreWorkspaces.Choose(mWorkspace, AWorkspaces.Items);
     if mWorkspace = nil then
     begin
       AError := cTexts[TCompileSetupText.NoFolder].Text;

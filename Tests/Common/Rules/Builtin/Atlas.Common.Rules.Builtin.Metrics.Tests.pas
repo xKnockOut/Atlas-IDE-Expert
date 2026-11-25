@@ -29,10 +29,6 @@ type
     [Test]
     procedure CognitiveReports;
     [Test]
-    procedure LimitsFromSettings;
-    [Test]
-    procedure InvalidMaxKeepsDefault;
-    [Test]
     procedure RulesAreRegistered;
     [Test]
     procedure ClassSizeIssueExample;
@@ -65,6 +61,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Metrics.Limits,
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
@@ -77,7 +74,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 function InUnit(const ABody: string): string;
@@ -171,30 +168,6 @@ begin
     '{"rules": {"metric-cognitive-complexity": {"max": 5}}}');
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('Methode Run hat kognitive Komplexität 6 (Grenzwert 5)', mFindings[0].Message);
-end;
-
-procedure TMetricRulesTests.LimitsFromSettings;
-var
-  mIssues: TArray<TConfigurationIssue>;
-  mSettings: TServerSettings;
-  mLimits: TMetricLimits;
-begin
-  mSettings := TConfigurationParser.Parse('{"rules": {"metric-parameter-count": {"max": 4}, ' +
-    '"metric-method-length": "off"}}', mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  mLimits := TMetricRules.Limits(mSettings);
-  Assert.AreEqual(4, mLimits.Values[TMetricKind.ParameterCount]);
-  Assert.AreEqual(60, mLimits.Values[TMetricKind.MethodLength]);
-  Assert.AreEqual(15, mLimits.Values[TMetricKind.Cyclomatic]);
-end;
-
-procedure TMetricRulesTests.InvalidMaxKeepsDefault;
-begin
-  Assert.AreEqual(15, TMetricRules.LimitFromOptions('{"max": 0}', 15));
-  Assert.AreEqual(15, TMetricRules.LimitFromOptions('{"max": 2.5}', 15));
-  Assert.AreEqual(15, TMetricRules.LimitFromOptions('{"max": "10"}', 15));
-  Assert.AreEqual(15, TMetricRules.LimitFromOptions('', 15));
-  Assert.AreEqual(10, TMetricRules.LimitFromOptions('{"severity": "warning", "max": 10}', 15));
 end;
 
 procedure TMetricRulesTests.RulesAreRegistered;
@@ -325,7 +298,7 @@ begin
     FormWith(87), '{"rules": {"metric-class-size": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize),
     FormWith(87), '{"rules": {"metric-class-size": {"exclude": ["Formulare/*.pas"]}}}', 'Formulare/U.pas'))));
-  mLimits := TMetricRules.Limits(TConfigurationParser.Parse('{"rules": {"metric-class-size": {"max": 50}, ' +
+  mLimits := TMetricSettings.Limits(TConfigurationParser.Parse('{"rules": {"metric-class-size": {"max": 50}, ' +
     '"metric-uses-count": {"max": 12}}}', mIssues));
   Assert.AreEqual(50, mLimits.Structure[TStructureKind.ClassSize]);
   Assert.AreEqual(2000, mLimits.Structure[TStructureKind.UnitLength]);
@@ -369,7 +342,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Bedingung in Funktion auslagern', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(cSixOperands, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(cSixOperands, mFindings[0].Fixes[0].Edits);
   Assert.Contains(mFixed, 'function ExtractedCondition(const Kunde: TKunde; const Betrag: Currency; ' +
     'const Gesperrt: Boolean; const Datum: TDate; const Start: TDate; const Ende: TDate): Boolean;'#10'begin'#10 +
     '  Result := (Kunde.Aktiv) and (Kunde.Land = ''DE'') and (Betrag > 0) and'#10 +

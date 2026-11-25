@@ -108,7 +108,7 @@ uses
   Atlas.Common.Rules.Builtin.Performance.ManagedParams,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
   Atlas.Common.Rules.Profiles;
 
@@ -226,7 +226,7 @@ begin
 end;
 
 /// <summary>.Text eines Record-Felds liest nur (Atlas.Core.Documentation.Layout, Settings.JsonText); Delete ändert
-/// die Variable der Bedingung (Slashed in Atlas.Core.VersionControl.WorkingCopies).</summary>
+/// die Variable der Bedingung (Slashed in Atlas.VersionControl.Repository.WorkingCopies).</summary>
 procedure TPerformanceRulesTests.FieldTextAndDeleteInLoopSilent;
 const
   cSource = 'unit U;'#10'interface'#10'type'#10'  TSpan = record'#10'    Text: string;'#10'  end;'#10 +
@@ -393,7 +393,7 @@ var
   mTree: TSyntaxTree;
 begin
   Assert.AreEqual(1, Integer(Length(AFinding.Fixes)));
-  Result := TChangeSignature.ApplyEdits(ASource, AFinding.Fixes[0].Edits);
+  Result := TTextChanges.Apply(ASource, AFinding.Fixes[0].Edits);
   mTree := TPascalParser.Parse(Result);
   try
     Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), Result);

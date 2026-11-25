@@ -12,7 +12,7 @@ uses
   System.Generics.Collections,
   DUnitX.TestFramework,
   Atlas.Core.Debug.Visualizers,
-  Atlas.Core.Settings.VisualizerKinds;
+  Atlas.Plugin.Settings.VisualizerKinds;
 
 type
   [TestFixture]
@@ -131,7 +131,7 @@ end;
 
 procedure TVisualizerTests.KindsAndSettings;
 begin
-  // Lesen der Einstellungen prüft Atlas.Core.Settings.VisualizerKinds.Tests; hier die Vorgaben der Optionen.
+  // Lesen der Einstellungen prüft Atlas.Plugin.Settings.VisualizerKinds.Tests; hier die Vorgaben der Optionen.
   Assert.IsTrue(TAtlasVisualizerKind.Graphics in TAtlasVisualizerOptions.Defaults.Kinds);
   Assert.AreEqual(3, Integer(Length(TAtlasVisualizerOptions.Defaults.NameFields)));
   Assert.AreEqual(120, TAtlasVisualizerOptions.Defaults.MaxLength);
@@ -241,6 +241,7 @@ begin
   Assert.AreEqual('ab…', TAtlasVisualizerFormat.Shorten('abcd', 3));
   Assert.AreEqual('It''s', TAtlasVisualizerFormat.Unquote('''It''''s'''));
   Assert.AreEqual('42', TAtlasVisualizerFormat.Unquote('42'));
+  Assert.AreEqual('it''s', TAtlasVisualizerFormat.Unquote(' ''it''''s'' '));
   Assert.IsTrue(TAtlasVisualizerFormat.IsStructured('($0A3F1C20)'));
   Assert.IsTrue(TAtlasVisualizerFormat.IsStructured(':0A3F1C20'));
   Assert.IsFalse(TAtlasVisualizerFormat.IsStructured('''Meier'''));

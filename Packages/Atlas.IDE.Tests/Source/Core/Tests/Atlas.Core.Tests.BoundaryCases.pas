@@ -142,26 +142,6 @@ begin
   end;
 end;
 
-function ObjectsOf(AObject: TJSONObject; const AName: string): TArray<TJSONObject>;
-var
-  mArray: TJSONArray;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mArray := TJsonRead.Items(AObject, AName);
-  if mArray = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mArray.Count - 1 do
-  begin
-    if mArray.Items[mIndex] is TJSONObject then
-    begin
-      Result := Result + [TJSONObject(mArray.Items[mIndex])];
-    end;
-  end;
-end;
-
 function ParameterOf(AObject: TJSONObject): TAtlasBoundaryParameter;
 begin
   Result.Name := TJsonRead.Text(AObject, 'name');
@@ -208,11 +188,11 @@ begin
     ASuggestion.ResultType := TJsonRead.Text(mObject, 'resultType');
     ASuggestion.Line := TJsonRead.IntOr(mObject, 'line', -1);
     ASuggestion.Truncated := TJsonRead.FlagOr(mObject, 'truncated', False);
-    for mItem in ObjectsOf(mObject, 'parameters') do
+    for mItem in TJsonRead.Objects(mObject, 'parameters') do
     begin
       ASuggestion.Parameters := ASuggestion.Parameters + [ParameterOf(mItem)];
     end;
-    for mItem in ObjectsOf(mObject, 'cases') do
+    for mItem in TJsonRead.Objects(mObject, 'cases') do
     begin
       ASuggestion.Cases := ASuggestion.Cases + [CaseOf(mItem, ASuggestion.Parameters)];
     end;

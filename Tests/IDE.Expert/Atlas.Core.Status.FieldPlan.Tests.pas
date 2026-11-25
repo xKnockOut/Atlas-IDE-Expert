@@ -16,6 +16,8 @@ type
     [Test]
     procedure PanelShownUnlessRelocated;
     [Test]
+    procedure RelocatedNeedsBarWithStatusItem;
+    [Test]
     procedure ExtraPanelsMoveWithRelocation;
     [Test]
     procedure UnhookedWhenEverythingMoved;
@@ -32,6 +34,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Status.FieldPlan;
 
 { TAtlasStatusFieldPlanTests }
@@ -61,6 +64,22 @@ begin
   Assert.IsFalse(TAtlasStatusFieldPlan.PanelShown(mSettings, True));
   mSettings.StatusField := False;
   Assert.IsFalse(TAtlasStatusFieldPlan.PanelShown(mSettings, False));
+end;
+
+procedure TAtlasStatusFieldPlanTests.RelocatedNeedsBarWithStatusItem;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.EditorStatusBar := True;
+  mSettings.EditorStatusBarItems := 'status,method';
+  Assert.IsTrue(TAtlasStatusFieldPlan.Relocated(mSettings, False));
+  Assert.IsFalse(TAtlasStatusFieldPlan.Relocated(mSettings, True), 'Leiste von der Sicherung abgeschaltet');
+  mSettings.EditorStatusBarItems := 'method';
+  Assert.IsFalse(TAtlasStatusFieldPlan.Relocated(mSettings, False), 'ohne Element status');
+  mSettings.EditorStatusBarItems := 'status';
+  mSettings.EditorStatusBar := False;
+  Assert.IsFalse(TAtlasStatusFieldPlan.Relocated(mSettings, False), 'Leiste aus');
 end;
 
 procedure TAtlasStatusFieldPlanTests.ExtraPanelsMoveWithRelocation;

@@ -17,7 +17,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.AiProviders.Contract,
   Atlas.Core.AiProviders.Catalog,
   Atlas.IDE.Contracts.AiText;
@@ -62,8 +62,8 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.AiProviders.OpenAiCompatible,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.AiErrors,
@@ -195,6 +195,10 @@ begin
       mResult: TAtlasAiTextResult;
     begin
       mResult := TAtlasIdeAiText.ResultOf(AProvider.Complete(APrompt));
+      if mResult.Status = TAtlasAiTextStatus.Failed then
+      begin
+        TAtlasGuard.Log('KI-Anfrage (' + AProvider.Id + ') gescheitert: ' + TAtlasGuard.MessageText(mResult.Error));
+      end;
       // Stop wartet auf diesen Thread, bevor AOwner geht; der Eintrag verfällt mit dem Modul.
       TAtlasMainThread.Queue(TAtlasFeature.Settings,
         procedure

@@ -11,7 +11,7 @@ interface
 
 uses
   System.Types,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Hover.Contract;
 
 type

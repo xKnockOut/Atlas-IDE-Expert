@@ -23,8 +23,8 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.MutationShadow,
   Atlas.Core.Tests.Contract,
@@ -57,15 +57,17 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Text.DUnitX,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.Core.Tests.MutationFlow,
+  Atlas.Text.DUnitX.CommandLine,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Runner,
-  Atlas.IDE.Tests.Projects;
+  Atlas.IDE.Tests.Projects,
+  Atlas.Text.Files;
 
 const
   cMsPerSecond = 1000;
@@ -201,8 +203,14 @@ begin
       TFile.Delete(mResultFile);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
+    end;
   end;
 end;
 
