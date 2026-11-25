@@ -42,7 +42,6 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Query.Catalog,
   Atlas.Common.Query.Output,
-  Platform.Server,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Localization.RequestTexts;
 
@@ -116,13 +115,13 @@ const
     (De: 'Code-Abfragen sind ausgeschaltet (query.enabled)'; En: 'Code queries are turned off (query.enabled)'));
 
 /// <summary>Status dieses MCP-Prozesses für get_server_status, wenn kein Server der IDE läuft (#1356).</summary>
-function OwnStatus(const AIndex: ISymbolIndex; AStarted: TDateTime): TServerStatus;
+function OwnStatus(const AIndex: ISymbolIndex; AProcessId: Cardinal; AStarted: TDateTime): TServerStatus;
 var
   mParts: TIndexMemoryParts;
   mTrees: TSyntaxTreeCacheStats;
 begin
   Result := Default(TServerStatus);
-  Result.ProcessId := TServerPlatform.CurrentProcessId;
+  Result.ProcessId := AProcessId;
   Result.Version := TProductVersion.cVersion;
   Result.Started := AStarted;
   Result.UptimeMs := MilliSecondsBetween(Now, AStarted);
@@ -163,7 +162,7 @@ begin
   Result := TMcpStatusTools.ServerStatus(TIndexCacheDirectory.DefaultRoot, AContext.Root, SameText(mFormat, 'json'), Now,
     function: TServerStatus
     begin
-      Result := OwnStatus(AContext.Index, AContext.Started);
+      Result := OwnStatus(AContext.Index, AContext.Adapters.Process.CurrentProcessId, AContext.Started);
     end, AContext.Server.Statistics);
 end;
 

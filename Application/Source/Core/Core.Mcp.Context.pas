@@ -19,6 +19,7 @@ uses
   Atlas.Common.Mcp.Contract.RuleDocs,
   Atlas.Common.Mcp.Contract.TextChecks,
   Atlas.Common.Mcp.Contract.Workspace,
+  Atlas.Common.Mcp.Contract.Process,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.SymbolPath,
@@ -50,6 +51,9 @@ type
   TMcpHostAdapters = record
     /// <summary>Neuer Prozess für Testläufe (run_tests).</summary>
     NewProcess: TFunc<ICompilerProcess>;
+    /// <summary>Prozesse und Ordnersignale des Servers (laufende IDEs, Antworten des Plugins, get_server_status).
+    /// </summary>
+    Process: IMcpProcessHost;
     /// <summary>Zugang zur Versionsverwaltung (Änderungen, Hotspots, Verlauf).</summary>
     VcsAccess: TFunc<TCoreVcsAccess>;
     /// <summary>Git-Verzeichnis des Ordners ('' ohne Git).</summary>
@@ -137,7 +141,6 @@ uses
   Atlas.Common.Lsp.Formatting,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Core.Bootstrap,
   Atlas.Text.Json,
   Atlas.Text.Files,
   Atlas.Common.Documents.FileEncoding;
@@ -174,7 +177,7 @@ end;
 // Als gewöhnliche Funktion, weil sie als TReadText-Rückruf an mehrere Werkzeuge geht.
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
+  Result := TFileEncoding.TryLoadText(AFileName, AText);
 end;
 
 function FormatStyleOf(const AWorkspace: IMcpWorkspace; const AFileName: string): TFormatStyle;

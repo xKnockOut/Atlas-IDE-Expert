@@ -77,18 +77,8 @@ uses
 { TCoreBootstrap }
 
 class function TCoreBootstrap.ReadSourceText(const AFileName: string; out AText: string): Boolean;
-var
-  mFileFormat: TFileFormat;
 begin
-  Result := (AFileName <> '') and FileExists(AFileName);
-  if Result then
-  begin
-    AText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
-  end
-  else
-  begin
-    AText := '';
-  end;
+  Result := TFileEncoding.TryLoadText(AFileName, AText);
 end;
 
 class function TCoreBootstrap.SourceReader: TDocumentReadText;

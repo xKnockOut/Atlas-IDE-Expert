@@ -22,6 +22,8 @@ type
     function SettingsOf(const AFileName: string): TServerSettings;
     /// <summary>atlas.json des Hauptprojekts; '' ohne Datei.</summary>
     function SettingsFile: string;
+    /// <summary>Globale Einstellungsdatei (%APPDATA%\Atlas\settings.json); '' ohne APPDATA.</summary>
+    function GlobalSettingsFile: string;
     /// <summary>Namensräume des Hauptprojekts (Unit-Präfixe).</summary>
     function Namespaces: TArray<string>;
     /// <summary>Quelldateien des Hauptprojekts.</summary>
