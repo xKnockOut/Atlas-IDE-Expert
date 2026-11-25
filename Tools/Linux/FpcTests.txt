@@ -618,6 +618,7 @@ Atlas.Core.Editor.Unwrap.Tests
 Atlas.Core.Editor.SmartPaste.Tests
 Atlas.Core.Editor.LineItems.Tests
 Atlas.Core.Build.Events.Tests
+Atlas.Core.Build.CheckOnSave.Tests
 Atlas.Core.Editor.GutterColumn.Tests
 Atlas.Core.Editor.ExpressionType.Tests
 Atlas.Core.Editor.Overview.Tests

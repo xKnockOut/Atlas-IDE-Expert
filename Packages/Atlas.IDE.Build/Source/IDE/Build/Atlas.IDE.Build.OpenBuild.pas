@@ -354,6 +354,11 @@ begin
     begin
       Exit;
     end;
+    // Im Fortschrittsdialog eines Builds oder einem modalen Dialog nie den Compiler starten.
+    if TAtlasIdeCheckOnSave.CompilerBusy then
+    begin
+      Exit;
+    end;
     if FCore.Due(NowMs, mSettings.BuildOnOpenDelayMs, IdleMs, Debugging) then
     begin
       Run;
