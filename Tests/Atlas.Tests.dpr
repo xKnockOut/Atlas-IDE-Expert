@@ -3326,7 +3326,9 @@ uses
   Atlas.UI.Tests.DialogSmoke.Tests in 'IDE.Expert\Atlas.UI.Tests.DialogSmoke.Tests.pas',
   Atlas.UI.Tracker.DialogSmoke.Tests in 'IDE.Expert\Atlas.UI.Tracker.DialogSmoke.Tests.pas',
   Atlas.UI.Architecture.DialogSmoke.Tests in 'IDE.Expert\Atlas.UI.Architecture.DialogSmoke.Tests.pas',
-  Atlas.UI.Rules.DialogSmoke.Tests in 'IDE.Expert\Atlas.UI.Rules.DialogSmoke.Tests.pas';
+  Atlas.UI.Rules.DialogSmoke.Tests in 'IDE.Expert\Atlas.UI.Rules.DialogSmoke.Tests.pas',
+  Atlas.UI.Assistants.LinkDiffView in '..\Packages\Atlas.IDE.Assistants\Source\UI\Assistants\Atlas.UI.Assistants.LinkDiffView.pas',
+  Atlas.UI.Assistants.DialogSmoke.Tests in 'IDE.Expert\Atlas.UI.Assistants.DialogSmoke.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Symbol.res'}

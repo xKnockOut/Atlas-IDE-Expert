@@ -3377,6 +3377,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.DialogSmoke.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Architecture.DialogSmoke.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Rules.DialogSmoke.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\UI\Assistants\Atlas.UI.Assistants.LinkDiffView.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Assistants.DialogSmoke.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
