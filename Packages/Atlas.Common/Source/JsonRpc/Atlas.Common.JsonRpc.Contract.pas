@@ -65,6 +65,11 @@ type
   /// <summary>Die Eingabe wurde zwischen zwei Nachrichten regulär geschlossen.</summary>
   EJsonRpcTransportClosed = class(EJsonRpcTransportError);
 
+  /// <summary>Die Gegenseite hat die Verbindung geschlossen: Die Ausgabe nimmt nichts mehr an (Pipe der beendeten
+  /// IDE). Lösen die Ausgabestreams der Plattform aus, der Transport danach bei jedem weiteren Schreiben. Kein Fehler
+  /// des Servers, sondern das Ende der Verbindung: Antworten an diese Gegenseite werden verworfen.</summary>
+  EJsonRpcPeerClosed = class(EJsonRpcTransportClosed);
+
   /// <summary>Liest und schreibt einzelne JSON-RPC-Nachrichten.</summary>
   IJsonRpcTransport = interface
     ['{5B0E8E57-2C59-4C38-9F2A-3E6B1F0C7D41}']
