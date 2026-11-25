@@ -273,21 +273,24 @@ function TAtlasStatusRegistry.ReleaseOwned(const AOwned: TAtlasOwnedCode): Integ
 var
   mItem: IAtlasStatusItem;
   mTaken: TArray<IAtlasStatusItem>;
-  mIndex: Integer;
+  mIndex, mCount: Integer;
 begin
   mTaken := nil;
+  mCount := 0;
   FLock.Enter;
   try
+    SetLength(mTaken, FItems.Count);
     for mIndex := FItems.Count - 1 downto 0 do
     begin
       mItem := FItems[mIndex];
       if ItemOwned(mItem, AOwned) then
       begin
-        SetLength(mTaken, Length(mTaken) + 1);
-        mTaken[High(mTaken)] := mItem;
+        mTaken[mCount] := mItem;
+        Inc(mCount);
         FItems.Delete(mIndex);
       end;
     end;
+    SetLength(mTaken, mCount);
   finally
     FLock.Leave;
   end;

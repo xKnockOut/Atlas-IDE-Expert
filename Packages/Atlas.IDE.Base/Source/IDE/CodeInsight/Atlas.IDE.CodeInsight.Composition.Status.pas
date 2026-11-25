@@ -97,6 +97,9 @@ var
   NotificationsInstance: TAtlasIdeNotifications;
   // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
   QuickTogglesInstance: TAtlasIdeQuickToggles;
+  // Gesetzte Zusatzfelder des Statusfelds samt Klicks: ReleaseModuleCallbacks entfernt die eines abgemeldeten
+  // Moduls, ohne dass das Feld selbst dafür ein Mitglied braucht.
+  StatusExtras: TArray<TAtlasStatusExtra>;
 
 function StatusField: TAtlasStatusField;
 begin
@@ -138,8 +141,35 @@ begin
   SetStatusItem(mExtra);
 end;
 
+/// <summary>AExtra in StatusExtras merken (gleiche Id ersetzen); Text '' entfernt es.</summary>
+procedure RememberExtra(const AExtra: TAtlasStatusExtra);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(StatusExtras) do
+  begin
+    if StatusExtras[mIndex].Id = AExtra.Id then
+    begin
+      if AExtra.Text = '' then
+      begin
+        Delete(StatusExtras, mIndex, 1);
+      end
+      else
+      begin
+        StatusExtras[mIndex] := AExtra;
+      end;
+      Exit;
+    end;
+  end;
+  if AExtra.Text <> '' then
+  begin
+    StatusExtras := StatusExtras + [AExtra];
+  end;
+end;
+
 procedure SetStatusItem(const AExtra: TAtlasStatusExtra);
 begin
+  RememberExtra(AExtra);
   if StatusFieldInstance <> nil then
   begin
     StatusFieldInstance.SetExtra(AExtra);
@@ -364,6 +394,7 @@ begin
     Manager.OnServerChanged := nil;
   end;
   FreeAndNil(StatusFieldInstance);
+  StatusExtras := nil;
   FreeAndNil(StatusLinesInstance);
   TAtlasStatusRegistry.ReleaseDefault;
 end;
@@ -473,6 +504,34 @@ begin
     end;
 end;
 
+/// <summary>Zusatzfelder entfernen, deren Links- oder Rechtsklick AOwned gehört; Ergebnis: ihre Zahl. Sonst gäbe
+/// das Feld beim Freigeben Code eines entladenen Moduls frei.</summary>
+function ReleaseOwnedExtras(const AOwned: TFunc<Pointer, Boolean>): Integer;
+var
+  mIds: TArray<string>;
+  mExtra: TAtlasStatusExtra;
+  mId: string;
+begin
+  SetLength(mIds, Length(StatusExtras));
+  Result := 0;
+  for mExtra in StatusExtras do
+  begin
+    if (Assigned(mExtra.OnClick) and AOwned(PPointer(@mExtra.OnClick)^)) or
+      (Assigned(mExtra.OnContext) and AOwned(PPointer(@mExtra.OnContext)^)) then
+    begin
+      mIds[Result] := mExtra.Id;
+      Inc(Result);
+    end;
+  end;
+  SetLength(mIds, Result);
+  for mId in mIds do
+  begin
+    mExtra := Default(TAtlasStatusExtra);
+    mExtra.Id := mId;
+    SetStatusItem(mExtra);
+  end;
+end;
+
 procedure ReleaseModuleCallbacks(AModule: NativeUInt);
 const
   cReleased = 'Atlas: released callbacks of module $%x: %d notifications, %d status lines, %d status fields';
@@ -487,11 +546,7 @@ begin
   mOwned := OwnedByModule(AModule);
   mNotifications := ReleaseOwnedNotifications(mOwned);
   mLines := TAtlasStatusRegistry.ReleaseOwnedInDefault(mOwned);
-  mFields := 0;
-  if StatusFieldInstance <> nil then
-  begin
-    mFields := StatusFieldInstance.ReleaseOwned(mOwned);
-  end;
+  mFields := ReleaseOwnedExtras(mOwned);
   if mNotifications + mLines + mFields > 0 then
   begin
     TAtlasGuard.Log(Format(cReleased, [AModule, mNotifications, mLines, mFields]));

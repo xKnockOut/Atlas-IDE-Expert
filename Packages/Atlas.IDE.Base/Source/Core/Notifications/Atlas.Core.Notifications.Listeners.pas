@@ -91,20 +91,23 @@ var
   mPair: TPair<Integer, TProc>;
   mHandles: TArray<Integer>;
   mDropped: TArray<TProc>;
-  mIndex: Integer;
+  mIndex, mCount: Integer;
 begin
   mHandles := nil;
   mDropped := nil;
+  mCount := 0;
   FLock.Enter;
   try
+    SetLength(mHandles, FListeners.Count);
     for mPair in FListeners do
     begin
       if AOwned(PPointer(@mPair.Value)^) then
       begin
-        SetLength(mHandles, Length(mHandles) + 1);
-        mHandles[High(mHandles)] := mPair.Key;
+        mHandles[mCount] := mPair.Key;
+        Inc(mCount);
       end;
     end;
+    SetLength(mHandles, mCount);
     SetLength(mDropped, Length(mHandles));
     for mIndex := 0 to High(mHandles) do
     begin

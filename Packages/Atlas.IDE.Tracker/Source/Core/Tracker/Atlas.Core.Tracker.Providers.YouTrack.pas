@@ -929,7 +929,7 @@ begin
     APoll.FailedStatus := mStatus;
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := TAtlasYouTrackApi.ErrorOfStatus(mStatus);
     APoll.FailedStatus := mStatus;
@@ -973,7 +973,7 @@ begin
       APoll.Language := mLanguage;
       Exit;
     end;
-    if APoll.FailedStatus <> 400 then
+    if APoll.FailedStatus <> TAtlasHttpStatus.cBadRequest then
     begin
       Exit;
     end;
