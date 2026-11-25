@@ -20,7 +20,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Lsp.AffectedTests,
   Atlas.Common.Lsp.AffectedTests.Types,
   Core.VersionControlChanges,

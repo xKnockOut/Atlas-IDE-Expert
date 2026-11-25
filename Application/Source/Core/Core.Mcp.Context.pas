@@ -29,7 +29,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Hotspots.Service,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.RefactorTools,
   Atlas.Common.Compiler.Contract;

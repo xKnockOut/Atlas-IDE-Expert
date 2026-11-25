@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Impact;
+﻿unit Atlas.Common.Semantics.Impact;
 
 // Auswirkungsanalyse (#1120): Was ist betroffen, wenn ich X ändere?
 //
@@ -54,7 +54,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Semantics.Hierarchies,
-  Atlas.Common.Lsp.Impact.Forms,
+  Atlas.Common.Semantics.Impact.Forms,
   Atlas.Common.Semantics.Feature,
   Atlas.Common.Semantics.References;
 
@@ -66,8 +66,8 @@ type
 {$SCOPEDENUMS OFF}
   TImpactLimits = set of TImpactLimit;
 
-  /// <summary>Bindung einer Stelle in einem Formular (Atlas.Common.Lsp.Impact.Forms).</summary>
-  TImpactFormBinding = Atlas.Common.Lsp.Impact.Forms.TImpactFormBinding;
+  /// <summary>Bindung einer Stelle in einem Formular (Atlas.Common.Semantics.Impact.Forms).</summary>
+  TImpactFormBinding = Atlas.Common.Semantics.Impact.Forms.TImpactFormBinding;
 
   /// <summary>Was die Analyse liest: Projektdateien und wie man eine Datei liest.</summary>
   TImpactSources = record
@@ -217,7 +217,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.Usages,
-  Atlas.Common.Editing.TestUnits,
+  Atlas.Text.DUnitX.UnitNames,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
@@ -370,7 +370,7 @@ var
   mTested: string;
 begin
   Result := (AUnitName <> '') and ((IndexText(AUnitName, Units) >= 0) or
-    TTestUnits.TestedUnitName(AUnitName, Pattern, mTested));
+    TTestUnitNames.TestedUnitName(AUnitName, Pattern, mTested));
 end;
 
 class function TImpactTestScope.FromProgram(const APattern, AProgramText: string): TImpactTestScope;
@@ -392,7 +392,7 @@ begin
   Result.MaxPlaces := TImpactAnalysis.cMaxPlaces;
   Result.TimeoutMs := 0;
   Result.References := TReferenceSettings.Default;
-  Result.Tests.Pattern := TTestUnits.cDefaultPattern;
+  Result.Tests.Pattern := TTestUnitNames.cDefaultPattern;
   Result.Tests.Units := nil;
 end;
 
@@ -1488,6 +1488,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Impact', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.Impact', cTexts);
 
 end.

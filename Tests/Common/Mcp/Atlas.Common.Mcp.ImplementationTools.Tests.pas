@@ -45,7 +45,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Impact;
+  Atlas.Common.Semantics.Impact;
 
 const
   cApiFile = 'C:\P\Api.pas';

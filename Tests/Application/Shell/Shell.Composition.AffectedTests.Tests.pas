@@ -40,7 +40,7 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.AffectedTests.Types,
   Atlas.Common.Logging.Providers.Logger;

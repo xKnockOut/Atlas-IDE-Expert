@@ -168,7 +168,6 @@
         "Atlas.Common.Lsp.Formatting -> Atlas.Common.Editing.SlashCommands",
         "Atlas.Common.Lsp.FormMentions -> Atlas.Common.Editing.PromoteVariable",
         "Atlas.Common.Lsp.Hover -> Atlas.Common.Editing.DataFieldNames",
-        "Atlas.Common.Lsp.Impact -> Atlas.Common.Editing.TestUnits",
         "Atlas.Common.Lsp.InlayHints -> Atlas.Common.Editing.InterfaceStubs",
         "Atlas.Common.Lsp.InlayHints -> Atlas.Common.Editing.MethodWithoutSelf",
         "Atlas.Common.Lsp.InlayHints -> Atlas.Common.Editing.PostfixTemplates",
@@ -200,9 +199,7 @@
         "Atlas.Common.Lsp.Unwrap -> Atlas.Common.Editing.Unwrap",
         "Atlas.Common.Lsp.Unwrap -> Atlas.Common.Editing.WithResolution",
         "Atlas.Common.Lsp.WorkspaceSymbols -> Atlas.Common.Editing.Bookmarks",
-        "Atlas.Common.Mcp.CodeTools -> Atlas.Common.Lsp.Impact",
-        "Atlas.Common.Mcp.EditTools -> Atlas.Common.Lsp.Rename",
-        "Atlas.Common.Mcp.ImplementationTools -> Atlas.Common.Lsp.Impact"
+        "Atlas.Common.Mcp.EditTools -> Atlas.Common.Lsp.Rename"
       ]
     },
     "forbidden-symbol": {

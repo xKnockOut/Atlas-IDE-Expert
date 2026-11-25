@@ -32,7 +32,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Lsp.AffectedTests.Types,
   Core.AffectedTests,
   Core.VersionControlChanges,

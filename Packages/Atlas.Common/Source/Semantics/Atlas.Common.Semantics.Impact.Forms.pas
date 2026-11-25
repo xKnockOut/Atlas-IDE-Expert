@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Impact.Forms;
+﻿unit Atlas.Common.Semantics.Impact.Forms;
 
 // Formularbindungen der Auswirkungsanalyse (#1120): Ereignis-Handler und
 // Komponentennamen einer Stelle in den Formularen ihrer Unit (.dfm, .fmx).

@@ -308,8 +308,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureHelp.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SignatureFormat.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Hierarchies.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Impact.Forms.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Impact.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Impact.Forms.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.Types.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AffectedTests.Report.pas"/>

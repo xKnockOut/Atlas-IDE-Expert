@@ -73,7 +73,7 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.Rationale,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Semantics.References,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Architecture.UsesGraph,

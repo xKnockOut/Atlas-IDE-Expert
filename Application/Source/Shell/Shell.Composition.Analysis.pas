@@ -15,7 +15,7 @@ uses
   Atlas.Common.Semantics.References,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Semantics.Hierarchies,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Lsp.DataFlow,
   Atlas.Common.Lsp.AccessChains,
   Atlas.Common.Lsp.Implementations,

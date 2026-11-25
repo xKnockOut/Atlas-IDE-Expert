@@ -12,6 +12,7 @@ Atlas.Text.Timestamps.Tests
 Atlas.Text.Checkin.Tests
 Atlas.Text.CommandLine.Tests
 Atlas.Text.DUnitX.Tests
+Atlas.Text.DUnitX.UnitNames.Tests
 Atlas.Text.DebugDisplay.Tests
 Atlas.Text.Defines.Tests
 Atlas.Text.Diff.Tests

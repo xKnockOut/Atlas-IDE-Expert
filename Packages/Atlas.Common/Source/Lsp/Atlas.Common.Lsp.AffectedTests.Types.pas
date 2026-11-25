@@ -9,7 +9,7 @@ interface
 uses
   Atlas.Common.History.ChangedFiles,
   Atlas.Common.Semantics.Hierarchies,
-  Atlas.Common.Lsp.Impact;
+  Atlas.Common.Semantics.Impact;
 
 const
   /// <summary>Trenner der Schritte eines Wegs.</summary>
