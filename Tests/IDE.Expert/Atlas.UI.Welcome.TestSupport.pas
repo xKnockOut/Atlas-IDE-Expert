@@ -6,9 +6,9 @@ interface
 
 uses
   System.Classes,
-  Atlas.Core.Modules.Contract,
   Atlas.Core.Welcome.Sections,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.Plugin.Registration.Contract;
 
 type
   /// <summary>Bereich ohne Inhalt, der seine Aktualisierungen zählt.</summary>
@@ -31,7 +31,7 @@ function ProvideWelcomeSettings: IAtlasRegistration;
 implementation
 
 uses
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Welcome.SettingsSection,
   Atlas.IDE.Welcome.Adapters.SettingsSection;

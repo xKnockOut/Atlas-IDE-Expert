@@ -314,7 +314,7 @@ var
 begin
   DefaultDraw := True;
   mIndex := Item.Index;
-  if (mIndex < 0) or (mIndex > High(FMarks)) or (cdsSelected in State) then
+  if (mIndex < 0) or (mIndex > High(FMarks)) or Item.Selected then
   begin
     Exit;
   end;

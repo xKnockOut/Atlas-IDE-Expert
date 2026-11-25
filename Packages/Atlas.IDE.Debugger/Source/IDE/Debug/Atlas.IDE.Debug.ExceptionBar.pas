@@ -164,8 +164,8 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.IDE.Base.Foundation.DebugStop,
   Atlas.IDE.Debug.ExceptionRules,
   Atlas.UI.Debug.Exceptions.Strings;

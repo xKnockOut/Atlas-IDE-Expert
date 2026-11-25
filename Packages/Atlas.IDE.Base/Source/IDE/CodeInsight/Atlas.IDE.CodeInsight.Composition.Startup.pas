@@ -6,7 +6,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Diagnostics.StartTimes,
   Atlas.IDE.Diagnostics.SafeMode;
 

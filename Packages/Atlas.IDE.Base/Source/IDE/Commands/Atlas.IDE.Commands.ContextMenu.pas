@@ -49,7 +49,7 @@ uses
   Vcl.ActnList,
   Vcl.Menus,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Commands.MenuSlots;
 
 type
@@ -160,8 +160,8 @@ uses
   Atlas.Core.Commands.MenuContext,
   Atlas.IDE.Commands.MenuContext,
   Atlas.IDE.Commands.ContextSubmenus,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Commands.KeyStroke,
   Atlas.IDE.Commands.ShortcutTips;
 

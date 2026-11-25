@@ -38,7 +38,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Commands.MenuContext;
 
 /// <summary>Bedingung „Debug-Sitzung“ für die Tests.</summary>

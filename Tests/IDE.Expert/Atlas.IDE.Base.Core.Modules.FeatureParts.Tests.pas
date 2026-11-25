@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.FeatureParts.Tests;
+﻿unit Atlas.IDE.Base.Core.Modules.FeatureParts.Tests;
 
 // Tests zu TAtlasFeaturePart (#1455).
 
@@ -21,8 +21,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.FeatureParts;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.FeatureParts;
 
 function Inactive: TFunc<Boolean>;
 begin

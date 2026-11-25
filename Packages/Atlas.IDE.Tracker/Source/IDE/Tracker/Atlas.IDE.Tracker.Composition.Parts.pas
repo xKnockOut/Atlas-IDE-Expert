@@ -24,7 +24,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Tracker.Contract,
   Atlas.IDE.Tracker.Access,
   Atlas.Core.Commands.Contract;
@@ -53,7 +53,7 @@ implementation
 uses
   System.Types,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.Core.Ci.Contract,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -71,8 +71,9 @@ uses
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Commands.Strings,
-  Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Tracker.Composition.HostAdapters;
+  Atlas.IDE.Base.Core.Modules.Contributions,
+  Atlas.IDE.Tracker.Composition.HostAdapters,
+  Atlas.Plugin.Registration.Contract;
 
 const
   // Zusatzfeld der Zeiterfassung im Statusfeld (#1267).

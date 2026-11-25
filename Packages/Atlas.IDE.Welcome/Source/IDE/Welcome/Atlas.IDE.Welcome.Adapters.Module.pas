@@ -13,7 +13,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.IDE.Welcome.Commands;
 
@@ -69,7 +69,7 @@ implementation
 
 uses
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Layouts,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Watch.Tests;
+﻿unit Atlas.IDE.Base.Core.Modules.Watch.Tests;
 
 // Tests zu TAtlasProvidedWatch (#1455): Die Liste folgt Bereitstellen und
 // Zurückziehen sofort, OnChanged nur bei einer echten Änderung. TAtlasRegistryWatch reicht jede Änderung an die
@@ -38,9 +38,10 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Watch;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Watch,
+  Atlas.Plugin.Registration.Contract;
 
 type
   IWatchTestThing = interface

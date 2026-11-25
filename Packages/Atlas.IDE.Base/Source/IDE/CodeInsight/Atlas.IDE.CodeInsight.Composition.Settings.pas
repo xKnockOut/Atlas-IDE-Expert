@@ -23,13 +23,15 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Product.Version,
   Atlas.Plugin.Diagnostics.TimeLimit,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Watch,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Theme.Symbol,
   Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Settings.Options,
+  Atlas.UI.Settings.Page.Sections,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.Experimental,
   Atlas.IDE.Completion.History,
@@ -144,6 +146,8 @@ begin
   mHooks.DefaultServerPath := TAtlasCodeInsightPaths.DefaultServerPath;
   mHooks.IdeTemplateFolder := TAtlasEditorCompletion.IdeTemplateFolder;
   mHooks.SnippetFolder := TAtlasEditorCompletion.SnippetFolder;
+  // Abschnitte der Module (#1455): Die IDE legt die Seite selbst an, die Registry kommt von hier.
+  TAtlasSettingsSectionsPart.UseRegistry(AtlasModuleRegistry, TAtlasRegistryWatch.Subscribe);
   TAtlasOptionsRegistration.Register(mHooks);
 end;
 
@@ -184,6 +188,7 @@ end;
 procedure UnregisterOptions;
 begin
   TAtlasOptionsRegistration.Unregister;
+  TAtlasSettingsSectionsPart.UseRegistry(nil, nil);
   TAtlasProjectSettings.Command := nil;
 end;
 

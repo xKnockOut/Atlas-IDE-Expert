@@ -52,10 +52,6 @@ type
     /// <summary>Text einer Stapelzeile: Kopf bzw. „… n Bibliotheksrahmen“ und Ort.</summary>
     class function Cells(const AFrames: TAtlasDebugFrames; const ARow: TAtlasDebugStackRow): TArray<string>;
       static;
-    /// <summary>Zeilenfarben aus dem Stil von AList (wie die Lesezeichenliste), sonst im dunklen Thema weiße
-    /// Zellen; AGray: Schrift grau.</summary>
-    class procedure RowColors(ACanvas: TCanvas; AList: TListView; AState: TCustomDrawState; AGray: Boolean);
-      static;
     property List: TListView read FList;
     property Rows: TAtlasDebugStackRows read FRows;
     /// <summary>Bibliotheksrahmen abgeschwächt und zusammengefasst (debug.justMyCode, #578).</summary>
@@ -174,14 +170,14 @@ procedure TAtlasDebugExceptionStack.ListCustomDrawItem(Sender: TCustomListView; 
   State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
-  RowColors(Sender.Canvas, FList, State, RowFaded(Item));
+  TAtlasUiTheme.RowColors(Sender.Canvas, FList, Item.Selected, RowFaded(Item));
 end;
 
 procedure TAtlasDebugExceptionStack.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
   SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
-  RowColors(Sender.Canvas, FList, State, RowFaded(Item));
+  TAtlasUiTheme.RowColors(Sender.Canvas, FList, Item.Selected, RowFaded(Item));
 end;
 
 procedure TAtlasDebugExceptionStack.ShowFor(const AKey: string; const AFrames: TAtlasDebugFrames);
@@ -245,28 +241,6 @@ begin
     mWhere := ExtractFileName(mFrame.FileName) + ':' + IntToStr(mFrame.Line);
   end;
   Result := TArray<string>.Create(mFrame.Header, mWhere);
-end;
-
-class procedure TAtlasDebugExceptionStack.RowColors(ACanvas: TCanvas; AList: TListView; AState: TCustomDrawState;
-  AGray: Boolean);
-begin
-  if cdsSelected in AState then
-  begin
-    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, clHighlight);
-    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clHighlightText);
-  end
-  else
-  begin
-    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, AList.Color);
-    if AGray then
-    begin
-      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clGrayText);
-    end
-    else
-    begin
-      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, AList.Font.Color);
-    end;
-  end;
 end;
 
 end.

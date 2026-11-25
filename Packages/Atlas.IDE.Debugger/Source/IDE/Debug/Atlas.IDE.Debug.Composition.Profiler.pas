@@ -11,7 +11,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 /// <summary>AScopeOf liefert den Scope des Moduls für Antworten des Servers.</summary>
 function ProfilerParts(const AScopeOf: TFunc<IAtlasModuleScope>): TArray<IAtlasFeaturePart>;
@@ -23,7 +23,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Profiler,

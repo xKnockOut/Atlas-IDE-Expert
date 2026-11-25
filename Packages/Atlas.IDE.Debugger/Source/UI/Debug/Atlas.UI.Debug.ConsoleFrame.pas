@@ -133,6 +133,7 @@ uses
   Vcl.Themes,
   Atlas.Plugin.Style.Color,
   Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Debug.Console.Strings;
 
 {$R *.dfm}
@@ -582,7 +583,8 @@ end;
 
 procedure TAtlasDebugConsoleFrame.FocusInput;
 begin
-  if FRunning and FInput.CanFocus and Showing then
+  // Nicht nur CanFocus: Die IDE sperrt ihr Hauptfenster beim Start des Programms, SetFocus würfe dann.
+  if FRunning and TAtlasControls.CanFocusNow(FInput) then
   begin
     FInput.SetFocus;
   end;

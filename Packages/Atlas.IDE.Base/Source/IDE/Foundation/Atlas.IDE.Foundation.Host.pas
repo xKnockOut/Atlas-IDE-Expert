@@ -25,7 +25,7 @@ uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Build.Events,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Status.Lines,
@@ -206,7 +206,7 @@ implementation
 uses
   Vcl.Forms,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Modules.Answer;
+  Atlas.IDE.Base.Core.Modules.Answer;
 
 { TAtlasServerRequest }
 

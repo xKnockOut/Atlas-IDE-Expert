@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.SafeMode;
+﻿unit Atlas.IDE.Base.Core.SafeMode;
 
 // Abgesicherter Start nach einem Absturz (#722), Teil ohne Windows und ohne
 // Open Tools API:
@@ -33,7 +33,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Settings.QuickToggles,
   // TAtlasSafeLevel (Stufe des abgesicherten Starts) steht im Modulvertrag (#1455).
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
 {$SCOPEDENUMS ON}
@@ -893,6 +893,6 @@ begin
 end;
 
 initialization
-  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.SafeMode', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Base.Core.SafeMode', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

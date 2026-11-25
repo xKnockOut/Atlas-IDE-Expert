@@ -63,7 +63,7 @@ uses
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Commands.EditorActions,
   Atlas.IDE.Commands.MenuContext,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Settings.ContextMenuGroups,
   Atlas.Plugin.Localization.Language;
 

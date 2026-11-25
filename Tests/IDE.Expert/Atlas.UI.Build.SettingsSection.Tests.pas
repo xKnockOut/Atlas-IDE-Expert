@@ -7,9 +7,9 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Build.SettingsSection;
+  Atlas.UI.Build.SettingsSection,
+  Atlas.Plugin.Registration.Contract;
 
 type
   [TestFixture]

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Contributions.Tests;
+﻿unit Atlas.IDE.Base.Core.Modules.Contributions.Tests;
 
 // Tests zu TAtlasModuleContributions (#1455): Beiträge kommen und gehen mit
 // dem Modul, Fehler eines Hörers halten die übrigen nicht an.
@@ -44,9 +44,9 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions;
 
 type
   TFakeModule = class(TInterfacedObject, IAtlasModule)

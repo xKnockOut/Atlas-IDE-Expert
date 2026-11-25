@@ -115,9 +115,9 @@ uses
   Atlas.IDE.Foundation.Keys,
   Atlas.Core.Commands.Usage,
   Atlas.IDE.Commands.Usage,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Host,
   Atlas.Core.Commands.Palette;
 

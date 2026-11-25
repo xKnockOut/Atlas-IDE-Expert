@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Registration;
+﻿unit Atlas.Plugin.Registration;
 
 // Gemeinsame Grundlage der Anmeldungen in Base (#1455, Regel 4): Revoke löst
 // eine Anmeldung genau einmal; Detach markiert sie als gelöst, ohne den
@@ -12,7 +12,7 @@ uses
   System.SysUtils,
   System.SyncObjs,
   System.Generics.Collections,
-  Atlas.Core.Modules.Contract;
+  Atlas.Plugin.Registration.Contract;
 
 type
   TAtlasRegistration = class(TInterfacedObject, IAtlasRegistration)

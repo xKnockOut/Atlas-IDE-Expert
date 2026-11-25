@@ -9,7 +9,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Commands.Contract;
 
 type
@@ -39,7 +39,7 @@ uses
   System.Classes,
   Atlas.Text.Product.Version,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.IDE.Foundation.Settings,
@@ -50,7 +50,7 @@ uses
   Atlas.IDE.Query.Service,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Search.Strings,
-  Atlas.Core.Modules.Contributions;
+  Atlas.IDE.Base.Core.Modules.Contributions;
 
 { Befehle }
 

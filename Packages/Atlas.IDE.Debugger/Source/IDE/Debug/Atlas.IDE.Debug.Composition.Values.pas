@@ -11,7 +11,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Debug.DialogCompletion;
 
 /// <summary>Teile für Werte und Ausdrücke in ihrer Startreihenfolge; AProvider liefert die Vervollständigung in
@@ -46,7 +46,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Lsp.DataFlow,

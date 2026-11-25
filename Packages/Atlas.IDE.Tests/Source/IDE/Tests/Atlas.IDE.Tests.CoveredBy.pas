@@ -32,7 +32,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,

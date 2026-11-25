@@ -52,7 +52,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Ci.Contract,
   Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Settings.TeamFile,

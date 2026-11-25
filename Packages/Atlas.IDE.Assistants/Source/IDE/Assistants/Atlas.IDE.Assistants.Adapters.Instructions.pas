@@ -11,7 +11,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   TAtlasModuleScopeFunc = reference to function: IAtlasModuleScope;

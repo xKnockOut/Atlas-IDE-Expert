@@ -18,7 +18,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 /// <summary>Teile in ihrer Startreihenfolge; AScope liefert den Scope des Moduls für Antworten des Servers.
 /// </summary>
@@ -39,7 +39,7 @@ uses
   Winapi.Windows,
   Vcl.Menus,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Status.Registry,
   Atlas.IDE.Foundation.Host,

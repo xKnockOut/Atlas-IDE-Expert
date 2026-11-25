@@ -62,10 +62,11 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Settings.Parts;
+  Atlas.Core.Settings.Parts,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TFakePart = class(TInterfacedObject, IAtlasSettingsPart)

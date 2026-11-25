@@ -50,13 +50,13 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Settings.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Page,
-  Atlas.UI.Settings.Page.Sections;
+  Atlas.UI.Settings.Page.Sections,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TTestSection = class(TInterfacedObject, IAtlasSettingsSection)

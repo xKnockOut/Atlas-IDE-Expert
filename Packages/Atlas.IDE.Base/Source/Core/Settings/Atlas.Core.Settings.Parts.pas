@@ -23,9 +23,9 @@ uses
   System.SysUtils,
   System.SyncObjs,
   System.Generics.Collections,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registration,
-  Atlas.Core.Settings.Contract;
+  Atlas.Plugin.Registration,
+  Atlas.Core.Settings.Contract,
+  Atlas.Plugin.Registration.Contract;
 
 const
   /// <summary>Anfang der Namen, unter denen Base die Schlüssel je Modul vermerkt („$parts.{Id}.keys“).</summary>
@@ -957,8 +957,8 @@ initialization
   AtlasSettingsParts;
 
 finalization
-  // Die Reihenfolge gegenüber Atlas.Core.Modules.Registry ist offen: Noch angemeldete Teile trennt der Destruktor
-  // ab, ein späteres Revoke aus dem Scope eines Moduls geht dann ins Leere.
+  // Die Reihenfolge gegenüber Atlas.IDE.Base.Core.Modules.Registry ist offen: Noch angemeldete Teile trennt der
+  // Destruktor ab, ein späteres Revoke aus dem Scope eines Moduls geht dann ins Leere.
   GTornDown := True;
   GParts := nil;
 

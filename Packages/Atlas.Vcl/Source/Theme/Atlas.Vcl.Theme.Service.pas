@@ -62,6 +62,11 @@ type
     /// Zeichenfläche. Eine Systemfarbe direkt in Canvas.Font.Color bzw. Brush.Color nimmt die Farbe von Windows,
     /// im dunklen IDE-Thema also hell. AControl = nil: Stil der Anwendung.</summary>
     class function SystemColor(AControl: TControl; AColor: TColor): TColor; static;
+    /// <summary>Farben einer selbst gefärbten Zeile einer Liste oder eines Baums AControl auf ACanvas: gewählt in den
+    /// Farben der Auswahl, sonst Fläche und Schrift von AControl (AGray: clGrayText), alle über den Stil. ASelected
+    /// kommt aus Item.Selected bzw. Node.Selected, nie aus cdsSelected: Das ist in der IDE bei jeder Zeile gesetzt,
+    /// die Zeile bekäme dann die helle Auswahlschrift auf dem weißen Hintergrund von Windows.</summary>
+    class procedure RowColors(ACanvas: TCanvas; AControl: TControl; ASelected, AGray: Boolean); static;
     /// <summary>Schrift von AControl in der Systemfarbe AColor des Stils zeigen und bei jedem Themenwechsel
     /// nachziehen, bis AControl freigegeben wird. Mit seFont übergeht der VCL-Stil Font.Color und zeichnet in
     /// seiner Textfarbe: Ein „Font.Color := clGrayText“ bliebe ohne Wirkung. Ein zweiter Aufruf ersetzt die Farbe;
@@ -231,6 +236,25 @@ end;
 class function TAtlasUiTheme.SystemColor(AControl: TControl; AColor: TColor): TColor;
 begin
   Result := ColorToRGB(StyleServices(AControl).GetSystemColor(AColor));
+end;
+
+class procedure TAtlasUiTheme.RowColors(ACanvas: TCanvas; AControl: TControl; ASelected, AGray: Boolean);
+begin
+  if ASelected then
+  begin
+    ACanvas.Brush.Color := SystemColor(AControl, clHighlight);
+    ACanvas.Font.Color := SystemColor(AControl, clHighlightText);
+    Exit;
+  end;
+  ACanvas.Brush.Color := SystemColor(AControl, TControlAccess(AControl).Color);
+  if AGray then
+  begin
+    ACanvas.Font.Color := SystemColor(AControl, clGrayText);
+  end
+  else
+  begin
+    ACanvas.Font.Color := SystemColor(AControl, TControlAccess(AControl).Font.Color);
+  end;
 end;
 
 class procedure TAtlasUiTheme.UseFontColor(AControl: TControl; AColor: TColor);
