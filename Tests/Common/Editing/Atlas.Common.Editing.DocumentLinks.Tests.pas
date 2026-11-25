@@ -43,7 +43,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.DocumentLinks,
-  Atlas.Common.Lsp.DocumentLinks;
+  Atlas.Common.Editing.DocumentLinks.Protocol;
 
 const
   cDir = 'C:\Proj\';
@@ -190,7 +190,7 @@ var
   mItem: TJSONObject;
 begin
   mLink := Links('{$I Defs.inc} // http://x.de', [cDir + 'Defs.inc'])[0];
-  mItem := TLspDocumentLinks.LinkToJson(mLink);
+  mItem := TDocumentLinksProtocol.LinkToJson(mLink);
   try
     Assert.AreEqual(TDocumentUris.FromPath(cDir + 'Defs.inc'), mItem.GetValue<string>('target'));
     Assert.AreEqual(4, mItem.GetValue<Integer>('range.start.character'));
@@ -198,7 +198,7 @@ begin
     mItem.Free;
   end;
   mLink := Links('{$I Defs.inc} // http://x.de', [cDir + 'Defs.inc'])[1];
-  mItem := TLspDocumentLinks.LinkToJson(mLink);
+  mItem := TDocumentLinksProtocol.LinkToJson(mLink);
   try
     Assert.AreEqual('http://x.de', mItem.GetValue<string>('target'));
   finally

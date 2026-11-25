@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SmartIndent.Tests;
+﻿unit Atlas.Common.Editing.SmartIndent.Protocol.Tests;
 
 interface
 
@@ -8,7 +8,7 @@ uses
 type
   /// <summary>Befehl atlas.server.smartIndent (#1827): Argumente, Antwort, Schalter.</summary>
   [TestFixture]
-  TLspSmartIndentTests = class
+  TSmartIndentProtocolTests = class
   private
     /// <summary>Antwort auf AArguments (JSON-Text) als JSON-Text; AEnabled: smartIndent an.</summary>
     function Answer(const AArguments: string; AEnabled: Boolean): string;
@@ -35,15 +35,15 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.SmartIndent,
-  Atlas.Common.Lsp.SmartIndent;
+  Atlas.Common.Editing.SmartIndent.Protocol;
 
 const
   cUri = 'file:///C:/P/U.pas';
   cText = 'begin'#10'  if A then'#10;
 
-{ TLspSmartIndentTests }
+{ TSmartIndentProtocolTests }
 
-function TLspSmartIndentTests.Answer(const AArguments: string; AEnabled: Boolean): string;
+function TSmartIndentProtocolTests.Answer(const AArguments: string; AEnabled: Boolean): string;
 var
   mStore: IDocumentStore;
   mArguments: TJSONArray;
@@ -53,7 +53,7 @@ begin
   mStore.Open(cUri, 'delphi', 1, cText);
   mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
   try
-    mValue := TLspSmartIndent.Execute(mStore,
+    mValue := TSmartIndentProtocol.Execute(mStore,
       function(const AUri: string; const AEditorOptions: TJSONValue; out AOptions: TSmartIndentOptions): Boolean
       begin
         AOptions := TSmartIndentOptions.Default;
@@ -73,7 +73,7 @@ begin
   end;
 end;
 
-procedure TLspSmartIndentTests.AnswersEditsAndCursor;
+procedure TSmartIndentProtocolTests.AnswersEditsAndCursor;
 begin
   Assert.AreEqual('{"edits":[{"range":{"start":{"line":2,"character":0},"end":{"line":2,"character":0}},' +
     '"newText":"    "}],"cursor":{"line":2,"character":4}}',
@@ -84,12 +84,12 @@ begin
     Answer('["' + cUri + '",2,{"tabSize":4,"insertSpaces":true}]', True));
 end;
 
-procedure TLspSmartIndentTests.AnswersColumn;
+procedure TSmartIndentProtocolTests.AnswersColumn;
 begin
   Assert.AreEqual('{"column":4}', Answer('["' + cUri + '",2,{"tabSize":2,"insertSpaces":true},"column"]', True));
 end;
 
-procedure TLspSmartIndentTests.AnswersNullWhenOffOrUnknown;
+procedure TSmartIndentProtocolTests.AnswersNullWhenOffOrUnknown;
 begin
   Assert.AreEqual('null', Answer('["' + cUri + '",2,{"tabSize":2,"insertSpaces":true}]', False));
   Assert.AreEqual('null', Answer('["file:///C:/P/Fremd.pas",2]', True));
@@ -97,7 +97,7 @@ begin
   Assert.AreEqual('null', Answer('["' + cUri + '",0]', True));
 end;
 
-procedure TLspSmartIndentTests.RejectsMissingArguments;
+procedure TSmartIndentProtocolTests.RejectsMissingArguments;
 begin
   Assert.WillRaise(
     procedure
@@ -111,7 +111,7 @@ begin
     end, EArgumentException);
 end;
 
-procedure TLspSmartIndentTests.TakesOptionsFromSettings;
+procedure TSmartIndentProtocolTests.TakesOptionsFromSettings;
 var
   mSettings: TSmartIndentSettings;
   mStyle: TFormatStyle;
@@ -121,20 +121,20 @@ begin
   mStyle := TFormatStyle.Default;
   mStyle.IndentSize := 4;
   mStyle.UseTabs := True;
-  Assert.IsTrue(TLspSmartIndent.OptionsFrom(mSettings, mStyle, mOptions));
+  Assert.IsTrue(TSmartIndentProtocol.OptionsFrom(mSettings, mStyle, mOptions));
   Assert.AreEqual(4, mOptions.IndentSize);
   Assert.IsTrue(mOptions.UseTabs);
   Assert.AreEqual<TStringContinuation>(TStringContinuation.Indent, mOptions.StringContinuation);
   mSettings.SplitStringsIndent := 'align';
   mSettings.OutdentClosers := False;
   mSettings.Enabled := False;
-  Assert.IsFalse(TLspSmartIndent.OptionsFrom(mSettings, mStyle, mOptions));
+  Assert.IsFalse(TSmartIndentProtocol.OptionsFrom(mSettings, mStyle, mOptions));
   Assert.AreEqual<TStringContinuation>(TStringContinuation.Align, mOptions.StringContinuation);
   Assert.IsFalse(mOptions.OutdentClosers);
   Assert.IsTrue(mOptions.AfterEnter);
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspSmartIndentTests);
+  TDUnitX.RegisterTestFixture(TSmartIndentProtocolTests);
 
 end.

@@ -72,7 +72,7 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.Formatting,
-  Atlas.Common.Lsp.SmartIndent,
+  Atlas.Common.Editing.SmartIndent.Protocol,
   Atlas.Common.Pascal.TypeComments,
   Core.Workspace;
 
@@ -160,7 +160,7 @@ end;
 function TShellFileOptions.SmartIndentFor(const AUri: string; const AEditorOptions: TJSONValue;
   out AOptions: TSmartIndentOptions): Boolean;
 begin
-  Result := TLspSmartIndent.OptionsFrom(FSettings.SettingsFor(AUri).SmartIndent,
+  Result := TSmartIndentProtocol.OptionsFrom(FSettings.SettingsFor(AUri).SmartIndent,
     ResolvedFormatStyleWith(AUri, AEditorOptions), AOptions);
 end;
 

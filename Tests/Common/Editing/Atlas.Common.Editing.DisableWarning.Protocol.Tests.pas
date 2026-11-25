@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.DisableWarning.Tests;
+﻿unit Atlas.Common.Editing.DisableWarning.Protocol.Tests;
 
 // Tests für die Code-Aktionen und den Befehl atlas.server.disableWarning (#531).
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TLspDisableWarningTests = class
+  TDisableWarningProtocolTests = class
   public
     [Test]
     procedure OffersScopesForWarning;
@@ -36,7 +36,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Lsp.DisableWarning,
+  Atlas.Common.Editing.DisableWarning.Protocol,
   Atlas.Common.JsonRpc.TestSupport;
 
 const
@@ -92,15 +92,15 @@ var
 begin
   mTree := TPascalParser.Parse(cSource);
   try
-    Result := TLspDisableWarning.Actions(AOptions, mTree, cUri, AFirst, ALast, AMessages);
+    Result := TDisableWarningProtocol.Actions(AOptions, mTree, cUri, AFirst, ALast, AMessages);
   finally
     mTree.Free;
   end;
 end;
 
-{ TLspDisableWarningTests }
+{ TDisableWarningProtocolTests }
 
-procedure TLspDisableWarningTests.OffersScopesForWarning;
+procedure TDisableWarningProtocolTests.OffersScopesForWarning;
 var
   mActions: TArray<TJSONObject>;
   mArguments: TJSONArray;
@@ -112,10 +112,10 @@ begin
       'W1000 in der ganzen Unit abschalten ({$WARN SYMBOL_DEPRECATED OFF})|' +
       'W1000 im ganzen Projekt abschalten (Projektoptionen)|', Summary(mActions));
     mArguments := mActions[0].GetValue<TJSONObject>('command').GetValue<TJSONArray>('arguments');
-    Assert.AreEqual(TLspDisableWarning.cClientCommand, mActions[0].GetValue<TJSONObject>('command').GetValue<string>(
+    Assert.AreEqual(TDisableWarningProtocol.cClientCommand, mActions[0].GetValue<TJSONObject>('command').GetValue<string>(
       'command', ''));
     Assert.AreEqual('["file:///C:/Projekt/A.pas",7,"W1000","line",true]', mArguments.ToJSON);
-    Assert.AreEqual(TLspDisableWarning.cProjectCommand, mActions[3].GetValue<TJSONObject>('command').GetValue<string>(
+    Assert.AreEqual(TDisableWarningProtocol.cProjectCommand, mActions[3].GetValue<TJSONObject>('command').GetValue<string>(
       'command', ''));
     Assert.AreEqual('["file:///C:/Projekt/A.pas","W1000","SYMBOL_DEPRECATED"]',
       mActions[3].GetValue<TJSONObject>('command').GetValue<TJSONArray>('arguments').ToJSON);
@@ -125,7 +125,7 @@ begin
   end;
 end;
 
-procedure TLspDisableWarningTests.RoutineWideHintPrefersRoutine;
+procedure TDisableWarningProtocolTests.RoutineWideHintPrefersRoutine;
 var
   mActions: TArray<TJSONObject>;
 begin
@@ -138,7 +138,7 @@ begin
   end;
 end;
 
-procedure TLspDisableWarningTests.WarningWithoutIdentifierSaysAllWarnings;
+procedure TDisableWarningProtocolTests.WarningWithoutIdentifierSaysAllWarnings;
 var
   mActions: TArray<TJSONObject>;
 begin
@@ -152,7 +152,7 @@ begin
   end;
 end;
 
-procedure TLspDisableWarningTests.IgnoresErrorsOtherLinesAndDisabled;
+procedure TDisableWarningProtocolTests.IgnoresErrorsOtherLinesAndDisabled;
 var
   mActions: TArray<TJSONObject>;
   mDisabled: TDisableWarningOptions;
@@ -174,7 +174,7 @@ begin
   end;
 end;
 
-procedure TLspDisableWarningTests.ExecuteReturnsWorkspaceEdit;
+procedure TDisableWarningProtocolTests.ExecuteReturnsWorkspaceEdit;
 var
   mTree: TSyntaxTree;
   mArguments: TJSONArray;
@@ -184,7 +184,7 @@ begin
   try
     mArguments := TJSONObject.ParseJSONValue('["' + cUri + '", 7, "W1000", "line", "bewusst"]') as TJSONArray;
     try
-      mAnswer := TLspDisableWarning.Execute(mArguments, cSource, mTree, '');
+      mAnswer := TDisableWarningProtocol.Execute(mArguments, cSource, mTree, '');
     finally
       mArguments.Free;
     end;
@@ -202,7 +202,7 @@ begin
   end;
 end;
 
-procedure TLspDisableWarningTests.ExecuteRefusesBadArguments;
+procedure TDisableWarningProtocolTests.ExecuteRefusesBadArguments;
 var
   mTree: TSyntaxTree;
 
@@ -215,7 +215,7 @@ var
     try
       mRaised := False;
       try
-        TLspDisableWarning.Execute(mArguments, cSource, mTree, '').Free;
+        TDisableWarningProtocol.Execute(mArguments, cSource, mTree, '').Free;
       except
         on EJsonRpcError do
           mRaised := True;
@@ -239,6 +239,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspDisableWarningTests);
+  TDUnitX.RegisterTestFixture(TDisableWarningProtocolTests);
 
 end.
