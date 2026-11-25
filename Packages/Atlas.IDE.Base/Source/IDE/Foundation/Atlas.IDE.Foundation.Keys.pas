@@ -6,7 +6,13 @@
 // fremde Belegung aktiv und Atlas meldet den Konflikt in der Meldungsansicht.
 // Beim Start außerdem Hinweis auf Erweiterungen mit eigener Vervollständigung.
 // Nach dem Installieren oder Entfernen von Packages prüft Atlas erneut
-// (WatchPackages). TAtlasIdeKeyBinding belegt eine einzelne Taste für eine
+// (WatchPackages), aber erst über einen Zeitgeber aus der Nachrichtenschleife:
+// Ein eingereihter Eintrag (TAtlasMainThread) liefe auch in einem
+// verschachtelten CheckSynchronize, etwa wenn eine Erweiterung beim Entladen
+// mit TThread.WaitFor auf ihren Thread wartet. Die IDE ist dann mitten im
+// Laden bzw. Entladen, und IOTAKeyboardServices greift beim Neubelegen auf
+// Belegungen zu, deren Daten schon weg sind (Zugriffsverletzung in coreide).
+// TAtlasIdeKeyBinding belegt eine einzelne Taste für eine
 // Aktion, etwa die eigenen Tasten für Vervollständigung und Parameter-Hint.
 // Gemeldete Tasten merkt sich Reported, damit die Prüfung beim Start (#520)
 // denselben Konflikt nicht ein zweites Mal meldet.
@@ -17,6 +23,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
+  Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard;
 
@@ -57,8 +64,14 @@ type
   TAtlasIdeKeys = class
   private type
     TPackageWatch = class(TNotifierObject, IOTAIDENotifier)
+    public const
+      // Ruhe nach der letzten Paketmeldung, bevor neu geprüft wird.
+      cQuietMs = 500;
     private
       FChanged: TProc;
+      // Startet jede Paketmeldung neu; läuft nur aus der Nachrichtenschleife, nie in CheckSynchronize.
+      FTimer: TTimer;
+      procedure TimerTick(Sender: TObject);
     public
       procedure FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
       procedure BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
@@ -93,7 +106,9 @@ type
     /// <summary>Zu AShortCut ist in dieser Sitzung schon ein Konflikt gemeldet (#494, #520).</summary>
     class function Reported(AShortCut: Word): Boolean; static;
     class procedure MarkReported(AShortCut: Word); static;
-    /// <summary>AChanged im Hauptthread aufrufen, sobald Packages installiert oder entfernt werden.</summary>
+    /// <summary>AChanged im Hauptthread aufrufen, nachdem Packages installiert oder entfernt wurden: einmal nach
+    /// der letzten von mehreren Meldungen und erst aus der Nachrichtenschleife, nie verschachtelt in einem
+    /// CheckSynchronize mitten im Laden oder Entladen.</summary>
     class procedure WatchPackages(const AChanged: TProc); static;
     class procedure UnwatchPackages; static;
   end;
@@ -101,7 +116,6 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   Winapi.PsAPI,
   Vcl.ActnList,
@@ -215,21 +229,25 @@ end;
 
 procedure TAtlasIdeKeys.TPackageWatch.FileNotification(NotifyCode: TOTAFileNotification; const FileName: string;
   var Cancel: Boolean);
-var
-  mChanged: TProc;
 begin
-  if not (NotifyCode in [ofnPackageInstalled, ofnPackageUninstalled]) or not Assigned(FChanged) then
+  if not (NotifyCode in [ofnPackageInstalled, ofnPackageUninstalled]) or not Assigned(FChanged)
+    or (FTimer = nil) then
   begin
     Exit;
   end;
-  mChanged := FChanged;
-  // Nach der Meldung: Das Package ist dann fertig geladen bzw. entladen.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
-    procedure
-    begin
-      // Keine Exception an die IDE (#493).
-      TAtlasGuard.Run(TAtlasFeature.Settings, mChanged);
-    end);
+  // Neu starten: Weitere Meldungen kurz hintereinander (mehrere Packages) ergeben eine Prüfung.
+  FTimer.Enabled := False;
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasIdeKeys.TPackageWatch.TimerTick(Sender: TObject);
+begin
+  FTimer.Enabled := False;
+  if Assigned(FChanged) then
+  begin
+    // Keine Exception an die IDE (#493).
+    TAtlasGuard.Run(TAtlasFeature.Settings, FChanged);
+  end;
 end;
 
 procedure TAtlasIdeKeys.TPackageWatch.BeforeCompile(const Project: IOTAProject; var Cancel: Boolean);
@@ -473,6 +491,10 @@ begin
   end;
   FWatch := TPackageWatch.Create;
   FWatch.FChanged := AChanged;
+  FWatch.FTimer := TTimer.Create(nil);
+  FWatch.FTimer.Enabled := False;
+  FWatch.FTimer.Interval := TPackageWatch.cQuietMs;
+  FWatch.FTimer.OnTimer := FWatch.TimerTick;
   FWatchIndex := mServices.AddNotifier(FWatch);
 end;
 
@@ -485,6 +507,8 @@ begin
     Exit;
   end;
   FWatch.FChanged := nil;
+  // Eine wartende Prüfung verwerfen: Nach dem Abmelden erreicht nichts mehr den Hörer.
+  FreeAndNil(FWatch.FTimer);
   // RemoveNotifier gibt die Referenz der IDE frei und damit FWatch.
   if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
