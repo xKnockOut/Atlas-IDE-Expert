@@ -92,7 +92,6 @@ type
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     procedure HoverTick(Sender: TObject);
     procedure HideTip;
-    procedure QueueJump(ALine: Integer);
   public
     /// <summary>AScope ist der Scope des Moduls: Antworten erreichen die Marke nur, solange er offen ist.</summary>
     constructor Create(const AScope: IAtlasModuleScope);
@@ -111,7 +110,6 @@ implementation
 uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
@@ -458,7 +456,8 @@ begin
     mLine := TAtlasOwnershipMarks.JumpLine(FHits[mHit].Marks);
     if mLine >= 0 then
     begin
-      QueueJump(mLine);
+      // Erst nach dem Loslassen: Solange die Taste gedrückt ist, markiert der Editor bis zur Sprungstelle.
+      TAtlasIdeNavigation.JumpAfterClick(TAtlasFeature.Problems, FFileName, mLine, 0, nil);
     end;
   except
     on E: Exception do
@@ -547,26 +546,6 @@ begin
   begin
     FTip.HidePopup;
   end;
-end;
-
-procedure TAtlasIdeOwnershipHints.QueueJump(ALine: Integer);
-var
-  mState: IInterface;
-  mFileName: string;
-  mLine: Integer;
-begin
-  mState := FStateRef;
-  mFileName := FFileName;
-  mLine := ALine;
-  // Erst nach dem Mausereignis: Der Editor setzt sonst den Cursor danach.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Problems,
-    procedure
-    begin
-      if TState(mState as TObject).Alive then
-      begin
-        TAtlasIdeNavigation.GoToLocation(mFileName, mLine, 0);
-      end;
-    end);
 end;
 
 procedure TAtlasIdeOwnershipHints.ApplySettings;
