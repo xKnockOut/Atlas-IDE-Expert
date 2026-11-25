@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.UnitRename.Tests;
+﻿unit Atlas.Common.Editing.UnitRename.Protocol.Tests;
 
 // Tests für atlas.server.unitRenamed (#512): drei Units passen sich an, die
 // umbenannte Datei und Dateien ohne Verwendung bleiben außen vor.
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TLspUnitRenameTests = class
+  TUnitRenameProtocolTests = class
   public
     [Test]
     procedure AdjustsUsingUnits;
@@ -23,7 +23,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.UnitRename;
+  Atlas.Common.Editing.UnitRename.Protocol;
 
 function TextOf(const AFileName: string): string;
 begin
@@ -50,16 +50,16 @@ begin
   end;
 end;
 
-{ TLspUnitRenameTests }
+{ TUnitRenameProtocolTests }
 
-procedure TLspUnitRenameTests.AdjustsUsingUnits;
+procedure TUnitRenameProtocolTests.AdjustsUsingUnits;
 var
   mAnswer: TJSONObject;
   mChanges: TJSONArray;
   mIndex: Integer;
   mUris: string;
 begin
-  mAnswer := TLspUnitRename.Execute('C:\P\Kunden.pas', 'C:\P\KundenDaten.pas', ['C:\P\KundenDaten.pas',
+  mAnswer := TUnitRenameProtocol.Execute('C:\P\Kunden.pas', 'C:\P\KundenDaten.pas', ['C:\P\KundenDaten.pas',
     'C:\P\A.pas', 'C:\P\B.pas', 'C:\P\C.pas', 'C:\P\D.pas'],
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -85,6 +85,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspUnitRenameTests);
+  TDUnitX.RegisterTestFixture(TUnitRenameProtocolTests);
 
 end.

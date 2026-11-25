@@ -48,7 +48,7 @@ uses
   Atlas.Common.Lsp.ExitPoints,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
-  Atlas.Common.Lsp.MethodOrder,
+  Atlas.Common.Editing.MethodOrder.Protocol,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.InterfaceMethods,
   Atlas.Common.Lsp.QualifiedNames,
@@ -101,7 +101,7 @@ begin
       mCapability.Free;
     end;
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand, TLspExpressionType.cCommand,
-      TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand, TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand,
+      TMethodOrderProtocol.cCommand, TLspOverrideMarks.cCommand, TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand,
       TEnumValueCommands.cCommand, TResourceStringCommands.cAddCommand, TStringLiteralCommands.cPlainTextCommand,
       TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand, TLspLearnedSuggestions.cSuggestCommand,
       TLspLearnedSuggestions.cListCommand, TLspLearnedSuggestions.cContextCommand,
@@ -129,7 +129,7 @@ begin
     mEditorCommands.RegisterMarkCommands(mCommands);
     mEditorCommands.RegisterTextCommands(mCommands);
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand,
-      TLspExpressionType.cCommand, TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand,
+      TLspExpressionType.cCommand, TMethodOrderProtocol.cCommand, TLspOverrideMarks.cCommand,
       TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
       TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand,
       TLspLearnedSuggestions.cSuggestCommand, TLspLearnedSuggestions.cListCommand,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Overloads.Tests;
+﻿unit Atlas.Common.Editing.Overloads.Protocol.Tests;
 
 // Überladung anlegen über das Protokoll (#674): beide Aktionen mit
 // Client-Befehl auf dem Kopf, abgeschaltete Aktion mit Grund, Antwort mit
@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TLspOverloadsTests = class
+  TOverloadsProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -48,7 +48,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.Overloads,
-  Atlas.Common.Lsp.Overloads,
+  Atlas.Common.Editing.Overloads.Protocol,
   Atlas.Common.JsonRpc.TestSupport;
 
 const
@@ -77,15 +77,15 @@ const
     'end;'#10 +                                                              // 20
     'end.'#10;
 
-{ TLspOverloadsTests }
+{ TOverloadsProtocolTests }
 
-procedure TLspOverloadsTests.Setup;
+procedure TOverloadsProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cLogSource, cLogFile, nil));
 end;
 
-procedure TLspOverloadsTests.TearDown;
+procedure TOverloadsProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
@@ -96,14 +96,14 @@ var
 begin
   mTree := TPascalParser.Parse(cLogSource);
   try
-    Result := TLspOverloads.Actions(mTree, cLogSource, TDocumentUris.FromPath(cLogFile),
+    Result := TOverloadsProtocol.Actions(mTree, cLogSource, TDocumentUris.FromPath(cLogFile),
       TTextPosition.Create(ALine, ACharacter));
   finally
     mTree.Free;
   end;
 end;
 
-procedure TLspOverloadsTests.ActionsOnHeader;
+procedure TOverloadsProtocolTests.ActionsOnHeader;
 var
   mActions: TArray<TJSONObject>;
   mArguments: TJSONArray;
@@ -113,12 +113,12 @@ begin
     Assert.AreEqual(2, Integer(Length(mActions)));
     Assert.AreEqual(TOverloads.ForwardTitle, mActions[0].GetValue<string>('title'));
     Assert.AreEqual(TOverloads.CopyTitle, mActions[1].GetValue<string>('title'));
-    Assert.AreEqual(TLspOverloads.cClientCommand, mActions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TOverloadsProtocol.cClientCommand, mActions[0].GetValue<string>('command.command'));
     mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(3, mArguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(cLogFile), mArguments.Items[0].Value);
-    Assert.AreEqual(TLspOverloads.cForwardName, mArguments.Items[2].Value);
-    Assert.AreEqual(TLspOverloads.cCopyName, mActions[1].GetValue<TJSONArray>('command.arguments').Items[2].Value);
+    Assert.AreEqual(TOverloadsProtocol.cForwardName, mArguments.Items[2].Value);
+    Assert.AreEqual(TOverloadsProtocol.cCopyName, mActions[1].GetValue<TJSONArray>('command.arguments').Items[2].Value);
   finally
     TJsonRpcTestSupport.FreeAll(mActions);
   end;
@@ -131,7 +131,7 @@ begin
   end;
 end;
 
-procedure TLspOverloadsTests.DisabledActionCarriesReason;
+procedure TOverloadsProtocolTests.DisabledActionCarriesReason;
 var
   mActions: TArray<TJSONObject>;
 begin
@@ -145,7 +145,7 @@ begin
   end;
 end;
 
-procedure TLspOverloadsTests.ExecuteAnswersWithPlaceholders;
+procedure TOverloadsProtocolTests.ExecuteAnswersWithPlaceholders;
 var
   mTree: TSyntaxTree;
   mAnswer: TJSONObject;
@@ -153,7 +153,7 @@ var
 begin
   mTree := TPascalParser.Parse(cLogSource);
   try
-    mAnswer := TLspOverloads.Execute(mTree, cLogFile, cLogSource, TTextPosition.Create(12, 18), 'copy', nil);
+    mAnswer := TOverloadsProtocol.Execute(mTree, cLogFile, cLogSource, TTextPosition.Create(12, 18), 'copy', nil);
     try
       Assert.IsTrue(Pos('procedure Write(const AText: string; ALevel: TLogLevel); overload;', mAnswer.ToJSON) > 0,
         mAnswer.ToJSON);
@@ -185,8 +185,8 @@ begin
   try
     mResolver.PinTree(mTree, cLogFile);
     try
-      mAnswer := TLspOverloads.Execute(mTree, cLogFile, cLogSource, TTextPosition.Create(ALine, ACharacter), 'forward',
-        TLspOverloads.DefaultFunc(mResolver, AIndex, mTree, cLogFile, cLogSource));
+      mAnswer := TOverloadsProtocol.Execute(mTree, cLogFile, cLogSource, TTextPosition.Create(ALine, ACharacter), 'forward',
+        TOverloadsProtocol.DefaultFunc(mResolver, AIndex, mTree, cLogFile, cLogSource));
       try
         Result := mAnswer.ToJSON;
       finally
@@ -201,7 +201,7 @@ begin
   end;
 end;
 
-procedure TLspOverloadsTests.DefaultsFromResolver;
+procedure TOverloadsProtocolTests.DefaultsFromResolver;
 var
   mJson: string;
 begin
@@ -211,7 +211,7 @@ begin
   Assert.IsTrue(Pos('Attach(AName, nil);', mJson) > 0, mJson);
 end;
 
-procedure TLspOverloadsTests.ErrorsCarryReason;
+procedure TOverloadsProtocolTests.ErrorsCarryReason;
 begin
   Assert.WillRaise(
     procedure
@@ -220,7 +220,7 @@ begin
     begin
       Tree := TPascalParser.Parse(cLogSource);
       try
-        TLspOverloads.Execute(Tree, cLogFile, cLogSource, TTextPosition.Create(18, 18), 'copy', nil).Free;
+        TOverloadsProtocol.Execute(Tree, cLogFile, cLogSource, TTextPosition.Create(18, 18), 'copy', nil).Free;
       finally
         Tree.Free;
       end;
@@ -232,7 +232,7 @@ begin
     begin
       Tree := TPascalParser.Parse(cLogSource);
       try
-        TLspOverloads.Execute(Tree, cLogFile, cLogSource, TTextPosition.Create(12, 18), 'merge', nil).Free;
+        TOverloadsProtocol.Execute(Tree, cLogFile, cLogSource, TTextPosition.Create(12, 18), 'merge', nil).Free;
       finally
         Tree.Free;
       end;
@@ -244,7 +244,7 @@ begin
     begin
       Tree := TPascalParser.Parse(cLogSource);
       try
-        TLspOverloads.Execute(Tree, cLogFile, cLogSource, TTextPosition.Create(13, 2), 'copy', nil).Free;
+        TOverloadsProtocol.Execute(Tree, cLogFile, cLogSource, TTextPosition.Create(13, 2), 'copy', nil).Free;
       finally
         Tree.Free;
       end;
@@ -252,6 +252,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspOverloadsTests);
+  TDUnitX.RegisterTestFixture(TOverloadsProtocolTests);
 
 end.

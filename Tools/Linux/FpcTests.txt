@@ -255,7 +255,7 @@ Atlas.Common.Lsp.MethodBreakpoints.Tests
 Atlas.Common.Lsp.MissingUnit.Tests
 Atlas.Common.Semantics.ParameterHeaders.Tests
 Atlas.Common.Lsp.Processes.Tests
-Atlas.Common.Lsp.RaiseVisibility.Tests
+Atlas.Common.Editing.RaiseVisibility.Protocol.Tests
 Atlas.Common.Lsp.Rationale.Tests
 Atlas.Common.Semantics.ReferenceConfidence.Tests
 Atlas.Common.Semantics.References.Tests
@@ -263,6 +263,7 @@ Atlas.Common.Semantics.Implementations.Tests
 Atlas.Common.Lsp.Implementations.Tests
 Atlas.Common.Semantics.Definitions.Tests
 Atlas.Common.Lsp.Definition.Tests
+Atlas.Common.CodeActions.Json.Tests
 Atlas.Common.Lsp.Rename.Tests
 Atlas.Common.Lsp.ResourceStringCommands.Tests
 Atlas.Common.Lsp.RoutineParameters.Tests

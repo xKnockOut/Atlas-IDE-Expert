@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Overloads;
+﻿unit Atlas.Common.Editing.Overloads.Protocol;
 
 // Überladung anlegen über das Protokoll (#674):
 //   - Code-Aktionen auf dem Kopf einer Routine: „Überladung anlegen (als
@@ -27,7 +27,7 @@ uses
   Atlas.Common.Editing.Overloads;
 
 type
-  TLspOverloads = class
+  TOverloadsProtocol = class
   public const
     cClientCommand = 'atlas.createOverload';
     cApplyCommand = 'atlas.server.createOverload';
@@ -52,11 +52,10 @@ type
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443),
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
@@ -65,10 +64,10 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspOverloadsText = (ThereIsNoHeaderOf, OverloadNotPossible, UnknownKind);
+  TOverloadsProtocolText = (ThereIsNoHeaderOf, OverloadNotPossible, UnknownKind);
 
 const
-  cTexts: array[TLspOverloadsText] of TAtlasText = (
+  cTexts: array[TOverloadsProtocolText] of TAtlasText = (
     (De: 'Hier steht kein Kopf einer Routine mit Rumpf in dieser Unit.';
      En: 'There is no header of a routine with a body in this unit here.'),
     (De: 'Überladung geht nicht: '; En: 'Overload not possible: '),
@@ -76,9 +75,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspOverloads }
+{ TOverloadsProtocol }
 
-class function TLspOverloads.KindName(AKind: TOverloadKind): string;
+class function TOverloadsProtocol.KindName(AKind: TOverloadKind): string;
 begin
   if AKind = TOverloadKind.Forward then
   begin
@@ -90,7 +89,7 @@ begin
   end;
 end;
 
-class function TLspOverloads.KindOf(const AName: string; out AKind: TOverloadKind): Boolean;
+class function TOverloadsProtocol.KindOf(const AName: string; out AKind: TOverloadKind): Boolean;
 begin
   Result := True;
   if SameText(AName, cForwardName) then
@@ -119,7 +118,7 @@ begin
   mReason := ATarget.Reason(AKind);
   Result := TJSONObject.Create;
   Result.AddPair('title', mTitle);
-  Result.AddPair('kind', TLspOverloads.cActionKind);
+  Result.AddPair('kind', TOverloadsProtocol.cActionKind);
   if mReason <> '' then
   begin
     Result.AddPair('disabled', TJSONObject.Create(TJSONPair.Create('reason', mReason)));
@@ -128,15 +127,15 @@ begin
   mArguments := TJSONArray.Create;
   mArguments.Add(AUri);
   mArguments.AddElement(TLspPositions.PositionToJson(APosition));
-  mArguments.Add(TLspOverloads.KindName(AKind));
+  mArguments.Add(TOverloadsProtocol.KindName(AKind));
   mCommand := TJSONObject.Create;
   mCommand.AddPair('title', mTitle);
-  mCommand.AddPair('command', TLspOverloads.cClientCommand);
+  mCommand.AddPair('command', TOverloadsProtocol.cClientCommand);
   mCommand.AddPair('arguments', mArguments);
   Result.AddPair('command', mCommand);
 end;
 
-class function TLspOverloads.Actions(ATree: TSyntaxTree; const AText, AUri: string;
+class function TOverloadsProtocol.Actions(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
 var
   mTarget: TOverloadTarget;
@@ -169,7 +168,7 @@ begin
   end;
 end;
 
-class function TLspOverloads.DefaultFunc(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+class function TOverloadsProtocol.DefaultFunc(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName, AText: string): TOverloadDefaultFunc;
 var
   mLines: TLineTable;
@@ -203,7 +202,7 @@ end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, AMessage);
 end;
 
 function AnswerJson(const AUri: string; const AResult: TOverloadResult): TJSONObject;
@@ -251,7 +250,7 @@ begin
   Result.AddPair('warnings', mWarnings);
 end;
 
-class function TLspOverloads.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
+class function TOverloadsProtocol.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
   const APosition: TTextPosition; const AKind: string; const ADefault: TOverloadDefaultFunc): TJSONObject;
 var
   mKind: TOverloadKind;
@@ -261,20 +260,20 @@ var
 begin
   if not KindOf(AKind, mKind) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspOverloadsText.UnknownKind].Fmt([AKind]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TOverloadsProtocolText.UnknownKind].Fmt([AKind]));
   end;
   if not TOverloads.Target(AText, ATree, APosition, mTarget) then
   begin
-    raise Fail(cTexts[TLspOverloadsText.ThereIsNoHeaderOf].Text);
+    raise Fail(cTexts[TOverloadsProtocolText.ThereIsNoHeaderOf].Text);
   end;
   if not TOverloads.Build(AText, ATree, mTarget, TOverloadRequest.Create(mKind, ADefault), mOutcome, mReason) then
   begin
-    raise Fail(cTexts[TLspOverloadsText.OverloadNotPossible].Text + mReason);
+    raise Fail(cTexts[TOverloadsProtocolText.OverloadNotPossible].Text + mReason);
   end;
   Result := AnswerJson(TDocumentUris.FromPath(AFileName), mOutcome);
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Overloads', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.Overloads.Protocol', cTexts);
 
 end.
