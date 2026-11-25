@@ -8,7 +8,11 @@
 // Kachel in dessen Inhaltsfläche. Zieht ein Modul seine Kachel zurück, gibt
 // TAtlasIdeWelcomeTiles sofort alle Steuerelemente der Kachel frei und meldet
 // den Bereich ab: Danach ruft die Seite keinen Code des Moduls mehr auf
-// (Regel 3), auch wenn sie ihre Rahmen erst später neu ordnet.
+// (Regel 3), auch wenn sie ihre Rahmen erst später neu ordnet. Der Bereich
+// erreicht die Kachel nur über eine Verbindung (IAtlasWelcomeTileLink), die
+// das Zurückziehen kappt: Kopien des Bereichs (etwa in der Tafel bis zum
+// nächsten Rebuild) halten danach nichts mehr vom Modul und geben beim
+// Freigeben keinen Code des entladenen Moduls frei.
 // Umgekehrt stellt es IAtlasWelcomeBoard und IAtlasWelcomeProjects bereit.
 // Alles im Hauptthread.
 
@@ -27,6 +31,15 @@ uses
 
 type
   TAtlasIdeWelcomeTiles = class;
+
+  /// <summary>Verbindung eines Bereichs zu seiner Kachel; Cut beim Zurückziehen.</summary>
+  IAtlasWelcomeTileLink = interface
+    ['{49F9F32D-FE9F-458A-99F3-D93CE8A02A51}']
+    /// <summary>Schalter der Kachel; nach Cut False.</summary>
+    function Enabled: Boolean;
+    /// <summary>Kachel vergessen.</summary>
+    procedure Cut;
+  end;
 
   /// <summary>Projekte des Bereichs „Projekte“; ohne Bereich (nil) leer.</summary>
   TAtlasWelcomeProjectsQuery = reference to function: TArray<TAtlasWelcomeProject>;
@@ -94,6 +107,7 @@ type
     FSections: TAtlasWelcomeSections;
     FWatch: TAtlasProvidedWatch;
     FTiles: TDictionary<string, IAtlasWelcomeTile>;
+    FLinks: TDictionary<string, IAtlasWelcomeTileLink>;
     FFrames: TList<TAtlasWelcomeTileFrame>;
     FBoard: TBoard;
     FBoardRef: IAtlasWelcomeBoard;
@@ -123,14 +137,45 @@ type
     function TileIds: TArray<string>;
     /// <summary>Lebende Rahmen der Kachel AId (mit oder ohne Ansicht).</summary>
     function FramesOf(const AId: string): TArray<TAtlasWelcomeTileFrame>;
-    /// <summary>Bereich zur Kachel ATile.</summary>
-    class function SectionOf(const ATile: IAtlasWelcomeTile): TAtlasWelcomeSection; static;
+    /// <summary>Bereich zur Kachel ATile; ihren Schalter fragt er über ALink.</summary>
+    class function SectionOf(const ATile: IAtlasWelcomeTile; const ALink: IAtlasWelcomeTileLink):
+      TAtlasWelcomeSection; static;
+    /// <summary>Neue Verbindung zu ATile.</summary>
+    class function NewLink(const ATile: IAtlasWelcomeTile): IAtlasWelcomeTileLink; static;
   end;
 
 implementation
 
 uses
   Vcl.Controls;
+
+type
+  TTileLink = class(TInterfacedObject, IAtlasWelcomeTileLink)
+  private
+    FTile: IAtlasWelcomeTile;
+  public
+    constructor Create(const ATile: IAtlasWelcomeTile);
+    function Enabled: Boolean;
+    procedure Cut;
+  end;
+
+{ TTileLink }
+
+constructor TTileLink.Create(const ATile: IAtlasWelcomeTile);
+begin
+  inherited Create;
+  FTile := ATile;
+end;
+
+function TTileLink.Enabled: Boolean;
+begin
+  Result := (FTile <> nil) and FTile.Enabled;
+end;
+
+procedure TTileLink.Cut;
+begin
+  FTile := nil;
+end;
 
 { TAtlasWelcomeTileFrame.THost }
 
@@ -235,7 +280,7 @@ var
 begin
   if (FOwner <> nil) and FOwner.FTiles.TryGetValue(AId, mTile) then
   begin
-    FOwner.FSections.Add(SectionOf(mTile));
+    FOwner.FSections.Add(SectionOf(mTile, FOwner.FLinks[AId]));
   end;
 end;
 
@@ -297,6 +342,7 @@ begin
   FProvide := AProvide;
   FSections := ASections;
   FTiles := TDictionary<string, IAtlasWelcomeTile>.Create;
+  FLinks := TDictionary<string, IAtlasWelcomeTileLink>.Create;
   FFrames := TList<TAtlasWelcomeTileFrame>.Create;
 end;
 
@@ -304,6 +350,7 @@ destructor TAtlasIdeWelcomeTiles.Destroy;
 begin
   Stop;
   FFrames.Free;
+  FLinks.Free;
   FTiles.Free;
   FProvide := nil;
   inherited Destroy;
@@ -358,6 +405,7 @@ end;
 procedure TAtlasIdeWelcomeTiles.Withdraw(const AId: string);
 var
   mFrame: TAtlasWelcomeTileFrame;
+  mLink: IAtlasWelcomeTileLink;
 begin
   // Zuerst die Steuerelemente: Nach dem Zurückziehen läuft kein Code des Moduls mehr (Regel 3).
   for mFrame in FramesOf(AId) do
@@ -365,6 +413,12 @@ begin
     mFrame.Detach;
   end;
   TAtlasWelcomeViews.Unregister(AId);
+  // Kopien des Bereichs leben weiter (Tafel bis zum nächsten Rebuild); sie dürfen die Kachel nicht mehr halten.
+  if FLinks.TryGetValue(AId, mLink) then
+  begin
+    mLink.Cut;
+  end;
+  FLinks.Remove(AId);
   FTiles.Remove(AId);
   FSections.Remove(AId);
 end;
@@ -372,15 +426,18 @@ end;
 procedure TAtlasIdeWelcomeTiles.Announce(const AId: string; const ATile: IAtlasWelcomeTile);
 var
   mId: string;
+  mLink: IAtlasWelcomeTileLink;
 begin
   mId := AId;
+  mLink := NewLink(ATile);
   FTiles.Add(mId, ATile);
+  FLinks.Add(mId, mLink);
   TAtlasWelcomeViews.Register(mId,
     function(AOwner: TComponent): TAtlasWelcomeSectionFrame
     begin
       Result := CreateFrame(mId, AOwner);
     end);
-  FSections.Add(SectionOf(ATile));
+  FSections.Add(SectionOf(ATile, mLink));
 end;
 
 function TAtlasIdeWelcomeTiles.CreateFrame(const AId: string; AOwner: TComponent): TAtlasWelcomeSectionFrame;
@@ -501,14 +558,21 @@ begin
   end;
 end;
 
-class function TAtlasIdeWelcomeTiles.SectionOf(const ATile: IAtlasWelcomeTile): TAtlasWelcomeSection;
+class function TAtlasIdeWelcomeTiles.NewLink(const ATile: IAtlasWelcomeTile): IAtlasWelcomeTileLink;
+begin
+  Result := TTileLink.Create(ATile);
+end;
+
+class function TAtlasIdeWelcomeTiles.SectionOf(const ATile: IAtlasWelcomeTile;
+  const ALink: IAtlasWelcomeTileLink): TAtlasWelcomeSection;
 var
   mInfo: TAtlasWelcomeTileInfo;
-  mTile: IAtlasWelcomeTile;
+  mLink: IAtlasWelcomeTileLink;
   mColumn: TAtlasWelcomeColumn;
 begin
   mInfo := ATile.Info;
-  mTile := ATile;
+  // Nur die Verbindung, nie die Kachel selbst: Der Bereich wird kopiert und überlebt das Modul.
+  mLink := ALink;
   mColumn := TAtlasWelcomeColumn.Left;
   if mInfo.Column = TAtlasWelcomeTileColumn.Right then
   begin
@@ -517,7 +581,7 @@ begin
   Result := TAtlasWelcomeSection.Create(mInfo.Id, mInfo.Title, mInfo.Order, mColumn,
     function: Boolean
     begin
-      Result := mTile.Enabled;
+      Result := mLink.Enabled;
     end);
   Result.Description := mInfo.Description;
 end;
