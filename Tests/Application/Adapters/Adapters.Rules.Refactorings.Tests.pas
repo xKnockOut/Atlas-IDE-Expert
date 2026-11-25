@@ -24,6 +24,8 @@ type
     [Test]
     procedure ClassCompletionGoesToEditing;
     [Test]
+    procedure SlashCommandsGoToEditing;
+    [Test]
     procedure OverrideGoesToEditing;
     [Test]
     procedure CreateAccessorGoesToEditing;
@@ -125,6 +127,7 @@ begin
   Result.Methods := TEditingComposition.MethodsWithoutSelf;
   Result.Order := TEditingComposition.MethodOrder;
   Result.Completion := TEditingComposition.ClassCompletion;
+  Result.Commands := TEditingComposition.SlashChecks;
 end;
 
 function Refactorings: TRuleRefactorings;
@@ -306,6 +309,18 @@ begin
   Assert.IsTrue(Refactorings.Classes.CreateAccessor(TClassEditRequest.Create(cSource, 10), mPlan, mAction));
   mText := TTestEdits.Apply(cSource, mAction.Edits);
   Assert.IsTrue(Pos('FName: string;', mText) > 0, mText);
+end;
+
+procedure TRuleRefactoringsAdapterTests.SlashCommandsGoToEditing;
+var
+  mProblems: TArray<TRuleSlashProblem>;
+begin
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(Default(TRuleRefactoringSources)).Commands);
+  mProblems := Refactorings.Commands.Problems('unit U;'#10'implementation'#10'  /gibtsnicht X'#10'end.', nil, '');
+  Assert.AreEqual(1, Integer(Length(mProblems)));
+  Assert.AreEqual(2, mProblems[0].Range.StartPos.Line);
+  Assert.AreEqual('Unbekannter Schnellbefehl /gibtsnicht', mProblems[0].Message);
+  Assert.Contains(Refactorings.Commands.IgnoreWithoutHit('probe-line'), 'probe-line');
 end;
 
 procedure TRuleRefactoringsAdapterTests.NothingToDoGivesFalse;
