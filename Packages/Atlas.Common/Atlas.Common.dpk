@@ -375,7 +375,7 @@ contains
   Atlas.Common.Lsp.WinApiDocs in 'Source\Lsp\Atlas.Common.Lsp.WinApiDocs.pas',
   Atlas.Common.Lsp.KeywordReference in 'Source\Lsp\Atlas.Common.Lsp.KeywordReference.pas',
   Atlas.Common.Editing.AssignmentSwap in 'Source\Editing\Atlas.Common.Editing.AssignmentSwap.pas',
-  Atlas.Common.Editing.ChangeSignature in 'Source\Editing\Atlas.Common.Editing.ChangeSignature.pas',
+  Atlas.Common.Pascal.SignatureChanges in 'Source\Pascal\Atlas.Common.Pascal.SignatureChanges.pas',
   Atlas.Common.Semantics.LegacyListKinds in 'Source\Semantics\Atlas.Common.Semantics.LegacyListKinds.pas',
   Atlas.Common.Editing.GenericLists.Syntax in 'Source\Editing\Atlas.Common.Editing.GenericLists.Syntax.pas',
   Atlas.Common.Editing.GenericLists.Source in 'Source\Editing\Atlas.Common.Editing.GenericLists.Source.pas',
