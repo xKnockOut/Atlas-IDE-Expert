@@ -72,7 +72,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Windows,
   System.Types,
   System.IOUtils,
@@ -81,8 +81,8 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.Plan,
@@ -90,36 +90,36 @@ uses
   Atlas.UI.Search.Strings,
   Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Window,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.ToolsApi.Commands.ActionHook,
+  Atlas.ToolsApi.Editor.Buffer;
 
 type
   /// <summary>Hängt sich an OnExecute der IDE-Aktion „Units“, „Unit verwenden“ oder „Formulare“ und gibt sie
   /// beim Freigeben zurück.</summary>
-  TUnitDialogHook = class(TComponent)
+  TUnitDialogHook = class(TAtlasIdeActionHook)
   private
-    FAction: TContainedAction;
-    FOriginal: TNotifyEvent;
-    FBypass: Boolean;
     FMode: TAtlasUnitSearchMode;
-    procedure Execute(Sender: TObject);
   protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure Intercept; override;
   public
     constructor Create(AAction: TContainedAction; AMode: TAtlasUnitSearchMode); reintroduce;
-    destructor Destroy; override;
-    /// <summary>Ursprüngliches Verhalten der Aktion (IDE-Dialog).</summary>
-    procedure RunOriginal;
   end;
 
   /// <summary>Ein offenes Fenster samt Zustand und Ziel für „In uses aufnehmen“.</summary>
   TOpenSearch = class
+  private
+    FWindow: TAtlasUnitSearchWindow;
+    FState: TAtlasUnitSearchState;
+    FTarget: string;
+    FMode: TAtlasUnitSearchMode;
   public
-    Window: TAtlasUnitSearchWindow;
-    State: TAtlasUnitSearchState;
+    property Window: TAtlasUnitSearchWindow read FWindow write FWindow;
+    property State: TAtlasUnitSearchState read FState write FState;
     /// <summary>Datei des obersten Editors beim Öffnen; '' ohne.</summary>
-    Target: string;
-    Mode: TAtlasUnitSearchMode;
+    property Target: string read FTarget write FTarget;
+    property Mode: TAtlasUnitSearchMode read FMode write FMode;
     destructor Destroy; override;
   end;
 
@@ -174,41 +174,14 @@ end;
 
 constructor TUnitDialogHook.Create(AAction: TContainedAction; AMode: TAtlasUnitSearchMode);
 begin
-  inherited Create(nil);
-  FAction := AAction;
   FMode := AMode;
-  FOriginal := AAction.OnExecute;
-  FAction.OnExecute := Execute;
-  FAction.FreeNotification(Self);
+  inherited Create(AAction);
 end;
 
-destructor TUnitDialogHook.Destroy;
-begin
-  if FAction <> nil then
-  begin
-    FAction.RemoveFreeNotification(Self);
-    FAction.OnExecute := FOriginal;
-  end;
-  inherited Destroy;
-end;
-
-procedure TUnitDialogHook.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FAction) then
-  begin
-    FAction := nil;
-  end;
-end;
-
-procedure TUnitDialogHook.Execute(Sender: TObject);
+procedure TUnitDialogHook.Intercept;
 var
   mPlugin: TAtlasPluginSettings;
 begin
-  if FBypass then
-  begin
-    Exit;
-  end;
   mPlugin := Settings;
   // Umschalttaste (etwa beim Klick ins Menü Ansicht) holt den IDE-Dialog; abgeschaltet nach Fehlern (#493) oder
   // Fehler beim Öffnen ebenso: Die Taste darf nie ins Leere gehen.
@@ -225,31 +198,6 @@ begin
     end) then
   begin
     RunOriginal;
-  end;
-end;
-
-procedure TUnitDialogHook.RunOriginal;
-begin
-  if FAction = nil then
-  begin
-    Exit;
-  end;
-  if Assigned(FOriginal) then
-  begin
-    FOriginal(FAction);
-    Exit;
-  end;
-  // Ohne eigenes OnExecute erledigt die IDE die Aktion über ihre Liste: kurz abhängen und ausführen.
-  FBypass := True;
-  FAction.OnExecute := nil;
-  try
-    FAction.Execute;
-  finally
-    if FAction <> nil then
-    begin
-      FAction.OnExecute := Execute;
-    end;
-    FBypass := False;
   end;
 end;
 
@@ -286,17 +234,6 @@ begin
     end;
   end;
   TAtlasUnitSearchPlan.GroupInfo(mGroupFile, mProjectFile, AGroupFile, AActiveProject, ARoot);
-end;
-
-function TopFile: string;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) and (mEditors.TopBuffer <> nil) then
-  begin
-    Result := mEditors.TopBuffer.FileName;
-  end;
 end;
 
 { TAtlasIdeUnitSearch }
@@ -402,7 +339,7 @@ begin
   Result := nil;
   if FHooks[TAtlasUnitSearchMode.Search] <> nil then
   begin
-    Result := TUnitDialogHook(FHooks[TAtlasUnitSearchMode.Search]).FAction;
+    Result := TUnitDialogHook(FHooks[TAtlasUnitSearchMode.Search]).Action;
   end;
 end;
 
@@ -474,7 +411,7 @@ begin
     // Die Meldung kann den Pfad enthalten; ReportNotWritten nennt nur die Klasse.
     on E: Exception do
     begin
-      TAtlasDataFile.ReportNotWritten('Zustand von Units suchen', E);
+      TAtlasDataFile.ReportNotWritten(cUnitSearchStateKind, E);
     end;
   end;
   FreeAndNil(Current);
@@ -637,7 +574,7 @@ begin
     end;
     Exit;
   end;
-  mTargetFile := TopFile;
+  mTargetFile := TAtlasEditorBuffer.TopFileName;
   if (AMode = TAtlasUnitSearchMode.UseUnit) and not TAtlasIdeUnitSearchActions.UsesTarget(mTargetFile) then
   begin
     Say(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchUsesNone));

@@ -32,7 +32,7 @@
 // mit höherem Format wird weder gelesen noch überschrieben. Ein leeres
 // Notizbuch löscht seine Datei.
 // Lesen und Schreiben über TAtlasDataFile: atomar ersetzt
-// (früher Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
+// (kein Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
 // .defekt daneben; eine beim Lesen gesperrte merkt sich das Notizbuch
 // (KeptFile), und Save überschreibt sie nicht.
 // Nicht threadsicher: Die IDE liest und schreibt nur im Hauptthread.
@@ -125,8 +125,6 @@ type
     /// <summary>Liest AJson. False bei ungültigem Inhalt oder höherem Format; ABook ist dann leer.</summary>
     class function Parse(const AJson: string; out ABook: TAtlasNoteBook): Boolean; static;
     class function ToJson(const ABook: TAtlasNoteBook): string; static;
-    /// <summary>Format einer Datei (0 ohne oder bei ungültigem Inhalt).</summary>
-    class function FormatOf(const AJson: string): Integer; static;
     /// <summary>Liest die Datei zu AProject über TAtlasDataFile.Load; False ohne, bei unbrauchbarer (dann als
     /// .defekt beiseitegelegt) oder gesperrter Datei (dann KeptFile). ABook ist dann leer mit Project = AProject.
     /// </summary>
@@ -149,9 +147,11 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Projects.Summary.Json,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Marks.Ids,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Uris;
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
@@ -395,24 +395,9 @@ begin
   end;
 end;
 
-/// <summary>Dateiname ohne Ordner; unabhängig vom Trennzeichen des Systems.</summary>
-function ShortName(const AFileName: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := AFileName;
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if CharInSet(Result[mIndex], ['\', '/']) then
-    begin
-      Exit(Copy(Result, mIndex + 1, MaxInt));
-    end;
-  end;
-end;
-
 function CompareNotes(const A, B: TAtlasNote): Integer;
 begin
-  Result := CompareText(ShortName(A.FileName), ShortName(B.FileName));
+  Result := CompareText(TTextUris.FileNameOf(A.FileName), TTextUris.FileNameOf(B.FileName));
   if Result = 0 then
   begin
     Result := CompareText(A.FileName, B.FileName);
@@ -466,44 +451,11 @@ end;
 
 { JSON-Helfer }
 
-function Known(const AKeys: array of string; const AName: string): Boolean;
-var
-  mKey: string;
-begin
-  Result := False;
-  for mKey in AKeys do
-  begin
-    if mKey = AName then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 begin
   Result := Copy(TJsonRead.Strings(AObject, AName), 0, TAtlasLineAnchors.cContextLines);
 end;
 
-/// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
-procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
-var
-  mIndex: Integer;
-  mPair: TJSONPair;
-begin
-  if AOriginal = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to AOriginal.Count - 1 do
-  begin
-    mPair := AOriginal.Pairs[mIndex];
-    if not Known(AKeys, mPair.JsonString.Value) then
-    begin
-      ATarget.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
-    end;
-  end;
-end;
 
 /// <summary>Nur die unbekannten Felder einer Notiz als JSON-Objekt; '' ohne.</summary>
 function ExtraOf(AObject: TJSONObject): string;
@@ -666,18 +618,6 @@ begin
   end;
 end;
 
-class function TAtlasNotes.FormatOf(const AJson: string): Integer;
-var
-  mRoot: TJSONObject;
-begin
-  mRoot := TJsonRead.ParseObject(AJson);
-  try
-    Result := TJsonRead.IntOr(mRoot, 'format', 0);
-  finally
-    mRoot.Free;
-  end;
-end;
-
 class function TAtlasNotes.Load(const AFolder, AProject: string; out ABook: TAtlasNoteBook): Boolean;
 var
   mFileName: string;
@@ -698,7 +638,7 @@ begin
     begin
       mParsed := Parse(AText, mBook);
       // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
-      Result := mParsed or (FormatOf(AText) > cFormat);
+      Result := mParsed or (TJsonRead.FormatOf(AText) > cFormat);
     end);
   Result := mParsed and (mLoad = TAtlasDataLoad.Loaded);
   if Result then
@@ -732,7 +672,8 @@ begin
   end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > cFormat)) then
+    if FileExists(mFileName) and
+      (not TAtlasDataFile.TryRead(mFileName, mText) or (TJsonRead.FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;

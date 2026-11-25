@@ -8,7 +8,7 @@ interface
 uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -28,7 +28,6 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Strings;
 
 { TAtlasSettingsBuildPart }
@@ -61,7 +60,7 @@ procedure TAtlasSettingsBuildPart.Build;
 begin
   // Probleme im Editor und eine Aktion nach dem Speichern (#398, #548): Syntaxprüfung der IDE oder
   // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
-  AddSheet(TAtlasTextId.SettingsTabCompiler);
+  AddSheet(TAtlasSettingsTextId.SettingsTabCompiler);
   BindCheck('Problems', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblems)));
   BindCheck('ProblemsStatusCounter',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsStatusCounter)));

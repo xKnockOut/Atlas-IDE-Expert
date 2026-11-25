@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.Completion.Guard;
 
 // Freigabe absichern (#489): Nach "Liste := TStringList.Create;" schlägt die Vervollständigung try…finally vor.
-// Aus Atlas.Common.Lsp.Completion herausgelöst.
+// Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 

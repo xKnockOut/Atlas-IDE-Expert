@@ -84,10 +84,10 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Lsp.IdeIndex,
+  Atlas.Common.Lsp.Adapters.IdeIndex,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.Preprocessor,
-  Shell.Workspace;
+  Core.Workspace;
 
 { TShellIndexArea }
 
@@ -137,7 +137,7 @@ end;
 procedure TShellIndexArea.CollectNamespaces(out ANamespaces, ALibraryRoots: TArray<string>);
 var
   mCore: TShellCore;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mNamespace: string;
 begin
   // Die Features kennen eine Liste: die Namespaces aller Projekte ohne Doppelte.
@@ -208,8 +208,8 @@ begin
   FServices.Queue(
     procedure
     var
-      mWorkspace: TShellWorkspace;
-      mWorkspaces: TArray<TShellWorkspace>;
+      mWorkspace: TCoreWorkspace;
+      mWorkspaces: TArray<TCoreWorkspace>;
     begin
       System.TMonitor.Enter(mCore.Workspaces.Lock);
       try
@@ -273,7 +273,7 @@ begin
     FServices.IndexFinished();
   end;
   // Nach der Projektstufe kennt der Index alles, was das Projekt über uses erreicht. Das Ende des Aufbaus
-  // (Suchpfade, Bibliothek) startet die Prüfung nicht noch einmal von vorn (Diagnose-Log 29.10.2026).
+  // (Suchpfade, Bibliothek) startet die Prüfung nicht noch einmal von vorn.
   mDiagnostics := FServices.Diagnostics();
   // Absicherung: Beim Beenden sind die Diagnosen vor dem Index fort.
   if (mDiagnostics <> nil) and mDiagnostics.IndexRecheck.Recheck(AProjectStage) then

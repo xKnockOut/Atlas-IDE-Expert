@@ -9,7 +9,7 @@
 //     noch am selben Halt steht; ShowWaitMs höchstens.
 //   - Zerlegen: atlas/accessChains (TLspSession.AccessChains) im Hintergrund-Thread; den Text der Datei gleicht
 //     Atlas vorher im Hauptthread ab. Startet keinen Server.
-//   - Auswerten: TAtlasAvAnalysis fragt, Atlas antwortet über TAtlasIdeDebugValues im Hauptthread in
+//   - Auswerten: TAtlasAvAnalysis fragt, Atlas antwortet über TAtlasIdeDebugThreadValues im Hauptthread in
 //     Zeitscheiben von höchstens SliceMs (wie die Werte im Editor, #508); verzögerte Antworten (LLDB)
 //     höchstens DeferredTimeoutMs. Ohne debug.explainAccessViolation.allowCalls ohne Nebenwirkungen (eseNone):
 //     Glieder mit Getter oder Aufruf bleiben „nicht ausgewertet“.
@@ -30,22 +30,22 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Winapi.Windows,
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.DebugValue,
-  Atlas.Core.Debug.Exceptions,
-  Atlas.Core.Lsp.AccessChains,
+  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
   Atlas.Core.Debug.ExceptionBanner,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Debug.AccessViolationUnderline,
   Atlas.IDE.Debug.Modules,
-  Atlas.IDE.Hover.DebugValue,
-  Atlas.UI.Debug.ExceptionBar;
+  Atlas.IDE.Debug.ThreadEvaluator;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -66,7 +66,7 @@ type
     cDeferredTimeoutMs = 2000;
     cRequestTimeoutMs = 5000;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -96,10 +96,11 @@ type
       Active: Boolean;
       Since: UInt64;
     end;
-    /// <summary>Was zum Halt gehört: Exception, Meldung, Ort, Zeigergröße und abgeglichener Text der Datei.
+    /// <summary>Was zum Halt gehört: Meldung, Ort, Zeigergröße und abgeglichener Text der Datei.
     /// </summary>
     TStopFacts = record
-      Exception: TAtlasDebugException;
+      /// <summary>Halt der Exception; Header liest daraus Klasse und Meldung (#2460).</summary>
+      ExceptionStop: TAtlasDebugExceptionStop;
       Access: TAtlasAvMessage;
       FileName: string;
       Line: Integer;
@@ -123,15 +124,15 @@ type
     FInstance: TAtlasIdeDebugAccessViolation;
   private
     FHooks: THooks;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FHandler: Integer;
     FTimer: TTimer;
     FWorkers: TAtlasWorkerSlot;
-    FEvaluator: TAtlasIdeDebugValues;
+    /// <summary>Eigene Auswertungen im angehaltenen Thread (BeginInternal/EndInternal darin).</summary>
+    FEvaluator: TAtlasIdeDebugThreadValues;
     FAnalysis: TAtlasAvAnalysis;
     FProgress: TProgress;
     FDeferred: TDeferred;
-    FInternal: Boolean;
     FFacts: TStopFacts;
     FOutcome: TOutcome;
     FUnderline: TAtlasIdeAvUnderline;
@@ -153,7 +154,6 @@ type
     procedure Finish;
     procedure Publish(const AExplanation: TAtlasDebugBannerExplanation);
     procedure RunAction(AAction: TAtlasDebugBarAction);
-    procedure EndInternal;
     function StillStopped: Boolean;
   public
     destructor Destroy; override;
@@ -173,10 +173,10 @@ implementation
 uses
   Vcl.Forms,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.UI.Debug.AccessViolation,
@@ -225,7 +225,7 @@ begin
   inherited Create;
   FHooks.Session := ASession;
   FHooks.Message := AMessage;
-  FEvaluator := TAtlasIdeDebugValues.Create;
+  FEvaluator := TAtlasIdeDebugThreadValues.Create;
   FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -239,7 +239,6 @@ begin
   FreeAndNil(FUnderline);
   FreeAndNil(FTimer);
   FEvaluator.Cancel;
-  EndInternal;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
   if FWorkers <> nil then
   begin
@@ -269,7 +268,6 @@ begin
     FEvaluator.Cancel;
   end;
   FDeferred.Active := False;
-  EndInternal;
   FreeAndNil(FAnalysis);
   FProgress.Phase := TPhase.Idle;
   FOutcome.Explanation := Default(TAtlasDebugBannerExplanation);
@@ -441,7 +439,6 @@ begin
   if not Result then
   begin
     FEvaluator.Cancel;
-    EndInternal;
     FDeferred.Active := False;
     FAnalysis.Answer(False, TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvNoAnswer));
   end;
@@ -452,19 +449,9 @@ var
   mValue: TAtlasDebugValue;
 begin
   Result := TSliceStep.Next;
-  // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugSession).
-  mValue := Default(TAtlasDebugValue);
-  TAtlasIdeDebugSession.BeginInternal;
-  FInternal := True;
-  try
-    mValue := FEvaluator.Evaluate(ARequest.Expression, FFacts.FileName, FFacts.Line + 1, ARequest.SideEffects,
-      DeferredDone);
-  finally
-    if mValue.State <> TAtlasDebugValueState.Pending then
-    begin
-      EndInternal;
-    end;
-  end;
+  // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugThreadValues).
+  mValue := FEvaluator.Evaluate(ARequest.Expression, FFacts.FileName, FFacts.Line + 1, ARequest.SideEffects,
+    DeferredDone);
   case mValue.State of
     TAtlasDebugValueState.Pending:
       begin
@@ -506,7 +493,10 @@ begin
         mChains := ASession.AccessChains(mFileName, mLine, mPointerSize, cRequestTimeoutMs);
       except
         // Server langsam oder weg: keine Ketten.
-        mChains := Default(TAtlasAvChains);
+        on ELspClientError do
+        begin
+          mChains := Default(TAtlasAvChains);
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,
@@ -541,6 +531,7 @@ begin
   begin
     Exit;
   end;
+  FFacts.ExceptionStop := AStop;
   FFacts.Access := TAtlasAvMessage.Parse(AStop.Exception.ExceptionClass, AStop.Exception.Message);
   if not FFacts.Access.IsAccessViolation then
   begin
@@ -558,7 +549,6 @@ begin
     TAtlasGuard.Log('Zugriffsverletzung erklären: Halt nicht in eigenem Code mit Quelltext; nur die Meldung');
     Exit;
   end;
-  FFacts.Exception := AStop.Exception;
   FProgress.Stop := AStop.Stop;
   if FFacts.ModuleOnly then
   begin
@@ -586,7 +576,6 @@ begin
   begin
     Exit;
   end;
-  EndInternal;
   FDeferred.Active := False;
   FAnalysis.Answer(AValue.State = TAtlasDebugValueState.Value, AValue.Text);
 end;
@@ -669,16 +658,9 @@ begin
       end;
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
-    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest: ;
-  end;
-end;
-
-procedure TAtlasIdeDebugAccessViolation.EndInternal;
-begin
-  if FInternal then
-  begin
-    FInternal := False;
-    TAtlasIdeDebugSession.EndInternal;
+    TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest, TAtlasDebugBarAction.MessageRule,
+    TAtlasDebugBarAction.KnownOpen, TAtlasDebugBarAction.KnownComment, TAtlasDebugBarAction.KnownReopen,
+    TAtlasDebugBarAction.KnownNew: ;
   end;
 end;
 
@@ -751,7 +733,7 @@ end;
 
 function TAtlasIdeDebugAccessViolation.TStopFacts.Header: string;
 begin
-  Result := TAtlasAvStop.Header(Exception, Place);
+  Result := TAtlasAvStop.Header(ExceptionStop.Exception, Place);
 end;
 
 class function

@@ -83,6 +83,8 @@ type
     /// <summary>Routinen nur im implementation-Teil unter einem nicht geltenden Zweig (#476).</summary>
     [Test]
     procedure RecordsUnavailableImplementationRoutines;
+    [Test]
+    procedure VisibilityKeywords;
   end;
 
   [TestFixture]
@@ -960,7 +962,7 @@ var
   mRound: Integer;
 begin
   // Ersetzte Units lassen tote Verweise zurück; nach genug Runden werden die Tabellen neu gebaut
-  // (Diagnoselog 15.10.2026). Weder vorher noch danach darf ein alter Stand auftauchen.
+  // Weder vorher noch danach darf ein alter Stand auftauchen.
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(MakeUnit('B', 'C:\B.pas', ['TFoo'], 'TBase'));
   for mRound := 1 to 3 * TSymbolIndex.cRebuildDeadRefs do
@@ -1027,7 +1029,7 @@ var
   U, mFound: TUnitIndex;
   mPositions: TArray<Integer>;
 begin
-  // Diagnoselog 15.10.2026: Die Namensauflösung sucht über die Tabelle der abgelegten Unit.
+  // Die Namensauflösung sucht über die Tabelle der abgelegten Unit.
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(MakeUnit('A', 'C:\A.pas', ['Foo', 'Bar', 'foo']));
   Assert.IsTrue(mIndex.FindUnit('A', mFound));
@@ -1707,6 +1709,14 @@ begin
     mHasWin64 := mHasWin64 or (mDefine = 'WIN64');
   end;
   Assert.IsTrue(mHasWin64);
+end;
+
+procedure TIndexExtractorTests.VisibilityKeywords;
+begin
+  Assert.AreEqual('public', VisibilityKeyword(TIndexVisibility.Public));
+  Assert.AreEqual('published', VisibilityKeyword(TIndexVisibility.Published));
+  Assert.AreEqual('strict protected', VisibilityKeyword(TIndexVisibility.StrictProtected));
+  Assert.AreEqual('strict private', VisibilityKeyword(TIndexVisibility.StrictPrivate));
 end;
 
 initialization

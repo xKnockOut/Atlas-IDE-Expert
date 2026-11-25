@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.ProjectPicker;
 
-// Klappliste „Tracker-Projekt“ in „Meine Issues“ (#1927, Mockup Runde 82 TP1),
+// Klappliste „Tracker-Projekt“ in „Meine Issues“ (#1927),
 // reine VCL: links in der Zeile über der Liste „Projekt: Automatisch ▾“.
 //   ● Automatisch – nach dem Delphi-Projekt (Kasse)
 //     YouTrack · KASSE
@@ -20,7 +20,7 @@ uses
   Vcl.Controls,
   Vcl.Menus,
   Vcl.StdCtrls,
-  Atlas.Core.Tracker.MyIssues;
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   TAtlasTrackerProjectPicker = class
@@ -59,7 +59,10 @@ uses
   System.Types,
   Vcl.Graphics,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Tracker.MyIssues.Strings;
+  Atlas.UI.Tracker.MyIssues.Strings,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Theme.Service;
 
 const
   cMenuLine = '-';
@@ -79,22 +82,19 @@ begin
   FLabel.Parent := ABar;
   FLabel.Align := alLeft;
   FLabel.AlignWithMargins := True;
-  FLabel.Margins.SetBounds(cMargin, cMargin, cMargin, 0);
+  TAtlasControlScaling.SetMargins(FLabel, cMargin, cMargin, cMargin, 0);
   FLabel.Cursor := crHandPoint;
   FLabel.ShowHint := True;
   FLabel.Hint := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectHint);
-  FLabel.Font.Color := clHotLight;
+  TAtlasUiTheme.UseFontColor(FLabel, clHotLight);
   FLabel.Visible := False;
   FLabel.OnClick := LabelClick;
 end;
 
 procedure TAtlasTrackerProjectPicker.LabelClick(Sender: TObject);
-var
-  mPoint: TPoint;
 begin
   Fill;
-  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
-  FMenu.Popup(mPoint.X, mPoint.Y);
+  TAtlasMenus.PopupBelow(FMenu, FLabel);
 end;
 
 procedure TAtlasTrackerProjectPicker.ItemClick(Sender: TObject);

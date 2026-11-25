@@ -38,7 +38,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow.Signatures,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.CodeActions.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -86,10 +86,11 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Reassigned,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -172,16 +173,6 @@ begin
   if StartsStr('&', Result) then
   begin
     Result := Copy(Result, 2, MaxInt);
-  end;
-end;
-
-/// <summary>Innerste Routine (benannt oder anonym), in der ANode steht.</summary>
-function OwnerRoutine(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and not (Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
-  begin
-    Result := Result.Parent;
   end;
 end;
 
@@ -474,12 +465,12 @@ begin
   else if (ATokens[mFirst].Kind = TPascalTokenKind.Identifier) and SameText(mText, ATypeText) then
   begin
     // T.Create bzw. T.Create(…)
-    mNext := TRoutineBody.NextToken(ATokens, mFirst);
+    mNext := NextCodeAfter(ATokens, mFirst);
     if (mNext <= mLast) and ATokens[mNext].IsSymbol('.') then
     begin
-      mNext := TRoutineBody.NextToken(ATokens, mNext);
+      mNext := NextCodeAfter(ATokens, mNext);
       Result := (mNext <= mLast) and SameText(ATokens[mNext].Text, 'Create') and
-        ((mNext = mLast) or ATokens[TRoutineBody.NextToken(ATokens, mNext)].IsSymbol('('));
+        ((mNext = mLast) or ATokens[NextCodeAfter(ATokens, mNext)].IsSymbol('('));
       if Result and (mNext < mLast) then
       begin
         Result := ATokens[mLast].IsSymbol(')');
@@ -625,7 +616,7 @@ begin
       Continue;
     end;
     // Capture: Eine anonyme Methode oder verschachtelte Routine sähe die Inline-Variable anders.
-    if (OwnerRoutine(mOccurrence.Node) <> Routine) or not TRoutineBody.Within(mOccurrence.Node, Body) then
+    if (TSyntaxNodes.Enclosing(mOccurrence.Node, [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) <> Routine) or not TRoutineBody.Within(mOccurrence.Node, Body) then
     begin
       Exit(False);
     end;
@@ -845,7 +836,7 @@ begin
   end;
   if Result then
   begin
-    NameToken := TRoutineBody.NextToken(Tokens, Keyword);
+    NameToken := NextCodeAfter(Tokens, Keyword);
   end;
 end;
 
@@ -874,7 +865,7 @@ var
 begin
   for mOccurrence in Symbol.Occurrences do
   begin
-    if (mOccurrence.Node <> nil) and (OwnerRoutine(mOccurrence.Node) <> Routine) then
+    if (mOccurrence.Node <> nil) and (TSyntaxNodes.Enclosing(mOccurrence.Node, [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) <> Routine) then
     begin
       Exit(True);
     end;
@@ -964,7 +955,7 @@ begin
   end
   else
   begin
-    mSemicolon := TRoutineBody.NextToken(Tokens, LastTokenOf(Tokens, Decl));
+    mSemicolon := NextCodeAfter(Tokens, LastTokenOf(Tokens, Decl));
     Result := (mSemicolon <= High(Tokens)) and Tokens[mSemicolon].IsSymbol(';');
     if Result then
     begin

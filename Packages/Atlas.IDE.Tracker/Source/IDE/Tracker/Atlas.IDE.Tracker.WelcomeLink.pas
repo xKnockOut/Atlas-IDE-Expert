@@ -48,14 +48,52 @@ type
     procedure TileInfoChanged(const AId: string);
     /// <summary>Haken lösen (beim Stoppen des Moduls); danach wirkungslos.</summary>
     procedure Release;
+    /// <summary>Findet die Dienste der Willkommensseite bei jedem Gebrauch neu in der Registry.</summary>
+    class function RegistryLookup: TAtlasTrackerWelcomeLookup; static;
   end;
 
 implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Core.Modules.Registry,
   Atlas.IDE.Projects.Summaries;
+
+// Dienste der Willkommensseite aus der Registry.
+
+/// <summary>Erstes unter AIID bereitgestelltes Objekt; nil ohne.</summary>
+function Provided(const AIID: TGUID): IInterface;
+var
+  mItems: TArray<IInterface>;
+begin
+  Result := nil;
+  if AtlasModuleRegistry = nil then
+  begin
+    Exit;
+  end;
+  mItems := AtlasModuleRegistry.FindAll(AIID);
+  if Length(mItems) > 0 then
+  begin
+    Result := mItems[0];
+  end;
+end;
+
+function WelcomeProjects: IAtlasWelcomeProjects;
+begin
+  if not Supports(Provided(IAtlasWelcomeProjects), IAtlasWelcomeProjects, Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+function WelcomeBoard: IAtlasWelcomeBoard;
+begin
+  if not Supports(Provided(IAtlasWelcomeBoard), IAtlasWelcomeBoard, Result) then
+  begin
+    Result := nil;
+  end;
+end;
 
 { TAtlasTrackerWelcomeLink }
 
@@ -194,6 +232,13 @@ end;
 procedure TAtlasTrackerWelcomeLink.Release;
 begin
   FLookup := Default(TAtlasTrackerWelcomeLookup);
+end;
+
+class function TAtlasTrackerWelcomeLink.RegistryLookup: TAtlasTrackerWelcomeLookup;
+begin
+  Result := Default(TAtlasTrackerWelcomeLookup);
+  Result.Projects := WelcomeProjects;
+  Result.Board := WelcomeBoard;
 end;
 
 end.

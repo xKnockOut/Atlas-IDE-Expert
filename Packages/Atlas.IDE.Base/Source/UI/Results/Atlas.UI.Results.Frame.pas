@@ -18,7 +18,7 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.UI.Results.View,
   Atlas.UI.Results.Entries,
   Atlas.UI.Results.Hierarchy,
@@ -88,9 +88,13 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Style.Symbol;
+  Atlas.Plugin.Style.Symbol;
 
 {$R *.dfm}
+
+const
+  /// <summary>Höhe der Titelzeile bei 96 dpi.</summary>
+  cHeaderHeight = 22;
 
 { TAtlasResultsFrame }
 
@@ -150,7 +154,7 @@ begin
   Result.Align := alTop;
   Result.BevelOuter := bvNone;
   Result.ParentBackground := True;
-  Result.Height := Result.ScaleValue(22);
+  Result.Height := Result.ScaleValue(cHeaderHeight);
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Result;
   FSymbol.LogicalSize := TAtlasSymbol.cMenuSize;

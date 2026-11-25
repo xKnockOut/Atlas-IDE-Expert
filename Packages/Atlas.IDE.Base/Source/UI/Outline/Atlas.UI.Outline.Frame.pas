@@ -49,7 +49,6 @@ type
     FListMenu: TPopupMenu;
     FFollowItem: TMenuItem;
     function NewButton(AWidth: Integer): TButton;
-    function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer; AClick: TNotifyEvent): TMenuItem;
     function Scale(AValue: Integer): Integer;
     /// <summary>Die Liste hat ein Fenster oder kann eins bekommen (Formular darüber).</summary>
     function ListCanHaveHandle: Boolean;
@@ -170,12 +169,14 @@ implementation
 uses
   Winapi.Windows,
   System.Math,
-  Vcl.Themes,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Outline.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Vcl.Controls.ListBox,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.Menus;
 
 {$R *.dfm}
 
@@ -183,6 +184,13 @@ const
   cIndentPx = 14;
   cExpanderPx = 14;
   cRowPx = 20;
+  /// <summary>Einzug der ersten Ebene bei 96 dpi.</summary>
+  cRowIndentPx = 4;
+  /// <summary>Schlüsselwörter hinter dem Namen; Delphi-Syntax, daher nicht übersetzt.</summary>
+  cMarkClass = ' · class';
+  cMarkOverride = ' · override';
+  cMarkVirtual = ' · virtual';
+  cMarkAbstract = ' · abstract';
   /// <summary>Feste Breite des Suchfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
   cButtonWidth = 92;
   cSortButtonWidth = 150;
@@ -190,15 +198,18 @@ const
   cButtonHeight = 24;
   /// <summary>Tag der Menüeinträge „Alle zeigen“.</summary>
   cTagAll = -1;
-  cKindTexts: array[0..7] of TAtlasTextId = (TAtlasTextId.OutlineKindTypes, TAtlasTextId.OutlineKindFields,
-    TAtlasTextId.OutlineKindMethods, TAtlasTextId.OutlineKindProperties, TAtlasTextId.OutlineKindConstants,
-    TAtlasTextId.OutlineKindVariables, TAtlasTextId.OutlineKindRoutines, TAtlasTextId.OutlineKindEnumMembers);
+  cKindTexts: array[0..7] of TAtlasOutlineTextId = (TAtlasOutlineTextId.OutlineKindTypes,
+    TAtlasOutlineTextId.OutlineKindFields, TAtlasOutlineTextId.OutlineKindMethods,
+    TAtlasOutlineTextId.OutlineKindProperties, TAtlasOutlineTextId.OutlineKindConstants,
+    TAtlasOutlineTextId.OutlineKindVariables, TAtlasOutlineTextId.OutlineKindRoutines,
+    TAtlasOutlineTextId.OutlineKindEnumMembers);
   cKindCategories: array[0..7] of TAtlasOutlineCategory = (TAtlasOutlineCategory.TypeDecl,
     TAtlasOutlineCategory.Field, TAtlasOutlineCategory.Method, TAtlasOutlineCategory.PropertyDecl,
     TAtlasOutlineCategory.Constant, TAtlasOutlineCategory.Variable, TAtlasOutlineCategory.Routine,
     TAtlasOutlineCategory.EnumMember);
-  cVisibilityTexts: array[0..3] of TAtlasTextId = (TAtlasTextId.OutlineVisPrivate, TAtlasTextId.OutlineVisProtected,
-    TAtlasTextId.OutlineVisPublic, TAtlasTextId.OutlineVisPublished);
+  cVisibilityTexts: array[0..3] of TAtlasOutlineTextId = (TAtlasOutlineTextId.OutlineVisPrivate,
+    TAtlasOutlineTextId.OutlineVisProtected, TAtlasOutlineTextId.OutlineVisPublic,
+    TAtlasOutlineTextId.OutlineVisPublished);
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -206,10 +217,11 @@ begin
 end;
 
 /// <summary>Farben aus dem Stil von AControl: Die IDE themt je Formular; der globale Stil liefert im dunklen
-/// Thema Weiß (Gliederung hell im dunklen Thema).</summary>
+/// Thema Weiß (Gliederung hell im dunklen Thema). Fläche und Schrift wie die Fenster der IDE, nicht die
+/// feste Atlas-Palette (sonst dunkler als der Objektinspektor).</summary>
 function StyleColors(AControl: TControl): TAtlasColors;
 begin
-  Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(AControl).GetSystemColor(clWindow))));
+  Result := TAtlasUiTheme.WindowColors(AControl);
 end;
 
 { TAtlasOutlineFrame }
@@ -244,7 +256,7 @@ end;
 procedure TAtlasOutlineFrame.BuildBar;
 begin
   // Suchfeld oben über die ganze Breite, darunter die Knöpfe in einer fließenden Leiste (brechen bei schmalem
-  // Fenster um). Vorher stand das Suchfeld mit fester Breite in der Leiste und der Sortierknopf war abgeschnitten.
+  // Fenster um). Mit fester Breite in der Leiste schnitte das Suchfeld den Sortierknopf ab.
   FSearch := TEdit.Create(Self);
   FSearch.Top := 0;
   FSearch.Align := alTop;
@@ -282,32 +294,32 @@ var
   mIndex: Integer;
 begin
   FVisibilityMenu := TPopupMenu.Create(Self);
-  AddMenuItem(FVisibilityMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll,
+  TAtlasMenus.Add(FVisibilityMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll,
     VisibilityItemClick);
   FVisibilityMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cVisibilityTexts) do
   begin
-    AddMenuItem(FVisibilityMenu, TAtlasStrings.Text(cVisibilityTexts[mIndex]), mIndex, VisibilityItemClick).Checked :=
-      True;
+    TAtlasMenus.Add(FVisibilityMenu, TAtlasOutlineStrings.Text(cVisibilityTexts[mIndex]), mIndex,
+      VisibilityItemClick).Checked := True;
   end;
 
   FKindMenu := TPopupMenu.Create(Self);
-  AddMenuItem(FKindMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll, KindItemClick);
+  TAtlasMenus.Add(FKindMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll), cTagAll, KindItemClick);
   FKindMenu.Items.Add(NewLine);
   for mIndex := 0 to High(cKindTexts) do
   begin
-    AddMenuItem(FKindMenu, TAtlasStrings.Text(cKindTexts[mIndex]), mIndex, KindItemClick).Checked := True;
+    TAtlasMenus.Add(FKindMenu, TAtlasOutlineStrings.Text(cKindTexts[mIndex]), mIndex, KindItemClick).Checked := True;
   end;
 
   FListMenu := TPopupMenu.Create(Self);
   FListMenu.OnPopup := ListMenuPopup;
-  AddMenuItem(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToDeclaration), 0,
+  TAtlasMenus.Add(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToDeclaration), 0,
     DeclarationClick).Default :=
     True;
-  AddMenuItem(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToImplementation), 1,
+  TAtlasMenus.Add(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineGoToImplementation), 1,
     ImplementationClick);
   FListMenu.Items.Add(NewLine);
-  FFollowItem := AddMenuItem(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineFollowCursor), 2,
+  FFollowItem := TAtlasMenus.Add(FListMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineFollowCursor), 2,
     FollowClick);
   FFollowItem.Checked := FFollowCursor;
 end;
@@ -342,16 +354,6 @@ begin
   begin
     FList.Invalidate;
   end;
-end;
-
-function TAtlasOutlineFrameParts.AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer;
-  AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AClick;
-  AMenu.Items.Add(Result);
 end;
 
 function TAtlasOutlineFrameParts.Scale(AValue: Integer): Integer;
@@ -423,7 +425,7 @@ end;
 function TAtlasOutlineFrameRows.ExpanderRect(AIndex: Integer; const ARect: TRect): TRect;
 begin
   Result := ARect;
-  Result.Left := ARect.Left + Scale(4) + FRows[AIndex].Depth * Scale(cIndentPx);
+  Result.Left := ARect.Left + Scale(cRowIndentPx) + FRows[AIndex].Depth * Scale(cIndentPx);
   Result.Right := Result.Left + Scale(cExpanderPx);
 end;
 
@@ -543,7 +545,9 @@ end;
 /// <summary>Liste der Gliederung und der Hinweis an ihrer Stelle.</summary>
 procedure TAtlasOutlineFrame.BuildList;
 begin
-  FList := TListBox.Create(Self);
+  // Löscht nur die Fläche ohne Zeilen: Unter dem Thema der IDE blitzte die Liste beim Klick und nach der Auswahl
+  // leer auf.
+  FList := TAtlasListBox.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
@@ -563,7 +567,7 @@ begin
   FMessage.Align := alClient;
   FMessage.AlignWithMargins := True;
   FMessage.ShowAccelChar := False;
-  FMessage.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FMessage, clGrayText);
   FMessage.Visible := False;
 end;
 
@@ -769,7 +773,7 @@ begin
 end;
 
 /// <summary>Marken hinter dem Namen: „nicht implementiert“ und mit AShowConditions der aktive Zweig der bedingten
-/// Kompilierung (#845), wie die Marke im Mockup.</summary>
+/// Kompilierung (#845).</summary>
 procedure PutMarks(ACanvas: TCanvas; var AX: Integer; const ARect: TRect; const ANode: TAtlasOutlineNode;
   AShowConditions: Boolean; const AColors: TAtlasColors);
 begin
@@ -857,19 +861,19 @@ begin
   end;
   if mNode.ClassMember then
   begin
-    Result := Result + ' · class';
+    Result := Result + cMarkClass;
   end;
   if mNode.IsOverride then
   begin
-    Result := Result + ' · override';
+    Result := Result + cMarkOverride;
   end;
   if mNode.IsVirtual and not mNode.IsOverride then
   begin
-    Result := Result + ' · virtual';
+    Result := Result + cMarkVirtual;
   end;
   if mNode.IsAbstract then
   begin
-    Result := Result + ' · abstract';
+    Result := Result + cMarkAbstract;
   end;
   if mNode.Unimplemented then
   begin
@@ -920,11 +924,7 @@ end;
 
 procedure TAtlasOutlineFrame.SearchKeyPress(Sender: TObject; var Key: Char);
 begin
-  // Kein Signalton bei Enter und Esc.
-  if (Key = #13) or (Key = #27) then
-  begin
-    Key := #0;
-  end;
+  TAtlasControls.SuppressBeep(Key);
 end;
 
 procedure TAtlasOutlineFrame.VisibilityClick(Sender: TObject);

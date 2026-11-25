@@ -1,0 +1,380 @@
+﻿unit Atlas.IDE.Assistants.Adapters.AiGhost;
+
+// KI-Schattentext (#1922): Anbieter für die Schattentext-Vorschläge von Base
+// (Atlas.IDE.Contracts.GhostSuggestions). Base fragt ihn nach den gelernten
+// Vorschlägen, also nur, wenn kein gelerntes Muster passt.
+// - Prepare (Hauptthread): assistants.provider gesetzt, Datei nicht in
+//   assistants.exclude, Schlüssel hinterlegt, Tagesgrenze nicht erreicht;
+//   dann den Puffer an den Server und die Anfrage zählen.
+// - Arbeit (Hintergrund): Köpfe der Klasse vom Server
+//   (atlas.server.suggestionContext), Anfrage beim Anbieter, Antwort in Zeilen,
+//   Prüfung beim Server (atlas.server.checkSuggestion: keine neuen
+//   Syntaxfehler, nur bekannte Bezeichner). Nur geprüfte Vorschläge erscheinen.
+// - Fehler des Anbieters merkt sich die Arbeit. Ohne Netz, bei Zeitgrenze oder
+//   Überlast bleibt es still (der gelernte Teil läuft weiter); was nur der
+//   Benutzer beheben kann (Schlüssel fehlt oder abgelehnt, Modell unbekannt,
+//   Antwort verweigert) meldet das nächste Prepare im Hauptthread, je Art
+//   einmal je Sitzung.
+// - Tageszähler gemeinsam mit den Anfragen der IDE (TAtlasIdeAiDailyCount, #2745).
+// - Destroy bricht laufende Anfragen ab und meldet den Anbieter bei Base ab;
+//   Base wartet dabei die laufende Arbeit ab (Regel 3).
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.Core.Lsp.Session,
+  Atlas.Core.AiProviders.Contract,
+  Atlas.IDE.Contracts.GhostSuggestions;
+
+type
+  TAtlasIdeAiGhost = class
+  public const
+    cTimeoutMs = 10000;
+    cServerTimeoutMs = 3000;
+  private
+    FSessionOf: TFunc<TLspSession>;
+    FHttp: IAtlasAiHttp;
+    FKeys: TAtlasAiKeyReader;
+    FMessage: TProc<string>;
+    FProvider: IAtlasGhostProvider;
+    /// <summary>Letzter Fehler der Arbeit (Ord von TAtlasAiError), atomar.</summary>
+    FLastError: Integer;
+    /// <summary>Schon gemeldete Fehlerarten und der Tag der gemeldeten Tagesgrenze.</summary>
+    FReported: set of TAtlasAiError;
+    FLimitDay: string;
+    procedure ReportLastError;
+    function Allowed(const AContext: TAtlasGhostContext): Boolean;
+    procedure Failed(AError: TAtlasAiError);
+  public
+    /// <summary>ASessionOf: laufende Serversitzung oder nil; AHttp: Transport; AKeys: Schlüssel je Anbieter;
+    /// AMessage: Meldung in der Meldungsansicht. ASessionOf und AMessage sind nie nil.</summary>
+    constructor Create(const ASessionOf: TFunc<TLspSession>; const AHttp: IAtlasAiHttp;
+      const AKeys: TAtlasAiKeyReader; const AMessage: TProc<string>);
+    destructor Destroy; override;
+    function Enabled: Boolean;
+    function Prepare(const AContext: TAtlasGhostContext): TAtlasGhostWork;
+  end;
+
+implementation
+
+uses
+  System.JSON,
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  Atlas.Text.Json,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Uris,
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.AiProviders.Catalog,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Assistants.AiErrors,
+  Atlas.IDE.Assistants.DailyCount,
+  Atlas.UI.Assistants.Strings,
+  Atlas.Core.Assistants.AiGhost;
+
+const
+  cContextCommand = 'atlas.server.suggestionContext';
+  cCheckCommand = 'atlas.server.checkSuggestion';
+
+type
+  TAiGhostProvider = class(TInterfacedObject, IAtlasGhostProvider)
+  private
+    FOwner: TAtlasIdeAiGhost;
+  public
+    constructor Create(AOwner: TAtlasIdeAiGhost);
+    function Enabled: Boolean;
+    function Prepare(const AContext: TAtlasGhostContext): TAtlasGhostWork;
+    procedure Accepted(const AProposal: TAtlasGhostProposal);
+    procedure Rejected(const AProposal: TAtlasGhostProposal);
+  end;
+
+  /// <summary>Alles, was die Arbeit im Hintergrund braucht; im Hauptthread gefüllt.</summary>
+  TAiGhostJob = record
+    Session: TLspSession;
+    Provider: IAtlasAiProvider;
+    Uri: string;
+    Request: TAtlasAiGhostRequest;
+    TabSize: Integer;
+    InsertSpaces: Boolean;
+    /// <summary>Zeitlimit der Anfrage: das des Anbieters (OpenAI-kompatibel) oder cTimeoutMs.</summary>
+    TimeoutMs: Integer;
+    Status: string;
+    Hint: string;
+  end;
+
+{ TAiGhostProvider }
+
+constructor TAiGhostProvider.Create(AOwner: TAtlasIdeAiGhost);
+begin
+  inherited Create;
+  FOwner := AOwner;
+end;
+
+function TAiGhostProvider.Enabled: Boolean;
+begin
+  Result := FOwner.Enabled;
+end;
+
+function TAiGhostProvider.Prepare(const AContext: TAtlasGhostContext): TAtlasGhostWork;
+begin
+  Result := FOwner.Prepare(AContext);
+end;
+
+procedure TAiGhostProvider.Accepted(const AProposal: TAtlasGhostProposal);
+begin
+  // Nichts zu lernen: Der Anbieter bekommt bei jeder Anfrage den Stand neu.
+end;
+
+procedure TAiGhostProvider.Rejected(const AProposal: TAtlasGhostProposal);
+begin
+  // Wie Accepted.
+end;
+
+{ Arbeit im Hintergrund }
+
+/// <summary>Köpfe der Klasse an der Zeile; leer bei Zeitgrenze oder Fehler.</summary>
+function DeclarationsOf(ASession: TLspSession; const AUri: string; ALine: Integer): TArray<string>;
+var
+  mArguments: TJSONArray;
+  mValue: TJSONValue;
+begin
+  Result := nil;
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.AddElement(TJSONString.Create(AUri));
+    mArguments.AddElement(TJSONNumber.Create(ALine));
+    try
+      mValue := ASession.RunCommand(cContextCommand, mArguments.ToJSON, TAtlasIdeAiGhost.cServerTimeoutMs);
+    except
+      on ELspClientError do
+        Exit;
+    end;
+  finally
+    mArguments.Free;
+  end;
+  try
+    if mValue is TJSONObject then
+    begin
+      Result := TJsonRead.Strings(TJSONObject(mValue), 'declarations');
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+/// <summary>Prüft ALines an ALine beim Server; False bei Zeitgrenze oder Fehler.</summary>
+function Checked(ASession: TLspSession; const AUri: string; ALine: Integer; const ALines: TArray<string>): Boolean;
+var
+  mArguments: TJSONArray;
+  mValue: TJSONValue;
+begin
+  Result := False;
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.AddElement(TJSONString.Create(AUri));
+    mArguments.AddElement(TJSONNumber.Create(ALine));
+    mArguments.AddElement(TJsonBuild.Strings(ALines));
+    try
+      mValue := ASession.RunCommand(cCheckCommand, mArguments.ToJSON, TAtlasIdeAiGhost.cServerTimeoutMs);
+    except
+      on ELspClientError do
+        Exit;
+    end;
+  finally
+    mArguments.Free;
+  end;
+  try
+    Result := (mValue is TJSONObject) and TJSONObject(mValue).GetValue<Boolean>('valid', False);
+  finally
+    mValue.Free;
+  end;
+end;
+
+/// <summary>Vorschlag aus den geprüften Zeilen.</summary>
+function ProposalOf(const AJob: TAiGhostJob; const ALines: TArray<string>): TAtlasGhostProposal;
+begin
+  Result := Default(TAtlasGhostProposal);
+  Result.Id := 'ai';
+  Result.Lines := ALines;
+  Result.CursorLine := AJob.Request.Line + High(ALines);
+  Result.CursorCharacter := Length(ALines[High(ALines)]);
+  Result.StatusText := AJob.Status;
+  Result.Hint := AJob.Hint;
+end;
+
+/// <summary>Die Arbeit für AJob; Fehler des Anbieters gehen an AOwner.</summary>
+function WorkOf(AOwner: TAtlasIdeAiGhost; const AJob: TAiGhostJob): TAtlasGhostWork;
+var
+  mJob: TAiGhostJob;
+begin
+  mJob := AJob;
+  Result :=
+    function(out AProposal: TAtlasGhostProposal): Boolean
+    var
+      mAnswer: TAtlasAiAnswer;
+      mLines: TArray<string>;
+    begin
+      AProposal := Default(TAtlasGhostProposal);
+      mJob.Request.Declarations := DeclarationsOf(mJob.Session, mJob.Uri, mJob.Request.Line);
+      mAnswer := mJob.Provider.Complete(TAtlasAiGhost.Prompt(mJob.Request, mJob.TimeoutMs));
+      if not mAnswer.Ok then
+      begin
+        // Abbruch beim Weitertippen ist Alltag; alles andere ins Protokoll, mit Meldung des Anbieters.
+        if mAnswer.Error <> TAtlasAiError.Cancelled then
+        begin
+          TAtlasGuard.Log('KI-Schattentext (' + mJob.Provider.Id + '): ' + TAtlasAiErrorTexts.Text(mAnswer.Error) +
+            ' ' + TAtlasGuard.MessageText(mAnswer.Detail));
+        end;
+        AOwner.Failed(mAnswer.Error);
+        Exit(False);
+      end;
+      mLines := TAtlasAiGhost.LinesOf(mAnswer.Text, mJob.Request.Text, mJob.Request.Line, mJob.TabSize,
+        mJob.InsertSpaces);
+      Result := (Length(mLines) > 0) and Checked(mJob.Session, mJob.Uri, mJob.Request.Line, mLines);
+      if Result then
+      begin
+        AProposal := ProposalOf(mJob, mLines);
+      end;
+    end;
+end;
+
+{ TAtlasIdeAiGhost }
+
+constructor TAtlasIdeAiGhost.Create(const ASessionOf: TFunc<TLspSession>; const AHttp: IAtlasAiHttp;
+  const AKeys: TAtlasAiKeyReader; const AMessage: TProc<string>);
+begin
+  inherited Create;
+  FSessionOf := ASessionOf;
+  FHttp := AHttp;
+  FKeys := AKeys;
+  FMessage := AMessage;
+  FProvider := TAiGhostProvider.Create(Self);
+  TAtlasGhostProviders.Add(FProvider);
+end;
+
+destructor TAtlasIdeAiGhost.Destroy;
+begin
+  // Erst die laufende Anfrage abbrechen, dann abmelden: Base wartet die Arbeit ab (Regel 3).
+  if FHttp <> nil then
+  begin
+    FHttp.Cancel;
+  end;
+  if FProvider <> nil then
+  begin
+    TAtlasGhostProviders.Remove(FProvider);
+    FProvider := nil;
+  end;
+  FHttp := nil;
+  FKeys := nil;
+  FSessionOf := nil;
+  FMessage := nil;
+  inherited Destroy;
+end;
+
+procedure TAtlasIdeAiGhost.Failed(AError: TAtlasAiError);
+begin
+  // Aus dem Hintergrund-Thread: nur merken, gemeldet wird im Hauptthread.
+  AtomicExchange(FLastError, Ord(AError));
+end;
+
+procedure TAtlasIdeAiGhost.ReportLastError;
+var
+  mError: TAtlasAiError;
+begin
+  mError := TAtlasAiError(AtomicExchange(FLastError, Ord(TAtlasAiError.None)));
+  // Netz, Zeitgrenze, Überlast und Abbruch beim Tippen behebt niemand in den Einstellungen: still.
+  if (mError in [TAtlasAiError.None, TAtlasAiError.Cancelled, TAtlasAiError.Timeout, TAtlasAiError.Unreachable,
+    TAtlasAiError.RateLimited, TAtlasAiError.ServerError, TAtlasAiError.BadAnswer]) or (mError in FReported) then
+  begin
+    Exit;
+  end;
+  Include(FReported, mError);
+  FMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostFailed, [TAtlasAiErrorTexts.Text(mError)]));
+end;
+
+function TAtlasIdeAiGhost.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.AssistantsInlineSuggestions and
+    not SameText(mSettings.AssistantsProvider, TAtlasAiProviders.cNone);
+end;
+
+function TAtlasIdeAiGhost.Allowed(const AContext: TAtlasGhostContext): Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+  mDay: string;
+begin
+  Result := False;
+  mSettings := TAtlasIdeSettings.Current;
+  if TAtlasAiGhost.Excluded(AContext.FileName, mSettings.AssistantsExclude) then
+  begin
+    Exit;
+  end;
+  if TAtlasAiProviders.NeedsKey(mSettings.AssistantsProvider) and
+    ((not Assigned(FKeys)) or (FKeys(mSettings.AssistantsProvider) = '')) then
+  begin
+    if not (TAtlasAiError.NoKey in FReported) then
+    begin
+      Include(FReported, TAtlasAiError.NoKey);
+      FMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostNoKey, [mSettings.AssistantsProvider]));
+    end;
+    Exit;
+  end;
+  mDay := FormatDateTime('yyyy"-"mm"-"dd', Date);
+  if not TAtlasIdeAiDailyCount.TryTake(mSettings.AssistantsDailyLimit) then
+  begin
+    if FLimitDay <> mDay then
+    begin
+      FLimitDay := mDay;
+      FMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostLimit, [mSettings.AssistantsDailyLimit]));
+    end;
+    Exit;
+  end;
+  Result := True;
+end;
+
+function TAtlasIdeAiGhost.Prepare(const AContext: TAtlasGhostContext): TAtlasGhostWork;
+var
+  mSettings: TAtlasPluginSettings;
+  mProvider: TAtlasAiProviderSettings;
+  mJob: TAiGhostJob;
+begin
+  Result := nil;
+  ReportLastError;
+  mSettings := TAtlasIdeSettings.Current;
+  mJob := Default(TAiGhostJob);
+  mJob.Session := FSessionOf();
+  if (mJob.Session = nil) or not mJob.Session.Initialized then
+  begin
+    Exit;
+  end;
+  mProvider := TAtlasAiProviders.SettingsOf(mSettings);
+  mJob.Provider := TAtlasAiProviders.Create(mProvider, FHttp, FKeys);
+  if (mJob.Provider = nil) or not Allowed(AContext) then
+  begin
+    Exit;
+  end;
+  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  mJob.Session.Sync(AContext.FileName, AContext.Text);
+  mJob.Uri := TLspUris.FromPath(AContext.FileName);
+  mJob.Request.FileName := AContext.FileName;
+  mJob.Request.Line := AContext.Line;
+  mJob.Request.Text := AContext.Text;
+  mJob.Request.ContextLines := mSettings.AssistantsContextLines;
+  mJob.TabSize := AContext.TabSize;
+  mJob.InsertSpaces := AContext.InsertSpaces;
+  mJob.TimeoutMs := cTimeoutMs;
+  if mProvider.TimeoutMs > 0 then
+  begin
+    mJob.TimeoutMs := mProvider.TimeoutMs;
+  end;
+  mJob.Status := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.GhostStatus);
+  mJob.Hint := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostHint,
+    [mProvider.Model, TAtlasIdeAiDailyCount.Today]);
+  Result := WorkOf(Self, mJob);
+end;
+
+end.

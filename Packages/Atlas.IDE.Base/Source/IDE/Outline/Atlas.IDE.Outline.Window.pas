@@ -29,6 +29,9 @@ type
     class function Visible: Boolean; static;
     class procedure Hide; static;
     class procedure ApplyTheme; static;
+    /// <summary>Früh (Start der Gliederung): bei der IDE anmelden, damit der Desktop das Fenster samt Andockplatz
+    /// speichert und beim Laden wiederherstellt (#879).</summary>
+    class procedure Prepare; static;
     class procedure Release; static;
   end;
 
@@ -44,8 +47,8 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.UI.Outline.Strings,
-  Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.Vcl.Images.Symbol,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TOutlineDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -160,7 +163,7 @@ procedure EnsureHost;
 begin
   if Host = nil then
   begin
-    Host := TAtlasIdeDockWindow.Create(TOutlineDock.Create, False);
+    Host := TAtlasIdeDockWindow.Create(TOutlineDock.Create, True);
   end;
 end;
 
@@ -168,7 +171,6 @@ end;
 
 class function TAtlasIdeOutlineWindow.Show: TAtlasOutlineFrame;
 begin
-  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
   Host.Present;
   Result := ExistingFrame;
@@ -203,6 +205,11 @@ begin
     Theme(mFrame);
   end;
   TAtlasIdeDockWindow.UpdateIcon(Host);
+end;
+
+class procedure TAtlasIdeOutlineWindow.Prepare;
+begin
+  EnsureHost;
 end;
 
 class procedure TAtlasIdeOutlineWindow.Release;

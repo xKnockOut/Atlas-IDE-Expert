@@ -79,7 +79,7 @@ procedure TFlowFieldFreeWithoutNilTests.DestroyHandlerAndDUnitTearDownAreSilent;
 var
   mFindings: TArray<TRuleFinding>;
 begin
-  // FP-Prüfung 28.10.2026: OnDestroy-Behandlung wie von der IDE angelegt und TearDown aus DUnit (override).
+  // OnDestroy-Behandlung wie von der IDE angelegt und TearDown aus DUnit (override).
   TRuleAssert.Silent(TFieldFreeWithoutNilRule.Create,
     'unit U;'#10'interface'#10'type'#10'  TForm1 = class(TForm)'#10'    procedure FormDestroy(Sender: TObject);'#10 +
     '  private'#10'    FDaten: TObject;'#10'  end;'#10'  TTests = class(TTestCase)'#10'  private'#10 +

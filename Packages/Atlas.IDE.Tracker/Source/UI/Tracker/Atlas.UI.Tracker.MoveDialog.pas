@@ -19,7 +19,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasBoardMoveDialog = class(TAtlasDialog)
@@ -54,12 +54,15 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.Board.Strings;
+  Atlas.UI.Tracker.Board.Strings,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 10;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 32;
 
 { TAtlasBoardMoveDialog }
 
@@ -75,7 +78,7 @@ begin
   FQuestion.Parent := Self;
   FQuestion.Align := alTop;
   FQuestion.AlignWithMargins := True;
-  FQuestion.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FQuestion, cGap, cGap, cGap, 0);
   FQuestion.Font.Style := [fsBold];
   FQuestion.Caption := TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveQuestion, [AKey, AColumn]);
 
@@ -83,7 +86,7 @@ begin
   mLabel.Parent := Self;
   mLabel.Align := alTop;
   mLabel.AlignWithMargins := True;
-  mLabel.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(mLabel, cGap, cGap, cGap, 0);
   mLabel.Top := FQuestion.Top + FQuestion.Height + 1;
   mLabel.Caption := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveComment);
 
@@ -91,7 +94,7 @@ begin
   FComment.Parent := Self;
   FComment.Align := alTop;
   FComment.AlignWithMargins := True;
-  FComment.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  TAtlasControlScaling.SetMargins(FComment, cGap, cGap div 2, cGap, 0);
   FComment.Top := mLabel.Top + mLabel.Height + 1;
   FComment.Height := ScaleValue(cCommentHeight);
   FComment.ScrollBars := ssVertical;
@@ -101,7 +104,7 @@ begin
   FDontAsk.Parent := Self;
   FDontAsk.Align := alTop;
   FDontAsk.AlignWithMargins := True;
-  FDontAsk.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  TAtlasControlScaling.SetMargins(FDontAsk, cGap, cGap div 2, cGap, 0);
   FDontAsk.Top := FComment.Top + FComment.Height + 1;
   FDontAsk.Caption := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveDontAsk);
 
@@ -126,9 +129,9 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
+  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(Result, 0, 0, cGap, 0);
 end;
 
 procedure TAtlasBoardMoveDialog.AddButtons(ATop: Integer);
@@ -141,7 +144,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := ATop;
   Canvas.Font := Font;
   FMove := AddButton(mButtons, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveOk));

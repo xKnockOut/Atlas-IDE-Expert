@@ -73,17 +73,18 @@ uses
   System.JSON,
   Vcl.ActnList,
   ToolsAPI,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.TestUnit,
   Atlas.Core.UnitSearch.Plan,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
   Atlas.UI.Search.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Editor.WorkspaceEdit;
+  Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.Plugin.Calls.Optional;
 
 const
   cUnitsCommand = 'atlas.server.units';
@@ -212,10 +213,7 @@ end;
 
 class procedure TAtlasIdeUnitSearchActions.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeUnitSearchActions.RunNamedAction(const AName: string): Boolean;

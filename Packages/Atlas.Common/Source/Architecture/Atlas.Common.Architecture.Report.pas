@@ -106,7 +106,6 @@ type
     class function EdgeText(const AOverview: TArchitectureOverview; const AEdge: TOverviewEdge): string; static;
     /// <summary>"Source/A.pas:12:3" oder '' ohne Fundstelle.</summary>
     class function LocationText(const AOverview: TArchitectureOverview; const AEdge: TOverviewEdge): string; static;
-    class function SectionCaption(AInterface: Boolean): string; static;
     class function CrossReasonCaption(AReason: TOverviewCrossReason): string; static;
     class function OutlierReasonCaption(AReason: TOverviewOutlierReason): string; static;
     /// <summary>"Zyklus nur über interface (Compilerfehler F2047)" bzw. "Zyklus über implementation".</summary>
@@ -138,7 +137,9 @@ uses
   Atlas.Common.Architecture.MapTemplate,
   Atlas.Common.Architecture.MapTemplateEn,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Entities,
+  Atlas.Text.Names;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -281,18 +282,6 @@ begin
   Result := FormatFloat('0.###', AValue, TFormatSettings.Invariant);
 end;
 
-function JsonBool(AValue: Boolean): string;
-begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
-end;
-
 function JsonInts(const AValues: TArray<Integer>): string;
 var
   mIndex: Integer;
@@ -322,30 +311,6 @@ end;
 function IsInterface(const AEdge: TOverviewEdge): Boolean;
 begin
   Result := AEdge.Section = TUsesSection.Interface_;
-end;
-
-function RoleName(ARole: TOverviewUnitRole): string;
-begin
-  case ARole of
-    TOverviewUnitRole.Foundation:
-      Result := 'foundation';
-    TOverviewUnitRole.Hub:
-      Result := 'hub';
-  else
-    Result := '';
-  end;
-end;
-
-function SubsystemName(const AOverview: TArchitectureOverview; ASubsystem: Integer): string;
-begin
-  if (ASubsystem >= 0) and (ASubsystem < Length(AOverview.Subsystems)) then
-  begin
-    Result := AOverview.Subsystems[ASubsystem].Name;
-  end
-  else
-  begin
-    Result := '';
-  end;
 end;
 
 /// <summary>Name mit dem ursprünglichen Teilsystem, wenn es nachgeteilt wurde (#1364): "Lsp (Teil von Common)".
@@ -518,7 +483,7 @@ var
   mLocation: string;
 begin
   Result := AOverview.Units[AEdge.Source].Name + ' → ' + AOverview.Units[AEdge.Target].Name + ' (' +
-    SectionCaption(IsInterface(AEdge));
+    TTextNames.SectionKeyword(IsInterface(AEdge));
   mLocation := LocationText(AOverview, AEdge);
   if mLocation <> '' then
   begin
@@ -536,18 +501,6 @@ begin
   end;
   Result := AOverview.RelativePath(AEdge.Location.FileName) + ':' + IntToStr(AEdge.Location.Range.StartPos.Line + 1) +
     ':' + IntToStr(AEdge.Location.Range.StartPos.Character + 1);
-end;
-
-class function TArchitectureReport.SectionCaption(AInterface: Boolean): string;
-begin
-  if AInterface then
-  begin
-    Result := 'interface';
-  end
-  else
-  begin
-    Result := 'implementation';
-  end;
 end;
 
 class function TArchitectureReport.CrossReasonCaption(AReason: TOverviewCrossReason): string;
@@ -634,7 +587,7 @@ end;
 function EdgeJson(const AOverview: TArchitectureOverview; const AEdge: TOverviewEdge): string;
 begin
   Result := '"source":' + IntToStr(AEdge.Source) + ',"target":' + IntToStr(AEdge.Target) + ',"section":' +
-    TJsonText.Quote(TArchitectureReport.SectionCaption(IsInterface(AEdge)));
+    TJsonText.Quote(TTextNames.SectionKeyword(IsInterface(AEdge)));
   if AEdge.Located then
   begin
     Result := Result + ',"file":' + TJsonText.Quote(AOverview.RelativePath(AEdge.Location.FileName)) + ',"line":' +
@@ -736,7 +689,7 @@ begin
     .Append(',"generation":').Append(IntToStr(AOverview.Generation))
     .Append(',"durationMs":').Append(IntToStr(AOverview.DurationMs))
     .Append(',"scope":').Append(TJsonText.Quote(AOverview.Scope))
-    .Append(',"includeLibrary":').Append(JsonBool(AOverview.IncludeLibrary))
+    .Append(',"includeLibrary":').Append(TJsonText.Bool(AOverview.IncludeLibrary))
     .Append(',"grouping":{"resolution":').Append(JsonNumber(AOverview.Grouping.Clamped.Resolution))
     .Append(',"maxShare":').Append(JsonNumber(AOverview.Grouping.Clamped.MaxShare))
     .Append(',"minCohesion":').Append(JsonNumber(AOverview.Grouping.Clamped.MinCohesion))
@@ -787,8 +740,8 @@ begin
       .Append(',"direct":').Append(mItem.Direct)
       .Append(',"total":').Append(mItem.Total)
       .Append(',"uses":').Append(mItem.Uses_)
-      .Append(',"role":').Append(TJsonText.Quote(RoleName(mItem.Role)))
-      .Append(',"library":').Append(JsonBool(mItem.Library_));
+      .Append(',"role":').Append(TJsonText.Quote(TArchitectureAnalyzer.RoleKey(mItem.Role)))
+      .Append(',"library":').Append(TJsonText.Bool(mItem.Library_));
     if mIndex < Length(ALayout.Units) then
     begin
       ABuilder.Append(',"x":').Append(JsonNumber(ALayout.Units[mIndex].X))
@@ -839,7 +792,7 @@ begin
     .Append(',"inner":').Append(ASubsystem.InnerEdges)
     .Append(',"outer":').Append(ASubsystem.OuterEdges)
     .Append(',"cohesion":').Append(JsonNumber(ASubsystem.Cohesion))
-    .Append(',"isolated":').Append(JsonBool(ASubsystem.Isolated))
+    .Append(',"isolated":').Append(TJsonText.Bool(ASubsystem.Isolated))
     .Append(',"color":').Append(ASubsystem.ColorSlot)
     .Append(',"shade":').Append(ASubsystem.Shade);
   if ASubsystem.Foundation then
@@ -909,7 +862,7 @@ begin
   begin
     mCycle := AOverview.Cycles[mIndex];
     AppendComma(ABuilder, mIndex);
-    ABuilder.Append(cLineBreak).Append('{"interfaceOnly":').Append(JsonBool(mCycle.InterfaceOnly))
+    ABuilder.Append(cLineBreak).Append('{"interfaceOnly":').Append(TJsonText.Bool(mCycle.InterfaceOnly))
       .Append(',"units":').Append(JsonInts(mCycle.Units))
       .Append(',"component":').Append(JsonInts(mCycle.Component))
       .Append(',"edges":[');
@@ -959,7 +912,7 @@ begin
   begin
     Exit('');
   end;
-  mRival := SubsystemName(AOverview, AAssignment.Rows[AAssignment.Rival].Subsystem);
+  mRival := TArchitectureAnalyzer.SubsystemName(AOverview, AAssignment.Rows[AAssignment.Rival].Subsystem);
   if AAssignment.Missing = 1 then
   begin
     Result := mRival + cTexts[TArchitectureReportText.ReachesOf1EdgeShort].Fmt([IntToStr(AAssignment.RivalSum),
@@ -1000,7 +953,7 @@ begin
   for mIndex := 0 to High(mAssignment.Rows) do
   begin
     mRow := mAssignment.Rows[mIndex];
-    mLine := '  ' + SubsystemName(AOverview, mRow.Subsystem);
+    mLine := '  ' + TArchitectureAnalyzer.SubsystemName(AOverview, mRow.Subsystem);
     if mIndex = mAssignment.Own then
     begin
       mLine := mLine + cTexts[TArchitectureReportText.Own].Text;
@@ -1135,7 +1088,7 @@ begin
   begin
     mItem := AOverview.Units[AOverview.Central[mIndex]];
     ABuilder.Append('| ').Append(mIndex + 1).Append(' | ').Append(Cell(mItem.Name)).Append(' | ')
-      .Append(Cell(SubsystemName(AOverview, mItem.Subsystem))).Append(' | ').Append(mItem.Direct).Append(' | ')
+      .Append(Cell(TArchitectureAnalyzer.SubsystemName(AOverview, mItem.Subsystem))).Append(' | ').Append(mItem.Direct).Append(' | ')
       .Append(mItem.Total).Append(' | ').Append(mItem.Uses_).Append(' | ')
       .Append(TArchitectureAnalyzer.RoleCaption(mItem.Role)).Append(' |').Append(cLineBreak);
   end;
@@ -1198,8 +1151,8 @@ begin
   for mOutlier in AOverview.Outliers do
   begin
     ABuilder.Append('| ').Append(Cell(AOverview.Units[mOutlier.Unit_].Name)).Append(' | ')
-      .Append(Cell(SubsystemName(AOverview, AOverview.Units[mOutlier.Unit_].Subsystem))).Append(' | ')
-      .Append(Cell(SubsystemName(AOverview, mOutlier.Suggested))).Append(' | ')
+      .Append(Cell(TArchitectureAnalyzer.SubsystemName(AOverview, AOverview.Units[mOutlier.Unit_].Subsystem))).Append(' | ')
+      .Append(Cell(TArchitectureAnalyzer.SubsystemName(AOverview, mOutlier.Suggested))).Append(' | ')
       .Append(TArchitectureReport.OutlierReasonCaption(mOutlier.Reason)).Append(' | ').Append(mOutlier.Inside)
       .Append(' | ').Append(mOutlier.Toward).Append(' |').Append(cLineBreak);
   end;
@@ -1253,9 +1206,8 @@ begin
   begin
     ABuilder.Append('| ').Append(Cell(AOverview.Units[mLink.Edge.Source].Name)).Append(' | ')
       .Append(Cell(AOverview.Units[mLink.Edge.Target].Name)).Append(' | ')
-      .Append(TArchitectureReport.SectionCaption(IsInterface(mLink.Edge))).Append(' | ')
-      .Append(Cell(SubsystemName(AOverview, mLink.FromSubsystem) + ' → ' + SubsystemName(AOverview,
-        mLink.ToSubsystem))).Append(' | ')
+      .Append(TTextNames.SectionKeyword(IsInterface(mLink.Edge))).Append(' | ')
+      .Append(Cell(TArchitectureAnalyzer.SubsystemName(AOverview, mLink.FromSubsystem) + ' → ' + TArchitectureAnalyzer.SubsystemName(AOverview, mLink.ToSubsystem))).Append(' | ')
       .Append(TArchitectureReport.CrossReasonCaption(mLink.Reason)).Append(' (').Append(mLink.Forward)
       .Append(cTexts[TArchitectureReportText.Forward].Text).Append(mLink.Backward)
       .Append(cTexts[TArchitectureReportText.Back].Text)
@@ -1282,14 +1234,6 @@ begin
   end;
 end;
 
-function HtmlEscape(const AText: string): string;
-begin
-  Result := StringReplace(AText, '&', '&amp;', [rfReplaceAll]);
-  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
-  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
-  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
-end;
-
 /// <summary>Vorlage der Karte in der Sprache der Servertexte (#1458).</summary>
 function MapTemplate: string;
 begin
@@ -1306,7 +1250,7 @@ end;
 function Page(const ATitle, AData: string): string;
 begin
   // In einem <script> darf "</" nicht vorkommen (schlösse das Element); \/ ist in JSON gleichwertig.
-  Result := StringReplace(MapTemplate, '{{TITLE}}', HtmlEscape(ATitle), [rfReplaceAll]);
+  Result := StringReplace(MapTemplate, '{{TITLE}}', TTextEntities.Encode(ATitle), [rfReplaceAll]);
   Result := StringReplace(Result, '{{DATA}}', StringReplace(AData, '</', '<\/', [rfReplaceAll]), []);
 end;
 
@@ -1398,7 +1342,7 @@ begin
   for mIndex := 0 to Min(High(AOverview.Central), ALimit - 1) do
   begin
     mItem := AOverview.Units[AOverview.Central[mIndex]];
-    mLine := mItem.Name + ' | ' + SubsystemName(AOverview, mItem.Subsystem) + ' | ' + IntToStr(mItem.Direct) +
+    mLine := mItem.Name + ' | ' + TArchitectureAnalyzer.SubsystemName(AOverview, mItem.Subsystem) + ' | ' + IntToStr(mItem.Direct) +
       ' | ' + IntToStr(mItem.Total) + ' | ' + IntToStr(mItem.Uses_);
     if mItem.Role <> TOverviewUnitRole.None then
     begin
@@ -1434,8 +1378,7 @@ begin
   begin
     mOutlier := AOverview.Outliers[mIndex];
     Result := Result + cTexts[TArchitectureReportText.InSuggestion].Fmt([AOverview.Units[mOutlier.Unit_].Name,
-      SubsystemName(AOverview, AOverview.Units[mOutlier.Unit_].Subsystem), SubsystemName(AOverview,
-      mOutlier.Suggested), TArchitectureReport.OutlierReasonCaption(mOutlier.Reason)]) + cLineBreak;
+      TArchitectureAnalyzer.SubsystemName(AOverview, AOverview.Units[mOutlier.Unit_].Subsystem), TArchitectureAnalyzer.SubsystemName(AOverview, mOutlier.Suggested), TArchitectureReport.OutlierReasonCaption(mOutlier.Reason)]) + cLineBreak;
   end;
   Result := Limited(Result, Length(AOverview.Outliers), ALimit);
 end;
@@ -1498,8 +1441,8 @@ begin
   begin
     mLink := AOverview.CrossLinks[mIndex];
     Result := Result + TArchitectureReport.EdgeText(AOverview, mLink.Edge) +
-      cTexts[TArchitectureReportText.ThereBack].Fmt([SubsystemName(AOverview, mLink.FromSubsystem),
-      SubsystemName(AOverview, mLink.ToSubsystem), TArchitectureReport.CrossReasonCaption(mLink.Reason),
+      cTexts[TArchitectureReportText.ThereBack].Fmt([TArchitectureAnalyzer.SubsystemName(AOverview, mLink.FromSubsystem),
+      TArchitectureAnalyzer.SubsystemName(AOverview, mLink.ToSubsystem), TArchitectureReport.CrossReasonCaption(mLink.Reason),
       IntToStr(mLink.Forward), IntToStr(mLink.Backward)]) + cLineBreak;
   end;
   Result := Limited(Result, Length(AOverview.CrossLinks), ALimit);
@@ -1557,8 +1500,7 @@ begin
   if AProfile.Outlier >= 0 then
   begin
     mOutlier := AOverview.Outliers[AProfile.Outlier];
-    Result := Result + cTexts[TArchitectureReportText.OutlierBelongsRatherToEdges].Fmt([SubsystemName(AOverview,
-      mOutlier.Suggested), TArchitectureReport.OutlierReasonCaption(mOutlier.Reason), IntToStr(mOutlier.Inside),
+    Result := Result + cTexts[TArchitectureReportText.OutlierBelongsRatherToEdges].Fmt([TArchitectureAnalyzer.SubsystemName(AOverview, mOutlier.Suggested), TArchitectureReport.OutlierReasonCaption(mOutlier.Reason), IntToStr(mOutlier.Inside),
       IntToStr(mOutlier.Toward)]) + cLineBreak;
   end;
 end;
@@ -1577,7 +1519,7 @@ begin
   mUnit := AOverview.Units[mIndex];
   mProfile := AOverview.Profile(mIndex);
   Result := mUnit.Name + cTexts[TArchitectureReportText.SSubsystemSdirectDependentsTotalDependents].Fmt([
-    AOverview.RelativePath(mUnit.FileName), cLineBreak, SubsystemName(AOverview, mUnit.Subsystem), cLineBreak,
+    AOverview.RelativePath(mUnit.FileName), cLineBreak, TArchitectureAnalyzer.SubsystemName(AOverview, mUnit.Subsystem), cLineBreak,
     IntToStr(mUnit.Direct), IntToStr(mUnit.Total)]) +
     IntToStr(mUnit.Uses_);
   if mUnit.Role <> TOverviewUnitRole.None then

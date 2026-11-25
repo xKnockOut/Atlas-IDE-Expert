@@ -16,9 +16,9 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.CommentEditor,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.IDE.Tracker.IssueContext;
+  Atlas.IDE.Tracker.IssueContext,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
   /// <summary>Kommentar zu AKey schreiben (#1266); ADone im Hauptthread, genau einmal.</summary>
@@ -68,11 +68,12 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.Core.Tracker.Preview,
   Atlas.IDE.Foundation.Settings,
-  Atlas.UI.Tracker.CommentEditor;
+  Atlas.UI.Tracker.CommentEditor,
+  Atlas.Core.Tracker.CommentEditor;
 
 /// <summary>Kommentarfeld an das gezeigte Issue binden (#1278).</summary>
 procedure BindComment(AOwner: TAtlasIdeIssueComments; AFrame: TAtlasIssueFrame; AWrite: Boolean);

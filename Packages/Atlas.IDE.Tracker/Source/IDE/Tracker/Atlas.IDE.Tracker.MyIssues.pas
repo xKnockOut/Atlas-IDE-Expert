@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.MyIssues;
 
-// Bereich „Meine Issues“ in der IDE (#765): Quelle des Bereichs
-// (IAtlasIssuesSource), Anmeldung als Bereich atlas.issues der
+// Bereich „Meine Issues“ in der IDE (#765): Quelle des Bereichs (für die
+// Kachel über Atlas.IDE.Tracker.Adapters.MyIssues), Anmeldung als Bereich atlas.issues der
 // Willkommensseite (bzw. des Fensters „Atlas-Start“), Abfrage beim
 // Issue-Tracker im Hintergrund, „Beginnen“, das aktuelle Issue im
 // Statusfeld (#591) und das Commit-Präfix.
@@ -116,23 +116,23 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.MyIssues,
-  Atlas.UI.Tracker.MyIssues,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices,
   Atlas.IDE.Tracker.IssueCommands,
   Atlas.IDE.Tracker.IssuesStatus,
   Atlas.IDE.Tracker.IssuesQuery,
-  Atlas.IDE.Tracker.IssueStart;
+  Atlas.IDE.Tracker.IssueStart,
+  Atlas.Core.Tracker.Contract.MyIssues,
+  Atlas.UI.Tracker.Contract.MyIssues;
 
 type
-  TAtlasIdeIssues = class(TInterfacedObject, IAtlasIssuesSource, IAtlasIdeIssuesActions)
+  TAtlasIdeIssues = class(TInterfacedObject, IAtlasIdeIssuesActions)
   public const
     /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite (Layouts bleiben).
     /// </summary>
     cTileId = TAtlasIdeIssuesContext.cTileId;
-    /// <summary>Reihenfolge außerhalb des Atlas-Layouts: nach „Testergebnisse“ (Mockup: rechte Spalte, im
+    /// <summary>Reihenfolge außerhalb des Atlas-Layouts: nach „Testergebnisse“ (rechte Spalte, im
     /// Atlas-Layout ohne festen Platz).</summary>
     cOrder = 26;
   private
@@ -164,7 +164,7 @@ type
     procedure UpdateTileInfo;
     procedure SetFilter(const ACaption: string; const AIssues: TArray<TAtlasTrackerIssue>);
     function ViewOf(const AProject: string): TAtlasIssuesView;
-    { IAtlasIssuesSource }
+    { Für die Kachel (IAtlasIssuesSource über Atlas.IDE.Tracker.Adapters.MyIssues) }
     function View: TAtlasIssuesView;
     procedure Shown;
     procedure Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart); overload;
@@ -197,15 +197,14 @@ implementation
 
 uses
   Atlas.UI.Tracker.MyIssues.Text,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Tracker.Reopened,
-  Atlas.Core.Tracker.Projects,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.MyIssuesPlan,
   Atlas.Core.Tracker.Templates,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Tracker.Workflow;
+  Atlas.IDE.Tracker.Workflow,
+  Atlas.Core.Tracker.MyIssues;
 
 const
   cRowActions: array[TAtlasIssueAction] of TAtlasIssueRowAction = (TAtlasIssueRowAction.Continue,
@@ -420,7 +419,7 @@ begin
     Result.Reopened := FServices.Reopened.Marks(AProject);
   end;
   // „Prüfen“ (#2126) an Zeilen im Prüfzustand.
-  if FServices.Review <> nil then
+  if FServices.Tracking.Review <> nil then
   begin
     Result.ReviewStates := TAtlasIdeTrackerSync.Options(mTarget).ReviewStates;
   end;
@@ -553,9 +552,9 @@ begin
   case TAtlasMyIssuesPlan.StepOf(cRowActions[AAction], FServices.Reopened <> nil) of
     TAtlasIssueRowStep.Review:
       // „Prüfen“ (#2126): Bei „Alle“ gilt das Tracker-Projekt der Zeile (FocusIssue).
-      if FServices.Review <> nil then
+      if FServices.Tracking.Review <> nil then
       begin
-        FServices.Review.Review(AIssue, FServices.Options);
+        FServices.Tracking.Review.Review(AIssue, FServices.Options);
       end;
     TAtlasIssueRowStep.Resume:
       begin

@@ -16,8 +16,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -52,18 +50,6 @@ begin
 end;
 
 { TAtlasBreakpointSetDialogTests }
-
-procedure TAtlasBreakpointSetDialogTests.WarmUpFirstUse;
-begin
-  // Der erste Dialog mit Fenster legt unter Delphi einmalig Speicher an (1360 Byte, auch im Einzellauf):
-  // vorab, damit der Leckmonitor ihn nicht SaveOffersBranch zuschreibt. Ein echtes Leck zeigt der Test trotzdem.
-  Setup;
-  try
-    SaveOffersBranch;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasBreakpointSetDialogTests.Setup;
 begin

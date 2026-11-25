@@ -21,11 +21,13 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   Vcl.Menus,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Debug.Threads,
   Atlas.Core.Debug.ThreadMarks,
   Atlas.Core.Debug.ThreadsInSourceFlow,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.Threads.Strings;
 
@@ -41,7 +43,7 @@ type
     /// <summary>Tag des Eintrags „Alle Threads dieser Zeile“.</summary>
     cAllTag = TAtlasThreadsInSourceFlow.cAllTag;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
       procedure DebugResumed; override;
@@ -53,7 +55,7 @@ type
       procedure Pick(Sender: TObject);
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FMenu: TPopupMenu;
@@ -105,8 +107,8 @@ implementation
 uses
   Vcl.Controls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,

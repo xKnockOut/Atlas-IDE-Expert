@@ -41,7 +41,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.NotifyPlan,
-  Atlas.Core.Tracker.Reopened;
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 function Unseen(const AKey, AProject: string; AAnchor: TDateTime): TAtlasTrackerUnseen;
 begin

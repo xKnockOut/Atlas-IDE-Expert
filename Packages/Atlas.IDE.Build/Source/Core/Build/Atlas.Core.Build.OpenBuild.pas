@@ -35,7 +35,8 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Notifications.Contract;
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Core.Build.OpenBuildSettings;
 
 type
   /// <summary>Ergebnis eines Laufs beim Öffnen.</summary>
@@ -82,6 +83,31 @@ type
     class function IsCovered(const ACovered: TArray<string>; const AFileName: string): Boolean; static;
   end;
 
+  /// <summary>Konfiguration und Plattform eines Projekts für den Lauf (#1293).</summary>
+  TAtlasOpenBuildTarget = record
+    /// <summary>Zu setzende Konfiguration bzw. Plattform in der Schreibweise des Projekts; '' = wie eingestellt.
+    /// </summary>
+    Configuration: string;
+    Platform: string;
+    /// <summary>Die Vorgabe gibt es im Projekt nicht (Konfiguration bzw. aktivierte Plattform).</summary>
+    MissingConfiguration: Boolean;
+    MissingPlatform: Boolean;
+    /// <summary>Ziel aus den Vorgaben AWanted… und dem, was das Projekt kennt (AConfigurations, aktivierte
+    /// APlatforms).</summary>
+    class function Choose(const AWantedConfiguration, AWantedPlatform: string;
+      const AConfigurations, APlatforms: TArray<string>): TAtlasOpenBuildTarget; static;
+    /// <summary>Weicht das Ziel von der Auswahl im Projekt ab?</summary>
+    function Switches(const ACurrentConfiguration, ACurrentPlatform: string): Boolean;
+  end;
+
+  /// <summary>Projekte der geladenen Gruppe AGroupFile (AMembers in Reihenfolge der Gruppe, AActive ihr aktives
+  /// Projekt oder ''); False, wenn die Gruppe (noch) nicht geladen ist.</summary>
+  TAtlasOpenBuildGroupOf = reference to function(const AGroupFile: string; out AMembers: TArray<string>;
+    out AActive: string): Boolean;
+  /// <summary>Datei des geladenen Projekts zu AFileName (.dpr/.dpk kennt die IDE meist als .dproj); False, wenn es
+  /// (noch) nicht geladen ist.</summary>
+  TAtlasOpenBuildProjectOf = reference to function(const AFileName: string; out AProject: string): Boolean;
+
   TAtlasOpenBuild = class
   public const
     /// <summary>Auftraggeber in den Compile-Ereignissen (#527): kein Build des Benutzers, also keine Tests nach
@@ -103,6 +129,10 @@ type
     FCancelReason: string;
     FRunStartedAt: Int64;
     function PendingIndex(const AFileName: string): Integer;
+    /// <summary>Projekte der geladenen Gruppen unter AFiles (alle oder das aktive); ACovered bekommt alle
+    /// Mitglieder. Nicht geladene Gruppen merkt Retry erneut vor.</summary>
+    function GroupCandidates(const AFiles: TArray<string>; AScope: TAtlasOpenBuildScope;
+      const AGroupOf: TAtlasOpenBuildGroupOf; ANowMs: Int64; out ACovered: TArray<string>): TArray<string>;
     procedure AddPending(const AFileName: string; ANowMs: Int64);
   public
     constructor Create;
@@ -120,6 +150,11 @@ type
     function Retry(const AFileName: string; ANowMs: Int64): Boolean;
     /// <summary>Zu bauende Projekte aus AProjects (Reihenfolge bleibt); markiert sie als gebaut.</summary>
     function Select(const AProjects, AExclude: TArray<string>): TArray<string>;
+    /// <summary>Projekte des fälligen Laufs: Take, zuerst die Gruppen (alle oder nur das aktive, AScope; sie
+    /// entscheiden auch über ihre einzeln gemeldeten Projekte), dann die übrigen Projekte, dann Select. Nicht
+    /// geladene Gruppen und Projekte merkt Retry erneut vor.</summary>
+    function Plan(AScope: TAtlasOpenBuildScope; const AExclude: TArray<string>; const AGroupOf: TAtlasOpenBuildGroupOf;
+      const AProjectOf: TAtlasOpenBuildProjectOf; ANowMs: Int64): TArray<string>;
     procedure BuildStarted;
     procedure BuildFinished;
     procedure RunStarted(const AProjects: TArray<string>; ANowMs: Int64);
@@ -141,9 +176,6 @@ type
   end;
 
 implementation
-
-uses
-  Atlas.Core.Build.OpenBuildSettings;
 
 { TAtlasOpenBuildResult }
 
@@ -211,6 +243,24 @@ begin
     end;
   end;
   Result := False;
+end;
+
+{ TAtlasOpenBuildTarget }
+
+class function TAtlasOpenBuildTarget.Choose(const AWantedConfiguration, AWantedPlatform: string;
+  const AConfigurations, APlatforms: TArray<string>): TAtlasOpenBuildTarget;
+begin
+  Result := Default(TAtlasOpenBuildTarget);
+  Result.Configuration := TAtlasOpenBuildSettings.PickTarget(AWantedConfiguration, AConfigurations);
+  Result.Platform := TAtlasOpenBuildSettings.PickTarget(AWantedPlatform, APlatforms);
+  Result.MissingConfiguration := (AWantedConfiguration <> '') and (Result.Configuration = '');
+  Result.MissingPlatform := (AWantedPlatform <> '') and (Result.Platform = '');
+end;
+
+function TAtlasOpenBuildTarget.Switches(const ACurrentConfiguration, ACurrentPlatform: string): Boolean;
+begin
+  Result := TAtlasOpenBuildSummary.Differs(Configuration, ACurrentConfiguration) or
+    TAtlasOpenBuildSummary.Differs(Platform, ACurrentPlatform);
 end;
 
 { TAtlasOpenBuild }
@@ -345,6 +395,64 @@ begin
       Result := Result + [mProject];
     end;
   end;
+end;
+
+function TAtlasOpenBuild.GroupCandidates(const AFiles: TArray<string>; AScope: TAtlasOpenBuildScope;
+  const AGroupOf: TAtlasOpenBuildGroupOf; ANowMs: Int64; out ACovered: TArray<string>): TArray<string>;
+var
+  mFileName, mActive: string;
+  mMembers: TArray<string>;
+begin
+  Result := nil;
+  ACovered := nil;
+  for mFileName in AFiles do
+  begin
+    if not IsGroupFile(mFileName) then
+    begin
+      Continue;
+    end;
+    if not AGroupOf(mFileName, mMembers, mActive) or (mMembers = nil) then
+    begin
+      Retry(mFileName, ANowMs);
+      Continue;
+    end;
+    ACovered := ACovered + mMembers;
+    if AScope = TAtlasOpenBuildScope.All then
+    begin
+      Result := Result + mMembers;
+    end
+    else if mActive <> '' then
+    begin
+      Result := Result + [mActive];
+    end;
+  end;
+end;
+
+function TAtlasOpenBuild.Plan(AScope: TAtlasOpenBuildScope; const AExclude: TArray<string>;
+  const AGroupOf: TAtlasOpenBuildGroupOf; const AProjectOf: TAtlasOpenBuildProjectOf; ANowMs: Int64): TArray<string>;
+var
+  mFiles, mCandidates, mCovered: TArray<string>;
+  mFileName, mProject: string;
+begin
+  mFiles := Take;
+  // Zuerst die Gruppen: Sie entscheiden auch über ihre einzeln gemeldeten Projekte.
+  mCandidates := GroupCandidates(mFiles, AScope, AGroupOf, ANowMs, mCovered);
+  for mFileName in mFiles do
+  begin
+    if IsGroupFile(mFileName) or TAtlasOpenBuildSummary.IsCovered(mCovered, mFileName) then
+    begin
+      Continue;
+    end;
+    if AProjectOf(mFileName, mProject) then
+    begin
+      mCandidates := mCandidates + [mProject];
+    end
+    else
+    begin
+      Retry(mFileName, ANowMs);
+    end;
+  end;
+  Result := Select(mCandidates, AExclude);
 end;
 
 procedure TAtlasOpenBuild.BuildStarted;

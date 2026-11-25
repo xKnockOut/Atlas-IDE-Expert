@@ -21,6 +21,9 @@ type
     class function Current: string; static;
     /// <summary>Formatiert eine Adresse als "Modul+$Offset".</summary>
     class function DescribeAddress(AAddress: Pointer): string; static;
+    /// <summary>Rücksprungadressen AFrames wie Exception.StackTrace: eine Zeile je Adresse, mit Map dahinter
+    /// Unit, Routine und Zeile.</summary>
+    class function DescribeFrames(const AFrames: TArray<Pointer>): string; static;
   end;
 
 implementation
@@ -31,8 +34,10 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.IOUtils,
+  Atlas.Text.Locked,
   Atlas.Text.MapFile,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Text.Files;
 
 const
   cMaxFrames = 48;
@@ -82,7 +87,14 @@ begin
         end;
       except
         // Eine unlesbare Map darf das Absturzprotokoll nicht verhindern.
-        FreeAndNil(Map);
+        on E: Exception do
+        begin
+          if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+          begin
+            raise;
+          end;
+          FreeAndNil(Map);
+        end;
       end;
     end;
     Result := Map;
@@ -99,17 +111,15 @@ end;
 
 function Describe(AInfo: PStackInfo): string;
 var
+  mFrames: TArray<Pointer>;
   mIndex: Integer;
 begin
-  Result := '';
+  SetLength(mFrames, AInfo.Count);
   for mIndex := 0 to AInfo.Count - 1 do
   begin
-    Result := Result + TStackTrace.DescribeAddress(AInfo.Frames[mIndex]) + sLineBreak;
+    mFrames[mIndex] := AInfo.Frames[mIndex];
   end;
-  if LoadedMap <> nil then
-  begin
-    Result := LoadedMap.Symbolize(Result, MapModule);
-  end;
+  Result := TStackTrace.DescribeFrames(mFrames);
 end;
 
 function GetExceptionStackInfo(AP: PExceptionRecord): Pointer;
@@ -201,8 +211,23 @@ begin
   end;
 end;
 
+class function TStackTrace.DescribeFrames(const AFrames: TArray<Pointer>): string;
+var
+  mFrame: Pointer;
+begin
+  Result := '';
+  for mFrame in AFrames do
+  begin
+    Result := Result + DescribeAddress(mFrame) + sLineBreak;
+  end;
+  if LoadedMap <> nil then
+  begin
+    Result := LoadedMap.Symbolize(Result, MapModule);
+  end;
+end;
+
 initialization
-  MapLock := TObject.Create;
+  MapLock := TAtlasSharedLock.New;
 
 finalization
   Map.Free;

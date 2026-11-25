@@ -27,9 +27,9 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Generate.Menu,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasGenerateChoicesFunc = reference to function(const AEntry: TAtlasGenerateEntry): TArray<string>;
@@ -132,75 +132,74 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   System.Math,
-  Atlas.UI.Strings,
   Atlas.UI.Generate.Strings,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Completion.Presentation;
 
 type
   TCommandCaption = record
     Name: string;
-    Id: TAtlasTextId;
+    Id: TAtlasGenerateTextId;
   end;
 
 const
   // Eigene Beschriftungen der Schnellbefehle; die Kurzbeschreibungen des Servers gibt es nur auf Deutsch.
   cCommandCaptions: array[0..51] of TCommandCaption = (
-    (Name: 'ctor'; Id: TAtlasTextId.GenerateCmdCtor),
-    (Name: 'dtor'; Id: TAtlasTextId.GenerateCmdDtor),
-    (Name: 'prop'; Id: TAtlasTextId.GenerateCmdProp),
-    (Name: 'override'; Id: TAtlasTextId.GenerateCmdOverride),
-    (Name: 'implement'; Id: TAtlasTextId.GenerateCmdImplement),
-    (Name: 'equals'; Id: TAtlasTextId.GenerateCmdEquals),
-    (Name: 'impl'; Id: TAtlasTextId.GenerateCmdImpl),
-    (Name: 'field'; Id: TAtlasTextId.GenerateCmdField),
-    (Name: 'encapsulate'; Id: TAtlasTextId.GenerateCmdEncapsulate),
-    (Name: 'clone'; Id: TAtlasTextId.GenerateCmdClone),
-    (Name: 'assign'; Id: TAtlasTextId.GenerateCmdAssign),
-    (Name: 'json'; Id: TAtlasTextId.GenerateCmdJson),
-    (Name: 'msg'; Id: TAtlasTextId.GenerateCmdMsg),
-    (Name: 'notify'; Id: TAtlasTextId.GenerateCmdNotify),
-    (Name: 'changed'; Id: TAtlasTextId.GenerateCmdChanged),
-    (Name: 'loaded'; Id: TAtlasTextId.GenerateCmdLoaded),
-    (Name: 'notification'; Id: TAtlasTextId.GenerateCmdNotification),
-    (Name: 'singleton'; Id: TAtlasTextId.GenerateCmdSingleton),
-    (Name: 'list'; Id: TAtlasTextId.GenerateCmdList),
-    (Name: 'dict'; Id: TAtlasTextId.GenerateCmdDict),
-    (Name: 'dict!'; Id: TAtlasTextId.GenerateCmdDictBang),
-    (Name: 'operator'; Id: TAtlasTextId.GenerateCmdOperator),
-    (Name: 'guid'; Id: TAtlasTextId.GenerateCmdGuid),
-    (Name: 'var'; Id: TAtlasTextId.GenerateCmdVar),
-    (Name: 'const'; Id: TAtlasTextId.GenerateCmdConst),
-    (Name: 'const!'; Id: TAtlasTextId.GenerateCmdConstBang),
-    (Name: 'guard'; Id: TAtlasTextId.GenerateCmdGuard),
-    (Name: 'raise'; Id: TAtlasTextId.GenerateCmdRaise),
-    (Name: 'log'; Id: TAtlasTextId.GenerateCmdLog),
-    (Name: 'sql'; Id: TAtlasTextId.GenerateCmdSql),
-    (Name: 'params'; Id: TAtlasTextId.GenerateCmdParams),
-    (Name: 'record'; Id: TAtlasTextId.GenerateCmdRecord),
-    (Name: 'enum'; Id: TAtlasTextId.GenerateCmdEnum),
-    (Name: 'enum!'; Id: TAtlasTextId.GenerateCmdEnumBang),
-    (Name: 'helper'; Id: TAtlasTextId.GenerateCmdHelper),
-    (Name: 'exception'; Id: TAtlasTextId.GenerateCmdException),
-    (Name: 'thread'; Id: TAtlasTextId.GenerateCmdThread),
-    (Name: 'external'; Id: TAtlasTextId.GenerateCmdExternal),
-    (Name: 'exports'; Id: TAtlasTextId.GenerateCmdExports),
-    (Name: 'todo'; Id: TAtlasTextId.GenerateCmdTodo),
-    (Name: 'try'; Id: TAtlasTextId.GenerateCmdTry),
-    (Name: 'except'; Id: TAtlasTextId.GenerateCmdExcept),
-    (Name: 'lock'; Id: TAtlasTextId.GenerateCmdLock),
-    (Name: 'sync'; Id: TAtlasTextId.GenerateCmdSync),
-    (Name: 'sync!'; Id: TAtlasTextId.GenerateCmdSyncBang),
-    (Name: 'ifdef'; Id: TAtlasTextId.GenerateCmdIfdef),
-    (Name: 'region'; Id: TAtlasTextId.GenerateCmdRegion),
-    (Name: 'measure'; Id: TAtlasTextId.GenerateCmdMeasure),
-    (Name: 'task'; Id: TAtlasTextId.GenerateCmdTask),
-    (Name: 'future'; Id: TAtlasTextId.GenerateCmdFuture),
-    (Name: 'loop'; Id: TAtlasTextId.GenerateCmdLoop),
-    (Name: 'transaction'; Id: TAtlasTextId.GenerateCmdTransaction));
+    (Name: 'ctor'; Id: TAtlasGenerateTextId.GenerateCmdCtor),
+    (Name: 'dtor'; Id: TAtlasGenerateTextId.GenerateCmdDtor),
+    (Name: 'prop'; Id: TAtlasGenerateTextId.GenerateCmdProp),
+    (Name: 'override'; Id: TAtlasGenerateTextId.GenerateCmdOverride),
+    (Name: 'implement'; Id: TAtlasGenerateTextId.GenerateCmdImplement),
+    (Name: 'equals'; Id: TAtlasGenerateTextId.GenerateCmdEquals),
+    (Name: 'impl'; Id: TAtlasGenerateTextId.GenerateCmdImpl),
+    (Name: 'field'; Id: TAtlasGenerateTextId.GenerateCmdField),
+    (Name: 'encapsulate'; Id: TAtlasGenerateTextId.GenerateCmdEncapsulate),
+    (Name: 'clone'; Id: TAtlasGenerateTextId.GenerateCmdClone),
+    (Name: 'assign'; Id: TAtlasGenerateTextId.GenerateCmdAssign),
+    (Name: 'json'; Id: TAtlasGenerateTextId.GenerateCmdJson),
+    (Name: 'msg'; Id: TAtlasGenerateTextId.GenerateCmdMsg),
+    (Name: 'notify'; Id: TAtlasGenerateTextId.GenerateCmdNotify),
+    (Name: 'changed'; Id: TAtlasGenerateTextId.GenerateCmdChanged),
+    (Name: 'loaded'; Id: TAtlasGenerateTextId.GenerateCmdLoaded),
+    (Name: 'notification'; Id: TAtlasGenerateTextId.GenerateCmdNotification),
+    (Name: 'singleton'; Id: TAtlasGenerateTextId.GenerateCmdSingleton),
+    (Name: 'list'; Id: TAtlasGenerateTextId.GenerateCmdList),
+    (Name: 'dict'; Id: TAtlasGenerateTextId.GenerateCmdDict),
+    (Name: 'dict!'; Id: TAtlasGenerateTextId.GenerateCmdDictBang),
+    (Name: 'operator'; Id: TAtlasGenerateTextId.GenerateCmdOperator),
+    (Name: 'guid'; Id: TAtlasGenerateTextId.GenerateCmdGuid),
+    (Name: 'var'; Id: TAtlasGenerateTextId.GenerateCmdVar),
+    (Name: 'const'; Id: TAtlasGenerateTextId.GenerateCmdConst),
+    (Name: 'const!'; Id: TAtlasGenerateTextId.GenerateCmdConstBang),
+    (Name: 'guard'; Id: TAtlasGenerateTextId.GenerateCmdGuard),
+    (Name: 'raise'; Id: TAtlasGenerateTextId.GenerateCmdRaise),
+    (Name: 'log'; Id: TAtlasGenerateTextId.GenerateCmdLog),
+    (Name: 'sql'; Id: TAtlasGenerateTextId.GenerateCmdSql),
+    (Name: 'params'; Id: TAtlasGenerateTextId.GenerateCmdParams),
+    (Name: 'record'; Id: TAtlasGenerateTextId.GenerateCmdRecord),
+    (Name: 'enum'; Id: TAtlasGenerateTextId.GenerateCmdEnum),
+    (Name: 'enum!'; Id: TAtlasGenerateTextId.GenerateCmdEnumBang),
+    (Name: 'helper'; Id: TAtlasGenerateTextId.GenerateCmdHelper),
+    (Name: 'exception'; Id: TAtlasGenerateTextId.GenerateCmdException),
+    (Name: 'thread'; Id: TAtlasGenerateTextId.GenerateCmdThread),
+    (Name: 'external'; Id: TAtlasGenerateTextId.GenerateCmdExternal),
+    (Name: 'exports'; Id: TAtlasGenerateTextId.GenerateCmdExports),
+    (Name: 'todo'; Id: TAtlasGenerateTextId.GenerateCmdTodo),
+    (Name: 'try'; Id: TAtlasGenerateTextId.GenerateCmdTry),
+    (Name: 'except'; Id: TAtlasGenerateTextId.GenerateCmdExcept),
+    (Name: 'lock'; Id: TAtlasGenerateTextId.GenerateCmdLock),
+    (Name: 'sync'; Id: TAtlasGenerateTextId.GenerateCmdSync),
+    (Name: 'sync!'; Id: TAtlasGenerateTextId.GenerateCmdSyncBang),
+    (Name: 'ifdef'; Id: TAtlasGenerateTextId.GenerateCmdIfdef),
+    (Name: 'region'; Id: TAtlasGenerateTextId.GenerateCmdRegion),
+    (Name: 'measure'; Id: TAtlasGenerateTextId.GenerateCmdMeasure),
+    (Name: 'task'; Id: TAtlasGenerateTextId.GenerateCmdTask),
+    (Name: 'future'; Id: TAtlasGenerateTextId.GenerateCmdFuture),
+    (Name: 'loop'; Id: TAtlasGenerateTextId.GenerateCmdLoop),
+    (Name: 'transaction'; Id: TAtlasGenerateTextId.GenerateCmdTransaction));
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -232,7 +231,7 @@ begin
   begin
     if SameText(mItem.Name, AEntry.Name) then
     begin
-      Exit(TAtlasStrings.Text(mItem.Id));
+      Exit(TAtlasGenerateStrings.Text(mItem.Id));
     end;
   end;
   if Result = '' then
@@ -323,6 +322,28 @@ begin
   Result := Trim(Text);
 end;
 
+const
+  // Maße in Pixeln bei 96 dpi.
+  cWidth = 440;
+  cScreenMargin = 40;
+  cTopOffset = 60;
+  cFrameMargin = 4;
+  cRowPadding = 8;
+  cTitleGap = 6;
+  cListMargin = 4;
+  cEdge = 12;
+  cTextIndent = 8;
+  cNameGap = 12;
+  cInputMargin = 6;
+  cBadgeWidth = 18;
+  cBadgeInset = 4;
+  cBadgeRadius = 4;
+  cCheckSize = 14;
+  cCheckInset = 5;
+  cCheckColumn = 22;
+  // Zeilen je Schritt des Mausrads.
+  cWheelRows = 3;
+
 type
   /// <summary>Höhen und Zeilen des Fensters in der Fensterschrift.</summary>
   TAtlasGenerateMetrics = record
@@ -357,16 +378,16 @@ type
 function TAtlasGenerateMetrics.RowHeight: Integer;
 begin
   Window.Canvas.Font := Window.Font;
-  Result := Window.Canvas.TextHeight('Wg') + Window.ScaleValue(8);
+  Result := Window.Canvas.TextHeight('Wg') + Window.ScaleValue(cRowPadding);
 end;
 
 function TAtlasGenerateMetrics.TitleHeight: Integer;
 begin
-  Result := RowHeight + Window.ScaleValue(6);
+  Result := RowHeight + Window.ScaleValue(cTitleGap);
   // Im zweiten Schritt steht unter dem Titel das Eingabefeld.
   if Window.FStep.Active then
   begin
-    Inc(Result, RowHeight + Window.ScaleValue(6));
+    Inc(Result, RowHeight + Window.ScaleValue(cTitleGap));
   end;
 end;
 
@@ -382,7 +403,8 @@ end;
 
 function TAtlasGenerateMetrics.RowRect(AVisibleRow: Integer): TRect;
 begin
-  Result := Rect(Window.ScaleValue(4), ListTop + AVisibleRow * RowHeight, Window.ClientWidth - Window.ScaleValue(4),
+  Result := Rect(Window.ScaleValue(cListMargin), ListTop + AVisibleRow * RowHeight,
+    Window.ClientWidth - Window.ScaleValue(cListMargin),
     ListTop + (AVisibleRow + 1) * RowHeight);
 end;
 
@@ -452,11 +474,12 @@ var
   mBadge: TRect;
 begin
   // Ziffer 1–9 als Badge.
-  mBadge := Rect(ABounds.Left, ABounds.Top + Px(4), ABounds.Left + Px(18), ABounds.Bottom - Px(4));
+  mBadge := Rect(ABounds.Left, ABounds.Top + Px(cBadgeInset), ABounds.Left + Px(cBadgeWidth),
+    ABounds.Bottom - Px(cBadgeInset));
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Window.Colors.AccentSoft);
   Canvas.Pen.Color := ToColor(Window.Colors.Line);
-  Canvas.RoundRect(mBadge.Left, mBadge.Top, mBadge.Right, mBadge.Bottom, Px(4), Px(4));
+  Canvas.RoundRect(mBadge.Left, mBadge.Top, mBadge.Right, mBadge.Bottom, Px(cBadgeRadius), Px(cBadgeRadius));
   Canvas.Brush.Style := bsClear;
   DrawLabel(IntToStr(ADigit), mBadge, Window.Colors.Text, DT_CENTER);
 end;
@@ -475,7 +498,7 @@ begin
   begin
     Canvas.Font.Size := Window.Font.Size - 1;
     mPart := mBounds;
-    Inc(mPart.Left, Px(8));
+    Inc(mPart.Left, Px(cTextIndent));
     DrawLabel(TAtlasGenerateTexts.GroupCaption(mRow.Group), mPart, Window.Colors.Muted, 0);
     Canvas.Font.Size := Window.Font.Size;
     Canvas.Brush.Style := bsSolid;
@@ -489,12 +512,12 @@ begin
     Canvas.FillRect(mBounds);
     Canvas.Brush.Style := bsClear;
   end;
-  InflateRect(mBounds, -Px(8), 0);
+  InflateRect(mBounds, -Px(cTextIndent), 0);
   if mRow.Digit > 0 then
   begin
     Badge(mBounds, mRow.Digit);
   end;
-  Inc(mBounds.Left, Px(18) + Px(8));
+  Inc(mBounds.Left, Px(cBadgeWidth) + Px(cTextIndent));
   // /name gedimmt rechts.
   mNameWidth := 0;
   if Window.FOptions.ShowCommandNames and (mEntry.CommandName <> '') then
@@ -502,7 +525,7 @@ begin
     mNameWidth := Canvas.TextWidth(mEntry.CommandName);
     mPart := Rect(mBounds.Right - mNameWidth, mBounds.Top, mBounds.Right, mBounds.Bottom);
     DrawLabel(mEntry.CommandName, mPart, Window.Colors.Muted, 0);
-    Inc(mNameWidth, Px(12));
+    Inc(mNameWidth, Px(cNameGap));
   end;
   DrawHighlighted(TAtlasGenerateTexts.EntryCaption(mEntry), CaptionPattern(Window.FPattern),
     Rect(mBounds.Left, mBounds.Top, mBounds.Right - mNameWidth, mBounds.Bottom));
@@ -525,7 +548,7 @@ begin
     Canvas.FillRect(mBounds);
   end;
   Canvas.Brush.Style := bsClear;
-  InflateRect(mBounds, -Px(8), 0);
+  InflateRect(mBounds, -Px(cTextIndent), 0);
   if mIndex > High(mStep.Order) then
   begin
     // Eigene Eingabe.
@@ -537,7 +560,8 @@ begin
   end;
   if mStep.Entry.Multi then
   begin
-    mBox := Rect(mBounds.Left, mBounds.Top + Px(5), mBounds.Left + Px(14), mBounds.Bottom - Px(5));
+    mBox := Rect(mBounds.Left, mBounds.Top + Px(cCheckInset), mBounds.Left + Px(cCheckSize),
+      mBounds.Bottom - Px(cCheckInset));
     Canvas.Pen.Color := ToColor(Window.Colors.Muted);
     if mStep.Checked[mStep.Order[mIndex]] then
     begin
@@ -546,7 +570,7 @@ begin
     end;
     Canvas.Rectangle(mBox);
     Canvas.Brush.Style := bsClear;
-    Inc(mBounds.Left, Px(22));
+    Inc(mBounds.Left, Px(cCheckColumn));
   end;
   DrawHighlighted(mStep.Choices[mStep.Order[mIndex]], mStep.Text, mBounds);
   Canvas.Brush.Style := bsSolid;
@@ -555,7 +579,7 @@ end;
 function TAtlasGeneratePainter.Title: TRect;
 begin
   // Titel: „Erzeugen“ bzw. der gewählte Eintrag.
-  Result := Rect(Px(12), Px(2), Window.ClientWidth - Px(12), Px(2) + Metrics.RowHeight);
+  Result := Rect(Px(cEdge), Px(2), Window.ClientWidth - Px(cEdge), Px(2) + Metrics.RowHeight);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
   if Window.FStep.Active then
@@ -581,12 +605,13 @@ var
   mInput: TRect;
 begin
   // Eingabefeld mit Akzentrahmen.
-  mInput := Rect(Px(6), ATitle.Bottom + Px(6), Window.ClientWidth - Px(6), ATitle.Bottom + Px(6) + Metrics.RowHeight);
+  mInput := Rect(Px(cInputMargin), ATitle.Bottom + Px(cInputMargin), Window.ClientWidth - Px(cInputMargin),
+    ATitle.Bottom + Px(cInputMargin) + Metrics.RowHeight);
   Canvas.Brush.Style := bsSolid;
   Canvas.Pen.Color := ToColor(Window.Colors.Accent);
   Canvas.Brush.Color := ToColor(Window.Colors.Gutter);
   Canvas.Rectangle(mInput);
-  InflateRect(mInput, -Px(8), 0);
+  InflateRect(mInput, -Px(cTextIndent), 0);
   Canvas.Brush.Style := bsClear;
   if Window.FStep.Text <> '' then
   begin
@@ -622,7 +647,7 @@ begin
   begin
     mReason := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateEmpty);
   end;
-  DrawLabel(mReason, Rect(Px(12), Metrics.ListTop, Window.ClientWidth - Px(12),
+  DrawLabel(mReason, Rect(Px(cEdge), Metrics.ListTop, Window.ClientWidth - Px(cEdge),
     Metrics.ListTop + Metrics.RowHeight), Window.Colors.Muted, 0);
 end;
 
@@ -632,7 +657,7 @@ var
   mHint: string;
 begin
   // Fußzeile: Filter oder Hinweis.
-  mFooter := Rect(Px(12), Window.ClientHeight - Metrics.FooterHeight - Px(2), Window.ClientWidth - Px(12),
+  mFooter := Rect(Px(cEdge), Window.ClientHeight - Metrics.FooterHeight - Px(2), Window.ClientWidth - Px(cEdge),
     Window.ClientHeight - Px(2));
   Canvas.Pen.Color := ToColor(Window.Colors.Line);
   Canvas.MoveTo(0, mFooter.Top);
@@ -665,6 +690,7 @@ constructor TAtlasGenerateWindow.CreateMenu(AOwner: TComponent; const AEntries: 
   const AOptions: TAtlasGenerateOptions; ARecent: TAtlasGenerateRecent; const AColors: TAtlasColors);
 begin
   inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
   FEntries := AEntries;
   FOptions := AOptions;
   FRecent := ARecent;
@@ -837,7 +863,7 @@ end;
 
 function TAtlasGenerateWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - cVisibleRows));
+  FTop := EnsureRange(FTop - Sign(WheelDelta) * cWheelRows, 0, Max(0, RowCount - cVisibleRows));
   Invalidate;
   Result := True;
 end;
@@ -1074,7 +1100,8 @@ var
 begin
   mMetrics.Window := Self;
   mVisible := EnsureRange(RowCount, 1, cVisibleRows);
-  ClientHeight := mMetrics.TitleHeight + mVisible * mMetrics.RowHeight + mMetrics.FooterHeight + ScaleValue(4);
+  ClientHeight := mMetrics.TitleHeight + mVisible * mMetrics.RowHeight + mMetrics.FooterHeight +
+    ScaleValue(cFrameMargin);
 end;
 
 procedure TAtlasGenerateWindow.FormDeactivate(Sender: TObject);
@@ -1092,7 +1119,7 @@ var
   mArea: TRect;
   mLeft, mTop: Integer;
 begin
-  Width := ScaleValue(440);
+  Width := ScaleValue(cWidth);
   UpdateHeight;
   mArea := Screen.MonitorFromPoint(ACaret.TopLeft, mdNearest).WorkareaRect;
   mLeft := EnsureRange(ACaret.Left, mArea.Left, Max(mArea.Left, mArea.Right - Width));
@@ -1109,9 +1136,9 @@ end;
 
 procedure TAtlasGenerateWindow.ShowOver(const AArea: TRect);
 begin
-  Width := Min(ScaleValue(440), AArea.Width - ScaleValue(40));
+  Width := Min(ScaleValue(cWidth), AArea.Width - ScaleValue(cScreenMargin));
   UpdateHeight;
-  SetBounds(AArea.Left + (AArea.Width - Width) div 2, AArea.Top + ScaleValue(60), Width, Height);
+  SetBounds(AArea.Left + (AArea.Width - Width) div 2, AArea.Top + ScaleValue(cTopOffset), Width, Height);
   Show;
   SetFocus;
 end;

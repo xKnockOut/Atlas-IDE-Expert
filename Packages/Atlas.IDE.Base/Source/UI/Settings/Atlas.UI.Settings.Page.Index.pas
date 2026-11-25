@@ -61,8 +61,13 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Dialogs,
-  Atlas.UI.Strings,
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Settings.Page.Sheets,
+  Atlas.Vcl.Theme.Service;
+
+const
+  /// <summary>Höhe der Kennzahlen des Index (vier Zeilen Text).</summary>
+  cIndexInfoHeight = 66;
 
 { TAtlasSettingsIndexPart }
 
@@ -76,37 +81,22 @@ var
   mPanel: TWinControl;
 begin
   // Symbolindex (#492): Verwendungen, Speichergrenze, Kennzahlen und Verwaltung.
-  AddTitle(TAtlasTextId.SettingsIndexTitle);
+  AddTitle(TAtlasSettingsTextId.SettingsIndexTitle);
   BindCheck('IndexUsages', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexUsages)));
   BindText('MemoryBudgetMb', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMemoryBudget)));
-  mPanel := AddPanel(66);
+  mPanel := AddPanel(cIndexInfoHeight);
   FIndexInfo := TLabel.Create(FPage);
   FIndexInfo.Parent := mPanel;
   FIndexInfo.Left := 0;
   FIndexInfo.Top := FIndexInfo.ScaleValue(2);
-  FIndexInfo.Font.Color := clGrayText;
-  mPanel := AddPanel(32);
-  FIndexRefresh := TButton.Create(FPage);
-  FIndexRefresh.Parent := mPanel;
-  FIndexRefresh.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRefresh);
-  FIndexRefresh.Left := 0;
-  FIndexRefresh.Top := FIndexRefresh.ScaleValue(3);
-  FIndexRefresh.Width := FIndexRefresh.ScaleValue(150);
-  FIndexRefresh.OnClick := IndexRefreshClick;
-  FIndexRebuild := TButton.Create(FPage);
-  FIndexRebuild.Parent := mPanel;
-  FIndexRebuild.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRebuild);
-  FIndexRebuild.Left := FIndexRebuild.ScaleValue(160);
-  FIndexRebuild.Top := FIndexRebuild.ScaleValue(3);
-  FIndexRebuild.Width := FIndexRebuild.ScaleValue(150);
-  FIndexRebuild.OnClick := IndexRebuildClick;
-  FIndexClear := TButton.Create(FPage);
-  FIndexClear.Parent := mPanel;
-  FIndexClear.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexClear);
-  FIndexClear.Left := FIndexClear.ScaleValue(320);
-  FIndexClear.Top := FIndexClear.ScaleValue(3);
-  FIndexClear.Width := FIndexClear.ScaleValue(150);
-  FIndexClear.OnClick := IndexClearClick;
+  TAtlasUiTheme.UseFontColor(FIndexInfo, clGrayText);
+  mPanel := AddPanel(cButtonRowHeight);
+  FIndexRefresh := AddColumnButton(mPanel, 0, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRefresh),
+    IndexRefreshClick);
+  FIndexRebuild := AddColumnButton(mPanel, 1, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRebuild),
+    IndexRebuildClick);
+  FIndexClear := AddColumnButton(mPanel, 2, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexClear),
+    IndexClearClick);
   // Ohne Server (Ereignisse nicht gesetzt) sind die Befehle aus.
   RefreshIndex;
 end;
@@ -166,7 +156,7 @@ end;
 procedure TAtlasSettingsIndexPart.Build;
 begin
   // Umfang des Index für alle Projekte, gespeichert in settings.json (index.*, #652, #227).
-  AddSheet(TAtlasTextId.SettingsTabIndex);
+  AddSheet(TAtlasSettingsTextId.SettingsTabIndex);
   BindCheck('IndexProjectGroup', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexGroup)));
   BindCheck('IndexSearchPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexSearch)));
   BindCheck('IndexLibraryPaths', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexLibrary)));

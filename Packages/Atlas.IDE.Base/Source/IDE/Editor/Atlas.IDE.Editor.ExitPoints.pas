@@ -35,13 +35,13 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExitPoints,
   Atlas.Core.Editor.ExitPointAsk,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Plugin.Diagnostics.WorkerSlot,
+  Atlas.Vcl.Theme.EditorFont;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -119,17 +119,17 @@ uses
   System.Math,
   System.JSON,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Editor.Strings,
-  Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.EditorSettings,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.PaintedLine;
 
 { TAtlasIdeExitPoints.TEvents }
@@ -289,7 +289,7 @@ var
 begin
   mView := nil;
   mBadge := False;
-  if TAtlasIdeSettings.ExitPointsOn(mExceptions, mLoops, mBadge) and
+  if TAtlasIdeEditorSettings.ExitPointsOn(mExceptions, mLoops, mBadge) and
     not TAtlasGuard.Disabled(TAtlasFeature.ExitPoints) then
   begin
     mView := TAtlasEditorBuffer.ActiveView;
@@ -491,7 +491,10 @@ begin
         end;
       except
         // Server beschäftigt, weg oder zu alt (Befehl unbekannt): keine Hervorhebung, der Editor bleibt frei.
-        mFound := Default(TAtlasExitPointSet);
+        on ELspClientError do
+        begin
+          mFound := Default(TAtlasExitPointSet);
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.ExitPoints,
@@ -575,13 +578,8 @@ begin
 end;
 
 class procedure TAtlasIdeExitPoints.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 class procedure TAtlasIdeExitPoints.Install(const ASession: TAtlasExitPointsSessionFunc);

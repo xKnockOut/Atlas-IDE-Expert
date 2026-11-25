@@ -22,7 +22,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
 {$SCOPEDENUMS ON}

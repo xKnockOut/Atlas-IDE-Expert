@@ -34,17 +34,15 @@ uses
   System.SysUtils,
   System.DateUtils,
   Atlas.Core.Tracker.Contract,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Lines,
+  System.StrUtils;
 
 { TAtlasYouTrackJson }
 
 class function TAtlasYouTrackJson.Shorten(const AText: string; AMax: Integer): string;
 begin
-  Result := Trim(StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
-  if Length(Result) > AMax then
-  begin
-    Result := Copy(Result, 1, AMax - 1) + '…';
-  end;
+  Result := TTextLines.ShortLine(AText, AMax);
 end;
 
 /// <summary>Erster nicht leerer Name eines Objekts: "name", "presentation",
@@ -98,21 +96,12 @@ begin
   begin
     Result := ListText(TJSONArray(AValue));
   end;
-  Result := Shorten(Result, 60);
+  Result := Shorten(Result, TAtlasTrackerTextLimits.cName);
 end;
 
 class function TAtlasYouTrackJson.IsOneOf(const AName: string; const ANames: array of string): Boolean;
-var
-  mName: string;
 begin
-  Result := False;
-  for mName in ANames do
-  begin
-    if SameText(AName, mName) then
-    begin
-      Exit(True);
-    end;
-  end;
+  Result := MatchText(AName, ANames);
 end;
 
 class function TAtlasYouTrackJson.ValidKey(const AKey: string): Boolean;
@@ -132,12 +121,11 @@ end;
 /// <summary>Millisekunden seit 1970 (YouTrack) als UTC; 0 ohne.</summary>
 class function TAtlasYouTrackJson.TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
 var
-  mValue: TJSONValue;
   mMs: Int64;
 begin
   Result := 0;
-  mValue := AObject.Values[AName];
-  if (mValue is TJSONNumber) and TryStrToInt64(TJSONNumber(mValue).Value, mMs) and (mMs > 0) then
+  // Millisekunden seit 1970 (UTC), kein ISO-Text.
+  if (TJsonRead.Value(AObject, AName) is TJSONNumber) and TJsonRead.TryInt64(AObject, AName, mMs) and (mMs > 0) then
   begin
     Result := UnixToDateTime(mMs div 1000, True) + (mMs mod 1000) / MSecsPerDay;
   end;

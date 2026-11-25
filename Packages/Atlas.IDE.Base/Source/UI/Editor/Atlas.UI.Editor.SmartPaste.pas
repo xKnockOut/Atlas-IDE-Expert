@@ -21,10 +21,10 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Editor.SmartPaste,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
-  TAtlasSmartPasteWindow = class(TAtlasPopupWindow)
+  TAtlasSmartPasteWindow = class(TAtlasPickPopupWindow)
   public const
     /// <summary>Abstand unter der Einfügestelle, logische Pixel.</summary>
     cGap = 4;
@@ -35,22 +35,19 @@ type
     FAcceptRect: TRect;
     FCancelRect: TRect;
     FOnAccept: TProc;
-    FOnCancel: TProc;
-    function Layout(ADraw: Boolean): TSize;
     /// <summary>Zeile der Wahl AIndex bei AY; merkt die Flächen der Units und liefert das rechte Ende.</summary>
     function LayoutChoice(ADraw: Boolean; AIndex, AY, ATextHeight: Integer): Integer;
     /// <summary>Fußzeile „Übernehmen · Verwerfen“ bei AY; merkt beide Flächen und liefert das rechte Ende.</summary>
     function LayoutFooter(ADraw: Boolean; AY, ATextHeight: Integer): Integer;
     function Title: string;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Zeigt AAnalysis unter APoint (Bildschirm).</summary>
     procedure ShowFor(const AAnalysis: TAtlasPasteAnalysis; const APoint: TPoint);
-    procedure Dismiss;
     /// <summary>Nächste bzw. vorige Zeile mit Auswahl; False ohne Auswahlzeilen.</summary>
     function MoveRow(ADelta: Integer): Boolean;
     /// <summary>Nächste bzw. vorige Unit der aktuellen Zeile (keine, dann die Units); False ohne
@@ -61,22 +58,20 @@ type
     /// <summary>Fläche der Wahl AOption (-1 = keine) in Zeile ARow; leer, wenn es sie nicht gibt.</summary>
     function OptionRect(ARow, AOption: Integer): TRect;
     procedure Accept;
-    procedure Cancel;
     function AcceptRect: TRect;
     property Analysis: TAtlasPasteAnalysis read FAnalysis;
     property Row: Integer read FRow;
     property Caption: string read Title;
     property OnAccept: TProc read FOnAccept write FOnAccept;
-    property OnCancel: TProc read FOnCancel write FOnCancel;
   end;
 
 implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;
@@ -111,27 +106,6 @@ begin
     Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SmartPasteTitle, [Length(mUnits),
       TAtlasSmartPaste.Named(mUnits)]);
   end;
-end;
-
-/// <summary>Schreibt AText bei AX, AY in AColor (nur wenn ADraw) und rückt AX um seine Breite weiter.</summary>
-procedure PutText(ACanvas: TCanvas; ADraw: Boolean; var AX: Integer; AY: Integer; const AText: string;
-  AColor: TColor);
-begin
-  if ADraw then
-  begin
-    ACanvas.Font.Color := AColor;
-    ACanvas.TextOut(AX, AY, AText);
-  end;
-  Inc(AX, ACanvas.TextWidth(AText));
-end;
-
-procedure TAtlasSmartPasteWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 procedure TAtlasSmartPasteWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -210,7 +184,7 @@ begin
   mX := Scale(cPad);
   mY := Scale(cPad);
   Canvas.Font.Style := [fsBold];
-  PutText(Canvas, ADraw, mX, mY, Title, ToColor(Colors.Text));
+  PutRun(ADraw, mX, mY, Title, Colors.Text);
   mWidth := mX;
   Canvas.Font.Style := [];
   SetLength(FOptionRects, Length(FAnalysis.Choices));
@@ -248,14 +222,14 @@ begin
   begin
     Result := Result + Canvas.TextWidth(cMarker);
   end;
-  PutText(Canvas, ADraw, Result, AY, mText, ToColor(Colors.Muted));
+  PutRun(ADraw, Result, AY, mText, Colors.Muted);
   mRects := nil;
   for mOption := -1 to High(mChoice.Units) do
   begin
     mText := TAtlasEditorStrings.Text(TAtlasEditorTextId.SmartPasteNoUnit);
     if mOption >= 0 then
     begin
-      PutText(Canvas, ADraw, Result, AY, cSeparator, ToColor(Colors.Muted));
+      PutRun(ADraw, Result, AY, cSeparator, Colors.Muted);
       mText := mChoice.Units[mOption];
     end;
     if mOption = mChoice.Chosen then
@@ -265,11 +239,11 @@ begin
     mRects := mRects + [Rect(Result, AY, Result + Canvas.TextWidth(mText), AY + ATextHeight)];
     if mOption = mChoice.Chosen then
     begin
-      PutText(Canvas, ADraw, Result, AY, mText, ToColor(Colors.Accent));
+      PutRun(ADraw, Result, AY, mText, Colors.Accent);
     end
     else
     begin
-      PutText(Canvas, ADraw, Result, AY, mText, ToColor(Colors.Text));
+      PutRun(ADraw, Result, AY, mText, Colors.Text);
     end;
     Canvas.Font.Style := [];
   end;
@@ -284,10 +258,10 @@ begin
   mCancel := TAtlasEditorStrings.Text(TAtlasEditorTextId.SmartPasteCancel);
   Result := Scale(cPad);
   FAcceptRect := Rect(Result, AY, Result + Canvas.TextWidth(mAccept), AY + ATextHeight);
-  PutText(Canvas, ADraw, Result, AY, mAccept, ToColor(Colors.Accent));
-  PutText(Canvas, ADraw, Result, AY, cSeparator, ToColor(Colors.Muted));
+  PutRun(ADraw, Result, AY, mAccept, Colors.Accent);
+  PutRun(ADraw, Result, AY, cSeparator, Colors.Muted);
   FCancelRect := Rect(Result, AY, Result + Canvas.TextWidth(mCancel), AY + ATextHeight);
-  PutText(Canvas, ADraw, Result, AY, mCancel, ToColor(Colors.Accent));
+  PutRun(ADraw, Result, AY, mCancel, Colors.Accent);
 end;
 
 procedure TAtlasSmartPasteWindow.ShowFor(const AAnalysis: TAtlasPasteAnalysis; const APoint: TPoint);
@@ -314,11 +288,6 @@ begin
   ShowAt(Rect(Max(mLeft, mArea.Left), Max(mTop, mArea.Top), Max(mLeft, mArea.Left) + mSize.cx,
     Max(mTop, mArea.Top) + mSize.cy));
   Announce(Title);
-end;
-
-procedure TAtlasSmartPasteWindow.Dismiss;
-begin
-  HidePopup;
 end;
 
 function TAtlasSmartPasteWindow.MoveRow(ADelta: Integer): Boolean;
@@ -384,15 +353,6 @@ begin
   if Assigned(FOnAccept) then
   begin
     FOnAccept();
-  end;
-end;
-
-procedure TAtlasSmartPasteWindow.Cancel;
-begin
-  Dismiss;
-  if Assigned(FOnCancel) then
-  begin
-    FOnCancel();
   end;
 end;
 

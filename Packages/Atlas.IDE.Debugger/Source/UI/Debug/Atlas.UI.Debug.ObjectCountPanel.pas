@@ -65,7 +65,9 @@ uses
   Winapi.Windows,
   Atlas.Core.Debug.MemoryTimeline,
   Atlas.UI.Debug.Memory.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Text.Numbers,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Maße in logischen Pixeln.</summary>
@@ -80,15 +82,6 @@ const
   cColCount = 1;
   cColDelta = 2;
   cColBytes = 3;
-
-function SignedNumber(AValue: Integer): string;
-begin
-  Result := IntToStr(AValue);
-  if AValue > 0 then
-  begin
-    Result := '+' + Result;
-  end;
-end;
 
 { TAtlasDebugObjectCountPanel }
 
@@ -106,7 +99,7 @@ begin
   mHint.Parent := Self;
   mHint.AlignWithMargins := True;
   mHint.ShowAccelChar := False;
-  mHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mHint, clGrayText);
   mHint.Caption := TAtlasMemoryStrings.Text(TAtlasMemoryTextId.ObjectCountHint);
   CreateGrid;
 end;
@@ -185,7 +178,7 @@ begin
     FControls.Grid.Cells[cColDelta, mIndex + 1] := '';
     if FCounts.HasBase then
     begin
-      FControls.Grid.Cells[cColDelta, mIndex + 1] := SignedNumber(mRows[mIndex].Delta);
+      FControls.Grid.Cells[cColDelta, mIndex + 1] := TTextNumbers.Signed(mRows[mIndex].Delta);
     end;
     FControls.Grid.Cells[cColBytes, mIndex + 1] := TAtlasMemoryFormat.Bytes(mRows[mIndex].Bytes, FormatSettings);
   end;

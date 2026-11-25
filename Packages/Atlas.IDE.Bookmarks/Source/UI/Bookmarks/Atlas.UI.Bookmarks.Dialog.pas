@@ -15,7 +15,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasBookmarkDialog = class(TAtlasDialog)
@@ -24,7 +24,6 @@ type
     FEdit: TEdit;
     FOk: TButton;
     FCancel: TButton;
-    function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     procedure EditChange(Sender: TObject);
     procedure OkClick(Sender: TObject);
     procedure CancelClick(Sender: TObject);
@@ -43,10 +42,13 @@ type
 implementation
 
 uses
-  Atlas.UI.Bookmarks.Strings;
+  Atlas.UI.Bookmarks.Strings,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
+  // Höhe der Knopfleiste unten, logische Pixel.
+  cBottomHeight = 44;
   cDialogWidth = 460;
 
 { TAtlasBookmarkDialog }
@@ -62,7 +64,7 @@ begin
   FPrompt.Parent := Self;
   FPrompt.Align := alTop;
   FPrompt.AlignWithMargins := True;
-  FPrompt.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
+  TAtlasControlScaling.SetMargins(FPrompt, cGap, cGap, cGap, cGap div 2);
   FPrompt.ShowAccelChar := False;
   FPrompt.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogPrompt);
 
@@ -70,7 +72,7 @@ begin
   FEdit.Parent := Self;
   FEdit.Align := alTop;
   FEdit.AlignWithMargins := True;
-  FEdit.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FEdit, cGap, 0, cGap, 0);
   FEdit.Top := FPrompt.Top + FPrompt.Height + 1;
   FEdit.Text := AName;
   FEdit.OnChange := EditChange;
@@ -79,13 +81,14 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := ScaleValue(44);
+  mBottom.Height := ScaleValue(cBottomHeight);
   mBottom.BevelOuter := bvNone;
   // Rechts „Abbrechen“, links davon „Setzen“.
-  FCancel := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogCancel), CancelClick);
+  FCancel := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogCancel),
+    CancelClick);
   FCancel.Cancel := True;
   FCancel.Left := mBottom.ClientWidth - FCancel.Width - ScaleValue(cGap);
-  FOk := AddButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogOk), OkClick);
+  FOk := NewFooterButton(mBottom, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDialogOk), OkClick);
   FOk.Default := True;
   FOk.Left := FCancel.Left - FOk.Width - ScaleValue(cGap);
 
@@ -94,24 +97,6 @@ begin
   FEdit.AutoSelect := True;
   ActiveControl := FEdit;
   EditChange(FEdit);
-end;
-
-function TAtlasBookmarkDialog.AddButton(AParent: TWinControl; const ACaption: string;
-  AClick: TNotifyEvent): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  if Result.Width < ScaleValue(90) then
-  begin
-    Result.Width := ScaleValue(90);
-  end;
-  Result.Top := ScaleValue(cGap);
-  Result.Height := ScaleValue(28);
-  Result.Anchors := [akTop, akRight];
 end;
 
 procedure TAtlasBookmarkDialog.EditChange(Sender: TObject);

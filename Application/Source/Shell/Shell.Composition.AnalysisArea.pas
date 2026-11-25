@@ -13,6 +13,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.Impact,
   Shell.Composition.Core,
   Shell.Composition.Analysis,
@@ -159,6 +160,7 @@ begin
   Result.HotspotSourceFor := FCore.Sources.HotspotSource();
   Result.UnitRelationsOptionsFor := FCore.Sources.UnitRelationsOptions();
   Result.SymbolPathSourceFor := FCore.Sources.SymbolPathSource();
+  Result.Namespaces := Namespaces;
 end;
 
 function TShellAnalysisArea.BaselineServices: TShellBaselineServices;

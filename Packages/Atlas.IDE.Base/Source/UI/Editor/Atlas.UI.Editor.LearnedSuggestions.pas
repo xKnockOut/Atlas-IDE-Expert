@@ -22,7 +22,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Editor.LearnedSuggestions;
 
 type
@@ -71,9 +71,9 @@ uses
   System.Types,
   System.Math,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasLearnedText] of string = (
@@ -125,8 +125,6 @@ const
   cColumnMaxWidth = 320;
   /// <summary>Anfangs so viele Zeilen sichtbar, mehr nur mit Rollen.</summary>
   cInitialRows = 18;
-  /// <summary>Höchstens dieser Anteil (Prozent) des Arbeitsbereichs als Anfangsgröße.</summary>
-  cMaxScreenShare = 80;
   cColumnFollow = 1;
 
 type
@@ -149,7 +147,6 @@ type
     procedure BuildList;
     procedure FillList;
     procedure FitToContent;
-    function WorkArea: TRect;
     function AddButton(const ACaption: string; AAlign: TAlign): TButton;
     procedure ItemChecked(Sender: TObject; Item: TListItem);
     procedure ItemSelected(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -282,22 +279,12 @@ begin
   end;
 end;
 
-function TListWindow.WorkArea: TRect;
-begin
-  // Das Fenster erscheint über dem Hauptfenster (poMainFormCenter): dessen Monitor begrenzt die Größe.
-  Result := Screen.WorkAreaRect;
-  if (Application.MainForm <> nil) and (Application.MainForm.Monitor <> nil) then
-  begin
-    Result := Application.MainForm.Monitor.WorkareaRect;
-  end;
-end;
-
 procedure TListWindow.FitToContent;
 var
   mArea, mRow: TRect;
   mWidth, mIndex, mRows, mRowHeight, mHeight: Integer;
 begin
-  mArea := WorkArea;
+  mArea := MainFormWorkArea;
   FList.FillColumn(cColumnFollow, cFollowMinWidth);
   FList.FitColumnsToContent(cColumnMaxWidth);
   // Breit genug für alle Spalten samt ganzer Folge, Rand und senkrechter Rollleiste.

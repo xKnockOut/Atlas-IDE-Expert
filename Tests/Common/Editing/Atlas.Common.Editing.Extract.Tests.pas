@@ -60,41 +60,10 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.Extract;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
-
-function PositionOf(const AText: string; AIndex: Integer): TTextPosition;
-var
-  mIndex, mLine, mCharacter: Integer;
-begin
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 1 to AIndex - 1 do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mCharacter := 0;
-    end
-    else
-    begin
-      Inc(mCharacter);
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mCharacter);
-end;
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Editing.Extract,
+  Atlas.Tests.SourceText;
 
 /// <summary>Text ohne « und » und die Auswahl dazwischen; ein "|" steht für den Cursor.</summary>
 function Unmark(const AMarked: string; out ARange: TTextRange): string;
@@ -106,14 +75,14 @@ begin
   if mStart > 0 then
   begin
     Result := StringReplace(Result, '|', '', []);
-    ARange := TTextRange.Create(PositionOf(Result, mStart), PositionOf(Result, mStart));
+    ARange := TTextRange.Create(TTestSource.PositionAt(Result, mStart), TTestSource.PositionAt(Result, mStart));
     Exit;
   end;
   mStart := Pos('«', Result);
   Result := StringReplace(Result, '«', '', []);
   mFinish := Pos('»', Result);
   Result := StringReplace(Result, '»', '', []);
-  ARange := TTextRange.Create(PositionOf(Result, mStart), PositionOf(Result, mFinish));
+  ARange := TTextRange.Create(TTestSource.PositionAt(Result, mStart), TTestSource.PositionAt(Result, mFinish));
 end;
 
 type
@@ -137,7 +106,7 @@ begin
       Exit('-');
     end;
     ATitle := mAction.Title;
-    Result := TChangeSignature.ApplyEdits(mText, mAction.Edits);
+    Result := TTextChanges.Apply(mText, mAction.Edits);
   finally
     mTree.Free;
   end;
@@ -193,18 +162,6 @@ begin
   AReason := mReason;
 end;
 
-procedure AssertParses(const AText: string);
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'parst fehlerfrei');
-  finally
-    mTree.Free;
-  end;
-end;
-
 { TExtractTests }
 
 procedure TExtractTests.ExtractMethodWithConstAndVarParameters;
@@ -212,7 +169,7 @@ var
   mReason, mResult_: string;
 begin
   // Zusätzliche Abnahme: liest AValue, schreibt Total (danach gelesen) → const und var; Temp nur innen.
-  mResult_ := Method(Join([
+  mResult_ := Method(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -233,7 +190,7 @@ begin
     '  FWert := Total;',
     'end;',
     'end.']), mReason);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -262,7 +219,7 @@ begin
     '  FWert := Total;',
     'end;',
     'end.']), mResult_, mReason);
-  AssertParses(mResult_);
+  TTestSource.AssertParses(mResult_);
 end;
 
 procedure TExtractTests.ExtractRoutineWithOutParameter;
@@ -270,7 +227,7 @@ var
   mReason, mResult_: string;
 begin
   // Unbedingt zuerst geschrieben und danach gelesen → out; ohne Klasse eine Routine davor.
-  mResult_ := Method(Join([
+  mResult_ := Method(TTestSource.Lines([
     'program P;',
     'procedure Run;',
     'var',
@@ -282,7 +239,7 @@ begin
     'end;',
     'begin',
     'end.']), mReason);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'program P;',
     'procedure ExtractedMethod(const A: Integer; out B: Integer);',
     'begin',
@@ -299,7 +256,7 @@ begin
     'end;',
     'begin',
     'end.']), mResult_, mReason);
-  AssertParses(mResult_);
+  TTestSource.AssertParses(mResult_);
 end;
 
 procedure TExtractTests.ExtractMethodRejectsExit;
@@ -307,7 +264,7 @@ var
   mReason: string;
 begin
   // Zusätzliche Abnahme: Ein Block mit Exit wird nicht angeboten.
-  Assert.AreEqual('-', Method(Join([
+  Assert.AreEqual('-', Method(TTestSource.Lines([
     'program P;',
     'procedure Run(A: Integer);',
     'begin',
@@ -318,7 +275,7 @@ begin
     'begin',
     'end.']), mReason));
   Assert.AreEqual('Exit in der Auswahl', mReason);
-  Assert.AreEqual('-', Method(Join([
+  Assert.AreEqual('-', Method(TTestSource.Lines([
     'program P;',
     'procedure Run(A: Integer);',
     'begin',
@@ -332,7 +289,7 @@ procedure TExtractTests.ExtractMethodRejectsResultAndPartialSelection;
 var
   mReason: string;
 begin
-  Assert.AreEqual('-', Method(Join([
+  Assert.AreEqual('-', Method(TTestSource.Lines([
     'program P;',
     'function Run(A: Integer): Integer;',
     'begin',
@@ -342,7 +299,7 @@ begin
     'end.']), mReason));
   Assert.AreEqual('Result in der Auswahl', mReason);
   // Nur ein Teil einer Anweisung.
-  Assert.AreEqual('-', Method(Join([
+  Assert.AreEqual('-', Method(TTestSource.Lines([
     'program P;',
     'procedure Run(A: Integer);',
     'begin',
@@ -352,7 +309,7 @@ begin
     'end.']), mReason));
   Assert.AreEqual('keine vollständigen Anweisungen', mReason);
   // with um die Auswahl.
-  Assert.AreEqual('-', Method(Join([
+  Assert.AreEqual('-', Method(TTestSource.Lines([
     'program P;',
     'procedure Run(A: TObject);',
     'begin',
@@ -370,7 +327,7 @@ var
   mReason, mResult_: string;
 begin
   // Break ohne Schleife in der Auswahl springt hinaus.
-  Assert.AreEqual('-', Method(Join([
+  Assert.AreEqual('-', Method(TTestSource.Lines([
     'program P;',
     'procedure Run;',
     'var',
@@ -386,7 +343,7 @@ begin
     'end.']), mReason));
   Assert.AreEqual('Break springt aus der Auswahl', mReason);
   // Mit der ganzen Schleife ist Break innen; I wird nur innen gebraucht.
-  mResult_ := Method(Join([
+  mResult_ := Method(TTestSource.Lines([
     'program P;',
     'procedure Run;',
     'var',
@@ -398,7 +355,7 @@ begin
     'end;',
     'begin',
     'end.']), mReason);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'program P;',
     'procedure ExtractedMethod;',
     'var',
@@ -423,7 +380,7 @@ var
 begin
   // In einer Schleife: Sum wird vor der Auswahl in der Schleife gelesen, also „danach“; zuerst unbedingt
   // geschrieben → out statt lokaler Variable.
-  mResult_ := Method(Join([
+  mResult_ := Method(TTestSource.Lines([
     'program P;',
     'procedure Run;',
     'var',
@@ -439,14 +396,14 @@ begin
     'begin',
     'end.']), mReason);
   Assert.Contains(mResult_, 'procedure ExtractedMethod(const I: Integer; out Sum: Integer);', mReason);
-  AssertParses(mResult_);
+  TTestSource.AssertParses(mResult_);
 end;
 
 procedure TExtractTests.ExtractMethodCopiesConstants;
 var
   mReason, mResult_: string;
 begin
-  mResult_ := Method(Join([
+  mResult_ := Method(TTestSource.Lines([
     'program P;',
     'procedure Run;',
     'const',
@@ -459,7 +416,7 @@ begin
     'end;',
     'begin',
     'end.']), mReason);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'program P;',
     'procedure ExtractedMethod(const X: Integer);',
     'const',
@@ -486,7 +443,7 @@ var
   mTitle: string;
 begin
   // Zusätzliche Abnahme (Teil 1): mit Inline-Variablen (Delphi 12) entsteht var X := ….
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'program P;',
     'procedure Run(Count: Integer);',
     'begin',
@@ -494,7 +451,7 @@ begin
     '  Writeln(Format(''%d'', [Value]));',
     'end;',
     'begin',
-    'end.']), Variable(Join([
+    'end.']), Variable(TTestSource.Lines([
     'program P;',
     'procedure Run(Count: Integer);',
     'begin',
@@ -510,7 +467,7 @@ var
   mTitle: string;
 begin
   // Zusätzliche Abnahme (Teil 2): refactoring.inlineVar: false → Eintrag im var-Abschnitt.
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'program P;',
     'procedure Run(Count: Integer);',
     'var',
@@ -521,7 +478,7 @@ begin
     '  Text := IntToStr(Value);',
     'end;',
     'begin',
-    'end.']), Variable(Join([
+    'end.']), Variable(TTestSource.Lines([
     'program P;',
     'procedure Run(Count: Integer);',
     'var',
@@ -532,7 +489,7 @@ begin
     'begin',
     'end.']), False, False, mTitle));
   // Ohne var-Abschnitt entsteht einer vor begin.
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'program P;',
     'procedure Run(const AText: string);',
     'var',
@@ -542,7 +499,7 @@ begin
     '  Writeln(Value);',
     'end;',
     'begin',
-    'end.']), Variable(Join([
+    'end.']), Variable(TTestSource.Lines([
     'program P;',
     'procedure Run(const AText: string);',
     'begin',
@@ -556,7 +513,7 @@ procedure TExtractTests.IntroduceVariableForAllOccurrences;
 var
   mTitle, mMarked: string;
 begin
-  mMarked := Join([
+  mMarked := TTestSource.Lines([
     'program P;',
     'procedure Run(Liste: TStrings);',
     'var',
@@ -567,7 +524,7 @@ begin
     'end;',
     'begin',
     'end.']);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'program P;',
     'procedure Run(Liste: TStrings);',
     'var',
@@ -592,7 +549,7 @@ var
   mTitle: string;
 begin
   // Ziel einer Zuweisung, Bedingung einer Schleife, Zweig ohne begin, kein ganzer Ausdruck.
-  Assert.AreEqual('-', Variable(Join([
+  Assert.AreEqual('-', Variable(TTestSource.Lines([
     'program P;',
     'procedure Run(var A: Integer);',
     'begin',
@@ -600,7 +557,7 @@ begin
     'end;',
     'begin',
     'end.']), True, False, mTitle));
-  Assert.AreEqual('-', Variable(Join([
+  Assert.AreEqual('-', Variable(TTestSource.Lines([
     'program P;',
     'procedure Run(A: Integer);',
     'begin',
@@ -609,7 +566,7 @@ begin
     'end;',
     'begin',
     'end.']), True, False, mTitle));
-  Assert.AreEqual('-', Variable(Join([
+  Assert.AreEqual('-', Variable(TTestSource.Lines([
     'program P;',
     'procedure Run(L: TList);',
     'begin',
@@ -618,7 +575,7 @@ begin
     'end;',
     'begin',
     'end.']), True, False, mTitle));
-  Assert.AreEqual('-', Variable(Join([
+  Assert.AreEqual('-', Variable(TTestSource.Lines([
     'program P;',
     'procedure Run(A, B: Integer);',
     'begin',
@@ -633,7 +590,7 @@ procedure AssertConstantInRoutineOrUnit;
 var
   mTitle, mMarked: string;
 begin
-  mMarked := Join([
+  mMarked := TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -642,7 +599,7 @@ begin
     '  Sleep(«250»);',
     'end;',
     'end.']);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -654,7 +611,7 @@ begin
     'end;',
     'end.']), Constant(mMarked, False, mTitle));
   Assert.AreEqual('Konstante extrahieren', mTitle);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -675,7 +632,7 @@ var
   mTitle: string;
 begin
   // Cursor im Literal genügt; ein vorhandener const-Abschnitt wird ergänzt.
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -686,7 +643,7 @@ begin
     'begin',
     '  Writeln(NewConstant);',
     'end;',
-    'end.']), Constant(Join([
+    'end.']), Constant(TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -709,7 +666,7 @@ procedure TExtractTests.ExtractConstantRejectsNonLiterals;
 var
   mTitle: string;
 begin
-  Assert.AreEqual('-', Constant(Join([
+  Assert.AreEqual('-', Constant(TTestSource.Lines([
     'program P;',
     'procedure Run(A: Integer);',
     'begin',
@@ -718,7 +675,7 @@ begin
     'begin',
     'end.']), False, mTitle));
   // Außerhalb einer Routine.
-  Assert.AreEqual('-', Constant(Join([
+  Assert.AreEqual('-', Constant(TTestSource.Lines([
     'unit U;',
     'interface',
     'const',
@@ -735,7 +692,7 @@ begin
   mNames := TPascalNamePrefixes.None;
   mNames.ConstantPrefix := 'c';
   mNames.LocalPrefix := 'm';
-  mChanged := Apply(Join(['unit U;', 'interface', 'implementation', 'procedure Run;', 'begin', '  Sleep(«250»);',
+  mChanged := Apply(TTestSource.Lines(['unit U;', 'interface', 'implementation', 'procedure Run;', 'begin', '  Sleep(«250»);',
     'end;', 'end.']),
     function(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange; out AAction: TCodeAction): Boolean
     var
@@ -747,7 +704,7 @@ begin
     end, mTitle);
   Assert.IsTrue(Pos('  cNewConstant = 250;', mChanged) > 0, mChanged);
   Assert.IsTrue(Pos('Sleep(cNewConstant)', mChanged) > 0, mChanged);
-  mChanged := Apply(Join(['unit U;', 'interface', 'implementation', 'procedure Run(X: Integer);', 'begin',
+  mChanged := Apply(TTestSource.Lines(['unit U;', 'interface', 'implementation', 'procedure Run(X: Integer);', 'begin',
     '  Sleep(«X + 1»);', 'end;', 'end.']),
     function(const AText: string; ATree: TSyntaxTree; const ARange: TTextRange; out AAction: TCodeAction): Boolean
     var
@@ -765,7 +722,7 @@ var
   mReason, mResult_: string;
 begin
   // Methode der Klasse: Deklaration im private-Abschnitt, gelesene Namen als const-Parameter, Felder bleiben.
-  mResult_ := Condition(Join([
+  mResult_ := Condition(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -785,7 +742,7 @@ begin
     '    Betrag := Betrag - 1;',
     'end;',
     'end.']), mReason);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -811,7 +768,7 @@ begin
     '    Betrag := Betrag - 1;',
     'end;',
     'end.']), mResult_, mReason);
-  AssertParses(mResult_);
+  TTestSource.AssertParses(mResult_);
 end;
 
 procedure TExtractTests.ExtractConditionAsRoutineWithConstant;
@@ -819,7 +776,7 @@ var
   mReason, mResult_: string;
 begin
   // Ohne Klasse eine Routine davor; lokale Konstanten werden mitkopiert, Klammern um die ganze Bedingung fallen.
-  mResult_ := Condition(Join([
+  mResult_ := Condition(TTestSource.Lines([
     'program P;',
     'procedure Run(A: Integer);',
     'const',
@@ -831,7 +788,7 @@ begin
     'end;',
     'begin',
     'end.']), mReason);
-  Assert.AreEqual(Join([
+  Assert.AreEqual(TTestSource.Lines([
     'program P;',
     'function ExtractedCondition(const A: Integer): Boolean;',
     'const',
@@ -850,8 +807,8 @@ begin
     'end;',
     'begin',
     'end.']), mResult_, mReason);
-  AssertParses(mResult_);
-  mResult_ := Condition(Join([
+  TTestSource.AssertParses(mResult_);
+  mResult_ := Condition(TTestSource.Lines([
     'program P;',
     'procedure Run(A: Integer);',
     'begin',
@@ -870,7 +827,7 @@ var
   mReason: string;
 begin
   // Ein var-Argument ändert A: die Funktion bekäme es nur als const.
-  Assert.AreEqual('-', Condition(Join([
+  Assert.AreEqual('-', Condition(TTestSource.Lines([
     'program P;',
     'function Lies(var X: Integer): Boolean;',
     'begin',
@@ -885,7 +842,7 @@ begin
     'end.']), mReason));
   Assert.AreEqual('die Bedingung ändert A', mReason);
   // Nur ein Teil der Bedingung.
-  Assert.AreEqual('-', Condition(Join([
+  Assert.AreEqual('-', Condition(TTestSource.Lines([
     'program P;',
     'procedure Run(A, B: Integer);',
     'begin',
@@ -896,7 +853,7 @@ begin
     'end.']), mReason));
   Assert.AreEqual('keine ganze Bedingung', mReason);
   // Result ist in der neuen Funktion ein anderes.
-  Assert.AreEqual('-', Condition(Join([
+  Assert.AreEqual('-', Condition(TTestSource.Lines([
     'program P;',
     'function Run(A: Integer): Boolean;',
     'begin',

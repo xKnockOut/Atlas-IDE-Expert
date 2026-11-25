@@ -34,6 +34,8 @@ type
     procedure GroupsLongestFirstMembersByPath;
     [Test]
     procedure AsmAndForwardHaveNoBody;
+    [Test]
+    procedure SortedPathsIgnoreCaseThenOrdinal;
   end;
 
 implementation
@@ -196,6 +198,18 @@ procedure TDuplicateBodiesTests.AsmAndForwardHaveNoBody;
 begin
   Assert.AreEqual(0, Integer(Length(TDuplicateBodies.ForText(UnitText('A',
     'procedure F; forward;'#10'procedure X; external ''x.dll'';'#10)))));
+end;
+
+procedure TDuplicateBodiesTests.SortedPathsIgnoreCaseThenOrdinal;
+var
+  mInput, mSorted: TArray<string>;
+begin
+  mInput := TArray<string>.Create('C:\P\b.pas', 'C:\P\A.pas', 'C:\P\a.pas', 'C:\P\C.pas');
+  mSorted := TDuplicateBodies.SortedPaths(mInput);
+  Assert.AreEqual('C:\P\A.pas|C:\P\a.pas|C:\P\b.pas|C:\P\C.pas', string.Join('|', mSorted));
+  Assert.AreEqual('C:\P\b.pas', mInput[0], 'Eingabe bleibt unverändert');
+  mInput := nil;
+  mSorted := nil;
 end;
 
 end.

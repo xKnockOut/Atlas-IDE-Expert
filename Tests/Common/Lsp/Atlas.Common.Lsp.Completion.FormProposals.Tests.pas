@@ -21,9 +21,6 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure OffersFormComponentsByNameAndType;
     /// <summary>#882: Formular-Komponenten auch über Kürzel und Teilwort, mit dem getippten Wort als
@@ -79,16 +76,6 @@ end;
 procedure TLspCompletionFormProposalTests.TearDown;
 begin
   Release;
-end;
-
-procedure TLspCompletionFormProposalTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ComponentItemsSecondRequestUsesCache;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TLspCompletionFormProposalTests.OffersFormComponentsByNameAndType;
@@ -630,9 +617,11 @@ begin
   mStore.Open(TDocumentUris.FromPath(mUnitFile), 'delphi', 1, mText);
   mReads := 0;
   mId := 0;
-  mCompletion := TLspCompletion.Create(mStore, FIndex);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mCompletion := TLspCompletion.Create(mStore, FIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mCompletion.Hooks.ReadText :=
       function(const AFileName: string; out AText: string): Boolean
       begin

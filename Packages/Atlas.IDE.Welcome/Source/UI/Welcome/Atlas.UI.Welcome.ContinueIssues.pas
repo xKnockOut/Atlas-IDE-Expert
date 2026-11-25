@@ -24,20 +24,10 @@ uses
   Vcl.ExtCtrls,
   Vcl.Graphics,
   Atlas.Core.Welcome.ContinueIssues,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasContinueIssuesSource = interface
-    ['{8D3F61B0-27C4-4A5E-9B18-E4C07A2D5F93}']
-    /// <summary>Reiter „Issues“ zeigen (welcomePage.continue.issues an und Tracker vorhanden).</summary>
-    function IssuesEnabled: Boolean;
-    /// <summary>Gespeicherte Arbeitsstände offener Issues, neueste zuerst.</summary>
-    function IssueRows: TAtlasIssueWorkRows;
-    /// <summary>Hinweis unter der Liste (z. B. Branch fehlt, übersprungene Dateien); '' ohne.</summary>
-    function IssuesNotice: string;
-    /// <summary>„Fortsetzen“: Projekt öffnen, Branch nur nach Rückfrage wechseln, Reiter wiederherstellen.</summary>
-    procedure ResumeIssue(const AProject, AKey: string);
-  end;
 
   /// <summary>Texte der Reiter „Zuletzt“ und „Issues“, ohne Steuerelement.</summary>
   TAtlasContinueIssueTexts = class
@@ -67,7 +57,7 @@ type
     cButtonHeight = 22;
     cButtonPadding = 10;
     /// <summary>Rundung der Schaltfläche „Fortsetzen“.</summary>
-    cButtonRadius = 6;
+    cButtonRadius = TAtlasWelcomeRow.cButtonRadius;
     /// <summary>Einzug der zweiten und dritten Zeile (unter dem Titel).</summary>
     cDetailIndent = 32;
   private
@@ -110,9 +100,10 @@ uses
   System.UITypes,
   Vcl.Forms,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Welcome.Strings;
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.UI.Welcome.Strings,
+  Atlas.Text.Uris;
 
 const
   cSeparator = ' · ';
@@ -192,7 +183,7 @@ end;
 /// <summary>„TKunde.Laden (Kunde.pas:42)“, ohne Methode „Kunde.pas:42“; '' ohne Datei.</summary>
 function PlaceText(const ATab: TAtlasWorkTab): string;
 begin
-  Result := TAtlasWelcomeContinue.FileNameOf(ATab.FileName);
+  Result := TTextUris.FileNameOf(Trim(ATab.FileName));
   if Result = '' then
   begin
     Exit;

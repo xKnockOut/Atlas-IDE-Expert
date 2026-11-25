@@ -23,6 +23,7 @@ Der Server prüft jede Unit beim Tippen.
 | Alt+Enter | korrigiert |
 | Kontextmenü | Unterdrücken, Einstellen, Abschalten und Erklären der Regel |
 | Kontextmenü „Alle sicheren Treffer von … korrigieren …“ | Sammelkorrektur mit Vorschau je Datei, abwählbar, ein Rückgängig-Schritt je Datei |
+| Kontextmenü „Als Auftrag für KI-Assistenten kopieren“ | legt einen oder mehrere markierte Befunde als Markdown-Auftrag in die Zwischenablage (siehe unten) |
 
 - „Offene zuerst“:
   - Die Unit im Editor steht angepinnt oben, darunter die übrigen geöffneten Units.
@@ -30,6 +31,14 @@ Der Server prüft jede Unit beim Tippen.
   - Auf Wunsch auch die aktive Unit ohne Befunde („Keine Befunde“).
 
 Einstellungen: `fix.bulk`
+
+### Befunde als Auftrag für einen KI-Assistenten (#2570)
+
+- „Als Auftrag für KI-Assistenten kopieren“ im Kontextmenü des Fensters „Atlas-Prüfung“ und die Glühbirne „Befund … als Auftrag für KI-Assistenten kopieren“ im Editor liefern denselben Text wie das MCP-Werkzeug `explain_finding`.
+- Je Befund: Regel mit Name, Datei, Zeile, Meldung, Schweregrad und Konfidenz, weitere Stellen (z. B. die Kanten eines Unit-Zyklus), Codeausschnitt ±8 Zeilen aus dem Editorpuffer mit markierter Zeile, Regelerklärung mit Vorher/Nachher.
+- Am Ende sagt der Auftrag, womit der Assistent sein Ergebnis prüft: `check_code` mit der Datei, bei Regeln mit sicherer Korrektur auch `fix_findings`.
+- Mehrere Befunde: „n Befunde in m Dateien beheben“, je Datei gruppiert, überlappende Ausschnitte nur einmal, jede Regel einmal erklärt; höchstens 20 Befunde, für den Rest ein Hinweis auf `check_code`.
+- Compilermeldungen bekommen Code, Meldung, Ausschnitt und den Hinweis auf `check_code`.
 
 ### Wann die Prüfung läuft
 
@@ -48,7 +57,7 @@ Einstellungen: `fix.bulk`
 
 ## Prüfregeln
 
-**354 Prüfregeln** in vier Kategorien: 235 Fehler, 108 Code-Smells, 6 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
+**367 Prüfregeln** in vier Kategorien: 246 Fehler, 110 Code-Smells, 6 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
 
 ### Korrektheit
 
@@ -120,6 +129,8 @@ Einstellungen: `fix.bulk`
 - harte Umwandlungen zwischen Klassen, die weder Vorfahr noch Nachfahr voneinander sind (`TButton(mEdit)`; still beim Zugriffsklassen-Trick, Option `allowTypes`, Korrektur `(mEdit as TButton)`)
 - `@S[1]` bzw. `PChar(@S[1])` als Adresse der Zeichen (Bereichsfehler bei leerem String; Korrektur `PChar(S)`)
 - Formatstrings, die nicht zu ihren Argumenten passen (`Format('%d', [Name])`, zu wenige Argumente, `%q`)
+- mehrere lokale Objekte an einem gemeinsamen `try … finally`, bei denen ein früheres leckt, wenn ein späteres `Create` scheitert (`multiple-create-in-try`, #2630; sichere Korrektur: Variablen vor dem `try` auf `nil` setzen und die `Create` ins `try` verschieben)
+- Konstruktoren, die eine virtuelle Methode aufrufen, deren Überschreibung in einem Nachfahren ein Feld liest, das erst nach `inherited` gesetzt wird (`virtual-call-in-constructor`, #2623; Nachfahren auch aus anderen Units über den Index, die Meldung nennt Nachfahr und Feld)
 
 ### Threads
 
@@ -136,6 +147,8 @@ Einstellungen: `fix.bulk`
 - `TTask.Run` ohne `try … except`, dessen Exceptions verloren gehen (die Korrektur schließt den Rumpf ein)
 - Variablen und Sammlungen von außerhalb, die `TParallel.For` oder in einer Schleife gestartete Tasks ohne Sperre schreiben (die Korrektur nimmt `TInterlocked` bzw. eine `TMonitor`-Sperre)
 - Zähler, die `Execute`, `TTask.Run` oder anonyme Threads ohne Sperre mit `Inc` erhöhen (die Korrektur nimmt `TInterlocked.Increment`)
+- `TThread.Execute`, dessen Rumpf nicht ganz in `try … except` steht: Eine Ausnahme beendet den Thread sonst still (`thread-execute-without-except`, #2632; still, wenn die Klasse `FatalException` auswertet; Korrektur mit Meldung über ein `ILogger`-Feld)
+- Warteschleifen, die nur mit `Sleep` auf ein Feld, eine Eigenschaft oder eine globale Variable warten, statt auf ein Ereignis (`sleep-polling-loop`, #2626; die Meldung nennt `TEvent.WaitFor`, `TThread.WaitFor` oder `ITask.Wait`)
 
 ### Datenbank
 
@@ -318,6 +331,15 @@ Compilerfehler schon beim Tippen, ohne Build.
   - `@` auf Variablen, Felder und Parameter (wie W1047)
   - Umwandlungen eines `Pointer` in eine Klasse (wie W1048)
 
+#### Fallen, die Free Pascal übersetzt, Delphi aber nicht (#2095, #1345, #1899)
+
+- Funktionsreferenz in `Exit(ARef)` oder im Array-Literal neben `+` (`FHandlers + [AHandler]`): Delphi ruft sie auf, statt sie als Wert zu nehmen (`method-reference-called`, wie E2035 bzw. E2010; sichere Korrektur `Result := ARef; Exit;`)
+- Konstante einer anderen Klasse oder eines Vorfahren in der Klassendeklaration ohne Klassennamen (`class-constant-unqualified`, wie E2003; sichere Korrektur)
+- Aufzählungswert `Continue`, `Break`, `Exit` oder `Halt` ohne `{$SCOPEDENUMS ON}` (`enum-hides-keyword`, wie E2014)
+- `reference to` direkt als Typ eines Felds oder einer Variablen (`inline-reference-type`, wie E2003)
+- geerbtes Mitglied wie `Scaled` oder `Padding`, das in Methoden eine Routine, Konstante oder Variable der Unit verdeckt (`member-hides-unit-symbol`)
+- `#13` und `#10` getrennt ersetzt, was aus `#13#10` zwei Zeichen macht (`line-break-split-replace`)
+
 #### OLE-Automation (#1373)
 
 - im veralteten Abschnitt `automated` (wie E2175–E2182, E2096, E2185):
@@ -375,6 +397,12 @@ Compilerfehler schon beim Tippen, ohne Build.
 - feste Laufwerks-, Benutzer- und Netzwerkpfade (Option `allowUnits`)
 - Dateinamen mit `=` statt `SameFileName` verglichen (still bei plattformabhängigen Vergleichen mit `SameText` und in Test-Units)
 - DLL-Exporte ohne Aufrufkonvention oder mit Strings, dynamischen Arrays, Objekten oder Interfaces ohne GUID (Korrektur `stdcall`, Option `allowShareMem`)
+
+### IDE-Packages und Experten (#2751, #2752, #2753)
+
+- `Register`-Routinen von Packages, die Arbeit starten (Timer, Threads, Formulare, `Sleep`, auch über Hilfsroutinen, die nur von dort aufgerufen werden), statt nur anzumelden (`register-does-work`)
+- öffentliche Methoden von Notifiern, Wizards und Tastaturbindungen, aus denen eine Ausnahme ohne Schutzroutine oder `try … except` die IDE erreicht (`ota-entry-without-guard`, Schutzroutinen einstellbar, mit Korrektur)
+- Threads, die mit `Queue` am eigenen Thread einreihen, ohne dass jemand die Einträge mit `RemoveQueuedEvents` entfernt (`queue-without-remove`, mit Korrektur)
 
 ### Sicherheit
 

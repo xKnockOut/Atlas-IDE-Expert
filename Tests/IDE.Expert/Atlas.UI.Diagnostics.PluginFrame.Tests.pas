@@ -15,9 +15,6 @@ type
   [TestFixture]
   TAtlasDiagnosticsFrameTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure StartsOnMainThreadWithBar;
     [Test]
@@ -45,9 +42,9 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginParts,
   Atlas.UI.Diagnostics.PluginFrame;
@@ -96,11 +93,6 @@ begin
 end;
 
 { TAtlasDiagnosticsFrameTests }
-
-procedure TAtlasDiagnosticsFrameTests.WarmUpFirstUse;
-begin
-  PaintsAllPages;
-end;
 
 procedure TAtlasDiagnosticsFrameTests.StartsOnMainThreadWithBar;
 var

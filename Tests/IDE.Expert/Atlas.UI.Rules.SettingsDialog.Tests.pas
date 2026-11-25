@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Rules.SettingsDialog.Tests;
 
-// Dialog der Einstellungsdateien mit Regel-Editor (#909, #1296), seit #1755 im Modul Prüfregeln: Regeltabelle
+// Dialog der Einstellungsdateien mit Regel-Editor (#909, #1296) im Modul Prüfregeln (#1755): Regeltabelle
 // ändert nur ihre Regel, ein Knoten je Gruppe mit Hauptschalter, „Regel einstellen…“ springt zur Regel, Felder
 // unter dem Editor rücken mit. Ohne Modul: Atlas.UI.Settings.Page.Dialog.Tests.
 
@@ -14,9 +14,6 @@ type
   [Category('Atlas.IDE.Rules')]
   TAtlasRulesSettingsDialogTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure ProviderNamesRulesDialog;
     [Test]
@@ -42,17 +39,13 @@ uses
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
-  Atlas.UI.Settings.ProjectDialog,
   Atlas.UI.Rules.Editor,
   Atlas.UI.Rules.SettingsDialog,
-  Atlas.UI.Settings.Page.TestSupport;
+  Atlas.UI.Settings.Contract,
+  Atlas.IDE.Rules.Adapters.SettingsDialog;
 
 { TAtlasRulesSettingsDialogTests }
 
-procedure TAtlasRulesSettingsDialogTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 procedure TAtlasRulesSettingsDialogTests.ProviderNamesRulesDialog;
 var
   mProvider: IAtlasSettingsDialogProvider;
@@ -119,7 +112,7 @@ begin
       mDialog.HandleNeeded;
       mDialog.PageTree.Selected := mDialog.GroupNode('threads');
       Assert.AreEqual('threads', mDialog.RuleEditor.FixedGroup);
-      Assert.AreEqual(1, mDialog.RuleList.Items.Count);
+      Assert.AreEqual(1, Integer(mDialog.RuleList.Items.Count));
       Assert.IsTrue(mDialog.RuleEditor.Left + mDialog.RuleEditor.Width >= mDialog.RuleEditor.Parent.ClientWidth - 50,
         'Regel-Editor der Gruppe in voller Breite');
       mDialog.RuleEditor.Master.Checked := False;

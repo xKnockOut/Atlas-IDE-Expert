@@ -26,12 +26,22 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Setup,
-  Atlas.Core.Projects.PathCheck;
+  Atlas.Plugin.Projects.PathCheck,
+  Atlas.Core.Generate.Contract,
+  Atlas.Core.Welcome.Contract;
 
 type
+  /// <summary>Ende des Baseline-Laufs im Hauptthread; ATotal und AFiles nur mit ASucceeded.</summary>
+  TAtlasSetupBaselineDone = reference to procedure(ASucceeded: Boolean; ATotal, AFiles: Integer;
+    const AError: string);
+  /// <summary>Startet atlas.updateBaseline für AProject; '' = gestartet, sonst der Grund in der Sprache der
+  /// Oberfläche (ADone kommt dann nicht).</summary>
+  TAtlasSetupBaselineStart = reference to function(const AProject: string;
+    const ADone: TAtlasSetupBaselineDone): string;
+  TAtlasSetupNewFile = reference to procedure(AKind: TAtlasNewFileKind);
+
 {$SCOPEDENUMS ON}
-  /// <summary>Lauf eines Schritts in dieser Sitzung (Baseline, Pfadprüfung).</summary>
-  TAtlasSetupRun = (Idle, Running, Done, Failed);
+  TAtlasSetupRun = Atlas.Core.Welcome.Contract.TAtlasSetupRun;
   /// <summary>Was Refresh meldet: neu anmelden (Titel geändert), neu ordnen (Karte erscheint oder verschwindet)
   /// oder nur den Bereich neu zeichnen.</summary>
   TAtlasSetupRefresh = (Announce, Reorder, Redraw);
@@ -56,41 +66,11 @@ type
     Note: string;
   end;
 
-  TAtlasSetupCard = record
-    /// <summary>Projektdatei des Ziels; '' = kein Projekt.</summary>
-    Project: string;
-    /// <summary>Dateiname ohne Endung, für den Titel.</summary>
-    ProjectName: string;
-    /// <summary>Das Ziel ist in der IDE geöffnet (Baseline und Pfadprüfung brauchen das).</summary>
-    ProjectOpen: Boolean;
-    Facts: TAtlasSetupFacts;
-    /// <summary>Projektgruppe: Zahl ihrer Projekte und davon geprüfte; 0 = keine Gruppe.</summary>
-    GroupProjects: Integer;
-    GroupChecked: Integer;
-    /// <summary>Name der vorhandenen Konfiguration (atlas.json bzw. delphi-lsp.json); '' ohne.</summary>
-    ConfigName: string;
-    ShowCard: Boolean;
-    ShowNew: Boolean;
-    Baseline: TAtlasSetupRun;
-    /// <summary>Start des laufenden Schritts (Millisekunden-Zähler der Quelle).</summary>
-    BaselineStarted: UInt64;
-    /// <summary>Nach einem erfolgreichen Lauf: Treffer und Dateien in der neuen Baseline.</summary>
-    BaselineTotal: Integer;
-    BaselineFiles: Integer;
-    /// <summary>Neue Regeltreffer seit der Baseline aus der Projekt-Zusammenfassung (nach dem Erzeugen 0);
-    /// -1 = unbekannt.</summary>
-    BaselineNewHits: Integer;
-    /// <summary>Grund bei Failed (Sprache der Oberfläche).</summary>
-    BaselineError: string;
-    Paths: TAtlasSetupRun;
-    PathsStarted: UInt64;
-    PathsError: string;
-    /// <summary>Hinweis zur Edition der IDE (#1822), etwa ohne Kommandozeilen-Compiler; '' ohne.</summary>
-    Edition: string;
-    class function Empty: TAtlasSetupCard; static;
+  TAtlasSetupCard = Atlas.Core.Welcome.Contract.TAtlasSetupCard;
+
+  /// <summary>Logik zu TAtlasSetupCard (der Record steht im Vertrag).</summary>
+  TAtlasSetupCardHelper = record helper for TAtlasSetupCard
     function StepDone(AStep: TAtlasSetupStep): Boolean;
-    /// <summary>Bereich zeigen (Karte oder Knöpfe).</summary>
-    function Visible: Boolean;
   end;
 
   /// <summary>Projekt einer Gruppe mit seinem Abschnitt "setup".</summary>
@@ -157,26 +137,6 @@ type
   end;
 
 implementation
-
-{ TAtlasSetupCard }
-
-class function TAtlasSetupCard.Empty: TAtlasSetupCard;
-begin
-  Result := Default(TAtlasSetupCard);
-  Result.Facts := Default(TAtlasSetupFacts);
-  Result.Facts.Setup := TAtlasProjectSetup.Empty;
-  Result.BaselineNewHits := -1;
-end;
-
-function TAtlasSetupCard.StepDone(AStep: TAtlasSetupStep): Boolean;
-begin
-  Result := TAtlasProjectSetups.StepDone(AStep, Facts);
-end;
-
-function TAtlasSetupCard.Visible: Boolean;
-begin
-  Result := ShowCard or ShowNew;
-end;
 
 { TAtlasWelcomeSetup }
 
@@ -345,7 +305,7 @@ end;
 
 class function TAtlasWelcomeSetup.IsGroup(const AProject: string): Boolean;
 begin
-  Result := SameText(Copy(AProject, Length(AProject) - 9, 10), '.groupproj');
+  Result := SameText(ExtractFileExt(AProject), '.groupproj');
 end;
 
 /// <summary>Ordner von AFileName mit abschließendem Trenner; '' ohne.</summary>
@@ -517,6 +477,13 @@ begin
   Inc(Defines, Length(ACheck.UndefinedDefines));
   Inc(Uncertain, TAtlasPathCheckResult.UncertainIn(ACheck.MissingUnits) +
     TAtlasPathCheckResult.UncertainIn(ACheck.UndefinedDefines));
+end;
+
+{ TAtlasSetupCardHelper }
+
+function TAtlasSetupCardHelper.StepDone(AStep: TAtlasSetupStep): Boolean;
+begin
+  Result := TAtlasProjectSetups.StepDone(AStep, Facts);
 end;
 
 end.

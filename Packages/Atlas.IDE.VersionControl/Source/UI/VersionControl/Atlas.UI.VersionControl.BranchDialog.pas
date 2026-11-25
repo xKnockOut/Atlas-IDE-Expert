@@ -46,7 +46,7 @@ uses
   Vcl.Graphics,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.BranchPlan,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasBranchDialog = class;
@@ -286,9 +286,10 @@ uses
   Atlas.Core.VersionControl.BranchNames,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
@@ -297,10 +298,60 @@ const
   cBelowAll = 10000;
   cExternalRow = 26;
   cExternalRowsVisible = 5;
+  /// <summary>Höhe der Kopfzeile über den Externals.</summary>
+  cExternalsHeader = 20;
   /// <summary>Höhe der Gruppe für die Externals ohne ihre Zeilen: Rahmen mit Titel und Kopfzeile.</summary>
-  cExternalsFrame = 44 + 20;
+  cExternalsFrame = 44 + cExternalsHeader;
+  /// <summary>Höhe der Gruppe, wenn die Externals unverändert mitgehen (nur Hinweis).</summary>
+  cExternalsKeptHeight = 56;
+  /// <summary>Zeilenhöhe mit Eingabefeld oder Auswahl bzw. nur mit Kästchen; Oberkante der Felder darin.</summary>
+  cFieldRow = 28;
+  cCheckRow = 24;
+  cFieldTop = 2;
+  /// <summary>Abstand unter einem Fehlerhinweis bzw. unter dem Hinweis zur Arbeitskopie.</summary>
+  cErrorBottom = 2;
+  cInfoBottom = 4;
+  /// <summary>Gruppe Git: Höhe der Überschrift, einer Zeile samt Abstand darüber (Row) und des Fehlerhinweises;
+  /// Höhe vor dem ersten UpdateHeight und um wie viel der Dialog mit ihr wächst.</summary>
+  cGitCaption = 24;
+  cGitRowStep = cFieldRow + cGap div 2;
+  cGitCheckStep = cCheckRow + cGap div 2;
+  cGitErrorHeight = 36;
+  cGitBoxHeight = 120;
+  cGitDialogGrowth = 176;
+  /// <summary>Schriftgröße (Punkt) der Liste der Schritte.</summary>
+  cStepsFontSize = 9;
+  /// <summary>Anfang eines Orts im Repository ("^/Kasse/branches/x").</summary>
+  cRepositoryRoot = '^/';
+  /// <summary>Anfangsgröße des Dialogs und Höhe der Leiste mit den Knöpfen.</summary>
+  cCreateWidth = 720;
+  cCreateHeight = 520;
+  cButtonBarHeight = 44;
   cFolderWidth = 150;
   cChoiceWidth = 200;
+  // Zeilen: Beschriftung etwas unter der Oberkante des Felds, Feld- und Kästchenhöhe.
+  cCaptionTop = 5;
+  cCaptionHeight = 17;
+  cFieldHeight = 23;
+  cCheckTop = 3;
+  cCheckHeight = 20;
+  // Abstand der Listen oben und unten.
+  cBoxGap = 4;
+  // Breite der Spalte Quelle in der Kopfzeile der Externals.
+  cSourceWidth = 200;
+  // Rand rechts der Externals-Zeilen (Bildlaufleiste).
+  cScrollBarRoom = 20;
+  // Breite der Zählung neben der Auswahl für ungesicherte Änderungen.
+  cCountWidth = 260;
+  // Zusätzliche Mindesthöhe, solange die Externals sichtbar sind.
+  cExternalsMinHeight = 176;
+  // Dialog „Branch anlegen“: Mindestgröße, Kästchen „Nicht mehr fragen“, Knöpfe.
+  cCreateMinWidth = 520;
+  cCreateMinHeight = 420;
+  cNeverAskTop = 12;
+  cNeverAskWidth = 360;
+  cButtonTop = 8;
+  cButtonHeight = 28;
 
 { Bausteine }
 
@@ -311,22 +362,35 @@ begin
   AControl.Align := alTop;
 end;
 
-/// <summary>Zeile mit Beschriftung links, unter alle bisherigen gestapelt.</summary>
+/// <summary>Zeile mit Beschriftung links, unter alle bisherigen gestapelt; AHeight in logischen Pixeln (96 dpi).
+/// </summary>
 function Row(AOwner: TComponent; AParent: TWinControl; const ACaption: string; AHeight: Integer): TPanel;
 var
   mCaption: TLabel;
 begin
   Result := TPanel.Create(AOwner);
   Result.Parent := AParent;
-  Result.Height := AHeight;
+  Result.Height := Result.ScaleValue(AHeight);
   Result.BevelOuter := bvNone;
   Stack(Result);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  Result.Margins.SetBounds(Result.ScaleValue(cGap), Result.ScaleValue(cGap div 2), Result.ScaleValue(cGap), 0);
   mCaption := TLabel.Create(AOwner);
   mCaption.Parent := Result;
-  mCaption.SetBounds(0, 5, cCaptionWidth, 17);
+  mCaption.SetBounds(0, mCaption.ScaleValue(cCaptionTop), mCaption.ScaleValue(cCaptionWidth),
+    mCaption.ScaleValue(cCaptionHeight));
   mCaption.Caption := ACaption;
+end;
+
+/// <summary>AControl rechts neben der Beschriftung seiner Zeile, bis zum rechten Rand; AHeight in logischen Pixeln.
+/// </summary>
+procedure PlaceInRow(AControl: TControl; ATop, AHeight: Integer);
+var
+  mLeft: Integer;
+begin
+  mLeft := AControl.ScaleValue(cCaptionWidth + cGap);
+  AControl.SetBounds(mLeft, AControl.ScaleValue(ATop), AControl.Parent.Width - mLeft - AControl.ScaleValue(cGap),
+    AControl.ScaleValue(AHeight));
 end;
 
 /// <summary>Eingabefeld rechts neben der Beschriftung einer Zeile.</summary>
@@ -334,7 +398,7 @@ function RowEdit(AOwner: TComponent; ARow: TPanel; const AOnChange: TNotifyEvent
 begin
   Result := TEdit.Create(AOwner);
   Result.Parent := ARow;
-  Result.SetBounds(cCaptionWidth + cGap, 2, ARow.Width - cCaptionWidth - 2 * cGap, 23);
+  PlaceInRow(Result, cFieldTop, cFieldHeight);
   Result.Anchors := [akLeft, akTop, akRight];
   Result.OnChange := AOnChange;
 end;
@@ -345,36 +409,38 @@ begin
   Result := TComboBox.Create(AOwner);
   Result.Parent := ARow;
   Result.Style := csDropDownList;
-  Result.SetBounds(cCaptionWidth + cGap, 2, ARow.Width - cCaptionWidth - 2 * cGap, 23);
+  PlaceInRow(Result, cFieldTop, cFieldHeight);
   Result.Anchors := [akLeft, akTop, akRight];
   Result.OnChange := AOnChange;
 end;
 
-/// <summary>Hinweis unter den Feldern, eingerückt wie sie.</summary>
+/// <summary>Hinweis unter den Feldern, eingerückt wie sie; ATop und ABottom in logischen Pixeln (96 dpi).</summary>
 function NoteLabel(AOwner: TComponent; AParent: TWinControl; ATop, ABottom: Integer): TLabel;
 begin
   Result := TAtlasWrapLabel.Create(AOwner);
   Result.Parent := AParent;
   Stack(Result);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cCaptionWidth + 2 * cGap, ATop, cGap, ABottom);
+  Result.Margins.SetBounds(Result.ScaleValue(cCaptionWidth + 2 * cGap), Result.ScaleValue(ATop),
+    Result.ScaleValue(cGap), Result.ScaleValue(ABottom));
 end;
 
 /// <summary>Roter Hinweis unter einem Feld.</summary>
 function ErrorLabel(AOwner: TComponent; AParent: TWinControl; ATop: Integer): TLabel;
 begin
-  Result := NoteLabel(AOwner, AParent, ATop, 2);
+  Result := NoteLabel(AOwner, AParent, ATop, cErrorBottom);
   Result.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   // Mit seFont übergeht der Stil Font.Color.
   Result.StyleElements := Result.StyleElements - [seFont];
 end;
 
-/// <summary>Zelle der Externals-Tabelle; zu lange Pfade mit „…“ und vollständig als Hinweis.</summary>
+/// <summary>Zelle der Externals-Tabelle; zu lange Pfade mit „…“ und vollständig als Hinweis. ALeft und AWidth in
+/// Gerätepixeln (aus der Breite der Zeile gerechnet).</summary>
 function CellLabel(AOwner: TComponent; AParent: TWinControl; ALeft, AWidth: Integer; const ACaption: string): TLabel;
 begin
   Result := TLabel.Create(AOwner);
   Result.Parent := AParent;
-  Result.SetBounds(ALeft, 5, AWidth, 17);
+  Result.SetBounds(ALeft, Result.ScaleValue(cCaptionTop), AWidth, Result.ScaleValue(cCaptionHeight));
   Result.AutoSize := False;
   Result.EllipsisPosition := epPathEllipsis;
   Result.Caption := ACaption;
@@ -387,11 +453,11 @@ end;
 function LocationOf(const AText: string): string;
 begin
   Result := Trim(AText);
-  if Copy(Result, 1, 2) <> '^/' then
+  if Copy(Result, 1, Length(cRepositoryRoot)) <> cRepositoryRoot then
   begin
     Exit('');
   end;
-  Result := Copy(Result, 3, MaxInt);
+  Result := Copy(Result, Length(cRepositoryRoot) + 1, MaxInt);
   while (Result <> '') and (Result[Length(Result)] = '/') do
   begin
     Delete(Result, Length(Result), 1);
@@ -587,11 +653,11 @@ procedure TAtlasBranchNamePart.Build(const AName: string);
 var
   mPanel: TPanel;
 begin
-  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchName), 28);
+  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchName), cFieldRow);
   FNameEdit := RowEdit(FDialog, mPanel, FDialog.Changed);
   FNameEdit.Text := AName;
   FNameError := ErrorLabel(FDialog, FDialog, 0);
-  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchBase), 28);
+  mPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchBase), cFieldRow);
   FBaseBox := RowChoice(FDialog, mPanel, FDialog.Changed);
 end;
 
@@ -686,14 +752,14 @@ procedure TAtlasBranchGitPart.AddFetchAndPush;
 var
   mPanel: TPanel;
 begin
-  mPanel := Row(FDialog, FBox, '', 24);
+  mPanel := Row(FDialog, FBox, '', cCheckRow);
   FFetchCheck := TCheckBox.Create(FDialog);
   FFetchCheck.Parent := mPanel;
-  FFetchCheck.SetBounds(cCaptionWidth + cGap, 3, mPanel.Width - cCaptionWidth - 2 * cGap, 20);
+  PlaceInRow(FFetchCheck, cCheckTop, cCheckHeight);
   FFetchCheck.Anchors := [akLeft, akTop, akRight];
   FFetchCheck.Checked := FOptions.Base = TAtlasVcsGitBaseOption.Remote;
   FFetchCheck.OnClick := FDialog.Changed;
-  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPush), 28);
+  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPush), cFieldRow);
   FPushBox := RowChoice(FDialog, mPanel, FDialog.Changed);
 end;
 
@@ -702,15 +768,18 @@ const
   cBoxWidth = 240;
 begin
   // Offene Änderungen: nur mit geänderten Dateien; „nachfragen“ lässt die Auswahl leer.
-  FUncommittedPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchUncommitted), 28);
+  FUncommittedPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchUncommitted), cFieldRow);
   FUncommittedBox := TComboBox.Create(FDialog);
   FUncommittedBox.Parent := FUncommittedPanel;
   FUncommittedBox.Style := csDropDownList;
-  FUncommittedBox.SetBounds(cCaptionWidth + cGap, 2, cBoxWidth, 23);
+  FUncommittedBox.SetBounds(FUncommittedBox.ScaleValue(cCaptionWidth + cGap), FUncommittedBox.ScaleValue(cFieldTop),
+    FUncommittedBox.ScaleValue(cBoxWidth), FUncommittedBox.ScaleValue(cFieldHeight));
   FUncommittedBox.OnChange := FDialog.Changed;
   FUncommittedCount := TLabel.Create(FDialog);
   FUncommittedCount.Parent := FUncommittedPanel;
-  FUncommittedCount.SetBounds(cCaptionWidth + 2 * cGap + cBoxWidth, 5, 260, 17);
+  FUncommittedCount.SetBounds(FUncommittedCount.ScaleValue(cCaptionWidth + 2 * cGap + cBoxWidth),
+    FUncommittedCount.ScaleValue(cCaptionTop), FUncommittedCount.ScaleValue(cCountWidth),
+    FUncommittedCount.ScaleValue(cCaptionHeight));
   FUncommittedCount.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchUncommittedCount,
     [FDialog.FFacts.LocalChanges]);
 end;
@@ -719,9 +788,9 @@ procedure TAtlasBranchGitPart.AddPlace;
 var
   mPanel: TPanel;
 begin
-  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlace), 28);
+  mPanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlace), cFieldRow);
   FPlaceBox := RowChoice(FDialog, mPanel, FDialog.Changed);
-  FWorktreePanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), 28);
+  FWorktreePanel := Row(FDialog, FBox, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), cFieldRow);
   FWorktreeEdit := RowEdit(FDialog, FWorktreePanel, WorktreeChanged);
 end;
 
@@ -754,20 +823,20 @@ begin
     Exit;
   end;
   // Höhe nach den sichtbaren Zeilen: Überschrift, Abrufen, Server, Ablage, ggf. Änderungen, Ordner, Hinweis.
-  mHeight := 24 + 28 + 2 * 32;
+  mHeight := cGitCaption + cGitCheckStep + 2 * cGitRowStep;
   if FUncommittedPanel.Visible then
   begin
-    Inc(mHeight, 32);
+    Inc(mHeight, cGitRowStep);
   end;
   if FWorktreePanel.Visible then
   begin
-    Inc(mHeight, 32);
+    Inc(mHeight, cGitRowStep);
   end;
   if FError.Visible then
   begin
-    Inc(mHeight, 36);
+    Inc(mHeight, cGitErrorHeight);
   end;
-  FBox.Height := mHeight;
+  FBox.Height := FBox.ScaleValue(mHeight);
 end;
 
 procedure TAtlasBranchGitPart.Build(const AOptions: TAtlasVcsGitBranchOptions; const AKey: string);
@@ -778,9 +847,9 @@ begin
   FBox.Parent := FDialog;
   Stack(FBox);
   FBox.AlignWithMargins := True;
-  FBox.Margins.SetBounds(cGap, 4, cGap, 4);
+  TAtlasControlScaling.SetMargins(FBox, cGap, cBoxGap, cGap, cBoxGap);
   FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchGit);
-  FBox.Height := FBox.ScaleValue(120);
+  FBox.Height := FBox.ScaleValue(cGitBoxHeight);
   FBox.Visible := FDialog.FFacts.Kind = TAtlasVcsKind.Git;
   // Einträge der Auswahllisten erst mit Fenster (FillChoices).
   AddFetchAndPush;
@@ -789,8 +858,8 @@ begin
   FError := ErrorLabel(FDialog, FBox, 0);
   if FBox.Visible then
   begin
-    FDialog.Height := FDialog.Height + FDialog.ScaleValue(176);
-    FDialog.Constraints.MinHeight := FDialog.Constraints.MinHeight + 176;
+    FDialog.Height := FDialog.Height + FDialog.ScaleValue(cGitDialogGrowth);
+    FDialog.Constraints.MinHeight := FDialog.Constraints.MinHeight + FDialog.ScaleValue(cExternalsMinHeight);
   end;
 end;
 
@@ -921,29 +990,29 @@ end;
 
 procedure TAtlasBranchSvnPart.AddMessage(const AMessage: string);
 begin
-  FMessagePanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchMessage), 28);
+  FMessagePanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchMessage), cFieldRow);
   FMessageEdit := RowEdit(FDialog, FMessagePanel, FDialog.Changed);
   FMessageEdit.Text := AMessage;
 end;
 
 procedure TAtlasBranchSvnPart.AddLocation;
 begin
-  FLocationPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchLocation), 28);
+  FLocationPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchLocation), cFieldRow);
   FLocationEdit := RowEdit(FDialog, FLocationPanel, LocationChanged);
   FLocationError := ErrorLabel(FDialog, FDialog, 0);
 end;
 
 procedure TAtlasBranchSvnPart.AddAfterAndFolder;
 begin
-  FAfterPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfter), 28);
+  FAfterPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfter), cFieldRow);
   FAfterBox := RowChoice(FDialog, FAfterPanel, FDialog.Changed);
-  FFolderPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), 28);
+  FFolderPanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchFolder), cFieldRow);
   FFolderEdit := RowEdit(FDialog, FFolderPanel, FolderChanged);
 end;
 
 procedure TAtlasBranchSvnPart.AddMixed;
 begin
-  FMixedLabel := ErrorLabel(FDialog, FDialog, 2);
+  FMixedLabel := ErrorLabel(FDialog, FDialog, cFieldTop);
   FMixedLabel.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchMixed, [FDialog.FFacts.Revision]);
 end;
 
@@ -1089,18 +1158,20 @@ begin
   mHeader.Parent := FBox;
   mHeader.Width := AWidth;
   mHeader.Align := alTop;
-  mHeader.Height := mHeader.ScaleValue(20);
+  mHeader.Height := mHeader.ScaleValue(cExternalsHeader);
   mHeader.BevelOuter := bvNone;
-  mLabel := CellLabel(FDialog, mHeader, cGap, cFolderWidth,
+  mLabel := CellLabel(FDialog, mHeader, mHeader.ScaleValue(cGap), mHeader.ScaleValue(cFolderWidth),
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsFolder));
-  mLabel.Font.Color := clGrayText;
-  mLabel := CellLabel(FDialog, mHeader, cGap + cFolderWidth + cGap, 200,
+  TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
+  mLabel := CellLabel(FDialog, mHeader, mHeader.ScaleValue(cGap + cFolderWidth + cGap),
+    mHeader.ScaleValue(cSourceWidth),
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsSource));
-  mLabel.Font.Color := clGrayText;
-  mLabel := CellLabel(FDialog, mHeader, mHeader.Width - cChoiceWidth - cGap, cChoiceWidth,
+  TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
+  mLabel := CellLabel(FDialog, mHeader, mHeader.Width - mHeader.ScaleValue(cChoiceWidth + cGap),
+    mHeader.ScaleValue(cChoiceWidth),
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsInBranch));
   mLabel.Anchors := [akTop, akRight];
-  mLabel.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mLabel, clGrayText);
 end;
 
 procedure TAtlasBranchExternalsPart.AddRow(AParent: TWinControl; AIndex, AWidth: Integer);
@@ -1117,16 +1188,17 @@ begin
   mRow.BevelOuter := bvNone;
   mRow.Top := mRow.ScaleValue(AIndex * cExternalRow);
   mRow.Align := alTop;
-  CellLabel(FDialog, mRow, cGap, cFolderWidth, mExternal.Path);
-  mLabel := CellLabel(FDialog, mRow, cGap + cFolderWidth + cGap, mRow.Width - cFolderWidth - cChoiceWidth - 4 * cGap,
-    ExternalSource(mExternal));
+  CellLabel(FDialog, mRow, mRow.ScaleValue(cGap), mRow.ScaleValue(cFolderWidth), mExternal.Path);
+  mLabel := CellLabel(FDialog, mRow, mRow.ScaleValue(cGap + cFolderWidth + cGap),
+    mRow.Width - mRow.ScaleValue(cFolderWidth + cChoiceWidth + cGap + cGap + cGap + cGap), ExternalSource(mExternal));
   mLabel.Anchors := [akLeft, akTop, akRight];
   FChoices[AIndex] := nil;
   FBoxes[AIndex] := nil;
   // Feste Revision: bleibt, keine Auswahl.
   if mExternal.Fixed then
   begin
-    mLabel := CellLabel(FDialog, mRow, mRow.Width - cChoiceWidth - cGap, cChoiceWidth,
+    mLabel := CellLabel(FDialog, mRow, mRow.Width - mRow.ScaleValue(cChoiceWidth + cGap),
+      mRow.ScaleValue(cChoiceWidth),
       TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalFixed, [TAtlasVcsBranchPlan.ExternalRevision(mExternal)]));
     mLabel.Anchors := [akTop, akRight];
     Exit;
@@ -1135,7 +1207,8 @@ begin
   FBoxes[AIndex] := TComboBox.Create(FDialog);
   FBoxes[AIndex].Parent := mRow;
   FBoxes[AIndex].Style := csDropDownList;
-  FBoxes[AIndex].SetBounds(mRow.Width - cChoiceWidth - cGap, 1, cChoiceWidth, 23);
+  FBoxes[AIndex].SetBounds(mRow.Width - mRow.ScaleValue(cChoiceWidth + cGap), 1, mRow.ScaleValue(cChoiceWidth),
+    mRow.ScaleValue(cFieldHeight));
   FBoxes[AIndex].Anchors := [akTop, akRight];
   FBoxes[AIndex].OnChange := FDialog.Changed;
 end;
@@ -1151,7 +1224,7 @@ begin
   FBox.Parent := FDialog;
   Stack(FBox);
   FBox.AlignWithMargins := True;
-  FBox.Margins.SetBounds(cGap, 4, cGap, 4);
+  TAtlasControlScaling.SetMargins(FBox, cGap, cBoxGap, cGap, cBoxGap);
   FBox.Visible := (mFacts.Kind = TAtlasVcsKind.Svn) and mFacts.Externals;
   FHint := TAtlasWrapLabel.Create(FDialog);
   FHint.Parent := FBox;
@@ -1163,7 +1236,7 @@ begin
   // Nicht gelesen (propget gescheitert): Hinweis wie vor #1291, die Externals gehen unverändert mit.
   if (mFacts.Kind <> TAtlasVcsKind.Svn) or (Length(mFacts.SvnExternals) = 0) then
   begin
-    FBox.Height := FBox.ScaleValue(56);
+    FBox.Height := FBox.ScaleValue(cExternalsKeptHeight);
     FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternals);
     FHint.Align := alClient;
     FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsKept);
@@ -1178,7 +1251,7 @@ begin
   FBox.Height := FBox.ScaleValue(cExternalsFrame + Min(Integer(Length(mFacts.SvnExternals)), cExternalRowsVisible) *
     cExternalRow);
   // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
-  mWidth := FDialog.Width - 4 * cGap - 20;
+  mWidth := FDialog.Width - FDialog.ScaleValue(cGap + cGap + cGap + cGap + cScrollBarRoom);
   AddHeader(mWidth);
   mScroll := TScrollBox.Create(FDialog);
   mScroll.Parent := FBox;
@@ -1275,7 +1348,7 @@ begin
   mBox.Parent := FDialog;
   mBox.Align := alClient;
   mBox.AlignWithMargins := True;
-  mBox.Margins.SetBounds(cGap, 4, cGap, 0);
+  TAtlasControlScaling.SetMargins(mBox, cGap, cBoxGap, cGap, 0);
   mBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchWhatHappens);
   FServerHint := TAtlasWrapLabel.Create(FDialog);
   FServerHint.Parent := mBox;
@@ -1290,7 +1363,7 @@ begin
   FMemo.ScrollBars := ssBoth;
   FMemo.WordWrap := False;
   FMemo.Font.Name := 'Consolas';
-  FMemo.Font.Size := 9;
+  FMemo.Font.Size := cStepsFontSize;
 end;
 
 procedure TAtlasBranchStepsPart.Show(AKind: TAtlasVcsKind; const ASteps: TArray<TAtlasVcsBranchStep>);
@@ -1320,7 +1393,7 @@ begin
   // Git-Optionen (#1289) gehören zur Basis: direkt darunter.
   FGit.Build(ASetup.Git, ASetup.Key);
   FSvn.Build(ASetup.Message, ASetup.Svn);
-  FInfoLabel := NoteLabel(Self, Self, 2, 4);
+  FInfoLabel := NoteLabel(Self, Self, cFieldTop, cInfoBottom);
   FExternals.Build;
   FSteps.Build;
   // Hat schon ein Steuerelement das Fenster erzwungen, kam CreateWnd zu früh: jetzt füllen. Sonst füllt CreateWnd,
@@ -1387,10 +1460,10 @@ begin
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
   Position := poMainFormCenter;
-  Width := ScaleValue(720);
-  Height := ScaleValue(520);
-  Constraints.MinWidth := 520;
-  Constraints.MinHeight := 420;
+  Width := ScaleValue(cCreateWidth);
+  Height := ScaleValue(cCreateHeight);
+  Constraints.MinWidth := ScaleValue(cCreateMinWidth);
+  Constraints.MinHeight := ScaleValue(cCreateMinHeight);
 end;
 
 procedure TAtlasBranchDialog.AddButtons(AOfferNeverAsk: Boolean);
@@ -1401,23 +1474,28 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := mBottom.ScaleValue(44);
+  mBottom.Height := mBottom.ScaleValue(cButtonBarHeight);
   mBottom.BevelOuter := bvNone;
   FNeverAsk := TCheckBox.Create(Self);
   FNeverAsk.Parent := mBottom;
-  FNeverAsk.SetBounds(cGap, 12, 360, 20);
+  FNeverAsk.SetBounds(FNeverAsk.ScaleValue(cGap), FNeverAsk.ScaleValue(cNeverAskTop),
+    FNeverAsk.ScaleValue(cNeverAskWidth),
+    FNeverAsk.ScaleValue(cCheckHeight));
   FNeverAsk.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchNeverAsk);
   FNeverAsk.Visible := AOfferNeverAsk;
   FCreateButton := TButton.Create(Self);
   FCreateButton.Parent := mBottom;
-  FCreateButton.SetBounds(mBottom.Width - 2 * (cButtonWidth + cGap), 8, cButtonWidth, 28);
+  FCreateButton.SetBounds(mBottom.Width - FCreateButton.ScaleValue(2 * (cButtonWidth + cGap)),
+    FCreateButton.ScaleValue(cButtonTop), FCreateButton.ScaleValue(cButtonWidth),
+    FCreateButton.ScaleValue(cButtonHeight));
   FCreateButton.Anchors := [akTop, akRight];
   FCreateButton.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchCreate);
   FCreateButton.Default := True;
   FCreateButton.OnClick := CreateClick;
   mCancel := TButton.Create(Self);
   mCancel.Parent := mBottom;
-  mCancel.SetBounds(mBottom.Width - (cButtonWidth + cGap), 8, cButtonWidth, 28);
+  mCancel.SetBounds(mBottom.Width - mCancel.ScaleValue(cButtonWidth + cGap), mCancel.ScaleValue(cButtonTop),
+    mCancel.ScaleValue(cButtonWidth), mCancel.ScaleValue(cButtonHeight));
   mCancel.Anchors := [akTop, akRight];
   mCancel.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mCancel.Cancel := True;

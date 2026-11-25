@@ -9,17 +9,13 @@ interface
 uses
   Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Section,
   Atlas.UI.Settings.Page,
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Forms,
   Vcl.ComCtrls;
-
-/// <summary>Erzeugt die Seite einmal ohne und einmal mit Fenster, damit einmalige VCL-Daten keinem Test
-/// angerechnet werden.</summary>
-procedure WarmUpSettingsPage;
 
 /// <summary>Reiter, auf dem AControl liegt; nil ohne.</summary>
 function SheetOf(AControl: TControl): TTabSheet;
@@ -43,6 +39,10 @@ function ProvideSection(const ASection: IAtlasSettingsSection): IAtlasRegistrati
 
 /// <summary>Gibt alle Anmeldungen ab und leert die Liste.</summary>
 procedure RevokeAll(var ARegistrations: TArray<IAtlasRegistration>);
+
+/// <summary>Gibt die Anmeldung eines Abschnitts aus ProvideSection ab und leert Anmeldung und Abschnitt
+/// (TearDown).</summary>
+procedure RevokeSection(var ARegistration: IAtlasRegistration; var ASection: IAtlasSettingsSection);
 
 /// <summary>Knoten der obersten Ebene im Navigationsbaum der Seite.</summary>
 function TopLevelNodes(APage: TAtlasSettingsPage): TArray<TTreeNode>;
@@ -75,27 +75,6 @@ end;
 function TAtlasFixedSectionProvider.CreateSection: IAtlasSettingsSection;
 begin
   Result := FSection;
-end;
-
-procedure WarmUpSettingsPage;
-var
-  mHost: TForm;
-  mPage: TAtlasSettingsPage;
-  mRegistrations: TArray<IAtlasRegistration>;
-begin
-  // Erste Anmeldung legt die Listen der Registry an: nicht dem ersten Setup anrechnen.
-  mRegistrations := ProvideSections([TAtlasSettingsSection]);
-  RevokeAll(mRegistrations);
-  TAtlasSettingsPage.Create(nil).Free;
-  // Auch mit Fenster (Reiter, PageControl): einmalige VCL-Daten nicht dem ersten Test anrechnen.
-  mHost := TForm.CreateNew(nil);
-  try
-    mPage := TAtlasSettingsPage.Create(mHost);
-    mPage.Parent := mHost;
-    mPage.HandleNeeded;
-  finally
-    mHost.Free;
-  end;
 end;
 
 function SheetOf(AControl: TControl): TTabSheet;
@@ -149,6 +128,13 @@ begin
     mRegistration.Revoke;
   end;
   ARegistrations := nil;
+end;
+
+procedure RevokeSection(var ARegistration: IAtlasRegistration; var ASection: IAtlasSettingsSection);
+begin
+  ARegistration.Revoke;
+  ARegistration := nil;
+  ASection := nil;
 end;
 
 function TopLevelNodes(APage: TAtlasSettingsPage): TArray<TTreeNode>;

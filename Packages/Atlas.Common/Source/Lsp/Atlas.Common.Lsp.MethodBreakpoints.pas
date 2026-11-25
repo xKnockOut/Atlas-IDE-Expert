@@ -146,7 +146,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.StepFilter,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -178,30 +179,6 @@ type
 
 { Hilfsfunktionen }
 
-function LastPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := AName;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
-end;
-
-function ContainerPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := '';
-  mDot := LastDelimiter('.', AName);
-  if mDot > 0 then
-  begin
-    Result := Copy(AName, 1, mDot - 1);
-  end;
-end;
-
 function HasWildcard(const AText: string): Boolean;
 begin
   Result := (Pos('*', AText) > 0) or (Pos('?', AText) > 0);
@@ -210,7 +187,7 @@ end;
 /// <summary>Typname zum Vergleich: ohne Typargumente, ohne Unit davor, klein.</summary>
 function TypeKey(const AType: string): string;
 begin
-  Result := LowerCase(LastPart(TLspStepFilter.PlainName(Trim(AType))));
+  Result := LowerCase(TTextNames.LastPart(TLspStepFilter.PlainName(Trim(AType))));
 end;
 
 function SameParams(const A, B: TArray<string>): Boolean;
@@ -254,7 +231,7 @@ begin
   end;
   mPlain := TLspStepFilter.PlainName(AContainer);
   Result := TMethodPattern.Matches(AMask, mPlain) or
-    ((Pos('.', AMask) = 0) and (mPlain <> '') and TMethodPattern.Matches(AMask, LastPart(mPlain)));
+    ((Pos('.', AMask) = 0) and (mPlain <> '') and TMethodPattern.Matches(AMask, TTextNames.LastPart(mPlain)));
 end;
 
 { TMethodPattern }
@@ -432,9 +409,9 @@ begin
   begin
     Exit;
   end;
-  APattern.NameMask := LastPart(mPath);
-  AssignQualifier(ContainerPart(mPath), AIndex, APattern);
-  APattern.Exact := (ContainerPart(mPath) <> '') and not HasWildcard(ContainerPart(mPath));
+  APattern.NameMask := TTextNames.LastPart(mPath);
+  AssignQualifier(TTextNames.ContainerOf(mPath), AIndex, APattern);
+  APattern.Exact := (TTextNames.ContainerOf(mPath) <> '') and not HasWildcard(TTextNames.ContainerOf(mPath));
   Result := True;
 end;
 
@@ -540,8 +517,8 @@ begin
         end;
         mBody := Default(TMethodBody);
         mName := TLspStepFilter.PlainName(ANode.Name);
-        mBody.Container := ContainerPart(mName);
-        mBody.Name := LastPart(mName);
+        mBody.Container := TTextNames.ContainerOf(mName);
+        mBody.Name := TTextNames.LastPart(mName);
         // Die Parameter stehen im Kopf der Routine.
         mHeader := ANode.FindChild(TSyntaxKind.RoutineHeader);
         if mHeader = nil then
@@ -987,7 +964,7 @@ begin
       Continue;
     end;
     mLeft := Trim(Copy(mEntry, 1, mEquals - 1));
-    if SameText(TypeKey(ContainerPart(mLeft)), TypeKey(AInterface)) and SameText(LastPart(mLeft), AName) then
+    if SameText(TypeKey(TTextNames.ContainerOf(mLeft)), TypeKey(AInterface)) and SameText(TTextNames.LastPart(mLeft), AName) then
     begin
       Exit(Trim(Copy(mEntry, mEquals + 1, MaxInt)));
     end;

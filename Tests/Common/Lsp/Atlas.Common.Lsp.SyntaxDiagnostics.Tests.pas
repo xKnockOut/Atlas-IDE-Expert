@@ -118,6 +118,8 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
+  Atlas.Tests.LspRules,
   Atlas.Common.Lsp.DiagnosticItems;
 
 function CompilerMessage(ALine, AColumn: Integer; ASeverity: TCompilerSeverity): TCompilerMessage;
@@ -204,6 +206,14 @@ begin
   end;
 end;
 
+/// <summary>Dienste ohne Projekt: Prüfregeln ohne Umfeld (Syntaxfehler und Sprachmerkmale mit den Vorgaben).
+/// </summary>
+function PlainProviders: TSyntaxDiagnosticsProviders;
+begin
+  Result := Default(TSyntaxDiagnosticsProviders);
+  Result.Rules := TTestLspRules.Plain;
+end;
+
 { TLspSyntaxDiagnosticsTests }
 
 procedure TLspSyntaxDiagnosticsTests.Setup;
@@ -226,7 +236,7 @@ var
   mMessage: TJSONObject;
   mItem: TJSONValue;
 begin
-  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, PlainProviders, 0);
   try
     mDiagnostics.Attach;
     FStore.Open(cUri, 'objectpascal', 3, cBrokenCode);
@@ -258,7 +268,7 @@ var
   mDiagnostics: TLspSyntaxDiagnostics;
   mMessage: TJSONObject;
 begin
-  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, PlainProviders, 0);
   try
     mDiagnostics.Attach;
     FStore.Open(cUri, 'objectpascal', 1, cValidCode);
@@ -278,7 +288,7 @@ var
   mDiagnostics: TLspSyntaxDiagnostics;
   mMessage: TJSONObject;
 begin
-  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, PlainProviders, 0);
   try
     mDiagnostics.Attach;
     FStore.Open(cUri, 'objectpascal', 1, cBrokenCode);
@@ -301,7 +311,7 @@ var
   mDiagnostics: TLspSyntaxDiagnostics;
   mMessage: TJSONObject;
 begin
-  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders), 0);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, PlainProviders, 0);
   try
     mDiagnostics.Attach;
     FStore.Open(cUri, 'objectpascal', 1, cBrokenCode);
@@ -327,7 +337,7 @@ var
   mVersion: Integer;
   mMessage: TJSONObject;
 begin
-  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, PlainProviders);
   try
     mDiagnostics.Attach;
     FStore.Open(cUri, 'objectpascal', 1, cValidCode);
@@ -362,7 +372,7 @@ var
 begin
   // Jedes Projekt einer Gruppe meldet seine Indexstufen; neu geprüft wird einmal (#647).
   mCalls := 0;
-  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, Default(TSyntaxDiagnosticsProviders));
+  mDiagnostics := TLspSyntaxDiagnostics.Create(FStore, FTransport, PlainProviders);
   try
     mDiagnostics.PullMode := True;
     mDiagnostics.OnPullChanged :=
@@ -388,7 +398,7 @@ var
   mDocument: ITextDocument;
 begin
   mDocument := FStore.Open(cUri, 'objectpascal', 1, cBrokenCode);
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument);
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', TTestLspRules.PlainDocument);
   try
     Assert.AreEqual(1, mParams.GetValue<Integer>('version'));
     Assert.AreEqual(1, mParams.GetValue<TJSONArray>('diagnostics').Count);
@@ -504,7 +514,7 @@ begin
   Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt', TLspDiagnosticItems.InactiveMessageOf('DEBUG', '', ''));
   Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt (Zielplattform Win64 · ?)',
     TLspDiagnosticItems.InactiveMessageOf('DEBUG', 'Win64', ''));
-  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders := PlainProviders;
   mProviders.Defines :=
     function(const AUri: string; out ADefines: TArray<string>): Boolean
     begin
@@ -562,7 +572,7 @@ begin
           AText := '{$DEFINE FOO}';
         end;
     end);
-  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders := PlainProviders;
   mProviders.Defines :=
     function(const AUri: string; out ADefines: TArray<string>): Boolean
     begin
@@ -598,7 +608,7 @@ var
   mItem: TJSONObject;
 begin
   mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith(''));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', TTestLspRules.Document(RulesWith('')));
   try
     Assert.AreEqual(1, mParams.GetValue<TJSONArray>('diagnostics').Count);
     mItem := mParams.GetValue<TJSONArray>('diagnostics').Items[0] as TJSONObject;
@@ -615,7 +625,8 @@ var
   mDocument: ITextDocument;
 begin
   mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode + ' // ' + Char($202E));
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', RulesWith('{ "rules": { "bidi-control": "off" } }'));
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '',
+    TTestLspRules.Document(RulesWith('{ "rules": { "bidi-control": "off" } }')));
   try
     Assert.AreEqual(0, mParams.GetValue<TJSONArray>('diagnostics').Count);
   finally
@@ -636,7 +647,7 @@ begin
   mSource.Text := mDocument.Text;
   mSource.Findings := TFileChecker.CheckText(mRules.Rules, mRules.Settings, mRules.RelativePath, mDocument.Text);
   mRules.Baseline := TRuleBaseline.FromJson(TRuleBaseline.Build([mSource]));
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', mRules);
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', TTestLspRules.Document(mRules));
   try
     Assert.AreEqual(0, mParams.GetValue<TJSONArray>('diagnostics').Count);
   finally
@@ -786,7 +797,7 @@ var
   mMessage: TJSONObject;
   mItems: TJSONArray;
 begin
-  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders := PlainProviders;
   mProviders.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin
@@ -826,7 +837,7 @@ var
   mMessage: TJSONObject;
   mItems: TJSONArray;
 begin
-  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders := PlainProviders;
   mProviders.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin
@@ -864,7 +875,7 @@ var
   mParams: TJSONObject;
   mItems: TJSONArray;
 begin
-  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders := PlainProviders;
   mProviders.UsesContext :=
     function(const AUri: string; out AContext: TUsesContext): Boolean
     begin
@@ -963,9 +974,9 @@ var
   mItem: TJSONValue;
 begin
   Result := '';
-  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders := PlainProviders;
   mProviders.UsesContext := GridUses();
-  mProviders.Rules := EditorRules(AConfig);
+  mProviders.Rules := TTestLspRules.From(EditorRules(AConfig));
   mDiagnostics := TLspSyntaxDiagnostics.Create(AStore, ATransport, mProviders, 0);
   try
     mParams := mDiagnostics.Compute(AStore.Open(cUri, 'objectpascal', 1, ACode));

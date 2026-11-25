@@ -154,7 +154,7 @@ begin
 end;
 
 /// <summary>Ereignisbehandlung OnDestroy eines Formulars, Frames oder Datenmoduls: FormDestroy(Sender: TObject)
-/// wie von der IDE angelegt (FP-Prüfung 28.10.2026).</summary>
+/// wie von der IDE angelegt.</summary>
 function IsDestroyHandler(const AName, AText: string): Boolean;
 var
   mHead: string;

@@ -27,7 +27,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Notify;
+  Atlas.Core.Tracker.Notify,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Ein mit Atlas beendetes Issue.</summary>
@@ -41,26 +42,6 @@ type
     State: string;
     /// <summary>Erledigt geschrieben oder seitdem erledigt gesehen.</summary>
     Done: Boolean;
-  end;
-
-  /// <summary>Marke „wieder offen“ an einem Issue.</summary>
-  TAtlasTrackerReopen = record
-    Key: string;
-    Title: string;
-    /// <summary>Zustand jetzt und davor; '' unbekannt.</summary>
-    State: string;
-    Previous: string;
-    /// <summary>Zeitpunkt der Rückkehr bzw. der Erkennung (UTC).</summary>
-    At: TDateTime;
-    /// <summary>Beendet am (UTC); 0 = nicht mit Atlas beendet. Kommentare danach sind der Grund.</summary>
-    EndedAt: TDateTime;
-    /// <summary>Branch aus dem Beenden; '' = nach dem Muster.</summary>
-    Branch: string;
-    /// <summary>Neuester Kommentar seit dem Beenden: Urheber, Zeitpunkt (UTC), Text gekürzt; '' bzw. 0 ohne.
-    /// </summary>
-    CommentBy: string;
-    CommentAt: TDateTime;
-    Comment: string;
   end;
 
   /// <summary>Was als erledigt gilt.</summary>
@@ -132,7 +113,6 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  System.DateUtils,
   Atlas.Core.Tracker.IssueWork,
   Atlas.Text.Json;
 
@@ -451,42 +431,13 @@ begin
   AReopen.Comment := TAtlasTrackerReopened.Shortened(AComment.Text);
 end;
 
-function IsoOf(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue > 0 then
-  begin
-    Result := DateToISO8601(AValue, True);
-  end;
-end;
-
-function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mText: string;
-begin
-  mText := TJsonRead.Text(AObject, AName);
-  if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
-  begin
-    Result := 0;
-  end;
-end;
-
-/// <summary>Feld nur mit Inhalt schreiben.</summary>
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
-
 function EndedJson(const AEntry: TAtlasTrackerEnded): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('key', AEntry.Key);
-  AddText(Result, 'branch', AEntry.Branch);
-  AddText(Result, 'at', IsoOf(AEntry.At));
-  AddText(Result, 'state', AEntry.State);
+  TJsonBuild.AddText(Result, 'branch', AEntry.Branch);
+  TJsonBuild.AddText(Result, 'at', TJsonBuild.IsoTime(AEntry.At));
+  TJsonBuild.AddText(Result, 'state', AEntry.State);
   if AEntry.Done then
   begin
     Result.AddPair('done', TJSONBool.Create(True));
@@ -497,15 +448,15 @@ function ReopenJson(const AReopen: TAtlasTrackerReopen): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('key', AReopen.Key);
-  AddText(Result, 'title', AReopen.Title);
-  AddText(Result, 'state', AReopen.State);
-  AddText(Result, 'previous', AReopen.Previous);
-  AddText(Result, 'at', IsoOf(AReopen.At));
-  AddText(Result, 'endedAt', IsoOf(AReopen.EndedAt));
-  AddText(Result, 'branch', AReopen.Branch);
-  AddText(Result, 'commentBy', AReopen.CommentBy);
-  AddText(Result, 'commentAt', IsoOf(AReopen.CommentAt));
-  AddText(Result, 'comment', AReopen.Comment);
+  TJsonBuild.AddText(Result, 'title', AReopen.Title);
+  TJsonBuild.AddText(Result, 'state', AReopen.State);
+  TJsonBuild.AddText(Result, 'previous', AReopen.Previous);
+  TJsonBuild.AddText(Result, 'at', TJsonBuild.IsoTime(AReopen.At));
+  TJsonBuild.AddText(Result, 'endedAt', TJsonBuild.IsoTime(AReopen.EndedAt));
+  TJsonBuild.AddText(Result, 'branch', AReopen.Branch);
+  TJsonBuild.AddText(Result, 'commentBy', AReopen.CommentBy);
+  TJsonBuild.AddText(Result, 'commentAt', TJsonBuild.IsoTime(AReopen.CommentAt));
+  TJsonBuild.AddText(Result, 'comment', AReopen.Comment);
 end;
 
 class procedure TAtlasTrackerReopened.WriteJson(ASection: TJSONObject; const AEnded: TArray<TAtlasTrackerEnded>;
@@ -540,7 +491,7 @@ begin
   Result := Default(TAtlasTrackerEnded);
   Result.Key := Trim(TJsonRead.Text(AObject, 'key'));
   Result.Branch := TJsonRead.Text(AObject, 'branch');
-  Result.At := TimeOf(AObject, 'at');
+  Result.At := TJsonRead.IsoTime(AObject, 'at', True);
   Result.State := TJsonRead.Text(AObject, 'state');
   Result.Done := TJsonRead.Flag(AObject, 'done');
 end;
@@ -552,11 +503,11 @@ begin
   Result.Title := TJsonRead.Text(AObject, 'title');
   Result.State := TJsonRead.Text(AObject, 'state');
   Result.Previous := TJsonRead.Text(AObject, 'previous');
-  Result.At := TimeOf(AObject, 'at');
-  Result.EndedAt := TimeOf(AObject, 'endedAt');
+  Result.At := TJsonRead.IsoTime(AObject, 'at', True);
+  Result.EndedAt := TJsonRead.IsoTime(AObject, 'endedAt', True);
   Result.Branch := TJsonRead.Text(AObject, 'branch');
   Result.CommentBy := TJsonRead.Text(AObject, 'commentBy');
-  Result.CommentAt := TimeOf(AObject, 'commentAt');
+  Result.CommentAt := TJsonRead.IsoTime(AObject, 'commentAt', True);
   Result.Comment := TJsonRead.Text(AObject, 'comment');
 end;
 

@@ -9,7 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Shell.Replay;
+  Replay.Player;
 
 type
   /// <summary>Datei eines eingebetteten Falls: Name im Ordner und Inhalt.</summary>
@@ -31,11 +31,6 @@ type
   [TestFixture]
   TShellReplayServerTests = class
   public
-    /// <summary>Den Server einmal durchlaufen: Geteilte Speicher wie die Ordnerlisten der Unit-Suche
-    /// (TSharedUnitListings) entstehen beim ersten Gebrauch und leben bis Programmende; das ist kein Leck des
-    /// Tests.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     /// <summary>Hover auf einer gesunden Unit stürzt nicht ab: „nicht reproduziert“, Exit-Code 0.</summary>
     [Test]
     procedure HealthyHoverIsNotReproduced;
@@ -113,13 +108,6 @@ const
 
 { TShellReplayServerTests }
 
-procedure TShellReplayServerTests.WarmUpFirstUse;
-begin
-  TCrashReplayTest.Replay(cHoverRequest, TArray<TCrashReplayFile>.Create(TCrashReplayFile.Create('Demo.pas',
-    cDemoUnit)));
-  TCrashReplayTest.LastLog := nil;
-end;
-
 procedure TShellReplayServerTests.HealthyHoverIsNotReproduced;
 var
   mResult: TReplayResult;
@@ -127,7 +115,7 @@ begin
   mResult := TCrashReplayTest.Replay(cHoverRequest, TArray<TCrashReplayFile>.Create(
     TCrashReplayFile.Create('Demo.pas', cDemoUnit)));
   Assert.AreEqual<TReplayOutcome>(TReplayOutcome.NotReproduced, mResult.Outcome, mResult.Text);
-  Assert.AreEqual(TShellReplay.cExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TReplayPlayer.cExitNotReproduced, TReplayPlayer.ExitCodeOf(mResult));
   // Sauber beendet: Liefen beim Ende noch Anfragen, gibt die Komposition ihre Objekte absichtlich nicht frei.
   Assert.IsFalse(string.Join(#10, TCrashReplayTest.LastLog).Contains('liefen noch Anfragen'),
     string.Join(#10, TCrashReplayTest.LastLog));

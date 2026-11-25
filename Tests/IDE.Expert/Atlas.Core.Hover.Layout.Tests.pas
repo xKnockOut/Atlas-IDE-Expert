@@ -13,7 +13,7 @@ uses
   System.Types,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
-  Atlas.Core.Hover.Layout.Contract,
+  Atlas.Core.Hover.Layout.Input,
   Atlas.Core.Hover.View;
 
 type
@@ -102,10 +102,10 @@ uses
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
   System.SysUtils,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Hover.Layout.TestSupport;
 
 function Unavailable(const AReason: string): TAtlasDebugValue;

@@ -18,9 +18,6 @@ type
     FForm: TForm;
     FRuler: TAtlasOverviewRuler;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -42,23 +39,13 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Overview;
 
 type
   TRulerAccess = class(TAtlasOverviewRuler);
 
 { TAtlasOverviewRulerTests }
-
-procedure TAtlasOverviewRulerTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    KeepsWidth;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasOverviewRulerTests.SetUp;
 begin

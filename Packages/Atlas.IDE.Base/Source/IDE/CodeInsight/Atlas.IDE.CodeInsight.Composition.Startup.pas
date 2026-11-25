@@ -7,7 +7,7 @@ interface
 
 uses
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.StartTimes,
+  Atlas.Plugin.Diagnostics.StartTimes,
   Atlas.IDE.Diagnostics.SafeMode;
 
 /// <summary>Hinweis des abgesicherten Starts; nil vor StartSafeMode.</summary>
@@ -39,11 +39,11 @@ uses
   System.Classes,
   System.Win.Registry,
   Atlas.UI.Strings,
-  Atlas.Core.Localization.Language,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Localization.Language,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.Export,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status;
 
@@ -187,6 +187,9 @@ end;
 /// Handles liefert GetModuleFileName nichts, der Name der eingeblendeten Datei steht dann bei GetMappedFileName.
 /// </summary>
 function ResourceFileName(AInstance: HINST): string;
+const
+  // HINSTANCE eines Datendatei-Mappings trägt Flags in den unteren zwei Bit
+  cMappedFlags = 3;
 var
   mBuffer: array[0..MAX_PATH] of Char;
   mLength: DWORD;
@@ -194,7 +197,8 @@ begin
   Result := GetModuleName(AInstance);
   if Result = '' then
   begin
-    mLength := GetMappedFileName(GetCurrentProcess, Pointer(AInstance and not HINST(3)), @mBuffer[0], MAX_PATH);
+    mLength := GetMappedFileName(GetCurrentProcess, Pointer(AInstance and not HINST(cMappedFlags)), @mBuffer[0],
+      MAX_PATH);
     SetString(Result, mBuffer, mLength);
   end;
 end;
@@ -226,9 +230,12 @@ end;
 /// <summary>Sprache der IDE wie TAtlasIdeLanguage.Decide: geladene Ressourcen-DLLs der IDE, Eintrag für bds.exe
 /// unter Software\Embarcadero\Locales, Sprache der Windows-Oberfläche; Rückfall Englisch.</summary>
 function IdeLanguage: TAtlasIdeLanguage;
+const
+  // PRIMARYLANGID: die unteren zehn Bit der Sprachkennung.
+  cPrimaryLanguageMask = $3FF;
 begin
   Result := TAtlasIdeLanguage.Decide(ResourceCodes, RegisteredLanguage,
-    (GetUserDefaultUILanguage and $3FF) = LANG_GERMAN);
+    (GetUserDefaultUILanguage and cPrimaryLanguageMask) = LANG_GERMAN);
 end;
 
 procedure InstallLanguage;

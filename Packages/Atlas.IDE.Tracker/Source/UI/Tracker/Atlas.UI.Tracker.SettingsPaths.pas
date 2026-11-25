@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Tracker.SettingsPaths;
 
 // Feld „Arbeitskopien“ der Tabelle Projekte auf der Seite Issue-Tracker
-// (#1926, Mockup Runde 82 TP2): ein Ordner je Zeile, der erste ist die
+// (#1926): ein Ordner je Zeile, der erste ist die
 // Haupt-Arbeitskopie. Darunter „Ordner hinzufügen …“, „Prüfen“ (Art und
 // Branch je Ordner über den Haken OnCheckPaths) und „Vorschlagen …“ (#1929,
 // nur mit dem Haken OnSuggestPaths). Die Zeile selbst hält

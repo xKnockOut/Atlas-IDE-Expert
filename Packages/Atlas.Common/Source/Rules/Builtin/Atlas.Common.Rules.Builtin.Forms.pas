@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Forms;
 
-// Regeln zum Lebenslauf von Formularen (Runde 67):
+// Regeln zum Lebenslauf von Formularen:
 //   form-resource-missing   Neben der Unit liegt eine .dfm/.fmx, deren Wurzelklasse die Unit deklariert, aber
 //                           kein {$R …} bindet eine Formulardatei ein: Create löst EResNotFound aus (#1054).
 //                           Umgekehrt ein {$R *.dfm} bzw. {$R Name.dfm}, dessen Datei fehlt (wie F1026).
@@ -71,7 +71,7 @@ uses
   System.StrUtils,
   System.RegularExpressions,
   System.Generics.Collections,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.FormReferences,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -83,10 +83,11 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -391,20 +392,6 @@ begin
   end;
 end;
 
-function IntInArray(AValue: Integer; const AValues: TArray<Integer>): Boolean;
-var
-  mValue: Integer;
-begin
-  for mValue in AValues do
-  begin
-    if mValue = AValue then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 { TFormAutoCreateAndManualRule }
 
 type
@@ -675,7 +662,7 @@ begin
   for mPosition := mFirst to mLast - 4 do
   begin
     // Verschachtelte Routinen liegen im Rumpf der äußeren: jede Stelle einmal.
-    if not IsCreateAssignment(mPosition) or IntInArray(mPosition, FReported) then
+    if not IsCreateAssignment(mPosition) or TTextArrays.ContainsInteger(FReported, mPosition) then
     begin
       Continue;
     end;
@@ -924,7 +911,7 @@ begin
     Exit;
   end;
   mText := TFileEncoding.Decode(mData, mFormat_);
-  AUnits := TUsesClauses.UsedUnitsOf(mText);
+  AUnits := TPascalUses.UsedUnitsOf(mText);
   mMatch := TRegEx.Match(mText, '\b' + AClassName + '\s*=\s*class\s*\(\s*([\w.]+)', [roIgnoreCase]);
   if mMatch.Success then
   begin
@@ -1126,7 +1113,7 @@ begin
   begin
     Exit;
   end;
-  FUsedUnits := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  FUsedUnits := TPascalUses.UsedUnits(FContext.Tree.Tokens);
   FInherited_ := nil;
   CollectAncestors(mClassNode[0].Name);
   for mEvent in mOwn do

@@ -34,12 +34,12 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
-  Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Tracker.Templates,
   Atlas.UI.Tracker.Settings.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.UI.Tracker.QueryDialog;
+  Atlas.UI.Tracker.QueryDialog,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 function Connections: TArray<TAtlasTrackerConnection>;
 var

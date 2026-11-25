@@ -31,9 +31,6 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasDiscoverTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure NeverUsedComesBeforeUsed;
     [Test]
@@ -217,11 +214,6 @@ end;
 
 { TAtlasDiscoverTests }
 
-procedure TAtlasDiscoverTests.WarmUpFirstUse;
-begin
-  EnabledFollowsSettingAndCommand;
-end;
-
 procedure TAtlasDiscoverTests.NeverUsedComesBeforeUsed;
 var
   mUsage: TAtlasCommandUsage;
@@ -255,9 +247,11 @@ begin
   mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-discover-' + FormatDateTime('hhnnsszzz', Now));
   mTipsFile := TAtlasCommandUsage.DefaultFile(mFolder);
   mUsageFile := TAtlasCommandUsage.DefaultUsageFile(mFolder);
-  mUsage := TAtlasCommandUsage.Create;
-  mLoaded := TAtlasCommandUsage.Create;
+  mUsage := nil;
+  mLoaded := nil;
   try
+    mUsage := TAtlasCommandUsage.Create;
+    mLoaded := TAtlasCommandUsage.Create;
     mOrder := TAtlasDiscover.Order(Tips, mUsage, NoState, nil, True);
     Assert.AreEqual('codeActions', mOrder[0]);
     mAge := TAtlasDiscover.UsageAge(Tips[0], mUsage, True, Moment(15, 10));
@@ -522,9 +516,11 @@ begin
   mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-discover-' + FormatDateTime('hhnnsszzz', Now) + '-s');
   mTipsFile := TAtlasCommandUsage.DefaultFile(mFolder);
   mUsageFile := TAtlasCommandUsage.DefaultUsageFile(mFolder);
-  mUsage := TAtlasCommandUsage.Create;
-  mLoaded := TAtlasCommandUsage.Create;
+  mUsage := nil;
+  mLoaded := nil;
   try
+    mUsage := TAtlasCommandUsage.Create;
+    mLoaded := TAtlasCommandUsage.Create;
     mState := NoState;
     mState.Block('rename');
     mState.Last := 'codeActions';

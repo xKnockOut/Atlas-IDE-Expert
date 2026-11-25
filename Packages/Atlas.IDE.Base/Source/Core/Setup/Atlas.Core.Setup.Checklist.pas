@@ -25,9 +25,10 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Commands.KeyConflicts;
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Core.Commands.KeyConflicts,
+  Atlas.Core.Setup.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -213,34 +214,19 @@ type
     class function StateMark(AState: TAtlasStatusState): string; static;
   end;
 
-  /// <summary>Was die Knöpfe in der IDE tun; Tests setzen eine eigene Umgebung ein.</summary>
-  IAtlasSetupEnvironment = interface
-    ['{5E2A9C61-7B3D-4F08-A1C4-93D6E28B7F15}']
-    /// <summary>Zustand für die Prüfungen sammeln (Hauptthread, schnell; die Serverabfrage läuft im
-    /// Hintergrund).</summary>
-    function Snapshot: TAtlasSetupInput;
-    /// <summary>Dateiauswahl für AtlasServer.exe; False bei Abbruch.</summary>
-    function ChooseServerPath(out APath: string): Boolean;
-    /// <summary>Pfad in den Plugin-Einstellungen speichern (ServerPath).</summary>
-    procedure SaveServerPath(const APath: string);
-    /// <summary>Server starten bzw. neu starten; True, wenn er läuft.</summary>
-    function StartServer(ARestart: Boolean): Boolean;
-    /// <summary>atlas.server.rebuildIndex; True, wenn der Server den Befehl angenommen hat.</summary>
-    function RebuildIndex: Boolean;
-    /// <summary>Error Insight der IDE schalten; True, wenn geschrieben.</summary>
-    function SetErrorInsight(AEnabled: Boolean): Boolean;
-    /// <summary>Optionsseite „Tastenkonflikte“ öffnen.</summary>
-    procedure OpenKeyConflicts;
-  end;
+  /// <summary>Zustand für die Prüfungen sammeln (Hauptthread, schnell; die Serverabfrage läuft im
+  /// Hintergrund).</summary>
+  TAtlasSetupSnapshot = reference to function: TAtlasSetupInput;
 
   TAtlasSetupController = class
   private
     FEnvironment: IAtlasSetupEnvironment;
+    FSnapshot: TAtlasSetupSnapshot;
     FResults: TArray<TAtlasSetupResult>;
     FKey: string;
     FVersion: Integer;
   public
-    constructor Create(const AEnvironment: IAtlasSetupEnvironment);
+    constructor Create(const AEnvironment: IAtlasSetupEnvironment; const ASnapshot: TAtlasSetupSnapshot);
     /// <summary>Neu prüfen; Version steigt nur, wenn sich ein Punkt geändert hat.</summary>
     function Refresh: TArray<TAtlasSetupResult>;
     /// <summary>Knopf ausführen und neu prüfen; False, wenn nichts zu tun war (None, Explain, Abbruch).</summary>
@@ -363,12 +349,7 @@ begin
   begin
     Exit;
   end;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if not (mValue is TJSONObject) then
     begin
@@ -902,6 +883,8 @@ begin
   end;
 end;
 class function TAtlasSetupChecklist.Report(const AInput: TAtlasSetupReportInput): string;
+const
+  cIdePrefix = ', IDE ';
 var
   mBuilder: TStringBuilder;
   mLine: TAtlasSetupReportLine;
@@ -913,7 +896,7 @@ begin
     mVersions := 'Atlas ' + AInput.AtlasVersion;
     if AInput.IdeVersion <> '' then
     begin
-      mVersions := mVersions + ', IDE ' + AInput.IdeVersion;
+      mVersions := mVersions + cIdePrefix + AInput.IdeVersion;
     end;
     if AInput.Platform <> '' then
     begin
@@ -946,22 +929,30 @@ end;
 
 { TAtlasSetupController }
 
-constructor TAtlasSetupController.Create(const AEnvironment: IAtlasSetupEnvironment);
+constructor TAtlasSetupController.Create(const AEnvironment: IAtlasSetupEnvironment;
+  const ASnapshot: TAtlasSetupSnapshot);
 begin
   inherited Create;
   FEnvironment := AEnvironment;
+  FSnapshot := ASnapshot;
 end;
 
 function TAtlasSetupController.Refresh: TArray<TAtlasSetupResult>;
 var
   mItem: TAtlasSetupResult;
+  mKeys: TStringBuilder;
   mKey: string;
 begin
-  FResults := TAtlasSetupChecklist.Evaluate(FEnvironment.Snapshot);
-  mKey := '';
-  for mItem in FResults do
-  begin
-    mKey := mKey + mItem.Key + #10;
+  FResults := TAtlasSetupChecklist.Evaluate(FSnapshot());
+  mKeys := TStringBuilder.Create;
+  try
+    for mItem in FResults do
+    begin
+      mKeys.Append(mItem.Key).Append(#10);
+    end;
+    mKey := mKeys.ToString;
+  finally
+    mKeys.Free;
   end;
   if mKey <> FKey then
   begin

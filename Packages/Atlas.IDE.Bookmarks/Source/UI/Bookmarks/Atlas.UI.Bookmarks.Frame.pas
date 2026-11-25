@@ -161,7 +161,17 @@ uses
   Vcl.Themes,
   Atlas.UI.Bookmarks.Strings,
   Atlas.Core.Marks.Ids,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Theme.Service;
+
+const
+  // Spaltenbreiten bei 96 dpi.
+  cNameWidth = 160;
+  cFileWidth = 120;
+  cMethodWidth = 140;
+  cLineWidth = 240;
+  cNumberWidth = 36;
 
 {$R *.dfm}
 
@@ -172,20 +182,6 @@ begin
   Result.Width := MulDiv(AWidth, APPI, 96);
 end;
 
-function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  AMenu.Items.Add(Result);
-end;
-
-function ListColor(AList: TListView; AColor: TColor): TColor;
-begin
-  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular.
-  Result := ColorToRGB(StyleServices(AList).GetSystemColor(AColor));
-end;
-
 procedure RowColors(AList: TListView; ACanvas: TCanvas; ASelected, AGray: Boolean);
 begin
   // Farben ausdrücklich aus dem Stil der Liste: Nach einer geänderten Schriftfarbe zeichnet die Liste sonst mit den
@@ -193,19 +189,19 @@ begin
   // Prüfliste jede Zeile blau, auch die nicht gewählten.
   if ASelected then
   begin
-    ACanvas.Brush.Color := ListColor(AList, clHighlight);
-    ACanvas.Font.Color := ListColor(AList, clHighlightText);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, clHighlight);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clHighlightText);
   end
   else
   begin
-    ACanvas.Brush.Color := ListColor(AList, AList.Color);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(AList, AList.Color);
     if AGray then
     begin
-      ACanvas.Font.Color := ListColor(AList, clGrayText);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, clGrayText);
     end
     else
     begin
-      ACanvas.Font.Color := ListColor(AList, AList.Font.Color);
+      ACanvas.Font.Color := TAtlasUiTheme.SystemColor(AList, AList.Font.Color);
     end;
   end;
 end;
@@ -242,7 +238,7 @@ begin
   Result.AlignWithMargins := True;
   Result.ShowAccelChar := False;
   Result.EllipsisPosition := epEndEllipsis;
-  Result.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(Result, clGrayText);
   Result.Caption := '';
 end;
 
@@ -251,24 +247,24 @@ procedure BuildMenu(AFrame: TAtlasBookmarksFrame; AEvents: TAtlasBookmarksFrame.
 begin
   AParts.Menu := TPopupMenu.Create(AFrame);
   AParts.Menu.OnPopup := AEvents.MenuPopup;
-  AParts.OpenItem := AddMenuItem(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuGoTo),
+  AParts.OpenItem := TAtlasMenus.Add(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksMenuGoTo),
     AEvents.OpenClick);
   AParts.OpenItem.Default := True;
-  AParts.RenameItem := AddMenuItem(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksRename),
+  AParts.RenameItem := TAtlasMenus.Add(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksRename),
     AEvents.RenameClick);
-  AParts.DeleteItem := AddMenuItem(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDelete),
+  AParts.DeleteItem := TAtlasMenus.Add(AParts.Menu, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDelete),
     AEvents.DeleteClick);
 end;
 
 procedure AddColumns(AList: TListView; APPI: Integer);
 begin
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnName), 160, APPI);
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnFile), 120, APPI);
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnMethod), 140, APPI);
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnLine), 240, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnName), cNameWidth, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnFile), cFileWidth, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnMethod), cMethodWidth, APPI);
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnLine), cLineWidth, APPI);
   // „Nr.“ hinten angelegt, damit der Name die bearbeitbare erste Spalte bleibt; CreateWnd zeigt sie vorn.
-  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnNumber), 36, APPI).Alignment :=
-    taCenter;
+  AddColumn(AList, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksColumnNumber), cNumberWidth,
+    APPI).Alignment := taCenter;
 end;
 
 function BuildList(AFrame: TAtlasBookmarksFrame; AEvents: TAtlasBookmarksFrame.TEvents;
@@ -307,7 +303,7 @@ begin
   Result.Align := alClient;
   Result.AlignWithMargins := True;
   Result.ShowAccelChar := False;
-  Result.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(Result, clGrayText);
   Result.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksEmpty);
   Result.Visible := False;
 end;
@@ -669,7 +665,7 @@ var
   mId: string;
 begin
   mId := SelectedId;
-  if (mId <> '') and (ANumber >= 1) and (ANumber <= 9) and Assigned(FHandlers.OnNumber) then
+  if (mId <> '') and (ANumber >= 1) and (ANumber <= cMaxBookmarkNumber) and Assigned(FHandlers.OnNumber) then
   begin
     FHandlers.OnNumber(mId, ANumber);
   end;

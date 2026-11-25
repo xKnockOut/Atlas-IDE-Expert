@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.Completion.Names;
 
 // Namensvorschläge an der Namensposition einer Deklaration (#452) und das Präfix dafür (Vorgabe des Projekts
-// oder Zählung im Index). Aus Atlas.Common.Lsp.Completion herausgelöst.
+// oder Zählung im Index). Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
@@ -36,18 +36,18 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.NameSuggestions,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.Completion.Context;
+  Atlas.Text.Lines;
 
 /// <summary>Der Name, der an der Namensposition ASite schon steht; '' ohne.</summary>
 function OwnNameAt(ARequest: TCompletionRequest; const ASite: TNameSite): string;
 begin
   Result := '';
-  if ComparePositions(ASite.NameRange.StartPos, ASite.NameRange.EndPos) <> 0 then
+  if TTextPosition.Compare(ASite.NameRange.StartPos, ASite.NameRange.EndPos) <> 0 then
   begin
     Result := Copy(ARequest.LineText(ASite.NameRange.StartPos.Line), ASite.NameRange.StartPos.Character + 1,
       ASite.NameRange.EndPos.Character - ASite.NameRange.StartPos.Character);
@@ -265,7 +265,7 @@ begin
     mItem.Detail := mSite.TypeText;
     mItem.Fits := True;
     mItem.HasTextEdit := True;
-    mItem.TextEdit := TRuleEdit.Create(mSite.NameRange, mName);
+    mItem.TextEdit := TTextEdit.Create(mSite.NameRange, mName);
     AItems.Items := AItems.Items + [mItem];
   end;
   Result := Length(AItems.Items) > 0;

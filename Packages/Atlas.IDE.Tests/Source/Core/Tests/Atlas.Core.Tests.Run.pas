@@ -222,6 +222,10 @@ type
     /// <summary>Ende des Laufs mit Ausgang AOutcome des Prozessläufers; AValid: Der Bericht ließ sich lesen.
     /// </summary>
     class function FinishOf(AOutcome: TAtlasVcsOutcome; AValid: Boolean): TAtlasTestFinish; static;
+    /// <summary>Lauf mit Ende AFinish und Bericht ARun ging schief (#2467): mindestens ein Test fehlgeschlagen
+    /// oder mit Fehler, bzw. ohne Bericht oder nach der Zeitgrenze abgebrochen. Nicht nach einem Abbruch durch den
+    /// Benutzer.</summary>
+    class function WentWrong(AFinish: TAtlasTestFinish; const ARun: TTestRunResult): Boolean; static;
     /// <summary>Die letzten ACount Zeilen von ALines (alle, wenn es weniger sind).</summary>
     class function LastLines(const ALines: TArray<string>; ACount: Integer): TArray<string>; static;
     /// <summary>Ist AFileName die Datei der Unit AUnitName (.pas, Name ohne Groß-/Kleinschreibung)?</summary>
@@ -848,6 +852,18 @@ begin
   else
   begin
     Result := TAtlasTestFinish.Report;
+  end;
+end;
+
+class function TAtlasTestRun.WentWrong(AFinish: TAtlasTestFinish; const ARun: TTestRunResult): Boolean;
+begin
+  case AFinish of
+    TAtlasTestFinish.TimedOut, TAtlasTestFinish.NoReport:
+      Result := True;
+    TAtlasTestFinish.Report:
+      Result := Length(ARun.Failures) > 0;
+  else
+    Result := False;
   end;
 end;
 

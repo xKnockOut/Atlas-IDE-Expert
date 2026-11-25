@@ -19,7 +19,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Designer.InsertSpace,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.UI.Designer.Dialog;
 
 type
   TAtlasSpaceOptions = record
@@ -28,7 +28,7 @@ type
     Snap: Boolean;
   end;
 
-  TAtlasSpaceDialog = class(TAtlasDialog)
+  TAtlasSpaceDialog = class(TAtlasDesignerDialog)
   public const
     cDialogWidth = 360;
     cMaxAmount = 2000;
@@ -37,7 +37,6 @@ type
     FColumns: TRadioButton;
     FAmount: TEdit;
     FSnap: TCheckBox;
-    function AddRow: TFlowPanel;
     function AddRadio(AParent: TWinControl; const ACaption: string; ATop: Integer): TRadioButton;
     procedure AddButtons;
   public
@@ -59,7 +58,6 @@ uses
   Atlas.UI.Designer.Strings;
 
 const
-  cGap = 10;
   cNumberWidth = 56;
   cRadioHeight = 22;
 
@@ -69,7 +67,6 @@ constructor TAtlasSpaceDialog.CreateDialog(AOwner: TComponent; ARemove: Boolean;
 var
   mRow: TFlowPanel;
   mGroup: TPanel;
-  mLabel: TLabel;
 begin
   inherited CreateDialog(AOwner, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceInsertTitle),
     cDialogWidth);
@@ -85,26 +82,22 @@ begin
   mGroup.Align := alTop;
   mGroup.BevelOuter := bvNone;
   mGroup.AlignWithMargins := True;
-  mGroup.Margins.SetBounds(cGap, cGap, cGap, 0);
+  mGroup.Margins.SetBounds(Gap, Gap, Gap, 0);
   mGroup.Height := ScaleValue(cRadioHeight * 2);
   FRows := AddRadio(mGroup, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceRows), 0);
   FColumns := AddRadio(mGroup, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceColumns),
     ScaleValue(cRadioHeight));
-  mRow := AddRow;
-  mLabel := TLabel.Create(Self);
-  mLabel.Parent := mRow;
-  mLabel.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceAmount);
-  mLabel.AlignWithMargins := True;
-  mLabel.Margins.SetBounds(0, ScaleValue(3), cGap div 2, 0);
+  mRow := AddFlowRow;
+  AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceAmount));
   FAmount := TEdit.Create(Self);
   FAmount.Parent := mRow;
   FAmount.Width := ScaleValue(cNumberWidth);
   FAmount.NumbersOnly := True;
-  mRow := AddRow;
+  mRow := AddFlowRow;
   FSnap := TCheckBox.Create(Self);
   FSnap.Parent := mRow;
   FSnap.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceSnap);
-  FSnap.Width := Canvas.TextWidth(FSnap.Caption) + ScaleValue(24);
+  FSnap.Width := CheckWidth(FSnap.Caption);
   AddButtons;
 
   FRows.Checked := AOptions.Axis = TAtlasSpaceAxis.Rows;
@@ -114,25 +107,12 @@ begin
   ActiveControl := FAmount;
 end;
 
-function TAtlasSpaceDialog.AddRow: TFlowPanel;
-begin
-  Result := TFlowPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AutoSize := True;
-  Result.BevelOuter := bvNone;
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  // Hinter alle bisherigen Zeilen (alTop ordnet nach Top).
-  Result.Top := ScaleValue(2000) + ComponentCount;
-end;
-
 function TAtlasSpaceDialog.AddRadio(AParent: TWinControl; const ACaption: string; ATop: Integer): TRadioButton;
 begin
   Result := TRadioButton.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.SetBounds(0, ATop, Canvas.TextWidth(ACaption) + ScaleValue(24), ScaleValue(cRadioHeight - 2));
+  Result.SetBounds(0, ATop, CheckWidth(ACaption), ScaleValue(cRadioHeight - 2));
 end;
 
 procedure TAtlasSpaceDialog.AddButtons;
@@ -140,21 +120,21 @@ var
   mButtons: TFlowPanel;
   mButton: TButton;
 begin
-  mButtons := AddRow;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  mButtons := AddFlowRow;
+  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
   mButton := TButton.Create(Self);
   mButton.Parent := mButtons;
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceOk);
   mButton.Default := True;
   mButton.ModalResult := mrOk;
   mButton.AlignWithMargins := True;
-  mButton.Margins.SetBounds(0, 0, cGap, 0);
+  mButton.Margins.SetBounds(0, 0, Gap, 0);
   mButton := TButton.Create(Self);
   mButton.Parent := mButtons;
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
+  ClientHeight := mButtons.Top + mButtons.Height + Gap;
 end;
 
 function TAtlasSpaceDialog.Options: TAtlasSpaceOptions;

@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.MyIssues.Tests;
 
-// Bereich „Meine Issues“ der Willkommensseite (#765, Mockup #ws12): Titel,
+// Bereich „Meine Issues“ der Willkommensseite (#765): Titel,
 // Chip des Pull Requests mit CI-Ampel, Zeile zum Stand („Stand vom …“ ohne
 // Netz), Fußzeile vor und nach „Beginnen“, Kurztext „ATL-123 · 3 offen“;
 // Klicks auf Kennung, Pull Request und „Beginnen“ erreichen die Quelle über
@@ -24,9 +24,6 @@ type
   [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerIssuesViewTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen (Warteschlange des Hauptthreads, Menüs).</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure TextsFollowMockup;
     [Test]
@@ -78,12 +75,14 @@ uses
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.Core.Tracker.Reopened,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.MyIssues,
-  Atlas.UI.Tracker.MyIssues.Text;
+  Atlas.UI.Tracker.MyIssues.Text,
+  Atlas.Core.Tracker.Contract.MyIssues,
+  Atlas.UI.Tracker.Contract.MyIssues,
+  Atlas.Core.Tracker.TestSupport;
 
 type
   /// <summary>Quelle des Bereichs für die Tests; merkt sich die Aufrufe.</summary>
@@ -116,15 +115,7 @@ begin
   Result := EncodeDate(2026, 10, 16) + EncodeTime(9, 0, 0, 0);
 end;
 
-function Issue(const AKey: string; ANumber: Integer; const ATitle: string): TAtlasTrackerIssue;
-begin
-  Result := TAtlasTrackerIssue.Empty;
-  Result.Key := AKey;
-  Result.Number := ANumber;
-  Result.Title := ATitle;
-end;
-
-/// <summary>Zwei GitHub-Issues wie im Mockup, eines mit Pull Request; Git.</summary>
+/// <summary>Zwei GitHub-Issues, eines mit Pull Request; Git.</summary>
 function SampleView: TAtlasIssuesView;
 var
   mTarget: TAtlasTrackerTarget;
@@ -240,16 +231,6 @@ end;
 
 { TAtlasTrackerIssuesViewTests }
 
-procedure TAtlasTrackerIssuesViewTests.WarmUpFirstUse;
-begin
-  try
-    ClicksReachSource;
-  except
-    on Exception do
-      ;
-  end;
-end;
-
 procedure TAtlasTrackerIssuesViewTests.TextsFollowMockup;
 var
   mSaved: TAtlasLanguage;
@@ -271,7 +252,7 @@ begin
     Assert.IsFalse(mView.IsUnseen(mView.Items[1].Key));
     Assert.IsFalse(mView.IsUnseen(''));
     mView.Unseen := nil;
-    // Mockup: Chip „PR #640 · CI grün“.
+    // Chip „PR #… · CI grün“.
     Assert.AreEqual('PR #760 · CI grün', TAtlasTrackerIssuesText.PullRequestText(mView.Items[0].PullRequest));
     mPull := mView.Items[0].PullRequest;
     mPull.Checks := TAtlasTrackerChecks.Failure;
@@ -287,7 +268,7 @@ begin
       mView.Items[0]));
     mView.Options.Start := TAtlasIssueStart.Remember;
     Assert.AreEqual('Merkt #753 als aktuelles Issue', TAtlasTrackerIssuesText.StartHint(mView, mView.Items[0]));
-    // Kurztext wie die Kachel im Mockup: „ATL-123 · 3 offen“.
+    // Kurztext wie die Kachel: „ATL-123 · 3 offen“.
     Assert.AreEqual('GitHub · 2 offen', TAtlasTrackerIssuesText.TileText(mView));
     mView.Active.Key := 'ATL-123';
     mView.Items := mView.Items + [Issue('ATL-124', 124, 'x')];
@@ -306,7 +287,7 @@ begin
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     mView := SampleView;
-    // Frischer Stand: keine Zeile über der Liste; Fußzeile wie im Mockup.
+    // Frischer Stand: keine Zeile über der Liste; Fußzeile mit Hinweis.
     Assert.AreEqual('', TAtlasTrackerIssuesText.StatusText(mView));
     Assert.AreEqual('„Beginnen“ legt den Branch an und öffnet das Projekt.',
       TAtlasTrackerIssuesText.FooterText(mView));
@@ -556,7 +537,7 @@ end;
 procedure AssertQueryMenu(const AFrame: TAtlasTrackerIssuesView);
 begin
   AFrame.Queries.Fill;
-  Assert.AreEqual(5, AFrame.Queries.QueryMenu.Items.Count);
+  Assert.AreEqual(5, Integer(AFrame.Queries.QueryMenu.Items.Count));
   Assert.AreEqual('Standard (2)', AFrame.Queries.QueryMenu.Items[0].Caption);
   Assert.IsTrue(AFrame.Queries.QueryMenu.Items[0].Checked);
   Assert.IsFalse(AFrame.Queries.QueryMenu.Items[1].Checked);
@@ -689,7 +670,7 @@ procedure CheckProjectMenu(AFake: TFakeIssues; AFrame: TAtlasTrackerIssuesView);
 begin
   // Automatisch (mit Projekt), zwei Tracker-Projekte, Alle, Linie, bearbeiten.
   AFrame.Queries.Projects.Fill;
-  Assert.AreEqual(6, AFrame.Queries.Projects.Menu.Items.Count);
+  Assert.AreEqual(6, Integer(AFrame.Queries.Projects.Menu.Items.Count));
   Assert.AreEqual('Automatisch – nach dem Delphi-Projekt (Kasse)', AFrame.Queries.Projects.Menu.Items[0].Caption);
   Assert.IsTrue(AFrame.Queries.Projects.Menu.Items[0].Checked);
   Assert.AreEqual('Firma · KASSE', AFrame.Queries.Projects.Menu.Items[1].Caption);
@@ -767,7 +748,7 @@ begin
     mFake.FView := mView;
     mFrame.UpdateContent;
     mFrame.Queries.Projects.Fill;
-    Assert.AreEqual(5, mFrame.Queries.Projects.Menu.Items.Count);
+    Assert.AreEqual(5, Integer(mFrame.Queries.Projects.Menu.Items.Count));
     Assert.IsTrue(mFrame.Queries.Projects.Menu.Items[2].Checked);
     // issues.projectPicker aus: keine Klappliste.
     mView.ProjectPicker := False;

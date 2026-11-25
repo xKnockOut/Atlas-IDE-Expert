@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Designer.SettingsSection;
 
-// Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456; vorher im Teil
-// „Editor“ von Base): Modulschalter und Designer-Leiste im Formular-Designer (#1442), Tab-Reihenfolge (#603),
+// Abschnitt „Editor“ des Moduls Designer im Optionsdialog (#1456):
+// Modulschalter und Designer-Leiste im Formular-Designer (#1442), Tab-Reihenfolge (#603),
 // Gleiche auswählen (#738), Befehle im Menü „Anordnen“ (#730 ff.), fast bündige Kanten (#746), Standardgrößen
 // (#747), Ebenen (#749), Format-Pinsel (#726), Anchors vorschlagen (#727), Texte des Formulars (#728), Label und
 // Feld (#729), Formularraster (#731), Einpacken in Container (#733), Schriften und Farben (#741), Gruppen (#744),
@@ -13,7 +13,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Section;
 
 type
@@ -248,6 +248,8 @@ begin
   Switch('designer.dataBindings', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDataBindings));
   Switch('designer.extractFrame', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsExtractFrame));
   Switch('designer.eventMap', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsEventMap));
+  Switch('designer.rememberButtons',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsRememberButtons));
   BuildLayoutRows;
 end;
 

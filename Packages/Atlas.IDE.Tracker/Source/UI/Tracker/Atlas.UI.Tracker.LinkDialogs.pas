@@ -24,7 +24,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasSubtaskDialog = class(TAtlasDialog)
@@ -107,11 +107,18 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.Issue.Strings;
+  Atlas.UI.Tracker.Issue.Strings,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
   cDialogWidth = 520;
+  /// <summary>Knöpfe: Rand um die Beschriftung, Mindestbreite, Höhe; Höhe der unteren Leiste.</summary>
+  cButtonPadding = 32;
+  cMinButtonWidth = 90;
+  cButtonHeight = 28;
+  cBottomBarHeight = 44;
+  cDescriptionHeight = 140;
 
 function Scaled(AForm: TForm; AValue: Integer): Integer;
 begin
@@ -130,16 +137,16 @@ begin
   mMeasure := TBitmap.Create;
   try
     mMeasure.Canvas.Font.Assign(AForm.Font);
-    Result.Width := mMeasure.Canvas.TextWidth(ACaption) + Scaled(AForm, 32);
+    Result.Width := mMeasure.Canvas.TextWidth(ACaption) + Scaled(AForm, cButtonPadding);
   finally
     mMeasure.Free;
   end;
-  if Result.Width < Scaled(AForm, 90) then
+  if Result.Width < Scaled(AForm, cMinButtonWidth) then
   begin
-    Result.Width := Scaled(AForm, 90);
+    Result.Width := Scaled(AForm, cMinButtonWidth);
   end;
   Result.Top := Scaled(AForm, cGap);
-  Result.Height := Scaled(AForm, 28);
+  Result.Height := Scaled(AForm, cButtonHeight);
   Result.Anchors := [akTop, akRight];
 end;
 
@@ -148,7 +155,7 @@ begin
   Result := TPanel.Create(AForm);
   Result.Parent := AForm;
   Result.Align := alBottom;
-  Result.Height := Scaled(AForm, 44);
+  Result.Height := Scaled(AForm, cBottomBarHeight);
   Result.BevelOuter := bvNone;
   Result.ShowCaption := False;
 end;
@@ -175,7 +182,7 @@ begin
   FTitle.Parent := Self;
   FTitle.Align := alTop;
   FTitle.AlignWithMargins := True;
-  FTitle.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FTitle, cGap, 0, cGap, 0);
   FTitle.Top := FTitle.ScaleValue(cTitleTop);
   FTitle.MaxLength := TAtlasTrackerIssue.cMaxTitle;
   FTitle.OnChange := TitleChange;
@@ -187,9 +194,9 @@ begin
   FDescription.Parent := Self;
   FDescription.Align := alTop;
   FDescription.AlignWithMargins := True;
-  FDescription.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FDescription, cGap, 0, cGap, 0);
   FDescription.Top := FDescription.ScaleValue(cDescriptionTop);
-  FDescription.Height := ScaleValue(140);
+  FDescription.Height := ScaleValue(cDescriptionHeight);
   FDescription.ScrollBars := ssVertical;
   FDescription.WantReturns := True;
   FDescriptionLabel.FocusControl := FDescription;
@@ -223,7 +230,7 @@ begin
   Result.Parent := Self;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
+  TAtlasControlScaling.SetMargins(Result, cGap, cGap, cGap, cGap div 2);
   Result.Top := ATop;
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
@@ -281,6 +288,11 @@ end;
 { TAtlasIssueLinkDialog }
 
 constructor TAtlasIssueLinkDialog.CreateDialog(AOwner: TComponent; const AKey, AProvider: string);
+const
+  // Reihenfolge der oben ausgerichteten Steuerelemente über ihr Top beim Anlegen.
+  cBlocksTop = 100;
+  cOtherLabelTop = 200;
+  cOtherTop = 300;
 var
   mBottom: TPanel;
 begin
@@ -293,7 +305,7 @@ begin
   FDependsOn.Parent := Self;
   FDependsOn.Align := alTop;
   FDependsOn.AlignWithMargins := True;
-  FDependsOn.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FDependsOn, cGap, cGap, cGap, 0);
   FDependsOn.Top := 0;
   FDependsOn.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkDependsOn, [AKey]);
   FDependsOn.Checked := True;
@@ -302,16 +314,16 @@ begin
   FBlocks.Parent := Self;
   FBlocks.Align := alTop;
   FBlocks.AlignWithMargins := True;
-  FBlocks.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
-  FBlocks.Top := FBlocks.ScaleValue(100);
+  TAtlasControlScaling.SetMargins(FBlocks, cGap, cGap div 2, cGap, 0);
+  FBlocks.Top := FBlocks.ScaleValue(cBlocksTop);
   FBlocks.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkBlocks, [AKey]);
 
   FOtherLabel := TLabel.Create(Self);
   FOtherLabel.Parent := Self;
   FOtherLabel.Align := alTop;
   FOtherLabel.AlignWithMargins := True;
-  FOtherLabel.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
-  FOtherLabel.Top := FOtherLabel.ScaleValue(200);
+  TAtlasControlScaling.SetMargins(FOtherLabel, cGap, cGap, cGap, cGap div 2);
+  FOtherLabel.Top := FOtherLabel.ScaleValue(cOtherLabelTop);
   FOtherLabel.ShowAccelChar := False;
   FOtherLabel.Caption := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssueLinkKey,
     [TAtlasIssuePreview.KeyExample(AProvider)]);
@@ -320,8 +332,8 @@ begin
   FOther.Parent := Self;
   FOther.Align := alTop;
   FOther.AlignWithMargins := True;
-  FOther.Margins.SetBounds(cGap, 0, cGap, 0);
-  FOther.Top := FOther.ScaleValue(300);
+  TAtlasControlScaling.SetMargins(FOther, cGap, 0, cGap, 0);
+  FOther.Top := FOther.ScaleValue(cOtherTop);
   FOther.OnChange := OtherChange;
   FOtherLabel.FocusControl := FOther;
 

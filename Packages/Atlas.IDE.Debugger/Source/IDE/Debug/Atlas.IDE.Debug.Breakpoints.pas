@@ -22,7 +22,6 @@ uses
 type
   TAtlasIdeBreakpoints = class
   public
-    class function Debugger: IOTADebuggerServices; static;
     /// <summary>Laufender oder angehaltener Prozess; nil ohne.</summary>
     class function CurrentProcess: IOTAProcess; static;
     /// <summary>Angehaltener Prozess (auch nach Fehler oder Exception); nil sonst.</summary>
@@ -51,22 +50,18 @@ type
 
 implementation
 
-{ TAtlasIdeBreakpoints }
+uses
+  Atlas.ToolsApi.Debugger.Services,
+  Atlas.Plugin.Diagnostics.Guard;
 
-class function TAtlasIdeBreakpoints.Debugger: IOTADebuggerServices;
-begin
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
-  begin
-    Result := nil;
-  end;
-end;
+{ TAtlasIdeBreakpoints }
 
 class function TAtlasIdeBreakpoints.CurrentProcess: IOTAProcess;
 var
   mServices: IOTADebuggerServices;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices <> nil) and (mServices.ProcessCount > 0) then
   begin
     Result := mServices.CurrentProcess;
@@ -108,7 +103,7 @@ var
   mExisting: IOTASourceBreakpoint;
 begin
   Result := False;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -128,7 +123,7 @@ var
   mServices: IOTADebuggerServices;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (AFileName = '') or (ALine < 0) or Exists(AFileName, ALine) then
   begin
     Exit;
@@ -136,8 +131,11 @@ begin
   try
     Result := mServices.NewSourceBreakpoint(AFileName, ALine + 1, nil);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
+    end;
   end;
 end;
 
@@ -153,8 +151,10 @@ begin
     Result.GroupName := AGroup;
   except
     // Ohne Gruppe hält der Haltepunkt genauso.
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Haltepunktgruppe nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+    end;
   end;
 end;
 
@@ -165,7 +165,7 @@ var
   mExisting: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -186,7 +186,7 @@ var
   mFileName: string;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (ABreakpoint = nil) or (ALine < 0) then
   begin
     Exit;
@@ -206,8 +206,11 @@ begin
         CopyProperties(ABreakpoint, Result);
       end;
     except
-      on Exception do
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Debugger: Haltepunkt nicht verschoben: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
         Result := nil;
+      end;
     end;
   end;
   if Result <> nil then
@@ -216,8 +219,10 @@ begin
       mServices.RemoveBreakpoint(ABreakpoint);
     except
       // Schon vom Benutzer gelöscht: nichts mehr zu tun.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Debugger: Haltepunkt nicht entfernt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      end;
     end;
   end;
 end;
@@ -251,8 +256,10 @@ begin
     AServices.RemoveBreakpoint(ABreakpoint);
   except
     // Schon vom Benutzer gelöscht: nichts mehr zu tun.
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Haltepunkt nicht entfernt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+    end;
   end;
 end;
 
@@ -261,7 +268,7 @@ var
   mServices: IOTADebuggerServices;
   mBreakpoint: IOTABreakpoint;
 begin
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   try
     if mServices <> nil then
     begin

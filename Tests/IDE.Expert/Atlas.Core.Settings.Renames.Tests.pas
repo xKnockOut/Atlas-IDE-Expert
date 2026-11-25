@@ -45,7 +45,8 @@ uses
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Renames,
-  Atlas.Core.Settings.QueryMigration;
+  Atlas.Core.Settings.QueryMigration,
+  Atlas.Core.Settings.Contract;
 
 /// <summary>Katalog mit Text-, Wahrheits- und Zahleinstellung unter neuem Namen, je mit früherem Namen.</summary>
 function TestCatalog: TAtlasSettingsCatalog;
@@ -225,7 +226,7 @@ begin
     mStore.WriteString('WelcomePageIssuesCommitPattern', '[{kennung}] ');
     mStore.WriteInteger('TrackerLogin', 0);
     mRenames := Apply(mStore, mCatalog);
-    // Die Abfrage übernimmt seit #1262 TAtlasSettingsQueryMigrations (als „Standard“ in issues.queries).
+    // Die Abfrage übernimmt TAtlasSettingsQueryMigrations (#1262) (als „Standard“ in issues.queries).
     Assert.AreEqual(5, Integer(Length(mRenames)), 'je früherem Namen eine Übernahme');
     Assert.IsTrue((mStore as IAtlasSettingsNames).Contains('WelcomePageIssuesQuery'));
     mMigration := TAtlasSettingsQueryMigrations.Migrate(mStore, mStore as IAtlasSettingsNames, mStore);
@@ -290,7 +291,7 @@ var
 begin
   mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    // issues.query (#1280) geht seit #1262 in issues.queries auf.
+    // issues.query (#1280) geht in issues.queries auf (#1262).
     mExpected := mCatalog.IndexOfKey('issues.queries');
     Assert.IsTrue(mExpected >= 0);
     Assert.IsTrue(mCatalog.IndexOfKey('issues.query') < 0);
@@ -316,7 +317,7 @@ begin
   try
     Assert.IsTrue(mHistory.LoadJson('[{"changedAt":"2026-10-27T10:00:00.000Z","settings":' +
       '{"WelcomePageIssuesQuery":"label:bug","WelcomePageIssuesTracker":"github"}}]'));
-    Assert.AreEqual(1, mHistory.Count);
+    Assert.AreEqual(1, Integer(mHistory.Count));
     Assert.AreEqual('[{"name": "Standard", "query": "label:bug"}]', mHistory[0].Settings.IssuesQueries);
     Assert.AreEqual('github', mHistory[0].Settings.IssuesTracker);
   finally

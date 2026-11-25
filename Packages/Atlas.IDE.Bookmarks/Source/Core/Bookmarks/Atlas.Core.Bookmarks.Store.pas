@@ -34,7 +34,7 @@
 // Lesbar ohne Server und ohne geöffnetes Projekt (Load), etwa für
 // „Weiterarbeiten“ auf der Willkommensseite (#755).
 // Lesen und Schreiben über TAtlasDataFile: atomar ersetzt
-// (früher Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
+// (kein Löschen und Umbenennen), eine unbrauchbare Datei liegt danach als
 // .defekt daneben; eine beim Lesen gesperrte merkt sich die Liste
 // (KeptFile), und Save überschreibt sie nicht.
 //
@@ -70,6 +70,10 @@ uses
   System.SysUtils,
   Atlas.Core.Editor.LineAnchor;
 
+const
+  /// <summary>Höchste Nummer eines nummerierten Lesezeichens (Strg+1…9).</summary>
+  cMaxBookmarkNumber = 9;
+
 type
   {$SCOPEDENUMS ON}
   /// <summary>Named: benanntes Lesezeichen (#622); Quick: schnelles Lesezeichen aus dem Zeilenrand oder per Taste
@@ -83,7 +87,7 @@ type
     /// <summary>Bei schnellen Lesezeichen leer, bis man ihnen einen Namen gibt.</summary>
     Name: string;
     Kind: TAtlasBookmarkKind;
-    /// <summary>1–9 bei nummerierten Lesezeichen, sonst 0.</summary>
+    /// <summary>1 bis cMaxBookmarkNumber bei nummerierten Lesezeichen, sonst 0.</summary>
     Number: Integer;
     /// <summary>Vollständiger Pfad der Datei.</summary>
     FileName: string;
@@ -184,8 +188,6 @@ type
     /// <summary>JSON mit Dateipfaden relativ zu AFolder (sofern darunter oder daneben auf demselben Laufwerk).
     /// </summary>
     class function ToJson(const AList: TAtlasBookmarkList; const AFolder: string): string; static;
-    /// <summary>Format einer Datei (0 ohne oder bei ungültigem Inhalt).</summary>
-    class function FormatOf(const AJson: string): Integer; static;
     /// <summary>Liest AFileName für AProject über TAtlasDataFile.Load; False ohne, bei unbrauchbarer (dann als
     /// .defekt beiseitegelegt) oder gesperrter Datei (dann KeptFile). AList ist dann leer mit Project = AProject.
     /// </summary>
@@ -213,9 +215,14 @@ uses
   System.JSON,
   System.Math,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Projects.Summary.Json,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Marks.Ids,
-  Atlas.Text.Json;
+  Atlas.Text.Encoding,
+  Atlas.Text.Json,
+  Atlas.Text.Uris,
+  Atlas.Text.Files,
+  Atlas.Plugin.Files.Contract;
 
 const
   // Bekannte Felder; alles andere bleibt beim Schreiben erhalten.
@@ -243,9 +250,6 @@ begin
   Result := Trim(Name) = '';
 end;
 
-/// <summary>Dateiname ohne Ordner; unabhängig vom Trennzeichen des Systems.</summary>
-function ShortName(const AFileName: string): string; forward;
-
 function TAtlasBookmark.DisplayName: string;
 var
   mDot: Integer;
@@ -262,7 +266,7 @@ begin
   end;
   if Result = '' then
   begin
-    Result := ShortName(FileName) + ':' + IntToStr(Line + 1);
+    Result := TTextUris.FileNameOf(FileName) + ':' + IntToStr(Line + 1);
   end;
 end;
 
@@ -548,20 +552,6 @@ begin
   end;
 end;
 
-function ShortName(const AFileName: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := AFileName;
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if CharInSet(Result[mIndex], ['\', '/']) then
-    begin
-      Exit(Copy(Result, mIndex + 1, MaxInt));
-    end;
-  end;
-end;
-
 function TAtlasBookmarkList.Filter(const APattern: string): TArray<Integer>;
 var
   mWords: TArray<string>;
@@ -573,8 +563,8 @@ begin
   mWords := LowerCase(Trim(APattern)).Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
   for mIndex := 0 to High(Bookmarks) do
   begin
-    mHaystack := LowerCase(Bookmarks[mIndex].DisplayName + #10 + ShortName(Bookmarks[mIndex].FileName) + #10 +
-      Bookmarks[mIndex].Method + #10 + Bookmarks[mIndex].Preview);
+    mHaystack := LowerCase(Bookmarks[mIndex].DisplayName + #10 + TTextUris.FileNameOf(Bookmarks[mIndex].FileName) +
+      #10 + Bookmarks[mIndex].Method + #10 + Bookmarks[mIndex].Preview);
     mMatches := True;
     for mPart in mWords do
     begin
@@ -593,44 +583,11 @@ end;
 
 { JSON-Helfer }
 
-function Known(const AKeys: array of string; const AName: string): Boolean;
-var
-  mKey: string;
-begin
-  Result := False;
-  for mKey in AKeys do
-  begin
-    if mKey = AName then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 begin
   Result := Copy(TJsonRead.Strings(AObject, AName), 0, TAtlasLineAnchors.cContextLines);
 end;
 
-/// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
-procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
-var
-  mIndex: Integer;
-  mPair: TJSONPair;
-begin
-  if AOriginal = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to AOriginal.Count - 1 do
-  begin
-    mPair := AOriginal.Pairs[mIndex];
-    if not Known(AKeys, mPair.JsonString.Value) then
-    begin
-      ATarget.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
-    end;
-  end;
-end;
 
 /// <summary>Nur die unbekannten Felder eines Lesezeichens als JSON-Objekt; '' ohne.</summary>
 function ExtraOf(AObject: TJSONObject): string;
@@ -653,12 +610,14 @@ end;
 function ReadText(const AFileName: string): string;
 var
   mBytes: TBytes;
+  mBomLength: Integer;
 begin
   mBytes := TFile.ReadAllBytes(AFileName);
   // Mit oder ohne BOM.
-  if (Length(mBytes) >= 3) and (mBytes[0] = $EF) and (mBytes[1] = $BB) and (mBytes[2] = $BF) then
+  if TTextEncodingProbe.BomOf(mBytes) = TTextBom.Utf8 then
   begin
-    Result := TEncoding.UTF8.GetString(mBytes, 3, Length(mBytes) - 3);
+    mBomLength := TTextEncodingProbe.BomLength(TTextBom.Utf8);
+    Result := TEncoding.UTF8.GetString(mBytes, mBomLength, Length(mBytes) - mBomLength);
   end
   else
   begin
@@ -718,7 +677,7 @@ begin
     AMark.Kind := TAtlasBookmarkKind.Quick;
   end;
   AMark.Number := TJsonRead.IntOr(AObject, 'number', 0);
-  if (AMark.Number < 1) or (AMark.Number > 9) then
+  if (AMark.Number < 1) or (AMark.Number > cMaxBookmarkNumber) then
   begin
     AMark.Number := 0;
   end;
@@ -735,7 +694,7 @@ begin
   // Benannte ohne Namen: Datei und Zeile; schnelle bleiben ohne Namen (DisplayName).
   if (AMark.Kind = TAtlasBookmarkKind.Named) and (Trim(AMark.Name) = '') then
   begin
-    AMark.Name := ShortName(AMark.FileName) + ':' + IntToStr(AMark.Line + 1);
+    AMark.Name := TTextUris.FileNameOf(AMark.FileName) + ':' + IntToStr(AMark.Line + 1);
   end;
 end;
 
@@ -851,13 +810,13 @@ begin
   end
   else
   begin
-    Result := ShortName(AFileName) + ':' + IntToStr(ALine + 1);
+    Result := TTextUris.FileNameOf(AFileName) + ':' + IntToStr(ALine + 1);
   end;
 end;
 
 class function TAtlasBookmarks.Location(const ABookmark: TAtlasBookmark): string;
 begin
-  Result := ShortName(ABookmark.FileName) + ':' + IntToStr(ABookmark.Line + 1);
+  Result := TTextUris.FileNameOf(ABookmark.FileName) + ':' + IntToStr(ABookmark.Line + 1);
   if ABookmark.Method <> '' then
   begin
     Result := Result + ' › ' + ABookmark.Method;
@@ -934,18 +893,6 @@ begin
   end;
 end;
 
-class function TAtlasBookmarks.FormatOf(const AJson: string): Integer;
-var
-  mRoot: TJSONObject;
-begin
-  mRoot := TJsonRead.ParseObject(AJson);
-  try
-    Result := TJsonRead.IntOr(mRoot, 'format', 0);
-  finally
-    mRoot.Free;
-  end;
-end;
-
 class function TAtlasBookmarks.LoadFile(const AFileName, AProject: string; out AList: TAtlasBookmarkList): Boolean;
 var
   mList: TAtlasBookmarkList;
@@ -964,7 +911,7 @@ begin
     begin
       mParsed := Parse(AText, ExtractFilePath(AFileName), mList);
       // Ein höheres Format ist nicht unbrauchbar: nicht beiseitelegen; Save überschreibt es nicht.
-      Result := mParsed or (FormatOf(AText) > cFormat);
+      Result := mParsed or (TJsonRead.FormatOf(AText) > cFormat);
     end);
   Result := mParsed and (mLoad = TAtlasDataLoad.Loaded);
   if Result then
@@ -1005,7 +952,8 @@ begin
   end;
   try
     // Eine neuere Fassung hat die Datei geschrieben oder sie ist gerade nicht lesbar: nicht überschreiben.
-    if FileExists(mFileName) and (not TAtlasDataFile.TryRead(mFileName, mText) or (FormatOf(mText) > cFormat)) then
+    if FileExists(mFileName) and
+      (not TAtlasDataFile.TryRead(mFileName, mText) or (TJsonRead.FormatOf(mText) > cFormat)) then
     begin
       Exit;
     end;
@@ -1070,30 +1018,39 @@ begin
   end;
 end;
 
+/// <summary>Arbeitsverzeichnis (ADir) und Git-Ordner (AGit) über AFileName; False außerhalb eines Repositorys.
+/// </summary>
+function GitRootOf(const AFileName: string; out ADir, AGit: string): Boolean;
+var
+  mParent: string;
+begin
+  ADir := ExcludeTrailingPathDelimiter(ExtractFilePath(ExpandFileName(AFileName)));
+  AGit := '';
+  while ADir <> '' do
+  begin
+    AGit := GitFolderOf(ADir);
+    if AGit <> '' then
+    begin
+      Break;
+    end;
+    mParent := ExcludeTrailingPathDelimiter(ExtractFilePath(ADir));
+    if (mParent = '') or SameText(mParent, ADir) then
+    begin
+      Break;
+    end;
+    ADir := mParent;
+  end;
+  Result := AGit <> '';
+end;
+
 class function TAtlasBookmarks.ExcludeFromGit(const AFileName: string): Boolean;
 var
-  mDir, mParent, mGit, mExclude, mPattern, mText: string;
+  mDir, mGit, mExclude, mPattern, mText: string;
   mLine: string;
 begin
   Result := False;
   try
-    mDir := ExcludeTrailingPathDelimiter(ExtractFilePath(ExpandFileName(AFileName)));
-    mGit := '';
-    while mDir <> '' do
-    begin
-      mGit := GitFolderOf(mDir);
-      if mGit <> '' then
-      begin
-        Break;
-      end;
-      mParent := ExcludeTrailingPathDelimiter(ExtractFilePath(mDir));
-      if (mParent = '') or SameText(mParent, mDir) then
-      begin
-        Exit;
-      end;
-      mDir := mParent;
-    end;
-    if mGit = '' then
+    if not GitRootOf(AFileName, mDir, mGit) then
     begin
       Exit;
     end;
@@ -1123,8 +1080,14 @@ begin
     Result := True;
   except
     // Kein Schreibrecht o. Ä.: Die Lesezeichen sind trotzdem gespeichert.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 

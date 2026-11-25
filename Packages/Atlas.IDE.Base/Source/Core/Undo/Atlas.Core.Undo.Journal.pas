@@ -25,7 +25,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Undo.Contract;
 
 type
@@ -33,6 +33,7 @@ type
   public const
     cMinDepth = 1;
     cMaxDepth = 200;
+    cDefaultDepth = 20;
   public
     /// <summary>undo.multiFile: aus = nichts protokollieren, Zurücknehmen meldet Disabled.</summary>
     Enabled: Boolean;
@@ -112,15 +113,16 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Files.TextDiff,
-  Atlas.Core.Undo.LinePatch;
+  Atlas.Plugin.Files.TextDiff,
+  Atlas.Core.Undo.LinePatch,
+  Atlas.Plugin.Notifications.MessageSink;
 
 { TAtlasUndoOptions }
 
 class function TAtlasUndoOptions.Defaults: TAtlasUndoOptions;
 begin
   Result.Enabled := True;
-  Result.Depth := 20;
+  Result.Depth := cDefaultDepth;
   Result.OnConflict := TAtlasUndoConflictMode.Partial;
   Result.NewFiles := TAtlasNewFilesMode.RecycleBin;
 end;
@@ -188,10 +190,7 @@ end;
 
 procedure TAtlasUndoJournal.Log(const AText: string);
 begin
-  if Assigned(FOnLog) then
-  begin
-    FOnLog(AText);
-  end;
+  TAtlasMessageSink.Create(FOnLog).Say(AText);
 end;
 
 procedure TAtlasUndoJournal.Changed;

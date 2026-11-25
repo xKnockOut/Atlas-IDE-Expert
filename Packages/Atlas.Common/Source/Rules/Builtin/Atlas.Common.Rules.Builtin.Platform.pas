@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Platform;
 
-// Regeln für Annahmen über die Laufzeitumgebung (#909, Runde 67):
+// Regeln für Annahmen über die Laufzeitumgebung (#909):
 //   ui-call-in-console-or-service  ShowMessage, MessageDlg, InputBox usw. in einem Konsolenprogramm, einem
 //                                  Windows-Dienst oder einer DLL ohne Formulare (#1060)
 //   load-without-encoding          TStrings.LoadFromFile/SaveToFile und TFile.ReadAllText ohne Kodierung:
@@ -68,14 +68,15 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -133,21 +134,6 @@ function IsName(ANode: TSyntaxNode; const AName: string): Boolean;
 begin
   Result := (ANode <> nil) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
     SameText(ANode.Name, AName);
-end;
-
-/// <summary>Nur Bezeichner und Punkte: Unit- oder Klassenname vor einer Routine. Iterativ (tiefe Bäume sprengen den
-/// Stapel nicht).
-/// </summary>
-function IsQualifiedName(ANode: TSyntaxNode): Boolean;
-var
-  mNode: TSyntaxNode;
-begin
-  mNode := ANode;
-  while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) do
-  begin
-    mNode := mNode[0];
-  end;
-  Result := mNode.Kind = TSyntaxKind.Identifier;
 end;
 
 /// <summary>Pfad der bedingten Übersetzung am Anfang von ANode; '' ohne Bedingungen.</summary>
@@ -249,22 +235,6 @@ begin
   end;
 end;
 
-/// <summary>Edit, das AUnitName ins uses einträgt, wenn die Unit (auch ohne Namespace) fehlt.</summary>
-function UsesEdit(const AContext: TRuleContext; const ATokens: TTokens; AOffset: Integer;
-  const AUnitName: string; out AEdit: TTextEdit): Boolean;
-var
-  mUsed: TArray<string>;
-  mShort: string;
-begin
-  mUsed := TUsesClauses.UsedUnits(ATokens);
-  mShort := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
-  if TUsesClauses.IsUsed(mUsed, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(mUsed, mShort, nil) then
-  begin
-    Exit(False);
-  end;
-  Result := TUsesClauses.AddUnit(ATokens, AOffset, AUnitName, TTextLines.LineBreakOf(AContext.Text), AEdit);
-end;
-
 { TUiCallInConsoleOrServiceRule }
 
 const
@@ -346,18 +316,18 @@ var
       Exit;
     end;
     // Vcl.Dialogs.ShowMessage, Dialogs.MessageDlg
-    if MatchText(ACallee.Name, cDialogRoutines) and IsQualifiedName(ACallee[0]) and
+    if MatchText(ACallee.Name, cDialogRoutines) and TSyntaxNodes.IsNameChain(ACallee[0]) and
       IsName(ACallee[0], 'Dialogs') then
     begin
       Exit(True);
     end;
     // Application.MessageBox, auch Vcl.Forms.Application.MessageBox
-    if SameText(ACallee.Name, 'MessageBox') and IsQualifiedName(ACallee[0]) and IsName(ACallee[0], 'Application') then
+    if SameText(ACallee.Name, 'MessageBox') and TSyntaxNodes.IsNameChain(ACallee[0]) and IsName(ACallee[0], 'Application') then
     begin
       Exit(True);
     end;
     // TDialogService.ShowMessage
-    Result := MatchText(ACallee.Name, cDialogServiceMethods) and IsQualifiedName(ACallee[0]) and
+    Result := MatchText(ACallee.Name, cDialogServiceMethods) and TSyntaxNodes.IsNameChain(ACallee[0]) and
       MatchText(ACallee[0].Name, cDialogServices);
   end;
 
@@ -479,15 +449,6 @@ var
     end;
   end;
 
-  function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := ANode.Parent;
-    while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-    begin
-      Result := Result.Parent;
-    end;
-  end;
-
   // X.DefaultEncoding := …
   function IsDefaultEncodingAssign(ANode: TSyntaxNode): Boolean;
   begin
@@ -510,7 +471,7 @@ var
     mNode, mRoutine: TSyntaxNode;
   begin
     Result := False;
-    mRoutine := RoutineOf(ACall);
+    mRoutine := TSyntaxNodes.Enclosing(ACall, [TSyntaxKind.RoutineDecl]);
     if mRoutine = nil then
     begin
       Exit;
@@ -548,7 +509,8 @@ var
   begin
     mLast := ACall[ACall.ChildCount - 1];
     mEdits := [TRuleEdit.Create(TTextRange.Create(mLast.EndPos, mLast.EndPos), ', TEncoding.' + mEncoding)];
-    if UsesEdit(AContext, mTokens, ACall.StartOffset, 'System.SysUtils', mExtra) then
+    if TPascalUsesEdits.AddMissingUnit(mTokens, ACall.StartOffset, 'System.SysUtils', AContext.Namespaces,
+      TTextLines.LineBreakOf(AContext.Text), mExtra) then
     begin
       mEdits := mEdits + [mExtra];
     end;
@@ -566,7 +528,7 @@ var
       Exit;
     end;
     mMethod := mCallee.Name;
-    if MatchText(mMethod, cReadAllMethods) and IsQualifiedName(mCallee[0]) and IsName(mCallee[0], 'TFile') then
+    if MatchText(mMethod, cReadAllMethods) and TSyntaxNodes.IsNameChain(mCallee[0]) and IsName(mCallee[0], 'TFile') then
     begin
       AReport.Add(NodeRange(mCallee), cTexts[TPlatformText.FileNoEncoding].Fmt([mMethod]), TRuleConfidence.Medium,
         Fix(ACall));
@@ -795,13 +757,13 @@ begin
   begin
     ANode := ANode[0];
   end;
-  Result := IsName(ANode, 'Now') and IsQualifiedName(ANode);
+  Result := IsName(ANode, 'Now') and TSyntaxNodes.IsNameChain(ANode);
 end;
 
 // MilliSecondsBetween(Now, …) und Verwandte, die TStopwatch ersetzen kann.
 function IsStopwatchCall(ANode: TSyntaxNode): Boolean;
 begin
-  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and IsQualifiedName(ANode[0]) and
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and TSyntaxNodes.IsNameChain(ANode[0]) and
     (IndexText(ANode[0].Name, cStopwatchFunctions) >= 0) and IsNow(ANode[1]);
 end;
 
@@ -886,7 +848,7 @@ begin
     mA := ANode[0];
     mB := ANode[1];
   end
-  else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and IsQualifiedName(ANode[0]) and
+  else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and TSyntaxNodes.IsNameChain(ANode[0]) and
     MatchText(ANode[0].Name, cBetweenFunctions) then
   begin
     mA := ANode[1];
@@ -1057,7 +1019,8 @@ begin
   begin
     mEdits := mEdits + RenameEdits(mName, mNewName, mMeasured);
   end;
-  if UsesEdit(FContext, FTokens, FRoutine.StartOffset, 'System.Diagnostics', mExtra) then
+  if TPascalUsesEdits.AddMissingUnit(FTokens, FRoutine.StartOffset, 'System.Diagnostics', FContext.Namespaces,
+    TTextLines.LineBreakOf(FContext.Text), mExtra) then
   begin
     mEdits := mEdits + [mExtra];
   end;

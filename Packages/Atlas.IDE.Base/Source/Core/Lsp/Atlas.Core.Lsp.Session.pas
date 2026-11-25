@@ -32,7 +32,7 @@
 // typeDefinition; auch hier gleicht der Aufrufer vorher ab.
 // Formatieren (#43): formatting bzw. rangeFormatting, Abgleich wie oben.
 
-// Aufbau (Atlas-Metriken): TLspSessionJson (Atlas.Core.Lsp.Session.Json, JSON ohne Zustand) <- TLspSessionBase
+// Aufbau (Atlas-Metriken): TLspSessionJson (Atlas.Plugin.Lsp.Session.Json, JSON ohne Zustand) <- TLspSessionBase
 // (.Base, Zustand und Abgleich) <- TLspSessionRequests (.Requests, Anfragen) <- TLspSession (hier).
 
 interface
@@ -41,29 +41,31 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Progress,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.DataFlow,
-  Atlas.Core.Lsp.AccessChains,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Progress,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.AccessChains,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.Lsp.Session.Base,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Base,
   Atlas.Core.Lsp.Session.Requests;
 
 type
-  // Aliase: Die Typen stehen in Atlas.Core.Lsp.Session.Json; Aufrufer binden weiter nur diese Unit ein.
-  TLspLocation = Atlas.Core.Lsp.Session.Json.TLspLocation;
-  TLspCodeAction = Atlas.Core.Lsp.Session.Json.TLspCodeAction;
-  TLspCodeActionChoice = Atlas.Core.Lsp.Session.Json.TLspCodeActionChoice;
-  TLspHoverParts = Atlas.Core.Lsp.Session.Json.TLspHoverParts;
-  TLspDiagnosticReport = Atlas.Core.Lsp.Session.Json.TLspDiagnosticReport;
-  TLspWorkspaceRun = Atlas.Core.Lsp.Session.Json.TLspWorkspaceRun;
-  TLspOpenDocument = Atlas.Core.Lsp.Session.Json.TLspOpenDocument;
-  TLspApplyEditReply = Atlas.Core.Lsp.Session.Json.TLspApplyEditReply;
-  TLspFormatOptions = Atlas.Core.Lsp.Session.Json.TLspFormatOptions;
-  TLspInitializeOptions = Atlas.Core.Lsp.Session.Base.TLspInitializeOptions;
+  // Fehler einer Anfrage (Zeitlimit, Abbruch, Verbindung weg, Fehlerantwort); steht in Atlas.Plugin.Lsp.Framing.
+  ELspClientError = Atlas.Plugin.Lsp.Client.ELspClientError;
+  // Aliase: Die Typen stehen in Atlas.Plugin.Lsp.Session.Json; Aufrufer binden weiter nur diese Unit ein.
+  TLspLocation = Atlas.Plugin.Lsp.Session.Json.TLspLocation;
+  TLspCodeAction = Atlas.Plugin.Lsp.Session.Json.TLspCodeAction;
+  TLspCodeActionChoice = Atlas.Plugin.Lsp.Session.Json.TLspCodeActionChoice;
+  TLspHoverParts = Atlas.Plugin.Lsp.Session.Json.TLspHoverParts;
+  TLspDiagnosticReport = Atlas.Plugin.Lsp.Session.Json.TLspDiagnosticReport;
+  TLspWorkspaceRun = Atlas.Plugin.Lsp.Session.Json.TLspWorkspaceRun;
+  TLspOpenDocument = Atlas.Plugin.Lsp.Session.Json.TLspOpenDocument;
+  TLspApplyEditReply = Atlas.Plugin.Lsp.Session.Json.TLspApplyEditReply;
+  TLspFormatOptions = Atlas.Plugin.Lsp.Session.Json.TLspFormatOptions;
+  TLspInitializeOptions = Atlas.Plugin.Lsp.Session.Base.TLspInitializeOptions;
 
   /// <summary>LSP-Sitzung des Plugins: Zustand und Abgleich aus TLspSessionBase, Anfragen aus
   /// TLspSessionRequests, hier Hierarchien, Auswirkungen, betroffene Tests, Debug-Werte, Inlay Hints, Diagnosen,
@@ -147,6 +149,9 @@ type
     /// <summary>Wie oben mit Argumenten; übernimmt AArguments.</summary>
     function ExecuteCommand(const ACommand: string; AArguments: TJSONArray; ATimeoutMs: Cardinal): TJSONValue;
       overload;
+    /// <summary>Sitzung aus ASource; nil ohne Quelle. Für Dienste, denen die Sitzung von außen gereicht wird.
+    /// </summary>
+    class function From(const ASource: TFunc<TLspSession>): TLspSession; static;
   end;
 
   /// <summary>Laufende Sitzung oder nil; startet nie einen Server. Aus beliebigem Thread
@@ -155,6 +160,7 @@ type
   TAtlasSessionFunc = reference to function: TLspSession;
 
 implementation
+
 
 const
   /// <summary>Betroffene Tests (#1353, #1775): git bzw. svn und eine Auswirkungsanalyse je geänderter Routine
@@ -223,7 +229,7 @@ begin
   begin
     Result := AText.StartsWith('//');
     AHint.EndLabel := Result;
-    AText := Trim(Copy(AText, 3, MaxInt));
+    AText := Trim(Copy(AText, Length('//') + 1, MaxInt));
     // Blockanfang für den Sprung per Klick (#620).
     AHint.BlockLine := AEntry.GetValue<Integer>('data.blockStart.line', -1);
     AHint.BlockCharacter := AEntry.GetValue<Integer>('data.blockStart.character', 0);
@@ -292,6 +298,15 @@ end;
 
 { TLspSession }
 
+class function TLspSession.From(const ASource: TFunc<TLspSession>): TLspSession;
+begin
+  Result := nil;
+  if Assigned(ASource) then
+  begin
+    Result := ASource();
+  end;
+end;
+
 function TLspSession.InlayHints(const AFileName: string; AFromLine, AToLine: Integer;
   ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
 begin
@@ -331,7 +346,7 @@ begin
     begin
       Continue;
     end;
-    mReport := TLspDiagnosticReport.FromJson(TJSONObject(mItem), '');
+    mReport := TLspSessionJson.DiagnosticReport(TJSONObject(mItem), '');
     if mReport.FileName <> '' then
     begin
       Result := Result + [mReport];
@@ -527,6 +542,10 @@ begin
   end;
 end;
 
+const
+  // Mehrere Referenzsuchen: ein Vielfaches der üblichen Wartezeit.
+  cImpactTimeoutFactor = 30;
+
 function TLspSession.Impact(const AFileName: string; ALine, ACharacter, ADepth: Integer): TAtlasImpact;
 var
   mParams: TJSONObject;
@@ -535,7 +554,7 @@ begin
   mParams := PositionParams(AFileName, ALine, ACharacter);
   mParams.AddPair('depth', TJSONNumber.Create(ADepth));
   // Mehrere Referenzsuchen über das ganze Projekt; der Server begrenzt die Zeit selbst und meldet es.
-  mResponse := FClient.Request('atlas/impact', mParams, FTimeoutMs * 30);
+  mResponse := FClient.Request('atlas/impact', mParams, FTimeoutMs * cImpactTimeoutFactor);
   try
     Result := ImpactFromJson(mResponse);
   finally
@@ -615,7 +634,7 @@ begin
   try
     if mResponse is TJSONObject then
     begin
-      Result := TLspDiagnosticReport.FromJson(TJSONObject(mResponse), AFileName);
+      Result := TLspSessionJson.DiagnosticReport(TJSONObject(mResponse), AFileName);
     end
     else
     begin
@@ -647,7 +666,7 @@ begin
   try
     if mResponse is TJSONObject then
     begin
-      ARun := TLspWorkspaceRun.FromJson(mResponse);
+      ARun := TLspSessionJson.WorkspaceRun(mResponse);
       Result := DiagnosticReportsOf(TJSONObject(mResponse).GetValue('items'));
     end;
   finally
@@ -696,7 +715,10 @@ begin
     Result := FClient.Request('workspace/executeCommand',
       TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', AArguments), ATimeoutMs);
   except
-    Result := nil;
+    on ELspClientError do
+    begin
+      Result := nil;
+    end;
   end;
 end;
 

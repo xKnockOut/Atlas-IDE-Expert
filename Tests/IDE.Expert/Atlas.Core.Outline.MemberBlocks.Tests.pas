@@ -35,13 +35,14 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.TypeText,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.Core.Outline.MemberBlocks;
+  Atlas.Core.Outline.MemberBlocks,
+  Atlas.Core.Outline.CrumbMenu,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cCode =
@@ -79,35 +80,8 @@ begin
 end;
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
-end;
-
-function Find(const ANodes: TAtlasOutlineNodes; const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(ANodes) do
-  begin
-    if ANodes[mIndex].Name = AName then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+  Result := TOutlineTest.NodesOf(cCode);
 end;
 
 function Keywords(const ABlocks: TAtlasMemberBlocks): string;
@@ -125,36 +99,6 @@ begin
   end;
 end;
 
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
-  end;
-end;
-
-function NamesOf(const ANodes: TAtlasOutlineNodes; const AItems: TArray<Integer>): string;
-var
-  mItem: Integer;
-begin
-  Result := '';
-  for mItem in AItems do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ',';
-    end;
-    Result := Result + ANodes[mItem].Name;
-  end;
-end;
-
 function BlockAt(ALine, ACharacter: Integer): string;
 var
   mPlace: TAtlasMemberBlockPlace;
@@ -169,7 +113,7 @@ end;
 
 function PathAt(ALine, ACharacter: Integer): string;
 begin
-  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Result := TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(ALine, ACharacter, '', False,
       [TAtlasCrumbPart.Visibility, TAtlasCrumbPart.MemberBlocks])));
 end;
@@ -183,7 +127,7 @@ begin
   mList := Nodes;
   // var beendet class var; const und var in der Parameterliste zählen nicht.
   Assert.AreEqual('const@5,type@9,class var@14,const@20',
-    Keywords(TAtlasMemberBlockFinder.BlocksOf(mList, Lines, Find(mList, 'TKunde'))));
+    Keywords(TAtlasMemberBlockFinder.BlocksOf(mList, Lines, TOutlineTest.Find(mList, 'TKunde'))));
   Assert.AreEqual(0, Integer(Length(TAtlasMemberBlockFinder.BlocksOf(mList, Lines, -1))));
 end;
 
@@ -219,7 +163,7 @@ var
 begin
   mList := Nodes;
   mPlace := TAtlasMemberBlockFinder.At(mList, Lines, 12, 8);
-  Assert.AreEqual(Find(mList, 'TInnen'), mPlace.TypeNode);
+  Assert.AreEqual(TOutlineTest.Find(mList, 'TInnen'), mPlace.TypeNode);
   Assert.AreEqual('const@11', Keywords(mPlace.Blocks));
   Assert.AreEqual(0, mPlace.Current);
 end;
@@ -231,9 +175,9 @@ var
 begin
   mList := Nodes;
   mPlace := TAtlasMemberBlockFinder.At(mList, Lines, 6, 6);
-  Assert.AreEqual('cRabatt,cGrenze', NamesOf(mList, TAtlasMemberBlockFinder.MembersOf(mList, mPlace, 0)));
-  Assert.AreEqual('TInnen', NamesOf(mList, TAtlasMemberBlockFinder.MembersOf(mList, mPlace, 1)));
-  Assert.AreEqual('FZaehler', NamesOf(mList, TAtlasMemberBlockFinder.MembersOf(mList, mPlace, 2)));
+  Assert.AreEqual('cRabatt,cGrenze', TOutlineTest.NamesOf(mList, TAtlasMemberBlockFinder.MembersOf(mList, mPlace, 0)));
+  Assert.AreEqual('TInnen', TOutlineTest.NamesOf(mList, TAtlasMemberBlockFinder.MembersOf(mList, mPlace, 1)));
+  Assert.AreEqual('FZaehler', TOutlineTest.NamesOf(mList, TAtlasMemberBlockFinder.MembersOf(mList, mPlace, 2)));
   Assert.AreEqual(0, Integer(Length(TAtlasMemberBlockFinder.MembersOf(mList, mPlace, 3))));
 end;
 
@@ -252,9 +196,9 @@ begin
   Assert.AreEqual(0, mCrumbs[2].Current);
   Assert.AreEqual(5, mCrumbs[2].Places[0].Line);
   // Ohne Unterblöcke bzw. ohne Abschnitt.
-  Assert.AreEqual('TKunde › private › cRabatt', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('TKunde › private › cRabatt', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(6, 7, '', False, [TAtlasCrumbPart.Visibility]))));
-  Assert.AreEqual('TKunde › const › cRabatt', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('TKunde › const › cRabatt', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(6, 7, '', False, [TAtlasCrumbPart.MemberBlocks]))));
 end;
 
@@ -267,7 +211,7 @@ begin
   mList := Nodes;
   // „type“ steht im Kommentar (Zeile 8), im String (Zeile 21) und im verschachtelten Typ nicht als Wort.
   mTypeWords := 0;
-  for mToken in TAtlasTypeText.Tokens(mList, Lines, Find(mList, 'TKunde')) do
+  for mToken in TAtlasTypeText.Tokens(mList, Lines, TOutlineTest.Find(mList, 'TKunde')) do
   begin
     if mToken.Word and (mToken.Text = 'type') then
     begin

@@ -37,7 +37,7 @@ uses
   Atlas.UI.Designer.Handles,
   Atlas.IDE.Designer.HandleTool,
   Atlas.IDE.Designer.KeptForm,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   TAtlasIdeGapHandles = class;
@@ -111,7 +111,7 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Designer.ToolStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Foundation.Settings;
@@ -162,7 +162,7 @@ end;
 
 constructor TAtlasIdeGapHandles.Create(const AOnMessage: TProc<string>);
 begin
-  inherited Create(AOnMessage);
+  inherited Create(cId, AOnMessage);
   FKeys := TAtlasGapKeys.Create(cKeyPriority);
   FKeys.FOwner := Self;
 end;
@@ -400,9 +400,10 @@ begin
         (mFirst.Bottom + mNext.Top) div 2);
     end;
     mCenter := Point(mCenter.X + AOrigin.X, mCenter.Y + AOrigin.Y);
-    Result := Result + [TAtlasHandle.Create(Rect(mCenter.X - Overlay.S(cPillWidth) div 2,
-      mCenter.Y - Overlay.S(cPillHeight) div 2, mCenter.X + Overlay.S(cPillWidth) div 2,
-      mCenter.Y + Overlay.S(cPillHeight) div 2), TAtlasHandleKind.Pill, IntToStr(mGaps[mIndex]), mCursor, mIndex)];
+    Result := Result + [TAtlasHandle.Create(Rect(mCenter.X - Overlay.ScalePx(cPillWidth) div 2,
+      mCenter.Y - Overlay.ScalePx(cPillHeight) div 2, mCenter.X + Overlay.ScalePx(cPillWidth) div 2,
+      mCenter.Y + Overlay.ScalePx(cPillHeight) div 2), TAtlasHandleKind.Pill, IntToStr(mGaps[mIndex]), mCursor,
+      mIndex)];
   end;
   mMuted := TAtlasGaps.Deviating(mGaps);
   for mIndex := 0 to High(Result) do

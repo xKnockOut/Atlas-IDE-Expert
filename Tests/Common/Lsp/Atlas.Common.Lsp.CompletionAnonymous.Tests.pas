@@ -23,9 +23,6 @@ type
     function ItemAt(const AMarked: string; out AItem: TCompletionItem): Boolean; overload;
     function HeaderAt(const AMarked: string): string;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -73,7 +70,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.CompletionAnonymous,
-  Atlas.Common.Lsp.Completion.Methods;
+  Atlas.Common.Lsp.Completion.Methods,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -130,29 +128,6 @@ const
     'end;'#10 +
     'end.';
 
-/// <summary>Text ohne "|" und die Position des "|".</summary>
-function Split(const AMarked: string; out APosition: TTextPosition): string;
-var
-  mIndex, mLine, mCharacter: Integer;
-begin
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 1 to Pos('|', AMarked) - 1 do
-  begin
-    if AMarked[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mCharacter := 0;
-    end
-    else
-    begin
-      Inc(mCharacter);
-    end;
-  end;
-  APosition := TTextPosition.Create(mLine, mCharacter);
-  Result := StringReplace(AMarked, '|', '', []);
-end;
-
 function Source(const AMarked: string): string;
 begin
   Result := StringReplace(cUnitHaupt, '{ Code }', AMarked, []);
@@ -175,7 +150,7 @@ var
   mTree: TSyntaxTree;
   mRequest: TCompletionRequest;
 begin
-  mText := Split(Source(AMarked), mPosition);
+  mText := TTestSource.Unmark(Source(AMarked), mPosition);
   mTree := TPascalParser.Parse(mText);
   mRequest := TCompletionRequest.Create(mText, cHauptFile, mPosition);
   try
@@ -203,16 +178,6 @@ begin
   if ItemAt(AMarked, mItem) then
   begin
     Result := mItem.Name;
-  end;
-end;
-
-procedure TCompletionAnonymousTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    AloneAfterParenthesis;
-  finally
-    TearDown;
   end;
 end;
 
@@ -449,13 +414,15 @@ var
   end;
 
 begin
-  mText := Split(Source('TTask.Run(|'), mPosition);
+  mText := TTestSource.Unmark(Source('TTask.Run(|'), mPosition);
   mUri := TDocumentUris.FromPath(cHauptFile);
   mStore := TDocumentStore.Create;
   mStore.Open(mUri, 'delphi', 1, mText);
-  mCompletion := TLspCompletion.Create(mStore, FIndex);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mCompletion := TLspCompletion.Create(mStore, FIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mCompletion.Attach(mDispatcher);
     // Nach "(": nur das Gerüst.
     mAnswer := Ask('(');

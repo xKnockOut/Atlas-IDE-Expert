@@ -47,6 +47,7 @@ uses
   System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
 type
@@ -124,11 +125,6 @@ const
   cWrapOperators: array[0..11] of string = ('+', '-', '*', '/', 'and', 'or', 'xor', 'div', 'mod', 'shl', 'shr',
     '<>');
 
-function IsCode(const AToken: TPascalToken): Boolean;
-begin
-  Result := not (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
-end;
-
 /// <summary>Tokens je Zeile (Zeile des Anfangs).</summary>
 function TokensByLine(const ATokens: TArray<TPascalToken>; ACount: Integer): TArray<TArray<Integer>>;
 var
@@ -143,20 +139,6 @@ begin
     begin
       Result[mLine] := Result[mLine] + [mIndex];
     end;
-  end;
-end;
-
-/// <summary>+1 für eine öffnende, -1 für eine schließende Klammer, sonst 0.</summary>
-function BracketDelta(const AToken: TPascalToken): Integer;
-begin
-  Result := 0;
-  if AToken.IsSymbol('(') or AToken.IsSymbol('[') then
-  begin
-    Result := 1;
-  end
-  else if AToken.IsSymbol(')') or AToken.IsSymbol(']') then
-  begin
-    Result := -1;
   end;
 end;
 

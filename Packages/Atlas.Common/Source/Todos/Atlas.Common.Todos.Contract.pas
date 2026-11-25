@@ -13,7 +13,7 @@
 // mit Leerzeichen dürfen in ' oder " stehen. DONE-Einträge sind erledigt und
 // in Liste und Bericht standardmäßig ausgeblendet (TTodoFilter.IncludeDone).
 // Die Marken stellt die Option "keywords" der Regel todo-comment ein
-// (Atlas.Common.Rules.Builtin.Todos).
+// (Atlas.Common.Todos.Keywords).
 
 interface
 

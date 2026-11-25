@@ -26,6 +26,8 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.MemoryTimeline,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.MemoryCounters,
   Atlas.UI.Debug.MemoryFrame;
@@ -33,7 +35,7 @@ uses
 type
   TAtlasIdeDebugMemoryTimeline = class
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -53,7 +55,7 @@ type
       Reported: Boolean;
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FTimeline: TAtlasMemoryTimeline;
@@ -94,7 +96,7 @@ uses
   Winapi.Windows,
   Vcl.Clipbrd,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.MemoryWindow,
   Atlas.IDE.Debug.ObjectCount,

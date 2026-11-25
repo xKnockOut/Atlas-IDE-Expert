@@ -43,6 +43,17 @@ type
     /// <summary>#2168: tests.log an, tests.log.maxLines mit Vorgabe 2000 und Grenzen 100..100000.</summary>
     [Test]
     procedure TestsLogRoundTrip;
+    /// <summary>#2409: tests.lastRun mit Vorgabe an.</summary>
+    [Test]
+    procedure TestsLastRunRoundTrip;
+    /// <summary>#2050: assistants.context, .selection und .selectionMax mit Vorgaben und Grenzen.</summary>
+    [Test]
+    procedure AssistantsContextRoundTrip;
+    [Test]
+    procedure AssistantsLinkRoundTrip;
+    /// <summary>#2605, #2620, #2049: Zurückhalten, Fragen in der IDE, Protokoll mit Höchstzahl.</summary>
+    [Test]
+    procedure AssistantsHoldQuestionsLogRoundTrip;
     /// <summary>#1919: hover.signatureParams mit Vorgabe an.</summary>
     [Test]
     procedure HoverSignatureParamsRoundTrip;
@@ -114,13 +125,14 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Notifications.Center,
+  Atlas.Plugin.Notifications.Center,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Scopes,
-  Atlas.Core.Settings.TestSupport;
+  Atlas.Core.Settings.TestSupport,
+  Atlas.Core.Settings.Contract;
 
 { TAtlasPluginSettingsTests }
 
@@ -139,6 +151,7 @@ begin
   Assert.IsTrue(ASettings.TestsApprovalFiles, 'Vergleichsdateien standardmäßig an (#1881)');
   Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
   Assert.IsTrue(ASettings.TestsWindow, 'Fenster „Atlas-Tests“ standardmäßig an (#1776)');
+  Assert.IsTrue(ASettings.TestsWindowOnFailure, 'Fenster bei Fehlschlägen öffnen standardmäßig an (#2467)');
   Assert.IsTrue(ASettings.TestsLists, 'Testlisten standardmäßig an (#2167)');
   Assert.AreEqual($C052, ASettings.TestsListsRunKey, 'Testliste mit Strg+Alt+R (#2167)');
   Assert.IsTrue(ASettings.EditorStatusBarTests, 'Teststand in der Statusleiste standardmäßig an (#1777)');
@@ -220,6 +233,7 @@ begin
   Assert.IsTrue(ASettings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(ASettings.TeamFile, 'Projektdatei standardmäßig an (#486)');
   Assert.IsTrue(ASettings.McpBuild, 'Builds für Claude Code standardmäßig erlaubt (#261)');
+  Assert.IsTrue(ASettings.AssistantsBanner, 'Anzeige „KI-Assistent aktiv“ standardmäßig an (#1906)');
   Assert.IsTrue(ASettings.BaselineUpdate, 'Befehl standardmäßig da (#97)');
   Assert.IsTrue(ASettings.SlashCommands, 'Schnellbefehle standardmäßig an (#399)');
   Assert.IsTrue(ASettings.Snippets, 'Code-Vorlagen standardmäßig an (#51)');
@@ -231,6 +245,30 @@ begin
   Assert.AreEqual(200, ASettings.ProviderTimeLimitMs, 'Zeitlimit für Quellen (#493)');
   Assert.AreEqual($E041, ASettings.QuickToggleKey, 'Schnellschalter: Strg+Umschalt+Alt+A (#604)');
   Assert.IsFalse(ASettings.QuickToggleKeyPriority);
+end;
+
+/// <summary>Vorgaben der Debug-Fenster, Logpunkte und Werte im Hover.</summary>
+procedure AssertDebugWindowDefaults(const ASettings: TAtlasPluginSettings);
+begin
+  Assert.IsTrue(ASettings.DebugLogpointsRecordValues, 'debug.logpoints.recordValues (#2552)');
+  Assert.AreEqual(10000, ASettings.DebugLogpointsRecordLimit, 'debug.logpoints.recordLimit (#2552)');
+  Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
+  Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
+  Assert.IsTrue(ASettings.DebugVariablesWindow, 'debug.variablesWindow (#853)');
+  Assert.AreEqual(3, ASettings.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
+  Assert.AreEqual(500, ASettings.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
+  Assert.IsTrue(ASettings.DebugVariablesScopedWatches, 'debug.variablesWindow.scopedWatches (#2550)');
+  Assert.IsTrue(ASettings.DebugObjectMarks, 'debug.objectMarks (#839)');
+  Assert.IsTrue(ASettings.DebugParallelWatch, 'debug.parallelWatch (#866)');
+  Assert.IsTrue(ASettings.DebugPredictConditions, 'debug.predictConditions (#2169)');
+  Assert.IsTrue(ASettings.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
+  Assert.AreEqual(20, ASettings.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
+  Assert.IsTrue(ASettings.DebugEditValues, 'debug.editValues (#868)');
+  Assert.IsTrue(ASettings.DebugHoverExpand, 'debug.hoverExpand (#895)');
+  Assert.IsTrue(ASettings.DebugHoverChanges, 'debug.hoverChanges (#895)');
+  Assert.AreEqual(100, ASettings.DebugHoverMaxChildren, 'debug.hoverMaxChildren (#895)');
+  Assert.IsTrue(ASettings.DebugPinnedValues, 'debug.pinnedValues (#526)');
+  Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
 end;
 
 /// <summary>Vorgaben für Debugger, Befehle und Tasten.</summary>
@@ -261,6 +299,8 @@ begin
   Assert.IsTrue(ASettings.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsFalse(ASettings.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
   Assert.IsTrue(ASettings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsTrue(ASettings.DebugExceptionMessageRules, 'debug.exceptionMessageRules (#2549)');
+  Assert.IsTrue(ASettings.DebugExceptionRules, 'debug.exceptionRules (#838)');
   Assert.IsTrue(ASettings.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(5, ASettings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsTrue(ASettings.DebugMemoryTimeline, 'debug.memoryTimeline (#858)');
@@ -268,20 +308,11 @@ begin
   Assert.IsFalse(ASettings.DebugProfiler, 'debug.profiler (#2057)');
   Assert.AreEqual(10, ASettings.DebugProfilerIntervalMs, 'debug.profiler.intervalMs (#2057)');
   Assert.IsFalse(ASettings.DebugMemoryTimelineObjectCount, 'debug.memoryTimeline.objectCount (#858)');
-  Assert.IsTrue(ASettings.DebugWhyHere, 'debug.whyHere (#1878)');
-  Assert.AreEqual(3, ASettings.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
-  Assert.IsTrue(ASettings.DebugVariablesWindow, 'debug.variablesWindow (#853)');
-  Assert.AreEqual(3, ASettings.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
-  Assert.AreEqual(500, ASettings.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
-  Assert.IsTrue(ASettings.DebugPredictConditions, 'debug.predictConditions (#2169)');
-  Assert.IsTrue(ASettings.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
-  Assert.AreEqual(20, ASettings.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
-  Assert.IsTrue(ASettings.DebugEditValues, 'debug.editValues (#868)');
-  Assert.IsTrue(ASettings.DebugHoverExpand, 'debug.hoverExpand (#895)');
-  Assert.IsTrue(ASettings.DebugHoverChanges, 'debug.hoverChanges (#895)');
-  Assert.AreEqual(100, ASettings.DebugHoverMaxChildren, 'debug.hoverMaxChildren (#895)');
-  Assert.IsTrue(ASettings.DebugPinnedValues, 'debug.pinnedValues (#526)');
-  Assert.AreEqual('', ASettings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
+  Assert.IsTrue(ASettings.DebugNote, 'debug.note (#582)');
+  Assert.IsTrue(ASettings.DebugNoteSaveFile, 'debug.note.saveFile (#582)');
+  Assert.AreEqual('ask', ASettings.DebugCloseOpenedFiles, 'debug.closeOpenedFiles (#842)');
+  Assert.IsFalse(ASettings.DebugPreviewTab, 'debug.previewTab (#842)');
+  AssertDebugWindowDefaults(ASettings);
   AssertCommandDefaults(ASettings);
 end;
 /// <summary>Vorgaben für Diagnose, Einrichtung, Start, Zurücknehmen und Lesezeichen.</summary>
@@ -359,6 +390,7 @@ begin
   ASettings.TestsApprovalFiles := False;
   ASettings.TestsShowDuration := False;
   ASettings.TestsWindow := False;
+  ASettings.TestsWindowOnFailure := False;
   ASettings.TestsLists := False;
   ASettings.TestsListsRunKey := 0;
   ASettings.TestsSlowMs := 1000;
@@ -431,6 +463,7 @@ begin
   ASettings.MetricsReport := False;
   ASettings.TeamFile := False;
   ASettings.McpBuild := False;
+  ASettings.AssistantsBanner := False;
   ASettings.BaselineUpdate := False;
   ASettings.EditorKeysPriority := True;
   ASettings.SlashCommands := False;
@@ -444,6 +477,30 @@ begin
   ASettings.QuickToggleKey := $6051;
   ASettings.QuickToggleKeyPriority := True;
   ASettings.DiagnosticMode := True;
+end;
+
+/// <summary>Rundreise: Debug-Fenster, Logpunkte und Werte im Hover von der Vorgabe abweichend setzen.</summary>
+procedure SetRoundTripDebugWindows(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.DebugLogpointsRecordValues := False;
+  ASettings.DebugLogpointsRecordLimit := 500;
+  ASettings.DebugWhyHere := False;
+  ASettings.DebugWhyHereDepth := 6;
+  ASettings.DebugVariablesWindow := False;
+  ASettings.DebugVariablesSearchDepth := 5;
+  ASettings.DebugVariablesSearchLimit := 250;
+  ASettings.DebugVariablesScopedWatches := False;
+  ASettings.DebugObjectMarks := False;
+  ASettings.DebugParallelWatch := False;
+  ASettings.DebugPredictConditions := False;
+  ASettings.DebugPredictDimSkipped := False;
+  ASettings.DebugPredictLines := 40;
+  ASettings.DebugEditValues := False;
+  ASettings.DebugHoverExpand := False;
+  ASettings.DebugHoverChanges := False;
+  ASettings.DebugHoverMaxChildren := 250;
+  ASettings.DebugPinnedValues := False;
+  ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
 end;
 
 /// <summary>Rundreise: Debugger, Befehle und Tasten von der Vorgabe abweichend setzen.</summary>
@@ -476,6 +533,8 @@ begin
   ASettings.DebugJustMyCode := False;
   ASettings.DebugExceptionBanner := True;
   ASettings.DebugExceptionBannerIgnoreAtLocation := False;
+  ASettings.DebugExceptionMessageRules := False;
+  ASettings.DebugExceptionRules := False;
   ASettings.DebugInlineValues := False;
   ASettings.DebugInlineValuesPerLine := 7;
   ASettings.DebugMemoryTimeline := False;
@@ -483,20 +542,11 @@ begin
   ASettings.DebugProfiler := True;
   ASettings.DebugProfilerIntervalMs := 25;
   ASettings.DebugMemoryTimelineObjectCount := True;
-  ASettings.DebugWhyHere := False;
-  ASettings.DebugWhyHereDepth := 6;
-  ASettings.DebugVariablesWindow := False;
-  ASettings.DebugVariablesSearchDepth := 5;
-  ASettings.DebugVariablesSearchLimit := 250;
-  ASettings.DebugPredictConditions := False;
-  ASettings.DebugPredictDimSkipped := False;
-  ASettings.DebugPredictLines := 40;
-  ASettings.DebugEditValues := False;
-  ASettings.DebugHoverExpand := False;
-  ASettings.DebugHoverChanges := False;
-  ASettings.DebugHoverMaxChildren := 250;
-  ASettings.DebugPinnedValues := False;
-  ASettings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
+  ASettings.DebugNote := False;
+  ASettings.DebugNoteSaveFile := False;
+  ASettings.DebugCloseOpenedFiles := 'AUTO';
+  ASettings.DebugPreviewTab := True;
+  SetRoundTripDebugWindows(ASettings);
   SetRoundTripCommands(ASettings);
 end;
 /// <summary>Rundreise: Diagnose, Start, Zurücknehmen und Blocklinien von der Vorgabe abweichend setzen.</summary>
@@ -559,6 +609,7 @@ begin
   Assert.IsFalse(ALoaded.TestsApprovalFiles, 'tests.approvalFiles (#1881)');
   Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
   Assert.IsFalse(ALoaded.TestsWindow, 'tests.window (#1776)');
+  Assert.IsFalse(ALoaded.TestsWindowOnFailure, 'tests.window.openOnFailure (#2467)');
   Assert.IsFalse(ALoaded.TestsLists, 'tests.lists (#2167)');
   Assert.AreEqual(0, ALoaded.TestsListsRunKey, 'tests.lists.runKey (#2167)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
@@ -632,6 +683,7 @@ begin
   Assert.IsFalse(ALoaded.MetricsReport);
   Assert.IsFalse(ALoaded.TeamFile);
   Assert.IsFalse(ALoaded.McpBuild);
+  Assert.IsFalse(ALoaded.AssistantsBanner);
   Assert.IsFalse(ALoaded.BaselineUpdate);
   Assert.IsTrue(ALoaded.EditorKeysPriority);
   Assert.IsFalse(ALoaded.SlashCommands);
@@ -645,6 +697,30 @@ begin
   Assert.IsTrue(ALoaded.NestedRoutineBand);
   Assert.AreEqual('#A85A00', ALoaded.NestedRoutineColorLight, 'einheitlich geschrieben');
   Assert.IsTrue(ALoaded.ProblemsMessageList, 'Liste „Atlas-Probleme“ eingeschaltet');
+end;
+
+/// <summary>Rundreise: Debug-Fenster, Logpunkte und Werte im Hover gelesen.</summary>
+procedure AssertRoundTripDebugWindows(const ALoaded: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ALoaded.DebugLogpointsRecordValues, 'debug.logpoints.recordValues (#2552)');
+  Assert.AreEqual(500, ALoaded.DebugLogpointsRecordLimit, 'debug.logpoints.recordLimit (#2552)');
+  Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
+  Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
+  Assert.IsFalse(ALoaded.DebugVariablesWindow, 'debug.variablesWindow (#853)');
+  Assert.AreEqual(5, ALoaded.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
+  Assert.AreEqual(250, ALoaded.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
+  Assert.IsFalse(ALoaded.DebugVariablesScopedWatches, 'debug.variablesWindow.scopedWatches (#2550)');
+  Assert.IsFalse(ALoaded.DebugObjectMarks, 'debug.objectMarks (#839)');
+  Assert.IsFalse(ALoaded.DebugParallelWatch, 'debug.parallelWatch (#866)');
+  Assert.IsFalse(ALoaded.DebugPredictConditions, 'debug.predictConditions (#2169)');
+  Assert.IsFalse(ALoaded.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
+  Assert.AreEqual(40, ALoaded.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
+  Assert.IsFalse(ALoaded.DebugEditValues, 'debug.editValues (#868)');
+  Assert.IsFalse(ALoaded.DebugHoverExpand, 'debug.hoverExpand (#895)');
+  Assert.IsFalse(ALoaded.DebugHoverChanges, 'debug.hoverChanges (#895)');
+  Assert.AreEqual(250, ALoaded.DebugHoverMaxChildren, 'debug.hoverMaxChildren (#895)');
+  Assert.IsFalse(ALoaded.DebugPinnedValues, 'debug.pinnedValues (#526)');
+  Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
 end;
 
 /// <summary>Rundreise: Debugger, Befehle und Blocklinien gelesen.</summary>
@@ -678,6 +754,8 @@ begin
   Assert.IsFalse(ALoaded.DebugJustMyCode, 'debug.justMyCode (#578)');
   Assert.IsTrue(ALoaded.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
   Assert.IsFalse(ALoaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsFalse(ALoaded.DebugExceptionMessageRules, 'debug.exceptionMessageRules (#2549)');
+  Assert.IsFalse(ALoaded.DebugExceptionRules, 'debug.exceptionRules (#838)');
   Assert.IsFalse(ALoaded.DebugInlineValues, 'debug.inlineValues (#508)');
   Assert.AreEqual(7, ALoaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
   Assert.IsFalse(ALoaded.DebugMemoryTimeline, 'debug.memoryTimeline (#858)');
@@ -685,20 +763,11 @@ begin
   Assert.IsTrue(ALoaded.DebugProfiler, 'debug.profiler (#2057)');
   Assert.AreEqual(25, ALoaded.DebugProfilerIntervalMs, 'debug.profiler.intervalMs (#2057)');
   Assert.IsTrue(ALoaded.DebugMemoryTimelineObjectCount, 'debug.memoryTimeline.objectCount (#858)');
-  Assert.IsFalse(ALoaded.DebugWhyHere, 'debug.whyHere (#1878)');
-  Assert.AreEqual(6, ALoaded.DebugWhyHereDepth, 'debug.whyHere.depth (#1878)');
-  Assert.IsFalse(ALoaded.DebugVariablesWindow, 'debug.variablesWindow (#853)');
-  Assert.AreEqual(5, ALoaded.DebugVariablesSearchDepth, 'debug.variablesWindow.searchDepth (#853)');
-  Assert.AreEqual(250, ALoaded.DebugVariablesSearchLimit, 'debug.variablesWindow.searchLimit (#853)');
-  Assert.IsFalse(ALoaded.DebugPredictConditions, 'debug.predictConditions (#2169)');
-  Assert.IsFalse(ALoaded.DebugPredictDimSkipped, 'debug.predictConditions.dimSkipped (#2169)');
-  Assert.AreEqual(40, ALoaded.DebugPredictLines, 'debug.predictConditions.lines (#2169)');
-  Assert.IsFalse(ALoaded.DebugEditValues, 'debug.editValues (#868)');
-  Assert.IsFalse(ALoaded.DebugHoverExpand, 'debug.hoverExpand (#895)');
-  Assert.IsFalse(ALoaded.DebugHoverChanges, 'debug.hoverChanges (#895)');
-  Assert.AreEqual(250, ALoaded.DebugHoverMaxChildren, 'debug.hoverMaxChildren (#895)');
-  Assert.IsFalse(ALoaded.DebugPinnedValues, 'debug.pinnedValues (#526)');
-  Assert.AreEqual('C:\Komponenten;D:\Lib', ALoaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
+  Assert.IsFalse(ALoaded.DebugNote, 'debug.note (#582)');
+  Assert.IsFalse(ALoaded.DebugNoteSaveFile, 'debug.note.saveFile (#582)');
+  Assert.AreEqual('auto', ALoaded.DebugCloseOpenedFiles, 'debug.closeOpenedFiles (#842)');
+  Assert.IsTrue(ALoaded.DebugPreviewTab, 'debug.previewTab (#842)');
+  AssertRoundTripDebugWindows(ALoaded);
   AssertRoundTripCommands(ALoaded);
 end;
 /// <summary>Rundreise: Serverpfad, Tasten, Diagnose, Start und Zurücknehmen gelesen.</summary>
@@ -1250,6 +1319,91 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.cMaxTestsLogMaxLines, mLoaded.TestsLogMaxLines);
 end;
 
+procedure TAtlasPluginSettingsTests.TestsLastRunRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.TestsLastRun);
+  mStore := TMemoryStore.Create;
+  mSettings.TestsLastRun := False;
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mStore.ReadInteger('TestsLastRun', 1));
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.TestsLastRun);
+end;
+
+procedure TAtlasPluginSettingsTests.AssistantsContextRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.AssistantsContext);
+  Assert.IsTrue(mSettings.AssistantsContextSelection);
+  Assert.AreEqual(4000, mSettings.AssistantsContextSelectionMax);
+  mStore := TMemoryStore.Create;
+  mSettings.AssistantsContext := False;
+  mSettings.AssistantsContextSelection := False;
+  mSettings.AssistantsContextSelectionMax := 999999;
+  mSettings.Save(mStore);
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.AssistantsContext);
+  Assert.IsFalse(mLoaded.AssistantsContextSelection);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxAssistantsContextSelectionMax, mLoaded.AssistantsContextSelectionMax);
+end;
+
+procedure TAtlasPluginSettingsTests.AssistantsLinkRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(mSettings.AssistantsLink, 'Kopplung standardmäßig aus (#2377)');
+  Assert.IsTrue(mSettings.AssistantsLinkShareSelection);
+  Assert.IsTrue(mSettings.AssistantsLinkDiffPreview);
+  Assert.AreEqual($E000 + Ord('K'), mSettings.AssistantsLinkMentionKey, 'Strg+Umschalt+Alt+K');
+  mStore := TMemoryStore.Create;
+  mSettings.AssistantsLink := True;
+  mSettings.AssistantsLinkShareSelection := False;
+  mSettings.AssistantsLinkDiffPreview := False;
+  mSettings.AssistantsLinkMentionKey := 0;
+  mSettings.Save(mStore);
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.AssistantsLink);
+  Assert.IsFalse(mLoaded.AssistantsLinkShareSelection);
+  Assert.IsFalse(mLoaded.AssistantsLinkDiffPreview);
+  Assert.AreEqual(0, mLoaded.AssistantsLinkMentionKey, 'keine Taste');
+end;
+
+procedure TAtlasPluginSettingsTests.AssistantsHoldQuestionsLogRoundTrip;
+var
+  mStore: IAtlasSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.AssistantsEditHoldModified);
+  Assert.IsTrue(mSettings.AssistantsQuestionsInIde);
+  Assert.IsTrue(mSettings.AssistantsLog);
+  Assert.AreEqual(500, mSettings.AssistantsLogMax);
+  mStore := TMemoryStore.Create;
+  mSettings.AssistantsEditHoldModified := False;
+  mSettings.AssistantsQuestionsInIde := False;
+  mSettings.AssistantsLog := False;
+  mSettings.AssistantsLogMax := 1;
+  mSettings.Save(mStore);
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.AssistantsEditHoldModified);
+  Assert.IsFalse(mLoaded.AssistantsQuestionsInIde);
+  Assert.IsFalse(mLoaded.AssistantsLog);
+  Assert.AreEqual(TAtlasPluginSettings.cMinAssistantsLogMax, mLoaded.AssistantsLogMax);
+end;
+
 procedure TAtlasPluginSettingsTests.HoverSignatureParamsRoundTrip;
 var
   mStore: IAtlasSettingsStore;
@@ -1401,9 +1555,11 @@ begin
   mSettings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(mSettings.EditorContextMenuContextual);
   Assert.IsTrue(mSettings.AtlasMenuContextual);
+  Assert.IsTrue(mSettings.AtlasViewMenu);
   Assert.AreEqual('navigation,edit,analysis,findings,debug,tests,notes', mSettings.EditorContextMenuGroups);
   mSettings.EditorContextMenuContextual := False;
   mSettings.AtlasMenuContextual := False;
+  mSettings.AtlasViewMenu := False;
   mSettings.EditorContextMenuGroups := 'notes; quatsch, Debug';
   mSettings.Normalize;
   Assert.AreEqual('debug,notes', mSettings.EditorContextMenuGroups);
@@ -1413,6 +1569,7 @@ begin
   mLoaded.Load(mStore);
   Assert.IsFalse(mLoaded.EditorContextMenuContextual);
   Assert.IsFalse(mLoaded.AtlasMenuContextual);
+  Assert.IsFalse(mLoaded.AtlasViewMenu);
   Assert.AreEqual('debug,notes', mLoaded.EditorContextMenuGroups);
 end;
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
@@ -1658,7 +1815,7 @@ begin
   end;
   Assert.Contains(mPaths, '|language|');
   Assert.Contains(mPaths, '|completion.matching|');
-  // Versionsverwaltung (#571) hat seit #1285 eine eigene Seite, Issue-Tracker seit #1260: Das ganze Objekt
+  // Versionsverwaltung (#571) hat eine eigene Seite (#1285), Issue-Tracker auch (#1260): Das ganze Objekt
   // ("vcs", "issues") enthält Glieder dieser Seiten und steht deshalb nicht im Dialog.
   Assert.DoesNotContain(mPaths, '|vcs|');
   Assert.DoesNotContain(mPaths, '|vcs.provider|');

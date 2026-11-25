@@ -26,7 +26,8 @@ uses
   Vcl.Forms,
   Atlas.Core.Debug.OwnCode,
   Atlas.Core.Debug.CallStackView,
-  Atlas.UI.Debug.CallStack.Strings;
+  Atlas.UI.Debug.CallStack.Strings,
+  Atlas.Vcl.Forms.FillFrame;
 
 type
   /// <summary>Leiste über der Liste: Suche, „Mit letztem Halt vergleichen“, „Kopieren“ mit Menü und Statuszeile.
@@ -60,7 +61,7 @@ type
     property OnCopy: TProc<Boolean> read FOnCopy write FOnCopy;
   end;
 
-  TAtlasDebugCallStackFrame = class(TFrame)
+  TAtlasDebugCallStackFrame = class(TAtlasFillFrame)
   private
     FBar: TAtlasCallStackBar;
     FList: TListView;
@@ -72,12 +73,10 @@ type
     FRows: TAtlasDebugStackRows;
     FExpanded: TArray<Integer>;
     FStatusText: string;
-    FFilled: Boolean;
     FOnOpenFrame: TProc<Integer>;
     FOnExpand: TProc;
     FOnCopied: TProc<Integer>;
     procedure BuildLists;
-    procedure Fill;
     procedure FillPrevious;
     function RowIndex(AItem: TListItem): Integer;
     procedure BarChange(Sender: TObject);
@@ -91,7 +90,7 @@ type
       var DefaultDraw: Boolean);
     procedure DrawRow(ACanvas: TCanvas; AItem: TListItem; AState: TCustomDrawState);
   protected
-    procedure CreateWnd; override;
+    procedure FillControls; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Neuer Halt: Stapel zeigen, Gruppen zu. APrevious: Stapel beim letzten Halt an derselben Stelle
@@ -360,15 +359,6 @@ begin
   Result.Parent := AParent;
 end;
 
-procedure TAtlasDebugCallStackFrame.CreateWnd;
-begin
-  inherited CreateWnd;
-  if not FFilled then
-  begin
-    Fill;
-  end;
-end;
-
 procedure TAtlasDebugCallStackFrame.BuildLists;
 var
   mFooter: TLabel;
@@ -397,13 +387,12 @@ begin
   FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
 end;
 
-procedure TAtlasDebugCallStackFrame.Fill;
+procedure TAtlasDebugCallStackFrame.FillControls;
 var
   mRow: TAtlasDebugStackRow;
   mCells: TArray<string>;
   mItem: TListItem;
 begin
-  FFilled := True;
   FRows := FStack.Rows(FExpanded);
   FList.HandleNeeded;
   FList.Items.BeginUpdate;
@@ -582,11 +571,7 @@ begin
   FHasPrevious := AHasPrevious;
   FExpanded := nil;
   FStatusText := '';
-  FFilled := False;
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
+  Refill;
 end;
 
 procedure TAtlasDebugCallStackFrame.UpdateStack(const AStack, APrevious: TAtlasDebugStackView);
@@ -597,7 +582,7 @@ begin
   FPrev := APrevious;
   if not HandleAllocated then
   begin
-    FFilled := False;
+    FillLater;
     Exit;
   end;
   mSelected := -1;

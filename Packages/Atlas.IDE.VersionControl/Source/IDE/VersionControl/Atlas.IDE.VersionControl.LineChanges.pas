@@ -33,9 +33,10 @@
 //   steht (Strg+Klick und Rechtsklick fängt der Tracker ab). Beim Zeichnen
 //   fragt niemand den Tracker.
 // Seit #1905 im Modul Versionsverwaltung: Der Teil des Moduls installiert die Marken und meldet sie über
-// TAtlasLineChangesAdapter bei TAtlasLineChangeMarks (Atlas.IDE.Contracts.LineChanges) an; die Haken des Trackers
-// liegen dort und kommen über BlameHooksChanged. Gezeichnet wird weiter hier (Balken am Rand der Rinne, Dreieck,
-// Text hinter dem Zeilenende): IAtlasGutterLayer zeichnet nur Marken in der Rinne je Zeile.
+// TAtlasLineChangesAdapter (Atlas.IDE.VersionControl.Adapters.LineChanges) bei TAtlasLineChangeMarks
+// (Atlas.IDE.Contracts.LineChanges) an; die Haken des Trackers liegen dort und kommen über BlameHooksChanged.
+// Gezeichnet wird weiter hier (Balken am Rand der Rinne, Dreieck, Text hinter dem Zeilenende): IAtlasGutterLayer
+// zeichnet nur Marken in der Rinne je Zeile.
 // Gesichert über TAtlasFeature.LineChanges. Nur im Hauptthread.
 
 interface
@@ -77,48 +78,34 @@ type
     class procedure HideBlameTip; static;
   end;
 
-  /// <summary>Die Marken für Base und Tracker (IAtlasLineChanges, #1905).</summary>
-  TAtlasLineChangesAdapter = class(TInterfacedObject, IAtlasLineChanges)
-  public
-    function Enabled: Boolean;
-    procedure GoToChange(AForward: Boolean);
-    function Snapshot(const AFileName: string; out AChanges: TAtlasLineChangeList; out ALineCount: Integer): Boolean;
-    function BlameAt(AWnd: HWND; AX, AY: Integer; out ACommit: TAtlasBlameCommit): Boolean;
-    procedure RefreshBlameTip;
-    procedure HideBlameTip;
-    procedure BlameHooksChanged;
-  end;
-
 implementation
 
 uses
   Atlas.Core.VersionControl.Contract,
   System.Classes,
   System.Types,
-  System.Math,
   System.Generics.Collections,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.LineChangesPlan,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.UI.Popup.TitledTip,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.Vcl.Popup.TitledTip,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.VersionControl.LineChangesData,
   Atlas.IDE.VersionControl.LineChangesPaint,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Vcl.Theme.EditorFont;
 
 const
   cTickMs = 150;
@@ -557,44 +544,17 @@ end;
 procedure TLineChangesState.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   AMark: TAtlasLineMark; AChange, ADeleted: Integer);
 var
-  mColors: TAtlasColors;
-  mWidth, mLeft, mSize, mSaved: Integer;
   mBar: TRect;
-  mDC: HDC;
   mRow: TMarkRow;
   mLineText: string;
 begin
-  mColors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Left + 1, ARect.Top + 1));
-  mWidth := TAtlasLineChangesPlan.BarWidth(ARect.Height);
-  // Rechts in der Rinne, mit einem Pixel Abstand zum Code.
-  mLeft := ARect.Right - mWidth - 2;
-  mBar := TRect.Create(mLeft, ARect.Top, mLeft + mWidth, ARect.Bottom);
+  mBar := TAtlasLineChangesPaint.PaintMarks(AContext.Canvas.Handle, ARect,
+    TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Left + 1, ARect.Top + 1), AMark, ADeleted >= 0,
+    (ADeleted >= 0) and (FData.Changes[ADeleted].Line >= FData.LineCount));
   mRow.Change := AChange;
-  mDC := AContext.Canvas.Handle;
-  mSaved := SaveDC(mDC);
-  try
-    if AMark = TAtlasLineMark.Added then
-    begin
-      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Add);
-    end
-    else if AMark <> TAtlasLineMark.None then
-    begin
-      TAtlasLineChangesPaint.FillBar(mDC, mBar, mColors.Accent);
-    end;
-    if ADeleted >= 0 then
-    begin
-      // Über der Zeile, am Dateiende unter der letzten Zeile.
-      mSize := TAtlasLineChangesPlan.DeletedSize(ARect.Height);
-      TAtlasLineChangesPaint.PaintDeleted(mDC, mLeft, mSize, ARect,
-        FData.Changes[ADeleted].Line >= FData.LineCount, mColors.Error);
-      mBar.Right := Max(mBar.Right, mLeft + mSize);
-      if AMark = TAtlasLineMark.None then
-      begin
-        mRow.Change := ADeleted;
-      end;
-    end;
-  finally
-    RestoreDC(mDC, mSaved);
+  if (ADeleted >= 0) and (AMark = TAtlasLineMark.None) then
+  begin
+    mRow.Change := ADeleted;
   end;
   mRow.FileName := AContext.FileName;
   mRow.Line := AContext.LogicalLineNum - 1;
@@ -925,44 +885,6 @@ begin
     mState.FHovering := False;
     mState.HideTip;
   end;
-end;
-
-{ TAtlasLineChangesAdapter }
-
-function TAtlasLineChangesAdapter.Enabled: Boolean;
-begin
-  Result := TAtlasIdeLineChanges.Enabled;
-end;
-
-procedure TAtlasLineChangesAdapter.GoToChange(AForward: Boolean);
-begin
-  TAtlasIdeLineChanges.GoToChange(AForward);
-end;
-
-function TAtlasLineChangesAdapter.Snapshot(const AFileName: string; out AChanges: TAtlasLineChangeList;
-  out ALineCount: Integer): Boolean;
-begin
-  Result := TAtlasIdeLineChanges.Snapshot(AFileName, AChanges, ALineCount);
-end;
-
-function TAtlasLineChangesAdapter.BlameAt(AWnd: HWND; AX, AY: Integer; out ACommit: TAtlasBlameCommit): Boolean;
-begin
-  Result := TAtlasIdeLineChanges.BlameAt(AWnd, AX, AY, ACommit);
-end;
-
-procedure TAtlasLineChangesAdapter.RefreshBlameTip;
-begin
-  TAtlasIdeLineChanges.RefreshBlameTip;
-end;
-
-procedure TAtlasLineChangesAdapter.HideBlameTip;
-begin
-  TAtlasIdeLineChanges.HideBlameTip;
-end;
-
-procedure TAtlasLineChangesAdapter.BlameHooksChanged;
-begin
-  TAtlasIdeLineChanges.SetBlameHooks(TAtlasLineChangeMarks.BlameHooks);
 end;
 
 end.

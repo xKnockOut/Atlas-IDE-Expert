@@ -17,7 +17,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.Core.Results.Model;
 
 type
@@ -74,25 +74,26 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Vcl.Controls,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Results.Plan,
   Atlas.Core.Commands.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Results.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Host;
+  Atlas.ToolsApi.Files.Service,
+  Atlas.IDE.Foundation.Host,
+  Atlas.Plugin.Notifications.MessageSink;
 
 const
   // Beim Tippen: lieber leer als die IDE aufhalten.
@@ -187,8 +188,8 @@ end;
 
 class procedure TAtlasIdeResults.RunDataFlow(AFromFilter: Boolean);
 const
-  cTitles: array[TAtlasDataFlowDirection] of TAtlasTextId = (TAtlasTextId.ResultsDataFlowSources,
-    TAtlasTextId.ResultsDataFlowTargets);
+  cTitles: array[TAtlasDataFlowDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsDataFlowSources,
+    TAtlasResultsTextId.ResultsDataFlowTargets);
 var
   mCurrent: TLspSession;
   mFound: TAtlasDataFlowResult;
@@ -223,7 +224,7 @@ begin
   begin
     mFound.Symbol.Name := FFlowName;
   end;
-  TAtlasIdeResultsWindow.ShowDataFlow(TAtlasStrings.Fmt(cTitles[FFlowRequest.Direction],
+  TAtlasIdeResultsWindow.ShowDataFlow(TAtlasResultsStrings.Fmt(cTitles[FFlowRequest.Direction],
     [mFound.Symbol.Name, Length(mFound.Nodes)]), FFlowRequest.Direction, mFound,
     TAtlasIdeSettings.Current.DataFlowMaxDepth, FFlowRequest.OnlyProject, FFlowRequest.ExcludeTests);
 end;
@@ -321,19 +322,12 @@ end;
 
 class function TAtlasIdeResults.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class procedure TAtlasIdeResults.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasMessageSink.Create(FMessage).Say(AText);
 end;
 
 class function TAtlasIdeResults.AtCursor(out AFileName: string; out ALine, ACharacter: Integer;
@@ -437,8 +431,8 @@ end;
 
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean);
 const
-  cTitles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
-    TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
+  cTitles: array[TAtlasHierarchyDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsIncoming,
+    TAtlasResultsTextId.ResultsOutgoing, TAtlasResultsTextId.ResultsSupertypes, TAtlasResultsTextId.ResultsSubtypes);
 var
   mFileName, mName: string;
   mLine, mCharacter: Integer;
@@ -467,8 +461,8 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots,
-    AAsDiagram);
+  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasResultsStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection,
+    mRoots, AAsDiagram);
 end;
 
 class procedure TAtlasIdeResults.ShowCallDiagram;

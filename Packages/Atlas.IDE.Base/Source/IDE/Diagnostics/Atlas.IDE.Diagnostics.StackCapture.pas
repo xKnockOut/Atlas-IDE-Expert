@@ -21,7 +21,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Hangs;
+  Atlas.Plugin.Diagnostics.Hangs;
 
 type
   TAtlasIdeStackCapture = class
@@ -48,9 +48,9 @@ uses
   System.IOUtils,
   System.SyncObjs,
   Atlas.Text.MapFile,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.StackRing,
-  Atlas.Core.Files.TextFile;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.StackRing,
+  Atlas.Plugin.Files.TextFile;
 
 type
   // Eigene Fassungen von EXCEPTION_RECORD/EXCEPTION_POINTERS: SysUtils und Winapi.Windows deklarieren

@@ -58,7 +58,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Style.Syntax;
+  Atlas.Plugin.Style.Syntax;
 
 type
   /// <summary>Zelle einer Zeile mit Spalten: Läufe oder ein Text in fester Schrift und Farbe.</summary>
@@ -759,10 +759,12 @@ begin
   begin
     mStop := RowEnd(ARuns, AIndex);
     mCell := CellOf(AIndex + 1, mStop);
-    mTerm := TLayoutBuilder.Create(mTermWidth, FMetrics, FMeasure);
-    mDescription := TLayoutBuilder.Create(Max(1, FWidth - mLeft - mTermWidth - FMetrics.ColumnGap), FMetrics,
-      FMeasure);
+    mTerm := nil;
+    mDescription := nil;
     try
+      mTerm := TLayoutBuilder.Create(mTermWidth, FMetrics, FMeasure);
+      mDescription := TLayoutBuilder.Create(Max(1, FWidth - mLeft - mTermWidth - FMetrics.ColumnGap), FMetrics,
+        FMeasure);
       mTerm.FlowRuns(Copy(ARuns, AIndex + 1, mCell - AIndex - 1), ABaseColor);
       mDescription.FlowRuns(Copy(ARuns, mCell + 1, mStop - mCell - 1), ABaseColor);
       Merge([mTerm, mDescription], [mLeft, mLeft + mTermWidth + FMetrics.ColumnGap], FMetrics.ParagraphGap div 2);
@@ -1359,7 +1361,7 @@ begin
     Exit;
   end;
   FBuilder.Heading(FLabels.Exceptions);
-  mNameWidth := NameColumn(mSections, MaxInt, FMono, 50);
+  mNameWidth := NameColumn(mSections, MaxInt, FMono, TAtlasDocLayout.cExceptionColumnPercent);
   for mSection in mSections do
   begin
     FBuilder.Columns([LinkCell(mSection), TDocCell.OfRuns(mSection.Runs, TAtlasDocColor.Muted)], [mNameWidth]);
@@ -1618,9 +1620,11 @@ begin
   end;
   Result.Collapsible := IsCollapsible(AContent);
   Result.Expanded := AContent.Expanded or not Result.Collapsible;
-  mBuilder := TLayoutBuilder.Create(AWidth, AMetrics, AMeasure);
-  mSections := TDocSections.Create(mBuilder, AContent, ALabels, AWidth, AMeasure);
+  mBuilder := nil;
+  mSections := nil;
   try
+    mBuilder := TLayoutBuilder.Create(AWidth, AMetrics, AMeasure);
+    mSections := TDocSections.Create(mBuilder, AContent, ALabels, AWidth, AMeasure);
     mSections.Summary;
     if Result.Expanded and Result.Collapsible then
     begin

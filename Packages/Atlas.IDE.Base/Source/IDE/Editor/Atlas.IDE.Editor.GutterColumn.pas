@@ -38,7 +38,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Lsp.Session,
-  Atlas.UI.Popup.TitledTip,
+  Atlas.Vcl.Popup.TitledTip,
   Atlas.IDE.Editor.GutterColumnState;
 
 type
@@ -131,20 +131,20 @@ uses
   System.Math,
   Vcl.Forms,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.GutterPanel,
   Atlas.UI.Editor.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.GutterColumns,
+  Atlas.ToolsApi.Gutter.Columns,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorSettings,
+  Atlas.ToolsApi.Editor.Refresh;
 
 type
   /// <summary>Maße eines Symbols in seiner Zelle.</summary>
@@ -163,13 +163,17 @@ type
 { TSymbolBox }
 
 constructor TSymbolBox.Create(const ARect: TRect);
+const
+  cMinSize = 6;
+  cInset = 4;
+  cPenDivisor = 7;
 begin
-  Size := Max(6, Min(ARect.Width, ARect.Height) - 4);
+  Size := Max(cMinSize, Min(ARect.Width, ARect.Height) - cInset);
   Left := ARect.Left + (ARect.Width - Size) div 2;
   Top := ARect.Top + (ARect.Height - Size) div 2;
   Mid := Top + Size div 2;
   Center := Left + Size div 2;
-  Pen := Max(1, Size div 7);
+  Pen := Max(1, Size div cPenDivisor);
 end;
 
 function TSymbolBox.Bottom: Integer;
@@ -177,20 +181,14 @@ begin
   Result := Top + Size - 1;
 end;
 
-function Services: INTACodeEditorServices280;
-begin
-  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 /// <summary>↑ (AUp) bzw. ↓: Schaft und gefüllte Spitze.</summary>
 procedure PaintArrow(ACanvas: TCanvas; const ABox: TSymbolBox; AUp: Boolean);
+const
+  cThirds = 3;
 var
   mHead: Integer;
 begin
-  mHead := Max(2, ABox.Size div 3);
+  mHead := Max(2, ABox.Size div cThirds);
   ACanvas.Pen.Width := 1;
   if AUp then
   begin
@@ -211,6 +209,8 @@ begin
 end;
 
 procedure PaintSymbol(ACanvas: TCanvas; const ARect: TRect; ASymbol: TAtlasGutterSymbol; ABack: TAtlasColor);
+const
+  cQuarters = 4;
 var
   mBox: TSymbolBox;
   mColor: TColor;
@@ -226,7 +226,7 @@ begin
   begin
     ACanvas.Pen.Width := 1;
   end;
-  mQuarter := mBox.Size div 4;
+  mQuarter := mBox.Size div cQuarters;
   case ASymbol of
     TAtlasGutterSymbol.Error:
       begin
@@ -271,15 +271,18 @@ begin
     mBack := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
   end;
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    PaintSymbol(ACanvas, ARect, ASymbol, mBack);
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      PaintSymbol(ACanvas, ARect, ASymbol, mBack);
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
+    end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;
@@ -474,7 +477,7 @@ end;
 function TAtlasIdeGutterColumn.Active: Boolean;
 begin
   Result := (FIndex >= 0) and not TAtlasGuard.Disabled(TAtlasFeature.GutterColumn) and
-    TAtlasIdeSettings.GutterColumnOn;
+    TAtlasIdeEditorSettings.GutterColumnOn;
 end;
 
 procedure TAtlasIdeGutterColumn.EnsureColumn;
@@ -489,7 +492,7 @@ begin
   begin
     Exit;
   end;
-  mEditors := Services;
+  mEditors := TAtlasIdeGutterColumns.Services;
   // Kurz nach dem Abbau eines Editorfensters nicht wieder anfordern (#1233, TAtlasIdeGutterColumns).
   if (mEditors = nil) or not TAtlasIdeGutterColumns.Allowed then
   begin
@@ -503,20 +506,8 @@ begin
 end;
 
 procedure TAtlasIdeGutterColumn.DropColumn;
-var
-  mEditors: INTACodeEditorServices280;
 begin
-  if FColumn < 0 then
-  begin
-    Exit;
-  end;
-  mEditors := Services;
-  if mEditors <> nil then
-  begin
-    mEditors.RemoveGutterColumn(FColumn);
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-  FColumn := -1;
+  TAtlasIdeGutterColumns.Remove(FColumn);
   FRows.Clear;
 end;
 
@@ -716,13 +707,12 @@ end;
 
 procedure TAtlasIdeGutterColumn.HideTip;
 begin
-  if (FTip <> nil) and FTip.IsShown then
-  begin
-    FTip.HidePopup;
-  end;
+  TAtlasTitledTip.HideShown(FTip);
 end;
 
 procedure TAtlasIdeGutterColumn.ShowPanel(const ARow: TRow; AFetchFixes: Boolean);
+const
+  cTipGap = 4;
 var
   mPanel: TPanel;
   mShown: Boolean;
@@ -750,7 +740,8 @@ begin
   FHovering := True;
   FHover := ARow;
   TAtlasIdeStyle.Apply(FTip, FHoverScreen);
-  FTip.ShowNote(mPanel.Title, mPanel.Text, mPanel.Captions, Point(FHoverScreen.Right + 4, FHoverScreen.Bottom + 2));
+  FTip.ShowNote(mPanel.Title, mPanel.Text, mPanel.Captions,
+    Point(FHoverScreen.Right + cTipGap, FHoverScreen.Bottom + 2));
 end;
 
 function TAtlasIdeGutterColumn.ProblemPanel(const ARow: TRow; AFetchFixes: Boolean; var APanel: TPanel): Boolean;

@@ -46,6 +46,11 @@ type
     procedure FormatWithoutSettingsOwnRoutineInOtherUnit;
     [Test]
     procedure FormatWithoutSettingsOwnRoutineInSameUnit;
+    /// <summary>Eigene Unit mit StrToDate, FloatToStr …, die nicht im Index steht (Prüfung im Editor während des
+    /// Indexaufbaus, Unit außerhalb der Suchpfade): Steht sie in uses nach System.SysUtils, kann sie die RTL
+    /// verdecken, die Regel schweigt.</summary>
+    [Test]
+    procedure FormatWithoutSettingsUnknownWrapperUnit;
     [Test]
     procedure LocaleSpecifiers;
     [Test]
@@ -121,6 +126,12 @@ type
     [Test]
     procedure DelimitedTextSilentCases;
     [Test]
+    procedure DelimitedTextStrictFarAway;
+    [Test]
+    procedure DelimitedTextStrictWithAndCast;
+    [Test]
+    procedure DelimitedTextUnknownOrigin;
+    [Test]
     procedure DelimitedTextOffAndExclude;
     [Test]
     procedure UncheckedEnumCastIssueExample;
@@ -163,7 +174,7 @@ uses
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Collections,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Conversions,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -423,8 +434,8 @@ procedure TRtlTypePatternRulesTests.FormatWithoutSettingsOwnRoutineInOtherUnit;
 var
   mIndex: ISymbolIndex;
 begin
-  // Marcos Fall: eigene Routine Format in einer anderen Unit, die TFormatSettings selbst übergibt. Sie steht in
-  // uses nach System.SysUtils und verdeckt damit die RTL.
+  // Fall aus der Praxis: eigene Routine Format in einer anderen Unit, die TFormatSettings selbst übergibt. Sie
+  // steht in uses nach System.SysUtils und verdeckt damit die RTL.
   mIndex := ToolsIndex(True);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
     FormatCaller('System.SysUtils, Werkzeuge', 'Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
@@ -457,6 +468,28 @@ begin
     'function TBericht.Format(const AFormat: string; const AArgs: array of const): string;'#10'begin'#10 +
     '  Result := AFormat;'#10'end;'#10'procedure TBericht.Schreiben(X: Double);'#10'begin'#10 +
     '  Format(''%.2f'', [X]);'#10'end;'#10'end.');
+end;
+
+procedure TRtlTypePatternRulesTests.FormatWithoutSettingsUnknownWrapperUnit;
+var
+  mIndex: ISymbolIndex;
+begin
+  // Ohne Index: Werkzeuge nach System.SysUtils ist unbekannt und kann StrToDate deklarieren.
+  TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, FormatCaller('System.SysUtils, System.DateUtils, Werkzeuge',
+    'DateToStr(StrToDate(''1.1.2020''))'));
+  TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, FormatCaller('Werkzeuge', 'FloatToStr(X)'));
+  // Steht Werkzeuge davor oder folgen nur Units von Embarcadero, ruft der Compiler die RTL.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('Werkzeuge, System.SysUtils', 'FloatToStr(X)')))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('SysUtils, System.Classes, Vcl.Forms, Math', 'FloatToStr(X)')))));
+  // Steht die Unit im Index, deklariert sie den Namen nicht (sonst hätte der Resolver sie gefunden).
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Andere;'#10'interface'#10'procedure Leer;'#10'implementation'#10 +
+    'end.', 'C:\Projekt\Andere.pas', nil));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils, Andere', 'FloatToStr(X)'), mIndex, '', 'Fall.pas'))));
+  mIndex := nil;
 end;
 
 procedure TRtlTypePatternRulesTests.LocaleSpecifiers;
@@ -500,7 +533,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Adresse := Default(TAdresse)', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(WithTypes(cAdresse, '  Adresse: TAdresse;', '  Adresse := Default(TAdresse);'), mFixed);
   TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, mFixed);
   // Record ohne verwaltete Felder: FillChar ist in Ordnung.
@@ -551,7 +584,7 @@ begin
   Assert.AreEqual('TAdresse enthält Strings; Move kopiert die Referenzen ohne Referenzzählung (doppelte Freigabe, ' +
     'ggf. Zugriffsverletzung).', mFindings[0].Message);
   Assert.AreEqual(WithTypes(cAdresse, '  A, B: TAdresse;', '  B := A;'),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // GetMem und FreeMem über einen Zeiger auf den Record.
   mSource := WithTypes(cAdresse, '  P: PAdresse;', '  GetMem(P, SizeOf(TAdresse));'#10'  FreeMem(P);');
   mFindings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, mSource);
@@ -561,9 +594,9 @@ begin
   Assert.AreEqual('TAdresse enthält Strings; FreeMem gibt die Referenzen nicht frei (Leck); Dispose oder Finalize ' +
     'verwenden.', mFindings[1].Message);
   Assert.AreEqual(WithTypes(cAdresse, '  P: PAdresse;', '  New(P);'#10'  FreeMem(P);'),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   Assert.AreEqual(WithTypes(cAdresse, '  P: PAdresse;', '  GetMem(P, SizeOf(TAdresse));'#10'  Dispose(P);'),
-    TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[1].Fixes[0].Edits));
   // Dereferenzierter Zeiger: FillChar(P^, …) ohne Korrektur.
   mFindings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(cAdresse, '  P: ^TAdresse;',
     '  FillChar(P^, SizeOf(TAdresse), 0);'));
@@ -578,7 +611,7 @@ begin
     '  S: string;'#10'  Puffer: array[0..15] of Byte;'#10'  Liste: TListe;',
     '  FillChar(S[1], Length(S) * SizeOf(Char), '' '');'#10'  FillChar(Puffer, SizeOf(Puffer), 0);'#10 +
     '  Liste.Move(0, 1);'));
-  // FP-Prüfung 28.10.2026 (F10): Nullen direkt nach New bzw. GetMem füllt frischen Speicher.
+  // Nullen direkt nach New bzw. GetMem füllt frischen Speicher.
   TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes(cAdresse, '  P, Q: PAdresse;',
     '  New(P);'#10'  FillChar(P^, SizeOf(TAdresse), 0);'#10'  GetMem(Q, SizeOf(TAdresse));'#10 +
     '  FillChar(Q^, SizeOf(TAdresse), 0);'#10'  Dispose(P);'#10'  Dispose(Q);'));
@@ -675,7 +708,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Zwischenergebnis in ZielText ablegen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Copier('  var ZielText: string := Pfad + ''.bak'';'#10'  Ziel := PChar(ZielText);'#10 +
     '  CopyFile(PChar(Pfad), Ziel, False);'), mFixed);
   TRuleAssert.Silent(TPCharOfTemporaryRule.Create, mFixed);
@@ -785,13 +818,13 @@ begin
   Assert.AreEqual('Sorted := True nach dem Erzeugen ergänzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Lister('', '  Namen := TStringList.Create;'#10'  Namen.Sorted := True;'#10 +
     '  Namen.LoadFromFile(Datei);'#10'  if Namen.Find(Suche, Index) then'#10'    Namen.Delete(Index);'#10 +
-    '  Namen.Free;'), TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
-  TRuleAssert.Silent(TStringListUnsortedRule.Create, TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    '  Namen.Free;'), TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   Assert.AreEqual('IndexOf statt Find verwenden', mFindings[0].Fixes[1].Title);
   Assert.AreEqual(Lister('', '  Namen := TStringList.Create;'#10'  Namen.LoadFromFile(Datei);'#10 +
     '  Index := Namen.IndexOf(Suche);'#10'  if Index >= 0 then'#10'    Namen.Delete(Index);'#10'  Namen.Free;'),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits));
-  TRuleAssert.Silent(TStringListUnsortedRule.Create, TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[1].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[1].Edits));
+  TRuleAssert.Silent(TStringListUnsortedRule.Create, TTextChanges.Apply(mSource, mFindings[0].Fixes[1].Edits));
 end;
 
 procedure TRtlTypePatternRulesTests.StringListUnsortedVariants;
@@ -882,7 +915,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('Durch OutputDebugString ersetzen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('  OutputDebugString(PChar(''Start: '' + TimeToStr(Now)));', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('Winapi.Windows', mFixed) > 0, 'uses ergänzt: ' + mFixed);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, mFixed,
@@ -927,8 +960,8 @@ begin
   mFindings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, mSource);
   Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.IsTrue(Pos('OutputDebugString(PChar(''Anzahl: '' + IntToStr(Anzahl)))',
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits)) > 0);
-  Assert.IsTrue(Pos('System.SysUtils', TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits)) > 0,
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits)) > 0);
+  Assert.IsTrue(Pos('System.SysUtils', TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits)) > 0,
     'IntToStr braucht SysUtils');
   Assert.AreEqual('Das Projekt hat keine Konsole; Readln löst zur Laufzeit E/A-Fehler 104 aus.', mFindings[1].Message);
   Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
@@ -965,12 +998,12 @@ begin
   mFindings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, mSource,
     '{"rules": {"writeln-in-gui-app": {"replacement": "Log.Info"}}}', 'Werkzeug.dpr');
   Assert.AreEqual('Durch Log.Info ersetzen', mFindings[0].Fixes[0].Title);
-  Assert.AreEqual(GuiProgram('', '  Log.Info(''Start'');'), TChangeSignature.ApplyEdits(mSource,
+  Assert.AreEqual(GuiProgram('', '  Log.Info(''Start'');'), TTextChanges.Apply(mSource,
     mFindings[0].Fixes[0].Edits));
   mFindings := TRuleAssert.Findings(TWritelnInGuiAppRule.Create, mSource,
     '{"rules": {"writeln-in-gui-app": {"replacement": "Logger.Log(TLogLevel.Info, %s)"}}}', 'Werkzeug.dpr');
   Assert.AreEqual('Durch Logger.Log ersetzen', mFindings[0].Fixes[0].Title);
-  Assert.AreEqual(GuiProgram('', '  Logger.Log(TLogLevel.Info, ''Start'');'), TChangeSignature.ApplyEdits(mSource,
+  Assert.AreEqual(GuiProgram('', '  Logger.Log(TLogLevel.Info, ''Start'');'), TTextChanges.Apply(mSource,
     mFindings[0].Fixes[0].Edits));
   Assert.AreEqual('OutputDebugString', TWritelnInGuiAppRule.Replacement(''));
   Assert.AreEqual('OutputDebugString', TWritelnInGuiAppRule.Replacement('{"replacement": " "}'));
@@ -1005,7 +1038,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('In TryStrToInt mit Fehlerzweig umschreiben', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Eingabe('', '  if not TryStrToInt(edtMenge.Text, Menge) then'#10 +
     '    raise EConvertError.Create(''Menge ist keine Zahl'');'), mFixed);
   TRuleAssert.Silent(TUncheckedConversionRule.Create, mFixed);
@@ -1087,7 +1120,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('In TryGetValue umschreiben', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Preisliste('', '  if not Preise.TryGetValue(Artikel.Nummer, Preis) then'#10'    Preis := 0;'), mFixed);
   TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, mFixed);
 end;
@@ -1269,6 +1302,94 @@ begin
     '    Teile.DelimitedText := Zeile;'#10));
 end;
 
+procedure TRtlConversionRulesTests.DelimitedTextStrictFarAway;
+const
+  cSource =
+    'unit Import;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure Zerlegen(const Zeile: string);'#10 +
+    'var'#10 +
+    '  Teile: TStringList;'#10 +
+    '  Index: Integer;'#10 +
+    'begin'#10 +
+    '  Teile := TStringList.Create;'#10 +
+    '  Teile.Delimiter := '';'';'#10 +
+    '  Teile.StrictDelimiter := True;'#10 +
+    '  try'#10 +
+    '    for Index := 0 to 3 do'#10 +
+    '    begin'#10 +
+    '      if Index > 1 then'#10 +
+    '      begin'#10 +
+    '        Teile.Clear;'#10 +
+    '      end;'#10 +
+    '    end;'#10 +
+    '    Teile.DelimitedText := Zeile;'#10 +
+    '  finally'#10 +
+    '    Teile.Free;'#10 +
+    '  end;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // Delimiter und StrictDelimiter gleich nach dem Create, DelimitedText weit danach: still.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, cSource);
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, StringReplace(cSource, '  Teile := TStringList.Create;',
+    '  Teile := TStringList.Create(True);', []));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    StringReplace(cSource, '  Teile.StrictDelimiter := True;'#10, '', [])))));
+end;
+
+procedure TRtlConversionRulesTests.DelimitedTextStrictWithAndCast;
+begin
+  // StrictDelimiter in with Liste do bzw. über eine Typumwandlung.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    with Teile do'#10'    begin'#10 +
+    '      Delimiter := '';'';'#10'      StrictDelimiter := True;'#10'    end;'#10 +
+    '    Teile.Delimiter := '','';'#10'    Teile.DelimitedText := Zeile;'#10));
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.Delimiter := '';'';'#10 +
+    '    TStringList(Teile).StrictDelimiter := True;'#10'    Teile.DelimitedText := Zeile;'#10));
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.Delimiter := '';'';'#10 +
+    '    (Teile as TStringList).StrictDelimiter := True;'#10'    Teile.DelimitedText := Zeile;'#10));
+  // with einer anderen Liste bzw. eines Mitglieds der Liste zählt nicht.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    Teilen('    with Andere do'#10'      StrictDelimiter := True;'#10'    Teile.Delimiter := '';'';'#10 +
+    '    Teile.DelimitedText := Zeile;'#10)))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    Teilen('    with Teile.Objects[0] as TStringList do'#10'      StrictDelimiter := True;'#10 +
+    '    Teile.Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10)))));
+  // with-Block, der nur den Delimiter setzt.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    Teilen('    with Teile do'#10'      Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10)))));
+end;
+
+procedure TRtlConversionRulesTests.DelimitedTextUnknownOrigin;
+const
+  cParameter =
+    'unit Import;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure Fuellen(Teile: TStrings; const Zeile: string);'#10 +
+    'begin'#10 +
+    '  Teile.Delimiter := '';'';'#10 +
+    '  Teile.DelimitedText := Zeile;'#10 +
+    'end;'#10 +
+    'procedure Lesen(const Zeile: string);'#10 +
+    'var'#10 +
+    '  Liste: TStringList;'#10 +
+    'begin'#10 +
+    '  Liste := TStringList.Create;'#10 +
+    '  Liste.StrictDelimiter := True;'#10 +
+    '  Fuellen(Liste, Zeile);'#10 +
+    '  Liste.Free;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // Parameter: StrictDelimiter setzt der Aufrufer.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, cParameter);
+  // Liste aus einer Funktion: Die setzt StrictDelimiter.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, StringReplace(Teilen('    Teile.Delimiter := '';'';'#10 +
+    '    Teile.DelimitedText := Zeile;'#10), '  Teile := TStringList.Create;', '  Teile := NeueListe;', []));
+end;
+
 procedure TRtlConversionRulesTests.DelimitedTextOffAndExclude;
 var
   mSource: string;
@@ -1306,7 +1427,7 @@ begin
   Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(12, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('Prüfung mit InRange davorsetzen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Auftrag('uses System.SysUtils, Data.DB, System.Math;'#10, 'var'#10'  Wert: Integer;'#10,
     '  Wert := qry.FieldByName(''Status'').AsInteger;'#10 +
     '  if not InRange(Wert, Ord(Low(TStatus)), Ord(High(TStatus))) then'#10 +
@@ -1400,7 +1521,7 @@ begin
   Assert.AreEqual(11, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(27, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('Befehlszeile in eine lokale Variable kopieren und UniqueString aufrufen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Starten('  Befehl: string;'#10, '  Befehl := ''notepad.exe '' + Datei;'#10 +
     '  UniqueString(Befehl);'#10 +
     '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10), mFixed);
@@ -1436,7 +1557,7 @@ begin
     'und ist ohne UniqueString nicht beschreibbar.', mFindings[0].Message);
   Assert.AreEqual(Starten('  Befehl: string;'#10, '  Befehl := Editor;'#10'  UniqueString(Befehl);'#10 +
     '  CreateProcess(nil, PChar(Befehl), nil, nil, False, 0, nil, nil, SI, PI);'#10),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Parameter: mittlere Konfidenz; CreateProcessAsUser an dritter Stelle.
   mFindings := TRuleAssert.Findings(TCreateProcessReadonlyCommandLineRule.Create, Starten('',
     '  CreateProcessAsUser(0, nil, PChar(Datei), nil, nil, False, 0, nil, nil, SI, PI);'#10));
@@ -1508,7 +1629,7 @@ begin
   Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Lokale TFormatSettings anlegen und übergeben', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Export('var'#10'  FS: TFormatSettings;'#10, '  FS := TFormatSettings.Invariant;'#10 +
     '  FZeile := FloatToStr(FBetrag, FS);'#10), mFixed);
   mTree := TPascalParser.Parse(mFixed);
@@ -1540,7 +1661,7 @@ begin
     'TFormatSettings verwenden.', mFindings[0].Message);
   Assert.AreEqual(Export('uses SysUtils;'#10, 'var'#10'  Zeile: string;'#10'  FS: TFormatSettings;'#10,
     '  FS := FormatSettings;'#10'  FS.DecimalSeparator := '','';'#10'  Zeile := Format(''%.2f'', [Betrag], FS);'#10 +
-    '  Zeile := Zeile + IntToStr(1);'#10), TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    '  Zeile := Zeile + IntToStr(1);'#10), TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Mit Unit-Namen, ganze FormatSettings, Feld mit Index, Methode eines Formulars (TForm ist bekannt).
   mFindings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10, '',
     '  System.SysUtils.FormatSettings.ShortDateFormat := ''dd.mm.yyyy'';'#10 +

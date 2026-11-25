@@ -67,15 +67,21 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Themes,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Architecture.Model;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Core.Architecture.Resolution;
 
 const
   /// <summary>Halbe Breite des Griffs in logischen Pixeln (96 dpi).</summary>
   cThumbRadius = 6;
   /// <summary>Breite der Schiene in logischen Pixeln.</summary>
   cTrackWidth = 3;
+  /// <summary>Vorgabegröße des Reglers in logischen Pixeln.</summary>
+  cDefaultWidth = 140;
+  cDefaultHeight = 22;
+  /// <summary>Marke bei 1,0: Länge über und unter der Schiene in logischen Pixeln.</summary>
+  cTickAbove = 5;
+  cTickBelow = 6;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -89,8 +95,8 @@ begin
   inherited Create(AOwner);
   ControlStyle := ControlStyle + [csDoubleClicks, csOpaque];
   TabStop := True;
-  Width := ScaleValue(140);
-  Height := ScaleValue(22);
+  Width := ScaleValue(cDefaultWidth);
+  Height := ScaleValue(cDefaultHeight);
   FPosition := TAtlasArchResolution.PositionOf(1);
   FCommitted := FPosition;
 end;
@@ -131,8 +137,8 @@ begin
   mTick := TrackLeft + MulDiv(TrackRight - TrackLeft, TAtlasArchResolution.PositionOf(1), TAtlasArchResolution.cSteps);
   Canvas.Pen.Width := 1;
   Canvas.Pen.Color := ToColor(mColors.Muted);
-  Canvas.MoveTo(mTick, mMiddle - MulDiv(5, CurrentPPI, 96));
-  Canvas.LineTo(mTick, mMiddle + MulDiv(6, CurrentPPI, 96));
+  Canvas.MoveTo(mTick, mMiddle - MulDiv(cTickAbove, CurrentPPI, 96));
+  Canvas.LineTo(mTick, mMiddle + MulDiv(cTickBelow, CurrentPPI, 96));
   // Griff; mit Fokus mit Rand in Textfarbe.
   mRadius := MulDiv(cThumbRadius, CurrentPPI, 96);
   Canvas.Brush.Color := ToColor(mColors.Accent);

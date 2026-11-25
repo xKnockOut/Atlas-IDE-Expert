@@ -26,7 +26,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -166,7 +166,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Results.CallDiagramTemplate,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language,
+  Atlas.Text.Entities;
 
 {$SCOPEDENUMS ON}
 
@@ -645,14 +646,6 @@ begin
   end;
 end;
 
-function HtmlEscape(const AText: string): string;
-begin
-  Result := StringReplace(AText, '&', '&amp;', [rfReplaceAll]);
-  Result := StringReplace(Result, '<', '&lt;', [rfReplaceAll]);
-  Result := StringReplace(Result, '>', '&gt;', [rfReplaceAll]);
-  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
-end;
-
 /// <summary>Setzt Sprache und Texte der Seite (#1458) in die Platzhalter {{LANG}} und {{T_…}} ein.</summary>
 function Localized(const AHtml: string): string;
 const
@@ -665,13 +658,13 @@ begin
   Result := StringReplace(AHtml, '{{LANG}}', cLang[TAtlasTextLanguage.Current], [rfReplaceAll]);
   for mText := Low(TCallDiagramText) to High(TCallDiagramText) do
   begin
-    Result := StringReplace(Result, cKeys[mText], HtmlEscape(UiText(mText)), [rfReplaceAll]);
+    Result := StringReplace(Result, cKeys[mText], TTextEntities.Encode(UiText(mText)), [rfReplaceAll]);
   end;
 end;
 
 function TAtlasCallDiagram.Html(const ATitle: string): string;
 begin
-  Result := StringReplace(Localized(CallDiagramHtml), '{{TITLE}}', HtmlEscape(ATitle), [rfReplaceAll]);
+  Result := StringReplace(Localized(CallDiagramHtml), '{{TITLE}}', TTextEntities.Encode(ATitle), [rfReplaceAll]);
   // Die Daten stehen in einem script-Element: "</" darf es nicht beenden.
   Result := StringReplace(Result, '{{DATA}}', StringReplace(Json(ATitle), '</', '<\/', [rfReplaceAll]), []);
 end;

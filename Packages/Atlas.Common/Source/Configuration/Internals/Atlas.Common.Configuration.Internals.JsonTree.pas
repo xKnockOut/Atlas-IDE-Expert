@@ -65,7 +65,8 @@ implementation
 
 uses
   Atlas.Text.Jsonc,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Chars;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -169,11 +170,7 @@ constructor TReader.Create(const AText: string);
 begin
   inherited Create;
   FText := AText;
-  FPos := 1;
-  if (FText <> '') and (FText[1] = #$FEFF) then
-  begin
-    FPos := 2;
-  end;
+  FPos := TTextChars.StartAfterBom(FText);
 end;
 
 procedure TReader.Fail(const AMessage: string);

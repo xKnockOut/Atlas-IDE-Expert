@@ -11,7 +11,7 @@
 //   - Module (#1454): Join ordnet Teile einem Modul zu (Debugger, Tests …).
 //     Ist das Modul laut ModuleOn aus, startet StartWanted seine Teile nicht,
 //     und StopOffModules stoppt rückwärts die laufenden (ohne Neustart).
-// Ein Fehler in Start geht an den Aufrufer (wie zuvor in RegisterFeatures).
+// Ein Fehler in Start geht an den Aufrufer.
 // Ein Fehler in Stop hält den Abbau nicht an (#886): Die übrigen Teile werden
 // trotzdem gestoppt, StopAll liefert die fehlgeschlagenen mit Ausnahmeklasse.
 
@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.StartTimes;
+  Atlas.Plugin.Diagnostics.StartTimes;
 
 type
   /// <summary>Bedingung je Stufe des abgesicherten Starts (#722) und Einstellung; der Typ steht im Modulvertrag.
@@ -85,7 +85,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Teardown;
+  Atlas.Plugin.Diagnostics.Teardown;
 
 { TAtlasFeatureTable }
 
@@ -178,6 +178,8 @@ begin
 end;
 
 procedure TAtlasFeatureTable.Join(const AModule: string; const ANames: array of string);
+const
+  cUnknownPart = 'Teil "%s" für Modul "%s" unbekannt';
 var
   mName: string;
   mIndex: Integer;
@@ -199,7 +201,7 @@ begin
     end;
     if not mFound then
     begin
-      raise EArgumentException.CreateFmt('Teil "%s" für Modul "%s" unbekannt', [mName, AModule]);
+      raise EArgumentException.CreateFmt(cUnknownPart, [mName, AModule]);
     end;
   end;
 end;

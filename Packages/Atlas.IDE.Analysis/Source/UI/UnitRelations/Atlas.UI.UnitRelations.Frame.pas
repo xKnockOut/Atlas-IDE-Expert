@@ -45,7 +45,7 @@ uses
   Vcl.Menus,
   Vcl.ExtCtrls,
   Atlas.Core.UnitRelations.Model,
-  Atlas.UI.Style.Symbol;
+  Atlas.Vcl.Images.Symbol;
 
 type
   /// <summary>Datei öffnen; ALine = -1: nur die Unit, sonst die Stelle (0-basiert).</summary>
@@ -177,12 +177,20 @@ uses
   Winapi.Windows,
   Vcl.Clipbrd,
   Vcl.Themes,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Symbol,
-  Atlas.UI.Analysis.Strings;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Symbol,
+  Atlas.UI.Analysis.Strings,
+  Atlas.Vcl.Controls.Menus;
 
 {$R *.dfm}
+
+const
+  // Höhen der Titelzeile und der Leiste sowie Breiten der Tiefenauswahl in logischen Pixeln (96 dpi).
+  cHeaderHeight = 22;
+  cBarHeight = 26;
+  cAllLevelsWidth = 90;
+  cDirectWidth = 70;
 
 type
   TRelationsFrame = TAtlasUnitRelationsFrame;
@@ -452,12 +460,10 @@ end;
 
 function NewMenuItem(AMenu: TPopupMenu; AText: TAtlasAnalysisTextId; const AOnClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(AMenu);
-  Result.Caption := TAtlasAnalysisStrings.Text(AText);
-  Result.OnClick := AOnClick;
-  AMenu.Items.Add(Result);
+  Result := TAtlasMenus.Add(AMenu, TAtlasAnalysisStrings.Text(AText), AOnClick);
 end;
 
+/// <summary>Leiste oben im Rahmen; AHeight in logischen Pixeln (96 dpi).</summary>
 function NewPanel(AFrame: TRelationsFrame; AHeight: Integer): TPanel;
 begin
   Result := TPanel.Create(AFrame);
@@ -465,7 +471,7 @@ begin
   Result.Align := alTop;
   Result.BevelOuter := bvNone;
   Result.ParentBackground := True;
-  Result.Height := AHeight;
+  Result.Height := Result.ScaleValue(AHeight);
 end;
 
 /// <summary>Titelzeile mit Symbol (#751) und Unit, darunter Kosten und Zyklus der Unit.</summary>
@@ -473,7 +479,7 @@ procedure BuildHeader(AFrame: TRelationsFrame);
 var
   mHeader: TPanel;
 begin
-  mHeader := NewPanel(AFrame, 22);
+  mHeader := NewPanel(AFrame, cHeaderHeight);
   AFrame.FParts.Symbol := TAtlasSymbolImage.Create(AFrame);
   AFrame.FParts.Symbol.Parent := mHeader;
   AFrame.FParts.Symbol.LogicalSize := TAtlasSymbol.cMenuSize;
@@ -497,6 +503,7 @@ begin
   AFrame.FParts.Info.ShowHint := True;
 end;
 
+/// <summary>Auswahl der Tiefe rechts in ABar; AWidth in logischen Pixeln (96 dpi).</summary>
 function NewRadio(ABar: TPanel; AWidth: Integer; AText: TAtlasAnalysisTextId;
   AEvents: TRelationsFrame.TEvents): TRadioButton;
 begin
@@ -504,7 +511,7 @@ begin
   Result.Parent := ABar;
   Result.Align := alRight;
   Result.AlignWithMargins := True;
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.Caption := TAtlasAnalysisStrings.Text(AText);
   Result.OnClick := AEvents.DepthClick;
 end;
@@ -514,10 +521,10 @@ procedure BuildBar(AFrame: TRelationsFrame; AEvents: TRelationsFrame.TEvents);
 var
   mBar: TPanel;
 begin
-  mBar := NewPanel(AFrame, 26);
+  mBar := NewPanel(AFrame, cBarHeight);
   mBar.Top := AFrame.FParts.Info.Top + AFrame.FParts.Info.Height + 1;
-  AFrame.FParts.AllLevels := NewRadio(mBar, 90, TAtlasAnalysisTextId.UnitRelationsAllLevels, AEvents);
-  AFrame.FParts.Direct := NewRadio(mBar, 70, TAtlasAnalysisTextId.UnitRelationsDirect, AEvents);
+  AFrame.FParts.AllLevels := NewRadio(mBar, cAllLevelsWidth, TAtlasAnalysisTextId.UnitRelationsAllLevels, AEvents);
+  AFrame.FParts.Direct := NewRadio(mBar, cDirectWidth, TAtlasAnalysisTextId.UnitRelationsDirect, AEvents);
   AFrame.FParts.Direct.Checked := True;
   AFrame.FParts.Filter := TEdit.Create(AFrame);
   AFrame.FParts.Filter.Parent := mBar;

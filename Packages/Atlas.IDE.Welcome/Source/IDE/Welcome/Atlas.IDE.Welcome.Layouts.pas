@@ -15,6 +15,7 @@
 //   Sitzung.
 // Rechtsklick „Ausblenden“ und „Einstellungen dazu …“ kommen als Hooks aus
 // der Komposition (TAtlasIdeHide), damit Welcome nicht vom Editor abhängt.
+// Den Tafeln gibt Atlas.IDE.Welcome.Adapters.Layouts das als IAtlasWelcomeArrangeSource weiter.
 
 interface
 
@@ -23,10 +24,10 @@ uses
   System.Types,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Welcome.Layout,
-  Atlas.UI.Welcome.Arrange;
+  Atlas.UI.Welcome.Contract;
 
 type
-  TAtlasIdeWelcomeLayouts = class(TInterfacedObject, IAtlasWelcomeArrangeSource)
+  TAtlasIdeWelcomeLayouts = class(TInterfacedObject)
   public const
     /// <summary>Befehl der Befehlspalette: Bearbeitungsmodus an/aus.</summary>
     cCommandId = 'Atlas.WelcomeCustomize';
@@ -48,7 +49,7 @@ type
     function BoardLayout(const AWeight: TAtlasWelcomeWeight): TAtlasWelcomeLayout;
     /// <summary>Kurze Beschreibung eines Bereichs für „Bereich hinzufügen“.</summary>
     class function Description(const AId: string): string; static;
-    { IAtlasWelcomeArrangeSource }
+    { Für „Seite anpassen“; die Tafeln erreichen sie über Atlas.IDE.Welcome.Adapters.Layouts }
     function CanCustomize: Boolean;
     function Editing: Boolean;
     procedure SetEditing(AOn: Boolean);
@@ -77,8 +78,8 @@ implementation
 
 uses
   Atlas.Core.Welcome.Layouts,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Strings,
@@ -145,7 +146,8 @@ var
   mAdded: TArray<string>;
   mIds: TArray<string>;
   mAdopted: TAtlasWelcomeLayout;
-  mKeep: IAtlasWelcomeArrangeSource;
+  // Nur Lebensdauer: Die Klasse erfüllt den Vertrag seit #1443 über einen Adapter, nicht selbst (E2010).
+  mKeep: IInterface;
 begin
   mCurrent := TAtlasIdeSettings.Current;
   if not mCurrent.WelcomePageCustomLayout then

@@ -78,7 +78,6 @@ type
     FText: string;
     FCallsAt: TLspCallsAt;
     FCalls: TArray<TTextPosition>;
-    function TextOf(ANode: TSyntaxNode): string;
     function HasCall(ANode: TSyntaxNode): Boolean;
     function NewPart(ANode: TSyntaxNode; const AKind, AOperator: string; AParent: Integer): TLspConditionPart;
     procedure AddValue(var AParts: TLspConditionParts; ANode: TSyntaxNode; AParent: Integer);
@@ -87,7 +86,6 @@ type
     procedure AddPart(var AParts: TLspConditionParts; ANode: TSyntaxNode; AParent: Integer);
     procedure LoadCalls(ANode: TSyntaxNode);
     function Condition(ANode: TSyntaxNode): TLspConditionParts;
-    function Path(ALine: Integer): TArray<TSyntaxNode>;
     function BlockOf(ANode, AThrough, ANext: TSyntaxNode; out ABlock: TLspEnclosingBlock): Boolean;
     function IfBlock(ANode, AThrough: TSyntaxNode; var ABlock: TLspEnclosingBlock): Boolean;
     function LoopBlock(ANode, AThrough: TSyntaxNode; var ABlock: TLspEnclosingBlock): Boolean;
@@ -116,7 +114,8 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  System.Math;
+  System.Math,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cCompareOperators: array[0..7] of string = ('=', '<>', '<', '>', '<=', '>=', 'in', 'is');
@@ -148,11 +147,6 @@ begin
   begin
     Result := Result.Children[0];
   end;
-end;
-
-function Contains(ANode: TSyntaxNode; ALine: Integer): Boolean;
-begin
-  Result := (ANode.StartPos.Line <= ALine) and (ALine <= ANode.EndPos.Line);
 end;
 
 function Before(const A, B: TTextPosition): Boolean;
@@ -187,26 +181,6 @@ begin
   FTree := ATree;
   FText := AText;
   FCallsAt := ACallsAt;
-end;
-
-function TLspEnclosingConditions.TextOf(ANode: TSyntaxNode): string;
-begin
-  Result := '';
-  if (ANode = nil) or (ANode.EndOffset <= ANode.StartOffset) or (ANode.EndOffset > Length(FText)) then
-  begin
-    Exit;
-  end;
-  Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-  // Mehrzeilig: in eine Zeile.
-  Result := Result.Replace(#13#10, ' ').Replace(#10, ' ').Replace(#13, ' ');
-  while Pos('  ', Result) > 0 do
-  begin
-    Result := Result.Replace('  ', ' ');
-  end;
-  if Length(Result) > cMaxText then
-  begin
-    Result := Copy(Result, 1, cMaxText - 1) + '…';
-  end;
 end;
 
 function TLspEnclosingConditions.HasCall(ANode: TSyntaxNode): Boolean;
@@ -249,7 +223,7 @@ begin
   Result := Default(TLspConditionPart);
   Result.Kind := AKind;
   Result.Operator_ := AOperator;
-  Result.Text := TextOf(ANode);
+  Result.Text := TSyntaxNodes.OneLineText(FText, ANode, cMaxText);
   Result.Parent := AParent;
   Result.Call := HasCall(ANode);
   Result.Position := ANode.StartPos;
@@ -325,31 +299,6 @@ begin
   Result := nil;
   LoadCalls(ANode);
   AddPart(Result, ANode, -1);
-end;
-
-function TLspEnclosingConditions.Path(ALine: Integer): TArray<TSyntaxNode>;
-var
-  mNode, mNext: TSyntaxNode;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mNode := FTree.Root;
-  while mNode <> nil do
-  begin
-    Result := Result + [mNode];
-    // Reichen mehrere Kinder in die Zeile, gilt das letzte: bei „paNormal: Summe := 0;“ die Anweisung, nicht
-    // die Marke.
-    mNext := nil;
-    for mIndex := mNode.ChildCount - 1 downto 0 do
-    begin
-      if Contains(mNode.Children[mIndex], ALine) then
-      begin
-        mNext := mNode.Children[mIndex];
-        Break;
-      end;
-    end;
-    mNode := mNext;
-  end;
 end;
 
 function TLspEnclosingConditions.BlockOf(ANode, AThrough, ANext: TSyntaxNode;
@@ -475,7 +424,7 @@ begin
     mLabels := nil;
     for mIndex := 0 to AThrough.ChildCount - 2 do
     begin
-      mLabels := mLabels + [TextOf(AThrough.Children[mIndex])];
+      mLabels := mLabels + [TSyntaxNodes.OneLineText(FText, AThrough.Children[mIndex], cMaxText)];
     end;
     ABlock.Branch := string.Join(', ', mLabels);
   end
@@ -522,7 +471,7 @@ var
 begin
   Result := nil;
   ADepth := ClampDepth(ADepth);
-  mPath := Path(ALine);
+  mPath := TSyntaxNodes.LinePath(FTree.Root, ALine);
   for mIndex := High(mPath) - 1 downto 0 do
   begin
     if IsBoundary(mPath[mIndex]) or (Length(Result) >= ADepth) then

@@ -6,7 +6,8 @@
 //     Kein Ausdruck in Strings und Kommentaren, auf reservierten Wörtern und
 //     Zahlen; keiner mit Klammer vor dem Punkt (Get(X).Name) und keiner mit
 //     Klammer im Index, damit die Auswertung nie etwas im Programm ausführt.
-//   - Zustand des Werts im Tooltip: ausstehend (der Debugger antwortet
+//   - Zustand des Werts im Tooltip (TAtlasDebugValue, Atlas.Core.Hover.Contract.
+//     DebugValue): ausstehend (der Debugger antwortet
 //     verzögert, Win64/LLDB), Wert, Fehler. Fehler zeigt der Tooltip nur mit
 //     Erklärung (#840, Note): „‹kein Zugriff›“, Ursache, Herkunft des
 //     Schalters, geprüfte Punkte und Korrekturen als Verweise. Die Erklärung
@@ -19,78 +20,13 @@
 
 interface
 
+uses
+  Atlas.Core.Hover.Contract.DebugValue;
+
 type
-  {$SCOPEDENUMS ON}
-  TAtlasDebugValueState = (None, Pending, Value, Failed);
-  {$SCOPEDENUMS OFF}
-
-  /// <summary>Korrektur unter der Erklärung (#840): Kennung der Debug-Schicht und Beschriftung.</summary>
-  TAtlasDebugValueFix = record
-    Id: Integer;
-    Caption: string;
-    class function Create(AId: Integer; const ACaption: string): TAtlasDebugValueFix; static;
-  end;
-
-  /// <summary>Erklärung eines Fehlers „kein Zugriff“ (#840); Caption = '' ohne.</summary>
-  TAtlasDebugValueNote = record
-    /// <summary>„‹kein Zugriff›“.</summary>
-    Caption: string;
-    /// <summary>Die Ursache wird noch ermittelt (Anfrage an den Server).</summary>
-    Pending: Boolean;
-    Reason: string;
-    /// <summary>Herkunft des Schalters („{$O+} in Kunden.pas, Zeile 12“); '' ohne.</summary>
-    Origin: string;
-    /// <summary>Bei unbekannter Ursache: die geprüften Punkte.</summary>
-    Checked: TArray<string>;
-    Fixes: TArray<TAtlasDebugValueFix>;
-  end;
-
-  /// <summary>Zeile des aufgeklappten Werts (#895). Expandable: lässt sich auf- bzw. zuklappen (Expanded);
-  /// Lazy: Getter, erst nach Klick ausgewertet; More: „weitere …“; OldText: Wert beim vorigen Halt, '' wenn
-  /// unverändert.</summary>
-  TAtlasDebugValueRow = record
-    Expression: string;
-    Name: string;
-    Text: string;
-    OldText: string;
-    Depth: Integer;
-    Expandable: Boolean;
-    Expanded: Boolean;
-    Pending: Boolean;
-    Lazy: Boolean;
-    More: Boolean;
-  end;
-
-  /// <summary>Wert eines Ausdrucks im angehaltenen Debugger.</summary>
-  TAtlasDebugValue = record
-    State: TAtlasDebugValueState;
-    Expression: string;
-    Text: string;
-    /// <summary>Erklärung eines Fehlers „kein Zugriff“ (#840).</summary>
-    Note: TAtlasDebugValueNote;
-    /// <summary>Aktionen unter dem Wert (Anheften #526); Id und Beschriftung setzt die Debug-Schicht.</summary>
-    Actions: TArray<TAtlasDebugValueFix>;
-    /// <summary>Wert beim vorigen Halt, wenn er sich geändert hat (#895); '' sonst.</summary>
-    OldText: string;
-    /// <summary>Lässt sich aufklappen (#895); Rows sind dann die sichtbaren Kinder.</summary>
-    Expandable: Boolean;
-    Expanded: Boolean;
-    Rows: TArray<TAtlasDebugValueRow>;
-    class function Pending(const AExpression: string): TAtlasDebugValue; static;
-    /// <summary>Ausgewerteter Wert, auf TAtlasDebugExpression.cMaxValueLength gekürzt.</summary>
-    class function Evaluated(const AExpression, AText: string): TAtlasDebugValue; static;
-    class function Failed(const AExpression, AText: string): TAtlasDebugValue; static;
-    /// <summary>Zeigt der Tooltip den Abschnitt (ausstehend, Wert oder erklärter Fehler)?</summary>
-    function Visible: Boolean;
-    /// <summary>Fehler mit Erklärung „kein Zugriff“ (#840).</summary>
-    function Explained: Boolean;
-    /// <summary>„Ausdruck = Wert“ als Klartext für den Tooltip der IDE; '' ohne Wert.</summary>
-    function PlainText: string;
-  end;
-
   TAtlasDebugExpression = record
   public const
-    cMaxValueLength = 2000;
+    cMaxValueLength = TAtlasDebugValue.cMaxTextLength;
   public
     /// <summary>Ausdruck zum Bezeichner [AStart, AStop) der Zeile (0-basiert, AStop exklusiv); '' wenn dort
     /// nichts ausgewertet werden soll.</summary>
@@ -108,7 +44,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Chars;
 
 const
   // Reservierte Wörter von Delphi; Direktiven (override, virtual …) wertet der Debugger ohnehin nicht aus.
@@ -120,76 +57,6 @@ const
     'shl', 'shr', 'string', 'then', 'threadvar', 'to', 'try', 'type', 'unit', 'until', 'uses', 'var',
     'while', 'with', 'xor', 'out', 'operator');
 
-function IsIdentifierChar(AChar: Char): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_']) or (Ord(AChar) > 127);
-end;
-
-{ TAtlasDebugValue }
-
-class function TAtlasDebugValue.Pending(const AExpression: string): TAtlasDebugValue;
-begin
-  Result := Default(TAtlasDebugValue);
-  Result.State := TAtlasDebugValueState.Pending;
-  Result.Expression := AExpression;
-end;
-
-class function TAtlasDebugValue.Evaluated(const AExpression, AText: string): TAtlasDebugValue;
-begin
-  Result := Default(TAtlasDebugValue);
-  Result.State := TAtlasDebugValueState.Value;
-  Result.Expression := AExpression;
-  Result.Text := TAtlasDebugExpression.Shorten(AText, TAtlasDebugExpression.cMaxValueLength);
-end;
-
-class function TAtlasDebugValue.Failed(const AExpression, AText: string): TAtlasDebugValue;
-begin
-  Result := Default(TAtlasDebugValue);
-  Result.State := TAtlasDebugValueState.Failed;
-  Result.Expression := AExpression;
-  Result.Text := AText;
-end;
-
-function TAtlasDebugValue.Visible: Boolean;
-begin
-  Result := (Expression <> '') and ((State in [TAtlasDebugValueState.Pending, TAtlasDebugValueState.Value]) or
-    Explained);
-end;
-
-function TAtlasDebugValue.Explained: Boolean;
-begin
-  Result := (State = TAtlasDebugValueState.Failed) and (Note.Caption <> '');
-end;
-
-function TAtlasDebugValue.PlainText: string;
-begin
-  Result := '';
-  if Expression = '' then
-  begin
-    Exit;
-  end;
-  if State = TAtlasDebugValueState.Value then
-  begin
-    Result := Expression + ' = ' + Text;
-  end
-  else if Explained then
-  begin
-    Result := Expression + ' = ' + Note.Caption;
-    if Note.Reason <> '' then
-    begin
-      Result := Result + sLineBreak + Note.Reason;
-    end;
-  end;
-end;
-
-{ TAtlasDebugValueFix }
-
-class function TAtlasDebugValueFix.Create(AId: Integer; const ACaption: string): TAtlasDebugValueFix;
-begin
-  Result.Id := AId;
-  Result.Caption := ACaption;
-end;
-
 { TAtlasDebugExpression }
 
 class function TAtlasDebugExpression.AtCharacter(const ALine: string; AIndex: Integer): string;
@@ -197,17 +64,17 @@ var
   mStart, mStop: Integer;
 begin
   Result := '';
-  if (AIndex < 0) or (AIndex >= Length(ALine)) or not IsIdentifierChar(ALine[AIndex + 1]) then
+  if (AIndex < 0) or (AIndex >= Length(ALine)) or not TTextChars.IsIdentChar(ALine[AIndex + 1]) then
   begin
     Exit;
   end;
   mStart := AIndex;
-  while (mStart > 0) and IsIdentifierChar(ALine[mStart]) do
+  while (mStart > 0) and TTextChars.IsIdentChar(ALine[mStart]) do
   begin
     Dec(mStart);
   end;
   mStop := AIndex + 1;
-  while (mStop < Length(ALine)) and IsIdentifierChar(ALine[mStop + 1]) do
+  while (mStop < Length(ALine)) and TTextChars.IsIdentChar(ALine[mStop + 1]) do
   begin
     Inc(mStop);
   end;
@@ -325,12 +192,12 @@ var
 begin
   AStart := 0;
   // Klammer vor dem Punkt: Aufruf oder Typumwandlung, nicht auswerten (auch nicht nur den Rest).
-  if (APos = 0) or not IsIdentifierChar(ALine[APos]) then
+  if (APos = 0) or not TTextChars.IsIdentChar(ALine[APos]) then
   begin
     Exit(False);
   end;
   mNameStart := APos;
-  while (mNameStart > 1) and IsIdentifierChar(ALine[mNameStart - 1]) do
+  while (mNameStart > 1) and TTextChars.IsIdentChar(ALine[mNameStart - 1]) do
   begin
     Dec(mNameStart);
   end;
@@ -413,11 +280,7 @@ end;
 
 class function TAtlasDebugExpression.Shorten(const AText: string; AMaxLength: Integer): string;
 begin
-  Result := AText;
-  if (AMaxLength > 0) and (Length(Result) > AMaxLength) then
-  begin
-    Result := Copy(Result, 1, AMaxLength) + ' …';
-  end;
+  Result := TAtlasDebugValue.Shorten(AText, AMaxLength);
 end;
 
 end.

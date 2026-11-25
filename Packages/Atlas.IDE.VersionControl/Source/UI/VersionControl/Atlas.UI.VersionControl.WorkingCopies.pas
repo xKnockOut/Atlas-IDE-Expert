@@ -32,7 +32,7 @@ uses
   Vcl.Menus,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.WorkingCopies,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasWorkingCopyEvent = procedure(Sender: TObject; AIndex: Integer) of object;
@@ -143,13 +143,23 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
   cButtonWidth = 180;
   cCheckWidth = 120;
   cCloseWidth = 100;
+  cButtonTop = 8;
+  cButtonHeight = 28;
+  /// <summary>Höhe der Leiste mit den Knöpfen.</summary>
+  cButtonBarHeight = 44;
+  /// <summary>Anfangs- und Mindestgröße des Fensters.</summary>
+  cDialogWidth = 860;
+  cDialogHeight = 380;
+  cDialogMinWidth = 560;
+  cDialogMinHeight = 240;
   cIndent = '    ';
   cBranchMark = #$2514' ';
 
@@ -323,16 +333,16 @@ begin
   FDialog := ADialog;
   Parent := ADialog;
   Align := alBottom;
-  Height := ScaleValue(44);
+  Height := ScaleValue(cButtonBarHeight);
   BevelOuter := bvNone;
   FCheckButton := AddButton(cGap, cCheckWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesCheckServer),
     CheckClick);
-  FUpdateAllButton := AddButton(cCheckWidth + 2 * cGap, cButtonWidth,
+  FUpdateAllButton := AddButton(cGap + cCheckWidth + cGap, cButtonWidth,
     TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesUpdateAll), UpdateClick);
-  FUpdateOnlyButton := AddButton(cCheckWidth + cButtonWidth + 3 * cGap, cButtonWidth,
+  FUpdateOnlyButton := AddButton(cGap + cCheckWidth + cGap + cButtonWidth + cGap, cButtonWidth,
     TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateOnly, [AName]), UpdateClick);
-  mClose := AddButton(Width - (cCloseWidth + cGap), cCloseWidth,
-    TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesClose), nil);
+  mClose := AddButton(0, cCloseWidth, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesClose), nil);
+  mClose.Left := Width - ScaleValue(cCloseWidth + cGap);
   mClose.Anchors := [akTop, akRight];
   mClose.Cancel := True;
   mClose.ModalResult := mrCancel;
@@ -343,7 +353,7 @@ function TAtlasWorkingCopiesButtons.AddButton(ALeft, AWidth: Integer; const ACap
 begin
   Result := TButton.Create(Owner);
   Result.Parent := Self;
-  Result.SetBounds(ALeft, 8, AWidth, 28);
+  TAtlasControlScaling.Place(Result, ALeft, cButtonTop, AWidth, cButtonHeight);
   Result.Caption := ACaption;
   Result.OnClick := AOnClick;
 end;
@@ -395,18 +405,16 @@ begin
   Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesTitle, [AName]);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Width := ScaleValue(860);
-  Height := ScaleValue(380);
-  Constraints.MinWidth := 560;
-  Constraints.MinHeight := 240;
+  Width := ScaleValue(cDialogWidth);
+  Height := ScaleValue(cDialogHeight);
+  Constraints.MinWidth := ScaleValue(cDialogMinWidth);
+  Constraints.MinHeight := ScaleValue(cDialogMinHeight);
   // Unten zuerst: die Knöpfe bleiben beim Verkleinern sichtbar.
   FButtons := TAtlasWorkingCopiesButtons.CreateFor(Self, AName);
   AddHint;
   FMenu := TAtlasWorkingCopiesMenu.CreateFor(Self);
   AddView;
   UpdateButtons;
-  // Hat der Dialog sein Fenster schon (TAtlasDialog legt es im Konstruktor an), kommt kein CreateWnd mehr.
-  Fill;
 end;
 
 procedure TAtlasWorkingCopiesDialog.CreateWnd;
@@ -424,22 +432,24 @@ begin
   mHint.Parent := Self;
   mHint.Align := alBottom;
   mHint.AlignWithMargins := True;
-  mHint.Margins.SetBounds(cGap, 2, cGap, 2);
+  TAtlasControlScaling.SetMargins(mHint, cGap, 2, cGap, 2);
   mHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesHint);
 end;
 
 procedure TAtlasWorkingCopiesDialog.AddView;
+const
+  // Breiten der Spalten Kopie, Pfad, Revision, Geändert, Eingehend.
+  cColumnWidths: array[0..4] of Integer = (200, 260, 120, 70, 130);
 var
   mColumn: TListColumn;
   mIndex: Integer;
-  mWidths: TArray<Integer>;
   mCaptions: TArray<TAtlasVcsTextId>;
 begin
   FView := TListView.Create(Self);
   FView.Parent := Self;
   FView.Align := alClient;
   FView.AlignWithMargins := True;
-  FView.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FView, cGap, cGap, cGap, 0);
   FView.ViewStyle := vsReport;
   FView.ReadOnly := True;
   FView.RowSelect := True;
@@ -449,12 +459,11 @@ begin
   mCaptions := TArray<TAtlasVcsTextId>.Create(TAtlasVcsTextId.VcsWorkingCopiesColumnCopy,
     TAtlasVcsTextId.VcsWorkingCopiesColumnPath, TAtlasVcsTextId.VcsWorkingCopiesColumnRevision,
     TAtlasVcsTextId.VcsWorkingCopiesColumnChanged, TAtlasVcsTextId.VcsWorkingCopiesColumnIncoming);
-  mWidths := TArray<Integer>.Create(200, 260, 120, 70, 130);
   for mIndex := 0 to High(mCaptions) do
   begin
     mColumn := FView.Columns.Add;
     mColumn.Caption := TAtlasVcsStrings.Text(mCaptions[mIndex]);
-    mColumn.Width := FView.ScaleValue(mWidths[mIndex]);
+    mColumn.Width := FView.ScaleValue(cColumnWidths[mIndex]);
   end;
 end;
 
@@ -462,12 +471,6 @@ procedure TAtlasWorkingCopiesDialog.Fill;
 var
   mIndex: Integer;
 begin
-  // CreateWnd kann schon im Konstruktor der Basis laufen (TAtlasDialog, BorderStyle erzeugt das Fenster neu),
-  // bevor es die Liste gibt.
-  if FView = nil then
-  begin
-    Exit;
-  end;
   // Die Liste braucht ein Fenster; hat der Dialog schon eines, auch die Liste anlegen.
   if not FView.HandleAllocated then
   begin

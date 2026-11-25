@@ -10,7 +10,7 @@
 //   Zeile aus dem Abschnitt tracker der .atlas (#486) kommt schreibgeschützt
 //   dazu.
 // - Resolve: welcher Tracker für ein Projekt gilt (Auflösung gemeinsam mit
-//   der Versionsverwaltung je Projekt in Atlas.Core.Projects.Matching, #1286),
+//   der Versionsverwaltung je Projekt in Atlas.Plugin.Projects.Matching, #1286),
 //   in dieser Reihenfolge:
 //   1. tracker aus der .atlas (Team, Vorrang),
 //   2. Zeile für genau diese .dproj,
@@ -29,7 +29,7 @@
 //   Tracker-Projekt die erste Zeile; ChoiceKey „projekt@verbindung“ merkt
 //   die Wahl (issues.welcomeProject). Als „Projekt“ gilt dann der Pfad aus
 //   „Gilt für“ der Zeile; Resolve nimmt für genau diesen Pfad genau diese Zeile.
-// - TAtlasTrackerProjectPick (#1967, vorher in der IDE): welche Wahl gilt,
+// - TAtlasTrackerProjectPick (#1967, ohne IDE testbar): welche Wahl gilt,
 //   welches Projekt daraus folgt („Alle“ #1928: die zuletzt bediente Gruppe),
 //   die Ziele aller Verbindungen mit Server.
 // Ohne Netz, ohne Dateizugriff.
@@ -38,9 +38,10 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Connections;
+  Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Wodurch ein Tracker für ein Projekt gilt; zugleich die Art einer Zeile (Project, Group, Folder).
@@ -72,20 +73,6 @@ type
     function MainFolder: string;
     /// <summary>Alle Arbeitskopien: Paths, sonst nur MatchFolder.</summary>
     function Folders: TArray<string>;
-  end;
-
-  /// <summary>Ein Eintrag der Klappliste „Tracker-Projekt“ (#1927).</summary>
-  TAtlasTrackerChoice = record
-    /// <summary>„projekt@verbindung“.</summary>
-    Key: string;
-    Connection: string;
-    Project: string;
-    /// <summary>„Gilt für“ der ersten Zeile mit diesem Paar; dient als Projekt für Zustand und Auflösung.</summary>
-    Match: string;
-    /// <summary>Index dieser Zeile in den persönlichen Zeilen.</summary>
-    Index: Integer;
-    /// <summary>„Verbindung · Projekt“ (ohne Projekt nur die Verbindung).</summary>
-    function Caption: string;
   end;
 
   /// <summary>Welche Zeile bzw. welcher Tracker für ein Projekt gilt.</summary>
@@ -281,17 +268,6 @@ begin
   for mIndex := 0 to High(Paths) do
   begin
     Result[mIndex] := TAtlasTrackerProjects.WithoutTrailingDelimiter(Paths[mIndex]);
-  end;
-end;
-
-{ TAtlasTrackerChoice }
-
-function TAtlasTrackerChoice.Caption: string;
-begin
-  Result := Connection;
-  if Project <> '' then
-  begin
-    Result := Result + ' ' + #$00B7 + ' ' + Project;
   end;
 end;
 

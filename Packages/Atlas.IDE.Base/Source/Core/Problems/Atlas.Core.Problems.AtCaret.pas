@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.Core.Problems.Store;
 
 type
@@ -23,7 +23,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract;
 
 { TAtlasProblemAtCaret }
 

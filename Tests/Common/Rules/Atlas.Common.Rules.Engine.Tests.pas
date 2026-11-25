@@ -13,9 +13,6 @@ type
   [TestFixture]
   TRuleEngineTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure RegistryRejectsDuplicateId;
     [Test]
@@ -67,7 +64,7 @@ type
     procedure SortsByPosition;
     [Test]
     procedure RuleAssertPositiveAndNegative;
-    /// <summary>Abbruch wirkt vor der nächsten Regel (Diagnoselog 15.10.2026).</summary>
+    /// <summary>Abbruch wirkt vor der nächsten Regel.</summary>
     [Test]
     procedure CancelledStopsBeforeNextRule;
     [Test]
@@ -108,7 +105,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
@@ -355,11 +352,6 @@ begin
 end;
 
 { TRuleEngineTests }
-
-procedure TRuleEngineTests.WarmUpFirstUse;
-begin
-  CancelledStopsBeforeNextRule;
-end;
 
 procedure TRuleEngineTests.RegistryRejectsDuplicateId;
 var

@@ -71,12 +71,12 @@ uses
   Vcl.Controls,
   Vcl.Dialogs,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.Pull,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.IDE.Foundation.DockWindow,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Windows.DockWindow,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.VersionControl.Service;
 
 { TAtlasIdeWorkingCopies }

@@ -42,13 +42,13 @@ implementation
 uses
   System.Types,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Generate.Menu,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Generate.Strings,
   Atlas.UI.Generate.Window,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 type

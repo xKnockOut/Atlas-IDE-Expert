@@ -11,7 +11,7 @@
 //   derselben Unit; ohne Rumpf zur Deklaration).
 // - Sortierknopf und „Cursor folgen“ schreiben outline.alphabetical bzw.
 //   outline.followCursor; outline.enabled aus schließt das Fenster.
-// Abgrenzung zur Strukturansicht der IDE: docs/Architektur.md.
+// Abgrenzung zur Strukturansicht der IDE: docs/architektur/Plugin-Editor.md.
 // Nur im Hauptthread.
 
 interface
@@ -37,13 +37,13 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Outline.Model,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Outline.Strings,
   Atlas.UI.Outline.Frame,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
@@ -92,6 +92,9 @@ begin
     begin
       Wire(AFrame);
     end;
+  // Beim Desktop anmelden, bevor die IDE ihn lädt: Sonst kennt sie das angedockte Fenster nicht und lässt es samt
+  // seinem Platz in der Andockgruppe fallen.
+  TAtlasIdeOutlineWindow.Prepare;
   // Das Fenster gab es schon (Paket neu geladen): neu verdrahten.
   if TAtlasIdeOutlineWindow.ExistingFrame <> nil then
   begin

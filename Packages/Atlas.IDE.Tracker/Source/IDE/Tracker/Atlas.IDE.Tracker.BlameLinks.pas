@@ -107,12 +107,13 @@ uses
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Tracker.IssuePreview,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Tracker.IssueLookups;
+  Atlas.IDE.Tracker.IssueLookups,
+  Atlas.Vcl.Controls.Menus;
 
 const
   cTipStates: array[TAtlasBlameKeyState] of TAtlasIssueTipState = (TAtlasIssueTipState.Loading,
@@ -528,11 +529,7 @@ end;
 
 function TAtlasIdeBlameLinks.AddMenuItem(AParent: TMenuItem; const ACaption: string; ATag: Integer): TMenuItem;
 begin
-  Result := TMenuItem.Create(FMenu);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := MenuClick;
-  AParent.Add(Result);
+  Result := TAtlasMenus.Add(FMenu, AParent, ACaption, ATag, MenuClick);
 end;
 
 /// <summary>Im Hauptthread nachgereicht: Menü zum Rechtsklick auf ACommit an AWhere.</summary>
@@ -609,8 +606,8 @@ var
   mPattern: TAtlasIssueKeyPattern;
   mCommand: Integer;
 begin
-  if not TAtlasLineChangeMarks.Current.BlameAt(AMsg.hwnd, SmallInt(LoWord(AMsg.lParam)), SmallInt(HiWord(AMsg.lParam)),
-    mCommit) or not AOwner.PatternOf(mTarget, mPattern) then
+  if not TAtlasLineChangeMarks.Current.BlameAt(AMsg.hwnd, SmallInt(LoWord(Cardinal(AMsg.lParam))),
+    SmallInt(HiWord(Cardinal(AMsg.lParam))), mCommit) or not AOwner.PatternOf(mTarget, mPattern) then
   begin
     Exit;
   end;

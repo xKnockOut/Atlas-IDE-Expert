@@ -57,26 +57,13 @@ implementation
 
 uses
   Atlas.Core.Settings.Groups,
-  Atlas.Core.Settings.History;
+  Atlas.Core.Settings.History,
+  System.StrUtils;
 
 function HasOffValue(const AEntry: TAtlasCatalogEntry): Boolean;
 begin
   Result := not AEntry.State and not AEntry.Machine and
     ((AEntry.Kind = akBoolean) or ((AEntry.Kind = akString) and (AEntry.OffJson <> '')));
-end;
-
-function Contains(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  Result := False;
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
 end;
 
 /// <summary>Wert eines Schalters aus dem Speicher; ohne Eintrag an (Vorgabe der Modul-Schalter).</summary>
@@ -128,7 +115,7 @@ begin
       for mOther := 0 to ACatalog.Count - 1 do
       begin
         if (ACatalog[mOther].Source = asPlugin) and HasOffValue(ACatalog[mOther]) and
-          Contains(mGroups.AncestorsOf(ACatalog[mOther].Name), mEntry.Name) then
+          MatchText(mEntry.Name, mGroups.AncestorsOf(ACatalog[mOther].Name)) then
         begin
           mSwitch.Members := mSwitch.Members + [ACatalog[mOther]];
         end;

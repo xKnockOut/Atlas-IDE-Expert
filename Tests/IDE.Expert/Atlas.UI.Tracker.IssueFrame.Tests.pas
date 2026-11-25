@@ -8,7 +8,10 @@
 // Fortschritt, Zustand und Knöpfen zum Anlegen und Verknüpfen (#1279);
 // Checklisten (#1273): Fortschritt in der Kopfzeile, Kästchen, „Punkt
 // hinzufügen …“, nur lesbar, abgeschaltet; Reiter „Details“ und „Entwicklung“
-// mit Schalter (#1269).
+// mit Schalter (#1269); Teile des Frames: Ablage im Bildlauf (Reihenfolge,
+// Karten, Leeren, keine Überlappung bei Höhenänderungen) und Wünsche nach dem Klick (Reihenfolge, nur einmal);
+// „Zusammenfassen“ mit KI (#2462): Knopf und Menüeintrag nach Schaltern, Karte
+// mit Stand, Fragen, Units als Links, „veraltet“ und „Als Kommentar übernehmen“.
 
 interface
 
@@ -23,9 +26,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -61,6 +61,26 @@ type
     /// <summary>#2126: „Prüfen …“ nur mit CanReview und Issue, meldet OnReview.</summary>
     [Test]
     procedure ReviewButton;
+    /// <summary>Ablage: untereinander in Anlegereihenfolge ohne Überlappung, Teile einer Karte in der Karte, Clear
+    /// gibt alles frei, danach legt die Fläche neu ab, ohne Freigegebenes anzufassen.</summary>
+    [Test]
+    procedure LayoutPlacesInOrderAndClears;
+    /// <summary>Ablagefläche: Teile untereinander in der Reihenfolge des Einhängens, auch wenn ein Teil seine
+    /// Höhe erst aus der Breite rechnet oder sie später ändert; die Fläche wächst mit.</summary>
+    [Test]
+    procedure StackKeepsPartsApart;
+    /// <summary>Wünsche nach dem Klick: erst Neuaufbau, dann Link, Kästchen, „Punkt hinzufügen …“, „Neu
+    /// zusammenfassen“ (#2462); je nur einmal.</summary>
+    [Test]
+    procedure DeferredRunsInOrderOnce;
+    /// <summary>#2462: ohne KI kein Knopf und kein Menüeintrag; Menü immer, Knopf erst ab genug Kommentaren.
+    /// </summary>
+    [Test]
+    procedure SummarizeButtonAndMenu;
+    /// <summary>#2462: Karte mit Stand, offenen Fragen, nächstem Schritt und Units; Unit-Link meldet den Pfad,
+    /// „Als Kommentar übernehmen“ füllt das Kommentarfeld; anderes Issue zeigt keine Karte.</summary>
+    [Test]
+    procedure SummaryCardSectionsAndLinks;
   end;
 
 implementation
@@ -69,16 +89,62 @@ uses
   Atlas.UI.Tracker.Issue.Strings,
   System.SysUtils,
   Vcl.Forms,
+  Vcl.Controls,
   Vcl.ComCtrls,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Preview,
+  Atlas.Core.Tracker.AiSummary,
   Atlas.UI.Tracker.IssueBoxes,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.IssueFrame.Contract;
+  Atlas.UI.Tracker.IssueFrame.Types,
+  Atlas.UI.Tracker.IssueFrame.Layout,
+  Atlas.UI.Tracker.IssueFrame.Deferred;
 
 const
   cNow = 46323.5;
+
+type
+  /// <summary>Rechnet seine Höhe in Resize aus der Breite, wie Doku, Abzeichen und Bilder.</summary>
+  TGrowingBox = class(TCustomControl)
+  private
+    FExtra: Integer;
+  protected
+    procedure Resize; override;
+  public
+    /// <summary>Höhe zur Breite: ein Viertel davon und AExtra.</summary>
+    function Wanted: Integer;
+    /// <summary>Später um AExtra höher, wie nach dem Laden eines Bilds.</summary>
+    procedure Grow(AExtra: Integer);
+  end;
+
+function TGrowingBox.Wanted: Integer;
+begin
+  Result := Width div 4 + FExtra;
+end;
+
+procedure TGrowingBox.Resize;
+begin
+  inherited;
+  if Height <> Wanted then
+  begin
+    Height := Wanted;
+  end;
+end;
+
+procedure TGrowingBox.Grow(AExtra: Integer);
+begin
+  FExtra := AExtra;
+  Height := Wanted;
+end;
+
+/// <summary>AUpper steht ganz über ALower (mit Abstand der Margins).</summary>
+procedure AssertApart(AUpper, ALower: TControl; const AMessage: string);
+begin
+  Assert.IsTrue(AUpper.Top + AUpper.Height + AUpper.Margins.Bottom + ALower.Margins.Top <= ALower.Top, AMessage);
+end;
 
 /// <summary>Adressen aller Bilder im Inhalt.</summary>
 function ImageUrls(AFrame: TAtlasIssueFrame): TArray<string>;
@@ -135,17 +201,44 @@ begin
   Result.Links := [mLink];
 end;
 
-{ TAtlasIssueFrameTests }
-
-procedure TAtlasIssueFrameTests.WarmUpFirstUse;
+/// <summary>Label mit ACaption im Frame; nil ohne.</summary>
+function LabelOf(AFrame: TAtlasIssueFrame; const ACaption: string): TLabel;
+var
+  mIndex: Integer;
 begin
-  Setup;
-  try
-    ShowsHeaderBadgesAndLists;
-  finally
-    TearDown;
+  for mIndex := 0 to AFrame.ComponentCount - 1 do
+  begin
+    if (AFrame.Components[mIndex] is TLabel) and (TLabel(AFrame.Components[mIndex]).Caption = ACaption) then
+    begin
+      Exit(TLabel(AFrame.Components[mIndex]));
+    end;
   end;
+  Result := nil;
 end;
+
+function SampleSummary(const AKey: string; AStale: Boolean): TAtlasIssueSummaryShown;
+var
+  mQuestion: TAtlasIssueSummaryQuestion;
+  mUnit: TAtlasIssueSummaryUnit;
+begin
+  Result := Default(TAtlasIssueSummaryShown);
+  Result.Kind := TAtlasIssueSummaryKind.Ready;
+  Result.Key := AKey;
+  Result.Stale := AStale;
+  Result.Summary.Status := 'Fix liegt im PR.';
+  mQuestion := Default(TAtlasIssueSummaryQuestion);
+  mQuestion.Question := 'Welche Version?';
+  mQuestion.Who := 'Anna';
+  Result.Summary.Questions := [mQuestion];
+  Result.Summary.NextStep := 'PR prüfen';
+  Result.Summary.Units := ['Atlas.Core.Save'];
+  mUnit := Default(TAtlasIssueSummaryUnit);
+  mUnit.Name := 'Atlas.Core.Save';
+  mUnit.Path := 'C:\Src\Atlas.Core.Save.pas';
+  Result.Units := [mUnit];
+end;
+
+{ TAtlasIssueFrameTests }
 
 procedure TAtlasIssueFrameTests.Setup;
 begin
@@ -221,11 +314,11 @@ begin
     Assert.AreEqual(1, Integer(Length(ImageUrls(mFrame))));
     Assert.AreEqual('https://beispiel.youtrack.cloud/api/files/1-2?sign=x', ImageUrls(mFrame)[0], 'Bild aus dem Anhang');
     Assert.AreEqual(1, Integer(Length(mRequested)), 'Bild wird geladen');
-    Assert.AreEqual(2, mFrame.Content.Attachments.Items.Count);
+    Assert.AreEqual(2, Integer(mFrame.Content.Attachments.Items.Count));
     Assert.AreEqual('skizze.png', mFrame.Content.Attachments.Items[0].Caption);
     Assert.AreEqual('2,0 KB', mFrame.Content.Attachments.Items[0].SubItems[0].Replace('.', ','));
     Assert.AreEqual('–', mFrame.Content.Attachments.Items[1].SubItems[0], 'Größe unbekannt');
-    Assert.AreEqual(1, mFrame.Content.Links.Items.Count);
+    Assert.AreEqual(1, Integer(mFrame.Content.Links.Items.Count));
     Assert.AreEqual('ATL-100', mFrame.Content.Links.Items[0].Caption);
     Assert.AreEqual('depends on', mFrame.Content.Links.Items[0].SubItems[1]);
     Assert.IsNull(mFrame.Content.Older, 'ein Kommentar: nichts eingeklappt');
@@ -467,12 +560,12 @@ begin
   mNode := ATree.Items.GetFirstNode;
   Assert.AreEqual('Hängt ab von (1)', mNode.Text);
   Assert.IsTrue(mNode.Expanded);
-  Assert.AreEqual(1, mNode.Count);
+  Assert.AreEqual(1, Integer(mNode.Count));
   Assert.AreEqual(TAtlasIssueLinkText.Row(TreeSample.Links[2]), mNode.Item[0].Text);
   mNode := mNode.getNextSibling;
   Assert.AreEqual('Unteraufgaben 2/3', mNode.Text);
   Assert.IsTrue(mNode.Expanded);
-  Assert.AreEqual(3, mNode.Count);
+  Assert.AreEqual(3, Integer(mNode.Count));
   Assert.IsTrue(mNode.Item[0].Text.Contains('ATL-131'), 'Reihenfolge des Trackers');
   mNode := mNode.getNextSibling;
   Assert.AreEqual('Duplikat von (1)', mNode.Text);
@@ -526,7 +619,7 @@ begin
     mFrame.SetFlag(TAtlasIssueFlag.LinksAsTree, False);
     mFrame.ShowDetails(TreeSample, cNow, '', False);
     Assert.IsNull(mFrame.Content.LinkTree);
-    Assert.AreEqual(5, mFrame.Content.Links.Items.Count);
+    Assert.AreEqual(5, Integer(mFrame.Content.Links.Items.Count));
   finally
     mHost.Free;
   end;
@@ -676,6 +769,249 @@ begin
     Assert.AreEqual(1, mCalls);
     mFrame.SetFlag(TAtlasIssueFlag.CanReview, False);
     Assert.IsFalse(mFrame.Parts.Review.Visible, 'kein Prüfzustand');
+    mFrame.Events := Default(TAtlasIssueFrameEvents);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.LayoutPlacesInOrderAndClears;
+var
+  mHost: TForm;
+  mBox: TScrollBox;
+  mLayout: TAtlasIssueLayout;
+  mCard: TAtlasIssueCard;
+  mInside, mBelow: TLabel;
+begin
+  mHost := TForm.CreateNew(nil);
+  mLayout := nil;
+  try
+    mBox := TScrollBox.Create(mHost);
+    mBox.Parent := mHost;
+    mLayout := TAtlasIssueLayout.Create(mHost, mBox, nil);
+    mLayout.BeginUpdate;
+    try
+      mLayout.AddSection('Abschnitt');
+      mCard := mLayout.BeginCard(0.1);
+      mInside := mLayout.AddText('in der Karte', False);
+      Assert.AreEqual(Int64(mCard.Fill), Int64(mLayout.ContentColors.Surface), 'in der Karte deren Fläche');
+      mLayout.EndCard;
+      mBelow := mLayout.AddText('darunter', True);
+    finally
+      mLayout.EndUpdate;
+    end;
+    Assert.AreEqual(1, mBox.ControlCount, 'nur die Ablagefläche im Bildlauf');
+    Assert.AreEqual(3, mLayout.Stack.ControlCount, 'Überschrift, Karte, Text');
+    Assert.AreSame(mCard, mInside.Parent);
+    Assert.AreSame(mLayout.Stack, mBelow.Parent);
+    AssertApart(mCard, mBelow, 'in der Reihenfolge des Anlegens, ohne Überlappung');
+    Assert.IsTrue(mCard.Height >= mInside.Top + mInside.Height, 'Karte umfasst ihren Inhalt');
+    Assert.AreEqual(Int64(mLayout.Colors.Surface), Int64(mLayout.ContentColors.Surface),
+      'nach der Karte wieder der Bildlauf');
+    mLayout.Clear;
+    Assert.AreEqual(0, mLayout.Stack.ControlCount, 'alles frei');
+    // Neu ablegen nach dem Freigeben einer Karte samt Inhalt: Die Fläche hält nichts Freigegebenes fest.
+    mLayout.BeginUpdate;
+    try
+      mBelow := mLayout.AddText('neu', False);
+    finally
+      mLayout.EndUpdate;
+    end;
+    Assert.AreEqual(1, mLayout.Stack.ControlCount, 'nur der neue Text');
+    Assert.AreEqual(Integer(mLayout.Stack.Padding.Top + mBelow.Margins.Top), mBelow.Top, 'oben in der Fläche');
+  finally
+    mLayout.Free;
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.StackKeepsPartsApart;
+var
+  mHost: TForm;
+  mStack: TAtlasIssueStack;
+  mFirst: TPanel;
+  mGrowing: TGrowingBox;
+  mLast: TPanel;
+  mWidth: Integer;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.Width := 400;
+    mHost.Height := 300;
+    mStack := TAtlasIssueStack.Create(mHost);
+    mStack.Parent := mHost;
+    mStack.Align := alTop;
+    mFirst := TPanel.Create(mHost);
+    mFirst.Height := 30;
+    mFirst.AlignWithMargins := True;
+    mFirst.Parent := mStack;
+    mGrowing := TGrowingBox.Create(mHost);
+    mGrowing.AlignWithMargins := True;
+    mGrowing.Parent := mStack;
+    mLast := TPanel.Create(mHost);
+    // Top zählt nicht: Reihenfolge des Einhängens.
+    mLast.Top := 0;
+    mLast.Height := 20;
+    mLast.AlignWithMargins := True;
+    mLast.Parent := mStack;
+    mGrowing.HandleNeeded;
+    mStack.Arrange;
+    Assert.IsTrue(mGrowing.Height > 0, 'Höhe aus der Breite');
+    Assert.AreEqual(mGrowing.Wanted, mGrowing.Height);
+    AssertApart(mFirst, mGrowing, 'erstes über dem wachsenden');
+    AssertApart(mGrowing, mLast, 'wachsendes über dem letzten');
+    // Später höher (z. B. Bild geladen): Die Fläche richtet über RequestAlign neu aus.
+    mGrowing.Grow(50);
+    Assert.AreEqual(mGrowing.Wanted, mGrowing.Height, 'später höher');
+    AssertApart(mGrowing, mLast, 'nach der späteren Änderung');
+    Assert.IsTrue(mStack.Height >= mLast.Top + mLast.Height, 'Fläche wächst mit');
+    // Breiteres Fenster: mehr Höhe, nichts überlappt.
+    mWidth := mGrowing.Width;
+    mHost.Width := mHost.Width + 200;
+    mStack.Arrange;
+    Assert.IsTrue(mGrowing.Width > mWidth, 'volle Breite');
+    Assert.AreEqual(mGrowing.Wanted, mGrowing.Height, 'neue Breite, neue Höhe');
+    AssertApart(mGrowing, mLast, 'nach neuer Breite');
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.DeferredRunsInOrderOnce;
+var
+  mHost: TForm;
+  mDeferred: TAtlasIssueDeferred;
+  mEvents: TAtlasIssueFrameEvents;
+  mLink: TAtlasTrackerLink;
+  mLog: string;
+  mRebuild: TProc;
+begin
+  mLog := '';
+  mHost := TForm.CreateNew(nil);
+  try
+    // Ohne Fenster bleibt die Nachricht aus; Run führt aus, was gemerkt ist.
+    mDeferred := TAtlasIssueDeferred.Create(mHost, cWM_ATLAS_ISSUE_DEFERRED);
+    mEvents := Default(TAtlasIssueFrameEvents);
+    mEvents.OpenLink :=
+      procedure(ALink: TAtlasTrackerLink)
+      begin
+        mLog := mLog + 'Link ' + ALink.Key + ';';
+      end;
+    mEvents.ToggleTask :=
+      procedure(AIndex: Integer)
+      begin
+        mLog := mLog + 'Kästchen ' + IntToStr(AIndex) + ';';
+      end;
+    mEvents.AddTask :=
+      procedure
+      begin
+        mLog := mLog + 'Punkt;';
+      end;
+    mEvents.Summarize :=
+      procedure
+      begin
+        mLog := mLog + 'Zusammenfassen;';
+      end;
+    mRebuild :=
+      procedure
+      begin
+        mLog := mLog + 'Neuaufbau;';
+      end;
+    mLink := Default(TAtlasTrackerLink);
+    mLink.Key := 'ATL-7';
+    mDeferred.Summarize;
+    mDeferred.AddTask;
+    mDeferred.ToggleTask(2);
+    mDeferred.OpenLink(mLink);
+    mDeferred.Rebuild;
+    mDeferred.Run(mEvents, mRebuild);
+    Assert.AreEqual('Neuaufbau;Link ATL-7;Kästchen 2;Punkt;Zusammenfassen;', mLog);
+    mDeferred.Run(mEvents, mRebuild);
+    Assert.AreEqual('Neuaufbau;Link ATL-7;Kästchen 2;Punkt;Zusammenfassen;', mLog, 'nur einmal');
+  finally
+    mHost.Free;
+    mEvents := Default(TAtlasIssueFrameEvents);
+    mRebuild := nil;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.SummarizeButtonAndMenu;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mEvents: TAtlasIssueFrameEvents;
+  mCalls: Integer;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mCalls := 0;
+    mEvents := mFrame.Events;
+    mEvents.Summarize :=
+      procedure
+      begin
+        Inc(mCalls);
+      end;
+    mFrame.Events := mEvents;
+    mFrame.ShowDetails(Sample(1), cNow, '', False);
+    Assert.IsFalse(mFrame.Parts.Summarize.Visible, 'ohne KI kein Knopf');
+    Assert.IsFalse(mFrame.Parts.SummarizeItem.Visible, 'ohne KI kein Menüeintrag');
+    mFrame.Parts.Summarize.Click;
+    Assert.AreEqual(0, mCalls, 'ohne KI nichts melden');
+    mFrame.SetFlag(TAtlasIssueFlag.CanSummarize, True);
+    Assert.IsTrue(mFrame.Parts.SummarizeItem.Visible, 'Menüeintrag immer');
+    Assert.IsFalse(mFrame.Parts.Summarize.Visible, 'Knopf erst ab genug Kommentaren');
+    mFrame.SetFlag(TAtlasIssueFlag.SummaryButton, True);
+    Assert.IsTrue(mFrame.Parts.Summarize.Visible);
+    Assert.AreEqual(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryMenu), mFrame.Parts.SummarizeItem.Caption);
+    mFrame.Parts.Summarize.Click;
+    mFrame.Parts.SummarizeItem.Click;
+    Assert.AreEqual(2, mCalls);
+    mFrame.Events := Default(TAtlasIssueFrameEvents);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.SummaryCardSectionsAndLinks;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mEvents: TAtlasIssueFrameEvents;
+  mOpened: string;
+  mLink: TLabel;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mOpened := '';
+    mEvents := mFrame.Events;
+    mEvents.OpenUnit :=
+      procedure(APath: string)
+      begin
+        mOpened := APath;
+      end;
+    mFrame.Events := mEvents;
+    mFrame.SetFlag(TAtlasIssueFlag.CanWrite, True);
+    mFrame.ShowDetails(Sample(1), cNow, '', False);
+    mFrame.ShowSummary(SampleSummary('ATL-999', False));
+    Assert.IsNull(LabelOf(mFrame, 'Fix liegt im PR.'), 'anderes Issue: keine Karte');
+    mFrame.ShowSummary(SampleSummary('ATL-123', True));
+    Assert.IsNotNull(LabelOf(mFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryTitle)), 'Titel');
+    Assert.IsNotNull(LabelOf(mFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryStale)), 'veraltet');
+    Assert.IsNotNull(LabelOf(mFrame, 'Fix liegt im PR.'), 'Stand');
+    Assert.IsNotNull(LabelOf(mFrame, '• Welche Version? (Anna)'), 'Frage mit wem');
+    Assert.IsNotNull(LabelOf(mFrame, 'PR prüfen'), 'nächster Schritt');
+    mLink := LabelOf(mFrame, 'Atlas.Core.Save');
+    Assert.IsNotNull(mLink, 'Unit als Link');
+    mLink.OnClick(mLink);
+    Assert.AreEqual('C:\Src\Atlas.Core.Save.pas', mOpened, 'Pfad an die IDE-Schicht');
+    mLink := LabelOf(mFrame, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueSummaryAsComment));
+    Assert.IsNotNull(mLink, 'Als Kommentar übernehmen');
+    mLink.OnClick(mLink);
+    Assert.IsTrue(string(mFrame.Parts.CommentEdit.Text).Contains('Fix liegt im PR.'), 'Entwurf im Kommentarfeld');
     mFrame.Events := Default(TAtlasIssueFrameEvents);
   finally
     mHost.Free;

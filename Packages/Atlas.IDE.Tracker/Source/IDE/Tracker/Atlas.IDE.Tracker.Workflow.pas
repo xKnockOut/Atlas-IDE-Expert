@@ -43,7 +43,7 @@
 // Nur mit issues.syncState und einem Anbieter, der IAtlasTrackerWriter
 // umsetzt (Enabled); sonst bleibt „Beenden“ die Rückfrage von „Meine Issues“.
 // Einstellungen je Verbindung (issues.connections) vor den globalen. Netz im
-// Hintergrund über TAtlasVcsWorker (Stop beim Entladen), je Schreiben
+// Hintergrund über TAtlasBackgroundJobs (Stop beim Entladen), je Schreiben
 // höchstens TAtlasTrackerWorkflow.cWriteTimeoutMs; nichts wird wiederholt.
 // Protokoll anonym: Anbieter, Art und Ergebnis, nie Adresse, Kennung,
 // Kommentar oder Token.
@@ -55,12 +55,12 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.EndSteps,
-  Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.SyncPlan,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Notifications.MessageSink,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
   /// <summary>Transport mit dem Token aus dem Anmeldespeicher; nil ohne Token. Läuft im Hintergrund.</summary>
@@ -109,7 +109,7 @@ type
     /// <summary>Zeitlimit je Aufruf der Versionsverwaltung für {commits}.</summary>
     cVcsTimeoutMs = 10000;
   private
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FTransport: TAtlasIdeTrackerTransport;
     FMessage: TAtlasMessageSink;
     FTimeText: TAtlasIdeTrackerTimeText;
@@ -199,12 +199,18 @@ implementation
 uses
   System.Math,
   Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.IDE.Tracker.EndPull,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.Core.Tracker.CommentEditor;
+
+const
+  /// <summary>So lange wartet Stop höchstens auf ein laufendes Schreiben.</summary>
+  cStopTimeoutMs = 1000;
 
 type
   /// <summary>Der offene Beenden-Dialog für nachgeladene Werte; nil, sobald er geschlossen ist.</summary>
@@ -291,7 +297,7 @@ begin
   inherited Create;
   FTransport := ATransport;
   FMessage := TAtlasMessageSink.Create(AReport);
-  FWorker := TAtlasVcsWorker.Create;
+  FWorker := TAtlasBackgroundJobs.Create(HInstance);
 end;
 
 destructor TAtlasIdeTrackerSync.Destroy;
@@ -608,7 +614,7 @@ begin
   end;
   FStopped := True;
   // Höchstens die Zeitgrenze eines Schreibens; danach kommt kein Ergebnis mehr an.
-  FWorker.Stop(1000);
+  FWorker.Stop(cStopTimeoutMs);
   FTransport := nil;
   FMessage.Clear;
   FTimeText := nil;

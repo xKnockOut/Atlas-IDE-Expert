@@ -13,8 +13,8 @@ uses
   System.SysUtils,
   System.Types,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tests.Run;
 
 type
@@ -135,6 +135,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.JSON,
   System.StrUtils,
+  Atlas.Core.Editor.LineItems,
   Atlas.Core.Tests.Lens,
   Atlas.Text.DUnitX,
   Atlas.Text.Json,
@@ -143,17 +144,12 @@ uses
 { TAtlasCoveredUnit }
 
 function TAtlasCoveredUnit.MethodAt(ALine: Integer): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Methods) do
-  begin
-    if Methods[mIndex].Line = ALine then
+  Result := TAtlasLineItems.IndexAt<TAtlasCoveredMethod>(Methods, ALine,
+    function(AMethod: TAtlasCoveredMethod): Integer
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AMethod.Line;
+    end);
 end;
 
 function TAtlasCoveredUnit.Tested: Integer;

@@ -36,10 +36,12 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Unavailable,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Hover.DebugValue;
 
@@ -51,7 +53,7 @@ type
   public const
     cRequestTimeoutMs = 3000;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugEnded; override;
     end;
@@ -62,7 +64,7 @@ type
   private
     FSession: TAtlasUnavailableSessionFunc;
     FMessage: TProc<string>;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     // Letzte Erklärung: die Korrekturen brauchen ihre Tatsachen (Einfügungen, Schalter).
@@ -123,17 +125,19 @@ uses
   System.IOUtils,
   System.JSON,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.UnavailableNote,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.UnavailableFixes,
-  Atlas.UI.Debug.Explain.Strings;
+  Atlas.UI.Debug.Explain.Strings,
+  Atlas.Plugin.Calls.Optional,
+  Atlas.Text.Files;
 
 const
   cDebugDcusOption = TAtlasUnavailableNote.cDebugDcusOption;
@@ -356,10 +360,7 @@ end;
 
 procedure TAtlasIdeDebugUnavailable.Say(AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class function TAtlasIdeDebugUnavailable.StopLocation(out AFileName: string; out ALine: Integer): Boolean;
@@ -402,7 +403,10 @@ begin
       AFacts.ReadServer(mResponse);
     except
       // Server langsam oder weg: nur die Tatsachen des Plugins.
-      AFacts.Server := False;
+      on ELspClientError do
+      begin
+        AFacts.Server := False;
+      end;
     end;
   finally
     mResponse.Free;
@@ -538,7 +542,14 @@ begin
       end;
     except
       // Unlesbare Ergänzungen: es gelten die bekannten Texte.
-      FPatterns := nil;
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
+        FPatterns := nil;
+      end;
     end;
   end;
   Result := FPatterns;

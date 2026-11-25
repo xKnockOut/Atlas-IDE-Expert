@@ -30,14 +30,14 @@
 //   fortsetzen“ öffnet nur https-Adressen. Was GitHub nicht übernahm
 //   (Meilenstein, Typ, Projekte), nennt die Benachrichtigung.
 // Anbieter, Transport und „Beginnen“ kommen von TAtlasIdeIssues (Start).
-// Base erreicht „Issue anlegen“ über IAtlasIssueCreation (TAtlasIdeIssueCreation,
-// bereitgestellt von der Komposition des Moduls, #1455).
+// Base erreicht „Issue anlegen“ über IAtlasIssueCreation
+// (Atlas.IDE.Tracker.Adapters.NewIssue, bereitgestellt von der Komposition des
+// Moduls, #1455).
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
   Atlas.Core.Tracker.NewIssue,
   Atlas.Core.Tracker.Attach,
   Atlas.IDE.Tracker.MyIssues;
@@ -62,15 +62,6 @@ type
     class procedure FromCrash(const ATitle, ADescription: string; const AFiles: TArray<TAtlasAttachFile>); static;
   end;
 
-  /// <summary>„Issue anlegen“ für Base (#1268, #1355): wandelt die Records des Vertrags und ruft
-  /// TAtlasIdeNewIssue; ohne Start bzw. mit issues.create aus wirkungslos. Hauptthread.</summary>
-  TAtlasIdeIssueCreation = class(TInterfacedObject, IAtlasIssueCreation)
-  public
-    function Enabled: Boolean;
-    procedure FromFindings(const AFindings: TArray<TAtlasIssueFinding>);
-    procedure FromCrash(const ATitle, ADescription: string; const AFiles: TArray<TAtlasIssueTextFile>);
-  end;
-
 implementation
 
 uses
@@ -82,12 +73,12 @@ uses
   Atlas.Core.Tracker.IssueForms,
   Atlas.Core.Tracker.NewIssueGitHub,
   Atlas.Core.Tracker.NewIssuePlan,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
@@ -98,7 +89,7 @@ uses
   Atlas.IDE.Tracker.NewIssuePlace,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cVcsTimeoutMs = 2000;
@@ -558,49 +549,6 @@ begin
       mSetup.Description := mDescription;
       ShowDialogWithFiles(mSetup, mFiles);
     end);
-end;
-
-{ TAtlasIdeIssueCreation }
-
-function TAtlasIdeIssueCreation.Enabled: Boolean;
-begin
-  Result := TAtlasIdeNewIssue.Enabled;
-end;
-
-procedure TAtlasIdeIssueCreation.FromFindings(const AFindings: TArray<TAtlasIssueFinding>);
-var
-  mItems: TArray<TAtlasNewIssueFinding>;
-  mIndex: Integer;
-begin
-  if not Enabled then
-  begin
-    Exit;
-  end;
-  SetLength(mItems, Length(AFindings));
-  for mIndex := 0 to High(AFindings) do
-  begin
-    mItems[mIndex] := TAtlasNewIssueFinding.Create(AFindings[mIndex].Rule, AFindings[mIndex].Message,
-      AFindings[mIndex].Location, AFindings[mIndex].LineText);
-  end;
-  TAtlasIdeNewIssue.FromFindings(mItems);
-end;
-
-procedure TAtlasIdeIssueCreation.FromCrash(const ATitle, ADescription: string;
-  const AFiles: TArray<TAtlasIssueTextFile>);
-var
-  mFiles: TArray<TAtlasAttachFile>;
-  mIndex: Integer;
-begin
-  if not Enabled then
-  begin
-    Exit;
-  end;
-  SetLength(mFiles, Length(AFiles));
-  for mIndex := 0 to High(AFiles) do
-  begin
-    mFiles[mIndex] := TAtlasAttachFile.CreateText(TAtlasAttachKind.LogFile, AFiles[mIndex].Name, AFiles[mIndex].Text);
-  end;
-  TAtlasIdeNewIssue.FromCrash(ATitle, ADescription, mFiles);
 end;
 
 end.

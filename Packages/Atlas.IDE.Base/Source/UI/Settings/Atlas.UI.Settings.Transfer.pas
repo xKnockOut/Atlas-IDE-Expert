@@ -24,7 +24,7 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Transfer,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasImportPreviewFunc = reference to function(AMode: TAtlasImportMode;
@@ -115,7 +115,9 @@ uses
   Vcl.Menus,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   // Breiten der Dialoge Export, Import und Profil.
@@ -133,6 +135,20 @@ const
 
 const
   cGap = 8;
+  /// <summary>Knopf: Platz links und rechts neben der Beschriftung zusammen.</summary>
+  cButtonTextPadding = 32;
+  /// <summary>Höhe einer Auswahl mit zwei Einträgen.</summary>
+  cChoiceHeight = 64;
+  /// <summary>Vorläufige Lage der Kästchen je Bereich: unter den übrigen Teilen oben.</summary>
+  cAreaBoxesTop = 2000;
+  /// <summary>Breite eines Kästchens je Bereich (drei Spalten).</summary>
+  cAreaBoxWidth = 140;
+  /// <summary>Feste Höhe der Inhalte der Dialoge Export, Import und Profil.</summary>
+  cExportHeight = 360;
+  cImportHeight = 520;
+  cProfileHeight = 240;
+  /// <summary>Höhe der Beschreibung des gewählten Profils (drei Zeilen).</summary>
+  cProfileDescriptionHeight = 48;
 
 function NewButton(AOwner: TForm; AParent: TWinControl; const ACaption: string): TButton;
 begin
@@ -140,9 +156,9 @@ begin
   Result.Parent := AParent;
   Result.Caption := ACaption;
   AOwner.Canvas.Font := AOwner.Font;
-  Result.Width := AOwner.Canvas.TextWidth(ACaption) + AOwner.ScaleValue(32);
+  Result.Width := AOwner.Canvas.TextWidth(ACaption) + AOwner.ScaleValue(cButtonTextPadding);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
+  TAtlasControlScaling.SetMargins(Result, 0, 0, cGap, cGap div 2);
 end;
 
 function NewButtons(AOwner: TForm): TFlowPanel;
@@ -153,7 +169,7 @@ begin
   Result.AutoSize := True;
   Result.BevelOuter := bvNone;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(Result, cGap);
 end;
 
 function HasArea(const AAreas: TArray<string>; const AArea: string): Boolean;
@@ -182,7 +198,7 @@ begin
   Result.Parent := AOwner;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(Result, cGap, cGap, cGap, 0);
   Result.Top := ATop;
   Result.Caption := ACaption;
 end;
@@ -204,9 +220,9 @@ begin
   Result.Parent := AOwner;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(Result, cGap, cGap, cGap, 0);
   Result.Top := ATop;
-  Result.Height := AOwner.ScaleValue(64);
+  Result.Height := AOwner.ScaleValue(cChoiceHeight);
   Result.Caption := ACaption;
   Result.Items.BeginUpdate;
   try
@@ -236,13 +252,13 @@ begin
   mPanel.AutoSize := True;
   mPanel.BevelOuter := bvNone;
   mPanel.AlignWithMargins := True;
-  mPanel.Margins.SetBounds(cGap, 4, cGap, 0);
-  mPanel.Top := mPanel.ScaleValue(2000);
+  TAtlasControlScaling.SetMargins(mPanel, cGap, cGap div 2, cGap, 0);
+  mPanel.Top := mPanel.ScaleValue(cAreaBoxesTop);
   for mArea in ACatalog.Areas do
   begin
     mBox := TCheckBox.Create(AOwner);
     mBox.Parent := mPanel;
-    mBox.Width := AOwner.ScaleValue(140);
+    mBox.Width := AOwner.ScaleValue(cAreaBoxWidth);
     mBox.Caption := ACatalog.AreaCaption(mArea.Id, English);
     mBox.Checked := AAll or HasArea(AChecked, mArea.Id);
     mBox.OnClick := AOnClick;
@@ -288,16 +304,6 @@ begin
   end;
 end;
 
-/// <summary>Spalte ACaption mit der (schon skalierten) Breite AWidth an AList anhängen.</summary>
-procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := AWidth;
-end;
-
 { TAtlasExportDialog }
 
 constructor TAtlasExportDialog.CreateDialog(AOwner: TComponent; ACatalog: TAtlasSettingsCatalog;
@@ -317,7 +323,7 @@ begin
   FSecrets.ItemIndex := Ord(ASecrets);
   FSecrets.Columns := 2;
   // Feste Höhe: vier Zeilen Bereiche bei 11 Bereichen und drei Spalten.
-  ClientHeight := ScaleValue(360);
+  ClientHeight := ScaleValue(cExportHeight);
 end;
 
 procedure TAtlasExportDialog.AreaClick(Sender: TObject);
@@ -394,7 +400,7 @@ begin
   FCount := TLabel.Create(Self);
   FCount.Parent := mButtons;
   FCount.AlignWithMargins := True;
-  FCount.Margins.SetBounds(cGap, 4, 0, 0);
+  TAtlasControlScaling.SetMargins(FCount, cGap, cGap div 2, 0, 0);
   FInfo := NewInfoLabel(Self, ImportInfo(APreview));
   FInfo.Visible := FInfo.Caption <> '';
   FMode := NewChoice(Self, '', cModeTop, [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportMerge),
@@ -406,20 +412,21 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FList, cGap, cGap, cGap, 0);
   FList.ViewStyle := vsReport;
   FList.Checkboxes := True;
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.OnClick := ListChanged;
   FList.OnKeyUp := ListKeyUp;
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), ScaleValue(cKeyWidth));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColArea), ScaleValue(100));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent), ScaleValue(cValueWidth));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), ScaleValue(cValueWidth));
-  AddColumn(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), ScaleValue(cNoteWidth));
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColKey), cKeyWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColArea), 100);
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColCurrent),
+    cValueWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNew), cValueWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportColNote), cNoteWidth);
 
-  ClientHeight := ScaleValue(520);
+  ClientHeight := ScaleValue(cImportHeight);
 end;
 
 procedure TAtlasImportDialog.DoShow;
@@ -663,18 +670,18 @@ begin
   FDescription.Parent := Self;
   FDescription.Align := alBottom;
   FDescription.AlignWithMargins := True;
-  FDescription.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FDescription, cGap, cGap, cGap, 0);
   FDescription.ShowAccelChar := False;
   FDescription.AutoSize := False;
-  FDescription.Height := ScaleValue(48);
+  FDescription.Height := ScaleValue(cProfileDescriptionHeight);
   FList := TListBox.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FList, cGap, cGap, cGap, 0);
   FList.OnClick := ListClick;
   FList.OnDblClick := ListDblClick;
-  ClientHeight := ScaleValue(240);
+  ClientHeight := ScaleValue(cProfileHeight);
   // Einträge erst mit Fenster (DoShow); die Namen bis dahin merken.
   FNames := ANames;
 end;

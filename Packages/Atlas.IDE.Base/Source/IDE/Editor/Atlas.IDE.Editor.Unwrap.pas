@@ -22,43 +22,31 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  Winapi.Windows,
-  Winapi.Messages,
-  Vcl.Graphics,
-  Vcl.AppEvnts,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Unwrap,
   Atlas.UI.Editor.Unwrap,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Notifications.MessageSink,
+  Atlas.IDE.Editor.CaretPopup;
 
 type
   TAtlasUnwrapSessionFunc = reference to function: TLspSession;
 
-  TAtlasIdeUnwrap = class
+  TAtlasIdeUnwrap = class(TAtlasIdeCaretCommand)
   private const
     /// <summary>„with auflösen“ fragt die Namensauflösung: etwas länger als eine einfache Anfrage.</summary>
     cTimeoutMs = 10000;
     /// <summary>Deckkraft der Vorschau über dem Text (0–255).</summary>
     cKeepAlpha = 56;
     cRemoveAlpha = 64;
-  private type
-    TEvents = class(TNTACodeEditorNotifier)
-    protected
-      function AllowedEvents: TCodeEditorEvents; override;
-      function AllowedLineStages: TPaintLineStages; override;
-    end;
   private class var
     FInstance: TAtlasIdeUnwrap;
   private
     FSession: TAtlasUnwrapSessionFunc;
     FMessage: TAtlasMessageSink;
-    FMessages: TApplicationEvents;
+    FHooks: TAtlasIdeCaretPopupHooks;
     FWindow: TAtlasUnwrapWindow;
-    FEvents: TEvents;
-    FEventsRef: INTACodeEditorEvents;
-    FIndex: Integer;
     FWriting: Boolean;
     // Offene Liste: Datei, Text beim Fragen, Einträge und der gewählte (Vorschau).
     FFileName: string;
@@ -67,19 +55,19 @@ type
     FTabWidth: Integer;
     FEntries: TArray<TAtlasUnwrapEntry>;
     FPreview: Integer;
-    procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
-    procedure KeyDown(const AMsg: TMsg; var AHandled: Boolean);
+    procedure KeyDown(AKey: Word; var AHandled: Boolean);
     function ListKey(AKey: Word): Boolean;
-    procedure Execute;
     function Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
     function Ask(ASession: TLspSession; const AView: IOTAEditView; out AEntries: TArray<TAtlasUnwrapEntry>): Boolean;
     procedure CreateWindow;
     procedure Preview(AIndex: Integer);
     procedure Accept(AIndex: Integer);
-    procedure Close;
-    procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-      var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-    class procedure Invalidate; static;
+    procedure PaintLine(const ARect: TRect; const AStage: TPaintLineStage; ABeforeEvent: Boolean;
+      const AContext: INTACodeEditorPaintContext);
+  protected
+    procedure Execute; override;
+    function Allowed: Boolean; override;
+    procedure Close; override;
   public
     constructor Create(const ASession: TAtlasUnwrapSessionFunc; const AMessage: TProc<string>);
     destructor Destroy; override;
@@ -104,145 +92,55 @@ implementation
 uses
   System.Math,
   System.JSON,
-  Vcl.Controls,
+  Winapi.Windows,
+  Vcl.Graphics,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Editor.PaintedLine;
-
-function IsEditorWindow(AWnd: HWND): Boolean;
-var
-  mControl: TWinControl;
-begin
-  mControl := FindControl(AWnd);
-  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
-end;
-
-/// <summary>Bildschirmstelle unter der Zeile mit der Schreibmarke.</summary>
-function CaretPoint: TPoint;
-var
-  mFocus: HWND;
-begin
-  Result := Mouse.CursorPos;
-  mFocus := GetFocus;
-  if (mFocus <> 0) and GetCaretPos(Result) then
-  begin
-    Inc(Result.Y, 16);
-    Winapi.Windows.ClientToScreen(mFocus, Result);
-  end;
-end;
-
-{ TAtlasIdeUnwrap.TEvents }
-
-function TAtlasIdeUnwrap.TEvents.AllowedEvents: TCodeEditorEvents;
-begin
-  Result := [cevPaintLineEvents];
-end;
-
-function TAtlasIdeUnwrap.TEvents.AllowedLineStages: TPaintLineStages;
-begin
-  Result := [plsEndPaint];
-end;
+  Atlas.IDE.Editor.PaintedLine,
+  Atlas.ToolsApi.Editor.Caret;
 
 { TAtlasIdeUnwrap }
 
 constructor TAtlasIdeUnwrap.Create(const ASession: TAtlasUnwrapSessionFunc; const AMessage: TProc<string>);
-var
-  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
-  FIndex := -1;
-  FPreview := -1;
-  FMessages := TApplicationEvents.Create(nil);
-  FMessages.OnMessage := AppMessage;
-  FEvents := TEvents.Create;
-  FEventsRef := FEvents;
   FMessage := TAtlasMessageSink.Create(AMessage);
-  FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
-  end;
+  FPreview := -1;
+  FHooks := TAtlasIdeCaretPopupHooks.Create(TAtlasFeature.Unwrap, KeyDown, Close, PaintLine);
 end;
 
 destructor TAtlasIdeUnwrap.Destroy;
 var
-  mServices: INTACodeEditorServices;
   mPainted: Boolean;
 begin
-  FreeAndNil(FMessages);
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    mServices.RemoveEditorEventsNotifier(FIndex);
-  end;
-  FEvents.OnEditorPaintLine := nil;
-  FEventsRef := nil;
+  FreeAndNil(FHooks);
   mPainted := FPreview >= 0;
   FreeAndNil(FWindow);
   FEntries := nil;
   FLines := nil;
   if mPainted then
   begin
-    Invalidate;
+    TAtlasIdeCaretPopupHooks.Invalidate;
   end;
   inherited;
 end;
 
-procedure TAtlasIdeUnwrap.AppMessage(var Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeUnwrap.KeyDown(AKey: Word; var AHandled: Boolean);
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Unwrap) or (FWindow = nil) or not FWindow.IsShown then
-  begin
-    Exit;
-  end;
-  try
-    case Msg.message of
-      WM_KEYDOWN, WM_SYSKEYDOWN:
-        if IsEditorWindow(Msg.hwnd) then
-        begin
-          KeyDown(Msg, Handled);
-        end;
-      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN:
-        if not FWindow.HandleAllocated or (Msg.hwnd <> FWindow.Handle) then
-        begin
-          Close;
-        end;
-    end;
-  except
-    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
-    on E: Exception do
-    begin
-      Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.Unwrap, E);
-    end;
-  end;
-end;
-
-procedure TAtlasIdeUnwrap.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
-var
-  mKey: Word;
-begin
-  if (FWindow = nil) or not FWindow.IsShown then
-  begin
-    Exit;
-  end;
-  mKey := Word(AMsg.wParam);
-  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
-  begin
-    Exit;
-  end;
-  if ListKey(mKey) then
+  if ListKey(AKey) then
   begin
     AHandled := True;
   end
@@ -293,7 +191,7 @@ begin
   begin
     CreateWindow;
   end;
-  mPoint := CaretPoint;
+  mPoint := TAtlasIdeCaret.BelowLine;
   FWindow.Colors := TAtlasIdeStyle.Colors;
   FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
   FWindow.ShowFor(FEntries, mPoint);
@@ -364,6 +262,7 @@ end;
 procedure TAtlasIdeUnwrap.CreateWindow;
 begin
   FWindow := TAtlasUnwrapWindow.Create(nil);
+  FHooks.Popup := FWindow;
   FWindow.OnSelect :=
     procedure(AIndex: Integer)
     begin
@@ -419,7 +318,7 @@ begin
   begin
     mView.SetTopLeft(mFirst + 1, mView.LeftColumn);
   end;
-  Invalidate;
+  TAtlasIdeCaretPopupHooks.Invalidate;
 end;
 
 procedure TAtlasIdeUnwrap.Accept(AIndex: Integer);
@@ -471,17 +370,7 @@ begin
   end;
   if mPainted then
   begin
-    Invalidate;
-  end;
-end;
-
-class procedure TAtlasIdeUnwrap.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+    TAtlasIdeCaretPopupHooks.Invalidate;
   end;
 end;
 
@@ -511,20 +400,19 @@ begin
   Result := (FInstance <> nil) and (FInstance.FWindow <> nil) and FInstance.FWindow.IsShown;
 end;
 
+function TAtlasIdeUnwrap.Allowed: Boolean;
+begin
+  Result := Enabled;
+end;
+
 class procedure TAtlasIdeUnwrap.Run;
 begin
-  if (FInstance <> nil) and Enabled then
-  begin
-    FInstance.Execute;
-  end;
+  RunCommand(FInstance);
 end;
 
 class procedure TAtlasIdeUnwrap.Dismiss;
 begin
-  if FInstance <> nil then
-  begin
-    FInstance.Close;
-  end;
+  CloseCommand(FInstance);
 end;
 
 class procedure TAtlasIdeUnwrap.EditorModified;
@@ -578,6 +466,8 @@ end;
 /// <summary>Vorschau für die Teile ASpans der Zeile AText.</summary>
 procedure PaintSpans(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
   const ASpans: TArray<TAtlasUnwrapSpan>; ATabWidth: Integer);
+const
+  cPenDivisor = 14;
 var
   mSpan: TAtlasUnwrapSpan;
   mCode, mArea: TRect;
@@ -590,7 +480,8 @@ begin
   mDC := AContext.Canvas.Handle;
   mCode := AContext.LineState.CodeRect;
   mSaved := SaveDC(mDC);
-  mPen := CreatePen(PS_SOLID, Max(1, (ARect.Bottom - ARect.Top) div 14), COLORREF(ColorToRGB(TColor(mColors.Error))));
+  mPen := CreatePen(PS_SOLID, Max(1, (ARect.Bottom - ARect.Top) div cPenDivisor),
+    COLORREF(ColorToRGB(TColor(mColors.Error))));
   try
     if mCode.Right > mCode.Left then
     begin
@@ -609,30 +500,22 @@ begin
   end;
 end;
 
-procedure TAtlasIdeUnwrap.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+procedure TAtlasIdeUnwrap.PaintLine(const ARect: TRect; const AStage: TPaintLineStage; ABeforeEvent: Boolean;
+  const AContext: INTACodeEditorPaintContext);
 var
   mSpans: TArray<TAtlasUnwrapSpan>;
   mLine: Integer;
 begin
-  if (FPreview < 0) or (FPreview > High(FEntries)) or TAtlasGuard.Disabled(TAtlasFeature.Unwrap) then
+  // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht.
+  if (FPreview < 0) or (FPreview > High(FEntries)) or
+    not TAtlasPaintedLine.Resolve(AStage, ABeforeEvent, AContext, FFileName, FLines, mLine) then
   begin
     Exit;
   end;
-  try
-    // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht.
-    if not TAtlasPaintedLine.Resolve(Stage, BeforeEvent, Context, FFileName, FLines, mLine) then
-    begin
-      Exit;
-    end;
-    mSpans := TAtlasUnwrap.SpansOnLine(FEntries[FPreview], mLine);
-    if Length(mSpans) > 0 then
-    begin
-      PaintSpans(Rect, Context, FLines[mLine], mSpans, FTabWidth);
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Unwrap, E);
+  mSpans := TAtlasUnwrap.SpansOnLine(FEntries[FPreview], mLine);
+  if Length(mSpans) > 0 then
+  begin
+    PaintSpans(ARect, AContext, FLines[mLine], mSpans, FTabWidth);
   end;
 end;
 

@@ -33,13 +33,13 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Editor.Reassigned,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -117,15 +117,15 @@ uses
   System.Math,
   System.JSON,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.Elements,
-  Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.EditorSettings,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.PaintedLine;
 
 { TAtlasIdeReassigned.TEvents }
@@ -214,7 +214,7 @@ var
   mFirst, mLast: Integer;
 begin
   mView := nil;
-  if TAtlasIdeSettings.ReassignedOn(mTargetsText, mStyleText, mColorText) and
+  if TAtlasIdeEditorSettings.ReassignedOn(mTargetsText, mStyleText, mColorText) and
     not TAtlasGuard.Disabled(TAtlasFeature.Reassigned) then
   begin
     mView := TAtlasEditorBuffer.ActiveView;
@@ -451,7 +451,10 @@ begin
         end;
       except
         // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, der Editor bleibt frei.
-        mFailed := True;
+        on ELspClientError do
+        begin
+          mFailed := True;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Reassigned,
@@ -500,13 +503,8 @@ begin
 end;
 
 class procedure TAtlasIdeReassigned.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 class procedure TAtlasIdeReassigned.Install(const ASession: TAtlasReassignedSessionFunc);

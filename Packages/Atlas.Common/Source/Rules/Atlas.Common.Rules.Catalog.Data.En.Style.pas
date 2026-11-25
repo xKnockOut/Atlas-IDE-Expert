@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnStyle: array[0..1151] of string = (
+  cCatalogLinesEnStyle: array[0..1159] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Unused local variable",',
@@ -105,6 +105,14 @@ const
     'JSON from { or \"key\":, Markdown headings # and ##) and Font.Name; option ignoreCalls names further routines. Off by default, low confidence.",',
     '      "bad": "ShowMessage(''File not found'');",',
     '      "good": "resourcestring\n  SFileNotFound = ''File not found'';\n...\nShowMessage(SFileNotFound);",',
+    '      "options": [',
+    '        {',
+    '          "name": "ignoreCalls",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Further routines whose text arguments nobody translates, for example an own Pick(English, ''en'', ''de''). Logging, check, comparison and registry calls always count."',
+    '        }',
+    '      ],',
     '      "safeFix": false,',
     '      "profiles": [',
     '        "strict"',
@@ -576,9 +584,11 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "style",',
-    '      "description": "The class has more members than the limit (default 40): field names, methods, properties with their own type and class var. Properties that only raise visibility (property Align;' +
-    ') and nested types do not count; a nested class is measured on its own. Also shown in the metrics lens above the class. Split the class or move parts into helper classes; Move class to own unit (#103)' +
-    ' helps when the unit is crowded too.",',
+    '      "description": "The class has more members than the limit (default 40): field names, methods, properties with their own type and class var, plus every free routine of the same unit that accesses' +
+    ' a private or protected member of the class through a parameter or variable of that type (such a routine is a method written outside the class). Properties that only raise visibility (property Align;)' +
+    ' and nested types do not count; a nested class is measured on its own. A field of a record type counts as one member even when the record bundles several values: collecting what belongs together in a ' +
+    'record (such as the paint state of a control) should not be penalized. A record that only lowers the count does not take a task away from the class, though; split the class instead. Also shown in the ' +
+    'metrics lens above the class. Split the class or move parts into helper classes; Move class to own unit (#103) helps when the unit is crowded too.",',
     '      "bad": "type\n  TfrmHaupt = class(TForm)\n    { 87 members }\n  end;",',
     '      "good": "type\n  TfrmHaupt = class(TForm)\n    { 25 members; data access in TKundenDaten }\n  end;",',
     '      "options": [',

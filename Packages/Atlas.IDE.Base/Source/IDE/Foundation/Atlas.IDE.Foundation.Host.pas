@@ -22,14 +22,16 @@ interface
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  ToolsAPI,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Build.Events,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Completion.Snippets;
+  Atlas.Core.Completion.Snippets,
+  Atlas.Plugin.Files.Contract;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) im Hintergrund an den laufenden Server; ADone bekommt das
@@ -94,6 +96,10 @@ type
     ShowMessages: TProc;
     /// <summary>Zeilen des Statusfelds (#591) laufen; die Willkommensseite (#754) beobachtet sie.</summary>
     StatusLinesReady: TFunc<Boolean>;
+    /// <summary>Datei und Schreibmarke des oberen Editors (Adapter der Kompositionswurzel, #1967).</summary>
+    ActiveEditor: TFunc<IAtlasActiveEditor>;
+    /// <summary>Puffer offener Dateien lesen und speichern (Adapter der Kompositionswurzel).</summary>
+    EditorFiles: TFunc<IAtlasEditorFiles>;
   end;
 
   /// <summary>Anfrage an den Server für TAtlasIdeHost.RunRequestAsync: Methode, Parameter als JSON, Zeitgrenze und
@@ -119,12 +125,23 @@ type
     class function ActiveSession: TLspSession; static;
     /// <summary>Zeile in der Meldungsansicht der IDE, Gruppe „Atlas“.</summary>
     class procedure Message(const AText: string); static;
+    /// <summary>Gruppe AName der Meldungsansicht; legt sie an, wenn es sie noch nicht gibt.</summary>
+    class function MessageGroup(const AMessages: IOTAMessageServices; const AName: string): IOTAMessageGroup;
+      static;
+    /// <summary>Message als Methodenreferenz für die Start-Routinen der Features und Module (mit () aufrufen).
+    /// </summary>
+    class function Messages: TProc<string>; static;
     /// <summary>Fläche, über der ein Popup oder eine Palette erscheint: aktives Formular, sonst Hauptfenster,
     /// sonst Arbeitsfläche.</summary>
     class function PopupArea: TRect; static;
+    /// <summary>Anker (Bildschirm) für ein Popup über dem Statusfeld: AOnAnchor, solange es eins gibt (X nicht
+    /// MaxInt); sonst unten links im aktiven Fenster (PopupArea).</summary>
+    class function PopupAnchor(const AOnAnchor: TFunc<TPoint>): TPoint; static;
     /// <summary>Warnung wie die der Sicherung: Meldungsansicht und Bericht; vor Install nur die
     /// Meldungsansicht.</summary>
     class procedure Warning(const AText: string); static;
+    /// <summary>Warning als Methodenreferenz (mit () aufrufen).</summary>
+    class function Warnings: TProc<string>; static;
     /// <summary>Zeile im Diagnoselog des Servers; ohne Server nichts.</summary>
     class procedure Log(const AText: string); static;
     /// <summary>Zeile im Bericht des Managers (Diagnose); vor Install nichts.</summary>
@@ -172,17 +189,23 @@ type
     class procedure ShowMessages; static;
     /// <summary>Laufen die Zeilen des Statusfelds? False vor Install und nach Uninstall.</summary>
     class function StatusLinesReady: Boolean; static;
+    /// <summary>Datei und Schreibmarke des oberen Editors; nil vor Install und nach Uninstall.</summary>
+    class function ActiveEditor: IAtlasActiveEditor; static;
+    /// <summary>Puffer offener Dateien lesen und speichern; nil vor Install und nach Uninstall.</summary>
+    class function EditorFiles: IAtlasEditorFiles; static;
     /// <summary>Ordner des Base-Packages mit Pfadtrenner am Ende (Regel 8, #1456): Daten, Vorlagen und Doku liegen
     /// dort, auch wenn ein Modul aus einem eigenen Package fragt. Braucht kein Install.</summary>
     class function InstallFolder: string; static;
+    /// <summary>Registrierungsschlüssel der IDE (IOTAServices.GetBaseRegistryKey, etwa Software\Embarcadero\BDS\37.0);
+    /// '' ohne IDE.</summary>
+    class function BaseRegistryKey: string; static;
   end;
 
 implementation
 
 uses
   Vcl.Forms,
-  ToolsAPI,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Modules.Answer;
 
 { TAtlasServerRequest }
@@ -229,18 +252,39 @@ end;
 class procedure TAtlasIdeHost.Message(const AText: string);
 var
   mMessages: IOTAMessageServices;
-  mGroup: IOTAMessageGroup;
 begin
-  if not Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+  if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
-    Exit;
+    mMessages.AddTitleMessage(AText, MessageGroup(mMessages, 'Atlas'));
   end;
-  mGroup := mMessages.GetGroup('Atlas');
-  if mGroup = nil then
+end;
+
+class function TAtlasIdeHost.MessageGroup(const AMessages: IOTAMessageServices;
+  const AName: string): IOTAMessageGroup;
+begin
+  Result := AMessages.GetGroup(AName);
+  if Result = nil then
   begin
-    mGroup := mMessages.AddMessageGroup('Atlas');
+    Result := AMessages.AddMessageGroup(AName);
   end;
-  mMessages.AddTitleMessage(AText, mGroup);
+end;
+
+class function TAtlasIdeHost.Messages: TProc<string>;
+begin
+  Result :=
+    procedure(AText: string)
+    begin
+      Message(AText);
+    end;
+end;
+
+class function TAtlasIdeHost.Warnings: TProc<string>;
+begin
+  Result :=
+    procedure(AText: string)
+    begin
+      Warning(AText);
+    end;
 end;
 
 class function TAtlasIdeHost.PopupArea: TRect;
@@ -256,6 +300,24 @@ begin
   else
   begin
     Result := Screen.WorkAreaRect;
+  end;
+end;
+
+class function TAtlasIdeHost.PopupAnchor(const AOnAnchor: TFunc<TPoint>): TPoint;
+const
+  cAnchorInset = 40;
+var
+  mArea: TRect;
+begin
+  Result := Point(MaxInt, MaxInt);
+  if Assigned(AOnAnchor) then
+  begin
+    Result := AOnAnchor();
+  end;
+  if Result.X = MaxInt then
+  begin
+    mArea := PopupArea;
+    Result := Point(mArea.Left + cAnchorInset, mArea.Bottom - cAnchorInset);
   end;
 end;
 
@@ -293,15 +355,8 @@ begin
 end;
 
 class procedure TAtlasIdeHost.SetStatusField(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
-var
-  mExtra: TAtlasStatusExtra;
 begin
-  mExtra := Default(TAtlasStatusExtra);
-  mExtra.Id := AId;
-  mExtra.Text := AText;
-  mExtra.Hint := AHint;
-  mExtra.OnClick := AOnClick;
-  SetStatusItem(mExtra);
+  SetStatusItem(TAtlasStatusExtra.Make(AId, AText, AHint, AOnClick));
 end;
 
 class procedure TAtlasIdeHost.SetStatusItem(const AExtra: TAtlasStatusExtra);
@@ -432,9 +487,14 @@ begin
   end;
 end;
 
-/// <summary>Weiterreichen in den Hauptthread; eigene Routine, damit der Rahmen nur die Antwort hält.</summary>
+/// <summary>Weiterreichen in den Hauptthread; eigene Routine, damit der Rahmen nur die Antwort hält. Kam die
+/// Anfrage aus einem Befehl des Benutzers, läuft die Antwort wieder als dieser Befehl: Scheitert sie, steht das
+/// sofort in der Meldungsansicht (sonst täte der Befehl scheinbar nichts).</summary>
 function DeliverInMainThread(const AAnswer: IAtlasModuleAnswer; AFeature: TAtlasFeature): TProc<string>;
+var
+  mCommand: string;
 begin
+  mCommand := TAtlasCommandScope.Current;
   Result :=
     procedure(AText: string)
     var
@@ -444,7 +504,11 @@ begin
       TAtlasMainThread.Queue(AFeature,
         procedure
         begin
-          AAnswer.Deliver(mText);
+          TAtlasCommandScope.Run(AFeature, mCommand,
+            procedure
+            begin
+              AAnswer.Deliver(mText);
+            end);
         end);
     end;
 end;
@@ -510,10 +574,39 @@ begin
   Result := Assigned(FServices.StatusLinesReady) and FServices.StatusLinesReady();
 end;
 
+class function TAtlasIdeHost.ActiveEditor: IAtlasActiveEditor;
+begin
+  Result := nil;
+  if Assigned(FServices.ActiveEditor) then
+  begin
+    Result := FServices.ActiveEditor();
+  end;
+end;
+
+class function TAtlasIdeHost.EditorFiles: IAtlasEditorFiles;
+begin
+  Result := nil;
+  if Assigned(FServices.EditorFiles) then
+  begin
+    Result := FServices.EditorFiles();
+  end;
+end;
+
 class function TAtlasIdeHost.InstallFolder: string;
 begin
   // HInstance ist hier das Base-Package, weil diese Unit dort liegt.
   Result := ExtractFilePath(GetModuleName(HInstance));
+end;
+
+class function TAtlasIdeHost.BaseRegistryKey: string;
+var
+  mServices: IOTAServices;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
+    Result := mServices.GetBaseRegistryKey;
+  end;
 end;
 
 end.

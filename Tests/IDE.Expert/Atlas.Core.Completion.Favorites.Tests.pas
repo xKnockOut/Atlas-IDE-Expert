@@ -62,8 +62,10 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Completion.Controller,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Completion.Providers.Fixed;
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Core.Completion.Providers.Fixed,
+  Atlas.Tests.Wait,
+  Atlas.Core.Completion.TestSupport;
 
 type
   TFavoritesView = class(TInterfacedObject, IAtlasCompletionView)
@@ -77,28 +79,6 @@ type
     function PageSize: Integer;
     procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
   end;
-
-function OrderNames(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex in AOrder do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ',';
-    end;
-    if TAtlasRanking.IsHeader(mIndex) then
-    begin
-      Result := Result + '#';
-    end
-    else
-    begin
-      Result := Result + AItems[mIndex].Name;
-    end;
-  end;
-end;
 
 { TFavoritesView }
 
@@ -156,21 +136,6 @@ begin
   Result.Prefix := APrefix;
 end;
 
-function Wait(const ACondition: TFunc<Boolean>): Boolean;
-var
-  mStart: UInt64;
-begin
-  mStart := TThread.GetTickCount64;
-  repeat
-    CheckSynchronize(5);
-    if ACondition() then
-    begin
-      Exit(True);
-    end;
-  until TThread.GetTickCount64 - mStart > 3000;
-  Result := False;
-end;
-
 function TempFile: string;
 begin
   Result := TPath.Combine(TPath.GetTempPath, 'AtlasFavorites' + IntToStr(TThread.GetTickCount64) + '.json');
@@ -209,7 +174,7 @@ end;
 procedure StartAndWait(AController: TAtlasCompletionController; const APrefix: string);
 begin
   AController.Start(Context(APrefix));
-  Assert.IsTrue(Wait(
+  Assert.IsTrue(TTestWait.Synchronized(
     function: Boolean
     begin
       Result := not AController.Loading;
@@ -323,9 +288,11 @@ var
   mQuery: TAtlasCompletionItems;
   mStamp: TDateTime;
 begin
-  mFavorites := TAtlasFavorites.Create;
-  mLoaded := TAtlasFavorites.Create;
+  mFavorites := nil;
+  mLoaded := nil;
   try
+    mFavorites := TAtlasFavorites.Create;
+    mLoaded := TAtlasFavorites.Create;
     mStamp := EncodeDate(2026, 10, 15) + EncodeTime(9, 30, 5, 0);
     mQuery := QueryItems;
     mFavorites.Toggle(mQuery[5], mStamp);
@@ -394,9 +361,11 @@ var
 begin
   // Akzeptanz #458: Favoriten bleiben nach einem Neustart erhalten.
   mFileName := TPath.Combine(TPath.Combine(TempFile + '.d', 'Atlas'), 'favorites.json');
-  mFavorites := TAtlasFavorites.Create;
-  mLoaded := TAtlasFavorites.Create;
+  mFavorites := nil;
+  mLoaded := nil;
   try
+    mFavorites := TAtlasFavorites.Create;
+    mLoaded := TAtlasFavorites.Create;
     mFavorites.Toggle(Member('Open', 'TDataSet', 1, 0));
     mFavorites.Toggle(Member('ParamByName', 'TFDQuery', 0, 0));
     mFavorites.SaveToFile(mFileName);
@@ -527,11 +496,14 @@ begin
   mView := TFavoritesView.Create;
   mViewRef := mView;
   mFileName := TempFile;
-  mFavorites := TAtlasFavorites.Create;
-  mRestarted := TAtlasFavorites.Create;
-  mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
-    IAtlasCompletionProvider, mViewRef);
+  mFavorites := nil;
+  mRestarted := nil;
+  mController := nil;
   try
+    mFavorites := TAtlasFavorites.Create;
+    mRestarted := TAtlasFavorites.Create;
+    mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
+      IAtlasCompletionProvider, mViewRef);
     mController.Favorites := mFavorites;
     mController.GroupInherited := True;
     StartAndWait(mController, '');
@@ -583,10 +555,12 @@ var
 begin
   mView := TFavoritesView.Create;
   mViewRef := mView;
-  mFavorites := TAtlasFavorites.Create;
-  mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
-    IAtlasCompletionProvider, mViewRef);
+  mFavorites := nil;
+  mController := nil;
   try
+    mFavorites := TAtlasFavorites.Create;
+    mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
+      IAtlasCompletionProvider, mViewRef);
     for mIndex := 1 to TAtlasFavorites.cMaxPerType do
     begin
       mFavorites.Toggle(Member('Weitere' + IntToStr(mIndex), 'TDataSet', 1, 0));
@@ -621,10 +595,12 @@ var
 begin
   mView := TFavoritesView.Create;
   mViewRef := mView;
-  mFavorites := TAtlasFavorites.Create;
-  mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
-    IAtlasCompletionProvider, mViewRef);
+  mFavorites := nil;
+  mController := nil;
   try
+    mFavorites := TAtlasFavorites.Create;
+    mController := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create(QueryItems) as
+      IAtlasCompletionProvider, mViewRef);
     mController.Favorites := mFavorites;
     StartAndWait(mController, '');
     Assert.AreEqual('ExecSQL,ParamByName,Active,Close,FieldByName,Open', mView.Names);

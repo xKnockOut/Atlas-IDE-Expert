@@ -77,18 +77,23 @@ end;
 { TAtlasFormText }
 
 class function TAtlasFormText.Write(ARoot: TComponent; const AMethodName: TFunc<TMethod, string>): string;
+const
+  cWriterBufferSize = 4096;
 var
   mBinary: TMemoryStream;
   mText: TStringStream;
   mWriter: TWriter;
   mNamer: TMethodNamer;
 begin
-  mBinary := TMemoryStream.Create;
-  mText := TStringStream.Create('', TEncoding.UTF8);
-  mNamer := TMethodNamer.Create;
+  mBinary := nil;
+  mText := nil;
+  mNamer := nil;
   try
+    mBinary := TMemoryStream.Create;
+    mText := TStringStream.Create('', TEncoding.UTF8);
+    mNamer := TMethodNamer.Create;
     mNamer.FMethodName := AMethodName;
-    mWriter := TWriter.Create(mBinary, 4096);
+    mWriter := TWriter.Create(mBinary, cWriterBufferSize);
     try
       if Assigned(AMethodName) then
       begin

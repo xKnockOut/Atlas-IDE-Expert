@@ -19,9 +19,6 @@ type
     FForm: TForm;
     FFrame: TAtlasOutlineFrame;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -40,6 +37,8 @@ type
     procedure SortButtonAndMessage;
     [Test]
     procedure ShowsConditionUnlessSwitchedOff;
+    [Test]
+    procedure ListKeepsRowsOnErase;
   end;
 
 implementation
@@ -50,12 +49,12 @@ uses
   System.Generics.Collections,
   Vcl.Controls,
   Vcl.Menus,
-  Atlas.UI.Strings,
   Atlas.UI.Outline.Strings,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
-  Atlas.Core.Outline.Model;
+  Atlas.Core.Outline.Model,
+  Atlas.Vcl.Controls.ListBox,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cFormCode =
@@ -79,21 +78,8 @@ const
     'end.';
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cFormCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cFormCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
+  Result := TOutlineTest.NodesOf(cFormCode);
 end;
 
 function Names(AFrame: TAtlasOutlineFrame): string;
@@ -141,16 +127,6 @@ end;
 
 { TAtlasOutlineFrameTests }
 
-procedure TAtlasOutlineFrameTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    ShowsRowsWithMarks;
-  finally
-    TearDown;
-  end;
-end;
-
 procedure TAtlasOutlineFrameTests.SetUp;
 begin
   FForm := TForm.CreateNew(nil);
@@ -193,7 +169,7 @@ begin
   Assert.IsTrue(mItem.Checked);
   Assert.IsFalse(MenuItem(FFrame.VisibilityMenu, 'private').Checked);
   // Art „Felder“ dazu: nur Button1.
-  MenuItem(FFrame.KindMenu, TAtlasStrings.Text(TAtlasTextId.OutlineKindFields)).Click;
+  MenuItem(FFrame.KindMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineKindFields)).Click;
   Assert.AreEqual('interface,TForm1,Button1', Names(FFrame));
   // „Alle zeigen“ hebt den Filter auf.
   MenuItem(FFrame.VisibilityMenu, TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineShowAll)).Click;
@@ -317,6 +293,12 @@ begin
   Assert.AreEqual('+ Make · class · CPUX64', FFrame.RowText(RowOf(FFrame, 'Make')));
   FFrame.ShowConditions := False;
   Assert.AreEqual('+ Make · class', FFrame.RowText(RowOf(FFrame, 'Make')));
+end;
+
+procedure TAtlasOutlineFrameTests.ListKeepsRowsOnErase;
+begin
+  // Unter dem Thema der IDE blitzte die Liste beim Klick und nach der Auswahl leer auf.
+  Assert.IsTrue(FFrame.List is TAtlasListBox);
 end;
 
 initialization

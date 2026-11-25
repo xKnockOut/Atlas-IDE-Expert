@@ -41,6 +41,12 @@ uses
   System.SysUtils,
   Atlas.Text.Diff;
 
+function Labels: TTextDiffLabels;
+begin
+  Result.Line := 'Zeile %d:';
+  Result.FromLine := 'ab Zeile %d:';
+end;
+
 { TTextDiffTests }
 
 procedure TTextDiffTests.PrefixSuffixNoOverlap;
@@ -101,7 +107,7 @@ procedure TTextDiffTests.ChangedLinesSameCount;
 var
   mLines: TArray<string>;
 begin
-  mLines := TTextDiff.ChangedLines(['a', 'b', 'c'], ['a', 'B', 'c']);
+  mLines := TTextDiff.ChangedLines(['a', 'b', 'c'], ['a', 'B', 'c'], Labels);
   Assert.AreEqual<Integer>(3, Length(mLines));
   Assert.AreEqual('Zeile 2:', mLines[0]);
   Assert.AreEqual('- b', mLines[1]);
@@ -112,7 +118,7 @@ procedure TTextDiffTests.ChangedLinesBlock;
 var
   mLines: TArray<string>;
 begin
-  mLines := TTextDiff.ChangedLines(['a', 'b', 'c'], ['a', 'x', 'y', 'c']);
+  mLines := TTextDiff.ChangedLines(['a', 'b', 'c'], ['a', 'x', 'y', 'c'], Labels);
   Assert.AreEqual<Integer>(4, Length(mLines));
   Assert.AreEqual('ab Zeile 2:', mLines[0]);
   Assert.AreEqual('- b', mLines[1]);
@@ -124,7 +130,7 @@ procedure TTextDiffTests.ChangedLinesLimit;
 var
   mLines: TArray<string>;
 begin
-  mLines := TTextDiff.ChangedLines(['a'], ['b', 'c', 'd', 'e'], 3);
+  mLines := TTextDiff.ChangedLines(['a'], ['b', 'c', 'd', 'e'], Labels, 3);
   Assert.AreEqual<Integer>(4, Length(mLines));
   Assert.AreEqual('ab Zeile 1:', mLines[0]);
   Assert.AreEqual('- a', mLines[1]);
@@ -134,8 +140,8 @@ end;
 
 procedure TTextDiffTests.ChangedLinesEqualIsEmpty;
 begin
-  Assert.AreEqual<Integer>(0, Length(TTextDiff.ChangedLines(['a', ''], ['a', ''])));
-  Assert.AreEqual<Integer>(0, Length(TTextDiff.ChangedLines(nil, nil)));
+  Assert.AreEqual<Integer>(0, Length(TTextDiff.ChangedLines(['a', ''], ['a', ''], Labels)));
+  Assert.AreEqual<Integer>(0, Length(TTextDiff.ChangedLines(nil, nil, Labels)));
 end;
 
 procedure TTextDiffTests.UnifiedDiff;

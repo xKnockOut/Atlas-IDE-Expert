@@ -36,6 +36,10 @@
       "caption": "Debug",
       "captionEn": "Debug"
     },
+    "assistants": {
+      "caption": "KI-Assistenten",
+      "captionEn": "AI assistants"
+    },
     "snippets": {
       "caption": "Vorlagen/Snippets",
       "captionEn": "Templates/snippets"
@@ -679,6 +683,19 @@
       "x-caption": "Ungenutzte uses-Einträge abblenden",
       "x-captionEn": "Dim unused uses entries",
       "x-issue": "#621"
+    },
+    "HighlightMovableUses": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.highlightMovableUses",
+      "x-area": "editor",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-parent": "completion.enabled",
+      "x-drawing": true,
+      "x-caption": "Nur in der implementation gebrauchte uses-Einträge hervorheben",
+      "x-captionEn": "Highlight uses entries only needed in the implementation",
+      "x-issue": "#2465"
     },
     "RecursionMarkers": {
       "type": "boolean",
@@ -1376,6 +1393,374 @@
       "x-captionEn": "Writing to open files",
       "x-issue": "#1888"
     },
+    "AssistantsInlineSuggestions": {
+      "type": "boolean",
+      "default": false,
+      "description": "Schattentext-Vorschläge über einen KI-Anbieter: Passt kein gelernter Vorschlag und ist die Tipp-Pause (suggestions.delayMs) erreicht, fragt Atlas im Hintergrund den eingestellten Anbieter. Gesendet werden nur die Zeilen um die Schreibmarke (assistants.contextLines) und Köpfe der Klasse aus dem Index. Jeder Vorschlag läuft vor dem Zeigen durch Parser und Namensprüfung. Ohne Netz, ohne Schlüssel oder bei Fehlern bleibt es still. Aus = kein Netzverkehr.",
+      "x-key": "assistants.inlineSuggestions",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Schattentext-Vorschläge über den KI-Anbieter",
+      "x-captionEn": "Ghost text suggestions from the AI provider",
+      "x-issue": "#1922",
+      "x-keywords": [
+        "KI",
+        "AI",
+        "LLM",
+        "Schattentext",
+        "ghost text"
+      ]
+    },
+    "AssistantsProvider": {
+      "type": "string",
+      "enum": [
+        "none",
+        "anthropic",
+        "openai-compatible"
+      ],
+      "default": "none",
+      "description": "KI-Anbieter für Schattentext-Vorschläge: none = keiner (keine Anfragen), anthropic = Anthropic-API (HTTPS), openai-compatible = Server mit OpenAI-kompatibler Schnittstelle (lokal, z. B. LM Studio, llama.cpp-Server, Ollama, oder ein Gateway der Firma; #2056). Der Schlüssel steht nur im Anmeldespeicher von Windows, nie in den Einstellungen.",
+      "x-key": "assistants.provider",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Auswahl",
+      "x-caption": "KI-Anbieter",
+      "x-captionEn": "AI provider",
+      "x-issue": "#1922"
+    },
+    "AssistantsModel": {
+      "type": "string",
+      "default": "claude-haiku-5-5",
+      "description": "Modell des KI-Anbieters für Schattentext; Vorgabe ist ein kleines, schnelles Modell. Ein größeres Modell liefert bessere Vorschläge, antwortet aber langsamer und kostet mehr.",
+      "x-key": "assistants.model",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld",
+      "x-caption": "Modell",
+      "x-captionEn": "Model",
+      "x-issue": "#1922"
+    },
+    "AssistantsContextLines": {
+      "type": "integer",
+      "default": 40,
+      "minimum": 10,
+      "maximum": 200,
+      "description": "Zeilen um die Schreibmarke, die an den KI-Anbieter gehen (10 bis 200); mehr Zeilen geben dem Modell mehr Zusammenhang und kosten mehr.",
+      "x-key": "assistants.contextLines",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Zahl",
+      "x-caption": "Zeilen um die Schreibmarke",
+      "x-captionEn": "Lines around the cursor",
+      "x-issue": "#1922"
+    },
+    "AssistantsExclude": {
+      "type": "string",
+      "default": "",
+      "description": "Dateien und Ordner, aus denen nichts an den KI-Anbieter geht: Muster mit * und ?, durch Semikolon getrennt, z. B. „*\\Geheim\\*;*Lizenz*.pas“. Verglichen wird der volle Pfad ohne Groß-/Kleinschreibung.",
+      "x-key": "assistants.exclude",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld",
+      "x-caption": "Nicht senden aus (Muster)",
+      "x-captionEn": "Never send from (patterns)",
+      "x-issue": "#1922"
+    },
+    "AssistantsDailyLimit": {
+      "type": "integer",
+      "default": 300,
+      "minimum": 1,
+      "maximum": 100000,
+      "description": "Höchstzahl der Anfragen an den KI-Anbieter je Tag; ist sie erreicht, fragt Atlas bis zum nächsten Tag nicht mehr. Gezählt wird je Benutzer auf diesem Rechner.",
+      "x-key": "assistants.dailyLimit",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Zahl",
+      "x-caption": "Anfragen je Tag höchstens",
+      "x-captionEn": "Requests per day at most",
+      "x-issue": "#1922"
+    },
+    "AssistantsBanner": {
+      "type": "boolean",
+      "default": true,
+      "description": "Feld „KI-Assistent“ im Atlas-Statusfeld (#1906): zeigt, solange ein KI-Assistent (MCP-Client) über die IDE baut oder eine offene Datei geändert hat, wer gerade was tut. Ein Klick hält KI-Assistenten an („Pause für KI“): Neue Builds und Änderungen an offenen Dateien lehnt die IDE dann mit Grund ab, ein laufender Build läuft zu Ende; ein zweiter Klick hebt die Pause auf. Aus = kein Feld und keine Pause.",
+      "x-key": "assistants.banner",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Anzeige „KI-Assistent aktiv“ mit Pause",
+      "x-captionEn": "“AI assistant active” display with pause",
+      "x-issue": "#1906"
+    },
+    "AssistantsContext": {
+      "type": "boolean",
+      "default": true,
+      "description": "Das Modul KI-Assistenten legt den Zustand der IDE für das MCP-Werkzeug get_ide_context ab (#2050): offene Datei mit Cursor und Methode, Auswahl, aktives Projekt mit Konfiguration und Plattform, letzter Build, Reiter. Geschrieben nur nach einem Wechsel von Reiter, Methode, Auswahl, Projekt oder Build, nicht beim Tippen; beim Beenden gelöscht. Aus = keine Datei, das Werkzeug nennt den Grund.",
+      "x-key": "assistants.context",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "IDE-Zustand für KI-Assistenten bereitstellen",
+      "x-captionEn": "Provide the IDE state to AI assistants",
+      "x-issue": "#2050"
+    },
+    "AssistantsContextSelection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Den markierten Text an KI-Assistenten mitgeben (#2050). Aus = nur der Zeilenbereich der Auswahl.",
+      "x-key": "assistants.context.selection",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.context",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Markierten Text mitgeben",
+      "x-captionEn": "Include the selected text",
+      "x-issue": "#2050"
+    },
+    "AssistantsContextSelectionMax": {
+      "description": "Höchstens so viele Zeichen der Auswahl gehen an KI-Assistenten (0 bis 50000); längere Auswahlen werden gekürzt und als gekürzt markiert.",
+      "type": "integer",
+      "default": 4000,
+      "minimum": 0,
+      "maximum": 50000,
+      "x-key": "assistants.context.selectionMax",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.context.selection",
+      "x-control": "Zahl",
+      "x-caption": "Höchstens Zeichen der Auswahl",
+      "x-captionEn": "At most characters of the selection",
+      "x-issue": "#2050"
+    },
+    "AssistantsOpenAiUrl": {
+      "type": "string",
+      "default": "http://localhost:1234/v1",
+      "description": "Adresse des OpenAI-kompatiblen Servers bis einschließlich /v1; Atlas hängt /chat/completions und /models an. Ein Schlüssel geht nur über https oder an den eigenen Rechner (localhost) hinaus.",
+      "x-key": "assistants.openaiCompatible.url",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld",
+      "x-caption": "Adresse (OpenAI-kompatibel)",
+      "x-captionEn": "Address (OpenAI-compatible)",
+      "x-issue": "#2056"
+    },
+    "AssistantsOpenAiModel": {
+      "type": "string",
+      "default": "",
+      "description": "Modell beim OpenAI-kompatiblen Server, wie es /models nennt; leer = keine Anfrage. „Modelle abrufen“ auf der Optionsseite füllt die Auswahl.",
+      "x-key": "assistants.openaiCompatible.model",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Textfeld mit „Modelle abrufen“",
+      "x-caption": "Modell (OpenAI-kompatibel)",
+      "x-captionEn": "Model (OpenAI-compatible)",
+      "x-issue": "#2056"
+    },
+    "AssistantsOpenAiTimeoutMs": {
+      "type": "integer",
+      "default": 3000,
+      "minimum": 500,
+      "maximum": 30000,
+      "description": "Zeitlimit je Anfrage an den OpenAI-kompatiblen Server in Millisekunden (500 bis 30000); danach kein Vorschlag.",
+      "x-key": "assistants.openaiCompatible.timeoutMs",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.inlineSuggestions",
+      "x-control": "Zahl",
+      "x-caption": "Zeitlimit in ms (OpenAI-kompatibel)",
+      "x-captionEn": "Time limit in ms (OpenAI-compatible)",
+      "x-issue": "#2056"
+    },
+    "AssistantsTextSource": {
+      "type": "string",
+      "enum": [
+        "ide",
+        "own",
+        "none"
+      ],
+      "default": "ide",
+      "description": "Wer einfache KI-Aufgaben anderer Atlas-Funktionen übernimmt (eine Frage, eine Antwort, z. B. Issue zusammenfassen): ide = ein KI-Anbieter der IDE (Smart CodeInsight, siehe assistants.ideProvider), sonst der eigene; own = der eigene Anbieter (assistants.provider), sonst der der IDE; none = keiner, die Funktionen bleiben ausgeblendet. Dateien unter assistants.exclude gehen an keinen.",
+      "x-key": "assistants.textSource",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Auswahl",
+      "x-caption": "Quelle für einfache Aufgaben",
+      "x-captionEn": "Source for simple tasks",
+      "x-issue": "#2744",
+      "x-keywords": [
+        "KI",
+        "AI",
+        "Smart CodeInsight"
+      ]
+    },
+    "AssistantsIdeProvider": {
+      "type": "boolean",
+      "default": false,
+      "description": "Einen KI-Anbieter der IDE (Tools › Optionen › Smart CodeInsight, ab Delphi 12.2) für einfache Aufgaben mitbenutzen. Atlas schickt dann Anweisung und Inhalt an diesen Anbieter; ohne Streaming, Systemprompt und Gesprächsverlauf, deshalb nur für einfache Aufgaben. Der eigene Eintrag „Atlas (…)“ wird nie gewählt.",
+      "x-key": "assistants.ideProvider",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "KI-Anbieter der IDE (Smart CodeInsight) für einfache Aufgaben mitbenutzen",
+      "x-captionEn": "Use the IDE's AI provider (Smart CodeInsight) for simple tasks",
+      "x-issue": "#2744"
+    },
+    "AssistantsIdeProviderName": {
+      "type": "string",
+      "default": "",
+      "description": "Name des Anbieters der IDE, wie Smart CodeInsight ihn zeigt; leer = der erste aktive Anbieter mit Anweisung oder Chat. Ist der genannte Anbieter aus oder fehlt er, nutzt Atlas keinen anderen.",
+      "x-key": "assistants.ideProvider.name",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.ideProvider",
+      "x-control": "Textfeld mit Auswahl der Anbieter der IDE",
+      "x-caption": "Anbieter der IDE",
+      "x-captionEn": "IDE provider",
+      "x-issue": "#2744"
+    },
+    "AssistantsRegisterInIde": {
+      "type": "boolean",
+      "default": false,
+      "description": "Den eigenen KI-Anbieter (assistants.provider) als „Atlas (…)“ bei Smart CodeInsight der IDE anmelden: Chat und Anweisungen der IDE laufen dann über ihn, mit derselben Tagesgrenze (assistants.dailyLimit). Ohne eingerichteten Anbieter meldet Atlas nichts an; Umschalten wirkt ohne Neustart.",
+      "x-key": "assistants.registerInIde",
+      "x-area": "assistants",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Eigenen Anbieter bei Smart CodeInsight der IDE anmelden",
+      "x-captionEn": "Register own provider with the IDE's Smart CodeInsight",
+      "x-issue": "#2745"
+    },
+    "AssistantsInstructionsHint": {
+      "type": "boolean",
+      "default": true,
+      "description": "Hinweis in der Meldungsansicht, wenn nach dem Speichern der atlas.json der Abschnitt in einer Anweisungsdatei für KI-Assistenten (assistants.instructions.file) fehlt oder veraltet ist (#2615). Aktualisieren über Atlas › Anweisungen für KI-Assistenten aktualisieren.",
+      "x-key": "assistants.instructionsHint",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Hinweis auf veraltete Anweisungen",
+      "x-captionEn": "Hint on outdated instructions",
+      "x-issue": "#2615"
+    },
+    "AssistantsLink": {
+      "type": "boolean",
+      "default": false,
+      "description": "RAD Studio als verbundene IDE für Kommandozeilen-Assistenten (#2377): ein WebSocket-Server nur auf 127.0.0.1 mit zufälligem Port und Token je IDE-Sitzung, angekündigt über eine Lock-Datei im Konfigurationsordner des Assistenten. Der Assistent sieht offene Dateien, Auswahl und Befunde, öffnet Dateien und zeigt Vorschläge als Vergleich. Statusfeld „Assistent verbunden“ mit Trennen. Aus = kein Port, keine Lock-Datei.",
+      "x-key": "assistants.link",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Mit Kommandozeilen-Assistenten verbinden",
+      "x-captionEn": "Connect with command line assistants",
+      "x-issue": "#2377"
+    },
+    "AssistantsLinkShareSelection": {
+      "type": "boolean",
+      "default": true,
+      "description": "Die Auswahl im Editor laufend an den verbundenen Assistenten melden (#2377), erst wenn sie kurz ruht. Aus = der Assistent erfährt die Auswahl nur, wenn er fragt oder über „Auswahl an den Assistenten“.",
+      "x-key": "assistants.link.shareSelection",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.link",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Auswahl laufend teilen",
+      "x-captionEn": "Share the selection live",
+      "x-issue": "#2377"
+    },
+    "AssistantsLinkDiffPreview": {
+      "type": "boolean",
+      "default": true,
+      "description": "Vorschläge des verbundenen Assistenten als Vergleich zeigen (#2377): Annehmen ändert die Datei als ein Rückgängig-Schritt und speichert sie, Ablehnen lässt sie unverändert; der Assistent erfährt die Entscheidung. Aus = der Assistent schreibt Dateien ohne Vergleich in der IDE.",
+      "x-key": "assistants.link.diffPreview",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.link",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Vorschläge als Vergleich zeigen",
+      "x-captionEn": "Show proposals as a comparison",
+      "x-issue": "#2377"
+    },
+    "AssistantsLinkMentionKey": {
+      "type": "integer",
+      "default": 57419,
+      "description": "Tastenkürzel für „Auswahl an den Assistenten“ (#2377, Vorgabe Strg+Umschalt+Alt+K): schickt Datei und Zeilen der Auswahl an den verbundenen Assistenten; 0 = keins.",
+      "x-key": "assistants.link.mentionKey",
+      "x-area": "build",
+      "x-format": "shortcut",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.link",
+      "x-issue": "#2377"
+    },
+    "AssistantsEditHoldModified": {
+      "type": "boolean",
+      "default": true,
+      "description": "Änderungen von KI-Assistenten an Dateien, die im Editor ungespeichert geändert sind, zurückhalten statt ablehnen (#2605): Atlas meldet „KI möchte X ändern – Datei hat ungespeicherte Änderungen“ mit „Speichern und übernehmen“, „Als Vergleich öffnen“ und „Verwerfen“; der Assistent erfährt, dass die Änderung wartet. Der MCP-Server schreibt eine zurückgehaltene Datei nie selbst. Aus = solche Änderungen werden abgelehnt.",
+      "x-key": "assistants.editHoldModified",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.edit",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Änderungen an ungespeicherten Dateien zurückhalten",
+      "x-captionEn": "Hold changes to unsaved files",
+      "x-issue": "#2605"
+    },
+    "AssistantsQuestionsInIde": {
+      "type": "boolean",
+      "default": true,
+      "description": "Rückfragen von KI-Assistenten (MCP-Werkzeug ask_user) erscheinen als Fenster in der IDE (#2620): Frage, Antworten zur Auswahl bzw. Eingabefeld, „Antworten“, „Später“, „Abbrechen“; dazu ein Hinweis und „KI fragt“ im Statusfeld. Das Fenster ist nicht modal. Aus = das Werkzeug sagt dem Assistenten, er soll im Client fragen.",
+      "x-key": "assistants.questionsInIde",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Fragen von KI-Assistenten in der IDE zeigen",
+      "x-captionEn": "Show questions of AI assistants in the IDE",
+      "x-issue": "#2620"
+    },
+    "AssistantsLog": {
+      "type": "boolean",
+      "default": true,
+      "description": "Aufträge von KI-Assistenten dieser Sitzung im andockbaren Fenster „Atlas-KI-Protokoll“ festhalten (#2049): Änderungen an offenen Dateien mit Unterschied und Zurücknehmen, Builds, Ablehnungen, zurückgehaltene Änderungen und Rückfragen. Nur im Speicher, nicht auf der Platte. Aus = nichts festhalten.",
+      "x-key": "assistants.log",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "KI-Protokoll führen",
+      "x-captionEn": "Keep the AI log",
+      "x-issue": "#2049"
+    },
+    "AssistantsLogMax": {
+      "description": "Höchstens so viele Einträge hält das KI-Protokoll (50 bis 5000); ältere fallen weg.",
+      "type": "integer",
+      "default": 500,
+      "minimum": 50,
+      "maximum": 5000,
+      "x-key": "assistants.log.max",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.log",
+      "x-control": "Zahl",
+      "x-caption": "Höchstens Einträge im KI-Protokoll",
+      "x-captionEn": "At most entries in the AI log",
+      "x-issue": "#2049"
+    },
     "McpBuild": {
       "type": "boolean",
       "default": true,
@@ -1388,6 +1773,72 @@
       "x-caption": "Builds für KI-Assistenten (MCP)",
       "x-captionEn": "Builds for AI assistants (MCP)",
       "x-issue": "#261"
+    },
+    "DebugMcp": {
+      "type": "boolean",
+      "default": false,
+      "description": "KI-Assistenten (MCP) debuggen in dieser IDE (#1874): Die MCP-Werkzeuge debug_start, debug_stop, set_breakpoint, remove_breakpoint, debug_continue, debug_step, debug_state und debug_evaluate starten Programme im Debugger, setzen Haltepunkte der Gruppe Atlas-KI, steppen und lesen Werte. Aus = die IDE nimmt keine Debug-Aufträge an, die Werkzeuge melden das.",
+      "x-key": "debug.mcp",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "assistants.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-caption": "Debuggen durch KI-Assistenten (MCP)",
+      "x-captionEn": "Debugging by AI assistants (MCP)",
+      "x-issue": "#1874"
+    },
+    "DebugMcpSideEffects": {
+      "type": "boolean",
+      "default": false,
+      "description": "debug_evaluate darf Ausdrücke mit Aufrufen auswerten (Getter, Funktionen; #1874). Aus = nur Felder und Variablen, Aufrufe lehnt das Plugin mit Begründung ab.",
+      "x-key": "debug.mcp.sideEffects",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "debug.mcp",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Ausdrücke mit Aufrufen",
+      "x-captionEn": "Expressions with calls",
+      "x-issue": "#1874"
+    },
+    "DebugMcpModify": {
+      "type": "boolean",
+      "default": false,
+      "description": "debug_evaluate darf Werte ändern (Zuweisungen wie I := 3; #1874). Aus = Ablehnung mit Begründung.",
+      "x-key": "debug.mcp.modify",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "debug.mcp",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Werte ändern",
+      "x-captionEn": "Change values",
+      "x-issue": "#1874"
+    },
+    "DebugMcpAttach": {
+      "type": "boolean",
+      "default": false,
+      "description": "Ein KI-Assistent darf eine Debug-Sitzung übernehmen, die der Benutzer selbst gestartet hat (#1874). Aus = solange der Benutzer debuggt, lehnt die IDE Debug-Aufträge mit Grund ab.",
+      "x-key": "debug.mcp.attach",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "debug.mcp",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Laufende Sitzung des Benutzers übernehmen",
+      "x-captionEn": "Take over the user's running session",
+      "x-issue": "#1874"
+    },
+    "DebugMcpBanner": {
+      "type": "boolean",
+      "default": true,
+      "description": "Leiste im Editorfenster, solange ein KI-Assistent den Debugger steuert (#1874): Name des MCP-Clients, Zahl der Schritte, zuletzt benutztes Werkzeug, „Pause für KI“ und „Übernehmen“.",
+      "x-key": "debug.mcp.banner",
+      "x-area": "build",
+      "x-page": "KI-Assistenten",
+      "x-parent": "debug.mcp",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Leiste zeigen",
+      "x-captionEn": "Show bar",
+      "x-issue": "#1874"
     },
     "BuildToolsEnabled": {
       "type": "boolean",
@@ -1702,6 +2153,19 @@
       "x-captionEn": "“Atlas Tests” window",
       "x-issue": "#1776"
     },
+    "TestsWindowOnFailure": {
+      "description": "Nach einem Testlauf mit fehlgeschlagenen Tests oder einem Lauf, der mit Fehler abbricht (kein Bericht, Zeitgrenze), öffnet sich das Fenster „Atlas-Tests“ von selbst, kommt nach vorn und zeigt das Testprojekt des Laufs. Gilt für jeden Weg: Tests ausführen, fehlgeschlagene erneut ausführen, Tests nach dem Build, betroffene Tests beim Speichern, Serien, Testlisten und Testlinse. Der Fokus bleibt, wo er war (etwa im Editor). Nach einem grünen oder vom Benutzer abgebrochenen Lauf passiert nichts. Aus: Das Fenster öffnet sich nur über Befehl oder Menü.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.window.openOnFailure",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.window",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Bei Fehlschlägen von selbst öffnen",
+      "x-captionEn": "Open automatically when tests fail",
+      "x-issue": "#2467"
+    },
     "TestsLists": {
       "description": "Testlisten im Fenster „Atlas-Tests“: Reiter neben „Alle“ mit festen Listen (Tests, Fixtures oder Units über „Zu Liste hinzufügen“) und dynamischen (Regeln mit „und“: Kategorie, Muster für Unit bzw. Fixture, Stand), „Liste ausführen“ im Reiter, in der Befehlspalette und mit Taste. Ablage je Liste in atlas.json (testLists, für das Team) oder nur für mich. Aus: keine Reiter, kein Eintrag in der Palette, testLists wird nicht gelesen.",
       "type": "boolean",
@@ -1754,6 +2218,19 @@
       "x-caption": "Höchstens Zeilen je Test",
       "x-captionEn": "At most lines per test",
       "x-issue": "#2168"
+    },
+    "TestsLastRun": {
+      "description": "Nach jedem Testlauf (auch Teilläufe, Serien und Läufe beim Speichern) legt Atlas das Ergebnis je Testprojekt unter %LOCALAPPDATA%\\Atlas\\last-tests ab: Zahlen, rote Tests mit Meldung, Datei und Zeile, erwartet und erhalten, Protokollauszug, Leck, wackelig und neu rot bzw. wieder grün gegenüber dem Lauf davor. KI-Assistenten lesen es über das MCP-Werkzeug get_last_tests, ohne die Tests erneut auszuführen. Aus = keine Ablage; das Werkzeug zeigt dann den zuletzt abgelegten Lauf.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.lastRun",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Letzten Testlauf für KI-Assistenten ablegen",
+      "x-captionEn": "Store the last test run for AI assistants",
+      "x-issue": "#2409"
     },
     "TestsCaseTable": {
       "description": "An einer Testmethode mit [TestCase] zeigt die Testlinse „4 Fälle · 1 rot · Tabelle“; der Klick und der Befehl „TestCase-Tabelle bearbeiten …“ (Kontextmenü einer Testunit, Befehlspalette) öffnen die Fälle als Tabelle: Spalte je Parameter mit Typ, letzter Lauf je Fall, Werte prüfen wie dunitx-testcase-mismatch, Zeilen anfügen, löschen und verschieben, einzelnen Fall ausführen oder debuggen. Atlas schreibt die Attribute in einem Rückgängig-Schritt zurück.",
@@ -2261,6 +2738,34 @@
       "x-captionEn": "Ignore only here",
       "x-issue": "#783"
     },
+    "DebugExceptionMessageRules": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exceptions nach Meldungstext anhalten oder fortsetzen: Regeln mit Muster für die Meldung, angelegt aus der Exception-Leiste oder dem Exception-Verlauf.",
+      "x-key": "debug.exceptionMessageRules",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "checkbox",
+      "x-parent": "debug.exceptionHistory",
+      "x-caption": "Exceptions nach Meldungstext anhalten oder fortsetzen",
+      "x-captionEn": "Stop or continue exceptions by message text",
+      "x-issue": "#2549"
+    },
+    "DebugExceptionRules": {
+      "type": "boolean",
+      "default": true,
+      "description": "Exception-Regeln nach Klasse und Ort: anhalten, nur im Exception-Verlauf vermerken oder still weiterlaufen, je nach der ersten eigenen Methode im Aufrufstapel. Persönliche Regeln (Fenster „Exception-Regeln“) gelten vor denen der Projektdatei .atlas (exceptionRules). „Nur an dieser Stelle ignorieren“ legt eine Regel für die Methode an. Aus = nur die Ignorier-Liste und die Optionen der IDE.",
+      "x-key": "debug.exceptionRules",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "checkbox",
+      "x-parent": "debug.exceptionHistory",
+      "x-caption": "Exception-Regeln nach Klasse und Ort",
+      "x-captionEn": "Exception rules by class and place",
+      "x-issue": "#838"
+    },
     "DebugInlineValues": {
       "type": "boolean",
       "default": true,
@@ -2364,6 +2869,77 @@
       "x-captionEn": "Count objects per class",
       "x-issue": "#858"
     },
+    "DebugNote": {
+      "description": "Debug-Zustand festhalten: Der Befehl „Debug-Zustand festhalten“ (Atlas-Menü › Debuggen, Befehlspalette) legt im angehaltenen Programm eine Markdown-Notiz in die Zwischenablage: Projekt, Konfiguration, Plattform, Thread, Ort mit ±5 Zeilen Quelltext, Aufrufstapel mit eigenem Code fett, lokale Variablen und überwachte Ausdrücke des Fensters „Variablen“ (Teile strukturierter Werte eine Stufe tief, lange Werte gekürzt), letzte Exception und die letzten 20 Zeilen des Ereignisprotokolls. Werte von Namen wie Password, Token oder ApiKey erscheinen als ***. Aus = kein Befehl.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.note",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Debug-Zustand als Notiz festhalten",
+      "x-captionEn": "Capture the debug state as a note",
+      "x-keywords": [
+        "Notiz",
+        "Zwischenablage",
+        "Markdown",
+        "Fehlerbericht",
+        "note",
+        "clipboard",
+        "bug report"
+      ],
+      "x-issue": "#582"
+    },
+    "DebugNoteSaveFile": {
+      "type": "boolean",
+      "default": true,
+      "description": "Die Notiz zusätzlich als Datei im Ordner „debug-notizen“ neben dem Projekt speichern (debug-notiz-JJJJ-MM-TT-hhmm.md, UTF-8). Aus = nur Zwischenablage.",
+      "x-key": "debug.note.saveFile",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-parent": "debug.note",
+      "x-issue": "#582"
+    },
+    "DebugCloseOpenedFiles": {
+      "description": "Vom Debugger geöffnete Dateien nach der Sitzung schließen (RTL- und VCL-Units, in die F7 geführt hat): off = nichts geschieht, ask = Hinweis mit „Schließen“, „Offen lassen“ und „Immer automatisch“, auto = Atlas schließt sie und bietet „Wieder öffnen“ an. Offen bleiben geänderte Dateien, Dateien mit Haltepunkt oder Lesezeichen, festgehaltene und solche, die vor der Sitzung offen waren.",
+      "type": "string",
+      "enum": [
+        "off",
+        "ask",
+        "auto"
+      ],
+      "default": "ask",
+      "x-key": "debug.closeOpenedFiles",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Auswahl",
+      "x-caption": "Vom Debugger geöffnete Dateien nach der Sitzung schließen",
+      "x-captionEn": "Close files opened by the debugger after the session",
+      "x-keywords": [
+        "Reiter",
+        "Dateien schließen",
+        "System.pas",
+        "tabs",
+        "close files"
+      ],
+      "x-issue": "#842"
+    },
+    "DebugPreviewTab": {
+      "description": "Vom Debugger geöffnete Dateien teilen sich einen Reiter: Hält der Debugger in einer weiteren solchen Datei, schließt Atlas die vorige, sofern sie unberührt ist (nicht geändert, kein Haltepunkt, kein Lesezeichen, nicht festgehalten).",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.previewTab",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Vom Debugger geöffnete Dateien teilen sich einen Reiter",
+      "x-captionEn": "Files opened by the debugger share one tab",
+      "x-issue": "#842"
+    },
     "DebugWhyHere": {
       "description": "Warum bin ich hier? Beim Halt stehen am Ende der Kopfzeilen der umgebenden if, while, repeat, for und case die Werte ihrer Bedingungen; Aufrufe und Getter erst auf Klick.",
       "type": "boolean",
@@ -2386,6 +2962,33 @@
       "x-page": "Debuggen",
       "x-parent": "debug.whyHere",
       "x-issue": "#1878"
+    },
+    "DebugShowElapsed": {
+      "description": "Laufzeit zwischen Haltepunkten: Beim Halt steht am Ende der Zeile des Ausführungspunkts gedimmt die Zeit seit dem letzten Halt („+124 ms“). Gemessen wird nur, solange das Programm läuft; Zeit im angehaltenen Zustand und Auswertungen zählen nicht. An einem Haltepunkt immer, bei Schritten und Pausen ab 1 ms. Klick auf die Zeit zeigt die letzten 20 Messungen mit Start- und Zielzeile. Die Zeit enthält den Aufwand des Debuggers und gilt nur als Richtwert.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.showElapsed",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Laufzeit seit dem letzten Halt",
+      "x-captionEn": "Run time since the last stop",
+      "x-issue": "#579"
+    },
+    "DebugReturnValues": {
+      "description": "Rückgabewerte anzeigen: Nach „Gesamte Routine“ (F8) über eine Zeile, die eigene Funktionen aufruft, bzw. nach „Bis zur Rückkehr ausführen“ (Umschalt+F8) in einer eigenen Funktion steht am Ende der Aufrufzeile gedimmt „→ BerechneNetto = 109,16“, bei mehreren Funktionen alle in der Reihenfolge ihrer Rückkehr. Klick darauf zeigt die letzten 20 Rückgabewerte mit Funktion, Ergebnis, end-Zeile und Zeitpunkt. Dafür setzt Atlas vor dem Schritt vorübergehende Haltepunkte auf die end-Zeilen der Funktionen, wertet dort Result aus und setzt den Schritt fort; danach sind sie wieder entfernt. Rekursive Aufrufe halten nicht in tieferen Rahmen. Bibliothekscode und Prozeduren bleiben außen vor. Aus = keine Haltepunkte, keine Anzeige.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.returnValues",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Rückgabewerte nach F8 und Umschalt+F8 anzeigen",
+      "x-captionEn": "Show return values after F8 and Shift+F8",
+      "x-issue": "#844"
     },
     "DebugPredictConditions": {
       "description": "Bedingungen vorausschauen: Beim Halt stehen an den kommenden if, while und case derselben Routine die vorhergesagten Ergebnisse, wenn dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet.",
@@ -2471,6 +3074,43 @@
       "x-page": "Debuggen",
       "x-parent": "debug.variablesWindow",
       "x-issue": "#853"
+    },
+    "DebugVariablesScopedWatches": {
+      "description": "Überwachte Ausdrücke im Fenster „Variablen“ an eine Klasse oder Unit binden (Kontextmenü der Zeile): Beim Halt zeigt und wertet Atlas nur die Ausdrücke der Klasse (auch in Nachfahren, soweit der Index sie kennt) bzw. Unit, in der das Programm steht, und die überall geltenden; die übrigen sind ausgeblendet. Aus = alle Ausdrücke überall wie bisher.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.variablesWindow.scopedWatches",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.variablesWindow",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Überwachte Ausdrücke an Klasse oder Unit binden",
+      "x-captionEn": "Bind watched expressions to a class or unit",
+      "x-issue": "#2550"
+    },
+    "DebugObjectMarks": {
+      "description": "Objekte beim Debuggen markieren: Befehl „Objekt markieren …“ im Kontextmenü des Editors (im Halt), Etikett hinter dem Wert im Editor, im Debug-Hover und im Fenster „Auswerten“, Fenster „Markierte Objekte“. Steht an einer markierten Adresse eine andere Klasse, gilt das Objekt als vermutlich freigegeben. Markierungen gelten bis zum Ende der Debug-Sitzung. Aus = kein Menüpunkt, keine Etiketten.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.objectMarks",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Objekte beim Debuggen markieren",
+      "x-captionEn": "Mark objects while debugging",
+      "x-issue": "#839"
+    },
+    "DebugParallelWatch": {
+      "description": "Ausdrücke in allen Threads auswerten: Fenster „Parallel auswerten“ mit einer Zeile je Thread (Kennung, Name, Ort des obersten eigenen Rahmens) und einer Spalte je Ausdruck. Ausgewertet wird bei jedem Halt, solange das Fenster sichtbar ist, ab 32 Threads erst auf Knopfdruck. Gilt ein Ausdruck in einem Thread nicht, steht dort „–“. Filter je Spalte, Sortieren nach Spalte, markierte Threads oben; Doppelklick wechselt zum Thread. Die Ausdrücke werden je Projekt gespeichert. Aus = kein Fenster, kein Menüpunkt.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.parallelWatch",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Ausdrücke in allen Threads auswerten",
+      "x-captionEn": "Evaluate expressions in all threads",
+      "x-issue": "#866"
     },
     "DebugHoverExpand": {
       "description": "Debug-Hover aufklappen: Objekte, Records und Arrays im Debug-Hover als Baum (Pfeiltasten, Rechtsklick für Aktionen); Getter erst auf Klick „auswerten“. Aus = Wert wie bisher in einer Zeile.",
@@ -2587,6 +3227,31 @@
       "x-captionEn": "Logpoint prefix",
       "x-issue": "#583"
     },
+    "DebugLogpointsRecordValues": {
+      "description": "Logpunkt-Verlauf: Im Dialog des Logpunkts „Zahl aufzeichnen“ (nur bei genau einem Platzhalter); die Werte stehen als Linie über der Zeit im Fenster „Logpunkt-Verlauf“, je Thread wählbar, Text-Werte als Lücke, mit Kennzahlen und „CSV kopieren“. Aus = kein Ankreuzfeld, keine Aufzeichnung.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.logpoints.recordValues",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.logpoints",
+      "x-caption": "Logpunkt-Werte aufzeichnen",
+      "x-captionEn": "Record logpoint values",
+      "x-issue": "#2552"
+    },
+    "DebugLogpointsRecordLimit": {
+      "type": "integer",
+      "default": 10000,
+      "minimum": 10,
+      "maximum": 1000000,
+      "description": "Höchstzahl Treffer je Reihe im Logpunkt-Verlauf (10 bis 1000000); die ältesten fallen heraus.",
+      "x-key": "debug.logpoints.recordLimit",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-control": "Zahl",
+      "x-parent": "debug.logpoints.recordValues",
+      "x-issue": "#2552"
+    },
     "DebugNoSourcePage": {
       "description": "Fenster „Kein Quelltext“: Hält der Debugger in einer Routine ohne Quelltext, nennt ein kleines Fenster neben dem CPU-Fenster Routine, Modul, Adresse und den Grund (Debug-DCUs aus, ohne Debug-Informationen übersetzt, nur DCU, nicht im Suchpfad, Systemcode) mit Auswegen. Aus = nur das CPU-Fenster der IDE.",
       "type": "boolean",
@@ -2687,6 +3352,19 @@
       "x-caption": "Startverbünde",
       "x-captionEn": "Launch groups",
       "x-issue": "#867"
+    },
+    "DebugCaptureConsole": {
+      "description": "Ausgabe von Konsolenprogrammen andocken: Startet die IDE ein Konsolenprogramm (Win32/Win64, ohne Host-Anwendung) mit F9, startet Atlas es selbst mit umgeleitetem stdout, stderr und stdin und hängt den Debugger der IDE an, bevor die erste Zeile läuft (Haltepunkte greifen weiter). Die Ausgabe steht im Fenster „Atlas: Konsolenausgabe“: stderr in Rot, Zeilen mit Datei und Zeile anklickbar, Eingaben über das Feld darunter (für Readln). Nach dem Ende bleibt das Fenster mit dem Exit-Code stehen. „Ohne Debugger mit Konsolenausgabe starten“ im Menü Start startet ohne Debugger. Aus = die IDE startet Konsolenprogramme wie immer in einem eigenen Konsolenfenster.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.captureConsole",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Ausgabe von Konsolenprogrammen andocken",
+      "x-captionEn": "Dock console program output",
+      "x-issue": "#581"
     },
     "DebugVisualizers": {
       "description": "Visualisierer für häufige Typen beim Debuggen: einzeiliger Ersatztext im Hover, in Überwachten Ausdrücken und Lokalen Variablen sowie ein Ansichtsfenster über die Lupe (Tabelle, Hex, JSON-Baum, Bild, Farbe). Aus = die IDE zeigt ihre eigenen Texte.",
@@ -2885,6 +3563,30 @@
       "x-control": "Textfeld",
       "x-issue": "#856"
     },
+    "DebugDataBreaks": {
+      "description": "Anhalten bei Datenzugriff: Der Befehl „Anhalten bei Datenzugriff …“ (Menü Start, Befehlspalette, vor dem Start und während das Programm läuft) setzt vorübergehende Haltepunkte (Gruppe Atlas.Datenzugriff) auf die eigenen Aufrufe von Open, ExecSQL, Execute und ExecSQLScalar der beobachteten Datenbankklassen bzw. Get, Post, Put und Delete der HTTP-Klassen. Beim Halt wertet Atlas SQL-Text samt Parametern bzw. Methode und URL aus und hält nur an, wenn das Muster passt (* als Platzhalter, wahlweise ohne Groß-/Kleinschreibung, HTTP wie „POST */api/auftrag*“); sonst läuft das Programm ohne Anzeige weiter. Eine Leiste zeigt Stelle und Text mit „Weiter beobachten“, „Nur protokollieren“ und „Beenden“. Aus = kein Befehl, kein Menüeintrag.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.dataBreaks",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-caption": "Anhalten bei Datenzugriff",
+      "x-captionEn": "Break on data access",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#870"
+    },
+    "DebugDataBreaksClasses": {
+      "description": "Klassen, deren Aufrufe „Anhalten bei Datenzugriff“ beobachtet, kommagetrennt; Nachfahren zählen mit. Bekannt sind FireDAC, dbExpress, ADO, Zeos, THTTPClient, TNetHTTPClient, TRESTRequest und TIdHTTP; eigene Klassen mit Art als „TMeineAbfrage=sql“ bzw. „TMeinClient=http“.",
+      "type": "string",
+      "default": "TFDQuery, TFDCommand, TFDConnection, TFDStoredProc, TSQLQuery, TSQLDataSet, TSQLConnection, TADOQuery, TADOCommand, TADOConnection, TADODataSet, TZQuery, TZReadOnlyQuery, TZConnection, THTTPClient, TNetHTTPClient, TRESTRequest, TIdHTTP",
+      "x-key": "debug.dataBreaks.classes",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.dataBreaks",
+      "x-control": "Textfeld",
+      "x-issue": "#870"
+    },
     "DebugCheckBreakpoints": {
       "description": "Haltepunkte, die nicht greifen werden: Vor dem Start einer Debug-Sitzung prüft Atlas alle aktiven Quelltext-Haltepunkte und meldet Haltepunkte auf Zeilen ohne Code (Kommentar, Leerzeile, Deklaration), in inaktiven Zweigen der bedingten Kompilierung, in Units mit {$D-} bzw. ohne Debug-Informationen im Projekt und in Units, die zu einem anderen Projekt der Gruppe gehören. Der Dialog bietet „Trotzdem starten“, „Auf nächste Codezeile verschieben“ und „Abbrechen“; dazu der Befehl „Haltepunkte prüfen“. Aus = keine Prüfung, der Start bleibt, wie er ist.",
       "type": "boolean",
@@ -2961,6 +3663,29 @@
       "x-captionEn": "Run to here by clicking the margin",
       "x-control": "Kontrollkästchen",
       "x-issue": "#851"
+    },
+    "DebugDragNextStatement": {
+      "description": "Ausführungspfeil ziehen (#871): Hält das Programm im Debugger an, steht in einer schmalen Spalte im Rand ein Pfeil an der Zeile des Ausführungspunkts. Ihn auf eine andere ausführbare Zeile derselben Routine ziehen setzt die nächste Anweisung dorthin, ohne etwas auszuführen; ein Tooltip nennt die Zeilen, die erneut laufen bzw. übersprungen werden. Gesperrt sind Zeilen außerhalb der Routine, ohne Code, im Kopf einer for-Schleife mit Zähler und in einem anderen Teil eines try-Blocks oder einer anonymen Methode. Dazu „Nächste Anweisung hier“ im Kontextmenü des Editors und in der Befehlspalette. Setzt nur den Befehlszähler: Stack und Register können danach ungültig sein. Aus = keine Spalte, kein Befehl.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.dragNextStatement",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-caption": "Ausführungspfeil ziehen (nächste Anweisung setzen)",
+      "x-captionEn": "Drag the execution point (set next statement)",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#871"
+    },
+    "DebugNextStatementNoticeShown": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.dragNextStatement.noticeShown",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-state": true,
+      "x-issue": "#871"
     },
     "DebugBreakpointsWindow": {
       "description": "Haltepunktfenster: eigenes andockbares Fenster „Haltepunkte“ neben der Liste der IDE, mit Suche über Datei, Methode, Bedingung und Etikett, Filterchips (aktiv, mit Bedingung, nie getroffen, greift nicht), Trefferzahl dieser Sitzung, persönlichen Etiketten, Gruppieren nach Etikett, Datei oder Gruppe und Befehlen für mehrere Haltepunkte (ein, aus, Etikett, löschen mit Rückgängig). Aus = kein Fenster, kein Befehl.",
@@ -5163,6 +5888,18 @@
       "x-captionEn": "Atlas menu: Debug and Breakpoints only with an open project",
       "x-issue": "#2102"
     },
+    "AtlasViewMenu": {
+      "type": "boolean",
+      "default": true,
+      "description": "Untermenü Atlas unter Ansicht: alle andockbaren Atlas-Fenster öffnen, Fenster von Modulen in ihren Untermenüs (etwa Debuggen, Designer mit Atlas-Struktur und Ereignis-Karte). Jeder Eintrag erscheint nur, solange seine Funktion an ist. Aus = kein Untermenü Atlas unter Ansicht; die Fenster bleiben über das Menü Atlas, die Befehlspalette und ihre Knöpfe erreichbar.",
+      "x-key": "commands.viewMenu.windows",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Atlas-Fenster unter Ansicht › Atlas",
+      "x-captionEn": "Atlas windows under View › Atlas",
+      "x-issue": "#2470"
+    },
     "Snippets": {
       "type": "boolean",
       "default": true,
@@ -6750,6 +7487,25 @@
       "x-page": "Editor",
       "x-node": "editor.designerBar",
       "x-issue": "#612"
+    },
+    "DesignerRememberButtons": {
+      "description": "Zustand der Umschaltknöpfe der Designer-Leiste (Datenbindung, Tab-Reihenfolge, Abstände messen, Abstandsgriffe, gemeinsame Größengriffe, Schnellleiste) merken, über Formularwechsel, das Aus- und Einschalten der Leiste und IDE-Neustarts hinweg. Aus = jede Sitzung beginnt mit den Vorgaben der Knöpfe. Andockbare Fenster (Atlas-Struktur, Ereignis-Karte) merkt sich der Desktop der IDE.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "designer.rememberButtons",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-node": "editor.designerBar",
+      "x-issue": "#2546"
+    },
+    "DesignerBarButtons": {
+      "type": "string",
+      "default": "",
+      "x-key": "designer.barButtons",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-state": true,
+      "x-issue": "#2546"
     },
     "DesignerLayout": {
       "description": "Im Formular-Designer ein eigenes Desktop-Layout verwenden: Bleibt der Designer (F12 oder Reiter „Design“) 300 ms vorn, merkt sich Atlas das aktuelle Layout und lädt das Designer-Layout über das Desktop-Auswahlfeld der IDE; zurück im Code kommt das vorherige bzw. das Standard-Layout der IDE wieder. Schnelles Hin- und Herschalten löst nichts aus. Hat man im Designer selbst ein anderes Layout gewählt, bleibt es. Kein Wechsel, solange ein Projekt lädt.",
@@ -8497,6 +9253,39 @@
       "x-captionEn": "Regions when a file opens",
       "x-issue": "#1814"
     },
+    "BlockFolds": {
+      "description": "Große Anweisungsblöcke einklappen (#2795): if-, else-, Schleifen-, with-, case-, on-, try- und repeat-Blöcke in Routinen. Der Delphi-Editor faltet sie nicht selbst; Atlas setzt dafür eine Region (*$REGION …*) … (*$ENDREGION*) in dieselben Zeilen und klappt sie zu. Aufklappen und Speichern nehmen die Marken wieder heraus, in die Datei kommen sie nie. Befehle „Block einklappen“, „Große Blöcke einklappen“ und „Blöcke aufklappen“ (Menü Atlas, Kontextmenü, Befehlspalette); aus schaltet sie ab.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.blockFolds",
+      "x-area": "editor",
+      "x-feature": "RegionFolds",
+      "x-page": "Editor",
+      "x-caption": "Große Blöcke einklappbar",
+      "x-captionEn": "Large blocks can be collapsed",
+      "x-issue": "#2795",
+      "x-keywords": [
+        "Falten",
+        "Folding",
+        "if",
+        "Block"
+      ]
+    },
+    "BlockFoldsMinLines": {
+      "description": "Mindestlänge eines Blocks in Zeilen (3 bis 1000) für „Große Blöcke einklappen“; „Block einklappen“ an der Schreibmarke nimmt den innersten Block ab dieser Länge.",
+      "type": "integer",
+      "default": 15,
+      "minimum": 3,
+      "maximum": 1000,
+      "x-key": "editor.blockFolds.minLines",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.blockFolds",
+      "x-control": "Zahl",
+      "x-caption": "Ab Zeilen",
+      "x-captionEn": "From lines",
+      "x-issue": "#2795"
+    },
     "NextChangeKey": {
       "description": "Tastenkürzel „Nächste Änderung“: springt reihum zum nächsten Block mit Änderungsmarke (0 = keins).",
       "type": "integer",
@@ -10056,6 +10845,26 @@
       "x-page": "Issue-Tracker",
       "x-issue": "#1273"
     },
+    "IssuesDebugKnownErrors": {
+      "type": "boolean",
+      "default": true,
+      "description": "Bekannte Fehler beim Exception-Halt: Hält der Debugger an einer Exception, sucht Atlas im Hintergrund im Tracker des Projekts nach Issues mit derselben Signatur (Exception-Klasse, Meldung ohne Zahlen, Adressen, Pfade und Anführungsinhalte, oberste eigene Methode) und zeigt bis zu vier Treffer in der Exception-Leiste, mit Öffnen, Als Kommentar anhängen bzw. Wieder öffnen; sonst Neues Issue. Ergebnis je Signatur für die Sitzung gemerkt; der Debugger wartet nie. Aus: keine Suche.",
+      "x-key": "issues.debugKnownErrors",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2460"
+    },
+    "IssuesShareWithAssistants": {
+      "type": "boolean",
+      "default": true,
+      "description": "Begonnenes Issue für KI-Assistenten bereitstellen: Solange ein Issue aktuell ist, schreibt Atlas Kennung, Titel, Tracker, Zustand, Meilenstein, Branch, Beschreibung, Checkliste, Codeverweise und die letzten fünf Kommentare nach <gitdir>/atlas-current-issue.json (neben atlas-commit-prefix, bei Worktrees in deren eigenen Ordner); das MCP-Werkzeug get_current_issue liest sie. Nie ein Token, keine Anhänge. Aus: keine Datei, eine vorhandene wird gelöscht.",
+      "x-key": "issues.shareWithAssistants",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#2051"
+    },
     "IssuesStatusState": {
       "type": "boolean",
       "default": true,
@@ -10243,6 +11052,31 @@
       "x-area": "issues",
       "x-page": "Issue-Tracker",
       "x-issue": "#1269"
+    },
+    "IssuesAiSummary": {
+      "type": "boolean",
+      "default": true,
+      "description": "„Zusammenfassen“ im Fenster „Atlas-Issue“: Der KI-Anbieter des Moduls KI-Assistenten (assistants.provider, Modell und Schlüssel wie beim KI-Schattentext) fasst Beschreibung, Kommentare und verknüpfte Issues zusammen: Stand, offene Fragen (mit wem) und nächster Schritt mit den betroffenen Units als Links in den Editor. Nur auf Knopfdruck; vor dem ersten Senden je Verbindung ein Hinweis, dass die Inhalte an den Anbieter gehen. Ohne eingerichteten Anbieter oder aus: kein Knopf, nichts geht hinaus.",
+      "x-key": "issues.aiSummary",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Issues mit KI zusammenfassen",
+      "x-captionEn": "Summarize issues with AI",
+      "x-issue": "#2462"
+    },
+    "IssuesAiSummaryMinComments": {
+      "type": "integer",
+      "default": 10,
+      "minimum": 0,
+      "maximum": 1000,
+      "description": "Knopf „Zusammenfassen“ in der Werkzeugleiste ab so vielen Kommentaren (0 = immer); im Kontextmenü des Fensters immer.",
+      "x-key": "issues.aiSummary.minComments",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Zahl (0–1000)",
+      "x-parent": "issues.aiSummary",
+      "x-issue": "#2462"
     },
     "IssuesNotify": {
       "type": "boolean",

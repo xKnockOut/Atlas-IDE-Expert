@@ -4,7 +4,7 @@
 // #1843) aus der Open Tools API, dazu die Zeilen ungeöffneter Dateien von der
 // Platte. Projekt = .dpr/.dpk und die .pas-Module des
 // Projekts; Projektgruppe = alle Dateien aller Projekte der Gruppe ohne
-// Doppelte (vorher galt jeder Befund im Speicher, auch von Units außerhalb
+// Doppelte (nicht jeder Befund im Speicher, auch nicht von Units außerhalb
 // der Gruppe). Die Dateien der Gruppe bleiben 2 s im Zwischenspeicher, weil
 // der Takt des Fensters alle 250 ms fragt; ändert sich die Gruppe, gilt der
 // Speicher sofort nicht mehr. Nur im Hauptthread verwenden.
@@ -41,7 +41,7 @@ uses
   System.Classes,
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Files.TextFile;
+  Atlas.Plugin.Files.TextFile;
 
 const
   /// <summary>So lange gelten die Dateien der Gruppe ohne neue Abfrage.</summary>
@@ -117,17 +117,6 @@ begin
   end;
 end;
 
-function ActiveProject: IOTAProject;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := nil;
-  if ModuleServices(mModules) then
-  begin
-    Result := mModules.GetActiveProject;
-  end;
-end;
-
 { TAtlasIdeProblemFiles }
 
 class function TAtlasIdeProblemFiles.Projects: TArray<TAtlasScopeProject>;
@@ -137,9 +126,9 @@ var
 begin
   Result := nil;
   mActive := '';
-  if ActiveProject <> nil then
+  if GetActiveProject <> nil then
   begin
-    mActive := ActiveProject.FileName;
+    mActive := GetActiveProject.FileName;
   end;
   for mProject in GroupProjects do
   begin
@@ -152,7 +141,7 @@ end;
 
 class function TAtlasIdeProblemFiles.ActiveFiles: TArray<string>;
 begin
-  Result := FilesOfProject(ActiveProject);
+  Result := FilesOfProject(GetActiveProject);
 end;
 
 class function TAtlasIdeProblemFiles.FilesOf(const AName: string): TArray<string>;
@@ -214,8 +203,14 @@ begin
     end;
   except
     // Gesperrt, gelöscht oder binär: Die Spalte „Zeile“ bleibt leer, das Fenster läuft weiter.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Result := nil;
+    end;
   end;
 end;
 

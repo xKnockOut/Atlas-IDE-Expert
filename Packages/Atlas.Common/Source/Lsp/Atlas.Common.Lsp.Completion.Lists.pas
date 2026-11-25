@@ -3,7 +3,7 @@
 // Die Vorschlagsliste an einer Stelle (#31, #180, #616): Units in uses, Mitglieder nach "A.", Vorfahrmethoden
 // nach "inherited ", sonst eigener Gültigkeitsbereich, Units aus uses und Importe; dazu Typargumente (#450),
 // Attribute (#465), Exception-Klassen (#483), Postfix-Vorlagen (#188) und kontextabhängige Code-Vorlagen (#51).
-// Aus Atlas.Common.Lsp.Completion herausgelöst.
+// Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
@@ -50,7 +50,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Math,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.ContextSnippets,
   Atlas.Common.Diagnostics.RequestScope,
@@ -179,7 +178,7 @@ begin
   begin
     mText := TContextSnippets.ToPlain(mText);
   end;
-  Result.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line, AStart, ARequest.Position.Line,
+  Result.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position.Line, AStart, ARequest.Position.Line,
     ARequest.Position.Character), mText);
   Result.AdditionalEdits := ASnippet.AdditionalEdits;
   // Atlas wertet die weiteren Änderungen dann nicht als uses-Ergänzung.

@@ -25,7 +25,7 @@ implementation
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.MethodOrder,
-  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Rules.Options,
   Atlas.Common.Localization.Texts;
 
@@ -76,6 +76,7 @@ begin
   Result := TMethodOrderOptions.Create(TMethodOrder.PlacementOf(TRuleOptions.Text(AContext.Options, 'placement',
     TMethodOrder.PlacementName(TMethodPlacement.Grouped))));
   Result.LifecycleFirst := mSettings.LifecycleFirst;
+  Result.BlankLines := mSettings.BlankLines;
   Result.TypeComment := TTypeComments.StyleOf(mSettings.TypeComment);
   Result.LineLength := AContext.Formatting.MaxLineLength;
 end;

@@ -48,7 +48,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -240,26 +241,6 @@ begin
 end;
 
 // Innerster Knoten unter ANode, der AOffset enthält.
-function NodeAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
-var
-  mIndex: Integer;
-  mFound: Boolean;
-begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  Result := ANode;
-  repeat
-    mFound := False;
-    for mIndex := 0 to Result.ChildCount - 1 do
-    begin
-      if (AOffset >= Result[mIndex].StartOffset) and (AOffset < Result[mIndex].EndOffset) then
-      begin
-        Result := Result[mIndex];
-        mFound := True;
-        Break;
-      end;
-    end;
-  until not mFound;
-end;
 
 function Positive(const ACondition, AName: string): Boolean;
 var
@@ -617,7 +598,7 @@ begin
     if (FCode.At(mIndex).Offset > ARoutine.StartOffset) and (FCode.At(mIndex).Offset < AOffset) and
       SameText(FCode.At(mIndex).Text, AFlag) and FCode.At(mIndex + 1).IsSymbol(':=') then
     begin
-      mNode := NodeAt(ARoutine, FCode.At(mIndex).Offset);
+      mNode := TSyntaxNodes.DeepestAt(ARoutine, FCode.At(mIndex).Offset);
       while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.AssignStatement) and (mNode <> ARoutine) do
       begin
         mNode := mNode.Parent;
@@ -749,7 +730,7 @@ begin
   begin
     Exit;
   end;
-  Result := NodeAt(ARoutine, FCode.At(AIndex).Offset);
+  Result := TSyntaxNodes.DeepestAt(ARoutine, FCode.At(AIndex).Offset);
   while (Result <> nil) and (Result.Kind <> TSyntaxKind.IfStatement) and (Result <> ARoutine) do
   begin
     Result := Result.Parent;
@@ -818,7 +799,7 @@ var
   mPrefix: string;
 begin
   mPrefix := '';
-  mNode := NodeAt(ARoutine, AOffset);
+  mNode := TSyntaxNodes.DeepestAt(ARoutine, AOffset);
   mStatement := StatementOf(ARoutine, mNode);
   if mStatement <> nil then
   begin
@@ -838,7 +819,7 @@ var
   mIndent: string;
 begin
   Result := False;
-  mStatement := NodeAt(ARoutine, FCode.At(AFirst).Offset);
+  mStatement := TSyntaxNodes.DeepestAt(ARoutine, FCode.At(AFirst).Offset);
   while (mStatement <> nil) and (mStatement.Kind <> TSyntaxKind.CallStatement) and (mStatement <> ARoutine) do
   begin
     mStatement := mStatement.Parent;
@@ -901,7 +882,7 @@ begin
   mName := LowerCase(FCode.At(APosition).Text);
   Result := ((AFirst = APosition) and Shadowed(ARoutine, mName)) or Guarded(ARoutine, FCode.At(APosition).Offset,
     mName);
-  // Property und Feld aus ihrem read sind dasselbe Ereignis (FP-Prüfung 28.10.2026).
+  // Property und Feld aus ihrem read sind dasselbe Ereignis.
   for mIndex := 0 to High(FAliasProperties) do
   begin
     if not Result and (mName = FAliasProperties[mIndex]) then

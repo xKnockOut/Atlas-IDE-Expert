@@ -1,5 +1,6 @@
 ﻿package Atlas.IDE.Assistants;
 
+{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -29,8 +30,8 @@
 {$IMPLICITBUILD OFF}
 {$LIBSUFFIX AUTO}
 
-// Modul KI-Assistenten (#1888): nimmt Aufträge von MCP-Clients in der laufenden IDE an
-// (Builds über build_project, Änderungen an offenen Dateien). Meldet sich in der Unit-Initialisierung von
+// Modul KI-Assistenten (#1888): nimmt Aufträge von MCP-Clients in der laufenden IDE an (Builds über build_project,
+// Änderungen an offenen Dateien, Debuggen über debug_*). Meldet sich in der Unit-Initialisierung von
 // Atlas.IDE.Assistants.Composition über die Registry von Atlas.IDE.Base an; gebaut wird über den Vertrag
 // IAtlasBuildRequests des Moduls Build-Pipeline. Requiret nur das Kern-Package (Regel 9).
 
@@ -46,12 +47,65 @@ contains
   Atlas.Core.Assistants.EditInbox in 'Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas',
   Atlas.Core.Assistants.Inbox in 'Source\Core\Assistants\Atlas.Core.Assistants.Inbox.pas',
   Atlas.Core.Assistants.InboxPace in 'Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas',
+  Atlas.Core.Assistants.ContextState in 'Source\Core\Assistants\Atlas.Core.Assistants.ContextState.pas',
+  Atlas.Core.Assistants.LinkFrames in 'Source\Core\Assistants\Atlas.Core.Assistants.LinkFrames.pas',
+  Atlas.Core.Assistants.LinkLock in 'Source\Core\Assistants\Atlas.Core.Assistants.LinkLock.pas',
+  Atlas.Core.Assistants.Contract.Link in 'Source\Core\Assistants\Atlas.Core.Assistants.Contract.Link.pas',
+  Atlas.Core.Assistants.LinkProtocol in 'Source\Core\Assistants\Atlas.Core.Assistants.LinkProtocol.pas',
+  Atlas.Core.Assistants.LinkState in 'Source\Core\Assistants\Atlas.Core.Assistants.LinkState.pas',
   Atlas.Core.Assistants.EditPlan in 'Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas',
+  Atlas.Core.Assistants.EditChange in 'Source\Core\Assistants\Atlas.Core.Assistants.EditChange.pas',
+  Atlas.Core.Assistants.Queue in 'Source\Core\Assistants\Atlas.Core.Assistants.Queue.pas',
+  Atlas.Core.Assistants.HeldEdits in 'Source\Core\Assistants\Atlas.Core.Assistants.HeldEdits.pas',
+  Atlas.Core.Assistants.Questions in 'Source\Core\Assistants\Atlas.Core.Assistants.Questions.pas',
+  Atlas.Core.Assistants.Log in 'Source\Core\Assistants\Atlas.Core.Assistants.Log.pas',
+  Atlas.Core.Assistants.Instructions in 'Source\Core\Assistants\Atlas.Core.Assistants.Instructions.pas',
+  Atlas.Core.AiProviders.Contract in 'Source\Core\AiProviders\Atlas.Core.AiProviders.Contract.pas',
+  Atlas.Core.AiProviders.Anthropic in 'Source\Core\AiProviders\Atlas.Core.AiProviders.Anthropic.pas',
+  Atlas.Core.AiProviders.OpenAiCompatible in 'Source\Core\AiProviders\Atlas.Core.AiProviders.OpenAiCompatible.pas',
+  Atlas.Core.AiProviders.Providers.Http in 'Source\Core\AiProviders\Atlas.Core.AiProviders.Providers.Http.pas',
+  Atlas.Core.AiProviders.Catalog in 'Source\Core\AiProviders\Atlas.Core.AiProviders.Catalog.pas',
+  Atlas.Core.Assistants.AiGhost in 'Source\Core\Assistants\Atlas.Core.Assistants.AiGhost.pas',
+  Atlas.Core.Assistants.DebugInbox in 'Source\Core\Assistants\Atlas.Core.Assistants.DebugInbox.pas',
+  Atlas.Core.Assistants.DebugGate in 'Source\Core\Assistants\Atlas.Core.Assistants.DebugGate.pas',
+  Atlas.Core.Assistants.Activity in 'Source\Core\Assistants\Atlas.Core.Assistants.Activity.pas',
+  Atlas.Core.Assistants.Contract.IdeAi in 'Source\Core\Assistants\Atlas.Core.Assistants.Contract.IdeAi.pas',
+  Atlas.Core.Assistants.IdeProviders in 'Source\Core\Assistants\Atlas.Core.Assistants.IdeProviders.pas',
+  Atlas.IDE.Assistants.Adapters.TextRequests in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.TextRequests.pas',
+  Atlas.IDE.Assistants.Adapters.TextSource in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.TextSource.pas',
+  Atlas.IDE.Assistants.IdeBridge in 'Source\IDE\Assistants\Atlas.IDE.Assistants.IdeBridge.pas',
   Atlas.UI.Assistants.Strings in 'Source\UI\Assistants\Atlas.UI.Assistants.Strings.pas',
   Atlas.UI.Assistants.SettingsSection in 'Source\UI\Assistants\Atlas.UI.Assistants.SettingsSection.pas',
+  Atlas.UI.Assistants.IdePluginFrame in 'Source\UI\Assistants\Atlas.UI.Assistants.IdePluginFrame.pas' {AtlasAssistantsIdePluginFrame: TFrame},
+  Atlas.UI.Assistants.QuestionDialog in 'Source\UI\Assistants\Atlas.UI.Assistants.QuestionDialog.pas',
+  Atlas.UI.Assistants.LogFrame in 'Source\UI\Assistants\Atlas.UI.Assistants.LogFrame.pas' {AtlasAssistantsLogFrame: TFrame},
   Atlas.IDE.Assistants.BuildInbox in 'Source\IDE\Assistants\Atlas.IDE.Assistants.BuildInbox.pas',
+  Atlas.IDE.Assistants.ContextExport in 'Source\IDE\Assistants\Atlas.IDE.Assistants.ContextExport.pas',
   Atlas.IDE.Assistants.FolderSignal in 'Source\IDE\Assistants\Atlas.IDE.Assistants.FolderSignal.pas',
+  Atlas.IDE.Assistants.Adapters.AiGhost in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.AiGhost.pas',
+  Atlas.IDE.Assistants.DailyCount in 'Source\IDE\Assistants\Atlas.IDE.Assistants.DailyCount.pas',
+  Atlas.IDE.Assistants.AiErrors in 'Source\IDE\Assistants\Atlas.IDE.Assistants.AiErrors.pas',
+  Atlas.IDE.Assistants.AiProbe in 'Source\IDE\Assistants\Atlas.IDE.Assistants.AiProbe.pas',
+  Atlas.IDE.Assistants.Adapters.AiText in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.AiText.pas',
   Atlas.IDE.Assistants.EditInbox in 'Source\IDE\Assistants\Atlas.IDE.Assistants.EditInbox.pas',
+  Atlas.IDE.Assistants.LogEntries in 'Source\IDE\Assistants\Atlas.IDE.Assistants.LogEntries.pas',
+  Atlas.IDE.Assistants.HeldEdits in 'Source\IDE\Assistants\Atlas.IDE.Assistants.HeldEdits.pas',
+  Atlas.IDE.Assistants.QuestionInbox in 'Source\IDE\Assistants\Atlas.IDE.Assistants.QuestionInbox.pas',
+  Atlas.IDE.Assistants.LogWindow in 'Source\IDE\Assistants\Atlas.IDE.Assistants.LogWindow.pas',
+  Atlas.IDE.Assistants.Adapters.Instructions in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.Instructions.pas',
+  Atlas.IDE.Assistants.DebugInbox in 'Source\IDE\Assistants\Atlas.IDE.Assistants.DebugInbox.pas',
+  Atlas.UI.Assistants.DebugBar in 'Source\UI\Assistants\Atlas.UI.Assistants.DebugBar.pas',
+  Atlas.IDE.Assistants.DebugBar in 'Source\IDE\Assistants\Atlas.IDE.Assistants.DebugBar.pas',
+  Atlas.IDE.Assistants.Banner in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Banner.pas',
+  Atlas.UI.Assistants.LinkDiffView in 'Source\UI\Assistants\Atlas.UI.Assistants.LinkDiffView.pas',
+  Atlas.IDE.Assistants.LinkServer in 'Source\IDE\Assistants\Atlas.IDE.Assistants.LinkServer.pas',
+  Atlas.IDE.Assistants.LinkEditor in 'Source\IDE\Assistants\Atlas.IDE.Assistants.LinkEditor.pas',
+  Atlas.IDE.Assistants.Adapters.Link in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.Link.pas',
+  Atlas.IDE.Assistants.Adapters.IdeProviders in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.IdeProviders.pas',
+  Atlas.IDE.Assistants.Adapters.IdePlugin in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.IdePlugin.pas',
+  Atlas.IDE.Assistants.Composition.HostAdapters in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.HostAdapters.pas',
+  Atlas.IDE.Assistants.Adapters.Module in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.Module.pas',
+  Atlas.IDE.Assistants.Composition.Debug in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.Debug.pas',
   Atlas.IDE.Assistants.Composition in 'Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.pas';
 
 end.

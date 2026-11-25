@@ -46,7 +46,9 @@ uses
   System.StrUtils,
   Atlas.Common.Metrics.Report,
   Atlas.Common.Query.Catalog,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json,
+  Atlas.Text.Csv;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -75,18 +77,6 @@ const
 function MarkdownCell(const AText: string): string;
 begin
   Result := StringReplace(StringReplace(AText, '|', '\|', [rfReplaceAll]), sLineBreak, ' ', [rfReplaceAll]);
-end;
-
-function CsvCell(const AText: string): string;
-begin
-  if (Pos(';', AText) > 0) or (Pos('"', AText) > 0) or (Pos(#10, AText) > 0) or (Pos(#13, AText) > 0) then
-  begin
-    Result := '"' + StringReplace(AText, '"', '""', [rfReplaceAll]) + '"';
-  end
-  else
-  begin
-    Result := AText;
-  end;
 end;
 
 function Summary(const AResult: TQueryResult): string;
@@ -171,16 +161,16 @@ begin
   try
     for mIndex := 0 to High(AResult.Columns) do
     begin
-      mBuilder.Append(CsvCell(AResult.Columns[mIndex])).Append(';');
+      mBuilder.Append(TTextCsv.Cell(AResult.Columns[mIndex])).Append(';');
     end;
     mBuilder.Append('path;inferred').Append(sLineBreak);
     for mRow in AResult.Rows do
     begin
       for mIndex := 0 to High(AResult.Columns) do
       begin
-        mBuilder.Append(CsvCell(TQueryResult.CellText(mRow, mIndex))).Append(';');
+        mBuilder.Append(TTextCsv.Cell(TQueryResult.CellText(mRow, mIndex))).Append(';');
       end;
-      mBuilder.Append(CsvCell(mRow.Path)).Append(';');
+      mBuilder.Append(TTextCsv.Cell(mRow.Path)).Append(';');
       if mRow.Inferred then
       begin
         mBuilder.Append(cTexts[TOutputText.Inferred2].Text);
@@ -499,18 +489,6 @@ begin
   Result := Result + ']';
 end;
 
-function JsonFlag(AValue: Boolean): string;
-begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
-end;
-
 procedure AppendCatalogFields(ABuilder: TStringBuilder; AEntity: TQueryEntity);
 var
   mField: TQueryFieldInfo;
@@ -571,7 +549,7 @@ begin
     ABuilder.Append('{"name": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Name))
       .Append(', "query": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Query))
       .Append(', "description": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Description))
-      .Append(', "failIfAny": ').Append(JsonFlag(AQueries[mIndex].FailIfAny)).Append('}');
+      .Append(', "failIfAny": ').Append(TJsonText.Bool(AQueries[mIndex].FailIfAny)).Append('}');
   end;
   ABuilder.Append(']');
 end;

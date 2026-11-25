@@ -54,6 +54,13 @@
         <DCC_DcpOutput>..\..\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
         <DCC_UnitSearchPath>..\..\Output\$(Platform)\$(Config)\Dcp;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_BplOutput>..\..\Output\$(Platform)\$(Config)\Bpl</DCC_BplOutput>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_MajorVer>2</VerInfo_MajorVer>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>0</VerInfo_Release>
+        <VerInfo_Build>3001</VerInfo_Build>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <VerInfo_Keys>CompanyName=xKnockOut;FileDescription=Atlas IDE Expert - $(MSBuildProjectName);FileVersion=2.3.0.3001;InternalName=$(MSBuildProjectName);LegalCopyright=Copyright (c) xKnockOut, MIT License;LegalTrademarks=;OriginalFilename=;ProgramID=io.github.xknockout.atlas.$(MSBuildProjectName);ProductName=Atlas IDE Expert;ProductVersion=2.3.0.3001;Comments=2.3.0-rc.1</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_UsePackage>vcl;rtl;$(DCC_UsePackage)</DCC_UsePackage>
@@ -64,9 +71,6 @@
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
-        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-        <VerInfo_Locale>1033</VerInfo_Locale>
         <BCC_EnableBatchCompilation>true</BCC_EnableBatchCompilation>
         <DCC_UsePackage>vcl;rtl;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
@@ -96,6 +100,7 @@
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Contract.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.ContinueIssues.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
@@ -108,6 +113,11 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Projects.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.QuickActions.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.QuickActionRuns.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.ContinueQueries.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.ContinueWork.pas"/>
+        <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.QuickActionRows.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Headers.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Scroll.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Search.pas"/>
@@ -118,38 +128,47 @@
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\Core\Welcome\Atlas.Core.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.Areas.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Areas.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.IdeLayout.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.ProjectWatch.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Module.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Continue.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.ContinueHost.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Editor.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.ContinueIssueLink.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Saved.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.ContinueIssues.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.IssueWork.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Commit.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.ContinueIssues.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Discover.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Help.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Layouts.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.TileProjects.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Tiles.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Listener.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Settings.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Layouts.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.TileProjects.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Tiles.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Listener.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Settings.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.SettingsSection.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Neighbors.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Page.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Projects.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.QuickActions.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Registry.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Projects.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.QuickActions.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.QuickActions.Keys.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Registry.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Setup.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.Paths.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.ProjectEvents.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Startup.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.State.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas"/>
-        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.WhatsNew.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.Startup.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.Sources.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.State.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Trends.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.Unsaved.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Adapters.WhatsNew.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Window.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Arrange.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Contract.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Board.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.ContinueIssues.pas"/>

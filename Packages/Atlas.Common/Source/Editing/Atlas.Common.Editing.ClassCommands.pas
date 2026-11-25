@@ -55,16 +55,19 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassBodies,
-  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -209,7 +212,7 @@ var
   mIndex, mDepth: Integer;
   mText: string;
 begin
-  mText := StringReplace(StringReplace(ADeclaration, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  mText := TTextLines.NormalizeLineBreaks(ADeclaration, ' ');
   mDepth := 0;
   for mIndex := 1 to Length(mText) do
     case mText[mIndex] of
@@ -995,16 +998,6 @@ begin
   Result := LowerCase(AMember.Container + '.' + AMember.Name + '(' + string.Join(',', AMember.ParamTypes) + ')');
 end;
 
-/// <summary>Name ohne Typargumente: IComparer&lt;TKunde&gt; wird IComparer.</summary>
-function PlainName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-end;
-
 /// <summary>Token "class" im Kopf der Klasse AClass; -1 ohne.</summary>
 function ClassKeywordToken(const ATokens: TArray<TPascalToken>; const AClass: TIndexSymbol): Integer;
 begin
@@ -1018,30 +1011,6 @@ begin
   begin
     Result := -1;
   end;
-end;
-
-/// <summary>Schließende Klammer zur öffnenden an AOpen; -1 ohne.</summary>
-function ClosingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer): Integer;
-var
-  mDepth, mIndex: Integer;
-begin
-  mDepth := 0;
-  for mIndex := AOpen to High(ATokens) do
-  begin
-    if ATokens[mIndex].IsSymbol('(') then
-    begin
-      Inc(mDepth);
-    end
-    else if ATokens[mIndex].IsSymbol(')') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Änderung am Kopf der Klasse: ", AName" vor die schließende Klammer der Vorfahrenliste, ohne Liste
@@ -1068,7 +1037,7 @@ begin
   end;
   if (mIndex < High(mTokens)) and mTokens[mIndex + 1].IsSymbol('(') then
   begin
-    mClose := ClosingParen(mTokens, mIndex + 1);
+    mClose := MatchingParen(mTokens, mIndex + 1);
     Result := mClose >= 0;
     if Result then
     begin
@@ -1095,7 +1064,7 @@ begin
   ABefore := nil;
   for mText in mHeader do
   begin
-    if SameText(PlainName(mText), PlainName(AName)) then
+    if SameText(TTextNames.WithoutGenerics(mText), TTextNames.WithoutGenerics(AName)) then
     begin
       Result := True;
     end
@@ -1137,7 +1106,7 @@ begin
   mResolver := TNameResolver.Create(AContext.Index);
   try
     mResolver.Namespaces := AContext.Namespaces;
-    Result := mResolver.ResolveNameFrom(AOwn, PlainName(AName), mResolved) and
+    Result := mResolver.ResolveNameFrom(AOwn, TTextNames.WithoutGenerics(AName), mResolved) and
       (mResolved.SymbolKind = TIndexSymbolKind.InterfaceType);
     if not Result then
     begin
@@ -1304,7 +1273,7 @@ var
 begin
   AEdits := nil;
   mName := Trim(AContext.Arguments);
-  if not IsValidIdent(PlainName(mName), True) then
+  if not IsValidIdent(TTextNames.WithoutGenerics(mName), True) then
   begin
     Exit(Fail(cTexts[TClassCommandsText.ExpectedIsIntfIName].Text, AReason));
   end;
@@ -1316,24 +1285,20 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterClassCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('impl', cTexts[TClassCommandsText.CreateMissingMethodBodiesOf].Text, '/impl', ExecuteImpl));
-  ARegister(Command('ctor', cTexts[TClassCommandsText.ConstructorWithTheFieldsAs].Text, '/ctor owner', ExecuteCtor));
-  ARegister(Command('dtor', cTexts[TClassCommandsText.DestructorThatFreesCreatedFields].Text, '/dtor', ExecuteDtor));
-  ARegister(Command('override', cTexts[TClassCommandsText.OverrideAVirtualMethodOf].Text, '/override Paint',
-    ExecuteOverride));
-  ARegister(Command('msg', cTexts[TClassCommandsText.CreateAMessageMethod].Text, '/msg WM_SIZE', ExecuteMsg));
-  ARegister(Command('intf', cTexts[TClassCommandsText.AttachAnInterfaceToThe].Text, '/intf IExporter',
-    ExecuteIntf));
+  ARegister(TSlashCommand.Create('impl', cTexts[TClassCommandsText.CreateMissingMethodBodiesOf].Text, '/impl',
+      ExecuteImpl));
+  ARegister(TSlashCommand.Create('ctor', cTexts[TClassCommandsText.ConstructorWithTheFieldsAs].Text, '/ctor owner',
+      ExecuteCtor));
+  ARegister(TSlashCommand.Create('dtor', cTexts[TClassCommandsText.DestructorThatFreesCreatedFields].Text, '/dtor',
+      ExecuteDtor));
+  ARegister(TSlashCommand.Create('override', cTexts[TClassCommandsText.OverrideAVirtualMethodOf].Text,
+      '/override Paint', ExecuteOverride));
+  ARegister(TSlashCommand.Create('msg', cTexts[TClassCommandsText.CreateAMessageMethod].Text, '/msg WM_SIZE',
+      ExecuteMsg));
+  ARegister(TSlashCommand.Create('intf', cTexts[TClassCommandsText.AttachAnInterfaceToThe].Text, '/intf IExporter',
+      ExecuteIntf));
 end;
 
 initialization

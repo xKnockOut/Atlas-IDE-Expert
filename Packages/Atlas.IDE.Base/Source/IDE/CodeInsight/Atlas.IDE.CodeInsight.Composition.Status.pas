@@ -9,15 +9,15 @@ interface
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Status.Contract,
-  Atlas.IDE.Status.Field,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Core.Status.FieldFlow,
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Notifications.Service;
 
 /// <summary>Atlas-Statusfeld; nil vor RegisterStatusField und nach UnregisterStatusField.</summary>
-function StatusField: TAtlasStatusField;
+function StatusField: TAtlasStatusFieldFlow;
 /// <summary>Zeilen des Statusfelds; nil ohne Statusfeld.</summary>
 function StatusLines: TAtlasIdeStatusLines;
 /// <summary>Benachrichtigungszentrale; nil vor StartNotifications.</summary>
@@ -61,13 +61,13 @@ uses
   System.JSON,
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Status.Server,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Status.Server,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Problems.RuleActions,
   Atlas.IDE.Status.ServerWindow,
@@ -76,21 +76,23 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Diagnostics.ServerPackage,
-  Atlas.IDE.CodeInsight.Composition.Session;
+  Atlas.IDE.CodeInsight.Composition.Session,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
+  Atlas.IDE.Foundation.Host;
 
 const
   cProblemCountsExtra = 'problemCounts';
 
 var
   // Atlas-Statusfeld mit Server, Index und Datei (#591).
-  StatusFieldInstance: TAtlasStatusField;
+  StatusFieldInstance: TAtlasStatusFieldFlow;
   StatusLinesInstance: TAtlasIdeStatusLines;
   // Benachrichtigungszentrale mit Liste, Plakette im Statusfeld und Build-Einträgen (#601).
   NotificationsInstance: TAtlasIdeNotifications;
   // Schnellschalter mit Fenster, Taste und Befehlen in der Palette (#604).
   QuickTogglesInstance: TAtlasIdeQuickToggles;
 
-function StatusField: TAtlasStatusField;
+function StatusField: TAtlasStatusFieldFlow;
 begin
   Result := StatusFieldInstance;
 end;
@@ -119,15 +121,8 @@ begin
 end;
 
 procedure SetStatusExtra(const AId, AText, AHint: string; const AOnClick: TProc<TPoint>);
-var
-  mExtra: TAtlasStatusExtra;
 begin
-  mExtra := Default(TAtlasStatusExtra);
-  mExtra.Id := AId;
-  mExtra.Text := AText;
-  mExtra.Hint := AHint;
-  mExtra.OnClick := AOnClick;
-  SetStatusItem(mExtra);
+  SetStatusItem(TAtlasStatusExtra.Make(AId, AText, AHint, AOnClick));
 end;
 
 procedure SetStatusItem(const AExtra: TAtlasStatusExtra);
@@ -164,23 +159,27 @@ end;
 /// <summary>Diagnosepaket des Fensters „Atlas-Server“ (#1356): Bericht und Dateien des laufenden Servers im
 /// Hintergrund.</summary>
 procedure CreateServerPackage;
+const
+  cCommandTimeoutMs = 30000;
 begin
   TAtlasIdeServerPackage.Execute(
     procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
     begin
-      RunServerCommand(ACommand, AArgumentsJson, 30000, ADone);
+      RunServerCommand(ACommand, AArgumentsJson, cCommandTimeoutMs, ADone);
     end,
     Warnings());
 end;
 
 /// <summary>„Index neu aufbauen“ im Fenster „Atlas-Server“; ohne Manager nichts.</summary>
 procedure RebuildIndex;
+const
+  cCommandTimeoutMs = 30000;
 begin
   if Manager = nil then
   begin
     Exit;
   end;
-  Manager.ExecuteServerCommandAsync('atlas.server.rebuildIndex', 30000,
+  Manager.ExecuteServerCommandAsync('atlas.server.rebuildIndex', cCommandTimeoutMs,
     procedure(AAnswer: TJSONValue)
     begin
       if AAnswer = nil then
@@ -307,7 +306,7 @@ end;
 /// <summary>Atlas-Statusfeld mit Aktualisieren, Protokoll, Schnellschaltern und Neustart des Servers.</summary>
 procedure CreateStatusField;
 begin
-  StatusFieldInstance := TAtlasStatusField.Create(TAtlasStatusRegistry.Default);
+  StatusFieldInstance := NewStatusField(TAtlasStatusRegistry.Default);
   StatusFieldInstance.OnRefresh :=
     procedure
     begin
@@ -478,7 +477,7 @@ begin
   TAtlasMainThread.Queue(TAtlasFeature.Status,
     procedure
     begin
-      MessageLine(mText);
+      TAtlasIdeHost.Message(mText);
     end);
 end;
 

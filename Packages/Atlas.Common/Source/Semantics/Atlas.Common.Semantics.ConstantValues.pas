@@ -8,7 +8,7 @@
 // wenn die geprüfte Stelle in demselben Zweig steht (Pascal.ConditionalBranches),
 // sonst bleibt der Ausdruck unbekannt. Dazu die Wertebereiche der eingebauten
 // ganzzahligen Typen und die Werte einer Aufzählung in ihrer Reihenfolge
-// (#1011, #1015). Früher Teil von Rules.Builtin.Statements (duplicate-case-label).
+// (#1011, #1015). Nutzer sind unter anderem duplicate-case-label und die Namensauflösung.
 
 interface
 

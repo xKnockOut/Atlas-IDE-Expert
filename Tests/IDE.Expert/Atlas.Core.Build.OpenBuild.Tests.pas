@@ -42,14 +42,48 @@ type
     /// .dpr und .dproj.</summary>
     [Test]
     procedure TargetsDifferAndGroupsCover;
+    /// <summary>Plan: Gruppen zuerst (alle oder das aktive), einzeln gemeldete Mitglieder nicht doppelt, nicht
+    /// geladene Dateien erneut vorgemerkt, ausgeschlossene weggelassen.</summary>
+    [Test]
+    procedure PlanTakesGroupsFirstAndRetriesUnloaded;
+    /// <summary>Ziel je Projekt: Schreibweise des Projekts, fehlende Vorgaben, Umschalten nur bei Abweichung.
+    /// </summary>
+    [Test]
+    procedure TargetChoosesProjectSpelling;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Notifications.Contract,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Core.Build.OpenBuildSettings,
   Atlas.Core.Build.OpenBuild;
+
+/// <summary>Geladene Gruppe C:\P\All.groupproj mit App (aktiv) und Lib; jede andere Gruppe ist nicht geladen.
+/// </summary>
+function LoadedGroup(const AGroupFile: string; out AMembers: TArray<string>; out AActive: string): Boolean;
+begin
+  AMembers := nil;
+  AActive := '';
+  Result := SameText(AGroupFile, 'C:\P\All.groupproj');
+  if Result then
+  begin
+    AMembers := TArray<string>.Create('C:\P\App.dproj', 'C:\P\Lib.dproj');
+    AActive := 'C:\P\App.dproj';
+  end;
+end;
+
+/// <summary>Geladen sind nur Projekte unter C:\P\; .dpr kennt die IDE als .dproj.</summary>
+function LoadedProject(const AFileName: string; out AProject: string): Boolean;
+begin
+  Result := SameText(ExtractFilePath(AFileName), 'C:\P\');
+  AProject := '';
+  if Result then
+  begin
+    AProject := ChangeFileExt(AFileName, '.dproj');
+  end;
+end;
 
 { TAtlasOpenBuildTests }
 
@@ -264,6 +298,61 @@ begin
   Assert.IsFalse(TAtlasOpenBuildSummary.IsCovered(mCovered, 'C:\P\Tests.dproj'));
   Assert.IsFalse(TAtlasOpenBuildSummary.IsCovered(nil, 'C:\P\App.dproj'));
   mCovered := nil;
+end;
+
+procedure TAtlasOpenBuildTests.PlanTakesGroupsFirstAndRetriesUnloaded;
+var
+  mCore: TAtlasOpenBuild;
+  mPlan: TArray<string>;
+begin
+  mCore := TAtlasOpenBuild.Create;
+  try
+    mCore.Opened('C:\P\App.dpr', 0);
+    mCore.Opened('C:\P\All.groupproj', 0);
+    mCore.Opened('C:\P\Tool.dproj', 0);
+    mCore.Opened('D:\Fern\Fern.dproj', 0);
+    mCore.Opened('D:\Fern\Andere.groupproj', 0);
+    mPlan := mCore.Plan(TAtlasOpenBuildScope.All, TArray<string>.Create('Tool'), LoadedGroup, LoadedProject, 10);
+    Assert.AreEqual(2, Integer(Length(mPlan)), 'Gruppe ganz, App nicht doppelt, Tool ausgeschlossen');
+    Assert.AreEqual('C:\P\App.dproj', mPlan[0]);
+    Assert.AreEqual('C:\P\Lib.dproj', mPlan[1]);
+    mPlan := mCore.Take;
+    Assert.AreEqual(2, Integer(Length(mPlan)), 'nicht geladene Gruppe und nicht geladenes Projekt kommen wieder');
+    mCore.Closed('C:\P\All.groupproj');
+    mCore.Closed('C:\P\App.dproj');
+    mCore.Closed('C:\P\Lib.dproj');
+    mCore.Opened('C:\P\All.groupproj', 20);
+    mPlan := mCore.Plan(TAtlasOpenBuildScope.Active, nil, LoadedGroup, LoadedProject, 20);
+    Assert.AreEqual(1, Integer(Length(mPlan)), 'nur das aktive Projekt');
+    Assert.AreEqual('C:\P\App.dproj', mPlan[0]);
+  finally
+    mCore.Free;
+  end;
+  mPlan := nil;
+end;
+
+procedure TAtlasOpenBuildTests.TargetChoosesProjectSpelling;
+var
+  mTarget: TAtlasOpenBuildTarget;
+begin
+  mTarget := TAtlasOpenBuildTarget.Choose('release', 'win64', TArray<string>.Create('Debug', 'Release'),
+    TArray<string>.Create('Win32', 'Win64'));
+  Assert.AreEqual('Release', mTarget.Configuration);
+  Assert.AreEqual('Win64', mTarget.Platform);
+  Assert.IsFalse(mTarget.MissingConfiguration);
+  Assert.IsFalse(mTarget.MissingPlatform);
+  Assert.IsTrue(mTarget.Switches('Debug', 'Win64'));
+  Assert.IsFalse(mTarget.Switches('Release', 'Win64'), 'schon so eingestellt');
+  mTarget := TAtlasOpenBuildTarget.Choose('Profil', 'Linux64', TArray<string>.Create('Debug'),
+    TArray<string>.Create('Win32'));
+  Assert.AreEqual('', mTarget.Configuration);
+  Assert.IsTrue(mTarget.MissingConfiguration, 'Konfiguration fehlt');
+  Assert.IsTrue(mTarget.MissingPlatform, 'Plattform nicht aktiviert');
+  Assert.IsFalse(mTarget.Switches('Debug', 'Win32'), 'dann bleibt die Einstellung des Projekts');
+  mTarget := TAtlasOpenBuildTarget.Choose('', '', nil, nil);
+  Assert.IsFalse(mTarget.MissingConfiguration, 'ohne Vorgabe fehlt nichts');
+  Assert.IsFalse(mTarget.Switches('Debug', 'Win32'));
+  mTarget := Default(TAtlasOpenBuildTarget);
 end;
 
 initialization

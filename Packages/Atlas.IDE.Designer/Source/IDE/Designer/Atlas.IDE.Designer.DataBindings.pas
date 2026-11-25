@@ -32,7 +32,7 @@ uses
   Atlas.Core.Designer.DataBindings,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.BindingBar,
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.ToolsApi.EditorBars.Host,
   Atlas.IDE.Designer.PaletteImages;
 
 type
@@ -66,14 +66,16 @@ implementation
 uses
   System.TypInfo,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Editor.BarDock,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.ToolsApi.EditorBars.Order,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.DesignerView,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Designer.ButtonStates,
+  Atlas.ToolsApi.Designer.View,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.IDE.Foundation.Settings;
 
 const
   cTick = 400;
@@ -201,12 +203,15 @@ begin
     end, nil);
   // Unten neben dem Editor-Bereich direkt am Editor, über der Statusleiste; nicht im EditorPanel, dort lag die
   // Designfläche samt Bildlaufleiste darüber.
-  FHost.DockBottom(TAtlasBarDock.cOrderNearest);
-  FHost.ShowIn := TAtlasEditorBarView.Designer;
+  FHost.Placement.DockBottom(TAtlasBarDock.cOrderNearest);
+  FHost.Placement.ShowIn := TAtlasEditorBarView.Designer;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := cTick;
   FTimer.OnTimer := Tick;
+  // Gemerkter Zustand (#2546): Der Takt legt die Leiste an, sobald ein Designer gezeigt wird.
+  FShown := TAtlasIdeDesignerButtonStates.Pressed(cId, False);
+  FTimer.Enabled := FShown;
 end;
 
 destructor TAtlasIdeDataBindings.Destroy;
@@ -225,7 +230,7 @@ begin
   Result := TAtlasBindingBar.Create(nil);
   mHost := FHost;
   mPalette := FPalette;
-  Result.ApplyColors(TAtlasIdeStyle.BarColors);
+  Result.ApplyColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
   Result.Images := FPalette.Images;
   Result.OnImage :=
     function(AClassName: string): Integer
@@ -387,6 +392,7 @@ end;
 
 procedure TAtlasIdeDataBindings.Toggle;
 begin
+  TAtlasIdeDesignerButtonStates.Remember(cId, not FShown);
   if FShown then
   begin
     Hide;
@@ -403,7 +409,7 @@ procedure TAtlasIdeDataBindings.ApplyTheme;
 var
   mColors: TAtlasColors;
 begin
-  mColors := TAtlasIdeStyle.BarColors;
+  mColors := TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors);
   FHost.ForEach(
     procedure(ABar: TControl)
     begin

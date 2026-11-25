@@ -81,8 +81,9 @@ uses
   System.IOUtils,
   Atlas.Common.Rationale.References,
   Atlas.Common.Todos.Contract,
-  Atlas.Common.Rules.Builtin.Todos,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Todos.Keywords,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -113,28 +114,11 @@ class function TRationaleOptions.FromSettings(const ASettings: TServerSettings;
 begin
   Result.Enabled := ASettings.Hints.Rationale;
   Result.Markers := TLspRationale.Markers(ASettings.Hints);
-  Result.Excluded := TTodoRules.Keywords(ASettings);
+  Result.Excluded := TTodoKeywords.FromSettings(ASettings);
   Result.AdrFolder := TLspRationale.AdrFolder(ASettings.Hints.AdrFolder, ARoot);
 end;
 
 { TLspRationale }
-
-function SameParamTypes(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for mIndex := 0 to High(A) do
-    begin
-      if not SameText(A[mIndex], B[mIndex]) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
 
 function IsRoutine(AKind: TIndexSymbolKind): Boolean;
 begin
@@ -179,7 +163,7 @@ begin
   end;
   for mOther in mCandidates do
   begin
-    if SameParamTypes(mOther.ParamTypes, ASymbol.ParamTypes) then
+    if TTextArrays.SameTexts(mOther.ParamTypes, ASymbol.ParamTypes) then
     begin
       Result := Result + [mOther];
       Exit;

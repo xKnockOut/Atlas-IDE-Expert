@@ -18,9 +18,6 @@ type
   [Category('Atlas.IDE.Tracker')]
   TAtlasIssueDevelopmentTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure KeyCountsOnlyAsOwnToken;
     [Test]
@@ -60,7 +57,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Tools,
   Atlas.Core.VersionControl.Composition,
-  Atlas.Core.VersionControl.Adapters.ProcessRunner;
+  Atlas.Core.VersionControl.Providers.ProcessRunner,
+  Atlas.Tests.Files;
 
 type
   /// <summary>Versionsverwaltung mit festen Antworten für IAtlasVcsHistory; zählt die Aufrufe.</summary>
@@ -99,14 +97,7 @@ type
 
 function Root: string;
 begin
-  if PathDelim = '\' then
-  begin
-    Result := 'C:\Projekte\Kasse';
-  end
-  else
-  begin
-    Result := '/projekte/kasse';
-  end;
+  Result := TTestData.ProjectRoot('Kasse');
 end;
 
 function Under(const ARelative: string): string;
@@ -261,14 +252,6 @@ begin
 end;
 
 { TAtlasIssueDevelopmentTests }
-
-procedure TAtlasIssueDevelopmentTests.WarmUpFirstUse;
-begin
-  // Der Benchmark sucht git einmal und merkt sich den Pfad (TAtlasVcsTools); TEncoding.ASCII legt die RTL beim
-  // ersten Zugriff an. Beides bleibt bis zum Programmende und zählte sonst als Leck des Tests.
-  TAtlasVcsTools.Find(TAtlasVcsKind.Git);
-  TEncoding.ASCII.GetBytes('');
-end;
 
 procedure TAtlasIssueDevelopmentTests.KeyCountsOnlyAsOwnToken;
 begin
@@ -476,7 +459,7 @@ begin
     Assert.IsTrue(mCache.Get(mTarget, 'ATL-1', mDevelopment));
     Assert.IsFalse(mCache.Get(mTarget, 'ATL-2', mDevelopment));
     mCache.Clear;
-    Assert.AreEqual(0, mCache.Count);
+    Assert.AreEqual(0, Integer(mCache.Count));
   finally
     mCache.Free;
   end;

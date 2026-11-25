@@ -54,6 +54,11 @@
 //   Supports) legt Unteraufgaben an und verknüpft Issues über IAtlasCiSend.
 // - Search und Lookup (#1270): Suche der Befehlspalette, je eine Abfrage ohne
 //   Pull Requests und Ampeln; Lookup liest ein Issue zur Kennung.
+// - IAtlasTrackerAccess: Anbieter, Token und Transport für Optionsseite und
+//   „Meine Issues“; setzt Atlas.IDE.Tracker.Adapters.Access um
+//   (Anmeldespeicher, Dialog).
+// - TAtlasIssueSearchQuery (#1270): Anfrage der Befehlspalette und der
+//   Issue-Vorschläge im Kommentar-Editor (Kennung, Text oder zuletzt geöffnete).
 // - IAtlasTrackerPeople (#1278): Benutzer für @-Erwähnungen im
 //   Kommentar-Editor (TAtlasTrackerUser mit Anmelde- und Anzeigename);
 //   Filter und Ranked ordnen die Treffer zum getippten Text.
@@ -79,6 +84,13 @@ uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract;
+
+const
+  /// <summary>Beziehungen, die GitHub als Wort liefert (TAtlasTrackerLink.Relation); die Oberfläche übersetzt sie.
+  /// </summary>
+  cGitHubRelationPull = 'pull request';
+  cGitHubRelationMentioned = 'cross-referenced';
+  cGitHubRelationDependsOn = 'depends on';
 
 type
 {$SCOPEDENUMS ON}
@@ -138,7 +150,9 @@ type
   /// <summary>Höchstlängen der Texte, die die Parser aus Tracker-Antworten übernehmen (Zeichen).</summary>
   TAtlasTrackerTextLimits = record
   public const
-    /// <summary>Login, Schlagwort, Beziehung.</summary>
+    /// <summary>Label, Art eines Issues.</summary>
+    cLabel = 40;
+    /// <summary>Login, Schlagwort, Beziehung, Sprint.</summary>
     cName = 60;
     /// <summary>Vollständiger Name einer Person.</summary>
     cPerson = 80;
@@ -891,10 +905,53 @@ type
       out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
+  /// <summary>Anbieter, Token und Transport; setzt die Komposition um. Token nie im Protokoll.</summary>
+  IAtlasTrackerAccess = interface
+    ['{4C7E2A91-8B3D-4F06-9E15-A2D6C8B04F73}']
+    /// <summary>Alle Anbieter in fester Reihenfolge (Auswahl der Optionsseite).</summary>
+    function Providers: TArray<IAtlasTrackerProvider>;
+    /// <summary>Anbieter zum Namen; nil, wenn es ihn nicht gibt.</summary>
+    function Provider(const AName: string): IAtlasTrackerProvider;
+    /// <summary>Im Anmeldespeicher steht ein Token für den Server von ATarget.</summary>
+    function HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    /// <summary>Token abfragen (verdeckter Dialog) und speichern, leer entfernt es; nur über https. True, wenn
+    /// sich etwas geändert hat.</summary>
+    function EnterToken(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
+    /// <summary>Token des Servers entfernen; True auch, wenn es keins gab.</summary>
+    function RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    /// <summary>Transport mit dem Token, das nur an AProvider.ApiServer geht; nil ohne Token. Im Hintergrund
+    /// erlaubt.</summary>
+    function Transport(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>None: Befehle; Recent: zuletzt geöffnete; Key: eine Kennung; Text: Freitextsuche.</summary>
+  TAtlasIssueSearchKind = (None, Recent, Key, Text);
+{$SCOPEDENUMS OFF}
+
+  TAtlasIssueSearchQuery = record
+    Kind: TAtlasIssueSearchKind;
+    /// <summary>Key: Kennung wie im Tracker ("ATL-12", "#42").</summary>
+    Key: string;
+    /// <summary>Text: Suchtext ohne Auslöser ("Speicherleck").</summary>
+    Text: string;
+    class function None: TAtlasIssueSearchQuery; static;
+    /// <summary>Gleiche Anfrage (Art, Kennung, Text ohne Groß-/Kleinschreibung).</summary>
+    function SameAs(const AOther: TAtlasIssueSearchQuery): Boolean;
+    /// <summary>Text, dessen Zeichen in den Zeilen hervorgehoben werden.</summary>
+    function Highlight: string;
+  end;
+
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils;
+
+const
+  cHttps = 'https://';
+  /// <summary>Rang eines Benutzers ohne Treffer (TAtlasTrackerUser.Rank).</summary>
+  cRankNone = 3;
 
 { TAtlasTrackerCall }
 
@@ -1014,7 +1071,7 @@ end;
 
 function TAtlasTrackerUser.Matches(const AText: string): Boolean;
 begin
-  Result := Rank(AText) < 3;
+  Result := Rank(AText) < cRankNone;
 end;
 
 function TAtlasTrackerUser.Rank(const AText: string): Integer;
@@ -1035,7 +1092,7 @@ begin
   begin
     Exit(2);
   end;
-  Result := 3;
+  Result := cRankNone;
 end;
 
 function RankedUsers(const AUsers: TArray<TAtlasTrackerUser>; const AText: string; AMax: Integer;
@@ -1043,32 +1100,35 @@ function RankedUsers(const AUsers: TArray<TAtlasTrackerUser>; const AText: strin
 var
   mRank, mIndex: Integer;
   mUser: TAtlasTrackerUser;
-  mSeen: string;
+  mSeen: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  mSeen := '|';
-  // Stabil: je Rang in der Reihenfolge der Liste (TArray.Sort ist nicht stabil).
-  for mRank := 0 to 3 do
-  begin
-    if (mRank = 3) and not AKeepOthers then
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    // Stabil: je Rang in der Reihenfolge der Liste (TArray.Sort ist nicht stabil).
+    for mRank := 0 to cRankNone do
     begin
-      Break;
-    end;
-    for mIndex := 0 to High(AUsers) do
-    begin
-      if Length(Result) >= AMax then
+      if (mRank = cRankNone) and not AKeepOthers then
       begin
-        Exit;
+        Break;
       end;
-      mUser := AUsers[mIndex];
-      if (Trim(mUser.Login) = '') or (mUser.Rank(AText) <> mRank) or
-        (Pos('|' + LowerCase(mUser.Login) + '|', mSeen) > 0) then
+      for mIndex := 0 to High(AUsers) do
       begin
-        Continue;
+        if Length(Result) >= AMax then
+        begin
+          Exit;
+        end;
+        mUser := AUsers[mIndex];
+        if (Trim(mUser.Login) = '') or (mUser.Rank(AText) <> mRank) or mSeen.ContainsKey(LowerCase(mUser.Login)) then
+        begin
+          Continue;
+        end;
+        mSeen.Add(LowerCase(mUser.Login), True);
+        Result := Result + [mUser];
       end;
-      mSeen := mSeen + LowerCase(mUser.Login) + '|';
-      Result := Result + [mUser];
     end;
+  finally
+    mSeen.Free;
   end;
 end;
 
@@ -1410,7 +1470,33 @@ end;
 
 function TAtlasTrackerTarget.Secure: Boolean;
 begin
-  Result := SameText(Copy(Server, 1, 8), 'https://');
+  Result := SameText(Copy(Server, 1, Length(cHttps)), cHttps);
+end;
+
+{ TAtlasIssueSearchQuery }
+
+class function TAtlasIssueSearchQuery.None: TAtlasIssueSearchQuery;
+begin
+  Result.Kind := TAtlasIssueSearchKind.None;
+  Result.Key := '';
+  Result.Text := '';
+end;
+
+function TAtlasIssueSearchQuery.SameAs(const AOther: TAtlasIssueSearchQuery): Boolean;
+begin
+  Result := (Kind = AOther.Kind) and SameText(Key, AOther.Key) and SameText(Text, AOther.Text);
+end;
+
+function TAtlasIssueSearchQuery.Highlight: string;
+begin
+  case Kind of
+    TAtlasIssueSearchKind.Key:
+      Result := Key;
+    TAtlasIssueSearchKind.Text:
+      Result := Text;
+  else
+    Result := '';
+  end;
 end;
 
 end.

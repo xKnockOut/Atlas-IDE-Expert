@@ -37,6 +37,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.ObjectCount;
 
 const
@@ -330,7 +331,7 @@ begin
   Assert.AreEqual(0, mRows[2].Delta);
   Assert.AreEqual('TGone', mRows[3].Name);
   Assert.AreEqual(-2, mRows[3].Delta);
-  Assert.AreEqual(0, mRows[3].Count);
+  Assert.AreEqual(0, Integer(mRows[3].Count));
 end;
 
 procedure TAtlasObjectCountTests.CompareFiltersByName;

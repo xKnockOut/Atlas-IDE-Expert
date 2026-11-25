@@ -5,7 +5,7 @@
 // (QueryThreadCycleTime), wird er kurz angehalten (SuspendThread), sein Kontext gelesen ((Wow64)GetThreadContext)
 // und der Aufrufstapel mit StackWalk64 abgelaufen; dann läuft er weiter. Kein Debugger nötig, die IDE darf das
 // Programm gleichzeitig debuggen. Nur ein 64-Bit-Prozess kann so 32- und 64-Bit-Programme lesen, deshalb misst der
-// Server. Gemessen 13.11.2026: 0,2 bis 0,5 ms je Probe, bei 10 ms Abstand +1,5 % (Win64) bzw. +3 % (Win32).
+// Server. Gemessen: 0,2 bis 0,5 ms je Probe, bei 10 ms Abstand +1,5 % (Win64) bzw. +3 % (Win32).
 // Gleiche Stapel fasst TAtlasRawStacks zusammen; aufgelöst wird nach dem Lauf (Atlas.Common.Lsp.Profiler).
 
 interface
@@ -16,6 +16,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   System.Diagnostics,
+  System.SyncObjs,
   Atlas.Common.Profiling.Contract,
   Atlas.Common.Profiling.Sampling;
 
@@ -33,10 +34,14 @@ type
     TWorker = class(TThread)
     private
       FOwner: TAtlasWindowsProfileSampler;
+      /// <summary>Weckt den Thread zwischen zwei Runden, sobald er enden soll.</summary>
+      FWake: TEvent;
     protected
       procedure Execute; override;
+      procedure TerminatedSet; override;
     public
       constructor Create(AOwner: TAtlasWindowsProfileSampler);
+      destructor Destroy; override;
     end;
   private
     FProcess: THandle;
@@ -53,6 +58,9 @@ type
     FSamples: Integer;
     FEnded: Integer;
     FLastRefresh: Int64;
+    /// <summary>Fehler, der die Abtastung vorzeitig beendet hat; '' ohne. Schreibt nur der Thread, gelesen nach
+    /// WaitFor.</summary>
+    FFailure: string;
     procedure LoadModules;
     procedure AddThread(AId: DWORD);
     procedure RefreshThreads;
@@ -174,21 +182,44 @@ end;
 constructor TAtlasWindowsProfileSampler.TWorker.Create(AOwner: TAtlasWindowsProfileSampler);
 begin
   FOwner := AOwner;
+  FWake := TEvent.Create(nil, False, False, '');
   inherited Create(False);
+end;
+
+destructor TAtlasWindowsProfileSampler.TWorker.Destroy;
+begin
+  inherited;
+  FWake.Free;
+end;
+
+procedure TAtlasWindowsProfileSampler.TWorker.TerminatedSet;
+begin
+  inherited;
+  FWake.SetEvent;
 end;
 
 procedure TAtlasWindowsProfileSampler.TWorker.Execute;
 begin
   NameThreadForDebugging('Atlas.Profiler');
-  timeBeginPeriod(1);
   try
-    FOwner.RefreshThreads;
-    while (not Terminated) and FOwner.Round do
-    begin
-      Sleep(FOwner.FIntervalMs);
+    timeBeginPeriod(1);
+    try
+      FOwner.RefreshThreads;
+      // Warten auf FWake statt Sleep: Stop endet sofort, nicht erst nach dem Takt.
+      while (not Terminated) and FOwner.Round do
+      begin
+        FWake.WaitFor(FOwner.FIntervalMs);
+      end;
+    finally
+      timeEndPeriod(1);
     end;
-  finally
-    timeEndPeriod(1);
+  except
+    // Kein stilles Ende: Stop gibt den Fehler im Ergebnis weiter.
+    on E: Exception do
+    begin
+      FOwner.FFailure := E.ClassName + ': ' + E.Message;
+      AtomicExchange(FOwner.FEnded, 1);
+    end;
   end;
 end;
 
@@ -465,6 +496,7 @@ begin
   FStacks.Clear;
   FSamples := 0;
   FEnded := 0;
+  FFailure := '';
   FLastRefresh := 0;
   FWatch := TStopwatch.StartNew;
   FWorker := TWorker.Create(Self);
@@ -484,6 +516,7 @@ begin
   Result.MainModule := FMainModule;
   Result.Stacks := FStacks.ToArray;
   Result.DurationMs := FWatch.ElapsedMilliseconds;
+  Result.Error := FFailure;
   Release;
   FStacks.Clear;
   FModules := nil;

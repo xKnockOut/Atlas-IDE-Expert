@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Modules.KnownPackages.Tests;
 
-// Module unter „Known Packages“ (Meldung vom 05.11.2026): Erkennen der
+// Module unter „Known Packages“: Erkennen der
 // Modul-BPLs neben Base, fehlende, abgeschaltete und aus anderem Ordner
 // eingetragene Module und Vergleich zweier Stände.
 
@@ -71,7 +71,7 @@ procedure TAtlasKnownPackagesTests.MissingWhenNeitherKnownNorDisabled;
 var
   mState: TAtlasKnownPackagesState;
 begin
-  // Der Stand vom 05.11.2026: nur Base eingetragen.
+  // Nur Base eingetragen (kam über Nacht so vor).
   mState := TAtlasKnownPackages.Check(Input(TArray<string>.Create(cBase, 'C:\Fremd\Xml370.bpl'), nil));
   Assert.AreEqual(3, Integer(Length(mState.Modules)));
   Assert.AreEqual(3, Integer(Length(mState.Missing)));

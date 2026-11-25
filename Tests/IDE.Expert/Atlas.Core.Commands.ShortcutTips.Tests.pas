@@ -96,7 +96,7 @@ uses
   System.JSON,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips;
 
@@ -437,9 +437,11 @@ var
   mUsage, mLoaded: TAtlasCommandUsage;
   mEntry: TAtlasCommandUsageEntry;
 begin
-  mUsage := TAtlasCommandUsage.Create;
-  mLoaded := TAtlasCommandUsage.Create;
+  mUsage := nil;
+  mLoaded := nil;
   try
+    mUsage := TAtlasCommandUsage.Create;
+    mLoaded := TAtlasCommandUsage.Create;
     Assert.IsFalse(mUsage.Changed);
     mUsage.Count(cClassCompletion, TAtlasCommandInput.Mouse, Moment(9, 0, 0));
     mUsage.Count('ECCLASSCOMPLETION', TAtlasCommandInput.Mouse, Moment(9, 30, 0));
@@ -472,6 +474,9 @@ begin
     Assert.AreEqual(TAtlasCommandUsage.TimeText(Moment(9, 30, 0)),
       TAtlasCommandUsage.TimeText(TAtlasCommandUsage.TimeOf('2026-10-15T09:30:00.123Z')));
     Assert.AreEqual<TDateTime>(0, TAtlasCommandUsage.TimeOf('gestern'));
+    // Richtige Trenner, aber keine Ziffern: 0 statt ERangeError (Word-Parameter von TryEncodeDate/-Time).
+    Assert.AreEqual<TDateTime>(0, TAtlasCommandUsage.TimeOf('jjjj-mm-ttT09:30:00'));
+    Assert.AreEqual<TDateTime>(0, TAtlasCommandUsage.TimeOf('2026-10-15Thh:mm:ss'));
   finally
     mLoaded.Free;
     mUsage.Free;
@@ -592,9 +597,11 @@ var
 begin
   mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-usage-' + FormatDateTime('hhnnsszzz', Now));
   mFileName := TAtlasCommandUsage.DefaultFile(mFolder);
-  mUsage := TAtlasCommandUsage.Create;
-  mLoaded := TAtlasCommandUsage.Create;
+  mUsage := nil;
+  mLoaded := nil;
   try
+    mUsage := TAtlasCommandUsage.Create;
+    mLoaded := TAtlasCommandUsage.Create;
     mUsage.Count(cClassCompletion, TAtlasCommandInput.Mouse, Moment(10, 0, 0));
     mEntry := mUsage.Entry(cClassCompletion);
     mEntry.Never := True;
@@ -817,9 +824,11 @@ begin
   ForceDirectories(ExtractFileDir(mTipsFile));
   TFile.WriteAllText(mTipsFile, '{"format":1,"commands":{"Atlas.Rename":{"mouse":2,"keyboard":1,' +
     '"lastUsed":"2026-10-01T08:00:00","never":true}}}');
-  mUsage := TAtlasCommandUsage.Create;
-  mLoaded := TAtlasCommandUsage.Create;
+  mUsage := nil;
+  mLoaded := nil;
   try
+    mUsage := TAtlasCommandUsage.Create;
+    mLoaded := TAtlasCommandUsage.Create;
     mUsage.LoadFromFiles(mTipsFile, mUsageFile);
     Assert.AreEqual(3, mUsage.UseCount('Atlas.Rename'));
     Assert.IsTrue(mUsage.Entry('Atlas.Rename').Never);
@@ -867,9 +876,11 @@ procedure TAtlasCommandUsageTests.SectionsRoundTrip;
 var
   mUsage, mLoaded: TAtlasCommandUsage;
 begin
-  mUsage := TAtlasCommandUsage.Create;
-  mLoaded := TAtlasCommandUsage.Create;
+  mUsage := nil;
+  mLoaded := nil;
   try
+    mUsage := TAtlasCommandUsage.Create;
+    mLoaded := TAtlasCommandUsage.Create;
     Assert.AreEqual('', mUsage.Section('discover'));
     mUsage.SetSection('discover', '{"blocked":["rename"],"last":"codeActions"}');
     Assert.IsTrue(mUsage.TipsChanged);

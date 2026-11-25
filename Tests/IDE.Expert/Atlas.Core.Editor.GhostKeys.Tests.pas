@@ -31,27 +31,31 @@ uses
 
 procedure TAtlasGhostKeysTests.TabAcceptsAll;
 begin
-  Assert.IsTrue(TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyTab, []) = TAtlasGhostKey.AcceptAll);
-  Assert.IsTrue(TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyTab, [ssShift]) = TAtlasGhostKey.None, 'Umschalt+Tab');
+  Assert.AreEqual<TAtlasGhostKey>(TAtlasGhostKey.AcceptAll, TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyTab, []));
+  Assert.AreEqual<TAtlasGhostKey>(TAtlasGhostKey.None,
+    TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyTab, [ssShift]), 'Umschalt+Tab');
 end;
 
 procedure TAtlasGhostKeysTests.CtrlRightAcceptsWord;
 begin
-  Assert.IsTrue(TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyRight, [ssCtrl]) = TAtlasGhostKey.AcceptWord);
-  Assert.IsTrue(TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyRight, []) = TAtlasGhostKey.None, '→ allein');
-  Assert.IsTrue(TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyRight, [ssCtrl, ssShift]) = TAtlasGhostKey.None);
+  Assert.AreEqual<TAtlasGhostKey>(TAtlasGhostKey.AcceptWord,
+    TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyRight, [ssCtrl]));
+  Assert.AreEqual<TAtlasGhostKey>(TAtlasGhostKey.None,
+    TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyRight, []), '→ allein');
+  Assert.AreEqual<TAtlasGhostKey>(TAtlasGhostKey.None,
+    TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyRight, [ssCtrl, ssShift]));
 end;
 
 procedure TAtlasGhostKeysTests.EscapeRejects;
 begin
-  Assert.IsTrue(TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyEscape, []) = TAtlasGhostKey.Reject);
-  Assert.IsTrue(TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyEscape, [ssAlt]) = TAtlasGhostKey.None);
+  Assert.AreEqual<TAtlasGhostKey>(TAtlasGhostKey.Reject, TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyEscape, []));
+  Assert.AreEqual<TAtlasGhostKey>(TAtlasGhostKey.None, TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyEscape, [ssAlt]));
 end;
 
 procedure TAtlasGhostKeysTests.OtherKeysGoToTheEditor;
 begin
-  Assert.IsTrue(TAtlasGhostKeys.KeyOf(Ord('A'), []) = TAtlasGhostKey.None);
-  Assert.IsTrue(TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyTab, [ssCtrl]) = TAtlasGhostKey.None);
+  Assert.AreEqual<TAtlasGhostKey>(TAtlasGhostKey.None, TAtlasGhostKeys.KeyOf(Ord('A'), []));
+  Assert.AreEqual<TAtlasGhostKey>(TAtlasGhostKey.None, TAtlasGhostKeys.KeyOf(TAtlasGhostKeys.cKeyTab, [ssCtrl]));
 end;
 
 initialization

@@ -16,8 +16,8 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits;
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits;
 
 type
   /// <summary>Stand, für den gefragt wurde.</summary>

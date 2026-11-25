@@ -21,8 +21,9 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Results.CallDiagram;
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Core.Results.CallDiagram,
+  Atlas.Vcl.Controls.ZoomView;
 
 type
   /// <summary>Nächste Ebene: Aufrufer bzw. Aufgerufene von AItem in Richtung ADirection.</summary>
@@ -30,7 +31,7 @@ type
     const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
   TAtlasCallOpen = reference to procedure(const AItem: TAtlasHierarchyItem);
 
-  TAtlasCallDiagramView = class(TCustomControl)
+  TAtlasCallDiagramView = class(TAtlasZoomView)
   private type
     /// <summary>Ziehen mit der Maus: läuft, schon bewegt, letzte Lage.</summary>
     TDrag = record
@@ -68,7 +69,7 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure DblClick; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
-    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
+    procedure ZoomAround(AFactor, AX, AY: Double); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -103,16 +104,27 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Forms,
-  Vcl.Themes,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.UI.Results.Strings;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.UI.Results.Strings,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Bildpunkte, ab denen ein Mausdruck als Ziehen gilt.</summary>
   cDragThreshold = 3;
   /// <summary>Unter dieser Vergrößerung keine Schrift mehr (unlesbar).</summary>
   cMinTextScale = 0.35;
+  /// <summary>Über dieser Vergrößerung wächst die Schrift nicht weiter.</summary>
+  cMaxTextScale = 1.5;
+  /// <summary>Maße bei 96 dpi und Vergrößerung 1: Innenrand und Rundung der Kästen, Höhe des Bogens zurück,
+  /// Pfeilspitze (Größe, mindestens in Bildpunkten), Abstand der Beschriftung, Breite der Linien.</summary>
+  cBoxPad = 8;
+  cBoxRadius = 8;
+  cBackArc = 14;
+  cArrowSize = 6;
+  cMinArrow = 3;
+  cCaptionGap = 8;
+  cLineWidth = 1.5;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -157,10 +169,9 @@ class function TCallPainter.Create(AView: TAtlasCallDiagramView): TCallPainter;
 begin
   Result.View := AView;
   Result.Canvas := AView.Canvas;
-  Result.Colors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(AView).GetSystemColor(
-    clWindow))));
+  Result.Colors := TAtlasUiTheme.WindowColors(AView);
   Result.Scale := AView.FView.Scale;
-  Result.Pad := Max(AView.ScaleValue(2), Px(8 * Result.Scale));
+  Result.Pad := Max(AView.ScaleValue(2), Px(cBoxPad * Result.Scale));
 end;
 
 function TCallPainter.EdgePoints(const AEdge: TAtlasCallEdge): TEdgePoints;
@@ -173,19 +184,19 @@ begin
   if AEdge.Back then
   begin
     // Bogen über beide Kästen zurück zum Vorfahren, wie in der HTML-Datei.
-    mTop := Min(mSource.Top, mTarget.Top) - Px(14 * Scale);
+    mTop := Min(mSource.Top, mTarget.Top) - Px(cBackArc * Scale);
     Result[0] := Point((mSource.Left + mSource.Right) div 2, mSource.Top);
     Result[1] := Point(Result[0].X, mTop);
-    Result[3] := Point((mTarget.Left + mTarget.Right) div 2, mTarget.Top);
-    Result[2] := Point(Result[3].X, mTop);
+    Result[High(Result)] := Point((mTarget.Left + mTarget.Right) div 2, mTarget.Top);
+    Result[2] := Point(Result[High(Result)].X, mTop);
   end
   else
   begin
     Result[0] := Point(mSource.Right, (mSource.Top + mSource.Bottom) div 2);
-    Result[3] := Point(mTarget.Left, (mTarget.Top + mTarget.Bottom) div 2);
-    mMid := (Result[0].X + Result[3].X) div 2;
+    Result[High(Result)] := Point(mTarget.Left, (mTarget.Top + mTarget.Bottom) div 2);
+    mMid := (Result[0].X + Result[High(Result)].X) div 2;
     Result[1] := Point(mMid, Result[0].Y);
-    Result[2] := Point(mMid, Result[3].Y);
+    Result[2] := Point(mMid, Result[High(Result)].Y);
   end;
 end;
 
@@ -196,7 +207,7 @@ begin
   Canvas.Pen.Style := psSolid;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := Canvas.Pen.Color;
-  mSize := Max(3, Px(6 * Scale));
+  mSize := Max(cMinArrow, Px(cArrowSize * Scale));
   if ABack then
   begin
     Canvas.Polygon([ATip, Point(ATip.X - mSize div 2, ATip.Y - mSize), Point(ATip.X + mSize div 2, ATip.Y - mSize)]);
@@ -224,7 +235,8 @@ begin
     mCaption := TAtlasResultsStrings.Fmt(TAtlasResultsTextId.CallDiagramImplementations, [AEdge.Implementations]);
   end;
   Canvas.Brush.Style := bsClear;
-  Canvas.TextOut(ATip.X - Canvas.TextWidth(mCaption) - Px(8 * Scale), ATip.Y - Canvas.TextHeight(mCaption) - 1,
+  Canvas.TextOut(ATip.X - Canvas.TextWidth(mCaption) - Px(cCaptionGap * Scale),
+    ATip.Y - Canvas.TextHeight(mCaption) - 1,
     mCaption);
 end;
 
@@ -248,13 +260,13 @@ begin
   else
   begin
     Canvas.Pen.Style := psSolid;
-    Canvas.Pen.Width := Max(1, Px(1.5 * Scale));
+    Canvas.Pen.Width := Max(1, Px(cLineWidth * Scale));
   end;
   Canvas.Brush.Style := bsClear;
   Canvas.PolyBezier(mPoints);
   // Pfeilspitze am Ziel.
-  DrawArrow(mPoints[3], AEdge.Back);
-  DrawEdgeCaption(AEdge, mPoints[3]);
+  DrawArrow(mPoints[High(mPoints)], AEdge.Back);
+  DrawEdgeCaption(AEdge, mPoints[High(mPoints)]);
 end;
 
 procedure TCallPainter.BoxText(const ARect: TRect; const AText: string);
@@ -273,7 +285,7 @@ begin
   Canvas.Brush.Color := ToColor(Colors.Surface);
   Canvas.Pen.Style := psDot;
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Px(8 * Scale), Px(8 * Scale));
+  Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Px(cBoxRadius * Scale), Px(cBoxRadius * Scale));
   if Scale < cMinTextScale then
   begin
     Exit;
@@ -341,7 +353,7 @@ begin
     Canvas.Pen.Color := ToColor(Colors.Accent);
     Canvas.Pen.Width := View.ScaleValue(2);
   end;
-  Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Px(8 * Scale), Px(8 * Scale));
+  Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Px(cBoxRadius * Scale), Px(cBoxRadius * Scale));
   if Scale >= cMinTextScale then
   begin
     DrawNodeTexts(ABox, ARect);
@@ -358,7 +370,7 @@ begin
   Canvas.Brush.Color := ToColor(Colors.Surface);
   Canvas.FillRect(View.ClientRect);
   Canvas.Font.Assign(View.Font);
-  Canvas.Font.Size := Max(1, Round(View.Font.Size * Min(Scale, 1.5)));
+  Canvas.Font.Size := Max(1, Round(View.Font.Size * Min(Scale, cMaxTextScale)));
   Canvas.Font.Color := ToColor(Colors.Muted);
   for mIndex := 0 to High(View.FLayout.Edges) do
   begin
@@ -513,9 +525,9 @@ begin
   inherited KeyDown(Key, Shift);
   case Key of
     VK_ADD, VK_OEM_PLUS:
-      ZoomBy(1.25);
+      ZoomBy(cKeyZoom);
     VK_SUBTRACT, VK_OEM_MINUS:
-      ZoomBy(1 / 1.25);
+      ZoomBy(1 / cKeyZoom);
     Ord('0'), VK_NUMPAD0:
       FitView;
     VK_RETURN:
@@ -528,21 +540,9 @@ begin
   Key := 0;
 end;
 
-function TAtlasCallDiagramView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
-var
-  mLocal: TPoint;
+procedure TAtlasCallDiagramView.ZoomAround(AFactor, AX, AY: Double);
 begin
-  Result := True;
-  mLocal := ScreenToClient(MousePos);
-  if WheelDelta > 0 then
-  begin
-    FView.ZoomAt(1.15, mLocal.X, mLocal.Y);
-  end
-  else
-  begin
-    FView.ZoomAt(1 / 1.15, mLocal.X, mLocal.Y);
-  end;
-  Invalidate;
+  FView.ZoomAt(AFactor, AX, AY);
 end;
 
 function TAtlasCallDiagramView.BoxRect(ABox: Integer): TRect;

@@ -77,14 +77,14 @@ uses
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.FormatArgs,
-  Shell.Workspace;
+  Core.Workspace;
 
 { TShellIdeArea }
 
@@ -158,7 +158,7 @@ end;
 
 function TShellIdeArea.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mProject: TProjectInfo;
   mContext: TIdeProjectContext;
   mName: string;

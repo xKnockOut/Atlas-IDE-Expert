@@ -83,6 +83,7 @@ Einstellungen: `completion.formatPlaceholders`
   - klassenbewusste Vorlagen (`prop`, `create`, `free`)
   - Postfix-Vorlagen (`Liste.forin`, `Obj.notnil`, `Obj.free`)
 - **Schnellbefehle** nach Enter, etwa `/uses Unit`, `/extract`, `/inline`, `/fix`, `/explain`, `/case`, `/helper`, `/test`, `/mock`, `/testcase`, `/dump`, `/assert`, `/component`, `/unit`, `/sortuses`, `/cleanuses`
+  - `/sortuses` gliedert die uses nach Herkunft: System, Delphi-Komponenten (Indy, FireDAC, DataSnap …), VCL/FMX, Bibliothek, Packages der Projektgruppe, Projekt; über jeder Gruppe ein Kommentar wie `{ System }` (#2794, `slashCommands.sortUsesOrder`, `usesGroupStyle`, für „uses aufräumen“ `sortUses: "origin"`)
 - **Erzeugen-Menü** (Alt+Einfg): Konstruktor, Properties, überschriebene Methoden, Interface-Methoden, Umschließen, Vorlagen
 - **Freigabe absichern:** nach `X := TFoo.Create;` ein Angebot für `try … finally X.Free; end;`
 
@@ -108,6 +109,7 @@ Einstellungen: `completion.formatPlaceholders`
   - Kommentar über dem Abschnitt einer Klasse (#1835, `typeComment`): `{ TKunde }` wie die IDE (Vorgabe), Trennlinie mit `// TKunde`, `{ TKunde: erster Satz der Doku }`, Region um alle Rümpfe oder keiner; ein vorhandener wird nicht verdoppelt
   - neue Rümpfe vorbefüllt (#1837, `bodyStubs`): `inherited` bei `override`, im Destruktor am Ende, Getter `Result := FName` und Setter `FName := AValue`
   - Umbenennen und „Klasse verschieben“ nehmen den Kommentar `{ TKunde }` mit (#1838)
+  - einheitliche Leerzeilen (#1839, `blankLines`): beim Anlegen und Ordnen genau eine Leerzeile zwischen zwei Rümpfen, vor und nach dem Klassenkommentar und vor `initialization`/`end.`; nur im betroffenen Bereich
 - var-Block pflegen (#644):
   - Variable an ihrer ersten Zuweisung zur Inline-Variablen machen und zurück
   - var-Abschnitt aufräumen (ungenutzte entfernen, nach erster Verwendung oder Namen sortieren, gleiche Typen zusammenfassen)

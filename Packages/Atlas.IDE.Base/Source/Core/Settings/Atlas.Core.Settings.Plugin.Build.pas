@@ -7,6 +7,7 @@
 interface
 
 uses
+  Atlas.Core.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const
@@ -14,6 +15,9 @@ const
   cMaxCheckDelay = 10000;
   cMinCheckMax = 200;
   cMaxCheckMax = 20000;
+  /// <summary>Vorgaben für die Prüfung beim Speichern: Wartezeit und Zeitgrenze in ms.</summary>
+  cDefaultCheckDelay = 2000;
+  cDefaultCheckMax = 1500;
   /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
   cMinTestsAffectedDepth = 1;
   cMaxTestsAffectedDepth = 5;
@@ -50,11 +54,20 @@ const
   cMaxTestsBoundaryMax = 200;
   cDefaultTestsBoundaryMax = 20;
   /// <summary>Taste „Zuletzt benutzte Testliste ausführen“ (#2167): Strg+Alt+R.</summary>
-  cDefaultTestsListsRunKey = $C052;
+  cDefaultTestsListsRunKey = cKeyCtrl + cKeyAlt + Ord('R');
   /// <summary>Grenzen und Vorgabe für tests.log.maxLines (#2168).</summary>
   cMinTestsLogMaxLines = 100;
   cMaxTestsLogMaxLines = 100000;
   cDefaultTestsLogMaxLines = 2000;
+  /// <summary>Grenzen und Vorgabe für assistants.context.selectionMax (#2050), in Zeichen.</summary>
+  cMinAssistantsContextSelectionMax = 0;
+  cMaxAssistantsContextSelectionMax = 50000;
+  cDefaultAssistantsContextSelectionMax = 4000;
+  /// <summary>Strg+Umschalt+Alt+K (TShortCut).</summary>
+  cDefaultAssistantsLinkMentionKey = $E000 + Ord('K');
+  cMinAssistantsLogMax = 50;
+  cMaxAssistantsLogMax = 5000;
+  cDefaultAssistantsLogMax = 500;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -77,6 +90,54 @@ type
     /// <summary>assistants.edit (#1888, #397): KI-Assistenten schreiben in offene Dateien über den Eingang des
     /// Plugins; aus = der MCP-Server bekommt „nicht angenommen“ und fasst offene Dateien nicht an.</summary>
     AssistantsEdit: Boolean;
+    /// <summary>debug.mcp (#1874): KI-Assistenten debuggen über die MCP-Werkzeuge debug_* in dieser IDE; aus = der
+    /// Eingang läuft nicht, die Werkzeuge melden „nicht angenommen“.</summary>
+    DebugMcp: Boolean;
+    /// <summary>debug.mcp.sideEffects: debug_evaluate darf Aufrufe auswerten.</summary>
+    DebugMcpSideEffects: Boolean;
+    /// <summary>debug.mcp.modify: debug_evaluate darf Werte ändern (Zuweisungen).</summary>
+    DebugMcpModify: Boolean;
+    /// <summary>debug.mcp.attach: eine Sitzung übernehmen, die der Benutzer gestartet hat.</summary>
+    DebugMcpAttach: Boolean;
+    /// <summary>debug.mcp.banner: Leiste, solange ein KI-Assistent den Debugger steuert.</summary>
+    DebugMcpBanner: Boolean;
+    /// <summary>assistants.banner (#1906): Feld „KI-Assistent aktiv“ im Statusfeld mit „Pause für KI“.</summary>
+    AssistantsBanner: Boolean;
+    /// <summary>assistants.context (#2050): Das Modul KI-Assistenten legt den Zustand der IDE (Datei, Cursor,
+    /// Methode, Auswahl, Projekt, letzter Build, Reiter) für get_ide_context ab; aus = keine Datei.</summary>
+    AssistantsContext: Boolean;
+    /// <summary>assistants.context.selection (#2050): markierten Text mitgeben; aus = nur der Bereich.</summary>
+    AssistantsContextSelection: Boolean;
+    /// <summary>assistants.context.selectionMax (#2050): höchstens so viele Zeichen der Auswahl,
+    /// cMinAssistantsContextSelectionMax bis cMaxAssistantsContextSelectionMax.</summary>
+    AssistantsContextSelectionMax: Integer;
+    /// <summary>assistants.instructionsHint (#2615): Hinweis in der Meldungsansicht, wenn nach dem Speichern der
+    /// atlas.json der Abschnitt in einer Anweisungsdatei für KI-Assistenten veraltet ist.</summary>
+    AssistantsInstructionsHint: Boolean;
+    /// <summary>assistants.link (#2377): RAD Studio als verbundene IDE für Kommandozeilen-Assistenten (WebSocket
+    /// nur auf 127.0.0.1, Lock-Datei, Werkzeuge der IDE); aus = kein Port, keine Lock-Datei.</summary>
+    AssistantsLink: Boolean;
+    /// <summary>assistants.link.shareSelection (#2377): Auswahl im Editor laufend an den Assistenten melden.
+    /// </summary>
+    AssistantsLinkShareSelection: Boolean;
+    /// <summary>assistants.link.diffPreview (#2377): Vorschläge des Assistenten als Vergleich zeigen und erst nach
+    /// der Entscheidung antworten; aus = openDiff wird nicht angeboten.</summary>
+    AssistantsLinkDiffPreview: Boolean;
+    /// <summary>assistants.link.mentionKey (#2377): Taste „Auswahl an den Assistenten“ (TShortCut, 0 = keine;
+    /// Vorgabe Strg+Umschalt+Alt+K).</summary>
+    AssistantsLinkMentionKey: Integer;
+    /// <summary>assistants.editHoldModified (#2605): Änderungen von KI-Assistenten an ungespeichert geänderten
+    /// Dateien zurückhalten, bis der Benutzer entscheidet; aus = ablehnen wie bisher.</summary>
+    AssistantsEditHoldModified: Boolean;
+    /// <summary>assistants.questionsInIde (#2620): Rückfragen von KI-Assistenten (ask_user) als Fenster in der IDE;
+    /// aus = das Werkzeug sagt, der Assistent soll im Client fragen.</summary>
+    AssistantsQuestionsInIde: Boolean;
+    /// <summary>assistants.log (#2049): Aufträge von KI-Assistenten in dieser Sitzung im Fenster
+    /// „Atlas-KI-Protokoll“ festhalten; aus = nichts festhalten.</summary>
+    AssistantsLog: Boolean;
+    /// <summary>assistants.log.max (#2049): höchstens so viele Einträge, cMinAssistantsLogMax bis
+    /// cMaxAssistantsLogMax.</summary>
+    AssistantsLogMax: Integer;
     /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE
     /// ruhig ist, über den Compiler der IDE (mit eingeschalteter Hintergrundcompilierung der IDE ohne zu
     /// blockieren). Aus = kein Bau beim Öffnen.</summary>
@@ -161,6 +222,9 @@ type
     TestsShowDuration: Boolean;
     /// <summary>Andockbares Fenster „Atlas-Tests“ mit allen Tests des Testprojekts (#1776, tests.window).</summary>
     TestsWindow: Boolean;
+    /// <summary>Fenster „Atlas-Tests“ nach einem Lauf mit Fehlschlägen oder Abbruch zeigen (#2467,
+    /// tests.window.openOnFailure).</summary>
+    TestsWindowOnFailure: Boolean;
     /// <summary>Testlisten im Fenster „Atlas-Tests“ (#2167, tests.lists).</summary>
     TestsLists: Boolean;
     /// <summary>Taste für die zuletzt benutzte Testliste (#2167, tests.lists.runKey; TShortCut, 0 = keine).</summary>
@@ -171,6 +235,9 @@ type
     /// <summary>Höchstens so viele Zeilen je Test im Protokoll (#2168, tests.log.maxLines), cMinTestsLogMaxLines bis
     /// cMaxTestsLogMaxLines.</summary>
     TestsLogMaxLines: Integer;
+    /// <summary>Letzten Testlauf je Testprojekt für KI-Assistenten ablegen (#2409, tests.lastRun; MCP-Werkzeug
+    /// get_last_tests).</summary>
+    TestsLastRun: Boolean;
     /// <summary>Ab dieser Dauer (Millisekunden) gilt ein Test als langsam (#1772, tests.slowMs), cMinTestsSlowMs bis
     /// cMaxTestsSlowMs.</summary>
     TestsSlowMs: Integer;
@@ -321,11 +388,29 @@ begin
   // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
   Result.CheckOnSave := False;
   Result.CompileOnSave := False;
-  Result.CheckOnSaveDelayMs := 2000;
-  Result.CheckOnSaveMaxMs := 1500;
+  Result.CheckOnSaveDelayMs := cDefaultCheckDelay;
+  Result.CheckOnSaveMaxMs := cDefaultCheckMax;
   Result.McpBuild := True;
   Result.AssistantsEnabled := True;
   Result.AssistantsEdit := True;
+  Result.DebugMcp := False;
+  Result.DebugMcpSideEffects := False;
+  Result.DebugMcpModify := False;
+  Result.DebugMcpAttach := False;
+  Result.DebugMcpBanner := True;
+  Result.AssistantsBanner := True;
+  Result.AssistantsContext := True;
+  Result.AssistantsContextSelection := True;
+  Result.AssistantsContextSelectionMax := cDefaultAssistantsContextSelectionMax;
+  Result.AssistantsInstructionsHint := True;
+  Result.AssistantsLink := False;
+  Result.AssistantsLinkShareSelection := True;
+  Result.AssistantsLinkDiffPreview := True;
+  Result.AssistantsLinkMentionKey := cDefaultAssistantsLinkMentionKey;
+  Result.AssistantsEditHoldModified := True;
+  Result.AssistantsQuestionsInIde := True;
+  Result.AssistantsLog := True;
+  Result.AssistantsLogMax := cDefaultAssistantsLogMax;
   Result.BuildOnOpen := False;
   Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
   Result.BuildOnOpenScope := TAtlasOpenBuildSettings.cScopeNames[TAtlasOpenBuildScope.All];
@@ -381,6 +466,7 @@ begin
   ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
+  AssistantsLinkMentionKey := EnsureRange(AssistantsLinkMentionKey, 0, $FFFF);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
   TestsCoveredByDepth := EnsureRange(TestsCoveredByDepth, cMinTestsCoveredByDepth, cMaxTestsCoveredByDepth);
   TestsUntestedWarnPercent := EnsureRange(TestsUntestedWarnPercent, cMinTestsUntestedWarnPercent,
@@ -395,6 +481,9 @@ begin
   TestsBoundaryMax := EnsureRange(TestsBoundaryMax, cMinTestsBoundaryMax, cMaxTestsBoundaryMax);
   TestsListsRunKey := EnsureRange(TestsListsRunKey, 0, $FFFF);
   TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
+  AssistantsContextSelectionMax := EnsureRange(AssistantsContextSelectionMax, cMinAssistantsContextSelectionMax,
+    cMaxAssistantsContextSelectionMax);
+  AssistantsLogMax := EnsureRange(AssistantsLogMax, cMinAssistantsLogMax, cMaxAssistantsLogMax);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -406,6 +495,24 @@ begin
   AIo.Flag('McpBuild', McpBuild);
   AIo.Flag('AssistantsEnabled', AssistantsEnabled);
   AIo.Flag('AssistantsEdit', AssistantsEdit);
+  AIo.Flag('DebugMcp', DebugMcp);
+  AIo.Flag('DebugMcpSideEffects', DebugMcpSideEffects);
+  AIo.Flag('DebugMcpModify', DebugMcpModify);
+  AIo.Flag('DebugMcpAttach', DebugMcpAttach);
+  AIo.Flag('DebugMcpBanner', DebugMcpBanner);
+  AIo.Flag('AssistantsBanner', AssistantsBanner);
+  AIo.Flag('AssistantsContext', AssistantsContext);
+  AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
+  AIo.Number('AssistantsContextSelectionMax', AssistantsContextSelectionMax);
+  AIo.Flag('AssistantsInstructionsHint', AssistantsInstructionsHint);
+  AIo.Flag('AssistantsLink', AssistantsLink);
+  AIo.Flag('AssistantsLinkShareSelection', AssistantsLinkShareSelection);
+  AIo.Flag('AssistantsLinkDiffPreview', AssistantsLinkDiffPreview);
+  AIo.Number('AssistantsLinkMentionKey', AssistantsLinkMentionKey);
+  AIo.Flag('AssistantsEditHoldModified', AssistantsEditHoldModified);
+  AIo.Flag('AssistantsQuestionsInIde', AssistantsQuestionsInIde);
+  AIo.Flag('AssistantsLog', AssistantsLog);
+  AIo.Number('AssistantsLogMax', AssistantsLogMax);
   AIo.Flag('BuildOnOpen', BuildOnOpen);
   AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
   AIo.Text('BuildOnOpenScope', BuildOnOpenScope);
@@ -460,10 +567,12 @@ begin
   TestsApprovalFiles := True;
   TestsShowDuration := True;
   TestsWindow := True;
+  TestsWindowOnFailure := True;
   TestsLists := True;
   TestsListsRunKey := cDefaultTestsListsRunKey;
   TestsLog := True;
   TestsLogMaxLines := cDefaultTestsLogMaxLines;
+  TestsLastRun := True;
   TestsSlowMs := cDefaultTestsSlowMs;
   TestsCaseTable := True;
   TestsBoundaryCases := True;
@@ -501,10 +610,12 @@ begin
   AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Flag('TestsWindow', TestsWindow);
+  AIo.Flag('TestsWindowOnFailure', TestsWindowOnFailure);
   AIo.Flag('TestsLists', TestsLists);
   AIo.Number('TestsListsRunKey', TestsListsRunKey);
   AIo.Flag('TestsLog', TestsLog);
   AIo.Number('TestsLogMaxLines', TestsLogMaxLines);
+  AIo.Flag('TestsLastRun', TestsLastRun);
   AIo.Number('TestsSlowMs', TestsSlowMs);
   AIo.Flag('TestsCaseTable', TestsCaseTable);
   AIo.Flag('TestsBoundaryCases', TestsBoundaryCases);

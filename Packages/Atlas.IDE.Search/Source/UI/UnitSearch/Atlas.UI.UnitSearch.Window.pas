@@ -41,11 +41,11 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.State,
   Atlas.Core.UnitSearch.UseUnit,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Painter;
 
@@ -110,8 +110,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Vcl.Graphics,
   Vcl.Clipbrd,
@@ -253,6 +253,21 @@ begin
   end;
 end;
 
+const
+  /// <summary>Wartezeit nach dem Wechsel der Zeile, bis die Vorschau lädt (ms).</summary>
+  cPreviewDelay = 150;
+  /// <summary>Einträge je Raste des Mausrads.</summary>
+  cWheelRows = 3;
+  /// <summary>Breite des Rands zum Vergrößern, bei 96 dpi.</summary>
+  cResizeEdge = 6;
+  // Erste Größe ohne gemerkte Lage, Abstand zum Rand des Monitors und kleinster Abstand oben, bei 96 dpi.
+  cStartWidth = 1000;
+  cStartHeight = 620;
+  cStartMargin = 40;
+  cStartTop = 20;
+  /// <summary>Die freie Höhe über dem Fenster ist ein Drittel der freien Höhe des Monitors.</summary>
+  cStartTopShare = 3;
+
 /// <summary>Rand zum Vergrößern unter APoint (HTTOPLEFT …); HTCLIENT im Inneren.</summary>
 function EdgeHit(const APoint: TPoint; AWidth, AHeight, AEdge: Integer): Integer;
 const
@@ -339,7 +354,7 @@ end;
 function TypeSpace(AData: TAtlasUnitSearchData; AShift: TShiftState): Boolean;
 begin
   Result := True;
-  if AData.CommitTypedFilter then
+  if AData.Filter.CommitTyped then
   begin
     Exit;
   end;
@@ -363,7 +378,7 @@ begin
   case AArea.Kind of
     TAtlasUnitSearchHit.Chip:
       begin
-        AData.ChipClicked(AArea.Value);
+        AData.Filter.ChipClicked(AArea.Value);
         AData.Refilter(True);
       end;
     TAtlasUnitSearchHit.Grouping:
@@ -379,7 +394,7 @@ begin
     TAtlasUnitSearchHit.Section:
       begin
         mSection := TAtlasPreviewSection(AArea.Value);
-        AData.State.Sections[mSection] := TAtlasPreviewSections.Toggled(AData.Preview.Sections[mSection]);
+        AData.State.Section[mSection] := TAtlasPreviewSections.Toggled(AData.Preview.Sections[mSection]);
       end;
     TAtlasUnitSearchHit.SectionSwitch:
       if TAtlasUseUnitSection(AArea.Value) <> AData.Use.Section then
@@ -406,8 +421,9 @@ constructor TAtlasUnitSearchWindow.CreateSearch(AOwner: TComponent; const AOptio
   AState: TAtlasUnitSearchState; const AColors: TAtlasColors);
 begin
   inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
   FData := TAtlasUnitSearchData.Create(AOptions, AState);
-  FData.Metrics.PPI := CurrentPPI;
+  FData.PPI := CurrentPPI;
   FPainter := TAtlasUnitSearchPainter.Create(FData, AColors);
   // Runde Ecken und Akzentrand vom Fenstermanager.
   Rounded := True;
@@ -417,7 +433,7 @@ begin
   Font.Assign(FPainter.Fonts.UI);
   FPreviewTimer := TTimer.Create(Self);
   FPreviewTimer.Enabled := False;
-  FPreviewTimer.Interval := 150;
+  FPreviewTimer.Interval := cPreviewDelay;
   FPreviewTimer.OnTimer := PreviewTick;
   FActionMenu := TPopupMenu.Create(Self);
   BuildActionMenu(FActionMenu, AOptions, MenuClick);
@@ -459,7 +475,7 @@ begin
   begin
     Exit;
   end;
-  FData.Metrics.PPI := CurrentPPI;
+  FData.PPI := CurrentPPI;
   FData.Layout(ClientWidth, ClientHeight);
   FData.EnsureVisible;
   Invalidate;
@@ -560,7 +576,7 @@ end;
 
 function TAtlasUnitSearchWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  FData.ScrollBy(-Sign(WheelDelta) * 3 * FData.Metrics.EntryHeight);
+  FData.ScrollBy(-Sign(WheelDelta) * cWheelRows * FData.Metrics.EntryHeight);
   Invalidate;
   Result := True;
 end;
@@ -658,14 +674,12 @@ begin
   end;
   if not FData.CurrentEntry(mIndex) then
   begin
-    FData.Preview.Data := Default(TAtlasUnitPreview);
-    FData.Preview.FileName := '';
+    FData.Preview.Show('', Default(TAtlasUnitPreview));
     Invalidate;
   end
   else if not SameText(FData.Preview.FileName, FData.Entries[mIndex].FileName) then
   begin
-    FData.Preview.FileName := FData.Entries[mIndex].FileName;
-    FData.Preview.Data := FEvents.OnPreview(FData.Entries[mIndex]);
+    FData.Preview.Show(FData.Entries[mIndex].FileName, FEvents.OnPreview(FData.Entries[mIndex]));
     Invalidate;
   end;
 end;
@@ -749,7 +763,7 @@ begin
       end;
     VK_BACK:
       begin
-        Result := FData.RemoveLast(ssCtrl in AShift);
+        Result := FData.Filter.RemoveLast(ssCtrl in AShift);
         if Result then
         begin
           Refilter(False);
@@ -797,10 +811,11 @@ begin
   inherited;
   mPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
   mHeader := FData.Metrics.HeaderHeight;
-  Message.Result := EdgeHit(mPoint, ClientWidth, ClientHeight, ScaleValue(6));
+  Message.Result := EdgeHit(mPoint, ClientWidth, ClientHeight, ScaleValue(cResizeEdge));
   // Freie Stellen im Kopf verschieben das Fenster.
   if (Message.Result = HTCLIENT) and (mPoint.Y < mHeader) and not FPainter.HitAt(mPoint.X, mPoint.Y, mArea) and
-    ((mPoint.Y < ScaleValue(7)) or (mPoint.Y > mHeader - ScaleValue(7))) then
+    ((mPoint.Y < ScaleValue(TAtlasUnitSearchPainter.cInputInset)) or
+    (mPoint.Y > mHeader - ScaleValue(TAtlasUnitSearchPainter.cInputInset))) then
   begin
     Message.Result := HTCAPTION;
   end;
@@ -856,10 +871,10 @@ begin
   end
   else
   begin
-    mWidth := Min(ScaleValue(1000), AArea.Width - ScaleValue(40));
-    mHeight := Min(ScaleValue(620), AArea.Height - ScaleValue(40));
-    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2, AArea.Top + Max(ScaleValue(20), (AArea.Height - mHeight) div
-      3), mWidth, mHeight);
+    mWidth := Min(ScaleValue(cStartWidth), AArea.Width - ScaleValue(cStartMargin));
+    mHeight := Min(ScaleValue(cStartHeight), AArea.Height - ScaleValue(cStartMargin));
+    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2, AArea.Top + Max(ScaleValue(cStartTop),
+      (AArea.Height - mHeight) div cStartTopShare), mWidth, mHeight);
   end;
   Show;
   SetFocus;

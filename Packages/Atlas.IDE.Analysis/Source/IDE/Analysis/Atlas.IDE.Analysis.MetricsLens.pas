@@ -73,10 +73,10 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Analysis.Strings,
@@ -84,7 +84,8 @@ uses
   Atlas.IDE.Editor.MetricsSource,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Theme.Style;
 
 { TAtlasAnalysisMetricsLens.TEvents }
 
@@ -104,16 +105,6 @@ function Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
   Result := ASettings.Enabled and ASettings.Metrics and ASettings.CodeLensMetrics and
     not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
-end;
-
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
 end;
 
 { TAtlasAnalysisMetricsLens }
@@ -149,7 +140,7 @@ begin
   FEventsRef := nil;
   if FWanted then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -178,6 +169,10 @@ end;
 
 procedure TAtlasAnalysisMetricsLens.PaintPill(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const ALine, AName, AText: string; AOver: Boolean);
+const
+  // Anteil der Tonfarbe an Rahmen und Füllung der Pille.
+  cPillBorder = 0.3;
+  cPillFill = 0.1;
 var
   mTailKey: string;
   mCell, mPill: TRect;
@@ -185,14 +180,14 @@ var
 begin
   mCell := TAtlasLensPill.CellAfter(AContext, ALine);
   mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
+  mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, mCell.Left, ARect.Top + 1);
   mTone := TAtlasColors.ForBackground(mBack).Muted;
   if AOver then
   begin
     mTone := TAtlasColors.ForBackground(mBack).Warn;
   end;
   mPill := TAtlasLensPill.Paint(AContext.Canvas, ARect, TAtlasLineTail.Start(Self, mTailKey, mCell.Left), AText,
-    TAtlasLensPillStyle.Create(mTone, mBack, 0.3, 0.1, []));
+    TAtlasLensPillStyle.Create(mTone, mBack, cPillBorder, cPillFill, []));
   TAtlasLineTail.Finish(Self, mTailKey, mPill.Right);
   TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensMetrics, AContext.FileName,
     AContext.LogicalLineNum - 1, AName), mPill, AContext.EditView.TopRow, ARect.Height);
@@ -316,7 +311,7 @@ begin
   begin
     TAtlasEditorMetricsSource.Want(cClient, TAtlasMetricsDemand.None);
   end;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 end.

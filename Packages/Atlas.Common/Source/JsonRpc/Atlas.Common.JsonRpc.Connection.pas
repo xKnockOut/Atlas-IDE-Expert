@@ -3,7 +3,8 @@
 // Nachrichtenschleife einer Verbindung.
 //
 //   Lese-Thread      liest Nachrichten vom Transport, führt $/cancelRequest sofort
-//                    aus und stellt alle übrigen Nachrichten in den Posteingang.
+//                    aus, gibt Antworten auf eigene wartende Anfragen an Outgoing
+//                    (#2620) und stellt alle übrigen Nachrichten in den Posteingang.
 //   Run (Aufrufer)   verarbeitet den Posteingang der Reihe nach: Benachrichtigungen
 //                    und normale Anfragen laufen hier, damit z. B. didChange in
 //                    der gesendeten Reihenfolge ankommt.
@@ -20,7 +21,8 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.JsonRpc.Dispatcher;
+  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.JsonRpc.Outgoing;
 
 type
   /// <summary>Meldet Fehler, die die Schleife abgefangen hat (z. B. für das Logging).</summary>
@@ -44,6 +46,7 @@ type
     FWorkTimeout: Cardinal;
     FOnLoopEnded: TProc;
     FUnfinishedWork: Boolean;
+    FOutgoing: IJsonRpcOutgoing;
     function LockedInbox: IInterface;
     procedure SetInbox(const AInbox: IInterface);
     procedure RunWork(const AWork: TProc);
@@ -85,6 +88,9 @@ type
     /// <summary>Die Schleife ist regulär zu Ende (Eingabe geschlossen oder Stop), bevor auf laufende
     /// Anfragen gewartet wird. Für Abschlussmeldungen, die ein ungeduldiger Client sonst abschneidet.</summary>
     property OnLoopEnded: TProc read FOnLoopEnded write FOnLoopEnded;
+    /// <summary>Eigene Anfragen, auf deren Antwort ein Aufrufer wartet (#2620); vor Run setzen, darf nil sein.
+    /// Endet die Eingabe, kehren Wartende zurück.</summary>
+    property Outgoing: IJsonRpcOutgoing read FOutgoing write FOutgoing;
   end;
 
 implementation
@@ -324,7 +330,7 @@ end;
 
 // Liest eine Nachricht in die Inbox; False, wenn die Eingabe geschlossen ist.
 function ReadIncoming(const ATransport: IJsonRpcTransport; const APending: IJsonRpcPendingRequests;
-  const AInbox: IJsonRpcInbox): Boolean;
+  const AOutgoing: IJsonRpcOutgoing; const AInbox: IJsonRpcInbox): Boolean;
 var
   mItem: TJsonRpcInboxItem;
   mIncoming: TJSONObject;
@@ -335,6 +341,10 @@ begin
   except
     on EJsonRpcTransportClosed do
     begin
+      if AOutgoing <> nil then
+      begin
+        AOutgoing.CloseAll;
+      end;
       AInbox.Put(InboxItem(ikClosed));
       Exit(False);
     end;
@@ -354,6 +364,11 @@ begin
       FreeAndNil(mIncoming);
       Exit;
     end;
+    // Antwort auf eine eigene Anfrage: gehört jetzt dem Wartenden.
+    if (AOutgoing <> nil) and AOutgoing.Observe(mIncoming) then
+    begin
+      Exit;
+    end;
   except
     FreeAndNil(mIncoming);
     raise;
@@ -368,14 +383,16 @@ end;
 // dann sicher endet, wenn Run nicht auf ihn warten konnte (blockierendes stdin).
 // Er gibt sich nicht selbst frei: Run wartet auf ihn (ReleaseReader).
 function StartReader(const ATransport: IJsonRpcTransport; const APending: IJsonRpcPendingRequests;
-  const AInbox: IJsonRpcInbox): TThread;
+  const AOutgoing: IJsonRpcOutgoing; const AInbox: IJsonRpcInbox): TThread;
 var
   mTransport: IJsonRpcTransport;
   mPending: IJsonRpcPendingRequests;
+  mOutgoing: IJsonRpcOutgoing;
   mInbox: IJsonRpcInbox;
 begin
   mTransport := ATransport;
   mPending := APending;
+  mOutgoing := AOutgoing;
   mInbox := AInbox;
   Result := TThread.CreateAnonymousThread(
     procedure
@@ -384,15 +401,18 @@ begin
     begin
       try
         try
-          while not mInbox.IsClosed and ReadIncoming(mTransport, mPending, mInbox) do
+          while not mInbox.IsClosed and ReadIncoming(mTransport, mPending, mOutgoing, mInbox) do
           begin
             // weiterlesen
           end;
         except
           // Zerstörter Nachrichtenstrom: Run löst den Fehler erneut aus.
-          // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
           on Exception do
           begin
+            if mOutgoing <> nil then
+            begin
+              mOutgoing.CloseAll;
+            end;
             mItem := InboxItem(ikFailed);
             mItem.Error := Exception(AcquireExceptionObject);
             mInbox.Put(mItem);
@@ -410,8 +430,10 @@ end;
 // selbst frei, kurz nach ReaderDone und damit nach dem Ende von Run; was er
 // bis dahin hielt, überlebte Run. Hängt er nach ATimeout noch im Lesen
 // (blockierendes stdin), gibt er sich bei seiner Rückkehr selbst frei. Liest
-// er FreeOnTerminate vor dem Setzen, bleibt höchstens ein Leck (wie
-// TAtlasThreadList.StopAll im Plugin).
+// er FreeOnTerminate vor dem Setzen, bleibt höchstens ein Leck. Das genügt,
+// weil die Verbindung nur im Serverprozess läuft: Er endet als Ganzes, kein
+// Package mit dem Code des Threads wird vorher entladen. Im Plugin gehen
+// solche Threads an TAtlasOverdueThreads.
 procedure ReleaseReader(AReader: TThread; const AInbox: IJsonRpcInbox; ATimeout: Cardinal);
 begin
   if AReader = nil then
@@ -491,7 +513,6 @@ begin
     AWork();
   except
     // Wie bei Benachrichtigungen: melden und weiterarbeiten.
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
     on E: Exception do
       ReportError(E);
   end;
@@ -535,7 +556,6 @@ begin
     mResponse := FDispatcher.DispatchMessage(AMessage, AQueueMs);
   except
     // Fehler eines Benachrichtigungs-Handlers: melden und weiterarbeiten.
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
     on E: Exception do
     begin
       ReportError(E);
@@ -567,7 +587,6 @@ begin
           AResponse.Free;
         end;
       except
-        // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
         on E: Exception do
           if Assigned(mOnError) then
             try
@@ -635,6 +654,10 @@ var
   // Schließt die Inbox, bricht offene Anfragen ab und nimmt eigene Scheduler und Responder zurück.
   procedure FinishRun;
   begin
+    if FOutgoing <> nil then
+    begin
+      FOutgoing.CloseAll;
+    end;
     SetInbox(nil);
     mInbox.Close;
     FDispatcher.PendingRequests.CancelAll;
@@ -679,7 +702,7 @@ begin
   mFailure := nil;
   mReader := nil;
   try
-    mReader := StartReader(FTransport, FDispatcher.PendingRequests, mInbox);
+    mReader := StartReader(FTransport, FDispatcher.PendingRequests, FOutgoing, mInbox);
     while not FStopped and HandleItem(mInbox.Take) do
     begin
       // nächste Nachricht

@@ -9,7 +9,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.ContextMenuGroups,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -108,11 +108,10 @@ procedure TAtlasSettingsCommandsPart.BuildContextMenu;
 const
   // Eine Zeile Text über den Häkchen der Untermenüs.
   cGroupsLabelHeight = 20;
-  cTexts: array[TAtlasContextMenuGroup] of TAtlasSettingsTextId = (
-    TAtlasSettingsTextId.SettingsContextGroupNavigation, TAtlasSettingsTextId.SettingsContextGroupEdit,
-    TAtlasSettingsTextId.SettingsContextGroupAnalysis, TAtlasSettingsTextId.SettingsContextGroupFindings,
-    TAtlasSettingsTextId.SettingsContextGroupDebug, TAtlasSettingsTextId.SettingsContextGroupTests,
-    TAtlasSettingsTextId.SettingsContextGroupNotes);
+  cTexts: array[TAtlasContextMenuGroup] of TAtlasSettingsTextId = (TAtlasSettingsTextId.SettingsContextGroupNavigation,
+    TAtlasSettingsTextId.SettingsContextGroupEdit, TAtlasSettingsTextId.SettingsContextGroupAnalysis,
+    TAtlasSettingsTextId.SettingsContextGroupFindings, TAtlasSettingsTextId.SettingsContextGroupDebug,
+    TAtlasSettingsTextId.SettingsContextGroupTests, TAtlasSettingsTextId.SettingsContextGroupNotes);
 var
   mGroup: TAtlasContextMenuGroup;
 begin
@@ -127,12 +126,14 @@ begin
   // Hauptmenü Atlas: Debuggen und Haltepunkte nur mit offenem Projekt.
   BindCheck('AtlasMenuContextual',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAtlasMenuContextual)));
+  // Ansicht › Atlas: alle andockbaren Atlas-Fenster.
+  BindCheck('AtlasViewMenu', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAtlasViewMenu)));
 end;
 
 procedure TAtlasSettingsCommandsPart.Build;
 begin
   // Editorbefehle (#399): ein Vorrang für alle.
-  AddSheet(TAtlasTextId.SettingsTabCommands);
+  AddSheet(TAtlasSettingsTextId.SettingsTabCommands);
   BindKey('ActionsKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorActions)));
   BindKey('ExpandKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorExpand)));
   BindKey('ShrinkKey', AddKey(TAtlasStrings.Text(TAtlasTextId.EditorShrink)));

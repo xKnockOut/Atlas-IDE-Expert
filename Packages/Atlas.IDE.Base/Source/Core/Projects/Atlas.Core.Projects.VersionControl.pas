@@ -11,7 +11,7 @@
 // - Resolve (für ein Projekt) und ResolveFolder (für einen Ordner, z. B. die
 //   Änderungsmarken einer Unit): 1. Abschnitt vcs der .atlas (je Feld: was
 //   die Datei setzt, gilt), 2.–4. persönliche Zeile über die gemeinsame
-//   Auflösung Atlas.Core.Projects.Matching (dieselbe wie die
+//   Auflösung Atlas.Plugin.Projects.Matching (dieselbe wie die
 //   Tracker-Zuordnung #1261), 5. globales vcs.provider.
 // - Covered: persönliche Zeile, die für ein Projekt mit Abschnitt vcs in der
 //   .atlas gälte („von .atlas überdeckt“).
@@ -20,7 +20,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.Core.VersionControl.Contract;
 
 type
@@ -270,6 +270,9 @@ begin
 end;
 
 class function TAtlasVcsProjects.ToJson(const AItems: TArray<TAtlasVcsProjectMapping>): string;
+const
+  cMatchAndProvider = '{"match": %s, "provider": %s';
+  cMainBranch = ', "mainBranch": ';
 var
   mItem: TAtlasVcsProjectMapping;
   mParts: TArray<string>;
@@ -282,11 +285,10 @@ begin
     begin
       Continue;
     end;
-    mText := '{"match": ' + TJsonText.Quote(mItem.Match) + ', "provider": ' +
-      TJsonText.Quote(ProviderText(mItem.Provider));
+    mText := Format(cMatchAndProvider, [TJsonText.Quote(mItem.Match), TJsonText.Quote(ProviderText(mItem.Provider))]);
     if mItem.MainBranch <> '' then
     begin
-      mText := mText + ', "mainBranch": ' + TJsonText.Quote(mItem.MainBranch);
+      mText := mText + cMainBranch + TJsonText.Quote(mItem.MainBranch);
     end;
     mParts := mParts + [mText + '}'];
   end;

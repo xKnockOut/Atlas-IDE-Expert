@@ -13,7 +13,7 @@ uses
   System.Generics.Collections,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Build.IdleGate;
 
 type

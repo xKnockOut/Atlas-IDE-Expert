@@ -72,7 +72,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Localization.Texts,
@@ -119,26 +119,10 @@ type
   TUnclearResult = (Value, Pointer_, Unknown);
   {$SCOPEDENUMS OFF}
 
-  TSourceFile = class
+  TSourceFile = class(TLspSourceFile)
   public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    OwnsTree: Boolean;
     Edits: TArray<TTextEdit>;
-    destructor Destroy; override;
   end;
-
-{ TSourceFile }
-
-destructor TSourceFile.Destroy;
-begin
-  if OwnsTree then
-  begin
-    Tree.Free;
-  end;
-  inherited;
-end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
@@ -409,7 +393,7 @@ procedure CheckParses(AUnit: TSourceFile);
 var
   mTree: TSyntaxTree;
 begin
-  mTree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(AUnit.Text, AUnit.Edits));
+  mTree := TSyntaxTreeCache.Parse(TTextChanges.Apply(AUnit.Text, AUnit.Edits));
   try
     if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
     begin

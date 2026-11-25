@@ -11,19 +11,19 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  Atlas.UI.Popup.Window;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Vcl.Popup.Window;
 
 type
-  TAtlasStepsBar = class(TAtlasPopupWindow)
+  TAtlasStepsBar = class(TAtlasLayoutPopupWindow)
   public const
     cGap = 4;
     cPad = 10;
   private
     FTitle: string;
     FText: string;
-    function Layout(ADraw: Boolean): TSize;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Zeigt ATitle und AText mit der rechten oberen Ecke an APoint (Bildschirm); schon sichtbar, nur
@@ -33,6 +33,9 @@ type
     /// <summary>Rechte obere Ecke im aktiven Fenster der IDE (Bildschirm), etwas eingerückt; auch für andere
     /// Fenster des Debuggers (#869).</summary>
     class function ActiveCorner: TPoint; static;
+    /// <summary>Neue Farben AColors für ABar, wenn sie gezeigt wird; nil oder verborgen: nichts (beim Zeigen
+    /// holt der Besitzer die Farben ohnehin).</summary>
+    class procedure Recolor(ABar: TAtlasStepsBar; const AColors: TAtlasColors); static;
     property Text: string read FText;
   end;
 
@@ -43,8 +46,8 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   /// <summary>Abstand vom rechten bzw. oberen Rand des aktiven Fensters (in cPad).</summary>
@@ -58,15 +61,6 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Debugger;
   SetAccessible(cUiaToolTipControlType, '');
-end;
-
-procedure TAtlasStepsBar.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 function TAtlasStepsBar.Layout(ADraw: Boolean): TSize;
@@ -137,6 +131,14 @@ begin
   mRect := mForm.BoundsRect;
   Result := TPoint.Create(mRect.Right - mForm.ScaleValue(cPad * cCornerRight),
     mRect.Top + mForm.ScaleValue(cPad * cCornerTop));
+end;
+
+class procedure TAtlasStepsBar.Recolor(ABar: TAtlasStepsBar; const AColors: TAtlasColors);
+begin
+  if (ABar <> nil) and ABar.IsShown then
+  begin
+    ABar.Colors := AColors;
+  end;
 end;
 
 end.

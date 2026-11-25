@@ -105,7 +105,12 @@ implementation
 uses
   System.Math,
   System.Generics.Defaults,
-  Atlas.Core.Completion.Matching;
+  Atlas.Core.Completion.Matching,
+  Atlas.Core.Editor.SourceFiles;
+
+const
+  /// <summary>Länge der Wurzel eines Laufwerkspfads („C:\“).</summary>
+  cDriveRootLength = 3;
 
 { TAtlasWelcomeHit }
 
@@ -324,17 +329,15 @@ begin
 end;
 
 class function TAtlasWelcomeSearch.IsProjectFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(Trim(AFileName)));
-  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.groupproj');
+  Result := TAtlasSourceFiles.IsProjectFile(Trim(AFileName));
 end;
 
 /// <summary>Absoluter Windows-Pfad (C:\… oder \\Server\…); relative Einträge taugen nicht zum Öffnen.</summary>
 function IsAbsolute(const APath: string): Boolean;
 begin
-  Result := ((Length(APath) >= 3) and (APath[2] = ':') and CharInSet(APath[3], ['\', '/'])) or
+  Result := ((Length(APath) >= cDriveRootLength) and (APath[cDriveRootLength - 1] = ':') and
+    CharInSet(APath[cDriveRootLength], ['\', '/'])) or
     APath.StartsWith('\\');
 end;
 

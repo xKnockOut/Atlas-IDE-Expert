@@ -40,6 +40,9 @@ type
     constructor Create(const AValue: T);
   end;
 
+  /// <summary>Prüft eine Routine (RoutineDecl mit Rumpf).</summary>
+  TRuleRoutineVisit = reference to procedure(ARoutine: TSyntaxNode);
+
   /// <summary>Typisierte Zugriffe auf den Ableitungscache.</summary>
   TRuleDerived = class
   public
@@ -57,8 +60,16 @@ type
     /// gleichzeitig einen zweiten Resolver braucht (ResolveNameFrom setzt den Zustand zurück), legt den
     /// zweiten selbst an.</summary>
     class function Resolver(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TNameResolver; static;
+    /// <summary>Für Regeln, die den Resolver erst bei Bedarf holen: Ist AResolver nil, Cache des Laufs nach ACache
+    /// (hält ihn, solange AResolver benutzt wird), Resolver nach AResolver und dessen PinTree auf den Baum von
+    /// AContext unter AFileName. Sonst nichts. UnpinTree bleibt Sache des Aufrufers.</summary>
+    class procedure EnsurePinnedResolver(var ACache: IRuleDerivedCache; var AResolver: TNameResolver;
+      const AContext: TRuleContext; const AFileName: string); static;
     /// <summary>Alle RoutineDecl mit Rumpf, auch lokale, in Baumreihenfolge.</summary>
     class function Routines(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TArray<TSyntaxNode>; static;
+    /// <summary>AVisit für jede Routine aus Routines, in Baumreihenfolge.</summary>
+    class procedure EachRoutine(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
+      const AVisit: TRuleRoutineVisit); static;
     /// <summary>TFlowSignatures.FromTree der Datei; nil ohne Baum.</summary>
     class function FlowSignatures(const ACache: IRuleDerivedCache;
       const AContext: TRuleContext): TFlowSignatureLookup; static;
@@ -66,6 +77,9 @@ type
     /// wie Abort (NoReturnLookup). Gehört dem Cache, nie freigeben.</summary>
     class function Graph(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
       ARoutine: TSyntaxNode): TControlFlowGraph; static;
+    /// <summary>Ist der Graph von ARoutine vollständig? Legt AGraph beim ersten Aufruf über Graph an.</summary>
+    class function GraphComplete(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
+      ARoutine: TSyntaxNode; var AGraph: TControlFlowGraph): Boolean; static;
     /// <summary>Kennt die Datei oder der Index die Routine AName (Kurzname) nur als noreturn? Eine Deklaration in
     /// der Datei entscheidet allein; sonst müssen alle Symbole dieses Namens im Index noreturn tragen. Antworten
     /// werden je Datei gemerkt.</summary>
@@ -255,6 +269,17 @@ begin
   ACache.Put(cKeyResolver, Result);
 end;
 
+class procedure TRuleDerived.EnsurePinnedResolver(var ACache: IRuleDerivedCache; var AResolver: TNameResolver;
+  const AContext: TRuleContext; const AFileName: string);
+begin
+  if AResolver = nil then
+  begin
+    ACache := Open(AContext);
+    AResolver := Resolver(ACache, AContext);
+    AResolver.PinTree(AContext.Tree, AFileName);
+  end;
+end;
+
 class function TRuleDerived.Routines(const ACache: IRuleDerivedCache;
   const AContext: TRuleContext): TArray<TSyntaxNode>;
 var
@@ -285,6 +310,17 @@ begin
     end;
   end;
   ACache.Put(cKeyRoutines, TRuleDerivedValue<TArray<TSyntaxNode>>.Create(Result));
+end;
+
+class procedure TRuleDerived.EachRoutine(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
+  const AVisit: TRuleRoutineVisit);
+var
+  mRoutine: TSyntaxNode;
+begin
+  for mRoutine in Routines(ACache, AContext) do
+  begin
+    AVisit(mRoutine);
+  end;
 end;
 
 class function TRuleDerived.FlowSignatures(const ACache: IRuleDerivedCache;
@@ -319,6 +355,16 @@ begin
   mLookup := FlowSignatures(ACache, AContext);
   Result := TControlFlowGraph.Build(ARoutine, mLookup, NoReturnLookup(ACache, AContext));
   ACache.Put(mKey, Result);
+end;
+
+class function TRuleDerived.GraphComplete(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
+  ARoutine: TSyntaxNode; var AGraph: TControlFlowGraph): Boolean;
+begin
+  if AGraph = nil then
+  begin
+    AGraph := Graph(ACache, AContext, ARoutine);
+  end;
+  Result := AGraph.Complete;
 end;
 
 class function TRuleDerived.NoReturnLookup(const ACache: IRuleDerivedCache;

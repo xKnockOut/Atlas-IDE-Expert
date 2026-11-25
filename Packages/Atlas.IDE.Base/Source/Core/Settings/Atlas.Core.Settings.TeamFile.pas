@@ -32,6 +32,8 @@
 //                  "anchor": "TKunde.Speichern"}],
 //      "launchGroups": [{"name": "Server + Client", "items": [          #867
 //        {"project": "Server\\Server.dproj", "wait": "port", "value": 8080}]}],
+//      "exceptionRules": [{"class": "EConvertError",                    #838
+//        "location": "Bericht.Druck.*", "action": "continue"}],
 //      "debugDisplayRules": {                                            #854
 //        "FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})",
 //        "TKunde": {"template": "{Name}, {Ort}", "children": ["Name", "Ort"]}}}
@@ -190,6 +192,9 @@ type
     /// <summary>Startverbünde (#867) als JSON-Text des Arrays "launchGroups"; das Modul Debugger liest ihn.
     /// '' = keine (oder mit Zugangsdaten verworfen).</summary>
     LaunchGroups: string;
+    /// <summary>Exception-Regeln des Projekts (#838) als JSON-Text des Arrays "exceptionRules"; das Modul
+    /// Debugger liest ihn. '' = keine.</summary>
+    ExceptionRules: string;
     Issues: TArray<TAtlasTeamIssue>;
     /// <summary>Es gibt eine Projektdatei (gültig oder nicht).</summary>
     function Exists: Boolean;
@@ -208,6 +213,7 @@ type
     cFileName = '.atlas';
     cDisplayRulesKey = 'debugDisplayRules';
     cLaunchGroupsKey = 'launchGroups';
+    cExceptionRulesKey = 'exceptionRules';
     cCurrentVersion = 1;
   public
     /// <summary>Projektdatei zum Ordner einer .dproj ohne Projektgruppe (siehe Kopf); '' ohne.</summary>
@@ -252,7 +258,7 @@ uses
   Atlas.Text.Jsonc,
   Atlas.Text.Checkin,
   Atlas.Text.DebugDisplay,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 const
   cNamingKeys: array[TAtlasNamingKind] of string = ('field', 'parameter', 'local', 'constant');
@@ -356,11 +362,8 @@ begin
 end;
 
 function IsHttpUrl(const AText: string): Boolean;
-var
-  mLower: string;
 begin
-  mLower := LowerCase(AText);
-  Result := (Copy(mLower, 1, 7) = 'http://') or (Copy(mLower, 1, 8) = 'https://');
+  Result := StartsText('http://', AText) or StartsText('https://', AText);
 end;
 
 { TAtlasTeamIssue }
@@ -482,7 +485,8 @@ type
     procedure ReadVcs(AValue: TJSONValue);
     procedure ReadHidden(AValue: TJSONValue);
     procedure ReadDisplayRules(AValue: TJSONValue);
-    procedure ReadLaunchGroups(AValue: TJSONValue);
+    /// <summary>Array, das ein Modul selbst prüft, als JSON-Text; '' bei falschem Typ oder Zugangsdaten.</summary>
+    function ArrayText(AValue: TJSONValue; const AKey: string): string;
     procedure ReadVersion(AValue: TJSONValue);
   public
     constructor Create(const AFileName, ARoot: string);
@@ -744,34 +748,30 @@ end;
 
 function TTeamReader.ReadProfileKey(const AKey, APath: string; AValue: TJSONValue;
   var AProfile: TAtlasStartProfile): Boolean;
+const
+  cName = 0;
+  cParameters = 1;
+  cWorkingDir = 2;
+  cHost = 3;
+  cEnvironment = 4;
 begin
-  Result := True;
   if IsCredential(AKey, APath) then
   begin
-    Result := False;
-  end
-  else if AKey = 'name' then
-  begin
-    Result := ReadString(AValue, APath, AProfile.Name);
-  end
-  else if AKey = 'parameters' then
-  begin
-    Result := ReadParameters(AValue, APath, AProfile.Parameters);
-  end
-  else if AKey = 'workingDir' then
-  begin
-    Result := ReadPath(AValue, APath, AProfile.WorkingDir);
-  end
-  else if AKey = 'host' then
-  begin
-    Result := ReadPath(AValue, APath, AProfile.Host);
-  end
-  else if AKey = 'environment' then
-  begin
-    Result := ReadEnvironment(AValue, APath, AProfile.Environment);
-  end
+    Exit(False);
+  end;
+  Result := True;
+  case IndexStr(AKey, ['name', 'parameters', 'workingDir', 'host', 'environment']) of
+    cName:
+      Result := ReadString(AValue, APath, AProfile.Name);
+    cParameters:
+      Result := ReadParameters(AValue, APath, AProfile.Parameters);
+    cWorkingDir:
+      Result := ReadPath(AValue, APath, AProfile.WorkingDir);
+    cHost:
+      Result := ReadPath(AValue, APath, AProfile.Host);
+    cEnvironment:
+      Result := ReadEnvironment(AValue, APath, AProfile.Environment);
   else
-  begin
     Report(TAtlasTeamIssueKind.UnknownKey, APath);
     ScanCredentials(AValue, APath);
   end;
@@ -900,26 +900,23 @@ begin
 end;
 
 function TTeamReader.ReadCiKey(const AKey, APath: string; AValue: TJSONValue; var ACi: TAtlasTeamCi): Boolean;
+const
+  cProvider = 0;
+  cUrl = 1;
+  cJob = 2;
+  cMultibranch = 3;
 begin
   Result := True;
-  if AKey = 'provider' then
-  begin
-    Result := ReadProvider(AValue, APath, ['jenkins'], ACi.Provider);
-  end
-  else if AKey = 'url' then
-  begin
-    ReadUrl(AValue, APath, ACi.Url);
-  end
-  else if AKey = 'job' then
-  begin
-    ReadString(AValue, APath, ACi.Job);
-  end
-  else if AKey = 'multibranch' then
-  begin
-    ReadBool(AValue, APath, ACi.Multibranch);
-  end
+  case IndexStr(AKey, ['provider', 'url', 'job', 'multibranch']) of
+    cProvider:
+      Result := ReadProvider(AValue, APath, ['jenkins'], ACi.Provider);
+    cUrl:
+      ReadUrl(AValue, APath, ACi.Url);
+    cJob:
+      ReadString(AValue, APath, ACi.Job);
+    cMultibranch:
+      ReadBool(AValue, APath, ACi.Multibranch);
   else
-  begin
     Report(TAtlasTeamIssueKind.UnknownKey, APath);
     ScanCredentials(AValue, APath);
   end;
@@ -951,78 +948,71 @@ begin
 end;
 
 function TTeamReader.ReadListKey(const AKey: string; AValue: TJSONValue): Boolean;
+const
+  cSnippets = 0;
+  cSqlTargets = 1;
+  cFileMethods = 2;
+  cMainThreadExceptions = 3;
 begin
   Result := True;
-  if AKey = 'snippets' then
-  begin
-    ReadPath(AValue, AKey, FTeam.Snippets);
-  end
-  else if AKey = 'sqlTargets' then
-  begin
-    FTeam.SqlTargets := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
-  end
-  else if AKey = 'fileMethods' then
-  begin
-    FTeam.FileMethods := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
-  end
-  else if AKey = 'mainThreadExceptions' then
-  begin
-    FTeam.MainThreadExceptions := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
-  end
+  case IndexStr(AKey, ['snippets', 'sqlTargets', 'fileMethods', 'mainThreadExceptions']) of
+    cSnippets:
+      ReadPath(AValue, AKey, FTeam.Snippets);
+    cSqlTargets:
+      FTeam.SqlTargets := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
+    cFileMethods:
+      FTeam.FileMethods := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
+    cMainThreadExceptions:
+      FTeam.MainThreadExceptions := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
   else
-  begin
     Result := False;
   end;
 end;
 
 procedure TTeamReader.ReadKey(const AKey: string; AValue: TJSONValue);
+const
+  cVersion = 0;
+  cNaming = 1;
+  cFormatFunctions = 2;
+  cStartProfiles = 3;
+  cCi = 4;
+  cTracker = 5;
+  cVcs = 6;
+  cHidden = 7;
+  cDisplayRules = 8;
+  cLaunchGroups = 9;
+  cExceptionRules = 10;
 begin
   if ReadListKey(AKey, AValue) then
   begin
     Exit;
   end;
-  if AKey = 'version' then
-  begin
-    ReadVersion(AValue);
-  end
-  else if AKey = 'naming' then
-  begin
-    ReadNaming(AValue);
-  end
-  else if AKey = 'formatFunctions' then
-  begin
-    ReadFormatFunctions(AValue);
-  end
-  else if AKey = 'startProfiles' then
-  begin
-    ReadStartProfiles(AValue);
-  end
-  else if AKey = 'ci' then
-  begin
-    ReadCi(AValue);
-  end
-  else if AKey = 'tracker' then
-  begin
-    ReadTracker(AValue);
-  end
-  else if AKey = 'vcs' then
-  begin
-    ReadVcs(AValue);
-  end
-  else if AKey = TAtlasHiddenPlaces.cKey then
-  begin
-    ReadHidden(AValue);
-  end
-  else if AKey = TAtlasTeamFile.cDisplayRulesKey then
-  begin
-    ReadDisplayRules(AValue);
-  end
-  else if AKey = TAtlasTeamFile.cLaunchGroupsKey then
-  begin
-    ReadLaunchGroups(AValue);
-  end
+  case IndexStr(AKey, ['version', 'naming', 'formatFunctions', 'startProfiles', 'ci', 'tracker', 'vcs',
+    TAtlasHiddenPlaces.cKey, TAtlasTeamFile.cDisplayRulesKey, TAtlasTeamFile.cLaunchGroupsKey,
+    TAtlasTeamFile.cExceptionRulesKey]) of
+    cVersion:
+      ReadVersion(AValue);
+    cNaming:
+      ReadNaming(AValue);
+    cFormatFunctions:
+      ReadFormatFunctions(AValue);
+    cStartProfiles:
+      ReadStartProfiles(AValue);
+    cCi:
+      ReadCi(AValue);
+    cTracker:
+      ReadTracker(AValue);
+    cVcs:
+      ReadVcs(AValue);
+    cHidden:
+      ReadHidden(AValue);
+    cDisplayRules:
+      ReadDisplayRules(AValue);
+    cLaunchGroups:
+      FTeam.LaunchGroups := ArrayText(AValue, AKey);
+    cExceptionRules:
+      FTeam.ExceptionRules := ArrayText(AValue, AKey);
   else
-  begin
     Report(TAtlasTeamIssueKind.UnknownKey, AKey);
     ScanCredentials(AValue, AKey);
   end;
@@ -1356,21 +1346,23 @@ begin
   end;
 end;
 
-procedure TTeamReader.ReadLaunchGroups(AValue: TJSONValue);
+function TTeamReader.ArrayText(AValue: TJSONValue; const AKey: string): string;
 var
   mIssues: Integer;
 begin
+  Result := '';
   if not (AValue is TJSONArray) then
   begin
-    Report(TAtlasTeamIssueKind.WrongType, TAtlasTeamFile.cLaunchGroupsKey);
+    Report(TAtlasTeamIssueKind.WrongType, AKey);
     Exit;
   end;
-  // Inhalt prüft das Modul Debugger; hier nur: keine Zugangsdaten (dann gilt der ganze Wert nicht).
+  // Inhalt prüft das Modul (Startverbünde, Exception-Regeln); hier nur: keine Zugangsdaten (dann gilt der ganze
+  // Wert nicht).
   mIssues := Length(FTeam.Issues);
-  ScanCredentials(AValue, TAtlasTeamFile.cLaunchGroupsKey);
+  ScanCredentials(AValue, AKey);
   if Length(FTeam.Issues) = mIssues then
   begin
-    FTeam.LaunchGroups := AValue.ToJSON([]);
+    Result := AValue.ToJSON([]);
   end;
 end;
 
@@ -1819,7 +1811,7 @@ begin
   AddList(Result, 'startProfiles', ProfileItems(ATeam.StartProfiles));
   if ATeam.Ci.Configured then
   begin
-    AddValue(Result, 'ci', Format('%s, %s, %s', [ATeam.Ci.Provider, ATeam.Ci.Url, ATeam.Ci.Job]));
+    AddValue(Result, 'ci', string.Join(', ', [ATeam.Ci.Provider, ATeam.Ci.Url, ATeam.Ci.Job]));
   end;
   if ATeam.Tracker.Configured then
   begin
@@ -1835,6 +1827,10 @@ begin
   if ATeam.LaunchGroups <> '' then
   begin
     AddValue(Result, cLaunchGroupsKey, ATeam.LaunchGroups);
+  end;
+  if ATeam.ExceptionRules <> '' then
+  begin
+    AddValue(Result, cExceptionRulesKey, ATeam.ExceptionRules);
   end;
 end;
 

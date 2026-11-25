@@ -19,8 +19,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.RoutineParts,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.MethodWithoutSelf.Contract;
+  Atlas.Common.Editing.MethodWithoutSelf.Types;
 
 type
   /// <summary>Analyse der Methode in ihrer Unit.</summary>
@@ -87,8 +86,8 @@ implementation
 
 uses
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Editing.RoutineLocals,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.MethodWithoutSelf.Texts;
 
 const

@@ -11,9 +11,6 @@ type
   [TestFixture]
   TMcpBuildToolsTests = class
   public
-    /// <summary>Zeitzone und ISO-8601-Umrechnung legen beim ersten Aufruf einmalige Daten an.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure NoBuildYet;
     [Test]
@@ -21,6 +18,8 @@ type
     /// <summary>#261: Builds von Claude Code (build_project) tragen requestedBy.</summary>
     [Test]
     procedure KeepsRequestedBy;
+    [Test]
+    procedure UnreadableFinishedAtIsUnknown;
     [Test]
     procedure OmitsFilesOutsideWorkspaceAndFiltersProject;
     [Test]
@@ -34,8 +33,8 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Lsp.IdeBuild,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Compiler.IdeBuild,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Mcp.BuildTools;
 
 function Message(const AFile: string; ALine: Integer; ASeverity: TCompilerSeverity;
@@ -67,13 +66,6 @@ begin
 end;
 
 { TMcpBuildToolsTests }
-
-procedure TMcpBuildToolsTests.WarmUp;
-var
-  mBuild: TIdeBuild;
-begin
-  TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Sample), mBuild);
-end;
 
 procedure TMcpBuildToolsTests.NoBuildYet;
 begin
@@ -125,6 +117,18 @@ begin
   finally
     mReport.Free;
   end;
+end;
+
+procedure TMcpBuildToolsTests.UnreadableFinishedAtIsUnknown;
+var
+  mBuild: TIdeBuild;
+begin
+  // Unlesbarer oder fehlender Zeitpunkt: der Build bleibt bekannt, nur der Zeitpunkt ist 0.
+  Assert.IsTrue(TMcpBuildTools.FromFileText('{"project":"C:\\P\\App.dproj","finishedAt":"gestern"}', mBuild));
+  Assert.AreEqual('C:\P\App.dproj', mBuild.Project);
+  Assert.AreEqual(Double(0), Double(mBuild.FinishedAt));
+  Assert.IsTrue(TMcpBuildTools.FromFileText('{"project":"C:\\P\\App.dproj"}', mBuild));
+  Assert.AreEqual(Double(0), Double(mBuild.FinishedAt));
 end;
 
 procedure TMcpBuildToolsTests.OmitsFilesOutsideWorkspaceAndFiltersProject;

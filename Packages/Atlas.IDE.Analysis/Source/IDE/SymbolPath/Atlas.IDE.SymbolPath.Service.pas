@@ -54,14 +54,15 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.SymbolPath.Model,
   Atlas.UI.Analysis.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.ResultsWindow;
+  Atlas.IDE.Foundation.ResultsWindow,
+  Atlas.UI.SymbolPath.Suggestions;
 
 const
   /// <summary>Der Server bricht nach vier Fünfteln von requestTimeoutMs selbst ab; das hier ist nur die Grenze

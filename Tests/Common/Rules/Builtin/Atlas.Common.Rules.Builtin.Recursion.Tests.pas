@@ -198,7 +198,7 @@ const
 var
   mFindings: TArray<TRuleFinding>;
 begin
-  // FP-Prüfung 28.10.2026: Der Setter klemmt den Wert; der zweite Aufruf nimmt den else-Zweig.
+  // Der Setter klemmt den Wert; der zweite Aufruf nimmt den else-Zweig.
   mFindings := TRuleAssert.Findings(TSetterRecursionRule.Create, cSource, '{"minConfidence": "low"}', 'U.pas');
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(mFindings[0].Confidence));

@@ -27,7 +27,7 @@ uses
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.References,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
 
@@ -56,12 +56,12 @@ type
     function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
     /// <summary>Arbeitsbereich für Metriken: Projekt der Projektdatei, sonst der der Datei bzw. der einzige.
     /// Aufrufer hält die Sperre.</summary>
-    function MetricsWorkspaceOf(const AFileName: string): TShellWorkspace;
+    function MetricsWorkspaceOf(const AFileName: string): TCoreWorkspace;
     /// <summary>Arbeitsbereich, dessen Projekt AFileName ist (.dproj, .dpr, .dpk). Aufrufer hält die Sperre.
     /// </summary>
-    function ProjectWorkspaceOf(const AFileName: string): TShellWorkspace;
+    function ProjectWorkspaceOf(const AFileName: string): TCoreWorkspace;
     /// <summary>Arbeitsbereich zu AFileName bzw. der einzige. Aufrufer hält die Sperre.</summary>
-    function WorkspaceNear(const AFileName: string): TShellWorkspace;
+    function WorkspaceNear(const AFileName: string): TCoreWorkspace;
     /// <summary>Architekturübersicht: Einstellungen, Wurzel, Titel, Namensräume und Dateien des Projekts
     /// (AScope "project") bzw. aller Projekte (sonst; leer = architecture.scope).</summary>
     function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
@@ -73,7 +73,7 @@ type
     function QuerySourceOf(out ASource: TQuerySource): Boolean;
     /// <summary>Arbeitsbereich der Abfragen: aktiv in der IDE, sonst ausgewählt, sonst der erste. Aufrufer hält
     /// die Sperre.</summary>
-    function QueryWorkspace: TShellWorkspace;
+    function QueryWorkspace: TCoreWorkspace;
     function QuerySettingsFor(const AFileName: string; out ASettings: TServerSettings; out ARoot: string): Boolean;
     /// <summary>Hotspots: Umfang wie die Architekturübersicht mit architecture.scope.</summary>
     function HotspotSourceFor(const AFileName: string; out ARequest: THotspotRequest; out ASettings: TServerSettings;
@@ -108,9 +108,10 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Index.Adapters.CacheDirectory,
-  Atlas.Common.Rules.Builtin.Metrics,
-  Shell.Hotspots;
+  Atlas.Common.Index.CacheDirectory,
+  Atlas.Common.Metrics.Limits,
+  Core.Hotspots,
+  Shell.Composition.Platform;
 
 { TShellSources }
 
@@ -123,7 +124,7 @@ end;
 function TShellSources.MetricsSourceFor(const AFileName: string; AProject: Boolean;
   out ASource: TLspMetricsSource): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mProject: TProjectInfo;
 begin
   ASource := Default(TLspMetricsSource);
@@ -155,7 +156,7 @@ begin
   end;
 end;
 
-function TShellSources.MetricsWorkspaceOf(const AFileName: string): TShellWorkspace;
+function TShellSources.MetricsWorkspaceOf(const AFileName: string): TCoreWorkspace;
 begin
   Result := nil;
   // Projektdatei: der Arbeitsbereich dieses Projekts (Projektgruppe, #648).
@@ -167,12 +168,12 @@ begin
   begin
     Result := FServices.Workspaces.WorkspaceOf(AFileName);
   end;
-  Result := TShellWorkspaces.Choose(Result, FServices.Workspaces.Items);
+  Result := TCoreWorkspaces.Choose(Result, FServices.Workspaces.Items);
 end;
 
-function TShellSources.ProjectWorkspaceOf(const AFileName: string): TShellWorkspace;
+function TShellSources.ProjectWorkspaceOf(const AFileName: string): TCoreWorkspace;
 var
-  mCandidate: TShellWorkspace;
+  mCandidate: TCoreWorkspace;
   mProject: TProjectInfo;
 begin
   for mCandidate in FServices.Workspaces.Items do
@@ -187,21 +188,21 @@ begin
   Result := nil;
 end;
 
-function TShellSources.WorkspaceNear(const AFileName: string): TShellWorkspace;
+function TShellSources.WorkspaceNear(const AFileName: string): TCoreWorkspace;
 begin
   Result := nil;
   if AFileName <> '' then
   begin
     Result := FServices.Workspaces.WorkspaceOf(AFileName);
   end;
-  Result := TShellWorkspaces.Choose(Result, FServices.Workspaces.Items);
+  Result := TCoreWorkspaces.Choose(Result, FServices.Workspaces.Items);
 end;
 
 function TShellSources.ArchitectureSourceFor(const AFileName, AScope: string;
   out ARequest: TArchitectureRequest; out ASettings: TServerSettings): Boolean;
 var
   mSource: TLspMetricsSource;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   ARequest := Default(TArchitectureRequest);
   ASettings := TServerSettings.Default;
@@ -246,7 +247,7 @@ end;
 
 function TShellSources.AllProjectFiles: TArray<string>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := nil;
   for mWorkspace in FServices.Workspaces.Items do
@@ -255,9 +256,9 @@ begin
   end;
 end;
 
-function TShellSources.QueryWorkspace: TShellWorkspace;
+function TShellSources.QueryWorkspace: TCoreWorkspace;
 var
-  mCandidate: TShellWorkspace;
+  mCandidate: TCoreWorkspace;
   mActive: string;
 begin
   // Projektgruppe: Choose liefert nur bei genau einem Arbeitsbereich etwas; sonst hieß es "Kein Projekt
@@ -320,13 +321,13 @@ begin
   // Ohne Hotspots kein Prozess; ohne Arbeitskopie meldet die Antwort den Grund statt einer leeren Liste.
   if ASettings.HotspotsEnabled then
   begin
-    TShellHotspotVcs.Detect(mArchitecture.Root, ASettings, AVcs, AError);
+    TCoreHotspotVcs.Detect(TShellPlatformAdapters.VcsAccess, mArchitecture.Root, ASettings, AVcs, AError);
   end;
 end;
 
 function TShellSources.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := TUsesGraphOptions.Default;
   Result.IncludeLibrary := True;
@@ -347,7 +348,7 @@ function TShellSources.SymbolPathSourceFor(const AFileName: string; out ASetting
   out ANamespaces: TArray<string>): Boolean;
 var
   mSource: TLspMetricsSource;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   ASettings := TServerSettings.Default;
   ANamespaces := nil;
@@ -371,7 +372,7 @@ end;
 
 function TShellSources.RationaleOptionsFor(const AUri: string): TRationaleOptions;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FServices.Workspaces.Lock);
   try
@@ -398,7 +399,7 @@ begin
   begin
     mSource.Settings := TServerSettings.Default;
   end;
-  ALimits := TMetricRules.Limits(mSource.Settings);
+  ALimits := TMetricSettings.Limits(mSource.Settings);
   Result := mSource.Settings.Metrics and mSource.Settings.CodeLens.Metrics;
 end;
 
@@ -436,7 +437,7 @@ end;
 
 function TShellSources.QuerySourceOf(out ASource: TQuerySource): Boolean;
 var
-  mWorkspace, mCandidate: TShellWorkspace;
+  mWorkspace, mCandidate: TCoreWorkspace;
   mFiles, mNamespaces: TArray<string>;
   mRoot: string;
   mReferences: TReferenceSettings;

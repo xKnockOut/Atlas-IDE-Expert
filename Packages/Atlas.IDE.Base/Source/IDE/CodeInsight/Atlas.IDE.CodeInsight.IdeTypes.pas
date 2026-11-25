@@ -11,7 +11,7 @@ interface
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Lsp.IdeTypes;
+  Atlas.Plugin.Lsp.IdeTypes;
 
 type
   TAtlasIdeTypeCollector = class
@@ -35,7 +35,8 @@ uses
   System.Classes,
   System.Rtti,
   ToolsAPI,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeTypeCollector }
 
@@ -90,8 +91,9 @@ begin
       try
         AddPackageTypes(mPackage, ATypes);
       except
-        on Exception do
+        on E: Exception do
         begin
+          TAtlasGuard.Log('Code Insight: Package-RTTI unlesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
           Inc(Result);
         end;
       end;

@@ -63,7 +63,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Migration.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -195,24 +196,24 @@ var
     mTypeName: string;
   begin
     Result := False;
-    ALength := Unwrapped(ACount);
+    ALength := TSyntaxNodes.Unparen(ACount);
     if (ALength.Kind = TSyntaxKind.BinaryExpr) and MatchStr(ALength.Name, ['+', '-']) and
       (ALength.ChildCount = 2) then
     begin
-      if Unwrapped(ALength[1]).Kind = TSyntaxKind.Literal then
+      if TSyntaxNodes.Unparen(ALength[1]).Kind = TSyntaxKind.Literal then
       begin
-        ALength := Unwrapped(ALength[0]);
+        ALength := TSyntaxNodes.Unparen(ALength[0]);
       end
-      else if Unwrapped(ALength[0]).Kind = TSyntaxKind.Literal then
+      else if TSyntaxNodes.Unparen(ALength[0]).Kind = TSyntaxKind.Literal then
       begin
-        ALength := Unwrapped(ALength[1]);
+        ALength := TSyntaxNodes.Unparen(ALength[1]);
       end;
     end;
     if not IsCallOf(ALength, 'Length') and not IsCallOf(ALength, 'StrLen') then
     begin
       Exit;
     end;
-    ASource := Unwrapped(ALength[1]);
+    ASource := TSyntaxNodes.Unparen(ALength[1]);
     if SameText(ALength.Name, 'Length') then
     begin
       Result := mScope.SureType(ASource, mSymbol, mType) and (mType.Builtin or SameText(mType.UnitName, 'System')) and
@@ -232,7 +233,7 @@ var
     mSource: string;
   begin
     mSource := mScope.Text(ASource);
-    mNode := Unwrapped(ABuffer);
+    mNode := TSyntaxNodes.Unparen(ABuffer);
     while True do
     begin
       if mScope.Text(mNode) = mSource then
@@ -241,16 +242,16 @@ var
       end;
       if (mNode.Kind in [TSyntaxKind.AddressOf, TSyntaxKind.Dereference]) and (mNode.ChildCount > 0) then
       begin
-        mNode := Unwrapped(mNode[0]);
+        mNode := TSyntaxNodes.Unparen(mNode[0]);
       end
       else if (mNode.Kind = TSyntaxKind.IndexAccess) and (mNode.ChildCount > 1) then
       begin
-        mNode := Unwrapped(mNode[0]);
+        mNode := TSyntaxNodes.Unparen(mNode[0]);
       end
       else if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount = 2) and
         MatchText(mNode.Name, ['PChar', 'PWideChar', 'Pointer', 'PByte']) then
       begin
-        mNode := Unwrapped(mNode[1]);
+        mNode := TSyntaxNodes.Unparen(mNode[1]);
       end
       else
       begin
@@ -262,7 +263,7 @@ var
   /// <summary>Ist das erste Argument von GetMem/ReallocMem sicher ein PChar?</summary>
   function CharPointerTarget(ANode: TSyntaxNode; out ATypeName: string): Boolean;
   begin
-    Result := DeclaredTypeName(mScope, AContext, Unwrapped(ANode[1]), ATypeName) and
+    Result := DeclaredTypeName(mScope, AContext, TSyntaxNodes.Unparen(ANode[1]), ATypeName) and
       TMigrationTypes.IsWideCharPointer(ATypeName);
   end;
 
@@ -315,7 +316,7 @@ var
       Exit;
     end;
     mNewText := mScope.Text(mCountNode);
-    if Unwrapped(mCountNode).Kind = TSyntaxKind.BinaryExpr then
+    if TSyntaxNodes.Unparen(mCountNode).Kind = TSyntaxKind.BinaryExpr then
     begin
       mNewText := '(' + mNewText + ')';
     end;
@@ -331,9 +332,11 @@ begin
   begin
     Exit;
   end;
-  mMigration := TMigrationScope.Create(AContext);
-  mScope := TTypedScope.Create(AContext);
+  mMigration := nil;
+  mScope := nil;
   try
+    mMigration := TMigrationScope.Create(AContext);
+    mScope := TTypedScope.Create(AContext);
     for mNode in CallsOf(AContext.Tree.Root) do
     begin
       CheckCall(mNode);
@@ -399,17 +402,17 @@ var
     mSymbol, mType: TResolvedSymbol;
   begin
     Result := False;
-    mInner := Unwrapped(AArgument);
+    mInner := TSyntaxNodes.Unparen(AArgument);
     if not IsCallOf(mInner, 'PAnsiChar') then
     begin
       Exit;
     end;
-    mInner := Unwrapped(mInner[1]);
+    mInner := TSyntaxNodes.Unparen(mInner[1]);
     if not IsCallOf(mInner, 'AnsiString') then
     begin
       Exit;
     end;
-    AString := Unwrapped(mInner[1]);
+    AString := TSyntaxNodes.Unparen(mInner[1]);
     Result := mScope.SureType(AString, mSymbol, mType) and (mType.Builtin or SameText(mType.UnitName, 'System')) and
       TMigrationTypes.IsUnicodeString(mType.Name);
   end;
@@ -419,7 +422,7 @@ var
   var
     mTypeName: string;
   begin
-    Result := DeclaredTypeName(mScope, AContext, Unwrapped(AArgument), mTypeName) and
+    Result := DeclaredTypeName(mScope, AContext, TSyntaxNodes.Unparen(AArgument), mTypeName) and
       ContainsText(mTypeName, 'Ansi');
   end;
 
@@ -503,9 +506,11 @@ begin
   begin
     Exit;
   end;
-  mMigration := TMigrationScope.Create(AContext);
-  mScope := TTypedScope.Create(AContext);
+  mMigration := nil;
+  mScope := nil;
   try
+    mMigration := TMigrationScope.Create(AContext);
+    mScope := TTypedScope.Create(AContext);
     for mNode in CallsOf(AContext.Tree.Root) do
     begin
       CheckCall(mNode);

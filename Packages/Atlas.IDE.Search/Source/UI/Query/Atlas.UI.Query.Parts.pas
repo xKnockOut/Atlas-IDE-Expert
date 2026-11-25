@@ -31,17 +31,24 @@ type
 
   /// <summary>Ereignisse des Fensters; die IDE-Schicht setzt sie, die Teile rufen sie. Gehört dem Frame.</summary>
   TAtlasCodeQueryEvents = class(TComponent)
+  private
+    FOnRun: TProc<string>;
+    FOnCancel: TProc;
+    FOnSaveRule: TProc<string>;
+    FOnCopied: TProc<Integer>;
+    FOnOpenLocation: TProc<string, Integer, Integer>;
+    FOnSymbols: TAtlasCodeQuerySymbols;
   public
     /// <summary>Text der Eingabezeile.</summary>
-    OnRun: TProc<string>;
-    OnCancel: TProc;
+    property OnRun: TProc<string> read FOnRun write FOnRun;
+    property OnCancel: TProc read FOnCancel write FOnCancel;
     /// <summary>„Als Regel speichern …“ mit dem Text der Eingabezeile.</summary>
-    OnSaveRule: TProc<string>;
+    property OnSaveRule: TProc<string> read FOnSaveRule write FOnSaveRule;
     /// <summary>CSV liegt in der Zwischenablage; Anzahl der Zeilen.</summary>
-    OnCopied: TProc<Integer>;
+    property OnCopied: TProc<Integer> read FOnCopied write FOnCopied;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
-    OnOpenLocation: TProc<string, Integer, Integer>;
-    OnSymbols: TAtlasCodeQuerySymbols;
+    property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
+    property OnSymbols: TAtlasCodeQuerySymbols read FOnSymbols write FOnSymbols;
   end;
 
   /// <summary>Obere Leiste: Auswahl gespeicherter Abfragen und die Knöpfe; die Klicks setzt der Frame.</summary>
@@ -53,6 +60,7 @@ type
     FSaveRule: TButton;
     FCopyCsv: TButton;
     FHelpButton: TButton;
+    /// <summary>Knopf der Leiste; AWidth in logischen Pixeln (96 dpi).</summary>
     function NewButton(const ACaption: string; AWidth: Integer): TButton;
   public
     constructor Create(AParent: TWinControl); reintroduce;
@@ -159,15 +167,30 @@ uses
   System.Types,
   System.Math,
   Vcl.Forms,
-  Atlas.UI.Search.Strings;
+  Atlas.UI.Search.Strings,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   /// <summary>So viele Zeilen hat die Vorschlagsliste höchstens sichtbar.</summary>
   cSuggestRows = 8;
+  // Vorschlagsliste: höchste Breite und Rand unter der letzten Zeile (logische Pixel).
+  cSuggestWidth = 320;
+  cSuggestPad = 4;
   /// <summary>So viele Symbolnamen kommen höchstens in die Liste.</summary>
   cMaxSymbols = 30;
   /// <summary>Symbolsuche erst ab so vielen getippten Zeichen.</summary>
   cSymbolMinChars = 2;
+  // Leiste: Breite der Liste gespeicherter Abfragen und der Knöpfe (logische Pixel).
+  cSavedWidth = 220;
+  cRunWidth = 90;
+  cCancelWidth = 90;
+  cSaveRuleWidth = 140;
+  cCopyCsvWidth = 120;
+  cHelpWidth = 70;
+  // Ergebnisliste: Breite der ersten Spalte, der übrigen Spalten und der Spalte Datei (logische Pixel).
+  cFirstColumnWidth = 220;
+  cColumnWidth = 90;
+  cFileColumnWidth = 320;
 
 function CanFill(AControl: TWinControl): Boolean;
 begin
@@ -186,21 +209,21 @@ begin
   // Fließende Leiste: bei schmalem Fenster brechen die Knöpfe in weitere Zeilen um.
   AutoWrap := True;
   AutoSize := True;
-  Padding.SetBounds(2, 2, 2, 0);
+  TAtlasControlScaling.SetPadding(Self, 2, 2, 2, 0);
 
   FSaved := TComboBox.Create(Self);
   FSaved.Parent := Self;
   FSaved.AlignWithMargins := True;
   FSaved.Style := csDropDownList;
-  FSaved.Width := FSaved.ScaleValue(220);
+  FSaved.Width := FSaved.ScaleValue(cSavedWidth);
   FSaved.Hint := TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySavedHint);
   FSaved.ShowHint := True;
 
-  FRun := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRun), 90);
-  FCancel := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCancel), 90);
-  FSaveRule := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySaveRule), 140);
-  FCopyCsv := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCopyCsv), 120);
-  FHelpButton := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryHelp), 70);
+  FRun := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRun), cRunWidth);
+  FCancel := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCancel), cCancelWidth);
+  FSaveRule := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QuerySaveRule), cSaveRuleWidth);
+  FCopyCsv := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCopyCsv), cCopyCsvWidth);
+  FHelpButton := NewButton(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryHelp), cHelpWidth);
 end;
 
 function TAtlasQueryToolbar.NewButton(const ACaption: string; AWidth: Integer): TButton;
@@ -210,7 +233,7 @@ begin
   Result.Parent := Self;
   Result.AlignWithMargins := True;
   Result.Caption := ACaption;
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
 end;
 
 function SavedCaption(const ASaved: TAtlasSavedQuery): string;
@@ -265,7 +288,7 @@ begin
   BevelOuter := bvNone;
   ShowCaption := False;
   AutoSize := True;
-  Padding.SetBounds(2, 0, 2, 2);
+  TAtlasControlScaling.SetPadding(Self, 2, 0, 2, 2);
 
   FEdit := TEdit.Create(Self);
   FEdit.Parent := Self;
@@ -349,8 +372,8 @@ var
 begin
   mPoint := FSuggest.Parent.ScreenToClient(FEdit.ClientToScreen(Point(0, FEdit.Height)));
   mRows := Min(cSuggestRows, Max(1, FSuggest.Items.Count));
-  FSuggest.SetBounds(mPoint.X, mPoint.Y, Min(FEdit.Width, MulDiv(320, CurrentPPI, 96)),
-    mRows * FSuggest.ItemHeight + 4);
+  FSuggest.SetBounds(mPoint.X, mPoint.Y, Min(FEdit.Width, ScaleValue(cSuggestWidth)),
+    mRows * FSuggest.ItemHeight + ScaleValue(cSuggestPad));
 end;
 
 procedure TAtlasQueryInput.MoveSuggestion(ADelta: Integer);
@@ -583,15 +606,15 @@ begin
     begin
       mColumn := Columns.Add;
       mColumn.Caption := FAnswer.Columns[mIndex];
-      mColumn.Width := MulDiv(90, CurrentPPI, 96);
+      mColumn.Width := ScaleValue(cColumnWidth);
       if mIndex = 0 then
       begin
-        mColumn.Width := MulDiv(220, CurrentPPI, 96);
+        mColumn.Width := ScaleValue(cFirstColumnWidth);
       end;
     end;
     mColumn := Columns.Add;
     mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryColumnFile);
-    mColumn.Width := MulDiv(320, CurrentPPI, 96);
+    mColumn.Width := ScaleValue(cFileColumnWidth);
   finally
     Columns.EndUpdate;
   end;

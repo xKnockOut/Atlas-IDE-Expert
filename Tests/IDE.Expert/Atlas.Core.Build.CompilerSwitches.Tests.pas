@@ -39,6 +39,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   System.SysUtils,
   System.JSON,
   Atlas.Core.Build.CompilerSwitches;
@@ -192,11 +193,11 @@ end;
 
 procedure TAtlasCompilerSwitchViewTests.OnlyPascalFiles;
 begin
-  Assert.IsTrue(TAtlasSwitchFollow.Applies('C:\P\A.pas'));
-  Assert.IsTrue(TAtlasSwitchFollow.Applies('C:\P\Projekt.DPR'));
-  Assert.IsTrue(TAtlasSwitchFollow.Applies('C:\P\Optionen.inc'));
-  Assert.IsFalse(TAtlasSwitchFollow.Applies('C:\P\Form.dfm'));
-  Assert.IsFalse(TAtlasSwitchFollow.Applies(''));
+  Assert.IsTrue(TAtlasSourceFiles.IsPascal('C:\P\A.pas'));
+  Assert.IsTrue(TAtlasSourceFiles.IsPascal('C:\P\Projekt.DPR'));
+  Assert.IsTrue(TAtlasSourceFiles.IsPascal('C:\P\Optionen.inc'));
+  Assert.IsFalse(TAtlasSourceFiles.IsPascal('C:\P\Form.dfm'));
+  Assert.IsFalse(TAtlasSourceFiles.IsPascal(''));
 end;
 
 end.

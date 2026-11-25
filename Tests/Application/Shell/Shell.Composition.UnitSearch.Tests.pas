@@ -24,8 +24,8 @@ type
     /// <summary>Units suchen, Vorschau und uses ergänzen sind angemeldet.</summary>
     [Test]
     procedure RegistersAllCommands;
-    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
-    /// 06.11.2026).</summary>
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten.
+    /// </summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;
     /// <summary>Die Liste der Units fragt die Arbeitsbereiche unter deren Sperre ab und antwortet mit JSON.</summary>
@@ -85,9 +85,11 @@ var
   mText: string;
   mName: string;
 begin
-  mSearch := TShellUnitSearch.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mSearch := nil;
+  mCommands := nil;
   try
+    mSearch := TShellUnitSearch.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mSearch.RegisterCommands(mCommands);
     mCapability := mCommands.Capability;
     try
@@ -112,9 +114,11 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mSearch := TShellUnitSearch.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mSearch := nil;
+  mCommands := nil;
   try
+    mSearch := TShellUnitSearch.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mSearch.RegisterCommands(mCommands);
     for mName in TArray<string>.Create(TUnitSearch.cUnitsCommand, TUnitSearch.cPreviewCommand) do
     begin
@@ -138,10 +142,13 @@ var
   mAnswer: TJSONValue;
 begin
   FVisits := 0;
-  mSearch := TShellUnitSearch.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mSearch := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mSearch := TShellUnitSearch.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mSearch.RegisterCommands(mCommands);
     mAnswer := mCommands.Execute(TUnitSearch.cUnitsCommand, mArguments);
     try

@@ -30,7 +30,11 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
+
+const
+  /// <summary>Art der Datei im Protokoll, wenn sie nicht geschrieben werden konnte.</summary>
+  cDataKind = 'Lernende Gewichtung';
 
 { TAtlasIdeHistory }
 
@@ -71,7 +75,7 @@ begin
   except
     // Speichern darf die IDE nie stören; der Grund steht einmal im Protokoll, Changed bleibt gesetzt.
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Lernende Gewichtung', E);
+      TAtlasDataFile.ReportNotWritten(cDataKind, E);
   end;
 end;
 

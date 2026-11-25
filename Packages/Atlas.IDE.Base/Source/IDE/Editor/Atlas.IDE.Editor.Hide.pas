@@ -64,12 +64,12 @@ type
     procedure Notice(const ATitle, ADetail: string; ACanUndo: Boolean);
     function Run(const AChoice: TAtlasHideChoice; out AStep: TStep; out ADetail: string): Boolean;
     function RunText(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
-    function RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
-    function RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean;
+    class function RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
+      static;
+    class function RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean; static;
     function UndoStep(const AStep: TStep): Boolean;
     class function RefusalText(ARefusal: TAtlasHideRefusal): string; static;
     class function SettingCaption(const AKey: string): string; static;
-    class function CaretPoint: TPoint; static;
     class procedure Applied; static;
   public
     constructor Create;
@@ -102,22 +102,23 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.StructureSwitch,
+  Atlas.ToolsApi.Editor.Caret,
   Atlas.IDE.Editor.HideTeamFile;
 
 { TAtlasIdeHide }
@@ -297,7 +298,7 @@ begin
   end;
 end;
 
-function TAtlasIdeHide.RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
+class function TAtlasIdeHide.RunTeamFile(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
 var
   mFileName: string;
 begin
@@ -316,7 +317,7 @@ begin
     [TAtlasHideMenu.ElementName(APlan.Target.Element, False), APlan.Place.FileName]);
 end;
 
-function TAtlasIdeHide.RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean;
+class function TAtlasIdeHide.RunSetting(const AKey: string; out AStep: TStep; out ADetail: string): Boolean;
 var
   mStored: TAtlasPluginSettings;
   mSession: TAtlasToggleSession;
@@ -378,20 +379,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeHide.CaretPoint: TPoint;
-var
-  mFocus: HWND;
-begin
-  Result := Mouse.CursorPos;
-  mFocus := GetFocus;
-  if (mFocus <> 0) and GetCaretPos(Result) then
-  begin
-    // Unter die Zeile der Schreibmarke, nicht in sie hinein.
-    Inc(Result.Y, 16);
-    Winapi.Windows.ClientToScreen(mFocus, Result);
-  end;
-end;
-
 class procedure TAtlasIdeHide.Applied;
 begin
   // Wie die Schnellschalter: Strukturhervorhebung der IDE abgleichen, Treffer vergessen, neu zeichnen.
@@ -423,27 +410,6 @@ begin
   FreeAndNil(FInstance);
 end;
 
-/// <summary>Ersetzt in ABuffer (Text AText) die Zeichen AFrom bis ATill (0-basiert, ATill ausschließlich) durch
-/// ANew; ein Rückgängig-Schritt der IDE.</summary>
-procedure WriteRange(const ABuffer: IOTAEditBuffer; const AText: string; AFrom, ATill: Integer; const ANew: string);
-var
-  mWriter: IOTAEditWriter;
-begin
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AFrom)));
-  if ATill > AFrom then
-  begin
-    mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, ATill)));
-  end;
-  if ANew <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(ANew)));
-  end;
-  mWriter := nil;
-  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
-end;
-
 function TAtlasIdeHide.RunText(const APlan: TAtlasHidePlan; out AStep: TStep; out ADetail: string): Boolean;
 var
   mView: IOTAEditView;
@@ -461,7 +427,7 @@ begin
   end;
   mText := TAtlasEditorBuffer.Text(mView.Buffer);
   mOffset := APlan.Insert.OffsetIn(mText);
-  WriteRange(mView.Buffer, mText, mOffset, mOffset, APlan.Insert.Text);
+  TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mText, mOffset, 0, APlan.Insert.Text);
   AStep.Valid := True;
   AStep.Kind := APlan.Kind;
   AStep.Insert := APlan.Insert;
@@ -500,7 +466,7 @@ begin
           Exit;
         end;
         mOffset := AStep.Insert.OffsetIn(mText);
-        WriteRange(mView.Buffer, mText, mOffset, mOffset + Length(AStep.Insert.Text), '');
+        TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mText, mOffset, Length(AStep.Insert.Text), '');
       end;
     TAtlasHideKind.TeamFile:
       begin
@@ -556,7 +522,7 @@ begin
   begin
     Exit;
   end;
-  ShowMenu(mTargets, CaretPoint);
+  ShowMenu(mTargets, TAtlasIdeCaret.BelowLine);
   Result := True;
 end;
 
@@ -579,7 +545,7 @@ begin
   begin
     Exit;
   end;
-  FInstance.FWhere := CaretPoint;
+  FInstance.FWhere := TAtlasIdeCaret.BelowLine;
   FInstance.Refused(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNoElement));
 end;
 

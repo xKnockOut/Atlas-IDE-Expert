@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.Completion.Slash;
 
 // Vervollständigung von Schnellbefehlen nach "/" am Zeilenanfang (#293) samt ihrer Argumente (#294 ff., #319)
-// und in Compilerdirektiven (#102). Aus Atlas.Common.Lsp.Completion herausgelöst.
+// und in Compilerdirektiven (#102). Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 

@@ -25,7 +25,7 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.TextChanges;
+  Atlas.Plugin.Lsp.TextChanges;
 
 type
   /// <summary>Implizite Umwandlung eines Teilausdrucks.</summary>
@@ -147,25 +147,6 @@ uses
   Atlas.Core.Editor.SourceFiles,
   Atlas.Text.Json;
 
-function ReadPosition(const AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
-var
-  mLine, mCharacter: Integer;
-begin
-  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', mLine) and
-    TJSONObject(AValue).TryGetValue<Integer>('character', mCharacter);
-  if Result then
-  begin
-    APosition := TLspTextPosition.Create(mLine, mCharacter);
-  end;
-end;
-
-function ReadRange(const AValue: TJSONValue; out ARange: TLspRange): Boolean;
-begin
-  ARange := Default(TLspRange);
-  Result := (AValue is TJSONObject) and ReadPosition(TJSONObject(AValue).GetValue('start'), ARange.StartPos) and
-    ReadPosition(TJSONObject(AValue).GetValue('end'), ARange.EndPos);
-end;
-
 function PositionJson(const APosition: TLspTextPosition): TJSONObject;
 begin
   Result := TJSONObject.Create;
@@ -176,15 +157,17 @@ end;
 /// <summary>Detail des Servers "Operator|links|rechts" bzw. "Operator||Operand"; sonst der Text, wie er ist.
 /// </summary>
 function OperatorText(const ADetail: string; const ATexts: TAtlasExpressionTypeTexts): string;
+const
+  cParts = 3;
 var
   mParts: TArray<string>;
 begin
   mParts := ADetail.Split(['|']);
-  if (Length(mParts) = 3) and (mParts[1] = '') then
+  if (Length(mParts) = cParts) and (mParts[1] = '') then
   begin
     Result := Format(ATexts.OperatorUnary, [mParts[0], mParts[2]]);
   end
-  else if Length(mParts) = 3 then
+  else if Length(mParts) = cParts then
   begin
     Result := Format(ATexts.OperatorMismatch, [mParts[0], mParts[1], mParts[2]]);
   end
@@ -387,7 +370,7 @@ begin
   if Result then
   begin
     mAnswer := TJSONObject(AAnswer);
-    ReadRange(mAnswer.GetValue('range'), AInfo.Range);
+    TLspRange.TryRead(mAnswer.GetValue('range'), AInfo.Range);
     AInfo.Expression := TJsonRead.Text(mAnswer, 'expression');
     AInfo.TypeName := TJsonRead.Text(mAnswer, 'type');
     AInfo.BaseName := TJsonRead.Text(mAnswer, 'base');

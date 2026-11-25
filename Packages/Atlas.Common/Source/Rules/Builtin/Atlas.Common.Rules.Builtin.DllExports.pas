@@ -117,29 +117,6 @@ begin
   end;
 end;
 
-/// <summary>Index der schließenden Klammer zur öffnenden an AIndex (oder das letzte Token).</summary>
-function ClosingParen(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  Result := AIndex;
-  mDepth := 0;
-  repeat
-    if ATokens[Result].IsSymbol('(') then
-    begin
-      Inc(mDepth);
-    end
-    else if ATokens[Result].IsSymbol(')') then
-    begin
-      Dec(mDepth);
-    end;
-    if mDepth <> 0 then
-    begin
-      Inc(Result);
-    end;
-  until (mDepth = 0) or (Result >= High(ATokens));
-end;
-
 /// <summary>Eintrag ab dem Bezeichner an AIndex; AIndex steht danach auf seinem letzten Token.</summary>
 function ReadEntry(const AContext: TRuleContext; const ATokens: TArray<TPascalToken>;
   var AIndex: Integer): TExportEntry;
@@ -160,7 +137,12 @@ begin
   if (AIndex + 1 <= High(ATokens)) and ATokens[AIndex + 1].IsSymbol('(') then
   begin
     mListStart := AIndex + 1;
-    AIndex := ClosingParen(ATokens, mListStart);
+    // Ohne Gegenstück reicht die Liste bis zum letzten Token.
+    AIndex := MatchingParen(ATokens, mListStart);
+    if AIndex < 0 then
+    begin
+      AIndex := High(ATokens);
+    end;
     Result.Parameters := Normalized(Copy(AContext.Text, ATokens[mListStart].Offset + 1,
       ATokens[AIndex].Offset + Length(ATokens[AIndex].Text) - ATokens[mListStart].Offset));
   end;

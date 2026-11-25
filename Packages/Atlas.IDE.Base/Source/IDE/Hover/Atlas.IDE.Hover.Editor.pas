@@ -59,7 +59,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Vcl.Controls,
   Vcl.ExtCtrls,
   ToolsAPI,
@@ -67,9 +67,10 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.Plan,
-  Atlas.Core.Editor.CloseRules,
-  Atlas.IDE.Foundation.KeyHook,
-  Atlas.IDE.Hover.EditorContent;
+  Atlas.ToolsApi.Editor.CloseRules,
+  Atlas.ToolsApi.Keys.Hook,
+  Atlas.IDE.Hover.EditorContent,
+  Atlas.IDE.Hover.IdeHelpInsight;
 
 type
   /// <summary>Stelle unter der Maus im Editor: Zeile (1-basiert), Spalte und sichtbare Zeile des Editors, Index im
@@ -118,7 +119,11 @@ type
     FWorkers: TAtlasWorkerSlot;
     // Fenster beim Anzeigen (Fokus, Datei, oberste Zeile); TAtlasCloseRules vergleicht damit.
     FShown: TAtlasEditorWindowState;
+    // Blendet Help Insight der IDE aus, solange der Atlas-Tooltip gilt (Delphi 12 merkt sich den Schalter nicht).
+    FHelpInsight: TAtlasIdeHelpInsightGuard;
     function WindowState: TAtlasEditorWindowState;
+    /// <summary>Wächter für Help Insight der IDE anlegen.</summary>
+    procedure CreateHelpInsightGuard;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     /// <summary>Stelle unter der Maus in einer Datei, die Atlas bedient; False sonst.</summary>
     function MousePos(const AEditor: TWinControl; AX, AY: Integer; out APos: TAtlasHoverMousePos): Boolean;
@@ -165,14 +170,14 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Windows,
   Vcl.Forms,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.View,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Outline.StickyScroll;
@@ -225,6 +230,8 @@ end;
 
 constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
   const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
+const
+  cWatchMs = 250;
 var
   mServices: INTACodeEditorServices;
 begin
@@ -242,7 +249,7 @@ begin
   FHideTimer.OnTimer := HideTimerTick;
   FWatchTimer := TTimer.Create(nil);
   FWatchTimer.Enabled := False;
-  FWatchTimer.Interval := 250;
+  FWatchTimer.Interval := cWatchMs;
   FWatchTimer.OnTimer := WatchTimerTick;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
@@ -257,6 +264,23 @@ begin
   begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
+  CreateHelpInsightGuard;
+end;
+
+procedure TAtlasEditorHover.CreateHelpInsightGuard;
+begin
+  FHelpInsight := TAtlasIdeHelpInsightGuard.Create(
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.HoverTooltip;
+    end,
+    function: Boolean
+    var
+      mView: IOTAEditView;
+    begin
+      mView := TAtlasEditorBuffer.TopView;
+      Result := (mView <> nil) and (mView.Buffer <> nil) and Handles(mView.Buffer.FileName);
+    end);
 end;
 
 constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
@@ -275,6 +299,7 @@ var
   mServices: INTACodeEditorServices;
 begin
   // Erst abmelden, dann freigeben (#493).
+  FreeAndNil(FHelpInsight);
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
     mServices.RemoveEditorEventsNotifier(FIndex);
@@ -324,7 +349,7 @@ begin
   Result := Default(TAtlasEditorWindowState);
   Result.AppActive := Application.Active;
   Result.Focus := GetFocus;
-  mView := CurrentEditView;
+  mView := TAtlasEditorBuffer.TopView;
   if mView = nil then
   begin
     Exit;
@@ -643,7 +668,10 @@ begin
         mData := ASession.HoverDataAt(mFileName, mLine, mCharacter, 0);
       except
         // Server langsam oder weg: kein Tooltip, die IDE wartet nie darauf.
-        mData := Default(TAtlasHoverData);
+        on ELspClientError do
+        begin
+          mData := Default(TAtlasHoverData);
+        end;
       end;
       mShow :=
         procedure

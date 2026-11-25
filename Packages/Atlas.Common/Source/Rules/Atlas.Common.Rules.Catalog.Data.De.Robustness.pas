@@ -19,7 +19,8 @@ const
     '      "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenne' +
     'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (' +
     ': / . ,) wie ''yyyy\"-\"mm\"-\"dd'' oder ''ddddd t''. Eigene Routinen gleichen Namens bleiben still, wenn die Namensauflösung sie findet: lokale Routinen, Methoden der eigenen Klasse, Routinen der eigenen' +
-    ' Unit und einer Unit, die in uses nach System.SysUtils steht."',
+    ' Unit und einer Unit, die in uses nach System.SysUtils steht. Ist der Name nicht auflösbar (Prüfung ohne Index, etwa im Editor während des Indexaufbaus, oder Unit außerhalb der Suchpfade), schweigt di' +
+    'e Regel, wenn in uses nach System.SysUtils eine Unit steht, die weder zur RTL gehört noch im Index steht."',
     '    },',
     '{',
     '      "id": "debug-display-placeholder",',

@@ -85,9 +85,25 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Collections,
   Atlas.Core.VersionControl.Internals.Text,
   Atlas.Core.VersionControl.Internals.LineTrace;
+
+const
+  /// <summary>Meldungen zu unerwarteter Ausgabe der Werkzeuge: nur für Tests und Fehlersuche, die Aufrufer
+  /// werten EAtlasVcsParse als Fehlschlag aus, ohne den Text zu zeigen.</summary>
+  cLogRevisionMissing = 'svn log: revision fehlt';
+  cBlameLineMissing = 'svn blame: line-number fehlt';
+  cLogDiffHeaderMissing = 'svn log --diff: Kopf erwartet';
+  cInfoEntryMissing = 'svn info: kein Eintrag';
+  /// <summary>Trenner der Felder im Kopf eines Eintrags von svn log ("r12 | autor | datum | 3 lines").</summary>
+  cLogFieldBar = ' | ';
+  /// <summary>Höchstzahl der Ziffern der Zeilenzahl im Kopf; längere gelten als ungültig.</summary>
+  cMaxLineCountDigits = 6;
+  /// <summary>Platz für die ersten Zeilen bzw. Einträge, bevor die Liste wächst.</summary>
+  cInitialPatchLines = 16;
+  cInitialLogEntries = 4;
 
 function ActionKind(const AAction: string): TAtlasVcsChangeKind;
 begin
@@ -117,7 +133,7 @@ var
 begin
   ARevision := '';
   ALines := 0;
-  mBar := Pos(' | ', ALine);
+  mBar := Pos(cLogFieldBar, ALine);
   Result := (Length(ALine) > 1) and (ALine[1] = 'r') and (mBar > 2);
   if not Result then
   begin
@@ -132,16 +148,16 @@ begin
     end;
   end;
   mLast := ALine;
-  while Pos(' | ', mLast) > 0 do
+  while Pos(cLogFieldBar, mLast) > 0 do
   begin
-    mLast := Copy(mLast, Pos(' | ', mLast) + 3, MaxInt);
+    mLast := Copy(mLast, Pos(cLogFieldBar, mLast) + Length(cLogFieldBar), MaxInt);
   end;
   mPos := 1;
   while (mPos <= Length(mLast)) and CharInSet(mLast[mPos], ['0'..'9']) do
   begin
     Inc(mPos);
   end;
-  if (mPos = 1) or (mPos > 7) or not TryStrToInt(Copy(mLast, 1, mPos - 1), ALines) then
+  if (mPos = 1) or (mPos - 1 > cMaxLineCountDigits) or not TryStrToInt(Copy(mLast, 1, mPos - 1), ALines) then
   begin
     ALines := 0;
   end;
@@ -206,10 +222,16 @@ type
     procedure OnStart; override;
     procedure OnEnd; override;
     procedure OnText; override;
+  strict private
+    FInfo: TAtlasSvnInfo;
+    FEntryCount: Integer;
+    FUrl, FRepositoryRoot: string;
   public
-    Info: TAtlasSvnInfo;
-    Depth: Integer;
-    Url, RepositoryRoot: string;
+    property Info: TAtlasSvnInfo read FInfo;
+    /// <summary>Gelesene entry-Elemente; 0 = keine Ausgabe von svn info.</summary>
+    property EntryCount: Integer read FEntryCount;
+    property Url: string read FUrl;
+    property RepositoryRoot: string read FRepositoryRoot;
   end;
 
   TSvnStatusScan = class(TSvnXmlScan)
@@ -220,9 +242,11 @@ type
   strict protected
     procedure OnStart; override;
     procedure OnEnd; override;
+  strict private
+    FChanges: TArray<TAtlasVcsChange>;
   public
-    Changes: TArray<TAtlasVcsChange>;
     constructor Create(const ARoot: string);
+    property Changes: TArray<TAtlasVcsChange> read FChanges;
   end;
 
   TSvnLogScan = class(TSvnXmlScan)
@@ -255,9 +279,11 @@ type
     procedure OnStart; override;
     procedure OnEnd; override;
     procedure OnText; override;
+  strict private
+    FRefs: TArray<TAtlasVcsRef>;
   public
-    Refs: TArray<TAtlasVcsRef>;
     constructor Create(const ACurrent: string);
+    property Refs: TArray<TAtlasVcsRef> read FRefs;
   end;
 
   TSvnBlameScan = class(TSvnXmlScan)
@@ -269,8 +295,10 @@ type
     procedure OnStart; override;
     procedure OnEnd; override;
     procedure OnText; override;
+  strict private
+    FLines: TArray<TAtlasVcsBlameLine>;
   public
-    Lines: TArray<TAtlasVcsBlameLine>;
+    property Lines: TArray<TAtlasVcsBlameLine> read FLines;
   end;
 
   TSvnLineLogScan = class(TSvnXmlScan)
@@ -281,8 +309,10 @@ type
     procedure OnStart; override;
     procedure OnEnd; override;
     procedure OnText; override;
+  strict private
+    FCommits: TArray<TAtlasVcsLineCommit>;
   public
-    Commits: TArray<TAtlasVcsLineCommit>;
+    property Commits: TArray<TAtlasVcsLineCommit> read FCommits;
   end;
 
   /// <summary>Liest svn log --diff Revision für Revision (#1275).</summary>
@@ -351,11 +381,11 @@ procedure TSvnInfoScan.OnStart;
 begin
   if FReader.Name = 'entry' then
   begin
-    Inc(Depth);
+    Inc(FEntryCount);
     // Nur der erste Eintrag zählt.
-    if Depth = 1 then
+    if FEntryCount = 1 then
     begin
-      Info.Revision := FReader.Attr('revision');
+      FInfo.Revision := FReader.Attr('revision');
     end;
   end;
   KeepElement;
@@ -368,22 +398,23 @@ begin
 end;
 
 procedure TSvnInfoScan.OnText;
+const
+  // Elemente in der Reihenfolge von cElements.
+  cElements: array[0..3] of string = ('wcroot-abspath', 'relative-url', 'url', 'root');
+  cWorkingRoot = 0;
+  cRelativeUrl = 1;
+  cUrl = 2;
+  cRepositoryRoot = 3;
 begin
-  if FElement = 'wcroot-abspath' then
-  begin
-    Info.Root := VcsNormalizeDir(FReader.Value);
-  end
-  else if FElement = 'relative-url' then
-  begin
-    Info.RelativeUrl := Trim(FReader.Value);
-  end
-  else if FElement = 'url' then
-  begin
-    Url := Trim(FReader.Value);
-  end
-  else if FElement = 'root' then
-  begin
-    RepositoryRoot := Trim(FReader.Value);
+  case IndexStr(FElement, cElements) of
+    cWorkingRoot:
+      FInfo.Root := VcsNormalizeDir(FReader.Value);
+    cRelativeUrl:
+      FInfo.RelativeUrl := Trim(FReader.Value);
+    cUrl:
+      FUrl := Trim(FReader.Value);
+    cRepositoryRoot:
+      FRepositoryRoot := Trim(FReader.Value);
   end;
 end;
 
@@ -464,7 +495,7 @@ begin
   mChange.Kind := mKind;
   mChange.Staged := False;
   mChange.Unstaged := True;
-  Changes := Changes + [mChange];
+  FChanges := FChanges + [mChange];
 end;
 
 { TSvnLogScan }
@@ -549,7 +580,7 @@ begin
   FEntry.Revision := FReader.Attr('revision');
   if FEntry.Revision = '' then
   begin
-    raise EAtlasVcsParse.Create('svn log: revision fehlt');
+    raise EAtlasVcsParse.Create(cLogRevisionMissing);
   end;
   FFiles.Clear;
   FInEntry := not FReader.EmptyElement;
@@ -620,7 +651,7 @@ begin
     begin
       FRef.LocalName := FRef.Name;
       FRef.Current := SameText('branches/' + FRef.Name, FCurrent);
-      Refs := Refs + [FRef];
+      FRefs := FRefs + [FRef];
     end;
   end;
   FElement := '';
@@ -675,7 +706,7 @@ begin
   end
   else if (FReader.Name = 'entry') and FInEntry then
   begin
-    Lines := Lines + [FItem];
+    FLines := FLines + [FItem];
     FInEntry := False;
   end;
 end;
@@ -705,13 +736,13 @@ begin
   FItem := Default(TAtlasVcsBlameLine);
   if not TryStrToInt(FReader.Attr('line-number'), mNumber) then
   begin
-    raise EAtlasVcsParse.Create('svn blame: line-number fehlt');
+    raise EAtlasVcsParse.Create(cBlameLineMissing);
   end;
   FItem.Line := mNumber;
   FInEntry := not FReader.EmptyElement;
   if not FInEntry then
   begin
-    Lines := Lines + [FItem];
+    FLines := FLines + [FItem];
   end;
 end;
 
@@ -728,12 +759,12 @@ begin
   FItem.Revision := FReader.Attr('revision');
   if FItem.Revision = '' then
   begin
-    raise EAtlasVcsParse.Create('svn log: revision fehlt');
+    raise EAtlasVcsParse.Create(cLogRevisionMissing);
   end;
   FInEntry := not FReader.EmptyElement;
   if not FInEntry then
   begin
-    Commits := Commits + [FItem];
+    FCommits := FCommits + [FItem];
   end;
 end;
 
@@ -743,7 +774,7 @@ begin
   if (FReader.Name = 'logentry') and FInEntry then
   begin
     FItem.Message := TrimRight(FItem.Message);
-    Commits := Commits + [FItem];
+    FCommits := FCommits + [FItem];
     FInEntry := False;
   end;
 end;
@@ -794,7 +825,7 @@ begin
   // Die Länge ist vorher unbekannt: Platz verdoppeln, am Ende kürzen.
   if FCount = Length(FPatch) then
   begin
-    SetLength(FPatch, FCount * 2 + 16);
+    SetLength(FPatch, FCount * 2 + cInitialPatchLines);
   end;
   FPatch[FCount] := ALine;
   Inc(FCount);
@@ -877,7 +908,7 @@ begin
   end;
   if not ReadLogHeader(FLines[FIndex], AItem.Revision, mMessage) then
   begin
-    raise EAtlasVcsParse.Create('svn log --diff: Kopf erwartet');
+    raise EAtlasVcsParse.Create(cLogDiffHeaderMissing);
   end;
   Inc(FIndex);
   // Leerzeile, dann die Nachricht.
@@ -898,9 +929,9 @@ begin
   mScan := TSvnInfoScan.Create;
   try
     mScan.Run(AText);
-    if mScan.Depth = 0 then
+    if mScan.EntryCount = 0 then
     begin
-      raise EAtlasVcsParse.Create('svn info: kein Eintrag');
+      raise EAtlasVcsParse.Create(cInfoEntryMissing);
     end;
     Result := mScan.Info;
     Result.RelativeUrl := InfoRelativeUrl(Result.RelativeUrl, mScan.Url, mScan.RepositoryRoot);
@@ -958,54 +989,30 @@ begin
 end;
 
 class function TAtlasSvnParser.KindOf(const AItem, AProps: string; out AKind: TAtlasVcsChangeKind): Boolean;
+const
+  cItems: array[0..9] of string = ('modified', 'added', 'deleted', 'replaced', 'unversioned', 'conflicted', 'missing',
+    'incomplete', 'obstructed', 'merged');
+  cKinds: array[0..9] of TAtlasVcsChangeKind = (TAtlasVcsChangeKind.Modified, TAtlasVcsChangeKind.Added,
+    TAtlasVcsChangeKind.Deleted, TAtlasVcsChangeKind.Replaced, TAtlasVcsChangeKind.Untracked,
+    TAtlasVcsChangeKind.Conflicted, TAtlasVcsChangeKind.Missing, TAtlasVcsChangeKind.Missing,
+    TAtlasVcsChangeKind.TypeChanged, TAtlasVcsChangeKind.Modified);
+  // Zustände nach diesem verdeckt ein Konflikt der Eigenschaften.
+  cConflicted = 5;
+var
+  mItem: Integer;
 begin
-  Result := True;
-  if AItem = 'modified' then
+  mItem := IndexStr(AItem, cItems);
+  if (AProps = 'conflicted') and ((mItem < 0) or (mItem > cConflicted)) then
   begin
-    AKind := TAtlasVcsChangeKind.Modified;
-  end
-  else if AItem = 'added' then
+    mItem := cConflicted;
+  end;
+  // Ohne bekannten Zustand: nur Eigenschaften geändert (svn:eol-style und ähnliche) oder normal, none, ignored,
+  // external.
+  AKind := TAtlasVcsChangeKind.Modified;
+  Result := (mItem >= 0) or (AProps = 'modified');
+  if mItem >= 0 then
   begin
-    AKind := TAtlasVcsChangeKind.Added;
-  end
-  else if AItem = 'deleted' then
-  begin
-    AKind := TAtlasVcsChangeKind.Deleted;
-  end
-  else if AItem = 'replaced' then
-  begin
-    AKind := TAtlasVcsChangeKind.Replaced;
-  end
-  else if AItem = 'unversioned' then
-  begin
-    AKind := TAtlasVcsChangeKind.Untracked;
-  end
-  else if (AItem = 'conflicted') or (AProps = 'conflicted') then
-  begin
-    AKind := TAtlasVcsChangeKind.Conflicted;
-  end
-  else if (AItem = 'missing') or (AItem = 'incomplete') then
-  begin
-    AKind := TAtlasVcsChangeKind.Missing;
-  end
-  else if AItem = 'obstructed' then
-  begin
-    AKind := TAtlasVcsChangeKind.TypeChanged;
-  end
-  else if AItem = 'merged' then
-  begin
-    AKind := TAtlasVcsChangeKind.Modified;
-  end
-  else if AProps = 'modified' then
-  begin
-    // Nur Eigenschaften geändert (svn:eol-style und ähnliche).
-    AKind := TAtlasVcsChangeKind.Modified;
-  end
-  else
-  begin
-    // normal, none, ignored, external
-    AKind := TAtlasVcsChangeKind.Modified;
-    Result := False;
+    AKind := cKinds[mItem];
   end;
 end;
 
@@ -1037,7 +1044,7 @@ begin
     begin
       if mFound = Length(Result) then
       begin
-        SetLength(Result, mFound * 2 + 4);
+        SetLength(Result, mFound * 2 + cInitialLogEntries);
       end;
       Result[mFound] := mItem;
       Inc(mFound);

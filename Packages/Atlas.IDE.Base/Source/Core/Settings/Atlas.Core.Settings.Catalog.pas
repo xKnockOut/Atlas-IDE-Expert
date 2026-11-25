@@ -20,6 +20,8 @@
 // Export, Import und Zurücksetzen (Voraussetzung für #767).
 // Beschreibung, Synonyme (x-keywords) und Schnellschalter trägt der Katalog für die Suche über die Einstellungen
 // (#1884, Atlas.Core.Settings.Search).
+// IndexOfKey und IndexOfName schlagen in einem Verzeichnis nach (#2372): Die Optionsseite fragt sie für jedes
+// Element und jeden Hauptschalter darüber; linear durch knapp 1000 Einträge kostete das je Knoten spürbar Zeit.
 
 interface
 
@@ -105,10 +107,16 @@ type
   TAtlasSettingsCatalog = class
   private
     FEntries: TList<TAtlasCatalogEntry>;
+    /// <summary>Erster Eintrag je Schlüssel (klein geschrieben).</summary>
+    FByKey: TDictionary<string, Integer>;
+    /// <summary>Erster Plugin-Eintrag je Registry-Name (klein geschrieben).</summary>
+    FByName: TDictionary<string, Integer>;
     FAreas: TArray<TAtlasCatalogArea>;
     FNodes: TArray<TAtlasCatalogArea>;
     FProjectPaths: TArray<string>;
     FVersion: Integer;
+    /// <summary>Eintrag anhängen und in FByKey und FByName aufnehmen.</summary>
+    procedure AddEntry(const AEntry: TAtlasCatalogEntry);
     procedure ReadPlugin(const AText: string);
     procedure ReadServer(const AText: string);
     procedure AddServerEntry(const AKey: string; ASchema, AParent: TJSONObject);
@@ -124,6 +132,9 @@ type
     destructor Destroy; override;
     /// <summary>Katalog aus den eingebauten Schemata (AtlasPluginSchemaJson, AtlasSchemaJson).</summary>
     class function CreateDefault: TAtlasSettingsCatalog; static;
+    /// <summary>ACatalog, beim ersten Aufruf mit CreateDefault angelegt; freigeben bleibt beim Besitzer von ACatalog.
+    /// </summary>
+    class function Lazy(var ACatalog: TAtlasSettingsCatalog): TAtlasSettingsCatalog; static;
     /// <summary>Eintrag mit Schlüssel AKey (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
     function IndexOfKey(const AKey: string): Integer;
     /// <summary>Plugin-Eintrag mit Registry-Name AName; -1 ohne.</summary>
@@ -163,15 +174,18 @@ type
     class function Display(const AJson: string): string; static;
   end;
 
+/// <summary>Index zu AText in einem Verzeichnis mit klein geschriebenen Schlüsseln; -1 ohne Eintrag.</summary>
+function IndexOfLowerKey(AMap: TDictionary<string, Integer>; const AText: string): Integer;
+
 implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Settings.SchemaCheck,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.PluginSchemaData,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
@@ -256,19 +270,6 @@ begin
   end;
 end;
 
-/// <summary>Wert des Schlüssels AName als JSON-Text ('default', 'x-offValue'); '' ohne.</summary>
-function JsonOf(ASchema: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := ASchema.GetValue(AName);
-  if mValue <> nil then
-  begin
-    Result := mValue.ToJSON;
-  end;
-end;
-
 { TAtlasCatalogEntry }
 
 /// <summary>Eintrag der Plugin-Einstellung AName aus ihrem Schema.</summary>
@@ -287,7 +288,7 @@ begin
   Result.Page := TJsonRead.Text(ASchema, 'x-page');
   Result.Caption := TJsonRead.Text(ASchema, 'x-caption');
   Result.CaptionEn := TJsonRead.Text(ASchema, 'x-captionEn');
-  Result.DefaultJson := JsonOf(ASchema, 'default');
+  Result.DefaultJson := TJsonRead.Json(ASchema, 'default');
   Result.State := TJsonRead.Flag(ASchema, 'x-state');
   Result.Machine := TJsonRead.Flag(ASchema, 'x-machine');
   Result.IsPath := TJsonRead.Flag(ASchema, 'x-path');
@@ -302,7 +303,7 @@ begin
   Result.Parent := OptionalText(ASchema, 'x-parent', Result.HasParent);
   Result.Node := OptionalText(ASchema, 'x-node', Result.HasNode);
   Result.Module := TJsonRead.Text(ASchema, 'x-module');
-  Result.OffJson := JsonOf(ASchema, 'x-offValue');
+  Result.OffJson := TJsonRead.Json(ASchema, 'x-offValue');
   Result.Description := TJsonRead.Text(ASchema, 'description');
   Result.Keywords := TJsonRead.Strings(ASchema, 'x-keywords');
   Result.QuickToggle := TJsonRead.Flag(ASchema, 'x-quickToggle');
@@ -345,7 +346,7 @@ begin
   Result.Caption := FirstSentence(TJsonRead.Text(ASchema, 'description'));
   // Englisch aus x-description-en (#1458), ebenso gekürzt.
   Result.CaptionEn := FirstSentence(TJsonRead.Text(ASchema, 'x-description-en'));
-  Result.DefaultJson := JsonOf(ASchema, 'default');
+  Result.DefaultJson := TJsonRead.Json(ASchema, 'default');
   Result.Machine := TJsonRead.Flag(ASchema, 'x-machine') or TJsonRead.Flag(AParent, 'x-machine');
   Result.State := TJsonRead.Flag(ASchema, 'x-state');
   Result.IsPath := TJsonRead.Flag(ASchema, 'x-path');
@@ -449,12 +450,16 @@ constructor TAtlasSettingsCatalog.Create(const APluginSchema, AServerSchema: str
 begin
   inherited Create;
   FEntries := TList<TAtlasCatalogEntry>.Create;
+  FByKey := TDictionary<string, Integer>.Create;
+  FByName := TDictionary<string, Integer>.Create;
   ReadPlugin(APluginSchema);
   ReadServer(AServerSchema);
 end;
 
 destructor TAtlasSettingsCatalog.Destroy;
 begin
+  FByName.Free;
+  FByKey.Free;
   FEntries.Free;
   inherited;
 end;
@@ -467,6 +472,25 @@ end;
 function TAtlasSettingsCatalog.GetEntry(AIndex: Integer): TAtlasCatalogEntry;
 begin
   Result := FEntries[AIndex];
+end;
+
+procedure TAtlasSettingsCatalog.AddEntry(const AEntry: TAtlasCatalogEntry);
+var
+  mIndex: Integer;
+  mKey: string;
+begin
+  mIndex := FEntries.Add(AEntry);
+  // Wie die frühere Suche von vorn: Der erste Eintrag gewinnt.
+  mKey := LowerCase(AEntry.Key);
+  if not FByKey.ContainsKey(mKey) then
+  begin
+    FByKey.Add(mKey, mIndex);
+  end;
+  mKey := LowerCase(AEntry.Name);
+  if (AEntry.Source = asPlugin) and not FByName.ContainsKey(mKey) then
+  begin
+    FByName.Add(mKey, mIndex);
+  end;
 end;
 
 procedure TAtlasSettingsCatalog.ReadPlugin(const AText: string);
@@ -494,7 +518,7 @@ begin
     begin
       if mPair.JsonValue is TJSONObject then
       begin
-        FEntries.Add(PluginEntry(mPair.JsonString.Value, TJSONObject(mPair.JsonValue)));
+        AddEntry(PluginEntry(mPair.JsonString.Value, TJSONObject(mPair.JsonValue)));
       end;
     end;
   finally
@@ -559,7 +583,7 @@ begin
   end;
   if mPlugin < 0 then
   begin
-    FEntries.Add(ServerEntry(AKey, ASchema, AParent));
+    AddEntry(ServerEntry(AKey, ASchema, AParent));
   end
   else if TJsonRead.Flag(ASchema, 'x-experimental') then
   begin
@@ -644,32 +668,31 @@ begin
   Result := TAtlasSettingsCatalog.Create(AtlasPluginSchemaJson, AtlasSchemaJson);
 end;
 
-function TAtlasSettingsCatalog.IndexOfKey(const AKey: string): Integer;
-var
-  mIndex: Integer;
+class function TAtlasSettingsCatalog.Lazy(var ACatalog: TAtlasSettingsCatalog): TAtlasSettingsCatalog;
 begin
-  Result := -1;
-  for mIndex := 0 to FEntries.Count - 1 do
+  if ACatalog = nil then
   begin
-    if SameText(FEntries[mIndex].Key, AKey) then
-    begin
-      Exit(mIndex);
-    end;
+    ACatalog := CreateDefault;
+  end;
+  Result := ACatalog;
+end;
+
+function IndexOfLowerKey(AMap: TDictionary<string, Integer>; const AText: string): Integer;
+begin
+  if not AMap.TryGetValue(LowerCase(AText), Result) then
+  begin
+    Result := -1;
   end;
 end;
 
-function TAtlasSettingsCatalog.IndexOfName(const AName: string): Integer;
-var
-  mIndex: Integer;
+function TAtlasSettingsCatalog.IndexOfKey(const AKey: string): Integer;
 begin
-  Result := -1;
-  for mIndex := 0 to FEntries.Count - 1 do
-  begin
-    if (FEntries[mIndex].Source = asPlugin) and SameText(FEntries[mIndex].Name, AName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
+  Result := IndexOfLowerKey(FByKey, AKey);
+end;
+
+function TAtlasSettingsCatalog.IndexOfName(const AName: string): Integer;
+begin
+  Result := IndexOfLowerKey(FByName, AName);
 end;
 
 function TAtlasSettingsCatalog.Resolve(const AKey: string; out AMigrated: Boolean): Integer;

@@ -196,6 +196,7 @@ A mutation run checks whether the tests notice faults in the code at all: Atlas 
 - Commands (command palette, *Atlas* menu, context menu of a unit under *Atlas › Tests*): “Mutation-test method” (method at the cursor or at the gutter line last right-clicked), “Mutation-test unit”, “Mutation-test changed methods” (only methods without a valid result) and “Cancel mutation run”.
 - Atlas picks the test project as for “Run tests”. For the run it creates a shadow project with its own dpr/dproj and output folders under `.atlas-local\mutation\<project>` next to the test project and adds it to the project group for the run; the original, its DCUs and the active project stay untouched. The text of the unit comes from the editor, unsaved changes included.
 - First the tests run against the unchanged copy; if they already fail, the run stops. Then for every mutant: build, run the tests with a time limit. A failing test (or a crash, or the time limit) **kills** the mutant, all green means it **survived**; mutants that do not compile or cannot be applied do not count.
+- If the environment ends the run after the tests without mutation (build refused because the debugger or another build is running; no test executable; copy not writable), everything checked so far counts as after "Cancel mutation run". A test executable that cannot be started kills no mutant; it ends the run.
 - The Messages view lists the outcome of every mutant, at the end the totals and the mutation score, and a clickable line for every surviving mutant.
 - The gutter shows a dot on every line with mutants: green all killed, red one survived, grey not rated; the tooltip names original, replacement and the killing test. Results are stored in `.atlas-local\mutation\results.json` of the test project and stay valid as long as the method is unchanged (indentation and comments do not count). Hide them per file or everywhere from the gutter context menu.
 
@@ -236,9 +237,10 @@ Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command pal
 - The filters *Failed*, *Not run*, *Outdated* and *Slow* (above `tests.slowMs`) apply at once, several together with “or”; the search box searches the full name (Unit.Fixture.Method.Case). The path to every match stays visible.
 - Double-click or Enter goes to the test, for a case to its `[TestCase]`. Below, the selected test shows message, expected and actual value and the stack trace; lines naming a unit of the test project open on double-click.
 - Results are kept for this session, per test project; changes to a test unit show up after saving.
+- It opens by itself when tests fail (#2467): if at least one test fails after a run, or the run aborts with an error (no report, time limit), the window opens, comes to the front and shows the test project of the run. This applies to every way of running tests: run tests, re-run failed tests, tests after the build, affected tests on save, series, test lists, test lens and debug test. The focus stays where it was, so a run on save does not interrupt your typing. Nothing happens after a green or cancelled run. Turn it off with `tests.window.openOnFailure`.
 - `tests.window` off: no menu entry, the window is not restored.
 
-Setting: `tests.window`
+Settings: `tests.window`, `tests.window.openOnFailure`
 
 ### Test lists in the “Atlas Tests” window (#2167)
 
@@ -312,6 +314,15 @@ Settings: `tests.log`, `tests.log.maxLines`
 - `tests.leaks` off: the result stays as DUnitX reports it (failure, red), and the line about leaks at program end is left out.
 
 Setting: `tests.leaks`
+
+### Folder of new test units (#274, #2800)
+
+- Atlas creates new test units (*Create DUnitX test unit*, test case from the unit) in `testUnits.folder`; empty: in the folder of the test project.
+- `{path}` in the folder mirrors the layout of the main project: with `testUnits.folder` = `Tests/{path}` and `testUnits.sourceRoot` = `Source`, `Source/Core/Foo.pas` gets the test unit `Tests/Core/Foo.Tests.pas`. Atlas creates missing folders, `.dpr` and `.dproj` get the path.
+- `{namespace}` inserts the unit's namespace as folders (`Atlas.Core.Net.Http` → `Atlas/Core/Net`).
+- Separate several source folders with `;`, the longest matching one applies; units outside land directly in the base folder. Without placeholders everything stays as before.
+
+Settings: `testUnits.folder`, `testUnits.sourceRoot`
 
 ### Create a test case from the unit (#1226)
 
@@ -420,6 +431,28 @@ Settings: `debug.inlineValues`, `debug.inlineValuesPerLine`
 
 Settings: `debug.whyHere`, `debug.whyHere.depth`
 
+### Run time between breakpoints
+
+- When stopped, the end of the line of the execution point shows, dimmed, how long the program ran since the last stop: `+124 ms`, from 10 s on `+12 s`
+- Only running time counts: time spent paused, stops that Atlas resumes on its own and evaluations do not
+- Always at a breakpoint, for single steps and pauses only from 1 ms on
+- A click on the time shows the last 20 measurements with start and target line. The time includes debugger overhead (debug build, events) and is a rough guide only
+
+Setting: `debug.showElapsed`
+
+### Return values *(experimental)*
+
+What did the function just return, without watching `Result` beforehand?
+
+- After “Step over” (F8) on a line that calls your own functions, the end of that line shows, dimmed, `→ CalculateNet = 109.16`; if the line calls several functions, all of them appear in the order they returned
+- After “Run until return” (Shift+F8) inside your own function, its result appears at the calling line where the program stops afterwards
+- A click on the text shows “Recently returned”: the last 20 results with function, value, `end` line and time
+- To do this Atlas sets temporary breakpoints on the `end` lines of the functions before the step, evaluates `Result` there and continues the step; the other displays do not notice these stops. After the step the breakpoints are gone. Your own breakpoint inside the function stops as usual, recursive calls do not stop in deeper frames
+- Only your own code with source and only functions (local ones and operators too); procedures and library code are left out. With optimization (`$O+`) `Result` often cannot be evaluated at the `end` line, then it shows ‹no access›
+- Works for the IDE commands (key, menu and toolbar) once Atlas knows the calls of the line; pressing very quickly after the stop gets no values for that step
+
+Setting: `debug.returnValues` (default off)
+
 ### Predict upcoming conditions
 
 - When stopped, the next `if`, `while` and `case` of the same routine (up to `debug.predictConditions.lines` lines ahead, default 20) show their predicted result, marked as a forecast: `⟨= False · FOnline⟩` (the deciding part), for `case` `⟨→ smManual⟩`
@@ -523,6 +556,7 @@ Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 - Values are evaluated without side effects, expand into their fields like in the evaluate window, and values that changed since the last step are highlighted.
 - Search in the shown tab by name or (with "In values") by value. With "Children" Atlas expands nodes itself up to `debug.variablesWindow.searchDepth` levels and stops after `debug.variablesWindow.searchLimit` evaluations. It shows the matches (bold), their path and their children; the footer shows the number of matches. Only simple values count: searching for "Berlin" matches `Kunde.Adressen[1].Ort`, not `Kunde`.
 - Autos and Locals need the Atlas server; Watch works without it.
+- Watched expressions per class or unit (#2550): in the context menu of a row on the Watch tab, “Show only in this class” or “Show only in this unit” binds the expression to the class or unit the program is stopped in; “Show everywhere” removes the binding. At the next stop in the class (also in descendants, as far as the Atlas index knows the inheritance) the expression appears by itself, matching bound ones first; elsewhere it is neither evaluated nor shown. The row says what it applies to (“· applies to TAuftragsLauf”), above the list “3 more hidden – show”. Class, unit and ancestors come from the Atlas server; without it Atlas reads class and unit from the top frame, without inheritance. Evaluation always happens in the top frame with source because the ToolsAPI does not select another frame.
 
 | Key / command | Action |
 |---|---|
@@ -534,7 +568,19 @@ Settings: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 | Del (Watch tab) | remove the watch |
 | Enter in the field of the Watch tab | watch the expression |
 
-Settings: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`
+Settings: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`, `debug.variablesWindow.scopedWatches`
+
+### Marked objects (#839)
+
+Following an object through the code no longer means comparing addresses. At a stop, “Mark object …” (editor context menu, Debug submenu) labels the object under the cursor; class and name are suggested (“Kunde Meier”). Wherever the same address shows up again, the label is next to it: in front of the value in the editor (“‹Kunde A› (FNr: 4; …)”), behind the value in the debug hover and in the Evaluate window. Each mark gets one of eight colors.
+
+- The “Marked objects” window (Atlas › Debug or View › Atlas › Debug) shows label, class, address, where the object was last seen (expression and file:line) and the state. Del removes, F2 renames the label, Space changes the color.
+- Atlas reads the address via `Pointer(expression)` without side effects and the class from the VMT in the program's memory; nothing is called in the program.
+- If another class sits at a marked address at a stop, the object counts as “probably freed”: the window shows it in gray and the label no longer appears anywhere.
+- Marks last for the running debug session; when the process ends, the list is empty.
+- Not covered: IDE windows (Watches, Local Variables), visualizer replacement texts and call stack parameters show no labels.
+
+Setting: `debug.objectMarks`
 
 ## Debug: stepping and breaking
 
@@ -563,6 +609,18 @@ Run menu and command palette. "Which code runs when I click here?"
 - Frequent events (`OnPaint`, `OnMouseMove`, `OnUpdate`, timers under 100 ms) only when chosen explicitly (`debug.breakOnNextEvent.excluded`).
 
 Settings: `debug.breakOnNextEvent`
+
+### Break on data access
+
+Run menu and command palette, before starting or while running. "Where does the program write to the Customers table?"
+
+- Atlas finds the calls of `Open`, `ExecSQL`, `Execute` (FireDAC, dbExpress, ADO, Zeos) and `Get`, `Post`, `Put`, `Delete` (`THTTPClient`, `TNetHTTPClient`, `TIdHTTP`, `TRESTRequest.Execute`) in the project, also on descendants, and sets temporary breakpoints there (group `Atlas.Datenzugriff`).
+- In the dialog: SQL and/or HTTP, one pattern each with `*` (`*FROM Customers WHERE*`, `POST */api/order*`, empty = any access), ignore case, stop or only log.
+- On a stop Atlas evaluates the SQL text and parameters or method and URL; if the pattern does not match, the program keeps running silently.
+- The bar shows place and text: "Keep watching", "Only log" (lines `[SQL] Customer.pas:43 · …` in the messages), "Stop watching" (removes the breakpoints).
+- Own classes in `debug.dataBreaks.classes` with `=sql` or `=http` (`TMyQuery=sql`).
+
+Settings: `debug.dataBreaks`, `debug.dataBreaks.classes`
 
 <a id="window-atlasstepfilter"></a>
 ### Step filters
@@ -593,6 +651,21 @@ Open it from the Atlas menu › Memory timeline or with the command `Atlas.Debug
 - The count does not depend on the memory manager and is an approximation: class references in fields (`TClass`) count too, freed objects drop out once the memory manager overwrites their start (FastMM does).
 
 Settings: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
+
+<a id="window-atlasconsoleoutput"></a>
+### Docked console output
+
+Experimental, off by default. Start with F9 as usual, or Run menu › “Run without debugger with console output”, or the commands `Atlas.ConsoleRunNoDebug` and `Atlas.ConsoleOutput`.
+
+- For a Win32 or Win64 console program without a host application, the output appears in the dockable window “Atlas: Console output” instead of a separate console window. The IDE starts other projects as usual.
+- With the debugger, Atlas starts the program suspended and attaches the IDE debugger. The program only runs once the IDE has taken it over, so breakpoints on the very first line are hit. If the IDE does not take over within 10 s, the program runs anyway and Atlas says so.
+- Error output (stderr) is red, input blue, notes from Atlas grey. Type input into the field at the bottom (Enter sends, “End input” sends end of file for `Readln`).
+- Locations such as `Main.pas(12)` or `Src/Main.pas:12:5` are underlined; a click opens the file at that line (looked up in the working folder, then the project folder).
+- Parameters, working folder and environment come from the project's run options, including an active start profile.
+- After the program ends, the output stays with the exit code. The window keeps at most 20,000 lines; older ones are dropped with a note.
+- “Stop” ends the program, through the IDE when debugging.
+
+Setting: `debug.captureConsole`
 
 <a id="window-atlasprofiler"></a>
 ### Profiler
@@ -663,6 +736,18 @@ Editor margin while paused, context menu Atlas › Debug, command palette. Inste
 
 Settings: `debug.runToClick`
 
+### Drag the execution point *(experimental)*
+
+Editor margin while paused, context menu Atlas › Debug › “Set next statement here”, command palette. Run a line again or skip a block without switching to the CPU window.
+
+- When the program is paused, a narrow column to the right of the line numbers shows an arrow at the line of the execution point.
+- Drag the arrow to another line of the same routine: a tooltip names the effect, e.g. “Lines 117–119 run again” or “Lines 121–124 are skipped”. Releasing sets the next statement there without executing anything; F7 or F8 continues from there.
+- Blocked (the mouse pointer shows a no-entry sign, the tooltip the reason): lines outside the routine, lines without executable code, the head of a counted `for` loop and targets in another part of a `try` block (`try`, `finally`, `except`) or of an anonymous method.
+- “Set next statement here” works like dragging, for the line of the caret or of the last right-click in the margin.
+- Atlas only moves the instruction pointer; stack, registers and variables stay as they are. A notice asks the first time. Win32 and Win64 only; Atlas refuses other platforms.
+
+Setting: `debug.dragNextStatement` (default off)
+
 ### Breakpoint only for one object
 
 A breakpoint in `TKunde.Speichere` stops 500 times for 500 customers. While the program is paused, with the caret on the breakpoint line, the editor context menu offers under Debug:
@@ -711,6 +796,22 @@ Settings: `debug.eventLog`, `debug.eventLogColors`
 
 Settings: `debug.logpoints`, `debug.logpointPrefix`
 
+<a id="window-atlaslogpointvalues"></a>
+### Logpoint history
+
+Open: Atlas menu › Debug › Logpoint history, or command `Atlas.DebugLogpointValues`.
+
+- Tick “Record number” in the logpoint dialog, optionally with a series name; this needs exactly one placeholder (`Open: {FOpen.Count}`).
+- The window “Atlas: Logpoint history” shows the values of every recording logpoint as a line over the time since the session started, on the same chart as the memory timeline.
+- Numbers are read in German and English notation (`48`, `-3,5`, `1.234,5`, `1,234.5`); text values such as `nil` are a gap in the line, not 0.
+- At the top the series (name and place) and the thread (“all” or one); below it hits, minimum, maximum and last value.
+- Clicking the line shows the hit and jumps to its line in the event log; dragging selects a range.
+- “Copy CSV” puts `time_s,thread,value` for each hit of the chosen series and thread on the clipboard.
+- At most `debug.logpoints.recordLimit` hits per series (default 10000); the oldest drop out. Starting a session clears all series.
+- Atlas remembers “Record number” like the text with placeholders while the IDE is running.
+
+Settings: `debug.logpoints.recordValues`, `debug.logpoints.recordLimit`
+
 ## Debug: no source
 
 - When the debugger stops in a routine without source (the IDE shows the CPU window), a small window without focus appears at the top right: routine, module, address, unit and reason
@@ -730,6 +831,28 @@ Settings: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 - With `debug.restart.reenableBreakpoints` Atlas turns breakpoints back on before the start that were on when the last session started
 
 Settings: `debug.restart`, `debug.restart.reenableBreakpoints`
+
+## Debug: debug note (#582)
+
+- “Capture debug state” in the Atlas menu and in the command palette, only while the debugger is paused
+- The Markdown note holds time, project, location with source line, call stack, local variables, the project's watches, the exception and the last lines of the event log
+- Values are cut to one line and 200 characters; values that are still missing or cannot be read say so; after 5 seconds the note is finished without the missing values
+- Passwords and keys in the event log and variables with such names appear masked
+- The note goes to the clipboard and, with `debug.note.saveFile`, into a file under `debug-notes` (German IDE: `debug-notizen`) next to the project
+
+Settings: `debug.note`, `debug.note.saveFile`
+
+## Debug: close files opened by the debugger (#842)
+
+- Atlas remembers which files the debugger opened during a session: the location of a stop (F7 into `System.pas`, `Vcl.Controls.pas` …), but not files you open yourself while paused
+- After the session (`debug.closeOpenedFiles`):
+  - `ask` (default): notice “The debugger opened N files” with “Close”, “Keep open” and “Always automatically”
+  - `auto`: Atlas closes them and reports “Closed N files opened by the debugger” with “Reopen”
+  - `off`: nothing happens
+- Files stay open if they were open before the session, are modified, have a breakpoint or bookmark, or were kept with “Keep file opened by the debugger” (Atlas menu, command palette)
+- Preview tab (`debug.previewTab`): when the debugger stops in another such file, Atlas closes the previous one if it is untouched; the status line names the preview tab (the IDE does not offer italic tab titles)
+
+Settings: `debug.closeOpenedFiles`, `debug.previewTab`
 
 ## Debug: leak and crash reports (#74)
 
@@ -788,14 +911,15 @@ Runs on its own; commands in the Atlas menu and the command palette. After `git 
 
 Settings: `debug.breakpointAnchors`
 
-### Breakpoint rules: dependent, hits, thread
+### Breakpoint rules: dependent, hits, thread, caller
 
 Editor context menu (Atlas › Debug › “Breakpoint rules …”, also in the margin), Atlas menu, command palette; on the line of a breakpoint. A breakpoint in a busy routine otherwise stops a hundred times before you get to the place that matters.
 
 - “Active only after”: the breakpoint is off at the start of every debug session and is switched on as soon as the chosen other breakpoint has stopped. “until the session ends” keeps it on, “only once” switches it off again after its stop until the triggering one stops again. After the session it is on again.
 - “Stop”: on every hit, exactly on hit n, from hit n on or on every n-th hit; counted per session.
 - “Thread”: all, name contains (from `TThread.NameThreadForDebugging`), one thread ID or the main thread only. A stop in another thread does not count as a hit.
-- The IDE condition, hit condition and thread filter apply together. For hits and threads the debugger stops briefly, Atlas counts and continues right away; in hot loops this costs time.
+- “Only if on the stack”: the breakpoint stops only when a given routine is on the call stack, for example `TKundenImport.LeseZeile`. Allowed are `Unit.Class.Method`, `Class.Method`, a whole unit or class and `*` as wildcard (`Kunden.*`, `*.LeseZeile`); case does not matter. “direct caller only” checks only the frame directly below the breakpoint. While the program is stopped, the list suggests the routines of the current stack. Stops without a matching caller do not count as hits, so “exactly on hit 2” means the second call from that routine. If the stack cannot be read, Atlas rather stops. Frames without debug information sometimes have no name, and inline routines or optimised code do not show up as a frame of their own. Breakpoints with a caller carry a hook (↳) in the Atlas column of the gutter; its hint names the caller.
+- The IDE condition, hit condition, thread filter and caller apply together. For hits, threads and callers the debugger stops briefly, Atlas checks and continues right away; in hot loops this costs time. After 1000 skipped stops in a session a line in the messages says so.
 - If the triggering breakpoint is missing at start, the dependent one stays on as usual and a line in the messages says so.
 - Rules are stored in `%LOCALAPPDATA%\Atlas\breakpoint-rules.json` and move along when “Breakpoints move with the code” moves a breakpoint.
 
@@ -837,10 +961,60 @@ Settings: `debug.justMyCode`
   - Continue (F9)
   - Ignore class
   - Ignore only here (class + unit + line per project, continued silently next time)
+  - Message … (rule by message text, see below)
   - Copy message
 - In Delphi 12 and 13 Atlas closes the IDE's dialog for it, otherwise the dialog stays and the bar follows.
 
 Settings: `debug.exceptionBanner` (off until the study for #783 is positive)
+
+### Exceptions by message text
+
+- One class such as `EConfigError` often stands for very different errors; the message tells them apart.
+- "Message …" in the exception bar and in the context menu of the exception history opens a small dialog:
+  - kind: "Stop only on messages like this" (other messages of this class continue) or "Ignore messages like this"
+  - pattern, prefilled from the message; numbers, addresses and quoted texts become `*`: `Key unknown: * in line *`
+  - without a regular expression it is enough for the message to contain the pattern; `*` stands for any text; case does not matter
+  - optionally a regular expression (an invalid one is reported right away)
+  - unit: any, or only the unit of the first line of your own code
+- Continued exceptions show greyed out in the history.
+- Rules come before the ignore list, so they can also stop on an ignored class.
+- Without a message read, no rule with a message decides: Atlas rather stops.
+- "Remove rules with a message for X" in the history's context menu takes them away again.
+- The rules are stored with the ignore list in `debug-ignore.json` (field `rules`).
+
+Settings: `debug.exceptionMessageRules` (default on)
+
+### Exception rules by class and location
+
+- A rule names the class (optionally with descendants), optionally the location (method or unit as a pattern, e.g. `Report.Print.*` or `TCustomer.*`), optionally a pattern for the message, and the action:
+  - Stop
+  - Only log (greyed out in the history)
+  - Continue (not in the history)
+- The location is the first method of your own code on the call stack; `*` stands for any text, case does not matter.
+- "Ignore only here" in the exception bar creates such a rule for the first method of your own code (without one, class + unit + line as before).
+- Window "Exception rules" (context menu of the exception history or command palette, `Atlas.DebugExceptionRules`):
+  - per row: on/off, class, location, message, action, origin and hits in the current debug session
+  - New, Edit, On/Off, Delete, Up/Down or drag with the mouse; the first matching rule wins
+  - personal rules come before those of the project; both can be changed here, sorting works within their own group
+  - in the dialog "Exception rule", "Applies to" chooses between "only me" and "everyone in the project (.atlas)"; "Apply" writes changed project rules to `.atlas` (comments and other entries stay, one rule per line), "Open project file" shows the file
+- Personal rules are stored in `debug-ignore.json` (field `rules`), project rules in `.atlas` under `exceptionRules` and are checked in:
+
+```json
+"exceptionRules": [{"class": "EConvertError", "location": "Report.Print.*", "action": "continue"}]
+```
+
+  Fields: `class`, `location`, `message`, `regex`, `messageMatch` (`matches`/`notMatches`), `action` (`stop`/`log`/`continue`), `enabled`, `descendants`.
+- With "including descendants" the rule also matches derived classes (`EDatabaseError` catches `EFDDBEngineException`). Atlas asks the server's type hierarchy for the ancestors once per class and session when the debugger stops; if the class is unknown there, only the exact name counts.
+
+Settings: `debug.exceptionRules` (default on); rules with a message also need `debug.exceptionMessageRules`
+
+### Known errors from the issue tracker (#2460)
+
+- When the debugger stops at an exception, the issue tracker module looks for matching issues in the background: class and topmost own method, class and words of the message, method only (numbers, addresses, paths and quoted text do not count).
+- The exception bar shows up to four hits with state and assignee, resolved ones as “occurred again?”, plus “Open issue”, “Add as comment” (exception, own call stack, location, branch) or “Reopen …” and “New issue …” (prefilled).
+- The result is kept per signature for the session; the debugger never waits for the tracker. Without the issue tracker module the bar stays as before.
+
+Setting: `issues.debugKnownErrors` (default on)
 
 ### Access violation explained
 
@@ -902,6 +1076,18 @@ Settings: `debug.callStackWindow` (off: the IDE call stack stays as it is), `deb
 - From `debug.parallelStacks.maxThreads` threads (default 64) Atlas reads the stacks in portions and shows the tree in between so the IDE stays responsive.
 
 Settings: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`
+
+### Parallel watch (#866)
+
+- Atlas > "Parallel watch" opens a dockable window that evaluates one or more expressions in all threads: one row per thread (ID, name, location of the top own frame), one column per expression. With eight workers you see at a glance which one is working on which order (`FOrder.No`).
+- Add expressions with the field and "Add" (or Enter); the context menu of a column changes or removes the expression. They are stored per project.
+- Atlas evaluates at every stop while the window is visible, in the thread itself with the top own frame as location; the current thread stays the same. If an expression does not apply in a thread (unknown identifier), the cell shows "–". From 32 threads Atlas evaluates only on "Evaluate".
+- Threads without an own frame (idle pool, system threads) are hidden; "Show threads without own code" shows them.
+- Clicking a column header sorts (numbers by value), a second click descending. "Only rows with …" in the context menu of a column filters, for example the column `Cancel` for `True`. Flagged threads (⚑, "Threads in source") come first.
+- Enter or a double click switches to the thread and jumps to the line of its frame.
+- Limit of the ToolsAPI: Atlas cannot choose a frame other than the one the debugger uses for the thread; it passes file and line of the own frame as the location.
+
+Setting: `debug.parallelWatch`
 
 <a id="window-atlasdebugleaks"></a>
 ### Atlas leaks

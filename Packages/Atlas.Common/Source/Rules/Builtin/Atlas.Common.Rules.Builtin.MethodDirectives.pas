@@ -61,7 +61,8 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -110,16 +111,6 @@ type
     IsAbstract: Boolean;
     Path: string;
   end;
-
-/// <summary>Typname ohne Typparameter ("TListe&lt;T&gt;" wird "TListe").</summary>
-function WithoutTypeParams(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-end;
 
 { TAbstractDeclarationInvalidRule }
 
@@ -365,7 +356,7 @@ var
   mOpen: TArray<TIndexSymbol>;
   mOwners: TArray<string>;
 begin
-  mName := WithoutTypeParams(ADecl.Name);
+  mName := TTextNames.WithoutGenerics(ADecl.Name);
   mNameToken := NameToken(TokenFrom(FTokens, ADecl.StartOffset), ABody.StartOffset, mName);
   if mNameToken < 0 then
   begin
@@ -421,7 +412,7 @@ begin
   begin
     if Result[mIndex].Kind = TSyntaxKind.RoutineHeader then
     begin
-      CheckHeader(WithoutTypeParams(ANode.Name), Result[mIndex]);
+      CheckHeader(TTextNames.WithoutGenerics(ANode.Name), Result[mIndex]);
     end;
   end;
   if mSealed then

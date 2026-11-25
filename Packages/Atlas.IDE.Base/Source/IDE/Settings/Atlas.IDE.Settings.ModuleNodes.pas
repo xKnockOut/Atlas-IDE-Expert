@@ -53,7 +53,8 @@ uses
   Vcl.StdCtrls,
   Vcl.Graphics,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Modules.Watch,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Settings.Strings;
 
 type
@@ -67,11 +68,6 @@ type
     function ValidateContents: Boolean;
     function GetHelpContext: Integer;
     function IncludeInIDEInsight: Boolean;
-  end;
-
-  TAtlasModuleNodeWatch = class(TInterfacedObject, IAtlasRegistryListener)
-  public
-    procedure RegistryChanged(const AChange: TAtlasRegistryChange);
   end;
 
 var
@@ -168,6 +164,12 @@ end;
 { TAtlasModuleNodePage }
 
 procedure TAtlasModuleNodePage.ShowModules(const AModules: TArray<TAtlasKnownModule>);
+const
+  cMargin = 12;
+  cFirstTop = 40;
+  cLineHeight = 22;
+  // Name  Version  (Zustand)
+  cModuleLine = '%s  %s  (%s)';
 var
   mModule: TAtlasKnownModule;
   mTop: Integer;
@@ -176,11 +178,11 @@ var
 begin
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.Left := mLabel.ScaleValue(12);
-  mLabel.Top := mLabel.ScaleValue(12);
+  mLabel.Left := mLabel.ScaleValue(cMargin);
+  mLabel.Top := mLabel.ScaleValue(cMargin);
   mLabel.Font.Style := [fsBold];
   mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesTitle);
-  mTop := 40;
+  mTop := cFirstTop;
   for mModule in AModules do
   begin
     if mModule.Installed then
@@ -193,16 +195,16 @@ begin
     end;
     mLabel := TLabel.Create(Self);
     mLabel.Parent := Self;
-    mLabel.Left := mLabel.ScaleValue(12);
+    mLabel.Left := mLabel.ScaleValue(cMargin);
     mLabel.Top := mTop;
     mLabel.ShowAccelChar := False;
-    mLabel.Caption := Format('%s  %s  (%s)', [mModule.Info.Name, mModule.Info.Version, mState]);
-    Inc(mTop, 22);
+    mLabel.Caption := Format(cModuleLine, [mModule.Info.Name, mModule.Info.Version, mState]);
+    Inc(mTop, cLineHeight);
   end;
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.Left := mLabel.ScaleValue(12);
-  mLabel.Top := mTop + mLabel.ScaleValue(12);
+  mLabel.Left := mLabel.ScaleValue(cMargin);
+  mLabel.Top := mTop + mLabel.ScaleValue(cMargin);
   mLabel.Font.Style := [fsItalic];
   mLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesHint);
 end;
@@ -254,9 +256,8 @@ begin
   Result := True;
 end;
 
-{ TAtlasModuleNodeWatch }
-
-procedure TAtlasModuleNodeWatch.RegistryChanged(const AChange: TAtlasRegistryChange);
+/// <summary>Module kommen und gehen: Knoten angleichen.</summary>
+procedure ModuleNodesRegistryChanged(const AChange: TAtlasRegistryChange);
 begin
   if AChange.Kind in [rcModuleAdded, rcModuleRemoved] then
   begin
@@ -282,7 +283,7 @@ begin
   begin
     mServices.RegisterAddInOptions(BaseNode);
   end;
-  Subscription := AtlasModuleRegistry.Subscribe(TAtlasModuleNodeWatch.Create);
+  Subscription := TAtlasRegistryWatch.Subscribe(AtlasModuleRegistry, ModuleNodesRegistryChanged);
   Sync;
 end;
 

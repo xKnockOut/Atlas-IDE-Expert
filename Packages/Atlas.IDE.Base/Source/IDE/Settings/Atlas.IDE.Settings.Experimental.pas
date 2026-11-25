@@ -10,8 +10,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry;
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry;
 
 type
   TAtlasIdeExperimental = class
@@ -33,7 +33,7 @@ implementation
 
 uses
   Atlas.Core.Settings.Experimental,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Strings;
 

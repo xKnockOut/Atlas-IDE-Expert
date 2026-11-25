@@ -23,12 +23,31 @@ type
     /// <summary>#1357: mcp.prompts, mcp.promptLanguage und eigene Prompts aus mcp.customPrompts.</summary>
     [Test]
     procedure ReadsMcpPrompts;
+    /// <summary>#2611: mcp.statistics, Vorgabe an.</summary>
+    [Test]
+    procedure ReadsMcpStatistics;
+    /// <summary>#2895: mcp.openProjects ask (Vorgabe), always, never; anderes gemeldet.</summary>
+    [Test]
+    procedure ReadsMcpOpenProjects;
     /// <summary>#1357: Fehler in eigenen Prompts (Name, Text, include, Platzhalter) werden gemeldet.</summary>
     [Test]
     procedure ChecksMcpCustomPrompts;
+    /// <summary>#2615: assistants.instructions.file (Vorgabe AGENTS.md) und .checks; falsche Typen gemeldet.
+    /// </summary>
+    [Test]
+    procedure ReadsAssistantInstructions;
     /// <summary>#1357: atlas.json mit nur mcp.customPrompts lässt das globale mcp.prompts stehen.</summary>
     [Test]
     procedure LayersMcpMembersSeparately;
+    /// <summary>#2608: assistants.protected mit path, reason und use; Fehler werden gemeldet.</summary>
+    [Test]
+    procedure ReadsAssistantProtected;
+    /// <summary>#2603: mcp.reportFindingsAfterEdit, Vorgabe an, je Glied geschichtet.</summary>
+    [Test]
+    procedure ReadsMcpReportFindingsAfterEdit;
+    /// <summary>#2620: mcp.confirm, Vorgabe an, je Glied geschichtet.</summary>
+    [Test]
+    procedure ReadsMcpConfirm;
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
@@ -188,6 +207,22 @@ begin
     '{"mcp": {"globalSettings": false}}', mIssues);
   Assert.IsFalse(mSettings.McpGlobalSettings, 'Datei vor Editor');
 end;
+procedure TConfigurationFeatureTests.ReadsMcpStatistics;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpStatistics, 'Vorgabe: zählen');
+  mSettings := Parse('{"mcp": {"statistics": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpStatistics);
+  mSettings := Parse('{"mcp": {"statistics": "nein"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'kein Wahrheitswert');
+  Assert.IsTrue(mSettings.McpStatistics, 'Ungültiger Wert lässt die Vorgabe');
+  mIssues := nil;
+end;
+
 procedure TConfigurationFeatureTests.ReadsMcpPrompts;
 var
   mSettings: TServerSettings;
@@ -214,6 +249,23 @@ begin
   Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Include)));
   Assert.AreEqual('metrics', mSettings.McpCustomPrompts[0].Include[1]);
 end;
+procedure TConfigurationFeatureTests.ReadsMcpOpenProjects;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual('ask', mSettings.McpOpenProjects);
+  mSettings := Parse('{"mcp": {"openProjects": "always"}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('always', mSettings.McpOpenProjects);
+  mSettings := Parse('{"mcp": {"openProjects": "never"}}', mIssues);
+  Assert.AreEqual('never', mSettings.McpOpenProjects);
+  mSettings := Parse('{"mcp": {"openProjects": "sometimes"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'nur ask, always oder never');
+  Assert.AreEqual('ask', mSettings.McpOpenProjects, 'ungültiger Wert lässt die Vorgabe');
+end;
+
 procedure TConfigurationFeatureTests.ChecksMcpCustomPrompts;
 var
   mSettings: TServerSettings;
@@ -236,6 +288,29 @@ begin
   Assert.IsFalse(mIssues[0].IsError, 'Platzhalter ohne Argument ist eine Warnung');
   Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
 end;
+procedure TConfigurationFeatureTests.ReadsAssistantInstructions;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mSettings.AssistantsInstructionFiles)));
+  Assert.AreEqual('AGENTS.md', mSettings.AssistantsInstructionFiles[0]);
+  Assert.AreEqual(0, Integer(Length(mSettings.AssistantsInstructionChecks)));
+  mSettings := Parse('{"assistants": {"instructions": {"file": ["AGENTS.md", "docs/Assistenten.md"], ' +
+    '"checks": ["pwsh Tools/Check-Delphi12.ps1"]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(2, Integer(Length(mSettings.AssistantsInstructionFiles)));
+  Assert.AreEqual('docs/Assistenten.md', mSettings.AssistantsInstructionFiles[1]);
+  Assert.AreEqual(1, Integer(Length(mSettings.AssistantsInstructionChecks)));
+  Assert.AreEqual('pwsh Tools/Check-Delphi12.ps1', mSettings.AssistantsInstructionChecks[0]);
+  mSettings := Parse('{"assistants": {"instructions": {"file": "AGENTS.md", "checks": [1]}}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)), 'keine Liste von Texten');
+  Assert.AreEqual('AGENTS.md', mSettings.AssistantsInstructionFiles[0], 'Vorgabe bleibt');
+  Parse('{"assistants": {"wetter": true}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'unbekannter Schlüssel');
+  mSettings := Default(TServerSettings);
+end;
 procedure TConfigurationFeatureTests.LayersMcpMembersSeparately;
 var
   mSettings: TServerSettings;
@@ -249,6 +324,62 @@ begin
   mSettings := TConfigurationParser.ParseLayered('{"mcp": {"promptLanguage": "en"}}',
     '{"mcp": {"promptLanguage": "de"}}', mIssues);
   Assert.AreEqual('de', mSettings.McpPromptLanguage, 'Datei vor Editor');
+end;
+procedure TConfigurationFeatureTests.ReadsAssistantProtected;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mSettings.AssistantProtected)), 'Vorgabe: nichts geschützt');
+  mSettings := Parse('{"assistants": {"protected": [{"path": "CHANGELOG.md", "reason": "Fragmente", ' +
+    '"use": "changelog.d"}, {"path": "**/*SchemaData.pas"}]}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(2, Integer(Length(mSettings.AssistantProtected)));
+  Assert.AreEqual('CHANGELOG.md', mSettings.AssistantProtected[0].Path);
+  Assert.AreEqual('Fragmente', mSettings.AssistantProtected[0].Reason);
+  Assert.AreEqual('changelog.d', mSettings.AssistantProtected[0].Use);
+  Assert.AreEqual('', mSettings.AssistantProtected[1].Reason, 'Grund ist freiwillig');
+  Parse('{"assistants": {"protected": "CHANGELOG.md"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
+  Parse('{"assistants": {"geschützt": []}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'unbekannte Einstellung');
+  // Kein Objekt, ohne path, unbekannte Angabe (nur Warnung, der Eintrag gilt).
+  mSettings := Parse('{"assistants": {"protected": ["a.pas", {"reason": "x"}, {"path": "b.pas", "grund": "y"}]}}',
+    mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[2].IsError, 'unbekannte Angabe ist eine Warnung');
+  Assert.AreEqual(1, Integer(Length(mSettings.AssistantProtected)), 'nur b.pas');
+  Assert.AreEqual('b.pas', mSettings.AssistantProtected[0].Path);
+end;
+procedure TConfigurationFeatureTests.ReadsMcpReportFindingsAfterEdit;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpReportFindingsAfterEdit, 'Vorgabe an');
+  mSettings := Parse('{"mcp": {"reportFindingsAfterEdit": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpReportFindingsAfterEdit);
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"reportFindingsAfterEdit": false}}',
+    '{"mcp": {"customPrompts": []}}', mIssues);
+  Assert.IsFalse(mSettings.McpReportFindingsAfterEdit, 'globale Ebene bleibt');
+end;
+
+procedure TConfigurationFeatureTests.ReadsMcpConfirm;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpConfirm, 'Vorgabe an');
+  mSettings := Parse('{"mcp": {"confirm": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpConfirm);
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"confirm": false}}', '{"mcp": {"prompts": true}}',
+    mIssues);
+  Assert.IsFalse(mSettings.McpConfirm, 'globale Ebene bleibt');
 end;
 procedure TConfigurationFeatureTests.ChecksTasks;
 var
@@ -379,6 +510,12 @@ begin
   Assert.IsFalse(mSettings.SlashSortUsesRemoveUnused);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.IsTrue(Parse('{}', mIssues).SlashSortUsesRemoveUnused);
+  // #2794: Reihenfolge von /sortuses, per Vorgabe nach Herkunft.
+  Assert.AreEqual('origin', Parse('{}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual('namespace', Parse('{"slashCommands": {"sortUsesOrder": "namespace"}}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('origin', Parse('{"slashCommands": {"sortUsesOrder": "zufall"}}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual('', Parse('{}', mIssues).SlashTodoOwner);
   // #875: /helper für Aufzählungen
   Assert.IsTrue(Parse('{}', mIssues).SlashEnumHelper);
@@ -1159,6 +1296,14 @@ begin
   // Muster ohne {unit} und Projekt ohne .dproj/.dpr (Fehler), "x" unbekannt (Warnung).
   Assert.AreEqual(3, Integer(Length(mIssues)));
   Assert.AreEqual('{unit}.Tests', mSettings.TestUnits.Pattern, 'ungültiges Muster bleibt bei der Vorgabe');
+  // #2800: Platzhalter im Ordner und Quellordner.
+  mSettings := Parse('{"testUnits": {"folder": "Tests/{path}", "sourceRoot": "Source;Lib"}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('Tests/{path}', mSettings.TestUnits.Folder);
+  Assert.AreEqual('Source;Lib', mSettings.TestUnits.SourceRoot);
+  mSettings := Parse('{"testUnits": {"folder": "Tests/{pfad}"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'unbekannter Platzhalter');
+  Assert.AreEqual('', mSettings.TestUnits.Folder);
 end;
 procedure TConfigurationFeatureTests.ReadsDfmPropertyRules;
 var

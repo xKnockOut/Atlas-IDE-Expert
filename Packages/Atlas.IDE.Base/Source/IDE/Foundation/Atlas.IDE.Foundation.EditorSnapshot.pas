@@ -1,18 +1,20 @@
 ﻿unit Atlas.IDE.Foundation.EditorSnapshot;
 
 // Gemeinsamer Stand des Editorpuffers für Probleme und Inlay-Hints:
-// Beide Zeitgeber fragten bisher je Takt den ganzen Puffer ab und verglichen
-// den ganzen Text. Jetzt liest Get nur, wenn ein Ereignis (EditorViewModified,
+// Statt dass beide Zeitgeber je Takt den ganzen Puffer abfragen und den
+// ganzen Text vergleichen, liest Get nur, wenn ein Ereignis (EditorViewModified,
 // Wechsel des Editors, eigene Schreibvorgänge, Neuladen) den Stand als veraltet
 // markiert hat, Zeilenzahl oder Änderungsstatus abweichen oder das
-// Sicherheitsnetz (TAtlasSnapshotPolicy.cSafetyMs) abgelaufen ist. Version
+// Sicherheitsnetz abgelaufen ist (je Puffer 2 bis 32 s, siehe
+// TAtlasSnapshotPolicy). Version
 // steigt nur, wenn der neu gelesene Text abweicht; Verbraucher vergleichen
 // die Version statt des Textes.
 
 interface
 
 uses
-  ToolsAPI;
+  ToolsAPI,
+  Atlas.Core.Editor.EditSurface;
 
 type
   TAtlasEditorSnapshot = record
@@ -34,6 +36,14 @@ type
     /// Rückgängig-Schritt, und markiert die Datei als veraltet (eigener Schreibvorgang).</summary>
     class procedure ReplaceText(const ABuffer: IOTAEditBuffer; const AText: string; AStart, AOldLength: Integer;
       const AInsert: string); static;
+    /// <summary>Schreibt AEdits (Zeichenversatz in AText, aufsteigend, ohne Überlappung) als einen
+    /// Rückgängig-Schritt in ABuffer und markiert die Datei als veraltet. Der eine Schreibweg für eigene
+    /// Änderungen am Puffer: Byte-Versatz im UTF-8-Puffer, Zeilenenden und Rückgängig-Gruppe nur hier.</summary>
+    class procedure WriteEdits(const ABuffer: IOTAEditBuffer; const AText: string; const AEdits: TAtlasTextEdits);
+      static;
+    /// <summary>Schreibt den Unterschied von AOld (Stand des Puffers) zu ANew zeilenweise (TAtlasLineMover.Difference)
+    /// als einen Rückgängig-Schritt; False, wenn beide gleich sind.</summary>
+    class function WriteDifference(const ABuffer: IOTAEditBuffer; const AOld, ANew: string): Boolean; static;
     /// <summary>Meldet den Beobachter der Editorereignisse an.</summary>
     class procedure Install; static;
     /// <summary>Meldet ab und gibt die gemerkten Stände frei.</summary>
@@ -48,8 +58,11 @@ uses
   System.Generics.Collections,
   DockForm,
   Atlas.Core.Editor.SnapshotPolicy,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.Plugin.Editor.TextOffsets,
+  Atlas.Core.Editor.LineMove,
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   TEntry = record
@@ -91,11 +104,17 @@ begin
   Result := Entries;
 end;
 
+// Aus den Notifiern der IDE: keine Exception an die IDE.
 procedure InvalidateView(const AView: IOTAEditView);
 begin
-  if (AView <> nil) and (AView.Buffer <> nil) then
-  begin
-    TAtlasEditorSnapshots.Invalidate(AView.Buffer.FileName);
+  try
+    if (AView <> nil) and (AView.Buffer <> nil) then
+    begin
+      TAtlasEditorSnapshots.Invalidate(AView.Buffer.FileName);
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Editor snapshots: ' + TAtlasGuard.ErrorText(E));
   end;
 end;
 
@@ -112,7 +131,12 @@ end;
 procedure TSnapshotNotifier.WindowActivated(const EditWindow: INTAEditWindow);
 begin
   // Unbekannt, welche Datei: alle neu prüfen.
-  TAtlasEditorSnapshots.Invalidate;
+  try
+    TAtlasEditorSnapshots.Invalidate;
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Editor snapshots: ' + TAtlasGuard.ErrorText(E));
+  end;
 end;
 
 procedure TSnapshotNotifier.WindowCommand(const EditWindow: INTAEditWindow; Command, Param: Integer;
@@ -150,7 +174,7 @@ var
   mKey, mText: string;
   mEntry: TEntry;
   mLines: Integer;
-  mModified: Boolean;
+  mModified, mChanged: Boolean;
   mStamp: UInt64;
 begin
   mBuffer := AView.Buffer;
@@ -166,17 +190,14 @@ begin
   if TAtlasSnapshotPolicy.MustRead(mEntry.State, mLines, mModified, mStamp) then
   begin
     mText := TAtlasEditorBuffer.Text(mBuffer);
-    if not mEntry.State.Known or (mText <> mEntry.Text) then
+    mChanged := not mEntry.State.Known or (mText <> mEntry.Text);
+    if mChanged then
     begin
       mEntry.Text := mText;
       Inc(NextVersion);
       mEntry.Version := NextVersion;
     end;
-    mEntry.State.Known := True;
-    mEntry.State.Dirty := False;
-    mEntry.State.Lines := mLines;
-    mEntry.State.Modified := mModified;
-    mEntry.State.ReadAt := mStamp;
+    TAtlasSnapshotPolicy.Read(mEntry.State, mLines, mModified, mStamp, mChanged);
     Entries.AddOrSetValue(mKey, mEntry);
   end;
   Result.Text := mEntry.Text;
@@ -222,17 +243,51 @@ end;
 class procedure TAtlasEditorSnapshots.ReplaceText(const ABuffer: IOTAEditBuffer; const AText: string; AStart,
   AOldLength: Integer; const AInsert: string);
 var
-  mWriter: IOTAEditWriter;
+  mEdits: TAtlasTextEdits;
 begin
+  mEdits := nil;
+  SetLength(mEdits, 1);
+  mEdits[0] := TAtlasTextEdit.Create(AStart, AOldLength, AInsert);
+  WriteEdits(ABuffer, AText, mEdits);
+end;
+
+class procedure TAtlasEditorSnapshots.WriteEdits(const ABuffer: IOTAEditBuffer; const AText: string;
+  const AEdits: TAtlasTextEdits);
+var
+  mWriter: IOTAEditWriter;
+  mEdit: TAtlasTextEdit;
+  mUtf8: UTF8String;
+begin
+  // Ein Schreiber: ein Rückgängig-Schritt. Er schreibt nur vorwärts; der Text zwischen den Ersetzungen bleibt.
   mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, AStart + AOldLength)));
-  if AInsert <> '' then
+  for mEdit in AEdits do
   begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(AInsert)));
+    mWriter.CopyTo(TAtlasTextOffsets.BytesBefore(AText, mEdit.Start));
+    if mEdit.Count > 0 then
+    begin
+      mWriter.DeleteTo(TAtlasTextOffsets.BytesBefore(AText, mEdit.Start + mEdit.Count));
+    end;
+    if mEdit.Insert <> '' then
+    begin
+      mUtf8 := UTF8Encode(mEdit.Insert);
+      mWriter.Insert(PAnsiChar(mUtf8));
+    end;
   end;
   mWriter := nil;
+  // Eigener Schreibvorgang: Probleme und Inlay-Hints lesen den Puffer neu.
   Invalidate(ABuffer.FileName);
+end;
+
+class function TAtlasEditorSnapshots.WriteDifference(const ABuffer: IOTAEditBuffer; const AOld, ANew: string): Boolean;
+var
+  mStart, mOldLength: Integer;
+  mInsert: string;
+begin
+  Result := TAtlasLineMover.Difference(AOld, ANew, mStart, mOldLength, mInsert);
+  if Result then
+  begin
+    ReplaceText(ABuffer, AOld, mStart, mOldLength, mInsert);
+  end;
 end;
 
 class procedure TAtlasEditorSnapshots.Install;

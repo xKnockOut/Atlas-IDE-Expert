@@ -37,11 +37,11 @@ implementation
 uses
   Winapi.Windows,
   Vcl.ExtCtrls,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Bookmarks.Quick,
   Atlas.UI.Bookmarks.Strings,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Bookmarks.QuickService,
   Atlas.IDE.Foundation.Host;
@@ -51,6 +51,8 @@ const
   cChordPriority = -10;
   /// <summary>So lange gilt ein selbst gesendeter erster Teil als „durchlassen“.</summary>
   cPassMs = 1000;
+  // Takt, in dem der Akkord auf das Ende der Wartezeit prüft.
+  cTickMs = 50;
 
 type
   TChordState = class(TAtlasKeyClient)
@@ -83,7 +85,7 @@ begin
   inherited Create(cChordPriority);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := 50;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
 end;
 

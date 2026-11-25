@@ -12,8 +12,6 @@ type
   [TestFixture]
   TAtlasSettingsSectionTests = class
   public
-    [SetupFixture]
-    procedure WarmUp;
     /// <summary>Die Fabrik liefert je Aufruf einen neuen Abschnitt der Klasse.</summary>
     [Test]
     procedure FactoryCreatesNewSection;
@@ -124,11 +122,6 @@ begin
 end;
 
 { TAtlasSettingsSectionTests }
-
-procedure TAtlasSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TAtlasSettingsSectionTests.FactoryCreatesNewSection;
 var

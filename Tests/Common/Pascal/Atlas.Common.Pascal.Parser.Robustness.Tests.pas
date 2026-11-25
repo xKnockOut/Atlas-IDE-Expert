@@ -17,11 +17,6 @@ type
   [TestFixture]
   TPascalParserRobustnessTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen (statt [IgnoreMemoryLeaks]): Thread mit
-    /// eigenem Stapel, alle Regeln, Dateien suchen und mit Kodierungserkennung lesen. Was die RTL dabei beim
-    /// ersten Mal anlegt, bleibt bis Programmende.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure FuzzingNeverCrashesOrHangs;
     [Test]
@@ -63,6 +58,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Tests.LspRules,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Configuration.Contract,
@@ -221,26 +217,6 @@ begin
 end;
 
 { TPascalParserRobustnessTests }
-
-procedure TPascalParserRobustnessTests.WarmUpFirstUse;
-var
-  mFolder, mFileName: string;
-begin
-  LongChainsDoNotOverflowStack;
-  LongConcatenationPassesAllRulesInSmallStack;
-  // Wie der Korpustest, nur mit einer Datei.
-  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasKorpus' + TGUID.NewGuid.ToString);
-  TDirectory.CreateDirectory(mFolder);
-  try
-    TFile.WriteAllText(TPath.Combine(mFolder, 'Probe.pas'), cSamples[0], TEncoding.UTF8);
-    for mFileName in TDirectory.GetFiles(mFolder, '*.pas', TSearchOption.soAllDirectories) do
-    begin
-      ParseAndFree(TFile.ReadAllText(mFileName, TEncoding.UTF8));
-    end;
-  finally
-    TDirectory.Delete(mFolder, True);
-  end;
-end;
 
 procedure TPascalParserRobustnessTests.FuzzingNeverCrashesOrHangs;
 var
@@ -609,7 +585,7 @@ begin
   mStore := TDocumentStore.Create;
   mDocument := mStore.Open('file:///big.pas', 'objectpascal', 1, GenerateUnit(200));
   mWatch := TStopwatch.StartNew;
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument);
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', TTestLspRules.PlainDocument);
   mWatch.Stop;
   mParams.Free;
   Assert.IsTrue(mWatch.ElapsedMilliseconds + TLspSyntaxDiagnostics.cDefaultDelayMs < 200,

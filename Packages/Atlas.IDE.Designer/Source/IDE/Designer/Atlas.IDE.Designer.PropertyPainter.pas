@@ -23,7 +23,7 @@ uses
   System.Classes,
   System.TypInfo,
   Atlas.Core.Designer.PropertyPainter,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -56,7 +56,6 @@ type
 
   TAtlasIdePropertyPainter = class(TAtlasIdeDesignerTool)
   private
-    FKeys: TAtlasPaintKeys;
     FSourceFile: string;
     FSourceName: string;
     FSourceProperties: TArray<TAtlasPaintProperty>;
@@ -69,7 +68,6 @@ type
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
-    destructor Destroy; override;
     procedure UpdateKeys(AWanted: Boolean);
     procedure Execute(ACommand: TAtlasPaintCommand);
     /// <summary>Gibt es aufgenommene Eigenschaften für das aktive Formular?</summary>
@@ -82,7 +80,7 @@ implementation
 uses
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.PaintDialog,
@@ -234,6 +232,9 @@ begin
           Result.Reference := nil;
         end;
       end;
+  else
+    // Übrige Arten (Variant, Record, Interface …) malt der Pinsel nicht; nichts zu merken.
+    Exit;
   end;
 end;
 
@@ -264,6 +265,9 @@ begin
           SetObjectProp(AObject, AProp, AValue.Reference);
         end;
       end;
+  else
+    // Übrige Arten hat ReadValue nicht gemerkt; nichts zurückzuschreiben.
+    Exit;
   end;
 end;
 
@@ -342,20 +346,13 @@ end;
 { TAtlasIdePropertyPainter }
 
 constructor TAtlasIdePropertyPainter.Create(const AOnMessage: TProc<string>);
+var
+  mKeys: TAtlasPaintKeys;
 begin
   inherited Create(AOnMessage);
-  FKeys := TAtlasPaintKeys.Create(cKeyPriority);
-  FKeys.FOwner := Self;
-end;
-
-destructor TAtlasIdePropertyPainter.Destroy;
-begin
-  if FKeys <> nil then
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-    FKeys.Free;
-  end;
-  inherited Destroy;
+  mKeys := TAtlasPaintKeys.Create(cKeyPriority);
+  mKeys.FOwner := Self;
+  OwnKeys(mKeys);
 end;
 
 procedure TAtlasIdePropertyPainter.PickUp;
@@ -453,14 +450,7 @@ end;
 
 procedure TAtlasIdePropertyPainter.UpdateKeys(AWanted: Boolean);
 begin
-  if AWanted and TAtlasIdeSettings.Current.DesignerPropertyPainter then
-  begin
-    TAtlasKeyHook.Add(FKeys);
-  end
-  else
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
+  HookKeys(AWanted and TAtlasIdeSettings.Current.DesignerPropertyPainter);
 end;
 
 procedure TAtlasIdePropertyPainter.Execute(ACommand: TAtlasPaintCommand);

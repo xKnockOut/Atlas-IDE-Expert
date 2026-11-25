@@ -6,10 +6,12 @@
 // - Summe des aktuellen Issues aus Datei, ungeschriebener Uhr und Spannen, die noch nicht in der Datei sind.
 // - Wann gespeichert, beim Wechsel angeboten und nach dem Beenden angeboten wird; wie viel Zeit mindestens.
 // - Von Hand korrigierte Dauer („0“ ist erlaubt) und der Kommentar für GitHub.
+// - Welches Issue Uhr und Statusfeld zählen: das aktuelle Issue eines Projekts mit dem Tracker des Projekts.
 
 interface
 
 uses
+  Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.TimeLog;
 
 type
@@ -57,6 +59,10 @@ type
     class function CorrectedMinutes(const AText: string; out AMinutes: Integer): Boolean; static;
     /// <summary>GitHub: Kommentar aus Aufwandszeile AHeader und Beschreibung AText darunter.</summary>
     class function BookComment(const AHeader, AText: string): string; static;
+    /// <summary>Issue AKey des Projekts mit dem Tracker ATarget; ohne Projekt (AHasProject False) oder ohne
+    /// Kennung keins.</summary>
+    class function IssueOf(AHasProject: Boolean; const ATarget: TAtlasTrackerTarget;
+      const AKey: string): TAtlasTimeIssue; static;
   end;
 
 implementation
@@ -158,6 +164,16 @@ begin
   if AText <> '' then
   begin
     Result := Result + #10#10 + AText;
+  end;
+end;
+
+class function TAtlasTimePlan.IssueOf(AHasProject: Boolean; const ATarget: TAtlasTrackerTarget;
+  const AKey: string): TAtlasTimeIssue;
+begin
+  Result := TAtlasTimeIssue.None;
+  if AHasProject and (Trim(AKey) <> '') then
+  begin
+    Result := TAtlasTimeIssue.Create(ATarget.Provider, ATarget.Url, ATarget.Project, AKey);
   end;
 end;
 

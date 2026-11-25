@@ -10,9 +10,10 @@
 //   sie mit UseStorage setzt.
 // - Abmelden stoppt ein aktives Modul und löst seinen Scope rückwärts; ein
 //   Fehler hält den Abbau nicht an (wie TAtlasFeatureTable.StopAll, #886).
-//   Zuerst ruft es OnModuleClosing mit Info.Handle (die Komposition verbindet
-//   es mit TAtlasMainThread.CloseModule: wartende Einträge des Moduls liefen
-//   sonst nach dem Entladen seines Packages in nicht mehr geladenem Code),
+//   Zuerst ruft es OnModuleClosing mit Info.Handle (TAtlasModuleHost.ConnectRegistry
+//   verbindet es mit TAtlasMainThread.CloseModule und TAtlasTimeLimit.ReleaseModule:
+//   wartende Einträge und hängende Zeitlimit-Arbeiter des Moduls liefen sonst nach
+//   dem Entladen seines Packages in nicht mehr geladenem Code),
 //   Anmelden ruft OnModuleOpened. Als Haken, damit Core.Modules nicht von
 //   Core.Diagnostics abhängt (sonst ein Feature-Zyklus).
 // - Objekte nach Interface-GUID (Provide/FindAll); die Registry versteht
@@ -63,17 +64,12 @@ type
       Ref: IAtlasRegistration;
     end;
 
-    TListenerEntry = record
-      Listener: IAtlasRegistryListener;
-      OwnerId: string;
-      Item: TAtlasRegistration;
-      Ref: IAtlasRegistration;
-    end;
+
   private
     FLock: TCriticalSection;
     FModules: TList<TModuleEntry>;
     FProvisions: TList<TProvision>;
-    FListeners: TList<TListenerEntry>;
+    FListeners: TAtlasListenerList<IAtlasRegistryListener>;
     FKnown: TList<TAtlasModuleInfo>;
     FStorage: IAtlasSettingsStorage;
     FShutDown: Boolean;
@@ -124,7 +120,19 @@ function AtlasModuleRegistryInstance: TAtlasModuleRegistry;
 implementation
 
 uses
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Text.Lines;
+
+const
+  // Ausnahme- und Protokolltexte für Entwickler von Modulen (nie übersetzt).
+  cScopeClosed = 'Modul %s ist abgemeldet; es kann nichts mehr anmelden';
+  cListenerOf = 'Hörer von ';
+  cNotSupported = 'Objekt unterstützt %s nicht';
+  cNoListener = 'Kein Hörer angegeben';
+  cNoModule = 'Kein Modul angegeben';
+  cNoModuleId = 'Modul ohne Id';
+  cShutDown = 'Base ist abgebaut; Modul %s wird nicht angemeldet';
+  cAlreadyRegistered = 'Modul %s ist schon angemeldet';
 
 type
   TAtlasModuleScope = class(TInterfacedObject, IAtlasModuleScope)
@@ -209,9 +217,7 @@ end;
 
 function CleanField(const AText: string): string;
 begin
-  Result := StringReplace(AText, #9, ' ', [rfReplaceAll]);
-  Result := StringReplace(Result, #13, ' ', [rfReplaceAll]);
-  Result := StringReplace(Result, #10, ' ', [rfReplaceAll]);
+  Result := TTextLines.NormalizeLineBreaks(StringReplace(AText, #9, ' ', [rfReplaceAll]), ' ');
 end;
 
 { TAtlasKnownModulesText }
@@ -293,7 +299,7 @@ begin
   try
     if not FOpen then
     begin
-      raise EAtlasModuleRegistry.CreateFmt('Modul %s ist abgemeldet; es kann nichts mehr anmelden', [FModuleId]);
+      raise EAtlasModuleRegistry.CreateFmt(cScopeClosed, [FModuleId]);
     end;
     Result := FRegistry;
   finally
@@ -432,7 +438,7 @@ begin
   FLock := TCriticalSection.Create;
   FModules := TList<TModuleEntry>.Create;
   FProvisions := TList<TProvision>.Create;
-  FListeners := TList<TListenerEntry>.Create;
+  FListeners := TAtlasListenerList<IAtlasRegistryListener>.Create;
   FKnown := TList<TAtlasModuleInfo>.Create;
 end;
 
@@ -440,7 +446,6 @@ destructor TAtlasModuleRegistry.Destroy;
 var
   mModule: TModuleEntry;
   mProvision: TProvision;
-  mListener: TListenerEntry;
 begin
   // Was noch angemeldet ist, verweist auf diese Registry: abtrennen, damit ein späteres Revoke ins Leere geht.
   for mModule in FModules do
@@ -451,12 +456,9 @@ begin
   begin
     mProvision.Item.Detach;
   end;
-  for mListener in FListeners do
-  begin
-    mListener.Item.Detach;
-  end;
-  FKnown.Free;
+  // Trennt auch die Anmeldungen der Hörer ab.
   FListeners.Free;
+  FKnown.Free;
   FProvisions.Free;
   FModules.Free;
   FLock.Free;
@@ -521,34 +523,24 @@ end;
 function TAtlasModuleRegistry.Notify(AKind: TAtlasRegistryChangeKind; const AModuleId: string;
   const AIID: TGUID): TArray<string>;
 var
-  mListeners: TArray<TListenerEntry>;
-  mListener: TListenerEntry;
   mChange: TAtlasRegistryChange;
+  mFailures: TArray<string>;
 begin
-  Result := nil;
-  FLock.Acquire;
-  try
-    mListeners := FListeners.ToArray;
-  finally
-    FLock.Release;
-  end;
   mChange.Kind := AKind;
   mChange.ModuleId := AModuleId;
   mChange.IID := AIID;
-  for mListener in mListeners do
-  begin
-    // Ein früherer Hörer kann diesen gelöst haben (Regel 3).
-    if mListener.Item.IsRevoked then
+  mFailures := nil;
+  FListeners.Visit(
+    procedure(AListener: IAtlasRegistryListener; AOwnerId: string)
     begin
-      Continue;
-    end;
-    try
-      mListener.Listener.RegistryChanged(mChange);
-    except
-      on mError: Exception do
-        Result := Result + [FailureOf('Hörer von ' + mListener.OwnerId, mError)];
-    end;
-  end;
+      try
+        AListener.RegistryChanged(mChange);
+      except
+        on mError: Exception do
+          mFailures := mFailures + [FailureOf(cListenerOf + AOwnerId, mError)];
+      end;
+    end);
+  Result := mFailures;
 end;
 
 function TAtlasModuleRegistry.NotifyModule(AKind: TAtlasRegistryChangeKind; const AModuleId: string): TArray<string>;
@@ -564,7 +556,7 @@ var
 begin
   if (AObject = nil) or not Supports(AObject, AIID) then
   begin
-    raise EAtlasModuleRegistry.CreateFmt('Objekt unterstützt %s nicht', [GUIDToString(AIID)]);
+    raise EAtlasModuleRegistry.CreateFmt(cNotSupported, [GUIDToString(AIID)]);
   end;
   mItem := TAtlasProvisionRegistration.Create(Self);
   mProvision.IID := AIID;
@@ -584,26 +576,12 @@ end;
 
 function TAtlasModuleRegistry.AddListener(const AOwnerId: string;
   const AListener: IAtlasRegistryListener): IAtlasRegistration;
-var
-  mEntry: TListenerEntry;
-  mItem: TAtlasListenerRegistration;
 begin
   if AListener = nil then
   begin
-    raise EAtlasModuleRegistry.Create('Kein Hörer angegeben');
+    raise EAtlasModuleRegistry.Create(cNoListener);
   end;
-  mItem := TAtlasListenerRegistration.Create(Self);
-  mEntry.Listener := AListener;
-  mEntry.OwnerId := AOwnerId;
-  mEntry.Item := mItem;
-  mEntry.Ref := mItem;
-  FLock.Acquire;
-  try
-    FListeners.Add(mEntry);
-  finally
-    FLock.Release;
-  end;
-  Result := mEntry.Ref;
+  Result := FListeners.Add(AListener, AOwnerId, TAtlasListenerRegistration.Create(Self));
 end;
 
 procedure TAtlasModuleRegistry.RemoveProvision(AItem: TAtlasRegistration);
@@ -635,23 +613,8 @@ begin
 end;
 
 procedure TAtlasModuleRegistry.RemoveListener(AItem: TAtlasRegistration);
-var
-  mIndex: Integer;
 begin
-  // Wer Revoke ruft, hält selbst eine Referenz: AItem lebt über das Löschen hinaus.
-  FLock.Acquire;
-  try
-    for mIndex := 0 to FListeners.Count - 1 do
-    begin
-      if FListeners[mIndex].Item = AItem then
-      begin
-        FListeners.Delete(mIndex);
-        Break;
-      end;
-    end;
-  finally
-    FLock.Release;
-  end;
+  FListeners.Remove(AItem);
 end;
 
 class procedure TAtlasModuleRegistry.RaiseFailures(const AFailures: TArray<string>);
@@ -669,24 +632,24 @@ var
 begin
   if AModule = nil then
   begin
-    raise EAtlasModuleRegistry.Create('Kein Modul angegeben');
+    raise EAtlasModuleRegistry.Create(cNoModule);
   end;
   mEntry.Module := AModule;
   mEntry.Info := AModule.Info;
   mEntry.Info.Id := Trim(mEntry.Info.Id);
   if mEntry.Info.Id = '' then
   begin
-    raise EAtlasModuleRegistry.Create('Modul ohne Id');
+    raise EAtlasModuleRegistry.Create(cNoModuleId);
   end;
   FLock.Acquire;
   try
     if FShutDown then
     begin
-      raise EAtlasModuleRegistry.CreateFmt('Base ist abgebaut; Modul %s wird nicht angemeldet', [mEntry.Info.Id]);
+      raise EAtlasModuleRegistry.CreateFmt(cShutDown, [mEntry.Info.Id]);
     end;
     if IndexOfModule(mEntry.Info.Id) >= 0 then
     begin
-      raise EAtlasModuleRegistry.CreateFmt('Modul %s ist schon angemeldet', [mEntry.Info.Id]);
+      raise EAtlasModuleRegistry.CreateFmt(cAlreadyRegistered, [mEntry.Info.Id]);
     end;
     mScope := TAtlasModuleScope.Create(Self, mEntry.Info.Id);
     mEntry.Scope := mScope;

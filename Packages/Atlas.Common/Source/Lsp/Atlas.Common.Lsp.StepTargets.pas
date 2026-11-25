@@ -86,7 +86,6 @@ type
     FTrees: TObjectDictionary<string, TSyntaxTree>;
     FOwnUnit: TUnitIndex;
     FOwnUnitReady: Boolean;
-    function TextOf(ANode: TSyntaxNode): string;
     function OwnUnit: TUnitIndex;
     function UnitOf(const AFileName: string; out AUnit: TUnitIndex): Boolean;
     function TreeOf(const AFileName: string): TSyntaxTree;
@@ -143,7 +142,9 @@ uses
   Atlas.Common.Index.Files,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.Implementations,
-  Atlas.Common.Semantics.SystemIntrinsics;
+  Atlas.Common.Semantics.SystemIntrinsics,
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -166,18 +167,6 @@ begin
   end;
 end;
 
-function LastPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := AName;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
-end;
-
 { TLspStepTargets }
 
 constructor TLspStepTargets.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -197,26 +186,6 @@ destructor TLspStepTargets.Destroy;
 begin
   FTrees.Free;
   inherited;
-end;
-
-function TLspStepTargets.TextOf(ANode: TSyntaxNode): string;
-begin
-  Result := '';
-  if (ANode = nil) or (ANode.EndOffset <= ANode.StartOffset) or (ANode.EndOffset > Length(FText)) then
-  begin
-    Exit;
-  end;
-  Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-  // Mehrzeilig: in eine Zeile.
-  Result := Result.Replace(#13#10, ' ').Replace(#10, ' ').Replace(#13, ' ');
-  while Pos('  ', Result) > 0 do
-  begin
-    Result := Result.Replace('  ', ' ');
-  end;
-  if Length(Result) > cMaxText then
-  begin
-    Result := Copy(Result, 1, cMaxText - 1) + '…';
-  end;
 end;
 
 function TLspStepTargets.OwnUnit: TUnitIndex;
@@ -604,7 +573,7 @@ begin
   Result := False;
   ACall := Default(TLspStepCall);
   ACall.DeclLine := -1;
-  ACall.Text := TextOf(ASite.Node);
+  ACall.Text := TSyntaxNodes.OneLineText(FText, ASite.Node, cMaxText);
   if not TStepCalls.NamePosition(ASite.Callee, mPosition) then
   begin
     Exit;
@@ -612,7 +581,7 @@ begin
   ACall.Position := mPosition;
   if ASite.Receiver <> nil then
   begin
-    ACall.Receiver := TextOf(ASite.Receiver);
+    ACall.Receiver := TSyntaxNodes.OneLineText(FText, ASite.Receiver, cMaxText);
   end;
   if ASite.Callee.Kind = TSyntaxKind.InheritedExpr then
   begin
@@ -674,7 +643,7 @@ begin
   begin
     Exit;
   end;
-  mName := LastPart(ASite.Callee.Name);
+  mName := TTextNames.LastPart(ASite.Callee.Name);
   if (mName = '') or TSystemIntrinsics.IsKnown(mName) then
   begin
     Exit;

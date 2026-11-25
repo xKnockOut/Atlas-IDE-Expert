@@ -12,18 +12,22 @@ procedure InstallSettings;
 procedure DetachSettings;
 /// <summary>Optionsseiten abmelden.</summary>
 procedure UnregisterOptions;
+/// <summary>Atlas-Symbol (#751) mit Titel und Beschreibung aus den Texten des Plugins anmelden.</summary>
+procedure RegisterSymbol;
 
 implementation
 
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Product.Version,
+  Atlas.Plugin.Diagnostics.TimeLimit,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Symbol,
+  Atlas.ToolsApi.Theme.Symbol,
+  Atlas.UI.Foundation.Strings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Settings.Project,
@@ -146,12 +150,20 @@ end;
 /// <summary>Prüfung und Regelkatalog des Einstellungsdialogs (#227): nur ein laufender Server, keiner wird
 /// gestartet.</summary>
 function ProjectSettingsCommand(const ACommand, AArgumentsJson: string): TJSONValue;
+const
+  cCommandTimeoutMs = 5000;
 begin
   Result := nil;
   if Manager <> nil then
   begin
-    Result := Manager.RunServerCommand(ACommand, AArgumentsJson, 5000);
+    Result := Manager.RunServerCommand(ACommand, AArgumentsJson, cCommandTimeoutMs);
   end;
+end;
+
+procedure RegisterSymbol;
+begin
+  TAtlasIdeSymbol.Register(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.SymbolTitle,
+    [TAtlasPluginVersion.cVersion]), TAtlasFoundationStrings.Text(TAtlasFoundationTextId.SymbolDescription));
 end;
 
 procedure InstallSettings;

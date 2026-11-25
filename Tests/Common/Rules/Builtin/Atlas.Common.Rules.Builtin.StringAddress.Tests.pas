@@ -227,7 +227,7 @@ procedure TFirstCharAddressTests.GuardedNonEmptyIsSilent;
 var
   mFound: TArray<TRuleFinding>;
 begin
-  // FP-Prüfung 28.10.2026 (F12): Bedingungen, die den String als nicht leer sichern.
+  // Bedingungen, die den String als nicht leer sichern.
   TRuleAssert.Silent(TFirstCharAddressRule.Create, Source('const AText: string; ALen: Integer',
     '  mText: string;'#10, '  if AText <> '''' then'#10'    WriteBuffer(@AText[1], 1);'#10 +
     '  if (Length(AText) > 0) and (ALen > 1) then'#10'    WriteBuffer(@AText[1], 1);'#10 +

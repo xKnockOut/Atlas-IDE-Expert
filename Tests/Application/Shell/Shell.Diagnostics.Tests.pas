@@ -22,9 +22,6 @@ type
     procedure RunSession(AEnabled: Boolean);
     function AllLogText: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -69,12 +66,13 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.Completion,
-  Atlas.Core.Diagnostics.Export,
+  Atlas.Plugin.Diagnostics.Export,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Diagnostics.Anonymizer,
@@ -179,6 +177,29 @@ end;
 
 { TShellDiagnosticsTests }
 
+function NewHover(const AStore: IDocumentStore; const AIndex: ISymbolIndex; const AFileName: string): TLspHover;
+begin
+  Result := TLspHover.Create(AStore, AIndex,
+    function(const AName: string; out AText: string): Boolean
+    begin
+      Result := SameText(AName, AFileName);
+      AText := cMarkerUnit;
+    end,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := False;
+    end);
+end;
+
+function NewCompletion(const AStore: IDocumentStore; const AIndex: ISymbolIndex): TLspCompletion;
+begin
+  Result := TLspCompletion.Create(AStore, AIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := False;
+    end);
+end;
+
 procedure TShellDiagnosticsTests.RunSession(AEnabled: Boolean);
 var
   mFolder, mFileName, mUri: string;
@@ -200,23 +221,13 @@ begin
   mStore.Open(mUri, 'delphi', 3, cMarkerUnit);
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(TIndexExtractor.ExtractText(cMarkerUnit, mFileName, nil));
-  mHover := TLspHover.Create(mStore, mIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := SameText(AFileName, mFileName);
-      AText := cMarkerUnit;
-    end,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := False;
-    end);
-  mCompletion := TLspCompletion.Create(mStore, mIndex,
-    function(const AUnitName: string): Boolean
-    begin
-      Result := False;
-    end);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mHover := nil;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mHover := NewHover(mStore, mIndex, mFileName);
+    mCompletion := NewCompletion(mStore, mIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mHover.Attach(mDispatcher);
     mCompletion.Attach(mDispatcher);
     mDiagnostics := TShellDiagnostics.Create(FLogFolder, 'test', mStore, mIndex);
@@ -246,22 +257,6 @@ begin
   for mFileName in TDirectory.GetFiles(FLogFolder, '*', TSearchOption.soAllDirectories) do
   begin
     Result := Result + ExtractFileName(mFileName) + #13#10 + TFile.ReadAllText(mFileName, TEncoding.UTF8);
-  end;
-end;
-
-procedure TShellDiagnosticsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    NoMarkerReachesLogOrExport;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    AddLogFile_BadPath_LogsError;
-  finally
-    TearDown;
   end;
 end;
 
@@ -425,7 +420,6 @@ begin
   end;
   Assert.Contains(TShellDiagnostics.EndReasonText(TDiagnosticEndReason.InputClosed), 'ohne exit');
 end;
-
 
 procedure TShellDiagnosticsTests.AddLogFile_EmptyName_DoesNothing;
 var

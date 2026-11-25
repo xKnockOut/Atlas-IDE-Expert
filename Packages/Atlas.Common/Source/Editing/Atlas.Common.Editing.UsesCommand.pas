@@ -3,7 +3,7 @@
 // Schnellbefehl /uses (#254), ohne Protokollbezug.
 //
 // Eine Zeile "/uses System.SysUtils, Vcl.Forms" (Semikolon erlaubt) wird nach
-// Enter gelöscht und die Units kommen über TUsesClauses ins uses des
+// Enter gelöscht und die Units kommen über TPascalUsesEdits ins uses des
 // Abschnitts, in dem die Zeile stand. Schon eingebundene Units entfallen.
 // Die Befehlszeile wird vor dem Zerlegen durch Leerzeichen ersetzt, damit ihr
 // "uses" nicht als uses-Liste gilt und alle Positionen gleich bleiben.
@@ -30,7 +30,8 @@ implementation
 uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines;
 
 function IsUnitName(const AName: string): Boolean;
@@ -101,11 +102,11 @@ begin
   mBlanked := Copy(AText, 1, mOffset) + StringOfChar(' ', Length(mLines[mLine])) +
     Copy(AText, mOffset + Length(mLines[mLine]) + 1, MaxInt);
   mTokens := TPascalLexer.Tokenize(mBlanked);
-  mUsed := TUsesClauses.UsedUnits(mTokens);
+  mUsed := TPascalUses.UsedUnits(mTokens);
   mMissing := nil;
   for mName in mUnits do
   begin
-    if not TUsesClauses.IsUsed(mUsed + mMissing, mName, ANamespaces) then
+    if not TPascalUses.IsUsed(mUsed + mMissing, mName, ANamespaces) then
     begin
       mMissing := mMissing + [mName];
     end;
@@ -114,7 +115,7 @@ begin
   AEdits := [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(mLine, 0), TTextPosition.Create(mLine + 1, 0)),
     '')];
   if (Length(mMissing) > 0) and
-    TUsesClauses.AddUnit(mTokens, mOffset, string.Join(', ', mMissing), mLineBreak, mEdit) then
+    TPascalUsesEdits.AddUnit(mTokens, mOffset, string.Join(', ', mMissing), mLineBreak, mEdit) then
   begin
     AEdits := [mEdit] + AEdits;
   end;

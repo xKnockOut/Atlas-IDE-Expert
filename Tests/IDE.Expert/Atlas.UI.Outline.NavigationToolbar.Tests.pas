@@ -25,9 +25,6 @@ type
     FEditor: TPanel;
     FHider: TAtlasNavigationToolbar;
   public
-    /// <summary>Erstgebrauch der VCL (Fenster, Klassen) vor der Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -51,22 +48,6 @@ type
   TEditorNavigationToolbarLike = class(TPanel);
 
 { TAtlasNavigationToolbarTests }
-
-procedure TAtlasNavigationToolbarTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    FindsToolbarByName;
-  finally
-    TearDown;
-  end;
-  SetUp;
-  try
-    RestoresAtTheOldPlace;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasNavigationToolbarTests.SetUp;
 begin

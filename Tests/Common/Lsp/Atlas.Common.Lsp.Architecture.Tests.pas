@@ -13,9 +13,6 @@ type
   [TestFixture]
   TLspArchitectureTests = class
   public
-    /// <summary>Einmalige Puffer der JSON-Antwort vor dem Leckmonitor anlegen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     /// <summary>Globalen String LastScope leeren, sonst zählt der Leckmonitor ihn.</summary>
     [TearDown]
     procedure TearDown;
@@ -55,12 +52,18 @@ uses
   Atlas.Common.Architecture.UsesGraph.Tests,
   Atlas.Text.Json;
 
+const
+  /// <summary>Projektordner der Anfrage, solange ein Test keinen eigenen setzt.</summary>
+  cDefaultRoot = 'C:\Projekt';
+
 var
   Enabled: Boolean;
   LastScope: string;
-  /// <summary>architecture.baseline und Projektordner der Anfrage (#1121).</summary>
+  /// <summary>architecture.baseline und Projektordner der Anfrage (#1121); leerer Ordner = cDefaultRoot.
+  /// Zurück auf leer statt auf cDefaultRoot: Ein Literal in einer Unit-Variablen wird beim Zuweisen kopiert und
+  /// lebte bis Programmende, der Leckmonitor zählte die Kopie dem Test zu.</summary>
   BaselineSetting: string;
-  ProjectRoot: string = 'C:\Projekt';
+  ProjectRoot: string;
   /// <summary>architecture.grouping.resolution der Einstellungen (#1366).</summary>
   ResolutionSetting: Double = 1;
 
@@ -97,7 +100,14 @@ begin
       ASettings.ArchitectureGroupingResolution := ResolutionSetting;
       ARequest := TArchitectureRequest.FromSettings(ASettings);
       ARequest.Title := 'Beispiel';
-      ARequest.Root := ProjectRoot;
+      if ProjectRoot = '' then
+      begin
+        ARequest.Root := cDefaultRoot;
+      end
+      else
+      begin
+        ARequest.Root := ProjectRoot;
+      end;
       LastScope := AScope;
       Result := True;
     end);
@@ -116,14 +126,6 @@ begin
 end;
 
 { TLspArchitectureTests }
-
-procedure TLspArchitectureTests.WarmUpFirstUse;
-begin
-  JsonAnswerHasDataAndLayout;
-  CommandAnswersLikeRequest;
-  SavesStateAndCompares;
-  TearDown;
-end;
 
 procedure TLspArchitectureTests.TearDown;
 begin
@@ -308,7 +310,7 @@ begin
     try
       Assert.AreEqual('project', LastScope);
       Assert.AreEqual('text', mAnswer.GetValue<string>('format'));
-      Assert.AreEqual('C:\Projekt', mAnswer.GetValue<string>('root'), 'root nur in der Antwort');
+      Assert.AreEqual(cDefaultRoot, mAnswer.GetValue<string>('root'), 'root nur in der Antwort');
       Assert.IsTrue(Pos('App.Data', mAnswer.GetValue<string>('text')) > 0);
     finally
       mAnswer.Free;
@@ -419,7 +421,7 @@ begin
     AssertMissingBaselineReported(mLaterLsp);
   finally
     BaselineSetting := '';
-    ProjectRoot := 'C:\Projekt';
+    ProjectRoot := '';
     if TDirectory.Exists(mFolder) then
     begin
       TDirectory.Delete(mFolder, True);

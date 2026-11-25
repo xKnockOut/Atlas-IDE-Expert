@@ -4,9 +4,8 @@
 // holen (Umwandlungen, Verschieben, Extrahieren, Zugriffsmethoden …): offene
 // Puffer schicken, Server-Befehl ausführen und {"edit", "warnings", …} lesen,
 // Vorschau wie beim Umbenennen, nach Bestätigung übernehmen (je Datei ein
-// Rückgängig-Schritt) und das Ergebnis melden. Früher stand jeder Schritt in
-// jeder Aktion von Hand; die Aktionen behalten nur ihre Texte und die Werte,
-// die nur sie lesen.
+// Rückgängig-Schritt) und das Ergebnis melden, einmal für alle Aktionen; die Aktionen
+// behalten nur ihre Texte und die Werte, die nur sie lesen.
 // Nur im Hauptthread.
 
 interface
@@ -15,8 +14,9 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.Strings,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.WorkspaceEdit;
 
@@ -27,8 +27,8 @@ type
     Command: string;
     Arguments: string;
     TimeoutMs: Integer;
-    Failed: TAtlasTextId;
-    class function Create(const ACommand, AArguments: string; ATimeoutMs: Integer; AFailed: TAtlasTextId):
+    Failed: TAtlasEditorTextId;
+    class function Create(const ACommand, AArguments: string; ATimeoutMs: Integer; AFailed: TAtlasEditorTextId):
       TAtlasServerEditCommand; static;
   end;
 
@@ -46,7 +46,7 @@ type
     /// <summary>Fragt nach einem Namen (Vorschlag: drittes Element von AArgumentsJson, einem JSON-Array) und liefert
     /// in AArguments die Argumente mit dem Namen an dritter Stelle. False bei Abbruch, leerem Namen oder weniger als
     /// drei Argumenten.</summary>
-    class function AskName(const AArgumentsJson: string; ATitle, APrompt: TAtlasTextId; out AName,
+    class function AskName(const AArgumentsJson: string; ATitle, APrompt: TAtlasEditorTextId; out AName,
       AArguments: string): Boolean; static;
     /// <summary>AArgumentsJson (ein JSON-Array) mit AValue als letztem Element; AValue gehört danach dieser Routine.
     /// False, wenn AArgumentsJson kein Array ist.</summary>
@@ -57,7 +57,7 @@ type
       const ARead: TAtlasServerEditRead; const AMessage: TProc<string>; out AReply: TAtlasServerEditReply): Boolean;
       static;
     /// <summary>Je Warnung von AReply eine Zeile AWarning (%s), jede mit Zeilenumbruch davor.</summary>
-    class function WarningLines(const AReply: TAtlasServerEditReply; AWarning: TAtlasTextId): string; static;
+    class function WarningLines(const AReply: TAtlasServerEditReply; AWarning: TAtlasEditorTextId): string; static;
     /// <summary>Vorschau wie beim Umbenennen; True, wenn der Benutzer mit AApply übernimmt.</summary>
     class function Confirm(const ATitle, AHint, AApply: string; const AEdit: TLspWorkspaceEdit): Boolean; static;
     /// <summary>Übernimmt AEdit als Aktion AAction; False mit Meldung in AMessage, wenn nichts geändert wurde.
@@ -67,7 +67,7 @@ type
     /// <summary>Nach dem Übernehmen: je Warnung eine Zeile AWarning (%s), dann die direkt geschriebenen Dateien.
     /// </summary>
     class procedure ReportAfter(const AReply: TAtlasServerEditReply; const AOutcome: TAtlasWorkspaceEditResult;
-      AWarning: TAtlasTextId; const AMessage: TProc<string>); static;
+      AWarning: TAtlasEditorTextId; const AMessage: TProc<string>); static;
   end;
 
 implementation
@@ -75,7 +75,7 @@ implementation
 uses
   System.Generics.Collections,
   Vcl.Dialogs,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Results.Model,
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
@@ -112,7 +112,7 @@ end;
 { TAtlasServerEditCommand }
 
 class function TAtlasServerEditCommand.Create(const ACommand, AArguments: string; ATimeoutMs: Integer;
-  AFailed: TAtlasTextId): TAtlasServerEditCommand;
+  AFailed: TAtlasEditorTextId): TAtlasServerEditCommand;
 begin
   Result.Command := ACommand;
   Result.Arguments := AArguments;
@@ -122,6 +122,9 @@ end;
 
 /// <summary>AValues mit AName an dritter Stelle.</summary>
 function ReplaceName(const AValues: TJSONArray; const AName: string): string;
+const
+  // Ab hier folgen die übrigen Argumente
+  cFirstRest = 3;
 var
   mList: TJSONArray;
   mIndex: Integer;
@@ -131,7 +134,7 @@ begin
     mList.AddElement(AValues.Items[0].Clone as TJSONValue);
     mList.AddElement(AValues.Items[1].Clone as TJSONValue);
     mList.Add(AName);
-    for mIndex := 3 to AValues.Count - 1 do
+    for mIndex := cFirstRest to AValues.Count - 1 do
     begin
       mList.AddElement(AValues.Items[mIndex].Clone as TJSONValue);
     end;
@@ -143,8 +146,10 @@ end;
 
 { TAtlasIdeServerEdit }
 
-class function TAtlasIdeServerEdit.AskName(const AArgumentsJson: string; ATitle, APrompt: TAtlasTextId; out AName,
+class function TAtlasIdeServerEdit.AskName(const AArgumentsJson: string; ATitle, APrompt: TAtlasEditorTextId; out AName,
   AArguments: string): Boolean;
+const
+  cMinArguments = 3;
 var
   mArguments: TJSONValue;
 begin
@@ -152,13 +157,13 @@ begin
   AArguments := '';
   mArguments := TJSONObject.ParseJSONValue(AArgumentsJson);
   try
-    Result := (mArguments is TJSONArray) and (TJSONArray(mArguments).Count >= 3);
+    Result := (mArguments is TJSONArray) and (TJSONArray(mArguments).Count >= cMinArguments);
     if not Result then
     begin
       Exit;
     end;
     AName := TJSONArray(mArguments).Items[2].Value;
-    Result := InputQuery(TAtlasStrings.Text(ATitle), TAtlasStrings.Text(APrompt), AName);
+    Result := InputQuery(TAtlasEditorStrings.Text(ATitle), TAtlasEditorStrings.Text(APrompt), AName);
     AName := Trim(AName);
     Result := Result and (AName <> '');
     if Result then
@@ -211,19 +216,20 @@ begin
   except
     on E: ELspClientError do
     begin
-      AMessage(TAtlasStrings.Fmt(ACommand.Failed, [E.Message]));
+      AMessage(TAtlasEditorStrings.Fmt(ACommand.Failed, [E.Message]));
     end;
   end;
 end;
 
-class function TAtlasIdeServerEdit.WarningLines(const AReply: TAtlasServerEditReply; AWarning: TAtlasTextId): string;
+class function TAtlasIdeServerEdit.WarningLines(const AReply: TAtlasServerEditReply;
+  AWarning: TAtlasEditorTextId): string;
 var
   mWarning: string;
 begin
   Result := '';
   for mWarning in AReply.Warnings do
   begin
-    Result := Result + sLineBreak + TAtlasStrings.Fmt(AWarning, [mWarning]);
+    Result := Result + sLineBreak + TAtlasEditorStrings.Fmt(AWarning, [mWarning]);
   end;
 end;
 
@@ -258,13 +264,13 @@ begin
 end;
 
 class procedure TAtlasIdeServerEdit.ReportAfter(const AReply: TAtlasServerEditReply;
-  const AOutcome: TAtlasWorkspaceEditResult; AWarning: TAtlasTextId; const AMessage: TProc<string>);
+  const AOutcome: TAtlasWorkspaceEditResult; AWarning: TAtlasEditorTextId; const AMessage: TProc<string>);
 var
   mWarning: string;
 begin
   for mWarning in AReply.Warnings do
   begin
-    AMessage(TAtlasStrings.Fmt(AWarning, [mWarning]));
+    AMessage(TAtlasEditorStrings.Fmt(AWarning, [mWarning]));
   end;
   if AOutcome.Written > 0 then
   begin

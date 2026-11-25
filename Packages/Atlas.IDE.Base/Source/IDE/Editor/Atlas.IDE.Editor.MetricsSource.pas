@@ -8,7 +8,7 @@
 //   er atlas.server.metrics für die Datei (nur, wenn der Server ohnehin läuft)
 //   und merkt sich die Antwort je Datei und Textstand. Ohne Änderung fragt er
 //   alle RefreshMs neu (geänderte Grenzwerte in atlas.json). Der Befehl läuft
-//   im Hintergrund (TAtlasLensPoll.AskAsync); vorher wartete der Hauptthread
+//   im Hintergrund (TAtlasLensPoll.AskAsync); sonst wartete der Hauptthread
 //   bis zu TimeoutMs, im Diagnose-Fenster einzeln bis 8,6 s.
 // - Bedarf: Jeder Leser meldet über Want, ob er die Werte liest (Read) oder
 //   im Editor zeigt (Paint). Ohne Bedarf, ohne metrics oder bei gesperrter
@@ -87,11 +87,11 @@ uses
   Atlas.Core.Editor.SourceFiles,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Editor.Buffer;
 
 const
   cMetricsCommand = 'atlas.server.metrics';
@@ -100,12 +100,14 @@ const
 
 constructor TAtlasEditorMetricsSource.Create(const ASession: TAtlasMetricsSourceSessionFunc;
   const ARun: TAtlasLensCommandProc);
+const
+  cTickMs = 250;
 begin
   inherited Create;
   FSession := ASession;
   FRun := ARun;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
   FCurrent := Self;
@@ -204,16 +206,6 @@ begin
     not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 procedure TAtlasEditorMetricsSource.Tick(Sender: TObject);
 var
   mView: IOTAEditView;
@@ -248,7 +240,7 @@ begin
   // Nur für die Statusleiste geholt: Der Editor zeigt nichts davon.
   if Demand = TAtlasMetricsDemand.Paint then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 
@@ -267,7 +259,7 @@ begin
   // Gezeigte Werte verschwinden (metrics aus, Code Lens gesperrt).
   if Demand = TAtlasMetricsDemand.Paint then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 

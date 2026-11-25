@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Lsp.Session.Requests;
 
-// Anfragen der LSP-Sitzung (aus Atlas.Core.Lsp.Session ausgelagert): Hover, Referenzen, Definitionen,
+// Anfragen der LSP-Sitzung (Teil von Atlas.Core.Lsp.Session): Hover, Referenzen, Definitionen,
 // Implementierungen, Symbole, Code-Aktionen und Befehle, Formatieren, Auswahlbereiche, Vervollständigung,
 // Parameterhilfe und Umbenennen. Der Aufrufer gleicht die Puffer vorher ab (Sync).
 
@@ -10,15 +10,15 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Progress,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Progress,
   Atlas.Core.Hover.Contract,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.Lsp.Session.Base;
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Files.WatchedChanges,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Base;
 
 type
   /// <summary>Anfragen der LSP-Sitzung zu Hover, Orten, Symbolen, Code-Aktionen, Formatieren, Vervollständigung

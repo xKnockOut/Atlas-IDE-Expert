@@ -8,7 +8,7 @@ interface
 uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -104,7 +104,7 @@ procedure TAtlasSettingsRulesPart.Build;
 begin
   // Prüfregeln (#909): das Fenster „Atlas-Prüfung“ und die laufende Prüfung. Den Weg zu den Regeln (sie stehen in
   // den Dialogen der Einstellungsdateien), Profile, Baseline und Unterdrückungen trägt das Modul bei (#1755).
-  AddSheet(TAtlasTextId.SettingsTabRules);
+  AddSheet(TAtlasSettingsTextId.SettingsTabRules);
   BindCheck('ProblemsWindow', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsWindow)));
   FProblemsWindowScope := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsWindowScope),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject),

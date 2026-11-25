@@ -1,7 +1,7 @@
 ﻿unit Dcc.Einbetten;
 
 // #1328, Regel type-restriction-violated (E2441, E2296, E2358): Fälle, die Atlas
-// meldete, die Delphi aber übersetzt (Korpus-Projekte, dcc-Lauf vom 29.10.2026).
+// meldete, die Delphi aber übersetzt (Funde in Fremdcode).
 
 interface
 
@@ -23,11 +23,11 @@ type
     class constructor Create; // TR7: class constructor im Class-Helfer (Skia4Delphi MobileBars)
   public
     constructor CreateAus(AGroesse: Integer); // TR6: Konstruktor ruft in einem if einen überladenen Konstruktor (Skia4Delphi)
-    constructor CreateLeer; // TR9 (vorher TG3): Konstruktor im Class-Helfer ruft keinen Konstruktor
+    constructor CreateLeer; // TR9: Konstruktor im Class-Helfer ruft keinen Konstruktor
   end;
 
 function KonstanteNutzen: Integer; inline; // TR2: echte Konstante aus dem implementation-Teil (mORMot2)
-function TypNutzen: Integer; inline; // TR8 (vorher TG2): Typ aus dem implementation-Teil
+function TypNutzen: Integer; inline; // TR8: Typ aus dem implementation-Teil
 function RoutineNutzen(AWert: Integer): Double; inline; // TR4: Routine aus dem implementation-Teil (Clipper2)
 function NurHintenInline(AWert: Integer): Double; // TR5: inline nur an der Implementierung (HtmlViewer)
 

@@ -24,13 +24,15 @@ uses
   System.SysUtils,
   System.Types,
   ToolsAPI.Editor,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.EditValue,
   Atlas.Core.Debug.EditValueFlow,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.InlineValuePainter,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasIdeDebugEditValue = class
@@ -41,7 +43,7 @@ type
     cUndoAction = TAtlasEditValueFlow.cUndoAction;
     cRequestTimeoutMs = 3000;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugResumed; override;
       procedure DebugEnded; override;
@@ -59,7 +61,7 @@ type
     FRun: TAtlasHostCommandRunner;
     FMessage: TAtlasMessageSink;
     FChanged: TProc;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
@@ -108,11 +110,13 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.InlineValues,
+  Atlas.Core.Hover.DebugValue,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Debug.LineEnd,
   Atlas.UI.Debug.EditValueDialog,

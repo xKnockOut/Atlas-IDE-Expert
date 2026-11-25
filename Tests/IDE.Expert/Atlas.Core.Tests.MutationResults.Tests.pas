@@ -87,7 +87,7 @@ begin
     // Neuer Lauf ersetzt den alten.
     mResults.Put(Routine(cFile, 'Satz', 'neu', [Outcome(0, TAtlasMutationStatus.Killed)]));
     Assert.IsTrue(mResults.Lookup(cFile, 'Satz', 'neu', mResult));
-    Assert.AreEqual(1, mResults.Count);
+    Assert.AreEqual(1, Integer(mResults.Count));
   finally
     mResults.Free;
   end;
@@ -133,9 +133,9 @@ begin
     Assert.AreEqual(2, Integer(Length(mResults.RoutinesOf(cFile))));
     Assert.AreEqual('Doppelt', mResults.RoutinesOf(cFile)[0].Routine);
     mResults.Forget(cFile);
-    Assert.AreEqual(1, mResults.Count);
+    Assert.AreEqual(1, Integer(mResults.Count));
     mResults.Forget('');
-    Assert.AreEqual(0, mResults.Count);
+    Assert.AreEqual(0, Integer(mResults.Count));
   finally
     mResults.Free;
   end;
@@ -148,9 +148,11 @@ var
   mResult: TAtlasMutationRoutineResult;
   mOutcome: TAtlasMutationOutcome;
 begin
-  mResults := TAtlasMutationResults.Create;
-  mLoaded := TAtlasMutationResults.Create;
+  mResults := nil;
+  mLoaded := nil;
   try
+    mResults := TAtlasMutationResults.Create;
+    mLoaded := TAtlasMutationResults.Create;
     mOutcome := Outcome(1, TAtlasMutationStatus.Killed);
     mOutcome.By := 'PreiseTests.TPreiseTests.Grenze';
     mOutcome.Description := '>= durch >';
@@ -161,7 +163,7 @@ begin
     Assert.Contains(mJson, '"format":1');
     Assert.Contains(mJson, 'Ä.pas', 'Umlaute lesbar');
     Assert.IsTrue(mLoaded.LoadJson(mJson));
-    Assert.AreEqual(3, mLoaded.Count);
+    Assert.AreEqual(3, Integer(mLoaded.Count));
     Assert.IsTrue(mLoaded.Lookup(cFile, 'Satz', 'abc', mResult));
     Assert.AreEqual(2, Integer(Length(mResult.Outcomes)));
     Assert.AreEqual('PreiseTests.TPreiseTests.Grenze', mResult.Outcomes[1].By);
@@ -188,13 +190,13 @@ begin
   try
     mResults.Put(Routine(cFile, 'Satz', 'a', nil));
     Assert.IsFalse(mResults.LoadJson('{"format": 2, "files": []}'));
-    Assert.AreEqual(0, mResults.Count);
+    Assert.AreEqual(0, Integer(mResults.Count));
     Assert.IsFalse(mResults.LoadJson('kaputt'));
     // Unbrauchbare Einträge fallen weg, der Rest bleibt.
     Assert.IsTrue(mResults.LoadJson('{"format": 1, "files": [{"file": "", "routines": []}, ' +
       '{"file": "C:\\P\\A.pas", "routines": [{"routine": ""}, {"routine": "R", "body": "x", ' +
       '"mutants": [{"index": 0, "line": 1, "status": "unbekannt"}, {"index": 0, "line": 1, "status": "killed"}]}]}]}'));
-    Assert.AreEqual(1, mResults.Count);
+    Assert.AreEqual(1, Integer(mResults.Count));
     Assert.AreEqual(1, mResults.Totals('').Killed);
   finally
     mResults.Free;

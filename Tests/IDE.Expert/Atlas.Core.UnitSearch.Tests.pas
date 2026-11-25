@@ -50,6 +50,8 @@ type
     [Test]
     procedure ReadsPreview;
     [Test]
+    procedure PreviewWithUnreadableModified;
+    [Test]
     procedure StateRoundTrip;
     /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
     /// überschrieben.</summary>
@@ -70,7 +72,7 @@ uses
   System.Generics.Collections,
   System.Diagnostics,
   System.Math,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 const
   cRoot = 'C:\Arbeit\Atlas-IDE-Expert-claude-project-thread-j9xhhv';
@@ -447,15 +449,34 @@ begin
   Assert.IsFalse(mPreview.HasForm);
 end;
 
+procedure TAtlasUnitSearchTests.PreviewWithUnreadableModified;
+var
+  mValue: TJSONValue;
+  mPreview: TAtlasUnitPreview;
+begin
+  // Unlesbare Änderungszeit: Zeitpunkt 0, die übrige Vorschau bleibt.
+  mValue := TJSONObject.ParseJSONValue('{"uri":"C:\\P\\Haupt.pas","header":"Kopf","lines":120,"modified":"gestern"}');
+  try
+    mPreview := TAtlasUnitPreview.FromJson(mValue, Path);
+  finally
+    mValue.Free;
+  end;
+  Assert.AreEqual('Kopf', mPreview.Header);
+  Assert.AreEqual(120, mPreview.Lines);
+  Assert.AreEqual(Double(0), Double(mPreview.Modified));
+end;
+
 procedure TAtlasUnitSearchTests.StateRoundTrip;
 var
   mState, mLoaded: TAtlasUnitSearchState;
   mOrigins: TAtlasUnitOrigins;
   mKinds: TAtlasUnitKinds;
 begin
-  mState := TAtlasUnitSearchState.Create;
-  mLoaded := TAtlasUnitSearchState.Create;
+  mState := nil;
+  mLoaded := nil;
   try
+    mState := TAtlasUnitSearchState.Create;
+    mLoaded := TAtlasUnitSearchState.Create;
     Assert.IsFalse(mState.Filters('C:\P\Gruppe.groupproj', mOrigins, mKinds));
     mState.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Project, ['Atlas.Common', 'atlas.tests']);
     mState.SetCollapsed('C:\P\Gruppe.groupproj', TAtlasUnitGrouping.Folder, ['Tests']);
@@ -465,7 +486,7 @@ begin
     mState.Width := 900;
     mState.PreviewWidth := 320;
     mState.PreviewVisible := False;
-    mState.Sections[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
+    mState.Section[TAtlasPreviewSection.Types] := TAtlasSectionChoice.HandClosed;
     Assert.IsTrue(mLoaded.LoadJson(mState.ToJson));
     Assert.AreEqual<TAtlasSectionChoice>(TAtlasSectionChoice.Auto, mLoaded.Sections[TAtlasPreviewSection.Types],
       'Abschnitte gelten nur für die Sitzung (#876)');

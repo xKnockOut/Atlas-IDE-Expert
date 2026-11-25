@@ -15,11 +15,13 @@ uses
   DUnitX.TestFramework,
   Atlas.Core.Designer.Undo,
   Atlas.Core.Designer.UndoApply,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Designer.Surface,
   Atlas.Core.Designer.UndoFlow,
   Atlas.Tests.DesignSurfaceFake;
 
-/// <summary>Texte der Schritte für Tests (englisch, wie in den Tests von Atlas.Core.Designer.Undo).</summary>
+/// <summary>Texte der Schritte für Tests, auch die von Atlas.Core.Designer.Undo: englisch und ohne Pfeil, weil FPC
+/// Strings mit Zeichen außerhalb von ASCII aus der Quelle anders vergleicht als Delphi.</summary>
 function UndoTestWords: TAtlasUndoWords;
 /// <summary>Gründe beim Zurückladen für Tests.</summary>
 function UndoTestReasons: TAtlasUndoReasons;
@@ -68,6 +70,8 @@ type
     procedure SetCaption(const AName, ACaption: string);
     function Undo: TAtlasUndoOutcome;
     function Redo: TAtlasUndoOutcome;
+    /// <summary>Zurück auf den Ausgangsstand, für WillRaise.</summary>
+    procedure RestoreFirst;
   public
     [Setup]
     procedure Setup;
@@ -91,6 +95,8 @@ type
     procedure ClosingDropsHistoryAndPendingCapture;
     [Test]
     procedure RestoreDoesNotCaptureOwnChanges;
+    [Test]
+    procedure FailedCleanupKeepsCapturing;
     [Test]
     procedure UndoRestoresHandler;
     [Test]
@@ -248,7 +254,7 @@ var
 begin
   OpenWithWidget;
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(1, mHistory.Count);
+  Assert.AreEqual(1, Integer(mHistory.Count));
   Assert.AreEqual('', mHistory.State(0).Caption);
   Assert.IsFalse(FFlow.CanUndo(FSurface));
   Assert.IsFalse(FFlow.CanRedo(FSurface));
@@ -265,7 +271,7 @@ begin
   Assert.AreEqual(1, FQueued, 'nur ein Erfassen eingereiht');
   AfterEvent;
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(2, mHistory.Count);
+  Assert.AreEqual(2, Integer(mHistory.Count));
   Assert.StartsWith('AtlasUndoWidget1.Caption: ', mHistory.State(1).Caption);
   Assert.EndsWith('Drei', mHistory.State(1).Caption.Replace('''', ''));
 end;
@@ -338,7 +344,7 @@ begin
   FFake.Delete(Widget('AtlasUndoWidget1'));
   AfterEvent;
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(2, mHistory.Count);
+  Assert.AreEqual(2, Integer(mHistory.Count));
   Assert.AreEqual('AtlasUndoWidget1 deleted', mHistory.State(1).Caption);
   Undo;
   Assert.AreEqual('Eins', Widget('AtlasUndoWidget1').Caption);
@@ -368,8 +374,38 @@ begin
   Undo;
   Assert.AreEqual(0, FQueued);
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(2, mHistory.Count);
+  Assert.AreEqual(2, Integer(mHistory.Count));
   Assert.AreEqual(0, mHistory.Index);
+end;
+
+procedure TAtlasDesignerUndoFlowTests.FailedCleanupKeepsCapturing;
+var
+  mHistory: TAtlasFormUndoHistory;
+begin
+  OpenWithWidget;
+  SetCaption('AtlasUndoWidget1', 'Zwei');
+  AfterEvent;
+  FFake.FailModified := True;
+  Assert.WillRaise(RestoreFirst, EAtlasDesignSurfaceFakeFailure);
+  FFake.FailModified := False;
+  // Der Verlauf steht trotzdem auf dem hergestellten Stand ...
+  Assert.AreEqual('Eins', Widget('AtlasUndoWidget1').Caption);
+  Assert.IsTrue(FFlow.Active(FSurface, mHistory));
+  Assert.AreEqual(0, mHistory.Index);
+  // ... und Rückgängig erfasst weiter Änderungen.
+  FQueued := 0;
+  SetCaption('AtlasUndoWidget1', 'Drei');
+  Assert.AreEqual(1, FQueued, 'eingereiht');
+  AfterEvent;
+  Assert.AreEqual(1, mHistory.Index);
+  Assert.IsTrue(FFlow.CanUndo(FSurface));
+end;
+
+procedure TAtlasDesignerUndoFlowTests.RestoreFirst;
+var
+  mOutcome: TAtlasUndoOutcome;
+begin
+  FFlow.Restore(FSurface, 0, mOutcome);
 end;
 
 procedure TAtlasDesignerUndoFlowTests.UndoRestoresHandler;
@@ -453,7 +489,7 @@ begin
     SetCaption('AtlasUndoWidget1', 'Zwei');
     AfterEvent;
     Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-    Assert.AreEqual(3, mHistory.Count);
+    Assert.AreEqual(3, Integer(mHistory.Count));
     Undo;
     Assert.AreEqual('Eins', mWidget.Caption);
     Assert.AreEqual(40, mWidget.Size);
@@ -475,7 +511,7 @@ begin
   AfterEvent;
   FFlow.Reset(FSurface);
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
-  Assert.AreEqual(1, mHistory.Count);
+  Assert.AreEqual(1, Integer(mHistory.Count));
   Assert.IsFalse(FFlow.CanUndo(FSurface));
 end;
 

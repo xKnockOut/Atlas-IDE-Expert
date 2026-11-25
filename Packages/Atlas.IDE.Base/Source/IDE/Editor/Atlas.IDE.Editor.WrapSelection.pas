@@ -55,42 +55,26 @@ uses
   System.Math,
   Vcl.Controls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Text.Lines,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Editor.LineMove,
   Atlas.Core.Editor.WrapSelection,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot;
-
-function IsEditorWindow(AWnd: HWND): Boolean;
-var
-  mControl: TWinControl;
-begin
-  mControl := FindControl(AWnd);
-  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
-end;
-
-function LineOf(const ALines: TArray<string>; ARow: Integer): string;
-begin
-  Result := '';
-  if (ARow >= 1) and (ARow <= Length(ALines)) then
-  begin
-    Result := ALines[ARow - 1];
-  end;
-end;
 
 function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
 begin
   Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(LineOf(ALines, Result.Line), APosition.Character, ATabWidth);
+  Result.Col := TLspSession.IndexToColumn(TTextLines.LineAt(ALines, APosition.Line), APosition.Character, ATabWidth);
 end;
 
 function PositionOf(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
 begin
-  Result := TLspTextPosition.Create(ARow - 1, TLspSession.ColumnToIndex(LineOf(ALines, ARow), AColumn, ATabWidth));
+  Result := TLspTextPosition.Create(ARow - 1,
+    TLspSession.ColumnToIndex(TTextLines.LineAt(ALines, ARow - 1), AColumn, ATabWidth));
 end;
 
 /// <summary>AView hat einen beschreibbaren Puffer und eine Markierung.</summary>
@@ -128,7 +112,7 @@ begin
   begin
     mStart := PositionOf(ALines, mRow, mFirstColumn, ATabWidth);
     mStop := PositionOf(ALines, mRow, mLastColumn, ATabWidth);
-    if mStart.Character < Length(LineOf(ALines, mRow)) then
+    if mStart.Character < Length(TTextLines.LineAt(ALines, mRow - 1)) then
     begin
       Result := Result + [TLspRange.Create(mStart.Line, mStart.Character, mStop.Line, mStop.Character)];
     end;
@@ -140,18 +124,14 @@ end;
 procedure WriteWrapped(const AView: IOTAEditView; const AText: string; const AWrapped: TAtlasWrapResult;
   AColumn: Boolean; ATabWidth: Integer);
 var
-  mLineBreak, mInsert: string;
-  mStart, mOldLength: Integer;
+  mLineBreak: string;
 begin
   mLineBreak := #10;
   if Pos(#13#10, AText) > 0 then
   begin
     mLineBreak := #13#10;
   end;
-  if TAtlasLineMover.Difference(AText, string.Join(mLineBreak, AWrapped.Lines), mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(AView.Buffer, AText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(AView.Buffer, AText, string.Join(mLineBreak, AWrapped.Lines));
   if AColumn then
   begin
     AView.Block.Style := btColumn;
@@ -195,7 +175,8 @@ begin
   end;
   try
     mTyped := Char(Msg.wParam);
-    if not IsEditorWindow(Msg.hwnd) or not Enabled or not TAtlasWrapSelection.Accepts(mTyped, Chars) then
+    if not TAtlasEditorBuffer.IsEditorWindow(Msg.hwnd) or not Enabled
+      or not TAtlasWrapSelection.Accepts(mTyped, Chars) then
     begin
       Exit;
     end;

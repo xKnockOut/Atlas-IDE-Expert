@@ -18,9 +18,6 @@ type
     function NewServices: TShellBaselineServices;
     procedure CountRefresh;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -53,7 +50,7 @@ uses
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.BulkFix,
   Atlas.Common.Lsp.CompilerBaseline,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Tests.TempFolder;
 
@@ -102,16 +99,6 @@ end;
 procedure TShellBaselinesTests.CountRefresh;
 begin
   Inc(FRefreshes);
-end;
-
-procedure TShellBaselinesTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    FilesWriteAndRead;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TShellBaselinesTests.Setup;
@@ -184,9 +171,11 @@ var
   mText: string;
   mName: string;
 begin
-  mBaselines := TShellBaselines.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mBaselines := nil;
+  mCommands := nil;
   try
+    mBaselines := TShellBaselines.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mBaselines.RegisterCommands(mCommands);
     mBaselines.RegisterClassifyCommand(mCommands);
     mCapability := mCommands.Capability;

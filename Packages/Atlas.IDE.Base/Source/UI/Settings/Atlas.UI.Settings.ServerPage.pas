@@ -5,8 +5,8 @@
 //     ohne die Werte der übrigen Reiter) und die des aktiven Projekts (atlas.json)
 //     im Dialog bearbeiten; jede Einstellung hat genau einen Ort (#227).
 //   - „Index-Cache löschen“ (#184).
-// Baseline (#97) und Unterdrückungen je Regel (#147) stehen seit #1755 auf der
-// Seite Prüfregeln im Abschnitt des Moduls Prüfregeln.
+// Baseline (#97) und Unterdrückungen je Regel (#147) stehen auf der Seite
+// Prüfregeln im Abschnitt des Moduls Prüfregeln (#1755).
 // Reine VCL; die Seite kennt weder Server noch Dateien. Die IDE-Schicht liefert
 // Texte und führt die Aktionen aus (AtlasServer.exe als Prozess bzw. Dialog).
 
@@ -20,8 +20,7 @@ uses
   Vcl.Graphics,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Vcl.Forms,
-  Vcl.Dialogs;
+  Vcl.Forms;
 
 type
   /// <summary>Was die IDE-Schicht für die Seite liefert; nicht gesetzte Haken lassen ihren Knopf aus.</summary>
@@ -40,10 +39,11 @@ type
     FCacheInfo: TLabel;
     FCacheClear: TButton;
     FHooks: TAtlasServerPageHooks;
+    /// <summary>Zeile der Höhe AHeight in logischen Pixeln (96 dpi).</summary>
     function AddPanel(AHeight: Integer): TPanel;
     function AddTitle(const ACaption: string): TLabel;
+    /// <summary>Knopf in APanel an ALeft (logische Pixel, 96 dpi).</summary>
     function AddButton(APanel: TPanel; const ACaption: string; ALeft: Integer; AClick: TNotifyEvent): TButton;
-    function Confirmed(const AQuestion: string): Boolean;
     procedure EditGlobalClick(Sender: TObject);
     procedure EditProjectClick(Sender: TObject);
     procedure CacheClearClick(Sender: TObject);
@@ -65,11 +65,27 @@ type
 implementation
 
 uses
-  Atlas.UI.Settings.Strings;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Settings.Page.Sheets,
+  Atlas.Vcl.Theme.Service;
 
 const
   // Linker Rand des Knopfs für die Projekteinstellungen.
   cEditProjectLeft = 230;
+  /// <summary>Anfangsgröße der Seite (logische Pixel); die IDE passt sie an ihren Bereich an.</summary>
+  cPageWidth = 480;
+  cPageHeight = 520;
+  /// <summary>Zeile mit Knöpfen: Höhe, Oberkante und Breite der Knöpfe.</summary>
+  cButtonRowHeight = 32;
+  cButtonTop = 3;
+  cButtonWidth = 220;
+  /// <summary>Überschrift: Höhe und Oberkante des Textes.</summary>
+  cTitleHeight = 22;
+  cTitleTop = 4;
+  /// <summary>Graue Zeile zum Cache: Höhe und Oberkante des Textes.</summary>
+  cInfoHeight = 20;
+  cInfoTop = 2;
 
 {$R *.dfm}
 
@@ -81,11 +97,11 @@ var
 begin
   inherited Create(AOwner);
   Name := 'AtlasServerPage';
-  Width := ScaleValue(480);
-  Height := ScaleValue(520);
+  Width := ScaleValue(cPageWidth);
+  Height := ScaleValue(cPageHeight);
   FNextTop := 100;
   AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalTitle));
-  mPanel := AddPanel(32);
+  mPanel := AddPanel(cButtonRowHeight);
   FEditGlobal := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageGlobalEdit), 0,
     EditGlobalClick);
   FEditProject := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageProjectEdit),
@@ -93,43 +109,34 @@ begin
     EditProjectClick);
 
   AddTitle(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheTitle));
-  mPanel := AddPanel(32);
+  mPanel := AddPanel(cButtonRowHeight);
   FCacheClear := AddButton(mPanel, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheClear), 0,
     CacheClearClick);
-  mPanel := AddPanel(20);
+  mPanel := AddPanel(cInfoHeight);
   FCacheInfo := TLabel.Create(Self);
   FCacheInfo.Parent := mPanel;
   FCacheInfo.Left := 0;
-  FCacheInfo.Top := FCacheInfo.ScaleValue(2);
-  FCacheInfo.Font.Color := clGrayText;
+  FCacheInfo.Top := FCacheInfo.ScaleValue(cInfoTop);
+  TAtlasUiTheme.UseFontColor(FCacheInfo, clGrayText);
   Reload;
 end;
 
 function TAtlasServerPage.AddPanel(AHeight: Integer): TPanel;
 begin
-  Result := TPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.BevelOuter := bvNone;
-  Result.Height := AHeight;
-  // alTop stapelt nach Top: jedes neue Element unter das vorige.
-  Result.Top := FNextTop;
-  Inc(FNextTop, 100);
-  Result.ParentBackground := True;
+  Result := TAtlasSettingsPageSheets.NewTopPanel(Self, AHeight, FNextTop);
 end;
 
 function TAtlasServerPage.AddTitle(const ACaption: string): TLabel;
 var
   mPanel: TPanel;
 begin
-  mPanel := AddPanel(22);
+  mPanel := AddPanel(cTitleHeight);
   Result := TLabel.Create(Self);
   Result.Parent := mPanel;
   Result.Caption := ACaption;
   Result.Font.Style := [fsBold];
   Result.Left := 0;
-  Result.Top := Result.ScaleValue(4);
+  Result.Top := Result.ScaleValue(cTitleTop);
 end;
 
 function TAtlasServerPage.AddButton(APanel: TPanel; const ACaption: string; ALeft: Integer;
@@ -138,22 +145,11 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := APanel;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
-  Result.Top := Result.ScaleValue(3);
-  Result.Width := Result.ScaleValue(220);
+  // ALeft in logischen Pixeln wie die Breite.
+  Result.Left := Result.ScaleValue(ALeft);
+  Result.Top := Result.ScaleValue(cButtonTop);
+  Result.Width := Result.ScaleValue(cButtonWidth);
   Result.OnClick := AClick;
-end;
-
-function TAtlasServerPage.Confirmed(const AQuestion: string): Boolean;
-begin
-  if Assigned(FHooks.Confirm) then
-  begin
-    Result := FHooks.Confirm(AQuestion);
-  end
-  else
-  begin
-    Result := MessageDlg(AQuestion, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
-  end;
 end;
 
 procedure TAtlasServerPage.EditGlobalClick(Sender: TObject);
@@ -174,8 +170,8 @@ end;
 
 procedure TAtlasServerPage.CacheClearClick(Sender: TObject);
 begin
-  if Assigned(FHooks.ClearCache) and Confirmed(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheConfirm))
-    then
+  if Assigned(FHooks.ClearCache) and
+    TAtlasDialog.Confirmed(FHooks.Confirm, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ServerPageCacheConfirm)) then
   begin
     FCacheInfo.Caption := FHooks.ClearCache();
   end;

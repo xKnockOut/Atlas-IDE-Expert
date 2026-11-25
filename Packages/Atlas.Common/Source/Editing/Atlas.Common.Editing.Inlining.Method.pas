@@ -16,7 +16,7 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Inlining.Types;
 
 type
@@ -35,13 +35,14 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Semantics.ControlFlow.Signatures,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Editing.Inlining.Syntax,
   Atlas.Common.Localization.Texts;
 
@@ -1286,7 +1287,7 @@ begin
     end
     else if Locals[mIndex].Kind = TLocalKind.Constant then
     begin
-      ReplaceToken(TInlineSyntax.NextSignificant(CalleeTokens, TRoutineBody.TokenAt(CalleeTokens,
+      ReplaceToken(NextCode(CalleeTokens, TRoutineBody.TokenAt(CalleeTokens,
         Locals[mIndex].Decl.StartOffset)), NewNames[mIndex]);
     end;
   end;

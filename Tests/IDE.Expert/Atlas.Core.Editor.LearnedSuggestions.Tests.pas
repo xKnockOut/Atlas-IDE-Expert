@@ -97,7 +97,7 @@ var
 begin
   Assert.IsTrue(SuggestionOf(cAnswer, 7, mSuggestion));
   Assert.AreEqual('$S := TFoo.Create', mSuggestion.Pattern.Trigger);
-  Assert.AreEqual(6, mSuggestion.Pattern.Count);
+  Assert.AreEqual(6, Integer(mSuggestion.Pattern.Count));
   Assert.AreEqual(85, mSuggestion.Pattern.Share);
   Assert.AreEqual(5, Integer(Length(mSuggestion.Lines)));
   Assert.AreEqual(8, mSuggestion.CursorLine);
@@ -251,7 +251,7 @@ begin
     Assert.AreEqual(0, mRejected);
     Assert.IsTrue(mUsage.IsOff('a'), 'Vergessen lässt den Schalter');
     mUsage.SetOff('a', False);
-    Assert.AreEqual(0, mUsage.Count, 'ohne Zähler und Schalter kein Eintrag');
+    Assert.AreEqual(0, Integer(mUsage.Count), 'ohne Zähler und Schalter kein Eintrag');
   finally
     mUsage.Free;
   end;
@@ -280,9 +280,11 @@ var
   mUsage, mRead: TAtlasLearnedUsage;
   mAccepted, mRejected: Integer;
 begin
-  mUsage := TAtlasLearnedUsage.Create;
-  mRead := TAtlasLearnedUsage.Create;
+  mUsage := nil;
+  mRead := nil;
   try
+    mUsage := TAtlasLearnedUsage.Create;
+    mRead := TAtlasLearnedUsage.Create;
     mUsage.SetGroup('C:\P\G.groupproj');
     mUsage.Accepted('a => b');
     mUsage.Rejected('c');
@@ -295,7 +297,7 @@ begin
     Assert.AreEqual(1, mAccepted);
     Assert.IsTrue(mRead.IsOff('c'));
     Assert.IsFalse(mRead.FromJson('[1, 2'));
-    Assert.AreEqual(0, mRead.Count);
+    Assert.AreEqual(0, Integer(mRead.Count));
     Assert.IsFalse(mRead.FromJson('{"groups": 3}'));
   finally
     mRead.Free;

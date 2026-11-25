@@ -39,8 +39,8 @@ implementation
 uses
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Welcome.Search;
 
 type
@@ -75,15 +75,18 @@ var
   mOwner: TAtlasIdeSetupProjectEvents;
 begin
   mOwner := FOwner;
-  if (mOwner = nil) or not Concerns(NotifyCode, FileName) then
+  if mOwner = nil then
   begin
     Exit;
   end;
-  // Keine Exception an die IDE (#493).
+  // Keine Exception an die IDE (#493), auch nicht aus der Prüfung des Dateinamens.
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mOwner.Notified;
+      if Concerns(NotifyCode, FileName) then
+      begin
+        mOwner.Notified;
+      end;
     end);
 end;
 

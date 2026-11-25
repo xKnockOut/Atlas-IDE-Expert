@@ -172,6 +172,7 @@ Ein Mutationslauf prüft, ob die Tests Fehler im Code überhaupt bemerken: Atlas
 - Befehle (Befehlspalette, *Atlas*-Menü, Kontextmenü einer Unit unter *Atlas › Tests*): „Mutationen der Methode prüfen“ (Methode am Cursor bzw. an der zuletzt rechts geklickten Zeile der Rinne), „Mutationen der Unit prüfen“, „Mutationen geänderter Methoden prüfen“ (nur Methoden ohne gültiges Ergebnis) und „Mutationslauf abbrechen“.
 - Das Testprojekt wählt Atlas wie bei „Tests ausführen“. Für den Lauf legt Atlas unter `.atlas-local\mutation\<Projekt>` neben dem Testprojekt ein Schattenprojekt mit eigener dpr/dproj und eigenen Ausgabeordnern an und holt es kurz in die Projektgruppe; Original, DCUs und das aktive Projekt bleiben unberührt. Der Text der Unit kommt aus dem Editor, auch ungespeichert.
 - Zuerst laufen die Tests gegen die unveränderte Kopie; sind sie schon dann nicht grün, endet der Lauf. Danach je Mutant: bauen, Tests mit Zeitlimit ausführen. Ein fehlgeschlagener Test (oder ein Absturz, oder das Zeitlimit) **erkennt** den Mutanten, alle grün heißt **überlebt**; nicht übersetzbare oder nicht anwendbare Mutanten zählen nicht mit.
+- Endet der Lauf nach den Tests ohne Mutation durch die Umgebung (Build abgelehnt, weil der Debugger oder ein anderer Build läuft; keine Test-EXE; Kopie nicht schreibbar), zählt alles bis dahin Geprüfte wie nach „Mutationslauf abbrechen“. Eine Test-EXE, die sich nicht starten lässt, erkennt keinen Mutanten, sondern beendet den Lauf.
 - Die Meldungsansicht nennt je Mutant den Ausgang, am Ende Zahlen und Mutation-Score und je überlebendem Mutanten eine anklickbare Zeile.
 - Die Rinne zeigt je Zeile mit Mutanten einen Punkt: grün alle erkannt, rot einer überlebt, grau nicht bewertbar; der Tooltip nennt Original, Ersatz und den erkennenden Test. Ergebnisse liegen in `.atlas-local\mutation\results.json` des Testprojekts und gelten, solange die Methode unverändert ist (Einrückung und Kommentare zählen nicht). Ausblenden je Datei oder überall über das Kontextmenü der Rinne.
 
@@ -212,9 +213,10 @@ Aufruf: *Ansicht › Atlas › Atlas-Tests*, Atlas-Menü oder Befehlspalette. Da
 - Filter *Fehlgeschlagen*, *Nicht gelaufen*, *Veraltet* und *Langsam* (über `tests.slowMs`) wirken sofort, mehrere zusammen mit „oder“; das Suchfeld sucht im vollen Namen (Unit.Fixture.Methode.Fall). Der Weg zu jedem Treffer bleibt sichtbar.
 - Doppelklick oder Enter springt zum Test, bei einem Fall zu seinem `[TestCase]`. Unten stehen zum gewählten Test Meldung, erwarteter und erhaltener Wert und der Stacktrace; Zeilen, die eine Unit des Testprojekts nennen, öffnen sich per Doppelklick.
 - Die Ergebnisse gelten für diese Sitzung, je Testprojekt; Änderungen an einer Testunit zeigt das Fenster nach dem Speichern.
+- Bei Fehlschlägen öffnet es sich von selbst (#2467): Schlägt nach einem Lauf mindestens ein Test fehl oder bricht der Lauf mit Fehler ab (kein Bericht, Zeitgrenze), öffnet sich das Fenster, kommt nach vorn und zeigt das Testprojekt des Laufs. Das gilt für jeden Weg: Tests ausführen, fehlgeschlagene erneut ausführen, Tests nach dem Build, betroffene Tests beim Speichern, Serien, Testlisten, Testlinse und Test debuggen. Der Fokus bleibt, wo er war, ein Lauf beim Speichern unterbricht also nicht das Tippen. Nach einem grünen oder abgebrochenen Lauf passiert nichts. Abschalten mit `tests.window.openOnFailure`.
 - `tests.window` aus: kein Menüeintrag, das Fenster wird nicht wiederhergestellt.
 
-Einstellung: `tests.window`
+Einstellungen: `tests.window`, `tests.window.openOnFailure`
 
 ### Testlisten im Fenster „Atlas-Tests“ (#2167)
 
@@ -288,6 +290,15 @@ Einstellungen: `tests.log`, `tests.log.maxLines`
 - `tests.leaks` aus: Das Ergebnis bleibt, wie DUnitX es meldet (Fehlschlag, rot), die Zeile zu Lecks am Programmende entfällt.
 
 Einstellung: `tests.leaks`
+
+### Ordner neuer Testunits (#274, #2800)
+
+- Neue Testunits (*DUnitX-Testunit anlegen*, Testfall aus der Unit) legt Atlas in `testUnits.folder` an; leer: im Ordner des Testprojekts.
+- `{path}` im Ordner spiegelt den Aufbau des Hauptprojekts: Mit `testUnits.folder` = `Tests/{path}` und `testUnits.sourceRoot` = `Source` wird aus `Source/Core/Foo.pas` die Testunit `Tests/Core/Foo.Tests.pas`. Fehlende Ordner legt Atlas an, `.dpr` und `.dproj` bekommen den Pfad.
+- `{namespace}` setzt den Namensraum der Unit als Ordner ein (`Atlas.Core.Net.Http` → `Atlas/Core/Net`).
+- Mehrere Quellordner mit `;` trennen, der längste passende gilt; Units außerhalb landen direkt im Basisordner. Ohne Platzhalter bleibt alles wie bisher.
+
+Einstellungen: `testUnits.folder`, `testUnits.sourceRoot`
 
 ### Testfall aus der Unit anlegen (#1226)
 
@@ -365,6 +376,18 @@ Aufruf: Menü Start und Befehlspalette. „Welcher Code läuft, wenn ich hier kl
 
 Einstellungen: `debug.breakOnNextEvent`
 
+#### Anhalten bei Datenzugriff
+
+Aufruf: Menü Start und Befehlspalette, vor dem Start oder während des Laufs. „Wo schreibt das Programm in die Tabelle Kunden?“
+
+- Atlas sucht im Projekt die Aufrufe von `Open`, `ExecSQL`, `Execute` (FireDAC, dbExpress, ADO, Zeos) und `Get`, `Post`, `Put`, `Delete` (`THTTPClient`, `TNetHTTPClient`, `TIdHTTP`, `TRESTRequest.Execute`), auch auf Nachfahren, und setzt dort vorübergehende Haltepunkte (Gruppe `Atlas.Datenzugriff`).
+- Im Dialog: SQL und/oder HTTP, je ein Muster mit `*` (`*FROM Kunden WHERE*`, `POST */api/auftrag*`, leer = jeder Zugriff), Groß-/Kleinschreibung, anhalten oder nur protokollieren.
+- Beim Halt wertet Atlas SQL-Text und Parameter bzw. Methode und URL aus; passt das Muster nicht, läuft das Programm still weiter.
+- Die Leiste zeigt Stelle und Text: „Weiter beobachten“, „Nur protokollieren“ (Zeilen `[SQL] Kunde.pas:43 · …` in den Meldungen), „Beenden“ (Haltepunkte entfernen).
+- Eigene Klassen in `debug.dataBreaks.classes` mit `=sql` oder `=http` (`TMeineAbfrage=sql`).
+
+Einstellungen: `debug.dataBreaks`, `debug.dataBreaks.classes`
+
 <a id="window-atlasstepfilter"></a>
 #### Schrittfilter
 
@@ -395,6 +418,21 @@ Aufruf: Atlas-Menü › Speicherverlauf bzw. Befehl `Atlas.DebugMemory`.
 - Die Zählung hängt nicht vom Speichermanager ab und ist eine Näherung: Klassenverweise in Feldern (`TClass`) zählen mit, freigegebene Objekte fallen weg, sobald der Speichermanager ihren Anfang überschreibt (FastMM tut das).
 
 Einstellungen: `debug.memoryTimeline`, `debug.memoryTimeline.intervalMs`, `debug.memoryTimeline.objectCount`
+
+<a id="window-atlasconsoleoutput"></a>
+#### Konsolenausgabe andocken
+
+Experimentell, Vorgabe aus. Aufruf: Start mit F9 wie immer, Menü Start › „Ohne Debugger mit Konsolenausgabe starten“ bzw. Befehle `Atlas.ConsoleRunNoDebug` und `Atlas.ConsoleOutput`.
+
+- Bei einem Konsolenprogramm für Win32 oder Win64 ohne Host-Anwendung erscheint statt eines eigenen Konsolenfensters die Ausgabe im andockbaren Fenster „Atlas: Konsolenausgabe“. Andere Projekte startet die IDE wie gewohnt.
+- Mit Debugger startet Atlas das Programm angehalten und hängt den Debugger der IDE an. Erst wenn die IDE das Programm übernommen hat, läuft es los; Haltepunkte ab der ersten Zeile greifen. Übernimmt die IDE nicht binnen 10 s, läuft das Programm trotzdem weiter, mit Meldung.
+- Fehlerausgabe (stderr) steht rot, Eingaben blau, Hinweise von Atlas grau. Eingaben gehen über das Feld unten an das Programm (Enter sendet, „Eingabe beenden“ schickt das Dateiende für `Readln`).
+- Fundstellen wie `Haupt.pas(12)` oder `Src/Haupt.pas:12:5` sind unterstrichen; ein Klick öffnet die Datei an der Zeile (gesucht im Arbeitsordner, dann im Projektordner).
+- Parameter, Arbeitsordner und Umgebung kommen aus den Startoptionen des Projekts, also auch aus einem aktiven Startprofil.
+- Nach dem Ende bleibt die Ausgabe mit dem Exit-Code stehen. Das Fenster hält höchstens 20 000 Zeilen; ältere fallen mit Hinweis weg.
+- „Beenden“ beendet das Programm, im Debugger über die IDE.
+
+Einstellung: `debug.captureConsole`
 
 <a id="window-atlasprofiler"></a>
 #### Profiler
@@ -465,6 +503,18 @@ Aufruf: Rand des Editors im angehaltenen Zustand, Kontextmenü Atlas › Debugge
 
 Einstellungen: `debug.runToClick`
 
+#### Ausführungspfeil ziehen *(experimentell)*
+
+Aufruf: Rand des Editors im angehaltenen Zustand, Kontextmenü Atlas › Debuggen › „Nächste Anweisung hier“, Befehlspalette. Eine Zeile noch einmal ausführen oder einen Block überspringen, ohne ins CPU-Fenster zu wechseln.
+
+- Hält das Programm an, steht in einer schmalen Spalte rechts der Zeilennummern ein Pfeil an der Zeile des Ausführungspunkts.
+- Den Pfeil mit der Maus auf eine andere Zeile derselben Routine ziehen: Ein Tooltip nennt die Folge, etwa „Zeilen 117–119 laufen erneut“ oder „Zeilen 121–124 werden übersprungen“. Loslassen setzt die nächste Anweisung dorthin, ohne etwas auszuführen; F7 oder F8 geht dort weiter.
+- Gesperrt (der Mauszeiger zeigt ein Verbot, der Tooltip den Grund): Zeilen außerhalb der Routine, Zeilen ohne ausführbaren Code, der Kopf einer `for`-Schleife mit Zähler und Ziele in einem anderen Teil eines `try`-Blocks (`try`, `finally`, `except`) oder einer anonymen Methode.
+- „Nächste Anweisung hier“ wirkt wie das Ziehen, für die Zeile der Schreibmarke bzw. des letzten Rechtsklicks in den Rand.
+- Atlas setzt nur den Befehlszähler; Stack, Register und Variablen bleiben, wie sie sind. Beim ersten Mal fragt ein Hinweis nach. Unter Win32 und Win64, andere Plattformen lehnt Atlas ab.
+
+Einstellung: `debug.dragNextStatement` (Vorgabe aus)
+
 #### Haltepunkt nur für ein Objekt
 
 Ein Haltepunkt in `TKunde.Speichere` hält bei 500 Kunden 500 Mal. Im angehaltenen Programm, mit der Schreibmarke auf der Zeile des Haltepunkts, bietet das Kontextmenü des Editors unter Debuggen:
@@ -502,14 +552,15 @@ Läuft von selbst; Befehle im Menü Atlas und in der Befehlspalette. Nach `git p
 
 Einstellungen: `debug.breakpointAnchors`
 
-#### Haltepunkt-Regeln: abhängig, Treffer, Thread
+#### Haltepunkt-Regeln: abhängig, Treffer, Thread, Aufrufer
 
 Aufruf: Kontextmenü des Editors (Atlas › Debuggen › „Haltepunkt-Regeln …“, auch im Rand), Menü Atlas, Befehlspalette; auf der Zeile eines Haltepunkts. Ein Haltepunkt in einer viel benutzten Routine hält sonst hundertmal, bevor man an der Stelle ist, um die es geht.
 
 - „Erst aktiv nach“: Der Haltepunkt ist zu Beginn jeder Debug-Sitzung aus und wird eingeschaltet, sobald der gewählte andere Haltepunkt gehalten hat. „bis zum Ende der Sitzung“ lässt ihn danach an, „nur einmal“ schaltet ihn nach seinem Halt wieder aus, bis der auslösende erneut hält. Nach der Sitzung ist er wieder an.
 - „Anhalten“: bei jedem, genau beim n-ten, ab dem n-ten oder bei jedem n-ten Treffer; gezählt wird je Sitzung.
 - „Thread“: alle, Name enthält (aus `TThread.NameThreadForDebugging`), eine Thread-ID oder nur der Hauptthread. Ein Halt in einem anderen Thread zählt nicht als Treffer.
-- Bedingung der IDE, Trefferbedingung und Thread-Filter gelten zusammen. Für Treffer und Thread hält der Debugger kurz an, Atlas zählt und setzt sofort fort; in heißen Schleifen kostet das Zeit.
+- „Nur wenn im Stapel“: Der Haltepunkt hält nur, wenn eine bestimmte Routine im Aufrufstapel steht, etwa `TKundenImport.LeseZeile`. Erlaubt sind `Unit.Klasse.Methode`, `Klasse.Methode`, eine ganze Unit oder Klasse und `*` als Platzhalter (`Kunden.*`, `*.LeseZeile`); Groß- und Kleinschreibung zählt nicht. „nur direkter Aufrufer“ prüft nur den Rahmen direkt unter dem Haltepunkt. Hält das Programm gerade, schlägt die Liste die Routinen des aktuellen Stapels vor. Halte ohne passenden Aufrufer zählen nicht als Treffer, „genau beim 2. Treffer“ meint also den zweiten Aufruf aus dieser Routine. Ist der Stapel nicht lesbar, hält Atlas lieber an. Rahmen ohne Debug-Informationen haben teils keinen Namen, und Inline-Routinen oder optimierter Code erscheinen nicht als eigener Rahmen. Haltepunkte mit Aufrufer tragen einen Haken (↳) in der Atlas-Spalte der Rinne; der Hinweis nennt den Aufrufer.
+- Bedingung der IDE, Trefferbedingung, Thread-Filter und Aufrufer gelten zusammen. Für Treffer, Thread und Aufrufer hält der Debugger kurz an, Atlas prüft und setzt sofort fort; in heißen Schleifen kostet das Zeit. Nach 1000 übergangenen Halten in einer Sitzung sagt es eine Zeile in den Meldungen.
 - Fehlt der auslösende Haltepunkt beim Start, bleibt der abhängige normal an, und eine Zeile in den Meldungen sagt es.
 - Regeln liegen in `%LOCALAPPDATA%\Atlas\breakpoint-rules.json` und ziehen mit, wenn „Haltepunkte wandern mit dem Code“ einen Haltepunkt verschiebt.
 
@@ -561,6 +612,28 @@ Einstellungen: `debug.inlineValues`, `debug.inlineValuesPerLine`
 - Nur in Dateien mit Quelltext, bis zur Routine, höchstens `debug.whyHere.depth` Blöcke (Vorgabe 3); die Werte verschwinden beim nächsten Schritt.
 
 Einstellungen: `debug.whyHere`, `debug.whyHere.depth`
+
+#### Laufzeit zwischen Haltepunkten
+
+- Beim Halt steht am Ende der Zeile des Ausführungspunkts gedimmt, wie lange das Programm seit dem letzten Halt lief: `+124 ms`, ab 10 s `+12 s`.
+- Gezählt wird nur, solange das Programm läuft: Zeit im angehaltenen Zustand, Halte, die Atlas selbst gleich fortsetzt, und Auswertungen zählen nicht.
+- An einem Haltepunkt immer, bei Einzelschritten und Pausen erst ab 1 ms.
+- Ein Klick auf die Zeit zeigt die letzten 20 Messungen mit Start- und Zielzeile. Die Zeit enthält den Aufwand des Debuggers (Debug-Build, Ereignisse) und ist nur ein Richtwert.
+
+Einstellung: `debug.showElapsed`
+
+#### Rückgabewerte *(experimentell)*
+
+Was hat die Funktion eben zurückgegeben, ohne vorher `Result` zu beobachten?
+
+- Nach „Gesamte Routine“ (F8) über eine Zeile, die eigene Funktionen aufruft, steht am Ende dieser Zeile gedimmt `→ BerechneNetto = 109,16`; ruft die Zeile mehrere Funktionen auf, stehen alle da, in der Reihenfolge ihrer Rückkehr.
+- Nach „Bis zur Rückkehr ausführen“ (Umschalt+F8) in einer eigenen Funktion steht ihr Ergebnis an der Aufrufzeile, an der das Programm danach hält.
+- Ein Klick auf den Text zeigt „Zuletzt zurückgegeben“: die letzten 20 Ergebnisse mit Funktion, Wert, `end`-Zeile und Uhrzeit.
+- Dafür setzt Atlas vor dem Schritt vorübergehende Haltepunkte auf die `end`-Zeilen der Funktionen, wertet dort `Result` aus und setzt den Schritt fort; die übrigen Anzeigen merken von diesen Halten nichts. Nach dem Schritt sind die Haltepunkte wieder weg. Ein eigener Haltepunkt in der Funktion hält wie gewohnt, rekursive Aufrufe halten nicht in tieferen Rahmen.
+- Nur eigener Code mit Quelltext und nur Funktionen (auch lokale und Operatoren); Prozeduren und Bibliothekscode bleiben außen vor. Mit Optimierung (`$O+`) ist `Result` an der `end`-Zeile oft nicht auswertbar, dann steht dort ‹kein Zugriff›.
+- Wirkt auf die Befehle der IDE (Taste, Menü und Symbolleiste), sobald Atlas die Aufrufe der Zeile kennt; wer sehr schnell nach dem Halt drückt, bekommt für diesen Schritt keine Werte.
+
+Einstellung: `debug.returnValues` (Vorgabe aus)
 
 #### Bedingungen vorausschauen
 
@@ -654,6 +727,7 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 - Ausgewertet wird ohne Nebenwirkungen; Werte klappen zu ihren Feldern auf wie im Fenster „Auswerten“, seit dem letzten Schritt geänderte Werte sind hervorgehoben.
 - Suche im gezeigten Reiter nach Name oder (mit „In Werten“) nach Wert. Mit „Unterelemente“ klappt Atlas Knoten bis `debug.variablesWindow.searchDepth` Ebenen selbst auf und hört nach `debug.variablesWindow.searchLimit` Auswertungen auf. Gezeigt werden Treffer (fett), ihr Pfad und ihre Unterelemente; unten steht die Zahl der Treffer. Ein Wert zählt nur bei einfachen Werten: Bei einer Suche nach „Berlin“ ist `Kunde.Adressen[1].Ort` der Treffer, nicht `Kunde`.
 - Autos und Lokal brauchen den Atlas-Server; die Überwachung geht ohne.
+- Überwachte Ausdrücke je Klasse oder Unit (#2550): Im Kontextmenü einer Zeile im Reiter Überwachung bindet „Nur in dieser Klasse zeigen“ bzw. „Nur in dieser Unit zeigen“ den Ausdruck an die Klasse bzw. Unit, in der das Programm gerade hält; „Überall zeigen“ hebt die Bindung auf. Beim nächsten Halt in der Klasse (auch in Nachfahren, soweit der Atlas-Index die Vererbung kennt) erscheint der Ausdruck von selbst, passende gebundene zuerst; anderswo wird er nicht ausgewertet und nicht gezeigt. Hinter der Zeile steht, wofür sie gilt („· gilt für TAuftragsLauf“), über der Liste „3 weitere ausgeblendet – zeigen“. Klasse, Unit und Vorfahren liefert der Atlas-Server; ohne ihn liest Atlas Klasse und Unit aus dem obersten Rahmen, ohne Vererbung. Gewertet wird immer im obersten Rahmen mit Quelltext, weil die ToolsAPI keinen anderen Rahmen wählt.
 
 | Bedienung | Wirkung |
 |---|---|
@@ -665,7 +739,19 @@ Einstellungen: `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`
 | Entf (Reiter Überwachung) | Überwachung entfernen |
 | Enter im Eingabefeld des Reiters Überwachung | Ausdruck überwachen |
 
-Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`
+Einstellungen: `debug.variablesWindow`, `debug.variablesWindow.searchDepth`, `debug.variablesWindow.searchLimit`, `debug.variablesWindow.scopedWatches`
+
+### Markierte Objekte (#839)
+
+Wer einem Objekt durch den Code folgt, muss keine Adressen mehr vergleichen. Im Halt markiert „Objekt markieren …“ (Kontextmenü des Editors, Untermenü Debuggen) das Objekt unter der Schreibmarke mit einem Etikett; vorgeschlagen werden Klasse und Name („Kunde Meier“). Wo dieselbe Adresse wieder auftaucht, steht das Etikett daneben: vor dem Wert im Editor („‹Kunde A› (FNr: 4; …)“), hinter dem Wert im Debug-Hover und im Fenster „Auswerten“. Jede Markierung bekommt eine von acht Farben.
+
+- Das Fenster „Markierte Objekte“ (Atlas › Debuggen bzw. Ansicht › Atlas › Debuggen) zeigt Etikett, Klasse, Adresse, wo das Objekt zuletzt zu sehen war (Ausdruck und Datei:Zeile) und den Zustand. Entf entfernt, F2 ändert das Etikett, die Leertaste wechselt die Farbe.
+- Die Adresse liest Atlas über `Pointer(Ausdruck)` ohne Nebenwirkungen, die Klasse aus der VMT im Speicher des Programms; im Programm wird dafür nichts aufgerufen.
+- Steht an einer markierten Adresse beim Halt eine andere Klasse, gilt das Objekt als „vermutlich freigegeben“: Das Fenster zeigt es grau, das Etikett erscheint nirgends mehr.
+- Markierungen gelten für die laufende Debug-Sitzung; mit dem Ende des Prozesses ist die Liste leer.
+- Nicht abgedeckt: Fenster der IDE (Überwachte Ausdrücke, Lokale Variablen), Ersatztexte der Visualisierer und Parameter im Aufrufstapel zeigen keine Etiketten.
+
+Einstellung: `debug.objectMarks`
 
 ### Ereignisprotokoll
 
@@ -691,6 +777,22 @@ Einstellungen: `debug.eventLog`, `debug.eventLogColors`
 
 Einstellungen: `debug.logpoints`, `debug.logpointPrefix`
 
+<a id="window-atlaslogpointvalues"></a>
+#### Logpunkt-Verlauf
+
+Aufruf: Atlas-Menü › Debuggen › Logpunkt-Verlauf bzw. Befehl `Atlas.DebugLogpointValues`.
+
+- Im Dialog des Logpunkts „Zahl aufzeichnen“ ankreuzen, optional mit Namen der Reihe; das geht nur bei genau einem Platzhalter (`Offen: {FOffen.Count}`).
+- Das Fenster „Atlas: Logpunkt-Verlauf“ zeigt die Werte jedes aufzeichnenden Logpunkts als Linie über die Zeit seit dem Start der Sitzung, auf derselben Zeichenfläche wie der Speicherverlauf.
+- Zahlen werden in deutscher und englischer Schreibweise erkannt (`48`, `-3,5`, `1.234,5`, `1,234.5`); Text-Werte wie `nil` sind eine Lücke in der Linie, keine 0.
+- Oben die Reihe (Name und Ort) und der Thread („alle“ oder einer); darunter Treffer, Minimum, Maximum und letzter Wert.
+- Klick auf die Linie zeigt den Treffer und springt zu seiner Zeile im Ereignisprotokoll; Ziehen wählt einen Bereich.
+- „CSV kopieren“ legt `time_s,thread,value` je Treffer der gewählten Reihe und des gewählten Threads in die Zwischenablage.
+- Je Reihe höchstens `debug.logpoints.recordLimit` Treffer (Vorgabe 10000); die ältesten fallen heraus. Der Start einer Sitzung leert alle Reihen.
+- „Zahl aufzeichnen“ merkt Atlas wie den Text mit Platzhaltern, solange die IDE läuft.
+
+Einstellungen: `debug.logpoints.recordValues`, `debug.logpoints.recordLimit`
+
 ### Kein Quelltext
 
 - Hält der Debugger in einer Routine ohne Quelltext (die IDE zeigt das CPU-Fenster), erscheint oben rechts ein kleines Fenster ohne Fokus: Routine, Modul, Adresse, Unit und Grund
@@ -710,6 +812,28 @@ Einstellungen: `debug.noSourcePage`, `debug.noSourcePage.ignoredUnits`
 - Mit `debug.restart.reenableBreakpoints` schaltet Atlas vor dem Start Haltepunkte wieder ein, die beim Start der letzten Sitzung an waren
 
 Einstellungen: `debug.restart`, `debug.restart.reenableBreakpoints`
+
+### Debug-Notiz (#582)
+
+- „Debug-Zustand festhalten“ im Atlas-Menü und in der Befehlspalette, nur im angehaltenen Debugger
+- Die Notiz in Markdown enthält Zeitpunkt, Projekt, Stelle mit Quelltextzeile, Aufrufstapel, lokale Variablen, Überwachte Ausdrücke des Projekts, die Exception und die letzten Zeilen des Ereignisprotokolls
+- Werte sind auf eine Zeile und 200 Zeichen gekürzt; Werte, die noch fehlen oder nicht lesbar sind, stehen als solche da; nach 5 Sekunden wird die Notiz ohne die fehlenden Werte fertig
+- Kennwörter und Schlüssel im Ereignisprotokoll und in Variablen mit solchen Namen erscheinen maskiert
+- Die Notiz liegt in der Zwischenablage und, mit `debug.note.saveFile`, als Datei unter `debug-notizen` (englische IDE: `debug-notes`) neben dem Projekt
+
+Einstellungen: `debug.note`, `debug.note.saveFile`
+
+### Vom Debugger geöffnete Dateien schließen (#842)
+
+- Atlas merkt sich, welche Dateien der Debugger während einer Sitzung geöffnet hat: die Stelle eines Halts (F7 in `System.pas`, `Vcl.Controls.pas` …), nicht aber Dateien, die man im Halt selbst öffnet
+- Nach der Sitzung (`debug.closeOpenedFiles`):
+  - `ask` (Vorgabe): Hinweis „N Dateien hat der Debugger geöffnet“ mit „Schließen“, „Offen lassen“ und „Immer automatisch“
+  - `auto`: Atlas schließt sie und meldet „N vom Debugger geöffnete Dateien geschlossen“ mit „Wieder öffnen“
+  - `off`: nichts geschieht
+- Offen bleiben Dateien, die vor der Sitzung offen waren, geänderte Dateien, Dateien mit Haltepunkt oder Lesezeichen und solche, die „Vom Debugger geöffnete Datei offen halten“ (Atlas-Menü, Befehlspalette) festhält
+- Vorschau-Reiter (`debug.previewTab`): Hält der Debugger in einer weiteren solchen Datei, schließt Atlas die vorige, wenn sie unberührt ist; die Statuszeile nennt den Vorschau-Reiter (kursive Reitertitel sieht die IDE nicht vor)
+
+Einstellungen: `debug.closeOpenedFiles`, `debug.previewTab`
 
 ### Leck- und Absturzberichte (#74)
 
@@ -785,10 +909,60 @@ Einstellungen: `debug.justMyCode`, eigener Code = Projektordner und `debug.ownCo
   - Fortsetzen (F9)
   - Klasse ignorieren
   - Nur an dieser Stelle ignorieren (Klasse + Unit + Zeile je Projekt, beim nächsten Mal still fortgesetzt)
+  - Meldung … (Regel nach Meldungstext, siehe unten)
   - Meldung kopieren
 - In Delphi 12 und 13 schließt Atlas dafür den Dialog der IDE, sonst bleibt er und die Leiste kommt danach.
 
 Einstellungen: `debug.exceptionBanner`, aus, bis die Studie zu #783 positiv ist
+
+#### Exceptions nach Meldungstext
+
+- Eine Klasse wie `EKonfigFehler` steht oft für ganz verschiedene Fehler; die Meldung unterscheidet sie.
+- „Meldung …“ in der Exception-Leiste und im Kontextmenü des Exception-Verlaufs öffnet einen kleinen Dialog:
+  - Art: „Nur bei Meldungen wie dieser anhalten“ (andere Meldungen dieser Klasse laufen weiter) oder „Meldungen wie diese ignorieren“
+  - Muster, vorbelegt aus der Meldung; Zahlen, Adressen und Texte in Hochkommas werden zu `*`: `Schlüssel unbekannt: * in Zeile *`
+  - ohne regulären Ausdruck genügt es, dass die Meldung das Muster enthält; `*` steht für beliebigen Text; Groß-/Kleinschreibung zählt nicht
+  - wahlweise regulärer Ausdruck (ein ungültiger wird gleich gemeldet)
+  - Unit: beliebig oder nur die Unit der ersten eigenen Zeile
+- Fortgesetzte Exceptions stehen grau im Verlauf.
+- Regeln gehen der Ignorier-Liste vor, also auch „anhalten trotz ignorierter Klasse“.
+- Ohne gelesene Meldung entscheidet keine Regel mit Meldung: Atlas hält dann lieber an.
+- „Regeln mit Meldung für X entfernen“ im Kontextmenü des Verlaufs nimmt sie wieder weg.
+- Die Regeln stehen mit der Ignorier-Liste in `debug-ignore.json` (Feld `rules`).
+
+Einstellungen: `debug.exceptionMessageRules` (Vorgabe an)
+
+#### Exception-Regeln nach Klasse und Ort
+
+- Eine Regel nennt die Klasse (wahlweise mit Nachfahren), wahlweise den Ort (Methode oder Unit als Muster, z. B. `Bericht.Druck.*` oder `TKunde.*`), wahlweise ein Muster für die Meldung und die Aktion:
+  - Anhalten
+  - Nur protokollieren (grau im Verlauf)
+  - Weiterlaufen (nicht im Verlauf)
+- Der Ort ist die erste eigene Methode im Aufrufstapel; `*` steht für beliebigen Text, Groß-/Kleinschreibung zählt nicht.
+- „Nur an dieser Stelle ignorieren“ in der Exception-Leiste legt dafür eine Regel für die erste eigene Methode an (ohne eigene Methode wie bisher Klasse + Unit + Zeile).
+- Fenster „Exception-Regeln“ (Kontextmenü des Exception-Verlaufs oder Befehlspalette, `Atlas.DebugExceptionRules`):
+  - je Zeile: an/aus, Klasse, Ort, Meldung, Aktion, Herkunft und Treffer der laufenden Debug-Sitzung
+  - Neu, Bearbeiten, Ein/Aus, Löschen, Nach oben/unten oder Ziehen mit der Maus; die erste passende Regel gewinnt
+  - persönliche Regeln stehen vor denen des Projekts; beide lassen sich hier ändern, Sortieren geht innerhalb der eigenen Gruppe
+  - im Dialog „Exception-Regel“ wählt „Gilt für“ zwischen „nur für mich“ und „alle im Projekt (.atlas)“; „Übernehmen“ schreibt geänderte Projektregeln in `.atlas` (Kommentare und übrige Einträge bleiben, eine Regel je Zeile), „Projektdatei öffnen“ zeigt die Datei
+- Persönliche Regeln stehen in `debug-ignore.json` (Feld `rules`), die des Projekts in `.atlas` unter `exceptionRules` und werden eingecheckt:
+
+```json
+"exceptionRules": [{"class": "EConvertError", "location": "Bericht.Druck.*", "action": "continue"}]
+```
+
+  Felder: `class`, `location`, `message`, `regex`, `messageMatch` (`matches`/`notMatches`), `action` (`stop`/`log`/`continue`), `enabled`, `descendants`.
+- Mit „mit Nachfahren“ passt die Regel auch zu abgeleiteten Klassen (`EDatabaseError` fängt `EFDDBEngineException`). Die Vorfahren fragt Atlas beim Halt einmal je Klasse und Sitzung über die Typhierarchie des Servers ab; ist die Klasse dort unbekannt, zählt nur der genaue Name.
+
+Einstellungen: `debug.exceptionRules` (Vorgabe an); Regeln mit Meldung zusätzlich `debug.exceptionMessageRules`
+
+#### Bekannte Fehler aus dem Issue-Tracker (#2460)
+
+- Hält der Debugger an einer Exception, sucht das Modul Issue-Tracker im Hintergrund nach passenden Issues: Klasse und oberste eigene Methode, Klasse und Wörter der Meldung, nur die Methode (Zahlen, Adressen, Pfade und Text in Anführungszeichen zählen nicht).
+- Die Exception-Leiste zeigt bis zu vier Treffer mit Zustand und Bearbeiter, erledigte als „wieder aufgetreten?“, dazu „Issue öffnen“, „Als Kommentar anhängen“ (Exception, eigener Aufrufstapel, Ort, Branch) bzw. „Wieder öffnen …“ und „Neues Issue …“ (vorausgefüllt).
+- Das Ergebnis bleibt je Signatur für die Sitzung gespeichert; der Debugger wartet nie auf den Tracker. Ohne Modul Issue-Tracker bleibt die Leiste wie bisher.
+
+Einstellung: `issues.debugKnownErrors` (Vorgabe an)
 
 #### Zugriffsverletzung erklärt
 
@@ -848,6 +1022,18 @@ Schalter: `debug.callStackWindow` (aus: der Aufrufstack der IDE bleibt, wie er i
 - Ab `debug.parallelStacks.maxThreads` Threads (Vorgabe 64) liest Atlas die Stapel abschnittsweise und zeigt den Baum dazwischen, damit die IDE bedienbar bleibt.
 
 Schalter: `debug.parallelStacks`, `debug.parallelStacks.waitRoutines`, `debug.parallelStacks.maxThreads`.
+
+#### Parallel auswerten (#866)
+
+- Atlas > „Parallel auswerten“ öffnet ein andockbares Fenster, das einen oder mehrere Ausdrücke in allen Threads auswertet: eine Zeile je Thread (Kennung, Name, Ort des obersten eigenen Rahmens), eine Spalte je Ausdruck. Bei acht Arbeitern sieht man so auf einen Blick, welcher gerade welchen Auftrag bearbeitet (`FAuftrag.Nr`).
+- Ausdrücke kommen über das Eingabefeld und „Hinzufügen“ (oder Enter) dazu; das Kontextmenü einer Spalte ändert oder entfernt den Ausdruck. Sie werden je Projekt gespeichert.
+- Ausgewertet wird bei jedem Halt, solange das Fenster sichtbar ist, im Thread selbst mit dem obersten eigenen Rahmen als Ort; der aktuelle Thread bleibt derselbe. Gilt ein Ausdruck in einem Thread nicht (unbekannter Bezeichner), steht dort „–“. Ab 32 Threads wertet Atlas erst auf „Auswerten“ aus.
+- Threads ohne eigenen Rahmen (Pool im Leerlauf, Systemthreads) sind ausgeblendet; „Threads ohne eigenen Code zeigen“ blendet sie ein.
+- Klick auf einen Spaltenkopf sortiert (Zahlen nach Wert), ein zweiter Klick absteigend. „Nur Zeilen mit …“ im Kontextmenü einer Spalte filtert, etwa die Spalte `Abbrechen` auf `True`. Markierte Threads (⚑, „Threads im Quelltext“) stehen oben.
+- Enter oder Doppelklick wechselt zum Thread und springt zur Zeile seines Rahmens.
+- Grenze der ToolsAPI: Einen anderen Rahmen als den, den der Debugger für den Thread wählt, kann Atlas nicht vorgeben; Datei und Zeile des eigenen Rahmens bekommt der Debugger als Ort mit.
+
+Schalter: `debug.parallelWatch`.
 
 <a id="window-atlasdebugleaks"></a>
 #### Atlas-Lecks

@@ -26,7 +26,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.EnumTables,
+  Atlas.Common.Pascal.EnumTables,
   Atlas.Common.Lsp.References;
 
 type
@@ -83,8 +83,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Editing.CaseCompletion,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.CaseCompletion,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
@@ -382,25 +382,7 @@ end;
 
 type
   /// <summary>Eine Datei für das Nachziehen; gibt einen selbst geparsten Baum frei.</summary>
-  TSyncFile = class
-  public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    OwnsTree: Boolean;
-    destructor Destroy; override;
-  end;
-
-{ TSyncFile }
-
-destructor TSyncFile.Destroy;
-begin
-  if OwnsTree then
-  begin
-    Tree.Free;
-  end;
-  inherited;
-end;
+  TSyncFile = TLspSourceFile;
 
 function Where(const AFileName, AText: string; AOffset: Integer): string;
 begin
@@ -730,7 +712,7 @@ begin
   begin
     raise Fail(cTexts[TLspEnumTablesText.UpdateNotPossible].Text + mReason);
   end;
-  mSync := TEnumSync.Create(AResolver, AContext, mTarget, TUsesClauses.OwnName(ADocument.Tree.Tokens));
+  mSync := TEnumSync.Create(AResolver, AContext, mTarget, TPascalUses.OwnName(ADocument.Tree.Tokens));
   try
     mSync.Run(ADocument);
     Result := mSync.Answer;

@@ -37,7 +37,7 @@ uses
   System.SysUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Builtin.Testing.TearDown,
   Atlas.Tests.RuleAssert;
 
@@ -106,7 +106,7 @@ begin
   Result := '';
   if (Length(mFound) > 0) and (Length(mFound[0].Fixes) > 0) then
   begin
-    Result := TChangeSignature.ApplyEdits(ASource, mFound[0].Fixes[0].Edits);
+    Result := TTextChanges.Apply(ASource, mFound[0].Fixes[0].Edits);
   end;
 end;
 

@@ -74,7 +74,8 @@ uses
   Atlas.UI.Settings.Transfer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service,
+  Atlas.Text.Files;
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -87,16 +88,25 @@ begin
       Result := True;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 
 /// <summary>UTF-8 ohne BOM, Zeilenende CRLF.</summary>
 procedure WriteText(const AFileName, AText: string);
+const
+  cUtf8CodePage = 65001;
 begin
   ForceDirectories(ExtractFileDir(AFileName));
-  TFile.WriteAllText(AFileName, StringReplace(AText, #10, #13#10, [rfReplaceAll]), TEncoding.GetEncoding(65001));
+  TFile.WriteAllText(AFileName, StringReplace(AText, #10, #13#10, [rfReplaceAll]),
+    TEncoding.GetEncoding(cUtf8CodePage));
 end;
 
 { TAtlasIdeSettingsTransfer }
@@ -271,11 +281,7 @@ end;
 
 class function TAtlasIdeSettingsTransfer.Catalog: TAtlasSettingsCatalog;
 begin
-  if FCatalog = nil then
-  begin
-    FCatalog := TAtlasSettingsCatalog.CreateDefault;
-  end;
-  Result := FCatalog;
+  Result := TAtlasSettingsCatalog.Lazy(FCatalog);
 end;
 
 class function TAtlasIdeSettingsTransfer.Macros: TAtlasSettingsEnvironment;

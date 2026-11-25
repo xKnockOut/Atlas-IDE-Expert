@@ -21,13 +21,11 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Completion.Snippets,
+  Atlas.Core.Generate.Contract,
   Atlas.Core.Generate.Menu;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Knöpfe „Neu mit Atlas“ in ihrer Reihenfolge.</summary>
-  TAtlasNewFileKind = (UnitFile, FormFile, TestFile);
-{$SCOPEDENUMS OFF}
+  TAtlasNewFileKind = Atlas.Core.Generate.Contract.TAtlasNewFileKind;
 
   TAtlasFileTemplates = class
   public const
@@ -54,7 +52,7 @@ implementation
 
 
 uses
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

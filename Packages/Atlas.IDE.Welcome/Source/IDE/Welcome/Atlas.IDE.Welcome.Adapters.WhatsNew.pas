@@ -1,0 +1,421 @@
+﻿unit Atlas.IDE.Welcome.Adapters.WhatsNew;
+
+// Karte „Neu in Atlas“ in der IDE (#756): Quelle der Karte
+// (IAtlasWhatsNewSource) und Bereich atlas.news der Willkommensseite.
+// - whatsnew.json liegt neben den BPLs oder eine Ebene darüber (Release-Paket:
+//   <Ziel>\Win32\…bpl, <Ziel>\whatsnew.json); Beispieldateien relativ dazu.
+// - Gesehene Version: WhatsNewSeen in den Plugin-Einstellungen (Registry).
+//   Beim ersten Start wird die aktuelle Version gemerkt, es gibt dann nichts
+//   Ungelesenes. „Gelesen“ merkt die aktuelle Version.
+// - welcomePage.whatsNew: off zeigt nichts (auch kein Kontextmenü), afterUpdate
+//   zeigt nach einem Versionswechsel die übersprungenen Versionen, always
+//   zusätzlich danach die Neuerungen der aktuellen Version.
+// - „Neuigkeiten dieser Version zeigen“ und „Alle Versionen“ (Kontextmenü,
+//   Befehlspalette) gelten bis „Schließen“ oder zum Neustart.
+// - Der Schalter einer Zeile setzt die Einstellung über die gespeicherten
+//   Werte (wie die Optionsseite, #227), das Tastenkürzel kommt aus der
+//   Tasten-Einstellung der Zeile.
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.Core.Welcome.WhatsNew,
+  Atlas.Core.Welcome.Sections,
+  Atlas.UI.Welcome.WhatsNew,
+  Atlas.Plugin.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract;
+
+type
+  TAtlasIdeWhatsNew = class(TInterfacedObject, IAtlasWhatsNewSource)
+  public const
+    /// <summary>Reihenfolge außerhalb des Atlas-Layouts; nach einem Update ganz vorn.</summary>
+    cOrder = 50;
+  private
+    FVersions: TAtlasWhatsNewVersions;
+    FFolder: string;
+    FSeen: string;
+    FCurrent: string;
+    FManual: Boolean;
+    FManualView: TAtlasWhatsNewView;
+    FTitle: string;
+    FOrderShown: Integer;
+    FCommandExists: TFunc<string, Boolean>;
+    FRun: TProc<string>;
+    FMessage: TAtlasMessageSink;
+    procedure Changed;
+    function Mode: TAtlasWhatsNewMode;
+  public
+    /// <summary>ACommandExists/ARun: Atlas-Befehle der Palette; AMessage: Zeile in die Meldungsansicht.</summary>
+    constructor Create(const ACommandExists: TFunc<string, Boolean>; const ARun: TProc<string>;
+      const AMessage: TProc<string>);
+    /// <summary>whatsnew.json lesen und den Bereich anmelden.</summary>
+    procedure Start;
+    /// <summary>Bereich und Fabrik abmelden (beim Entladen).</summary>
+    procedure Stop;
+    /// <summary>Titel und Reihenfolge des Bereichs nachführen (nach jeder Änderung der Einstellungen).</summary>
+    procedure Refresh;
+    /// <summary>Einträge an die laufende Version anhängen (#767: neue Bereiche im eigenen Layout); doppelte
+    /// Titel fallen weg.</summary>
+    procedure Announce(const AItems: TArray<TAtlasWhatsNewItem>);
+    /// <summary>Steht die Karte oben (Ungelesenes nach einem Update)?</summary>
+    function OnTop: Boolean;
+    /// <summary>Kontextmenü und Befehle: nur, wenn welcomePage.whatsNew nicht off ist.</summary>
+    function Active: Boolean;
+    function Section: TAtlasWelcomeSection;
+    { IAtlasWhatsNewSource }
+    function View: TAtlasWhatsNewView;
+    function Versions: TAtlasWhatsNewVersions;
+    function SwitchOf(const ASetting: string): TAtlasWhatsNewSwitch;
+    function KeyText(const AKey: string): string;
+    function CanTry(const AItem: TAtlasWhatsNewItem): Boolean;
+    procedure SetSwitch(const ASetting: string; AOn: Boolean);
+    procedure TryItem(const AItem: TAtlasWhatsNewItem);
+    procedure Dismiss;
+    procedure Show(AView: TAtlasWhatsNewView);
+    /// <summary>Ordner mit whatsnew.json: neben dem Plugin oder eine Ebene darüber; '' ohne Datei.</summary>
+    class function FindFolder(const APluginDir: string): string; static;
+    /// <summary>Beispieldatei ASample relativ zu AFolder; '' bei absolutem Pfad oder „..“.</summary>
+    class function SamplePath(const AFolder, ASample: string): string; static;
+  end;
+
+implementation
+
+uses
+  Atlas.Plugin.Diagnostics.MainThread,
+  System.Classes,
+  Vcl.Menus,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Product.Version,
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Settings.History,
+  Atlas.Core.Settings.QuickToggles,
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Welcome.Frame,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Results.Commands,
+  Atlas.IDE.Foundation.Host;
+
+{ TAtlasIdeWhatsNew }
+
+constructor TAtlasIdeWhatsNew.Create(const ACommandExists: TFunc<string, Boolean>; const ARun: TProc<string>;
+  const AMessage: TProc<string>);
+begin
+  inherited Create;
+  FCommandExists := ACommandExists;
+  FRun := ARun;
+  FMessage := TAtlasMessageSink.Create(AMessage);
+  FCurrent := TAtlasPluginVersion.cVersion;
+  FManualView := TAtlasWhatsNewView.Hidden;
+  FOrderShown := -1;
+end;
+
+procedure TAtlasIdeWhatsNew.Changed;
+begin
+  Refresh;
+  // Auswahl (sichtbar, oben) und Inhalt der Karte.
+  TAtlasWelcomeSections.Default.Changed;
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cNews);
+end;
+
+function TAtlasIdeWhatsNew.Mode: TAtlasWhatsNewMode;
+begin
+  Result := TAtlasWhatsNew.ModeOf(TAtlasIdeSettings.Current.WelcomePageWhatsNew);
+end;
+
+procedure TAtlasIdeWhatsNew.Start;
+var
+  mStored: TAtlasPluginSettings;
+  mCurrent, mJson: string;
+begin
+  FFolder := FindFolder(TAtlasIdeHost.InstallFolder);
+  FVersions := nil;
+  if (FFolder <> '') and TAtlasDataFile.TryRead(FFolder + TAtlasWhatsNew.cFileName, mJson) then
+  begin
+    FVersions := TAtlasWhatsNew.Parse(mJson);
+  end;
+  mStored := TAtlasIdeSettings.Stored;
+  FSeen := mStored.WhatsNewSeen;
+  if TAtlasWhatsNew.SeenAfterStart(FSeen, FCurrent) <> FSeen then
+  begin
+    // Erste Installation: nichts Ungelesenes. Gespeichert wird nach dem Laden des Plugins.
+    FSeen := TAtlasWhatsNew.SeenAfterStart(FSeen, FCurrent);
+    mCurrent := FCurrent;
+    TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+      procedure
+      var
+        Next: TAtlasPluginSettings;
+      begin
+        Next := TAtlasIdeSettings.Stored;
+        if Next.WhatsNewSeen <> '' then
+        begin
+          Exit;
+        end;
+        Next.WhatsNewSeen := mCurrent;
+        TAtlasIdeSettings.Update(Next);
+      end);
+  end;
+  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cNews,
+    function(AOwner: TComponent): TAtlasWelcomeSectionFrame
+    var
+      Frame: TAtlasWelcomeWhatsNewFrame;
+    begin
+      Frame := TAtlasWelcomeWhatsNewFrame.Create(AOwner);
+      Frame.Source := Self;
+      Result := Frame;
+    end);
+  Refresh;
+end;
+
+procedure TAtlasIdeWhatsNew.Stop;
+begin
+  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cNews);
+  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cNews);
+end;
+
+procedure TAtlasIdeWhatsNew.Refresh;
+var
+  mNext: TAtlasWelcomeSection;
+begin
+  mNext := Section;
+  // Nur bei Änderung neu anmelden: Add meldet allen Beobachtern, und die rufen wieder Refresh.
+  if (mNext.Title = FTitle) and (mNext.Order = FOrderShown) then
+  begin
+    Exit;
+  end;
+  FTitle := mNext.Title;
+  FOrderShown := mNext.Order;
+  TAtlasWelcomeSections.Default.Add(mNext);
+end;
+
+procedure TAtlasIdeWhatsNew.Announce(const AItems: TArray<TAtlasWhatsNewItem>);
+begin
+  if Length(AItems) = 0 then
+  begin
+    Exit;
+  end;
+  FVersions := TAtlasWhatsNew.WithItems(FVersions, FCurrent, AItems);
+  Changed;
+end;
+
+function TAtlasIdeWhatsNew.OnTop: Boolean;
+begin
+  Result := View = TAtlasWhatsNewView.Unread;
+end;
+
+function TAtlasIdeWhatsNew.Active: Boolean;
+begin
+  Result := Mode <> TAtlasWhatsNewMode.Off;
+end;
+
+function TAtlasIdeWhatsNew.Section: TAtlasWelcomeSection;
+var
+  mPosition: Integer;
+begin
+  mPosition := cOrder;
+  if OnTop then
+  begin
+    mPosition := 0;
+  end;
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cNews,
+    TAtlasWelcomeWhatsNewFrame.TitleFor(View, Versions), mPosition, TAtlasWelcomeColumn.Right,
+    function: Boolean
+    begin
+      Result := View <> TAtlasWhatsNewView.Hidden;
+    end);
+end;
+
+function TAtlasIdeWhatsNew.View: TAtlasWhatsNewView;
+begin
+  if not Active then
+  begin
+    Exit(TAtlasWhatsNewView.Hidden);
+  end;
+  if FManual then
+  begin
+    Exit(FManualView);
+  end;
+  Result := TAtlasWhatsNew.ViewFor(Mode, FVersions, FSeen, FCurrent);
+end;
+
+function TAtlasIdeWhatsNew.Versions: TAtlasWhatsNewVersions;
+begin
+  Result := TAtlasWhatsNew.VersionsFor(View, FVersions, FSeen, FCurrent);
+end;
+
+function TAtlasIdeWhatsNew.SwitchOf(const ASetting: string): TAtlasWhatsNewSwitch;
+var
+  mValue: Boolean;
+begin
+  // Gespeicherte Werte wie die Optionsseite: Der Schalter ändert genau diese.
+  Result := TAtlasWhatsNewSwitch.None;
+  if not TAtlasQuickToggles.GetFlag(TAtlasIdeSettings.Stored, ASetting, mValue) then
+  begin
+    Exit;
+  end;
+  if mValue then
+  begin
+    Result := TAtlasWhatsNewSwitch.On;
+  end
+  else
+  begin
+    Result := TAtlasWhatsNewSwitch.Off;
+  end;
+end;
+
+function TAtlasIdeWhatsNew.KeyText(const AKey: string): string;
+var
+  mStore: IAtlasMemorySettingsStore;
+begin
+  Result := '';
+  mStore := TAtlasMemorySettingsStore.FromSettings(TAtlasIdeSettings.Current);
+  if mStore.HasInteger(AKey) and (mStore.ReadInteger(AKey, 0) > 0) then
+  begin
+    Result := ShortCutToText(TShortCut(mStore.ReadInteger(AKey, 0)));
+  end;
+end;
+
+function TAtlasIdeWhatsNew.CanTry(const AItem: TAtlasWhatsNewItem): Boolean;
+begin
+  if AItem.Command <> '' then
+  begin
+    Exit(Assigned(FCommandExists) and FCommandExists(AItem.Command));
+  end;
+  Result := (SamplePath(FFolder, AItem.Sample) <> '') and FileExists(SamplePath(FFolder, AItem.Sample));
+end;
+
+procedure TAtlasIdeWhatsNew.SetSwitch(const ASetting: string; AOn: Boolean);
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      Next: TAtlasPluginSettings;
+    begin
+      Next := TAtlasIdeSettings.Stored;
+      if not TAtlasQuickToggles.SetFlag(Next, ASetting, AOn) then
+      begin
+        Exit;
+      end;
+      // Update meldet OnChanged: Die Funktion wirkt sofort, die Optionsseite zeigt denselben Wert.
+      TAtlasIdeSettings.Update(Next);
+      TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cNews);
+    end);
+end;
+
+procedure TAtlasIdeWhatsNew.TryItem(const AItem: TAtlasWhatsNewItem);
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      FileName: string;
+      Line: Integer;
+    begin
+      if AItem.Command <> '' then
+      begin
+        if Assigned(FCommandExists) and FCommandExists(AItem.Command) and Assigned(FRun) then
+        begin
+          FRun(AItem.Command);
+        end
+        else
+        begin
+          FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsNoCommand, [AItem.Command]));
+        end;
+        Exit;
+      end;
+      FileName := SamplePath(FFolder, AItem.Sample);
+      if (FileName = '') or not FileExists(FileName) then
+      begin
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsNoSample, [AItem.Sample]));
+        Exit;
+      end;
+      // whatsnew.json zählt Zeilen ab 1, der Editor ab 0.
+      Line := AItem.Line - 1;
+      if Line < 0 then
+      begin
+        Line := 0;
+      end;
+      TAtlasIdeResults.Open(FileName, Line, 0);
+    end);
+end;
+
+procedure TAtlasIdeWhatsNew.Dismiss;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      Next: TAtlasPluginSettings;
+    begin
+      if View = TAtlasWhatsNewView.Unread then
+      begin
+        // „Gelesen“: Die aktuelle Version gilt als gesehen, auch nach einem Neustart.
+        FSeen := FCurrent;
+        FManual := False;
+        Next := TAtlasIdeSettings.Stored;
+        Next.WhatsNewSeen := FCurrent;
+        TAtlasIdeSettings.Update(Next);
+      end
+      else
+      begin
+        // „Schließen“: bis zum nächsten Start ausgeblendet.
+        FManual := True;
+        FManualView := TAtlasWhatsNewView.Hidden;
+      end;
+      Changed;
+    end);
+end;
+
+procedure TAtlasIdeWhatsNew.Show(AView: TAtlasWhatsNewView);
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if not Active then
+      begin
+        Exit;
+      end;
+      if Length(TAtlasWhatsNew.VersionsFor(AView, FVersions, FSeen, FCurrent)) = 0 then
+      begin
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsMissing, [TAtlasWhatsNew.cFileName]));
+        Exit;
+      end;
+      FManual := True;
+      FManualView := AView;
+      Changed;
+    end);
+end;
+
+class function TAtlasIdeWhatsNew.FindFolder(const APluginDir: string): string;
+var
+  mCandidate: string;
+begin
+  Result := '';
+  if APluginDir = '' then
+  begin
+    Exit;
+  end;
+  mCandidate := IncludeTrailingPathDelimiter(APluginDir);
+  if FileExists(mCandidate + TAtlasWhatsNew.cFileName) then
+  begin
+    Exit(mCandidate);
+  end;
+  mCandidate := IncludeTrailingPathDelimiter(ExpandFileName(mCandidate + '..'));
+  if FileExists(mCandidate + TAtlasWhatsNew.cFileName) then
+  begin
+    Result := mCandidate;
+  end;
+end;
+
+class function TAtlasIdeWhatsNew.SamplePath(const AFolder, ASample: string): string;
+begin
+  Result := '';
+  // Nur Dateien im Installationsordner: whatsnew.json ist Teil der Installation, aber kein Ort für fremde Pfade.
+  if (AFolder = '') or (ASample = '') or (Pos('..', ASample) > 0) or (Pos(':', ASample) > 0) or
+    CharInSet(ASample[1], ['\', '/']) then
+  begin
+    Exit;
+  end;
+  Result := IncludeTrailingPathDelimiter(AFolder) + StringReplace(ASample, '/', PathDelim, [rfReplaceAll]);
+end;
+
+end.

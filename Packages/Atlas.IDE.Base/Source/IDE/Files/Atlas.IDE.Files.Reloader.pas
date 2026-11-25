@@ -27,8 +27,8 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Files.ExternalChanges,
-  Atlas.Core.Notifications.Contract;
+  Atlas.Plugin.Files.ExternalChanges,
+  Atlas.Plugin.Notifications.Contract;
 
 type
   TAtlasFileReloader = class
@@ -62,24 +62,38 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Winapi.Windows,
-  Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Diagnostics.Hangs,
-  Atlas.Core.Files.TextDiff,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Files.EncodingDefault,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
-  Atlas.IDE.Foundation.Host;
+  Atlas.Plugin.Diagnostics.Hangs,
+  Atlas.Plugin.Files.TextDiff,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Files.EncodingDefault,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
+  Atlas.IDE.Foundation.Host,
+  Atlas.UI.Notifications.Strings;
 
-/// <summary>Text der Datei auf der Platte in ihrer Kodierung; Ausnahme, wenn sie nicht lesbar ist.</summary>
-function DiskText(const AFileName: string): string;
+/// <summary>Text der Datei auf der Platte in ihrer Kodierung; False, wenn sie fehlt, gesperrt oder nicht lesbar
+/// ist.</summary>
+function TryDiskText(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
+  AText := '';
+  try
+    AText := TAtlasTextFile.Load(AFileName, TAtlasEncodingDefault.CodePageFor(AFileName)).Text;
+    Result := True;
+  except
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
+      Result := False;
+    end;
+  end;
 end;
 
 function NowMs: Int64;
@@ -90,12 +104,14 @@ end;
 { TAtlasFileReloader }
 
 constructor TAtlasFileReloader.Create(const AReport: TProc<string>);
+const
+  cTickMs = 500;
 begin
   inherited Create;
   FReport := AReport;
   FChanges := TAtlasExternalChanges.Create;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 500;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -188,18 +204,17 @@ begin
   begin
     Exit;
   end;
-  try
-    mDisk := DiskText(AFileName);
-  except
-    on Exception do
-      Exit;
+  if not TryDiskText(AFileName, mDisk) then
+  begin
+    Exit;
   end;
   mLines := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(mBuffer), mDisk);
   if Length(mLines) = 0 then
   begin
     Exit;
   end;
-  TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(AFileName)]));
+  TAtlasIdeHost.Message(TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.ReloadDiffTitle,
+    [ExtractFileName(AFileName)]));
   for mIndex := 0 to High(mLines) do
   begin
     if mIndex < cMaxDiffLines then
@@ -219,7 +234,8 @@ end;
 
 class function TAtlasFileReloader.CompareAction(const AFileName: string): TAtlasNotificationAction;
 begin
-  Result := TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.NotificationsCompare),
+  Result := TAtlasNotificationCenter.Action(
+    TAtlasNotificationsStrings.Text(TAtlasNotificationsTextId.NotificationsCompare),
     procedure
     begin
       ShowDiff(AFileName, True);
@@ -359,6 +375,9 @@ begin
 end;
 
 class function TAtlasFileReloader.DiskStamp(const AFileName: string; out AStamp: Int64): Boolean;
+const
+  // FILETIME: oberes Doppelwort
+  cHighShift = 32;
 var
   mData: TWin32FileAttributeData;
 begin
@@ -366,7 +385,7 @@ begin
   Result := GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @mData);
   if Result then
   begin
-    AStamp := Int64(mData.ftLastWriteTime.dwHighDateTime) shl 32 or mData.ftLastWriteTime.dwLowDateTime;
+    AStamp := Int64(mData.ftLastWriteTime.dwHighDateTime) shl cHighShift or mData.ftLastWriteTime.dwLowDateTime;
   end;
 end;
 
@@ -381,12 +400,11 @@ begin
     Exit;
   end;
   mCurrent := TAtlasEditorBuffer.Text(mBuffer).Replace(#13, '');
-  try
-    mDisk := DiskText(AFileName).Replace(#13, '');
-  except
+  if not TryDiskText(AFileName, mDisk) then
+  begin
     Exit;
   end;
-  Result := mCurrent = mDisk;
+  Result := mCurrent = mDisk.Replace(#13, '');
 end;
 
 /// <summary>Eigene Änderungen behalten: Hinweis mit „Vergleichen“, bei „einblenden“ der Unterschied (#536).</summary>
@@ -396,11 +414,11 @@ var
 begin
   mName := ExtractFileName(AFileName);
   if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Warning,
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKept, [mName]),
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadKeptText, [mName]),
+    TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsReloadKept, [mName]),
+    TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsReloadKeptText, [mName]),
     [TAtlasFileReloader.CompareAction(AFileName)]) = TAtlasNotificationMode.Show then
   begin
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadKeptModified, [mName]));
+    TAtlasIdeHost.Message(TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.ReloadKeptModified, [mName]));
     TAtlasFileReloader.ShowDiff(AFileName, False);
   end;
 end;
@@ -411,10 +429,10 @@ var
 begin
   mName := ExtractFileName(AFileName);
   if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Warning,
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloadDeleted, [mName]), AFileName) =
+    TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsReloadDeleted, [mName]), AFileName) =
     TAtlasNotificationMode.Show then
   begin
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDeleted, [mName]));
+    TAtlasIdeHost.Message(TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.ReloadDeleted, [mName]));
   end;
 end;
 
@@ -422,21 +440,20 @@ end;
 procedure NotifyReloaded(const ACenter: IAtlasNotificationCenter; const AReloaded: TArray<string>);
 var
   mName, mNames: string;
+  mShort: TArray<string>;
+  mIndex: Integer;
 begin
-  mNames := '';
-  for mName in AReloaded do
+  SetLength(mShort, Length(AReloaded));
+  for mIndex := 0 to High(AReloaded) do
   begin
-    if mNames <> '' then
-    begin
-      mNames := mNames + ', ';
-    end;
-    mNames := mNames + ExtractFileName(mName);
+    mShort[mIndex] := ExtractFileName(AReloaded[mIndex]);
   end;
+  mNames := string.Join(', ', mShort);
   if ACenter.Notify(TAtlasNotificationSources.cReload, TAtlasNotificationSeverity.Info,
-    TAtlasStrings.Fmt(TAtlasTextId.NotificationsReloaded, [Length(AReloaded)]), mNames) =
+    TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.NotificationsReloaded, [Length(AReloaded)]), mNames) =
     TAtlasNotificationMode.Show then
   begin
-    TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDone, [Length(AReloaded)]));
+    TAtlasIdeHost.Message(TAtlasNotificationsStrings.Fmt(TAtlasNotificationsTextId.ReloadDone, [Length(AReloaded)]));
     for mName in AReloaded do
     begin
       TAtlasIdeHost.Message('    ' + mName);
@@ -445,6 +462,10 @@ begin
 end;
 
 procedure TAtlasFileReloader.Process(const ADecisions: TArray<TAtlasReloadDecision>);
+const
+  // Tätigkeit und Protokollzeile.
+  cActivity = 'Dateien neu laden';
+  cChanged = 'Extern geändert: %s (%s)';
 var
   mDecision: TAtlasReloadDecision;
   mReloaded: TArray<string>;
@@ -452,7 +473,7 @@ var
   mCenter: IAtlasNotificationCenter;
   mActive: Boolean;
 begin
-  mActivity := TAtlasActivity.Scope('Dateien neu laden');
+  mActivity := TAtlasActivity.Scope(cActivity);
   mCenter := TAtlasNotificationCenter.Default;
   mReloaded := nil;
   mActive := TAtlasIdeSettings.Current.ReloadExternal;
@@ -460,7 +481,7 @@ begin
   begin
     if Assigned(FReport) and mActive then
     begin
-      FReport(Format('Extern geändert: %s (%s)', [mDecision.FileName,
+      FReport(Format(cChanged, [mDecision.FileName,
         TAtlasExternalChanges.ActionText(mDecision.Action)]));
     end;
   end;

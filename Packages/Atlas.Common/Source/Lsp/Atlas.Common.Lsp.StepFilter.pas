@@ -114,45 +114,9 @@ uses
   System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.Lsp.StepTargets,
-  Atlas.Text.Json;
-
-function Contains(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function LastPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := AName;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
-end;
-
-function ContainerPart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := '';
-  mDot := LastDelimiter('.', AName);
-  if mDot > 0 then
-  begin
-    Result := Copy(AName, 1, mDot - 1);
-  end;
-end;
+  Atlas.Text.Json,
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 { TLspStepFilter }
 
@@ -173,8 +137,8 @@ begin
   begin
     mLength := 40;
   end;
-  mWords := LowerCase(Copy(AText, mStart, mLength)).Replace(#13, ' ').Replace(#10, ' ').Replace(#9, ' ').Split([' '],
-    TStringSplitOptions.ExcludeEmpty);
+  mWords := TTextLines.NormalizeLineBreaks(LowerCase(Copy(AText, mStart, mLength)), ' ').Replace(#9, ' ').Split(
+    [' '], TStringSplitOptions.ExcludeEmpty);
   if Length(mWords) = 0 then
   begin
     Exit;
@@ -270,7 +234,7 @@ begin
   Result := False;
   case ATarget.Kind of
     TSyntaxKind.Identifier:
-      Result := not Contains(ALocals, ATarget.Name);
+      Result := not MatchText(ATarget.Name, ALocals);
     TSyntaxKind.MemberAccess:
       Result := (ATarget.ChildCount = 1) and (ATarget[0].Kind = TSyntaxKind.Identifier) and
         SameText(ATarget[0].Name, 'Self');
@@ -469,8 +433,8 @@ begin
       mName := mPrefix + '.' + mName;
     end;
   end;
-  Result.Container := ContainerPart(mName);
-  Result.Routine := LastPart(mName);
+  Result.Container := TTextNames.ContainerOf(mName);
+  Result.Routine := TTextNames.LastPart(mName);
   if UnitName(ATree) <> '' then
   begin
     Result.Name := UnitName(ATree) + '.' + mName;
@@ -523,8 +487,8 @@ var
   mContainer, mShort: string;
 begin
   Result := [];
-  mContainer := ContainerPart(AName);
-  mShort := LastPart(AName);
+  mContainer := TTextNames.ContainerOf(AName);
+  mShort := TTextNames.LastPart(AName);
   if (mContainer = '') or (Length(ABody) <> 1) or not TLspStepFilter.IsSimple(ABody[0]) then
   begin
     Exit;
@@ -603,7 +567,7 @@ begin
   begin
     Include(Result, TStepFilterKind.EmptyConstructors);
   end;
-  if IsTrivial(ARoutine, LastPart(mName)) then
+  if IsTrivial(ARoutine, TTextNames.LastPart(mName)) then
   begin
     Include(Result, TStepFilterKind.Trivial);
   end;

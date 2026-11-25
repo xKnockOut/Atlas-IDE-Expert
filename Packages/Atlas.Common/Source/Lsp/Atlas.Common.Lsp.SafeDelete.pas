@@ -87,7 +87,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Lines,
@@ -98,10 +98,10 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormFiles,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.InlineAccessor,
-  Atlas.Common.Editing.MemberTransfer,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Semantics.InlineAccessor,
+  Atlas.Common.Pascal.MemberTransfer,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.WorkspaceChanges,
@@ -239,21 +239,15 @@ end;
 { TSafeDeleteChoices }
 
 class function TSafeDeleteChoices.FromJson(AValue: TJSONValue): TSafeDeleteChoices;
-
-  function Flag(AObject: TJSONObject; const AName: string): Boolean;
-  begin
-    Result := (AObject.GetValue(AName) is TJSONBool) and TJSONBool(AObject.GetValue(AName)).AsBoolean;
-  end;
-
 begin
   Result := Default(TSafeDeleteChoices);
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  Result.Overrides := Flag(TJSONObject(AValue), 'overrides');
-  Result.Cascade := Flag(TJSONObject(AValue), 'cascade');
-  Result.Force := Flag(TJSONObject(AValue), 'force');
+  Result.Overrides := TJsonRead.Flag(TJSONObject(AValue), 'overrides');
+  Result.Cascade := TJsonRead.Flag(TJSONObject(AValue), 'cascade');
+  Result.Force := TJsonRead.Flag(TJSONObject(AValue), 'force');
 end;
 
 { TSafeDeletePlan }
@@ -1091,9 +1085,11 @@ var
   mBlocking: TArray<string>;
   mWarning: string;
 begin
-  mPlan := TSafeDeletePlan.Create(AResolver, ATree, AFileName, AText, AContext);
-  mChanges := TWorkspaceChanges.Create;
+  mPlan := nil;
+  mChanges := nil;
   try
+    mPlan := TSafeDeletePlan.Create(AResolver, ATree, AFileName, AText, AContext);
+    mChanges := TWorkspaceChanges.Create;
     mPlan.Analyze(APosition);
     mBlocking := BlockingOf(mPlan, AContext.Choices.Overrides);
     if (mBlocking <> nil) and not AContext.Choices.Force then

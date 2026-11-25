@@ -13,7 +13,8 @@
 //   Maus, ohne etwas zu verändern.
 // - Werte in Pixeln der DFM: Lagen werden mit PixelsPerInch des Formulars zu
 //   seiner aktuellen DPI (CurrentPPI) zurückgerechnet (TAtlasDesignScale).
-// - Der Knopf schaltet die Anzeige für die Sitzung aus und wieder an.
+// - Der Knopf schaltet die Anzeige aus und wieder an; der Zustand gilt über
+//   Neustarts hinweg (TAtlasIdeDesignerButtonStates, #2546).
 // Zeichnen: TAtlasMeasureOverlay. Nur im Hauptthread.
 
 interface
@@ -41,7 +42,7 @@ type
     FStart: TRect;
     FStartNames: string;
     FHoldUntil: UInt64;
-    /// <summary>Offene Formular-Designer: ohne Designer ruht der 40-ms-Takt (lief vorher immer).</summary>
+    /// <summary>Offene Formular-Designer: ohne Designer ruht der 40-ms-Takt.</summary>
     FOpen: TAtlasDesignerOpenWatch;
     procedure Tick(Sender: TObject);
     procedure OpenChanged;
@@ -71,13 +72,14 @@ uses
   System.Classes,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Designer.Measure,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.ButtonStates,
   Atlas.IDE.Designer.Model,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 function NamesOf(const AControls: TArray<TControl>): string;
@@ -262,7 +264,7 @@ end;
 constructor TAtlasIdeDesignerMeasure.Create;
 begin
   inherited Create;
-  FActive := True;
+  FActive := TAtlasIdeDesignerButtonStates.Pressed(cId, True);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
@@ -434,6 +436,7 @@ end;
 procedure TAtlasIdeDesignerMeasure.Toggle;
 begin
   FActive := not FActive;
+  TAtlasIdeDesignerButtonStates.Remember(cId, FActive);
   FDragging := False;
   Hide;
 end;

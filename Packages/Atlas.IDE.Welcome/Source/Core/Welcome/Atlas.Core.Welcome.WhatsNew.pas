@@ -28,40 +28,25 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Welcome.Contract;
 
 type
-  TAtlasWhatsNewItem = record
-    Title: string;
-    Text: string;
-    /// <summary>Titel und Text auf Englisch (#1458); '' = wie Title bzw. Text.</summary>
-    TitleEn: string;
-    TextEn: string;
-    Setting: string;
-    Key: string;
-    Command: string;
-    Sample: string;
-    /// <summary>Zeile in Sample ab 1; 0 = Anfang.</summary>
-    Line: Integer;
-    /// <summary>Experimentelle Funktion (#834): eigener Abschnitt auf der Karte.</summary>
-    Experimental: Boolean;
+  TAtlasWhatsNewItem = Atlas.Core.Welcome.Contract.TAtlasWhatsNewItem;
+
+  /// <summary>Logik zu TAtlasWhatsNewItem (der Record steht im Vertrag).</summary>
+  TAtlasWhatsNewItemHelper = record helper for TAtlasWhatsNewItem
     /// <summary>Titel in der Sprache der Oberfläche (#1458): mit AEnglish TitleEn, falls vorhanden.</summary>
     function TitleFor(AEnglish: Boolean): string;
     /// <summary>Text in der Sprache der Oberfläche (#1458): mit AEnglish TextEn, falls vorhanden.</summary>
     function TextFor(AEnglish: Boolean): string;
   end;
-
-  TAtlasWhatsNewVersion = record
-    Version: string;
-    Items: TArray<TAtlasWhatsNewItem>;
-  end;
-
-  TAtlasWhatsNewVersions = TArray<TAtlasWhatsNewVersion>;
+  TAtlasWhatsNewVersion = Atlas.Core.Welcome.Contract.TAtlasWhatsNewVersion;
+  TAtlasWhatsNewVersions = Atlas.Core.Welcome.Contract.TAtlasWhatsNewVersions;
 
 {$SCOPEDENUMS ON}
   TAtlasWhatsNewMode = (Off, AfterUpdate, Always);
-  /// <summary>Was die Karte gerade zeigt: Ungelesenes nach Update, die aktuelle Version, alle Versionen.</summary>
-  TAtlasWhatsNewView = (Hidden, Unread, Current, All);
+  TAtlasWhatsNewView = Atlas.Core.Welcome.Contract.TAtlasWhatsNewView;
 {$SCOPEDENUMS OFF}
 
   TAtlasWhatsNew = class
@@ -114,35 +99,18 @@ uses
   System.JSON,
   System.Generics.Defaults,
   System.Math,
-  Atlas.Text.Json;
+  Atlas.Plugin.Localization.Language,
+  Atlas.Text.Json,
+  Atlas.Text.Chars;
 
-{ TAtlasWhatsNewItem }
-
-function TAtlasWhatsNewItem.TitleFor(AEnglish: Boolean): string;
-begin
-  Result := Title;
-  if AEnglish and (TitleEn <> '') then
-  begin
-    Result := TitleEn;
-  end;
-end;
-
-function TAtlasWhatsNewItem.TextFor(AEnglish: Boolean): string;
-begin
-  Result := Text;
-  if AEnglish and (TextEn <> '') then
-  begin
-    Result := TextEn;
-  end;
-end;
+const
+  /// <summary>Teile einer Versionsnummer (Major.Minor.Patch).</summary>
+  cVersionParts = 3;
 
 function Flag(AObject: TJSONObject; const AName: string): Boolean;
-var
-  mValue: TJSONValue;
 begin
-  mValue := AObject.GetValue(AName);
-  Result := ((mValue is TJSONBool) and TJSONBool(mValue).AsBoolean) or
-    ((mValue is TJSONString) and SameText(Trim(TJSONString(mValue).Value), 'true'));
+  // Auch "true" als Zeichenkette (von Hand gepflegte Datei).
+  Result := TJsonRead.Flag(AObject, AName) or SameText(Trim(TJsonRead.StrictText(AObject, AName)), 'true');
 end;
 
 /// <summary>Eintrag aus AObject; Title '' bei einem unbrauchbaren Eintrag.</summary>
@@ -204,13 +172,7 @@ var
   mList: TList<TAtlasWhatsNewVersion>;
 begin
   Result := nil;
-  try
-    mRoot := TJSONObject.ParseJSONValue(AJson);
-  except
-    // Kaputte Datei: keine Karte, kein Fehler in der IDE.
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AJson);
   mList := TList<TAtlasWhatsNewVersion>.Create;
   try
     if not (mRoot is TJSONObject) then
@@ -271,20 +233,6 @@ begin
   end;
 end;
 
-function IsNumber(const AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AText <> '';
-  for mIndex := 1 to Length(AText) do
-  begin
-    if not CharInSet(AText[mIndex], ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 function CompareParts(const A, B: TArray<string>; ANumbersOnly: Boolean): Integer;
 var
   mIndex: Integer;
@@ -298,16 +246,16 @@ begin
     end;
     mLeft := A[mIndex];
     mRight := B[mIndex];
-    if ANumbersOnly or (IsNumber(mLeft) and IsNumber(mRight)) then
+    if ANumbersOnly or (TTextChars.IsDigits(mLeft) and TTextChars.IsDigits(mRight)) then
     begin
       Result := StrToIntDef(mLeft, 0) - StrToIntDef(mRight, 0);
     end
-    else if IsNumber(mLeft) then
+    else if TTextChars.IsDigits(mLeft) then
     begin
       // SemVer: Zahlen vor Text.
       Result := -1;
     end
-    else if IsNumber(mRight) then
+    else if TTextChars.IsDigits(mRight) then
     begin
       Result := 1;
     end
@@ -331,7 +279,7 @@ end;
 function Padded(const AParts: TArray<string>): TArray<string>;
 begin
   Result := AParts;
-  while Length(Result) < 3 do
+  while Length(Result) < cVersionParts do
   begin
     Result := Result + ['0'];
   end;
@@ -583,6 +531,18 @@ begin
   begin
     Result := ACurrent;
   end;
+end;
+
+{ TAtlasWhatsNewItemHelper }
+
+function TAtlasWhatsNewItemHelper.TitleFor(AEnglish: Boolean): string;
+begin
+  Result := TAtlasTextLanguage.Pick(Title, TitleEn, AEnglish);
+end;
+
+function TAtlasWhatsNewItemHelper.TextFor(AEnglish: Boolean): string;
+begin
+  Result := TAtlasTextLanguage.Pick(Text, TextEn, AEnglish);
 end;
 
 end.

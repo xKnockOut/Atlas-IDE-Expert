@@ -1,8 +1,7 @@
 ﻿unit Atlas.UI.Build.SettingsSection.Tests;
 
 // Abschnitt „Compiler“ des Moduls Build-Werkzeuge (#1456): Compiler-Schalter (#558), Startprofile (#575), Bauen
-// beim Öffnen (#1293) und Projektaufgaben (#900); Laden und Speichern über die Seite (vorher in den Tests der
-// Seite von Base).
+// beim Öffnen (#1293) und Projektaufgaben (#900); Laden und Speichern über die Seite.
 
 interface
 
@@ -21,8 +20,6 @@ type
     FSectionRef: IAtlasSettingsSection;
     FRegistration: IAtlasRegistration;
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -46,11 +43,6 @@ uses
 
 { TBuildSettingsSectionTests }
 
-procedure TBuildSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
-
 procedure TBuildSettingsSectionTests.Setup;
 begin
   FSection := TAtlasBuildSettingsSection.Create;
@@ -60,10 +52,8 @@ end;
 
 procedure TBuildSettingsSectionTests.TearDown;
 begin
-  FRegistration.Revoke;
-  FRegistration := nil;
   FSection := nil;
-  FSectionRef := nil;
+  RevokeSection(FRegistration, FSectionRef);
 end;
 
 procedure TBuildSettingsSectionTests.SwitchesAndStartProfilesRoundTrip;

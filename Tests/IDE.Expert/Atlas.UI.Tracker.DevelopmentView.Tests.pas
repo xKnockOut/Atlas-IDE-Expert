@@ -48,18 +48,12 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Tracker.DevelopmentView;
+  Atlas.UI.Tracker.DevelopmentView,
+  Atlas.Tests.Files;
 
 function Root: string;
 begin
-  if PathDelim = '\' then
-  begin
-    Result := 'C:\Projekte\Kasse';
-  end
-  else
-  begin
-    Result := '/projekte/kasse';
-  end;
+  Result := TTestData.ProjectRoot('Kasse');
 end;
 
 function Under(const ARelative: string): string;
@@ -266,18 +260,18 @@ begin
     // Klick: der Diff erst nach der Doppelklickzeit.
     mView.Parts.Commits.Selected := mView.Parts.Commits.Items[1];
     mView.Parts.Commits.OnClick(mView.Parts.Commits);
-    Assert.IsTrue(mView.Parts.CommitTimer.Enabled);
+    Assert.IsTrue(mView.CommitClicks.Waiting);
     Assert.AreEqual('', mDiff);
-    mView.FireCommitClick;
+    mView.CommitClicks.Fire;
     Assert.AreEqual('7637c6cf53522335c876c98aef9a32861d4dc147', mDiff);
-    Assert.IsFalse(mView.Parts.CommitTimer.Enabled);
+    Assert.IsFalse(mView.CommitClicks.Waiting);
     // Doppelklick: öffnen statt Diff.
     mDiff := '';
     mView.Parts.Commits.Selected := mView.Parts.Commits.Items[0];
     mView.Parts.Commits.OnClick(mView.Parts.Commits);
     mView.Parts.Commits.OnDblClick(mView.Parts.Commits);
-    Assert.IsFalse(mView.Parts.CommitTimer.Enabled, 'Doppelklick hält den Diff an');
-    mView.FireCommitClick;
+    Assert.IsFalse(mView.CommitClicks.Waiting, 'Doppelklick hält den Diff an');
+    mView.CommitClicks.Fire;
     Assert.AreEqual('', mDiff);
     Assert.AreEqual('28358feaf94440dbfe2fcc3aa2cb742e2d972f37', mOpened);
   finally

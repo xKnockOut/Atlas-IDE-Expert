@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Architecture.SymbolPath.Calls;
 
-// Aufrufkanten der Pfadsuche zwischen Symbolen (#1117), ausgelagert aus
+// Aufrufkanten der Pfadsuche zwischen Symbolen (#1117), Teil von
 // Atlas.Common.Architecture.SymbolPath.
 //
 // - Vorwärts aus dem Rumpf einer Routine über TLspHierarchies.OutgoingCalls
@@ -126,16 +126,6 @@ begin
   Result.SelectionRange := ANode.Symbol.SelectionRange;
 end;
 
-/// <summary>Leser für OutgoingCalls; als typisierte Variable, weil OutgoingCalls überladen ist.</summary>
-function ReaderOf(const AReadText: TSymbolPathReadText): TReferenceReadText;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := AReadText(AFileName, AText);
-    end;
-end;
-
 /// <summary>Knoten der aufgerufenen Routine ACall; -1 ohne.</summary>
 function CalleeNode(ATable: TSymbolPathNodeTable; const ACall: THierarchyCall): Integer;
 var
@@ -167,7 +157,7 @@ begin
   mItem := HierarchyItemOf(FTable.Node(ANode), AData);
   mList := TSymbolPathEdgeList.Create(FTable);
   try
-    for mCall in TLspHierarchies.OutgoingCalls(Resolver, mItem, ReaderOf(FReadText)) do
+    for mCall in TLspHierarchies.OutgoingCalls(Resolver, mItem, FReadText) do
     begin
       mTarget := CalleeNode(FTable, mCall);
       if (mTarget >= 0) and (mTarget <> ANode) and (Length(mCall.Ranges) > 0) then

@@ -12,9 +12,9 @@
 // paar Sekunden erneut ins Zeitlimit. Neue Antworten zeichnen den oberen
 // Editor neu. Nur im Hauptthread.
 // Überschreibungen und Glühbirne fragt eine Anfrage im Hintergrund
-// (TAtlasBackgroundRequest), höchstens eine zugleich. Früher wartete der
-// Hauptthread bis zu 800 ms; bei beschäftigtem Server kam keine Antwort an
-// und die IDE hing bei jedem Zeilenwechsel (2.0-stable).
+// (TAtlasBackgroundRequest), höchstens eine zugleich. Wartete der
+// Hauptthread (etwa bis zu 800 ms), käme bei beschäftigtem Server keine Antwort
+// an, und die IDE hinge bei jedem Zeilenwechsel.
 
 interface
 
@@ -24,11 +24,11 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.BackgroundRequest;
+  Atlas.Plugin.Lsp.BackgroundRequest;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
-  TAtlasGutterColumnSessionFunc = reference to function: TLspSession;
+  TAtlasGutterColumnSessionFunc = TFunc<TLspSession>;
 
   /// <summary>Zuletzt erfragte Glühbirne: Datei, Zeile und Zeilentext der Frage und ob es eine Aktion gibt.</summary>
   TAtlasGutterActionAsk = record
@@ -121,31 +121,21 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
-  ToolsAPI.Editor,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.Recursion,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Foundation.EditorSettings,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.LineTracker,
-  Atlas.IDE.Foundation.EditorBarHost,
-  Atlas.IDE.Foundation.DesignerView,
+  Atlas.ToolsApi.Editor.Windows,
+  Atlas.ToolsApi.Designer.View,
   Atlas.Core.Editor.LineTracking;
-
-procedure InvalidateTop;
-var
-  mEditors: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-end;
 
 { TAtlasIdeGutterColumnState }
 
@@ -169,11 +159,7 @@ end;
 
 function TAtlasIdeGutterColumnState.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSession) then
-  begin
-    Result := FSession();
-  end;
+  Result := TLspSession.From(FSession);
 end;
 
 function TAtlasIdeGutterColumnState.Changed(const AView: IOTAEditView): Boolean;
@@ -209,7 +195,7 @@ end;
 procedure TAtlasIdeGutterColumnState.FetchDue(ASession: TLspSession);
 begin
   // Im Designer und auf der Willkommensseite ist die Spalte nicht zu sehen: keine Anfragen an den Server.
-  if not TAtlasIdeDesignerView.CodeInFront(TAtlasEditorBarHost.TopEditor) then
+  if not TAtlasIdeDesignerView.CodeInFront(TAtlasIdeEditorWindows.TopEditor) then
   begin
     Exit;
   end;
@@ -278,7 +264,7 @@ begin
   FOverrides := AOverrides;
   FFetchedFile := AFileName;
   FFetchedText := AText;
-  InvalidateTop;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 procedure TAtlasIdeGutterColumnState.FetchAction(ASession: TLspSession);
@@ -349,7 +335,7 @@ begin
   end;
   if mHad or FAction.Found then
   begin
-    InvalidateTop;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -389,7 +375,7 @@ begin
   mStore := TAtlasProblemsController.Current;
   if (mStore <> nil) and SameText(FProblemsFile, AView.Buffer.FileName) and (mStore.Version <> FProblemsVersion) then
   begin
-    InvalidateTop;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   if Changed(AView) or not Settled or FRequest.Busy then
   begin
@@ -431,7 +417,7 @@ begin
   // Marken folgen ihrer Zeile sofort (#1818): die Zuordnung, die der Zeichner der Befunde angemeldet hat.
   mStore := TAtlasProblemsController.Current;
   mTracked := nil;
-  if (mStore <> nil) and TAtlasIdeSettings.TrackLinesOn then
+  if (mStore <> nil) and TAtlasIdeEditorSettings.TrackLinesOn then
   begin
     mTracked := TAtlasIdeLineTracker.Current(AFileName, TAtlasLineTracking.cProblems, mStore.Stamp(AFileName));
   end;

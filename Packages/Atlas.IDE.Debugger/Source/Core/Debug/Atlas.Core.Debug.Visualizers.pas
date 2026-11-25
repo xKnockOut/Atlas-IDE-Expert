@@ -125,13 +125,18 @@ uses
   System.StrUtils,
   System.Math,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Names;
 
 const
   // Leerer Platz eines Dictionaries (EMPTY_HASH in System.Generics.Collections).
   cEmptyHash = -1;
   // Höchstens so viele Plätze eines Dictionaries durchsuchen, bis die ersten Paare gefunden sind.
   cMaxDictionarySlots = 256;
+  // Höchstlängen im Ersatztext: Name eines Elements, Wert eines Elements ohne Namen, Feldwert einer Datenmenge.
+  cItemNameLength = 40;
+  cItemValueLength = 24;
+  cFieldValueLength = 30;
 
 type
   /// <summary>Ein Wert, für den es mehrere Ausdrücke gibt; %0:s ist der Ausdruck, %1:d der Index.</summary>
@@ -313,19 +318,6 @@ begin
   end;
 end;
 
-/// <summary>Letzter Teil eines qualifizierten Namens (ohne Typargumente).</summary>
-function StripUnit(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := Trim(AName);
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
-end;
-
 class function TAtlasVisualizers.ShortTypeName(const ATypeName: string): string;
 var
   mIndex, mStart: Integer;
@@ -341,7 +333,7 @@ begin
       mPart := Copy(ATypeName, mStart, mIndex - mStart);
       if mPart <> '' then
       begin
-        Result := Result + StripUnit(mPart);
+        Result := Result + TTextNames.LastPart(Trim(mPart));
       end;
       if mIndex <= Length(ATypeName) then
       begin
@@ -369,7 +361,7 @@ begin
   begin
     Result := Copy(Result, 1, mAngle - 1);
   end;
-  Result := StripUnit(Result);
+  Result := TTextNames.LastPart(Trim(Result));
 end;
 
 class function TAtlasVisualizers.KindOf(const ATypeName: string; out AKind: TAtlasVisualizerKind): Boolean;
@@ -465,7 +457,7 @@ begin
   Result := Trim(AValue);
   if not TAtlasVisualizerFormat.IsStructured(Result) then
   begin
-    Exit(TAtlasVisualizerFormat.Shorten(Result, 40));
+    Exit(TAtlasVisualizerFormat.Shorten(Result, cItemNameLength));
   end;
   for mName in AEvaluator.Options.NameFields do
   begin
@@ -473,14 +465,14 @@ begin
       Probe('%0:s.' + mName, TAtlasVisualizerEvaluation.Properties)], 0, mText) and
       not TAtlasVisualizerFormat.IsStructured(mText) then
     begin
-      Exit(TAtlasVisualizerFormat.Shorten(TAtlasVisualizerFormat.Unquote(mText), 40));
+      Exit(TAtlasVisualizerFormat.Shorten(TAtlasVisualizerFormat.Unquote(mText), cItemNameLength));
     end;
   end;
   if AEvaluator.FirstOf(AItemExpression, [Probe('%0:s.ToString', TAtlasVisualizerEvaluation.Calls)], 0, mText) then
   begin
-    Exit(TAtlasVisualizerFormat.Shorten(TAtlasVisualizerFormat.Unquote(mText), 40));
+    Exit(TAtlasVisualizerFormat.Shorten(TAtlasVisualizerFormat.Unquote(mText), cItemNameLength));
   end;
-  Result := TAtlasVisualizerFormat.Shorten(Result, 24);
+  Result := TAtlasVisualizerFormat.Shorten(Result, cItemValueLength);
 end;
 
 function ListItems(var AEvaluator: TEvaluator; ACount: Int64; AMax: Integer): TArray<string>;
@@ -777,7 +769,7 @@ begin
   if SameText(ABase, 'TAlphaColor') then
   begin
     AText := TAtlasVisualizerFormat.AlphaColorText(mValue);
-    ARgb := Cardinal(mValue and $FFFFFF);
+    ARgb := Cardinal(mValue and TAtlasVisualizerFormat.cRgbMask);
     AHasRgb := True;
   end
   else
@@ -785,7 +777,7 @@ begin
     AText := TAtlasVisualizerFormat.ColorText(mValue);
     if mValue < 0 then
     begin
-      mValue := mValue + $100000000;
+      mValue := mValue + TAtlasVisualizerFormat.cColorRange;
     end;
     AHasRgb := TAtlasVisualizerFormat.ColorRgb(mValue, ARgb);
   end;
@@ -842,7 +834,8 @@ begin
   mItems := nil;
   for mIndex := 0 to High(mDataSet.Names) do
   begin
-    mItems := mItems + [mDataSet.Names[mIndex] + ' = ' + TAtlasVisualizerFormat.Shorten(mDataSet.Values[mIndex], 30)];
+    mItems := mItems + [mDataSet.Names[mIndex] + ' = ' +
+      TAtlasVisualizerFormat.Shorten(mDataSet.Values[mIndex], cFieldValueLength)];
   end;
   if Length(mItems) > 0 then
   begin
@@ -881,7 +874,7 @@ begin
   begin
     Exit;
   end;
-  Result := Format('%s · Count = %d', [AShown, mJson.Count]);
+  Result := Format(TAtlasVisualizerFormat.cCountText, [AShown, mJson.Count]);
   if Length(mJson.Keys) > 0 then
   begin
     Result := Result + TAtlasVisualizerFormat.cSeparator + '{' + string.Join(', ', mJson.Keys);
@@ -966,17 +959,6 @@ begin
   Result := TAtlasVisualizerFormat.Shorten(Result, AOptions.MaxLength);
 end;
 
-function Row(const AValues: array of string): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AValues));
-  for mIndex := 0 to High(AValues) do
-  begin
-    Result[mIndex] := AValues[mIndex];
-  end;
-end;
-
 procedure ViewList(var AView: TAtlasVisualizerView; var AEvaluator: TEvaluator);
 var
   mCount: Int64;
@@ -992,7 +974,7 @@ begin
   mItems := ListItems(AEvaluator, mCount, TAtlasVisualizerOptions.cViewItems);
   for mIndex := 0 to High(mItems) do
   begin
-    AView.Rows := AView.Rows + [Row([IntToStr(mIndex), mItems[mIndex]])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(IntToStr(mIndex), mItems[mIndex])];
   end;
   AView.Total := mCount;
 end;
@@ -1012,7 +994,7 @@ begin
   for mValue in DictionaryPairs(AEvaluator, mCount, TAtlasVisualizerOptions.cViewItems) do
   begin
     mTab := Pos(#9, mValue);
-    AView.Rows := AView.Rows + [Row([Copy(mValue, 1, mTab - 1), Copy(mValue, mTab + 1, MaxInt)])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(Copy(mValue, 1, mTab - 1), Copy(mValue, mTab + 1, MaxInt))];
   end;
   AView.Total := mCount;
 end;
@@ -1028,8 +1010,8 @@ begin
     TAtlasVisualizerColumn.Value, TAtlasVisualizerColumn.OldValue];
   for mIndex := 0 to High(mDataSet.Names) do
   begin
-    AView.Rows := AView.Rows + [Row([mDataSet.Names[mIndex], mDataSet.Types[mIndex], mDataSet.Values[mIndex],
-      mDataSet.OldValues[mIndex]])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(mDataSet.Names[mIndex], mDataSet.Types[mIndex],
+      mDataSet.Values[mIndex], mDataSet.OldValues[mIndex])];
   end;
 end;
 
@@ -1058,7 +1040,7 @@ begin
   AView.Columns := [TAtlasVisualizerColumn.Index, TAtlasVisualizerColumn.Key];
   for mIndex := 0 to High(mJson.Keys) do
   begin
-    AView.Rows := AView.Rows + [Row([IntToStr(mIndex), mJson.Keys[mIndex]])];
+    AView.Rows := AView.Rows + [TArray<string>.Create(IntToStr(mIndex), mJson.Keys[mIndex])];
   end;
   AView.Total := mJson.Count;
 end;

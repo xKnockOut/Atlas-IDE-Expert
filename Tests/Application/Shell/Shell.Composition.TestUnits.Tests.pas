@@ -6,7 +6,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract,
   Shell.Composition.TestUnits;
 
@@ -16,7 +16,7 @@ type
   private
     FPicked: string;
     procedure VisitNone(const AVisit: TShellWorkspacesProc);
-    function PickNone(const AFileName: string): TShellWorkspace;
+    function PickNone(const AFileName: string): TCoreWorkspace;
     function NoText(const AFileName: string; out AText: string): Boolean;
     function NewServices: TShellTestUnitServices;
   public
@@ -25,8 +25,8 @@ type
     /// <summary>Ohne Arbeitsbereich gibt es kein Umfeld; gefragt wird mit dem Pfad der Datei.</summary>
     [Test]
     procedure NoContextWithoutWorkspace;
-    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
-    /// 06.11.2026).</summary>
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten.
+    /// </summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;
     /// <summary>Der Befehl atlas.server.testUnit ist angemeldet, ohne Ordner gibt es keine Code-Aktionen.</summary>
@@ -51,7 +51,7 @@ begin
   AVisit(nil);
 end;
 
-function TShellTestUnitsTests.PickNone(const AFileName: string): TShellWorkspace;
+function TShellTestUnitsTests.PickNone(const AFileName: string): TCoreWorkspace;
 begin
   FPicked := AFileName;
   Result := nil;
@@ -99,9 +99,11 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mTestUnits := TShellTestUnits.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mTestUnits := nil;
+  mCommands := nil;
   try
+    mTestUnits := TShellTestUnits.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mTestUnits.RegisterCommand(mCommands);
     for mName in TArray<string>.Create(TLspTestUnits.cCommand) do
     begin
@@ -120,9 +122,11 @@ var
   mCapability: TJSONObject;
   mText: string;
 begin
-  mTestUnits := TShellTestUnits.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mTestUnits := nil;
+  mCommands := nil;
   try
+    mTestUnits := TShellTestUnits.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mTestUnits.RegisterCommand(mCommands);
     mCapability := mCommands.Capability;
     try

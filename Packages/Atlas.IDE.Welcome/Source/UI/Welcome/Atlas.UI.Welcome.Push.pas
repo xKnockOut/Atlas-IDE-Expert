@@ -16,7 +16,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Welcome.Unsaved,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasPushDialog = class(TAtlasDialog)
@@ -28,7 +28,6 @@ type
     FDetails: TMemo;
     FPush: TButton;
     FCancel: TButton;
-    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
   public
     constructor CreateDialog(AOwner: TComponent; const AProjectName: string;
       const APlans: TArray<TAtlasUnsavedPush>);
@@ -50,10 +49,13 @@ uses
   System.DateUtils,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 32;
 
 { TAtlasPushDialog }
 
@@ -69,14 +71,14 @@ begin
   FIntro.Parent := Self;
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
-  FIntro.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FIntro, cGap, cGap, cGap, 0);
   FIntro.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushIntro);
 
   FDetails := TMemo.Create(Self);
   FDetails.Parent := Self;
   FDetails.Align := alTop;
   FDetails.AlignWithMargins := True;
-  FDetails.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FDetails, cGap, cGap, cGap, 0);
   FDetails.Top := FIntro.Top + FIntro.Height + 1;
   FDetails.Height := ScaleValue(cDetailsHeight);
   FDetails.ReadOnly := True;
@@ -90,28 +92,19 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FDetails.Top + FDetails.Height + 1;
-  FPush := AddButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushButton));
+  FPush := NewTextButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushButton),
+    cButtonPadding, cGap);
   FPush.ModalResult := mrOk;
-  FCancel := AddButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushCancel));
+  FCancel := NewTextButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushCancel),
+    cButtonPadding, cGap);
   FCancel.ModalResult := mrCancel;
   // Enter und Esc brechen ab: Gepusht wird nur mit einem bewussten Klick auf „Pushen“.
   FCancel.Default := True;
   FCancel.Cancel := True;
   ActiveControl := FCancel;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
-end;
-
-function TAtlasPushDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 class function TAtlasPushDialog.DetailText(const APlans: TArray<TAtlasUnsavedPush>): string;

@@ -14,7 +14,7 @@ interface
 
 uses
   System.JSON,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract;
 
 type
   /// <summary>Katalogtext einer Regel oder Compilermeldung (atlas.server.settingsCatalog).</summary>

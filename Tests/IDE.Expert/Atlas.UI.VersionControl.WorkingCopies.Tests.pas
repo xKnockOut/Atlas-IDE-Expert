@@ -23,9 +23,6 @@ type
     procedure Pinned(Sender: TObject; AIndex: Integer);
     procedure Opened(Sender: TObject; AIndex: Integer);
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -103,16 +100,6 @@ end;
 procedure TAtlasWorkingCopiesDialogTests.Opened(Sender: TObject; AIndex: Integer);
 begin
   FCalls := FCalls + [Format('open %d', [AIndex])];
-end;
-
-procedure TAtlasWorkingCopiesDialogTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    RowsFillOneByOne;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TAtlasWorkingCopiesDialogTests.Setup;

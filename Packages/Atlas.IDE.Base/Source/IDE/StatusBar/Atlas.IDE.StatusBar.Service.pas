@@ -9,21 +9,21 @@
 //   Datenbindung; Fenster, die später aufgehen, bekommen sie beim nächsten
 //   Takt.
 // - Ein Zeitgeber (250 ms) setzt den Inhalt: Status aus dem Atlas-Feld
-//   (TAtlasStatusField, Text, Zustand, Tooltip), Meldungen dieser Unit aus dem
+//   (TAtlasStatusFieldFlow, Text, Zustand, Tooltip), Meldungen dieser Unit aus dem
 //   Speicher der Probleme (TAtlasProblemsController.Current), Live-Prüfung
 //   (problems.live, Checking, LastCheck) und die Methode am Cursor aus der
 //   Gliederung (TAtlasIdeOutlineCache) mit Zeilen und CC aus
 //   atlas.server.metrics (Hook Metrics; die Leiste meldet über WantMetrics,
 //   dass sie Metriken braucht). Die oberste Leiste bekommt alles, die anderen
 //   nur den Status.
-// - Zeigt die Leiste das Element status, ist das Atlas-Feld der Statuszeile
-//   0 breit (TAtlasStatusField.Relocated); Klick und Rechtsklick öffnen dort
+// - Zeigt die Leiste das Element status, hat die Statuszeile kein Atlas-Feld
+//   (TAtlasStatusFieldFlow.Relocated); Klick und Rechtsklick öffnen dort
 //   wie bisher Statusfenster und Schnellschalter, nur über der Leiste.
 //   Doppelklick auf den Status öffnet das Fenster „Atlas-Server“ (#1356,
 //   nur mit server.statusWindow).
 // - Mit eingeschalteten Benachrichtigungen steht immer eine Plakette mit der
 //   Zahl der ungelesenen (auch 0) hinter dem Status (#1234, aus dem
-//   Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
+//   Atlas-Feld, das dann nicht in der Statuszeile steht); Klick öffnet die Liste.
 //   Dahinter stehen die Zusatzfelder des Atlas-Felds (z. B. „interface-Änderung“
 //   der Unit-Beziehungen); ein Klick ruft dort ihren Klick, in der Statuszeile
 //   stehen sie dann nicht. Rechtsklick auf ein Zusatzfeld mit eigenem
@@ -51,15 +51,16 @@ interface
 uses
   System.SysUtils,
   System.Types,
-  Atlas.IDE.Status.Field,
-  Atlas.IDE.StatusBar.View;
+  Atlas.Core.Status.FieldFlow,
+  Atlas.IDE.StatusBar.View,
+  Atlas.ToolsApi.EditorBars.Host;
 
 type
   TAtlasIdeStatusBar = class
   public type
     THooks = record
       /// <summary>Atlas-Feld der Statuszeile; nil ohne.</summary>
-      Field: TFunc<TAtlasStatusField>;
+      Field: TFunc<TAtlasStatusFieldFlow>;
       /// <summary>Metriken aus atlas.server.metrics (Abruf in Atlas.IDE.Editor.MetricsSource, #66).</summary>
       Metrics: TAtlasStatusMetricsFunc;
       /// <summary>Metriken auch ohne Lens holen (True) bzw. nicht mehr (False).</summary>
@@ -70,7 +71,7 @@ type
       Recheck: TProc;
     end;
   private class var
-    FState: TObject;
+    FState: TAtlasEditorBarState;
     FHooks: THooks;
     class procedure Say(const AText: string); static;
   public
@@ -93,26 +94,26 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.StatusBarItems,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
-  Atlas.Core.Editor.BarDock,
+  Atlas.ToolsApi.EditorBars.Order,
   Atlas.UI.StatusBar.Strings,
   Atlas.UI.StatusBar.Bar,
-  Atlas.IDE.Foundation.EditorBarHost,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.Service,
-  Atlas.IDE.Status.ServerWindow;
+  Atlas.IDE.Status.ServerWindow,
+  Atlas.Plugin.Notifications.MessageSink;
 
 const
   cTickMs = 250;
@@ -120,11 +121,16 @@ const
   /// Willkommensseite); dafür reicht eine Sekunde.</summary>
   cIdleTickMs = 1000;
   cLogPrefix = 'Atlas-Statusleiste: ';
+  // Protokollzeilen der Klicks.
+  cLogStatus = 'Klick auf Status';
+  cLogBadge = 'Klick auf Benachrichtigungen';
+  cLogLiveCheck = 'Klick auf Live-Prüfung';
+  cLogMethod = 'Klick auf Methode';
 
 type
-  TFieldAction = reference to procedure(AField: TAtlasStatusField; const APoint: TPoint);
+  TFieldAction = reference to procedure(AField: TAtlasStatusFieldFlow; const APoint: TPoint);
 
-  TStatusBarState = class
+  TStatusBarState = class(TAtlasEditorBarState)
   private
     FTimer: TTimer;
     FHost: TAtlasEditorBarHost;
@@ -150,18 +156,18 @@ type
     function ExtraClick: TAtlasStatusBarExtraEvent;
     /// <summary>AAction nach dem Klick; ALog ('' = nichts) ins Protokoll.</summary>
     function Deferred(const ALog: string; const AAction: TProc): TProc;
-    procedure RefreshField;
+    class procedure RefreshField; static;
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Reset;
-    procedure ApplyTheme;
+    procedure Reset; override;
+    procedure ApplyTheme; override;
     function TopBar: TAtlasEditorStatusBar;
-    procedure JumpToFinding(AKind: TAtlasFindingKind);
+    class procedure JumpToFinding(AKind: TAtlasFindingKind); static;
     procedure JumpToMethod;
-    procedure Recheck;
-    procedure ToggleItem(const AId: string);
-    procedure HideBar;
+    class procedure Recheck; static;
+    class procedure ToggleItem(const AId: string); static;
+    class procedure HideBar; static;
   end;
 
 function State: TStatusBarState;
@@ -192,7 +198,7 @@ begin
 end;
 
 /// <summary>Atlas-Feld der Statuszeile; nil ohne.</summary>
-function CurrentField: TAtlasStatusField;
+function CurrentField: TAtlasStatusFieldFlow;
 begin
   Result := nil;
   if Assigned(TAtlasIdeStatusBar.FHooks.Field) then
@@ -212,7 +218,7 @@ begin
       Result := CreateBar;
     end, nil);
   // Am weitesten unten von den Leisten neben dem Editor-Bereich, direkt über der Statuszeile der IDE.
-  FHost.DockBottom(TAtlasBarDock.cOrderStatusBar);
+  FHost.Placement.DockBottom(TAtlasBarDock.cOrderStatusBar);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
@@ -331,18 +337,18 @@ end;
 
 procedure TStatusBarState.WireStatus(ABar: TAtlasEditorStatusBar);
 begin
-  ABar.OnStatus := FieldClick('Klick auf Status',
-    procedure(AField: TAtlasStatusField; const APoint: TPoint)
+  ABar.OnStatus := FieldClick(cLogStatus,
+    procedure(AField: TAtlasStatusFieldFlow; const APoint: TPoint)
     begin
       AField.OpenWindowAt(APoint);
     end);
   ABar.OnStatusContext := FieldClick('',
-    procedure(AField: TAtlasStatusField; const APoint: TPoint)
+    procedure(AField: TAtlasStatusFieldFlow; const APoint: TPoint)
     begin
       AField.ContextAt(APoint);
     end);
-  ABar.OnBadge := FieldClick('Klick auf Benachrichtigungen',
-    procedure(AField: TAtlasStatusField; const APoint: TPoint)
+  ABar.OnBadge := FieldClick(cLogBadge,
+    procedure(AField: TAtlasStatusFieldFlow; const APoint: TPoint)
     begin
       AField.ClickBadge(APoint);
     end);
@@ -384,12 +390,12 @@ begin
     begin
       TAtlasIdeProblems.ShowCurrentFile;
     end);
-  ABar.OnLiveCheck := Deferred('Klick auf Live-Prüfung',
+  ABar.OnLiveCheck := Deferred(cLogLiveCheck,
     procedure
     begin
       Recheck;
     end);
-  ABar.OnMethod := Deferred('Klick auf Methode',
+  ABar.OnMethod := Deferred(cLogMethod,
     procedure
     begin
       JumpToMethod;
@@ -467,7 +473,7 @@ begin
       mOwner.Later(
         procedure
         var
-          mField: TAtlasStatusField;
+          mField: TAtlasStatusFieldFlow;
         begin
           mField := CurrentField;
           if mField <> nil then
@@ -494,7 +500,7 @@ begin
       mContext := AContext;
       TAtlasGuard.Log(cLogPrefix + 'Klick auf Zusatzfeld ' + mId);
       mClick := mOwner.FieldClick('',
-        procedure(AField: TAtlasStatusField; const ACorner: TPoint)
+        procedure(AField: TAtlasStatusFieldFlow; const ACorner: TPoint)
         begin
           AField.ClickExtra(mId, ACorner, mContext);
         end);
@@ -522,9 +528,9 @@ begin
     end;
 end;
 
-procedure TStatusBarState.RefreshField;
+class procedure TStatusBarState.RefreshField;
 var
-  mField: TAtlasStatusField;
+  mField: TAtlasStatusFieldFlow;
 begin
   mField := CurrentField;
   if mField <> nil then
@@ -557,7 +563,7 @@ begin
   Result := TAtlasEditorStatusBar(FHost.ActiveBar);
 end;
 
-procedure TStatusBarState.JumpToFinding(AKind: TAtlasFindingKind);
+class procedure TStatusBarState.JumpToFinding(AKind: TAtlasFindingKind);
 var
   mView: IOTAEditView;
   mLine, mCharacter: Integer;
@@ -589,7 +595,7 @@ begin
   TAtlasIdeNavigation.GoToLocation(FTarget.FileName, FTarget.Method.Line, FTarget.Method.Character);
 end;
 
-procedure TStatusBarState.Recheck;
+class procedure TStatusBarState.Recheck;
 begin
   // Der Server verwirft alle Ergebnis-Ids; geöffnete Units holt der Controller nach dem refresh neu, die übrigen
   // liefert workspace/diagnostic nach und nach.
@@ -612,7 +618,7 @@ begin
   TAtlasIdeStatusBar.FHooks.Recheck();
 end;
 
-procedure TStatusBarState.ToggleItem(const AId: string);
+class procedure TStatusBarState.ToggleItem(const AId: string);
 var
   mNext: TAtlasPluginSettings;
 begin
@@ -623,7 +629,7 @@ begin
   RefreshField;
 end;
 
-procedure TStatusBarState.HideBar;
+class procedure TStatusBarState.HideBar;
 var
   mNext: TAtlasPluginSettings;
 begin
@@ -637,10 +643,7 @@ end;
 
 class procedure TAtlasIdeStatusBar.Say(const AText: string);
 begin
-  if Assigned(FHooks.Message) then
-  begin
-    FHooks.Message(AText);
-  end;
+  TAtlasMessageSink.Create(FHooks.Message).Say(AText);
 end;
 
 class procedure TAtlasIdeStatusBar.Install(const AHooks: THooks);
@@ -659,18 +662,12 @@ end;
 
 class procedure TAtlasIdeStatusBar.ApplySettings;
 begin
-  if FState <> nil then
-  begin
-    State.Reset;
-  end;
+  TAtlasEditorBarState.ResetOf(FState);
 end;
 
 class procedure TAtlasIdeStatusBar.ThemeChanged;
 begin
-  if FState <> nil then
-  begin
-    State.ApplyTheme;
-  end;
+  TAtlasEditorBarState.ThemeOf(FState);
 end;
 
 class function TAtlasIdeStatusBar.Enabled: Boolean;

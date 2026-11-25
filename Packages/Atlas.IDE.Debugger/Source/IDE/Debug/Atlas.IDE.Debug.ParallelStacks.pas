@@ -21,6 +21,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Debug.Threads,
   Atlas.Core.Debug.ParallelStacks,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.ParallelStacksFrame;
 
@@ -30,7 +32,7 @@ type
     cIntervalMs = 150;
     cRetries = 10;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
       procedure DebugResumed; override;
@@ -44,7 +46,7 @@ type
       procedure TreePopup(Sender: TObject);
     end;
   private class var
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FMenu: TPopupMenu;
@@ -77,7 +79,7 @@ implementation
 uses
   Vcl.Controls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Threads,

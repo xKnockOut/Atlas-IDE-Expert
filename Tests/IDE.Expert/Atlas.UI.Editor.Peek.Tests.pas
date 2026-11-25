@@ -14,9 +14,6 @@ type
   [TestFixture]
   TAtlasPeekUiTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure HeightGrowsWithLines;
     [Test]
@@ -33,7 +30,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Peek,
   Atlas.UI.Editor.Peek;
 
@@ -69,11 +66,6 @@ begin
 end;
 
 { TAtlasPeekUiTests }
-
-procedure TAtlasPeekUiTests.WarmUpFirstUse;
-begin
-  HeightGrowsWithLines;
-end;
 
 procedure TAtlasPeekUiTests.HeightGrowsWithLines;
 var

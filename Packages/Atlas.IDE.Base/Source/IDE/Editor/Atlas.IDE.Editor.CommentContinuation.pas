@@ -33,45 +33,25 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Editor.LineMove,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Editor.EnterWatch;
+  Atlas.IDE.Editor.EnterWatch,
+  Atlas.Text.Lines;
 
 const
   cHandlerName = 'CommentContinuation';
 
 /// <summary>ALines mit den Zeilen von AEdit an Stelle der ersetzten.</summary>
 function ReplacedLines(const ALines: TArray<string>; const AEdit: TAtlasCommentEdit): TArray<string>;
-var
-  mIndex: Integer;
 begin
-  SetLength(Result, Length(ALines) - AEdit.OldCount + Length(AEdit.Lines));
-  for mIndex := 0 to AEdit.StartLine - 1 do
-  begin
-    Result[mIndex] := ALines[mIndex];
-  end;
-  for mIndex := 0 to High(AEdit.Lines) do
-  begin
-    Result[AEdit.StartLine + mIndex] := AEdit.Lines[mIndex];
-  end;
-  for mIndex := AEdit.StartLine + AEdit.OldCount to High(ALines) do
-  begin
-    Result[mIndex - AEdit.OldCount + Length(AEdit.Lines)] := ALines[mIndex];
-  end;
+  Result := TTextLines.ReplaceRange(ALines, AEdit.StartLine, AEdit.OldCount, AEdit.Lines);
 end;
 
 /// <summary>Schreibt nur den Unterschied von AText zu ANewText in den Puffer von AView.</summary>
 procedure WriteLines(const AView: IOTAEditView; const AText, ANewText: string);
-var
-  mStart, mOldLength: Integer;
-  mInsert: string;
 begin
-  if TAtlasLineMover.Difference(AText, ANewText, mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(AView.Buffer, AText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(AView.Buffer, AText, ANewText);
 end;
 
 { TAtlasIdeCommentContinuation }

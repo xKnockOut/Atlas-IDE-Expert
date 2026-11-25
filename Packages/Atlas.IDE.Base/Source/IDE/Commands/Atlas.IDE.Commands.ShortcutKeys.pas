@@ -101,7 +101,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.KeyMap,
-  Atlas.Core.Diagnostics.UserIdle;
+  Atlas.Plugin.Diagnostics.UserIdle;
 
 /// <summary>Der Benutzer hat gerade etwas eingegeben (Maus oder Tastatur, auch im Menü).</summary>
 function UserJustActed: Boolean;
@@ -530,12 +530,15 @@ begin
 end;
 
 function TAtlasIdeShortcutKeys.Stroke(const AMsg: TMsg): TArray<string>;
+const
+  // Bit 30 von lParam: Taste war schon gedrückt (Wiederholung).
+  cPreviousKeyState = $40000000;
 var
   mKey, mShortCut: Word;
 begin
   Result := nil;
   // Wiederholung beim Festhalten zählt nicht.
-  if (AMsg.lParam and $40000000) <> 0 then
+  if (AMsg.lParam and cPreviousKeyState) <> 0 then
   begin
     Exit;
   end;

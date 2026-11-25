@@ -10,11 +10,11 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.CrashCases,
+  Atlas.Plugin.Lsp.CrashCases,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.CodeInsight.Manager;
@@ -27,6 +27,9 @@ procedure StartManager;
 procedure StopManager;
 /// <summary>Ist der Manager bei der IDE angemeldet?</summary>
 function ManagerStarted: Boolean;
+/// <summary>Parameter-Hint öffnen wie mit der Taste (Taste und Schnellkorrektur „Signaturhilfe öffnen“, #1007);
+/// ohne Manager nichts.</summary>
+procedure OpenSignature;
 /// <summary>Aktive Sitzung (startet den Server bei Bedarf); nil ohne Manager.</summary>
 function ActiveSession: TLspSession;
 /// <summary>Laufende Sitzung (startet keinen Server); nil ohne.</summary>
@@ -45,15 +48,11 @@ procedure LogLine(const AText: string);
 procedure ReportLine(const AText: string);
 /// <summary>Warnung der Sicherung (#493): Meldungsansicht und Plugin-Protokoll, nie als Dialog.</summary>
 procedure GuardWarning(const AText: string);
-/// <summary>Zeile in der Meldungsansicht, ohne Plugin-Protokoll (z. B. Hinweis auf eine neue Version, #495).</summary>
-procedure MessageLine(const AText: string);
 /// <summary>Meldungsansicht mit der Gruppe Atlas nach vorn holen: für Ergebnisse eines Befehls, den der Benutzer
 /// gerade ausgelöst hat (sonst sieht es aus, als passiere nichts).</summary>
 procedure ShowAtlasMessages;
 /// <summary>GuardWarning als Methodenreferenz für die Haken der Features.</summary>
 function Warnings: TProc<string>;
-/// <summary>MessageLine als Methodenreferenz für die Haken der Features.</summary>
-function MessageLines: TProc<string>;
 /// <summary>ReportLine als Methodenreferenz für die Haken der Features.</summary>
 function Reports: TProc<string>;
 /// <summary>LogLine als Methodenreferenz für die Haken der Features.</summary>
@@ -111,11 +110,14 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.BugReport,
-  Atlas.IDE.CodeInsight.Composition.Adapters,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.CodeInsight.Composition.HostAdapters,
+  Atlas.IDE.Foundation.Host,
+  Atlas.Plugin.Diagnostics.UnloadSafety;
 
 const
   cMessageGroup = 'Atlas';
+  /// <summary>Grund für TAtlasUnloadSafety, wenn die IDE den Manager nach dem Abmelden noch hält.</summary>
+  cManagerHeldReason = 'Code-Insight-Manager';
 
 var
   ManagerIndex: Integer = -1;
@@ -166,6 +168,10 @@ begin
       begin
         TAtlasGuard.Log(Format('Code-Insight-Manager wird nach dem Abmelden noch %d-mal von der IDE gehalten',
           [ManagerInstance.RefCount - 1]));
+        // #2372: Die IDE gibt ihre Referenz erst später frei (beim Beenden oder beim nächsten Code-Insight-Aufruf)
+        // und springt dabei in _Release und die Methoden des Managers. Ohne Festhalten läge dieser Code dann schon
+        // nicht mehr im Speicher: Zugriffsverletzung in einem „unbekannten Modul“ der IDE.
+        TAtlasUnloadSafety.MarkUnsafe(HInstance, cManagerHeldReason);
       end;
     end;
   finally
@@ -177,6 +183,14 @@ end;
 function ManagerStarted: Boolean;
 begin
   Result := ManagerIndex >= 0;
+end;
+
+procedure OpenSignature;
+begin
+  if Manager <> nil then
+  begin
+    Manager.OpenSignature;
+  end;
 end;
 
 function ActiveSession: TLspSession;
@@ -244,11 +258,6 @@ end;
 procedure GuardWarning(const AText: string);
 begin
   ReportLine(AText);
-  MessageLine(AText);
-end;
-
-procedure MessageLine(const AText: string);
-begin
   TAtlasIdeHost.Message(AText);
 end;
 
@@ -274,15 +283,6 @@ begin
     procedure(AText: string)
     begin
       GuardWarning(AText);
-    end;
-end;
-
-function MessageLines: TProc<string>;
-begin
-  Result :=
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
     end;
 end;
 
@@ -327,10 +327,12 @@ begin
 end;
 
 procedure ExecuteServerCommand(const ACommand: string; const ADone: TProc<TJSONValue>);
+const
+  cCommandTimeoutMs = 30000;
 begin
   if ManagerInstance <> nil then
   begin
-    ManagerInstance.ExecuteServerCommandAsync(ACommand, 30000, ADone);
+    ManagerInstance.ExecuteServerCommandAsync(ACommand, cCommandTimeoutMs, ADone);
   end
   else if Assigned(ADone) then
   begin
@@ -377,12 +379,14 @@ begin
 end;
 
 procedure CreateBugReport;
+const
+  cCommandTimeoutMs = 10000;
 begin
   TAtlasIdeBugReport.Execute(
     procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
     begin
       // Im Hintergrund (#874): Der Server antwortet auch während des Indexierens sofort, das Plugin wartet nicht.
-      RunServerCommand(ACommand, AArgumentsJson, 10000, ADone);
+      RunServerCommand(ACommand, AArgumentsJson, cCommandTimeoutMs, ADone);
     end,
     Warnings());
 end;
@@ -444,7 +448,7 @@ var
 begin
   if not IssueCreation(mCreation) or not mCreation.Enabled then
   begin
-    MessageLine(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashCaseTitle) + ': ' + ACase.Folder);
+    TAtlasIdeHost.Message(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.CrashCaseTitle) + ': ' + ACase.Folder);
     Exit;
   end;
   mCaseFiles := TAtlasCrashCases.AttachFiles(ACase.Folder);
@@ -464,7 +468,7 @@ begin
   if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run) and
     TAtlasModuleContributions.IsVisible(mCommand) then
   begin
-    TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+    TAtlasCommandScope.Run(TAtlasFeature.EditorCommands, mCommand.Caption, mCommand.Run);
   end;
 end;
 
@@ -500,17 +504,8 @@ begin
 end;
 
 function Guarded(AFeature: TAtlasFeature; const AProc: TProc): TProc;
-var
-  mFeature: TAtlasFeature;
-  mProc: TProc;
 begin
-  mFeature := AFeature;
-  mProc := AProc;
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Run(mFeature, mProc);
-    end;
+  Result := TAtlasGuard.Wrap(AFeature, AProc);
 end;
 
 procedure AddCommand(APalette: TAtlasIdePalette; const AId: string; ATextId: TAtlasTextId; const AProc: TProc);

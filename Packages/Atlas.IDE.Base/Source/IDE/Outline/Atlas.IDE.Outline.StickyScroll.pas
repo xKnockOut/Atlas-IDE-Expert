@@ -34,8 +34,8 @@
 //   Zeitgeber und PaintLine fangen Bildläufe ohne Ereignis weiter ab.
 // - Klick (links, ohne Umschalttasten) auf eine Kopfzeile springt nach dem
 //   Loslassen der Maustaste zum Namen im Kopf und verwirft die Markierung, die
-//   der Editor ab der verdeckten Zeile begonnen hat (vorher markierte der
-//   Sprung bei noch gedrückter Taste den ganzen Bereich dazwischen).
+//   der Editor ab der verdeckten Zeile begonnen hat (ein Sprung bei noch
+//   gedrückter Taste markierte den ganzen Bereich dazwischen).
 // - Strg+Klick auf einen Bezeichner im Kopf springt über SetDefinitionJump zu
 //   dessen Definition; wo der Kopf keinen Quelltext zeigt, wie ein Klick zum
 //   Namen im Kopf. Gehe zu Definition der IDE, die der Klick ebenfalls
@@ -115,11 +115,11 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI.Editor,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.StickyScroll,
   Atlas.Core.Editor.StickyPlan,
@@ -127,12 +127,13 @@ uses
   Atlas.Core.Editor.Guides,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.StickyPaint,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Core.Editor.GuideStroke;
 
 const
   cTickMs = 100;
@@ -258,7 +259,7 @@ type
     procedure RunPendingJump;
     procedure Clear;
     procedure Update;
-    procedure QueueInvalidate;
+    class procedure QueueInvalidate; static;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -273,16 +274,6 @@ type
     procedure ApplySettings;
     procedure ThemeChanged;
   end;
-
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
 
 { TEvents }
 
@@ -358,7 +349,7 @@ begin
   StickyShown := False;
   if mShown then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
   inherited Destroy;
 end;
@@ -440,7 +431,7 @@ begin
         Clear;
         if mShown then
         begin
-          InvalidateEditor;
+          TAtlasIdeEditorRefresh.InvalidateCurrent;
         end;
       end;
     TAtlasStickyRefresh.Reload:
@@ -452,17 +443,17 @@ begin
         AnalyzePairs(mSnapshot.Text);
         ReadSyntax;
         FRowsTop := -1;
-        InvalidateEditor;
+        TAtlasIdeEditorRefresh.InvalidateCurrent;
       end;
     TAtlasStickyRefresh.Repaint:
       // Bildlauf ohne Malen der oberen Zeilen (z. B. per Rollrad): ganz neu zeichnen.
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.InvalidateCurrent;
   else
     // Keep: warten bzw. nichts geändert.
   end;
 end;
 
-procedure TStickyState.QueueInvalidate;
+class procedure TStickyState.QueueInvalidate;
 begin
   if InvalidatePending then
   begin
@@ -474,7 +465,7 @@ begin
     procedure
     begin
       InvalidatePending := False;
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.InvalidateCurrent;
     end);
 end;
 
@@ -501,7 +492,7 @@ begin
     begin
       QueueInvalidate;
     end;
-    mRow := TAtlasStickyPlan.ScreenRow(Rect.Top, mHeight);
+    mRow := TAtlasGuideStroke.RowIndex(Rect.Top, mHeight);
     if mRow >= Length(FRows) then
     begin
       // Nicht übermalte Zeile: deren Hintergrund ist der des Editors.
@@ -845,7 +836,7 @@ begin
     end
     else
     begin
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.InvalidateCurrent;
     end;
   except
     on E: Exception do
@@ -955,7 +946,7 @@ begin
   end;
   if mWas or FOn then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 
@@ -969,7 +960,7 @@ begin
   FSchemeBackKnown := False;
   if FOn then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 

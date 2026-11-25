@@ -48,6 +48,8 @@ type
     function RoutineAt: TSyntaxNode;
     /// <summary>Klasse, in deren Deklaration oder Methode die Befehlszeile steht.</summary>
     function ClassAt(out AClass: TIndexSymbol): Boolean;
+    /// <summary>Ob die Unit ein Feld AName deklariert.</summary>
+    function HasField(const AName: string): Boolean;
     /// <summary>Zeile von "private" (nicht strict) in AClass; -1 ohne.</summary>
     function PrivateLine(const AClass: TIndexSymbol): Integer;
     /// <summary>Zeile, hinter der Code am Ende der implementation steht (vor initialization bzw. end.).</summary>
@@ -113,7 +115,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -312,6 +315,20 @@ begin
       (mSymbol.Container = '') then
     begin
       AClass := mSymbol;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TCommandSource.HasField(const AName: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in UnitIndex.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Name, AName) then
+    begin
       Exit(True);
     end;
   end;
@@ -692,13 +709,13 @@ var
   mCombined, mEdit: TTextEdit;
   mFound: Boolean;
 begin
-  mUsed := TUsesClauses.UsedUnits(ASource.Tree.Tokens);
+  mUsed := TPascalUses.UsedUnits(ASource.Tree.Tokens);
   mCombined := Default(TTextEdit);
   mFound := False;
   for mIndex := 0 to High(AUnits) do
   begin
-    if (AUnits[mIndex] <> '') and not TUsesClauses.IsUsed(mUsed, AUnits[mIndex], AContext.Namespaces) and
-      TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnits[mIndex], ASource.LineBreak, mEdit) then
+    if (AUnits[mIndex] <> '') and not TPascalUses.IsUsed(mUsed, AUnits[mIndex], AContext.Namespaces) and
+      TPascalUsesEdits.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnits[mIndex], ASource.LineBreak, mEdit) then
     begin
       // Alle Units landen an derselben Stelle: Texte zu einem Edit zusammenfassen.
       if not mFound then

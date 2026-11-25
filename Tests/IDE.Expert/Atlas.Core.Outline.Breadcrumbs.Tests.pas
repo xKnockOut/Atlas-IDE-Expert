@@ -49,12 +49,13 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Outline.Model,
-  Atlas.Core.Outline.Breadcrumbs;
+  Atlas.Core.Outline.Breadcrumbs,
+  Atlas.Core.Outline.CrumbMenu,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cCode =
@@ -138,42 +139,9 @@ begin
   Result := cCode.Split([#13#10]);
 end;
 
-function NodesOf(const AText: string): TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, AText);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
-end;
-
 function Nodes: TAtlasOutlineNodes;
 begin
-  Result := NodesOf(cCode);
-end;
-
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
-  end;
+  Result := TOutlineTest.NodesOf(cCode);
 end;
 
 function NamesOf(const ANodes: TAtlasOutlineNodes; const AItems: TArray<Integer>): string;
@@ -191,20 +159,6 @@ begin
   end;
 end;
 
-function Find(const ANodes: TAtlasOutlineNodes; const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(ANodes) do
-  begin
-    if ANodes[mIndex].Name = AName then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 { TAtlasBreadcrumbsTests }
 
 procedure TAtlasBreadcrumbsTests.PathInLocalProcedureOfMethod;
@@ -214,7 +168,7 @@ var
 begin
   mList := Nodes;
   mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, TAtlasCrumbRequest.Create(24, 4, 'uKundeForm', True, []));
-  Assert.AreEqual('uKundeForm › TfrmKunde › btnSpeichernClick › Pruefe', Joined(mCrumbs));
+  Assert.AreEqual('uKundeForm › TfrmKunde › btnSpeichernClick › Pruefe', TAtlasCrumbMenu.PathOf(mCrumbs));
   Assert.AreEqual<TAtlasBadgeKind>(TAtlasBadgeKind.Unit_, mCrumbs[0].Badge.Kind);
   // Unit-Glied: alle Elemente der Unit-Ebene als Menü und als Kinder.
   Assert.AreEqual('TfrmKunde,TAndere,Limit,Hilfe', NamesOf(mList, mCrumbs[0].Siblings));
@@ -222,25 +176,25 @@ begin
   // Das Glied der Methode ist die Deklaration im Typ.
   Assert.AreEqual(8, mList[mCrumbs[2].Node].StartLine);
   // Ohne Unit-Namen (Vorgabe).
-  Assert.AreEqual('TfrmKunde › btnSpeichernClick', Joined(TAtlasBreadcrumbs.Path(mList, Lines,
+  Assert.AreEqual('TfrmKunde › btnSpeichernClick', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(mList, Lines,
     TAtlasCrumbRequest.Create(28, 2, 'uKundeForm', False, []))));
 end;
 
 procedure TAtlasBreadcrumbsTests.PathInInterfaceEndsAtMember;
 begin
-  Assert.AreEqual('TfrmKunde › SpeichereAdresse', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('TfrmKunde › SpeichereAdresse', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(10, 8, '', False, []))));
-  Assert.AreEqual('TfrmKunde › btnSpeichern', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('TfrmKunde › btnSpeichern', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(7, 6, '', False, []))));
-  Assert.AreEqual('Limit', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('Limit', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(20, 7, '', False, []))));
 end;
 
 procedure TAtlasBreadcrumbsTests.PathThroughNestedTypes;
 begin
-  Assert.AreEqual('TfrmKunde › TInner › Tief', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('TfrmKunde › TInner › Tief', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(16, 12, '', False, []))));
-  Assert.AreEqual('TfrmKunde › TInner › Tief', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('TfrmKunde › TInner › Tief', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(33, 40, '', False, []))),
     'Rumpf der Methode des verschachtelten Typs');
 end;
@@ -258,9 +212,9 @@ begin
   Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.InterfacePart, TAtlasBreadcrumbs.SectionAt(mText, 5));
   Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.ImplementationPart, TAtlasBreadcrumbs.SectionAt(mText, 30));
   Assert.AreEqual<TAtlasCodeSection>(TAtlasCodeSection.Initialization_, TAtlasBreadcrumbs.SectionAt(mText, 36));
-  Assert.AreEqual('U › uses', Joined(TAtlasBreadcrumbs.Path(Nodes, mText,
+  Assert.AreEqual('U › uses', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, mText,
     TAtlasCrumbRequest.Create(3, 4, 'U', True, []))));
-  Assert.AreEqual('initialization', Joined(TAtlasBreadcrumbs.Path(Nodes, mText,
+  Assert.AreEqual('initialization', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, mText,
     TAtlasCrumbRequest.Create(36, 2, 'U', False, []))));
 end;
 
@@ -272,7 +226,7 @@ var
 begin
   mText := cDirectiveCode.Split([#13#10]);
   mTable := TAtlasBreadcrumbs.SectionTable(mText);
-  Assert.AreEqual(Length(mText), Length(mTable));
+  Assert.AreEqual(Integer(Length(mText)), Integer(Length(mTable)));
   for mLine := 0 to High(mText) do
   begin
     Assert.AreEqual<TAtlasCodeSection>(TAtlasBreadcrumbs.SectionAt(mText, mLine), mTable[mLine], 'Zeile ' + IntToStr(mLine));
@@ -301,7 +255,7 @@ begin
   for mSource in [cCode, cDirectiveCode] do
   begin
     mText := mSource.Split([#13#10]);
-    mList := NodesOf(mSource);
+    mList := TOutlineTest.NodesOf(mSource);
     mPrepared := TAtlasBreadcrumbs.Prepare(mList, mText);
     for mLine := 0 to Length(mText) do
     begin
@@ -309,13 +263,14 @@ begin
       begin
         mExpected := TAtlasBreadcrumbs.Path(mList, mText, TAtlasCrumbRequest.Create(mLine, mCharacter, 'U', True, cAll));
         mActual := TAtlasBreadcrumbs.Path(mPrepared, TAtlasCrumbRequest.Create(mLine, mCharacter, 'U', True, cAll));
-        Assert.AreEqual(Joined(mExpected), Joined(mActual), Format('Zeile %d, Spalte %d', [mLine, mCharacter]));
+        Assert.AreEqual(TAtlasCrumbMenu.PathOf(mExpected), TAtlasCrumbMenu.PathOf(mActual),
+          Format('Zeile %d, Spalte %d', [mLine, mCharacter]));
       end;
     end;
   end;
   mText := cDirectiveCode.Split([#13#10]);
   Assert.AreEqual('U › Rümpfe › TKunde › Speichere › {$IFDEF DEBUG}',
-    Joined(TAtlasBreadcrumbs.Path(TAtlasBreadcrumbs.Prepare(NodesOf(cDirectiveCode), mText),
+    TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(TAtlasBreadcrumbs.Prepare(TOutlineTest.NodesOf(cDirectiveCode), mText),
     TAtlasCrumbRequest.Create(23, 4, 'U', True, [TAtlasCrumbPart.Regions, TAtlasCrumbPart.Conditionals]))));
 end;
 
@@ -346,7 +301,7 @@ var
 begin
   mList := Nodes;
   mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, TAtlasCrumbRequest.Create(34, 20, '', False, []));
-  Assert.AreEqual('Hilfe', Joined(mCrumbs));
+  Assert.AreEqual('Hilfe', TAtlasCrumbMenu.PathOf(mCrumbs));
   Assert.AreEqual('Hilfe', NamesOf(mList, mCrumbs[0].Siblings));
   mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, TAtlasCrumbRequest.Create(20, 7, '', False, []));
   Assert.AreEqual('Limit', NamesOf(mList, mCrumbs[0].Siblings));
@@ -373,13 +328,13 @@ var
   mDeclaration: Integer;
 begin
   mList := Nodes;
-  mDeclaration := Find(mList, 'SpaltenBreite');
+  mDeclaration := TOutlineTest.Find(mList, 'SpaltenBreite');
   Assert.AreEqual(31, mList[TAtlasBreadcrumbs.Target(mList, mDeclaration, True)].StartLine);
   Assert.AreEqual(mDeclaration, TAtlasBreadcrumbs.Target(mList, mDeclaration, False));
   // Rumpf → Deklaration.
   Assert.AreEqual(mDeclaration, TAtlasBreadcrumbs.Target(mList, mList[mDeclaration].Body, False));
   // Lokale Routine: sie selbst.
-  Assert.AreEqual(Find(mList, 'Pruefe'), TAtlasBreadcrumbs.Target(mList, Find(mList, 'Pruefe'), True));
+  Assert.AreEqual(TOutlineTest.Find(mList, 'Pruefe'), TAtlasBreadcrumbs.Target(mList, TOutlineTest.Find(mList, 'Pruefe'), True));
   Assert.AreEqual(-1, TAtlasBreadcrumbs.Target(mList, -1, True));
 end;
 
@@ -390,11 +345,11 @@ var
 begin
   mList := Nodes;
   mText := Lines;
-  Assert.AreEqual('pr', TAtlasBreadcrumbs.BadgeOf(mList, mText, Find(mList, 'SpeichereAdresse')).Code);
-  Assert.AreEqual('fn', TAtlasBreadcrumbs.BadgeOf(mList, mText, Find(mList, 'SpaltenBreite')).Code);
-  Assert.AreEqual('ty', TAtlasBreadcrumbs.BadgeOf(mList, mText, Find(mList, 'TfrmKunde')).Code);
-  Assert.AreEqual('fd', TAtlasBreadcrumbs.BadgeOf(mList, mText, Find(mList, 'btnSpeichern')).Code);
-  Assert.AreEqual('co', TAtlasBreadcrumbs.BadgeOf(mList, mText, Find(mList, 'Limit')).Code);
+  Assert.AreEqual('pr', TAtlasBreadcrumbs.BadgeOf(mList, mText, TOutlineTest.Find(mList, 'SpeichereAdresse')).Code);
+  Assert.AreEqual('fn', TAtlasBreadcrumbs.BadgeOf(mList, mText, TOutlineTest.Find(mList, 'SpaltenBreite')).Code);
+  Assert.AreEqual('ty', TAtlasBreadcrumbs.BadgeOf(mList, mText, TOutlineTest.Find(mList, 'TfrmKunde')).Code);
+  Assert.AreEqual('fd', TAtlasBreadcrumbs.BadgeOf(mList, mText, TOutlineTest.Find(mList, 'btnSpeichern')).Code);
+  Assert.AreEqual('co', TAtlasBreadcrumbs.BadgeOf(mList, mText, TOutlineTest.Find(mList, 'Limit')).Code);
 end;
 
 procedure TAtlasBreadcrumbsTests.UnitCrumbListsUnitMembers;
@@ -407,7 +362,7 @@ begin
   Assert.AreEqual('TfrmKunde,TAndere,Limit,Hilfe', NamesOf(mList, TAtlasBreadcrumbs.UnitMembers(mList)));
   // Auch in uses und initialization hat das Unit-Glied sein Menü.
   mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, TAtlasCrumbRequest.Create(3, 4, 'U', True, []));
-  Assert.AreEqual('U › uses', Joined(mCrumbs));
+  Assert.AreEqual('U › uses', TAtlasCrumbMenu.PathOf(mCrumbs));
   Assert.AreEqual(4, Integer(Length(mCrumbs[0].Siblings)));
   Assert.AreEqual(0, Integer(Length(mCrumbs[1].Children)), 'uses ohne Kinder');
   Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.UnitMembers(nil))));
@@ -420,7 +375,7 @@ var
 begin
   mList := Nodes;
   mCrumbs := TAtlasBreadcrumbs.Path(mList, Lines, TAtlasCrumbRequest.Create(24, 4, '', False, []));
-  Assert.AreEqual('TfrmKunde › btnSpeichernClick › Pruefe', Joined(mCrumbs));
+  Assert.AreEqual('TfrmKunde › btnSpeichernClick › Pruefe', TAtlasCrumbMenu.PathOf(mCrumbs));
   // Typ: alle Mitglieder in Quelltextreihenfolge.
   Assert.AreEqual('btnSpeichern,btnSpeichernClick,SpeichereAdresse,SpaltenBreite,Display,TInner',
     NamesOf(mList, mCrumbs[0].Children));
@@ -429,9 +384,9 @@ begin
   // Lokale Routine ohne eigene lokale Routinen.
   Assert.AreEqual(0, Integer(Length(mCrumbs[2].Children)));
   // Verschachtelter Typ.
-  Assert.AreEqual('Tief', NamesOf(mList, TAtlasBreadcrumbs.Children(mList, Find(mList, 'TInner'))));
+  Assert.AreEqual('Tief', NamesOf(mList, TAtlasBreadcrumbs.Children(mList, TOutlineTest.Find(mList, 'TInner'))));
   // Methode ohne lokale Routinen, ungültiger Knoten.
-  Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(mList, Find(mList, 'SpaltenBreite')))));
+  Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(mList, TOutlineTest.Find(mList, 'SpaltenBreite')))));
   Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(mList, -1))));
   Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Children(mList, Length(mList)))));
 end;
@@ -457,7 +412,7 @@ begin
   Assert.AreEqual('TfrmKunde.btnSpeichernClick,TfrmKunde.SpeichereAdresse,TfrmKunde.SpaltenBreite,' +
     'TfrmKunde.Display,TfrmKunde.TInner.Tief,Hilfe', mNames);
   Assert.AreEqual('', TAtlasBreadcrumbs.QualifiedName(mList, -1));
-  Assert.AreEqual('TAndere', TAtlasBreadcrumbs.QualifiedName(mList, Find(mList, 'TAndere')));
+  Assert.AreEqual('TAndere', TAtlasBreadcrumbs.QualifiedName(mList, TOutlineTest.Find(mList, 'TAndere')));
   Assert.AreEqual(0, Integer(Length(TAtlasBreadcrumbs.Routines(nil))));
 end;
 

@@ -17,8 +17,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.Core.Status.Lines,
-  Atlas.UI.Style.Symbol,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Vcl.Images.Symbol,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Search;
 
@@ -43,6 +43,10 @@ type
     cSearchWidth = 320;
     /// <summary>Höhe der Suchzeile unter dem Gruß, wenn das Feld daneben keinen Platz hat.</summary>
     cSearchRowHeight = 36;
+    /// <summary>Ränder des Suchfelds rechts im Kopf: links, oben und unten, rechts.</summary>
+    cSearchMarginLeft = 8;
+    cSearchMarginY = 19;
+    cSearchMarginRight = 12;
   private
     FSymbol: TAtlasSymbolImage;
     FGreeting: TLabel;
@@ -92,7 +96,26 @@ uses
   Atlas.Core.Welcome.Greeting,
   System.Math,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Theme.Service;
+
+const
+  // Maße in logischen Pixeln bei 96 dpi.
+  /// <summary>Abstand des Symbols vom linken Rand und vom Gruß.</summary>
+  cSymbolLeft = 8;
+  cSymbolGap = 20;
+  /// <summary>Schriftgröße des Grußes (Punkt).</summary>
+  cGreetingFontSize = 14;
+  /// <summary>Oberkante der Zeile unter dem Gruß.</summary>
+  cInfoTop = 38;
+  /// <summary>Stunde für die Tageszeit, bis die erste Angabe kommt.</summary>
+  cDefaultHour = 12;
+  /// <summary>Abstand zwischen Text und Suchfeld; mit weniger Platz rückt das Feld in eine eigene Zeile.</summary>
+  cTextSearchGap = 16;
+  cSearchMinGap = 20;
+  /// <summary>Rand unter dem Suchfeld in der eigenen Zeile.</summary>
+  cSearchBelowMargin = 8;
 
 { TAtlasWelcomeHeaderFrame }
 
@@ -103,24 +126,25 @@ begin
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Self;
   FSymbol.LogicalSize := cSymbolSize;
-  FSymbol.Left := FSymbol.ScaleValue(8);
+  FSymbol.Left := FSymbol.ScaleValue(cSymbolLeft);
   FSymbol.Top := (cHeaderHeight - cSymbolSize) div 2;
   FGreeting := TLabel.Create(Self);
   FGreeting.Parent := Self;
-  FGreeting.Left := FGreeting.ScaleValue(cSymbolSize) + FGreeting.ScaleValue(20);
+  FGreeting.Left := FGreeting.ScaleValue(cSymbolSize) + FGreeting.ScaleValue(cSymbolGap);
   FGreeting.Top := FGreeting.ScaleValue(10);
-  FGreeting.Font.Size := 14;
+  FGreeting.Font.Size := cGreetingFontSize;
   FGreeting.Font.Style := [fsBold];
   FInfo := TLabel.Create(Self);
   FInfo.Parent := Self;
   FInfo.Left := FGreeting.Left;
-  FInfo.Top := FInfo.ScaleValue(38);
-  FInfo.Font.Color := clGrayText;
+  FInfo.Top := FInfo.ScaleValue(cInfoTop);
+  TAtlasUiTheme.UseFontColor(FInfo, clGrayText);
   FSearchHost := TPanel.Create(Self);
   FSearchHost.Parent := Self;
   FSearchHost.Align := alRight;
   FSearchHost.AlignWithMargins := True;
-  FSearchHost.Margins.SetBounds(8, 19, 12, 19);
+  TAtlasControlScaling.SetMargins(FSearchHost, cSearchMarginLeft, cSearchMarginY, cSearchMarginRight,
+    cSearchMarginY);
   FSearchHost.Width := 0;
   FSearchHost.BevelOuter := bvNone;
   FSearchHost.ParentBackground := True;
@@ -128,7 +152,7 @@ begin
   FData.Units := -1;
   FData.Percent := -1;
   FData.Greeting := True;
-  FData.Hour := 12;
+  FData.Hour := cDefaultHour;
 end;
 
 procedure TAtlasWelcomeHeaderFrame.Resize;
@@ -160,19 +184,20 @@ begin
   end;
   FArranging := True;
   try
-    mTextRight := FGreeting.Left + Max(FGreeting.Width, FInfo.Width) + ScaleValue(16);
-    mBelow := ClientWidth - mTextRight < ScaleValue(cSearchWidth) + ScaleValue(20);
+    mTextRight := FGreeting.Left + Max(FGreeting.Width, FInfo.Width) + ScaleValue(cTextSearchGap);
+    mBelow := ClientWidth - mTextRight < ScaleValue(cSearchWidth) + ScaleValue(cSearchMinGap);
     if mBelow then
     begin
       FSearchHost.Align := alBottom;
-      FSearchHost.Margins.SetBounds(FGreeting.Left, 0, ScaleValue(12), ScaleValue(8));
-      FSearchHost.Height := ScaleValue(cSearchRowHeight) - ScaleValue(8);
+      FSearchHost.Margins.SetBounds(FGreeting.Left, 0, ScaleValue(cSearchMarginRight), ScaleValue(cSearchBelowMargin));
+      FSearchHost.Height := ScaleValue(cSearchRowHeight) - ScaleValue(cSearchBelowMargin);
       Height := ScaleValue(cHeaderHeight + cSearchRowHeight);
     end
     else
     begin
       FSearchHost.Align := alRight;
-      FSearchHost.Margins.SetBounds(8, 19, 12, 19);
+      TAtlasControlScaling.SetMargins(FSearchHost, cSearchMarginLeft, cSearchMarginY, cSearchMarginRight,
+        cSearchMarginY);
       FSearchHost.Width := ScaleValue(cSearchWidth);
       Height := ScaleValue(cHeaderHeight);
     end;

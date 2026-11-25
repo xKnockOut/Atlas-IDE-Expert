@@ -34,8 +34,8 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.ExtCtrls,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Updates.Contract,
   Atlas.Core.Updates.Check,
   Atlas.Core.Updates.Install,
@@ -63,7 +63,7 @@ type
     FLineAction: Boolean;
     FInstaller: TAtlasIdeUpdateInstaller;
     procedure StartInstaller;
-    procedure PrepareUpdate(const ARelease: TAtlasRelease);
+    procedure PrepareUpdate(const ARelease: TAtlasRelease; AAllowSource: Boolean);
     procedure AutoPrepare;
     procedure OfferUpdate(const ARelease: TAtlasRelease);
     procedure OpenChanges(const ARelease: TAtlasRelease);
@@ -113,21 +113,19 @@ uses
   System.Types,
   System.IOUtils,
   Vcl.Forms,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Files.DataFile,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Files.DataFile,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Updates.Offer,
   Atlas.UI.Updates.Selection,
   Atlas.UI.Updates.Texts,
   Atlas.Text.UpdateRun,
-  ToolsAPI,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 { TAtlasIdeUpdates }
 
@@ -156,12 +154,13 @@ begin
   end;
 end;
 
-procedure TAtlasIdeUpdates.PrepareUpdate(const ARelease: TAtlasRelease);
+procedure TAtlasIdeUpdates.PrepareUpdate(const ARelease: TAtlasRelease; AAllowSource: Boolean);
 begin
   FInstaller.Prepare(ARelease.Version, TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
-    TAtlasPluginVersion.cVersion), TAtlasIdeSettings.Current.UpdatesNewModules);
+    TAtlasPluginVersion.cVersion), TAtlasIdeSettings.Current.UpdatesNewModules, AAllowSource);
   UpdateLine;
 end;
+
 
 procedure TAtlasIdeUpdates.AutoPrepare;
 var
@@ -173,7 +172,7 @@ begin
   if UpdateReady(mRelease) and not FInstaller.Preparing and not FInstaller.TryStage(mRelease.Version, mStage) and
     TAtlasUpdateInstall.PrepareWithoutAsking(InstallMode, TAtlasPluginVersion.cVersion, mRelease.Version) then
   begin
-    PrepareUpdate(mRelease);
+    PrepareUpdate(mRelease, False);
   end;
 end;
 
@@ -182,10 +181,23 @@ var
   mStage: TUpdateStage;
   mChosen: TArray<string>;
 begin
-  // Vorbereitet: Module wählen oder verwerfen (Mockup 6); sonst anbieten (Mockup 2).
+  // Vorbereitet: Module wählen oder verwerfen; wartet auf die Bestätigung zum Bauen: fragen; sonst anbieten.
+  if FInstaller.TryStage(ARelease.Version, mStage) and TAtlasUpdateInstall.AwaitsSourceConfirmation(mStage) then
+  begin
+    // Kein Paket für diese IDE: Bauen nur nach ausdrücklicher Zustimmung, weil das Ergebnis keine Signatur trägt.
+    case TAtlasUpdateOffer.ConfirmSource(ARelease.Version) of
+      TAtlasUpdateSourceAnswer.Build:
+        PrepareUpdate(ARelease, True);
+      TAtlasUpdateSourceAnswer.Discard:
+        FInstaller.Discard(ARelease.Version);
+      TAtlasUpdateSourceAnswer.Later: ;
+    end;
+    UpdateLine;
+    Exit;
+  end;
   if FInstaller.TryStage(ARelease.Version, mStage) and (mStage.Phase = TUpdatePhase.Ready) then
   begin
-    case TAtlasUpdateOffer.Ready(ARelease.Version, Length(mStage.Candidates) > 0) of
+    case TAtlasUpdateOffer.Ready(ARelease.Version, Length(mStage.Candidates) > 0, mStage.FromSource) of
       TAtlasUpdateReadyAnswer.Modules:
         if TAtlasUpdateSelectionDialog.Choose(ARelease.Version, mStage.Candidates, mChosen) then
         begin
@@ -201,7 +213,7 @@ begin
   case TAtlasUpdateOffer.Offer(ARelease.Version, TAtlasPluginVersion.cVersion,
     TAtlasUpdateInstall.IsMajorJump(TAtlasPluginVersion.cVersion, ARelease.Version)) of
     TAtlasUpdateOfferAnswer.Install:
-      PrepareUpdate(ARelease);
+      PrepareUpdate(ARelease, False);
     TAtlasUpdateOfferAnswer.Changes:
       OpenChanges(ARelease);
     TAtlasUpdateOfferAnswer.Later: ;
@@ -213,17 +225,6 @@ begin
   Log('Update ' + ARelease.Version + ': Änderungen im Browser geöffnet');
   // Nur https-Adressen (TAtlasUpdates.TryParse bzw. Pending); heruntergeladen wird im Browser.
   ShellExecute(0, 'open', PChar(ARelease.ChangesUrl), nil, nil, SW_SHOWNORMAL);
-end;
-
-function RegistryKey: string;
-var
-  mServices: IOTAServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Result := mServices.GetBaseRegistryKey;
-  end;
 end;
 
 procedure TAtlasIdeUpdates.StartInstaller;
@@ -238,7 +239,7 @@ begin
   mEnvironment.Platform := 'Win32';
 {$ENDIF}
   mEnvironment.Ide := TAtlasUpdates.IdeVersion;
-  mEnvironment.RegistryKey := RegistryKey;
+  mEnvironment.RegistryKey := TAtlasIdeHost.BaseRegistryKey;
   mEnvironment.Installed := TAtlasPluginVersion.cVersion;
   mEnvironment.UpdaterExists := FileExists(TAtlasUpdateInstall.UpdaterOf(mEnvironment.PluginDir));
   FInstaller.Start(mEnvironment, TAtlasUpdateInstall.UpdatesRoot(GetEnvironmentVariable('LOCALAPPDATA')), FOnMessage,
@@ -438,7 +439,7 @@ begin
         Log('Update-Prüfung: neue Version ' + AResult.Release.Version);
         if Assigned(FOnMessage) then
         begin
-          FOnMessage(TAtlasStrings.Fmt(TAtlasTextId.UpdatesAvailable, [AResult.Release.Version,
+          FOnMessage(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesAvailable, [AResult.Release.Version,
             TAtlasPluginVersion.cVersion, AResult.Release.ChangesUrl]));
         end;
         AutoPrepare;

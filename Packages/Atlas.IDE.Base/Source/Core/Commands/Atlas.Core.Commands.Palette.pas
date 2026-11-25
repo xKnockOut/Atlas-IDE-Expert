@@ -24,43 +24,13 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Core.Commands.Contract;
 
 type
-  TAtlasCommand = record
-    /// <summary>Eindeutig, z. B. Name der Aktion oder "Atlas.Options".</summary>
-    Id: string;
-    Caption: string;
-    /// <summary>Menüpfad bzw. Kategorie, gedimmt angezeigt ("Projekt › Erzeugen").</summary>
-    Path: string;
-    ShortCut: string;
-    Description: string;
-    IsAtlas: Boolean;
-    /// <summary>Abzeichen rechts in der Zeile (Zustand eines Issues, #1270); '' ohne.</summary>
-    Badge: string;
-  end;
-
-{$SCOPEDENUMS ON}
-  /// <summary>Wie ein Eintrag einer Zusatzgruppe ausgeführt wird: Enter (Open), Strg+Enter (Start),
-  /// Umschalt+Enter (Browse), Strg+C (Copy, die Palette bleibt offen), Alt+Enter (Toggle: Schnellschalter einer
-  /// Einstellung umschalten, #1884).</summary>
-  TAtlasPaletteAction = (Open, Start, Browse, Copy, Toggle);
-{$SCOPEDENUMS OFF}
-
-  /// <summary>Gruppe einer Zusatzquelle unter den Befehlen (#1270).</summary>
-  TAtlasPaletteGroup = record
-    /// <summary>Überschrift ("Issues"); '' = keine Gruppe.</summary>
-    Title: string;
-    /// <summary>Zeile unter der Überschrift ("Suche im Tracker …", Fehler, Tastenhinweis); '' ohne.</summary>
-    Status: string;
-    /// <summary>Text, dessen Zeichen in den Einträgen hervorgehoben werden.</summary>
-    Highlight: string;
-    Items: TArray<TAtlasCommand>;
-    class function None: TAtlasPaletteGroup; static;
-    class function Create(const ATitle, AStatus, AHighlight: string;
-      const AItems: TArray<TAtlasCommand>): TAtlasPaletteGroup; static;
-    function Visible: Boolean;
-  end;
+  TAtlasCommand = Atlas.Core.Commands.Contract.TAtlasCommand;
+  TAtlasPaletteAction = Atlas.Core.Commands.Contract.TAtlasPaletteAction;
+  TAtlasPaletteGroup = Atlas.Core.Commands.Contract.TAtlasPaletteGroup;
 
   /// <summary>Art einer Zeile: Befehl, Überschrift und Status der Zusatzgruppe, Eintrag der Gruppe.</summary>
 {$SCOPEDENUMS ON}
@@ -92,40 +62,10 @@ type
     class function ActionOf(ACtrl, AShift, AAlt: Boolean): TAtlasPaletteAction; overload; static;
   end;
 
-  /// <summary>Zusatzquelle der Palette (#1270), z. B. Issues im Tracker. Alle Aufrufe im Hauptthread.</summary>
-  IAtlasPaletteSource = interface
-    ['{D1D5D951-0AD7-4D3E-80D8-5021BD5F0C41}']
-    /// <summary>Palette geöffnet; AShow zeigt bzw. ersetzt die Gruppe, auch später (nach Closed wirkungslos).
-    /// </summary>
-    procedure Opened(const AShow: TProc<TAtlasPaletteGroup>);
-    /// <summary>Eingabe geändert (auch auf leer).</summary>
-    procedure Changed(const APattern: string);
-    /// <summary>Eintrag der Gruppe ausgeführt; außer bei Copy ist die Palette danach geschlossen.</summary>
-    procedure Execute(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);
-    /// <summary>Palette geschlossen: laufende Anfragen abbrechen, AShow nicht mehr rufen.</summary>
-    procedure Closed;
-  end;
-
-  /// <summary>Liefert beim Öffnen der Palette eine Zusatzquelle (#1270, #1455); ein Modul stellt es über seinen
-  /// Scope bereit (etwa „Meine Issues“). nil = gerade keine Quelle. Hauptthread.</summary>
-  IAtlasPaletteSourceProvider = interface
-    ['{C737B249-C8ED-44D7-A33E-BEB867FED4B5}']
-    function PaletteSource: IAtlasPaletteSource;
-  end;
-
-  /// <summary>Atlas-Befehle anmelden (Palette, #520); ohne VCL und Open Tools API. Features melden ihre Befehle
-  /// darüber an, statt die Palette der IDE-Schicht zu importieren. Ohne Referenzzählung: Die Palette
-  /// gehört der Composition; Empfänger speichern die Schnittstelle nicht.</summary>
-  IAtlasCommandRegistry = interface
-    ['{57AA1265-60F8-4655-BC7B-1AE31AC48481}']
-    /// <summary>Atlas-Befehl für die Palette (Beschriftung mit „Atlas: “ davor).</summary>
-    procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc); overload;
-    /// <summary>Wie oben; der Befehl erscheint nur, solange AVisible True liefert (#520).</summary>
-    procedure RegisterCommand(const AId, ACaption, ADescription: string; const AProc: TProc;
-      const AVisible: TFunc<Boolean>); overload;
-  end;
-
   TAtlasCommandHistory = class
+  public const
+    /// <summary>Vorgabe für Kind.</summary>
+    cDefaultKind = 'Verlauf der Befehlspalette';
   private type
     TEntry = record
       Count: Integer;
@@ -151,8 +91,8 @@ type
     function LoadFromFile(const AFileName: string): TAtlasDataLoad;
     /// <summary>Schreibt atomar; False, wenn LoadFromFile die vorhandene Datei nicht lesen konnte.</summary>
     function SaveToFile(const AFileName: string): Boolean;
-    /// <summary>Name der Ablage im Protokoll; Vorgabe „Verlauf der Befehlspalette“ (Schnell öffnen nutzt die
-    /// Klasse auch).</summary>
+    /// <summary>Name der Ablage im Protokoll; Vorgabe cDefaultKind (Schnell öffnen nutzt die Klasse auch).
+    /// </summary>
     property Kind: string read FKind write FKind;
   end;
 
@@ -176,31 +116,8 @@ uses
   System.Math,
   System.JSON,
   System.Generics.Defaults,
+  Atlas.Text.Fuzzy,
   Atlas.Core.Completion.Matching;
-
-{ TAtlasPaletteGroup }
-
-class function TAtlasPaletteGroup.None: TAtlasPaletteGroup;
-begin
-  Result.Title := '';
-  Result.Status := '';
-  Result.Highlight := '';
-  Result.Items := nil;
-end;
-
-class function TAtlasPaletteGroup.Create(const ATitle, AStatus, AHighlight: string;
-  const AItems: TArray<TAtlasCommand>): TAtlasPaletteGroup;
-begin
-  Result.Title := ATitle;
-  Result.Status := AStatus;
-  Result.Highlight := AHighlight;
-  Result.Items := AItems;
-end;
-
-function TAtlasPaletteGroup.Visible: Boolean;
-begin
-  Result := Title <> '';
-end;
 
 { TAtlasPaletteRows }
 
@@ -342,7 +259,7 @@ constructor TAtlasCommandHistory.Create;
 begin
   inherited Create;
   FEntries := TDictionary<string, TEntry>.Create;
-  FKind := 'Verlauf der Befehlspalette';
+  FKind := cDefaultKind;
 end;
 
 destructor TAtlasCommandHistory.Destroy;
@@ -366,6 +283,13 @@ begin
 end;
 
 function TAtlasCommandHistory.Boost(const AId: string): Integer;
+const
+  // Zuletzt ausgeführt: bis cRecentBoost, je späterem Befehl cRecentStep weniger; Häufigkeit: je Aufruf
+  // cCountStep, höchstens cCountBoost. Zusammen bleibt der Zuschlag unter 100.
+  cRecentBoost = 70;
+  cRecentStep = 10;
+  cCountBoost = 29;
+  cCountStep = 3;
 var
   mEntry: TEntry;
 begin
@@ -374,8 +298,9 @@ begin
   begin
     Exit;
   end;
-  // Der zuletzt ausgeführte Befehl steht vorn (bis 70), Häufigkeit gibt bis 29 dazu.
-  Result := Max(0, 70 - Integer(FTick - mEntry.Last) * 10) + Min(29, mEntry.Count * 3);
+  // Der zuletzt ausgeführte Befehl steht vorn, Häufigkeit gibt etwas dazu.
+  Result := Max(0, cRecentBoost - Integer(FTick - mEntry.Last) * cRecentStep) +
+    Min(cCountBoost, mEntry.Count * cCountStep);
 end;
 
 function TAtlasCommandHistory.Parse(const AText: string): Boolean;
@@ -396,7 +321,7 @@ begin
     end;
     for mPair in TJSONObject(mRoot) do
     begin
-      // Früher brach ein kurzes oder falsch getyptes Paar das Lesen mit einer Ausnahme ab.
+      // Ein kurzes oder falsch getyptes Paar wird übergangen, statt das Lesen mit einer Ausnahme abzubrechen.
       if not (mPair.JsonValue is TJSONArray) then
       begin
         Continue;
@@ -459,20 +384,6 @@ begin
 end;
 
 /// <summary>Alle Zeichen von APattern kommen in AText in dieser Reihenfolge vor (Großschreibung egal).</summary>
-function IsSubsequence(const APattern, AText: string): Boolean;
-var
-  mPatternIndex, mTextIndex: Integer;
-begin
-  mPatternIndex := 1;
-  for mTextIndex := 1 to Length(AText) do
-  begin
-    if (mPatternIndex <= Length(APattern)) and (UpCase(AText[mTextIndex]) = UpCase(APattern[mPatternIndex])) then
-    begin
-      Inc(mPatternIndex);
-    end;
-  end;
-  Result := mPatternIndex > Length(APattern);
-end;
 
 const
   cScoreLoose = 100;
@@ -486,6 +397,9 @@ begin
 end;
 
 class function TAtlasCommandPalette.CleanCaption(const ACaption: string): string;
+const
+  cDots = '...';
+  cEllipsis = '…';
 var
   mIndex: Integer;
 begin
@@ -508,13 +422,13 @@ begin
     Inc(mIndex);
   end;
   Result := Trim(Result);
-  if Result.EndsWith('...') then
+  if Result.EndsWith(cDots) then
   begin
-    Result := TrimRight(Copy(Result, 1, Length(Result) - 3));
+    Result := TrimRight(Copy(Result, 1, Length(Result) - Length(cDots)));
   end
-  else if Result.EndsWith('…') then
+  else if Result.EndsWith(cEllipsis) then
   begin
-    Result := TrimRight(Copy(Result, 1, Length(Result) - 1));
+    Result := TrimRight(Copy(Result, 1, Length(Result) - Length(cEllipsis)));
   end;
 end;
 
@@ -531,7 +445,8 @@ begin
       Result := Result div 2;
     end;
   end;
-  if (Result = TAtlasCompletionMatcher.cNoMatch) and IsSubsequence(APattern.Replace(' ', ''), ACommand.Caption) then
+  if (Result = TAtlasCompletionMatcher.cNoMatch) and
+    TTextFuzzy.IsSubsequence(APattern.Replace(' ', ''), ACommand.Caption) then
   begin
     Result := cScoreLoose;
   end;

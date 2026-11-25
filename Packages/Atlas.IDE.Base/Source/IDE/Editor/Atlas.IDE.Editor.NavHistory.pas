@@ -54,12 +54,12 @@ uses
   Vcl.Forms,
   ToolsAPI,
   DockForm,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Host;
@@ -88,17 +88,26 @@ type
   TNavState = class(TComponent)
   private
     procedure Tick(Sender: TObject);
+  private
+    FHistory: TAtlasNavHistory;
+    FTimer: TTimer;
+    FNotifier: TEditNotifier;
+    FNotifierIndex: Integer;
+    FLast: TAtlasNavPlace;
+    FModified: Boolean;
+    FLineCounts: TDictionary<string, Integer>;
   public
-    History: TAtlasNavHistory;
-    Timer: TTimer;
-    Notifier: TEditNotifier;
-    NotifierIndex: Integer;
+    property History: TAtlasNavHistory read FHistory write FHistory;
+    // Nur lesen: Der Timer gehört dem Objekt selbst (Owner Self), ein fremder bräuchte FreeNotification.
+    property Timer: TTimer read FTimer;
+    property Notifier: TEditNotifier read FNotifier write FNotifier;
+    property NotifierIndex: Integer read FNotifierIndex write FNotifierIndex;
     /// <summary>Letzte gelesene Stelle; FileName = '' ohne.</summary>
-    Last: TAtlasNavPlace;
+    property Last: TAtlasNavPlace read FLast write FLast;
     /// <summary>Seit dem letzten Tick wurde getippt: kein Sprung.</summary>
-    Modified: Boolean;
+    property Modified: Boolean read FModified write FModified;
     /// <summary>Großgeschriebener Dateiname → Zeilenzahl des Puffers.</summary>
-    LineCounts: TDictionary<string, Integer>;
+    property LineCounts: TDictionary<string, Integer> read FLineCounts write FLineCounts;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Edited(const AView: IOTAEditView);
@@ -197,7 +206,7 @@ begin
   NotifierIndex := -1;
   History := TAtlasNavHistory.Create;
   LineCounts := TDictionary<string, Integer>.Create;
-  Timer := TTimer.Create(Self);
+  FTimer := TTimer.Create(Self);
   Timer.Interval := cTickMs;
   Timer.OnTimer := Tick;
   Timer.Enabled := True;

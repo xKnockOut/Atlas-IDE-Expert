@@ -31,8 +31,8 @@ uses
   Vcl.ComCtrls,
   Vcl.CheckLst,
   Atlas.Core.Editor.ClassExtraction,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListView;
 
 type
   TAtlasExtractMembersDialog = class(TAtlasDialog)
@@ -53,8 +53,7 @@ type
     FFitted: Boolean;
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     function AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer; AControl: TWinControl): Integer;
-    /// <summary>Spalten nach Inhalt; Fenster bis zum Inhalt vergrößern, höchstens cMaxScreenShare des
-    /// Arbeitsbereichs.</summary>
+    /// <summary>Spalten nach Inhalt; Fenster bis zum Inhalt vergrößern, höchstens MaxInitialSize.</summary>
     procedure FitToContent;
     /// <summary>Knöpfe, Hinweise des Servers und Fehlerzeile unten.</summary>
     procedure CreateFooter;
@@ -100,10 +99,10 @@ uses
   System.Math,
   Vcl.Themes,
   Vcl.Graphics,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   // Anfangsbreiten der Spalten Mitglied, Art, Sichtbarkeit und Grund (logische Pixel), bis FitToContent sie nach
@@ -131,10 +130,15 @@ const
   cLabelHeight = 20;
   /// <summary>Kästchen vor dem Text eines TCheckBox, logische Pixel.</summary>
   cCheckMark = 16;
+  /// <summary>Knöpfe, logische Pixel: Höhe, Abstand untereinander, Abstand zwischen Gruppen.</summary>
+  cButtonHeight = 28;
+  cButtonGap = 4;
+  cGroupGap = 3 * cGap;
+  /// <summary>Höhe des Kopfs und der Liste der Ziele, logische Pixel.</summary>
+  cHeaderHeight = 64;
+  cTargetListHeight = 66;
   /// <summary>Anfangs so viele Zeilen der Liste sichtbar.</summary>
   cInitialRows = 16;
-  /// <summary>Höchstens dieser Anteil (Prozent) des Arbeitsbereichs als Anfangsgröße.</summary>
-  cMaxScreenShare = 80;
 
 function OwnUnitCaption(AModel: TAtlasClassExtractionModel): string;
 begin
@@ -320,19 +324,10 @@ begin
   ShowAsError(FError);
 end;
 
-function WorkArea: TRect;
-begin
-  // Der Dialog erscheint über dem Hauptfenster (poMainFormCenter): dessen Monitor begrenzt die Größe.
-  Result := Screen.WorkAreaRect;
-  if (Application.MainForm <> nil) and (Application.MainForm.Monitor <> nil) then
-  begin
-    Result := Application.MainForm.Monitor.WorkareaRect;
-  end;
-end;
-
 procedure TAtlasExtractMembersDialog.FitToContent;
 var
-  mArea, mRow: TRect;
+  mRow: TRect;
+  mLimit: TSize;
   mWidth, mHeight, mIndex, mRowHeight, mRows: Integer;
 begin
   if FFitted or (FList.Items.Count = 0) then
@@ -340,7 +335,7 @@ begin
     Exit;
   end;
   FFitted := True;
-  mArea := WorkArea;
+  mLimit := MaxInitialSize;
   FList.FillColumn(cColumnReason, cReasonWidth);
   FList.FitColumnsToContent(cColumnMaxWidth);
   // Alle Spalten samt ganzem Grund, Rand der Liste und senkrechte Rollleiste.
@@ -362,8 +357,8 @@ begin
   mRows := Min(FList.Items.Count, cInitialRows);
   // Kopfzeile der Liste etwa so hoch wie eine Zeile, dazu ihr Rahmen.
   mHeight := ClientHeight - FList.Height + (mRows + 2) * mRowHeight;
-  ClientWidth := Max(ClientWidth, Min(mWidth, mArea.Width * cMaxScreenShare div 100));
-  ClientHeight := Max(ClientHeight, Min(mHeight, mArea.Height * cMaxScreenShare div 100));
+  ClientWidth := Max(ClientWidth, Min(mWidth, mLimit.cx));
+  ClientHeight := Max(ClientHeight, Min(mHeight, mLimit.cy));
 end;
 
 procedure TAtlasExtractMembersDialog.DoShow;
@@ -414,7 +409,7 @@ begin
   Result.Width := Max(TextWidth(Font, ACaption) + ScaleValue(TAtlasButtonRow.cButtonPadding),
     ScaleValue(TAtlasButtonRow.cButtonMinWidth));
   Result.Top := ScaleValue(cGap);
-  Result.Height := ScaleValue(28);
+  Result.Height := ScaleValue(cButtonHeight);
   Result.Anchors := [akTop, akRight];
 end;
 
@@ -472,7 +467,7 @@ begin
   mHeader := TPanel.Create(Self);
   mHeader.Parent := Self;
   mHeader.Align := alTop;
-  mHeader.Height := ScaleValue(64);
+  mHeader.Height := ScaleValue(cHeaderHeight);
   mHeader.BevelOuter := bvNone;
   mHeader.Caption := '';
   // Beschriftungen so breit wie die längste, damit auch längere Übersetzungen nicht abgeschnitten werden.
@@ -505,7 +500,7 @@ begin
     FTargetList := TCheckListBox.Create(Self);
     Result := AddLabeled(AHeader, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersTargets), Result,
       FTargetList);
-    FTargetList.Height := ScaleValue(66);
+    FTargetList.Height := ScaleValue(cTargetListHeight);
     Result := Result + FTargetList.Height - ScaleValue(cRowHeight);
     FTargetList.OnClickCheck := TargetClickCheck;
   end
@@ -558,8 +553,8 @@ begin
   mRight.Width := Max(Max(mAll.Width, mNone.Width), Max(mNeeds.Width, TextWidth(Font, FAbstract.Caption) +
     ScaleValue(2 * cGap + cCheckMark))) + ScaleValue(2 * cGap);
   mAll.Top := ScaleValue(cGap);
-  mNone.Top := mAll.Top + mAll.Height + ScaleValue(4);
-  mNeeds.Top := mNone.Top + mNone.Height + ScaleValue(3 * cGap);
+  mNone.Top := mAll.Top + mAll.Height + ScaleValue(cButtonGap);
+  mNeeds.Top := mNone.Top + mNone.Height + ScaleValue(cGroupGap);
   FAbstract.Top := mNeeds.Top + mNeeds.Height + ScaleValue(cGap);
   // Nur für die Basisklasse (#713): Abhängigkeiten und abstrakte Methoden.
   mNeeds.Visible := FModel.HasNeeds;

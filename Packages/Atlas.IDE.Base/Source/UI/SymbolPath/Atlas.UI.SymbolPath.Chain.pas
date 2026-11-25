@@ -19,7 +19,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.SymbolPath.Model;
 
 type
@@ -85,10 +85,9 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Forms,
-  Vcl.Themes,
-  Atlas.Core.Style.Color,
-  Atlas.UI.Strings,
-  Atlas.UI.SymbolPath.Strings;
+  Atlas.Plugin.Style.Color,
+  Atlas.UI.SymbolPath.Strings,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Logische Bildpunkte bei 96 dpi.</summary>
@@ -97,6 +96,18 @@ const
   cHeaderHeight = 26;
   cMargin = 8;
   cArrowIndent = 24;
+  /// <summary>Kasten eines Knotens: Rundung, Text oben und links; Abstand zwischen Treffern; Pfeilspitze, Text
+  /// neben dem Pfeil und Abstand zur Erläuterung.</summary>
+  cNodeRadius = 6;
+  cNodeTextTop = 3;
+  cNodeTextLeft = 8;
+  cCandidateGap = 4;
+  cArrowTip = 5;
+  cStepTextLeft = 14;
+  cDetailGap = 12;
+  cDetailSeparator = ' · ';
+  /// <summary>Beschriftung des Servers für „vom Typ“ (Feld, Variable → Typ).</summary>
+  cServerOfType = 'vom Typ'; // german-ok: Kennung des Servers
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -166,7 +177,7 @@ var
   mMain, mDetail: string;
   mRow: TAtlasSymbolPathRow;
 begin
-  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  mColors := TAtlasUiTheme.WindowColors(Self);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(mColors.Surface);
   Canvas.FillRect(ClientRect);
@@ -195,25 +206,25 @@ type
   /// <summary>Kantenart des Servers ohne Variante und ihr Text.</summary>
   TAtlasStepText = record
     Kind: string;
-    Id: TAtlasTextId;
+    Id: TAtlasSymbolPathTextId;
   end;
 
 const
   cStepTexts: array[0..4] of TAtlasStepText = (
-    (Kind: 'inherits'; Id: TAtlasTextId.SymbolPathEdgeInherits),
-    (Kind: 'parameter'; Id: TAtlasTextId.SymbolPathEdgeParameter),
-    (Kind: 'result'; Id: TAtlasTextId.SymbolPathEdgeResult),
-    (Kind: 'calls'; Id: TAtlasTextId.SymbolPathEdgeCalls),
-    (Kind: 'contains'; Id: TAtlasTextId.SymbolPathEdgeContains));
-  cUsesTexts: array[Boolean] of TAtlasTextId = (TAtlasTextId.SymbolPathEdgeUses,
-    TAtlasTextId.SymbolPathEdgeUsesImpl);
-  cImplementsTexts: array[Boolean] of TAtlasTextId = (TAtlasTextId.SymbolPathEdgeImplements,
-    TAtlasTextId.SymbolPathEdgeImplementedBy);
-  cHasFieldTexts: array[Boolean] of TAtlasTextId = (TAtlasTextId.SymbolPathEdgeHasField,
-    TAtlasTextId.SymbolPathEdgeOfType);
+    (Kind: 'inherits'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeInherits),
+    (Kind: 'parameter'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeParameter),
+    (Kind: 'result'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeResult),
+    (Kind: 'calls'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeCalls),
+    (Kind: 'contains'; Id: TAtlasSymbolPathTextId.SymbolPathEdgeContains));
+  cUsesTexts: array[Boolean] of TAtlasSymbolPathTextId = (TAtlasSymbolPathTextId.SymbolPathEdgeUses,
+    TAtlasSymbolPathTextId.SymbolPathEdgeUsesImpl);
+  cImplementsTexts: array[Boolean] of TAtlasSymbolPathTextId = (TAtlasSymbolPathTextId.SymbolPathEdgeImplements,
+    TAtlasSymbolPathTextId.SymbolPathEdgeImplementedBy);
+  cHasFieldTexts: array[Boolean] of TAtlasSymbolPathTextId = (TAtlasSymbolPathTextId.SymbolPathEdgeHasField,
+    TAtlasSymbolPathTextId.SymbolPathEdgeOfType);
 
 /// <summary>Text einer Kantenart ohne Variante; False bei unbekannter Art.</summary>
-function SimpleStepText(const AKind: string; out AId: TAtlasTextId): Boolean;
+function SimpleStepText(const AKind: string; out AId: TAtlasSymbolPathTextId): Boolean;
 var
   mEntry: TAtlasStepText;
 begin
@@ -225,7 +236,7 @@ begin
       Exit(True);
     end;
   end;
-  AId := Default(TAtlasTextId);
+  AId := Default(TAtlasSymbolPathTextId);
   Result := False;
 end;
 
@@ -351,7 +362,7 @@ begin
     // Treffer stehen ohne Pfeil untereinander, mit etwas Abstand.
     if FRows[mIndex].Kind = TAtlasSymbolPathRowKind.Candidate then
     begin
-      Inc(mTop, Px(4));
+      Inc(mTop, Px(cCandidateGap));
     end;
   end;
   Height := mTop + Px(cMargin);
@@ -401,15 +412,15 @@ begin
     Canvas.Pen.Color := ToColor(AColors.Line);
   end;
   Canvas.Brush.Style := bsSolid;
-  Canvas.RoundRect(ABox.Left, ABox.Top, ABox.Right, ABox.Bottom, Px(6), Px(6));
+  Canvas.RoundRect(ABox.Left, ABox.Top, ABox.Right, ABox.Bottom, Px(cNodeRadius), Px(cNodeRadius));
   Canvas.Brush.Style := bsClear;
-  mTextTop := ABox.Top + Px(3);
+  mTextTop := ABox.Top + Px(cNodeTextTop);
   Canvas.Font.Color := ToColor(AColors.Text);
   Canvas.Font.Style := [fsBold];
-  Canvas.TextRect(ABox, ABox.Left + Px(8), mTextTop, AMain);
+  Canvas.TextRect(ABox, ABox.Left + Px(cNodeTextLeft), mTextTop, AMain);
   Canvas.Font.Style := [];
   Canvas.Font.Color := ToColor(AColors.Muted);
-  Canvas.TextRect(ABox, ABox.Left + Px(8), mTextTop + Canvas.TextHeight('Ag') + Px(1), ADetail);
+  Canvas.TextRect(ABox, ABox.Left + Px(cNodeTextLeft), mTextTop + Canvas.TextHeight('Ag') + Px(1), ADetail);
 end;
 
 procedure TAtlasSymbolPathChain.DrawStep(const ABox: TRect; const AMain, ADetail: string;
@@ -432,18 +443,18 @@ begin
   Canvas.LineTo(mX, mBottom);
   Canvas.Pen.Style := psSolid;
   Canvas.Pen.Width := 1;
-  mTip := Px(5);
+  mTip := Px(cArrowTip);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := Canvas.Pen.Color;
   Canvas.Polygon([Point(mX - mTip, mBottom - mTip), Point(mX + mTip, mBottom - mTip), Point(mX, mBottom)]);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Color := PickColor(ASelected, AColors.Accent, AColors.Text);
   mTextTop := ABox.Top + (ABox.Height - Canvas.TextHeight(AMain)) div 2;
-  Canvas.TextOut(mX + Px(14), mTextTop, AMain);
+  Canvas.TextOut(mX + Px(cStepTextLeft), mTextTop, AMain);
   if ADetail <> '' then
   begin
     Canvas.Font.Color := ToColor(AColors.Muted);
-    Canvas.TextOut(mX + Px(14) + Canvas.TextWidth(AMain) + Px(12), mTextTop, ADetail);
+    Canvas.TextOut(mX + Px(cStepTextLeft) + Canvas.TextWidth(AMain) + Px(cDetailGap), mTextTop, ADetail);
   end;
 end;
 
@@ -497,34 +508,37 @@ begin
   for mRow in FRows do
   begin
     RowTexts(FAnswer, mRow, mMain, mDetail);
-    if mDetail <> '' then
+    if mDetail = '' then
     begin
-      mMain := mMain + ' · ' + mDetail;
+      Result := Result + [mMain];
+    end
+    else
+    begin
+      Result := Result + [mMain + cDetailSeparator + mDetail];
     end;
-    Result := Result + [mMain];
   end;
 end;
 
 class function TAtlasSymbolPathChain.StepCaption(const AStep: TAtlasSymbolPathStep): string;
 var
-  mId: TAtlasTextId;
+  mId: TAtlasSymbolPathTextId;
 begin
   if AStep.Kind = 'uses' then
   begin
-    Result := TAtlasStrings.Text(cUsesTexts[AStep.Implementation_]);
+    Result := TAtlasSymbolPathStrings.Text(cUsesTexts[AStep.Implementation_]);
   end
   else if AStep.Kind = 'implements' then
   begin
-    Result := TAtlasStrings.Text(cImplementsTexts[AStep.Reverse]);
+    Result := TAtlasSymbolPathStrings.Text(cImplementsTexts[AStep.Reverse]);
   end
   else if AStep.Kind = 'hasField' then
   begin
     // Der Server unterscheidet „hat Feld“ (Typ → Typ) und „vom Typ“ (Feld, Variable → Typ).
-    Result := TAtlasStrings.Text(cHasFieldTexts[AStep.Caption = 'vom Typ']); // german-ok: Kennung des Servers
+    Result := TAtlasSymbolPathStrings.Text(cHasFieldTexts[AStep.Caption = cServerOfType]);
   end
   else if SimpleStepText(AStep.Kind, mId) then
   begin
-    Result := TAtlasStrings.Text(mId);
+    Result := TAtlasSymbolPathStrings.Text(mId);
   end
   else
   begin

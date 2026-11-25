@@ -28,6 +28,21 @@ type
     procedure FreeBetweenSetupAndTestIsNoLeak;
     [Test]
     procedure ReportNamesThreads;
+    /// <summary>DUnitX ruft PreSetup nur bei Fixtures mit Setup: PreTest übernimmt dann den Ausgangszustand.
+    /// </summary>
+    [Test]
+    procedure WithoutSetupStartsInGerman;
+    /// <summary>Die bekannten Einmal-Belegungen (TFirstUse) sind vor dem ersten Test angelegt: Ein zweiter
+    /// Durchlauf belegt nichts mehr, sonst meldet der Leckmonitor diesen Test.</summary>
+    [Test]
+    procedure FirstUseWarmUpIsDoneOnce;
+    /// <summary>Die Aufzeichnung nennt eine übrige Belegung mit Größe und vergisst sie bei der Freigabe.
+    /// </summary>
+    [Test]
+    procedure TraceNamesSurvivingAllocation;
+    /// <summary>Ein vor der Aufzeichnung angelegter Block, der danach wächst, erscheint als vergrößert.</summary>
+    [Test]
+    procedure TraceNamesGrownOlderBlock;
     [Test]
     // Ausnahme mit Grund: Misst das Wachstum selbst über viele Runden; die Aufwärmrunde füllt gewollte Caches
     // (RTTI, JSON), die der Monitor sonst diesem Test anlastete.
@@ -63,6 +78,10 @@ uses
   Atlas.Common.JsonRpc.Watchdog,
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.ProtocolReplay,
+  Atlas.Common.Diagnostics.ShutdownRest,
+  Atlas.Common.Localization.Texts,
+  Atlas.Tests.AllocationTrace,
+  Atlas.Tests.FirstUse,
   Atlas.Tests.LeakMonitor;
 
 const
@@ -407,23 +426,23 @@ var
   mWorker: TThread;
 begin
   // Ein Thread des Tests gibt Speicher frei, während der Test schon endet: Der
-  // Monitor wartet die Freigabe ab, statt ein Leck zu melden.
+  // Monitor wartet die Freigabe ab, statt ein Leck zu melden. Der Thread entsteht wie in einem echten Test
+  // innerhalb der Messung: Der Monitor wartet, bis kein seit PreTest begonnener Thread mehr läuft (Zählhaken in
+  // BeginThread/EndThread). Entstünde er vorher, gehörte er nicht zum Test, und das Warten endete nach wenigen
+  // ruhigen Messungen, bevor der Thread überhaupt lief. Das passiert auch ohne Last: Der neue Thread läuft oft
+  // erst Dutzende Millisekunden nach Start an. Er gibt sich selbst frei (FreeOnTerminate), also auch sein
+  // Objekt und seine Startdaten.
   mMonitor := TLeakMonitor.Create;
+  mMonitor.PreTest;
+  mShared := TStringBuilder.Create(1024);
   mWorker := TThread.CreateAnonymousThread(
     procedure
     begin
       FreeAndNil(mShared); // lsp-ignore: captured-loop-variable -- Absicht: der Thread gibt das Objekt später frei
     end);
-  mWorker.FreeOnTerminate := False;
-  try
-    mMonitor.PreTest;
-    mShared := TStringBuilder.Create(1024);
-    mWorker.Start;
-    mMonitor.PostTest;
-    mWorker.WaitFor;
-  finally
-    mWorker.Free;
-  end;
+  mWorker.Start;
+  mMonitor.PostTest;
+  Assert.IsNull(mShared, 'Der Monitor hat die Freigabe des Threads nicht abgewartet');
   Assert.AreEqual(Int64(0), mMonitor.TestMemoryAllocated);
 end;
 
@@ -464,6 +483,22 @@ begin
   Assert.IsTrue(Supports(mMonitor, IMemoryLeakMonitor2, mReport));
   Assert.Contains(mReport.GetReport, 'Threads am Anfang');
   Assert.IsTrue(ProcessThreadCount > 0);
+end;
+
+procedure TLeakMonitorTests.WithoutSetupStartsInGerman;
+var
+  mMonitor: IMemoryLeakMonitor;
+begin
+  TAtlasLocale.Use(TTextLanguage.English);
+  try
+    mMonitor := TLeakMonitor.Create;
+    mMonitor.PreTest;
+    mMonitor.PostTest;
+    Assert.AreEqual<TTextLanguage>(TTextLanguage.German, TAtlasLocale.Language,
+      'PreTest ohne PreSetup setzt die Sprache nicht');
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
 end;
 
 procedure TLeakMonitorTests.ReplayDoesNotGrowMemory;
@@ -530,6 +565,65 @@ begin
   mGrowth := SoakGrowth(nil);
   Assert.IsTrue(mGrowth <= cAllowedGrowth, Format('Speicher nach %d Anfragen um %d Bytes gewachsen',
     [cSoakRounds * (cSoakGroups * 4 + 1), mGrowth]));
+end;
+
+procedure TLeakMonitorTests.FirstUseWarmUpIsDoneOnce;
+var
+  mBefore: Int64;
+begin
+  // Selbst messen statt Assert.Pass: Dessen Ausnahme lebt noch, wenn der Leckmonitor misst, und zählte als Leck.
+  mBefore := TShutdownRest.AllocatedBytes;
+  TFirstUse.WarmUp;
+  Assert.AreEqual(mBefore, TShutdownRest.AllocatedBytes, 'Zweites Aufwärmen hat Speicher behalten');
+end;
+
+procedure TLeakMonitorTests.TraceNamesSurvivingAllocation;
+var
+  mBlock: Pointer;
+  mHeld: Int64;
+  mReport: string;
+begin
+  TAllocationTrace.Install;
+  TAllocationTrace.Start;
+  GetMem(mBlock, 4321);
+  try
+    TAllocationTrace.Stop;
+    // Andere Threads können während der Aufzeichnung ebenfalls belegen.
+    mHeld := TAllocationTrace.Bytes;
+    Assert.IsTrue(mHeld >= 4321, 'Belegung fehlt in der Aufzeichnung');
+    mReport := TAllocationTrace.Report(50);
+    Assert.Contains(mReport, '4321 Bytes in 1 Blöcken angelegt bei:');
+    Assert.IsTrue(mReport.Contains('TLeakMonitorTests.TraceNamesSurvivingAllocation'), mReport);
+    // Die Zähler erklären einen Bericht ohne übrige Belegung.
+    Assert.IsTrue(mReport.Contains('Haken aktiv: ja'), mReport);
+  finally
+    FreeMem(mBlock);
+  end;
+  // Nach Stop streichen auch Freigaben anderer Threads: höchstens, nicht genau.
+  Assert.IsTrue(TAllocationTrace.Bytes <= mHeld - 4321, 'Freigabe nicht gestrichen');
+  mReport := '';
+end;
+
+procedure TLeakMonitorTests.TraceNamesGrownOlderBlock;
+var
+  mBlock: Pointer;
+  mReport: string;
+begin
+  // Vor Start angelegt, danach vergrößert: wie ein Zwischenspeicher, der im Test wächst.
+  GetMem(mBlock, 64);
+  try
+    TAllocationTrace.Install;
+    TAllocationTrace.Start;
+    ReallocMem(mBlock, 5432);
+    TAllocationTrace.Stop;
+    mReport := TAllocationTrace.Report(50);
+    Assert.IsTrue(mReport.Contains('5432 Bytes in 1 Blöcken vergrößert bei'), mReport);
+    Assert.IsTrue(mReport.Contains('TLeakMonitorTests.TraceNamesGrownOlderBlock'), mReport);
+  finally
+    FreeMem(mBlock);
+  end;
+  Assert.DoesNotContain(TAllocationTrace.Report(50), '5432 Bytes');
+  mReport := '';
 end;
 
 procedure TLeakMonitorTests.ConnectionSoakDetectsWorkerLeak;

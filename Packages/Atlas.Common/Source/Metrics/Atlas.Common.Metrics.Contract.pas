@@ -34,7 +34,7 @@
 //   Unit-Länge und uses-Anzahl nur für Units: Das uses eines Programms oder
 //   einer Bibliothek zählt die Units des Projekts auf.
 // Grenzwerte (Vorgaben aus der Spezifikation, Abschnitt 4.13) stehen in
-// atlas.json bei den Regeln metric-* unter "max" (Atlas.Common.Rules.Builtin.Metrics).
+// atlas.json bei den Regeln metric-* unter "max" (Atlas.Common.Metrics.Limits).
 
 interface
 
@@ -79,6 +79,9 @@ type
     /// <summary>Name in der Deklaration bzw. im Kopf der Unit; bei UsesCount das Schlüsselwort uses.</summary>
     NameRange: TTextRange;
     Value: Integer;
+    /// <summary>Nur bei ClassSize: freie Routinen der Unit mit Zugriff auf nicht öffentliche Mitglieder der Klasse
+    /// (Atlas.Common.Metrics.UnitRoutines); in Value enthalten.</summary>
+    UnitRoutines: Integer;
     /// <summary>Value ist nur eine Untergrenze: Die Vererbungskette bricht an einem unbekannten Vorfahren ab
     /// (#980).</summary>
     AtLeast: Boolean;

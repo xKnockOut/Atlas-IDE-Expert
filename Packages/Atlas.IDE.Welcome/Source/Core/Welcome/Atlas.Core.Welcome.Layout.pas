@@ -3,7 +3,7 @@
 // Atlas-Layout der Willkommensseite (#753, frei anordnen #767), ohne VCL und
 // Open Tools API: welche Bereiche in welcher Spalte, in welcher Reihenfolge
 // und wie breit stehen.
-// TAtlasWelcomeLayout.Atlas ist die Anordnung aus dem Mockup (links
+// TAtlasWelcomeLayout.Atlas ist die Standardanordnung (links
 // Weiterarbeiten, Projekte, Projektverlauf, Testergebnisse; rechts
 // Zustandskachel, Nicht gesichert, Neu in Atlas, Atlas entdecken, Projekt
 // einrichten, Meine Issues, Hilfe). Arrange verteilt die eingeschalteten
@@ -21,54 +21,19 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Welcome.Sections;
+  Atlas.Core.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Verschieben um einen Schritt (Strg+Pfeiltasten im Bearbeitungsmodus, #767).</summary>
-  TAtlasWelcomeMove = (Up, Down, Left, Right);
-{$SCOPEDENUMS OFF}
+  TAtlasWelcomeMove = Atlas.Core.Welcome.Contract.TAtlasWelcomeMove;
+  TAtlasWelcomeSlot = Atlas.Core.Welcome.Contract.TAtlasWelcomeSlot;
+  TAtlasWelcomeCell = Atlas.Core.Welcome.Contract.TAtlasWelcomeCell;
+  TAtlasWelcomeCells = Atlas.Core.Welcome.Contract.TAtlasWelcomeCells;
+  TAtlasWelcomeWeight = Atlas.Core.Welcome.Contract.TAtlasWelcomeWeight;
+  TAtlasWelcomeLayout = Atlas.Core.Welcome.Contract.TAtlasWelcomeLayout;
 
-  TAtlasWelcomeSlot = record
-    Id: string;
-    /// <summary>Spalte ab 0.</summary>
-    Column: Integer;
-    /// <summary>1 = eine Spalte, 2 = zwei Spalten breit (ab Column nach rechts, #767).</summary>
-    Width: Integer;
-    /// <summary>Sichtbar? Spiegel der Einstellung des Bereichs im aktiven Layout (#767).</summary>
-    Visible: Boolean;
-    class function Create(const AId: string; AColumn: Integer): TAtlasWelcomeSlot; overload; static;
-    class function Create(const AId: string; AColumn, AWidth: Integer; AVisible: Boolean): TAtlasWelcomeSlot;
-      overload; static;
-  end;
-
-  /// <summary>Ein Bereich in einer Spalte mit seiner Breite in Spalten.</summary>
-  TAtlasWelcomeCell = record
-    Id: string;
-    Span: Integer;
-    class function Create(const AId: string; ASpan: Integer): TAtlasWelcomeCell; static;
-  end;
-
-  /// <summary>Bereiche je Spalte in Lesereihenfolge.</summary>
-  TAtlasWelcomeCells = TArray<TArray<TAtlasWelcomeCell>>;
-
-  /// <summary>Gewicht eines Bereichs für „Spalte mit dem meisten Platz“ (z. B. seine Höhe).</summary>
-  TAtlasWelcomeWeight = reference to function(const AId: string): Integer;
-
-  TAtlasWelcomeLayout = record
-  public const
-    cMinColumns = 1;
-    cMaxColumns = 3;
-    cMinWidth = 1;
-    cMaxWidth = 2;
-    /// <summary>Name des Atlas-Layouts und des ersten Layouts (welcomePage.activeLayout, #767).</summary>
-    cDefaultName = 'Standard';
-  public
-    Name: string;
-    Columns: Integer;
-    /// <summary>Plätze in Lesereihenfolge; innerhalb einer Spalte gilt diese Reihenfolge.</summary>
-    Slots: TArray<TAtlasWelcomeSlot>;
-    /// <summary>Anordnung aus dem Mockup (#753, mit den späteren Bereichen #762–#766).</summary>
+  /// <summary>Logik zu TAtlasWelcomeLayout (der Record steht im Vertrag).</summary>
+  TAtlasWelcomeLayoutHelper = record helper for TAtlasWelcomeLayout
+    /// <summary>Standardanordnung (#753, mit den Bereichen #762–#766).</summary>
     class function Atlas: TAtlasWelcomeLayout; static;
     /// <summary>Platz von AId; False, wenn das Layout den Bereich nicht kennt.</summary>
     function SlotOf(const AId: string; out ASlot: TAtlasWelcomeSlot): Boolean;
@@ -180,7 +145,8 @@ uses
   System.Math,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Welcome.Sections;
 
 function Clamp(AValue, AMin, AMax: Integer): Integer;
 begin
@@ -192,101 +158,6 @@ begin
   if Result > AMax then
   begin
     Result := AMax;
-  end;
-end;
-
-{ TAtlasWelcomeSlot }
-
-class function TAtlasWelcomeSlot.Create(const AId: string; AColumn: Integer): TAtlasWelcomeSlot;
-begin
-  Result := Create(AId, AColumn, 1, True);
-end;
-
-class function TAtlasWelcomeSlot.Create(const AId: string; AColumn, AWidth: Integer;
-  AVisible: Boolean): TAtlasWelcomeSlot;
-begin
-  Result.Id := AId;
-  Result.Column := AColumn;
-  Result.Width := Clamp(AWidth, TAtlasWelcomeLayout.cMinWidth, TAtlasWelcomeLayout.cMaxWidth);
-  Result.Visible := AVisible;
-end;
-
-{ TAtlasWelcomeCell }
-
-class function TAtlasWelcomeCell.Create(const AId: string; ASpan: Integer): TAtlasWelcomeCell;
-begin
-  Result.Id := AId;
-  Result.Span := ASpan;
-end;
-
-{ TAtlasWelcomeLayout }
-
-class function TAtlasWelcomeLayout.Atlas: TAtlasWelcomeLayout;
-begin
-  Result.Name := cDefaultName;
-  Result.Columns := 2;
-  // Testergebnisse (#763) nach dem Projektverlauf (Mockup WS17), Nicht gesichert (#762) unter der Kachel,
-  // Meine Issues (#765), Sprint (#1277) und Hilfe (#766) am Ende der rechten Spalte.
-  Result.Slots := [
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cContinue, 0),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cProjects, 0),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cHistory, 0),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cTests, 0),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cState, 1),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cUnsaved, 1),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cNews, 1),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cDiscover, 1),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cSetup, 1),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cIssues, 1),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cSprint, 1),
-    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cHelp, 1)];
-end;
-
-function TAtlasWelcomeLayout.SlotOf(const AId: string; out ASlot: TAtlasWelcomeSlot): Boolean;
-var
-  mIndex: Integer;
-begin
-  mIndex := IndexOf(AId);
-  Result := mIndex >= 0;
-  if Result then
-  begin
-    ASlot := Slots[mIndex];
-  end
-  else
-  begin
-    ASlot := TAtlasWelcomeSlot.Create(AId, 0);
-  end;
-end;
-
-function TAtlasWelcomeLayout.IndexOf(const AId: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(Slots) do
-  begin
-    if SameText(Slots[mIndex].Id, AId) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-function TAtlasWelcomeLayout.MovedToTop(const AId: string): TAtlasWelcomeLayout;
-var
-  mSlot, mMoved: TAtlasWelcomeSlot;
-begin
-  SlotOf(AId, mMoved);
-  mMoved.Column := 0;
-  Result.Name := Name;
-  Result.Columns := Columns;
-  Result.Slots := [mMoved];
-  for mSlot in Slots do
-  begin
-    if not SameText(mSlot.Id, AId) then
-    begin
-      Result.Slots := Result.Slots + [mSlot];
-    end;
   end;
 end;
 
@@ -326,92 +197,6 @@ begin
         Result[ATarget - 1] := Result[ATarget - 1] + [TAtlasWelcomeCell.Create(mCell.Id, 1)];
       end;
     end;
-  end;
-end;
-
-function TAtlasWelcomeLayout.Arrange(const ASections: TArray<TAtlasWelcomeSection>;
-  AColumns: Integer): TArray<TArray<string>>;
-var
-  mGrid: TAtlasWelcomeCells;
-  mColumn: Integer;
-  mCell: TAtlasWelcomeCell;
-begin
-  Result := nil;
-  mGrid := Cells(ASections, AColumns);
-  SetLength(Result, Length(mGrid));
-  for mColumn := 0 to High(mGrid) do
-  begin
-    for mCell in mGrid[mColumn] do
-    begin
-      Result[mColumn] := Result[mColumn] + [mCell.Id];
-    end;
-  end;
-end;
-
-function TAtlasWelcomeLayout.Cells(const ASections: TArray<TAtlasWelcomeSection>;
-  AColumns: Integer): TAtlasWelcomeCells;
-var
-  mWide: TAtlasWelcomeCells;
-  mWidth, mColumn, mIndex: Integer;
-  mSlot: TAtlasWelcomeSlot;
-  mSection: TAtlasWelcomeSection;
-begin
-  // Zuerst in der Breite des Layouts verteilen (mindestens zwei Spalten für die Vorgabespalten) …
-  mWidth := Clamp(Columns, 2, cMaxColumns);
-  SetLength(mWide, mWidth);
-  for mSlot in Slots do
-  begin
-    mIndex := SectionIndex(ASections, mSlot.Id);
-    if mIndex >= 0 then
-    begin
-      mColumn := Clamp(mSlot.Column, 0, mWidth - 1);
-      mWide[mColumn] := mWide[mColumn] + [TAtlasWelcomeCell.Create(ASections[mIndex].Id, Clamp(mSlot.Width,
-        cMinWidth, cMaxWidth))];
-    end;
-  end;
-  for mSection in ASections do
-  begin
-    if IndexOf(mSection.Id) < 0 then
-    begin
-      mColumn := Clamp(Ord(mSection.Column), 0, mWidth - 1);
-      mWide[mColumn] := mWide[mColumn] + [TAtlasWelcomeCell.Create(mSection.Id, 1)];
-    end;
-  end;
-  // … dann auf die gewünschte Zahl falten.
-  Result := FoldedCells(mWide, Clamp(AColumns, cMinColumns, cMaxColumns));
-end;
-
-function TAtlasWelcomeLayout.MovedTo(const AId: string; AColumn: Integer;
-  const ABeforeId: string): TAtlasWelcomeLayout;
-var
-  mMoved: TAtlasWelcomeSlot;
-  mIndex, mBefore: Integer;
-begin
-  SlotOf(AId, mMoved);
-  mMoved.Column := Clamp(AColumn, 0, cMaxColumns - 1);
-  Result.Name := Name;
-  Result.Columns := Columns;
-  Result.Slots := nil;
-  for mIndex := 0 to High(Slots) do
-  begin
-    if not SameText(Slots[mIndex].Id, AId) then
-    begin
-      Result.Slots := Result.Slots + [Slots[mIndex]];
-    end;
-  end;
-  mBefore := -1;
-  if (ABeforeId <> '') and not SameText(ABeforeId, AId) then
-  begin
-    mBefore := Result.IndexOf(ABeforeId);
-  end;
-  if mBefore < 0 then
-  begin
-    // Innerhalb einer Spalte gilt die Reihenfolge der Liste: hinten angehängt = letzter der Spalte.
-    Result.Slots := Result.Slots + [mMoved];
-  end
-  else
-  begin
-    Insert(mMoved, Result.Slots, mBefore);
   end;
 end;
 
@@ -477,154 +262,6 @@ begin
   end;
 end;
 
-function TAtlasWelcomeLayout.MovedBy(const AId: string; ADirection: TAtlasWelcomeMove;
-  const ASections: TArray<TAtlasWelcomeSection>; out ALayout: TAtlasWelcomeLayout): Boolean;
-var
-  mGrid: TAtlasWelcomeCells;
-  mColumn, mRow, mTarget: Integer;
-  mBefore: string;
-begin
-  ALayout := Self;
-  mGrid := Cells(ASections, Columns);
-  Result := FindCell(mGrid, AId, mColumn, mRow) and StepTarget(mGrid, mColumn, mRow, ADirection, mTarget, mBefore);
-  if Result then
-  begin
-    ALayout := MovedTo(AId, mTarget, mBefore);
-  end;
-end;
-
-function TAtlasWelcomeLayout.WithWidth(const AId: string; AWidth: Integer): TAtlasWelcomeLayout;
-var
-  mIndex: Integer;
-begin
-  Result := Self;
-  Result.Slots := Copy(Slots);
-  mIndex := Result.IndexOf(AId);
-  if mIndex < 0 then
-  begin
-    Result.Slots := Result.Slots + [TAtlasWelcomeSlot.Create(AId, 0)];
-    mIndex := High(Result.Slots);
-  end;
-  Result.Slots[mIndex].Width := Clamp(AWidth, cMinWidth, cMaxWidth);
-end;
-
-function TAtlasWelcomeLayout.WidthOf(const AId: string): Integer;
-var
-  mSlot: TAtlasWelcomeSlot;
-begin
-  Result := 1;
-  if SlotOf(AId, mSlot) then
-  begin
-    Result := Clamp(mSlot.Width, cMinWidth, cMaxWidth);
-  end;
-end;
-
-function TAtlasWelcomeLayout.WithVisible(const AId: string; AVisible: Boolean): TAtlasWelcomeLayout;
-var
-  mIndex: Integer;
-begin
-  Result := Self;
-  Result.Slots := Copy(Slots);
-  mIndex := Result.IndexOf(AId);
-  if mIndex < 0 then
-  begin
-    Result.Slots := Result.Slots + [TAtlasWelcomeSlot.Create(AId, 0)];
-    mIndex := High(Result.Slots);
-  end;
-  Result.Slots[mIndex].Visible := AVisible;
-end;
-
-function TAtlasWelcomeLayout.WithColumns(AColumns: Integer): TAtlasWelcomeLayout;
-begin
-  // Die Plätze behalten ihre Spalte: Cells faltet die rechten unter die letzte, und beim Zurückschalten
-  // stehen sie wieder an ihrem Platz.
-  Result := Self;
-  Result.Slots := Copy(Slots);
-  Result.Columns := Clamp(AColumns, cMinColumns, cMaxColumns);
-end;
-
-function TAtlasWelcomeLayout.Adopted(const AIds: TArray<string>; const AWeight: TAtlasWelcomeWeight;
-  out AAdded: TArray<string>): TAtlasWelcomeLayout;
-var
-  mId: string;
-begin
-  AAdded := nil;
-  Result := Self;
-  Result.Slots := Copy(Slots);
-  for mId in AIds do
-  begin
-    if (mId = '') or (Result.IndexOf(mId) >= 0) then
-    begin
-      Continue;
-    end;
-    // Jeder neue Bereich zählt für den nächsten mit: mehrere neue verteilen sich.
-    Result.Slots := Result.Slots + [TAtlasWelcomeSlot.Create(mId, Result.RoomiestColumn(AWeight))];
-    AAdded := AAdded + [mId];
-  end;
-end;
-
-function TAtlasWelcomeLayout.RoomiestColumn(const AWeight: TAtlasWelcomeWeight): Integer;
-var
-  mLoad: TArray<Int64>;
-  mCount, mColumn, mIndex, mWeight: Integer;
-  mSlot: TAtlasWelcomeSlot;
-begin
-  mCount := Clamp(Columns, cMinColumns, cMaxColumns);
-  SetLength(mLoad, mCount);
-  for mSlot in Slots do
-  begin
-    if not mSlot.Visible then
-    begin
-      Continue;
-    end;
-    mWeight := 1;
-    if Assigned(AWeight) then
-    begin
-      mWeight := AWeight(mSlot.Id);
-    end;
-    mColumn := Clamp(mSlot.Column, 0, mCount - 1);
-    for mIndex := mColumn to Clamp(mColumn + mSlot.Width - 1, 0, mCount - 1) do
-    begin
-      Inc(mLoad[mIndex], mWeight);
-    end;
-  end;
-  Result := 0;
-  for mColumn := 1 to mCount - 1 do
-  begin
-    if mLoad[mColumn] < mLoad[Result] then
-    begin
-      Result := mColumn;
-    end;
-  end;
-end;
-
-function TAtlasWelcomeLayout.ToJson: string;
-var
-  mRoot, mItem: TJSONObject;
-  mList: TJSONArray;
-  mSlot: TAtlasWelcomeSlot;
-begin
-  mRoot := TJSONObject.Create;
-  try
-    mRoot.AddPair('name', Name);
-    mRoot.AddPair('columns', TJSONNumber.Create(Columns));
-    mList := TJSONArray.Create;
-    mRoot.AddPair('slots', mList);
-    for mSlot in Slots do
-    begin
-      mItem := TJSONObject.Create;
-      mItem.AddPair('id', mSlot.Id);
-      mItem.AddPair('column', TJSONNumber.Create(mSlot.Column));
-      mItem.AddPair('width', TJSONNumber.Create(Clamp(mSlot.Width, cMinWidth, cMaxWidth)));
-      mItem.AddPair('visible', TJSONBool.Create(mSlot.Visible));
-      mList.AddElement(mItem);
-    end;
-    Result := mRoot.ToJSON;
-  finally
-    mRoot.Free;
-  end;
-end;
-
 function IntegerField(AItem: TJSONObject; const AName: string; ADefault, AMin, AMax: Integer): Integer;
 var
   mField: TJSONValue;
@@ -669,58 +306,6 @@ begin
     end;
   end;
   Result := True;
-end;
-
-class function TAtlasWelcomeLayout.FromJson(const AText: string; out ALayout: TAtlasWelcomeLayout): Boolean;
-var
-  mValue, mField: TJSONValue;
-  mRoot: TJSONObject;
-begin
-  ALayout := Atlas;
-  Result := False;
-  mValue := TJSONObject.ParseJSONValue(AText);
-  try
-    if mValue is TJSONObject then
-    begin
-      mRoot := TJSONObject(mValue);
-      mField := mRoot.GetValue('slots');
-      Result := (mField is TJSONArray) and SlotsFromJson(TJSONArray(mField), ALayout);
-      mField := mRoot.GetValue('name');
-      if Result and (mField is TJSONString) then
-      begin
-        ALayout.Name := mField.Value;
-      end;
-      ALayout.Columns := IntegerField(mRoot, 'columns', ALayout.Columns, cMinColumns, cMaxColumns);
-    end;
-  finally
-    mValue.Free;
-  end;
-  if not Result then
-  begin
-    ALayout := Atlas;
-  end;
-end;
-
-class function TAtlasWelcomeLayout.Same(const ALeft, ARight: TAtlasWelcomeLayout): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := (ALeft.Name = ARight.Name) and (ALeft.Columns = ARight.Columns) and
-    (Length(ALeft.Slots) = Length(ARight.Slots));
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(ALeft.Slots) do
-  begin
-    if not SameText(ALeft.Slots[mIndex].Id, ARight.Slots[mIndex].Id) or
-      (ALeft.Slots[mIndex].Column <> ARight.Slots[mIndex].Column) or
-      (ALeft.Slots[mIndex].Width <> ARight.Slots[mIndex].Width) or
-      (ALeft.Slots[mIndex].Visible <> ARight.Slots[mIndex].Visible) then
-    begin
-      Exit(False);
-    end;
-  end;
 end;
 
 { TAtlasWelcomeArea }
@@ -961,6 +546,365 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+{ TAtlasWelcomeLayoutHelper }
+
+class function TAtlasWelcomeLayoutHelper.Atlas: TAtlasWelcomeLayout;
+begin
+  Result.Name := TAtlasWelcomeLayout.cDefaultName;
+  Result.Columns := 2;
+  // Testergebnisse (#763) nach dem Projektverlauf, Nicht gesichert (#762) unter der Kachel,
+  // Meine Issues (#765), Sprint (#1277) und Hilfe (#766) am Ende der rechten Spalte.
+  Result.Slots := [
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cContinue, 0),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cProjects, 0),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cHistory, 0),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cTests, 0),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cState, 1),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cUnsaved, 1),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cNews, 1),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cDiscover, 1),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cSetup, 1),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cIssues, 1),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cSprint, 1),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cHelp, 1)];
+end;
+
+function TAtlasWelcomeLayoutHelper.SlotOf(const AId: string; out ASlot: TAtlasWelcomeSlot): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := IndexOf(AId);
+  Result := mIndex >= 0;
+  if Result then
+  begin
+    ASlot := Slots[mIndex];
+  end
+  else
+  begin
+    ASlot := TAtlasWelcomeSlot.Create(AId, 0);
+  end;
+end;
+
+function TAtlasWelcomeLayoutHelper.IndexOf(const AId: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Slots) do
+  begin
+    if SameText(Slots[mIndex].Id, AId) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasWelcomeLayoutHelper.MovedToTop(const AId: string): TAtlasWelcomeLayout;
+var
+  mSlot, mMoved: TAtlasWelcomeSlot;
+begin
+  SlotOf(AId, mMoved);
+  mMoved.Column := 0;
+  Result.Name := Name;
+  Result.Columns := Columns;
+  Result.Slots := [mMoved];
+  for mSlot in Slots do
+  begin
+    if not SameText(mSlot.Id, AId) then
+    begin
+      Result.Slots := Result.Slots + [mSlot];
+    end;
+  end;
+end;
+
+function TAtlasWelcomeLayoutHelper.Arrange(const ASections: TArray<TAtlasWelcomeSection>;
+  AColumns: Integer): TArray<TArray<string>>;
+var
+  mGrid: TAtlasWelcomeCells;
+  mColumn: Integer;
+  mCell: TAtlasWelcomeCell;
+begin
+  Result := nil;
+  mGrid := Cells(ASections, AColumns);
+  SetLength(Result, Length(mGrid));
+  for mColumn := 0 to High(mGrid) do
+  begin
+    for mCell in mGrid[mColumn] do
+    begin
+      Result[mColumn] := Result[mColumn] + [mCell.Id];
+    end;
+  end;
+end;
+
+function TAtlasWelcomeLayoutHelper.Cells(const ASections: TArray<TAtlasWelcomeSection>;
+  AColumns: Integer): TAtlasWelcomeCells;
+var
+  mWide: TAtlasWelcomeCells;
+  mWidth, mColumn, mIndex: Integer;
+  mSlot: TAtlasWelcomeSlot;
+  mSection: TAtlasWelcomeSection;
+begin
+  // Zuerst in der Breite des Layouts verteilen (mindestens zwei Spalten für die Vorgabespalten) …
+  mWidth := Clamp(Columns, 2, TAtlasWelcomeLayout.cMaxColumns);
+  SetLength(mWide, mWidth);
+  for mSlot in Slots do
+  begin
+    mIndex := SectionIndex(ASections, mSlot.Id);
+    if mIndex >= 0 then
+    begin
+      mColumn := Clamp(mSlot.Column, 0, mWidth - 1);
+      mWide[mColumn] := mWide[mColumn] + [TAtlasWelcomeCell.Create(ASections[mIndex].Id, Clamp(mSlot.Width,
+        TAtlasWelcomeLayout.cMinWidth, TAtlasWelcomeLayout.cMaxWidth))];
+    end;
+  end;
+  for mSection in ASections do
+  begin
+    if IndexOf(mSection.Id) < 0 then
+    begin
+      mColumn := Clamp(Ord(mSection.Column), 0, mWidth - 1);
+      mWide[mColumn] := mWide[mColumn] + [TAtlasWelcomeCell.Create(mSection.Id, 1)];
+    end;
+  end;
+  // … dann auf die gewünschte Zahl falten.
+  Result := FoldedCells(mWide, Clamp(AColumns, TAtlasWelcomeLayout.cMinColumns, TAtlasWelcomeLayout.cMaxColumns));
+end;
+
+function TAtlasWelcomeLayoutHelper.MovedTo(const AId: string; AColumn: Integer;
+  const ABeforeId: string): TAtlasWelcomeLayout;
+var
+  mMoved: TAtlasWelcomeSlot;
+  mIndex, mBefore: Integer;
+begin
+  SlotOf(AId, mMoved);
+  mMoved.Column := Clamp(AColumn, 0, TAtlasWelcomeLayout.cMaxColumns - 1);
+  Result.Name := Name;
+  Result.Columns := Columns;
+  Result.Slots := nil;
+  for mIndex := 0 to High(Slots) do
+  begin
+    if not SameText(Slots[mIndex].Id, AId) then
+    begin
+      Result.Slots := Result.Slots + [Slots[mIndex]];
+    end;
+  end;
+  mBefore := -1;
+  if (ABeforeId <> '') and not SameText(ABeforeId, AId) then
+  begin
+    mBefore := Result.IndexOf(ABeforeId);
+  end;
+  if mBefore < 0 then
+  begin
+    // Innerhalb einer Spalte gilt die Reihenfolge der Liste: hinten angehängt = letzter der Spalte.
+    Result.Slots := Result.Slots + [mMoved];
+  end
+  else
+  begin
+    Insert(mMoved, Result.Slots, mBefore);
+  end;
+end;
+
+function TAtlasWelcomeLayoutHelper.MovedBy(const AId: string; ADirection: TAtlasWelcomeMove;
+  const ASections: TArray<TAtlasWelcomeSection>; out ALayout: TAtlasWelcomeLayout): Boolean;
+var
+  mGrid: TAtlasWelcomeCells;
+  mColumn, mRow, mTarget: Integer;
+  mBefore: string;
+begin
+  ALayout := Self;
+  mGrid := Cells(ASections, Columns);
+  Result := FindCell(mGrid, AId, mColumn, mRow) and StepTarget(mGrid, mColumn, mRow, ADirection, mTarget, mBefore);
+  if Result then
+  begin
+    ALayout := MovedTo(AId, mTarget, mBefore);
+  end;
+end;
+
+function TAtlasWelcomeLayoutHelper.WithWidth(const AId: string; AWidth: Integer): TAtlasWelcomeLayout;
+var
+  mIndex: Integer;
+begin
+  Result := Self;
+  Result.Slots := Copy(Slots);
+  mIndex := Result.IndexOf(AId);
+  if mIndex < 0 then
+  begin
+    Result.Slots := Result.Slots + [TAtlasWelcomeSlot.Create(AId, 0)];
+    mIndex := High(Result.Slots);
+  end;
+  Result.Slots[mIndex].Width := Clamp(AWidth, TAtlasWelcomeLayout.cMinWidth, TAtlasWelcomeLayout.cMaxWidth);
+end;
+
+function TAtlasWelcomeLayoutHelper.WidthOf(const AId: string): Integer;
+var
+  mSlot: TAtlasWelcomeSlot;
+begin
+  Result := 1;
+  if SlotOf(AId, mSlot) then
+  begin
+    Result := Clamp(mSlot.Width, TAtlasWelcomeLayout.cMinWidth, TAtlasWelcomeLayout.cMaxWidth);
+  end;
+end;
+
+function TAtlasWelcomeLayoutHelper.WithVisible(const AId: string; AVisible: Boolean): TAtlasWelcomeLayout;
+var
+  mIndex: Integer;
+begin
+  Result := Self;
+  Result.Slots := Copy(Slots);
+  mIndex := Result.IndexOf(AId);
+  if mIndex < 0 then
+  begin
+    Result.Slots := Result.Slots + [TAtlasWelcomeSlot.Create(AId, 0)];
+    mIndex := High(Result.Slots);
+  end;
+  Result.Slots[mIndex].Visible := AVisible;
+end;
+
+function TAtlasWelcomeLayoutHelper.WithColumns(AColumns: Integer): TAtlasWelcomeLayout;
+begin
+  // Die Plätze behalten ihre Spalte: Cells faltet die rechten unter die letzte, und beim Zurückschalten
+  // stehen sie wieder an ihrem Platz.
+  Result := Self;
+  Result.Slots := Copy(Slots);
+  Result.Columns := Clamp(AColumns, TAtlasWelcomeLayout.cMinColumns, TAtlasWelcomeLayout.cMaxColumns);
+end;
+
+function TAtlasWelcomeLayoutHelper.Adopted(const AIds: TArray<string>; const AWeight: TAtlasWelcomeWeight;
+  out AAdded: TArray<string>): TAtlasWelcomeLayout;
+var
+  mId: string;
+begin
+  AAdded := nil;
+  Result := Self;
+  Result.Slots := Copy(Slots);
+  for mId in AIds do
+  begin
+    if (mId = '') or (Result.IndexOf(mId) >= 0) then
+    begin
+      Continue;
+    end;
+    // Jeder neue Bereich zählt für den nächsten mit: mehrere neue verteilen sich.
+    Result.Slots := Result.Slots + [TAtlasWelcomeSlot.Create(mId, Result.RoomiestColumn(AWeight))];
+    AAdded := AAdded + [mId];
+  end;
+end;
+
+function TAtlasWelcomeLayoutHelper.RoomiestColumn(const AWeight: TAtlasWelcomeWeight): Integer;
+var
+  mLoad: TArray<Int64>;
+  mCount, mColumn, mIndex, mWeight: Integer;
+  mSlot: TAtlasWelcomeSlot;
+begin
+  mCount := Clamp(Columns, TAtlasWelcomeLayout.cMinColumns, TAtlasWelcomeLayout.cMaxColumns);
+  SetLength(mLoad, mCount);
+  for mSlot in Slots do
+  begin
+    if not mSlot.Visible then
+    begin
+      Continue;
+    end;
+    mWeight := 1;
+    if Assigned(AWeight) then
+    begin
+      mWeight := AWeight(mSlot.Id);
+    end;
+    mColumn := Clamp(mSlot.Column, 0, mCount - 1);
+    for mIndex := mColumn to Clamp(mColumn + mSlot.Width - 1, 0, mCount - 1) do
+    begin
+      Inc(mLoad[mIndex], mWeight);
+    end;
+  end;
+  Result := 0;
+  for mColumn := 1 to mCount - 1 do
+  begin
+    if mLoad[mColumn] < mLoad[Result] then
+    begin
+      Result := mColumn;
+    end;
+  end;
+end;
+
+function TAtlasWelcomeLayoutHelper.ToJson: string;
+var
+  mRoot, mItem: TJSONObject;
+  mList: TJSONArray;
+  mSlot: TAtlasWelcomeSlot;
+begin
+  mRoot := TJSONObject.Create;
+  try
+    mRoot.AddPair('name', Name);
+    mRoot.AddPair('columns', TJSONNumber.Create(Columns));
+    mList := TJSONArray.Create;
+    mRoot.AddPair('slots', mList);
+    for mSlot in Slots do
+    begin
+      mItem := TJSONObject.Create;
+      mItem.AddPair('id', mSlot.Id);
+      mItem.AddPair('column', TJSONNumber.Create(mSlot.Column));
+      mItem.AddPair('width',
+        TJSONNumber.Create(Clamp(mSlot.Width, TAtlasWelcomeLayout.cMinWidth, TAtlasWelcomeLayout.cMaxWidth)));
+      mItem.AddPair('visible', TJSONBool.Create(mSlot.Visible));
+      mList.AddElement(mItem);
+    end;
+    Result := mRoot.ToJSON;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+class function TAtlasWelcomeLayoutHelper.FromJson(const AText: string; out ALayout: TAtlasWelcomeLayout): Boolean;
+var
+  mValue, mField: TJSONValue;
+  mRoot: TJSONObject;
+begin
+  ALayout := Atlas;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AText);
+  try
+    if mValue is TJSONObject then
+    begin
+      mRoot := TJSONObject(mValue);
+      mField := mRoot.GetValue('slots');
+      Result := (mField is TJSONArray) and SlotsFromJson(TJSONArray(mField), ALayout);
+      mField := mRoot.GetValue('name');
+      if Result and (mField is TJSONString) then
+      begin
+        ALayout.Name := mField.Value;
+      end;
+      ALayout.Columns := IntegerField(mRoot, 'columns', ALayout.Columns, TAtlasWelcomeLayout.cMinColumns,
+        TAtlasWelcomeLayout.cMaxColumns);
+    end;
+  finally
+    mValue.Free;
+  end;
+  if not Result then
+  begin
+    ALayout := Atlas;
+  end;
+end;
+
+class function TAtlasWelcomeLayoutHelper.Same(const ALeft, ARight: TAtlasWelcomeLayout): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (ALeft.Name = ARight.Name) and (ALeft.Columns = ARight.Columns) and
+    (Length(ALeft.Slots) = Length(ARight.Slots));
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(ALeft.Slots) do
+  begin
+    if not SameText(ALeft.Slots[mIndex].Id, ARight.Slots[mIndex].Id) or
+      (ALeft.Slots[mIndex].Column <> ARight.Slots[mIndex].Column) or
+      (ALeft.Slots[mIndex].Width <> ARight.Slots[mIndex].Width) or
+      (ALeft.Slots[mIndex].Visible <> ARight.Slots[mIndex].Visible) then
+    begin
+      Exit(False);
+    end;
+  end;
 end;
 
 end.

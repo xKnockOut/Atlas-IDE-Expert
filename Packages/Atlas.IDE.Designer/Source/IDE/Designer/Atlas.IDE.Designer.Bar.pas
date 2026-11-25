@@ -31,12 +31,15 @@
 //   und das Menü „Anordnen“ (#730 ff.), alles über TAtlasIdeDesignerCommands.
 // - Werkzeuge mit eigenem Knopf (#734 ff.), ebenfalls über
 //   TAtlasIdeDesignerCommands: Symbol schaltet, Pfeil öffnet das Menü.
+// - Andockbare Fenster der Leiste (Atlas-Struktur, Ereignis-Karte) öffnet
+//   Present auch aus dem Hauptmenü; ohne laufende Leiste fehlen die Einträge.
 // - Eigene Sicherung TAtlasFeature.DesignerBar. Nur im Hauptthread.
 
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.ToolsApi.EditorBars.Host;
 
 type
   TAtlasIdeDesignerBar = class
@@ -46,13 +49,18 @@ type
       Message: TProc<string>;
     end;
   private class var
-    FState: TObject;
+    FState: TAtlasEditorBarState;
     FHooks: THooks;
   public
     class procedure Install(const AHooks: THooks); static;
     class procedure Uninstall; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
+    /// <summary>Läuft die Leiste (editor.designerBar an)?</summary>
+    class function Running: Boolean; static;
+    /// <summary>Andockbares Fenster AId der Leiste (Atlas-Struktur, Ereignis-Karte) aus dem Hauptmenü öffnen oder
+    /// nach vorn holen; False ohne laufende Leiste oder ohne solches Fenster.</summary>
+    class function Present(const AId: string): Boolean; static;
   end;
 
 implementation
@@ -66,12 +74,12 @@ uses
   Vcl.Menus,
   ToolsAPI,
   DesignIntf,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Designer.Components,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.Bar,
@@ -83,9 +91,8 @@ uses
   Atlas.IDE.Designer.SearchItems,
   Atlas.IDE.Designer.ShowComponent,
   Atlas.IDE.Designer.TabOrder,
-  Atlas.IDE.Foundation.EditorBarHost,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -104,7 +111,7 @@ type
     procedure HandleKey(AKey: Word; AShift: TShiftState); override;
   end;
 
-  TDesignerBarState = class
+  TDesignerBarState = class(TAtlasEditorBarState)
   private
     FTimer: TTimer;
     /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt.</summary>
@@ -139,9 +146,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Reset;
-    procedure ApplyTheme;
+    procedure Reset; override;
+    procedure ApplyTheme; override;
     procedure OpenSearch;
+    /// <summary>Fenster AId öffnen oder nach vorn holen, danach die Knöpfe (gedrückt) nachziehen.</summary>
+    function Present(const AId: string): Boolean;
   end;
 
 function State: TDesignerBarState;
@@ -376,8 +385,8 @@ begin
       Result := CreateBar;
     end, nil);
   // Oben neben dem Editor-Bereich, nicht im EditorPanel: Dort lag die Designfläche darunter.
-  FHost.DockTop;
-  FHost.ShowIn := TAtlasEditorBarView.Designer;
+  FHost.Placement.DockTop;
+  FHost.Placement.ShowIn := TAtlasEditorBarView.Designer;
   FAlignMenu := TPopupMenu.Create(nil);
   FCommands := TAtlasIdeDesignerCommands.Create(
     procedure(AText: string)
@@ -393,7 +402,7 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
-  // Takt nur bei offenem Formular-Designer (vorher alle 200 ms, auch auf der Willkommensseite).
+  // Takt nur bei offenem Formular-Designer, sonst liefe er alle 200 ms, auch auf der Willkommensseite.
   FOpen := TAtlasDesignerOpenWatch.Create(OpenChanged);
   FTimer.Enabled := FOpen.Any;
 end;
@@ -467,7 +476,7 @@ var
 begin
   mBar := TAtlasDesignerBar.Create(nil);
   mHost := FHost;
-  mBar.ApplyColors(TAtlasIdeStyle.BarColors);
+  mBar.ApplyColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
   mBar.SetButtons(Buttons);
   mBar.OnDisabled :=
     procedure(ASender: TObject)
@@ -554,7 +563,7 @@ begin
   end;
   Result.Enabled := mEnabled;
   Result.Pressed := mPressed;
-  // Wie im Mockup: ausgeblendet = durchgestrichenes Auge.
+  // Ausgeblendet = durchgestrichenes Auge.
   if Result.Pressed then
   begin
     Result.Icon := TAtlasToolbarIcon.NonVisualHidden;
@@ -824,11 +833,20 @@ begin
   ApplyTheme;
 end;
 
+function TDesignerBarState.Present(const AId: string): Boolean;
+begin
+  Result := FCommands.Present(AId);
+  if Result then
+  begin
+    UpdateBars;
+  end;
+end;
+
 procedure TDesignerBarState.ApplyTheme;
 var
   mColors: TAtlasColors;
 begin
-  mColors := TAtlasIdeStyle.BarColors;
+  mColors := TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors);
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
@@ -884,18 +902,22 @@ end;
 
 class procedure TAtlasIdeDesignerBar.ApplySettings;
 begin
-  if FState <> nil then
-  begin
-    State.Reset;
-  end;
+  TAtlasEditorBarState.ResetOf(FState);
+end;
+
+class function TAtlasIdeDesignerBar.Running: Boolean;
+begin
+  Result := FState <> nil;
+end;
+
+class function TAtlasIdeDesignerBar.Present(const AId: string): Boolean;
+begin
+  Result := (FState <> nil) and State.Present(AId);
 end;
 
 class procedure TAtlasIdeDesignerBar.ThemeChanged;
 begin
-  if FState <> nil then
-  begin
-    State.ApplyTheme;
-  end;
+  TAtlasEditorBarState.ThemeOf(FState);
 end;
 
 end.

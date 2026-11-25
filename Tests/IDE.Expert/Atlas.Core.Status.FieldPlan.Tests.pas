@@ -16,7 +16,11 @@ type
     [Test]
     procedure PanelShownUnlessRelocated;
     [Test]
+    procedure RelocatedNeedsBarWithStatusItem;
+    [Test]
     procedure ExtraPanelsMoveWithRelocation;
+    [Test]
+    procedure UnhookedWhenEverythingMoved;
     [Test]
     procedure ClickOnBadgeWindowOrExtra;
     [Test]
@@ -30,6 +34,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Status.FieldPlan;
 
 { TAtlasStatusFieldPlanTests }
@@ -61,10 +66,35 @@ begin
   Assert.IsFalse(TAtlasStatusFieldPlan.PanelShown(mSettings, False));
 end;
 
+procedure TAtlasStatusFieldPlanTests.RelocatedNeedsBarWithStatusItem;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.EditorStatusBar := True;
+  mSettings.EditorStatusBarItems := 'status,method';
+  Assert.IsTrue(TAtlasStatusFieldPlan.Relocated(mSettings, False));
+  Assert.IsFalse(TAtlasStatusFieldPlan.Relocated(mSettings, True), 'Leiste von der Sicherung abgeschaltet');
+  mSettings.EditorStatusBarItems := 'method';
+  Assert.IsFalse(TAtlasStatusFieldPlan.Relocated(mSettings, False), 'ohne Element status');
+  mSettings.EditorStatusBarItems := 'status';
+  mSettings.EditorStatusBar := False;
+  Assert.IsFalse(TAtlasStatusFieldPlan.Relocated(mSettings, False), 'Leiste aus');
+end;
+
 procedure TAtlasStatusFieldPlanTests.ExtraPanelsMoveWithRelocation;
 begin
   Assert.AreEqual(2, TAtlasStatusFieldPlan.ExtraPanels(2, False));
   Assert.AreEqual(0, TAtlasStatusFieldPlan.ExtraPanels(2, True));
+end;
+
+procedure TAtlasStatusFieldPlanTests.UnhookedWhenEverythingMoved;
+begin
+  // Umgezogen mit Zusatzfeldern (z. B. KI-Assistent): Die Statuszeile braucht nichts von Atlas.
+  Assert.IsFalse(TAtlasStatusFieldPlan.Hooked(False, TAtlasStatusFieldPlan.ExtraPanels(3, True)));
+  Assert.IsTrue(TAtlasStatusFieldPlan.Hooked(False, TAtlasStatusFieldPlan.ExtraPanels(3, False)), 'Feld aus');
+  Assert.IsTrue(TAtlasStatusFieldPlan.Hooked(True, 0));
+  Assert.IsFalse(TAtlasStatusFieldPlan.Hooked(False, 0));
 end;
 
 procedure TAtlasStatusFieldPlanTests.ClickOnBadgeWindowOrExtra;

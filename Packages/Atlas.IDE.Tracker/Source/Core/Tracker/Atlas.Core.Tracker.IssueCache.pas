@@ -63,11 +63,18 @@ type
 implementation
 
 uses
-  System.DateUtils,
   System.JSON,
   Atlas.Core.Tracker.Contract.Files,
   Atlas.Core.Tracker.Files,
   Atlas.Text.Json;
+
+const
+  /// <summary>FNV-1a, 32 Bit.</summary>
+  cFnvOffset = 2166136261;
+  cFnvPrime = 16777619;
+  cHashDigits = 8;
+  /// <summary>Höchstlänge des Dateinamens eines Issues im Zwischenspeicher.</summary>
+  cMaxSafeNameLength = 64;
 
 function MemoryKey(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 begin
@@ -83,27 +90,6 @@ begin
   end;
 end;
 
-function IsoOf(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue > 0 then
-  begin
-    Result := DateToISO8601(AValue, True);
-  end;
-end;
-
-function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mText: string;
-begin
-  Result := 0;
-  mText := AObject.GetValue<string>(AName, '');
-  if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
-  begin
-    Result := 0;
-  end;
-end;
-
 function CommentsJson(const AComments: TArray<TAtlasTrackerComment>): TJSONArray;
 var
   mItem: TJSONObject;
@@ -114,7 +100,7 @@ begin
   begin
     mItem := TJSONObject.Create;
     mItem.AddPair('author', mComment.Author);
-    mItem.AddPair('created', IsoOf(mComment.Created));
+    mItem.AddPair('created', TJsonBuild.IsoTime(mComment.Created));
     mItem.AddPair('text', mComment.Text);
     Result.AddElement(mItem);
   end;
@@ -165,7 +151,7 @@ function CommentOf(AItem: TJSONObject): TAtlasTrackerComment;
 begin
   Result := Default(TAtlasTrackerComment);
   Result.Author := AItem.GetValue<string>('author', '');
-  Result.Created := TimeOf(AItem, 'created');
+  Result.Created := TJsonRead.IsoTime(AItem, 'created', True);
   Result.Text := AItem.GetValue<string>('text', '');
 end;
 
@@ -255,11 +241,11 @@ begin
   ADetails.Kind := ARoot.GetValue<string>('kind', '');
   ADetails.Assignee := ARoot.GetValue<string>('assignee', '');
   ADetails.Sprint := ARoot.GetValue<string>('sprint', '');
-  ADetails.Created := TimeOf(ARoot, 'created');
-  ADetails.Updated := TimeOf(ARoot, 'updated');
+  ADetails.Created := TJsonRead.IsoTime(ARoot, 'created', True);
+  ADetails.Updated := TJsonRead.IsoTime(ARoot, 'updated', True);
   ADetails.Description := ARoot.GetValue<string>('description', '');
   ADetails.CommentsLoaded := ARoot.GetValue<Boolean>('commentsLoaded', False);
-  ADetails.Fetched := TimeOf(ARoot, 'fetched');
+  ADetails.Fetched := TJsonRead.IsoTime(ARoot, 'fetched', True);
 end;
 
 { TAtlasTrackerIssueCache }
@@ -382,13 +368,13 @@ var
 begin
   // FNV-1a über die UTF-16-Zeichen; nur Unterscheidung, kein Schutz.
   mText := LowerCase(ATarget.Server + '|' + ATarget.Project);
-  mHash := 2166136261;
+  mHash := cFnvOffset;
   for mIndex := 1 to Length(mText) do
   begin
     mHash := mHash xor Ord(mText[mIndex]);
-    mHash := Cardinal(UInt64(mHash) * 16777619);
+    mHash := Cardinal(UInt64(mHash) * cFnvPrime);
   end;
-  Result := LowerCase(IntToHex(mHash, 8));
+  Result := LowerCase(IntToHex(mHash, cHashDigits));
 end;
 
 class function TAtlasTrackerIssueCache.SafeName(const AKey: string): string;
@@ -403,7 +389,7 @@ begin
       Result := Result + AKey[mIndex];
     end;
   end;
-  Result := Copy(Result, 1, 64);
+  Result := Copy(Result, 1, cMaxSafeNameLength);
 end;
 
 class function TAtlasTrackerIssueCache.ToJson(const ADetails: TAtlasTrackerDetails): string;
@@ -423,14 +409,14 @@ begin
     mRoot.AddPair('assignee', ADetails.Assignee);
     mRoot.AddPair('sprint', ADetails.Sprint);
     mRoot.AddPair('labels', TJsonBuild.Strings(ADetails.Labels));
-    mRoot.AddPair('created', IsoOf(ADetails.Created));
-    mRoot.AddPair('updated', IsoOf(ADetails.Updated));
+    mRoot.AddPair('created', TJsonBuild.IsoTime(ADetails.Created));
+    mRoot.AddPair('updated', TJsonBuild.IsoTime(ADetails.Updated));
     mRoot.AddPair('description', ADetails.Description);
     mRoot.AddPair('commentsLoaded', TJSONBool.Create(ADetails.CommentsLoaded));
     mRoot.AddPair('comments', CommentsJson(ADetails.Comments));
     mRoot.AddPair('attachments', AttachmentsJson(ADetails.Attachments));
     mRoot.AddPair('links', LinksJson(ADetails.Links));
-    mRoot.AddPair('fetched', IsoOf(ADetails.Fetched));
+    mRoot.AddPair('fetched', TJsonBuild.IsoTime(ADetails.Fetched));
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;
@@ -478,13 +464,7 @@ var
 begin
   ADetails := TAtlasTrackerDetails.Empty;
   Result := False;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    // Kaputte Datei: als fehlend werten.
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if not (mValue is TJSONObject) then
     begin

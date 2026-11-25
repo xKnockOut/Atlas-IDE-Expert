@@ -50,12 +50,12 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.UI.Strings,
-  Atlas.UI.Style.Symbol,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Vcl.Images.Symbol,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.IDE.Contracts.Help,
   Atlas.IDE.ElementHelp.Keys,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TProblemsDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -206,7 +206,6 @@ end;
 
 class function TAtlasIdeProblemsWindow.Show: TAtlasProblemsFrame;
 begin
-  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
   Host.Present;
   Result := ExistingFrame;

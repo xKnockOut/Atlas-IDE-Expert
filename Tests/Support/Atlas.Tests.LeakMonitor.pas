@@ -5,8 +5,12 @@
 // und TearDown netto belegt haben. DUnitX wertet einen Test mit Rest als
 // Speicherleck. Eine Leckmeldung ist ein Befund, kein Grund zum Wiederholen
 //: Tests warten auf jeden Thread, den sie starten, und leeren
-// Felder im TearDown; Einmal-Belegungen der RTL nimmt ein [SetupFixture]
-// vorweg. [IgnoreMemoryLeaks] nur, wo ein Test sein Wachstum selbst misst oder
+// Felder im TearDown; bekannte Einmal-Belegungen legt TFirstUse
+// (Atlas.Tests.FirstUse) vor dem ersten Test an, jede mit ihrem Besitzer. Ob
+// eine solche Belegung wirklich bis zum Programmende lebt und dort frei wird,
+// entscheidet der Speicherrest beim Beenden (TShutdownLeaks.Expect in der
+// .dpr): Ein Leck der ersten Benutzung lässt dort den Lauf scheitern, auch
+// wenn ein Aufwärmen es aus der Messung je Test nimmt. [IgnoreMemoryLeaks] nur, wo ein Test sein Wachstum selbst misst oder
 // Speicher absichtlich über das Testende hinaus lebt, und dann mit Grund.
 //
 // Die Messung ist prozessweit und sieht deshalb auch andere Threads. Damit
@@ -21,17 +25,28 @@
 // - Nachwarten: Bleibt nach Test oder TearDown ein Rest, wartet der Monitor
 //   kurz, bis Threads des Tests ihre letzten Freigaben erledigt haben (z. B.
 //   der Lese-Thread einer JSON-RPC-Verbindung nach ReaderDone oder ein
-//   Task nach dem Signal).
-// - Lücke nach dem Setup: Die RTL belegt die Startdaten eines Threads (BeginThread, 24 Byte unter Win64) im
-//   Aufrufer, frei gibt sie der neue Thread beim Anlaufen. Fällt das zwischen PostSetUp und PreTest, zählt
-//   PreTest die Freigabe zum Setup; Belegungen in der Lücke gehören DUnitX und zählen nicht.
+//   Task nach dem Signal). Ruhig ist es erst, wenn kein seit Beginn der Messung
+//   gestarteter Thread mehr läuft. Das zählen Haken der RTL (SystemThreadFuncProc in
+//   BeginThread, SystemThreadEndProc in EndThread), nicht die Threads des Prozesses:
+//   Ein frisch gestarteter Thread fehlte in der Liste des Betriebssystems (Toolhelp)
+//   teils noch Dutzende Millisekunden, die Anzahl lag dann nicht über dem Anfang, und
+//   das Warten endete, bevor er seine Freigaben erledigt hatte.
+// - Lücke nach dem Setup: Die RTL belegt die Startdaten eines Threads (BeginThread, mit dem Zählhaken zwei
+//   Blöcke zu 24 Byte unter Win64) im Aufrufer, frei gibt sie der neue Thread beim Anlaufen. Fällt das zwischen
+//   PostSetUp und PreTest, zählt PreTest die Freigabe zum Setup; Belegungen in der Lücke gehören DUnitX und
+//   zählen nicht.
 // - Ein negativer Saldo (andere Threads geben älteren Speicher frei) ist nie
 //   ein Leck des Tests und wird als 0 gemeldet.
 // - Anonymes Protokoll (#1478): Das gemeinsame atlas.log (TAtlasGuard.RotatingLog) nummeriert jeden neuen Namen,
 //   Pfad und Text und behält die Nummern bis Programmende (höchstens MaxLabels). Jeder Wert zählte so als Leck
 //   des Tests, der ihn zuerst schreibt (z. B. FailingProviderTripsOnlyItself, GuardErrorLineHidesMessage).
-//   PostTearDown vergisst die Nummern vor der letzten Messung; jeder Test beginnt mit leerer Tabelle.
-// Bleibt ein Leck, hängt der Bericht Thread-Anzahl und Wartezeit an.
+//   PostTest und PostTearDown vergessen die Nummern vor ihrer Messung; jeder Test beginnt mit leerer Tabelle.
+// - Fixtures ohne Setup oder TearDown: DUnitX ruft PreSetup/PostSetUp und PreTearDown/PostTearDown nur, wenn die
+//   Fixture die Methode hat. Was für jeden Test gelten muss (Sprache, Aufzeichnung, Vergessen der Nummern,
+//   Festhalten des Stapelberichts), steht deshalb auch in PreTest und PostTest.
+// Bleibt ein Leck, hängt der Bericht Thread-Anzahl und Wartezeit an. Mit ATLAS_LEAK_TRACE=1 in der Umgebung
+// zeichnet TAllocationTrace (Atlas.Tests.AllocationTrace) jede Belegung des Tests mit Stapel auf, und der
+// Bericht nennt die Stellen, deren Speicher übrig blieb.
 //
 // Der Monitor ist der einzige Haken vor jedem Setup und setzt deshalb auch den gemeinsamen Ausgangszustand:
 // Jeder Test beginnt mit deutschen Texten (TAtlasLocale, #1458). Die Sprache gilt prozessweit, und Tests, die
@@ -57,8 +72,14 @@ type
     FStarted: Boolean;
     FThreadsAtStart: Integer;
     FThreadsAtEnd: Integer;
+    /// <summary>Nummer des ersten Threads, den die RTL nach dem Start der Messung beginnt (StartedThreads).</summary>
+    FFirstThread: Int64;
     FWaitedMs: UInt64;
+    /// <summary>Stapelbericht, festgehalten am Ende des Tests (ATLAS_LEAK_TRACE=1). DUnitX fragt GetReport erst
+    /// später ab, wenn die Aufzeichnung schon dem nächsten Test gehört.</summary>
+    FTraceReport: string;
     procedure Start;
+    procedure CaptureTrace;
     function RawTotal: Int64;
     function Reported(AValue: Int64): Int64;
     procedure Settle(ABefore: Int64; var AAllocated: Int64; AOthers: Int64);
@@ -81,10 +102,20 @@ function AllocatedBytes: Int64;
 /// <summary>Anzahl der Threads dieses Prozesses (Toolhelp; belegt keinen Delphi-Speicher).</summary>
 function ProcessThreadCount: Integer;
 
+/// <summary>Zählhaken für BeginThread und EndThread setzen (einmal, vor dem ersten Thread der Tests).</summary>
+procedure InstallThreadCounting;
+
+/// <summary>Anzahl der Threads, die BeginThread seit InstallThreadCounting begonnen hat.</summary>
+function StartedThreads: Int64;
+
+/// <summary>True, solange ein Thread mit Nummer ab AFirst (siehe StartedThreads) noch läuft.</summary>
+function ThreadsRunningSince(AFirst: Int64): Boolean;
+
 /// <summary>Löst Einmal-Belegungen der RTL aus, die sonst in fremden Tests auffallen.</summary>
 procedure PrewarmRuntime;
 
-/// <summary>Wärmt die RTL vor und meldet TLeakMonitor als Überwachung bei DUnitX an.</summary>
+/// <summary>Wärmt die RTL und die bekannten Einmal-Belegungen (TFirstUse) vor und meldet TLeakMonitor als
+/// Überwachung bei DUnitX an.</summary>
 procedure RegisterLeakMonitor;
 
 implementation
@@ -97,21 +128,13 @@ uses
   Winapi.TlHelp32,
   System.SysUtils,
   System.Classes,
-  System.IOUtils,
   System.Threading,
-  System.DateUtils,
-  System.JSON,
-  System.Generics.Collections,
   DUnitX.ServiceLocator,
-  Atlas.Common.Editing.SlashCommands,
+  Atlas.Tests.AllocationTrace,
+  Atlas.Tests.FirstUse,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Settings.Catalog,
-  Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Transfer,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.TimeLimit;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.TimeLimit;
 
 const
   /// <summary>Höchstens so lange wartet der Monitor auf Freigaben anderer Threads.</summary>
@@ -121,6 +144,131 @@ const
   cStableSamples = 3;
   /// <summary>Mindestzahl gleichzeitig wartender Threads beim Vorwärmen.</summary>
   cMinPrewarmWaiters = 64;
+  /// <summary>So viele Stapel mit Atlas-Rahmen nennt der Bericht eines Lecks mit ATLAS_LEAK_TRACE=1; Stapel nur
+  /// aus RTL, VCL und DUnitX zählt er nur.</summary>
+  cTraceGroups = 20;
+
+  /// <summary>So viele Threads hält die Tabelle laufender Threads; liegen mehr Starts seit Beginn der Messung
+  /// zurück, gilt noch einer als laufend (dann endet das Warten mit der Zeitgrenze).</summary>
+  cThreadSlots = 4096;
+
+var
+  /// <summary>Belegungen je Test mit Stapel aufzeichnen (ATLAS_LEAK_TRACE=1, TAllocationTrace).</summary>
+  TraceLeaks: Boolean;
+  /// <summary>Nummer des zuletzt über BeginThread begonnenen Threads.</summary>
+  ThreadsBegun: Int64;
+  /// <summary>1, solange der Thread mit dieser Nummer (modulo cThreadSlots) läuft. Feste Tabelle: Die Haken
+  /// belegen dafür nichts.</summary>
+  ThreadRunning: array[0..cThreadSlots - 1] of Integer;
+
+threadvar
+  /// <summary>Nummer des eigenen Threads; 0 bei Threads, die vor den Haken begannen.</summary>
+  ThreadNumber: Int64;
+
+type
+  /// <summary>Startdaten, wie ThreadWrapper (System) sie liest: Funktion und Parameter; ThreadWrapper gibt den
+  /// Block vor dem Aufruf frei.</summary>
+  PRtlThreadStart = ^TRtlThreadStart;
+  TRtlThreadStart = record
+    Func: TThreadFunc;
+    Parameter: Pointer;
+  end;
+
+  /// <summary>Eigentliche Funktion und Parameter samt Nummer; gibt CountedThreadFunc beim Anlaufen frei.</summary>
+  PCountedStart = ^TCountedStart;
+  TCountedStart = record
+    Func: TThreadFunc;
+    Parameter: Pointer;
+    Number: Int64;
+  end;
+
+procedure MarkThreadEnded;
+var
+  mNumber: Int64;
+begin
+  mNumber := ThreadNumber;
+  if mNumber > 0 then
+  begin
+    ThreadNumber := 0;
+    AtomicExchange(ThreadRunning[Integer(mNumber mod cThreadSlots)], 0);
+  end;
+end;
+
+function CountedThreadFunc(AParameter: Pointer): Integer;
+var
+  mStart: TCountedStart;
+begin
+  mStart := PCountedStart(AParameter)^;
+  Dispose(PCountedStart(AParameter));
+  ThreadNumber := mStart.Number;
+  try
+    Result := mStart.Func(mStart.Parameter);
+  finally
+    // Ohne EndThread (Funktion kehrt zurück, z. B. roher BeginThread): hier als beendet zählen.
+    MarkThreadEnded;
+  end;
+end;
+
+function CountingThreadFuncProc(AThreadFunc: TThreadFunc; AParameter: Pointer): Pointer;
+var
+  mInner: PCountedStart;
+  mOuter: PRtlThreadStart;
+begin
+  // Im startenden Thread, noch vor CreateThread: Der neue Thread läuft ab hier, nicht erst, wenn er anläuft.
+  New(mInner);
+  mInner.Func := AThreadFunc;
+  mInner.Parameter := AParameter;
+  mInner.Number := AtomicIncrement(ThreadsBegun);
+  AtomicExchange(ThreadRunning[Integer(mInner.Number mod cThreadSlots)], 1);
+  New(mOuter);
+  mOuter.Func := CountedThreadFunc;
+  mOuter.Parameter := mInner;
+  Result := mOuter;
+end;
+
+procedure CountingThreadEndProc(AExitCode: Integer);
+begin
+  // TThread.ThreadProc ruft EndThread erst nach dem Freigeben des Objekts (FreeOnTerminate).
+  MarkThreadEnded;
+end;
+
+procedure InstallThreadCounting;
+begin
+  // Nur ohne fremde Haken (C++Builder setzt eigene); ohne Haken bleibt ThreadsRunningSince immer False.
+  if Assigned(SystemThreadFuncProc) or Assigned(SystemThreadEndProc) then
+  begin
+    Exit;
+  end;
+  SystemThreadFuncProc := CountingThreadFuncProc;
+  SystemThreadEndProc := CountingThreadEndProc;
+end;
+
+function StartedThreads: Int64;
+begin
+  Result := AtomicCmpExchange(ThreadsBegun, 0, 0);
+end;
+
+function ThreadsRunningSince(AFirst: Int64): Boolean;
+var
+  mLast: Int64;
+  mNumber: Int64;
+begin
+  mLast := StartedThreads;
+  if mLast - AFirst >= cThreadSlots then
+  begin
+    Exit(True);
+  end;
+  mNumber := AFirst;
+  while mNumber <= mLast do
+  begin
+    if ThreadRunning[Integer(mNumber mod cThreadSlots)] <> 0 then
+    begin
+      Exit(True);
+    end;
+    Inc(mNumber);
+  end;
+  Result := False;
+end;
 
 function AllocatedBytes: Int64;
 var
@@ -255,140 +403,12 @@ begin
   end;
 end;
 
-/// <summary>Katalog, Export und Import der Einstellungen (#723) einmal durchlaufen: Was dabei beim ersten
-/// Gebrauch bleibt, träfe sonst je nach Reihenfolge einen anderen Test als Leck.</summary>
-procedure PrewarmSettingsTransfer;
-var
-  mCatalog: TAtlasSettingsCatalog;
-  mState: TAtlasSettingsState;
-  mExported: TAtlasExportResult;
-  mEnvironment: TAtlasSettingsEnvironment;
-  mIndex: Integer;
-begin
-  mEnvironment :=
-    function(const AName: string): string
-    begin
-      Result := '';
-    end;
-  mCatalog := TAtlasSettingsCatalog.CreateDefault;
-  try
-    mState := TAtlasSettingsState.Create(TAtlasPluginSettings.Defaults, '');
-    // Gemeinsamer Speicher mit allen Standardwerten (DefaultValues): entsteht beim ersten DefaultJson.
-    for mIndex := 0 to mCatalog.Count - 1 do
-    begin
-      TAtlasSettingsTransfer.DefaultJson(mCatalog, mIndex);
-    end;
-    mExported := TAtlasSettingsTransfer.ExportSettings(mCatalog, mState, TAtlasExportOptions.ForBackup, mEnvironment);
-    TAtlasSettingsTransfer.Apply(mCatalog, mState, TAtlasSettingsTransfer.Preview(mCatalog, mState,
-      TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, mEnvironment)));
-  finally
-    mCatalog.Free;
-  end;
-end;
-
-/// <summary>Dateifehler einmal auslösen: Die RTL lädt dabei Ressourcen-Strings (EFOpenError, EFCreateError,
-/// EInOutError) und
-/// behält sie bis Programmende; das träfe sonst den ersten Test mit einer gesperrten oder fehlenden Datei.</summary>
-procedure PrewarmFileErrors;
-var
-  mMissing: string;
-  mHeld: TFileStream;
-begin
-  mMissing := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-fehlt-' + IntToStr(GetCurrentProcessId) + '.bin');
-  try
-    TFile.ReadAllBytes(mMissing);
-  except
-    on Exception do
-      ;
-  end;
-  try
-    TFileStream.Create(mMissing, fmOpenRead or fmShareDenyNone).Free;
-  except
-    on Exception do
-      ;
-  end;
-  // Gesperrte Datei neu anlegen (EFCreateError), wie die Sperre des Index-Caches.
-  mHeld := TFileStream.Create(mMissing, fmCreate or fmShareExclusive);
-  try
-    try
-      TFileStream.Create(mMissing, fmCreate or fmShareExclusive).Free;
-    except
-      on Exception do
-        ;
-    end;
-  finally
-    mHeld.Free;
-    System.SysUtils.DeleteFile(mMissing);
-  end;
-end;
-
-/// <summary>Datendatei einmal unbrauchbar beiseitelegen und gesperrt lesen und schreiben: Was die
-/// Melde- und Fehlerpfade beim ersten Mal anlegen, träfe sonst den ersten Test mit einer gesperrten Datei.</summary>
-procedure PrewarmDataFiles;
-var
-  mFileName: string;
-  mLock: TFileStream;
-begin
-  mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-daten-' + IntToStr(GetCurrentProcessId) + '.json');
-  try
-    TFile.WriteAllText(mFileName, '[1, 2]');
-    TAtlasDataFile.Load(mFileName, 'Leckmonitor',
-      function(const AText: string): Boolean
-      begin
-        Result := False;
-      end);
-    TAtlasDataFile.Write(mFileName, '{}');
-    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
-    try
-      TAtlasDataFile.Load(mFileName, 'Leckmonitor',
-        function(const AText: string): Boolean
-        begin
-          Result := True;
-        end);
-      try
-        TAtlasDataFile.Write(mFileName, '{}');
-      except
-        on E: Exception do
-          TAtlasDataFile.ReportNotWritten('Leckmonitor', E);
-      end;
-    finally
-      mLock.Free;
-    end;
-  finally
-    System.SysUtils.DeleteFile(mFileName);
-    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.cDefectExtension);
-    TAtlasDataFile.ForgetReports;
-  end;
-end;
-
-/// <summary>Gemeinsame Befehlsliste je Sprache (#1458): entsteht beim ersten Zugriff in der jeweiligen Sprache und
-/// bleibt; sonst trifft das je nach Reihenfolge einen anderen Test als Leck (die englische etwa
-/// EnglishTextsWithoutGerman über die Regel slash-command, rund 23 KB).</summary>
-procedure PrewarmSlashCommands;
-var
-  mLanguage: TTextLanguage;
-begin
-  try
-    for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
-    begin
-      TAtlasLocale.Use(mLanguage);
-      TSlashCommandRegistry.Shared;
-    end;
-  finally
-    TAtlasLocale.Use(TTextLanguage.German);
-  end;
-end;
-
 procedure PrewarmRuntime;
 var
   mTask: ITask;
   mCurrent: TThread;
-  mJson: TJSONValue;
 begin
   PrewarmWaitObjects;
-  PrewarmSlashCommands;
-  // Ebenso der gemeinsame Regelkatalog mit Gruppen und Optionen (#909).
-  TRuleCatalog.Shared;
   // Legt den Standard-Thread-Pool und seinen Überwachungs-Thread an (bleiben bis Programmende).
   mTask := TTask.Run(
     procedure
@@ -401,30 +421,6 @@ begin
   begin
     raise EInvalidOperation.Create('Kein aktueller Thread');
   end;
-  // Lokale Zeitzone (ISO-8601-Zeitstempel) und JSON-Pfade legen beim ersten Gebrauch Daten an,
-  // die bis Programmende bleiben.
-  if DateToISO8601(Now, False) = '' then
-  begin
-    raise EInvalidOperation.Create('Keine Zeitzone');
-  end;
-  mJson := TJSONObject.ParseJSONValue('{"a":{"b":true}}');
-  try
-    if not mJson.GetValue<Boolean>('a.b') then
-    begin
-      raise EInvalidOperation.Create('JSON-Pfad');
-    end;
-  finally
-    mJson.Free;
-  end;
-  PrewarmSettingsTransfer;
-  PrewarmFileErrors;
-  PrewarmDataFiles;
-  // Dateien ohne BOM liest TFile.ReadAllText mit TEncoding.Default (Singleton beim ersten Gebrauch, z. B. im
-  // Korpustest des Parsers über die RTL-Quellen).
-  if TEncoding.Default.GetString(TEncoding.Default.GetBytes('a')) <> 'a' then
-  begin
-    raise EInvalidOperation.Create('Kodierung');
-  end;
 end;
 
 procedure RegisterLeakMonitor;
@@ -432,7 +428,14 @@ begin
   // Sleep(2) beim Warten auf andere Threads schliefe sonst eine ganze Zeitscheibe (rund 16 ms)
   // und verdreifachte die Laufzeit der Tests.
   timeBeginPeriod(1);
+  InstallThreadCounting;
   PrewarmRuntime;
+  TFirstUse.WarmUp;
+  TraceLeaks := TAllocationTrace.Requested;
+  if TraceLeaks then
+  begin
+    TAllocationTrace.Install;
+  end;
   TDUnitXServiceLocator.DefaultContainer.RegisterType<IMemoryLeakMonitor>(
     function: IMemoryLeakMonitor
     begin
@@ -444,13 +447,32 @@ end;
 
 procedure TLeakMonitor.Start;
 begin
+  // Aus PreSetup oder, bei einer Fixture ohne Setup, aus PreTest: nur beim ersten Aufruf.
   if FStarted then
   begin
     Exit;
   end;
   FStarted := True;
+  TAtlasLocale.Use(TTextLanguage.German);
   FThreadsAtStart := ProcessThreadCount;
   FThreadsAtEnd := FThreadsAtStart;
+  FFirstThread := StartedThreads + 1;
+  // Vor der Messung freigeben: Der Bericht des vorigen Tests gehört nicht zu diesem.
+  FTraceReport := '';
+  if TraceLeaks then
+  begin
+    TAllocationTrace.Start;
+  end;
+end;
+
+procedure TLeakMonitor.CaptureTrace;
+begin
+  // Gleich festhalten, solange die Tabelle noch diesem Test gehört; nur bei einem Leck, der Bericht kostet Zeit.
+  // Ohne TearDown ist PostTest der letzte Haken, mit TearDown ersetzt PostTearDown den Bericht.
+  if TraceLeaks and (RawTotal > 0) then
+  begin
+    FTraceReport := TAllocationTrace.Report(cTraceGroups);
+  end;
 end;
 
 function TLeakMonitor.RawTotal: Int64;
@@ -494,8 +516,8 @@ begin
       mStable := 0;
       mLast := AAllocated;
     end;
-    // Ruhig und keine zusätzlichen Threads mehr: weiteres Warten bringt nichts.
-    if (mStable >= cStableSamples) and (ProcessThreadCount <= FThreadsAtStart) then
+    // Ruhig und kein Thread des Tests läuft mehr: weiteres Warten bringt nichts.
+    if (mStable >= cStableSamples) and not ThreadsRunningSince(FFirstThread) then
     begin
       Break;
     end;
@@ -506,7 +528,6 @@ end;
 
 procedure TLeakMonitor.PreSetup;
 begin
-  TAtlasLocale.Use(TTextLanguage.German);
   Start;
   FSetUpBefore := AllocatedBytes;
 end;
@@ -541,6 +562,8 @@ begin
   // Arbeiter des Zeitlimits (#493) bleiben für den nächsten Aufruf stehen; ihr Speicher gehört zu keinem
   // Test. Vor dem Messen beenden, der nächste Aufruf legt neue an.
   TAtlasTimeLimit.StopAll(1000);
+  // Nummern des anonymen Protokolls (siehe Kopf); ohne TearDown gibt es keinen späteren Haken dafür.
+  TAtlasGuard.RotatingLog.Redactor.Forget;
   FTestAllocated := AllocatedBytes - FTestBefore;
   // Nur der Test selbst: Was das Setup belegt, gibt meist erst das TearDown frei.
   if FTestAllocated > 0 then
@@ -551,6 +574,7 @@ begin
   begin
     FThreadsAtEnd := ProcessThreadCount;
   end;
+  CaptureTrace;
 end;
 
 procedure TLeakMonitor.PreTearDown;
@@ -567,6 +591,11 @@ begin
   begin
     Settle(FTearDownBefore, FTearDownAllocated, FSetUpAllocated + FTestAllocated);
   end;
+  if TraceLeaks then
+  begin
+    TAllocationTrace.Stop;
+  end;
+  CaptureTrace;
 end;
 
 function TLeakMonitor.SetUpMemoryAllocated: Int64;
@@ -589,6 +618,10 @@ begin
   Result := Format(' (Setup %d, Test %d, TearDown %d Byte; Threads am Anfang %d, am Ende %d; ' +
     '%d ms auf andere Threads gewartet)', [FSetUpAllocated, FTestAllocated, FTearDownAllocated,
     FThreadsAtStart, FThreadsAtEnd, FWaitedMs]);
+  if TraceLeaks then
+  begin
+    Result := Result + sLineBreak + FTraceReport;
+  end;
 end;
 
 end.

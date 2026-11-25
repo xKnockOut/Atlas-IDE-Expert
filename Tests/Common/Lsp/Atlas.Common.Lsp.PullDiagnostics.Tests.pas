@@ -9,9 +9,6 @@ type
   [TestFixture]
   TLspPullDiagnosticsTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure DetectsClientSupport;
     [Test]
@@ -34,7 +31,7 @@ type
     /// <summary>Eine zweite gleichzeitige workspace/diagnostic-Anfrage prüft nicht noch einmal.</summary>
     [Test]
     procedure WorkspaceRequestDoesNotCompute;
-    /// <summary>Ein Abbruch wirkt vor der nächsten Prüfregel, nicht erst am Ende (Diagnoselog 15.10.2026).</summary>
+    /// <summary>Ein Abbruch wirkt vor der nächsten Prüfregel, nicht erst am Ende.</summary>
     [Test]
     procedure CancelStopsRuleChecks;
     /// <summary>#1761: Dauert die Prüfung einer geöffneten Datei länger als OpenJobs.WaitMs, antwortet die Anfrage
@@ -72,7 +69,7 @@ type
     [Test]
     procedure WorkspaceReportCarriesRun;
     /// <summary>Während eines Laufs bündelt eine Anfrage die Befunde mehrerer Units, statt je Unit zu antworten
-    /// (Diagnoselog 29.10.2026: 970 Anfragen mit je einem Befund).</summary>
+    /// (sonst 970 Anfragen mit je einem Befund).</summary>
     [Test]
     procedure WorkspaceBundlesReportsDuringRun;
   end;
@@ -88,6 +85,7 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Tests.RuleAssert,
+  Atlas.Tests.Wait,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.Dispatcher,
@@ -96,8 +94,11 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
+  Atlas.Tests.LspRules,
   Atlas.Common.Lsp.PullDiagnostics,
-  Atlas.Common.Diagnostics.RequestScope;
+  Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cOpenFile = 'C:\P\Offen.pas';
@@ -131,7 +132,7 @@ begin
   Store := TDocumentStore.Create;
   Store.Open(TDocumentUris.FromPath(cOpenFile), 'objectpascal', 1, cValid);
   mProviders := Default(TSyntaxDiagnosticsProviders);
-  mProviders.Rules := ARules;
+  mProviders.Rules := TTestLspRules.From(ARules);
   Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, mProviders, 0);
   Diagnostics.PullMode := True;
   Pull := TLspPullDiagnostics.Create(Store, Diagnostics, nil,
@@ -164,11 +165,6 @@ begin
 end;
 
 { TLspPullDiagnosticsTests }
-
-procedure TLspPullDiagnosticsTests.WarmUpFirstUse;
-begin
-  CancelStopsRuleChecks;
-end;
 
 procedure TLspPullDiagnosticsTests.DetectsClientSupport;
 var
@@ -490,13 +486,23 @@ begin
   end;
 end;
 
+/// <summary>Hat APull mindestens einmal gerechnet? Eigene Routine, damit die anonyme Methode nur APull einfängt.
+/// </summary>
+function HasComputed(APull: TLspPullDiagnostics): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := APull.Computed > 0;
+    end;
+end;
+
 procedure TLspPullDiagnosticsTests.SlowOpenDocumentAnswersBeforeTimeout;
 var
   mFixture: TFixture;
   mRules: TRuleContextProvider;
   mGo: TEvent;
   mCode: Integer;
-  mClock: TStopwatch;
   mReport: TJSONObject;
   mUri: string;
 begin
@@ -530,11 +536,7 @@ begin
       Assert.AreEqual(0, mFixture.Pull.Computed);
       // Die Prüfung rechnet weiter und legt ab.
       mGo.SetEvent;
-      mClock := TStopwatch.StartNew;
-      while (mFixture.Pull.Computed = 0) and (mClock.ElapsedMilliseconds < 10000) do
-      begin
-        Sleep(10);
-      end;
+      Assert.IsTrue(TTestWait.Reached(HasComputed(mFixture.Pull), 10000));
       Assert.AreEqual(1, mFixture.Pull.Computed);
       mReport := mFixture.Pull.DocumentReport(mUri, '', Token);
       try
@@ -808,11 +810,13 @@ var
 begin
   mStore := TDocumentStore.Create;
   mProviders := Default(TSyntaxDiagnosticsProviders);
-  mProviders.Rules := FailingRules();
-  mDiagnostics := TLspSyntaxDiagnostics.Create(mStore, nil, mProviders, 0);
-  mLogged := TStringList.Create;
+  mProviders.Rules := TTestLspRules.From(FailingRules());
+  mDiagnostics := nil;
+  mLogged := nil;
   mPull := nil;
   try
+    mDiagnostics := TLspSyntaxDiagnostics.Create(mStore, nil, mProviders, 0);
+    mLogged := TStringList.Create;
     mDiagnostics.PullMode := True;
     // Die kaputte Datei steht vorn: früher scheiterte daran jede Anfrage, bis der Server starb.
     mPull := CreateFailingFirstPull(mStore, mDiagnostics, mLogged);
@@ -935,19 +939,6 @@ begin
   end;
 end;
 
-procedure Notify(ADispatcher: TJsonRpcDispatcher; const AMethod, AParams: string);
-var
-  mMessage: TJSONObject;
-begin
-  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
-    as TJSONObject;
-  try
-    ADispatcher.DispatchMessage(mMessage).Free;
-  finally
-    mMessage.Free;
-  end;
-end;
-
 procedure TLspPullDiagnosticsTests.ClientPausesRun;
 var
   mFixture: TFixture;
@@ -958,12 +949,12 @@ begin
   mDispatcher := TJsonRpcDispatcher.Create;
   try
     mFixture.Pull.Attach(mDispatcher);
-    Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":true}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":true}');
     mFixture.Pull.WorkspaceReport(nil, Token).Free;
     Sleep(300);
     Assert.AreEqual(0, mFixture.Pull.Computed);
     Assert.AreEqual('debug', mFixture.Pull.Check.Run.Paused);
-    Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":false}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":false}');
     Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
     Assert.AreEqual(1, mFixture.Pull.Computed);
   finally
@@ -998,10 +989,9 @@ const
   cWorkspaceBundlescFileCount = 12;
 
 /// <summary>Regeln, bei denen jede Unit etwas Zeit braucht, wie im echten Lauf.</summary>
-function SlowRuleProviders: TSyntaxDiagnosticsProviders;
+function SlowRules: TRuleContextProvider;
 begin
-  Result := Default(TSyntaxDiagnosticsProviders);
-  Result.Rules :=
+  Result :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
       AContext := Default(TRuleCheckContext);
@@ -1014,6 +1004,12 @@ begin
           end)];
       Result := True;
     end;
+end;
+
+function SlowRuleProviders: TSyntaxDiagnosticsProviders;
+begin
+  Result := Default(TSyntaxDiagnosticsProviders);
+  Result.Rules := TTestLspRules.From(SlowRules());
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceBundlesReportsDuringRun;

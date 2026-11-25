@@ -12,10 +12,6 @@ type
   [TestFixture]
   TGoldenCorpusTests = class
   public
-    /// <summary>Prüft das Referenzprojekt einmal vorab; einmalig angelegte Daten der Regeln zählen
-    /// sonst als Leck von ReferenceProjectMatchesMarkers.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure MarkersReadExpectedAndNoFinding;
     [Test]
@@ -73,41 +69,20 @@ uses
   Atlas.Common.Rules.GoldenCorpus,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Projects.PackageReader,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Tests.RtlStubs,
   Atlas.Common.Localization.Texts,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Tests.Files;
 
 function Finding(const ARuleId: string; ALine: Integer): TRuleFinding;
 begin
   Result := Default(TRuleFinding);
   Result.RuleId := ARuleId;
   Result.Range := TTextRange.Create(ALine, 2, ALine, 5);
-end;
-
-/// <summary>Ordner des Referenzprojekts, gesucht von der Test-EXE aufwärts; '' ohne.</summary>
-function ReferenceFolder: string;
-var
-  mDirectory: string;
-begin
-  mDirectory := ExtractFileDir(ParamStr(0));
-  while mDirectory <> '' do
-  begin
-    Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
-    if TDirectory.Exists(Result) then
-    begin
-      Exit;
-    end;
-    if ExtractFileDir(mDirectory) = mDirectory then
-    begin
-      Break;
-    end;
-    mDirectory := ExtractFileDir(mDirectory);
-  end;
-  Result := '';
 end;
 
 /// <summary>Text einer Datei des Referenzprojekts ohne BOM, wie ihn der Server liest.</summary>
@@ -281,28 +256,6 @@ end;
 
 { TGoldenCorpusTests }
 
-procedure TGoldenCorpusTests.WarmUp;
-var
-  mFolder, mFileName, mText: string;
-  mRules: TArray<IRule>;
-  mTexts: TArray<string>;
-begin
-  mFolder := ReferenceFolder;
-  if mFolder = '' then
-  begin
-    Exit;
-  end;
-  mRules := BuiltinRules;
-  mTexts := nil;
-  for mFileName in TDirectory.GetFiles(TPath.Combine(mFolder, 'Source'), '*.pas') do
-  begin
-    mText := ReadSource(mFileName);
-    mTexts := mTexts + [mText];
-    TFileChecker.CheckText(mRules, TServerSettings.Default, ExtractFileName(mFileName), mText);
-  end;
-  TGoldenCorpus.TimeRules(mRules, TServerSettings.Default, mTexts);
-end;
-
 procedure TGoldenCorpusTests.MarkersReadExpectedAndNoFinding;
 var
   mMarkers: TArray<TGoldenMarker>;
@@ -424,7 +377,7 @@ var
   mTiming: TRuleTiming;
   mMarkers: Integer;
 begin
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
@@ -449,9 +402,9 @@ var
   mFiles, mTexts: TArray<string>;
   mRun: TIndexRun;
 begin
-  // Wie TShellWorkspaceGroup.RuleProject: Die Regeln bekommen den Index über TCheckProject.Services. Ohne
+  // Wie TCoreWorkspaceGroup.RuleProject: Die Regeln bekommen den Index über TCheckProject.Services. Ohne
   // Dateinamen wie der Lauf ohne Index, damit nur der Index den Unterschied macht.
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
@@ -681,7 +634,7 @@ var
   mRate: TRuleHitRate;
   mDetected: Boolean;
 begin
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
@@ -720,7 +673,7 @@ var
   mRates: TArray<TRuleRate>;
   mRate: TRuleRate;
 begin
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
@@ -855,7 +808,7 @@ var
   mMutation: TRuleMutation;
   mDescriptor: TRuleDescriptor;
 begin
-  mFolder := ReferenceFolder;
+  mFolder := TTestData.ReferenceFolder;
   if mFolder = '' then
   begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');

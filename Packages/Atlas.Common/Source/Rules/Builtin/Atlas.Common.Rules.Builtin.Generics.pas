@@ -98,10 +98,11 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Calls,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -321,7 +322,6 @@ type
     FParamNames: TDictionary<string, Boolean>;
     function NodeText(ANode: TSyntaxNode): string;
     function RangeOf(ANode: TSyntaxNode): TTextRange;
-    function BareName(const AName: string): string;
     function SameType(const A, B: TResolvedSymbol): Boolean;
     function KindOf(const AType: TResolvedSymbol): TArgumentKind;
     function Descends(const AType, ATarget: TResolvedSymbol; out AKnown: Boolean): Boolean;
@@ -366,16 +366,6 @@ end;
 function TGenericConstraintViolatedScan.RangeOf(ANode: TSyntaxNode): TTextRange;
 begin
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
-end;
-
-function TGenericConstraintViolatedScan.BareName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
 
 function TGenericConstraintViolatedScan.SameType(const A, B: TResolvedSymbol): Boolean;
@@ -425,8 +415,8 @@ begin
     begin
       Exit(True);
     end;
-    if (Length(mCurrent.Ancestors) = 0) or SameText(BareName(mCurrent.Ancestors[0]), 'TObject') or
-      SameText(BareName(mCurrent.Ancestors[0]), 'IInterface') then
+    if (Length(mCurrent.Ancestors) = 0) or SameText(TTextNames.BareTypeName(mCurrent.Ancestors[0]), 'TObject') or
+      SameText(TTextNames.BareTypeName(mCurrent.Ancestors[0]), 'IInterface') then
     begin
       Exit(SameText(ATarget.Name, 'TObject') or SameText(ATarget.Name, 'IInterface') or
         SameText(ATarget.Name, 'IUnknown'));
@@ -484,7 +474,7 @@ begin
       AKnown := Result;
       Exit;
     end;
-    if (Length(mCurrent.Ancestors) = 0) or SameText(BareName(mCurrent.Ancestors[0]), 'TObject') then
+    if (Length(mCurrent.Ancestors) = 0) or SameText(TTextNames.BareTypeName(mCurrent.Ancestors[0]), 'TObject') then
     begin
       AKnown := True;
       Exit;
@@ -610,7 +600,7 @@ var
   mMessage: string;
 begin
   if (AParam.Constraints = nil) or (AArg.Kind <> TSyntaxKind.TypeReference) or
-    FParamNames.ContainsKey(LowerCase(BareName(AArgText))) or not FResolver.ResolveTypeTextFrom(FLocal, AArgText,
+    FParamNames.ContainsKey(LowerCase(TTextNames.BareTypeName(AArgText))) or not FResolver.ResolveTypeTextFrom(FLocal, AArgText,
     mArg) then
   begin
     Exit;
@@ -1339,7 +1329,7 @@ begin
   begin
     Exit;
   end;
-  mList := TChangeSignature.ParseParameters(mParameters);
+  mList := TPascalSignatures.ParseParameters(mParameters);
   for mParam in TGenericInferenceFailedRule.OwnTypeParams(AHeader, AName) do
   begin
     mUsed := False;
@@ -1494,7 +1484,7 @@ begin
   begin
     Exit;
   end;
-  mList := TChangeSignature.ParseParameters(mParameters);
+  mList := TPascalSignatures.ParseParameters(mParameters);
   for mParam in TGenericInferenceFailedRule.OwnTypeParams(mCandidates[0].Signature, mCandidates[0].Name) do
   begin
     mSeen := MixedArgument(mParam, mList, AArguments, mFirst);

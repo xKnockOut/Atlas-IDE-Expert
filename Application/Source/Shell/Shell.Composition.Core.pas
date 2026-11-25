@@ -14,8 +14,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Shell.Platform,
-  Shell.Workspace,
+  Platform.Server,
+  Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,
   Shell.Composition.Configuration,
@@ -73,7 +73,7 @@ type
     function RuleContextServices: TShellRuleContextServices;
     function SourcesServices: TShellSourcesServices;
     /// <summary>Noch nicht gesehene Projektdateien von AWorkspace, mit excludeTests ohne Testunits.</summary>
-    function FilesOf(AWorkspace: TShellWorkspace; ASeen: TDictionary<string, Boolean>): TArray<string>;
+    function FilesOf(AWorkspace: TCoreWorkspace; ASeen: TDictionary<string, Boolean>): TArray<string>;
     /// <summary>Hat die Unit laut Index ein Test-Framework im uses?</summary>
     function IsIndexedTestUnit(const AFileName: string): Boolean;
   public
@@ -109,8 +109,8 @@ implementation
 uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
-  Shell.Bootstrap;
+  Atlas.Common.Pascal.UsesClauses,
+  Core.Bootstrap;
 
 { TShellCore }
 
@@ -225,7 +225,7 @@ begin
     end;
 end;
 
-function TShellCore.FilesOf(AWorkspace: TShellWorkspace;
+function TShellCore.FilesOf(AWorkspace: TCoreWorkspace;
   ASeen: TDictionary<string, Boolean>): TArray<string>;
 var
   mFileName: string;
@@ -252,7 +252,7 @@ var
 begin
   mIndex := FServices.Index();
   Result := (mIndex <> nil) and mIndex.FindFile(AFileName, mIndexed) and
-    TUsesClauses.UsesTestFramework(mIndexed.InterfaceUses + mIndexed.ImplementationUses);
+    TPascalUses.UsesTestFramework(mIndexed.InterfaceUses + mIndexed.ImplementationUses);
 end;
 
 procedure TShellCore.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -266,7 +266,7 @@ end;
 
 procedure TShellCore.StopIndexThreads;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   for mWorkspace in FWorkspaces.Items do
   begin
@@ -294,12 +294,12 @@ begin
     AText := mDocument.Text;
     Exit(True);
   end;
-  Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+  Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
 end;
 
 function TShellCore.ProjectFiles: TArray<string>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mDocument: ITextDocument;
   mFileName: string;
 begin
@@ -325,7 +325,7 @@ end;
 
 function TShellCore.CheckFiles: TArray<string>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mDocument: ITextDocument;
   mSeen: TDictionary<string, Boolean>;
 begin

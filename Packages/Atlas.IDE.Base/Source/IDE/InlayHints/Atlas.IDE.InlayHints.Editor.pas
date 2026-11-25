@@ -7,9 +7,9 @@
 //   die sichtbaren Zeilen (mit Rand), die im Zwischenspeicher noch fehlen
 //   (TAtlasInlayHintStore, je Datei und Textstand). Startet keinen Server.
 //   Der Abruf läuft im Hintergrund (TAtlasBackgroundRequest), höchstens einer
-//   zugleich; nach einem Fehler wartet er einige Sekunden. Früher wartete der
-//   Hauptthread bis zu 800 ms: Bei beschäftigtem Server hing die IDE alle
-//   paar Sekunden, und keine Antwort kam je an (2.0-stable).
+//   zugleich; nach einem Fehler wartet er einige Sekunden. Wartete der
+//   Hauptthread (etwa bis zu 800 ms), hinge die IDE bei beschäftigtem Server
+//   alle paar Sekunden, und keine Antwort käme je an.
 // - Zeichnen: nach dem Zeichnen jeder Zeile (plsEndPaint) kleine Marken mit
 //   den Namen hinter dem Zeilenende, in der Reihenfolge der Argumente. Der
 //   Editor kennt keinen eingeschobenen Text; so bleiben Datei, Undo und
@@ -59,10 +59,10 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Editor.InlayPlan,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -160,24 +160,28 @@ implementation
 uses
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.CodeView;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Editor.CodeView;
 
 /// <summary>Zeichnet ALabels als Pillen ab AX (Höhe AHeight ab ATop) und rückt AX hinter die letzte; liefert die
 /// Fläche aller Pillen, leer ohne.</summary>
 function DrawPills(ADC: HDC; const ALabels: TArray<string>; ATop, AHeight: Integer; var AX: Integer): TRect;
+const
+  cPillPad = 8;
+  cCorner = 6;
+  cTextPad = 4;
 var
   mName: string;
   mSize: TSize;
@@ -187,10 +191,10 @@ begin
   for mName in ALabels do
   begin
     GetTextExtentPoint32W(ADC, PChar(mName), Length(mName), mSize);
-    mPill := TRect.Create(AX, ATop, AX + mSize.cx + 8, ATop + AHeight + 2);
-    RoundRect(ADC, mPill.Left, mPill.Top, mPill.Right, mPill.Bottom, 6, 6);
-    TextOutW(ADC, mPill.Left + 4, mPill.Top + 1, PChar(mName), Length(mName));
-    AX := mPill.Right + 4;
+    mPill := TRect.Create(AX, ATop, AX + mSize.cx + cPillPad, ATop + AHeight + 2);
+    RoundRect(ADC, mPill.Left, mPill.Top, mPill.Right, mPill.Bottom, cCorner, cCorner);
+    TextOutW(ADC, mPill.Left + cTextPad, mPill.Top + 1, PChar(mName), Length(mName));
+    AX := mPill.Right + cTextPad;
     if Result.IsEmpty then
     begin
       Result := mPill;
@@ -217,6 +221,8 @@ end;
 { TAtlasEditorInlayHints }
 
 constructor TAtlasEditorInlayHints.Create(const ASession: TAtlasInlayHintsSessionFunc; const AMethodActions: TProc);
+const
+  cTickMs = 150;
 var
   mServices: INTACodeEditorServices;
 begin
@@ -236,7 +242,7 @@ begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 150;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -285,10 +291,10 @@ end;
 /// Blockende)?</summary>
 function AnyInlayOn: Boolean;
 begin
-  Result := TAtlasIdeSettings.InlayHintsOn or TAtlasIdeSettings.InlayTypeHintsOn or
-    TAtlasIdeSettings.InlayDefineHintsOn;
-  Result := Result or TAtlasIdeSettings.InlayCharHintsOn or TAtlasIdeSettings.InlayMethodHintsOn or
-    TAtlasIdeSettings.BlockEndLabelsOn;
+  Result := TAtlasIdeEditorSettings.InlayHintsOn or TAtlasIdeEditorSettings.InlayTypeHintsOn or
+    TAtlasIdeEditorSettings.InlayDefineHintsOn;
+  Result := Result or TAtlasIdeEditorSettings.InlayCharHintsOn or TAtlasIdeEditorSettings.InlayMethodHintsOn or
+    TAtlasIdeEditorSettings.BlockEndLabelsOn;
 end;
 
 /// <summary>Vorderste Ansicht, wenn sie eine Pascal-Datei zeigt; sonst nil.</summary>
@@ -384,9 +390,9 @@ end;
 
 procedure TAtlasEditorInlayHints.SyncMinLines;
 begin
-  if FMinLines <> TAtlasIdeSettings.Current.BlockEndLabelsMinLines then
+  if FMinLines <> TAtlasIdeEditorSettings.BlockEndLabelsMinLines then
   begin
-    FMinLines := TAtlasIdeSettings.Current.BlockEndLabelsMinLines;
+    FMinLines := TAtlasIdeEditorSettings.BlockEndLabelsMinLines;
     FStore.Clear;
     FClicks.Clear;
   end;
@@ -489,23 +495,23 @@ const
 function KindsOn: TAtlasInlayKinds;
 begin
   Result := [];
-  if TAtlasIdeSettings.InlayHintsOn then
+  if TAtlasIdeEditorSettings.InlayHintsOn then
   begin
     Include(Result, TAtlasInlayKind.Parameters);
   end;
-  if TAtlasIdeSettings.InlayTypeHintsOn then
+  if TAtlasIdeEditorSettings.InlayTypeHintsOn then
   begin
     Include(Result, TAtlasInlayKind.InferredTypes);
   end;
-  if TAtlasIdeSettings.InlayDefineHintsOn then
+  if TAtlasIdeEditorSettings.InlayDefineHintsOn then
   begin
     Include(Result, TAtlasInlayKind.Defines);
   end;
-  if TAtlasIdeSettings.InlayCharHintsOn then
+  if TAtlasIdeEditorSettings.InlayCharHintsOn then
   begin
     Include(Result, TAtlasInlayKind.Chars);
   end;
-  if TAtlasIdeSettings.InlayMethodHintsOn then
+  if TAtlasIdeEditorSettings.InlayMethodHintsOn then
   begin
     Include(Result, TAtlasInlayKind.Method);
   end;
@@ -544,11 +550,13 @@ end;
 /// <summary>Blockende-Beschriftung (#620): gedämpfter Text wie ein Kommentar, ohne Rahmen; liefert ihre Fläche.
 /// </summary>
 function DrawEndLabel(ADC: HDC; const ALabel: string; AX, ATop, AHeight: Integer): TRect;
+const
+  cTextPad = 4;
 var
   mSize: TSize;
 begin
   GetTextExtentPoint32W(ADC, PChar(ALabel), Length(ALabel), mSize);
-  Result := TRect.Create(AX, ATop, AX + mSize.cx + 4, ATop + AHeight + 2);
+  Result := TRect.Create(AX, ATop, AX + mSize.cx + cTextPad, ATop + AHeight + 2);
   TextOutW(ADC, Result.Left + 2, Result.Top + 1, PChar(ALabel), Length(ALabel));
 end;
 
@@ -571,9 +579,9 @@ begin
     end;
     mOn := KindsOn;
     // .atlas erst, wenn die Zeile im Editor der im Speicher entspricht (Stored ist dann gesetzt).
-    if TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeSettings.BlockEndLabelsOn, nil) and
+    if TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeEditorSettings.BlockEndLabelsOn, nil) and
       LineMatches(FStore, Context, mHints) and
-      TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeSettings.BlockEndLabelsOn, HiddenIn(Context.FileName)) then
+      TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeEditorSettings.BlockEndLabelsOn, HiddenIn(Context.FileName)) then
     begin
       DrawHints(Rect, Context, mHints);
     end;
@@ -671,13 +679,8 @@ begin
 end;
 
 class procedure TAtlasEditorInlayHints.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 { TAtlasInlayHintClicks }
@@ -696,8 +699,8 @@ var
 begin
   mCharacter := -1;
   mStored := AHit.Actions and FStore.MethodOnLine(AHit.FileName, AHit.Line, mCharacter);
-  Result := TAtlasInlayPlan.HitStillShown(AHit, TAtlasIdeSettings.BlockEndLabelsOn,
-    TAtlasIdeSettings.InlayMethodHintsOn, mStored, mCharacter);
+  Result := TAtlasInlayPlan.HitStillShown(AHit, TAtlasIdeEditorSettings.BlockEndLabelsOn,
+    TAtlasIdeEditorSettings.InlayMethodHintsOn, mStored, mCharacter);
 end;
 
 function TAtlasInlayHintClicks.HitAt(const AView: IOTAEditView; AX, AY: Integer; out AHit: TAtlasInlayPillHit): Boolean;

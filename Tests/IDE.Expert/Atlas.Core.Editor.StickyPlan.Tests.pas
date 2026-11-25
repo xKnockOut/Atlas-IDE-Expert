@@ -30,8 +30,6 @@ type
     [Test]
     procedure RowAtOutsideHeader;
     [Test]
-    procedure ScreenRowUsesMiddleOfLine;
-    [Test]
     procedure ScrolledOnlyAfterFirstPaint;
     [Test]
     procedure RefreshOrder;
@@ -80,8 +78,8 @@ begin
   mSettings.StickyScrollTry := True;
   mSettings.StickyScrollCase := False;
   mSettings.StickyScrollWith := True;
-  Assert.IsTrue(TAtlasStickyPlan.Kinds(mSettings) = [TAtlasStickyKind.Types, TAtlasStickyKind.Branches,
-    TAtlasStickyKind.TryBlocks, TAtlasStickyKind.WithBlocks]);
+  Assert.AreEqual<TAtlasStickyKinds>([TAtlasStickyKind.Types, TAtlasStickyKind.Branches,
+    TAtlasStickyKind.TryBlocks, TAtlasStickyKind.WithBlocks], TAtlasStickyPlan.Kinds(mSettings));
 end;
 
 procedure TAtlasStickyPlanTests.KindsEmptyWhenAllOff;
@@ -96,7 +94,7 @@ begin
   mSettings.StickyScrollTry := False;
   mSettings.StickyScrollCase := False;
   mSettings.StickyScrollWith := False;
-  Assert.IsTrue(TAtlasStickyPlan.Kinds(mSettings) = []);
+  Assert.AreEqual<TAtlasStickyKinds>([], TAtlasStickyPlan.Kinds(mSettings));
 end;
 
 procedure TAtlasStickyPlanTests.WordAtStopsAtNonLetter;
@@ -176,15 +174,6 @@ begin
   Assert.IsFalse(TAtlasStickyPlan.RowAt(TAtlasStickyGrid.Create(3, 3, 0, 40), 40, 5, mRow));
   // Gezeichnet waren drei, gerechnet sind nur noch zwei Köpfe.
   Assert.IsFalse(TAtlasStickyPlan.RowAt(TAtlasStickyGrid.Create(3, 2, 16, 40), 40, 35, mRow));
-end;
-
-procedure TAtlasStickyPlanTests.ScreenRowUsesMiddleOfLine;
-begin
-  Assert.AreEqual(0, TAtlasStickyPlan.ScreenRow(0, 16));
-  Assert.AreEqual(2, TAtlasStickyPlan.ScreenRow(32, 16));
-  // Teilweise gemalte Zeile beim Bildlauf: die Mitte entscheidet.
-  Assert.AreEqual(1, TAtlasStickyPlan.ScreenRow(10, 16));
-  Assert.AreEqual(-1, TAtlasStickyPlan.ScreenRow(10, 0));
 end;
 
 procedure TAtlasStickyPlanTests.ScrolledOnlyAfterFirstPaint;

@@ -21,7 +21,7 @@ uses
   Vcl.StdCtrls,
   Vcl.Grids,
   Atlas.Core.Tests.BoundaryCases,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasTestsBoundaryDialog = class(TAtlasDialog)
@@ -72,7 +72,7 @@ uses
   System.Math,
   System.UITypes,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Tests.Strings;
 
 /// <summary>Wert des Parameters AIndex im Fall ACase; '' ohne.</summary>

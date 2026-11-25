@@ -11,6 +11,8 @@
 //   Commit-Dialog der IDE (das Nachrichtenfeld wird einmal je Dialog vorne
 //   ergänzt) und über den Git-Hook prepare-commit-msg
 //   (Atlas.Core.Tracker.CommitHook).
+// - Begonnenes Issue für KI-Assistenten (#2051) in <gitdir>/atlas-current-issue.json
+//   (Atlas.IDE.Tracker.CurrentIssue).
 // - Titel der Kachel (TAtlasIdeIssuesTitle): „Meine Issues · Projekt“, mit
 //   Punkt bei neuen Änderungen (#1271).
 
@@ -21,11 +23,12 @@ uses
   System.Classes,
   System.Generics.Collections,
   Vcl.ExtCtrls,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices,
-  Atlas.IDE.Tracker.IssueCommands;
+  Atlas.IDE.Tracker.IssueCommands,
+  Atlas.IDE.Tracker.CurrentIssue;
 
 type
   TAtlasIdeIssuesStatus = class
@@ -51,6 +54,7 @@ type
     FFilled: TList<THandle>;
     // Git-Ordner, in die diese Sitzung ein Präfix für den Hook geschrieben hat (Abschalten löscht es dort).
     FPrefixDirs: TList<string>;
+    FCurrentIssue: TAtlasIdeCurrentIssue;
     procedure Inactive;
     procedure EnsureLine;
     procedure UpdateChecklist(const AProject, AKey: string);
@@ -106,8 +110,8 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.CommitHook,
@@ -119,7 +123,8 @@ uses
   Atlas.UI.Tracker.MyIssues.Text,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssuePreview,
-  Atlas.IDE.Tracker.Attach;
+  Atlas.IDE.Tracker.Attach,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 const
   // Commit-Dialog der Versionsverwaltung der IDE (Git, SVN, Mercurial): am Namen der Formularklasse erkannt.
@@ -198,6 +203,7 @@ begin
   FCommands := ACommands;
   FFilled := TList<THandle>.Create;
   FPrefixDirs := TList<string>.Create;
+  FCurrentIssue := TAtlasIdeCurrentIssue.Create(AContext, AServices);
 end;
 
 destructor TAtlasIdeIssuesStatus.Destroy;
@@ -205,18 +211,20 @@ begin
   Stop;
   FFilled.Free;
   FPrefixDirs.Free;
+  FCurrentIssue.Free;
   inherited;
 end;
 
 procedure TAtlasIdeIssuesStatus.Inactive;
 begin
   Remove;
-  FServices.SyncTime('', '', '');
+  FServices.Tracking.SyncTime('', '', '');
   FPrefix := '';
   // Beim Entladen (Stop) bleibt das Präfix, damit der Hook außerhalb der IDE weiter gilt.
   if FContext.Started then
   begin
     ClearPrefixes;
+    FCurrentIssue.Clear;
   end;
   if FWatch <> nil then
   begin
@@ -489,6 +497,7 @@ begin
   FPrefix := TAtlasMyIssues.CommitPrefix(mData.Active, FServices.Options.CommitPattern);
   try
     SyncPrefix(mProject);
+    FCurrentIssue.Sync(mProject, mData.Active);
   except
     on E: Exception do
     begin
@@ -498,10 +507,10 @@ begin
   if not mData.Active.Active then
   begin
     Remove;
-    FServices.SyncTime('', '', '');
+    FServices.Tracking.SyncTime('', '', '');
     Exit;
   end;
-  FServices.SyncTime(mProject, mData.Active.Key, StateOf(mData.Items, mData.Active.Key));
+  FServices.Tracking.SyncTime(mProject, mData.Active.Key, StateOf(mData.Items, mData.Active.Key));
   EnsureLine;
   mText := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesStatusLine,
     [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);

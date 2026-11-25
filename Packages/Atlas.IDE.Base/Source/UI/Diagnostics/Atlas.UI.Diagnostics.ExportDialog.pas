@@ -17,7 +17,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Dialogs,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Vorbereitung vor dem Zeigen, etwa das Thema der IDE (die UI-Schicht kennt es nicht).</summary>
@@ -68,10 +68,21 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
+  // Dialoggröße bei 96 dpi.
+  cDialogWidth = 900;
+  cDialogHeight = 600;
+  // Fußleiste mit „Speichern“ und „Abbrechen“.
+  cBarHeight = 44;
+  cButtonWidth = 100;
+  cButtonHeight = 28;
+  // Schrift der Vorschau.
+  cPreviewFontName = 'Consolas';
+  cPreviewFontSize = 9;
 
 { TAtlasExportDialogTexts }
 
@@ -114,17 +125,17 @@ begin
   FDefaultExt := ATexts.DefaultExt;
   Caption := ATexts.Title;
   BorderStyle := bsSizeable;
-  Width := ScaleValue(900);
-  Height := ScaleValue(600);
+  Width := ScaleValue(cDialogWidth);
+  Height := ScaleValue(cDialogHeight);
 
   mHint := TAtlasWrapLabel.Create(Self);
   mHint.Parent := Self;
   mHint.Align := alTop;
   mHint.AlignWithMargins := True;
-  mHint.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mHint, cGap);
   // Breite vor dem Text: Sonst misst die Beschriftung mit ihrer Standardbreite, bricht nach jedem Wort um und
   // bleibt so hoch, dass die Vorschau kaum Platz hat.
-  mHint.Width := Width - 2 * cGap;
+  mHint.Width := Width - 2 * ScaleValue(cGap);
   mHint.Caption := ATexts.Hint;
   FHint := mHint;
   OnResize := FitHint;
@@ -132,18 +143,20 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := mBottom.ScaleValue(44);
+  mBottom.Height := mBottom.ScaleValue(cBarHeight);
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - 2 * (100 + cGap), 8, 100, 28);
+  mButton.SetBounds(mBottom.Width - 2 * mButton.ScaleValue(cButtonWidth + cGap), mButton.ScaleValue(cGap),
+    mButton.ScaleValue(cButtonWidth), mButton.ScaleValue(cButtonHeight));
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportSave);
   mButton.Default := True;
   mButton.OnClick := SaveClick;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - (100 + cGap), 8, 100, 28);
+  mButton.SetBounds(mBottom.Width - mButton.ScaleValue(cButtonWidth + cGap), mButton.ScaleValue(cGap),
+    mButton.ScaleValue(cButtonWidth), mButton.ScaleValue(cButtonHeight));
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mButton.Cancel := True;
@@ -153,12 +166,12 @@ begin
   mMemo.Parent := Self;
   mMemo.Align := alClient;
   mMemo.AlignWithMargins := True;
-  mMemo.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(mMemo, cGap, 0, cGap, 0);
   mMemo.ReadOnly := True;
   mMemo.ScrollBars := ssBoth;
   mMemo.WordWrap := False;
-  mMemo.Font.Name := 'Consolas';
-  mMemo.Font.Size := 9;
+  mMemo.Font.Name := cPreviewFontName;
+  mMemo.Font.Size := cPreviewFontSize;
   mMemo.Lines.Text := ATexts.Preview;
 end;
 

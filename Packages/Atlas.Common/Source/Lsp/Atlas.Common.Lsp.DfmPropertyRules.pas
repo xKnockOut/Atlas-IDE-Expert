@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Prüft die Unit AFileName nur mit der Regel dfm-property; False ohne Formular oder Regeln.</summary>
@@ -71,9 +71,9 @@ begin
 end;
 
 /// <summary>True, wenn kein Edit aus AEdits einen aus ATaken überlappt.</summary>
-function FitsBeside(const AEdits, ATaken: TArray<TRuleEdit>): Boolean;
+function FitsBeside(const AEdits, ATaken: TArray<TTextEdit>): Boolean;
 var
-  mEdit, mTaken: TRuleEdit;
+  mEdit, mTaken: TTextEdit;
 begin
   for mEdit in AEdits do
   begin
@@ -89,10 +89,10 @@ begin
 end;
 
 /// <summary>Ein Eintrag von documentChanges für AFileName mit den Änderungen AEdits.</summary>
-function DocumentChange(const AFileName: string; const AEdits: TArray<TRuleEdit>;
+function DocumentChange(const AFileName: string; const AEdits: TArray<TTextEdit>;
   const AAnnotationId: string): TJSONObject;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mDocument, mItem: TJSONObject;
   mItems: TJSONArray;
 begin
@@ -131,7 +131,7 @@ type
   TDfmEditCollector = class
   private
     FOrder: TList<string>;
-    FEdits: TDictionary<string, TArray<TRuleEdit>>;
+    FEdits: TDictionary<string, TArray<TTextEdit>>;
     FSeen: TDictionary<string, Boolean>;
     procedure AddFix(const AFix: TRuleFix);
     procedure AddFinding(const AFinding: TRuleFinding);
@@ -148,7 +148,7 @@ constructor TDfmEditCollector.Create;
 begin
   inherited Create;
   FOrder := TList<string>.Create;
-  FEdits := TDictionary<string, TArray<TRuleEdit>>.Create;
+  FEdits := TDictionary<string, TArray<TTextEdit>>.Create;
   FSeen := TDictionary<string, Boolean>.Create;
 end;
 
@@ -162,7 +162,7 @@ end;
 
 procedure TDfmEditCollector.AddFix(const AFix: TRuleFix);
 var
-  mExisting: TArray<TRuleEdit>;
+  mExisting: TArray<TTextEdit>;
 begin
   if not FEdits.TryGetValue(UpperCase(AFix.FileName), mExisting) then
   begin
@@ -217,7 +217,7 @@ end;
 function TDfmEditCollector.Changes(out AFiles, AEdits: Integer): TJSONArray;
 var
   mFileName: string;
-  mExisting: TArray<TRuleEdit>;
+  mExisting: TArray<TTextEdit>;
 begin
   AFiles := 0;
   AEdits := 0;

@@ -182,8 +182,10 @@ uses
   System.Classes,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Localization.Language,
-  Atlas.Text.Json;
+  Atlas.Plugin.Localization.Language,
+  Atlas.Text.Json,
+  Atlas.Text.Timestamps,
+  Atlas.Text.Files;
 
 {$SCOPEDENUMS ON}
 
@@ -304,24 +306,6 @@ begin
   end;
 end;
 
-/// <summary>ISO-8601-Zeitpunkt (UTC); 0 bei leerem oder ungültigem Text.</summary>
-function MarkerDateOf(const AStamp: string): TDateTime;
-begin
-  Result := 0;
-  if AStamp = '' then
-  begin
-    Exit;
-  end;
-  try
-    Result := ISO8601ToDate(AStamp, True);
-  except
-    on EConvertError do
-    begin
-      Result := 0;
-    end;
-  end;
-end;
-
 function MarkerFailuresOf(const AValue: TJSONValue): TArray<TPair<string, Integer>>;
 var
   mPair: TJSONPair;
@@ -359,7 +343,7 @@ begin
     end;
     AMarker.ProcessId := Cardinal(TJSONNumber(mValue).AsInt64);
     AMarker.Version := TJSONObject(mRoot).GetValue<string>('version', '');
-    AMarker.StartedAt := MarkerDateOf(TJSONObject(mRoot).GetValue<string>('startedAt', ''));
+    AMarker.StartedAt := TJsonRead.IsoTime(TJSONObject(mRoot), 'startedAt', True);
     mValue := TJSONObject(mRoot).GetValue('loaded');
     AMarker.Loaded := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
     mValue := TJSONObject(mRoot).GetValue('loadMs');
@@ -422,7 +406,6 @@ end;
 class function TAtlasSafeState.FromJson(const AText: string): TAtlasSafeState;
 var
   mRoot, mValue: TJSONValue;
-  mStamp: string;
 begin
   Result := Default(TAtlasSafeState);
   mRoot := TJSONObject.ParseJSONValue(AText);
@@ -436,14 +419,7 @@ begin
     begin
       Result.CrashCount := Max(0, TJSONNumber(mValue).AsInt);
     end;
-    mStamp := TJSONObject(mRoot).GetValue<string>('lastCrashAt', '');
-    if mStamp <> '' then
-      try
-        Result.LastCrashAt := ISO8601ToDate(mStamp, True);
-      except
-        on EConvertError do
-          Result.LastCrashAt := 0;
-      end;
+    Result.LastCrashAt := TJsonRead.IsoTime(TJSONObject(mRoot), 'lastCrashAt', True);
     // "slowStart" älterer Fassungen bleibt unbeachtet: Ein langsamer Start ist kein Absturz.
     mValue := TJSONObject(mRoot).GetValue('crashed');
     if mValue is TJSONObject then
@@ -638,20 +614,15 @@ begin
 end;
 
 function LineStamp(const ALine: string; out AStamp: TDateTime): Boolean;
-var
-  mYear, mMonth, mDay, mHour, mMinute, mSecond, mMilli: Integer;
+const
+  // Protokollzeilen beginnen mit "yyyy-mm-dd hh:nn:ss.zzz".
+  cStampLength = 23;
+  cClockGap = 11;
+  cMilliDot = 20;
 begin
   AStamp := 0;
-  Result := (Length(ALine) >= 23) and (ALine[5] = '-') and (ALine[8] = '-') and (ALine[11] = ' ') and
-    (ALine[14] = ':') and (ALine[17] = ':') and (ALine[20] = '.') and
-    TryStrToInt(Copy(ALine, 1, 4), mYear) and TryStrToInt(Copy(ALine, 6, 2), mMonth) and
-    TryStrToInt(Copy(ALine, 9, 2), mDay) and TryStrToInt(Copy(ALine, 12, 2), mHour) and
-    TryStrToInt(Copy(ALine, 15, 2), mMinute) and TryStrToInt(Copy(ALine, 18, 2), mSecond) and
-    TryStrToInt(Copy(ALine, 21, 3), mMilli);
-  if Result then
-  begin
-    Result := TryEncodeDateTime(mYear, mMonth, mDay, mHour, mMinute, mSecond, mMilli, AStamp);
-  end;
+  Result := (Length(ALine) >= cStampLength) and (ALine[cClockGap] = ' ') and (ALine[cMilliDot] = '.') and
+    TTextTimestamp.TryParse(Copy(ALine, 1, cStampLength), AStamp);
 end;
 
 class function TAtlasSafeMode.Details(const AMarker: TAtlasSessionMarker): TArray<string>;
@@ -721,12 +692,14 @@ const
 
 /// <summary>
 /// Ersetzt AFileName in einem Schritt: erst vollständig daneben schreiben, dann TFile.Replace
-/// (unter Windows ReplaceFile). Früher erst löschen, dann umbenennen: Ein Absturz dazwischen ließ keine Marke
+/// (unter Windows ReplaceFile). Nicht erst löschen, dann umbenennen: Ein Absturz dazwischen ließe keine Marke
 /// bzw. keinen Zustand zurück. Ohne TAtlasDataFile, weil das über TAtlasGuard protokolliert und Core.Diagnostics
 /// Core.Files nicht verwenden darf (Feature-Zyklus). EInOutError, wenn die Datei nicht ersetzt wurde; sie bleibt
 /// dann, wie sie war.
 /// </summary>
 procedure WriteFileSafely(const AFileName, AText: string);
+const
+  cNotReplaced = 'Datei des abgesicherten Starts nicht ersetzt';
 var
   mTemp, mBackup: string;
 begin
@@ -752,7 +725,7 @@ begin
     end;
     if TFile.Exists(mTemp) then
     begin
-      raise EInOutError.Create('Datei des abgesicherten Starts nicht ersetzt');
+      raise EInOutError.Create(cNotReplaced);
     end;
   finally
     if TFile.Exists(mTemp) then
@@ -791,6 +764,24 @@ begin
   end;
 end;
 
+/// <summary>Marke aus AFileName; False, wenn die Datei ungültig, gesperrt oder schon fort ist.</summary>
+function ReadMarker(const AFileName: string; out AMarker: TAtlasSessionMarker): Boolean;
+begin
+  AMarker := Default(TAtlasSessionMarker);
+  try
+    Result := TAtlasSessionMarker.FromJson(TFile.ReadAllText(AFileName, TEncoding.UTF8), AMarker);
+  except
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
+      Result := False;
+    end;
+  end;
+end;
+
 class function TAtlasSessionFiles.TakeCrashed(const AFolder: string; AOwnProcessId: Cardinal;
   const AAlive: TAtlasProcessAlive): TArray<TAtlasSessionMarker>;
 var
@@ -805,11 +796,7 @@ begin
   end;
   for mFileName in TDirectory.GetFiles(AFolder, cMarkerPrefix + '*.json') do
   begin
-    try
-      mValid := TAtlasSessionMarker.FromJson(TFile.ReadAllText(mFileName, TEncoding.UTF8), mMarker);
-    except
-      mValid := False;
-    end;
+    mValid := ReadMarker(mFileName, mMarker);
     if mValid and (mMarker.ProcessId = AOwnProcessId) then
     begin
       Continue;
@@ -822,13 +809,8 @@ begin
     begin
       Result := Result + [mMarker];
     end;
-    try
-      TFile.Delete(mFileName);
-    except
-      // Gesperrt: beim nächsten Start noch einmal.
-      on Exception do
-        ;
-    end;
+    // Gesperrt: beim nächsten Start noch einmal.
+    TTextFiles.DeleteQuietly(mFileName);
   end;
 end;
 
@@ -841,8 +823,14 @@ begin
       Result := TAtlasSafeState.FromJson(TFile.ReadAllText(StateFile(AFolder), TEncoding.UTF8));
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := Default(TAtlasSafeState);
+    end;
   end;
 end;
 

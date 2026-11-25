@@ -12,9 +12,6 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeWhatsNewFrameTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure UnreadShowsRowsWithSwitchKeyAndTry;
     [Test]
@@ -45,7 +42,8 @@ uses
   Atlas.UI.Welcome.Board,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.UI.Welcome.TestSupport;
+  Atlas.UI.Welcome.TestSupport,
+  Atlas.UI.Welcome.Contract;
 
 
 type
@@ -143,11 +141,6 @@ begin
 end;
 { TAtlasWelcomeWhatsNewFrameTests }
 
-procedure TAtlasWelcomeWhatsNewFrameTests.WarmUpFirstUse;
-begin
-  UnreadShowsRowsWithSwitchKeyAndTry;
-  BoardSizesCardToItsText;
-end;
 procedure TAtlasWelcomeWhatsNewFrameTests.UnreadShowsRowsWithSwitchKeyAndTry;
 var
   mHost: TForm;

@@ -20,9 +20,6 @@ type
     FForm: TForm;
     FBar: TAtlasBreadcrumbBar;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -62,7 +59,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Outline.Breadcrumbs;
 
 type
@@ -114,31 +111,6 @@ begin
 end;
 
 { TAtlasBreadcrumbBarTests }
-
-procedure TAtlasBreadcrumbBarTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    KeepsHeightAndShowsEmptyText;
-  finally
-    TearDown;
-  end;
-  // Erstes Kontextmenü (VCL) ebenfalls vorweg.
-  SetUp;
-  try
-    HitTestAndMenuOnlyWithSiblings;
-  finally
-    TearDown;
-  end;
-  // Erstes benanntes TPanel vor einem Geschwisterfenster (VCL) ebenfalls vorweg: Es belegte einmalig bis zu 336 Byte,
-  // die bis Programmende bleiben; ein zweiter Lauf belegt nichts mehr.
-  SetUp;
-  try
-    NamesWhyTheMouseMissesTheBar;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasBreadcrumbBarTests.SetUp;
 begin

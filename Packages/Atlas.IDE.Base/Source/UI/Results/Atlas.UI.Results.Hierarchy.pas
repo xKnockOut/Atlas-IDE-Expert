@@ -14,7 +14,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.UI.Results.CallDiagram,
   Atlas.UI.Results.View;
 
@@ -106,6 +106,10 @@ const
   cFitWidth = 90;
   /// <summary>Breite des Knopfs „Speichern“ bei 96 dpi.</summary>
   cSaveWidth = 150;
+  /// <summary>Breiten bei 96 dpi: Umschalter Liste/Diagramm, Richtungen „ausgehend“ und „eingehend“.</summary>
+  cToggleWidth = 90;
+  cOutgoingWidth = 160;
+  cIncomingWidth = 150;
 
 { TAtlasResultsHierarchyPart }
 
@@ -113,7 +117,7 @@ constructor TAtlasResultsHierarchyPart.Create(AView: TAtlasResultsView);
 begin
   inherited Create(AView);
   // Umschalter Liste/Diagramm (#1122), nur bei Aufrufhierarchien.
-  FControls.Toggle := TAtlasResultsControls.Check(AView.Host, AView.Header, alRight, 90,
+  FControls.Toggle := TAtlasResultsControls.Check(AView.Host, AView.Header, alRight, cToggleWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramToggle), ToggleClick);
   FControls.Toggle.Visible := False;
   CreateBar;
@@ -212,9 +216,9 @@ begin
   mOwner := View.Host;
   // Fließende Leiste: Reihenfolge = Erzeugungsreihenfolge, bei schmalem Fenster Umbruch.
   FControls.Bar := TAtlasResultsControls.Bar(mOwner, View);
-  FControls.Outgoing := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 160,
+  FControls.Outgoing := TAtlasResultsControls.Radio(mOwner, FControls.Bar, cOutgoingWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramOutgoing), DirectionClick);
-  FControls.Incoming := TAtlasResultsControls.Radio(mOwner, FControls.Bar, 150,
+  FControls.Incoming := TAtlasResultsControls.Radio(mOwner, FControls.Bar, cIncomingWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramIncoming), DirectionClick);
   FControls.ProjectOnly := TAtlasResultsControls.Check(mOwner, FControls.Bar, alNone, cProjectOnlyWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramProjectOnly), nil);
@@ -386,8 +390,8 @@ end;
 
 procedure TAtlasResultsHierarchyPart.SwitchDirection(ADirection: TAtlasHierarchyDirection);
 const
-  cTitles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
-    TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
+  cTitles: array[TAtlasHierarchyDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsIncoming,
+    TAtlasResultsTextId.ResultsOutgoing, TAtlasResultsTextId.ResultsSupertypes, TAtlasResultsTextId.ResultsSubtypes);
 var
   mRoots: TArray<TAtlasHierarchyItem>;
 begin
@@ -396,7 +400,7 @@ begin
     Exit;
   end;
   mRoots := FRoots;
-  Show(TAtlasStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots, ShowsDiagram);
+  Show(TAtlasResultsStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection, mRoots, ShowsDiagram);
 end;
 
 function TAtlasResultsHierarchyPart.DiagramHtml: string;

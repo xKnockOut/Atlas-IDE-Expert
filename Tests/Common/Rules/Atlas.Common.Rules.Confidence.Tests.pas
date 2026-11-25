@@ -42,6 +42,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Tests.RuleAssert;

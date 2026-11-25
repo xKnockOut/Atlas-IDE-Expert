@@ -80,6 +80,17 @@ type
     class function UrlOf(APrerelease: Boolean): string; static;
   end;
 
+  /// <summary>Hosts, von denen AtlasUpdate.exe Versionsdatei, Pakete und Quelltext lädt: GitHub und die Speicher,
+  /// auf die GitHub Release-Dateien umleitet. Nur genau diese Namen, keine Unterdomänen.</summary>
+  TUpdateHosts = class
+  public
+    /// <summary>Host von AUrl in Kleinschreibung, ohne Port; '' ohne https oder mit Anmeldedaten (user@host).
+    /// </summary>
+    class function HostOf(const AUrl: string): string; static;
+    /// <summary>Sichere https-Adresse (IsSafeUrl) auf einem der erlaubten Hosts.</summary>
+    class function IsTrusted(const AUrl: string): Boolean; static;
+  end;
+
   TUpdateManifests = class
   public
     /// <summary>False, wenn AJson keine Versionsdatei mit gültiger Version ist. Ungültige Pakete und Quellen
@@ -95,13 +106,20 @@ uses
   System.JSON,
   System.RegularExpressions,
   System.Generics.Collections,
-  Atlas.Text.Json;
+  Atlas.Text.Chars;
 
 const
   cIdentifier = '(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)';
   cSemVerPattern = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)' +
     '(-' + cIdentifier + '(?:\.' + cIdentifier + ')*)?' +
     '(\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$';
+  cHttpsScheme = 'https://';
+  /// <summary>Hexziffern einer SHA-256-Prüfsumme.</summary>
+  cSha256Digits = 64;
+  cPackageExtension = '.bpl';
+  /// <summary>Erlaubte Hosts der Update-Dateien (TUpdateHosts).</summary>
+  cUpdateHosts: array[0..2] of string = ('github.com', 'objects.githubusercontent.com',
+    'release-assets.githubusercontent.com');
 
 { TUpdateFile }
 
@@ -140,20 +158,6 @@ end;
 
 { TUpdateVersions }
 
-function IsNumber(const AText: string): Boolean;
-var
-  mChar: Char;
-begin
-  Result := AText <> '';
-  for mChar in AText do
-  begin
-    if not CharInSet(mChar, ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 function CompareNumbers(const A, B: string): Integer;
 begin
   // Ohne führende Nullen (SemVer): länger ist größer, sonst Zeichen für Zeichen.
@@ -166,15 +170,15 @@ end;
 
 function CompareIdentifier(const A, B: string): Integer;
 begin
-  if IsNumber(A) and IsNumber(B) then
+  if TTextChars.IsDigits(A) and TTextChars.IsDigits(B) then
   begin
     Result := CompareNumbers(A, B);
   end
-  else if IsNumber(A) then
+  else if TTextChars.IsDigits(A) then
   begin
     Result := -1;
   end
-  else if IsNumber(B) then
+  else if TTextChars.IsDigits(B) then
   begin
     Result := 1;
   end
@@ -282,10 +286,10 @@ class function TUpdateVersions.IsSafeUrl(const AUrl: string): Boolean;
 var
   mChar: Char;
 begin
-  Result := AUrl.StartsWith('https://', True) and (Length(AUrl) > Length('https://'));
+  Result := AUrl.StartsWith(cHttpsScheme, True) and (Length(AUrl) > Length(cHttpsScheme));
   for mChar in AUrl do
   begin
-    if Ord(mChar) <= 32 then
+    if mChar <= ' ' then
     begin
       Exit(False);
     end;
@@ -296,7 +300,7 @@ class function TUpdateVersions.IsSha256(const AText: string): Boolean;
 var
   mChar: Char;
 begin
-  Result := Length(AText) = 64;
+  Result := Length(AText) = cSha256Digits;
   for mChar in AText do
   begin
     if not CharInSet(mChar, ['0'..'9', 'a'..'f', 'A'..'F']) then
@@ -311,9 +315,9 @@ var
   mEnd: Integer;
 begin
   Result := AFileName.Substring(AFileName.LastDelimiter('\/') + 1);
-  if Result.EndsWith('.bpl', True) then
+  if Result.EndsWith(cPackageExtension, True) then
   begin
-    Result := Result.Substring(0, Length(Result) - 4);
+    Result := Result.Substring(0, Length(Result) - Length(cPackageExtension));
   end;
   mEnd := Length(Result);
   while (mEnd > 0) and CharInSet(Result[mEnd], ['0'..'9']) do
@@ -339,6 +343,56 @@ begin
   else
   begin
     Result := cStableUrl;
+  end;
+end;
+
+{ TUpdateHosts }
+
+class function TUpdateHosts.HostOf(const AUrl: string): string;
+var
+  mRest: string;
+  mEnd: Integer;
+begin
+  Result := '';
+  if not AUrl.StartsWith(cHttpsScheme, True) then
+  begin
+    Exit;
+  end;
+  mRest := AUrl.Substring(Length(cHttpsScheme));
+  mEnd := mRest.IndexOfAny(['/', '?', '#']);
+  if mEnd >= 0 then
+  begin
+    mRest := mRest.Substring(0, mEnd);
+  end;
+  // Anmeldedaten vor dem Host verschleiern ihn ("https://github.com@andere.org/").
+  if mRest.Contains('@') then
+  begin
+    Exit;
+  end;
+  mEnd := mRest.IndexOf(':');
+  if mEnd >= 0 then
+  begin
+    mRest := mRest.Substring(0, mEnd);
+  end;
+  Result := LowerCase(mRest);
+end;
+
+class function TUpdateHosts.IsTrusted(const AUrl: string): Boolean;
+var
+  mHost, mTrusted: string;
+begin
+  Result := False;
+  if not TUpdateVersions.IsSafeUrl(AUrl) then
+  begin
+    Exit;
+  end;
+  mHost := HostOf(AUrl);
+  for mTrusted in cUpdateHosts do
+  begin
+    if mHost = mTrusted then
+    begin
+      Exit(True);
+    end;
   end;
 end;
 
@@ -449,39 +503,35 @@ begin
   end;
 end;
 
-function FileJson(const AFile: TUpdateFile): string;
+function FileObject(const AFile: TUpdateFile): TJSONObject;
 begin
-  Result := '{"url": ' + TJsonText.Quote(AFile.Url) + ', "sha256": ' + TJsonText.Quote(AFile.Sha256) + '}';
+  Result := TJSONObject.Create;
+  Result.AddPair('url', AFile.Url);
+  Result.AddPair('sha256', AFile.Sha256);
 end;
 
 class function TUpdateManifests.ToJson(const AManifest: TUpdateManifest): string;
 var
-  mBuilder: TStringBuilder;
-  mIndex: Integer;
+  mRoot, mPackages: TJSONObject;
+  mPackage: TUpdateIdePackage;
 begin
-  mBuilder := TStringBuilder.Create;
+  mRoot := TJSONObject.Create;
   try
-    mBuilder.Append('{"version": ').Append(TJsonText.Quote(AManifest.Version));
-    mBuilder.Append(', "changes": ').Append(TJsonText.Quote(AManifest.ChangesUrl));
-    mBuilder.Append(', "packages": {');
-    for mIndex := 0 to High(AManifest.Packages) do
+    mRoot.AddPair('version', AManifest.Version);
+    mRoot.AddPair('changes', AManifest.ChangesUrl);
+    mPackages := TJSONObject.Create;
+    mRoot.AddPair('packages', mPackages);
+    for mPackage in AManifest.Packages do
     begin
-      if mIndex > 0 then
-      begin
-        mBuilder.Append(', ');
-      end;
-      mBuilder.Append(TJsonText.Quote(AManifest.Packages[mIndex].Ide)).Append(': ');
-      mBuilder.Append(FileJson(AManifest.Packages[mIndex].Archive));
+      mPackages.AddPair(mPackage.Ide, FileObject(mPackage.Archive));
     end;
-    mBuilder.Append('}');
     if AManifest.Source.Url <> '' then
     begin
-      mBuilder.Append(', "source": ').Append(FileJson(AManifest.Source));
+      mRoot.AddPair('source', FileObject(AManifest.Source));
     end;
-    mBuilder.Append('}');
-    Result := mBuilder.ToString;
+    Result := mRoot.ToJSON([]);
   finally
-    mBuilder.Free;
+    mRoot.Free;
   end;
 end;
 

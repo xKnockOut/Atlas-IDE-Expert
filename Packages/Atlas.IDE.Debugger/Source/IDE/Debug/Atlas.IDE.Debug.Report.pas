@@ -1,25 +1,28 @@
 ﻿unit Atlas.IDE.Debug.Report;
 
-// Bericht über die laufende Debug-Sitzung für andere Module (#1455): stellt
-// IAtlasDebugReportSource bereit (Prozess, gestartetes Projekt, Debug-Notiz
-// #582, Exception-Verlauf #517). Der Tracker („An Issue anhängen …“, #1276)
-// fragt den Vertrag über die Registry und kennt den Debugger nicht.
+// Debug-Notiz des Halts (#582) ohne Werte: Überschriften, Daten und Dateiname.
+// Nutzen „Debug-Zustand festhalten“ (Atlas.IDE.Debug.Note), das die Werte des
+// Halts selbst nachlädt, und der Bericht für andere Module
+// (Atlas.IDE.Debug.Adapters.Report).
 
 interface
 
 uses
-  Atlas.Core.Debug.Note,
-  Atlas.IDE.Contracts.DebugReport;
+  Atlas.Core.Debug.Note;
 
 type
-  TAtlasIdeDebugReport = class(TInterfacedObject, IAtlasDebugReportSource)
-  private
-    class function NoteTexts: TAtlasDebugNoteTexts; static;
+  TAtlasIdeDebugReport = class
+  public const
+    /// <summary>Zeilen des Ereignisprotokolls in der Notiz.</summary>
+    cNoteEvents = TAtlasDebugNote.cMaxEvents;
   public
-    function DebuggedProcessId: Cardinal;
-    function LaunchProject: string;
-    function DebugNote(out AMarkdown, AFileName: string): Boolean;
-    function ExceptionsText(AMax: Integer; out ACount: Integer): string;
+    /// <summary>Überschriften der Notiz in der Sprache der Oberfläche.</summary>
+    class function NoteTexts: TAtlasDebugNoteTexts; static;
+    /// <summary>Zustand des Halts ohne Werte: Projekt, Ort mit Ausschnitt, Aufrufstapel, letzte Exception und die
+    /// letzten Zeilen des Ereignisprotokolls; False, wenn das Programm nicht angehalten ist.</summary>
+    class function NoteData(out AData: TAtlasDebugNoteData): Boolean; static;
+    /// <summary>Dateiname der Notiz zur Zeit ATime in der Sprache der Oberfläche.</summary>
+    class function NoteFileName(ATime: TDateTime): string; static;
   end;
 
 implementation
@@ -30,12 +33,14 @@ uses
   System.IOUtils,
   ToolsAPI,
   Atlas.Text.Lines,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,
   Atlas.UI.Debug.Exceptions.Strings,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Sources,
+  Atlas.IDE.Debug.EventLog,
+  Atlas.UI.Debug.Note.Strings,
   Atlas.IDE.Debug.Exceptions;
 
 { TAtlasIdeDebugReport }
@@ -53,23 +58,16 @@ begin
   Result.LastException := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteLastException);
   Result.Count := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteCount);
   Result.NoLocation := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteNoLocation);
+  Result.Locals := TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteLocals);
+  Result.Watches := TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteWatches);
+  Result.Events := TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteEvents);
+  Result.Unavailable := TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteUnavailable);
+  Result.Pending := TAtlasNoteStrings.Text(TAtlasNoteTextId.NotePending);
 end;
 
-function TAtlasIdeDebugReport.DebuggedProcessId: Cardinal;
-var
-  mProcess: IOTAProcess;
+class function TAtlasIdeDebugReport.NoteFileName(ATime: TDateTime): string;
 begin
-  Result := 0;
-  mProcess := TAtlasIdeDebugSession.Process;
-  if mProcess <> nil then
-  begin
-    Result := mProcess.ProcessId;
-  end;
-end;
-
-function TAtlasIdeDebugReport.LaunchProject: string;
-begin
-  Result := TAtlasIdeDebugSession.LaunchProject;
+  Result := TAtlasDebugNote.FileName(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteFileStem), ATime);
 end;
 
 /// <summary>Aufrufstapel des Halts mit eigenem Code markiert, dazu die Routine des obersten Rahmens.</summary>
@@ -136,63 +134,30 @@ begin
   end;
 end;
 
-function TAtlasIdeDebugReport.DebugNote(out AMarkdown, AFileName: string): Boolean;
+class function TAtlasIdeDebugReport.NoteData(out AData: TAtlasDebugNoteData): Boolean;
 var
   mThread: IOTAThread;
-  mData: TAtlasDebugNoteData;
 begin
-  AMarkdown := '';
-  AFileName := '';
+  AData := TAtlasDebugNoteData.Empty;
   mThread := TAtlasIdeDebugSession.StoppedThread;
   if mThread = nil then
   begin
     Exit(False);
   end;
-  mData := TAtlasDebugNoteData.Empty;
-  mData.Project := TAtlasIdeDebugSession.LaunchProject;
-  mData.Configuration := TAtlasIdeDebugSession.LaunchConfiguration;
-  mData.TargetPlatform := TAtlasIdeDebugSession.LaunchPlatform;
-  mData.Time := Now;
-  mData.Thread := TAtlasDebugException.Create(0, '', '', mThread.GetOSThreadID,
+  AData.Project := TAtlasIdeDebugSession.LaunchProject;
+  AData.Configuration := TAtlasIdeDebugSession.LaunchConfiguration;
+  AData.TargetPlatform := TAtlasIdeDebugSession.LaunchPlatform;
+  AData.Time := Now;
+  AData.Thread := TAtlasDebugException.Create(0, '', '', mThread.GetOSThreadID,
     TAtlasIdeDebugSession.ThreadName(mThread)).ThreadText(
     TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsThread));
-  mData.FileName := mThread.CurrentFile;
-  mData.Line := Integer(mThread.CurrentLine);
-  AddFrames(mData, mThread);
-  AddSource(mData);
-  AddException(mData);
-  AMarkdown := TAtlasDebugNote.Markdown(mData, NoteTexts);
-  AFileName := TAtlasDebugNote.FileName(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteFileStem),
-    mData.Time);
+  AData.FileName := mThread.CurrentFile;
+  AData.Line := Integer(mThread.CurrentLine);
+  AddFrames(AData, mThread);
+  AddSource(AData);
+  AddException(AData);
+  AData.Events := TAtlasIdeDebugEventLog.LastLines(cNoteEvents);
   Result := True;
-end;
-
-function TAtlasIdeDebugReport.ExceptionsText(AMax: Integer; out ACount: Integer): string;
-var
-  mHistory: TAtlasDebugExceptionHistory;
-  mIndexes: TArray<Integer>;
-  mItems: TAtlasDebugExceptions;
-  mIndex: Integer;
-begin
-  Result := '';
-  ACount := 0;
-  mHistory := TAtlasIdeDebugExceptions.History;
-  if mHistory = nil then
-  begin
-    Exit;
-  end;
-  mIndexes := mHistory.Filter('', '');
-  ACount := Length(mIndexes);
-  mItems := nil;
-  for mIndex in mIndexes do
-  begin
-    if Length(mItems) >= AMax then
-    begin
-      Break;
-    end;
-    mItems := mItems + [mHistory[mIndex]];
-  end;
-  Result := TAtlasDebugNote.HistoryText(mItems, AMax);
 end;
 
 end.

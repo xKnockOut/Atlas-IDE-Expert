@@ -7,7 +7,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
 
 type
   TProcessMessagesInLoopRule = class(TInterfacedObject, IRule)
@@ -36,6 +38,11 @@ type
     class function WrapperCall(const AWrapper, AMethod: string): string; static;
   end;
 
+/// <summary>Läuft die Methode ARoutine im Hauptthread: Methode eines Formulars oder Frames bzw. Ereignis-Handler
+/// außerhalb eines Threads? AThreads: Thread-Klassen der Unit. Gemeinsam für blocking-call-in-main-thread und
+/// sleep-polling-loop, damit beide dieselbe Warteschleife nicht doppelt melden.</summary>
+function RunsInMainThread(AAncestry: TAncestry; const AThreads: TArray<string>; ARoutine: TSyntaxNode): Boolean;
+
 
 implementation
 
@@ -50,7 +57,6 @@ uses
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
   Atlas.Common.Localization.Texts;
 
@@ -126,6 +132,28 @@ begin
       end;
     end;
   end;
+end;
+
+const
+  cFormBaseClasses: array[0..3] of string = ('TCustomForm', 'TForm', 'TCustomFrame', 'TFrame');
+
+function RunsInMainThread(AAncestry: TAncestry; const AThreads: TArray<string>; ARoutine: TSyntaxNode): Boolean;
+var
+  mOwner, mBase: string;
+begin
+  mOwner := ClassPart(ARoutine.Name);
+  if (mOwner = '') or MatchText(mOwner, AThreads) or AAncestry.DescendsFrom(mOwner, 'TThread') then
+  begin
+    Exit(False);
+  end;
+  for mBase in cFormBaseClasses do
+  begin
+    if AAncestry.DescendsFrom(mOwner, mBase) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := IsEventHandler(ARoutine);
 end;
 
 
@@ -425,7 +453,6 @@ end;
 { TBlockingCallInMainThreadRule }
 
 const
-  cFormBaseClasses: array[0..3] of string = ('TCustomForm', 'TForm', 'TCustomFrame', 'TFrame');
   cWindowsWaitCalls: array[0..2] of string = ('Sleep', 'WaitForSingleObject', 'WaitForMultipleObjects');
 
 { TBlockingCallInMainThreadRule }
@@ -473,22 +500,8 @@ end;
 
 // Methode eines Formulars oder Frames bzw. Ereignis-Handler außerhalb eines Threads.
 function TBlockingCallInMainThreadScan.InMainThread(ARoutine: TSyntaxNode): Boolean;
-var
-  mOwner, mBase: string;
 begin
-  mOwner := ClassPart(ARoutine.Name);
-  if (mOwner = '') or InList(FThreads, mOwner) or FAncestry.DescendsFrom(mOwner, 'TThread') then
-  begin
-    Exit(False);
-  end;
-  for mBase in cFormBaseClasses do
-  begin
-    if FAncestry.DescendsFrom(mOwner, mBase) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := IsEventHandler(ARoutine);
+  Result := RunsInMainThread(FAncestry, FThreads, ARoutine);
 end;
 
 // Timeout in Millisekunden: Zahl, INFINITE = MaxInt; -1 = unbekannt.
@@ -556,7 +569,7 @@ end;
 // (oder Winapi.Windows.…), WaitFor und Wait mit Empfänger.
 function TBlockingCallInMainThreadScan.IsBlockingCall(ACallee: TSyntaxNode): Boolean;
 begin
-  if InList(cWindowsWaitCalls, ACallee.Name) then
+  if MatchText(ACallee.Name, cWindowsWaitCalls) then
   begin
     Result := (ACallee.Kind <> TSyntaxKind.MemberAccess) or MatchText(SourceText(FContext.Text, ACallee[0]),
       ['Windows', 'Winapi.Windows']);
@@ -565,7 +578,7 @@ begin
   begin
     Result := not MatchText(ACallee.Name, ['WaitFor', 'Wait']) or (ACallee.Kind = TSyntaxKind.MemberAccess);
   end;
-  Result := Result and InList(FCalls, ACallee.Name);
+  Result := Result and MatchText(ACallee.Name, FCalls);
 end;
 
 // Timeout des Aufrufs AName mit den Argumenten AArgs (MaxInt ohne Timeout-Argument); False bei Sleep ohne

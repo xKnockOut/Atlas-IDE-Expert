@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Commands.ClientCommands;
 
-// Client-Befehle der Code-Aktionen (#399), aus TAtlasIdeEditorCommands.RunCommand
-// (Atlas.IDE.Commands.Editor, Beschreibung dort) ausgelagert: atlas.copyText,
+// Client-Befehle der Code-Aktionen (#399) für TAtlasIdeEditorCommands.RunCommand
+// (Atlas.IDE.Commands.Editor, Beschreibung dort): atlas.copyText,
 // atlas.openFile, atlas.goToPosition (#915), atlas.showSignatureHelp (#1007),
 // atlas.showUnitRelations (#896), die Befehle der fehlenden Unit (#550) und
 // der Projektwarnung (#531) sowie die Umbaudialoge (Signatur ändern #100,
@@ -63,7 +63,8 @@ uses
   Atlas.IDE.Editor.MethodKind,
   Atlas.IDE.Editor.TypeAlias,
   Atlas.IDE.Editor.EnumTables,
-  Atlas.IDE.Editor.Overloads;
+  Atlas.IDE.Editor.Overloads,
+  Atlas.Plugin.Calls.Optional;
 
 const
   cCopyTextCommand = 'atlas.copyText';
@@ -200,15 +201,6 @@ begin
   end;
 end;
 
-/// <summary>Optionaler Rückruf.</summary>
-procedure CallIfAssigned(const AProc: TProc);
-begin
-  if Assigned(AProc) then
-  begin
-    AProc();
-  end;
-end;
-
 /// <summary>Befehle ohne Server: Zwischenablage, Datei, Position, Parameter-Hint, Unit-Beziehungen.</summary>
 function TryEditorCommand(const ACommand, AArgumentsJson: string; const AHost: TAtlasClientCommandHost): Boolean;
 begin
@@ -230,13 +222,13 @@ begin
     // Wie atlas.goToPosition, danach der Parameter-Hint an der Stelle (#1007).
     if GoToPosition(AArgumentsJson) then
     begin
-      CallIfAssigned(AHost.SignatureHelp);
+      TAtlasCalls.Call(AHost.SignatureHelp);
     end;
   end
   else if ACommand = cShowUnitRelationsCommand then
   begin
     // „Graph zeigen“ an einem Unit-Zyklus (#896).
-    CallIfAssigned(AHost.UnitRelations);
+    TAtlasCalls.Call(AHost.UnitRelations);
   end
   else
   begin

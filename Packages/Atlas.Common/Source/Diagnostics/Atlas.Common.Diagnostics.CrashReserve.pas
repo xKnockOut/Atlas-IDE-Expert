@@ -90,38 +90,45 @@ procedure TCrashReserve.TWorker.Execute;
 var
   mWork: TProc;
 begin
-  while True do
-  begin
-    FOwner.FStart.WaitFor(cForever);
-    if FOwner.FStopping then
+  try
+    while True do
     begin
-      Exit;
-    end;
-    mWork := FOwner.FWork;
-    FOwner.FFailure := '';
-    // Erst die Reserve abgeben, damit das Schreiben auch bei knappem Speicher Platz findet.
-    FOwner.FReserve := nil;
-    try
-      if Assigned(mWork) then
+      FOwner.FStart.WaitFor(cForever);
+      if FOwner.FStopping then
       begin
-        mWork();
+        Exit;
       end;
-    except
-      // lsp-ignore: catch-all-without-raise -- Absturzvorsorge darf nie werfen; Fehler steht in FFailure
-      on E: Exception do
-        FOwner.FFailure := E.ClassName + ': ' + E.Message;
+      mWork := FOwner.FWork;
+      FOwner.FFailure := '';
+      // Erst die Reserve abgeben, damit das Schreiben auch bei knappem Speicher Platz findet.
+      FOwner.FReserve := nil;
+      try
+        if Assigned(mWork) then
+        begin
+          mWork();
+        end;
+      except
+        on E: Exception do
+          FOwner.FFailure := E.ClassName + ': ' + E.Message;
+      end;
+      mWork := nil;
+      try
+        SetLength(FOwner.FReserve, cReserveBytes);
+      except
+        // Kein Speicher für die neue Reserve: Der nächste Fall schreibt ohne.
+        on EOutOfMemory do
+          FOwner.FReserve := nil;
+      end;
+      FOwner.FDone.SetEvent;
+      // Erst nach dem Signal: Ein Run nach einem abgelaufenen Warten setzt das alte Signal zurück (Run).
+      AtomicIncrement(FOwner.FFinished);
     end;
-    mWork := nil;
-    try
-      SetLength(FOwner.FReserve, cReserveBytes);
-    except
-      // Kein Speicher für die neue Reserve: Der nächste Fall schreibt ohne.
-      on EOutOfMemory do
-        FOwner.FReserve := nil;
+  except
+    on E: Exception do
+    begin
+      // Absturzvorsorge darf nie werfen; der Fehler steht wie bei der Arbeit in FFailure.
+      FOwner.FFailure := E.ClassName + ': ' + E.Message;
     end;
-    FOwner.FDone.SetEvent;
-    // Erst nach dem Signal: Ein Run nach einem abgelaufenen Warten setzt das alte Signal zurück (Run).
-    AtomicIncrement(FOwner.FFinished);
   end;
 end;
 

@@ -20,7 +20,7 @@ uses
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.WorkspaceFolders,
   Atlas.Common.Rules.Contract,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,
   Shell.Composition.Configuration;
@@ -74,11 +74,11 @@ type
     /// </summary>
     function ProjectsOf(const AFolder: TWorkspaceFolder): TArray<string>;
     procedure AddProject(const ARoot, AName, AProjectFile, AOrigin: string; ADeferred: Boolean);
-    function NewWorkspace(const ARoot, AName, AProjectFile, AOrigin: string; ADeferred: Boolean): TShellWorkspace;
-    procedure WireEvents(AWorkspace: TShellWorkspace);
+    function NewWorkspace(const ARoot, AName, AProjectFile, AOrigin: string; ADeferred: Boolean): TCoreWorkspace;
+    procedure WireEvents(AWorkspace: TCoreWorkspace);
     procedure AddLogNames(const ANames: TArray<string>);
     /// <summary>Units der entfernten Projekte verlassen den Index, sofern kein verbleibendes sie enthält.</summary>
-    procedure RemoveOwnedUnits(const ARemoved, ARemaining: TArray<TShellWorkspace>);
+    procedure RemoveOwnedUnits(const ARemoved, ARemaining: TArray<TCoreWorkspace>);
     /// <summary>Meldungen in atlas.json: gespeicherte Abfragen (#1351) und, mit fertigem Index,
     /// Eigenschaftsregeln mit unbekannter Klasse oder Property (#309).</summary>
     function ConfigurationExtraIssues(const ASettings: TServerSettings): TArray<TConfigurationIssue>;
@@ -109,14 +109,17 @@ uses
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Query.Language,
   Atlas.Common.Rules.Builtin.DfmProperties,
-  Shell.Platform,
-  Shell.Bootstrap,
-  Shell.Workspace.Setup,
-  Atlas.Text.LogMarks;
+  Platform.Server,
+  Core.Bootstrap,
+  Core.Workspace.Setup,
+  Atlas.Text.LogMarks,
+  Atlas.Text.Files,
+  Shell.Composition.Platform,
+  Shell.Composition.RuleRefactorings;
 
 /// <summary>Gehört AFileName zu AWorkspace? Mit fester Projektdatei nur die Projekt- und Suchpfad-Units, sonst
 /// alles unter dem Ordner.</summary>
-function OwnsFile(AWorkspace: TShellWorkspace; const AFileName: string): Boolean;
+function OwnsFile(AWorkspace: TCoreWorkspace; const AFileName: string): Boolean;
 begin
   Result := AWorkspace.State.ContainsFile(AFileName);
   if not Result and (AWorkspace.Setup.ProjectFile = '') then
@@ -126,9 +129,9 @@ begin
 end;
 
 /// <summary>Gehört AFileName zu einem der Arbeitsbereiche AWorkspaces?</summary>
-function OwnedByAny(const AWorkspaces: TArray<TShellWorkspace>; const AFileName: string): Boolean;
+function OwnedByAny(const AWorkspaces: TArray<TCoreWorkspace>; const AFileName: string): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := False;
   for mWorkspace in AWorkspaces do
@@ -148,8 +151,14 @@ begin
       (Length(TDirectory.GetFiles(AFolder, '*.groupproj')) > 0);
   except
     // Ungültige oder nicht lesbare Ordner zählen als ohne Projekt.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 
@@ -171,8 +180,14 @@ begin
     end;
   except
     // Nicht lesbare Ordner haben keine Gruppe.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 
@@ -211,13 +226,13 @@ begin
   end;
   if mGroupFile <> '' then
   begin
-    Result := TShellBootstrap.LoadGroup(mGroupFile, FServices.Logger);
+    Result := TCoreBootstrap.LoadGroup(mGroupFile, FServices.Logger);
   end;
 end;
 
 procedure TShellFolders.AddProject(const ARoot, AName, AProjectFile, AOrigin: string; ADeferred: Boolean);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   if (AProjectFile <> '') and FServices.Workspaces.HasProject(AProjectFile) then
   begin
@@ -243,13 +258,14 @@ begin
 end;
 
 function TShellFolders.NewWorkspace(const ARoot, AName, AProjectFile, AOrigin: string;
-  ADeferred: Boolean): TShellWorkspace;
+  ADeferred: Boolean): TCoreWorkspace;
 var
   mIdentity: TIndexProcessInfo;
 begin
   Inc(FCounter);
-  Result := TShellWorkspace.Create(ARoot, AName, TShellWorkspaceServices.Create(FServices.Documents,
-    FServices.Transport, FServices.Logger, FServices.Index(), Format('atlas-index-%d', [FCounter])));
+  Result := TCoreWorkspace.Create(ARoot, AName, TCoreWorkspaceServices.Create(FServices.Documents,
+    FServices.Transport, FServices.Logger, FServices.Index(), Format('atlas-index-%d', [FCounter]),
+    TShellPlatformAdapters.WorkspaceFactories));
   Result.Setup.ProjectFile := AProjectFile;
   Result.Setup.Priority := FPriority;
   Inc(FPriority);
@@ -260,11 +276,12 @@ begin
   begin
     Result.Setup.IdeTypes := FServices.IdeTypes();
   end;
+  Result.Setup.Refactorings := TShellRuleRefactorings.Create;
   Result.Setup.Origin := AOrigin;
   Result.Setup.Selection := FServices.Selection();
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).
   mIdentity := Default(TIndexProcessInfo);
-  mIdentity.Pid := TShellPlatform.CurrentProcessId;
+  mIdentity.Pid := TServerPlatform.CurrentProcessId;
   mIdentity.Kind := TIndexProcessInfo.cKindLsp;
   mIdentity.Client := FServices.ClientName();
   Result.Setup.ProcessIdentity := mIdentity;
@@ -273,7 +290,7 @@ begin
   Result.Setup.LoopThreadId := TThread.Current.ThreadID;
 end;
 
-procedure TShellFolders.WireEvents(AWorkspace: TShellWorkspace);
+procedure TShellFolders.WireEvents(AWorkspace: TCoreWorkspace);
 begin
   // uses-unit-not-found: Was ein Projekt der Gruppe in einen Suchpfad übersetzt, gibt es beim Bau der Gruppe.
   AWorkspace.Setup.OnGroupProjects :=
@@ -323,7 +340,7 @@ begin
   end;
 end;
 
-procedure TShellFolders.RemoveOwnedUnits(const ARemoved, ARemaining: TArray<TShellWorkspace>);
+procedure TShellFolders.RemoveOwnedUnits(const ARemoved, ARemaining: TArray<TCoreWorkspace>);
 var
   mIndex: ISymbolIndex;
   mUnit: TUnitIndex;
@@ -387,9 +404,9 @@ end;
 
 procedure TShellFolders.Remove(const AFolder: TWorkspaceFolder);
 var
-  mRemoved: TArray<TShellWorkspace>;
-  mRemaining: TArray<TShellWorkspace>;
-  mWorkspace: TShellWorkspace;
+  mRemoved: TArray<TCoreWorkspace>;
+  mRemaining: TArray<TCoreWorkspace>;
+  mWorkspace: TCoreWorkspace;
 begin
   // Ein Eintrag (Ordner, .dproj oder .groupproj) kann mehrere Arbeitsbereiche erzeugt haben (#648).
   mRemoved := FServices.Workspaces.Extract(AFolder.Key, mRemaining);
@@ -439,8 +456,8 @@ end;
 
 function TShellFolders.EnsureUnit(const AUnitName: string): Boolean;
 var
-  mWorkspace: TShellWorkspace;
-  mTargets: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mTargets: TArray<TCoreWorkspace>;
 begin
   // Anfrage-Threads: jeder Ordner versucht es mit seinen Suchpfaden. Das Parsen läuft außerhalb der Sperre
   // (#647): Sonst warteten alle Anfragen, die nur kurz einen Arbeitsbereich suchen (Defines, Einstellungen,

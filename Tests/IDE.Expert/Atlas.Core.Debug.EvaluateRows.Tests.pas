@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.EvaluateRows;
 
@@ -202,14 +202,14 @@ begin
     mList.Add('Frei');
     // Gespeichert jüngste zuerst: angefügt wird die älteste zuerst.
     TAtlasEvalRows.ReplacePinned(mList, ['Neu2', 'Neu1', ' '], False);
-    Assert.AreEqual(3, mList.Count);
+    Assert.AreEqual(3, Integer(mList.Count));
     Assert.AreEqual('Frei', mList.Roots[0].Expression);
     Assert.AreEqual('Neu1', mList.Roots[1].Expression);
     Assert.AreEqual('Neu2', mList.Roots[2].Expression);
     Assert.IsTrue(mList.Roots[1].Pinned);
     Assert.AreEqual<TAtlasEvalState>(TAtlasEvalState.Unavailable, mList.Roots[1].State);
     TAtlasEvalRows.ReplacePinned(mList, ['Neu3'], True);
-    Assert.AreEqual(2, mList.Count);
+    Assert.AreEqual(2, Integer(mList.Count));
     Assert.AreEqual<TAtlasEvalState>(TAtlasEvalState.Pending, mList.Roots[1].State);
   finally
     mList.Free;

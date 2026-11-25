@@ -32,8 +32,8 @@ uses
   Vcl.Forms,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Status.Server;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Status.Server;
 
 type
   /// <summary>Speicher: je Bereich ein Balken gegen den Maßstab, senkrechter Strich beim Budget, darunter
@@ -69,6 +69,8 @@ type
     FOnOpenUnit: TProc<TAtlasServerSlowUnit>;
     FOnOpenRule: TProc<string>;
     function Px(AValue: Integer): Integer;
+    /// <summary>Tabelle mit den Spalten AColumns; AWidths in logischen Pixeln (96 dpi), skaliert über die Liste.
+    /// </summary>
     function NewList(const AColumns: array of string; const AWidths: array of Integer): TListView;
     procedure UnitsData(Sender: TObject; Item: TListItem);
     procedure RulesData(Sender: TObject; Item: TListItem);
@@ -102,6 +104,7 @@ type
     FOnRefresh: TProc;
     FOnRebuild: TProc;
     FOnPackage: TProc;
+    /// <summary>Knopf mit der Breite AWidth in logischen Pixeln (96 dpi).</summary>
     function NewButton(const ACaption: string; AWidth: Integer): TButton;
     procedure ButtonClick(Sender: TObject);
   public
@@ -156,11 +159,13 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Winapi.Windows,
   System.Math,
   Atlas.UI.Status.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Theme.Service;
 
 const
   // Breiten der Spalten Regel, ms und Aufrufe; Breite der Knöpfe der Leiste.
@@ -171,6 +176,19 @@ const
   cPackageWidth = 170;
   /// <summary>Abstand oben des Hinweises in der Leiste bei 96 dpi, mittig zu den Knöpfen.</summary>
   cNoteTop = 7;
+  /// <summary>Spalten der Anfragen: Anfrage, Anzahl, Mittel, Maximum, gescheitert; Spalte Unit.</summary>
+  cRequestColumnWidths: array[0..4] of Integer = (260, 70, 80, 90, 60);
+  cUnitWidth = 260;
+  /// <summary>Speicheranzeige bei 96 dpi: Breiten von Name und Wert, Zeilenhöhe, Abstände des Balkens.</summary>
+  cChartLabelWidth = 130;
+  cChartValueWidth = 150;
+  cChartRowHeight = 18;
+  cChartBarInset = 4;
+  cChartBarGap = 8;
+  /// <summary>Tabellen untereinander: Anzahl, kleinste Höhe und Abzug je Tabelle bei 96 dpi.</summary>
+  cTableCount = 3;
+  cTableMinHeight = 60;
+  cTableGap = 6;
 
 {$R *.dfm}
 
@@ -242,6 +260,8 @@ var
   mPart: TAtlasServerMemoryPart;
   mIndex: Integer;
 begin
+  // Geerbt zuerst: TPaintBox.Paint löst OnPaint aus; das eigene Bild deckt den Rest.
+  inherited;
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(FColors.Surface);
@@ -250,8 +270,8 @@ begin
   begin
     Exit;
   end;
-  FLabelWidth := Px(130);
-  FValueWidth := Px(150);
+  FLabelWidth := Px(cChartLabelWidth);
+  FValueWidth := Px(cChartValueWidth);
   mIndex := 0;
   for mPart := Low(TAtlasServerMemoryPart) to High(TAtlasServerMemoryPart) do
   begin
@@ -273,7 +293,7 @@ end;
 
 function TAtlasServerMemoryChart.RowHeight: Integer;
 begin
-  Result := Px(18);
+  Result := Px(cChartRowHeight);
 end;
 
 function TAtlasServerMemoryChart.TotalText: string;
@@ -333,7 +353,8 @@ begin
   DrawText(Canvas.Handle, PChar(ACaption), Length(ACaption), mCell, cTextFlags or DT_LEFT);
   mCell := Rect(mRow.Right - FValueWidth, mRow.Top, mRow.Right, mRow.Bottom);
   DrawText(Canvas.Handle, PChar(AValue), Length(AValue), mCell, cTextFlags or DT_RIGHT);
-  mBar := Rect(mRow.Left + FLabelWidth, mRow.Top + Px(4), mRow.Right - FValueWidth - Px(8), mRow.Bottom - Px(4));
+  mBar := Rect(mRow.Left + FLabelWidth, mRow.Top + Px(cChartBarInset), mRow.Right - FValueWidth - Px(cChartBarGap),
+    mRow.Bottom - Px(cChartBarInset));
   if mBar.Right > mBar.Left then
   begin
     DrawBar(mBar, AFraction, AWarnColor);
@@ -366,7 +387,7 @@ begin
     TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnAverage),
     TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnMax),
     TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnFailed)],
-    [260, 70, 80, 90, 60]);
+    cRequestColumnWidths);
   FRequests.Align := alClient;
   FRequests.OnData := RequestsData;
   FRules := NewList([TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnRule),
@@ -378,7 +399,7 @@ begin
   FRules.OnDblClick := RulesDblClick;
   FUnits := NewList([TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnUnit),
     TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerColumnMs)],
-    [260, 80]);
+    [cUnitWidth, cNumberWidth]);
   FUnits.Align := alTop;
   FUnits.Top := 0;
   FUnits.OnData := UnitsData;
@@ -389,7 +410,7 @@ procedure TAtlasServerTables.Resize;
 begin
   inherited;
   // Drei gleich hohe Tabellen untereinander; die Anfragen nehmen den Rest.
-  FUnits.Height := Max(Px(60), ClientHeight div 3 - Px(6));
+  FUnits.Height := Max(Px(cTableMinHeight), ClientHeight div cTableCount - Px(cTableGap));
   FRules.Height := FUnits.Height;
 end;
 
@@ -415,7 +436,7 @@ begin
   begin
     mColumn := Result.Columns.Add;
     mColumn.Caption := AColumns[mIndex];
-    mColumn.Width := AWidths[mIndex];
+    mColumn.Width := Result.ScaleValue(AWidths[mIndex]);
     if mIndex > 0 then
     begin
       mColumn.Alignment := taRightJustify;
@@ -525,7 +546,7 @@ begin
   // Fließende Leiste: bei schmalem Fenster brechen Knöpfe und Hinweis in weitere Zeilen um.
   AutoWrap := True;
   AutoSize := True;
-  Padding.SetBounds(2, 2, 2, 2);
+  TAtlasControlScaling.SetPadding(Self, 2, 2, 2, 2);
   FRefresh := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRefresh), cRefreshWidth);
   FRebuild := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowRebuild), cRebuildWidth);
   FPackage := NewButton(TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowPackage), cPackageWidth);
@@ -535,7 +556,7 @@ begin
   FNote.AutoSize := True;
   FNote.Margins.Top := FNote.ScaleValue(cNoteTop);
   FNote.ShowAccelChar := False;
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FNote.Caption := TAtlasStatusStrings.Text(TAtlasStatusTextId.ServerWindowHint);
 end;
 
@@ -544,7 +565,7 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := Self;
   Result.AlignWithMargins := True;
-  Result.Width := AWidth;
+  Result.Width := Result.ScaleValue(AWidth);
   Result.Caption := ACaption;
   Result.OnClick := ButtonClick;
 end;

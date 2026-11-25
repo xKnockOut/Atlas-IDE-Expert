@@ -78,7 +78,19 @@ type
 implementation
 
 uses
+  Atlas.Text.Uris,
   Atlas.Core.VersionControl.Internals.Text;
+
+const
+  cSchemeSeparator = '://';
+  /// <summary>URL relativ zur Wurzel des Repositorys.</summary>
+  cRepositoryPrefix = '^/';
+  /// <summary>URL relativ zum Ordner, der das External definiert.</summary>
+  cParentPrefix = '../';
+  /// <summary>Revision direkt an der Option ("-r123").</summary>
+  cRevisionOption = '-r';
+  /// <summary>Ab SVN 1.9 kann svn copy --pin-externals.</summary>
+  cPinExternalsMinor = 9;
 
 type
   TToken = record
@@ -167,8 +179,8 @@ end;
 
 function IsUrlish(const AText: string): Boolean;
 begin
-  Result := (Pos('://', AText) > 0) or (Copy(AText, 1, 2) = '^/') or (Copy(AText, 1, 3) = '../') or
-    (Copy(AText, 1, 1) = '/');
+  Result := (Pos(cSchemeSeparator, AText) > 0) or AText.StartsWith(cRepositoryPrefix) or
+    AText.StartsWith(cParentPrefix) or AText.StartsWith('/');
 end;
 
 function ParseLine(const ALine: string): TParsedLine;
@@ -197,9 +209,9 @@ begin
       Inc(mIndex, 2);
       Continue;
     end;
-    if (Length(mText) > 2) and (Copy(mText, 1, 2) = '-r') then
+    if (Length(mText) > Length(cRevisionOption)) and mText.StartsWith(cRevisionOption) then
     begin
-      Result.Revision := Copy(mText, 3, MaxInt);
+      Result.Revision := Copy(mText, Length(cRevisionOption) + 1, MaxInt);
     end
     else
     begin
@@ -229,12 +241,12 @@ function ServerOf(const AUrl: string): string;
 var
   mStart, mIndex: Integer;
 begin
-  mStart := Pos('://', AUrl);
+  mStart := Pos(cSchemeSeparator, AUrl);
   if mStart = 0 then
   begin
     Exit('');
   end;
-  mIndex := mStart + 3;
+  mIndex := mStart + Length(cSchemeSeparator);
   while (mIndex <= Length(AUrl)) and (AUrl[mIndex] <> '/') do
   begin
     Inc(mIndex);
@@ -320,11 +332,12 @@ class function TAtlasSvnExternals.Definitions(const AXml, ARoot: string): TArray
 var
   mReader: TAtlasVcsXmlReader;
   mPath, mText, mRelative: string;
+  mPieces: TArray<string>;
   mInProperty: Boolean;
 begin
   Result := nil;
   mPath := '';
-  mText := '';
+  mPieces := nil;
   mInProperty := False;
   mReader := TAtlasVcsXmlReader.Create(AXml);
   try
@@ -337,15 +350,16 @@ begin
       else if AtExternalsProperty(mReader) then
       begin
         mInProperty := True;
-        mText := '';
+        mPieces := nil;
       end
       else if mInProperty and (mReader.Node = TAtlasVcsXmlNode.Text) then
       begin
-        mText := mText + mReader.Value;
+        mPieces := mPieces + [mReader.Value];
       end
       else if mInProperty and (mReader.Node = TAtlasVcsXmlNode.EndTag) and (mReader.Name = 'property') then
       begin
         mInProperty := False;
+        mText := string.Join('', mPieces);
         if ExternalOwner(ARoot, mPath, mRelative) then
         begin
           Result := Result + [TAtlasVcsSvnExternalDefinition.Make(mRelative,
@@ -427,23 +441,23 @@ class function TAtlasSvnExternals.ResolveUrl(const AUrl, AOwnerUrl, ARepositoryR
 var
   mRest, mBase, mScheme: string;
 begin
-  if Copy(AUrl, 1, 2) = '^/' then
+  if AUrl.StartsWith(cRepositoryPrefix) then
   begin
     // ^/../Anderes: Nachbar-Repository neben der Wurzel.
-    mRest := Copy(AUrl, 3, MaxInt);
+    mRest := Copy(AUrl, Length(cRepositoryPrefix) + 1, MaxInt);
     mBase := WithoutSlash(ARepositoryRoot);
     Exit(Normalized(mBase + '/' + mRest));
   end;
   if Copy(AUrl, 1, 2) = '//' then
   begin
-    mScheme := Copy(AOwnerUrl, 1, Pos('://', AOwnerUrl) - 1);
+    mScheme := Copy(AOwnerUrl, 1, Pos(cSchemeSeparator, AOwnerUrl) - 1);
     Exit(Normalized(mScheme + ':' + AUrl));
   end;
   if Copy(AUrl, 1, 1) = '/' then
   begin
     Exit(Normalized(ServerOf(AOwnerUrl) + AUrl));
   end;
-  if Copy(AUrl, 1, 3) = '../' then
+  if AUrl.StartsWith(cParentPrefix) then
   begin
     Exit(Normalized(WithoutSlash(AOwnerUrl) + '/' + AUrl));
   end;
@@ -451,36 +465,8 @@ begin
 end;
 
 class function TAtlasSvnExternals.UrlDecode(const AText: string): string;
-var
-  mBytes: TBytes;
-  mIndex, mCount, mValue: Integer;
-  mChar: TBytes;
 begin
-  if Pos('%', AText) = 0 then
-  begin
-    Exit(AText);
-  end;
-  mChar := TEncoding.UTF8.GetBytes(AText);
-  SetLength(mBytes, Length(mChar));
-  mCount := 0;
-  mIndex := 0;
-  while mIndex <= High(mChar) do
-  begin
-    if (mChar[mIndex] = Ord('%')) and (mIndex + 2 <= High(mChar)) and
-      TryStrToInt('$' + Chr(mChar[mIndex + 1]) + Chr(mChar[mIndex + 2]), mValue) then
-    begin
-      mBytes[mCount] := Byte(mValue);
-      Inc(mIndex, 3);
-    end
-    else
-    begin
-      mBytes[mCount] := mChar[mIndex];
-      Inc(mIndex);
-    end;
-    Inc(mCount);
-  end;
-  SetLength(mBytes, mCount);
-  Result := TEncoding.UTF8.GetString(mBytes);
+  Result := TTextUris.PercentDecode(AText);
 end;
 
 class function TAtlasSvnExternals.ReplaceLine(const AText: string; ALine: Integer; const ANewLine: string): string;
@@ -629,7 +615,7 @@ begin
   begin
     Exit;
   end;
-  Result := (mMajor > 1) or ((mMajor = 1) and (mMinor >= 9));
+  Result := (mMajor > 1) or ((mMajor = 1) and (mMinor >= cPinExternalsMinor));
 end;
 
 function PrefixOf(const APrefix, AText: string): Boolean;

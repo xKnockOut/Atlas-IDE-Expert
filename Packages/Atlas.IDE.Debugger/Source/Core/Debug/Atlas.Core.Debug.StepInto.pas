@@ -128,7 +128,8 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Json;
 
 { TAtlasStepRow }
 
@@ -140,26 +141,18 @@ end;
 { TAtlasStepInto }
 
 class function TAtlasStepInto.KindOf(const AText: string): TAtlasStepKind;
+const
+  cNames: array[0..3] of string = ('constructor', 'getter', 'setter', 'inherited');
+  cKinds: array[0..3] of TAtlasStepKind = (TAtlasStepKind.Constructor_, TAtlasStepKind.Getter,
+    TAtlasStepKind.Setter, TAtlasStepKind.Inherited_);
+var
+  mIndex: Integer;
 begin
-  if AText = 'constructor' then
+  Result := TAtlasStepKind.Call;
+  mIndex := IndexStr(AText, cNames);
+  if mIndex >= 0 then
   begin
-    Result := TAtlasStepKind.Constructor_;
-  end
-  else if AText = 'getter' then
-  begin
-    Result := TAtlasStepKind.Getter;
-  end
-  else if AText = 'setter' then
-  begin
-    Result := TAtlasStepKind.Setter;
-  end
-  else if AText = 'inherited' then
-  begin
-    Result := TAtlasStepKind.Inherited_;
-  end
-  else
-  begin
-    Result := TAtlasStepKind.Call;
+    Result := cKinds[mIndex];
   end;
 end;
 
@@ -270,17 +263,8 @@ begin
 end;
 
 class function TAtlasStepInto.Arguments(const AUri: string; ALine: Integer): string;
-var
-  mItems: TJSONArray;
 begin
-  mItems := TJSONArray.Create;
-  try
-    mItems.Add(AUri);
-    mItems.Add(ALine);
-    Result := mItems.ToJSON;
-  finally
-    mItems.Free;
-  end;
+  Result := TJsonBuild.UriLine(AUri, ALine);
 end;
 
 class function TAtlasStepInto.ReadAnswer(AJson: TJSONValue; out AAnswer: TAtlasStepAnswer): Boolean;
@@ -324,6 +308,8 @@ begin
 end;
 
 class function TAtlasStepInto.ClassExpression(const ACall: TAtlasStepCall; ADepth: Integer): string;
+const
+  cAsObject = '(%s as TObject)';
 var
   mLevel: Integer;
 begin
@@ -334,7 +320,7 @@ begin
   end;
   if ACall.ReceiverInterface then
   begin
-    Result := '(' + ACall.Receiver + ' as TObject)';
+    Result := Format(cAsObject, [ACall.Receiver]);
   end
   else
   begin

@@ -2,7 +2,8 @@
 
 // Entscheidungen des Schrittfilters (#850) außerhalb von Urteil und Ablauf, ohne IDE prüfbar (#1967): was ein F7
 // für den Lauf bedeutet, ob ein Haltepunkt des Benutzers an der neuen Routine steht und wie „Routine überspringen“
-// bzw. „nicht mehr überspringen“ die Muster ändern. Atlas.IDE.Debug.StepFilter fragt Debugger, Editor und Server
+// bzw. „nicht mehr überspringen“ die Muster ändern, und welche Eingabe im Fenster „Schrittfilter“ ein Muster
+// anfügen oder ersetzen darf. Atlas.IDE.Debug.StepFilter fragt Debugger, Editor und Server
 // und meldet die Texte.
 
 interface
@@ -69,6 +70,13 @@ type
     /// </summary>
     class function Unskip(const AOptions: TAtlasStepFilterOptions;
       const ARoutine: TAtlasStepRoutine): TAtlasStepUnskipEdit; static;
+    /// <summary>Darf AText (ohne Leerraum am Rand) an APatterns angefügt werden: gültig, nicht schon darin
+    /// (ohne Groß-/Kleinschreibung) und noch Platz?</summary>
+    class function CanAddPattern(const APatterns: TArray<string>; const AText: string): Boolean; static;
+    /// <summary>Darf Muster AIndex durch AText (ohne Leerraum am Rand) ersetzt werden: Index gültig, Text gültig und
+    /// kein anderes Muster gleich?</summary>
+    class function CanReplacePattern(const APatterns: TArray<string>; AIndex: Integer; const AText: string): Boolean;
+      static;
   end;
 
 implementation
@@ -173,6 +181,35 @@ begin
       Result.Outcome := TAtlasStepUnskipOutcome.NotSkipped;
     end;
   end;
+end;
+
+class function TAtlasStepFilterEdit.CanAddPattern(const APatterns: TArray<string>; const AText: string): Boolean;
+var
+  mText: string;
+begin
+  mText := Trim(AText);
+  Result := TStepFilterNames.IsValidPattern(mText) and (TStepFilterNames.IndexOfPattern(APatterns, mText) < 0) and
+    (Length(APatterns) < TStepFilterNames.cMaxPatterns);
+end;
+
+class function TAtlasStepFilterEdit.CanReplacePattern(const APatterns: TArray<string>; AIndex: Integer;
+  const AText: string): Boolean;
+var
+  mText: string;
+  mOther: Integer;
+begin
+  Result := False;
+  if (AIndex < 0) or (AIndex > High(APatterns)) then
+  begin
+    Exit;
+  end;
+  mText := Trim(AText);
+  if not TStepFilterNames.IsValidPattern(mText) then
+  begin
+    Exit;
+  end;
+  mOther := TStepFilterNames.IndexOfPattern(APatterns, mText);
+  Result := (mOther < 0) or (mOther = AIndex);
 end;
 
 end.

@@ -128,8 +128,8 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.Math,
   Atlas.Text.Chars,
-  Atlas.Core.Lsp.Uris,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Lsp.Uris,
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

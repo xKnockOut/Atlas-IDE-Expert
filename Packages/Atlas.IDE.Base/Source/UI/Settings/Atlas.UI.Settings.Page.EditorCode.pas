@@ -10,7 +10,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Settings.Reassigned,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -69,6 +69,10 @@ uses
   Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Problems.InlineHints;
 
+const
+  /// <summary>Werte von SmartPaste in der Reihenfolge der Auswahl.</summary>
+  cSmartPasteModes: array[0..3] of string = ('off', 'uses', 'indent', 'both');
+
 { TAtlasSettingsEditorCodePart }
 
 procedure TAtlasSettingsEditorCodePart.Load(const ASettings: TAtlasPluginSettings);
@@ -112,7 +116,7 @@ begin
   begin
     FCompleteStatementTryKind.Choice := 2;
   end;
-  FSmartPaste.Choice := Max(0, IndexText(ASettings.SmartPaste, ['off', 'uses', 'indent', 'both']));
+  FSmartPaste.Choice := Max(0, IndexText(ASettings.SmartPaste, cSmartPasteModes));
   FMultiCursorModifier.Choice := 0;
   if ASettings.MultiCursorModifier = TAtlasPluginSettings.cMultiCursorModifierCtrl then
   begin
@@ -169,15 +173,7 @@ begin
   else
     ASettings.CompleteStatementTryKind := TAtlasPluginSettings.cTryKindFinally;
   end;
-  ASettings.SmartPaste := 'off';
-  case FSmartPaste.Choice of
-    1:
-      ASettings.SmartPaste := 'uses';
-    2:
-      ASettings.SmartPaste := 'indent';
-    3:
-      ASettings.SmartPaste := 'both';
-  end;
+  ASettings.SmartPaste := cSmartPasteModes[EnsureRange(FSmartPaste.Choice, 0, High(cSmartPasteModes))];
   Save2(ASettings);
 end;
 
@@ -259,6 +255,9 @@ begin
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMethodPlacementOff)]);
   // Regionen beim Öffnen (#1814).
   FRegionFolds := AddChoice(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.Setting), TAtlasRegionFoldsTexts.Choices);
+  // Große Blöcke einklappen (#2795): an/aus und Mindestlänge.
+  BindCheck('BlockFolds', AddCheck(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.BlockSetting)));
+  BindText('BlockFoldsMinLines', AddNumber(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.BlockMinLines)));
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   BindCheck('OverviewRuler', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewRuler)));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=

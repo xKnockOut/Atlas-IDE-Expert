@@ -26,7 +26,6 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
@@ -60,7 +59,7 @@ type
     function MissingInterfaceMethods(const AUri, AText: string; const ASpot: TSlashSpot;
       out AItems: TArray<TCompletionItem>; out ACommandLine: Integer): Boolean;
     function RunImplement(const AUri, AText: string; const ASpot: TSlashSpot; const AArguments: string;
-      out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+      out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
   public
     constructor Create(const AStore: IDocumentStore);
     function ExecuteMenu(const AArguments: TJSONArray): TJSONValue;
@@ -239,13 +238,13 @@ begin
 end;
 
 function TLspSlashMenu.RunImplement(const AUri, AText: string; const ASpot: TSlashSpot; const AArguments: string;
-  out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   mItems: TArray<TCompletionItem>;
   mItem: TCompletionItem;
   mCommandLine: Integer;
   mChosen: TArray<string>;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mLineBreak: string;
 begin
   AEdits := nil;
@@ -335,7 +334,7 @@ begin
       mItem.AddPair('multi', TJSONBool.Create(mEntry.Multi));
       mItem.AddPair('separator', mEntry.Separator);
       mCommands.AddElement(mItem);
-      // „Interface implementieren“ (#466) nach /override, wie im Mockup.
+      // „Interface implementieren“ (#466) direkt nach /override, weil beide fehlende Methoden anlegen.
       if SameText(mEntry.Name, 'override') and MissingInterfaceMethods(mUri, mDocument.Text, mSpot, mMissing,
         mCommandLine) then
       begin
@@ -381,8 +380,8 @@ var
   mSpot: TSlashSpot;
   mDocument: ITextDocument;
   mDisabled: TArray<string>;
-  mEdits: TArray<TRuleEdit>;
-  mEdit: TRuleEdit;
+  mEdits: TArray<TTextEdit>;
+  mEdit: TTextEdit;
   mList: TJSONArray;
   mItem: TJSONObject;
 begin

@@ -33,18 +33,12 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Contracts.LineChanges;
+  Atlas.IDE.Contracts.LineChanges,
+  Atlas.ToolsApi.Debugger.Services,
+  Atlas.Core.Editor.Contract;
 
 const
   cBookmarkCount = 10;
-
-function Debugger: IOTADebuggerServices;
-begin
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
-  begin
-    Result := nil;
-  end;
-end;
 
 /// <summary>Eigene Lesezeichen des ersten laufenden Moduls, das welche für AFileName hat (#1455); False ohne.</summary>
 function ModuleBookmarks(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
@@ -121,7 +115,7 @@ var
   mIndex: Integer;
 begin
   Result := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

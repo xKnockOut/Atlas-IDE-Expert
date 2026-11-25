@@ -550,7 +550,7 @@ begin
     InClassDeclaration(ANode) and DescendantOrUnknown(ANode, AMember));
   // protected über einen generischen Empfänger (TKnoten<T>, TBaum<T>) übersetzt dcc aus generischem Code
   // einer anderen Unit (Spring4D TLinkedListNode<T>, TRedBlackTree<T>; IM1, IM2); aus nicht generischem Code
-  // meldet es E2362 (SG3, dcc-Lauf vom 29.10.2026, #1328).
+  // meldet es E2362 (SG3, #1328).
   Result := Result or ((AMember.Visibility = TIndexVisibility.Protected) and (AReceiverType.TypeParams <> '') and
     InGenericCode(ANode));
 end;

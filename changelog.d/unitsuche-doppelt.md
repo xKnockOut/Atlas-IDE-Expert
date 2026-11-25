@@ -1,2 +1,0 @@
-### Behoben
-- Units suchen zeigt Units nicht mehr doppelt, wenn ein zweiter Checkout desselben Projekts auf der Platte liegt (etwa Trunk und Branch): Öffnet man eine Datei daraus, liest Atlas dieses Projekt zwar weiter für die Datei ein, zählt es in der Unit-Suche aber nicht mehr zu den Projekten der IDE. Ebenso fallen gleichnamige Units aus Suchpfad oder Bibliothek weg, hinter denen die geltende Datei steht (wie bei dcc: Projekt vor Suchpfad vor Bibliothek).

@@ -15,11 +15,11 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Lsp.IdeProject,
-  Atlas.Common.Lsp.IdeTypes,
+  Atlas.Common.Lsp.Providers.IdeTypes,
   Atlas.Common.Lsp.IdeUnits,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Workspaces;
 
 type
@@ -51,7 +51,7 @@ type
   TShellIde = class
   private
     FServices: TShellIdeServices;
-    FBuild: TLspIdeBuild;
+    FBuild: TIdeBuildTracker;
     FProject: TLspIdeProject;
     FTypes: TLspIdeTypes;
     // Der Index ist einmal ganz aufgebaut; erst dann gilt eine Unit ohne Eintrag als ohne Quelltext.
@@ -63,7 +63,7 @@ type
     procedure BuildChanged(const ABuild: TIdeBuild);
     procedure Compiling(ARunning: Boolean);
     /// <summary>Arbeitsbereiche, deren Projekt AProject ist.</summary>
-    function WorkspacesOfProject(const AProject: string): TArray<TShellWorkspace>;
+    function WorkspacesOfProject(const AProject: string): TArray<TCoreWorkspace>;
     procedure ProjectChanged(const AContext: TIdeProjectContext);
     procedure NamingChanged(const AContext: TIdeProjectContext);
     procedure TypesChanged(ACount: Integer);
@@ -77,7 +77,7 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Der Indexaufbau ist fertig: nach den Units ohne Quelltext fragen.</summary>
     procedure IndexFinished;
-    property Build: TLspIdeBuild read FBuild;
+    property Build: TIdeBuildTracker read FBuild;
     property Project: TLspIdeProject read FProject;
     /// <summary>Typen aus den Packages der IDE (atlas/ideTypes).</summary>
     property Types: TLspIdeTypes read FTypes;
@@ -87,10 +87,11 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Lsp.Contract,
   System.IOUtils,
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Text.LogMarks;
 
@@ -101,7 +102,7 @@ begin
   inherited Create;
   FServices := AServices;
   // Compilermeldungen aus dem Meldungsfenster der IDE ersetzen die des letzten Laufs wie ein eigener Compile (#528).
-  FBuild := TLspIdeBuild.Create;
+  FBuild := TIdeBuildTracker.Create;
   FBuild.OnMessages := MessagesReceived;
   // Letzten Build für den MCP-Prozess ablegen (#556): je Arbeitsordner eine Datei im Atlas-Cache.
   FBuild.OnChanged := BuildChanged;
@@ -139,7 +140,7 @@ end;
 
 function TShellIde.BuildRootOf(const AProject: string): string;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FServices.Workspaces.Lock);
   try
@@ -178,9 +179,9 @@ begin
   FServices.Compiling(ARunning);
 end;
 
-function TShellIde.WorkspacesOfProject(const AProject: string): TArray<TShellWorkspace>;
+function TShellIde.WorkspacesOfProject(const AProject: string): TArray<TCoreWorkspace>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mProject: TProjectInfo;
 begin
   Result := nil;
@@ -201,7 +202,7 @@ end;
 
 procedure TShellIde.ProjectChanged(const AContext: TIdeProjectContext);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   FServices.Logger.Info(Format('Projektkontext aus der IDE: %s (%s, %s)',
     [TLogMarks.Path(ExtractFileName(AContext.Project)),

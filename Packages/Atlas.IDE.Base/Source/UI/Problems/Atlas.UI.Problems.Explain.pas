@@ -34,7 +34,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Problems.Explanation,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Katalogtext einer Regel (Atlas.Core.Problems.Explanation).</summary>
@@ -105,13 +105,14 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Graphics,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Strings,
   Atlas.UI.Problems.Strings;
 
 const
   cGap = 8;
   cDialogWidth = 560;
+  cDialogHeight = 420;
   cDialogMinWidth = 360;
   cDialogMinHeight = 220;
   cButtonBarHeight = 44;
@@ -121,8 +122,6 @@ const
   cCodeFontSize = 9;
   /// <summary>Rand und Innenabstand eines Beispiels oben und unten bzw. links und rechts, logische Pixel.</summary>
   cMemoChrome = 10;
-  /// <summary>Höchstens dieser Anteil (Prozent) des Arbeitsbereichs als Anfangsgröße.</summary>
-  cMaxScreenShare = 80;
   /// <summary>Zeilen je Rastung des Mausrads.</summary>
   cWheelLines = 3;
   cBadColor = $003C3CD8;
@@ -163,7 +162,8 @@ end;
 procedure FitCode(AMemo: TMemo);
 var
   mWidth, mLineHeight, mHeight, mChrome: Integer;
-  mScrollBars: TScrollStyle;
+  // Vcl.StdCtrls.TScrollStyle ist veraltet (W1000): der Typ aus System.UITypes.
+  mScrollBars: System.UITypes.TScrollStyle;
 begin
   if AMemo = nil then
   begin
@@ -194,7 +194,7 @@ begin
   BorderStyle := bsSizeToolWin;
   BorderIcons := [biSystemMenu];
   KeyPreview := True;
-  ClientHeight := ScaleValue(420);
+  ClientHeight := ScaleValue(cDialogHeight);
   AddButtonBar;
 
   FContent := TScrollBox.Create(Self);
@@ -327,21 +327,16 @@ end;
 
 procedure TAtlasRuleExplainDialog.FitToContent;
 var
-  mArea: TRect;
+  mLimit: TSize;
   mBad, mGood, mLineHeight, mCodeWidth, mWidth, mHeight, mPass: Integer;
 begin
-  // Der Dialog erscheint über dem Hauptfenster (poMainFormCenter): dessen Monitor begrenzt die Größe.
-  mArea := Screen.WorkAreaRect;
-  if (Application.MainForm <> nil) and (Application.MainForm.Monitor <> nil) then
-  begin
-    mArea := Application.MainForm.Monitor.WorkareaRect;
-  end;
+  mLimit := MaxInitialSize;
   // Breiter, damit die längste Codezeile ohne Rollen passt; Rand, Rollleiste und Rahmen dazu.
   MeasureCode(FBad, mBad, mLineHeight);
   MeasureCode(FGood, mGood, mLineHeight);
   mCodeWidth := Max(mBad, mGood) + ScaleValue(2 * cGap + cMemoChrome) +
     MulDiv(GetSystemMetrics(SM_CXVSCROLL), CurrentPPI, Screen.PixelsPerInch);
-  mWidth := Min(Max(ClientWidth, mCodeWidth), mArea.Width * cMaxScreenShare div 100);
+  mWidth := Min(Max(ClientWidth, mCodeWidth), mLimit.cx);
   ClientWidth := Max(mWidth, ScaleValue(cDialogMinWidth));
   // Ohne Fenster ordnet die VCL nicht an: Breiten und damit Umbruch und Höhen wären die vorläufigen.
   HandleNeeded;
@@ -351,7 +346,7 @@ begin
   for mPass := 1 to 2 do
   begin
     mHeight := ContentBottom + ScaleValue(cGap) + FButtons.Height;
-    ClientHeight := Max(Min(mHeight, mArea.Height * cMaxScreenShare div 100), ScaleValue(cDialogMinHeight));
+    ClientHeight := Max(Min(mHeight, mLimit.cy), ScaleValue(cDialogMinHeight));
   end;
   Constraints.MinWidth := Width - ClientWidth + ScaleValue(cDialogMinWidth);
   Constraints.MinHeight := Height - ClientHeight + ScaleValue(cDialogMinHeight);

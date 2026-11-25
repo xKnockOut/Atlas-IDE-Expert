@@ -82,9 +82,11 @@ var
   mModel: TAtlasArchitectureModel;
   mMain, mCache: Integer;
 begin
-  mState := TAtlasArchitectureMapState.Create;
-  mCounter := TCounter.Create;
+  mState := nil;
+  mCounter := nil;
   try
+    mState := TAtlasArchitectureMapState.Create;
+    mCounter := TCounter.Create;
     mModel := SampleModel;
     mState.SetModel(mModel);
     Watch(mState, mCounter);
@@ -126,9 +128,11 @@ var
   mModel: TAtlasArchitectureModel;
   mCache, mDb: Integer;
 begin
-  mState := TAtlasArchitectureMapState.Create;
-  mCounter := TCounter.Create;
+  mState := nil;
+  mCounter := nil;
   try
+    mState := TAtlasArchitectureMapState.Create;
+    mCounter := TCounter.Create;
     mModel := SampleModel;
     mState.SetModel(mModel);
     Watch(mState, mCounter);
@@ -201,9 +205,11 @@ var
   mModel: TAtlasArchitectureModel;
   mMain, mCache, mOther: Integer;
 begin
-  mState := TAtlasArchitectureMapState.Create;
-  mCounter := TCounter.Create;
+  mState := nil;
+  mCounter := nil;
   try
+    mState := TAtlasArchitectureMapState.Create;
+    mCounter := TCounter.Create;
     mModel := SampleModel;
     mState.SetModel(mModel);
     Watch(mState, mCounter);
@@ -225,8 +231,8 @@ begin
     Assert.IsTrue(mState.SubsystemVisible[mOther]);
     // Ein bestehender Weg meldet sein Ende.
     Assert.AreEqual(3, mCounter.PathChanges);
-    Assert.IsTrue(mState.IsCentral(mModel.Central[0]));
-    Assert.IsFalse(mState.IsAdded(0));
+    Assert.IsTrue(mState.Marks.IsCentral(mModel.Central[0]));
+    Assert.IsFalse(mState.Marks.IsAdded(0));
     Assert.IsFalse(mState.HasChanges);
   finally
     mCounter.Free;
@@ -241,9 +247,11 @@ var
   mModel: TAtlasArchitectureModel;
   mCycle: TAtlasArchEdge;
 begin
-  mState := TAtlasArchitectureMapState.Create;
-  mCounter := TCounter.Create;
+  mState := nil;
+  mCounter := nil;
   try
+    mState := TAtlasArchitectureMapState.Create;
+    mCounter := TCounter.Create;
     mModel := SampleModel;
     mState.SetModel(mModel);
     Watch(mState, mCounter);

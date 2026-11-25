@@ -1,18 +1,20 @@
 ﻿unit Atlas.UI.Editor.RegionFolds;
 
 // Texte zu „Regionen beim Öffnen“ (#1814, editor.regionFolds): Befehle zum Zu- und Aufklappen aller Regionen und
-// die Auswahl auf der Optionsseite, deutsch und englisch. Eigene Tabelle, weil Atlas.UI.Strings über der Grenze
+// die Auswahl auf der Optionsseite, deutsch und englisch. Dazu „Große Blöcke einklappen“ (#2795, editor.blockFolds):
+// Befehle, Einstellungen und Meldungen. Eigene Tabelle, weil Atlas.UI.Strings über der Grenze
 // der Unitlänge liegt.
 
 interface
 
 uses
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasRegionFoldsText = (CollapseCommand, ExpandCommand, Setting, ChoiceKeep, ChoiceCollapse, ChoiceExpand,
-    ChoiceOff);
+    ChoiceOff, FoldBlockCommand, FoldLargeBlocksCommand, UnfoldBlocksCommand, BlockSetting, BlockMinLines,
+    NoBlockAtCursor, NoLargeBlocks, NoFoldedBlocks);
 {$SCOPEDENUMS OFF}
 
   TAtlasRegionFoldsTexts = class
@@ -28,9 +30,14 @@ implementation
 const
   cTexts: array[TAtlasLanguage, TAtlasRegionFoldsText] of string = (
     ('Alle Regionen zuklappen', 'Alle Regionen aufklappen', 'Regionen beim Öffnen:', 'unverändert lassen',
-      'alle zuklappen', 'alle aufklappen', 'aus (auch keine Befehle)'),
+      'alle zuklappen', 'alle aufklappen', 'aus (auch keine Befehle)', 'Block einklappen',
+      'Große Blöcke einklappen', 'Blöcke aufklappen', 'Große Blöcke einklappbar', 'Ab Zeilen:',
+      'Kein Block ab %d Zeilen an der Schreibmarke.', 'Keine Blöcke ab %d Zeilen in dieser Datei.',
+      'Keine eingeklappten Blöcke in dieser Datei.'),
     ('Collapse all regions', 'Expand all regions', 'Regions when a file opens:', 'leave unchanged',
-      'collapse all', 'expand all', 'off (no commands either)'));
+      'collapse all', 'expand all', 'off (no commands either)', 'Collapse block', 'Collapse large blocks',
+      'Expand blocks', 'Large blocks can be collapsed', 'From lines:', 'No block of %d lines or more at the cursor.',
+      'No blocks of %d lines or more in this file.', 'No collapsed blocks in this file.'));
 
 { TAtlasRegionFoldsTexts }
 

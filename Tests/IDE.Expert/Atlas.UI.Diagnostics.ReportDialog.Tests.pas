@@ -17,9 +17,6 @@ type
   private
     FFolder: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -46,7 +43,7 @@ uses
   System.IOUtils,
   System.StrUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Package,
+  Atlas.Plugin.Diagnostics.Package,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.ReportDialog,
@@ -115,16 +112,6 @@ begin
 end;
 
 { TAtlasReportDialogTests }
-
-procedure TAtlasReportDialogTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    PreviewFollowsChecks;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasReportDialogTests.Setup;
 begin

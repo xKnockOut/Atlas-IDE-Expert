@@ -82,9 +82,9 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.UnitRelations.Model,
   Atlas.Core.UnitRelations.InterfaceCost,
@@ -95,15 +95,15 @@ uses
   Atlas.UI.Analysis.Strings,
   Atlas.UI.UnitRelations.Frame,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.UnitRelations.Window,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.IDE.Foundation.CodeView;
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.ToolsApi.Editor.CodeView;
 
 const
   cTickMs = 250;

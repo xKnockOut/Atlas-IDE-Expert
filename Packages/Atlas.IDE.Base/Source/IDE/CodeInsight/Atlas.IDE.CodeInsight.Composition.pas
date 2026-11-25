@@ -15,23 +15,24 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.TimeLimit,
-  Atlas.Core.Diagnostics.ExitWatch,
-  Atlas.Core.Diagnostics.Teardown,
-  Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.TimeLimit,
+  Atlas.Plugin.Diagnostics.ExitWatch,
+  Atlas.Plugin.Diagnostics.Teardown,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.StackCapture,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Symbol,
+  Atlas.ToolsApi.Theme.Symbol,
   Atlas.IDE.Settings.Experimental,
   Atlas.IDE.Settings.Transfer,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.Tools,
@@ -39,7 +40,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Features,
   Atlas.IDE.CodeInsight.Composition.Settings,
   Atlas.IDE.CodeInsight.Composition.Services,
-  Atlas.IDE.CodeInsight.Composition.Leftovers;
+  Atlas.IDE.CodeInsight.Composition.Leftovers,
+  Atlas.Core.Diagnostics.ModuleHost;
 
 /// <summary>Sicherung, Protokoll, Stacktraces, Sprache, Versionsverwaltung und Atlas-Symbol: vor allen Teilen.
 /// </summary>
@@ -50,12 +52,14 @@ begin
   TAtlasGuard.SetLogNames(TAtlasIdeSettings.Current.LogNames);
   TAtlasGuard.OnWarning := GuardWarning;
   TAtlasGuard.OnTripped := GuardTripped;
+  // Scheitert ein Befehl des Benutzers, die Meldungsansicht nach vorn: Wer sie geschlossen hat, sähe sonst nichts.
+  TAtlasCommandScope.OnFailed := ShowAtlasMessages;
   TAtlasGuard.RotatingLog.OnError := LogError;
   // Stacktraces für jede Fehlerzeile der Sicherung: ohne sie lässt sich kein Fehler bis zur Codezeile verfolgen.
   TAtlasIdeStackCapture.Install;
   InstallLanguage;
   // Atlas-Symbol (#751): Startbildschirm, Info-Dialog und Bildliste immer, auch abgesichert.
-  TAtlasIdeSymbol.Register;
+  RegisterSymbol;
 end;
 
 /// <summary>Immer, auch abgesichert: abgesicherter Start (#722) zuerst, denn davon hängt ab, was angemeldet wird;
@@ -145,6 +149,7 @@ begin
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnTripped := nil;
   TAtlasGuard.OnFailure := nil;
+  TAtlasCommandScope.OnFailed := nil;
   TAtlasGuard.RotatingLog.OnError := nil;
   DetachSettings;
   // Entladen vor der freien Nachrichtenschleife: Die Startanteile hängen noch an Aktionen und Teilen.
@@ -191,28 +196,30 @@ begin
 end;
 
 /// <summary>Zuletzt: Hintergrund-Threads, Feature-Tabelle, Stacktraces und was noch an der IDE hängt (#1233);
-/// Ergebnis: ob alle Hintergrund-Threads beendet sind.</summary>
+/// Ergebnis: ob alle Hintergrund-Threads beendet sind, auch die überfälligen.</summary>
 function StopRest(var ATeardown: TAtlasTeardown): Boolean;
 var
-  mStopped: Boolean;
+  mSettled: Boolean;
 begin
-  mStopped := False;
+  mSettled := False;
+  // Arbeiter, die nicht in der Zeit enden, gehen an TAtlasOverdueThreads; der nächste Schritt wartet auf sie.
   ATeardown.Step('Threads',
     procedure
     begin
-      mStopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs);
+      TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs);
     end);
-  // Überfällige Threads mit dem Code von Base (Update-Prüfung, Thread-Listen): Festhalten wirkt nur hier, vor
-  // FreeLibrary, und vor dem Abbau von TAtlasOverdueThreads in der Finalisierung.
+  // Überfällige Threads mit dem Code von Base (Zeitlimit-Arbeiter, Update-Prüfung, Thread-Listen): Festhalten
+  // wirkt nur hier, vor FreeLibrary, und vor dem Abbau von TAtlasOverdueThreads in der Finalisierung. Läuft
+  // danach noch einer, hält TAtlasUnloadSafety Base im Speicher.
   ATeardown.Step('OverdueThreads',
     procedure
     begin
-      TAtlasOverdueThreads.SettleBeforeUnload(HInstance);
+      mSettled := TAtlasOverdueThreads.SettleBeforeUnload(HInstance);
     end);
   ATeardown.Step('Features', FreeFeatures);
   ATeardown.Step('StackCapture', TAtlasIdeStackCapture.Uninstall);
   ATeardown.Step('Leftovers', FreeLeftovers);
-  Result := mStopped;
+  Result := mSettled;
 end;
 
 /// <summary>Abbau in der Finalisierung. Jeder Schritt für sich (#886): Eine Ausnahme, etwa beim Entladen mitten im
@@ -257,25 +264,10 @@ begin
   end;
 end;
 
-/// <summary>Einträge in den Hauptthread verfallen mit ihrem Modul: Die Registry meldet Ab- und Anmelden mit dem
-/// Handle des Packages an TAtlasMainThread. Schon in der Initialisierung: Module können sich anmelden, bevor die
-/// IDE Register von Base ruft (Regel 1).</summary>
-procedure ConnectModuleQueue;
-begin
-  TAtlasModuleRegistry.OnModuleClosing :=
-    procedure(AHandle: NativeUInt)
-    begin
-      TAtlasMainThread.CloseModule(AHandle);
-    end;
-  TAtlasModuleRegistry.OnModuleOpened :=
-    procedure(AHandle: NativeUInt)
-    begin
-      TAtlasMainThread.OpenModule(AHandle);
-    end;
-end;
-
 initialization
-  ConnectModuleQueue;
+  // Vor dem ersten Lesen der Einstellungen: der Speicher in der Registry und die übrigen Adapter der IDE.
+  InstallIdeAdapters;
+  TAtlasModuleHost.ConnectRegistry;
 
 finalization
   Unregister;

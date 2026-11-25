@@ -30,7 +30,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.KeyConflicts;
+  Atlas.Core.Commands.KeyConflicts,
+  Atlas.Core.Commands.Contract;
 
 type
   {$SCOPEDENUMS ON}
@@ -46,21 +47,7 @@ type
     NoneActive);
   {$SCOPEDENUMS OFF}
 
-  /// <summary>Aktion der IDE, die ein Modul übernommen hat, etwa Strg+F12 „Units“ für „Units suchen“ (#777).
-  /// </summary>
-  TAtlasTakenAction = record
-    /// <summary>Atlas-Funktion, die an Stelle der Aktion läuft.</summary>
-    Func: TAtlasKeyFunction;
-    /// <summary>Name der Aktion in der Aktionsliste der IDE.</summary>
-    ActionName: string;
-  end;
-
-  /// <summary>Übernommene Aktionen eines Moduls für die Tastenkürzel-Übersicht (#520, #1455); Hauptthread.
-  /// </summary>
-  IAtlasTakenActions = interface
-    ['{CA511338-4188-48A9-B7C7-E5B6CC0FFD28}']
-    function TakenActions: TArray<TAtlasTakenAction>;
-  end;
+  TAtlasTakenAction = Atlas.Core.Commands.Contract.TAtlasTakenAction;
 
   /// <summary>Wem eine Belegung gehört und woher sie stammt (für TAtlasKeyItem.Create).</summary>
   TAtlasKeyProvenance = record
@@ -193,6 +180,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Core.Commands.Usage;
@@ -398,7 +386,8 @@ const
     '', // DesignerMagnifier
     '', // DesignerUsages
     'Atlas.RunLastTestList', // TestsListRun
-    'Atlas.Reattach' // DebugReattach
+    'Atlas.Reattach', // DebugReattach
+    'Atlas.AssistantsLinkMention' // AssistantsMention (cMentionCommand des Moduls)
   );
 
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;
@@ -850,15 +839,15 @@ end;
 /// <summary>Umschalttaste zum Namen (deutsch oder englisch); 0, wenn es keine ist.</summary>
 function ModifierOf(const AName: string): Word;
 begin
-  if (AName = 'strg') or (AName = 'ctrl') or (AName = 'control') or (AName = 'ctl') then
+  if MatchStr(AName, ['strg', 'ctrl', 'control', 'ctl']) then
   begin
     Result := TAtlasKeyMap.cScCtrl;
   end
-  else if (AName = 'umschalt') or (AName = 'umsch') or (AName = 'shift') or (AName = 'shft') then
+  else if MatchStr(AName, ['umschalt', 'umsch', 'shift', 'shft']) then
   begin
     Result := TAtlasKeyMap.cScShift;
   end
-  else if (AName = 'alt') or (AName = 'menu') then
+  else if MatchStr(AName, ['alt', 'menu']) then
   begin
     Result := TAtlasKeyMap.cScAlt;
   end
@@ -903,11 +892,11 @@ begin
     '0'..'9':
       Result := Ord(ACh);
     '.':
-      Result := $BE;
+      Result := TAtlasKeyConflicts.cVkPeriod;
     ',':
-      Result := $BC;
+      Result := TAtlasKeyConflicts.cVkComma;
     '-':
-      Result := $BD;
+      Result := TAtlasKeyConflicts.cVkMinus;
   else
     Result := 0;
   end;
@@ -936,6 +925,8 @@ end;
 /// <summary>Virtueller Tastencode zum Namen (deutsch oder englisch); 0, wenn unbekannt. AFunctionKey bei F1–F24.
 /// </summary>
 function KeyOf(const AName: string; out AFunctionKey: Boolean): Word;
+const
+  cFunctionKeys = TAtlasKeyConflicts.cVkF24 - TAtlasKeyConflicts.cVkF1 + 1;
 var
   mNumber: Integer;
 begin
@@ -948,10 +939,11 @@ begin
       Result := CharKey(AName[1]);
     end;
   end
-  else if (AName[1] = 'f') and TryStrToInt(Copy(AName, 2, MaxInt), mNumber) and (mNumber >= 1) and (mNumber <= 24) then
+  else if (AName[1] = 'f') and TryStrToInt(Copy(AName, 2, MaxInt), mNumber) and (mNumber >= 1) and
+    (mNumber <= cFunctionKeys) then
   begin
     AFunctionKey := True;
-    Result := $70 + mNumber - 1;
+    Result := TAtlasKeyConflicts.cVkF1 + mNumber - 1;
   end
   else
   begin

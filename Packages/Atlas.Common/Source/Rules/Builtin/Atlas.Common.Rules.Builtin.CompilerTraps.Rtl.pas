@@ -62,10 +62,12 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -148,19 +150,6 @@ begin
   Result := mFound;
 end;
 
-/// <summary>Steht vor dem Token AIndex (ohne Kommentare) ein Punkt?</summary>
-function AfterDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
-var
-  mBefore: Integer;
-begin
-  mBefore := AIndex - 1;
-  while (mBefore >= 0) and (ATokens[mBefore].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(mBefore);
-  end;
-  Result := (mBefore >= 0) and ATokens[mBefore].IsSymbol('.');
-end;
-
 /// <summary>Liegt A vor B?</summary>
 function PositionBefore(const A, B: TTextPosition): Boolean;
 begin
@@ -193,12 +182,12 @@ var
 begin
   Result := nil;
   mSeen := nil;
-  mClauses := TUsesClauses.Clauses(ATokens);
+  mClauses := TPascalUses.Clauses(ATokens);
   for mIndex := 0 to High(ATokens) do
   begin
     if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and MatchText(ATokens[mIndex].Text, ANames) and
       not MatchText(ATokens[mIndex].Text, mSeen) and not AfterDot(ATokens, mIndex) and
-      not TUsesClauses.InClause(ATokens, mClauses, ATokens[mIndex].Offset) and
+      not TPascalUses.InClause(ATokens, mClauses, ATokens[mIndex].Offset) and
       not InInactive(ATokens[mIndex].StartPos, AInactive) then
     begin
       mSeen := mSeen + [ATokens[mIndex].Text];
@@ -227,9 +216,9 @@ function UsesWindows(const AContext: TRuleContext): Boolean;
 var
   mUsed: TArray<string>;
 begin
-  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
-  Result := TUsesClauses.IsUsed(mUsed, cWindowsUnits[0], AContext.Namespaces) or
-    TUsesClauses.IsUsed(mUsed, cWindowsUnits[1], AContext.Namespaces);
+  mUsed := TPascalUses.UsedUnits(AContext.Tree.Tokens);
+  Result := TPascalUses.IsUsed(mUsed, cWindowsUnits[0], AContext.Namespaces) or
+    TPascalUses.IsUsed(mUsed, cWindowsUnits[1], AContext.Namespaces);
 end;
 
 /// <summary>Deklaration aus cMissingDeclarations für AName.</summary>
@@ -319,7 +308,7 @@ var
   mEdit: TTextEdit;
 begin
   Result := nil;
-  if TUsesClauses.AddUnit(AContext.Tree.Tokens, AContext.Tree.Tokens[AIndex].Offset, cWindowsUnits[0],
+  if TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, AContext.Tree.Tokens[AIndex].Offset, cWindowsUnits[0],
     TTextLines.LineBreakOf(AContext.Text), mEdit) then
   begin
     Result := [TRuleFix.Create(cTexts[TRtlTrapText.UsesFix].Text, [mEdit], False)];

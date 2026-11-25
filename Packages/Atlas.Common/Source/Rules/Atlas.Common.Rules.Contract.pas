@@ -10,6 +10,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): der Syntaxbaum ist
@@ -17,7 +18,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Query.Contract,
-  Atlas.Common.Semantics.Contract;
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Rules.Contract.Refactorings;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
@@ -36,69 +38,12 @@ type
   /// damit Editing die Textänderung ohne Abhängigkeit von Rules nutzen kann.</summary>
   TRuleEdit = TTextEdit;
 
-  /// <summary>Edits einer weiteren Datei einer Korrektur (#1105).</summary>
-  TRuleFileEdits = record
-    FileName: string;
-    Edits: TArray<TRuleEdit>;
-  end;
-
-  /// <summary>Code-Aktion zu einem Treffer.</summary>
-  TRuleFix = record
-    Title: string;
-    Edits: TArray<TRuleEdit>;
-    /// <summary>Sicher ohne Rückfrage anwendbar, z. B. beim Speichern über source.fixAll (#182).
-    /// Jede Regel entscheidet das für ihre Korrekturen selbst.</summary>
-    Safe: Boolean;
-    /// <summary>Eine von mehreren gleichwertigen Korrekturen (#125): keine wird als bevorzugt angeboten.</summary>
-    Alternative: Boolean;
-    /// <summary>Datei, die die Edits ändern, z. B. die Formulardatei neben der Unit (#309);
-    /// '' = die geprüfte Datei.</summary>
-    FileName: string;
-    /// <summary>Sprung statt Änderung (#915): der Client setzt den Cursor auf JumpTo in der geprüften Datei,
-    /// z. B. zur Freigabe bei use-after-free. Edits bleiben leer.</summary>
-    HasJump: Boolean;
-    JumpTo: TTextPosition;
-    /// <summary>Nach dem Sprung öffnet der Client den Parameter-Hint an JumpTo (#1007).</summary>
-    OpensSignature: Boolean;
-    /// <summary>Edits in weiteren Dateien zusätzlich zu FileName, z. B. Verwendungen eines öffentlichen Felds in
-    /// anderen Units (#1105); nil = keine. Solche Korrekturen sind nie Safe.</summary>
-    OtherFiles: TArray<TRuleFileEdits>;
-    /// <summary>Aktion „Graph zeigen“ statt Änderung (#896): der Client öffnet die Unit-Beziehungen (#593) der
-    /// geprüften Datei. Edits bleiben leer.</summary>
-    ShowsUnitRelations: Boolean;
-    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean); overload;
-    /// <summary>Wie oben mit ASafe = False.</summary>
-    constructor Create(const ATitle: string; const AEdits: TArray<TRuleEdit>); overload;
-    /// <summary>Aktion, die nur zu ATarget springt (#915).</summary>
-    class function Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
-    /// <summary>Aktion, die zu ATarget (in den Klammern eines Aufrufs) springt und dort den Parameter-Hint öffnet
-    /// (#1007).</summary>
-    class function SignatureHelp(const ATitle: string; const ATarget: TTextPosition): TRuleFix; static;
-    /// <summary>Aktion, die die Unit-Beziehungen der geprüften Datei zeigt (#896).</summary>
-    class function UnitRelations(const ATitle: string): TRuleFix; static;
-  end;
-
-  /// <summary>Weitere Stelle zu einem Treffer (#896), beim Client als relatedInformation: z. B. der uses-Eintrag
-  /// jeder Kante eines Unit-Zyklus. Message ist die Beschriftung im Befund-Hover.</summary>
-  TRuleRelated = record
-    FileName: string;
-    Range: TTextRange;
-    Message: string;
-  end;
-
-  /// <summary>Ein Treffer einer Regel. Severity setzt die Engine.</summary>
-  TRuleFinding = record
-    RuleId: string;
-    Range: TTextRange;
-    Message: string;
-    Severity: TRuleSeverity;
-    Confidence: TRuleConfidence;
-    Fixes: TArray<TRuleFix>;
-    /// <summary>Zusatz für den Befund-Hover, z. B. der durchsuchte Bereich (#1102); '' ohne.</summary>
-    Details: string;
-    /// <summary>Weitere Stellen (#896), z. B. die uses-Einträge eines Zyklus; nil ohne.</summary>
-    Related: TArray<TRuleRelated>;
-  end;
+  /// <summary>Befund-Wertetypen aus Findings.Contract: Sprachserver, MCP und Ausgaben verwenden sie, ohne die
+  /// Prüfregeln einzubinden.</summary>
+  TRuleFileEdits = Atlas.Common.Findings.Contract.TRuleFileEdits;
+  TRuleFix = Atlas.Common.Findings.Contract.TRuleFix;
+  TRuleRelated = Atlas.Common.Findings.Contract.TRuleRelated;
+  TRuleFinding = Atlas.Common.Findings.Contract.TRuleFinding;
 
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
   TRuleFileReader = reference to function(const AFileName: string; out AData: TBytes): Boolean;
@@ -154,11 +99,9 @@ type
     function ReadProject(out AFileName, AText: string): Boolean;
   end;
 
-  /// <summary>True, wenn die Prüfung abgebrochen werden soll (Zeitlimit, Dokument geändert).</summary>
-  TRuleCancelled = reference to function: Boolean;
+  TRuleCancelled = Atlas.Common.Findings.Contract.TRuleCancelled;
 
-  /// <summary>Die Prüfung wurde über TRuleContext.Cancelled abgebrochen; es gibt kein Ergebnis.</summary>
-  ERuleCheckCancelled = class(Exception);
+  ERuleCheckCancelled = Atlas.Common.Findings.Contract.ERuleCheckCancelled;
 
   /// <summary>Ableitungen einer Prüfung, die alle Regeln eines Laufs teilen.
   /// Besitzt die abgelegten Objekte. Nicht threadsicher: ein Cache gehört genau einem Lauf.
@@ -308,7 +251,8 @@ type
     /// <summary>Zugriffsmethoden im protected-Abschnitt anlegen (completion.accessorSection, #467, für #1001).
     /// </summary>
     AccessorsProtected: Boolean;
-    /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
+    /// <summary>Abbruch zwischen den Regeln, damit ein veralteter Lauf nicht zu Ende rechnet; nil = nie abbrechen.
+    /// </summary>
     Cancelled: TRuleCancelled;
     /// <summary>Gemeinsame Ableitungen des Laufs; setzt TRuleEngine.Run. nil = jede Regel
     /// rechnet selbst (direkter Aufruf von Check). Zugriff nur über TRuleDerived. Die Werte zeigen in
@@ -387,6 +331,8 @@ type
     Queries: ICodeQueries;
     /// <summary>Typen der laufenden IDE ohne Quelltext (IRuleIdeTypes); nil = ohne IDE.</summary>
     IdeTypes: IRuleIdeTypes;
+    /// <summary>Refactorings für Korrekturen (TRuleRefactorings); je Eintrag nil = diese Korrektur nicht anbieten.</summary>
+    Refactorings: TRuleRefactorings;
     /// <summary>Dateiname für die Namensauflösung (TNameResolver): FileName, sonst RelativePath, sonst
     /// UnitName mit ".pas".</summary>
     function ResolverFileName: string;
@@ -394,7 +340,7 @@ type
 
   /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
   /// Packages, Projekte der Gruppe und Namenskonvention. Ein Weg für LSP-Server, MCP und Linter: Der
-  /// Arbeitsbereich liefert sie (TShellWorkspace.RuleServices), ApplyTo trägt sie in den Regelkontext ein.
+  /// Arbeitsbereich liefert sie (TCoreWorkspace.RuleServices), ApplyTo trägt sie in den Regelkontext ein.
   /// Default = ohne Index; Regeln, die ihn brauchen, schweigen dann.</summary>
   TRuleServices = record
     /// <summary>Symbolindex für Typen aus anderen Units und der RTL (#125); nil = keiner.</summary>
@@ -421,6 +367,8 @@ type
     Queries: ICodeQueries;
     /// <summary>Typen der laufenden IDE ohne Quelltext; nil = ohne IDE.</summary>
     IdeTypes: IRuleIdeTypes;
+    /// <summary>Refactorings für Korrekturen, vom Host über Adapter; je Eintrag nil = nicht verfügbar.</summary>
+    Refactorings: TRuleRefactorings;
     /// <summary>Trägt die Dienste in AContext ein.</summary>
     procedure ApplyTo(var AContext: TRuleContext);
   end;
@@ -495,16 +443,17 @@ type
       const ARanIds: TArray<string>; const AReport: IRuleReport);
   end;
 
-/// <summary>Kennwort der Konfidenz: "hoch", "mittel", "niedrig".</summary>
-function ConfidenceText(AConfidence: TRuleConfidence): string;
-/// <summary>
-///   Kennung der Konfidenz für Maschinen: "high", "medium", "low". Steht als
-///   eigenes Feld neben der Meldung (LSP data.confidence, JSON, SARIF), nie im
-///   Meldungstext (#144).
-/// </summary>
-function ConfidenceName(AConfidence: TRuleConfidence): string;
+/// <summary>Sicherheit für Regeln, die eingebundene Dateien nicht sehen: Medium, wenn die Unit {$I …} bzw.
+/// {$INCLUDE …} enthält, sonst High.</summary>
+function IncludeConfidence(const ATokens: TArray<TPascalToken>): TRuleConfidence;
+
+/// <summary>Schlüssel der Projektart in Einstellungen: "application", "package", "library" oder ''.</summary>
+function ProjectKindKey(AKind: TRuleProjectKind): string;
 
 implementation
+
+uses
+  System.StrUtils;
 
 { TRuleContext }
 
@@ -521,27 +470,32 @@ begin
   end;
 end;
 
-function ConfidenceText(AConfidence: TRuleConfidence): string;
+function ProjectKindKey(AKind: TRuleProjectKind): string;
 begin
-  case AConfidence of
-    TRuleConfidence.Low:
-      Result := 'niedrig';
-    TRuleConfidence.Medium:
-      Result := 'mittel';
+  case AKind of
+    TRuleProjectKind.Application:
+      Result := 'application';
+    TRuleProjectKind.Package:
+      Result := 'package';
+    TRuleProjectKind.Library_:
+      Result := 'library';
   else
-    Result := 'hoch';
+    Result := '';
   end;
 end;
 
-function ConfidenceName(AConfidence: TRuleConfidence): string;
+function IncludeConfidence(const ATokens: TArray<TPascalToken>): TRuleConfidence;
+var
+  mToken: TPascalToken;
 begin
-  case AConfidence of
-    TRuleConfidence.Low:
-      Result := 'low';
-    TRuleConfidence.Medium:
-      Result := 'medium';
-  else
-    Result := 'high';
+  Result := TRuleConfidence.High;
+  for mToken in ATokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', mToken.Text) or
+      StartsText('{$INCLUDE ', mToken.Text)) then
+    begin
+      Exit(TRuleConfidence.Medium);
+    end;
   end;
 end;
 
@@ -561,6 +515,7 @@ begin
   AContext.ProjectWarnings := ProjectWarnings;
   AContext.Queries := Queries;
   AContext.IdeTypes := IdeTypes;
+  AContext.Refactorings := Refactorings;
 end;
 
 { TRuleDescriptor }
@@ -570,48 +525,6 @@ begin
   Id := AId;
   DefaultSeverity := ADefaultSeverity;
   Description := ADescription;
-end;
-
-{ TRuleFix }
-
-constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean);
-begin
-  Title := ATitle;
-  Edits := AEdits;
-  Safe := ASafe;
-  Alternative := False;
-  FileName := '';
-  HasJump := False;
-  JumpTo := Default(TTextPosition);
-  // Ein Record-Konstruktor setzt nichts von selbst; ohne diese Zeilen trüge ein Sprung zufällig den
-  // Parameter-Hint (#1007) oder Edits fremder Dateien (#1105).
-  OpensSignature := False;
-  OtherFiles := nil;
-  ShowsUnitRelations := False;
-end;
-
-constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>);
-begin
-  Self := TRuleFix.Create(ATitle, AEdits, False);
-end;
-
-class function TRuleFix.Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix;
-begin
-  Result := TRuleFix.Create(ATitle, nil);
-  Result.HasJump := True;
-  Result.JumpTo := ATarget;
-end;
-
-class function TRuleFix.SignatureHelp(const ATitle: string; const ATarget: TTextPosition): TRuleFix;
-begin
-  Result := Jump(ATitle, ATarget);
-  Result.OpensSignature := True;
-end;
-
-class function TRuleFix.UnitRelations(const ATitle: string): TRuleFix;
-begin
-  Result := TRuleFix.Create(ATitle, nil);
-  Result.ShowsUnitRelations := True;
 end;
 
 end.

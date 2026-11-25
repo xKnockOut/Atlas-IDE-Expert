@@ -266,6 +266,10 @@ type
     class function NamespaceParts(const AUnitName: string): TArray<string>; static;
     /// <summary>Text der Rolle: "Fundament", "Drehscheibe" oder ''.</summary>
     class function RoleCaption(ARole: TOverviewUnitRole): string; static;
+    /// <summary>Schlüssel der Rolle für JSON und Schnappschüsse: "foundation", "hub" oder ''.</summary>
+    class function RoleKey(ARole: TOverviewUnitRole): string; static;
+    /// <summary>Name des Teilsystems ASubsystem von AOverview; '' außerhalb der Liste.</summary>
+    class function SubsystemName(const AOverview: TArchitectureOverview; ASubsystem: Integer): string; static;
     /// <summary>Nachteilung (#1364): teilt jede Gruppe außer ASkip mit ASplit, ein Teil höchstens ADepth Stufen
     /// tief. Das erste Teil nimmt den Platz der Gruppe ein, die übrigen kommen hinten dazu. AFamilies: je
     /// Ergebnis die Nummer der Ausgangsgruppe.</summary>
@@ -293,7 +297,8 @@ uses
   Atlas.Common.Architecture.Overview.Foundations,
   Atlas.Common.Architecture.Overview.Naming,
   Atlas.Common.Architecture.Overview.Splitting,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -315,20 +320,6 @@ begin
   Result := cTexts[TOverviewText.UnitsWithTheFoundationRole].Text;
 end;
 
-function ContainsInt(AValue: Integer; const AValues: TArray<Integer>): Boolean;
-var
-  mValue: Integer;
-begin
-  for mValue in AValues do
-  begin
-    if mValue = AValue then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>AUnit (Nummer AIndex) ist zentraler als AOther (Nummer AOtherIndex): mehr Verbindungen insgesamt,
 /// dann mehr direkte, dann die kleinere Nummer.</summary>
 function MoreCentral(const AUnit, AOther: TOverviewUnit; AIndex, AOtherIndex: Integer): Boolean;
@@ -342,18 +333,6 @@ begin
     Exit(AUnit.Direct > AOther.Direct);
   end;
   Result := AIndex < AOtherIndex;
-end;
-
-/// <summary>Die Nummern 0..ACount-1.</summary>
-function AllIndices(ACount: Integer): TArray<Integer>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, ACount);
-  for mIndex := 0 to ACount - 1 do
-  begin
-    Result[mIndex] := mIndex;
-  end;
 end;
 
 /// <summary>AMembers nach Zentralität sortieren: die zentralste Unit zuerst.</summary>
@@ -511,17 +490,12 @@ begin
 end;
 
 function TArchitectureOverview.IndexOf(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Units) do
-  begin
-    if SameText(Units[mIndex].Name, AName) then
+  Result := TTextArrays.IndexOfText<TOverviewUnit>(Units, AName,
+    function(AUnit: TOverviewUnit): string
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AUnit.Name;
+    end);
 end;
 
 function TArchitectureOverview.Assignment(AUnit: Integer): TOverviewAssignment;
@@ -543,7 +517,7 @@ begin
   Result := nil;
   for mIndex := 0 to High(ACycles) do
   begin
-    if ContainsInt(AUnit, ACycles[mIndex].Component) then
+    if TTextArrays.ContainsInteger(ACycles[mIndex].Component, AUnit) then
     begin
       Result := Result + [mIndex];
     end;
@@ -607,11 +581,11 @@ begin
   Result.Unit_ := AUnit;
   for mEdge in Edges do
   begin
-    if (mEdge.Source = AUnit) and not ContainsInt(mEdge.Target, Result.DependsOn) then
+    if (mEdge.Source = AUnit) and not TTextArrays.ContainsInteger(Result.DependsOn, mEdge.Target) then
     begin
       Result.DependsOn := Result.DependsOn + [mEdge.Target];
     end;
-    if (mEdge.Target = AUnit) and not ContainsInt(mEdge.Source, Result.UsedBy) then
+    if (mEdge.Target = AUnit) and not TTextArrays.ContainsInteger(Result.UsedBy, mEdge.Source) then
     begin
       Result.UsedBy := Result.UsedBy + [mEdge.Source];
     end;
@@ -841,7 +815,7 @@ begin
     end;
     FResult.Units[mIndex] := mItem;
   end;
-  FResult.Central := AllIndices(Length(FResult.Units));
+  FResult.Central := TTextArrays.Indices(Length(FResult.Units));
   SortByCentrality(FResult.Units, FResult.Central);
 end;
 
@@ -1108,7 +1082,7 @@ begin
   SetLength(FPartKey, Length(FResult.Subsystems));
   mParts := UnitParts(FResult.Units);
   mFamilies := FamilyUnits(FResult.Subsystems, FFamily);
-  mGlobal := TSubsystemNaming.PartCounts(mParts, AllIndices(Length(FResult.Units)));
+  mGlobal := TSubsystemNaming.PartCounts(mParts, TTextArrays.Indices(Length(FResult.Units)));
   try
     for mIndex := 0 to High(FResult.Subsystems) do
     begin
@@ -1181,6 +1155,28 @@ begin
   else
   begin
     Result := CentralName(FResult.Units, AMembers);
+  end;
+end;
+
+class function TArchitectureAnalyzer.RoleKey(ARole: TOverviewUnitRole): string;
+begin
+  case ARole of
+    TOverviewUnitRole.Foundation:
+      Result := 'foundation';
+    TOverviewUnitRole.Hub:
+      Result := 'hub';
+  else
+    Result := '';
+  end;
+end;
+
+class function TArchitectureAnalyzer.SubsystemName(const AOverview: TArchitectureOverview;
+  ASubsystem: Integer): string;
+begin
+  Result := '';
+  if (ASubsystem >= 0) and (ASubsystem < Length(AOverview.Subsystems)) then
+  begin
+    Result := AOverview.Subsystems[ASubsystem].Name;
   end;
 end;
 

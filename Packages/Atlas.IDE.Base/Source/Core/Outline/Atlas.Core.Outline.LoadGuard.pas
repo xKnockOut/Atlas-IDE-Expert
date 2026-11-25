@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Outline.LoadGuard;
 
-// Schutz des Gliederungsstands während einer Abfrage (Zugriffsverletzung in
-// AnsiLowerCase, 22.10.2026): Beim Laden holt der Stand die Sitzung, und das
+// Schutz des Gliederungsstands während einer Abfrage (gegen eine Zugriffsverletzung
+// in AnsiLowerCase): Beim Laden holt der Stand die Sitzung, und das
 // kann den Server starten oder die Projektkontexte abgleichen. Ändert sich
 // dabei der Kontext, vergisst der Manager alle Stände, also auch den Eintrag,
 // der gerade lädt; das Laden las danach freigegebenen Speicher. Auch das

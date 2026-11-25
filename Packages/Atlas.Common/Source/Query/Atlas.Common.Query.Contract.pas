@@ -111,7 +111,7 @@ type
   TQueryCallsFunc = reference to function(const ALocation: TSymbolLocation; AIncoming: Boolean): TArray<TQueryCall>;
 
   /// <summary>Text einer Datei (geöffnete Dokumente zuerst); False, wenn sie fehlt.</summary>
-  TQueryReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TQueryReadText = TDocumentReadText;
 
   /// <summary>True, wenn die Auswertung abbrechen soll (Fenster, Zeitlimit).</summary>
   TQueryCancelled = reference to function: Boolean;
@@ -154,7 +154,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.StrUtils;
 
 { TQueryValue }
 
@@ -212,14 +213,7 @@ end;
 
 function TQueryRow.QualifiedName: string;
 begin
-  if Container = '' then
-  begin
-    Result := Name;
-  end
-  else
-  begin
-    Result := Container + '.' + Name;
-  end;
+  Result := TIndexSymbol.QualifiedOf(Container, Name);
 end;
 
 { TQueryResult }
@@ -230,17 +224,8 @@ begin
 end;
 
 function TQueryResult.ColumnOf(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Columns) do
-  begin
-    if SameText(Columns[mIndex], AName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+  Result := IndexText(AName, Columns);
 end;
 
 function TQueryResult.Truncated: Boolean;

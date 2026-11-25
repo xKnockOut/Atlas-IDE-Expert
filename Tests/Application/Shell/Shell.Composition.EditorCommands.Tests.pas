@@ -23,8 +23,8 @@ type
     /// <summary>Markierungs- und Textbefehle stehen in executeCommandProvider.</summary>
     [Test]
     procedure RegistersAllCommands;
-    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
-    /// 06.11.2026).</summary>
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten.
+    /// </summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;
     /// <summary>„Text in Literal“ fragt die Einstellungen der Datei über den Dienst ab, bevor es die Argumente
@@ -87,9 +87,11 @@ var
   mText: string;
   mName: string;
 begin
-  mEditorCommands := TShellEditorCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mEditorCommands := nil;
+  mCommands := nil;
   try
+    mEditorCommands := TShellEditorCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mEditorCommands.RegisterMarkCommands(mCommands);
     mEditorCommands.RegisterTextCommands(mCommands);
     mCapability := mCommands.Capability;
@@ -102,7 +104,8 @@ begin
       TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand, TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand,
       TEnumValueCommands.cCommand, TResourceStringCommands.cAddCommand, TStringLiteralCommands.cPlainTextCommand,
       TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand, TLspLearnedSuggestions.cSuggestCommand,
-      TLspLearnedSuggestions.cListCommand) do
+      TLspLearnedSuggestions.cListCommand, TLspLearnedSuggestions.cContextCommand,
+      TLspLearnedSuggestions.cCheckCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -118,16 +121,19 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mEditorCommands := TShellEditorCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mEditorCommands := nil;
+  mCommands := nil;
   try
+    mEditorCommands := TShellEditorCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mEditorCommands.RegisterMarkCommands(mCommands);
     mEditorCommands.RegisterTextCommands(mCommands);
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand,
       TLspExpressionType.cCommand, TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand,
       TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
       TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand,
-      TLspLearnedSuggestions.cSuggestCommand, TLspLearnedSuggestions.cListCommand) do
+      TLspLearnedSuggestions.cSuggestCommand, TLspLearnedSuggestions.cListCommand,
+      TLspLearnedSuggestions.cContextCommand, TLspLearnedSuggestions.cCheckCommand) do
     begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;
@@ -148,10 +154,13 @@ var
   mArguments: TJSONArray;
   mResult: TJSONValue;
 begin
-  mEditorCommands := TShellEditorCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mEditorCommands := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mEditorCommands := TShellEditorCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mEditorCommands.RegisterTextCommands(mCommands);
     mArguments.Add('file:///tmp/A.pas');
     // Ohne Position lehnt der Befehl ab, die Einstellungen der Datei hat er da schon geholt.
@@ -176,10 +185,13 @@ var
   mArguments: TJSONArray;
   mResult: TJSONValue;
 begin
-  mEditorCommands := TShellEditorCommands.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mEditorCommands := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mEditorCommands := TShellEditorCommands.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mEditorCommands.RegisterTextCommands(mCommands);
     mArguments.Add('file:///tmp/A.pas');
     Assert.WillRaise(

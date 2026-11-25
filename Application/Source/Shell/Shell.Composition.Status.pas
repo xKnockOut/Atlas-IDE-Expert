@@ -13,7 +13,7 @@ uses
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Text.LogMarks,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Status.Contract;
 
 type
@@ -23,7 +23,7 @@ type
     FServices: TShellStatusServices;
     FStartedAt: TDateTime;
     FUptime: TStopwatch;
-    function Workspaces: TArray<TShellWorkspace>;
+    function Workspaces: TArray<TCoreWorkspace>;
     function WorkspaceRoots: TArray<string>;
     function RecentLines: TArray<string>;
     /// <summary>Protokoll der Sitzung, mit AAnonymize über den Anonymisierer, sonst im Klartext.</summary>
@@ -66,11 +66,11 @@ uses
   Atlas.Common.Diagnostics.BugReport,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Diagnostics.ServerPackage,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Text.Anonymize,
-  Shell.Platform;
+  Platform.Server;
 
 const
   /// <summary>So viele Zeilen des Protokolls im Fehlerbericht (#108); das Diagnosepaket nimmt alle (#1356).</summary>
@@ -176,13 +176,13 @@ begin
   FUptime := TStopwatch.StartNew;
 end;
 
-function TShellStatusReports.Workspaces: TArray<TShellWorkspace>;
+function TShellStatusReports.Workspaces: TArray<TCoreWorkspace>;
 var
-  mResult: TArray<TShellWorkspace>;
+  mResult: TArray<TCoreWorkspace>;
 begin
   mResult := nil;
   FServices.VisitWorkspaces(
-    procedure(const AWorkspaces: TArray<TShellWorkspace>)
+    procedure(const AWorkspaces: TArray<TCoreWorkspace>)
     begin
       mResult := AWorkspaces;
     end);
@@ -191,7 +191,7 @@ end;
 
 function TShellStatusReports.WorkspaceRoots: TArray<string>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := nil;
   for mWorkspace in Workspaces do
@@ -292,9 +292,9 @@ begin
   end;
   // Unter der Sperre der Arbeitsbereiche: Projektwahl (#46), aktiv in der IDE und per selectProject ausgewählt.
   FServices.VisitWorkspaces(
-    procedure(const AWorkspaces: TArray<TShellWorkspace>)
+    procedure(const AWorkspaces: TArray<TCoreWorkspace>)
     var
-      mWorkspace: TShellWorkspace;
+      mWorkspace: TCoreWorkspace;
     begin
       for mWorkspace in AWorkspaces do
       begin
@@ -319,7 +319,7 @@ var
   mWorkspace: TWorkspaceStatus;
 begin
   // Fenster „Atlas-Server“ (#1356): Prozess, Speicher je Bereich, Prüflauf, Warteschlangen, Cache-Treffer.
-  AStatus.ProcessId := TShellPlatform.CurrentProcessId;
+  AStatus.ProcessId := TServerPlatform.CurrentProcessId;
   AStatus.Version := TProductVersion.cVersion;
   AStatus.Started := FStartedAt;
   AStatus.UptimeMs := FUptime.ElapsedMilliseconds;
@@ -362,7 +362,7 @@ function TShellStatusReports.ConfigurationReport: string;
 var
   mRoot, mItem, mChoice: TJSONObject;
   mItems: TJSONArray;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mStatus: TWorkspaceStatus;
 begin
   mRoot := TJSONObject.Create;
@@ -451,6 +451,8 @@ begin
   end;
   mInput.Workspaces := WorkspaceRoots;
   mInput.Identity := TProcessInfo.IdentityNames;
+  // Aufrufstatistik der KI-Assistenten am selben Ordner (#2611).
+  mInput.McpStatistics := TServerPackage.McpSectionsIn(TIndexCacheDirectory.DefaultRoot, mInput.Workspaces, Now);
   Result := TServerPackage.ToJson(TServerPackage.Build(mInput));
   FServices.Logger.Info('Diagnosepaket des Servers erstellt');
 end;

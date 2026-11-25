@@ -12,9 +12,6 @@ type
   [Category('Atlas.IDE.Debugger')]
   TAtlasEventLogTests = class
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung (erste Ausnahme aus TRegEx bei ungültigem Ausdruck).</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     /// <summary>Präfixe der IDE auf Deutsch und Englisch; angehängter Prozess fällt weg.</summary>
     [Test]
     procedure ClassifiesIdeLines;
@@ -45,13 +42,16 @@ type
     /// <summary>Älteste Einträge fallen über dem Limit weg; Text zum Speichern.</summary>
     [Test]
     procedure KeepsLimitAndWritesText;
+    /// <summary>Die letzten Zeilen für die Debug-Notiz (#582), älteste zuerst.</summary>
+    [Test]
+    procedure LastLinesForNote;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Settings.Plugin.Debug,
   Atlas.Core.Debug.EventLog;
 
@@ -61,11 +61,6 @@ begin
 end;
 
 { TAtlasEventLogTests }
-
-procedure TAtlasEventLogTests.WarmUpFirstUse;
-begin
-  FiltersByRegex;
-end;
 
 procedure TAtlasEventLogTests.ClassifiesIdeLines;
 var
@@ -239,6 +234,29 @@ begin
     Assert.AreEqual(Integer(0), mLog.Dropped);
     mLog.Add(TAtlasEventEntry.Create(1500, TAtlasEventKind.Thread, '7', 'a'#13#10'b'));
     Assert.AreEqual('0:01.500'#9'thread'#9'7'#9'a b'#13#10, mLog.ToText);
+  finally
+    mLog.Free;
+  end;
+end;
+
+procedure TAtlasEventLogTests.LastLinesForNote;
+var
+  mLog: TAtlasEventLog;
+  mLines: TArray<string>;
+  mIndex: Integer;
+begin
+  mLog := TAtlasEventLog.Create(10);
+  try
+    Assert.AreEqual(Integer(0), Integer(Length(mLog.LastLines(5))), 'leer');
+    for mIndex := 1 to 4 do
+    begin
+      mLog.Add(TAtlasEventEntry.Create(mIndex * 1000, TAtlasEventKind.Output, '', 'Zeile ' + IntToStr(mIndex)));
+    end;
+    mLines := mLog.LastLines(2);
+    Assert.AreEqual(Integer(2), Integer(Length(mLines)));
+    Assert.AreEqual('0:03.000'#9'output'#9#9'Zeile 3', mLines[0]);
+    Assert.AreEqual('0:04.000'#9'output'#9#9'Zeile 4', mLines[1]);
+    Assert.AreEqual(Integer(4), Integer(Length(mLog.LastLines(20))), 'weniger als verlangt');
   finally
     mLog.Free;
   end;

@@ -12,9 +12,6 @@ type
   [TestFixture]
   TAtlasFormsTests = class
   public
-    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure WritesComponentsAndHandlers;
     [Test]
@@ -97,11 +94,6 @@ const
 
 { TAtlasFormsTests }
 
-procedure TAtlasFormsTests.WarmUpFirstUse;
-begin
-  WritesComponentsAndHandlers;
-end;
-
 procedure TAtlasFormsTests.WritesComponentsAndHandlers;
 var
   mRoot: TTestRoot;
@@ -109,9 +101,11 @@ var
   mHandler: TTestHandler;
   mText: string;
 begin
-  mRoot := TTestRoot.Create(nil);
-  mHandler := TTestHandler.Create;
+  mRoot := nil;
+  mHandler := nil;
   try
+    mRoot := TTestRoot.Create(nil);
+    mHandler := TTestHandler.Create;
     mRoot.Name := 'Form1';
     mPing := TTestPing.Create(mRoot);
     mPing.Name := 'Ping1';

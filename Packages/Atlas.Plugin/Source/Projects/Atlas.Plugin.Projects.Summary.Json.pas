@@ -1,0 +1,127 @@
+﻿unit Atlas.Plugin.Projects.Summary.Json;
+
+// Schreiben einzelner Felder der Projekt-Zusammenfassung (#592), ohne VCL und
+// Open Tools API: Zeiten in UTC ("2026-10-15T09:30:00Z") und unbekannte
+// Felder, die beim Schreiben erhalten bleiben. Gelesen wird mit TJsonRead
+// (Atlas.Text.Json). Genutzt von Atlas.Core.Projects.Summary und ihren
+// Abschnitten (Atlas.Core.Projects.Summary.Sections); ReplaceSection setzt die
+// Abschnitte ein, die Module selbst führen.
+
+interface
+
+uses
+  System.JSON;
+
+/// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
+procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
+/// <summary>Text der Zusammenfassung ARaw mit ASection als Abschnitt AName; ein vorhandener Abschnitt AName
+/// fällt weg, alle übrigen Felder bleiben in ihrer Reihenfolge. ASection gehört danach der Funktion; nil
+/// entfernt den Abschnitt. Ungültiges ARaw gilt als leeres Objekt.</summary>
+function ReplaceSection(const ARaw, AName: string; ASection: TJSONObject): string;
+/// <summary>Zeit AUtc als Feld AName; nichts bei 0.</summary>
+procedure AddTime(AObject: TJSONObject; const AName: string; AUtc: TDateTime);
+/// <summary>UTC als "2026-10-15T09:30:00Z"; '' bei 0.</summary>
+function SummaryTimeText(AUtc: TDateTime): string;
+/// <summary>Umkehrung von SummaryTimeText; Bruchteile und Zeitzone "Z" erlaubt; 0 bei ungültigem Text.</summary>
+function SummaryTimeOf(const AText: string): TDateTime;
+/// <summary>Schlüssel eines Projektpfads: getrimmt, „/“ als „\“, a–z groß (Pfade unter Windows ohne Rücksicht
+/// auf Groß- und Kleinschreibung).</summary>
+function SummaryNormalizedPath(const AProject: string): string;
+
+implementation
+
+uses
+  System.Generics.Collections,
+  System.SysUtils,
+  System.StrUtils,
+  Atlas.Text.Json,
+  Atlas.Text.Timestamps;
+
+procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
+var
+  mIndex: Integer;
+  mPair: TJSONPair;
+begin
+  if AOriginal = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to AOriginal.Count - 1 do
+  begin
+    mPair := AOriginal.Pairs[mIndex];
+    if not MatchStr(mPair.JsonString.Value, AKeys) then
+    begin
+      ATarget.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
+    end;
+  end;
+end;
+
+function ReplaceSection(const ARaw, AName: string; ASection: TJSONObject): string;
+var
+  mOriginal, mRoot, mSection: TJSONObject;
+begin
+  mSection := ASection;
+  mOriginal := nil;
+  mRoot := TJSONObject.Create;
+  try
+    mOriginal := TJsonRead.ParseObject(ARaw);
+    KeepUnknown(mRoot, mOriginal, [AName]);
+    if mSection <> nil then
+    begin
+      mRoot.AddPair(AName, mSection);
+      mSection := nil;
+    end;
+    Result := mRoot.ToJSON;
+  finally
+    mSection.Free;
+    mRoot.Free;
+    mOriginal.Free;
+  end;
+end;
+
+procedure AddTime(AObject: TJSONObject; const AName: string; AUtc: TDateTime);
+begin
+  if AUtc > 0 then
+  begin
+    AObject.AddPair(AName, SummaryTimeText(AUtc));
+  end;
+end;
+
+function SummaryTimeText(AUtc: TDateTime): string;
+var
+  mYear, mMonth, mDay, mHour, mMinute, mSecond, mMSec: Word;
+begin
+  Result := '';
+  if AUtc <= 0 then
+  begin
+    Exit;
+  end;
+  DecodeDate(AUtc, mYear, mMonth, mDay);
+  DecodeTime(AUtc, mHour, mMinute, mSecond, mMSec);
+  Result := System.SysUtils.Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2dZ', [mYear, mMonth, mDay, mHour, mMinute, mSecond]);
+end;
+
+function SummaryTimeOf(const AText: string): TDateTime;
+begin
+  Result := TTextTimestamp.ParseOrZero(AText);
+end;
+
+function SummaryNormalizedPath(const AProject: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := Trim(AProject);
+  for mIndex := 1 to Length(Result) do
+  begin
+    if Result[mIndex] = '/' then
+    begin
+      Result[mIndex] := '\';
+    end
+    else if CharInSet(Result[mIndex], ['a'..'z']) then
+    begin
+      Result[mIndex] := UpCase(Result[mIndex]);
+    end;
+  end;
+end;
+
+end.

@@ -20,12 +20,12 @@ uses
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Parentheses,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.Preview,
   Atlas.IDE.Completion.Placeholders,
   Atlas.UI.Completion.Popup,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   /// <summary>Protokoll für die Diagnose (Registry-Wert Diagnose).</summary>
@@ -151,10 +151,8 @@ type
     procedure RemoveKeyHook;
     /// <summary>Indiziert der Server gerade (#492)?</summary>
     function IndexingNow: Boolean;
-    /// <summary>Zustand für TAtlasCloseRules (#414); AWindow ist das Editorfenster mit dem Caret.</summary>
-    class function WindowState(const AView: IOTAEditView; AWindow, AFocus: HWND): TAtlasEditorWindowState; static;
   public
-    /// <summary>ASources legt die Quellen des Kerns an (Kompositionswurzel).</summary>
+    /// <summary>ASources legt die Quellen des Kerns an (Kompositionswurzel); ALog: Protokoll, nie nil.</summary>
     constructor Create(const ASession: TAtlasSessionFunc; const ALog: TAtlasLogProc;
       const ASources: TAtlasCompletionSourcesFactory);
     destructor Destroy; override;
@@ -188,26 +186,11 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer;
 
 const
   /// <summary>Takt, in dem die offene Liste Cursor, Details und Vorschau prüft.</summary>
   cTickMs = 50;
-
-/// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
-function EditorSize(AWindow: HWND): TPoint;
-var
-  mArea: TRect;
-begin
-  if (AWindow <> 0) and GetClientRect(AWindow, mArea) then
-  begin
-    Result := Point(mArea.Width, mArea.Height);
-  end
-  else
-  begin
-    Result := Point(0, 0);
-  end;
-end;
 
 /// <summary>Gezogene Breiten (#416) und eingeklapptes Panel (#428) gelten auch beim nächsten Mal.</summary>
 procedure WireSettings(APopup: TAtlasCompletionPopup);
@@ -257,7 +240,7 @@ begin
   FProviders.Add(FSources.Snippets);
   FPlaceholders := TAtlasEditorPlaceholders.Create;
   FPopup := TAtlasCompletionPopup.Create(nil);
-  FController := TAtlasCompletionController.Create(FProvidersRef, FPopup);
+  FController := TAtlasCompletionController.Create(FProvidersRef, TAtlasCompletionViews.ViewOf(FPopup));
   WirePopup;
   FPreview := TAtlasEditorPreview.Create;
   FTimer := TTimer.Create(nil);
@@ -332,10 +315,7 @@ end;
 
 procedure TAtlasEditorCompletionState.Log(const AMessage: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AMessage);
-  end;
+  FLog(AMessage);
 end;
 
 procedure TAtlasEditorCompletionState.CancelDelay;
@@ -395,25 +375,6 @@ begin
   end;
   mSession := FSession();
   Result := (mSession <> nil) and (mSession.IndexingText <> '');
-end;
-
-class function TAtlasEditorCompletionState.WindowState(const AView: IOTAEditView; AWindow,
-  AFocus: HWND): TAtlasEditorWindowState;
-begin
-  Result := Default(TAtlasEditorWindowState);
-  Result.AppActive := Application.Active;
-  Result.Focus := AFocus;
-  Result.Size := EditorSize(AWindow);
-  if AView = nil then
-  begin
-    Exit;
-  end;
-  Result.TopRow := AView.TopRow;
-  Result.Rows := AView.ViewSize.cy;
-  if AView.Buffer <> nil then
-  begin
-    Result.FileName := AView.Buffer.FileName;
-  end;
 end;
 
 procedure TAtlasEditorCompletionState.Close;

@@ -50,7 +50,8 @@ uses
   System.SysUtils,
   Atlas.Core.Tests.Mutants,
   Atlas.Core.Tests.MutationResults,
-  Atlas.Core.Tests.MutationPlan;
+  Atlas.Core.Tests.MutationPlan,
+  Atlas.Core.Tests.Mutation.TestSupport;
 
 const
   cFile = 'C:\P\Preise.pas';
@@ -63,14 +64,6 @@ const
     '"endCharacter": 16, "original": "+", "replacement": "-"}], ' +
     '"routines": [{"name": "Satz", "line": 3, "endLine": 9}, {"name": "Doppelt", "line": 10, "endLine": 13}, ' +
     '{"name": "Doppelt.Lokal", "line": 11, "endLine": 12}]}';
-
-function SampleLines: TArray<string>;
-begin
-  Result := TArray<string>.Create('unit Preise;', 'interface', 'implementation',
-    'function Satz(AMenge: Integer): Integer;', 'begin', '  if AMenge >= 100 then', '    Result := 10',
-    '  else', '    Result := 0;', 'end;', 'function Doppelt(A: Integer): Integer;', 'begin',
-    '  Result := A + A;', 'end;', 'end.');
-end;
 
 function List: TAtlasMutantList;
 begin

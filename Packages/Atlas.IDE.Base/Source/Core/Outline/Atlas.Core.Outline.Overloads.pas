@@ -37,6 +37,10 @@ uses
   System.SysUtils,
   Atlas.Text.Lines;
 
+const
+  /// <summary>So viele Zeilen ab dem Namen liest ParamsOf höchstens für die Parameterliste.</summary>
+  cMaxSignatureLines = 20;
+
 function IsRoutine(const ANode: TAtlasOutlineNode): Boolean;
 begin
   Result := ANode.Category in [TAtlasOutlineCategory.Method, TAtlasOutlineCategory.Routine];
@@ -160,7 +164,7 @@ begin
   begin
     Exit;
   end;
-  mText := TextFrom(ALines, ANodes[ANode].NameLine, ANodes[ANode].NameCharacter, 20);
+  mText := TextFrom(ALines, ANodes[ANode].NameLine, ANodes[ANode].NameCharacter, cMaxSignatureLines);
   mIndex := SkipName(mText, 1);
   Result := '()';
   if (mIndex <= Length(mText)) and (mText[mIndex] = '(') then

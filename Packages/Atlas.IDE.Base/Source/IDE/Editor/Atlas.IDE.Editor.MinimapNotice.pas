@@ -44,15 +44,15 @@ uses
   System.Types,
   Vcl.Forms,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Editor.Minimap,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Editor.Minimap,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 const

@@ -27,6 +27,16 @@ type
     procedure PicksProjectByName;
     [Test]
     procedure ExplainsWhenNoIdeHasTheProject;
+    /// <summary>#2895: Projekt in keiner IDE offen, aber unter dem Arbeitsordner: nach Zustimmung die IDE mit dem
+    /// aktiven Projekt unter dem Arbeitsordner und die Datei.</summary>
+    [Test]
+    procedure OpensProjectAfterConsent;
+    [Test]
+    procedure KeepsReasonWhenConsentIsMissing;
+    [Test]
+    procedure OpenPolicyDecides;
+    [Test]
+    procedure AskAsksWithProjectName;
     [Test]
     procedure ReportsBuildOfThePlugin;
     [Test]
@@ -46,9 +56,12 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Lsp.IdeBuild,
+  Atlas.Common.Compiler.IdeBuild,
   Atlas.Common.Mcp.BuildTools,
-  Atlas.Common.Mcp.IdeBuilds;
+  Atlas.Common.Mcp.IdeInbox,
+  Atlas.Common.Mcp.IdeBuilds,
+  Atlas.Common.Mcp.Confirm,
+  Atlas.Common.Mcp.IdeInbox.Tests;
 
 const
   /// <summary>Antwort des Plugins wie TAtlasBuildInbox.SuccessText (Zeilen und Spalten 1-basiert).</summary>
@@ -105,6 +118,40 @@ begin
   Result.Mode := AMode;
 end;
 
+function Candidates(const AFiles: TArray<string>): TFunc<TArray<string>>;
+begin
+  Result :=
+    function: TArray<string>
+    begin
+      Result := AFiles;
+    end;
+end;
+
+function Consent(AValue: Boolean): TMcpMayOpenFunc;
+begin
+  Result :=
+    function(const AProjectFile: string; out AReason: string): Boolean
+    begin
+      AReason := 'abgelehnt';
+      Result := AValue;
+    end;
+end;
+
+var
+  /// <summary>Zuletzt gestellte Frage von Chooser.</summary>
+  GAsked: string;
+
+function Chooser(AChoice: Integer): TMcpChooseFunc;
+begin
+  GAsked := '';
+  Result :=
+    function(const AText: string; const AOptions: TArray<string>): Integer
+    begin
+      GAsked := AText;
+      Result := AChoice;
+    end;
+end;
+
 { TMcpIdeBuildsTests }
 
 procedure TMcpIdeBuildsTests.Setup;
@@ -116,11 +163,7 @@ end;
 
 procedure TMcpIdeBuildsTests.TearDown;
 begin
-  if TDirectory.Exists(FInbox) then
-  begin
-    TDirectory.Delete(FInbox, True);
-  end;
-  FInbox := '';
+  RemoveTestInbox(FInbox);
 end;
 
 procedure TMcpIdeBuildsTests.ReadsIdeEntry;
@@ -179,6 +222,70 @@ begin
   Assert.IsFalse(TMcpIdeBuilds.Pick([Ide(7, ['C:\P\App.dproj'], '')], 'C:\P', 'Kasse', mPid, mProject, mReason));
   Assert.IsTrue(Pos('Kasse', mReason) > 0, mReason);
   Assert.AreEqual(Cardinal(0), mPid);
+end;
+
+procedure TMcpIdeBuildsTests.OpensProjectAfterConsent;
+var
+  mPid: Cardinal;
+  mProject, mReason: string;
+begin
+  Assert.IsTrue(TMcpIdeBuilds.PickOrOpen([Ide(1, ['C:\Other\X.dproj'], 'C:\Other\X.dproj'),
+    Ide(2, ['C:\P\App.dproj'], 'C:\P\App.dproj')], 'C:\P', 'AppTests',
+    Candidates(TArray<string>.Create('C:\P\App.dproj', 'C:\P\Tests\AppTests.dproj')), Consent(True), mPid,
+    mProject, mReason), mReason);
+  Assert.AreEqual(Cardinal(2), mPid);
+  Assert.AreEqual('C:\P\Tests\AppTests.dproj', mProject);
+  // Offen ist offen: Pick gewinnt, ohne zu fragen.
+  Assert.IsTrue(TMcpIdeBuilds.PickOrOpen([Ide(2, ['C:\P\App.dproj'], 'C:\P\App.dproj')], 'C:\P', 'App',
+    Candidates(nil), Consent(False), mPid, mProject, mReason));
+  Assert.AreEqual('C:\P\App.dproj', mProject);
+end;
+
+procedure TMcpIdeBuildsTests.KeepsReasonWhenConsentIsMissing;
+var
+  mPid: Cardinal;
+  mProject, mReason: string;
+begin
+  Assert.IsFalse(TMcpIdeBuilds.PickOrOpen([Ide(2, ['C:\P\App.dproj'], 'C:\P\App.dproj')], 'C:\P', 'AppTests',
+    Candidates(TArray<string>.Create('C:\P\Tests\AppTests.dproj')), Consent(False), mPid, mProject, mReason));
+  Assert.AreEqual('abgelehnt', mReason);
+  // Ohne Zustimmungsweg wie bisher: nur Pick.
+  Assert.IsFalse(TMcpIdeBuilds.PickOrOpen([Ide(2, ['C:\P\App.dproj'], 'C:\P\App.dproj')], 'C:\P', 'AppTests',
+    Candidates(TArray<string>.Create('C:\P\Tests\AppTests.dproj')), nil, mPid, mProject, mReason));
+  Assert.IsTrue(Pos('AppTests', mReason) > 0, mReason);
+  // Datei gibt es nicht: Grund von Pick.
+  Assert.IsFalse(TMcpIdeBuilds.PickOrOpen([Ide(2, ['C:\P\App.dproj'], 'C:\P\App.dproj')], 'C:\P', 'Kasse',
+    Candidates(TArray<string>.Create('C:\P\Tests\AppTests.dproj')), Consent(True), mPid, mProject, mReason));
+  Assert.IsTrue(Pos('Kasse', mReason) > 0, mReason);
+end;
+
+procedure TMcpIdeBuildsTests.OpenPolicyDecides;
+var
+  mReason: string;
+begin
+  Assert.AreEqual(Ord(TMcpOpenProjects.Always), Ord(TMcpIdeBuilds.OpenPolicyOf('always')));
+  Assert.AreEqual(Ord(TMcpOpenProjects.Never), Ord(TMcpIdeBuilds.OpenPolicyOf('never')));
+  Assert.AreEqual(Ord(TMcpOpenProjects.Ask), Ord(TMcpIdeBuilds.OpenPolicyOf('')));
+  Assert.IsTrue(TMcpIdeBuilds.MayOpen(TMcpOpenProjects.Always, 'C:\P\A.dproj', Chooser(1), mReason));
+  Assert.AreEqual('', GAsked, 'always fragt nicht');
+  Assert.IsFalse(TMcpIdeBuilds.MayOpen(TMcpOpenProjects.Never, 'C:\P\A.dproj', Chooser(0), mReason));
+  Assert.IsTrue(Pos('never', mReason) > 0, mReason);
+  Assert.AreEqual('', GAsked, 'never fragt nicht');
+  Assert.IsFalse(TMcpIdeBuilds.MayOpen(TMcpOpenProjects.Ask, 'C:\P\A.dproj', nil, mReason));
+  Assert.IsTrue(Pos('always', mReason) > 0, mReason);
+end;
+
+procedure TMcpIdeBuildsTests.AskAsksWithProjectName;
+var
+  mReason: string;
+begin
+  Assert.IsTrue(TMcpIdeBuilds.MayOpen(TMcpOpenProjects.Ask, 'C:\P\A.dproj', Chooser(0), mReason));
+  Assert.IsTrue(Pos('A.dproj', GAsked) > 0, GAsked);
+  Assert.IsFalse(TMcpIdeBuilds.MayOpen(TMcpOpenProjects.Ask, 'C:\P\A.dproj', Chooser(1), mReason));
+  Assert.IsTrue(Pos('A.dproj', mReason) > 0, mReason);
+  Assert.IsFalse(TMcpIdeBuilds.MayOpen(TMcpOpenProjects.Ask, 'C:\P\A.dproj', Chooser(TMcpConfirm.cNoAnswer),
+    mReason));
+  GAsked := '';
 end;
 
 procedure TMcpIdeBuildsTests.ReportsBuildOfThePlugin;
@@ -248,7 +355,7 @@ var
   mBuildText, mReason, mSeen: string;
 begin
   Assert.AreEqual<TMcpIdeBuildOutcome>(TMcpIdeBuildOutcome.TimedOut,
-    TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'check'), TMcpIdeBuildWaiting.Make(
+    TMcpIdeBuilds.Send(FInbox, Request('C:\P\App.dproj', 'check'), TMcpIdeWaiting.Make(
     procedure
     begin
       Inc(Now_, 1000);

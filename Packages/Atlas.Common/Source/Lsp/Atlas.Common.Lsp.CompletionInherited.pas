@@ -84,7 +84,9 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Pascal.RoutineSignatures,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 function StripModifier(const AText: string): string;
 var
@@ -136,19 +138,6 @@ begin
     end;
   end;
   Result := Length(ARest) + 1;
-end;
-
-/// <summary>TAussen.TInnen.Create: nur der letzte Teil; Typargumente "TFoo&lt;T&gt;.Bar" stören nicht.</summary>
-function LastNamePart(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  Result := AName;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
 end;
 
 /// <summary>Namen und Typ (ohne Vorgabewert) einer Parametergruppe "const A, B: string = ''".</summary>
@@ -245,7 +234,7 @@ begin
   end;
   // Name bis "(", ":" oder ";".
   mStop := NameStop(mRest);
-  AHeader.Name := LastNamePart(Trim(Copy(mRest, 1, mStop - 1)));
+  AHeader.Name := TTextNames.LastPart(Trim(Copy(mRest, 1, mStop - 1)));
   Result := AHeader.Name <> '';
   if not Result then
   begin
@@ -518,7 +507,7 @@ begin
       Break;
     end;
   end;
-  Result := StringReplace(StringReplace(Result, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  Result := TTextLines.NormalizeLineBreaks(Result, ' ');
 end;
 
 end.

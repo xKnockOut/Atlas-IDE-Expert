@@ -140,10 +140,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Semantics.ControlFlow;
-
-type
-  TSyntaxKindSet = set of TSyntaxKind;
+  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cRoutineKinds = [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod];
@@ -259,7 +257,7 @@ end;
 
 /// <summary>Innerster Knoten einer der Arten AKinds, der AOffset enthält; ABoundaries beenden die Suche nach
 /// außen (ein Break in einer anonymen Methode gehört nicht zur Schleife außen).</summary>
-function Innermost(ARoot: TSyntaxNode; AOffset: Integer; const AKinds, ABoundaries: TSyntaxKindSet): TSyntaxNode;
+function Innermost(ARoot: TSyntaxNode; AOffset: Integer; const AKinds, ABoundaries: TSyntaxKinds): TSyntaxNode;
 var
   mNode, mChild: TSyntaxNode;
   mIndex: Integer;
@@ -294,20 +292,11 @@ begin
   end;
 end;
 
-function BodyOf(ARoutine: TSyntaxNode): TSyntaxNode;
-begin
-  Result := nil;
-  if ARoutine <> nil then
-  begin
-    Result := ARoutine.FindChild(TSyntaxKind.Block);
-  end;
-end;
-
 /// <summary>Knoten unter ARoot ohne verschachtelte Routinen und anonyme Methoden, in Baumreihenfolge.</summary>
-function OwnNodes(ARoot: TSyntaxNode; const AKinds: TSyntaxKindSet): TArray<TSyntaxNode>;
+function OwnNodes(ARoot: TSyntaxNode; const AKinds: TSyntaxKinds): TArray<TSyntaxNode>;
 var
   mList: TList<TSyntaxNode>;
-  mKinds: TSyntaxKindSet;
+  mKinds: TSyntaxKinds;
   mRoot: TSyntaxNode;
 begin
   mList := TList<TSyntaxNode>.Create;
@@ -517,7 +506,7 @@ begin
       end);
     for mRoutine in mRoutines do
     begin
-      mBody := BodyOf(mRoutine);
+      mBody := TSyntaxNodes.BlockOf(mRoutine);
       // Vorfilter: Ohne raise und Abort im eigenen Rumpf kann die Routine nicht immer auslösen.
       if Length(OwnNodes(mBody, [TSyntaxKind.RaiseStatement])) = 0 then
       begin
@@ -800,7 +789,7 @@ var
   mScan: TExitScan;
 begin
   ASet := Default(TExitPointSet);
-  mBody := BodyOf(ARoutine);
+  mBody := TSyntaxNodes.BlockOf(ARoutine);
   Result := mBody <> nil;
   if not Result then
   begin
@@ -839,7 +828,7 @@ var
 begin
   Result := nil;
   mName := ShortName(ARoutine.Name);
-  for mNode in OwnNodes(BodyOf(ARoutine), [TSyntaxKind.AssignStatement]) do
+  for mNode in OwnNodes(TSyntaxNodes.BlockOf(ARoutine), [TSyntaxKind.AssignStatement]) do
   begin
     if IsResultTarget(mNode, mName) then
     begin
@@ -1124,7 +1113,7 @@ var
 begin
   Result := nil;
   mRoutine := Innermost(ARoot, AOffset, [TSyntaxKind.RoutineDecl], []);
-  if (mRoutine = nil) or (BodyOf(mRoutine) = nil) then
+  if (mRoutine = nil) or (TSyntaxNodes.BlockOf(mRoutine) = nil) then
   begin
     Exit;
   end;
@@ -1319,8 +1308,8 @@ end;
 /// <summary>Steht die Abfrage unqualifiziert im Rumpf von ARoutine?</summary>
 function InBody(const AQuery: TExitQuery; ARoutine: TSyntaxNode): Boolean;
 begin
-  Result := not AQuery.Qualified and (ARoutine <> nil) and (BodyOf(ARoutine) <> nil) and
-    (AQuery.Token.Offset >= BodyOf(ARoutine).StartOffset);
+  Result := not AQuery.Qualified and (ARoutine <> nil) and (TSyntaxNodes.BlockOf(ARoutine) <> nil) and
+    (AQuery.Token.Offset >= TSyntaxNodes.BlockOf(ARoutine).StartOffset);
 end;
 
 class function TExitPoints.Find(ATree: TSyntaxTree; const APosition: TTextPosition;

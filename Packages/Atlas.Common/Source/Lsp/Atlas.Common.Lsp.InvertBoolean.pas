@@ -84,7 +84,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.InvertBoolean,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
@@ -92,7 +92,10 @@ uses
   Atlas.Common.Lsp.Rename,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -156,32 +159,18 @@ const
   cFormExtensions: array[0..1] of string = ('.dfm', '.fmx');
 
 type
-  TSourceFile = class
+  TSourceFile = class(TLspSourceFile)
   public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    OwnsTree: Boolean;
     Lines: TLineTable;
     Targets: TInvertTargets;
     Extra: TArray<TTextEdit>;
     Resolver: TNameResolver;
-    destructor Destroy; override;
     function Offset(const APosition: TTextPosition): Integer;
     function TokenAt(const APosition: TTextPosition): Integer;
     function IsVarArgument(ACall: TSyntaxNode; AArgument: Integer): Boolean;
   end;
 
 { TSourceFile }
-
-destructor TSourceFile.Destroy;
-begin
-  if OwnsTree then
-  begin
-    Tree.Free;
-  end;
-  inherited;
-end;
 
 /// <summary>Ansatz für TLspChangeSignature.Family an APosition, ohne Abbruch.</summary>
 function FamilySource(AResolver: TNameResolver; const AContext: TInvertBooleanContext; ATree: TSyntaxTree;
@@ -253,20 +242,6 @@ end;
 function IsBooleanType(const ATypeName: string): Boolean;
 begin
   Result := IndexText(Trim(ATypeName), cBooleanTypes) >= 0;
-end;
-
-function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
-  if Result > High(ATokens) then
-  begin
-    Result := -1;
-  end;
 end;
 
 /// <summary>Text zwischen der ersten "(" und ihrer passenden ")"; False ohne Parameterliste.</summary>
@@ -766,10 +741,7 @@ end;
 
 procedure TInvertPlan.Warn(const AText: string);
 begin
-  if IndexStr(AText, Warnings) < 0 then
-  begin
-    Warnings := Warnings + [AText];
-  end;
+  TTextArrays.AddText(Warnings, AText);
 end;
 
 procedure TInvertPlan.AddVariable(const ASymbol: TResolvedSymbol; const ANewName: string; AAccessorCheck: Boolean);
@@ -961,8 +933,8 @@ begin
     Exit(True);
   end;
   mTypeRef := mDecl.FindChild(TSyntaxKind.TypeReference);
-  Result := (mTypeRef <> nil) and (NextToken(mTokens, AToken) >= 0) and
-    mTokens[NextToken(mTokens, AToken)].IsSymbol(':');
+  Result := (mTypeRef <> nil) and (FollowingCode(mTokens, AToken) >= 0) and
+    mTokens[FollowingCode(mTokens, AToken)].IsSymbol(':');
   if Result then
   begin
     mPosition := AUnit.Lines.PositionAt(mTypeRef.EndOffset);
@@ -1019,10 +991,10 @@ var
 begin
   mTokens := AUnit.Tree.Tokens;
   Result := AStatement.EndOffset;
-  mAt := NextToken(mTokens, AUnit.TokenAt(AUnit.Lines.PositionAt(AStatement.StartOffset)));
+  mAt := FollowingCode(mTokens, AUnit.TokenAt(AUnit.Lines.PositionAt(AStatement.StartOffset)));
   while (mAt >= 0) and (mTokens[mAt].Offset < AStatement.EndOffset) do
   begin
-    mAt := NextToken(mTokens, mAt);
+    mAt := FollowingCode(mTokens, mAt);
   end;
   if (mAt >= 0) and mTokens[mAt].IsSymbol(';') then
   begin
@@ -1064,16 +1036,6 @@ begin
   mPosition := AUnit.Lines.PositionAt(mInsert);
   AUnit.Extra := AUnit.Extra + [TTextEdit.Create(TTextRange.Create(mPosition, mPosition),
     TTextLines.LineBreakOf(AUnit.Text) + mIndent + ANewName + ' := True;')];
-end;
-
-/// <summary>Name der Klasse ohne Typparameter.</summary>
-function PlainClassName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
 end;
 
 procedure TInvertPlan.AddStartValue(const ASymbol: TResolvedSymbol; const ANewName: string);
@@ -1193,14 +1155,14 @@ begin
     end;
     if ATokens[mIndex].IsSymbol('=') then
     begin
-      mIndex := NextToken(ATokens, mIndex);
+      mIndex := FollowingCode(ATokens, mIndex);
       if (mIndex >= 0) and (TInvertBoolean.NegateLiteral(ATokens[mIndex].Text) <> '') then
       begin
         Result := mIndex;
       end;
       Exit;
     end;
-    mIndex := NextToken(ATokens, mIndex);
+    mIndex := FollowingCode(ATokens, mIndex);
   end;
 end;
 
@@ -1362,7 +1324,7 @@ begin
       ASymbol.SelectionRange.StartPos), ASymbol.Name, ANewName]));
     Exit;
   end;
-  mClassName := PlainClassName(mTypeDecl.Name);
+  mClassName := TTextNames.WithoutGenerics(mTypeDecl.Name);
   mConstructors := ClassConstructors(AUnit, mClassName);
   for mRoutine in mConstructors do
   begin
@@ -1387,7 +1349,7 @@ begin
   mIndex := ANameToken + 1;
   while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ADecl.EndOffset) do
   begin
-    mNext := NextToken(ATokens, mIndex);
+    mNext := FollowingCode(ATokens, mIndex);
     if (mNext >= 0) and (ATokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
     begin
       case IndexText(ATokens[mIndex].Text, ['read', 'write', 'default']) of
@@ -1685,7 +1647,7 @@ begin
   end;
   if Result <> nil then
   begin
-    CheckParses(mUnit, TChangeSignature.ApplyEdits(mUnit.Text, Result));
+    CheckParses(mUnit, TTextChanges.Apply(mUnit.Text, Result));
   end;
 end;
 
@@ -1761,7 +1723,7 @@ var
   mPlaces, mFiles: Integer;
   mWarnings: TArray<string>;
 begin
-  if not TLspRename.IsValidName(AContext.NewName) then
+  if not TPascalLexer.IsIdentifierName(AContext.NewName) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspInvertBooleanText.IsNotAValidIdentifier].Fmt([AContext.NewName]));

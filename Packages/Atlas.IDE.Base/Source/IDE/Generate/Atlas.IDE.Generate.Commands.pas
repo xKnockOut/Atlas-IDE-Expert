@@ -74,25 +74,29 @@ uses
   Vcl.Forms,
   Vcl.Controls,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Generate.Protocol,
   Atlas.UI.Strings,
   Atlas.UI.Generate.Strings,
   Atlas.UI.Generate.Window,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.ToolsApi.Editor.Caret,
+  Atlas.Plugin.Notifications.MessageSink;
 
 const
   // Wie die Code-Aktionen: Der Server darf etwas rechnen (Vorfahren, Index).
   cCommandTimeoutMs = 30000;
+  /// <summary>Art der Datei im Protokoll (Lesen und Schreiben).</summary>
+  cRecentKind = 'Verlauf des Erzeugen-Menüs';
 
 function LineAt(const ALines: TArray<string>; AIndex: Integer): string;
 begin
@@ -103,39 +107,16 @@ begin
   end;
 end;
 
-/// <summary>Caret des Editors in Bildschirmkoordinaten; False ohne Caret.</summary>
-function CaretRect(out ARect: TRect): Boolean;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
-  if not Result then
-  begin
-    Exit;
-  end;
-  ARect := mInfo.rcCaret;
-  MapWindowPoints(mInfo.hwndCaret, 0, ARect, 2);
-end;
-
 { TAtlasIdeGenerate }
 
 class function TAtlasIdeGenerate.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class procedure TAtlasIdeGenerate.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasMessageSink.Create(FMessage).Say(AText);
 end;
 
 class procedure TAtlasIdeGenerate.LoadRecent;
@@ -147,7 +128,7 @@ begin
   FRecentLoaded := True;
   // Eine Kennung je Zeile, jeder Text ist lesbar. Gesperrt: leer beginnen und die Datei nicht überschreiben;
   // TAtlasDataFile protokolliert das ohne Pfad.
-  FRecentKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(RecentFile, 'Verlauf des Erzeugen-Menüs',
+  FRecentKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(RecentFile, cRecentKind,
     function(const AText: string): Boolean
     begin
       FRecent.LoadFromText(AText);
@@ -175,7 +156,7 @@ begin
     TAtlasDataFile.Write(RecentFile, FRecent.ToText);
   except
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Verlauf des Erzeugen-Menüs', E);
+      TAtlasDataFile.ReportNotWritten(cRecentKind, E);
   end;
 end;
 
@@ -521,8 +502,9 @@ end;
 procedure ShowMenuWindow(AWindow: TAtlasGenerateWindow);
 var
   mCaret, mArea: TRect;
+  mCaretWindow: HWND;
 begin
-  if CaretRect(mCaret) then
+  if TAtlasIdeCaret.TryFind(mCaretWindow, mCaret) then
   begin
     AWindow.ShowAt(mCaret);
     Exit;

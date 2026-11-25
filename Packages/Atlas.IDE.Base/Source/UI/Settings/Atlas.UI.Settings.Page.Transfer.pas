@@ -9,7 +9,7 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -71,7 +71,6 @@ implementation
 uses
   System.Classes,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Settings.Transfer;
 
@@ -121,7 +120,7 @@ const
   end;
 
 begin
-  AddTitle(TAtlasTextId.SettingsTransferTitle);
+  AddTitle(TAtlasSettingsTextId.SettingsTransferTitle);
   FSettingsExportImport := BindCheck('SettingsExportImport',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExportImport)));
   FSettingsMarkModified := BindCheck('SettingsMarkModified',

@@ -27,7 +27,10 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.InactiveRegions,
-  Atlas.Common.Lsp.ReferenceConfidence;
+  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   TReferenceLocation = record
@@ -41,9 +44,9 @@ type
   TReferenceSettingsProvider = reference to function(const AUri: string): TReferenceSettings;
 
   /// <summary>Text einer Datei, geöffnete Dokumente zuerst; False, wenn sie nicht lesbar ist.</summary>
-  TReferenceReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TReferenceReadText = TDocumentReadText;
   /// <summary>Dateien des Projekts, die nach Verweisen durchsucht werden.</summary>
-  TReferenceFilesProvider = reference to function: TArray<string>;
+  TReferenceFilesProvider = TLspFilesProvider;
 
   /// <summary>Was die Referenzsuche sucht: das Symbol an Position in FileName, in Files über ReadText.</summary>
   TReferenceSearch = record
@@ -57,15 +60,10 @@ type
       const AFiles: TArray<string>; const AReadText: TReferenceReadText): TReferenceSearch; static;
   end;
 
-  TLspReferences = class
+  TLspReferences = class(TLspProjectFeature)
   public const
     cMethod = 'textDocument/references';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
-    FReadText: TReferenceReadText;
-    FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FSettingsFor: TReferenceSettingsProvider;
     function HandleReferences(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -93,6 +91,11 @@ type
     class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const ASearch: TReferenceSearch; const ASettings: TReferenceSettings;
       const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>; overload; static;
+    /// <summary>Ziel der Suche an APosition wie TLspDefinition.Targets zur Deklaration. Ein Parameter zielt auf
+    /// seinen Namen im Kopf mit Rumpf, den die Namensauflösung kennt, auch vom Kopf ohne Rumpf aus; hat seine
+    /// Routine keinen Rumpf (abstract), auf seinen Namen im Kopf (#2425). Leer, wenn nichts auflöst.</summary>
+    class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
     /// <summary>Inaktive Bereiche von AText unter den Symbolen, mit denen der Editor die Datei liest; leer ohne
     /// references.inferred.</summary>
     class function InactiveFor(const AFileName, AText: string;
@@ -101,6 +104,23 @@ type
     /// <summary>Einstellungen references.* je Datei; nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
   end;
+
+type
+  /// <summary>Datei einer Umbaurechnung mit Text und Baum; den Baum gibt sie nur mit OwnsTree frei (sonst gehört
+  /// er dem Dokumentspeicher).</summary>
+  TLspSourceFile = class
+  public
+    FileName: string;
+    Text: string;
+    Tree: TSyntaxTree;
+    OwnsTree: Boolean;
+    destructor Destroy; override;
+  end;
+
+/// <summary>Baum zu AUri: geöffnet aus dem Speicher (AShared), sonst selbst gelesen (AOwnTree, gehört dem
+/// Aufrufer); nil, wenn die Datei nicht lesbar ist.</summary>
+function ReferenceTreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
+  const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
 
 implementation
 
@@ -111,12 +131,12 @@ uses
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Lsp.ParameterHeaders,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -130,19 +150,6 @@ const
      En: 'Fields "textDocument.uri" and "position" missing in '));
 
 {$SCOPEDENUMS OFF}
-
-function CleanName(const AText: string): string;
-begin
-  // &Begin → Begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
 
 /// <summary>Andere Schreibweise eines Attributnamens: Foo zu FooAttribute und umgekehrt.</summary>
 function AlternativeName(const AName: string): string;
@@ -176,12 +183,7 @@ end;
 constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
 constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -240,8 +242,8 @@ begin
       end;
       // Attribute (#119): [TestFixture] verwendet TestFixtureAttribute.
       if (ATree.Tokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
-        not (SameText(CleanName(ATree.Tokens[mIndex].Text), AName) or
-        SameText(CleanName(ATree.Tokens[mIndex].Text), mAlternative)) then
+        not (SameText(TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text), AName) or
+        SameText(TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text), mAlternative)) then
       begin
         Continue;
       end;
@@ -478,6 +480,38 @@ begin
   Result := Find(AResolver, AIndex, ATree, ASearch, nil);
 end;
 
+/// <summary>Stellen eines Parameters (#2425): die Fundstellen AFound aus seiner Routine, dazu sein Name in den
+/// Köpfen ohne Rumpf als sichere Stellen; die nur ohne ADeclaration nicht. Gleichnamiges außerhalb der Routine
+/// meint ihn nie.</summary>
+function ParameterLocations(const AFound: TArray<TReferenceLocation>; const AHeaders: TParameterHeaders;
+  const AFileName: string; ADeclaration: Boolean): TArray<TReferenceLocation>;
+var
+  mLocation: TReferenceLocation;
+  mRange: TTextRange;
+begin
+  Result := nil;
+  for mLocation in AFound do
+  begin
+    if SameText(mLocation.FileName, AFileName) and (not AHeaders.HasBody or
+      AHeaders.Routine.Contains(mLocation.Range.StartPos)) and
+      not TTextRange.AnyContains(AHeaders.Declarations, mLocation.Range.StartPos) then
+    begin
+      Result := Result + [mLocation];
+    end;
+  end;
+  if not ADeclaration then
+  begin
+    Exit;
+  end;
+  for mRange in AHeaders.Declarations do
+  begin
+    mLocation.FileName := AFileName;
+    mLocation.Range := mRange;
+    mLocation.Confidence := TReferenceConfidence.Sure;
+    Result := Result + [mLocation];
+  end;
+end;
+
 class function TLspReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const ASearch: TReferenceSearch; const ASettings: TReferenceSettings;
   const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>;
@@ -485,6 +519,9 @@ var
   mIndex: Integer;
   mWanted: TArray<TDefinitionTarget>;
   mRun: TReferenceRun;
+  mParameter: Boolean;
+  mHeaders: TParameterHeaders;
+  mPosition: TTextPosition;
 begin
   Result := nil;
   mIndex := IdentifierAt(ATree.Tokens, ASearch.Position);
@@ -497,19 +534,63 @@ begin
   // pinnt HitsInTree darüber und löst sie wieder.
   AResolver.PinTree(ATree, ASearch.FileName);
   try
-    mWanted := TLspDefinition.Targets(AResolver, AIndex, ATree, ASearch.FileName, ASearch.Position, True);
+    // Ein Parameter ist ein Symbol mit Kopf ohne und Kopf mit Rumpf (#2425); gesucht wird vom Kopf mit Rumpf aus,
+    // den die Namensauflösung kennt.
+    mParameter := TParameterHeaders.Find(AResolver, AIndex, ATree, ASearch.FileName, ASearch.Position, mHeaders);
+    mPosition := ASearch.Position;
+    if mParameter and mHeaders.HasBody then
+    begin
+      mPosition := mHeaders.Body.StartPos;
+    end;
+    mWanted := TLspDefinition.Targets(AResolver, AIndex, ATree, ASearch.FileName, mPosition, True);
     if Length(mWanted) = 0 then
     begin
+      // Parameter einer Routine ohne Rumpf (abstract, Interface): nur die Köpfe.
+      if mParameter then
+      begin
+        Result := ParameterLocations(nil, mHeaders, ASearch.FileName, ASearch.Declaration);
+      end;
       Exit;
     end;
-    mRun.Prepare(ATree, mWanted[0], CleanName(ATree.Tokens[mIndex].Text));
+    mRun.Prepare(ATree, mWanted[0], TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text));
     mRun.SearchOwn(ATree);
-    mRun.SearchFiles;
-    mRun.SearchForms(mWanted[0]);
+    // Ein Parameter kommt nur in seiner Routine vor.
+    if not mParameter then
+    begin
+      mRun.SearchFiles;
+      mRun.SearchForms(mWanted[0]);
+    end;
     Result := mRun.Locations(mWanted[0]);
+    if mParameter then
+    begin
+      Result := ParameterLocations(Result, mHeaders, ASearch.FileName, ASearch.Declaration);
+    end;
   finally
     AResolver.UnpinTree;
     mRun.Free;
+  end;
+end;
+
+class function TLspReferences.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>;
+var
+  mHeaders: TParameterHeaders;
+  mTarget: TDefinitionTarget;
+begin
+  if not TParameterHeaders.Find(AResolver, AIndex, ATree, AFileName, APosition, mHeaders) then
+  begin
+    Result := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+  end
+  else if mHeaders.HasBody then
+  begin
+    Result := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, mHeaders.Body.StartPos, True);
+  end
+  else
+  begin
+    mTarget.FileName := AFileName;
+    mTarget.Range := mHeaders.Declarations[0];
+    mTarget.SelectionRange := mHeaders.Declarations[0];
+    Result := [mTarget];
   end;
 end;
 
@@ -526,9 +607,18 @@ begin
   end;
 end;
 
-/// <summary>Baum zu AUri: geöffnet aus dem Speicher (AShared), sonst selbst gelesen (AOwnTree, gehört dem
-/// Aufrufer); nil, wenn die Datei nicht lesbar ist.</summary>
-function TreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
+{ TLspSourceFile }
+
+destructor TLspSourceFile.Destroy;
+begin
+  if OwnsTree then
+  begin
+    Tree.Free;
+  end;
+  inherited;
+end;
+
+function ReferenceTreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
   const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
 var
   mDocument: ITextDocument;
@@ -594,7 +684,7 @@ begin
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   mCancellation := TRequestCancellation.Create(ACancellation);
-  mTree := TreeOf(FStore, FReadText, mUri, mCancellation, mShared, mOwnTree);
+  mTree := ReferenceTreeOf(FStore, FReadText, mUri, mCancellation, mShared, mOwnTree);
   if mTree = nil then
   begin
     Exit(TJSONNull.Create);

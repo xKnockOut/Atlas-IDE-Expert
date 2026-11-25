@@ -19,9 +19,6 @@ type
     FView: TAtlasMinimapView;
     procedure Fill(ALineCount: Integer);
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -52,8 +49,8 @@ uses
   Winapi.Windows,
   Winapi.Messages,
   Vcl.Controls,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Syntax,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Syntax,
   Atlas.Core.Editor.Overview,
   Atlas.Core.Editor.Minimap,
   Atlas.UI.Editor.MinimapLayers;
@@ -74,16 +71,6 @@ begin
     mLines[mIndex] := '  if Value > ' + IntToStr(mIndex) + ' then // Zeile';
   end;
   FView.SetContent(mLines, TAtlasMinimap.Runs(mLines, 120, 4), 4);
-end;
-
-procedure TAtlasMinimapViewTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    WidthFollowsSetting;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TAtlasMinimapViewTests.SetUp;

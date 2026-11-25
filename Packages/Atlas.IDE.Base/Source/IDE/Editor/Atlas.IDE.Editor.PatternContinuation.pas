@@ -27,7 +27,7 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.PatternContinuation,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Completion.Preview;
 
 type
@@ -88,12 +88,11 @@ implementation
 uses
   System.JSON,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Editor.LineMove,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.Text.Json;
@@ -170,12 +169,8 @@ begin
 end;
 
 class function TAtlasIdePatternContinuation.AtSuggestion: Boolean;
-var
-  mView: IOTAEditView;
 begin
-  mView := TAtlasEditorBuffer.ActiveView;
-  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FFileName) and
-    (mView.CursorPos.Line = FLine) and (mView.CursorPos.Col = FColumn);
+  Result := TAtlasEditorBuffer.CursorAt(FFileName, FLine, FColumn);
 end;
 
 class function TAtlasIdePatternContinuation.CanSuggest(const AView: IOTAEditView): Boolean;
@@ -276,9 +271,8 @@ end;
 function WriteLine(const ABuffer: IOTAEditBuffer; const AText: string; ALine: Integer; const ANewLine: string):
   Boolean;
 var
-  mLineBreak, mInsert: string;
+  mLineBreak: string;
   mLines: TArray<string>;
-  mStart, mOldLength: Integer;
 begin
   mLineBreak := #10;
   if Pos(#13#10, AText) > 0 then
@@ -292,10 +286,7 @@ begin
     Exit;
   end;
   mLines[ALine] := ANewLine;
-  if TAtlasLineMover.Difference(AText, string.Join(mLineBreak, mLines), mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(ABuffer, AText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(ABuffer, AText, string.Join(mLineBreak, mLines));
 end;
 
 class function TAtlasIdePatternContinuation.Run(const AView: IOTAEditView): Boolean;

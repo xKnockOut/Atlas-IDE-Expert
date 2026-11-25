@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.BuildPipeline.SettingsSection.Tests;
 
 // Abschnitte des Moduls Build-Pipeline (#1456): Compiler (#261, #529, #530) und Reiter „Release-Build“ (#533);
-// Laden und Speichern über die Seite (vorher in den Tests der Seite von Base).
+// Laden und Speichern über die Seite.
 
 interface
 
@@ -20,8 +20,6 @@ type
     FReleaseRef: IAtlasSettingsSection;
     FRegistrations: TArray<IAtlasRegistration>;
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -45,11 +43,6 @@ uses
   Atlas.UI.Settings.Page.TestSupport;
 
 { TBuildPipelineSettingsSectionTests }
-
-procedure TBuildPipelineSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TBuildPipelineSettingsSectionTests.Setup;
 begin

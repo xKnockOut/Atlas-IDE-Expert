@@ -12,9 +12,6 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeDiscoverFrameTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure AgeTextsFollowKind;
     [Test]
@@ -37,7 +34,8 @@ uses
   Atlas.Core.Welcome.Discover,
   Atlas.UI.Welcome.Discover,
   System.IOUtils,
-  Vcl.Imaging.pngimage;
+  Vcl.Imaging.pngimage,
+  Atlas.UI.Welcome.Contract;
 
 
 type
@@ -87,10 +85,6 @@ begin
 end;
 { TAtlasWelcomeDiscoverFrameTests }
 
-procedure TAtlasWelcomeDiscoverFrameTests.WarmUpFirstUse;
-begin
-  CardShowsTipAndButtons;
-end;
 procedure TAtlasWelcomeDiscoverFrameTests.AgeTextsFollowKind;
 var
   mSaved: TAtlasLanguage;

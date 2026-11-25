@@ -49,7 +49,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Dfm.FormModel,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
@@ -266,7 +267,7 @@ var
   mUsed: TArray<string>;
 begin
   mUsed := FUnitIndex.InterfaceUses + FUnitIndex.ImplementationUses;
-  Result := SameText(AUnitName, FContext.UnitName) or TUsesClauses.IsUsed(mUsed, AUnitName, FContext.Namespaces);
+  Result := SameText(AUnitName, FContext.UnitName) or TPascalUses.IsUsed(mUsed, AUnitName, FContext.Namespaces);
 end;
 
 function TFormReferenceCheck.ClassRange: TTextRange;
@@ -305,7 +306,7 @@ var
 begin
   Result := nil;
   // MaxInt: Abschnitt implementation, wie die IDE den Eintrag anlegt.
-  if TUsesClauses.AddUnit(FContext.Tree.Tokens, MaxInt, AUnitName, TTextLines.LineBreakOf(FContext.Text),
+  if TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, MaxInt, AUnitName, TTextLines.LineBreakOf(FContext.Text),
     mEdit) then
   begin
     Result := [TRuleFix.Create(cTexts[TFormReferencesText.AddUses].Fmt([AUnitName]), [mEdit])];

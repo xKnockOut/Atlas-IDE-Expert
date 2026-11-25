@@ -16,7 +16,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.TimeLog,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -36,7 +36,6 @@ type
     FClose: TButton;
     FAction: TAtlasTimeListAction;
     FChosen: Integer;
-    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
     procedure BookClick(Sender: TObject);
     procedure DiscardClick(Sender: TObject);
     procedure ListClick(Sender: TObject);
@@ -65,10 +64,13 @@ implementation
 
 uses
   Atlas.Core.Tracker.Workflow,
-  Atlas.UI.Tracker.Time.Strings;
+  Atlas.UI.Tracker.Time.Strings,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 32;
 
 { TAtlasTrackerTimeListDialog }
 
@@ -86,7 +88,7 @@ begin
   FEmpty.Parent := Self;
   FEmpty.Align := alTop;
   FEmpty.AlignWithMargins := True;
-  FEmpty.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FEmpty, cGap, cGap, cGap, 0);
   FEmpty.Caption := TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeOpenEmpty);
   FEmpty.Visible := Length(FItems) = 0;
 
@@ -94,7 +96,7 @@ begin
   FList.Parent := Self;
   FList.Align := alTop;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FList, cGap, cGap, cGap, 0);
   FList.Top := FEmpty.Top + FEmpty.Height + 1;
   FList.Height := ScaleValue(cListHeight);
   FList.OnClick := ListClick;
@@ -106,14 +108,14 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FList.Top + FList.Height + 1;
-  FBook := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeOpenBook));
+  FBook := NewTextButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeOpenBook), cButtonPadding, cGap);
   FBook.OnClick := BookClick;
   FBook.Default := True;
-  FDiscard := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeOpenDiscard));
+  FDiscard := NewTextButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeOpenDiscard), cButtonPadding, cGap);
   FDiscard.OnClick := DiscardClick;
-  FClose := AddButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeOpenClose));
+  FClose := NewTextButton(mButtons, TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeOpenClose), cButtonPadding, cGap);
   FClose.ModalResult := mrCancel;
   FClose.Cancel := True;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
@@ -143,17 +145,6 @@ begin
   end;
   UpdateButtons;
   inherited;
-end;
-
-function TAtlasTrackerTimeListDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 procedure TAtlasTrackerTimeListDialog.BookClick(Sender: TObject);

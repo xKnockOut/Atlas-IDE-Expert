@@ -25,7 +25,7 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Lsp.Hover;
 
 type
@@ -171,10 +171,12 @@ uses
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.PostfixTemplates,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Text.Chars,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -211,64 +213,9 @@ const
   cKindParameter = 2;
   cParameterModifiers: array[0..4] of string = ('const ', 'var ', 'out ', 'constref ', '[ref] ');
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 function InRange(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
 begin
-  Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
-end;
-
-function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function CleanName(const AText: string): string;
-begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
-/// <summary>Index des ersten Tokens mit Offset >= AOffset.</summary>
-function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh := Length(ATokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ATokens[mMiddle].Offset < AOffset then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
+  Result := (TTextPosition.Compare(ARange.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, ARange.EndPos) <= 0);
 end;
 
 procedure CollectNodes(ANode: TSyntaxNode; const AKinds: TSyntaxKinds; AList: TList<TSyntaxNode>);
@@ -372,13 +319,13 @@ var
   mDot, mName: Integer;
 begin
   Result := AFirst;
-  mDot := NextToken(ATokens, Result);
-  mName := NextToken(ATokens, mDot);
+  mDot := NextCodeAfter(ATokens, Result);
+  mName := NextCodeAfter(ATokens, mDot);
   while (mName <= ALimit) and ATokens[mDot].IsSymbol('.') and (ATokens[mName].Kind = TPascalTokenKind.Identifier) do
   begin
     Result := mName;
-    mDot := NextToken(ATokens, Result);
-    mName := NextToken(ATokens, mDot);
+    mDot := NextCodeAfter(ATokens, Result);
+    mName := NextCodeAfter(ATokens, mDot);
   end;
 end;
 
@@ -404,7 +351,7 @@ var
 begin
   Result := nil;
   mDepth := 0;
-  mScan := NextToken(ATokens, AOpen);
+  mScan := NextCodeAfter(ATokens, AOpen);
   if (mScan <= High(ATokens)) and not ATokens[mScan].IsSymbol(')') then
   begin
     Result := [mScan];
@@ -421,9 +368,9 @@ begin
     end
     else if (mDepth = 0) and ATokens[mScan].IsSymbol(',') then
     begin
-      Result := Result + [NextToken(ATokens, mScan)];
+      Result := Result + [NextCodeAfter(ATokens, mScan)];
     end;
-    mScan := NextToken(ATokens, mScan);
+    mScan := NextCodeAfter(ATokens, mScan);
   end;
 end;
 
@@ -457,7 +404,7 @@ var
   mText: string;
 begin
   mLast := ChainEnd(ATokens, AStart, High(ATokens));
-  mText := CleanName(ATokens[mLast].Text);
+  mText := TTextNames.WithoutAmpersand(ATokens[mLast].Text);
   Result := (ATokens[mLast].Kind = TPascalTokenKind.Identifier) and (SameText(mText, AName) or
     SameText(mText, 'F' + AName) or SameText(mText, 'A' + AName));
 end;
@@ -506,7 +453,7 @@ begin
   Result := -1;
   if ATokens[AIndex].Kind = TPascalTokenKind.Identifier then
   begin
-    Result := NextToken(ATokens, AIndex);
+    Result := NextCodeAfter(ATokens, AIndex);
   end;
   if (Result < 0) or (Result > High(ATokens)) or not ATokens[Result].IsSymbol('(') or
     not InRange(ARange, ATokens[Result].EndPos) then
@@ -674,12 +621,12 @@ begin
   while Result and (mIndex <= ALast) do
   begin
     Result := ATokens[mIndex].Kind = TPascalTokenKind.Identifier;
-    ANames := ANames + [CleanName(ATokens[mIndex].Text)];
-    mIndex := NextToken(ATokens, mIndex);
+    ANames := ANames + [TTextNames.WithoutAmpersand(ATokens[mIndex].Text)];
+    mIndex := NextCodeAfter(ATokens, mIndex);
     if Result and (mIndex <= ALast) then
     begin
       Result := ATokens[mIndex].IsSymbol('.');
-      mIndex := NextToken(ATokens, mIndex);
+      mIndex := NextCodeAfter(ATokens, mIndex);
     end;
   end;
 end;
@@ -754,7 +701,7 @@ procedure SetFoundName(var AFound: TInferredType; const AToken: TPascalToken);
 begin
   AFound.NameStart := AToken.StartPos;
   AFound.NameEnd := AToken.EndPos;
-  AFound.Name := CleanName(AToken.Text);
+  AFound.Name := TTextNames.WithoutAmpersand(AToken.Text);
 end;
 
 /// <summary>for var X in Ausdruck do: "var", Name, dann "in" ohne ":" dazwischen.</summary>
@@ -764,25 +711,25 @@ var
   mIndex, mNameToken, mFirst, mLast: Integer;
 begin
   mTokens := ASource.Tree.Tokens;
-  mIndex := FirstTokenAt(mTokens, ANode.StartOffset);
+  mIndex := TokenFrom(mTokens, ANode.StartOffset);
   if (mIndex + 3 > High(mTokens)) or not mTokens[mIndex].IsKeyword('for') or
-    not mTokens[NextToken(mTokens, mIndex)].IsKeyword('var') then
+    not mTokens[NextCodeAfter(mTokens, mIndex)].IsKeyword('var') then
   begin
     Exit(False);
   end;
-  mNameToken := NextToken(mTokens, NextToken(mTokens, mIndex));
-  mFirst := NextToken(mTokens, mNameToken);
-  if (mFirst > High(mTokens)) or not mTokens[mFirst].IsKeyword('in') or (NextToken(mTokens, mFirst) > High(mTokens))
+  mNameToken := NextCodeAfter(mTokens, NextCodeAfter(mTokens, mIndex));
+  mFirst := NextCodeAfter(mTokens, mNameToken);
+  if (mFirst > High(mTokens)) or not mTokens[mFirst].IsKeyword('in') or (NextCodeAfter(mTokens, mFirst) > High(mTokens))
   then
   begin
     Exit(False);
   end;
-  mFirst := NextToken(mTokens, mFirst);
+  mFirst := NextCodeAfter(mTokens, mFirst);
   mLast := mFirst;
-  while (NextToken(mTokens, mLast) <= High(mTokens)) and not mTokens[NextToken(mTokens, mLast)].IsKeyword('do') and
-    (mTokens[NextToken(mTokens, mLast)].Offset < ANode.EndOffset) do
+  while (NextCodeAfter(mTokens, mLast) <= High(mTokens)) and not mTokens[NextCodeAfter(mTokens, mLast)].IsKeyword('do') and
+    (mTokens[NextCodeAfter(mTokens, mLast)].Offset < ANode.EndOffset) do
   begin
-    mLast := NextToken(mTokens, mLast);
+    mLast := NextCodeAfter(mTokens, mLast);
   end;
   SetFoundName(AFound, mTokens[mNameToken]);
   AFound.ForIn := True;
@@ -801,7 +748,7 @@ begin
   ANameToken := -1;
   AAssign := -1;
   mTyped := False;
-  mIndex := FirstTokenAt(ATokens, ANode.StartOffset);
+  mIndex := TokenFrom(ATokens, ANode.StartOffset);
   while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) and (AAssign < 0) do
   begin
     if (ANameToken < 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) then
@@ -870,7 +817,7 @@ var
   mChain: TResolvedChainType;
 begin
   Result := ASource.Resolver.ChainType(ASource.Tree, ASource.FileName,
-    [CleanName(ASource.Tree.Tokens[ANameToken].Text)], AEndOffset, mChain) and mChain.TypeFound and
+    [TTextNames.WithoutAmpersand(ASource.Tree.Tokens[ANameToken].Text)], AEndOffset, mChain) and mChain.TypeFound and
     (mChain.TypeInfo.Name <> '');
   if not Result then
   begin
@@ -890,12 +837,12 @@ var
   mDepth: Integer;
 begin
   Result := AIndex;
-  if (Result >= ALast) or not ATokens[NextToken(ATokens, Result)].IsSymbol('(') then
+  if (Result >= ALast) or not ATokens[NextCodeAfter(ATokens, Result)].IsSymbol('(') then
   begin
     Exit;
   end;
   mDepth := 0;
-  Result := NextToken(ATokens, Result);
+  Result := NextCodeAfter(ATokens, Result);
   while Result <= ALast do
   begin
     if ATokens[Result].IsSymbol('(') then
@@ -910,7 +857,7 @@ begin
     begin
       Exit;
     end;
-    Result := NextToken(ATokens, Result);
+    Result := NextCodeAfter(ATokens, Result);
   end;
 end;
 
@@ -977,16 +924,16 @@ begin
   begin
     Exit(False);
   end;
-  mFirst := NextToken(mTokens, mAssign);
+  mFirst := NextCodeAfter(mTokens, mAssign);
   if mFirst > High(mTokens) then
   begin
     Exit(False);
   end;
   mLast := mFirst;
-  while (NextToken(mTokens, mLast) <= High(mTokens)) and (mTokens[NextToken(mTokens, mLast)].Offset < ANode.EndOffset)
-    and not mTokens[NextToken(mTokens, mLast)].IsSymbol(';') do
+  while (NextCodeAfter(mTokens, mLast) <= High(mTokens)) and (mTokens[NextCodeAfter(mTokens, mLast)].Offset < ANode.EndOffset)
+    and not mTokens[NextCodeAfter(mTokens, mLast)].IsSymbol(';') do
   begin
-    mLast := NextToken(mTokens, mLast);
+    mLast := NextCodeAfter(mTokens, mLast);
   end;
   SetFoundName(AFound, mTokens[mNameToken]);
   if mFirst = mLast then
@@ -1084,21 +1031,6 @@ type
     Base: string;
   end;
 
-/// <summary>Offset des Tokens, das bei APosition beginnt; 0 ohne.</summary>
-function OffsetAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mToken: TPascalToken;
-begin
-  for mToken in ATokens do
-  begin
-    if (mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character = APosition.Character) then
-    begin
-      Exit(mToken.Offset);
-    end;
-  end;
-  Result := 0;
-end;
-
 /// <summary>Unit, aus der das Wort AWord des Typs stammt, wenn es hier noch nicht sichtbar ist; '' sonst.</summary>
 function UnitOfWord(const AUnits: TTypeUnits; const AWord: string): string;
 var
@@ -1135,12 +1067,12 @@ begin
   begin
     mUnitName := UnitOfWord(AUnits, mWord);
     if (mUnitName = '') or MatchText(mUnitName, [AUnits.OwnName, 'System']) or
-      TUsesClauses.IsUsed(AUnits.Used, mUnitName, AUnits.Resolver.Namespaces) or (IndexText(mUnitName, mAdded) >= 0)
+      TPascalUses.IsUsed(AUnits.Used, mUnitName, AUnits.Resolver.Namespaces) or (IndexText(mUnitName, mAdded) >= 0)
     then
     begin
       Continue;
     end;
-    if TUsesClauses.AddUnit(AUnits.Tokens, AUnits.Offset, mUnitName, ALineBreak, mEdit) then
+    if TPascalUsesEdits.AddUnit(AUnits.Tokens, AUnits.Offset, mUnitName, ALineBreak, mEdit) then
     begin
       Result := Result + [mEdit];
       mAdded := mAdded + [mUnitName];
@@ -1204,7 +1136,7 @@ begin
   begin
     Exit(-1);
   end;
-  Result := FirstTokenAt(ATokens, mBody.EndOffset) - 1;
+  Result := TokenFrom(ATokens, mBody.EndOffset) - 1;
   while (Result >= 0) and (IsTrivia(ATokens[Result]) or ATokens[Result].IsSymbol(';')) do
   begin
     Dec(Result);
@@ -1241,7 +1173,7 @@ begin
     TSyntaxKind.TryStatement:
       Result := TryLabel(ANode);
   else
-    Result := HeaderText(ATokens, FirstTokenAt(ATokens, ANode.StartOffset), AEndToken,
+    Result := HeaderText(ATokens, TokenFrom(ATokens, ANode.StartOffset), AEndToken,
       TLspInlayHints.cMaxEndLabelLength);
   end;
 end;
@@ -1261,7 +1193,7 @@ begin
   end;
   mText := EndLabel(ATokens, ANode, mEndToken);
   AHint.Position := ATokens[mEndToken].EndPos;
-  mNext := NextToken(ATokens, mEndToken);
+  mNext := NextCodeAfter(ATokens, mEndToken);
   if (mNext <= High(ATokens)) and (ATokens[mNext].IsSymbol(';') or ATokens[mNext].IsSymbol('.')) and
     (ATokens[mNext].StartPos.Line = ATokens[mEndToken].EndPos.Line) then
   begin
@@ -1298,10 +1230,10 @@ begin
     ': ' + mUnits.Found.TypeName)];
   mUnits.Resolver := AResolver;
   mUnits.Tokens := ATree.Tokens;
-  mUnits.Offset := OffsetAt(mUnits.Tokens, mUnits.Found.NameStart);
+  mUnits.Offset := TokenOffsetAt(mUnits.Tokens, mUnits.Found.NameStart);
   mUnits.Own := AResolver.ExtractedUnit(ATree, AFileName);
-  mUnits.OwnName := TUsesClauses.OwnName(mUnits.Tokens);
-  mUnits.Used := TUsesClauses.UsedUnits(mUnits.Tokens);
+  mUnits.OwnName := TPascalUses.OwnName(mUnits.Tokens);
+  mUnits.Used := TPascalUses.UsedUnits(mUnits.Tokens);
   mUnits.Base := mUnits.Found.TypeName;
   if Pos('<', mUnits.Base) > 0 then
   begin
@@ -1329,16 +1261,6 @@ begin
   end;
 end;
 
-/// <summary>Ende des Bezeichners, der in AText bei AIndex beginnt (erstes Zeichen dahinter).</summary>
-function IdentEnd(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and TTextChars.IsIdentChar(AText[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Trägt alle Bezeichner in AText ab AIndex in AWords ein.</summary>
 procedure AddWords(AWords: TDictionary<string, Boolean>; const AText: string; AIndex: Integer);
 var
@@ -1349,7 +1271,7 @@ begin
   begin
     if TTextChars.IsIdentStart(AText[mIndex]) then
     begin
-      mEnd := IdentEnd(AText, mIndex);
+      mEnd := TTextChars.IdentEnd(AText, mIndex);
       AWords.AddOrSetValue(Copy(AText, mIndex, mEnd - mIndex), True);
       mIndex := mEnd;
     end
@@ -1374,7 +1296,7 @@ begin
     begin
       Continue;
     end;
-    mIndex := IdentEnd(mText, 1);
+    mIndex := TTextChars.IdentEnd(mText, 1);
     if MatchStr(Copy(mText, 1, mIndex - 1), ['IFDEF', 'IFNDEF', 'IF', 'ELSEIF']) then
     begin
       AddWords(Result, mText, mIndex);
@@ -1538,7 +1460,7 @@ end;
 
 function CompareHints(const A, B: TInlayHint): Integer;
 begin
-  Result := ComparePositions(A.Position, B.Position);
+  Result := TTextPosition.Compare(A.Position, B.Position);
 end;
 
 class function TLspInlayHints.MethodMarkers(AResolver: TNameResolver; ATree: TSyntaxTree;

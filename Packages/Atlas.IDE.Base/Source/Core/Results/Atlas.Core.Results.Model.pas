@@ -13,8 +13,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.WorkspaceEdits;
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.WorkspaceEdits;
 
 type
   TAtlasResultEntry = record
@@ -57,11 +57,11 @@ type
   /// <summary>Liefert den Text einer Datei (offener Puffer oder Platte); '' wenn sie fehlt.</summary>
   TAtlasReadText = reference to function(const AFileName: string): string;
 
-  /// <summary>Liegen im Lsp-Feature (Atlas.Core.Lsp.Contract); Aliase für bestehende Nutzer.</summary>
-  TAtlasSymbol = Atlas.Core.Lsp.Contract.TAtlasSymbol;
-  TAtlasHierarchyDirection = Atlas.Core.Lsp.Contract.TAtlasHierarchyDirection;
-  TAtlasHierarchyItem = Atlas.Core.Lsp.Contract.TAtlasHierarchyItem;
-  TAtlasConfidence = Atlas.Core.Lsp.Contract.TAtlasConfidence;
+  /// <summary>Liegen im Lsp-Feature (Atlas.Plugin.Lsp.Contract); Aliase für bestehende Nutzer.</summary>
+  TAtlasSymbol = Atlas.Plugin.Lsp.Contract.TAtlasSymbol;
+  TAtlasHierarchyDirection = Atlas.Plugin.Lsp.Contract.TAtlasHierarchyDirection;
+  TAtlasHierarchyItem = Atlas.Plugin.Lsp.Contract.TAtlasHierarchyItem;
+  TAtlasConfidence = Atlas.Plugin.Lsp.Contract.TAtlasConfidence;
 
   TAtlasResults = class
   public
@@ -380,29 +380,18 @@ begin
 end;
 
 class function TAtlasResults.SymbolBadge(AKind: Integer): string;
+const
+  // Kürzel je SymbolKind nach LSP 3.17: File, Module, Namespace, Package, Class, Method, Property, Field,
+  // Constructor, Enum, Interface, Function, Variable, Constant, String, Number, Boolean, Array, Object, Key, Null,
+  // EnumMember, Struct, Event, Operator, TypeParameter.
+  cBadges: array[1..26] of string = ('un', 'un', 'un', 'un', 'ty', 'fn', 'pr', 'fd', 'fn', 'ty', 'ty', 'fn', 'va',
+    'co', 'kw', 'kw', 'kw', 'kw', 'kw', 'kw', 'kw', 'co', 'ty', 'ev', 'kw', 'ty');
+  cOther = 'kw';
 begin
-  // SymbolKind nach LSP 3.17.
-  case AKind of
-    1, 2, 3, 4:
-      Result := 'un';
-    5, 10, 11, 23:
-      Result := 'ty';
-    6, 9, 12:
-      Result := 'fn';
-    7:
-      Result := 'pr';
-    8:
-      Result := 'fd';
-    13:
-      Result := 'va';
-    14, 22:
-      Result := 'co';
-    24:
-      Result := 'ev';
-    26:
-      Result := 'ty';
-  else
-    Result := 'kw';
+  Result := cOther;
+  if (AKind >= Low(cBadges)) and (AKind <= High(cBadges)) then
+  begin
+    Result := cBadges[AKind];
   end;
 end;
 

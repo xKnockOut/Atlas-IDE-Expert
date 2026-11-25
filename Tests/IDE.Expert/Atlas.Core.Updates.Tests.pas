@@ -43,7 +43,7 @@ uses
   Atlas.Text.Updates,
   Atlas.Core.Updates.Contract,
   Atlas.Core.Updates.Check,
-  Atlas.Core.Diagnostics.Export;
+  Atlas.Plugin.Diagnostics.Export;
 
 type
   TFakeSource = class(TInterfacedObject, IAtlasVersionSource)

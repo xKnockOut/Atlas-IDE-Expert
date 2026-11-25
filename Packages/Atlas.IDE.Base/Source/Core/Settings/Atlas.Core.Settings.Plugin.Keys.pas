@@ -235,55 +235,56 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  Atlas.Core.Settings.KeyCodes;
 
 { TAtlasPluginEditingKeysSettings }
 
 class function TAtlasPluginEditingKeysSettings.Defaults: TAtlasPluginEditingKeysSettings;
 begin
-  Result.PaletteKey := $6050; // Strg+Umschalt+P
-  Result.CheckKey := $C078; // Strg+Alt+F9
+  Result.PaletteKey := cKeyShift + cKeyCtrl + Ord('P'); // Strg+Umschalt+P
+  Result.CheckKey := cKeyCtrl + cKeyAlt + cKeyF9; // Strg+Alt+F9
   Result.CompletionKey := 0;
   Result.SignatureKey := 0;
   Result.CreateIssueKey := 0;
-  Result.ActionsKey := $800D; // Alt+Enter
-  Result.ExpandKey := $4057; // Strg+W
-  Result.ShrinkKey := $6057; // Strg+Umschalt+W
+  Result.ActionsKey := cKeyAlt + cKeyReturn; // Alt+Enter
+  Result.ExpandKey := cKeyCtrl + Ord('W'); // Strg+W
+  Result.ShrinkKey := cKeyShift + cKeyCtrl + Ord('W'); // Strg+Umschalt+W
   Result.TestUnitKey := 0;
-  Result.GenerateMenuKey := $802D; // Alt+Einfg
-  Result.QuickToggleKey := $E041; // Strg+Umschalt+Alt+A
-  Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
+  Result.GenerateMenuKey := cKeyAlt + cKeyInsert; // Alt+Einfg
+  Result.QuickToggleKey := cKeyShift + cKeyCtrl + cKeyAlt + Ord('A'); // Strg+Umschalt+Alt+A
+  Result.DiagnosticModeKey := cKeyShift + cKeyCtrl + cKeyAlt + Ord('D'); // Strg+Umschalt+Alt+D
   Result.KeyStartupCheck := True;
-  Result.UndoKey := $C05A; // Strg+Alt+Z
-  Result.RedoKey := $E05A; // Strg+Alt+Umschalt+Z
+  Result.UndoKey := cKeyCtrl + cKeyAlt + Ord('Z'); // Strg+Alt+Z
+  Result.RedoKey := cKeyShift + cKeyCtrl + cKeyAlt + Ord('Z'); // Strg+Alt+Umschalt+Z
   Result.ToggleBlockComment := True;
-  Result.ToggleBlockCommentKey := $A041; // Umschalt+Alt+A
+  Result.ToggleBlockCommentKey := cKeyShift + cKeyAlt + Ord('A'); // Umschalt+Alt+A
   Result.ToggleBlockCommentStyle := 'braces';
   Result.ToggleBlockCommentFallback := 'lineComments';
   Result.ToggleBlockCommentOwnLines := False;
   Result.ToggleBlockCommentWithoutSelection := 'statement';
   Result.NewLineAround := True;
-  Result.NewLineBelowKey := $200D; // Umschalt+Enter
-  Result.NewLineAboveKey := $C00D; // Strg+Alt+Enter
+  Result.NewLineBelowKey := cKeyShift + cKeyReturn; // Umschalt+Enter
+  Result.NewLineAboveKey := cKeyCtrl + cKeyAlt + cKeyReturn; // Strg+Alt+Enter
   Result.NewLineAroundStatementAware := True;
   Result.Unwrap := True;
-  Result.UnwrapKey := $602E; // Strg+Umschalt+Entf
-  Result.ExpressionTypeKey := $6054; // Strg+Umschalt+T
+  Result.UnwrapKey := cKeyShift + cKeyCtrl + cKeyDelete; // Strg+Umschalt+Entf
+  Result.ExpressionTypeKey := cKeyShift + cKeyCtrl + Ord('T'); // Strg+Umschalt+T
   Result.SafeDelete := True;
-  Result.SafeDeleteKey := $802E; // Alt+Entf
+  Result.SafeDeleteKey := cKeyAlt + cKeyDelete; // Alt+Entf
   Result.MoveLines := True;
-  Result.MoveLinesUpKey := $8026; // Alt+↑
-  Result.MoveLinesDownKey := $8028; // Alt+↓
-  Result.DuplicateLinesUpKey := $A026; // Umschalt+Alt+↑
-  Result.DuplicateLinesDownKey := $A028; // Umschalt+Alt+↓
-  Result.CompleteStatementKey := $600D; // Strg+Umschalt+Enter
+  Result.MoveLinesUpKey := cKeyAlt + cKeyUp; // Alt+↑
+  Result.MoveLinesDownKey := cKeyAlt + cKeyDown; // Alt+↓
+  Result.DuplicateLinesUpKey := cKeyShift + cKeyAlt + cKeyUp; // Umschalt+Alt+↑
+  Result.DuplicateLinesDownKey := cKeyShift + cKeyAlt + cKeyDown; // Umschalt+Alt+↓
+  Result.CompleteStatementKey := cKeyShift + cKeyCtrl + cKeyReturn; // Strg+Umschalt+Enter
   // Strg+Umschalt+Alt+F hat die Suche in der Methode (#877).
-  Result.FormatCodeKey := $E04C; // Strg+Umschalt+Alt+L
-  Result.MultiCursorNextKey := $4044; // Strg+D
-  Result.MultiCursorSkipKey := $4044; // Strg+K, Strg+D
-  Result.MultiCursorLineEndsKey := $A049; // Alt+Umschalt+I
-  Result.MultiCursorAboveKey := $C026; // Strg+Alt+↑
-  Result.MultiCursorBelowKey := $C028; // Strg+Alt+↓
+  Result.FormatCodeKey := cKeyShift + cKeyCtrl + cKeyAlt + Ord('L'); // Strg+Umschalt+Alt+L
+  Result.MultiCursorNextKey := cKeyCtrl + Ord('D'); // Strg+D
+  Result.MultiCursorSkipKey := cKeyCtrl + Ord('D'); // Strg+K, Strg+D
+  Result.MultiCursorLineEndsKey := cKeyShift + cKeyAlt + Ord('I'); // Alt+Umschalt+I
+  Result.MultiCursorAboveKey := cKeyCtrl + cKeyAlt + cKeyUp; // Strg+Alt+↑
+  Result.MultiCursorBelowKey := cKeyCtrl + cKeyAlt + cKeyDown; // Strg+Alt+↓
 end;
 
 procedure TAtlasPluginEditingKeysSettings.Normalize;
@@ -401,47 +402,47 @@ end;
 
 class function TAtlasPluginNavigationKeysSettings.Defaults: TAtlasPluginNavigationKeysSettings;
 begin
-  Result.BookmarkKey := $C04B; // Strg+Alt+K
-  Result.HideElementKey := $40BE; // Strg+.
-  Result.SearchReplaceKey := $4048; // Strg+H
-  Result.SearchKey := $4046; // Strg+F
-  Result.SearchNextKey := $72; // F3
-  Result.SearchPreviousKey := $2072; // Umschalt+F3
-  Result.SearchMethodKey := $E046; // Strg+Umschalt+Alt+F
-  Result.ProblemsWindowKey := $C050; // Strg+Alt+P
-  Result.CheckFileKey := $E050; // Strg+Umschalt+Alt+P
+  Result.BookmarkKey := cKeyCtrl + cKeyAlt + Ord('K'); // Strg+Alt+K
+  Result.HideElementKey := cKeyCtrl + cKeyPeriod; // Strg+.
+  Result.SearchReplaceKey := cKeyCtrl + Ord('H'); // Strg+H
+  Result.SearchKey := cKeyCtrl + Ord('F'); // Strg+F
+  Result.SearchNextKey := cKeyF3; // F3
+  Result.SearchPreviousKey := cKeyShift + cKeyF3; // Umschalt+F3
+  Result.SearchMethodKey := cKeyShift + cKeyCtrl + cKeyAlt + Ord('F'); // Strg+Umschalt+Alt+F
+  Result.ProblemsWindowKey := cKeyCtrl + cKeyAlt + Ord('P'); // Strg+Alt+P
+  Result.CheckFileKey := cKeyShift + cKeyCtrl + cKeyAlt + Ord('P'); // Strg+Umschalt+Alt+P
   Result.GotoInterfaceKey := 0;
   Result.GotoImplementationKey := 0;
-  Result.NextProblemKey := $C077; // Strg+Alt+F8
-  Result.PreviousProblemKey := $E077; // Strg+Alt+Umschalt+F8
-  Result.ImplementationKey := $C049; // Strg+Alt+I
+  Result.NextProblemKey := cKeyCtrl + cKeyAlt + cKeyF8; // Strg+Alt+F8
+  Result.PreviousProblemKey := cKeyShift + cKeyCtrl + cKeyAlt + cKeyF8; // Strg+Alt+Umschalt+F8
+  Result.ImplementationKey := cKeyCtrl + cKeyAlt + Ord('I'); // Strg+Alt+I
   Result.TypeDefinitionKey := 0;
-  Result.MethodToggleUpKey := $6026; // Strg+Umschalt+↑
-  Result.MethodToggleDownKey := $6028; // Strg+Umschalt+↓
+  Result.MethodToggleUpKey := cKeyShift + cKeyCtrl + cKeyUp; // Strg+Umschalt+↑
+  Result.MethodToggleDownKey := cKeyShift + cKeyCtrl + cKeyDown; // Strg+Umschalt+↓
   Result.KeyOverview := True;
   Result.UnitSearchKey := 0;
-  Result.QuickOpenKey := $4050; // Strg+P
-  Result.NavBackKey := $8025; // Alt+Links
-  Result.NavForwardKey := $8027; // Alt+Rechts
-  Result.LastEditKey := $C051; // Strg+Alt+Q
-  Result.PeekDefinitionKey := $807B; // Alt+F12
-  Result.PeekReferencesKey := $A07B; // Umschalt+Alt+F12
-  Result.QuickBookmarkSetKey := $6031; // Strg+Umschalt+1
-  Result.QuickBookmarkJumpKey := $4031; // Strg+1
+  Result.QuickOpenKey := cKeyCtrl + Ord('P'); // Strg+P
+  Result.NavBackKey := cKeyAlt + cKeyLeft; // Alt+Links
+  Result.NavForwardKey := cKeyAlt + cKeyRight; // Alt+Rechts
+  Result.LastEditKey := cKeyCtrl + cKeyAlt + Ord('Q'); // Strg+Alt+Q
+  Result.PeekDefinitionKey := cKeyAlt + cKeyF12; // Alt+F12
+  Result.PeekReferencesKey := cKeyShift + cKeyAlt + cKeyF12; // Umschalt+Alt+F12
+  Result.QuickBookmarkSetKey := cKeyShift + cKeyCtrl + Ord('1'); // Strg+Umschalt+1
+  Result.QuickBookmarkJumpKey := cKeyCtrl + Ord('1'); // Strg+1
   Result.NextBookmarkKey := 0;
   Result.PreviousBookmarkKey := 0;
-  Result.BreadcrumbsKey := $60BE; // Strg+Umschalt+.
+  Result.BreadcrumbsKey := cKeyShift + cKeyCtrl + cKeyPeriod; // Strg+Umschalt+.
   Result.SectionAppendKey := 0;
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
-  Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
-  Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
+  Result.NextChangeKey := cKeyCtrl + cKeyAlt + cKeyPageDown; // Strg+Alt+Bild↓
+  Result.PreviousChangeKey := cKeyCtrl + cKeyAlt + cKeyPageUp; // Strg+Alt+Bild↑
   Result.JumpToMatch := True;
-  Result.JumpToMatchKey := $40BA; // Strg+Ü (VK_OEM_1 auf deutscher Tastatur)
-  Result.JumpToMatchSelectKey := $60BA; // Strg+Umschalt+Ü
-  Result.WelcomePageSearchKey := $4045; // Strg+E
-  Result.WelcomePageQuickActionsBuildKey := $4042; // Strg+B
-  Result.WelcomePageQuickActionsTestKey := $4054; // Strg+T
-  Result.NotificationsKey := $E04E; // Strg+Umschalt+Alt+N
+  Result.JumpToMatchKey := cKeyCtrl + cKeyOem1; // Strg+Ü (VK_OEM_1 auf deutscher Tastatur)
+  Result.JumpToMatchSelectKey := cKeyShift + cKeyCtrl + cKeyOem1; // Strg+Umschalt+Ü
+  Result.WelcomePageSearchKey := cKeyCtrl + Ord('E'); // Strg+E
+  Result.WelcomePageQuickActionsBuildKey := cKeyCtrl + Ord('B'); // Strg+B
+  Result.WelcomePageQuickActionsTestKey := cKeyCtrl + Ord('T'); // Strg+T
+  Result.NotificationsKey := cKeyShift + cKeyCtrl + cKeyAlt + Ord('N'); // Strg+Umschalt+Alt+N
 end;
 
 procedure TAtlasPluginNavigationKeysSettings.Normalize;

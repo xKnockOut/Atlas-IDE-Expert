@@ -27,8 +27,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.StringLiterals,
-  Atlas.Common.Editing.SqlText,
+  Atlas.Common.Pascal.StringLiterals,
+  Atlas.Common.Dfm.SqlText,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts;
 
@@ -365,24 +365,16 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterDatabaseCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('sql', cTexts[TDatabaseCommandsText.SetSQLTextAndParameters].Text,
-    '/sql Q select * from Kunde where Nr = :Nr', ExecuteSql));
-  ARegister(Command('params', cTexts[TDatabaseCommandsText.AddMissingParamByNameLines].Text, '/params Q',
-    ExecuteParams));
-  ARegister(Command('loop', cTexts[TDatabaseCommandsText.IterateRecordsDisableControlsFirstNext].Text, '/loop Q',
-    ExecuteLoop));
-  ARegister(Command('transaction', cTexts[TDatabaseCommandsText.WrapStatementsInATransaction].Text, '/transaction Con',
-    ExecuteTransaction));
+  ARegister(TSlashCommand.Create('sql', cTexts[TDatabaseCommandsText.SetSQLTextAndParameters].Text,
+      '/sql Q select * from Kunde where Nr = :Nr', ExecuteSql));
+  ARegister(TSlashCommand.Create('params', cTexts[TDatabaseCommandsText.AddMissingParamByNameLines].Text, '/params Q',
+      ExecuteParams));
+  ARegister(TSlashCommand.Create('loop', cTexts[TDatabaseCommandsText.IterateRecordsDisableControlsFirstNext].Text,
+      '/loop Q', ExecuteLoop));
+  ARegister(TSlashCommand.Create('transaction', cTexts[TDatabaseCommandsText.WrapStatementsInATransaction].Text,
+      '/transaction Con', ExecuteTransaction));
 end;
 
 initialization

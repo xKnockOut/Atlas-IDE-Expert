@@ -40,58 +40,41 @@ uses
   Atlas.UI.Tracker.Sprint.Strings,
   Atlas.UI.Tracker.TestResults.Strings;
 
-type
-  /// <summary>Text zur Id mit der Ordnungszahl AIndex in der aktuellen Sprache.</summary>
-  TTableText = reference to function(AIndex: Integer): string;
-
-  TTable = record
-    Name: string;
-    Count: Integer;
-    Text: TTableText;
-  end;
-
-function Table(const AName: string; ACount: Integer; const AText: TTableText): TTable;
-begin
-  Result.Name := AName;
-  Result.Count := ACount;
-  Result.Text := AText;
-end;
-
 /// <summary>Texttabellen der Issue-Ansichten (Issue bis Anhänge).</summary>
-function IssueTables: TArray<TTable>;
+function IssueTables: TArray<TAtlasTextTable>;
 begin
   SetLength(Result, 7);
-  Result[0] := Table('Issue', Ord(High(TAtlasIssueTextId)) + 1,
+  Result[0] := TextTable('Issue', Ord(High(TAtlasIssueTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId(AIndex));
     end);
-  Result[1] := Table('Development', Ord(High(TAtlasIssueDevTextId)) + 1,
+  Result[1] := TextTable('Development', Ord(High(TAtlasIssueDevTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId(AIndex));
     end);
-  Result[2] := Table('Board', Ord(High(TAtlasBoardTextId)) + 1,
+  Result[2] := TextTable('Board', Ord(High(TAtlasBoardTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasBoardStrings.Text(TAtlasBoardTextId(AIndex));
     end);
-  Result[3] := Table('Flow', Ord(High(TAtlasFlowTextId)) + 1,
+  Result[3] := TextTable('Flow', Ord(High(TAtlasFlowTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasFlowStrings.Text(TAtlasFlowTextId(AIndex));
     end);
-  Result[4] := Table('Workflow', Ord(High(TAtlasWorkflowTextId)) + 1,
+  Result[4] := TextTable('Workflow', Ord(High(TAtlasWorkflowTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId(AIndex));
     end);
-  Result[5] := Table('Time', Ord(High(TAtlasTimeTextId)) + 1,
+  Result[5] := TextTable('Time', Ord(High(TAtlasTimeTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasTimeStrings.Text(TAtlasTimeTextId(AIndex));
     end);
-  Result[6] := Table('Attach', Ord(High(TAtlasAttachTextId)) + 1,
+  Result[6] := TextTable('Attach', Ord(High(TAtlasAttachTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasAttachStrings.Text(TAtlasAttachTextId(AIndex));
@@ -99,35 +82,35 @@ begin
 end;
 
 /// <summary>Übrige Texttabellen des Trackers (Neues Issue bis Befehle).</summary>
-function MoreTables: TArray<TTable>;
+function MoreTables: TArray<TAtlasTextTable>;
 begin
   SetLength(Result, 6);
-  Result[0] := Table('NewIssue', Ord(High(TAtlasNewIssueTextId)) + 1,
+  Result[0] := TextTable('NewIssue', Ord(High(TAtlasNewIssueTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId(AIndex));
     end);
-  Result[1] := Table('Settings', Ord(High(TAtlasOptionsTextId)) + 1,
+  Result[1] := TextTable('Settings', Ord(High(TAtlasOptionsTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasOptionsStrings.Text(TAtlasOptionsTextId(AIndex));
     end);
-  Result[2] := Table('MyIssues', Ord(High(TAtlasMyIssuesTextId)) + 1,
+  Result[2] := TextTable('MyIssues', Ord(High(TAtlasMyIssuesTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId(AIndex));
     end);
-  Result[3] := Table('Sprint', Ord(High(TAtlasSprintTextId)) + 1,
+  Result[3] := TextTable('Sprint', Ord(High(TAtlasSprintTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasSprintStrings.Text(TAtlasSprintTextId(AIndex));
     end);
-  Result[4] := Table('TestResults', Ord(High(TAtlasTestResultsTextId)) + 1,
+  Result[4] := TextTable('TestResults', Ord(High(TAtlasTestResultsTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId(AIndex));
     end);
-  Result[5] := Table('Commands', Ord(High(TAtlasCommandsTextId)) + 1,
+  Result[5] := TextTable('Commands', Ord(High(TAtlasCommandsTextId)) + 1,
     function(AIndex: Integer): string
     begin
       Result := TAtlasCommandsStrings.Text(TAtlasCommandsTextId(AIndex));
@@ -135,7 +118,7 @@ begin
 end;
 
 /// <summary>Die Texttabellen aller Features des Moduls.</summary>
-function Tables: TArray<TTable>;
+function Tables: TArray<TAtlasTextTable>;
 begin
   Result := IssueTables + MoreTables;
 end;
@@ -143,59 +126,13 @@ end;
 { TAtlasTrackerStringsTests }
 
 procedure TAtlasTrackerStringsTests.EveryTextExistsInBothLanguages;
-var
-  mTable: TTable;
-  mIndex: Integer;
-  mGerman: string;
-  mSaved: TAtlasLanguage;
 begin
-  mSaved := TAtlasStrings.Language;
-  try
-    for mTable in Tables do
-    begin
-      Assert.IsTrue(mTable.Count > 0, mTable.Name);
-      for mIndex := 0 to mTable.Count - 1 do
-      begin
-        TAtlasStrings.Language := TAtlasLanguage.German;
-        mGerman := mTable.Text(mIndex);
-        TAtlasStrings.Language := TAtlasLanguage.English;
-        AssertTextPair(mGerman, mTable.Text(mIndex), mIndex);
-      end;
-    end;
-  finally
-    TAtlasStrings.Language := mSaved;
-  end;
+  AssertTablesInBothLanguages(Tables);
 end;
 
 procedure TAtlasTrackerStringsTests.FollowsLanguageOfBase;
-var
-  mTable: TTable;
-  mIndex: Integer;
-  mGerman: string;
-  mDiffers: Integer;
-  mSaved: TAtlasLanguage;
 begin
-  // Kein eigener Sprachschalter: Ein Wechsel in Base gilt sofort auch für jede Tabelle des Moduls.
-  mSaved := TAtlasStrings.Language;
-  try
-    for mTable in Tables do
-    begin
-      mDiffers := 0;
-      for mIndex := 0 to mTable.Count - 1 do
-      begin
-        TAtlasStrings.Language := TAtlasLanguage.German;
-        mGerman := mTable.Text(mIndex);
-        TAtlasStrings.Language := TAtlasLanguage.English;
-        if mGerman <> mTable.Text(mIndex) then
-        begin
-          Inc(mDiffers);
-        end;
-      end;
-      Assert.IsTrue(mDiffers > 0, mTable.Name + ': kein Text folgt der Sprache von Base');
-    end;
-  finally
-    TAtlasStrings.Language := mSaved;
-  end;
+  AssertTablesFollowLanguage(Tables);
 end;
 
 procedure TAtlasTrackerStringsTests.EnglishFollowsLanguageOfBase;

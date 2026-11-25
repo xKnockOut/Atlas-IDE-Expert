@@ -8,7 +8,8 @@
 //   component-fixed-pixels               feste Pixelwerte in Paint/Resize ohne ScaleValue
 //   component-hardcoded-color            RGB-Literale und TColor-Casts in Paint
 //   control-fixed-bounds                 feste Pixelwerte an Width/Height/Left/Top/ClientWidth/
-//                                        ClientHeight in VCL-Units ohne ScaleValue (#1982)
+//                                        ClientHeight, an Right/Bottom von Margins und Padding und in
+//                                        SetBounds in VCL-Units ohne ScaleValue (#1982, #2675)
 //   missing-inherited                    Konstruktor, Destroy, AfterConstruction
 //                                        oder BeforeDestruction ohne inherited, für
 //                                        alle Klassen (#919); Destroy von
@@ -111,7 +112,7 @@ uses
   Atlas.Common.Rules.Builtin.Components.Model,
   Atlas.Common.Rules.Builtin.Components.InheritedCalls,
   Atlas.Common.Rules.Builtin.Components.Members,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -182,7 +183,7 @@ end;
 function LacksInherited(AModel: TComponentModel; const AClass: TClassInfo; const AMethod: TMethodImpl;
   out AToken: TPascalToken): Boolean;
 begin
-  Result := SameText(AMethod.ClassName, AClass.Name) and IsIn(AMethod.MethodName, cInheritedMethods) and
+  Result := SameText(AMethod.ClassName, AClass.Name) and MatchText(AMethod.MethodName, cInheritedMethods) and
     AModel.DeclaredWith(AClass, AMethod.MethodName, 'override') and not AModel.HasToken(AMethod.Block,
     ['inherited']);
   Result := Result and AModel.NameToken(AMethod, AToken);
@@ -590,7 +591,7 @@ begin
   begin
     mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  Result := IsIn(mName, cScaleCalls) or StartsText('Scale', mName);
+  Result := MatchText(mName, cScaleCalls) or StartsText('Scale', mName);
 end;
 
 /// <summary>Methoden der Datei, die selbst skalieren: Ihr Rumpf ruft ScaleValue, MulDiv oder einen Scale…-Helfer
@@ -616,7 +617,7 @@ function DirectExclusion(AParent: TSyntaxNode): Boolean;
 begin
   case AParent.Kind of
     TSyntaxKind.BinaryExpr:
-      Result := IsIn(AParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor']);
+      Result := MatchText(AParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor']);
     TSyntaxKind.IndexAccess, TSyntaxKind.CaseItem, TSyntaxKind.ForStatement, TSyntaxKind.SetConstructor:
       Result := True;
   else
@@ -641,12 +642,12 @@ begin
     case mParent.Kind of
       TSyntaxKind.Call:
         begin
-          Result := IsScaleCall(mParent.Name) or IsIn(mParent.Name, AHelpers) or
-            IsIn(mParent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']);
+          Result := IsScaleCall(mParent.Name) or MatchText(mParent.Name, AHelpers) or
+            MatchText(mParent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']);
           mDone := Result;
         end;
       TSyntaxKind.AssignStatement:
-        Result := IsIn(mParent.Name, cNonPixelTargets);
+        Result := MatchText(mParent.Name, cNonPixelTargets);
       TSyntaxKind.Block, TSyntaxKind.RoutineDecl:
         Result := False;
     else
@@ -698,7 +699,7 @@ begin
   try
     for mMethod in mModel.Methods do
     begin
-      if not IsIn(mMethod.MethodName, cPaintMethods) or not mModel.IsComponent(mMethod.ClassName) then
+      if not MatchText(mMethod.MethodName, cPaintMethods) or not mModel.IsComponent(mMethod.ClassName) then
       begin
         Continue;
       end;
@@ -772,7 +773,7 @@ begin
         Exit;
       end;
       // RGB(…) und TColor(…) mit Zahlen; TColor(FColors.Surface) wandelt eine Farbe des Themas um (#1109).
-      if (AVisited.Kind = TSyntaxKind.Call) and IsIn(AVisited.Name, ['RGB', 'TColor']) then
+      if (AVisited.Kind = TSyntaxKind.Call) and MatchText(AVisited.Name, ['RGB', 'TColor']) then
       begin
         if LiteralArguments(AVisited) then
         begin
@@ -832,6 +833,10 @@ const
   cDrawingOwners: array[0..3] of string = ('Pen', 'Canvas', 'Brush', 'Font');
   // Teile eines Steuerelements ohne eigenes ScaleValue: skaliert wird über das Steuerelement davor.
   cControlParts: array[0..2] of string = ('Margins', 'Padding', 'Constraints');
+  // Ränder von Margins und Padding: neben Left und Top auch Right und Bottom.
+  cEdgeTargets: array[0..1] of string = ('Right', 'Bottom');
+  // SetBounds(Left, Top, Width, Height) eines Steuerelements, von Margins oder Padding: Aufruf und vier Argumente.
+  cSetBoundsChildren = 5;
   // Ab hier ist Top/Left eine Reihenfolge für Align (alTop/alBottom), kein Pixelwert.
   cAlignOrder = 10000;
 
@@ -849,7 +854,7 @@ var
   mUnit: string;
 begin
   Result := False;
-  for mUnit in TUsesClauses.UsedUnits(AContext.Tree.Tokens) do
+  for mUnit in TPascalUses.UsedUnits(AContext.Tree.Tokens) do
   begin
     if StartsText('Vcl.', mUnit) or SameText(mUnit, 'Controls') or SameText(mUnit, 'Forms') then
     begin
@@ -858,19 +863,43 @@ begin
   end;
 end;
 
-/// <summary>Setzt die Zuweisung AAssign Größe oder Lage (Width, Left …), nicht aber Pen.Width &amp; Co.?</summary>
+/// <summary>Ist AOwner Margins oder Padding (X.Margins bzw. Margins ohne Objekt)?</summary>
+function IsEdgeOwner(AOwner: TSyntaxNode): Boolean;
+begin
+  Result := (AOwner.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Identifier]) and
+    MatchText(AOwner.Name, ['Margins', 'Padding']);
+end;
+
+/// <summary>Setzt die Zuweisung AAssign Größe oder Lage (Width, Left …, bei Margins und Padding auch Right und
+/// Bottom), nicht aber Pen.Width &amp; Co.?</summary>
 function IsBoundsAssign(AAssign: TSyntaxNode): Boolean;
 var
   mTarget: TSyntaxNode;
 begin
-  Result := (AAssign.Kind = TSyntaxKind.AssignStatement) and IsIn(AAssign.Name, cBoundsTargets) and
-    (AAssign.ChildCount = 2);
-  if Result then
+  Result := False;
+  if (AAssign.Kind <> TSyntaxKind.AssignStatement) or (AAssign.ChildCount <> 2) then
   begin
-    mTarget := AAssign.Children[0];
-    Result := (mTarget.Kind <> TSyntaxKind.MemberAccess) or (mTarget.ChildCount = 0) or
-      not IsIn(mTarget.Children[0].Name, cDrawingOwners);
+    Exit;
   end;
+  mTarget := AAssign.Children[0];
+  if MatchText(AAssign.Name, cBoundsTargets) then
+  begin
+    Result := (mTarget.Kind <> TSyntaxKind.MemberAccess) or (mTarget.ChildCount = 0) or
+      not MatchText(mTarget.Children[0].Name, cDrawingOwners);
+  end
+  else if MatchText(AAssign.Name, cEdgeTargets) then
+  begin
+    Result := (mTarget.Kind = TSyntaxKind.MemberAccess) and (mTarget.ChildCount > 0) and
+      IsEdgeOwner(mTarget.Children[0]);
+  end;
+end;
+
+/// <summary>Aufruf SetBounds(Left, Top, Width, Height) mit vier Argumenten (Steuerelement, Margins, Padding)?
+/// </summary>
+function IsSetBoundsCall(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Call) and SameText(ANode.Name, 'SetBounds') and
+    (ANode.ChildCount = cSetBoundsChildren);
 end;
 
 /// <summary>Pixelwert der Zuweisung AAssign (Zahl oder Konstante)? Nicht bei Zahlen ab cAlignOrder, nicht in
@@ -888,11 +917,11 @@ begin
     // Klammern, Summen und Vorzeichen reichen den Pixelwert durch.
     if mParent.Kind = TSyntaxKind.BinaryExpr then
     begin
-      Result := not IsIn(mParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr']);
+      Result := not MatchText(mParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr']);
     end
     else if mParent.Kind = TSyntaxKind.Call then
     begin
-      Result := IsIn(mParent.Name, ['Max', 'Min']);
+      Result := MatchText(mParent.Name, ['Max', 'Min']);
     end;
     mParent := mParent.Parent;
   end;
@@ -924,12 +953,13 @@ end;
 /// <summary>Zahl oder Bezeichner einer der Konstanten AConstants?</summary>
 function IsFixedValue(ANode: TSyntaxNode; const AConstants: TArray<string>): Boolean;
 begin
-  Result := IsPixelLiteral(ANode) or ((ANode.Kind = TSyntaxKind.Identifier) and IsIn(ANode.Name, AConstants));
+  Result := IsPixelLiteral(ANode) or ((ANode.Kind = TSyntaxKind.Identifier) and MatchText(ANode.Name, AConstants));
 end;
 
-/// <summary>Feste Pixelwerte im Wert der Zuweisung AAssign: Zahlen und Konstanten aus AConstants, die weder
-/// skaliert noch ausgenommen sind, in Quelltextreihenfolge.</summary>
-procedure CollectBounds(AAssign: TSyntaxNode; const AConstants, AHelpers: TArray<string>;
+/// <summary>Feste Pixelwerte im Ausdruck AValue, der zur Anweisung AStatement gehört (Wert einer Zuweisung,
+/// Argument von SetBounds): Zahlen und Konstanten aus AConstants, die weder skaliert noch ausgenommen sind, in
+/// Quelltextreihenfolge.</summary>
+procedure CollectBounds(AValue, AStatement: TSyntaxNode; const AConstants, AHelpers: TArray<string>;
   AList: TList<TSyntaxNode>);
 var
   mList: TList<TSyntaxNode>;
@@ -937,10 +967,10 @@ var
   mConstants, mHelpers: TArray<string>;
 begin
   mList := AList;
-  mAssign := AAssign;
+  mAssign := AStatement;
   mConstants := AConstants;
   mHelpers := AHelpers;
-  AAssign.Children[1].Walk(
+  AValue.Walk(
     function(AVisited: TSyntaxNode): Boolean
     begin
       Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
@@ -952,25 +982,28 @@ begin
     end);
 end;
 
-/// <summary>Aufruf, der AValue für das Ziel der Zuweisung AAssign skaliert: ScaleValue des Steuerelements, dem
-/// Width &amp; Co. gehören (bei Margins, Padding und Constraints das davor), ohne Objekt das eigene. Das Ziel selbst
-/// skaliert richtig, ob es schon eingehängt ist oder erst beim Einhängen mitskaliert wird.</summary>
-function ScaleCallFor(const AContext: TRuleContext; AAssign: TSyntaxNode; const AValue: string): string;
+/// <summary>Aufruf, der AValue für ATarget skaliert (Ziel der Zuweisung oder aufgerufenes SetBounds): ScaleValue
+/// des Steuerelements, dem Width &amp; Co. gehören (bei Margins, Padding und Constraints das davor), ohne Objekt
+/// das eigene. Das Ziel selbst skaliert richtig, ob es schon eingehängt ist oder erst beim Einhängen mitskaliert
+/// wird.</summary>
+function ScaleCallFor(const AContext: TRuleContext; ATarget: TSyntaxNode; const AValue: string): string;
 var
   mOwner: TSyntaxNode;
 begin
-  mOwner := AAssign.Children[0];
+  mOwner := ATarget;
   if (mOwner.Kind <> TSyntaxKind.MemberAccess) or (mOwner.ChildCount = 0) then
   begin
     Exit('ScaleValue(' + AValue + ')');
   end;
   mOwner := mOwner.Children[0];
-  if (mOwner.Kind = TSyntaxKind.MemberAccess) and (mOwner.ChildCount > 0) and IsIn(mOwner.Name, cControlParts) then
+  if (mOwner.Kind = TSyntaxKind.MemberAccess) and (mOwner.ChildCount > 0) and MatchText(mOwner.Name, cControlParts) then
   begin
     mOwner := mOwner.Children[0];
   end;
-  // Ein Aufruf als Ziel (NewLabel(…).Top) würde doppelt ausgeführt: dann über Self.
-  if mOwner.Kind = TSyntaxKind.Call then
+  // Ein Aufruf als Ziel (NewLabel(…).Top) würde doppelt ausgeführt, Margins ohne Objekt gehört zu Self: dann über
+  // Self.
+  if (mOwner.Kind = TSyntaxKind.Call) or ((mOwner.Kind = TSyntaxKind.Identifier) and
+    MatchText(mOwner.Name, cControlParts)) then
   begin
     Exit('ScaleValue(' + AValue + ')');
   end;
@@ -993,8 +1026,26 @@ begin
   if (mNode <> nil) and (LastDelimiter('.', mNode.Name) > 0) then
   begin
     mName := Copy(mNode.Name, LastDelimiter('.', mNode.Name) + 1, MaxInt);
-    Result := IsIn(mName, cPaintMethods) and
+    Result := MatchText(mName, cPaintMethods) and
       AModel.IsComponent(Copy(mNode.Name, 1, LastDelimiter('.', mNode.Name) - 1));
+  end;
+end;
+
+/// <summary>Feste Pixelwerte der Anweisung AStatement (Zuweisung an Width &amp; Co. oder SetBounds) in AList.
+/// </summary>
+procedure CollectStatement(AStatement: TSyntaxNode; const AConstants, AHelpers: TArray<string>;
+  AList: TList<TSyntaxNode>);
+var
+  mIndex: Integer;
+begin
+  if AStatement.Kind = TSyntaxKind.AssignStatement then
+  begin
+    CollectBounds(AStatement.Children[1], AStatement, AConstants, AHelpers, AList);
+    Exit;
+  end;
+  for mIndex := 1 to AStatement.ChildCount - 1 do
+  begin
+    CollectBounds(AStatement.Children[mIndex], AStatement, AConstants, AHelpers, AList);
   end;
 end;
 
@@ -1025,7 +1076,7 @@ begin
       function(AVisited: TSyntaxNode): Boolean
       begin
         Result := True;
-        if IsBoundsAssign(AVisited) then
+        if IsBoundsAssign(AVisited) or IsSetBoundsCall(AVisited) then
         begin
           mAssigns.Add(AVisited);
         end;
@@ -1037,7 +1088,7 @@ begin
         Continue;
       end;
       mLiterals.Clear;
-      CollectBounds(mAssign, mConstants, mHelpers, mLiterals);
+      CollectStatement(mAssign, mConstants, mHelpers, mLiterals);
       if mLiterals.Count = 0 then
       begin
         Continue;
@@ -1046,7 +1097,7 @@ begin
       for mLiteral in mLiterals do
       begin
         mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mLiteral.StartPos, mLiteral.EndPos),
-          ScaleCallFor(AContext, mAssign, mLiteral.Name))];
+          ScaleCallFor(AContext, mAssign.Children[0], mLiteral.Name))];
       end;
       AReport.Add(TTextRange.Create(mLiterals.First.StartPos, mLiterals.Last.EndPos),
         cTexts[TComponentsText.FixedBounds].Fmt([mAssign.Name]), TRuleConfidence.Medium,

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Architecture.Overview.Splitting;
 
-// Nachteilung der Teilsysteme der Architekturübersicht (#1364), ausgelagert
-// aus Atlas.Common.Architecture.Overview.
+// Nachteilung der Teilsysteme der Architekturübersicht (#1364), Teil von
+// Atlas.Common.Architecture.Overview.
 //
 // - Eine Gruppe wird nachgeteilt, wenn die Entscheidung des Aufrufers (Größe
 //   und Zusammenhalt) es verlangt. Der Zusammenhalt ist Kanten innen /

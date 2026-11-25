@@ -75,6 +75,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Product.Version,
   Atlas.Common.Rules.Catalog,

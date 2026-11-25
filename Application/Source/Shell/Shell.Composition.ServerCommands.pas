@@ -14,7 +14,7 @@ uses
   Atlas.Common.Compiler.Backend,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Processes,
-  Shell.Workspace;
+  Core.Workspace;
 
 type
   TShellServerStatusFunc = reference to function(AAnonymize: Boolean): TJSONObject;
@@ -22,8 +22,8 @@ type
   TShellServerFilesFunc = reference to function: TArray<string>;
   TShellServerCompileFunc = reference to function(const AFileName: string;
     out AChoice: TCompilerBackendChoice): Boolean;
-  TShellServerWorkspacesFunc = reference to function(const AUri: string): TArray<TShellWorkspace>;
-  TShellServerSelectedFunc = reference to function(AWorkspace: TShellWorkspace): Boolean;
+  TShellServerWorkspacesFunc = reference to function(const AUri: string): TArray<TCoreWorkspace>;
+  TShellServerSelectedFunc = reference to function(AWorkspace: TCoreWorkspace): Boolean;
   TShellServerSetProjectProc = reference to procedure(const AScope, AProject: string);
   TShellServerRetryFunc = reference to function(const AUri: string): Integer;
   TShellServerRecheckProc = reference to procedure;
@@ -68,7 +68,7 @@ type
     function RunRecheck(const AArguments: TJSONArray): TJSONValue;
     function RunSelectBuild(const AArguments: TJSONArray): TJSONValue;
     function RunSelectProject(const AArguments: TJSONArray): TJSONValue;
-    function ProjectWorkspaces: TArray<TShellWorkspace>;
+    function ProjectWorkspaces: TArray<TCoreWorkspace>;
     /// <summary>Arbeitsbereiche mit Index-Cache und den Prozessen daran (#62).</summary>
     function CollectProcesses: TArray<TLspProcessWorkspace>;
   public const
@@ -83,7 +83,7 @@ type
     procedure RegisterReadCommands(ACommands: TLspCommands);
     /// <summary>Befehle, die etwas anstoßen: Kompilieren, Index, Neuprüfen, Build und Projekt wählen.</summary>
     procedure RegisterActionCommands(ACommands: TLspCommands);
-    /// <summary>Formulare in Text umwandeln (Logik in Shell.Commands.Build).</summary>
+    /// <summary>Formulare in Text umwandeln (Logik in Core.Commands.Build).</summary>
     procedure RegisterConvertCommand(ACommands: TLspCommands);
   end;
 
@@ -96,17 +96,18 @@ uses
   Atlas.Common.Index.Cache,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.CacheDirectory,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.SettingsCommands,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.FormFiles,
-  Shell.Platform,
-  Shell.CrashCases,
-  Shell.Commands.Build,
-  Shell.Commands.Index,
+  Platform.Server,
+  Core.CrashCases,
+  Core.Commands.Build,
+  Core.Commands.Index,
   Atlas.Text.LogMarks,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
 {$SCOPEDENUMS ON}
@@ -116,15 +117,6 @@ type
 const
   cTexts: array[TServerCommandText] of TAtlasText = (
     (De: 'Projekt %s ist nicht geladen.'; En: 'Project %s is not loaded.'));
-
-function FirstText(const AArguments: TJSONArray): string;
-begin
-  Result := '';
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-  begin
-    Result := AArguments.Items[0].Value;
-  end;
-end;
 
 function FormFileExists(AFileName: string): Boolean;
 begin
@@ -154,8 +146,8 @@ var
   mWorkspaces: TArray<TLspProcessWorkspace>;
 begin
   mWorkspaces := CollectProcesses;
-  Result := TLspProcesses.ToJson(mWorkspaces, TShellPlatform.CurrentProcessId, Now);
-  FServices.Logger.Info(TLspProcesses.MarkedMarkdown(mWorkspaces, TShellPlatform.CurrentProcessId, Now));
+  Result := TLspProcesses.ToJson(mWorkspaces, TServerPlatform.CurrentProcessId, Now);
+  FServices.Logger.Info(TLspProcesses.MarkedMarkdown(mWorkspaces, TServerPlatform.CurrentProcessId, Now));
 end;
 
 function TShellServerCommands.RunSettingsCheck(const AArguments: TJSONArray): TJSONValue;
@@ -179,7 +171,7 @@ function TShellServerCommands.RunConvertForms(const AArguments: TJSONArray): TJS
 var
   mConverted, mBackups: Integer;
 begin
-  // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units (Logik in Shell.Commands.Build).
+  // Mit URI eine Datei, sonst alle Formulare neben den Projekt-Units (Logik in Core.Commands.Build).
   mConverted := TBuildCommands.ConvertForms(TBuildCommands.FormFiles(AArguments, FServices.ProjectSourceFiles(),
     FormFileExists), FServices.Logger, mBackups);
   FServices.Logger.Info(Format('%d binäre Formulare in Text umgewandelt, %d Sicherungskopien (.bak)',
@@ -195,7 +187,7 @@ var
   mAnswer: TJSONObject;
 begin
   // Optional die URI einer Datei, deren Projekt kompiliert wird.
-  mUri := FirstText(AArguments);
+  mUri := TJsonRead.FirstText(AArguments);
   if mUri = '' then
   begin
     mStarted := FServices.Compile('', mChoice);
@@ -217,8 +209,8 @@ end;
 
 function TShellServerCommands.RunRebuildIndex(const AArguments: TJSONArray): TJSONValue;
 var
-  mWorkspace: TShellWorkspace;
-  mTargets: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mTargets: TArray<TCoreWorkspace>;
 begin
   // Alle Ordner ohne Cache neu einlesen (#49), z. B. nach Änderungen außerhalb des Editors.
   mTargets := FServices.Workspaces('');
@@ -232,12 +224,12 @@ end;
 
 function TShellServerCommands.RunClearIndex(const AArguments: TJSONArray): TJSONValue;
 var
-  mWorkspace: TShellWorkspace;
-  mTargets: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mTargets: TArray<TCoreWorkspace>;
   mFreed: Int64;
   mRemoved: Integer;
 begin
-  // „Index löschen“ (#492, Logik in Shell.Commands.Index): Caches freigeben, alle löschen, neu indizieren.
+  // „Index löschen“ (#492, Logik in Core.Commands.Index): Caches freigeben, alle löschen, neu indizieren.
   mTargets := FServices.Workspaces('');
   for mWorkspace in mTargets do
   begin
@@ -255,7 +247,7 @@ end;
 
 function TShellServerCommands.RunRetryCrashCase(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TJSONNumber.Create(FServices.RetryCrashCase(FirstText(AArguments)));
+  Result := TJSONNumber.Create(FServices.RetryCrashCase(TJsonRead.FirstText(AArguments)));
 end;
 
 function TShellServerCommands.RunRecheck(const AArguments: TJSONArray): TJSONValue;
@@ -271,12 +263,12 @@ function TShellServerCommands.RunSelectBuild(const AArguments: TJSONArray): TJSO
 var
   mArgs: TSelectBuildArgs;
   mError: string;
-  mWorkspace: TShellWorkspace;
-  mTargets: TArray<TShellWorkspace>;
+  mWorkspace: TCoreWorkspace;
+  mTargets: TArray<TCoreWorkspace>;
   mProject: TProjectInfo;
   mItems: TJSONArray;
 begin
-  // Argumente und Antwort in Shell.Commands.Build; ohne Änderung nur die aktuelle Auswahl je Projekt (#46).
+  // Argumente und Antwort in Core.Commands.Build; ohne Änderung nur die aktuelle Auswahl je Projekt (#46).
   mArgs := TSelectBuildArgs.Parse(AArguments);
   mTargets := FServices.Workspaces(mArgs.Uri);
   if mArgs.Changes then
@@ -304,7 +296,7 @@ end;
 function TShellServerCommands.RunSelectProject(const AArguments: TJSONArray): TJSONValue;
 var
   mArgs: TSelectProjectArgs;
-  mTargets: TArray<TShellWorkspace>;
+  mTargets: TArray<TCoreWorkspace>;
   mItems: TArray<TProjectChoiceItem>;
   mIndex: Integer;
   mActive: string;
@@ -346,9 +338,9 @@ begin
   Result := TBuildCommands.ProjectChoices(mItems);
 end;
 
-function TShellServerCommands.ProjectWorkspaces: TArray<TShellWorkspace>;
+function TShellServerCommands.ProjectWorkspaces: TArray<TCoreWorkspace>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := nil;
   for mWorkspace in FServices.Workspaces('') do
@@ -362,7 +354,7 @@ end;
 
 function TShellServerCommands.CollectProcesses: TArray<TLspProcessWorkspace>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mItem: TLspProcessWorkspace;
   mStatus: TWorkspaceStatus;
 begin
@@ -405,7 +397,7 @@ begin
   ACommands.Register(cRebuildIndexCommand, RunRebuildIndex);
   ACommands.Register(cClearIndexCommand, RunClearIndex);
   // „Erneut versuchen“ nach dem Überspringen (#1355): Argument Uri der Datei, ohne alle.
-  ACommands.Register(TShellCrashCases.cRetryCommand, RunRetryCrashCase);
+  ACommands.Register(TCoreCrashCases.cRetryCommand, RunRetryCrashCase);
   ACommands.Register(TLspPullDiagnostics.cRecheckCommand, RunRecheck);
   ACommands.Register(cSelectBuildCommand, RunSelectBuild);
   ACommands.Register(cSelectProjectCommand, RunSelectProject);

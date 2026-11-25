@@ -65,10 +65,10 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Projects.Contract,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Projects.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Session.Json;
+  Atlas.Plugin.Lsp.Session.Json;
 
 function Context(const AProject: string): TAtlasProjectContext;
 begin

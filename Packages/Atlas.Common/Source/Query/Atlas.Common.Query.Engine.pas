@@ -198,24 +198,6 @@ const
   /// <summary>Elemente zwischen zwei Blicken auf den Abbruch.</summary>
   cCancelStride = 256;
 
-function VisibilityName(AVisibility: TIndexVisibility): string;
-begin
-  case AVisibility of
-    TIndexVisibility.Published:
-      Result := 'published';
-    TIndexVisibility.Protected:
-      Result := 'protected';
-    TIndexVisibility.StrictProtected:
-      Result := 'strict protected';
-    TIndexVisibility.Private:
-      Result := 'private';
-    TIndexVisibility.StrictPrivate:
-      Result := 'strict private';
-  else
-    Result := 'public';
-  end;
-end;
-
 function RelativePath(const ARoot, AFileName: string): string;
 var
   mRoot, mPath: string;
@@ -925,20 +907,6 @@ begin
   FInterfaceNames.Add(mKey, Result);
 end;
 
-function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  Result := False;
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 /// <summary>Nennt die Typ-Kette AChain den Vorfahren ATarget (Kurzname)? Der erste Eintrag ist der Typ selbst.
 /// </summary>
 function ChainNames(const AChain: TArray<TSymbolLocation>; const ATarget: string): Boolean;
@@ -976,7 +944,7 @@ begin
   end;
   for mAncestor in mType.Symbol.Ancestors do
   begin
-    if ContainsName(InterfaceClosure(mAncestor), mTarget) then
+    if MatchText(mTarget, InterfaceClosure(mAncestor)) then
     begin
       Exit(True);
     end;
@@ -1233,7 +1201,7 @@ begin
     4:
       AValue := TQueryValue.OfText(AElement.Symbol.Container);
     5:
-      AValue := TQueryValue.OfText(VisibilityName(AElement.Symbol.Visibility));
+      AValue := TQueryValue.OfText(VisibilityKeyword(AElement.Symbol.Visibility));
     6:
       AValue := TypeValue(AElement.Symbol);
     7:

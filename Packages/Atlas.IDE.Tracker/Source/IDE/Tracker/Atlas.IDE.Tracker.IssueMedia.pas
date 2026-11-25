@@ -43,13 +43,18 @@ uses
   System.IOUtils,
   System.StrUtils,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.Issue.Strings;
+  Atlas.UI.Tracker.Issue.Strings,
+  System.Win.ComObj;
+
+const
+  /// <summary>Anhänge laden länger als eine Abfrage: das Zeitlimit der Vorschau mal diesen Faktor.</summary>
+  cDownloadTimeoutFactor = 3;
 
 /// <summary>Höchstens MaxImages Adressen vom Server des Tokens, ohne Doppelte.</summary>
 function LoadableUrls(const AUrls: TArray<string>; const AServer: string): TArray<string>;
@@ -86,8 +91,15 @@ begin
     try
       mImage.LoadFromStream(mStream);
     except
-      on Exception do
+      // Unlesbares Bild (WIC lehnt das Format ab): bleibt ein Link.
+      on E: Exception do
+      begin
+        if not ((E is EInvalidGraphic) or (E is EOleError) or (E is EStreamError)) then
+        begin
+          raise;
+        end;
         FreeAndNil(mImage);
+      end;
     end;
   finally
     mStream.Free;
@@ -113,13 +125,16 @@ begin
       Result := mError <> TAtlasCiFetchError.Cancelled;
       ABytes := nil;
     end
-    else if mStatus <> 200 then
+    else if mStatus <> TAtlasHttpStatus.cOk then
     begin
       ABytes := nil;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
       ABytes := nil;
+      TAtlasGuard.Log('Issue-Vorschau: Bild nicht geladen, ' + E.ClassName); // german-ok Protokoll
+    end;
   end;
 end;
 
@@ -215,16 +230,19 @@ begin
     begin
       mOk := False;
       try
-        if mDownload.GetBytes(AUrl, TAtlasIssuePreview.cTimeoutMs * 3, TAtlasIssuePreview.cMaxAttachmentBytes,
-          mStatus, mBytes, mError) and (mStatus = 200) then
+        if mDownload.GetBytes(AUrl, TAtlasIssuePreview.cTimeoutMs * cDownloadTimeoutFactor,
+          TAtlasIssuePreview.cMaxAttachmentBytes, mStatus, mBytes, mError) and (mStatus = TAtlasHttpStatus.cOk) then
         begin
           ForceDirectories(ExtractFileDir(AFile));
           TFile.WriteAllBytes(AFile, mBytes);
           mOk := True;
         end;
       except
-        on Exception do
+        on E: Exception do
+        begin
           mOk := False;
+          TAtlasGuard.Log('Issue-Vorschau: Anhang nicht gespeichert, ' + E.ClassName); // german-ok Protokoll
+        end;
       end;
       mDownload := nil;
       if TAtlasShutdown.Signalled then
@@ -321,10 +339,7 @@ end;
 
 procedure TAtlasIdeIssueMedia.Cancel;
 begin
-  if FCancel <> nil then
-  begin
-    FCancel.Cancel;
-  end;
+  TAtlasCiCancels.Cancel(FCancel);
 end;
 
 procedure TAtlasIdeIssueMedia.Retire;

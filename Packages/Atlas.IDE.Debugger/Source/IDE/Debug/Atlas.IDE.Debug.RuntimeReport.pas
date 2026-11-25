@@ -34,10 +34,10 @@ uses
   System.SysUtils,
   Vcl.Clipbrd,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.RuntimeReport,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.UI.Debug.RuntimeReport.Strings;
 
 const
@@ -51,11 +51,7 @@ end;
 
 function Group(const AMessages: IOTAMessageServices): IOTAMessageGroup;
 begin
-  Result := AMessages.GetGroup(cMessageGroup);
-  if Result = nil then
-  begin
-    Result := AMessages.AddMessageGroup(cMessageGroup);
-  end;
+  Result := TAtlasIdeHost.MessageGroup(AMessages, cMessageGroup);
 end;
 
 { Ausgabe }

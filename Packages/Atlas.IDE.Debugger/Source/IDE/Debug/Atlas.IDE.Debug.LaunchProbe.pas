@@ -5,8 +5,8 @@
 //   localhost:Port Verbindungen annimmt bzw. ob der Prozess ein sichtbares
 //   Hauptfenster hat (EnumWindows nach Prozess-ID). Die Ergebnisse liest der
 //   Hauptthread aus PortOpen und WindowFound (nur gesetzt, nie zurück).
-// - TAtlasIdeLaunchProcesses: Programm ohne Debugger starten (CreateProcess
-//   mit Arbeitsordner und Umgebung) und Prozesse beenden.
+// - TAtlasIdeLaunchProcesses: Programm ohne Debugger starten (über
+//   TAtlasProcessLauncher mit Arbeitsordner und Umgebung) und Prozesse beenden.
 // Free wartet auf das Ende des Threads; der Besitzer gibt ihn frei, bevor das
 // Modul geht.
 
@@ -62,7 +62,9 @@ implementation
 
 uses
   Winapi.Windows,
-  Winapi.Winsock2;
+  Winapi.Winsock2,
+  Atlas.WinBase.Process,
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cProcessTerminate = $0001;
@@ -91,21 +93,27 @@ procedure TAtlasIdeLaunchProbe.Execute;
 var
   mPid: Cardinal;
 begin
-  while not Terminated do
-  begin
-    if (FPort > 0) and (FPortOpen = 0) and TAtlasIdeLaunchProcesses.PortAccepts(FPort, cConnectMs) then
+  // Ein Fehler der Probe wird protokolliert; die Probe meldet danach nichts mehr (Zeitüberschreitung des Starts).
+  try
+    while not Terminated do
     begin
-      TInterlocked.Exchange(FPortOpen, 1);
+      if (FPort > 0) and (FPortOpen = 0) and TAtlasIdeLaunchProcesses.PortAccepts(FPort, cConnectMs) then
+      begin
+        TInterlocked.Exchange(FPortOpen, 1);
+      end;
+      mPid := Cardinal(TInterlocked.CompareExchange(Integer(FPid), 0, 0));
+      if (mPid <> 0) and (FWindowFound = 0) and TAtlasIdeLaunchProcesses.HasMainWindow(mPid) then
+      begin
+        TInterlocked.Exchange(FWindowFound, 1);
+      end;
+      if FWake.WaitFor(cIntervalMs) = wrSignaled then
+      begin
+        Exit;
+      end;
     end;
-    mPid := Cardinal(TInterlocked.CompareExchange(Integer(FPid), 0, 0));
-    if (mPid <> 0) and (FWindowFound = 0) and TAtlasIdeLaunchProcesses.HasMainWindow(mPid) then
-    begin
-      TInterlocked.Exchange(FWindowFound, 1);
-    end;
-    if FWake.WaitFor(cIntervalMs) = wrSignaled then
-    begin
-      Exit;
-    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
   end;
 end;
 
@@ -135,33 +143,24 @@ end;
 class function TAtlasIdeLaunchProcesses.Start(const AExe, AArgs, AWorkingDir: string;
   const AVariables: TArray<TAtlasTeamVariable>): Cardinal;
 var
-  mStartup: TStartupInfo;
+  mLaunch: TAtlasProcessLaunch;
   mInfo: TProcessInformation;
-  mCommand, mDir, mEnvironment: string;
-  mBlock: Pointer;
 begin
   Result := 0;
-  mStartup := Default(TStartupInfo);
-  mStartup.cb := SizeOf(mStartup);
-  mCommand := '"' + AExe + '"';
+  // Ohne Standard-Handles erbt das Programm nichts (auch keine Pipes anderer Atlas-Threads).
+  mLaunch := Default(TAtlasProcessLaunch);
+  mLaunch.CommandLine := '"' + AExe + '"';
   if AArgs <> '' then
   begin
-    mCommand := mCommand + ' ' + AArgs;
+    mLaunch.CommandLine := mLaunch.CommandLine + ' ' + AArgs;
   end;
-  UniqueString(mCommand);
-  mDir := AWorkingDir;
-  if mDir = '' then
+  mLaunch.WorkingDir := AWorkingDir;
+  if mLaunch.WorkingDir = '' then
   begin
-    mDir := ExtractFileDir(AExe);
+    mLaunch.WorkingDir := ExtractFileDir(AExe);
   end;
-  mEnvironment := EnvironmentBlock(AVariables);
-  mBlock := nil;
-  if mEnvironment <> '' then
-  begin
-    mBlock := PChar(mEnvironment);
-  end;
-  if not CreateProcess(nil, PChar(mCommand), nil, nil, False, CREATE_UNICODE_ENVIRONMENT, mBlock, PChar(mDir),
-    mStartup, mInfo) then
+  mLaunch.Environment := EnvironmentBlock(AVariables);
+  if not TAtlasProcessLauncher.Launch(mLaunch, mInfo) then
   begin
     Exit;
   end;

@@ -1,8 +1,8 @@
 ﻿unit Atlas.IDE.Commands.EditorMenu;
 
-// Einträge des Untermenüs Atlas im Kontextmenü des Editors (#399), aus
-// TAtlasIdeEditorCommands.Install (Atlas.IDE.Commands.Editor, Beschreibung dort)
-// ausgelagert, in der Reihenfolge des Menüs. Oben die häufigsten Befehle
+// Einträge des Untermenüs Atlas im Kontextmenü des Editors (#399) für
+// TAtlasIdeEditorCommands.Install (Atlas.IDE.Commands.Editor, Beschreibung dort),
+// in der Reihenfolge des Menüs. Oben die häufigsten Befehle
 // (Code-Aktionen, Erzeugen), danach Untermenüs Navigation, Bearbeiten, Suchen
 // und analysieren, Befunde (mit der Zahl der Befunde der Datei), dann die
 // Einträge der Module (eigene Untermenüs nach Section) und „Element
@@ -45,7 +45,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
@@ -56,6 +56,7 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.RegionFolds,
+  Atlas.IDE.Commands.BlockFolds,
   Atlas.UI.Editor.RegionFolds,
   Atlas.IDE.Editor.LearnedSuggestions,
   Atlas.UI.Editor.LearnedSuggestions,
@@ -64,7 +65,7 @@ uses
   Atlas.IDE.Commands.MenuContext,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.ContextMenuGroups,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -95,6 +96,12 @@ end;
 function RegionFoldsVisible: Boolean;
 begin
   Result := TAtlasIdeRegionFolds.Enabled and TAtlasIdeMenuContext.Applies(UnitHasRegions);
+end;
+
+/// <summary>Große Blöcke ein-/aufklappen (#2795) sichtbar, solange editor.blockFolds an ist.</summary>
+function BlockFoldsVisible: Boolean;
+begin
+  Result := TAtlasIdeBlockFolds.Enabled;
 end;
 
 /// <summary>Kennung eines Untermenüs für commands.editorContextMenu.groups.</summary>
@@ -203,6 +210,24 @@ begin
     begin
       TAtlasIdeRegionFolds.ExpandAll;
     end, RegionFoldsVisible);
+  AMenu.AddWhen(TAtlasFeature.RegionFolds, 'Atlas.FoldBlock',
+    TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldBlockCommand), nil,
+    procedure
+    begin
+      TAtlasIdeBlockFolds.FoldAtCursor;
+    end, BlockFoldsVisible);
+  AMenu.AddWhen(TAtlasFeature.RegionFolds, 'Atlas.FoldLargeBlocks',
+    TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldLargeBlocksCommand), nil,
+    procedure
+    begin
+      TAtlasIdeBlockFolds.FoldLarge;
+    end, BlockFoldsVisible);
+  AMenu.AddWhen(TAtlasFeature.RegionFolds, 'Atlas.UnfoldBlocks',
+    TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.UnfoldBlocksCommand), nil,
+    procedure
+    begin
+      TAtlasIdeBlockFolds.UnfoldAll;
+    end, BlockFoldsVisible);
   AMenu.AddWhen(TAtlasFeature.LearnedSuggestions, 'Atlas.LearnedSuggestions',
     TAtlasLearnedTexts.Text(TAtlasLearnedText.Command), nil,
     procedure

@@ -25,9 +25,6 @@ type
     FRan: string;
     FCancelled: Boolean;
   public
-    /// <summary>Einmalige VCL-Puffer (Liste, Klappliste) vor dem Leckmonitor anlegen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -83,16 +80,6 @@ begin
 end;
 
 { TAtlasCodeQueryFrameTests }
-
-procedure TAtlasCodeQueryFrameTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    ShowsRowsAndStatus;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasCodeQueryFrameTests.SetUp;
 var

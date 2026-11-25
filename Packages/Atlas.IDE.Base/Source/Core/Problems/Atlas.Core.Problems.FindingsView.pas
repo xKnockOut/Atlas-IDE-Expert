@@ -162,7 +162,8 @@ implementation
 uses
   System.SysUtils,
   System.Math,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Core.Problems.IdeErrors;
 
 { TAtlasFindingsSource }
 
@@ -485,7 +486,7 @@ begin
     TAtlasFindingColumn.Compiler:
       Result := CompareText(A.CompilerText, B.CompilerText);
     TAtlasFindingColumn.Source:
-      Result := CompareText(A.SourceText, B.SourceText);
+      Result := CompareText(TAtlasIdeErrors.OriginText(A.Problem), TAtlasIdeErrors.OriginText(B.Problem));
   else
     // Symbol und Art.
     Result := Ord(A.Kind) - Ord(B.Kind);

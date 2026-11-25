@@ -60,9 +60,6 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeBoardTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure ViewsCreateFramesWithId;
     [Test]
@@ -90,7 +87,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Welcome.Scroll,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Layout,
   Atlas.UI.Strings,
@@ -285,10 +282,6 @@ begin
 end;
 { TAtlasWelcomeBoardTests }
 
-procedure TAtlasWelcomeBoardTests.WarmUpFirstUse;
-begin
-  BoardPlacesSectionsInColumns;
-end;
 procedure TAtlasWelcomeBoardTests.ViewsCreateFramesWithId;
 var
   mView: TAtlasWelcomeSectionFrame;

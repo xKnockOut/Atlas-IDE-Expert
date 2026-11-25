@@ -3,8 +3,7 @@
 // Tests für Helfer mit Vorfahr (#848): class helper (TBaseHelper) for TFoo
 // wird als Helfer gelesen, steht mit Vorfahr und Ziel im Index, und die
 // Namensauflösung findet die Mitglieder des Vorfahr-Helfers über TFoo. Die
-// Quelle von CaseFour ist der nachgestellte Fall 04 aus
-// planung/parser-luecken-faelle.
+// Quelle von CaseFour stellt den Fall aus dem Issue nach.
 
 interface
 
@@ -36,14 +35,15 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.HoverTypes;
+  Atlas.Common.Lsp.HoverTypes,
+  Atlas.Tests.SourceText,
+  Atlas.Common.Pascal.TestSupport;
 
 const
   cCaseFour =
@@ -97,25 +97,6 @@ begin
   Result := nil;
 end;
 
-/// <summary>Namen der direkten Kinder einer Art, mit Komma.</summary>
-function ChildNames(ANode: TSyntaxNode; AKind: TSyntaxKind): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    if ANode[mIndex].Kind = AKind then
-    begin
-      if Result <> '' then
-      begin
-        Result := Result + ',';
-      end;
-      Result := Result + ANode[mIndex].Name;
-    end;
-  end;
-end;
-
 function SymbolOf(const AUnit: TUnitIndex; const AName: string): TIndexSymbol;
 var
   mSymbol: TIndexSymbol;
@@ -128,24 +109,6 @@ begin
     end;
   end;
   raise Exception.CreateFmt('%s fehlt im Index', [AName]);
-end;
-
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
 end;
 
 function NewIndex: ISymbolIndex;
@@ -168,11 +131,11 @@ begin
     Assert.IsNotNull(mHelper);
     Assert.AreEqual('class', mHelper.Name);
     // Erst der Vorfahr, zuletzt das Ziel.
-    Assert.AreEqual('TBaseHelper,TFoo', ChildNames(mHelper, TSyntaxKind.TypeReference));
-    Assert.AreEqual('A', ChildNames(mHelper, TSyntaxKind.RoutineHeader));
+    Assert.AreEqual('TBaseHelper,TFoo', TPascalTest.ChildNames(mHelper, TSyntaxKind.TypeReference));
+    Assert.AreEqual('A', TPascalTest.ChildNames(mHelper, TSyntaxKind.RoutineHeader));
     mOther := BodyOf(FindType(mTree.Root, 'TOther'), TSyntaxKind.ClassType);
     Assert.IsNotNull(mOther);
-    Assert.AreEqual('B', ChildNames(mOther, TSyntaxKind.RoutineHeader));
+    Assert.AreEqual('B', TPascalTest.ChildNames(mOther, TSyntaxKind.RoutineHeader));
   finally
     mTree.Free;
   end;
@@ -191,7 +154,7 @@ begin
     mHelper := BodyOf(FindType(mTree.Root, 'TIntHelper2'), TSyntaxKind.HelperType);
     Assert.IsNotNull(mHelper);
     Assert.AreEqual('record', mHelper.Name);
-    Assert.AreEqual('TIntHelper,Integer', ChildNames(mHelper, TSyntaxKind.TypeReference));
+    Assert.AreEqual('TIntHelper,Integer', TPascalTest.ChildNames(mHelper, TSyntaxKind.TypeReference));
   finally
     mTree.Free;
   end;
@@ -226,11 +189,11 @@ begin
   mResolver := TNameResolver.Create(mIndex);
   mTree := TPascalParser.Parse(cUnitMain);
   try
-    mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cUnitMain, 'AsText;'));
+    mFound := mResolver.Resolve(mTree, cMainFile, TTestSource.PositionOf(cUnitMain, 'AsText;'));
     Assert.IsTrue(mFound.Found);
     Assert.AreEqual('TBaseHelper', mFound.Container);
     // Der abgeleitete Helfer verdeckt das gleichnamige Mitglied seines Vorfahren.
-    mFound := mResolver.Resolve(mTree, cMainFile, PositionOf(cUnitMain, 'Reset;'));
+    mFound := mResolver.Resolve(mTree, cMainFile, TTestSource.PositionOf(cUnitMain, 'Reset;'));
     Assert.IsTrue(mFound.Found);
     Assert.AreEqual('TFooHelper', mFound.Container);
   finally

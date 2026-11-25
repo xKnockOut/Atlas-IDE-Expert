@@ -74,27 +74,16 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.CreateMethod,
-  Atlas.Common.Pascal.TokenCursor;
-
-type
-  TSyntaxKindSet = set of TSyntaxKind;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cListWords: array[0..5] of string = ('List', 'Array', 'Collection', 'Queue', 'Stack', 'Set');
   cVisibilityWords: array[0..6] of string = ('private', 'protected', 'public', 'published', 'strict', 'automated',
     'class');
   cRoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
-
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
 
 function IsWord(const AToken: TPascalToken): Boolean;
 begin
@@ -168,7 +157,7 @@ begin
     end;
     Result := Result + mToken.Text;
     mGlued := OpensBracket(mToken) or mToken.IsSymbol('.');
-    mIndex := TRoutineBody.NextToken(ATokens, mIndex);
+    mIndex := NextCodeAfter(ATokens, mIndex);
   end;
 end;
 
@@ -195,16 +184,6 @@ begin
       end;
     end;
   until not mFound;
-end;
-
-/// <summary>Nächster umgebender Knoten einer der Arten AKinds; nil ohne.</summary>
-function Enclosing(ANode: TSyntaxNode; const AKinds: TSyntaxKindSet): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and not (Result.Kind in AKinds) do
-  begin
-    Result := Result.Parent;
-  end;
 end;
 
 /// <summary>Steht ATokens[AIndex] in der Parameterliste eines Routinenkopfs?</summary>
@@ -320,23 +299,23 @@ var
 begin
   // Erstes Token, das am Cursor oder dahinter endet.
   mIndex := 0;
-  while (mIndex <= High(ATokens)) and (Compare(ATokens[mIndex].EndPos, APosition) < 0) do
+  while (mIndex <= High(ATokens)) and (TTextPosition.Compare(ATokens[mIndex].EndPos, APosition) < 0) do
   begin
     Inc(mIndex);
   end;
   if (mIndex <= High(ATokens)) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-    (Compare(ATokens[mIndex].StartPos, APosition) <= 0) then
+    (TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) <= 0) then
   begin
     ASite.NameRange := TTextRange.Create(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos);
     ASite.Typed := Copy(ATokens[mIndex].Text, 1, APosition.Character - ATokens[mIndex].StartPos.Character);
     ASite.Offset := ATokens[mIndex].Offset;
-    ANext := TRoutineBody.NextToken(ATokens, mIndex);
+    ANext := NextCodeAfter(ATokens, mIndex);
     APrev := PreviousCode(ATokens, mIndex);
     Exit;
   end;
   ASite.NameRange := TTextRange.Create(APosition, APosition);
   ANext := mIndex;
-  while (ANext <= High(ATokens)) and ((Compare(ATokens[ANext].StartPos, APosition) < 0) or
+  while (ANext <= High(ATokens)) and ((TTextPosition.Compare(ATokens[ANext].StartPos, APosition) < 0) or
     (ATokens[ANext].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive])) do
   begin
     Inc(ANext);
@@ -354,12 +333,12 @@ begin
   Result := ANext;
   while (Result <= High(ATokens)) and ATokens[Result].IsSymbol(',') do
   begin
-    Result := TRoutineBody.NextToken(ATokens, Result);
+    Result := NextCodeAfter(ATokens, Result);
     if (Result > High(ATokens)) or (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
     begin
       Exit(-1);
     end;
-    Result := TRoutineBody.NextToken(ATokens, Result);
+    Result := NextCodeAfter(ATokens, Result);
   end;
   if (Result > High(ATokens)) or not ATokens[Result].IsSymbol(':') then
   begin
@@ -389,8 +368,7 @@ begin
     ASite.Kind := TNamingKind.Parameter;
     Exit;
   end;
-  if ATokens[APrev].IsKeyword('var') and (Enclosing(NodeAt(ATree.Root, ASite.Offset),
-    [TSyntaxKind.Block .. TSyntaxKind.EmptyStatement]) <> nil) then
+  if ATokens[APrev].IsKeyword('var') and (TSyntaxNodes.Nearest(NodeAt(ATree.Root, ASite.Offset), [TSyntaxKind.Block .. TSyntaxKind.EmptyStatement]) <> nil) then
   begin
     // Inline-Variable in einer Anweisung.
     ASite.Kind := TNamingKind.Local;
@@ -407,12 +385,12 @@ begin
   end;
   // Der Abschnitt steht auch bei unfertigem Code an seinem Platz im Baum.
   mNode := NodeAt(ATree.Root, ATokens[mAt].Offset);
-  if (mSection = 'type') or (Enclosing(mNode, [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
+  if (mSection = 'type') or (TSyntaxNodes.Nearest(mNode, [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
     TSyntaxKind.RecordType, TSyntaxKind.HelperType]) <> nil) then
   begin
     ASite.Kind := TNamingKind.Field;
   end
-  else if Enclosing(mNode, [TSyntaxKind.RoutineDecl]) <> nil then
+  else if TSyntaxNodes.Nearest(mNode, [TSyntaxKind.RoutineDecl]) <> nil then
   begin
     ASite.Kind := TNamingKind.Local;
   end
@@ -443,7 +421,7 @@ begin
   begin
     Exit;
   end;
-  ASite.TypeText := TypeTextFrom(mTokens, TRoutineBody.NextToken(mTokens, mColon));
+  ASite.TypeText := TypeTextFrom(mTokens, NextCodeAfter(mTokens, mColon));
   if (ASite.TypeText = '') or not PrecedesName(mTokens[mPrev]) then
   begin
     Exit;

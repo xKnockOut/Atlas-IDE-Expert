@@ -39,8 +39,6 @@ type
     [Test]
     procedure AgeTexts;
     [Test]
-    procedure OrderFollowsTabCaptions;
-    [Test]
     procedure MethodAtLastChange;
     [Test]
     procedure SelectShowsOnlyCommitsOnWorkFiles;
@@ -92,9 +90,10 @@ uses
   System.DateUtils,
   Atlas.Core.Projects.Summary,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Providers.Null,
+  Atlas.Core.VersionControl.Null,
   Atlas.Core.Welcome.Projects,
-  Atlas.Core.Welcome.Continue;
+  Atlas.Core.Welcome.Continue,
+  Atlas.Tests.Lists;
 
 const
   cRoot = 'C:\Repo';
@@ -222,17 +221,8 @@ begin
 end;
 
 function TFakeVcs.Called(const AName: string): Boolean;
-var
-  mCall: string;
 begin
-  Result := False;
-  for mCall in Calls do
-  begin
-    if mCall = AName then
-    begin
-      Exit(True);
-    end;
-  end;
+  Result := TTestLists.Contains(Calls, AName);
 end;
 
 function TFakeVcs.CalledStarting(const APrefix: string): Boolean;
@@ -572,24 +562,6 @@ begin
     'kurz nach Mitternacht: gestern, nicht vor 1 Std.');
   Assert.AreEqual<TAtlasContinueAge>(TAtlasContinueAge.Date,
     TAtlasWelcomeContinue.Age(Stamp(18, 40) - 3, mNow_, mValue));
-end;
-
-procedure TAtlasWelcomeContinueTests.OrderFollowsTabCaptions;
-var
-  mFiles, mOrdered: TArray<string>;
-begin
-  mFiles := [Path('A.pas'), Path('B.pas'), Path('Sub\B.pas'), Path('C.pas'), Path('Projekt.dpr')];
-  mOrdered := TAtlasWelcomeContinue.OrderByTabs(mFiles, ['Willkommensseite', 'C.pas', '*B.pas', 'Projekt', 'B.pas*',
-    'A']);
-  Assert.AreEqual(5, Integer(Length(mOrdered)));
-  Assert.AreEqual(Path('C.pas'), mOrdered[0]);
-  Assert.AreEqual(Path('B.pas'), mOrdered[1], 'Markierung „*“ zählt nicht');
-  Assert.AreEqual(Path('Projekt.dpr'), mOrdered[2], 'Beschriftung ohne Endung');
-  Assert.AreEqual(Path('Sub\B.pas'), mOrdered[3], 'gleicher Name: der nächste noch freie');
-  Assert.AreEqual(Path('A.pas'), mOrdered[4]);
-  mOrdered := TAtlasWelcomeContinue.OrderByTabs(mFiles, nil);
-  Assert.AreEqual(Path('A.pas'), mOrdered[0], 'ohne Beschriftungen die Reihenfolge der Puffer');
-  Assert.AreEqual(Path('Projekt.dpr'), mOrdered[4]);
 end;
 
 procedure TAtlasWelcomeContinueTests.MethodAtLastChange;

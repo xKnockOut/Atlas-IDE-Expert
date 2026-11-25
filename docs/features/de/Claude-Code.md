@@ -4,7 +4,7 @@ Zurück zum [README](../../../README_DE.md)
 
 ## MCP-Werkzeuge
 
-Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
+Der Server bietet Claude Code 56 MCP-Werkzeuge, jeweils mit Vorschau:
 
 - **Code verstehen:**
   - Symbole suchen
@@ -12,6 +12,7 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - die Architektur des Projekts überblicken (`get_architecture`, auch im Vergleich mit einem gespeicherten Stand)
   - den Index in einer kleinen Sprache abfragen (`query_code`)
   - Hotspots und Änderungskopplung aus dem Git- oder SVN-Verlauf finden (`get_hotspots`)
+  - Geschichte einer Methode über Umbenennen und Verschieben verfolgen, mit Issues (`get_symbol_history`)
   - den kürzesten Weg zwischen zwei Symbolen oder Units finden (`find_path`)
   - Deklarationen samt Begründungskommentaren (`get_rationale`) und Typ- und Aufrufhierarchien lesen
   - die Auswirkungen einer Änderung ermitteln (`get_impact`)
@@ -19,21 +20,83 @@ Der Server bietet Claude Code 33 MCP-Werkzeuge, jeweils mit Vorschau:
   - Komponenten- und Formularinfos, Diagnosen, Metriken und TODOs abfragen
   - ungenutzten Code finden (`find_unused_code`)
   - die Abhängigkeiten einer Unit samt Zyklen lesen (`get_unit_dependencies`)
+  - Umsetzungen einer Interface- oder virtuellen Methode finden, mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`) und auf Wunsch mit Rumpf (`find_implementations`)
+  - bis zu 10 lesende Abfragen in einem Aufruf auf einem gemeinsamen Indexstand (`batch`)
 - **Prüfen:**
   - geplanten Code mit `check_code` vor dem Schreiben prüfen
-  - Treffer erklären
+  - Treffer erklären (`explain_finding`): derselbe Auftrag wie „Als Auftrag für KI-Assistenten kopieren“ im Fenster „Atlas-Prüfung“, mit Ausschnitt ±8 Zeilen und der Schlusszeile, womit der Assistent nachprüft (`check_code`, bei sicheren Korrekturen `fix_findings`)
+  - in der Doku von Atlas nachschlagen: Regeln mit Schweregrad im Projekt, Einstellungen mit aktuellem Wert, Fenster und Tastenkürzel (`search_atlas_docs`)
   - Befunde an Hooks von Claude Code melden (`hook_check`)
 - **Bauen und Testen:**
   - über die IDE bauen (`build_project`, `get_last_build`)
+  - das in der IDE begonnene Issue mit Checkliste und Codeverweisen lesen (`get_current_issue`)
+  - Compilermeldungen an ihrer Stelle erklären, mit der bekannten Delphi-Falle und einer sicheren Korrektur als Diff (`explain_compiler_message`)
   - DUnitX-Tests ausführen
+  - den letzten Testlauf der IDE lesen, ohne neu zu laufen (`get_last_tests`: rote Tests mit Datei:Zeile, erwartet/erhalten, Protokoll, neu rot, wackelig, Leck, veraltet)
+  - sehen, wo der Entwickler in der IDE gerade ist (`get_ide_context`: Datei, Cursor, Methode, Auswahl, aktives Projekt, letzter Build, Reiter)
+- **Debuggen in der laufenden IDE** (#1874, `debug.mcp`, Vorgabe aus):
+  - ein Projekt oder einen einzelnen DUnitX-Test im Debugger starten und beenden (`debug_start`, `debug_stop`)
+  - Haltepunkte setzen und entfernen (`set_breakpoint`, `remove_breakpoint`); sie stehen in der Gruppe `Atlas-KI`, die eigenen bleiben unberührt
+  - weiterlaufen lassen und schrittweise ausführen (`debug_continue`, `debug_step`), Aufrufstapel, lokale Werte und Threads lesen (`debug_state`), Ausdrücke auswerten (`debug_evaluate`)
+  - Aufrufe mit Nebenwirkungen und Zuweisungen brauchen eigene Erlaubnisse (`debug.mcp.sideEffects`, `debug.mcp.modify`), in eine Sitzung, die der Entwickler selbst debuggt, kommt der Assistent nur mit `debug.mcp.attach`
 - **Ändern:**
   - schreibend umbenennen
   - Code-Aktionen anwenden
   - formatieren (`format_code`)
   - Methode extrahieren, auf Wunsch samt gleicher Stellen (`extract_method`)
+  - Refactorings des Kontextmenüs mit Argumenten statt Rückfragen (`refactor`)
   - oder alle sicheren Treffer von Regeln auf einmal korrigieren (`fix_findings`)
+  - nach dem Schreiben meldet jedes dieser Werkzeuge die neuen und behobenen Befunde der geänderten Dateien (#2603, `mcp.reportFindingsAfterEdit`, Vorgabe an; die letzte Auswertung liefert `delphi://edits/last`)
 
 Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts.
+
+## Geschützte Dateien (#2608)
+
+`assistants.protected` in `atlas.json` nennt Dateien, die KI-Assistenten nicht ändern dürfen (erzeugte Units, `CHANGELOG.md` …), je Muster mit Grund und dem richtigen Weg. Die schreibenden MCP-Werkzeuge lehnen eine solche Änderung ab und schreiben dann gar nichts, auch keine andere Datei des Aufrufs; die Vorschau nennt die Datei schon. Der Hook meldet Änderungen mit den eigenen Werkzeugen des Assistenten als Fehler und lehnt sie im Plugin `atlas` vorher ab; `delphi://conventions` listet die geschützten Dateien.
+
+## KI-Assistenten in der IDE
+
+Das Modul KI-Assistenten (`assistants.enabled`) nimmt Aufträge von MCP-Clients in der laufenden IDE an: Builds über `build_project` und Änderungen an offenen Dateien, die als ein Rückgängig-Schritt im Editorpuffer landen.
+
+- **Anzeige „KI-Assistent aktiv“** (#1906, `assistants.banner`): Ein Feld im Atlas-Statusfeld zeigt, welches Projekt gerade für einen KI-Assistenten gebaut wird oder welche offene Datei er zuletzt geändert hat (eine Minute lang).
+- **Pause für KI:** Ein Klick auf das Feld oder der Befehl „Pause für KI-Assistenten“ in der Palette hält KI-Assistenten an. Neue Builds und Änderungen an offenen Dateien lehnt die IDE dann mit Grund ab, der MCP-Server schreibt die Datei auch nicht selbst; ein laufender Build läuft zu Ende. Während der Pause bleibt das Feld stehen, ein zweiter Klick hebt sie auf. Ein Rechtsklick auf das Feld öffnet das Fenster „Atlas-KI-Protokoll“.
+- **Änderungen an ungespeicherten Dateien zurückhalten** (#2605, `assistants.editHoldModified`): Will ein KI-Assistent eine Datei ändern, die im Editor ungespeicherte Änderungen hat, wartet die Änderung auf dich statt abgelehnt zu werden. Ein Hinweis nennt Datei, Zeilen und Assistent; „Speichern und übernehmen“ speichert deine Fassung und übernimmt die Änderung als eigenen Rückgängig-Schritt, „Als Vergleich öffnen“ zeigt den Vorschlag neben deinem Stand, „Verwerfen“ lässt alles wie es ist. Überschneidet sich die Änderung mit deinen, öffnet sich der Vergleich. Das Statusfeld zählt wartende Änderungen, ein Klick zeigt die erste.
+- **Fragen in der IDE** (#2620, `assistants.questionsInIde`): Mit `ask_user` fragt ein KI-Assistent dich direkt in der IDE, mit Antworten zur Auswahl oder eigener Antwort. „Später“ legt die Frage ins Statusfeld, „Abbrechen“ lehnt sie ab; weitere Fragen warten der Reihe nach. Während „Pause für KI“ werden Fragen abgelehnt. Auch schreibende Werkzeuge fragen nach (`mcp.confirm`): `rename_symbol`, ob erschlossene Stellen mit umbenannt werden, `fix_findings` vor dem Schreiben in 5 oder mehr Dateien; kann der KI-Client selbst fragen (MCP-Elicitation), fragt er, sonst die IDE.
+- <a id="window-atlasassistantslog"></a>**Fenster „Atlas-KI-Protokoll“** (#2049, `assistants.log`, `assistants.log.max`): Ein andockbares Fenster (Palette „Atlas-KI-Protokoll“) listet alle Aufträge von KI-Assistenten dieser Sitzung: Änderungen mit Datei, Methode und Zeilen, Builds mit Ergebnis, Ablehnungen, wartende und verworfene Änderungen, Fragen mit Antwort. Doppelklick springt zur Stelle; „Unterschied“ zeigt die Änderung, „Alle dieser Sitzung“ alle zusammen, „Zurücknehmen“ stellt den alten Text wieder her, solange die Stelle seither unverändert ist (ein Rückgängig-Schritt). Das Protokoll lebt nur im Speicher, höchstens `assistants.log.max` Einträge (Vorgabe 500).
+- **Leiste „KI-Assistent debuggt“** (#1874, `debug.mcp.banner`): Solange ein Assistent über MCP debuggt, zeigt der Editor, wer es ist, mit „Pause für KI“ und „Übernehmen“ (die Sitzung gehört dann wieder dem Entwickler).
+- **Wo der Entwickler gerade ist** (#2050, `assistants.context`): Das Modul liefert `get_ide_context` die offene Datei mit Cursor und Methode, die Auswahl (höchstens `assistants.context.selectionMax` Zeichen), das aktive Projekt und die Reiter.
+
+## KI-Anbieter
+
+Das Modul KI-Assistenten kann selbst einen KI-Anbieter fragen (`assistants.provider`). Der Schlüssel liegt nur im Anmeldespeicher von Windows (Optionen › KI-Assistenten, „Schlüssel hinterlegen …“).
+
+- **Anthropic-API:** Modell in `assistants.model`.
+- **OpenAI-kompatibel** (#2056, `assistants.provider` = `openai-compatible`): lokale Modelle über LM Studio, llama.cpp-Server, Ollama oder ein Firmen-Gateway (`assistants.openaiCompatible.url`, `.model`, `.timeoutMs`). „Modelle abrufen“ holt die Liste vom Server, „Verbindung testen“ zeigt Antwortzeit und Modell und warnt, wenn die Antwort länger dauert als die Tipppause. Ein Schlüssel ist freiwillig und geht nur über https oder an den eigenen Rechner.
+
+Was den Anbieter nutzt:
+
+- **KI-Schattentext** (#1922, `assistants.inlineSuggestions`, Vorgabe aus): Passt nach Enter kein gelernter Vorschlag, fragt Atlas den Anbieter. Mit geht der Ausschnitt um die Schreibmarke (`assistants.contextLines`) und die Köpfe der Klasse aus dem Index; Dateien aus `assistants.exclude` gehen nie hinaus, `assistants.dailyLimit` begrenzt die Anfragen je Tag. Ein Vorschlag erscheint nur, wenn der Server ihn geprüft hat (keine neuen Syntaxfehler, nur bekannte Bezeichner). Tab übernimmt, Esc verwirft.
+- **Issue zusammenfassen** (#2462, `issues.aiSummary`): „Zusammenfassen“ im Fenster „Atlas-Issue“ zeigt Stand, offene Fragen (mit wem), nächsten Schritt und die betroffenen Units als Links in den Editor. Vor dem ersten Senden je Tracker-Verbindung kommt ein Hinweis; die Zusammenfassung bleibt je Issue gespeichert und gilt als veraltet, sobald sich das Issue ändert. „Als Kommentar übernehmen“ füllt nur das Kommentarfeld.
+
+## Verbundene IDE für Kommandozeilen-Assistenten (#2377)
+
+Mit `assistants.link` (Vorgabe aus) meldet sich RAD Studio bei Kommandozeilen-Assistenten als verbundene IDE, wie es Editoren mit eigener Erweiterung tun. Atlas öffnet dafür einen WebSocket-Server nur auf 127.0.0.1 mit zufälligem Port und einem Token je IDE-Sitzung und legt eine Lock-Datei in den Konfigurationsordner des Assistenten (`%USERPROFILE%\.claude\ide\<Port>.lock` bzw. unter `CLAUDE_CONFIG_DIR`); beim Abschalten oder Beenden verschwindet sie wieder. Verbindungen ohne Token oder aus einem Browser lehnt der Server ab.
+
+- **Auswahl live** (`assistants.link.shareSelection`): Die Auswahl im Editor geht an den Assistenten, sobald sie kurz ruht; ohne Auswahl die Zeile der Schreibmarke.
+- **Auswahl an den Assistenten:** Befehl im Kontextmenü des Editors und Taste (`assistants.link.mentionKey`, Vorgabe Strg+Umschalt+Alt+K) schicken Datei und Zeilen der Auswahl als Erwähnung.
+- **Vorschlag als Vergleich** (`assistants.link.diffPreview`): Ein Vorschlag des Assistenten erscheint als Vergleich mit dem jetzigen Stand der Datei. „Annehmen“ ändert die Datei als ein Rückgängig-Schritt und speichert sie, „Annehmen und öffnen“ zeigt sie danach im Editor, „Ablehnen“ oder Schließen lässt sie unverändert. Erst dann erfährt der Assistent die Entscheidung. Hat sich die Datei inzwischen geändert, zeigt der Vergleich den neuen Stand.
+- **Werkzeuge:** offene Dateien und Arbeitsordner, Auswahl, Datei öffnen und einen Bereich markieren, ungespeicherte Änderungen prüfen und speichern, Befunde von Atlas und Compilermeldungen. Code in der IDE ausführen kann der Assistent nicht.
+- **Statusfeld „Assistent verbunden“** mit dem Namen des Assistenten; ein Klick bietet „Trennen“. Die Pause für KI gilt auch hier: Speichern und Vorschläge lehnt die IDE dann ab.
+
+### KI-Anbieter der IDE (Smart CodeInsight, #2744, #2745)
+
+Ab Delphi 12.2 hat die IDE eigene KI-Anbieter (Tools › Optionen › Smart CodeInsight). Atlas teilt sie in beide Richtungen; beides steht auf der Seite *KI-Assistenten* und ist standardmäßig aus.
+
+- **Anbieter der IDE mitbenutzen** (`assistants.ideProvider`): Einfache Aufgaben anderer Atlas-Funktionen, also eine Frage mit einer Antwort wie „Zusammenfassen“ im Fenster „Atlas-Issue“, gehen an einen Anbieter der IDE. `assistants.ideProvider.name` wählt ihn („Anbieter der IDE …“ listet die aktiven), leer heißt: der erste aktive mit Anweisung oder Chat. Ein genannter Anbieter, der aus ist oder fehlt, wird nicht still durch einen anderen ersetzt. Die Seite zeigt alle Anbieter der IDE mit Status und Funktionen und springt mit „Smart CodeInsight öffnen“ dorthin.
+- **Quelle für einfache Aufgaben** (`assistants.textSource`): `ide` nimmt den Anbieter der IDE und sonst den eigenen (`assistants.provider`), `own` umgekehrt, `none` keinen; die Funktionen bleiben dann ausgeblendet. Dateien unter `assistants.exclude` gehen an keine Quelle.
+- **Eigenen Anbieter bei der IDE anmelden** (`assistants.registerInIde`): Der eingerichtete eigene Anbieter erscheint in Smart CodeInsight als „Atlas (Anbieter, Modell)“ mit Chat, Anweisung und, beim OpenAI-kompatiblen Server, der Modellliste. Anfragen der IDE zählen zur selben Tagesgrenze (`assistants.dailyLimit`) wie der KI-Schattentext; der Schlüssel bleibt im Anmeldespeicher von Windows. Die Seite des Eintrags in Smart CodeInsight zeigt Anbieter, Modell und die Anfragen von heute, „In Atlas einrichten …“ springt zur Atlas-Seite. Ohne eingerichteten Anbieter meldet Atlas nichts an; Umschalten wirkt ohne Neustart.
+- Atlas wählt seinen eigenen Eintrag nie als Anbieter der IDE, Anfragen laufen also nie im Kreis.
+- Die Schnittstelle der IDE kennt kein Streaming, keinen Systemprompt, keine Werkzeugaufrufe und keinen Gesprächsverlauf; KI-Schattentext, Suche nach Bedeutung und Debuggen mit KI nutzen sie deshalb nicht.
 
 ## Prompts (#1357)
 
@@ -54,6 +117,16 @@ Dazu die Ressource `delphi://conventions` mit den Konventionen des Projekts.
 
 **Ressourcen mit Vorlage** hängen eine Unit (Gliederung und interface-Teil), ein Formular, die Befunde einer Datei oder den letzten Build mit `@` an, z. B. `@delphi:delphi://unit/UI.Auftrag`.
 
+## Anweisungen für KI-Assistenten (#2615)
+
+KI-Assistenten lesen beim Start eine Anweisungsdatei des Projekts. Atlas schreibt die Regeln aus `atlas.json` als Kurzfassung hinein, damit der Assistent sie kennt, bevor er die erste Zeile schreibt:
+
+- Regelprofil, Grenzwerte der aktiven Metrik-Regeln, Benennung (`naming-prefix`), verbotene Symbole mit Ersatz, die in `atlas.json` auf Fehler gestellten Regeln, die geschützten Dateien aus `assistants.protected` und die Pflichtprüfungen aus `assistants.instructions.checks`.
+- Der Abschnitt steht zwischen `<!-- atlas:begin … -->` und `<!-- atlas:end -->`; nur er wird ersetzt, der übrige Text der Datei bleibt. Fehlt er, hängt Atlas ihn an; fehlt die Datei, legt Atlas sie an.
+- Dateien: `assistants.instructions.file` (Vorgabe `["AGENTS.md"]`), relativ zum Ordner von `atlas.json`. Sprache wie `mcp.promptLanguage`.
+- Kommandozeile: `AtlasServer --check . --write-instructions` schreibt, `--check-instructions` prüft nur und endet mit Exit-Code 1, wenn ein Abschnitt veraltet ist (für CI und Pre-Commit-Hooks).
+- In der IDE: Atlas › „Anweisungen für KI-Assistenten aktualisieren“ (auch in der Befehlspalette) schreibt die Dateien und zeigt im Meldungsfenster, welche Zeilen sich geändert haben. Nach dem Speichern von `atlas.json` weist Atlas auf einen veralteten Abschnitt hin; abschaltbar mit `assistants.instructionsHint`.
+
 ## Plugin `atlas`
 
 - Das Plugin `atlas` prüft außerdem jede Pascal-Datei, die Claude ändert, sofort mit den Prüfregeln des Projekts (Hook mit `hook_check`, Befunde gehen direkt an Claude zurück).
@@ -64,6 +137,7 @@ Einrichtung: [Editors/ClaudeCode](../../../Editors/ClaudeCode/README.md), Werkze
 ## Neue Werkzeuge entwickeln
 
 - `pwsh Tools/Start-McpInspector.ps1` öffnet den [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) gegen den Server (Browser, Terminal oder Kommandozeile) und zeigt jedes Werkzeug, sein Schema und die rohen JSON-RPC-Nachrichten.
+- `delphi://stats` zeigt je Werkzeug, wie oft der KI-Assistent es aufruft, wie oft es scheitert (mit dem letzten fehlgeschlagenen Aufruf), wie langsam und groß seine Antworten sind und welche Werkzeuge in den letzten 30 Tagen nie vorkamen (#2611).
 - `pwsh Tools/Test-McpTools.ps1` ruft jedes Werkzeug einmal mit Beispielargumenten gegen das Referenzprojekt auf und schreibt den rohen Mitschnitt.
 
 Siehe [docs/MCP.md](../../../docs/MCP.md#werkzeuge-entwickeln-und-prüfen).

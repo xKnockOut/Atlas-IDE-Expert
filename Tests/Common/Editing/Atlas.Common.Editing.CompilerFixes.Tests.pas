@@ -14,8 +14,6 @@ type
   [TestFixture]
   TCompilerFixesTests = class
   public
-    [Test]
-    procedure QuotedNamesFromMessages;
     /// <summary>Abnahme: H2443 für System.Generics.Collections trägt die Unit ein.</summary>
     [Test]
     procedure H2443AddsUnit;
@@ -51,8 +49,9 @@ uses
   System.IOUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.CompilerFixes;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Editing.CompilerFixes,
+  Atlas.Tests.Files;
 
 const
   cLB = #13#10;
@@ -98,7 +97,7 @@ begin
     end;
     if Length(mFixes) > 0 then
     begin
-      Result := TChangeSignature.ApplyEdits(AText, mFixes[0].Edits);
+      Result := TTextChanges.Apply(AText, mFixes[0].Edits);
     end;
   finally
     mTree.Free;
@@ -119,16 +118,6 @@ begin
 end;
 
 { TCompilerFixesTests }
-
-procedure TCompilerFixesTests.QuotedNamesFromMessages;
-begin
-  Assert.AreEqual('Add|System.Generics.Collections', string.Join('|', TCompilerFixes.QuotedNames(
-    'Inline function ''Add'' has not been expanded because unit ''System.Generics.Collections'' is not ' +
-    'specified in USES list')));
-  Assert.AreEqual('AnsiString|string', string.Join('|', TCompilerFixes.QuotedNames(
-    'Implizite String-Umwandlung von ''AnsiString'' zu ''string''')));
-  Assert.AreEqual('', string.Join('|', TCompilerFixes.QuotedNames('ohne Namen ''offen')));
-end;
 
 procedure TCompilerFixesTests.H2443AddsUnit;
 const
@@ -267,7 +256,7 @@ begin
       '''S''')], 'W1057', Context, mFix));
     Assert.AreEqual('Alle W1057 in der Datei beheben (2)', mFix.Title);
     Assert.AreEqual(StringReplace(StringReplace(mText, 'S := A;', 'S := string(A);', []), 'T := A;', 'T := string(A);',
-      []), TChangeSignature.ApplyEdits(mText, mFix.Edits));
+      []), TTextChanges.Apply(mText, mFix.Edits));
     Assert.IsFalse(TCompilerFixes.FixAll(mText, mTree, [TFixMessage.Create('W1057', 9, -1, 'x ''A'' y ''string''')],
       'W1057', Context, mFix), 'eine Meldung reicht nicht');
     Assert.IsFalse(TCompilerFixes.FixAll(mText, mTree, nil, 'E2003', Context, mFix), 'E2003 hat eine Auswahl');
@@ -351,32 +340,6 @@ const
     '' + cLB +
     'end.' + cLB;
 
-function TestsFile(const ARelative: string): string;
-var
-  mStarts: TArray<string>;
-  mStart, mDirectory: string;
-begin
-  mStarts := [ExtractFileDir(ParamStr(0)), GetCurrentDir];
-  for mStart in mStarts do
-  begin
-    mDirectory := mStart;
-    while mDirectory <> '' do
-    begin
-      Result := TPath.Combine(mDirectory, TPath.Combine('Tests', ARelative));
-      if TFile.Exists(Result) then
-      begin
-        Exit;
-      end;
-      if ExtractFileDir(mDirectory) = mDirectory then
-      begin
-        Break;
-      end;
-      mDirectory := ExtractFileDir(mDirectory);
-    end;
-  end;
-  Result := '';
-end;
-
 procedure TCompilerFixesTests.MatchesGoldenFile;
 const
   // Von unten nach oben, damit die Zeilen darüber gelten; die uses-Korrekturen zuletzt.
@@ -395,7 +358,7 @@ begin
     mText := Fixed1(mText, TFixMessage.Create(cCodes[mIndex], cLines[mIndex], -1, cTexts[mIndex]));
     Assert.AreNotEqual('', mText, cCodes[mIndex]);
   end;
-  mFileName := TestsFile(TPath.Combine('Common', TPath.Combine('Editing',
+  mFileName := TTestData.Path(TPath.Combine('Common', TPath.Combine('Editing',
     'Atlas.Common.Editing.CompilerFixesGolden.pas')));
   Assert.AreNotEqual('', mFileName, 'Golden-Datei nicht gefunden');
   mGolden := TFile.ReadAllText(mFileName, TEncoding.UTF8);

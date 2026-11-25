@@ -60,13 +60,13 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Projects,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;
 

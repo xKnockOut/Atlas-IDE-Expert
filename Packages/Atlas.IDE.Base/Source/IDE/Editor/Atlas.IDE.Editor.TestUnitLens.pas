@@ -86,19 +86,20 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style;
 
 const
   cTestUnitCommand = 'atlas.server.testUnit';
@@ -119,6 +120,8 @@ end;
 
 constructor TAtlasEditorTestUnitLens.Create(const ASession: TAtlasTestUnitLensSessionFunc;
   const ARun: TAtlasLensCommandProc);
+const
+  cTickMs = 250;
 var
   mServices: INTACodeEditorServices;
 begin
@@ -136,7 +139,7 @@ begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -265,6 +268,10 @@ end;
 
 procedure TAtlasEditorTestUnitLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+const
+  // Rahmen und Fläche der Linse, Anteil der Akzentfarbe
+  cPillBorder = 0.35;
+  cPillFill = 0.12;
 var
   mText, mLine: string;
   mCell: TRect;
@@ -293,9 +300,10 @@ begin
       Exit;
     end;
     mCell := TAtlasLensPill.CellAfter(Context, mLine);
-    mBack := TAtlasLensPill.BackAt(Context.Canvas, mCell.Left, Rect.Top + 1);
+    mBack := TAtlasIdeStyle.SampleBack(Context.Canvas, mCell.Left, Rect.Top + 1);
     FLensRect := TAtlasLensPill.Paint(Context.Canvas, Rect, mCell.Left, mText,
-      TAtlasLensPillStyle.Create(TAtlasColors.ForBackground(mBack).Accent, mBack, 0.35, 0.12, [fsUnderline]));
+      TAtlasLensPillStyle.Create(TAtlasColors.ForBackground(mBack).Accent, mBack, cPillBorder, cPillFill,
+      [fsUnderline]));
     FLensTopRow := Context.EditView.TopRow;
     TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTestUnit, Context.FileName,
       FLine, ''), FLensRect, FLensTopRow, Rect.Height);
@@ -341,13 +349,8 @@ begin
 end;
 
 class procedure TAtlasEditorTestUnitLens.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 end.

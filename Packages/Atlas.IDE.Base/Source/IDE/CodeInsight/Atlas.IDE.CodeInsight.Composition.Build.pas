@@ -33,7 +33,8 @@ procedure MetricsReport;
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  System.Generics.Collections,
+  // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
   System.IOUtils,
@@ -42,12 +43,11 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Pipeline,
-  Atlas.Core.Build.Verdict,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.Metrics,
   Atlas.Core.Projects.Baseline,
   Atlas.Core.Problems.Store,
@@ -56,21 +56,33 @@ uses
   Atlas.IDE.Build.LastMessages,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Problems.Controller,
+  Atlas.IDE.CodeInsight.Adapters.BuildNotifications,
   Atlas.IDE.CodeInsight.Composition.Session,
-  Atlas.IDE.CodeInsight.Composition.Status;
+  Atlas.IDE.CodeInsight.Composition.Status,
+  Atlas.Plugin.Localization.Language,
+  Atlas.Core.Build.Contract;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit.</summary>
+  TBuildCompositionText = (MessagesWindow);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TBuildCompositionText] of string = (
+    ('Meldungsfenster: %s (z. B. %s, Zeile %d)'),
+    ('Messages window: %s (e.g. %s, line %d)'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TBuildCompositionText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   cMetricsCommand = 'atlas.server.metrics';
   cTodosCommand = 'atlas.server.todos';
-
-type
-  /// <summary>Bewertung eines Builds (#530) aus dem Modul Build-Pipeline bzw. nur nach dem Compiler (Modul aus) an
-  /// die Benachrichtigungszentrale (#601).</summary>
-  TNotificationsVerdictListener = class(TInterfacedObject, IAtlasBuildVerdictListener)
-  public
-    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
-      const AVerdict: TAtlasBuildVerdict);
-  end;
 
 var
   CompileInstance: TAtlasIdeCompileEvents;
@@ -90,29 +102,6 @@ end;
 function CheckOnSave: TAtlasIdeCheckOnSave;
 begin
   Result := CheckOnSaveInstance;
-end;
-
-{ TNotificationsVerdictListener }
-
-procedure TNotificationsVerdictListener.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
-  const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
-var
-  mMessages: TArray<TAtlasCompilerMessage>;
-  mProject: TAtlasCompileProject;
-  mVerdict: TAtlasBuildVerdict;
-begin
-  if Notifications = nil then
-  begin
-    Exit;
-  end;
-  mMessages := AMessages;
-  mProject := AProject;
-  mVerdict := AVerdict;
-  TAtlasGuard.Run(TAtlasFeature.Notifications,
-    procedure
-    begin
-      Notifications.BuildEvaluated(mMessages, mProject, mVerdict);
-    end);
 end;
 
 function MetricsArguments(const AProject, AMode: string): string;
@@ -148,6 +137,8 @@ end;
 /// Projekt-Zusammenfassung (Projektverlauf #758, Einrichtung #759): in einem Hintergrundlauf vom laufenden Server
 /// (startet ihn nicht), Zeitpunkt AStampUtc der des Builds: Damit kommen die Werte in seinen Messpunkt.</summary>
 procedure RecordProjectMetrics(const AProject: string; AStampUtc: TDateTime);
+const
+  cSummaryTimeoutMs = 60000;
 var
   mProject: string;
   mStamp: TDateTime;
@@ -160,7 +151,7 @@ begin
   mProject := AProject;
   mStamp := AStampUtc;
   Manager.RunCommandsAsync([cMetricsCommand, cTodosCommand],
-    [MetricsArguments(mProject, 'summary'), MetricsArguments(mProject, 'summary')], 60000,
+    [MetricsArguments(mProject, 'summary'), MetricsArguments(mProject, 'summary')], cSummaryTimeoutMs,
     procedure(AAnswers: TArray<string>)
     var
       mAnswers: TArray<string>;
@@ -221,6 +212,8 @@ begin
 end;
 
 procedure MetricsReport;
+const
+  cReportTimeoutMs = 120000;
 var
   mProject: IOTAProject;
   mFileName: string;
@@ -243,7 +236,7 @@ begin
     GuardWarning(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.MetricsReportFailed));
     Exit;
   end;
-  if Manager.RunCommandAsync(cMetricsCommand, MetricsArguments(mProject.FileName, 'markdown'), 120000,
+  if Manager.RunCommandAsync(cMetricsCommand, MetricsArguments(mProject.FileName, 'markdown'), cReportTimeoutMs,
     MetricsReportDone(mFileName)) then
   begin
     GuardWarning(TAtlasCodeInsightStrings.Text(TAtlasCodeInsightTextId.MetricsReportRunning));
@@ -383,7 +376,7 @@ begin
   end;
   if Length(AMessages) > 0 then
   begin
-    Manager.Report(Format('Meldungsfenster: %s (z. B. %s, Zeile %d)', [AInfo, AMessages[0].FileName,
+    Manager.Report(Format(UiText(TBuildCompositionText.MessagesWindow), [AInfo, AMessages[0].FileName,
       AMessages[0].Line]));
   end
   else
@@ -439,7 +432,7 @@ begin
   CompileInstance := TAtlasIdeCompileEvents.Create(mEvents);
   LastBuildMessages := TAtlasIdeLastBuildMessages.Create;
   NotificationsVerdict := AtlasModuleRegistry.Provide(IAtlasBuildVerdictListener,
-    TNotificationsVerdictListener.Create as IAtlasBuildVerdictListener);
+    TAtlasNotificationsVerdictListener.Create(Notifications) as IAtlasBuildVerdictListener);
 end;
 
 procedure UnregisterCompileEvents;
@@ -494,5 +487,8 @@ function ProjectSummariesStarted: Boolean;
 begin
   Result := ProjectSummaries <> nil;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.CodeInsight.Composition.Build', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

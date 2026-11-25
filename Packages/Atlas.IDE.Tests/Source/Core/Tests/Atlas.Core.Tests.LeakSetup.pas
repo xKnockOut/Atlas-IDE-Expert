@@ -103,7 +103,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.StrUtils,
   Atlas.Text.Json,
-  Atlas.Core.Lsp.Uris;
+  Atlas.Plugin.Lsp.Uris;
 
 function ChoiceOf(const AName: string): TAtlasLeakChoice;
 var

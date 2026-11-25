@@ -44,6 +44,10 @@ uses
   System.SysUtils;
 
 const
+  /// <summary>Trenner zwischen Schema und Authority einer URL.</summary>
+  cSchemeSeparator = '://';
+  /// <summary>Stelle des ersten Zeichens hinter "\\" eines UNC-Pfads.</summary>
+  cUncHostIndex = 3;
   /// <summary>Normierte Namen (klein, ohne Trenner) von Schlüsseln mit Zugangsdaten.</summary>
   cCredentialKeys: array[0..30] of string = ('password', 'passwort', 'passwd', 'pwd', 'pass', 'kennwort',
     'token', 'apitoken', 'accesstoken', 'authtoken', 'bearertoken', 'privatetoken', 'personalaccesstoken',
@@ -142,13 +146,13 @@ function HasAuthorityCredentials(const AValue: string): Boolean;
 var
   mScheme, mStop, mIndex: Integer;
 begin
-  mScheme := Pos('://', AValue);
+  mScheme := Pos(cSchemeSeparator, AValue);
   if mScheme = 0 then
   begin
     Exit(False);
   end;
   mStop := Length(AValue) + 1;
-  for mIndex := mScheme + 3 to Length(AValue) do
+  for mIndex := mScheme + Length(cSchemeSeparator) to Length(AValue) do
   begin
     if CharInSet(AValue[mIndex], ['/', '?', '#']) then
     begin
@@ -156,7 +160,8 @@ begin
       Break;
     end;
   end;
-  Result := Pos('@', Copy(AValue, mScheme + 3, mStop - mScheme - 3)) > 0;
+  Result := Pos('@', Copy(AValue, mScheme + Length(cSchemeSeparator),
+    mStop - mScheme - Length(cSchemeSeparator))) > 0;
 end;
 
 // Abfrageteil ohne ? und ohne Fragment; '' ohne Abfrage.
@@ -224,8 +229,8 @@ begin
   begin
     Exit(True);
   end;
-  Result := (Length(mPath) >= 3) and IsSeparator(mPath[1]) and IsSeparator(mPath[2]) and not IsSeparator(mPath[3]) and
-    (mPath[3] <> '*');
+  Result := (Length(mPath) >= cUncHostIndex) and IsSeparator(mPath[1]) and IsSeparator(mPath[2]) and
+    not IsSeparator(mPath[cUncHostIndex]) and (mPath[cUncHostIndex] <> '*');
 end;
 
 class function TTextCheckin.IsAbsolutePath(const APath: string): Boolean;

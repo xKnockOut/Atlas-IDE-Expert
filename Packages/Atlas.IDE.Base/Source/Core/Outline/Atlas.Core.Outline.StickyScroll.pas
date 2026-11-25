@@ -159,6 +159,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
@@ -210,11 +211,11 @@ class function TAtlasStickyScroll.OwnerKind(const AOwner: string; out AKind: TAt
 begin
   Result := True;
   AKind := TAtlasStickyKind.Branches;
-  if (AOwner = 'if') or (AOwner = 'else') then
+  if MatchStr(AOwner, ['if', 'else']) then
   begin
     AKind := TAtlasStickyKind.Branches;
   end
-  else if (AOwner = 'for') or (AOwner = 'while') or (AOwner = 'repeat') then
+  else if MatchStr(AOwner, ['for', 'while', 'repeat']) then
   begin
     AKind := TAtlasStickyKind.Loops;
   end
@@ -514,16 +515,6 @@ begin
   end;
 end;
 
-/// <summary>Ende der Folge ab AIndex aus Zeichen in AChars.</summary>
-function RunEnd(const AText: string; AIndex: Integer; const AChars: TSysCharSet): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and CharInSet(AText[Result], AChars) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 function IsNumberStart(const AText: string; AIndex: Integer): Boolean;
 begin
   Result := CharInSet(AText[AIndex], ['0'..'9']) or
@@ -537,15 +528,6 @@ begin
   Result := AIndex + 1;
   while (Result <= Length(AText)) and (CharInSet(AText[Result], ['0'..'9', 'a'..'f', 'A'..'F', '_', '.']) or
     (CharInSet(AText[Result], ['+', '-']) and CharInSet(AText[Result - 1], ['e', 'E']))) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function IdentEnd(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and TTextChars.IsIdentChar(AText[Result]) do
   begin
     Inc(Result);
   end;
@@ -582,7 +564,7 @@ begin
   end
   else if AText[AIndex] = '#' then
   begin
-    Result := RunEnd(AText, AIndex + 1, ['0'..'9', 'a'..'f', 'A'..'F', '$']);
+    Result := TTextChars.RunEnd(AText, AIndex + 1, ['0'..'9', 'a'..'f', 'A'..'F', '$']);
     AKind := TAtlasStickySyntax.Character;
   end
   else if IsNumberStart(AText, AIndex) then
@@ -593,17 +575,17 @@ begin
   else if (AText[AIndex] = '&') and TTextChars.IsIdentChar(CharAt(AText, AIndex + 1)) then
   begin
     // &begin: escapter Bezeichner, nicht reserviert.
-    Result := IdentEnd(AText, AIndex + 1);
+    Result := TTextChars.IdentEnd(AText, AIndex + 1);
     AKind := TAtlasStickySyntax.Identifier;
   end
   else if TTextChars.IsIdentChar(AText[AIndex]) then
   begin
-    Result := IdentEnd(AText, AIndex);
+    Result := TTextChars.IdentEnd(AText, AIndex);
     AKind := WordKind(AText, AIndex, Result);
   end
   else if CharInSet(AText[AIndex], [' ', #9]) then
   begin
-    Result := RunEnd(AText, AIndex, [' ', #9]);
+    Result := TTextChars.RunEnd(AText, AIndex, [' ', #9]);
     AKind := TAtlasStickySyntax.Plain;
   end;
 end;

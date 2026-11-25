@@ -62,13 +62,13 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Vcl.Dialogs,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Tracker.IssueCache,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Tracker.Issue.Strings,
@@ -152,6 +152,10 @@ end;
 
 /// <summary>Ergebnis fürs Protokoll, anonym.</summary>
 procedure LogWritten(const AProvider: IAtlasTrackerProvider; const AResult: TChecklistResult);
+const
+  cNotWritten = 'nicht geschrieben (%s)';
+  cWritten = 'geschrieben';
+  cDescriptionChanged = 'Beschreibung geändert';
 var
   mText: string;
 begin
@@ -159,14 +163,14 @@ begin
   begin
     Exit;
   end;
-  mText := 'nicht geschrieben (' + TAtlasCiBuild.ErrorKey(AResult.Error) + ')';
+  mText := Format(cNotWritten, [TAtlasCiBuild.ErrorKey(AResult.Error)]);
   if AResult.Applied then
   begin
-    mText := 'geschrieben';
+    mText := cWritten;
   end
   else if AResult.Changed then
   begin
-    mText := 'Beschreibung geändert';
+    mText := cDescriptionChanged;
   end;
   TAtlasGuard.Log(Format('Issue-Vorschau: Checkliste bei %s %s', [AProvider.Name, mText]));
 end;
@@ -376,8 +380,11 @@ begin
         mOk := mProvider.Details(TAtlasTrackerCall.Create(mEntry.Target, mTransport, TAtlasIssuePreview.cTimeoutMs),
           mEntry.Key, mComments, mResult, mError);
       except
-        on Exception do
+        on E: Exception do
+        begin
           mOk := False;
+          TAtlasGuard.Log('Issue-Vorschau: Details mit ' + E.ClassName + ' abgebrochen'); // german-ok Protokoll
+        end;
       end;
       mTransport := nil;
       if TAtlasShutdown.Signalled then

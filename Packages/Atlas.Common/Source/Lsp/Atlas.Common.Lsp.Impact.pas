@@ -56,7 +56,8 @@ uses
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Hierarchies,
-  Atlas.Common.Lsp.Impact.Forms;
+  Atlas.Common.Lsp.Impact.Forms,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
 {$SCOPEDENUMS ON}
@@ -145,12 +146,14 @@ type
     function LevelCount(ALevel: Integer): Integer;
     /// <summary>Alle Namen für run_tests, ohne Doppelte, in Reihenfolge der Tests.</summary>
     function RunNames: TArray<string>;
+    /// <summary>Index der Stelle, die zum Test ATestIndex führt; -1 ohne.</summary>
+    function PlaceOfTest(ATestIndex: Integer): Integer;
   end;
 
   /// <summary>Optionen der Analyse für die Datei AUri (Tiefe, Einstufung, Testunits, Zeitlimit).</summary>
   TImpactOptionsProvider = reference to function(const AUri: string): TImpactOptions;
 
-  TImpactAnalysis = class
+  TImpactAnalysis = class(TLspProjectFeature)
   public const
     cMethod = 'atlas/impact';
     cMinDepth = 1;
@@ -158,11 +161,6 @@ type
     cDefaultDepth = 2;
     cMaxPlaces = 1000;
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
-    FReadText: TReferenceReadText;
-    FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FOptionsFor: TImpactOptionsProvider;
     function OptionsFrom(AParams: TJSONObject; const AUri: string): TImpactOptions;
@@ -196,6 +194,8 @@ type
     class function EdgeName(AEdge: TImpactEdge): string; static;
     /// <summary>"depth", "count", "time".</summary>
     class function LimitName(ALimit: TImpactLimit): string; static;
+    /// <summary>{LimitName: true/false} je Grenze; der Aufrufer übernimmt das Objekt.</summary>
+    class function LimitsToJson(ALimits: TImpactLimits): TJSONObject; static;
     /// <summary>Antwort von atlas/impact; der Aufrufer übernimmt das Objekt.</summary>
     class function ToJson(const AResult: TImpactResult): TJSONObject; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -209,6 +209,7 @@ uses
   System.StrUtils,
   System.Diagnostics,
   System.Generics.Collections,
+  Atlas.Common.JsonRpc.CustomCancellation,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Documents.Uris,
@@ -218,10 +219,12 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.Usages,
   Atlas.Common.Editing.TestUnits,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Atlas.Common.Localization.Texts;
+  Atlas.Text.DUnitX.CommandLine,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -248,18 +251,6 @@ const
 type
   /// <summary>Zeitlimit der Analyse; zu Ende gelaufen bricht die nächste Prüfung mit EImpactTimeLimit ab.</summary>
   EImpactTimeLimit = class(Exception);
-
-  TImpactDeadline = class(TInterfacedObject, IJsonRpcCancellationToken)
-  private
-    FInner: IJsonRpcCancellationToken;
-    FClock: TStopwatch;
-    FLimitMs: Int64;
-  public
-    constructor Create(const AInner: IJsonRpcCancellationToken; ALimitMs: Integer);
-    function Expired: Boolean;
-    function IsCancellationRequested: Boolean;
-    procedure ThrowIfCancellationRequested;
-  end;
 
   /// <summary>Gelesene Dateien einer oder mehrerer Analysen (AnalyzeEach, #1353).</summary>
   TImpactFiles = class
@@ -288,7 +279,6 @@ type
     FSources: TImpactSources;
     FOptions: TImpactOptions;
     FToken: IJsonRpcCancellationToken;
-    FDeadline: TImpactDeadline;
     FPlaces: TList<TImpactPlace>;
     FTests: TList<TImpactTest>;
     /// <summary>Deklarationsschlüssel → Index in FPlaces; -1 = das Symbol.</summary>
@@ -344,39 +334,6 @@ type
     function Run(const AStart: THierarchyItem): TImpactResult;
   end;
 
-function WithoutGenerics(const AName: string): string;
-var
-  mBracket: Integer;
-begin
-  mBracket := Pos('<', AName);
-  if mBracket > 0 then
-  begin
-    Result := Copy(AName, 1, mBracket - 1);
-  end
-  else
-  begin
-    Result := AName;
-  end;
-end;
-
-function RangeContains(const AOuter: TTextRange; const APosition: TTextPosition): Boolean;
-
-  function Compare(const A, B: TTextPosition): Integer;
-  begin
-    if A.Line <> B.Line then
-    begin
-      Result := A.Line - B.Line;
-    end
-    else
-    begin
-      Result := A.Character - B.Character;
-    end;
-  end;
-
-begin
-  Result := (Compare(AOuter.StartPos, APosition) <= 0) and (Compare(APosition, AOuter.EndPos) <= 0);
-end;
-
 function RangeSize(const ARange: TTextRange): Int64;
 begin
   Result := Int64(ARange.EndPos.Line - ARange.StartPos.Line) * 100000 + ARange.EndPos.Character -
@@ -388,36 +345,22 @@ const
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType];
   cMethodKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_];
 
-{ TImpactDeadline }
-
-constructor TImpactDeadline.Create(const AInner: IJsonRpcCancellationToken; ALimitMs: Integer);
+/// <summary>Grund für das Token der Analyse: das Zeitlimit (0 = keins).</summary>
+function ImpactTimeLimit(ALimitMs: Integer): TJsonRpcCancelReason;
+var
+  mClock: TStopwatch;
 begin
-  inherited Create;
-  FInner := AInner;
-  FLimitMs := ALimitMs;
-  FClock := TStopwatch.StartNew;
-end;
-
-function TImpactDeadline.Expired: Boolean;
-begin
-  Result := (FLimitMs > 0) and (FClock.ElapsedMilliseconds >= FLimitMs);
-end;
-
-function TImpactDeadline.IsCancellationRequested: Boolean;
-begin
-  Result := Expired or ((FInner <> nil) and FInner.IsCancellationRequested);
-end;
-
-procedure TImpactDeadline.ThrowIfCancellationRequested;
-begin
-  if FInner <> nil then
-  begin
-    FInner.ThrowIfCancellationRequested;
-  end;
-  if Expired then
-  begin
-    raise EImpactTimeLimit.Create(cTexts[TImpactText.TimeLimitOfTheImpact].Text);
-  end;
+  mClock := TStopwatch.StartNew;
+  Result :=
+    function(out AClass: ExceptClass): string
+    begin
+      AClass := EImpactTimeLimit;
+      Result := '';
+      if (ALimitMs > 0) and (mClock.ElapsedMilliseconds >= ALimitMs) then
+      begin
+        Result := cTexts[TImpactText.TimeLimitOfTheImpact].Text;
+      end;
+    end;
 end;
 
 { TImpactTestScope }
@@ -436,7 +379,7 @@ begin
   Result.Pattern := APattern;
   if AProgramText <> '' then
   begin
-    Result.Units := TUsesClauses.UsedUnitsOf(AProgramText);
+    Result.Units := TPascalUses.UsedUnitsOf(AProgramText);
   end;
 end;
 
@@ -494,6 +437,20 @@ begin
   end;
 end;
 
+function TImpactResult.PlaceOfTest(ATestIndex: Integer): Integer;
+var
+  mStep: Integer;
+begin
+  for mStep := 0 to High(Places) do
+  begin
+    if Places[mStep].Test = ATestIndex then
+    begin
+      Exit(mStep);
+    end;
+  end;
+  Result := -1;
+end;
+
 { TImpactFiles }
 
 constructor TImpactFiles.Create(const AReadText: TReferenceReadText);
@@ -530,8 +487,7 @@ begin
   begin
     FMaxPlaces := TImpactAnalysis.cMaxPlaces;
   end;
-  FDeadline := TImpactDeadline.Create(ACancellation, AOptions.TimeoutMs);
-  FToken := FDeadline;
+  FToken := TJsonRpcCancellations.WithReason(ACancellation, ImpactTimeLimit(AOptions.TimeoutMs));
   FPlaces := TList<TImpactPlace>.Create;
   FTests := TList<TImpactTest>.Create;
   FKeys := TDictionary<string, Integer>.Create;
@@ -808,7 +764,7 @@ begin
   mFound := False;
   for mSymbol in mExtracted.Symbols do
   begin
-    if RangeContains(mSymbol.Range, APosition) and
+    if mSymbol.Range.Encloses(APosition) and
       (not mFound or (RangeSize(mSymbol.Range) < RangeSize(mBest.Range))) then
     begin
       mBest := mSymbol;
@@ -864,7 +820,7 @@ var
   mIndex: Integer;
 begin
   Result := False;
-  if not FResolver.ResolveTypeFrom(AFromUnit, WithoutGenerics(ATypeName), mResolved) or
+  if not FResolver.ResolveTypeFrom(AFromUnit, TTextNames.WithoutGenerics(ATypeName), mResolved) or
     not (mResolved.SymbolKind in cTypeKinds) or not FIndex.FindFile(mResolved.FileName, AUnit) then
   begin
     Exit;
@@ -967,7 +923,7 @@ var
   mEqualsAt: Integer;
 begin
   Result := AName;
-  mPrefix := WithoutGenerics(AAncestor) + '.';
+  mPrefix := TTextNames.WithoutGenerics(AAncestor) + '.';
   for mResolution in AOwner.Resolutions do
   begin
     mEqualsAt := Pos('=', mResolution);
@@ -1228,12 +1184,7 @@ end;
 constructor TImpactAnalysis.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
 constructor TImpactAnalysis.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -1399,17 +1350,6 @@ begin
   end;
 end;
 
-function RangesToJson(const ARanges: TArray<TTextRange>): TJSONArray;
-var
-  mRange: TTextRange;
-begin
-  Result := TJSONArray.Create;
-  for mRange in ARanges do
-  begin
-    Result.AddElement(TLspPositions.RangeToJson(mRange));
-  end;
-end;
-
 /// <summary>Eintrag einer Stelle in "places"; ATests: die Tests der Analyse für den Testnamen.</summary>
 function PlaceToJson(const APlace: TImpactPlace; const ATests: TArray<TImpactTest>): TJSONObject;
 begin
@@ -1418,7 +1358,7 @@ begin
   Result.AddPair('edge', TImpactAnalysis.EdgeName(APlace.Edge));
   Result.AddPair('cause', TJSONNumber.Create(APlace.Cause));
   Result.AddPair('item', TLspHierarchies.ItemToJson(APlace.Item));
-  Result.AddPair('ranges', RangesToJson(APlace.Ranges));
+  Result.AddPair('ranges', TLspPositions.RangesToJson(APlace.Ranges));
   Result.AddPair('atlasConfidence', APlace.Confidence.ToJson);
   Result.AddPair('forms', FormsToJson(APlace.Forms));
   if APlace.Terminal then
@@ -1449,14 +1389,14 @@ begin
   Result.AddPair('level', TJSONNumber.Create(ATest.Level));
 end;
 
-function LimitsToJson(ALimits: TImpactLimits): TJSONObject;
+class function TImpactAnalysis.LimitsToJson(ALimits: TImpactLimits): TJSONObject;
 var
   mLimit: TImpactLimit;
 begin
   Result := TJSONObject.Create;
   for mLimit := Low(TImpactLimit) to High(TImpactLimit) do
   begin
-    Result.AddPair(TImpactAnalysis.LimitName(mLimit), TJSONBool.Create(mLimit in ALimits));
+    Result.AddPair(LimitName(mLimit), TJSONBool.Create(mLimit in ALimits));
   end;
 end;
 
@@ -1495,29 +1435,6 @@ begin
   Result.AddPair('timeoutMs', TJSONNumber.Create(AResult.TimeoutMs));
 end;
 
-/// <summary>Baum der Datei AUri: aus dem Dokumentspeicher AStore (AShared) oder frisch gelesen (AOwnTree, der
-/// Aufrufer gibt ihn frei); nil, wenn sie sich nicht lesen lässt.</summary>
-function TreeFor(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
-  const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
-var
-  mDocument: ITextDocument;
-  mText: string;
-begin
-  AShared := nil;
-  AOwnTree := nil;
-  Result := nil;
-  if AStore.TryGet(AUri, mDocument) then
-  begin
-    AShared := TSyntaxTreeCache.Get(mDocument, ACancellation);
-    Result := AShared.Tree;
-  end
-  else if Assigned(AReadText) and AReadText(TDocumentUris.ToPath(AUri), mText) then
-  begin
-    AOwnTree := TSyntaxTreeCache.Parse(mText, ACancellation);
-    Result := AOwnTree;
-  end;
-end;
-
 function TImpactAnalysis.HandleImpact(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
@@ -1540,7 +1457,7 @@ begin
   end;
   mOptions := OptionsFrom(TJSONObject(AParams), mUri);
   mCancellation := TRequestCancellation.Create(ACancellation);
-  mTree := TreeFor(FStore, FReadText, mUri, mCancellation, mShared, mOwnTree);
+  mTree := ReferenceTreeOf(FStore, FReadText, mUri, mCancellation, mShared, mOwnTree);
   if mTree = nil then
   begin
     Exit(TJSONNull.Create);

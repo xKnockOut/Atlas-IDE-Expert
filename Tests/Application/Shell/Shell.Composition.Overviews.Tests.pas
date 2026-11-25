@@ -22,7 +22,7 @@ type
     /// <summary>Alle Befehle der Übersichten stehen in executeCommandProvider.</summary>
     [Test]
     procedure RegistersAllCommands;
-    /// <summary>Lesende Befehle laufen nebenläufig (Diagnose 06.11.2026), Berichte speichern und uses ändern in der
+    /// <summary>Lesende Befehle laufen nebenläufig, Berichte speichern und uses ändern in der
     /// Reihenfolge der Nachrichten.</summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;
@@ -48,6 +48,7 @@ uses
   Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.Lsp.DebugDisplay,
   Atlas.Common.Lsp.EventHandlers,
+  Atlas.Common.Lsp.DataAccessSites,
   Atlas.Common.Lsp.Recursion;
 
 const
@@ -81,9 +82,11 @@ var
   mText: string;
   mName: string;
 begin
-  mOverviews := TShellOverviews.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mOverviews := nil;
+  mCommands := nil;
   try
+    mOverviews := TShellOverviews.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mOverviews.RegisterReportCommands(mCommands);
     mOverviews.RegisterUnitCommands(mCommands);
     mCapability := mCommands.Capability;
@@ -95,7 +98,8 @@ begin
     for mName in TArray<string>.Create(TLspArchitecture.cCommand, TLspArchitecture.cSaveCommand, TLspQuery.cCommand,
       TLspHotspots.cCommand, TLspHotspots.cSaveCommand, TLspUnitRelations.cCommand, TLspUnitRelations.cMoveCommand,
       TLspUnitRelations.cRemoveCommand, TLspUnitRelations.cCostCommand, TLspUnitRelations.cUseUnitCommand,
-      TLspSymbolPath.cCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand, TLspRecursion.cCommand) do
+      TLspSymbolPath.cCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand, TLspDataAccessSites.cCommand,
+      TLspRecursion.cCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -111,9 +115,11 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mOverviews := TShellOverviews.Create(NewServices);
-  mCommands := TLspCommands.Create;
+  mOverviews := nil;
+  mCommands := nil;
   try
+    mOverviews := TShellOverviews.Create(NewServices);
+    mCommands := TLspCommands.Create;
     mOverviews.RegisterReportCommands(mCommands);
     mOverviews.RegisterUnitCommands(mCommands);
     for mName in TArray<string>.Create(TLspArchitecture.cCommand, TLspQuery.cCommand, TLspHotspots.cCommand,
@@ -123,7 +129,8 @@ begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;
     for mName in TArray<string>.Create(TLspArchitecture.cSaveCommand, TLspUnitRelations.cMoveCommand,
-      TLspUnitRelations.cRemoveCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand) do
+      TLspUnitRelations.cRemoveCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand,
+      TLspDataAccessSites.cCommand) do
     begin
       Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
     end;
@@ -140,10 +147,13 @@ var
   mArguments: TJSONArray;
   mResult: TJSONValue;
 begin
-  mOverviews := TShellOverviews.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mOverviews := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mOverviews := TShellOverviews.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mOverviews.RegisterUnitCommands(mCommands);
     mArguments.Add('file:///tmp/u.pas');
     mResult := mCommands.Execute(TLspRecursion.cCommand, mArguments);

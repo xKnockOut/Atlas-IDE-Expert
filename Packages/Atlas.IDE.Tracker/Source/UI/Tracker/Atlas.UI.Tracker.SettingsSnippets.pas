@@ -26,13 +26,10 @@ type
     Defaults: TButton;
   end;
 
-  TAtlasTrackerSnippetsPart = class
+  TAtlasTrackerSnippetsPart = class(TAtlasTrackerSettingsPart)
   private
-    FRows: TAtlasTrackerSettingsRows;
-    FTables: TAtlasTrackerSettingsTables;
     FView: TAtlasTrackerSnippetsView;
     FAnchor: TWinControl;
-    FFilling: Boolean;
     function Table: TAtlasTrackerSnippetTable;
     procedure BuildList;
     procedure BuildFields;
@@ -59,7 +56,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.UI.Tracker.Settings.Strings;
+  Atlas.UI.Tracker.Settings.Strings,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 const
   cSnippetsRow = 100;
@@ -75,9 +73,7 @@ type
 
 constructor TAtlasTrackerSnippetsPart.Create(ARows: TAtlasTrackerSettingsRows; ATables: TAtlasTrackerSettingsTables);
 begin
-  inherited Create;
-  FRows := ARows;
-  FTables := ATables;
+  inherited Create(ARows, nil, ATables);
 end;
 
 function TAtlasTrackerSnippetsPart.Table: TAtlasTrackerSnippetTable;
@@ -185,12 +181,7 @@ end;
 
 procedure TAtlasTrackerSnippetsPart.SelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
-  if FFilling or not Selected or (Item = nil) then
-  begin
-    Exit;
-  end;
-  Table.Select(Item.Index);
-  FillFields;
+  TakeSelection(Item, Selected, Table.Select, FillFields);
 end;
 
 procedure TAtlasTrackerSnippetsPart.NameChange(Sender: TObject);
@@ -239,11 +230,7 @@ end;
 
 procedure TAtlasTrackerSnippetsPart.RemoveClick(Sender: TObject);
 begin
-  if Table.Editable then
-  begin
-    Table.Remove;
-    Refresh;
-  end;
+  RemoveSelected(Table.Editable, Table.Remove, Refresh);
 end;
 
 procedure TAtlasTrackerSnippetsPart.DefaultsClick(Sender: TObject);

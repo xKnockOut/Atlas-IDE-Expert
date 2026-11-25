@@ -85,7 +85,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor;
 
 type
   /// <summary>Ein Token der Normalisierung; Marker sind $S und $A.</summary>
@@ -110,11 +111,6 @@ begin
   Result.Text := AText;
   Result.Name := True;
   Result.Marker := True;
-end;
-
-function IsCode(const AToken: TPascalToken): Boolean;
-begin
-  Result := not (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
 end;
 
 /// <summary>Code-Token von ATokens mit Offset in [AStart, AEnd).</summary>

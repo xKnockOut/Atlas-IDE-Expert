@@ -93,7 +93,7 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Internals.Text,
-  Atlas.Core.VersionControl.Providers.Null,
+  Atlas.Core.VersionControl.Null,
   Atlas.Core.Welcome.Unsaved;
 
 const

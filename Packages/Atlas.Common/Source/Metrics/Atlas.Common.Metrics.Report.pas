@@ -108,7 +108,7 @@ type
     FileMethodsLengthMaxCyclomatic, MethodsOfThese, MostComplexMethods, UnitsInUses, CodeMetrics, Depth, Cyclomatic,
     Cognitive, Operands, Exits, InheritanceDepth, InheritanceDepthAtLeast, Files, FilesHeading, CaptionLength,
     CaptionDepth, CaptionCyclomatic, CaptionCognitive, CaptionParameters, CaptionOperands, CaptionLocals,
-    CaptionExits);
+    CaptionExits, UnitRoutinesPart);
 
 const
   cTexts: array[TMetricsReportText] of TAtlasText = (
@@ -146,7 +146,8 @@ const
     (De: 'Parameter'; En: 'parameters'),
     (De: 'Operanden'; En: 'operands'),
     (De: 'lokale Variablen'; En: 'local variables'),
-    (De: 'Ausstiege'; En: 'exits'));
+    (De: 'Ausstiege'; En: 'exits'),
+    (De: ', davon %d freie Routinen der Unit'; En: ', %d of them free routines of the unit'));
 
 {$SCOPEDENUMS OFF}
 
@@ -641,6 +642,10 @@ begin
     begin
       Result := Result + ', "atLeast": true';
     end;
+    if mItem.UnitRoutines > 0 then
+    begin
+      Result := Result + ', "unitRoutines": ' + IntToStr(mItem.UnitRoutines);
+    end;
     Result := Result + '}';
   end;
   Result := Result + ']';
@@ -668,6 +673,11 @@ end;
 class function TMetricsReport.StructureLensPart(const AItem: TStructureMetrics; const ALimits: TMetricLimits): string;
 begin
   Result := StructureLensPart(AItem.Kind, AItem.Value, ALimits);
+  if (AItem.Kind = TStructureKind.ClassSize) and (AItem.UnitRoutines > 0) then
+  begin
+    Result := StringReplace(Result, ' Member', ' Member' + cTexts[TMetricsReportText.UnitRoutinesPart].Fmt(
+      [AItem.UnitRoutines]), []);
+  end;
   if AItem.AtLeast and (AItem.Kind = TStructureKind.InheritanceDepth) then
   begin
     Result := StringReplace(Result, cTexts[TMetricsReportText.InheritanceDepth].Text,

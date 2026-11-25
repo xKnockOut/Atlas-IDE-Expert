@@ -13,8 +13,6 @@ type
   [TestFixture]
   TAtlasKeysPageTests = class
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure CreatesAndRoundTripsSettings;
     [Test]
@@ -38,11 +36,6 @@ uses
   Atlas.UI.Settings.Keys;
 
 { TAtlasKeysPageTests }
-
-procedure TAtlasKeysPageTests.WarmUp;
-begin
-  TAtlasKeysPage.Create(nil).Free;
-end;
 
 procedure TAtlasKeysPageTests.CreatesAndRoundTripsSettings;
 var

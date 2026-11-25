@@ -33,32 +33,11 @@ uses
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Pascal.TokenCursor;
-
-function CleanName(const AName: string): string;
-begin
-  Result := AName;
-  if Result.StartsWith('&') then
-  begin
-    Result := Result.Substring(1);
-  end;
-end;
-
-function Contains(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 /// <summary>Deklariert die Datei einen Namen AName (Typ, Variable, Feld, Parameter, Routine …)?</summary>
 function Declares(ANode: TSyntaxNode; const AName: string): Boolean;
@@ -79,7 +58,7 @@ begin
       begin
         for Name in ACandidate.Name.Split([',']) do
         begin
-          if SameText(CleanName(Trim(Name)), mWanted) then
+          if SameText(TTextNames.WithoutAmpersand(Trim(Name)), mWanted) then
           begin
             Exit(TSyntaxSearchStep.Found);
           end;
@@ -101,15 +80,15 @@ begin
   begin
     if mPart > 0 then
     begin
-      mIndex := TRoutineBody.NextToken(ATokens, mIndex);
+      mIndex := NextCodeAfter(ATokens, mIndex);
       if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('.') then
       begin
         Exit;
       end;
-      mIndex := TRoutineBody.NextToken(ATokens, mIndex);
+      mIndex := NextCodeAfter(ATokens, mIndex);
     end;
     if (mIndex > High(ATokens)) or (ATokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
-      not SameText(CleanName(ATokens[mIndex].Text), AParts[mPart]) then
+      not SameText(TTextNames.WithoutAmpersand(ATokens[mIndex].Text), AParts[mPart]) then
     begin
       Exit;
     end;
@@ -122,11 +101,7 @@ end;
 
 class function TUnitRename.UnitNameOf(const AFileName: string): string;
 begin
-  Result := '';
-  if SameText(ExtractFileExt(AFileName), '.pas') then
-  begin
-    Result := ChangeFileExt(ExtractFileName(AFileName), '');
-  end;
+  Result := TTextNames.UnitNameOf(AFileName);
 end;
 
 /// <summary>Kopf "unit Alt;" der umbenannten Datei an ANewName anpassen, wenn die Datei schon so heißt.
@@ -137,12 +112,12 @@ var
   mIndex, mNext, mLast: Integer;
 begin
   Result := -1;
-  mIndex := TRoutineBody.NextToken(ATokens, -1);
+  mIndex := NextCodeAfter(ATokens, -1);
   if (mIndex > High(ATokens)) or not ATokens[mIndex].IsKeyword('unit') then
   begin
     Exit;
   end;
-  mNext := TRoutineBody.NextToken(ATokens, mIndex);
+  mNext := NextCodeAfter(ATokens, mIndex);
   if (mNext <= High(ATokens)) and Matches(ATokens, mNext, AParts, mLast) then
   begin
     Result := ATokens[mLast].Offset;
@@ -161,11 +136,11 @@ var
   mNext: Integer;
 begin
   Result := False;
-  if not TUsesClauses.InClause(ATokens, AClauses, ALines.OffsetAt(AReference.Range.StartPos)) then
+  if not TPascalUses.InClause(ATokens, AClauses, ALines.OffsetAt(AReference.Range.StartPos)) then
   begin
     Exit;
   end;
-  mNext := TRoutineBody.NextToken(ATokens, TRoutineBody.TokenAt(ATokens,
+  mNext := NextCodeAfter(ATokens, TRoutineBody.TokenAt(ATokens,
     ALines.OffsetAt(AReference.Range.EndPos)) - 1);
   Result := (mNext > High(ATokens)) or not ATokens[mNext].IsKeyword('in');
 end;
@@ -179,18 +154,18 @@ var
   mOptions: TUsesRewrite;
 begin
   Result := nil;
-  if Contains(TUsesClauses.UsedUnits(ATokens), ANewName) then
+  if MatchText(ANewName, TPascalUses.UsedUnits(ATokens)) then
   begin
     mOptions := Default(TUsesRewrite);
     mOptions.Drop := [AOldName];
-    if not TUsesClauses.Rewrite(ATokens, AText, mOptions, TTextLines.LineBreakOf(AText), Result) then
+    if not TPascalUsesEdits.Rewrite(ATokens, AText, mOptions, TTextLines.LineBreakOf(AText), Result) then
     begin
       Result := nil;
     end;
     Exit;
   end;
   mLines := TLineTable.Build(AText);
-  for mReference in TUsesClauses.References(ATokens) do
+  for mReference in TPascalUses.References(ATokens) do
   begin
     if SameText(mReference.Name, AOldName) and IsPlainUsesEntry(ATokens, mLines, AClauses, mReference) then
     begin
@@ -209,8 +184,8 @@ begin
   ALast := -1;
   Result := False;
   if (ATokens[AIndex].Kind <> TPascalTokenKind.Identifier) or
-    not SameText(CleanName(ATokens[AIndex].Text), AParts[0]) or
-    TUsesClauses.InClause(ATokens, AClauses, ATokens[AIndex].Offset) then
+    not SameText(TTextNames.WithoutAmpersand(ATokens[AIndex].Text), AParts[0]) or
+    TPascalUses.InClause(ATokens, AClauses, ATokens[AIndex].Offset) then
   begin
     Exit;
   end;
@@ -219,7 +194,7 @@ begin
   begin
     Exit;
   end;
-  mNext := TRoutineBody.NextToken(ATokens, ALast);
+  mNext := NextCodeAfter(ATokens, ALast);
   Result := (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol('.');
 end;
 
@@ -256,7 +231,7 @@ begin
   mTokens := ATree.Tokens;
   mParts := AOldName.Split(['.']);
   mHeaderEnd := HeaderEdits(AFileName, mTokens, mParts, ANewName, AEdits);
-  mClauses := TUsesClauses.Clauses(mTokens);
+  mClauses := TPascalUses.Clauses(mTokens);
   AEdits := AEdits + UsesEdits(AText, mTokens, mClauses, AOldName, ANewName);
   // Qualifizierte Bezeichner, sofern die Datei den Namen nicht selbst deklariert.
   if not Declares(ATree.Root, mParts[0]) then

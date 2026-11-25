@@ -12,7 +12,7 @@
 // bearbeiteten und zu einer fremden Datei; erst nach fetch kennt die
 // Arbeitskopie sie, und nur der Commit zur bearbeiteten Datei erscheint.
 // Dazu der Prozessläufer selbst: Hauptthread abgelehnt, Zeitlimit, fehlendes
-// Programm, Hintergrund über TAtlasVcsWorker.
+// Programm, Hintergrund über TAtlasBackgroundJobs.
 
 interface
 
@@ -24,9 +24,6 @@ type
   [Category('Atlas.IDE.VersionControl')]
   TAtlasVcsIntegrationTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure GitWorkingCopyReportsBranchRevisionAndChanges;
     [Test]
@@ -51,9 +48,9 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Tools,
   Atlas.Core.VersionControl.Switches,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.Core.VersionControl.Composition,
-  Atlas.Core.VersionControl.Adapters.ProcessRunner,
+  Atlas.Core.VersionControl.Providers.ProcessRunner,
   Atlas.Core.Welcome.Unsaved,
   Atlas.Core.Welcome.Continue;
 
@@ -120,23 +117,6 @@ begin
 end;
 
 { TAtlasVcsIntegrationTests }
-
-procedure TAtlasVcsIntegrationTests.WarmUpFirstUse;
-begin
-  // Ohne git bzw. svn meldet der Test Assert.Pass; das gilt hier nicht als Fehler.
-  try
-    GitWorkingCopyReportsBranchRevisionAndChanges;
-  except
-    on Exception do
-      ;
-  end;
-  try
-    SvnWorkingCopyReportsBranchRevisionAndChanges;
-  except
-    on Exception do
-      ;
-  end;
-end;
 
 /// <summary>Legt in AFolder ein Git-Repository mit Branch main für „Atlas Test“ an (ohne CRLF-Umwandlung und
 /// Signatur).</summary>
@@ -691,7 +671,7 @@ end;
 
 procedure TAtlasVcsIntegrationTests.WorkerRunsInBackgroundAndDeliversInMainThread;
 var
-  mWorker: TAtlasVcsWorker;
+  mWorker: TAtlasBackgroundJobs;
   mVcs: IAtlasVersionControl;
   mOutcome: TAtlasVcsOutcome;
   mHead: TAtlasVcsHead;
@@ -708,7 +688,7 @@ begin
   mDone := False;
   mInMain := False;
   mOutcome := TAtlasVcsOutcome.Failed;
-  mWorker := TAtlasVcsWorker.Create;
+  mWorker := TAtlasBackgroundJobs.Create(HInstance);
   try
     Assert.IsTrue(mWorker.Run(
       procedure

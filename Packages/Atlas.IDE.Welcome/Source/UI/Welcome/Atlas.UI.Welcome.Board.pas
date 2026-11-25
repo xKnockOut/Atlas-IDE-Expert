@@ -50,7 +50,8 @@ uses
   Atlas.Core.Welcome.Scroll,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,
-  Atlas.UI.Welcome.Arrange;
+  Atlas.UI.Welcome.Arrange,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Name abfragen (Neues Layout, Umbenennen); False = abgebrochen.</summary>
@@ -280,14 +281,19 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread;
 
 const
   // Tag der Einträge im Kontextmenü eines Bereichs.
   cTagHide = 1;
   cTagSettings = 2;
   cTagCustomize = 3;
+  // Dicke der Einfügemarke beim Verschieben eines Bereichs und Abstand des Titels zum Griff (logische Pixel).
+  cInsertLineHeight = 3;
+  cTitleGripGap = 4;
+  /// <summary>Takt des Rollens am Rand beim Ziehen (ms).</summary>
+  cEdgeScrollInterval = 40;
 
 /// <summary>AValue logische Pixel in der Auflösung von AControl.</summary>
 function Scaled(AControl: TControl; AValue: Integer): Integer;
@@ -459,7 +465,7 @@ begin
   FBoard := ABoard;
   FEdgeTimer := TTimer.Create(Self);
   FEdgeTimer.Enabled := False;
-  FEdgeTimer.Interval := 40;
+  FEdgeTimer.Interval := cEdgeScrollInterval;
   FEdgeTimer.OnTimer := EdgeTick;
   FEvents := TApplicationEvents.Create(nil);
   FEvents.OnMessage := AppMessage;
@@ -1068,8 +1074,7 @@ begin
   FInsertLine.BevelOuter := bvNone;
   FInsertLine.ParentBackground := False;
   FInsertLine.StyleElements := [];
-  FInsertLine.Color := clHighlight;
-  FInsertLine.Height := FInsertLine.ScaleValue(3);
+  FInsertLine.Height := FInsertLine.ScaleValue(cInsertLineHeight);
   FInsertLine.Visible := False;
 end;
 
@@ -1196,7 +1201,8 @@ var
 begin
   case ATool of
     TAtlasWelcomeTool.Width:
-      FBoard.Rearranged(FBoard.FLayout.WithWidth(AId, 3 - FBoard.FLayout.WidthOf(AId)));
+      FBoard.Rearranged(FBoard.FLayout.WithWidth(AId,
+        TAtlasWelcomeLayout.cMinWidth + TAtlasWelcomeLayout.cMaxWidth - FBoard.FLayout.WidthOf(AId)));
     TAtlasWelcomeTool.Eye:
       begin
         mId := AId;
@@ -1349,7 +1355,7 @@ begin
       mTools := EnsureTools(mFrame);
       mTools.Wide := FBoard.FLayout.WidthOf(mFrame.SectionId) > 1;
       mTools.Invalidate;
-      mFrame.TitleLabel.Left := mGrip.Width + Scaled(mFrame, 4);
+      mFrame.TitleLabel.Left := mGrip.Width + Scaled(mFrame, cTitleGripGap);
     end
     else
     begin
@@ -1402,7 +1408,8 @@ begin
     TAtlasWelcomeArea.Create(FBoard.FScroll.ClientWidth, TAtlasWelcomeBoardFrame.cGap,
     TAtlasWelcomeBoardFrame.cMinColumnWidth), mColumn,
     mBefore);
-  FInsertLine.SetBounds(mLine.Left, mLine.Top - 1 - FBoard.FScroll.VertScrollBar.Position, mLine.Width, 3);
+  FInsertLine.SetBounds(mLine.Left, mLine.Top - 1 - FBoard.FScroll.VertScrollBar.Position, mLine.Width,
+    FInsertLine.ScaleValue(cInsertLineHeight));
   FInsertLine.Color := StyleServices(FBoard).GetSystemColor(clHighlight);
   FInsertLine.Visible := True;
   FInsertLine.BringToFront;

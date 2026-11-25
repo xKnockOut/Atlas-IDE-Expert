@@ -2,7 +2,7 @@
 
 // Vervollständigung aus der Formulardatei: Komponenten des Formulars (#455), "Sender." in Ereignisbehandlern
 // (#480) und Feld- bzw. Parameternamen in FieldByName und Verwandten (#461). Dazu der Zugriff auf die
-// Formulare mit und ohne Zwischenspeicher. Aus Atlas.Common.Lsp.Completion herausgelöst.
+// Formulare mit und ohne Zwischenspeicher. Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
@@ -76,7 +76,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.Contract,
@@ -110,7 +109,7 @@ type
 /// <summary>Liegt APosition in ARange (Grenzen eingeschlossen)?</summary>
 function RangeHas(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
 begin
-  Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
+  Result := (TTextPosition.Compare(ARange.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, ARange.EndPos) <= 0);
 end;
 
 /// <summary>Innerste Routine aus AUnit (aus dem Baum), deren Bereich APosition enthält; lokale Prozeduren
@@ -496,7 +495,7 @@ begin
     mName := AItem.Name;
   end;
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ASite.ChainStart, APosition), ASite.Cast + '.' + mName);
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(ASite.ChainStart, APosition), ASite.Cast + '.' + mName);
 end;
 
 { TCompletionForms }
@@ -636,7 +635,7 @@ begin
   end;
   // Schreibweise wie in der Quelle; ersetzt den ganzen Inhalt zwischen den Anführungszeichen.
   Result.HasTextEdit := True;
-  Result.TextEdit := TRuleEdit.Create(ARange, StringReplace(AName.Name, '''', '''''', [rfReplaceAll]));
+  Result.TextEdit := TTextEdit.Create(ARange, StringReplace(AName.Name, '''', '''''', [rfReplaceAll]));
   Result.DataSet := ACall.DisplayName;
   Result.DataSource := ASource;
 end;

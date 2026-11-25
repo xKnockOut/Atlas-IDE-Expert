@@ -5,7 +5,7 @@
 // Titelzeile, Griff und Spalte gehören der Seite; die Kachel zeichnet nur
 // ihren Inhalt, nennt ihre Höhe (BodyHeight) und meldet Änderungen der Höhe
 // über OnHeightChanged. Den Vertrag Atlas.IDE.Contracts.WelcomeTiles setzt
-// Atlas.IDE.Tracker.Tiles darauf um (UI kennt Atlas.IDE nicht). Ohne Fenster
+// Atlas.IDE.Tracker.Adapters.Tiles darauf um (UI kennt Atlas.IDE nicht). Ohne Fenster
 // misst sie keinen Text und holt UpdateContent in CreateWnd nach.
 
 interface
@@ -14,7 +14,8 @@ uses
   System.Classes,
   Vcl.Controls,
   System.SysUtils,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls,
+  Atlas.Plugin.Calls.Contract;
 
 type
   TAtlasTrackerTileView = class(TCustomPanel)
@@ -28,6 +29,8 @@ type
     procedure CreateWnd; override;
     /// <summary>Der Inhalt braucht eine andere Höhe: meldet OnHeightChanged.</summary>
     procedure HeightChanged;
+    /// <summary>Neue Quelle ASource: Inhalt neu (UpdateContent), dann ASource.Shown, wenn gesetzt.</summary>
+    procedure SourceChanged(const ASource: IAtlasShownSource);
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Hängt die Ansicht an einem Fenster? Vorher kein Messen von Text („kein übergeordnetes Fenster“);
@@ -44,7 +47,8 @@ type
 implementation
 
 uses
-  Vcl.Forms;
+  Atlas.Plugin.Calls.Optional,
+  Atlas.Vcl.Controls.Helpers;
 
 { TAtlasTrackerTileView }
 
@@ -75,20 +79,8 @@ begin
 end;
 
 function TAtlasTrackerTileView.HasWindow: Boolean;
-var
-  mControl: TWinControl;
 begin
-  mControl := Self;
-  while mControl <> nil do
-  begin
-    if mControl.HandleAllocated or (mControl.ParentWindow <> 0) or (mControl is TCustomForm) then
-    begin
-      Exit(True);
-    end;
-    mControl := mControl.Parent;
-  end;
-  FPendingUpdate := True;
-  Result := False;
+  Result := TAtlasControls.WindowOrPending(Self, FPendingUpdate);
 end;
 
 function TAtlasTrackerTileView.BodyHeight: Integer;
@@ -99,6 +91,11 @@ end;
 procedure TAtlasTrackerTileView.UpdateContent;
 begin
   Invalidate;
+end;
+
+procedure TAtlasTrackerTileView.SourceChanged(const ASource: IAtlasShownSource);
+begin
+  TAtlasCalls.ShowSource(ASource, UpdateContent);
 end;
 
 end.

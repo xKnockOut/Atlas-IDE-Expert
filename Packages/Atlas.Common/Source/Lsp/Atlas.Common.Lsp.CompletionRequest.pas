@@ -21,10 +21,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Documentation,
-  Atlas.Common.Lsp.IdeTypes;
+  Atlas.Common.Lsp.Contract;
 
 type
   TCompletionContextKind = (None, Scope, Member, UsesClause);
@@ -82,7 +81,7 @@ type
     /// <summary>Text für den Filter des Editors; '' = Name.</summary>
     FilterText: string;
     /// <summary>Weitere Änderungen beim Annehmen, z. B. der uses-Eintrag.</summary>
-    AdditionalEdits: TArray<TRuleEdit>;
+    AdditionalEdits: TArray<TTextEdit>;
     /// <summary>Datei und Namensposition der Deklaration für completionItem/resolve; '' ohne.</summary>
     SourceFile: string;
     SourcePosition: TTextPosition;
@@ -126,7 +125,7 @@ type
     Action: string;
     /// <summary>Ersetzt TextEdit.Range statt nur den getippten Namen (Postfix-Vorlagen, #188).</summary>
     HasTextEdit: Boolean;
-    TextEdit: TRuleEdit;
+    TextEdit: TTextEdit;
     /// <summary>Wert einer Aufzählung (#448): Stelle in der Deklaration ab 1; 0 bei anderen Einträgen.</summary>
     Ordinal: Integer;
     /// <summary>Mengenmodus (#448): Aufzählungstyp der Menge; '' sonst. Dann gelten SetChecked und SetRange.</summary>
@@ -353,7 +352,8 @@ implementation
 
 uses
   System.Math,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Lines;
 
 { TCompletionRequest }
 
@@ -477,17 +477,8 @@ begin
 end;
 
 function TextLines(const AText: string): TArray<string>;
-var
-  mIndex: Integer;
 begin
-  Result := AText.Split([#10]);
-  for mIndex := 0 to High(Result) do
-  begin
-    if Result[mIndex].EndsWith(#13) then
-    begin
-      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
-    end;
-  end;
+  Result := TTextLines.SplitAtLineFeed(AText);
 end;
 
 function CachedLines(ACache: TDictionary<string, TArray<string>>; const AFileName, AOwnFile, AText: string;

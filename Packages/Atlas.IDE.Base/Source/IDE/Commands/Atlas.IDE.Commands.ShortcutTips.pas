@@ -4,7 +4,7 @@
 // Kürzel gibt, per Maus aufruft, sieht kurz unten rechts im Editorfenster einen
 // Tipp mit dem Kürzel (TAtlasShortcutTipWindow).
 // Erkennen, wie ein Befehl aufgerufen wurde (vorher geprüft, siehe
-// docs/Architektur.md):
+// docs/architektur/Plugin-Dienste.md):
 // - Aktionen der IDE und anderer Erweiterungen: Application.OnActionExecute
 //   über TApplicationEvents (mehrere Abonnenten möglich, ändert keine Aktion).
 //   Die VCL ruft es für jede TContainedAction, deren Aktionsliste sie nicht
@@ -53,7 +53,7 @@ uses
   System.Classes,
   Vcl.AppEvnts,
   Atlas.Core.Commands.Usage,
-  Atlas.Core.Notifications.Contract,
+  Atlas.Plugin.Notifications.Contract,
   Atlas.UI.Commands.ShortcutTip,
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutKeys;
@@ -90,7 +90,7 @@ type
     procedure MouseUse(const AId: string); overload;
     /// <summary>Wie oben mit schon bekanntem Kürzel und Beschriftung (Aktion der IDE).</summary>
     procedure MouseUse(const AId, AKeyText, ACaption: string); overload;
-    procedure Queue(const AId, AKeyText, ACaption: string; AKnown: Boolean);
+    class procedure Queue(const AId, AKeyText, ACaption: string; AKnown: Boolean); static;
     procedure Consider(const AId: string); overload;
     procedure Consider(const AId, AKeyText, ACaption: string; AIsAtlas: Boolean); overload;
     procedure ShowTip(const AId, AKeyText, ACaption: string);
@@ -127,24 +127,24 @@ implementation
 
 uses
   Atlas.Core.Commands.ShortcutTips,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Messages,
   System.Types,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.ActnList,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.Tips,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
-  Atlas.UI.Popup.Window,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Windows,
   Atlas.IDE.Commands.KeyMap;
 
 /// <summary>Angehaltene Debug-Sitzung (Haltepunkt, Ausnahme).</summary>
@@ -193,7 +193,7 @@ begin
     mWindow := mServices.TopEditWindow;
     if (mWindow <> nil) and (mWindow.Form <> nil) and mWindow.Form.Visible then
     begin
-      mEditor := TAtlasEditorBarHost.EditorOf(mWindow);
+      mEditor := TAtlasIdeEditorWindows.EditorOf(mWindow);
       if (mEditor <> nil) and mEditor.Showing then
       begin
         mControl := mEditor;
@@ -401,7 +401,7 @@ begin
   Queue(AId, AKeyText, ACaption, True);
 end;
 
-procedure TAtlasIdeShortcutTips.Queue(const AId, AKeyText, ACaption: string; AKnown: Boolean);
+class procedure TAtlasIdeShortcutTips.Queue(const AId, AKeyText, ACaption: string; AKnown: Boolean);
 var
   mId, mKeyText, mCaption: string;
   mKnown: Boolean;

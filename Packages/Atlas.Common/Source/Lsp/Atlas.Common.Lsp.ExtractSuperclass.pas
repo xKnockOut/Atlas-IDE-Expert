@@ -83,18 +83,19 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.ExtractInterface,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Editing.ExtractSuperclass,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.WorkspaceChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -127,18 +128,6 @@ function Failed(const AMessage: string): EJsonRpcError;
 begin
   Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed,
     cTexts[TLspExtractSuperclassText.ExtractSuperclass].Text + AMessage);
-end;
-
-function KindText(AKind: TTransferKind): string;
-begin
-  case AKind of
-    TTransferKind.Field:
-      Result := 'field';
-    TTransferKind.Property_:
-      Result := 'property';
-  else
-    Result := 'method';
-  end;
 end;
 
 /// <summary>Ist AName ein Interface: im Baum oder im Index.</summary>
@@ -254,7 +243,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('id', TJSONNumber.Create(AItem.Id));
   Result.AddPair('name', AItem.Name);
-  Result.AddPair('kind', KindText(AItem.Kind));
+  Result.AddPair('kind', TMemberTransfer.KindKey(AItem.Kind));
   Result.AddPair('display', AItem.Display);
   Result.AddPair('visibility', TClassEdits.VisibilityName(AItem.Visibility));
   Result.AddPair('checked', TJSONBool.Create(False));
@@ -285,7 +274,7 @@ begin
   end;
   Result := TJSONObject.Create;
   Result.AddPair('className', mInfo.ClassName);
-  Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
+  Result.AddPair('ownUnit', TPascalUses.OwnName(ATree.Tokens));
   Result.AddPair('name', mInfo.SuggestedName);
   Result.AddPair('ancestor', mInfo.Ancestor);
   mList := TJSONArray.Create;
@@ -312,33 +301,6 @@ begin
   else
   begin
     Result.AddPair('unit', '');
-  end;
-end;
-
-function Ids(AObject: TJSONObject; const AKey: string): TArray<Integer>;
-var
-  mValue, mItem: TJSONValue;
-begin
-  Result := nil;
-  mValue := AObject.GetValue(AKey);
-  if mValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      if mItem is TJSONNumber then
-      begin
-        Result := Result + [TJSONNumber(mItem).AsInt];
-      end;
-    end;
-  end;
-end;
-
-function Field(AObject: TJSONObject; const AKey: string): string;
-begin
-  Result := '';
-  if AObject.GetValue(AKey) <> nil then
-  begin
-    Result := Trim(AObject.GetValue(AKey).Value);
   end;
 end;
 
@@ -527,11 +489,11 @@ begin
   end;
   mBody := TJSONObject(ARequest);
   FRequest := Default(TSuperclassRequest);
-  FRequest.Name := Field(mBody, 'name');
-  FRequest.Members := Ids(mBody, 'members');
-  FRequest.Abstract := Ids(mBody, 'abstract');
-  FUnitName := Field(mBody, 'unit');
-  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, TUsesClauses.OwnName(FTree.Tokens));
+  FRequest.Name := TJsonRead.TrimmedText(mBody, 'name');
+  FRequest.Members := TJsonRead.Ints(mBody, 'members');
+  FRequest.Abstract := TJsonRead.Ints(mBody, 'abstract');
+  FUnitName := TJsonRead.TrimmedText(mBody, 'unit');
+  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, TPascalUses.OwnName(FTree.Tokens));
   FRequest.RaiseVisibility := RaiseVisibilityOf(FContext.RaiseVisibility);
   if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
   begin

@@ -16,9 +16,6 @@ type
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
   public
-    /// <summary>Ein Hover vorab; einmalig angelegte Daten zählen sonst als Leck des ersten Tests.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -35,13 +32,13 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Hover,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Tests.SourceText;
 
 const
   cUnitAttribute =
@@ -88,28 +85,6 @@ const
     'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mRun: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  mLine := 0;
-  mLineStart := 1;
-  for mRun := 1 to mIndex - 1 do
-  begin
-    if AText[mRun] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mRun + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 const
   cAttributeFile = 'C:\P\DUnitX.Attributes.pas';
   cHauptFile = 'C:\P\Haupt.pas';
@@ -127,24 +102,13 @@ begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
     Result := TLspHover.InfoAt(THoverSource.Create(AResolver, AIndex, ReadText), mTree, cUnitHaupt, cHauptFile,
-      PositionOf(cUnitHaupt, AMarker));
+      TTestSource.PositionOf(cUnitHaupt, AMarker));
   finally
     mTree.Free;
   end;
 end;
 
 { TLspAttributesTests }
-
-procedure TLspAttributesTests.WarmUp;
-begin
-  Setup;
-  try
-    Hover(FResolver, FIndex, 'TestCase(');
-    Hover(FResolver, FIndex, 'TestFixture]');
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TLspAttributesTests.Setup;
 begin
@@ -188,7 +152,7 @@ begin
   mTree := TPascalParser.Parse(cUnitHaupt);
   try
     mFound := TLspReferences.Find(FResolver, FIndex, mTree,
-      TReferenceSearch.Create(cHauptFile, PositionOf(cUnitHaupt, 'TestFixture]'), True,
+      TReferenceSearch.Create(cHauptFile, TTestSource.PositionOf(cUnitHaupt, 'TestFixture]'), True,
       [cAttributeFile, cHauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin

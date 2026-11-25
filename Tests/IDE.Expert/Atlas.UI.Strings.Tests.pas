@@ -1,6 +1,7 @@
 ﻿unit Atlas.UI.Strings.Tests;
 
-// Tests für die Oberflächentexte (#446).
+// Tests für die Oberflächentexte (#446). Dazu die Prüfungen, die die Texttests der Module teilen: AssertTextPair
+// für ein Textpaar, AssertTablesInBothLanguages und AssertTablesFollowLanguage für die Tabellen je Feature.
 
 interface
 
@@ -34,6 +35,24 @@ type
 /// AIndex ist die Ordnungszahl der Id für die Meldung.</summary>
 procedure AssertTextPair(const AGerman, AEnglish: string; AIndex: Integer);
 
+type
+  /// <summary>Text zur Id mit der Ordnungszahl AIndex in der aktuellen Sprache.</summary>
+  TAtlasTextTableText = reference to function(AIndex: Integer): string;
+
+  /// <summary>Texttabelle eines Features: Name für Meldungen, Zahl der Ids, Text je Ordnungszahl.</summary>
+  TAtlasTextTable = record
+    Name: string;
+    Count: Integer;
+    Text: TAtlasTextTableText;
+  end;
+
+function TextTable(const AName: string; ACount: Integer; const AText: TAtlasTextTableText): TAtlasTextTable;
+/// <summary>Jede Tabelle hat Texte, und jeder Text besteht AssertTextPair.</summary>
+procedure AssertTablesInBothLanguages(const ATables: TArray<TAtlasTextTable>);
+/// <summary>Kein eigener Sprachschalter: Ein Wechsel in Base gilt sofort für jede Tabelle (mindestens ein Text
+/// je Tabelle unterscheidet sich zwischen Deutsch und Englisch).</summary>
+procedure AssertTablesFollowLanguage(const ATables: TArray<TAtlasTextTable>);
+
 implementation
 
 uses
@@ -63,6 +82,68 @@ procedure AssertTextPair(const AGerman, AEnglish: string; AIndex: Integer);
 begin
   Assert.IsTrue((AGerman <> '') and (AEnglish <> ''), AIndex.ToString);
   Assert.AreEqual(Placeholders(AGerman), Placeholders(AEnglish), AGerman + ' / ' + AEnglish);
+end;
+
+function TextTable(const AName: string; ACount: Integer; const AText: TAtlasTextTableText): TAtlasTextTable;
+begin
+  Result.Name := AName;
+  Result.Count := ACount;
+  Result.Text := AText;
+end;
+
+procedure AssertTablesInBothLanguages(const ATables: TArray<TAtlasTextTable>);
+var
+  mTable: TAtlasTextTable;
+  mIndex: Integer;
+  mGerman: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mTable in ATables do
+    begin
+      Assert.IsTrue(mTable.Count > 0, mTable.Name);
+      for mIndex := 0 to mTable.Count - 1 do
+      begin
+        TAtlasStrings.Language := TAtlasLanguage.German;
+        mGerman := mTable.Text(mIndex);
+        TAtlasStrings.Language := TAtlasLanguage.English;
+        AssertTextPair(mGerman, mTable.Text(mIndex), mIndex);
+      end;
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure AssertTablesFollowLanguage(const ATables: TArray<TAtlasTextTable>);
+var
+  mTable: TAtlasTextTable;
+  mIndex: Integer;
+  mGerman: string;
+  mDiffers: Integer;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  try
+    for mTable in ATables do
+    begin
+      mDiffers := 0;
+      for mIndex := 0 to mTable.Count - 1 do
+      begin
+        TAtlasStrings.Language := TAtlasLanguage.German;
+        mGerman := mTable.Text(mIndex);
+        TAtlasStrings.Language := TAtlasLanguage.English;
+        if mGerman <> mTable.Text(mIndex) then
+        begin
+          Inc(mDiffers);
+        end;
+      end;
+      Assert.IsTrue(mDiffers > 0, mTable.Name + ': kein Text folgt der Sprache von Base');
+    end;
+  finally
+    TAtlasStrings.Language := mSaved;
+  end;
 end;
 
 { TAtlasStringsTests }

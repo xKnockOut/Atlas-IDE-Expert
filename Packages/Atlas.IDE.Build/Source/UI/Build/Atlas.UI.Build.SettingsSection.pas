@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Build.SettingsSection;
 
-// Abschnitt „Compiler“ des Moduls Build-Werkzeuge im Optionsdialog (#1456; vorher
-// Atlas.UI.Settings.Page.Tasks in Base): Modulschalter, wirksame Compiler-Schalter (#558), Startprofile (#575),
+// Abschnitt „Compiler“ des Moduls Build-Werkzeuge im Optionsdialog (#1456):
+// Modulschalter, wirksame Compiler-Schalter (#558), Startprofile (#575),
 // laufendes Programm vor dem Build beenden (#551), Bauen beim Öffnen (build.onOpen, #1293) und Projektaufgaben aus
 // atlas.json (#900). „Bauen beim Öffnen“ fasst build.onOpen und build.onOpenKind in einer Auswahl zusammen; der
 // Abschnitt liest und schreibt sie selbst.
@@ -11,7 +11,7 @@ interface
 uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Section;
 
 type

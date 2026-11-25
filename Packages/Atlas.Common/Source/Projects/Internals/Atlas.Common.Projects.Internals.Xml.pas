@@ -50,7 +50,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Chars;
 
 {$SCOPEDENUMS ON}
 
@@ -182,12 +183,7 @@ constructor TParser.Create(const AText: string);
 begin
   inherited Create;
   FText := AText;
-  FPos := 1;
-  // BOM als Zeichen am Anfang überspringen.
-  if (FText <> '') and (FText[1] = #$FEFF) then
-  begin
-    FPos := 2;
-  end;
+  FPos := TTextChars.StartAfterBom(FText);
 end;
 
 procedure TParser.Fail(const AMessage: string);

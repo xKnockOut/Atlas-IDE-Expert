@@ -31,7 +31,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Syntax,
+  Atlas.Plugin.Style.Syntax,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.Overview;
 
@@ -100,7 +100,7 @@ type
       ARowHeight, AHeight: Integer): TAtlasMinimapMap; static;
     /// <summary>Gestaucht wird nicht mehr: Passt der Inhalt nicht, scrollt die Minimap mit (wie VS Code). Immer False;
     /// bleibt für die Stellen, die bei gestauchten Zeilen anders zeichneten.</summary>
-    function Compressed: Boolean;
+    class function Compressed: Boolean; static;
     /// <summary>Höhe des ganzen Inhalts in Pixeln (alle Zeilen in voller Höhe).</summary>
     function TotalHeight: Int64;
     /// <summary>Offset aus der Lage im Editor: oben der Anfang, unten das Ende, dazwischen anteilig. True, wenn
@@ -425,29 +425,6 @@ begin
   end;
 end;
 
-/// <summary>Marken der Art AKind, aufsteigend nach Zeile (stabil).</summary>
-function MarksOfKind(const AMarks: TAtlasOverviewMarks; AKind: TAtlasOverviewMarkKind): TArray<Integer>;
-var
-  mIndex, mPosition, mMoved: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to High(AMarks) do
-  begin
-    if AMarks[mIndex].Kind = AKind then
-    begin
-      Result := Result + [mIndex];
-      mPosition := High(Result);
-      while (mPosition > 0) and (AMarks[Result[mPosition - 1]].Line > AMarks[mIndex].Line) do
-      begin
-        mMoved := Result[mPosition - 1];
-        Result[mPosition - 1] := Result[mPosition];
-        Result[mPosition] := mMoved;
-        Dec(mPosition);
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Pixelbereich der Marke, mindestens AMinHeight hoch und in der Karte.</summary>
 function MarkSpan(const AMark: TAtlasOverviewMark; const AMap: TAtlasMinimapMap; AMinHeight: Integer):
   TAtlasMinimapSpan;
@@ -473,7 +450,7 @@ var
   mBar: TAtlasOverviewBar;
 begin
   mLast := -1;
-  for mIndex in MarksOfKind(AMarks, AKind) do
+  for mIndex in TAtlasOverviewMark.IndexesOfKind(AMarks, AKind) do
   begin
     mSpan := MarkSpan(AMarks[mIndex], AMap, AMinHeight);
     if (mLast >= 0) and (mSpan.Top <= ABars[mLast].Bottom) then
@@ -552,7 +529,7 @@ begin
   Result.Offset := 0;
 end;
 
-function TAtlasMinimapMap.Compressed: Boolean;
+class function TAtlasMinimapMap.Compressed: Boolean;
 begin
   Result := False;
 end;
@@ -1083,6 +1060,9 @@ begin
 end;
 
 class function TAtlasMinimap.GlyphHeight(AChar: Char; ARowHeight: Integer): Integer;
+const
+  // Kleinbuchstaben: zwei Drittel der Zeile, gerundet.
+  cThirds = 3;
 begin
   if ARowHeight <= 0 then
   begin
@@ -1098,7 +1078,7 @@ begin
   end;
   if CharInSet(AChar, ['a'..'z']) or TTextChars.IsIdentStart(AChar) then
   begin
-    Exit(Max(1, (ARowHeight * 2 + 2) div 3));
+    Exit(Max(1, (ARowHeight * 2 + 2) div cThirds));
   end;
   Result := 1;
 end;

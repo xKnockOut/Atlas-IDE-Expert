@@ -18,11 +18,10 @@ type
   protected
     procedure DelayTimerTick(Sender: TObject);
     /// <summary>Kontext an der Cursorstelle; ALine ab 1, ACharacter und AWordStart 0-basiert.</summary>
-    function ContextAt(const AView: IOTAEditView; const ALineText: string; ALine, ACharacter,
-      AWordStart: Integer): TAtlasContext;
+    class function ContextAt(const AView: IOTAEditView; const ALineText: string; ALine, ACharacter,
+      AWordStart: Integer): TAtlasContext; static;
   private
     procedure ApplyStyle(const ACaret: TRect);
-    function CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
     /// <summary>Einstellungen der Liste in Popup und Ablauf übernehmen (vor jedem Öffnen).</summary>
     procedure ApplyOptions;
     /// <summary>Popup am Wortanfang verankern (ACaret: Caret-Rechteck) und die offene Stelle merken.</summary>
@@ -45,17 +44,19 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Timing,
-  Atlas.Core.Completion.Word,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Timing,
+  Atlas.Plugin.Editor.Word,
   Atlas.Core.Completion.Ranking,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Windows,
+  Atlas.ToolsApi.Editor.Caret;
 
 /// <summary>Plattform und Konfiguration des aktiven Projekts („Win32 · Debug“, #476); '' ohne Projekt.</summary>
 function ActiveTarget: string;
@@ -108,8 +109,9 @@ begin
     mLineText := TAtlasEditorBuffer.LineText(mView, mView.CursorPos.Line);
     mCharacter := TLspSession.ColumnToIndex(mLineText, mView.CursorPos.Col,
       TAtlasEditorBuffer.TabWidth(mView.Buffer));
-    if not TAtlasCloseRules.DelayedOpen(FDelay.State, WindowState(mView, FDelay.Window, GetFocus), mSame,
-      mLineText, FDelay.Character, mCharacter) then
+    if not TAtlasCloseRules.DelayedOpen(FDelay.State,
+      TAtlasIdeEditorWindows.WindowState(mView, FDelay.Window, GetFocus), mSame, mLineText, FDelay.Character,
+      mCharacter) then
     begin
       Log('Vervollständigung: verzögertes Öffnen verworfen');
       Exit;
@@ -129,7 +131,7 @@ begin
   end;
 end;
 
-function TAtlasEditorCompletionOpen.ContextAt(const AView: IOTAEditView; const ALineText: string; ALine,
+class function TAtlasEditorCompletionOpen.ContextAt(const AView: IOTAEditView; const ALineText: string; ALine,
   ACharacter, AWordStart: Integer): TAtlasContext;
 begin
   Result := Default(TAtlasContext);
@@ -153,22 +155,6 @@ begin
   // Farben aus dem Thema der IDE (hell/dunkel), Schrift aus den Editoroptionen, Monitor-DPI und Zoom
   // am Caret (#411, #412, #445).
   Log(TAtlasIdeStyle.Apply(FPopup, ACaret));
-end;
-
-function TAtlasEditorCompletionOpen.CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AWindow := mInfo.hwndCaret;
-  ARect := mInfo.rcCaret;
-  MapWindowPoints(AWindow, 0, ARect, 2);
 end;
 
 procedure TAtlasEditorCompletionOpen.ApplyOptions;
@@ -227,7 +213,7 @@ begin
   FOpen.Window := AWindow;
   FOpen.Line := ALine;
   FOpen.WordStart := AWordStart;
-  FOpen.Opened := WindowState(AView, AWindow, AWindow);
+  FOpen.Opened := TAtlasIdeEditorWindows.WindowState(AView, AWindow, AWindow);
 end;
 
 procedure TAtlasEditorCompletionOpen.StartDelay(const AView: IOTAEditView; ALine, ACharacter: Integer;
@@ -237,7 +223,7 @@ begin
   FDelay.Line := ALine;
   FDelay.Character := ACharacter;
   FDelay.Window := AWindow;
-  FDelay.State := WindowState(AView, AWindow, AWindow);
+  FDelay.State := TAtlasIdeEditorWindows.WindowState(AView, AWindow, AWindow);
   FDelay.Timer.Interval := Cardinal(TAtlasIdeSettings.Current.OpenDelayMs);
   FDelay.Timer.Enabled := True;
 end;
@@ -294,7 +280,7 @@ begin
   mLineText := TAtlasEditorBuffer.LineText(AView, mCursor.Line);
   mCharacter := TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
   mWordStart := TAtlasWord.StartBefore(mLineText, mCharacter);
-  if not CaretRect(mWindow, mAnchor) then
+  if not TAtlasIdeCaret.TryFind(mWindow, mAnchor) then
   begin
     Log('Vervollständigung: kein Caret gefunden');
     Exit;

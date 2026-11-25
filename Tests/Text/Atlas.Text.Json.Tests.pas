@@ -24,6 +24,8 @@ type
     procedure QuotedTextParsesBack;
     [Test]
     procedure ListsQuotedItems;
+    [Test]
+    procedure BoolIsJsonLiteral;
   end;
 
   [TestFixture]
@@ -35,6 +37,18 @@ type
     procedure KeepsOrderAndText;
     [Test]
     procedure TakesDynamicArray;
+    [Test]
+    procedure AddTextLeavesOutEmptyValue;
+    [Test]
+    procedure IsoTimeRoundTrips;
+    /// <summary>TextAndFree gibt den Text und gibt den Wert frei (sonst meldet der Leckmonitor); nil ergibt ''.
+    /// </summary>
+    [Test]
+    procedure TextAndFreeGivesTextAndFrees;
+    [Test]
+    procedure AddFlagOnlyWhenTrue;
+    [Test]
+    procedure UriLineIsArrayOfUriAndLine;
   end;
 
   [TestFixture]
@@ -46,6 +60,10 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
+    [Test]
+    procedure FormatOfReadsRootNumber;
+    [Test]
+    procedure ObjectsSkipsOtherValues;
     [Test]
     procedure NilObjectGivesDefaults;
     [Test]
@@ -90,12 +108,25 @@ type
     procedure StringsOfNoArrayAreEmpty;
     [Test]
     procedure TrimmedStringsDropEmpty;
+    [Test]
+    procedure ParseArrayOnlyForArrays;
+    [Test]
+    procedure JsonGivesValueText;
+    [Test]
+    procedure IntsSkipOtherValues;
+    [Test]
+    procedure ReadsIsoTime;
+    [Test]
+    procedure IsoTimeIsZeroForOtherValues;
+    [Test]
+    procedure FirstTextOfArray;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Text.Json;
 
 { TJsonTextTests }
@@ -149,7 +180,7 @@ var
 begin
   mArray := TJsonBuild.Strings([]);
   try
-    Assert.AreEqual(0, mArray.Count);
+    Assert.AreEqual(0, Integer(mArray.Count));
     Assert.AreEqual('[]', mArray.ToJSON);
   finally
     mArray.Free;
@@ -162,7 +193,7 @@ var
 begin
   mArray := TJsonBuild.Strings(['b', 'a', '', 'Größe "x"']);
   try
-    Assert.AreEqual(4, mArray.Count);
+    Assert.AreEqual(4, Integer(mArray.Count));
     Assert.AreEqual('b', mArray.Items[0].Value);
     Assert.AreEqual('a', mArray.Items[1].Value);
     Assert.AreEqual('', mArray.Items[2].Value);
@@ -181,11 +212,57 @@ begin
   mItems := TArray<string>.Create('x', 'y');
   mArray := TJsonBuild.Strings(mItems);
   try
-    Assert.AreEqual(2, mArray.Count);
+    Assert.AreEqual(2, Integer(mArray.Count));
     Assert.AreEqual('y', mArray.Items[1].Value);
   finally
     mArray.Free;
   end;
+end;
+
+procedure TJsonBuildTests.AddTextLeavesOutEmptyValue;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    TJsonBuild.AddText(mObject, 'a', 'Wert');
+    TJsonBuild.AddText(mObject, 'b', '');
+    Assert.AreEqual('{"a":"Wert"}', mObject.ToJSON([]));
+  finally
+    mObject.Free;
+  end;
+end;
+
+procedure TJsonBuildTests.IsoTimeRoundTrips;
+var
+  mObject: TJSONObject;
+  mStamp: TDateTime;
+begin
+  Assert.AreEqual('', TJsonBuild.IsoTime(0), 'ohne Zeitpunkt leer');
+  mStamp := EncodeDate(2026, 11, 19) + EncodeTime(8, 30, 15, 0);
+  Assert.AreEqual('2026-11-19T08:30:15.000Z', TJsonBuild.IsoTime(mStamp));
+  mObject := TJSONObject.Create;
+  try
+    mObject.AddPair('at', TJsonBuild.IsoTime(mStamp));
+    Assert.AreEqual(Double(mStamp), Double(TJsonRead.IsoTime(mObject, 'at', True)), 1 / (24 * 3600));
+  finally
+    mObject.Free;
+  end;
+end;
+
+procedure TJsonBuildTests.UriLineIsArrayOfUriAndLine;
+begin
+  Assert.AreEqual('["file:///c:/a.pas",12]', TJsonBuild.UriLine('file:///c:/a.pas', 12));
+end;
+
+procedure TJsonBuildTests.TextAndFreeGivesTextAndFrees;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  mObject.AddPair('a', 'b');
+  Assert.AreEqual('{"a":"b"}', TJsonBuild.TextAndFree(mObject));
+  Assert.AreEqual('', TJsonBuild.TextAndFree(nil));
 end;
 
 { TJsonReadTests }
@@ -195,12 +272,43 @@ begin
   FObject := TJSONObject.ParseJSONValue('{"text":"  Hallo  ","number":42,"float":12.0,"exp":1e3,' +
     '"numberText":"17","big":5000000000,"real":2.5,"yes":true,"no":false,"none":null,' +
     '"object":{"a":1},"array":[1,2],"bad":"zwölf",' +
-    '"names":[" a ","",1,"b",true,null,{"c":"d"},["e"],"  "]}') as TJSONObject;
+    '"names":[" a ","",1,"b",true,null,{"c":"d"},["e"],"  "],' +
+    '"stamp":"2026-11-17T10:57:54.250Z","noStamp":"gestern",' +
+    '"ints":[1,"2",3.0,true,5000000000,-4,null]}') as TJSONObject;
 end;
 
 procedure TJsonReadTests.TearDown;
 begin
   FreeAndNil(FObject);
+end;
+
+procedure TJsonReadTests.ObjectsSkipsOtherValues;
+var
+  mRoot: TJSONObject;
+  mObjects: TArray<TJSONObject>;
+begin
+  mRoot := TJsonRead.ParseObject('{"rows": [{"a": 1}, 2, "x", {"a": 3}], "text": "t"}');
+  try
+    mObjects := TJsonRead.Objects(mRoot, 'rows');
+    Assert.AreEqual(2, Integer(Length(mObjects)));
+    Assert.AreEqual(1, TJsonRead.Int(mObjects[0], 'a'));
+    Assert.AreEqual(3, TJsonRead.Int(mObjects[1], 'a'));
+    Assert.AreEqual(0, Integer(Length(TJsonRead.Objects(mRoot, 'text'))), 'kein Array');
+    Assert.AreEqual(0, Integer(Length(TJsonRead.Objects(mRoot, 'fehlt'))));
+    Assert.AreEqual(0, Integer(Length(TJsonRead.Objects(nil, 'rows'))));
+  finally
+    mRoot.Free;
+  end;
+  mObjects := nil;
+end;
+
+procedure TJsonReadTests.FormatOfReadsRootNumber;
+begin
+  Assert.AreEqual(3, TJsonRead.FormatOf('{"format": 3}'));
+  Assert.AreEqual(0, TJsonRead.FormatOf('{"bookmarks": []}'), 'ohne format');
+  Assert.AreEqual(0, TJsonRead.FormatOf('kaputt'));
+  Assert.AreEqual(0, TJsonRead.FormatOf('[1, 2]'));
+  Assert.AreEqual(0, TJsonRead.FormatOf(''));
 end;
 
 procedure TJsonReadTests.NilObjectGivesDefaults;
@@ -362,7 +470,7 @@ var
 begin
   mObject := TJsonRead.ParseObjectOrEmpty('[1]');
   try
-    Assert.AreEqual(0, mObject.Count);
+    Assert.AreEqual(0, Integer(mObject.Count));
   finally
     mObject.Free;
   end;
@@ -404,10 +512,108 @@ begin
   Assert.AreEqual('a|b', string.Join('|', TJsonRead.TrimmedStrings(TJsonRead.Value(FObject, 'names'))));
 end;
 
+procedure TJsonReadTests.JsonGivesValueText;
+begin
+  Assert.AreEqual('{"a":1}', TJsonRead.Json(FObject, 'object'));
+  Assert.AreEqual('null', TJsonRead.Json(FObject, 'none'));
+  Assert.AreEqual('42', TJsonRead.Json(FObject, 'number'));
+  Assert.AreEqual('', TJsonRead.Json(FObject, 'fehlt'));
+  Assert.AreEqual('', TJsonRead.Json(nil, 'object'));
+end;
+
+procedure TJsonReadTests.IntsSkipOtherValues;
+var
+  mInts: TArray<Integer>;
+begin
+  mInts := TJsonRead.Ints(FObject, 'ints');
+  Assert.AreEqual(Integer(3), Integer(Length(mInts)));
+  Assert.AreEqual(1, mInts[0]);
+  Assert.AreEqual(3, mInts[1]);
+  Assert.AreEqual(-4, mInts[2]);
+  Assert.AreEqual(Integer(1), Integer(Length(TJsonRead.Ints(FObject, 'names'))));
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.Ints(nil, 'ints'))));
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.Ints(FObject, 'number'))));
+  mInts := nil;
+end;
+
+procedure TJsonReadTests.ReadsIsoTime;
+begin
+  Assert.AreEqual(Double(EncodeDate(2026, 11, 17) + EncodeTime(10, 57, 54, 250)),
+    Double(TJsonRead.IsoTime(FObject, 'stamp', True)), Double(1 / MSecsPerDay));
+end;
+
+procedure TJsonReadTests.IsoTimeIsZeroForOtherValues;
+begin
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(nil, 'stamp', True)));
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(FObject, 'fehlt', True)));
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(FObject, 'noStamp', True)));
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(FObject, 'number', False)));
+  Assert.AreEqual(Double(0), Double(TJsonRead.IsoTime(FObject, 'none', False)));
+end;
+
 procedure TJsonTextTests.ListsQuotedItems;
 begin
   Assert.AreEqual('[]', TJsonText.List([]));
   Assert.AreEqual('["a", "b\"c"]', TJsonText.List(['a', 'b"c']));
+end;
+
+procedure TJsonTextTests.BoolIsJsonLiteral;
+begin
+  Assert.AreEqual('true', TJsonText.Bool(True));
+  Assert.AreEqual('false', TJsonText.Bool(False));
+end;
+
+procedure TJsonReadTests.ParseArrayOnlyForArrays;
+var
+  mArray: TJSONArray;
+begin
+  mArray := TJsonRead.ParseArray('[1, "a"]');
+  try
+    Assert.IsNotNull(mArray);
+    Assert.AreEqual(2, Integer(mArray.Count));
+  finally
+    mArray.Free;
+  end;
+  Assert.IsNull(TJsonRead.ParseArray('{"a": 1}'));
+  Assert.IsNull(TJsonRead.ParseArray('[1,'));
+  Assert.IsNull(TJsonRead.ParseArray(''));
+end;
+
+procedure TJsonBuildTests.AddFlagOnlyWhenTrue;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    TJsonBuild.AddFlag(mObject, 'aus', False);
+    TJsonBuild.AddFlag(mObject, 'an', True);
+    Assert.AreEqual('{"an":true}', mObject.ToJSON);
+  finally
+    mObject.Free;
+  end;
+end;
+
+procedure TJsonReadTests.FirstTextOfArray;
+var
+  mArray: TJSONArray;
+begin
+  Assert.AreEqual('', TJsonRead.FirstText(nil));
+  mArray := TJSONArray.Create;
+  try
+    Assert.AreEqual('', TJsonRead.FirstText(mArray));
+    mArray.Add(TJSONObject.Create);
+    Assert.AreEqual('', TJsonRead.FirstText(mArray), 'kein Text');
+  finally
+    mArray.Free;
+  end;
+  mArray := TJSONArray.Create;
+  try
+    mArray.Add('eins');
+    mArray.Add('zwei');
+    Assert.AreEqual('eins', TJsonRead.FirstText(mArray));
+  finally
+    mArray.Free;
+  end;
 end;
 
 initialization

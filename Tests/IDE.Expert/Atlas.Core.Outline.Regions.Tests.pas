@@ -28,13 +28,14 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.Core.Outline.Directives,
-  Atlas.Core.Outline.Regions;
+  Atlas.Core.Outline.Regions,
+  Atlas.Core.Outline.CrumbMenu,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cCode =
@@ -65,41 +66,13 @@ begin
 end;
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
-end;
-
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
-  end;
+  Result := TOutlineTest.NodesOf(cCode);
 end;
 
 function Path(ALine, ACharacter: Integer; AParts: TAtlasCrumbParts): string;
 begin
-  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Result := TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(ALine, ACharacter, 'uKunden', True, AParts)));
 end;
 
@@ -140,7 +113,7 @@ var
 begin
   mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(5, 6, 'uKunden', True, [TAtlasCrumbPart.Regions]));
-  Assert.AreEqual('uKunden › Datenbankzugriff › TKunde › Speichern', Joined(mCrumbs));
+  Assert.AreEqual('uKunden › Datenbankzugriff › TKunde › Speichern', TAtlasCrumbMenu.PathOf(mCrumbs));
   Assert.AreEqual('rg', mCrumbs[1].Badge.Code);
   Assert.AreEqual(3, Integer(Length(mCrumbs[1].Places)));
   Assert.AreEqual(0, mCrumbs[1].Current);
@@ -151,7 +124,7 @@ begin
   // Ohne Namen: leerer Text, die Anzeige ergänzt ihn.
   mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(15, 2, 'uKunden', True, [TAtlasCrumbPart.Regions]));
-  Assert.AreEqual('uKunden ›  › TKunde › Speichern', Joined(mCrumbs));
+  Assert.AreEqual('uKunden ›  › TKunde › Speichern', TAtlasCrumbMenu.PathOf(mCrumbs));
   Assert.AreEqual(2, mCrumbs[1].Current);
   Assert.AreEqual(14, mCrumbs[1].Places[2].Line);
 end;

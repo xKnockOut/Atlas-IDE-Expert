@@ -48,20 +48,8 @@ type
 implementation
 
 uses
-  Atlas.Common.Documents.Contract;
-
-function StringBytes(const AValue: string): Int64;
-begin
-  // Kopf (Referenzzähler, Länge, Codepage) plus UTF-16-Zeichen und Endnull.
-  if AValue = '' then
-  begin
-    Result := 0;
-  end
-  else
-  begin
-    Result := 12 + (Length(AValue) + 1) * SizeOf(Char);
-  end;
-end;
+  Atlas.Common.Documents.Contract,
+  Atlas.Text.Chars;
 
 function ArrayBytes(const AValues: TArray<string>): Int64;
 var
@@ -74,7 +62,7 @@ begin
   end;
   for mValue in AValues do
   begin
-    Inc(Result, StringBytes(mValue));
+    Inc(Result, TTextChars.StringBytes(mValue));
   end;
 end;
 
@@ -178,19 +166,21 @@ class function TIndexMemory.UnitBytes(const AUnit: TUnitIndex): Int64;
 var
   mSymbol: TIndexSymbol;
 begin
-  Result := SizeOf(TUnitIndex) + StringBytes(AUnit.UnitName) + StringBytes(AUnit.FileName) +
-    StringBytes(AUnit.Hash) + ArrayBytes(AUnit.InterfaceUses) + ArrayBytes(AUnit.ImplementationUses) +
-    ArrayBytes(AUnit.Directives) + StringBytes(AUnit.DeprecatedText) + ArrayBytes(AUnit.Rationale);
+  Result := SizeOf(TUnitIndex) + TTextChars.StringBytes(AUnit.UnitName) +
+    TTextChars.StringBytes(AUnit.FileName) + TTextChars.StringBytes(AUnit.Hash) +
+    ArrayBytes(AUnit.InterfaceUses) + ArrayBytes(AUnit.ImplementationUses) + ArrayBytes(AUnit.Directives) +
+    TTextChars.StringBytes(AUnit.DeprecatedText) + ArrayBytes(AUnit.Rationale);
   if Length(AUnit.Symbols) > 0 then
   begin
     Inc(Result, 16);
   end;
   for mSymbol in AUnit.Symbols do
   begin
-    Inc(Result, SizeOf(TIndexSymbol) + StringBytes(mSymbol.Name) + StringBytes(mSymbol.Container) +
-      StringBytes(mSymbol.TypeName) + ArrayBytes(mSymbol.Ancestors) + StringBytes(mSymbol.Signature) +
-      StringBytes(mSymbol.Summary) + ArrayBytes(mSymbol.Directives) + StringBytes(mSymbol.DeprecatedText) +
-      ArrayBytes(mSymbol.InlineRefs) + ArrayBytes(mSymbol.Resolutions) + ArrayBytes(mSymbol.Rationale));
+    Inc(Result, SizeOf(TIndexSymbol) + TTextChars.StringBytes(mSymbol.Name) +
+      TTextChars.StringBytes(mSymbol.Container) + TTextChars.StringBytes(mSymbol.TypeName) +
+      ArrayBytes(mSymbol.Ancestors) + TTextChars.StringBytes(mSymbol.Signature) +
+      TTextChars.StringBytes(mSymbol.Summary) + ArrayBytes(mSymbol.Directives) +
+      TTextChars.StringBytes(mSymbol.DeprecatedText) + ArrayBytes(mSymbol.InlineRefs) + ArrayBytes(mSymbol.Resolutions) + ArrayBytes(mSymbol.Rationale));
   end;
   Inc(Result, UsageBytes(AUnit));
 end;
@@ -228,7 +218,8 @@ begin
   end;
   for mUsage in AUnit.Usages do
   begin
-    Inc(Result, SizeOf(TIndexUsage) + StringBytes(mUsage.Name) + 16 + Length(mUsage.Positions) * SizeOf(TTextPosition));
+    Inc(Result, SizeOf(TIndexUsage) + TTextChars.StringBytes(mUsage.Name) + 16 +
+      Length(mUsage.Positions) * SizeOf(TTextPosition));
   end;
 end;
 

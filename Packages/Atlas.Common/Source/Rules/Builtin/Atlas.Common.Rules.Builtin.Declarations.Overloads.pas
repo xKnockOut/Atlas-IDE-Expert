@@ -29,9 +29,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.RoutineSignatures,
@@ -115,7 +112,6 @@ type
     procedure AddRoutines(ANode: TSyntaxNode; var AHeaders: TArray<TSyntaxNode>);
     function TypeHeaders(AType: TSyntaxNode): TArray<TSyntaxNode>;
     procedure CheckNode(ANode: TSyntaxNode);
-    procedure Visit(ARoot: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
@@ -569,31 +565,9 @@ begin
   end;
 end;
 
-procedure TOverloadDirectiveMissingScan.Visit(ARoot: TSyntaxNode);
-var
-  mIndex: Integer;
-  mNode: TSyntaxNode;
-  mPending: TStack<TSyntaxNode>;
-begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(ARoot);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      CheckNode(mNode);
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
-end;
-
 procedure TOverloadDirectiveMissingScan.Run;
+var
+  mNode: TSyntaxNode;
 begin
   if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
   begin
@@ -601,7 +575,10 @@ begin
   end;
   FTokens := FContext.Tree.Tokens;
   FPaths := TConditionalBranches.Paths(FTokens);
-  Visit(FContext.Tree.Root);
+  for mNode in TSyntaxNode.PreOrder(FContext.Tree.Root) do
+  begin
+    CheckNode(mNode);
+  end;
 end;
 
 procedure TOverloadDirectiveMissingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

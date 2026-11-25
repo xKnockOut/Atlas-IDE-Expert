@@ -53,11 +53,12 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Core.Editor.Contract;
 
 type
   TFakeEnvironment = class(TInterfacedObject, IAtlasEditEnvironment)

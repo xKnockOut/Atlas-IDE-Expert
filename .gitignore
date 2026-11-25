@@ -50,7 +50,6 @@ benchmark/
 /Packages/Atlas.Text/atlas-baseline.json
 /Packages/Atlas.Windows/atlas.json
 /Packages/Atlas.Windows/atlas-baseline.json
-/Tests/Referenzprojekt/atlas.json
 /Tests/Referenzprojekt/atlas-baseline.json
 
 # Reste von Merge-Werkzeugen (git mergetool), z. B. Shell.Linter.pas.orig
@@ -59,3 +58,12 @@ benchmark/
 
 # Lokale Einstellungen der Claude-Sitzungen
 .claude/settings.local.json
+
+# Private Schlüssel (Signatur der Versionsdatei, docs/Release.md) nie einchecken
+*.pem
+*.key
+*.pfx
+
+# Python-Zwischendateien der Werkzeuge
+__pycache__/
+*.pyc

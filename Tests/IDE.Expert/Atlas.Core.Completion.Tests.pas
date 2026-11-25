@@ -48,9 +48,6 @@ type
   [TestFixture]
   TAtlasServerCompletionTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     // Startet den echten Server neben dem Testprogramm.
     [Test]
     procedure CompletesMembersFromServer;
@@ -123,105 +120,17 @@ uses
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Core.Completion.Providers.Server,
-  Atlas.Core.Completion.Word,
+  Atlas.Plugin.Editor.Word,
   Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Providers.XmlDoc,
   System.Diagnostics,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Adapters.ServerProcess;
-
-type
-  /// <summary>Sammelt Einträge aus beliebigen Threads und meldet Complete über ein Ereignis.</summary>
-  TCollectingSink = class(TInterfacedObject, IAtlasCompletionSink)
-  private
-    FLock: TCriticalSection;
-    FNames: TList<string>;
-    FCompleted: Integer;
-    FDone: TEvent;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure AddItems(const AItems: TAtlasCompletionItems);
-    procedure MarkIncomplete;
-    procedure MarkSyntax(const ANotice: TAtlasSyntaxNotice);
-    procedure Complete;
-    function WaitDone(ATimeoutMs: Cardinal): Boolean;
-    function Names: string;
-    function Completed: Integer;
-  end;
-
-{ TCollectingSink }
-
-constructor TCollectingSink.Create;
-begin
-  inherited Create;
-  FLock := TCriticalSection.Create;
-  FNames := TList<string>.Create;
-  FDone := TEvent.Create(nil, True, False, '');
-end;
-
-destructor TCollectingSink.Destroy;
-begin
-  FDone.Free;
-  FNames.Free;
-  FLock.Free;
-  inherited;
-end;
-
-procedure TCollectingSink.AddItems(const AItems: TAtlasCompletionItems);
-var
-  mItem: TAtlasCompletionItem;
-begin
-  FLock.Enter;
-  try
-    for mItem in AItems do
-    begin
-      FNames.Add(mItem.Name);
-    end;
-  finally
-    FLock.Leave;
-  end;
-end;
-
-procedure TCollectingSink.MarkIncomplete;
-begin
-end;
-
-procedure TCollectingSink.MarkSyntax(const ANotice: TAtlasSyntaxNotice);
-begin
-end;
-
-procedure TCollectingSink.Complete;
-begin
-  TInterlocked.Increment(FCompleted);
-  FDone.SetEvent;
-end;
-
-function TCollectingSink.WaitDone(ATimeoutMs: Cardinal): Boolean;
-begin
-  Result := FDone.WaitFor(ATimeoutMs) = wrSignaled;
-end;
-
-function TCollectingSink.Names: string;
-var
-  mList: TArray<string>;
-begin
-  FLock.Enter;
-  try
-    mList := FNames.ToArray;
-  finally
-    FLock.Leave;
-  end;
-  TArray.Sort<string>(mList);
-  Result := string.Join(',', mList);
-end;
-
-function TCollectingSink.Completed: Integer;
-begin
-  Result := TInterlocked.CompareExchange(FCompleted, 0, 0);
-end;
+  Atlas.Plugin.Lsp.Providers.ServerProcess,
+  Atlas.Plugin.Lsp.Providers.ServerProcess.Tests,
+  Atlas.Core.Completion.TestSupport;
 
 function Item(const AName: string): TAtlasCompletionItem;
 begin
@@ -682,20 +591,6 @@ end;
 
 { TAtlasServerCompletionTests }
 
-procedure TAtlasServerCompletionTests.WarmUpFirstUse;
-begin
-  // Erster echter Start (Pipes, Threads, Sitzung, Zeitlimit-Arbeiter) ungemessen statt [IgnoreMemoryLeaks]
-  //. Ohne Server neben dem Testprogramm überspringt der Test ohnehin.
-  if FileExists(TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe')) then
-    try
-      CompletesMembersFromServer;
-    except
-      // Scheitert der Lauf, meldet das der Test selbst.
-      on Exception do
-        ;
-    end;
-end;
-
 const
   cCompletesMembersUnitText =
     'unit Probe;'#13#10 +
@@ -717,6 +612,7 @@ procedure TAtlasServerCompletionTests.CompletesMembersFromServer;
 var
   mServerExe: string;
   mServer: TLspServerProcess;
+  mClient: TLspClient;
   mSession: TLspSession;
   mProvider: TAtlasServerCompletionProvider;
   mProviderRef: IAtlasCompletionProvider;
@@ -729,9 +625,9 @@ begin
   begin
     Assert.Pass('Server nicht neben dem Testprogramm gebaut: ' + mServerExe);
   end;
-  mServer := TLspServerProcess.Create(mServerExe, '');
+  mServer := StartLspServer(mServerExe, '', mClient);
   try
-    mSession := TLspSession.Create(mServer.Client, 5000);
+    mSession := TLspSession.Create(mClient, 5000);
     try
       mSession.Initialize;
       mProvider := TAtlasServerCompletionProvider.Create(

@@ -50,10 +50,11 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer,
-  Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Editing.SafeDelete;
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Pascal.MemberTransfer,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Editing.SafeDelete,
+  Atlas.Tests.SourceText;
 
 const
   cSource =
@@ -143,18 +144,6 @@ begin
   end;
 end;
 
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := mTree.Diagnostics = nil;
-  finally
-    mTree.Free;
-  end;
-end;
-
 { TSafeDeleteTests }
 
 procedure TSafeDeleteTests.FindsSymbols;
@@ -214,7 +203,7 @@ begin
   Assert.IsFalse(ContainsText(mText, 'Helper;'#10'  protected'), mText);
   Assert.IsFalse(ContainsText(mText, 'TFoo.Helper'), mText);
   Assert.IsTrue(ContainsText(mText, '  Helper;'#10'end;'), 'Aufruf bleibt (prueft die Protokollschicht)');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesOneOverload;
@@ -225,7 +214,7 @@ begin
   Assert.IsFalse(ContainsText(mText, 'Run(AValue: Integer)'), mText);
   Assert.IsTrue(ContainsText(mText, '    procedure Run; overload;'), mText);
   Assert.IsTrue(ContainsText(mText, 'procedure TFoo.Run;'), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesFieldFromGroup;
@@ -245,7 +234,7 @@ begin
   mText := DeleteAt(cSource, 15, 14);
   Assert.IsFalse(ContainsText(mText, 'property A'), mText);
   Assert.IsFalse(ContainsText(mText, 'public'), 'leerer Abschnitt faellt weg');
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesClassWithBodies;
@@ -256,7 +245,7 @@ begin
   Assert.IsFalse(ContainsText(mText, 'TFoo'), mText);
   Assert.IsFalse(ContainsText(mText, 'type'), 'leerer type-Abschnitt faellt weg');
   Assert.IsTrue(ContainsText(mText, 'procedure Glob(AValue: Integer);'#10'  procedure Inner;'), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesConstantWithDocAndSection;
@@ -269,7 +258,7 @@ begin
   mText := DeleteAt(mText, 3, 3);
   Assert.IsFalse(ContainsText(mText, 'const'), 'leerer const-Abschnitt faellt weg');
   Assert.IsTrue(ContainsText(mText, 'interface'#10'type'), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesVariableFromGroup;
@@ -281,7 +270,7 @@ begin
   mText := DeleteAt(mText, 18, 3);
   Assert.IsFalse(ContainsText(mText, 'GA'), mText);
   Assert.IsTrue(ContainsText(mText, '  end;'#10'procedure Glob'), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesRoutineEverywhere;
@@ -291,7 +280,7 @@ begin
   mText := DeleteAt(cSource, 36, 11);
   Assert.IsFalse(ContainsText(mText, 'Glob'), mText);
   Assert.IsFalse(ContainsText(mText, 'Inner'), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.DeletesLocalRoutine;
@@ -301,7 +290,7 @@ begin
   mText := DeleteAt(cSource, 37, 13);
   Assert.IsFalse(ContainsText(mText, 'Inner'), mText);
   Assert.IsTrue(ContainsText(mText, 'procedure Glob(AValue: Integer);'#10'var'), mText);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
 end;
 
 procedure TSafeDeleteTests.FindsFreedMembers;

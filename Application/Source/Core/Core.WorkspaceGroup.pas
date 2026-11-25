@@ -1,0 +1,556 @@
+﻿unit Core.WorkspaceGroup;
+
+// Host-Rolle Core: Arbeitsbereiche ohne LSP-Client für MCP-Modus und Linter
+// (#1112). Ein Ordner mit seinem Projekt und, mit index.projectGroup, den
+// übrigen Projekten der Projektgruppe, alle in einem Symbolindex wie im
+// LSP-Server. Für die Prüfregeln liefert RuleProject den Projektkontext einer
+// Datei mit Index, Nachladen über alle Projekte und den Projekten der Gruppe:
+// derselbe Weg wie TServerComposition.RuleContextFor, damit IDE, MCP und
+// --check dieselben Befunde haben. Der Index ist das Herzstück: Ohne ihn
+// schweigen Regeln, die Typen aus anderen Units oder der RTL brauchen.
+// Wie im LSP-Server beantwortet der Index Declared(X) in {$IF} (#847); sonst
+// blieb es unbekannt, beide Zweige galten und ergaben Syntaxfehler.
+
+interface
+
+uses
+  System.SysUtils,
+  System.SyncObjs,
+  System.Generics.Collections,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Processes,
+  Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Architecture.UsesService,
+  Atlas.Common.Query.Contract,
+  Core.Workspace.Setup,
+  Core.Workspace;
+
+type
+  /// <summary>Gemerkte Projekte der Gruppe für projektweite Regeln (#1102); Valid bis Invalidate.</summary>
+  TCoreRuleProjectCache = record
+    Items: TArray<TRuleProject>;
+    Valid: Boolean;
+  end;
+
+  /// <summary>Warten auf den Indexaufbau der Arbeitsbereiche einer Gruppe.</summary>
+  TCoreIndexWait = record
+    /// <summary>Arbeitsbereiche, deren Indexaufbau seit Load fertig ist; unter FLock der Gruppe.</summary>
+    Finished: TList<TCoreWorkspace>;
+    /// <summary>Gesetzt, sobald einer fertig wird.</summary>
+    Event: TEvent;
+    /// <summary>Meldung je fertigem Arbeitsbereich (#1480), True beim Hauptarbeitsbereich; nil erlaubt.</summary>
+    OnFinished: TProc<Boolean>;
+  end;
+
+  TCoreWorkspaceGroup = class
+  private
+    FRoot: string;
+    FStore: IDocumentStore;
+    FTransport: IJsonRpcTransport;
+    FLogger: ILogger;
+    FIndex: ISymbolIndex;
+    FProgressToken: string;
+    FReadText: TRuleProjectReadText;
+    FFactories: TCoreWorkspaceFactories;
+    FMain: TCoreWorkspace;
+    FOthers: TObjectList<TCoreWorkspace>;
+    FProcessIdentity: TIndexProcessInfo;
+    FCacheRoot: string;
+    FRefactorings: TRuleRefactorings;
+    FIndexWait: TCoreIndexWait;
+    FLock: TObject;
+    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102), bis Invalidate; unter FLock.</summary>
+    FRuleProjects: TCoreRuleProjectCache;
+    /// <summary>Uses-Graph über FIndex für projektweite Regeln (#64) und die MCP-Werkzeuge; einer für die Gruppe,
+    /// statt je Prüfung einen eigenen aufzubauen.</summary>
+    FUsesGraph: TUsesGraphService;
+    /// <summary>Code-Abfragen über alle Projekte der Gruppe (#1351) für query_code, --query und die Regeln
+    /// query:&lt;name&gt;; ein Dienst, damit ein Ergebnis je Index-Stand einmal gerechnet wird.</summary>
+    FQueries: ICodeQueries;
+    function Workspaces: TArray<TCoreWorkspace>;
+    function QuerySource(out ASource: TQuerySource): Boolean;
+    procedure Prepare(AWorkspace: TCoreWorkspace);
+    function RuleProjects: TArray<TRuleProject>;
+  public
+    /// <summary>Name des Clients für alle Arbeitsbereiche, auch nach Load (#1883).</summary>
+    procedure SetClient(const AClient: string);
+    /// <summary>AReadText liest Quelltexte (Hauptquelltexte der Projekte); Fortschritt und logMessage der
+    /// Arbeitsbereiche gehen ins Leere, Meldungen an ALogger.</summary>
+    constructor Create(const ARoot: string; const AStore: IDocumentStore; const ALogger: ILogger;
+      const AIndex: ISymbolIndex; const AProgressToken: string; const AFactories: TCoreWorkspaceFactories;
+      const AReadText: TRuleProjectReadText);
+    destructor Destroy; override;
+    /// <summary>Liest atlas.json, lädt das Projekt (ProjectFile oder im Ordner gesucht) und mit
+    /// index.projectGroup die übrigen Projekte der Gruppe; startet den Indexaufbau.</summary>
+    procedure Load(const AGlobalSettings: string);
+    /// <summary>Hält alle Indexaufbauten an.</summary>
+    procedure Stop;
+    /// <summary>Wartet, bis der Index aller Projekte fertig ist; False nach ATimeoutMs.</summary>
+    function WaitForIndex(ATimeoutMs: Cardinal): Boolean;
+    /// <summary>Projekte geladen und Index fertig? Sonst der Grund in AReason.</summary>
+    function Ready(out AReason: string): Boolean;
+    /// <summary>Projektdateien aller Projekte der Gruppe.</summary>
+    function AllFiles: TArray<string>;
+    /// <summary>Lädt AUnitName über die Suchpfade des ersten Projekts nach, das sie findet.</summary>
+    function EnsureUnit(const AUnitName: string): Boolean;
+    /// <summary>EnsureUnit als Methodenreferenz für Dienste, die nachladen.</summary>
+    function UnitLoader: TEnsureUnitFunc;
+    /// <summary>Arbeitsbereich, zu dem AFileName gehört, sonst der Hauptarbeitsbereich.</summary>
+    function WorkspaceOf(const AFileName: string): TCoreWorkspace;
+    /// <summary>Projektkontext für die Prüfregeln (#1112): Anwendungsart, Formulare der .dpr und die Dienste
+    /// mit Index, Nachladen über alle Projekte und den Projekten der Gruppe.</summary>
+    function RuleProject(const AFileName: string): TCheckProject;
+    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102, #64) mit dem Uses-Graphen der Gruppe; still,
+    /// solange Projekte laden oder der Index läuft.</summary>
+    function RuleProjectFiles: IRuleProjectFiles;
+    /// <summary>Uses-Graph der Gruppe (#64) mit den Namensräumen des Hauptprojekts; neu aufgebaut wird er nur bei
+    /// einer Änderung.</summary>
+    function UsesGraph: TUsesGraphService;
+    /// <summary>Code-Abfragen über alle Projekte der Gruppe (#1351) mit dem Index, den Namensräumen des
+    /// Hauptprojekts und der Aufrufhierarchie.</summary>
+    function Queries: ICodeQueries;
+    /// <summary>Projekte der Gruppe neu ermitteln (nach geänderten Projektdateien).</summary>
+    procedure Invalidate;
+    property Main: TCoreWorkspace read FMain;
+    /// <summary>Symbolindex aller Projekte der Gruppe.</summary>
+    property Index: ISymbolIndex read FIndex;
+    /// <summary>Vor Load setzen (#62): Anmeldung am Index-Cache.</summary>
+    property ProcessIdentity: TIndexProcessInfo read FProcessIdentity write FProcessIdentity;
+    /// <summary>Vor Load setzen (#1112): Ordner der Index-Caches.</summary>
+    property CacheRoot: string read FCacheRoot write FCacheRoot;
+    /// <summary>Vor Load setzen: Refactorings für die Korrekturen der Prüfregeln; je Eintrag nil = keine.</summary>
+    property Refactorings: TRuleRefactorings read FRefactorings write FRefactorings;
+    /// <summary>Vor Load setzen (#1480): Index eines Arbeitsbereichs fertig, True beim Hauptarbeitsbereich; läuft
+    /// im Thread des Indexaufbaus, auch nach einem erneuten Aufbau.</summary>
+    property OnIndexFinished: TProc<Boolean> read FIndexWait.OnFinished write FIndexWait.OnFinished;
+  end;
+
+implementation
+
+uses
+  Atlas.Common.Architecture.UsesGraph,
+  System.Classes,
+  System.Diagnostics,
+  System.JSON,
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Index.CacheDirectory,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Query.Service,
+  Atlas.Common.Lsp.Query,
+  Core.Bootstrap,
+  Core.Workspace.RuleProjects;
+
+type
+  /// <summary>Nimmt die LSP-Benachrichtigungen der Arbeitsbereiche (Fortschritt, logMessage) auf und verwirft
+  /// sie; ohne LSP-Client gibt es niemanden, der sie liest.</summary>
+  TSilentTransport = class(TInterfacedObject, IJsonRpcTransport)
+  public
+    function ReadMessage: TJSONObject;
+    procedure WriteMessage(const AMessage: TJSONObject);
+  end;
+
+{ TSilentTransport }
+
+function TSilentTransport.ReadMessage: TJSONObject;
+begin
+  raise EJsonRpcTransportClosed.Create('Kein LSP-Client');
+end;
+
+procedure TSilentTransport.WriteMessage(const AMessage: TJSONObject);
+begin
+end;
+
+/// <summary>Projekte der Gruppe von AWorkspace: die .groupproj in ARoot, sonst die nächste darüber, die das Projekt
+/// von AWorkspace enthält (#1895).</summary>
+function GroupProjectsOf(const ARoot: string; AWorkspace: TCoreWorkspace; const ALogger: ILogger): TArray<string>;
+var
+  mInfo: TProjectInfo;
+  mProjectFile: string;
+begin
+  Result := TCoreBootstrap.GroupProjects(ARoot, ALogger);
+  if Result <> nil then
+  begin
+    Exit;
+  end;
+  // --check <Projekt>.dproj prüft im Ordner des Projekts; die Gruppe liegt oft darüber (Application/,
+  // Packages/<Modul>/). Wie in der IDE mit geöffneter Gruppe gehören ihre Projekte dazu: Sonst fehlen Units, die ein
+  // anderes Projekt in einen Suchpfad übersetzt, im Index (unresolved-*) und als .dcu vor dem ersten Bau
+  // (uses-unit-not-found).
+  mProjectFile := AWorkspace.Setup.ProjectFile;
+  if (mProjectFile = '') and AWorkspace.State.Project(mInfo) then
+  begin
+    mProjectFile := mInfo.FileName;
+  end;
+  Result := TCoreBootstrap.EnclosingGroupProjects(mProjectFile, ALogger);
+end;
+
+{ TCoreWorkspaceGroup }
+
+constructor TCoreWorkspaceGroup.Create(const ARoot: string; const AStore: IDocumentStore; const ALogger: ILogger;
+  const AIndex: ISymbolIndex; const AProgressToken: string; const AFactories: TCoreWorkspaceFactories;
+  const AReadText: TRuleProjectReadText);
+begin
+  inherited Create;
+  FRoot := ARoot;
+  FStore := AStore;
+  FLogger := ALogger;
+  FIndex := AIndex;
+  FProgressToken := AProgressToken;
+  FReadText := AReadText;
+  FFactories := AFactories;
+  FTransport := TSilentTransport.Create;
+  FLock := TObject.Create;
+  FIndexWait.Finished := TList<TCoreWorkspace>.Create;
+  FIndexWait.Event := TEvent.Create(nil, False, False, '');
+  FOthers := TObjectList<TCoreWorkspace>.Create(True);
+  FCacheRoot := TIndexCacheDirectory.DefaultRoot;
+  FMain := TCoreWorkspace.Create(ARoot, ExtractFileName(ARoot),
+    TCoreWorkspaceServices.Create(AStore, FTransport, ALogger,
+    AIndex, AProgressToken, AFactories));
+  FUsesGraph := TUsesGraphService.Create(AIndex, TUsesGraphOptions.Default);
+  FQueries := TCodeQueryService.Create(QuerySource);
+  TPascalPreprocessor.SetDeclaredProvider(TSymbolIndex.DeclaredIn(AIndex));
+end;
+
+destructor TCoreWorkspaceGroup.Destroy;
+begin
+  TPascalPreprocessor.SetDeclaredProvider(nil);
+  FQueries := nil;
+  FUsesGraph.Free;
+  FOthers.Free;
+  FMain.Free;
+  FIndexWait.Event.Free;
+  FIndexWait.Finished.Free;
+  FLock.Free;
+  inherited;
+end;
+
+function TCoreWorkspaceGroup.Workspaces: TArray<TCoreWorkspace>;
+var
+  mOther: TCoreWorkspace;
+begin
+  Result := [FMain];
+  for mOther in FOthers do
+  begin
+    Result := Result + [mOther];
+  end;
+end;
+
+function TCoreWorkspaceGroup.QuerySource(out ASource: TQuerySource): Boolean;
+var
+  mInput: TLspQueryInput;
+begin
+  mInput.Index := FIndex;
+  mInput.EnsureUnit := UnitLoader();
+  mInput.Root := FRoot;
+  mInput.Files := AllFiles;
+  mInput.Namespaces := FMain.State.Namespaces;
+  mInput.ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := Assigned(FReadText) and FReadText(AFileName, AText);
+    end;
+  ASource := TLspQuery.Source(mInput, FMain.Configuration.Settings.References);
+  Result := True;
+end;
+
+procedure TCoreWorkspaceGroup.Prepare(AWorkspace: TCoreWorkspace);
+begin
+  AWorkspace.Setup.ProcessIdentity := FProcessIdentity;
+  AWorkspace.Setup.CacheRoot := FCacheRoot;
+  AWorkspace.Setup.Refactorings := FRefactorings;
+  AWorkspace.Events.OnIndexFinished :=
+    procedure
+    begin
+      System.TMonitor.Enter(FLock);
+      try
+        if not FIndexWait.Finished.Contains(AWorkspace) then
+        begin
+          FIndexWait.Finished.Add(AWorkspace);
+        end;
+        FRuleProjects.Valid := False;
+      finally
+        System.TMonitor.Exit(FLock);
+      end;
+      FIndexWait.Event.SetEvent;
+      if Assigned(FIndexWait.OnFinished) then
+      begin
+        FIndexWait.OnFinished(AWorkspace = FMain);
+      end;
+    end;
+  // uses-unit-not-found: Was ein anderes Projekt der Gruppe in einen Suchpfad übersetzt, gibt es beim Bau der
+  // Gruppe (wie in der Komposition; hier für --check und MCP).
+  AWorkspace.Setup.OnGroupProjects :=
+    function: TArray<string>
+    begin
+      Result := GroupProjectsOf(FRoot, AWorkspace, FLogger);
+    end;
+  // requires-Packages als Quelle bei den Projekten der Gruppe suchen (#46), auch wenn --check nur ein Projekt der
+  // Gruppe prüft und die Gruppe darüber liegt (Packages/<Modul>/<Modul>.dproj): Sonst fehlen beim Prüfen eines
+  // Moduls alle Units des Basis-Packages im Index (#2309).
+  AWorkspace.Setup.OnPackageFolders :=
+    function: TArray<string>
+    begin
+      Result := TCoreBootstrap.ProjectFolders(TCoreBootstrap.GroupProjects(FRoot, FLogger) +
+        TCoreBootstrap.EnclosingGroupProjects(AWorkspace.Setup.ProjectFile, FLogger));
+    end;
+end;
+
+function TCoreWorkspaceGroup.RuleProjects: TArray<TRuleProject>;
+var
+  mWorkspace: TCoreWorkspace;
+  mProject: TRuleProject;
+  mMainSource: string;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    if FRuleProjects.Valid then
+    begin
+      Exit(FRuleProjects.Items);
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+  Result := nil;
+  for mWorkspace in Workspaces do
+  begin
+    if mWorkspace.State.RuleProject(mProject, mMainSource) then
+    begin
+      Result := Result + [TRuleProjectFiles.ProjectOf(mProject.FileName, mMainSource, mProject.Sources, FReadText)];
+    end;
+  end;
+  System.TMonitor.Enter(FLock);
+  try
+    FRuleProjects.Items := Result;
+    FRuleProjects.Valid := True;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TCoreWorkspaceGroup.SetClient(const AClient: string);
+var
+  mWorkspace: TCoreWorkspace;
+begin
+  FProcessIdentity.Client := AClient;
+  for mWorkspace in Workspaces do
+  begin
+    mWorkspace.Cache.SetClient(AClient);
+  end;
+end;
+
+procedure TCoreWorkspaceGroup.Load(const AGlobalSettings: string);
+var
+  mInfo: TProjectInfo;
+  mProjectFile: string;
+  mOther: TCoreWorkspace;
+begin
+  Prepare(FMain);
+  FMain.Load(AGlobalSettings);
+  // Übrige Projekte der Gruppe (index.projectGroup, Standard an): Sonst fehlen z. B. Units, die nur ein
+  // Package enthält, wenn atlas.json auf ein anderes Projekt zeigt.
+  if not FMain.Configuration.Settings.IndexProjectGroup then
+  begin
+    Exit;
+  end;
+  for mProjectFile in GroupProjectsOf(FRoot, FMain, FLogger) do
+  begin
+    if FMain.State.Project(mInfo) and SameText(mInfo.FileName, mProjectFile) then
+    begin
+      Continue;
+    end;
+    mOther := TCoreWorkspace.Create(ExtractFileDir(mProjectFile), ChangeFileExt(ExtractFileName(mProjectFile), ''),
+      TCoreWorkspaceServices.Create(FStore, FTransport, FLogger, FIndex, Format('%s-%d', [FProgressToken,
+      FOthers.Count + 1]), FFactories));
+    mOther.Setup.ProjectFile := mProjectFile;
+    Prepare(mOther);
+    FOthers.Add(mOther);
+    mOther.Load(AGlobalSettings);
+  end;
+end;
+
+procedure TCoreWorkspaceGroup.Stop;
+var
+  mWorkspace: TCoreWorkspace;
+begin
+  for mWorkspace in FOthers do
+  begin
+    mWorkspace.Stop;
+  end;
+  FMain.Stop;
+end;
+
+function TCoreWorkspaceGroup.WaitForIndex(ATimeoutMs: Cardinal): Boolean;
+var
+  mWorkspace: TCoreWorkspace;
+  mInfo: TProjectInfo;
+  mWatch: TStopwatch;
+  mMissing: Boolean;
+begin
+  mWatch := TStopwatch.StartNew;
+  repeat
+    // Nur Arbeitsbereiche mit Projekt bauen einen Index; ohne Projekt gibt es nichts abzuwarten.
+    mMissing := False;
+    System.TMonitor.Enter(FLock);
+    try
+      for mWorkspace in Workspaces do
+      begin
+        if mWorkspace.State.Project(mInfo) and not FIndexWait.Finished.Contains(mWorkspace) then
+        begin
+          mMissing := True;
+        end;
+      end;
+    finally
+      System.TMonitor.Exit(FLock);
+    end;
+    if not mMissing then
+    begin
+      Exit(True);
+    end;
+    if mWatch.ElapsedMilliseconds >= ATimeoutMs then
+    begin
+      Exit(False);
+    end;
+    FIndexWait.Event.WaitFor(200);
+  until False;
+end;
+
+function TCoreWorkspaceGroup.Ready(out AReason: string): Boolean;
+var
+  mWorkspace: TCoreWorkspace;
+begin
+  AReason := '';
+  for mWorkspace in Workspaces do
+  begin
+    if not mWorkspace.RuleReady(AReason) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+function TCoreWorkspaceGroup.AllFiles: TArray<string>;
+var
+  mWorkspace: TCoreWorkspace;
+begin
+  Result := nil;
+  for mWorkspace in Workspaces do
+  begin
+    Result := Result + mWorkspace.State.ProjectFiles;
+  end;
+end;
+
+function TCoreWorkspaceGroup.EnsureUnit(const AUnitName: string): Boolean;
+var
+  mWorkspace: TCoreWorkspace;
+begin
+  for mWorkspace in Workspaces do
+  begin
+    if mWorkspace.EnsureUnit(AUnitName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TCoreWorkspaceGroup.UnitLoader: TEnsureUnitFunc;
+begin
+  Result :=
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end;
+end;
+
+function TCoreWorkspaceGroup.WorkspaceOf(const AFileName: string): TCoreWorkspace;
+var
+  mWorkspace: TCoreWorkspace;
+begin
+  for mWorkspace in Workspaces do
+  begin
+    if mWorkspace.State.ContainsFile(AFileName) then
+    begin
+      Exit(mWorkspace);
+    end;
+  end;
+  Result := FMain;
+end;
+
+function TCoreWorkspaceGroup.RuleProject(const AFileName: string): TCheckProject;
+var
+  mWorkspace, mOther: TCoreWorkspace;
+  mInfo: TProjectInfo;
+  mProjects: TArray<TProjectInfo>;
+begin
+  // Alle Projekte der Gruppe, die die Datei enthalten, das gewählte zuerst: Eine Unit im Testprogramm und
+  // im Package hat keine eindeutige Anwendungsart (MergeRuleProjects).
+  mWorkspace := WorkspaceOf(AFileName);
+  mProjects := nil;
+  if mWorkspace.State.Project(mInfo) then
+  begin
+    mProjects := mProjects + [mInfo];
+  end;
+  for mOther in Workspaces do
+  begin
+    if (mOther <> mWorkspace) and mOther.State.ContainsFile(AFileName) and mOther.State.Project(mInfo) then
+    begin
+      mProjects := mProjects + [mInfo];
+    end;
+  end;
+  Result := TCoreRuleProjects.RuleProjectOf(mProjects, AFileName, FReadText);
+  Result.Services := mWorkspace.RuleServices;
+  // Nachladen über alle Projekte der Gruppe und projektweite Regeln (#1102) wie im Server.
+  Result.Services.EnsureUnit := UnitLoader();
+  Result.Services.ProjectFiles := RuleProjectFiles;
+  // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
+  Result.Services.Queries := FQueries;
+end;
+
+function TCoreWorkspaceGroup.RuleProjectFiles: IRuleProjectFiles;
+begin
+  Result := TRuleProjectFiles.Create(RuleProjects, FIndex, FReadText,
+    function(out AReason: string): Boolean
+    begin
+      Result := Ready(AReason);
+    end,
+    UsesGraph);
+end;
+
+function TCoreWorkspaceGroup.UsesGraph: TUsesGraphService;
+var
+  mOptions: TUsesGraphOptions;
+begin
+  mOptions := FUsesGraph.Options;
+  if string.Join(';', mOptions.Namespaces) <> string.Join(';', FMain.State.Namespaces) then
+  begin
+    mOptions.Namespaces := FMain.State.Namespaces;
+    FUsesGraph.SetOptions(mOptions);
+  end;
+  Result := FUsesGraph;
+end;
+
+function TCoreWorkspaceGroup.Queries: ICodeQueries;
+begin
+  Result := FQueries;
+end;
+
+procedure TCoreWorkspaceGroup.Invalidate;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    FRuleProjects.Valid := False;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+end.

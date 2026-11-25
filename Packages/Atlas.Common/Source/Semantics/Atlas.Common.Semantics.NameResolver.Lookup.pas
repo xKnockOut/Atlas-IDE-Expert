@@ -91,7 +91,7 @@ var
   mPass, mPosition: Integer;
   mPositions: TArray<Integer>;
 begin
-  // Über die Namenstabelle statt linear durch alle Symbole (Diagnoselog 15.10.2026).
+  // Über die Namenstabelle statt linear durch alle Symbole.
   mPositions := AUnit.SymbolsNamed(AName);
   // Mit Typargumenten nur generische Typen passender Stelligkeit; ohne zuerst nicht generische.
   for mPass := 0 to 1 do

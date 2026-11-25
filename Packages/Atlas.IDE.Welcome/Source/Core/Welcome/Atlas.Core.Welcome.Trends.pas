@@ -19,37 +19,14 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Welcome.Contract;
 
 type
   TAtlasTrendSeriesList = TArray<TAtlasTrendSeries>;
 
-  TAtlasTrendTile = record
-    Series: TAtlasTrendSeries;
-    /// <summary>Wert je Punkt in Zehnteln; nur mit Has.</summary>
-    Values: TArray<Integer>;
-    Has: TArray<Boolean>;
-    /// <summary>Skala in Zehnteln: Bottom ≤ 0 ≤ Top, Bottom &lt; Top.</summary>
-    Bottom: Integer;
-    Top: Integer;
-    /// <summary>Der letzte Punkt hat einen Wert.</summary>
-    function HasLast: Boolean;
-    function Last: Integer;
-    /// <summary>Letzter bekannter Wert vor dem letzten Punkt; False ohne.</summary>
-    function Previous(out AValue: Integer): Boolean;
-  end;
-
-  TAtlasTrendView = record
-    /// <summary>Projektdatei; '' ohne Projekt.</summary>
-    Project: string;
-    /// <summary>Gezeigte Punkte, älteste zuerst.</summary>
-    Points: TArray<TAtlasTrendPoint>;
-    /// <summary>Eine Kachel je gewählter Reihe.</summary>
-    Tiles: TArray<TAtlasTrendTile>;
-    /// <summary>Höchstens so viele Builds (welcomePage.trends.points).</summary>
-    Limit: Integer;
-    function Name: string;
-  end;
+  TAtlasTrendTile = Atlas.Core.Welcome.Contract.TAtlasTrendTile;
+  TAtlasTrendView = Atlas.Core.Welcome.Contract.TAtlasTrendView;
 
   TAtlasWelcomeTrends = class
   public const
@@ -91,6 +68,13 @@ implementation
 uses
   System.Math;
 
+const
+  /// <summary>Länge einer vollständigen Revision in Hexziffern: SHA-1 und SHA-256.</summary>
+  cSha1Length = 40;
+  cSha256Length = 64;
+  /// <summary>Länge der Kurzform einer Revision wie bei git.</summary>
+  cShortCommitLength = 7;
+
 /// <summary>Round(AValue * ANumerator / ADenominator) ohne Überlauf; ADenominator &gt; 0.</summary>
 function Scaled(AValue, ANumerator, ADenominator: Integer): Integer;
 var
@@ -105,48 +89,6 @@ begin
   begin
     Result := -Integer((-mProduct + ADenominator div 2) div ADenominator);
   end;
-end;
-
-{ TAtlasTrendTile }
-
-function TAtlasTrendTile.HasLast: Boolean;
-begin
-  Result := (Length(Has) > 0) and Has[System.High(Has)];
-end;
-
-function TAtlasTrendTile.Last: Integer;
-begin
-  Result := 0;
-  if HasLast then
-  begin
-    Result := Values[System.High(Values)];
-  end;
-end;
-
-function TAtlasTrendTile.Previous(out AValue: Integer): Boolean;
-var
-  mIndex: Integer;
-begin
-  AValue := 0;
-  for mIndex := System.High(Has) - 1 downto 0 do
-  begin
-    if Has[mIndex] then
-    begin
-      AValue := Values[mIndex];
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-{ TAtlasTrendView }
-
-function TAtlasTrendView.Name: string;
-var
-  mSummary: TAtlasProjectSummary;
-begin
-  mSummary := TAtlasProjectSummary.Create(Project);
-  Result := mSummary.Name;
 end;
 
 { TAtlasWelcomeTrends }
@@ -311,7 +253,7 @@ var
   mIndex: Integer;
 begin
   Result := Trim(ARevision);
-  if (Length(Result) <> 40) and (Length(Result) <> 64) then
+  if (Length(Result) <> cSha1Length) and (Length(Result) <> cSha256Length) then
   begin
     Exit;
   end;
@@ -322,7 +264,7 @@ begin
       Exit;
     end;
   end;
-  Result := Copy(Result, 1, 7);
+  Result := Copy(Result, 1, cShortCommitLength);
 end;
 
 class function TAtlasWelcomeTrends.PointX(AIndex, ACount, ALeft, AWidth: Integer): Integer;

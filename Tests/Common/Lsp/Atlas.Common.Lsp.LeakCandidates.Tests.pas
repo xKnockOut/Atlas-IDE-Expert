@@ -8,7 +8,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Lsp.LeakCandidates;
+  Atlas.Common.Lsp.LeakCandidates,
+  Atlas.Common.Lsp.Contract;
 
 type
   [TestFixture]
@@ -167,9 +168,9 @@ begin
   end;
   Assert.AreEqual(2, Integer(Length(mClasses)), 'ohne UnicodeString, ohne doppelten Namen');
   Assert.AreEqual('TKunde', mClasses[0].Name);
-  Assert.AreEqual(2, mClasses[0].Count);
+  Assert.AreEqual(2, Integer(mClasses[0].Count));
   Assert.AreEqual('TStringList', mClasses[1].Name);
-  Assert.AreEqual(0, mClasses[1].Count);
+  Assert.AreEqual(0, Integer(mClasses[1].Count));
   Assert.IsFalse(mHasStacks);
   mClasses := TLspLeakCandidates.ClassesOf(nil, mHasStacks);
   Assert.AreEqual(0, Integer(Length(mClasses)), 'ohne Optionen');

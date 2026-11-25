@@ -62,13 +62,15 @@ type
     /// <summary>Startverbünde (#867): Array als JSON-Text; mit Zugangsdaten verworfen.</summary>
     [Test]
     procedure KeepsLaunchGroups;
+    [Test]
+    procedure KeepsExceptionRules;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 const
   cFileName = 'C:\Repo\App\.atlas';
@@ -502,6 +504,18 @@ begin
   Assert.AreEqual('', mTeam.LaunchGroups, 'mit Zugangsdaten verworfen');
   Assert.IsTrue(HasIssue(mTeam, TAtlasTeamIssueKind.Credential, 'launchGroups.password'));
   Assert.IsTrue(HasIssue(Parsed('{"version": 1, "launchGroups": {}}'), TAtlasTeamIssueKind.WrongType, 'launchGroups'));
+end;
+
+procedure TAtlasTeamFileTests.KeepsExceptionRules;
+var
+  mTeam: TAtlasTeamSettings;
+begin
+  mTeam := Parsed('{"version": 1, "exceptionRules": [{"class": "EAbort", "action": "continue"}]}');
+  Assert.AreEqual(0, Integer(Length(mTeam.Issues)));
+  Assert.AreEqual('[{"class":"EAbort","action":"continue"}]', mTeam.ExceptionRules);
+  Assert.AreEqual('exceptionRules', TAtlasTeamFile.Values(mTeam)[0].Key);
+  Assert.IsTrue(HasIssue(Parsed('{"version": 1, "exceptionRules": "EAbort"}'), TAtlasTeamIssueKind.WrongType,
+    'exceptionRules'));
 end;
 
 initialization

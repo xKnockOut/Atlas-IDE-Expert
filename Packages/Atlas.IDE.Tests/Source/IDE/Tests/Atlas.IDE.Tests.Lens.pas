@@ -62,7 +62,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Lens,
@@ -192,31 +192,24 @@ type
 implementation
 
 uses
-  Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.UI.Tests.Strings,
   Atlas.Core.Editor.Elements,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Text.Lines,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.ToolsApi.Theme.Style;
 
-/// <summary>Oberen Editor neu zeichnen.</summary>
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
+const
+  // Takt, in dem die Anzeige dem aktiven Editor folgt.
+  cTickMs = 250;
 
 { TAtlasIdeTestsLens.TEvents }
 
@@ -256,7 +249,7 @@ begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -280,7 +273,7 @@ begin
   FQueries := Default(TAtlasTestStateQueries);
   if FShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -323,7 +316,7 @@ begin
     begin
       FVersion := FTests.Version;
       UpdateStale;
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.RepaintTop;
     end;
   except
     on E: Exception do
@@ -351,7 +344,7 @@ begin
   if FShowing then
   begin
     FShowing := False;
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -382,7 +375,7 @@ begin
   UpdateStale;
   FShowing := Length(mItems) > 0;
   FVersion := FTests.Version;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 function TAtlasIdeTestsLens.ItemAt(ALine: Integer): Integer;
@@ -571,18 +564,8 @@ begin
 end;
 
 class function TAtlasIdeLensPill.BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
-var
-  mSample: COLORREF;
 begin
-  mSample := GetPixel(ACanvas.Handle, AX, AY);
-  if mSample = CLR_INVALID then
-  begin
-    Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
-  end
-  else
-  begin
-    Result := TAtlasColor(mSample);
-  end;
+  Result := TAtlasIdeStyle.SampleBack(ACanvas, AX, AY);
 end;
 
 class function TAtlasIdeLensPill.LeftOf(const AContext: INTACodeEditorPaintContext; const ALine: string): Integer;
@@ -602,19 +585,25 @@ var
 begin
   try
     mOldFont := TFont.Create;
-    mOldBrush := TBrush.Create;
-    mOldPen := TPen.Create;
     try
       mOldFont.Assign(ACanvas.Font);
-      mOldBrush.Assign(ACanvas.Brush);
-      mOldPen.Assign(ACanvas.Pen);
-      APaint();
+      mOldBrush := TBrush.Create;
+      try
+        mOldBrush.Assign(ACanvas.Brush);
+        mOldPen := TPen.Create;
+        try
+          mOldPen.Assign(ACanvas.Pen);
+          APaint();
+        finally
+          ACanvas.Pen.Assign(mOldPen);
+          mOldPen.Free;
+        end;
+      finally
+        ACanvas.Brush.Assign(mOldBrush);
+        mOldBrush.Free;
+      end;
     finally
       ACanvas.Font.Assign(mOldFont);
-      ACanvas.Brush.Assign(mOldBrush);
-      ACanvas.Pen.Assign(mOldPen);
-      mOldPen.Free;
-      mOldBrush.Free;
       mOldFont.Free;
     end;
   except

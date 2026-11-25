@@ -40,7 +40,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.TypeCommands,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -839,14 +840,6 @@ begin
   end;
 end;
 
-procedure AddName(var ANames: TArray<string>; const AName: string);
-begin
-  if (AName <> '') and not MatchText(AName, ANames) then
-  begin
-    ANames := ANames + [AName];
-  end;
-end;
-
 /// <summary>Felder der Klasse an der Befehlszeile und globale Variablen mit Typargumenten.</summary>
 procedure AddScopeCollections(ASource: TCommandSource; var ANames: TArray<string>);
 var
@@ -860,7 +853,7 @@ begin
       (mSymbol.TypeArgs <> '') and ((mSymbol.Container = '') or (mHasClass and
       SameText(mSymbol.Container, mClass.Name))) then
     begin
-      AddName(ANames, mSymbol.Name);
+      TTextArrays.AddText(ANames, mSymbol.Name);
     end;
   end;
 end;
@@ -896,7 +889,7 @@ begin
   begin
     if IsValidIdent(Trim(mName)) then
     begin
-      AddName(ANames, Trim(mName));
+      TTextArrays.AddText(ANames, Trim(mName));
     end;
   end;
 end;
@@ -936,7 +929,7 @@ begin
     if (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
       SameText(mSymbol.Container, AElement) then
     begin
-      AddName(ANames, mSymbol.Name);
+      TTextArrays.AddText(ANames, mSymbol.Name);
     end;
   end;
 end;
@@ -994,30 +987,18 @@ begin
   Result := ExecuteDict(AContext, True, AEdits, AReason);
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterCollectionCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('list', cTexts[TCollectionCommandsText.ListAsFieldOrLocal].Text,
-    cTexts[TCollectionCommandsText.ListFCustomersTCustomer].Text,
-    ExecuteList));
-  ARegister(Command('dict', cTexts[TCollectionCommandsText.DictionaryAsFieldOrLocal].Text,
-    cTexts[TCollectionCommandsText.DictFCacheStringTCustomer].Text,
-    ExecuteDictPlain));
-  ARegister(Command('dict!', cTexts[TCollectionCommandsText.DictionaryWithCaseInsensitiveKeys].Text,
-    cTexts[TCollectionCommandsText.DictFCacheStringTCustomer2].Text, ExecuteDictIgnoreCase));
-  ARegister(Command('sort', cTexts[TCollectionCommandsText.SortAListByField].Text,
-    cTexts[TCollectionCommandsText.SortCustomersRevenue].Text,
-    ExecuteSort));
-  ARegister(Command('filter', cTexts[TCollectionCommandsText.MatchesOfAConditionInto].Text,
-    cTexts[TCollectionCommandsText.FilterCustomersActive].Text,
-    ExecuteFilter));
+  ARegister(TSlashCommand.Create('list', cTexts[TCollectionCommandsText.ListAsFieldOrLocal].Text,
+      cTexts[TCollectionCommandsText.ListFCustomersTCustomer].Text, ExecuteList));
+  ARegister(TSlashCommand.Create('dict', cTexts[TCollectionCommandsText.DictionaryAsFieldOrLocal].Text,
+      cTexts[TCollectionCommandsText.DictFCacheStringTCustomer].Text, ExecuteDictPlain));
+  ARegister(TSlashCommand.Create('dict!', cTexts[TCollectionCommandsText.DictionaryWithCaseInsensitiveKeys].Text,
+      cTexts[TCollectionCommandsText.DictFCacheStringTCustomer2].Text, ExecuteDictIgnoreCase));
+  ARegister(TSlashCommand.Create('sort', cTexts[TCollectionCommandsText.SortAListByField].Text,
+      cTexts[TCollectionCommandsText.SortCustomersRevenue].Text, ExecuteSort));
+  ARegister(TSlashCommand.Create('filter', cTexts[TCollectionCommandsText.MatchesOfAConditionInto].Text,
+      cTexts[TCollectionCommandsText.FilterCustomersActive].Text, ExecuteFilter));
 end;
 
 initialization

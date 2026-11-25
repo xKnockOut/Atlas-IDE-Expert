@@ -40,8 +40,8 @@ uses
   ToolsAPI,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.LineTail,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh;
 
 const
   /// <summary>Abstand in Zeichen hinter dem letzten Zeichen der Zeile.</summary>
@@ -98,13 +98,8 @@ begin
 end;
 
 class procedure TAtlasDebugLineEnd.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 end.

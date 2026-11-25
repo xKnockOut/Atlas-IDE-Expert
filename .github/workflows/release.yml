@@ -2,7 +2,9 @@ name: Release
 
 # Veröffentlicht eine Version (#83), ausgelöst durch ein Tag v<SemVer>, z. B. v0.2.0.
 #
-# 1. Prüft, dass Tag, TProductVersion und Claude-Code-Plugin dieselbe Version tragen.
+# 1. Prüft, dass Tag, TProductVersion und Claude-Code-Plugin dieselbe Version tragen,
+#    und bei einer stabilen Version, dass seit dem letzten Kandidaten nur Korrekturen
+#    kamen oder ein Commit die Abweichung begründet (Tools/Check-ReleaseCandidate.ps1).
 # 2. Baut den Server (Win64 Release) auf dem selbst gehosteten Delphi-Runner,
 #    sofern DELPHI_RUNNER = 'true'; signiert ihn, wenn SIGN_CERT_BASE64 und
 #    SIGN_CERT_PASSWORD gesetzt sind.
@@ -23,6 +25,11 @@ name: Release
 #    danach ein lokal gebautes an und ersetzt beide Versionsdateien.
 #    AtlasUpdate.exe gehört ins ZIP; ist sie signiert, verlangt sie für jede
 #    EXE, BPL und DLL eines Updates dieselbe gültige Signatur.
+# 6. Signiert beide Versionsdateien mit dem eigenen Schlüssel für Updates
+#    (Geheimnis ATLAS_UPDATE_SIGNING_KEY, Tools/Sign-VersionFile.ps1) und lädt
+#    <Versionsdatei>.sig daneben hoch; AtlasUpdate prüft sie vor dem Download.
+#    Das Code-Signing-Zertifikat bleibt freiwillig: Ohne es steht in den
+#    Release-Notizen ein Hinweis, dass die Binärdateien nicht signiert sind.
 
 on:
   push:
@@ -38,6 +45,9 @@ jobs:
       version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Ganze Historie samt Tags für den Vergleich mit dem letzten Kandidaten.
+          fetch-depth: 0
       - name: Versionen vergleichen
         id: check
         shell: pwsh
@@ -45,6 +55,10 @@ jobs:
           $version = '${{ github.ref_name }}'.TrimStart('v')
           ./Tools/Check-Version.ps1 -Expected $version
           "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Seit dem letzten Kandidaten nur Korrekturen
+        shell: pwsh
+        # Begründung aus einer Zeile „Ohne neuen Kandidaten: …“ in einem Commit seit dem Kandidaten (Set-Version.ps1 -Reason).
+        run: ./Tools/Check-ReleaseCandidate.ps1 -Version ('${{ github.ref_name }}'.TrimStart('v')) -ReasonFromHistory
       - name: Release-Notizen prüfen
         shell: pwsh
         # Vor dem Bauen: GitHub lehnt Notizen über 125000 Zeichen ab, das Release scheiterte sonst erst am Ende.
@@ -54,6 +68,8 @@ jobs:
     needs: version
     if: vars.DELPHI_RUNNER == 'true'
     runs-on: [self-hosted, windows, delphi]
+    outputs:
+      signed: ${{ steps.sign.outputs.signed }}
     env:
       HAS_SIGNING: ${{ secrets.SIGN_CERT_BASE64 != '' }}
     steps:
@@ -108,6 +124,7 @@ jobs:
             if (-not $bpl -or $bpl.LastWriteTime -lt $start) { throw "Win32-BPL von $($package.Name) wurde nicht neu geschrieben" }
           }
       - name: Signieren (optional)
+        id: sign
         if: env.HAS_SIGNING == 'true'
         shell: pwsh
         env:
@@ -126,6 +143,7 @@ jobs:
               signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $file
               if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             }
+            "signed=true" >> $env:GITHUB_OUTPUT
           } finally {
             Remove-Item $pfx -Force
           }
@@ -181,10 +199,28 @@ jobs:
             -ServerUrl '${{ github.server_url }}' -SourceZip "atlas-ide-expert-source-$env:VERSION.zip" `
             -PackageZip $package -OutFile atlas-version.json
           Copy-Item atlas-version.json atlas-version-beta.json
+      - name: Versionsdateien signieren (#1519)
+        shell: pwsh
+        env:
+          ATLAS_UPDATE_SIGNING_KEY: ${{ secrets.ATLAS_UPDATE_SIGNING_KEY }}
+        # Eigener Schlüssel, kein Zertifikat nötig. Ohne Geheimnis bleibt die Versionsdatei unsigniert; AtlasUpdate
+        # warnt dann nur, solange TUpdateManifestSignature.cRequired False ist. Ohne Paket schreibt
+        # Publish-ReleasePackage.ps1 beide Dateien neu und signiert sie selbst.
+        run: |
+          if (-not $env:ATLAS_UPDATE_SIGNING_KEY) {
+            Write-Host '::warning::ATLAS_UPDATE_SIGNING_KEY fehlt: Versionsdatei nicht signiert (docs/Release.md)'
+            exit 0
+          }
+          ./Tools/Sign-VersionFile.ps1 -VersionFile atlas-version.json
+          Copy-Item atlas-version.json.sig atlas-version-beta.json.sig
       - name: Release-Notizen
         shell: pwsh
-        # Kurze Fassung aus docs/Release-Notizen/<Version>.md, sonst der Abschnitt aus CHANGELOG.md.
-        run: ./Tools/Get-ReleaseNotes.ps1 -Version $env:VERSION | Set-Content -Encoding utf8 release-notes.md
+        # Kurze Fassung aus docs/Release-Notizen/<Version>.md, sonst der Abschnitt aus CHANGELOG.md. Hat der
+        # Delphi-Runner gebaut, aber nicht signiert, kommt der Hinweis auf unsignierte Binärdateien dazu; ohne Runner
+        # setzt ihn Publish-ReleasePackage.ps1 mit dem lokal gebauten Paket.
+        run: |
+          $unsigned = '${{ needs.server.result }}' -eq 'success' -and '${{ needs.server.outputs.signed }}' -ne 'true'
+          ./Tools/Get-ReleaseNotes.ps1 -Version $env:VERSION -UnsignedBinaries:$unsigned | Set-Content -Encoding utf8 release-notes.md
       - name: Release anlegen
         uses: softprops/action-gh-release@v2
         with:
@@ -198,6 +234,7 @@ jobs:
             server/atlas-ide-expert-${{ env.VERSION }}.zip
             atlas-ide-expert-source-${{ env.VERSION }}.zip
             atlas-version.json
+            atlas-version.json.sig
           fail_on_unmatched_files: false
       - name: Kanal für Vorabversionen ersetzen (#1519)
         env:
@@ -209,3 +246,9 @@ jobs:
               --notes 'Versionsdatei für updates.channel = prerelease; jeder Release ersetzt sie.'
           fi
           gh release upload update-channel atlas-version-beta.json --clobber
+          # Signatur dazu; ohne neue Signatur die alte entfernen, sie passte nicht mehr zur Datei.
+          if [ -f atlas-version-beta.json.sig ]; then
+            gh release upload update-channel atlas-version-beta.json.sig --clobber
+          else
+            gh release delete-asset update-channel atlas-version-beta.json.sig --yes 2>/dev/null || true
+          fi

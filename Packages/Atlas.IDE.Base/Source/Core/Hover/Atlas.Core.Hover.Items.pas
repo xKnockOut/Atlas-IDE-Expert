@@ -11,12 +11,12 @@ interface
 
 uses
   System.Types,
-  Atlas.Core.Style.Color;
+  Atlas.Plugin.Style.Color,
+  Atlas.Core.Hover.Contract;
 
 type
   {$SCOPEDENUMS ON}
-  /// <summary>Schriften des Tooltips: UI, Editorschrift, beide verkleinert, Badge.</summary>
-  TAtlasHoverFont = (Ui, Mono, SmallUi, SmallMono, Badge);
+  TAtlasHoverFont = Atlas.Core.Hover.Contract.TAtlasHoverFont;
   /// <summary>DebugFix: Korrektur unter „kein Zugriff“ (#840), Index in View.DebugValue.Note.Fixes.
   /// DebugAction: Aktion unter dem Wert (Anheften #526), Index in View.DebugValue.Actions.
   /// DebugRow: Zeile des aufgeklappten Werts (#895), Index in View.DebugValue.Rows, -1 der Wert selbst.</summary>
@@ -29,12 +29,7 @@ type
   TAtlasHoverItemKind = (Fill, Line, Text, CenterText, Frame, RoundFill, Block, Styled, Doc);
   {$SCOPEDENUMS OFF}
 
-  TAtlasHoverFace = record
-    Font: TAtlasHoverFont;
-    Bold: Boolean;
-    Underline: Boolean;
-    class function Create(AFont: TAtlasHoverFont; ABold, AUnderline: Boolean): TAtlasHoverFace; static;
-  end;
+  TAtlasHoverFace = Atlas.Core.Hover.Contract.TAtlasHoverFace;
 
   TAtlasHoverItem = record
     Kind: TAtlasHoverItemKind;
@@ -108,15 +103,6 @@ implementation
 
 uses
   System.Math;
-
-{ TAtlasHoverFace }
-
-class function TAtlasHoverFace.Create(AFont: TAtlasHoverFont; ABold, AUnderline: Boolean): TAtlasHoverFace;
-begin
-  Result.Font := AFont;
-  Result.Bold := ABold;
-  Result.Underline := AUnderline;
-end;
 
 { TAtlasHoverScroll }
 

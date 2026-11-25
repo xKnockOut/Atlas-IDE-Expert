@@ -17,7 +17,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
@@ -26,7 +26,7 @@ uses
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Diagnostics.Providers.Log,
-  Atlas.Common.Diagnostics.Adapters.LogFolder;
+  Atlas.Common.Diagnostics.Providers.LogFolder;
 
 type
   TShellDiagnostics = class(TInterfacedObject, IJsonRpcRequestObserver)
@@ -105,12 +105,11 @@ uses
   System.IOUtils,
   System.Hash,
   System.StrUtils,
-  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Logging.Providers.TransformSink,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Text.LogMarks;
 
 threadvar
@@ -389,7 +388,7 @@ begin
   begin
     // Nur Klasse und Aufrufstapel: Die Meldung kann Pfade oder Namen aus dem Projekt enthalten.
     mErrorClass := AError.ClassName;
-    mStack := TShellPlatform.StackTraceOf(AError);
+    mStack := TServerPlatform.StackTraceOf(AError);
   end;
   FLog.LogEnd(AReason, AExitCode, mProcess, mErrorClass, mStack);
   FLogImpl.Flush;

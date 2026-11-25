@@ -13,11 +13,11 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Groups,
-  Atlas.Core.Settings.Search;
+  Atlas.Core.Settings.Search,
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasSettingsPaletteSource = class(TInterfacedObject, IAtlasPaletteSource)
@@ -84,7 +84,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

@@ -137,10 +137,11 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -202,16 +203,6 @@ begin
 end;
 
 { TLegacyCollections }
-
-/// <summary>Ausdruck ohne umschließende Klammern.</summary>
-function Unparenthesized(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
 
 function IsMember(const AName: string; const AMembers: TArray<string>): Boolean;
 var
@@ -308,7 +299,7 @@ var
   begin
     Result := False;
     ACollection := nil;
-    AValue := Unparenthesized(AValue);
+    AValue := TSyntaxNodes.Unparen(AValue);
     if AValue = nil then
     begin
       Exit;
@@ -380,7 +371,7 @@ var
         // Wert as T
         else if (mNode.Kind = TSyntaxKind.BinaryExpr) and SameText(mNode.Name, 'as') and (mNode.ChildCount = 2) then
         begin
-          Add(mNode, mNode[0], Unparenthesized(mNode[1]));
+          Add(mNode, mNode[0], TSyntaxNodes.Unparen(mNode[1]));
         end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
         begin

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Updates.Selection;
 
 // Platform-Feature "Updates" (#1519), Root: welche Packages ein Update
-// installiert (Mockup 6).
+// installiert.
 // - Kern und Verträge immer; bisher eingetragene Module bleiben gewählt.
 // - Neue Module (in der installierten Version nicht vorhanden) nach
 //   updates.newModules: install wählt sie, skip nicht, ask fragt. Ein früher

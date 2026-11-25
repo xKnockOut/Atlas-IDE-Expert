@@ -103,6 +103,12 @@ const
   cImageBaseAlignment = $10000;
   cLengthSuffix = 'H';
   cEntryPointText = 'Program entry point at';
+  /// <summary>Kopf eines Abschnitts mit Zeilennummern, vom Linker englisch geschrieben.</summary>
+  cLineSectionText = 'Line numbers for ';
+  /// <summary>Segment einer Adresse "0001:00ABCDEF": vier Hexziffern, dann der Doppelpunkt.</summary>
+  cSegmentDigits = 4;
+  /// <summary>Mindestens Adresse, Länge und Name in einer Zeile des Kopfs.</summary>
+  cHeaderParts = 3;
 
 { TMapLocation }
 
@@ -126,7 +132,7 @@ var
   mValue: Int64;
 begin
   mColon := Pos(':', AText);
-  Result := (mColon = 5) and TryStrToInt('$' + Copy(AText, 1, 4), ASegment) and
+  Result := (mColon = cSegmentDigits + 1) and TryStrToInt('$' + Copy(AText, 1, cSegmentDigits), ASegment) and
     TryStrToInt64('$' + Copy(AText, mColon + 1, MaxInt), mValue);
   if Result then
   begin
@@ -283,7 +289,7 @@ begin
   begin
     FSection := TSection.Other;
   end
-  else if StartsText('Line numbers for ', ALine) then
+  else if StartsText(cLineSectionText, ALine) then
   begin
     StartLineSection(ALine);
   end
@@ -313,7 +319,7 @@ var
   mOpen, mClose: Integer;
 begin
   // Line numbers for System(System.pas) segment .text
-  mInside := Copy(ALine, Length('Line numbers for ') + 1, MaxInt);
+  mInside := Copy(ALine, Length(cLineSectionText) + 1, MaxInt);
   mOpen := Pos('(', mInside);
   mClose := Pos(')', mInside);
   FCurrentUnit := Copy(mInside, 1, mOpen - 1);
@@ -344,7 +350,7 @@ var
   mAddress: UInt64;
 begin
   // 0001:00401000 0012345H .text CODE
-  if FHeaderDone or (Length(AParts) < 3) or not ReadCodeAddress(AParts[0], mAddress) then
+  if FHeaderDone or (Length(AParts) < cHeaderParts) or not ReadCodeAddress(AParts[0], mAddress) then
   begin
     Exit;
   end;
@@ -406,7 +412,7 @@ end;
 function TMapFile.Resolve(AModuleOffset: UInt64): TMapLocation;
 var
   mAddress: UInt64;
-  mFound, mDot: Integer;
+  mFound, mSymbol, mDot: Integer;
 begin
   Result := Default(TMapLocation);
   if (AModuleOffset < FCodeStart) or (FSymbols.Count = 0) then
@@ -428,20 +434,22 @@ begin
   begin
     Exit;
   end;
+  mSymbol := mFound;
   Result.Found := True;
-  Result.Routine := FSymbols[mFound].Name;
+  Result.Routine := FSymbols[mSymbol].Name;
   mDot := Pos('.', Result.Routine);
   if mDot > 0 then
   begin
     Result.UnitName := Copy(Result.Routine, 1, mDot - 1);
   end;
-  // Zeile: letzte Zeilenangabe <= Address, nicht vor dem Anfang der Routine.
+  // Zeile: letzte Zeilenangabe <= Address, nicht vor dem Anfang der Routine. Routinen ohne Zeileninfo
+  // (System, Generika, Units ohne Debug-Info) bekämen sonst die Zeile einer Routine davor.
   mFound := LastAtOrBefore(FLines.Count,
     function(AIndex: Integer): UInt64
     begin
       Result := FLines[AIndex].Address;
     end, mAddress);
-  if (mFound >= 0) and (FLines[mFound].Address >= FSymbols[0].Address) then
+  if (mFound >= 0) and (FLines[mFound].Address >= FSymbols[mSymbol].Address) then
   begin
     Result.Line := FLines[mFound].Line;
     Result.FileName := FLines[mFound].FileName;

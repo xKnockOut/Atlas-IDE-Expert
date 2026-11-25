@@ -53,7 +53,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Math;
+  System.Math,
+  Atlas.Common.Pascal.TokenCursor;
 
 type
   TFrameKind = (Top, Section, ClassBody, Routine, Block, TryBlock, RepeatBlock, CaseBlock, AsmBlock, InitBlock,
@@ -455,21 +456,12 @@ end;
 
 function TIndentTokens.NextSignificant(AIndex: Integer): Integer;
 begin
-  Result := AIndex + 1;
-  while (Result <= High(Tokens)) and (Tokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
+  Result := NextCodeAfter(Tokens, AIndex);
 end;
 
 function TIndentTokens.PreviousSignificant(AIndex: Integer): Integer;
 begin
-  Result := AIndex - 1;
-  while (Result >= 0) and (Tokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
+  Result := PreviousCode(Tokens, AIndex);
 end;
 
 function TIndentTokens.WordOf(AIndex: Integer): string;

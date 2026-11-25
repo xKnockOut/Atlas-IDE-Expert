@@ -2,7 +2,7 @@
 
 // Entscheidungen des Fensters „Atlas-Board“ (#1272, #1967) ohne Fenster: Anzeige nach dem Laden, Grund je
 // Fehler, Karten aus anderen Repositories, Prüfung vor dem Ziehen, Übergänge in der Fehlermeldung und
-// Aktualisieren.
+// Aktualisieren, Wiederfinden nach der Rückfrage und Stand des Ladens.
 
 interface
 
@@ -31,6 +31,16 @@ type
     procedure TransitionsOnlyWhenRejectedUnderStateMachine;
     [Test]
     procedure RefreshesOnlyWhenIdle;
+    /// <summary>Nach der Rückfrage zum Verschieben: Karte und Spalte über Kennung und Namen, auch wenn der Stand
+    /// inzwischen neu geladen ist und die Karte woanders steht.</summary>
+    [Test]
+    procedure RelocateByKeyAndColumnName;
+    /// <summary>Ziel wechselt während des Ladens auf eins ohne Tracker: Das neue Laden beginnt ohne Ladezustand,
+    /// die Antwort des alten zählt nicht und setzt ihn auch nicht.</summary>
+    [Test]
+    procedure LoadRunEndsWhenNextSkips;
+    [Test]
+    procedure LoadRunCountsOnlyLatestAnswer;
   end;
 
 implementation
@@ -185,6 +195,60 @@ begin
   Assert.IsFalse(TAtlasBoardPlan.Refreshes(True, True, False, False, False), 'Fenster zu');
   Assert.IsFalse(TAtlasBoardPlan.Refreshes(True, True, True, True, False), 'lädt schon');
   Assert.IsFalse(TAtlasBoardPlan.Refreshes(True, True, True, False, True), 'verschiebt');
+end;
+
+procedure TAtlasBoardPlanTests.RelocateByKeyAndColumnName;
+var
+  mSnapshot: TAtlasBoardSnapshot;
+  mCard: Integer;
+  mColumn: Integer;
+begin
+  mSnapshot := PlanSnapshot;
+  Assert.IsTrue(TAtlasBoardPlan.Relocate(mSnapshot, 'ATL-1', 'In Arbeit', mCard, mColumn));
+  Assert.AreEqual(0, mCard);
+  Assert.AreEqual(1, mColumn);
+  // Neu geladen: eine Karte davor, Spalten in anderer Reihenfolge.
+  mSnapshot.Cards := TArray<TAtlasBoardCard>.Create(PlanCard('ATL-9', 'Offen')) + mSnapshot.Cards;
+  mSnapshot.Columns := [mSnapshot.Columns[2], mSnapshot.Columns[0], mSnapshot.Columns[1]];
+  Assert.IsTrue(TAtlasBoardPlan.Relocate(mSnapshot, 'atl-1', 'in arbeit', mCard, mColumn));
+  Assert.AreEqual(1, mCard, 'Karte über die Kennung');
+  Assert.AreEqual(2, mColumn, 'Spalte über den Namen');
+  Assert.IsFalse(TAtlasBoardPlan.Relocate(mSnapshot, 'ATL-2', 'In Arbeit', mCard, mColumn), 'Karte weg');
+  Assert.IsFalse(TAtlasBoardPlan.Relocate(mSnapshot, 'ATL-1', 'Prüfung', mCard, mColumn), 'Spalte weg');
+end;
+
+procedure TAtlasBoardPlanTests.LoadRunEndsWhenNextSkips;
+var
+  mRun: TAtlasBoardLoadRun;
+  mOld: Integer;
+begin
+  mRun := Default(TAtlasBoardLoadRun);
+  mOld := mRun.Next;
+  mRun.Started;
+  Assert.IsTrue(mRun.Loading);
+  // Ziel ohne Tracker: neues Laden, aber keine Abfrage.
+  mRun.Next;
+  Assert.IsFalse(mRun.Loading, 'Ladezustand endet sichtbar');
+  Assert.IsFalse(mRun.Answered(mOld), 'alte Antwort zählt nicht');
+  Assert.IsFalse(mRun.Loading);
+end;
+
+procedure TAtlasBoardPlanTests.LoadRunCountsOnlyLatestAnswer;
+var
+  mRun: TAtlasBoardLoadRun;
+  mFirst: Integer;
+  mSecond: Integer;
+begin
+  mRun := Default(TAtlasBoardLoadRun);
+  mFirst := mRun.Next;
+  mRun.Started;
+  mSecond := mRun.Next;
+  mRun.Started;
+  Assert.IsFalse(mRun.Answered(mFirst), 'veraltet');
+  Assert.IsTrue(mRun.Loading, 'die neue läuft weiter');
+  Assert.IsTrue(mRun.Answered(mSecond));
+  Assert.IsFalse(mRun.Loading);
+  Assert.AreEqual(mSecond, mRun.Generation);
 end;
 
 initialization

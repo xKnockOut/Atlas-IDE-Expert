@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasTimingFrameTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure EmptyShowsHint;
     [Test]
@@ -30,9 +27,8 @@ uses
   System.SysUtils,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Timing,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Timing,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.TimingFrame;
 
@@ -56,11 +52,6 @@ end;
 
 { TAtlasTimingFrameTests }
 
-procedure TAtlasTimingFrameTests.WarmUpFirstUse;
-begin
-  RowsWithProviderNamesAndWarnings;
-end;
-
 procedure TAtlasTimingFrameTests.EmptyShowsHint;
 var
   mFrame: TAtlasTimingFrame;
@@ -70,7 +61,7 @@ begin
     Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticNoQuery), mFrame.Title.Caption);
     Assert.AreEqual(5, Integer(Length(mFrame.Rows)), 'Schritte ohne Quellen');
     Assert.IsFalse(mFrame.FileNames.Checked, 'Dateinamen nur auf Wunsch');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopy), mFrame.CopyButton.Caption);
+    Assert.AreEqual(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopy), mFrame.CopyButton.Caption);
   finally
     mFrame.Free;
   end;

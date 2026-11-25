@@ -21,7 +21,9 @@
 // „Für diese Zeile unterdrücken“ und „Regel abschalten“ liefert das Modul
 // Prüfregeln (TAtlasRuleActions, #1755); ohne Modul fehlen die Einträge. „Alle sicheren Treffer
 // von <Regel> korrigieren …“ (#1352) bietet das Modul Prüfregeln über
-// IAtlasBulkFixer an (#1455); ohne laufendes Modul fehlt der Eintrag.
+// IAtlasBulkFixer an (#1455); ohne laufendes Modul fehlt der Eintrag. „Als Auftrag für KI-Assistenten
+// kopieren“ (#2570) schickt die Argumente des Fensters (markierte Befunde) an atlas.server.findingsPrompt (Hook
+// Command); den Text legt das Fenster in die Zwischenablage, gemeldet wird in der Meldungsansicht.
 // Markierung folgt dem Cursor (problems.window.followCursor); F8/Umschalt+F8
 // gehen bei sichtbarem Fenster durch dessen gefilterte Liste (StepWindow).
 // Offene Units zuerst (#1108): Der Takt gibt dem Frame die Datei des oberen
@@ -119,7 +121,7 @@ uses
   System.Generics.Collections,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
@@ -136,7 +138,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -164,26 +166,33 @@ const
 
 type
   TState = class
+  private
+    FHooks: TAtlasIdeProblemsHooks;
+    FTimer: TTimer;
+    FVersion: Integer;
+    FInputs: string;
+    FCursor: string;
+    FStatus: string;
+    FFindings: TAtlasFindingsCache;
+    FCatalog: TJSONValue;
+    FCatalogLanguage: TAtlasLanguage;
+    FCatalogLoading: Boolean;
   public
-    Hooks: TAtlasIdeProblemsHooks;
-    Timer: TTimer;
-    /// <summary>Zuletzt gezeigter Stand: Version des Speichers und Eingaben (Bereich, Dateien, obere Datei).</summary>
-    Version: Integer;
-    Inputs: string;
-    /// <summary>Datei und Zeile des Cursors beim letzten Folgen.</summary>
-    Cursor: string;
-    Status: string;
-    /// <summary>Befunde je Datei: Neu gebaut (und von der Platte gelesen) werden nur Dateien mit neuem Stand.
-    /// </summary>
-    Findings: TAtlasFindingsCache;
-    Catalog: TJSONValue;
-    CatalogLanguage: TAtlasLanguage;
     constructor Create;
     destructor Destroy; override;
     procedure Tick(Sender: TObject);
-  private
-    FCatalogLoading: Boolean;
-  public
+    property Hooks: TAtlasIdeProblemsHooks read FHooks write FHooks;
+    /// <summary>Zuletzt gezeigter Stand: Version des Speichers und Eingaben (Bereich, Dateien, obere Datei).</summary>
+    property Version: Integer read FVersion write FVersion;
+    property Inputs: string read FInputs write FInputs;
+    /// <summary>Datei und Zeile des Cursors beim letzten Folgen.</summary>
+    property Cursor: string read FCursor write FCursor;
+    property Status: string read FStatus write FStatus;
+    /// <summary>Befunde je Datei: Neu gebaut (und von der Platte gelesen) werden nur Dateien mit neuem Stand.
+    /// </summary>
+    property Findings: TAtlasFindingsCache read FFindings;
+    property Catalog: TJSONValue read FCatalog write FCatalog;
+    property CatalogLanguage: TAtlasLanguage read FCatalogLanguage write FCatalogLanguage;
     /// <summary>Eine Anfrage nach dem Katalog läuft (Hover fragt nur einmal, #54).</summary>
     property CatalogLoading: Boolean read FCatalogLoading write FCatalogLoading;
   end;
@@ -521,7 +530,7 @@ begin
         Exit;
       end;
       // Der Wert gehört dem Absender: eine Kopie merken.
-      FreeAndNil(State.Catalog);
+      State.Catalog.Free;
       State.Catalog := AValue.Clone as TJSONValue;
       State.CatalogLanguage := TAtlasStrings.Language;
       if Assigned(ADone) then
@@ -677,7 +686,28 @@ begin
     end;
 end;
 
-/// <summary>Regel erklären; Issue anlegen.</summary>
+/// <summary>„Als Auftrag für KI-Assistenten kopieren“ (#2570): Den Text erzeugt der Server (Katalog, Editorpuffer),
+/// das Plugin legt ihn in die Zwischenablage und meldet das in der Meldungsansicht.</summary>
+procedure CopyPrompt(const ACommand, AArgumentsJson: string; ACount: Integer; const ACopy: TFunc<TJSONValue, Boolean>);
+begin
+  if (State = nil) or not Assigned(State.Hooks.Command) then
+  begin
+    Say(TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsPromptFailed));
+    Exit;
+  end;
+  State.Hooks.Command(ACommand, AArgumentsJson,
+    procedure(AAnswer: TJSONValue)
+    begin
+      if not ACopy(AAnswer) then
+      begin
+        Say(TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsPromptFailed));
+        Exit;
+      end;
+      Say(TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsPromptCopied, [ACount]));
+    end);
+end;
+
+/// <summary>Regel erklären; Issue anlegen; Auftrag für KI-Assistenten kopieren.</summary>
 procedure WireRules(AFrame: TAtlasProblemsFrame);
 begin
   AFrame.OnExplain :=
@@ -696,6 +726,15 @@ begin
       begin
         State.Hooks.CreateIssue(AFindings);
       end;
+    end;
+  AFrame.OnCopyPrompt :=
+    procedure(const ACommand, AArgumentsJson: string; ACount: Integer; const ACopy: TFunc<TJSONValue, Boolean>)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Problems,
+        procedure
+        begin
+          CopyPrompt(ACommand, AArgumentsJson, ACount, ACopy);
+        end);
     end;
   AFrame.CanCreateIssue :=
     function: Boolean
@@ -730,19 +769,19 @@ end;
 constructor TState.Create;
 begin
   inherited Create;
-  Findings := TAtlasFindingsCache.Create;
+  FFindings := TAtlasFindingsCache.Create;
   Version := -1;
-  Timer := TTimer.Create(nil);
-  Timer.Interval := cTickMs;
-  Timer.OnTimer := Tick;
-  Timer.Enabled := True;
+  FTimer := TTimer.Create(nil);
+  FTimer.Interval := cTickMs;
+  FTimer.OnTimer := Tick;
+  FTimer.Enabled := True;
 end;
 
 destructor TState.Destroy;
 begin
-  Timer.Free;
-  Findings.Free;
-  Catalog.Free;
+  FTimer.Free;
+  FFindings.Free;
+  FCatalog.Free;
   inherited Destroy;
 end;
 

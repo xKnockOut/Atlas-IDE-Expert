@@ -32,15 +32,11 @@ uses
   Atlas.Core.Projects.VcsQueries,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Problems.Store;
+  Atlas.Core.Problems.Store,
+  Atlas.IDE.Projects.Contract;
 
 type
-  /// <summary>Hört auf geänderte Projekt-Zusammenfassungen (Hauptthread). AProject: Projekt oder Projektgruppe,
-  /// '' = mehrere oder unbekannt.</summary>
-  IAtlasProjectSummaryListener = interface
-    ['{6E0C5B7A-2F1D-4C8E-9A35-7D41B0E2C9F6}']
-    procedure SummaryChanged(const AProject: string);
-  end;
+  IAtlasProjectSummaryListener = Atlas.IDE.Projects.Contract.IAtlasProjectSummaryListener;
 
   TAtlasIdeProjectSummaries = class
   private type
@@ -75,7 +71,7 @@ type
     procedure RecordRules(const AProject: string; ANowUtc: TDateTime);
     class procedure RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
       const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64; ANowUtc: TDateTime); static;
-    procedure RecordTrend(const AProject: string; ANowUtc: TDateTime);
+    class procedure RecordTrend(const AProject: string; ANowUtc: TDateTime); static;
     class function TrendsOn: Boolean; static;
     class function IsProjectFile(const AFileName: string): Boolean; static;
   public
@@ -139,12 +135,13 @@ uses
   Winapi.Windows,
   System.Classes,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Recording,
   Atlas.Core.Projects.Trends,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
+  Atlas.Core.Editor.SourceFiles,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl;
 
@@ -401,7 +398,7 @@ begin
     end);
 end;
 
-procedure TAtlasIdeProjectSummaries.RecordTrend(const AProject: string; ANowUtc: TDateTime);
+class procedure TAtlasIdeProjectSummaries.RecordTrend(const AProject: string; ANowUtc: TDateTime);
 var
   mStamp: TDateTime;
   mLimit: Integer;
@@ -421,12 +418,8 @@ begin
 end;
 
 class function TAtlasIdeProjectSummaries.IsProjectFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(Trim(AFileName)));
-  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or
-    (mExtension = '.groupproj');
+  Result := TAtlasSourceFiles.IsProjectFile(Trim(AFileName));
 end;
 
 class function TAtlasIdeProjectSummaries.Current: TAtlasIdeProjectSummaries;

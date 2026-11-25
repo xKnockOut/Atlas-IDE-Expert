@@ -29,8 +29,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Package,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Plugin.Diagnostics.Package,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasReportActions = record
@@ -130,7 +130,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   // Vorläufige Lage der Überschriften; die Ausrichtung ordnet sie danach in dieser Reihenfolge an.
@@ -141,6 +142,36 @@ const
   cFolderButtonWidth = 110;
   cZipButtonWidth = 130;
   cIssueButtonWidth = 160;
+  cCloseButtonWidth = 100;
+  cButtonHeight = 28;
+  // Dialoggröße bei 96 dpi.
+  cDialogWidth = 760;
+  cDialogHeight = 660;
+  // Vorläufige Lage von Beschreibung und Kästchen (wie cPartsTop).
+  cDescriptionLabelTop = 100;
+  cDescriptionTop = 200;
+  cChecksTop = 400;
+  cDescriptionHeight = 72;
+  // Abstand der Beschriftungen und Kästchen zur Zeile darunter.
+  cRowBottomGap = 2;
+  // Fußleiste mit vier festen Zeilen; Lage von Knöpfen und Beschriftungen je Zeile.
+  cFootHeight = 136;
+  cFootLabelHeight = 17;
+  cSummaryButtonTop = 4;
+  cSummaryLabelTop = 10;
+  cFolderButtonTop = 38;
+  cFolderLabelTop = 44;
+  cStatusTop = 74;
+  cButtonRowTop = 98;
+  // Spalten der Dateiliste.
+  cFileColumnWidth = 480;
+  cSizeColumnWidth = 120;
+  // Eingebautes Fenster für den Inhalt einer Datei.
+  cViewerWidth = 900;
+  cViewerHeight = 600;
+  cViewerBarHeight = 44;
+  cViewerFontName = 'Consolas';
+  cViewerFontSize = 9;
   cBytesPerKb = 1024;
   cBytesPerMb = cBytesPerKb * cBytesPerKb;
 
@@ -158,19 +189,19 @@ begin
   try
     mViewer.BorderStyle := bsSizeable;
     mViewer.Position := poMainFormCenter;
-    mViewer.Width := mViewer.ScaleValue(900);
-    mViewer.Height := mViewer.ScaleValue(600);
+    mViewer.Width := mViewer.ScaleValue(cViewerWidth);
+    mViewer.Height := mViewer.ScaleValue(cViewerHeight);
     mBottom := TPanel.Create(mViewer);
     mBottom.Parent := mViewer;
     mBottom.Align := alBottom;
-    mBottom.Height := mBottom.ScaleValue(44);
+    mBottom.Height := mBottom.ScaleValue(cViewerBarHeight);
     mBottom.BevelOuter := bvNone;
     mButton := TButton.Create(mViewer);
     mButton.Parent := mBottom;
-    mButton.Width := mButton.ScaleValue(100);
+    mButton.Width := mButton.ScaleValue(cCloseButtonWidth);
     mButton.Align := alRight;
     mButton.AlignWithMargins := True;
-    mButton.Margins.SetBounds(8, 8, 8, 8);
+    TAtlasControlScaling.SetMarginsAll(mButton, TAtlasReportDialog.cGap);
     mButton.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportClose);
     mButton.Cancel := True;
     mButton.Default := True;
@@ -182,8 +213,8 @@ begin
     mMemo.ReadOnly := True;
     mMemo.ScrollBars := ssBoth;
     mMemo.WordWrap := False;
-    mMemo.Font.Name := 'Consolas';
-    mMemo.Font.Size := 9;
+    mMemo.Font.Name := cViewerFontName;
+    mMemo.Font.Size := cViewerFontSize;
     mMemo.Lines.Text := AText;
     mViewer.ShowModal;
   finally
@@ -198,7 +229,8 @@ begin
   Result.Parent := AParent;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, 2);
+  TAtlasControlScaling.SetMargins(Result, TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, TAtlasReportDialog.cGap,
+    cRowBottomGap);
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
 end;
@@ -221,7 +253,7 @@ function NewButton(AOwner: TComponent; AParent: TWinControl; const ACaption: str
 begin
   Result := TButton.Create(AOwner);
   Result.Parent := AParent;
-  Result.SetBounds(0, 8, AWidth, 28);
+  TAtlasControlScaling.Place(Result, 0, TAtlasReportDialog.cGap, AWidth, cButtonHeight);
   Result.Caption := ACaption;
   Result.OnClick := AClick;
 end;
@@ -239,8 +271,8 @@ begin
   FLastDataAvailable := (AInput.LastDataFile <> '') and FileExists(AInput.LastDataFile);
   Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportTitle);
   BorderStyle := bsSizeable;
-  Width := ScaleValue(760);
-  Height := ScaleValue(660);
+  Width := ScaleValue(cDialogWidth);
+  Height := ScaleValue(cDialogHeight);
   CreateHead;
   CreateChecks;
   NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportPreview)).Top :=
@@ -260,15 +292,16 @@ begin
   mHeading := PlaceLabel(TAtlasWrapLabel.Create(Self), Self, TAtlasDiagnosticsStrings.Text(
     TAtlasDiagnosticsTextId.ReportHint));
   mHeading.Top := 0;
-  NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportDescription)).Top := ScaleValue(100);
+  NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportDescription)).Top :=
+    ScaleValue(cDescriptionLabelTop);
   FParts.Description := TMemo.Create(Self);
   FParts.Description.Parent := Self;
   FParts.Description.Align := alTop;
   FParts.Description.AlignWithMargins := True;
-  FParts.Description.Margins.SetBounds(cGap, 0, cGap, cGap);
-  FParts.Description.Height := FParts.Description.ScaleValue(72);
+  TAtlasControlScaling.SetMargins(FParts.Description, cGap, 0, cGap, cGap);
+  FParts.Description.Height := FParts.Description.ScaleValue(cDescriptionHeight);
   FParts.Description.ScrollBars := ssVertical;
-  FParts.Description.Top := FParts.Description.ScaleValue(200);
+  FParts.Description.Top := FParts.Description.ScaleValue(cDescriptionTop);
   NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportParts)).Top := ScaleValue(cPartsTop);
 end;
 
@@ -283,8 +316,8 @@ begin
     mCheck.Parent := Self;
     mCheck.Align := alTop;
     mCheck.AlignWithMargins := True;
-    mCheck.Margins.SetBounds(cGap * 2, 0, cGap, 2);
-    mCheck.Top := mCheck.ScaleValue(400) + Ord(mPart);
+    TAtlasControlScaling.SetMargins(mCheck, cGap * 2, 0, cGap, cRowBottomGap);
+    mCheck.Top := mCheck.ScaleValue(cChecksTop) + Ord(mPart);
     // Vor OnClick setzen: Ein Wechsel von Checked löst OnClick aus, die Vorschau gibt es noch nicht.
     // Optional (#479): die letzten Diagnosedaten sind nicht vorausgewählt.
     mCheck.Checked := mPart <> TAtlasPackagePart.LastData;
@@ -320,7 +353,7 @@ begin
   mFoot := TPanel.Create(Self);
   mFoot.Parent := Self;
   mFoot.Align := alBottom;
-  mFoot.Height := mFoot.ScaleValue(136);
+  mFoot.Height := mFoot.ScaleValue(cFootHeight);
   mFoot.BevelOuter := bvNone;
   mFoot.ShowCaption := False;
   FParts.Summary := NewFootLabel(Self, mFoot);
@@ -337,8 +370,8 @@ begin
     cZipButtonWidth, ZipClick);
   FParts.IssueButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportOpenIssue),
     cIssueButtonWidth, IssueClick);
-  FParts.CloseButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportClose), 100,
-    nil);
+  FParts.CloseButton := NewButton(Self, mFoot, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportClose),
+    cCloseButtonWidth, nil);
   FParts.CloseButton.Cancel := True;
   FParts.CloseButton.ModalResult := mrCancel;
   mFoot.OnResize := FootResize;
@@ -354,17 +387,17 @@ begin
   mList.Parent := Self;
   mList.Align := alClient;
   mList.AlignWithMargins := True;
-  mList.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(mList, cGap, 0, cGap, 0);
   mList.ViewStyle := vsReport;
   mList.ReadOnly := True;
   mList.RowSelect := True;
   mList.HideSelection := False;
   mColumn := mList.Columns.Add;
   mColumn.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportColumnFile);
-  mColumn.Width := mList.ScaleValue(480);
+  mColumn.Width := mList.ScaleValue(cFileColumnWidth);
   mColumn := mList.Columns.Add;
   mColumn.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportColumnSize);
-  mColumn.Width := mList.ScaleValue(120);
+  mColumn.Width := mList.ScaleValue(cSizeColumnWidth);
   mColumn.Alignment := taRightJustify;
   // Doppelklick wie „Ansehen“.
   mList.OnDblClick := ViewClick;
@@ -379,17 +412,25 @@ end;
 
 procedure TAtlasReportDialog.FootResize(Sender: TObject);
 var
-  mRight: Integer;
+  mRight, mGap, mButtonHeight, mLabelHeight: Integer;
 begin
-  mRight := (Sender as TPanel).ClientWidth - cGap;
-  FParts.ViewButton.SetBounds(mRight - 110, 4, 110, 28);
-  FParts.Summary.SetBounds(cGap, 10, Max(0, FParts.ViewButton.Left - 2 * cGap), 17);
-  FParts.FolderButton.SetBounds(mRight - 110, 38, 110, 28);
-  FParts.FolderLabel.SetBounds(cGap, 44, Max(0, FParts.FolderButton.Left - 2 * cGap), 17);
-  FParts.Status.SetBounds(cGap, 74, Max(0, mRight - cGap), 17);
-  FParts.ZipButton.SetBounds(cGap, 98, 130, 28);
-  FParts.IssueButton.SetBounds(2 * cGap + 130, 98, 160, 28);
-  FParts.CloseButton.SetBounds(mRight - 100, 98, 100, 28);
+  mGap := ScaleValue(cGap);
+  mButtonHeight := ScaleValue(cButtonHeight);
+  mLabelHeight := ScaleValue(cFootLabelHeight);
+  mRight := (Sender as TPanel).ClientWidth - mGap;
+  FParts.ViewButton.SetBounds(mRight - ScaleValue(cViewButtonWidth), ScaleValue(cSummaryButtonTop),
+    ScaleValue(cViewButtonWidth), mButtonHeight);
+  FParts.Summary.SetBounds(mGap, ScaleValue(cSummaryLabelTop), Max(0, FParts.ViewButton.Left - 2 * mGap), mLabelHeight);
+  FParts.FolderButton.SetBounds(mRight - ScaleValue(cFolderButtonWidth), ScaleValue(cFolderButtonTop),
+    ScaleValue(cFolderButtonWidth), mButtonHeight);
+  FParts.FolderLabel.SetBounds(mGap, ScaleValue(cFolderLabelTop), Max(0, FParts.FolderButton.Left - 2 * mGap),
+    mLabelHeight);
+  FParts.Status.SetBounds(mGap, ScaleValue(cStatusTop), Max(0, mRight - mGap), mLabelHeight);
+  TAtlasControlScaling.Place(FParts.ZipButton, cGap, cButtonRowTop, cZipButtonWidth, cButtonHeight);
+  TAtlasControlScaling.Place(FParts.IssueButton, 2 * cGap + cZipButtonWidth, cButtonRowTop, cIssueButtonWidth,
+    cButtonHeight);
+  FParts.CloseButton.SetBounds(mRight - ScaleValue(cCloseButtonWidth), ScaleValue(cButtonRowTop),
+    ScaleValue(cCloseButtonWidth), mButtonHeight);
 end;
 
 procedure TAtlasReportDialog.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -585,11 +626,11 @@ end;
 
 class function TAtlasReportDialog.SizeText(ABytes: Int64): string;
 begin
-  if ABytes < 1024 then
+  if ABytes < cBytesPerKb then
   begin
     Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeBytes, [ABytes]);
   end
-  else if ABytes < 1024 * 1024 then
+  else if ABytes < cBytesPerMb then
   begin
     Result := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportSizeKb, [FormatFloat('0.0', ABytes / cBytesPerKb,
       FormatSettings)]);

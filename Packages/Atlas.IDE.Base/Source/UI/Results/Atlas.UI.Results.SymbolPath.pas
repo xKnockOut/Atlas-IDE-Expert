@@ -58,7 +58,11 @@ implementation
 uses
   Vcl.Controls,
   Atlas.UI.Results.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
+
+const
+  /// <summary>Breite des Knopfs für die Karte bei 96 dpi.</summary>
+  cMapButtonWidth = 75;
 
 { TAtlasResultsPathPart }
 
@@ -73,7 +77,7 @@ begin
   FParts.Panel.ShowCaption := False;
   FParts.Panel.ParentBackground := True;
   FParts.Panel.Visible := False;
-  FParts.Map := TAtlasResultsControls.Button(AView.Host, FParts.Panel, alTop, 75,
+  FParts.Map := TAtlasResultsControls.Button(AView.Host, FParts.Panel, alTop, cMapButtonWidth,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.SymbolPathShowMap), MapClick);
   FParts.Map.Visible := False;
   FParts.Status := TAtlasWrapLabel.Create(AView.Host);

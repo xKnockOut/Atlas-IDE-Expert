@@ -31,12 +31,13 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.Core.Outline.DeclarationBlocks;
+  Atlas.Core.Outline.DeclarationBlocks,
+  Atlas.Core.Outline.CrumbMenu,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cCode =
@@ -81,41 +82,13 @@ begin
 end;
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
-end;
-
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
-  end;
+  Result := TOutlineTest.NodesOf(cCode);
 end;
 
 function Path(ALine, ACharacter: Integer; AParts: TAtlasCrumbParts): string; overload;
 begin
-  Result := Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Result := TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(ALine, ACharacter, '', False, AParts)));
 end;
 
@@ -198,7 +171,7 @@ var
 begin
   mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(15, 4, 'uKunden', True, [TAtlasCrumbPart.DeclarationBlocks]));
-  Assert.AreEqual('uKunden › interface › resourcestring › sKundeFehlt', Joined(mCrumbs));
+  Assert.AreEqual('uKunden › interface › resourcestring › sKundeFehlt', TAtlasCrumbMenu.PathOf(mCrumbs));
   // Teil: Sprungziele interface und implementation.
   Assert.AreEqual('kw', mCrumbs[1].Badge.Code);
   Assert.AreEqual(2, Integer(Length(mCrumbs[1].Places)));

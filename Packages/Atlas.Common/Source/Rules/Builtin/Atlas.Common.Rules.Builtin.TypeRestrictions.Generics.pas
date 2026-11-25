@@ -60,14 +60,15 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -724,7 +725,6 @@ type
     FLocal: TUnitIndex;
     procedure Report(const ARange: TTextRange; const AMessage: string);
     function TokenRangeAt(AOffset: Integer): TTextRange;
-    function HeaderNameRange(AHeader: TSyntaxNode): TTextRange;
     function IndexConstraintKind(const AText: string; const AScope: TArray<string>): TConstraintKind;
     function ResolvedConstraintKind(const AText: string; const AScope: TArray<string>): TConstraintKind;
     procedure CheckGroup(const AGroup: TArray<TGenericConstraint>; const AScope: TArray<string>);
@@ -780,21 +780,6 @@ begin
   else
   begin
     Result := TTextRange.Create(FNode.StartPos, FNode.StartPos);
-  end;
-end;
-
-function TGenericDeclarationInvalidScan.HeaderNameRange(AHeader: TSyntaxNode): TTextRange;
-var
-  mAt: Integer;
-begin
-  mAt := NameToken(FTokens, AHeader);
-  if mAt >= 0 then
-  begin
-    Result := TokenRange(FTokens[mAt]);
-  end
-  else
-  begin
-    Result := NodeRange(AHeader);
   end;
 end;
 
@@ -936,8 +921,8 @@ begin
       begin
         mInner := ADecl[mChild];
       end;
-      Report(HeaderNameRange(mInner), cTexts[TTypeRestrictionsGenericsText.LocalRoutine].Fmt([ADecl[mChild].Name,
-        mHeader.Name]));
+      Report(HeaderNameRange(FTokens, mInner),
+        cTexts[TTypeRestrictionsGenericsText.LocalRoutine].Fmt([ADecl[mChild].Name, mHeader.Name]));
     end;
   end;
 end;
@@ -1010,7 +995,7 @@ var
   mParams, mTypeNode: TSyntaxNode;
 begin
   mParams := ADecl.FindChild(TSyntaxKind.GenericParams);
-  mTypeNode := TypeOfDecl(ADecl);
+  mTypeNode := TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams]);
   if (mParams = nil) and (mTypeNode <> nil) then
   begin
     CheckTypedType(ADecl, mTypeNode);
@@ -1042,7 +1027,7 @@ begin
   mMessage := MemberGenericMessage(mHead, AHolder.Kind);
   if mMessage <> '' then
   begin
-    Report(HeaderNameRange(AHeader), mMessage);
+    Report(HeaderNameRange(FTokens, AHeader), mMessage);
     Exit;
   end;
   for mName in cVirtualDirectives do
@@ -1103,7 +1088,7 @@ begin
   mHolder := AHeader.Parent;
   if mHolder.Kind = TSyntaxKind.InterfaceType then
   begin
-    Report(HeaderNameRange(AHeader), cTexts[TTypeRestrictionsGenericsText.InterfaceMethods].Text);
+    Report(HeaderNameRange(FTokens, AHeader), cTexts[TTypeRestrictionsGenericsText.InterfaceMethods].Text);
   end
   else if mHolder.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType,
     TSyntaxKind.HelperType] then
@@ -1114,7 +1099,7 @@ begin
   else if IsGlobalRoutine(AHeader, mHolder) and not ((mHolder.Parent.Kind = TSyntaxKind.ImplementationSection) and
     DeclaredGenericInInterface(AHeader.Name)) then
   begin
-    Report(TTextRange.Create(HeaderNameRange(AHeader).StartPos, mOwn.EndPos),
+    Report(TTextRange.Create(HeaderNameRange(FTokens, AHeader).StartPos, mOwn.EndPos),
       cTexts[TTypeRestrictionsGenericsText.GlobalRoutines].Text);
   end;
 end;
@@ -1177,7 +1162,7 @@ begin
     begin
       Exit;
     end;
-    mTypeNode := TypeOfDecl(mDecl);
+    mTypeNode := TSyntaxNodes.FirstChildExcept(mDecl, [TSyntaxKind.GenericParams]);
     AddMethodHeads(mTypeNode, AMethod, AHeads);
     if (mTypeNode.Kind <> TSyntaxKind.ClassType) or (mTypeNode.ChildCount = 0) or
       (mTypeNode[0].Kind <> TSyntaxKind.TypeReference) then

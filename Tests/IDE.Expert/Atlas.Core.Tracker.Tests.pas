@@ -217,12 +217,13 @@ uses
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.Providers.LocalFiles,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.GitHubParse,
   Atlas.Core.Tracker.YouTrackApi,
   Atlas.Core.Tracker.YouTrackParse,
-  Atlas.Core.Tracker.TestSupport;
+  Atlas.Core.Tracker.TestSupport,
+  Atlas.Tests.TempFolder;
 
 { TAtlasTrackerTargetTests }
 
@@ -634,11 +635,7 @@ end;
 procedure TAtlasCommitHookTests.TearDown;
 begin
   TAtlasTrackerFiles.Uninstall;
-  if TDirectory.Exists(FDir) then
-  begin
-    TDirectory.Delete(FDir, True);
-  end;
-  FDir := '';
+  TTestTempFolder.Remove(FDir);
 end;
 
 procedure TAtlasCommitHookTests.ScriptHasMarkerAndUnixLineEnds;

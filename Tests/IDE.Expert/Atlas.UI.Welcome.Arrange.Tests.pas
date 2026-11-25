@@ -12,9 +12,6 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeArrangeBoardTests = class
   public
-    /// <summary>Erste Benutzung (Menüs, Bearbeitungsleiste) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure BarFollowsCustomLayoutAndEditing;
     [Test]
@@ -46,7 +43,8 @@ uses
   Atlas.UI.Welcome.Board,
   Atlas.UI.Welcome.Arrange,
   System.Types,
-  Atlas.UI.Welcome.TestSupport;
+  Atlas.UI.Welcome.TestSupport,
+  Atlas.UI.Welcome.Contract;
 
 { TAtlasWelcomeArrangeBoardTests }
 
@@ -187,15 +185,6 @@ begin
 end;
 { TAtlasWelcomeArrangeBoardTests }
 
-procedure TAtlasWelcomeArrangeBoardTests.WarmUpFirstUse;
-begin
-  try
-    BarFollowsCustomLayoutAndEditing;
-  except
-    on Exception do
-      ;
-  end;
-end;
 procedure TAtlasWelcomeArrangeBoardTests.BarFollowsCustomLayoutAndEditing;
 var
   mHost: TForm;

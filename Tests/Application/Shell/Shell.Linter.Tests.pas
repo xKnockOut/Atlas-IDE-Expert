@@ -9,8 +9,8 @@
 // --format-check und --format-write (#1358): Exit-Codes, Formate, Kodierung
 // und Zeilenenden beim Schreiben, Syntaxfehler, format.* aus atlas.json. Der Ordner
 // bleibt zwischen den Läufen: Der Index der erreichbaren RTL (rund 1500 Units)
-// kostete in einem leeren Cache je Aufbau gut drei Minuten, im Testlauf zweimal
-// (Aufwärmen und Test). Ein neues Cache-Format verwirft er selbst.
+// kostete in einem leeren Cache je Aufbau gut drei Minuten. Ein neues
+// Cache-Format verwirft er selbst.
 // Jede Ausgabe geht in eine Datei (--output), nie auf stdout.
 // TLinterShell.ClearCache bleibt ungetestet: Es löscht die echten Index-Caches
 // des Benutzers.
@@ -30,9 +30,6 @@ type
     function Run(const AArgs: TArray<string>): Integer;
     function OutputText: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -50,6 +47,9 @@ type
     /// <summary>TLinterCheck.Run ohne die Weiche von TLinterShell: fehlende Datei 3, Syntaxfehler 1.</summary>
     [Test]
     procedure CheckRunsWithoutShell;
+    /// <summary>TLinterShell.Host setzt alle Teile, die der Linter-Modus von außen braucht.</summary>
+    [Test]
+    procedure HostHasAllParts;
     /// <summary>Wie im Editor: atlas.json wird von der Datei aus nach oben gesucht bis zum Stamm des
     /// Repositorys.</summary>
     [Test]
@@ -117,6 +117,11 @@ type
     /// <summary>#1358: ungültige Kombinationen ergeben 3.</summary>
     [Test]
     procedure FormatOptionsConflict;
+    /// <summary>#1112: Ein zweiter Lauf liest den Index des Projekts aus dem Cache und ist schneller als der erste,
+    /// der die Units zerlegt; geprüft wird nur eine Unit, damit die Zeit des Index zählt.</summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure WarmIndexCacheIsFaster;
   end;
 
 implementation
@@ -124,18 +129,19 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  System.Diagnostics,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Core.VersionControl.Contract,
-  Shell.Platform,
-  Shell.VersionControlChanges,
+  Shell.Composition.Platform,
+  Core.VersionControlChanges,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.FormatCheck,
-  Shell.CommandLine,
+  Core.CommandLine,
   Shell.Linter,
-  Shell.Linter.Check,
-  Shell.Linter.Duplicates,
-  Shell.Linter.Mutation,
-  Shell.Workspace.Listings;
+  Core.Linter.Check,
+  Core.Linter.Host,
+  Core.Linter.Duplicates,
+  Core.Linter.Mutation,
+  Core.Workspace.Listings;
 
 const
   cCleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;
@@ -168,29 +174,6 @@ begin
   if TFile.Exists(FOutput) then
   begin
     Result := TFile.ReadAllText(FOutput, TEncoding.UTF8);
-  end;
-end;
-
-procedure TShellLinterTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    MissingTargetFails;
-  finally
-    TearDown;
-  end;
-  // Der erste Symbolindex im Prozess legt bleibende Strukturen und einen Thread des Pools an (#1112).
-  Setup;
-  try
-    IndexKnowsTypesOfOtherUnits;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    HotspotsNeedVersionControl;
-  finally
-    TearDown;
   end;
 end;
 
@@ -258,10 +241,21 @@ var
 begin
   mCache := TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache');
   Assert.AreEqual(3, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Fehlt.pas'), '--output', FOutput,
-    '--index-cache', mCache])));
+    '--index-cache', mCache]), TLinterShell.Host));
   Assert.AreEqual(1, TLinterCheck.Run(TCommandLineOptions.Parse(['--check', Path('Src/Kaputt.pas'), '--format=json',
-    '--output', FOutput, '--index-cache', mCache])));
+    '--output', FOutput, '--index-cache', mCache]), TLinterShell.Host));
   Assert.Contains(OutputText, 'Kaputt.pas');
+end;
+
+procedure TShellLinterTests.HostHasAllParts;
+var
+  mHost: TCoreLinterHost;
+begin
+  mHost := TLinterShell.Host;
+  Assert.IsTrue(Assigned(mHost.InstalledVersions), 'InstalledVersions');
+  Assert.IsTrue(Assigned(mHost.Vcs), 'Vcs');
+  Assert.IsTrue(Assigned(mHost.NewGroup), 'NewGroup');
+  Assert.IsTrue(Assigned(mHost.Instructions), 'Instructions');
 end;
 
 procedure TShellLinterTests.ConfigurationFoundInParentFolder;
@@ -453,7 +447,7 @@ begin
   begin
     Exit;
   end;
-  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mRunner := TShellPlatformAdapters.CreateVcsRunner(True, nil);
   mCommands := TArray<string>.Create('init -q', 'config user.name Atlas', 'config user.email test@example.org',
     'config commit.gpgsign false', 'add Src', 'commit -q -m Start');
   for mCommand in mCommands do
@@ -476,7 +470,7 @@ procedure TShellLinterTests.MutateFormatsAndExitCodes;
     begin
       TFile.Delete(FOutput);
     end;
-    Result := TLinterMutation.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput]));
+    Result := TLinterMutation.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput]), TLinterShell.Host);
   end;
 
 begin
@@ -737,6 +731,54 @@ begin
   Assert.AreEqual(3, Run(['--check', Path('Src/Gut.pas'), '--format-check', '--metrics']));
   Assert.AreEqual(3, Run(['--check', Path('Src/Gut.pas'), '--format', 'diff']));
   Assert.AreEqual(3, Run(['--check', Path('Src/Fehlt.pas'), '--format-check']));
+end;
+
+/// <summary>Unit AName mit einer Klasse aus AMethods Methoden samt Rümpfen.</summary>
+function BenchmarkUnit(const AName: string; AMethods: Integer): string;
+var
+  mMethod: Integer;
+  mDeclarations, mBodies: string;
+begin
+  mDeclarations := '';
+  mBodies := '';
+  for mMethod := 1 to AMethods do
+  begin
+    mDeclarations := mDeclarations + Format('    function M%d(AWert: Integer): Integer;'#13#10, [mMethod]);
+    mBodies := mBodies + Format('function T%s.M%d(AWert: Integer): Integer;'#13#10'begin'#13#10 +
+      '  Result := AWert + %d;'#13#10'end;'#13#10#13#10, [AName, mMethod, mMethod]);
+  end;
+  Result := Format('unit %s;'#13#10#13#10'interface'#13#10#13#10'type'#13#10'  T%s = class'#13#10'  public'#13#10 +
+    '%s  end;'#13#10#13#10'implementation'#13#10#13#10'%send.'#13#10, [AName, AName, mDeclarations, mBodies]);
+end;
+
+procedure TShellLinterTests.WarmIndexCacheIsFaster;
+const
+  cUnits = 300;
+  cMethods = 40;
+var
+  mReferences: string;
+  mUnit: Integer;
+  mWatch: TStopwatch;
+  mCold, mWarm: Int64;
+begin
+  ForceDirectories(Path('Bench'));
+  mReferences := '';
+  for mUnit := 1 to cUnits do
+  begin
+    TFile.WriteAllText(Path(Format('Bench/U%d.pas', [mUnit])), BenchmarkUnit(Format('U%d', [mUnit]), cMethods));
+    mReferences := mReferences + Format('    <DCCReference Include="U%d.pas"/>'#13#10, [mUnit]);
+  end;
+  TFile.WriteAllText(Path('Bench/Bench.dproj'), '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">' +
+    #13#10'  <PropertyGroup><Config Condition="''$(Config)''==''''">Debug</Config>' +
+    '<Platform Condition="''$(Platform)''==''''">Win32</Platform></PropertyGroup>'#13#10'  <ItemGroup>'#13#10 +
+    mReferences + '  </ItemGroup>'#13#10'</Project>'#13#10);
+  mWatch := TStopwatch.StartNew;
+  Assert.AreEqual(0, Run(['--check', Path('Bench/Bench.dproj'), '--units', 'U1', '--fail-on', 'never']));
+  mCold := mWatch.ElapsedMilliseconds;
+  mWatch := TStopwatch.StartNew;
+  Assert.AreEqual(0, Run(['--check', Path('Bench/Bench.dproj'), '--units', 'U1', '--fail-on', 'never']));
+  mWarm := mWatch.ElapsedMilliseconds;
+  Assert.IsTrue(mWarm < mCold, Format('Mit warmem Cache %d ms, ohne %d ms', [mWarm, mCold]));
 end;
 
 initialization

@@ -22,6 +22,8 @@ type
     [Test]
     procedure AutoContinueByClassOrLocation;
     [Test]
+    procedure RuleGoesFirst;
+    [Test]
     procedure InfoCutsStackToFirstOwnLine;
     [Test]
     procedure InfoWithoutJustMyCodeShowsTopSource;
@@ -36,6 +38,7 @@ uses
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.ExceptionDialog,
+  Atlas.Core.Debug.ExceptionRules,
   Atlas.Core.Debug.ExceptionBanner;
 
 function Frame(const AHeader, AFile: string; ALine: Integer; AOwn: Boolean): TAtlasDebugFrame;
@@ -104,6 +107,19 @@ begin
     'Orte nur mit debug.exceptionBanner.ignoreAtLocation');
 end;
 
+procedure TAtlasDebugExceptionBannerTests.RuleGoesFirst;
+begin
+  // Regel nach Meldung (#2549): vermerken, still weiter oder anhalten, auch gegen die Ignorier-Liste.
+  Assert.AreEqual(Ord(TAtlasDebugAutoContinue.ByRule), Ord(TAtlasDebugBannerRules.WithRule(
+    TAtlasDebugAutoContinue.None, True, TAtlasExceptionAction.Log)));
+  Assert.AreEqual(Ord(TAtlasDebugAutoContinue.Silent), Ord(TAtlasDebugBannerRules.WithRule(
+    TAtlasDebugAutoContinue.None, True, TAtlasExceptionAction.Continue)));
+  Assert.AreEqual(Ord(TAtlasDebugAutoContinue.None), Ord(TAtlasDebugBannerRules.WithRule(
+    TAtlasDebugAutoContinue.ByClass, True, TAtlasExceptionAction.Stop)), 'Regel hält trotz Klasse auf der Liste');
+  Assert.AreEqual(Ord(TAtlasDebugAutoContinue.ByLocation), Ord(TAtlasDebugBannerRules.WithRule(
+    TAtlasDebugAutoContinue.ByLocation, False, TAtlasExceptionAction.Stop)), 'ohne passende Regel bleibt es');
+end;
+
 procedure TAtlasDebugExceptionBannerTests.InfoCutsStackToFirstOwnLine;
 var
   mInfo: TAtlasDebugBannerInfo;
@@ -112,7 +128,7 @@ begin
   Assert.AreEqual('EConvertError', mInfo.ExceptionClass);
   Assert.AreEqual('''x'' ist kein gültiger Wert', mInfo.Message);
   Assert.AreEqual('Hauptthread 4711', mInfo.ThreadText);
-  Assert.AreEqual(3, mInfo.Count);
+  Assert.AreEqual(3, Integer(mInfo.Count));
   Assert.AreEqual(3, mInfo.FrameIndex);
   Assert.AreEqual(3, mInfo.Hidden, 'drei Ebenen über dem eigenen Code');
   Assert.AreEqual('Unit1.TForm1.Button1Click', mInfo.Routine);
@@ -148,7 +164,7 @@ begin
   Assert.AreEqual(0, mInfo.Hidden);
   Assert.AreEqual('Demo.Worker', mInfo.Routine, 'Adresse entfällt');
   Assert.AreEqual('Worker (1)', mInfo.ThreadText);
-  Assert.AreEqual(1, mInfo.Count, 'mindestens einmal');
+  Assert.AreEqual(1, Integer(mInfo.Count), 'mindestens einmal');
   Assert.AreEqual('', mInfo.LocationText);
   Assert.IsFalse(mInfo.CanIgnoreLocation);
 end;

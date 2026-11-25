@@ -42,11 +42,16 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Hangs,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Settings.Page.General;
+  Atlas.UI.Settings.Page.General,
+  Atlas.UI.Settings.Page.Sheets;
+
+const
+  /// <summary>Höhe der Liste abgeschalteter Funktionen (etwa vier Einträge).</summary>
+  cFuseListHeight = 64;
 
 { TAtlasSettingsRobustnessPart }
 
@@ -106,52 +111,36 @@ procedure TAtlasSettingsRobustnessPart.AddFuseSection;
 var
   mPanel: TWinControl;
 begin
-  AddTitle(TAtlasTextId.SettingsFuseTitle);
-  mPanel := AddPanel(64);
+  AddTitle(TAtlasSettingsTextId.SettingsFuseTitle);
+  mPanel := AddPanel(cFuseListHeight);
   FFuseList := TListBox.Create(FPage);
   FFuseList.Parent := mPanel;
   FFuseList.Align := alClient;
   FFuseList.MultiSelect := True;
-  mPanel := AddPanel(32);
-  FFuseEnableSelected := TButton.Create(FPage);
-  FFuseEnableSelected.Parent := mPanel;
-  FFuseEnableSelected.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFuseEnableSelected);
-  FFuseEnableSelected.Left := 0;
-  FFuseEnableSelected.Top := FFuseEnableSelected.ScaleValue(3);
-  FFuseEnableSelected.Width := FFuseEnableSelected.ScaleValue(150);
-  FFuseEnableSelected.OnClick := FuseEnableSelectedClick;
-  FFuseEnableAll := TButton.Create(FPage);
-  FFuseEnableAll.Parent := mPanel;
-  FFuseEnableAll.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFuseEnableAll);
-  FFuseEnableAll.Left := FFuseEnableAll.ScaleValue(160);
-  FFuseEnableAll.Top := FFuseEnableAll.ScaleValue(3);
-  FFuseEnableAll.Width := FFuseEnableAll.ScaleValue(150);
-  FFuseEnableAll.OnClick := FuseEnableAllClick;
+  mPanel := AddPanel(cButtonRowHeight);
+  FFuseEnableSelected := AddColumnButton(mPanel, 0,
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFuseEnableSelected), FuseEnableSelectedClick);
+  FFuseEnableAll := AddColumnButton(mPanel, 1, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFuseEnableAll),
+    FuseEnableAllClick);
 end;
 
 procedure TAtlasSettingsRobustnessPart.Build;
 var
   mPanel: TWinControl;
 begin
-  AddSheet(TAtlasTextId.SettingsTabRobustness);
+  AddSheet(TAtlasSettingsTextId.SettingsTabRobustness);
   // Einfrier-Wächter (#501).
   BindText('HangThresholdMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangThreshold)));
   BindCheck('HangHint', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHangHint)));
   // Blockierschutz für Datenquellen (#493).
   BindText('ProviderTimeLimitMs',
     AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProviderTimeLimit)));
-  mPanel := AddPanel(32);
+  mPanel := AddPanel(cButtonRowHeight);
   // Künstlicher Hänger (#501) nur im Diagnosemodus (#479), nicht neben den regulären Einstellungen.
   FHangTestRow := mPanel;
   FHangTestRow.Visible := False;
   FPage.Part<TAtlasSettingsGeneralPart>.DiagnosticMode.OnClick := DiagnosticModeClick;
-  FHangTest := TButton.Create(FPage);
-  FHangTest.Parent := mPanel;
-  FHangTest.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsHangTest);
-  FHangTest.Left := 0;
-  FHangTest.Top := FHangTest.ScaleValue(3);
-  FHangTest.Width := FHangTest.ScaleValue(150);
-  FHangTest.OnClick := HangTestClick;
+  FHangTest := AddColumnButton(mPanel, 0, TAtlasStrings.Text(TAtlasTextId.SettingsHangTest), HangTestClick);
   AddFuseSection;
 end;
 

@@ -4,20 +4,17 @@
 // IDE: offene Reiter in der Reihenfolge des Editorfensters mit Cursorstelle
 // und Methode, Ziel eines Projekts (gespeicherte Projektgruppe, sonst das
 // Projekt), Öffnen von Projekt und Reiter, Text einer Datei (Puffer oder
-// Platte). Abgeteilt aus Atlas.IDE.Welcome.Continue (Atlas-Befunde).
+// Platte). Abgeteilt aus Atlas.IDE.Welcome.Adapters.Continue (Atlas-Befunde).
 
 interface
 
 uses
   System.Generics.Collections,
+  Atlas.Core.Welcome.Contract,
   Atlas.Core.Welcome.Continue;
 
 type
-  /// <summary>Offene Reiter in ihrer Reihenfolge mit der Cursorstelle und aktive Datei.</summary>
-  TAtlasContinueSnapshot = record
-    Tabs: TArray<TAtlasWorkTab>;
-    Active: string;
-  end;
+  TAtlasContinueSnapshot = Atlas.Core.Welcome.Contract.TAtlasContinueSnapshot;
 
   TAtlasIdeContinueEditor = class
   public
@@ -42,12 +39,12 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  System.TypInfo,
-  Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Core.Editor.SourceFiles,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Tabs,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Projects.Summaries;
 
@@ -58,71 +55,6 @@ type
     Files: TArray<string>;
     Tabs: TArray<TAtlasWorkTab>;
   end;
-
-function IsPascal(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
-end;
-
-/// <summary>Beschriftungen eines Reiter-Steuerelements (veröffentlichte Eigenschaft „Tabs“ als TStrings).</summary>
-function TabsOf(AComponent: TComponent): TArray<string>;
-var
-  mValue: TObject;
-begin
-  Result := nil;
-  if (AComponent = nil) or not IsPublishedProp(AComponent, 'Tabs') or
-    (PropType(AComponent, 'Tabs') <> tkClass) then
-  begin
-    Exit;
-  end;
-  mValue := GetObjectProp(AComponent, 'Tabs');
-  if mValue is TStrings then
-  begin
-    Result := TStrings(mValue).ToStringArray;
-  end;
-end;
-
-/// <summary>Formular des obersten Editorfensters; nil ohne.</summary>
-function EditForm: TCustomForm;
-var
-  mServices: INTAEditorServices;
-  mWindow: INTAEditWindow;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, INTAEditorServices, mServices) then
-  begin
-    mWindow := mServices.TopEditWindow;
-    if mWindow <> nil then
-    begin
-      Result := mWindow.Form;
-    end;
-  end;
-end;
-
-function TabCaptions: TArray<string>;
-var
-  mForm: TCustomForm;
-  mIndex: Integer;
-begin
-  // Das Editorfenster der IDE führt seine Reiter in einem Steuerelement „TabControl“ (TTabSet-Abkömmling); ohne
-  // es gilt die Reihenfolge der Puffer.
-  Result := nil;
-  mForm := EditForm;
-  if mForm = nil then
-  begin
-    Exit;
-  end;
-  Result := TabsOf(mForm.FindComponent('TabControl'));
-  mIndex := 0;
-  while (Length(Result) = 0) and (mIndex < mForm.ComponentCount) do
-  begin
-    Result := TabsOf(mForm.Components[mIndex]);
-    Inc(mIndex);
-  end;
-end;
 
 /// <summary>Reiter des Editors AEditor in AOpen aufnehmen (nur Quelltext mit Ansicht, jede Datei einmal).</summary>
 procedure AddEditor(var AOpen: TOpenTabs; const AEditor: IOTAEditor);
@@ -184,7 +116,7 @@ var
   mTab: TAtlasWorkTab;
 begin
   Result := nil;
-  for mName in TAtlasWelcomeContinue.OrderByTabs(AOpen.Files, TabCaptions) do
+  for mName in TAtlasEditorTabs.Ordered(AOpen.Files) do
   begin
     for mTab in AOpen.Tabs do
     begin
@@ -209,7 +141,7 @@ begin
   for mPosition := 0 to High(ASnapshot.Tabs) do
   begin
     mKey := AnsiUpperCase(ASnapshot.Tabs[mPosition].FileName);
-    if not IsPascal(mKey) or not AOpen.Buffers.TryGetValue(mKey, mBuffer) then
+    if not TAtlasSourceFiles.IsPascal(mKey) or not AOpen.Buffers.TryGetValue(mKey, mBuffer) then
     begin
       Continue;
     end;

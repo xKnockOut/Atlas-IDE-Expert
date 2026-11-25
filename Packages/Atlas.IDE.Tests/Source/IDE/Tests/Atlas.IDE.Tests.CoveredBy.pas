@@ -34,8 +34,8 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.CoveredBy,
   Atlas.IDE.Tests.Runner,
@@ -133,16 +133,16 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Tests.Lens;
@@ -165,17 +165,6 @@ begin
 end;
 
 { Hilfen }
-
-/// <summary>Oberen Editor neu zeichnen.</summary>
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
 
 function UriToPath(AUri: string): string;
 begin
@@ -256,7 +245,7 @@ begin
   FMark.Free;
   if FShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -293,7 +282,7 @@ begin
       if not SameText(FFileName, mView.Buffer.FileName) and SameText(mView.Buffer.FileName, FShownFile) then
       begin
         UpdateStale;
-        InvalidateEditor;
+        TAtlasIdeEditorRefresh.RepaintTop;
       end;
       FFileName := mView.Buffer.FileName;
       FText := mText;
@@ -308,7 +297,7 @@ begin
     begin
       FVersion := FTests.Version;
       UpdateStale;
-      InvalidateEditor;
+      TAtlasIdeEditorRefresh.RepaintTop;
     end;
   except
     on E: Exception do
@@ -401,7 +390,7 @@ begin
   FShowing := Length(mUnit.Methods) > 0;
   FVersion := FTests.Version;
   UpdateStale;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 procedure TAtlasIdeCoveredByLens.Clear;
@@ -417,7 +406,7 @@ begin
   if FShowing then
   begin
     FShowing := False;
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -440,12 +429,6 @@ begin
     end);
 end;
 
-/// <summary>Zeilen einer Testunit: offener Puffer, sonst die Platte.</summary>
-function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
-begin
-  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
-end;
-
 procedure TAtlasIdeCoveredByLens.UpdateStale;
 begin
   FStale := nil;
@@ -453,7 +436,7 @@ begin
   begin
     Exit;
   end;
-  FStale := TAtlasCoveredBy.StaleKeysOf(FUnit.AllTests, ReadLines, FStaleKeys);
+  FStale := TAtlasCoveredBy.StaleKeysOf(FUnit.AllTests, TAtlasIdeFiles.LineReader(), FStaleKeys);
 end;
 
 procedure TAtlasIdeCoveredByLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;

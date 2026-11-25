@@ -67,15 +67,16 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.PromoteVariable,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -146,7 +147,7 @@ begin
   Result := TProcTypeKind.Plain;
   while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) do
   begin
-    mNext := TRoutineBody.NextToken(ATokens, mIndex);
+    mNext := NextCodeAfter(ATokens, mIndex);
     if SameText(ATokens[mIndex].Text, 'of') and (mNext <= High(ATokens)) and SameText(ATokens[mNext].Text, 'object') then
     begin
       Exit(TProcTypeKind.MethodPointer);

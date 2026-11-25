@@ -10,8 +10,8 @@
 // Umgekehrt stellt die Willkommensseite IAtlasWelcomeBoard (Inhalt einer
 // Kachel geändert) und IAtlasWelcomeProjects (Projektliste und gewähltes
 // Projekt) bereit. Nur Interfaces und Records, kein Code; die Ansicht
-// übergibt ein Steuerelement, daher Vcl.Controls. Liegt in Base (Source/Contracts, #1456,
-// Entscheidung 04.11.2026). Alle Aufrufe im Hauptthread.
+// übergibt ein Steuerelement, daher Vcl.Controls. Liegt in Base (Source/Contracts, #1456).
+// Alle Aufrufe im Hauptthread.
 
 interface
 

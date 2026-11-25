@@ -51,10 +51,10 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.InvertBoolean,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Common.Lsp.Edits.TestSupport;
 
 const
   cPanelsFile = 'C:\P\Panels.pas';
@@ -158,22 +158,6 @@ begin
   end;
 end;
 
-function Apply(const AText: string; ADocument: TJSONObject): string;
-var
-  mItem: TJSONValue;
-  mEdits: TArray<TTextEdit>;
-  mRange: TJSONObject;
-begin
-  mEdits := nil;
-  for mItem in ADocument.GetValue('edits') as TJSONArray do
-  begin
-    mRange := TJSONObject(mItem).GetValue('range') as TJSONObject;
-    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(TLspPositions.ReadPosition(mRange.GetValue('start')),
-      TLspPositions.ReadPosition(mRange.GetValue('end'))), TJSONObject(mItem).GetValue('newText').Value)];
-  end;
-  Result := TChangeSignature.ApplyEdits(AText, mEdits);
-end;
-
 function Context(const AIndex: ISymbolIndex): TInvertBooleanContext;
 begin
   Result := Default(TInvertBooleanContext);
@@ -214,7 +198,7 @@ begin
     begin
       mDocument := TJSONObject(mItem);
       mFileName := TDocumentUris.ToPath((mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value);
-      Result := Result + [ExtractFileName(mFileName) + '|' + Apply(TextOf(mFileName), mDocument)];
+      Result := Result + [ExtractFileName(mFileName) + '|' + ApplyDocument(TextOf(mFileName), mDocument)];
     end;
     AWarnings := TJsonRead.Strings(mAnswer, 'warnings');
   finally

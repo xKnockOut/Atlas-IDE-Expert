@@ -12,16 +12,14 @@ type
   [TestFixture]
   TAtlasStatusWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure ShowsEveryRegisteredLine;
     [Test]
     procedure DotColorsFollowState;
     [Test]
     procedure ButtonsRunAfterClosing;
-    /// <summary>Dialogschrift und IDE-Thema über TAtlasDialog; ein Themenwechsel holt die neuen Farben.</summary>
+    /// <summary>Dialogschrift und IDE-Thema an den Steuerelementen über TAtlasPopupForm (ThemedControls); ein
+    /// Themenwechsel holt die neuen Farben.</summary>
     [Test]
     procedure FollowsIdeTheme;
   end;
@@ -32,15 +30,16 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Strings,
-  Atlas.UI.Status.Window;
+  Atlas.UI.Status.Window,
+  Atlas.Plugin.Status.Signal;
 
 function Line(const AId: string; AOrder: Integer; AState: TAtlasStatusState; const AText: string): IAtlasStatusItem;
 var
@@ -52,11 +51,6 @@ begin
 end;
 
 { TAtlasStatusWindowTests }
-
-procedure TAtlasStatusWindowTests.WarmUpFirstUse;
-begin
-  ShowsEveryRegisteredLine;
-end;
 
 procedure TAtlasStatusWindowTests.ShowsEveryRegisteredLine;
 var
@@ -92,14 +86,15 @@ begin
   // Signalfarben (#1255) statt der Textfarben Add/Warn/Error/Muted.
   mColors := TAtlasColors.Dark;
   Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Ok).Fill),
-    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Green).Fill));
+    Int64(TAtlasStatusSignal.ForState(mColors.Signals, TAtlasStatusState.Green).Fill));
   Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Warn).Fill),
-    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Yellow).Fill));
+    Int64(TAtlasStatusSignal.ForState(mColors.Signals, TAtlasStatusState.Yellow).Fill));
   Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Error).Fill),
-    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Red).Fill));
+    Int64(TAtlasStatusSignal.ForState(mColors.Signals, TAtlasStatusState.Red).Fill));
   Assert.AreEqual(Int64(mColors.Signals.Get(TAtlasSignalKind.Idle).Fill),
-    Int64(mColors.Signals.ForStatus(TAtlasStatusState.Neutral).Fill));
-  Assert.AreNotEqual<TAtlasColor>(mColors.Add, mColors.Signals.ForStatus(TAtlasStatusState.Green).Fill);
+    Int64(TAtlasStatusSignal.ForState(mColors.Signals, TAtlasStatusState.Neutral).Fill));
+  Assert.AreNotEqual<TAtlasColor>(mColors.Add,
+    TAtlasStatusSignal.ForState(mColors.Signals, TAtlasStatusState.Green).Fill);
 end;
 
 procedure TAtlasStatusWindowTests.ButtonsRunAfterClosing;
@@ -144,6 +139,7 @@ begin
   try
     Assert.AreEqual(TAtlasUiTheme.cFontName, string(mWindow.Font.Name));
     Assert.IsTrue(TAtlasUiTheme.Subscribed(mWindow), 'meldet sich beim Themendienst an');
+    Assert.IsTrue(mWindow.ThemedControls, 'IDE-Thema an Knöpfen und Listen');
     TAtlasUiTheme.Install(
       function: TAtlasColors
       begin

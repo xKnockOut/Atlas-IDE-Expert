@@ -23,40 +23,20 @@ uses
   System.SysUtils,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.SavedPlaces.Contract,
-  Atlas.Core.Welcome.IndexFiles;
+  Atlas.Core.Welcome.IndexFiles,
+  Atlas.Core.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  TAtlasSavedKind = (Note, Bookmark, Favorite);
-{$SCOPEDENUMS OFF}
+  TAtlasSavedKind = Atlas.Core.Welcome.Contract.TAtlasSavedKind;
+  TAtlasSavedItem = Atlas.Core.Welcome.Contract.TAtlasSavedItem;
 
-  TAtlasSavedItem = record
-    Kind: TAtlasSavedKind;
-    /// <summary>Kennung der Notiz bzw. des Lesezeichens; beim Favoriten der Schlüssel "typ|member".</summary>
-    Id: string;
-    /// <summary>Titel der Notiz, Name des Lesezeichens bzw. "TDataSet.Open".</summary>
-    Text: string;
-    /// <summary>Vollständiger Pfad; '' beim Favoriten.</summary>
-    FileName: string;
-    /// <summary>Zeile, 0-basiert; -1 ohne (Favorit).</summary>
-    Line: Integer;
-    /// <summary>Pfad der Projektdatei; '' beim Favoriten (gilt für alle Projekte).</summary>
-    Project: string;
-    /// <summary>Lesezeichen: Methode; Notiz: weitere Zeilen; Favorit: Signatur.</summary>
-    Detail: string;
-    /// <summary>Notiz verwaist bzw. Lesezeichen nicht gefunden (letzte bekannte Zeile).</summary>
-    Lost: Boolean;
-    /// <summary>Nur Favorit: Unit, Typ und Member.</summary>
-    UnitName: string;
-    TypeName: string;
-    Member: string;
+  /// <summary>Logik zu TAtlasSavedItem (der Record steht im Vertrag).</summary>
+  TAtlasSavedItemHelper = record helper for TAtlasSavedItem
     /// <summary>„Kunde.pas:42“; beim Favoriten die Unit.</summary>
     function Place: string;
-    /// <summary>Name des Projekts ohne Endung; '' beim Favoriten.</summary>
-    function ProjectName: string;
   end;
 
-  TAtlasSavedItems = TArray<TAtlasSavedItem>;
+  TAtlasSavedItems = Atlas.Core.Welcome.Contract.TAtlasSavedItems;
 
   TAtlasWelcomeSaved = class
   public
@@ -86,50 +66,8 @@ implementation
 
 uses
   Atlas.Core.Editor.MethodToggle,
-  Atlas.Core.Projects.Summary,
-  Atlas.Text.Chars;
-
-function NameOfPath(const APath: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := Trim(APath);
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if CharInSet(Result[mIndex], ['\', '/']) then
-    begin
-      Exit(Copy(Result, mIndex + 1, MaxInt));
-    end;
-  end;
-end;
-
-{ TAtlasSavedItem }
-
-function TAtlasSavedItem.Place: string;
-begin
-  if Kind = TAtlasSavedKind.Favorite then
-  begin
-    Exit(UnitName);
-  end;
-  Result := NameOfPath(FileName);
-  if Line >= 0 then
-  begin
-    Result := Result + ':' + IntToStr(Line + 1);
-  end;
-end;
-
-function TAtlasSavedItem.ProjectName: string;
-var
-  mSummary: TAtlasProjectSummary;
-begin
-  Result := '';
-  if Project = '' then
-  begin
-    Exit;
-  end;
-  mSummary := TAtlasProjectSummary.Create(Project);
-  Result := mSummary.Name;
-end;
+  Atlas.Text.Chars,
+  Atlas.Text.Uris;
 
 { Sortieren }
 
@@ -146,7 +84,7 @@ begin
   end;
   if Result = 0 then
   begin
-    Result := CompareText(NameOfPath(A.FileName), NameOfPath(B.FileName));
+    Result := CompareText(TTextUris.FileNameOf(Trim(A.FileName)), TTextUris.FileNameOf(Trim(B.FileName)));
   end;
   if Result = 0 then
   begin
@@ -248,8 +186,8 @@ begin
   Result := nil;
   for mItem in AItems do
   begin
-    mHaystack := LowerCase(mItem.Text + #1 + NameOfPath(mItem.FileName) + #1 + mItem.ProjectName + #1 + mItem.Detail +
-      #1 + mItem.UnitName);
+    mHaystack := LowerCase(mItem.Text + #1 + TTextUris.FileNameOf(Trim(mItem.FileName)) + #1 + mItem.ProjectName +
+      #1 + mItem.Detail + #1 + mItem.UnitName);
     mMatches := True;
     for mWord in mWords do
     begin
@@ -508,6 +446,21 @@ begin
     mKept := mKept + [mPart];
   end;
   Result := string.Join('\', mKept);
+end;
+
+{ TAtlasSavedItemHelper }
+
+function TAtlasSavedItemHelper.Place: string;
+begin
+  if Kind = TAtlasSavedKind.Favorite then
+  begin
+    Exit(UnitName);
+  end;
+  Result := TTextUris.FileNameOf(Trim(FileName));
+  if Line >= 0 then
+  begin
+    Result := Result + ':' + IntToStr(Line + 1);
+  end;
 end;
 
 end.

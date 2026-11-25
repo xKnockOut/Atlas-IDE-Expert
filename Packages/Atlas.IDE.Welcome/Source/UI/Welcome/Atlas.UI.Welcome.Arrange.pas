@@ -26,53 +26,11 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Atlas.Core.Welcome.Layout,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  /// <summary>Ein Atlas-Bereich für „Bereich hinzufügen“ und die Leiste „Ausgeblendet“.</summary>
-  TAtlasWelcomeCatalogEntry = record
-    Id: string;
-    Title: string;
-    /// <summary>Kurze Beschreibung für „Bereich hinzufügen“.</summary>
-    Description: string;
-    /// <summary>Einstellung des Bereichs an?</summary>
-    Shown: Boolean;
-    class function Create(const AId, ATitle, ADescription: string; AShown: Boolean): TAtlasWelcomeCatalogEntry;
-      static;
-  end;
-
-  IAtlasWelcomeArrangeSource = interface
-    ['{3F7B2C91-6A4E-4D08-B5C1-9E2A7D4F6B13}']
-    /// <summary>welcomePage.customLayout: Bearbeitungsmodus, Stift und Layout-Umschalter.</summary>
-    function CanCustomize: Boolean;
-    /// <summary>Bearbeitungsmodus an (gilt für Willkommensseite und „Atlas-Start“ zugleich)?</summary>
-    function Editing: Boolean;
-    procedure SetEditing(AOn: Boolean);
-    function LayoutNames: TArray<string>;
-    function ActiveLayout: string;
-    /// <summary>Alle angemeldeten Atlas-Bereiche in der Reihenfolge des Atlas-Layouts.</summary>
-    function Catalog: TArray<TAtlasWelcomeCatalogEntry>;
-    /// <summary>Plätze, Breiten oder Spalten des aktiven Layouts geändert.</summary>
-    procedure Arrange(const ALayout: TAtlasWelcomeLayout);
-    /// <summary>Ausgeblendeten Bereich einschalten und in Spalte AColumn vor ABefore ('' = ans Ende) setzen.
-    /// </summary>
-    procedure ShowSection(const AId: string; AColumn: Integer; const ABefore: string);
-    /// <summary>Auge: Einstellung des Bereichs aus.</summary>
-    procedure HideSection(const AId: string);
-    /// <summary>Rechtsklick „Ausblenden“ wie am Element (#628): mit „Rückgängig“ an APoint (Bildschirm).
-    /// </summary>
-    procedure HideSectionAt(const AId: string; const APoint: TPoint);
-    /// <summary>Optionsseite mit der Einstellung des Bereichs.</summary>
-    procedure ShowSectionSettings(const AId: string);
-    procedure SwitchLayout(const AName: string);
-    /// <summary>Kopie des aktiven Layouts unter AName; False bei leerem oder vergebenem Namen.</summary>
-    function AddLayout(const AName: string): Boolean;
-    function RenameLayout(const AName: string): Boolean;
-    /// <summary>Aktives Layout löschen; False beim letzten.</summary>
-    function DeleteLayout: Boolean;
-    /// <summary>„Zurücksetzen“: Atlas-Layout (#753) für das aktive Layout.</summary>
-    procedure ResetLayout;
-  end;
+  TAtlasWelcomeCatalogEntry = Atlas.UI.Welcome.Contract.TAtlasWelcomeCatalogEntry;
 
 {$SCOPEDENUMS ON}
   /// <summary>Teile der gezeichneten Leisten.</summary>
@@ -142,7 +100,7 @@ type
 
   /// <summary>Griff eines Bereichs im Bearbeitungsmodus: Tab erreicht ihn, Strg+Pfeiltasten verschieben,
   /// Ziehen mit der Maus (Escape bricht ab).</summary>
-  TAtlasWelcomeGrip = class(TCustomControl)
+  TAtlasWelcomeGrip = class(TAtlasWelcomeKeyControl)
   public const
     cGripWidth = 16;
   private
@@ -155,7 +113,6 @@ type
     FOnDragMove: TProc<TPoint>;
     FOnDragEnd: TProc<Boolean>;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
-    procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
     procedure EndDrag(ADrop: Boolean);
   protected
     procedure Paint; override;
@@ -166,8 +123,7 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
-    /// <summary>Taste wie gedrückt; True, wenn sie verarbeitet wurde (auch für Tests).</summary>
-    function HandleKey(AKey: Word; AShift: TShiftState): Boolean;
+    function HandleKey(AKey: Word; AShift: TShiftState): Boolean; override;
     property SectionId: string read FSectionId write FSectionId;
     /// <summary>Zieht gerade; nicht „Dragging“, das verdeckte TControl.Dragging (W1009).</summary>
     property IsDragging: Boolean read FDragging;
@@ -211,24 +167,25 @@ implementation
 uses
   Vcl.Forms,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Welcome.Strings;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.UI.Welcome.Strings,
+  Atlas.Vcl.Theme.Service;
 
-function StyleColor(AControl: TControl; AColor: TColor): TColor;
-begin
-  Result := StyleServices(AControl).GetSystemColor(AColor);
-end;
-
-{ TAtlasWelcomeCatalogEntry }
-
-class function TAtlasWelcomeCatalogEntry.Create(const AId, ATitle, ADescription: string;
-  AShown: Boolean): TAtlasWelcomeCatalogEntry;
-begin
-  Result.Id := AId;
-  Result.Title := ATitle;
-  Result.Description := ADescription;
-  Result.Shown := AShown;
-end;
+const
+  /// <summary>Rand der Leiste über und unter den Knöpfen zusammen (logische Pixel bei 96 dpi).</summary>
+  cStripBorder = 8;
+  /// <summary>Radius der Ecken der Knöpfe.</summary>
+  cPartRadius = 6;
+  /// <summary>Abstand der Knöpfe zum Rand der Leiste.</summary>
+  cStripMargin = 4;
+  /// <summary>Punkte des Griffs (⠿): Spalten und Zeilen, je ein Punkt Abstand dazwischen.</summary>
+  cGripColumns = 2;
+  cGripRows = 3;
+  /// <summary>Größe des Symbols für die Breite und das Auge.</summary>
+  cToolSymbolSize = 12;
+  /// <summary>Das Auge ist so hoch wie ein Drittel (nach oben und unten) seiner Breite.</summary>
+  cEyeHeightDivisor = 3;
 
 { TAtlasArrangePart }
 
@@ -251,7 +208,7 @@ begin
   FHot := -1;
   FPressed := -1;
   ShowHint := True;
-  Height := ScaleValue(cPartHeight) + ScaleValue(8);
+  Height := ScaleValue(cPartHeight) + ScaleValue(cStripBorder);
 end;
 
 procedure TAtlasArrangeStrip.Paint;
@@ -262,12 +219,12 @@ var
 begin
   inherited;
   Measure;
-  mTextColor := StyleColor(Self, clWindowText);
-  mMutedColor := StyleColor(Self, clGrayText);
-  mLineColor := StyleColor(Self, clBtnShadow);
-  mAccentColor := StyleColor(Self, clHighlight);
-  mAccentText := StyleColor(Self, clHighlightText);
-  mRadius := ScaleValue(6);
+  mTextColor := TAtlasUiTheme.SystemColor(Self, clWindowText);
+  mMutedColor := TAtlasUiTheme.SystemColor(Self, clGrayText);
+  mLineColor := TAtlasUiTheme.SystemColor(Self, clBtnShadow);
+  mAccentColor := TAtlasUiTheme.SystemColor(Self, clHighlight);
+  mAccentText := TAtlasUiTheme.SystemColor(Self, clHighlightText);
+  mRadius := ScaleValue(cPartRadius);
   Canvas.Font := Font;
   for mIndex := 0 to High(FParts) do
   begin
@@ -404,7 +361,7 @@ begin
   mLine := ScaleValue(cPartHeight);
   mPad := ScaleValue(cPartPadding);
   mGap := ScaleValue(cPartGap);
-  mMargin := ScaleValue(4);
+  mMargin := ScaleValue(cStripMargin);
   X := mMargin + mGap;
   Y := mMargin;
   for mIndex := 0 to High(FParts) do
@@ -441,11 +398,7 @@ end;
 procedure TAtlasArrangeStrip.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  if FHot >= 0 then
-  begin
-    FHot := -1;
-    Invalidate;
-  end;
+  TAtlasControls.ClearHot(Self, FHot);
 end;
 
 procedure TAtlasArrangeStrip.SetParts(const AParts: TArray<TAtlasArrangePart>);
@@ -494,7 +447,7 @@ function TAtlasArrangeStrip.PreferredHeight: Integer;
 var
   mPart: TAtlasArrangePart;
 begin
-  Result := ScaleValue(cPartHeight + 8);
+  Result := ScaleValue(cPartHeight + cStripBorder);
   if not HandleAllocated then
   begin
     Exit;
@@ -502,9 +455,9 @@ begin
   Measure;
   for mPart in FParts do
   begin
-    if mPart.Rect.Bottom + ScaleValue(4) > Result then
+    if mPart.Rect.Bottom + ScaleValue(cStripMargin) > Result then
     begin
-      Result := mPart.Rect.Bottom + ScaleValue(4);
+      Result := mPart.Rect.Bottom + ScaleValue(cStripMargin);
     end;
   end;
 end;
@@ -531,19 +484,19 @@ begin
   Canvas.FillRect(ClientRect);
   // Sechs Punkte wie ein Griff (⠿).
   mSize := ScaleValue(2);
-  mLeft := (ClientWidth - 3 * mSize) div 2;
-  mTop := (ClientHeight - 5 * mSize) div 2;
+  mLeft := (ClientWidth - (2 * cGripColumns - 1) * mSize) div 2;
+  mTop := (ClientHeight - (2 * cGripRows - 1) * mSize) div 2;
   if Focused then
   begin
-    Canvas.Brush.Color := StyleColor(Self, clHighlight);
+    Canvas.Brush.Color := TAtlasUiTheme.SystemColor(Self, clHighlight);
   end
   else
   begin
-    Canvas.Brush.Color := StyleColor(Self, clGrayText);
+    Canvas.Brush.Color := TAtlasUiTheme.SystemColor(Self, clGrayText);
   end;
-  for mRow := 0 to 2 do
+  for mRow := 0 to cGripRows - 1 do
   begin
-    for mColumn := 0 to 1 do
+    for mColumn := 0 to cGripColumns - 1 do
     begin
       Canvas.FillRect(TRect.Create(mLeft + mColumn * 2 * mSize, mTop + mRow * 2 * mSize,
         mLeft + mColumn * 2 * mSize + mSize, mTop + mRow * 2 * mSize + mSize));
@@ -620,16 +573,6 @@ begin
   Message.Result := Message.Result or DLGC_WANTARROWS;
 end;
 
-procedure TAtlasWelcomeGrip.CNKeyDown(var Message: TWMKeyDown);
-begin
-  if HandleKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
-  begin
-    Message.Result := 1;
-    Exit;
-  end;
-  inherited;
-end;
-
 procedure TAtlasWelcomeGrip.EndDrag(ADrop: Boolean);
 var
   mWas: Boolean;
@@ -704,15 +647,15 @@ begin
   Canvas.Brush.Color := TAtlasWelcomeCanvas.BackgroundOf(Self);
   Canvas.FillRect(ClientRect);
   mHalf := ClientWidth div 2;
-  mSize := ScaleValue(12);
+  mSize := ScaleValue(cToolSymbolSize);
   // Breite: ein bzw. zwei Rechtecke nebeneinander; gefüllt, was der Bereich gerade belegt.
   if FHot = TAtlasWelcomeTool.Width then
   begin
-    mColor_ := StyleColor(Self, clHighlight);
+    mColor_ := TAtlasUiTheme.SystemColor(Self, clHighlight);
   end
   else
   begin
-    mColor_ := StyleColor(Self, clWindowText);
+    mColor_ := TAtlasUiTheme.SystemColor(Self, clWindowText);
   end;
   Canvas.Pen.Color := mColor_;
   Canvas.Brush.Color := mColor_;
@@ -733,17 +676,18 @@ begin
   // Auge: Ellipse mit Pupille.
   if FHot = TAtlasWelcomeTool.Eye then
   begin
-    mColor_ := StyleColor(Self, clHighlight);
+    mColor_ := TAtlasUiTheme.SystemColor(Self, clHighlight);
   end
   else
   begin
-    mColor_ := StyleColor(Self, clWindowText);
+    mColor_ := TAtlasUiTheme.SystemColor(Self, clWindowText);
   end;
   Canvas.Pen.Color := mColor_;
   Canvas.Brush.Style := bsClear;
   mMid := mHalf + mHalf div 2;
   mTop := ClientHeight div 2;
-  Canvas.Ellipse(mMid - mSize div 2, mTop - mSize div 3, mMid + mSize div 2, mTop + mSize div 3);
+  Canvas.Ellipse(mMid - mSize div 2, mTop - mSize div cEyeHeightDivisor, mMid + mSize div 2,
+    mTop + mSize div cEyeHeightDivisor);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := mColor_;
   Canvas.Ellipse(mMid - ScaleValue(2), mTop - ScaleValue(2), mMid + ScaleValue(2), mTop + ScaleValue(2));

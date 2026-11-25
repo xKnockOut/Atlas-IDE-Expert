@@ -38,7 +38,20 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - `get_hotspots` vor Aufräumarbeiten oder Reviews: welche Units und Methoden oft geändert werden und zugleich komplex sind (dort lohnt Umbau am meisten), mit `section` = `coupling` Dateien, die fast immer gemeinsam geändert werden, ohne sich über uses zu kennen (versteckte Abhängigkeit). Braucht Git oder SVN.
 - `find_path` bei „Wie hängt X mit Y zusammen?“ oder „Warum zieht diese Unit jene herein?“: ein Aufruf liefert die kürzeste Kette mit Kantenart und Datei:Zeile je Schritt, statt sich über `find_references` und `get_call_hierarchy` zu hangeln. „Kein Weg“ ist verlässlich; `[erschlossen]` heißt: über eine von mehreren Umsetzungen.
 - Befunde mit `explain_finding` erklären lassen (Regel, Ausschnitt, Vorher/Nachher).
+- `search_atlas_docs` bei Fragen zu Atlas selbst (Regel, Einstellung, Fenster, Tastenkürzel), statt zu raten oder
+  `docs/` zu durchsuchen: eine Kennung wie `method-order` liefert den ganzen Abschnitt samt Schweregrad im Projekt,
+  eine Frage („Brotkrumen abschalten“) die passenden Einstellungen mit aktuellem Wert.
 - `get_last_build` zeigt den letzten Build aus der IDE samt Compilermeldungen.
+- `get_current_issue` zu Beginn einer Aufgabe auf einem Issue-Branch: das in der IDE begonnene Tracker-Issue mit Checkliste, Codeverweisen und (mit `section` = `body` bzw. `comments`) Beschreibung und letzten Kommentaren. Die Checkliste dort ist der Auftrag; Codeverweise sind die ersten Stellen zum Lesen.
+- `explain_compiler_message` bei Compilermeldungen, bevor du rätst und neu baust: Ursache an der Stelle, bekannte
+  Delphi-Falle (Delphi 12 gegen 13, Methodenreferenzen, Units, die FPC nicht verlangt) und eine sichere Korrektur als
+  Diff; die Meldungen aus `get_last_build`/`build_project` direkt als `messages` übergeben.
+- `get_last_tests` bei „Warum ist der Test rot?“: der letzte Testlauf aus der IDE ohne neuen Lauf, je rotem Test
+  Meldung, Datei:Zeile, erwartet/erhalten, Protokollauszug und Marken (neu rot, wackelig, Leck, veraltet);
+  `only` wählt `failed`, `flaky`, `slow`, `leaks`, `stale` oder `all`. Erst hier lesen, dann gezielt `run_tests`.
+- `get_ide_context` bei „diese Methode“, „die Auswahl“, „hier“: offene Datei mit Cursor und Methode, markierter
+  Text, aktives Projekt mit Konfiguration und Plattform, letzter Build, Reiter. Danach mit den übrigen Werkzeugen
+  lesen und prüfen.
 - `build_project` baut das Projekt in der laufenden IDE (auch in der Starter Edition ohne
   Kommandozeilen-Compiler) und liefert die Compilermeldungen; das Projekt muss dort offen sein.
 - `run_tests` führt die DUnitX-Tests aus (vorhandene Test-EXE, mit `build: true` vorher in der IDE
@@ -52,6 +65,10 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
   Es ändert auch .dfm/.fmx und automatisch benannte Ereignis-Handler.
   Erst mit `dryRun: true` (Vorgabe) den Diff ansehen, dann mit `dryRun: false` schreiben.
 - Korrekturen von Prüfregeln mit `apply_code_action`: ohne `title` auflisten, dann anwenden.
+- Umbauten wie Signatur ändern, Interface oder Basisklasse herauslösen, sicher löschen, Mitglied
+  verschieben oder Typ-Alias mit `refactor`: erst ohne `kind` an der Stelle auflisten (zeigt die
+  erwarteten `args`), dann mit `kind` und `args` als Vorschau, zuletzt mit `dryRun: false` schreiben.
+  Hand-Edits für solche Umbauten vermeiden: `refactor` findet auch die Aufrufer im Projekt.
 - Viele gleiche Befunde auf einmal mit `fix_findings` (z. B. `rules: ["unused-uses"]`):
   nur sichere Korrekturen, erst mit `dryRun: true` (Vorgabe) den Diff ansehen.
 - Ist eine Datei in der IDE ungespeichert geändert, schreibt Atlas nicht; erst speichern lassen.

@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasSmartPasteWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure TitleCountsUniqueAndChosenUnits;
     [Test]
@@ -29,7 +26,7 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.SmartPaste,
   Atlas.UI.Strings,
   Atlas.UI.Editor.SmartPaste;
@@ -58,11 +55,6 @@ begin
 end;
 
 { TAtlasSmartPasteWindowTests }
-
-procedure TAtlasSmartPasteWindowTests.WarmUpFirstUse;
-begin
-  TitleCountsUniqueAndChosenUnits;
-end;
 
 procedure TAtlasSmartPasteWindowTests.TitleCountsUniqueAndChosenUnits;
 var

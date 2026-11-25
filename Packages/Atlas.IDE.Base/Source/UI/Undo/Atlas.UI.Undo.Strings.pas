@@ -12,7 +12,8 @@ type
   TAtlasUndoTextId = (
     UndoListTitle, UndoDisabled, UndoConflictChanged, UndoConflictExists, UndoConflictMissing, UndoFailed,
     UndoStateApplied, UndoStatePartly, UndoStateUndone, UndoKindCreated, UndoKindDeleted, UndoDiffTitle, UndoNoDiff,
-    UndoSetCaption, UndoClose);
+    UndoSetCaption, UndoClose, UndoNothing, RedoNothing, UndoDone, RedoDone, UndoPartial, RedoPartial, UndoAborted,
+    RedoAborted, UndoRecycleBinNotReachable);
 
   TAtlasUndoStrings = class
   public
@@ -43,7 +44,16 @@ const
      'Atlas-Änderung: %s',
      '(kein Unterschied im Text)',
      '%s · %d Dateien · %s · %s',
-     'Schließen'),
+     'Schließen',
+     'Atlas: keine Atlas-Änderung zum Zurücknehmen.',
+     'Atlas: keine Atlas-Änderung zum Wiederherstellen.',
+     'Atlas: „%s“ in %d Dateien zurückgenommen.',
+     'Atlas: „%s“ in %d Dateien wiederhergestellt.',
+     'Atlas: „%s“ in %d Dateien zurückgenommen, %d Dateien blieben unverändert:',
+     'Atlas: „%s“ in %d Dateien wiederhergestellt, %d Dateien blieben unverändert:',
+     'Atlas: „%s“ nicht zurückgenommen, %d Dateien haben Konflikte (undo.multiFile.onConflict = abort):',
+     'Atlas: „%s“ nicht wiederhergestellt, %d Dateien haben Konflikte (undo.multiFile.onConflict = abort):',
+     'Papierkorb nicht erreichbar'),
     ('Atlas changes (%d) – double-click shows the difference, right-click undoes',
      'Atlas: undo across files is switched off (undo.multiFile).',
      '  %s: changed at these places after the action',
@@ -58,7 +68,16 @@ const
      'Atlas change: %s',
      '(no difference in the text)',
      '%s · %d files · %s · %s',
-     'Close'));
+     'Close',
+     'Atlas: no Atlas change to undo.',
+     'Atlas: no Atlas change to redo.',
+     'Atlas: "%s" undone in %d files.',
+     'Atlas: "%s" redone in %d files.',
+     'Atlas: "%s" undone in %d files, %d files were left unchanged:',
+     'Atlas: "%s" redone in %d files, %d files were left unchanged:',
+     'Atlas: "%s" not undone, %d files have conflicts (undo.multiFile.onConflict = abort):',
+     'Atlas: "%s" not redone, %d files have conflicts (undo.multiFile.onConflict = abort):',
+     'recycle bin not reachable'));
 
 { TAtlasUndoStrings }
 

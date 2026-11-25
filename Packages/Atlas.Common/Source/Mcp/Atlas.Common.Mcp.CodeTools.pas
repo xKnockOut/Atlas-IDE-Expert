@@ -97,7 +97,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   System.StrUtils,
   System.JSON,
   Atlas.Common.Documents.Uris,
@@ -107,12 +107,13 @@ uses
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.CheckTools,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -386,7 +387,7 @@ var
   mProcessed: TPreprocessorResult;
 begin
   // Nur die aktiven Zweige (#860): Namen eines anderen Zielsystems sind dort nicht auflösbar.
-  mTree := TSyntaxTreeCache.ParseActive(AText, ASource.Options, nil, mProcessed);
+  mTree := TSyntaxTreeCache.ParseActive(AText, TPascalPreprocessor.SourceOptions(ASource), nil, mProcessed);
   try
     mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
@@ -911,8 +912,7 @@ begin
   mLines := TStringList.Create;
   try
     mCount := 0;
-    for mFinding in TFileChecker.CheckText(AScope.Rules, AScope.Settings, TMcpCheckTools.RelativeTo(AScope.Root,
-      AFileName), mNewText,
+    for mFinding in TFileChecker.CheckText(AScope.Rules, AScope.Settings, TTextNames.RelativeTo(AScope.Root, AFileName), mNewText,
       TCheckOrigin.Make(TFileChecker.ProjectOf(FCheckProject, AFileName), mSource), mScopes) do
     begin
       Inc(mCount);

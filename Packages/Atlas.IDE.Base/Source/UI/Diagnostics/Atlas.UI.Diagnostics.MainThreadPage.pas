@@ -16,10 +16,10 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Diagnostics.PluginReport,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.PluginReport,
   Atlas.UI.Diagnostics.Grid,
   Atlas.UI.Diagnostics.PluginParts;
 
@@ -71,6 +71,10 @@ uses
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginRows;
 
+const
+  // Höhe der Funktionsliste über dem Teiler bei 96 dpi.
+  cFeaturesHeight = 200;
+
 { TAtlasMainThreadPage }
 
 constructor TAtlasMainThreadPage.Create(AOwner: TComponent);
@@ -83,7 +87,7 @@ begin
   FFeatures := TAtlasDiagnosticGrid.Create(Self);
   FFeatures.Parent := Self;
   FFeatures.Align := alTop;
-  FFeatures.Height := MulDiv(200, CurrentPPI, 96);
+  FFeatures.Height := MulDiv(cFeaturesHeight, CurrentPPI, 96);
   FFeatures.EmptyText := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagEmpty);
   FFeatures.SetColumns(TAtlasPluginGridRows.FeatureColumns);
   FFeatures.OnOpen := FeatureOpen;

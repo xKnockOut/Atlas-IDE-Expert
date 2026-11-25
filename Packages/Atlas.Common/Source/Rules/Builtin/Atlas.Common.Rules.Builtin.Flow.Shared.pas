@@ -28,6 +28,17 @@ const
     TSyntaxKind.ExceptionHandler, TSyntaxKind.FinallyBlock, TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement,
     TSyntaxKind.LabeledStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.EmptyStatement];
 
+type
+  /// <summary>Gemeinsamer Kopf der Flussprüfungen je Datei: Kontext, Ausgabe und Zeilenumbruch des Textes.</summary>
+  TFlowFileCheck = class
+  protected
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FLineBreak: string;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 /// <summary>Bezeichner, an dem eine Kette wie Result.Feld oder Result[I] hängt.</summary>
 function RootName(ANode: TSyntaxNode): string;
@@ -88,15 +99,23 @@ function CallsMethod(ARoutine: TSyntaxNode; const AName: string): Boolean;
 /// </summary>
 function NilCheckedPaths(ANode: TSyntaxNode): TArray<string>;
 
-/// <summary>Stelle von AChild unter AParent; sonst -1.</summary>
-function PositionIn(AParent, AChild: TSyntaxNode): Integer;
-
 implementation
 
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Text.Lines;
+
+{ TFlowFileCheck }
+
+constructor TFlowFileCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
+end;
 
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 begin
@@ -625,20 +644,6 @@ begin
       SameText(ANode[1 - mIndex].Name, 'nil') then
     begin
       Result := Result + [FreedPath(ANode[mIndex])];
-    end;
-  end;
-end;
-
-function PositionIn(AParent, AChild: TSyntaxNode): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to AParent.ChildCount - 1 do
-  begin
-    if AParent[mIndex] = AChild then
-    begin
-      Result := mIndex;
     end;
   end;
 end;

@@ -11,9 +11,6 @@ type
   [TestFixture]
   TAtlasSettingsPagePartsTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     /// <summary>Jeder Teil, den die Seite anlegt, ist genau einmal da und über seine Klasse erreichbar.</summary>
     [Test]
     procedure EveryPartReachable;
@@ -38,8 +35,7 @@ uses
   Atlas.UI.Settings.Page.Completion,
   Atlas.UI.Settings.Page.Colors,
   Atlas.UI.Settings.Page.Index,
-  Atlas.UI.Settings.Page.Sections,
-  Atlas.UI.Settings.Page.TestSupport;
+  Atlas.UI.Settings.Page.Sections;
 
 type
   /// <summary>Teil, den die Seite nie anlegt.</summary>
@@ -47,11 +43,6 @@ type
   end;
 
 { TAtlasSettingsPagePartsTests }
-
-procedure TAtlasSettingsPagePartsTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TAtlasSettingsPagePartsTests.EveryPartReachable;
 var

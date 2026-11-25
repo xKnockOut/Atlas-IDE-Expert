@@ -34,6 +34,8 @@ type
     [Test]
     procedure InlineEntitiesBreaksAndHtml;
     [Test]
+    procedure InlinePartDirect;
+    [Test]
     procedure DocRunsAndCodeLanguage;
     [Test]
     procedure SegmentsSplitAtImages;
@@ -50,7 +52,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Tracker.Markdown;
+  Atlas.Core.Tracker.Markdown,
+  Atlas.Core.Tracker.Markdown.Spans;
 
 function Lines(const AParts: TArray<string>): string;
 begin
@@ -206,6 +209,21 @@ begin
   Assert.AreEqual('https://w.de', mRuns[6].Target);
   Assert.AreEqual('<b> & "x"', TAtlasTrackerMarkdown.DecodeHtml('&lt;b&gt; &amp; &quot;x&quot;'));
   Assert.AreEqual('a b ''c'' &nbsp;', TAtlasTrackerMarkdown.DecodeHtml('a&nbsp;b &#39;c&#39; &amp;nbsp;'));
+end;
+
+procedure TAtlasTrackerMarkdownTests.InlinePartDirect;
+var
+  mRuns: TAtlasDocRuns;
+begin
+  // Der Fließtext-Teil allein: kursiv als Grundlage, Bild im Text als Link, Attribute in beiden Anführungen.
+  mRuns := TAtlasMarkdownInline.Runs('x <img alt=''A'' src="https://b.de/i.png">', False, True);
+  Assert.AreEqual(Integer(2), Integer(Length(mRuns)));
+  Assert.IsTrue(mRuns[0].Italic);
+  Assert.AreEqual<TAtlasDocRunKind>(TAtlasDocRunKind.Link, mRuns[1].Kind);
+  Assert.AreEqual('A', mRuns[1].Text);
+  Assert.AreEqual('https://b.de/i.png', mRuns[1].Target);
+  Assert.AreEqual('3', TAtlasMarkdownInline.HtmlAttribute('<td colspan=3>', 'colspan'));
+  Assert.AreEqual('', TAtlasMarkdownInline.HtmlAttribute('<td>', 'colspan'));
 end;
 
 procedure TAtlasTrackerMarkdownTests.DocRunsAndCodeLanguage;

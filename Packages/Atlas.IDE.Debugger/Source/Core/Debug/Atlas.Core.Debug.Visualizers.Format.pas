@@ -40,6 +40,16 @@ type
   public const
     /// <summary>Trenner der Teile eines Ersatztexts.</summary>
     cSeparator = ' · ';
+    /// <summary>Bytes je Zeile der Hex-Ansicht.</summary>
+    cHexLineBytes = 16;
+    /// <summary>RGB-Anteil einer Farbe ohne Alpha bzw. Systembit.</summary>
+    cRgbMask = $FFFFFF;
+    /// <summary>Umfang von TColor: Systemfarben sind negativ, mit diesem Wert addiert ohne Vorzeichen.</summary>
+    cColorRange = $100000000;
+    /// <summary>Ersatztext einer Sammlung: angezeigter Wert und Count wie die Eigenschaft im Quelltext.</summary>
+    cCountText = '%s · Count = %d';
+    /// <summary>Größe eines Speicherblocks (Einheit in beiden Sprachen gleich).</summary>
+    cByteCount = '%d Bytes';
   public
     /// <summary>Höchstens AMaxLength Zeichen, gekürzt mit „…“.</summary>
     class function Shorten(const AText: string; AMaxLength: Integer): string; static;
@@ -66,6 +76,8 @@ type
     class function HexPreview(const ABytes: TBytes; ATotal: Int64; AMaxBytes: Integer): string; static;
     /// <summary>Zeile der Hex-Ansicht ab AOffset: „00000010  48 65 … 6F  Hello“ (16 Bytes je Zeile).</summary>
     class function HexLine(const ABytes: TBytes; AOffset: Integer): string; static;
+    /// <summary>Zeile ALine (ab 0) der Hex-Ansicht.</summary>
+    class function HexLineAt(const ABytes: TBytes; ALine: Integer): string; static;
     class function HexLineCount(ALength: Integer): Integer; static;
     /// <summary>JSON-Text kompakt (ohne Leerraum außerhalb von Zeichenketten).</summary>
     class function CompactJson(const AText: string): string; static;
@@ -76,6 +88,8 @@ type
     class function ColorName(AValue: Int64): string; static;
     /// <summary>TColor als $RRGGBB; Systemfarben und clNone haben keinen.</summary>
     class function ColorRgb(AValue: Int64; out ARgb: Cardinal): Boolean; static;
+    /// <summary>$RRGGBB als TColor-Wert ($00BBGGRR).</summary>
+    class function RgbToColor(ARgb: Cardinal): Cardinal; static;
     /// <summary>„clWebDodgerBlue · $1E90FF“, „$123456“, „clBtnFace“.</summary>
     class function ColorText(AValue: Int64): string; static;
     /// <summary>TAlphaColor ($AARRGGBB) als „claDodgerBlue“ bzw. „$801E90FF“.</summary>
@@ -111,6 +125,23 @@ type
   end;
 
 const
+  // Erstes Zeichen nach dem druckbaren ASCII-Bereich (DEL).
+  cAsciiDelete = 127;
+  // Lage der Farbanteile in TColor ($00BBGGRR) und in Pixeln mit Alpha ($AARRGGBB).
+  cRedShift = 16;
+  cAlphaShift = 24;
+  cGreenMask = $FF00;
+  // Hexstellen einer Farbe mit Alpha bzw. Systembit und einer reinen RGB-Farbe.
+  cColorDigits = 8;
+  cRgbDigits = 6;
+  // DIB-Pixel: Bits je Pixel mit und ohne Alpha, Alpha als viertes Byte (Blau, Grün, Rot, Alpha).
+  cBitsPerByte = 8;
+  cRgbBits = 24;
+  cRgbaBits = 32;
+  cAlphaIndex = 3;
+  // Bytes von TGUID.D4.
+  cGuidTailBytes = 8;
+
   // Feste Farben der VCL (RGB).
   cStandardColors: array[0..19] of TNamedValue = (
     (Name: 'clBlack'; Value: $000000), (Name: 'clMaroon'; Value: $800000), (Name: 'clGreen'; Value: $008000),
@@ -357,7 +388,7 @@ begin
     begin
       Break;
     end;
-    if (mField.Name <> '') or not ParseInteger(mField.Value, mValue) or (mValue < 0) or (mValue > 255) then
+    if (mField.Name <> '') or not ParseInteger(mField.Value, mValue) or (mValue < 0) or (mValue > High(Byte)) then
     begin
       ABytes := nil;
       Exit(False);
@@ -393,7 +424,7 @@ end;
 
 function Printable(AValue: Byte): Char;
 begin
-  if (AValue >= 32) and (AValue < 127) then
+  if (AValue >= Ord(' ')) and (AValue < cAsciiDelete) then
   begin
     Result := Char(AValue);
   end
@@ -406,61 +437,75 @@ end;
 class function TAtlasVisualizerFormat.HexPreview(const ABytes: TBytes; ATotal: Int64; AMaxBytes: Integer): string;
 var
   mCount, mIndex: Integer;
-  mHex, mText: string;
+  mHex: TArray<string>;
+  mText: TStringBuilder;
 begin
   mCount := Min(Length(ABytes), AMaxBytes);
-  mHex := '';
-  mText := '';
-  for mIndex := 0 to mCount - 1 do
-  begin
-    if mHex <> '' then
+  SetLength(mHex, mCount);
+  mText := TStringBuilder.Create;
+  try
+    for mIndex := 0 to mCount - 1 do
     begin
-      mHex := mHex + ' ';
+      mHex[mIndex] := IntToHex(ABytes[mIndex], 2);
+      mText.Append(Printable(ABytes[mIndex]));
     end;
-    mHex := mHex + IntToHex(ABytes[mIndex], 2);
-    mText := mText + Printable(ABytes[mIndex]);
-  end;
-  if ATotal > mCount then
-  begin
-    mHex := mHex + ' …';
-    mText := mText + '…';
-  end;
-  Result := Format('%d Bytes', [ATotal]);
-  if mHex <> '' then
-  begin
-    Result := Result + cSeparator + mHex + cSeparator + mText;
+    if ATotal > mCount then
+    begin
+      mHex := mHex + ['…'];
+      mText.Append('…');
+    end;
+    Result := Format(cByteCount, [ATotal]);
+    if Length(mHex) > 0 then
+    begin
+      Result := Result + cSeparator + string.Join(' ', mHex) + cSeparator + mText.ToString;
+    end;
+  finally
+    mText.Free;
   end;
 end;
 
 class function TAtlasVisualizerFormat.HexLine(const ABytes: TBytes; AOffset: Integer): string;
+const
+  // Stellen des Abstands am Zeilenanfang.
+  cOffsetDigits = 8;
 var
   mIndex: Integer;
-  mHex, mText: string;
+  mHex, mText: TStringBuilder;
 begin
-  mHex := '';
-  mText := '';
-  for mIndex := AOffset to AOffset + 15 do
-  begin
-    if mIndex = AOffset + 8 then
+  mHex := TStringBuilder.Create;
+  mText := TStringBuilder.Create;
+  try
+    for mIndex := AOffset to AOffset + cHexLineBytes - 1 do
     begin
-      mHex := mHex + ' ';
+      if mIndex = AOffset + cHexLineBytes div 2 then
+      begin
+        mHex.Append(' ');
+      end;
+      if mIndex < Length(ABytes) then
+      begin
+        mHex.Append(IntToHex(ABytes[mIndex], 2)).Append(' ');
+        mText.Append(Printable(ABytes[mIndex]));
+      end
+      else
+      begin
+        mHex.Append('   ');
+      end;
     end;
-    if mIndex < Length(ABytes) then
-    begin
-      mHex := mHex + IntToHex(ABytes[mIndex], 2) + ' ';
-      mText := mText + Printable(ABytes[mIndex]);
-    end
-    else
-    begin
-      mHex := mHex + '   ';
-    end;
+    Result := IntToHex(AOffset, cOffsetDigits) + '  ' + mHex.ToString + ' ' + mText.ToString;
+  finally
+    mText.Free;
+    mHex.Free;
   end;
-  Result := IntToHex(AOffset, 8) + '  ' + mHex + ' ' + mText;
+end;
+
+class function TAtlasVisualizerFormat.HexLineAt(const ABytes: TBytes; ALine: Integer): string;
+begin
+  Result := HexLine(ABytes, ALine * cHexLineBytes);
 end;
 
 class function TAtlasVisualizerFormat.HexLineCount(ALength: Integer): Integer;
 begin
-  Result := (ALength + 15) div 16;
+  Result := (ALength + cHexLineBytes - 1) div cHexLineBytes;
 end;
 
 class function TAtlasVisualizerFormat.CompactJson(const AText: string): string;
@@ -570,13 +615,19 @@ end;
 
 function SwapRedBlue(AValue: Cardinal): Cardinal;
 begin
-  Result := ((AValue and $FF) shl 16) or (AValue and $FF00) or ((AValue shr 16) and $FF);
+  Result := ((AValue and $FF) shl cRedShift) or (AValue and cGreenMask) or ((AValue shr cRedShift) and $FF);
+end;
+
+class function TAtlasVisualizerFormat.RgbToColor(ARgb: Cardinal): Cardinal;
+begin
+  // Rot und Blau tauschen die Plätze; derselbe Tausch macht aus TColor wieder $RRGGBB.
+  Result := SwapRedBlue(ARgb);
 end;
 
 class function TAtlasVisualizerFormat.ColorRgb(AValue: Int64; out ARgb: Cardinal): Boolean;
 begin
   ARgb := 0;
-  Result := (AValue >= 0) and (AValue <= $FFFFFF);
+  Result := (AValue >= 0) and (AValue <= cRgbMask);
   if Result then
   begin
     ARgb := SwapRedBlue(Cardinal(AValue));
@@ -615,7 +666,7 @@ begin
   // TColor ist vorzeichenbehaftet: Systemfarben kommen als -16777201 usw.
   if mValue < 0 then
   begin
-    mValue := mValue + $100000000;
+    mValue := mValue + cColorRange;
   end;
   if mValue = cClNone then
   begin
@@ -645,18 +696,18 @@ begin
   mValue := AValue;
   if mValue < 0 then
   begin
-    mValue := mValue + $100000000;
+    mValue := mValue + cColorRange;
   end;
   if not ColorRgb(mValue, mRgb) then
   begin
     Result := mName;
     if Result = '' then
     begin
-      Result := '$' + IntToHex(mValue, 8);
+      Result := '$' + IntToHex(mValue, cColorDigits);
     end;
     Exit;
   end;
-  Result := '$' + IntToHex(mRgb, 6);
+  Result := '$' + IntToHex(mRgb, cRgbDigits);
   if mName <> '' then
   begin
     Result := mName + cSeparator + Result;
@@ -669,18 +720,18 @@ var
   mIndex: Integer;
 begin
   mValue := Cardinal(AValue and $FFFFFFFF);
-  Result := '$' + IntToHex(mValue, 8);
+  Result := '$' + IntToHex(mValue, cColorDigits);
   if mValue = 0 then
   begin
     Exit('claNull');
   end;
-  if (mValue shr 24) <> $FF then
+  if (mValue shr cAlphaShift) <> $FF then
   begin
     Exit;
   end;
   for mIndex := Low(cWebColors) to High(cWebColors) do
   begin
-    if cWebColors[mIndex].Value = (mValue and $FFFFFF) then
+    if cWebColors[mIndex].Value = (mValue and cRgbMask) then
     begin
       Exit('cla' + cWebColors[mIndex].Name + cSeparator + Result);
     end;
@@ -711,14 +762,14 @@ begin
   begin
     Exit;
   end;
-  if not FieldValue(mFields, 'D4', mText) or not ParseFields(mText, mBytes) or (Length(mBytes) <> 8) then
+  if not FieldValue(mFields, 'D4', mText) or not ParseFields(mText, mBytes) or (Length(mBytes) <> cGuidTailBytes) then
   begin
     Exit;
   end;
   mGuid.D1 := Cardinal(mD1);
   mGuid.D2 := Word(mD2);
   mGuid.D3 := Word(mD3);
-  for mIndex := 0 to 7 do
+  for mIndex := 0 to cGuidTailBytes - 1 do
   begin
     if not ParseInteger(mBytes[mIndex].Value, mValue) then
     begin
@@ -831,13 +882,15 @@ begin
   mWidth := ALayout.Width;
   mHeight := ALayout.Height;
   mWidthBytes := ALayout.WidthBytes;
-  Result := (mWidth > 0) and (mHeight > 0) and ((ALayout.BitsPerPixel = 24) or (ALayout.BitsPerPixel = 32)) and
-    (mWidthBytes >= mWidth * (ALayout.BitsPerPixel div 8)) and (Int64(mWidthBytes) * mHeight <= Length(ABits));
+  Result := (mWidth > 0) and (mHeight > 0) and
+    ((ALayout.BitsPerPixel = cRgbBits) or (ALayout.BitsPerPixel = cRgbaBits)) and
+    (mWidthBytes >= mWidth * (ALayout.BitsPerPixel div cBitsPerByte)) and
+    (Int64(mWidthBytes) * mHeight <= Length(ABits));
   if not Result then
   begin
     Exit;
   end;
-  mStep := ALayout.BitsPerPixel div 8;
+  mStep := ALayout.BitsPerPixel div cBitsPerByte;
   SetLength(APixels, mWidth * mHeight);
   for Y := 0 to mHeight - 1 do
   begin
@@ -854,12 +907,12 @@ begin
       // DIB: Blau, Grün, Rot (, Alpha).
       mOffset := mRow * mWidthBytes + X * mStep;
       mAlpha := $FF;
-      if mStep = 4 then
+      if mStep = cRgbaBits div cBitsPerByte then
       begin
-        mAlpha := ABits[mOffset + 3];
+        mAlpha := ABits[mOffset + cAlphaIndex];
       end;
-      APixels[Y * mWidth + X] := (mAlpha shl 24) or (Cardinal(ABits[mOffset + 2]) shl 16) or
-        (Cardinal(ABits[mOffset + 1]) shl 8) or ABits[mOffset];
+      APixels[Y * mWidth + X] := (mAlpha shl cAlphaShift) or (Cardinal(ABits[mOffset + 2]) shl cRedShift) or
+        (Cardinal(ABits[mOffset + 1]) shl cBitsPerByte) or ABits[mOffset];
     end;
   end;
 end;
@@ -867,7 +920,7 @@ end;
 class function TAtlasVisualizerFormat.ListText(const AShown: string; ACount: Integer;
   const AItems: TArray<string>): string;
 begin
-  Result := Format('%s · Count = %d', [AShown, ACount]);
+  Result := Format(cCountText, [AShown, ACount]);
   if Length(AItems) > 0 then
   begin
     Result := Result + cSeparator + '[' + string.Join(', ', AItems);
@@ -882,7 +935,7 @@ end;
 class function TAtlasVisualizerFormat.DictionaryText(const AShown: string; ACount: Integer;
   const APairs: TArray<string>): string;
 begin
-  Result := Format('%s · Count = %d', [AShown, ACount]);
+  Result := Format(cCountText, [AShown, ACount]);
   if Length(APairs) > 0 then
   begin
     Result := Result + cSeparator + '{' + string.Join(', ', APairs);

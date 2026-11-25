@@ -39,6 +39,8 @@ type
     procedure ExpandWithoutUsagesMarksOffloaded;
     [Test]
     procedure BudgetOffloadsUsagesFirst;
+    [Test]
+    procedure QualifiedNameWithAndWithoutContainer;
   end;
 
   [TestFixture]
@@ -51,9 +53,6 @@ type
     function Start(const AIndex: ISymbolIndex; const AFiles: TArray<string>; AUsages: Boolean): TIndexService;
     procedure Build(const AIndex: ISymbolIndex; const AFiles: TArray<string>; AUsages: Boolean);
   public
-    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -401,16 +400,6 @@ begin
   Start(AIndex, AFiles, AUsages).Free;
 end;
 
-procedure TIndexServiceCacheTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    DamagedCacheIsRebuiltSilently;
-  finally
-    TearDown;
-  end;
-end;
-
 procedure TIndexServiceCacheTests.Setup;
 begin
   FFiles := TMemoryIndexFileSystem.Create;
@@ -422,6 +411,9 @@ procedure TIndexServiceCacheTests.TearDown;
 begin
   FFiles := nil;
   FFilesRef := nil;
+  // Der Grund ist eine Kopie des Texts aus der Texttabelle: Sonst gäbe erst das nächste Setup ihn frei
+  // (Leckmonitor, DamagedCacheIsRebuiltSilently).
+  FRejected := '';
 end;
 
 procedure TIndexServiceCacheTests.DamagedCacheIsRebuiltSilently;
@@ -547,6 +539,20 @@ begin
   finally
     mService.Free;
   end;
+end;
+
+procedure TIndexContentTests.QualifiedNameWithAndWithoutContainer;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Assert.AreEqual('TFoo.Bar', TIndexSymbol.QualifiedOf('TFoo', 'Bar'));
+  Assert.AreEqual('Bar', TIndexSymbol.QualifiedOf('', 'Bar'));
+  mSymbol := Default(TIndexSymbol);
+  mSymbol.Name := 'Run';
+  Assert.AreEqual('Run', mSymbol.QualifiedName);
+  mSymbol.Container := 'TAussen.TInnen';
+  Assert.AreEqual('TAussen.TInnen.Run', mSymbol.QualifiedName);
+  mSymbol := Default(TIndexSymbol);
 end;
 
 initialization

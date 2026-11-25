@@ -2,7 +2,7 @@
 
 // SVN über die Kommandozeile svn (#571; TortoiseSVN mit
 // Kommandozeilenwerkzeugen genügt). Dieselbe Umsetzung nutzt der Server für
-// --changed mit SVN (#276, Shell.VersionControlChanges). Jeder Aufruf läuft in der Wurzel
+// --changed mit SVN (#276, Core.VersionControlChanges). Jeder Aufruf läuft in der Wurzel
 // der Arbeitskopie mit --non-interactive (nie eine Rückfrage nach Kennwort
 // oder Zertifikat) und, wo möglich, --xml (UTF-8 unabhängig von der Konsole).
 // Befehle; alle lesen nur die Arbeitskopie, keiner spricht mit dem Server:
@@ -31,7 +31,7 @@
 // info --show-item relative-url (ohne Server). Schritte mit Long (switch,
 // checkout) laufen mit dem langen Zeitlimit.
 // IAtlasVcsSvnWorkingCopy: WorkingRevisions = svnversion . bzw. svnversion
-// <Ordner> (Programm neben svn, ohne Server); seit #1291 ExternalsXml =
+// <Ordner> (Programm neben svn, ohne Server); ExternalsXml (#1291) =
 // propget svn:externals --xml -R ., RepositoryRoot = info --show-item
 // repos-root-url ., ToolVersion = --version --quiet. RunStep schreibt vor
 // einem Schritt mit InputFile dessen Inhalt (UTF-8 ohne BOM, LF), etwa für
@@ -812,12 +812,16 @@ end;
 
 { IAtlasVcsLineHistory (#1275) }
 
+const
+  /// <summary>Höchstzahl der Ziffern einer Revisionsnummer: Neun Ziffern passen immer in Integer.</summary>
+  cMaxRevisionDigits = 9;
+
 /// <summary>Revisionsnummer: nur Ziffern, höchstens neun.</summary>
 function IsRevision(const AText: string): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := (AText <> '') and (Length(AText) <= 9);
+  Result := (AText <> '') and (Length(AText) <= cMaxRevisionDigits);
   if Result then
   begin
     for mIndex := 1 to Length(AText) do
@@ -1001,7 +1005,7 @@ begin
   // Glob-Zeichen hätten in --search eine Bedeutung; Kennungen haben keine.
   for mIndex := 1 to Length(AText) do
   begin
-    if (Ord(AText[mIndex]) < 32) or CharInSet(AText[mIndex], ['*', '?', '[', ']', '\']) then
+    if (AText[mIndex] < ' ') or CharInSet(AText[mIndex], ['*', '?', '[', ']', '\']) then
     begin
       Exit(TAtlasVcsOutcome.Failed);
     end;

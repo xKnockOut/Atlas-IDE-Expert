@@ -113,7 +113,7 @@ begin
 end;
 
 /// <summary>Ruft AStatement eine Methode der eigenen Klasse oder geerbt auf (Reset; Self.Reset(1); inherited Reset)?
-/// Sie kann ein Feld neu belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)). ANames sind die Namen
+/// Sie kann ein Feld neu belegen (FList.Free; Reset; FList.Add(…)). ANames sind die Namen
 /// der Methoden bzw. lokalen Routinen; inherited zählt nur mit AWithInherited.</summary>
 function TUseAfterFreeCheck.CallsOwnMethod(AStatement: TSyntaxNode; const ANames: TArray<string>;
   AWithInherited: Boolean): Boolean;

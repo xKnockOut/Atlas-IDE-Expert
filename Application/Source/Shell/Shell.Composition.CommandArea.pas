@@ -11,7 +11,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.Commands,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract,
   Shell.Composition.Core,
   Shell.Composition.Editing,
@@ -60,7 +60,7 @@ type
     function Namespaces: TArray<string>;
     procedure VisitWorkspaces(const AVisit: TShellWorkspacesProc);
     /// <summary>Arbeitsbereich von AUri, mit '' alle.</summary>
-    function CommandWorkspaces(const AUri: string): TArray<TShellWorkspace>;
+    function CommandWorkspaces(const AUri: string): TArray<TCoreWorkspace>;
     function StatusServices: TShellStatusServices;
     function ServerServices: TShellServerCommandServices;
     function EditorServices: TShellEditorCommandServices;
@@ -99,11 +99,16 @@ uses
   Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Lsp.ServerActivity,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.OwnershipReport,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Ownership,
+  Adapters.Lsp.OwnershipReport,
   Shell.Composition.DfmPropertyRules,
   Shell.Composition.LeakSetup,
-  Shell.Composition.LeakCandidates;
+  Shell.Composition.LeakCandidates,
+  Shell.Composition.Instructions;
 
 /// <summary>Ausführlicher Status von AReports als Funktion für die Aktivität des Servers.</summary>
 function DetailsOf(AReports: TShellStatusReports): TServerDetailsFunc;
@@ -134,6 +139,7 @@ begin
   FServerCommands.RegisterConvertCommand(FCommands);
   RegisterDfmPropertyRules;
   RegisterLeakSetup;
+  TShellInstructions.Attach(FCommands, FCore.Workspaces, FServices.Logger);
   RegisterOwnership;
   FCode.TestUnits.RegisterCaseCommands(FCommands);
   FCode.Refactorings.Register(FCommands);
@@ -183,9 +189,9 @@ begin
   FCore.Workspaces.Visit(AVisit);
 end;
 
-function TShellCommandArea.CommandWorkspaces(const AUri: string): TArray<TShellWorkspace>;
+function TShellCommandArea.CommandWorkspaces(const AUri: string): TArray<TCoreWorkspace>;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   Result := nil;
   System.TMonitor.Enter(FCore.Workspaces.Lock);
@@ -221,7 +227,7 @@ begin
       Result := mCore.Settings.EditorSettings;
     end;
   Result.IsSelectedProject :=
-    function(AWorkspace: TShellWorkspace): Boolean
+    function(AWorkspace: TCoreWorkspace): Boolean
     begin
       Result := mCore.Workspaces.IsSelected(AWorkspace);
     end;
@@ -254,7 +260,7 @@ begin
   Result.ProjectSourceFiles := ProjectFiles;
   Result.Workspaces := CommandWorkspaces;
   Result.IsSelectedProject :=
-    function(AWorkspace: TShellWorkspace): Boolean
+    function(AWorkspace: TCoreWorkspace): Boolean
     begin
       Result := mCore.Workspaces.IsSelected(AWorkspace);
     end;
@@ -332,7 +338,9 @@ end;
 procedure TShellCommandArea.RegisterOwnership;
 var
   mCore: TShellCore;
-  mInput: TLspOwnershipInput;
+  mInput: TRuleOwnershipInput;
+  mReport: IRuleOwnershipReport;
+  mLspReport: ILspOwnershipReport;
 begin
   mCore := FCore;
   // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
@@ -346,7 +354,9 @@ begin
         ARules := Default(TRuleCheckContext);
       end;
     end;
-  TLspOwnership.Attach(FCommands, mInput);
+  mReport := TRuleOwnershipReport.Create(mInput);
+  mLspReport := TLspOwnershipReportAdapter.Wrap(mReport);
+  TLspOwnership.Attach(FCommands, mLspReport);
 end;
 
 

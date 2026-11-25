@@ -14,9 +14,6 @@ type
   [TestFixture]
   TAtlasUnwrapWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure CaptionsAndNotes;
     [Test]
@@ -32,8 +29,8 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.Unwrap,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Unwrap;
@@ -73,13 +70,6 @@ begin
 end;
 
 { TAtlasUnwrapWindowTests }
-
-procedure TAtlasUnwrapWindowTests.WarmUpFirstUse;
-begin
-  CaptionsAndNotes;
-  // Auch das erste Zeigen eines Fensters samt Ereignis (Erstgebrauch der VCL).
-  KeysSkipUnavailableAndReport;
-end;
 
 procedure TAtlasUnwrapWindowTests.CaptionsAndNotes;
 var

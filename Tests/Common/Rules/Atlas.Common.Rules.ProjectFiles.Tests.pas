@@ -162,8 +162,8 @@ var
   mRead: TRuleProjectReadText;
   mProvider: IRuleProjectFiles;
 begin
-  // Ohne Verwendungen im Index (ausgelagert): Früher las und parste NameIn die Datei für jeden Namen neu;
-  // unused-public-member fragt je Mitglied alle Dateien der Gruppe (Prüflauf staute sich in 2.0-stable).
+  // Ohne Verwendungen im Index (ausgelagert): NameIn darf die Datei nicht für jeden Namen neu lesen und parsen;
+  // unused-public-member fragt je Mitglied alle Dateien der Gruppe, der Prüflauf stünde sonst still.
   mReads := 0;
   mRead :=
     function(const AFileName: string; out AText: string): Boolean

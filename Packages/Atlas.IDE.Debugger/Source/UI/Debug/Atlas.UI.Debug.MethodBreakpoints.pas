@@ -32,7 +32,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.CheckLst,
   Atlas.Core.Debug.MethodBreakpoints,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Server fragen; False ohne Server oder bei Fehler (AError).</summary>
@@ -63,6 +63,7 @@ type
     FAnswer: TAtlasMethodAnswer;
     FSearched: Boolean;
     FChosen: Boolean;
+    /// <summary>Haken in AParent an ALeft (logische Pixel, 96 dpi).</summary>
     function AddCheck(AParent: TWinControl; const ACaption: string; ALeft: Integer; AChecked: Boolean): TCheckBox;
     function AddLabeledEdit(const ACaption: string; AHeight96: Integer): TEdit;
     procedure CreatePatternRows;
@@ -144,7 +145,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.MethodBreakpoints.Strings;
 
 const
@@ -194,7 +195,7 @@ begin
   Result := TCheckBox.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ALeft;
+  Result.Left := ScaleValue(ALeft);
   Result.Top := ScaleValue(cRowLabelTop);
   Result.Width := ScaleValue(cCheckWidth);
   Result.Checked := AChecked;
@@ -255,7 +256,7 @@ begin
   FOverrides.OnClick := SwitchClick;
   FOverloads := AddCheck(mRow,
     TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsOverloads),
-    ScaleValue(cCheckWidth), FInitial.Overloads);
+    cCheckWidth, FInitial.Overloads);
   FOverloads.OnClick := SwitchClick;
   mRow := AddRow(cRowHeight);
   FGrow := AddCheck(mRow, TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsGrow), 0,

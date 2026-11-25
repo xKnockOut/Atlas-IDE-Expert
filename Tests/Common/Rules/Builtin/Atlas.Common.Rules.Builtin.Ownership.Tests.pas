@@ -104,7 +104,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
@@ -114,8 +113,10 @@ uses
   Atlas.Common.Rules.Builtin.Ownership.RawMemory,
   Atlas.Common.Rules.Builtin.Ownership.StringListObjects,
   Atlas.Common.Rules.Builtin.Ownership.ComponentInterface,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Tests.RuleAssert;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits,
+  Atlas.Tests.SourceText;
 
 function Routine(const ACreate, ABody: string): string;
 begin
@@ -138,46 +139,6 @@ end;
 function Body(const ABody: string): string;
 begin
   Result := Routine('TObjectList<TAuftrag>.Create', ABody);
-end;
-
-/// <summary>Wendet alle Änderungen der Korrektur an, von hinten nach vorn (Zeilen mit #10).</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex: Integer;
-  mEdit: TRuleEdit;
-
-  function OffsetOf(const APosition: TTextPosition): Integer;
-  var
-    mLine, mPosition: Integer;
-  begin
-    mPosition := 0;
-    for mLine := 1 to APosition.Line do
-    begin
-      mPosition := Pos(#10, AText, mPosition + 1);
-    end;
-    Result := mPosition + APosition.Character;
-  end;
-
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mEdit := AFix.Edits[mIndex];
-    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
-      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
-  end;
-end;
-
-procedure AssertParses(const ASource: string);
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(ASource);
-  try
-    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)));
-  finally
-    mTree.Free;
-  end;
 end;
 
 { TOwnershipRulesTests }
@@ -217,15 +178,15 @@ begin
   mFindings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Free entfernen', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Body('  Auftraege.Delete(I);'#10), mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Silent(TOwnedItemFreedRule.Create, mFixed);
   // FreeAndNil ebenso.
   mSource := Body('  FreeAndNil(Auftraege[I]);'#10'  Auftraege.Delete(I);'#10);
   mFindings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(Body('  Auftraege.Delete(I);'#10), ApplyFix(mSource, mFindings[0].Fixes[0]));
+  Assert.AreEqual(Body('  Auftraege.Delete(I);'#10), TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
 end;
 
 procedure TOwnershipRulesTests.FreeWithoutRemovalSuggestsDelete;
@@ -239,9 +200,9 @@ begin
   Assert.AreEqual('Auftraege besitzt seine Elemente (OwnsObjects); die Liste gibt das Element beim Freigeben ' +
     'ein zweites Mal frei.', mFindings[0].Message);
   Assert.AreEqual('Delete statt Free', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Body('  Auftraege.Delete(I);'#10), mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
 end;
 
 procedure TOwnershipRulesTests.NotOwningListsAreSilent;
@@ -274,9 +235,9 @@ begin
   Assert.AreEqual('Auftraege besitzt seine Elemente (OwnsObjects); Clear gibt das Element ein zweites Mal frei.',
     mFindings[0].Message);
   // Die Korrektur nimmt die ganze Schleife weg.
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Body('  Auftraege.Clear;'#10), mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   // Freigabe nach der Schleife betrifft das Element nicht mehr sicher; ein Feld der Schleife schon.
   TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  for Auftrag in Auftraege do'#10'    Pruefen(Auftrag);'#10 +
     '  Auftrag := TAuftrag.Create;'#10'  Auftrag.Free;'#10));
@@ -305,7 +266,7 @@ begin
   Assert.AreEqual('Free entfernen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual('Extract statt Remove', mFindings[0].Fixes[1].Title);
   Assert.IsTrue(mFindings[0].Fixes[1].Alternative);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[1]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[1]);
   Assert.AreEqual(Body('  Auftrag := Auftraege[I];'#10'  Auftraege.Extract(Auftrag);'#10'  Auftrag.Free;'#10), mFixed);
   TRuleAssert.Silent(TOwnedItemFreedRule.Create, mFixed);
 end;
@@ -343,7 +304,7 @@ begin
     'ein zweites Mal frei.', mFindings[0].Message);
   Assert.AreEqual('Remove statt Free', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(StringReplace(cSource, 'Self.FKunden[AName].Free', 'Self.FKunden.Remove(AName)', []),
-    ApplyFix(cSource, mFindings[0].Fixes[0]));
+    TTestEdits.ApplyFix(cSource, mFindings[0].Fixes[0]));
   // Ohne doOwnsValues besitzt das Dictionary nichts.
   TRuleAssert.Silent(TOwnedItemFreedRule.Create, StringReplace(cSource, '[doOwnsValues]', '[]', []));
   // for in Values.
@@ -437,18 +398,18 @@ begin
   mFindings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('An ImportProtokoll zuweisen und in try/finally freigeben', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(StringReplace(Import('  ImportProtokoll := TImportProtokoll.Create;'#10'  try'#10 +
     '    Laden;'#10'    Melden;'#10'  finally'#10'    ImportProtokoll.Free;'#10'  end;'#10),
     'procedure TImport.Starten;'#10'begin', 'procedure TImport.Starten;'#10'var'#10 +
     '  ImportProtokoll: TImportProtokoll;'#10'begin', []), mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Silent(TCreateWithoutAssignmentRule.Create, mFixed);
   // Letzte Anweisung: leerer try-Block; vergebener Name bekommt eine Nummer.
   mSource := Import('  ImportProtokoll := 1;'#10'  TImportProtokoll.Create;'#10);
   mFindings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, mSource);
   Assert.AreEqual('An ImportProtokoll2 zuweisen und in try/finally freigeben', mFindings[0].Fixes[0].Title);
-  AssertParses(ApplyFix(mSource, mFindings[0].Fixes[0]));
+  TTestSource.AssertParses(TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]));
   // In einer Zeile mit anderer Anweisung keine Korrektur.
   mFindings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create,
     Import('  if X then TImportProtokoll.Create;'#10));
@@ -546,7 +507,7 @@ const
 var
   mFindings: TArray<TRuleFinding>;
 begin
-  // FP-Prüfung 28.10.2026: Ein Konstruktor mit out-Parameter gibt das Objekt selbst weiter; in Assert.WillRaise
+  // Ein Konstruktor mit out-Parameter gibt das Objekt selbst weiter; in Assert.WillRaise
   // soll Create scheitern. Gemeldet bleibt nur das letzte TStringListe.Create.
   mFindings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, cSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
@@ -697,9 +658,9 @@ begin
     'auf 0, ist das Objekt schon freigegeben.', mFindings[0].Message);
   Assert.AreEqual(26, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual('Vor inherited verschieben', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(NachInherited('  FQuelle.Anmelden(Self);'#10'  inherited;'#10), mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Silent(TSelfAsInterfaceInConstructorRule.Create, mFixed);
   // Ohne eigene Zeile keine Korrektur.
   mFindings := TRuleAssert.Findings(TSelfAsInterfaceInConstructorRule.Create,
@@ -769,11 +730,11 @@ begin
   Assert.AreEqual(12, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('try … finally FreeMem(Puffer) end einfügen', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Puffer('  Puffer: PByte;'#10, '  GetMem(Puffer, Groesse);'#10'  try'#10 +
     '    Strom.ReadBuffer(Puffer^, Groesse);'#10'    Result := Pruefsumme(Puffer, Groesse);'#10'  finally'#10 +
     '    FreeMem(Puffer);'#10'  end;'#10), mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Silent(TRawMemoryLeakRule.Create, mFixed);
 end;
 
@@ -795,9 +756,9 @@ begin
   mSource := Puffer('  Text: PChar;'#10, '  Text := StrAlloc(Groesse);'#10);
   mFindings := TRuleAssert.Findings(TRawMemoryLeakRule.Create, mSource);
   // Letzte Anweisung: leerer try-Block.
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.IsTrue(Pos('  try'#10'  finally'#10'    StrDispose(Text);'#10, mFixed) > 0, mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Reports(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10, '  P := AllocMem(Groesse);'#10));
   // Freigegeben, auch ohne try/finally (das meldet pair-without-finally) oder über ReallocMem(P, 0).
   TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
@@ -916,10 +877,10 @@ begin
   Assert.AreEqual(30, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('TStringList.Create(True) setzen', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.AreEqual(Kundenliste('FKunden := TStringList.Create(True);',
     'begin'#10'  FKunden.AddObject(K.Name, TKunde.Create(K));'#10, ''), mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Silent(TStringListObjectsLeakRule.Create, mFixed);
   // Mit leeren Klammern und mit False ebenso.
   mFindings := TRuleAssert.Findings(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create(False);',
@@ -927,7 +888,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Kundenliste('FKunden := TStringList.Create(True);',
     'begin'#10'  FKunden.InsertObject(0, K.Name, TKunde.Create(nil));'#10, ''),
-    ApplyFix(Kundenliste('FKunden := TStringList.Create(False);',
+    TTestEdits.ApplyFix(Kundenliste('FKunden := TStringList.Create(False);',
     'begin'#10'  FKunden.InsertObject(0, K.Name, TKunde.Create(nil));'#10, ''), mFindings[0].Fixes[0]));
 end;
 
@@ -944,10 +905,10 @@ begin
   Assert.AreEqual('FKunden besitzt die Objekte nicht; die TKunde-Objekte werden nie freigegeben.',
     mFindings[0].Message);
   Assert.AreEqual('OwnsObjects := True setzen', mFindings[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFindings[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFindings[0].Fixes[0]);
   Assert.IsTrue(Pos('  FKunden := TStringList.Create(dupIgnore, True, False);'#10'  FKunden.OwnsObjects := True;'#10,
     mFixed) > 0, mFixed);
-  AssertParses(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Silent(TStringListObjectsLeakRule.Create, mFixed);
   // Die lokale Variable wird anderswo gespeichert oder freigegeben: still.
   TRuleAssert.Silent(TStringListObjectsLeakRule.Create, Kundenliste('FKunden := TStringList.Create;',
@@ -1043,7 +1004,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual('Abmeldung vor der Freigabe einfügen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Haupt('TForm', '', '  Bus.Anmelden(FAnsicht as IBeobachter);'#10,
     '  Bus.Abmelden(FAnsicht as IBeobachter);'#10'  FAnsicht.Free;'#10), mFixed);
   mTree := TPascalParser.Parse(mFixed);
@@ -1069,7 +1030,7 @@ begin
     'ein ungültiges IBeobachter.', mFindings[0].Message);
   Assert.AreEqual(Haupt('TForm', '    FBeobachter: IBeobachter;'#10, '  FBeobachter := FAnsicht;'#10,
     '  FBeobachter := nil;'#10'  FreeAndNil(FAnsicht);'#10),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Liste von Interfaces ohne "as"; Release; Self.FAnsicht; Gegenstück am unbekannten TList: keine Korrektur.
   mFindings := TRuleAssert.Findings(TComponentInterfaceDanglingRule.Create, Haupt('TForm',
     '    FListe: TList<IBeobachter>;'#10, '  FListe.Add(Self.FAnsicht);'#10, '  FAnsicht.Release;'#10));

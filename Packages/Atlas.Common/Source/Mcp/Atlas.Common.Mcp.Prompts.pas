@@ -31,7 +31,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools;
 
@@ -81,6 +81,7 @@ type
     function ToolSection(const ATitle, ATool: string; const AArguments: TJSONObject): string; overload;
     function ToolSection(const ATitle, ATool, AName, AValue: string): string; overload;
     function ConventionsSection: string;
+    function TestFolderText(const ASettings: TTestUnitSettings): string;
     function FormFile(const AFile: string): string;
     function Builtin: TArray<TMcpPrompt>;
     function Custom: TArray<TMcpPrompt>;
@@ -140,7 +141,23 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit, die erst später dazukamen, in beiden Sprachen.</summary>
+  TPromptsText = (LastTestsHint);
+
+const
+  cPromptTexts: array[TPromptsText] of TAtlasText = (
+    (De: ' Das Ergebnis des letzten Laufs in der IDE liefert get_last_tests ohne neuen Lauf: dort zuerst ' +
+      'nachsehen, dann run_tests nur für die betroffenen Tests.';
+     En: ' get_last_tests returns the result of the last run in the IDE without a new run: look there first, ' +
+      'then run_tests only for the affected tests.'));
+
+{$SCOPEDENUMS OFF}
 
 function Utf8Length(const AText: string): Integer;
 begin
@@ -558,6 +575,30 @@ begin
     Section(Say('Datenbindungen', 'Data bindings'), mBindings);
 end;
 
+function TMcpPrompts.TestFolderText(const ASettings: TTestUnitSettings): string;
+var
+  mSourceRoot: string;
+begin
+  Result := ASettings.Folder;
+  if Result = '' then
+  begin
+    Exit(Say('Ordner des Testprojekts', 'folder of the test project'));
+  end;
+  if Pos('{', Result) = 0 then
+  begin
+    Exit;
+  end;
+  // #2800: Platzhalter erklären, sonst legt die KI einen Ordner "{path}" an.
+  mSourceRoot := ASettings.SourceRoot;
+  if mSourceRoot = '' then
+  begin
+    mSourceRoot := Say('der Wurzel', 'the root'); // german-ok: zweisprachig über Say
+  end;
+  Result := Result + Format(Say(
+    ' ({path} = Ordner der Unit unter %s, {namespace} = Namensraum als Ordner)', // german-ok: zweisprachig über Say
+    ' ({path} = folder of the unit under test below %s, {namespace} = its namespace as folders)'), [mSourceRoot]);
+end;
+
 function TMcpPrompts.WriteTests(const AArguments: TDictionary<string, string>): string;
 var
   mName, mSteps, mConventions, mFolder, mProject: string;
@@ -566,11 +607,7 @@ begin
   UseLanguage;
   mName := Argument(AArguments, 'name');
   mSettings := FSettings();
-  mFolder := mSettings.TestUnits.Folder;
-  if mFolder = '' then
-  begin
-    mFolder := Say('Ordner des Testprojekts', 'folder of the test project');
-  end;
+  mFolder := TestFolderText(mSettings.TestUnits);
   mProject := mSettings.TestUnits.Project;
   if mProject = '' then
   begin
@@ -598,6 +635,11 @@ begin
     mSteps := mSteps + Say('3. Prüfe den Code mit check_code, dann führe die neuen Tests mit run_tests aus ' +
       '(tests: Unit.Fixture.Methode) und behebe Fehlschläge.', '3. Check the code with check_code, then run the ' +
       'new tests with run_tests (tests: Unit.Fixture.Method) and fix failures.');
+    // Letzter Lauf in der IDE (#2409): erst lesen, dann gezielt ausführen.
+    if FServer.ToolAvailable('get_last_tests') then
+    begin
+      mSteps := mSteps + Say(cPromptTexts[TPromptsText.LastTestsHint].De, cPromptTexts[TPromptsText.LastTestsHint].En);
+    end;
   end
   else
   begin
@@ -1173,11 +1215,14 @@ var
   mHandler: string;
 begin
   mDocument := TDfmParser.Parse(AFormText);
-  mHandlers := TList<string>.Create;
-  mUses := TDictionary<string, string>.Create;
-  mBuilder := TStringBuilder.Create;
+  mHandlers := nil;
+  mUses := nil;
   mTree := nil;
+  mBuilder := nil;
   try
+    mHandlers := TList<string>.Create;
+    mUses := TDictionary<string, string>.Create;
+    mBuilder := TStringBuilder.Create;
     if mDocument.Root <> nil then
     begin
       CollectEvents(mDocument.Root, mHandlers, mUses);
@@ -1303,5 +1348,8 @@ begin
     mBuilder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.Prompts', cPromptTexts);
 
 end.

@@ -39,12 +39,14 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Common.Semantics.Attributes;
 
 {$SCOPEDENUMS ON}
 
@@ -91,45 +93,6 @@ const
   cVolatileForbiddenTargets = [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
     TSyntaxKind.PropertyDecl];
 
-/// <summary>Knoten des Namens eines Eintrags im Attribut-Knoten ([Name] bzw. [Name(…)]).</summary>
-function AttributeNameNode(AItem: TSyntaxNode): TSyntaxNode;
-begin
-  Result := AItem;
-  if (AItem.Kind = TSyntaxKind.Call) and (AItem.ChildCount > 0) then
-  begin
-    Result := AItem[0];
-  end;
-end;
-
-/// <summary>Punktkette eines Bezeichners bzw. MemberAccess; '' bei anderen Ausdrücken. Iterativ (tiefe Bäume sprengen
-/// den Stapel nicht): erst die Kette hinab, dann die Namen von innen nach außen anhängen.</summary>
-function DottedNameOf(ANode: TSyntaxNode): string;
-var
-  mChain: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
-begin
-  mChain := TStack<TSyntaxNode>.Create;
-  try
-    mNode := ANode;
-    while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) do
-    begin
-      mChain.Push(mNode);
-      mNode := mNode[0];
-    end;
-    Result := '';
-    if mNode.Kind = TSyntaxKind.Identifier then
-    begin
-      Result := mNode.Name;
-    end;
-    while (mChain.Count > 0) and (Result <> '') do
-    begin
-      Result := Result + '.' + mChain.Pop.Name;
-    end;
-  finally
-    mChain.Free;
-  end;
-end;
-
 /// <summary>Name des Compiler-Attributs (Weak, Unsafe, Volatile, Ref) für den Eintrag AItem, '' bei anderen.
 /// [WeakAttribute] und [System.Weak] zählen mit; deklariert die Datei einen Typ gleichen Namens, nicht.</summary>
 function CompilerAttribute(const ATypes: TFileTypes; AItem: TSyntaxNode): string;
@@ -138,7 +101,7 @@ var
   mDot: Integer;
 begin
   Result := '';
-  mName := DottedNameOf(AttributeNameNode(AItem));
+  mName := TSyntaxNodes.DottedName(TAttributes.NameNode(AItem));
   mDot := LastDelimiter('.', mName);
   if (mDot > 0) and not SameText(Copy(mName, 1, mDot - 1), 'System') then
   begin
@@ -459,7 +422,7 @@ begin
     mReported := False;
     for mArgument := 1 to mItem.ChildCount - 1 do
     begin
-      CheckArgument(mItem[mArgument], AAttribute, DottedNameOf(mItem[0]), mReported);
+      CheckArgument(mItem[mArgument], AAttribute, TSyntaxNodes.DottedName(mItem[0]), mReported);
     end;
   end;
 end;

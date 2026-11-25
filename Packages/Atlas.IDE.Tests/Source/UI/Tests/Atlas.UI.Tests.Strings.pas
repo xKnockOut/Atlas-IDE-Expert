@@ -100,6 +100,8 @@ type
     // Protokoll je Test (#2168).
     ExplorerDetailsTab, ExplorerLogTab, ExplorerLogCopy, LogStart, LogFinish, LogWarning, LogError, LogConsole,
     LogAfterEnd, LogDropped, LogFixture, LogNoLogger, LogOutput, LogEmpty, SettingsTestsLog, SettingsTestsLogMaxLines,
+    // Letzter Testlauf für KI-Assistenten (#2409).
+    SettingsTestsLastRun,
     // Teststand in der Statusleiste (#1777).
     StatusFieldText, StatusFieldRunning, StatusFieldNotRun, StatusFieldProject, StatusFieldLastRun, StatusFieldNoRun,
     StatusFieldCounts, StatusFieldStale, StatusFieldClickFailed, StatusFieldClickAll, StatusFieldContext,
@@ -136,12 +138,15 @@ type
     MutationMethodCommand, MutationUnitCommand, MutationChangedCommand, MutationCancelCommand, MutationBusy,
     MutationNoServer, MutationNoUnit, MutationServerFailed, MutationNoMutants, MutationNothingChanged,
     MutationNoRoutine, MutationShadowFailed, MutationShadowNotOpened, MutationShadowOverlaps, MutationBuildRefused,
-    MutationNoExe,
+    MutationNoExe, MutationShadowNotClosed, MutationTestsNotStarted, MutationDprNoProgram, MutationDprNotRewritable,
+    MutationDprUnclosed,
     MutationStarted, MutationBaseline, MutationBaselineFailed, MutationOutcome, MutationSurvivor, MutationFinished,
     MutationCancelled, MutationScore, MutationNoScore, MutationStatusKilledBy, MutationStatusKilledExit,
     MutationStatusKilled, MutationStatusSurvived, MutationStatusTimedOut, MutationStatusBuildFailed,
     MutationStatusInvalid, MutationTipTitle, MutationTipLine, SettingsTestsMutation, SettingsTestsMutationTimeout,
-    SettingsTestsMutationOperators, SettingsTestsMutationMarks);
+    SettingsTestsMutationOperators, SettingsTestsMutationMarks,
+    // Fenster „Atlas-Tests“ bei Fehlschlägen öffnen (#2467).
+    SettingsTestsWindowOnFailure);
 
   TAtlasTestsStrings = class
   public
@@ -489,6 +494,7 @@ const
      'Keine Zeilen für diesen Test im letzten Lauf.',
      'Protokoll je Test (Log- und Konsolenausgabe)',
      'Höchstens Zeilen je Test',
+     'Letzten Testlauf für KI-Assistenten ablegen (get_last_tests)',
      'Tests %d/%d',
      'Tests laufen …',
      'Tests –',
@@ -639,6 +645,12 @@ const
      'Mutation: %s liegt im Ordner des Schattenprojekts %s. Bitte die Unit des Originals öffnen.',
      'Mutation: %s nicht gebaut: %s',
      'Mutation: Keine Test-EXE nach dem Build von %s.',
+     'Mutation: Schattenprojekt %s ließ sich nicht schließen (%s). Es steht noch in der Projektgruppe und kann ' +
+       'dort entfernt werden.',
+     'Mutation: Die Test-EXE von %s ließ sich nicht starten; Lauf beendet.',
+     'Mutation: Schattenprojekt für %s nicht angelegt: %s hat keinen Programmkopf (program …;).',
+     'Mutation: Projektdatei %s nicht umschreibbar, diese Form kennt der Mutationslauf nicht: %s',
+     'Mutation: Projektdatei %s nicht umschreibbar, Kommentar oder Zeichenkette ohne Abschluss: %s',
      'Mutation: %d Mutanten in %s, Testprojekt %s (%s, %s) …',
      'Mutation: Tests ohne Mutation …',
      'Mutation: Die Tests von %s sind schon ohne Mutation nicht grün (%s); Lauf beendet.',
@@ -660,7 +672,8 @@ const
      'Mutationslauf: prüfen, ob die Tests Fehler im Code bemerken',
      'Zeitlimit je Mutant (Sekunden)',
      'Operatoren (leer = alle)',
-     'Symbole des Mutationslaufs im Editor anzeigen'),
+     'Symbole des Mutationslaufs im Editor anzeigen',
+     'Bei Fehlschlägen von selbst öffnen'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -992,6 +1005,7 @@ const
      'No lines for this test in the last run.',
      'Log per test (log and console output)',
      'At most lines per test',
+     'Store the last test run for AI assistants (get_last_tests)',
      'Tests %d/%d',
      'Tests running …',
      'Tests –',
@@ -1141,6 +1155,12 @@ const
      'Mutation: %s lies in the folder of shadow project %s. Please open the original unit.',
      'Mutation: %s not built: %s',
      'Mutation: No test executable after building %s.',
+     'Mutation: Could not close shadow project %s (%s). It is still in the project group and can be removed ' +
+       'there.',
+     'Mutation: The test executable of %s could not be started; run stopped.',
+     'Mutation: Shadow project for %s not created: %s has no program header (program …;).',
+     'Mutation: Cannot rewrite project file %s, the mutation run does not know this form: %s',
+     'Mutation: Cannot rewrite project file %s, comment or string without an end: %s',
      'Mutation: %d mutants in %s, test project %s (%s, %s) …',
      'Mutation: tests without mutation …',
      'Mutation: The tests of %s already fail without mutation (%s); run stopped.',
@@ -1162,7 +1182,8 @@ const
      'Mutation testing: check whether tests notice faults in the code',
      'Time limit per mutant (seconds)',
      'Operators (empty = all)',
-     'Show mutation testing marks in the editor'));
+     'Show mutation testing marks in the editor',
+     'Open automatically when tests fail'));
 
 { TAtlasTestsStrings }
 

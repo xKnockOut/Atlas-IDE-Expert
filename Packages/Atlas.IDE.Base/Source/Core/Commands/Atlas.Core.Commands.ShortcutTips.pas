@@ -289,7 +289,7 @@ end;
 function KeysOf(const AStep: string): TArray<string>;
 var
   mText, mPart: string;
-  mIndex: Integer;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
   mText := Trim(AStep);
@@ -297,21 +297,21 @@ begin
   begin
     Exit;
   end;
-  mPart := '';
-  mIndex := 1;
-  while mIndex <= Length(mText) do
+  // Ein „+“ trennt nur nach einem Teil mit Inhalt; sonst ist es selbst die Taste (Strg++).
+  mStart := 1;
+  for mIndex := 1 to Length(mText) do
   begin
-    if (mText[mIndex] = '+') and (Trim(mPart) <> '') then
+    if mText[mIndex] = '+' then
     begin
-      Result := Result + [Trim(mPart)];
-      mPart := '';
-    end
-    else
-    begin
-      mPart := mPart + mText[mIndex];
+      mPart := Trim(Copy(mText, mStart, mIndex - mStart));
+      if mPart <> '' then
+      begin
+        Result := Result + [mPart];
+        mStart := mIndex + 1;
+      end;
     end;
-    Inc(mIndex);
   end;
+  mPart := Copy(mText, mStart, MaxInt);
   if Trim(mPart) <> '' then
   begin
     Result := Result + [Trim(mPart)];
@@ -413,7 +413,7 @@ begin
     Exit(False);
   end;
   Result := ((AShortCut and (TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt)) <> 0) or
-    ((mKey >= $70) and (mKey <= $87));
+    ((mKey >= TAtlasKeyConflicts.cVkF1) and (mKey <= TAtlasKeyConflicts.cVkF24));
 end;
 
 class function TAtlasShortcutTips.AtlasCommandId(AFunc: TAtlasKeyFunction): string;

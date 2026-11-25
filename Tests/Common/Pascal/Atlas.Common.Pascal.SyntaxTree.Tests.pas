@@ -53,6 +53,10 @@ type
     procedure UsedInNestedRoutineLooksIntoLocalRoutines;
     [Test]
     procedure WithoutNodeNothingIsFound;
+    /// <summary>InnermostAt: der Typname eines Parameters liegt in der TypeReference, sein Name im Parameter
+    /// (#1896); außerhalb aller Kinder der Knoten selbst.</summary>
+    [Test]
+    procedure InnermostAtFindsTypeReference;
   end;
 
 implementation
@@ -710,6 +714,27 @@ begin
   Assert.AreEqual(0, Integer(Length(TSyntaxNode.IdentifierUses(nil, 'X'))));
   Assert.AreEqual(0, Integer(Length(TSyntaxNode.IdentifierUsesOutsideNested(nil, 'X'))));
   Assert.IsFalse(TSyntaxNode.UsedInNestedRoutine(nil, 'X'));
+end;
+
+procedure TSyntaxTreeTests.InnermostAtFindsTypeReference;
+const
+  cHeader = 'unit A;'#10'interface'#10'procedure P(WParam: WPARAM);'#10'implementation'#10'end.';
+var
+  mTree: TSyntaxTree;
+  mName, mType: Integer;
+begin
+  mTree := TPascalParser.Parse(cHeader);
+  try
+    mName := mTree.IdentifierAt(TTextPosition.Create(2, 13));
+    mType := mTree.IdentifierAt(TTextPosition.Create(2, 21));
+    Assert.AreEqual('WParam', mTree.Tokens[mName].Text);
+    Assert.AreEqual('WPARAM', mTree.Tokens[mType].Text);
+    Assert.AreEqual(Ord(TSyntaxKind.Parameter), Ord(mTree.InnermostAt(mTree.Tokens[mName].Offset).Kind));
+    Assert.AreEqual(Ord(TSyntaxKind.TypeReference), Ord(mTree.InnermostAt(mTree.Tokens[mType].Offset).Kind));
+    Assert.AreSame(mTree.Root, mTree.InnermostAt(-1));
+  finally
+    mTree.Free;
+  end;
 end;
 
 initialization

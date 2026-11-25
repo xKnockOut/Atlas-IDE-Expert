@@ -95,7 +95,9 @@ type
     /// <summary>Marke „Wer gibt das frei?“ hinter jedem T.Create(…) (#1877).</summary>
     OwnershipHints,
     /// <summary>Symbole des Mutationslaufs in der Rinne (#1460).</summary>
-    MutationResults);
+    MutationResults,
+    /// <summary>uses-Einträge in Hinweisfarbe, die nur die implementation braucht (#2465).</summary>
+    MovableUses);
   TAtlasHideScope = (Here, InFile, Everywhere);
 {$SCOPEDENUMS OFF}
   TAtlasHideScopes = set of TAtlasHideScope;
@@ -210,7 +212,9 @@ const
     (Key: 'OwnershipHints'; Scopes: cAllScopes; Overlay: True; Gutter: False),
     // Ergebnisse gelten je Routine der Datei: Ausblenden je Datei oder überall. Schlüssel ist die Einstellung
     // tests.mutation.marks (TestsMutationMarks, nur die Anzeige); der Lauf selbst bleibt an tests.mutation.
-    (Key: 'TestsMutationMarks'; Scopes: cFileScopes; Overlay: False; Gutter: True)
+    (Key: 'TestsMutationMarks'; Scopes: cFileScopes; Overlay: False; Gutter: True),
+    // Wie ungenutzte uses-Einträge je Datei oder überall.
+    (Key: 'HighlightMovableUses'; Scopes: cFileScopes; Overlay: False; Gutter: False)
   );
 
 function Make(AElement: TAtlasDrawnElement; const AKey: string; AScopes: TAtlasHideScopes;

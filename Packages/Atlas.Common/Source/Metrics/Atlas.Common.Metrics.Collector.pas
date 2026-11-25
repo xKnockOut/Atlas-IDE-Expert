@@ -10,11 +10,12 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Metrics.Contract;
+  Atlas.Common.Metrics.Contract,
+  Atlas.Common.Documents.Contract;
 
 type
   /// <summary>Text einer Datei (geöffnetes Dokument oder Platte); False, wenn sie fehlt.</summary>
-  TMetricsReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TMetricsReadText = TDocumentReadText;
 
   TMetricsCollector = class
   private type
@@ -51,7 +52,8 @@ type
 implementation
 
 uses
-  Atlas.Common.Metrics.Calculator;
+  Atlas.Common.Metrics.Calculator,
+  Atlas.Text.Names;
 
 { TMetricsCollector }
 
@@ -163,11 +165,8 @@ begin
 end;
 
 class function TMetricsCollector.IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
+  Result := TTextNames.IsPascalFile(AFileName);
 end;
 
 class function TMetricsCollector.Checksum(const AText: string): Cardinal;

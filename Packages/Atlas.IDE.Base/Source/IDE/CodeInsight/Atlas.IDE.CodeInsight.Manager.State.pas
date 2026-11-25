@@ -9,23 +9,26 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.ThreadList,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Diagnostics.ThreadList,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Crashes,
-  Atlas.Core.Lsp.CrashCases,
-  Atlas.Core.Files.WatchedChanges,
+  Atlas.Plugin.Lsp.Crashes,
+  Atlas.Plugin.Lsp.CrashCases,
+  Atlas.Plugin.Files.Contract,
+  Atlas.Plugin.Files.WatchedChanges,
   Atlas.Core.Signature.Contract,
-  Atlas.Core.Notifications.Contract,
+  Atlas.Plugin.Notifications.Contract,
   Atlas.IDE.Completion.Editor,
   Atlas.IDE.CodeInsight.Manager.Editors;
 
 type
   /// <summary>Adapter des Kerns, eingesetzt von der Kompositionswurzel.</summary>
   TAtlasCodeInsightAdapters = record
-    /// <summary>Startet AtlasServer.exe; löst bei Fehlern EOSError aus.</summary>
-    NewServer: TFunc<string, string, IAtlasLspServer>;
+    /// <summary>Startet AtlasServer.exe und legt über den dritten Parameter die Clientseite an; löst bei Fehlern
+    /// EOSError aus.</summary>
+    NewServer: TFunc<string, string, TAtlasLspConnect, IAtlasLspServer>;
     NewFolderWatcher: TFunc<TAtlasWatchedChanges, IAtlasFolderWatcher>;
     NewCompletionSources: TAtlasCompletionSourcesFactory;
     NewSignatureSource: TFunc<TAtlasSessionFunc, IAtlasSignatureSource>;
@@ -132,8 +135,8 @@ implementation
 uses
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.CodeInsight.Manager.Paths,
   ToolsAPI;
 
@@ -292,9 +295,9 @@ begin
   begin
     Result.Version := FSession.ServerVersion;
   end;
-  if FServer <> nil then
+  if FSession <> nil then
   begin
-    Result.AverageMs := FServer.Client.AverageMs(Result.Samples);
+    Result.AverageMs := FSession.Client.AverageMs(Result.Samples);
   end;
   if (FCrashSkips <> nil) and (FPhase.Phase = TAtlasServerPhase.Running) then
   begin

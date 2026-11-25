@@ -278,6 +278,11 @@ Settings: `vcs.externals.show`, `vcs.externals.update` (with, without, ask)
 
 - **Change marks** in the gutter against Git HEAD or SVN BASE
 
+### Atlas windows under *View › Atlas* (`commands.viewMenu.windows`)
+
+- Every dockable Atlas window opens from there, like the IDE windows under *View*. Directly in it: *Findings*, *Results*, *Outline*, *Atlas server* and the windows of the modules (such as start page, architecture, hotspots, unit relations, query, replace, bookmarks, tests, compiler switches, board and flow map); the debugger windows are in the submenu *Debug* (also without an open project, so the layout can be set up), *Atlas Structure* and *Event map* in the submenu *Designer*.
+- An entry only shows while its feature is on; the windows of the designer bar also need the designer bar (`editor.designerBar`). For an open window the entry brings it to the front and does not close it.
+
 ## Commands, status and notifications
 
 | Feature | Shortcut |

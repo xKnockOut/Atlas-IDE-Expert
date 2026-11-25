@@ -49,7 +49,9 @@ uses
   Atlas.Core.Debug.BreakpointTags,
   Atlas.Core.Debug.BreakpointCheck,
   Atlas.Core.Debug.BreakpointRules,
-  Atlas.IDE.Foundation.Files,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,
@@ -61,7 +63,8 @@ uses
   Atlas.UI.Debug.BreakpointRules,
   Atlas.IDE.Debug.BreakpointsWindow,
   Atlas.UI.Debug.BreakpointsFrame,
-  Atlas.UI.Debug.Breakpoints.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings,
+  Atlas.ToolsApi.Debugger.Services;
 
 const
   cRefreshMs = 150;
@@ -81,7 +84,7 @@ type
     Tags: TArray<string>;
   end;
 
-  TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugBreakpointListener)
+  TListener = class(TAtlasDebugListener, IAtlasIdeDebugBreakpointListener)
   public
     procedure DebugStarted; override;
     procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -96,7 +99,7 @@ type
 
 var
   GMessage: TProc<string>;
-  GListener: IAtlasIdeDebugListener;
+  GListener: IAtlasDebugListener;
   GHits: TAtlasBreakpointHits;
   GTags: TAtlasBreakpointTags;
   GTimer: TTimer;
@@ -227,7 +230,7 @@ var
 begin
   Result := nil;
   mProblems := TAtlasIdeBreakpointCheck.LastProblems;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -304,7 +307,7 @@ var
   mDeleted: TArray<TDeleted>;
   mEntry: TDeleted;
 begin
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

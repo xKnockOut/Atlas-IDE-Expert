@@ -20,10 +20,11 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Forms,
-  Atlas.Core.Debug.LeakView;
+  Atlas.Core.Debug.LeakView,
+  Atlas.Vcl.Forms.FillFrame;
 
 type
-  TAtlasDebugLeaksFrame = class(TFrame)
+  TAtlasDebugLeaksFrame = class(TAtlasFillFrame)
   private
     FHideKnown: TCheckBox;
     FMarkKnown: TButton;
@@ -31,11 +32,9 @@ type
     FTree: TTreeView;
     FFooter: TLabel;
     FRows: TArray<TAtlasLeakRow>;
-    FFilled: Boolean;
     FOnOpen: TProc<TAtlasLeakRow>;
     FOnMarkKnown: TProc<string>;
     FOnFilter: TProc;
-    procedure Fill;
     procedure FilterClick(Sender: TObject);
     procedure MarkKnownClick(Sender: TObject);
     procedure TreeDblClick(Sender: TObject);
@@ -44,7 +43,7 @@ type
     procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
       var DefaultDraw: Boolean);
   protected
-    procedure CreateWnd; override;
+    procedure FillControls; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Zeilen und Statuszeile zeigen.</summary>
@@ -67,8 +66,11 @@ implementation
 
 uses
   Winapi.Windows,
+  Atlas.Plugin.Calls.Optional,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Debug.Leaks.Strings,
-  Atlas.UI.Debug.Leaks;
+  Atlas.UI.Debug.Leaks,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 
@@ -126,21 +128,11 @@ begin
   FTree.Parent := Self;
 end;
 
-procedure TAtlasDebugLeaksFrame.CreateWnd;
-begin
-  inherited CreateWnd;
-  if not FFilled then
-  begin
-    Fill;
-  end;
-end;
-
-procedure TAtlasDebugLeaksFrame.Fill;
+procedure TAtlasDebugLeaksFrame.FillControls;
 var
   mIndex: Integer;
   mParent: TTreeNode;
 begin
-  FFilled := True;
   FTree.HandleNeeded;
   FTree.Items.BeginUpdate;
   try
@@ -166,10 +158,7 @@ end;
 
 procedure TAtlasDebugLeaksFrame.FilterClick(Sender: TObject);
 begin
-  if Assigned(FOnFilter) then
-  begin
-    FOnFilter();
-  end;
+  TAtlasCalls.Call(FOnFilter);
 end;
 
 procedure TAtlasDebugLeaksFrame.MarkKnownClick(Sender: TObject);
@@ -190,11 +179,7 @@ end;
 
 procedure TAtlasDebugLeaksFrame.TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if Key = VK_RETURN then
-  begin
-    Key := 0;
-    OpenSelected;
-  end;
+  TAtlasControls.ReturnKey(Key, OpenSelected);
 end;
 
 procedure TAtlasDebugLeaksFrame.TreeChange(Sender: TObject; Node: TTreeNode);
@@ -230,7 +215,7 @@ begin
   end;
   if FRows[mRow].Entry.Known and not (cdsSelected in State) then
   begin
-    Sender.Canvas.Font.Color := clGrayText;
+    Sender.Canvas.Font.Color := TAtlasUiTheme.SystemColor(Sender, clGrayText);
   end;
 end;
 
@@ -238,20 +223,12 @@ procedure TAtlasDebugLeaksFrame.SetRows(const ARows: TArray<TAtlasLeakRow>; cons
 begin
   FRows := ARows;
   FStatus.Caption := AStatus;
-  FFilled := False;
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
+  Refill;
 end;
 
 function TAtlasDebugLeaksFrame.SelectedRow: Integer;
 begin
-  Result := -1;
-  if FTree.Selected <> nil then
-  begin
-    Result := Integer(NativeInt(FTree.Selected.Data));
-  end;
+  Result := TAtlasControls.SelectedIndex(FTree);
 end;
 
 procedure TAtlasDebugLeaksFrame.OpenSelected;

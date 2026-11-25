@@ -38,7 +38,9 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Trace,
   Atlas.UI.Debug.StepFilterFrame,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasStepFilterSessionFunc = reference to function: TLspSession;
@@ -54,7 +56,7 @@ type
     cIntervalMs = 100;
     cStackRetries = 10;
   private type
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStarted; override;
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
@@ -85,7 +87,7 @@ type
   private class var
     FSession: TAtlasStepFilterSessionFunc;
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FTicker: TTicker;
     FTimer: TTimer;
     FCache: TAtlasStepRoutineCache;
@@ -140,15 +142,16 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Debug.StepFilterEdit,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.StepFilterWindow;
 
@@ -233,7 +236,7 @@ begin
     end;
   except
     // Server langsam oder weg: keine Treffer, das Fenster sagt es.
-    on Exception do
+    on ELspClientError do
       Result := False;
   end;
 end;
@@ -542,7 +545,7 @@ end;
 
 class procedure TAtlasIdeDebugStepFilter.WireFrame(AFrame: TAtlasDebugStepFilterFrame);
 begin
-  AFrame.OnChange :=
+  AFrame.Hooks.Change :=
     procedure(AEnabled: Boolean; AKinds: TStepFilterKinds; const APatterns: TArray<string>)
     begin
       TAtlasGuard.Run(TAtlasFeature.Debugger,
@@ -551,7 +554,7 @@ begin
           SaveOptions(AEnabled, AKinds, APatterns);
         end);
     end;
-  AFrame.OnRefresh :=
+  AFrame.Hooks.Refresh :=
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.Debugger, Recount);

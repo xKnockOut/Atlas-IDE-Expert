@@ -8,8 +8,8 @@
 //   der Ereignis-Handler liefert der Designer (IDesigner.GetMethodName).
 // - Änderungen im Designer (Komponente eingefügt, gelöscht, umbenannt,
 //   Ereignis zugewiesen) meldet IDesignNotification; 500 ms danach geht der
-//   neue Text an den Server, nur für die geänderten Formulare (vorher wurde
-//   jedes offene Formular neu in Text gewandelt, im Diagnose-Fenster bis
+//   neue Text an den Server, nur für die geänderten Formulare (jedes offene
+//   Formular neu in Text zu wandeln, kostete im Diagnose-Fenster bis
 //   266 ms je Änderung). Ein geschlossenes Formular meldet Atlas mit
 //   didClose ab, danach gilt wieder die Datei. Nach einem Serverneustart
 //   gehen alle Formulare neu an den Server.
@@ -34,7 +34,7 @@ uses
   ToolsAPI,
   DesignIntf,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Forms.Changes;
 
 type
@@ -108,11 +108,13 @@ implementation
 
 uses
   System.TypInfo,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Forms.Text,
   Atlas.Core.Forms.PropertyValues,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language,
+  Atlas.ToolsApi.Designer.View,
+  Atlas.Plugin.Calls.Optional;
 
 {$SCOPEDENUMS ON}
 
@@ -188,27 +190,6 @@ begin
   end;
 end;
 
-function RootOf(const AEditor: IOTAFormEditor): TComponent;
-var
-  mComponent: INTAComponent;
-begin
-  Result := nil;
-  if (AEditor <> nil) and Supports(AEditor.GetRootComponent, INTAComponent, mComponent) then
-  begin
-    Result := mComponent.GetComponent;
-  end;
-end;
-
-function DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
-var
-  mNative: INTAFormEditor;
-begin
-  Result := nil;
-  if Supports(AEditor, INTAFormEditor, mNative) then
-  begin
-    Result := mNative.FormDesigner;
-  end;
-end;
 
 function TextOf(const AEditor: IOTAFormEditor): string;
 var
@@ -216,8 +197,8 @@ var
   mDesigner: IDesigner;
 begin
   Result := '';
-  mRoot := RootOf(AEditor);
-  mDesigner := DesignerOf(AEditor);
+  mRoot := TAtlasIdeDesignerView.RootOf(AEditor);
+  mDesigner := TAtlasIdeDesignerView.DesignerOf(AEditor);
   if (mRoot = nil) or (mDesigner = nil) then
   begin
     Exit;
@@ -471,7 +452,7 @@ begin
   FDirtyRoots.Clear;
   for mEditor in FormEditors do
   begin
-    mRoot := RootOf(mEditor);
+    mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
     if mRoot <> nil then
     begin
       SyncEditor(ASession, mEditor, mRoot);
@@ -490,7 +471,7 @@ begin
   end;
   for mEditor in FormEditors do
   begin
-    mRoot := RootOf(mEditor);
+    mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
     if (mRoot <> nil) and FDirtyRoots.Contains(mRoot) then
     begin
       SyncEditor(ASession, mEditor, mRoot);
@@ -520,10 +501,7 @@ end;
 
 procedure TAtlasIdeForms.Log(const AText: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AText);
-  end;
+  TAtlasCalls.Send(FLog, AText);
 end;
 
 class procedure TAtlasIdeForms.SyncNow(ASession: TLspSession);
@@ -555,7 +533,7 @@ end;
 
 class function TAtlasIdeForms.IsOpen(const AFileName: string): Boolean;
 begin
-  Result := RootOf(EditorOf(AFileName)) <> nil;
+  Result := TAtlasIdeDesignerView.RootOf(EditorOf(AFileName)) <> nil;
 end;
 
 class function TAtlasIdeForms.Check(const AFileName: string; const AEdits: TArray<TLspTextEdit>;
@@ -596,8 +574,8 @@ var
   mIndex: Integer;
 begin
   mEditor := EditorOf(AFileName);
-  mRoot := RootOf(mEditor);
-  mDesigner := DesignerOf(mEditor);
+  mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
+  mDesigner := TAtlasIdeDesignerView.DesignerOf(mEditor);
   if (mRoot = nil) or (mDesigner = nil) then
   begin
     Exit(UiText(TDesignerText.FormIsNoLongerOpen));

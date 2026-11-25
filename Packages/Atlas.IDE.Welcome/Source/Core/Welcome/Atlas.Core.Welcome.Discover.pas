@@ -24,21 +24,12 @@ uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.Usage,
-  Atlas.Core.Commands.Tips;
+  Atlas.Core.Commands.Tips,
+  Atlas.Core.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Hinweis zur Nutzung: None = keiner (Zählung aus), Never = „Noch nie benutzt“, sonst „Zuletzt …“.
-  /// </summary>
-  TAtlasDiscoverAgeKind = (None, Never, Today, Yesterday, Days, Weeks, Months, Years);
-{$SCOPEDENUMS OFF}
-
-  TAtlasDiscoverAge = record
-    Kind: TAtlasDiscoverAgeKind;
-    /// <summary>Anzahl Tage, Wochen, Monate bzw. Jahre.</summary>
-    Count: Integer;
-    class function Create(AKind: TAtlasDiscoverAgeKind; ACount: Integer): TAtlasDiscoverAge; static;
-  end;
+  TAtlasDiscoverAgeKind = Atlas.Core.Welcome.Contract.TAtlasDiscoverAgeKind;
+  TAtlasDiscoverAge = Atlas.Core.Welcome.Contract.TAtlasDiscoverAge;
 
   /// <summary>Gesperrte Tipps und der zuletzt gezeigte.</summary>
   TAtlasDiscoverState = record
@@ -52,22 +43,7 @@ type
     class function Parse(const AJson: string): TAtlasDiscoverState; static;
   end;
 
-  /// <summary>Was die Karte zeigt.</summary>
-  TAtlasDiscoverCard = record
-    Id: string;
-    Title: string;
-    Text: string;
-    /// <summary>Tatsächliche Belegung des Befehls; '' ohne.</summary>
-    KeyText: string;
-    /// <summary>Vollständiger Pfad des Bilds; '' ohne (oder Datei fehlt).</summary>
-    ImageFile: string;
-    Age: TAtlasDiscoverAge;
-    /// <summary>„Ausprobieren“ möglich (Beispieldatei vorhanden oder Befehl vorhanden).</summary>
-    CanTry: Boolean;
-    /// <summary>Stelle (ab 1) und Zahl der Tipps, die gerade in Frage kommen.</summary>
-    Position: Integer;
-    Count: Integer;
-  end;
+  TAtlasDiscoverCard = Atlas.Core.Welcome.Contract.TAtlasDiscoverCard;
 
   TAtlasDiscover = class
   public const
@@ -135,15 +111,18 @@ uses
   System.JSON,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Settings.History;
+  Atlas.Core.Settings.History,
+  Atlas.Text.Json;
 
-{ TAtlasDiscoverAge }
-
-class function TAtlasDiscoverAge.Create(AKind: TAtlasDiscoverAgeKind; ACount: Integer): TAtlasDiscoverAge;
-begin
-  Result.Kind := AKind;
-  Result.Count := ACount;
-end;
+const
+  /// <summary>Unter so vielen Tagen zählt das Alter in Tagen, darunter in Wochen.</summary>
+  cDaysShownAsDays = 14;
+  /// <summary>Unter so vielen Tagen zählt das Alter in Wochen.</summary>
+  cDaysShownAsWeeks = 60;
+  cDaysPerWeek = 7;
+  /// <summary>Grob gerechnet: Für „vor n Monaten“ genügt ein Monat zu 30 Tagen.</summary>
+  cDaysPerMonth = 30;
+  cDaysPerYear = 365;
 
 { TAtlasDiscoverState }
 
@@ -193,12 +172,7 @@ begin
   begin
     Exit;
   end;
-  try
-    mRoot := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AJson);
   try
     if not (mRoot is TJSONObject) then
     begin
@@ -331,21 +305,21 @@ begin
   begin
     Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Yesterday, 1);
   end
-  else if mDays < 14 then
+  else if mDays < cDaysShownAsDays then
   begin
     Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Days, mDays);
   end
-  else if mDays < 60 then
+  else if mDays < cDaysShownAsWeeks then
   begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, mDays div 7);
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, mDays div cDaysPerWeek);
   end
-  else if mDays < 365 then
+  else if mDays < cDaysPerYear then
   begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Months, mDays div 30);
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Months, mDays div cDaysPerMonth);
   end
   else
   begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Years, mDays div 365);
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Years, mDays div cDaysPerYear);
   end;
 end;
 

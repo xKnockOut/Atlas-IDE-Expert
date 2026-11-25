@@ -35,11 +35,15 @@ type
     [Test]
     procedure StateRoundTrips;
     [Test]
+    procedure UnreadableStampsCountAsUnknown;
+    [Test]
     procedure SafeSessionTurnsEveryToggleOff;
     [Test]
     procedure SuggestsChangedThenFaulty;
     [Test]
     procedure SettingsHistoryRestores;
+    [Test]
+    procedure SettingsHistoryIgnoresStates;
     [Test]
     procedure LogLinesOfCrashedSession;
     [Test]
@@ -56,10 +60,12 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
+  Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.SafeMode;
@@ -255,6 +261,44 @@ begin
   Assert.AreEqual(0, mLoaded.CrashCount);
 end;
 
+procedure TAtlasSafeModeTests.UnreadableStampsCountAsUnknown;
+var
+  mMarker: TAtlasSessionMarker;
+  mState: TAtlasSafeState;
+  mHistory, mLoaded: TAtlasSettingsHistory;
+  mSecond: TAtlasPluginSettings;
+  mJson: string;
+begin
+  // Ein Text ohne Ziffern macht nur den Zeitpunkt unbekannt, nicht die ganze Marke, den Zustand oder den Verlauf.
+  Assert.IsTrue(TAtlasSessionMarker.FromJson('{"processId": 7, "startedAt": "gestern"}', mMarker));
+  Assert.AreEqual(Int64(7), Int64(mMarker.ProcessId));
+  Assert.AreEqual(Double(0), Double(mMarker.StartedAt));
+  mState := TAtlasSafeState.FromJson('{"crashCount": 2, "lastCrashAt": "gestern"}');
+  Assert.AreEqual(2, mState.CrashCount);
+  Assert.AreEqual(Double(0), Double(mState.LastCrashAt));
+  mState := TAtlasSafeState.FromJson('{"crashCount": 1, "lastCrashAt": "2026-13-01T00:00:00Z"}');
+  Assert.AreEqual(1, mState.CrashCount);
+  Assert.AreEqual(Double(0), Double(mState.LastCrashAt));
+  mSecond := TAtlasPluginSettings.Defaults;
+  mSecond.PairColors := False;
+  mHistory := TAtlasSettingsHistory.Create;
+  try
+    mHistory.Push(TAtlasPluginSettings.Defaults, mSecond, EncodeDateTime(2026, 10, 14, 8, 0, 0, 0), 5);
+    mHistory.Push(mSecond, TAtlasPluginSettings.Defaults, EncodeDateTime(2026, 10, 14, 9, 0, 0, 0), 5);
+    mJson := StringReplace(mHistory.ToJson, DateToISO8601(mHistory[1].ChangedAt, True), 'gestern', []);
+    mLoaded := TAtlasSettingsHistory.Create;
+    try
+      Assert.IsTrue(mLoaded.LoadJson(mJson));
+      Assert.AreEqual(1, Integer(mLoaded.Count), 'nur der unlesbare Stand fällt weg');
+      Assert.IsTrue(SameDateTime(mHistory[0].ChangedAt, mLoaded[0].ChangedAt));
+    finally
+      mLoaded.Free;
+    end;
+  finally
+    mHistory.Free;
+  end;
+end;
+
 procedure TAtlasSafeModeTests.SafeSessionTurnsEveryToggleOff;
 var
   mToggles: TArray<TAtlasQuickToggle>;
@@ -299,8 +343,8 @@ begin
   mMarker.AddFailure('Problems');
   mKeys := TAtlasSafeMode.Suggest(mToggles, ['VisibleRows', 'PairGuides'], mMarker);
   // Zuerst zuletzt geändert (nur Schnellschalter), dann Fehler: Probleme (2) vor Hover (1).
-  // Zum Feature Hover gehören zwei Schalter (DebugHoverValues seit #891), zu Problems vier
-  // (Marke „Wer gibt das frei?“ seit #1877, Fenster „Atlas-Prüfung“ seit #909, offene Units zuerst seit #1108);
+  // Zum Feature Hover gehören zwei Schalter (DebugHoverValues, #891), zu Problems vier
+  // (Marke „Wer gibt das frei?“ #1877, Fenster „Atlas-Prüfung“ #909, offene Units zuerst #1108);
   // bei Gleichstand in Katalogfolge.
   Assert.AreEqual(7, Integer(Length(mKeys)));
   Assert.AreEqual('PairGuides', mKeys[0]);
@@ -312,6 +356,39 @@ begin
   Assert.AreEqual('DebugHoverValues', mKeys[6]);
   Assert.AreEqual(0, Integer(Length(TAtlasSafeMode.Suggest(mToggles, nil, TAtlasSessionMarker.Create(1, '', 0)))));
   Assert.IsTrue(Length(TAtlasSafeMode.Details(mMarker)) >= 5);
+end;
+
+procedure TAtlasSafeModeTests.SettingsHistoryIgnoresStates;
+var
+  mCatalog: TAtlasSettingsCatalog;
+  mHistory: TAtlasSettingsHistory;
+  mState, mBoth: TAtlasPluginSettings;
+  mKeys: TArray<string>;
+begin
+  mHistory := TAtlasSettingsHistory.Create;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
+  try
+    mHistory.Ignored := TAtlasSettingsHistory.StateNames(mCatalog);
+    Assert.IsTrue(MatchText('DesignerBarButtons', mHistory.Ignored), 'Zustand der Designer-Knöpfe');
+    Assert.IsFalse(MatchText('DesignerRememberButtons', mHistory.Ignored), 'echte Einstellung');
+    // Nur ein Zustand geändert (Klick auf einen Knopf): kein neuer Stand.
+    mState := TAtlasPluginSettings.Defaults;
+    mState.DesignerBarButtons := 'dataBindings=1';
+    mHistory.Push(TAtlasPluginSettings.Defaults, mState, EncodeDateTime(2026, 11, 18, 8, 0, 0, 0), 5);
+    Assert.AreEqual(0, Integer(mHistory.Count));
+    // Mit echter Änderung: Stand gemerkt, der Zustand steht nicht unter den geänderten Namen.
+    mBoth := mState;
+    mBoth.PairColors := not mBoth.PairColors;
+    mBoth.DesignerBarButtons := 'dataBindings=0';
+    mHistory.Push(mState, mBoth, EncodeDateTime(2026, 11, 18, 9, 0, 0, 0), 5);
+    Assert.AreEqual(1, Integer(mHistory.Count));
+    mKeys := mHistory.LastChangedKeys(mBoth);
+    Assert.AreEqual(1, Integer(Length(mKeys)));
+    Assert.AreEqual('PairColors', mKeys[0]);
+  finally
+    mCatalog.Free;
+    mHistory.Free;
+  end;
 end;
 
 procedure TAtlasSafeModeTests.SettingsHistoryRestores;
@@ -377,6 +454,10 @@ begin
     '2026-10-14 09:00:02.000 c'], EncodeDateTime(2026, 10, 14, 9, 0, 0, 0), 0, 2);
   Assert.AreEqual(2, Integer(Length(mLines)), 'nur die letzten');
   Assert.AreEqual('2026-10-14 09:00:02.000 c', mLines[1]);
+  // Vorzeichen in einem Zeitfeld: keine Zeitmarke (kein ERangeError), die Zeile gehört zur laufenden Sitzung.
+  mLines := TAtlasSafeMode.LogLinesBetween(['2026-10-14 09:00:00.000 a', '2026--1-14 09:00:01.000 b',
+    '2026-10-14 09:-1:02.000 c'], EncodeDateTime(2026, 10, 14, 9, 0, 0, 0), 0, 10);
+  Assert.AreEqual(3, Integer(Length(mLines)), 'Zeilen ohne gültige Zeit');
 end;
 
 procedure TAtlasSafeModeTests.MarkerFilesFindCrashedSessions;

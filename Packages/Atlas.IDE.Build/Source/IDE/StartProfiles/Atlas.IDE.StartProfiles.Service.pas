@@ -2,7 +2,10 @@
 
 // Startprofile in der IDE (#575): Auswahl, Setzen der Startoptionen des
 // Projekts, Statusfeld und Start für die Willkommensseite (#764). Lesen,
-// Zusammenführen und die lokale Datei in Atlas.Core.StartProfiles.Store.
+// Zusammenführen und die lokale Datei in Atlas.Core.StartProfiles.Store, der
+// Ablauf (Profil setzen, zurücksetzen, speichern, Statusfeld) in
+// Atlas.Core.StartProfiles.Flow; diese Unit gibt ihm Zugriff auf die
+// Startoptionen der IDE und macht aus seinen Ergebnissen Meldungen.
 // - Auswahl (Befehl „Startprofil: …“, Atlas.StartProfile, und Klick auf das
 //   Statusfeld): Palettenfenster mit den Profilen des aktiven Projekts (erst
 //   aus .atlas, dann persönliche), „Kein Startprofil“, „Aktuelle
@@ -39,6 +42,7 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
+  Atlas.Core.StartProfiles.Flow,
   Atlas.UI.Strings,
   Atlas.UI.Build.Strings;
 
@@ -50,6 +54,7 @@ type
   private class var
     FInstance: TAtlasIdeStartProfiles;
     FOnStatus: TAtlasStartProfileStatus;
+    FFlow: TAtlasStartProfileFlow;
   private
     FTimer: TTimer;
     FStamp: string;
@@ -60,6 +65,10 @@ type
     procedure Check(AForce: Boolean);
     procedure Publish(const AProject: string);
     class function Team(const AProject: string): TAtlasTeamSettings; static;
+    /// <summary>Ablauf mit Zugriff auf die Startoptionen der IDE; lebt bis zum Entladen der Unit.</summary>
+    class function Flow: TAtlasStartProfileFlow; static;
+    /// <summary>Meldung zu einem gescheiterten Schritt für AProject.</summary>
+    class function Failure(const AResult: TAtlasStartProfileResult; const AProject: string): string; static;
     class function Summary(const AOptions: TAtlasStartOptions): string; static;
     class function Describe(const AEntry: TAtlasStartProfileEntry): string; static;
     class procedure SaveCurrent(const AProject: IOTAProject); static;
@@ -99,11 +108,11 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   Atlas.Core.StartProfiles.Picker,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.UI.Commands.Palette;
@@ -174,8 +183,8 @@ end;
 procedure TAtlasIdeStartProfiles.Check(AForce: Boolean);
 var
   mProject: IOTAProject;
-  mFileName, mStamp, mActive, mReason: string;
-  mEntry: TAtlasStartProfileEntry;
+  mFileName, mStamp: string;
+  mResult: TAtlasStartProfileResult;
 begin
   mProject := TAtlasIdeStartOptions.ActiveProject;
   mFileName := '';
@@ -195,11 +204,10 @@ begin
   if (mProject <> nil) and not SameText(TAtlasIdeStartOptions.TemporaryProject, mFileName) then
   begin
     TAtlasIdeStartOptions.RecoverTemporary(mProject);
-    mActive := ActiveName(mFileName);
-    if (mActive <> '') and TAtlasStartProfiles.Find(Profiles(mFileName), mActive, mEntry) and
-      not TAtlasIdeStartOptions.WriteOptions(mProject, TAtlasStartProfiles.OptionsOf(mEntry), mReason) then
+    mResult := Flow.Reapply(mFileName);
+    if not mResult.Succeeded then
     begin
-      TAtlasIdeStartOptions.Say(TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [mReason]));
+      TAtlasIdeStartOptions.Say(Failure(mResult, mFileName));
     end;
   end;
   Publish(mFileName);
@@ -207,9 +215,9 @@ end;
 
 procedure TAtlasIdeStartProfiles.Publish(const AProject: string);
 var
-  mEntries: TArray<TAtlasStartProfileEntry>;
-  mEntry: TAtlasStartProfileEntry;
-  mActive, mText, mHint: string;
+  // Voll qualifiziert: Der Rückruftyp TAtlasStartProfileStatus dieser Unit verdeckt den Record (E2010).
+  mStatus: Atlas.Core.StartProfiles.Flow.TAtlasStartProfileStatus;
+  mText, mHint: string;
 begin
   if not Assigned(FOnStatus) then
   begin
@@ -217,11 +225,8 @@ begin
   end;
   mText := '';
   mHint := '';
-  mEntries := Profiles(AProject);
-  mActive := ActiveName(AProject);
-  mEntry := Default(TAtlasStartProfileEntry);
-  case TAtlasStartProfilePicker.StatusKind(AProject, Length(mEntries), mActive,
-    (mActive <> '') and TAtlasStartProfiles.Find(mEntries, mActive, mEntry)) of
+  mStatus := Flow.Status(AProject);
+  case mStatus.Kind of
     TAtlasStartProfileStatusKind.Hidden: ;
     TAtlasStartProfileStatusKind.NoneActive:
       begin
@@ -230,13 +235,13 @@ begin
       end;
     TAtlasStartProfileStatusKind.Active:
       begin
-        mText := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesStatus, [mEntry.Profile.Name]);
-        mHint := Describe(mEntry);
+        mText := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesStatus, [mStatus.Entry.Profile.Name]);
+        mHint := Describe(mStatus.Entry);
       end;
     TAtlasStartProfileStatusKind.Missing:
       begin
-        mText := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesStatusMissing, [mActive]);
-        mHint := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesHintMissing, [mActive]);
+        mText := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesStatusMissing, [mStatus.Active]);
+        mHint := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesHintMissing, [mStatus.Active]);
       end;
   end;
   if mText <> '' then
@@ -250,6 +255,70 @@ class function TAtlasIdeStartProfiles.Team(const AProject: string): TAtlasTeamSe
 begin
   // ForProject ist leer, wenn die Projektdatei (#486) ausgeschaltet ist.
   Result := TAtlasIdeTeamFile.ForProject(AProject);
+end;
+
+/// <summary>Startoptionen des geöffneten AProject für den Ablauf; False, wenn es nicht offen ist.</summary>
+function ReadOpen(const AProject: string; out AOptions: TAtlasStartOptions): Boolean;
+var
+  mProject: IOTAProject;
+begin
+  AOptions := Default(TAtlasStartOptions);
+  mProject := TAtlasIdeStartOptions.FindProject(AProject);
+  Result := mProject <> nil;
+  if Result then
+  begin
+    TAtlasIdeStartOptions.ReadOptions(mProject, AOptions);
+  end;
+end;
+
+/// <summary>Startoptionen von AProject für den Ablauf schreiben; False mit Grund.</summary>
+function WriteOpen(const AProject: string; const AOptions: TAtlasStartOptions; out AReason: string): Boolean;
+var
+  mProject: IOTAProject;
+begin
+  AReason := '';
+  mProject := TAtlasIdeStartOptions.FindProject(AProject);
+  if mProject = nil then
+  begin
+    AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesNotOpen, [ExtractFileName(AProject)]);
+    Exit(False);
+  end;
+  Result := TAtlasIdeStartOptions.WriteOptions(mProject, AOptions, AReason);
+end;
+
+class function TAtlasIdeStartProfiles.Flow: TAtlasStartProfileFlow;
+var
+  mAccess: TAtlasStartProfileAccess;
+begin
+  if FFlow = nil then
+  begin
+    mAccess := Default(TAtlasStartProfileAccess);
+    mAccess.Folder := TAtlasIdeStartOptions.Folder;
+    mAccess.TeamOf := Team;
+    mAccess.ReadOptions := ReadOpen;
+    mAccess.WriteOptions := WriteOpen;
+    FFlow := TAtlasStartProfileFlow.Create(mAccess);
+  end;
+  Result := FFlow;
+end;
+
+class function TAtlasIdeStartProfiles.Failure(const AResult: TAtlasStartProfileResult; const AProject: string): string;
+begin
+  case AResult.Outcome of
+    TAtlasStartProfileOutcome.NotOpen:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesNotOpen, [ExtractFileName(AProject)]);
+    TAtlasStartProfileOutcome.Unknown:
+      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesUnknown,
+        [AResult.Name, ExtractFileName(AProject)]);
+    TAtlasStartProfileOutcome.InvalidName:
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesInvalidName);
+    TAtlasStartProfileOutcome.WriteFailed:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [AResult.Reason]);
+    TAtlasStartProfileOutcome.SaveFailed:
+      Result := TAtlasStrings.Text(TAtlasTextId.StartProfilesSaveFailed);
+  else
+    Result := '';
+  end;
 end;
 
 class function TAtlasIdeStartProfiles.Summary(const AOptions: TAtlasStartOptions): string;
@@ -282,64 +351,6 @@ begin
   Result := string.Join(' · ', mParts);
 end;
 
-/// <summary>Lokale Datei speichern; False mit Grund.</summary>
-function SaveState(const AState: TAtlasStartProfileState; var AReason: string): Boolean;
-begin
-  Result := TAtlasStartProfiles.Save(TAtlasIdeStartOptions.Folder, AState);
-  if not Result then
-  begin
-    AReason := TAtlasStrings.Text(TAtlasTextId.StartProfilesSaveFailed);
-  end;
-end;
-
-/// <summary>Startoptionen schreiben; False mit Grund.</summary>
-function WriteWithReason(const AProject: IOTAProject; const AOptions: TAtlasStartOptions; var AReason: string): Boolean;
-begin
-  Result := TAtlasIdeStartOptions.WriteOptions(AProject, AOptions, AReason);
-  if not Result then
-  begin
-    AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesWriteFailed, [AReason]);
-  end;
-end;
-
-/// <summary>Kein Profil: die gemerkten Startoptionen zurück; ohne gemerkte bleiben die jetzigen.</summary>
-function RestoreBefore(const AProject: IOTAProject; var AState: TAtlasStartProfileState; var AReason: string): Boolean;
-var
-  mOptions: TAtlasStartOptions;
-begin
-  Result := (not TAtlasStartProfiles.Deactivate(AState, mOptions) or WriteWithReason(AProject, mOptions, AReason)) and
-    SaveState(AState, AReason);
-  if Result then
-  begin
-    TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesRestored));
-  end;
-end;
-
-/// <summary>Profil AName setzen; ACurrent sind die Startoptionen davor.</summary>
-function ApplyProfile(const AProject: IOTAProject; var AState: TAtlasStartProfileState; const AName: string;
-  const ACurrent: TAtlasStartOptions; var AReason: string): Boolean;
-var
-  mEntry: TAtlasStartProfileEntry;
-  mOptions: TAtlasStartOptions;
-begin
-  if not TAtlasStartProfiles.Find(TAtlasStartProfiles.Merge(TAtlasIdeStartProfiles.Team(AProject.FileName), AState),
-    AName, mEntry) then
-  begin
-    AReason := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesUnknown,
-      [AName, ExtractFileName(AProject.FileName)]);
-    Exit(False);
-  end;
-  mOptions := TAtlasStartProfiles.OptionsOf(mEntry);
-  // Erst merken, was vorher galt, dann schreiben: Scheitert das Schreiben, bleibt der alte Stand.
-  TAtlasStartProfiles.Activate(AState, mEntry.Profile.Name, ACurrent);
-  Result := WriteWithReason(AProject, mOptions, AReason) and SaveState(AState, AReason);
-  if Result then
-  begin
-    TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesApplied,
-      [mEntry.Profile.Name, TAtlasIdeStartProfiles.Summary(mOptions)]));
-  end;
-end;
-
 class function TAtlasIdeStartProfiles.Describe(const AEntry: TAtlasStartProfileEntry): string;
 begin
   Result := Summary(TAtlasStartProfiles.OptionsOf(AEntry));
@@ -348,8 +359,7 @@ end;
 class procedure TAtlasIdeStartProfiles.SaveCurrent(const AProject: IOTAProject);
 var
   mName: string;
-  mOptions: TAtlasStartOptions;
-  mState: TAtlasStartProfileState;
+  mResult: TAtlasStartProfileResult;
   mReason: string;
 begin
   mName := '';
@@ -358,22 +368,15 @@ begin
   begin
     Exit;
   end;
-  if Trim(mName) = '' then
+  mResult := Flow.SaveCurrent(AProject.FileName, mName);
+  if not mResult.Succeeded then
   begin
-    TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesInvalidName));
+    TAtlasIdeStartOptions.Say(Failure(mResult, AProject.FileName));
     Exit;
   end;
-  TAtlasIdeStartOptions.ReadOptions(AProject, mOptions);
-  mState := TAtlasStartProfiles.Load(TAtlasIdeStartOptions.Folder, AProject.FileName);
-  TAtlasStartProfiles.PutPersonal(mState, TAtlasStartProfiles.ProfileFromOptions(mName, mOptions));
-  if not TAtlasStartProfiles.Save(TAtlasIdeStartOptions.Folder, mState) then
-  begin
-    TAtlasIdeStartOptions.Say(TAtlasStrings.Text(TAtlasTextId.StartProfilesSaveFailed));
-    Exit;
-  end;
-  TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesSaved, [Trim(mName)]));
+  TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesSaved, [mResult.Name]));
   // Gleich aktiv: Die Startoptionen bleiben dieselben, gemerkt wird das Profil.
-  if not Activate(AProject.FileName, Trim(mName), mReason) then
+  if not Activate(AProject.FileName, mResult.Name, mReason) then
   begin
     TAtlasIdeStartOptions.Say(mReason);
   end;
@@ -382,18 +385,12 @@ end;
 class procedure TAtlasIdeStartProfiles.EditPersonal(const AProject: string);
 var
   mFileName: string;
-  mState: TAtlasStartProfileState;
   mActions: IOTAActionServices;
 begin
-  mFileName := TAtlasStartProfiles.FileFor(TAtlasIdeStartOptions.Folder, AProject);
-  if not FileExists(mFileName) then
+  if not Flow.PersonalFile(AProject, mFileName) then
   begin
-    mState := TAtlasStartProfiles.Empty(AProject);
-    if not TAtlasStartProfiles.Save(TAtlasIdeStartOptions.Folder, mState) then
-    begin
-      TAtlasIdeStartOptions.Say(TAtlasStrings.Text(TAtlasTextId.StartProfilesSaveFailed));
-      Exit;
-    end;
+    TAtlasIdeStartOptions.Say(TAtlasStrings.Text(TAtlasTextId.StartProfilesSaveFailed));
+    Exit;
   end;
   if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
@@ -554,28 +551,18 @@ end;
 
 class function TAtlasIdeStartProfiles.Profiles(const AProject: string): TArray<TAtlasStartProfileEntry>;
 begin
-  Result := nil;
-  if AProject = '' then
-  begin
-    Exit;
-  end;
-  Result := TAtlasStartProfiles.ForProject(TAtlasIdeStartOptions.Folder, AProject, Team(AProject));
+  Result := Flow.Profiles(AProject);
 end;
 
 class function TAtlasIdeStartProfiles.ActiveName(const AProject: string): string;
 begin
-  Result := '';
-  if AProject <> '' then
-  begin
-    Result := TAtlasStartProfiles.Load(TAtlasIdeStartOptions.Folder, AProject).Active;
-  end;
+  Result := Flow.ActiveName(AProject);
 end;
 
 class function TAtlasIdeStartProfiles.Activate(const AProject, AName: string; out AReason: string): Boolean;
 var
   mProject: IOTAProject;
-  mState: TAtlasStartProfileState;
-  mCurrent: TAtlasStartOptions;
+  mResult: TAtlasStartProfileResult;
 begin
   AReason := '';
   mProject := TAtlasIdeStartOptions.FindProject(AProject);
@@ -584,15 +571,19 @@ begin
     AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesNotOpen, [ExtractFileName(AProject)]);
     Exit(False);
   end;
-  mState := TAtlasStartProfiles.Load(TAtlasIdeStartOptions.Folder, mProject.FileName);
-  TAtlasIdeStartOptions.ReadOptions(mProject, mCurrent);
-  if Trim(AName) = '' then
-  begin
-    Result := RestoreBefore(mProject, mState, AReason);
-  end
+  mResult := Flow.Activate(mProject.FileName, AName);
+  Result := mResult.Succeeded;
+  case mResult.Outcome of
+    TAtlasStartProfileOutcome.Applied:
+      TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesApplied,
+        [mResult.Name, Summary(mResult.Options)]));
+    TAtlasStartProfileOutcome.Restored:
+      TAtlasIdeStartOptions.Say(TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesRestored));
   else
-  begin
-    Result := ApplyProfile(mProject, mState, AName, mCurrent, AReason);
+    if not Result then
+    begin
+      AReason := Failure(mResult, mProject.FileName);
+    end;
   end;
   if Result and (FInstance <> nil) then
   begin
@@ -653,5 +644,10 @@ begin
     FInstance.Check(True);
   end;
 end;
+
+initialization
+
+finalization
+  FreeAndNil(TAtlasIdeStartProfiles.FFlow);
 
 end.

@@ -21,7 +21,7 @@ uses
   System.JSON,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.View,
@@ -72,28 +72,14 @@ begin
   end;
 end;
 
-/// <summary>Vergleich des ersten laufenden Moduls (#1779); False ohne. Jedes Mal neu gefragt (Regel 3).</summary>
-function FindTestValues(out AValues: IAtlasTestValues): Boolean;
-var
-  mItem: IInterface;
-begin
-  AValues := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasTestValues) do
-  begin
-    if Supports(mItem, IAtlasTestValues, AValues) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>„Vergleichen“ unter AProblem (#1779): fehlgeschlagener Test im oberen Editor mit Werten.</summary>
 function HoverComparable(const AProblem: TAtlasProblem): Boolean;
 var
   mValues: IAtlasTestValues;
 begin
-  Result := SameText(AProblem.Source, TAtlasProblemStore.cTestSource) and FindTestValues(mValues) and
+  // Vergleich des ersten laufenden Moduls (#1779); jedes Mal neu gefragt (Regel 3).
+  Result := SameText(AProblem.Source, TAtlasProblemStore.cTestSource) and
+    TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasTestValues, mValues) and
     mValues.HasValuesAt(AProblem.StartLine);
 end;
 
@@ -101,7 +87,7 @@ procedure CompareTestValues(const AProblem: TAtlasProblem);
 var
   mValues: IAtlasTestValues;
 begin
-  if FindTestValues(mValues) then
+  if TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasTestValues, mValues) then
   begin
     mValues.CompareAt(AProblem.StartLine);
   end;
@@ -200,16 +186,6 @@ begin
   RunModuleCommand(cUnitDependenciesCommandId);
 end;
 
-/// <summary>Schnellkorrektur „Signaturhilfe öffnen“ (#1007): nach dem Sprung der Parameter-Hint wie mit der Taste.
-/// </summary>
-procedure SignatureHelp;
-begin
-  if Manager <> nil then
-  begin
-    Manager.OpenSignature;
-  end;
-end;
-
 /// <summary>///-Gerüst (#88): Tab springt durch die Beschreibungen, wie bei Code-Vorlagen.</summary>
 procedure Placeholders(const AView: IOTAEditView; const ABefore: string; AOffset: Integer;
   const AExpansion: TAtlasSnippetExpansion);
@@ -226,7 +202,7 @@ begin
   TAtlasIdeEditorCommands.OnProblemsOf := ProblemsOf;
   // „Graph zeigen“ als Code-Aktion an einem Unit-Zyklus (#896, atlas.showUnitRelations).
   TAtlasIdeEditorCommands.OnUnitRelations := UnitRelations;
-  TAtlasIdeEditorCommands.OnSignatureHelp := SignatureHelp;
+  TAtlasIdeEditorCommands.OnSignatureHelp := OpenSignature;
   TAtlasIdeEditorCommands.OnPlaceholders := Placeholders;
 end;
 

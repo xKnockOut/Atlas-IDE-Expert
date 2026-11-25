@@ -31,12 +31,13 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
-  Atlas.Core.Outline.Statements;
+  Atlas.Core.Outline.Statements,
+  Atlas.Core.Outline.CrumbMenu,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cCode =
@@ -79,21 +80,8 @@ begin
 end;
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
+  Result := TOutlineTest.NodesOf(cCode);
 end;
 
 function FramesAt(ALine, ACharacter: Integer): string;
@@ -108,21 +96,6 @@ begin
       Result := Result + ' › ';
     end;
     Result := Result + mFrame.Text;
-  end;
-end;
-
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
   end;
 end;
 
@@ -173,9 +146,9 @@ end;
 
 procedure TAtlasStatementsTests.PathShowsAtMostThree;
 begin
-  Assert.AreEqual('Laden › case Art of › akFirma › except', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('Laden › case Art of › akFirma › except', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(21, 10, '', False, [TAtlasCrumbPart.Statements]))));
-  Assert.AreEqual('Laden', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('Laden', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(21, 10, '', False, []))), 'ausgeschaltet');
 end;
 

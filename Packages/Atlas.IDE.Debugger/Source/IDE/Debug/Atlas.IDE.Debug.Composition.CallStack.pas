@@ -21,7 +21,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,

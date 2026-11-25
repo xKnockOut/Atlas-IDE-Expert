@@ -45,7 +45,8 @@ uses
   System.JSON,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Metrics;
+  Atlas.Common.Lsp.Metrics,
+  Atlas.Common.Dfm.EventHandlers.TestSupport;
 
 const
   cBasisFile = 'C:\P\Basis.pas';
@@ -114,18 +115,8 @@ const
 { TLspEventHandlersTests }
 
 function TLspEventHandlersTests.Find(const AComponent, AEvent: string): TEventHandler;
-var
-  mItem: TEventHandler;
 begin
-  for mItem in FHandlers do
-  begin
-    if SameText(mItem.Component, AComponent) and SameText(mItem.Event, AEvent) then
-    begin
-      Exit(mItem);
-    end;
-  end;
-  Assert.Fail('nicht gefunden: ' + AComponent + '.' + AEvent);
-  Result := Default(TEventHandler);
+  Result := FindHandler(FHandlers, AComponent, AEvent);
 end;
 
 procedure TLspEventHandlersTests.Setup;

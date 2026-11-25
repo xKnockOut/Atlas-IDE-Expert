@@ -227,6 +227,7 @@ begin
   Assert.IsTrue(THotspotHistory.TryParseIsoDate('2026-01-02T03:04:05Z', mDate));
   Assert.AreEqual('2026-01-02T03:04:05Z', THotspotHistory.IsoDate(mDate));
   Assert.IsFalse(THotspotHistory.TryParseIsoDate('29.10.2026', mDate));
+  Assert.IsFalse(THotspotHistory.TryParseIsoDate('2026--1-29T21:24:52Z', mDate), 'Vorzeichen ist keine Ziffer');
   Assert.AreEqual('2025-10-29T00:00:00Z', THotspotHistory.IsoDate(THotspotHistory.Since(EncodeDate(2026, 10, 29),
     12)));
 end;

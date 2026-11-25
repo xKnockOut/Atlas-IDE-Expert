@@ -23,10 +23,10 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Editor.ExpressionType,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
-  TAtlasExpressionTypeTip = class(TAtlasPopupWindow)
+  TAtlasExpressionTypeTip = class(TAtlasLayoutPopupWindow)
   public const
     /// <summary>Abstand unter der Schreibmarke, logische Pixel.</summary>
     cGap = 4;
@@ -34,11 +34,10 @@ type
     FRows: TArray<TAtlasExpressionTypeRow>;
     FRowRects: TArray<TRect>;
     FOnNavigate: TProc;
-    function Layout(ADraw: Boolean): TSize;
     function LinkIndex: Integer;
     procedure ApplyFont(AKind: TAtlasExpressionTypeRowKind);
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -62,10 +61,10 @@ implementation
 uses
   System.UITypes,
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;
@@ -78,15 +77,6 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.ExpressionType;
   SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand));
-end;
-
-procedure TAtlasExpressionTypeTip.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 procedure TAtlasExpressionTypeTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -219,13 +209,32 @@ begin
   end;
 end;
 
+/// <summary>Text für den Bildschirmleser: alle Zeilen außer Hinweisen, je mit Punkt.</summary>
+function SpokenText(const ARows: TArray<TAtlasExpressionTypeRow>): string;
+var
+  mRow: TAtlasExpressionTypeRow;
+  mBuilder: TStringBuilder;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    for mRow in ARows do
+    begin
+      if mRow.Kind <> TAtlasExpressionTypeRowKind.Hint then
+      begin
+        mBuilder.Append(mRow.Text).Append('. ');
+      end;
+    end;
+    Result := Trim(mBuilder.ToString);
+  finally
+    mBuilder.Free;
+  end;
+end;
+
 procedure TAtlasExpressionTypeTip.ShowFor(const ARows: TArray<TAtlasExpressionTypeRow>; const APoint: TPoint);
 var
   mSize: TSize;
   mArea: TRect;
   mLeft, mTop: Integer;
-  mRow: TAtlasExpressionTypeRow;
-  mSpoken: string;
 begin
   FRows := ARows;
   HandleNeeded;
@@ -241,15 +250,7 @@ begin
   ShowAt(Rect(Max(mLeft, mArea.Left), Max(mTop, mArea.Top), Max(mLeft, mArea.Left) + mSize.cx,
     Max(mTop, mArea.Top) + mSize.cy));
   Invalidate;
-  mSpoken := '';
-  for mRow in FRows do
-  begin
-    if mRow.Kind <> TAtlasExpressionTypeRowKind.Hint then
-    begin
-      mSpoken := mSpoken + mRow.Text + '. ';
-    end;
-  end;
-  Announce(Trim(mSpoken));
+  Announce(SpokenText(FRows));
 end;
 
 procedure TAtlasExpressionTypeTip.Dismiss;

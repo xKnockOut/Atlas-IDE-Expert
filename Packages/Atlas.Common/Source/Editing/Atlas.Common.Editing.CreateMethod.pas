@@ -124,17 +124,8 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.ClassCompletion;
-
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
 
 /// <summary>Vor diesem Token beginnt eine Anweisung.</summary>
 function StartsStatementAfter(const AToken: TPascalToken): Boolean;
@@ -202,7 +193,7 @@ var
 begin
   Result := -1;
   mScan := 0;
-  while (mScan <= High(ATokens)) and (Compare(ATokens[mScan].StartPos, APosition) < 0) do
+  while (mScan <= High(ATokens)) and (TTextPosition.Compare(ATokens[mScan].StartPos, APosition) < 0) do
   begin
     if not (ATokens[mScan].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
@@ -217,11 +208,11 @@ end;
 function NameIndexAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const APosition: TTextPosition): Integer;
 begin
   Result := AIndex;
-  if ATokens[AIndex].IsSymbol('(') and (Compare(ATokens[AIndex].EndPos, APosition) = 0) then
+  if ATokens[AIndex].IsSymbol('(') and (TTextPosition.Compare(ATokens[AIndex].EndPos, APosition) = 0) then
   begin
     Result := PreviousCode(ATokens, AIndex);
   end
-  else if Compare(ATokens[AIndex].EndPos, APosition) < 0 then
+  else if TTextPosition.Compare(ATokens[AIndex].EndPos, APosition) < 0 then
   begin
     Result := -1;
   end;
@@ -291,7 +282,7 @@ begin
     Site.NameIndex := mIndex;
     Site.Name := Tokens[mIndex].Text;
     Site.NameRange := TTextRange.Create(Tokens[mIndex].StartPos, Tokens[mIndex].EndPos);
-    Site.OpenIndex := TRoutineBody.NextToken(Tokens, mIndex);
+    Site.OpenIndex := NextCodeAfter(Tokens, mIndex);
     Result := (Site.OpenIndex <= High(Tokens)) and Tokens[Site.OpenIndex].IsSymbol('(');
   end;
 end;
@@ -331,11 +322,11 @@ var
 begin
   Site.Arguments := nil;
   mDepth := 0;
-  mScan := TRoutineBody.NextToken(Tokens, Site.OpenIndex);
+  mScan := NextCodeAfter(Tokens, Site.OpenIndex);
   mStart := mScan;
   while (mScan <= High(Tokens) + 1) and not ArgumentStep(mScan, AOpenLineOnly, mDepth, mStart) do
   begin
-    mScan := TRoutineBody.NextToken(Tokens, mScan);
+    mScan := NextCodeAfter(Tokens, mScan);
   end;
   Result := Site.CloseIndex >= 0;
 end;
@@ -364,7 +355,7 @@ begin
       Site.CloseIndex := AScan;
     end;
     Result := not Tokens[AScan].IsSymbol(',');
-    AStart := TRoutineBody.NextToken(Tokens, AScan);
+    AStart := NextCodeAfter(Tokens, AScan);
   end;
 end;
 
@@ -389,7 +380,7 @@ begin
   mAfter := Length(Tokens);
   if Site.CloseIndex >= 0 then
   begin
-    mAfter := TRoutineBody.NextToken(Tokens, Site.CloseIndex);
+    mAfter := NextCodeAfter(Tokens, Site.CloseIndex);
   end;
   mEndsHere := (Site.CloseIndex < 0) or (mAfter > High(Tokens)) or EndsStatement(Tokens[mAfter]);
   Site.Context := TCallContext.Expression;
@@ -497,7 +488,7 @@ begin
   // Vorzeichen gehört zur Zahl.
   if (mFirst < AArgument.Last) and (ATokens[mFirst].IsSymbol('-') or ATokens[mFirst].IsSymbol('+')) then
   begin
-    mFirst := TRoutineBody.NextToken(ATokens, mFirst);
+    mFirst := NextCodeAfter(ATokens, mFirst);
   end;
   if mFirst <> AArgument.Last then
   begin
@@ -657,7 +648,7 @@ begin
   mFirst := AArgument.First;
   if ATokens[mFirst].IsSymbol('@') then
   begin
-    mFirst := TRoutineBody.NextToken(ATokens, mFirst);
+    mFirst := NextCodeAfter(ATokens, mFirst);
   end;
   if mFirst > AArgument.Last then
   begin

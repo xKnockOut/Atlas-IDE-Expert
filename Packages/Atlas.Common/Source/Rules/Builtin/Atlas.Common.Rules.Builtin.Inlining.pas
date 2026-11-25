@@ -73,7 +73,8 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.InlineCallees,
   Atlas.Common.Semantics.UnresolvedNames,
@@ -399,8 +400,8 @@ end;
 
 function TInlineCheck.OnlyInImplementationUses(const AUnitName: string): Boolean;
 begin
-  Result := TUsesClauses.IsUsed(FOwn.ImplementationUses, AUnitName, FContext.Namespaces) and
-    not TUsesClauses.IsUsed(FOwn.InterfaceUses, AUnitName, FContext.Namespaces);
+  Result := TPascalUses.IsUsed(FOwn.ImplementationUses, AUnitName, FContext.Namespaces) and
+    not TPascalUses.IsUsed(FOwn.InterfaceUses, AUnitName, FContext.Namespaces);
 end;
 
 function TInlineCheck.Report(const ACallee: TInlineCallee; const ARange: TTextRange; AOffset: Integer): Boolean;
@@ -450,7 +451,7 @@ begin
   mMissings := nil;
   for mUnitName in mNeeds.Units do
   begin
-    if not FCycles.IsOwnUnit(mUnitName) and not TUsesClauses.IsUsed(FUsed, mUnitName, FContext.Namespaces) then
+    if not FCycles.IsOwnUnit(mUnitName) and not TPascalUses.IsUsed(FUsed, mUnitName, FContext.Namespaces) then
     begin
       mMissings := mMissings + [mUnitName];
     end;
@@ -461,7 +462,7 @@ begin
   end;
   mMissing := String.Join(', ', mMissings);
   mFixes := nil;
-  if TUsesClauses.AddUnit(FContext.Tree.Tokens, AOffset, mMissing, FLineBreak, mEdit) then
+  if TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, AOffset, mMissing, FLineBreak, mEdit) then
   begin
     mFixes := [TRuleFix.Create(cTexts[TInliningText.AddUses].Fmt([mMissing]), [mEdit], True)];
   end;
@@ -571,13 +572,13 @@ var
   mForIns, mIndexes: TList<TSyntaxNode>;
   mNode: TSyntaxNode;
 begin
-  FOwnName := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  FOwnName := TPascalUses.OwnName(FContext.Tree.Tokens);
   if FOwnName = '' then
   begin
     FOwnName := FContext.UnitName;
   end;
   FCycles.OwnName := FOwnName;
-  FUsed := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  FUsed := TPascalUses.UsedUnits(FContext.Tree.Tokens);
   FLineBreak := TTextLines.LineBreakOf(FContext.Text);
   FResolver.PinTree(FContext.Tree, FContext.RelativePath);
   try

@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerSyntax: array[0..696] of string = (
+  cCatalogLinesEnCompilerSyntax: array[0..726] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntax error",',
@@ -394,9 +394,9 @@ const
     ' declaration (E2527) or declared inside a generic type (E2589); several class constructors (E2359, exclusive conditional branches count once), class constructors with parameters (E2360) or virtual, dy' +
     'namic or message (E2534); methods, properties, class members, types and constants in local or anonymous records (E2433 to E2437); inline on virtual or dynamic methods (E2425), on constructors and dest' +
     'ructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a variable or typed constant of the implementation section (E2441; true const' +
-    'ants, enumeration values, types and routines compile, mORMot2, Clipper2, dcc run of 29.10.2026), as local routine reading variables of the enclosing routine (E2449) or calling its own local routines (' +
-    'E2501); local, absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes' +
-    ': remove the directive, add static.",',
+    'ants, enumeration values, types and routines compile, as in mORMot2 and Clipper2), as local routine reading variables of the enclosing routine (E2449) or calling its own local routines (E2501); local,' +
+    ' absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes: remove the d' +
+    'irective, add static.",',
     '      "bad": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double; virtual;\nend;",',
     '      "good": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double;\nend;",',
     '      "compilerCodes": [',
@@ -715,6 +715,39 @@ const
     '      ],',
     '      "level": "A",',
     '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "enum-hides-keyword",',
+    '      "name": "Enumeration value hides a standard procedure",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "compiler",',
+    '      "description": "An enumeration declared without {$SCOPEDENUMS ON} has a value Continue, Break, Exit or Halt. The value hides the standard procedure of the same name in every unit that sees the t' +
+    'ype: Continue; becomes an expression statement there (E2014), and in a unit without such a statement the trap only fires later. The state of {$SCOPEDENUMS} is taken from the last directive before the ' +
+    'type. No quick fix: {$SCOPEDENUMS ON} changes every use of the values, renaming changes the type.",',
+    '      "bad": "type\n  TReopenedAction = (Continue, Dismiss, Reason);",',
+    '      "good": "{$SCOPEDENUMS ON}\ntype\n  TReopenedAction = (Continue, Dismiss, Reason);\n{$SCOPEDENUMS OFF}",',
+    '      "compilerCodes": [',
+    '        "E2014"',
+    '      ],',
+    '      "level": "A",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "inline-reference-type",',
+    '      "name": "reference to without a named type",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A field or variable has the type reference to procedure … or reference to function … directly. Delphi only accepts method reference types in a type declaration and reports E2003 ' +
+    'for ''reference'' followed by many follow-up errors; Free Pascal compiles the declaration. No quick fix: declare a named type and use it.",',
+    '      "bad": "type\n  TReopened = record\n    Peek: reference to function(const A: string): Boolean;\n  end;",',
+    '      "good": "type\n  TPeek = reference to function(const A: string): Boolean;\n  TReopened = record\n    Peek: TPeek;\n  end;",',
+    '      "compilerCodes": [',
+    '        "E2003"',
+    '      ],',
+    '      "level": "A",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "stream-write-nativeint",',

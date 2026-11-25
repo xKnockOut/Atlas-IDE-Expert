@@ -21,7 +21,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -97,10 +97,23 @@ implementation
 uses
   System.Math,
   System.UITypes,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Attach.Strings;
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Attach.Strings,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
+  // Knöpfe der Werkzeugleiste und der unteren Leiste (logische Pixel).
+  cButtonWidth = 110;
+  cButtonHeight = 28;
+  cToolButtonTop = 6;
+  cBottomButtonTop = 8;
+  cTopBarHeight = 40;
+  cBottomBarHeight = 44;
+  // Größe des Dialogs (logische Pixel).
+  cDialogWidth = 1000;
+  cDialogHeight = 720;
+  /// <summary>Halber Öffnungswinkel der Pfeilspitze: Pi / 7 (gut 25 Grad).</summary>
+  cHeadAngleDivisor = 7;
 
 { TAtlasMarkupShape }
 
@@ -164,10 +177,10 @@ begin
         mAngle := ArcTan2(mTo.Y - mFrom.Y, mTo.X - mFrom.X);
         mHead := cHeadLength * AScale;
         mHeadPoints[0] := mTo;
-        mHeadPoints[1] := Point(Round(mTo.X - mHead * Cos(mAngle - Pi / 7)),
-          Round(mTo.Y - mHead * Sin(mAngle - Pi / 7)));
-        mHeadPoints[2] := Point(Round(mTo.X - mHead * Cos(mAngle + Pi / 7)),
-          Round(mTo.Y - mHead * Sin(mAngle + Pi / 7)));
+        mHeadPoints[1] := Point(Round(mTo.X - mHead * Cos(mAngle - Pi / cHeadAngleDivisor)),
+          Round(mTo.Y - mHead * Sin(mAngle - Pi / cHeadAngleDivisor)));
+        mHeadPoints[2] := Point(Round(mTo.X - mHead * Cos(mAngle + Pi / cHeadAngleDivisor)),
+          Round(mTo.Y - mHead * Sin(mAngle + Pi / cHeadAngleDivisor)));
         ACanvas.Brush.Style := bsSolid;
         ACanvas.Brush.Color := cMarkColor;
         ACanvas.Polygon(mHeadPoints);
@@ -196,8 +209,8 @@ begin
   Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkupCaption);
   BorderStyle := bsSizeable;
   KeyPreview := True;
-  Width := ScaleValue(1000);
-  Height := ScaleValue(720);
+  Width := ScaleValue(cDialogWidth);
+  Height := ScaleValue(cDialogHeight);
 
   AddToolBar;
   AddBottomButtons;
@@ -206,7 +219,7 @@ begin
   FBox.Parent := Self;
   FBox.Align := alClient;
   FBox.AlignWithMargins := True;
-  FBox.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FBox, cGap, 0, cGap, 0);
   FBox.Cursor := crCross;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseDown := BoxMouseDown;
@@ -350,22 +363,22 @@ begin
   mTop := TPanel.Create(Self);
   mTop.Parent := Self;
   mTop.Align := alTop;
-  mTop.Height := mTop.ScaleValue(40);
+  mTop.Height := mTop.ScaleValue(cTopBarHeight);
   mTop.BevelOuter := bvNone;
   mLeft := cGap;
   for mTool := Low(TAtlasMarkupTool) to High(TAtlasMarkupTool) do
   begin
     FToolButtons[mTool] := TButton.Create(Self);
     FToolButtons[mTool].Parent := mTop;
-    FToolButtons[mTool].SetBounds(mLeft, 6, 110, 28);
+    TAtlasControlScaling.Place(FToolButtons[mTool], mLeft, cToolButtonTop, cButtonWidth, cButtonHeight);
     FToolButtons[mTool].Caption := TAtlasAttachStrings.Text(cToolText[mTool]);
     FToolButtons[mTool].Tag := Ord(mTool);
     FToolButtons[mTool].OnClick := ToolClick;
-    Inc(mLeft, 110 + cGap div 2);
+    Inc(mLeft, cButtonWidth + cGap div 2);
   end;
   FUndo := TButton.Create(Self);
   FUndo.Parent := mTop;
-  FUndo.SetBounds(mLeft + cGap, 6, 110, 28);
+  TAtlasControlScaling.Place(FUndo, mLeft + cGap, cToolButtonTop, cButtonWidth, cButtonHeight);
   FUndo.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkupUndo);
   FUndo.OnClick := UndoClick;
 end;
@@ -379,18 +392,20 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := mBottom.ScaleValue(44);
+  mBottom.Height := mBottom.ScaleValue(cBottomBarHeight);
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - 2 * (110 + cGap), 8, 110, 28);
+  mButton.SetBounds(mBottom.Width - 2 * mButton.ScaleValue(cButtonWidth + cGap), mButton.ScaleValue(cBottomButtonTop),
+    mButton.ScaleValue(cButtonWidth), mButton.ScaleValue(cButtonHeight));
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkupApply);
   mButton.Default := True;
   mButton.ModalResult := mrOk;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - (110 + cGap), 8, 110, 28);
+  mButton.SetBounds(mBottom.Width - mButton.ScaleValue(cButtonWidth + cGap), mButton.ScaleValue(cBottomButtonTop),
+    mButton.ScaleValue(cButtonWidth), mButton.ScaleValue(cButtonHeight));
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mButton.Cancel := True;

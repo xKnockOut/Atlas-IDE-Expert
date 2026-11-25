@@ -7,7 +7,7 @@
 // Einstellung vcs.provider.
 // Die Umsetzungen rufen git bzw. svn über IAtlasVcsRunner auf (Kommandozeile,
 // keine Bibliotheken). Jeder Aufruf startet einen Prozess: Er gehört nie in
-// den Hauptthread der IDE (siehe Atlas.Core.VersionControl.Worker), der Prozessläufer der
+// den Hauptthread der IDE (siehe Atlas.Plugin.Diagnostics.BackgroundJobs), der Prozessläufer der
 // IDE lehnt ihn dort ab.
 // Ohne VCL und Open Tools API; auch der Server (--changed mit SVN, #276)
 // übersetzt diese Units mit.
@@ -57,6 +57,10 @@ interface
 uses
   System.SysUtils;
 
+const
+  /// <summary>Stellen einer kurzen Git-Kennung (wie git log --oneline).</summary>
+  cAtlasVcsShortHashLength = 7;
+
 type
 {$SCOPEDENUMS ON}
   /// <summary>Art der Arbeitskopie.</summary>
@@ -105,6 +109,10 @@ type
 
   /// <summary>Update mit oder ohne Externals (#1292, vcs.externals.update); Ask fragt beim Pull.</summary>
   TAtlasVcsExternalsUpdate = (WithExternals, WithoutExternals, Ask);
+
+  /// <summary>Ergebnis von Pull (TAtlasVcsPull): neue Commits geholt, schon aktuell, wegen lokaler Änderungen nicht
+  /// geholt, keine Arbeitskopie, Fehler (auch Zeitüberschreitung oder fehlendes Programm).</summary>
+  TAtlasPullOutcome = (Updated, UpToDate, Blocked, NoWorkingCopy, Failed);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Feste Behandlung je Quelle (#1291, vcs.externals.rules): Source ist ein Präfix einer Repository-URL
@@ -905,7 +913,7 @@ begin
   end
   else
   begin
-    Result := Copy(Revision, 1, 7);
+    Result := Copy(Revision, 1, cAtlasVcsShortHashLength);
   end;
 end;
 
@@ -927,14 +935,14 @@ end;
 
 function TAtlasVcsCommit.ShortHash: string;
 begin
-  Result := Copy(Hash, 1, 7);
+  Result := Copy(Hash, 1, cAtlasVcsShortHashLength);
 end;
 
 { TAtlasVcsIncomingCommit }
 
 function TAtlasVcsIncomingCommit.ShortHash: string;
 begin
-  Result := Copy(Hash, 1, 7);
+  Result := Copy(Hash, 1, cAtlasVcsShortHashLength);
 end;
 
 { TAtlasVcsLogEntry }
@@ -951,7 +959,7 @@ begin
   end
   else
   begin
-    Result := Copy(Revision, 1, 7);
+    Result := Copy(Revision, 1, cAtlasVcsShortHashLength);
   end;
 end;
 
@@ -1004,10 +1012,13 @@ begin
 end;
 
 class function TAtlasVcsSvnBranchOptions.Legacy: TAtlasVcsSvnBranchOptions;
+const
+  /// <summary>Commit-Nachricht vor #1290; steht so in bestehenden Repositorys.</summary>
+  cLegacyBranchMessage = 'Branch {name}';
 begin
   Result := Default;
   Result.Location := '^/branches/{name}';
-  Result.Message := 'Branch {name}';
+  Result.Message := cLegacyBranchMessage;
   Result.ExternalsOnBranch := TAtlasVcsExternalAction.Keep;
   Result.ExternalsSuggest := TAtlasVcsExternalSuggest.Never;
 end;

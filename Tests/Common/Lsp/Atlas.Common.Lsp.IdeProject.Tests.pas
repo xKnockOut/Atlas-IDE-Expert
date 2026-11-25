@@ -39,7 +39,6 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.IdeProject;
 
 const
@@ -136,9 +135,11 @@ var
   mContext: TIdeProjectContext;
   mChanged: Integer;
 begin
-  mStore := TLspIdeProject.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mStore := nil;
+  mDispatcher := nil;
   try
+    mStore := TLspIdeProject.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)
@@ -174,7 +175,6 @@ var
   mDispatcher: TJsonRpcDispatcher;
   mContext: TIdeProjectContext;
   mChanged, mNamingChanged: Integer;
-  mNaming: TRuleNaming;
 begin
   mContext := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"","parameter":3}}');
   Assert.IsTrue(mContext.HasNaming[TNamingKind.Field]);
@@ -188,17 +188,14 @@ begin
   mContext := Parse('{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"m","constant":"c"}}');
   Assert.IsTrue(mContext.HasConstantPrefix);
   Assert.AreEqual('c', mContext.ConstantPrefix);
-  mNaming := mContext.RuleNaming;
-  Assert.IsTrue(mNaming.Known[TRuleNamingKind.Field]);
-  Assert.AreEqual('F', mNaming.Prefixes[TRuleNamingKind.Field]);
-  Assert.AreEqual('m', mNaming.Prefixes[TRuleNamingKind.Local]);
-  Assert.AreEqual('c', mNaming.Prefixes[TRuleNamingKind.Constant]);
-  Assert.IsFalse(mNaming.Known[TRuleNamingKind.Parameter]);
+  Assert.AreEqual('m', mContext.Naming[TNamingKind.Local]);
   Assert.AreNotEqual(Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"c"}}').NamingKey,
     Parse('{"project":"C:\\P\\A.dproj","naming":{"constant":"k"}}').NamingKey);
-  mStore := TLspIdeProject.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mStore := nil;
+  mDispatcher := nil;
   try
+    mStore := TLspIdeProject.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mNamingChanged := 0;
     mStore.OnChanged :=
@@ -238,9 +235,11 @@ var
 begin
   Assert.IsFalse(Parse('{"project":"C:\\P\\A.dproj"}').HasActive);
   Assert.IsTrue(Parse('{"project":"C:\\P\\A.dproj","active":true}').Active);
-  mStore := TLspIdeProject.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mStore := nil;
+  mDispatcher := nil;
   try
+    mStore := TLspIdeProject.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)
@@ -280,9 +279,11 @@ begin
   Assert.AreEqual(1, mContext.FormatFunctions[0].FormatIndex);
   Assert.AreEqual(-1, mContext.FormatFunctions[1].FormatIndex);
   Assert.IsTrue(mContext.FormatFunctions[1].IsMethod);
-  mStore := TLspIdeProject.Create;
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mStore := nil;
+  mDispatcher := nil;
   try
+    mStore := TLspIdeProject.Create;
+    mDispatcher := TJsonRpcDispatcher.Create;
     mChanged := 0;
     mStore.OnChanged :=
       procedure(const AContext: TIdeProjectContext)

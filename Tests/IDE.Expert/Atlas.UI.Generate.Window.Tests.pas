@@ -16,14 +16,11 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    /// <summary>Entwurf AC7: Kopf „Erzeugen“, Zeilen 1–6.</summary>
+    /// <summary>Kopf „Erzeugen“, Zeilen 1–6.</summary>
     [Test]
     procedure CaptionsLikeMockup;
     [Test]
@@ -40,7 +37,7 @@ uses
   Atlas.UI.Generate.Strings,
   System.SysUtils,
   Winapi.Windows,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Generate.Menu,
   Atlas.UI.Generate.Window;
 
@@ -78,22 +75,6 @@ begin
 end;
 
 { TAtlasGenerateWindowTests }
-
-procedure TAtlasGenerateWindowTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    CaptionsLikeMockup;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    DeleteHidesEntry;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasGenerateWindowTests.Setup;
 begin

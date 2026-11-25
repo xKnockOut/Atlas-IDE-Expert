@@ -26,7 +26,9 @@ uses
   Atlas.UI.Debug.MethodBreakpoints,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.BreakpointListMenu,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasMethodBreakpointSessionFunc = reference to function: TLspSession;
@@ -38,7 +40,7 @@ type
     cFileName = 'debug-method-breakpoints.json';
     cStoreWhat = 'Methodenhaltepunkte';
   private type
-    TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugLaunchCheck)
+    TListener = class(TAtlasDebugListener, IAtlasIdeDebugLaunchCheck)
     public
       function AllowLaunch(const AProject: IOTAProject): Boolean;
       procedure DebugStarted; override;
@@ -46,7 +48,7 @@ type
   private class var
     FSession: TAtlasMethodBreakpointSessionFunc;
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FStore: TAtlasMethodGroupStore;
     FStoreKept: Boolean;
     FLastGroup: TAtlasMethodGroup;
@@ -88,15 +90,17 @@ implementation
 uses
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Files.DataFile,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.MethodBreakpoints.Strings,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.MethodGroupFlow,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Debug.Breakpoints;
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.IDE.Debug.Breakpoints,
+  Atlas.ToolsApi.Debugger.Services,
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeMethodBreakpoints.TListener }
 
@@ -244,8 +248,10 @@ begin
       end;
     except
       // Ohne Bedingung oder Aktion hält der Haltepunkt trotzdem.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Debugger: Haltepunktbedingung fehlt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      end;
     end;
     Inc(Result);
   end;
@@ -259,7 +265,7 @@ var
   mName: string;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

@@ -15,7 +15,7 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.LinkedEditing,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TAtlasLinkedSessionFunc = reference to function: TLspSession;
@@ -73,12 +73,12 @@ type
 implementation
 
 uses
-  System.Math,
   System.JSON,
   Atlas.Text.Chars,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.IDE.Editor.Surfaces;
 
 /// <summary>Steht an oder vor ACharacter ein Zeichen eines Bezeichners?</summary>
 function NearIdentifier(const ALine: string; ACharacter: Integer): Boolean;
@@ -160,7 +160,10 @@ begin
         end;
       except
         // Server langsam oder weg: keine Sitzung, die Taste geht an die IDE.
-        mRanges := nil;
+        on ELspClientError do
+        begin
+          mRanges := nil;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.LinkedEditing,
@@ -177,15 +180,8 @@ begin
 end;
 
 class procedure TAtlasIdeLinkedEditingQuery.ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
-var
-  mCursor: TOTAEditPos;
-  mLineText: string;
 begin
-  mCursor := AView.CursorPos;
-  ALine := Max(0, mCursor.Line - 1);
-  mLineText := TAtlasEditorBuffer.LineText(AView, ALine + 1);
-  ACharacter := Min(TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
-    Length(mLineText));
+  TAtlasIdeEditSurfaces.Wrap(AView).ReadCaret(ALine, ACharacter);
 end;
 
 procedure TAtlasIdeLinkedEditingQuery.Watch(const AView: IOTAEditView);

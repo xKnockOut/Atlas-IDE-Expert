@@ -41,13 +41,13 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.GutterMarks,
   Atlas.Core.Modules.Watch,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   /// <summary>Eine Art von Markierung in der Rinne. Alle Aufrufe im Hauptthread; Ausnahmen fängt
@@ -189,24 +189,14 @@ uses
   Winapi.Windows,
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh;
 
 function LayerActive(const ALayer: IAtlasGutterLayer): Boolean;
 begin
   Result := not TAtlasGuard.Disabled(ALayer.Feature) and ALayer.Wanted;
-end;
-
-function TopEditView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
 end;
 
 /// <summary>Aktive Schichten neu verankern; mit AOnlyMarked nur die mit Markierungen in AFileName. True, wenn
@@ -266,15 +256,18 @@ var
   mOldPen: TPen;
 begin
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    ALayer.PaintIcon(ACanvas, ARect, AColors, ABack);
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      ALayer.PaintIcon(ACanvas, ARect, AColors, ABack);
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
+    end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;
@@ -439,7 +432,7 @@ begin
   ARow := Default(TRow);
   ARow.Line := -1;
   Result := False;
-  mView := TopEditView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
@@ -489,7 +482,7 @@ var
   mView: IOTAEditView;
   mText: string;
 begin
-  mView := TopEditView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
   begin
     Exit;
@@ -538,6 +531,8 @@ begin
 end;
 
 procedure TAtlasIdeGutterMarks.ShowTip;
+const
+  cTipGap = 4;
 var
   mLayer: IAtlasGutterLayer;
   mTitle, mText, mFileName: string;
@@ -567,16 +562,13 @@ begin
     end;
   TAtlasIdeStyle.Apply(FTip, FHover.Screen);
   FTip.ShowNote(mTitle, mText, mLayer.TipLinks(mFileName, mLine),
-    Point(FHover.Screen.Right + 4, FHover.Screen.Bottom + 2));
+    Point(FHover.Screen.Right + cTipGap, FHover.Screen.Bottom + 2));
 end;
 
 
 procedure TAtlasIdeGutterMarks.HideTip;
 begin
-  if (FTip <> nil) and FTip.IsShown then
-  begin
-    FTip.HidePopup;
-  end;
+  TAtlasTitledTip.HideShown(FTip);
 end;
 
 
@@ -739,13 +731,8 @@ begin
 end;
 
 class procedure TAtlasIdeGutterMarks.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 class function TAtlasIdeGutterMarks.IconRect(const AGutter: TRect; ASlot: Integer): TRect;

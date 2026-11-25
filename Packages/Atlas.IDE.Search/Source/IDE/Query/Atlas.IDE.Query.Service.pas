@@ -63,15 +63,15 @@ uses
   System.JSON,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Session,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Query.Model,
   Atlas.UI.Search.Strings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
-  Atlas.IDE.Query.Window;
+  Atlas.IDE.Query.Window,
+  Atlas.ToolsApi.Files.Service;
 
 const
   /// <summary>Der Server bricht nach vier Fünfteln von requestTimeoutMs selbst ab; das hier ist nur die Grenze für
@@ -90,14 +90,13 @@ type
     /// <summary>Nummer der letzten Katalog-Anfrage; ältere Antworten fallen weg.</summary>
     FCatalogRequest: Integer;
     procedure Wire(AFrame: TAtlasCodeQueryFrame);
-    function ProjectUri(out AUri: string): Boolean;
     function Symbols(const APredicate, APrefix: string): TArray<string>;
   public
     constructor Create(const ARequest: TAtlasCodeQueryRequest; const ASymbols: TAtlasCodeQuerySymbols);
     destructor Destroy; override;
     procedure LoadCatalog;
     procedure Run(const AQuery: string);
-    procedure Cancel;
+    class procedure Cancel; static;
     procedure SaveRule(const AQuery: string);
   end;
 
@@ -243,19 +242,6 @@ begin
     end);
 end;
 
-function TCodeQueryState.ProjectUri(out AUri: string): Boolean;
-var
-  mProject: IOTAProject;
-begin
-  AUri := '';
-  mProject := GetActiveProject;
-  Result := (mProject <> nil) and (mProject.FileName <> '');
-  if Result then
-  begin
-    AUri := TLspSession.PathToUri(mProject.FileName);
-  end;
-end;
-
 function TCodeQueryState.Symbols(const APredicate, APrefix: string): TArray<string>;
 begin
   Result := nil;
@@ -274,7 +260,7 @@ var
   mUri: string;
   mRequest: Integer;
 begin
-  if not ProjectUri(mUri) then
+  if not TAtlasIdeFiles.ActiveProjectUri(mUri) then
   begin
     mUri := '';
   end;
@@ -309,7 +295,7 @@ begin
   begin
     Exit;
   end;
-  if not ProjectUri(mUri) then
+  if not TAtlasIdeFiles.ActiveProjectUri(mUri) then
   begin
     mFrame.SetMessage(TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryNoProject), True);
     Exit;
@@ -351,7 +337,7 @@ begin
   end;
 end;
 
-procedure TCodeQueryState.Cancel;
+class procedure TCodeQueryState.Cancel;
 var
   mFrame: TAtlasCodeQueryFrame;
 begin

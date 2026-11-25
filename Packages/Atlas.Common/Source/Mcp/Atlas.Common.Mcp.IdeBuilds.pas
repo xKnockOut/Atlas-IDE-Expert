@@ -12,17 +12,22 @@
 //   {"ok": true, "build": {project, kind, configuration, platform, success,
 //    durationMs, finishedAt, messages[]}}  bzw. {"ok": false, "reason": "…"}
 // "build" hat das Format von TMcpBuildTools.ToFileText. Nimmt das Plugin den
-// Auftrag nicht innerhalb von TakeMs an, zieht der MCP-Server ihn zurück.
+// Auftrag nicht innerhalb von TakeMs an, zieht der MCP-Server ihn zurück (Austausch in Atlas.Common.Mcp.IdeInbox).
 // Welche IDE welche Projekte offen hat, steht unter "projects" und
 // "activeProject" in editor-dirty-<pid>.json (TAtlasDirtyExport im Plugin).
 // Gegenstück im Plugin: Atlas.Core.Assistants.BuildInbox und Atlas.IDE.Assistants.BuildInbox.
+// Projekt, das in keiner IDE offen ist (#2895, auch für debug_start): PickOrOpen sucht die Projektdatei unter dem
+// Arbeitsordner und lässt nach mcp.openProjects (MayOpen: fragen, immer, nie) die IDE mit dem aktiven Projekt
+// unter dem Arbeitsordner (sonst die erste) sie öffnen; das Plugin öffnet sie dann zur Projektgruppe hinzu.
 
 interface
 
 {$SCOPEDENUMS ON}
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Mcp.Confirm,
+  Atlas.Common.Mcp.IdeInbox;
 
 type
   /// <summary>Eine laufende IDE mit Atlas-Plugin laut editor-dirty-&lt;pid&gt;.json.</summary>
@@ -43,16 +48,12 @@ type
 
   TMcpIdeBuildOutcome = (Done, NotTaken, Refused, TimedOut);
 
-  /// <summary>Warten auf das Plugin: AWait schläft kurz, Clock liefert Millisekunden, dazu die Fristen bis zur
-  /// Übernahme und für den Build.</summary>
-  TMcpIdeBuildWaiting = record
-    Wait: TProc;
-    Clock: TFunc<Int64>;
-    TakeMs: Int64;
-    BuildMs: Int64;
-    class function Make(const AWait: TProc; const AClock: TFunc<Int64>; ATakeMs, ABuildMs: Int64):
-      TMcpIdeBuildWaiting; static;
-  end;
+  /// <summary>mcp.openProjects (#2895): Projekt, das in keiner IDE offen ist, öffnen nach Rückfrage, immer oder nie.
+  /// </summary>
+  TMcpOpenProjects = (Ask, Always, Never);
+
+  /// <summary>Darf die IDE AProjectFile öffnen? False mit Grund.</summary>
+  TMcpMayOpenFunc = reference to function(const AProjectFile: string; out AReason: string): Boolean;
 
   TMcpIdeBuilds = class
   public const
@@ -74,6 +75,21 @@ type
     /// </summary>
     class function Pick(const AEntries: TArray<TMcpIdeEntry>; const ARoot, AProject: string; out APid: Cardinal;
       out AProjectFile, AReason: string): Boolean; static;
+    /// <summary>Projektdatei zu AProject (voller Pfad, Dateiname oder Name ohne Endung) unter ACandidates; ein
+    /// vorhandener voller Pfad gilt auch ohne Eintrag. '' ohne Treffer.</summary>
+    class function ProjectOnDisk(const ACandidates: TArray<string>; const AProject: string): string; static;
+    /// <summary>Wie Pick; ist AProject in keiner IDE offen, aber als Datei da (ProjectOnDisk über ACandidates, erst
+    /// dann gelesen), die IDE mit dem aktiven Projekt unter ARoot (sonst die erste) und die Datei, wenn AMayOpen
+    /// zustimmt (#2895). AMayOpen nil: nur Pick.</summary>
+    class function PickOrOpen(const AEntries: TArray<TMcpIdeEntry>; const ARoot, AProject: string;
+      const ACandidates: TFunc<TArray<string>>; const AMayOpen: TMcpMayOpenFunc; out APid: Cardinal;
+      out AProjectFile, AReason: string): Boolean; static;
+    /// <summary>Wert von mcp.openProjects; Unbekanntes gilt als Ask.</summary>
+    class function OpenPolicyOf(const AValue: string): TMcpOpenProjects; static;
+    /// <summary>Entscheidet nach APolicy, ob AProjectFile geöffnet werden darf; Ask fragt über AChoose (nil = kein
+    /// Weg zum Menschen: nein). False mit Grund.</summary>
+    class function MayOpen(APolicy: TMcpOpenProjects; const AProjectFile: string; const AChoose: TMcpChooseFunc;
+      out AReason: string): Boolean; static;
     class function RequestText(const ARequest: TMcpIdeBuildRequest): string; static;
     /// <summary>Liest die Antwort des Plugins; ABuildText = Objekt "build" als JSON-Text.</summary>
     class function ParseAnswer(const AText: string; out AOk: Boolean; out ABuildText, AReason: string): Boolean;
@@ -86,7 +102,7 @@ type
       const AClock: TFunc<Int64>; out ABuildText, AReason: string): TMcpIdeBuildOutcome; overload; static;
     /// <summary>Wie oben mit eigenen Fristen (Tests).</summary>
     class function Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest;
-      const AWaiting: TMcpIdeBuildWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome; overload; static;
+      const AWaiting: TMcpIdeWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome; overload; static;
   end;
 
 implementation
@@ -101,7 +117,8 @@ uses
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TIdeBuildsText = (NoRADStudioIDEWith, NoRunningIDEWithThe, NoRunningIDEWithThe2, TheIDEDeliveredNoResult,
-    TheIDEDidNotAccept, TheIDEAcceptedTheBuild, AnswerOfTheIDENot);
+    TheIDEDidNotAccept, TheIDEAcceptedTheBuild, AnswerOfTheIDENot, OpenQuestion, OpenYes, OpenNo, OpenNever,
+    OpenDeclined, OpenNotAsked);
 
 const
   cTexts: array[TIdeBuildsText] of TAtlasText = (
@@ -121,7 +138,20 @@ const
      En: 'The IDE did not accept the build (plugin busy, switched off or too old).'),
     (De: 'Die IDE hat den Build angenommen, aber nicht rechtzeitig gemeldet.';
      En: 'The IDE accepted the build but did not report in time.'),
-    (De: 'Antwort der IDE nicht lesbar.'; En: 'Answer of the IDE not readable.'));
+    (De: 'Antwort der IDE nicht lesbar.'; En: 'Answer of the IDE not readable.'),
+    (De: 'Ein KI-Assistent möchte das Projekt %s in der IDE öffnen (zur Projektgruppe hinzu). Öffnen?';
+     En: 'An AI assistant wants to open the project %s in the IDE (added to the project group). Open it?'),
+    (De: 'Öffnen'; En: 'Open'),
+    (De: 'Nicht öffnen'; En: 'Do not open'),
+    (De: 'Das Projekt %s ist in keiner laufenden IDE offen, und mcp.openProjects ist "never". Projekt in der IDE ' +
+      'öffnen und erneut aufrufen.';
+     En: 'The project %s is not open in any running IDE, and mcp.openProjects is "never". Open the project in the ' +
+      'IDE and call again.'),
+    (De: 'Der Benutzer möchte das Projekt %s nicht öffnen lassen.'; En: 'The user does not want the project %s opened.'),
+    (De: 'Das Projekt %s ist in keiner laufenden IDE offen, und niemand konnte gefragt werden, ob es geöffnet ' +
+      'werden darf. Projekt in der IDE öffnen oder mcp.openProjects auf "always" setzen.';
+     En: 'The project %s is not open in any running IDE, and nobody could be asked whether it may be opened. Open ' +
+      'the project in the IDE or set mcp.openProjects to "always".'));
 
 { TMcpIdeBuilds }
 
@@ -251,6 +281,105 @@ begin
   Result := False;
 end;
 
+class function TMcpIdeBuilds.ProjectOnDisk(const ACandidates: TArray<string>; const AProject: string): string;
+var
+  mCandidate: string;
+begin
+  Result := '';
+  if AProject = '' then
+  begin
+    Exit;
+  end;
+  if TProjectPaths.IsAbsolute(AProject) and FileExists(AProject) then
+  begin
+    Exit(AProject);
+  end;
+  for mCandidate in ACandidates do
+  begin
+    if Matches(mCandidate, AProject) then
+    begin
+      Exit(mCandidate);
+    end;
+  end;
+end;
+
+class function TMcpIdeBuilds.PickOrOpen(const AEntries: TArray<TMcpIdeEntry>; const ARoot, AProject: string;
+  const ACandidates: TFunc<TArray<string>>; const AMayOpen: TMcpMayOpenFunc; out APid: Cardinal;
+  out AProjectFile, AReason: string): Boolean;
+var
+  mFile, mActive, mIgnored: string;
+begin
+  Result := Pick(AEntries, ARoot, AProject, APid, AProjectFile, AReason);
+  if Result or (AProject = '') or (Length(AEntries) = 0) or not Assigned(AMayOpen) then
+  begin
+    Exit;
+  end;
+  mFile := ProjectOnDisk(ACandidates(), AProject);
+  if (mFile = '') or not AMayOpen(mFile, AReason) then
+  begin
+    Exit(False);
+  end;
+  // Die IDE, in der der Benutzer unter dem Arbeitsordner arbeitet; sonst die erste.
+  if not Pick(AEntries, ARoot, '', APid, mActive, mIgnored) then
+  begin
+    APid := AEntries[0].Pid;
+  end;
+  AProjectFile := mFile;
+  AReason := '';
+  Result := True;
+end;
+
+class function TMcpIdeBuilds.OpenPolicyOf(const AValue: string): TMcpOpenProjects;
+begin
+  if SameText(AValue, 'always') then
+  begin
+    Exit(TMcpOpenProjects.Always);
+  end;
+  if SameText(AValue, 'never') then
+  begin
+    Exit(TMcpOpenProjects.Never);
+  end;
+  Result := TMcpOpenProjects.Ask;
+end;
+
+class function TMcpIdeBuilds.MayOpen(APolicy: TMcpOpenProjects; const AProjectFile: string;
+  const AChoose: TMcpChooseFunc; out AReason: string): Boolean;
+var
+  mName: string;
+  mChoice: Integer;
+begin
+  AReason := '';
+  mName := ExtractFileName(AProjectFile.Replace('/', PathDelim));
+  case APolicy of
+    TMcpOpenProjects.Always:
+      Exit(True);
+    TMcpOpenProjects.Never:
+      begin
+        AReason := cTexts[TIdeBuildsText.OpenNever].Fmt([mName]);
+        Exit(False);
+      end;
+  end;
+  mChoice := TMcpConfirm.cNotAsked;
+  if Assigned(AChoose) then
+  begin
+    mChoice := AChoose(cTexts[TIdeBuildsText.OpenQuestion].Fmt([mName]),
+      TArray<string>.Create(cTexts[TIdeBuildsText.OpenYes].Text, cTexts[TIdeBuildsText.OpenNo].Text));
+  end;
+  Result := mChoice = 0;
+  if Result then
+  begin
+    Exit;
+  end;
+  if mChoice = TMcpConfirm.cNotAsked then
+  begin
+    AReason := cTexts[TIdeBuildsText.OpenNotAsked].Fmt([mName]);
+  end
+  else
+  begin
+    AReason := cTexts[TIdeBuildsText.OpenDeclined].Fmt([mName]);
+  end;
+end;
+
 class function TMcpIdeBuilds.RequestText(const ARequest: TMcpIdeBuildRequest): string;
 var
   mJson: TJSONObject;
@@ -303,81 +432,32 @@ begin
   end;
 end;
 
-procedure DeleteQuietly(const AFileName: string);
-begin
-  try
-    if FileExists(AFileName) then
-    begin
-      TFile.Delete(AFileName);
-    end;
-  except
-    // lsp-ignore: catch-all-without-raise -- Austauschdatei mit der IDE nach Kräften
-    on Exception do
-      ;
-  end;
-end;
-
-{ TMcpIdeBuildWaiting }
-
-class function TMcpIdeBuildWaiting.Make(const AWait: TProc; const AClock: TFunc<Int64>; ATakeMs,
-  ABuildMs: Int64): TMcpIdeBuildWaiting;
-begin
-  Result.Wait := AWait;
-  Result.Clock := AClock;
-  Result.TakeMs := ATakeMs;
-  Result.BuildMs := ABuildMs;
-end;
-
 class function TMcpIdeBuilds.Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest; const AWait: TProc;
   const AClock: TFunc<Int64>; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
 begin
-  Result := Send(AInbox, ARequest, TMcpIdeBuildWaiting.Make(AWait, AClock, cTakeMs, cBuildMs), ABuildText, AReason);
+  Result := Send(AInbox, ARequest, TMcpIdeWaiting.Make(AWait, AClock, cTakeMs, cBuildMs), ABuildText, AReason);
 end;
 
 class function TMcpIdeBuilds.Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest;
-  const AWaiting: TMcpIdeBuildWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
+  const AWaiting: TMcpIdeWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
 var
-  mId, mRequest, mAnswer, mText: string;
-  mStarted: Int64;
+  mText: string;
   mOk: Boolean;
 begin
   ABuildText := '';
   AReason := '';
-  mId := TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '');
-  mRequest := TPath.Combine(AInbox, mId + '.json');
-  mAnswer := TPath.Combine(AInbox, mId + '.result.json');
-  ForceDirectories(AInbox);
-  TFile.WriteAllText(mRequest + '.tmp', RequestText(ARequest), TEncoding.UTF8);
-  TFile.Move(mRequest + '.tmp', mRequest);
-  mStarted := AWaiting.Clock();
-  // Warten, bis das Plugin den Auftrag übernimmt (die .json verschwindet) oder schon antwortet.
-  while (AWaiting.Clock() - mStarted < AWaiting.TakeMs) and FileExists(mRequest) and not FileExists(mAnswer) do
-  begin
-    AWaiting.Wait();
+  case TMcpIdeInbox.Exchange(AInbox, RequestText(ARequest), AWaiting, mText) of
+    TMcpIdeExchangeOutcome.NotTaken:
+      begin
+        AReason := cTexts[TIdeBuildsText.TheIDEDidNotAccept].Text;
+        Exit(TMcpIdeBuildOutcome.NotTaken);
+      end;
+    TMcpIdeExchangeOutcome.TimedOut:
+      begin
+        AReason := cTexts[TIdeBuildsText.TheIDEAcceptedTheBuild].Text;
+        Exit(TMcpIdeBuildOutcome.TimedOut);
+      end;
   end;
-  if FileExists(mRequest) and not FileExists(mAnswer) and DeleteFile(mRequest) then
-  begin
-    AReason := cTexts[TIdeBuildsText.TheIDEDidNotAccept].Text;
-    Exit(TMcpIdeBuildOutcome.NotTaken);
-  end;
-  mStarted := AWaiting.Clock();
-  while (AWaiting.Clock() - mStarted < AWaiting.BuildMs) and not FileExists(mAnswer) do
-  begin
-    AWaiting.Wait();
-  end;
-  if not FileExists(mAnswer) then
-  begin
-    AReason := cTexts[TIdeBuildsText.TheIDEAcceptedTheBuild].Text;
-    Exit(TMcpIdeBuildOutcome.TimedOut);
-  end;
-  try
-    mText := TFile.ReadAllText(mAnswer, TEncoding.UTF8);
-  except
-    // lsp-ignore: catch-all-without-raise -- Austauschdatei mit der IDE nach Kräften
-    on Exception do
-      mText := '';
-  end;
-  DeleteQuietly(mAnswer);
   if not ParseAnswer(mText, mOk, ABuildText, AReason) then
   begin
     AReason := cTexts[TIdeBuildsText.AnswerOfTheIDENot].Text;

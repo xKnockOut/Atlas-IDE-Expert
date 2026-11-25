@@ -12,7 +12,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.References,
   Atlas.Common.Todos.Contract,
@@ -56,8 +56,6 @@ type
     /// zu ARoot.</summary>
     class function Todos(const ASettings: TServerSettings; const ARoot: string; const AFiles: TArray<string>;
       const AReadText: TReferenceReadText; const AFilter: TTodoFilter; AJson: Boolean): string; static;
-    /// <summary>AFileName relativ zu ARoot, wenn sie darunter liegt; sonst unverändert.</summary>
-    class function RelativeTo(const ARoot, AFileName: string): string; static;
     /// <summary>Befund als "Zeile:Spalte: Schwere [Regel] [Konfidenz …] Meldung" (Zeilen und Spalten ab 1).
     /// </summary>
     class function FindingLine(const AFinding: TRuleFinding): string; static;
@@ -68,17 +66,18 @@ implementation
 uses
   System.Classes,
   System.StrUtils,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Output,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Metrics.Collector,
   Atlas.Common.Metrics.Report,
-  Atlas.Common.Rules.Builtin.Metrics,
+  Atlas.Common.Metrics.Limits,
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Builtin.Todos,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Todos.Keywords,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -147,7 +146,7 @@ var
   mFiles: TArray<TFileMetrics>;
   mLimits: TMetricLimits;
 begin
-  mLimits := TMetricRules.Limits(ASettings);
+  mLimits := TMetricSettings.Limits(ASettings);
   mCollector := TMetricsCollector.Create;
   try
     mFiles := mCollector.Collect(AFiles, ARoot,
@@ -178,7 +177,7 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := Assigned(AReadText) and AReadText(AFileName, AText);
-    end, TTodoRules.Keywords(ASettings)), AFilter);
+    end, TTodoKeywords.FromSettings(ASettings)), AFilter);
   if AJson then
   begin
     Result := TTodoReport.Json(mFiles);
@@ -189,22 +188,13 @@ begin
   end;
 end;
 
-class function TMcpCheckTools.RelativeTo(const ARoot, AFileName: string): string;
-begin
-  Result := AFileName;
-  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
-  begin
-    Result := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
-  end;
-end;
-
 /// <summary>Befunde der Regeln aus AScope in AText (Inhalt von AFileName).</summary>
 function FileFindings(const AScope: TMcpRuleScope; const AFileName, AText: string; const ASource: TCheckSourceFunc;
   const AProject: TCheckProjectFunc): TArray<TRuleFinding>;
 var
   mScopes: TFindingScopes;
 begin
-  Result := TFileChecker.CheckText(AScope.Rules, AScope.Settings, TMcpCheckTools.RelativeTo(AScope.Root, AFileName),
+  Result := TFileChecker.CheckText(AScope.Rules, AScope.Settings, TTextNames.RelativeTo(AScope.Root, AFileName),
     AText, TCheckOrigin.ForFile(AProject, ASource, AFileName), mScopes);
 end;
 

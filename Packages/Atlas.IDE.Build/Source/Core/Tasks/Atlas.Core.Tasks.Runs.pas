@@ -1,10 +1,9 @@
 ﻿unit Atlas.Core.Tasks.Runs;
 
 // Läufe von Projektaufgaben (#900), ohne VCL und Open Tools API:
-// - TAtlasTaskLines zerlegt die Ausgabe eines Prozesses in Zeilen, sobald
-//   ein Zeilenende da ist: je Zeile UTF-8, wenn die Bytes gültiges UTF-8
-//   sind, sonst die Codepage der Konsole (pwsh und cmd schreiben umgeleitet
-//   in der OEM-Codepage); CR und Farbfolgen (ESC [ … m) fallen weg.
+// - Die Zerlegung der Ausgabe in Zeilen (UTF-8, sonst Codepage der Konsole)
+//   steht in Base (TAtlasOutputLines, Atlas.Core.Processes.OutputLines), weil
+//   auch die angedockte Konsolenausgabe des Debuggers (#581) sie braucht.
 // - TAtlasTaskRun: Ergebnis eines Laufs mit Ausgabe, Befunden, Exit-Code,
 //   Dauer und Ausgang (fertig, Programm fehlt, Start fehlgeschlagen,
 //   Zeitlimit, abgebrochen).
@@ -21,40 +20,10 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Matchers;
 
 type
-{$SCOPEDENUMS ON}
-  TAtlasTaskOutcome = (Finished, ProgramMissing, StartFailed, TimedOut, Cancelled);
-{$SCOPEDENUMS OFF}
-
-  TAtlasTaskLineProc = reference to procedure(const ALine: string);
-
-  /// <summary>Ergebnis des Prozesses einer Aufgabe (Atlas.Core.Tasks.Adapters.Process).</summary>
-  TAtlasTaskProcessResult = record
-    Outcome: TAtlasTaskOutcome;
-    ExitCode: Integer;
-    /// <summary>StartFailed: Grund oder fehlender Arbeitsordner; ProgramMissing: der Befehl.</summary>
-    Error: string;
-  end;
-
-  TAtlasTaskLines = class
-  private
-    FPending: TBytes;
-    FCodePage: Integer;
-    function Decode(const ABytes: TBytes; AStart, ACount: Integer): string;
-  public
-    /// <summary>ACodePage: Codepage für Zeilen, die kein gültiges UTF-8 sind (GetOEMCP; 0 = nur UTF-8).</summary>
-    constructor Create(ACodePage: Integer);
-    /// <summary>Neue Bytes; liefert die Zeilen, die damit fertig sind.</summary>
-    function Feed(const ABytes: TBytes; ACount: Integer): TArray<string>;
-    /// <summary>Rest ohne Zeilenende am Schluss; leer, wenn nichts mehr da ist.</summary>
-    function Flush: TArray<string>;
-    /// <summary>Zeile ohne CR und ohne Farbfolgen.</summary>
-    class function Clean(const ALine: string): string; static;
-  end;
-
   TAtlasTaskCounts = record
     Errors: Integer;
     Warnings: Integer;
@@ -152,118 +121,7 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Text.Encoding,
   Atlas.Text.Json;
-
-{ TAtlasTaskLines }
-
-constructor TAtlasTaskLines.Create(ACodePage: Integer);
-begin
-  inherited Create;
-  FCodePage := ACodePage;
-end;
-
-/// <summary>Letztes Zeichen der Steuerfolge, die bei AIndex mit ESC beginnt: CSI „ESC [ … Buchstabe“,
-/// OSC „ESC ] … BEL“ bzw. „… ESC \“, sonst ESC mit einem Zeichen.</summary>
-function EscapeEnd(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  if (Result <= Length(AText)) and (AText[Result] = '[') then
-  begin
-    Inc(Result);
-    while (Result <= Length(AText)) and not CharInSet(AText[Result], ['@'..'~']) do
-    begin
-      Inc(Result);
-    end;
-  end
-  else if (Result <= Length(AText)) and (AText[Result] = ']') then
-  begin
-    while (Result <= Length(AText)) and (AText[Result] <> #7) and not ((AText[Result] = '\') and
-      (AText[Result - 1] = #27)) do
-    begin
-      Inc(Result);
-    end;
-  end;
-end;
-
-function TAtlasTaskLines.Decode(const ABytes: TBytes; AStart, ACount: Integer): string;
-var
-  mEncoding: TEncoding;
-begin
-  if ACount <= 0 then
-  begin
-    Exit('');
-  end;
-  // Gültiges UTF-8 (ohne überlange Formen, Atlas.Text) geht vor der Codepage.
-  if (FCodePage = 0) or TTextEncodingProbe.IsValidUtf8(Copy(ABytes, AStart, ACount), 0) then
-  begin
-    Exit(Clean(TEncoding.UTF8.GetString(ABytes, AStart, ACount)));
-  end;
-  try
-    mEncoding := TEncoding.GetEncoding(FCodePage);
-    try
-      Result := Clean(mEncoding.GetString(ABytes, AStart, ACount));
-    finally
-      mEncoding.Free;
-    end;
-  except
-    on Exception do
-      Result := Clean(TEncoding.ANSI.GetString(ABytes, AStart, ACount));
-  end;
-end;
-
-function TAtlasTaskLines.Feed(const ABytes: TBytes; ACount: Integer): TArray<string>;
-var
-  mData: TBytes;
-  mIndex, mStart: Integer;
-begin
-  Result := nil;
-  if ACount <= 0 then
-  begin
-    Exit;
-  end;
-  mData := FPending;
-  SetLength(mData, Length(FPending) + ACount);
-  Move(ABytes[0], mData[Length(FPending)], ACount);
-  mStart := 0;
-  for mIndex := 0 to High(mData) do
-  begin
-    if mData[mIndex] = 10 then
-    begin
-      Result := Result + [Decode(mData, mStart, mIndex - mStart)];
-      mStart := mIndex + 1;
-    end;
-  end;
-  FPending := Copy(mData, mStart, Length(mData) - mStart);
-end;
-
-function TAtlasTaskLines.Flush: TArray<string>;
-begin
-  Result := nil;
-  if Length(FPending) > 0 then
-  begin
-    Result := [Decode(FPending, 0, Length(FPending))];
-  end;
-  FPending := nil;
-end;
-
-class function TAtlasTaskLines.Clean(const ALine: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := ALine;
-  if (Result <> '') and (Result[Length(Result)] = #13) then
-  begin
-    SetLength(Result, Length(Result) - 1);
-  end;
-  // Steuerfolgen der Konsole (pwsh färbt Fehler).
-  mIndex := Pos(#27, Result);
-  while mIndex > 0 do
-  begin
-    Delete(Result, mIndex, EscapeEnd(Result, mIndex) - mIndex + 1);
-    mIndex := Pos(#27, Result);
-  end;
-end;
 
 { TAtlasTaskCounts }
 
@@ -568,17 +426,6 @@ begin
   end;
 end;
 
-function DateOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mValue: TJSONValue;
-begin
-  mValue := AObject.GetValue(AName);
-  if not (mValue is TJSONString) or not TryISO8601ToDate(mValue.Value, Result, False) then
-  begin
-    Result := 0;
-  end;
-end;
-
 function ReadOutcome(AValue: TJSONValue): TAtlasTaskOutcome;
 var
   mOutcome: TAtlasTaskOutcome;
@@ -607,7 +454,7 @@ begin
   Result.Counts.Warnings := Integer(TJsonRead.Int64Or(AObject, 'warnings', 0));
   Result.Counts.Infos := Integer(TJsonRead.Int64Or(AObject, 'infos', 0));
   Result.DurationMs := TJsonRead.Int64Or(AObject, 'durationMs', 0);
-  Result.FinishedAt := DateOf(AObject, 'finished');
+  Result.FinishedAt := TJsonRead.IsoTime(AObject, 'finished', False);
 end;
 
 function ReadRuns(AValue: TJSONValue): TArray<TAtlasTaskLastRun>;
@@ -658,7 +505,7 @@ begin
       mProject := TProject.Create;
       FProjects.Add(mProject);
       mProject.FKey := Key(mPair.JsonString.Value);
-      mProject.FUsed := DateOf(mItem, 'used');
+      mProject.FUsed := TJsonRead.IsoTime(mItem, 'used', False);
       mProject.FHidden := TJsonRead.Strings(mItem.GetValue('hidden'));
       mProject.FLast := ReadRuns(mItem.GetValue('last'));
     end;

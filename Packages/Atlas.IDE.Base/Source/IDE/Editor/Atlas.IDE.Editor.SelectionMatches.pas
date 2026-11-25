@@ -32,9 +32,9 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Editor.SelectionMatches,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Vcl.Theme.EditorFont;
 
 type
   TAtlasIdeSelectionMatches = class
@@ -101,18 +101,18 @@ implementation
 uses
   System.Math,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Editor.Strings,
-  Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSettings,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.PaintedLine;
 
 function OptionsKey(const AOptions: TAtlasSelectionMatchOptions): string;
@@ -268,7 +268,7 @@ var
 begin
   ATerm := '';
   AView := nil;
-  if TAtlasIdeSettings.SelectionMatchesOn(AOptions, mNavigateF3) and
+  if TAtlasIdeEditorSettings.SelectionMatchesOn(AOptions, mNavigateF3) and
     not TAtlasGuard.Disabled(TAtlasFeature.SelectionMatches) then
   begin
     AView := TAtlasEditorBuffer.ActiveView;
@@ -457,13 +457,8 @@ begin
 end;
 
 class procedure TAtlasIdeSelectionMatches.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.InvalidateCurrent;
 end;
 
 end.

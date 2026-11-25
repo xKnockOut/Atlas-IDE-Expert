@@ -37,8 +37,8 @@ uses
   Atlas.Core.Signature.Controller,
   Atlas.Core.Signature.EditorPlan,
   Atlas.UI.Signature.Hint,
-  Atlas.Core.Editor.CloseRules,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Editor.CloseRules,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Signature.FormatMarks;
 
 type
@@ -88,7 +88,7 @@ type
   public
     /// <summary>Beim nächsten Hint für AName die Überladung AIndex wählen (aus dem Detailpanel, #425).</summary>
     class procedure PreferOverload(const AName: string; AIndex: Integer); static;
-    /// <summary>ASource: Server-Anbieter, eingesetzt von der Kompositionswurzel.</summary>
+    /// <summary>ASource: Server-Anbieter, eingesetzt von der Kompositionswurzel; ALog: Protokoll, nie nil.</summary>
     constructor Create(const ASource: IAtlasSignatureSource; const ACompletionOpen: TAtlasBoolFunc;
       const ALog: TAtlasLogFunc);
     destructor Destroy; override;
@@ -104,51 +104,19 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Lsp.Client,
   Vcl.Forms,
   DockForm,
   Atlas.Core.Signature.CallScanner,
   Atlas.Core.Signature.Format,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Lsp.Session;
-
-/// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
-function EditorSize(AWindow: HWND): TPoint;
-var
-  mArea: TRect;
-begin
-  if (AWindow <> 0) and GetClientRect(AWindow, mArea) then
-  begin
-    Result := Point(mArea.Width, mArea.Height);
-  end
-  else
-  begin
-    Result := Point(0, 0);
-  end;
-end;
-
-/// <summary>Zustand für TAtlasCloseRules (#414).</summary>
-function WindowState(const AView: IOTAEditView; AWindow, AFocus: HWND): TAtlasEditorWindowState;
-begin
-  Result := Default(TAtlasEditorWindowState);
-  Result.AppActive := Application.Active;
-  Result.Focus := AFocus;
-  Result.Size := EditorSize(AWindow);
-  if AView = nil then
-  begin
-    Exit;
-  end;
-  Result.TopRow := AView.TopRow;
-  Result.Rows := AView.ViewSize.cy;
-  if AView.Buffer <> nil then
-  begin
-    Result.FileName := AView.Buffer.FileName;
-  end;
-end;
+  Atlas.Core.Lsp.Session,
+  Atlas.ToolsApi.Editor.Caret,
+  Atlas.ToolsApi.Editor.Windows;
 
 type
   /// <summary>Cursor eines Editors: Text, Zeile (ab 1), Zeichen in der Zeile und Offset im Text.</summary>
@@ -169,22 +137,6 @@ begin
   Result.Character := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, mCursor.Line), mCursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
   Result.Caret := TAtlasEditorBuffer.CharOffset(Result.Text, mCursor.Line - 1, Result.Character);
-end;
-
-/// <summary>Fenster und Rechteck des Carets (Bildschirmkoordinaten); False ohne Caret.</summary>
-function CaretAnchor(out AWindow: HWND; out AAnchor: TRect): Boolean;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
-  AWindow := mInfo.hwndCaret;
-  AAnchor := mInfo.rcCaret;
-  if Result then
-  begin
-    MapWindowPoints(AWindow, 0, AAnchor, 2);
-  end;
 end;
 
 type
@@ -299,6 +251,8 @@ end;
 
 constructor TAtlasEditorSignature.Create(const ASource: IAtlasSignatureSource; const ACompletionOpen: TAtlasBoolFunc;
   const ALog: TAtlasLogFunc);
+const
+  cTickMs = 50;
 var
   mEditor: IOTAEditorServices;
   mNotifier: INTAEditServicesNotifier;
@@ -314,7 +268,7 @@ begin
   FProvider := ASource;
   FMarks := TAtlasIdeFormatMarks.Create;
   FHint := TAtlasSignatureHint.Create(nil);
-  FController := TAtlasSignatureController.Create(FHint);
+  FController := TAtlasSignatureController.Create(TAtlasSignatureViews.ViewOf(FHint));
   FHint.OnSelect :=
     procedure(AIndex: Integer)
     begin
@@ -323,7 +277,7 @@ begin
   FKeys := TSignatureKeys.Create(Self);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := 50;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
   if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) then
   begin
@@ -445,10 +399,7 @@ end;
 
 procedure TAtlasEditorSignature.Log(const AMessage: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AMessage);
-  end;
+  FLog(AMessage);
 end;
 
 procedure TAtlasEditorSignature.TimerTick(Sender: TObject);
@@ -481,7 +432,7 @@ begin
     Exit;
   end;
   // IDE inaktiv, Fokus woanders, Größe geändert, Ankerzeile außer Sicht: schließen (#414).
-  mNow := WindowState(FView, FEditorWindow, GetFocus);
+  mNow := TAtlasIdeEditorWindows.WindowState(FView, FEditorWindow, GetFocus);
   if TAtlasCloseRules.Hint(FOpened, mNow, FAnchorLine, mMove) <> TAtlasCloseReason.None then
   begin
     Close;
@@ -603,7 +554,7 @@ begin
     FController.UpdateParameter(mSite.ActiveParameter);
     Exit(True);
   end;
-  if not CaretAnchor(mWindow, mAnchor) then
+  if not TAtlasIdeCaret.TryFind(mWindow, mAnchor) then
   begin
     Exit;
   end;
@@ -623,7 +574,7 @@ begin
   FView := AView;
   FEditorWindow := mWindow;
   FOpenParen := mSite.OpenParen;
-  FOpened := WindowState(AView, FEditorWindow, FEditorWindow);
+  FOpened := TAtlasIdeEditorWindows.WindowState(AView, FEditorWindow, FEditorWindow);
   FAnchorLine := mSpot.Line;
   FPending := FProvider.Query(AView.Buffer.FileName, mSpot.Text, mSpot.Line - 1, mSpot.Character,
     procedure(const AHelp: TAtlasSignatureHelp)

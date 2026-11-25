@@ -196,13 +196,17 @@ implementation
 
 uses
   System.Classes,
-  System.DateUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
   System.JSON,
   System.Math,
   Atlas.Core.Tracker.Files,
   Atlas.Text.Json;
+
+const
+  cMsPerMinute = 60000;
+  /// <summary>Mehr Fehlschläge zählt Failed nicht; ab hier gilt ohnehin cMaxBackoffMinutes.</summary>
+  cMaxCountedFailures = 16;
 
 { TAtlasTrackerNotice }
 
@@ -296,7 +300,7 @@ var
   mBase, mCap: UInt64;
   mStep: Integer;
 begin
-  mBase := UInt64(TAtlasTrackerNotify.Interval(AIntervalMinutes)) * 60000;
+  mBase := UInt64(TAtlasTrackerNotify.Interval(AIntervalMinutes)) * cMsPerMinute;
   if UInt64(PollSeconds) * 1000 > mBase then
   begin
     mBase := UInt64(PollSeconds) * 1000;
@@ -306,7 +310,7 @@ begin
   begin
     Exit;
   end;
-  mCap := UInt64(TAtlasTrackerNotify.cMaxBackoffMinutes) * 60000;
+  mCap := UInt64(TAtlasTrackerNotify.cMaxBackoffMinutes) * cMsPerMinute;
   if mBase >= mCap then
   begin
     Exit;
@@ -366,8 +370,7 @@ end;
 
 function TAtlasTrackerNotifySchedule.Failed: Boolean;
 begin
-  // Obergrenze genügt: ab hier gilt ohnehin MaxBackoffMinutes.
-  if Failures < 16 then
+  if Failures < cMaxCountedFailures then
   begin
     Inc(Failures);
   end;
@@ -434,7 +437,7 @@ end;
 
 class function TAtlasTrackerNotify.UserActive(AMinimized: Boolean; AIdleMs: UInt64): Boolean;
 begin
-  Result := not AMinimized and (AIdleMs < UInt64(cIdleMinutes) * 60000);
+  Result := not AMinimized and (AIdleMs < UInt64(cIdleMinutes) * cMsPerMinute);
 end;
 
 class function TAtlasTrackerNotify.Foreign(const AChanges: TArray<TAtlasTrackerChange>;
@@ -684,28 +687,6 @@ begin
   end;
 end;
 
-function IsoOf(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue > 0 then
-  begin
-    Result := DateToISO8601(AValue, True);
-  end;
-end;
-
-function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mValue: TJSONValue;
-begin
-  Result := 0;
-  mValue := AObject.Values[AName];
-  if not (mValue is TJSONString) or (TJSONString(mValue).Value = '') or
-    not TryISO8601ToDate(TJSONString(mValue).Value, Result, True) then
-  begin
-    Result := 0;
-  end;
-end;
-
 class function TAtlasTrackerNotify.ToJson(const AFile: TAtlasTrackerNotifyFile): string;
 var
   mRoot, mObject, mEntry: TJSONObject;
@@ -724,7 +705,7 @@ begin
       mObject := TJSONObject.Create;
       mList.AddElement(mObject);
       mObject.AddPair('id', mConnection.Id);
-      mObject.AddPair('since', IsoOf(mConnection.Since));
+      mObject.AddPair('since', TJsonBuild.IsoTime(mConnection.Since));
       mObject.AddPair('me', mConnection.Me);
       mObject.AddPair('lastModified', mConnection.LastModified);
       mUnseen := TJSONArray.Create;
@@ -735,7 +716,7 @@ begin
         mUnseen.AddElement(mEntry);
         mEntry.AddPair('key', mItem.Key);
         mEntry.AddPair('project', mItem.Project);
-        mEntry.AddPair('anchor', IsoOf(mItem.Anchor));
+        mEntry.AddPair('anchor', TJsonBuild.IsoTime(mItem.Anchor));
       end;
     end;
     Result := mRoot.ToJSON;
@@ -762,7 +743,7 @@ begin
     end;
     mUnseen.Key := Trim(TJsonRead.Text(TJSONObject(mEntry), 'key'));
     mUnseen.Project := Trim(TJsonRead.Text(TJSONObject(mEntry), 'project'));
-    mUnseen.Anchor := TimeOf(TJSONObject(mEntry), 'anchor');
+    mUnseen.Anchor := TJsonRead.IsoTime(TJSONObject(mEntry), 'anchor', True);
     if (mUnseen.Key <> '') and (AConnection.IndexOfUnseen(mUnseen.Key, mUnseen.Project) < 0) then
     begin
       AConnection.Unseen := AConnection.Unseen + [mUnseen];
@@ -781,7 +762,8 @@ begin
     Exit;
   end;
   mObject := TJSONObject(AItem);
-  AConnection := TAtlasTrackerNotifyConnection.Create(Trim(TJsonRead.Text(mObject, 'id')), TimeOf(mObject, 'since'));
+  AConnection := TAtlasTrackerNotifyConnection.Create(Trim(TJsonRead.Text(mObject, 'id')),
+    TJsonRead.IsoTime(mObject, 'since', True));
   Result := (AConnection.Id <> '') and (AConnection.Since <> 0);
   if Result then
   begin

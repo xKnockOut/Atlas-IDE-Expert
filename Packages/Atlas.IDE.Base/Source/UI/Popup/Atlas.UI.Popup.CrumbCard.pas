@@ -13,7 +13,7 @@ uses
   System.Classes,
   System.Types,
   Atlas.Core.Editor.CrumbCard,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasCrumbCardTip = class(TAtlasPopupWindow)
@@ -23,6 +23,9 @@ type
     cPadding = 9;
     /// <summary>Abstand zwischen Beschriftung und Wert.</summary>
     cGap = 16;
+  private const
+    /// <summary>Abstand zwischen Kopfzeile und erster Zeile in logischen Pixeln.</summary>
+    cTitleGap = 4;
   private
     FCard: TAtlasCrumbCard;
     FCaptions: TArray<string>;
@@ -50,9 +53,9 @@ uses
   System.SysUtils,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Popup.Accessibility,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.UI.Outline.Strings,
+  Atlas.Vcl.Popup.Accessibility;
 
 { TAtlasCrumbCardTip }
 
@@ -78,7 +81,7 @@ begin
   mArea := Rect(Scale(cPadding), mTop, ClientWidth - Scale(cPadding), mTop + mLine);
   Canvas.Font.Color := ToColor(Colors.Text);
   DrawText(Canvas.Handle, PChar(FCard.Title), -1, mArea, DT_LEFT or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-  Inc(mTop, mLine + Scale(4));
+  Inc(mTop, mLine + Scale(cTitleGap));
   mValueLeft := Scale(cPadding) + FCaptionWidth + Scale(cGap);
   for mIndex := 0 to High(FCaptions) do
   begin
@@ -156,7 +159,7 @@ begin
   end;
   if not ACard.Available then
   begin
-    FCaptions := [TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMetricsMissing)];
+    FCaptions := [TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMetricsMissing)];
     FValues := [''];
   end;
   Canvas.Font := UIFont;
@@ -174,18 +177,18 @@ begin
   end;
   mWidth := Min(Max(mWidth, Canvas.TextWidth(ACard.Title)), Scale(cMaxWidth));
   Result.cx := mWidth + 2 * Scale(cPadding);
-  // Kopfzeile, Abstand 4, je Zeile eine Höhe, Padding unten.
-  Result.cy := Scale(cPadding) + LineHeight + Scale(4) + Length(FCaptions) * LineHeight + Scale(cPadding);
+  // Kopfzeile, Abstand cTitleGap, je Zeile eine Höhe, Padding unten.
+  Result.cy := Scale(cPadding) + LineHeight + Scale(cTitleGap) + Length(FCaptions) * LineHeight + Scale(cPadding);
 end;
 
 class function TAtlasCrumbCardTip.RowCaption(const ARow: TAtlasCardRow): string;
 const
-  cIds: array[TAtlasCardMetric] of TAtlasTextId = (TAtlasTextId.BreadcrumbsMetricsLines,
-    TAtlasTextId.BreadcrumbsMetricsCyclomatic, TAtlasTextId.BreadcrumbsMetricsNesting,
-    TAtlasTextId.BreadcrumbsMetricsParameters, TAtlasTextId.BreadcrumbsMetricsMembers,
-    TAtlasTextId.BreadcrumbsMetricsInheritance);
+  cIds: array[TAtlasCardMetric] of TAtlasOutlineTextId = (TAtlasOutlineTextId.BreadcrumbsMetricsLines,
+    TAtlasOutlineTextId.BreadcrumbsMetricsCyclomatic, TAtlasOutlineTextId.BreadcrumbsMetricsNesting,
+    TAtlasOutlineTextId.BreadcrumbsMetricsParameters, TAtlasOutlineTextId.BreadcrumbsMetricsMembers,
+    TAtlasOutlineTextId.BreadcrumbsMetricsInheritance);
 begin
-  Result := TAtlasStrings.Text(cIds[ARow.Metric]);
+  Result := TAtlasOutlineStrings.Text(cIds[ARow.Metric]);
 end;
 
 class function TAtlasCrumbCardTip.RowValue(const ARow: TAtlasCardRow): string;
@@ -193,7 +196,7 @@ begin
   Result := ARow.ValueText;
   if ARow.Over then
   begin
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMetricsLimit), [Result, ARow.Limit]);
+    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsMetricsLimit), [Result, ARow.Limit]);
   end;
 end;
 

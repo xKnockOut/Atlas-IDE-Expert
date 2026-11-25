@@ -150,8 +150,10 @@ uses
   System.StrUtils,
   System.Math,
   System.Generics.Defaults,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 { TReassignedScope }
 
@@ -297,17 +299,6 @@ begin
   Result := AWrite <> TReassignedWrite.None;
 end;
 
-/// <summary>Äußerster Zugriff, der mit ANode beginnt: X.Feld, X[I], X^.</summary>
-function AccessRoot(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Parent <> nil) and (Result.Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
-    TSyntaxKind.Dereference]) and (Result.Parent[0] = Result) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Der Zugriff AAccess auf ANode als Argument des Aufrufs ACall: nach der Übergabeart.</summary>
 function ArgumentWrite(ANode, AAccess, ACall: TSyntaxNode; const ALookup: TFlowSignatureLookup): TReassignedWrite;
 var
@@ -348,7 +339,7 @@ begin
     Exit;
   end;
   // Teil eines Ziels oder eines var-Arguments: X.Feld := …, X[I] := …, Inc(X.Zaehler)
-  mAccess := AccessRoot(ANode);
+  mAccess := TSyntaxNodes.AccessRoot(ANode);
   mParent := mAccess.Parent;
   if (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent[0] <> mAccess) then
   begin
@@ -859,7 +850,7 @@ begin
   mIndex := TRoutineBody.TokenAt(FTokens, AMethod.StartOffset);
   if (mIndex <= High(FTokens)) and SameText(FTokens[mIndex].Text, 'class') then
   begin
-    mIndex := TRoutineBody.NextToken(FTokens, mIndex);
+    mIndex := NextCodeAfter(FTokens, mIndex);
   end;
   Result := (mIndex <= High(FTokens)) and SameText(FTokens[mIndex].Text, 'constructor');
 end;

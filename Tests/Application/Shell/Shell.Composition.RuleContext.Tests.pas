@@ -44,7 +44,7 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.SyntaxDiagnostics;
+  Atlas.Common.Rules.CheckContext;
 
 function NoSelection(const AOrigin: string): string;
 begin

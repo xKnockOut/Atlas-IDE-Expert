@@ -30,10 +30,10 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Editor.MethodPlacement,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
-  TAtlasMethodPlacementSessionFunc = reference to function: TLspSession;
+  TAtlasMethodPlacementSessionFunc = TFunc<TLspSession>;
 
   TAtlasIdeMethodPlacement = class
   private const
@@ -89,16 +89,17 @@ implementation
 uses
   Atlas.Core.Editor.SourceFiles,
   System.JSON,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Results.View,
   Atlas.UI.Results.RenamePreview,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.WorkspaceEdit;
@@ -253,11 +254,7 @@ end;
 
 function TAtlasIdeMethodPlacement.CurrentSession: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSession) then
-  begin
-    Result := FSession();
-  end;
+  Result := TLspSession.From(FSession);
 end;
 
 class function TAtlasIdeMethodPlacement.Mode: string;
@@ -279,22 +276,12 @@ end;
 class procedure TAtlasIdeMethodPlacement.WriteBuffer(const ABuffer: IOTAEditBuffer; const AText, ANewText: string);
 var
   mRange: TLspTextRange;
-  mWriter: IOTAEditWriter;
 begin
-  if not TAtlasMethodPlacement.Difference(AText, ANewText, mRange) then
+  if TAtlasMethodPlacement.Difference(AText, ANewText, mRange) then
   begin
-    Exit;
+    TAtlasEditorSnapshots.ReplaceText(ABuffer, AText, mRange.StartOffset, mRange.EndOffset - mRange.StartOffset,
+      mRange.NewText);
   end;
-  // Ein Schreiber = ein Rückgängig-Schritt.
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.StartOffset)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.EndOffset)));
-  if mRange.NewText <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(mRange.NewText)));
-  end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
 class procedure TAtlasIdeMethodPlacement.Install(const ASession: TAtlasMethodPlacementSessionFunc;

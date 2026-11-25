@@ -37,7 +37,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Completion.Placeholders,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   TAtlasEditorPlaceholders = class
@@ -72,8 +72,6 @@ type
     FBefore: string;
     procedure CollapseUndo;
     procedure SelectCurrent;
-    /// <summary>Rahmen und Fußzeile neu zeichnen lassen.</summary>
-    procedure Invalidate;
     procedure MoveTo(AOffset: Integer);
     procedure Finish(AToEnd: Boolean);
     procedure ApplyMirrors;
@@ -102,19 +100,21 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.PlaceholderPlan,
-  Atlas.Core.Lsp.TextOffsets,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.Plugin.Editor.TextOffsets,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.UI.Completion.Strings,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Core.Editor.EditSurface,
+  Atlas.IDE.Foundation.EditorSnapshot;
 
 { TAtlasEditorPlaceholders.TEvents }
 
@@ -131,9 +131,11 @@ end;
 { TAtlasEditorPlaceholders.TKeys }
 
 constructor TAtlasEditorPlaceholders.TKeys.Create(AOwner: TAtlasEditorPlaceholders);
+const
+  cMaxDepth = 20;
 begin
   // Nach Vervollständigung (0) und Parameter-Hint (10): Tab und Esc gehören zuerst deren Fenstern.
-  inherited Create(20);
+  inherited Create(cMaxDepth);
   FOwner := AOwner;
 end;
 
@@ -214,16 +216,6 @@ begin
   end;
 end;
 
-procedure TAtlasEditorPlaceholders.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
 procedure TAtlasEditorPlaceholders.MoveTo(AOffset: Integer);
 begin
   FView.Block.Reset;
@@ -253,12 +245,24 @@ begin
   Stop;
 end;
 
+/// <summary>AEdits (Anfang und Ende als Zeichenversatz) als Ersetzungen für den Puffer.</summary>
+function TextEdits(const AEdits: TAtlasPlaceholderEdits): TAtlasTextEdits;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AEdits));
+  for mIndex := 0 to High(AEdits) do
+  begin
+    Result[mIndex] := TAtlasTextEdit.Create(AEdits[mIndex].Start, AEdits[mIndex].Stop - AEdits[mIndex].Start,
+      AEdits[mIndex].Text);
+  end;
+end;
+
 procedure TAtlasEditorPlaceholders.ApplyMirrors;
 var
   mEdits: TAtlasPlaceholderEdits;
-  mEdit: TAtlasPlaceholderEdit;
   mText: string;
-  mWriter: IOTAEditWriter;
   mCursor, mShift: Integer;
 begin
   FMirrorQueued := False;
@@ -281,15 +285,8 @@ begin
   mShift := TAtlasPlaceholderPlan.CursorShift(mEdits, mCursor);
   FApplying := True;
   try
-    // Ein Schreiber schreibt nur vorwärts; die Änderungen sind aufsteigend.
-    mWriter := FView.Buffer.CreateUndoableWriter;
-    for mEdit in mEdits do
-    begin
-      mWriter.CopyTo(TAtlasTextOffsets.BytesBefore(mText, mEdit.Start));
-      mWriter.DeleteTo(TAtlasTextOffsets.BytesBefore(mText, mEdit.Stop));
-      mWriter.Insert(PAnsiChar(UTF8Encode(mEdit.Text)));
-    end;
-    mWriter := nil;
+    // Die Änderungen sind aufsteigend: ein Rückgängig-Schritt.
+    TAtlasEditorSnapshots.WriteEdits(FView.Buffer, mText, TextEdits(mEdits));
   finally
     FApplying := False;
   end;
@@ -362,7 +359,7 @@ begin
   end;
   if Active then
   begin
-    Invalidate;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 
@@ -407,7 +404,6 @@ procedure TAtlasEditorPlaceholders.CollapseUndo;
 var
   mFinal: string;
   mReplacement: TAtlasPlaceholderReplacement;
-  mWriter: IOTAEditWriter;
 begin
   if (FSession = nil) or (FView = nil) or (FView.Buffer = nil) or (FBefore = '') then
   begin
@@ -426,12 +422,9 @@ begin
     end;
     // Gemeinsamer Anfang und gemeinsames Ende; dazwischen ersetzt ein Schreiber.
     mReplacement := TAtlasPlaceholderPlan.Replacement(FBefore, mFinal);
-    mWriter := FView.Buffer.CreateUndoableWriter;
-    mWriter.CopyTo(TAtlasTextOffsets.BytesBefore(FBefore, mReplacement.Prefix));
-    mWriter.DeleteTo(TAtlasTextOffsets.BytesBefore(FBefore, Length(FBefore) - mReplacement.Suffix));
-    mWriter.Insert(PAnsiChar(UTF8Encode(Copy(mFinal, mReplacement.Prefix + 1,
-      Length(mFinal) - mReplacement.Prefix - mReplacement.Suffix))));
-    mWriter := nil;
+    TAtlasEditorSnapshots.ReplaceText(FView.Buffer, FBefore, mReplacement.Prefix,
+      Length(FBefore) - mReplacement.Suffix - mReplacement.Prefix,
+      Copy(mFinal, mReplacement.Prefix + 1, Length(mFinal) - mReplacement.Prefix - mReplacement.Suffix));
   finally
     FApplying := False;
   end;
@@ -477,7 +470,7 @@ begin
   // Rahmen und Fußzeile verschwinden.
   if mWasActive then
   begin
-    Invalidate;
+    TAtlasIdeEditorRefresh.InvalidateCurrent;
   end;
 end;
 

@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Welcome.QuickActions.Tests;
 
-// Schnellaktionen je Projekt auf der Willkommensseite (#764, Mockup #ws10):
+// Schnellaktionen je Projekt auf der Willkommensseite (#764):
 // Knopfleiste der Bereiche „Projekte“ und „Weiterarbeiten“ mit einer
 // Testquelle. Knöpfe nur in der aktiven Zeile und nur eingeschaltet, Liste
 // aus welcomePage.quickActions.items, Klicks und Tasten erreichen die Quelle
@@ -16,7 +16,8 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.QuickActions,
-  DUnitX.TestFramework;
+  DUnitX.TestFramework,
+  Atlas.UI.Welcome.Contract;
 
 type
   /// <summary>Quelle der Knopfleiste für die Tests (auch für die Bereiche in Atlas.UI.Welcome.Tests); merkt sich
@@ -60,9 +61,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung (VCL, Menüs, Warteschlange) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     /// <summary>Texte deutsch; danach die Sprache von vorher.</summary>
     [Setup]
     procedure Setup;
@@ -319,32 +317,6 @@ begin
 end;
 
 { TAtlasQuickActionsBarTests }
-
-procedure TAtlasQuickActionsBarTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    try
-      ButtonsFollowSwitchAndItems;
-    except
-      on Exception do
-        ;
-    end;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    try
-      ActiveRowFollowsMouse;
-    except
-      on Exception do
-        ;
-    end;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasQuickActionsBarTests.Setup;
 begin

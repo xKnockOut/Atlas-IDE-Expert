@@ -18,7 +18,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Status.Server;
+  Atlas.Plugin.Status.Server;
 
 type
   TAtlasIdeServerWindow = class
@@ -65,13 +65,13 @@ uses
   Vcl.Forms,
   DesignIntf,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Status.Strings,
-  Atlas.UI.Style.Symbol,
+  Atlas.Vcl.Images.Symbol,
   Atlas.UI.Status.ServerFrame,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 const
   cRefreshMs = 5000;
@@ -126,7 +126,7 @@ end;
 procedure Theme(AFrame: TAtlasServerFrame);
 begin
   TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
-  AFrame.SetColors(TAtlasIdeStyle.Colors);
+  AFrame.SetColors(TAtlasIdeStyle.WindowColors);
 end;
 
 procedure ShowState;
@@ -233,10 +233,12 @@ begin
   TAtlasIdeDockWindow.UpdateIcon(Host);
   Theme(TAtlasServerFrame(AFrame));
   Wire(TAtlasServerFrame(AFrame));
-  if State <> nil then
+  // Vom Desktop wiederhergestellt: Ohne Zeitgeber bliebe das Fenster leer bis zum nächsten Befehl.
+  if State = nil then
   begin
-    State.Refresh(True);
+    State := TServerState.Create;
   end;
+  State.Refresh(True);
 end;
 
 function TServerDock.GetMenuActionList: TCustomActionList;
@@ -355,9 +357,21 @@ end;
 
 { TAtlasIdeServerWindow }
 
+procedure EnsureHost;
+begin
+  // Im Desktop angemeldet, damit es angedockt seinen Platz behält. Gelesen wird nur, solange es zu sehen ist
+  // (TServerState.TimerTick).
+  if Host = nil then
+  begin
+    Host := TAtlasIdeDockWindow.Create(TServerDock.Create, True);
+  end;
+end;
+
 class procedure TAtlasIdeServerWindow.Install(const AHooks: THooks);
 begin
   FHooks := AHooks;
+  // Vor dem Laden des Desktops anmelden, sonst verliert das angedockte Fenster seinen Platz.
+  EnsureHost;
 end;
 
 class function TAtlasIdeServerWindow.Enabled: Boolean;
@@ -371,11 +385,7 @@ begin
   begin
     Exit;
   end;
-  // Nicht im Desktop: geöffnet nur auf Befehl, damit ohne Fenster nichts mitliest.
-  if Host = nil then
-  begin
-    Host := TAtlasIdeDockWindow.Create(TServerDock.Create, False);
-  end;
+  EnsureHost;
   if State = nil then
   begin
     State := TServerState.Create;

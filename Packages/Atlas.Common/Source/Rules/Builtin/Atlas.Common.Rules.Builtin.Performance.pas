@@ -56,7 +56,6 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.Performance.StringResets,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
@@ -64,7 +63,8 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Performance.ManagedParams,
   Atlas.Common.Rules.Builtin.Performance.SetLengthInLoop,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -1141,19 +1141,6 @@ const
   cPlainLists: array[0..5] of string = ('TList', 'TObjectList', 'TInterfaceList', 'TStack', 'TQueue',
     'TDictionary');
 
-/// <summary>Typname ohne Typargumente: TObjectList&lt;TNode&gt; → TObjectList.</summary>
-function BareTypeName(const ATypeName: string): string;
-var
-  mAngle: Integer;
-begin
-  Result := Trim(ATypeName);
-  mAngle := Pos('<', Result);
-  if mAngle > 0 then
-  begin
-    Result := Trim(Copy(Result, 1, mAngle - 1));
-  end;
-end;
-
 /// <summary>Kennt die Namensauflösung den Empfänger AReceiver (bzw. sein Objekt davor) als Typ ohne BeginUpdate:
 /// Menü (FParts.Menu: TPopupMenu aus einer anderen Unit), Liste ohne Steuerelement (Items: TObjectList&lt;T&gt;) oder
 /// ein Typ im Index ohne Mitglied BeginUpdate? Unbekannt: False.</summary>
@@ -1165,7 +1152,7 @@ var
   mMember: TResolvedSymbol;
 begin
   mOwner := AResolver.ResolveChain(AContext.Tree, AFileName, OwnerOf(AReceiver).Split(['.']), AOffset);
-  if (mOwner.Kind <> TResolvedKind.None) and MatchText(BareTypeName(mOwner.TypeName), cMenuTypes) then
+  if (mOwner.Kind <> TResolvedKind.None) and MatchText(TTextNames.WithoutGenerics(mOwner.TypeName), cMenuTypes) then
   begin
     Exit(True);
   end;
@@ -1174,7 +1161,7 @@ begin
   begin
     Exit(False);
   end;
-  if MatchText(BareTypeName(mItems.TypeName), cPlainLists) or MatchText(BareTypeName(mItems.TypeName),
+  if MatchText(TTextNames.WithoutGenerics(mItems.TypeName), cPlainLists) or MatchText(TTextNames.WithoutGenerics(mItems.TypeName),
     cMenuTypes) then
   begin
     Exit(True);

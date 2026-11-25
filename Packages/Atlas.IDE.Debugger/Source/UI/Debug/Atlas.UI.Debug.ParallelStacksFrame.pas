@@ -19,10 +19,11 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Debug.Threads,
-  Atlas.Core.Debug.ParallelStacks;
+  Atlas.Core.Debug.ParallelStacks,
+  Atlas.Vcl.Forms.FillFrame;
 
 type
-  TAtlasDebugParallelStacksFrame = class(TFrame)
+  TAtlasDebugParallelStacksFrame = class(TAtlasFillFrame)
   private
     FOwnOnly: TCheckBox;
     FWaitingOnly: TCheckBox;
@@ -32,10 +33,8 @@ type
     FFooter: TLabel;
     FStacks: TAtlasDebugThreadStacks;
     FData: TAtlasDebugStackTree;
-    FFilled: Boolean;
     FOnOpen: TProc<Integer>;
     FOnFilter: TProc;
-    procedure Fill;
     procedure AddNodes(AParent: TTreeNode; const AIndexes: TArray<Integer>);
     procedure FilterClick(Sender: TObject);
     procedure TreeDblClick(Sender: TObject);
@@ -44,7 +43,7 @@ type
     procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
       var DefaultDraw: Boolean);
   protected
-    procedure CreateWnd; override;
+    procedure FillControls; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Stapel und Baum zeigen; AStatus ersetzt die Statuszeile ('' = Zahl der Threads).</summary>
@@ -72,6 +71,8 @@ implementation
 
 uses
   Winapi.Windows,
+  Atlas.Plugin.Calls.Optional,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Debug.Threads.Strings,
   Atlas.UI.Debug.ParallelStacks;
 
@@ -131,18 +132,8 @@ begin
   FTree.Parent := Self;
 end;
 
-procedure TAtlasDebugParallelStacksFrame.CreateWnd;
+procedure TAtlasDebugParallelStacksFrame.FillControls;
 begin
-  inherited CreateWnd;
-  if not FFilled then
-  begin
-    Fill;
-  end;
-end;
-
-procedure TAtlasDebugParallelStacksFrame.Fill;
-begin
-  FFilled := True;
   FThreads.Caption := '';
   FTree.HandleNeeded;
   FTree.Items.BeginUpdate;
@@ -170,10 +161,7 @@ end;
 
 procedure TAtlasDebugParallelStacksFrame.FilterClick(Sender: TObject);
 begin
-  if Assigned(FOnFilter) then
-  begin
-    FOnFilter();
-  end;
+  TAtlasCalls.Call(FOnFilter);
 end;
 
 procedure TAtlasDebugParallelStacksFrame.TreeDblClick(Sender: TObject);
@@ -183,11 +171,7 @@ end;
 
 procedure TAtlasDebugParallelStacksFrame.TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if Key = VK_RETURN then
-  begin
-    Key := 0;
-    OpenSelected;
-  end;
+  TAtlasControls.ReturnKey(Key, OpenSelected);
 end;
 
 procedure TAtlasDebugParallelStacksFrame.TreeChange(Sender: TObject; Node: TTreeNode);
@@ -231,11 +215,7 @@ begin
   begin
     FStatus.Caption := TAtlasParallelStacksTexts.StatusText(ATree);
   end;
-  FFilled := False;
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
+  Refill;
 end;
 
 procedure TAtlasDebugParallelStacksFrame.ShowStatus(const AText: string);
@@ -252,11 +232,7 @@ end;
 
 function TAtlasDebugParallelStacksFrame.SelectedNode: Integer;
 begin
-  Result := -1;
-  if FTree.Selected <> nil then
-  begin
-    Result := Integer(NativeInt(FTree.Selected.Data));
-  end;
+  Result := TAtlasControls.SelectedIndex(FTree);
 end;
 
 procedure TAtlasDebugParallelStacksFrame.OpenSelected;

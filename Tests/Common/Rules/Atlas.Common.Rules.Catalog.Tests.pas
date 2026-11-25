@@ -12,10 +12,6 @@ type
   [TestFixture]
   TRuleCatalogTests = class
   public
-    /// <summary>Legt die geteilten Kataloge (englisch und deutsch) einmal an: Sie leben bis zum Prozessende,
-    /// der Leckmonitor zählte ihren ersten Gebrauch sonst im Test.</summary>
-    [SetupFixture]
-    procedure CreateSharedCatalogs;
     [Test]
     procedure ReadsBaseEntry;
     [Test]
@@ -113,20 +109,6 @@ begin
 end;
 
 { TRuleCatalogTests }
-
-procedure TRuleCatalogTests.CreateSharedCatalogs;
-var
-  mSaved: TTextLanguage;
-begin
-  mSaved := TAtlasLocale.Language;
-  try
-    TAtlasLocale.Use(TTextLanguage.German);
-    TRuleCatalog.Localized;
-    TRuleCatalog.Shared;
-  finally
-    TAtlasLocale.Use(mSaved);
-  end;
-end;
 
 procedure TRuleCatalogTests.ReadsBaseEntry;
 var
@@ -290,9 +272,11 @@ var
   mEnglish, mGerman: TRuleCatalog;
   mEntry, mTranslated: TRuleCatalogEntry;
 begin
-  mEnglish := TRuleCatalog.Create(RuleCatalogBaseJson);
-  mGerman := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
+  mEnglish := nil;
+  mGerman := nil;
   try
+    mEnglish := TRuleCatalog.Create(RuleCatalogBaseJson);
+    mGerman := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
     for mEntry in mEnglish.Entries do
     begin
       Assert.IsTrue(mGerman.TryFind(mEntry.Id, mTranslated));

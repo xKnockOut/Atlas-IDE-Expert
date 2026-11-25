@@ -33,9 +33,9 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Diagnostics.FeatureTable,
   Atlas.Core.Diagnostics.ModuleHosting,
-  Atlas.Core.Diagnostics.StartTimes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.StartTimes,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.GutterMarks,
@@ -55,7 +55,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.EditorBars,
   Atlas.IDE.CodeInsight.Composition.Drawing,
   Atlas.IDE.CodeInsight.Composition.Keys,
-  Atlas.IDE.CodeInsight.Composition.Startup;
+  Atlas.IDE.CodeInsight.Composition.Startup,
+  Atlas.IDE.Foundation.Host;
 
 var
   // Teile des Plugins in Startreihenfolge; gefüllt beim ersten RegisterFeatures.
@@ -108,7 +109,7 @@ begin
     StopRuleChecksNotice);
   // Hinweis „kein Kommandozeilen-Compiler“ (#1822): einmal überhaupt, auch abgesichert (liest nur Dateien).
   Features.Add('EditionNotice', TAtlasSafeLevel.Safe, EditionNoticeStarted, StartEditionNotice, StopEditionNotice);
-  // Module unter „Known Packages“ (Meldung vom 05.11.2026): auch abgesichert, liest nur die Registry; meldet
+  // Module unter „Known Packages“: auch abgesichert, liest nur die Registry; meldet
   // fehlende Module und protokolliert Änderungen der Liste.
   Features.Add('KnownPackages', TAtlasSafeLevel.Safe, KnownPackagesStarted, StartKnownPackages, StopKnownPackages);
 end;
@@ -348,8 +349,8 @@ begin
   begin
     mParts := ': ' + mParts;
   end;
-  MessageLine(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.StartSlow, [ALoadMs, ALimit, StartTimes.Total,
-    mParts]));
+  TAtlasIdeHost.Message(TAtlasCodeInsightStrings.Fmt(TAtlasCodeInsightTextId.StartSlow,
+    [ALoadMs, ALimit, StartTimes.Total, mParts]));
 end;
 
 procedure ReportStartup(ALoadMs: Int64);

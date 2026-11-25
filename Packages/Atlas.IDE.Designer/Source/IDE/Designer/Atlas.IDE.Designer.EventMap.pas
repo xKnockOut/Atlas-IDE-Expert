@@ -7,6 +7,9 @@
 //   Unit (Puffer), gerechnet von TAtlasEventMap. Jede Sekunde neu gelesen;
 //   die Liste wird nur bei geändertem Text neu gefüllt, damit Auswahl und
 //   Bildlauf bleiben. Ohne aktiven Designer bleibt das letzte Formular stehen.
+//   Ist das Fenster nicht zu sehen (Reiter im Hintergrund, eingeklappte
+//   Leiste, Desktop-Wechsel, X), ruht der Takt; er wacht auf, sobald die
+//   Liste wieder gezeichnet wird (OnPainted).
 // - Doppelklick springt zum Handler (TAtlasIdeNavigation), ein zweiter wählt
 //   die Komponente im Designer aus.
 // - „Handler umbenennen“: IDesigner.RenameMethod (Deklaration, Rumpf und alle
@@ -14,6 +17,8 @@
 // - „Leeren Handler entfernen“ (leer oder ohne Zuweisung): Zuweisungen im
 //   Designer auf nil, dann Deklaration und Rumpf als Atlas-Änderung
 //   (TAtlasIdeWorkspaceEdit, ein Schritt im Änderungsprotokoll).
+// - Auch über Ansicht › Atlas › Designer und Atlas › Designer zu öffnen
+//   (Present: öffnet oder holt nach vorn, schließt nie).
 // Nur im Hauptthread.
 
 interface
@@ -34,6 +39,7 @@ type
   private
     FOnMessage: TProc<string>;
     FTimer: TTimer;
+    /// <summary>Fenster offen (Form sichtbar, auch als Reiter im Hintergrund).</summary>
     FShown: Boolean;
     FFormFile: string;
     FFormClass: string;
@@ -41,6 +47,10 @@ type
     FText: string;
     FRows: TArray<TAtlasEventRow>;
     procedure Tick(Sender: TObject);
+    /// <summary>Die Liste wird gezeichnet: ruhenden Takt wecken.</summary>
+    procedure Painted;
+    /// <summary>Neuer Frame, auch vom Desktop beim Start angelegt: verdrahten und dem Formular folgen.</summary>
+    procedure FrameArrived;
     procedure Reload(AForce: Boolean);
     procedure FillList;
     function ClearAssignments(ARoot: TComponent; const AHandler: string): Integer;
@@ -56,6 +66,8 @@ type
     function Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
     /// <summary>Klick: Fenster öffnen bzw. schließen.</summary>
     procedure Toggle;
+    /// <summary>Menü Ansicht › Atlas: Fenster öffnen bzw. nach vorn holen, nie schließen.</summary>
+    procedure Present;
     procedure ApplyTheme;
     /// <summary>Text des Befunds für die Liste.</summary>
     class function FindingText(const ARow: TAtlasEventRow): string; static;
@@ -78,14 +90,14 @@ uses
   DesignIntf,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.Designer.FormModel,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.DockWindow,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Windows.DockWindow,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation;
 
 const
@@ -111,8 +123,11 @@ type
   end;
 
 var
-  // Fenster der Karte; nicht im Desktop gespeichert, es öffnet der Knopf.
+  // Fenster der Karte; im Desktop angemeldet, damit es angedockt seinen Platz behält. Öffnen tut es der Knopf
+  // oder der Desktop beim Laden.
   Host: TAtlasIdeDockWindow;
+  // Meldet der Karte jeden neuen Frame; nil ohne Karte.
+  OnHostFrame: TProc;
 
 { TEventDock }
 
@@ -138,6 +153,10 @@ begin
     Host.FrameCreated(AFrame);
   end;
   TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
+  if Assigned(OnHostFrame) then
+  begin
+    OnHostFrame();
+  end;
 end;
 
 function TEventDock.GetMenuActionList: TCustomActionList;
@@ -215,6 +234,16 @@ begin
   Result.NewText := '';
 end;
 
+/// <summary>Inhalt des Fensters; nil, solange es nicht angelegt ist.</summary>
+function HostFrame: TAtlasEventFrame;
+begin
+  Result := nil;
+  if (Host <> nil) and (Host.Frame is TAtlasEventFrame) then
+  begin
+    Result := TAtlasEventFrame(Host.Frame);
+  end;
+end;
+
 { TAtlasIdeEventMap }
 
 constructor TAtlasIdeEventMap.Create(const AOnMessage: TProc<string>);
@@ -225,10 +254,26 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := cTick;
   FTimer.OnTimer := Tick;
+  OnHostFrame :=
+    procedure
+    begin
+      FrameArrived;
+    end;
+  // Vor dem Laden des Desktops anmelden, sonst verliert das angedockte Fenster seinen Platz.
+  if Host = nil then
+  begin
+    Host := TAtlasIdeDockWindow.Create(TEventDock.Create, True);
+  end;
 end;
 
 destructor TAtlasIdeEventMap.Destroy;
 begin
+  OnHostFrame := nil;
+  // Nach dem Abmelden darf das Zeichnen der Liste nichts mehr wecken.
+  if HostFrame <> nil then
+  begin
+    HostFrame.OnPainted := nil;
+  end;
   if FTimer <> nil then
   begin
     FTimer.Enabled := False;
@@ -242,12 +287,33 @@ procedure TAtlasIdeEventMap.Tick(Sender: TObject);
 begin
   if (Host = nil) or not Host.Shown then
   begin
-    // Fenster mit dem X geschlossen.
-    FShown := False;
+    // Nicht zu sehen: ruhen, bis die Liste wieder gezeichnet wird. Nur eine versteckte Form ist geschlossen (X,
+    // Desktop-Wechsel); ein Reiter im Hintergrund oder eine eingeklappte Leiste bleibt offen.
     FTimer.Enabled := False;
+    FShown := (Host <> nil) and (Host.Form <> nil) and Host.Form.Visible;
     Exit;
   end;
+  FShown := True;
   Reload(False);
+end;
+
+procedure TAtlasIdeEventMap.Painted;
+begin
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasIdeEventMap.FrameArrived;
+begin
+  if HostFrame = nil then
+  begin
+    Exit;
+  end;
+  Wire(HostFrame);
+  ApplyTheme;
+  FShown := True;
+  FText := '';
+  // Vom Desktop verdeckt angelegt (Reiter im Hintergrund): Der erste Takt legt sich schlafen, OnPainted weckt.
+  FTimer.Enabled := True;
 end;
 
 procedure TAtlasIdeEventMap.Reload(AForce: Boolean);
@@ -274,16 +340,6 @@ begin
   FText := mDfm + #0 + mUnit;
   FRows := TAtlasEventMap.Rows(TAtlasFormModel.Parse(mDfm), TAtlasEventMap.Handlers(mUnit, FFormClass));
   FillList;
-end;
-
-/// <summary>Inhalt des Fensters; nil, solange es nicht angelegt ist.</summary>
-function HostFrame: TAtlasEventFrame;
-begin
-  Result := nil;
-  if (Host <> nil) and (Host.Frame is TAtlasEventFrame) then
-  begin
-    Result := TAtlasEventFrame(Host.Frame);
-  end;
 end;
 
 procedure TAtlasIdeEventMap.FillList;
@@ -347,6 +403,11 @@ begin
     procedure
     begin
       FillList;
+    end;
+  AFrame.OnPainted :=
+    procedure
+    begin
+      Painted;
     end;
 end;
 
@@ -492,7 +553,7 @@ begin
   end;
   if Host = nil then
   begin
-    Host := TAtlasIdeDockWindow.Create(TEventDock.Create, False);
+    Host := TAtlasIdeDockWindow.Create(TEventDock.Create, True);
   end;
   FShown := Host.Show(mCreated) and (HostFrame <> nil);
   if FShown then
@@ -502,6 +563,18 @@ begin
     Reload(True);
   end;
   FTimer.Enabled := FShown;
+end;
+
+procedure TAtlasIdeEventMap.Present;
+begin
+  if FShown and TAtlasIdeDockWindow.IsShown(Host) then
+  begin
+    Host.Present;
+  end
+  else
+  begin
+    Toggle;
+  end;
 end;
 
 procedure TAtlasIdeEventMap.ApplyTheme;

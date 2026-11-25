@@ -8,7 +8,7 @@
 //   - Bezeichner: textDocument/inlineValue des Servers (Syntaxbaum, #262) im
 //     Hintergrund-Thread. Den Text der Datei gleicht Atlas vorher im
 //     Hauptthread ab. Startet keinen Server.
-//   - Werte: IOTAThread.Evaluate über TAtlasIdeDebugValues ohne
+//   - Werte: IOTAThread.Evaluate über TAtlasIdeDebugThreadValues ohne
 //     Nebenwirkungen (eseNone), im Hauptthread in Zeitscheiben von höchstens
 //     SliceMs; dazwischen bedient die IDE Tasten und Zeichnen, ein
 //     Einzelschritt wird so nicht spürbar länger. Ausgewertet werden nur
@@ -33,22 +33,26 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Winapi.Windows,
   Vcl.Graphics,
   ToolsAPI.Editor,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.InlineValues,
   Atlas.Core.Debug.InlineValuesFlow,
   Atlas.IDE.Debug.StopView,
-  Atlas.IDE.Hover.DebugValue,
+  Atlas.IDE.Debug.ThreadEvaluator,
   Atlas.UI.Debug.InlineValuePainter;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
   TAtlasInlineValuesSessionFunc = reference to function: TLspSession;
+
+  /// <summary>Wert AText des Namens AName an AFileName, ALine (1-basiert) mit Etikett (#839); ohne Etikett AText.
+  /// </summary>
+  TAtlasInlineValueMarker = reference to function(const AName, AText, AFileName: string; ALine: Integer): string;
 
   TAtlasIdeDebugInlineValues = class(TAtlasIdeDebugStopView)
   public const
@@ -58,8 +62,9 @@ type
     /// <summary>So lange wartet Atlas auf einen verzögerten Wert (LLDB).</summary>
     cDeferredTimeoutMs = 500;
     cRequestTimeoutMs = 3000;
-    /// <summary>Versuche, bis der Aufrufstapel bzw. der Editor der Datei da ist (je TickMs * 5).</summary>
+    /// <summary>Versuche, bis der Aufrufstapel bzw. der Editor der Datei da ist (je cRetryTicks Takte).</summary>
     cLocationRetries = 20;
+    cRetryTicks = 5;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -71,18 +76,21 @@ type
       Name: string;
       Since: UInt64;
     end;
+  public class var
+    /// <summary>Setzt die Composition, solange markierte Objekte (#839) laufen; sonst nil.</summary>
+    OnMarked: TAtlasInlineValueMarker;
   private class var
     FInstance: TAtlasIdeDebugInlineValues;
   private
     FSession: TAtlasInlineValuesSessionFunc;
     FValues: TAtlasInlineValues;
-    FEvaluator: TAtlasIdeDebugValues;
+    /// <summary>Eigene Auswertungen im angehaltenen Thread (BeginInternal/EndInternal darin).</summary>
+    FEvaluator: TAtlasIdeDebugThreadValues;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FWorkers: TAtlasWorkerSlot;
     FDeferred: TDeferred;
-    FInternal: Boolean;
     FFileName: string;
     FContext: string;
     FLine: Integer;
@@ -96,8 +104,8 @@ type
     /// <summary>Wartet Atlas noch auf den verzögerten Wert? Nach DeferredTimeoutMs ohne ihn weiter.</summary>
     function DeferredPending: Boolean;
     function EvaluateOne(const AName: string; var AChanged: Boolean): TAtlasInlineStep;
+    function Marked(const AName, AText: string): string;
     procedure DeferredDone(const AValue: TAtlasDebugValue);
-    procedure EndInternal;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     class procedure Invalidate; static;
@@ -130,18 +138,18 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.Core.Debug.StopProgress,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Debug.CallStack,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Unavailable,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasIdeDebugInlineValues.TEvents }
 
@@ -165,7 +173,7 @@ begin
   FSession := ASession;
   FIndex := -1;
   FValues := TAtlasInlineValues.Create;
-  FEvaluator := TAtlasIdeDebugValues.Create;
+  FEvaluator := TAtlasIdeDebugThreadValues.Create;
   FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FStyle := TAtlasInlineValuePainter.Create;
   CreateTimer(cTickMs);
@@ -193,7 +201,6 @@ begin
   end;
   FEventsRef := nil;
   FEvaluator.Cancel;
-  EndInternal;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
   if FWorkers <> nil then
   begin
@@ -218,7 +225,6 @@ begin
     FTimer.Enabled := False;
   end;
   FEvaluator.Cancel;
-  EndInternal;
   FDeferred.Name := '';
   // Antworten noch laufender Anfragen verwerfen.
   FProgress.Discard;
@@ -290,7 +296,7 @@ begin
   case FProgress.Locate(mRead = TAtlasDebugStackRead.None, mWithoutSource, mBuffer <> nil, cLocationRetries) of
     TAtlasStopLocation.Retry:
       begin
-        FTimer.Interval := cTickMs * 5;
+        FTimer.Interval := cTickMs * cRetryTicks;
         FTimer.Enabled := True;
         Exit(False);
       end;
@@ -340,7 +346,10 @@ begin
         Refs := mSession.InlineValues(mFileName, 0, mLine, mLine, cRequestTimeoutMs);
       except
         // Server langsam oder weg: keine Werte.
-        Refs := nil;
+        on ELspClientError do
+        begin
+          Refs := nil;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,
@@ -375,9 +384,7 @@ begin
     Exit;
   end;
   FValues.Start(FFileName, FContext, FLine, ARefs, TAtlasIdeSettings.Current.DebugInlineValuesPerLine);
-  FProgress.Phase := TAtlasStopPhase.Evaluate;
-  FTimer.Interval := cTickMs;
-  FTimer.Enabled := True;
+  BeginEvaluate(cTickMs);
   EvaluateSlice;
 end;
 
@@ -439,9 +446,18 @@ begin
   if not Result then
   begin
     FEvaluator.Cancel;
-    EndInternal;
     FValues.Put(FDeferred.Name, '', False);
     FDeferred.Name := '';
+  end;
+end;
+
+/// <summary>AText mit dem Etikett eines markierten Objekts (#839), solange der Teil läuft.</summary>
+function TAtlasIdeDebugInlineValues.Marked(const AName, AText: string): string;
+begin
+  Result := AText;
+  if Assigned(OnMarked) then
+  begin
+    Result := OnMarked(AName, AText, FFileName, FLine + 1);
   end;
 end;
 
@@ -449,18 +465,9 @@ function TAtlasIdeDebugInlineValues.EvaluateOne(const AName: string; var AChange
 var
   mValue: TAtlasDebugValue;
 begin
-  // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugSession).
-  mValue := Default(TAtlasDebugValue);
-  TAtlasIdeDebugSession.BeginInternal;
-  FInternal := True;
-  try
-    mValue := FEvaluator.Evaluate(AName, FFileName, FLine + 1, DeferredDone);
-  finally
-    if mValue.State <> TAtlasDebugValueState.Pending then
-    begin
-      EndInternal;
-    end;
-  end;
+  // Eigene Auswertung ohne Nebenwirkungen: Zustandswechsel dabei sind kein Fortsetzen
+  // (TAtlasIdeDebugThreadValues).
+  mValue := FEvaluator.Evaluate(AName, FFileName, FLine + 1, False, DeferredDone);
   Result := TAtlasInlineValuesFlow.StepOf(mValue.State);
   case Result of
     TAtlasInlineStep.Wait:
@@ -471,7 +478,7 @@ begin
     TAtlasInlineStep.Next:
       if mValue.State = TAtlasDebugValueState.Value then
       begin
-        FValues.Put(AName, mValue.Text, True);
+        FValues.Put(AName, Marked(AName, mValue.Text), True);
         AChanged := True;
       end
       else
@@ -490,29 +497,14 @@ begin
   begin
     Exit;
   end;
-  EndInternal;
-  FValues.Put(FDeferred.Name, AValue.Text, AValue.State = TAtlasDebugValueState.Value);
+  FValues.Put(FDeferred.Name, Marked(FDeferred.Name, AValue.Text), AValue.State = TAtlasDebugValueState.Value);
   FDeferred.Name := '';
   Invalidate;
 end;
 
-procedure TAtlasIdeDebugInlineValues.EndInternal;
-begin
-  if FInternal then
-  begin
-    FInternal := False;
-    TAtlasIdeDebugSession.EndInternal;
-  end;
-end;
-
 class procedure TAtlasIdeDebugInlineValues.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 class procedure TAtlasIdeDebugInlineValues.Start(const ASession: TAtlasInlineValuesSessionFunc);

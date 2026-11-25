@@ -18,6 +18,10 @@ type
   TTextLineBreak = (None, CRLF, LF, CR, Mixed);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Zeilen einer Datei ohne Zeilenende; False, wenn sie fehlt oder nicht lesbar ist. Ein gemeinsamer Typ
+  /// für Server, Plugin und Module (Delphi 12 hält gleich gebaute Methodenreferenztypen auseinander).</summary>
+  TTextReadLines = reference to function(const AFileName: string; out ALines: TArray<string>): Boolean;
+
   /// <summary>Zeile und Zeichen, 0-basiert, Zeichen in UTF-16-Einheiten (LSP).</summary>
   TTextPosition = record
     Line: Integer;
@@ -25,6 +29,8 @@ type
     constructor Create(ALine, ACharacter: Integer);
     class operator Equal(const A, B: TTextPosition): Boolean;
     class operator NotEqual(const A, B: TTextPosition): Boolean;
+    /// <summary>Negativ, 0 oder positiv wie CompareText: zuerst die Zeile, dann das Zeichen.</summary>
+    class function Compare(const A, B: TTextPosition): Integer; static;
   end;
 
   /// <summary>Zeilenanfänge eines Texts; PositionAt sucht binär, OffsetAt in O(1).</summary>
@@ -65,6 +71,15 @@ type
       out AMixed: Boolean): TTextLineBreak; overload; static;
     /// <summary>Zeilen ohne Umbruch (CRLF, LF, CR); immer Anzahl Umbrüche + 1 Einträge.</summary>
     class function SplitLines(const AText: string): TArray<string>; overload; static;
+    /// <summary>AText an jedem #10 geteilt, ein #13 am Zeilenende entfernt; ein einzelnes #13 trennt nicht (Puffer
+    /// des Editors, Zeilennummern wie dort).</summary>
+    class function SplitAtLineFeed(const AText: string): TArray<string>; static;
+    /// <summary>Zeilen, wie TStrings.Text sie aus AText macht: Ein Umbruch am Ende ergibt keine leere letzte Zeile,
+    /// leerer Text keine Zeile.</summary>
+    class function SplitLikeStrings(const AText: string): TArray<string>; static;
+    /// <summary>ALines mit AOldCount Zeilen ab AStart (ab 0) durch ANew ersetzt.</summary>
+    class function ReplaceRange(const ALines: TArray<string>; AStart, AOldCount: Integer;
+      const ANew: TArray<string>): TArray<string>; static;
     /// <summary>Wie oben, dazu ALineBreak = LineBreakOf(AText).</summary>
     class function SplitLines(const AText: string; out ALineBreak: string): TArray<string>; overload; static;
     /// <summary>Zeilen samt Umbruch; die letzte ohne, wenn AText nicht mit einem endet; leerer Text →
@@ -74,6 +89,8 @@ type
     class function JoinLines(const ALines: array of string; const ALineBreak: string): string; static;
     /// <summary>Führende Leerzeichen und Tabs.</summary>
     class function IndentOf(const ALine: string): string; overload; static;
+    /// <summary>Zeile AIndex (0-basiert) von ALines; '' außerhalb.</summary>
+    class function LineAt(const ALines: TArray<string>; AIndex: Integer): string; static;
     /// <summary>Einrückung der Zeile ALine (0-basiert) von AText; '' außerhalb.</summary>
     class function IndentOf(const AText: string; ALine: Integer): string; overload; static;
     /// <summary>Anzahl führender Leerzeichen und Tabs.</summary>
@@ -85,6 +102,9 @@ type
     /// <summary>Leerraum (Leerzeichen, Tabulator, Zeilenumbrüche) zu je einem Leerzeichen, außen ohne; z. B. für
     /// Typen und Kopfzeilen, die über mehrere Zeilen gehen.</summary>
     class function CollapseSpace(const AText: string): string; static;
+    /// <summary>AText in einer Zeile (jeder Umbruch ein Leerzeichen), außen ohne Leerraum, höchstens AMax Zeichen;
+    /// gekürzt endet er auf "…".</summary>
+    class function ShortLine(const AText: string; AMax: Integer): string; static;
   end;
 
 implementation
@@ -105,6 +125,15 @@ end;
 class operator TTextPosition.NotEqual(const A, B: TTextPosition): Boolean;
 begin
   Result := not (A = B);
+end;
+
+class function TTextPosition.Compare(const A, B: TTextPosition): Integer;
+begin
+  Result := A.Line - B.Line;
+  if Result = 0 then
+  begin
+    Result := A.Character - B.Character;
+  end;
 end;
 
 /// <summary>Länge des Umbruchs, der bei AIndex (1-basiert) beginnt: 2 für CRLF, 1 für LF oder CR, sonst 0.</summary>
@@ -389,6 +418,47 @@ begin
   Result[mCount] := Copy(AText, mStart, MaxInt);
 end;
 
+class function TTextLines.SplitLikeStrings(const AText: string): TArray<string>;
+begin
+  Result := SplitLines(AText);
+  if (Length(Result) > 0) and (Result[High(Result)] = '') then
+  begin
+    SetLength(Result, Length(Result) - 1);
+  end;
+end;
+
+class function TTextLines.SplitAtLineFeed(const AText: string): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := AText.Split([#10]);
+  for mIndex := 0 to High(Result) do
+  begin
+    Result[mIndex] := StripTrailingCr(Result[mIndex]);
+  end;
+end;
+
+class function TTextLines.ReplaceRange(const ALines: TArray<string>; AStart, AOldCount: Integer;
+  const ANew: TArray<string>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(ALines) - AOldCount + Length(ANew));
+  for mIndex := 0 to AStart - 1 do
+  begin
+    Result[mIndex] := ALines[mIndex];
+  end;
+  for mIndex := 0 to High(ANew) do
+  begin
+    Result[AStart + mIndex] := ANew[mIndex];
+  end;
+  for mIndex := AStart + AOldCount to High(ALines) do
+  begin
+    Result[mIndex - AOldCount + Length(ANew)] := ALines[mIndex];
+  end;
+end;
+
 class function TTextLines.SplitLines(const AText: string; out ALineBreak: string): TArray<string>;
 begin
   ALineBreak := LineBreakOf(AText);
@@ -454,6 +524,15 @@ begin
   Result := Copy(ALine, 1, IndentLength(ALine));
 end;
 
+class function TTextLines.LineAt(const ALines: TArray<string>; AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex <= High(ALines)) then
+  begin
+    Result := ALines[AIndex];
+  end;
+end;
+
 class function TTextLines.IndentOf(const AText: string; ALine: Integer): string;
 var
   mTable: TLineTable;
@@ -513,6 +592,15 @@ begin
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+class function TTextLines.ShortLine(const AText: string; AMax: Integer): string;
+begin
+  Result := Trim(NormalizeLineBreaks(AText, ' '));
+  if Length(Result) > AMax then
+  begin
+    Result := Copy(Result, 1, AMax - 1) + '…';
   end;
 end;
 

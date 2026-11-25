@@ -19,7 +19,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Editor.ChangeSignature,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasChangeSignatureDialog = class(TAtlasDialog)
@@ -75,11 +75,12 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   // Breiten der Spalten Name, Typ, Modifizierer und Vorgabewert in der Parameterliste.
@@ -92,9 +93,29 @@ const
   cGap = 8;
   cDialogWidth = 640;
   cDialogHeight = 520;
+  /// <summary>Zeile mit Beschriftung: Höhe, Beschriftung (Versatz, Breite, Höhe), Eingabe (Beginn, Höhe).</summary>
+  cRowHeight = 28;
+  cLabelTop = 3;
+  cLabelWidth = 190;
+  cLineHeight = 20;
+  cFieldLeft = 200;
+  cFieldHeight = 23;
+  /// <summary>Optionen: erste Zeile, Zeilenabstand, Einzug; Felder: erste Zeile; Knöpfe rechts: Höhe und Abstand.
+  /// </summary>
+  cOptionTop = 4;
+  cOptionStep = 22;
+  cOptionIndent = 16;
+  cFieldsTop = 4;
+  cButtonHeight = 28;
+  cButtonGap = 4;
+  // Höhen der Leisten unten (Knöpfe, Optionen, Felder) und Breite der Knopfspalte rechts.
+  cButtonBarHeight = 44;
+  cOptionsHeight = 72;
+  cFieldsHeight = 118;
+  cSideWidth = 120;
 
-/// <summary>Panel ohne Rahmen in AParent, an AAlign ausgerichtet; ASize ist Höhe bzw. Breite (schon skaliert).
-/// </summary>
+/// <summary>Panel ohne Rahmen in AParent, an AAlign ausgerichtet; ASize ist Höhe bzw. Breite in logischen Pixeln
+/// (96 dpi), skaliert über das Panel.</summary>
 function AddPanel(AParent: TWinControl; AAlign: TAlign; ASize: Integer): TPanel;
 begin
   Result := TPanel.Create(AParent);
@@ -102,11 +123,11 @@ begin
   Result.Align := AAlign;
   if AAlign in [alLeft, alRight] then
   begin
-    Result.Width := ASize;
+    Result.Width := Result.ScaleValue(ASize);
   end
   else
   begin
-    Result.Height := ASize;
+    Result.Height := Result.ScaleValue(ASize);
   end;
   Result.BevelOuter := bvNone;
 end;
@@ -118,7 +139,7 @@ begin
   Result.Parent := AForm;
   Result.Align := alBottom;
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(cGap, ATopMargin, cGap, cGap div 2);
+  Result.Margins.SetBounds(Result.ScaleValue(cGap), ATopMargin, Result.ScaleValue(cGap), Result.ScaleValue(cGap div 2));
   Result.ShowAccelChar := False;
 end;
 
@@ -131,7 +152,7 @@ begin
   Result.OnClick := AClick;
   Result.Width := ADialog.ScaleValue(100);
   Result.Top := ADialog.ScaleValue(cGap);
-  Result.Height := ADialog.ScaleValue(28);
+  Result.Height := ADialog.ScaleValue(cButtonHeight);
   Result.Anchors := [akTop, akRight];
 end;
 
@@ -145,24 +166,14 @@ begin
   mCaption := TLabel.Create(ADialog);
   mCaption.Parent := AParent;
   mCaption.Caption := ACaption;
-  mCaption.SetBounds(ADialog.ScaleValue(cGap), ATop + ADialog.ScaleValue(3), ADialog.ScaleValue(190),
-    ADialog.ScaleValue(20));
+  mCaption.SetBounds(ADialog.ScaleValue(cGap), ATop + ADialog.ScaleValue(cLabelTop), ADialog.ScaleValue(cLabelWidth),
+    ADialog.ScaleValue(cLineHeight));
   mCaption.FocusControl := AControl;
   AControl.Parent := AParent;
-  AControl.SetBounds(ADialog.ScaleValue(200), ATop, ADialog.ScaleValue(cDialogWidth - 200 - cGap),
-    ADialog.ScaleValue(23));
+  AControl.SetBounds(ADialog.ScaleValue(cFieldLeft), ATop, ADialog.ScaleValue(cDialogWidth - cFieldLeft - cGap),
+    ADialog.ScaleValue(cFieldHeight));
   AControl.Anchors := [akLeft, akTop, akRight];
-  Result := ATop + ADialog.ScaleValue(28);
-end;
-
-/// <summary>Spalte ACaption mit der Breite AWidth (schon skaliert).</summary>
-procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := AWidth;
+  Result := ATop + ADialog.ScaleValue(cRowHeight);
 end;
 
 /// <summary>Hinweise zum Modell: festes Ereignis und Warnungen des Servers, je eine Zeile.</summary>
@@ -181,7 +192,7 @@ begin
     begin
       Result := Result + sLineBreak;
     end;
-    Result := Result + TAtlasStrings.Fmt(TAtlasTextId.SigWarning, [mWarning]);
+    Result := Result + TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigWarning, [mWarning]);
   end;
 end;
 
@@ -204,16 +215,16 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, 0, 0);
+  TAtlasControlScaling.SetMargins(FList, cGap, cGap, 0, 0);
   FList.ViewStyle := vsReport;
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.OnSelectItem := ListSelect;
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColName), ScaleValue(cSigNameWidth));
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColType), ScaleValue(cSigTypeWidth));
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColModifier), ScaleValue(cSigModifierWidth));
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColValue), ScaleValue(cSigValueWidth));
+  TAtlasListView.AddColumnTo(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColName), cSigNameWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColType), cSigTypeWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColModifier), cSigModifierWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColValue), cSigValueWidth);
   ActiveControl := FList;
 end;
 
@@ -236,7 +247,7 @@ procedure TAtlasChangeSignatureDialog.CreateBottom;
 var
   mBottom: TPanel;
 begin
-  mBottom := AddPanel(Self, alBottom, ScaleValue(44));
+  mBottom := AddPanel(Self, alBottom, cButtonBarHeight);
   FCancel := AddButton(Self, mBottom, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigCancel), nil);
   FCancel.Cancel := True;
   FCancel.ModalResult := mrCancel;
@@ -258,20 +269,23 @@ procedure TAtlasChangeSignatureDialog.CreateOptions;
 var
   mOptions: TPanel;
 begin
-  mOptions := AddPanel(Self, alBottom, ScaleValue(72));
+  mOptions := AddPanel(Self, alBottom, cOptionsHeight);
   FOverload := TRadioButton.Create(Self);
   FOverload.Parent := mOptions;
-  FOverload.SetBounds(ScaleValue(cGap), ScaleValue(4), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
+  FOverload.SetBounds(ScaleValue(cGap), ScaleValue(cOptionTop), ScaleValue(cDialogWidth - 2 * cGap),
+    ScaleValue(cLineHeight));
   FOverload.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.SigModeOverload);
   FOverload.OnClick := ModeClick;
   FCallers := TRadioButton.Create(Self);
   FCallers.Parent := mOptions;
-  FCallers.SetBounds(ScaleValue(cGap), ScaleValue(26), ScaleValue(cDialogWidth - 2 * cGap), ScaleValue(20));
+  FCallers.SetBounds(ScaleValue(cGap), ScaleValue(cOptionTop + cOptionStep), ScaleValue(cDialogWidth - 2 * cGap),
+    ScaleValue(cLineHeight));
   FCallers.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.SigModeCallers);
   FCallers.OnClick := ModeClick;
   FVirtual := TCheckBox.Create(Self);
   FVirtual.Parent := mOptions;
-  FVirtual.SetBounds(ScaleValue(cGap + 16), ScaleValue(48), ScaleValue(cDialogWidth - 2 * cGap - 16), ScaleValue(20));
+  FVirtual.SetBounds(ScaleValue(cGap + cOptionIndent), ScaleValue(cOptionTop + 2 * cOptionStep),
+    ScaleValue(cDialogWidth - 2 * cGap - cOptionIndent), ScaleValue(cLineHeight));
   FVirtual.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.SigVirtual);
   FVirtual.Checked := FModel.VirtualOverload;
   FVirtual.OnClick := ModeClick;
@@ -289,12 +303,12 @@ var
   mFields: TPanel;
   mTop: Integer;
 begin
-  mFields := AddPanel(Self, alBottom, ScaleValue(118));
+  mFields := AddPanel(Self, alBottom, cFieldsHeight);
   FName := TEdit.Create(Self);
   FType := TEdit.Create(Self);
   FModifier := TComboBox.Create(Self);
   FValue := TEdit.Create(Self);
-  mTop := ScaleValue(4);
+  mTop := ScaleValue(cFieldsTop);
   mTop := AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldName), mTop, FName);
   mTop := AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldType), mTop, FType);
   mTop := AddLabeled(Self, mFields, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigFieldModifier), mTop, FModifier);
@@ -311,15 +325,15 @@ var
   mRight: TPanel;
   mIndex: Integer;
 begin
-  mRight := AddPanel(Self, alRight, ScaleValue(120));
+  mRight := AddPanel(Self, alRight, cSideWidth);
   FAdd := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigAdd), AddClick);
   FRemove := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigRemove), RemoveClick);
   FUp := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigUp), UpClick);
   FDown := AddButton(Self, mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigDown), DownClick);
   FAdd.Top := ScaleValue(cGap);
-  FRemove.Top := FAdd.Top + FAdd.Height + ScaleValue(4);
+  FRemove.Top := FAdd.Top + FAdd.Height + ScaleValue(cButtonGap);
   FUp.Top := FRemove.Top + FRemove.Height + ScaleValue(cGap * 2);
-  FDown.Top := FUp.Top + FUp.Height + ScaleValue(4);
+  FDown.Top := FUp.Top + FUp.Height + ScaleValue(cButtonGap);
   for mIndex := 0 to mRight.ControlCount - 1 do
   begin
     mRight.Controls[mIndex].Left := ScaleValue(cGap);

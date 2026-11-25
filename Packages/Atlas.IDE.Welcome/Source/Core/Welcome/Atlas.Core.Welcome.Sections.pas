@@ -13,33 +13,13 @@ interface
 
 uses
   System.SysUtils,
-  System.SyncObjs,
-  System.Generics.Collections;
+  Atlas.Plugin.Notifications.Listeners,
+  Atlas.Plugin.Notifications.OrderedItems,
+  Atlas.Core.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>Spalte im Atlas-Layout; im Fenster „Atlas-Start“ stehen beide untereinander.</summary>
-  TAtlasWelcomeColumn = (Left, Right);
-{$SCOPEDENUMS OFF}
-
-  TAtlasWelcomeSection = record
-    /// <summary>Kennung, z. B. "atlas.state"; siehe TAtlasWelcomeIds.</summary>
-    Id: string;
-    /// <summary>Überschrift in der Sprache der IDE.</summary>
-    Title: string;
-    /// <summary>Reihenfolge außerhalb eines Layouts, kleiner zuerst; bei Gleichstand nach Kennung.</summary>
-    Order: Integer;
-    /// <summary>Spalte, wenn das Layout den Bereich nicht kennt.</summary>
-    Column: TAtlasWelcomeColumn;
-    /// <summary>Schalter des Bereichs (z. B. welcomePage.state); nil = immer an.</summary>
-    Enabled: TFunc<Boolean>;
-    /// <summary>Ein Satz für „Seite anpassen“ (#767), wenn TAtlasIdeWelcomeLayouts den Bereich nicht kennt
-    /// (Kacheln anderer Module, #1455); '' = keiner.</summary>
-    Description: string;
-    function IsEnabled: Boolean;
-    class function Create(const AId, ATitle: string; AOrder: Integer; AColumn: TAtlasWelcomeColumn;
-      const AEnabled: TFunc<Boolean>): TAtlasWelcomeSection; static;
-  end;
+  TAtlasWelcomeColumn = Atlas.Core.Welcome.Contract.TAtlasWelcomeColumn;
+  TAtlasWelcomeSection = Atlas.Core.Welcome.Contract.TAtlasWelcomeSection;
 
   /// <summary>Kennungen der Bereiche und der Plugins auf der Willkommensseite der IDE.</summary>
   TAtlasWelcomeIds = class
@@ -71,16 +51,18 @@ type
     class function SectionOf(const APluginId: string): string; static;
   end;
 
+  /// <summary>Bereiche nach Order und Kennung.</summary>
+  TAtlasWelcomeSectionItems = class(TAtlasOrderedItems<TAtlasWelcomeSection>)
+  protected
+    function IdOf(const AItem: TAtlasWelcomeSection): string; override;
+    function OrderOf(const AItem: TAtlasWelcomeSection): Integer; override;
+  end;
+
   TAtlasWelcomeSections = class
   private
-    FLock: TCriticalSection;
-    FItems: TList<TAtlasWelcomeSection>;
-    FListeners: TDictionary<Integer, TProc<string>>;
-    FNextListener: Integer;
-    FVersion: Integer;
+    FItems: TAtlasWelcomeSectionItems;
+    FListeners: TAtlasListeners<string>;
     class var FDefault: TAtlasWelcomeSections;
-    function IndexOf(const AId: string): Integer;
-    procedure Notify(const AId: string);
   public
     constructor Create;
     destructor Destroy; override;
@@ -128,36 +110,18 @@ type
 
 implementation
 
-{ TAtlasWelcomeSection }
-
-function TAtlasWelcomeSection.IsEnabled: Boolean;
-begin
-  Result := True;
-  if Assigned(Enabled) then
-  begin
-    Result := Enabled();
-  end;
-end;
-
-class function TAtlasWelcomeSection.Create(const AId, ATitle: string; AOrder: Integer;
-  AColumn: TAtlasWelcomeColumn; const AEnabled: TFunc<Boolean>): TAtlasWelcomeSection;
-begin
-  Result.Id := AId;
-  Result.Title := ATitle;
-  Result.Order := AOrder;
-  Result.Column := AColumn;
-  Result.Enabled := AEnabled;
-  Result.Description := '';
-end;
+const
+  /// <summary>Präfix der Kennungen der Atlas-Bereiche.</summary>
+  cSectionPrefix = 'atlas.';
 
 { TAtlasWelcomeIds }
 
 class function TAtlasWelcomeIds.PluginId(const ASectionId: string): string;
 begin
   Result := ASectionId;
-  if SameText(Copy(Result, 1, 6), 'atlas.') then
+  if SameText(Copy(Result, 1, Length(cSectionPrefix)), cSectionPrefix) then
   begin
-    Delete(Result, 1, 6);
+    Delete(Result, 1, Length(cSectionPrefix));
   end;
   Result := cPluginPrefix + Result;
 end;
@@ -169,8 +133,20 @@ begin
     (Length(APluginId) > Length(cPluginPrefix)) then
   begin
     // Kennungen der Bereiche sind klein geschrieben.
-    Result := 'atlas.' + LowerCase(Copy(APluginId, Length(cPluginPrefix) + 1, MaxInt));
+    Result := cSectionPrefix + LowerCase(Copy(APluginId, Length(cPluginPrefix) + 1, MaxInt));
   end;
+end;
+
+{ TAtlasWelcomeSectionItems }
+
+function TAtlasWelcomeSectionItems.IdOf(const AItem: TAtlasWelcomeSection): string;
+begin
+  Result := AItem.Id;
+end;
+
+function TAtlasWelcomeSectionItems.OrderOf(const AItem: TAtlasWelcomeSection): Integer;
+begin
+  Result := AItem.Order;
 end;
 
 { TAtlasWelcomeSections }
@@ -178,54 +154,15 @@ end;
 constructor TAtlasWelcomeSections.Create;
 begin
   inherited Create;
-  FLock := TCriticalSection.Create;
-  FItems := TList<TAtlasWelcomeSection>.Create;
-  FListeners := TDictionary<Integer, TProc<string>>.Create;
+  FItems := TAtlasWelcomeSectionItems.Create;
+  FListeners := TAtlasListeners<string>.Create;
 end;
 
 destructor TAtlasWelcomeSections.Destroy;
 begin
   FListeners.Free;
   FItems.Free;
-  FLock.Free;
   inherited;
-end;
-
-function TAtlasWelcomeSections.IndexOf(const AId: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to FItems.Count - 1 do
-  begin
-    if SameText(FItems[mIndex].Id, AId) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-procedure TAtlasWelcomeSections.Notify(const AId: string);
-var
-  mListeners: TArray<TProc<string>>;
-  mListener: TProc<string>;
-begin
-  FLock.Enter;
-  try
-    Inc(FVersion);
-    mListeners := FListeners.Values.ToArray;
-  finally
-    FLock.Leave;
-  end;
-  // Außerhalb der Sperre: Beobachter dürfen die Bereiche lesen.
-  for mListener in mListeners do
-    try
-      mListener(AId);
-    except
-      // Ein Fehler im Beobachter darf den meldenden Bereich nicht stören.
-      on Exception do
-        ;
-    end;
 end;
 
 class function TAtlasWelcomeSections.Default: TAtlasWelcomeSections;
@@ -237,98 +174,37 @@ begin
   Result := FDefault;
 end;
 
-function Comes(const ALeft, ARight: TAtlasWelcomeSection): Boolean;
-begin
-  if ALeft.Order <> ARight.Order then
-  begin
-    Result := ALeft.Order < ARight.Order;
-  end
-  else
-  begin
-    Result := CompareText(ALeft.Id, ARight.Id) < 0;
-  end;
-end;
-
 class procedure TAtlasWelcomeSections.ReleaseDefault;
 begin
   FreeAndNil(FDefault);
 end;
 
 procedure TAtlasWelcomeSections.Add(const ASection: TAtlasWelcomeSection);
-var
-  mIndex, mExisting: Integer;
 begin
   if ASection.Id = '' then
   begin
     Exit;
   end;
-  FLock.Enter;
-  try
-    mExisting := IndexOf(ASection.Id);
-    if mExisting >= 0 then
-    begin
-      FItems.Delete(mExisting);
-    end;
-    mIndex := 0;
-    while (mIndex < FItems.Count) and not Comes(ASection, FItems[mIndex]) do
-    begin
-      Inc(mIndex);
-    end;
-    FItems.Insert(mIndex, ASection);
-  finally
-    FLock.Leave;
-  end;
-  Notify('');
+  FItems.Put(ASection);
+  FListeners.Changed('');
 end;
 
 procedure TAtlasWelcomeSections.Remove(const AId: string);
-var
-  mIndex: Integer;
 begin
-  FLock.Enter;
-  try
-    mIndex := IndexOf(AId);
-    if mIndex < 0 then
-    begin
-      Exit;
-    end;
-    FItems.Delete(mIndex);
-  finally
-    FLock.Leave;
+  if FItems.Remove(AId) then
+  begin
+    FListeners.Changed('');
   end;
-  Notify('');
 end;
 
 function TAtlasWelcomeSections.Find(const AId: string; out ASection: TAtlasWelcomeSection): Boolean;
-var
-  mIndex: Integer;
 begin
-  FLock.Enter;
-  try
-    mIndex := IndexOf(AId);
-    Result := mIndex >= 0;
-    if Result then
-    begin
-      ASection := FItems[mIndex];
-    end
-    else
-    begin
-      // Nicht Default(…): Die Klasse hat selbst eine Methode Default.
-      ASection := TAtlasWelcomeSection.Create('', '', 0, TAtlasWelcomeColumn.Left, nil);
-    end;
-  finally
-    FLock.Leave;
-  end;
+  Result := FItems.Find(AId, ASection);
 end;
 
 function TAtlasWelcomeSections.All: TArray<TAtlasWelcomeSection>;
 begin
-  FLock.Enter;
-  try
-    Result := FItems.ToArray;
-  finally
-    FLock.Leave;
-  end;
+  Result := FItems.ToArray;
 end;
 
 function TAtlasWelcomeSections.Visible: TArray<TAtlasWelcomeSection>;
@@ -359,44 +235,27 @@ end;
 
 procedure TAtlasWelcomeSections.Changed(const AId: string);
 begin
-  Notify(AId);
+  FListeners.Changed(AId);
 end;
 
 procedure TAtlasWelcomeSections.Changed;
 begin
-  Notify('');
+  FListeners.Changed('');
 end;
 
 function TAtlasWelcomeSections.Version: Integer;
 begin
-  FLock.Enter;
-  try
-    Result := FVersion;
-  finally
-    FLock.Leave;
-  end;
+  Result := FListeners.Version;
 end;
 
 function TAtlasWelcomeSections.AddListener(const AListener: TProc<string>): Integer;
 begin
-  FLock.Enter;
-  try
-    Inc(FNextListener);
-    Result := FNextListener;
-    FListeners.Add(Result, AListener);
-  finally
-    FLock.Leave;
-  end;
+  Result := FListeners.Add(AListener);
 end;
 
 procedure TAtlasWelcomeSections.RemoveListener(AHandle: Integer);
 begin
-  FLock.Enter;
-  try
-    FListeners.Remove(AHandle);
-  finally
-    FLock.Leave;
-  end;
+  FListeners.Remove(AHandle);
 end;
 
 { TAtlasWelcomePlugins }

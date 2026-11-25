@@ -27,8 +27,8 @@ uses
   System.SysUtils,
   Atlas.UI.Strings,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.Bindings,
@@ -37,7 +37,7 @@ uses
   Atlas.IDE.CodeInsight.Composition.Build,
   Atlas.IDE.CodeInsight.Composition.Tools,
   Atlas.IDE.CodeInsight.Composition.Palette,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -134,14 +134,6 @@ begin
   if Manager <> nil then
   begin
     Manager.OpenCompletion;
-  end;
-end;
-
-procedure OpenSignature;
-begin
-  if Manager <> nil then
-  begin
-    Manager.OpenSignature;
   end;
 end;
 

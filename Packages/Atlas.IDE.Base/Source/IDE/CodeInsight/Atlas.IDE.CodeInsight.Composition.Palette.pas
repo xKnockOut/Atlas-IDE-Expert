@@ -33,8 +33,8 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Settings.PaletteSearch,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Generate.Commands,
@@ -50,7 +50,9 @@ uses
   Atlas.IDE.CodeInsight.Composition.Build,
   Atlas.IDE.CodeInsight.Composition.Tools,
   Atlas.IDE.CodeInsight.Composition.PaletteNavigation,
-  Atlas.IDE.CodeInsight.Composition.PaletteEditing;
+  Atlas.IDE.CodeInsight.Composition.PaletteEditing,
+  Atlas.IDE.CodeInsight.Composition.IdeAdapters,
+  Atlas.Core.Commands.Contract;
 
 var
   PaletteInstance: TAtlasIdePalette;
@@ -237,22 +239,25 @@ end;
 
 /// <summary>Befehle der Teile mit eigenem Fenster: Schnellschalter, Diagnosemodus, Einrichtung, Tasten.</summary>
 procedure RegisterPartCommands;
+var
+  mRegistry: IAtlasCommandRegistry;
 begin
+  mRegistry := PaletteRegistry(PaletteInstance);
   if QuickToggles <> nil then
   begin
-    QuickToggles.RegisterCommands(PaletteInstance);
+    QuickToggles.RegisterCommands(mRegistry);
   end;
   if DiagnosticMode <> nil then
   begin
-    DiagnosticMode.RegisterCommands(PaletteInstance);
+    DiagnosticMode.RegisterCommands(mRegistry);
   end;
   if Setup <> nil then
   begin
-    Setup.RegisterCommands(PaletteInstance);
+    Setup.RegisterCommands(mRegistry);
   end;
   if KeyMap <> nil then
   begin
-    KeyMap.RegisterCommands(PaletteInstance);
+    KeyMap.RegisterCommands(mRegistry);
   end;
 end;
 

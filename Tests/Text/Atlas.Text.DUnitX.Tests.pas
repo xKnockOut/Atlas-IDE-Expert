@@ -43,6 +43,8 @@ type
     [Test]
     procedure CommandLineWithAndWithoutFilter;
     [Test]
+    procedure CaptionLeavesOutEmptyParts;
+    [Test]
     procedure BodyRangeSkipsLocalRoutinesAndTypes;
     [Test]
     procedure CaseLinesAndMarks;
@@ -66,7 +68,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Text.DUnitX.CommandLine;
 
 function Sample: TArray<string>;
 begin
@@ -351,6 +354,13 @@ begin
   Assert.IsTrue(TDUnitXSource.UsesDUnitX(['program P;', 'uses DUnitX.TestFramework in ''x.pas'';', 'end.']));
   Assert.IsFalse(TDUnitXSource.UsesDUnitX(['program App;', 'uses Vcl.Forms; // DUnitX.TestFramework,', 'end.']));
   Assert.IsFalse(TDUnitXSource.UsesDUnitX(['program App;', 'uses DUnitX.TestFrameworkExtra;', 'end.']));
+end;
+
+procedure TDUnitXSourceTests.CaptionLeavesOutEmptyParts;
+begin
+  Assert.AreEqual('TRechnerTests', TDUnitXCommandLine.Caption('TRechnerTests', '', ''));
+  Assert.AreEqual('TRechnerTests.Addiert', TDUnitXCommandLine.Caption('TRechnerTests', 'Addiert', ''));
+  Assert.AreEqual('TRechnerTests.Addiert.Zwei', TDUnitXCommandLine.Caption('TRechnerTests', 'Addiert', 'Zwei'));
 end;
 
 procedure TDUnitXSourceTests.CommandLineWithAndWithoutFilter;

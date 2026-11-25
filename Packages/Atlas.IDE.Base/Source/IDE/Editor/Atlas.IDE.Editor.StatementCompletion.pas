@@ -46,18 +46,17 @@ uses
   System.Types,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Editor.LineMove,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Host;
 
@@ -219,9 +218,9 @@ end;
 class procedure TAtlasIdeStatementCompletion.RunWith(ATryKind: TAtlasTryKind);
 var
   mView: IOTAEditView;
-  mText, mLineBreak, mFinal, mInsert: string;
+  mText, mLineBreak, mFinal: string;
   mEdit: TAtlasStatementEdit;
-  mCursorLine, mCursorCharacter, mStart, mOldLength: Integer;
+  mCursorLine, mCursorCharacter: Integer;
 begin
   mView := TAtlasEditorBuffer.ActiveView;
   if not Enabled or (mView = nil) or (mView.Buffer = nil) or mView.Buffer.IsReadOnly then
@@ -244,10 +243,7 @@ begin
   mFinal := Followed(mView.Buffer.FileName, string.Join(mLineBreak,
     TAtlasStatementCompleter.Apply(mText.Split([#13#10, #10]), mEdit)), mLineBreak, mEdit, mCursorLine,
     mCursorCharacter);
-  if TAtlasLineMover.Difference(mText, mFinal, mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mText, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(mView.Buffer, mText, mFinal);
   PlaceCursor(mView, mFinal.Split([#13#10, #10]), mCursorLine, mCursorCharacter,
     TAtlasEditorBuffer.TabWidth(mView.Buffer));
 end;

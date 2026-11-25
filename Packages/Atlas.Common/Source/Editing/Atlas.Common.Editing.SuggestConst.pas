@@ -19,7 +19,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow.Signatures,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.CodeActions.Contract;
 
 type
   TSuggestConst = class
@@ -36,8 +36,8 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Reassigned,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

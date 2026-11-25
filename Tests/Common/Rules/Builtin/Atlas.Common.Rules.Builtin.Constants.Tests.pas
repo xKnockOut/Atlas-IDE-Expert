@@ -185,7 +185,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -194,9 +193,10 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Constants,
-  Atlas.Common.Rules.Builtin.Constants.Conversions,
+  Atlas.Common.Rules.Builtin.Conversions,
   Atlas.Common.Rules.Builtin.Constants.TypedConstants,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 function ConstantFindings(const ASource: string): TArray<TRuleFinding>; overload;
 begin
@@ -530,76 +530,14 @@ begin
     '{"rules": {"constant-expression-error": {"exclude": ["Source/*.pas"]}}}', 'Source/Werte.pas'))));
 end;
 
-/// <summary>Ob eine der eingebauten Regeln die ID ARuleId trägt.</summary>
-function IsBuiltin(const ARuleId: string): Boolean;
-var
-  mRule: IRule;
-begin
-  Result := False;
-  for mRule in BuiltinRules do
-  begin
-    if mRule.Descriptor.Id = ARuleId then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 procedure TConstantExpressionErrorTests.RuleIsRegistered;
 begin
-  Assert.IsTrue(IsBuiltin(cConstantExpressionErrorRuleId), cConstantExpressionErrorRuleId);
-  Assert.IsTrue(IsBuiltin(cDefaultParameterInvalidRuleId), cDefaultParameterInvalidRuleId);
-  Assert.IsTrue(IsBuiltin(cSignedUnsignedMixRuleId), cSignedUnsignedMixRuleId);
-  Assert.IsTrue(IsBuiltin(cNarrowingAssignmentRuleId), cNarrowingAssignmentRuleId);
-  Assert.IsTrue(IsBuiltin(cTypedConstantModifiedRuleId), cTypedConstantModifiedRuleId);
-  Assert.IsTrue(IsBuiltin(cStringLengthLimitRuleId), cStringLengthLimitRuleId);
-end;
-
-/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
-function OffsetIn(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine, mIndex: Integer;
-begin
-  mLine := 0;
-  mIndex := 1;
-  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-    end;
-    Inc(mIndex);
-  end;
-  Result := mIndex + APosition.Character;
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an (nach Position sortiert).</summary>
-function ApplyAll(const AText: string; const AFix: TRuleFix): string;
-var
-  mEdits: TArray<TRuleEdit>;
-  mIndex, mInner, mStart, mStop: Integer;
-  mSwap: TRuleEdit;
-begin
-  mEdits := Copy(AFix.Edits);
-  for mIndex := 0 to High(mEdits) do
-  begin
-    for mInner := mIndex + 1 to High(mEdits) do
-    begin
-      if OffsetIn(AText, mEdits[mInner].Range.StartPos) > OffsetIn(AText, mEdits[mIndex].Range.StartPos) then
-      begin
-        mSwap := mEdits[mIndex];
-        mEdits[mIndex] := mEdits[mInner];
-        mEdits[mInner] := mSwap;
-      end;
-    end;
-  end;
-  Result := AText;
-  for mIndex := 0 to High(mEdits) do
-  begin
-    mStart := OffsetIn(Result, mEdits[mIndex].Range.StartPos);
-    mStop := OffsetIn(Result, mEdits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + mEdits[mIndex].NewText + Copy(Result, mStop, MaxInt);
-  end;
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cConstantExpressionErrorRuleId), cConstantExpressionErrorRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cDefaultParameterInvalidRuleId), cDefaultParameterInvalidRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cSignedUnsignedMixRuleId), cSignedUnsignedMixRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cNarrowingAssignmentRuleId), cNarrowingAssignmentRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cTypedConstantModifiedRuleId), cTypedConstantModifiedRuleId);
+  Assert.IsTrue(TRuleAssert.IsBuiltin(cStringLengthLimitRuleId), cStringLengthLimitRuleId);
 end;
 
 { TDefaultParameterInvalidTests }
@@ -647,7 +585,7 @@ begin
   Assert.AreEqual(10, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Parameter mit Standardwert ans Ende verschieben', mFound[0].Fixes[0].Title);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('procedure Senden(Ziel: TZiel; const Text: string = '''');', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('procedure TPost.Senden(Ziel: TZiel; const Text: string);', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(DefaultFindings(mFixed))), mFixed);
@@ -656,7 +594,7 @@ begin
   Assert.AreEqual(2, Integer(Length(mFound)));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual(0, Integer(Length(mFound[1].Fixes)));
-  mFixed := ApplyAll(Post('    procedure Senden(Text: string = ''''; A: Integer; B: Integer);'#10, ''),
+  mFixed := TTestEdits.ApplyFix(Post('    procedure Senden(Text: string = ''''; A: Integer; B: Integer);'#10, ''),
     mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('procedure Senden(A: Integer; B: Integer; Text: string = '''');', mFixed) > 0, mFixed);
 end;
@@ -672,7 +610,7 @@ begin
   Assert.AreEqual('Links, Rechts: Standardwerte gibt es nur für einzeln deklarierte Parameter (wie E2237).',
     mFound[0].Message);
   Assert.AreEqual('Parameter einzeln deklarieren', mFound[0].Fixes[0].Title);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('procedure Rand(const Links: Integer = 4; const Rechts: Integer = 4);', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(DefaultFindings(mFixed))), mFixed);
 end;
@@ -734,7 +672,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Bis braucht einen Standardwert, weil ein vorheriger Parameter einen hat (wie E2238).',
     mFound[0].Message);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('procedure Linie(const [ref] Bis: TPunkt; Breite: Integer = 1);', mFixed) > 0, mFixed);
 end;
 
@@ -818,8 +756,8 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Anzahl in Int64 umwandeln', mFound[0].Fixes[0].Title);
-  Assert.IsTrue(Pos('if Index < Int64(Anzahl) then', ApplyAll(mSource, mFound[0].Fixes[0])) > 0);
-  Assert.AreEqual(0, Integer(Length(MixFindings(ApplyAll(mSource, mFound[0].Fixes[0])))));
+  Assert.IsTrue(Pos('if Index < Int64(Anzahl) then', TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0])) > 0);
+  Assert.AreEqual(0, Integer(Length(MixFindings(TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0])))));
 end;
 
 procedure TSignedUnsignedMixTests.MembersFromIndex;
@@ -928,10 +866,10 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(2, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Ausdrücklich in Integer umwandeln', mFound[0].Fixes[0].Title);
-  Assert.IsTrue(Pos('Anzahl := Integer(Strom.Size);', ApplyAll(mSource, mFound[0].Fixes[0])) > 0);
+  Assert.IsTrue(Pos('Anzahl := Integer(Strom.Size);', TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0])) > 0);
   Assert.AreEqual('Zieltyp auf Int64 vergrößern', mFound[0].Fixes[1].Title);
-  Assert.IsTrue(Pos('  Anzahl: Int64;', ApplyAll(mSource, mFound[0].Fixes[1])) > 0);
-  Assert.AreEqual(0, Integer(Length(NarrowingFindings(ApplyAll(mSource, mFound[0].Fixes[1]), cNarrowingOn))));
+  Assert.IsTrue(Pos('  Anzahl: Int64;', TTestEdits.ApplyFix(mSource, mFound[0].Fixes[1])) > 0);
+  Assert.AreEqual(0, Integer(Length(NarrowingFindings(TTestEdits.ApplyFix(mSource, mFound[0].Fixes[1]), cNarrowingOn))));
   // Mehrere Namen in einer Deklaration und Felder: nur die Umwandlung.
   mFound := NarrowingFindings(Lesen('  Anzahl, Rest: Integer;'#10, '  Anzahl := Strom.Size;'#10), cNarrowingOn);
   Assert.AreEqual(1, Integer(Length(mFound)));
@@ -1021,14 +959,8 @@ begin
 end;
 
 function Messages(const AFindings: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
 begin
-  Result := '';
-  for mFinding in AFindings do
-  begin
-    Result := Result + mFinding.Message + #10;
-  end;
+  Result := TRuleAssert.Messages(AFindings, #10);
 end;
 
 { TTypedConstantModifiedTests }
@@ -1045,7 +977,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('In var mit Initialwert umwandeln', mFound[0].Fixes[0].Title);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('interface'#10'var'#10'  Zaehler: Integer = 0;'#10'implementation', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(TypedFindings(mFixed))));
 end;
@@ -1152,7 +1084,7 @@ begin
     '  Zaehler := 1;'#10);
   mFound := TypedFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)));
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('const'#10'  Erste = 1;'#10'var'#10'  Zaehler: Integer = 0;'#10'const'#10'  Letzte = 2;'#10,
     mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(TypedFindings(mFixed))));
@@ -1214,7 +1146,7 @@ begin
     'Kunde ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).'#10 +
     'Ziel ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).'#10, Messages(mFound));
   Assert.AreEqual('nil schreiben', mFound[0].Fixes[0].Title);
-  Assert.IsTrue(Pos('Leer: Pointer = nil;', ApplyAll(mSource, mFound[0].Fixes[0])) > 0);
+  Assert.IsTrue(Pos('Leer: Pointer = nil;', TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0])) > 0);
 end;
 
 procedure TTypedConstantModifiedTests.ReadingAndShadowingAreSilent;
@@ -1274,7 +1206,7 @@ begin
   Assert.AreEqual('Das Literal hat 15 Zeichen und wird auf 8 gekürzt (wie W1014).', mFound[0].Message);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('Als string deklarieren', mFound[0].Fixes[0].Title);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('  Kennung: string;', mFixed) > 0, mFixed);
   Assert.AreEqual(0, Integer(Length(LimitFindings(mFixed))));
   // Korrigierte Form: passendes Literal.
@@ -1327,7 +1259,7 @@ begin
     '(wie E2056).', mFound[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
   Assert.AreEqual('Literal teilen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.IsTrue(Pos('Lang = ''' + StringOfChar('a', 255) + ''' + ''' + StringOfChar('a', 45) + ''';', mFixed) > 0);
   Assert.AreEqual(0, Integer(Length(LimitFindings(mFixed, '{"delphiVersion": "22.0"}', 'Kennungen.pas'))));
 end;

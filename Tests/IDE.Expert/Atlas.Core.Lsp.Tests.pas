@@ -9,10 +9,6 @@ type
   [TestFixture]
   TLspClientTests = class
   public
-    /// <summary>Erste Benutzung des gemeinsamen Rekorders (TAtlasPluginTimings.Shared, lebt bis zum Entladen)
-    /// ungemessen vorwegnehmen; sonst meldet TimingNamesExecutedCommand ihn je nach Reihenfolge als Leck.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure AnswersRequestFromSplitFrames;
     [Test]
@@ -49,9 +45,6 @@ type
   [TestFixture]
   TLspSessionTests = class
   public
-    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure ConvertsPathsAndUris;
     [Test]
@@ -124,15 +117,17 @@ uses
   System.Generics.Collections,
   System.SyncObjs,
   System.Diagnostics,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Projects.Contract,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Files.WatchedChanges,
+  Atlas.Plugin.Projects.Contract,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Results.Model,
-  Atlas.Core.Diagnostics.PluginTimings;
+  Atlas.Plugin.Diagnostics.PluginTimings,
+  Atlas.Plugin.Lsp.Framing,
+  Atlas.Plugin.Lsp.Contract;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
 function Unframe(const ABytes: TBytes): TJSONObject;
@@ -158,7 +153,7 @@ begin
       try
         if Message.GetValue<string>('method', '') = 'initialize' then
         begin
-          Answer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+          Answer := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
             [Message.GetValue<Integer>('id')]));
           mClient.Receive(Answer, Length(Answer));
         end
@@ -227,11 +222,6 @@ end;
 
 { TLspClientTests }
 
-procedure TLspClientTests.WarmUpFirstUse;
-begin
-  TimingNamesExecutedCommand;
-end;
-
 procedure TLspClientTests.AnswersRequestFromSplitFrames;
 var
   mClient: TLspClient;
@@ -249,7 +239,7 @@ begin
       Request := Unframe(ABytes);
       try
         Id := Request.GetValue<Integer>('id');
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"wert":"Grüße"}}', [Id]));
+        Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"wert":"Grüße"}}', [Id]));
       finally
         Request.Free;
       end;
@@ -286,7 +276,8 @@ begin
       Request := Unframe(ABytes);
       try
         Id := Request.GetValue<Integer>('id');
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"error":{"code":-32601,"message":"unbekannt"}}', [Id]));
+        Reply := TLspFrameReader.Frame(
+          Format('{"jsonrpc":"2.0","id":%d,"error":{"code":-32601,"message":"unbekannt"}}', [Id]));
       finally
         Request.Free;
       end;
@@ -309,22 +300,25 @@ var
   mSent: TList<string>;
   mIncoming: TBytes;
 begin
-  mSent := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-    begin
-      Message := Unframe(ABytes);
-      try
-        mSent.Add(Message.ToJSON);
-      finally
-        Message.Free;
-      end;
-    end);
+  mSent := nil;
+  mClient := nil;
   try
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":"p1","method":"window/workDoneProgress/create","params":{}}') +
-      TLspClient.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3,"message":"x"}}');
+    mSent := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+      begin
+        Message := Unframe(ABytes);
+        try
+          mSent.Add(Message.ToJSON);
+        finally
+          Message.Free;
+        end;
+      end);
+    mIncoming :=
+      TLspFrameReader.Frame('{"jsonrpc":"2.0","id":"p1","method":"window/workDoneProgress/create","params":{}}') +
+      TLspFrameReader.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3,"message":"x"}}');
     mClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual(1, Integer(mSent.Count));
     Assert.AreEqual('{"jsonrpc":"2.0","id":"p1","result":null}', mSent[0]);
@@ -400,12 +394,15 @@ var
   mDefinition, mDiagnostic: TThread;
   mEnded, mInfo: TLspCloseInfo;
 begin
-  mDefinitionSent := TEvent.Create(nil, True, False, '');
-  mDiagnosticSent := TEvent.Create(nil, True, False, '');
-  mClient := CreateSilentClient(mDefinitionSent, mDiagnosticSent);
+  mDefinitionSent := nil;
+  mDiagnosticSent := nil;
   mDefinition := nil;
   mDiagnostic := nil;
+  mClient := nil;
   try
+    mDefinitionSent := TEvent.Create(nil, True, False, '');
+    mDiagnosticSent := TEvent.Create(nil, True, False, '');
+    mClient := CreateSilentClient(mDefinitionSent, mDiagnosticSent);
     mInfo := mClient.CloseInfo;
     Assert.AreEqual('', mInfo.LastMethod, 'offen: noch nichts');
     mDefinition := RequestInThread(mClient, 'textDocument/definition');
@@ -446,14 +443,17 @@ var
   mSent, mSeen: TList<string>;
   mIncoming: TBytes;
 begin
-  mSent := TList<string>.Create;
-  mSeen := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    begin
-      mSent.Add(TEncoding.UTF8.GetString(ABytes));
-    end);
+  mSent := nil;
+  mSeen := nil;
+  mClient := nil;
   try
+    mSent := TList<string>.Create;
+    mSeen := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      begin
+        mSent.Add(TEncoding.UTF8.GetString(ABytes));
+      end);
     mClient.OnServerMessage :=
       procedure(const AMethod: string; const AParams: TJSONValue)
       begin
@@ -466,8 +466,8 @@ begin
           mSeen.Add(AMethod);
         end;
       end;
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}') +
-      TLspClient.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}');
+    mIncoming := TLspFrameReader.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}') +
+      TLspFrameReader.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}');
     mClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual(2, Integer(mSeen.Count));
     Assert.AreEqual('workspace/diagnostic/refresh', mSeen[0]);
@@ -479,6 +479,29 @@ begin
     mSent.Free;
   end;
 end;
+// Antwort auf eine Anfrage mit partialResultToken: zwei Teilergebnisse, dazwischen fremder Fortschritt, dann das
+// Ergebnis.
+function PartialReplies(const ABytes: TBytes): TBytes;
+var
+  mRequest: TJSONObject;
+  mId: Integer;
+  mToken: string;
+begin
+  mRequest := Unframe(ABytes);
+  try
+    mId := mRequest.GetValue<Integer>('id');
+    mToken := mRequest.GetValue<string>('params.partialResultToken');
+  finally
+    mRequest.Free;
+  end;
+  Result := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[1]}}',
+    [mToken])) +
+    TLspFrameReader.Frame('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"fremd","value":{"kind":"end"}}}') +
+    TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[2,3]}}',
+    [mToken])) +
+    TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[4]}', [mId]));
+end;
+
 procedure TLspClientTests.RoutesPartialResultsToRequest;
 var
   mClient: TLspClient;
@@ -487,33 +510,20 @@ var
   mParams: TJSONObject;
 begin
   // #616: $/progress zum partialResultToken geht an die Anfrage, vor der Antwort; andere Tokens nicht.
-  mPartials := TList<string>.Create;
-  mSeen := TList<string>.Create;
+  mPartials := nil;
+  mSeen := nil;
   mClient := nil;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Request: TJSONObject;
-      Reply: TBytes;
-      Id: Integer;
-      Token: string;
-    begin
-      Request := Unframe(ABytes);
-      try
-        Id := Request.GetValue<Integer>('id');
-        Token := Request.GetValue<string>('params.partialResultToken');
-      finally
-        Request.Free;
-      end;
-      Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[1]}}',
-        [Token])) +
-        TLspClient.Frame('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"fremd","value":{"kind":"end"}}}') +
-        TLspClient.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[2,3]}}',
-        [Token])) +
-        TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[4]}', [Id]));
-      mClient.Receive(Reply, Length(Reply));
-    end);
   try
+    mPartials := TList<string>.Create;
+    mSeen := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Reply: TBytes;
+      begin
+        Reply := PartialReplies(ABytes);
+        mClient.Receive(Reply, Length(Reply));
+      end);
     mClient.OnServerMessage :=
       procedure(const AMethod: string; const AParams: TJSONValue)
       begin
@@ -585,7 +595,7 @@ begin
         if mMessage.GetValue<string>('method', '') = 'initialize' then
         begin
           AProbe.FAnnounced := mMessage.GetValue<Boolean>('params.capabilities.workspace.applyEdit', False);
-          mAnswer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+          mAnswer := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
             [mMessage.GetValue<Integer>('id')]));
           AProbe.FClient.Receive(mAnswer, Length(mAnswer));
         end
@@ -638,7 +648,7 @@ begin
           Exit;
         end;
         ASeen.Add(Method + ' ' + Message.GetValue('params').ToJSON);
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
+        Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
           [Message.GetValue<Integer>('id'), Answer]));
         mClient.Receive(Reply, Length(Reply));
       finally
@@ -650,10 +660,6 @@ end;
 
 { TLspSessionTests }
 
-procedure TLspSessionTests.WarmUpFirstUse;
-begin
-  AcceptsApplyEditAndRepliesLater;
-end;
 procedure TLspSessionTests.ConvertsPathsAndUris;
 begin
   Assert.AreEqual('file:///c%3A/Mein%20Projekt/%C3%9Cbung.pas', TLspSession.PathToUri('C:\Mein Projekt\Übung.pas'));
@@ -735,24 +741,27 @@ var
   mSession: TLspSession;
   mMethods: TList<string>;
 begin
-  mMethods := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-      Method, Version: string;
-    begin
-      Message := Unframe(ABytes);
-      try
-        Method := Message.GetValue<string>('method');
-        Version := Message.GetValue<string>('params.textDocument.version', '');
-        mMethods.Add(Method + ':' + Version);
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
+  mMethods := nil;
+  mClient := nil;
+  mSession := nil;
   try
+    mMethods := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+        Method, Version: string;
+      begin
+        Message := Unframe(ABytes);
+        try
+          Method := Message.GetValue<string>('method');
+          Version := Message.GetValue<string>('params.textDocument.version', '');
+          mMethods.Add(Method + ':' + Version);
+        finally
+          Message.Free;
+        end;
+      end);
+    mSession := TLspSession.Create(mClient);
     mSession.Sync('C:\P\A.pas', 'unit A;');
     mSession.Sync('c:\p\a.pas', 'unit A;');
     mSession.Sync('C:\P\A.pas', 'unit A; ');
@@ -772,21 +781,24 @@ var
   mMethods: TList<string>;
   mText: string;
 begin
-  mMethods := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-    begin
-      Message := Unframe(ABytes);
-      try
-        mMethods.Add(Message.GetValue<string>('method') + ' ' + Message.GetValue<string>('params.textDocument.uri', ''));
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
+  mMethods := nil;
+  mClient := nil;
+  mSession := nil;
   try
+    mMethods := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+      begin
+        Message := Unframe(ABytes);
+        try
+          mMethods.Add(Message.GetValue<string>('method') + ' ' + Message.GetValue<string>('params.textDocument.uri', ''));
+        finally
+          Message.Free;
+        end;
+      end);
+    mSession := TLspSession.Create(mClient);
     mSession.Sync('C:\P\A.pas', 'unit A;');
     mSession.Sync('C:\P\B.pas', 'unit B;');
     Assert.AreEqual(2, Integer(Length(mSession.SyncedFiles)));
@@ -814,34 +826,36 @@ var
   mSession: TLspSession;
   mCapabilities: string;
 begin
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-      Reply: TBytes;
-    begin
-      Message := Unframe(ABytes);
-      try
-        if Message.GetValue<string>('method', '') = 'initialize' then
-        begin
-          mCapabilities := Message.GetValue<TJSONObject>('params.capabilities').ToJSON;
-          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
-            [Message.GetValue<Integer>('id')]));
-          mClient.Receive(Reply, Length(Reply));
-        end;
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
+  mClient := nil;
+  mSession := nil;
   try
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+        Reply: TBytes;
+      begin
+        Message := Unframe(ABytes);
+        try
+          if Message.GetValue<string>('method', '') = 'initialize' then
+          begin
+            mCapabilities := Message.GetValue<TJSONObject>('params.capabilities').ToJSON;
+            Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+              [Message.GetValue<Integer>('id')]));
+            mClient.Receive(Reply, Length(Reply));
+          end;
+        finally
+          Message.Free;
+        end;
+      end);
+    mSession := TLspSession.Create(mClient);
     mSession.Initialize;
     Assert.Contains(mCapabilities, '"diagnostic":{"dynamicRegistration":false');
     // Seit #648 meldet der Client unter "workspace" auch workspaceFolders; geprüft wird nur refreshSupport.
     Assert.Contains(mCapabilities, '"diagnostics":{"refreshSupport":true}');
     Assert.AreEqual(0, mSession.RefreshCount);
-    mClient.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}'),
-      Length(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}')));
+    mClient.Receive(TLspFrameReader.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}'),
+      Length(TLspFrameReader.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}')));
     Assert.AreEqual(1, mSession.RefreshCount);
   finally
     mSession.Free;
@@ -856,7 +870,7 @@ begin
   mResponse := TJSONObject.ParseJSONValue('{"items":[],"atlas":{"run":{"serial":3,"active":true,"done":40,' +
     '"total":90,"skipped":1,"paused":"compile","elapsedMs":1500}}}');
   try
-    mRun := TLspWorkspaceRun.FromJson(mResponse);
+    mRun := TLspSessionJson.WorkspaceRun(mResponse);
   finally
     mResponse.Free;
   end;
@@ -871,7 +885,7 @@ begin
   // Ältere Server ohne Laufstand.
   mResponse := TJSONObject.ParseJSONValue('{"items":[]}');
   try
-    Assert.IsFalse(TLspWorkspaceRun.FromJson(mResponse).Known);
+    Assert.IsFalse(TLspSessionJson.WorkspaceRun(mResponse).Known);
   finally
     mResponse.Free;
   end;
@@ -907,24 +921,28 @@ var
   mMessages: TList<string>;
   mDocuments: TArray<TLspOpenDocument>;
 begin
-  mMessages := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-    begin
-      Message := Unframe(ABytes);
-      try
-        mMessages.Add(Message.GetValue<string>('method') + ' ' +
-          Message.GetValue<string>('params.textDocument.uri', '') + ' ' +
-          Message.GetValue<string>('params.textDocument.text', ''));
-      finally
-        Message.Free;
-      end;
-    end);
-  mPrevious := TLspSession.Create(mClient);
-  mFresh := TLspSession.Create(mClient);
+  mMessages := nil;
+  mClient := nil;
+  mPrevious := nil;
+  mFresh := nil;
   try
+    mMessages := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+      begin
+        Message := Unframe(ABytes);
+        try
+          mMessages.Add(Message.GetValue<string>('method') + ' ' +
+            Message.GetValue<string>('params.textDocument.uri', '') + ' ' +
+            Message.GetValue<string>('params.textDocument.text', ''));
+        finally
+          Message.Free;
+        end;
+      end);
+    mPrevious := TLspSession.Create(mClient);
+    mFresh := TLspSession.Create(mClient);
     mPrevious.Sync('C:\P\A.pas', 'unit A;');
     mPrevious.Sync('C:\P\B.pas', 'unit B;');
     // Ungespeicherter Stand: Der neue Server muss den zuletzt geschickten Text bekommen.
@@ -951,28 +969,31 @@ var
   mSession: TLspSession;
   mChanges: TList<string>;
 begin
-  mChanges := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-      Change: TJSONObject;
-    begin
-      Message := Unframe(ABytes);
-      try
-        if Message.GetValue<string>('method') = 'textDocument/didChange' then
-        begin
-          Change := Message.GetValue<TJSONArray>('params.contentChanges').Items[0] as TJSONObject;
-          mChanges.Add(Format('%d:%d-%d:%d "%s"', [Change.GetValue<Integer>('range.start.line'),
-            Change.GetValue<Integer>('range.start.character'), Change.GetValue<Integer>('range.end.line'),
-            Change.GetValue<Integer>('range.end.character'), Change.GetValue<string>('text')]));
-        end;
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
+  mChanges := nil;
+  mClient := nil;
+  mSession := nil;
   try
+    mChanges := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+        Change: TJSONObject;
+      begin
+        Message := Unframe(ABytes);
+        try
+          if Message.GetValue<string>('method') = 'textDocument/didChange' then
+          begin
+            Change := Message.GetValue<TJSONArray>('params.contentChanges').Items[0] as TJSONObject;
+            mChanges.Add(Format('%d:%d-%d:%d "%s"', [Change.GetValue<Integer>('range.start.line'),
+              Change.GetValue<Integer>('range.start.character'), Change.GetValue<Integer>('range.end.line'),
+              Change.GetValue<Integer>('range.end.character'), Change.GetValue<string>('text')]));
+          end;
+        finally
+          Message.Free;
+        end;
+      end);
+    mSession := TLspSession.Create(mClient);
     mSession.Sync('C:\P\A.pas', 'unit A;'#13#10'begin'#13#10'end.');
     mSession.Sync('C:\P\A.pas', 'unit A;'#13#10'begin'#13#10'  X;'#13#10'end.');
     mSession.Sync('C:\P\A.pas', 'unit A;'#13#10'begin'#13#10'end.');
@@ -992,31 +1013,34 @@ var
   mSession: TLspSession;
   mMessages: TList<string>;
 begin
-  mMessages := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-      Item: TJSONValue;
-      Line: string;
-    begin
-      Message := Unframe(ABytes);
-      try
-        if Message.GetValue<string>('method') = 'workspace/didChangeWatchedFiles' then
-        begin
-          Line := '';
-          for Item in Message.GetValue<TJSONArray>('params.changes') do
-          begin
-            Line := Line + Item.GetValue<string>('uri') + '=' + Item.GetValue<string>('type') + ' ';
-          end;
-          mMessages.Add(Line);
-        end;
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
+  mMessages := nil;
+  mClient := nil;
+  mSession := nil;
   try
+    mMessages := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+        Item: TJSONValue;
+        Line: string;
+      begin
+        Message := Unframe(ABytes);
+        try
+          if Message.GetValue<string>('method') = 'workspace/didChangeWatchedFiles' then
+          begin
+            Line := '';
+            for Item in Message.GetValue<TJSONArray>('params.changes') do
+            begin
+              Line := Line + Item.GetValue<string>('uri') + '=' + Item.GetValue<string>('type') + ' ';
+            end;
+            mMessages.Add(Line);
+          end;
+        finally
+          Message.Free;
+        end;
+      end);
+    mSession := TLspSession.Create(mClient);
     mSession.Sync('C:\P\Open.pas', 'unit Open;');
     // Nur die offene Datei geändert: Ihr Editortext gilt, nichts zu melden.
     mSession.FilesChanged([TAtlasFileChange.Create('c:\p\open.pas', TAtlasFileChangeKind.Changed)]);
@@ -1033,6 +1057,27 @@ begin
     mMessages.Free;
   end;
 end;
+// Antwort des Testservers auf prepareRename (APrepareReply) bzw. rename (merkt den neuen Namen); False bei anderen
+// Nachrichten.
+function RenameAnswer(AMessage: TJSONObject; const APrepareReply: string; var ANewName: string;
+  out AAnswer: string): Boolean;
+var
+  mMethod: string;
+begin
+  mMethod := AMessage.GetValue<string>('method', '');
+  AAnswer := '';
+  if mMethod = 'textDocument/prepareRename' then
+  begin
+    AAnswer := APrepareReply;
+  end
+  else if mMethod = 'textDocument/rename' then
+  begin
+    ANewName := AMessage.GetValue<string>('params.newName');
+    AAnswer := '{"changes":{}}';
+  end;
+  Result := AAnswer <> '';
+end;
+
 procedure TLspSessionTests.PreparesAndRequestsRename;
 var
   mClient: TLspClient;
@@ -1041,38 +1086,29 @@ var
   mPlaceholder: string;
   mResponse: TJSONValue;
 begin
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-      Method, Answer: string;
-      Reply: TBytes;
-    begin
-      Message := Unframe(ABytes);
-      try
-        Method := Message.GetValue<string>('method', '');
-        if Method = 'textDocument/prepareRename' then
-        begin
-          Answer := mPrepareReply;
-        end
-        else if Method = 'textDocument/rename' then
-        begin
-          mNewName := Message.GetValue<string>('params.newName');
-          Answer := '{"changes":{}}';
-        end
-        else
-        begin
-          Exit;
-        end;
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
-          [Message.GetValue<Integer>('id'), Answer]));
-        mClient.Receive(Reply, Length(Reply));
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
+  mClient := nil;
+  mSession := nil;
   try
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+        Answer: string;
+        Reply: TBytes;
+      begin
+        Message := Unframe(ABytes);
+        try
+          if RenameAnswer(Message, mPrepareReply, mNewName, Answer) then
+          begin
+            Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
+              [Message.GetValue<Integer>('id'), Answer]));
+            mClient.Receive(Reply, Length(Reply));
+          end;
+        finally
+          Message.Free;
+        end;
+      end);
+    mSession := TLspSession.Create(mClient);
     mPrepareReply := '{"range":{"start":{"line":0,"character":5},"end":{"line":0,"character":8}},"placeholder":"Alt"}';
     Assert.IsTrue(mSession.PrepareRename('C:\P\A.pas', 'unit Foo;', 0, 6, mPlaceholder));
     Assert.AreEqual('Alt', mPlaceholder);
@@ -1102,36 +1138,39 @@ var
   mSent: TList<string>;
   mContext: TAtlasProjectContext;
 begin
-  mSent := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-      Contexts: TJSONArray;
-      Reply: TBytes;
-    begin
-      Message := Unframe(ABytes);
-      try
-        if Message.GetValue<string>('method', '') = 'initialize' then
-        begin
-          if Message.TryGetValue<TJSONArray>('params.initializationOptions.projectContexts', Contexts) then
-          begin
-            mInitial := Contexts.ToJSON;
-          end;
-          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
-            [Message.GetValue<Integer>('id')]));
-          mClient.Receive(Reply, Length(Reply));
-        end
-        else if Message.GetValue<string>('method', '') = 'atlas/projectContext' then
-        begin
-          mSent.Add(Message.GetValue<string>('params.configuration') + '/' + Message.GetValue<string>('params.platform'));
-        end;
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
+  mSent := nil;
+  mClient := nil;
+  mSession := nil;
   try
+    mSent := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+        Contexts: TJSONArray;
+        Reply: TBytes;
+      begin
+        Message := Unframe(ABytes);
+        try
+          if Message.GetValue<string>('method', '') = 'initialize' then
+          begin
+            if Message.TryGetValue<TJSONArray>('params.initializationOptions.projectContexts', Contexts) then
+            begin
+              mInitial := Contexts.ToJSON;
+            end;
+            Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+              [Message.GetValue<Integer>('id')]));
+            mClient.Receive(Reply, Length(Reply));
+          end
+          else if Message.GetValue<string>('method', '') = 'atlas/projectContext' then
+          begin
+            mSent.Add(Message.GetValue<string>('params.configuration') + '/' + Message.GetValue<string>('params.platform'));
+          end;
+        finally
+          Message.Free;
+        end;
+      end);
+    mSession := TLspSession.Create(mClient);
     mContext := DebugWin32Context;
     Assert.AreEqual(1, Integer(Length(mSession.SetProjectContexts([mContext]))), 'für initialize gemerkt');
     mSession.Initialize;
@@ -1158,15 +1197,17 @@ var
   mSession: TLspSession;
   mIncoming: TBytes;
 begin
-  mProbe := TApplyEditProbe.Create;
-  mProbe.FSent := TList<string>.Create;
-  mProbe.FClient := CreateApplyEditClient(mProbe);
-  mSession := TLspSession.Create(mProbe.FClient);
+  mProbe := nil;
+  mSession := nil;
   try
+    mProbe := TApplyEditProbe.Create;
+    mProbe.FSent := TList<string>.Create;
+    mProbe.FClient := CreateApplyEditClient(mProbe);
+    mSession := TLspSession.Create(mProbe.FClient);
     WireApplyEdit(mSession, mProbe);
     mSession.Initialize;
     Assert.IsTrue(mProbe.FAnnounced, 'applyEdit angekündigt');
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
+    mIncoming := TLspFrameReader.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
       '{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":0,"character":0},' +
       '"end":{"line":0,"character":1}},"newText":"b"}]}}}}');
     mProbe.FClient.Receive(mIncoming, Length(mIncoming));
@@ -1178,7 +1219,7 @@ begin
     Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"gesperrt"}}',
       mProbe.FSent[0]);
     // Andere Anfragen weiter mit null.
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
+    mIncoming := TLspFrameReader.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
     mProbe.FClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', mProbe.FSent[1]);
   finally
@@ -1200,11 +1241,14 @@ var
   mCalls: Integer;
   mIncoming: TBytes;
 begin
-  mSent := TList<string>.Create;
-  mCalls := 0;
-  mClient := ApplyEditClient(mSent);
-  mSession := TLspSession.Create(mClient);
+  mSent := nil;
+  mSession := nil;
+  mClient := nil;
   try
+    mSent := TList<string>.Create;
+    mCalls := 0;
+    mClient := ApplyEditClient(mSent);
+    mSession := TLspSession.Create(mClient);
     // Wie ein beim Entladen verworfener Eintrag: Die Antwort-Prozedur wird nie gerufen.
     mSession.OnApplyEdit :=
       procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
@@ -1212,7 +1256,7 @@ begin
         Inc(mCalls);
       end;
     mSession.Initialize;
-    mIncoming := TLspClient.Frame(cApplyEditRequest);
+    mIncoming := TLspFrameReader.Frame(cApplyEditRequest);
     mClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual(1, mCalls);
     // Keine Antwort; die Id gibt die Sitzung frei (der Leak-Monitor prüft das).
@@ -1232,17 +1276,20 @@ var
   mReply: TLspApplyEditReply;
   mIncoming: TBytes;
 begin
-  mSent := TList<string>.Create;
-  mClient := ApplyEditClient(mSent);
-  mSession := TLspSession.Create(mClient);
+  mSent := nil;
+  mSession := nil;
+  mClient := nil;
   try
+    mSent := TList<string>.Create;
+    mClient := ApplyEditClient(mSent);
+    mSession := TLspSession.Create(mClient);
     mSession.OnApplyEdit :=
       procedure(const AEdit: TLspWorkspaceEdit; const AReply: TLspApplyEditReply)
       begin
         mReply := AReply;
       end;
     mSession.Initialize;
-    mIncoming := TLspClient.Frame(cApplyEditRequest);
+    mIncoming := TLspFrameReader.Frame(cApplyEditRequest);
     mClient.Receive(mIncoming, Length(mIncoming));
     mReply(True, '');
     mReply(True, '');
@@ -1263,33 +1310,35 @@ var
   mRange: string;
   mHints: TArray<TAtlasInlayHint>;
 begin
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    var
-      Message: TJSONObject;
-      Reply: TBytes;
-    begin
-      Message := Unframe(ABytes);
-      try
-        if Message.GetValue<string>('method', '') = 'textDocument/inlayHint' then
-        begin
-          mRange := Message.GetValue<Integer>('params.range.start.line').ToString + '-' +
-            Message.GetValue<Integer>('params.range.end.line').ToString;
-          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[' +
-            '{"position":{"line":3,"character":9},"label":"AWert:","kind":2,"paddingRight":true},' +
-            '{"position":{"line":4,"character":2},"label":": Integer","kind":1},' +
-            '{"position":{"line":5,"character":7},"label":[{"value":"AName"},{"value":":"}],"kind":2},' +
-            '{"position":{"line":8,"character":6},"label":"// TKunde.Speichern","paddingLeft":true},' +
-            '{"position":{"line":9,"character":1},"label":"ohne Art"}]}',
-            [Message.GetValue<Integer>('id')]));
-          mClient.Receive(Reply, Length(Reply));
-        end;
-      finally
-        Message.Free;
-      end;
-    end);
-  mSession := TLspSession.Create(mClient);
+  mClient := nil;
+  mSession := nil;
   try
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Message: TJSONObject;
+        Reply: TBytes;
+      begin
+        Message := Unframe(ABytes);
+        try
+          if Message.GetValue<string>('method', '') = 'textDocument/inlayHint' then
+          begin
+            mRange := Message.GetValue<Integer>('params.range.start.line').ToString + '-' +
+              Message.GetValue<Integer>('params.range.end.line').ToString;
+            Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[' +
+              '{"position":{"line":3,"character":9},"label":"AWert:","kind":2,"paddingRight":true},' +
+              '{"position":{"line":4,"character":2},"label":": Integer","kind":1},' +
+              '{"position":{"line":5,"character":7},"label":[{"value":"AName"},{"value":":"}],"kind":2},' +
+              '{"position":{"line":8,"character":6},"label":"// TKunde.Speichern","paddingLeft":true},' +
+              '{"position":{"line":9,"character":1},"label":"ohne Art"}]}',
+              [Message.GetValue<Integer>('id')]));
+            mClient.Receive(Reply, Length(Reply));
+          end;
+        finally
+          Message.Free;
+        end;
+      end);
+    mSession := TLspSession.Create(mClient);
     mHints := mSession.InlayHints('C:\P\A.pas', 2, 9, 1000);
     // Bis zum Anfang der Zeile nach der letzten, damit sie ganz dabei ist.
     Assert.AreEqual('2-10', mRange);
@@ -1323,11 +1372,15 @@ var
   mSymbols: TArray<TAtlasSymbol>;
   mSingle: TJSONValue;
 begin
-  mReplies := TDictionary<string, string>.Create;
-  mSeen := TStringList.Create;
-  mClient := CannedClient(mReplies, mSeen);
-  mSession := TLspSession.Create(mClient);
+  mReplies := nil;
+  mSeen := nil;
+  mSession := nil;
+  mClient := nil;
   try
+    mReplies := TDictionary<string, string>.Create;
+    mSeen := TStringList.Create;
+    mClient := CannedClient(mReplies, mSeen);
+    mSession := TLspSession.Create(mClient);
     // LocationLink: Ziel ist der Name (targetSelectionRange), nicht der ganze Rumpf.
     mReplies.Add('textDocument/implementation', '[{"targetUri":"file:///c:/p/b.pas",' +
       '"targetRange":{"start":{"line":10,"character":0},"end":{"line":20,"character":4}},' +
@@ -1374,11 +1427,15 @@ var
   mSession: TLspSession;
   mRoots, mCallers, mSupers, mCallees: TArray<TAtlasHierarchyItem>;
 begin
-  mReplies := TDictionary<string, string>.Create;
-  mSeen := TStringList.Create;
-  mClient := CannedClient(mReplies, mSeen);
-  mSession := TLspSession.Create(mClient);
+  mReplies := nil;
+  mSeen := nil;
+  mSession := nil;
+  mClient := nil;
   try
+    mReplies := TDictionary<string, string>.Create;
+    mSeen := TStringList.Create;
+    mClient := CannedClient(mReplies, mSeen);
+    mSession := TLspSession.Create(mClient);
     mReplies.Add('textDocument/prepareCallHierarchy', '[' + Format(cItem, ['Laden', 'TKunde', 4, 9, 4, 4, 1]) + ']');
     mReplies.Add('callHierarchy/incomingCalls', '[{"from":' + Format(cItem, ['Start', 'TForm1', 30, 40, 30, 30, 2]) +
       ',"fromRanges":[]}]');
@@ -1449,21 +1506,23 @@ var
   mHeader: string;
   mIncoming: TBytes;
 begin
-  mSeen := TList<string>.Create;
-  mClient := TLspClient.Create(
-    procedure(const ABytes: TBytes)
-    begin
-    end);
+  mSeen := nil;
+  mClient := nil;
   try
+    mSeen := TList<string>.Create;
+    mClient := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      begin
+      end);
     mClient.OnServerMessage :=
       procedure(const AMethod: string; const AParams: TJSONValue)
       begin
         mSeen.Add(AMethod);
       end;
     // Kopf knapp unter der Grenze: ein langes Füllfeld vor Content-Length.
-    mHeader := 'X-Fill: ' + StringOfChar('a', TLspClient.cMaxHeaderLength - 40) + #13#10 +
+    mHeader := 'X-Fill: ' + StringOfChar('a', TLspFrameReader.cMaxHeaderLength - 40) + #13#10 +
       'Content-Length: ' + IntToStr(Length(cBody)) + #13#10#13#10;
-    Assert.IsTrue(Length(mHeader) - 4 <= TLspClient.cMaxHeaderLength, 'Kopf innerhalb der Grenze');
+    Assert.IsTrue(Length(mHeader) - 4 <= TLspFrameReader.cMaxHeaderLength, 'Kopf innerhalb der Grenze');
     mIncoming := TEncoding.UTF8.GetBytes(mHeader + cBody);
     mClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual(1, Integer(mSeen.Count));
@@ -1493,7 +1552,7 @@ begin
       finally
         mRequest.Free;
       end;
-      mReply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId]));
+      mReply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId]));
       mClient.Receive(mReply, Length(mReply));
     end);
   TAtlasPluginTimings.Shared.Reset;
@@ -1522,11 +1581,15 @@ var
   mActions: TArray<TLspCodeAction>;
   mAnswer: TJSONValue;
 begin
-  mReplies := TDictionary<string, string>.Create;
-  mSeen := TStringList.Create;
-  mClient := CannedClient(mReplies, mSeen);
-  mSession := TLspSession.Create(mClient);
+  mReplies := nil;
+  mSeen := nil;
+  mSession := nil;
+  mClient := nil;
   try
+    mReplies := TDictionary<string, string>.Create;
+    mSeen := TStringList.Create;
+    mClient := CannedClient(mReplies, mSeen);
+    mSession := TLspSession.Create(mClient);
     mReplies.Add('textDocument/codeAction', '[{"title":"try/finally ergänzen","kind":"refactor.rewrite",' +
       '"isPreferred":true,"edit":{"changes":{"file:///c:/p/a.pas":[{"range":{"start":{"line":2,"character":0},' +
       '"end":{"line":2,"character":0}},"newText":"try"}]}}},' +
@@ -1576,11 +1639,15 @@ var
   mRanges: TArray<TLspRange>;
   mLocations: TArray<TLspLocation>;
 begin
-  mReplies := TDictionary<string, string>.Create;
-  mSeen := TStringList.Create;
-  mClient := CannedClient(mReplies, mSeen);
-  mSession := TLspSession.Create(mClient);
+  mReplies := nil;
+  mSeen := nil;
+  mSession := nil;
+  mClient := nil;
   try
+    mReplies := TDictionary<string, string>.Create;
+    mSeen := TStringList.Create;
+    mClient := CannedClient(mReplies, mSeen);
+    mSession := TLspSession.Create(mClient);
     mReplies.Add('textDocument/onTypeFormatting', '[{"range":{"start":{"line":4,"character":0},' +
       '"end":{"line":5,"character":0}},"newText":"uses\r\n  Unit2;\r\n"}]');
     mReplies.Add('textDocument/selectionRange', '[{"range":{"start":{"line":3,"character":2},' +
@@ -1620,11 +1687,15 @@ var
   mSession: TLspSession;
   mEdits: TArray<TLspTextEdit>;
 begin
-  mReplies := TDictionary<string, string>.Create;
-  mSeen := TStringList.Create;
-  mClient := CannedClient(mReplies, mSeen);
-  mSession := TLspSession.Create(mClient);
+  mReplies := nil;
+  mSeen := nil;
+  mSession := nil;
+  mClient := nil;
   try
+    mReplies := TDictionary<string, string>.Create;
+    mSeen := TStringList.Create;
+    mClient := CannedClient(mReplies, mSeen);
+    mSession := TLspSession.Create(mClient);
     mReplies.Add('textDocument/formatting', '[{"range":{"start":{"line":2,"character":0},' +
       '"end":{"line":2,"character":4}},"newText":"  A;"},{"range":{"start":{"line":3,"character":0},' +
       '"end":{"line":3,"character":1}},"newText":""}]');
@@ -1652,11 +1723,15 @@ var
   mSession: TLspSession;
   mAnswer: TJSONValue;
 begin
-  mReplies := TDictionary<string, string>.Create;
-  mSeen := TStringList.Create;
-  mClient := CannedClient(mReplies, mSeen);
-  mSession := TLspSession.Create(mClient);
+  mReplies := nil;
+  mSeen := nil;
+  mSession := nil;
+  mClient := nil;
   try
+    mReplies := TDictionary<string, string>.Create;
+    mSeen := TStringList.Create;
+    mClient := CannedClient(mReplies, mSeen);
+    mSession := TLspSession.Create(mClient);
     mReplies.Add('textDocument/linkedEditingRange', '{"ranges":[{"start":{"line":3,"character":2},' +
       '"end":{"line":3,"character":8}}],"atlasConflicts":[]}');
     mAnswer := mSession.LinkedLocals('C:\P\A.pas', 3, 4);
@@ -1683,11 +1758,15 @@ var
   mSession: TLspSession;
   mLocations: TArray<TLspLocation>;
 begin
-  mReplies := TDictionary<string, string>.Create;
-  mSeen := TStringList.Create;
-  mClient := CannedClient(mReplies, mSeen);
-  mSession := TLspSession.Create(mClient);
+  mReplies := nil;
+  mSeen := nil;
+  mSession := nil;
+  mClient := nil;
   try
+    mReplies := TDictionary<string, string>.Create;
+    mSeen := TStringList.Create;
+    mClient := CannedClient(mReplies, mSeen);
+    mSession := TLspSession.Create(mClient);
     mReplies.Add('textDocument/declaration', '[{"uri":"file:///c:/p/kunde.pas","range":{"start":' +
       '{"line":12,"character":4},"end":{"line":12,"character":8}}}]');
     mReplies.Add('textDocument/definition', '[{"uri":"file:///c:/p/kunde.pas","range":{"start":' +

@@ -20,9 +20,9 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Tests.Run,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Testlauf: Datei aus dem Testprojekt und Namen für --run.</summary>
@@ -59,7 +59,6 @@ type
     class procedure InstallHook(const ATarget: TAtlasTestTarget); static;
     class procedure RemoveHook(const AFolder: string); static;
     class procedure ReportOnce(const AHooksDir, AText: string); static;
-    class function ActiveProject: string; static;
   public
     class procedure Install(const AHooks: TAtlasAffectedTestsHooks); static;
     /// <summary>Beim Entladen: wartet auf laufende Arbeiter und löst die Haken.</summary>
@@ -82,9 +81,9 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Lsp.Session,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tests.AffectedHook,
@@ -92,7 +91,8 @@ uses
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.ToolsApi.Files.Service;
 
 { TAtlasIdeAffectedTests }
 
@@ -178,23 +178,6 @@ begin
   TAtlasIdeResults.Say(AText);
 end;
 
-class function TAtlasIdeAffectedTests.ActiveProject: string;
-var
-  mServices: IOTAModuleServices;
-  mProject: IOTAProject;
-begin
-  Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Exit;
-  end;
-  mProject := mServices.GetActiveProject;
-  if mProject <> nil then
-  begin
-    Result := mProject.FileName;
-  end;
-end;
-
 class procedure TAtlasIdeAffectedTests.Install(const AHooks: TAtlasAffectedTestsHooks);
 begin
   FHooks := AHooks;
@@ -232,7 +215,7 @@ begin
     TAtlasIdeResults.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  mFileName := ActiveProject;
+  mFileName := TAtlasIdeFiles.ActiveProjectFile;
   if mFileName = '' then
   begin
     TAtlasIdeResults.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsAffectedNoProject));
@@ -391,7 +374,7 @@ begin
     end;
     Exit;
   end;
-  mProject := ActiveProject;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject <> '' then
   begin
     RemoveHook(ExtractFilePath(mProject));

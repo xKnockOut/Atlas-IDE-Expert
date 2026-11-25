@@ -3,7 +3,7 @@
 // Namen rund um „Beginnen“ (#765), ohne VCL, Open Tools API und Netz:
 // - Kurztitel: die ersten drei Wörter des Titels, klein, Umlaute ersetzt
 //   (ä → ae, ß → ss), Akzente entfernt, mit Bindestrichen. Eine Vorsilbe aus
-//   einem Wort mit Doppelpunkt („Plugin: …“) entfällt, wie im Mockup.
+//   einem Wort mit Doppelpunkt („Plugin: …“) entfällt.
 // - Branch-Name aus issues.branchPattern mit den Platzhaltern
 //   {kennung} (753 bzw. ATL-123; das „#“ von GitHub entfällt), {nummer} und
 //   {kurztitel}; danach nach den Regeln von git check-ref-format bereinigt,
@@ -53,9 +53,13 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.BranchNames;
+  Atlas.Core.VersionControl.BranchNames,
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 const
+  /// <summary>Git verbietet Branchnamen mit dieser Endung.</summary>
+  cLockSuffix = '.lock';
   // Paare: Zeichen und Ersatz. Großbuchstaben mit, weil LowerCase nur ASCII kennt.
   cFolding: array[0..63] of string = (
     'ä', 'ae', 'ö', 'oe', 'ü', 'ue', 'ß', 'ss', 'Ä', 'ae', 'Ö', 'oe', 'Ü', 'ue', 'ẞ', 'ss',
@@ -122,45 +126,41 @@ end;
 
 class function TAtlasTrackerNaming.ShortTitle(const ATitle: string): string;
 var
-  mText, mWord: string;
-  mIndex, mCount: Integer;
+  mText: string;
+  mWords: TArray<string>;
+  mIndex, mStart: Integer;
 begin
-  Result := '';
   mText := Fold(WithoutPrefix(ATitle));
-  mCount := 0;
-  mWord := '';
+  mWords := nil;
+  // Anfang des laufenden Worts; 0 zwischen zwei Wörtern.
+  mStart := 0;
   for mIndex := 1 to Length(mText) + 1 do
   begin
     if (mIndex <= Length(mText)) and IsAsciiAlnum(mText[mIndex]) then
     begin
-      mWord := mWord + mText[mIndex];
+      if mStart = 0 then
+      begin
+        mStart := mIndex;
+      end;
       Continue;
     end;
-    if mWord = '' then
+    if mStart = 0 then
     begin
       Continue;
     end;
-    if Result <> '' then
-    begin
-      Result := Result + '-';
-    end;
-    Result := Result + mWord;
-    mWord := '';
-    Inc(mCount);
-    if mCount >= cShortTitleWords then
+    mWords := mWords + [Copy(mText, mStart, mIndex - mStart)];
+    mStart := 0;
+    if Length(mWords) >= cShortTitleWords then
     begin
       Break;
     end;
   end;
+  Result := string.Join('-', mWords);
 end;
 
 class function TAtlasTrackerNaming.BranchKey(const AKey: string): string;
 begin
-  Result := Trim(AKey);
-  while (Result <> '') and (Result[1] = '#') do
-  begin
-    Delete(Result, 1, 1);
-  end;
+  Result := TTextNames.KeyWithoutHash(AKey);
 end;
 
 function Fill(const APattern, AKey: string; const AIssue: TAtlasTrackerIssue): string;
@@ -224,9 +224,9 @@ begin
       Delete(Result, Length(Result), 1);
       mChanged := True;
     end;
-    if SameText(Copy(Result, Length(Result) - 4, 5), '.lock') then
+    if SameText(Copy(Result, Length(Result) - Length(cLockSuffix) + 1, Length(cLockSuffix)), cLockSuffix) then
     begin
-      Delete(Result, Length(Result) - 4, 5);
+      Delete(Result, Length(Result) - Length(cLockSuffix) + 1, Length(cLockSuffix));
       mChanged := True;
     end;
   until not mChanged;
@@ -283,7 +283,7 @@ begin
   end;
   Result := Fill(APattern, Trim(AIssue.Key), AIssue);
   // Zeilenumbrüche gehören nicht in einen Präfix.
-  Result := StringReplace(StringReplace(Result, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  Result := TTextLines.NormalizeLineBreaks(Result, ' ');
 end;
 
 class function TAtlasTrackerNaming.Prefixed(const AMessage, APrefix: string): string;

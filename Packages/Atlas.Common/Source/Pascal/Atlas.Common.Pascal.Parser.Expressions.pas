@@ -152,7 +152,7 @@ begin
   begin
     Exit(True);
   end;
-  Result := not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, cRelationalOperators);
+  Result := not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and MatchText(Current.Text, cRelationalOperators);
 end;
 
 function TExpressionParser.ParseSimpleExpression: TSyntaxNode;
@@ -165,7 +165,7 @@ begin
   mStart := NodeStart;
   Result := ParseTerm;
   mRun := Default(TOperatorRun);
-  while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, cAdditiveSymbols)) or
+  while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and MatchText(Current.Text, cAdditiveSymbols)) or
     IsKw(['or', 'xor']) do
   begin
     mOp := LowerCase(Current.Text);
@@ -186,7 +186,7 @@ begin
   mStart := NodeStart;
   Result := ParseFactor;
   mRun := Default(TOperatorRun);
-  while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, cMultiplicativeSymbols)) or
+  while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and MatchText(Current.Text, cMultiplicativeSymbols)) or
     IsKw(['div', 'mod', 'and', 'shl', 'shr', 'as']) do
   begin
     mOp := LowerCase(Current.Text);
@@ -662,7 +662,7 @@ begin
     Result := FlushRun(Result, AStartIndex, ARun);
   end;
   // Nicht assoziativ (a - b - c) oder leerer Operand (fehlender Ausdruck): sofort anhängen wie bisher.
-  if not InWords(AOperator, cAssociativeOperators) or (FIndex <= AOperandStart) then
+  if not MatchText(AOperator, cAssociativeOperators) or (FIndex <= AOperandStart) then
   begin
     Result := FlushRun(Result, AStartIndex, ARun);
     Exit(Binary(AOperator, Result, ARight, AStartIndex));

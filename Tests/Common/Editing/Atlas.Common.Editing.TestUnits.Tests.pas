@@ -33,6 +33,12 @@ type
     procedure TestProgramDetected;
     [Test]
     procedure RelativePaths;
+    [Test]
+    procedure SourcePathUnderLongestRoot;
+    [Test]
+    procedure NamespaceAsFolders;
+    [Test]
+    procedure ExpandFolderPlaceholders;
   end;
 
 implementation
@@ -41,9 +47,9 @@ uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.TestUnits;
+  Atlas.Common.Editing.TestUnits,
+  Atlas.Tests.SourceText;
 
 const
   cKundenText =
@@ -104,18 +110,6 @@ const
 function KundenIndex: TUnitIndex;
 begin
   Result := TIndexExtractor.ExtractText(cKundenText, 'C:\Projekt\Kunden.pas', nil);
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
 end;
 
 { TTestUnitsTests }
@@ -194,7 +188,7 @@ begin
   Assert.AreEqual('TestSumme', mMethods[0].Name);
   Assert.AreEqual('TestLeeren', mMethods[1].Name);
   mUnit_ := TTestUnits.UnitText('Werkzeug.Tests', mIndex, '', #13#10);
-  Assert.IsTrue(Parses(mUnit_), mUnit_);
+  Assert.IsTrue(TTestSource.Parses(mUnit_), mUnit_);
   Assert.IsTrue(Pos('TWerkzeugTests = class', mUnit_) > 0, mUnit_);
   Assert.AreEqual(0, Pos('FSubject', mUnit_), mUnit_);
 end;
@@ -224,7 +218,7 @@ var
   mText: string;
 begin
   mText := TTestUnits.UnitText('Kunden.Tests', KundenIndex, 'TKunde', #13#10);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(mText.StartsWith('unit Kunden.Tests;'#13#10), mText);
   Assert.IsTrue(Pos('uses'#13#10'  DUnitX.TestFramework,'#13#10'  Kunden;', mText) > 0, mText);
   Assert.IsTrue(Pos('  [TestFixture]'#13#10'  TKundeTests = class', mText) > 0, mText);
@@ -248,7 +242,7 @@ var
   mUnit_: string;
 begin
   mUnit_ := TTestUnits.UnitText('U.Tests', TIndexExtractor.ExtractText(cText, 'U.pas', nil), 'TMitArg', #10);
-  Assert.IsTrue(Parses(mUnit_), mUnit_);
+  Assert.IsTrue(TTestSource.Parses(mUnit_), mUnit_);
   Assert.IsTrue(Pos('// TMitArg braucht Argumente im Konstruktor', mUnit_) > 0, mUnit_);
   Assert.AreEqual(0, Pos('FSubject := TMitArg', mUnit_), mUnit_);
 end;
@@ -286,6 +280,41 @@ begin
   Assert.AreEqual('Unit\Kunden.Tests.pas', TTestUnits.RelativePath('C:\P\Tests', 'C:\P\Tests\Unit\Kunden.Tests.pas'));
   Assert.AreEqual('..\Quelle\Kunden.pas', TTestUnits.RelativePath('C:\P\Tests\', 'c:\p\Quelle\Kunden.pas'));
   Assert.AreEqual('D:\Anders\K.pas', TTestUnits.RelativePath('C:\P\Tests\', 'D:\Anders\K.pas'));
+end;
+
+/// <summary>Pfad mit \ in der Schreibweise des Systems (Tests laufen auch unter Linux).</summary>
+function Native(const APath: string): string;
+begin
+  Result := StringReplace(APath, '\', PathDelim, [rfReplaceAll]);
+end;
+
+procedure TTestUnitsTests.SourcePathUnderLongestRoot;
+var
+  mRoots: TArray<string>;
+begin
+  mRoots := TArray<string>.Create('C:\P\Source', 'C:\P\Source\Lib\');
+  Assert.AreEqual(Native('Core\Net'), TTestUnits.SourcePath(mRoots, 'C:\P\Source\Core\Net\Http.pas'));
+  Assert.AreEqual('', TTestUnits.SourcePath(mRoots, 'C:\P\Source\Main.pas'), 'direkt im Quellordner');
+  Assert.AreEqual('Json', TTestUnits.SourcePath(mRoots, 'c:/p/source/lib/Json/Leser.pas'), 'längster Quellordner');
+  Assert.AreEqual('', TTestUnits.SourcePath(mRoots, 'C:\P\Extern\X.pas'), 'außerhalb');
+  Assert.AreEqual('', TTestUnits.SourcePath(nil, 'C:\P\Source\Core\Foo.pas'), 'ohne Quellordner');
+end;
+
+procedure TTestUnitsTests.NamespaceAsFolders;
+begin
+  Assert.AreEqual(Native('Atlas\Core\Net'), TTestUnits.NamespacePath('Atlas.Core.Net.Http'));
+  Assert.AreEqual('', TTestUnits.NamespacePath('Kunden'));
+end;
+
+procedure TTestUnitsTests.ExpandFolderPlaceholders;
+begin
+  Assert.AreEqual(Native('Tests\Core\Net'), TTestUnits.ExpandFolder('Tests/{path}', 'Core\Net', 'Http'));
+  Assert.AreEqual(Native('Tests\'), TTestUnits.ExpandFolder('Tests\{path}\', '', 'Main'), 'leerer {path}');
+  Assert.AreEqual(Native('Tests\Atlas\Core\Unit'), TTestUnits.ExpandFolder('Tests/{NAMESPACE}/Unit', 'x',
+    'Atlas.Core.Foo'));
+  Assert.AreEqual(Native('\\Server\Tests\Core'), TTestUnits.ExpandFolder('\\Server\Tests\{path}', 'Core', 'Foo'),
+    'UNC bleibt');
+  Assert.AreEqual(Native('Tests\Fest'), TTestUnits.ExpandFolder('Tests/Fest', 'Core', 'Foo'), 'ohne Platzhalter');
 end;
 
 end.

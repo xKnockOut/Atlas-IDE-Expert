@@ -102,8 +102,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.Extract,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
@@ -112,7 +112,8 @@ uses
   Atlas.Common.Rules.Builtin.Style.Declarations,
   Atlas.Common.Rules.Builtin.Style.BeginEnd,
   Atlas.Common.Rules.Builtin.Style.MethodOrder,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -1240,21 +1241,12 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
   end;
 
-  function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := ANode;
-    while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-    begin
-      Result := Result[0];
-    end;
-  end;
-
   function CaseSide(ANode: TSyntaxNode; out ASide: TCaseSide): Boolean;
   var
     mNode, mMember: TSyntaxNode;
   begin
     ASide := Default(TCaseSide);
-    mNode := Unwrapped(ANode);
+    mNode := TSyntaxNodes.Unparen(ANode);
     // UpperCase(X), AnsiLowerCase(X), SysUtils.UpperCase(X)
     if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount = 2) and MatchText(mNode.Name, ['UpperCase', 'LowerCase',
       'AnsiUpperCase', 'AnsiLowerCase']) then
@@ -1289,7 +1281,7 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     mNode: TSyntaxNode;
     mValue: string;
   begin
-    mNode := Unwrapped(ANode);
+    mNode := TSyntaxNodes.Unparen(ANode);
     mValue := Text(mNode);
     Result := (mNode.Kind = TSyntaxKind.Literal) and StartsStr('''', mValue);
     if not Result then
@@ -1333,14 +1325,14 @@ procedure TCaseInsensitiveCompareRule.Check(const AContext: TRuleContext; const 
     else if mHasLeft and MatchingLiteral(ANode[1], mLeft.Upper) then
     begin
       mFirst := Text(mLeft.Argument);
-      mSecond := Text(Unwrapped(ANode[1]));
+      mSecond := Text(TSyntaxNodes.Unparen(ANode[1]));
       mName := mLeft.Name;
       mLocale := mLeft.Locale;
     end
     else if mHasRight and MatchingLiteral(ANode[0], mRight.Upper) then
     begin
       mFirst := Text(mRight.Argument);
-      mSecond := Text(Unwrapped(ANode[0]));
+      mSecond := Text(TSyntaxNodes.Unparen(ANode[0]));
       mName := mRight.Name;
       mLocale := mRight.Locale;
     end
@@ -1418,7 +1410,8 @@ type
     FReport: IRuleReport;
     FAllowed: TArray<Double>;
     FSettings: TFormatSettings;
-    FExtractor: TConstantExtractor;
+    /// <summary>„Konstante extrahieren“ des Laufs, beim ersten Literal angelegt; nil ohne Refactorings.</summary>
+    FExtractor: IRuleConstantExtraction;
     function Text(ANode: TSyntaxNode): string;
     function NumberValue(const ALiteral: string; out AValue: Double): Boolean;
     function IsAllowed(AValue: Double): Boolean;
@@ -1553,7 +1546,6 @@ var
   mValue: Double;
   mAction: TCodeAction;
   mFixes: TArray<TRuleFix>;
-  mOptions: TExtractOptions;
 begin
   if not NumberValue(Text(ALiteral), mValue) then
   begin
@@ -1572,14 +1564,12 @@ begin
     Exit;
   end;
   mFixes := nil;
-  if FExtractor = nil then
+  if (FExtractor = nil) and (FContext.Refactorings.Extract <> nil) then
   begin
-    mOptions := TExtractOptions.Default;
     // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
-    mOptions.Names := FContext.NewNames;
-    FExtractor := TConstantExtractor.Create(FContext.Text, FContext.Tree, mOptions);
+    FExtractor := FContext.Refactorings.Extract.ConstantExtraction(FContext.Text, FContext.NewNames);
   end;
-  if FExtractor.Run(TTextRange.Create(mNode.StartPos, mNode.EndPos), False, mAction) then
+  if (FExtractor <> nil) and FExtractor.Run(TTextRange.Create(mNode.StartPos, mNode.EndPos), mAction) then
   begin
     mFixes := [TRuleFix.Create(cTexts[TStyleText.IntroduceConstant].Text, mAction.Edits)];
   end;
@@ -1651,11 +1641,7 @@ begin
   FAllowed := TRuleOptions.Numbers(FContext.Options, 'allowed', mDefaults);
   FSettings := TFormatSettings.Invariant;
   FExtractor := nil;
-  try
-    Visit(FContext.Tree.Root, False);
-  finally
-    FExtractor.Free;
-  end;
+  Visit(FContext.Tree.Root, False);
 end;
 
 procedure TMagicNumberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

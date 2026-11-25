@@ -76,7 +76,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Inheritance,
@@ -1088,7 +1088,7 @@ begin
 end;
 
 /// <summary>Hat ein Konstruktor Create der Klasse AClassName einen var- oder out-Parameter? Dann gibt er das Objekt
-/// selbst weiter (FP-Prüfung 28.10.2026).</summary>
+/// selbst weiter.</summary>
 function TCreateWithoutAssignmentScan.PassesItselfOut(const AClassName: string): Boolean;
 var
   mSymbol: TIndexSymbol;
@@ -1108,7 +1108,7 @@ begin
 end;
 
 /// <summary>Steht AStatement in einer anonymen Methode, die an Assert.WillRaise… geht? Dort soll Create
-/// scheitern (FP-Prüfung 28.10.2026).</summary>
+/// scheitern.</summary>
 function TCreateWithoutAssignmentScan.ExpectedToRaise(AStatement: TSyntaxNode): Boolean;
 var
   mNode, mCall: TSyntaxNode;

@@ -10,7 +10,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Designer.Surface,
+  Atlas.Core.Designer.Contract,
   Atlas.Core.Designer.UndoFlow,
   Atlas.Tests.DesignSurfaceFake;
 
@@ -53,6 +53,10 @@ var
 begin
   mForm := TForm.CreateNew(nil);
   mForm.Name := 'Form1';
+  // Im Designer hat das Formular immer ein Fenster. Ohne legt Delphi es erst beim ersten
+  // Schreiben an (TextHeight misst über den Canvas), und poDefaultPosOnly lässt Windows dann
+  // Left/Top neu setzen: Der zweite Schnappschuss sähe Form1 „bewegt“. Unter FPC fällt das weg.
+  mForm.HandleNeeded;
   FFake := TAtlasDesignSurfaceFake.Create(mForm);
   FSurface := FFake;
   FFlow := TAtlasDesignerUndoFlow.Create(UndoTestWords, UndoTestReasons);

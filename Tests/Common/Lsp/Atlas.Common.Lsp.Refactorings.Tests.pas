@@ -20,9 +20,6 @@ type
     function Titles(const AText: string; ALine, ACharacter: Integer; const AContext: TRefactoringContext): string;
     function Applied(const AText, ATitle: string; ALine, ACharacter: Integer): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -82,8 +79,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Lsp.Completion;
@@ -298,21 +295,11 @@ begin
         begin
           Assert.AreEqual(cCaseCompleteTag, mAction.Tag);
         end;
-        Exit(TChangeSignature.ApplyEdits(AText, mAction.Edits));
+        Exit(TTextChanges.Apply(AText, mAction.Edits));
       end;
     end;
   finally
     mTree.Free;
-  end;
-end;
-
-procedure TLspRefactoringsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    CompletionOffersWithItem;
-  finally
-    TearDown;
   end;
 end;
 
@@ -503,9 +490,11 @@ begin
   mStore := TDocumentStore.Create;
   mStore.Open(mUri, 'delphi', 1, cUnitHaupt);
   mAsked := 0;
-  mCompletion := TLspCompletion.Create(mStore, FIndex);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mCompletion := TLspCompletion.Create(mStore, FIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mCompletion.Hooks.WithFor :=
       function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean
       begin
@@ -576,19 +565,19 @@ begin
   mRechner.FileName := cRechnerFile;
   // Abnahmefall: Total: Currency, Customer: TCustomer, 0.1 ist ein Satz.
   Assert.IsTrue(RechnerAction(mRechner, 14, 13, 'Methode CalcDiscount anlegen', mAction));
-  mResult_ := TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits);
+  mResult_ := TTextChanges.Apply(cUnitRechner, mAction.Edits);
   Assert.IsTrue(mResult_.Contains('  private'#10'    function CalcDiscount(Customer: TCustomer; Rate: Double): ' +
     'Currency;'#10'  end;'), mResult_);
   Assert.IsTrue(mResult_.Contains(#10'function TRechner.CalcDiscount(Customer: TCustomer; Rate: Double): Currency;' +
     #10'begin'#10#10'end;'), mResult_);
   // Ohne Zuweisung eine Prozedur; string als const.
   Assert.IsTrue(RechnerAction(mRechner, 15, 4, 'Methode Protokolliere anlegen', mAction));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits).Contains(
-    'procedure Protokolliere(const Name: string);'), TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits));
+  Assert.IsTrue(TTextChanges.Apply(cUnitRechner, mAction.Edits).Contains(
+    'procedure Protokolliere(const Name: string);'), TTextChanges.Apply(cUnitRechner, mAction.Edits));
   mRechner.Settings.ConstParameters := False;
   Assert.IsTrue(RechnerAction(mRechner, 15, 4, 'Methode Protokolliere anlegen', mAction));
-  Assert.IsTrue(TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits).Contains(
-    'procedure Protokolliere(Name: string);'), TChangeSignature.ApplyEdits(cUnitRechner, mAction.Edits));
+  Assert.IsTrue(TTextChanges.Apply(cUnitRechner, mAction.Edits).Contains(
+    'procedure Protokolliere(Name: string);'), TTextChanges.Apply(cUnitRechner, mAction.Edits));
   // Klasse aus einer Bibliothek: kein Angebot.
   Assert.IsFalse(RechnerAction(mRechner, 16, 10, 'Methode Sortiere in TBibListe anlegen', mAction));
   // Klasse einer anderen Unit des Projekts: dort public, als Änderung der anderen Datei.
@@ -596,7 +585,7 @@ begin
   Assert.AreEqual(0, Integer(Length(mAction.Edits)));
   Assert.AreEqual(1, Integer(Length(mAction.FileEdits)));
   Assert.AreEqual(cKundenFile, mAction.FileEdits[0].FileName);
-  mResult_ := TChangeSignature.ApplyEdits(cUnitKunden, mAction.FileEdits[0].Edits);
+  mResult_ := TTextChanges.Apply(cUnitKunden, mAction.FileEdits[0].Edits);
   Assert.IsTrue(mResult_.Contains('    Name: string;'#10'    procedure Pruefe(Total: Currency);'#10'  end;'), mResult_);
   Assert.IsTrue(mResult_.Contains('procedure TCustomer.Pruefe(Total: Currency);'), mResult_);
   // Bekannter Name und abgeschaltet: nichts.
@@ -646,9 +635,11 @@ begin
   mStore := TDocumentStore.Create;
   mStore.Open(mUri, 'delphi', 1, mText);
   mEnabled := True;
-  mCompletion := TLspCompletion.Create(mStore, FIndex);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mCompletion := nil;
+  mDispatcher := nil;
   try
+    mCompletion := TLspCompletion.Create(mStore, FIndex);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mCompletion.Hooks.CreateFor :=
       function(ARequest: TCompletionRequest; out ATitle, ADetail: string; out AEdits: TArray<TTextEdit>): Boolean
       var
@@ -703,7 +694,7 @@ var
       mTitles_ := mTitles_ + mItem.Title + '|';
       if mItem.Title = ATitle then
       begin
-        Result := TChangeSignature.ApplyEdits(cUnitKasse, mItem.Edits);
+        Result := TTextChanges.Apply(cUnitKasse, mItem.Edits);
       end;
     end;
   end;
@@ -734,7 +725,7 @@ begin
     begin
       if mAction.Title = 'Variable X einbetten' then
       begin
-        mTitles_ := TChangeSignature.ApplyEdits(mResult_, mAction.Edits);
+        mTitles_ := TTextChanges.Apply(mResult_, mAction.Edits);
       end;
     end;
     Assert.AreEqual(StringReplace(StringReplace(mResult_, 'var'#10'  X: Integer;'#10, '', []),

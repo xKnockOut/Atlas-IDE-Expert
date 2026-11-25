@@ -1,8 +1,8 @@
 ﻿unit Atlas.UI.Notes.List;
 
 // Liste der Notizen (#545) im Ergebnisfenster: macht aus den Gruppen eines
-// Notizbuchs eine allgemeine Liste mit Kennungen (TAtlasResultsItemList, seit
-// #1455; vorher kannte das Ergebnisfenster die Notizen selbst). Je Datei eine
+// Notizbuchs eine allgemeine Liste mit Kennungen (TAtlasResultsItemList,
+// #1455), damit das Ergebnisfenster die Notizen nicht kennen muss. Je Datei eine
 // Gruppe „Kunde.pas (2)“ mit Einträgen „42: Titel“, verwaiste am Ende als
 // „Verwaist (1)“ mit „Kunde.pas, Zeile 42: Titel“.
 

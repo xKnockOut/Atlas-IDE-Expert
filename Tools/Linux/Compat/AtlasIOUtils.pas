@@ -55,6 +55,7 @@ type
     class procedure WriteAllLines(const AFileName: string; const AContents: TArray<string>;
       const AEncoding: TEncoding); overload; static;
     class procedure AppendAllText(const AFileName, AContents: string); overload; static;
+    class procedure AppendAllText(const AFileName, AContents: string; AEncoding: TEncoding); overload; static;
     class procedure Delete(const AFileName: string); static;
     class procedure Move(const ASourceFileName, ADestFileName: string); static;
     class procedure Copy(const ASourceFileName, ADestFileName: string; AOverwrite: Boolean); overload; static;
@@ -77,6 +78,7 @@ type
     class function GetParent(const APath: string): string; static;
     class function GetCurrentDirectory: string; static;
     class function GetLastWriteTime(const APath: string): TDateTime; static;
+    class function GetLastWriteTimeUtc(const APath: string): TDateTime; static;
     class function GetFiles(const APath: string): TArray<string>; overload; static;
     class function GetFiles(const APath, ASearchPattern: string): TArray<string>; overload; static;
     class function GetFiles(const APath, ASearchPattern: string; ASearchOption: TSearchOption): TArray<string>;
@@ -302,6 +304,11 @@ begin
 end;
 
 class procedure TFile.AppendAllText(const AFileName, AContents: string);
+begin
+  AppendAllText(AFileName, AContents, TEncoding.UTF8);
+end;
+
+class procedure TFile.AppendAllText(const AFileName, AContents: string; AEncoding: TEncoding);
 var
   mStream: TFileStream;
   mBytes: TBytes;
@@ -312,7 +319,7 @@ begin
     mStream := TFileStream.Create(AFileName, fmCreate);
   try
     mStream.Seek(0, soEnd);
-    mBytes := TEncoding.UTF8.GetBytes(AContents);
+    mBytes := AEncoding.GetBytes(AContents);
     if Length(mBytes) > 0 then
       mStream.WriteBuffer(mBytes[0], Length(mBytes));
   finally
@@ -521,6 +528,12 @@ end;
 class function TDirectory.GetCurrentDirectory: string;
 begin
   Result := GetCurrentDir;
+end;
+
+class function TDirectory.GetLastWriteTimeUtc(const APath: string): TDateTime;
+begin
+  // stat(2) gilt für Ordner wie für Dateien.
+  Result := TFile.GetLastWriteTimeUtc(APath);
 end;
 
 class function TDirectory.GetLastWriteTime(const APath: string): TDateTime;

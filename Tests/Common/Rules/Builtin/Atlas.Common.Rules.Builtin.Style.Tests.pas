@@ -107,10 +107,10 @@ uses
   Atlas.Common.Rules.Builtin.Style.Declarations,
   Atlas.Common.Rules.Builtin.Style.BeginEnd,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Engine,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.SourceText;
 
 const
   cParensOn = '{ "rules": { "redundant-parens": "hint" } }';
@@ -193,19 +193,6 @@ begin
   end;
   Assert.Fail('Keine Korrektur mit "' + AText + '"');
   Result := Default(TRuleFix);
-end;
-
-/// <summary>ASource parst ohne Syntaxfehler.</summary>
-procedure AssertParses(const ASource: string);
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(ASource);
-  try
-    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), ASource);
-  finally
-    mTree.Free;
-  end;
 end;
 
 { TStyleRulesTests }
@@ -526,7 +513,7 @@ begin
     '  Tage = 30;'#10'var'#10'  A: array[0..9] of Byte;'#10'begin'#10'  if X > Grenze then'#10'    X := 0;'#10 +
     '  S := ''42'' + #13#10;'#10'  X := X * 2 + 1 - 100;'#10'  var B: array[0..4] of Byte;'#10'end;'#10'end.',
     cMagicOn))));
-  // Zahlen, die für sich sprechen: DPI-Basis, Bitmasken, Zeiteinheiten, Punktlisten (Marcos Lauf 06.11.2026).
+  // Zahlen, die für sich sprechen: DPI-Basis, Bitmasken, Zeiteinheiten, Punktlisten.
   // Gemeldet bleiben 72 in MulDiv, WaitFor(1000) und Pixelwerte außerhalb einer Punktliste (SetBounds: 4 Zahlen).
   Assert.AreEqual(6, Integer(Length(TRuleAssert.Findings(TMagicNumberRule.Create, 'unit U;'#10'interface'#10 +
     'implementation'#10'procedure P;'#10'begin'#10'  X := MulDiv(X, PPI, 96);'#10'  K := EnsureRange(K, 0, $FFFF);'#10 +
@@ -829,7 +816,7 @@ begin
   // Drei Reichweiten: die Stelle, die Methode, die Datei (hier nur eine Methode, also zwei Korrekturen).
   Assert.AreEqual(2, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual(mExpected, Applied(mSource, FixTitled(mFindings[0], 'ganzen Methode')));
-  AssertParses(mExpected);
+  TTestSource.AssertParses(mExpected);
   // Sammelkorrektur (--fix missing-begin-end): nur die Stelle ist sicher, die Methode bleibt eine Auswahl.
   Assert.IsTrue(mFindings[0].Fixes[0].Safe);
   Assert.IsFalse(mFindings[0].Fixes[1].Safe);
@@ -850,7 +837,7 @@ begin
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  if A then'#10 +
     '  begin'#10'    B;'#10'  end;'#10'  while C do'#10'  begin'#10'    D;'#10'  end;'#10'end;'#10'procedure Q;'#10 +
     'begin'#10'  with E do'#10'  begin'#10'    F;'#10'  end;'#10'end;'#10'end.', mExpected);
-  AssertParses(mExpected);
+  TTestSource.AssertParses(mExpected);
 end;
 
 procedure TStyleRulesTests.MissingBeginEndFixFollowsElsePlacement;
@@ -867,19 +854,19 @@ begin
   mFindings := TRuleAssert.Findings(TMissingBeginEndRule.Create, mSource, cSameLine);
   Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual(mExpected, Applied(mSource, FixTitled(mFindings[0], 'ganzen Methode')));
-  AssertParses(mExpected);
+  TTestSource.AssertParses(mExpected);
   // Alles in einer Zeile: else bleibt hinter dem end.
   mSource := InRoutine('', '  if A then B else C;');
   mFindings := TRuleAssert.Findings(TMissingBeginEndRule.Create, mSource, cSameLine);
   mExpected := Applied(mSource, FixTitled(mFindings[0], 'ganzen Methode'));
   Assert.Contains(mExpected, '  end else'#10);
-  AssertParses(mExpected);
+  TTestSource.AssertParses(mExpected);
   // Ein Kommentar zwischen Rumpf und else bleibt stehen, else dann in eigener Zeile.
   mSource := InRoutine('', '  if A then'#10'    B // Grund'#10'  else'#10'    C;');
   mFindings := TRuleAssert.Findings(TMissingBeginEndRule.Create, mSource, cSameLine);
   mExpected := Applied(mSource, FixTitled(mFindings[0], 'ganzen Methode'));
   Assert.Contains(mExpected, '// Grund');
-  AssertParses(mExpected);
+  TTestSource.AssertParses(mExpected);
 end;
 
 procedure TStyleRulesTests.MissingBeginEndSameLineAndNestedFixes;
@@ -894,7 +881,7 @@ begin
   mExpected := InRoutine('  X: Integer;', '  if A then'#10'  begin'#10'    X := 1;'#10'  end'#10'  else'#10'  begin'#10 +
     '    X := 2;'#10'  end;');
   Assert.AreEqual(mExpected, Applied(mSource, FixTitled(mFindings[0], 'ganzen Methode')));
-  AssertParses(mExpected);
+  TTestSource.AssertParses(mExpected);
   // Verschachtelt in einer Zeile: innen zuerst geschlossen, eine Ebene tiefer eingerückt.
   mSource := InRoutine('  I: Integer;', '  for I := 0 to 1 do if A then X := I;');
   mFindings := TRuleAssert.Findings(TMissingBeginEndRule.Create, mSource);
@@ -902,7 +889,7 @@ begin
   mExpected := InRoutine('  I: Integer;', '  for I := 0 to 1 do'#10'  begin'#10'    if A then'#10'    begin'#10 +
     '      X := I;'#10'    end;'#10'  end;');
   Assert.AreEqual(mExpected, Applied(mSource, FixTitled(mFindings[0], 'ganzen Methode')));
-  AssertParses(mExpected);
+  TTestSource.AssertParses(mExpected);
   Assert.AreEqual(InRoutine('  I: Integer;', '  for I := 0 to 1 do'#10'  begin'#10'    if A then X := I;'#10'  end;'),
     Fixed(mSource, mFindings));
   // Dangling else: das else gehört zum inneren if und bleibt dort.
@@ -912,13 +899,13 @@ begin
   mExpected := InRoutine('  X: Integer;', '  if A then'#10'  begin'#10'    if B then'#10'    begin'#10'      X := 1;'#10 +
     '    end'#10'    else'#10'    begin'#10'      X := 2;'#10'    end;'#10'  end;');
   Assert.AreEqual(mExpected, Applied(mSource, FixTitled(mFindings[0], 'ganzen Methode')));
-  AssertParses(mExpected);
+  TTestSource.AssertParses(mExpected);
   // Letzte Anweisung ohne Semikolon vor end, Kommentar hinter dem Rumpf.
   mSource := InRoutine('  X: Integer;', '  while A do'#10'    X := 1 // weiter'#10'  ;');
   mExpected := Fixed(mSource, TRuleAssert.Findings(TMissingBeginEndRule.Create, mSource));
   Assert.AreEqual(InRoutine('  X: Integer;', '  while A do'#10'  begin'#10'    X := 1;'#10'  end // weiter'#10'  ;'),
     mExpected);
-  AssertParses(mExpected);
+  TTestSource.AssertParses(mExpected);
 end;
 
 procedure TStyleRulesTests.MissingBeginEndSilentCases;

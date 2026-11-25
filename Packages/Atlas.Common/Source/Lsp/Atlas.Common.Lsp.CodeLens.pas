@@ -24,7 +24,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Metrics.Contract,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   TCodeLensKind = (References, Overrides, Descendants, Messages, Metrics);
@@ -64,20 +66,18 @@ type
     Targets: TArray<TCodeLensLocation>;
   end;
 
-  TLspCodeLens = class
+  TLspCodeLens = class(TLspProjectFeature)
   public const
     cLensMethod = 'textDocument/codeLens';
     cResolveMethod = 'codeLens/resolve';
     cShowLocationsCommand = 'atlas.showLocations';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
-    FReadText: TReferenceReadText;
-    FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FMetricsFor: TCodeLensMetricsFunc;
+    FInheritanceDepths: ILspInheritanceDepths;
     function NewResolver: TNameResolver;
+    /// <summary>Vererbungstiefe der Datei über InheritanceDepths; leer ohne.</summary>
+    function DepthsOf(const AFileName, AText: string): TArray<TStructureMetrics>;
     function HandleLens(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
@@ -99,10 +99,9 @@ type
     /// dem Unit-Namen (Zeilen) und über dem ersten uses (Units im uses, #939); der Aufbau zuerst.</summary>
     class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>;
       overload; static;
-    /// <summary>Wie oben, dazu die Vererbungstiefe jeder Klasse mit eigenen Vorfahren über AIndex (#980); AFileName
-    /// für den Index der Datei.</summary>
-    class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits; const AIndex: ISymbolIndex;
-      const AFileName: string): TArray<TCodeLensEntry>; overload; static;
+    /// <summary>Wie oben, dazu die Vererbungstiefe jeder Klasse mit eigenen Vorfahren aus ADepths (#980).</summary>
+    class function MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits;
+      const ADepths: TArray<TStructureMetrics>): TArray<TCodeLensEntry>; overload; static;
     /// <summary>Nächster Vorfahr von AType, der die Routine AName deklariert (auch für die Zeilenleiste #768);
     /// AFound nennt ihn und die Deklaration. False, wenn keiner im Index steht.</summary>
     class function OverriddenAncestor(AResolver: TNameResolver; const AIndex: ISymbolIndex;
@@ -120,6 +119,8 @@ type
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
     /// <summary>Einstellung und Grenzwerte der Metrik-Linsen; nil = keine.</summary>
     property MetricsFor: TCodeLensMetricsFunc read FMetricsFor write FMetricsFor;
+    /// <summary>Vererbungstiefe in der Metrik-Linse (#980); nil = ohne.</summary>
+    property InheritanceDepths: ILspInheritanceDepths read FInheritanceDepths write FInheritanceDepths;
   end;
 
 implementation
@@ -136,8 +137,8 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Metrics.Report,
-  Atlas.Common.Rules.Builtin.Metrics,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Numbers;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -171,29 +172,6 @@ begin
   Result.Range := ARange;
 end;
 
-function Plural(ACount: Integer; const AOne, AMany: string): string;
-begin
-  if ACount = 1 then
-  begin
-    Result := '1 ' + AOne;
-  end
-  else
-  begin
-    Result := IntToStr(ACount) + ' ' + AMany;
-  end;
-end;
-
-function UnitOf(const AIndex: ISymbolIndex; const ACurrent: TUnitIndex; const AFileName: string;
-  out AUnit: TUnitIndex): Boolean;
-begin
-  if SameText(AFileName, ACurrent.FileName) then
-  begin
-    AUnit := ACurrent;
-    Exit(True);
-  end;
-  Result := AIndex.FindFile(AFileName, AUnit);
-end;
-
 /// <summary>Nächster Vorfahr, der AName deklariert; False, wenn keiner im Index steht.</summary>
 function FindOverridden(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ACurrent: TUnitIndex;
   const AType: TIndexSymbol; const AName: string; out AFound: TCodeLensOverride): Boolean;
@@ -216,7 +194,7 @@ begin
     end;
     mName := mAncestors[0];
     if (Pos('<', mName) > 0) or not AResolver.ResolveTypeFrom(mFromUnit, mName, mAncestor) or
-      not UnitOf(AIndex, ACurrent, mAncestor.FileName, mOwnerUnit) then
+      not UnitOfFile(AIndex, ACurrent, mAncestor.FileName, mOwnerUnit) then
     begin
       Exit;
     end;
@@ -283,12 +261,7 @@ end;
 constructor TLspCodeLens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
 constructor TLspCodeLens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -348,7 +321,7 @@ begin
     end;
     if Assigned(FMetricsFor) and FMetricsFor(mUri, mLimits) then
     begin
-      for mEntry in MetricLenses(mSource.Tree, mLimits, FIndex, mSource.FileName) do
+      for mEntry in MetricLenses(mSource.Tree, mLimits, DepthsOf(mSource.FileName, mDocument.Text)) do
       begin
         TJSONArray(Result).AddElement(ToJson(mEntry, mSource.FileName));
       end;
@@ -379,7 +352,7 @@ begin
     Exit;
   end;
   mEntry := NewEntry(TCodeLensKind.Descendants, ASymbol.SelectionRange,
-    Plural(Length(mDescendants), cTexts[TCodeLensText.Descendant].Text, cTexts[TCodeLensText.Descendants].Text));
+    TTextNumbers.Counted(Length(mDescendants), cTexts[TCodeLensText.Descendant].Text, cTexts[TCodeLensText.Descendants].Text));
   for mDescendant in mDescendants do
   begin
     mEntry.Targets := mEntry.Targets + [Location(mDescendant.FileName, mDescendant.Symbol.SelectionRange)];
@@ -532,14 +505,23 @@ begin
   end;
 end;
 
+function TLspCodeLens.DepthsOf(const AFileName, AText: string): TArray<TStructureMetrics>;
+begin
+  Result := nil;
+  if FInheritanceDepths <> nil then
+  begin
+    Result := FInheritanceDepths.Depths(AFileName, AText, FIndex);
+  end;
+end;
+
 class function TLspCodeLens.MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits;
-  const AIndex: ISymbolIndex; const AFileName: string): TArray<TCodeLensEntry>;
+  const ADepths: TArray<TStructureMetrics>): TArray<TCodeLensEntry>;
 var
   mItem: TStructureMetrics;
   mEntry: TCodeLensEntry;
 begin
   Result := MetricLenses(ATree, ALimits);
-  for mItem in TMetricRules.InheritanceDepths(ATree, AIndex, TIndexExtractor.Extract(ATree, AFileName)) do
+  for mItem in ADepths do
   begin
     mEntry := Default(TCodeLensEntry);
     mEntry.Kind := TCodeLensKind.Metrics;
@@ -579,8 +561,7 @@ begin
   finally
     mHeaders.Free;
   end;
-  Result.Title := Plural(Length(Result.Targets), cTexts[TCodeLensText.Reference].Text,
-    cTexts[TCodeLensText.References].Text);
+  Result.Title := TTextNumbers.Counted(Length(Result.Targets), cTexts[TCodeLensText.Reference].Text, cTexts[TCodeLensText.References].Text);
 end;
 
 class function TLspCodeLens.ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
@@ -684,7 +665,7 @@ begin
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
-    mEntry.Title := Plural(0, cTexts[TCodeLensText.Reference].Text, cTexts[TCodeLensText.References].Text);
+    mEntry.Title := TTextNumbers.Counted(0, cTexts[TCodeLensText.Reference].Text, cTexts[TCodeLensText.References].Text);
     Exit(ToJson(mEntry, mSource.FileName));
   end;
   mCancellation := TRequestCancellation.Create(ACancellation);

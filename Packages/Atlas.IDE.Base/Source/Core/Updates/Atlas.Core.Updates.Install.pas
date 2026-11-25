@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Updates.Install;
 
-// Update installieren (#1519, Variante A „beim Beenden installieren“), ohne
+// Update installieren (#1519, „beim Beenden installieren“), ohne
 // IDE und ohne Prozesse:
 // - updates.install: ask bietet ein gefundenes Update an, auto bereitet es
 //   ohne Frage vor (nicht bei einer neuen Hauptversion), off meldet es nur
@@ -13,6 +13,10 @@
 //   Dateien), ohne AtlasUpdate.exe neben AtlasServer.exe und außerhalb eines
 //   Release-Ordners (<Ziel>\Win32 bzw. \Win64, etwa beim Bauen aus dem
 //   Repository). Dann bleibt es beim Hinweis mit Link (#495).
+// - Gibt es für die IDE kein Paket, baut AtlasUpdate.exe aus dem Quelltext
+//   nur nach Bestätigung (--allow-source): Ohne sie endet „prepare“ mit
+//   sourceConfirm, und das Plugin fragt, weil ein so gebautes Update nicht
+//   an den Herausgeber gebunden ist. Auch auto baut nie ohne Frage.
 // - Kanal: updates.channel = prerelease oder eine installierte
 //   Vorabversion fragt die Versionsdatei der Vorabversionen, sonst die der
 //   stabilen Versionen.
@@ -68,15 +72,18 @@ type
     /// <summary>Ohne Frage vorbereiten: auto und keine neue Hauptversion.</summary>
     class function PrepareWithoutAsking(AMode: TAtlasUpdateInstallMode; const AInstalled,
       AVersion: string): Boolean; static;
-    /// <summary>Aufruf „prepare“ für AVersion aus der Versionsdatei AManifestUrl.</summary>
+    /// <summary>Aufruf „prepare“ für AVersion aus der Versionsdatei AManifestUrl; AAllowSource: Bauen aus dem
+    /// Quelltext bestätigt.</summary>
     class function PrepareArgs(const AEnvironment: TAtlasUpdateEnvironment; const ARoot, AVersion, AManifestUrl,
-      ANewModules: string): TUpdateArguments; static;
+      ANewModules: string; AAllowSource: Boolean): TUpdateArguments; static;
+    /// <summary>„prepare“ wartet auf die Bestätigung, aus dem Quelltext zu bauen.</summary>
+    class function AwaitsSourceConfirmation(const AStage: TUpdateStage): Boolean; static;
     /// <summary>Aufruf „apply“ mit den gewählten Packages; AWaitPid = Prozess der IDE.</summary>
     class function ApplyArgs(const AEnvironment: TAtlasUpdateEnvironment; const ARoot: string;
       const AStage: TUpdateStage; AWaitPid: Cardinal): TUpdateArguments; static;
     /// <summary>Stand eines laufenden oder fertigen „prepare“: fertig, wenn bereit oder gescheitert.</summary>
     class function IsFinished(const AStage: TUpdateStage): Boolean; static;
-    /// <summary>Gewählte Packages nach der Auswahl (Mockup 6) übernehmen; Pflicht-Packages bleiben gewählt,
+    /// <summary>Gewählte Packages nach der Auswahl der Module übernehmen; Pflicht-Packages bleiben gewählt,
     /// unbekannte Namen fallen weg. Danach fragt das Plugin nicht mehr.</summary>
     class function Choose(const AStage: TUpdateStage; const AChosen: TArray<string>): TUpdateStage; static;
   end;
@@ -160,7 +167,7 @@ begin
 end;
 
 class function TAtlasUpdateInstall.PrepareArgs(const AEnvironment: TAtlasUpdateEnvironment; const ARoot, AVersion,
-  AManifestUrl, ANewModules: string): TUpdateArguments;
+  AManifestUrl, ANewModules: string; AAllowSource: Boolean): TUpdateArguments;
 begin
   Result := Default(TUpdateArguments);
   Result.Command := 'prepare';
@@ -173,6 +180,12 @@ begin
   Result.Target := TargetOf(AEnvironment.PluginDir);
   Result.Staging := StagingDir(ARoot, AVersion);
   Result.NewModules := TUpdateNames.ParseNewModules(ANewModules);
+  Result.AllowSource := AAllowSource;
+end;
+
+class function TAtlasUpdateInstall.AwaitsSourceConfirmation(const AStage: TUpdateStage): Boolean;
+begin
+  Result := (AStage.Phase = TUpdatePhase.Failed) and (AStage.Error = TUpdateErrors.cSourceConfirm);
 end;
 
 class function TAtlasUpdateInstall.ApplyArgs(const AEnvironment: TAtlasUpdateEnvironment; const ARoot: string;

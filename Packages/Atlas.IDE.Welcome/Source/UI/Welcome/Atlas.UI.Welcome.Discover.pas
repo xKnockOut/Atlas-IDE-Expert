@@ -42,24 +42,13 @@ uses
   Vcl.Graphics,
   Atlas.Core.Commands.Tips,
   Atlas.Core.Welcome.Discover,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasDiscoverButton = (TryIt, Next, Block);
 {$SCOPEDENUMS OFF}
-
-  IAtlasDiscoverSource = interface
-    ['{3E7C9A14-5B2D-4F86-A1C0-8D6E2F4B7A93}']
-    /// <summary>Der Tipp, den die Karte gerade zeigt; False ohne Tipp.</summary>
-    function Card(out ACard: TAtlasDiscoverCard): Boolean;
-    /// <summary>„Ausprobieren“: Befehl ausführen oder Beispieldatei öffnen.</summary>
-    procedure TryTip(const AId: string);
-    /// <summary>„Nächster Tipp“.</summary>
-    procedure NextTip(const AId: string);
-    /// <summary>„Nicht mehr zeigen“: Tipp dauerhaft sperren.</summary>
-    procedure BlockTip(const AId: string);
-  end;
 
   /// <summary>Texte der Karte „Atlas entdecken“, ohne Steuerelement.</summary>
   TAtlasDiscoverTexts = class
@@ -151,12 +140,18 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Vcl.Imaging.pngimage,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Text.Files;
+
+const
+  /// <summary>Schmaler bricht der Text eines Tipps nicht um (logische Pixel bei 96 dpi).</summary>
+  cMinTipWidth = 80;
 
 { TAtlasDiscoverPicture }
 
@@ -192,8 +187,14 @@ begin
     FOriginal.LoadFromFile(AFileName);
   except
     // Kaputtes Bild: Karte ohne Bild.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EInvalidGraphic)) then
+      begin
+        raise;
+      end;
       FOriginal.Assign(nil);
+    end;
   end;
 end;
 
@@ -212,9 +213,11 @@ begin
   end;
   FShownWidth := AWidth;
   FShownHeight := AHeight;
-  mNative := TBitmap.Create;
-  mScaled := TBitmap.Create;
+  mNative := nil;
+  mScaled := nil;
   try
+    mNative := TBitmap.Create;
+    mScaled := TBitmap.Create;
     mNative.PixelFormat := pf24bit;
     mNative.SetSize(FOriginal.Width, FOriginal.Height);
     mNative.Canvas.Draw(0, 0, FOriginal.Graphic);
@@ -263,15 +266,15 @@ begin
   FTitleLabel := NewLabel;
   FTitleLabel.Font.Style := [fsBold];
   FKey := NewLabel;
-  FKey.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FKey, clGrayText);
   FText := TAtlasWrapLabel.Create(Self);
   FText.Parent := Body;
   FAge := NewLabel;
-  FAge.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FAge, clGrayText);
   FPosition := NewLabel;
-  FPosition.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FPosition, clGrayText);
   FEmpty := NewLabel;
-  FEmpty.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FEmpty, clGrayText);
   FEmpty.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeDiscoverEmpty);
   for mKind := Low(TAtlasDiscoverButton) to High(TAtlasDiscoverButton) do
   begin
@@ -372,7 +375,7 @@ function TAtlasWelcomeDiscoverFrame.BodyHeight: Integer;
 begin
   // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
   Arrange;
-  Result := Max(FContentHeight, ScaleValue(40));
+  Result := Max(FContentHeight, ScaleValue(cMinBodyHeight));
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.UpdateContent;
@@ -495,7 +498,7 @@ begin
   if FText.Visible then
   begin
     // Breite zuerst: Das Label bricht danach um und passt seine Höhe an.
-    FText.Width := Max(ARight - ATextLeft, ScaleValue(80));
+    FText.Width := Max(ARight - ATextLeft, ScaleValue(cMinTipWidth));
     // AutoSize neu setzen: Erst das misst den umbrochenen Text für die neue Breite.
     FText.AutoSize := False;
     FText.AutoSize := True;
@@ -541,16 +544,8 @@ begin
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
 begin
-  mOldHeight := FContentHeight;
-  Arrange;
-  // Anderer Umbruch bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
+  Rearrange(Arrange, FContentHeight);
 end;
 
 procedure TAtlasWelcomeDiscoverFrame.ButtonClick(Sender: TObject);

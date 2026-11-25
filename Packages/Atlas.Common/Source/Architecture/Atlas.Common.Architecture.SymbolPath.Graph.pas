@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Architecture.SymbolPath.Graph;
 
-// Kanten aus dem Index für die Pfadsuche zwischen Symbolen (#1117), ausgelagert
-// aus Atlas.Common.Architecture.SymbolPath. Aufrufkanten stehen in
+// Kanten aus dem Index für die Pfadsuche zwischen Symbolen (#1117), Teil von
+// Atlas.Common.Architecture.SymbolPath. Aufrufkanten stehen in
 // Atlas.Common.Architecture.SymbolPath.Calls.
 //
 // - Vorwärts je Knoten: uses (Uses-Graph), contains, inherits, implements
@@ -93,7 +93,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Arrays;
 
 { TSymbolPathGraph }
 
@@ -330,21 +331,6 @@ begin
   end;
 end;
 
-/// <summary>ANode steht in ANodes.</summary>
-function ContainsNode(ANode: Integer; const ANodes: TArray<Integer>): Boolean;
-var
-  mNode: Integer;
-begin
-  for mNode in ANodes do
-  begin
-    if mNode = ANode then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function TSymbolPathGraph.ImplementersOf(ANode: Integer): TArray<Integer>;
 var
   mLocation: TSymbolLocation;
@@ -362,7 +348,7 @@ begin
       Continue;
     end;
     mNode := FTable.NodeOf(mLocation);
-    if (mNode >= 0) and ContainsNode(ANode, InterfacesOf(mNode)) then
+    if (mNode >= 0) and TTextArrays.ContainsInteger(InterfacesOf(mNode), ANode) then
     begin
       Result := Result + [mNode];
     end;

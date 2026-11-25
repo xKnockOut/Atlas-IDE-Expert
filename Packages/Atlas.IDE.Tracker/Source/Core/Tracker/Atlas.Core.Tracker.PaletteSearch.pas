@@ -22,29 +22,11 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  /// <summary>None: Befehle; Recent: zuletzt geöffnete; Key: eine Kennung; Text: Freitextsuche.</summary>
-  TAtlasIssueSearchKind = (None, Recent, Key, Text);
-{$SCOPEDENUMS OFF}
-
-  TAtlasIssueSearchQuery = record
-    Kind: TAtlasIssueSearchKind;
-    /// <summary>Key: Kennung wie im Tracker ("ATL-12", "#42").</summary>
-    Key: string;
-    /// <summary>Text: Suchtext ohne Auslöser ("Speicherleck").</summary>
-    Text: string;
-    class function None: TAtlasIssueSearchQuery; static;
-    /// <summary>Gleiche Anfrage (Art, Kennung, Text ohne Groß-/Kleinschreibung).</summary>
-    function SameAs(const AOther: TAtlasIssueSearchQuery): Boolean;
-    /// <summary>Text, dessen Zeichen in den Zeilen hervorgehoben werden.</summary>
-    function Highlight: string;
-  end;
-
   TAtlasIssuePaletteSearch = class
   public const
     /// <summary>Höchstens so viele Treffer je Suche.</summary>
@@ -134,47 +116,8 @@ implementation
 
 uses
   System.StrUtils,
-  System.JSON;
-
-function IsDigits(const AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AText <> '';
-  for mIndex := 1 to Length(AText) do
-  begin
-    if not CharInSet(AText[mIndex], ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
-{ TAtlasIssueSearchQuery }
-
-class function TAtlasIssueSearchQuery.None: TAtlasIssueSearchQuery;
-begin
-  Result.Kind := TAtlasIssueSearchKind.None;
-  Result.Key := '';
-  Result.Text := '';
-end;
-
-function TAtlasIssueSearchQuery.SameAs(const AOther: TAtlasIssueSearchQuery): Boolean;
-begin
-  Result := (Kind = AOther.Kind) and SameText(Key, AOther.Key) and SameText(Text, AOther.Text);
-end;
-
-function TAtlasIssueSearchQuery.Highlight: string;
-begin
-  case Kind of
-    TAtlasIssueSearchKind.Key:
-      Result := Key;
-    TAtlasIssueSearchKind.Text:
-      Result := Text;
-  else
-    Result := '';
-  end;
-end;
+  System.JSON,
+  Atlas.Text.Chars;
 
 { TAtlasIssuePaletteSearch }
 
@@ -189,7 +132,7 @@ end;
 function NumberKey(const ATarget: TAtlasTrackerTarget; const ANumber: string): string;
 begin
   Result := '';
-  if not IsDigits(ANumber) or (StrToIntDef(ANumber, 0) <= 0) then
+  if not TTextChars.IsDigits(ANumber) or (StrToIntDef(ANumber, 0) <= 0) then
   begin
     Exit;
   end;
@@ -207,7 +150,7 @@ end;
 function IsProjectKey(const ATarget: TAtlasTrackerTarget; const ARest: string): Boolean;
 begin
   Result := not SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) and (ATarget.Project <> '') and
-    StartsText(ATarget.Project + '-', ARest) and IsDigits(Copy(ARest, Length(ATarget.Project) + 2, MaxInt));
+    StartsText(ATarget.Project + '-', ARest) and TTextChars.IsDigits(Copy(ARest, Length(ATarget.Project) + 2, MaxInt));
 end;
 
 /// <summary>Suche nach "#": leer die letzten Issues, "#42" die Nummer, "#ATL-12" die Kennung, sonst Text.</summary>
@@ -377,10 +320,13 @@ end;
 { TAtlasRecentIssues }
 
 constructor TAtlasRecentIssues.Create;
+const
+  /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
+  cKind = 'Zuletzt geöffnete Issues';
 begin
   inherited Create;
   FEntries := TList<TEntry>.Create;
-  FKind := 'Zuletzt geöffnete Issues';
+  FKind := cKind;
 end;
 
 destructor TAtlasRecentIssues.Destroy;
@@ -533,30 +479,12 @@ end;
 
 function TAtlasRecentIssues.LoadFromFile(const AFileName: string): TAtlasDataLoad;
 begin
-  FEntries.Clear;
-  FKept := '';
-  Result := TAtlasDataFile.Load(AFileName, FKind,
-    function(const AText: string): Boolean
-    begin
-      Result := Parse(AText);
-    end);
-  if not TAtlasDataFile.Writable(Result) then
-  begin
-    FKept := AFileName;
-  end;
-  if Result <> TAtlasDataLoad.Loaded then
-  begin
-    FEntries.Clear;
-  end;
+  Result := TAtlasDataFile.LoadInto(AFileName, FKind, Parse, Clear, FKept);
 end;
 
 function TAtlasRecentIssues.SaveToFile(const AFileName: string): Boolean;
 begin
-  Result := not SameFileName(AFileName, FKept);
-  if Result then
-  begin
-    TAtlasDataFile.Write(AFileName, ToJson);
-  end;
+  Result := TAtlasDataFile.WriteUnlessKept(AFileName, FKept, ToJson);
 end;
 
 class function TAtlasRecentIssues.TrackerKey(const ATarget: TAtlasTrackerTarget): string;

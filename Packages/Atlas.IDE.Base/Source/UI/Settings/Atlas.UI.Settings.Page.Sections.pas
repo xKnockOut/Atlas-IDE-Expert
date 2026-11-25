@@ -32,7 +32,8 @@ type
     /// <summary>Reiter, die erst für einen Abschnitt entstanden sind: Bereich und Index in den Reitern der Seite.
     /// </summary>
     FAreas: TArray<TPair<string, Integer>>;
-    FWatch: IAtlasRegistryListener;
+    /// <summary>Anmeldung bei der Registry (TAtlasRegistryWatch): Geht ein Modul, schließt die Seite seinen
+    /// Abschnitt (Regel 2).</summary>
     FWatchRegistration: IAtlasRegistration;
     /// <summary>Erster Reiter mit einer Einstellung der Seite (AByPage) bzw. des Bereichs AArea; -1 ohne.</summary>
     function SheetWith(const AArea: string; AByPage: Boolean): Integer;
@@ -52,6 +53,7 @@ type
     function Values(const AStore: IAtlasMemorySettingsStore): IAtlasSettingsValues;
     /// <summary>Abschnitte abgemeldeter Module schließen (Regel 3).</summary>
     procedure DropMissing;
+    procedure RegistryChanged(const AChange: TAtlasRegistryChange);
     procedure CloseAll;
   public
     constructor Create(APage: TAtlasSettingsPageHost);
@@ -75,11 +77,12 @@ implementation
 uses
   System.SysUtils,
   Vcl.StdCtrls,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.StoreValues,
   Atlas.Core.Settings.PageNames,
   Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Watch,
   Atlas.UI.Strings;
 
 const
@@ -87,7 +90,7 @@ const
   cSectionChoiceMismatch = 'Auswahl %s: Anzeige und Werte verschieden lang';
 
 type
-  /// <summary>Host und Wächter der Abschnitte lösen sich von der Seite, wenn sie schließt (#1455).</summary>
+  /// <summary>Hosts der Abschnitte lösen sich von der Seite, wenn sie schließt (#1455).</summary>
   IAtlasSettingsDetachable = interface
     ['{816EC08A-0148-46B9-AD92-1374D8305711}']
     procedure Detach;
@@ -143,16 +146,6 @@ type
     property Sections: TArray<IAtlasSettingsSection> read FSections;
   end;
 
-  /// <summary>Hört für die Seite auf die Registry: Geht ein Modul, schließt die Seite seinen Abschnitt (Regel 2).
-  /// </summary>
-  TAtlasSettingsSectionWatch = class(TInterfacedObject, IAtlasRegistryListener, IAtlasSettingsDetachable)
-  private
-    FPart: TAtlasSettingsSectionsPart;
-  public
-    constructor Create(APart: TAtlasSettingsSectionsPart);
-    procedure Detach;
-    procedure RegistryChanged(const AChange: TAtlasRegistryChange);
-  end;
 
 { TAtlasPendingSections }
 
@@ -459,27 +452,6 @@ begin
   end;
   mName := TAtlasSettingsStoreValues.PluginName(FPage.Catalog, AKey);
   Result := (mName <> '') and (FPage.ControlOfSetting(mName) <> nil);
-end;
-
-{ TAtlasSettingsSectionWatch }
-
-constructor TAtlasSettingsSectionWatch.Create(APart: TAtlasSettingsSectionsPart);
-begin
-  inherited Create;
-  FPart := APart;
-end;
-
-procedure TAtlasSettingsSectionWatch.Detach;
-begin
-  FPart := nil;
-end;
-
-procedure TAtlasSettingsSectionWatch.RegistryChanged(const AChange: TAtlasRegistryChange);
-begin
-  if (FPart <> nil) and IsEqualGUID(AChange.IID, IAtlasSettingsSectionProvider) then
-  begin
-    FPart.DropMissing;
-  end;
 end;
 
 /// <summary>Zeigen AFirst und ASecond auf dasselbe Objekt (Vergleich über IInterface, nicht über die
@@ -849,20 +821,24 @@ begin
   FHosts := mKeepHosts;
 end;
 
+procedure TAtlasSettingsSectionsPart.RegistryChanged(const AChange: TAtlasRegistryChange);
+begin
+  if IsEqualGUID(AChange.IID, IAtlasSettingsSectionProvider) then
+  begin
+    DropMissing;
+  end;
+end;
+
 procedure TAtlasSettingsSectionsPart.CloseAll;
 var
   mIndex: Integer;
 begin
-  if FWatch <> nil then
-  begin
-    (FWatch as IAtlasSettingsDetachable).Detach;
-  end;
+  // Revoke löst den Rückruf: Danach erreicht keine Meldung der Registry die Seite mehr.
   if FWatchRegistration <> nil then
   begin
     FWatchRegistration.Revoke;
   end;
   FWatchRegistration := nil;
-  FWatch := nil;
   for mIndex := 0 to High(FSections) do
   begin
     (FHosts[mIndex] as IAtlasSettingsDetachable).Detach;
@@ -902,8 +878,7 @@ begin
   finally
     mPending.Free;
   end;
-  FWatch := TAtlasSettingsSectionWatch.Create(Self);
-  FWatchRegistration := AtlasModuleRegistry.Subscribe(FWatch);
+  FWatchRegistration := TAtlasRegistryWatch.Subscribe(AtlasModuleRegistry, RegistryChanged);
 end;
 
 function TAtlasSettingsSectionsPart.ShowSettingArgument(const AName, AArgument: string): Boolean;

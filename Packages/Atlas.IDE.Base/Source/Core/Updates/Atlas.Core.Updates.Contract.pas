@@ -2,7 +2,7 @@
 
 // Prüfung auf neue Versionen (#495): Quelle der Versionsdatei als
 // Schnittstelle, damit die Prüfung ohne Netzwerk testbar ist. Die einzige
-// echte Quelle ist TAtlasHttpVersionSource (Adapters.HttpSource).
+// echte Quelle ist TAtlasHttpVersionSource (Providers.HttpSource).
 
 interface
 

@@ -26,12 +26,12 @@ uses
   Atlas.Core.Hover.View,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.IDE.Hover.DebugValue,
   Atlas.UI.Hover.Tip;
 
 type
-  TAtlasHoverSessionFunc = reference to function: TLspSession;
+  TAtlasHoverSessionFunc = TFunc<TLspSession>;
   TAtlasHoverLogFunc = reference to procedure(const AMessage: string);
   /// <summary>Probleme an der Stelle (0-basiert, #398).</summary>
   TAtlasHoverProblemsFunc = reference to function(const AFileName: string; ALine, ACharacter: Integer):
@@ -74,8 +74,10 @@ type
 
   /// <summary>Lebt der Tooltip noch? Hintergrund-Anfragen prüfen das, bevor sie ihr Ergebnis zeigen.</summary>
   TAtlasHoverAlive = class(TInterfacedObject)
+  private
+    FAlive: Boolean;
   public
-    Alive: Boolean;
+    property Alive: Boolean read FAlive write FAlive;
   end;
 
   /// <summary>Tooltip, Verlauf, Sitzung, Probleme und das Wort unter der Maus.</summary>
@@ -122,8 +124,8 @@ type
     function MouseOverTip: Boolean;
     /// <summary>Liegt der Editor unter der Maus (kein anderes Fenster davor)?</summary>
     function MouseOverEditor: Boolean;
-    function CurrentEditView: IOTAEditView;
   public
+    /// <summary>ALog: Protokoll, nie nil.</summary>
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
       const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
     destructor Destroy; override;
@@ -235,10 +237,11 @@ uses
   Winapi.ShellAPI,
   Vcl.Forms,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Plan,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
   Atlas.UI.Hover.Strings;
@@ -274,10 +277,7 @@ end;
 
 procedure TAtlasEditorHoverContent.Log(const AMessage: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AMessage);
-  end;
+  FLog(AMessage);
 end;
 
 function TAtlasEditorHoverContent.Handles(const AFileName: string): Boolean;
@@ -287,11 +287,7 @@ end;
 
 function TAtlasEditorHoverContent.CurrentSession: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSession) then
-  begin
-    Result := FSession();
-  end;
+  Result := TLspSession.From(FSession);
 end;
 
 function TAtlasEditorHoverContent.Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
@@ -316,7 +312,7 @@ var
   mTargets, mStyle, mColor: string;
   mEnabled: Boolean;
 begin
-  mEnabled := TAtlasIdeSettings.ReassignedOn(mTargets, mStyle, mColor) and
+  mEnabled := TAtlasIdeEditorSettings.ReassignedOn(mTargets, mStyle, mColor) and
     not TAtlasGuard.Disabled(TAtlasFeature.Reassigned);
   Result := TAtlasHoverPlan.ShowsReassigned(mEnabled, mTargets, AData.ReassignedTarget);
 end;
@@ -409,17 +405,6 @@ begin
   mUnder := WindowFromPoint(Mouse.CursorPos);
   Result := (FEditor <> nil) and FEditor.HandleAllocated and
     ((mUnder = FEditor.Handle) or IsChild(FEditor.Handle, mUnder));
-end;
-
-function TAtlasEditorHoverContent.CurrentEditView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
 end;
 
 procedure TAtlasEditorHoverContent.Hide;

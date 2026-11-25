@@ -35,7 +35,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.TabOverlay,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -114,11 +114,12 @@ uses
   Vcl.Forms,
   ToolsAPI,
   DesignIntf,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Designer.ButtonStates,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -368,6 +369,7 @@ end;
 constructor TAtlasIdeDesignerTabOrder.Create(const AOnMessage: TProc<string>);
 begin
   inherited Create(AOnMessage);
+  FShown := TAtlasIdeDesignerButtonStates.Pressed(cId, False);
   FMenu := TPopupMenu.Create(nil);
   FClicks := TAtlasTabClicks.Create;
   FAutoShown := TStringList.Create;
@@ -390,10 +392,7 @@ end;
 procedure TAtlasIdeDesignerTabOrder.ApplyTheme;
 begin
   inherited ApplyTheme;
-  if FOverlay <> nil then
-  begin
-    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
+  ThemeWindow(FOverlay);
 end;
 
 function TAtlasIdeDesignerTabOrder.PathsWanted: Boolean;
@@ -573,6 +572,7 @@ begin
     Exit;
   end;
   FShown := not FShown;
+  TAtlasIdeDesignerButtonStates.Remember(cId, FShown);
   Update;
 end;
 
@@ -751,12 +751,8 @@ begin
 end;
 
 function TAtlasIdeDesignerTabOrder.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
 begin
-  Result := (Length(FUndo) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FUndoFile);
+  Result := (Length(FUndo) > 0) and TAtlasDesignerAccess.IsCurrentForm(FUndoFile);
 end;
 
 procedure TAtlasIdeDesignerTabOrder.Undo;

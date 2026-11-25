@@ -96,7 +96,7 @@ uses
   Winapi.Messages,
   Winapi.Dwmapi,
   Vcl.Imaging.pngimage,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.Attach;
 
 const
@@ -106,6 +106,8 @@ const
   cPngSignature: array[0..7] of Byte = ($89, $50, $4E, $47, $0D, $0A, $1A, $0A);
   // Fehlt in Winapi.Windows: Bildschirmkopie samt überlagerter Fenster.
   cCAPTUREBLT = $40000000;
+  /// <summary>Takt der Fensterauswahl (Tick).</summary>
+  cTickMs = 50;
 
 type
   // Fehlt in Winapi.Windows: Daten des systemweiten Maus-Hooks (WH_MOUSE_LL).
@@ -387,7 +389,7 @@ begin
   if FTimer = nil then
   begin
     FTimer := TTimer.Create(nil);
-    FTimer.Interval := 50;
+    FTimer.Interval := cTickMs;
     FTimer.OnTimer := Tick;
   end;
   FTimer.Enabled := True;
@@ -464,20 +466,23 @@ begin
     Exit;
   end;
   mPng := TPngImage.Create;
-  mStream := TBytesStream.Create(ABytes);
   try
+    mStream := TBytesStream.Create(ABytes);
     try
-      mPng.LoadFromStream(mStream);
-    except
-      on EInvalidGraphic do
-        Exit;
-      on EPNGError do
-        Exit;
+      try
+        mPng.LoadFromStream(mStream);
+      except
+        on EInvalidGraphic do
+          Exit;
+        on EPNGError do
+          Exit;
+      end;
+      Result := TBitmap.Create;
+      Result.Assign(mPng);
+    finally
+      mStream.Free;
     end;
-    Result := TBitmap.Create;
-    Result.Assign(mPng);
   finally
-    mStream.Free;
     mPng.Free;
   end;
 end;

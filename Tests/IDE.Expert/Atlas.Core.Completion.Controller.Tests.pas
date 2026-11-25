@@ -87,7 +87,8 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Providers.Fixed,
-  Atlas.Core.Diagnostics.Timing;
+  Atlas.Plugin.Diagnostics.Timing,
+  Atlas.Tests.Wait;
 
 type
   TFakeView = class(TInterfacedObject, IAtlasCompletionView, IAtlasCompletionSyntaxView)
@@ -275,30 +276,6 @@ begin
   Result.Prefix := APrefix;
 end;
 
-/// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder ATimeoutMs um sind.</summary>
-function WaitWithin(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
-var
-  mStart: UInt64;
-begin
-  mStart := TThread.GetTickCount64;
-  repeat
-    CheckSynchronize(5);
-    if ACondition() then
-    begin
-      Exit(True);
-    end;
-  until TThread.GetTickCount64 - mStart > ATimeoutMs;
-  Result := False;
-end;
-
-/// <summary>Wie WaitWithin mit der üblichen Wartezeit von drei Sekunden.</summary>
-function WaitFor(const ACondition: TFunc<Boolean>): Boolean;
-const
-  cTimeoutMs = 3000;
-begin
-  Result := WaitWithin(ACondition, cTimeoutMs);
-end;
-
 { TAtlasCompletionControllerTests }
 
 procedure TAtlasCompletionControllerTests.ShowsItemsFilteredByPrefix;
@@ -314,7 +291,7 @@ begin
     mViewRef);
   try
     mController.Start(Context('C'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -341,7 +318,7 @@ begin
     mViewRef);
   try
     mController.Start(Context(''));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -377,7 +354,7 @@ begin
         mCommitted := AItem.Name;
       end;
     mController.Start(Context('A'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -454,7 +431,7 @@ begin
   try
     Assert.IsFalse(mController.HandleKey(TAtlasNavigationKey.Down), 'Geschlossen: Taste gehört dem Editor');
     mController.Start(Context(''));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -482,7 +459,7 @@ begin
     TAtlasFixedCompletionProvider.Create([Item('Add')]) as IAtlasCompletionProvider, mViewRef);
   try
     mController.Start(Context('A'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -522,7 +499,7 @@ begin
     TAtlasFixedCompletionProvider.Create([Item('Add'), Item('Clear')]) as IAtlasCompletionProvider, mViewRef);
   try
     mController.Start(Context('a'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -555,7 +532,7 @@ begin
     TAtlasFixedCompletionProvider.Create(nil) as IAtlasCompletionProvider, mViewRef);
   try
     mController.Start(Context('mylist'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -587,7 +564,7 @@ begin
       as IAtlasCompletionProvider, mViewRef);
   try
     mController.Start(Context(''));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -628,7 +605,7 @@ begin
         mCommitted := AItem.Name;
       end;
     mController.Start(Context(''));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -658,7 +635,7 @@ begin
   try
     mController.Start(Context(''));
     mController.Close;
-    WaitWithin(
+    TTestWait.Synchronized(
       function: Boolean
       begin
         Result := False;
@@ -685,7 +662,7 @@ begin
   mController := TAtlasCompletionController.Create(mProviderRef, mViewRef);
   try
     mController.Start(Context('ab'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -694,7 +671,7 @@ begin
     Assert.IsTrue(mController.Incomplete, 'Gekürzte Liste gemeldet');
     // #431: Weitertippen fragt neu, die neue Liste ersetzt die alte.
     mController.Requery(Context('abc'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -717,7 +694,7 @@ begin
   mController := TAtlasCompletionController.Create(TPrefixProvider.Create as IAtlasCompletionProvider, mViewRef);
   try
     mController.Start(Context('ab'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -726,7 +703,7 @@ begin
     Assert.AreEqual(1, mView.Selected);
     // Neue Einträge verschieben die Auswahl nicht (#431).
     mController.Requery(Context('ab'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -754,7 +731,7 @@ begin
   mController := TAtlasCompletionController.Create(mProviderRef, mViewRef);
   try
     mController.Start(Context('ab'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -795,7 +772,7 @@ begin
   mController := TAtlasCompletionController.Create(mProviderRef, mViewRef);
   try
     mController.Start(Context('ab'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -806,7 +783,7 @@ begin
     Assert.AreEqual('ab1,ab2', mView.Names, 'Einträge bleiben');
     mProvider.Syntax := Default(TAtlasSyntaxNotice);
     mController.Requery(Context('abc'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -816,7 +793,7 @@ begin
     // Schließen setzt zurück.
     mProvider.Syntax.Trust := TAtlasSyntaxTrust.Unknown;
     mController.Requery(Context('abcd'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -845,7 +822,7 @@ begin
   mController := TAtlasCompletionController.Create(mProviderRef, mViewRef);
   try
     mController.Start(Context('ab'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -853,7 +830,7 @@ begin
     Assert.AreEqual('ab1,ab2', mView.Names);
     // Requery: Das erste Teil ersetzt die alte Liste, das zweite hängt an (#616).
     mController.Requery(Context('a'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -883,7 +860,7 @@ begin
         mCommitted := AItem.Name;
       end;
     mController.Start(Context('FE'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -919,7 +896,7 @@ begin
     TAtlasFixedCompletionProvider.Create(HiddenItems) as IAtlasCompletionProvider, mViewRef);
   try
     mController.Start(Context('FEi'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -972,7 +949,7 @@ begin
         mOffered := AItem.Name;
       end;
     mController.Start(Context('FE'));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -1036,7 +1013,7 @@ begin
     mStart := Context('');
     mStart.Started := TAtlasQueryTimings.Stamp;
     mController.Start(mStart);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -1094,7 +1071,7 @@ begin
     mStart.FileName := 'C:\Users\Tester\Projekt\GeheimeUnit.pas';
     mStart.Text := 'procedure GeheimerQuelltext; begin Lan end;';
     mController.Start(mStart);
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -1137,7 +1114,7 @@ begin
   mController := TAtlasCompletionController.Create(TimedProviders(0), mViewRef);
   try
     mController.Start(Context(''));
-    Assert.IsTrue(WaitFor(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;

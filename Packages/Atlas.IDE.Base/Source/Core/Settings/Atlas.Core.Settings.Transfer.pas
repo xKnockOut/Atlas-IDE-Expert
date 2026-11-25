@@ -224,13 +224,14 @@ implementation
 uses
   System.Generics.Defaults,
   Atlas.Text.Checkin,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Settings.QueryMigration,
   Atlas.Core.Settings.ProblemsUpdate,
-  Atlas.Core.Localization.Language,
-  Atlas.Text.Json;
+  Atlas.Plugin.Localization.Language,
+  Atlas.Text.Json,
+  Atlas.Core.Settings.Contract;
 
 {$SCOPEDENUMS ON}
 
@@ -278,27 +279,9 @@ const
   /// <summary>Benutzerordner für Pfadmakros, der längste zuerst.</summary>
   cUserMacros: array[0..2] of string = ('LOCALAPPDATA', 'APPDATA', 'USERPROFILE');
 
-function IsText(AValue: TJSONValue): Boolean;
-begin
-  // TJSONNumber erbt von TJSONString.
-  Result := (AValue is TJSONString) and not (AValue is TJSONNumber);
-end;
-
 function IsTrue(AValue: TJSONValue): Boolean;
 begin
   Result := (AValue is TJSONBool) and TJSONBool(AValue).AsBoolean;
-end;
-
-function BoolJson(AValue: Boolean): string;
-begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
 end;
 
 function Contains(const AList: TArray<string>; const AValue: string): Boolean;
@@ -485,7 +468,7 @@ var
   mObj: TJSONObject;
   mList: TJSONArray;
 begin
-  if IsText(AValue) then
+  if TJsonRead.IsString(AValue) then
   begin
     if AExpand then
     begin
@@ -528,7 +511,7 @@ var
   mItem: TJSONValue;
 begin
   Result := False;
-  if IsText(AValue) then
+  if TJsonRead.IsString(AValue) then
   begin
     Result := (TJSONString(AValue).Value <> '') and
       (AMarked or TTextCheckin.IsCredentialKey(AKey) or TTextCheckin.HasUrlCredentials(TJSONString(AValue).Value));
@@ -593,7 +576,7 @@ var
 begin
   case AEntry.Kind of
     akBoolean:
-      Result := BoolJson(AStore.ReadInteger(AEntry.Name, 0) <> 0);
+      Result := TJsonText.Bool(AStore.ReadInteger(AEntry.Name, 0) <> 0);
     akInteger:
       Result := IntToStr(AStore.ReadInteger(AEntry.Name, 0));
     akJson:
@@ -681,7 +664,7 @@ begin
         FStore.WriteString(AEntry.Name, AValue.ToJSON);
       end;
   else
-    if IsText(AValue) then
+    if TJsonRead.IsString(AValue) then
     begin
       FStore.WriteString(AEntry.Name, TJSONString(AValue).Value);
     end;
@@ -988,7 +971,7 @@ end;
 /// <summary>JSON-Text eines Werts; Strings über Quote (Umlaute bleiben lesbar).</summary>
 function ValueText(AValue: TJSONValue): string;
 begin
-  if IsText(AValue) then
+  if TJsonRead.IsString(AValue) then
   begin
     Result := TJsonText.Quote(TJSONString(AValue).Value);
   end
@@ -1150,18 +1133,6 @@ begin
   Result.Text := ExportText(ACatalog, mAreas, mLines, AOptions.Backup);
 end;
 
-function StringField(ARoot: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := ARoot.GetValue(AName);
-  if IsText(mValue) then
-  begin
-    Result := TJSONString(mValue).Value;
-  end;
-end;
-
 procedure AddSettingPairs(ASettings: TJSONObject; var AFile: TAtlasSettingsFile);
 var
   mPair: TJSONPair;
@@ -1177,12 +1148,12 @@ procedure ReadFileHeader(ARoot: TJSONObject; var AFile: TAtlasSettingsFile);
 begin
   AFile.FormatVersion := TJsonRead.Int(ARoot, 'formatVersion');
   AFile.SchemaVersion := TJsonRead.Int(ARoot, 'schemaVersion');
-  AFile.AtlasVersion := StringField(ARoot, 'atlasVersion');
-  AFile.Name := StringField(ARoot, 'name');
-  AFile.NameEn := StringField(ARoot, 'nameEn');
-  AFile.Description := StringField(ARoot, 'description');
-  AFile.DescriptionEn := StringField(ARoot, 'descriptionEn');
-  AFile.Mode := StringField(ARoot, 'mode');
+  AFile.AtlasVersion := TJsonRead.StrictText(ARoot, 'atlasVersion');
+  AFile.Name := TJsonRead.StrictText(ARoot, 'name');
+  AFile.NameEn := TJsonRead.StrictText(ARoot, 'nameEn');
+  AFile.Description := TJsonRead.StrictText(ARoot, 'description');
+  AFile.DescriptionEn := TJsonRead.StrictText(ARoot, 'descriptionEn');
+  AFile.Mode := TJsonRead.StrictText(ARoot, 'mode');
   AFile.Backup := IsTrue(ARoot.GetValue('backup'));
   AFile.Areas := TJsonRead.Strings(ARoot.GetValue('areas'));
 end;
@@ -1203,9 +1174,9 @@ begin
   begin
     Result := UiText(TTransferText.SettingsIsNotAnObject);
   end
-  else if (ARoot.GetValue('format') <> nil) and (StringField(ARoot, 'format') <> TAtlasSettingsTransfer.cFormatName) then
+  else if (ARoot.GetValue('format') <> nil) and (TJsonRead.StrictText(ARoot, 'format') <> TAtlasSettingsTransfer.cFormatName) then
   begin
-    Result := UiText(TTransferText.OtherFormat) + StringField(ARoot, 'format');
+    Result := UiText(TTransferText.OtherFormat) + TJsonRead.StrictText(ARoot, 'format');
   end;
 end;
 
@@ -1292,7 +1263,7 @@ begin
   Result := True;
   if (AEntry.Kind = akBoolean) and (AValue is TJSONNumber) then
   begin
-    AJson := BoolJson(TJSONNumber(AValue).AsInt <> 0);
+    AJson := TJsonText.Bool(TJSONNumber(AValue).AsInt <> 0);
   end
   // hints.xmlDocFull (#654) war ein Wahrheitswert (in alten Dateien 0/1); hints.xmlDocExpand (#770) ist
   // eine Auswahl.

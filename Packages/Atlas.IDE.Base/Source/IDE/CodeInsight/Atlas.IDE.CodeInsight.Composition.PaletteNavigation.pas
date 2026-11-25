@@ -23,9 +23,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.UI.Strings,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.Results.Commands,

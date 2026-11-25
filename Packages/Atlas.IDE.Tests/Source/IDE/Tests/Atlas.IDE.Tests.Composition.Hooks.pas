@@ -54,7 +54,7 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Tests.Debug,
@@ -70,18 +70,8 @@ uses
 
 /// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
 function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;
-var
-  mItem: IInterface;
 begin
-  AJobs := nil;
-  for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasBuildJobs) do
-  begin
-    if Supports(mItem, IAtlasBuildJobs, AJobs) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := TAtlasModuleContributions.First(AtlasModuleRegistry, IAtlasBuildJobs, AJobs);
 end;
 
 /// <summary>Vor den Tests bauen: über die Builds auf Auftrag (#261) der Build-Pipeline, Auftraggeber "tests".

@@ -4,24 +4,20 @@
 // (#591) ohne VCL und Open Tools API: Text der Plakette (#601), Tooltip mit
 // Plakette, welche Zusatzfelder in der Statuszeile stehen (#575, #1777),
 // was ein Linksklick auf eine Zone auslöst und welche Mausgeste die
-// Schnellschalter öffnet (#604, statusField.toggles). Panels, Hooks und
-// Zeichnen bleiben in Atlas.IDE.Status.Field.
+// Schnellschalter öffnet (#604, statusField.toggles) und ob das Feld in die
+// Atlas-Statusleiste umgezogen ist (#1155). Den Ablauf führt
+// Atlas.Core.Status.FieldFlow; Panels, Hooks und Zeichnen liegen im Adapter
+// Atlas.IDE.Status.Adapters.FieldSurface.
 
 {$SCOPEDENUMS ON}
 
 interface
 
 uses
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Plugin,
+  Atlas.Plugin.Status.Contract;
 
 type
-  /// <summary>Was ein Linksklick in der Statuszeile auslöst: nichts von Atlas; Liste der Benachrichtigungen
-  /// (Plakette); Statusfenster; Zusatzfeld.</summary>
-  TAtlasStatusFieldClick = (None, Badge, Window, Extra);
-
-  /// <summary>Mausnachricht über der Statuszeile, nach der die Schnellschalter aufgehen können.</summary>
-  TAtlasStatusFieldGesture = (RightButton, DoubleClick, ContextMenu);
-
   TAtlasStatusFieldPlan = record
   public const
     /// <summary>Höchste Zahl auf der Plakette; mehr steht als „99+“.</summary>
@@ -35,8 +31,14 @@ type
     /// <summary>Atlas-Panel in der Statuszeile zeigen: statusField.enabled und nicht in die Atlas-Statusleiste
     /// umgezogen (ARelocated).</summary>
     class function PanelShown(const ASettings: TAtlasPluginSettings; ARelocated: Boolean): Boolean; static;
+    /// <summary>Zeigt die Atlas-Statusleiste das Element status (editor.statusBar mit Element status, Leiste nicht
+    /// von der Sicherung abgeschaltet: ABarDisabled)? Dann gibt es kein Atlas-Panel in der Statuszeile.</summary>
+    class function Relocated(const ASettings: TAtlasPluginSettings; ABarDisabled: Boolean): Boolean; static;
     /// <summary>Zusatzfelder in der Statuszeile: keine, wenn sie in der Atlas-Statusleiste stehen.</summary>
     class function ExtraPanels(AExtras: Integer; ARelocated: Boolean): Integer; static;
+    /// <summary>Braucht die Statuszeile Panels von Atlas: das Atlas-Feld (APanelShown) oder Zusatzfelder
+    /// (AExtraPanels, nach ExtraPanels)? Sonst hängt das Feld die Leisten aus.</summary>
+    class function Hooked(APanelShown: Boolean; AExtraPanels: Integer): Boolean; static;
     /// <summary>Linksklick in Zone AZone (0 = Atlas-Feld, 1.. = Zusatzfeld, -1 = keins) bei AExtras Zusatzfeldern.
     /// Im Atlas-Feld gilt die Plakette, wenn sie Einträge hat (ABadgeCount), ein Ziel kennt (ABadgeClick) und AX
     /// rechts von ABadgeLeft liegt.</summary>
@@ -51,7 +53,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Settings.StatusBarItems;
 
 { TAtlasStatusFieldPlan }
 
@@ -87,6 +90,12 @@ begin
   Result := ASettings.StatusField and not ARelocated;
 end;
 
+class function TAtlasStatusFieldPlan.Relocated(const ASettings: TAtlasPluginSettings; ABarDisabled: Boolean): Boolean;
+begin
+  Result := ASettings.EditorStatusBar and TAtlasStatusBarItems.Contains(TAtlasStatusBarItems.Parse(
+    ASettings.EditorStatusBarItems), TAtlasStatusBarItems.cStatus) and not ABarDisabled;
+end;
+
 class function TAtlasStatusFieldPlan.ExtraPanels(AExtras: Integer; ARelocated: Boolean): Integer;
 begin
   Result := AExtras;
@@ -94,6 +103,11 @@ begin
   begin
     Result := 0;
   end;
+end;
+
+class function TAtlasStatusFieldPlan.Hooked(APanelShown: Boolean; AExtraPanels: Integer): Boolean;
+begin
+  Result := APanelShown or (AExtraPanels > 0);
 end;
 
 class function TAtlasStatusFieldPlan.Click(AZone, AExtras, ABadgeCount: Integer; ABadgeClick: Boolean;

@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerNames: array[0..222] of string = (
+  cCatalogLinesDeCompilerNames: array[0..237] of string = (
     '{',
     '      "id": "deprecated-symbol",',
     '      "name": "Veraltetes oder gebundenes Symbol",',
@@ -111,10 +111,11 @@ const
     '{',
     '      "id": "unit-name-conflict",',
     '      "name": "Unit-Name kollidiert",',
-    '      "description": "Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür ' +
-    'braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen de' +
-    'r .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collec' +
-    'tions.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen."',
+    '      "description": "Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), ein Teil des Unit-Namens im Kopf oder in uses/contains ist ein reserviertes Wort wie ' +
+    'inline, object oder string (wie E2029; Free Pascal nimmt es an, ein Teil mit & davor bleibt still), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür braucht die Reg' +
+    'el die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen der .NET-Metadate' +
+    'n, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas). Sch' +
+    'nellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen."',
     '    },',
     '{',
     '      "id": "anonymous-capture-invalid",',
@@ -363,6 +364,18 @@ const
     'nschränkung ergänzen (T: class, constructor bzw. T: class)."',
     '    },',
     '{',
+    '      "id": "method-reference-called",',
+    '      "name": "Methodenreferenz wird aufgerufen statt übergeben",',
+    '      "description": "Eine Variable, ein Parameter oder ein Feld vom Typ einer Referenz auf eine Funktion (TFunc<…>, TPredicate<T> oder ein eigener reference to function-Typ) steht als einziges Argume' +
+    'nt in Exit(…) einer Funktion, die eine Methodenreferenz liefert, oder als Element eines Array-Literals neben + (FHandlers + [AHandler]), dessen anderer Operand ein Array von Methodenreferenzen ist. De' +
+    'lphi ruft die Referenz dort auf, statt sie als Wert zu nehmen (E2035 bzw. E2010); Free Pascal nimmt den Wert. Der Typ kommt aus der Deklaration in der Datei (Parameter, lokale Variable, Feld der eigen' +
+    'en Klasse); ein eigener Typ zählt, wenn die Datei oder der Symbolindex ihn als reference to function deklariert. Referenzen auf Prozeduren (TProc) nimmt Delphi als Wert; sie bleiben still. Exit(AFunc)' +
+    ' in einer Funktion mit anderem Ergebnistyp ruft gewollt auf und bleibt still. Umgekehrt meldet die Regel eine parameterlose Funktion, die eine Methodenreferenz liefert (TTransport.Fabrik: TFabrik), we' +
+    'nn sie ohne () als Argument steht und eine Fassung der gerufenen Routine dort einen Parameter vom Ergebnistyp hat: Delphi nimmt die Funktion selbst (E2010, bei Überladungen E2250). Funktion und gerufe' +
+    'ne Routine kommen aus dem Symbolindex. Korrektur bei Exit (sicher): Result := ARef; Exit;. Beim Array-Literal: Länge mit SetLength erhöhen und das Element zuweisen. Bei der Fabrik (sicher): () anhänge' +
+    'n."',
+    '    },',
+    '{',
     '      "id": "interface-uses-missing",',
     '      "name": "Unit nur im uses des implementation-Teils",',
     '      "description": "Ein Typ im interface-Teil (Feld, Parameter, Ergebnis, Property, Vorfahr) kommt aus einer Unit, die nur im uses des implementation-Teils steht. Dort ist der Name noch nicht bekann' +
@@ -383,6 +396,24 @@ const
     '      "description": "Eine Routine, die Delphi nur in Winapi.Windows deklariert (GetTickCount64, GetTickCount, MulDiv), wird aufgerufen, ohne dass Winapi.Windows (bzw. Windows) in uses steht. Free Pas' +
     'cal findet diese Routinen auch in SysUtils und übersetzt die Unit; Delphi meldet E2003. TThread.GetTickCount64 und andere Namen hinter einem Punkt zählen nicht, ebenso Routinen, die die Datei oder ein' +
     'e Projekt-Unit selbst deklariert. Eine Meldung je Datei. Korrektur: Winapi.Windows ins uses des Abschnitts aufnehmen (bei Vcl.Graphics in uses auf uses-order-hides-type achten)."',
+    '    },',
+    '{',
+    '      "id": "class-constant-unqualified",',
+    '      "name": "Konstante einer anderen Klasse ohne Klassennamen",',
+    '      "description": "Ein Bezeichner ohne Klassennamen ist eine Konstante einer anderen Klasse bzw. eines anderen Records derselben Unit (cHeadCacheMs aus TWorkingCopies in einer Methode von TWorkingH' +
+    'eads) oder in der Deklaration einer Klasse eine Konstante eines Vorfahren (cRows = 2 * cGap). Delphi sieht beide dort nicht (E2003); Free Pascal löst den Namen auf und übersetzt die Unit. In Methodenr' +
+    'ümpfen sind geerbte Konstanten sichtbar, verschachtelte Typen sehen die Konstanten der umgebenden Typen. Still, wenn ein lokaler Name, ein Mitglied der eigenen Klasse samt Vorfahren und umgebenden Typ' +
+    'en oder ein Name der Unit-Ebene so heißt, wenn mehrere Klassen die Konstante deklarieren, und innerhalb von with. Verlässt die Klassenkette die Datei, schweigt die Regel, wenn der Symbolindex den Name' +
+    'n in einer anderen Unit kennt. Korrektur (sicher): Klassennamen davor setzen."',
+    '    },',
+    '{',
+    '      "id": "member-hides-unit-symbol",',
+    '      "name": "Mitglied verdeckt einen Namen der Unit",',
+    '      "description": "Eine Methode verwendet ohne Unit-Namen einen Namen, den die Unit als Routine, Konstante oder Variable deklariert, während die Klasse ein gleichnamiges Mitglied von einem Vorfahre' +
+    'n erbt (Scaled aus TCustomForm, AddLabel eines Basisdialogs, Padding aus TControl). In Methoden löst Delphi den Namen zum Mitglied auf, nicht zum Namen der Unit, und meldet je nach Gebrauch E2066, E20' +
+    '10, E2015 oder E2034; Free Pascal nimmt unter Umständen den Namen der Unit und übersetzt. Ein Mitglied, das die Klasse selbst deklariert, ist gewollt und bleibt still, ebenso lokale Namen, qualifizier' +
+    'te Namen und Code in with. Vorfahren außerhalb der Datei kommen aus dem Symbolindex; ohne Index bleibt die Regel für sie still. Korrektur (nicht sicher, vielleicht ist das Mitglied gemeint): Unit-Name' +
+    'n davor setzen oder die Routine umbenennen."',
     '    },',
     '{',
     '      "id": "unresolved-type",',

@@ -32,9 +32,10 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.CaseCompletion,
+  Atlas.Common.Pascal.CaseCompletion,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -108,20 +109,6 @@ begin
   end;
 end;
 
-function IsField(ASource: TCommandSource; const AName: string): Boolean;
-var
-  mSymbol: TIndexSymbol;
-begin
-  for mSymbol in ASource.UnitIndex.Symbols do
-  begin
-    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Name, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function ExecuteTry(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   mSource: TCommandSource;
@@ -146,7 +133,7 @@ begin
         Break;
       end;
     end;
-    if (mVariable = '') or IsField(mSource, mVariable) then
+    if (mVariable = '') or mSource.HasField(mVariable) then
     begin
       Exit(Fail(cTexts[TWrapCommandsText.NoLocalObjectIsCreated].Text, AReason));
     end;
@@ -342,16 +329,6 @@ begin
   end;
 end;
 
-function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Öffnet das Token einen Block, den ein end bzw. until schließt?</summary>
 function OpensBlock(const AToken: TPascalToken): Boolean;
 begin
@@ -433,7 +410,7 @@ begin
   end;
   // Auswahlausdruck: nur Namen und Punkte (A, Self.FArt, Kunde.Art).
   FNames := nil;
-  FOfIndex := NextCode(FTokens, FCaseIndex);
+  FOfIndex := NextCodeAfter(FTokens, FCaseIndex);
   while (FOfIndex <= High(FTokens)) and not FTokens[FOfIndex].IsKeyword('of') do
   begin
     if FTokens[FOfIndex].Kind = TPascalTokenKind.Identifier then
@@ -444,7 +421,7 @@ begin
     begin
       Exit(Fail(cTexts[TWrapCommandsText.CaseOnlyUnderstandsAName].Text));
     end;
-    FOfIndex := NextCode(FTokens, FOfIndex);
+    FOfIndex := NextCodeAfter(FTokens, FOfIndex);
   end;
   Result := (FOfIndex <= High(FTokens)) and (FNames <> nil);
   if not Result then
@@ -534,7 +511,7 @@ var
 begin
   Result := FOfIndex;
   mDepth := 0;
-  mIndex := NextCode(FTokens, FOfIndex);
+  mIndex := NextCodeAfter(FTokens, FOfIndex);
   while mIndex <= High(FTokens) do
   begin
     if (mDepth = 0) and (FTokens[mIndex].IsKeyword('end') or (FTokens[mIndex].IsKeyword('else') and
@@ -551,7 +528,7 @@ begin
       Dec(mDepth);
     end;
     Result := mIndex;
-    mIndex := NextCode(FTokens, mIndex);
+    mIndex := NextCodeAfter(FTokens, mIndex);
   end;
 end;
 
@@ -622,34 +599,28 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterWrapCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('try', cTexts[TWrapCommandsText.TryFinallyFreeAroundThe].Text, '/try', ExecuteTry));
-  ARegister(Command('lock', cTexts[TWrapCommandsText.LockTheFollowingStatements].Text, '/lock', ExecuteLock));
-  ARegister(Command('sync', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadQueue].Text, '/sync',
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('try', cTexts[TWrapCommandsText.TryFinallyFreeAroundThe].Text, '/try', ExecuteTry));
+  ARegister(TSlashCommand.Create('lock', cTexts[TWrapCommandsText.LockTheFollowingStatements].Text, '/lock',
+      ExecuteLock));
+  ARegister(TSlashCommand.Create('sync', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadQueue].Text, '/sync',
+      function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Queue', AEdits, AReason);
     end));
-  ARegister(Command('sync!', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadSynchronize].Text, '/sync!',
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('sync!', cTexts[TWrapCommandsText.FollowingStatementsViaTThreadSynchronize].Text,
+      '/sync!', function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteSync(AContext, 'Synchronize', AEdits, AReason);
     end));
-  ARegister(Command('ifdef', cTexts[TWrapCommandsText.FollowingStatementsInIFDEF].Text, '/ifdef DEBUG', ExecuteIfdef));
-  ARegister(Command('except', cTexts[TWrapCommandsText.GuardTheFollowingStatementsWith].Text, '/except',
-    ExecuteExcept));
-  ARegister(Command('region', cTexts[TWrapCommandsText.FollowingStatementsInREGION].Text,
-    cTexts[TWrapCommandsText.RegionLoad].Text, ExecuteRegion));
-  ARegister(Command('case', cTexts[TWrapCommandsText.AddTheMissingValuesOf].Text, '/case', ExecuteCase));
+  ARegister(TSlashCommand.Create('ifdef', cTexts[TWrapCommandsText.FollowingStatementsInIFDEF].Text, '/ifdef DEBUG',
+      ExecuteIfdef));
+  ARegister(TSlashCommand.Create('except', cTexts[TWrapCommandsText.GuardTheFollowingStatementsWith].Text, '/except',
+      ExecuteExcept));
+  ARegister(TSlashCommand.Create('region', cTexts[TWrapCommandsText.FollowingStatementsInREGION].Text,
+      cTexts[TWrapCommandsText.RegionLoad].Text, ExecuteRegion));
+  ARegister(TSlashCommand.Create('case', cTexts[TWrapCommandsText.AddTheMissingValuesOf].Text, '/case', ExecuteCase));
 end;
 
 initialization

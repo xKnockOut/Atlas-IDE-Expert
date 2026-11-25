@@ -6,7 +6,7 @@
 //   Hinweise). Eigene Steuerelemente gehören einem Besitzer, den Detach
 //   freigibt; danach legt nichts mehr Zeilen an.
 // - TAtlasTrackerSettingsHooks: Haken zur IDE (Token, Prüfung, Projekt, Werte
-//   vom Tracker …). Atlas.IDE.Tracker.Settings setzt sie; ohne Haken keine
+//   vom Tracker …). Atlas.IDE.Tracker.Adapters.Settings setzt sie; ohne Haken keine
 //   Prüfung, kein Token. Der Abschnitt gibt sie in Close frei (Regel 3).
 
 interface
@@ -20,10 +20,11 @@ uses
   Atlas.UI.Settings.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.Core.Tracker.Queries,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Core.Tracker.SettingsTables,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
-  Atlas.UI.Tracker.QueryDialog;
+  Atlas.UI.Tracker.QueryDialog,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Zustand des Tokens einer Tracker-Verbindung (#1260), ohne Netz.</summary>
@@ -94,7 +95,8 @@ type
     property OnSuggestPaths: TAtlasTrackerPathsSuggestEvent read FOnSuggestPaths write FOnSuggestPaths;
   end;
 
-  /// <summary>Zeilen des Abschnitts über den Host der Seite.</summary>
+  /// <summary>Zeilen des Abschnitts über den Host der Seite. Maße an den Bausteinen (Höhe, Breite, Lage) in
+  /// logischen Pixeln (96 dpi); skaliert wird in den Bausteinen.</summary>
   TAtlasTrackerSettingsRows = class
   public const
     cRowHeight = 26;
@@ -154,16 +156,37 @@ type
     property Owner: TComponent read FOwner;
   end;
 
+  /// <summary>Gemeinsamer Teil der Seiten des Abschnitts (Verbindungen, Projekte, Abfragen, Bausteine, Ablauf):
+  /// Zeilen, Hooks und Tabellen; FFilling ist gesetzt, während die Seite ihre Liste füllt.</summary>
+  TAtlasTrackerSettingsPart = class
+  protected
+    FRows: TAtlasTrackerSettingsRows;
+    FHooks: TAtlasTrackerSettingsHooks;
+    FTables: TAtlasTrackerSettingsTables;
+    FFilling: Boolean;
+    /// <summary>In der Liste gewählte Zeile AItem übernehmen: ASelect(Index), dann AFill. Nicht beim Füllen und
+    /// nicht beim Abwählen.</summary>
+    procedure TakeSelection(AItem: TListItem; ASelected: Boolean; const ASelect: TProc<Integer>;
+      const AFill: TProc);
+    /// <summary>Gewählte Zeile entfernen (ARemove) und die Seite neu zeigen (ARefresh), wenn AEditable.</summary>
+    class procedure RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc); static;
+  public
+    constructor Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
+      ATables: TAtlasTrackerSettingsTables);
+  end;
+
 implementation
 
 uses
   Vcl.Graphics,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.UI.Settings.Page.Sheets,
+  Atlas.Vcl.Theme.Service;
 
 const
   cLabelTop = 5;
   cControlTop = 1;
-  cButtonTop = 3;
 
 { TAtlasTrackerSettingsRows }
 
@@ -245,7 +268,7 @@ begin
   AControl.Parent := Result;
   AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := cControlTop;
-  AControl.Width := AWidth;
+  AControl.Width := AControl.ScaleValue(AWidth);
   if AWidth >= cWideWidth then
   begin
     AControl.Anchors := [akLeft, akTop, akRight];
@@ -261,20 +284,14 @@ begin
   AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := cControlTop;
   AControl.Width := AControl.ScaleValue(cWideWidth);
-  AControl.Height := AHeight - cControlTop - cControlTop;
+  AControl.Height := AControl.ScaleValue(AHeight - cControlTop - cControlTop);
   AControl.Anchors := [akLeft, akTop, akRight];
 end;
 
 function TAtlasTrackerSettingsRows.AddButton(AParent: TWinControl; ALeft, AWidth: Integer; const ACaption: string;
   AClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(FOwner);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.Left := ALeft;
-  Result.Top := Result.ScaleValue(cButtonTop);
-  Result.Width := AWidth;
-  Result.OnClick := AClick;
+  Result := TAtlasSettingsPageSheets.NewRowButton(FOwner, AParent, ALeft, AWidth, ACaption, AClick);
 end;
 
 function TAtlasTrackerSettingsRows.AddList(AParent: TWinControl; ASelect: TLVSelectItemEvent): TListView;
@@ -290,12 +307,8 @@ begin
 end;
 
 class procedure TAtlasTrackerSettingsRows.AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
 begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := AWidth;
+  TAtlasListView.AddColumnTo(AList, ACaption, AWidth);
 end;
 
 function TAtlasTrackerSettingsRows.AddNote(AAnchor: TControl): TLabel;
@@ -320,7 +333,7 @@ begin
   mHint := TAtlasWrapLabel.Create(FOwner);
   mHint.Parent := mPanel;
   mHint.Align := alClient;
-  mHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mHint, clGrayText);
   mHint.Caption := ACaption;
   Attach(mPanel, AAnchor);
 end;
@@ -333,7 +346,7 @@ begin
   AddLabel(mPanel, ACaption);
   Result := TAtlasValueBox.Create(FOwner);
   Result.Parent := mPanel;
-  Result.Left := ALeft;
+  Result.Left := Result.ScaleValue(ALeft);
   Result.Top := cControlTop;
   Result.Width := Result.ScaleValue(cFieldWidth);
 end;
@@ -376,6 +389,37 @@ begin
   if AControl.CanFocus and AControl.Showing then
   begin
     AControl.SetFocus;
+  end;
+end;
+
+{ TAtlasTrackerSettingsPart }
+
+constructor TAtlasTrackerSettingsPart.Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
+  ATables: TAtlasTrackerSettingsTables);
+begin
+  inherited Create;
+  FRows := ARows;
+  FHooks := AHooks;
+  FTables := ATables;
+end;
+
+procedure TAtlasTrackerSettingsPart.TakeSelection(AItem: TListItem; ASelected: Boolean;
+  const ASelect: TProc<Integer>; const AFill: TProc);
+begin
+  if FFilling or not ASelected or (AItem = nil) then
+  begin
+    Exit;
+  end;
+  ASelect(AItem.Index);
+  AFill();
+end;
+
+class procedure TAtlasTrackerSettingsPart.RemoveSelected(AEditable: Boolean; const ARemove, ARefresh: TProc);
+begin
+  if AEditable then
+  begin
+    ARemove();
+    ARefresh();
   end;
 end;
 

@@ -42,12 +42,12 @@ uses
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.DisableWarning,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cApplyCommand = 'atlas.server.disableWarning';

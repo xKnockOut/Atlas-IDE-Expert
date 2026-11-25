@@ -14,7 +14,9 @@
 // schaltete ein beschäftigter Rechner so nach drei langsamen Anfragen die
 // Quelle ab. Damit eine Quelle, die länger braucht, nicht bei jedem Tastendruck
 // einen weiteren Arbeiter belegt, wird sie übersprungen, solange ihr voriger
-// Aufruf noch läuft.
+// Aufruf noch läuft. Jeder Eintrag merkt sich das Package, in dem der Code der
+// Quelle liegt: Hängt ihr Aufruf, wenn sich das Modul dieses Packages abmeldet,
+// hält TAtlasOverdueThreads dieses Package fest und nicht nur Base.
 // Diagnosemodus (#479): Ist die Messung an, meldet jede Teilsenke beim ersten
 // Complete Name, Dauer seit ihrem Query und Zahl ihrer Einträge an
 // TAtlasQueryTimings (auch bei Fehler oder Zeitlimit); aus nimmt sie keinen
@@ -26,8 +28,8 @@ uses
   System.SysUtils,
   System.SyncObjs,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.TimeLimit;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.TimeLimit;
 
 type
   TAtlasCompletionProviders = class(TInterfacedObject, IAtlasCompletionProvider)
@@ -76,6 +78,8 @@ type
     TEntry = record
       Provider: IAtlasCompletionProvider;
       Name: string;
+      /// <summary>Package mit dem Code der Quelle (TAtlasTimeLimit.Run).</summary>
+      Module: HMODULE;
       Running: TRunning;
       RunningRef: IInterface;
     end;
@@ -110,9 +114,10 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Diagnostics.Timing,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.Timing,
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -305,6 +310,10 @@ begin
   inherited;
 end;
 
+const
+  cNoAnswer = 'keine Antwort innerhalb von %d ms';
+  cStillRunning = 'vorige Anfrage läuft seit %d ms, übersprungen';
+
 procedure TAtlasCompletionProviders.Abandon(const AEntry: TEntry; const APart: IAtlasCompletionSink);
 begin
   // Langsam: nicht länger warten und abbrechen; was später noch kommt, verwirft die Teilsenke. Kein Fehler.
@@ -315,8 +324,7 @@ begin
     on E: Exception do
       TAtlasGuard.ReportProvider(AEntry.Name, E);
   end;
-  TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('keine Antwort innerhalb von %d ms',
-    [TimeLimitOf(FTimeLimitMs)]));
+  TAtlasGuard.ReportProviderSlow(AEntry.Name, Format(cNoAnswer, [TimeLimitOf(FTimeLimitMs)]));
 end;
 
 procedure TAtlasCompletionProviders.QueryOne(const AEntry: TEntry; const AContext: TAtlasContext;
@@ -336,13 +344,13 @@ begin
   if TInterlocked.CompareExchange(mRunning.Active, 1, 0) <> 0 then
   begin
     APart.Complete;
-    TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('vorige Anfrage läuft seit %d ms, übersprungen',
+    TAtlasGuard.ReportProviderSlow(AEntry.Name, Format(cStillRunning,
       [Int64(TThread.GetTickCount64) - TInterlocked.Read(mRunning.Started)]));
     Exit;
   end;
   TInterlocked.Exchange(mRunning.Started, Int64(TThread.GetTickCount64));
   mPart := APart;
-  case TAtlasTimeLimit.Run(Work(AEntry, AContext, APart), mError, FTimeLimitMs) of
+  case TAtlasTimeLimit.Run(Work(AEntry, AContext, APart), mError, FTimeLimitMs, AEntry.Module) of
     TAtlasTimedOutcome.Done:
       ;
     TAtlasTimedOutcome.Failed:
@@ -404,6 +412,7 @@ var
   mNamed: IAtlasNamedProvider;
 begin
   mEntry.Provider := AProvider;
+  mEntry.Module := TAtlasMainThread.CodeModuleOf(AProvider);
   mEntry.Name := DefaultName;
   if Supports(AProvider, IAtlasNamedProvider, mNamed) and (mNamed.ProviderName <> '') then
   begin

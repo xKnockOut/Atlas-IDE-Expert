@@ -67,7 +67,7 @@ implementation
 
 uses
   Atlas.Common.Editing.MethodWithoutSelf,
-  Atlas.Common.Editing.MethodWithoutSelf.Contract,
+  Atlas.Common.Editing.MethodWithoutSelf.Types,
   System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.JsonRpc.Contract,

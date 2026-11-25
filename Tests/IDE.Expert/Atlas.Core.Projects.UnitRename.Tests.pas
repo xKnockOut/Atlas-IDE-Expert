@@ -140,13 +140,13 @@ var
 begin
   mScopes := TAtlasUnitRename.Scopes(2, 5);
   Assert.AreEqual(2, Integer(Length(mScopes)));
-  Assert.IsTrue(mScopes[0] = TAtlasUnitRenameScope.Project);
-  Assert.IsTrue(mScopes[1] = TAtlasUnitRenameScope.Group);
+  Assert.AreEqual<TAtlasUnitRenameScope>(TAtlasUnitRenameScope.Project, mScopes[0]);
+  Assert.AreEqual<TAtlasUnitRenameScope>(TAtlasUnitRenameScope.Group, mScopes[1]);
   mScopes := TAtlasUnitRename.Scopes(3, 3);
   Assert.AreEqual(1, Integer(Length(mScopes)), 'Gruppe ohne weitere Dateien');
   mScopes := TAtlasUnitRename.Scopes(0, 4);
   Assert.AreEqual(1, Integer(Length(mScopes)));
-  Assert.IsTrue(mScopes[0] = TAtlasUnitRenameScope.Group);
+  Assert.AreEqual<TAtlasUnitRenameScope>(TAtlasUnitRenameScope.Group, mScopes[0]);
   Assert.AreEqual(2, TAtlasUnitRename.ShownCount(2, 5));
   Assert.AreEqual(4, TAtlasUnitRename.ShownCount(0, 4), 'ohne Treffer im Projekt die Zahl der Gruppe');
 end;

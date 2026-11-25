@@ -106,16 +106,16 @@ uses
   System.Generics.Collections,
   Winapi.Windows,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.TeamFile,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Text.DebugDisplay,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Visualizers,
   Atlas.UI.Debug.Values.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cVisualizerIdentifier = 'Atlas.Visualizer.DisplayRules';

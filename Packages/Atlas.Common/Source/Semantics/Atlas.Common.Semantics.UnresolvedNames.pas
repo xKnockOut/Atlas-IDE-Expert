@@ -254,7 +254,7 @@ end;
 class function TUnresolvedNames.Find(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string): TArray<TUnresolvedName>;
 var
-  // Nachschlagen statt Liste: bei vielen Inline-Variablen sonst ein Lauf je Bezeichner (Diagnoselog 15.10.2026).
+  // Nachschlagen statt Liste: bei vielen Inline-Variablen sonst ein Lauf je Bezeichner.
   mDeclared: TDictionary<string, Boolean>;
   // Konstruktor- und Destruktornamen in New/Dispose (#1382): keine eigenen Bezeichner.
   mMembers: TDictionary<TSyntaxNode, Boolean>;

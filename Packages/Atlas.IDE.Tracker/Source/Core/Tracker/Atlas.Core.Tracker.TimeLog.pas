@@ -137,11 +137,17 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Core.Tracker.Files,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Timestamps;
 
 const
   cLocalAppData = 'LOCALAPPDATA';
   cAtlasFolder = 'Atlas';
+  cMinutesPerHour = 60;
+  cSecondsPerMinute = 60;
+  cSecondsPerHour = cSecondsPerMinute * cMinutesPerHour;
+  /// <summary>Kaufmännisch runden: ab der Hälfte auf.</summary>
+  cRoundUp = 0.5;
 
 { TAtlasTimeIssue }
 
@@ -208,13 +214,13 @@ begin
 end;
 
 function ParseDay(const AText: string; out ADay: Integer): Boolean;
+const
+  // Genau "yyyy-mm-dd" wie DayText.
+  cDayLength = 10;
 var
-  mYear, mMonth, mDay: Integer;
   mDate: TDateTime;
 begin
-  Result := (Length(AText) = 10) and (AText[5] = '-') and (AText[8] = '-') and
-    TryStrToInt(Copy(AText, 1, 4), mYear) and TryStrToInt(Copy(AText, 6, 2), mMonth) and
-    TryStrToInt(Copy(AText, 9, 2), mDay) and TryEncodeDate(mYear, mMonth, mDay, mDate);
+  Result := (Length(AText) = cDayLength) and TTextTimestamp.TryParseDate(AText, mDate);
   ADay := 0;
   if Result then
   begin
@@ -223,18 +229,13 @@ begin
 end;
 
 function ParseTime(const AText: string; out ATime: TDateTime): Boolean;
-var
-  mDay, mHour, mMinute, mSecond: Integer;
-  mClock: TDateTime;
+const
+  // Genau "yyyy-mm-ddThh:nn:ss" wie TimeText.
+  cTimeLength = 19;
+  cClockMark = 11;
 begin
   ATime := 0;
-  Result := (Length(AText) = 19) and (AText[11] = 'T') and ParseDay(Copy(AText, 1, 10), mDay) and
-    TryStrToInt(Copy(AText, 12, 2), mHour) and TryStrToInt(Copy(AText, 15, 2), mMinute) and
-    TryStrToInt(Copy(AText, 18, 2), mSecond) and TryEncodeTime(mHour, mMinute, mSecond, 0, mClock);
-  if Result then
-  begin
-    ATime := mDay + mClock;
-  end;
+  Result := (Length(AText) = cTimeLength) and (AText[cClockMark] = 'T') and TTextTimestamp.TryParse(AText, ATime);
 end;
 
 { TAtlasTimeLog }
@@ -661,7 +662,7 @@ begin
     AStep := 1;
   end;
   // Kaufmännisch (Round rundet bei .5 zur geraden Zahl).
-  Result := Trunc(ASeconds / (60 * AStep) + 0.5) * AStep;
+  Result := Trunc(ASeconds / (cSecondsPerMinute * AStep) + cRoundUp) * AStep;
   if Result < AStep then
   begin
     Result := AStep;
@@ -674,7 +675,7 @@ begin
   begin
     ASeconds := 0;
   end;
-  Result := Format('%d:%.2d', [ASeconds div 3600, (ASeconds mod 3600) div 60]);
+  Result := Format('%d:%.2d', [ASeconds div cSecondsPerHour, (ASeconds mod cSecondsPerHour) div cSecondsPerMinute]);
 end;
 
 class function TAtlasTimeRounding.Presentation(AMinutes: Integer): string;
@@ -684,15 +685,15 @@ begin
   begin
     Exit;
   end;
-  if AMinutes < 60 then
+  if AMinutes < cMinutesPerHour then
   begin
     Exit(Format('%dm', [AMinutes]));
   end;
-  if AMinutes mod 60 = 0 then
+  if AMinutes mod cMinutesPerHour = 0 then
   begin
-    Exit(Format('%dh', [AMinutes div 60]));
+    Exit(Format('%dh', [AMinutes div cMinutesPerHour]));
   end;
-  Result := Format('%dh %dm', [AMinutes div 60, AMinutes mod 60]);
+  Result := Format('%dh %dm', [AMinutes div cMinutesPerHour, AMinutes mod cMinutesPerHour]);
 end;
 
 function ParseNumber(const AText: string; out AValue: Double): Boolean;
@@ -710,10 +711,11 @@ var
 begin
   AMinutes := 0;
   Result := TryStrToInt(Trim(Copy(AText, 1, AColon - 1)), mHours) and
-    TryStrToInt(Trim(Copy(AText, AColon + 1, MaxInt)), mRest) and (mHours >= 0) and (mRest >= 0) and (mRest <= 59);
+    TryStrToInt(Trim(Copy(AText, AColon + 1, MaxInt)), mRest) and (mHours >= 0) and (mRest >= 0) and
+    (mRest < cMinutesPerHour);
   if Result then
   begin
-    AMinutes := mHours * 60 + mRest;
+    AMinutes := mHours * cMinutesPerHour + mRest;
   end;
 end;
 
@@ -744,7 +746,7 @@ begin
   AFactor := 0;
   if MatchStr(AUnit, ['h', 'std', 'std.', 'stunde', 'stunden', 'hr', 'hrs', 'hour', 'hours']) then
   begin
-    AFactor := 60;
+    AFactor := cMinutesPerHour;
   end
   else if (AUnit = '') or MatchStr(AUnit, ['m', 'min', 'min.', 'mins', 'minuten', 'minute', 'minutes']) then
   begin
@@ -804,7 +806,7 @@ begin
     Result := ParseUnits(mText, mTotal);
     if Result then
     begin
-      AMinutes := Trunc(mTotal + 0.5);
+      AMinutes := Trunc(mTotal + cRoundUp);
     end;
   end;
   Result := Result and (AMinutes > 0) and (AMinutes <= cMaxMinutes);

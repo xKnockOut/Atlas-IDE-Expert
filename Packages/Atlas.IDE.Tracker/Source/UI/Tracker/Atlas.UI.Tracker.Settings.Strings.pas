@@ -55,7 +55,8 @@ type
     SettingsIssuesReopened, SettingsIssuesReviewStates, SettingsIssuesConnectionReviewStates,
     SettingsIssuesReviewBuild, SettingsIssuesReviewComment, SettingsIssuesIdeColors, SettingsIssuesStatusState,
     SettingsIssuesSprintOnStart, SettingsIssuesSprintAsk, SettingsIssuesSprintAlways, SettingsIssuesSprintNever,
-    SettingsIssuesFlowMap, SettingsIssuesFlowMapDays, SettingsIssuesFlowMapStuckDays);
+    SettingsIssuesFlowMap, SettingsIssuesFlowMapDays, SettingsIssuesFlowMapStuckDays,
+    SettingsIssuesShareWithAssistants, SettingsIssuesDebugKnownErrors);
 
   TAtlasOptionsStrings = class
   public
@@ -245,7 +246,9 @@ const
      'Nie',
      'Fenster „Atlas-Ablauf“: Ablauf-Karte aus der Historie (nur YouTrack)',
      'Zeitraum der Ablauf-Karte in Tagen',
-     '„Liegt lange“ ab so vielen Tagen'),
+     '„Liegt lange“ ab so vielen Tagen',
+     'Begonnenes Issue für KI-Assistenten bereitstellen (get_current_issue)',
+     'Beim Exception-Halt bekannte Fehler aus dem Tracker zeigen'),
     ('Provider:',
      'as in .atlas',
      'Query',
@@ -419,7 +422,9 @@ const
      'Never',
      '“Atlas Flow” window: flow map from the history (YouTrack only)',
      'Flow map period in days',
-     '“Stuck” after this many days'));
+     '“Stuck” after this many days',
+     'Share the started issue with AI assistants (get_current_issue)',
+     'Show known errors from the tracker when the debugger stops at an exception'));
 
 { TAtlasOptionsStrings }
 

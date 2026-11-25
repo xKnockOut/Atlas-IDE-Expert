@@ -14,9 +14,6 @@ type
   [Category('Atlas.IDE.Debugger')]
   TAtlasStepIntoWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure CaptionsKindsAndReasons;
     [Test]
@@ -30,7 +27,7 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Debug.StepInto,
   Atlas.UI.Strings,
   Atlas.UI.Debug.StepInto;
@@ -65,12 +62,6 @@ begin
 end;
 
 { TAtlasStepIntoWindowTests }
-
-procedure TAtlasStepIntoWindowTests.WarmUpFirstUse;
-begin
-  CaptionsKindsAndReasons;
-  KeysSkipUnavailable;
-end;
 
 procedure TAtlasStepIntoWindowTests.CaptionsKindsAndReasons;
 var

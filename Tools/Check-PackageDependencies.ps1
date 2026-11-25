@@ -13,6 +13,14 @@
     - Atlas.IDE.Base (Kern des Plugins, bis #1456 Atlas.IDE.Expert): eigenständig; darin Schichten (#406):
         Atlas.Core.* ohne VCL, Open Tools API, Atlas.UI.* und Atlas.IDE.*
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
+    - Atlas.Plugin  : Platform-Package des Plugins ohne host-spezifisches Framework (RTL, Winapi.*, Atlas.Text,
+        Atlas.WinBase); nur Quelltext unter Packages/Atlas.Plugin/Source, den Base mitübersetzt (kein dpk)
+    - Atlas.Vcl     : Platform-Package des Plugins, das VCL kapselt (Steuerelemente, Dialoge, Thema, Popups); RTL,
+        Winapi.*, VCL, Atlas.Text, Atlas.WinBase, Atlas.Plugin; ohne Open Tools API und Fachcode von Base;
+        Quelltext unter Packages/Atlas.Vcl/Source wie Atlas.Plugin
+    - Atlas.ToolsApi: Platform-Package des Plugins, das die Open Tools API kapselt (Editorpuffer, Andockfenster,
+        Editorleisten, Neuzeichnen, Tasten, Gutter, Dateien der IDE); RTL, Winapi.*, VCL, Open Tools API, Atlas.Text,
+        Atlas.WinBase, Atlas.Plugin, Atlas.Vcl; ohne Fachcode von Base; Quelltext unter Packages/Atlas.ToolsApi/Source
     - Atlas.Core.VersionControl.* (Versionsverwaltung, #571): übersetzt auch der Server
         mit; darum nur RTL, Winapi, Atlas.Text.*, Atlas.WinBase.* und eigene Atlas.Core.VersionControl.*-Units
 
@@ -21,6 +29,8 @@
     '..\Atlas.Text\Source\…' bzw. '..\Atlas.WinBase\Source\…'). Geprüft wird, dass
       - das Plugin außer eigenen Units (Source\…) nur Units dieser beiden enthält,
       - es genau die Units aus Atlas.Text.dpk und Atlas.WinBase.dpk enthält (sonst W1033),
+      - es jede Unit unter Packages/Atlas.Plugin/Source, Packages/Atlas.Vcl/Source und
+        Packages/Atlas.ToolsApi/Source enthält (ohne eigenes dpk),
       - Atlas.Tests.dpr und AtlasServer.dpr keine Quellen der beiden einbinden
         (sie linken die DCUs aus Dcu\Atlas.Text bzw. Dcu\Atlas.WinBase; zwei Fassungen vermeiden).
 
@@ -33,7 +43,9 @@
     definiert nur Atlas.Common.Pascal.TokenCursor Routinen wie TokenFrom,
     NextCode, PreviousCode, IsTrivia, MatchingParen, IsKeywordIn; abweichende
     Fassungen stehen mit Grund in $TokenAllowedLocal. Dazu gehören auch die
-    alten Namen für PreviousCode (Prev, PreviousToken, PreviousIndex …).
+    alten Namen für PreviousCode (Prev, PreviousToken, PreviousIndex …), für
+    NextCode/NextCodeAfter/FollowingCode (NextToken, NextSignificant,
+    NextSolid, SkipTrivia), IsCode und ClosingParen (MatchingParen).
     JSON aus Text lesen (ParseObject, ParseValue, ParseJson mit einem string als
     Parameter und TJSONObject/TJSONValue als Ergebnis) gibt es nur als
     TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json; eigene
@@ -55,7 +67,12 @@
     Dasselbe gilt für JSON-Lesehelfer (#1969): Eine Routine TextOf, StringOf,
     NumberOf, IntOf, FlagOf, ObjectOf, ArrayOf usw. mit einem TJSONObject und
     einem Namen als Parametern gibt es nur als TJsonRead in Atlas.Text.Json;
-    Ausnahmen mit eigenem Verhalten stehen in $AllowedJsonLocal.
+    Ausnahmen mit eigenem Verhalten stehen in $AllowedJsonLocal. Zusätzlich nach
+    Form, damit neue Namen derselben Kopie auffallen: Eine kurze Funktion mit
+    genau einem JSON-Objekt und einem Namen als Parametern und einfachem Ergebnis
+    (Text, Zahl, Wahrheitswert, Zeitpunkt, JSON-Wert), die den Wert selbst über
+    GetValue/Values/TryGetValue/FindValue holt, ist eine Kopie von TJsonRead
+    (Packages, Application, Tests); Ausnahmen mit Grund in $AllowedJsonFormLocal.
     JSON schreiben prüft die Form, nicht den Namen: Eine Routine mit einer
     Liste von Strings als einzigem Parameter und TJSONArray als Ergebnis gibt es
     nur als TJsonBuild.Strings, und kein Rumpf maskiert einen String über
@@ -68,6 +85,13 @@
     (Result := Result + [Element.Value], Result[I] := Liste.Items[I].Value,
     Liste.Add(Element.Value)); dafür TJsonRead.Strings/TrimmedStrings in
     Atlas.Text.Json. Ausnahmen mit Grund in $AllowedJsonReadLocal.
+
+    Kopien-Sperre für Zeitstempel: "yyyy-mm-dd hh:nn:ss" liest nur
+    TTextTimestamp in Atlas.Text.Timestamps; außerhalb dieser Unit ruft kein
+    Quelltext in Packages und Application TryEncodeDate, TryEncodeTime oder
+    TryEncodeDateTime auf. Ausnahmen mit Grund in $AllowedTimestampLocal.
+    Ebenso ruft dort niemand ISO8601ToDate auf (wirft je nach Text und Compiler
+    verschiedene Klassen); ISO 8601 liest TTextTimestamp.TryParseIso/IsoOrZero.
 
     Rollenmatrix: Jede Unit wird nach
     Ausgabeartefakt.Feature.Rolle.Sache eingeordnet; ein uses-Eintrag muss die
@@ -89,13 +113,15 @@
     und Verweise auf *.Contract).
 
     Modulgrenzen (#1455): Welche Unit des Plugins in welches
-    Package gehört, steht als Daten in docs/adr/0017-unit-zuordnung.md
-    (Ordnertabelle, Einzelzeilen je Package). Jede Unit braucht dort eine
-    Zeile. Verboten sind Base -> Modul und Modul -> anderes Modul; die
+    Package gehört, steht als Daten in Tools/UnitAssignment.tsv (eine Zeile
+    je Unit, sortiert nach Package und Unit) und
+    Tools/UnitAssignment.Folders.tsv (Ordner -> Package). Jede Unit braucht
+    eine Zeile. Verboten sind Base -> Modul und Modul -> anderes Modul; die
     Verträge zwischen Modulen liegen in Base (Source/Contracts). Befristete
-    Ausnahmen und bekannte Verstöße stehen im Abschnitt "Grenzen zwischen
-    Base, Modulen und Verträgen"; bekannte Verstöße werden bei jedem Lauf
-    genannt, neue sind Fehler, nicht mehr vorkommende Zeilen ebenso.
+    Ausnahmen und bekannte Verstöße stehen in
+    Tools/UnitAssignment.Boundaries.tsv; bekannte Verstöße werden bei jedem
+    Lauf genannt, neue sind Fehler, nicht mehr vorkommende Zeilen ebenso.
+    Die Entscheidung dazu steht in docs/adr/0017-unit-zuordnung.md.
     Tools/Test-PackageDependencies.ps1 prüft das mit absichtlichen Verstößen.
 
     Ausgewertet werden alle uses-Klauseln der .pas-Dateien und die
@@ -103,6 +129,10 @@
     Compiler-Direktiven werden vorher entfernt.
 
     Exit-Code 0: keine Verstöße, 1: mindestens ein Verstoß.
+
+.PARAMETER UpdateAdapterRoles
+    Schreibt die bekannten Altfälle der Rollen Adapters und Providers neu
+    (Tools/AdapterRoles.known.txt); nur zum Kürzen der Liste verwenden.
 
 .PARAMETER SelfTest
     Prüft nur die Rollenmatrix gegen Tests/Data/Architecture/role-imports.json.
@@ -116,7 +146,8 @@
 [CmdletBinding()]
 param(
     [string] $Root = '',
-    [switch] $SelfTest
+    [switch] $SelfTest,
+    [switch] $UpdateAdapterRoles
 )
 
 Set-StrictMode -Version Latest
@@ -199,6 +230,35 @@ $Packages = @(
         Reason           = 'eigenständig ohne Atlas.Common und Atlas.Windows'
     }
 )
+# Platform-Packages des Plugins ohne eigenes dpk: Base übersetzt ihre Quellen mit (contains).
+$Packages += @{
+    Name             = 'Atlas.Plugin'
+    Path             = 'Packages/Atlas.Plugin'
+    AllowedRequires  = @()
+    ForbiddenPrefix  = @('Vcl.', 'FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.',
+                         'Atlas.Vcl.', 'Atlas.ToolsApi.', 'Setup.', 'ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', 'DesignWindows',
+                         'PropInspAPI', 'DockForm')
+    ForbiddenUnits   = $LegacyVclUnits
+    Reason           = 'frei von VCL, Open Tools API und Fachcode von Base (nur RTL, Windows-API, Atlas.Text, Atlas.WinBase)'
+}
+$Packages += @{
+    Name             = 'Atlas.Vcl'
+    Path             = 'Packages/Atlas.Vcl'
+    AllowedRequires  = @()
+    ForbiddenPrefix  = @('FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.',
+                         'Atlas.ToolsApi.', 'Setup.', 'ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus',
+                         'DesignWindows', 'PropInspAPI', 'DockForm')
+    ForbiddenUnits   = @()
+    Reason           = 'frei von Open Tools API und Fachcode von Base (nur RTL, Windows-API, VCL, Atlas.Text, Atlas.WinBase, Atlas.Plugin)'
+}
+$Packages += @{
+    Name             = 'Atlas.ToolsApi'
+    Path             = 'Packages/Atlas.ToolsApi'
+    AllowedRequires  = @()
+    ForbiddenPrefix  = @('FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.', 'Setup.')
+    ForbiddenUnits   = @()
+    Reason           = 'frei von Fachcode von Base (nur RTL, Windows-API, VCL, Open Tools API, Atlas.Text, Atlas.WinBase, Atlas.Plugin, Atlas.Vcl)'
+}
 # Module requiren nur Base, das auch die Verträge zwischen Modulen enthält (Regel 9).
 foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
     $requires = @('rtl', 'vcl', 'vclwinx', 'designide', $PluginBaseFolder)
@@ -219,15 +279,15 @@ $OpenToolsPrefix = @('ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', '
 $Layers = @(
     @{
         UnitPrefix      = 'Atlas.Core.'
-        ForbiddenPrefix = @('Vcl.', 'Atlas.UI.', 'Atlas.IDE.') + $OpenToolsPrefix
+        ForbiddenPrefix = @('Vcl.', 'Atlas.UI.', 'Atlas.IDE.', 'Atlas.Vcl.', 'Atlas.ToolsApi.') + $OpenToolsPrefix
         ForbiddenUnits  = $LegacyVclUnits
-        Reason          = 'frei von VCL, Open Tools API, Atlas.UI und Atlas.IDE'
+        Reason          = 'frei von VCL, Open Tools API, Atlas.UI, Atlas.IDE, Atlas.Vcl und Atlas.ToolsApi'
     },
     @{
         UnitPrefix      = 'Atlas.UI.'
-        ForbiddenPrefix = @('Atlas.IDE.') + $OpenToolsPrefix
+        ForbiddenPrefix = @('Atlas.IDE.', 'Atlas.ToolsApi.') + $OpenToolsPrefix
         ForbiddenUnits  = @()
-        Reason          = 'frei von Open Tools API und Atlas.IDE'
+        Reason          = 'frei von Open Tools API, Atlas.IDE und Atlas.ToolsApi'
     }
 )
 
@@ -264,14 +324,15 @@ $CopyLockNames = @('LineBreakOf', 'LineBreakIn', 'DetectLineBreak', 'SplitLines'
 $AllowedLocal = @{
     'Atlas.Common.Documents.FileEncoding:TFileEncoding.DetectLineBreak' = 'Fassade mit eigenem Typ TLineBreakStyle, leitet an TTextLines.DominantOf weiter'
     'Atlas.Common.Lsp.Documentation:TLspDocumentation.SplitLines'      = 'öffentliche Weiterleitung an TTextLines.SplitLines'
+    'Atlas.Common.History.Commits:IsWordChar'                           = 'Issue-Kennungen in Commit-Nachrichten: Buchstaben ab #128 gehören zum Wort, Satzzeichen ab #128 („, “, –) nicht (gegen IsIdentChar)'
     'Atlas.Common.Editing.DataFieldNames:IsWordChar'                    = 'SQL-Bezeichner mit $, @ und #, keine Pascal-Regel'
     'Atlas.Core.Query.Model:IsWordChar'                                 = 'Wörter der Abfragesprache: Punkt, @name und Masken mit * und ? gehören zum Wort'
     'Atlas.Core.Tracker.CodeLinks:IsWordChar'                           = 'Issue-Kennungen: Buchstaben ab #128 gehören zum Wort (äATL-1 ist keine Kennung, gegen IsAsciiIdentChar), Satzzeichen ab #128 („, “, –) nicht (gegen IsIdentChar)'
     'Atlas.Common.Rules.Builtin.Unused:IsWordChar'                      = 'verschachtelt mit Index; folgt mit Block Rules'
     'Atlas.Core.InlayHints.Store:TAtlasInlayHintStore.SplitLines'      = 'öffentliche Weiterleitung an TTextLines.SplitLines'
-    'Atlas.Core.Files.Format:TAtlasFileFormats.IsUtf8'                 = 'Fassade, leitet an TTextEncodingProbe weiter'
-    'Atlas.Core.Files.Format:TAtlasFileFormats.LineBreakOf'            = 'Fassade mit eigenem Typ TAtlasLineBreak'
-    'Atlas.Core.Files.TextFile:TAtlasTextFile.IsUtf8'                  = 'Fassade, leitet an TTextEncodingProbe weiter'
+    'Atlas.Plugin.Files.Format:TAtlasFileFormats.IsUtf8'                 = 'Fassade, leitet an TTextEncodingProbe weiter'
+    'Atlas.Plugin.Files.Format:TAtlasFileFormats.LineBreakOf'            = 'Fassade mit eigenem Typ TAtlasLineBreak'
+    'Atlas.Plugin.Files.TextFile:TAtlasTextFile.IsUtf8'                  = 'Fassade, leitet an TTextEncodingProbe weiter'
     'Atlas.Core.Undo.LinePatch:TAtlasLinePatch.SplitLines'             = 'öffentliche Weiterleitung an TTextLines.SplitKeepingBreaks'
     'Atlas.Core.Completion.Snippets:TAtlasSnippets.IndentOf'           = 'öffentliche Weiterleitung an TTextLines.IndentOf'
     'Atlas.Core.Editor.MultiCursor:TAtlasMultiCursor.LineBreakOf'      = 'öffentliche Weiterleitung an TTextLines.LineBreakOf'
@@ -331,47 +392,64 @@ $TokenLockNames = @('TokenAt', 'TokenFrom', 'TokenAtOffset', 'TokenExactly', 'Ma
     # Suche nach Zeile und Spalte, Bezeichner unter dem Cursor.
     'TokenFromPosition', 'TokenUpToPosition', 'TokenTouching', 'IdentifierAt', 'NameTokenAt',
     # Alte Namen für PreviousCode.
-    'PreviousToken', 'PreviousIndex', 'PreviousSignificant', 'PreviousSolid', 'PreviousCodeToken', 'PrevCode', 'Prev')
+    'PreviousToken', 'PreviousIndex', 'PreviousSignificant', 'PreviousSolid', 'PreviousCodeToken', 'PrevCode', 'Prev',
+    # Alte Namen für NextCode, NextCodeAfter, FollowingCode, IsCode und MatchingParen.
+    'NextCodeAfter', 'FollowingCode', 'NextToken', 'NextSignificant', 'NextSolid', 'SkipTrivia', 'IsCode',
+    'ClosingParen')
 $TokenLockHomes = @('Atlas.Common.Pascal.TokenCursor', 'Atlas.Common.Pascal.RoutineSignatures:TRoutineSignatures.WithoutTypeParams')
 
 # Erlaubte abweichende Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $TokenAllowedLocal = @{
-    'Atlas.Common.Editing.DocumentationCommands:NextCode'                 = 'beginnt hinter AIndex und zählt nach IsCode der Unit'
-    'Atlas.Common.Editing.DocumentationCommands:PrevCode'                 = 'zählt nach IsCode der Unit'
     'Atlas.Common.Editing.Formatter.Indent:PreviousSignificant'           = 'Methodendeklaration von TIndentTokens'
-    'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.PreviousSignificant' = 'Methode über die eigenen Token des Formatierers'
+    'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.PreviousSignificant' = 'Methode über die eigenen Token des Formatierers, leitet an PreviousCode weiter'
+    'Atlas.Common.Editing.Formatter.Indent:NextSignificant'               = 'Methodendeklaration von TIndentTokens'
+    'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.NextSignificant' = 'Methode über die eigenen Token des Formatierers, leitet an NextCodeAfter weiter'
+    'Atlas.Common.Editing.Unwrap:IsCode'                                  = 'Methodendeklaration von TBuilder'
+    'Atlas.Common.Editing.Unwrap:TBuilder.IsCode'                         = 'Token-Index statt Token, außerhalb des Arrays False'
+    'Atlas.Common.Rules.Builtin.Capture:NextToken'                        = 'sucht ab einem Offset über den Regelkontext und liefert das Token mit out-Parameter'
+    'Atlas.Common.Rules.Builtin.Todos:IsCode'                             = 'prüft Kommentarzeilen auf auskommentierten Code, keine Token'
     'Atlas.Common.Editing.SafeDelete:PreviousSolid'                       = 'schließt AIndex ein'
     'Atlas.Common.Editing.Unwrap:PrevCode'                                = 'Offset im Text statt Token-Index'
     'Atlas.Common.Editing.Unwrap:TBuilder.PrevCode'                       = 'Offset im Text statt Token-Index'
     'Atlas.Common.Lsp.Completion.TypeGuards:Prev'                         = 'Methodendeklaration von TGuardScan'
     'Atlas.Common.Lsp.Completion.TypeGuards:TGuardScan.Prev'              = 'Methode über die eigenen Token, leitet an PreviousCode weiter'
     'Atlas.Common.Lsp.SignatureHelp:PreviousCodeToken'                    = 'überspringt nach IsSkipped der Unit'
-    'Atlas.Common.Editing.RoutineBody:TRoutineBody.TokenAt'               = 'öffentliche Weiterleitung an TSyntaxTree.FirstTokenOf'
+    'Atlas.Common.Pascal.RoutineBody:TRoutineBody.TokenAt'               = 'öffentliche Weiterleitung an TSyntaxTree.FirstTokenOf'
     'Atlas.Common.Editing.Unwrap:NextCode'                                = 'Offset im Text statt Token-Index'
     'Atlas.Common.Editing.Unwrap:TBuilder.NextCode'                       = 'Offset im Text statt Token-Index'
-    'Atlas.Common.Editing.WrapCommands:NextCode'                          = 'beginnt hinter AIndex'
     'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.NextCode'      = 'Methode des Lesers über seinen eigenen Token-Ausschnitt'
     'Atlas.Common.Index.Extractor.Tokens:TIndexTokenReader.PreviousCode'  = 'schließt AIndex ein'
     'Atlas.Common.Lsp.Completion.Cases:TokenAt'                           = 'sucht nach Zeile und Spalte (TTextPosition), nicht nach Offset'
     'Atlas.Common.Lsp.InvertBoolean:TokenAt'                              = 'Methodendeklaration von TSourceFile, sucht nach TTextPosition'
     'Atlas.Common.Lsp.InvertBoolean:TSourceFile.TokenAt'                  = 'Methode der Unit-Sicht: rechnet die Position in den Offset um und leitet an TokenExactly weiter'
     'Atlas.Common.Lsp.SelectionRanges:TokenAt'                            = 'Token im Syntaxbaum mit out-Parameter, sucht das umschließende Token'
-    'Atlas.Common.Pascal.LanguageFeatures:NextCode'                       = 'beginnt hinter AIndex, -1 statt Length ohne Treffer'
     'Atlas.Common.Pascal.SyntaxTree:TSyntaxTree.IdentifierAt'             = 'Methode des Baums: ein #13-Teil einer Zeichenkonstante (IsControlCharPart) gilt nicht als Bezeichner'
     'Atlas.Common.Editing.InvertBoolean:IdentifierAt'                     = 'Methodendeklaration von TSourceTokens'
     'Atlas.Common.Editing.InvertBoolean:TSourceTokens.IdentifierAt'       = 'Bezeichner, der genau bei einem Offset beginnt, nicht nach Zeile und Spalte'
     'Atlas.Common.Pascal.SyntaxChecks:NextCode'                           = 'Methodendeklaration von TTreeChecker'
     'Atlas.Common.Pascal.SyntaxChecks:TTreeChecker.NextCode'              = 'überspringt zusätzlich Token außerhalb aktiver Zweige'
-    'Atlas.Common.Rules.Builtin.Automation:NextCode'                      = 'Methodendeklaration von TAutomationCheck'
-    'Atlas.Common.Rules.Builtin.Automation:TAutomationCheck.NextCode'     = 'mit Grenze AStop'
     'Atlas.Common.Rules.Builtin.Database:TokenAt'                         = 'Methodendeklaration von TSqlBuild'
     'Atlas.Common.Rules.Builtin.Database:TSqlBuild.TokenAt'               = 'Token eines SQL-Stücks, nicht Token-Index der Unit'
     'Atlas.Common.Rules.Builtin.Inheritance.Ancestry:TokenAt'             = 'liefert das Token mit out-Parameter über den Regelkontext'
-    'Atlas.Common.Rules.Builtin.MethodDirectives:WithoutTypeParams'       = 'schneidet beim ersten < ab ("A<T>.B" ergibt "A")'
-    'Atlas.Common.Rules.Builtin.TypeDeclarations.Scan:TDeclarationScan.NextCode' = 'mit Grenze AStop'
-    'Atlas.Common.Rules.Builtin.Units:NextCode'                           = 'zählt nach IsCode der Unit'
     'Atlas.Common.Rules.Builtin.Visibility:TokenAt'                       = 'Methodendeklaration von TInaccessibleMemberCheck'
     'Atlas.Common.Rules.Builtin.Visibility:TInaccessibleMemberCheck.TokenAt' = 'liefert High statt Length ohne Treffer'
+}
+
+# Kopien-Sperre für JSON-Lesehelfer nach Form (#1969): erlaubte eigene Fassungen ("Unit:Routine") mit Grund.
+# Die Liste soll nur schrumpfen.
+$AllowedJsonFormLocal = @{
+    'Atlas.Core.Query.Model:StringOf'                                    = 'jeder einfache Wert als Text, auch true/false und Zahlen'
+    'Atlas.Core.Editor.ClassExtraction:StringOf'                         = 'jeder Wert außer null als Text'
+    'Atlas.Common.Mcp.Server:TMcpArgs.OptionalString'                    = 'Argument eines MCP-Clients: jeder einfache Wert als Text, auch Wahrheitswerte'
+    'Shell.Composition.Refactorings.Services:TShellRefactoringPart.Number' = 'Antwort des eigenen Servers: fehlender Wert ist ein Fehler (Ausnahme), keine Vorgabe'
+    'Shell.Composition.Refactorings.Services:TShellRefactoringPart.Count'  = 'Antwort des eigenen Servers: fehlender Wert ist ein Fehler (Ausnahme), keine Vorgabe'
+    'Atlas.Common.Lsp.Baseline.Tests:NumberAt'                           = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
+    'Atlas.Common.Lsp.Baseline.Tests:TextAt'                             = 'Pfad mit Punkten (FindValue), prüft den Typ mit Assert'
+    'Atlas.Common.Lsp.BoundaryCases.Tests:Count'                         = 'Test: fehlendes Array soll als Ausnahme auffallen'
+    'Atlas.Common.Lsp.SlashMenu.Tests:Field'                             = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Lsp.SlashMenu.Tests:Flag'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Lsp.SlashMenu.Tests:List'                              = 'Test: fehlender Wert soll als Ausnahme auffallen'
+    'Atlas.Common.Lsp.SafeDelete.Tests:Items'                            = 'Test: setzt die Einträge eines Arrays zu einer Vergleichszeile zusammen'
 }
 
 # Kopien-Sperre für JSON aus Text: nur TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json.
@@ -380,8 +458,8 @@ $JsonParseLockNames = @('ParseObject', 'ParseValue', 'ParseJson', 'Parse', 'Pars
 
 # Erlaubte eigene Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $AllowedJsonParseLocal = @{
-    'Atlas.Core.Settings.JsonText:Parse'                   = 'Deklaration von TAtlasJsonText.Parse'
-    'Atlas.Core.Settings.JsonText:TAtlasJsonText.Parse'    = 'entfernt Kommentare (JSONC), leitet an TJsonRead.ParseObject weiter'
+    'Atlas.Plugin.Settings.JsonText:Parse'                   = 'Deklaration von TAtlasJsonText.Parse'
+    'Atlas.Plugin.Settings.JsonText:TAtlasJsonText.Parse'    = 'entfernt Kommentare (JSONC), leitet an TJsonRead.ParseObject weiter'
     'Atlas.Core.Settings.Catalog:Parse'                    = 'Deklaration von TAtlasJsonValues.Parse'
     'Atlas.Core.Settings.Catalog:TAtlasJsonValues.Parse'   = 'liest auch einzelne Zahlen, Strings und Wahrheitswerte (über ein Hüllobjekt)'
 }
@@ -389,7 +467,7 @@ $AllowedJsonParseLocal = @{
 # Kopien-Sperre für JSON schreiben: nach Form statt nach Namen, damit neue Namen derselben Kopie auffallen.
 # Erlaubte eigene Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $AllowedJsonWriteLocal = @{
-    'Atlas.Core.Lsp.Session.Json:TLspSessionJson.ProjectFolders' = 'baut Objekte mit uri und name, keine Liste von Strings'
+    'Atlas.Plugin.Lsp.Session.Json:TLspSessionJson.ProjectFolders' = 'baut Objekte mit uri und name, keine Liste von Strings'
 }
 
 # Kopien-Sperre für JSON lesen (Array -> Liste von Strings): nach Form wie beim Schreiben.
@@ -406,7 +484,7 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'EnsureFont'
         Folder  = 'Packages'
-        Home    = 'TAtlasEditorFont in Atlas.UI.Foundation.EditorFont'
+        Home    = 'TAtlasEditorFont in Atlas.Vcl.Theme.EditorFont'
         Allowed = @{}
     }
     [pscustomobject]@{
@@ -418,13 +496,13 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Welcome'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Plugin.Notifications.MessageSink'
         Allowed = @{}
     }
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Tracker'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Plugin.Notifications.MessageSink'
         Allowed = @{
             'Atlas.IDE.Tracker.IssuesServices:Report'                   = 'Methodendeklaration von TAtlasIssuesLink'
             'Atlas.IDE.Tracker.IssuesServices:TAtlasIssuesLink.Report'  = 'meldet nur, solange der Kontext lebt (Keep)'
@@ -434,7 +512,7 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Debugger'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Plugin.Notifications.MessageSink'
         Allowed = @{
             'Atlas.IDE.Debug.AsyncOrigin:TAtlasIdeDebugAsyncOrigin.Report'  = 'zeigt den Ursprung als Meldung oder in der Ergebnisliste'
             'Atlas.IDE.Debug.ReattachWait:TAtlasIdeReattachWaiter.Report'   = 'meldet einen gefundenen Prozess, keine Textzeile'
@@ -479,18 +557,18 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'TopView'
         Folder  = 'Packages'
-        Home    = 'TAtlasEditorBuffer.TopView/TopSourceView in Atlas.IDE.Foundation.EditorBuffer'
+        Home    = 'TAtlasEditorBuffer.TopView/TopSourceView in Atlas.ToolsApi.Editor.Buffer'
         Allowed = @{
-            'Atlas.IDE.Foundation.EditorBuffer:TAtlasEditorBuffer.TopView' = 'die eine Fassung'
+            'Atlas.ToolsApi.Editor.Buffer:TAtlasEditorBuffer.TopView' = 'die eine Fassung'
             'Atlas.IDE.Search.Editor:TAtlasIdeSearchEditor.TopView'        = 'out-Fassung für Bedingungen, leitet weiter'
         }
     }
     [pscustomobject]@{
         Name    = 'TopSourceView'
         Folder  = 'Packages'
-        Home    = 'TAtlasEditorBuffer.TopSourceView in Atlas.IDE.Foundation.EditorBuffer'
+        Home    = 'TAtlasEditorBuffer.TopSourceView in Atlas.ToolsApi.Editor.Buffer'
         Allowed = @{
-            'Atlas.IDE.Foundation.EditorBuffer:TAtlasEditorBuffer.TopSourceView' = 'die eine Fassung'
+            'Atlas.ToolsApi.Editor.Buffer:TAtlasEditorBuffer.TopSourceView' = 'die eine Fassung'
         }
     }
     # Syntaxbaum: Knoten in Baumreihenfolge und Vorkommen eines Bezeichners nur an TSyntaxNode.
@@ -523,6 +601,35 @@ $PluginLock = @(
             'Atlas.Common.Pascal.RoutineSignatures:TRoutineSignatures.SplitTopLevel' = 'die eine Fassung'
         }
     }
+    [pscustomobject]@{
+        Name    = 'MessageLine'
+        Folder  = 'Packages'
+        Home    = 'TAtlasIdeHost.Message/Messages() in Atlas.IDE.Foundation.Host'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'ActiveProject(?:File)?'
+        Folder  = 'Packages'
+        Home    = 'GetActiveProject (ToolsAPI) bzw. TAtlasIdeFiles.ActiveProjectFile in Atlas.ToolsApi.Files.Service'
+        Allowed = @{
+            'Atlas.ToolsApi.Files.Service:TAtlasIdeFiles.ActiveProjectFile'             = 'die eine Fassung'
+            'Atlas.IDE.Foundation.StartOptions:TAtlasIdeStartOptions.ActiveProject'   = 'nur .dproj (Startoptionen)'
+            'Atlas.IDE.Debug.MethodBreakpoints:TAtlasIdeMethodBreakpoints.ActiveProject' = 'Projekt der Projektgruppe zur aktiven Datei'
+            'Atlas.Common.Lsp.IdeProject:TLspIdeProject.ActiveProject'                = 'Server: gemeldetes Projekt der IDE, kein ToolsAPI'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'ReadLines(?:Of)?'
+        Folder  = 'Packages'
+        Home    = 'TAtlasIdeFiles.ReadLines/LineReader() in Atlas.ToolsApi.Files.Service'
+        Allowed = @{
+            'Atlas.ToolsApi.Files.Service:TAtlasIdeFiles.ReadLines'       = 'die eine Fassung'
+            'Atlas.IDE.Welcome.Adapters.QuickActions:ReadLines'         = 'nur von der Platte (Projektdateien, nie ein offener Puffer)'
+            'Atlas.Common.Lsp.SignatureHelp:THelpRun.ReadLines'         = 'Server: Zeilen der Hilfeanfrage, keine Datei'
+            'Atlas.Common.Lsp.SignatureHelp:ReadLines'                  = 'Deklaration von THelpRun.ReadLines'
+            'Atlas.Common.Mcp.Prompts:ReadLines'                        = 'Server: liest über den Leser des MCP-Kontexts'
+        }
+    }
 )
 
 # An- und Abmelden der Module nur über TAtlasModuleHost: Aufrufe, die nur diese Units enthalten dürfen.
@@ -531,76 +638,221 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
-$RolePrefixes = @('Atlas.Text', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
+$RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Plugin', 'Atlas.Vcl',
+    'Atlas.ToolsApi', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
+# Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
+$HostedFeatures = @('Replay', 'Monitor', 'Update')
 $FeatureRoles = @('Contract', 'Internals', 'Providers', 'Adapters', 'Composition', 'Hosting')
-# Eigenes Feature: Rolle der Quelle -> erlaubte Rollen des Ziels
+# Eigenes Feature (bzw. innerhalb einer Struktur relativ zum Träger): Rolle der Quelle -> erlaubte Rollen des Ziels
 $OwnAllowed = @{
     Contract    = @('Contract')
     Internals   = @('Contract', 'Internals')
     Providers   = @('Contract', 'Internals', 'Root')
     Adapters    = @('Contract', 'Internals', 'Root')
     Root        = @('Contract', 'Internals', 'Root')
-    Composition = @('Contract', 'Providers', 'Adapters', 'Root', 'Composition')
-    Hosting     = @('Contract', 'Providers', 'Adapters', 'Root', 'Composition', 'Hosting')
+    Composition = @('Contract', 'Providers', 'Adapters', 'Root', 'Composition', 'Hosting')
+    Hosting     = @('Contract', 'Hosting')
 }
-# Fremdes Feature; alle nicht genannten Rollen: Contract und Root.
-# Host (8.1, Annahme bis zur Bestätigung des Konzepts): alles außer Internals.
-$ForeignAllowed = @{
-    Contract = @('Contract')
-    Host     = @('Contract', 'Root', 'Providers', 'Adapters', 'Composition', 'Hosting')
+# Fremdes Feature: Contract nur Contract, alle anderen Rollen Contract und Root.
+# Host-Rollen (Konzept 8.1): erlaubte Rollen fremder Features und erlaubte Host-Rollen. Die Shell setzt
+# zusammen und sieht alles außer Internals; Host-Adapters implementieren Sub-Contracts.
+$HostAllowed = @{
+    Foundation = @('Contract')
+    Core       = @('Contract', 'Root')
+    Shell      = @('Contract', 'Root', 'Providers', 'Adapters', 'Composition', 'Hosting', 'SubContract', 'Nested')
+    Adapters   = @('Contract', 'Root', 'SubContract')
+    Platform   = @('Contract', 'Root')
+}
+$HostHostAllowed = @{
+    Foundation = @('Foundation')
+    Core       = @('Foundation', 'Core', 'Platform')
+    Shell      = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
+    Adapters   = @('Foundation', 'Core', 'Adapters', 'Platform')
+    Platform   = @('Platform')
 }
 
-function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts) {
+function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts, [string[]] $Hosted = @()) {
     # Einordnung nach Ausgabeartefakt.Feature.Rolle.Sache; $null für externe Units (RTL, VCL, Setup, Tests).
+    # Rolle ist der erste Rollenbezeichner nach dem Feature; jeder weitere eröffnet eine Verschachtelung
+    # (Konzept 7.4). Positions nennt die Stellen der Rollenbezeichner in Segments (Segments[0] = Feature),
+    # ein Bezeichner gleich dem vorigen zählt als Sache ("Keine Wiederholung").
     $best = ''
+    $isHosted = $false
+    $hostedName = $Hosted | Where-Object { $_ -ieq $Name.Split('.')[0] } | Select-Object -First 1
+    if ($hostedName -and $Name.Contains('.')) {
+        $best = $hostedName
+        $isHosted = $true
+    }
     foreach ($prefix in $Prefixes) {
+        if ($isHosted) { break }
         if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) {
             $best = $prefix
         }
     }
     if ($best -ne '') {
-        $rest = $Name.Substring($best.Length + 1).Split('.')
-        $role = 'Root'
-        if ($rest.Count -ge 2) {
-            $hit = $FeatureRoles | Where-Object { $_ -ieq $rest[1] } | Select-Object -First 1
-            if ($hit) { $role = $hit }
+        $rest = @($Name.Substring($best.Length + 1).ToLowerInvariant().Split('.'))
+        $artefact = $best.ToLowerInvariant()
+        if ($isHosted) {
+            # Hosted-Feature: kein Präfix, das erste Segment ist das Feature.
+            $rest = @($Name.ToLowerInvariant().Split('.'))
+            $artefact = ''
         }
-        return [pscustomobject]@{ Artefact = $best.ToLowerInvariant(); Feature = $rest[0].ToLowerInvariant(); Role = $role }
+        $positions = @()
+        $roles = @()
+        for ($index = 1; $index -lt $rest.Count; $index++) {
+            $hit = $FeatureRoles | Where-Object { $_ -ieq $rest[$index] } | Select-Object -First 1
+            if ($hit -and ($roles.Count -eq 0 -or $roles[-1] -ne $hit)) {
+                $positions += $index
+                $roles += $hit
+            }
+        }
+        $role = 'Root'
+        if ($roles.Count -gt 0) { $role = $roles[0] }
+        return [pscustomobject]@{ Artefact = $artefact; Feature = $rest[0]; Role = $role
+            Segments = $rest; Positions = $positions; Roles = $roles; HostRole = ''; Hosted = $isHosted }
     }
     $first = $Name.Split('.')[0]
     $hostRole = $Hosts | Where-Object { $_ -ieq $first } | Select-Object -First 1
     if ($hostRole -and $Name.Contains('.')) {
-        return [pscustomobject]@{ Artefact = ''; Feature = $hostRole.ToLowerInvariant(); Role = 'Host' }
+        return [pscustomobject]@{ Artefact = ''; Feature = $hostRole.ToLowerInvariant(); Role = 'Host'; HostRole = $hostRole
+            Segments = @(); Positions = @(); Roles = @(); Hosted = $false }
     }
     return $null
 }
 
+function Test-Within($Unit, [int] $Length, $Carrier) {
+    # True, wenn die ersten $Length Segmente von $Unit denen von $Carrier gleichen.
+    if ($Unit.Segments.Count -lt $Length) { return $false }
+    for ($index = 0; $index -lt $Length; $index++) {
+        if ($Unit.Segments[$index] -ne $Carrier.Segments[$index]) { return $false }
+    }
+    return $true
+}
+
+function Get-CarrierLength($Source, $Target) {
+    # Länge des tiefsten gemeinsamen Trägers (Segmente bis vor einen verschachtelten Rollenbezeichner);
+    # 1 = nur das Feature.
+    # Kandidaten: jede Stelle eines verschachtelten Rollenbezeichners und der ganze Name einer Unit mit Rolle
+    # und Sache (Cache ist Träger von Cache.Store). Zwei Root-Fragmente einer Struktur (Cache.Store,
+    # Cache.Index) verraten ihren Träger nicht im Namen und gelten als Geschwister der äußeren Rolle.
+    $best = 1
+    foreach ($unit in @($Source, $Target)) {
+        $candidates = @($unit.Positions | Select-Object -Skip 1)
+        if ($unit.Positions.Count -gt 0 -and $unit.Segments.Count -gt $unit.Positions[-1] + 1) {
+            $candidates += $unit.Segments.Count
+        }
+        foreach ($length in $candidates) {
+            if ($length -gt $best -and [Math]::Max($Source.Segments.Count, $Target.Segments.Count) -gt $length -and
+                (Test-Within $Source $length $unit) -and (Test-Within $Target $length $unit)) {
+                $best = $length
+            }
+        }
+    }
+    return $best
+}
+
+function Get-LevelRoles($Unit, [int] $Length) {
+    # Rollenbezeichner hinter dem Träger der Länge $Length.
+    $result = @()
+    for ($index = 0; $index -lt $Unit.Positions.Count; $index++) {
+        if ($Unit.Positions[$index] -ge $Length) { $result += $Unit.Roles[$index] }
+    }
+    return ,$result
+}
+
+function Get-SourceRights($Unit, [int] $Length) {
+    # Importrechte relativ zum Träger: Struktur erbt die Rechte des Trägers, ein Sub-Contract nur Contract-Rechte.
+    $roles = Get-LevelRoles $Unit $Length
+    if ($roles.Count -eq 0) { return 'Root' }
+    if ($roles -contains 'Contract') { return 'Contract' }
+    return $roles[0]
+}
+
+function Get-TargetView($Unit, [int] $Length) {
+    # Was von außerhalb einer Struktur sichtbar ist: Internals nie, Sub-Contract, sonst die Rolle des Trägers
+    # (Nested: nur Composition und Shell).
+    $roles = Get-LevelRoles $Unit $Length
+    if ($roles.Count -eq 0) { return [pscustomobject]@{ Kind = 'Root'; Outer = 'Root' } }
+    if ($roles.Count -eq 1) { return [pscustomobject]@{ Kind = $roles[0]; Outer = $roles[0] } }
+    $kind = 'Nested'
+    if ($roles -contains 'Internals') { $kind = 'NestedInternals' }
+    elseif ($roles[1] -eq 'Contract') { $kind = 'SubContract' }
+    return [pscustomobject]@{ Kind = $kind; Outer = $roles[0] }
+}
+
 function Test-RoleImport($Source, $Target) {
     if ($null -eq $Source -or $null -eq $Target) { return $true }
-    if ($Target.Role -eq 'Host') { return $Source.Role -eq 'Host' }
-    if ($Source.Role -ne 'Host' -and $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature) {
-        return $OwnAllowed[$Source.Role] -contains $Target.Role
+    # Platform-Features importieren nie den Host (8.3), Hosted-Features nur die Foundation (8.2).
+    if ($Target.Role -eq 'Host') {
+        if ($Source.Hosted) { return $Target.HostRole -eq 'Foundation' }
+        return $Source.Role -eq 'Host' -and $HostHostAllowed[$Source.HostRole] -contains $Target.HostRole
     }
-    $allowed = @('Contract', 'Root')
-    if ($ForeignAllowed.ContainsKey($Source.Role)) { $allowed = $ForeignAllowed[$Source.Role] }
-    return $allowed -contains $Target.Role
+    if ($Source.Role -eq 'Host') {
+        $kind = (Get-TargetView $Target 1).Kind
+        if ($Target.Hosted) {
+            # 8.1, Zeilen Hosted-Feature: Shell alles außer Internals, Host-Adapters nur Contract und Sub-Contract.
+            switch ($Source.HostRole) {
+                'Shell'    { return $HostAllowed.Shell -contains $kind }
+                'Adapters' { return $kind -in @('Contract', 'SubContract') }
+                default    { return $false }
+            }
+        }
+        return $HostAllowed[$Source.HostRole] -contains $kind
+    }
+    $same = $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature
+    # Platform-Features importieren keine Hosted-Features (8.3), Hosted-Features einander nie (8.2).
+    if ($Target.Hosted -and -not $same) { return $false }
+    if (-not $same) {
+        $view = (Get-TargetView $Target 1).Kind
+        if ((Get-SourceRights $Source 1) -eq 'Contract') { return $view -eq 'Contract' }
+        return $view -in @('Contract', 'Root')
+    }
+    $length = Get-CarrierLength $Source $Target
+    $rights = Get-SourceRights $Source $length
+    $view = Get-TargetView $Target $length
+    switch ($view.Kind) {
+        'SubContract' { return $rights -eq 'Composition' -or ((Get-TargetView $Source $length).Outer -eq $view.Outer) }
+        'Nested'      { return $rights -eq 'Composition' }
+        default       { return $OwnAllowed[$rights] -contains $view.Kind }
+    }
 }
 
 function Get-RoleDescription($Source, $Target) {
     # Kurztext wie TArchitectureMatrix.Describe, z. B. "fremde Adapters aus Root".
     $kind = 'fremde'
-    if ($Source.Role -ne 'Host' -and $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature) {
+    $length = 1
+    $sourceRole = $Source.Role
+    if ($Source.Role -eq 'Host') { $sourceRole = "Host-$($Source.HostRole)" }
+    elseif ($Target.Role -ne 'Host' -and $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature) {
         $kind = 'eigene'
+        $length = Get-CarrierLength $Source $Target
+        $sourceRole = Get-SourceRights $Source $length
     }
-    return "$kind $($Target.Role) aus $($Source.Role)"
+    $targetRole = "Host-$($Target.HostRole)"
+    if ($Target.Role -ne 'Host') {
+        $view = Get-TargetView $Target $length
+        $targetRole = switch ($view.Kind) {
+            'SubContract'     { 'Sub-Contract' }
+            'Nested'          { "verschachtelte $($view.Outer)" }
+            'NestedInternals' { 'Internals einer Struktur' }
+            default           { $view.Kind }
+        }
+    }
+    return "$kind $targetRole aus $sourceRole"
+}
+
+function Test-ContractRole($Unit) {
+    # Contract oder Sub-Contract: der letzte Rollenbezeichner ist Contract.
+    return $null -ne $Unit -and $Unit.Role -ne 'Host' -and $Unit.Roles.Count -gt 0 -and $Unit.Roles[-1] -eq 'Contract'
 }
 
 if ($SelfTest) {
     $data = Get-Content -Raw -Encoding UTF8 (Join-Path $Root 'Tests/Data/Architecture/role-imports.json') | ConvertFrom-Json
     $failures = @()
     foreach ($case in $data.cases) {
-        $actual = Test-RoleImport (Get-UnitRole $case.from $data.prefixes $data.hostRoles) (Get-UnitRole $case.to $data.prefixes $data.hostRoles)
+        $hosted = @($data.hostedFeatures)
+        $actual = Test-RoleImport (Get-UnitRole $case.from $data.prefixes $data.hostRoles $hosted) (Get-UnitRole $case.to $data.prefixes $data.hostRoles $hosted)
         if ($actual -ne [bool] $case.allowed) {
             $failures += "$($case.from) -> $($case.to): erwartet $($case.allowed), erhalten $actual"
         }
@@ -627,6 +879,12 @@ if (Test-Path $atlasJson) {
         if ($rule -and $rule.Value.PSObject.Properties['allow']) { $ContractContentAllow = @($rule.Value.allow) }
     }
 }
+
+# Frameworks im Contract (Konzept 7.1): Ein Vertrag legt seine Konsumenten nicht auf VCL, FMX, Windows-API oder
+# Open Tools API fest. Genehmigte Einzelausnahme (docs/Architektur.md, „Genehmigte Ausnahmen“): Atlas.UI.Settings.Contract
+# reicht die Steuerelemente einer Optionsseite, die Base und Module mit derselben VCL bauen (Vcl.Controls).
+$ContractFrameworks = '^(?i)(Vcl|FMX|Winapi|System\.Win|ToolsAPI|DesignIntf|DesignEditors|PaletteAPI)(\.|$)'
+$ContractFrameworkAllow = @(@{ Unit = 'Atlas.UI.Settings.Contract'; Uses = 'Vcl.Controls' })
 
 function Test-RoleApproved([string] $Source, [string] $Target) {
     foreach ($entry in $RoleImportAllow) {
@@ -686,8 +944,9 @@ foreach ($package in $Packages) {
     }
 }
 
-# Atlas.Text und Atlas.WinBase im Plugin: als Quelltext, genau mit den Units ihres dpk.
-$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase')
+# Atlas.Text und Atlas.WinBase im Plugin: als Quelltext, genau mit den Units ihres dpk. Platform-Packages ohne dpk
+# (Atlas.Plugin, Atlas.Vcl, Atlas.ToolsApi): genau mit allen Units unter ihrem Ordner Source.
+$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi')
 $pluginDpkName = "Packages/$PluginBaseFolder/$PluginBaseFolder.dpk"
 $pluginDpk = Join-Path $Root $pluginDpkName
 if (Test-Path $pluginDpk) {
@@ -704,14 +963,20 @@ if (Test-Path $pluginDpk) {
     }
     foreach ($package in $SharedSourcePackages) {
         $sharedDpk = Join-Path $Root "Packages/$package/$package.dpk"
-        if (-not (Test-Path $sharedDpk)) { continue }
-        $sharedUnits = @(Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($sharedDpk))) | ForEach-Object { $_.Name })
+        $sharedSource = Join-Path $Root "Packages/$package/Source"
+        if (Test-Path $sharedDpk) {
+            $sharedUnits = @(Get-ContainsEntries (Remove-PascalCommentsOnly ([IO.File]::ReadAllText($sharedDpk))) |
+                ForEach-Object { $_.Name })
+        } elseif (Test-Path $sharedSource) {
+            $sharedUnits = @(Get-ChildItem -Path $sharedSource -Recurse -File -Filter '*.pas' |
+                ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_.Name) })
+        } else { continue }
         $pluginSharedUnits = @($pluginEntries | Where-Object { $_.Name.StartsWith("$package.") } | ForEach-Object { $_.Name })
         foreach ($name in $sharedUnits | Where-Object { $pluginSharedUnits -notcontains $_ }) {
-            $violations += "${pluginDpkName}: $name fehlt unter contains (steht in $package.dpk; sonst W1033)"
+            $violations += "${pluginDpkName}: $name fehlt unter contains (steht in $package; sonst W1033)"
         }
         foreach ($name in $pluginSharedUnits | Where-Object { $sharedUnits -notcontains $_ }) {
-            $violations += "${pluginDpkName}: $name steht nicht in $package.dpk"
+            $violations += "${pluginDpkName}: $name gibt es in $package nicht"
         }
     }
 }
@@ -746,15 +1011,22 @@ foreach ($dir in @('Packages', 'Application')) {
     foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
         $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
         $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
-        $source = Get-UnitRole $ownUnit $RolePrefixes $HostRoles
+        $source = Get-UnitRole $ownUnit $RolePrefixes $HostRoles $HostedFeatures
         if ($null -eq $source) { continue }
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
         foreach ($unit in Get-ClauseEntries $text 'uses') {
-            $target = Get-UnitRole $unit.Name $RolePrefixes $HostRoles
-            if ((Test-RoleImport $source $target) -or (Test-RoleApproved $ownUnit $unit.Name)) { continue }
+            $target = Get-UnitRole $unit.Name $RolePrefixes $HostRoles $HostedFeatures
+            # Genehmigte Ausnahmen gelten nie für Internals: Ein Platzhalter wie Atlas.Core.* gibt sie nicht frei.
+            $internals = $null -ne $target -and $target.Role -ne 'Host' -and $target.Roles -contains 'Internals'
+            if ((Test-RoleImport $source $target) -or ((Test-RoleApproved $ownUnit $unit.Name) -and -not $internals)) { continue }
             $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Rollenmatrix: $(Get-RoleDescription $source $target)"
         }
-        if ($source.Role -ne 'Contract') { continue }
+        if (-not (Test-ContractRole $source)) { continue }
+        foreach ($unit in Get-ClauseEntries $text 'uses') {
+            if ($unit.Name -notmatch $ContractFrameworks) { continue }
+            if ($ContractFrameworkAllow | Where-Object { $ownUnit -like $_.Unit -and $unit.Name -like $_.Uses }) { continue }
+            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – ein Contract bindet kein Framework ein (VCL, FMX, Windows, Open Tools API); Ausnahmen mit Grund in `$ContractFrameworkAllow"
+        }
         $interface = [regex]::Match($text, '(?im)^\s*implementation\b')
         $head = $text
         if ($interface.Success) { $head = $text.Substring(0, $interface.Index) }
@@ -875,63 +1147,87 @@ if (Test-Path $PluginSource) {
     }
 }
 
-# Modulgrenzen (#1455): Die Zuordnung der Units zu Packages steht als Daten in
-# docs/adr/0017-unit-zuordnung.md (Ordnertabelle, Einzelzeilen je Package, Ausnahmen und bekannte Verstöße).
+# Modulgrenzen (#1455): Die Zuordnung der Units zu Packages steht als Daten in drei TSV-Dateien neben diesem Skript:
+# Tools/UnitAssignment.tsv (eine Zeile je Unit), Tools/UnitAssignment.Folders.tsv (Ordner -> Package) und
+# Tools/UnitAssignment.Boundaries.tsv (befristete Ausnahmen und bekannte Verstöße). Die Entscheidung dazu steht in
+# docs/adr/0017-unit-zuordnung.md.
 # Verboten: Base -> Modul, Modul -> anderes Modul. Erlaubt: Modul -> Base (auch die Verträge zwischen
 # Modulen unter Source/Contracts von Base) und alles innerhalb eines Packages.
 $BasePackage = 'Atlas.IDE.Base'
-$AssignmentFile = 'docs/adr/0017-unit-zuordnung.md'
-$BoundarySection = 'Grenzen zwischen Base, Modulen und Verträgen'
+$AssignmentFile = 'Tools/UnitAssignment.tsv'
+$FolderFile = 'Tools/UnitAssignment.Folders.tsv'
+$BoundaryFile = 'Tools/UnitAssignment.Boundaries.tsv'
 $KnownReport = @()
 
-function Read-ModuleAssignment([string] $Path) {
-    # Liest die Tabellen der Zuordnung. Zellen mit Namen stehen in Backticks.
-    $result = [pscustomobject]@{
-        Folders = @{}; Default = ''; Rows = @{}; Allowed = @(); Known = @(); Problems = @(); Packages = @()
-    }
-    $section = ''
-    $subsection = ''
+function Read-AssignmentTable([string] $Relative, [string[]] $Columns, $Problems) {
+    # Liest eine TSV-Datei der Zuordnung: erste Zeile die Spaltenköpfe, Zeilen mit # und Leerzeilen zählen nicht.
+    $rows = @()
+    $path = Join-Path $Root $Relative
     $lineNo = 0
-    foreach ($line in [IO.File]::ReadAllLines($Path)) {
+    foreach ($line in [IO.File]::ReadAllLines($path)) {
         $lineNo++
-        if ($line -match '^###\s+(.+?)\s*$') { $subsection = $Matches[1]; continue }
-        if ($line -match '^##\s+(.+?)\s*$') {
-            $section = $Matches[1]
-            $subsection = ''
-            if ($section -match '^Atlas\.IDE\.\w+$') { $result.Packages += $section }
-            continue
-        }
-        if (-not $line.StartsWith('|') -or $line -match '^\|\s*-') { continue }
-        $cells = @($line.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
-        if ($section -eq '') {
-            # Ordnertabelle: | `Debug` | `Atlas.IDE.Debugger` |, "alle übrigen" ohne Backticks ist die Vorgabe.
-            if ($cells.Count -ne 2 -or $cells[1] -notmatch '^`(Atlas\.IDE\.\w+)`$') { continue }
-            $package = $Matches[1]
-            $folders = @([regex]::Matches($cells[0], '`(\w+)`') | ForEach-Object { $_.Groups[1].Value })
-            if ($folders.Count -eq 0) { $result.Default = $package }
-            foreach ($folder in $folders) { $result.Folders[$folder] = $package }
-            continue
-        }
-        if ($cells.Count -lt 3 -or $cells[0] -notmatch '^`([\w.]+)`$') { continue }
-        $first = $Matches[1]
-        if ($cells[1] -notmatch '^`([^`]+)`$') { continue }
-        $second = $Matches[1]
-        if ($section -match '^Atlas\.IDE\.\w+$') {
-            if ($result.Rows.ContainsKey($first)) {
-                $result.Problems += "${AssignmentFile}:${lineNo}: $first steht doppelt in der Zuordnung (auch Zeile $($result.Rows[$first].Line))"
-                continue
+        if ($lineNo -eq 1) {
+            if ($line.TrimStart([char]0xFEFF) -ne ($Columns -join "`t")) {
+                $Problems.Add("${Relative}:1: Kopfzeile muss lauten: $($Columns -join ' <Tab> ')")
             }
-            $result.Rows[$first] = [pscustomobject]@{ Package = $section; File = $second; Reason = $cells[2]; Line = $lineNo }
+            continue
         }
-        elseif ($section -eq $BoundarySection) {
-            $entry = [pscustomobject]@{ From = $first; To = $second; Note = $cells[2]; Line = $lineNo; Uses = 0 }
-            if ($subsection -eq 'Befristete Ausnahmen') { $result.Allowed += $entry }
-            elseif ($subsection -eq 'Bekannte Verstöße') { $result.Known += $entry }
+        if ($line.Trim() -eq '' -or $line.StartsWith('#')) { continue }
+        $cells = $line.Split("`t")
+        if ($cells.Count -ne $Columns.Count -or @($cells | Where-Object { $_.Trim() -eq '' }).Count -gt 0) {
+            $Problems.Add("${Relative}:${lineNo}: erwartet $($Columns.Count) Spalten getrennt durch Tab ($($Columns -join ', ')), keine leer")
+            continue
+        }
+        $row = [ordered]@{ Line = $lineNo }
+        for ($i = 0; $i -lt $Columns.Count; $i++) { $row[$Columns[$i]] = $cells[$i].Trim() }
+        $rows += [pscustomobject]$row
+    }
+    return $rows
+}
+
+function Read-ModuleAssignment {
+    $problems = [Collections.Generic.List[string]]::new()
+    $result = [pscustomobject]@{
+        Folders = @{}; Default = ''; Rows = @{}; Allowed = @(); Known = @(); Problems = $problems; Packages = @()
+    }
+    foreach ($entry in Read-AssignmentTable $FolderFile @('Ordner', 'Package') $problems) {
+        if ($entry.Package -notmatch '^Atlas\.IDE\.\w+$') {
+            $problems.Add("${FolderFile}:$($entry.Line): $($entry.Package) ist kein Plugin-Package")
+            continue
+        }
+        if ($entry.Ordner -eq '*') { $result.Default = $entry.Package }
+        else { $result.Folders[$entry.Ordner] = $entry.Package }
+    }
+    $previous = $null
+    foreach ($entry in Read-AssignmentTable $AssignmentFile @('Package', 'Unit', 'Datei', 'Grund') $problems) {
+        if ($entry.Package -notmatch '^Atlas\.IDE\.\w+$' -or $entry.Unit -notmatch '^[\w.]+$') {
+            $problems.Add("${AssignmentFile}:$($entry.Line): Package oder Unit ist kein Name ($($entry.Package), $($entry.Unit))")
+            continue
+        }
+        if ($result.Rows.ContainsKey($entry.Unit)) {
+            $problems.Add("${AssignmentFile}:$($entry.Line): $($entry.Unit) steht doppelt in der Zuordnung (auch Zeile $($result.Rows[$entry.Unit].Line))")
+            continue
+        }
+        # Sortiert nach Package und Unit: Neue Zeilen beider Seiten landen beim Mergen an verschiedenen Stellen.
+        $key = "$($entry.Package)`t$($entry.Unit)"
+        if ($null -ne $previous -and [StringComparer]::OrdinalIgnoreCase.Compare($previous, $key) -gt 0) {
+            $problems.Add("${AssignmentFile}:$($entry.Line): $($entry.Unit) steht nicht sortiert; Zeilen nach Package und Unit ordnen")
+        }
+        $previous = $key
+        if ($result.Packages -notcontains $entry.Package) { $result.Packages += $entry.Package }
+        $result.Rows[$entry.Unit] = [pscustomobject]@{
+            Package = $entry.Package; File = $entry.Datei; Reason = $entry.Grund; Line = $entry.Line
         }
     }
-    if ($result.Default -eq '') { $result.Problems += "${AssignmentFile}: Ordnertabelle ohne Zeile für alle übrigen Ordner" }
+    foreach ($entry in Read-AssignmentTable $BoundaryFile @('Art', 'Von', 'Nach', 'Grund') $problems) {
+        $boundary = [pscustomobject]@{ From = $entry.Von; To = $entry.Nach; Note = $entry.Grund; Line = $entry.Line; Uses = 0 }
+        if ($entry.Art -eq 'Ausnahme') { $result.Allowed += $boundary }
+        elseif ($entry.Art -eq 'Verstoß') { $result.Known += $boundary }
+        else { $problems.Add("${BoundaryFile}:$($entry.Line): Art ist Ausnahme oder Verstoß, nicht $($entry.Art)") }
+    }
+    if ($result.Default -eq '') { $problems.Add("${FolderFile}: Zeile * für alle übrigen Ordner fehlt") }
     foreach ($name in @($BasePackage)) {
-        if ($result.Packages -notcontains $name) { $result.Problems += "${AssignmentFile}: Abschnitt ## $name fehlt" }
+        if ($result.Packages -notcontains $name) { $problems.Add("${AssignmentFile}: keine Zeile für $name") }
     }
     return $result
 }
@@ -955,12 +1251,12 @@ function Find-BoundaryEntry($Entries, [string] $Source, [string] $Target, [strin
     return $null
 }
 
-$assignmentPath = Join-Path $Root $AssignmentFile
-if ((Test-Path $PluginSource) -and -not (Test-Path $assignmentPath)) {
-    $violations += "${AssignmentFile}: fehlt; die Modulgrenzen (#1455) lassen sich ohne Zuordnung nicht prüfen"
+$assignmentMissing = @($AssignmentFile, $FolderFile, $BoundaryFile | Where-Object { -not (Test-Path (Join-Path $Root $_)) })
+if ((Test-Path $PluginSource) -and $assignmentMissing.Count -gt 0) {
+    $violations += "$($assignmentMissing -join ', '): fehlt; die Modulgrenzen (#1455) lassen sich ohne Zuordnung nicht prüfen"
 }
 elseif (Test-Path $PluginSource) {
-    $map = Read-ModuleAssignment $assignmentPath
+    $map = Read-ModuleAssignment
     $violations += $map.Problems
     $pluginUnits = @{}
     foreach ($folder in $PluginFolders) {
@@ -985,7 +1281,7 @@ elseif (Test-Path $PluginSource) {
     # Vollständigkeit und Abweichungen von der Ordnertabelle
     foreach ($name in @($pluginUnits.Keys | Sort-Object)) {
         if (-not $map.Rows.ContainsKey($name)) {
-            $violations += "${AssignmentFile}: $name ($($pluginUnits[$name].File)) fehlt in der Zuordnung; Zeile unter ## $(Get-FolderPackage $map $pluginUnits[$name].File $pluginUnits[$name].Folder) eintragen"
+            $violations += "${AssignmentFile}: $name ($($pluginUnits[$name].File)) fehlt in der Zuordnung; Zeile mit Package $(Get-FolderPackage $map $pluginUnits[$name].File $pluginUnits[$name].Folder) sortiert eintragen"
         }
     }
     foreach ($name in @($map.Rows.Keys | Sort-Object)) {
@@ -1004,7 +1300,7 @@ elseif (Test-Path $PluginSource) {
             $violations += "${AssignmentFile}:$($row.Line): $name gehört zu $($row.Package) und liegt darum unter Packages/$($row.Package)/Source, nicht unter Packages/$($pluginUnits[$name].Folder)/Source"
         }
         elseif ($pluginUnits[$name].Folder -ne $PluginBaseFolder -and $row.Package -ne $pluginUnits[$name].Folder) {
-            $violations += "${AssignmentFile}:$($row.Line): $name liegt unter Packages/$($pluginUnits[$name].Folder)/Source und steht darum unter ## $($pluginUnits[$name].Folder), nicht unter ## $($row.Package)"
+            $violations += "${AssignmentFile}:$($row.Line): $name liegt unter Packages/$($pluginUnits[$name].Folder)/Source und gehört darum zu $($pluginUnits[$name].Folder), nicht zu $($row.Package)"
         }
         if ($row.Package -ne $folderPackage -and $row.Reason -match '^Ordner\s') {
             $violations += "${AssignmentFile}:$($row.Line): $name steht unter $($row.Package), die Ordnertabelle sagt $folderPackage; eine Ausnahme braucht eine eigene Begründung"
@@ -1046,7 +1342,7 @@ elseif (Test-Path $PluginSource) {
     }
     foreach ($entry in @($map.Allowed) + @($map.Known)) {
         if ($entry.Uses -eq 0) {
-            $violations += "${AssignmentFile}:$($entry.Line): $($entry.From) -> $($entry.To) kommt nicht mehr vor; Zeile streichen"
+            $violations += "${BoundaryFile}:$($entry.Line): $($entry.From) -> $($entry.To) kommt nicht mehr vor; Zeile streichen"
         }
     }
 }
@@ -1121,6 +1417,51 @@ foreach ($key in $TokenAllowedLocal.Keys) {
     $routine = [regex]::Escape($key.Substring($unitName.Length + 1))
     if (-not $implementation.Success -or -not [regex]::IsMatch($text.Substring($implementation.Index), '(?im)^\s*(?:class\s+)?function\s+' + $routine + '\b')) {
         $violations += "Tools/Check-PackageDependencies.ps1: `$TokenAllowedLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
+    }
+}
+
+# Kopien-Sperre für JSON-Lesehelfer nach Form (#1969): kurze Funktion (Objekt, Name) mit einfachem Ergebnis, die
+# den Wert selbst holt.
+$jsonFormFound = @{}
+# Units, die es im geprüften Baum gibt (der Selbsttest prüft eine Kopie ohne Tests/).
+$jsonFormUnits = @{}
+$jsonFormPattern = '(?ims)^(?:class\s+)?function\s+((?:\w+\.)?\w+)\s*\(\s*(?:const\s+)?(\w+)\s*:\s*' +
+    'TJSON(?:Object|Value)\s*;\s*(?:const\s+)?(\w+)\s*:\s*string\s*\)\s*:\s*' +
+    '(string|Integer|Int64|Cardinal|Boolean|Double|Extended|TDateTime|TJSONObject|TJSONArray|TJSONValue|' +
+    'TArray\s*<\s*(?:Integer|string)\s*>)\s*;(.*?)^end\s*;'
+$jsonFormMaxLines = 18
+foreach ($folder in @('Packages', 'Application', 'Tests')) {
+    $folderPath = Join-Path $Root $folder
+    if (-not (Test-Path $folderPath)) { continue }
+    foreach ($file in Get-ChildItem -Path $folderPath -Recurse -File -Include '*.pas') {
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        if ($relative.StartsWith('Packages/Atlas.Text/Source/Json/')) { continue }
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        $jsonFormUnits[$ownUnit] = $true
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        if ($text -notmatch '(?i)\bTJSON(?:Object|Value)\b') { continue }
+        $implementation = [regex]::Match($text, '(?im)^\s*implementation\b')
+        if (-not $implementation.Success) { continue }
+        $body = $text.Substring($implementation.Index)
+        foreach ($routine in [regex]::Matches($body, $jsonFormPattern)) {
+            $inner = $routine.Groups[5].Value
+            if (($inner -split "`n").Count -gt $jsonFormMaxLines) { continue }
+            $object = [regex]::Escape($routine.Groups[2].Value)
+            $name = [regex]::Escape($routine.Groups[3].Value)
+            $reads = '(?i)\b' + $object + '\s*\.\s*(?:(?:GetValue|TryGetValue|FindValue)\s*(?:<[^>]+>)?\s*\(\s*' +
+                $name + '\b|Values\s*\[\s*' + $name + '\s*\])'
+            if (-not [regex]::IsMatch($inner, $reads)) { continue }
+            $key = "${ownUnit}:$($routine.Groups[1].Value)"
+            $jsonFormFound[$key] = $true
+            if ($AllowedJsonFormLocal.ContainsKey($key)) { continue }
+            $line = ($text.Substring(0, $implementation.Index + $routine.Index) -split "`n").Count
+            $violations += "${relative}:${line}: $($routine.Groups[1].Value) – liest einen JSON-Wert wie TJsonRead in Atlas.Text.Json (Kopien-Sperre nach Form, #1969); dort verwenden oder in `$AllowedJsonFormLocal begründen"
+        }
+    }
+}
+foreach ($key in $AllowedJsonFormLocal.Keys) {
+    if ($jsonFormUnits.ContainsKey($key.Split(':')[0]) -and -not $jsonFormFound.ContainsKey($key)) {
+        $violations += "Tools/Check-PackageDependencies.ps1: `$AllowedJsonFormLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
     }
 }
 
@@ -1268,6 +1609,52 @@ foreach ($lock in $PluginLock) {
     }
 }
 
+# Kopien-Sperre für Schreiben in den Editorpuffer (#1973): Einen Rückgängig-Schritt mit Byte-Versatz,
+# Löschen und Einfügen legt nur TAtlasEditorSnapshots.WriteEdits/ReplaceText/WriteDifference an
+# (Atlas.IDE.Foundation.EditorSnapshot). Erlaubte Units mit Grund. Die Liste soll nur schrumpfen.
+$WriterHome = 'Atlas.IDE.Foundation.EditorSnapshot'
+$AllowedWriterLocal = @{
+    'Atlas.IDE.Completion.EditorCommit' = 'Änderungen der Vervollständigung kommen schon als Byte-Versatz'
+}
+$writerFound = @{}
+foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -File -Include '*.pas') {
+    $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+    if ($ownUnit -eq $WriterHome) { continue }
+    $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+    foreach ($match in [regex]::Matches($text, '(?i)\.\s*CreateUndoableWriter\b')) {
+        $writerFound[$ownUnit] = $true
+        if ($AllowedWriterLocal.ContainsKey($ownUnit)) { continue }
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        $line = ($text.Substring(0, $match.Index) -split "`n").Count
+        $violations += "${relative}:${line}: CreateUndoableWriter – in den Editorpuffer schreibt TAtlasEditorSnapshots.WriteEdits/ReplaceText/WriteDifference in $WriterHome (Kopien-Sperre, #1973); dort verwenden oder in `$AllowedWriterLocal begründen"
+    }
+}
+foreach ($key in $AllowedWriterLocal.Keys) {
+    if (-not $writerFound.ContainsKey($key)) {
+        $violations += "Tools/Check-PackageDependencies.ps1: `$AllowedWriterLocal nennt $key, dort gibt es keinen Schreiber mehr; Zeile streichen"
+    }
+}
+
+# Kopien-Sperre für Zeitstempel: Datum und Zeit aus Ziffern setzt nur Atlas.Text.Timestamps zusammen.
+# Erlaubte Units mit Grund. Die Liste soll nur schrumpfen.
+$TimestampHome = 'Atlas.Text.Timestamps'
+$AllowedTimestampLocal = @{}
+foreach ($folder in @('Packages', 'Application')) {
+    $path = Join-Path $Root $folder
+    if (-not (Test-Path $path)) { continue }
+    foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        if ($ownUnit -eq $TimestampHome -or $AllowedTimestampLocal.ContainsKey($ownUnit)) { continue }
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        foreach ($match in [regex]::Matches($text, '(?i)\b(?:TryEncode(?:DateTime|Date|Time)|ISO8601ToDate)\s*\(')) {
+            $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+            $line = ($text.Substring(0, $match.Index) -split "`n").Count
+            $call = ($match.Value -replace '[\s(]', '')
+            $violations += "${relative}:${line}: ${call} – Zeitstempel liest TTextTimestamp in Atlas.Text.Timestamps (Kopien-Sperre); dort verwenden oder in `$AllowedTimestampLocal begründen"
+        }
+    }
+}
+
 # Module nur über TAtlasModuleHost an- und abmelden
 foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -File -Include '*.pas') {
     $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
@@ -1283,8 +1670,174 @@ foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -Fil
 }
 
 if ($KnownReport.Count -gt 0) {
-    Write-Host "Bekannte Verstöße gegen die Modulgrenzen ($($KnownReport.Count), offen laut $AssignmentFile):" -ForegroundColor Yellow
+    Write-Host "Bekannte Verstöße gegen die Modulgrenzen ($($KnownReport.Count), offen laut $BoundaryFile):" -ForegroundColor Yellow
     $KnownReport | ForEach-Object { Write-Host "  $_" }
+}
+
+# Rollen Adapters und Providers (#1443): Wer ein Interface eines anderen Features implementiert, ist ein Adapter
+# und nimmt es aus dessen Contract; Providers implementieren den eigenen Contract. Verträge zwischen Modulen
+# (Atlas.IDE.Contracts.*) zählen als fremder Contract jedes Moduls, auch für die Composition: Modulklassen stehen in
+# Atlas.IDE.<Modul>.Adapters.Module. Hosting und Host-Units (Shell, Foundation …) setzen zusammen und sind
+# ausgenommen, Regel 4 (Interface im Contract) gilt auch für sie.
+# Bekannte Altfälle stehen in Tools/AdapterRoles.known.txt; neue sind Fehler, behobene müssen dort raus.
+$AdapterRolesFile = Join-Path $Root 'Tools/AdapterRoles.known.txt'
+
+function Get-FeatureName([string] $Name) {
+    # Ausgabeartefakt.Feature in der Schreibweise der Unit, z. B. "Atlas.IDE.Welcome".
+    $best = ''
+    foreach ($prefix in $RolePrefixes) {
+        if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) { $best = $prefix }
+    }
+    if ($best -eq '') { return $Name.Split('.')[0] }
+    return "$best." + $Name.Substring($best.Length + 1).Split('.')[0]
+}
+
+function Test-ContractUnit([string] $Name) {
+    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles $HostedFeatures)) -or $Name -match '^(?i)Atlas\.IDE\.Contracts\.'
+}
+
+function Get-AdapterRoleFindings([string] $BaseDir) {
+    # Liefert je Verstoß Key (ohne Zeile, für die Altfallliste) und Text (mit Datei und Zeile).
+    $sources = @()
+    foreach ($dir in @('Packages', 'Application')) {
+        $path = Join-Path $BaseDir $dir
+        if (-not (Test-Path $path)) { continue }
+        foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
+            $name = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+            $role = Get-UnitRole $name $RolePrefixes $HostRoles $HostedFeatures
+            if ($null -eq $role) { continue }
+            $relative = $file.FullName.Substring((Resolve-Path $BaseDir).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+            $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+            $sources += [pscustomobject]@{ Name = $name; Relative = $relative; Text = $text; Role = $role }
+        }
+    }
+    $homes = @{}
+    foreach ($unit in $sources) {
+        foreach ($match in [regex]::Matches($unit.Text, '(?im)^\s*(I\w+)(?:\s*<[^>]*>)?\s*=\s*(?:disp)?interface\b(?!\s*;)')) {
+            $key = $match.Groups[1].Value.ToLowerInvariant()
+            if (-not $homes.ContainsKey($key)) { $homes[$key] = [Collections.Generic.List[string]]::new() }
+            $homes[$key].Add($unit.Name)
+        }
+    }
+    # Aliase (IAtlasIdeX = IAtlasX;) zählen wie das Interface, auf das sie zeigen.
+    $aliases = @{}
+    foreach ($unit in $sources) {
+        foreach ($match in [regex]::Matches($unit.Text, '(?im)^\s*(I\w+)\s*=\s*(I\w+)\s*;')) {
+            $aliases[$match.Groups[1].Value.ToLowerInvariant()] = $match.Groups[2].Value
+        }
+    }
+    # Erster Durchgang: Klassen mit Vorfahr und den Interfaces aus anderen Units, die sie direkt implementieren.
+    $classes = @()
+    $byName = @{}
+    $pattern = '(?is)(?<![\w.])(T\w+)(?:\s*<[^>]*>)?\s*=\s*class\s*(?:abstract\s*|sealed\s*)?\(([^)]*)\)'
+    foreach ($unit in $sources) {
+        $used = @{}
+        foreach ($entry in Get-ClauseEntries $unit.Text 'uses') { $used[$entry.Name.ToLowerInvariant()] = $true }
+        foreach ($match in [regex]::Matches($unit.Text, $pattern)) {
+            $parts = @($match.Groups[2].Value -split ',' | ForEach-Object { ($_ -replace '<.*$', '').Trim() })
+            $implemented = @()
+            foreach ($part in $parts) {
+                $interfaceName = $part
+                for ($depth = 0; $depth -lt 5 -and -not $homes.ContainsKey($interfaceName.ToLowerInvariant()) -and
+                    $aliases.ContainsKey($interfaceName.ToLowerInvariant()); $depth++) {
+                    $interfaceName = $aliases[$interfaceName.ToLowerInvariant()]
+                }
+                $key = $interfaceName.ToLowerInvariant()
+                if (-not $homes.ContainsKey($key) -or $homes[$key].Contains($unit.Name)) { continue }
+                # Bei gleichnamigen Interfaces zählt die Unit, die die implementierende Unit verwendet; ein
+                # eindeutiger Name gilt auch, wenn er über einen Alias in einer anderen Unit ankommt.
+                $homeUnit = $homes[$key] | Where-Object { $used.ContainsKey($_.ToLowerInvariant()) } | Select-Object -First 1
+                if (-not $homeUnit -and $homes[$key].Count -eq 1) { $homeUnit = $homes[$key][0] }
+                if ($homeUnit) { $implemented += [pscustomobject]@{ Name = $interfaceName; Home = $homeUnit } }
+            }
+            $class = [pscustomobject]@{ Name = $match.Groups[1].Value; Unit = $unit; Ancestor = $parts[0]
+                Line = ($unit.Text.Substring(0, $match.Index) -split "`n").Count; Implemented = $implemented }
+            $classes += $class
+            $key = $class.Name.ToLowerInvariant()
+            if (-not $byName.ContainsKey($key)) { $byName[$key] = $class }
+        }
+    }
+    $findings = @()
+    $fitting = @{}
+    foreach ($class in $classes) {
+        $unit = $class.Unit
+        $own = $unit.Role
+        $ownFeature = Get-FeatureName $unit.Name
+        if (-not $fitting.ContainsKey($unit.Name)) { $fitting[$unit.Name] = 0 }
+        # Geerbte Interfaces zählen nur dafür, dass Adapters und Providers überhaupt etwas implementieren.
+        $chain = @($class.Implemented)
+        $ancestor = $class.Ancestor
+        for ($depth = 0; $depth -lt 10 -and $byName.ContainsKey($ancestor.ToLowerInvariant()); $depth++) {
+            $base = $byName[$ancestor.ToLowerInvariant()]
+            $chain += $base.Implemented
+            $ancestor = $base.Ancestor
+        }
+        foreach ($item in $chain) {
+            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles $HostedFeatures
+            $same = $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
+            if ((Test-ContractUnit $item.Home) -and (($own.Role -eq 'Adapters' -and -not $same) -or ($own.Role -eq 'Providers' -and $same))) {
+                $fitting[$unit.Name]++
+            }
+        }
+        foreach ($item in $class.Implemented) {
+            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles $HostedFeatures
+            $same = $own.Role -ne 'Host' -and $homeRole.Role -ne 'Host' -and
+                $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
+            $where = "$($unit.Relative):$($class.Line)"
+            $what = "$($class.Name) implementiert $($item.Name) aus $($item.Home)"
+            $suffix = "$($unit.Name) $($class.Name) $($item.Name)"
+            if (-not $same -and -not (Test-ContractUnit $item.Home)) {
+                $findings += [pscustomobject]@{ Key = "contract $suffix"
+                    Text = "${where}: $what – Interface eines Features, das andere implementieren, gehört in den Contract von $(Get-FeatureName $item.Home)" }
+            }
+            if ($own.Role -eq 'Adapters' -and $same) {
+                $findings += [pscustomobject]@{ Key = "adapters-own $suffix"
+                    Text = "${where}: $what – eigener Contract, das ist die Rolle Providers ($ownFeature.Providers.*)" }
+            }
+            elseif ($own.Role -eq 'Providers' -and -not $same) {
+                $findings += [pscustomobject]@{ Key = "providers-foreign $suffix"
+                    Text = "${where}: $what – fremdes Feature, das ist die Rolle Adapters ($ownFeature.Adapters.*)" }
+            }
+            elseif ($own.Role -in @('Root', 'Internals', 'Contract', 'Composition') -and -not $same) {
+                $findings += [pscustomobject]@{ Key = "adapter-name $suffix"
+                    Text = "${where}: $what – fremdes Feature, gehört in eine Unit $ownFeature.Adapters.*" }
+            }
+        }
+    }
+    foreach ($unit in $sources | Where-Object { $_.Role.Role -in @('Adapters', 'Providers') }) {
+        if ($fitting.ContainsKey($unit.Name) -and $fitting[$unit.Name] -gt 0) { continue }
+        $kind = 'einem fremden Contract'
+        if ($unit.Role.Role -eq 'Providers') { $kind = 'dem eigenen Contract' }
+        $findings += [pscustomobject]@{ Key = "empty $($unit.Name)"
+            Text = "$($unit.Relative): $($unit.Role.Role) ohne Interface aus $kind" }
+    }
+    return $findings
+}
+
+$AdapterFindings = @(Get-AdapterRoleFindings $Root)
+if ($UpdateAdapterRoles) {
+    $keys = @($AdapterFindings | ForEach-Object { $_.Key } | Sort-Object -Unique)
+    $header = "# Bekannte Altfälle der Rollen Adapters und Providers (#1443), geschrieben von`n" +
+        "# pwsh Tools/Check-PackageDependencies.ps1 -UpdateAdapterRoles. Die Liste darf nur kürzer werden.`n"
+    [IO.File]::WriteAllText($AdapterRolesFile, $header + (($keys | ForEach-Object { "$_`n" }) -join ''), [Text.UTF8Encoding]::new($false))
+    Write-Host "Altfälle Adapters/Providers geschrieben: $($keys.Count)." -ForegroundColor Green
+}
+$AdapterKnown = @{}
+if (Test-Path $AdapterRolesFile) {
+    foreach ($entry in [IO.File]::ReadAllLines($AdapterRolesFile)) {
+        if ($entry.Trim() -eq '' -or $entry.StartsWith('#')) { continue }
+        $AdapterKnown[$entry.Trim()] = $false
+    }
+}
+foreach ($finding in $AdapterFindings) {
+    if ($AdapterKnown.ContainsKey($finding.Key)) { $AdapterKnown[$finding.Key] = $true; continue }
+    $violations += $finding.Text
+}
+foreach ($entry in @($AdapterKnown.Keys | Where-Object { -not $AdapterKnown[$_] } | Sort-Object)) {
+    $violations += "Tools/AdapterRoles.known.txt: $entry kommt nicht mehr vor; Zeile streichen"
+}
+if ($AdapterKnown.Count -gt 0) {
+    Write-Host "Rollen Adapters/Providers: $($AdapterKnown.Count) bekannte Altfälle (Tools/AdapterRoles.known.txt)." -ForegroundColor Yellow
 }
 
 if ($violations.Count -gt 0) {

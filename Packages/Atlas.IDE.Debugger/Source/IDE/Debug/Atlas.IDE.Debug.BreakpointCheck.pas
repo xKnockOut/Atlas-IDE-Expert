@@ -12,6 +12,11 @@
 //   springt zur Stelle; „Trotzdem starten“, „Auf nächste Codezeile
 //   verschieben“ (verschiebt und startet) oder „Abbrechen“ (die IDE startet
 //   nicht).
+// - Startet ein KI-Assistent (debug_start, #2895), zeigt Atlas keinen Dialog,
+//   der auf den Benutzer wartet: QuietLaunch meldet den nächsten Start des
+//   Projekts an (gilt cQuietMs), die IDE startet wie mit „Trotzdem starten“,
+//   und TakeQuietProblems liefert die Funde einmal für die Antwort an den
+//   Assistenten.
 // - Befehl „Haltepunkte prüfen“ (Atlas.CheckBreakpoints) für das aktive
 //   Projekt, mit Verschieben und Schließen; ohne Funde eine Zeile in den
 //   Meldungen.
@@ -26,7 +31,9 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.BreakpointCheck,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasBreakpointCheckSessionFunc = reference to function: TLspSession;
@@ -34,17 +41,26 @@ type
   TAtlasIdeBreakpointCheck = class
   private const
     cTimeoutMs = 3000;
+    /// <summary>So lange gilt ein angemeldeter Start des Assistenten (Bauen eingeschlossen); danach fragt der
+    /// nächste Start wieder mit Dialog.</summary>
+    cQuietMs = 10 * 60 * 1000;
   private type
-    TListener = class(TAtlasIdeDebugListener, IAtlasIdeDebugLaunchCheck)
+    TListener = class(TAtlasDebugListener, IAtlasIdeDebugLaunchCheck)
     public
       function AllowLaunch(const AProject: IOTAProject): Boolean;
     end;
   private class var
     FSession: TAtlasBreakpointCheckSessionFunc;
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FLastProblems: TAtlasBreakpointProblems;
+    /// <summary>Projekt, dessen nächster Start vom Assistenten kommt; '' ohne (#2895).</summary>
+    FQuietProject: string;
+    FQuietUntil: UInt64;
+    FQuietProblems: TAtlasBreakpointProblems;
     class function Spots: TAtlasBreakpointSpots; static;
+    /// <summary>Kommt dieser Start von AProject vom Assistenten? Verbraucht die Anmeldung.</summary>
+    class function TakeQuiet(const AProject: IOTAProject): Boolean; static;
     class procedure SyncOpenFiles(const ASession: TLspSession; const ASpots: TAtlasBreakpointSpots); static;
     class function ProjectProblems(const AProject: IOTAProject;
       const ASpots: TAtlasBreakpointSpots): TAtlasBreakpointProblems; static;
@@ -64,20 +80,27 @@ type
     /// <summary>Funde der letzten Prüfung (vor dem Start oder per Befehl), für das Haltepunktfenster (#863); nil
     /// ohne Prüfung oder ohne Funde.</summary>
     class function LastProblems: TAtlasBreakpointProblems; static;
+    /// <summary>Der nächste Start von AProjectFile kommt von einem KI-Assistenten (#2895): Funde ohne Dialog merken
+    /// und trotzdem starten. '' hebt die Anmeldung auf.</summary>
+    class procedure QuietLaunch(const AProjectFile: string); static;
+    /// <summary>Funde des letzten Starts durch den Assistenten, einmal; danach nil.</summary>
+    class function TakeQuietProblems: TAtlasBreakpointProblems; static;
   end;
 
 implementation
 
 uses
+  Winapi.Windows,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.UI.Debug.Breakpoints.Strings,
   Atlas.UI.Debug.BreakpointCheck,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Debug.Breakpoints;
+  Atlas.IDE.Debug.Breakpoints,
+  Atlas.ToolsApi.Debugger.Services;
 
 { TAtlasIdeBreakpointCheck.TListener }
 
@@ -95,7 +118,7 @@ var
   mBreakpoint: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -273,6 +296,8 @@ begin
   end;
   FListener := nil;
   FLastProblems := nil;
+  FQuietProject := '';
+  FQuietProblems := nil;
   FSession := nil;
   FMessage.Clear;
 end;
@@ -285,6 +310,32 @@ end;
 class function TAtlasIdeBreakpointCheck.LastProblems: TAtlasBreakpointProblems;
 begin
   Result := FLastProblems;
+end;
+
+class procedure TAtlasIdeBreakpointCheck.QuietLaunch(const AProjectFile: string);
+begin
+  FQuietProject := AProjectFile;
+  FQuietUntil := GetTickCount64 + cQuietMs;
+  FQuietProblems := nil;
+end;
+
+class function TAtlasIdeBreakpointCheck.TakeQuietProblems: TAtlasBreakpointProblems;
+begin
+  Result := FQuietProblems;
+  FQuietProblems := nil;
+end;
+
+class function TAtlasIdeBreakpointCheck.TakeQuiet(const AProject: IOTAProject): Boolean;
+begin
+  if (FQuietProject <> '') and (GetTickCount64 > FQuietUntil) then
+  begin
+    FQuietProject := '';
+  end;
+  Result := (FQuietProject <> '') and (AProject <> nil) and SameFileName(AProject.FileName, FQuietProject);
+  if Result then
+  begin
+    FQuietProject := '';
+  end;
 end;
 
 /// <summary>Sprung aus dem Dialog; eigene Routine, damit die Methodenreferenz nichts weiter festhält.</summary>
@@ -302,12 +353,20 @@ var
   mSpots: TAtlasBreakpointSpots;
   mProblems: TAtlasBreakpointProblems;
   mError: string;
+  mQuiet: Boolean;
 begin
   Result := True;
+  mQuiet := TakeQuiet(AProject);
   mSpots := Spots;
   // Ohne Haltepunkte, ohne Server oder bei einem Fehler startet die IDE wie bisher.
   if (mSpots = nil) or not Check(AProject, mSpots, mProblems, mError) or (mProblems = nil) then
   begin
+    Exit;
+  end;
+  // Start durch den Assistenten: kein Dialog, der auf den Benutzer wartet; die Funde gehen in seine Antwort.
+  if mQuiet then
+  begin
+    FQuietProblems := mProblems;
     Exit;
   end;
   case TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Launch, JumpProc()) of

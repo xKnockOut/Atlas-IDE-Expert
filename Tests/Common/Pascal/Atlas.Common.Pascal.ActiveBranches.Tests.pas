@@ -1,9 +1,8 @@
 ﻿unit Atlas.Common.Pascal.ActiveBranches.Tests;
 
 // Tests für den Editor-Baum aus den aktiven {$IFDEF}-Zweigen (#845). Die Quellen
-// sind die nachgestellten Fälle aus planung/parser-luecken-faelle (01, 02, 03,
-// 10, 11): Mit dem Vollbaum fehlten Routinen nach dem {$ENDIF}, wurden zu
-// verschachtelten Routinen oder Vorfahren zu Feldern.
+// stellen die Fälle aus dem Issue nach: Mit dem Vollbaum fehlen Routinen nach
+// dem {$ENDIF}, werden zu verschachtelten Routinen oder Vorfahren zu Feldern.
 
 interface
 

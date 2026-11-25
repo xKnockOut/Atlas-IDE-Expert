@@ -60,6 +60,13 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
+const
+  // Meldungsnummer des Compilers: Buchstabe und vier Ziffern (E2003).
+  cCompilerCodeLength = 5;
+
 type
   /// <summary>Ein Wert je Zeile von cWindows: Die Grenze der Tabelle ergibt sich daraus, ein neues Fenster braucht
   /// einen Wert hier und eine Zeile dort (Reihenfolge gleich). Zwei Zweige, die je ein Fenster ergänzen, ergeben so
@@ -91,11 +98,13 @@ type
     TestsExplorer,
     StepFilter,
     MemoryTimeline,
+    LogpointValues,
     Profiler,
     Breakpoints,
     CompilerSwitches,
     Structure,
     EventMap,
+    AssistantsLog,
     Options);
 {$SCOPEDENUMS OFF}
 
@@ -128,11 +137,13 @@ const
     (Id: 'AtlasTestsExplorer'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasStepFilter'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasMemoryTimeline'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
+    (Id: 'AtlasLogpointValues'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasProfiler'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasBreakpoints'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasCompilerSwitches'; German: 'Bauen-Testen-Debuggen'; English: 'Build-test-debug'), // german-ok Dateiname
     (Id: 'AtlasStructure'; German: 'Formulare'; English: 'Forms'), // german-ok Dateiname
     (Id: 'AtlasEventMap'; German: 'Formulare'; English: 'Forms'), // german-ok Dateiname
+    (Id: 'AtlasAssistantsLog'; German: 'Claude-Code'; English: 'Claude-Code'),
     (Id: TAtlasHelpLinks.cOptionsWindow; German: 'Einstellungen'; English: 'Settings')); // german-ok Dateiname
 
 function Target(const APath, AAnchor: string): TAtlasHelpTarget;
@@ -146,7 +157,7 @@ function IsCompilerCode(const ACode: string): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := (Length(ACode) = 5) and CharInSet(UpCase(ACode[1]), ['E', 'F', 'H', 'W', 'X']);
+  Result := (Length(ACode) = cCompilerCodeLength) and CharInSet(UpCase(ACode[1]), ['E', 'F', 'H', 'W', 'X']);
   for mIndex := 2 to Length(ACode) do
   begin
     Result := Result and CharInSet(ACode[mIndex], ['0'..'9']);
@@ -236,18 +247,21 @@ begin
 end;
 
 class function TAtlasHelpLinks.LocalPage(const APath: string): string;
+const
+  // Seiten mit eigenem Namen in der lokalen Hilfe und ihr Vorsatz.
+  cPages: array[0..3] of string = ('docs/Regeln.md', 'docs/Einstellungen.md', // german-ok Dateiname
+    'docs/en/Rules.md', 'docs/en/Settings.md');
+  cPrefixes: array[0..3] of string = ('', '', 'en-', 'en-');
 var
   mPath, mName: string;
+  mPage: Integer;
 begin
   mPath := StringReplace(APath, '\', '/', [rfReplaceAll]);
   mName := ChangeFileExt(ExtractFileName(StringReplace(mPath, '/', PathDelim, [rfReplaceAll])), '');
-  if SameText(mPath, 'docs/Regeln.md') or SameText(mPath, 'docs/Einstellungen.md') then // german-ok Dateiname
+  mPage := IndexText(mPath, cPages);
+  if mPage >= 0 then
   begin
-    Result := mName + '.html';
-  end
-  else if SameText(mPath, 'docs/en/Rules.md') or SameText(mPath, 'docs/en/Settings.md') then
-  begin
-    Result := 'en-' + mName + '.html';
+    Result := cPrefixes[mPage] + mName + '.html';
   end
   else if SameText(Copy(mPath, 1, Length(cFeaturesGerman)), cFeaturesGerman) then
   begin
@@ -313,12 +327,14 @@ begin
 end;
 
 class function TAtlasHelpLinks.RedirectHtml(const AUrl: string): string;
+const
+  cRedirect = '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=%0:s">' +
+    '</head><body><a href="%0:s">Atlas</a></body></html>';
 var
   mUrl: string;
 begin
   mUrl := StringReplace(StringReplace(AUrl, '&', '&amp;', [rfReplaceAll]), '"', '&quot;', [rfReplaceAll]);
-  Result := '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=' + mUrl +
-    '"></head><body><a href="' + mUrl + '">Atlas</a></body></html>';
+  Result := Format(cRedirect, [mUrl]);
 end;
 
 end.

@@ -41,11 +41,11 @@ implementation
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.JSON,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Completion.ServerPlaceholders,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit;
 
@@ -97,7 +97,7 @@ begin
   mPlaceholders := nil;
   try
     if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, AArgumentsJson,
-      cTimeoutMs, TAtlasTextId.OverloadFailed),
+      cTimeoutMs, TAtlasEditorTextId.OverloadFailed),
       procedure(const AReply: TJSONObject)
       begin
         if AReply.GetValue('placeholders') is TJSONArray then

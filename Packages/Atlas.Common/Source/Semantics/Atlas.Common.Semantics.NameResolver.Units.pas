@@ -442,7 +442,7 @@ begin
     Exit(mEntry.Positions);
   end;
   // Über den Index statt for-in: jede Kopie eines Symbol-Records kostet, und hier laufen alle
-  // Symbole aller Units der uses-Liste durch (Diagnoselog 15.10.2026).
+  // Symbole aller Units der uses-Liste durch.
   mPositions := TList<Integer>.Create;
   try
     for mPosition := 0 to High(AUnit.Symbols) do

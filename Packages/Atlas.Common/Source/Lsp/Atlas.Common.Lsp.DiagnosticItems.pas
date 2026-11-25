@@ -12,12 +12,12 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Contract,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.InactiveRegions,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.Contract;
 
 type

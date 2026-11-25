@@ -9,8 +9,8 @@
 //   Fehler kommen als False, leeres Ergebnis bzw. nil zurück.
 // - IAtlasTrackerShell: Adresse oder Datei mit dem zugeordneten Programm
 //   öffnen, Datei im Explorer zeigen.
-// Die echten Umsetzungen liegen in Atlas.Core.Tracker.Adapters.LocalFiles und
-// Atlas.Core.Tracker.Adapters.Shell; nur Atlas.IDE.Tracker.Composition (und
+// Die echten Umsetzungen liegen in Atlas.Core.Tracker.Providers.LocalFiles und
+// Atlas.Core.Tracker.Providers.Shell; nur Atlas.IDE.Tracker.Composition (und
 // die Tests) erzeugt sie und meldet sie bei Atlas.Core.Tracker.Files an.
 
 interface
@@ -52,8 +52,9 @@ type
     function Folders(const AFolder: string): TArray<string>;
     /// <summary>Letzte Änderung einer Datei oder eines Ordners; 0, wenn es ihn nicht gibt.</summary>
     function WriteTime(const APath: string): TDateTime;
-    /// <summary>Sperrdatei AFileName exklusiv öffnen und bis zu AWaitMs warten; nil ohne Sperre. Freigabe mit
-    /// dem letzten Verweis.</summary>
+    /// <summary>Sperrdatei AFileName exklusiv öffnen; hält sie ein anderer, bis zu AWaitMs warten. Ohne Sperre
+    /// nil, und zwar sofort, wenn das Öffnen nie gelingen kann (kein Schreibrecht, Name ist ein Ordner). Freigabe
+    /// mit dem letzten Verweis.</summary>
     function Lock(const AFileName: string; AWaitMs: Integer): IInterface;
     /// <summary>Wert einer Umgebungsvariablen; '' ohne.</summary>
     function Environment(const AName: string): string;

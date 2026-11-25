@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.SprintTile;
 
-// Bereich „Sprint“ in der IDE (#1277): Quelle der Kachel (IAtlasSprintSource)
-// und Anmeldung als Bereich atlas.sprint der Willkommensseite.
+// Bereich „Sprint“ in der IDE (#1277): Quelle der Kachel (für sie über
+// Atlas.IDE.Tracker.Adapters.Sprint) und Anmeldung als Bereich atlas.sprint der Willkommensseite.
 // - Tracker wie „Meine Issues“ (Projekt des Bereichs: .atlas, sonst Zuordnung
 //   #1261); Board-Zugriff wie das Fenster „Atlas-Board“ (#1272,
 //   TAtlasIdeBoard.BoardsOf). Ohne Tracker bzw. Board der Hinweis mit
@@ -9,7 +9,7 @@
 // - Keine eigene Abfrage-Schleife: geladen wird beim Anzeigen des Bereichs
 //   und nach jeder Abfrage von „Meine Issues“, höchstens alle 10 Minuten
 //   (DueMinutes von „Meine Issues“); „Jetzt abfragen“ lädt sofort. Im
-//   Hintergrund (TAtlasVcsWorker) mit 15 s für alles zusammen: aktueller
+//   Hintergrund (TAtlasBackgroundJobs) mit 15 s für alles zusammen: aktueller
 //   Sprint, Arbeitstage (YouTrack, IAtlasTrackerWorkDays) und mit
 //   issues.sprint.compare die drei vorherigen Sprints.
 // - Zwischenspeicher neben dem Board (%LOCALAPPDATA%\Atlas\issues):
@@ -29,9 +29,9 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.SprintLoad,
-  Atlas.Core.VersionControl.Worker,
-  Atlas.UI.Tracker.SprintTile,
-  Atlas.IDE.Tracker.WelcomeLink;
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
+  Atlas.IDE.Tracker.WelcomeLink,
+  Atlas.UI.Tracker.Contract.Sprint;
 
 type
   TAtlasSprintProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -58,7 +58,7 @@ type
     Welcome: TAtlasTrackerWelcomeLink;
   end;
 
-  TAtlasIdeSprint = class(TInterfacedObject, IAtlasSprintSource)
+  TAtlasIdeSprint = class(TInterfacedObject)
   public const
     /// <summary>Kennung der Kachel; dieselbe wie früher als Bereich der Willkommensseite.</summary>
     cTileId = 'atlas.sprint';
@@ -73,7 +73,7 @@ type
     FStarted: Boolean;
     FTitle: string;
     FActive: Boolean;
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FCancel: IAtlasCiCancel;
     FGeneration: Integer;
     FLoading: Boolean;
@@ -93,7 +93,7 @@ type
     procedure Run(AGeneration: Integer; const AJob: TAtlasSprintJob);
     procedure Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget; const AResult: TAtlasSprintResult);
     procedure CancelLoad;
-    function Due(const ATarget: TAtlasTrackerTarget): Boolean;
+    function Due: Boolean;
     class function NowUtc: TDateTime; static;
   public
     /// <summary>ACacheFolder: Ordner des Zwischenspeichers ('' = keiner).</summary>
@@ -110,7 +110,7 @@ type
     procedure IssuesFetched(AForce: Boolean);
     /// <summary>welcomePage.sprint an?</summary>
     class function Active: Boolean; static;
-    { IAtlasSprintSource }
+    { Für die Kachel (IAtlasSprintSource über Atlas.IDE.Tracker.Adapters.Sprint) }
     function View: TAtlasSprintTile;
     procedure Shown;
     procedure OpenBoard;
@@ -126,13 +126,14 @@ uses
   Atlas.Core.Tracker.Board,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Sprint,
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Tracker.Board;
+  Atlas.IDE.Tracker.Board,
+  Atlas.UI.Tracker.SprintTile;
 
 const
   cStopWaitMs = 1000;
@@ -146,7 +147,7 @@ begin
   inherited Create;
   FHooks := AHooks;
   FCacheFolder := ACacheFolder;
-  FWorker := TAtlasVcsWorker.Create;
+  FWorker := TAtlasBackgroundJobs.Create(HInstance);
   FState.Calendar := TAtlasSprintCalendar.WorkWeek;
 end;
 
@@ -271,7 +272,7 @@ begin
   end;
   AJob.Target := mTarget;
   AJob.Boards := TAtlasIdeBoard.BoardsOf(mProvider);
-  Result := (AForce or Due(mTarget)) and (mProvider <> nil) and (AJob.Boards <> nil);
+  Result := (AForce or Due) and (mProvider <> nil) and (AJob.Boards <> nil);
   if Result and Assigned(FHooks.Transport) then
   begin
     AJob.Transport := FHooks.Transport(mProvider, mTarget);
@@ -282,7 +283,7 @@ procedure TAtlasIdeSprint.Run(AGeneration: Integer; const AJob: TAtlasSprintJob)
 var
   mJob: TAtlasSprintJob;
   mGeneration: Integer;
-  mKeep: IAtlasSprintSource;
+  mKeep: IInterface;
   mOwner: TAtlasIdeSprint;
 begin
   mJob := AJob;
@@ -366,7 +367,7 @@ begin
   FCancel := nil;
 end;
 
-function TAtlasIdeSprint.Due(const ATarget: TAtlasTrackerTarget): Boolean;
+function TAtlasIdeSprint.Due: Boolean;
 begin
   Result := TAtlasSprintLoad.Due(FLoadedTick, GetTickCount64, TAtlasMyIssues.cDueMinutes,
     TAtlasIdeSettings.Current.IssuesSprintCompare, FState.WithPrevious);

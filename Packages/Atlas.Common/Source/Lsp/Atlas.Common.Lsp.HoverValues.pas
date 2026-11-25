@@ -40,7 +40,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Chars;
 
 {$SCOPEDENUMS ON}
 
@@ -57,17 +58,6 @@ const
     (De: '**Experimentell**'; En: '**Experimental**'));
 
 {$SCOPEDENUMS OFF}
-
-function DigitValue(AChar: Char): Integer;
-begin
-  case AChar of
-    '0'..'9': Result := Ord(AChar) - Ord('0');
-    'a'..'f': Result := Ord(AChar) - Ord('a') + 10;
-    'A'..'F': Result := Ord(AChar) - Ord('A') + 10;
-  else
-    Result := -1;
-  end;
-end;
 
 { THoverValues }
 
@@ -111,7 +101,7 @@ begin
   mValue := 0;
   for mIndex := 1 to Length(mText) do
   begin
-    mDigit := DigitValue(mText[mIndex]);
+    mDigit := TTextChars.HexDigitValue(mText[mIndex]);
     if (mDigit < 0) or (mDigit >= mBase) then
     begin
       Exit(False);
@@ -540,23 +530,13 @@ begin
   end;
 end;
 
-/// <summary>Erste Stelle ab AIndex, die kein Leerzeichen ist.</summary>
-function SkipSpaces(const AText: string; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= Length(AText)) and (AText[Result] = ' ') do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>"**Veraltet**: Grund" für deprecated 'Grund'; AIndex steht hinter dem Wort.</summary>
 function DeprecatedText(const ADeclaration: string; AIndex: Integer): string;
 var
   mStart, mClose: Integer;
 begin
   Result := cTexts[THoverValuesText.Deprecated].Text;
-  mStart := SkipSpaces(ADeclaration, AIndex);
+  mStart := TTextChars.RunEnd(ADeclaration, AIndex, [' ']);
   if (mStart > Length(ADeclaration)) or (ADeclaration[mStart] <> '''') then
   begin
     Exit;
@@ -611,7 +591,7 @@ begin
       Inc(mIndex);
     end;
     // Direktiven stehen vor ";", einem String oder am Ende; Namen wie "Platform: string" nicht.
-    mClose := SkipSpaces(ADeclaration, mIndex);
+    mClose := TTextChars.RunEnd(ADeclaration, mIndex, [' ']);
     if (mClose > Length(ADeclaration)) or CharInSet(ADeclaration[mClose], [';', '''']) then
     begin
       Result := DirectiveHint(ADeclaration, LowerCase(Copy(ADeclaration, mStart, mIndex - mStart)), mIndex);

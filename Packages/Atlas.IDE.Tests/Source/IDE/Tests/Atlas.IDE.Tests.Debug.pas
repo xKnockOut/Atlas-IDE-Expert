@@ -74,9 +74,7 @@ type
     procedure RemoveBreakpoint;
     procedure RestoreActiveProject;
     function Say(const AText: string): Boolean;
-    class function Debugger: IOTADebuggerServices; static;
     class function Debugging: Boolean; static;
-    class function ProjectOf(const AFileName: string): IOTAProject; static;
     /// <summary>Datei und Test am Cursor der oberen Editoransicht; False mit Meldung.</summary>
     function AtCursor(out AFileName: string; out ASelection: TAtlasTestSelection): Boolean;
   public
@@ -109,17 +107,20 @@ implementation
 uses
   Winapi.Windows,
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.TextFile,
   Atlas.UI.Strings,
   Atlas.UI.Tests.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.IDE.Tests.Projects,
+  Atlas.ToolsApi.Debugger.Services,
+  Atlas.Text.Files;
 
 function ProjectName(const AFileName: string): string;
 begin
@@ -172,7 +173,7 @@ begin
     var
       mServices: IOTADebuggerServices;
     begin
-      mServices := Debugger;
+      mServices := TAtlasIdeDebugger.Services;
       case FPhase of
         TPhase.Starting:
           TickStarting(mServices);
@@ -349,6 +350,34 @@ begin
   FTimer.Enabled := True;
 end;
 
+/// <summary>Inhalt der Ergebnisdatei AFileName, die danach gelöscht wird; '' ohne Datei oder wenn sie nicht lesbar
+/// ist. AFileName ist danach leer.</summary>
+function TakeResultXml(var AFileName: string): string;
+begin
+  Result := '';
+  if AFileName = '' then
+  begin
+    Exit;
+  end;
+  try
+    if FileExists(AFileName) then
+    begin
+      Result := TFile.ReadAllText(AFileName, TEncoding.UTF8);
+      TFile.Delete(AFileName);
+    end;
+  except
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
+      Result := '';
+    end;
+  end;
+  AFileName := '';
+end;
+
 procedure TAtlasIdeTestDebugger.Finish(AStarted: Boolean);
 var
   mChanged: Boolean;
@@ -376,21 +405,7 @@ begin
   end;
   FPhase := TPhase.Idle;
   FTests.Debugging := False;
-  mXml := '';
-  if FXmlFile <> '' then
-  begin
-    try
-      if FileExists(FXmlFile) then
-      begin
-        mXml := TFile.ReadAllText(FXmlFile, TEncoding.UTF8);
-        TFile.Delete(FXmlFile);
-      end;
-    except
-      on Exception do
-        mXml := '';
-    end;
-    FXmlFile := '';
-  end;
+  mXml := TakeResultXml(FXmlFile);
   // Ergebnis wie nach „Tests ausführen“: Code Lens, Probleme, Meldungen, Projekt-Zusammenfassung.
   if AStarted and (mXml <> '') then
   begin
@@ -405,7 +420,7 @@ var
   mExisting: IOTASourceBreakpoint;
 begin
   FBreakpoint := nil;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices = nil) or (FUnitFile = '') or (FSelection.BreakLine < 0) then
   begin
     Exit;
@@ -427,8 +442,11 @@ begin
       Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsDebugBreak, [mLine]));
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Tests: Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       FBreakpoint := nil;
+    end;
   end;
 end;
 
@@ -440,7 +458,7 @@ begin
   begin
     Exit;
   end;
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   try
     if mServices <> nil then
     begin
@@ -460,7 +478,7 @@ begin
   begin
     Exit;
   end;
-  mPrevious := ProjectOf(FPreviousProject);
+  mPrevious := TAtlasIdeStartOptions.FindProject(FPreviousProject);
   if (mPrevious <> nil) and Supports(BorlandIDEServices, IOTAModuleServices, mServices) and
     (mServices.MainProjectGroup <> nil) and (mServices.MainProjectGroup.ActiveProject <> mPrevious) then
   begin
@@ -474,31 +492,12 @@ begin
   Result := False;
 end;
 
-class function TAtlasIdeTestDebugger.Debugger: IOTADebuggerServices;
-begin
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
 class function TAtlasIdeTestDebugger.Debugging: Boolean;
 var
   mServices: IOTADebuggerServices;
 begin
-  mServices := Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   Result := (mServices <> nil) and (mServices.ProcessCount > 0);
-end;
-
-class function TAtlasIdeTestDebugger.ProjectOf(const AFileName: string): IOTAProject;
-var
-  mServices: IOTAModuleServices;
-begin
-  Result := nil;
-  if (AFileName <> '') and Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Supports(mServices.FindModule(AFileName), IOTAProject, Result);
-  end;
 end;
 
 function TAtlasIdeTestDebugger.AtCursor(out AFileName: string; out ASelection: TAtlasTestSelection): Boolean;
@@ -625,7 +624,7 @@ begin
     AReason := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsDebugOff);
     Exit;
   end;
-  mProject := ProjectOf(AProject);
+  mProject := TAtlasIdeStartOptions.FindProject(AProject);
   if mProject = nil then
   begin
     AReason := TAtlasStrings.Fmt(TAtlasTextId.StartProfilesNotOpen, [ExtractFileName(AProject)]);
@@ -635,7 +634,7 @@ begin
   mName := Trim(AFullName);
   for mUnitName in TAtlasTestDebug.UnitNamesOf(mName) do
   begin
-    mFileName := TAtlasIdeTests.UnitFileOf(mProject.FileName, mUnitName);
+    mFileName := TAtlasIdeTestProjects.UnitFileOf(mProject.FileName, mUnitName);
     if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
       Continue;
@@ -672,7 +671,7 @@ begin
   // Wie DebugByName: jede Teilung von hinten als Unitname versuchen.
   for mUnitName in TAtlasTestDebug.UnitNamesOf(mName) do
   begin
-    mFileName := TAtlasIdeTests.UnitFileOf(AProject, mUnitName);
+    mFileName := TAtlasIdeTestProjects.UnitFileOf(AProject, mUnitName);
     if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
       Continue;

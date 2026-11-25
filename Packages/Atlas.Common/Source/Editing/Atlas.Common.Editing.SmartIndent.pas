@@ -71,6 +71,7 @@ implementation
 uses
   System.SysUtils,
   System.Math,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
@@ -94,7 +95,6 @@ type
     FFirst: TArray<Integer>;
     FLast: TArray<Integer>;
     procedure IndexLines;
-    function IsCode(AIndex: Integer): Boolean;
     function OpenBracket(ALine: Integer): Integer;
   public
     /// <summary>ALine bekommt den Platzhalter, wenn sie ohne Code ist.</summary>
@@ -210,11 +210,6 @@ begin
   end;
 end;
 
-function TIndentScan.IsCode(AIndex: Integer): Boolean;
-begin
-  Result := not (FTokens[AIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
-end;
-
 /// <summary>Innerste Klammer, die die Anweisung der Zeile ALine vor deren erstem Token offen hat; -1 ohne.
 /// </summary>
 function TIndentScan.OpenBracket(ALine: Integer): Integer;
@@ -288,7 +283,7 @@ begin
   mLine := ALine;
   while mLine >= 0 do
   begin
-    if (FFirst[mLine] >= 0) and IsCode(FFirst[mLine]) and FInfo[mLine].Placed then
+    if (FFirst[mLine] >= 0) and IsCode(FTokens[FFirst[mLine]]) and FInfo[mLine].Placed then
     begin
       Exit(FColumns[mLine] - FInfo[mLine].Column);
     end;

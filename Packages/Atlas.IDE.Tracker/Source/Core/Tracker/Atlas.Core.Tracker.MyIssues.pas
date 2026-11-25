@@ -52,26 +52,13 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Projects,
-  Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.Reopened,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan;
+  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>issues.start: Branch anlegen oder nur merken.</summary>
-  TAtlasIssueStart = (Branch, Remember);
-  /// <summary>Was der Bereich zeigt.</summary>
-  TAtlasIssuesStatus = (
-    /// <summary>Kein Tracker in .atlas (oder unbekannter Anbieter).</summary>
-    NotConfigured,
-    /// <summary>Noch keine Abfrage zu diesem Ziel.</summary>
-    Waiting,
-    Ready,
-    /// <summary>Letzte Abfrage fehlgeschlagen, ein älterer Stand ist da („Stand vom …“).</summary>
-    Stale,
-    /// <summary>Fehlgeschlagen ohne älteren Stand.</summary>
-    Failed);
   /// <summary>Ergebnis von „Beginnen“.</summary>
   TAtlasIssueStartOutcome = (
     /// <summary>Branch neu angelegt und ausgecheckt.</summary>
@@ -85,21 +72,6 @@ type
     /// <summary>Aus dem Muster entsteht kein gültiger Branch-Name.</summary>
     InvalidName);
 {$SCOPEDENUMS OFF}
-
-  /// <summary>Aktuelles Issue eines Projekts.</summary>
-  TAtlasActiveIssue = record
-    Key: string;
-    Title: string;
-    Mode: TAtlasIssueStart;
-    /// <summary>Branch, auf dem es begonnen wurde; '' bei Remember.</summary>
-    Branch: string;
-    /// <summary>UTC; 0 = aus dem Branch-Namen erkannt.</summary>
-    StartedUtc: TDateTime;
-    /// <summary>Nur aus dem Branch-Namen erkannt (nicht mit „Beginnen“).</summary>
-    FromBranch: Boolean;
-    class function Empty: TAtlasActiveIssue; static;
-    function Active: Boolean;
-  end;
 
   /// <summary>Trefferzahl der letzten Abfrage mit diesem Namen (#1262).</summary>
   TAtlasIssuesQueryCount = record
@@ -139,28 +111,6 @@ type
     /// <summary>Trefferzahl der letzten Abfrage AName; -1 = noch keine.</summary>
     function CountOf(const AName: string): Integer;
     procedure SetCount(const AName: string; ACount: Integer);
-  end;
-
-  /// <summary>Einstellungen issues.* für „Beginnen“.</summary>
-  TAtlasIssuesOptions = record
-    Start: TAtlasIssueStart;
-    /// <summary>'' = je Versionsverwaltung (Git feature/{kennung}-{kurztitel}, SVN {kennung}-{kurztitel}).</summary>
-    BranchPattern: string;
-    /// <summary>'' = Git main (sonst master), SVN trunk.</summary>
-    BranchBase: string;
-    /// <summary>'' = aus; nicht gekürzt.</summary>
-    CommitPattern: string;
-    /// <summary>issues.preview (#1264): Klick auf Zeile bzw. Kennung zeigt das Issue in „Atlas-Issue“,
-    /// Strg+Klick öffnet den Browser. Create setzt False.</summary>
-    Preview: Boolean;
-    /// <summary>Hauptbranch des Projekts (#1286, vcs.projects bzw. .atlas); '' = raten. BranchBase hat Vorrang.
-    /// Setzt der Aufrufer je Projekt.</summary>
-    MainBranch: string;
-    /// <summary>SVN-Optionen (#1290, vcs.branch.svn.*): Ort, Quelle, Danach und Nachricht; Create setzt die
-    /// Vorgaben, der Aufrufer die Einstellungen und den Projektnamen.</summary>
-    Svn: TAtlasVcsSvnBranchOptions;
-    class function Create(AStart: TAtlasIssueStart; const ABranchPattern, ABranchBase,
-      ACommitPattern: string): TAtlasIssuesOptions; static;
   end;
 
   /// <summary>Was „Beginnen“ tut.</summary>
@@ -215,89 +165,6 @@ type
     /// <summary>Den Ordner für den worktree gab es schon: nichts angelegt (Outcome Failed).</summary>
     FolderTaken: Boolean;
     function Succeeded: Boolean;
-  end;
-
-  /// <summary>Kopf einer Gruppe bei „Alle Tracker-Projekte“ (#1928).</summary>
-  TAtlasIssuesGroup = record
-    /// <summary>„Verbindung · Tracker-Projekt“.</summary>
-    Caption: string;
-    /// <summary>Projekt (Pfad aus „Gilt für“), für „Beginnen“ der Zeilen dieser Gruppe.</summary>
-    Project: string;
-    /// <summary>Index der ersten Zeile in Items; bei einer leeren Gruppe der der nächsten.</summary>
-    First: Integer;
-    /// <summary>Gezeigte und gefundene Zeilen.</summary>
-    Shown: Integer;
-    Total: Integer;
-    Status: TAtlasIssuesStatus;
-    Error: TAtlasCiFetchError;
-    Querying: Boolean;
-    /// <summary>Weitere, nicht gezeigte Zeilen („+ N weitere“).</summary>
-    function More: Integer;
-  end;
-
-  TAtlasIssuesView = record
-    Status: TAtlasIssuesStatus;
-    Error: TAtlasCiFetchError;
-    /// <summary>Stand der Liste (UTC); 0 = keiner.</summary>
-    At: TDateTime;
-    Items: TArray<TAtlasTrackerIssue>;
-    Active: TAtlasActiveIssue;
-    /// <summary>Von der IDE gesetzt: Projekt (Datei und Name), Anzeigename des Trackers, Abfrage läuft, Hinweis
-    /// in der Fußzeile (z. B. nach „Beginnen“), Einstellungen für „Beginnen“ und Versionsverwaltung des Projekts.
-    /// </summary>
-    Project: string;
-    ProjectName: string;
-    Tracker: string;
-    /// <summary>Name der Verbindung (#1261): aus der Zuordnung bzw. der Projektname bei .atlas; '' ohne.</summary>
-    Connection: string;
-    /// <summary>Ohne Tracker: „zuordnen …“ anbieten (#1261).</summary>
-    CanAssign: Boolean;
-    /// <summary>Tracker-Projekt (YouTrack-ID, GitHub owner/repo) für die Fußzeile (#1262).</summary>
-    TrackerProject: string;
-    /// <summary>Passende Abfragen (#1262), die gewählte (Index, -1 ohne) und je Abfrage die Trefferzahl der
-    /// letzten Abfrage (-1 = noch keine).</summary>
-    Queries: TArray<TAtlasTrackerQuery>;
-    QueryIndex: Integer;
-    QueryCounts: TArray<Integer>;
-    /// <summary>Gesendete Abfrage (bei der Vorgabe die des Anbieters) für die Fußzeile.</summary>
-    QueryText: string;
-    /// <summary>Klappliste zeigen (issues.queryPicker).</summary>
-    Picker: Boolean;
-    Querying: Boolean;
-    Notice: string;
-    /// <summary>Hinweis ist ein Fehler (rot).</summary>
-    NoticeFailed: Boolean;
-    /// <summary>„Beginnen“ läuft gerade.</summary>
-    Starting: Boolean;
-    Options: TAtlasIssuesOptions;
-    VcsKind: TAtlasVcsKind;
-    /// <summary>Filter aus der Sprint-Kachel (#1277), z. B. „„Sprint 12“, meine offen“: Items sind dann die Issues
-    /// des Filters; '' ohne.</summary>
-    Filter: string;
-    /// <summary>Kennungen mit neuen Änderungen seit dem letzten Öffnen (#1271, Punkt an der Zeile).</summary>
-    Unseen: TArray<string>;
-    /// <summary>Marken „wieder offen“ (#2127, issues.reopened); leer ohne.</summary>
-    Reopened: TArray<TAtlasTrackerReopen>;
-    /// <summary>Prüfzustände des Trackers (#2126, issues.reviewStates): Zeilen in diesen Zuständen bieten „Prüfen“
-    /// statt „Beginnen“; leer = nur im Kontextmenü.</summary>
-    ReviewStates: TArray<string>;
-    /// <summary>Klappliste „Tracker-Projekt“ (#1927, issues.projectPicker), ihre Einträge und die Wahl ('' =
-    /// automatisch, "*" = alle, sonst „projekt@verbindung“).</summary>
-    ProjectPicker: Boolean;
-    ProjectChoices: TArray<TAtlasTrackerChoice>;
-    ProjectKey: string;
-    /// <summary>Eintrag „Alle Tracker-Projekte“ anbieten (issues.allProjects).</summary>
-    AllProjects: Boolean;
-    /// <summary>Name des Delphi-Projekts, nach dem „Automatisch“ wählt; '' ohne.</summary>
-    AutomaticName: string;
-    /// <summary>Gruppen bei „Alle“ (#1928); leer sonst.</summary>
-    Groups: TArray<TAtlasIssuesGroup>;
-    /// <summary>Offene Issues der Liste, z. B. für „ATL-123 · 3 offen“.</summary>
-    function OpenCount: Integer;
-    /// <summary>AKey trägt einen Punkt (ohne Groß-/Kleinschreibung).</summary>
-    function IsUnseen(const AKey: string): Boolean;
-    /// <summary>Marke „wieder offen“ von AKey; False ohne.</summary>
-    function ReopenOf(const AKey: string; out AReopen: TAtlasTrackerReopen): Boolean;
   end;
 
   TAtlasMyIssues = class
@@ -414,7 +281,7 @@ uses
   Atlas.Core.VersionControl.BranchNames,
   Atlas.Core.Tracker.Naming,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json;
 
 const
   cStartNames: array[TAtlasIssueStart] of string = ('branch', 'remember');
@@ -590,18 +457,6 @@ begin
   end;
 end;
 
-{ TAtlasActiveIssue }
-
-class function TAtlasActiveIssue.Empty: TAtlasActiveIssue;
-begin
-  Result := Default(TAtlasActiveIssue);
-end;
-
-function TAtlasActiveIssue.Active: Boolean;
-begin
-  Result := Key <> '';
-end;
-
 { TAtlasIssuesState }
 
 class function TAtlasIssuesState.Empty: TAtlasIssuesState;
@@ -672,63 +527,12 @@ begin
   Counts := Counts + [mCount];
 end;
 
-{ TAtlasIssuesGroup }
-
-function TAtlasIssuesGroup.More: Integer;
-begin
-  Result := Total - Shown;
-end;
-
-{ TAtlasIssuesView }
-
-function TAtlasIssuesView.OpenCount: Integer;
-begin
-  Result := Length(Items);
-end;
-
-function TAtlasIssuesView.IsUnseen(const AKey: string): Boolean;
-var
-  mKey: string;
-begin
-  Result := False;
-  if AKey = '' then
-  begin
-    Exit;
-  end;
-  for mKey in Unseen do
-  begin
-    if SameText(mKey, AKey) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-function TAtlasIssuesView.ReopenOf(const AKey: string; out AReopen: TAtlasTrackerReopen): Boolean;
-begin
-  Result := (AKey <> '') and TAtlasTrackerReopened.Find(Reopened, AKey, AReopen);
-end;
-
 { TAtlasIssueStartResult }
 
 function TAtlasIssueStartResult.Succeeded: Boolean;
 begin
   Result := (Outcome = TAtlasIssueStartOutcome.Started) or (Outcome = TAtlasIssueStartOutcome.Switched) or
     (Outcome = TAtlasIssueStartOutcome.Remembered);
-end;
-
-{ TAtlasIssuesOptions }
-
-class function TAtlasIssuesOptions.Create(AStart: TAtlasIssueStart; const ABranchPattern, ABranchBase,
-  ACommitPattern: string): TAtlasIssuesOptions;
-begin
-  Result.Start := AStart;
-  Result.BranchPattern := Trim(ABranchPattern);
-  Result.BranchBase := Trim(ABranchBase);
-  Result.CommitPattern := ACommitPattern;
-  Result.Preview := False;
-  Result.MainBranch := '';
-  Result.Svn := TAtlasVcsSvnBranchOptions.Default;
 end;
 
 { TAtlasMyIssues }
@@ -1139,14 +943,6 @@ end;
 
 { JSON }
 
-procedure AddText(AObject: TJSONObject; const AName, AValue: string);
-begin
-  if AValue <> '' then
-  begin
-    AObject.AddPair(AName, AValue);
-  end;
-end;
-
 procedure AddTime(AObject: TJSONObject; const AName: string; AValue: TDateTime);
 begin
   if AValue > 0 then
@@ -1176,9 +972,9 @@ begin
       mLabels.Add(mLabelName);
     end;
   end;
-  AddText(Result, 'state', AItem.State);
-  AddText(Result, 'priority', AItem.Priority);
-  AddText(Result, 'sprint', AItem.Sprint);
+  TJsonBuild.AddText(Result, 'state', AItem.State);
+  TJsonBuild.AddText(Result, 'priority', AItem.Priority);
+  TJsonBuild.AddText(Result, 'sprint', AItem.Sprint);
   if AItem.PullRequest.Number > 0 then
   begin
     Result.AddPair('pr', TJSONNumber.Create(AItem.PullRequest.Number));
@@ -1194,9 +990,9 @@ function ActiveJson(const AActive: TAtlasActiveIssue): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('key', AActive.Key);
-  AddText(Result, 'title', AActive.Title);
+  TJsonBuild.AddText(Result, 'title', AActive.Title);
   Result.AddPair('mode', TAtlasMyIssues.StartName(AActive.Mode));
-  AddText(Result, 'branch', AActive.Branch);
+  TJsonBuild.AddText(Result, 'branch', AActive.Branch);
   AddTime(Result, 'started', AActive.StartedUtc);
 end;
 
@@ -1217,12 +1013,12 @@ var
   mItem: TAtlasTrackerIssue;
 begin
   Result := TJSONObject.Create;
-  AddText(Result, 'provider', AState.Provider);
-  AddText(Result, 'server', AState.Server);
-  AddText(Result, 'project', AState.Project);
-  AddText(Result, 'query', AState.Query);
+  TJsonBuild.AddText(Result, 'provider', AState.Provider);
+  TJsonBuild.AddText(Result, 'server', AState.Server);
+  TJsonBuild.AddText(Result, 'project', AState.Project);
+  TJsonBuild.AddText(Result, 'query', AState.Query);
   AddTime(Result, 'attempt', AState.Attempt);
-  AddText(Result, 'error', TAtlasCiBuild.ErrorKey(AState.Error));
+  TJsonBuild.AddText(Result, 'error', TAtlasCiBuild.ErrorKey(AState.Error));
   AddTime(Result, 'at', AState.At);
   mItems := TJSONArray.Create;
   Result.AddPair('items', mItems);
@@ -1234,10 +1030,10 @@ begin
   begin
     Result.AddPair('active', ActiveJson(AState.Active));
   end;
-  AddText(Result, 'endedBranch', AState.EndedBranch);
-  AddText(Result, 'hook', AState.Hook);
-  AddText(Result, 'gitDir', AState.GitDir);
-  AddText(Result, 'selected', AState.Selected);
+  TJsonBuild.AddText(Result, 'endedBranch', AState.EndedBranch);
+  TJsonBuild.AddText(Result, 'hook', AState.Hook);
+  TJsonBuild.AddText(Result, 'gitDir', AState.GitDir);
+  TJsonBuild.AddText(Result, 'selected', AState.Selected);
   if Length(AState.Counts) > 0 then
   begin
     Result.AddPair('counts', CountsJson(AState.Counts));
@@ -1366,15 +1162,8 @@ begin
 end;
 
 class function TAtlasMyIssues.ToJson(const AState: TAtlasIssuesState): string;
-var
-  mSection: TJSONObject;
 begin
-  mSection := SectionJson(AState);
-  try
-    Result := mSection.ToJSON;
-  finally
-    mSection.Free;
-  end;
+  Result := TJsonBuild.TextAndFree(SectionJson(AState));
 end;
 
 class function TAtlasMyIssues.FromJson(const AJson: string; out AState: TAtlasIssuesState): Boolean;

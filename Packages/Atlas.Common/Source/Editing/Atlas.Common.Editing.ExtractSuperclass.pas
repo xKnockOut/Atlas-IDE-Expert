@@ -33,8 +33,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Editing.ExtractInterface;
 
 type
@@ -102,8 +102,9 @@ uses
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -163,29 +164,6 @@ function Fail(const AReason: string; out AOut: string): Boolean;
 begin
   AOut := AReason;
   Result := False;
-end;
-
-function ContainsText(const AList: TArray<string>; const AValue: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AValue) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function StripT(const AName: string): string;
-begin
-  Result := AName;
-  if (Length(Result) > 1) and CharInSet(Result[1], ['T', 't']) and CharInSet(Result[2], ['A'..'Z']) then
-  begin
-    Result := Copy(Result, 2, MaxInt);
-  end;
 end;
 
 /// <summary>Wortteile eines Namens in CamelCase (PdfExport → Pdf, Export; HTMLView → HTML, View).</summary>
@@ -339,15 +317,15 @@ begin
   Result := False;
   for mName in ANames do
   begin
-    if ContainsText(ACheck.Locals, mName) then
+    if MatchText(mName, ACheck.Locals) then
     begin
       Exit(False);
     end;
-    if ContainsText(ACheck.Allowed, mName) then
+    if MatchText(mName, ACheck.Allowed) then
     begin
       Result := True;
     end
-    else if ContainsText(ACheck.Own, mName) then
+    else if MatchText(mName, ACheck.Own) then
     begin
       Exit(False);
     end;
@@ -548,7 +526,7 @@ begin
       begin
         if Split.Member = AUser then
         begin
-          Result := ContainsText(Split.Remaining, AName);
+          Result := MatchText(AName, Split.Remaining);
         end;
       end;
     end;
@@ -561,7 +539,7 @@ var
   mParts: TArray<string>;
   mRest: string;
 begin
-  mRest := StripT(AClassName);
+  mRest := TTextNames.WithoutTypePrefix(AClassName);
   mParts := Words(mRest);
   if Length(mParts) > 1 then
   begin
@@ -611,11 +589,11 @@ function FullName(const AClassName, ASuffix: string): string;
 begin
   if SameText(ASuffix, 'Custom') then
   begin
-    Result := 'TCustom' + StripT(AClassName);
+    Result := 'TCustom' + TTextNames.WithoutTypePrefix(AClassName);
   end
   else
   begin
-    Result := 'T' + StripT(AClassName) + ASuffix;
+    Result := 'T' + TTextNames.WithoutTypePrefix(AClassName) + ASuffix;
   end;
 end;
 

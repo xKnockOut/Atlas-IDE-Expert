@@ -11,7 +11,7 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Completion.Favorites,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -88,10 +88,18 @@ uses
   System.Math,
   Vcl.Controls,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Strings,
   Atlas.UI.Editor.LearnedSuggestions,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Completion.Ranking;
+
+const
+  /// <summary>Gezogene Breite der Liste, wenn „automatisch“ abgeschaltet wird und noch keine gezogen wurde: so viel
+  /// über der kleinsten Breite.</summary>
+  cManualListWidthExtra = 160;
+  /// <summary>Breite des Feldes für die Zahl der Zeilen (zwei Ziffern neben den Pfeilen).</summary>
+  cRowsWidth = 44;
+  /// <summary>Höhe der Liste der Favoriten (etwa fünf Einträge).</summary>
+  cFavoritesListHeight = 80;
 
 { TAtlasSettingsCompletionPart }
 
@@ -157,7 +165,7 @@ begin
   end
   else if FListWidth = 0 then
   begin
-    FListWidth := TAtlasPluginSettings.cMinListWidth + 160;
+    FListWidth := TAtlasPluginSettings.cMinListWidth + cManualListWidthExtra;
   end;
 end;
 
@@ -166,18 +174,19 @@ var
   mPanel: TWinControl;
 begin
   // Liste der Vervollständigung.
-  AddSheet(TAtlasTextId.SettingsTabCompletion);
-  mPanel := AddPanel(26);
+  AddSheet(TAtlasSettingsTextId.SettingsTabCompletion);
+  mPanel := AddPanel(cFieldRowHeight);
   FRowsLabel := TLabel.Create(FPage);
   FRowsLabel.Parent := mPanel;
   FRowsLabel.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsRows);
   FRowsLabel.Left := 0;
-  FRowsLabel.Top := FRowsLabel.ScaleValue(5);
+  FRowsLabel.Top := FRowsLabel.ScaleValue(cFieldCaptionTop);
   FRows := TEdit.Create(FPage);
   FRows.Parent := mPanel;
-  FRows.Left := cFieldLeft;
+  // Skaliert wie die Felder der übrigen Zeilen (AddNumber).
+  FRows.Left := FRows.ScaleValue(cFieldLeft);
   FRows.Top := 1;
-  FRows.Width := FRows.ScaleValue(44);
+  FRows.Width := FRows.ScaleValue(cRowsWidth);
   FRows.NumbersOnly := True;
   FRowsUpDown := TUpDown.Create(FPage);
   FRowsUpDown.Parent := mPanel;
@@ -210,25 +219,15 @@ begin
   BindText('SuggestionsMinShare', AddNumber(TAtlasLearnedTexts.Text(TAtlasLearnedText.SettingMinShare)));
   BindText('SuggestionsMinCount', AddNumber(TAtlasLearnedTexts.Text(TAtlasLearnedText.SettingMinCount)));
   BindCheck('SuggestionsLearnFromUsage', AddCheck(TAtlasLearnedTexts.Text(TAtlasLearnedText.SettingLearnFromUsage)));
-  mPanel := AddPanel(32);
-  FResetHistory := TButton.Create(FPage);
-  FResetHistory.Parent := mPanel;
-  FResetHistory.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetHistory);
-  FResetHistory.Left := 0;
-  FResetHistory.Top := FResetHistory.ScaleValue(3);
-  FResetHistory.Width := FResetHistory.ScaleValue(150);
-  FResetHistory.OnClick := ResetHistoryClick;
-  FResetWidths := TButton.Create(FPage);
-  FResetWidths.Parent := mPanel;
+  mPanel := AddPanel(cButtonRowHeight);
+  FResetHistory := AddColumnButton(mPanel, 0, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetHistory),
+    ResetHistoryClick);
 end;
 
 procedure TAtlasSettingsCompletionPart.Build2;
 begin
-  FResetWidths.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetWidths);
-  FResetWidths.Left := FResetWidths.ScaleValue(160);
-  FResetWidths.Top := FResetWidths.ScaleValue(3);
-  FResetWidths.Width := FResetWidths.ScaleValue(150);
-  FResetWidths.OnClick := ResetWidthsClick;
+  FResetWidths := AddColumnButton(FResetHistory.Parent, 1,
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsResetWidths), ResetWidthsClick);
 end;
 
 { TAtlasSettingsFavoritesPart }
@@ -285,27 +284,17 @@ var
   mFavorites: TCheckBox;
 begin
   mFavorites := FPage.Part<TAtlasSettingsCompletionPart>.FavoritesCheck;
-  AddTitle(TAtlasTextId.SettingsFavoritesTitle);
-  mPanel := AddPanel(80);
+  AddTitle(TAtlasSettingsTextId.SettingsFavoritesTitle);
+  mPanel := AddPanel(cFavoritesListHeight);
   FFavoritesList := TListBox.Create(FPage);
   FFavoritesList.Parent := mPanel;
   FFavoritesList.Align := alClient;
   FFavoritesList.MultiSelect := True;
-  mPanel := AddPanel(32);
-  FFavoritesRemove := TButton.Create(FPage);
-  FFavoritesRemove.Parent := mPanel;
-  FFavoritesRemove.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFavoritesRemove);
-  FFavoritesRemove.Left := 0;
-  FFavoritesRemove.Top := FFavoritesRemove.ScaleValue(3);
-  FFavoritesRemove.Width := FFavoritesRemove.ScaleValue(150);
-  FFavoritesRemove.OnClick := FavoritesRemoveClick;
-  FFavoritesRemoveAll := TButton.Create(FPage);
-  FFavoritesRemoveAll.Parent := mPanel;
-  FFavoritesRemoveAll.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFavoritesRemoveAll);
-  FFavoritesRemoveAll.Left := FFavoritesRemoveAll.ScaleValue(160);
-  FFavoritesRemoveAll.Top := FFavoritesRemoveAll.ScaleValue(3);
-  FFavoritesRemoveAll.Width := FFavoritesRemoveAll.ScaleValue(150);
-  FFavoritesRemoveAll.OnClick := FavoritesRemoveAllClick;
+  mPanel := AddPanel(cButtonRowHeight);
+  FFavoritesRemove := AddColumnButton(mPanel, 0,
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFavoritesRemove), FavoritesRemoveClick);
+  FFavoritesRemoveAll := AddColumnButton(mPanel, 1,
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFavoritesRemoveAll), FavoritesRemoveAllClick);
   Attach(FFavoritesList.Parent, mFavorites);
   Attach(mPanel, mFavorites);
 end;

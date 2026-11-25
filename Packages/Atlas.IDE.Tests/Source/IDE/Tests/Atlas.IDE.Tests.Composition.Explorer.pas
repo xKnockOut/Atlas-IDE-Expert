@@ -6,13 +6,16 @@
 // - Befehle „Atlas-Tests“ und „Wackelnde Tests zeigen“ (#1773, Filter „wackelt“),
 // - je Testliste ein Befehl „Testliste ausführen: <Name>“ und die Taste tests.lists.runKey für die zuletzt
 //   benutzte,
-// - Einstellungen, Farbschema und gespeicherte Testunits reicht die Composition herein.
+// - Einstellungen, Farbschema und gespeicherte Testunits reicht die Composition herein,
+// - das Ende jedes Laufs auch (ExplorerRunEnded): Ging er schief, öffnet sich das Fenster (#2467).
 
 interface
 
 uses
+  Atlas.Text.TestResults,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Tests.Run,
+  Atlas.Core.Tests.LastRun,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Series;
@@ -24,6 +27,9 @@ procedure StartExplorer(ATests: TAtlasIdeTests; ADebugger: TAtlasIdeTestDebugger
   const AStaleKeys: TAtlasTestStaleKeys; const ANext: TAtlasTestsReportedProc);
 /// <summary>Abfragen veralteter (AStaleKeys) und wackelnder Tests, etwa für die Testlinse.</summary>
 function StateQueries(const AStaleKeys: TAtlasTestStaleKeys): TAtlasTestStateQueries;
+/// <summary>Wackelnde Tests des Testprojekts AProject für den letzten Testlauf (#2409); fragt erst beim Aufruf, ob
+/// es sie gibt.</summary>
+function FlakyCountFor(const AProject: string): TAtlasTestFlakyCount;
 /// <summary>Teststand, Fenster und Testlisten freigeben (in dieser Reihenfolge: Der Teststand liest aus dem
 /// Fenster, das Fenster findet die Testlisten).</summary>
 procedure StopExplorer;
@@ -44,12 +50,16 @@ procedure ApplyExplorerSettings;
 procedure ExplorerThemeChanged;
 /// <summary>Gespeicherte Testunit im Fenster neu lesen.</summary>
 procedure ExplorerFileSaved(const AFileName: string);
+/// <summary>Ein Lauf von AProject endete mit AFinish und Bericht ARun (Haken OnEnded der Ausgabe): Ging er schief,
+/// das Fenster „Atlas-Tests“ zeigen (#2467).</summary>
+procedure ExplorerRunEnded(const AProject: string; AFinish: TAtlasTestFinish; const ARun: TTestRunResult);
 
 implementation
 
 uses
+  Winapi.Windows,
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Explorer,
   Atlas.IDE.Tests.Flaky,
@@ -79,6 +89,20 @@ end;
 function StateQueries(const AStaleKeys: TAtlasTestStaleKeys): TAtlasTestStateQueries;
 begin
   Result := GFlaky.QueriesWith(AStaleKeys);
+end;
+
+function FlakyCountFor(const AProject: string): TAtlasTestFlakyCount;
+var
+  mProject: string;
+begin
+  mProject := AProject;
+  Result :=
+    function(const ACase: TTestCaseResult; out AFailed, ARuns: Integer): Boolean
+    begin
+      AFailed := 0;
+      ARuns := 0;
+      Result := (GFlaky <> nil) and GFlaky.CountOf(mProject, ACase, AFailed, ARuns);
+    end;
 end;
 
 procedure StopExplorer;
@@ -231,6 +255,29 @@ begin
   if GExplorer <> nil then
   begin
     GExplorer.FileSaved(AFileName);
+  end;
+end;
+
+procedure ExplorerRunEnded(const AProject: string; AFinish: TAtlasTestFinish; const ARun: TTestRunResult);
+var
+  mProject: string;
+  mFocus: HWND;
+begin
+  if (GExplorer = nil) or not TAtlasTestRun.WentWrong(AFinish, ARun) then
+  begin
+    Exit;
+  end;
+  mProject := AProject;
+  // Ein Lauf beim Speichern (#1775) darf das Tippen im Editor nicht unterbrechen: Fokus danach zurückgeben.
+  mFocus := GetFocus;
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      GExplorer.ShowFailedRun(mProject);
+    end);
+  if (mFocus <> 0) and IsWindow(mFocus) and (GetFocus <> mFocus) then
+  begin
+    Winapi.Windows.SetFocus(mFocus);
   end;
 end;
 

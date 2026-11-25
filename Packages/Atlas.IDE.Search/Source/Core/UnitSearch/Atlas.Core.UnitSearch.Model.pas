@@ -191,27 +191,28 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  System.DateUtils,
   System.Generics.Defaults,
   Atlas.Core.Completion.Matching,
-  Atlas.Text.Json;
+  Atlas.Text.Fuzzy,
+  Atlas.Text.Json,
+  Atlas.Text.Arrays;
 
 const
   cKindTexts: array[TAtlasUnitKind] of string = ('unit', 'form', 'frame', 'dm', 'test', 'inc');
-
-function Contains(const AList: TArray<string>; const AValue: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SameText(mItem, AValue) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
+  /// <summary>Länge der Vorsilbe eines Filters (p:, k:, t: …) ohne Minus.</summary>
+  cFilterPrefixLength = Length('p:');
+  /// <summary>Spalten einer Zeile der Formularskizze: [Name, Typ, Caption, Left, Top, Width, Height, Tiefe].</summary>
+  cSketchName = 0;
+  cSketchType = 1;
+  cSketchCaption = 2;
+  cSketchLeft = 3;
+  cSketchTop = 4;
+  cSketchWidth = 5;
+  cSketchHeight = 6;
+  cSketchDepth = 7;
+  cSketchColumns = cSketchDepth + 1;
+  /// <summary>Länge eines Laufwerkswurzelordners (C:\); kürzer wird nicht gekürzt.</summary>
+  cDriveRootLength = Length('C:\');
 
 function ProjectMatches(const AEntry: TAtlasUnitEntry; const AFilter: string): Boolean;
 var
@@ -241,11 +242,11 @@ begin
   begin
     mToken := Copy(mToken, 2, MaxInt);
   end;
-  if (Length(mToken) < 3) or (mToken[2] <> ':') then
+  if (Length(mToken) <= cFilterPrefixLength) or (mToken[cFilterPrefixLength] <> ':') then
   begin
     Exit(False);
   end;
-  mValue := Copy(mToken, 3, MaxInt);
+  mValue := Copy(mToken, cFilterPrefixLength + 1, MaxInt);
   case UpCase(mToken[1]) of
     'P':
       Result := mValue <> '';
@@ -287,7 +288,7 @@ var
   mValue: string;
 begin
   mNegative := AToken.StartsWith('-');
-  mValue := Copy(AToken, 3 + Ord(mNegative), MaxInt);
+  mValue := Copy(AToken, cFilterPrefixLength + 1 + Ord(mNegative), MaxInt);
   if UpCase(AToken[1 + Ord(mNegative)]) <> 'P' then
   begin
     if mNegative then
@@ -367,23 +368,6 @@ begin
   Result := Length(Words) > 0;
 end;
 
-function SameNames(const A, B: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := Length(A) = Length(B);
-  if Result then
-  begin
-    for mIndex := 0 to High(A) do
-    begin
-      if not SameText(A[mIndex], B[mIndex]) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
 function TAtlasUnitQuery.Narrows(const APrevious: TAtlasUnitQuery): Boolean;
 var
   mIndex: Integer;
@@ -391,7 +375,8 @@ begin
   // Jede Regel des Matchers setzt eine Teilfolge voraus, und jede Teilfolge zählt (ScoreSubsequence):
   // Was das längere Wort trifft, traf auch das kürzere.
   Result := (Kinds = APrevious.Kinds) and (NotKinds = APrevious.NotKinds) and
-    SameNames(Projects, APrevious.Projects) and SameNames(NotProjects, APrevious.NotProjects) and
+    TTextArrays.SameTexts(Projects, APrevious.Projects) and
+    TTextArrays.SameTexts(NotProjects, APrevious.NotProjects) and
     (Length(Words) >= Length(APrevious.Words));
   if Result then
   begin
@@ -406,25 +391,6 @@ begin
 end;
 
 { TAtlasUnitPreview }
-
-/// <summary>Zeitpunkt aus "modified" (ISO 8601); 0 ohne oder bei ungültigem Wert.</summary>
-function ModifiedOf(AObject: TJSONObject): TDateTime;
-var
-  mText: string;
-begin
-  Result := 0;
-  if AObject.TryGetValue<string>('modified', mText) then
-  begin
-    try
-      Result := ISO8601ToDate(mText, False);
-    except
-      on EConvertError do
-      begin
-        Result := 0;
-      end;
-    end;
-  end;
-end;
 
 function TypesOf(AObject: TJSONObject): TArray<TAtlasUnitType>;
 var
@@ -453,14 +419,14 @@ end;
 function SketchItemOf(ARow: TJSONArray): TAtlasUnitSketchItem;
 begin
   Result := Default(TAtlasUnitSketchItem);
-  Result.Name := ARow.Items[0].Value;
-  Result.TypeName := ARow.Items[1].Value;
-  Result.Caption := ARow.Items[2].Value;
-  Result.Left := StrToIntDef(ARow.Items[3].Value, 0);
-  Result.Top := StrToIntDef(ARow.Items[4].Value, 0);
-  Result.Width := StrToIntDef(ARow.Items[5].Value, 0);
-  Result.Height := StrToIntDef(ARow.Items[6].Value, 0);
-  Result.Depth := StrToIntDef(ARow.Items[7].Value, 1);
+  Result.Name := ARow.Items[cSketchName].Value;
+  Result.TypeName := ARow.Items[cSketchType].Value;
+  Result.Caption := ARow.Items[cSketchCaption].Value;
+  Result.Left := StrToIntDef(ARow.Items[cSketchLeft].Value, 0);
+  Result.Top := StrToIntDef(ARow.Items[cSketchTop].Value, 0);
+  Result.Width := StrToIntDef(ARow.Items[cSketchWidth].Value, 0);
+  Result.Height := StrToIntDef(ARow.Items[cSketchHeight].Value, 0);
+  Result.Depth := StrToIntDef(ARow.Items[cSketchDepth].Value, 1);
 end;
 
 function SketchItemsOf(AForm: TJSONObject): TArray<TAtlasUnitSketchItem>;
@@ -475,7 +441,7 @@ begin
   end;
   for mItem in mItems do
   begin
-    if (mItem is TJSONArray) and (TJSONArray(mItem).Count >= 8) then
+    if (mItem is TJSONArray) and (TJSONArray(mItem).Count >= cSketchColumns) then
     begin
       Result := Result + [SketchItemOf(TJSONArray(mItem))];
     end;
@@ -515,7 +481,7 @@ begin
   end;
   mAnswer.TryGetValue<string>('header', Result.Header);
   mAnswer.TryGetValue<Integer>('lines', Result.Lines);
-  Result.Modified := ModifiedOf(mAnswer);
+  Result.Modified := TJsonRead.IsoTime(mAnswer, 'modified', False);
   mAnswer.TryGetValue<string>('git', Result.Git);
   Result.Types := TypesOf(mAnswer);
   Result.TypeCount := Length(Result.Types);
@@ -636,7 +602,7 @@ begin
   begin
     Result := TAtlasUnitOrigin.SearchPath;
   end
-  else if (AActiveProject <> '') and Contains(AEntry.Projects, AActiveProject) then
+  else if (AActiveProject <> '') and MatchText(AActiveProject, AEntry.Projects) then
   begin
     Result := TAtlasUnitOrigin.Active;
   end
@@ -655,7 +621,7 @@ end;
 function ProjectOf(const AEntry: TAtlasUnitEntry; const AActiveProject: string): string;
 begin
   Result := '';
-  if (AActiveProject <> '') and Contains(AEntry.Projects, AActiveProject) then
+  if (AActiveProject <> '') and MatchText(AActiveProject, AEntry.Projects) then
   begin
     Result := AActiveProject;
   end
@@ -758,20 +724,6 @@ begin
   end;
 end;
 
-function IsSubsequence(const APattern, AText: string): Boolean;
-var
-  mPatternIndex, mTextIndex: Integer;
-begin
-  mPatternIndex := 1;
-  for mTextIndex := 1 to Length(AText) do
-  begin
-    if (mPatternIndex <= Length(APattern)) and (UpCase(AText[mTextIndex]) = UpCase(APattern[mPatternIndex])) then
-    begin
-      Inc(mPatternIndex);
-    end;
-  end;
-  Result := mPatternIndex > Length(APattern);
-end;
 
 const
   /// <summary>Längster Namensteil, den SegmentScore ohne Speicheranforderung prüft.</summary>
@@ -980,7 +932,7 @@ var
   mDot: Integer;
 begin
   // Schneller Ausschluss: Ohne Teilfolge passt keine Regel des Matchers (die meisten Units je Tastendruck).
-  if not IsSubsequence(AWordUpper, AUpper) then
+  if not TTextFuzzy.IsSubsequence(AWordUpper, AUpper) then
   begin
     Exit(TAtlasCompletionMatcher.cNoMatch);
   end;
@@ -1146,7 +1098,7 @@ end;
 function WithoutSlash(const AFolder: string): string;
 begin
   Result := AFolder;
-  while (Length(Result) > 3) and Result.EndsWith('\') do
+  while (Length(Result) > cDriveRootLength) and Result.EndsWith('\') do
   begin
     SetLength(Result, Length(Result) - 1);
   end;
@@ -1280,7 +1232,7 @@ begin
   mRow.IsGroup := True;
   mRow.Group := AKey;
   mRow.Count := AMembers.Count;
-  mRow.Collapsed := Contains(ACollapsed, LowerCase(AKey));
+  mRow.Collapsed := MatchText(LowerCase(AKey), ACollapsed);
   mRow.Entry := -1;
   AList.Add(mRow);
   if mRow.Collapsed then

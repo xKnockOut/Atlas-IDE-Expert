@@ -31,13 +31,14 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.Core.Outline.Directives,
-  Atlas.Core.Outline.Conditionals;
+  Atlas.Core.Outline.Conditionals,
+  Atlas.Core.Outline.CrumbMenu,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cCode =
@@ -73,21 +74,8 @@ begin
 end;
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
+  Result := TOutlineTest.NodesOf(cCode);
 end;
 
 /// <summary>Texte der Zweige um ALine/ACharacter, mit „ › “ verbunden.</summary>
@@ -103,21 +91,6 @@ begin
       Result := Result + ' › ';
     end;
     Result := Result + mBranch.Text;
-  end;
-end;
-
-function Joined(const ACrumbs: TAtlasCrumbs): string;
-var
-  mCrumb: TAtlasCrumb;
-begin
-  Result := '';
-  for mCrumb in ACrumbs do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' › ';
-    end;
-    Result := Result + mCrumb.Text;
   end;
 end;
 
@@ -183,15 +156,15 @@ var
 begin
   mCrumbs := TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(12, 4, '', False, [TAtlasCrumbPart.Conditionals]));
-  Assert.AreEqual('Laden › {$IFDEF DEBUG} › {$IFNDEF TEST}', Joined(mCrumbs));
+  Assert.AreEqual('Laden › {$IFDEF DEBUG} › {$IFNDEF TEST}', TAtlasCrumbMenu.PathOf(mCrumbs));
   Assert.AreEqual('if', mCrumbs[1].Badge.Code);
   Assert.AreEqual(-1, mCrumbs[1].Node);
   Assert.AreEqual(3, Integer(Length(mCrumbs[1].Places)));
   Assert.AreEqual(0, mCrumbs[1].Current);
   Assert.IsTrue(TAtlasBreadcrumbs.HasMenu(mCrumbs[2]));
-  Assert.AreEqual('uses › {$IFDEF MSWINDOWS}', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('uses › {$IFDEF MSWINDOWS}', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(4, 2, '', False, [TAtlasCrumbPart.Conditionals]))));
-  Assert.AreEqual('Laden', Joined(TAtlasBreadcrumbs.Path(Nodes, Lines,
+  Assert.AreEqual('Laden', TAtlasCrumbMenu.PathOf(TAtlasBreadcrumbs.Path(Nodes, Lines,
     TAtlasCrumbRequest.Create(12, 4, '', False, []))), 'ausgeschaltet');
 end;
 

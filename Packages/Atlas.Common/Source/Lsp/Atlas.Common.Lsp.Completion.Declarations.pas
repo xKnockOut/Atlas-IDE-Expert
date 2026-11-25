@@ -2,7 +2,7 @@
 
 // Vervollständigung in Deklarationen: Zugriffe in "property … read/write" (#31) samt Feld und
 // Zugriffsmethoden anlegen (#467), überschreibbare Methoden (#443), fehlende Interface-Methoden (#466) und
-// String-Literal als resourcestring auslagern (#473). Aus Atlas.Common.Lsp.Completion herausgelöst.
+// String-Literal als resourcestring auslagern (#473). Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
@@ -49,14 +49,15 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Editing.CommandSource,
+  Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Common.Editing.AccessorCreation,
-  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Common.Pascal.ResourceStrings,
   Atlas.Common.Editing.ContextSnippets,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.InterfaceStubs,
@@ -105,7 +106,7 @@ type
     Taken: TArray<string>;
     HasTarget: Boolean;
     Target: TUnitIndex;
-    UsesEdits: TArray<TRuleEdit>;
+    UsesEdits: TArray<TTextEdit>;
     HasExisting: Boolean;
     Existing: TResourceEntry;
   end;
@@ -136,7 +137,7 @@ type
     FBatch: Boolean;
     FItems: TArray<TCompletionItem>;
     FInterfaces: TArray<string>;
-    FGroup: TArray<TRuleEdit>;
+    FGroup: TArray<TTextEdit>;
     FCount: Integer;
     FWordRange: TTextRange;
     FTypeName: string;
@@ -147,11 +148,11 @@ type
     function Prepare(out ATypeSymbol: TIndexSymbol): Boolean;
     function StubOf(const AMissing: TResolvedSymbol; const ASourceLines: TArray<string>;
       out AStub: TInterfaceStub): Boolean;
-    function StubEdits(const AStub: TInterfaceStub): TArray<TRuleEdit>;
+    function StubEdits(const AStub: TInterfaceStub): TArray<TTextEdit>;
     procedure StartInterface(const AInterface: string);
     procedure AddHint;
     procedure AddBatchItem(const AStub: TInterfaceStub; const AMissing: TResolvedSymbol;
-      const AEdits: TArray<TRuleEdit>);
+      const AEdits: TArray<TTextEdit>);
     procedure AddMissing(const AMissing: TArray<TResolvedSymbol>);
     procedure MarkBatch;
   public
@@ -177,7 +178,7 @@ begin
   Result := EnclosingTypeAt(AUnit, ALine, mKinds, 0, True, mTypeSymbol);
   if Result then
   begin
-    ATypeName := QualifiedTypeName(mTypeSymbol);
+    ATypeName := mTypeSymbol.QualifiedName;
   end;
 end;
 
@@ -329,7 +330,7 @@ begin
   Result.Action := 'create';
   Result.HasTextEdit := True;
   // Der getippte Anfang wird zum Namen: "read Ca|" → "read FCaption".
-  Result.TextEdit := TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
+  Result.TextEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
     ARequest.Position.Character - Length(ASite.Prefix)), ARequest.Position), APlan.Name);
   Result.AdditionalEdits := AEdits;
   if AWithField then
@@ -436,7 +437,7 @@ var
 begin
   ATargetText := '';
   mUnitName := ARequest.Settings.ResourceStringUnit;
-  Result := (mUnitName <> '') and not SameText(mUnitName, TUsesClauses.OwnName(ARequest.Tree.Tokens)) and
+  Result := (mUnitName <> '') and not SameText(mUnitName, TPascalUses.OwnName(ARequest.Tree.Tokens)) and
     (ARequest.Index <> nil);
   Result := Result and ARequest.Index.FindUnit(mUnitName, ATarget) and Assigned(ARequest.ReadText);
   Result := Result and ARequest.ReadText(ATarget.FileName, ATargetText);
@@ -452,8 +453,8 @@ begin
   ATarget.HasTarget := True;
   mEntries := TResourceStrings.Entries(ATargetText, TPascalLexer.Tokenize(ATargetText));
   ATarget.Taken := ATarget.Taken + TakenResourceNames(ATarget.Target, mEntries);
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ARequest.Tree.Tokens), ATarget.Target.UnitName,
-    ARequest.Resolver.Namespaces) and TUsesClauses.AddUnit(ARequest.Tree.Tokens, ATarget.Literal.StartOffset,
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(ARequest.Tree.Tokens), ATarget.Target.UnitName,
+    ARequest.Resolver.Namespaces) and TPascalUsesEdits.AddUnit(ARequest.Tree.Tokens, ATarget.Literal.StartOffset,
     ATarget.Target.UnitName, ARequest.LineBreak, mUsesEdit) then
   begin
     ATarget.UsesEdits := [mUsesEdit];
@@ -493,7 +494,7 @@ begin
   Result.Pinned := True;
   Result.Action := 'create';
   Result.HasTextEdit := True;
-  Result.TextEdit := TRuleEdit.Create(ATarget.Literal.Range, ATarget.Existing.Name);
+  Result.TextEdit := TTextEdit.Create(ATarget.Literal.Range, ATarget.Existing.Name);
   Result.AdditionalEdits := ATarget.UsesEdits;
 end;
 
@@ -512,7 +513,7 @@ end;
 procedure ExtractToUnit(var AItem: TCompletionItem; const ATarget: TResourceTarget; const AName: string);
 begin
   AItem.Detail := Format('%s = %s in %s', [AName, LiteralPreview(ATarget.Literal), ATarget.Target.UnitName]);
-  AItem.TextEdit := TRuleEdit.Create(ATarget.Literal.Range, AName);
+  AItem.TextEdit := TTextEdit.Create(ATarget.Literal.Range, AName);
   AItem.AdditionalEdits := ATarget.UsesEdits;
   AItem.Command := cAddResourceCommand;
   AItem.CommandTitle := AItem.Name;
@@ -534,7 +535,7 @@ begin
     Exit;
   end;
   AItem.Detail := Format('%s = %s', [AName, LiteralPreview(ATarget.Literal)]);
-  AItem.TextEdit := TRuleEdit.Create(ATarget.Literal.Range, AName);
+  AItem.TextEdit := TTextEdit.Create(ATarget.Literal.Range, AName);
   if ASnippets then
   begin
     AItem.Snippet := True;
@@ -721,7 +722,7 @@ begin
     mLead := 'class ' + mLead;
   end;
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ARequest.Position.Line,
     ASite.IndentLength), ARequest.Position), mLead + AItem.InsertText);
   AItem.InsertText := '';
   AItem.FilterText := 'override ' + AItem.Name;
@@ -731,7 +732,7 @@ end;
 function OverrideItem(ARequest: TCompletionRequest; const ASite: TOverrideSite; const ACandidate: TResolvedSymbol;
   const ADecl: TOverrideDeclaration; const ADefaultValue: TRegEx): TCompletionItem;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Result := Default(TCompletionItem);
   Result.Name := ACandidate.Name;
@@ -826,7 +827,7 @@ begin
   if Result then
   begin
     FIndent := Copy(mLines[FEndLine], 1, Length(mLines[FEndLine]) - Length(TrimLeft(mLines[FEndLine])));
-    FTypeName := QualifiedTypeName(ATypeSymbol);
+    FTypeName := ATypeSymbol.QualifiedName;
   end;
 end;
 
@@ -839,9 +840,9 @@ begin
     AMissing.Bindings), FRequest.LineBreak, AStub);
 end;
 
-function TInterfaceItemsBuilder.StubEdits(const AStub: TInterfaceStub): TArray<TRuleEdit>;
+function TInterfaceItemsBuilder.StubEdits(const AStub: TInterfaceStub): TArray<TTextEdit>;
 var
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   Result := TInterfaceStubs.ClassEdits(AStub, FEndLine, FIndent, FSection, FNeedHeader, FRequest.LineBreak);
   if TClassCompletion.BodyEdit(FRequest.Tree, FRequest.Text, FTypeName, AStub.Body, mEdit) then
@@ -888,13 +889,13 @@ begin
   mHint.Container := mInterface;
   // Das angefangene Wort verschwindet, die Methoden kommen über die weiteren Änderungen.
   mHint.HasTextEdit := True;
-  mHint.TextEdit := TRuleEdit.Create(FWordRange, '');
+  mHint.TextEdit := TTextEdit.Create(FWordRange, '');
   mHint.AdditionalEdits := TInterfaceStubs.Merge(FGroup);
   FItems := FItems + [mHint];
 end;
 
 procedure TInterfaceItemsBuilder.AddBatchItem(const AStub: TInterfaceStub; const AMissing: TResolvedSymbol;
-  const AEdits: TArray<TRuleEdit>);
+  const AEdits: TArray<TTextEdit>);
 var
   mItem: TCompletionItem;
 begin
@@ -920,7 +921,7 @@ var
   mSourceLines: TArray<string>;
   mMissing: TResolvedSymbol;
   mStub: TInterfaceStub;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Je Datei einmal lesen, auch wenn die Interfaces abwechselnd aus mehreren Units stammen.
   mFiles := TDictionary<string, TArray<string>>.Create;

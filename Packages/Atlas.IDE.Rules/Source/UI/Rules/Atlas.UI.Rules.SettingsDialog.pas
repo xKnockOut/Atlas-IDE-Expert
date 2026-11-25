@@ -10,7 +10,7 @@
 // als „(global: …)“. Geändert wird je Regel nur ihr Wert in der Datei. Die
 // Prüfregeln stehen nur hier (Projekt und „Weitere globale Einstellungen“),
 // nicht in Tools › Optionen. Den Dialog öffnet Base über
-// IAtlasSettingsDialogProvider (TAtlasRulesDialogProvider).
+// IAtlasSettingsDialogProvider (Atlas.IDE.Rules.Adapters.SettingsDialog).
 
 interface
 
@@ -55,12 +55,6 @@ type
     property RuleEditor: TAtlasRulesEditor read FRuleEditor;
   end;
 
-  /// <summary>Anbieter der Dialogklasse für Base (IAtlasSettingsDialogProvider).</summary>
-  TAtlasRulesDialogProvider = class(TInterfacedObject, IAtlasSettingsDialogProvider)
-  public
-    function DialogClass: TAtlasProjectSettingsDialogClass;
-  end;
-
 implementation
 
 uses
@@ -69,10 +63,17 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Graphics,
-  Atlas.Core.Rules.Table;
+  Atlas.Core.Rules.Table,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
+  // Titel einer Regelgruppe und Regel-Editor darunter (logische Pixel).
+  cTitleWidth = 400;
+  cTitleHeight = 16;
+  cTitleRow = 24;
+  cEditorHeight = 400;
+  cRightRoom = 5 * cGap;
 
 { TAtlasRulesSettingsDialog }
 
@@ -122,10 +123,10 @@ begin
   FCurrentGroup := AGroup;
   mTitle := TLabel.Create(FBox);
   mTitle.Parent := FBox;
-  mTitle.SetBounds(cGap * 2, cGap, 400, 16);
+  TAtlasControlScaling.Place(mTitle, cGap * 2, cGap, cTitleWidth, cTitleHeight);
   mTitle.Font.Style := [fsBold];
   mTitle.Caption := AtlasRuleGroupCaption(FGroups[AGroup]);
-  AddRuleTable(cGap + 24, FGroups[AGroup]);
+  AddRuleTable(FBox.ScaleValue(cGap + cTitleRow), FGroups[AGroup]);
 end;
 
 procedure TAtlasRulesSettingsDialog.ClearBox;
@@ -154,7 +155,8 @@ begin
   // ihrem Hauptschalter.
   FRuleEditor := TAtlasRulesEditor.Create(FBox);
   FRuleEditor.Parent := FBox;
-  FRuleEditor.SetBounds(cGap * 2, ATop, FBox.ClientWidth - cGap * 5, 400);
+  FRuleEditor.SetBounds(FBox.ScaleValue(cGap * 2), ATop, FBox.ClientWidth - FBox.ScaleValue(cRightRoom),
+    FBox.ScaleValue(cEditorHeight));
   FRuleEditor.Anchors := [akLeft, akTop, akRight];
   FRuleEditor.FixedGroup := AGroup;
   FRuleEditor.SetRules(FCatalog, FRulesJson, FGlobalRulesJson);
@@ -162,7 +164,7 @@ begin
   FRuleEditor.HandleNeeded;
   FRuleHeight := FRuleEditor.Height;
   FRuleEditor.OnResize := RuleEditorResize;
-  Result := ATop + FRuleHeight + cGap;
+  Result := ATop + FRuleHeight + FBox.ScaleValue(cGap);
 end;
 
 function TAtlasRulesSettingsDialog.SelectRule(const AId: string): Boolean;
@@ -277,13 +279,6 @@ begin
   begin
     ApplyRules(TAtlasRuleTable.WithSeverity(FRulesJson, AId, ASeverity));
   end;
-end;
-
-{ TAtlasRulesDialogProvider }
-
-function TAtlasRulesDialogProvider.DialogClass: TAtlasProjectSettingsDialogClass;
-begin
-  Result := TAtlasRulesSettingsDialog;
 end;
 
 end.

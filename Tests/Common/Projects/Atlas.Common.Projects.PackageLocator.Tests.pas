@@ -12,10 +12,6 @@ type
   [TestFixture]
   TPackageLocatorTests = class
   public
-    /// <summary>Datei- und Zeitfunktionen legen beim ersten Aufruf Objekte an, die bis Prozessende leben (z. B.
-    /// die Zeitzone); der Leckmonitor zählte sie sonst im ersten Test mit .dcp auf der Platte.</summary>
-    [SetupFixture]
-    procedure WarmUpFileTimes;
     [Test]
     procedure SourceAnswersFromContains;
     [Test]
@@ -37,7 +33,7 @@ type
     procedure RequiredFilesFollowRequires;
     [Test]
     procedure RequiresComeFromSource;
-    /// <summary>Speicher (Rückmeldung 01.11.2026): Jeder Arbeitsbereich und jeder Indexstart hat einen eigenen
+    /// <summary>Speicher: Jeder Arbeitsbereich und jeder Indexstart hat einen eigenen
     /// Locator; dieselbe .dcp liegt trotzdem nur einmal im Speicher.</summary>
     [Test]
     procedure CompiledFilesAreShared;
@@ -110,26 +106,6 @@ begin
 end;
 
 { TPackageLocatorTests }
-
-procedure TPackageLocatorTests.WarmUpFileTimes;
-var
-  mFolder: string;
-  mLocator: TPackageLocator;
-  mContains: Boolean;
-begin
-  // Einmal der ganze Weg der Tests mit .dcp auf der Platte (Ordner, Zeitstempel, geteiltes Lesen).
-  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDcpWarmUp' + TGUID.NewGuid.ToString);
-  TDirectory.CreateDirectory(mFolder);
-  TFile.WriteAllBytes(TPath.Combine(mFolder, 'Warm.dcp'), TEncoding.ASCII.GetBytes('WARM'));
-  mLocator := TPackageLocator.Create([mFolder]);
-  try
-    mLocator.Provides('Warm', 'Warm', mContains);
-  finally
-    mLocator.Free;
-    TPackageCompiledFiles.Clear;
-    TDirectory.Delete(mFolder, True);
-  end;
-end;
 
 procedure TPackageLocatorTests.SourceAnswersFromContains;
 var
@@ -225,9 +201,11 @@ var
   mContains: Boolean;
   mCount: Integer;
 begin
-  mReads := TList<string>.Create;
-  mLocator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Basis.dpk'), cBasisDpk)], mReads));
+  mReads := nil;
+  mLocator := nil;
   try
+    mReads := TList<string>.Create;
+    mLocator := TPackageLocator.Create(['A'], Files([Entry(TPath.Combine('A', 'Basis.dpk'), cBasisDpk)], mReads));
     mLocator.Provides('Basis', 'uBasis', mContains);
     mCount := mReads.Count;
     mLocator.Provides('BASIS', 'uHilfe', mContains);
@@ -343,9 +321,11 @@ begin
   TDirectory.CreateDirectory(mFolder);
   TFile.WriteAllBytes(TPath.Combine(mFolder, 'Geteilt.dcp'), TEncoding.ASCII.GetBytes('xx GETEILT.EINS yy'));
   mBefore := TPackageCompiledFiles.Bytes;
-  mFirst := TPackageLocator.Create([mFolder]);
-  mSecond := TPackageLocator.Create([mFolder]);
+  mFirst := nil;
+  mSecond := nil;
   try
+    mFirst := TPackageLocator.Create([mFolder]);
+    mSecond := TPackageLocator.Create([mFolder]);
     Assert.IsTrue(mFirst.Provides('Geteilt', 'Geteilt.Eins', mContains));
     Assert.IsTrue(mContains);
     Assert.IsTrue(mSecond.Provides('Geteilt', 'Geteilt.Eins', mContains));

@@ -25,7 +25,6 @@ type
     function Guarded: Boolean;
     procedure HandleDirective(const AText: string);
     function Current: TPascalToken;
-    function NextSignificant(AFrom: Integer): Integer;
     procedure ReadUses;
     procedure ReadEntry;
     procedure ReadStatementWord;
@@ -64,7 +63,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   cDebug = 1;
@@ -162,16 +162,6 @@ begin
   Result := FTokens[FIndex];
 end;
 
-function TLeakMainScan.NextSignificant(AFrom: Integer): Integer;
-begin
-  Result := AFrom;
-  while (Result < Length(FTokens)) and
-    (FTokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 procedure TLeakMainScan.ReadUses;
 begin
   UsesFound := True;
@@ -250,7 +240,7 @@ begin
   else if IsWord(Current, 'end') and (FDepth > 0) then
   begin
     Dec(FDepth);
-    mNext := NextSignificant(FIndex + 1);
+    mNext := NextCode(FTokens, FIndex + 1);
     if (FDepth = 0) and (mNext < Length(FTokens)) and FTokens[mNext].IsSymbol('.') then
     begin
       MainBegin := FCandidate;
@@ -277,7 +267,7 @@ begin
       end;
     TPascalTokenKind.Identifier:
       begin
-        mNext := NextSignificant(FIndex + 1);
+        mNext := NextCode(FTokens, FIndex + 1);
         if (mNext < Length(FTokens)) and FTokens[mNext].IsSymbol(':=') then
         begin
           if (ReportLine = 0) and SameText(Current.Text, 'ReportMemoryLeaksOnShutdown') then

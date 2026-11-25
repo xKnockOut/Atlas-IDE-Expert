@@ -74,14 +74,14 @@ uses
   Vcl.Forms,
   Vcl.Controls,
   ToolsAPI,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Settings.Schema,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Choices,
   Atlas.Core.Settings.Validation,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Build.Target,
   Atlas.IDE.Build.Target,
   Atlas.UI.Strings,
@@ -89,8 +89,10 @@ uses
   Atlas.UI.Settings.ProjectDialog,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Foundation.Files,
-  Atlas.Text.Json;
+  Atlas.ToolsApi.Files.Service,
+  Atlas.Text.Json,
+  System.StrUtils,
+  Atlas.UI.Settings.Contract;
 
 /// <summary>Dialogklasse mit Regel-Editor eines laufenden Moduls (Prüfregeln, #1755); sonst die von Base.
 /// </summary>
@@ -102,9 +104,11 @@ begin
   Result := TAtlasProjectSettingsDialog;
   for mItem in TAtlasModuleContributions.Active(AtlasModuleRegistry, IAtlasSettingsDialogProvider) do
   begin
-    if Supports(mItem, IAtlasSettingsDialogProvider, mProvider) then
+    if Supports(mItem, IAtlasSettingsDialogProvider, mProvider) and (mProvider.DialogClass <> nil) and
+      mProvider.DialogClass.InheritsFrom(TAtlasProjectSettingsDialog) then
     begin
-      Exit(mProvider.DialogClass);
+      Result := TAtlasProjectSettingsDialogClass(mProvider.DialogClass);
+      Exit;
     end;
   end;
 end;
@@ -203,9 +207,11 @@ var
   mKeys: TStringList;
   mKey: string;
 begin
-  mKeys := TStringList.Create;
-  mRegistry := TRegistry.Create(KEY_READ);
+  mKeys := nil;
+  mRegistry := nil;
   try
+    mKeys := TStringList.Create;
+    mRegistry := TRegistry.Create(KEY_READ);
     mRegistry.RootKey := ARoot;
     if not mRegistry.OpenKeyReadOnly('Software\Embarcadero\BDS') then
     begin
@@ -298,7 +304,7 @@ type
     /// könnte.</summary>
     function Fields: TArray<TAtlasSettingField>;
     /// <summary>Regelkatalog des Servers in der Sprache der Oberfläche (#446); nil ohne Server.</summary>
-    function LoadCatalog: TJSONValue;
+    class function LoadCatalog: TJSONValue; static;
     function DprojChoices(const APath: string): TArray<TAtlasSettingChoice>;
     function Choices(const APath: string): TArray<TAtlasSettingChoice>;
     function Validate(const AText: string; out AChecked: Boolean): TArray<TAtlasSettingIssue>;
@@ -379,7 +385,7 @@ begin
   end;
 end;
 
-function TAtlasSettingsFileEdit.LoadCatalog: TJSONValue;
+class function TAtlasSettingsFileEdit.LoadCatalog: TJSONValue;
 begin
   if TAtlasStrings.Language = TAtlasLanguage.English then
   begin
@@ -422,7 +428,7 @@ begin
   begin
     Result := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions);
   end
-  else if (APath = 'profile') or (APath = 'testProfile') then
+  else if MatchStr(APath, ['profile', 'testProfile']) then
   begin
     mProfiles := FModel.IndexOf('profiles');
     if mProfiles >= 0 then

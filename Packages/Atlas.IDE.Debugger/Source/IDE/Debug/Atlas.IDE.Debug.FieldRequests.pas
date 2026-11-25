@@ -13,7 +13,7 @@ interface
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Session;
 
 type
@@ -45,8 +45,8 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Debug.Evaluate;
 
 /// <summary>AFields im Hauptthread an AArrived.</summary>
@@ -126,7 +126,10 @@ begin
     end;
   except
     // Server langsam oder weg: Der Aufrufer zerlegt den Ergebnis-String.
-    Result := nil;
+    on ELspClientError do
+    begin
+      Result := nil;
+    end;
   end;
 end;
 

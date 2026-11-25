@@ -37,38 +37,12 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   Vcl.Graphics,
-  Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.Frame,
-  Atlas.UI.Welcome.QuickActions;
+  Atlas.UI.Welcome.QuickActions,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasProjectsSource = interface
-    ['{4E7C2A19-6B3D-4F80-9C51-8A2D0E6F3B47}']
-    /// <summary>Gezeigte Projekte mit Zusammenfassung und Stand der Versionsverwaltung.</summary>
-    function Entries: TAtlasProjectEntries;
-    procedure Open(const AProject: string);
-    /// <summary>Projekt öffnen und zu ATarget springen (Fehler-Marke).</summary>
-    procedure OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
-    procedure OpenFolder(const AProject: string);
-    /// <summary>„Branch anlegen …“ (#1288): Dialog für die Arbeitskopie von AProject.</summary>
-    procedure CreateBranch(const AProject: string);
-    /// <summary>„Arbeitskopien …“ (#1292): Tabelle der Arbeitskopien von AProject (Wurzel, Externals,
-    /// Submodule).</summary>
-    procedure ShowWorkingCopies(const AProject: string);
-    /// <summary>vcs.externals.show: Eintrag „Arbeitskopien …“ zeigen.</summary>
-    function WorkingCopies: Boolean;
-    /// <summary>„Aus Liste entfernen“: nur in diesem Bereich, die Liste der IDE bleibt.</summary>
-    procedure Remove(const AProject: string);
-    /// <summary>Der Bereich wird gezeigt: Versionsverwaltung bei Bedarf im Hintergrund frisch abfragen.</summary>
-    procedure Shown;
-    /// <summary>Klick wählt eine Zeile für den Projektverlauf (#758) statt sie zu öffnen.</summary>
-    function Selectable: Boolean;
-    /// <summary>Projekt für den Projektverlauf wählen (#758).</summary>
-    procedure Select(const AProject: string);
-    /// <summary>Gewähltes Projekt; '' = keins (der Verlauf zeigt dann das oberste).</summary>
-    function Selected: string;
-  end;
 
   TAtlasProjectsHit = record
     /// <summary>Zeile; -1 = keine.</summary>
@@ -192,11 +166,14 @@ uses
   Atlas.UI.Welcome.QuickActions.Texts,
   System.UITypes,
   Atlas.Core.Welcome.QuickActions,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.Core.Projects.Summary,
+  Atlas.Text.Arrays,
+  Atlas.Plugin.Calls.Optional;
 
 type
   /// <summary>Zeichnet die Zeilen des Bereichs: Punkt, Name, Branch, zweite Zeile, Stand der Schnellaktion und
@@ -224,14 +201,12 @@ type
   end;
 
 function ProjectNames(const AEntries: TAtlasProjectEntries): TArray<string>;
-var
-  mIndex: Integer;
 begin
-  SetLength(Result, Length(AEntries));
-  for mIndex := 0 to High(AEntries) do
-  begin
-    Result[mIndex] := AEntries[mIndex].Project;
-  end;
+  Result := TTextArrays.Texts<TAtlasProjectEntry>(AEntries,
+    function(AEntry: TAtlasProjectEntry): string
+    begin
+      Result := AEntry.Project;
+    end);
 end;
 
 procedure AddFirstHint(ALines: TStrings; const ALocation: TAtlasProjectLocation);
@@ -396,7 +371,7 @@ begin
     Canvas.Font.Assign(FFrame.Font);
     Canvas.Font.Size := FFrame.Font.Size - 1;
     Result := FFrame.FQuick.LayoutRow(Canvas, ARow, Rect(Scaled(TAtlasWelcomeProjectsFrame.cIndent) + FDot +
-      Scaled(80), ATop, mWidth - Scaled(TAtlasWelcomeProjectsFrame.cIndent),
+      Scaled(TAtlasWelcomeRow.cQuickActionsLeft), ATop, mWidth - Scaled(TAtlasWelcomeProjectsFrame.cIndent),
       ATop + Scaled(TAtlasWelcomeProjectsFrame.cRowHeight) - Scaled(2))) - Scaled(TAtlasWelcomeProjectsFrame.cIndent);
   end;
 end;
@@ -411,7 +386,8 @@ begin
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := StyleServices(FFrame).GetSystemColor(clHighlight);
     Canvas.Pen.Color := Canvas.Brush.Color;
-    Canvas.FillRect(Rect(0, ATop, Scaled(3), ATop + Scaled(TAtlasWelcomeProjectsFrame.cRowHeight) - Scaled(2)));
+    Canvas.FillRect(Rect(0, ATop, Scaled(TAtlasWelcomeRow.cSelectionBar),
+      ATop + Scaled(TAtlasWelcomeProjectsFrame.cRowHeight) - Scaled(2)));
     Canvas.Brush.Style := bsClear;
   end;
   // Punkt mit der schlimmsten Stufe; ohne Angaben grau.
@@ -419,34 +395,38 @@ begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := TAtlasProjectsTexts.PillColor(TAtlasWelcomeProjects.Level(FFrame.FPills[ARow]));
   Canvas.Pen.Color := Canvas.Brush.Color;
-  Canvas.Ellipse(mLeft, ATop + Scaled(6), mLeft + FDot, ATop + Scaled(6) + FDot);
+  Canvas.Ellipse(mLeft, ATop + Scaled(TAtlasWelcomeRow.cDotTop), mLeft + FDot,
+    ATop + Scaled(TAtlasWelcomeRow.cDotTop) + FDot);
   Canvas.Brush.Style := bsClear;
 end;
 
 procedure TProjectsPainter.PaintTexts(ARow, ATop, ALimit: Integer);
 var
   mEntry: TAtlasProjectEntry;
-  mLeft, mTextLeft: Integer;
+  mLeft, mTextLeft, mNameTop, mNameBottom, mDetailTop: Integer;
 begin
   mEntry := FFrame.FEntries[ARow];
-  mTextLeft := Scaled(TAtlasWelcomeProjectsFrame.cIndent) + FDot + Scaled(6);
+  mNameTop := ATop + Scaled(TAtlasWelcomeRow.cNameTop);
+  mNameBottom := ATop + Scaled(TAtlasWelcomeRow.cNameBottom);
+  mDetailTop := ATop + Scaled(TAtlasWelcomeRow.cDetailTop);
+  mTextLeft := Scaled(TAtlasWelcomeProjectsFrame.cIndent) + FDot + Scaled(TAtlasWelcomeRow.cDotGap);
   mLeft := mTextLeft;
   Canvas.Font.Assign(FFrame.Font);
   Canvas.Font.Color := TextColor;
   Canvas.Font.Style := [fsBold];
-  Canvas.TextRect(Rect(mLeft, ATop + Scaled(3), ALimit, ATop + Scaled(21)), mLeft, ATop + Scaled(3), mEntry.Name);
-  Inc(mLeft, Canvas.TextWidth(mEntry.Name) + Scaled(8));
+  Canvas.TextRect(Rect(mLeft, mNameTop, ALimit, mNameBottom), mLeft, mNameTop, mEntry.Name);
+  Inc(mLeft, Canvas.TextWidth(mEntry.Name) + Scaled(TAtlasWelcomeRow.cNameGap));
   Canvas.Font.Style := [];
   if (mEntry.Branch <> '') and (mLeft < ALimit) then
   begin
     Canvas.Font.Color := MutedColor;
-    Canvas.TextRect(Rect(mLeft, ATop + Scaled(3), ALimit, ATop + Scaled(21)), mLeft, ATop + Scaled(3),
-      mEntry.Branch);
+    Canvas.TextRect(Rect(mLeft, mNameTop, ALimit, mNameBottom), mLeft, mNameTop, mEntry.Branch);
   end;
   // Zweite Zeile.
   Canvas.Font.Assign(FFrame.Font);
   Canvas.Font.Color := MutedColor;
-  Canvas.TextRect(Rect(mTextLeft, ATop + Scaled(23), ALimit, ATop + Scaled(41)), mTextLeft, ATop + Scaled(23),
+  Canvas.TextRect(Rect(mTextLeft, mDetailTop, ALimit, ATop + Scaled(TAtlasWelcomeRow.cDetailBottom)), mTextLeft,
+    mDetailTop,
     TAtlasProjectsTexts.DetailText(mEntry));
 end;
 
@@ -470,7 +450,8 @@ begin
     mRight := FFrame.FPillRects[ARow][0].Left - Scaled(TAtlasWelcomeProjectsFrame.cPillGap);
   end;
   mRect := Rect(mRight - Canvas.TextWidth(mText) - 2 * Scaled(TAtlasWelcomeProjectsFrame.cPillPadding),
-    ATop + Scaled(3), mRight, ATop + Scaled(3) + Scaled(TAtlasWelcomeProjectsFrame.cPillHeight));
+    ATop + Scaled(TAtlasWelcomeRow.cNameTop), mRight,
+    ATop + Scaled(TAtlasWelcomeRow.cNameTop) + Scaled(TAtlasWelcomeProjectsFrame.cPillHeight));
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := TAtlasQuickActionTexts.StateColor(mState);
   Canvas.Pen.Color := Canvas.Brush.Color;
@@ -571,11 +552,7 @@ end;
 procedure TAtlasWelcomeProjectsFrame.SetSource(const AValue: IAtlasProjectsSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  TAtlasCalls.ShowSource(FSource, UpdateContent);
 end;
 
 function TAtlasWelcomeProjectsFrame.GetQuickActions: IAtlasQuickActionsSource;
@@ -638,7 +615,7 @@ begin
   if Length(FEntries) = 0 then
   begin
     mPainter.Canvas.Font.Color := mPainter.MutedColor;
-    mPainter.Canvas.TextOut(ScaleValue(cIndent), RowTop(0) + ScaleValue(4),
+    mPainter.Canvas.TextOut(ScaleValue(cIndent), RowTop(0) + ScaleValue(TAtlasWelcomeRow.cEmptyTop),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeProjectsEmpty));
     Exit;
   end;
@@ -730,16 +707,15 @@ end;
 
 class function TAtlasProjectsTexts.PillColor(ALevel: TAtlasProjectPillLevel): TColor;
 begin
-  // Kräftige Töne mit weißer Schrift: lesbar im hellen und im dunklen Thema.
   case ALevel of
     TAtlasProjectPillLevel.Good:
-      Result := TColor($0043A02E);
+      Result := TAtlasWelcomeMarks.cGood;
     TAtlasProjectPillLevel.Warning:
-      Result := TColor($001A8CC9);
+      Result := TAtlasWelcomeMarks.cWarning;
     TAtlasProjectPillLevel.Error:
-      Result := TColor($002E22CF);
+      Result := TAtlasWelcomeMarks.cError;
   else
-    Result := TColor($00817666);
+    Result := TAtlasWelcomeMarks.cNeutral;
   end;
 end;
 
@@ -792,12 +768,7 @@ end;
 
 class function TAtlasProjectsTexts.LocalText(AUtc: TDateTime): string;
 begin
-  Result := '';
-  if AUtc <= 0 then
-  begin
-    Exit;
-  end;
-  Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
+  Result := TAtlasWelcomeStrings.LocalTime(AUtc);
 end;
 
 procedure TAtlasWelcomeProjectsFrame.BoxDblClick(Sender: TObject);
@@ -870,7 +841,7 @@ begin
   begin
     SetLength(FPillRects[mRow], Length(FPills[mRow]));
     mRight := FBox.Width - ScaleValue(cIndent);
-    mTop := RowTop(mRow) + ScaleValue(3);
+    mTop := RowTop(mRow) + ScaleValue(TAtlasWelcomeRow.cNameTop);
     for mIndex := High(FPills[mRow]) downto 0 do
     begin
       mWidth := mCanvas.TextWidth(TAtlasProjectsTexts.PillText(FPills[mRow][mIndex])) + 2 * ScaleValue(cPillPadding);

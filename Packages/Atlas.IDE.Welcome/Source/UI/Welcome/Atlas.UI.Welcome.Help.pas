@@ -19,22 +19,10 @@ uses
   Vcl.StdCtrls,
   Vcl.Graphics,
   Atlas.Core.Welcome.Help,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasHelpSource = interface
-    ['{6B1E2F7A-3C94-4D58-9A0B-5E7C1D2F8A46}']
-    /// <summary>Gibt es die Tastenkürzel-Übersicht (#520)?</summary>
-    function KeysAvailable: Boolean;
-    /// <summary>„Atlas-Doku“: installierte Doku oder Doku-Seite des Repositorys im Browser.</summary>
-    procedure OpenDocs;
-    /// <summary>„Tastenkürzel“: Übersicht aus #520.</summary>
-    procedure ShowKeys;
-    /// <summary>„Problem melden …“: Dialog mit Diagnosepaket.</summary>
-    procedure ReportProblem;
-    /// <summary>„Atlas unterstützen“: Spendenseite im Browser.</summary>
-    procedure Donate;
-  end;
 
   TAtlasWelcomeHelpFrame = class(TAtlasWelcomeSectionFrame)
   public const
@@ -71,9 +59,10 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Welcome.Strings;
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.UI.Welcome.Strings,
+  Atlas.Vcl.Theme.Service;
 
 { TAtlasWelcomeHelpFrame }
 
@@ -93,7 +82,7 @@ begin
   FNote := TLabel.Create(Self);
   FNote.Parent := Body;
   FNote.ShowAccelChar := False;
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FNote.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpNote);
   Body.OnResize := BodyResize;
   UpdateContent;
@@ -109,7 +98,7 @@ function TAtlasWelcomeHelpFrame.BodyHeight: Integer;
 begin
   // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
   Arrange;
-  Result := Max(FContentHeight, ScaleValue(40));
+  Result := Max(FContentHeight, ScaleValue(cMinBodyHeight));
 end;
 
 procedure TAtlasWelcomeHelpFrame.UpdateContent;
@@ -175,16 +164,8 @@ begin
 end;
 
 procedure TAtlasWelcomeHelpFrame.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
 begin
-  mOldHeight := FContentHeight;
-  Arrange;
-  // Andere Reihen bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
+  Rearrange(Arrange, FContentHeight);
 end;
 
 procedure TAtlasWelcomeHelpFrame.ButtonClick(Sender: TObject);

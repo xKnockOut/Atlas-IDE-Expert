@@ -4,7 +4,8 @@
 // Art, Feldern und Gruppierung; die Auswahl überspringt Gruppenköpfe und
 // bleibt beim Umschalten auf derselben Komponente; die klein Art zeigt flach
 // alle Arten; Zum Ereignis nur mit belegtem Ereignis; Name kopieren landet in
-// der Zwischenablage.
+// der Zwischenablage. Rahmenloses Fenster auf TAtlasPopupForm: Fenster und
+// Themenwechsel brauchen keinen Schutz vor halb gebautem Objekt.
 
 interface
 
@@ -23,10 +24,6 @@ type
     function Open(ACompact: Boolean; const ACurrent: string): TAtlasComponentSearchWindow;
     function SelectedName: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen: Clipboard legt sein Objekt einmal an und gibt es erst am
-    /// Programmende frei.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [TearDown]
     procedure TearDown;
     [Test]
@@ -39,6 +36,8 @@ type
     procedure CompactIsFlat;
     [Test]
     procedure ActionsNeedWhatTheyUse;
+    [Test]
+    procedure PopupFrameFollowsTheme;
   end;
 
 implementation
@@ -46,8 +45,11 @@ implementation
 uses
   System.SysUtils,
   System.Types,
+  Vcl.Graphics,
+  Vcl.Forms,
   Vcl.Clipbrd,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Vcl.Theme.Service;
 
 { TAtlasComponentSearchWindowTests }
 
@@ -99,15 +101,6 @@ begin
   if mIndex >= 0 then
   begin
     Result := Items[mIndex].Name;
-  end;
-end;
-
-procedure TAtlasComponentSearchWindowTests.WarmUpFirstUse;
-begin
-  try
-    ActionsNeedWhatTheyUse;
-  finally
-    TearDown;
   end;
 end;
 
@@ -209,6 +202,26 @@ begin
   FWindow.Run(TAtlasComponentSearchAction.CopyName);
   Assert.AreEqual('edtName', Clipboard.AsText, 'Name in der Zwischenablage');
   Assert.AreEqual(0, mCalls, 'Kopieren erledigt das Fenster selbst');
+end;
+
+procedure TAtlasComponentSearchWindowTests.PopupFrameFollowsTheme;
+begin
+  Open(False, '');
+  Assert.AreEqual<TFormBorderStyle>(bsNone, FWindow.BorderStyle);
+  Assert.IsTrue(FWindow.Rounded, 'runde Ecken und Akzentrand über die Basis');
+  // Das Fenster entsteht erst jetzt, mit fertigem Zeichner.
+  FWindow.HandleNeeded;
+  TAtlasUiTheme.Install(
+    function: TAtlasColors
+    begin
+      Result := TAtlasColors.Dark;
+    end, nil, nil);
+  try
+    TAtlasUiTheme.Changed;
+  finally
+    TAtlasUiTheme.Uninstall;
+  end;
+  Assert.AreEqual(Integer(TColor(TAtlasColors.Dark.Surface)), Integer(FWindow.Color), 'Fläche im neuen Thema');
 end;
 
 initialization

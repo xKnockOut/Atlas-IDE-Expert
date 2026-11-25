@@ -22,11 +22,11 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.LensAsk,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Diagnostics.Deadline;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) im Hintergrund an den laufenden Server (RunServerCommandAsync des
@@ -97,8 +97,6 @@ type
       const AFileName: string): Boolean; static;
     /// <summary>Zelle drei Zeichen hinter dem Ende von ALine (Text der Zeile in AContext).</summary>
     class function CellAfter(const AContext: INTACodeEditorPaintContext; const ALine: string): TRect; static;
-    /// <summary>Farbe unter AX, AY; ohne die Pinselfarbe.</summary>
-    class function BackAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor; static;
     /// <summary>Zeichnet AText als Marke ab AX in der Zeile ARect; Ergebnis: Rechteck der Marke.</summary>
     class function Paint(ACanvas: TCanvas; const ARect: TRect; AX: Integer; const AText: string;
       const AStyle: TAtlasLensPillStyle): TRect; static;
@@ -110,11 +108,11 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.Math,
   Winapi.Windows,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.CodeView;
+  Atlas.ToolsApi.Editor.CodeView;
 
 { TAtlasLensPoll }
 
@@ -270,31 +268,24 @@ begin
 end;
 
 class function TAtlasLensPill.CellAfter(const AContext: INTACodeEditorPaintContext; const ALine: string): TRect;
+const
+  // Abstand der Linse hinter dem Zeilenende in Zeichen
+  cGapChars = 3;
 var
   mColumn: Integer;
 begin
   mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(ALine,
     TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) + 1;
-  Result := AContext.EditorState.GetCharacterPosPx(mColumn + 3, AContext.EditorLineNum);
-end;
-
-class function TAtlasLensPill.BackAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
-var
-  mSample: COLORREF;
-begin
-  mSample := GetPixel(ACanvas.Handle, AX, AY);
-  if mSample = CLR_INVALID then
-  begin
-    Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
-  end
-  else
-  begin
-    Result := TAtlasColor(mSample);
-  end;
+  Result := AContext.EditorState.GetCharacterPosPx(mColumn + cGapChars, AContext.EditorLineNum);
 end;
 
 class function TAtlasLensPill.Paint(ACanvas: TCanvas; const ARect: TRect; AX: Integer; const AText: string;
   const AStyle: TAtlasLensPillStyle): TRect;
+const
+  cMinFontSize = 6;
+  cTextTone = 0.85;
+  cCorner = 6;
+  cTextPad = 5;
 var
   mOldFont: TFont;
   mOldBrush: TBrush;
@@ -302,30 +293,36 @@ var
   mHeight, mTop: Integer;
 begin
   mOldFont := TFont.Create;
-  mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldFont.Assign(ACanvas.Font);
-    mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    ACanvas.Font.Size := Max(6, ACanvas.Font.Size - 1);
-    ACanvas.Font.Style := AStyle.FontStyle;
-    ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, 0.85));
-    ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Border));
-    ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Fill));
-    mHeight := ACanvas.TextHeight('Xg');
-    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mHeight - 2) div 2);
-    Result := TRect.Create(AX, mTop, AX + ACanvas.TextWidth(AText) + 10, mTop + mHeight + 2);
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, 6, 6);
-    ACanvas.Brush.Style := bsClear;
-    ACanvas.TextOut(Result.Left + 5, Result.Top + 1, AText);
+    mOldBrush := TBrush.Create;
+    try
+      mOldBrush.Assign(ACanvas.Brush);
+      mOldPen := TPen.Create;
+      try
+        mOldPen.Assign(ACanvas.Pen);
+        ACanvas.Font.Size := Max(cMinFontSize, ACanvas.Font.Size - 1);
+        ACanvas.Font.Style := AStyle.FontStyle;
+        ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, cTextTone));
+        ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Border));
+        ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AStyle.Tone, AStyle.Back, AStyle.Fill));
+        mHeight := ACanvas.TextHeight('Xg');
+        mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mHeight - 2) div 2);
+        Result := TRect.Create(AX, mTop, AX + ACanvas.TextWidth(AText) + 10, mTop + mHeight + 2);
+        ACanvas.Brush.Style := bsSolid;
+        ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, cCorner, cCorner);
+        ACanvas.Brush.Style := bsClear;
+        ACanvas.TextOut(Result.Left + cTextPad, Result.Top + 1, AText);
+      finally
+        ACanvas.Pen.Assign(mOldPen);
+        mOldPen.Free;
+      end;
+    finally
+      ACanvas.Brush.Assign(mOldBrush);
+      mOldBrush.Free;
+    end;
   finally
     ACanvas.Font.Assign(mOldFont);
-    ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
-    mOldBrush.Free;
     mOldFont.Free;
   end;
 end;

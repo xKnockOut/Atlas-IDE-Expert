@@ -13,6 +13,8 @@
 //   läuft; sonst wird er aus Meldung und Ausdruck des Haltepunkts
 //   zurückgewonnen.
 // - Alle aus, an, löschen: nur Haltepunkte der Gruppe cGroup.
+// - „Zahl aufzeichnen“ (#2552) steht in der gemerkten Eingabe; RecordedInput
+//   findet sie zum Ort der Ausgabe für den Logpunkt-Verlauf.
 // - Lines/Item liefern der Rinne (TAtlasIdeLogpointGutter) die Zeilen ohne
 //   IDE-Aufrufe; Refresh liest die Haltepunkte höchstens alle cRefreshMs neu.
 // Nur im Hauptthread verwenden.
@@ -73,6 +75,9 @@ type
     class function Marks(const AFileName: string): TArray<TAtlasIdeLogpointMark>; static;
     class function TryMark(const AFileName: string; ALine: Integer; out AMark: TAtlasIdeLogpointMark): Boolean;
       static;
+    /// <summary>Eingabe des Logpunkts am Ort APlace („Unit1.pas:12“, wie in der Ausgabe), wenn er Werte
+    /// aufzeichnet (#2552); False sonst. Bei gleichnamigen Dateien gilt der erste.</summary>
+    class function RecordedInput(const APlace: string; out AInput: TAtlasLogpointInput): Boolean; static;
   end;
 
 implementation
@@ -81,12 +86,14 @@ uses
   Winapi.Windows, // GetTickCount64 (in Delphi nicht über System.SysUtils)
   ToolsAPI.Editor,
   Atlas.Core.Debug.Logpoint,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.UI.Debug.Logpoints.Strings;
+  Atlas.UI.Debug.Logpoints.Strings,
+  Atlas.Plugin.Calls.Optional,
+  Atlas.ToolsApi.Debugger.Services;
 
 /// <summary>Ort für Meldung und Titel: "Unit1.pas:12".</summary>
 function PlaceOf(const AFileName: string; ALine: Integer): string;
@@ -160,7 +167,7 @@ var
   mExisting: IOTASourceBreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -227,7 +234,7 @@ var
   mServices: IOTADebuggerServices;
 begin
   FInputs.Remove(KeyOf(AFileName, ALine));
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if (mServices <> nil) and (ABreakpoint <> nil) then
   begin
     mServices.RemoveBreakpoint(ABreakpoint);
@@ -241,7 +248,7 @@ var
   mBreakpoint: IOTABreakpoint;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -258,10 +265,7 @@ end;
 
 class procedure TAtlasIdeLogpoints.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasCalls.Send(FMessage, AText);
 end;
 
 class procedure TAtlasIdeLogpoints.Changed;
@@ -327,7 +331,8 @@ begin
   mExisting := Find(mFileName, mLine);
   mInput := InputOf(mExisting, mLine);
   mPlace := PlaceOf(mFileName, mLine);
-  case TAtlasLogpointDialog.Execute(mPlace, IsLogpoint(mExisting), mInput) of
+  case TAtlasLogpointDialog.Execute(mPlace, IsLogpoint(mExisting), TAtlasIdeSettings.Current.DebugLogpointsRecordValues,
+    mInput) of
     TAtlasLogpointChoice.SetLogpoint:
       if Apply(mFileName, mLine, mExisting, mInput) then
       begin
@@ -346,6 +351,29 @@ begin
     Exit;
   end;
   Changed;
+end;
+
+class function TAtlasIdeLogpoints.RecordedInput(const APlace: string; out AInput: TAtlasLogpointInput): Boolean;
+var
+  mPair: TPair<string, TAtlasLogpointInput>;
+  mAt: Integer;
+begin
+  AInput := Default(TAtlasLogpointInput);
+  if (FInputs = nil) or (APlace = '') then
+  begin
+    Exit(False);
+  end;
+  for mPair in FInputs do
+  begin
+    mAt := mPair.Key.LastIndexOf('|');
+    if mPair.Value.RecordValues and (mAt > 0) and
+      SameText(PlaceOf(mPair.Key.Substring(0, mAt), StrToIntDef(mPair.Key.Substring(mAt + 1), -1)), APlace) then
+    begin
+      AInput := mPair.Value;
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class procedure TAtlasIdeLogpoints.DisableAll;
@@ -382,7 +410,7 @@ var
   mBreakpoint: IOTABreakpoint;
   mServices: IOTADebuggerServices;
 begin
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   mBreakpoints := Own;
   if mServices <> nil then
   begin

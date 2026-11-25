@@ -29,12 +29,13 @@ uses
   Winapi.Windows,
   System.SysUtils,
   Vcl.Forms,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.UI.Strings,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Welcome.State,
-  Atlas.UI.Welcome.State;
+  Atlas.UI.Welcome.State,
+  Atlas.UI.Welcome.Contract;
 
 
 type

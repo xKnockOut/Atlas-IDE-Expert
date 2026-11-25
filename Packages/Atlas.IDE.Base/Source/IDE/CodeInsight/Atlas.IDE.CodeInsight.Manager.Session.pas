@@ -13,9 +13,11 @@ interface
 
 uses
   System.SyncObjs,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Files.WatchedChanges,
+  Atlas.Plugin.Files.Contract,
+  Atlas.Plugin.Files.WatchedChanges,
   Atlas.IDE.CodeInsight.Manager.State;
 
 type
@@ -42,10 +44,11 @@ type
     function EnsureSession: Boolean;
     /// <summary>Server starten und Sitzung aufbauen; nur aus EnsureSession, nur im Hauptthread.</summary>
     function StartSession: Boolean;
-    /// <summary>Server starten; sein Ende färbt das Statusfeld sofort (#591).</summary>
-    procedure ConnectServer(const APath, AArguments: string);
+    /// <summary>Server starten; sein Ende färbt das Statusfeld sofort (#591).
+    /// AClient: Clientseite der Verbindung; gehört dem Server und lebt so lange wie er.</summary>
+    procedure ConnectServer(const APath, AArguments: string; out AClient: TLspClient);
     /// <summary>Sitzung auf dem neuen Server anlegen und initialisieren; ADocuments wieder öffnen (#393).</summary>
-    procedure OpenSession(const ADocuments: TArray<TLspOpenDocument>);
+    procedure OpenSession(AClient: TLspClient; const ADocuments: TArray<TLspOpenDocument>);
     /// <summary>Eintrag „Server neu gestartet“ ab dem zweiten Start (#601).</summary>
     procedure NotifyRestart(ACrashed: Boolean; APreviousStart: TDateTime; AReopened: Integer);
     /// <summary>Projekte der geöffneten Gruppe, aktives zuerst; leer ohne Gruppe (#648).</summary>
@@ -102,13 +105,13 @@ uses
   Winapi.Windows,
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.TimeLimit,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Projects.Contract,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.TimeLimit,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Projects.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Outline.Cache,
@@ -116,27 +119,31 @@ uses
   Atlas.IDE.CodeInsight.Manager.Handlers,
   Atlas.IDE.CodeInsight.IdeTypes,
   Atlas.IDE.CodeInsight.IdeMembers,
-  Atlas.Core.Lsp.IdeTypes,
-  Atlas.Core.Lsp.IdeMembers,
+  Atlas.Plugin.Lsp.IdeTypes,
+  Atlas.Plugin.Lsp.IdeMembers,
   System.Diagnostics,
-  Atlas.Core.Localization.Language,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Localization.Language,
+  Atlas.Plugin.Diagnostics.Deadline;
 
 {$SCOPEDENUMS ON}
 
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
-  TSessionText = (ServerNotFoundTheBuilt, ServerNotFound, AtlasServerExeNotFound);
+  TSessionText = (ServerNotFoundTheBuilt, ServerNotFound, AtlasServerExeNotFound, StartFailed, Restarting);
 {$SCOPEDENUMS OFF}
 
 const
   cTexts: array[TAtlasLanguage, TSessionText] of string = (
     ('Server nicht gefunden: %s (die eingebaute Code Insight bleibt aktiv)',
      'Server nicht gefunden: %s',
-     'AtlasServer.exe nicht gefunden'),
+     'AtlasServer.exe nicht gefunden',
+     'Start fehlgeschlagen: %s',
+     'Server wird neu gestartet'),
     ('Server not found: %s (the built-in Code Insight stays active)',
      'Server not found: %s',
-     'AtlasServer.exe not found'));
+     'AtlasServer.exe not found',
+     'Start failed: %s',
+     'Restarting the server'));
   /// <summary>Höchstens so oft die Projektgruppe bzw. die Projektkontexte neu lesen (den Pfad des Servers:
   /// TAtlasCodeInsightPlan.cServerCheckMs).</summary>
   cProjectsCheckMs = 2000;
@@ -218,6 +225,7 @@ end;
 function TAtlasCodeInsightSession.StartSession: Boolean;
 var
   mPath, mArguments: string;
+  mClient: TLspClient;
   mDocuments: TArray<TLspOpenDocument>;
   mCrashed: Boolean;
   mPreviousStart: TDateTime;
@@ -249,8 +257,8 @@ begin
   end;
   SetPhase(TAtlasServerPhase.Starting, '');
   try
-    ConnectServer(mPath, mArguments);
-    OpenSession(mDocuments);
+    ConnectServer(mPath, mArguments, mClient);
+    OpenSession(mClient, mDocuments);
     FLastError := '';
     FStartedAt := Now;
     SetPhase(TAtlasServerPhase.Running, '');
@@ -264,7 +272,7 @@ begin
   except
     on E: Exception do
     begin
-      ReportError('Start fehlgeschlagen: ' + E.Message);
+      ReportError(Format(UiText(TSessionText.StartFailed), [E.Message]));
       StopSession;
       SetPhase(TAtlasServerPhase.Failed, TAtlasCodeInsightPaths.WithoutPaths(E.Message));
       Result := False;
@@ -272,12 +280,17 @@ begin
   end;
 end;
 
-procedure TAtlasCodeInsightSession.ConnectServer(const APath, AArguments: string);
+procedure TAtlasCodeInsightSession.ConnectServer(const APath, AArguments: string; out AClient: TLspClient);
 var
   mClient: TLspClient;
 begin
-  FServer := FAdapters.NewServer(APath, AArguments);
-  mClient := FServer.Client;
+  mClient := nil;
+  FServer := FAdapters.NewServer(APath, AArguments,
+    function(const ASend: TLspSendProc): IAtlasLspConnection
+    begin
+      Result := TLspClientConnection.Open(ASend, mClient);
+    end);
+  AClient := mClient;
   // Ende des Prozesses (z. B. im Task-Manager beendet) färbt das Statusfeld sofort rot (#591).
   mClient.OnClosed :=
     procedure
@@ -295,11 +308,11 @@ begin
     end;
 end;
 
-procedure TAtlasCodeInsightSession.OpenSession(const ADocuments: TArray<TLspOpenDocument>);
+procedure TAtlasCodeInsightSession.OpenSession(AClient: TLspClient; const ADocuments: TArray<TLspOpenDocument>);
 var
   mProjects: TArray<string>;
 begin
-  FSession := TLspSession.Create(FServer.Client);
+  FSession := TLspSession.Create(AClient);
   // Sprache der Oberfläche (#1458): Befunde, Code-Aktionen und Hover wie die Oberfläche; ohne "language" in
   // settings.json entscheidet allein diese Angabe.
   FSession.InitializeOptions := TLspInitializeOptions.ForLocale(TAtlasTextLanguage.Code);
@@ -557,6 +570,8 @@ begin
 end;
 
 procedure TAtlasCodeInsightSession.StopSessionNow;
+const
+  cIdleWaitMs = 5000;
 begin
   Assert(TAtlasMainThread.IsMain, 'StopSessionNow außerhalb des Hauptthreads');
   if FEditors <> nil then
@@ -567,23 +582,23 @@ begin
   begin
     FSession.SetOnProgress(nil);
   end;
-  if FServer <> nil then
+  if FSession <> nil then
   begin
-    FServer.Client.Close;
+    FSession.Client.Close;
   end;
   if FEditors <> nil then
   begin
     FEditors.EndStop;
   end;
   // Eine Statusabfrage im Hintergrund kehrt nach Close sofort zurück (#591), ebenso ein Befehl (#66).
-  FQueryIdle.WaitFor(5000);
+  FQueryIdle.WaitFor(cIdleWaitMs);
   // Aufgegebene Zeitlimit-Arbeiter können noch in Prepare bzw. Sync der Sitzung stecken.
   if not TAtlasTimeLimit.WaitIdle(TAtlasShutdown.cStopMs) then
   begin
     Diagnose('Sitzung beendet, während ein Zeitlimit-Arbeiter noch lief');
   end;
-  FCommandIdle.WaitFor(5000);
-  FServerCommandsIdle.WaitFor(5000);
+  FCommandIdle.WaitFor(cIdleWaitMs);
+  FServerCommandsIdle.WaitFor(cIdleWaitMs);
   FreeAndNil(FSession);
   FServer := nil;
 end;
@@ -701,7 +716,7 @@ end;
 
 function TAtlasCodeInsightSession.RestartServer: Boolean;
 begin
-  Report('Server wird neu gestartet');
+  Report(UiText(TSessionText.Restarting));
   AllowStart;
   StopSession;
   SetPhase(TAtlasServerPhase.Stopped, '', True);

@@ -25,7 +25,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.FlowMap,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.FlowFrame;
 
 type
@@ -50,7 +50,7 @@ type
     FHooks: TAtlasFlowMapHooks;
     FCacheFolder: string;
     FStarted: Boolean;
-    FWorker: TAtlasVcsWorker;
+    FWorker: TAtlasBackgroundJobs;
     FCancel: IAtlasCiCancel;
     FGeneration: Integer;
     FTarget: TAtlasTrackerTarget;
@@ -84,10 +84,10 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Flow.Strings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.FlowWindow;
 
@@ -102,7 +102,7 @@ begin
   inherited Create;
   FHooks := AHooks;
   FCacheFolder := ACacheFolder;
-  FWorker := TAtlasVcsWorker.Create;
+  FWorker := TAtlasBackgroundJobs.Create(HInstance);
 end;
 
 destructor TAtlasIdeFlowMap.Destroy;
@@ -172,10 +172,7 @@ end;
 
 procedure TAtlasIdeFlowMap.CancelLoad;
 begin
-  if FCancel <> nil then
-  begin
-    FCancel.Cancel;
-  end;
+  TAtlasCiCancels.Cancel(FCancel);
 end;
 
 class function TAtlasIdeFlowMap.NowUtc: TDateTime;
@@ -221,7 +218,7 @@ end;
 
 procedure TAtlasIdeFlowMap.Wire(AFrame: TAtlasFlowFrame);
 begin
-  AFrame.ApplyColors(TAtlasIdeStyle.Colors);
+  AFrame.ApplyColors(TAtlasIdeStyle.WindowColorsIf(TAtlasIdeSettings.Current.IssuesIdeColors));
   AFrame.Events := FlowEvents(Self, Self);
 end;
 

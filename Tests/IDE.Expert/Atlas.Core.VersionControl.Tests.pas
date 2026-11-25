@@ -99,10 +99,10 @@ uses
   Atlas.Core.VersionControl.Switches,
   Atlas.Core.VersionControl.Providers.Git,
   Atlas.Core.VersionControl.Providers.Svn,
-  Atlas.Core.VersionControl.Providers.Null,
+  Atlas.Core.VersionControl.Null,
   Atlas.Core.VersionControl.Composition,
   Atlas.Core.VersionControl.BranchPlan,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.Core.VersionControl.TestSupport;
 
 type
@@ -422,6 +422,7 @@ procedure TAtlasVcsTests.LocatesProgramInPathAndKnownDirs;
 var
   mExe, mPathText: string;
   mDirs: TArray<string>;
+  mSvn: TAtlasVcsToolLocation;
 begin
   mExe := 'svn';
   if PathDelim = '\' then
@@ -448,11 +449,13 @@ begin
       Result := False;
     end), 'nicht installiert');
   Assert.AreEqual(0, Integer(Length(TAtlasVcsTools.KnownDirs(TAtlasVcsKind.None, [Root]))));
+  // Den echten Fund danach zurück: Forget ließe ihn den nächsten Test neu anlegen (Leck dort).
+  mSvn := TAtlasVcsTools.Where(TAtlasVcsKind.Svn);
   TAtlasVcsTools.Preset(TAtlasVcsKind.Svn, '');
   try
     Assert.AreEqual('', TAtlasVcsTools.Find(TAtlasVcsKind.Svn), 'Preset gilt für Find');
   finally
-    TAtlasVcsTools.Forget;
+    TAtlasVcsTools.Remember(TAtlasVcsKind.Svn, mSvn);
   end;
 end;
 procedure TAtlasVcsTests.GitProviderRunsExpectedCommands;
@@ -782,13 +785,13 @@ begin
 end;
 procedure TAtlasVcsTests.WorkerReportsWhetherItStarted;
 var
-  mWorker: TAtlasVcsWorker;
+  mWorker: TAtlasBackgroundJobs;
   mDone: Boolean;
   mDeadline: UInt64;
 begin
   // #592: Ohne Start kommt kein Ergebnis; der Aufrufer muss das wissen, sonst bleibt „wird abgefragt …“.
   mDone := False;
-  mWorker := TAtlasVcsWorker.Create;
+  mWorker := TAtlasBackgroundJobs.Create(HInstance);
   try
     Assert.IsTrue(mWorker.Run(
       procedure

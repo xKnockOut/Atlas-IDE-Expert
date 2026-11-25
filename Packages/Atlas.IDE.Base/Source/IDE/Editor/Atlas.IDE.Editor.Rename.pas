@@ -40,15 +40,15 @@ uses
   ToolsAPI,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Results.Model,
   Atlas.UI.Results.RenamePreview,
   Atlas.UI.Results.View,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Forms.Designer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Navigation;
 
 const

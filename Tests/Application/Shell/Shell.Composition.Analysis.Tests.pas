@@ -16,8 +16,8 @@ type
     /// <summary>Metriken und TODO-Übersicht stehen in executeCommandProvider.</summary>
     [Test]
     procedure RegistersReportCommands;
-    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
-    /// 06.11.2026).</summary>
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten.
+    /// </summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;
     /// <summary>Gesetzte Namensräume liest die Analyse unverändert zurück.</summary>
@@ -43,9 +43,11 @@ var
   mCapability: TJSONObject;
   mText: string;
 begin
-  mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
-  mCommands := TLspCommands.Create;
+  mAnalysis := nil;
+  mCommands := nil;
   try
+    mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
+    mCommands := TLspCommands.Create;
     mAnalysis.RegisterReportCommands(mCommands);
     mCapability := mCommands.Capability;
     try
@@ -67,9 +69,11 @@ var
   mCommands: TLspCommands;
   mName: string;
 begin
-  mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
-  mCommands := TLspCommands.Create;
+  mAnalysis := nil;
+  mCommands := nil;
   try
+    mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
+    mCommands := TLspCommands.Create;
     mAnalysis.RegisterReportCommands(mCommands);
     for mName in TArray<string>.Create(TLspMetrics.cCommand, TLspTodos.cCommand) do
     begin

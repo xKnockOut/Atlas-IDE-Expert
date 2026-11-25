@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Editor.LearnedSuggestions;
 
-// Gelernte Vorschläge (#1890) in der IDE: der Anbieter für die Schattentext-
-// Vorschläge (Atlas.IDE.Editor.GhostSuggestions), die Lernzähler und der
+// Gelernte Vorschläge (#1890) in der IDE: Sitzung und Lernzähler für den Anbieter der Schattentext-
+// Vorschläge (Atlas.IDE.Editor.Adapters.LearnedGhost, angemeldet bei Atlas.IDE.Editor.GhostSuggestions) und der
 // Befehl „Gelernte Vorschläge anzeigen …“.
 // - Was folgt, rechnet der Server aus dem Index (atlas.server.suggestNext);
 //   das Plugin schickt den Puffer, die Schwellen suggestions.minCount und
@@ -20,7 +20,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.Editor.LearnedSuggestions,
   Atlas.Core.Editor.LearnedUsage,
   Atlas.IDE.Contracts.GhostSuggestions;
@@ -35,16 +35,18 @@ type
     FListRequest: TAtlasBackgroundRequest;
     /// <summary>Datei nicht lesbar: nicht überschreiben.</summary>
     FKept: Boolean;
-    class function Session: TLspSession; static;
     class function UsageFile: string; static;
     class procedure Load; static;
     class procedure Save; static;
     class procedure ShowList(const APatterns: TArray<TAtlasLearnedPattern>); static;
   public
-    /// <summary>Meldet den Anbieter an. ASessionOf liefert die laufende Sitzung oder nil; AMessage meldet, wenn die
-    /// Liste nicht verfügbar ist.</summary>
-    class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
+    /// <summary>Meldet den Anbieter AProvider (von der Kompositionswurzel) an. ASessionOf liefert die laufende
+    /// Sitzung oder nil; AMessage meldet, wenn die Liste nicht verfügbar ist.</summary>
+    class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>;
+      const AProvider: IAtlasGhostProvider); static;
     class procedure Uninstall; static;
+    /// <summary>Laufende Sitzung oder nil.</summary>
+    class function Session: TLspSession; static;
     /// <summary>Atlas an und suggestions.learned an?</summary>
     class function Enabled: Boolean; static;
     /// <summary>Lernzähler; nil vor Install.</summary>
@@ -65,11 +67,9 @@ uses
   System.IOUtils,
   System.JSON,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Uris,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Lsp.Uris,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.UI.Editor.LearnedSuggestions;
@@ -78,96 +78,7 @@ const
   cUsageFile = 'learned-suggestions.json';
   cUsageKind = 'Gelernte Vorschläge'; // german-ok Protokoll
 
-type
-  TLearnedProvider = class(TInterfacedObject, IAtlasGhostProvider)
-  public
-    function Enabled: Boolean;
-    function Prepare(const AContext: TAtlasGhostContext): TAtlasGhostWork;
-    procedure Accepted(const AProposal: TAtlasGhostProposal);
-    procedure Rejected(const AProposal: TAtlasGhostProposal);
-  end;
-
-{ TLearnedProvider }
-
-function TLearnedProvider.Enabled: Boolean;
-begin
-  Result := TAtlasIdeLearnedSuggestions.Enabled;
-end;
-
-function TLearnedProvider.Prepare(const AContext: TAtlasGhostContext): TAtlasGhostWork;
-var
-  mSession: TLspSession;
-  mArguments: string;
-  mRequest: TAtlasLearnedRequest;
-  mLine: Integer;
-  mSettings: TAtlasPluginSettings;
-begin
-  Result := nil;
-  mSession := TAtlasIdeLearnedSuggestions.Session;
-  if (mSession = nil) or not mSession.Initialized or (TAtlasIdeLearnedSuggestions.Usage = nil) then
-  begin
-    Exit;
-  end;
-  TAtlasIdeLearnedSuggestions.UpdateGroup;
-  mSettings := TAtlasIdeSettings.Current;
-  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
-  mSession.Sync(AContext.FileName, AContext.Text);
-  mRequest.Uri := TLspUris.FromPath(AContext.FileName);
-  mRequest.Line := AContext.Line;
-  mRequest.TabSize := AContext.TabSize;
-  mRequest.InsertSpaces := AContext.InsertSpaces;
-  mRequest.MinCount := mSettings.SuggestionsMinCount;
-  mRequest.MinShare := mSettings.SuggestionsMinShare;
-  mRequest.Adjust := TAtlasIdeLearnedSuggestions.Usage.AdjustList(mSettings.SuggestionsLearnFromUsage);
-  mArguments := TAtlasLearnedSuggestions.SuggestArguments(mRequest);
-  mLine := AContext.Line;
-  Result :=
-    function(out AProposal: TAtlasGhostProposal): Boolean
-    var
-      mValue: TJSONValue;
-      mSuggestion: TAtlasLearnedSuggestion;
-    begin
-      AProposal := Default(TAtlasGhostProposal);
-      try
-        mValue := mSession.RunCommand(TAtlasLearnedSuggestions.cSuggestCommand, mArguments,
-          TAtlasLearnedSuggestions.cTimeoutMs);
-      except
-        // Zeitlimit oder Fehler beim Tippen: kein Vorschlag, keine Meldung.
-        on ELspClientError do
-          Exit(False);
-      end;
-      try
-        Result := TAtlasLearnedSuggestions.ReadSuggestion(mValue, mLine, mSuggestion);
-      finally
-        mValue.Free;
-      end;
-      if Result then
-      begin
-        AProposal := TAtlasIdeLearnedSuggestions.ProposalOf(mSuggestion);
-      end;
-    end;
-end;
-
-procedure TLearnedProvider.Accepted(const AProposal: TAtlasGhostProposal);
-begin
-  TAtlasIdeLearnedSuggestions.Accepted(AProposal.Id);
-end;
-
-procedure TLearnedProvider.Rejected(const AProposal: TAtlasGhostProposal);
-begin
-  TAtlasIdeLearnedSuggestions.Rejected(AProposal.Id);
-end;
-
 { TAtlasIdeLearnedSuggestions }
-
-class function TAtlasIdeLearnedSuggestions.Session: TLspSession;
-begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
-end;
 
 class function TAtlasIdeLearnedSuggestions.UsageFile: string;
 begin
@@ -207,7 +118,7 @@ begin
 end;
 
 class procedure TAtlasIdeLearnedSuggestions.Install(const ASessionOf: TFunc<TLspSession>;
-  const AMessage: TProc<string>);
+  const AMessage: TProc<string>; const AProvider: IAtlasGhostProvider);
 begin
   FSessionOf := ASessionOf;
   FMessage := AMessage;
@@ -220,9 +131,9 @@ begin
   begin
     FListRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.LearnedSuggestions);
   end;
-  if FProvider = nil then
+  if (FProvider = nil) and (AProvider <> nil) then
   begin
-    FProvider := TLearnedProvider.Create;
+    FProvider := AProvider;
     TAtlasGhostProviders.Add(FProvider);
   end;
 end;
@@ -238,6 +149,11 @@ begin
   FreeAndNil(FUsage);
   FSessionOf := nil;
   FMessage := nil;
+end;
+
+class function TAtlasIdeLearnedSuggestions.Session: TLspSession;
+begin
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class function TAtlasIdeLearnedSuggestions.Enabled: Boolean;

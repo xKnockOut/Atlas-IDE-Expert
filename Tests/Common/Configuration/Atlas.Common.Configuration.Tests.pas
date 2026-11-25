@@ -70,6 +70,9 @@ type
     procedure ChecksTodoKeywordsOption;
     [Test]
     procedure ChecksForbiddenSymbolsOption;
+    /// <summary>#145: Jede Option des Regelkatalogs prüft der Parser auf ihren Typ, und ihre Vorgabe besteht.</summary>
+    [Test]
+    procedure ChecksEveryCatalogOption;
   end;
 
   [TestFixture]
@@ -94,6 +97,8 @@ type
     /// <summary>#1352: Untergrenze der Sammelkorrektur.</summary>
     [Test]
     procedure ReadsFixMinConfidence;
+    [Test]
+    procedure RuleOptionsById;
   end;
 
 implementation
@@ -101,6 +106,7 @@ implementation
 uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Catalog,
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Configuration.Contract,
@@ -611,12 +617,14 @@ begin
   Assert.AreEqual('brace', mSettings.ClassCompletion.TypeComment, '{ TFoo } wie die IDE (#1835)');
   Assert.IsTrue(mSettings.ClassCompletion.LifecycleFirst, '#1836');
   Assert.IsTrue(mSettings.ClassCompletion.BodyStubs, '#1837');
-  mSettings := Parse('{"classCompletion": {"typeComment": "region", "lifecycleFirst": false, "bodyStubs": false}}',
-    mIssues);
+  Assert.IsTrue(mSettings.ClassCompletion.BlankLines, '#1839');
+  mSettings := Parse('{"classCompletion": {"typeComment": "region", "lifecycleFirst": false, "bodyStubs": false, ' +
+    '"blankLines": false}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.AreEqual('region', mSettings.ClassCompletion.TypeComment);
   Assert.IsFalse(mSettings.ClassCompletion.LifecycleFirst);
   Assert.IsFalse(mSettings.ClassCompletion.BodyStubs);
+  Assert.IsFalse(mSettings.ClassCompletion.BlankLines);
   mSettings := Parse('{"classCompletion": {"typeComment": "kasten"}}', mIssues);
   Assert.AreEqual('brace', mSettings.ClassCompletion.TypeComment, 'Unbekanntes bleibt bei der Vorgabe');
   Assert.AreEqual(1, Integer(Length(mIssues)));
@@ -866,6 +874,48 @@ begin
   Assert.Contains(mIssues[3].Message, '"message"');
   Assert.Contains(mIssues[4].Message, '"farbe"');
 end;
+/// <summary>Ein Wert, der nicht zur Art AKind einer Katalogoption passt; '' bei "json" (eigene Prüfungen).</summary>
+function WrongOptionValue(const AKind: string): string;
+begin
+  Result := '';
+  if AKind = 'string' then
+  begin
+    Result := '1';
+  end
+  else if AKind <> 'json' then
+  begin
+    Result := '"falsch"';
+  end;
+end;
+
+procedure TConfigurationParserTests.ChecksEveryCatalogOption;
+var
+  mEntry: TRuleCatalogEntry;
+  mOption: TRuleOption;
+  mWrong, mWhere: string;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  for mEntry in TRuleCatalog.Shared.Entries do
+  begin
+    for mOption in mEntry.Options do
+    begin
+      mWhere := mEntry.Id + '.' + mOption.Name;
+      if mOption.DefaultJson <> '' then
+      begin
+        Parse(Format('{"rules": {"%s": {"%s": %s}}}', [mEntry.Id, mOption.Name, mOption.DefaultJson]), mIssues);
+        Assert.AreEqual(0, Integer(Length(mIssues)), mWhere);
+      end;
+      mWrong := WrongOptionValue(mOption.Kind);
+      if mWrong <> '' then
+      begin
+        Parse(Format('{"rules": {"%s": {"%s": %s}}}', [mEntry.Id, mOption.Name, mWrong]), mIssues);
+        Assert.AreEqual(1, Integer(Length(mIssues)), mWhere);
+      end;
+    end;
+  end;
+  mIssues := nil;
+end;
+
 { TServerSettingsTests }
 
 procedure TServerSettingsTests.RuleSeverityFallsBackToDefault;
@@ -965,6 +1015,14 @@ begin
   Assert.IsFalse(Parse('{}', mIssues).SortUses);
   Assert.IsTrue(Parse('{"sortUses": true}', mIssues).SortUses);
   Assert.AreEqual(0, Integer(Length(mIssues)));
+  // Nach Herkunft gegliedert (#2794) mit Darstellung der Gruppen.
+  Assert.IsTrue(Parse('{"sortUses": "origin"}', mIssues).SortUsesByOrigin);
+  Assert.IsFalse(Parse('{"sortUses": "namespace"}', mIssues).SortUsesByOrigin);
+  Assert.AreEqual('comments', Parse('{}', mIssues).UsesGroupStyle);
+  Assert.AreEqual('lines', Parse('{"usesGroupStyle": "lines"}', mIssues).UsesGroupStyle);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('comments', Parse('{"usesGroupStyle": "blocks"}', mIssues).UsesGroupStyle);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
 procedure TServerSettingsTests.ReadsFixMinConfidence;
 var
@@ -983,6 +1041,20 @@ begin
   Parse('{"fix": "high"}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
 end;
+
+procedure TServerSettingsTests.RuleOptionsById;
+var
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
+begin
+  mSettings := Parse('{"rules": {"metric-uses-count": {"severity": "off", "max": 12}, "todo-comment": "hint"}}',
+    mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.Contains(TRuleSetting.OptionsOf(mSettings.Rules, 'METRIC-USES-COUNT'), '"max"');
+  Assert.AreEqual('', TRuleSetting.OptionsOf(mSettings.Rules, 'todo-comment'));
+  Assert.AreEqual('', TRuleSetting.OptionsOf(mSettings.Rules, 'unbekannt'));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConfigurationParserTests);
   TDUnitX.RegisterTestFixture(TServerSettingsTests);

@@ -1,5 +1,6 @@
 ﻿package Atlas.IDE.Designer;
 
+{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -49,6 +50,7 @@ contains
   Atlas.UI.Designer.Magnifier in 'Source\UI\Designer\Atlas.UI.Designer.Magnifier.pas',
   Atlas.Core.Designer.Gaps in 'Source\Core\Designer\Atlas.Core.Designer.Gaps.pas',
   Atlas.Core.Designer.KeptComponents in 'Source\Core\Designer\Atlas.Core.Designer.KeptComponents.pas',
+  Atlas.Core.Designer.Created in 'Source\Core\Designer\Atlas.Core.Designer.Created.pas',
   Atlas.Core.Designer.MultiResize in 'Source\Core\Designer\Atlas.Core.Designer.MultiResize.pas',
   Atlas.Core.Designer.SelectionBar in 'Source\Core\Designer\Atlas.Core.Designer.SelectionBar.pas',
   Atlas.Core.Designer.Magnifier in 'Source\Core\Designer\Atlas.Core.Designer.Magnifier.pas',
@@ -73,6 +75,9 @@ contains
   Atlas.Core.Designer.FormModel in 'Source\Core\Designer\Atlas.Core.Designer.FormModel.pas',
   Atlas.Core.Designer.InsertSpace in 'Source\Core\Designer\Atlas.Core.Designer.InsertSpace.pas',
   Atlas.Core.Designer.Neighbours in 'Source\Core\Designer\Atlas.Core.Designer.Neighbours.pas',
+  Atlas.Core.Designer.Names in 'Source\Core\Designer\Atlas.Core.Designer.Names.pas',
+  Atlas.Core.Designer.FormStore in 'Source\Core\Designer\Atlas.Core.Designer.FormStore.pas',
+  Atlas.Core.Designer.GridSnap in 'Source\Core\Designer\Atlas.Core.Designer.GridSnap.pas',
   Atlas.Core.Designer.SelectionSets in 'Source\Core\Designer\Atlas.Core.Designer.SelectionSets.pas',
   Atlas.Core.Designer.Similar in 'Source\Core\Designer\Atlas.Core.Designer.Similar.pas',
   Atlas.Core.Designer.Measure in 'Source\Core\Designer\Atlas.Core.Designer.Measure.pas',
@@ -80,6 +85,7 @@ contains
   Atlas.Core.Designer.Scale in 'Source\Core\Designer\Atlas.Core.Designer.Scale.pas',
   Atlas.Core.Designer.TabOrder in 'Source\Core\Designer\Atlas.Core.Designer.TabOrder.pas',
   Atlas.Core.Designer.DesktopSwitch in 'Source\Core\Designer\Atlas.Core.Designer.DesktopSwitch.pas',
+  Atlas.Core.Designer.ButtonStates in 'Source\Core\Designer\Atlas.Core.Designer.ButtonStates.pas',
   Atlas.Core.Designer.NameSuggest in 'Source\Core\Designer\Atlas.Core.Designer.NameSuggest.pas',
   Atlas.Core.Designer.CodeLink in 'Source\Core\Designer\Atlas.Core.Designer.CodeLink.pas',
   Atlas.Core.Designer.PropertySearch in 'Source\Core\Designer\Atlas.Core.Designer.PropertySearch.pas',
@@ -91,10 +97,12 @@ contains
   Atlas.Core.Designer.IconAlpha in 'Source\Core\Designer\Atlas.Core.Designer.IconAlpha.pas',
   Atlas.Core.Designer.Usages in 'Source\Core\Designer\Atlas.Core.Designer.Usages.pas',
   Atlas.Core.Designer.Undo in 'Source\Core\Designer\Atlas.Core.Designer.Undo.pas',
+  Atlas.Core.Designer.Contract in 'Source\Core\Designer\Atlas.Core.Designer.Contract.pas',
   Atlas.Core.Designer.Surface in 'Source\Core\Designer\Atlas.Core.Designer.Surface.pas',
   Atlas.Core.Designer.UndoApply in 'Source\Core\Designer\Atlas.Core.Designer.UndoApply.pas',
   Atlas.Core.Designer.UndoFlow in 'Source\Core\Designer\Atlas.Core.Designer.UndoFlow.pas',
   Atlas.UI.Designer.Flash in 'Source\UI\Designer\Atlas.UI.Designer.Flash.pas',
+  Atlas.UI.Designer.Overlay in 'Source\UI\Designer\Atlas.UI.Designer.Overlay.pas',
   Atlas.UI.Designer.Outlines in 'Source\UI\Designer\Atlas.UI.Designer.Outlines.pas',
   Atlas.UI.Designer.DuplicateDialog in 'Source\UI\Designer\Atlas.UI.Designer.DuplicateDialog.pas',
   Atlas.UI.Designer.SpaceDialog in 'Source\UI\Designer\Atlas.UI.Designer.SpaceDialog.pas',
@@ -170,9 +178,12 @@ contains
   Atlas.IDE.Designer.OpenWatch in 'Source\IDE\Designer\Atlas.IDE.Designer.OpenWatch.pas',
   Atlas.IDE.Designer.NonVisualAction in 'Source\IDE\Designer\Atlas.IDE.Designer.NonVisualAction.pas',
   Atlas.IDE.Designer.DesktopLayout in 'Source\IDE\Designer\Atlas.IDE.Designer.DesktopLayout.pas',
+  Atlas.IDE.Designer.ButtonStates in 'Source\IDE\Designer\Atlas.IDE.Designer.ButtonStates.pas',
+  Atlas.IDE.Designer.Adapters.Surface in 'Source\IDE\Designer\Atlas.IDE.Designer.Adapters.Surface.pas',
   Atlas.IDE.Designer.Surface in 'Source\IDE\Designer\Atlas.IDE.Designer.Surface.pas',
   Atlas.IDE.Designer.Undo in 'Source\IDE\Designer\Atlas.IDE.Designer.Undo.pas',
   Atlas.IDE.Designer.Bar in 'Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas',
+  Atlas.IDE.Designer.Adapters.Module in 'Source\IDE\Designer\Atlas.IDE.Designer.Adapters.Module.pas',
   Atlas.IDE.Designer.Composition in 'Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas',
   Atlas.UI.Designer.SettingsSection in 'Source\UI\Designer\Atlas.UI.Designer.SettingsSection.pas';
 

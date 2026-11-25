@@ -19,9 +19,6 @@ type
     function NewServices: TShellNavigationServices;
     function ReadMarked(const AFileName: string; out AText: string): Boolean;
   public
-    /// <summary>Erstes Sperren der gemeinsamen Namespaces legt den Monitor an, nicht dem Test anrechnen.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -70,21 +67,6 @@ begin
   Inc(FReads);
   AText := cDiskText;
   Result := True;
-end;
-
-procedure TShellNavigationTests.WarmUp;
-var
-  mNavigation: TShellNavigation;
-begin
-  FDocuments := TDocumentStore.Create;
-  mNavigation := TShellNavigation.Create(NewServices);
-  try
-    mNavigation.SetNamespaces(TArray<string>.Create('System'));
-    mNavigation.Namespaces;
-  finally
-    mNavigation.Free;
-  end;
-  FDocuments := nil;
 end;
 
 procedure TShellNavigationTests.Setup;

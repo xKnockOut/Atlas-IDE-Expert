@@ -1,6 +1,6 @@
 ﻿unit Atlas.IDE.Commands.MenuActions;
 
-// Was die Einträge des Hauptmenüs „Atlas“ ausführen, ausgelagert aus
+// Was die Einträge des Hauptmenüs „Atlas“ ausführen, Teil von
 // Atlas.IDE.Commands.MainMenu: Ergebnisfenster (#400), Editorbefehle (#399),
 // Abschnittssprünge der Editorleiste (#1101), Atlas-Änderungen (#721) und
 // „Prozesse am Projekt…“ (#62). Der Tag des Menüeintrags wählt den Befehl; jeder
@@ -16,6 +16,44 @@ uses
 type
   /// <summary>Befehle der Einträge im Atlas-Menü, je Gruppe über den Tag des Eintrags.</summary>
   TAtlasMenuActions = record
+  public const
+    // Tags der Ergebnisbefehle (RunResults).
+    cResultsReferences = 0;
+    cResultsImplementations = 1;
+    cResultsSymbolSearch = 2;
+    cResultsIncoming = 3;
+    cResultsOutgoing = 4;
+    cResultsSupertypes = 5;
+    cResultsSubtypes = 6;
+    cResultsWindow = 7;
+    cResultsCallDiagram = 8;
+    cResultsImpact = 9;
+    cResultsDataFlowSources = 10;
+    cResultsDataFlowTargets = 11;
+    // Tags der Editorbefehle (RunEditor); 8 und 9 sind frei.
+    cEditorCodeActions = 0;
+    cEditorExpand = 1;
+    cEditorShrink = 2;
+    cEditorTypeDefinition = 3;
+    cEditorCopyQualified = 4;
+    cEditorCopyQualifiedParams = 5;
+    cEditorMethodToggle = 6;
+    cEditorTestUnit = 7;
+    cEditorGenerate = 10;
+    cEditorFormat = 11;
+    cEditorMethodOrder = 12;
+    cEditorCollapseRegions = 13;
+    cEditorExpandRegions = 14;
+    cEditorFoldBlock = 15;
+    cEditorFoldLargeBlocks = 16;
+    cEditorUnfoldBlocks = 17;
+    // Tags der Abschnittssprünge (RunSection).
+    cSectionInterface = 0;
+    cSectionImplementation = 1;
+    cSectionUses = 2;
+    cSectionInitialization = 3;
+    cSectionReturn = 4;
+    cSectionFindMethod = 5;
   public
     /// <summary>Ergebnisfenster (#400): 0 Referenzen, 1 Implementierungen, 2 Symbolsuche, 3–6 Hierarchien,
     /// 7 Fenster, 8 Aufrufdiagramm, 9 Auswirkungen, 10/11 Datenfluss.</summary>
@@ -37,10 +75,10 @@ implementation
 
 uses
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Processes,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Processes,
   Atlas.Core.Results.Model,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.UI.Diagnostics.ProcessesDialog,
   Atlas.IDE.Files.DirtyExport,
   Atlas.IDE.Results.Commands,
@@ -50,15 +88,17 @@ uses
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.RegionFolds,
+  Atlas.IDE.Commands.BlockFolds,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Commands.ShortcutTips;
 
 const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
-  cEditorIds: array[0..14] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+  cEditorIds: array[0..17] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
     'Atlas.SwitchTestUnit', '', '', 'Atlas.GenerateMenu', 'Atlas.FormatCode',
-    'Atlas.MethodOrder', 'Atlas.CollapseRegions', 'Atlas.ExpandRegions');
+    'Atlas.MethodOrder', 'Atlas.CollapseRegions', 'Atlas.ExpandRegions', 'Atlas.FoldBlock', 'Atlas.FoldLargeBlocks',
+    'Atlas.UnfoldBlocks');
   cResultsIds: array[0..11] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram',
     'Atlas.Impact', 'Atlas.DataFlowSources', 'Atlas.DataFlowTargets');
@@ -80,19 +120,32 @@ end;
 procedure ResultsCommand(ACommand: Integer);
 begin
   case ACommand of
-    0: TAtlasIdeResults.FindReferences;
-    1: TAtlasIdeResults.FindImplementations;
-    2: TAtlasIdeResults.SearchSymbol;
-    3: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Incoming);
-    4: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
-    5: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
-    6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
-    8: TAtlasIdeResults.ShowCallDiagram;
-    9: TAtlasIdeImpact.ShowAtCursor;
-    10: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources);
-    11: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Targets);
+    TAtlasMenuActions.cResultsReferences: TAtlasIdeResults.FindReferences;
+    TAtlasMenuActions.cResultsImplementations: TAtlasIdeResults.FindImplementations;
+    TAtlasMenuActions.cResultsSymbolSearch: TAtlasIdeResults.SearchSymbol;
+    TAtlasMenuActions.cResultsIncoming: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Incoming);
+    TAtlasMenuActions.cResultsOutgoing: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
+    TAtlasMenuActions.cResultsSupertypes: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
+    TAtlasMenuActions.cResultsSubtypes: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
+    TAtlasMenuActions.cResultsCallDiagram: TAtlasIdeResults.ShowCallDiagram;
+    TAtlasMenuActions.cResultsImpact: TAtlasIdeImpact.ShowAtCursor;
+    TAtlasMenuActions.cResultsDataFlowSources: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources);
+    TAtlasMenuActions.cResultsDataFlowTargets: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Targets);
   else
     TAtlasIdeResults.ShowWindow;
+  end;
+end;
+
+/// <summary>Regionen und Blöcke ein- und aufklappen (#1814, #2795).</summary>
+procedure FoldCommand(ACommand: Integer);
+begin
+  case ACommand of
+    TAtlasMenuActions.cEditorCollapseRegions: TAtlasIdeRegionFolds.CollapseAll;
+    TAtlasMenuActions.cEditorExpandRegions: TAtlasIdeRegionFolds.ExpandAll;
+    TAtlasMenuActions.cEditorFoldBlock: TAtlasIdeBlockFolds.FoldAtCursor;
+    TAtlasMenuActions.cEditorFoldLargeBlocks: TAtlasIdeBlockFolds.FoldLarge;
+  else
+    TAtlasIdeBlockFolds.UnfoldAll;
   end;
 end;
 
@@ -100,18 +153,23 @@ end;
 procedure EditorCommand(ACommand: Integer);
 begin
   case ACommand of
-    0: TAtlasIdeEditorCommands.CodeActions;
-    1: TAtlasIdeEditorCommands.ExpandSelection;
-    2: TAtlasIdeEditorCommands.ShrinkSelection;
-    3: TAtlasIdeEditorCommands.GoToTypeDefinition;
-    4: TAtlasIdeEditorCommands.CopyQualifiedName(False);
-    6: TAtlasIdeEditorCommands.ToggleMethod;
-    7: TAtlasIdeEditorCommands.SwitchTestUnit;
-    10: TAtlasIdeGenerate.Show;
-    11: TAtlasIdeEditorCommands.FormatCode;
-    12: TAtlasGuard.Run(TAtlasFeature.MethodPlacement, TAtlasIdeMethodPlacement.Run);
-    13: TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.CollapseAll);
-    14: TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.ExpandAll);
+    TAtlasMenuActions.cEditorCodeActions: TAtlasIdeEditorCommands.CodeActions;
+    TAtlasMenuActions.cEditorExpand: TAtlasIdeEditorCommands.ExpandSelection;
+    TAtlasMenuActions.cEditorShrink: TAtlasIdeEditorCommands.ShrinkSelection;
+    TAtlasMenuActions.cEditorTypeDefinition: TAtlasIdeEditorCommands.GoToTypeDefinition;
+    TAtlasMenuActions.cEditorCopyQualified: TAtlasIdeEditorCommands.CopyQualifiedName(False);
+    TAtlasMenuActions.cEditorMethodToggle: TAtlasIdeEditorCommands.ToggleMethod;
+    TAtlasMenuActions.cEditorTestUnit: TAtlasIdeEditorCommands.SwitchTestUnit;
+    TAtlasMenuActions.cEditorGenerate: TAtlasIdeGenerate.Show;
+    TAtlasMenuActions.cEditorFormat: TAtlasIdeEditorCommands.FormatCode;
+    TAtlasMenuActions.cEditorMethodOrder:
+      TAtlasGuard.Run(TAtlasFeature.MethodPlacement, TAtlasIdeMethodPlacement.Run);
+    TAtlasMenuActions.cEditorCollapseRegions .. TAtlasMenuActions.cEditorUnfoldBlocks:
+      TAtlasGuard.Run(TAtlasFeature.RegionFolds,
+        procedure
+        begin
+          FoldCommand(ACommand);
+        end);
   else
     TAtlasIdeEditorCommands.CopyQualifiedName(True);
   end;
@@ -121,11 +179,11 @@ end;
 procedure SectionCommand(ACommand: Integer);
 begin
   case ACommand of
-    0: TAtlasIdeEditorToolbar.GotoInterface;
-    1: TAtlasIdeEditorToolbar.GotoImplementation;
-    2: TAtlasIdeEditorToolbar.GotoUses;
-    3: TAtlasIdeEditorToolbar.GotoInitialization;
-    4: TAtlasIdeEditorToolbar.ReturnFromSection;
+    TAtlasMenuActions.cSectionInterface: TAtlasIdeEditorToolbar.GotoInterface;
+    TAtlasMenuActions.cSectionImplementation: TAtlasIdeEditorToolbar.GotoImplementation;
+    TAtlasMenuActions.cSectionUses: TAtlasIdeEditorToolbar.GotoUses;
+    TAtlasMenuActions.cSectionInitialization: TAtlasIdeEditorToolbar.GotoInitialization;
+    TAtlasMenuActions.cSectionReturn: TAtlasIdeEditorToolbar.ReturnFromSection;
   else
     TAtlasIdeEditorToolbar.FindMethod;
   end;

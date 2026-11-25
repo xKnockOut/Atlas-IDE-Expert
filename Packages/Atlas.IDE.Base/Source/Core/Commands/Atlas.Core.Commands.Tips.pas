@@ -97,6 +97,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   System.Math,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json;
 
 { TAtlasTip }
@@ -121,20 +122,12 @@ end;
 
 function TAtlasTip.TitleIn(AEnglish: Boolean): string;
 begin
-  Result := Title;
-  if AEnglish and (TitleEn <> '') then
-  begin
-    Result := TitleEn;
-  end;
+  Result := TAtlasTextLanguage.Pick(Title, TitleEn, AEnglish);
 end;
 
 function TAtlasTip.TextIn(AEnglish: Boolean): string;
 begin
-  Result := Text;
-  if AEnglish and (TextEn <> '') then
-  begin
-    Result := TextEn;
-  end;
+  Result := TAtlasTextLanguage.Pick(Text, TextEn, AEnglish);
 end;
 
 { JSON-Helfer }
@@ -144,7 +137,7 @@ var
   mValue: TJSONValue;
 begin
   Result := nil;
-  mValue := AObject.GetValue(AName);
+  mValue := TJsonRead.Value(AObject, AName);
   if mValue is TJSONString then
   begin
     if Trim(TJSONString(mValue).Value) <> '' then
@@ -194,13 +187,7 @@ begin
   begin
     Exit;
   end;
-  try
-    mRoot := TJSONObject.ParseJSONValue(AJson);
-  except
-    // Kaputte Datei: keine Tipps, kein Fehler in der IDE.
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AJson);
   try
     if not (mRoot is TJSONObject) then
     begin

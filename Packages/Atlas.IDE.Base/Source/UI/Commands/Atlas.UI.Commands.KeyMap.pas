@@ -30,8 +30,8 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListView;
 
 type
   /// <summary>Grundlage des Fensters: Texte der Spalten und Hinweise sowie die Ereignisse der Knöpfe.</summary>
@@ -95,7 +95,6 @@ type
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
     function AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
-    function StyleColor(AColor: TColor): TColor;
     /// <summary>Kopf mit Suchfeld, „Nur Konflikte“ und Anzahl.</summary>
     procedure CreateTop;
     /// <summary>Fuß mit den Knöpfen.</summary>
@@ -134,8 +133,8 @@ implementation
 uses
   Vcl.Themes,
   Winapi.Windows,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings;
 
@@ -258,7 +257,8 @@ const
     TAtlasTextId.DesignerMagnifierCommand, // DesignerMagnifier
     TAtlasTextId.DesignerUsagesCommand, // DesignerUsages
     TAtlasTextId.TestsListsRunCommand, // TestsListRun
-    TAtlasTextId.DebugReattachCommand); // DebugReattach
+    TAtlasTextId.DebugReattachCommand, // DebugReattach
+    TAtlasTextId.AssistantsMentionCommand); // AssistantsMention
 
 { TAtlasKeyMapForm, TAtlasKeyMapWindow }
 
@@ -441,12 +441,12 @@ begin
   // clWindowText ohne Stil).
   if cdsSelected in State then
   begin
-    Sender.Canvas.Font.Color := StyleColor(clHighlightText);
+    Sender.Canvas.Font.Color := TAtlasUiTheme.SystemColor(FList, clHighlightText);
   end
   else
   begin
-    Sender.Canvas.Brush.Color := StyleColor(clWindow);
-    Sender.Canvas.Font.Color := StyleColor(clWindowText);
+    Sender.Canvas.Brush.Color := TAtlasUiTheme.SystemColor(FList, clWindow);
+    Sender.Canvas.Font.Color := TAtlasUiTheme.SystemColor(FList, clWindowText);
   end;
   // Doppelt belegte Kürzel in der Fehlerfarbe der Fensterfläche (#520); ausgewählt in der Farbe der Auswahl.
   if FItems[FShown[Item.Index]].Conflict and not (cdsSelected in State) then
@@ -459,11 +459,6 @@ function TAtlasKeyMapWindow.AddButton(const ACaption: string; AOnClick: TNotifyE
 begin
   Result := FButtons.AddButton(ACaption);
   Result.OnClick := AOnClick;
-end;
-
-function TAtlasKeyMapWindow.StyleColor(AColor: TColor): TColor;
-begin
-  Result := StyleServices(FList).GetSystemColor(AColor);
 end;
 
 procedure TAtlasKeyMapWindow.CreateTop;

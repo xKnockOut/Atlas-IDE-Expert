@@ -47,21 +47,24 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Peek,
   Atlas.Core.Editor.PeekPlan,
   Atlas.UI.Results.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Editor.Peek,
-  Atlas.IDE.Foundation.KeyHook,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Keys.Hook,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Results.Commands;
+  Atlas.IDE.Results.Commands,
+  Atlas.ToolsApi.Editor.Caret,
+  Atlas.Text.Files,
+  Atlas.Plugin.Files.Contract;
 
 const
   cWatchMs = 200;
@@ -86,16 +89,16 @@ type
 
   TPeekState = class(TComponent)
   private
+    FWindow: TAtlasPeekWindow;
+    FKeys: TPeekKeys;
+    FTimer: TTimer;
+    // Editor beim Öffnen: geändert = schließen.
+    FShownView: Pointer;
+    FShownCursor: TOTAEditPos;
+    FShownTop: Integer;
     procedure Watch(Sender: TObject);
     procedure WindowOpen(Sender: TObject);
   public
-    Window: TAtlasPeekWindow;
-    Keys: TPeekKeys;
-    Timer: TTimer;
-    // Editor beim Öffnen: geändert = schließen.
-    ShownView: Pointer;
-    ShownCursor: TOTAEditPos;
-    ShownTop: Integer;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Hide;
@@ -108,23 +111,6 @@ begin
   Result := TPeekState(TAtlasIdePeek.FState);
 end;
 
-/// <summary>Caret in Bildschirmkoordinaten und das Fenster des Editors; False ohne Caret.</summary>
-function CaretRect(out ARect: TRect; out AEditor: HWND): Boolean;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AEditor := mInfo.hwndCaret;
-  ARect := mInfo.rcCaret;
-  MapWindowPoints(mInfo.hwndCaret, 0, ARect, 2);
-end;
-
 { TPeekKeys }
 
 constructor TPeekKeys.Create(AOwner: TPeekState);
@@ -135,8 +121,8 @@ end;
 
 function TPeekKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
-  Result := (FOwner.Window <> nil) and FOwner.Window.IsShown and (FOwner.Window.View <> nil) and
-    (TAtlasPeekPlan.KeyOf(AKey, AShift, FOwner.Window.View.Count) <> TAtlasPeekKey.None);
+  Result := (FOwner.FWindow <> nil) and FOwner.FWindow.IsShown and (FOwner.FWindow.View <> nil) and
+    (TAtlasPeekPlan.KeyOf(AKey, AShift, FOwner.FWindow.View.Count) <> TAtlasPeekKey.None);
 end;
 
 procedure TPeekKeys.HandleKey(AKey: Word; AShift: TShiftState);
@@ -145,11 +131,11 @@ var
   mKey: TAtlasPeekKey;
 begin
   try
-    if (FOwner.Window = nil) or (FOwner.Window.View = nil) then
+    if (FOwner.FWindow = nil) or (FOwner.FWindow.View = nil) then
     begin
       Exit;
     end;
-    mView := FOwner.Window.View;
+    mView := FOwner.FWindow.View;
     mKey := TAtlasPeekPlan.KeyOf(AKey, AShift, mView.Count);
     case mKey of
       TAtlasPeekKey.None:
@@ -171,9 +157,9 @@ begin
       TAtlasPeekKey.PageDown:
         mView.PageDown;
     end;
-    if TAtlasPeekPlan.Stays(mKey) and (FOwner.Window.View <> nil) then
+    if TAtlasPeekPlan.Stays(mKey) and (FOwner.FWindow.View <> nil) then
     begin
-      FOwner.Window.ViewChanged;
+      FOwner.FWindow.ViewChanged;
     end;
   except
     on E: Exception do
@@ -186,24 +172,24 @@ end;
 constructor TPeekState.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Window := TAtlasPeekWindow.Create(Self);
-  Window.GuardFeature := TAtlasFeature.Peek;
-  Window.OnOpen := WindowOpen;
-  Keys := TPeekKeys.Create(Self);
-  Timer := TTimer.Create(Self);
-  Timer.Enabled := False;
-  Timer.Interval := cWatchMs;
-  Timer.OnTimer := Watch;
+  FWindow := TAtlasPeekWindow.Create(Self);
+  FWindow.GuardFeature := TAtlasFeature.Peek;
+  FWindow.OnOpen := WindowOpen;
+  FKeys := TPeekKeys.Create(Self);
+  FTimer := TTimer.Create(Self);
+  FTimer.Enabled := False;
+  FTimer.Interval := cWatchMs;
+  FTimer.OnTimer := Watch;
 end;
 
 destructor TPeekState.Destroy;
 begin
-  Timer.Enabled := False;
-  if TAtlasKeyHook.Contains(Keys) then
+  FTimer.Enabled := False;
+  if TAtlasKeyHook.Contains(FKeys) then
   begin
-    TAtlasKeyHook.Remove(Keys);
+    TAtlasKeyHook.Remove(FKeys);
   end;
-  Keys.Free;
+  FKeys.Free;
   inherited Destroy;
 end;
 
@@ -213,16 +199,16 @@ var
   mStale: Boolean;
 begin
   try
-    if not Window.IsShown then
+    if not FWindow.IsShown then
     begin
       Hide;
       Exit;
     end;
     mView := TAtlasEditorBuffer.TopView;
     // Weg, sobald sich Ansicht, Cursor oder Bildlauf ändern.
-    mStale := not Application.Active or (mView = nil) or (Pointer(mView) <> ShownView);
-    mStale := mStale or (mView.CursorPos.Line <> ShownCursor.Line) or (mView.CursorPos.Col <> ShownCursor.Col) or
-      (mView.TopRow <> ShownTop);
+    mStale := not Application.Active or (mView = nil) or (Pointer(mView) <> FShownView);
+    mStale := mStale or (mView.CursorPos.Line <> FShownCursor.Line) or (mView.CursorPos.Col <> FShownCursor.Col) or
+      (mView.TopRow <> FShownTop);
     if mStale then
     begin
       Hide;
@@ -247,23 +233,23 @@ end;
 
 procedure TPeekState.Hide;
 begin
-  Timer.Enabled := False;
-  if TAtlasKeyHook.Contains(Keys) then
+  FTimer.Enabled := False;
+  if TAtlasKeyHook.Contains(FKeys) then
   begin
-    TAtlasKeyHook.Remove(Keys);
+    TAtlasKeyHook.Remove(FKeys);
   end;
-  Window.Dismiss;
+  FWindow.Dismiss;
 end;
 
 procedure TPeekState.Open;
 var
   mPlace: TAtlasPeekPlace;
 begin
-  if (Window.View = nil) or (Window.View.Count = 0) then
+  if (FWindow.View = nil) or (FWindow.View.Count = 0) then
   begin
     Exit;
   end;
-  mPlace := Window.View.OpenPlace;
+  mPlace := FWindow.View.OpenPlace;
   Hide;
   if mPlace.FileName <> '' then
   begin
@@ -279,25 +265,26 @@ var
   mHeight: Integer;
 begin
   mView := TAtlasEditorBuffer.TopView;
-  if (mView = nil) or not CaretRect(mCaret, mEditorWindow) or not GetWindowRect(mEditorWindow, mEditor) then
+  if (mView = nil) or not TAtlasIdeCaret.TryFind(mEditorWindow, mCaret)
+    or not GetWindowRect(mEditorWindow, mEditor) then
   begin
     AView.Free;
     Exit;
   end;
-  TAtlasIdeStyle.Apply(Window, mCaret);
+  TAtlasIdeStyle.Apply(FWindow, mCaret);
   mArea := TAtlasPopupWindow.WorkAreaAt(mCaret.CenterPoint);
-  mHeight := Window.HeightForLines(TAtlasIdeSettings.Current.PeekHeightLines);
+  mHeight := FWindow.HeightForLines(TAtlasIdeSettings.Current.PeekHeightLines);
   // Unter der Cursorzeile, sonst darüber; nie größer als der Platz.
   mBounds := TAtlasPeekPlan.Bounds(mCaret, mEditor, mArea, mHeight);
-  ShownView := Pointer(mView);
-  ShownCursor := mView.CursorPos;
-  ShownTop := mView.TopRow;
-  Window.ShowView(AView, mBounds);
-  if not TAtlasKeyHook.Contains(Keys) then
+  FShownView := Pointer(mView);
+  FShownCursor := mView.CursorPos;
+  FShownTop := mView.TopRow;
+  FWindow.ShowView(AView, mBounds);
+  if not TAtlasKeyHook.Contains(FKeys) then
   begin
-    TAtlasKeyHook.Add(Keys);
+    TAtlasKeyHook.Add(FKeys);
   end;
-  Timer.Enabled := True;
+  FTimer.Enabled := True;
 end;
 
 { Ziele }
@@ -340,8 +327,14 @@ begin
     mText := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
   except
     // Nicht lesbar: leerer Ausschnitt statt Fehler.
-    on Exception do
+    on E: Exception do
+    begin
+      if not (TTextFiles.IsFileError(E) or (E is EAtlasTextFileError)) then
+      begin
+        raise;
+      end;
       mText := '';
+    end;
   end;
   Result := mText.Split([#13#10, #10]);
   FLines.Add(mKey, Result);
@@ -353,10 +346,12 @@ begin
 end;
 
 function TabWidth: Integer;
+const
+  cDefaultTabWidth = 8;
 var
   mView: IOTAEditView;
 begin
-  Result := 8;
+  Result := cDefaultTabWidth;
   mView := TAtlasEditorBuffer.TopView;
   if (mView <> nil) and (mView.Buffer <> nil) then
   begin

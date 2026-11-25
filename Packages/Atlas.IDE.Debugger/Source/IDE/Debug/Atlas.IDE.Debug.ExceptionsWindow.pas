@@ -45,8 +45,8 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.UI.Debug.Exceptions.Strings,
-  Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.Vcl.Images.Symbol,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TExceptionsDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -172,7 +172,6 @@ end;
 
 class function TAtlasIdeDebugExceptionsWindow.Show: TAtlasDebugExceptionsFrame;
 begin
-  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
   Host.Present;
   Result := ExistingFrame;

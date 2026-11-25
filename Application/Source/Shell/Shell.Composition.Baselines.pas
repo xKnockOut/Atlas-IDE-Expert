@@ -1,6 +1,7 @@
 ﻿unit Shell.Composition.Baselines;
 
-// Internals-Rolle Shell: Baselines des Servers (#97, #530) und die Sammelkorrektur (#1352). Die Komposition reicht
+// Internals-Rolle Shell: Baselines des Servers (#97, #530), die Sammelkorrektur (#1352) und der Auftrag für
+// KI-Assistenten aus markierten Befunden (#2570, prüft wie die Baseline). Die Komposition reicht
 // Metrikquelle, Prüfkontext, Defines und Include-Suche als Dienste herein; Dateien liest und schreibt die Unit
 // selbst. Die Befehle dazu schreiben nur Zahlen ins Log, keine Pfade.
 
@@ -13,8 +14,10 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.BulkFix,
+  Atlas.Common.Lsp.FindingsPrompt,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Pascal.Preprocessor;
 
 type
@@ -35,12 +38,13 @@ type
     Logger: ILogger;
   end;
 
-  /// <summary>Baseline der Befunde, Baseline der Compilermeldungen und Sammelkorrektur.</summary>
+  /// <summary>Baseline der Befunde, Baseline der Compilermeldungen, Sammelkorrektur und Auftrag aus Befunden.</summary>
   TShellBaselines = class
   private
     FServices: TShellBaselineServices;
     FBaseline: TLspBaseline;
     FBulkFix: TLspBulkFix;
+    FFindingsPrompt: TLspFindingsPrompt;
     FCompilerBaseline: TLspCompilerBaseline;
     function MetricsSource(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
     function ReadText(const AFileName: string; out AText: string): Boolean;
@@ -48,13 +52,15 @@ type
     function BulkFixInputFor(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
     procedure Written(AFileName: string);
     function RunBaseline(const AArguments: TJSONArray): TJSONValue;
+    function RunFindingsPrompt(const AArguments: TJSONArray): TJSONValue;
     function RunBulkFix(const AArguments: TJSONArray): TJSONValue;
     function RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
     function RunCompilerBaselineClassify(const AArguments: TJSONArray): TJSONValue;
   public
     constructor Create(const AServices: TShellBaselineServices);
     destructor Destroy; override;
-    /// <summary>Baseline aktualisieren, Sammelkorrektur und Compilermeldungen in die Baseline.</summary>
+    /// <summary>Baseline aktualisieren, Sammelkorrektur, Compilermeldungen in die Baseline und Auftrag aus Befunden.
+    /// </summary>
     procedure RegisterCommands(ACommands: TLspCommands);
     /// <summary>Compilermeldungen einordnen (Schnellbefehl im Editor).</summary>
     procedure RegisterClassifyCommand(ACommands: TLspCommands);
@@ -76,11 +82,11 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Adapters.DiskFileSystem,
+  Atlas.Common.Index.Providers.DiskFileSystem,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Checker,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Common.Localization.Texts;
 
 type
@@ -131,7 +137,7 @@ function SetBaselineAside(const AFileName: string; out ATarget: string): Boolean
 begin
   ATarget := AFileName + '.defekt';
   // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand.
-  Result := TShellPlatform.MoveReplacing(AFileName, ATarget);
+  Result := TServerPlatform.MoveReplacing(AFileName, ATarget);
 end;
 
 function BaselineFiles: TLspBaselineFiles;
@@ -159,6 +165,8 @@ begin
   // Compilermeldungen in derselben Baseline (#530): Text wie im Editor, offene Dokumente vor der Platte.
   FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSource, ReadText, BaselineFiles);
   FCompilerBaseline.OnWritten := Written;
+  // Auftrag für KI-Assistenten (#2570): Befunde wie die Baseline-Prüfung, Text wie im Editor.
+  FFindingsPrompt := TLspFindingsPrompt.Create(CheckFor, ReadText);
 end;
 
 destructor TShellBaselines.Destroy;
@@ -166,6 +174,7 @@ begin
   FreeAndNil(FCompilerBaseline);
   FreeAndNil(FBaseline);
   FreeAndNil(FBulkFix);
+  FreeAndNil(FFindingsPrompt);
   inherited Destroy;
 end;
 
@@ -198,7 +207,7 @@ begin
   ACheck.RelativePath := mContext.RelativePath;
   mTree := TSyntaxTreeCache.Parse(ACheck.Text);
   try
-    ACheck.Findings := TLspSyntaxDiagnostics.RuleFindings(ACheck.Text, mTree, mContext);
+    ACheck.Findings := mContext.Findings(ACheck.Text, mTree);
   finally
     mTree.Free;
   end;
@@ -282,6 +291,20 @@ begin
   FServices.Logger.Info(Format('Sammelkorrektur berechnet (%s), %d ms', [mSummary, mWatch.ElapsedMilliseconds]));
 end;
 
+function TShellBaselines.RunFindingsPrompt(const AArguments: TJSONArray): TJSONValue;
+var
+  mWatch: TStopwatch;
+begin
+  // Nur die Zahl ins Log; Pfade und Meldungen bleiben in der Antwort.
+  mWatch := TStopwatch.StartNew;
+  Result := FFindingsPrompt.Execute(AArguments);
+  if Result is TJSONObject then
+  begin
+    FServices.Logger.Info(Format('Auftrag aus %d Befunden erzeugt, %d ms',
+      [TJSONObject(Result).GetValue<Integer>('count', -1), mWatch.ElapsedMilliseconds]));
+  end;
+end;
+
 function TShellBaselines.RunCompilerBaselineAdd(const AArguments: TJSONArray): TJSONValue;
 var
   mAnswer: TJSONObject;
@@ -306,6 +329,7 @@ begin
   ACommands.Register(TLspBaseline.cCommand, RunBaseline);
   ACommands.Register(TLspBulkFix.cCommand, RunBulkFix);
   ACommands.Register(TLspCompilerBaseline.cAddCommand, RunCompilerBaselineAdd);
+  ACommands.Register(TLspFindingsPrompt.cCommand, RunFindingsPrompt);
 end;
 
 procedure TShellBaselines.RegisterClassifyCommand(ACommands: TLspCommands);

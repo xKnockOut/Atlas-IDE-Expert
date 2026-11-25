@@ -9,13 +9,19 @@ sich ohne Urteil lösen lässt, und lässt alles andere als Konflikt stehen:
   Integrationsbranches übernehmen und danach mit Update-ConfigDoc.ps1 und
   Update-RuleCatalog.ps1 neu erzeugen. Von Hand gelöst wären sie sofort wieder veraltet.
 - Reine Ergänzungen beider Seiten an derselben Stelle (Listen in .dpr/.dpk/.dproj,
-  Tools/Linux/FpcTests.txt, Tabellenzeilen und Aufzählungen in Markdown): beide behalten,
-  erst die eigenen Zeilen, dann die fremden; doppelte Zeilen nur einmal.
+  Tools/Linux/FpcTests.txt, Zeilen der Unit-Zuordnung Tools/UnitAssignment*.tsv, Tabellenzeilen
+  und Aufzählungen in Markdown): beide behalten, erst die eigenen Zeilen, dann die fremden;
+  doppelte Zeilen nur einmal. Tools/UnitAssignment.tsv wird danach wieder nach Package und
+  Unit sortiert.
 - Zeilen in Markdown, die sich nur in Zahlen unterscheiden (Regelzahlen im README):
   Stand des Integrationsbranches, die Zahlen erzeugt Update-RuleCatalog.ps1 neu.
 - Die Baseline wortgleicher Rümpfe (atlas-duplicates.json): Stand des Integrationsbranches,
   danach mit AtlasServer --check . --check-duplicates --update-baseline neu geschrieben
-  (Output/Linux64/Bin/AtlasServer oder AtlasServer im PATH).
+  (Output/Linux64/Bin/AtlasServer oder AtlasServer im PATH). Gruppen, die dabei gegenüber dem
+  Integrationsbranch neu sind oder wachsen, nennt das Skript: Sie stammen aus dem eigenen Branch,
+  und Tools/Check-Baselines.ps1 lässt sie in der CI nur mit „Neue Kopien: …“ im Pull Request durch.
+- Die Liste der Aufwärm-Routinen (Tools/TestWarmUps.baseline.json): Stand des
+  Integrationsbranches, danach mit Check-TestWarmUps.ps1 -Update aus dem Quelltext neu geschrieben.
 
 Was übrig bleibt (geänderte Zeilen auf beiden Seiten, Quelltext, JSON), meldet das
 Skript; der Merge bleibt dann offen.
@@ -37,6 +43,7 @@ neu erzeugt werden (pwsh fehlt), 3: Vorbedingung verletzt.
 
 import argparse
 import fnmatch
+import json
 import os
 import re
 import shutil
@@ -54,19 +61,46 @@ ABGELEITET = [
     ('Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.ProfileData.pas', 'config'),
     ('Packages/Atlas.Common/Source/Configuration/Internals/Atlas.Common.Configuration.Internals.ScopeData.pas',
      'config'),
+    ('Packages/Atlas.Common/Source/Mcp/Atlas.Common.Mcp.DocsIndexData.pas', 'config'),
     ('docs/Regeln.md', 'rules'),
     ('docs/en/Rules.md', 'rules'),
     ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data*.pas', 'rules'),
     ('atlas-duplicates.json', 'duplicates'),
+    ('Tools/TestWarmUps.baseline.json', 'warmups'),
 ]
 
 WERKZEUGE = {
-    'config': 'Tools/Update-ConfigDoc.ps1',
-    'rules': 'Tools/Update-RuleCatalog.ps1',
+    'config': ['Tools/Update-ConfigDoc.ps1'],
+    'rules': ['Tools/Update-RuleCatalog.ps1'],
+    # Liste der Aufwärm-Routinen: aus dem Quelltext neu geschrieben, darf nur sinken.
+    'warmups': ['Tools/Check-TestWarmUps.ps1', '-Update'],
 }
 
 # Baseline wortgleicher Rümpfe: schreibt AtlasServer, nicht pwsh.
 DUPLIKATE_AUFRUF = ['--check', '.', '--check-duplicates', '--update-baseline']
+
+
+def neue_kopien(alt, neu):
+    """Gruppen in neu (atlas-duplicates.json als dict), die alt nicht kennt oder die dort weniger Fassungen
+    haben. Wiedererkannt am Fingerabdruck, sonst an einer gemeinsamen Fassung; wie Tools/Check-Baselines.ps1."""
+    if alt.get('minLines') != neu.get('minLines'):
+        return []
+    nach_hash, nach_fassung = {}, {}
+    for gruppe in alt.get('groups', []):
+        anzahl = len(gruppe.get('members', []))
+        nach_hash[gruppe.get('hash')] = anzahl
+        for fassung in gruppe.get('members', []):
+            nach_fassung[fassung] = max(nach_fassung.get(fassung, 0), anzahl)
+    befunde = []
+    for gruppe in neu.get('groups', []):
+        fassungen = gruppe.get('members', [])
+        bekannt = [nach_hash[gruppe.get('hash')]] if gruppe.get('hash') in nach_hash else []
+        bekannt += [nach_fassung[f] for f in fassungen if f in nach_fassung]
+        if not bekannt:
+            befunde.append(f'neu: {", ".join(fassungen)}')
+        elif len(fassungen) > max(bekannt):
+            befunde.append(f'{max(bekannt)} -> {len(fassungen)} Fassungen: {", ".join(fassungen)}')
+    return befunde
 
 
 def atlas_server():
@@ -76,7 +110,25 @@ def atlas_server():
     return shutil.which('AtlasServer')
 
 # Dateien, in denen reine Ergänzungen beider Seiten zusammen stehen bleiben dürfen.
-ERGAENZBAR = ['*.md', '*.dpr', '*.dpk', '*.dproj', 'Tools/Linux/FpcTests.txt']
+ERGAENZBAR = ['*.md', '*.dpr', '*.dpk', '*.dproj', 'Tools/Linux/FpcTests.txt', 'Tools/UnitAssignment*.tsv']
+
+# Unit-Zuordnung: nach dem Lösen wieder nach Package und Unit sortiert (Check-PackageDependencies verlangt das;
+# Ergänzungen beider Seiten an derselben Stelle stünden sonst erst eigen, dann fremd).
+SORTIERT = ['Tools/UnitAssignment.tsv']
+
+
+def sortiere_tsv(text):
+    """Sortiert die Datenzeilen einer TSV-Datei nach den ersten beiden Spalten ohne Groß-/Kleinschreibung;
+    Kopfzeile und Kommentare (#) bleiben oben."""
+    zeilen = text.splitlines(keepends=True)
+    if not zeilen:
+        return text
+    ende = '\r\n' if zeilen[0].endswith('\r\n') else '\n'
+    kopf = [zeilen[0]] + [z for z in zeilen[1:] if z.startswith('#')]
+    daten = [z.rstrip('\r\n') for z in zeilen[1:] if z.strip() and not z.startswith('#')]
+    daten.sort(key=lambda z: tuple(s.upper() for s in z.split('\t')[:2]))
+    return ''.join(kopf) + ''.join(z + ende for z in daten)
+
 
 # Dateien, in denen Zeilen mit nur anderen Zahlen den Stand des Ziels nehmen.
 NUR_ZAHLEN = ['*.md']
@@ -106,9 +158,9 @@ def ohne_zahlen(zeilen):
 
 
 # Ein Eintrag, den beide Seiten gleich hinzufügen, steht nur einmal da: Listenpunkt oder Tabellenzeile in Markdown,
-# Element in .dproj, Unit in .dpr/.dpk, Zeile in FpcTests.txt. Andere Zeilen (Leerzeilen, Fließtext, Überschriften)
+# Element in .dproj, Unit in .dpr/.dpk, Zeile in FpcTests.txt, Zeile einer TSV-Datei. Andere Zeilen (Leerzeilen, Fließtext, Überschriften)
 # bleiben immer stehen, auch wenn beide Seiten sie haben.
-LISTENEINTRAG = re.compile(r"^\s*(\||[-*+] |\d+\. |<[A-Za-z]|[\w.]+ in |\w+(\.\w+)+[,;]?$)")
+LISTENEINTRAG = re.compile(r"^\s*(\||[-*+] |\d+\. |<[A-Za-z]|[\w.]+ in |\w+(\.\w+)+[,;]?$|[^\t\r\n]+\t)")
 
 
 def eintraege(zeilen):
@@ -251,6 +303,10 @@ def selbsttest():
         # Gleiche Tabellenzeile und gleicher Listenpunkt nur einmal, Folgezeile gehört zum Punkt.
         (block('| `A` | a |\r\n- x\r\n  weiter\r\n', '', '| `A` | a |\r\n- x\r\n  anders\r\n'), True, False,
          '| `A` | a |\r\n- x\r\n  weiter\r\n- x\r\n  anders\r\n', 0, False),
+        # Zeilen der Unit-Zuordnung (TSV): beide behalten, gleiche nur einmal.
+        (block('Atlas.IDE.Base\tA\ta.pas\tx\r\nAtlas.IDE.Base\tB\tb.pas\tx\r\n', '',
+               'Atlas.IDE.Base\tB\tb.pas\tx\r\nAtlas.IDE.Base\tC\tc.pas\tx\r\n'), True, False,
+         'Atlas.IDE.Base\tA\ta.pas\tx\r\nAtlas.IDE.Base\tB\tb.pas\tx\r\nAtlas.IDE.Base\tC\tc.pas\tx\r\n', 0, False),
         # Text verschieden trotz gleicher Zahl der Zeilen: offen.
         (block('346 Regeln, a\r\n', '345 Regeln\r\n', '347 Regeln, b\r\n'), True, True, None, 1, False),
     ]
@@ -262,6 +318,22 @@ def selbsttest():
         if (neu, offen, genommen) != (erwartet, offen_soll, zahlen_soll):
             print(f'Fall {nr}: erwartet {erwartet!r}/{offen_soll}/{zahlen_soll}, erhalten {neu!r}/{offen}/{genommen}')
             fehler += 1
+    def gruppe(kennung, *fassungen):
+        return {'hash': kennung, 'lines': 6, 'members': list(fassungen)}
+    alt = {'minLines': 6, 'groups': [gruppe('a', 'A:X', 'B:X'), gruppe('b', 'C:Y', 'D:Y', 'E:Y')]}
+    for nr, (gruppen, soll) in enumerate([
+            ([gruppe('a', 'A:X', 'B:X')], 0),                   # entfernt
+            ([gruppe('a', 'A2:X', 'B:X')], 0),                  # Datei umbenannt
+            ([gruppe('c', 'A:X', 'B:X')], 0),                   # Rumpf in beiden Kopien gleich geändert
+            ([gruppe('a', 'A:X', 'B:X', 'F:X')], 1),            # wächst
+            ([gruppe('d', 'G:Z', 'H:Z')], 1)], 1):              # neu, obwohl die Summe sinkt
+        erhalten = len(neue_kopien(alt, {'minLines': 6, 'groups': gruppen}))
+        if erhalten != soll:
+            print(f'Kopien-Fall {nr}: {erhalten} Befunde statt {soll}')
+            fehler += 1
+    if sortiere_tsv('P\tU\r\nB\tb\r\nA\tz\r\nA\t_\r\nA\tC\r\n') != 'P\tU\r\nA\tC\r\nA\tz\r\nA\t_\r\nB\tb\r\n':
+        print('Sortieren der Unit-Zuordnung: falsche Reihenfolge')
+        fehler += 1
     for pfad, soll in [('docs/Einstellungen.md', 'config'),
                        ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.De.Architecture.pas', 'rules'),
                        ('atlas-duplicates.json', 'duplicates'),
@@ -297,6 +369,20 @@ def main():
         print(f'{args.ziel} ist schon enthalten.')
         return 0
     return einmergen(ref, args.ziel, args.kein_commit)
+
+
+def kopien_melden(ref, name):
+    """Nennt Gruppen der neu geschriebenen Duplikat-Baseline, die gegenüber ref neu sind oder wachsen."""
+    stand = git('show', f'{ref}:atlas-duplicates.json', check=False)
+    if stand.returncode != 0:
+        return
+    with open('atlas-duplicates.json', encoding='utf-8-sig') as datei:
+        befunde = neue_kopien(json.loads(stand.stdout.lstrip('\ufeff')), json.load(datei))
+    if befunde:
+        print(f'Hinweis: Kopien, die {name} nicht hat (zusammenlegen oder im Pull Request mit „Neue Kopien: …“ '
+              'begründen, sonst scheitert Tools/Check-Baselines.ps1):')
+        for befund in befunde:
+            print(f'  {befund}')
 
 
 def eigenen_stand_einholen():
@@ -342,6 +428,8 @@ def einmergen(ref, name, kein_commit):
             offen.append(pfad)
             continue
         neu, rest, zahlen_genommen = loese_bloecke(text, erg, zahlen)
+        if not rest and passt(pfad, SORTIERT):
+            neu = sortiere_tsv(neu)
         if neu != text:
             schreib(pfad, neu, bom)
         if zahlen_genommen:
@@ -360,7 +448,7 @@ def einmergen(ref, name, kein_commit):
     def beide(*praefixe):
         return any(p.startswith(praefixe) for p in eigene) and any(p.startswith(praefixe) for p in fremde)
 
-    if beide('schemas/', 'Setup/Profile/'):
+    if beide('schemas/', 'Setup/Profile/', 'docs/features/'):
         neu_erzeugen.add('config')
     if beide('Packages/Atlas.Common/Katalog/'):
         neu_erzeugen.add('rules')
@@ -379,14 +467,15 @@ def einmergen(ref, name, kein_commit):
                 offen.append('atlas-duplicates.json: AtlasServer meldet Fehler')
             else:
                 git('add', '--', 'atlas-duplicates.json')
+                kopien_melden(ref, name)
             continue
         skript = WERKZEUGE[werkzeug]
         if not pwsh:
-            fehlt.append(f'pwsh {skript}')
+            fehlt.append('pwsh ' + ' '.join(skript))
             continue
-        lauf = subprocess.run([pwsh, '-NoProfile', '-File', skript])
+        lauf = subprocess.run([pwsh, '-NoProfile', '-File', *skript])
         if lauf.returncode != 0:
-            offen.append(f'{skript} meldet Fehler')
+            offen.append(f'{skript[0]} meldet Fehler')
     if neu_erzeugen and pwsh:
         git('add', '-u')
 

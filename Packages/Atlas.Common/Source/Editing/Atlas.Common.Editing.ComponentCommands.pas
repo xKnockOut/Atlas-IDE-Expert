@@ -31,6 +31,7 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.ComponentRoots,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Text.Lines,
@@ -734,26 +735,6 @@ begin
   Result := AClass.Range.EndPos.Line;
 end;
 
-/// <summary>Objekt AName in AObject oder darunter; nil ohne.</summary>
-function FindDfmObject(AObject: TDfmObject; const AName: string): TDfmObject;
-var
-  mChild: TDfmObject;
-begin
-  if SameText(AObject.Name, AName) then
-  begin
-    Exit(AObject);
-  end;
-  for mChild in AObject.Children do
-  begin
-    Result := FindDfmObject(mChild, AName);
-    if Result <> nil then
-    begin
-      Exit;
-    end;
-  end;
-  Result := nil;
-end;
-
 /// <summary>Einrückung der Zeile ALine in ALines.</summary>
 function LineIndent(const ALines: TArray<string>; ALine: Integer): string;
 begin
@@ -963,7 +944,7 @@ begin
   ATarget := ADocument.Root;
   if Component <> '' then
   begin
-    ATarget := FindDfmObject(ADocument.Root, Component);
+    ATarget := ADocument.Root.FindNamed(Component);
   end;
   if ATarget = nil then
   begin
@@ -1114,27 +1095,18 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterComponentCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('notify', cTexts[TComponentCommandsText.EventWithFieldPropertyAnd].Text, '/notify OnChange',
-    ExecuteNotify));
-  ARegister(Command('changed', cTexts[TComponentCommandsText.SetterWithChangeCheckAnd].Text,
-    cTexts[TComponentCommandsText.ChangedColor].Text,
-    ExecuteChanged));
-  ARegister(Command('loaded', cTexts[TComponentCommandsText.OverrideLoaded].Text, '/loaded', ExecuteLoaded));
-  ARegister(Command('event', cTexts[TComponentCommandsText.CreateAnEventHandlerAnd].Text, '/event Button1.OnClick',
-    ExecuteEvent));
-  ARegister(Command('notification', cTexts[TComponentCommandsText.NotificationForComponentFields].Text,
-    '/notification FDataSource',
-    ExecuteNotification));
+  ARegister(TSlashCommand.Create('notify', cTexts[TComponentCommandsText.EventWithFieldPropertyAnd].Text,
+      '/notify OnChange', ExecuteNotify));
+  ARegister(TSlashCommand.Create('changed', cTexts[TComponentCommandsText.SetterWithChangeCheckAnd].Text,
+      cTexts[TComponentCommandsText.ChangedColor].Text, ExecuteChanged));
+  ARegister(TSlashCommand.Create('loaded', cTexts[TComponentCommandsText.OverrideLoaded].Text, '/loaded',
+      ExecuteLoaded));
+  ARegister(TSlashCommand.Create('event', cTexts[TComponentCommandsText.CreateAnEventHandlerAnd].Text,
+      '/event Button1.OnClick', ExecuteEvent));
+  ARegister(TSlashCommand.Create('notification', cTexts[TComponentCommandsText.NotificationForComponentFields].Text,
+      '/notification FDataSource', ExecuteNotification));
 end;
 
 initialization

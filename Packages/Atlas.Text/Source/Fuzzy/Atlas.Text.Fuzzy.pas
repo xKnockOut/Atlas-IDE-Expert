@@ -21,6 +21,9 @@ type
     /// anschließend oder auf einem Wortanfang ("stl" → TStringList, nicht "myLis" →
     /// ERROR_TOO_MANY_LINKS). Ohne Groß/Klein; leeres Muster passt.</summary>
     class function MatchesBoundedSubsequence(const APattern, AName: string): Boolean; static;
+    /// <summary>Jedes Musterzeichen kommt der Reihe nach irgendwo in AText vor ("cpl" → "Compile"), ohne
+    /// Wortgrenzen und ohne Groß/Klein; leeres Muster passt.</summary>
+    class function IsSubsequence(const APattern, AText: string): Boolean; static;
     /// <summary>Editierabstand nach Levenshtein ohne Groß-/Kleinschreibung; über ALimit hinaus ALimit + 1.</summary>
     class function EditDistance(const A, B: string; ALimit: Integer): Integer; static;
     /// <summary>Nächstliegender Name aus ACandidates für einen Tippfehler (#989, #997): höchstens zwei Zeichen
@@ -35,6 +38,10 @@ uses
   System.SysUtils,
   System.Math,
   System.Character;
+
+const
+  /// <summary>Größter Abstand, bei dem Closest einen Namen noch vorschlägt.</summary>
+  cMaxCloseDistance = 3;
 
 { TTextFuzzy }
 
@@ -62,6 +69,21 @@ begin
     Exit(not mPrevious.IsDigit);
   end;
   Result := mCurrent.IsLower and mPrevious.IsDigit;
+end;
+
+class function TTextFuzzy.IsSubsequence(const APattern, AText: string): Boolean;
+var
+  mPatternIndex, mTextIndex: Integer;
+begin
+  mPatternIndex := 1;
+  for mTextIndex := 1 to Length(AText) do
+  begin
+    if (mPatternIndex <= Length(APattern)) and (UpCase(AText[mTextIndex]) = UpCase(APattern[mPatternIndex])) then
+    begin
+      Inc(mPatternIndex);
+    end;
+  end;
+  Result := mPatternIndex > Length(APattern);
 end;
 
 class function TTextFuzzy.MatchesWordStarts(const APattern, AName: string): Boolean;
@@ -163,7 +185,7 @@ var
   mBest, mValue: Integer;
 begin
   Result := '';
-  mBest := Min(3, (Length(AName) + 1) div 2);
+  mBest := Min(cMaxCloseDistance, (Length(AName) + 1) div 2);
   for mCandidate in ACandidates do
   begin
     mValue := EditDistance(AName, mCandidate, mBest);

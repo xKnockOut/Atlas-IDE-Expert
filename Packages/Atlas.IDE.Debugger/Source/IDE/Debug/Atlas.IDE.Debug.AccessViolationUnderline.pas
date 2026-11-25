@@ -55,12 +55,16 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh;
+
+const
+  // Zeilenhöhe je Pixel Strichstärke der Unterstreichung.
+  cLineHeightPerThickness = 8;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
 function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
@@ -83,7 +87,7 @@ begin
     mSample := COLORREF(ColorToRGB(AContext.Canvas.Brush.Color));
   end;
   // Fehlerfarbe zum Hintergrund, doppelt so dick wie eine Wellenlinie der Diagnosen.
-  mThickness := Max(2, (ARect.Bottom - ARect.Top) div 8);
+  mThickness := Max(2, (ARect.Bottom - ARect.Top) div cLineHeightPerThickness);
   mY := ARect.Bottom - mThickness;
   // Reines GDI zwischen SaveDC und RestoreDC; der Stift erst nach RestoreDC löschen (dann nicht mehr gewählt).
   mPen := CreatePen(PS_SOLID, mThickness,
@@ -216,13 +220,8 @@ begin
 end;
 
 class procedure TAtlasIdeAvUnderline.Invalidate;
-var
-  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 end.

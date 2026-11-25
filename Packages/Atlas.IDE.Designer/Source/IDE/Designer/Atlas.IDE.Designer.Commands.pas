@@ -52,6 +52,8 @@ type
     function HasMenu(const AId: string): Boolean;
     /// <summary>Klick auf das Symbol eines Werkzeugs; False, wenn der Knopf nicht hierher gehört.</summary>
     function Execute(const AId: string): Boolean;
+    /// <summary>Andockbares Fenster AId aus dem Hauptmenü öffnen oder nach vorn holen; False ohne solches.</summary>
+    function Present(const AId: string): Boolean;
     /// <summary>Takt der Leiste, solange sie gezeigt wird.</summary>
     procedure Tick;
     /// <summary>Fenster der Werkzeuge ausblenden (Leiste aus).</summary>
@@ -126,6 +128,11 @@ end;
 function TAtlasIdeDesignerCommands.Execute(const AId: string): Boolean;
 begin
   Result := FTools.Toggle(AId) or FViews.Run(AId);
+end;
+
+function TAtlasIdeDesignerCommands.Present(const AId: string): Boolean;
+begin
+  Result := FViews.Present(AId);
 end;
 
 procedure TAtlasIdeDesignerCommands.Tick;

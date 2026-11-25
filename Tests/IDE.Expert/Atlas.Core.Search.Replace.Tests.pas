@@ -15,9 +15,6 @@ type
   [Category('Atlas.IDE.Search')]
   TAtlasSearchReplaceTests = class
   public
-    /// <summary>Einmalige Puffer der Regex-Engine (Fehlertexte, Gruppen) vor dem Leckmonitor anlegen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure RegexFindsMatchesPerLine;
     [Test]
@@ -64,7 +61,7 @@ uses
   System.SysUtils,
   System.RegularExpressions,
   Atlas.Text.Lines,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.Results,
   Atlas.Core.Search.Replace,
@@ -72,23 +69,8 @@ uses
   Atlas.Core.Search.Files,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.Core.Commands.KeyMap;
-
-/// <summary>"Zeile:Zeichen+Länge" je Treffer, durch Leerzeichen getrennt.</summary>
-function Describe(const AHits: TArray<TAtlasSearchHit>): string;
-var
-  mHit: TAtlasSearchHit;
-begin
-  Result := '';
-  for mHit in AHits do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' ';
-    end;
-    Result := Result + Format('%d:%d+%d', [mHit.Line, mHit.Character, mHit.Length]);
-  end;
-end;
+  Atlas.Core.Commands.KeyMap,
+  Atlas.Core.Search.TestSupport;
 
 function Query(const AText: string; ACase, AWhole, AIdent, ARegex: Boolean): TAtlasSearchQuery;
 begin
@@ -117,12 +99,6 @@ begin
 end;
 
 { TAtlasSearchReplaceTests }
-
-procedure TAtlasSearchReplaceTests.WarmUpFirstUse;
-begin
-  InvalidRegexReportsErrorAndFindsNothing;
-  ExpandHandlesGroupsNamesAndDollar;
-end;
 
 procedure TAtlasSearchReplaceTests.RegexFindsMatchesPerLine;
 begin

@@ -13,9 +13,6 @@ type
   [TestFixture]
   TLspCompletionTests = class(TLspCompletionTestCase)
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -104,7 +101,7 @@ uses
   Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.Completion.Values,
-  Atlas.Common.Lsp.IdeTypes;
+  Atlas.Common.Lsp.Contract;
 
 /// <summary>Eintrag, der jedes Datenfeld belegt.</summary>
 function FullDataItem: TCompletionItem;
@@ -214,15 +211,6 @@ end;
 
 { TLspCompletionTests }
 
-procedure TLspCompletionTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ScopeListsLocalsMembersAndUsedUnits;
-  finally
-    TearDown;
-  end;
-end;
 procedure TLspCompletionTests.Setup;
 begin
   Prepare;
@@ -243,8 +231,8 @@ var
   mIndex: Integer;
   mItems: TCompletionItems;
 begin
-  // Rückmeldung 15.10.2026: Bei einem Vorfahren mit mehr als MaxItems kurzen Mitgliedern fielen eigene
-  // Methoden mit längerem Namen beim Kürzen heraus.
+  // Bei einem Vorfahren mit mehr als MaxItems kurzen Mitgliedern dürfen eigene Methoden mit längerem Namen
+  // beim Kürzen nicht herausfallen.
   mSource := 'unit Gross;'#10'interface'#10'type'#10'  TGross = class'#10'  public'#10;
   for mIndex := 0 to TLspCompletion.cMaxItems + 199 do
   begin

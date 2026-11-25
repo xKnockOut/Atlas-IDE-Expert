@@ -35,7 +35,7 @@ uses
   System.JSON,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.ChangeSignature,
   Atlas.UI.Editor.ChangeSignature,
   Atlas.IDE.Editor.Rename,
@@ -69,7 +69,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      AMessage(TAtlasStrings.Fmt(TAtlasTextId.SigFailed, [E.Message]));
+      AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigFailed, [E.Message]));
     end;
   end;
 end;
@@ -117,7 +117,7 @@ begin
   end;
   if not ChooseSignature(ASession, AArgumentsJson, AMessage, mApplyArguments) or
     not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, mApplyArguments, cTimeoutMs,
-    TAtlasTextId.SigFailed), nil, AMessage, mReply) then
+    TAtlasEditorTextId.SigFailed), nil, AMessage, mReply) then
   begin
     Exit;
   end;
@@ -129,7 +129,7 @@ begin
   // Vorschau wie beim Umbenennen (#400); Warnungen (Methodenzeiger, schreibgeschützte Aufrufer) im Hinweis.
   mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigPreviewHint, [mReply.Edit.EditCount,
     Length(mReply.Edit.Files)]) +
-    TAtlasIdeServerEdit.WarningLines(mReply, TAtlasTextId.SigWarning);
+    TAtlasIdeServerEdit.WarningLines(mReply, TAtlasEditorTextId.SigWarning);
   if not TAtlasIdeServerEdit.Confirm(TAtlasEditorStrings.Text(TAtlasEditorTextId.SigPreviewTitle), mHint,
     TAtlasEditorStrings.Text(TAtlasEditorTextId.SigPreviewApply), mReply.Edit) then
   begin
@@ -142,7 +142,7 @@ begin
   begin
     AMessage(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.SigDone, [mOutcome.Edits, mOutcome.Files]));
   end;
-  TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasTextId.SigWarning, AMessage);
+  TAtlasIdeServerEdit.ReportAfter(mReply, mOutcome, TAtlasEditorTextId.SigWarning, AMessage);
 end;
 
 end.

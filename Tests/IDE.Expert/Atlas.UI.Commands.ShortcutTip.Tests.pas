@@ -14,9 +14,6 @@ type
   [TestFixture]
   TAtlasShortcutTipWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -36,7 +33,7 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Commands.ShortcutTips,
   Atlas.UI.Strings,
   Atlas.UI.Commands.ShortcutTip;
@@ -74,16 +71,6 @@ begin
 end;
 
 { TAtlasShortcutTipWindowTests }
-
-procedure TAtlasShortcutTipWindowTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ShowsBottomRightWithTimer;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasShortcutTipWindowTests.Setup;
 begin

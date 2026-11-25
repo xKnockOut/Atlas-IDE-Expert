@@ -21,9 +21,6 @@ type
     FForm: TForm;
     FBar: TAtlasEditorToolbar;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -97,24 +94,6 @@ begin
 end;
 
 { TAtlasEditorToolbarTests }
-
-procedure TAtlasEditorToolbarTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    KeepsHeightAndOrder;
-  finally
-    TearDown;
-  end;
-  // Rücksprung mit Hinweis und Neuzeichnen: legt beim ersten Mal Daten der RTL an (je nach Reihenfolge der Teile
-  // sonst als Leck in ReturnFollowsPinnedSections gemeldet).
-  SetUp;
-  try
-    ReturnFollowsPinnedSections;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasEditorToolbarTests.SetUp;
 begin

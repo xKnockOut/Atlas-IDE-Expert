@@ -70,9 +70,12 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   System.Math,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
+  System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor;
 
 function Before(const A, B: TTextPosition): Boolean;
 begin
@@ -86,20 +89,6 @@ begin
   begin
     Result := Result.Substring(1);
   end;
-end;
-
-function Contains(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 { TSmartPaste }
@@ -120,7 +109,7 @@ begin
   begin
     Exit;
   end;
-  mClauses := TUsesClauses.Clauses(ATokens);
+  mClauses := TPascalUses.Clauses(ATokens);
   mSeen := nil;
   for mIndex := 0 to High(ATokens) do
   begin
@@ -131,13 +120,13 @@ begin
       Continue;
     end;
     mName := Bare(mToken.Text);
-    if Contains(mSeen, mName) then
+    if MatchText(mName, mSeen) then
     begin
       Continue;
     end;
     mSeen := mSeen + [mName];
     // Eingefügte uses-Einträge sind keine Bezeichner, die fehlen.
-    if TUsesClauses.InClause(ATokens, mClauses, mToken.Offset) then
+    if TPascalUses.InClause(ATokens, mClauses, mToken.Offset) then
     begin
       Continue;
     end;
@@ -157,7 +146,7 @@ begin
   Result := nil;
   for mItem in ANames do
   begin
-    if (Length(mItem.Units) = 1) and not Contains(Result, mItem.Units[0]) then
+    if (Length(mItem.Units) = 1) and not MatchText(mItem.Units[0], Result) then
     begin
       Result := Result + [mItem.Units[0]];
     end;
@@ -188,27 +177,6 @@ begin
   Result := mSeen;
 end;
 
-/// <summary>Offsets von interface und implementation; -1, wo das Wort fehlt.</summary>
-procedure SectionOffsets(const ATokens: TArray<TPascalToken>; out AInterface, AImplementation: Integer);
-var
-  mIndex: Integer;
-begin
-  AInterface := -1;
-  AImplementation := -1;
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if ATokens[mIndex].IsKeyword('interface') and (AInterface < 0) then
-    begin
-      AInterface := ATokens[mIndex].Offset;
-    end
-    else if ATokens[mIndex].IsKeyword('implementation') then
-    begin
-      AImplementation := ATokens[mIndex].Offset;
-      Break;
-    end;
-  end;
-end;
-
 type
   /// <summary>Verteilt Units auf interface- und implementation-uses.</summary>
   TUsesSplit = record
@@ -227,7 +195,7 @@ type
 procedure TUsesSplit.Add(const AName: string; const AInterfaceUses: TInterfaceUsesFunc;
   var AUses: TSmartPasteUses);
 begin
-  if Upper and CheckCycles and Contains(AInterfaceUses(AName), Own) then
+  if Upper and CheckCycles and MatchText(Own, AInterfaceUses(AName)) then
   begin
     ForImplementation := ForImplementation + [AName];
     AUses.ToImplementation := AUses.ToImplementation + [AName];
@@ -243,13 +211,13 @@ begin
   AUses.Added := AUses.Added + [AName];
 end;
 
-/// <summary>Trägt AUnits (durch Komma getrennt) über TUsesClauses.AddUnit beim Abschnitt an AOffset ein.</summary>
+/// <summary>Trägt AUnits (durch Komma getrennt) über TPascalUsesEdits.AddUnit beim Abschnitt an AOffset ein.</summary>
 procedure AddUnitsEdit(const ATarget: TSmartPasteTarget; AOffset: Integer; const AUnits: TArray<string>;
   var AEdits: TArray<TTextEdit>);
 var
   mEdit: TTextEdit;
 begin
-  if (Length(AUnits) > 0) and TUsesClauses.AddUnit(ATarget.Tokens, AOffset, string.Join(', ', AUnits),
+  if (Length(AUnits) > 0) and TPascalUsesEdits.AddUnit(ATarget.Tokens, AOffset, string.Join(', ', AUnits),
     ATarget.LineBreak, mEdit) then
   begin
     AEdits := AEdits + [mEdit];
@@ -265,17 +233,17 @@ var
   mSplit: TUsesSplit;
 begin
   AUses := Default(TSmartPasteUses);
-  mUsed := TUsesClauses.UsedUnits(ATarget.Tokens);
+  mUsed := TPascalUses.UsedUnits(ATarget.Tokens);
   mSplit := Default(TUsesSplit);
-  mSplit.Own := TUsesClauses.OwnName(ATarget.Tokens);
+  mSplit.Own := TPascalUses.OwnName(ATarget.Tokens);
   SectionOffsets(ATarget.Tokens, mInterfaceOffset, mImplementationOffset);
   // Ohne implementation (Programm, Paket) gibt es nur ein uses.
   mSplit.Upper := (mImplementationOffset < 0) or InInterface(ATarget.Tokens, ATarget.Position);
   mSplit.CheckCycles := (mImplementationOffset >= 0) and Assigned(ATarget.InterfaceUses) and (mSplit.Own <> '');
   for mName in AUnits do
   begin
-    if (Trim(mName) <> '') and not SameText(mName, mSplit.Own) and not Contains(AUses.Added, mName) and
-      not TUsesClauses.IsUsed(mUsed, mName, ATarget.Namespaces) then
+    if (Trim(mName) <> '') and not SameText(mName, mSplit.Own) and not MatchText(mName, AUses.Added) and
+      not TPascalUses.IsUsed(mUsed, mName, ATarget.Namespaces) then
     begin
       mSplit.Add(mName, ATarget.InterfaceUses, AUses);
     end;

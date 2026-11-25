@@ -108,13 +108,17 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Files.Format,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Progress,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Files.Format,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Progress,
+  Atlas.Core.Settings.Plugin,
+  Atlas.Plugin.Lsp.Framing,
+  Atlas.Core.Settings.Contract,
+  Atlas.Core.Settings.TestSupport,
+  Atlas.Core.Lsp.TestSupport;
 
 type
   /// <summary>Zeile eines anderen Issues, ohne TAtlasStatusLine (Abnahme: erscheint ohne Änderung).</summary>
@@ -130,18 +134,6 @@ type
     function HasAction: Boolean;
     procedure Execute;
     property Clicks: Integer read FClicks;
-  end;
-
-  TMemoryStore = class(TInterfacedObject, IAtlasSettingsStore)
-  private
-    FValues: TDictionary<string, string>;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
   end;
 
 { TForeignItem }
@@ -181,52 +173,6 @@ begin
   Inc(FClicks);
 end;
 
-{ TMemoryStore }
-
-constructor TMemoryStore.Create;
-begin
-  inherited Create;
-  FValues := TDictionary<string, string>.Create;
-end;
-
-destructor TMemoryStore.Destroy;
-begin
-  FValues.Free;
-  inherited;
-end;
-
-function TMemoryStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
-var
-  mValue: string;
-begin
-  if FValues.TryGetValue(AName, mValue) then
-  begin
-    Result := StrToInt(mValue);
-  end
-  else
-  begin
-    Result := ADefault;
-  end;
-end;
-
-procedure TMemoryStore.WriteInteger(const AName: string; AValue: Integer);
-begin
-  FValues.AddOrSetValue(AName, IntToStr(AValue));
-end;
-
-function TMemoryStore.ReadString(const AName, ADefault: string): string;
-begin
-  if not FValues.TryGetValue(AName, Result) then
-  begin
-    Result := ADefault;
-  end;
-end;
-
-procedure TMemoryStore.WriteString(const AName, AValue: string);
-begin
-  FValues.AddOrSetValue(AName, AValue);
-end;
-
 function Line(const ARegistry: IAtlasStatusRegistry; const AId: string; AOrder: Integer;
   AState: TAtlasStatusState; const AText, ASummary: string): IAtlasStatusItem;
 var
@@ -249,17 +195,6 @@ begin
       Result := Result + ' ';
     end;
     Result := Result + mItem.Id;
-  end;
-end;
-
-function Bytes(const AValues: array of Byte): TBytes;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AValues));
-  for mIndex := 0 to High(AValues) do
-  begin
-    Result[mIndex] := AValues[mIndex];
   end;
 end;
 
@@ -641,9 +576,9 @@ end;
 procedure TAtlasFileFormatTests.DetectsAnsiAndUtf16;
 begin
   // „ä“ in Windows-1252 allein ist kein gültiges UTF-8.
-  Assert.AreEqual('ANSI, CRLF', TAtlasFileFormats.Detect(Bytes([$61, $E4, 13, 10])).Text);
-  Assert.AreEqual('UTF-16 LE, LF', TAtlasFileFormats.Detect(Bytes([$FF, $FE, $61, 0, 10, 0])).Text);
-  Assert.AreEqual('UTF-16 BE, ohne Zeilenende', TAtlasFileFormats.Detect(Bytes([$FE, $FF, 0, $61])).Text);
+  Assert.AreEqual('ANSI, CRLF', TAtlasFileFormats.Detect(TBytes.Create($61, $E4, 13, 10)).Text);
+  Assert.AreEqual('UTF-16 LE, LF', TAtlasFileFormats.Detect(TBytes.Create($FF, $FE, $61, 0, 10, 0)).Text);
+  Assert.AreEqual('UTF-16 BE, ohne Zeilenende', TAtlasFileFormats.Detect(TBytes.Create($FE, $FF, 0, $61)).Text);
 end;
 
 procedure TAtlasFileFormatTests.DetectsMixedAndMissingLineBreaks;
@@ -703,10 +638,10 @@ end;
 
 procedure TAtlasFileFormatTests.RejectsInvalidUtf8;
 begin
-  Assert.IsFalse(TAtlasFileFormats.IsUtf8(Bytes([$C3]), 0), 'abgeschnitten');
-  Assert.IsFalse(TAtlasFileFormats.IsUtf8(Bytes([$C3, $41]), 0), 'kein Folgebyte');
-  Assert.IsFalse(TAtlasFileFormats.IsUtf8(Bytes([$C0, $80]), 0), 'überlang');
-  Assert.IsTrue(TAtlasFileFormats.IsUtf8(Bytes([$E2, $82, $AC, $41]), 0), 'Euro');
+  Assert.IsFalse(TAtlasFileFormats.IsUtf8(TBytes.Create($C3), 0), 'abgeschnitten');
+  Assert.IsFalse(TAtlasFileFormats.IsUtf8(TBytes.Create($C3, $41), 0), 'kein Folgebyte');
+  Assert.IsFalse(TAtlasFileFormats.IsUtf8(TBytes.Create($C0, $80), 0), 'überlang');
+  Assert.IsTrue(TAtlasFileFormats.IsUtf8(TBytes.Create($E2, $82, $AC, $41), 0), 'Euro');
   Assert.IsTrue(TAtlasFileFormats.IsUtf8(nil, 0));
 end;
 
@@ -765,7 +700,7 @@ begin
   mClient := TLspClient.Create(
     procedure(const ABytes: TBytes)
     begin
-      mClient.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":1,"result":null}'), Length(TLspClient.Frame(
+      mClient.Receive(TLspFrameReader.Frame('{"jsonrpc":"2.0","id":1,"result":null}'), Length(TLspFrameReader.Frame(
         '{"jsonrpc":"2.0","id":1,"result":null}')));
     end);
   try
@@ -782,14 +717,14 @@ var
   mClient: TLspClient;
   mSamples: Integer;
 begin
-  // Rückmeldung 15.10.2026: workspace/diagnostic wartet absichtlich bis zu 10 s.
-  Assert.IsFalse(TLspClient.CountsResponseTime('workspace/diagnostic'));
-  Assert.IsTrue(TLspClient.CountsResponseTime('textDocument/diagnostic'));
+  // workspace/diagnostic wartet absichtlich bis zu 10 s und zählt darum nicht mit.
+  Assert.IsFalse(TLspResponseTimes.Counts('workspace/diagnostic'));
+  Assert.IsTrue(TLspResponseTimes.Counts('textDocument/diagnostic'));
   mClient := nil;
   mClient := TLspClient.Create(
     procedure(const ABytes: TBytes)
     begin
-      mClient.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":1,"result":null}'), Length(TLspClient.Frame(
+      mClient.Receive(TLspFrameReader.Frame('{"jsonrpc":"2.0","id":1,"result":null}'), Length(TLspFrameReader.Frame(
         '{"jsonrpc":"2.0","id":1,"result":null}')));
     end);
   try
@@ -827,18 +762,6 @@ begin
   Assert.AreEqual(1, mCalls, 'Freigeben meldet nicht noch einmal');
 end;
 
-procedure SendProgress(const AProgress: ILspProgress; const AJson: string);
-var
-  mValue: TJSONValue;
-begin
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    AProgress.Handle(mValue);
-  finally
-    mValue.Free;
-  end;
-end;
-
 procedure TAtlasStatusSourcesTests.ProgressReportsChangesAndPercent;
 var
   mProgress: ILspProgress;
@@ -853,17 +776,17 @@ begin
     end);
   Assert.IsFalse(mProgress.Active(mPercent));
   Assert.AreEqual(-1, mPercent);
-  SendProgress(mProgress, '{"token":"atlas-index","value":{"kind":"begin","title":"Index"}}');
+  Send(mProgress, '{"token":"atlas-index","value":{"kind":"begin","title":"Index"}}');
   Assert.IsTrue(mProgress.Active(mPercent));
   Assert.AreEqual(-1, mPercent);
-  SendProgress(mProgress, '{"token":"atlas-index","value":{"kind":"report","percentage":45}}');
+  Send(mProgress, '{"token":"atlas-index","value":{"kind":"report","percentage":45}}');
   Assert.IsTrue(mProgress.Active(mPercent));
   Assert.AreEqual(45, mPercent);
-  SendProgress(mProgress, '{"token":"atlas-index","value":{"kind":"end"}}');
+  Send(mProgress, '{"token":"atlas-index","value":{"kind":"end"}}');
   Assert.IsFalse(mProgress.Active(mPercent));
   Assert.AreEqual(3, mCalls);
   mProgress.SetOnChanged(nil);
-  SendProgress(mProgress, '{"token":"x","value":{"kind":"begin"}}');
+  Send(mProgress, '{"token":"x","value":{"kind":"begin"}}');
   Assert.AreEqual(3, mCalls);
 end;
 
@@ -882,7 +805,7 @@ begin
   Assert.IsFalse(mSettings.IndexProgressInMenu);
   Assert.IsTrue(mSettings.StatusTogglesOnRightClick);
   Assert.IsTrue(mSettings.StatusTogglesOnDoubleClick);
-  mStore := TMemoryStore.Create;
+  mStore := TTextStore.Create;
   mSettings.StatusField := False;
   mSettings.StatusFieldSummary := False;
   mSettings.StatusFieldToggles := 'doubleClick';

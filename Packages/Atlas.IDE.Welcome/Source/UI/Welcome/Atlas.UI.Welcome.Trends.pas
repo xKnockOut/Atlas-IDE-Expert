@@ -28,14 +28,10 @@ uses
   Vcl.Graphics,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Trends,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasTrendsSource = interface
-    ['{9C3B6E21-4A7D-4F18-B2E5-7D0A1C8F5E93}']
-    /// <summary>Verlauf des gewählten (sonst obersten) Projekts mit den eingestellten Reihen.</summary>
-    function View: TAtlasTrendView;
-  end;
 
   TAtlasTrendsHit = record
     /// <summary>Kachel; -1 = keine.</summary>
@@ -68,7 +64,7 @@ type
     procedure SetSource(const AValue: IAtlasTrendsSource);
     procedure BoxPaint(Sender: TObject);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure BoxLeftClick(Sender: TObject; AX, AY: Integer);
     procedure BodyResize(Sender: TObject);
     function AreaWidth: Integer;
     function Columns(AWidth: Integer): Integer;
@@ -128,8 +124,29 @@ uses
   System.UITypes,
   System.DateUtils,
   Vcl.Themes,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Strings;
+
+const
+  /// <summary>Lage von Grün und Blau in TColor ($00BBGGRR) in Bit.</summary>
+  cGreenShift = 8;
+  cBlueShift = 16;
+  /// <summary>Anteile der Vordergrundfarbe in Prozent: Fläche unter der Linie, Rahmen der Kachel, Nulllinie.</summary>
+  cAreaPercent = 22;
+  cFramePercent = 35;
+  cZeroLinePercent = 50;
+  // Maße in logischen Pixeln bei 96 dpi.
+  /// <summary>Oberkante der Überschrift und der Zeile mit dem gewählten Punkt.</summary>
+  cTextTop = 3;
+  /// <summary>Radius der Ecken einer Kachel, Oberkante ihrer Bezeichnung und ihres Werts.</summary>
+  cTileRadius = 8;
+  cCaptionTop = 5;
+  cValueTop = 20;
+  /// <summary>Abstand zwischen Wert und Vorwert.</summary>
+  cPreviousGap = 6;
+  /// <summary>Der Wert ist so viele Punkt größer als die Schrift des Bereichs.</summary>
+  cValueFontGrow = 3;
 
 type
   /// <summary>Zeichnet die Linie einer Kachel: Nulllinie, Stücke ohne Lücke, letzter und gewählter Punkt.</summary>
@@ -162,9 +179,9 @@ begin
   mBack := ColorToRGB(ABack);
   // TColor nach ColorToRGB: $00BBGGRR.
   R := ((mFore and $FF) * APercent + (mBack and $FF) * (100 - APercent)) div 100;
-  G := (((mFore shr 8) and $FF) * APercent + ((mBack shr 8) and $FF) * (100 - APercent)) div 100;
-  B := (((mFore shr 16) and $FF) * APercent + ((mBack shr 16) and $FF) * (100 - APercent)) div 100;
-  Result := TColor(R or (G shl 8) or (B shl 16));
+  G := (((mFore shr cGreenShift) and $FF) * APercent + ((mBack shr cGreenShift) and $FF) * (100 - APercent)) div 100;
+  B := (((mFore shr cBlueShift) and $FF) * APercent + ((mBack shr cBlueShift) and $FF) * (100 - APercent)) div 100;
+  Result := TColor(R or (G shl cGreenShift) or (B shl cBlueShift));
 end;
 
 { TTrendSparkPainter }
@@ -218,7 +235,7 @@ begin
       APoints[0].Y + mRadius + 1);
     Exit;
   end;
-  Canvas.Brush.Color := Blend(LineColor, BackColor, 22);
+  Canvas.Brush.Color := Blend(LineColor, BackColor, cAreaPercent);
   Canvas.Pen.Style := psClear;
   Canvas.Polygon(APoints + [Point(APoints[High(APoints)].X, ZeroY), Point(APoints[0].X, ZeroY)]);
   Canvas.Pen.Style := psSolid;
@@ -286,7 +303,7 @@ begin
   FBox.ShowHint := True;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseMove := BoxMouseMove;
-  FBox.OnMouseUp := BoxMouseUp;
+  FBox.OnLeftClick := BoxLeftClick;
   Body.OnResize := BodyResize;
 end;
 
@@ -348,7 +365,7 @@ begin
     Exit;
   end;
   mCanvas.Font.Color := mMutedColor;
-  mCanvas.TextOut(ScaleValue(cIndent), ScaleValue(3), HeadingText);
+  mCanvas.TextOut(ScaleValue(cIndent), ScaleValue(cTextTop), HeadingText);
   if Length(FView.Points) > 0 then
   begin
     for mIndex := 0 to High(FView.Tiles) do
@@ -365,7 +382,7 @@ begin
   begin
     mInfo := PointInfo(FView, ChosenTile, ChosenPoint, False);
   end;
-  mCanvas.TextOut(ScaleValue(cIndent), InfoTop(mWidth) + ScaleValue(3), mInfo);
+  mCanvas.TextOut(ScaleValue(cIndent), InfoTop(mWidth) + ScaleValue(cTextTop), mInfo);
 end;
 
 procedure TAtlasWelcomeTrendsFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -398,26 +415,15 @@ begin
   Application.CancelHint;
 end;
 
-procedure TAtlasWelcomeTrendsFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+procedure TAtlasWelcomeTrendsFrame.BoxLeftClick(Sender: TObject; AX, AY: Integer);
 begin
-  if Button = mbLeft then
-  begin
-    ClickAt(HitTest(X, Y));
-  end;
+  ClickAt(HitTest(AX, AY));
 end;
 
 procedure TAtlasWelcomeTrendsFrame.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
 begin
-  mOldHeight := FContentHeight;
-  FContentHeight := HeightFor(ClientWidth);
   // Andere Anzahl Reihen von Kacheln: Der Frame „Atlas“ ordnet die Spalten neu.
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
+  TAtlasControls.Remeasure(FContentHeight, HeightFor(ClientWidth), HeightChanged);
 end;
 
 function TAtlasWelcomeTrendsFrame.AreaWidth: Integer;
@@ -475,25 +481,26 @@ begin
   ACanvas.Brush.Style := bsClear;
   ACanvas.Pen.Style := psSolid;
   ACanvas.Pen.Width := 1;
-  ACanvas.Pen.Color := Blend(mMutedColor, mSpark.BackColor, 35);
-  ACanvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, ScaleValue(8), ScaleValue(8));
+  ACanvas.Pen.Color := Blend(mMutedColor, mSpark.BackColor, cFramePercent);
+  ACanvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, ScaleValue(cTileRadius), ScaleValue(cTileRadius));
   // Bezeichnung klein und in Großbuchstaben.
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size - 1;
   ACanvas.Font.Color := mMutedColor;
-  ACanvas.TextRect(Rect(ARect.Left + ScaleValue(cTilePadding), ARect.Top + ScaleValue(5),
-    ARect.Right - ScaleValue(cTilePadding), ARect.Top + ScaleValue(5) + ACanvas.TextHeight('Ag')),
-    ARect.Left + ScaleValue(cTilePadding), ARect.Top + ScaleValue(5), AnsiUpperCase(SeriesTitle(mTile.Series)));
+  ACanvas.TextRect(Rect(ARect.Left + ScaleValue(cTilePadding), ARect.Top + ScaleValue(cCaptionTop),
+    ARect.Right - ScaleValue(cTilePadding), ARect.Top + ScaleValue(cCaptionTop) + ACanvas.TextHeight('Ag')),
+    ARect.Left + ScaleValue(cTilePadding), ARect.Top + ScaleValue(cCaptionTop),
+    AnsiUpperCase(SeriesTitle(mTile.Series)));
   // Letzter Wert groß, Vorwert klein daneben.
   ACanvas.Font.Assign(Font);
-  ACanvas.Font.Size := Font.Size + 3;
+  ACanvas.Font.Size := Font.Size + cValueFontGrow;
   ACanvas.Font.Style := [fsBold];
   ACanvas.Font.Color := mSpark.TextColor;
   mText := ValueLine(mTile);
   mX := ARect.Left + ScaleValue(cTilePadding);
-  mY := ARect.Top + ScaleValue(20);
+  mY := ARect.Top + ScaleValue(cValueTop);
   ACanvas.TextOut(mX, mY, mText);
-  Inc(mX, ACanvas.TextWidth(mText) + ScaleValue(6));
+  Inc(mX, ACanvas.TextWidth(mText) + ScaleValue(cPreviousGap));
   mValueHeight := ACanvas.TextHeight(mText);
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Size := Font.Size - 1;
@@ -503,7 +510,7 @@ begin
   mSpark.Area := SparkRect(ARect);
   mSpark.Radius := ScaleValue(cDotRadius);
   mSpark.LineWidth := ScaleValue(2);
-  mSpark.Draw(Blend(mMutedColor, mSpark.BackColor, 50));
+  mSpark.Draw(Blend(mMutedColor, mSpark.BackColor, cZeroLinePercent));
   // Gewählter Punkt als Ring; in einer Lücke auf der Nulllinie.
   if mTile.Series = FChosenSeries then
   begin
@@ -718,7 +725,7 @@ begin
   end;
   mPoint := AView.Points[APoint];
   mTile := AView.Tiles[ATile];
-  // Wie im Mockup „Build i von N“ in den gezeigten Punkten; die laufende Nummer zählt alle Builds.
+  // „Build i von N“ in den gezeigten Punkten; die laufende Nummer zählt alle Builds.
   Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeTrendsBuild, [APoint + 1, Length(AView.Points)]);
   if ANumber and (mPoint.Build > 0) and (mPoint.Build <> APoint + 1) then
   begin
@@ -761,12 +768,7 @@ end;
 
 class function TAtlasWelcomeTrendsFrame.LocalText(AUtc: TDateTime): string;
 begin
-  Result := '';
-  if AUtc <= 0 then
-  begin
-    Exit;
-  end;
-  Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
+  Result := TAtlasWelcomeStrings.LocalTime(AUtc);
 end;
 
 end.

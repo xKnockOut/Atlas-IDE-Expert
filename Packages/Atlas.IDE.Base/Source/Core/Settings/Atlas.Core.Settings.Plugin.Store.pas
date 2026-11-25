@@ -5,6 +5,9 @@
 
 interface
 
+uses
+  Atlas.Core.Settings.Contract;
+
 const
   /// <summary>Werte von bookmarks.quick.scope (#1104) in der Reihenfolge der Optionsseite.</summary>
   cAtlasQuickBookmarkScopes: array[0..1] of string = ('project', 'file');
@@ -24,24 +27,6 @@ const
   cStopRunningProgramNames: array[0..2] of string = ('ask', 'always', 'never');
 
 type
-  /// <summary>Ablage für Einstellungen; Werte als ganze Zahlen (Wahrheitswerte 0/1).</summary>
-  IAtlasSettingsStore = interface
-    ['{4C8E2A17-9B3D-4F61-A5E2-7D0C1B9F3E84}']
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
-  end;
-
-  /// <summary>Ablage, die gespeicherte Namen kennt und entfernen kann (#1280): Grundlage der Übernahme umbenannter
-  /// Einstellungen (x-renamedFrom im Plugin-Katalog).</summary>
-  IAtlasSettingsNames = interface
-    ['{6B2E9D41-7C3A-4F85-B1D6-0A8E5C2F9B73}']
-    /// <summary>Steht unter AName ein Wert (gleich welcher Art)?</summary>
-    function Contains(const AName: string): Boolean;
-    /// <summary>Wert unter AName entfernen; ohne Wert nichts.</summary>
-    procedure Remove(const AName: string);
-  end;
 
   /// <summary>Liest oder schreibt Einstellungen über eine Ablage: Laden und Speichern eines Bereichs
   /// gehen über dieselbe Liste (Exchange), damit Name und Art jedes Werts nur einmal stehen.</summary>
@@ -71,6 +56,8 @@ type
 /// <summary>Ohne Zeilenumbrüche und Steuerzeichen, höchstens MaxIssuesText Zeichen; ATrim kürzt Leerraum am Rand.
 /// </summary>
 function NormalizedIssuesText(const AText: string; ATrim: Boolean): string;
+/// <summary>AText mit Leerzeichen statt Steuerzeichen (unter #32, auch Zeilenumbrüche).</summary>
+function ControlCharsAsSpaces(const AText: string): string;
 /// <summary>AValue, wenn er (ohne Groß-/Kleinschreibung) unter AAllowed steht, in deren Schreibweise;
 /// sonst der erste erlaubte Wert.</summary>
 function Choice(const AValue: string; const AAllowed: array of string): string;
@@ -83,17 +70,8 @@ uses
   System.SysUtils;
 
 function NormalizedIssuesText(const AText: string; ATrim: Boolean): string;
-var
-  mIndex: Integer;
 begin
-  Result := AText;
-  for mIndex := 1 to Length(Result) do
-  begin
-    if Ord(Result[mIndex]) < 32 then
-    begin
-      Result[mIndex] := ' ';
-    end;
-  end;
+  Result := ControlCharsAsSpaces(AText);
   if ATrim then
   begin
     Result := Trim(Result);
@@ -101,6 +79,20 @@ begin
   if Length(Result) > cMaxIssuesText then
   begin
     Result := Copy(Result, 1, cMaxIssuesText);
+  end;
+end;
+
+function ControlCharsAsSpaces(const AText: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := AText;
+  for mIndex := 1 to Length(Result) do
+  begin
+    if Result[mIndex] < ' ' then
+    begin
+      Result[mIndex] := ' ';
+    end;
   end;
 end;
 

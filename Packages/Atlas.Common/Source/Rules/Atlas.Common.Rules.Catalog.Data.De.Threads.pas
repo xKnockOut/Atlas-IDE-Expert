@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeThreads: array[0..112] of string = (
+  cCatalogLinesDeThreads: array[0..127] of string = (
     '{',
     '      "id": "thread-vcl-access",',
     '      "name": "VCL-Zugriff aus einem Thread",',
@@ -86,6 +86,16 @@ const
     '      ]',
     '    },',
     '{',
+    '      "id": "queue-without-remove",',
+    '      "name": "Thread reiht ein, entfernt die Einträge aber nie",',
+    '      "description": "Ein Nachfahr von TThread reiht am eigenen Thread in den Hauptthread ein (Queue(…), ForceQueue(…), TThread.Queue(Self, …) oder TThread.Queue(CurrentThread, …)), aber niemand entfe' +
+    'rnt die Einträge mit RemoveQueuedEvents. Was beim Anhalten des Threads noch wartet, läuft danach mit freigegebenen Objekten bzw. nach dem Entladen des Packages in fremdem Speicher. Als Entfernen zählt' +
+    ' ein Aufruf in einer Methode der Klasse oder eines Vorfahren der Unit, ein Aufruf mit einem anderen Argument als Self oder nil an anderer Stelle der Unit (der Besitzer räumt beim Anhalten auf, TThread' +
+    '.RemoveQueuedEvents(FWorker)) und eine andere Unit des Projekts, die Klasse und RemoveQueuedEvents nennt (Index mit index.usages). Synchronize wartet und wird nicht gemeldet; Queue(nil, …) meldet queu' +
+    'e-nil-in-package; eine eigene Methode namens Queue zählt nicht. Sicherheit hoch; niedrig, wenn ein Vorfahr aus einer anderen Unit die Einträge entfernen könnte. Korrektur: RemoveQueuedEvents(Self) im ' +
+    'Destruktor vor inherited ergänzen (legt den Destruktor hinter dem letzten Konstruktor an, wenn er fehlt; nicht bei eingebetteten Klassen)."',
+    '    },',
+    '{',
     '      "id": "blocking-call-in-main-thread",',
     '      "name": "Blockierender Aufruf im Hauptthread",',
     '      "description": "Sleep, WaitFor, WaitForSingleObject, WaitForMultipleObjects oder Wait in Methoden von Formularen und Frames (Klassen, die von TForm, TCustomForm, TFrame oder TCustomFrame erben) ' +
@@ -130,6 +140,30 @@ const
     'Verwendung der Variablen) und bei Methodenzeigern, deren Rumpf die Regel nicht sieht. Konfidenz mittel. Korrektur: den Rumpf in try … except einschließen und die Meldung über TThread.Queue mit ShowMes' +
     'sage im Hauptthread zeigen (ergänzt Vcl.Dialogs, in FireMonkey-Units FMX.Dialogs, und System.SysUtils im uses, wenn sie fehlen); nur, wenn begin und end der anonymen Methode auf eigenen Zeilen stehen.' +
     '"',
+    '    },',
+    '{',
+    '      "id": "thread-execute-without-except",',
+    '      "name": "Ausnahme in TThread.Execute beendet den Thread still",',
+    '      "description": "Eine Überschreibung von Execute in einem Nachfahren von TThread (aus Unit und Index, auch über eigene Thread-Vorfahren), deren Rumpf nicht ganz in einem try … except steht, das j' +
+    'ede Ausnahme fängt (except ohne on, on E: Exception, on TObject oder ein else-Teil). Eine Ausnahme, die Execute verlässt, beendet den Thread still: Delphi legt sie nur in FatalException ab, und gemeld' +
+    'et wird nichts, solange niemand die Eigenschaft liest. Um den Schutz erlaubt sind ein try … finally und ein vorangestelltes NameThreadForDebugging. Ein Rumpf, der nur eine Routine aufruft (auch mit Me' +
+    'thodenreferenz als Argument, inherited, eine Methode der Klasse oder eine eingebettete Routine), gilt als geschützt, wenn diese Routine selbst geschützt ist; steht ihr Rumpf nicht in der Unit, hat der' +
+    ' Befund Konfidenz niedrig und nennt die Routine. Still, wenn die Klasse FatalException auswertet: eine andere Methode der Klasse oder eines Vorfahren (DoTerminate) liest sie, eine Routine, die die Kla' +
+    'sse nennt, liest sie (Code nach WaitFor, OnTerminate-Handler) oder weist einen solchen OnTerminate-Handler zu, oder eine andere Unit des Projekts nennt Klasse und FatalException (Index mit index.usage' +
+    's). Konfidenz hoch. Korrektur nur, wenn die Klasse ein Feld vom Typ ILogger hat: den Rumpf in try … except on E: Exception do einschließen und die Meldung mit Error protokollieren (ergänzt System.SysU' +
+    'tils, wenn es fehlt); ohne Protokoll keine Korrektur, damit kein leerer Handler entsteht. catch-all-without-raise bleibt für diesen äußeren Handler still."',
+    '    },',
+    '{',
+    '      "id": "sleep-polling-loop",',
+    '      "name": "Warteschleife mit Sleep statt Warten auf ein Ereignis",',
+    '      "description": "Eine while- oder repeat-Schleife, deren Rumpf nur mit Sleep oder SleepEx wartet (optional mit Zähler, Zeitmessung in lokalen Variablen oder einer Zeitprüfung, die mit Exit, Break' +
+    ' oder raise abbricht), und deren Bedingung einen Zustand außerhalb der Routine liest: ein Feld, eine Eigenschaft, eine globale Variable oder eine Funktion (nicht nur lokale Variablen, Konstanten, Zeit' +
+    'funktionen oder Terminated). Eine solche Schleife reagiert spät (bis zu einem Sleep-Intervall), kostet bei jedem Durchlauf Rechenzeit und hängt still, wenn sich der Zustand nie ändert. Die Meldung nen' +
+    'nt den abgefragten Zustand und den Ersatz: TThread.WaitFor bei Finished, ITask.Wait bei Status, sonst TEvent.WaitFor bzw. TLightweightEvent.WaitFor mit Zeitgrenze. Still, wenn der Rumpf anderes tut, s' +
+    'chon auf ein Ereignis wartet, bei Sleep(0) (Zeitscheibe abgeben im Spinlock), bei Bedingungen, die eine Aktion wiederholen (Aufruf mit Argumenten wie TryReplace(…)), für die Zeitgrenze selbst (Verglei' +
+    'ch mit GetTickCount64 oder ElapsedMilliseconds), bei Schleifen in anonymen Methoden (für sich geprüft) und wo eine andere Regel die Schleife schon meldet: Methoden von Thread-Klassen ohne Terminated i' +
+    'n der Schleife (thread-loop-without-terminated) und Methoden, die im Hauptthread laufen, etwa Formulare, Frames und Ereignis-Handler (blocking-call-in-main-thread). Konfidenz mittel; keine Korrektur, ' +
+    'weil das Ereignis dort gesetzt werden muss, wo sich der Zustand ändert."',
     '    },',
     '{',
     '      "id": "parallel-for-shared-write",',

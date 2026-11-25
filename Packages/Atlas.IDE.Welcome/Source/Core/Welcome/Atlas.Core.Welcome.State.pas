@@ -22,32 +22,14 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract;
+  Atlas.Plugin.Status.Contract,
+  Atlas.Core.Welcome.Contract;
 
 type
-{$SCOPEDENUMS ON}
-  TAtlasStateRowKind = (Server, Version, Index, Setup, Diagnostic);
-  TAtlasStateButton = (Restart, Settings, LogFolder, Update);
-{$SCOPEDENUMS OFF}
-
-  TAtlasStateRow = record
-    Kind: TAtlasStateRowKind;
-    /// <summary>Kennung der Zeile im Statusfeld, z. B. "atlas.server".</summary>
-    Id: string;
-    /// <summary>Die Zeile gibt es im Statusfeld; sonst Ersatzzeile (neutral, Text von der UI).</summary>
-    Present: Boolean;
-    State: TAtlasStatusState;
-    /// <summary>Kurzform der Zeile, sonst ihr Text; '' bei Ersatzzeilen.</summary>
-    Text: string;
-    /// <summary>Zusatz rechts; '' = keiner.</summary>
-    Detail: string;
-    /// <summary>Voller Text der Zeile im Statusfeld (Tooltip).</summary>
-    Hint: string;
-    /// <summary>Klick auf die Zeile führt die Aktion der Statusfeld-Zeile aus.</summary>
-    HasAction: Boolean;
-  end;
-
-  TAtlasStateRows = TArray<TAtlasStateRow>;
+  TAtlasStateRowKind = Atlas.Core.Welcome.Contract.TAtlasStateRowKind;
+  TAtlasStateButton = Atlas.Core.Welcome.Contract.TAtlasStateButton;
+  TAtlasStateRow = Atlas.Core.Welcome.Contract.TAtlasStateRow;
+  TAtlasStateRows = Atlas.Core.Welcome.Contract.TAtlasStateRows;
 
   TAtlasWelcomeState = class
   public
@@ -73,7 +55,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Status.Lines;
+  Atlas.Plugin.Status.Lines;
 
 { TAtlasWelcomeState }
 
@@ -184,15 +166,14 @@ end;
 
 class function TAtlasWelcomeState.Buttons(const ARows: TAtlasStateRows): TArray<TAtlasStateButton>;
 begin
-  // Einzeln zuweisen: Eine Liste von Aufzählungswerten in eckigen Klammern liest der Compiler als Menge.
-  SetLength(Result, 3);
-  Result[0] := TAtlasStateButton.Restart;
-  Result[1] := TAtlasStateButton.Settings;
-  Result[2] := TAtlasStateButton.LogFolder;
+  // TArray.Create statt eckiger Klammern: Eine Liste von Aufzählungswerten in eckigen Klammern liest der Compiler
+  // als Menge.
+  Result := TArray<TAtlasStateButton>.Create(TAtlasStateButton.Restart, TAtlasStateButton.Settings,
+    TAtlasStateButton.LogFolder);
   if UpdateReady(ARows) then
   begin
-    SetLength(Result, 4);
-    Result[3] := TAtlasStateButton.Update;
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := TAtlasStateButton.Update;
   end;
 end;
 

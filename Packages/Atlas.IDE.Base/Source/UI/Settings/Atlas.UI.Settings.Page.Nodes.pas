@@ -11,7 +11,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Settings.Groups,
-  Atlas.UI.Settings.Group,
+  Atlas.Vcl.Options.Group,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -91,25 +91,23 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Settings.Marks,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
+
+const
+  /// <summary>Oberkante der ersten Zeile, die Place beim Aufteilen eines Bereichs setzt (alTop ordnet nach Top;
+  /// weiter in Schritten von 100).</summary>
+  cFirstPlaceTop = 1000;
+  /// <summary>Oberkante der Übersicht des Hauptknotens: unter allen anderen Zeilen seiner Seite.</summary>
+  cOverviewTop = 100000;
+  /// <summary>Höhe einer Zeile der Übersicht (Spiegel und „Details“).</summary>
+  cOverviewRowHeight = 24;
 
 type
   /// <summary>Art einer Zeile beim Aufteilen eines Bereichs: mit Einstellung, angehängt, Beschriftung, sonst.
   /// </summary>
   TAtlasRowKind = (rkBound, rkAttached, rkLabel, rkOther);
-
-/// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
-function Inside(AControl, AParent: TControl): Boolean;
-var
-  mParent: TControl;
-begin
-  mParent := AControl;
-  while (mParent <> nil) and (mParent <> AParent) do
-  begin
-    mParent := mParent.Parent;
-  end;
-  Result := mParent <> nil;
-end;
 
 /// <summary>Zeilen von ABox in der Reihenfolge von oben nach unten.</summary>
 function SortedRows(ABox: TWinControl): TArray<TControl>;
@@ -203,7 +201,7 @@ var
 begin
   for mItem in FPage.FAttached do
   begin
-    if Inside(mItem.Value, AControl) then
+    if ControlInside(mItem.Value, AControl) then
     begin
       Exit(True);
     end;
@@ -217,7 +215,7 @@ var
 begin
   for mCandidate := 0 to High(FRows) do
   begin
-    if Inside(AAnchor, FRows[mCandidate]) then
+    if ControlInside(AAnchor, FRows[mCandidate]) then
     begin
       Exit(mCandidate);
     end;
@@ -599,7 +597,7 @@ procedure TAtlasSettingsPageNodes.BuildArea(AArea: Integer);
 var
   mLayout: TAtlasSettingsAreaLayout;
 begin
-  FPlaceTop := 1000;
+  FPlaceTop := cFirstPlaceTop;
   mLayout := TAtlasSettingsAreaLayout.Create(Self, AArea);
   try
     mLayout.Run;
@@ -650,7 +648,7 @@ var
   mCaption: TLabel;
 begin
   Result := TAtlasSettingsGroup.Create(Self);
-  FPlaceTop := 100000;
+  FPlaceTop := cOverviewTop;
   Place(Result, FNodePages[AMain].Box);
   mCaption := TLabel.Create(Self);
   mCaption.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewTitle);
@@ -667,7 +665,7 @@ var
   mMirror: TCheckBox;
 begin
   mRow := TAtlasSettingsRow.Create(Self);
-  mRow.Height := mRow.ScaleValue(24);
+  mRow.Height := mRow.ScaleValue(cOverviewRowHeight);
   AOverview.AddRow(mRow);
   FOverviewRows := FOverviewRows + [mRow];
   FOverviewFrames := FOverviewFrames + [AFrame];
@@ -678,7 +676,7 @@ begin
   mDetails.Layout := tlCenter;
   mDetails.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewDetails);
   mDetails.Font.Style := [fsUnderline];
-  mDetails.Font.Color := clHotLight;
+  TAtlasUiTheme.UseFontColor(mDetails, clHotLight);
   mDetails.Cursor := crHandPoint;
   mDetails.Tag := APage;
   mDetails.OnClick := DetailsClick;

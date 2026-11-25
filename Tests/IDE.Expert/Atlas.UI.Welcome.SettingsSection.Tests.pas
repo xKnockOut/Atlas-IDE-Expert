@@ -3,8 +3,8 @@
 // Abschnitt der Willkommensseite im Optionsdialog (#1456): Die Optionsseite
 // holt ihn vom Anbieter des Moduls und baut ihn in den Reiter
 // Willkommensseite samt Modulschalter. Geprüft werden
-// Laden und Speichern aller Werte über die Seite (vorher in den Tests der
-// Seite), die benannten Layouts (#767), die Knöpfe der Zählung (#757) und der
+// Laden und Speichern aller Werte über die Seite,
+// die benannten Layouts (#767), die Knöpfe der Zählung (#757) und der
 // Weg von „Meine Issues“ zur Seite Issue-Tracker.
 
 interface
@@ -13,7 +13,8 @@ uses
   DUnitX.TestFramework,
   Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Welcome.SettingsSection;
+  Atlas.UI.Welcome.SettingsSection,
+  Atlas.IDE.Welcome.Adapters.SettingsSection;
 
 type
   [TestFixture]
@@ -24,9 +25,6 @@ type
     FSectionRef: IAtlasSettingsSection;
     FRegistration: IAtlasRegistration;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -91,27 +89,7 @@ begin
   Result := FSection;
 end;
 
-/// <summary>Reiter, auf dem AControl liegt; nil ohne.</summary>
-function SheetOf(AControl: TControl): TTabSheet;
-begin
-  while (AControl <> nil) and not (AControl is TTabSheet) do
-  begin
-    AControl := AControl.Parent;
-  end;
-  Result := TTabSheet(AControl);
-end;
-
 { TWelcomeSettingsSectionTests }
-
-procedure TWelcomeSettingsSectionTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    SettingsRoundTrip;
-  finally
-    TearDown;
-  end;
-end;
 
 function TileSwitch(const AKey, ASetting, ASettingsKey: string): TAtlasWelcomeTileSwitch;
 begin
@@ -126,7 +104,7 @@ begin
   // Kacheln des Trackers wie aus dem Kachel-Vertrag (#1903): Meine Issues mit Weg zum Tracker, Sprint.
   FSection.Hooks.TileSwitches := [TileSwitch('welcomePage.issues', 'WelcomePageIssues', 'issues.tracker'),
     TileSwitch('welcomePage.sprint', 'WelcomePageSprint', '')];
-  FSectionRef := FSection;
+  FSectionRef := TAtlasIdeWelcomeSettingsSection.Create(FSection);
   FRegistration := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
     TFixedProvider.Create(FSectionRef) as IAtlasSettingsSectionProvider);
 end;
@@ -135,8 +113,9 @@ procedure TWelcomeSettingsSectionTests.TearDown;
 begin
   FRegistration.Revoke;
   FRegistration := nil;
-  FSection := nil;
+  // Die Hülle gibt den Abschnitt frei.
   FSectionRef := nil;
+  FSection := nil;
 end;
 
 /// <summary>Vorgaben nach dem Laden (#753, #755, #758, #763, #764, #757, #766).</summary>

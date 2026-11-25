@@ -16,21 +16,19 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Style.Symbol,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Images.Symbol,
+  Atlas.Vcl.Forms.Dialog;
 
 type
-  TAtlasUpdateConsent = class(TAtlasDialog)
+  TAtlasUpdateConsent = class(TAtlasAnswerDialog)
   private
     FText: TLabel;
     FSymbol: TAtlasSymbolImage;
     FYes: TButton;
     FNo: TButton;
-    FDone: Boolean;
     FOnYes: TProc;
     FOnNo: TProc;
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
-    procedure Run(const AProc: TProc);
     procedure YesClick(Sender: TObject);
     procedure NoClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
@@ -49,14 +47,15 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Symbol,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Plugin.Style.Symbol,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.UI.Updates.Strings;
 
 const
   cGap = 8;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 24;
   cConsentWidth = 420;
 
 { TAtlasUpdateConsent }
@@ -65,7 +64,7 @@ constructor TAtlasUpdateConsent.CreateConsent(AOwner: TComponent);
 var
   mButtons: TFlowPanel;
 begin
-  inherited CreateDialog(AOwner, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle), cConsentWidth);
+  inherited CreateDialog(AOwner, TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentTitle), cConsentWidth);
   BorderStyle := bsToolWindow;
   BorderIcons := [biSystemMenu];
   Position := poDesigned;
@@ -81,8 +80,8 @@ begin
   FText.Parent := Self;
   FText.Align := alTop;
   FText.AlignWithMargins := True;
-  FText.Margins.SetBounds(2 * cGap + FSymbol.Width, cGap, cGap, 0);
-  FText.Caption := TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText);
+  FText.Margins.SetBounds(2 * cGap + FSymbol.Width, FText.ScaleValue(cGap), FText.ScaleValue(cGap), 0);
+  FText.Caption := TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentText);
 
   mButtons := TFlowPanel.Create(Self);
   mButtons.Parent := Self;
@@ -90,10 +89,10 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FText.Top + FText.Height + 1;
-  FYes := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), YesClick);
-  FNo := AddButton(mButtons, TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), NoClick);
+  FYes := AddButton(mButtons, TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentYes), YesClick);
+  FNo := AddButton(mButtons, TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentNo), NoClick);
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
   if ClientHeight < FSymbol.Top + FSymbol.Height + cGap then
   begin
@@ -104,43 +103,18 @@ end;
 function TAtlasUpdateConsent.AddButton(AParent: TWinControl; const ACaption: string;
   AClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
+  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
   Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(24);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
-end;
-
-procedure TAtlasUpdateConsent.Run(const AProc: TProc);
-begin
-  // Nur die erste Antwort zählt; ausgeführt wird nach dem Schließen.
-  if FDone then
-  begin
-    Exit;
-  end;
-  FDone := True;
-  Close;
-  if Assigned(AProc) then
-  begin
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
-      procedure
-      begin
-        AProc();
-      end);
-  end;
 end;
 
 procedure TAtlasUpdateConsent.YesClick(Sender: TObject);
 begin
-  Run(FOnYes);
+  Answer(FOnYes);
 end;
 
 procedure TAtlasUpdateConsent.NoClick(Sender: TObject);
 begin
-  Run(FOnNo);
+  Answer(FOnNo);
 end;
 
 procedure TAtlasUpdateConsent.FormClose(Sender: TObject; var Action: TCloseAction);

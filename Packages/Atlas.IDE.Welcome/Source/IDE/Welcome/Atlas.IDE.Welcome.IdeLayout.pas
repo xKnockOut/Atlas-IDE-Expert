@@ -19,19 +19,22 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Welcome.Backup;
+  Atlas.Core.Welcome.Contract;
 
 type
   TAtlasIdeWelcomeIdeLayout = class
   private
     FAccess: IAtlasRegistryAccess;
     FMessage: TProc<string>;
-    function WelcomeKey: string;
+    class function WelcomeKey: string; static;
     function BoardPlaced: Boolean;
     function PlaceBoard: Boolean;
   public
-    /// <summary>AMessage: Zeile in die Meldungsansicht.</summary>
-    constructor Create(const AMessage: TProc<string>);
+    /// <summary>AAccess: Registry der IDE (aus der Composition); AMessage: Zeile in die Meldungsansicht.</summary>
+    constructor Create(const AAccess: IAtlasRegistryAccess; const AMessage: TProc<string>);
+    /// <summary>Basisschlüssel der laufenden IDE ohne führenden Backslash (z. B. Software\Embarcadero\BDS\37.0).
+    /// </summary>
+    class function IdeBaseKey: string; static;
     /// <summary>Sollen nach den Einstellungen Atlas-Bereiche auf der Willkommensseite der IDE stehen?</summary>
     class function Wanted(const ASettings: TAtlasPluginSettings): Boolean; static;
     /// <summary>Gewünschten Stand aus der Marke wiederholen, falls die IDE ihn beim Beenden überschrieben hat.
@@ -47,7 +50,7 @@ type
     function Place(AReport: Boolean): Boolean;
     /// <summary>Gesicherten Stand zurückschreiben; False ohne Sicherung (mit AReport gemeldet).</summary>
     function Unplace(AReport: Boolean): Boolean;
-    /// <summary>Wird für Tests ersetzt; Vorgabe: Registry der IDE.</summary>
+    /// <summary>Wird für Tests ersetzt.</summary>
     property Access: IAtlasRegistryAccess read FAccess write FAccess;
   end;
 
@@ -55,14 +58,15 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Welcome.HostLayout,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Welcome.Registry,
-  Atlas.IDE.Welcome.Page;
+  Atlas.IDE.Welcome.Page,
+  Atlas.Core.Welcome.Backup,
+  ToolsAPI;
 
 function AtlasFolder: string;
 begin
@@ -77,10 +81,12 @@ end;
 /// <summary>Textdatei lesen, mit oder ohne Byte-Order-Mark (frühere Fassungen schrieben eines); teilt Löschen,
 /// damit es das atomare Ersetzen nicht blockiert. EInOutError, wenn sie nicht lesbar ist.</summary>
 function ReadText(const AFileName: string): string;
+const
+  cNotReadable = 'Datei der Willkommensseite nicht lesbar';
 begin
   if not TAtlasDataFile.TryRead(AFileName, Result) then
   begin
-    raise EInOutError.Create('Datei der Willkommensseite nicht lesbar');
+    raise EInOutError.Create(cNotReadable);
   end;
 end;
 
@@ -91,16 +97,31 @@ end;
 
 { TAtlasIdeWelcomeIdeLayout }
 
-constructor TAtlasIdeWelcomeIdeLayout.Create(const AMessage: TProc<string>);
+constructor TAtlasIdeWelcomeIdeLayout.Create(const AAccess: IAtlasRegistryAccess; const AMessage: TProc<string>);
 begin
   inherited Create;
   FMessage := AMessage;
-  FAccess := TAtlasIdeRegistryAccess.Create;
+  FAccess := AAccess;
 end;
 
-function TAtlasIdeWelcomeIdeLayout.WelcomeKey: string;
+class function TAtlasIdeWelcomeIdeLayout.IdeBaseKey: string;
+var
+  mServices: IOTAServices;
 begin
-  Result := TAtlasWelcomeBackup.WelcomeKey(TAtlasIdeRegistryAccess.IdeBaseKey);
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
+    Result := mServices.GetBaseRegistryKey;
+  end;
+  while (Result <> '') and (Result[1] = '\') do
+  begin
+    Delete(Result, 1, 1);
+  end;
+end;
+
+class function TAtlasIdeWelcomeIdeLayout.WelcomeKey: string;
+begin
+  Result := TAtlasWelcomeBackup.WelcomeKey(IdeBaseKey);
 end;
 
 function TAtlasIdeWelcomeIdeLayout.BoardPlaced: Boolean;
@@ -108,7 +129,7 @@ var
   mKey: TAtlasRegKey;
   mLayout: TAtlasHostLayout;
 begin
-  mKey := FAccess.Read(WelcomeKey);
+  mKey := TAtlasRegistryKeys.Read(FAccess, WelcomeKey);
   try
     Result := (mKey <> nil) and TAtlasHostLayout.Read(mKey, mLayout) and
       mLayout.HasAtlasOnTop(BoardId, TAtlasWelcomeIds.cPluginPrefix);
@@ -122,7 +143,7 @@ var
   mKey: TAtlasRegKey;
   mLayout: TAtlasHostLayout;
 begin
-  mKey := FAccess.Read(WelcomeKey);
+  mKey := TAtlasRegistryKeys.Read(FAccess, WelcomeKey);
   try
     if mKey = nil then
     begin
@@ -137,7 +158,7 @@ begin
     if Result then
     begin
       mLayout.WithAtlasOnTop(BoardId, TAtlasWelcomeIds.cPluginPrefix).WriteTo(mKey);
-      FAccess.Replace(WelcomeKey, mKey);
+      TAtlasRegistryKeys.Replace(FAccess, WelcomeKey, mKey);
     end;
   finally
     mKey.Free;

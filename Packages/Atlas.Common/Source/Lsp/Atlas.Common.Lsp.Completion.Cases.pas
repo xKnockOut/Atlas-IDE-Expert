@@ -2,8 +2,8 @@
 
 // Die Fälle von textDocument/completion in fester Reihenfolge: ohne Syntaxbaum
 // (Schnellbefehle, Direktiven, Feldnamen in Strings, Wertdarstellungen) und mit Baum und Resolver (Angebote
-// oben in der Liste, exklusive Listen, die allgemeine Liste, Code-Vorlagen, Deklarieren). Aus
-// Atlas.Common.Lsp.Completion herausgelöst.
+// oben in der Liste, exklusive Listen, die allgemeine Liste, Code-Vorlagen, Deklarieren). Teil der
+// Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
@@ -77,18 +77,16 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CreateMethod,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.DocComments,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Pascal.DocComments,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.CompletionJson,
   Atlas.Common.Lsp.CompletionDebugDisplay,
-  Atlas.Common.Lsp.Completion.Context,
   Atlas.Common.Lsp.Completion.Values,
   Atlas.Common.Lsp.Completion.Declarations,
   Atlas.Common.Lsp.Completion.Names,
@@ -183,7 +181,7 @@ end;
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 begin
   Result := 0;
-  while (Result <= High(ATokens)) and (ComparePositions(ATokens[Result].EndPos, APosition) < 0) do
+  while (Result <= High(ATokens)) and (TTextPosition.Compare(ATokens[Result].EndPos, APosition) < 0) do
   begin
     Inc(Result);
   end;
@@ -207,7 +205,7 @@ begin
     Exit;
   end;
   mToken := ARequest.Tree.Tokens[mIndex];
-  if not mToken.IsKeyword('with') or (ComparePositions(mToken.StartPos, ARequest.Position) > 0) or
+  if not mToken.IsKeyword('with') or (TTextPosition.Compare(mToken.StartPos, ARequest.Position) > 0) or
     not AWithFor(ARequest, mEdits) then
   begin
     Exit;
@@ -219,13 +217,13 @@ begin
   AItem.Pinned := True;
   AItem.Action := 'with';
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(mToken.StartPos, mToken.EndPos), '');
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(mToken.StartPos, mToken.EndPos), '');
   for mEdit in mEdits do
   begin
     if (mEdit.Range.StartPos.Line = mToken.StartPos.Line) and
       (mEdit.Range.StartPos.Character = mToken.StartPos.Character) then
     begin
-      AItem.AdditionalEdits := AItem.AdditionalEdits + [TRuleEdit.Create(TTextRange.Create(mToken.EndPos,
+      AItem.AdditionalEdits := AItem.AdditionalEdits + [TTextEdit.Create(TTextRange.Create(mToken.EndPos,
         mEdit.Range.EndPos), mEdit.NewText)];
       Result := True;
     end
@@ -256,7 +254,7 @@ begin
   AItem.Pinned := True;
   AItem.Action := 'docParams';
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
   AItem.AdditionalEdits := mAction.Edits;
 end;
 
@@ -285,10 +283,10 @@ begin
   AItem.Action := 'create';
   AItem.Unknown := mSite.Name;
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(mSite.NameRange, mSite.Name);
+  AItem.TextEdit := TTextEdit.Create(mSite.NameRange, mSite.Name);
   if ARequest.Trigger = '(' then
   begin
-    AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
+    AItem.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position, ARequest.Position), '');
   end;
   AItem.AdditionalEdits := mEdits;
 end;

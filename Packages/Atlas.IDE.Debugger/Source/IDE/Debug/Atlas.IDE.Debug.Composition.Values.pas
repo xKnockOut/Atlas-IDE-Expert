@@ -3,10 +3,10 @@
 // Modul Debugger (#1455), Teil der Komposition: die Teile der
 // Feature-Tabelle rund um Werte und Ausdrücke, in dieser Reihenfolge Werte im
 // Editor, angeheftete Werte, „kein Zugriff“ erklären, Zugriffsverletzung, Vervollständigung in
-// Debugger-Dialogen, Fenster „Auswerten“, „Warum bin ich hier?“, Werte ändern, Debug-Hover aufklappen und
-// Fenster „Variablen“. Sie fragen den Server nur, wenn er ohnehin läuft. Dazu der Speicherverlauf (#858, Werte
-// des Prozesses über die Sitzung; ohne Server), der nach dem Schrittfilter startet. Atlas.IDE.Debug.Composition
-// stellt sie über den Scope des Moduls bereit.
+// Debugger-Dialogen, Fenster „Auswerten“, „Warum bin ich hier?“, Laufzeit zwischen Haltepunkten, Werte ändern,
+// Debug-Hover aufklappen und Fenster „Variablen“. Sie fragen den Server nur, wenn er ohnehin läuft. Dazu der
+// Speicherverlauf (#858, Werte des Prozesses über die Sitzung; ohne Server), der nach dem Schrittfilter startet.
+// Atlas.IDE.Debug.Composition stellt sie über den Scope des Moduls bereit.
 
 interface
 
@@ -47,10 +47,10 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Modules.FeatureParts,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.DataFlow,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Plugin.Lsp.DataFlow,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Hover.Editor,
@@ -64,9 +64,13 @@ uses
   Atlas.IDE.Debug.Evaluate,
   Atlas.IDE.Debug.AccessViolation,
   Atlas.IDE.Debug.WhyHere,
+  Atlas.IDE.Debug.Elapsed,
+  Atlas.IDE.Debug.ReturnValues,
   Atlas.IDE.Debug.Variables,
+  Atlas.IDE.Debug.ObjectMarks,
   Atlas.IDE.Debug.MemoryTimeline,
   Atlas.UI.Debug.Commands.Strings,
+  Atlas.UI.Debug.ObjectMarks.Strings,
   Atlas.UI.Debug.Memory.Strings;
 
 const
@@ -84,11 +88,6 @@ var
 function Session: TLspSession;
 begin
   Result := TAtlasIdeHost.RunningSession;
-end;
-
-procedure MessageLine(AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
 end;
 
 procedure LogLine(AText: string);
@@ -121,7 +120,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   TAtlasEditorHover.OnExplain :=
     function(const AValue: TAtlasDebugValue; const ADone: TAtlasDebugValueEvent): TAtlasDebugValue
     begin
@@ -178,7 +177,7 @@ begin
     function: TLspSession
     begin
       Result := Session;
-    end, MessageLine);
+    end, TAtlasIdeHost.Messages());
   TAtlasIdeDebugAccessViolation.SetWhereAssigned(ShowWhereAssigned);
   TAtlasIdeDebugAccessViolation.SetEvaluate(EvaluateExpression);
 end;
@@ -186,7 +185,7 @@ end;
 /// <summary>Speicherverlauf (#858): misst ohne Server.</summary>
 procedure StartDebugMemoryTimeline;
 begin
-  TAtlasIdeDebugMemoryTimeline.Start(MessageLine);
+  TAtlasIdeDebugMemoryTimeline.Start(TAtlasIdeHost.Messages());
 end;
 
 /// <summary>Start von „Warum bin ich hier?“ mit Serverbefehlen im Hintergrund über Base und den Scope AScope; die
@@ -260,7 +259,7 @@ end;
 /// <summary>Angeheftete Werte (#526): „Anheften“ im Debug-Hover.</summary>
 procedure StartDebugPins;
 begin
-  TAtlasIdeDebugPins.Start(MessageLine);
+  TAtlasIdeDebugPins.Start(TAtlasIdeHost.Messages());
   HookHoverActions;
 end;
 
@@ -291,7 +290,7 @@ begin
         begin
           Result := TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger, ACommand, AArgumentsJson,
             ATimeoutMs, ADone);
-        end, MessageLine, ValuesChanged);
+        end, TAtlasIdeHost.Messages(), ValuesChanged);
       HookHoverActions;
     end;
 end;
@@ -300,6 +299,28 @@ procedure ReleaseDebugEditValue;
 begin
   TAtlasIdeDebugEditValue.Release;
   HookHoverActions;
+end;
+
+/// <summary>Baum im Debug-Hover (#895) und Etiketten markierter Objekte (#839) teilen sich den Haken OnDebugTree
+/// des Tooltips; angehängt, solange einer der Teile läuft.</summary>
+procedure HookHoverTree;
+begin
+  if not TAtlasIdeDebugHoverTree.Started and not TAtlasIdeDebugObjectMarks.Started then
+  begin
+    TAtlasEditorHover.OnDebugTree := nil;
+    Exit;
+  end;
+  TAtlasEditorHover.OnDebugTree :=
+    function(const AValue: TAtlasDebugValue; const AFileName: string; ALine: Integer;
+      const ARefresh: TProc): TAtlasDebugValue
+    begin
+      Result := AValue;
+      if TAtlasIdeDebugHoverTree.Started then
+      begin
+        Result := TAtlasIdeDebugHoverTree.Decorate(Result, AFileName, ALine, ARefresh);
+      end;
+      Result := TAtlasIdeDebugObjectMarks.DecorateHover(Result, AFileName, ALine);
+    end;
 end;
 
 /// <summary>Start von „Debug-Hover aufklappen“ (#895): Zeilen und alter Wert über die Haken des Tooltips,
@@ -320,12 +341,7 @@ begin
               Result := not TAtlasIdeDebugHoverTree.Started;
             end), ADone);
         end);
-      TAtlasEditorHover.OnDebugTree :=
-        function(const AValue: TAtlasDebugValue; const AFileName: string; ALine: Integer;
-          const ARefresh: TProc): TAtlasDebugValue
-        begin
-          Result := TAtlasIdeDebugHoverTree.Decorate(AValue, AFileName, ALine, ARefresh);
-        end;
+      HookHoverTree;
       TAtlasEditorHover.OnDebugRow :=
         procedure(const AValue: TAtlasDebugValue; ARow: Integer)
         begin
@@ -337,10 +353,35 @@ end;
 
 procedure ReleaseDebugHoverTree;
 begin
-  TAtlasEditorHover.OnDebugTree := nil;
   TAtlasEditorHover.OnDebugRow := nil;
   TAtlasIdeDebugHoverTree.Release;
+  HookHoverTree;
   HookHoverActions;
+end;
+
+/// <summary>Objekte markieren (#839): Etiketten im Hover über den Haken des Baums.</summary>
+procedure StartDebugObjectMarks;
+begin
+  TAtlasIdeDebugObjectMarks.Start(TAtlasIdeHost.Messages());
+  HookHoverTree;
+  TAtlasIdeDebugInlineValues.OnMarked :=
+    function(const AName, AText, AFileName: string; ALine: Integer): string
+    begin
+      Result := TAtlasIdeDebugObjectMarks.DecorateInline(AName, AText, AFileName, ALine);
+    end;
+  TAtlasIdeEvaluateDecoration.OnValueSuffix :=
+    function(const AExpression, AValue, AFileName: string; ALine: Integer): string
+    begin
+      Result := TAtlasIdeDebugObjectMarks.Suffix(AExpression, AValue, AFileName, ALine);
+    end;
+end;
+
+procedure ReleaseDebugObjectMarks;
+begin
+  TAtlasIdeDebugInlineValues.OnMarked := nil;
+  TAtlasIdeEvaluateDecoration.OnValueSuffix := nil;
+  TAtlasIdeDebugObjectMarks.Release;
+  HookHoverTree;
 end;
 
 { Teile }
@@ -433,6 +474,56 @@ begin
     end, WhyHereStarter(AScope), TAtlasIdeDebugWhyHere.Release);
 end;
 
+/// <summary>Laufzeit zwischen Haltepunkten (#579): Zuhörer der Debug-Sitzung, Zeichner und Mausklick; aus = nichts
+/// angemeldet.</summary>
+function ElapsedPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugShowElapsed',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugShowElapsed;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugElapsed.Started;
+    end, TAtlasIdeDebugElapsed.Start, TAtlasIdeDebugElapsed.Release);
+end;
+
+/// <summary>Start der Rückgabewerte (#844) mit Serverbefehlen im Hintergrund über Base und den Scope AScope; die
+/// Antwort kommt nur, solange das Modul angemeldet ist.</summary>
+function ReturnValuesStarter(const AScope: IAtlasModuleScope): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      TAtlasIdeDebugReturnValues.Start(
+        function: TLspSession
+        begin
+          Result := Session;
+        end,
+        function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+        begin
+          Result := TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger, ACommand, AArgumentsJson,
+            ATimeoutMs, ADone);
+        end);
+    end;
+end;
+
+/// <summary>Rückgabewerte (#844, experimentell): Zuhörer, Haltfilter, Schritt-Haken, Zeichner; aus = nichts
+/// angemeldet, keine Haltepunkte.</summary>
+function ReturnValuesPart(const AScope: IAtlasModuleScope): IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugReturnValues',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugReturnValues;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugReturnValues.Started;
+    end, ReturnValuesStarter(AScope), TAtlasIdeDebugReturnValues.Release);
+end;
+
 /// <summary>Fenster „Variablen“ (#853): Zuhörer der Debug-Sitzung und Fenster; aus = nichts angemeldet, kein
 /// Fenster.</summary>
 function VariablesPart(const AScope: IAtlasModuleScope): IAtlasFeaturePart;
@@ -479,12 +570,27 @@ begin
     end, HoverTreeStarter(AScope), ReleaseDebugHoverTree);
 end;
 
+/// <summary>Objekte markieren (#839): Zuhörer der Debug-Sitzung, Fenster und Etiketten im Hover; aus = nichts
+/// angemeldet, kein Menüpunkt.</summary>
+function ObjectMarksPart: IAtlasFeaturePart;
+begin
+  Result := TAtlasFeaturePart.When('DebugObjectMarks',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugObjectMarks;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugObjectMarks.Started;
+    end, StartDebugObjectMarks, ReleaseDebugObjectMarks);
+end;
+
 function DebugValueParts(const AProvider: TAtlasDialogProviderFactory;
   const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
 begin
   GProvider := AProvider;
-  Result := EditorParts + DialogParts + [WhyHerePart(AScope), EditValuePart(AScope), HoverTreePart(AScope),
-    VariablesPart(AScope)];
+  Result := EditorParts + DialogParts + [WhyHerePart(AScope), ElapsedPart, ReturnValuesPart(AScope),
+    EditValuePart(AScope), HoverTreePart(AScope), VariablesPart(AScope), ObjectMarksPart];
 end;
 
 function EditValueVisible: Boolean;
@@ -495,6 +601,29 @@ end;
 function EditValueKey: Integer;
 begin
   Result := cEditValueKey;
+end;
+
+function ObjectMarksVisible: Boolean;
+begin
+  Result := TAtlasIdeDebugObjectMarks.Started;
+end;
+
+/// <summary>Befehle „Objekt markieren …“ und Fenster „Markierte Objekte“ (#839).</summary>
+function ObjectMarkCommands: TArray<TAtlasModuleCommand>;
+var
+  mMark, mWindow: TAtlasModuleCommand;
+begin
+  mMark := Default(TAtlasModuleCommand);
+  mMark.Id := 'Atlas.DebugMarkObject';
+  mMark.Caption := TAtlasObjectMarksStrings.Text(TAtlasObjectMarksTextId.MarkObjectCommand);
+  mMark.Run := TAtlasIdeDebugObjectMarks.MarkAtCursor;
+  mMark.Visible := ObjectMarksVisible;
+  mWindow := Default(TAtlasModuleCommand);
+  mWindow.Id := 'Atlas.DebugObjectMarks';
+  mWindow.Caption := TAtlasObjectMarksStrings.Text(TAtlasObjectMarksTextId.ObjectMarksCommand);
+  mWindow.Run := TAtlasIdeDebugObjectMarks.ShowWindow;
+  mWindow.Visible := ObjectMarksVisible;
+  Result := [mMark, mWindow];
 end;
 
 function ValueCommands: TArray<TAtlasModuleCommand>;
@@ -512,7 +641,7 @@ begin
   mUndo.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EditValueUndoCommand);
   mUndo.Run := TAtlasIdeDebugEditValue.UndoAtCursor;
   mUndo.Visible := EditValueVisible;
-  Result := [mEdit, mUndo];
+  Result := [mEdit, mUndo] + ObjectMarkCommands;
 end;
 
 /// <summary>Ist das Programm angehalten?</summary>
@@ -527,7 +656,7 @@ var
   mId: string;
 begin
   Result := nil;
-  for mId in TArray<string>.Create('Atlas.DebugEditValue', 'Atlas.DebugUndoValue') do
+  for mId in TArray<string>.Create('Atlas.DebugEditValue', 'Atlas.DebugUndoValue', 'Atlas.DebugMarkObject') do
   begin
     mEntry := Default(TAtlasMenuEntry);
     mEntry.CommandId := mId;
@@ -619,6 +748,7 @@ end;
 
 procedure ValueThemeChanged;
 begin
+  TAtlasIdeDebugObjectMarks.ThemeChanged;
   TAtlasIdeDebugEvaluate.ThemeChanged;
   TAtlasIdeDebugVariables.ThemeChanged;
   TAtlasIdeDebugMemoryTimeline.ThemeChanged;

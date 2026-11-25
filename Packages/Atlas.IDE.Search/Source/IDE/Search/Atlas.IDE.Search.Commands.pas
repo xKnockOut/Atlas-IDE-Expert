@@ -73,7 +73,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.UI.Search.Bar,
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.ToolsApi.EditorBars.Host,
   Atlas.IDE.Search.Painter;
 
 type
@@ -139,15 +139,15 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.BarPlan,
   Atlas.Core.Search.Results,
   Atlas.Text.Lines,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.DockWindow,
+  Atlas.ToolsApi.Windows.DockWindow,
   Atlas.IDE.Search.MessageList,
   Atlas.IDE.Search.FileSearch,
   Atlas.IDE.Search.ReplaceWindow,
@@ -157,7 +157,8 @@ uses
   Atlas.IDE.Search.Counter,
   Atlas.IDE.Search.AcrossFiles,
   Atlas.IDE.Search.Stepping,
-  Atlas.IDE.Search.Replacing;
+  Atlas.IDE.Search.Replacing,
+  Atlas.ToolsApi.Editor.Windows;
 
 const
   // Takt bei offener Leiste und Frist, in der ein Fokusverlust nach dem Klick als zurückgeholt gilt.
@@ -195,13 +196,15 @@ begin
 end;
 
 function WindowName(AWindow: HWND): string;
+const
+  cNoWindow = 'kein Fenster';
 var
   mWindowClass: array[0..255] of Char;
   mControl: TWinControl;
 begin
   if AWindow = 0 then
   begin
-    Exit('kein Fenster');
+    Exit(cNoWindow);
   end;
   mWindowClass[0] := #0;
   GetClassName(AWindow, mWindowClass, Length(mWindowClass));
@@ -446,7 +449,7 @@ begin
   mBar.Visible := False;
   TAtlasIdeSearchSession.Highlight := False;
   TAtlasIdeSearchSession.Repaint;
-  TAtlasEditorBarHost.FocusEditor(mBar);
+  TAtlasIdeEditorWindows.FocusEditor(mBar);
 end;
 
 class procedure TAtlasIdeSearch.Probe;
@@ -509,11 +512,14 @@ end;
 
 /// <summary>Einmal je Leiste: Lage von Editor und Leiste im gemeinsamen Eltern-Steuerelement (Diagnose).</summary>
 class procedure TAtlasIdeSearch.LogLayout(ABar: TAtlasSearchBar);
+const
+  // Ein Steuerelement neben der Suchleiste im Protokoll.
+  cPartFormat = ' [%s %s Align %d, %d,%d %dx%d, sichtbar %s]';
 var
   mParent: TWinControl;
   mIndex: Integer;
   mChild: TControl;
-  mParts: string;
+  mParts: TStringBuilder;
 begin
   if ABar.Tag <> 0 then
   begin
@@ -525,15 +531,19 @@ begin
   begin
     Exit;
   end;
-  mParts := '';
-  for mIndex := 0 to mParent.ControlCount - 1 do
-  begin
-    mChild := mParent.Controls[mIndex];
-    mParts := mParts + Format(' [%s %s Align %d, %d,%d %dx%d, sichtbar %s]', [mChild.ClassName, mChild.Name,
-      Ord(mChild.Align), mChild.Left, mChild.Top, mChild.Width, mChild.Height, BoolToStr(mChild.Visible, True)]);
+  mParts := TStringBuilder.Create;
+  try
+    for mIndex := 0 to mParent.ControlCount - 1 do
+    begin
+      mChild := mParent.Controls[mIndex];
+      mParts.AppendFormat(cPartFormat, [mChild.ClassName, mChild.Name, Ord(mChild.Align), mChild.Left, mChild.Top,
+        mChild.Width, mChild.Height, BoolToStr(mChild.Visible, True)]);
+    end;
+    TAtlasGuard.Log(Format('Suchleiste: in %s %s (%dx%d):%s', [mParent.ClassName, mParent.Name,
+      mParent.ClientWidth, mParent.ClientHeight, mParts.ToString]));
+  finally
+    mParts.Free;
   end;
-  TAtlasGuard.Log(Format('Suchleiste: in %s %s (%dx%d):%s', [mParent.ClassName, mParent.Name, mParent.ClientWidth,
-    mParent.ClientHeight, mParts]));
 end;
 
 class procedure TAtlasIdeSearch.StopProbe;
@@ -576,6 +586,8 @@ begin
     TAtlasIdeSearchSession.Histories := TAtlasIdeSearchHistories.Create(TAtlasIdeSettings.Current.SearchHistory);
   end;
   TAtlasIdeSearchSession.Histories.Load;
+  // Vor dem Laden des Desktops anmelden, sonst verliert das angedockte Fenster seinen Platz.
+  TAtlasIdeSearchReplaceWindow.Prepare;
 end;
 
 class procedure TAtlasIdeSearch.Uninstall;

@@ -1,8 +1,9 @@
 ﻿unit Atlas.UI.Debug.SettingsSection;
 
-// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456; vorher
-// Atlas.UI.Settings.Page.Debug in Base): Modulschalter, Werte im Hover, Visualisierer (#835), eigene
+// Abschnitt „Debuggen“ des Moduls Debugger im Optionsdialog (#1456):
+// Modulschalter, Werte im Hover, Visualisierer (#835), eigene
 // Wertdarstellungen (#854), gezielt hineinspringen (#836), Schrittfilter (#850), nächstes Ereignis (#856),
+// Datenzugriff (#870),
 // Erklärungen (#840, #865), Auswerten (#784), Exceptions (#517, #783), eigener Code (#578) und Werte im
 // Editor (#508). Felder, die mehrere Werte in einer Einstellung sammeln (Arten), liest und schreibt der
 // Abschnitt selbst; Listen in Textfeldern bindet die Seite und der Abschnitt bringt sie beim Speichern in die
@@ -28,13 +29,16 @@ type
     FStepFilterKinds: array[TStepFilterKind] of TCheckBox;
     FStepFilterPatterns: TEdit;
     FBreakOnNextEventExcluded: TEdit;
+    FDataBreaksClasses: TEdit;
     FOwnCodeFolders: TEdit;
     procedure BuildVisualizers;
     procedure BuildStepping;
     procedure BuildMore;
+    procedure BuildLogpointRows;
     procedure BuildRestartRows;
     /// <summary>Werte beim Halt: Fenster „Variablen“, Vorhersage, Werte ändern, Debug-Hover.</summary>
     procedure BuildStopValues;
+    procedure BuildExceptions;
   protected
     procedure BuildRows; override;
   public
@@ -49,6 +53,7 @@ type
     property VisualizerNameFieldsEdit: TEdit read FVisualizerNameFields;
     property StepFilterPatternsEdit: TEdit read FStepFilterPatterns;
     property BreakOnNextEventExcludedEdit: TEdit read FBreakOnNextEventExcluded;
+    property DataBreaksClassesEdit: TEdit read FDataBreaksClasses;
     property OwnCodeFoldersEdit: TEdit read FOwnCodeFolders;
   end;
 
@@ -56,6 +61,8 @@ implementation
 
 uses
   Atlas.Core.Settings.EventBreakNames,
+  Atlas.Core.Settings.DataBreakClasses,
+  Atlas.Core.Settings.Plugin.Debug,
   Atlas.Core.Settings.FolderList,
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
@@ -64,8 +71,14 @@ uses
   Atlas.UI.Debug.Values.Strings,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
+  Atlas.UI.Debug.ObjectMarks.Strings,
+  Atlas.UI.Debug.ParallelWatch.Strings,
   Atlas.UI.Debug.Memory.Strings,
-  Atlas.UI.Debug.Profile.Strings;
+  Atlas.UI.Debug.Note.Strings,
+  Atlas.UI.Debug.Logpoints.Strings,
+  Atlas.UI.Debug.OpenedFiles.Strings,
+  Atlas.UI.Debug.Profile.Strings,
+  Atlas.UI.Debug.Console.Strings;
 
 const
   cVisualizerTypesKey = 'debug.visualizers.types';
@@ -73,6 +86,7 @@ const
   cStepFilterKindsKey = 'debug.stepFilters.kinds';
   cStepFilterPatternsKey = 'debug.stepFilters.patterns';
   cBreakExcludedKey = 'debug.breakOnNextEvent.excluded';
+  cDataBreaksClassesKey = 'debug.dataBreaks.classes';
   cOwnCodeFoldersKey = 'debug.ownCodeFolders';
   cEventLogColorsKey = 'debug.eventLogColors';
 
@@ -158,6 +172,8 @@ begin
     TStepFilterNames.NormalizePatterns(AValues.ReadString(cStepFilterPatternsKey)));
   AValues.WriteString(cBreakExcludedKey,
     TAtlasEventBreakSettings.NormalizeExcluded(AValues.ReadString(cBreakExcludedKey)));
+  AValues.WriteString(cDataBreaksClassesKey,
+    TAtlasDataBreakSettings.NormalizeClasses(AValues.ReadString(cDataBreaksClassesKey)));
   AValues.WriteString(cOwnCodeFoldersKey, TAtlasFolderList.Text(AValues.ReadString(cOwnCodeFoldersKey)));
   AValues.WriteString(cEventLogColorsKey, TAtlasEventColors.Normalize(AValues.ReadString(cEventLogColorsKey)));
 end;
@@ -179,6 +195,7 @@ begin
   FVisualizerNameFields := nil;
   FStepFilterPatterns := nil;
   FBreakOnNextEventExcluded := nil;
+  FDataBreaksClasses := nil;
   FOwnCodeFolders := nil;
   inherited Close;
 end;
@@ -249,6 +266,10 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakOnNextEvent));
   FBreakOnNextEventExcluded := Line(cBreakExcludedKey,
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakOnNextEventExcluded));
+  // Anhalten bei Datenzugriff (#870): Schalter und beobachtete Klassen.
+  Switch('debug.dataBreaks', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDataBreaks));
+  FDataBreaksClasses := Line(cDataBreaksClassesKey,
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDataBreaksClasses));
   // Haltepunkte, die nicht greifen werden (#577).
   Switch('debug.checkBreakpoints',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugCheckBreakpoints));
@@ -266,6 +287,9 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointSetPerBranch));
   // Bis hier ausführen per Klick (#851).
   Switch('debug.runToClick', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRunToClick));
+  // Ausführungspfeil ziehen (#871, experimentell).
+  Switch('debug.dragNextStatement',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDragNextStatement));
   // Haltepunktfenster mit Suche, Etiketten und Trefferzahlen (#863).
   Switch('debug.breakpointsWindow',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointsWindow));
@@ -324,36 +348,39 @@ begin
   Number('debug.parallelStacks.maxThreads',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugParallelStacksMaxThreads));
 
-  // Exception-Verlauf (#517), nur eigener Code (#578), Exception-Leiste (#783), Werte im Editor (#508).
-  Switch('debug.exceptionHistory',
-    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionHistory));
-  Switch('debug.justMyCode', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugJustMyCode));
-  FOwnCodeFolders := Line(cOwnCodeFoldersKey,
-    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugOwnCodeFolders));
-  Switch('debug.exceptionBanner',
-    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBanner));
-  Switch('debug.exceptionBanner.ignoreAtLocation',
-    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
+  BuildExceptions;
+  // Werte im Editor (#508).
   Switch('debug.inlineValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugInlineValues));
   Number('debug.inlineValuesPerLine',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugInlineValuesPerLine));
   // „Warum bin ich hier?“ (#1878).
   Switch('debug.whyHere', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHere));
   Number('debug.whyHere.depth', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHereDepth));
+  // Laufzeit zwischen Haltepunkten (#579).
+  Switch('debug.showElapsed', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugShowElapsed));
   BuildStopValues;
   // Ereignisprotokoll (#580).
   Switch('debug.eventLog', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEventLog));
   Line(cEventLogColorsKey, TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEventLogColors));
-  Switch('debug.logpoints', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpoints));
-  Line('debug.logpointPrefix', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpointPrefix));
+  BuildLogpointRows;
   Switch('debug.noSourcePage', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugNoSourcePage));
   Line('debug.noSourcePage.ignoredUnits',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugNoSourceIgnored));
 end;
 
+procedure TAtlasDebugSettingsSection.BuildLogpointRows;
+begin
+  // Logpunkte (#583) und Logpunkt-Verlauf (#2552).
+  Switch('debug.logpoints', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpoints));
+  Line('debug.logpointPrefix', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpointPrefix));
+  Switch('debug.logpoints.recordValues', TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.SettingsRecordValues));
+  Number('debug.logpoints.recordLimit', TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.SettingsRecordLimit));
+end;
+
 procedure TAtlasDebugSettingsSection.BuildRestartRows;
 begin
-  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057).
+  // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057),
+  // Debug-Zustand festhalten (#582).
   Switch('debug.restart', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestart));
   Switch('debug.restart.reenableBreakpoints',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestartReenable));
@@ -364,6 +391,8 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugReattachWait));
   // Startverbünde (#867).
   Switch('debug.launchGroups', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLaunchGroups));
+  // Konsolenausgabe andocken (#581).
+  Switch('debug.captureConsole', TAtlasConsoleStrings.Text(TAtlasConsoleTextId.SettingsCaptureConsole));
   Switch('debug.pinnedValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPinnedValues));
   // Speicherverlauf (#858).
   Switch('debug.memoryTimeline', TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimeline));
@@ -374,16 +403,54 @@ begin
   Number('debug.profiler.intervalMs', TAtlasProfileStrings.Text(TAtlasProfileTextId.SettingsDebugProfilerInterval));
   Switch('debug.memoryTimeline.objectCount',
     TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimelineObjectCount));
+  // Debug-Zustand festhalten (#582).
+  Switch('debug.note', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNote));
+  Switch('debug.note.saveFile', TAtlasNoteStrings.Text(TAtlasNoteTextId.SettingsNoteSaveFile));
+  // Vom Debugger geöffnete Dateien schließen (#842).
+  Choice('debug.closeOpenedFiles', TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseOpenedFiles),
+    [TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseOff),
+    TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseAsk),
+    TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsCloseAuto)],
+    TArray<string>.Create(cCloseOpenedFilesModes[0], cCloseOpenedFilesModes[1], cCloseOpenedFilesModes[2]));
+  Switch('debug.previewTab', TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.SettingsPreviewTab));
+end;
+
+procedure TAtlasDebugSettingsSection.BuildExceptions;
+begin
+  // Exception-Verlauf (#517), nur eigener Code (#578), Exception-Leiste (#783), Meldungstext (#2549), Regeln nach Ort
+  // (#838).
+  Switch('debug.exceptionHistory',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionHistory));
+  Switch('debug.justMyCode', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugJustMyCode));
+  FOwnCodeFolders := Line(cOwnCodeFoldersKey,
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugOwnCodeFolders));
+  Switch('debug.exceptionBanner',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBanner));
+  Switch('debug.exceptionBanner.ignoreAtLocation',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
+  Switch('debug.exceptionMessageRules',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionMessageRules));
+  Switch('debug.exceptionRules',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionRules));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStopValues;
 begin
+  // Rückgabewerte (#844, experimentell).
+  Switch('debug.returnValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugReturnValues));
   // Fenster „Variablen“ (#853).
   Switch('debug.variablesWindow', TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesWindow));
   Number('debug.variablesWindow.searchDepth',
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchDepth));
   Number('debug.variablesWindow.searchLimit',
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchLimit));
+  Switch('debug.variablesWindow.scopedWatches',
+    TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesScopedWatches));
+  // Objekte markieren (#839).
+  Switch('debug.objectMarks', TAtlasObjectMarksStrings.Text(TAtlasObjectMarksTextId.SettingsDebugObjectMarks));
+  // Parallel auswerten (#866).
+  Switch('debug.parallelWatch',
+    TAtlasParallelWatchStrings.Text(TAtlasParallelWatchTextId.SettingsDebugParallelWatch));
   // Bedingungen vorausschauen (#2169).
   Switch('debug.predictConditions', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredict));
   Switch('debug.predictConditions.dimSkipped',

@@ -21,8 +21,8 @@ uses
   Atlas.Core.Results.Model,
   Atlas.Core.Undo.Contract,
   Atlas.Core.SymbolPath.Model,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.UI.Results.View,
   Atlas.UI.Results.Hierarchy,
   Atlas.UI.Results.Changes,
@@ -114,8 +114,8 @@ uses
   ToolsAPI,
   Vcl.Graphics,
   Atlas.UI.Foundation.Strings,
-  Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.Vcl.Images.Symbol,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TResultsDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -350,7 +350,6 @@ end;
 
 class function TAtlasIdeResultsWindow.Frame: TAtlasResultsFrame;
 begin
-  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
   Host.Present;
   Result := ExistingFrame;

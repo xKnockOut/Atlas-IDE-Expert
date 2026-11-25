@@ -30,6 +30,12 @@ type
     procedure WritesAllFilesAndAuditsThem;
     [Test]
     procedure DirtyOrChangedFileAbortsWithoutChanges;
+    /// <summary>Zurückhalten (#2605): Die ungespeicherte Datei geht an die IDE, der Rest wird geschrieben.</summary>
+    [Test]
+    procedure DirtyFileIsHeldInTheIde;
+    /// <summary>Lehnt die IDE das Zurückhalten ab, wird nichts geschrieben.</summary>
+    [Test]
+    procedure RefusedHoldWritesNothing;
     [Test]
     procedure FailedWriteRestoresWrittenFiles;
     [Test]
@@ -45,6 +51,9 @@ type
     procedure FixFindingsSkipsDirtyFiles;
     [Test]
     procedure FixFindingsRefusesLowerConfidence;
+    /// <summary>Rückfrage (#2620): ab cConfirmFiles Dateien fragt fix_findings vor dem Schreiben.</summary>
+    [Test]
+    procedure FixFindingsAsksBeforeManyFiles;
     /// <summary>#1358: format_code mit Text liefert den formatierten Text und schreibt nichts.</summary>
     [Test]
     procedure FormatCodeWithTextWritesNothing;
@@ -72,7 +81,9 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
-  Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Mcp.Contract.Formatting,
+  Shell.Composition.Mcp,
+  Atlas.Common.Mcp.Confirm,
   Atlas.Common.Mcp.EditTools;
 
 type
@@ -189,6 +200,8 @@ begin
       Result := nil;
     end,
     nil);
+  Result.Formatting := TMcpComposition.Formatting;
+  Result.BulkFix := TMcpComposition.BulkFix(nil, nil);
 end;
 
 function Edits: TArray<TMcpFileEdit>;
@@ -268,9 +281,11 @@ var
   mLog: TList<string>;
   mParams, mCalled: TJSONObject;
 begin
-  mLog := TList<string>.Create;
-  mServer := TMcpServer.Create('Atlas', '0');
+  mLog := nil;
+  mServer := nil;
   try
+    mLog := TList<string>.Create;
+    mServer := TMcpServer.Create('Atlas', '0');
     mServer.AddTool('schreiben', 's', '{}',
       function(const AArguments: TJSONObject): string
       begin
@@ -447,6 +462,75 @@ begin
   end;
 end;
 
+procedure TMcpEditToolsTests.DirtyFileIsHeldInTheIde;
+var
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mHeldFile, mHeldText, mReport: string;
+begin
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
+  try
+    mFiles.Files.Add('A.pas', 'Alt;');
+    mFiles.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
+    mEdit.DirtyFiles :=
+      function: TArray<string>
+      begin
+        Result := ['b.dfm'];
+      end;
+    mEdit.HoldText :=
+      function(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult
+      begin
+        mHeldFile := AFileName;
+        mHeldText := AText;
+        AReason := '';
+        Result := TMcpHoldResult.Held;
+      end;
+    mReport := mEdit.Apply('test', Edits, False);
+    Assert.AreEqual('B.dfm', mHeldFile);
+    Assert.AreEqual('x'#10'  Neu'#10'y', mHeldText);
+    Assert.AreEqual('x'#10'  Alt'#10'y', mFiles.Files['B.dfm'], 'zurückgehalten: nicht selbst geschrieben');
+    Assert.AreEqual('Neu;', mFiles.Files['A.pas']);
+    Assert.Contains(mReport, 'B.dfm');
+  finally
+    mEdit.Free;
+    mFiles.Free;
+  end;
+end;
+
+procedure TMcpEditToolsTests.RefusedHoldWritesNothing;
+var
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+begin
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
+  try
+    mFiles.Files.Add('A.pas', 'Alt;');
+    mFiles.Files.Add('B.dfm', 'x'#10'  Alt'#10'y');
+    mEdit.DirtyFiles :=
+      function: TArray<string>
+      begin
+        Result := ['B.dfm'];
+      end;
+    mEdit.HoldText :=
+      function(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult
+      begin
+        AReason := 'IDE: nein';
+        Result := TMcpHoldResult.Refused;
+      end;
+    Assert.WillRaise(
+      procedure
+      begin
+        mEdit.Apply('test', Edits, False);
+      end, EMcpToolError);
+    Assert.AreEqual(0, mFiles.Writes);
+  finally
+    mEdit.Free;
+    mFiles.Free;
+  end;
+end;
+
 procedure TMcpEditToolsTests.FailedWriteRestoresWrittenFiles;
 var
   mFiles: TMemoryFiles;
@@ -592,6 +676,63 @@ begin
   end;
 end;
 
+/// <summary>Rückfrage, die immer AChoice antwortet und AAsked hochzählt.</summary>
+function Answering(AChoice: Integer; AAsked: PInteger): TMcpChooseFunc;
+begin
+  Result :=
+    function(const AText: string; const AOptions: TArray<string>): Integer
+    begin
+      Inc(AAsked^);
+      Result := AChoice;
+    end;
+end;
+
+/// <summary>fix_findings über cConfirmFiles Dateien mit Assigned/Free; die Rückfrage antwortet AChoice.</summary>
+function FixManyAnswering(AChoice: Integer; out AWrites, AAsked: Integer): string;
+var
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mIndex: Integer;
+  mNames: TArray<string>;
+begin
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
+  try
+    AAsked := 0;
+    mEdit.Choose := Answering(AChoice, @AAsked);
+    mNames := nil;
+    for mIndex := 1 to TMcpEditTools.cConfirmFiles do
+    begin
+      mNames := mNames + [Format('U%d.pas', [mIndex])];
+      mFiles.Files.Add(mNames[High(mNames)], StringReplace(cAssignedFree, 'unit U;',
+        Format('unit U%d;', [mIndex]), []));
+    end;
+    Result := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), mNames,
+      ['redundant-assigned-free'], '', False);
+    AWrites := mFiles.Writes;
+  finally
+    mEdit.Free;
+    mFiles.Free;
+  end;
+end;
+
+procedure TMcpEditToolsTests.FixFindingsAsksBeforeManyFiles;
+var
+  mReport: string;
+  mWrites, mAsked: Integer;
+begin
+  mReport := FixManyAnswering(1, mWrites, mAsked);
+  Assert.AreEqual(1, mAsked);
+  Assert.AreEqual(0, mWrites, '„Nur Vorschau“ schreibt nichts');
+  Assert.Contains(mReport, 'Auf Rückfrage nichts geschrieben');
+  mReport := FixManyAnswering(TMcpConfirm.cNoAnswer, mWrites, mAsked);
+  Assert.AreEqual(0, mWrites, 'ohne Antwort nur die Vorschau');
+  mReport := FixManyAnswering(0, mWrites, mAsked);
+  Assert.AreEqual(TMcpEditTools.cConfirmFiles, mWrites, mReport);
+  mReport := FixManyAnswering(TMcpConfirm.cNotAsked, mWrites, mAsked);
+  Assert.AreEqual(TMcpEditTools.cConfirmFiles, mWrites, 'ohne Weg zum Menschen wie bisher');
+end;
+
 procedure TMcpEditToolsTests.FixFindingsSkipsDirtyFiles;
 var
   mFiles: TMemoryFiles;
@@ -659,13 +800,13 @@ begin
   mFiles := TMemoryFiles.Create;
   mEdit := Tools(mFiles);
   try
-    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', cSchief, TFormatScope.All);
+    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', cSchief, TMcpFormatLines.All);
     Assert.Contains(mText, '2 Abweichungen');
     Assert.Contains(mText, 'Zeile 6: Einrückung 3 statt 2');
     Assert.Contains(mText, #10'  P;'#10'  P;'#10);
     Assert.AreEqual(0, mFiles.Writes);
     Assert.Contains(mEdit.FormatCode(TFormatStyle.Default, 'U.pas', 'unit U;'#10'interface'#10'implementation'#10 +
-      'end.', TFormatScope.All), 'Keine Abweichung');
+      'end.', TMcpFormatLines.All), 'Keine Abweichung');
   finally
     mEdit.Free;
     mFiles.Free;
@@ -682,18 +823,18 @@ begin
   mEdit := Tools(mFiles);
   try
     mFiles.Files.Add('U.pas', cSchief);
-    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, True);
+    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.All, True);
     Assert.Contains(mText, 'Vorschau');
     Assert.Contains(mText, '-    P;');
     Assert.AreEqual(0, mFiles.Writes);
     // Nur Zeile 7 (0-basiert 6).
-    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.Lines([TFormatLineSpan.Create(6, 6)]), False);
+    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.Range(6, 6), False);
     Assert.AreEqual(1, mFiles.Writes);
     Assert.AreEqual(StringReplace(cSchief, '     P;', '  P;', []), mFiles.Files['U.pas']);
-    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, False);
+    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.All, False);
     Assert.AreEqual(StringReplace(StringReplace(cSchief, '     P;', '  P;', []), '   P;', '  P;', []),
       mFiles.Files['U.pas']);
-    Assert.Contains(mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, False), 'keine Abweichung');
+    Assert.Contains(mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.All, False), 'keine Abweichung');
     Assert.AreEqual(2, mFiles.Writes);
   finally
     mEdit.Free;
@@ -714,7 +855,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, False);
+        mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TMcpFormatLines.All, False);
       end, EMcpToolError);
     Assert.AreEqual(0, mFiles.Writes);
   finally

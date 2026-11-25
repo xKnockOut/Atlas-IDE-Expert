@@ -43,6 +43,10 @@
 // Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
 // „Atlas-Prüfung“ (#909) öffnet das Fenster der Befunde, auch unter Ansicht ›
 // Atlas › Prüfung; sichtbar nur bei problems.window.
+// Ansicht › Atlas (commands.viewMenu.windows) sammelt alle andockbaren
+// Atlas-Fenster: von Base Prüfung, Ergebnisse, Gliederung und Atlas-Server,
+// dazu die Fenster der Module (TAtlasMenuPlace.ViewMenu), in Untermenüs nach
+// ihrer Section (etwa Debuggen, Designer).
 // „Architekturübersicht“ (#1118) öffnet das Fenster „Atlas-Architektur“, auch
 // unter Ansicht › Atlas › Architektur; sichtbar nur bei architecture.enabled.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
@@ -104,7 +108,8 @@ type
     FMethodOrderItem: TMenuItem;
     /// <summary>Untermenü Code mit Erzeugen und Methodenreihenfolge; fehlt, wenn beide aus sind.</summary>
     FCodeGroup: TMenuItem;
-    /// <summary>„Alle Regionen zu-/aufklappen“ (#1814), nur mit editor.regionFolds nicht off.</summary>
+    /// <summary>„Alle Regionen zu-/aufklappen“ (#1814), nur mit editor.regionFolds nicht off; dahinter „Block
+    /// einklappen“, „Große Blöcke einklappen“, „Blöcke aufklappen“ (#2795), nur mit editor.blockFolds.</summary>
     FRegionItems: TArray<TMenuItem>;
     /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
     FOutlineItem: TMenuItem;
@@ -114,9 +119,12 @@ type
     FModules: TAtlasMenuModuleItems;
     /// <summary>„Woher/Wohin kommt der Wert?“ (#690), sichtbar nach navigation.dataFlow.</summary>
     FDataFlowItems: TArray<TMenuItem>;
-    /// <summary>Ansicht › Atlas mit „Prüfung“ (#909) und den Einträgen der Module.</summary>
+    /// <summary>Ansicht › Atlas mit den andockbaren Fenstern: „Prüfung“ (#909), Ergebnisse, Gliederung,
+    /// Atlas-Server und die Fenster der Module; nur mit commands.viewMenu.windows.</summary>
     FViewAtlas: TMenuItem;
     FViewProblems: TMenuItem;
+    FViewOutline: TMenuItem;
+    FViewServer: TMenuItem;
     /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
     FImpactItem: TMenuItem;
   protected
@@ -162,6 +170,10 @@ type
     procedure AddSettingsItems;
     /// <summary>Atlas-Menü hinter „Tools“ einhängen, Ansicht › Atlas unter „Ansicht“.</summary>
     procedure InsertIntoIde(AMainMenu: TMainMenu);
+    /// <summary>Ansicht › Atlas mit den Fenstern von Base unter AViews anlegen.</summary>
+    procedure AddViewMenu(AViews: TMenuItem);
+    /// <summary>Eintrag unter Ansicht › Atlas.</summary>
+    function AddViewItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
@@ -198,7 +210,8 @@ implementation
 
 uses
   Atlas.UI.Commands.Strings,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Plugin.Diagnostics.Guard,
   ToolsAPI,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.QuickToggles,
@@ -208,14 +221,15 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.RegionFolds,
+  Atlas.IDE.Commands.BlockFolds,
   Atlas.UI.Editor.RegionFolds,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Commands.MenuActions,
-  Atlas.IDE.Foundation.Symbol,
+  Atlas.ToolsApi.Theme.Symbol,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Setup.Checklist,
-  Atlas.Core.Lsp.Progress;
+  Atlas.Plugin.Lsp.Progress;
 
 const
   /// <summary>Takt des Fortschritts im Menütitel, solange ein Vorgang läuft.</summary>
@@ -226,6 +240,8 @@ const
   cToolsMenu = 'ToolsMenu';
   // Menü „Ansicht“ der IDE; dort steht das Untermenü „Atlas“ (#909, #1455).
   cViewsMenu = 'ViewsMenu';
+  /// <summary>Befehl „Ergebnisfenster“ in TAtlasMenuActions.RunResults.</summary>
+  cResultsWindowTag = 7;
   cToggleTexts: array[TAtlasToggle] of TAtlasTextId = (TAtlasTextId.MenuToggleEnabled, TAtlasTextId.MenuToggleHover,
     TAtlasTextId.MenuTogglePairs, TAtlasTextId.MenuToggleGuides, TAtlasTextId.MenuToggleOwners,
     TAtlasTextId.MenuToggleProblems, TAtlasTextId.MenuToggleInactive, TAtlasTextId.MenuToggleInlayHints);
@@ -270,11 +286,8 @@ end;
 
 function TAtlasMainMenuItems.AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(FRoot);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AOnClick;
-  FParent.Add(Result);
+  // Als Befehl des Benutzers: Scheitert er, steht das sofort in der Meldungsansicht.
+  Result := TAtlasMenus.Add(FRoot, FParent, ACaption, ATag, AOnClick);
 end;
 
 function TAtlasMainMenuItems.AddGroup(AText: TAtlasTextId): TMenuItem;
@@ -295,9 +308,17 @@ var
   mItem: TMenuItem;
 begin
   // Regionen zu-/aufklappen (#1814) nach editor.regionFolds.
+  // Große Blöcke ein-/aufklappen (#2795) nach editor.blockFolds.
   for mItem in FRegionItems do
   begin
-    mItem.Visible := TAtlasIdeRegionFolds.Enabled;
+    if mItem.Tag >= TAtlasMenuActions.cEditorFoldBlock then
+    begin
+      mItem.Visible := TAtlasIdeBlockFolds.Enabled;
+    end
+    else
+    begin
+      mItem.Visible := TAtlasIdeRegionFolds.Enabled;
+    end;
   end;
 end;
 
@@ -328,7 +349,10 @@ begin
   // Atlas-Prüfung (#909) nach problems.window.
   ShowItem(FProblemsItem, TAtlasIdeProblems.Enabled);
   ShowItem(FViewProblems, TAtlasIdeProblems.Enabled);
-  ShowItem(FViewAtlas, TAtlasIdeProblems.Enabled or TAtlasMenuModuleItems.HasViewItems);
+  ShowItem(FViewOutline, TAtlasIdeSettings.Current.Outline);
+  ShowItem(FViewServer, TAtlasIdeSettings.Current.ServerStatusWindow and Assigned(FOnServerStatus));
+  // Ansicht › Atlas (commands.viewMenu.windows); die Ergebnisse stehen immer darin.
+  ShowItem(FViewAtlas, TAtlasIdeSettings.Current.AtlasViewMenu);
   // Auswirkungen anzeigen (#1120) nach navigation.impact.
   ShowItem(FImpactItem, TAtlasIdeImpact.Enabled);
   // Datenfluss (#690) nach navigation.dataFlow.
@@ -400,15 +424,15 @@ var
 begin
   AddItem(TAtlasTextId.RenameMenu, 0, RenameClick);
   // Editorbefehle (#399) und Ergebnisfenster (#400); Tag wählt den Befehl in EditorClick bzw. ResultsClick.
-  AddItem(TAtlasTextId.EditorActions, 0, EditorClick);
+  AddItem(TAtlasTextId.EditorActions, TAtlasMenuActions.cEditorCodeActions, EditorClick);
   // Formatieren (#43).
-  FFormatItem := AddItem(TAtlasTextId.FormatCodeCommand, 11, EditorClick);
-  AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
+  FFormatItem := AddItem(TAtlasTextId.FormatCodeCommand, TAtlasMenuActions.cEditorFormat, EditorClick);
+  AddItem(TAtlasTextId.MenuSymbolSearch, TAtlasMenuActions.cResultsSymbolSearch, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
   // Untermenü Code: Erzeugen-Menü (#719), Methodenrümpfe wie die Klasse ordnen (#660).
   FCodeGroup := AddGroup(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuGroupCode));
-  FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, 10, EditorClick);
-  FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, 12, EditorClick);
+  FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, TAtlasMenuActions.cEditorGenerate, EditorClick);
+  FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, TAtlasMenuActions.cEditorMethodOrder, EditorClick);
   FParent := FRoot;
   // Einträge der Module (#1455) in ihren Untermenüs (Section), z. B. Debuggen, Haltepunkte, Designer, Tests.
   mAnchor := AddItem('', 0, nil);
@@ -420,44 +444,53 @@ end;
 procedure TAtlasMainMenu.AddNavigationGroup;
 begin
   AddGroup(TAtlasTextId.MenuGroupNavigation);
-  AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
-  AddItem(TAtlasTextId.EditorMethodToggle, 6, EditorClick);
-  AddItem(TAtlasTextId.EditorTestUnit, 7, EditorClick);
-  AddItem(TAtlasTextId.GotoInterfaceCommand, 0, SectionClick);
-  AddItem(TAtlasTextId.GotoImplementationCommand, 1, SectionClick);
-  AddItem(TAtlasTextId.GotoUsesCommand, 2, SectionClick);
-  AddItem(TAtlasTextId.GotoInitializationCommand, 3, SectionClick);
-  AddItem(TAtlasTextId.ReturnFromSectionCommand, 4, SectionClick);
-  AddItem(TAtlasTextId.FindMethodCommand, 5, SectionClick);
-  AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
-  AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
+  AddItem(TAtlasTextId.EditorTypeDefinition, TAtlasMenuActions.cEditorTypeDefinition, EditorClick);
+  AddItem(TAtlasTextId.EditorMethodToggle, TAtlasMenuActions.cEditorMethodToggle, EditorClick);
+  AddItem(TAtlasTextId.EditorTestUnit, TAtlasMenuActions.cEditorTestUnit, EditorClick);
+  AddItem(TAtlasTextId.GotoInterfaceCommand, TAtlasMenuActions.cSectionInterface, SectionClick);
+  AddItem(TAtlasTextId.GotoImplementationCommand, TAtlasMenuActions.cSectionImplementation, SectionClick);
+  AddItem(TAtlasTextId.GotoUsesCommand, TAtlasMenuActions.cSectionUses, SectionClick);
+  AddItem(TAtlasTextId.GotoInitializationCommand, TAtlasMenuActions.cSectionInitialization, SectionClick);
+  AddItem(TAtlasTextId.ReturnFromSectionCommand, TAtlasMenuActions.cSectionReturn, SectionClick);
+  AddItem(TAtlasTextId.FindMethodCommand, TAtlasMenuActions.cSectionFindMethod, SectionClick);
+  AddItem(TAtlasTextId.EditorExpand, TAtlasMenuActions.cEditorExpand, EditorClick);
+  AddItem(TAtlasTextId.EditorShrink, TAtlasMenuActions.cEditorShrink, EditorClick);
   FOutlineItem := AddItem(TAtlasTextId.OutlineCommand, 0, OutlineClick);
   // Regionen zu-/aufklappen (#1814).
   FRegionItems := TArray<TMenuItem>.Create(
-    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand), 13, EditorClick),
-    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand), 14, EditorClick));
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand),
+      TAtlasMenuActions.cEditorCollapseRegions, EditorClick),
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand),
+      TAtlasMenuActions.cEditorExpandRegions, EditorClick),
+    // Große Blöcke ein-/aufklappen (#2795).
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldBlockCommand),
+      TAtlasMenuActions.cEditorFoldBlock, EditorClick),
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldLargeBlocksCommand),
+      TAtlasMenuActions.cEditorFoldLargeBlocks, EditorClick),
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.UnfoldBlocksCommand),
+      TAtlasMenuActions.cEditorUnfoldBlocks, EditorClick));
 end;
 
 procedure TAtlasMainMenu.AddSearchGroups;
 begin
   AddGroup(TAtlasTextId.MenuGroupSearch);
-  AddItem(TAtlasTextId.MenuReferences, 0, ResultsClick);
-  AddItem(TAtlasTextId.MenuImplementations, 1, ResultsClick);
-  AddItem(TAtlasTextId.MenuIncoming, 3, ResultsClick);
-  AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
+  AddItem(TAtlasTextId.MenuReferences, TAtlasMenuActions.cResultsReferences, ResultsClick);
+  AddItem(TAtlasTextId.MenuImplementations, TAtlasMenuActions.cResultsImplementations, ResultsClick);
+  AddItem(TAtlasTextId.MenuIncoming, TAtlasMenuActions.cResultsIncoming, ResultsClick);
+  AddItem(TAtlasTextId.MenuOutgoing, TAtlasMenuActions.cResultsOutgoing, ResultsClick);
   // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
-  FCallDiagramItem := AddItem(TAtlasTextId.CallDiagramCommand, 8, ResultsClick);
-  AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
-  AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
-  FImpactItem := AddItem(TAtlasTextId.ImpactCommand, 9, ResultsClick);
+  FCallDiagramItem := AddItem(TAtlasTextId.CallDiagramCommand, TAtlasMenuActions.cResultsCallDiagram, ResultsClick);
+  AddItem(TAtlasTextId.MenuSupertypes, TAtlasMenuActions.cResultsSupertypes, ResultsClick);
+  AddItem(TAtlasTextId.MenuSubtypes, TAtlasMenuActions.cResultsSubtypes, ResultsClick);
+  FImpactItem := AddItem(TAtlasTextId.ImpactCommand, TAtlasMenuActions.cResultsImpact, ResultsClick);
   // Datenfluss (#690).
-  FDataFlowItems := [AddItem(TAtlasTextId.MenuDataFlowSources, 10, ResultsClick),
-    AddItem(TAtlasTextId.MenuDataFlowTargets, 11, ResultsClick)];
+  FDataFlowItems := [AddItem(TAtlasTextId.MenuDataFlowSources, TAtlasMenuActions.cResultsDataFlowSources, ResultsClick),
+    AddItem(TAtlasTextId.MenuDataFlowTargets, TAtlasMenuActions.cResultsDataFlowTargets, ResultsClick)];
   FParent.Add(NewLine);
-  AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
+  AddItem(TAtlasTextId.MenuResultsWindow, cResultsWindowTag, ResultsClick);
   AddGroup(TAtlasTextId.MenuGroupCopy);
-  AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
-  AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
+  AddItem(TAtlasTextId.EditorCopyQualified, TAtlasMenuActions.cEditorCopyQualified, EditorClick);
+  AddItem(TAtlasTextId.EditorCopyQualifiedParams, TAtlasMenuActions.cEditorCopyQualifiedParams, EditorClick);
   // Atlas-Änderungen über mehrere Dateien (#721); Tag wählt den Befehl in UndoClick.
   AddGroup(TAtlasTextId.MenuGroupChanges);
   AddItem(TAtlasTextId.UndoMenu, 0, UndoClick);
@@ -492,16 +525,12 @@ var
   mItem: TMenuItem;
 begin
   FRoot.Add(NewLine);
-  mItem := TMenuItem.Create(FRoot);
-  mItem.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProjectSettingsMenu);
-  mItem.OnClick := ProjectClick;
-  FRoot.Add(mItem);
+  mItem := TAtlasMenus.Add(FRoot, FRoot, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProjectSettingsMenu), 0,
+    ProjectClick);
   FImageItems := [FRoot, mItem];
   // Globale Einstellungen stehen nur unter Tools › Optionen › Atlas, kein eigener Menüpunkt mehr.
-  mItem := TMenuItem.Create(FRoot);
-  mItem.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuOptions);
-  mItem.OnClick := OptionsClick;
-  FRoot.Add(mItem);
+  mItem := TAtlasMenus.Add(FRoot, FRoot, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuOptions), 0,
+    OptionsClick);
   FImageItems := FImageItems + [mItem];
   // Nur sichtbar, wenn die Sicherung etwas abgeschaltet hat (#493).
   FEnableAll := TMenuItem.Create(FRoot);
@@ -527,21 +556,33 @@ begin
   begin
     if SameText(AMainMenu.Items[mIndex].Name, cViewsMenu) then
     begin
-      // Gehört dem Atlas-Menü, damit es mit ihm freigegeben wird; Freigeben nimmt es aus „Ansicht“.
-      // Ansicht › Atlas › Prüfung (#909) und Architektur (#1118).
-      FViewAtlas := TMenuItem.Create(FRoot);
-      FViewAtlas.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuAtlas);
-      FViewProblems := TMenuItem.Create(FViewAtlas);
-      FViewProblems.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuWindow);
-      FViewProblems.OnClick := ProblemsClick;
-      FViewAtlas.Add(FViewProblems);
-      // Einträge der Module (#1455) kommen beim Öffnen dazu.
-      FViewAtlas.OnClick := ViewAtlasClick;
-      FModules.ViewAtlas := FViewAtlas;
-      AMainMenu.Items[mIndex].Add(FViewAtlas);
+      AddViewMenu(AMainMenu.Items[mIndex]);
       Break;
     end;
   end;
+end;
+
+function TAtlasMainMenu.AddViewItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TAtlasMenus.Add(FViewAtlas, FViewAtlas, ACaption, ATag, AOnClick);
+end;
+
+procedure TAtlasMainMenu.AddViewMenu(AViews: TMenuItem);
+begin
+  // Gehört dem Atlas-Menü, damit es mit ihm freigegeben wird; Freigeben nimmt es aus „Ansicht“.
+  FViewAtlas := TMenuItem.Create(FRoot);
+  FViewAtlas.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuAtlas);
+  // Fenster von Base: Prüfung (#909), Ergebnisse (#400), Gliederung (#537), Atlas-Server (#1356).
+  FViewProblems := AddViewItem(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuWindow), 0,
+    ProblemsClick);
+  AddViewItem(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ViewMenuResults), cResultsWindowTag, ResultsClick);
+  FViewOutline := AddViewItem(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ViewMenuOutline), 0, OutlineClick);
+  FViewServer := AddViewItem(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ViewMenuServer), 0,
+    ServerStatusClick);
+  // Fenster der Module (#1455) kommen beim Öffnen dazu, in ihren Untermenüs (etwa Debuggen, Designer).
+  FViewAtlas.OnClick := ViewAtlasClick;
+  FModules.ViewAtlas := FViewAtlas;
+  AViews.Add(FViewAtlas);
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);
@@ -602,13 +643,21 @@ begin
   TAtlasGuard.Run(TAtlasFeature.Menu,
     procedure
     begin
+      // Sichtbarkeit der Fenster von Base nach den aktuellen Einstellungen, dann die der Module.
+      UpdateKeyMap;
       FModules.UpdateView;
     end);
 end;
 
 procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);
 begin
-  TAtlasGuard.EnableAll;
+  // Nicht über Run(Menu): Auch ein abgeschaltetes Menü-Feature soll sich wieder einschalten lassen.
+  try
+    TAtlasGuard.EnableAll;
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Enable all features: ' + TAtlasGuard.ErrorText(E));
+  end;
 end;
 
 procedure TAtlasMainMenu.TimerTick(Sender: TObject);

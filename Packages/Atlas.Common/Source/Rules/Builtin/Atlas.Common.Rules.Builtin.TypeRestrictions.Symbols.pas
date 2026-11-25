@@ -66,8 +66,6 @@ type
     function Declared(const AName: string): Boolean;
   end;
 
-/// <summary>Typknoten einer Typdeklaration (das erste Kind außer den Typparametern), nil ohne.</summary>
-function TypeOfDecl(ADecl: TSyntaxNode): TSyntaxNode;
 /// <summary>Namen, die ein Knoten deklariert ("A,B" ergibt beide); leer bei Knoten ohne Deklaration.</summary>
 function DeclaredNames(ANode: TSyntaxNode): TArray<string>;
 /// <summary>Alle Namen, die unterhalb von ANode deklariert sind.</summary>
@@ -77,7 +75,7 @@ function NamesBelow(ANode: TSyntaxNode): TArray<string>;
 function SectionNames(ASection: TSyntaxNode): TArray<string>;
 /// <summary>Namen des implementation-Teils, die eine Inline-Routine aus dem interface-Teil verwenden darf: echte
 /// Konstanten, Typen samt Aufzählungswerten und Routinen. dcc übersetzt das (mORMot2, Clipper2 in Graphics32; TR1,
-/// TR2, TR4, TR8; dcc-Lauf vom 29.10.2026, #1328); E2441 bleibt für Variablen und typisierte Konstanten (TG1,
+/// TR2, TR4, TR8 in Tests/DccFaelle, #1328); E2441 bleibt für Variablen und typisierte Konstanten (TG1,
 /// TG4).</summary>
 function InlineUsableNames(ASection: TSyntaxNode): TArray<string>;
 /// <summary>Echte Konstanten (ohne Typ) auf oberster Ebene von ASection. Methoden generischer Typen und
@@ -95,22 +93,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Derived;
-
-/// <summary>Typknoten einer Typdeklaration (das erste Kind außer den Typparametern), nil ohne.</summary>
-function TypeOfDecl(ADecl: TSyntaxNode): TSyntaxNode;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ADecl.ChildCount - 1 do
-  begin
-    if ADecl[mIndex].Kind <> TSyntaxKind.GenericParams then
-    begin
-      Exit(ADecl[mIndex]);
-    end;
-  end;
-  Result := nil;
-end;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 /// <summary>Namen, die ein Knoten deklariert ("A,B" ergibt beide); leer bei Knoten ohne Deklaration.</summary>
 function DeclaredNames(ANode: TSyntaxNode): TArray<string>;
@@ -307,7 +291,7 @@ begin
       begin
         Result := mFound = nil;
         if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) and
-          (TypeOfDecl(ANode) <> nil) and (TypeOfDecl(ANode).Kind in [TSyntaxKind.ClassType,
+          (TSyntaxNodes.FirstChildExcept(ANode, [TSyntaxKind.GenericParams]) <> nil) and (TSyntaxNodes.FirstChildExcept(ANode, [TSyntaxKind.GenericParams]).Kind in [TSyntaxKind.ClassType,
           TSyntaxKind.RecordType, TSyntaxKind.ObjectType]) then
         begin
           mFound := ANode;
@@ -374,7 +358,7 @@ begin
     end;
     mOuter := mOuter.Parent;
   end;
-  if TypeOfDecl(ADecl).Kind <> TSyntaxKind.ClassType then
+  if TSyntaxNodes.FirstChildExcept(ADecl, [TSyntaxKind.GenericParams]).Kind <> TSyntaxKind.ClassType then
   begin
     Exit(True);
   end;

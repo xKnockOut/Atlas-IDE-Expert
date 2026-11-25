@@ -2,7 +2,7 @@
 
 // Eine Versionsangabe für Server und Plugin.
 // Tools/Set-Version.ps1 schreibt nur hier, Tools/Check-Version.ps1 liest hier;
-// Atlas.Common.Product.Version und Atlas.Core.Product.Version verweisen auf
+// Atlas.Common.Product.Version und Atlas.Plugin.Product.Version verweisen auf
 // diese Konstante.
 
 interface
@@ -11,7 +11,7 @@ type
   /// <summary>Version von Atlas (SemVer).</summary>
   TAtlasVersion = record
   public const
-    cVersion = '2.2.0-rc.1';
+    cVersion = '2.3.0-rc.1';
   end;
 
 implementation

@@ -21,7 +21,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Welcome.Backup;
+  Atlas.Core.Welcome.Backup,
+  Atlas.Core.Welcome.Contract;
 
 type
   TAtlasHostItem = record
@@ -94,6 +95,10 @@ implementation
 
 uses
   System.Math;
+
+const
+  /// <summary>Spalten des Rasters der IDE-Willkommensseite im Auslieferungszustand.</summary>
+  cIdeDefaultColumns = 3;
 
 { TAtlasHostItem }
 
@@ -424,7 +429,7 @@ end;
 class function TAtlasHostLayout.IdeDefault: TAtlasHostLayout;
 begin
   Result.Rows := 2;
-  Result.Columns := 3;
+  Result.Columns := cIdeDefaultColumns;
   Result.Items := [TAtlasHostItem.Create('Embarcadero.WelcomePagePlugin.GetItNewIn', 0, 0, 2, 1),
     TAtlasHostItem.Create('Embarcadero.WelcomePagePlugin.OpenRecent', 0, 1, 2, 1),
     TAtlasHostItem.Create('Embarcadero.WelcomePagePlugin.Learn', 0, 2, 2, 1)];
@@ -488,7 +493,7 @@ begin
     Result := TAtlasRetireResult.Restored;
     Exit;
   end;
-  mKey := AAccess.Read(AWelcomePath);
+  mKey := TAtlasRegistryKeys.Read(AAccess, AWelcomePath);
   try
     if (mKey = nil) or not TAtlasHostLayout.Read(mKey, mLayout) or not mLayout.ContainsAtlas(APrefix) then
     begin
@@ -496,7 +501,7 @@ begin
     end;
     mCleaned := mLayout.WithoutAtlas(APrefix);
     mCleaned.WriteTo(mKey);
-    AAccess.Replace(AWelcomePath, mKey);
+    TAtlasRegistryKeys.Replace(AAccess, AWelcomePath, mKey);
   finally
     mKey.Free;
   end;

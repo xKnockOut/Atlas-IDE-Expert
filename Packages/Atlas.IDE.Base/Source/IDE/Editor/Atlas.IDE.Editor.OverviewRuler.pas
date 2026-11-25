@@ -23,7 +23,7 @@
 //   IDE, Ausblenden bei ausgelöster Sicherung und Abbau übernimmt
 //   TAtlasEditorBarHost (#1248).
 // Minimap der IDE: Die Open Tools API bietet für sie keine Zeichen-Ereignisse,
-// deshalb ein eigener Streifen (docs/Architektur.md). Die Minimap (#873)
+// deshalb ein eigener Streifen (docs/architektur/Plugin-Editor.md). Die Minimap (#873)
 // sammelt ihre Marken über CollectMarks (Atlas.IDE.Editor.OverviewMarks). Nur im Hauptthread.
 
 interface
@@ -57,18 +57,19 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.SelectionMatches,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.TitledTip,
+  Atlas.Vcl.Popup.TitledTip,
   Atlas.UI.Editor.OverviewRuler,
-  Atlas.IDE.Foundation.EditorBarHost,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.EditorBars.Host,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Editor.OverviewMarks;
 
 const
@@ -326,7 +327,7 @@ var
   mNavigateF3: Boolean;
 begin
   Result := '';
-  AMatching := TAtlasIdeSettings.SelectionMatchesOn(AOptions, mNavigateF3);
+  AMatching := TAtlasIdeEditorSettings.SelectionMatchesOn(AOptions, mNavigateF3);
   AKey := '';
   if AMatching then
   begin
@@ -404,6 +405,8 @@ begin
 end;
 
 procedure TOverviewState.ShowPreview;
+const
+  cTipGap = 12;
 var
   mView: IOTAEditView;
   mTitle, mText: string;
@@ -432,7 +435,8 @@ begin
   TAtlasIdeStyle.Apply(FTip, TRect.Create(FHoverPoint, FHoverPoint));
   // Links neben dem Streifen, damit die Maus ihn nicht verdeckt.
   mWidth := FTip.Measure(mTitle, mText).cx;
-  FTip.ShowNote(mTitle, mText, Point(FHoverPoint.X - mWidth - MulDiv(12, FHoverRuler.CurrentPPI, 96), FHoverPoint.Y));
+  FTip.ShowNote(mTitle, mText, Point(FHoverPoint.X - mWidth - MulDiv(cTipGap, FHoverRuler.CurrentPPI, 96),
+    FHoverPoint.Y));
 end;
 
 procedure TOverviewState.Removed(ARuler: TControl);

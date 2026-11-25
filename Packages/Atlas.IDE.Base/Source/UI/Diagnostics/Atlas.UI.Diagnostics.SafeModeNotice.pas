@@ -23,14 +23,14 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
 {$SCOPEDENUMS ON}
   TAtlasSafeNoticeKind = (Ask, Safe);
 {$SCOPEDENUMS OFF}
 
-  TAtlasSafeModeNotice = class(TAtlasDialog)
+  TAtlasSafeModeNotice = class(TAtlasAnswerDialog)
   private type
     /// <summary>Steuerelemente des Fensters.</summary>
     TParts = record
@@ -60,7 +60,6 @@ type
     FKind: TAtlasSafeNoticeKind;
     FParts: TParts;
     FHandlers: THandlers;
-    FDone: Boolean;
     /// <summary>Text und Vorschlag oben.</summary>
     procedure CreateTexts(const AText, ASuggestion: string);
     /// <summary>Knopfreihe je nach Art; ARestore = '' blendet „Zurücksetzen“ aus.</summary>
@@ -68,7 +67,6 @@ type
     /// <summary>Aufklappbare Details mit Export und Fehlerbericht.</summary>
     procedure CreateDetails(const ADetails: TArray<string>);
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
-    procedure Run(const AProc: TProc);
     procedure PrimaryClick(Sender: TObject);
     procedure SecondaryClick(Sender: TObject);
     procedure RestoreClick(Sender: TObject);
@@ -113,16 +111,19 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 24;
   cNoticeWidth = 460;
   cDetailsHeight = 220;
+  // Vorläufige Höhe der Knopfreihe, bevor der unterste Knopf sie festlegt.
+  cButtonsInitialHeight = 200;
 
 { TAtlasSafeModeNotice }
 
@@ -148,14 +149,14 @@ begin
   FParts.Text.Parent := Self;
   FParts.Text.Align := alTop;
   FParts.Text.AlignWithMargins := True;
-  FParts.Text.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Text, cGap, cGap, cGap, 0);
   FParts.Text.Caption := AText;
 
   FParts.Suggestion := TAtlasWrapLabel.Create(Self);
   FParts.Suggestion.Parent := Self;
   FParts.Suggestion.Align := alTop;
   FParts.Suggestion.AlignWithMargins := True;
-  FParts.Suggestion.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Suggestion, cGap, cGap, cGap, 0);
   FParts.Suggestion.Caption := ASuggestion;
   FParts.Suggestion.Visible := ASuggestion <> '';
   FParts.Suggestion.Top := FParts.Text.Top + FParts.Text.Height + 1;
@@ -171,7 +172,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FParts.Suggestion.Top + FParts.Suggestion.Height + 1;
   FParts.Buttons := mButtons;
   if FKind = TAtlasSafeNoticeKind.Ask then
@@ -212,7 +213,7 @@ begin
   FParts.Details.Parent := mPanel;
   FParts.Details.Align := alClient;
   FParts.Details.AlignWithMargins := True;
-  FParts.Details.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Details, cGap, 0, cGap, 0);
   FParts.Details.ReadOnly := True;
   FParts.Details.ScrollBars := ssBoth;
   FParts.Details.WordWrap := False;
@@ -230,55 +231,30 @@ begin
   FParts.ExportButton := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.DiagExportMenu), ExportClick);
   FParts.ExportButton.Align := alBottom;
   FParts.ExportButton.AlignWithMargins := True;
-  FParts.ExportButton.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(FParts.ExportButton, cGap);
   FParts.BugButton := AddButton(mPanel, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.SafeBugReport), BugClick);
   FParts.BugButton.Align := alBottom;
   FParts.BugButton.AlignWithMargins := True;
-  FParts.BugButton.Margins.SetBounds(cGap, 0, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.BugButton, cGap, 0, cGap, 0);
   FParts.BugButton.Visible := False;
 end;
 
 function TAtlasSafeModeNotice.AddButton(AParent: TWinControl; const ACaption: string;
   AClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
+  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
   Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(24);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
-end;
-
-procedure TAtlasSafeModeNotice.Run(const AProc: TProc);
-begin
-  // Nur die erste Aktion zählt; ausgeführt wird nach dem Schließen.
-  if FDone then
-  begin
-    Exit;
-  end;
-  FDone := True;
-  Close;
-  if Assigned(AProc) then
-  begin
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
-      procedure
-      begin
-        AProc();
-      end);
-  end;
 end;
 
 procedure TAtlasSafeModeNotice.PrimaryClick(Sender: TObject);
 begin
   if FKind = TAtlasSafeNoticeKind.Ask then
   begin
-    Run(FHandlers.OnSafe);
+    Answer(FHandlers.OnSafe);
   end
   else
   begin
-    Run(FHandlers.OnNormal);
+    Answer(FHandlers.OnNormal);
   end;
 end;
 
@@ -286,17 +262,17 @@ procedure TAtlasSafeModeNotice.SecondaryClick(Sender: TObject);
 begin
   if FKind = TAtlasSafeNoticeKind.Ask then
   begin
-    Run(FHandlers.OnNormal);
+    Answer(FHandlers.OnNormal);
   end
   else
   begin
-    Run(FHandlers.OnToggles);
+    Answer(FHandlers.OnToggles);
   end;
 end;
 
 procedure TAtlasSafeModeNotice.RestoreClick(Sender: TObject);
 begin
-  Run(FHandlers.OnRestore);
+  Answer(FHandlers.OnRestore);
 end;
 
 procedure TAtlasSafeModeNotice.DetailsClick(Sender: TObject);
@@ -339,7 +315,7 @@ begin
   // Knopfreihe: AutoSize des TFlowPanel rechnet umgebrochene Reihen nicht zuverlässig mit;
   // die Höhe ergibt sich aus dem untersten sichtbaren Knopf.
   FParts.Buttons.AutoSize := False;
-  FParts.Buttons.Height := ScaleValue(200);
+  FParts.Buttons.Height := ScaleValue(cButtonsInitialHeight);
   FParts.Buttons.Realign;
   mBottom := 0;
   for mIndex := 0 to FParts.Buttons.ControlCount - 1 do

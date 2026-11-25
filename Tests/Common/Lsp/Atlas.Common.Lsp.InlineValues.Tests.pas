@@ -19,11 +19,6 @@ type
     /// <summary>Gefundene Werte als „Zeile:Name“ mit Leerzeichen getrennt.</summary>
     function ValuesFor(AFirstLine, ALastLine, AStoppedLine: Integer): string;
   public
-    /// <summary>Erste Benutzung des Handler-Wegs ungemessen vorwegnehmen: Die globalen Sperren der Namespaces
-    /// (TLspNamespaces) und des Baum-Caches legen ihre TMonitor- bzw. Tabellendaten beim ersten Zugriff an und
-    /// behalten sie bis Programmende (72 Byte unter Win64 in HandlerWritesInlineValues).</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -126,16 +121,6 @@ begin
   end;
 end;
 
-procedure TLspInlineValuesTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    HandlerWritesInlineValues;
-  finally
-    TearDown;
-  end;
-end;
-
 procedure TLspInlineValuesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
@@ -229,9 +214,11 @@ begin
   mStore := TDocumentStore.Create;
   mUri := TDocumentUris.FromPath(cFileName);
   mStore.Open(mUri, 'delphi', 1, cUnitText);
-  mValues := TLspInlineValues.Create(mStore, FIndex, nil);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mValues := nil;
+  mDispatcher := nil;
   try
+    mValues := TLspInlineValues.Create(mStore, FIndex, nil);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mValues.Attach(mDispatcher);
     mRequest := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"' + TLspInlineValues.cMethod +
       '","params":{"textDocument":{"uri":"' + mUri.Replace('\', '\\') + '"},' +

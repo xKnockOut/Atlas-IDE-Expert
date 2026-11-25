@@ -80,10 +80,11 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.Core.Setup.Checklist;
+  Atlas.Core.Setup.Checklist,
+  Atlas.Core.Setup.Contract;
 
 /// <summary>Alles in Ordnung: Server 0.1.0 läuft, Delphi 13 Win64, zwei Projekte fertig indiziert.</summary>
 function GoodInput: TAtlasSetupInput;
@@ -708,7 +709,7 @@ begin
   mEnvironment := mFake;
   mFake.Choose := True;
   mFake.Chosen := ' C:\Atlas\AtlasServer.exe ';
-  mController := TAtlasSetupController.Create(mEnvironment);
+  mController := TAtlasSetupController.Create(mEnvironment, mFake.Snapshot);
   try
     mController.Refresh;
     Assert.AreEqual(Ord(TAtlasSetupFinding.ServerMissing), Ord(mController.Results[0].Finding));
@@ -733,7 +734,7 @@ begin
   mEnvironment := mFake;
   mFake.Choose := False;
   mFake.Chosen := 'C:\Atlas\AtlasServer.exe';
-  mController := TAtlasSetupController.Create(mEnvironment);
+  mController := TAtlasSetupController.Create(mEnvironment, mFake.Snapshot);
   try
     mController.Refresh;
     Assert.IsFalse(mController.Apply(TAtlasSetupFix.ChooseServerPath));
@@ -757,7 +758,7 @@ begin
   mEnvironment := mFake;
   mFake.Path := 'C:\Atlas\AtlasServer.exe';
   mFake.ErrorInsight := True;
-  mController := TAtlasSetupController.Create(mEnvironment);
+  mController := TAtlasSetupController.Create(mEnvironment, mFake.Snapshot);
   try
     mController.Refresh;
     mController.Progress(mDone, mTotal);
@@ -791,7 +792,7 @@ begin
   mFake := TFakeEnvironment.Create;
   mEnvironment := mFake;
   mFake.Path := 'C:\Atlas\AtlasServer.exe';
-  mController := TAtlasSetupController.Create(mEnvironment);
+  mController := TAtlasSetupController.Create(mEnvironment, mFake.Snapshot);
   try
     mController.Refresh;
     mVersion := mController.Version;

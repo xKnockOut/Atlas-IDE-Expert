@@ -29,7 +29,9 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.DataBreakpoint,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Notifications.MessageSink,
+  Atlas.Core.Debug.Phases,
+  Atlas.Core.Debug.Contract;
 
 type
   TAtlasIdeDataBreakpoint = class
@@ -47,7 +49,7 @@ type
       Bytes: TBytes;
     end;
 
-    TListener = class(TAtlasIdeDebugListener)
+    TListener = class(TAtlasDebugListener)
     public
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
       procedure DebugResumed; override;
@@ -55,7 +57,7 @@ type
     end;
   private class var
     FMessage: TAtlasMessageSink;
-    FListener: IAtlasIdeDebugListener;
+    FListener: IAtlasDebugListener;
     FWatches: TList<TWatch>;
     class function Evaluate(const AExpression: string; out AValue: string): Boolean; static;
     /// <summary>Ausdruck unter der Schreibmarke des obersten Editors; '' ohne.</summary>
@@ -100,11 +102,13 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Core.Debug.InstanceBreakpoint,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.Evaluator,
-  Atlas.UI.Debug.DataBreakpoints.Strings;
+  Atlas.UI.Debug.DataBreakpoints.Strings,
+  Atlas.ToolsApi.Debugger.Services,
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeDataBreakpoint.TListener }
 
@@ -211,7 +215,7 @@ var
   mBreakpoint: IOTAAddressBreakpoint;
 begin
   Result := 0;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -270,7 +274,7 @@ var
   mAddress: TOTAAddress;
 begin
   Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;
@@ -280,8 +284,11 @@ begin
     Result := mServices.NewAddressBreakpoint(mAddress, LongWord(APlan.Length), TOTAAccessType.atWrite,
       TAtlasIdeBreakpoints.StoppedProcess);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Daten-Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
+    end;
   end;
 end;
 

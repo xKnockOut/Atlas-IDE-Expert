@@ -2,7 +2,7 @@
 
 // Postfix-Vorlagen (#188): Hinter "Ausdruck." kommen nach den Mitgliedern Kürzel wie for, tryf, ifa und fmt,
 // die den Ausdruck ersetzen (textEdit ab Ausdrucksbeginn, filterText "Ausdruck.Kürzel"), sofern der Typ bekannt
-// ist und passt. Aus Atlas.Common.Lsp.Completion herausgelöst.
+// ist und passt. Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 
@@ -47,7 +47,6 @@ uses
   System.StrUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.CommandSource,
@@ -75,7 +74,7 @@ type
     FLine: TPostfixLine;
     FDescends: TFunc<string, Boolean>;
     function Fits(const ATemplate: TPostfixTemplate): Boolean;
-    function DeclarationEdit(const ADeclaration: string; out AEdit: TRuleEdit): Boolean;
+    function DeclarationEdit(const ADeclaration: string; out AEdit: TTextEdit): Boolean;
     function ItemOf(const ATemplate: TPostfixTemplate; out AItem: TCompletionItem): Boolean;
   public
     constructor Create(ARequest: TCompletionRequest; const AContext: TCompletionContext;
@@ -311,13 +310,13 @@ begin
     (MatchScore(ATemplate.Key, FContext.Prefix, FRequest.Matching) <> TFuzzyMatch.cNoMatch);
 end;
 
-function TPostfixBuilder.DeclarationEdit(const ADeclaration: string; out AEdit: TRuleEdit): Boolean;
+function TPostfixBuilder.DeclarationEdit(const ADeclaration: string; out AEdit: TTextEdit): Boolean;
 var
   mSlash: TSlashContext;
   mSource: TCommandSource;
   mRoutine: TSyntaxNode;
 begin
-  AEdit := Default(TRuleEdit);
+  AEdit := Default(TTextEdit);
   mSlash := Default(TSlashContext);
   mSlash.Text := FRequest.Text;
   mSlash.Line := FRequest.Position.Line;
@@ -338,7 +337,7 @@ end;
 function TPostfixBuilder.ItemOf(const ATemplate: TPostfixTemplate; out AItem: TCompletionItem): Boolean;
 var
   mExpansion: TPostfixExpansion;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   mExpansion := TPostfixTemplates.Expand(ATemplate, FLine.Expr, FTraits,
     TPostfixLayout.Create(FLine.Indent, FRequest.LineBreak, FPostfix.InlineVar, FPostfix.Snippet));
@@ -351,7 +350,7 @@ begin
   AItem.Action := 'postfix';
   AItem.Snippet := FPostfix.Snippet;
   AItem.HasTextEdit := True;
-  AItem.TextEdit := TRuleEdit.Create(TTextRange.Create(FContext.ChainStart, FRequest.Position), mExpansion.Text);
+  AItem.TextEdit := TTextEdit.Create(TTextRange.Create(FContext.ChainStart, FRequest.Position), mExpansion.Text);
   Result := True;
   if mExpansion.Declaration <> '' then
   begin

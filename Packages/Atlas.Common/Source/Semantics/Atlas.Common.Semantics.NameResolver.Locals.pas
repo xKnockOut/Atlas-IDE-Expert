@@ -43,6 +43,9 @@ type
     /// <summary>Deklaration von ARoutine im interface-Teil, wenn ihr Ergebnistyp für den Rumpf gilt (#1369).
     /// </summary>
     function InterfaceRoutine(ARoutine: TSyntaxNode; out ADeclared: TResolvedSymbol): Boolean;
+    /// <summary>Steht die Stelle im Kopf von ARoutine im Namen einer Typangabe (Parametertyp, Ergebnistyp,
+    /// Typargument)?</summary>
+    function InHeaderType(ARoutine: TSyntaxNode): Boolean;
   public
     constructor Create(APlace: TResolverPlace; AUnits: TResolverUnits; ALookup: TResolverLookup);
     /// <summary>Hat die Routine mit dem Kopf AHeader ein Result: Ergebnistyp im Kopf oder Kurzform einer Funktion
@@ -260,6 +263,12 @@ begin
   end;
 end;
 
+/// <summary>Einfacher Typname ohne Unit, Punkt und Typargumente.</summary>
+function IsPlainTypeName(const ATypeName: string): Boolean;
+begin
+  Result := (ATypeName <> '') and (Pos('.', ATypeName) = 0) and (Pos('<', ATypeName) = 0);
+end;
+
 function TResolverLocals.LocalType(const ALocal: TResolvedSymbol; const ATypeName: string;
   out AResult: TResolvedSymbol): Boolean;
 var
@@ -267,7 +276,7 @@ var
 begin
   Result := False;
   if (ALocal.Kind <> TResolvedKind.Local) or (FPlace.Tree = nil) or not FPlace.IsCurrentFile(ALocal.FileName) or
-    (ATypeName = '') or (Pos('.', ATypeName) > 0) or (Pos('<', ATypeName) > 0) then
+    not IsPlainTypeName(ATypeName) then
   begin
     Exit;
   end;
@@ -442,7 +451,7 @@ begin
   Result.Range := TTextRange.Create(ANode.StartPos, ANode.EndPos);
   Result.SelectionRange := Result.Range;
   // Auswahl auf den Namen selbst legen; ab dem ersten Token des Knotens, nicht ab Dateianfang: Das
-  // kostete je lokalem Namen einen Lauf über alle Tokens davor (Diagnoselog 15.10.2026, große Units).
+  // kostete je lokalem Namen einen Lauf über alle Tokens davor (spürbar in großen Units).
   for mIndex := mTree.FirstTokenFrom(ANode.StartOffset) to High(mTree.Tokens) do
   begin
     if mTree.Tokens[mIndex].Offset >= ANode.EndOffset then
@@ -473,12 +482,67 @@ begin
   end;
 end;
 
+/// <summary>Der Teil von ARoutine mit Parametern und Ergebnistyp, der AOffset enthält; nil, wenn AOffset nicht
+/// darin liegt. Bei einer anonymen Methode die Parameterliste oder der Ergebnistyp.</summary>
+function HeaderPartAt(ARoutine: TSyntaxNode; AOffset: Integer): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if ARoutine.Kind <> TSyntaxKind.AnonymousMethod then
+  begin
+    Result := TResolverNodes.RoutineHeaderOf(ARoutine);
+    if (Result <> nil) and ((AOffset < Result.StartOffset) or (AOffset >= Result.EndOffset)) then
+    begin
+      Result := nil;
+    end;
+    Exit;
+  end;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if (ARoutine[mIndex].Kind in [TSyntaxKind.Parameters, TSyntaxKind.TypeReference]) and
+      (AOffset >= ARoutine[mIndex].StartOffset) and (AOffset < ARoutine[mIndex].EndOffset) then
+    begin
+      Exit(ARoutine[mIndex]);
+    end;
+  end;
+end;
+
+function TResolverLocals.InHeaderType(ARoutine: TSyntaxNode): Boolean;
+var
+  mNode, mInner: TSyntaxNode;
+begin
+  mNode := HeaderPartAt(ARoutine, FPlace.Offset);
+  if mNode = nil then
+  begin
+    Exit(False);
+  end;
+  // Der Name eines Typs ist kein eigener Knoten: Der innerste Knoten um die Stelle ist dann die Typangabe selbst.
+  mInner := TResolverNodes.ChildAround(mNode, FPlace.Offset);
+  while mInner <> nil do
+  begin
+    mNode := mInner;
+    mInner := TResolverNodes.ChildAround(mNode, FPlace.Offset);
+  end;
+  Result := mNode.Kind = TSyntaxKind.TypeReference;
+end;
+
 function TResolverLocals.LookupLocal(const AName: string; out AResult: TResolvedSymbol): Boolean;
 var
   mRoutine: TSyntaxNode;
 begin
   for mRoutine in FPlace.EnclosingRoutines do
   begin
+    // Typangaben im Kopf (WParam: WPARAM, Ergebnistyp) sehen die Parameter, Result und lokalen Namen der Routine
+    // noch nicht, nur ihre Typparameter (#1896).
+    if InHeaderType(mRoutine) then
+    begin
+      if LookupTypeParameter(TResolverNodes.RoutineHeaderOf(mRoutine), AName, AResult) then
+      begin
+        Exit(True);
+      end;
+      Continue;
+    end;
     if LookupInlineVars(mRoutine, AName, AResult) or LookupInHeader(mRoutine, AName, AResult) or
       LookupInDeclarations(mRoutine, AName, AResult) then
     begin

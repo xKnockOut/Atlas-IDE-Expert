@@ -31,7 +31,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Shell.Texts;
+  Core.Texts;
 
 { TShellMethodBreakpoints }
 
@@ -56,7 +56,7 @@ begin
   // Argument: {"pattern": …, "overrides": …, "overloads": …} aus dem Fenster bzw. beim Mitwachsen vor dem Start.
   if not TLspMethodBreakpoints.ReadRequest(AArguments, mText, mOptions) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(['pattern']));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TCoreTexts.Missing(['pattern']));
   end;
   if not TMethodPattern.Parse(mText, Index, mPattern) then
   begin

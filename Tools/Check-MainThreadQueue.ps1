@@ -6,7 +6,7 @@
     TThread.Queue(nil, …) und TThread.ForceQueue(nil, …) gehören keinem Thread:
     Beim Entladen des Packages räumt niemand die Einträge weg, und
     CheckSynchronize ruft sie danach in nicht mehr geladenem Code auf. Im Plugin
-    reiht deshalb nur TAtlasMainThread (Atlas.Core.Diagnostics.MainThread) ein;
+    reiht deshalb nur TAtlasMainThread (Atlas.Plugin.Diagnostics.MainThread) ein;
     dessen Besitzer-Thread hält die Komposition beim Entladen an.
 
     Geprüft werden alle Quelltexte unter Packages/Atlas.IDE.*/Source/.
@@ -37,8 +37,10 @@ $ErrorActionPreference = 'Stop'
 # "// lsp-ignore: forbidden-symbol" in derselben Zeile.
 $Exempt = '//\s*(mainthread-ok|lsp-ignore:[^\r\n]*\bforbidden-symbol\b)'
 
-# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
-$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
+# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source, dazu die Platform-Packages des
+# Plugins, die Base als Quelltext mitübersetzt (Atlas.Plugin, Atlas.Vcl, Atlas.ToolsApi).
+$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory |
+    Where-Object { $_.Name -like 'Atlas.IDE.*' -or $_.Name -in @('Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi') } |
     Where-Object { Test-Path (Join-Path $_.FullName 'Source') } |
     ForEach-Object { "Packages/$($_.Name)/Source" })
 

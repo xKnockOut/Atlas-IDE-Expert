@@ -59,7 +59,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
@@ -67,7 +67,8 @@ uses
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -222,7 +223,7 @@ begin
   mAfter := mIndex;
   while (mAfter >= 0) and (mAfter < Length(ATokens)) and not ATokens[mAfter].IsSymbol(';') do
   begin
-    mAfter := TRoutineBody.NextToken(ATokens, mAfter);
+    mAfter := NextCodeAfter(ATokens, mAfter);
   end;
   if (mAfter < 0) or (mAfter >= Length(ATokens)) then
   begin
@@ -402,18 +403,8 @@ begin
 end;
 
 function TTypeRestrictionViolatedScan.NameRange(AHeader: TSyntaxNode): TTextRange;
-var
-  mAt: Integer;
 begin
-  mAt := NameToken(FTokens, AHeader);
-  if mAt >= 0 then
-  begin
-    Result := TokenRange(FTokens[mAt]);
-  end
-  else
-  begin
-    Result := NodeRange(AHeader);
-  end;
+  Result := HeaderNameRange(FTokens, AHeader);
 end;
 
 function TTypeRestrictionViolatedScan.KeywordRange(ANode: TSyntaxNode): TTextRange;
@@ -484,7 +475,7 @@ begin
     mDecl := FindStructDecl(FRoot, LastPart(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1)));
     if mDecl <> nil then
     begin
-      Result := TypeOfDecl(mDecl);
+      Result := TSyntaxNodes.FirstChildExcept(mDecl, [TSyntaxKind.GenericParams]);
     end;
   end
   else if (ARoutine.Parent <> nil) and (ARoutine.Parent.Kind = TSyntaxKind.ImplementationSection) then

@@ -13,14 +13,15 @@ type
     InstanceFieldCommand, BreakpointCheckCommand, BreakpointSetSaveCommand, BreakpointSetSwitchCommand,
     BreakpointSetAddCommand, BreakpointSetDeleteCommand, RunToHereCommand, RunToSkipCommand, RunToOnceCommand,
     BreakpointsWindowCommand, BreakpointAnchorsUndoCommand, BreakpointAnchorsOrphansCommand, BreakpointRulesCommand,
-    DebugExceptionsCommand, DebugJustMyCodeCommand, DebugBannerIdeDialogCommand, DebugExpressionHistory,
+    DebugExceptionsCommand, DebugExceptionRulesCommand, DebugJustMyCodeCommand, DebugBannerIdeDialogCommand,
+    DebugExpressionHistory,
     DebugEvaluateCommand, DebugEvaluateIdeDialogCommand, DebugWaitsCommand, ParallelStacksCommand, CallStackCommand,
     ThreadMarksFlagCommand, ThreadMarksFreezeCommand, ThreadMarksThawCommand, ThreadMarksThawAllCommand,
     StepFilterWindowCommand, StepFilterStepIntoAnywayCommand, StepFilterSkipCommand, StepFilterUnskipCommand,
     DebugEditorMenuGroup, EditValueCommand, EditValueUndoCommand, DebugEventLogCommand, LogpointCommand,
     LogpointDisableAll, LogpointEnableAll, LogpointDeleteAll, RestartCommand, ReattachCommandPlain,
     ReattachWaitCommand, RuntimeReportPasteCommand, RuntimeReportClearCommand, LaunchCommandWindow, LaunchCommandRun,
-    LaunchCommandStop,
+    LaunchCommandStop, DataBreakCommand,
     // Untermenü „Haltepunkte“ im Hauptmenü Atlas.
     MenuGroupBreakpoints);
 
@@ -60,6 +61,7 @@ const
      'Verwaiste Haltepunkte …',
      'Haltepunkt-Regeln …',
      'Atlas: Exception-Verlauf',
+     'Atlas: Exception-Regeln …',
      'Atlas: Nur eigener Code beim Debuggen umschalten',
      'Atlas: Exception-Dialog der IDE in dieser Debug-Sitzung zeigen',
      'Verlauf',
@@ -92,6 +94,7 @@ const
      'Atlas: Startverbünde …',
      'Atlas: Startverbund starten',
      'Atlas: Startverbund beenden',
+     'Anhalten bei Datenzugriff …',
      'Haltepunkte'),
     ('Break on next event…',
      'Breakpoint on methods …',
@@ -111,6 +114,7 @@ const
      'Orphaned breakpoints …',
      'Breakpoint rules …',
      'Atlas: Exception history',
+     'Atlas: Exception rules …',
      'Atlas: Toggle just my code while debugging',
      'Atlas: Show the IDE exception dialog in this debug session',
      'History',
@@ -143,6 +147,7 @@ const
      'Atlas: Launch groups …',
      'Atlas: Start launch group',
      'Atlas: Stop launch group',
+     'Break on data access …',
      'Breakpoints'));
 
 { TAtlasDebugCommandsStrings }

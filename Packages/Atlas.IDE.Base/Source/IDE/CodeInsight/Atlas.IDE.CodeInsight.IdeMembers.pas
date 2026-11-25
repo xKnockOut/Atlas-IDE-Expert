@@ -10,7 +10,7 @@ interface
 
 uses
   System.Rtti,
-  Atlas.Core.Lsp.IdeMembers;
+  Atlas.Plugin.Lsp.IdeMembers;
 
 type
   TAtlasIdeMemberCollector = class
@@ -29,8 +29,9 @@ uses
   System.SysUtils,
   System.TypInfo,
   System.Generics.Collections,
-  Atlas.Core.Lsp.IdeTypes,
-  Atlas.IDE.CodeInsight.IdeTypes;
+  Atlas.Plugin.Lsp.IdeTypes,
+  Atlas.IDE.CodeInsight.IdeTypes,
+  Atlas.Plugin.Diagnostics.Guard;
 
 /// <summary>Typ als Text mit Unit (System.Integer); '' ohne Typ oder bei namenlosen Typen.</summary>
 function TypeText(AType: TRttiType): string;
@@ -50,8 +51,12 @@ begin
       Result := AType.Name;
     end;
   except
-    on Exception do
+    on E: Exception do
     begin
+      if not ((E is ENonPublicType) or (E is EInsufficientRtti)) then
+      begin
+        raise;
+      end;
       Result := AType.Name;
     end;
   end;
@@ -328,10 +333,12 @@ var
 begin
   AFailed := 0;
   mFolders := TAtlasIdeTypeCollector.SkippedFolders;
-  mWanted := TDictionary<string, Boolean>.Create;
-  mDetails := TList<TAtlasIdeTypeDetail>.Create;
-  mContext := TRttiContext.Create;
+  mWanted := nil;
+  mDetails := nil;
   try
+    mWanted := TDictionary<string, Boolean>.Create;
+    mDetails := TList<TAtlasIdeTypeDetail>.Create;
+    mContext := TRttiContext.Create;
     for mUnit in AUnits do
     begin
       mWanted.AddOrSetValue(UpperCase(mUnit), True);
@@ -346,8 +353,9 @@ begin
       try
         AddPackageDetails(mPackage, mWanted, mDetails);
       except
-        on Exception do
+        on E: Exception do
         begin
+          TAtlasGuard.Log('Code Insight: Package-RTTI unlesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
           Inc(AFailed);
         end;
       end;

@@ -47,12 +47,18 @@ implementation
 
 uses
   Vcl.Controls,
-  Atlas.UI.Strings,
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Settings.Page.Sheets;
 
 const
   // Höhe des Hinweises zur Teamdatei.
   cTeamFileHintHeight = 36;
+  /// <summary>Breite des Knopfs „Projektdatei öffnen“ (längere Beschriftung als die übrigen Knöpfe).</summary>
+  cTeamFileOpenWidth = 180;
+  /// <summary>Höhe der Werte aus der Projektdatei (bis etwa zehn Zeilen).</summary>
+  cTeamFileInfoHeight = 180;
+  /// <summary>Höhe der Zeile mit den Vorlagen aus der Projektdatei.</summary>
+  cTeamSnippetsHeight = 20;
 
 /// <summary>Fehler einer ungültigen Projektdatei; mit Zeile und Spalte, wenn bekannt: Dort steht er im JSON.
 /// </summary>
@@ -142,16 +148,12 @@ begin
   FTeamFile.OnClick := TeamFileClick;
   Attach(AddWrappedLabel(cTeamFileHintHeight,
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileHint)).Parent, FTeamFile);
-  mPanel := AddPanel(32);
-  FTeamFileOpen := TButton.Create(FPage);
-  FTeamFileOpen.Parent := mPanel;
-  FTeamFileOpen.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileOpen);
-  FTeamFileOpen.Left := 0;
-  FTeamFileOpen.Top := FTeamFileOpen.ScaleValue(3);
-  FTeamFileOpen.Width := FTeamFileOpen.ScaleValue(180);
-  FTeamFileOpen.OnClick := TeamFileOpenClick;
+  mPanel := AddPanel(cButtonRowHeight);
+  FTeamFileOpen := AddColumnButton(mPanel, 0, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsTeamFileOpen),
+    TeamFileOpenClick);
+  FTeamFileOpen.Width := FTeamFileOpen.ScaleValue(cTeamFileOpenWidth);
   Attach(mPanel, FTeamFile);
-  FTeamFileInfo := AddWrappedLabel(180, '');
+  FTeamFileInfo := AddWrappedLabel(cTeamFileInfoHeight, '');
   Attach(FTeamFileInfo.Parent, FTeamFile);
   RefreshTeamFile;
 end;
@@ -173,7 +175,7 @@ end;
 procedure TAtlasSettingsTeamFilePart.Build;
 begin
   // Was beim Übernehmen eingefügt wird.
-  AddSheet(TAtlasTextId.SettingsTabInsert);
+  AddSheet(TAtlasSettingsTextId.SettingsTabInsert);
   BindCheck('AutoParentheses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsParentheses)));
   BindCheck('FixCase', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsFixCase)));
   BindCheck('CommitCharacters', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCommitChars)));
@@ -186,12 +188,12 @@ begin
   BindCheck('ImportIdeTemplates',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsImportIdeTemplates)));
   // Vorlagen aus der Projektdatei (#486); leer ohne .atlas.
-  FTeamSnippets := AddWrappedLabel(20, '');
+  FTeamSnippets := AddWrappedLabel(cTeamSnippetsHeight, '');
 end;
 
 procedure TAtlasSettingsTeamFilePart.Build2;
 begin
-  AddSheet(TAtlasTextId.SettingsTabTeamFile);
+  AddSheet(TAtlasSettingsTextId.SettingsTabTeamFile);
   AddTeamFileSection;
 end;
 

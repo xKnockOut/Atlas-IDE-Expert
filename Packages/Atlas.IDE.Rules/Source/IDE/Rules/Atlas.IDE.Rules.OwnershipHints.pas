@@ -32,7 +32,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Rules.Ownership,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   TAtlasIdeOwnershipHints = class
@@ -110,25 +110,26 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Rules.OwnershipPlan,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Rules.Strings,
   Atlas.IDE.Editor.Lens,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style;
 
 const
   cTimeoutMs = 20000;
@@ -150,16 +151,6 @@ begin
 end;
 
 { Hilfen }
-
-procedure InvalidateEditor;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
 
 /// <summary>Antwort an die Marke, solange sie lebt (Regel 3); eigene Routine, damit die Referenz nur Zustand,
 /// Generation und Datei einfängt.</summary>
@@ -216,7 +207,7 @@ begin
   end;
   if Wanted then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -247,7 +238,7 @@ begin
   FScope := nil;
   if mShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
   inherited Destroy;
 end;
@@ -265,7 +256,7 @@ begin
   HideTip;
   if mShowing then
   begin
-    InvalidateEditor;
+    TAtlasIdeEditorRefresh.RepaintTop;
   end;
 end;
 
@@ -301,7 +292,7 @@ begin
   FMarks := TAtlasOwnershipMarks.Parse(AJson);
   FHits := nil;
   HideTip;
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 procedure TAtlasIdeOwnershipHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
@@ -369,7 +360,7 @@ var
 begin
   mCell := TAtlasLensPill.CellAfter(AContext, ALine);
   mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  mBack := TAtlasLensPill.BackAt(AContext.Canvas, mCell.Left, ARect.Top + 1);
+  mBack := TAtlasIdeStyle.SampleBack(AContext.Canvas, mCell.Left, ARect.Top + 1);
   mColors := TAtlasColors.ForBackground(mBack);
   case TAtlasOwnershipMarks.LineTone(AMarks) of
     TAtlasOwnershipTone.Safe:
@@ -528,8 +519,13 @@ begin
       TAtlasOwnershipTipStep.Close:
         HideTip;
       TAtlasOwnershipTipStep.Show:
-        FTip.ShowNote(TAtlasOwnershipMarks.TipTitle(FHits[FHover].Marks, FTexts),
-          TAtlasOwnershipMarks.TipText(FHits[FHover].Marks, FTexts), Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+        begin
+          // Farben und Schrift des IDE-Themas, sonst hell im dunklen Editor.
+          TAtlasIdeStyle.Apply(FTip, FHoverScreen);
+          FTip.ShowNote(TAtlasOwnershipMarks.TipTitle(FHits[FHover].Marks, FTexts),
+            TAtlasOwnershipMarks.TipText(FHits[FHover].Marks, FTexts),
+            Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+        end;
     end;
   except
     on E: Exception do
@@ -582,7 +578,7 @@ begin
     Exit;
   end;
   // An und aus von „nur Problemfälle“ zeichnet nur neu; die Antwort enthält alle Stellen.
-  InvalidateEditor;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 class function TAtlasIdeOwnershipHints.Wanted: Boolean;

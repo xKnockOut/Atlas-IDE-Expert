@@ -32,26 +32,11 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.Session,
-  Atlas.Core.Editor.LineMove,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Editor.CommentContinuation;
-
-function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
-var
-  mLineText: string;
-begin
-  mLineText := '';
-  if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
-  begin
-    mLineText := ALines[APosition.Line];
-  end;
-  Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(mLineText, APosition.Character, ATabWidth);
-end;
+  Atlas.IDE.Editor.CommentContinuation,
+  Atlas.IDE.Foundation.Navigation;
 
 { TAtlasIdeNewLine }
 
@@ -73,9 +58,9 @@ class procedure TAtlasIdeNewLine.Run(ADirection: TAtlasNewLineDirection);
 var
   mView: IOTAEditView;
   mBuffer: IOTAEditBuffer;
-  mText, mNewText, mLineBreak, mInsert: string;
+  mText, mNewText, mLineBreak: string;
   mLines: TArray<string>;
-  mTabWidth, mStart, mOldLength: Integer;
+  mTabWidth: Integer;
   mDone: TAtlasNewLineResult;
 begin
   if not Enabled then
@@ -103,11 +88,8 @@ begin
   mDone := TAtlasNewLine.Insert(mLines, mView.CursorPos.Line - 1, ADirection,
     Options(TAtlasEditorBuffer.BlockIndent(mBuffer)));
   mNewText := string.Join(mLineBreak, mDone.Lines);
-  if TAtlasLineMover.Difference(mText, mNewText, mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(mBuffer, mText, mStart, mOldLength, mInsert);
-  end;
-  mView.CursorPos := EditPos(mDone.Lines, mDone.Cursor, mTabWidth);
+  TAtlasEditorSnapshots.WriteDifference(mBuffer, mText, mNewText);
+  mView.CursorPos := TAtlasIdeNavigation.EditPosOf(mDone.Lines, mDone.Cursor, mTabWidth);
   mView.MoveViewToCursor;
   mView.Paint;
 end;

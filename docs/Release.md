@@ -2,10 +2,24 @@
 
 Server und Claude-Code-Plugin tragen dieselbe [SemVer](https://semver.org/lang/de/)-Version. Quellen sind `TAtlasVersion.cVersion` (`Packages/Atlas.Text/Source/Product/Atlas.Text.Product.Version.pas`, gemeinsam für Server und Plugin; `TProductVersion` und `TAtlasPluginVersion` verweisen nur darauf) und `version` in `Editors/ClaudeCode/atlas/.claude-plugin/plugin.json` und `.claude-plugin/marketplace.json`; `pwsh Tools/Check-Version.ps1` prüft beide und den Abschnitt in `CHANGELOG.md`.
 
+## Kandidaten
+
+Eine stabile Version `x.y.0` enthält nur Code, der schon in einem Kandidaten (`x.y.0-rc.N`) ausgeliefert war, plus Korrekturen:
+
+- Nach dem letzten Kandidaten kommen nur noch Korrekturen. Ein Umbau (neue Units, Klassen teilen, Abläufe hinter neue Verträge legen, neue Zählweisen von Prüfregeln) bedeutet einen neuen Kandidaten.
+- Ein Kandidat liegt mindestens einen Arbeitstag, bevor die stabile Version daraus wird, und jede neue Funktion ist in ihm einmal aufgerufen worden.
+- Patch-Versionen `x.y.z` (z > 0) enthalten nur Korrekturen; sie brauchen keinen eigenen Kandidaten und werden gegen die vorige stabile Version derselben Reihe geprüft.
+
+`pwsh Tools/Check-ReleaseCandidate.ps1 -Version x.y.z` prüft das; `Set-Version.ps1` ruft es für jede Version ohne Suffix auf, bevor es etwas ändert, und der Release-Workflow prüft das Tag noch einmal. Vergleichsstand ist der jüngste Kandidat derselben Version in der Historie, bei einer Patch-Version ohne Kandidat die vorige stabile Version. Es bricht ab bei einer neuen Unit (`*.pas` unter `Packages/` und `Application/`, Umbenennen zählt als neu), bei mehr als 25 geänderten Units, bei einem Kandidaten, der jünger als 20 Stunden ist, und wenn es für `x.y.0` keinen Kandidaten gibt. Eine begründete Abweichung (etwa ein umbenannter Bezeichner in vielen Units) geht mit `Set-Version.ps1 -Version x.y.z -Reason '<Grund>'`; die Begründung gehört dann als Zeile `Ohne neuen Kandidaten: <Grund>` in den Commit-Text der Version, dort liest sie der Release-Workflow.
+
+Vor jedem Kandidaten erzeugt `pwsh Tools/New-CandidateChecklist.ps1` die Liste zum Abhaken (`Output/Kandidat-Abhaken.md`): jeder Eintrag unter „Neu“, „Experimentell“ und „Geändert“ seit der letzten stabilen Version, mit Befehl, Einstellung und Tastenkürzel aus den Markierungen `<!-- whatsnew … -->`. Jeden Punkt einmal in der IDE aufrufen; was nicht geht, wird im Kandidaten behoben. `-Since x.y.0-rc.1` beschränkt die Liste auf das Neue seit einem Kandidaten, `-IncludeFixes` nimmt die Korrekturen dazu.
+
+Der Integrationszweig `main-merging` wird auf dem Delphi-Runner nach jedem Push gebaut (`server.yml`), damit Übersetzungsfehler nicht erst vor dem Release auffallen. Ohne Runner gilt dasselbe von Hand: nach jedem Schwung zusammengeführter Pull Requests einmal mit Delphi bauen und die Tests laufen lassen, bevor der nächste Schwung kommt.
+
 ## Ablauf
 
 1. Änderungen laufend als Fragment in `changelog.d/` eintragen, je Pull Request eine Datei (Aufbau in `changelog.d/README.md`, Ablauf in `docs/Zusammenfuehren.md`); `CHANGELOG.md` selbst ändert erst der Release. Einträge für die Karte „Neu in Atlas“ (#756) bekommen am Zeilenende eine Markierung `<!-- whatsnew … -->` (Felder `title`, `text`, `setting`, `key`, `command`, `sample`, `line`; siehe `Tools/Update-WhatsNew.ps1`); Beispieldateien liegen in `Setup/Beispiele`. Der Release erzeugt daraus `whatsnew.json` im Installationspaket, die Release-Notizen enthalten die Markierungen nicht. Die Tipps der Karte „Atlas entdecken“ (#757) stehen in `Setup/tips.json` mit Bildern in `Setup/Tipps`; `Tools/Check-Tips.ps1` prüft sie (Befehle, Einstellungen, Bilder samt Größe und `@2x`-Datei, Vorlagen, Stellen in den Beispielen), der Release kopiert beide unverändert ins Paket. Neuer Befehl oder neue Funktion: Tipp in `Setup/tips.json` ergänzen (siehe Abschnitt „Bilder der Tipps“). Die lokale HTML-Doku für „Atlas-Doku“ (#766) erzeugt `Tools/Build-Docs.ps1` aus `README_DE.md`, den Seiten unter `docs/` und `CHANGELOG.md` in den Ordner `Doku` des Pakets; Verweise auf andere Dateien zeigen ins Repository auf GitHub.
-2. `pwsh Tools/Set-Version.ps1 -Version 0.2.0` setzt die Version überall, übernimmt die Fragmente aus `changelog.d/` unter `## [Unveröffentlicht]`, legt den Changelog-Abschnitt an und erneuert die Spalte Units der Pakettabelle in README.md und README_DE.md. Ab dann darf der erste Pull Request, der einen Vertrag von Base ändert, die Vertragsversion wieder um eins erhöhen (`Tools/Check-ContractVersion.ps1`).
+2. `pwsh Tools/Set-Version.ps1 -Version 0.2.0` prüft bei einer stabilen Version die Regel der Kandidaten (Abschnitt oben), setzt die Version überall, übernimmt die Fragmente aus `changelog.d/` unter `## [Unveröffentlicht]`, legt den Changelog-Abschnitt an und erneuert die Spalte Units der Pakettabelle in README.md und README_DE.md. Dazu schreibt es mit `Tools/Update-VersionInfo.ps1` die Versionsressource in alle ausgelieferten Projekte (`.dproj` unter `Packages/` und `Application/`, `{$R *.res}` in der `.dpk`/`.dpr`): Produktversion als SemVer-Text, Herausgeber, ProgramID `io.github.xknockout.atlas.<Projekt>` und eine numerische Dateiversion. Deren vierte Stelle ordnet Vorabversionen vor die stabile: `alpha.N` = 1000 + N, `beta.N` = 2000 + N, `rc.N` = 3000 + N, stabil = 9000 (2.3.0-rc.1 ist 2.3.0.3001, 2.3.0 ist 2.3.0.9000); andere Vorabkennungen lehnt das Skript ab. `Check-Version.ps1` prüft die Ressource mit. Ab dann darf der erste Pull Request, der einen Vertrag von Base ändert, die Vertragsversion wieder um eins erhöhen (`Tools/Check-ContractVersion.ps1`).
    Die Release-Notizen liefert `pwsh Tools/Get-ReleaseNotes.ps1 -Version 0.2.0`: Gibt es `docs/Release-Notizen/<Version>.md`, ist das die kurze Fassung (mit Verweis auf den Changelog), sonst der Changelog-Abschnitt ohne die whatsnew-Markierungen. GitHub nimmt höchstens 125000 Zeichen; längere Notizen lässt das Skript schon in der CI (Workflow Package-Abhängigkeiten) und vor dem Bauen im Release scheitern. Für 1.1.0 war der Abschnitt rund 200000 Zeichen lang, für 1.2.0 rund 200000, deshalb gibt es `docs/Release-Notizen/1.1.0.md` und `docs/Release-Notizen/1.2.0.md`. Ab 2.0 ist die kurze Fassung zweisprachig: erst Deutsch, nach einer Linie `---` Englisch (`docs/Release-Notizen/2.0.0-beta.1.md`).
 3. Committen, mergen, dann `git tag v0.2.0` und `git push origin v0.2.0`.
 4. `.github/workflows/release.yml` prüft die Versionen, baut den Server (Win64 Release) auf dem Delphi-Runner, packt das Claude-Code-Plugin mit EXE und legt das GitHub Release mit EXE, Map-Datei, Plugin und den Release-Notizen an. Versionen `0.x` und mit Suffix (`-beta.1`) gelten als Vorabversion.
@@ -15,8 +29,39 @@ Mit Delphi-Runner baut der Workflow außerdem das Plugin (Win32 und Win64) und h
 Ohne Delphi-Runner (`DELPHI_RUNNER` nicht `true`) enthält das Release nur die Notizen, den Quelltext-ZIP und eine Versionsdatei ohne Paket. Das Plugin meldet die Version dann, der Update-Installer bricht aber mit „kein Paket für diese IDE“ ab (#1849). So kommt das Paket nachträglich dazu:
 
 1. Mit Delphi 13 aus dem getaggten Stand die Release-Builds erzeugen: `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, `AtlasServer`, `AtlasUpdate` und alle Plugin-Packages für Win64, die Plugin-Packages zusätzlich für Win32, jeweils Konfiguration Release.
-2. Nachdem der Release-Workflow zum Tag gelaufen ist: `pwsh Tools/Publish-ReleasePackage.ps1 -Version 2.0.0-beta.1` (mit `-WhatIf` zuerst ansehen). Das Skript packt `atlas-ide-expert-<Version>.zip` mit `Tools/New-ReleasePackage.ps1` (derselbe Aufbau wie auf dem Runner) und lädt es mit `AtlasServer.exe`/`.map` ins Release. Danach schreibt es `atlas-version.json` mit Paket und Quelltext (SHA-256) neu, ebenso `atlas-version-beta.json` im Kanal `update-channel`, wenn der Kanal auf diese Version zeigt. Es braucht die GitHub-CLI `gh` mit Schreibrecht.
-3. Das Paket bricht ab, wenn eine EXE, BPL oder Map fehlt, die Version im Quelltext nicht passt oder ein Build älter als der letzte Commit ist. Unsigniert prüft der Update-Installer nur die SHA-256.
+2. Nachdem der Release-Workflow zum Tag gelaufen ist: `pwsh Tools/Publish-ReleasePackage.ps1 -Version 2.0.0-beta.1 -SigningKey <PEM-Datei>` (mit `-WhatIf` zuerst ansehen; statt `-SigningKey` geht die Umgebungsvariable `ATLAS_UPDATE_SIGNING_KEY` mit dem Inhalt der PEM-Datei). Das Skript packt `atlas-ide-expert-<Version>.zip` mit `Tools/New-ReleasePackage.ps1` (derselbe Aufbau wie auf dem Runner) und lädt es mit `AtlasServer.exe`/`.map` ins Release. Danach schreibt es `atlas-version.json` mit Paket und Quelltext (SHA-256) neu und signiert sie (Abschnitt „Signatur der Versionsdatei“), ebenso `atlas-version-beta.json` im Kanal `update-channel`, wenn der Kanal auf diese Version zeigt. Ohne Schlüssel bricht es vor dem ersten Hochladen ab: Die neue Datei passte sonst nicht mehr zur Signatur des Workflows, und AtlasUpdate lehnte jedes Update ab. Ist `AtlasUpdate.exe` im Paket nicht Authenticode-signiert, schreibt es die Release-Notizen mit dem Hinweis auf unsignierte Binärdateien neu. Es braucht die GitHub-CLI `gh` mit Schreibrecht.
+3. Das Paket bricht ab, wenn eine EXE, BPL oder Map fehlt, die Version im Quelltext nicht passt oder ein Build älter als der letzte Commit ist. Ohne Code-Signing-Zertifikat prüft der Update-Installer die Dateien über die SHA-256 aus der signierten Versionsdatei.
+
+## Changelog je Hauptversion
+
+`CHANGELOG.md` ist mit allen Versionen seit 0.x zu groß, um es zu lesen oder zu mergen. Beim nächsten Release wird es einmalig je Hauptversion geteilt, als eigener Schritt vor `Set-Version.ps1`:
+
+1. `CHANGELOG.md` behält `## [Unveröffentlicht]` und die Abschnitte der laufenden Hauptversion; die Abschnitte älterer Hauptversionen ziehen unverändert nach `docs/changelog/CHANGELOG-<Hauptversion>.x.md` (`0.x`, `1.x`), am Ende von `CHANGELOG.md` steht je Datei ein Verweis.
+2. Die Leser des Changelogs nachziehen, damit sie Abschnitte älterer Versionen in den Teildateien finden: `Tools/Get-ChangelogSection.ps1`, `Tools/Get-ReleaseNotes.ps1`, `Tools/Update-Changelog.ps1`, `Tools/Update-WhatsNew.ps1`, `Tools/Set-Version.ps1`, `Tools/Check-Version.ps1`, `Tools/New-CandidateChecklist.ps1`, `Tools/Build-Docs.ps1`, `Tools/Merge-Integration.py` und die Workflows `release.yml` und `package-dependencies.yml`.
+3. Mit jeder neuen Hauptversion wandert die vorige auf dieselbe Weise in ihre Teildatei.
+
+Bis dahin gilt weiter: Einträge nur als Fragment in `changelog.d/`.
+
+## Signatur der Versionsdatei
+
+Updates sind über die Versionsdatei an den Herausgeber gebunden, nicht über ein Code-Signing-Zertifikat: Jedes Release legt `atlas-version.json.sig` (und `atlas-version-beta.json.sig` im Kanal `update-channel`) neben die Versionsdatei, eine ECDSA-P-256-Signatur über die Bytes der Datei, als 128 Hexziffern. `AtlasUpdate.exe prepare` lädt beide und prüft die Signatur gegen die öffentlichen Schlüssel in `Packages/Atlas.Common/Source/Updates/Atlas.Common.Updates.ManifestSignature.pas` (`cPrimaryKey`, `cReserveKey`), bevor es Adressen oder Prüfsummen daraus verwendet. Eine unlesbare oder fremde Signatur bricht immer ab (`manifestSignature`). Eine fehlende Signatur ist ein Hinweis (`manifestUnsigned`), solange `TUpdateManifestSignature.cRequired` `False` ist; in der ersten Version, die nach einer Version mit signierter Versionsdatei erscheint, wird die Konstante `True`.
+
+Das Code-Signing-Zertifikat (`SIGN_CERT_BASE64`) bleibt freiwillig. Ohne es baut der Release trotzdem, und die Release-Notizen bekommen den Hinweis „Binärdateien nicht signiert; Updates werden über die signierte Versionsdatei geprüft“ (`Tools/Get-ReleaseNotes.ps1 -UnsignedBinaries`).
+
+**Schlüssel anlegen (einmalig):**
+
+1. Auf dem eigenen Rechner, außerhalb des Repositorys: `pwsh Tools/New-UpdateSigningKey.ps1 -OutFile <Ordner>\update-haupt.pem` und `pwsh Tools/New-UpdateSigningKey.ps1 -OutFile <Ordner>\update-reserve.pem`. Jeder Aufruf gibt den öffentlichen Schlüssel als 128 Hexziffern aus.
+2. Die beiden öffentlichen Schlüssel als `cPrimaryKey` und `cReserveKey` eintragen (je in zwei Literale zu 64 Zeichen umbrechen) und committen.
+3. Den Inhalt von `update-haupt.pem` als Geheimnis `ATLAS_UPDATE_SIGNING_KEY` im Repository hinterlegen (Settings › Secrets and variables › Actions). Beide PEM-Dateien getrennt sicher verwahren (Passwortmanager, Datenträger offline); den Reserveschlüssel nirgends sonst ablegen.
+4. `pwsh Tools/Test-VersionFileSignature.ps1` prüft, dass zwei gültige, verschiedene Schlüssel eingetragen sind; `pwsh Tools/Sign-VersionFile.ps1 -VersionFile <Datei> -Verify` prüft eine Signaturdatei.
+
+`Tools/Sign-VersionFile.ps1` prüft nach dem Signieren gegen die eingetragenen Schlüssel und bricht ab, wenn der private Schlüssel zu keinem gehört; ein falsches Geheimnis lässt also den Release scheitern statt die Updates.
+
+**Schlüssel wechseln** (Hauptschlüssel verloren, verraten oder planmäßig): Installierte Updater kennen nur die Schlüssel, die sie eingebaut haben. Deshalb zuerst mit dem Reserveschlüssel weitersignieren, dann einen neuen Reserveschlüssel ausliefern:
+
+1. Geheimnis `ATLAS_UPDATE_SIGNING_KEY` auf den Inhalt von `update-reserve.pem` setzen. Alle installierten Versionen ab 2.3 nehmen diese Signatur schon an.
+2. Neuen Schlüssel anlegen (`New-UpdateSigningKey.ps1`); im Quelltext wird der bisherige Reserveschlüssel `cPrimaryKey`, der neue `cReserveKey`. Ist der alte Hauptschlüssel verraten, fällt er damit aus der Liste; ein Release mit dieser Liste so bald wie möglich veröffentlichen.
+3. Wer noch einen Updater hat, der nur den verratenen Schlüssel kennt, ist bis zum Update auf das neue Release nicht geschützt; im Release-Text darauf hinweisen. Sind beide Schlüssel verloren, hilft nur eine Neuinstallation aus dem Release-Paket.
 
 ## Bilder der Tipps
 
@@ -33,4 +78,5 @@ Die Bilder im Repository sind mit den Schriften DejaVu Sans und DejaVu Sans Mono
 
 | Geheimnis | Wirkung |
 |---|---|
-| `SIGN_CERT_BASE64`, `SIGN_CERT_PASSWORD` | Signiert die EXE mit `signtool` (PFX als Base64), vermeidet SmartScreen-Warnungen |
+| `SIGN_CERT_BASE64`, `SIGN_CERT_PASSWORD` | Signiert die EXE mit `signtool` (PFX als Base64), vermeidet SmartScreen-Warnungen; ohne es Hinweis in den Release-Notizen |
+| `ATLAS_UPDATE_SIGNING_KEY` | Privater Schlüssel (PEM) für die Signatur der Versionsdatei (Abschnitt „Signatur der Versionsdatei“); ohne es bleibt die Versionsdatei unsigniert und AtlasUpdate warnt |

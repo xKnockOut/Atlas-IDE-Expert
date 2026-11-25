@@ -35,10 +35,10 @@ uses
   Vcl.AppEvnts,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.SmartPaste,
   Atlas.UI.Editor.SmartPaste,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TAtlasSmartPasteSessionFunc = reference to function: TLspSession;
@@ -111,43 +111,20 @@ implementation
 uses
   System.Math,
   System.JSON,
-  Vcl.Controls,
+  Atlas.ToolsApi.Editor.Caret,
   Vcl.Clipbrd,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.SmartIndent;
-
-function IsEditorWindow(AWnd: HWND): Boolean;
-var
-  mControl: TWinControl;
-begin
-  mControl := FindControl(AWnd);
-  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
-end;
-
-/// <summary>Bildschirmstelle unter der Zeile mit der Schreibmarke.</summary>
-function CaretPoint: TPoint;
-var
-  mFocus: HWND;
-begin
-  Result := Mouse.CursorPos;
-  mFocus := GetFocus;
-  if (mFocus <> 0) and GetCaretPos(Result) then
-  begin
-    Inc(Result.Y, 16);
-    Winapi.Windows.ClientToScreen(mFocus, Result);
-  end;
-end;
 
 { TAtlasIdeSmartPaste }
 
@@ -198,7 +175,7 @@ begin
   try
     case Msg.message of
       WM_KEYDOWN, WM_SYSKEYDOWN:
-        if IsEditorWindow(Msg.hwnd) then
+        if TAtlasEditorBuffer.IsEditorWindow(Msg.hwnd) then
         begin
           KeyDown(Msg, Handled);
         end;
@@ -209,7 +186,7 @@ begin
           begin
             FWindow.Dismiss;
           end;
-          if IsEditorWindow(Msg.hwnd) then
+          if TAtlasEditorBuffer.IsEditorWindow(Msg.hwnd) then
           begin
             FArmed := True;
           end;
@@ -263,8 +240,11 @@ begin
       end;
     except
       // Zwischenablage gerade von einem anderen Programm gesperrt: beim nächsten Mal.
-      FClipSequence := 0;
-      FClipText := '';
+      on EClipboardException do
+      begin
+        FClipSequence := 0;
+        FClipText := '';
+      end;
     end;
     FClipLines := TTextLines.SplitLines(FClipText);
   end;
@@ -311,7 +291,8 @@ begin
         end;
       except
         // Server langsam oder weg: kein Fenster, das Einfügen bleibt, wie es ist.
-        Analysis := Default(TAtlasPasteAnalysis);
+        on ELspClientError do
+          Analysis := Default(TAtlasPasteAnalysis);
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.SmartPaste,
@@ -365,7 +346,7 @@ begin
           end);
       end;
   end;
-  mPoint := CaretPoint;
+  mPoint := TAtlasIdeCaret.BelowLine;
   FWindow.Colors := TAtlasIdeStyle.Colors;
   FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
   FWindow.ShowFor(AAnalysis, mPoint);
@@ -513,24 +494,20 @@ end;
 procedure WriteIndents(const ABuffer: IOTAEditBuffer; AStartLine: Integer; const AEdits: TArray<TAtlasIndentEdit>);
 var
   mText: string;
-  mEdit: TAtlasIndentEdit;
-  mWriter: IOTAEditWriter;
-  mUtf8: UTF8String;
+  mRanges: TArray<TLspTextRange>;
+  mIndex: Integer;
 begin
   mText := TAtlasEditorBuffer.Text(ABuffer);
-  mWriter := ABuffer.CreateUndoableWriter;
-  for mEdit in AEdits do
+  mRanges := nil;
+  SetLength(mRanges, Length(AEdits));
+  for mIndex := 0 to High(AEdits) do
   begin
-    mWriter.CopyTo(TAtlasEditorBuffer.ByteOffset(mText, AStartLine + mEdit.Line, 0));
-    mWriter.DeleteTo(TAtlasEditorBuffer.ByteOffset(mText, AStartLine + mEdit.Line, mEdit.Remove));
-    mUtf8 := UTF8Encode(mEdit.Indent);
-    if mUtf8 <> '' then
-    begin
-      mWriter.Insert(PAnsiChar(mUtf8));
-    end;
+    mRanges[mIndex].StartOffset := TAtlasEditorBuffer.CharOffset(mText, AStartLine + AEdits[mIndex].Line, 0);
+    mRanges[mIndex].EndOffset := TAtlasEditorBuffer.CharOffset(mText, AStartLine + AEdits[mIndex].Line,
+      AEdits[mIndex].Remove);
+    mRanges[mIndex].NewText := AEdits[mIndex].Indent;
   end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
+  TAtlasIdeWorkspaceEdit.WriteBuffer(ABuffer, mText, mRanges);
 end;
 
 /// <summary>Cursor in Zeile ALine (ab 0) an Zeichen ACharacter (höchstens ans Zeilenende).</summary>

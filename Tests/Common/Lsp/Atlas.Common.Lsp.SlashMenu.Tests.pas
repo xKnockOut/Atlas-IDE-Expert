@@ -26,9 +26,6 @@ type
     function Arguments(ALine, AEndLine: Integer; const AName, AArgument: string): TJSONArray; overload;
     function Names(AResult: TJSONValue): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -134,22 +131,6 @@ begin
     Result := Result + ',' + mItem.GetValue<string>('name');
   end;
   Result := Result + ',';
-end;
-
-procedure TLspSlashMenuTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    MenuLeavesOutDisabledCommands;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    ImplementsMissingInterfaceMethods;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TLspSlashMenuTests.Setup;
@@ -414,7 +395,7 @@ begin
     mPosition.AddElement(mSpot);
     mPosition.Add(-1);
     try
-      // Nach /override, wie im Mockup.
+      // Direkt nach /override.
       mAnswer := FMenu.ExecuteMenu(mPosition);
       try
         mNames_ := Names(mAnswer);

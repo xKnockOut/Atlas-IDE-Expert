@@ -58,7 +58,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Architecture.UsesGraph,
@@ -92,7 +92,7 @@ begin
     mEdit.NewText := mItem.GetValue<string>('newText');
     mEdits := mEdits + [mEdit];
   end;
-  Result := TChangeSignature.ApplyEdits(AText, mEdits);
+  Result := TTextChanges.Apply(AText, mEdits);
 end;
 
 { TLspUnitRelationsTests }

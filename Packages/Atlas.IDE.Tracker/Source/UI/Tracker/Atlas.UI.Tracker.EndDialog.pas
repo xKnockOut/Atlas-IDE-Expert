@@ -67,7 +67,7 @@ uses
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.CommentEditor,
   Atlas.UI.Tracker.EndPullRows,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Ergebnis des Schreibens, im Hauptthread.</summary>
@@ -326,15 +326,17 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Graphics,
+  Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Transitions,
   Atlas.Core.Tracker.TimeLog,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.Time.Strings,
   Atlas.UI.Tracker.GitHubStrings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
@@ -407,7 +409,7 @@ begin
   Result.Caption := ACaption;
   FitButton(ADialog, Result);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
+  TAtlasControlScaling.SetMargins(Result, 0, 0, cGap, cGap div 2);
 end;
 
 /// <summary>Fehler rot in der Hinweiszeile ANote.</summary>
@@ -1028,7 +1030,7 @@ begin
   FParts.Editor.Parent := Self;
   FParts.Editor.Align := alTop;
   FParts.Editor.AlignWithMargins := True;
-  FParts.Editor.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  TAtlasControlScaling.SetMargins(FParts.Editor, cGap, cGap div 2, cGap, 0);
   FParts.Editor.Top := mRow.Top + mRow.Height + 1;
   FParts.Editor.Height := ScaleValue(cCommentHeight + cEditorBarHeight);
   FParts.Editor.Events := TAtlasCommentEditorEvents.Create(SendClick, EditorCancel);
@@ -1073,7 +1075,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := ATop;
   FParts.AddField := NewButton(Self, mButtons, '');
   FParts.AddField.Visible := False;
@@ -1120,7 +1122,8 @@ begin
     ModalResult := mrOk;
     Exit;
   end;
-  FParts.Note.Font.Color := clWindowText;
+  // ShowErrorNote nahm dem Hinweis seFont: zurück an den Stil, sonst bliebe die Schrift im dunklen Thema schwarz.
+  TAtlasUiTheme.UseFontColor(FParts.Note, clDefault);
   FParts.Note.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndSending);
   SetBusy(True);
   mDialog := Self;
@@ -1512,7 +1515,7 @@ begin
     TAtlasCiFetchError.None:
       Exit('');
     TAtlasCiFetchError.Unauthorized:
-      if AResult.Status = 403 then
+      if AResult.Status = TAtlasHttpStatus.cForbidden then
       begin
         Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerWriteForbidden, [AKey, AResult.Status]);
       end

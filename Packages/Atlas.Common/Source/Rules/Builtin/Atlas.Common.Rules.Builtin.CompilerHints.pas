@@ -62,7 +62,8 @@ uses
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.Units,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -130,9 +131,7 @@ type
     /// <summary>Typname der sicher deklarierten Variablen AArgument, wenn er aus System stammt.</summary>
     function ArgumentTypeName(AArgument: TSyntaxNode; out ATypeName: string): Boolean;
     procedure CheckCall(ANode: TSyntaxNode);
-    function InsideWith(ANode: TSyntaxNode): Boolean;
     procedure VisitDeclarations;
-    procedure VisitCalls;
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     destructor Destroy; override;
@@ -363,8 +362,8 @@ begin
     Exit;
   end;
   ACallee := ANode[0];
-  AArgument := Unwrapped(ANode[1]);
-  Result := (AArgument.Kind = TSyntaxKind.Identifier) and not InsideWith(ANode) and HintsEnabled(ANode.StartOffset);
+  AArgument := TSyntaxNodes.Unparen(ANode[1]);
+  Result := (AArgument.Kind = TSyntaxKind.Identifier) and (TSyntaxNodes.Nearest(ANode, [TSyntaxKind.WithStatement]) = nil) and HintsEnabled(ANode.StartOffset);
   if not Result then
   begin
     Exit;
@@ -426,19 +425,6 @@ begin
   end;
 end;
 
-function TCompilerHintsCheck.InsideWith(ANode: TSyntaxNode): Boolean;
-begin
-  while ANode <> nil do
-  begin
-    if ANode.Kind = TSyntaxKind.WithStatement then
-    begin
-      Exit(True);
-    end;
-    ANode := ANode.Parent;
-  end;
-  Result := False;
-end;
-
 procedure TCompilerHintsCheck.VisitDeclarations;
 var
   mPending: TStack<TSyntaxNode>;
@@ -475,34 +461,9 @@ begin
   end;
 end;
 
-procedure TCompilerHintsCheck.VisitCalls;
-var
-  mPending: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
-begin
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(FContext.Tree.Root);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      if mNode.Kind = TSyntaxKind.Call then
-      begin
-        CheckCall(mNode);
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
-end;
-
 procedure TCompilerHintsCheck.Run;
 var
+  mCall: TSyntaxNode;
   mCache: IRuleDerivedCache;
 begin
   if ContainsText(FContext.Text, 'published') then
@@ -516,7 +477,10 @@ begin
   if ContainsText(FContext.Text, 'Initialize') or ContainsText(FContext.Text, 'Finalize') then
   begin
     FScope := TTypedScope.Create(FContext);
-    VisitCalls;
+    for mCall in TSyntaxNodes.OfKind(FContext.Tree.Root, TSyntaxKind.Call) do
+    begin
+      CheckCall(mCall);
+    end;
   end;
 end;
 

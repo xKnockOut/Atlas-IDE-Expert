@@ -16,7 +16,7 @@ uses
   Atlas.Core.Projects.VersionControl,
   Atlas.Core.VersionControl.ServerCheck,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.VersionControl.SettingsPart;
 
 type
@@ -196,7 +196,7 @@ uses
   Vcl.Dialogs,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.ServerAccess,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.UI.VersionControl.SettingsKind,
   Atlas.UI.VersionControl.SettingsProject;
 
@@ -217,6 +217,11 @@ const
   cVcsServerStateColumn = 180;
   cVcsCheckWidth = 100;
   cVcsCheckAllWidth = 110;
+  /// <summary>Höhe der Liste der Projekte bzw. der Server.</summary>
+  cVcsProjectListHeight = 110;
+  cVcsServerListHeight = 96;
+  /// <summary>Gespeicherte Werte der Art in der Reihenfolge der Auswahl.</summary>
+  cProviderValues: array[0..3] of string = ('auto', 'git', 'svn', 'off');
 
 /// <summary>Überdeckt die .atlas die persönliche Zeile AMapping (dann wirkt sie nicht)?</summary>
 function VcsProjectCovered(const AContext: TAtlasVcsProjectContext; const AMapping: TAtlasVcsProjectMapping): Boolean;
@@ -313,7 +318,7 @@ begin
   FVcsProjectSelected := -1;
   FVcsContext := TAtlasVcsProjectContext.Empty;
   AddTitle(TAtlasVcsTextId.SettingsVcsProjects);
-  mPanel := AddPanel(110, [cProjectsKey]);
+  mPanel := AddPanel(cVcsProjectListHeight, [cProjectsKey]);
   // Die Zeilen erst mit Fenster (RefreshVcsProjects, auch aus CreateWnd).
   FVcsProjectList := TListView.Create(FPage);
   FVcsProjectList.Parent := mPanel;
@@ -346,20 +351,19 @@ begin
     FVcsProjectList);
   FVcsProjectMainBranch.TextHint := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsGuess);
   // Grund, warum eine Zeile nicht greift oder nicht übernommen wird (.atlas, Pfad doppelt, Leerraum).
-  mPanel := AddPanel(18);
+  mPanel := AddPanel(cStateRowHeight);
   FVcsProjectNote := TLabel.Create(FPage);
   FVcsProjectNote.Parent := mPanel;
-  FVcsProjectNote.Left := FVcsProjectNote.ScaleValue(90);
+  FVcsProjectNote.Left := FVcsProjectNote.ScaleValue(cFieldLeft);
   FVcsProjectNote.Top := 1;
   FVcsProjectNote.Font.Color := clRed;
   Attach(mPanel, FVcsProjectList);
-  mPanel := AddPanel(32);
+  mPanel := AddPanel(cButtonRowHeight);
   FPage.Part<TAtlasSettingsVcsProjectAddPart>.AddButtons(mPanel);
   FVcsProjectRemove := AddRowButton(mPanel, cVcsAddCurrentWidth + cVcsAddWidth + cVcsButtonGap + cVcsButtonGap,
     cVcsRemoveWidth, TAtlasTextId.SettingsIssuesConnectionRemove, VcsProjectRemoveClick);
   Attach(mPanel, FVcsProjectList);
-  mHint := AddWrappedLabel(52, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsHint));
-  mHint.Font.Color := clGrayText;
+  mHint := AddNote(cLongNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectsHint));
   Attach(mHint.Parent, FVcsProjectList);
 end;
 
@@ -407,8 +411,7 @@ begin
     begin
       FVcsProjectMatch.Text := mRows[FVcsProjectSelected].Match;
       FVcsProjectMainBranch.Text := mRows[FVcsProjectSelected].MainBranch;
-      FVcsProjectProvider.Choice := Max(0, IndexText(mRows[FVcsProjectSelected].Provider,
-        ['auto', 'git', 'svn', 'off']));
+      FVcsProjectProvider.Choice := Max(0, IndexText(mRows[FVcsProjectSelected].Provider, cProviderValues));
       VcsProjectNoteFor(mRows[FVcsProjectSelected]);
     end
     else
@@ -501,20 +504,11 @@ var
   mChoice: Integer;
 begin
   mChoice := FVcsProjectProvider.Choice;
-  if FVcsProjectFilling or not VcsProjectEditable or (mChoice < 0) or (mChoice > 3) then
+  if FVcsProjectFilling or not VcsProjectEditable or (mChoice < 0) or (mChoice > High(cProviderValues)) then
   begin
     Exit;
   end;
-  case mChoice of
-    1:
-      FVcsProjects[FVcsProjectSelected].Provider := 'git';
-    2:
-      FVcsProjects[FVcsProjectSelected].Provider := 'svn';
-    3:
-      FVcsProjects[FVcsProjectSelected].Provider := 'off';
-  else
-    FVcsProjects[FVcsProjectSelected].Provider := 'auto';
-  end;
+  FVcsProjects[FVcsProjectSelected].Provider := cProviderValues[mChoice];
   VcsProjectShowItem(FVcsProjectSelected);
 end;
 
@@ -786,7 +780,7 @@ var
 begin
   FVcsServerSelected := -1;
   AddTitle(TAtlasVcsTextId.SettingsVcsServers);
-  mPanel := AddPanel(96);
+  mPanel := AddPanel(cVcsServerListHeight);
   FVcsServerList := TListView.Create(FPage);
   FVcsServerList.Parent := mPanel;
   FVcsServerList.Align := alClient;
@@ -799,7 +793,7 @@ begin
     cVcsServerProjectColumn);
   AddListColumn(FVcsServerList, TAtlasVcsTextId.SettingsVcsServerServer, cVcsServerServerColumn);
   AddListColumn(FVcsServerList, TAtlasVcsTextId.SettingsVcsServerState, cVcsServerStateColumn);
-  mPanel := AddPanel(32);
+  mPanel := AddPanel(cButtonRowHeight);
   FVcsServerCheck := AddRowButton(mPanel, 0, cVcsCheckWidth, TAtlasVcsTextId.SettingsVcsServerCheck,
     VcsServerCheckClick);
   FVcsServerCheckAll := AddRowButton(mPanel, cVcsCheckWidth + cVcsButtonGap, cVcsCheckAllWidth,
@@ -807,14 +801,13 @@ begin
   FVcsServerLogin := AddRowButton(mPanel, cVcsCheckWidth + cVcsCheckAllWidth + cVcsButtonGap + cVcsButtonGap,
     cVcsCheckAllWidth, TAtlasVcsTextId.SettingsVcsServerLogin, VcsServerLoginClick);
   Attach(mPanel, FVcsServerList);
-  mPanel := AddPanel(18);
+  mPanel := AddPanel(cStateRowHeight);
   FVcsServerNote := TLabel.Create(FPage);
   FVcsServerNote.Parent := mPanel;
   FVcsServerNote.Left := 0;
   FVcsServerNote.Top := 1;
   Attach(mPanel, FVcsServerList);
-  mHint := AddWrappedLabel(52, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServersHint));
-  mHint.Font.Color := clGrayText;
+  mHint := AddNote(cLongNoteHeight, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServersHint));
   Attach(mHint.Parent, FVcsServerList);
 end;
 

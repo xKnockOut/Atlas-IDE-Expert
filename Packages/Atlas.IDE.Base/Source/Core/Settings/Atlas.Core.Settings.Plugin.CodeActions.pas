@@ -43,6 +43,9 @@ type
     /// <summary>Hauptmenü Atlas: Einträge mit Bedingung nur, wenn sie passen, etwa Debuggen und Haltepunkte nur mit
     /// offenem Projekt (commands.atlasMenu.contextual).</summary>
     AtlasMenuContextual: Boolean;
+    /// <summary>Untermenü Atlas unter Ansicht mit den andockbaren Atlas-Fenstern (commands.viewMenu.windows).
+    /// </summary>
+    AtlasViewMenu: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginCodeActionsSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -73,6 +76,7 @@ begin
   Result.EditorContextMenuContextual := True;
   Result.EditorContextMenuGroups := TAtlasContextMenuGroupNames.Text(TAtlasContextMenuGroupNames.cAll);
   Result.AtlasMenuContextual := True;
+  Result.AtlasViewMenu := True;
 end;
 
 procedure TAtlasPluginCodeActionsSettings.Normalize;
@@ -96,6 +100,7 @@ begin
   AIo.Flag('EditorContextMenuContextual', EditorContextMenuContextual);
   AIo.Text('EditorContextMenuGroups', EditorContextMenuGroups);
   AIo.Flag('AtlasMenuContextual', AtlasMenuContextual);
+  AIo.Flag('AtlasViewMenu', AtlasViewMenu);
 end;
 
 end.

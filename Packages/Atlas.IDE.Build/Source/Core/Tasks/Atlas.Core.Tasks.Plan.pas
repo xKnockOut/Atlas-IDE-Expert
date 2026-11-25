@@ -20,8 +20,8 @@
 interface
 
 uses
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Tasks.Definitions,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.PreBuild,
   Atlas.Core.Tasks.Runs;
 

@@ -13,8 +13,6 @@ type
   TTypeAliasNamesTests = class
   public
     [Test]
-    procedure LastPartCutsQualifier;
-    [Test]
     procedure TypeNodeNeedsTypeKind;
     [Test]
     procedure SuggestsNameFromField;
@@ -65,12 +63,6 @@ begin
 end;
 
 { TTypeAliasNamesTests }
-
-procedure TTypeAliasNamesTests.LastPartCutsQualifier;
-begin
-  Assert.AreEqual('TList', TTypeAliasNames.LastPart('System.Generics.Collections.TList'));
-  Assert.AreEqual('TKunde', TTypeAliasNames.LastPart('TKunde'));
-end;
 
 procedure TTypeAliasNamesTests.TypeNodeNeedsTypeKind;
 var

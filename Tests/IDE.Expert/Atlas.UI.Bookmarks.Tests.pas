@@ -18,9 +18,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -37,9 +34,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -99,16 +93,6 @@ end;
 
 { TAtlasBookmarkDialogTests }
 
-procedure TAtlasBookmarkDialogTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ShowsSuggestionAndButtons;
-  finally
-    TearDown;
-  end;
-end;
-
 procedure TAtlasBookmarkDialogTests.Setup;
 begin
   FLanguage := TAtlasStrings.Language;
@@ -163,16 +147,6 @@ begin
 end;
 
 { TAtlasBookmarksFrameTests }
-
-procedure TAtlasBookmarksFrameTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ShowsColumnsAndLostBookmarks;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasBookmarksFrameTests.Setup;
 begin

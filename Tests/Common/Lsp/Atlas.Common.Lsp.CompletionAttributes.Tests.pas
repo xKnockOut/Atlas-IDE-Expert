@@ -21,7 +21,6 @@ type
     function ItemsAt(const AMarked: string; const ASettings: TCompletionSettings): TCompletionItems; overload;
     function ItemsAt(const AMarked: string): TCompletionItems; overload;
     function Names(const AItems: TCompletionItems): string;
-    function Find(const AItems: TCompletionItems; const AName: string; out AItem: TCompletionItem): Boolean;
   public
     [Setup]
     procedure Setup;
@@ -62,7 +61,9 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.CompletionAttributes,
-  Atlas.Common.Lsp.SignatureHelp;
+  Atlas.Common.Lsp.SignatureHelp,
+  Atlas.Common.Lsp.Completion.TestSupport,
+  Atlas.Tests.SourceText;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -137,29 +138,6 @@ const
     'end;'#10 +
     'end.';
 
-/// <summary>Text ohne "|" und die Position des "|".</summary>
-function Split(const AMarked: string; out APosition: TTextPosition): string;
-var
-  mIndex, mLine, mCharacter: Integer;
-begin
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 1 to Pos('|', AMarked) - 1 do
-  begin
-    if AMarked[mIndex] = #10 then
-    begin
-      Inc(mLine);
-      mCharacter := 0;
-    end
-    else
-    begin
-      Inc(mCharacter);
-    end;
-  end;
-  APosition := TTextPosition.Create(mLine, mCharacter);
-  Result := StringReplace(AMarked, '|', '', []);
-end;
-
 /// <summary>AMarked ersetzt "{ Attr }" (beginnt es mit "C:", "{ Code }"; mit "U:" kommt "uses DUnitX.TestFramework;"
 /// dazu).</summary>
 function Source(const AMarked: string): string;
@@ -210,7 +188,7 @@ var
   mTree: TSyntaxTree;
   mRequest: TCompletionRequest;
 begin
-  mText := Split(Source(AMarked), mPosition);
+  mText := TTestSource.Unmark(Source(AMarked), mPosition);
   mTree := TPascalParser.Parse(mText);
   mRequest := TCompletionRequest.Create(mText, cHauptFile, mPosition);
   try
@@ -244,23 +222,6 @@ begin
   Result := TrimRight(Result);
 end;
 
-function TCompletionAttributesTests.Find(const AItems: TCompletionItems; const AName: string;
-  out AItem: TCompletionItem): Boolean;
-var
-  mItem: TCompletionItem;
-begin
-  for mItem in AItems.Items do
-  begin
-    if mItem.Name = AName then
-    begin
-      AItem := mItem;
-      Exit(True);
-    end;
-  end;
-  AItem := Default(TCompletionItem);
-  Result := False;
-end;
-
 procedure TCompletionAttributesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
@@ -283,7 +244,7 @@ procedure TCompletionAttributesTests.FindsAttributeBrackets;
     mTokens: TArray<TPascalToken>;
     mIndex, mLast: Integer;
   begin
-    mTokens := TPascalLexer.Tokenize(Split(AMarked, mPosition));
+    mTokens := TPascalLexer.Tokenize(TTestSource.Unmark(AMarked, mPosition));
     mLast := -1;
     for mIndex := 0 to High(mTokens) do
     begin
@@ -326,7 +287,7 @@ var
 begin
   mItems := ItemsAt('[Te|');
   Assert.AreEqual('Test TestCase TearDown', Names(mItems));
-  Assert.IsTrue(Find(mItems, 'Test', mItem));
+  Assert.IsTrue(FindItem(mItems, 'Test', mItem));
   Assert.IsTrue(mItem.Attribute);
   Assert.AreEqual('Test', mItem.InsertText);
   // Der Alias der Fassade geht dem Original vor.
@@ -336,7 +297,7 @@ begin
   // Eingebunden: ohne uses-Eintrag.
   mItems := ItemsAt('U:[Te|');
   Assert.AreEqual('Test TestCase TearDown', Names(mItems));
-  Assert.IsTrue(Find(mItems, 'TestCase', mItem));
+  Assert.IsTrue(FindItem(mItems, 'TestCase', mItem));
   Assert.AreEqual(0, Integer(Length(mItem.AdditionalEdits)));
 end;
 
@@ -352,13 +313,13 @@ var
   mItem: TCompletionItem;
 begin
   mItems := ItemsAt('U:[|');
-  Assert.IsTrue(Find(mItems, 'TestCase', mItem));
+  Assert.IsTrue(FindItem(mItems, 'TestCase', mItem));
   Assert.AreEqual('(const ACaseName: string; const AValues: string)', mItem.Detail);
-  Assert.IsTrue(Find(mItems, 'TearDown', mItem));
+  Assert.IsTrue(FindItem(mItems, 'TearDown', mItem));
   Assert.AreEqual('DUnitX.Attributes', mItem.Detail, 'ohne Konstruktor die Unit');
-  Assert.IsTrue(Find(mItems, 'Marke', mItem));
+  Assert.IsTrue(FindItem(mItems, 'Marke', mItem));
   Assert.AreEqual('(const AText: string)', mItem.Detail);
-  Assert.IsTrue(Find(mItems, 'weak', mItem));
+  Assert.IsTrue(FindItem(mItems, 'weak', mItem));
   Assert.AreEqual('Compiler', mItem.Detail);
   Assert.IsTrue(mItem.Attribute);
 end;
@@ -375,10 +336,10 @@ var
   mItem: TCompletionItem;
 begin
   mItems := ItemsAt('C:A := [A|');
-  Assert.IsTrue(Find(mItems, 'A', mItem), Names(mItems));
+  Assert.IsTrue(FindItem(mItems, 'A', mItem), Names(mItems));
   Assert.IsFalse(mItem.Attribute);
   mItems := ItemsAt('C:A[Le|');
-  Assert.IsFalse(Find(mItems, 'Test', mItem));
+  Assert.IsFalse(FindItem(mItems, 'Test', mItem));
 end;
 
 procedure TCompletionAttributesTests.SwitchOff;
@@ -390,9 +351,9 @@ begin
   mSettings := TCompletionSettings.Default;
   mSettings.Attributes := False;
   mItems := ItemsAt('[Ma|', mSettings);
-  Assert.IsTrue(Find(mItems, 'MarkeAttribute', mItem), Names(mItems));
+  Assert.IsTrue(FindItem(mItems, 'MarkeAttribute', mItem), Names(mItems));
   Assert.IsFalse(mItem.Attribute);
-  Assert.IsFalse(Find(mItems, 'Marke', mItem));
+  Assert.IsFalse(FindItem(mItems, 'Marke', mItem));
 end;
 
 procedure TCompletionAttributesTests.ParameterText;
@@ -411,7 +372,7 @@ procedure TCompletionAttributesTests.SignatureShowsConstructor;
     mPosition: TTextPosition;
     mTree: TSyntaxTree;
   begin
-    mText := Split(Source(AMarked), mPosition);
+    mText := TTestSource.Unmark(Source(AMarked), mPosition);
     mTree := TPascalParser.Parse(mText);
     try
       Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, mTree, mText, cHauptFile,

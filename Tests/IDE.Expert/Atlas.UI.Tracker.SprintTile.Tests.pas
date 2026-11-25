@@ -45,9 +45,9 @@ uses
   Vcl.Forms,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Sprint,
   Atlas.UI.Strings,
-  Atlas.UI.Tracker.SprintTile;
+  Atlas.UI.Tracker.SprintTile,
+  Atlas.UI.Tracker.Contract.Sprint;
 
 type
   /// <summary>Quelle der Kachel für die Tests; merkt sich die Aufrufe.</summary>

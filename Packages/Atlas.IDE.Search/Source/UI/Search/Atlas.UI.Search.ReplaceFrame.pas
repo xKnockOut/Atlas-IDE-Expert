@@ -82,6 +82,10 @@ const
   cCheckOff = '☐';
   cCheckWidth = 32;
   cReplaceWidth = 170;
+  // Spalten Stelle, Text und Vorschau (logische Pixel).
+  cPlaceWidth = 220;
+  cTextWidth = 360;
+  cPreviewWidth = 300;
 
 { TAtlasSearchReplaceFrame }
 
@@ -140,13 +144,13 @@ begin
   mColumn.Width := FList.ScaleValue(cCheckWidth);
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPlace);
-  mColumn.Width := FList.ScaleValue(220);
+  mColumn.Width := FList.ScaleValue(cPlaceWidth);
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnText);
-  mColumn.Width := FList.ScaleValue(360);
+  mColumn.Width := FList.ScaleValue(cTextWidth);
   mColumn := FList.Columns.Add;
   mColumn.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceColumnPreview);
-  mColumn.Width := FList.ScaleValue(300);
+  mColumn.Width := FList.ScaleValue(cPreviewWidth);
   UpdateTitle;
 end;
 

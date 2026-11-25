@@ -21,7 +21,7 @@ type
 
   INeuMitGeerbtem = interface(INurLesen)
     ['{4E1C1D35-2F6B-4C0F-9B7E-0C9A47E1A003}']
-    property Zahl: Integer read GetAnzahl; // ID3 (vorher IG2): neue Property mit geerbtem Getter
+    property Zahl: Integer read GetAnzahl; // ID3: neue Property mit geerbtem Getter
   end;
 
   INurLesenListe<T> = interface

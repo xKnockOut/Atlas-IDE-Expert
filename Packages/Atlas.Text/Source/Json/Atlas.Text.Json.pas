@@ -30,6 +30,8 @@ type
     class function Quote(const AText: string): string; static;
     /// <summary>AItems als JSON-Array von Strings in einer Zeile, getrennt durch ", ".</summary>
     class function List(const AItems: array of string): string; static;
+    /// <summary>AValue als JSON-Literal true oder false.</summary>
+    class function Bool(AValue: Boolean): string; static;
   end;
 
   /// <summary>JSON-Werte aus Pascal-Werten bauen.</summary>
@@ -38,6 +40,18 @@ type
     /// <summary>AItems als JSON-Array von Strings in derselben Reihenfolge. Der Aufrufer gibt das Array frei.
     /// </summary>
     class function Strings(const AItems: array of string): TJSONArray; static;
+    /// <summary>AValue unter AName in AObject; ein leerer Wert bleibt weg.</summary>
+    class procedure AddText(AObject: TJSONObject; const AName, AValue: string); static;
+    /// <summary>true unter AName in AObject, wenn AValue; sonst bleibt der Eintrag weg.</summary>
+    class procedure AddFlag(AObject: TJSONObject; const AName: string; AValue: Boolean); static;
+    /// <summary>Zeitpunkt AValue (UTC) als ISO 8601 mit „Z“; '' für 0 und davor. Gegenstück zu
+    /// TJsonRead.IsoTime.</summary>
+    class function IsoTime(AValue: TDateTime): string; static;
+    /// <summary>AValue als JSON-Text (wie ToJSON) und danach freigeben; '' für nil. Für Werte, die nur für den
+    /// Text gebaut werden.</summary>
+    class function TextAndFree(AValue: TJSONValue): string; static;
+    /// <summary>Argumente eines Serverbefehls an einer Stelle: JSON-Array [AUri, ALine].</summary>
+    class function UriLine(const AUri: string; ALine: Integer): string; static;
   end;
 
   /// <summary>Nachsichtiges Lesen aus TJSONObject: nil, fehlender Wert, null und falscher Typ geben die
@@ -45,6 +59,7 @@ type
   TJsonRead = record
   private
     class function NumberText(AValue: TJSONValue; out AText: string): Boolean; static;
+    class function TryInt64Of(AValue: TJSONValue; out AInt: Int64): Boolean; static;
   public
     /// <summary>AJson als JSON-Wert; nil bei leerem oder ungültigem Text. Der Aufrufer gibt den Wert frei.
     /// </summary>
@@ -54,8 +69,16 @@ type
     class function ParseObject(const AJson: string): TJSONObject; static;
     /// <summary>Wie ParseObject, aber ein leeres Objekt statt nil. Der Aufrufer gibt das Objekt frei.</summary>
     class function ParseObjectOrEmpty(const AJson: string): TJSONObject; static;
+    /// <summary>Zahl "format" im Wurzelobjekt von AJson (Fassung einer Datendatei); 0 bei leerem, ungültigem Text,
+    /// anderem Wert oder ohne Zahl.</summary>
+    class function FormatOf(const AJson: string): Integer; static;
+    /// <summary>AJson als JSON-Array; nil bei leerem, ungültigem Text oder anderem Wert. Der Aufrufer gibt das Array
+    /// frei.</summary>
+    class function ParseArray(const AJson: string): TJSONArray; static;
     /// <summary>AValue als Objekt, sonst nil.</summary>
     class function AsObject(AValue: TJSONValue): TJSONObject; static;
+    /// <summary>Erstes Element von AArray, wenn es ein String ist; sonst (auch ohne Array) ''.</summary>
+    class function FirstText(AArray: TJSONArray): string; static;
     /// <summary>Der Wert AName in AObject; nil, wenn AObject nil ist oder den Namen nicht hat.</summary>
     class function Value(AObject: TJSONObject; const AName: string): TJSONValue; static;
     /// <summary>Zeichenkette AName, sonst ''. Eine Zahl liefert ihren Text (TJSONNumber erbt bis Delphi 12
@@ -85,6 +108,14 @@ type
     class function Obj(AObject: TJSONObject; const AName: string): TJSONObject; static;
     /// <summary>Array AName, sonst nil. Gehört weiter AObject.</summary>
     class function Items(AObject: TJSONObject; const AName: string): TJSONArray; static;
+    /// <summary>Objekte im Array AName in ihrer Reihenfolge; andere Einträge fallen weg, ohne Array leer. Die
+    /// Objekte gehören weiter AObject.</summary>
+    class function Objects(AObject: TJSONObject; const AName: string): TArray<TJSONObject>; static;
+    /// <summary>Wert AName als JSON-Text (TJSONValue.ToJSON, null als "null"); '' ohne Wert.</summary>
+    class function Json(AObject: TJSONObject; const AName: string): string; static;
+    /// <summary>Zeitpunkt AName nach ISO 8601 (Zeichenkette mit Zeitzone); mit AReturnUTC in UTC, sonst in
+    /// Ortszeit. 0 ohne Wert, bei leerem, unlesbarem Text oder anderem Typ.</summary>
+    class function IsoTime(AObject: TJSONObject; const AName: string; AReturnUTC: Boolean): TDateTime; static;
     /// <summary>True, wenn AValue eine echte Zeichenkette ist, keine Zahl (TJSONNumber erbt bis Delphi 12 von
     /// TJSONString).</summary>
     class function IsString(AValue: TJSONValue): Boolean; static;
@@ -95,11 +126,22 @@ type
     class function Strings(AObject: TJSONObject; const AName: string): TArray<string>; overload; static;
     /// <summary>Wie Strings, jede ohne führenden und folgenden Leerraum; leere fallen weg.</summary>
     class function TrimmedStrings(AValue: TJSONValue): TArray<string>; overload; static;
+    /// <summary>Die ganzen Zahlen des Arrays AName in ihrer Reihenfolge (auch 12.0); Zeichenketten, andere Werte
+    /// und Zahlen außerhalb von Integer werden übersprungen. Kein Array gibt nil.</summary>
+    class function Ints(AObject: TJSONObject; const AName: string): TArray<Integer>; static;
     /// <summary>TrimmedStrings des Werts AName in AObject.</summary>
     class function TrimmedStrings(AObject: TJSONObject; const AName: string): TArray<string>; overload; static;
   end;
 
 implementation
+
+uses
+  System.DateUtils,
+  Atlas.Text.Timestamps;
+
+const
+  /// <summary>Hexadezimalstellen einer Folge \uXXXX.</summary>
+  cUnicodeEscapeDigits = 4;
 
 { TJsonText }
 
@@ -128,9 +170,9 @@ begin
         #13:
           mBuilder.Append('\r');
       else
-        if Ord(mChar) < 32 then
+        if mChar < ' ' then
         begin
-          mBuilder.Append('\u' + IntToHex(Ord(mChar), 4));
+          mBuilder.Append('\u' + IntToHex(Ord(mChar), cUnicodeEscapeDigits));
         end
         else
         begin
@@ -160,6 +202,15 @@ begin
   Result := Result + ']';
 end;
 
+class function TJsonText.Bool(AValue: Boolean): string;
+begin
+  Result := 'false';
+  if AValue then
+  begin
+    Result := 'true';
+  end;
+end;
+
 { TJsonBuild }
 
 class function TJsonBuild.Strings(const AItems: array of string): TJSONArray;
@@ -171,6 +222,55 @@ begin
   begin
     Result.Add(mItem);
   end;
+end;
+
+class procedure TJsonBuild.AddText(AObject: TJSONObject; const AName, AValue: string);
+begin
+  if AValue <> '' then
+  begin
+    AObject.AddPair(AName, AValue);
+  end;
+end;
+
+class procedure TJsonBuild.AddFlag(AObject: TJSONObject; const AName: string; AValue: Boolean);
+begin
+  if AValue then
+  begin
+    AObject.AddPair(AName, TJSONBool.Create(True));
+  end;
+end;
+
+class function TJsonBuild.IsoTime(AValue: TDateTime): string;
+begin
+  Result := '';
+  if AValue > 0 then
+  begin
+    Result := DateToISO8601(AValue, True);
+  end;
+end;
+
+class function TJsonBuild.TextAndFree(AValue: TJSONValue): string;
+begin
+  Result := '';
+  if AValue = nil then
+  begin
+    Exit;
+  end;
+  try
+    Result := AValue.ToJSON;
+  finally
+    AValue.Free;
+  end;
+end;
+
+class function TJsonBuild.UriLine(const AUri: string; ALine: Integer): string;
+var
+  mItems: TJSONArray;
+begin
+  mItems := TJSONArray.Create;
+  mItems.Add(AUri);
+  mItems.Add(ALine);
+  Result := TextAndFree(mItems);
 end;
 
 { TJsonRead }
@@ -223,6 +323,18 @@ begin
   end;
 end;
 
+class function TJsonRead.FormatOf(const AJson: string): Integer;
+var
+  mRoot: TJSONObject;
+begin
+  mRoot := ParseObject(AJson);
+  try
+    Result := IntOr(mRoot, 'format', 0);
+  finally
+    mRoot.Free;
+  end;
+end;
+
 class function TJsonRead.ParseObjectOrEmpty(const AJson: string): TJSONObject;
 begin
   Result := ParseObject(AJson);
@@ -232,12 +344,34 @@ begin
   end;
 end;
 
+class function TJsonRead.ParseArray(const AJson: string): TJSONArray;
+var
+  mValue: TJSONValue;
+begin
+  Result := nil;
+  mValue := Parse(AJson);
+  if mValue is TJSONArray then
+  begin
+    Exit(TJSONArray(mValue));
+  end;
+  mValue.Free;
+end;
+
 class function TJsonRead.AsObject(AValue: TJSONValue): TJSONObject;
 begin
   Result := nil;
   if AValue is TJSONObject then
   begin
     Result := TJSONObject(AValue);
+  end;
+end;
+
+class function TJsonRead.FirstText(AArray: TJSONArray): string;
+begin
+  Result := '';
+  if (AArray <> nil) and (AArray.Count > 0) and (AArray.Items[0] is TJSONString) then
+  begin
+    Result := AArray.Items[0].Value;
   end;
 end;
 
@@ -310,32 +444,35 @@ begin
   end;
 end;
 
-class function TJsonRead.TryInt64(AObject: TJSONObject; const AName: string; out AValue: Int64): Boolean;
+class function TJsonRead.TryInt64Of(AValue: TJSONValue; out AInt: Int64): Boolean;
 const
   // Etwas unter High(Int64): als Double gerundet läge High(Int64) schon außerhalb, Trunc liefe über.
   cInt64Range = 9.2e18;
 var
-  mValue: TJSONValue;
   mText: string;
   mDouble: Double;
 begin
-  AValue := 0;
-  mValue := Value(AObject, AName);
-  if not NumberText(mValue, mText) then
+  AInt := 0;
+  if not NumberText(AValue, mText) then
   begin
     Exit(False);
   end;
-  Result := TryStrToInt64(mText, AValue);
+  Result := TryStrToInt64(mText, AInt);
   // Zähler kommen auch als 12.0 oder 1e3; Zeitstempel in ms passen nicht in 32 Bit.
-  if not Result and (mValue is TJSONNumber) then
+  if not Result and (AValue is TJSONNumber) then
   begin
-    mDouble := TJSONNumber(mValue).AsDouble;
+    mDouble := TJSONNumber(AValue).AsDouble;
     Result := (mDouble >= -cInt64Range) and (mDouble <= cInt64Range);
     if Result then
     begin
-      AValue := Trunc(mDouble);
+      AInt := Trunc(mDouble);
     end;
   end;
+end;
+
+class function TJsonRead.TryInt64(AObject: TJSONObject; const AName: string; out AValue: Int64): Boolean;
+begin
+  Result := TryInt64Of(Value(AObject, AName), AValue);
 end;
 
 class function TJsonRead.Float(AObject: TJSONObject; const AName: string): Double;
@@ -382,6 +519,47 @@ begin
   begin
     Result := TJSONArray(mValue);
   end;
+end;
+
+class function TJsonRead.Objects(AObject: TJSONObject; const AName: string): TArray<TJSONObject>;
+var
+  mArray: TJSONArray;
+  mIndex, mCount: Integer;
+begin
+  Result := nil;
+  mArray := Items(AObject, AName);
+  if mArray = nil then
+  begin
+    Exit;
+  end;
+  SetLength(Result, mArray.Count);
+  mCount := 0;
+  for mIndex := 0 to mArray.Count - 1 do
+  begin
+    if mArray.Items[mIndex] is TJSONObject then
+    begin
+      Result[mCount] := TJSONObject(mArray.Items[mIndex]);
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TJsonRead.Json(AObject: TJSONObject; const AName: string): string;
+var
+  mValue: TJSONValue;
+begin
+  Result := '';
+  mValue := Value(AObject, AName);
+  if mValue <> nil then
+  begin
+    Result := mValue.ToJSON;
+  end;
+end;
+
+class function TJsonRead.IsoTime(AObject: TJSONObject; const AName: string; AReturnUTC: Boolean): TDateTime;
+begin
+  Result := TTextTimestamp.IsoOrZero(StrictText(AObject, AName), AReturnUTC);
 end;
 
 class function TJsonRead.IsString(AValue: TJSONValue): Boolean;
@@ -431,6 +609,33 @@ begin
     if Trim(Result[mIndex]) <> '' then
     begin
       Result[mCount] := Trim(Result[mIndex]);
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TJsonRead.Ints(AObject: TJSONObject; const AName: string): TArray<Integer>;
+var
+  mList: TJSONArray;
+  mIndex: Integer;
+  mCount: Integer;
+  mValue: Int64;
+begin
+  Result := nil;
+  mList := Items(AObject, AName);
+  if mList = nil then
+  begin
+    Exit;
+  end;
+  SetLength(Result, mList.Count);
+  mCount := 0;
+  for mIndex := 0 to mList.Count - 1 do
+  begin
+    if (mList.Items[mIndex] is TJSONNumber) and TryInt64Of(mList.Items[mIndex], mValue) and
+      (mValue >= Low(Integer)) and (mValue <= High(Integer)) then
+    begin
+      Result[mCount] := Integer(mValue);
       Inc(mCount);
     end;
   end;

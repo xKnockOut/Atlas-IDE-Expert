@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Pascal.Preprocessor.Expressions;
 
-// Auswerter für $IF-Ausdrücke des Präprozessors (#847), aus
-// Atlas.Common.Pascal.Preprocessor ausgelagert: Defined, Declared,
+// Auswerter für $IF-Ausdrücke des Präprozessors (#847), Teil von
+// Atlas.Common.Pascal.Preprocessor: Defined, Declared,
 // CompilerVersion, RTLVersion, die booleschen Versionskonstanten RTLVersion111 …,
 // SizeOf/High/Low der Grundtypen aus der Zielplattform, Ord, Zahlen, Konstanten
 // aus den Einstellungen, Vergleiche, and/or/xor/not und Klammern.

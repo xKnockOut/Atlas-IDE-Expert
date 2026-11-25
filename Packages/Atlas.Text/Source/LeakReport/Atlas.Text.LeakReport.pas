@@ -94,7 +94,8 @@ type
 implementation
 
 uses
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Text.Chars;
 
 const
   cSeparatorStart = '-----';
@@ -119,20 +120,6 @@ type
 function IsHexDigit(AChar: Char): Boolean;
 begin
   Result := CharInSet(AChar, ['0'..'9', 'A'..'F', 'a'..'f']);
-end;
-
-function IsDigits(const AText: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := AText <> '';
-  for mIndex := 1 to Length(AText) do
-  begin
-    if not CharInSet(AText[mIndex], ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-  end;
 end;
 
 function HexValue(const AText: string): UInt64;
@@ -187,7 +174,7 @@ begin
     end;
     mPart := Trim(Copy(mRest, 1, mComma - 1));
     mRest := Copy(mRest, mComma + 1, MaxInt);
-    if not (IsDigits(mPart) and TryStrToInt64(mPart, ASizes[mIndex])) then
+    if not (TTextChars.IsDigits(mPart) and TryStrToInt64(mPart, ASizes[mIndex])) then
     begin
       ASizes := nil;
       Exit(False);

@@ -4,7 +4,7 @@
 // Art (LSP, MCP), Client, Zustand ("baut Index", "liest Cache", "bereit"), ob
 // er die Cache-Sperre hält, und seine letzten Sperr- und Cache-Ereignisse; dazu
 // das Zusammenführen der Ereignisse aller Prozesse nach Zeit. Dateien und
-// Sperren liegen in Atlas.Common.Index.Adapters.Processes.
+// Sperren liegen in Atlas.Common.Index.ProcessFiles.
 
 interface
 
@@ -56,7 +56,8 @@ type
 implementation
 
 uses
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Text.Json;
 
 { TIndexProcessInfo }
 
@@ -85,21 +86,6 @@ begin
   Result.AddPair('events', mItems);
 end;
 
-function ReadTime(AObject: TJSONObject; const AName: string): TDateTime;
-var
-  mText: string;
-begin
-  Result := 0;
-  if AObject.TryGetValue<string>(AName, mText) and (mText <> '') then
-    try
-      Result := ISO8601ToDate(mText, False);
-    except
-      // lsp-ignore: catch-all-without-raise -- Prozessdatei unlesbar heißt kein Eintrag
-      on Exception do
-        Result := 0;
-    end;
-end;
-
 /// <summary>Ereignisse mit Text aus "events".</summary>
 function ReadEvents(AItems: TJSONArray): TArray<TIndexProcessEvent>;
 var
@@ -113,7 +99,7 @@ begin
     begin
       Continue;
     end;
-    mEvent.Time := ReadTime(TJSONObject(mValue), 'time');
+    mEvent.Time := TJsonRead.IsoTime(TJSONObject(mValue), 'time', False);
     mEvent.Text := TJSONObject(mValue).GetValue<string>('text', '');
     if mEvent.Text <> '' then
     begin
@@ -130,13 +116,7 @@ var
   mPid: Integer;
 begin
   AInfo := Default(TIndexProcessInfo);
-  try
-    mRoot := TJSONObject.ParseJSONValue(AText);
-  except
-    // lsp-ignore: catch-all-without-raise -- Prozessdatei unlesbar heißt kein Eintrag
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AText);
   try
     Result := (mRoot is TJSONObject) and TJSONObject(mRoot).TryGetValue<Integer>('pid', mPid);
     if not Result then
@@ -150,7 +130,7 @@ begin
     AInfo.Workspace := mItem.GetValue<string>('workspace', '');
     AInfo.State := mItem.GetValue<string>('state', '');
     AInfo.Writer := (mItem.GetValue('writer') is TJSONBool) and TJSONBool(mItem.GetValue('writer')).AsBoolean;
-    AInfo.Started := ReadTime(mItem, 'started');
+    AInfo.Started := TJsonRead.IsoTime(mItem, 'started', False);
     if mItem.TryGetValue<TJSONArray>('events', mItems) then
     begin
       AInfo.Events := ReadEvents(mItems);

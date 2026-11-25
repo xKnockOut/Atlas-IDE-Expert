@@ -21,10 +21,13 @@
 // Wert in Save anders schreiben (z. B. ungekürzt oder geordnet).
 // Steuerelemente aus der VCL dürfen über die Package-Grenze: Base und Module
 // teilen dieselbe VCL. Klassen aus Atlas-Packages nie.
+// Genehmigte Ausnahme „VCL in Verträgen der UI-Schicht“ (docs/Architektur.md): Die Bausteine sind
+// VCL-Steuerelemente, die das Modul selbst anordnet; eigene Interfaces je Steuerelement brächten nur Hüllen.
 
 interface
 
 uses
+  System.Classes,
   Vcl.Controls,
   Atlas.Core.Settings.Contract;
 
@@ -130,6 +133,14 @@ type
   IAtlasSettingsSectionProvider = interface
     ['{3B0E5C27-6F1D-4A8E-B9C2-7D45E1A0F836}']
     function CreateSection: IAtlasSettingsSection;
+  end;
+
+  /// <summary>Dialogklasse mit Regel-Editor; das Modul Prüfregeln stellt sie bereit (#1755), der Aufrufer fragt
+  /// laufende Module bei jedem Öffnen. Die Klasse erbt von TAtlasProjectSettingsDialog
+  /// (Atlas.UI.Settings.ProjectDialog); Base prüft das und nimmt sonst seinen eigenen Dialog.</summary>
+  IAtlasSettingsDialogProvider = interface
+    ['{8E3B6A15-4C72-4D9E-B1F8-2A7D05C6E934}']
+    function DialogClass: TComponentClass;
   end;
 
 implementation

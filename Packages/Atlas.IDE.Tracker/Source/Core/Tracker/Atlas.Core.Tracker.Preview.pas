@@ -17,7 +17,7 @@
 //   einen Rechner aus dem Issue-Text). Anderes bleibt ein Link.
 // - Fehler: Art und Befehl zum Beheben (Token hinterlegen, Einstellungen,
 //   Im Browser öffnen, erneut versuchen); ohne Transport: nicht eingetragen
-//   bzw. ohne Token (#1967, vorher in der IDE).
+//   bzw. ohne Token (#1967, ohne IDE testbar).
 // - Laden (#1967): ein späterer Wunsch gilt vor dem Ergebnis, ein veraltetes
 //   Ergebnis wird nicht gezeigt. Verknüpftes Issue in der Vorschau, sonst seine
 //   Seite, sonst die Seite aus der eingetragenen Adresse.
@@ -148,6 +148,16 @@ uses
   System.DateUtils,
   System.StrUtils,
   Atlas.Core.Tracker.Files;
+
+const
+  cMinutesPerHour = 60;
+  cMinutesPerDay = 24 * cMinutesPerHour;
+  /// <summary>Bis zu so vielen Tagen zählt Age in Tagen, danach in Monaten zu cDaysPerMonth.</summary>
+  cMaxAgeDays = 31;
+  cDaysPerMonth = 30;
+  cDaysPerYear = 365;
+  /// <summary>Höchstlänge des Dateinamens eines Anhangs.</summary>
+  cMaxFileNameLength = 120;
 
 { TAtlasIssueHistoryEntry }
 
@@ -284,30 +294,30 @@ begin
   begin
     Result.UnitKind := TAtlasIssueAgeUnit.JustNow;
   end
-  else if mMinutes < 60 then
+  else if mMinutes < cMinutesPerHour then
   begin
     Result.UnitKind := TAtlasIssueAgeUnit.Minutes;
     Result.Count := Integer(mMinutes);
   end
-  else if mMinutes < 24 * 60 then
+  else if mMinutes < cMinutesPerDay then
   begin
     Result.UnitKind := TAtlasIssueAgeUnit.Hours;
-    Result.Count := Integer(mMinutes div 60);
+    Result.Count := Integer(mMinutes div cMinutesPerHour);
   end
-  else if mMinutes < 31 * 24 * 60 then
+  else if mMinutes < cMaxAgeDays * cMinutesPerDay then
   begin
     Result.UnitKind := TAtlasIssueAgeUnit.Days;
-    Result.Count := Integer(mMinutes div (24 * 60));
+    Result.Count := Integer(mMinutes div cMinutesPerDay);
   end
-  else if mMinutes < 365 * 24 * 60 then
+  else if mMinutes < cDaysPerYear * cMinutesPerDay then
   begin
     Result.UnitKind := TAtlasIssueAgeUnit.Months;
-    Result.Count := Integer(mMinutes div (30 * 24 * 60));
+    Result.Count := Integer(mMinutes div (cDaysPerMonth * cMinutesPerDay));
   end
   else
   begin
     Result.UnitKind := TAtlasIssueAgeUnit.Years;
-    Result.Count := Integer(mMinutes div (365 * 24 * 60));
+    Result.Count := Integer(mMinutes div (cDaysPerYear * cMinutesPerDay));
   end;
 end;
 
@@ -580,7 +590,7 @@ begin
   begin
     Result := 'anhang';
   end;
-  Result := Copy(Result, 1, 120);
+  Result := Copy(Result, 1, cMaxFileNameLength);
 end;
 
 end.

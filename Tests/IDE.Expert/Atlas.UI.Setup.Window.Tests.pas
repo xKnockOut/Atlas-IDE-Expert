@@ -14,9 +14,6 @@ type
   [TestFixture]
   TAtlasSetupWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -45,19 +42,23 @@ type
     /// es nicht.</summary>
     [Test]
     procedure WidthFollowsWindow;
+    /// <summary>#2372: Bei der kleinsten Breite schneidet das Fenster weder eine Zeile vor ihrem Knopf noch den Text
+    /// des Häkchens vor „Bericht kopieren“ ab, auf Englisch wie auf Deutsch.</summary>
+    [Test]
+    procedure NoTextCutAtMinimumWidth;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Strings,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Setup.Strings,
   Atlas.UI.Setup.Window;
 
@@ -88,16 +89,6 @@ begin
 end;
 
 { TAtlasSetupWindowTests }
-
-procedure TAtlasSetupWindowTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ButtonOnlyForNonGreenPoints;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasSetupWindowTests.Setup;
 begin
@@ -366,6 +357,58 @@ begin
   finally
     mWindow.Free;
   end;
+end;
+
+procedure AssertTextsFit(ALanguage: TAtlasLanguage);
+const
+  cTextLeft = 34;
+  cDetailGap = 10;
+  cFixButtonGap = 8;
+  cEdge = 12;
+  cCheckBoxWidth = 24;
+var
+  mWindow: TAtlasSetupWindow;
+  mResults: TArray<TAtlasSetupResult>;
+  mIndex, mRight, mNeeded: Integer;
+  mDetail: string;
+begin
+  TAtlasStrings.Language := ALanguage;
+  mWindow := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
+  try
+    mResults := TAtlasSetupChecklist.Evaluate(Input);
+    mWindow.SetResults(mResults);
+    mWindow.Width := 0;
+    mWindow.Canvas.Font := mWindow.Font;
+    for mIndex := 0 to High(mResults) do
+    begin
+      mRight := mWindow.ClientWidth - mWindow.ScaleValue(cEdge);
+      if mWindow.FixButtons[mIndex].Visible then
+      begin
+        mRight := mWindow.FixButtons[mIndex].Left - mWindow.ScaleValue(cFixButtonGap);
+      end;
+      mNeeded := mWindow.ScaleValue(cTextLeft) +
+        mWindow.Canvas.TextWidth(TAtlasSetupTexts.ResultText(mResults[mIndex]));
+      mDetail := TAtlasSetupTexts.DetailText(mResults[mIndex]);
+      if mDetail <> '' then
+      begin
+        Inc(mNeeded, mWindow.ScaleValue(cDetailGap) + mWindow.Canvas.TextWidth(mDetail));
+      end;
+      Assert.IsTrue(mNeeded <= mRight, Format('Zeile %d passt (%d <= %d)', [mIndex, mNeeded, mRight]));
+    end;
+    mNeeded := mWindow.ShowAtStartBox.Left + mWindow.ScaleValue(cCheckBoxWidth) +
+      mWindow.Canvas.TextWidth(mWindow.ShowAtStartBox.Caption);
+    Assert.IsTrue(mNeeded <= mWindow.ShowAtStartBox.Left + mWindow.ShowAtStartBox.Width,
+      Format('Häkchen passt (%d <= %d)', [mNeeded, mWindow.ShowAtStartBox.Left + mWindow.ShowAtStartBox.Width]));
+  finally
+    mWindow.Free;
+    mResults := nil;
+  end;
+end;
+
+procedure TAtlasSetupWindowTests.NoTextCutAtMinimumWidth;
+begin
+  AssertTextsFit(TAtlasLanguage.English);
+  AssertTextsFit(TAtlasLanguage.German);
 end;
 
 initialization

@@ -1,8 +1,7 @@
 ﻿unit Atlas.UI.Bookmarks.SettingsSection.Tests;
 
 // Abschnitte des Moduls Lesezeichen (#1456) auf den Seiten „Editor“ und „Befehle“: Notizen (#545), benannte
-// (#622) und schnelle Lesezeichen (#1104); Laden und Speichern über die Seite (vorher in den Tests der Seite von
-// Base).
+// (#622) und schnelle Lesezeichen (#1104); Laden und Speichern über die Seite.
 
 interface
 
@@ -17,8 +16,6 @@ type
   private
     FRegistrations: TArray<IAtlasRegistration>;
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -43,11 +40,6 @@ uses
   Atlas.UI.Bookmarks.SettingsSection;
 
 { TBookmarksSettingsSectionTests }
-
-procedure TBookmarksSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TBookmarksSettingsSectionTests.Setup;
 begin

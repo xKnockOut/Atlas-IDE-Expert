@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.SharedState;
 
-// Ungeschützte Schreibzugriffe auf gemeinsame Variablen aus mehreren Threads (Runde 67):
+// Ungeschützte Schreibzugriffe auf gemeinsame Variablen aus mehreren Threads:
 //   parallel-for-shared-write  Der Rumpf von TParallel.For bzw. ein TTask, der in einer Schleife entsteht, schreibt
 //                              eine Variable von außerhalb (Summe := Summe + …, Inc/Dec) oder verändert eine
 //                              Sammlung von außerhalb (Liste.Add, Delete, Clear …) ohne Sperre (#1058). Typen aus
@@ -50,13 +50,15 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.Concurrency,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -143,16 +145,6 @@ const
     'Insert', 'Delete', 'Remove', 'Clear', 'Push', 'Enqueue', 'Exchange');
   cLockNames: array[0..6] of string = ('TMonitor', 'Enter', 'Acquire', 'Lock', 'LockList', 'BeginWrite',
     'TInterlocked');
-
-function ShortName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-end;
 
 { TSharedState }
 
@@ -581,7 +573,7 @@ var
   mUsesEdit: TRuleEdit;
 begin
   Result := nil;
-  if not MatchText(ShortName(ATypeName), ['Integer', 'Int64', 'Cardinal', 'LongInt', 'UInt64']) then
+  if not MatchText(TTextNames.BareTypeName(ATypeName), ['Integer', 'Int64', 'Cardinal', 'LongInt', 'UInt64']) then
   begin
     Exit;
   end;
@@ -592,8 +584,8 @@ begin
   end;
   mEdits := [TRuleEdit.Create(TTextRange.Create(AWrite.Statement.StartPos, AWrite.Statement.EndPos), mCall)];
   mLineBreak := TTextLines.LineBreakOf(FContext.Text);
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FContext.Tree.Tokens), 'System.SyncObjs', FContext.Namespaces) and
-    TUsesClauses.AddUnit(FContext.Tree.Tokens, AWrite.Statement.StartOffset, 'System.SyncObjs', mLineBreak, mUsesEdit) then
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FContext.Tree.Tokens), 'System.SyncObjs', FContext.Namespaces) and
+    TPascalUsesEdits.AddUnit(FContext.Tree.Tokens, AWrite.Statement.StartOffset, 'System.SyncObjs', mLineBreak, mUsesEdit) then
   begin
     mEdits := [mUsesEdit] + mEdits;
   end;
@@ -669,7 +661,7 @@ begin
   begin
     mMethod := Copy(mMethod, 2, MaxInt);
   end;
-  Result := SameText(ShortName(mAccess[0].Name), AType) and MatchText(mMethod, AMethods);
+  Result := SameText(TTextNames.BareTypeName(mAccess[0].Name), AType) and MatchText(mMethod, AMethods);
 end;
 
 /// <summary>Letztes Argument als anonyme Methode, sonst nil.</summary>
@@ -710,7 +702,7 @@ var
       end;
       if mWrite.Kind = TWriteKind.Collection then
       begin
-        if (mTypeName <> '') and MatchText(ShortName(mTypeName), mSafeTypes) then
+        if (mTypeName <> '') and MatchText(TTextNames.BareTypeName(mTypeName), mSafeTypes) then
         begin
           Continue;
         end;

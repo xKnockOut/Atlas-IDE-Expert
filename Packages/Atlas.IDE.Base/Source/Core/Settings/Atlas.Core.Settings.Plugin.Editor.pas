@@ -7,6 +7,7 @@
 interface
 
 uses
+  Atlas.Core.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const
@@ -37,6 +38,9 @@ const
   /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
   cMinBlockEndLines = 1;
   cMaxBlockEndLines = 1000;
+  /// <summary>Grenzen der Mindestlänge für „Große Blöcke einklappen“ (#2795).</summary>
+  cMinBlockFoldLines = 3;
+  cMaxBlockFoldLines = 1000;
   /// <summary>Grenzen für editor.recursionMarkers.depth (#623); wie TRecursionAnalysis im Server.</summary>
   cMinRecursionDepth = 1;
   cMaxRecursionDepth = 16;
@@ -51,10 +55,10 @@ const
   /// <summary>search.history (#893): Vorgabe und Höchstwert.</summary>
   cDefaultSearchHistory = 20;
   cMaxSearchHistory = 100;
-  /// <summary>Vorgabe für designer.showInDesigner.key (#511): Umschalt+F12 (scShift + VK_F12).</summary>
-  cDefaultShowInDesignerKey = $2000 + $7B;
-  /// <summary>Vorgabe für designer.usages.key (#750): Umschalt+Alt+F7 (scShift + scAlt + VK_F7).</summary>
-  cDefaultUsagesKey = $2000 + $8000 + $76;
+  /// <summary>Vorgabe für designer.showInDesigner.key (#511): Umschalt+F12 (cKeyShift + VK_F12).</summary>
+  cDefaultShowInDesignerKey = cKeyShift + cKeyF12;
+  /// <summary>Vorgabe für designer.usages.key (#750): Umschalt+Alt+F7 (cKeyShift + cKeyAlt + VK_F7).</summary>
+  cDefaultUsagesKey = cKeyShift + cKeyAlt + cKeyF7;
   /// <summary>Werte von designer.usages.scope (#750).</summary>
   cDesignerUsagesUnit = 'unit';
   cDesignerUsagesProject = 'project';
@@ -142,6 +146,9 @@ type
     /// <summary>Ungenutzte uses-Einträge abblenden (#621, editor.dimUnusedUses); der Tooltip nennt den Grund und
     /// bietet Entfernen und Verschieben an. Aus: weder Abblenden noch Hinweise.</summary>
     DimUnusedUses: Boolean;
+    /// <summary>uses-Einträge im interface, die nur die implementation braucht, in Hinweisfarbe zeichnen (#2465,
+    /// editor.highlightMovableUses); folgt der Regel uses-only-in-implementation.</summary>
+    HighlightMovableUses: Boolean;
     /// <summary>Rekursionssymbol (↻) in der Rinne neben Aufrufen, die zur Methode zurückführen (#623,
     /// editor.recursionMarkers); der Tooltip zeigt die Kette, jede Methode anklickbar.</summary>
     RecursionMarkers: Boolean;
@@ -163,6 +170,11 @@ type
     /// <summary>Regionen beim Öffnen (#1814, editor.regionFolds): keep, collapse, expand oder off; off schaltet auch
     /// die Befehle „Alle Regionen zu-/aufklappen“ ab.</summary>
     RegionFolds: string;
+    /// <summary>Große Anweisungsblöcke einklappen (#2795, editor.blockFolds): Befehle „Block einklappen“, „Große
+    /// Blöcke einklappen“ und „Blöcke aufklappen“.</summary>
+    BlockFolds: Boolean;
+    /// <summary>Mindestlänge eines Blocks in Zeilen (#2795, editor.blockFolds.minLines).</summary>
+    BlockFoldsMinLines: Integer;
     /// <summary>Kommentar beim Enter fortsetzen (#696, editor.continueComments).</summary>
     ContinueComments: Boolean;
     /// <summary>Auch //-Zeilen fortsetzen, nicht nur /// (#696, editor.continueComments.lineComments).</summary>
@@ -652,6 +664,11 @@ type
     DesignerExtractFrame: Boolean;
     /// <summary>Knopf „Ereignis-Karte“ (#612, designer.eventMap).</summary>
     DesignerEventMap: Boolean;
+    /// <summary>Zustand der Umschaltknöpfe der Designer-Leiste merken (#2546, designer.rememberButtons).</summary>
+    DesignerRememberButtons: Boolean;
+    /// <summary>Gemerkter Zustand der Umschaltknöpfe, „dataBindings=1, measure=0“ (#2546, designer.barButtons,
+    /// Zustand).</summary>
+    DesignerBarButtons: string;
     /// <summary>Im Formular-Designer eigenes Desktop-Layout laden (#2079, designer.layout).</summary>
     DesignerLayout: Boolean;
     /// <summary>Name des Layouts für den Designer, wie im Desktop-Auswahlfeld der IDE (#2079,
@@ -914,19 +931,49 @@ uses
   System.SysUtils,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Settings.StatusBarItems,
-  Atlas.Core.Settings.ToolbarItems;
+  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Core.Settings.Contract;
 
 const
   /// <summary>Knöpfe der Schnellleiste im Designer ab Werk, in dieser Reihenfolge (Kennungen, kein Text).</summary>
   cSelectionBarItems = 'fontSmaller, fontSize, fontLarger, bold, italic, fontColor, enabled, visible, ' +
     'parentFont, parentColor, anchorLeft, anchorTop, anchorRight, anchorBottom, sameWidth, sameHeight, alignLeft, ' +
     'alignCenter, alignRight, transfer';
-  /// <summary>Vorgabe von designer.selectionSets.saveKey: Strg+Umschalt+S (scShift + scCtrl + Ord('S')).</summary>
-  cDefaultSelectionSetsSaveKey = $2000 + $4000 + Ord('S');
+  /// <summary>Vorgabe von designer.selectionSets.saveKey: Strg+Umschalt+S.</summary>
+  cDefaultSelectionSetsSaveKey = cKeyShift + cKeyCtrl + Ord('S');
   /// <summary>Vorgabeabstand der Designer-Werkzeuge in Pixel (Zeilen, Beschriftungen, Innenrand).</summary>
   cDefaultDesignerGap = 8;
   /// <summary>Vorgabe für „nahe am Rand“ bzw. „nahe am Feld“ in Pixel (Anchors, Label und Feld).</summary>
   cDefaultDesignerNear = 16;
+  /// <summary>Vorgaben in Zeilen: Mindestlänge der Blöcke für Endmarken und Sticky Scroll, höchstens gezeigte
+  /// Mitglieder im Hover, Höhe der Einblendung (Peek), Zeilen im Sticky Scroll.</summary>
+  cDefaultBlockEndLines = 25;
+  cDefaultBlockFoldLines = 15;
+  cDefaultHoverMembersLines = 15;
+  cDefaultPeekLines = 15;
+  cDefaultStickyLines = 3;
+  /// <summary>Vorgaben für editor.recursionMarkers.depth und navigation.dataFlow.maxDepth.</summary>
+  cDefaultRecursionDepth = 4;
+  cDefaultDataFlowDepth = 6;
+  /// <summary>Vorgaben für undo.multiFile.depth und undo.multiFile.maxSizeMb.</summary>
+  cDefaultUndoDepth = 20;
+  cDefaultUndoMaxSizeMb = 50;
+  /// <summary>Vorgaben für editor.minimap.width (Pixel) und editor.minimap.maxColumn (Zeichen).</summary>
+  cDefaultMinimapWidth = 120;
+  cDefaultMinimapColumn = 120;
+  /// <summary>Designer, an Text anpassen: kleinste Breite und Zugabe in Pixel.</summary>
+  cDefaultFitToTextMinWidth = 75;
+  cDefaultFitToTextPadding = 16;
+  /// <summary>Designer: Abstand in Pixel, bis zu dem Kanten als ausgerichtet gelten.</summary>
+  cDefaultAlignmentTolerance = 3;
+  /// <summary>Designer: Wartezeit in ms, bis die Schnellleiste erscheint.</summary>
+  cDefaultSelectionBarDelayMs = 400;
+  /// <summary>Stufen der Designer-Lupe (wie TAtlasMagnifier.NormalizeZoom im Designer-Modul); ab
+  /// cMagnifierZoomHighFrom gilt die höchste Stufe.</summary>
+  cMagnifierZoomLow = 2;
+  cMagnifierZoomMiddle = 4;
+  cMagnifierZoomHigh = 8;
+  cMagnifierZoomHighFrom = 6;
   cDefaultPainterGroups = 'font, colors, size, layout';
   cDefaultAnchorFillClasses = 'TMemo, TDBGrid, TStringGrid, TListView, TTreeView, TPageControl, TRichEdit';
   cDefaultTextChecks = 'accelerators, variants, truncated, whitespace';
@@ -956,17 +1003,10 @@ end;
 /// <summary>Präfix für Blockkommentare (#696): Steuerzeichen werden Leerzeichen, höchstens acht Zeichen; Leerraum
 /// am Rand bleibt (' * ').</summary>
 function NormalizedBlockPrefix(const AText: string): string;
-var
-  mIndex: Integer;
+const
+  cMaxBlockPrefix = 8;
 begin
-  Result := Copy(AText, 1, 8);
-  for mIndex := 1 to Length(Result) do
-  begin
-    if Ord(Result[mIndex]) < 32 then
-    begin
-      Result[mIndex] := ' ';
-    end;
-  end;
+  Result := ControlCharsAsSpaces(Copy(AText, 1, cMaxBlockPrefix));
   // Nur Leerraum ist kein Präfix.
   if Trim(Result) = '' then
   begin
@@ -982,16 +1022,19 @@ begin
   Result.ReloadExternal := True;
   Result.OpenForEdits := True;
   Result.BlockEndLabels := True;
-  Result.BlockEndLabelsMinLines := 25;
+  Result.BlockEndLabelsMinLines := cDefaultBlockEndLines;
   Result.DimUnusedUses := True;
+  Result.HighlightMovableUses := True;
   Result.RecursionMarkers := True;
-  Result.RecursionMarkersDepth := 4;
+  Result.RecursionMarkersDepth := cDefaultRecursionDepth;
   Result.InlineDiagnostics := 'errors';
   Result.TrackLines := True;
   Result.GitGutter := True;
   Result.GitBlame := False;
   Result.MethodPlacement := 'grouped';
   Result.RegionFolds := 'keep';
+  Result.BlockFolds := True;
+  Result.BlockFoldsMinLines := cDefaultBlockFoldLines;
   Result.ContinueComments := True;
   Result.ContinueCommentsLineComments := True;
   Result.ContinueCommentsLists := True;
@@ -1018,6 +1061,7 @@ begin
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, cMinPatternLines, cMaxPatternLines);
   MethodPlacement := Choice(MethodPlacement, cAtlasMethodPlacements);
   RegionFolds := Choice(RegionFolds, cAtlasRegionFoldModes);
+  BlockFoldsMinLines := EnsureRange(BlockFoldsMinLines, cMinBlockFoldLines, cMaxBlockFoldLines);
   ContinueCommentsBlockPrefix := NormalizedBlockPrefix(ContinueCommentsBlockPrefix);
   CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [cBeginEndMultiLine, cBeginEndAlways, cBeginEndNever]);
   CompleteStatementTryKind := Choice(CompleteStatementTryKind, [cTryKindFinally, cTryKindExcept, cTryKindAsk]);
@@ -1034,6 +1078,7 @@ begin
   AIo.Flag('BlockEndLabels', BlockEndLabels);
   AIo.Number('BlockEndLabelsMinLines', BlockEndLabelsMinLines);
   AIo.Flag('DimUnusedUses', DimUnusedUses);
+  AIo.Flag('HighlightMovableUses', HighlightMovableUses);
   AIo.Flag('RecursionMarkers', RecursionMarkers);
   AIo.Number('RecursionMarkersDepth', RecursionMarkersDepth);
   AIo.Text('InlineDiagnostics', InlineDiagnostics);
@@ -1042,6 +1087,8 @@ begin
   AIo.Flag('GitBlame', GitBlame);
   AIo.Text('MethodPlacement', MethodPlacement);
   AIo.Text('RegionFolds', RegionFolds);
+  AIo.Flag('BlockFolds', BlockFolds);
+  AIo.Number('BlockFoldsMinLines', BlockFoldsMinLines);
   AIo.Flag('ContinueComments', ContinueComments);
   AIo.Flag('ContinueCommentsLineComments', ContinueCommentsLineComments);
   AIo.Flag('ContinueCommentsLists', ContinueCommentsLists);
@@ -1075,7 +1122,7 @@ begin
   Result.HoverProblemActions := True;
   Result.HoverExplainMessages := True;
   Result.HoverRuleExamples := True;
-  Result.HoverMembersMaxLines := 15;
+  Result.HoverMembersMaxLines := cDefaultHoverMembersLines;
   Result.HoverSignatureParams := True;
   Result.ProblemsStatusCounter := True;
   Result.CodeLensTestUnit := True;
@@ -1094,9 +1141,9 @@ begin
   Result.XmlDocExpand := 'last';
   Result.XmlDocMaxLines := 0;
   Result.UndoMultiFile := True;
-  Result.UndoMultiFileDepth := 20;
+  Result.UndoMultiFileDepth := cDefaultUndoDepth;
   Result.UndoMultiFilePersist := True;
-  Result.UndoMultiFileMaxSizeMb := 50;
+  Result.UndoMultiFileMaxSizeMb := cDefaultUndoMaxSizeMb;
   Result.UndoMultiFileOnConflict := 'partial';
   Result.UndoMultiFileNewFiles := 'recycleBin';
   Result.ExpressionType := True;
@@ -1200,7 +1247,7 @@ begin
   Result.NavHistory := True;
   Result.MouseNavButtons := True;
   Result.Peek := True;
-  Result.PeekHeightLines := 15;
+  Result.PeekHeightLines := cDefaultPeekLines;
   Result.PeekShowImplementation := True;
   Result.ReferencesInferred := True;
   Result.ReferencesTextMatches := False;
@@ -1208,7 +1255,7 @@ begin
   Result.Impact := True;
   Result.ImpactDepth := 2;
   Result.DataFlow := True;
-  Result.DataFlowMaxDepth := 6;
+  Result.DataFlowMaxDepth := cDefaultDataFlowDepth;
   Result.DataFlowExcludeTests := False;
   Result.Outline := True;
   Result.OutlineAlphabetical := False;
@@ -1333,7 +1380,7 @@ begin
   Result.BreadcrumbsIdeColors := True;
   Result.BreadcrumbsHideIdeToolbar := True;
   Result.StickyScroll := True;
-  Result.StickyScrollMaxLines := 3;
+  Result.StickyScrollMaxLines := cDefaultStickyLines;
   Result.StickyScrollTypes := True;
   Result.StickyScrollRoutines := True;
   Result.StickyScrollBlocks := True;
@@ -1341,7 +1388,7 @@ begin
   Result.StickyScrollTry := False;
   Result.StickyScrollCase := False;
   Result.StickyScrollWith := False;
-  Result.StickyScrollBlockMinLines := 25;
+  Result.StickyScrollBlockMinLines := cDefaultBlockEndLines;
 end;
 
 procedure TAtlasPluginStickyScrollSettings.Normalize;
@@ -1396,7 +1443,7 @@ begin
   Result.EditorStatusBarTests := True;
   Result.EditorDesignerBar := True;
   // Alt+^ (VK_OEM_5 mit Alt).
-  Result.DesignerSearchKey := 32988;
+  Result.DesignerSearchKey := cKeyAlt + cKeyOem5;
   Result.DesignerSearchStyle := cDesignerSearchWindow;
   Result.DesignerFuzzySearch := True;
   Result.DesignerTabOrderClick := True;
@@ -1428,10 +1475,10 @@ begin
   Result.SetToolDefaults;
   Result.Minimap := False;
   Result.MinimapRender := 'characters';
-  Result.MinimapWidth := 120;
+  Result.MinimapWidth := cDefaultMinimapWidth;
   // 2: 4 Pixel je Zeile, Zeichen lesbar wie in VS Code (bei 1 kaum erkennbar).
   Result.MinimapScale := 2;
-  Result.MinimapMaxColumn := 120;
+  Result.MinimapMaxColumn := cDefaultMinimapColumn;
   Result.MinimapSide := 'right';
   Result.MinimapShowSlider := 'always';
   Result.MinimapSectionHeaders := True;
@@ -1468,6 +1515,8 @@ begin
   AIo.Flag('DesignerDataBindings', DesignerDataBindings);
   AIo.Flag('DesignerExtractFrame', DesignerExtractFrame);
   AIo.Flag('DesignerEventMap', DesignerEventMap);
+  AIo.Flag('DesignerRememberButtons', DesignerRememberButtons);
+  AIo.Text('DesignerBarButtons', DesignerBarButtons);
   AIo.Flag('DesignerLayout', DesignerLayout);
   AIo.Text('DesignerLayoutName', DesignerLayoutName);
   AIo.Text('DesignerLayoutReturnTo', DesignerLayoutReturnTo);
@@ -1477,26 +1526,26 @@ end;
 procedure TAtlasPluginEditorViewSettings.SetArrangeDefaults;
 begin
   DesignerFitToText := True;
-  DesignerFitToTextMinWidth := 75;
-  DesignerFitToTextPadding := 16;
+  DesignerFitToTextMinWidth := cDefaultFitToTextMinWidth;
+  DesignerFitToTextPadding := cDefaultFitToTextPadding;
   DesignerFitToTextSources := cFitSourceCaption;
   DesignerButtonBar := True;
   DesignerButtonBarOrder := 'ok,cancel,apply,help';
   DesignerButtonBarPosition := cButtonBarBottomRight;
-  DesignerButtonBarGap := 8;
-  DesignerButtonBarMargin := 8;
+  DesignerButtonBarGap := cDefaultDesignerGap;
+  DesignerButtonBarMargin := cDefaultDesignerGap;
   DesignerButtonBarSetModalResult := True;
   DesignerButtonBarRoles := '';
   DesignerDuplicateRow := True;
   DesignerDuplicateRowShareEvents := True;
-  DesignerDuplicateRowDefaultGap := 8;
+  DesignerDuplicateRowDefaultGap := cDefaultDesignerGap;
   DesignerInsertSpace := True;
   DesignerInsertSpaceGrowParent := True;
   DesignerFitContainer := True;
-  DesignerFitContainerPadding := 8;
+  DesignerFitContainerPadding := cDefaultDesignerGap;
   DesignerFitContainerAlignTopLeft := False;
   DesignerNearAlignment := True;
-  DesignerNearAlignmentTolerance := 3;
+  DesignerNearAlignmentTolerance := cDefaultAlignmentTolerance;
   DesignerNearAlignmentBaseline := True;
   DesignerNearAlignmentIgnoreClasses := 'TBevel,TShape';
   DesignerDefaultSizes := True;
@@ -1640,16 +1689,16 @@ begin
   DesignerMultiResizeLeftTopHandles := False;
   DesignerSelectionBar := True;
   DesignerSelectionBarMode := cSelectionBarAuto;
-  DesignerSelectionBarDelayMs := 400;
+  DesignerSelectionBarDelayMs := cDefaultSelectionBarDelayMs;
   DesignerSelectionBarItems := cSelectionBarItems;
   // Strg+Umschalt+Leer.
-  DesignerSelectionBarKey := 24608;
+  DesignerSelectionBarKey := cKeyShift + cKeyCtrl + cKeySpace;
   DesignerMagnifier := True;
-  DesignerMagnifierZoom := 4;
+  DesignerMagnifierZoom := cMagnifierZoomMiddle;
   DesignerMagnifierGrid := True;
   DesignerMagnifierEdges := False;
   // Strg+Alt+L.
-  DesignerMagnifierKey := 49228;
+  DesignerMagnifierKey := cKeyCtrl + cKeyAlt + Ord('L');
   DesignerUndo := False;
   DesignerUndoSteps := cDefaultUndoSteps;
 end;
@@ -1734,18 +1783,18 @@ begin
   DesignerSelectionBarMode := Choice(DesignerSelectionBarMode, [cSelectionBarAuto, cSelectionBarShortcut]);
   DesignerSelectionBarDelayMs := EnsureRange(DesignerSelectionBarDelayMs, 0, cMaxSelectionBarDelay);
   DesignerSelectionBarKey := EnsureRange(DesignerSelectionBarKey, 0, $FFFF);
-  // Stufen 2, 4, 8 (TAtlasMagnifier.NormalizeZoom im Designer-Modul).
-  if DesignerMagnifierZoom <= 2 then
+  // Auf die Stufen der Lupe bringen.
+  if DesignerMagnifierZoom <= cMagnifierZoomLow then
   begin
-    DesignerMagnifierZoom := 2;
+    DesignerMagnifierZoom := cMagnifierZoomLow;
   end
-  else if DesignerMagnifierZoom < 6 then
+  else if DesignerMagnifierZoom < cMagnifierZoomHighFrom then
   begin
-    DesignerMagnifierZoom := 4;
+    DesignerMagnifierZoom := cMagnifierZoomMiddle;
   end
   else
   begin
-    DesignerMagnifierZoom := 8;
+    DesignerMagnifierZoom := cMagnifierZoomHigh;
   end;
   DesignerMagnifierKey := EnsureRange(DesignerMagnifierKey, 0, $FFFF);
 end;
@@ -1775,6 +1824,8 @@ begin
   DesignerDataBindings := False;
   DesignerExtractFrame := True;
   DesignerEventMap := True;
+  DesignerRememberButtons := True;
+  DesignerBarButtons := '';
   DesignerLayout := False;
   DesignerLayoutName := '';
   DesignerLayoutReturnTo := cDesignerLayoutPrevious;

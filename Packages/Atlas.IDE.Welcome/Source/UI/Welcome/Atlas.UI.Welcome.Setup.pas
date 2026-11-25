@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Welcome.Setup;
 
 // Bereich „<Projekt> für Atlas einrichten“ der Willkommensseite (#759), ohne
-// Open Tools API. Nach dem Mockup (#ws7):
+// Open Tools API. Aufbau:
 //   ✓ Projekt gefunden, keine atlas.json
 //   ☐ atlas.json anlegen          [Bestehendes Projekt ▾] [Anlegen …]
 //   ☐ Baseline erzeugen (#97)     [Starten]
@@ -30,29 +30,10 @@ uses
   Atlas.Core.Projects.Setup,
   Atlas.Core.Generate.FileTemplates,
   Atlas.Core.Welcome.Setup,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasSetupSource = interface
-    ['{8C2D4E61-7A3B-4F95-B1C0-2E9D6A4F7B13}']
-    /// <summary>Stand der Karte für das Ziel.</summary>
-    function Card: TAtlasSetupCard;
-    /// <summary>„Anlegen …“: Inhalt zeigen, nach Bestätigung atlas.json neben die Projektdatei schreiben.
-    /// </summary>
-    procedure CreateConfig(ATemplate: TAtlasSetupTemplate);
-    /// <summary>„Starten“: Baseline erzeugen (#97).</summary>
-    procedure StartBaseline;
-    /// <summary>„Prüfen“: Suchpfade und Defines prüfen.</summary>
-    procedure CheckPaths;
-    /// <summary>Projektoptionen des Ziels öffnen.</summary>
-    procedure OpenOptions;
-    /// <summary>Ziel in der IDE öffnen.</summary>
-    procedure OpenProject;
-    /// <summary>„Für dieses Projekt nicht mehr fragen“.</summary>
-    procedure Dismiss;
-    /// <summary>„Neu mit Atlas“: Erzeugen-Menü mit den Dateivorlagen der Art AKind.</summary>
-    procedure NewFile(AKind: TAtlasNewFileKind);
-  end;
 
 {$SCOPEDENUMS ON}
   /// <summary>Knöpfe des Bereichs (für Tests und ClickButton).</summary>
@@ -98,8 +79,8 @@ type
     cButtonHeight = 24;
     cButtonPadding = 16;
     cComboWidth = 170;
-    /// <summary>Grün wie die Marken der Projekte (#592), lesbar im hellen und im dunklen Thema.</summary>
-    cDoneColor = TColor($0043A02E);
+    /// <summary>Grün wie die Marken der Projekte (#592).</summary>
+    cDoneColor = TAtlasWelcomeMarks.cGood;
   private
     FSource: IAtlasSetupSource;
     FCard: TAtlasSetupCard;
@@ -152,14 +133,22 @@ implementation
 uses
   System.Math,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.Vcl.Theme.Service;
 
 const
   cCheckMark = #$2713;
   cOpenBox = #$2610;
+  /// <summary>Abstand der Zeilen zur Oberkante ihres Platzes, damit der Text mittig neben den Knöpfen steht
+  /// (logische Pixel bei 96 dpi).</summary>
+  cRowTextTop = 4;
+  /// <summary>Mindesthöhe der Karte (logische Pixel bei 96 dpi).</summary>
+  cSetupMinBodyHeight = 32;
+  /// <summary>Takt, in dem die Karte laufende Schritte nachführt (ms).</summary>
+  cTickInterval = 1000;
 
 type
   /// <summary>Überträgt die Karte auf die Steuerelemente: Farben, Schritte, Knöpfe, Ergebnisse, Funde.</summary>
@@ -167,7 +156,6 @@ type
   private
     FFrame: TAtlasWelcomeSetupFrame;
     FShow: Boolean;
-    function Themed(AColor: TColor): TColor;
     procedure ApplyColors;
     procedure ApplySteps;
     procedure ApplyButtons;
@@ -253,25 +241,19 @@ begin
   FShow := AFrame.FCard.ShowCard;
 end;
 
-function TSetupCardView.Themed(AColor: TColor): TColor;
-begin
-  // Farbe des IDE-Themas (hell oder dunkel).
-  Result := StyleServices(FFrame).GetSystemColor(AColor);
-end;
-
 procedure TSetupCardView.ApplyColors;
 var
   mIndex: Integer;
 begin
-  FFrame.FLabels.BaselineInfo.Font.Color := Themed(clGrayText);
-  FFrame.FLabels.Edition.Font.Color := Themed(clGrayText);
-  FFrame.FLabels.PathsInfo.Font.Color := Themed(clGrayText);
-  FFrame.FLabels.More.Font.Color := Themed(clGrayText);
-  FFrame.FLabels.NewRow.Font.Color := Themed(clWindowText);
-  FFrame.FLabels.Dismiss.Font.Color := Themed(clHotLight);
+  FFrame.FLabels.BaselineInfo.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clGrayText);
+  FFrame.FLabels.Edition.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clGrayText);
+  FFrame.FLabels.PathsInfo.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clGrayText);
+  FFrame.FLabels.More.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clGrayText);
+  FFrame.FLabels.NewRow.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clWindowText);
+  FFrame.FLabels.Dismiss.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clHotLight);
   for mIndex := Low(FFrame.FLabels.Findings) to High(FFrame.FLabels.Findings) do
   begin
-    FFrame.FLabels.Findings[mIndex].Font.Color := Themed(clWindowText);
+    FFrame.FLabels.Findings[mIndex].Font.Color := TAtlasUiTheme.SystemColor(FFrame, clWindowText);
   end;
 end;
 
@@ -294,7 +276,7 @@ begin
     else
     begin
       mMark.Caption := cOpenBox;
-      mMark.Font.Color := Themed(clWindowText);
+      mMark.Font.Color := TAtlasUiTheme.SystemColor(FFrame, clWindowText);
     end;
     mText.Font.Color := mMark.Font.Color;
     mText.Caption := TAtlasSetupTexts.StepCaption(mStep, FFrame.FCard, TThread.GetTickCount64);
@@ -493,11 +475,11 @@ var
 begin
   mMark := FFrame.FLabels.Marks[AStep];
   mText := FFrame.FLabels.Texts[AStep];
-  mMark.SetBounds(FLeft, FTop + Scaled(4), Scaled(TAtlasWelcomeSetupFrame.cMarkWidth), mMark.Height);
+  mMark.SetBounds(FLeft, FTop + Scaled(cRowTextTop), Scaled(TAtlasWelcomeSetupFrame.cMarkWidth), mMark.Height);
   FX := FTextLeft;
   Place(mText, FMeasure.Canvas.TextWidth(mText.Caption), mText.Height);
   // Text etwas tiefer, damit er mittig neben den Knöpfen steht.
-  mText.Top := FTop + Scaled(4);
+  mText.Top := FTop + Scaled(cRowTextTop);
   FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.cButtonHeight));
   case AStep of
     TAtlasSetupStep.Config:
@@ -569,7 +551,7 @@ begin
   FX := FLeft;
   Place(mNewRow, FMeasure.Canvas.TextWidth(mNewRow.Caption), mNewRow.Height);
   mNewRow.Left := FLeft;
-  mNewRow.Top := FTop + Scaled(4);
+  mNewRow.Top := FTop + Scaled(cRowTextTop);
   FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.cButtonHeight));
   FX := FLeft + FMeasure.Canvas.TextWidth(mNewRow.Caption) + Scaled(TAtlasWelcomeSetupFrame.cGap);
   for mKind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
@@ -644,7 +626,7 @@ begin
   FLabels.NewRow.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNewRow);
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := 1000;
+  FTimer.Interval := cTickInterval;
   FTimer.OnTimer := TimerTick;
   Body.OnResize := BodyResize;
   UpdateContent;
@@ -660,7 +642,7 @@ function TAtlasWelcomeSetupFrame.BodyHeight: Integer;
 begin
   // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
   Arrange;
-  Result := Max(FContentHeight, ScaleValue(32));
+  Result := Max(FContentHeight, ScaleValue(cSetupMinBodyHeight));
 end;
 
 { TAtlasSetupTexts }
@@ -933,16 +915,8 @@ begin
 end;
 
 procedure TAtlasWelcomeSetupFrame.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
 begin
-  mOldHeight := FContentHeight;
-  Arrange;
-  // Andere Reihen bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
+  Rearrange(Arrange, FContentHeight);
 end;
 
 procedure TAtlasWelcomeSetupFrame.ButtonClick(Sender: TObject);

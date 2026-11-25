@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Ownership.RawMemory;
 
-// Regel aus Atlas.Common.Rules.Builtin.Ownership ausgelagert (Länge der Unit):
+// Regel von Atlas.Common.Rules.Builtin.Ownership in eigener Unit (Länge der Unit):
 //   raw-memory-leak   lokaler Zeiger aus GetMem, AllocMem, ReallocMem, GetMemory, New, StrAlloc oder StrNew, den
 //                     die Routine nie freigibt und der sie nicht verlässt (#1047): Jedes Vorkommen wird im
 //                     Syntaxbaum nach oben eingeordnet (Belegung, Freigabe, Zugriff, Weitergabe als Ergebnis,
@@ -42,7 +42,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.Ownership.TryFinally,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -126,20 +128,6 @@ begin
   Result := False;
 end;
 
-function ContainsAny(const AName: string; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  for mWord in AWords do
-  begin
-    if ContainsText(AName, mWord) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 // Typumwandlung wie PByte(P), PChar(P), Pointer(P): ein Argument, Aufruf über einen Typnamen.
 function IsTypeCast(ACall: TSyntaxNode): Boolean;
 var
@@ -197,7 +185,7 @@ begin
   begin
     AUse := AllocUse(ACall);
   end
-  else if MatchText(ACall.Name, cRawReleaseCalls) or ContainsAny(ACall.Name, cRawReleaseWords) then
+  else if MatchText(ACall.Name, cRawReleaseCalls) or TTextArrays.ContainsAnyText(ACall.Name, cRawReleaseWords) then
   begin
     AUse := TRawMemoryUse.Release;
   end
@@ -322,21 +310,6 @@ begin
 end;
 
 // Steht ANode in einer anonymen Methode der Routine (die Variable wird eingefangen)?
-function InsideAnonymous(ANode, ARoutine: TSyntaxNode): Boolean;
-var
-  mCurrent: TSyntaxNode;
-begin
-  mCurrent := ANode.Parent;
-  while (mCurrent <> nil) and (mCurrent <> ARoutine) do
-  begin
-    if mCurrent.Kind = TSyntaxKind.AnonymousMethod then
-    begin
-      Exit(True);
-    end;
-    mCurrent := mCurrent.Parent;
-  end;
-  Result := False;
-end;
 
 // Die Anweisung, die das Vorkommen ANode enthält.
 function StatementOf(ANode: TSyntaxNode): TSyntaxNode;
@@ -387,7 +360,7 @@ begin
   for mNode in mFound do
   begin
     mUse := Classify(mNode);
-    if (mUse in [TRawMemoryUse.Release, TRawMemoryUse.Escape]) or InsideAnonymous(mNode, ARoutine) then
+    if (mUse in [TRawMemoryUse.Release, TRawMemoryUse.Escape]) or (TSyntaxNodes.Enclosing(mNode, [TSyntaxKind.AnonymousMethod], ARoutine) <> nil) then
     begin
       Exit(False);
     end;

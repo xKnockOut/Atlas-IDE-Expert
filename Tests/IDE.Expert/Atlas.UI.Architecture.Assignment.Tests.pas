@@ -17,9 +17,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung (Schriften, Grafik) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -45,9 +42,10 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Architecture.MapState,
   Atlas.Core.Architecture.Model,
+  Atlas.Core.Architecture.Resolution,
   Atlas.Core.Architecture.Model.Tests,
   Atlas.UI.Architecture.Map,
   Atlas.UI.Architecture.Assignment;
@@ -64,17 +62,6 @@ begin
 end;
 
 { TAtlasArchitectureAssignmentTests }
-
-procedure TAtlasArchitectureAssignmentTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    MeasuresAndDraws;
-    MapShowsHoverAssignment;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasArchitectureAssignmentTests.SetUp;
 begin

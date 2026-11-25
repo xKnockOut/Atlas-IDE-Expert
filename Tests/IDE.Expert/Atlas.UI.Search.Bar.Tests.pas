@@ -21,9 +21,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -73,7 +70,8 @@ uses
   Vcl.Forms,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.History,
-  Atlas.UI.Search.Bar;
+  Atlas.UI.Search.Bar,
+  Atlas.UI.Search.BarParts;
 
 function NewHost: TForm;
 begin
@@ -107,16 +105,6 @@ begin
 end;
 
 { TAtlasSearchBarTests }
-
-procedure TAtlasSearchBarTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    PrepareFillsFieldsAndQueryReadsThemBack;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasSearchBarTests.Setup;
 begin
@@ -476,9 +464,11 @@ var
   mCount: Integer;
 begin
   mHost := NewHost;
-  mSearch := TAtlasSearchHistory.Create(20);
-  mReplace := TAtlasSearchHistory.Create(20);
+  mSearch := nil;
+  mReplace := nil;
   try
+    mSearch := TAtlasSearchHistory.Create(20);
+    mReplace := TAtlasSearchHistory.Create(20);
     mBar := NewBar(mHost);
     mBar.Features := TAtlasSearchBarFeatures.Create(True, False, False);
     mBar.SetHistories(mSearch, mReplace);

@@ -50,10 +50,10 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.DfmPropertyRules,
-  Shell.Workspace,
-  Shell.Texts;
+  Core.Workspace,
+  Core.Texts;
 
 { TShellDfmPropertyRules }
 
@@ -79,7 +79,7 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count = 0) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(['uri']));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TCoreTexts.Missing(['uri']));
   end;
   mScope := TLspDfmPropertyRules.cScopeForm;
   if AArguments.Count > 1 then
@@ -101,7 +101,7 @@ end;
 class function TShellDfmPropertyRules.UnitsFor(const AServices: TShellDfmPropertyRulesServices;
   const AFileName, AScope: string): TArray<string>;
 var
-  mWorkspace, mPicked: TShellWorkspace;
+  mWorkspace, mPicked: TCoreWorkspace;
 begin
   if SameText(AScope, TLspDfmPropertyRules.cScopeForm) then
   begin
@@ -139,11 +139,11 @@ begin
   begin
     Exit;
   end;
-  // Nur dfm-property; RuleFindings zieht die Baseline nicht ab, der Befehl korrigiert alle Verstöße.
+  // Nur dfm-property; TRuleCheckContext.Findings zieht die Baseline nicht ab, der Befehl korrigiert alle Verstöße.
   mContext.Rules := RulesWithId(mContext.Rules, TLspDfmPropertyRules.cRuleId);
   mTree := TSyntaxTreeCache.Parse(mText);
   try
-    AFindings := TLspSyntaxDiagnostics.RuleFindings(mText, mTree, mContext);
+    AFindings := mContext.Findings(mText, mTree);
   finally
     mTree.Free;
   end;

@@ -587,7 +587,7 @@ begin
     Assert.AreEqual(-1, (mPlace.GetValue('cause') as TJSONNumber).AsInt);
     Assert.AreEqual('Hilfe', mPlace.GetValue<string>('item.name'));
     mTests := mJson.GetValue('tests') as TJSONArray;
-    Assert.AreEqual(1, mTests.Count);
+    Assert.AreEqual(1, Integer(mTests.Count));
     Assert.IsTrue(mJson.GetValue<Boolean>('limits.depth'));
     Assert.IsFalse(mJson.GetValue<Boolean>('limits.count'));
     Assert.IsFalse(mJson.GetValue<Boolean>('limits.time'));
@@ -606,17 +606,19 @@ var
 begin
   mStore := TDocumentStore.Create;
   mStore.Open(TDocumentUris.FromPath(cWerkzeugFile), 'delphi', 1, cUnitWerkzeug);
-  mAnalysis := TImpactAnalysis.Create(mStore, FIndex,
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadFile(AFileName, AText);
-    end,
-    function: TArray<string>
-    begin
-      Result := ProjectFiles;
-    end);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mAnalysis := nil;
+  mDispatcher := nil;
   try
+    mAnalysis := TImpactAnalysis.Create(mStore, FIndex,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := ReadFile(AFileName, AText);
+      end,
+      function: TArray<string>
+      begin
+        Result := ProjectFiles;
+      end);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mAnalysis.Attach(mDispatcher);
     mPosition := PositionOf(cUnitWerkzeug, 'procedure Ziel;', 'Ziel');
     mMessage := TJSONObject.ParseJSONValue(Format('{"jsonrpc":"2.0","id":1,"method":"%s","params":{' +

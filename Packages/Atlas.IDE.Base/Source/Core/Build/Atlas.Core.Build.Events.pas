@@ -27,28 +27,13 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Build.Contract;
 
 type
-  TAtlasCompileKind = (Make, Build, Check, MakeUnit, Clean, Link);
+  TAtlasCompileKind = Atlas.Core.Build.Contract.TAtlasCompileKind;
 
-  TAtlasCompileProject = record
-    FileName: string;
-    Kind: TAtlasCompileKind;
-    Configuration: string;
-    Platform: string;
-    OutputFile: string;
-    /// <summary>Eigene Hintergrundprüfung von Atlas (#548), kein Build des Benutzers.</summary>
-    Background: Boolean;
-    /// <summary>Wer den Build angestoßen hat: '' = Benutzer, "mcp" = ein KI-Assistent über build_project (#261).
-    /// </summary>
-    RequestedBy: string;
-    /// <summary>Dauer des Compiles in ms (#758); setzt nur der Leser des Meldungsfensters nach dem Ende, sonst 0.
-    /// </summary>
-    DurationMs: Int64;
-    /// <summary>Dauer des ganzen Laufs (Gruppe) in ms (#758); 0 = unbekannt.</summary>
-    GroupDurationMs: Int64;
-  end;
+  TAtlasCompileProject = Atlas.Core.Build.Contract.TAtlasCompileProject;
 
   /// <summary>Teilnehmer an den Compile-Ereignissen; alle Methoden sind optional.</summary>
   TAtlasCompileParticipant = class
@@ -64,6 +49,13 @@ type
   end;
 
   TAtlasClockFunc = reference to function: Int64;
+
+  /// <summary>Uhr der Compile-Teilnehmer: eine eingesetzte Uhr (Tests) oder die des Systems.</summary>
+  TAtlasClocks = record
+  public
+    /// <summary>Millisekunden von AClock; ohne AClock die monotone Uhr des Systems.</summary>
+    class function Millis(const AClock: TAtlasClockFunc): Int64; static;
+  end;
   TAtlasNotifyProc = reference to procedure(const AMethod: string; AParams: TJSONObject);
   TAtlasTextProc = reference to procedure(const AText: string);
 
@@ -132,10 +124,10 @@ type
   TAtlasCompileLog = class(TAtlasCompileParticipant)
   private
     FEvents: TAtlasCompileEvents;
-    FWrite: TAtlasTextProc;
+    FLog: TAtlasTextProc;
   public
-    /// <summary>AEvents liefert die Zahlen der Code-Insight-Kompilierungen.</summary>
-    constructor Create(AEvents: TAtlasCompileEvents; const AWrite: TAtlasTextProc);
+    /// <summary>AEvents liefert die Zahlen der Code-Insight-Kompilierungen; ALog schreibt eine Zeile.</summary>
+    constructor Create(AEvents: TAtlasCompileEvents; const ALog: TAtlasTextProc);
     procedure GroupStarted(AKind: TAtlasCompileKind); override;
     procedure GroupFinished(ASucceeded: Boolean; ADurationMs: Int64); override;
     procedure ProjectStarted(const AProject: TAtlasCompileProject); override;
@@ -149,29 +141,29 @@ uses
 
 { TAtlasCompileLog }
 
-constructor TAtlasCompileLog.Create(AEvents: TAtlasCompileEvents; const AWrite: TAtlasTextProc);
+constructor TAtlasCompileLog.Create(AEvents: TAtlasCompileEvents; const ALog: TAtlasTextProc);
 begin
   inherited Create;
   FEvents := AEvents;
-  FWrite := AWrite;
+  FLog := ALog;
 end;
 
 procedure TAtlasCompileLog.GroupStarted(AKind: TAtlasCompileKind);
 begin
-  FWrite(Format('Compile: Gruppe %s beginnt', [TAtlasCompileEvents.KindText(AKind)]));
+  FLog(Format('Compile: Gruppe %s beginnt', [TAtlasCompileEvents.KindText(AKind)]));
 end;
 
 procedure TAtlasCompileLog.GroupFinished(ASucceeded: Boolean; ADurationMs: Int64);
 const
   cResults: array[Boolean] of string = ('fehlgeschlagen', 'erfolgreich');
 begin
-  FWrite(Format('Compile: Gruppe %s nach %d ms; Code Insight bisher %d-mal, %d ms',
+  FLog(Format('Compile: Gruppe %s nach %d ms; Code Insight bisher %d-mal, %d ms',
     [cResults[ASucceeded], ADurationMs, FEvents.CodeInsightCount, FEvents.CodeInsightMs]));
 end;
 
 procedure TAtlasCompileLog.ProjectStarted(const AProject: TAtlasCompileProject);
 begin
-  FWrite(Format('Compile: %s %s (%s, %s) beginnt', [TAtlasCompileEvents.KindText(AProject.Kind),
+  FLog(Format('Compile: %s %s (%s, %s) beginnt', [TAtlasCompileEvents.KindText(AProject.Kind),
     ExtractFileName(AProject.FileName), AProject.Configuration, AProject.Platform]));
 end;
 
@@ -180,7 +172,7 @@ procedure TAtlasCompileLog.ProjectFinished(const AProject: TAtlasCompileProject;
 const
   cResults: array[Boolean] of string = ('fehlgeschlagen', 'erfolgreich');
 begin
-  FWrite(Format('Compile: %s %s nach %d ms', [ExtractFileName(AProject.FileName), cResults[ASucceeded], ADurationMs]));
+  FLog(Format('Compile: %s %s nach %d ms', [ExtractFileName(AProject.FileName), cResults[ASucceeded], ADurationMs]));
 end;
 
 { TAtlasCompileParticipant }
@@ -212,6 +204,20 @@ procedure TAtlasCompileParticipant.ProjectFinished(const AProject: TAtlasCompile
 begin
 end;
 
+{ TAtlasClocks }
+
+class function TAtlasClocks.Millis(const AClock: TAtlasClockFunc): Int64;
+begin
+  if Assigned(AClock) then
+  begin
+    Result := AClock();
+  end
+  else
+  begin
+    Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
+  end;
+end;
+
 { TAtlasCompileEvents }
 
 constructor TAtlasCompileEvents.Create(const AClock: TAtlasClockFunc);
@@ -238,14 +244,7 @@ end;
 
 function TAtlasCompileEvents.Now_: Int64;
 begin
-  if Assigned(FClock) then
-  begin
-    Result := FClock();
-  end
-  else
-  begin
-    Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
-  end;
+  Result := TAtlasClocks.Millis(FClock);
 end;
 
 function TAtlasCompileEvents.RunningIndex(const AFileName: string): Integer;

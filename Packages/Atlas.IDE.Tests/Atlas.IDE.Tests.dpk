@@ -1,5 +1,6 @@
 ﻿package Atlas.IDE.Tests;
 
+{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -68,11 +69,15 @@ contains
   Atlas.Core.Tests.MutationShadow in 'Source\Core\Tests\Atlas.Core.Tests.MutationShadow.pas',
   Atlas.Core.Tests.MutationResults in 'Source\Core\Tests\Atlas.Core.Tests.MutationResults.pas',
   Atlas.Core.Tests.MutationPlan in 'Source\Core\Tests\Atlas.Core.Tests.MutationPlan.pas',
+  Atlas.Core.Tests.Contract in 'Source\Core\Tests\Atlas.Core.Tests.Contract.pas',
+  Atlas.Core.Tests.MutationFlow in 'Source\Core\Tests\Atlas.Core.Tests.MutationFlow.pas',
   Atlas.Core.Tests.Approval in 'Source\Core\Tests\Atlas.Core.Tests.Approval.pas',
   Atlas.Core.Tests.Durations in 'Source\Core\Tests\Atlas.Core.Tests.Durations.pas',
   Atlas.Core.Tests.Flaky in 'Source\Core\Tests\Atlas.Core.Tests.Flaky.pas',
+  Atlas.Core.Tests.LastRun in 'Source\Core\Tests\Atlas.Core.Tests.LastRun.pas',
   Atlas.Core.Tests.Explorer in 'Source\Core\Tests\Atlas.Core.Tests.Explorer.pas',
   Atlas.Core.Tests.Series in 'Source\Core\Tests\Atlas.Core.Tests.Series.pas',
+  Atlas.Core.Tests.UnitScans in 'Source\Core\Tests\Atlas.Core.Tests.UnitScans.pas',
   Atlas.Core.Tests.Lists in 'Source\Core\Tests\Atlas.Core.Tests.Lists.pas',
   Atlas.Core.Tests.ListText in 'Source\Core\Tests\Atlas.Core.Tests.ListText.pas',
   Atlas.Core.Tests.ListFile in 'Source\Core\Tests\Atlas.Core.Tests.ListFile.pas',
@@ -88,6 +93,9 @@ contains
   Atlas.Core.Tests.LeakSetup in 'Source\Core\Tests\Atlas.Core.Tests.LeakSetup.pas',
   Atlas.IDE.Tests.Projects in 'Source\IDE\Tests\Atlas.IDE.Tests.Projects.pas',
   Atlas.IDE.Tests.Runner in 'Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas',
+  Atlas.IDE.Tests.Adapters.Module in 'Source\IDE\Tests\Atlas.IDE.Tests.Adapters.Module.pas',
+  Atlas.IDE.Tests.Adapters.Runs in 'Source\IDE\Tests\Atlas.IDE.Tests.Adapters.Runs.pas',
+  Atlas.IDE.Tests.Adapters.Values in 'Source\IDE\Tests\Atlas.IDE.Tests.Adapters.Values.pas',
   Atlas.IDE.Tests.Composition in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.pas',
   Atlas.IDE.Tests.Composition.Hooks in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Hooks.pas',
   Atlas.IDE.Tests.Affected in 'Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas',
@@ -106,12 +114,16 @@ contains
   Atlas.IDE.Tests.Compare in 'Source\IDE\Tests\Atlas.IDE.Tests.Compare.pas',
   Atlas.IDE.Tests.Coverage in 'Source\IDE\Tests\Atlas.IDE.Tests.Coverage.pas',
   Atlas.IDE.Tests.Mutation in 'Source\IDE\Tests\Atlas.IDE.Tests.Mutation.pas',
+  Atlas.IDE.Tests.Adapters.MutationShadowProject in 'Source\IDE\Tests\Atlas.IDE.Tests.Adapters.MutationShadowProject.pas',
+  Atlas.IDE.Tests.MutationShadowProject in 'Source\IDE\Tests\Atlas.IDE.Tests.MutationShadowProject.pas',
   Atlas.IDE.Tests.MutationMarks in 'Source\IDE\Tests\Atlas.IDE.Tests.MutationMarks.pas',
   Atlas.IDE.Tests.ApprovalFiles in 'Source\IDE\Tests\Atlas.IDE.Tests.ApprovalFiles.pas',
   Atlas.IDE.Tests.Slowest in 'Source\IDE\Tests\Atlas.IDE.Tests.Slowest.pas',
   Atlas.IDE.Tests.Flaky in 'Source\IDE\Tests\Atlas.IDE.Tests.Flaky.pas',
+  Atlas.IDE.Tests.LastRun in 'Source\IDE\Tests\Atlas.IDE.Tests.LastRun.pas',
   Atlas.IDE.Tests.ExplorerWindow in 'Source\IDE\Tests\Atlas.IDE.Tests.ExplorerWindow.pas',
   Atlas.IDE.Tests.ExplorerLog in 'Source\IDE\Tests\Atlas.IDE.Tests.ExplorerLog.pas',
+  Atlas.IDE.Tests.ExplorerTicker in 'Source\IDE\Tests\Atlas.IDE.Tests.ExplorerTicker.pas',
   Atlas.IDE.Tests.Explorer in 'Source\IDE\Tests\Atlas.IDE.Tests.Explorer.pas',
   Atlas.IDE.Tests.Series in 'Source\IDE\Tests\Atlas.IDE.Tests.Series.pas',
   Atlas.UI.Tests.SeriesMenu in 'Source\UI\Tests\Atlas.UI.Tests.SeriesMenu.pas',
@@ -121,6 +133,7 @@ contains
   Atlas.IDE.Tests.BoundaryCases in 'Source\IDE\Tests\Atlas.IDE.Tests.BoundaryCases.pas',
   Atlas.IDE.Tests.Composition.Cases in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Cases.pas',
   Atlas.IDE.Tests.Composition.Coverage in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Coverage.pas',
+  Atlas.IDE.Tests.Composition.Results in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Results.pas',
   Atlas.IDE.Tests.Composition.Explorer in 'Source\IDE\Tests\Atlas.IDE.Tests.Composition.Explorer.pas',
   Atlas.IDE.Tests.LeakSetup in 'Source\IDE\Tests\Atlas.IDE.Tests.LeakSetup.pas',
   Atlas.UI.Tests.SettingsSection in 'Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas';

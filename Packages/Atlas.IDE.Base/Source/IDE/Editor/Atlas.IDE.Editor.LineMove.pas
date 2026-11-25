@@ -47,32 +47,15 @@ implementation
 
 uses
   ToolsAPI,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.Navigation;
 
-type
-  TPosition = record
-    Line: Integer;
-    Character: Integer;
-  end;
-
-function EditPos(const ALines: TArray<string>; const APosition: TPosition; ATabWidth: Integer): TOTAEditPos;
-var
-  mLineText: string;
-begin
-  mLineText := '';
-  if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
-  begin
-    mLineText := ALines[APosition.Line];
-  end;
-  Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(mLineText, APosition.Character, ATabWidth);
-end;
-
-function PositionOf(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TPosition;
+function PositionOf(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
 var
   mLineText: string;
 begin
@@ -87,7 +70,7 @@ end;
 
 /// <summary>Neue Stelle einer Markierungsgrenze: im Block mit ihm, das Ende am Zeilenanfang dahinter hinter den
 /// neuen Block.</summary>
-function Mapped(const AMove: TAtlasLineMove; const APosition: TPosition; ALast: Integer): TPosition;
+function Mapped(const AMove: TAtlasLineMove; const APosition: TLspTextPosition; ALast: Integer): TLspTextPosition;
 begin
   Result := APosition;
   if APosition.Line > ALast then
@@ -106,9 +89,9 @@ type
     Lines: TArray<string>;
     TabWidth: Integer;
     Cursor: TOTAEditPos;
-    CursorAt: TPosition;
-    SelectionStart: TPosition;
-    SelectionEnd: TPosition;
+    CursorAt: TLspTextPosition;
+    SelectionStart: TLspTextPosition;
+    SelectionEnd: TLspTextPosition;
     HasSelection: Boolean;
     First: Integer;
     Last: Integer;
@@ -181,13 +164,16 @@ procedure PlaceCursor(const AView: IOTAEditView; const AMove: TAtlasLineMove; co
 begin
   if not AState.HasSelection then
   begin
-    AView.CursorPos := EditPos(ANewLines, Mapped(AMove, AState.CursorAt, AState.Last), AState.TabWidth);
+    AView.CursorPos := TAtlasIdeNavigation.EditPosOf(ANewLines, Mapped(AMove, AState.CursorAt, AState.Last),
+      AState.TabWidth);
     Exit;
   end;
   AView.Block.Style := btNonInclusive;
-  AView.CursorPos := EditPos(ANewLines, Mapped(AMove, AState.SelectionStart, AState.Last), AState.TabWidth);
+  AView.CursorPos := TAtlasIdeNavigation.EditPosOf(ANewLines, Mapped(AMove, AState.SelectionStart, AState.Last),
+    AState.TabWidth);
   AView.Block.BeginBlock;
-  AView.CursorPos := EditPos(ANewLines, Mapped(AMove, AState.SelectionEnd, AState.Last), AState.TabWidth);
+  AView.CursorPos := TAtlasIdeNavigation.EditPosOf(ANewLines, Mapped(AMove, AState.SelectionEnd, AState.Last),
+    AState.TabWidth);
   AView.Block.EndBlock;
 end;
 
@@ -215,9 +201,8 @@ class procedure TAtlasIdeLineMove.Run(AKind: TAtlasLineMoveKind);
 var
   mView: IOTAEditView;
   mState: TMoveState;
-  mBefore, mInsert: string;
+  mBefore: string;
   mNewLines: TArray<string>;
-  mStart, mOldLength: Integer;
   mMove: TAtlasLineMove;
 begin
   mView := TAtlasEditorBuffer.ActiveView;
@@ -241,10 +226,7 @@ begin
     FFileName := '';
     Exit;
   end;
-  if TAtlasLineMover.Difference(mBefore, string.Join(mState.LineBreak, mNewLines), mStart, mOldLength, mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, mBefore, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(mView.Buffer, mBefore, string.Join(mState.LineBreak, mNewLines));
   PlaceCursor(mView, mMove, mNewLines, mState);
   mView.MoveViewToCursor;
   mView.Paint;

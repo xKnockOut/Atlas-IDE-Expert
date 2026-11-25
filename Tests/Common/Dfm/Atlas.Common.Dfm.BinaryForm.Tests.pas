@@ -9,8 +9,6 @@ type
   [TestFixture]
   TDfmBinaryTests = class
   public
-    [SetupFixture]
-    procedure SetupFixture;
     [Test]
     procedure ConvertsSimpleForm;
     [Test]
@@ -37,31 +35,20 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.BinaryForm;
 
-function B(const AValues: array of Byte): TBytes;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AValues));
-  for mIndex := 0 to High(AValues) do
-  begin
-    Result[mIndex] := AValues[mIndex];
-  end;
-end;
-
 /// <summary>Kurzer String mit Längenbyte.</summary>
 function S(const AText: string): TBytes;
 begin
-  Result := B([Length(AText)]) + TEncoding.ASCII.GetBytes(AText);
+  Result := TBytes.Create(Length(AText)) + TEncoding.ASCII.GetBytes(AText);
 end;
 
 function Ident(const AText: string): TBytes;
 begin
-  Result := B([7]) + S(AText);
+  Result := TBytes.Create(7) + S(AText);
 end;
 
 function Str(const AText: string): TBytes;
 begin
-  Result := B([6]) + S(AText);
+  Result := TBytes.Create(6) + S(AText);
 end;
 
 function Header: TBytes;
@@ -78,30 +65,20 @@ end;
 function SimpleForm: TBytes;
 begin
   Result := Header + S('TForm1') + S('Form1') +
-    S('Left') + B([2, 8]) +
-    S('Width') + B([3, $2C, $01]) +
+    S('Left') + TBytes.Create(2, 8) +
+    S('Width') + TBytes.Create(3, $2C, $01) +
     S('Caption') + Str('Hallo') +
     S('Color') + Ident('clBtnFace') +
-    S('Visible') + B([8]) +
-    S('Anchors') + B([11]) + S('akLeft') + S('akTop') + B([0]) +
-    B([0]) +
+    S('Visible') + TBytes.Create(8) +
+    S('Anchors') + TBytes.Create(11) + S('akLeft') + S('akTop') + TBytes.Create(0) +
+    TBytes.Create(0) +
     S('TButton') + S('Button1') +
     S('OnClick') + Ident('Button1Click') +
-    B([0, 0]) +
-    B([0]);
+    TBytes.Create(0, 0) +
+    TBytes.Create(0);
 end;
 
 { TDfmBinaryTests }
-
-procedure TDfmBinaryTests.SetupFixture;
-begin
-  // Kodierungen und Formatierungen legt die RTL beim ersten Zugriff an und hält sie bis
-  // Programmende; einmal vorab umwandeln, damit der Leck-Monitor nur den Test sieht.
-  TEncoding.ANSI.GetString(B([65]));
-  TEncoding.Unicode.GetString(B([65, 0]));
-  TEncoding.UTF8.GetString(B([65]));
-  Convert(SimpleForm);
-end;
 
 procedure TDfmBinaryTests.ConvertsSimpleForm;
 begin
@@ -125,8 +102,8 @@ var
 begin
   // vaWString: Anzahl UTF-16-Zeichen, dann die Zeichen.
   mBytes := Header + S('TForm1') + S('Form1') +
-    S('Caption') + B([18, 7, 0, 0, 0]) + TEncoding.Unicode.GetBytes('Kai''s ä') +
-    B([0, 0]);
+    S('Caption') + TBytes.Create(18, 7, 0, 0, 0) + TEncoding.Unicode.GetBytes('Kai''s ä') +
+    TBytes.Create(0, 0);
   Assert.AreEqual('object Form1: TForm1'#13#10'  Caption = ''Kai''#39''s ''#228'#13#10'end'#13#10, Convert(mBytes));
 end;
 
@@ -136,7 +113,7 @@ var
   mText: string;
 begin
   mText := StringOfChar('a', 70);
-  mBytes := Header + S('TForm1') + S('Form1') + S('Hint') + Str(mText) + B([0, 0]);
+  mBytes := Header + S('TForm1') + S('Form1') + S('Hint') + Str(mText) + TBytes.Create(0, 0);
   Assert.AreEqual('object Form1: TForm1'#13#10 +
     '  Hint = '#13#10 +
     '    ''' + StringOfChar('a', 64) + ''' +'#13#10 +
@@ -149,13 +126,13 @@ var
   mBytes: TBytes;
 begin
   mBytes := Header + S('TForm1') + S('Form1') +
-    S('Columns') + B([14]) +
-      B([1]) + S('Caption') + Str('A') + B([0]) +
-      B([2, 5, 1]) + S('Width') + B([2, 40]) + B([0]) +
-    B([0]) +
-    S('Items.Strings') + B([1]) + Str('x') + Str('y') + B([0]) +
-    S('Data') + B([10, 3, 0, 0, 0, $01, $AB, $FF]) +
-    B([0, 0]);
+    S('Columns') + TBytes.Create(14) +
+      TBytes.Create(1) + S('Caption') + Str('A') + TBytes.Create(0) +
+      TBytes.Create(2, 5, 1) + S('Width') + TBytes.Create(2, 40) + TBytes.Create(0) +
+    TBytes.Create(0) +
+    S('Items.Strings') + TBytes.Create(1) + Str('x') + Str('y') + TBytes.Create(0) +
+    S('Data') + TBytes.Create(10, 3, 0, 0, 0, $01, $AB, $FF) +
+    TBytes.Create(0, 0);
   Assert.AreEqual('object Form1: TForm1'#13#10 +
     '  Columns = <'#13#10 +
     '    item'#13#10 +
@@ -176,10 +153,10 @@ procedure TDfmBinaryTests.ConvertsInheritedWithPosition;
 var
   mBytes: TBytes;
 begin
-  mBytes := Header + B([$F1]) + S('TForm2') + S('Form2') + B([0]) +
-    B([$F3, 2, 1]) + S('TButton') + S('Ok') + B([0, 0]) +
-    B([$F4]) + S('TRahmen') + S('Rahmen1') + B([0, 0]) +
-    B([0]);
+  mBytes := Header + TBytes.Create($F1) + S('TForm2') + S('Form2') + TBytes.Create(0) +
+    TBytes.Create($F3, 2, 1) + S('TButton') + S('Ok') + TBytes.Create(0, 0) +
+    TBytes.Create($F4) + S('TRahmen') + S('Rahmen1') + TBytes.Create(0, 0) +
+    TBytes.Create(0);
   Assert.AreEqual('inherited Form2: TForm2'#13#10 +
     '  inherited Ok: TButton [1]'#13#10 +
     '  end'#13#10 +
@@ -192,8 +169,8 @@ procedure TDfmBinaryTests.SkipsResourceHeader;
 var
   mBytes: TBytes;
 begin
-  mBytes := B([$FF, $0A, $00]) + TEncoding.ASCII.GetBytes('TFORM1') + B([0, $30, $10, 20, 0, 0, 0]) +
-    Header + S('TForm1') + S('Form1') + B([0, 0]);
+  mBytes := TBytes.Create($FF, $0A, $00) + TEncoding.ASCII.GetBytes('TFORM1') + TBytes.Create(0, $30, $10, 20, 0, 0, 0) +
+    Header + S('TForm1') + S('Form1') + TBytes.Create(0, 0);
   Assert.IsTrue(TDfmBinary.IsBinary(mBytes));
   Assert.AreEqual('object Form1: TForm1'#13#10'end'#13#10, Convert(mBytes));
 end;
@@ -214,8 +191,8 @@ var
   mDocument: TDfmDocument;
 begin
   // So kommt der Inhalt aus TFileEncoding (Windows-1252, ein Zeichen je Byte).
-  mBytes := Header + S('TForm1') + S('Form1') + S('Width') + B([3, $2C, $01]) + B([0]) +
-    S('TButton') + S('Button1') + S('OnClick') + Ident('Button1Click') + B([0, 0]) + B([0]);
+  mBytes := Header + S('TForm1') + S('Form1') + S('Width') + TBytes.Create(3, $2C, $01) + TBytes.Create(0) +
+    S('TButton') + S('Button1') + S('OnClick') + Ident('Button1Click') + TBytes.Create(0, 0) + TBytes.Create(0);
   mDecoded := '';
   for mIndex := 0 to High(mBytes) do
   begin

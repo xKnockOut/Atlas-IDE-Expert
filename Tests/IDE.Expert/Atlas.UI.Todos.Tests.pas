@@ -16,9 +16,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -49,16 +46,6 @@ begin
 end;
 
 { TAtlasTodoFilterDialogTests }
-
-procedure TAtlasTodoFilterDialogTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ShowsChoicesAndCurrentFilter;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasTodoFilterDialogTests.Setup;
 begin

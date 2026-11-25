@@ -4,7 +4,8 @@
 // Kommandozeilenlauf) schreibt alle paar Sekunden %LOCALAPPDATA%\Atlas\Status\server-<pid>.json
 // (TServerStatusHeartbeat): Art, Befehl und Ziel, Version, Start, Speicher, Zustand, laufende Anfragen mit Dauer,
 // Fortschritt, Zähler für Zeitüberschreitungen und Fehler, die Wurzeln der Arbeitsbereiche und beim LSP-Server den
-// ausführlichen Status des Fensters „Atlas-Server“. Daraus liest das MCP-Werkzeug get_server_status (Find: jüngster
+// ausführlichen Status des Fensters „Atlas-Server“, beim MCP-Server die Aufrufstatistik der Sitzung (Abschnitt mcp,
+// #2611). Daraus liest das MCP-Werkzeug get_server_status (Find: jüngster
 // LSP-Status für einen Ordner) und AtlasMonitor (List: alle Server). Beim Beenden löscht der Server seine Datei;
 // Dateien abgestürzter Prozesse räumen Schreiber und Leser weg. Die Datei bleibt lokal; Pfade stehen nur darin,
 // weil der Status selbst sie enthält.
@@ -59,6 +60,8 @@ type
     ProfiledProcess: Cardinal;
     /// <summary>Ausführlicher Status als JSON-Text (nur LSP-Server); '' ohne.</summary>
     Status: string;
+    /// <summary>Aufrufstatistik der MCP-Sitzung als JSON-Text (TMcpSessionStatistics, #2611); '' ohne.</summary>
+    Mcp: string;
     /// <summary>Gelesene Datei (nur beim Lesen gesetzt).</summary>
     FileName: string;
     /// <summary>Art mit Vorgabe lsp.</summary>
@@ -108,7 +111,9 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.Math,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Timestamps,
+  Atlas.Text.Files;
 
 /// <summary>Ordner zum Vergleichen: klein, beide Trenner als „/“, mit „/“ am Ende.</summary>
 function NormalFolder(const AFolder: string): string;
@@ -117,25 +122,6 @@ begin
   if not Result.EndsWith('/') then
   begin
     Result := Result + '/';
-  end;
-end;
-
-/// <summary>Zeitpunkt als ISO 8601 (Ortszeit); '' für 0.</summary>
-function DateText(AValue: TDateTime): string;
-begin
-  Result := '';
-  if AValue <> 0 then
-  begin
-    Result := DateToISO8601(AValue, False);
-  end;
-end;
-
-/// <summary>Zeitpunkt aus ISO 8601; 0, wenn der Text fehlt oder ungültig ist.</summary>
-function DateOf(const AText: string): TDateTime;
-begin
-  if (AText = '') or not TryISO8601ToDate(AText, Result, False) then
-  begin
-    Result := 0;
   end;
 end;
 
@@ -154,11 +140,11 @@ function TServerStatusEntry.ToJson(AStatus: TJSONObject): TJSONObject;
 var
   mRoots: TJSONArray;
   mRoot: string;
-  mRunning, mProgress: TJSONObject;
+  mRunning, mProgress, mMcp: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('pid', TJSONNumber.Create(Pid));
-  Result.AddPair('written', DateText(Written));
+  Result.AddPair('written', TTextTimestamp.IsoOrEmpty(Written));
   mRoots := TJSONArray.Create;
   for mRoot in Roots do
   begin
@@ -170,7 +156,7 @@ begin
   Result.AddPair('target', Target);
   Result.AddPair('logFile', LogFile);
   Result.AddPair('version', Version);
-  Result.AddPair('started', DateText(Started));
+  Result.AddPair('started', TTextTimestamp.IsoOrEmpty(Started));
   Result.AddPair('memoryBytes', TJSONNumber.Create(MemoryBytes));
   Result.AddPair('state', State);
   mRunning := TJSONObject.Create;
@@ -188,6 +174,11 @@ begin
   if AStatus <> nil then
   begin
     Result.AddPair('status', TJSONObject(AStatus.Clone));
+  end;
+  mMcp := TJsonRead.ParseObject(Mcp);
+  if mMcp <> nil then
+  begin
+    Result.AddPair('mcp', mMcp);
   end;
 end;
 
@@ -231,7 +222,7 @@ begin
   AEntry.Target := TJsonRead.Text(AObject, 'target');
   AEntry.LogFile := TJsonRead.Text(AObject, 'logFile');
   AEntry.Version := TJsonRead.Text(AObject, 'version');
-  AEntry.Started := DateOf(TJsonRead.Text(AObject, 'started'));
+  AEntry.Started := TJsonRead.IsoTime(AObject, 'started', False);
   AEntry.MemoryBytes := TJsonRead.Int64Or(AObject, 'memoryBytes', 0);
   AEntry.State := TJsonRead.Text(AObject, 'state');
   ReadActivity(AObject, AEntry);
@@ -241,6 +232,10 @@ begin
   if AObject.GetValue('status') is TJSONObject then
   begin
     AEntry.Status := AObject.GetValue('status').ToJSON([]);
+  end;
+  if AObject.GetValue('mcp') is TJSONObject then
+  begin
+    AEntry.Mcp := AObject.GetValue('mcp').ToJSON([]);
   end;
 end;
 
@@ -309,21 +304,6 @@ begin
   end;
 end;
 
-/// <summary>Löscht AFileName; Fehler bleiben still (ein anderer Leser war schneller).</summary>
-procedure DeleteQuietly(const AFileName: string);
-begin
-  try
-    if TFile.Exists(AFileName) then
-    begin
-      TFile.Delete(AFileName);
-    end;
-  except
-    // lsp-ignore: catch-all-without-raise -- Statusdatei nach Kräften; nur Anzeige
-    on Exception do
-      Exit;
-  end;
-end;
-
 /// <summary>Verwaiste Dateien anderer Prozesse in AFolder wegräumen (Absturz ohne Delete); AOwn bleibt.</summary>
 procedure DeleteOrphans(const AFolder, AOwn: string; ANow: TDateTime);
 var
@@ -339,7 +319,7 @@ begin
     if not ReadEntry(mOther, mEntry) or (SecondsBetween(ANow, mEntry.Written) > TServerStatusFile.cOrphanSeconds)
     then
     begin
-      DeleteQuietly(mOther);
+      TTextFiles.DeleteQuietly(mOther);
     end;
   end;
 end;
@@ -384,7 +364,7 @@ end;
 
 class procedure TServerStatusFile.Delete(const ARoot: string; APid: Cardinal);
 begin
-  DeleteQuietly(FileFor(ARoot, APid));
+  TTextFiles.DeleteQuietly(FileFor(ARoot, APid));
 end;
 
 class function TServerStatusFile.Matches(const AWorkspaceRoots: TArray<string>; const AFolder: string): Boolean;
@@ -483,7 +463,7 @@ begin
       if (SecondsBetween(ANow, mEntry.Written) > cOrphanSeconds) or (Assigned(AIsAlive) and not AIsAlive(mEntry.Pid))
       then
       begin
-        DeleteQuietly(mFile);
+        TTextFiles.DeleteQuietly(mFile);
         Continue;
       end;
       mEntries.Add(mEntry);

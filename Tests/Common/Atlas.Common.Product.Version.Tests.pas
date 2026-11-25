@@ -24,7 +24,7 @@ uses
   System.SysUtils,
   Atlas.Text.Product.Version,
   Atlas.Common.Product.Version,
-  Atlas.Core.Product.Version;
+  Atlas.Plugin.Product.Version;
 
 { TProductVersionTests }
 

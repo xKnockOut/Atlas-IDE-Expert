@@ -68,7 +68,14 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.Graphics,
-  Vcl.Dialogs;
+  Vcl.Dialogs,
+  Atlas.Vcl.Theme.Service;
+
+const
+  /// <summary>Breite der Zeile mit Pfad, Knopf „…“ und „Prüfen“: die Seite ohne Rand.</summary>
+  cToolRowWidth = 466;
+  cBrowseWidth = 30;
+  cToolCheckWidth = 90;
 
 { TAtlasSettingsVcsToolsPart }
 
@@ -113,16 +120,16 @@ var
 begin
   mEdit := Host.AddText(AKey, TAtlasVcsStrings.Text(ACaption)) as TEdit;
   mEdit.Anchors := [akLeft, akTop];
-  mEdit.Width := mEdit.ScaleValue(466 - 2 * 36 - 60);
+  mEdit.Width := mEdit.ScaleValue(cToolRowWidth - (cVcsButtonGap + cBrowseWidth) - (cVcsButtonGap + cToolCheckWidth));
   mEdit.Tag := Ord(AKind);
   mEdit.OnChange := VcsPathChange;
   mPanel := mEdit.Parent;
   mButton := TButton.Create(FPage);
   mButton.Parent := mPanel;
   mButton.Caption := '…';
-  mButton.Left := mEdit.Left + mEdit.Width + mButton.ScaleValue(6);
+  mButton.Left := mEdit.Left + mEdit.Width + mButton.ScaleValue(cVcsButtonGap);
   mButton.Top := 0;
-  mButton.Width := mButton.ScaleValue(30);
+  mButton.Width := mButton.ScaleValue(cBrowseWidth);
   mButton.Anchors := [akTop, akRight];
   mButton.Tag := Ord(AKind);
   mButton.OnClick := VcsBrowseClick;
@@ -130,21 +137,21 @@ begin
   mButton := TButton.Create(FPage);
   mButton.Parent := mPanel;
   mButton.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsCheck);
-  mButton.Left := FVcsBrowse[AKind].Left + mButton.ScaleValue(36);
+  mButton.Left := FVcsBrowse[AKind].Left + mButton.ScaleValue(cBrowseWidth + cVcsButtonGap);
   mButton.Top := 0;
-  mButton.Width := mButton.ScaleValue(90);
+  mButton.Width := mButton.ScaleValue(cToolCheckWidth);
   mButton.Anchors := [akTop, akRight];
   mButton.Tag := Ord(AKind);
   mButton.OnClick := VcsCheckClick;
   FVcsCheck[AKind] := mButton;
   FVcsPaths[AKind] := mEdit;
-  mPanel := AddPanel(18);
+  mPanel := AddPanel(cStateRowHeight);
   mState := TLabel.Create(FPage);
   mState.Parent := mPanel;
   mState.Left := 0;
   mState.Top := 0;
   mState.ShowAccelChar := False;
-  mState.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mState, clGrayText);
   FVcsStates[AKind] := mState;
   Attach(mPanel, mEdit);
 end;

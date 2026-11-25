@@ -23,7 +23,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Palette,
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
 {$SCOPEDENUMS ON}
@@ -108,11 +109,10 @@ type
     FKey: string;
     FGeneration: Integer;
     FStopping: Boolean;
-    FThreads: TList<TThread>;
+    FThreads: TAtlasWorkerSlot;
     FLister: TAtlasQuickOpenLister;
     FBuilding: Integer;
     procedure Store(AGeneration: Integer; const AFiles: TAtlasQuickOpenFiles);
-    procedure Sweep;
   public
     constructor Create(const ALister: TAtlasQuickOpenLister);
     /// <summary>Wartet auf laufende Aufbauten (sie brechen zwischen zwei Ordnern ab).</summary>
@@ -133,7 +133,8 @@ uses
   System.IOUtils,
   System.Diagnostics,
   System.Generics.Defaults,
-  Atlas.Core.Completion.Matching;
+  Atlas.Core.Completion.Matching,
+  Atlas.Text.Files;
 
 const
   cListed: array[0..7] of string = ('.pas', '.dpr', '.dpk', '.inc', '.dfm', '.fmx', '.rc', '.dproj');
@@ -387,24 +388,29 @@ begin
   Result := LowerCase(AFileName);
 end;
 
-/// <summary>Stufe der Datei: offen 3, zuletzt geöffnet (ABoost > 0) 2, Projekt 1, Rest 0.</summary>
+/// <summary>Stufe der Datei: offen vor zuletzt geöffnet (ABoost > 0) vor Projekt vor dem Rest.</summary>
 function TierOf(AOpen: TDictionary<string, Boolean>; const AFile: TAtlasQuickOpenFile; ABoost: Integer): Integer;
+const
+  cTierOther = 0;
+  cTierProject = 1;
+  cTierRecent = 2;
+  cTierOpen = 3;
 begin
   if AOpen.ContainsKey(LowerCase(AFile.FileName)) then
   begin
-    Result := 3;
+    Result := cTierOpen;
   end
   else if ABoost > 0 then
   begin
-    Result := 2;
+    Result := cTierRecent;
   end
   else if AFile.Origin = TAtlasQuickOpenOrigin.Project then
   begin
-    Result := 1;
+    Result := cTierProject;
   end
   else
   begin
-    Result := 0;
+    Result := cTierOther;
   end;
 end;
 
@@ -529,13 +535,11 @@ constructor TAtlasQuickOpenList.Create(const ALister: TAtlasQuickOpenLister);
 begin
   inherited Create;
   FLock := TObject.Create;
-  FThreads := TList<TThread>.Create;
+  FThreads := TAtlasWorkerSlot.Create(HInstance);
   FLister := ALister;
 end;
 
 destructor TAtlasQuickOpenList.Destroy;
-var
-  mThread: TThread;
 begin
   System.TMonitor.Enter(FLock);
   try
@@ -543,11 +547,7 @@ begin
   finally
     System.TMonitor.Exit(FLock);
   end;
-  for mThread in FThreads do
-  begin
-    mThread.WaitFor;
-    mThread.Free;
-  end;
+  FThreads.Stop(TAtlasWorkerSlot.cWaitForever);
   FThreads.Free;
   FLock.Free;
   inherited;
@@ -570,20 +570,6 @@ begin
   end;
 end;
 
-procedure TAtlasQuickOpenList.Sweep;
-var
-  mIndex: Integer;
-begin
-  for mIndex := FThreads.Count - 1 downto 0 do
-  begin
-    if FThreads[mIndex].Finished then
-    begin
-      FThreads[mIndex].Free;
-      FThreads.Delete(mIndex);
-    end;
-  end;
-end;
-
 procedure TAtlasQuickOpenList.Refresh(const ASources: TAtlasQuickOpenSources);
 var
   mKey: string;
@@ -592,7 +578,7 @@ var
   mLister: TAtlasQuickOpenLister;
   mThread: TThread;
 begin
-  Sweep;
+  FThreads.Prune;
   mKey := ASources.Key;
   System.TMonitor.Enter(FLock);
   try
@@ -628,14 +614,18 @@ begin
           end);
       except
         // Ein Fehler beim Lesen der Ordner lässt die bisherige Liste stehen.
-        on Exception do
+        on E: Exception do
+        begin
+          if not TTextFiles.IsFileError(E) then
+          begin
+            raise;
+          end;
           mGeneration := -1;
+        end;
       end;
       Store(mGeneration, mFiles);
     end);
-  mThread.FreeOnTerminate := False;
-  FThreads.Add(mThread);
-  mThread.Start;
+  FThreads.Start(mThread);
 end;
 
 function TAtlasQuickOpenList.Files: TAtlasQuickOpenFiles;

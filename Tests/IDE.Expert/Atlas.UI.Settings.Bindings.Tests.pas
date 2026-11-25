@@ -35,7 +35,7 @@ uses
   Vcl.StdCtrls,
   Vcl.Menus,
   Atlas.Core.Settings.History,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Bindings;
 
 { TAtlasSettingsBindingsTests }

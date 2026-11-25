@@ -17,7 +17,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Catalog,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.UI.Settings.Strings,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Bindings,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Page.Sheets;
@@ -28,22 +29,49 @@ const
 type
   TAtlasSettingsPageHost = class;
 
+  /// <summary>Zeilen der Abschnitte eines Moduls → Id des Moduls (#1903: Knoten je Package). Zwischen BeginQueries
+  /// und EndQueries antworten sie und die Bindungen aus einem einmal aufgebauten Stand der Lage (#2372): Filter und
+  /// Sperren fragen für jedes Element der Seite, der Weg über alle Zeilen machte das quadratisch. Dazwischen keine
+  /// Elemente umhängen.</summary>
+  TAtlasSettingsSectionOwners = class
+  private
+    FOwners: TDictionary<TControl, string>;
+    FMarks: TAtlasSettingsMarks;
+    /// <summary>Tiefe von BeginQueries.</summary>
+    FQueries: Integer;
+    /// <summary>Module der Zeilen je Element samt Behältern darüber; nil, solange nicht gebraucht.</summary>
+    FPlaces: TDictionary<TControl, TArray<string>>;
+    procedure BuildPlaces;
+  public
+    constructor Create(AMarks: TAtlasSettingsMarks);
+    destructor Destroy; override;
+    procedure Mark(AControl: TControl; const AOwnerId: string);
+    procedure Remove(AControl: TControl);
+    /// <summary>Module, deren Abschnitte AControl oder eins seiner Elemente angelegt haben.</summary>
+    function OwnersIn(AControl: TControl): TArray<string>;
+    /// <summary>Beginnt auch die Abfragen der Bindungen; verschachtelbar.</summary>
+    procedure BeginQueries;
+    procedure EndQueries;
+  end;
+
   /// <summary>Teil der Seite: baut die Elemente eines Bereichs, lädt und speichert sie. Die Bausteine (AddCheck,
   /// BindCheck …) reicht er an die Seite weiter, die Elemente gehören der Seite.</summary>
   TAtlasSettingsPagePart = class
   protected
     FPage: TAtlasSettingsPageHost;
-    procedure AddSheet(AId: TAtlasTextId);
+    procedure AddSheet(AId: TAtlasSettingsTextId);
     function AddCheck(const ACaption: string): TCheckBox;
     function AddPanel(AHeight: Integer): TWinControl;
     function AddNumber(const ACaption: string): TEdit;
     function AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
-    procedure AddTitle(AId: TAtlasTextId);
+    procedure AddTitle(AId: TAtlasSettingsTextId);
     function AddKey(const ACaption: string): TEdit;
     function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
     function AddTextLine(const ACaption: string): TEdit;
     function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
     function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
+      AClick: TNotifyEvent): TButton;
+    function AddColumnButton(AParent: TWinControl; AColumn: Integer; const ACaption: string;
       AClick: TNotifyEvent): TButton;
     function ListReady(AControl: TWinControl): Boolean;
     function BindCheck(const AName: string; AControl: TCheckBox): TCheckBox;
@@ -80,11 +108,10 @@ type
     /// <summary>Zeile ohne eigene Einstellung → Element, zu dem sie gehört (Liste und Knöpfe einer Funktion).</summary>
     FAttached: TDictionary<TControl, TControl>;
     /// <summary>Von der Seite selbst abgeschaltet (Liste leer, kein Server); bleibt aus, auch ohne Sperre.</summary>
-    FOwnOff: TList<TControl>;
+    FOwnOff: TDictionary<TControl, Byte>;
     /// <summary>Durch einen Hauptschalter gesperrt.</summary>
-    FLockedControls: TList<TControl>;
-    /// <summary>Zeilen der Abschnitte eines Moduls → Id des Moduls (#1903: Knoten je Package).</summary>
-    FSectionOwners: TDictionary<TControl, string>;
+    FLockedControls: TDictionary<TControl, Byte>;
+    FSectionOwners: TAtlasSettingsSectionOwners;
   private
     procedure MarksChanged(Sender: TObject);
     procedure MarksResetPage(Sender: TObject);
@@ -139,7 +166,106 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Settings.Group;
+  Atlas.Vcl.Options.Group;
+
+{ TAtlasSettingsSectionOwners }
+
+constructor TAtlasSettingsSectionOwners.Create(AMarks: TAtlasSettingsMarks);
+begin
+  inherited Create;
+  FMarks := AMarks;
+  FOwners := TDictionary<TControl, string>.Create;
+end;
+
+destructor TAtlasSettingsSectionOwners.Destroy;
+begin
+  FreeAndNil(FPlaces);
+  FreeAndNil(FOwners);
+  inherited Destroy;
+end;
+
+procedure TAtlasSettingsSectionOwners.Mark(AControl: TControl; const AOwnerId: string);
+begin
+  FOwners.AddOrSetValue(AControl, AOwnerId);
+  FreeAndNil(FPlaces);
+end;
+
+procedure TAtlasSettingsSectionOwners.Remove(AControl: TControl);
+begin
+  FOwners.Remove(AControl);
+  FreeAndNil(FPlaces);
+end;
+
+procedure TAtlasSettingsSectionOwners.BeginQueries;
+begin
+  Inc(FQueries);
+  FMarks.BeginQueries;
+end;
+
+procedure TAtlasSettingsSectionOwners.EndQueries;
+begin
+  FMarks.EndQueries;
+  Dec(FQueries);
+  if FQueries <= 0 then
+  begin
+    FQueries := 0;
+    FreeAndNil(FPlaces);
+  end;
+end;
+
+procedure TAtlasSettingsSectionOwners.BuildPlaces;
+var
+  mPair: TPair<TControl, string>;
+  mParent: TControl;
+  mOwners: TArray<string>;
+begin
+  FPlaces := TDictionary<TControl, TArray<string>>.Create;
+  for mPair in FOwners do
+  begin
+    mParent := mPair.Key;
+    while mParent <> nil do
+    begin
+      if not FPlaces.TryGetValue(mParent, mOwners) then
+      begin
+        mOwners := nil;
+      end;
+      FPlaces.AddOrSetValue(mParent, mOwners + [mPair.Value]);
+      mParent := mParent.Parent;
+    end;
+  end;
+end;
+
+function TAtlasSettingsSectionOwners.OwnersIn(AControl: TControl): TArray<string>;
+var
+  mPair: TPair<TControl, string>;
+  mParent: TControl;
+begin
+  Result := nil;
+  if FQueries > 0 then
+  begin
+    if FPlaces = nil then
+    begin
+      BuildPlaces;
+    end;
+    if (AControl = nil) or not FPlaces.TryGetValue(AControl, Result) then
+    begin
+      Result := nil;
+    end;
+    Exit;
+  end;
+  for mPair in FOwners do
+  begin
+    mParent := mPair.Key;
+    while (mParent <> nil) and (mParent <> AControl) do
+    begin
+      mParent := mParent.Parent;
+    end;
+    if mParent <> nil then
+    begin
+      Result := Result + [mPair.Value];
+    end;
+  end;
+end;
 
 { TAtlasSettingsPagePart }
 
@@ -149,7 +275,7 @@ begin
   FPage := APage;
 end;
 
-procedure TAtlasSettingsPagePart.AddSheet(AId: TAtlasTextId);
+procedure TAtlasSettingsPagePart.AddSheet(AId: TAtlasSettingsTextId);
 begin
   FPage.AddSheet(AId);
 end;
@@ -174,7 +300,7 @@ begin
   Result := FPage.AddChoice(ACaption, AItems);
 end;
 
-procedure TAtlasSettingsPagePart.AddTitle(AId: TAtlasTextId);
+procedure TAtlasSettingsPagePart.AddTitle(AId: TAtlasSettingsTextId);
 begin
   FPage.AddTitle(AId);
 end;
@@ -203,6 +329,12 @@ function TAtlasSettingsPagePart.AddRowButton(AParent: TWinControl; ALeft, AWidth
   AClick: TNotifyEvent): TButton;
 begin
   Result := FPage.AddRowButton(AParent, ALeft, AWidth, AId, AClick);
+end;
+
+function TAtlasSettingsPagePart.AddColumnButton(AParent: TWinControl; AColumn: Integer; const ACaption: string;
+  AClick: TNotifyEvent): TButton;
+begin
+  Result := FPage.AddColumnButton(AParent, AColumn, ACaption, AClick);
 end;
 
 function TAtlasSettingsPagePart.ListReady(AControl: TWinControl): Boolean;
@@ -273,10 +405,11 @@ begin
   FParts := TObjectList<TAtlasSettingsPagePart>.Create;
   FAttached := TDictionary<TControl, TControl>.Create;
   FBindings := TAtlasSettingsBindings.Create;
-  FOwnOff := TList<TControl>.Create;
-  FLockedControls := TList<TControl>.Create;
-  FSectionOwners := TDictionary<TControl, string>.Create;
+  // Mengen (#2372): Sperren fragt sie für jedes Element der Seite; eine Liste suchte dafür jedes Mal von vorn.
+  FOwnOff := TDictionary<TControl, Byte>.Create;
+  FLockedControls := TDictionary<TControl, Byte>.Create;
   FMarks := TAtlasSettingsMarks.Create(Self);
+  FSectionOwners := TAtlasSettingsSectionOwners.Create(FMarks);
   FMarks.OnChanged := MarksChanged;
   FMarks.OnResetPage := MarksResetPage;
   FMarks.OnReset :=
@@ -340,28 +473,13 @@ end;
 
 procedure TAtlasSettingsPageHost.MarkSectionOwner(AControl: TControl; const AOwnerId: string);
 begin
-  FSectionOwners.AddOrSetValue(AControl, AOwnerId);
+  FSectionOwners.Mark(AControl, AOwnerId);
   AControl.FreeNotification(Self);
 end;
 
 function TAtlasSettingsPageHost.SectionOwnersIn(AControl: TControl): TArray<string>;
-var
-  mPair: TPair<TControl, string>;
-  mParent: TControl;
 begin
-  Result := nil;
-  for mPair in FSectionOwners do
-  begin
-    mParent := mPair.Key;
-    while (mParent <> nil) and (mParent <> AControl) do
-    begin
-      mParent := mParent.Parent;
-    end;
-    if mParent <> nil then
-    begin
-      Result := Result + [mPair.Value];
-    end;
-  end;
+  Result := FSectionOwners.OwnersIn(AControl);
 end;
 
 procedure TAtlasSettingsPageHost.Attach(ARow, AAnchor: TControl);
@@ -384,11 +502,11 @@ begin
   begin
     FLockedControls.Remove(AControl);
   end
-  else if not FLockedControls.Contains(AControl) then
+  else
   begin
-    FLockedControls.Add(AControl);
+    FLockedControls.AddOrSetValue(AControl, 0);
   end;
-  AControl.Enabled := not ALocked and not FOwnOff.Contains(AControl);
+  AControl.Enabled := not ALocked and not FOwnOff.ContainsKey(AControl);
   if (AControl is TWinControl) and not (AControl is TAtlasSettingsGroup) then
   begin
     for mIndex := 0 to TWinControl(AControl).ControlCount - 1 do
@@ -405,11 +523,11 @@ begin
   begin
     FOwnOff.Remove(AControl);
   end
-  else if not FOwnOff.Contains(AControl) then
+  else
   begin
-    FOwnOff.Add(AControl);
+    FOwnOff.AddOrSetValue(AControl, 0);
   end;
-  AControl.Enabled := AValue and not FLockedControls.Contains(AControl);
+  AControl.Enabled := AValue and not FLockedControls.ContainsKey(AControl);
 end;
 
 procedure TAtlasSettingsPageHost.Bind(const AKey: string; AControl: TControl);
@@ -449,11 +567,7 @@ end;
 
 function TAtlasSettingsPageHost.Catalog: TAtlasSettingsCatalog;
 begin
-  if FCatalog = nil then
-  begin
-    FCatalog := TAtlasSettingsCatalog.CreateDefault;
-  end;
-  Result := FCatalog;
+  Result := TAtlasSettingsCatalog.Lazy(FCatalog);
 end;
 
 function TAtlasSettingsPageHost.ControlOfSetting(const AName: string): TControl;

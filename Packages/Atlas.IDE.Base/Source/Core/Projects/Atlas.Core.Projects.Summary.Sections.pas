@@ -11,166 +11,17 @@ interface
 
 uses
   System.JSON,
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Core.Projects.Contract.Summary;
 
 type
-  /// <summary>Fund der Pfadprüfung (#759): fehlende Unit oder Define ohne Quelle.</summary>
-  TAtlasSetupFinding = record
-    Name: string;
-    /// <summary>Datei der ersten Stelle, relativ zum Projektordner.</summary>
-    FileName: string;
-    /// <summary>Zeile ab 1.</summary>
-    Line: Integer;
-    /// <summary>Stellen im Projekt.</summary>
-    Count: Integer;
-    /// <summary>Kein sicherer Fund (Suchpfad mit unbekanntem Makro übersprungen).</summary>
-    Uncertain: Boolean;
-    /// <summary>Define: ähnliches bekanntes Symbol; Hinweis: Unit im Suchpfad ('' = Package ohne Quelle).</summary>
-    Note: string;
-    /// <summary>Nur in der Zusammenfassung einer Projektgruppe: Name des Projekts; nicht gespeichert.</summary>
-    Project: string;
-  end;
-
-  /// <summary>Einrichtung des Projekts für Atlas (#759).</summary>
-  TAtlasProjectSetup = record
-  public const
-    /// <summary>Höchstens so viele Funde je Liste stehen in der Datei.</summary>
-    cMaxFindings = 50;
-  public
-    Known: Boolean;
-    /// <summary>„Für dieses Projekt nicht mehr fragen“.</summary>
-    Dismissed: Boolean;
-    DismissedAt: TDateTime;
-    /// <summary>„Suchpfade und Defines prüfen“ lief; die übrigen Felder gelten nur dann.</summary>
-    Checked: Boolean;
-    CheckedAt: TDateTime;
-    Files: Integer;
-    Unreadable: Integer;
-    /// <summary>Alle fehlenden Units bzw. Defines ohne Quelle, auch über MaxFindings hinaus.</summary>
-    MissingUnitCount: Integer;
-    UndefinedDefineCount: Integer;
-    MissingUnits: TArray<TAtlasSetupFinding>;
-    UndefinedDefines: TArray<TAtlasSetupFinding>;
-    /// <summary>Hinweise zu requires-Packages (#759); kein Fehler.</summary>
-    Hints: TArray<TAtlasSetupFinding>;
-    /// <summary>Davon unsicher (in MissingUnitCount bzw. UndefinedDefineCount enthalten).</summary>
-    UncertainUnitCount: Integer;
-    UncertainDefineCount: Integer;
-    /// <summary>Unbekannte Makros übersprungener Such- und Bibliothekspfade.</summary>
-    SkippedMacros: TArray<string>;
-    class function Empty: TAtlasProjectSetup; static;
-    /// <summary>Die letzte Prüfung lief und fand nichts Sicheres (unsichere Funde zählen nicht).</summary>
-    function PathsClean: Boolean;
-  end;
-
-  /// <summary>Fehlgeschlagener Test des letzten Laufs (#69).</summary>
-  TAtlasProjectTestFailure = record
-    /// <summary>Voller Name aus dem Bericht von DUnitX (Unit.Fixture.Methode[.Fall]).</summary>
-    Test: string;
-    Message: string;
-    /// <summary>Datei des Tests (absolut); '' ohne Fundstelle.</summary>
-    FileName: string;
-    /// <summary>Zeile ab 1; 0 = ohne.</summary>
-    Line: Integer;
-  end;
-
-  /// <summary>Einer der langsamsten Tests des letzten Laufs (#1772).</summary>
-  TAtlasProjectSlowTest = record
-    /// <summary>Voller Name aus dem Bericht von DUnitX (Unit.Fixture.Methode[.Fall]).</summary>
-    Test: string;
-    /// <summary>Datei des Tests (absolut); '' ohne Fundstelle.</summary>
-    FileName: string;
-    /// <summary>Zeile ab 1; 0 = ohne.</summary>
-    Line: Integer;
-    DurationMs: Integer;
-  end;
-
-  /// <summary>Letzter DUnitX-Lauf aus der IDE (#69), Grundlage der Karte Tests (#763).</summary>
-  TAtlasProjectTests = record
-  public const
-    /// <summary>Höchstens so viele fehlgeschlagene Tests stehen in der Datei.</summary>
-    cMaxFailures = 50;
-    /// <summary>So viele langsamste Tests stehen in der Datei (#1772).</summary>
-    cMaxSlowest = 5;
-  public
-    Known: Boolean;
-    /// <summary>Ende des Laufs (UTC).</summary>
-    At: TDateTime;
-    /// <summary>Testprojekt (.dproj).</summary>
-    Project: string;
-    Configuration: string;
-    Platform: string;
-    Passed: Integer;
-    Failed: Integer;
-    Errors: Integer;
-    Skipped: Integer;
-    DurationMs: Integer;
-    Failures: TArray<TAtlasProjectTestFailure>;
-    /// <summary>Die langsamsten Tests, der langsamste zuerst; höchstens cMaxSlowest (#1772).</summary>
-    Slowest: TArray<TAtlasProjectSlowTest>;
-    class function Empty: TAtlasProjectTests; static;
-    /// <summary>Namen der gespeicherten fehlgeschlagenen Tests ohne Doppelte, für --run.</summary>
-    function FailedTests: TArray<string>;
-    function Total: Integer;
-  end;
-
-  /// <summary>Letzter erfolgreicher Release-Build einer Konfiguration und Plattform (#533).</summary>
-  TAtlasProjectReleaseBuild = record
-    Configuration: string;
-    Platform: string;
-    Version: string;
-    /// <summary>Ende des Builds (UTC).</summary>
-    At: TDateTime;
-  end;
-
-  /// <summary>Release-Build-Wächter (#533): letzte Prüfung und Versionen der Release-Builds.</summary>
-  TAtlasProjectRelease = record
-  public const
-    /// <summary>Höchstens so viele Einträge in "builds" (je Konfiguration und Plattform einer).</summary>
-    cMaxBuilds = 20;
-  public
-    Known: Boolean;
-    /// <summary>Letzte Prüfung (UTC); 0 = noch keine.</summary>
-    CheckedAt: TDateTime;
-    Configuration: string;
-    Platform: string;
-    Findings: Integer;
-    /// <summary>Die Prüfung hat den Build abgebrochen (build.gate = block).</summary>
-    Blocked: Boolean;
-    /// <summary>Regel-IDs der Verstöße ohne Doppelte, z. B. release-debug-define.</summary>
-    Rules: TArray<string>;
-    Builds: TArray<TAtlasProjectReleaseBuild>;
-    class function Empty: TAtlasProjectRelease; static;
-    /// <summary>Version des letzten erfolgreichen Release-Builds von AConfiguration/APlatform; '' = keiner.
-    /// </summary>
-    function VersionOf(const AConfiguration, APlatform: string): string;
-    /// <summary>Merkt AVersion für AConfiguration/APlatform (ersetzt den alten Eintrag, neueste zuerst).</summary>
-    procedure Remember(const AConfiguration, APlatform, AVersion: string; AAtUtc: TDateTime);
-  end;
-
-  /// <summary>Letzter Abruf vom Build-Server (#763).</summary>
-  TAtlasProjectCi = record
-    Known: Boolean;
-    /// <summary>"jenkins".</summary>
-    Provider: string;
-    /// <summary>TAtlasCiJob.Server, z. B. "https://ci.firma.de".</summary>
-    Server: string;
-    Job: string;
-    /// <summary>Branch des Multibranch-Jobs; '' sonst.</summary>
-    Branch: string;
-    /// <summary>Letzter Versuch (UTC); 0 = noch keiner.</summary>
-    Attempt: TDateTime;
-    /// <summary>Fehler des letzten Versuchs; None = gelungen.</summary>
-    Error: TAtlasCiFetchError;
-    /// <summary>Letzter gelungener Abruf (UTC); 0 = noch keiner. Build gilt für diesen Stand.</summary>
-    At: TDateTime;
-    Build: TAtlasCiBuild;
-    class function Empty: TAtlasProjectCi; static;
-    /// <summary>Der Stand gehört zu AJob (Anbieter, Server, Job und Branch gleich).</summary>
-    function Matches(const AJob: TAtlasCiJob): Boolean;
-    /// <summary>Ein Build ist bekannt.</summary>
-    function HasBuild: Boolean;
-  end;
+  TAtlasSetupFinding = Atlas.Core.Projects.Contract.Summary.TAtlasSetupFinding;
+  TAtlasProjectSetup = Atlas.Core.Projects.Contract.Summary.TAtlasProjectSetup;
+  TAtlasProjectTestFailure = Atlas.Core.Projects.Contract.Summary.TAtlasProjectTestFailure;
+  TAtlasProjectSlowTest = Atlas.Core.Projects.Contract.Summary.TAtlasProjectSlowTest;
+  TAtlasProjectTests = Atlas.Core.Projects.Contract.Summary.TAtlasProjectTests;
+  TAtlasProjectReleaseBuild = Atlas.Core.Projects.Contract.Summary.TAtlasProjectReleaseBuild;
+  TAtlasProjectRelease = Atlas.Core.Projects.Contract.Summary.TAtlasProjectRelease;
+  TAtlasProjectCi = Atlas.Core.Projects.Contract.Summary.TAtlasProjectCi;
 
   /// <summary>Lesen und Schreiben der Abschnitte; AOriginal ist der Abschnitt der gelesenen Datei (darf nil sein),
   /// seine unbekannten Felder bleiben erhalten.</summary>
@@ -200,7 +51,8 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.Math,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Text.Json;
 
 const
@@ -215,20 +67,6 @@ const
   cReleaseBuildKeys: array[0..3] of string = ('configuration', 'platform', 'version', 'at');
   cPathsKeys: array[0..10] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
     'defines', 'uncertainUnits', 'uncertainDefines', 'skippedMacros', 'hints');
-
-{ TAtlasProjectSetup }
-
-class function TAtlasProjectSetup.Empty: TAtlasProjectSetup;
-begin
-  Result := Default(TAtlasProjectSetup);
-  Result.MissingUnits := nil;
-  Result.UndefinedDefines := nil;
-end;
-
-function TAtlasProjectSetup.PathsClean: Boolean;
-begin
-  Result := Checked and (MissingUnitCount <= UncertainUnitCount) and (UndefinedDefineCount <= UncertainDefineCount);
-end;
 
 /// <summary>Funde aus einem Array [{"name", "file", "line", "count"}]; Einträge ohne Namen fallen weg.</summary>
 function SetupFindingsOf(AValue: TJSONValue): TArray<TAtlasSetupFinding>;
@@ -351,48 +189,6 @@ begin
     end;
     mItem.AddPair('durationMs', TJSONNumber.Create(ASlowest[mIndex].DurationMs));
   end;
-end;
-
-{ TAtlasProjectTests }
-
-class function TAtlasProjectTests.Empty: TAtlasProjectTests;
-begin
-  Result := Default(TAtlasProjectTests);
-  Result.Failures := nil;
-  Result.Slowest := nil;
-end;
-
-function TAtlasProjectTests.FailedTests: TArray<string>;
-var
-  mFailure: TAtlasProjectTestFailure;
-  mName: string;
-  mSeen: Boolean;
-begin
-  Result := nil;
-  for mFailure in Failures do
-  begin
-    if mFailure.Test = '' then
-    begin
-      Continue;
-    end;
-    mSeen := False;
-    for mName in Result do
-    begin
-      if SameText(mName, mFailure.Test) then
-      begin
-        mSeen := True;
-      end;
-    end;
-    if not mSeen then
-    begin
-      Result := Result + [mFailure.Test];
-    end;
-  end;
-end;
-
-function TAtlasProjectTests.Total: Integer;
-begin
-  Result := Passed + Failed + Errors + Skipped;
 end;
 
 /// <summary>Abschnitt "setup"; leer ohne Abschnitt.</summary>
@@ -592,53 +388,6 @@ begin
   KeepUnknown(Result, AOriginal, cTestsKeys);
 end;
 
-{ TAtlasProjectRelease }
-
-class function TAtlasProjectRelease.Empty: TAtlasProjectRelease;
-begin
-  Result := Default(TAtlasProjectRelease);
-  Result.Rules := nil;
-  Result.Builds := nil;
-end;
-
-function TAtlasProjectRelease.VersionOf(const AConfiguration, APlatform: string): string;
-var
-  mBuild: TAtlasProjectReleaseBuild;
-begin
-  Result := '';
-  for mBuild in Builds do
-  begin
-    if SameText(mBuild.Configuration, AConfiguration) and SameText(mBuild.Platform, APlatform) then
-    begin
-      Exit(mBuild.Version);
-    end;
-  end;
-end;
-
-procedure TAtlasProjectRelease.Remember(const AConfiguration, APlatform, AVersion: string; AAtUtc: TDateTime);
-var
-  mEntry: TAtlasProjectReleaseBuild;
-  mKept: TArray<TAtlasProjectReleaseBuild>;
-  mBuild: TAtlasProjectReleaseBuild;
-begin
-  mEntry.Configuration := AConfiguration;
-  mEntry.Platform := APlatform;
-  mEntry.Version := AVersion;
-  mEntry.At := AAtUtc;
-  mKept := nil;
-  mKept := mKept + [mEntry];
-  for mBuild in Builds do
-  begin
-    if (Length(mKept) < cMaxBuilds) and
-      not (SameText(mBuild.Configuration, AConfiguration) and SameText(mBuild.Platform, APlatform)) then
-    begin
-      mKept := mKept + [mBuild];
-    end;
-  end;
-  Builds := mKept;
-  Known := True;
-end;
-
 class function TAtlasSummarySections.ReleaseOf(ASection: TJSONObject): TAtlasProjectRelease;
 var
   mItems: TJSONValue;
@@ -752,25 +501,6 @@ begin
     KeepUnknown(mItem, OriginalReleaseBuild(AOriginal, mBuild.Configuration, mBuild.Platform), cReleaseBuildKeys);
   end;
   KeepUnknown(Result, AOriginal, cReleaseKeys);
-end;
-
-{ TAtlasProjectCi }
-
-class function TAtlasProjectCi.Empty: TAtlasProjectCi;
-begin
-  Result := Default(TAtlasProjectCi);
-  Result.Build := TAtlasCiBuild.Empty;
-end;
-
-function TAtlasProjectCi.Matches(const AJob: TAtlasCiJob): Boolean;
-begin
-  Result := Known and SameText(Provider, AJob.Provider) and SameText(Server, AJob.Server) and
-    SameText(Job, AJob.Job) and SameText(Branch, AJob.JobBranch);
-end;
-
-function TAtlasProjectCi.HasBuild: Boolean;
-begin
-  Result := Known and (Build.Number > 0);
 end;
 
 class function TAtlasSummarySections.CiOf(ASection: TJSONObject): TAtlasProjectCi;

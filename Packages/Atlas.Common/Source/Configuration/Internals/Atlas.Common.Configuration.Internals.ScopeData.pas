@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  cGlobalSettingPaths: array[0..74] of string = (
+  cGlobalSettingPaths: array[0..78] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -79,6 +79,10 @@ const
     'tests.affectedDepth',
     'mcp.disabledTools',
     'mcp.prompts',
+    'mcp.statistics',
+    'mcp.reportFindingsAfterEdit',
+    'mcp.confirm',
+    'mcp.openProjects',
     'mcp.promptLanguage',
     'tasks',
     'issues',
@@ -86,7 +90,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  cProjectSettingPaths: array[0..41] of string = (
+  cProjectSettingPaths: array[0..43] of string = (
     'minDelphiVersion',
     'encoding',
     'project',
@@ -106,6 +110,7 @@ const
     'completion.resourceStringUnit',
     'refactoring',
     'sortUses',
+    'usesGroupStyle',
     'usesKeep',
     'deadCode',
     'dfmPropertyRules',
@@ -127,6 +132,7 @@ const
     'exclude',
     'mcp.globalSettings',
     'mcp.customPrompts',
+    'assistants',
     'format',
     'tasks');
 

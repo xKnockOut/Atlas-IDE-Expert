@@ -42,7 +42,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Palette,
   Atlas.IDE.CodeInsight.Composition.Navigation,
   Atlas.IDE.CodeInsight.Composition.Editing,
-  Atlas.IDE.CodeInsight.Composition.Tools;
+  Atlas.IDE.CodeInsight.Composition.Tools,
+  Atlas.IDE.Foundation.Host;
 
 var
   // Ergebnisfenster (#400) und Editorbefehle (#399) angemeldet.
@@ -89,16 +90,18 @@ begin
   mHooks.FindingsOf := FindingsOf;
   mHooks.CanGoBack := CanGoBack;
   mHooks.CanGoForward := CanGoForward;
-  mHooks.Message := MessageLines();
+  mHooks.Message := TAtlasIdeHost.Messages();
   TAtlasIdeEditorToolbar.Install(mHooks);
 end;
 
 /// <summary>Klick auf die Live-Prüfung (#1231); startet keinen Server.</summary>
 procedure Recheck;
+const
+  cRecheckTimeoutMs = 10000;
 begin
   if Manager <> nil then
   begin
-    Manager.RunServerCommandAsync('atlas.server.recheck', '[]', 10000, nil);
+    Manager.RunServerCommandAsync('atlas.server.recheck', '[]', cRecheckTimeoutMs, nil);
   end;
 end;
 
@@ -134,7 +137,7 @@ begin
     end;
   mHooks.WantMetrics :=
     WantStatusMetrics;
-  mHooks.Message := MessageLines();
+  mHooks.Message := TAtlasIdeHost.Messages();
   mHooks.Recheck := Recheck;
   TAtlasIdeStatusBar.Install(mHooks);
   RequestStatusRefresh;

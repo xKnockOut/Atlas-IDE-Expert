@@ -62,12 +62,13 @@ uses
   Atlas.Core.Build.PipelineSettings,
   Atlas.Core.BuildPipeline.Plan,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Projects.Contract,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Projects.Contract,
   Atlas.Core.Projects.Summary,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.IDE.Foundation.StartOptions,
   Atlas.IDE.Projects.Context,
   Atlas.UI.Strings,
   Atlas.UI.BuildPipeline.Strings;
@@ -106,17 +107,6 @@ begin
   mMessages.ShowMessageView(mGroup);
 end;
 
-function ProjectOf(const AFileName: string): IOTAProject;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Supports(mModules.FindModule(AFileName), IOTAProject, Result);
-  end;
-end;
-
 /// <summary>.dpr bzw. .dpk des Projekts: aus den Moduldateien, sonst neben der .dproj.</summary>
 function ProjectSourceOf(const AProject: IOTAProject): string;
 var
@@ -134,8 +124,9 @@ begin
       end;
     end;
   except
-    on Exception do
-      ; // Rückfall unten.
+    // Rückfall unten.
+    on E: Exception do
+      TAtlasGuard.Log('Release-Prüfung: Moduldateien nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
   end;
   if FileExists(ChangeFileExt(AProject.FileName, '.dpk')) then
   begin
@@ -167,8 +158,14 @@ begin
       Result := TAtlasTextFile.Load(AFileName).Text;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Result := '';
+    end;
   end;
 end;
 
@@ -197,8 +194,8 @@ begin
       AOptions := Default(TAtlasReleaseOptions);
       Result := False;
       try
-        Result := ReadOptions(ProjectOf(AProject.FileName), AProject.Configuration, AProject.Platform, mFolder,
-          AOptions);
+        Result := ReadOptions(TAtlasIdeStartOptions.FindProject(AProject.FileName), AProject.Configuration,
+          AProject.Platform, mFolder, AOptions);
       except
         // Nicht lesbar: keine Prüfung, der Build läuft (#493).
         on E: Exception do

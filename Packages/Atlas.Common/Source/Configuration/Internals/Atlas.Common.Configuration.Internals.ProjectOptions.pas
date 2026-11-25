@@ -30,7 +30,8 @@ type
     AllowedAreLfAndCrlf, AllowedArePreserveNewLineAnd, AllowedAreAutoDccOff, AffectedDepthMustBeAWhole,
     TestUnitsProjectMustBeA, AllowedAreContainsNotContainsEmpty, AllowedAreAutoPromptAnd, ExcludeMustBeAList,
     UnknownEntryInAProperty, APropertyRuleNeedsClass, ThisConditionNeedsAValue, APropertyRuleMustBe,
-    DfmPropertyRulesMustBeAList, UnknownSeverityAllowedOffHint, ApprovalFolderMustNotBeEmpty);
+    DfmPropertyRulesMustBeAList, UnknownSeverityAllowedOffHint, ApprovalFolderMustNotBeEmpty,
+    UnknownPlaceholderInTestUnitsFolder);
 
 const
   cTexts: array[TProjectOptionsText] of TAtlasText = (
@@ -57,7 +58,9 @@ const
     (De: '"dfmPropertyRules" muss eine Liste von Regeln sein'; En: '"dfmPropertyRules" must be a list of rules'),
     (De: 'Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error';
      En: 'Unknown severity "%s"; allowed: off, hint, info, warning, error'),
-    (De: '"approvalFolder" darf nicht leer sein'; En: '"approvalFolder" must not be empty'));
+    (De: '"approvalFolder" darf nicht leer sein'; En: '"approvalFolder" must not be empty'),
+    (De: '"testUnits.folder" kennt nur die Platzhalter {path} und {namespace}';
+     En: '"testUnits.folder" only knows the placeholders {path} and {namespace}'));
 
 {$SCOPEDENUMS OFF}
 
@@ -232,7 +235,7 @@ end;
 procedure IgnoreIdeCommand(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  // compiler.ideCommand gibt es seit #1904 nicht mehr; ein alter Eintrag wird ohne Meldung übergangen.
+  // compiler.ideCommand ist entfallen (#1904); ein solcher Eintrag in älteren Dateien wird ohne Meldung übergangen.
 end;
 
 const
@@ -321,9 +324,30 @@ procedure ReadTestFolder(AReader: TConfigurationReader; AValue: TJsonNode; const
 var
   mText: string;
 begin
-  if AReader.ExpectString(AValue, AKey, mText) then
+  if not AReader.ExpectString(AValue, AKey, mText) then
+  begin
+    Exit;
+  end;
+  // Tippfehler wie {pfad} sonst unbemerkt als Ordnername.
+  if Pos('{', StringReplace(StringReplace(mText, '{path}', '', [rfReplaceAll, rfIgnoreCase]), '{namespace}', '',
+    [rfReplaceAll, rfIgnoreCase])) > 0 then
+  begin
+    AReader.ReportNode(AValue, cTexts[TProjectOptionsText.UnknownPlaceholderInTestUnitsFolder].Text);
+  end
+  else
   begin
     ASettings.TestUnits.Folder := mText;
+  end;
+end;
+
+procedure ReadTestSourceRoot(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
+  var ASettings: TServerSettings);
+var
+  mText: string;
+begin
+  if AReader.ExpectString(AValue, AKey, mText) then
+  begin
+    ASettings.TestUnits.SourceRoot := mText;
   end;
 end;
 
@@ -347,8 +371,9 @@ begin
 end;
 
 const
-  cTestUnitsMembers: array[0..2] of TMemberOption = ((Key: 'pattern'; Read: ReadTestPattern),
-    (Key: 'folder'; Read: ReadTestFolder), (Key: 'project'; Read: ReadTestProject));
+  cTestUnitsMembers: array[0..3] of TMemberOption = ((Key: 'pattern'; Read: ReadTestPattern),
+    (Key: 'folder'; Read: ReadTestFolder), (Key: 'sourceRoot'; Read: ReadTestSourceRoot),
+    (Key: 'project'; Read: ReadTestProject));
 
 procedure ReadTestUnits(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
 begin

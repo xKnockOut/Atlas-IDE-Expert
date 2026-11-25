@@ -73,8 +73,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SmartIndent,
-  Atlas.Common.Editing.TypeComments,
-  Shell.Workspace;
+  Atlas.Common.Pascal.TypeComments,
+  Core.Workspace;
 
 { TShellFileOptions }
 
@@ -100,7 +100,7 @@ end;
 
 function TShellFileOptions.DelphiVersionFor(const AUri: string): string;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FWorkspaces.Lock);
   try
@@ -171,6 +171,7 @@ begin
   mSettings := FSettings.SettingsFor(AUri).ClassCompletion;
   Result := TMethodOrderOptions.Create(TMethodPlacement.Grouped);
   Result.LifecycleFirst := mSettings.LifecycleFirst;
+  Result.BlankLines := mSettings.BlankLines;
   Result.TypeComment := TTypeComments.StyleOf(mSettings.TypeComment);
   Result.LineLength := FormatStyleFor(AUri).MaxLineLength;
 end;
@@ -189,7 +190,7 @@ end;
 function TShellFileOptions.NewNamesFor(const AUri: string): TPascalNamePrefixes;
 var
   mFileName: string;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mSettings: TServerSettings;
   mContext: TRuleContext;
 begin

@@ -27,6 +27,9 @@ type
     class function Visible: Boolean; static;
     class procedure Hide; static;
     class procedure ApplyTheme; static;
+    /// <summary>Früh (Start): bei der IDE anmelden, damit der Desktop das Fenster samt Andockplatz speichert und
+    /// beim Laden wiederherstellt (#879).</summary>
+    class procedure Prepare; static;
     class procedure Release; static;
   end;
 
@@ -42,8 +45,8 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.Vcl.Images.Symbol,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TTimingDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -159,11 +162,12 @@ end;
 
 procedure EnsureHost;
 begin
-  // Nicht im Desktop: Der Diagnosemodus öffnet das Fenster selbst, und zwar erst nach dem Build
-  // (TAtlasIdeBuildIdleGate).
+  // Im Desktop angemeldet, damit es angedockt seinen Platz behält. Selbst öffnet der Diagnosemodus das Fenster
+  // erst nach dem Build (TAtlasIdeBuildIdleGate): Ein Dockfenster während eines Builds anzulegen, lässt die IDE
+  // abstürzen. Anmelden legt nichts an.
   if Host = nil then
   begin
-    Host := TAtlasIdeDockWindow.Create(TTimingDock.Create, False);
+    Host := TAtlasIdeDockWindow.Create(TTimingDock.Create, True);
   end;
 end;
 
@@ -171,7 +175,6 @@ end;
 
 class function TAtlasIdeTimingWindow.Show: TAtlasDiagnosticsFrame;
 begin
-  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
   Host.Present;
   Result := ExistingFrame;
@@ -206,6 +209,11 @@ begin
     Theme(mFrame);
   end;
   TAtlasIdeDockWindow.UpdateIcon(Host);
+end;
+
+class procedure TAtlasIdeTimingWindow.Prepare;
+begin
+  EnsureHost;
 end;
 
 class procedure TAtlasIdeTimingWindow.Release;

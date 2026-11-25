@@ -23,9 +23,6 @@ type
     FFolder: string;
     procedure Notify(const AMethod, AParams: string);
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -52,7 +49,8 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Documents.Providers.DocumentStore;
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.JsonRpc.TestSupport;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -83,26 +81,8 @@ end;
 { TShellConfigurationTests }
 
 procedure TShellConfigurationTests.Notify(const AMethod, AParams: string);
-var
-  mMessage: TJSONObject;
 begin
-  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
-    as TJSONObject;
-  try
-    FDispatcher.DispatchMessage(mMessage).Free;
-  finally
-    mMessage.Free;
-  end;
-end;
-
-procedure TShellConfigurationTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ReplaySettingsAreGlobal;
-  finally
-    TearDown;
-  end;
+  TJsonRpcTestSupport.Notify(FDispatcher, AMethod, AParams);
 end;
 
 procedure TShellConfigurationTests.Setup;

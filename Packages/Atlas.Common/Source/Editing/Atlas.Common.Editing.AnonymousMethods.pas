@@ -45,7 +45,7 @@ interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.AnonymousMethods.Shared;
 
 type
@@ -106,14 +106,16 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.CreateMethod,
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Common.Editing.AnonymousMethods.Embed,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -304,15 +306,6 @@ begin
   Result := IsValidIdent(AName) and not TPascalLexer.IsReservedWord(AName);
 end;
 
-function Capitalized(const AName: string): string;
-begin
-  Result := AName;
-  if Result <> '' then
-  begin
-    Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
-  end;
-end;
-
 /// <summary>AItems mit ASeparator verbunden.</summary>
 function Joined(const AItems: TArray<string>; const ASeparator: string): string;
 var
@@ -341,7 +334,7 @@ begin
   begin
     Result := Copy(Result, 2, MaxInt);
   end;
-  Result := 'Handle' + Capitalized(Result);
+  Result := 'Handle' + TTextNames.Capitalized(Result);
 end;
 
 /// <summary>Ende des Kopfs einer anonymen Methode: Beginn von var, const bzw. begin; sonst ihr Ende.</summary>
@@ -378,16 +371,6 @@ begin
       end;
     end);
   Result := mFound;
-end;
-
-/// <summary>Innerste Routine um ANode; nil ohne.</summary>
-function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
 end;
 
 /// <summary>Kurzer Name des Aufgerufenen: Sort aus FList.Sort, For aus TParallel.For.</summary>
@@ -591,7 +574,7 @@ begin
   begin
     Exit(cTexts[TEditingAnonymousMethodsText.NoAnonymousMethod].Text);
   end;
-  FSite.Outer := RoutineOf(FSite.Anonymous);
+  FSite.Outer := TSyntaxNodes.Enclosing(FSite.Anonymous, [TSyntaxKind.RoutineDecl]);
   if (FSite.Outer = nil) or (TRoutineBody.BodyOf(FSite.Outer) = nil) then
   begin
     Result := cTexts[TEditingAnonymousMethodsText.NotInARoutine].Text;
@@ -1020,7 +1003,7 @@ begin
   end
   else if mCall <> '' then
   begin
-    Result := 'Handle' + Capitalized(mCall);
+    Result := 'Handle' + TTextNames.Capitalized(mCall);
   end
   else
   begin
@@ -1053,7 +1036,7 @@ begin
   finally
     mNodes.Free;
   end;
-  Result := 'CompareBy' + Capitalized(mField);
+  Result := 'CompareBy' + TTextNames.Capitalized(mField);
   if mField = '' then
   begin
     Result := 'Compare';
@@ -1610,15 +1593,8 @@ end;
 
 class function TAnonymousMethods.Embed(const AInput: TAnonymousInput; out AAction: TCodeAction;
   out AReason: string): Boolean;
-var
-  mEmbedding: TAnonymousEmbedding;
 begin
-  mEmbedding := TAnonymousEmbedding.Create(AInput);
-  try
-    Result := mEmbedding.Run(AAction, AReason);
-  finally
-    mEmbedding.Free;
-  end;
+  Result := TAnonymousEmbedding.Execute(AInput, AAction, AReason);
 end;
 
 /// <summary>Baut die Umwandlung der geprüften Stelle mit dem Namen AName.</summary>

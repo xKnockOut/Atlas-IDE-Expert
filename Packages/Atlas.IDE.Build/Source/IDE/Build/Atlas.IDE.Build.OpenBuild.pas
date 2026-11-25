@@ -7,7 +7,9 @@
 // Debugger, keine Compilerprüfung #548 und kein Auftrag des Läufers #261).
 // - Projektgruppe: alle Projekte in der Reihenfolge der Gruppe oder nur das
 //   aktive (build.onOpenScope). Projekte der Gruppe, die beim Laden einzeln
-//   gemeldet werden, entscheidet die Gruppe mit.
+//   gemeldet werden, entscheidet die Gruppe mit. Die Auswahl trifft
+//   TAtlasOpenBuild.Plan, das Ziel je Projekt TAtlasOpenBuildTarget (Core);
+//   diese Unit liefert ihnen, was die IDE geladen hat.
 // - Gebaut wird in einem Lauf über IOTACompileServices.CompileProjects (wie
 //   „Alle erzeugen“). Ist in der IDE die Hintergrundcompilierung an, kommt der
 //   Aufruf sofort zurück (crOTABackground) und die IDE bleibt bedienbar; das
@@ -41,8 +43,7 @@ uses
   PlatformAPI,
   ToolsAPI,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.OpenBuild,
-  Atlas.Core.Build.OpenBuildSettings;
+  Atlas.Core.Build.OpenBuild;
 
 type
   TAtlasIdeOpenBuild = class
@@ -105,10 +106,6 @@ type
     procedure Finish;
     procedure Opened(const AFileName: string);
     procedure Closing(const AFileName: string);
-    /// <summary>Projekte einer Gruppe; False, solange die Gruppe nicht geladen ist. AMembers bekommt alle
-    /// Projekte der Gruppe (auch bei Umfang „aktiv“).</summary>
-    class function ResolveGroup(const AFileName: string; AScope: TAtlasOpenBuildScope;
-      out AProjects, AMembers: TArray<string>): Boolean; static;
     /// <summary>Projekt zu einer .dproj/.dpr/.dpk; nil, solange es nicht geladen ist.</summary>
     class function FindProject(const AFileName: string): IOTAProject; static;
     class function Debugging: Boolean; static;
@@ -123,16 +120,23 @@ type
 implementation
 
 uses
+  Atlas.Core.Build.OpenBuildSettings,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.CheckOnSave,
   Atlas.UI.Build.Strings,
-  Atlas.Core.Diagnostics.UserIdle;
+  Atlas.Plugin.Diagnostics.UserIdle;
+
+const
+  /// <summary>Tätigkeit für die Hänger-Diagnose (Protokoll).</summary>
+  cActivity = 'Bauen beim Öffnen';
+  // Takt für Start, Fortschritt und Ende des Bauens beim Öffnen.
+  cTickMs = 250;
 
 { TAtlasIdeOpenBuild.TIdeNotifier }
 
@@ -281,7 +285,7 @@ begin
     end;
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -401,7 +405,7 @@ begin
   FWaiting := False;
   // Bis zum Ende des Laufs (auch im Hintergrund) tragen die Compile-Ereignisse den Auftraggeber "open".
   FEvents.RequestedBy := TAtlasOpenBuild.cRequestedBy;
-  mActivity := TAtlasActivity.Scope('Bauen beim Öffnen');
+  mActivity := TAtlasActivity.Scope(cActivity);
   FCompiling := True;
   try
     try
@@ -457,22 +461,23 @@ begin
   FCore.Closed(AFileName);
 end;
 
-class function TAtlasIdeOpenBuild.ResolveGroup(const AFileName: string; AScope: TAtlasOpenBuildScope;
-  out AProjects, AMembers: TArray<string>): Boolean;
+/// <summary>Mitglieder und aktives Projekt der geladenen Projektgruppe AFileName; False, wenn sie nicht die
+/// geladene ist.</summary>
+function GroupOf(const AFileName: string; out AMembers: TArray<string>; out AActive: string): Boolean;
 var
   mModules: IOTAModuleServices;
   mGroup: IOTAProjectGroup;
   mIndex: Integer;
 begin
-  AProjects := nil;
   AMembers := nil;
+  AActive := '';
   Result := False;
   if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
   mGroup := mModules.MainProjectGroup;
-  if (mGroup = nil) or not SameText(mGroup.FileName, AFileName) or (mGroup.ProjectCount = 0) then
+  if (mGroup = nil) or not SameText(mGroup.FileName, AFileName) then
   begin
     Exit;
   end;
@@ -480,16 +485,9 @@ begin
   begin
     AMembers := AMembers + [mGroup.Projects[mIndex].FileName];
   end;
-  if AScope = TAtlasOpenBuildScope.Active then
+  if mGroup.ActiveProject <> nil then
   begin
-    if mGroup.ActiveProject <> nil then
-    begin
-      AProjects := [mGroup.ActiveProject.FileName];
-    end;
-  end
-  else
-  begin
-    AProjects := AMembers;
+    AActive := mGroup.ActiveProject.FileName;
   end;
   Result := True;
 end;
@@ -520,56 +518,17 @@ begin
   Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
 end;
 
-/// <summary>Projekte der gemeldeten Gruppen; ACovered bekommt alle Mitglieder. Noch nicht geladene Gruppen kommen
-/// später wieder.</summary>
-function GroupCandidates(ACore: TAtlasOpenBuild; const AFiles: TArray<string>; AScope: TAtlasOpenBuildScope;
-  out ACovered: TArray<string>): TArray<string>;
+/// <summary>Datei des geladenen Projekts zu AFileName; False, wenn es nicht geladen ist.</summary>
+function ProjectOf(const AFileName: string; out AProject: string): Boolean;
 var
-  mFileName: string;
-  mResolved, mMembers: TArray<string>;
-begin
-  Result := nil;
-  ACovered := nil;
-  for mFileName in AFiles do
-  begin
-    if not TAtlasOpenBuild.IsGroupFile(mFileName) then
-    begin
-      Continue;
-    end;
-    if TAtlasIdeOpenBuild.ResolveGroup(mFileName, AScope, mResolved, mMembers) then
-    begin
-      Result := Result + mResolved;
-      ACovered := ACovered + mMembers;
-    end
-    else
-    begin
-      ACore.Retry(mFileName, TAtlasIdeOpenBuild.NowMs);
-    end;
-  end;
-end;
-
-/// <summary>Einzeln gemeldete Projekte, die keine Gruppe schon abdeckt; nicht geladene kommen später wieder.</summary>
-function ProjectCandidates(ACore: TAtlasOpenBuild; const AFiles, ACovered: TArray<string>): TArray<string>;
-var
-  mFileName: string;
   mProject: IOTAProject;
 begin
-  Result := nil;
-  for mFileName in AFiles do
+  mProject := TAtlasIdeOpenBuild.FindProject(AFileName);
+  Result := mProject <> nil;
+  AProject := '';
+  if Result then
   begin
-    if TAtlasOpenBuild.IsGroupFile(mFileName) or TAtlasOpenBuildSummary.IsCovered(ACovered, mFileName) then
-    begin
-      Continue;
-    end;
-    mProject := TAtlasIdeOpenBuild.FindProject(mFileName);
-    if mProject <> nil then
-    begin
-      Result := Result + [mProject.FileName];
-    end
-    else
-    begin
-      ACore.Retry(mFileName, TAtlasIdeOpenBuild.NowMs);
-    end;
+    AProject := mProject.FileName;
   end;
 end;
 
@@ -595,17 +554,12 @@ end;
 procedure TAtlasIdeOpenBuild.Run;
 var
   mSettings: TAtlasPluginSettings;
-  mFiles, mCandidates, mCovered, mBuilt: TArray<string>;
+  mBuilt: TArray<string>;
   mProjects: TArray<IOTAProject>;
 begin
   mSettings := TAtlasIdeSettings.Current;
-  mFiles := FCore.Take;
-  // Zuerst die Gruppen: Sie entscheiden auch über ihre einzeln gemeldeten Projekte.
-  mCandidates := GroupCandidates(FCore, mFiles, TAtlasOpenBuildSettings.ScopeOf(mSettings.BuildOnOpenScope),
-    mCovered);
-  mCandidates := mCandidates + ProjectCandidates(FCore, mFiles, mCovered);
-  mProjects := BuildableProjects(FCore.Select(mCandidates,
-    TAtlasOpenBuildSettings.ParseExclude(mSettings.BuildOnOpenExclude)), mBuilt);
+  mProjects := BuildableProjects(FCore.Plan(TAtlasOpenBuildSettings.ScopeOf(mSettings.BuildOnOpenScope),
+    TAtlasOpenBuildSettings.ParseExclude(mSettings.BuildOnOpenExclude), GroupOf, ProjectOf, NowMs), mBuilt);
   if Length(mProjects) = 0 then
   begin
     Exit;
@@ -620,52 +574,31 @@ begin
     [TAtlasOpenBuildSettings.NameOf(AProject.FileName), AWanted]);
 end;
 
-/// <summary>Konfiguration AWanted in der Schreibweise des Projekts; '' ohne Vorgabe oder wenn sie fehlt (dann
-/// mit Hinweis in ANotes).</summary>
-function PickConfiguration(const AProject: IOTAProject; const AWanted: string; var ANotes: TArray<string>): string;
+/// <summary>Namen der Konfigurationen von AProject.</summary>
+function ConfigurationNames(const AProject: IOTAProject): TArray<string>;
 var
   mConfigurations: IOTAProjectOptionsConfigurations;
-  mNames: TArray<string>;
   mIndex: Integer;
 begin
-  Result := '';
-  if AWanted = '' then
-  begin
-    Exit;
-  end;
-  mNames := nil;
+  Result := nil;
   if Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, mConfigurations) then
   begin
     for mIndex := 0 to mConfigurations.ConfigurationCount - 1 do
     begin
-      mNames := mNames + [mConfigurations.Configurations[mIndex].Name];
+      Result := Result + [mConfigurations.Configurations[mIndex].Name];
     end;
-  end;
-  Result := TAtlasOpenBuildSettings.PickTarget(AWanted, mNames);
-  if Result = '' then
-  begin
-    ANotes := ANotes + [TargetNote(AProject, AWanted)];
   end;
 end;
 
-/// <summary>Wie PickConfiguration für die Plattform: nur aktivierte, in der Schreibweise des Projekts (auch
-/// „Win 64“ trifft Win64).</summary>
-function PickPlatform(const AProject: IOTAProject; const AWanted: string; var ANotes: TArray<string>): string;
+/// <summary>Aktivierte Plattformen von AProject.</summary>
+function PlatformNames(const AProject: IOTAProject): TArray<string>;
 var
   mPlatforms: IOTAProjectPlatforms;
 begin
-  Result := '';
-  if AWanted = '' then
-  begin
-    Exit;
-  end;
+  Result := nil;
   if Supports(AProject, IOTAProjectPlatforms, mPlatforms) then
   begin
-    Result := TAtlasOpenBuildSettings.PickTarget(AWanted, mPlatforms.EnabledPlatforms);
-  end;
-  if Result = '' then
-  begin
-    ANotes := ANotes + [TargetNote(AProject, AWanted)];
+    Result := mPlatforms.EnabledPlatforms;
   end;
 end;
 
@@ -673,7 +606,7 @@ procedure TAtlasIdeOpenBuild.ApplyTargets(const AProjects: TArray<IOTAProject>);
 var
   mSettings: TAtlasPluginSettings;
   mProject: IOTAProject;
-  mConfiguration, mPlatform: string;
+  mTarget: TAtlasOpenBuildTarget;
   mSwitch: TSwitch;
 begin
   FSwitched := nil;
@@ -688,20 +621,27 @@ begin
     mSwitch.Project := mProject;
     mSwitch.Configuration := mProject.CurrentConfiguration;
     mSwitch.Platform := mProject.CurrentPlatform;
-    mConfiguration := PickConfiguration(mProject, mSettings.BuildOnOpenConfig, FTargetNotes);
-    mPlatform := PickPlatform(mProject, mSettings.BuildOnOpenPlatform, FTargetNotes);
+    mTarget := TAtlasOpenBuildTarget.Choose(mSettings.BuildOnOpenConfig, mSettings.BuildOnOpenPlatform,
+      ConfigurationNames(mProject), PlatformNames(mProject));
+    if mTarget.MissingConfiguration then
+    begin
+      FTargetNotes := FTargetNotes + [TargetNote(mProject, mSettings.BuildOnOpenConfig)];
+    end;
+    if mTarget.MissingPlatform then
+    begin
+      FTargetNotes := FTargetNotes + [TargetNote(mProject, mSettings.BuildOnOpenPlatform)];
+    end;
     // Nur für diesen Lauf; über IOTAProject, denn die Hilfsschnittstellen lesen nur (wie der Läufer).
-    if TAtlasOpenBuildSummary.Differs(mConfiguration, mSwitch.Configuration) or
-      TAtlasOpenBuildSummary.Differs(mPlatform, mSwitch.Platform) then
+    if mTarget.Switches(mSwitch.Configuration, mSwitch.Platform) then
     begin
       FSwitched := FSwitched + [mSwitch];
-      if TAtlasOpenBuildSummary.Differs(mConfiguration, mSwitch.Configuration) then
+      if TAtlasOpenBuildSummary.Differs(mTarget.Configuration, mSwitch.Configuration) then
       begin
-        mProject.CurrentConfiguration := mConfiguration;
+        mProject.CurrentConfiguration := mTarget.Configuration;
       end;
-      if TAtlasOpenBuildSummary.Differs(mPlatform, mSwitch.Platform) then
+      if TAtlasOpenBuildSummary.Differs(mTarget.Platform, mSwitch.Platform) then
       begin
-        mProject.CurrentPlatform := mPlatform;
+        mProject.CurrentPlatform := mTarget.Platform;
       end;
     end;
   end;

@@ -99,7 +99,11 @@ type
     /// <summary>Begründungen (#1123) über der Deklaration und bei Routinen im Rumpf, je Eintrag
     /// TRationale.Encode (Marke, Zeile, Text); alle möglichen Marken, gefiltert wird bei der Anzeige.</summary>
     Rationale: TArray<string>;
+    /// <summary>Container.Name bzw. Name.</summary>
     function QualifiedName: string;
+    /// <summary>"AContainer.AName"; ohne Container nur AName. Für Verträge, die Atlas.Text nicht einbinden
+    /// (TQueryRow).</summary>
+    class function QualifiedOf(const AContainer, AName: string): string; static;
     /// <summary>Trägt die Direktive ADirective (ohne Groß-/Kleinschreibung)?</summary>
     function HasDirective(const ADirective: string): Boolean;
   public const
@@ -152,8 +156,8 @@ const
 
 type
 
-  /// <summary>Nachschlagetabelle Name → Positionen in TUnitIndex.Symbols (Diagnoselog 15.10.2026): die
-  /// Namensauflösung suchte jeden Bezeichner linear in allen Units der uses-Liste, bei großen Units
+  /// <summary>Nachschlagetabelle Name → Positionen in TUnitIndex.Symbols: Ohne sie sucht die
+  /// Namensauflösung jeden Bezeichner linear in allen Units der uses-Liste, bei großen Units
   /// (Winapi.Windows, Vcl.Controls) mehrere Sekunden je Datei. Gilt nur für das Symbol-Array, aus dem
   /// sie entstand; wird beim ersten Zugriff aufgebaut und ist threadsicher.</summary>
   IUnitNameTable = interface
@@ -187,8 +191,8 @@ type
     /// <summary>Nur interface-Symbole behalten, um das Speicherbudget einzuhalten (#185).</summary>
     Compact: Boolean;
     /// <summary>Defines, mit denen die Unit gelesen wurde; nur im Speicher, nicht im Cache. Ein weiteres Projekt
-    /// der Gruppe übernimmt eine Unit mit gleichem Stand und gleichem Schlüssel nicht noch einmal (Speicher,
-    /// Rückmeldung 01.11.2026). '' = unbekannt, dann wird sie wie bisher neu übernommen.</summary>
+    /// der Gruppe übernimmt eine Unit mit gleichem Stand und gleichem Schlüssel nicht noch einmal (Speicher
+    /// bei Projektgruppen). '' = unbekannt, dann wird sie neu übernommen.</summary>
     DefinesKey: string;
     /// <summary>Eingebundene Include-Dateien (#264); ändert sich eine davon, wird die Unit neu eingelesen.</summary>
     Includes: TArray<string>;
@@ -356,17 +360,38 @@ type
     procedure Leave;
   end;
 
+/// <summary>Schlüsselwort der Sichtbarkeit: "public", "published", "strict protected" …</summary>
+function VisibilityKeyword(AVisibility: TIndexVisibility): string;
+
 implementation
 
 uses
   System.StrUtils;
+
+function VisibilityKeyword(AVisibility: TIndexVisibility): string;
+begin
+  case AVisibility of
+    TIndexVisibility.Published:
+      Result := 'published';
+    TIndexVisibility.Protected:
+      Result := 'protected';
+    TIndexVisibility.StrictProtected:
+      Result := 'strict protected';
+    TIndexVisibility.Private:
+      Result := 'private';
+    TIndexVisibility.StrictPrivate:
+      Result := 'strict private';
+  else
+    Result := 'public';
+  end;
+end;
 
 type
   TUnitNameTable = class(TInterfacedObject, IUnitNameTable)
   private
     FSymbols: TArray<TIndexSymbol>;
     // Name (groß) → erste Stelle; FNext verkettet die weiteren Stellen gleichen Namens
-    // aufsteigend (-1 = Ende). Spart je Name ein eigenes Array (Speicherbedarf, 15.10.2026).
+    // aufsteigend (-1 = Ende). Spart je Name ein eigenes Array.
     FFirst: TDictionary<string, Integer>;
     FNext: TArray<Integer>;
     procedure Build;
@@ -464,13 +489,15 @@ end;
 
 function TIndexSymbol.QualifiedName: string;
 begin
-  if Container = '' then
+  Result := QualifiedOf(Container, Name);
+end;
+
+class function TIndexSymbol.QualifiedOf(const AContainer, AName: string): string;
+begin
+  Result := AName;
+  if AContainer <> '' then
   begin
-    Result := Name;
-  end
-  else
-  begin
-    Result := Container + '.' + Name;
+    Result := AContainer + '.' + AName;
   end;
 end;
 

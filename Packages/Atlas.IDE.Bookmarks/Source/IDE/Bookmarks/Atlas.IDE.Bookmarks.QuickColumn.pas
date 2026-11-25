@@ -136,6 +136,10 @@ type
     /// <summary>So lange nach dem Anfordern darf die Spalte ungezeichnet bleiben, bevor das Protokoll es meldet.
     /// </summary>
     cPaintWaitMs = 5000;
+    /// <summary>Zeilenhöhe bei 96 dpi, solange der Editor keine gemeldet hat.</summary>
+    cDefaultLineHeight = 20;
+    /// <summary>Abstand des Tipps rechts neben der Spalte.</summary>
+    cTipGap = 4;
   private
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
@@ -190,18 +194,18 @@ uses
   System.Math,
   Vcl.Forms,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.GutterColumns,
+  Atlas.ToolsApi.Gutter.Columns,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Bookmarks.QuickService,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh;
 
 type
   /// <summary>Ergebnis der Prüfung einer Editorzeile: daneben, getroffen, oder getroffen ohne gültige Zeile.
@@ -213,24 +217,6 @@ type
     State: INTACodeEditorState;
     View: IOTAEditView;
   end;
-
-procedure InvalidateTop;
-var
-  mEditors: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-end;
-
-function Services: INTACodeEditorServices280;
-begin
-  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
-  begin
-    Result := nil;
-  end;
-end;
 
 function SampleBack(ACanvas: TCanvas; const ARect: TRect): TAtlasColor;
 var
@@ -248,10 +234,21 @@ begin
   end;
 end;
 
+const
+  /// <summary>Kerbe: ein Fünftel der Bandhöhe.</summary>
+  cNotchShareOf = 5;
+  /// <summary>Ziffer: vier Fünftel der Bandhöhe über der Kerbe, mindestens so viele Pixel.</summary>
+  cDigitShare = 4;
+  cDigitShareOf = 5;
+  cMinDigitHeight = 7;
+  /// <summary>Gefüllte Ecke bei mehreren Markern: ein Drittel der Bandbreite, mindestens so viele Pixel.</summary>
+  cCornerShareOf = 3;
+  cMinCorner = 3;
+
 /// <summary>Band mit Kerbe unten wie bei den benannten Lesezeichen (#622); liefert die Höhe der Kerbe.</summary>
 function PaintBand(ACanvas: TCanvas; const ABand: TRect; AFill, ALine: TAtlasColor): Integer;
 begin
-  Result := Max(2, ABand.Height div 5);
+  Result := Max(2, ABand.Height div cNotchShareOf);
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := TColor(AFill);
   ACanvas.Pen.Color := TColor(ALine);
@@ -274,7 +271,7 @@ begin
   try
     mOldFont.Assign(ACanvas.Font);
     ACanvas.Font.Style := [fsBold];
-    ACanvas.Font.Height := -Max(7, (ABand.Height - ANotch) * 4 div 5);
+    ACanvas.Font.Height := -Max(cMinDigitHeight, (ABand.Height - ANotch) * cDigitShare div cDigitShareOf);
     ACanvas.Font.Color := TColor(AColor);
     ACanvas.Brush.Style := bsClear;
     mSize := ACanvas.TextExtent(mDigit);
@@ -291,6 +288,9 @@ const
   cMarkFill = 0.85;
   /// <summary>Anteil der Ziffernfarbe auf dem blassen Vorschlag.</summary>
   cFreeDigit = 0.7;
+  /// <summary>Anteil der Warnfarbe in Fläche und Rand des blassen Vorschlags.</summary>
+  cFreeFill = 0.15;
+  cFreeLine = 0.45;
 
 procedure PaintMarks(ACanvas: TCanvas; const ARow: TAtlasIdeQuickColumn.TRow; const AColors: TAtlasColors;
   ABack: TAtlasColor);
@@ -305,7 +305,7 @@ begin
   // Mehr als ein Marker: gefüllte Ecke oben rechts.
   if Length(ARow.Marks) > 1 then
   begin
-    mCorner := Max(3, mBand.Width div 3);
+    mCorner := Max(cMinCorner, mBand.Width div cCornerShareOf);
     ACanvas.Brush.Color := TColor(AColors.Warn);
     ACanvas.Polygon([Point(mBand.Right - 1 - mCorner, mBand.Top), Point(mBand.Right - 1, mBand.Top),
       Point(mBand.Right - 1, mBand.Top + mCorner)]);
@@ -328,8 +328,8 @@ begin
   // alle neun belegt, ohne Nummer.
   mBand := ARect;
   InflateRect(mBand, -1, -1);
-  mFill := TAtlasColorMath.Mix(AColors.Warn, ABack, 0.15);
-  mNotch := PaintBand(ACanvas, mBand, mFill, TAtlasColorMath.Mix(AColors.Warn, ABack, 0.45));
+  mFill := TAtlasColorMath.Mix(AColors.Warn, ABack, cFreeFill);
+  mNotch := PaintBand(ACanvas, mBand, mFill, TAtlasColorMath.Mix(AColors.Warn, ABack, cFreeLine));
   if ANumber > 0 then
   begin
     PaintDigit(ACanvas, mBand, mNotch, ANumber, TAtlasColorMath.Mix(TAtlasQuickColumnPlan.DigitColor(mFill), mFill,
@@ -368,18 +368,21 @@ var
   mColors: TAtlasColors;
 begin
   mOldBrush := TBrush.Create;
-  mOldFont := TFont.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldFont.Assign(ACanvas.Font);
-    mBack := SampleBack(ACanvas, ARect);
-    mColors := TAtlasColors.ForBackground(mBack);
-    mColors.Gutter := mBack;
-    PaintLineNumber(ACanvas, ARect, ALine, mColors);
+    mOldFont := TFont.Create;
+    try
+      mOldFont.Assign(ACanvas.Font);
+      mBack := SampleBack(ACanvas, ARect);
+      mColors := TAtlasColors.ForBackground(mBack);
+      mColors.Gutter := mBack;
+      PaintLineNumber(ACanvas, ARect, ALine, mColors);
+    finally
+      ACanvas.Font.Assign(mOldFont);
+      mOldFont.Free;
+    end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Font.Assign(mOldFont);
-    mOldFont.Free;
     mOldBrush.Free;
   end;
 end;
@@ -396,22 +399,25 @@ begin
   mBack := SampleBack(ACanvas, ARow.Rect);
   mColors := TAtlasColors.ForBackground(mBack);
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    if Length(ARow.Marks) > 0 then
-    begin
-      PaintMarks(ACanvas, ARow, mColors, mBack);
-    end
-    else
-    begin
-      PaintFree(ACanvas, ARow.Rect, mColors, mBack, TAtlasIdeQuickBookmarks.NextNumber(ARow.FileName));
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      if Length(ARow.Marks) > 0 then
+      begin
+        PaintMarks(ACanvas, ARow, mColors, mBack);
+      end
+      else
+      begin
+        PaintFree(ACanvas, ARow.Rect, mColors, mBack, TAtlasIdeQuickBookmarks.NextNumber(ARow.FileName));
+      end;
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
     end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;
@@ -636,13 +642,13 @@ var
 begin
   if FSlot.WantedWidth <= 0 then
   begin
-    FSlot.WantedWidth := TAtlasQuickBookmarks.ColumnWidth(MulDiv(20, Screen.PixelsPerInch, 96));
+    FSlot.WantedWidth := TAtlasQuickBookmarks.ColumnWidth(MulDiv(cDefaultLineHeight, Screen.PixelsPerInch, 96));
   end;
   if (FSlot.Column >= 0) and (FSlot.Width = FSlot.WantedWidth) then
   begin
     Exit;
   end;
-  mEditors := Services;
+  mEditors := TAtlasIdeGutterColumns.Services;
   if mEditors = nil then
   begin
     if not FLog.NoServices then
@@ -672,20 +678,12 @@ begin
 end;
 
 procedure TAtlasIdeQuickColumn.DropColumn;
-var
-  mEditors: INTACodeEditorServices280;
 begin
   if FSlot.Column < 0 then
   begin
     Exit;
   end;
-  mEditors := Services;
-  if mEditors <> nil then
-  begin
-    mEditors.RemoveGutterColumn(FSlot.Column);
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-  FSlot.Column := -1;
+  TAtlasIdeGutterColumns.Remove(FSlot.Column);
   FArea.Rows.Clear;
   if FLog.Painted then
   begin
@@ -734,12 +732,12 @@ begin
         // Neue Datei vorn: gleich wiederfinden. Die IDE-Lesezeichen übernimmt CheckPainted, sobald die Spalte
         // zeichnet (#1281).
         TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text);
-        InvalidateTop;
+        TAtlasIdeEditorRefresh.RepaintTop;
       end;
     TAtlasQuickTrackStep.Settled:
       if TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text) then
       begin
-        InvalidateTop;
+        TAtlasIdeEditorRefresh.RepaintTop;
       end;
     TAtlasQuickTrackStep.Idle, TAtlasQuickTrackStep.Changed: ;
   end;
@@ -1076,7 +1074,7 @@ begin
   end;
   if TAtlasQuickColumnPlan.TipDue(FTip.IsShown, FHover.Since, TThread.GetTickCount64, cHoverMs) then
   begin
-    FTip.Show(FHover.Row.Marks, Point(FHover.ScreenRect.Right + 4, FHover.ScreenRect.Bottom + 2));
+    FTip.Show(FHover.Row.Marks, Point(FHover.ScreenRect.Right + cTipGap, FHover.ScreenRect.Bottom + 2));
   end;
 end;
 
@@ -1107,7 +1105,7 @@ begin
   FHover.Row := ARow;
   FHover.Since := TThread.GetTickCount64;
   // Umriss auf freiem Platz folgt der Maus.
-  InvalidateTop;
+  TAtlasIdeEditorRefresh.RepaintTop;
 end;
 
 end.

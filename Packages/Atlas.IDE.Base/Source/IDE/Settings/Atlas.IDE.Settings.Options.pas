@@ -17,12 +17,18 @@
 // die Seite „Atlas“ in der Baumansicht des Dialogs (soweit sie sich finden
 // lässt) und zeigt dort die Einstellung mit markierter Zeile (Reveal).
 // Seite Issue-Tracker: Den Abschnitt mit Verbindungen, Projekten, Abfragen
-// und Prüfungen baut das Modul Tracker (#1455, Atlas.IDE.Tracker.Settings).
+// und Prüfungen baut das Modul Tracker (#1455, Atlas.IDE.Tracker.Adapters.Settings).
 // ShowSetting mit Vorgabe („zuordnen …“ aus „Meine Issues“, #1261) reicht die
 // Vorgabe nach dem Laden an den Abschnitt, dem die Einstellung gehört.
 // Seite Versionsverwaltung: baut und verdrahtet das Modul Versionsverwaltung
 // als Abschnitt (#1905); nach OK liest es settings.json über ApplySettings neu.
 // ShowVcsServer reicht den Ordner als Vorgabe an dessen Abschnitt.
+// Speichern (#2372): Jeder Knoten (Base, je Modul, Tastenkonflikte) trägt beim
+// Schließen nur seine Änderungen in einen gemeinsamen Stapel ein. Gespeichert
+// und gemeldet (OnChanged: Tasten, Module, Startseite …) wird einmal, nachdem
+// die IDE den Dialog geschlossen hat; ohne Änderung gar nicht. Vorher speicherte
+// und meldete jeder angesehene Knoten selbst: Mit vielen Knoten stand die IDE
+// nach OK lange und legte je Knoten einen Einstellungsstand an.
 
 interface
 
@@ -74,13 +80,12 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.History,
   Atlas.Core.Settings.NodeScope,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Overview,
@@ -155,6 +160,10 @@ var
   KeysOptions: INTAAddInOptions;
   /// <summary>Gesetzt von Register, geleert von Unregister.</summary>
   Hooks: TAtlasOptionsHooks;
+  /// <summary>Änderungen der Knoten seit dem letzten Speichern (#2372).</summary>
+  Batch: TAtlasSettingsBatch;
+  /// <summary>Speichern nach dem Dialog ist eingereiht.</summary>
+  CommitQueued: Boolean;
   /// <summary>Einstellung, die die Seite „Atlas“ beim nächsten Anlegen zeigen soll (#628); '' ohne.</summary>
   PendingReveal: string;
   /// <summary>Vorgabe zu PendingReveal für den Abschnitt eines Moduls (#1455); '' ohne.</summary>
@@ -178,13 +187,53 @@ begin
   Result := TAtlasModuleNodes.NameOfSwitch(ASwitch);
 end;
 
-/// <summary>Ergebnis eines Hakens; '' ohne Haken.</summary>
-function HookText(const AHook: TFunc<string>): string;
+/// <summary>Eingetragene Änderungen einmal speichern; danach meldet TAtlasIdeSettings sie einmal (#2372).</summary>
+procedure CommitBatch;
+var
+  mSettings: TAtlasPluginSettings;
 begin
-  Result := '';
-  if Assigned(AHook) then
+  CommitQueued := False;
+  if not Batch.HasChanges then
   begin
-    Result := AHook();
+    Exit;
+  end;
+  // Auf den jetzigen Stand: Was seit dem Öffnen anderswo gespeichert wurde, bleibt.
+  mSettings := Batch.ApplyTo(TAtlasIdeSettings.Stored);
+  Batch.Clear;
+  TAtlasIdeSettings.Update(mSettings);
+end;
+
+/// <summary>Speichern und Abgleich mit der IDE einmal nach dem Dialog einreihen: Die IDE ruft DialogClosed für jeden
+/// Knoten, erst danach läuft die Warteschlange.</summary>
+procedure QueueCommit;
+begin
+  if CommitQueued then
+  begin
+    Exit;
+  end;
+  CommitQueued := True;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          CommitBatch;
+          // Strukturhervorhebung und Help Insight der IDE erst nach dem Dialog abgleichen: Mit OK
+          // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,
+          // die Atlas abgeschaltet hatte. Sonst zeigt sie ab dem nächsten Start wieder beide Tooltips.
+          TAtlasIdeStructureSwitch.Sync;
+        end);
+    end);
+end;
+
+/// <summary>Ein Knoten ist geschlossen: mit OK seine Änderungen eintragen und das Speichern einreihen.</summary>
+procedure NodeClosed(AAccepted: Boolean; const ABefore, AAfter: TAtlasPluginSettings);
+begin
+  if AAccepted then
+  begin
+    Batch.Add(ABefore, AAfter);
+    QueueCommit;
   end;
 end;
 
@@ -296,38 +345,18 @@ begin
 end;
 
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
-var
-  mSettings: TAtlasPluginSettings;
-  mTarget: IAtlasMemorySettingsStore;
 begin
   PendingReveal := '';
   PendingArgument := '';
   try
-    if Accepted and (FPage <> nil) then
+    // Nur die Änderungen dieses Knotens: Ein anderer Knoten hat vielleicht dieselbe Einstellung (#1903).
+    if FPage <> nil then
     begin
-      // Nur die Änderungen dieses Knotens: Ein anderer Knoten hat vielleicht schon gespeichert (#1903).
-      mTarget := TAtlasMemorySettingsStore.FromSettings(TAtlasIdeSettings.Stored);
-      TAtlasSettingsMerge.Changes(TAtlasMemorySettingsStore.FromSettings(FLoaded),
-        TAtlasMemorySettingsStore.FromSettings(FPage.CurrentSettings), mTarget);
-      mSettings := TAtlasIdeSettings.Stored;
-      mSettings.Load(mTarget);
-      mSettings.Normalize;
-      TAtlasIdeSettings.Update(mSettings);
-    end;
-    // Strukturhervorhebung und Help Insight der IDE erst nach dem Dialog abgleichen: Mit OK
-    // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,
-    // die Atlas abgeschaltet hatte. Sonst zeigt sie ab dem nächsten Start wieder beide Tooltips.
-    if Accepted then
+      NodeClosed(Accepted, FLoaded, FPage.CurrentSettings);
+    end
+    else if Accepted then
     begin
-      TAtlasMainThread.ForceQueue(TAtlasFeature.Settings,
-        procedure
-        begin
-          TAtlasGuard.Run(TAtlasFeature.Settings,
-            procedure
-            begin
-              TAtlasIdeStructureSwitch.Sync;
-            end);
-        end);
+      QueueCommit;
     end;
     FPage := nil;
   except
@@ -504,7 +533,7 @@ begin
     TAtlasModuleNodes.Start(BaseOptions, ModuleOptions);
     SnippetOptions := TAtlasSnippetOptions.Create(AHooks.IdeTemplateFolder, AHooks.SnippetFolder);
     mServices.RegisterAddInOptions(SnippetOptions);
-    KeysOptions := TAtlasKeysOptions.Create;
+    KeysOptions := TAtlasKeysOptions.Create(NodeClosed);
     mServices.RegisterAddInOptions(KeysOptions);
     ServerOptions := TAtlasServerOptions.Create;
     mServices.RegisterAddInOptions(ServerOptions);
@@ -516,6 +545,12 @@ var
   mServices: INTAEnvironmentOptionsServices;
 begin
   TAtlasModuleNodes.Stop;
+  // Mit OK geschlossen, aber noch nicht gespeichert: Die Warteschlange erreicht nach dem Abmelden nichts mehr.
+  if CommitQueued then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Settings, CommitBatch);
+  end;
+  Batch.Clear;
   if Supports(BorlandIDEServices, INTAEnvironmentOptionsServices, mServices) then
   begin
     if SnippetOptions <> nil then
@@ -599,6 +634,11 @@ begin
       Selector.Stop;
     end;
     PendingReveal := '';
+    // Der Aufrufer liest danach vielleicht die Einstellungen: mit OK gleich speichern, nicht erst eingereiht.
+    if CommitQueued then
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings, CommitBatch);
+    end;
   end;
 end;
 

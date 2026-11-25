@@ -39,18 +39,12 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Internals.SvnLayout;
+  Atlas.Core.VersionControl.Internals.SvnLayout,
+  Atlas.Tests.Files;
 
 function Root: string;
 begin
-  if PathDelim = '\' then
-  begin
-    Result := 'C:\Projekte\Kasse';
-  end
-  else
-  begin
-    Result := '/projekte/kasse';
-  end;
+  Result := TTestData.ProjectRoot('Kasse');
 end;
 
 function Beside(const AName: string): string;

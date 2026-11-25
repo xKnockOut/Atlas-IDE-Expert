@@ -48,18 +48,6 @@ type
   /// Nachrichtenschleife; eine Ausnahme zählt als False.</summary>
   TJsonRpcConcurrentWhen = reference to function(const AParams: TJSONValue): Boolean;
 
-  /// <summary>Beobachter je Anfrage (#647, Diagnoselog). Beide Aufrufe laufen im Thread des Handlers;
-  /// Ausnahmen darin werden verschluckt.</summary>
-  IJsonRpcRequestObserver = interface
-    ['{9D41E6B2-0C7A-4F35-A8E3-6B2F5C1D7094}']
-    /// <summary>Direkt vor dem Handler.</summary>
-    procedure Started(const AMethod: string);
-    /// <summary>Nach dem Handler: AResult bei Erfolg (gehört der Antwort), sonst AError.
-    /// AQueueMs ist die Wartezeit vor dem Start, AElapsedMs die Laufzeit des Handlers.</summary>
-    procedure Finished(const AMethod: string; const AParams, AResult: TJSONValue; const AError: Exception;
-      AQueueMs, AElapsedMs: Int64);
-  end;
-
   TJsonRpcDispatcher = class
   private
     FRequestHandlers: TDictionary<string, TJsonRpcRequestHandler>;
@@ -97,6 +85,8 @@ type
     /// laufen darf; ein vorhandener Handler (auch ein normaler) wird ersetzt.
     /// </summary>
     procedure RegisterConcurrentRequest(const AMethod: string; const AHandler: TJsonRpcConcurrentRequestHandler);
+    /// <summary>Wie RegisterConcurrentRequest für einen Handler, der das Abbruchsignal nicht braucht.</summary>
+    procedure RegisterConcurrentPlain(const AMethod: string; const AHandler: TJsonRpcRequestHandler);
     /// <summary>Registriert den Handler einer Benachrichtigung; ein vorhandener wird ersetzt.</summary>
     procedure RegisterNotification(const AMethod: string; const AHandler: TJsonRpcNotificationHandler);
     /// <summary>
@@ -150,7 +140,8 @@ uses
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.JsonRpc.CurrentRequest,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Reporting;
 
 {$SCOPEDENUMS ON}
 
@@ -183,21 +174,27 @@ procedure NotifyFailed(const AOnFailed: TJsonRpcRequestFailedEvent; const AMetho
   const AParams: TJSONValue; const AError: Exception);
 begin
   if Assigned(AOnFailed) and not (AError is EJsonRpcError) then
-    try
-      AOnFailed(AMethod, AParams, AError);
-    except
-      // Das Protokollieren darf die Antwort nicht verhindern.
-    end;
+  begin
+    // Das Protokollieren darf die Antwort nicht verhindern.
+    TReporting.Quietly(
+      procedure
+      begin
+        AOnFailed(AMethod, AParams, AError);
+      end);
+  end;
 end;
 
 procedure ObserveStarted(const AObserver: IJsonRpcRequestObserver; const AMethod: string);
 begin
   if AObserver <> nil then
-    try
-      AObserver.Started(AMethod);
-    except
-      // Das Diagnoselog darf keine Anfrage verhindern.
-    end;
+  begin
+    // Das Diagnoselog darf keine Anfrage verhindern.
+    TReporting.Quietly(
+      procedure
+      begin
+        AObserver.Started(AMethod);
+      end);
+  end;
 end;
 
 type
@@ -218,11 +215,14 @@ procedure ObserveFinished(const ARun: TRequestRun; const AResult: TJSONValue; co
   AElapsedMs: Int64);
 begin
   if ARun.Observer <> nil then
-    try
-      ARun.Observer.Finished(ARun.Method, ARun.Params, AResult, AError, ARun.QueueMs, AElapsedMs);
-    except
-      // Das Diagnoselog darf keine Antwort verhindern.
-    end;
+  begin
+    // Das Diagnoselog darf keine Antwort verhindern.
+    TReporting.Quietly(
+      procedure
+      begin
+        ARun.Observer.Finished(ARun.Method, ARun.Params, AResult, AError, ARun.QueueMs, AElapsedMs);
+      end);
+  end;
 end;
 
 /// <summary>Antwort mit AValue; meldet Ende und Laufzeit.</summary>
@@ -273,7 +273,6 @@ begin
     end;
     Result := SucceededResponse(ARun, mValue, mWatch.ElapsedMilliseconds);
   except
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
     on E: Exception do
     begin
       Result := FailedResponse(ARun, E, True, mWatch.ElapsedMilliseconds);
@@ -298,7 +297,6 @@ begin
     end;
     Result := SucceededResponse(ARun, mValue, mWatch.ElapsedMilliseconds);
   except
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
     on E: Exception do
     begin
       Result := FailedResponse(ARun, E, True, mWatch.ElapsedMilliseconds);
@@ -599,7 +597,6 @@ begin
       end;
       Result := RunOrdered(mRun, mHandler);
     except
-      // lsp-ignore: catch-all-without-raise -- Fehlergrenze der Anfrage; Fehler geht als Antwort zurück
       on E: Exception do
       begin
         Result := FailedResponse(mRun, E, False, 0);
@@ -660,6 +657,18 @@ begin
   FRequestHandlers.Remove(AMethod);
   FConcurrentWhen.Remove(AMethod);
   FConcurrentHandlers.AddOrSetValue(AMethod, AHandler);
+end;
+
+procedure TJsonRpcDispatcher.RegisterConcurrentPlain(const AMethod: string; const AHandler: TJsonRpcRequestHandler);
+var
+  mHandler: TJsonRpcRequestHandler;
+begin
+  mHandler := AHandler;
+  RegisterConcurrentRequest(AMethod,
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    begin
+      Result := mHandler(AParams);
+    end);
 end;
 
 procedure TJsonRpcDispatcher.RegisterNotification(const AMethod: string; const AHandler: TJsonRpcNotificationHandler);

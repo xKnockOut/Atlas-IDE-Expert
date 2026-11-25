@@ -38,6 +38,14 @@ type
     class function InactiveShown(const ASettings: TAtlasPluginSettings): Boolean; static;
     /// <summary>Bestätigte Compilermeldungen mit Befunden zusammenführen (problems.compilerMerge).</summary>
     class function CompilerMerge(const ASettings: TAtlasPluginSettings): Boolean; static;
+    /// <summary>Zähler der Statusleiste zeigen (#509), außer die Atlas-Statusleiste am Editor zeigt die Befunde.
+    /// </summary>
+    class function StatusCounter(const ASettings: TAtlasPluginSettings): Boolean; static;
+    /// <summary>Meldungen gelöschter Zeilen verwerfen statt auf die Folgezeile zu schieben (#1818,
+    /// editor.trackLines).</summary>
+    class function DropDeletedLines(const ASettings: TAtlasPluginSettings): Boolean; static;
+    /// <summary>Ungenutzte uses abblenden (#621).</summary>
+    class function UsesDimmed(const ASettings: TAtlasPluginSettings): Boolean; static;
     /// <summary>Delphi-Quelltext (.pas, .dpr, .dpk, .inc, .lpr), ohne Groß-/Kleinschreibung.</summary>
     class function IsSource(const AFileName: string): Boolean; static;
     /// <summary>Zähler der Statusleiste neu melden: Sichtbarkeit AShow gegenüber zuletzt AShown geändert oder,
@@ -54,18 +62,35 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Core.Problems.Switches;
 
 { TAtlasProblemsPlan }
 
 class function TAtlasProblemsPlan.Active(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := ASettings.Enabled and (ASettings.Problems or ASettings.InactiveDim or ASettings.DimUnusedUses);
+  Result := ASettings.Enabled and (ASettings.Problems or ASettings.InactiveDim or ASettings.DimUnusedUses or
+    ASettings.HighlightMovableUses);
 end;
 
 class function TAtlasProblemsPlan.Shown(const ASettings: TAtlasPluginSettings): Boolean;
 begin
   Result := ASettings.Enabled and ASettings.Problems;
+end;
+
+class function TAtlasProblemsPlan.StatusCounter(const ASettings: TAtlasPluginSettings): Boolean;
+begin
+  Result := TAtlasProblemSwitches.ProblemsStatusCounter(ASettings);
+end;
+
+class function TAtlasProblemsPlan.DropDeletedLines(const ASettings: TAtlasPluginSettings): Boolean;
+begin
+  Result := ASettings.Enabled and ASettings.TrackLines;
+end;
+
+class function TAtlasProblemsPlan.UsesDimmed(const ASettings: TAtlasPluginSettings): Boolean;
+begin
+  Result := ASettings.Enabled and ASettings.DimUnusedUses;
 end;
 
 class function TAtlasProblemsPlan.InactiveShown(const ASettings: TAtlasPluginSettings): Boolean;

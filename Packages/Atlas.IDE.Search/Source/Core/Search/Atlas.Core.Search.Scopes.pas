@@ -65,6 +65,9 @@ end;
 { TAtlasSearchScopes }
 
 class function TAtlasSearchScopes.Routines(const AText: string): TArray<TAtlasSearchRoutine>;
+const
+  /// <summary>Schlusswort des Rumpfs; der Bereich endet dahinter.</summary>
+  cEndLength = Length('end');
 var
   mLines: TArray<string>;
   mBlocks: TArray<TAtlasPairBlock>;
@@ -98,7 +101,7 @@ begin
     end;
     // Bis hinter das end des Rumpfs.
     mRoutine.Area := TAtlasSearchArea.Create(mBlock.OwnerLine, mBlock.OwnerCharacter, mBlock.CloseLine,
-      mBlock.CloseCharacter + 3);
+      mBlock.CloseCharacter + cEndLength);
     mRoutine.Caption := Trim(Copy(mLines[mBlock.OwnerLine], mBlock.OwnerCharacter + 1, MaxInt));
     Result := Result + [mRoutine];
   end;

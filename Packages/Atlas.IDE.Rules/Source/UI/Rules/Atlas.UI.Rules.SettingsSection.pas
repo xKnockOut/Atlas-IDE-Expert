@@ -1,13 +1,11 @@
 ﻿unit Atlas.UI.Rules.SettingsSection;
 
-// Abschnitte des Moduls Prüfregeln im Optionsdialog (#1456; vorher in den Teilen
-// „Prüfregeln“ und „Editor“ von Base). Fenster „Atlas-Prüfung“, Prüfen beim Speichern und deren Einstellungen
-// bleiben in Base.
+// Abschnitte des Moduls Prüfregeln im Optionsdialog (#1456) auf den Seiten „Prüfregeln“ und
+// „Editor“. Fenster „Atlas-Prüfung“, Prüfen beim Speichern und deren Einstellungen bleiben in Base.
 // - „Prüfregeln“: Modulschalter, Sammelkorrektur im Kontextmenü des Fensters (#1352), der Weg zu den Regeln (sie
 //   stehen in den Dialogen der Einstellungsdateien, Projekt und global), Profile, Stand der Baseline mit „neu
-//   erzeugen“ und „löschen“ und die Unterdrückungen je Regel (#909, #97, #147; seit #1755 hier statt in Base und
-//   auf der Seite „Atlas.Server“). Was dafür Dateien oder den Server braucht, kommt über Hooks
-//   (Atlas.IDE.Rules.Settings).
+//   erzeugen“ und „löschen“ und die Unterdrückungen je Regel (#909, #97, #147, #1755). Was dafür Dateien oder
+//   den Server braucht, kommt über Hooks (Atlas.IDE.Rules.Adapters.Settings).
 // - „Editor“: Basislinie aktualisieren, DFM-Eigenschaftsregeln anwenden und die Marke „Wer gibt das frei?“
 //   (#1877) samt „nur Problemfälle“.
 
@@ -54,11 +52,11 @@ type
     FSuppressionsRefresh: TButton;
     /// <summary>Zeile ohne eigenen Schlüssel im Rahmen des Modulschalters.</summary>
     function AddRow(AHeight: Integer): TWinControl;
+    /// <summary>Knopf in ARow an ALeft (logische Pixel, 96 dpi).</summary>
     function AddButton(ARow: TWinControl; const ACaption: string; ALeft: Integer; AClick: TNotifyEvent): TButton;
     procedure AddRulesLinks;
     procedure AddBaseline;
     procedure AddSuppressions;
-    function Confirmed(const AQuestion: string): Boolean;
     procedure RulesLinkClick(Sender: TObject);
     procedure BaselineClick(Sender: TObject);
     procedure SuppressionsClick(Sender: TObject);
@@ -94,14 +92,24 @@ implementation
 
 uses
   System.UITypes,
-  Vcl.Dialogs,
   Vcl.Graphics,
-  Atlas.UI.Rules.Strings;
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.UI.Rules.Strings,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cButtonWidth = 210;
+  cButtonHeight = 25;
   cButtonGap = 216;
   cRowHeight = 28;
+  // Beschriftungen der Baseline-Zeilen (logische Pixel).
+  cInfoWidth = 400;
+  cInfoHeight = 16;
+  cInfoTop = 6;
+  // Hinweis mit zwei Zeilen, Zeile mit Überschrift und Liste der Unterdrückungen (logische Pixel).
+  cHintHeight = 34;
+  cTitleRowHeight = 20;
+  cSuppressionsHeight = 110;
 
 { TAtlasRulesChecksSection }
 
@@ -162,7 +170,8 @@ begin
   Result := TButton.Create(FControls);
   Result.Parent := ARow;
   Result.Caption := ACaption;
-  Result.SetBounds(ALeft, 1, cButtonWidth, 25);
+  Result.SetBounds(Result.ScaleValue(ALeft), Result.ScaleValue(1), Result.ScaleValue(cButtonWidth),
+    Result.ScaleValue(cButtonHeight));
   Result.OnClick := AClick;
 end;
 
@@ -172,7 +181,7 @@ var
 begin
   // Die Regeln stehen in atlas.json des Projekts und in settings.json („Weitere globale Einstellungen“), mit
   // einem Knoten je Gruppe; hier nur der Weg dorthin.
-  Host.AddHint(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGlobalNote), 34);
+  Host.AddHint(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGlobalNote), cHintHeight);
   mRow := AddRow(cRowHeight);
   FRulesProject := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesProjectButton), 0, RulesLinkClick);
   FRulesGlobal := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGlobalButton), cButtonGap,
@@ -188,18 +197,18 @@ var
 begin
   // Profile gelten je Projekt (atlas.json), die Baseline je Projekt.
   Title(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesProfilesNode));
-  Host.AddHint(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesProfilesText), 34);
-  mRow := AddRow(20);
+  Host.AddHint(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesProfilesText), cHintHeight);
+  mRow := AddRow(cTitleRowHeight);
   mTitle := TLabel.Create(FControls);
   mTitle.Parent := mRow;
-  mTitle.SetBounds(0, 2, 400, 16);
+  TAtlasControlScaling.Place(mTitle, 0, 2, cInfoWidth, cInfoHeight);
   mTitle.ShowAccelChar := False;
   mTitle.Font.Style := [TFontStyle.fsBold];
   mTitle.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineTitle);
   mRow := AddRow(cRowHeight);
   FBaselineInfo := TLabel.Create(FControls);
   FBaselineInfo.Parent := mRow;
-  FBaselineInfo.SetBounds(0, 6, 400, 16);
+  TAtlasControlScaling.Place(FBaselineInfo, 0, cInfoTop, cInfoWidth, cInfoHeight);
   FBaselineInfo.ShowAccelChar := False;
   FBaselineInfo.Caption := TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineNone);
   if Assigned(FHooks.BaselineInfo) then
@@ -221,7 +230,7 @@ var
 begin
   // Unterdrückungen „lsp-ignore“ je Regel (#147, nur Anzeige); gefüllt erst auf Klick (startet AtlasServer.exe).
   Title(TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageSuppressionsTitle));
-  mRow := AddRow(110);
+  mRow := AddRow(cSuppressionsHeight);
   FSuppressions := TListBox.Create(FControls);
   FSuppressions.Parent := mRow;
   FSuppressions.Align := alClient;
@@ -229,18 +238,6 @@ begin
   FSuppressionsRefresh := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageSuppressionsRefresh), 0,
     SuppressionsClick);
   FSuppressionsRefresh.Enabled := Assigned(FHooks.Suppressions);
-end;
-
-function TAtlasRulesChecksSection.Confirmed(const AQuestion: string): Boolean;
-begin
-  if Assigned(FHooks.Confirm) then
-  begin
-    Result := FHooks.Confirm(AQuestion);
-  end
-  else
-  begin
-    Result := MessageDlg(AQuestion, mtConfirmation, [mbYes, mbNo], 0) = mrYes;
-  end;
 end;
 
 procedure TAtlasRulesChecksSection.RulesLinkClick(Sender: TObject);
@@ -268,7 +265,8 @@ begin
     end;
   end
   else if Assigned(FHooks.BaselineDelete) and
-    Confirmed(TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineDeleteConfirm)) then
+    TAtlasDialog.Confirmed(FHooks.Confirm, TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageBaselineDeleteConfirm))
+  then
   begin
     FBaselineInfo.Caption := FHooks.BaselineDelete();
   end;

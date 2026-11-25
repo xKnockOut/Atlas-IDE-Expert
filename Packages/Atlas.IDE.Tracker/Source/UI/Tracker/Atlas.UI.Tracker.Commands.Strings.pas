@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Tracker.Commands.Strings;
 
-// Oberflächentexte des Trackers für seine Befehle und Menüeinträge in der IDE (Atlas.IDE.Tracker.Parts), auf
-// Deutsch und Englisch (#1455). Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
+// Oberflächentexte des Trackers für seine Befehle und Menüeinträge in der IDE
+// (Atlas.IDE.Tracker.Composition.Parts), auf Deutsch und Englisch (#1455). Die
+// Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
 
 interface
 

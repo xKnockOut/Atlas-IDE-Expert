@@ -29,8 +29,6 @@ type
     function FirstToken(ANode: TSyntaxNode): Integer;
     /// <summary>Erstes Token hinter ANode.</summary>
     function StopToken(ANode: TSyntaxNode): Integer;
-    /// <summary>Erstes Token ab AIndex, das kein Kommentar und keine Direktive ist (höchstens AStop).</summary>
-    function NextCode(AIndex, AStop: Integer): Integer;
     /// <summary>Löscht die Direktive ADirective samt ihrem Semikolon und dem Leerraum davor.</summary>
     function DirectiveRemoval(ADirective: TSyntaxNode): TTextEdit;
     /// <summary>Token des Schlüsselworts dispinterface am Anfang von AType (InterfaceType); -1 bei
@@ -53,8 +51,6 @@ type
     /// <summary>Text des Knotens ohne Leerraum, Groß-/Kleinschreibung und Unit-Präfix (E2208, E2257).</summary>
     function TypeKey(ANode: TSyntaxNode): string; overload;
     function TypeKey(AFirst, AStop: Integer): string; overload;
-    /// <summary>Text der Token AFirst..AStop-1 ohne Kommentare und Leerraum.</summary>
-    function Text(AFirst, AStop: Integer): string;
     property Tokens: TArray<TPascalToken> read FTokens;
     property Resolver: TNameResolver read FResolver;
     property OwnUnit: TUnitIndex read FOwnUnit;
@@ -168,22 +164,13 @@ begin
   Result := TokenFrom(FTokens, ANode.EndOffset);
 end;
 
-function TDeclarationScan.NextCode(AIndex, AStop: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result < AStop) and IsTrivia(FTokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 function TDeclarationScan.DirectiveRemoval(ADirective: TSyntaxNode): TTextEdit;
 var
   mFirst, mLast, mNext, mBefore: Integer;
 begin
   mFirst := FirstToken(ADirective);
   mLast := StopToken(ADirective) - 1;
-  mNext := NextCode(mLast + 1, Length(FTokens));
+  mNext := NextCode(FTokens, mLast + 1);
   if (mNext < Length(FTokens)) and FTokens[mNext].IsSymbol(';') then
   begin
     mLast := mNext;
@@ -198,7 +185,7 @@ end;
 
 function TDeclarationScan.DispKeyword(AType: TSyntaxNode): Integer;
 begin
-  Result := NextCode(FirstToken(AType), Length(FTokens));
+  Result := NextCode(FTokens, FirstToken(AType));
   if (Result >= Length(FTokens)) or not SameText(FTokens[Result].Text, 'dispinterface') then
   begin
     Result := -1;
@@ -310,7 +297,7 @@ end;
 
 function TDeclarationScan.ClauseArgument(AProperty: TSyntaxNode; AIndex: Integer): Integer;
 begin
-  Result := NextCode(AIndex + 1, ClauseEnd(AProperty));
+  Result := NextCode(FTokens, AIndex + 1, ClauseEnd(AProperty));
 end;
 
 function TDeclarationScan.TypeKey(ANode: TSyntaxNode): string;
@@ -323,7 +310,7 @@ var
   mAngle: Integer;
   mHead: string;
 begin
-  Result := UpperCase(Text(AFirst, AStop));
+  Result := UpperCase(CodeText(FTokens, AFirst, AStop));
   mAngle := Pos('<', Result);
   if mAngle = 0 then
   begin
@@ -331,20 +318,6 @@ begin
   end;
   mHead := Copy(Result, 1, mAngle - 1);
   Result := Copy(mHead, LastDelimiter('.', mHead) + 1, MaxInt) + Copy(Result, mAngle, MaxInt);
-end;
-
-function TDeclarationScan.Text(AFirst, AStop: Integer): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := AFirst to AStop - 1 do
-  begin
-    if not IsTrivia(FTokens[mIndex]) then
-    begin
-      Result := Result + FTokens[mIndex].Text;
-    end;
-  end;
 end;
 
 end.

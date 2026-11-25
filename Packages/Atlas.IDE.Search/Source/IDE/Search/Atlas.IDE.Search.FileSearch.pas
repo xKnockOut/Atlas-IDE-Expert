@@ -63,9 +63,9 @@ implementation
 uses
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.ToolsApi.Editor.Buffer;
 
 { TAtlasIdeFileSearch.TWorker }
 
@@ -84,34 +84,41 @@ var
   mSummary: TAtlasFileSearchSummary;
   mRun: Integer;
 begin
-  mRun := FRun;
   try
-    mSummary := TAtlasFileSearch.Run(FSources, FQuery, TAtlasFileSearch.DiskLoader(),
-      function: Boolean
+    mRun := FRun;
+    try
+      mSummary := TAtlasFileSearch.Run(FSources, FQuery, TAtlasFileSearch.DiskLoader(),
+        function: Boolean
+        begin
+          Result := Terminated;
+        end,
+        procedure(AHits: TAtlasFileHits)
+        begin
+          TAtlasMainThread.Queue(TAtlasFeature.Search,
+            procedure
+            begin
+              TAtlasIdeFileSearch.Found(mRun, AHits);
+            end);
+        end);
+    except
+      on E: Exception do
       begin
-        Result := Terminated;
-      end,
-      procedure(AHits: TAtlasFileHits)
+        TAtlasGuard.Report(TAtlasFeature.Search, E);
+        mSummary := Default(TAtlasFileSearchSummary);
+        mSummary.Cancelled := True;
+      end;
+    end;
+    TAtlasMainThread.Queue(TAtlasFeature.Search,
+      procedure
       begin
-        TAtlasMainThread.Queue(TAtlasFeature.Search,
-          procedure
-          begin
-            TAtlasIdeFileSearch.Found(mRun, AHits);
-          end);
+        TAtlasIdeFileSearch.Done(mRun, mSummary);
       end);
   except
     on E: Exception do
     begin
       TAtlasGuard.Report(TAtlasFeature.Search, E);
-      mSummary := Default(TAtlasFileSearchSummary);
-      mSummary.Cancelled := True;
     end;
   end;
-  TAtlasMainThread.Queue(TAtlasFeature.Search,
-    procedure
-    begin
-      TAtlasIdeFileSearch.Done(mRun, mSummary);
-    end);
 end;
 
 { TAtlasIdeFileSearch }

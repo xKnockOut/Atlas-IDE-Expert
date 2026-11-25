@@ -31,7 +31,7 @@ interface
 uses
   System.SysUtils,
   System.RegularExpressions,
-  Atlas.Core.Tasks.Definitions;
+  Atlas.Core.Tasks.Contract;
 
 type
   TAtlasTaskFinding = record
@@ -92,9 +92,14 @@ type
     /// dann die Projektdatei, deren Pfad auf APath endet, dann ASearchPath; sonst gegen ACwd.</summary>
     class function Resolve(const APath, ACwd: string; const AProjectFiles, ASearchPath: TArray<string>;
       const AExists: TAtlasTaskFileExists): string; static;
+    /// <summary>Fragt die Platte (FileExists).</summary>
+    class function OnDisk: TAtlasTaskFileExists; static;
   end;
 
 implementation
+
+uses
+  System.StrUtils;
 
 const
   /// <summary>Datei mit Endung: optional Laufwerk, keine Zeichen, die in Pfaden verboten sind.</summary>
@@ -103,16 +108,19 @@ const
 { TAtlasTaskLineMatcher }
 
 constructor TAtlasTaskLineMatcher.Create(const AMatcher: TAtlasTaskMatcher);
+const
+  cDccIde = '^\s*\[\s*dcc\w*\s+(error|fehler|warning|warnung|hint|hinweis|fatal|' + // german-ok
+    'schwerer fehler)\s*\]\s*(.+?)\((\d+)(?:,(\d+))?\)\s*:?\s*(?:([EWHF]\d{3,4})\s+)?(.*)$'; // german-ok
+  cDccCommandLine = '^\s*(.+?)\((\d+)(?:,(\d+))?\)\s+(error|fehler|warning|warnung|hint|' + // german-ok
+    'hinweis|fatal|schwerer fehler)\s*:\s*(?:([EWHF]\d{3,4})\s+)?(.*)$'; // german-ok
 begin
   inherited Create;
   FMatcher := AMatcher;
   case AMatcher.Kind of
     TAtlasTaskMatcherKind.Dcc:
       begin
-        AddRule(TForm.DccIde, '^\s*\[\s*dcc\w*\s+(error|fehler|warning|warnung|hint|hinweis|fatal|' +
-          'schwerer fehler)\s*\]\s*(.+?)\((\d+)(?:,(\d+))?\)\s*:?\s*(?:([EWHF]\d{3,4})\s+)?(.*)$', [roIgnoreCase]); // german-ok
-        AddRule(TForm.DccCommandLine, '^\s*(.+?)\((\d+)(?:,(\d+))?\)\s+(error|fehler|warning|warnung|hint|' +
-          'hinweis|fatal|schwerer fehler)\s*:\s*(?:([EWHF]\d{3,4})\s+)?(.*)$', [roIgnoreCase]); // german-ok
+        AddRule(TForm.DccIde, cDccIde, [roIgnoreCase]);
+        AddRule(TForm.DccCommandLine, cDccCommandLine, [roIgnoreCase]);
       end;
     TAtlasTaskMatcherKind.Pwsh:
       AddRule(TForm.PwshLine, '^\s*(?:Write-Error:\s*)?(?:(FEHLER|WARNUNG|HINWEIS|ERROR|WARNING|HINT|INFO)\s*:?\s+)?' +
@@ -156,16 +164,21 @@ end;
 /// <summary>Name der Gruppe, die bei AIndex mit (? beginnt: (?&lt;name&gt;…), (?P&lt;name&gt;…), (?'name'…); '' bei
 /// anderen Formen.</summary>
 function GroupName(const APattern: string; AIndex: Integer): string;
+const
+  // „(?<Name>“ bzw. „(?'Name'“: Kennzeichen hinter „(?“, der Name dahinter; bei „(?P<Name>“ ein Zeichen später.
+  cMarkOffset = 2;
+  cNameOffset = cMarkOffset + 1;
+  cPythonNameOffset = cNameOffset + 1;
 var
   mClose: Integer;
 begin
   Result := '';
-  if (AIndex + 2 > Length(APattern)) or not CharInSet(APattern[AIndex + 2], ['<', 'P', '''']) then
+  if (AIndex + cMarkOffset > Length(APattern)) or not CharInSet(APattern[AIndex + cMarkOffset], ['<', 'P', '''']) then
   begin
     Exit;
   end;
-  mClose := AIndex + 3;
-  if APattern[AIndex + 2] = 'P' then
+  mClose := AIndex + cNameOffset;
+  if APattern[AIndex + cMarkOffset] = 'P' then
   begin
     Inc(mClose);
   end;
@@ -173,13 +186,14 @@ begin
   begin
     Inc(mClose);
   end;
-  if (APattern[AIndex + 2] = 'P') and (AIndex + 3 <= Length(APattern)) and (APattern[AIndex + 3] = '<') then
+  if (APattern[AIndex + cMarkOffset] = 'P') and (AIndex + cNameOffset <= Length(APattern)) and
+    (APattern[AIndex + cNameOffset] = '<') then
   begin
-    Result := Copy(APattern, AIndex + 4, mClose - AIndex - 4);
+    Result := Copy(APattern, AIndex + cPythonNameOffset, mClose - AIndex - cPythonNameOffset);
   end
-  else if APattern[AIndex + 2] <> 'P' then
+  else if APattern[AIndex + cMarkOffset] <> 'P' then
   begin
-    Result := Copy(APattern, AIndex + 3, mClose - AIndex - 3);
+    Result := Copy(APattern, AIndex + cNameOffset, mClose - AIndex - cNameOffset);
   end;
 end;
 
@@ -315,24 +329,40 @@ end;
 
 // Datei(Zeile,Spalte) Schwere Code Meldung: dcc auf der Kommandozeile und MSBuild.
 procedure ReadFileFirst(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster.
+  cFile = 1;
+  cLine = 2;
+  cColumn = 3;
+  cSeverity = 4;
+  cCode = 5;
+  cMessage = 6;
 begin
-  AFinding.FileName := Trim(GroupText(AFound, 1));
-  AFinding.Line := StrToIntDef(GroupText(AFound, 2), 0);
-  AFinding.Column := StrToIntDef(GroupText(AFound, 3), 0);
-  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 4), AFinding.Severity);
-  AFinding.Code := GroupText(AFound, 5);
-  AFinding.Message := Trim(GroupText(AFound, 6));
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  AFinding.Line := StrToIntDef(GroupText(AFound, cLine), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, cColumn), 0);
+  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, cSeverity), AFinding.Severity);
+  AFinding.Code := GroupText(AFound, cCode);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
 end;
 
 // [dcc Schwere] Datei(Zeile,Spalte) Code Meldung: Meldungen der IDE.
 procedure ReadDccIde(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster.
+  cSeverity = 1;
+  cFile = 2;
+  cLine = 3;
+  cColumn = 4;
+  cCode = 5;
+  cMessage = 6;
 begin
-  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 1), AFinding.Severity);
-  AFinding.FileName := Trim(GroupText(AFound, 2));
-  AFinding.Line := StrToIntDef(GroupText(AFound, 3), 0);
-  AFinding.Column := StrToIntDef(GroupText(AFound, 4), 0);
-  AFinding.Code := GroupText(AFound, 5);
-  AFinding.Message := Trim(GroupText(AFound, 6));
+  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, cSeverity), AFinding.Severity);
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  AFinding.Line := StrToIntDef(GroupText(AFound, cLine), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, cColumn), 0);
+  AFinding.Code := GroupText(AFound, cCode);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
 end;
 
 /// <summary>Wert der ersten beteiligten Gruppe von AFirst und ASecond.</summary>
@@ -346,16 +376,25 @@ begin
 end;
 
 procedure ReadPwsh(const AFound: TMatch; const ALine: string; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster; Zeile und Spalte stehen je nach Schreibweise in einer von zwei Gruppen.
+  cSeverity = 1;
+  cFile = 2;
+  cLine = 3;
+  cColumn = 4;
+  cLineAlt = 5;
+  cColumnAlt = 6;
+  cMessage = 7;
 var
   mSeverity: TAtlasTaskSeverity;
 begin
-  AFinding.FileName := Trim(GroupText(AFound, 2));
-  AFinding.Line := StrToIntDef(EitherGroup(AFound, 3, 5), 0);
-  AFinding.Column := StrToIntDef(EitherGroup(AFound, 4, 6), 0);
-  AFinding.Message := Trim(GroupText(AFound, 7));
-  if GroupText(AFound, 1) <> '' then
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  AFinding.Line := StrToIntDef(EitherGroup(AFound, cLine, cLineAlt), 0);
+  AFinding.Column := StrToIntDef(EitherGroup(AFound, cColumn, cColumnAlt), 0);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
+  if GroupText(AFound, cSeverity) <> '' then
   begin
-    TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 1), AFinding.Severity);
+    TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, cSeverity), AFinding.Severity);
   end
   else if UpperSeverity(AFinding.Message, mSeverity) then
   begin
@@ -368,11 +407,17 @@ begin
 end;
 
 procedure ReadMsBuildFile(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster.
+  cFile = 1;
+  cSeverity = 2;
+  cCode = 3;
+  cMessage = 4;
 begin
-  AFinding.FileName := Trim(GroupText(AFound, 1));
-  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, 2), AFinding.Severity);
-  AFinding.Code := GroupText(AFound, 3);
-  AFinding.Message := Trim(GroupText(AFound, 4));
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  TAtlasTaskLineMatcher.SeverityWord(GroupText(AFound, cSeverity), AFinding.Severity);
+  AFinding.Code := GroupText(AFound, cCode);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
   // „MSBUILD : error …“ und andere Werkzeugnamen sind keine Dateien.
   if Pos('.', ExtractFileName(AFinding.FileName)) = 0 then
   begin
@@ -381,14 +426,20 @@ begin
 end;
 
 procedure ReadGeneric(const AFound: TMatch; var AFinding: TAtlasTaskFinding);
+const
+  // Nummern der Gruppen im Muster.
+  cFile = 1;
+  cLine = 2;
+  cColumn = 3;
+  cMessage = 4;
 var
   mSeverity: TAtlasTaskSeverity;
   mCode: TMatch;
 begin
-  AFinding.FileName := Trim(GroupText(AFound, 1));
-  AFinding.Line := StrToIntDef(GroupText(AFound, 2), 0);
-  AFinding.Column := StrToIntDef(GroupText(AFound, 3), 0);
-  AFinding.Message := Trim(GroupText(AFound, 4));
+  AFinding.FileName := Trim(GroupText(AFound, cFile));
+  AFinding.Line := StrToIntDef(GroupText(AFound, cLine), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, cColumn), 0);
+  AFinding.Message := Trim(GroupText(AFound, cMessage));
   if LeadingSeverity(AFinding.Message, mSeverity) then
   begin
     AFinding.Severity := mSeverity;
@@ -457,29 +508,23 @@ begin
 end;
 
 class function TAtlasTaskLineMatcher.SeverityWord(const AWord: string; out ASeverity: TAtlasTaskSeverity): Boolean;
-var
-  mWord: string;
-begin
-  mWord := AnsiLowerCase(Trim(AWord));
-  Result := True;
+const
   // Wörter des deutschen Compilers, keine Oberfläche.
-  if (mWord = 'error') or (mWord = 'fehler') or (mWord = 'fatal') or (mWord = 'schwerer fehler') then // german-ok
+  cWords: array[0..10] of string = ('error', 'fehler', 'fatal', 'schwerer fehler', 'warning', 'warnung', // german-ok
+    'hint', 'hinweis', 'info', 'information', 'message'); // german-ok
+  cSeverities: array[0..10] of TAtlasTaskSeverity = (TAtlasTaskSeverity.Error, TAtlasTaskSeverity.Error,
+    TAtlasTaskSeverity.Error, TAtlasTaskSeverity.Error, TAtlasTaskSeverity.Warning, TAtlasTaskSeverity.Warning,
+    TAtlasTaskSeverity.Info, TAtlasTaskSeverity.Info, TAtlasTaskSeverity.Info, TAtlasTaskSeverity.Info,
+    TAtlasTaskSeverity.Info);
+var
+  mIndex: Integer;
+begin
+  mIndex := IndexStr(AnsiLowerCase(Trim(AWord)), cWords);
+  Result := mIndex >= 0;
+  ASeverity := TAtlasTaskSeverity.Error;
+  if Result then
   begin
-    ASeverity := TAtlasTaskSeverity.Error;
-  end
-  else if (mWord = 'warning') or (mWord = 'warnung') then
-  begin
-    ASeverity := TAtlasTaskSeverity.Warning;
-  end
-  else if (mWord = 'hint') or (mWord = 'hinweis') or (mWord = 'info') or (mWord = 'information') or
-    (mWord = 'message') then
-  begin
-    ASeverity := TAtlasTaskSeverity.Info;
-  end
-  else
-  begin
-    ASeverity := TAtlasTaskSeverity.Error;
-    Result := False;
+    ASeverity := cSeverities[mIndex];
   end;
 end;
 
@@ -499,7 +544,7 @@ begin
   if Copy(Result, 1, 2) = '\\' then
   begin
     mPrefix := '\\';
-    Result := Copy(Result, 3, MaxInt);
+    Result := Copy(Result, Length(mPrefix) + 1, MaxInt);
   end
   else if (Result <> '') and (Result[1] = '\') then
   begin
@@ -612,6 +657,15 @@ begin
   begin
     Result := mCandidate;
   end;
+end;
+
+class function TAtlasTaskPaths.OnDisk: TAtlasTaskFileExists;
+begin
+  Result :=
+    function(const AFileName: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+    end;
 end;
 
 end.

@@ -107,15 +107,15 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Forecast,
   Atlas.Core.Debug.WhyHereFlow,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.LineEnd,
@@ -319,9 +319,7 @@ begin
   begin
     Exit;
   end;
-  FProgress.Phase := TAtlasStopPhase.Evaluate;
-  FTimer.Interval := cTickMs;
-  FTimer.Enabled := True;
+  BeginEvaluate(cTickMs);
   EvaluateSlice;
   TAtlasDebugLineEnd.Invalidate;
 end;
@@ -475,9 +473,7 @@ begin
     Exit;
   end;
   FWhy.AllowCalls(ALine);
-  FProgress.Phase := TAtlasStopPhase.Evaluate;
-  FTimer.Interval := cTickMs;
-  FTimer.Enabled := True;
+  BeginEvaluate(cTickMs);
   EvaluateSlice;
 end;
 

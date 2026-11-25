@@ -20,7 +20,7 @@ uses
   System.Classes,
   Atlas.Core.Designer.Neighbours,
   Atlas.UI.Designer.Flash,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   TAtlasIdeDesignerNavigate = class;
@@ -64,10 +64,11 @@ uses
   Vcl.Forms,
   ToolsAPI,
   DesignIntf,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Core.Designer.Names;
 
 const
   cKeyPriority = 50;
@@ -206,20 +207,6 @@ begin
   end;
 end;
 
-function Contains(const AList: TArray<TComponent>; AComponent: TComponent): Boolean;
-var
-  mItem: TComponent;
-begin
-  for mItem in AList do
-  begin
-    if mItem = AComponent then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Bezug: beim Hinzufügen das zuletzt hinzugefügte, sonst die erste gewählte Komponente.</summary>
 function FromOf(const AItems: TArray<TAtlasNeighbourItem>; const ASelected: TArray<TComponent>;
   const ALast: string; AExtend: Boolean): Integer;
@@ -281,7 +268,7 @@ begin
   begin
     mSelected := nil;
   end;
-  if not Contains(mSelected, mTarget) then
+  if not TAtlasDesignerNames.ContainsComponent(mSelected, mTarget) then
   begin
     mSelected := mSelected + [mTarget];
   end;

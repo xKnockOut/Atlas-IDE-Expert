@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerSyntax: array[0..203] of string = (
+  cCatalogLinesDeCompilerSyntax: array[0..213] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntaxfehler",',
@@ -170,9 +170,9 @@ const
     'renkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstrukt' +
     'oren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virt' +
     'uellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Variablen oder typisi' +
-    'erten Konstanten des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte, Typen und Routinen übersetzt dcc, mORMot2, Clipper2, dcc-Lauf vom 29.10.2026), als lokale Routine mit Zugriff auf ' +
-    'Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstüt' +
-    'zten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.",',
+    'erten Konstanten des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte, Typen und Routinen übersetzt dcc, etwa in mORMot2 und Clipper2), als lokale Routine mit Zugriff auf Variablen der ' +
+    'umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Ve' +
+    'rsionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.",',
     '      "options": [',
     '        {',
     '          "name": "disabledChecks",',
@@ -289,6 +289,19 @@ const
     '      "description": "Winapi.Windows (bzw. Windows) steht in uses hinter Vcl.Graphics, FMX.Graphics oder Graphics, und die Unit nennt TBitmap. Die letzte Unit gewinnt, TBitmap meint also den Record au' +
     's Winapi.Windows: TBitmap.Create und die Methoden der Grafikklasse werden nicht gefunden (wie E2003). uses des interface- und implementation-Teils zählen zusammen. TBitmap hinter einem Punkt (Vcl.Grap' +
     'hics.TBitmap) bleibt still. Korrektur (sicher) nur, wenn beide Units in derselben uses-Liste stehen: Winapi.Windows vor die Grafik-Unit stellen."',
+    '    },',
+    '{',
+    '      "id": "enum-hides-keyword",',
+    '      "name": "Aufzählungswert verdeckt eine Standardprozedur",',
+    '      "description": "Eine Aufzählung ohne {$SCOPEDENUMS ON} hat einen Wert Continue, Break, Exit oder Halt. Der Wert verdeckt die gleichnamige Standardprozedur in jeder Unit, die den Typ sieht: Conti' +
+    'nue; wird dort zur Ausdrucksanweisung (E2014), und in einer Unit ohne solche Anweisung schnappt die Falle erst später zu. Ob {$SCOPEDENUMS} gilt, entscheidet die letzte Direktive vor dem Typ. Keine Ko' +
+    'rrektur: {$SCOPEDENUMS ON} ändert jede Verwendung der Werte, Umbenennen den Typ."',
+    '    },',
+    '{',
+    '      "id": "inline-reference-type",',
+    '      "name": "reference to ohne benannten Typ",',
+    '      "description": "Ein Feld oder eine Variable hat direkt den Typ reference to procedure … bzw. reference to function …. Delphi nimmt Methodenreferenztypen nur in einer Typdeklaration an und meldet' +
+    ' E2003 für ''reference'' mit vielen Folgefehlern; Free Pascal übersetzt die Deklaration. Keine Korrektur: benannten Typ deklarieren und verwenden."',
     '    },',
     '{',
     '      "id": "stream-write-nativeint",',

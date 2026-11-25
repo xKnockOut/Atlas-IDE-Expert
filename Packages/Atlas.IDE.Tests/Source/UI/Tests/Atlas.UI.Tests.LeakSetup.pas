@@ -12,7 +12,7 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.StdCtrls,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.Core.Tests.LeakSetup;
 
 type
@@ -130,11 +130,16 @@ begin
     FChoices[mChoice].Align := alClient;
     FChoices[mChoice].Caption := mCaption;
     FChoices[mChoice].Enabled := AInfo.Available(mChoice);
-    FChoices[mChoice].OnClick := ChoiceClick;
   end;
+  // Vorauswahl vor OnClick: Checked := True löst Click aus, und ChoiceClick braucht FFileReport und FSetUp, die
+  // erst danach entstehen (Zugriffsverletzung im Konstruktor, der Dialog erschien nie).
   if AInfo.Available(AInfo.Preselect) then
   begin
     FChoices[AInfo.Preselect].Checked := True;
+  end;
+  for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
+  begin
+    FChoices[mChoice].OnClick := ChoiceClick;
   end;
   if (AInfo.Sources[TAtlasLeakChoice.FastMM4].FileName = '') or
     (AInfo.Sources[TAtlasLeakChoice.FastMM5].FileName = '') then
@@ -153,6 +158,15 @@ var
   mAny: Boolean;
   mChoice: TAtlasLeakChoice;
 begin
+  // Jeder Knopf liegt in einer eigenen Zeile, also unter einem eigenen Parent: Die VCL schaltet beim Anhaken nur
+  // Geschwister mit demselben Parent aus. Die übrigen Knöpfe deshalb hier abwählen (Checked := False klickt nicht).
+  for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
+  begin
+    if (FChoices[mChoice] <> Sender) and (Sender is TRadioButton) and TRadioButton(Sender).Checked then
+    begin
+      FChoices[mChoice].Checked := False;
+    end;
+  end;
   mAny := False;
   for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
   begin

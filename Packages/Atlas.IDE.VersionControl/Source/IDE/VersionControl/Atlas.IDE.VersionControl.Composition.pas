@@ -13,108 +13,36 @@
 // Serverbefehle (Index neu aufbauen nach einem Branch mit geänderten
 // Externals, #1291) laufen über TAtlasIdeHost, die Antwort nur bei offenem Scope.
 // Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
-// Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
+// Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7). Die Modulklasse
+// (Adapters.Module), den Dienst (Adapters.Service) und die Dialoge (Adapters.Dialogs) erzeugt sie nur.
 
 interface
-
-uses
-  System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.ToolCheck,
-  Atlas.Core.VersionControl.ServerCheck,
-  Atlas.Core.Projects.VersionControl,
-  Atlas.IDE.Contracts.VersionControl;
-
-type
-  TAtlasVcsModule = class(TInterfacedObject, IAtlasModule)
-  public const
-    cModuleId = 'atlas.vcs';
-    cSwitch = 'vcs';
-  private
-    FActive: Boolean;
-    class function Parts: TArray<IAtlasFeaturePart>; static;
-  public
-    function Info: TAtlasModuleInfo;
-    procedure Start;
-    procedure Stop;
-    function IsActive: Boolean;
-    /// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
-    /// nicht passt.</summary>
-    class function RegisterModule: Boolean; static;
-    class procedure UnregisterModule; static;
-  end;
-
-  /// <summary>IAtlasVcsService über TAtlasIdeVcsCore.</summary>
-  TAtlasVcsServiceAdapter = class(TInterfacedObject, IAtlasVcsService)
-  public
-    procedure Report(const AText: string);
-    function Provider: TAtlasVcsProvider;
-    function TimeoutMs: Cardinal;
-    procedure Reload;
-    function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
-    function MainBranchOf(const AProjectFile, AGroupFile: string): string;
-    function Projects: TArray<TAtlasVcsProjectMapping>;
-    function Run(const AWork, ADone: TProc): Boolean;
-    function Locate(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation;
-    function CheckTool(AKind: TAtlasVcsKind; const APath: string; const ADone: TProc<TAtlasVcsToolCheck>): Boolean;
-    function QueryProject(const AProjectFile, AGroupFile: string; const ADone: TProc<TAtlasVcsProjectState>): Boolean;
-    function CheckServer(const AFolder: string; const ADone: TProc<TAtlasVcsServerCheck>): Boolean;
-    function ServerState(const AFolder: string): TAtlasVcsServerCheck;
-    function OpenServerLogin(const ACheck: TAtlasVcsServerCheck; const AClosed: TProc): Boolean;
-  end;
-
-  /// <summary>IAtlasVcsDialogs über TAtlasIdeBranching und TAtlasIdeWorkingCopies.</summary>
-  TAtlasVcsDialogsAdapter = class(TInterfacedObject, IAtlasVcsDialogs)
-  public
-    procedure CreateBranchFor(const AProject: string; const ADone: TProc);
-    procedure ShowWorkingCopies(const AProject: string; const ADone: TProc);
-    function AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
-      out ANeverAsk: Boolean): Boolean;
-    function SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;
-    function GitOptions: TAtlasVcsGitBranchOptions;
-    procedure OfferOpen(const AProject, ARoot, AFolder: string);
-    function ServerState(AOutcome: TAtlasVcsOutcome): string;
-    function AskLocal(const AFacts: TAtlasVcsBranchFacts; const ARequest: TAtlasVcsBranchRequest;
-      const ASteps: TArray<TAtlasVcsBranchStep>; const ARun: TAtlasVcsBranchRun;
-      out AFallback: TAtlasVcsBranchRequest): Boolean;
-    function AskUncommitted(AChanges: Integer; const AName: string; out AStash: Boolean): Boolean;
-    function WorktreeProject(const AProject, ARoot, AFolder: string): string;
-    function OfferWorktree(const AName, AFolder, ATarget: string): Boolean;
-    procedure StopAsking;
-    procedure RebuildIndex;
-    function Progress(AKind: TAtlasVcsKind): TAtlasVcsBranchProgress;
-    function FailureText(AKind: TAtlasVcsKind; const ASteps: TArray<TAtlasVcsBranchStep>;
-      const ARun: TAtlasVcsBranchRun): string;
-  end;
-
-  /// <summary>Nach dem Speichern der Optionen (#1905, vorher in Base): settings.json neu lesen, damit ein neuer
-  /// Pfad und ein neues Zeitlimit sofort gelten.</summary>
-  TAtlasVcsAppliesSettings = class(TInterfacedObject, IAtlasAppliesSettings, IAtlasFollowsTheme)
-  public
-    procedure ApplySettings;
-    procedure ThemeChanged;
-  end;
 
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.FeatureParts,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Tools,
+  Atlas.IDE.Contracts.VersionControl,
   Atlas.Core.VersionControl.Composition,
-  Atlas.IDE.VersionControl.Commands,
+  Atlas.IDE.VersionControl.Adapters.Commands,
   Atlas.IDE.VersionControl.LineChanges,
+  Atlas.IDE.VersionControl.Adapters.LineChanges,
   Atlas.IDE.Contracts.LineChanges,
-  Atlas.Core.VersionControl.Adapters.ProcessRunner,
+  Atlas.Core.VersionControl.Providers.ProcessRunner,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.VersionControl.Service,
   Atlas.IDE.VersionControl.Branching,
-  Atlas.IDE.VersionControl.WorkingCopies,
-  Atlas.IDE.VersionControl.Settings,
+  Atlas.IDE.VersionControl.Adapters.Settings,
+  Atlas.IDE.VersionControl.Adapters.Service,
+  Atlas.IDE.VersionControl.Adapters.Dialogs,
+  Atlas.IDE.VersionControl.Adapters.Module,
   Atlas.UI.Settings.Contract;
 
 const
@@ -126,11 +54,6 @@ var
   GStarted: Boolean;
 
 { Dienste von Base }
-
-procedure MessageLine(const AText: string);
-begin
-  TAtlasIdeHost.Message(AText);
-end;
 
 /// <summary>Befehl ohne Argumente an den laufenden Server; die Antwort braucht niemand.</summary>
 function ServerCommand(ACommand: string): Boolean;
@@ -174,15 +97,11 @@ end;
 procedure StartVcs;
 begin
   // Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile (#571).
-  TAtlasIdeVcsCore.Start(MessageLine, Backend);
+  TAtlasIdeVcsCore.Start(TAtlasIdeHost.Messages(), Backend);
   TAtlasIdeBranching.ServerCommand := ServerCommand;
   TAtlasIdeVcs.Bind(TAtlasVcsServiceAdapter.Create, TAtlasVcsDialogsAdapter.Create);
   // Änderungsmarken und Zeilenhistorie (#507, #1905): mit den Haken, die der Tracker schon abgelegt hat.
-  TAtlasIdeLineChanges.Install(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
-    end);
+  TAtlasIdeLineChanges.Install(TAtlasIdeHost.Messages());
   TAtlasIdeLineChanges.SetBlameHooks(TAtlasLineChangeMarks.BlameHooks);
   TAtlasLineChangeMarks.Bind(TAtlasLineChangesAdapter.Create);
   GStarted := True;
@@ -204,226 +123,31 @@ begin
   Result := GStarted;
 end;
 
-{ TAtlasVcsServiceAdapter }
+{ Anmeldung }
 
-procedure TAtlasVcsServiceAdapter.Report(const AText: string);
-begin
-  TAtlasIdeVcsCore.Report(AText);
-end;
-
-function TAtlasVcsServiceAdapter.Provider: TAtlasVcsProvider;
-begin
-  Result := TAtlasIdeVcsCore.Provider;
-end;
-
-function TAtlasVcsServiceAdapter.TimeoutMs: Cardinal;
-begin
-  Result := TAtlasIdeVcsCore.TimeoutMs;
-end;
-
-procedure TAtlasVcsServiceAdapter.Reload;
-begin
-  TAtlasIdeVcsCore.Reload;
-end;
-
-function TAtlasVcsServiceAdapter.ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
-begin
-  Result := TAtlasIdeVcsCore.ForFolder(AFolder, ATimeoutMs);
-end;
-
-function TAtlasVcsServiceAdapter.MainBranchOf(const AProjectFile, AGroupFile: string): string;
-begin
-  Result := TAtlasIdeVcsCore.MainBranchOf(AProjectFile, AGroupFile);
-end;
-
-function TAtlasVcsServiceAdapter.Projects: TArray<TAtlasVcsProjectMapping>;
-begin
-  Result := TAtlasIdeVcsCore.Projects;
-end;
-
-function TAtlasVcsServiceAdapter.Run(const AWork, ADone: TProc): Boolean;
-begin
-  Result := TAtlasIdeVcsCore.Run(AWork, ADone);
-end;
-
-function TAtlasVcsServiceAdapter.Locate(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation;
-begin
-  Result := TAtlasIdeVcsCore.Locate(AKind, APath);
-end;
-
-function TAtlasVcsServiceAdapter.CheckTool(AKind: TAtlasVcsKind; const APath: string;
-  const ADone: TProc<TAtlasVcsToolCheck>): Boolean;
-begin
-  Result := TAtlasIdeVcsCore.CheckTool(AKind, APath, ADone);
-end;
-
-function TAtlasVcsServiceAdapter.QueryProject(const AProjectFile, AGroupFile: string;
-  const ADone: TProc<TAtlasVcsProjectState>): Boolean;
-begin
-  Result := TAtlasIdeVcsCore.QueryProject(AProjectFile, AGroupFile, ADone);
-end;
-
-function TAtlasVcsServiceAdapter.CheckServer(const AFolder: string;
-  const ADone: TProc<TAtlasVcsServerCheck>): Boolean;
-begin
-  Result := TAtlasIdeVcsCore.CheckServer(AFolder, ADone);
-end;
-
-function TAtlasVcsServiceAdapter.ServerState(const AFolder: string): TAtlasVcsServerCheck;
-begin
-  Result := TAtlasIdeVcsCore.ServerState(AFolder);
-end;
-
-function TAtlasVcsServiceAdapter.OpenServerLogin(const ACheck: TAtlasVcsServerCheck; const AClosed: TProc): Boolean;
-begin
-  Result := TAtlasIdeVcsCore.OpenServerLogin(ACheck, AClosed);
-end;
-
-{ TAtlasVcsDialogsAdapter }
-
-procedure TAtlasVcsDialogsAdapter.CreateBranchFor(const AProject: string; const ADone: TProc);
-begin
-  TAtlasIdeBranching.CreateFor(AProject, ADone);
-end;
-
-procedure TAtlasVcsDialogsAdapter.ShowWorkingCopies(const AProject: string; const ADone: TProc);
-begin
-  TAtlasIdeWorkingCopies.ShowFor(AProject, ADone);
-end;
-
-function TAtlasVcsDialogsAdapter.AskBranch(const AAsk: TAtlasVcsBranchAsk; out ARequest: TAtlasVcsBranchRequest;
-  out ANeverAsk: Boolean): Boolean;
-begin
-  Result := TAtlasIdeBranching.Ask(AAsk.Folder, AAsk.Facts, TAtlasIdeBranching.Setup(AAsk.Name, AAsk.Message,
-    AAsk.Key, AAsk.Svn, AAsk.OfferNeverAsk), ARequest, ANeverAsk);
-end;
-
-function TAtlasVcsDialogsAdapter.SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;
-begin
-  Result := TAtlasIdeBranching.SvnOptions(AProject);
-end;
-
-function TAtlasVcsDialogsAdapter.GitOptions: TAtlasVcsGitBranchOptions;
-begin
-  Result := TAtlasIdeBranching.GitOptions;
-end;
-
-procedure TAtlasVcsDialogsAdapter.OfferOpen(const AProject, ARoot, AFolder: string);
-begin
-  TAtlasIdeBranching.OfferOpen(AProject, ARoot, AFolder);
-end;
-
-function TAtlasVcsDialogsAdapter.ServerState(AOutcome: TAtlasVcsOutcome): string;
-begin
-  Result := TAtlasIdeBranching.ServerState(AOutcome);
-end;
-
-function TAtlasVcsDialogsAdapter.AskLocal(const AFacts: TAtlasVcsBranchFacts; const ARequest: TAtlasVcsBranchRequest;
-  const ASteps: TArray<TAtlasVcsBranchStep>; const ARun: TAtlasVcsBranchRun;
-  out AFallback: TAtlasVcsBranchRequest): Boolean;
-begin
-  Result := TAtlasIdeBranching.AskLocal(AFacts, ARequest, ASteps, ARun, AFallback);
-end;
-
-function TAtlasVcsDialogsAdapter.AskUncommitted(AChanges: Integer; const AName: string; out AStash: Boolean): Boolean;
-begin
-  Result := TAtlasIdeBranching.AskUncommitted(AChanges, AName, AStash);
-end;
-
-function TAtlasVcsDialogsAdapter.WorktreeProject(const AProject, ARoot, AFolder: string): string;
-begin
-  Result := TAtlasIdeBranching.WorktreeProject(AProject, ARoot, AFolder);
-end;
-
-function TAtlasVcsDialogsAdapter.OfferWorktree(const AName, AFolder, ATarget: string): Boolean;
-begin
-  Result := TAtlasIdeBranching.OfferWorktree(AName, AFolder, ATarget);
-end;
-
-procedure TAtlasVcsDialogsAdapter.StopAsking;
-begin
-  TAtlasIdeBranching.StopAsking;
-end;
-
-procedure TAtlasVcsDialogsAdapter.RebuildIndex;
-begin
-  TAtlasIdeBranching.RebuildIndex;
-end;
-
-function TAtlasVcsDialogsAdapter.Progress(AKind: TAtlasVcsKind): TAtlasVcsBranchProgress;
-begin
-  Result := TAtlasIdeBranching.Progress(AKind);
-end;
-
-function TAtlasVcsDialogsAdapter.FailureText(AKind: TAtlasVcsKind; const ASteps: TArray<TAtlasVcsBranchStep>;
-  const ARun: TAtlasVcsBranchRun): string;
-begin
-  Result := TAtlasIdeBranching.FailureText(AKind, ASteps, ARun);
-end;
-
-{ TAtlasVcsAppliesSettings }
-
-procedure TAtlasVcsAppliesSettings.ApplySettings;
-begin
-  TAtlasIdeVcs.Reload;
-  // Änderungsmarken (#507): nur, solange der Teil läuft.
-  if GStarted then
-  begin
-    TAtlasIdeLineChanges.ApplySettings;
-  end;
-end;
-
-procedure TAtlasVcsAppliesSettings.ThemeChanged;
-begin
-  if GStarted then
-  begin
-    TAtlasIdeLineChanges.ThemeChanged;
-  end;
-end;
-
-{ TAtlasVcsModule }
-
-class function TAtlasVcsModule.Parts: TArray<IAtlasFeaturePart>;
+function Parts: TArray<IAtlasFeaturePart>;
 begin
   Result := [TAtlasFeaturePart.AtLevel('Vcs', TAtlasSafeLevel.Safe, VcsStarted, StartVcs, StopVcs)];
 end;
 
-function TAtlasVcsModule.Info: TAtlasModuleInfo;
-begin
-  // Die Versionsverwaltung lief bisher auch im abgesicherten Start (Projektzustand, Änderungsmarken).
-  Result := TAtlasModuleHost.Info(cModuleId, 'Versionsverwaltung', TAtlasVersion.cVersion, HInstance,
-    TAtlasSafeLevel.Safe, cSwitch);
-end;
-
-procedure TAtlasVcsModule.Start;
-begin
-  FActive := True;
-end;
-
-procedure TAtlasVcsModule.Stop;
-begin
-  FActive := False;
-end;
-
-function TAtlasVcsModule.IsActive: Boolean;
-begin
-  Result := FActive;
-end;
-
-class function TAtlasVcsModule.RegisterModule: Boolean;
+/// <summary>Modul anmelden und seine Beiträge bereitstellen; False, wenn Base fehlt oder die Vertragsversion
+/// nicht passt.</summary>
+function RegisterModule: Boolean;
 var
   mRegistry: IAtlasModuleRegistry;
   mModule: TAtlasVcsModule;
-  mApplies: TAtlasVcsAppliesSettings;
+  mRef: IInterface;
   mPart: IAtlasFeaturePart;
 begin
   Result := False;
   // Regel 7: zuerst die Vertragsversion von Base, gegen die dieses Modul übersetzt ist.
-  if not TAtlasModuleHost.Admit(cModuleId, cAtlasCoreContractVersion, GScope, mRegistry) then
+  if not TAtlasModuleHost.Admit(TAtlasVcsModule.cModuleId, cAtlasCoreContractVersion, TAtlasVersion.cVersion, GScope,
+    mRegistry) then
   begin
     Exit;
   end;
-  mModule := TAtlasVcsModule.Create;
+  mModule := TAtlasVcsModule.Create(VcsStarted);
+  mRef := mModule as IAtlasModule;
   GScope := mRegistry.RegisterModule(mModule);
   for mPart in Parts do
   begin
@@ -432,25 +156,25 @@ begin
   // Vertrag in der Registry (#1903): Beiträge anderer Module zum Optionsdialog (Branches zu Issues des Trackers)
   // finden darüber ihren Gastgeber. Genutzt wird der Dienst weiter über TAtlasIdeVcs, sobald der Teil läuft.
   GScope.Provide(IAtlasVcsService, TAtlasVcsServiceAdapter.Create as IAtlasVcsService);
-  // Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905, vorher in der Palette von Base).
+  // Befehle „Branch anlegen …“ und „Arbeitskopien“ (#1905).
   GScope.Provide(IAtlasCommandSource, TAtlasVcsCommands.Create as IAtlasCommandSource);
   // Modulschalter im Optionsdialog ab der Anmeldung, damit sich das Modul auch ausgeschaltet einstellen lässt.
   GScope.Provide(IAtlasSettingsSectionProvider, TAtlasIdeVcsSettings.Create as IAtlasSettingsSectionProvider);
-  mApplies := TAtlasVcsAppliesSettings.Create;
-  GScope.Provide(IAtlasAppliesSettings, mApplies as IAtlasAppliesSettings);
-  GScope.Provide(IAtlasFollowsTheme, mApplies as IAtlasFollowsTheme);
+  // Nach dem Speichern der Optionen (#1905) und beim Wechsel des Themas.
+  GScope.Provide(IAtlasAppliesSettings, mRef);
+  GScope.Provide(IAtlasFollowsTheme, mRef);
   Result := True;
 end;
 
-class procedure TAtlasVcsModule.UnregisterModule;
+procedure UnregisterModule;
 begin
-  TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  TAtlasModuleHost.Unregister(GScope, TAtlasVcsModule.cModuleId, HInstance, nil);
 end;
 
 initialization
-  TAtlasVcsModule.RegisterModule;
+  RegisterModule;
 
 finalization
-  TAtlasVcsModule.UnregisterModule;
+  UnregisterModule;
 
 end.

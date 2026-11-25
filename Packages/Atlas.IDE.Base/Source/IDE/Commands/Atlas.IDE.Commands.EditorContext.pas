@@ -11,7 +11,7 @@ interface
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Problems.Contract;
@@ -89,42 +89,28 @@ type
 implementation
 
 uses
+  Atlas.Text.Lines,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorBuffer;
-
-/// <summary>Zeile ARow (1-basiert) von ALines, '' außerhalb.</summary>
-function LineAt(const ALines: TArray<string>; ARow: Integer): string;
-begin
-  Result := '';
-  if (ARow >= 1) and (ARow <= Length(ALines)) then
-  begin
-    Result := ALines[ARow - 1];
-  end;
-end;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.Plugin.Notifications.MessageSink;
 
 /// <summary>Zeile und Spalte des Editors (1-basiert) als Position des Servers.</summary>
 function LspPosition(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
 begin
-  Result := TLspTextPosition.Create(ARow - 1, TLspSession.ColumnToIndex(LineAt(ALines, ARow), AColumn, ATabWidth));
+  Result := TLspTextPosition.Create(ARow - 1,
+    TLspSession.ColumnToIndex(TTextLines.LineAt(ALines, ARow - 1), AColumn, ATabWidth));
 end;
 
 { TAtlasEditorCommandContext }
 
 class function TAtlasEditorCommandContext.Session: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class procedure TAtlasEditorCommandContext.Say(const AText: string);
 begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  TAtlasMessageSink.Create(FMessage).Say(AText);
 end;
 
 class function TAtlasEditorCommandContext.Current(out AView: IOTAEditView; out AFileName: string;
@@ -186,14 +172,15 @@ begin
   ACaret.TabWidth := TAtlasEditorBuffer.TabWidth(ACaret.View.Buffer);
   mCursor := ACaret.View.CursorPos;
   ACaret.Row := mCursor.Line - 1;
-  ACaret.Character := TLspSession.ColumnToIndex(LineAt(ACaret.Lines, mCursor.Line), mCursor.Col, ACaret.TabWidth);
+  ACaret.Character := TLspSession.ColumnToIndex(TTextLines.LineAt(ACaret.Lines, mCursor.Line - 1), mCursor.Col,
+    ACaret.TabWidth);
 end;
 
 class function TAtlasEditorCommandContext.EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition;
   ATabWidth: Integer): TOTAEditPos;
 begin
   Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(LineAt(ALines, APosition.Line + 1), APosition.Character, ATabWidth);
+  Result.Col := TLspSession.IndexToColumn(TTextLines.LineAt(ALines, APosition.Line), APosition.Character, ATabWidth);
 end;
 
 class procedure TAtlasEditorCommandContext.Select(const AView: IOTAEditView; const ALines: TArray<string>;

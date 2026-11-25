@@ -60,9 +60,10 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists.Syntax,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -189,14 +190,14 @@ var
   mRoutine: TSyntaxNode;
 begin
   // Bezeichner in einer Methode der eigenen Klasse (TKlasse.Methode), auch in einer lokalen Routine darin.
-  mRoutine := TGenericListSyntax.EnclosingRoutine(ANode);
+  mRoutine := TSyntaxNodes.Enclosing(ANode, [TSyntaxKind.RoutineDecl]);
   while mRoutine <> nil do
   begin
     if StartsText(TGenericListSyntax.LastName(FTarget.OwnerType) + '.', mRoutine.Name) then
     begin
       Exit(True);
     end;
-    mRoutine := TGenericListSyntax.EnclosingRoutine(mRoutine);
+    mRoutine := TSyntaxNodes.Enclosing(mRoutine, [TSyntaxKind.RoutineDecl]);
   end;
   Result := False;
 end;
@@ -439,7 +440,7 @@ procedure TGenericListUsages.ClassifyRead(AFileIndex: Integer; ARead: TSyntaxNod
 var
   mOuter: TSyntaxNode;
 begin
-  mOuter := TGenericListSyntax.Unparen(ARead);
+  mOuter := TSyntaxNodes.OuterParens(ARead);
   if (mOuter.Parent <> nil) and not NoteCastRead(AFileIndex, ARead, mOuter) and
     not IsHarmlessRead(FFiles[AFileIndex], mOuter) then
   begin
@@ -468,7 +469,7 @@ begin
   if Result then
   begin
     NoteCast(AFileIndex, mSource.NodeText(mParent[1]), mParent);
-    mSource.RemoveCast(TGenericListSyntax.Unparen(mParent), ARead);
+    mSource.RemoveCast(TSyntaxNodes.OuterParens(mParent), ARead);
   end;
 end;
 
@@ -529,7 +530,7 @@ begin
   begin
     Exit;
   end;
-  Result := TGenericListSyntax.EnclosingRoutine(ALoop);
+  Result := TSyntaxNodes.Enclosing(ALoop, [TSyntaxKind.RoutineDecl]);
   mDeclaration := nil;
   if Result <> nil then
   begin
@@ -565,7 +566,7 @@ begin
   end;
   if TGenericListSyntax.IsIdentifierNamed(ANode, ALoop.Name) then
   begin
-    if TGenericListSyntax.IsAssignTarget(TGenericListSyntax.Unparen(ANode)) then
+    if TGenericListSyntax.IsAssignTarget(TSyntaxNodes.OuterParens(ANode)) then
     begin
       Exit(Fail(cTexts[TUsagesText.SomethingIsAssignedToThe].Fmt([ALoop.Name, LineOf(ANode)])));
     end;
@@ -599,7 +600,7 @@ var
   mValue, mBase: TSyntaxNode;
   mCastType: string;
 begin
-  mValue := TGenericListSyntax.Inner(AArgument);
+  mValue := TSyntaxNodes.Unparen(AArgument);
   mBase := mValue;
   if (mBase.Kind = TSyntaxKind.Call) and (mBase.ChildCount > 0) then
   begin

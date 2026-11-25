@@ -53,7 +53,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract.Shared;
 
 const
@@ -68,11 +68,8 @@ type
 
   /// <summary>Plant „Konstante extrahieren“; für viele Literale derselben Datei wiederverwendbar (Zeilentabelle und
   /// freier Name einmal je Datei, Prüfregel magic-number auf großen Units).</summary>
-  TConstantExtractor = class
+  TConstantExtractor = class(TExtractRun)
   private
-    FText: string;
-    FTree: TSyntaxTree;
-    FOptions: TExtractOptions;
     FLines: TLineTable;
     FHasLines: Boolean;
     FName: string;
@@ -82,7 +79,6 @@ type
     /// <summary>const-Abschnitt vor der äußersten Routine, in der das Literal steht.</summary>
     function UnitConstant(const AName, AValue: string): TTextEdit;
   public
-    constructor Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
     /// <summary>„Konstante extrahieren“ für das Literal in ARange; AUnit wie TExtractRefactoring.ExtractConstant.
     /// </summary>
     function Run(const ARange: TTextRange; AUnit: Boolean; out AAction: TCodeAction): Boolean;
@@ -134,8 +130,8 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Semantics.ControlFlow.Signatures,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Editing.Extract.Method,
   Atlas.Common.Editing.Extract.Duplicates,
   Atlas.Common.Localization.Texts;
@@ -298,11 +294,8 @@ end;
 
 type
   /// <summary>Plant „Variable einführen“.</summary>
-  TVariableIntroduction = class
+  TVariableIntroduction = class(TExtractRun)
   private
-    FText: string;
-    FTree: TSyntaxTree;
-    FOptions: TExtractOptions;
     FRoutine: TSyntaxNode;
     FBody: TSyntaxNode;
     FExpression: TSyntaxNode;
@@ -317,19 +310,10 @@ type
     /// <summary>Deklaration und Zuweisung vor der Anweisung; False bei unbekanntem Typ.</summary>
     function DeclarationEdits(const AName: string; out AEdits: TArray<TTextEdit>): Boolean;
   public
-    constructor Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
     function Run(const ARange: TTextRange; AAll: Boolean; out AAction: TCodeAction): Boolean;
   end;
 
 { TVariableIntroduction }
-
-constructor TVariableIntroduction.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
-begin
-  inherited Create;
-  FText := AText;
-  FTree := ATree;
-  FOptions := AOptions;
-end;
 
 function TVariableIntroduction.Find(const ARange: TTextRange; AAll: Boolean): Boolean;
 var
@@ -520,14 +504,6 @@ end;
 
 { TConstantExtractor }
 
-constructor TConstantExtractor.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
-begin
-  inherited Create;
-  FText := AText;
-  FTree := ATree;
-  FOptions := AOptions;
-end;
-
 function TConstantExtractor.Find(const ARange: TTextRange): Boolean;
 var
   mFirst, mLast, mStart, mEnd: Integer;
@@ -678,11 +654,8 @@ end;
 
 type
   /// <summary>Plant „Bedingung in Funktion auslagern“ (#980).</summary>
-  TConditionExtraction = class
+  TConditionExtraction = class(TExtractRun)
   private
-    FText: string;
-    FTree: TSyntaxTree;
-    FOptions: TExtractOptions;
     FRoutine: TSyntaxNode;
     FBody: TSyntaxNode;
     FCondition: TSyntaxNode;
@@ -700,19 +673,10 @@ type
     function BuildSignature(ASignature: TExtractSignature): Boolean;
     function BuildEdits(ASignature: TExtractSignature; out AEdits: TArray<TTextEdit>): Boolean;
   public
-    constructor Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
     function Run(const ARange: TTextRange; out AAction: TCodeAction; out AReason: string): Boolean;
   end;
 
 { TConditionExtraction }
-
-constructor TConditionExtraction.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
-begin
-  inherited Create;
-  FText := AText;
-  FTree := ATree;
-  FOptions := AOptions;
-end;
 
 function TConditionExtraction.Prepare(const ARange: TTextRange): Boolean;
 var

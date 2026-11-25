@@ -22,7 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Contract;
 
 type
   TAtlasRoutedSetting = record
@@ -80,7 +80,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Text.Json;
 
 function Setting(const AName, APath: string; AFlag: Boolean): TAtlasRoutedSetting;

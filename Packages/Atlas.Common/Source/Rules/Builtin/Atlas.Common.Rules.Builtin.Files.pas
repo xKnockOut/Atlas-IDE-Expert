@@ -95,14 +95,16 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Text.Chars,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -169,32 +171,6 @@ end;
 
 // Iterativ (tiefe Bäume sprengen den Stapel nicht): erst die Punktkette hinab, dann die Namen von innen nach außen
 // anhängen.
-function DottedText(ANode: TSyntaxNode): string;
-var
-  mChain: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
-begin
-  mChain := TStack<TSyntaxNode>.Create;
-  try
-    mNode := ANode;
-    while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) do
-    begin
-      mChain.Push(mNode);
-      mNode := mNode[0];
-    end;
-    Result := '';
-    if mNode.Kind = TSyntaxKind.Identifier then
-    begin
-      Result := mNode.Name;
-    end;
-    while (mChain.Count > 0) and (Result <> '') do
-    begin
-      Result := Result + '.' + mChain.Pop.Name;
-    end;
-  finally
-    mChain.Free;
-  end;
-end;
 
 function CalleeName(ANode: TSyntaxNode; out AName, AQualifier: string): Boolean;
 var
@@ -221,7 +197,7 @@ begin
   end
   else if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount = 1) then
   begin
-    AQualifier := DottedText(mCallee[0]);
+    AQualifier := TSyntaxNodes.DottedName(mCallee[0]);
     if AQualifier = '' then
     begin
       Exit(False);
@@ -244,15 +220,6 @@ begin
     cTexts[TFilesText.ConcatTitle].Text);
 end;
 
-function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
-
 function IsPlus(ANode: TSyntaxNode): Boolean;
 begin
   Result := (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.Name = '+') and (ANode.ChildCount = 2);
@@ -261,29 +228,20 @@ end;
 /// <summary>Letzter Summand von ANode (bei A + B + C der Teil C).</summary>
 function LastTerm(ANode: TSyntaxNode): TSyntaxNode;
 begin
-  Result := Unwrapped(ANode);
+  Result := TSyntaxNodes.Unparen(ANode);
   while IsPlus(Result) do
   begin
-    Result := Unwrapped(Result[1]);
+    Result := TSyntaxNodes.Unparen(Result[1]);
   end;
 end;
 
 /// <summary>Erster Summand von ANode (bei A + B + C der Teil A).</summary>
 function FirstTerm(ANode: TSyntaxNode): TSyntaxNode;
 begin
-  Result := Unwrapped(ANode);
+  Result := TSyntaxNodes.Unparen(ANode);
   while IsPlus(Result) do
   begin
-    Result := Unwrapped(Result[0]);
-  end;
-end;
-
-function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
+    Result := TSyntaxNodes.Unparen(Result[0]);
   end;
 end;
 
@@ -506,14 +464,14 @@ var
   begin
     Result := nil;
     // Nur wenn der Ausdruck genau Ordner + Name ist; bei Präfix + Ordner + Name wäre umzustellen.
-    if (Unwrapped(APlus[0]) <> ALeft) or (Unwrapped(APlus[1]) <> ARight) then
+    if (TSyntaxNodes.Unparen(APlus[0]) <> ALeft) or (TSyntaxNodes.Unparen(APlus[1]) <> ARight) then
     begin
       Exit;
     end;
     mEdits := [TRuleEdit.Create(TTextRange.Create(APlus.StartPos, APlus.EndPos),
       Format('TPath.Combine(%s, %s)', [SourceText(mText, APlus[0]), SourceText(mText, APlus[1])]))];
-    if not TUsesClauses.IsUsed(mUsed, 'System.IOUtils', AContext.Namespaces) and
-      TUsesClauses.AddUnit(AContext.Tree.Tokens, APlus.StartOffset, 'System.IOUtils', mLineBreak, mUsesEdit) then
+    if not TPascalUses.IsUsed(mUsed, 'System.IOUtils', AContext.Namespaces) and
+      TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, APlus.StartOffset, 'System.IOUtils', mLineBreak, mUsesEdit) then
     begin
       mEdits := mEdits + [mUsesEdit];
     end;
@@ -544,7 +502,7 @@ var
       begin
         Exit;
       end;
-      mRoutine := EnclosingRoutine(mLeft);
+      mRoutine := TSyntaxNodes.Enclosing(mLeft, [TSyntaxKind.RoutineDecl]);
       if (mRoutine = nil) or not IsLocal(mRoutine, mLeft.Name) then
       begin
         Exit;
@@ -576,7 +534,7 @@ begin
   end;
   mText := AContext.Text;
   mLineBreak := TTextLines.LineBreakOf(mText);
-  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  mUsed := TPascalUses.UsedUnits(AContext.Tree.Tokens);
   mPluses := nil;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
@@ -691,7 +649,7 @@ begin
   begin
     Exit;
   end;
-  mUnitName := TUsesClauses.OwnName(mTokens);
+  mUnitName := TPascalUses.OwnName(mTokens);
   if mUnitName = '' then
   begin
     mUnitName := AContext.UnitName;
@@ -772,7 +730,7 @@ var
   mName, mQualifier: string;
   mNode: TSyntaxNode;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   Result := False;
   if not CalleeName(mNode, mName, mQualifier) then
   begin
@@ -802,7 +760,7 @@ var
   mPlain, mName, mQualifier: string;
   C: Char;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if mNode.Kind = TSyntaxKind.Literal then
   begin
     if not StartsStr('''', mNode.Name) or not TStringLiterals.PlainText(mNode.Name, mPlain) then
@@ -843,7 +801,7 @@ function DerivedFromOther(const AText: string; ALeft, ARight: TSyntaxNode): Bool
     mOther := SourceText(AText, AOther);
     for mIndex := 1 to ACall.ChildCount - 1 do
     begin
-      if SameText(SourceText(AText, Unwrapped(ACall[mIndex])), mOther) then
+      if SameText(SourceText(AText, TSyntaxNodes.Unparen(ACall[mIndex])), mOther) then
       begin
         Exit(True);
       end;
@@ -851,7 +809,7 @@ function DerivedFromOther(const AText: string; ALeft, ARight: TSyntaxNode): Bool
   end;
 
 begin
-  Result := Derives(Unwrapped(ALeft), Unwrapped(ARight)) or Derives(Unwrapped(ARight), Unwrapped(ALeft));
+  Result := Derives(TSyntaxNodes.Unparen(ALeft), TSyntaxNodes.Unparen(ARight)) or Derives(TSyntaxNodes.Unparen(ARight), TSyntaxNodes.Unparen(ALeft));
 end;
 
 const
@@ -898,8 +856,8 @@ begin
   begin
     mScope := mScope.Parent;
   end;
-  mLeft := SourceText(AText, Unwrapped(ACompare[0]));
-  mRight := SourceText(AText, Unwrapped(ACompare[1]));
+  mLeft := SourceText(AText, TSyntaxNodes.Unparen(ACompare[0]));
+  mRight := SourceText(AText, TSyntaxNodes.Unparen(ACompare[1]));
   mFound := False;
   mScope.Walk(
     function(ANode: TSyntaxNode): Boolean
@@ -908,8 +866,8 @@ begin
     begin
       if not mFound and IsIgnoreCaseCompare(ANode) then
       begin
-        First := SourceText(AText, Unwrapped(ANode[1]));
-        Second := SourceText(AText, Unwrapped(ANode[2]));
+        First := SourceText(AText, TSyntaxNodes.Unparen(ANode[1]));
+        Second := SourceText(AText, TSyntaxNodes.Unparen(ANode[2]));
         mFound := (SameText(First, mLeft) and SameText(Second, mRight)) or
           (SameText(First, mRight) and SameText(Second, mLeft));
       end;
@@ -943,8 +901,8 @@ begin
     mNewText := 'not ' + mNewText;
   end;
   Result := [TRuleEdit.Create(TTextRange.Create(ACompare.StartPos, ACompare.EndPos), mNewText)];
-  if not TUsesClauses.IsUsed(AUsed, 'System.SysUtils', AContext.Namespaces) and
-    TUsesClauses.AddUnit(AContext.Tree.Tokens, ACompare.StartOffset, 'System.SysUtils',
+  if not TPascalUses.IsUsed(AUsed, 'System.SysUtils', AContext.Namespaces) and
+    TPascalUsesEdits.AddUnit(AContext.Tree.Tokens, ACompare.StartOffset, 'System.SysUtils',
     TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
   begin
     Result := Result + [mUsesEdit];
@@ -978,7 +936,7 @@ begin
   begin
     Exit;
   end;
-  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  mUsed := TPascalUses.UsedUnits(AContext.Tree.Tokens);
   for mCompare in mCompares do
   begin
     AReport.Add(TTextRange.Create(mCompare.StartPos, mCompare.EndPos),

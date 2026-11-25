@@ -2,7 +2,7 @@
 
 // Zeitprofil eines Prüflaufs (#1356): je Unit die Dauer ihrer Prüfung und je
 // Regel die Summe ihrer Laufzeit mit Zahl der Aufrufe. Gemessen wird nichts
-// zusätzlich: Die Regel-Engine misst jede Regel ohnehin (früher nur für
+// zusätzlich: Die Regel-Engine misst jede Regel ohnehin (auch für
 // slowRule im Diagnoselog) und meldet die Dauer hier, die Projektprüfung bzw.
 // --check misst die Dauer je Unit.
 //
@@ -19,7 +19,9 @@
 // - Eine Unit, die mehrmals drankommt (Frist abgelaufen, unterbrochen),
 //   zählt mit der Summe aller Versuche.
 // - TCheckTimings ist der Bericht von --check --timings: Profil, Indexzeit
-//   und Speicher als Markdown oder JSON.
+//   und Speicher als Markdown oder JSON. Den Heap misst sie zu festen
+//   Zeitpunkten (#1480, TCheckMemoryTrack): Zielprojekt bereit, alle
+//   Projekte der Gruppe fertig, Gipfel über den Lauf und Ende.
 
 interface
 
@@ -81,11 +83,18 @@ type
     /// <summary>Aufbau des Symbolindex in ms; -1 ohne Index (--no-index).</summary>
     IndexMs: Int64;
     IndexUnits: Integer;
-    /// <summary>Speicher des Index nach Bereichen und Heap gesamt in Byte; Total -1 = unbekannt.</summary>
+    /// <summary>Speicher des Index nach Bereichen in Byte, gemessen, wenn alle Projekte fertig sind.</summary>
     ProjectBytes: Int64;
     LibraryBytes: Int64;
     UsageBytes: Int64;
+    /// <summary>Heap in Byte (#1480): Zielprojekt bereit, alle Projekte der Gruppe fertig, Gipfel über den Lauf,
+    /// Ende des Laufs (TotalBytes); je -1 = nicht gemessen.</summary>
+    ReadyBytes: Int64;
+    GroupBytes: Int64;
+    PeakBytes: Int64;
     TotalBytes: Int64;
+    /// <summary>Alle Heap-Werte auf -1 (nicht gemessen).</summary>
+    procedure ClearHeap;
     function ToMarkdown: string;
     /// <summary>Der Aufrufer übernimmt das Objekt.</summary>
     function ToJson: TJSONObject;
@@ -144,9 +153,9 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TCheckProfileText = (CheckRunInProgressFor, LastCheckRunUnitsIn, CheckUnitsInMs, SlowestRulesMsCalls, TotalHeap,
+  TCheckProfileText = (CheckRunInProgressFor, LastCheckRunUnitsIn, CheckUnitsInMs, SlowestRulesMsCalls, HeapEnd,
     Start, SlowestUnitsMs, AtlasCheckTimeProfile, SymbolIndexUnitsInMs, SymbolIndexNoneNoIndex, MemoryMB, Symbols,
-    LibraryUnits, Usages);
+    LibraryUnits, Usages, HeapReady, HeapGroup, HeapPeak);
 
 const
   cTexts: array[TCheckProfileText] of TAtlasText = (
@@ -154,7 +163,7 @@ const
     (De: 'Letzter Prüflauf: %d Units in %d ms'; En: 'Last check run: %d units in %d ms'),
     (De: '- Prüfung: %d Units in %d ms'; En: '- Check: %d units in %d ms'),
     (De: '| Langsamste Regeln | ms | Aufrufe |'; En: '| Slowest rules | ms | Calls |'),
-    (De: '| Gesamt (Heap) | '; En: '| Total (heap) | '),
+    (De: '| Heap am Ende | '; En: '| Heap at the end | '),
     (De: ', Beginn '; En: ', start '),
     (De: '| Langsamste Units | ms |'; En: '| Slowest units | ms |'),
     (De: '# Atlas --check: Zeitprofil'; En: '# Atlas --check: time profile'),
@@ -163,7 +172,10 @@ const
     (De: '| Speicher | MB |'; En: '| Memory | MB |'),
     (De: '| Symbole | '; En: '| Symbols | '),
     (De: '| Bibliotheks-Units | '; En: '| Library units | '),
-    (De: '| Verwendungen | '; En: '| Usages | '));
+    (De: '| Verwendungen | '; En: '| Usages | '),
+    (De: '| Heap, Zielprojekt bereit | '; En: '| Heap, target project ready | '),
+    (De: '| Heap, alle Projekte fertig | '; En: '| Heap, all projects done | '),
+    (De: '| Heap, Gipfel | '; En: '| Heap, peak | '));
 
 {$SCOPEDENUMS OFF}
 
@@ -292,14 +304,29 @@ begin
   Result := RoundTo(AMicroseconds / 1000, -1);
 end;
 
-{ TCheckTimings }
-
 function MegaBytes(ABytes: Int64): string;
 begin
   Result := FormatFloat('0.0', ABytes / (1024 * 1024), TFormatSettings.Invariant);
 end;
 
 { TCheckTimings }
+
+procedure TCheckTimings.ClearHeap;
+begin
+  ReadyBytes := -1;
+  GroupBytes := -1;
+  PeakBytes := -1;
+  TotalBytes := -1;
+end;
+
+/// <summary>Zeile der Speichertabelle; nichts bei ABytes &lt; 0 (nicht gemessen).</summary>
+procedure AddHeapRow(ABuilder: TStringBuilder; const ALabel: string; ABytes: Int64);
+begin
+  if ABytes >= 0 then
+  begin
+    ABuilder.Append(ALabel).Append(MegaBytes(ABytes)).Append(' |').Append(#10);
+  end;
+end;
 
 function TCheckTimings.ToMarkdown: string;
 var
@@ -323,10 +350,10 @@ begin
     mBuilder.Append(cTexts[TCheckProfileText.LibraryUnits].Text).Append(MegaBytes(LibraryBytes)).Append(' |')
       .Append(#10);
     mBuilder.Append(cTexts[TCheckProfileText.Usages].Text).Append(MegaBytes(UsageBytes)).Append(' |').Append(#10);
-    if TotalBytes >= 0 then
-    begin
-      mBuilder.Append(cTexts[TCheckProfileText.TotalHeap].Text).Append(MegaBytes(TotalBytes)).Append(' |').Append(#10);
-    end;
+    AddHeapRow(mBuilder, cTexts[TCheckProfileText.HeapReady].Text, ReadyBytes);
+    AddHeapRow(mBuilder, cTexts[TCheckProfileText.HeapGroup].Text, GroupBytes);
+    AddHeapRow(mBuilder, cTexts[TCheckProfileText.HeapPeak].Text, PeakBytes);
+    AddHeapRow(mBuilder, cTexts[TCheckProfileText.HeapEnd].Text, TotalBytes);
     if Profile.Serial > 0 then
     begin
       mBuilder.Append(#10).Append(Profile.ToMarkdown);
@@ -350,6 +377,9 @@ begin
   mMemory.AddPair('symbols', TJSONNumber.Create(ProjectBytes));
   mMemory.AddPair('libraryUnits', TJSONNumber.Create(LibraryBytes));
   mMemory.AddPair('usages', TJSONNumber.Create(UsageBytes));
+  mMemory.AddPair('ready', TJSONNumber.Create(ReadyBytes));
+  mMemory.AddPair('allProjects', TJSONNumber.Create(GroupBytes));
+  mMemory.AddPair('peak', TJSONNumber.Create(PeakBytes));
   mMemory.AddPair('total', TJSONNumber.Create(TotalBytes));
   Result.AddPair('memory', mMemory);
   Result.AddPair('checkRun', Profile.ToJson);

@@ -14,10 +14,9 @@
 //
 // Ein finally-Block wird je Ausgang einmal modelliert: für das normale Ende
 // des try-Teils und für jedes Sprungziel (Exit, Break, Continue, Ausnahme)
-// eine eigene Kopie, deren Ende nur zu diesem Ziel führt. Früher gab es eine
-// Kopie für alle; dann lief der Weg einer Ausnahme nach dem finally normal
-// weiter, und result-not-set meldete jede Funktion, die Result im try-Teil
-// setzt (#647).
+// eine eigene Kopie, deren Ende nur zu diesem Ziel führt. Mit einer Kopie
+// für alle liefe der Weg einer Ausnahme nach dem finally normal weiter, und
+// result-not-set meldete jede Funktion, die Result im try-Teil setzt (#647).
 //
 // Zuweisungen: einfache Zuweisungen an einen Bezeichner, Schleifenvariablen,
 // Inline-Variablen mit Startwert und Exit(Wert) für Result.
@@ -131,6 +130,9 @@ type
     /// <summary>Wie oben mit ALookup = nil.</summary>
     class function Build(ARoutine: TSyntaxNode): TControlFlowGraph; overload; static;
     function NodeOf(ASyntax: TSyntaxNode): TFlowNode;
+    /// <summary>Flussknoten der Anweisung um ASyntax: NodeOf von ASyntax oder des nächsten Vorfahren mit Knoten;
+    /// nil ohne.</summary>
+    function EnclosingNodeOf(ASyntax: TSyntaxNode): TFlowNode;
     function IsReachable(ANode: TFlowNode): TFlowAnswer;
     /// <summary>Wird A auf jedem Weg vom Anfang zu B durchlaufen?</summary>
     function Dominates(A, B: TFlowNode): TFlowAnswer;
@@ -158,7 +160,9 @@ type
 implementation
 
 uses
-  Atlas.Common.Semantics.ControlFlow.Statements;
+  Atlas.Common.Semantics.ControlFlow.Statements,
+  System.StrUtils,
+  Atlas.Text.Arrays;
 
 type
   /// <summary>Sprungziel, dessen Knoten erst später feststeht.</summary>
@@ -216,6 +220,10 @@ type
     function BuildRepeat(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
     function BuildTry(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
     function BuildCall(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
+    /// <summary>Kehrt die Routine AName (klein geschrieben) nie normal zurück (noreturn, Abort)?</summary>
+    function IsNoReturn(const AName: string): Boolean;
+    /// <summary>Setzt der Aufruf AStatement von Exit mit Argument Result (Exit(Wert))?</summary>
+    class function ExitSetsResult(AStatement: TSyntaxNode): Boolean; static;
     /// <summary>with und Label: ein Knoten vor den enthaltenen Anweisungen.</summary>
     function BuildPrefixed(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
     /// <summary>raise und goto: Der Weg geht nicht hinter der Anweisung weiter.</summary>
@@ -232,28 +240,6 @@ type
     destructor Destroy; override;
     procedure Run(ARoutine: TSyntaxNode);
   end;
-
-function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-procedure AddName(var ANames: TArray<string>; const AName: string);
-begin
-  if (AName <> '') and not ContainsName(ANames, AName) then
-  begin
-    ANames := ANames + [AName];
-  end;
-end;
 
 /// <summary>Bezeichner, an dem eine Kette wie X.Feld, X[I] oder X^ hängt; sonst ''.</summary>
 function RootName(ANode: TSyntaxNode): string;
@@ -335,17 +321,17 @@ end;
 
 function TFlowNode.ReadsName(const AName: string): Boolean;
 begin
-  Result := ContainsName(FReads, AName);
+  Result := MatchText(AName, FReads);
 end;
 
 function TFlowNode.MaybeReadsName(const AName: string): Boolean;
 begin
-  Result := ContainsName(FMaybeReads, AName);
+  Result := MatchText(AName, FMaybeReads);
 end;
 
 function TFlowNode.TouchesName(const AName: string): Boolean;
 begin
-  Result := ContainsName(FTouches, AName);
+  Result := MatchText(AName, FTouches);
 end;
 
 function TFlowNode.IsImplicitRaiseEdge(ANext: TFlowNode): Boolean;
@@ -854,6 +840,27 @@ begin
   Result := mTarget.Kind = TSyntaxKind.Identifier;
 end;
 
+function TFlowBuilder.IsNoReturn(const AName: string): Boolean;
+begin
+  // noreturn-Routinen (ab Delphi 13) kehren wie Abort nie normal zurück. Mit Lookup entscheidet er auch über
+  // Abort: Eine eigene Methode Abort der Datei (TTunnelLocalThread.Abort in mORMot2) löst nicht aus.
+  if AName = '' then
+  begin
+    Exit(False);
+  end;
+  if Assigned(FNoReturn) then
+  begin
+    Exit(FNoReturn(AName));
+  end;
+  Result := AName = 'abort';
+end;
+
+class function TFlowBuilder.ExitSetsResult(AStatement: TSyntaxNode): Boolean;
+begin
+  Result := (AStatement.ChildCount > 0) and (AStatement.Children[0].Kind = TSyntaxKind.Call) and
+    (AStatement.Children[0].ChildCount > 1);
+end;
+
 function TFlowBuilder.BuildCall(AStatement: TSyntaxNode; const APreds: TArray<TFlowNode>): TArray<TFlowNode>;
 var
   mNode: TFlowNode;
@@ -868,9 +875,7 @@ begin
   end;
   if mName = 'exit' then
   begin
-    // Exit(Wert) setzt Result.
-    if (AStatement.ChildCount > 0) and (AStatement.Children[0].Kind = TSyntaxKind.Call) and
-      (AStatement.Children[0].ChildCount > 1) then
+    if ExitSetsResult(AStatement) then
     begin
       mNode.FDefines := 'Result';
     end;
@@ -887,12 +892,8 @@ begin
     Jump(mNode, FLoops.Last.ContinueTarget);
     Result := nil;
   end
-  else if (mName <> '') and (Assigned(FNoReturn) and FNoReturn(mName) or (mName = 'abort') and not Assigned(FNoReturn))
-    then
+  else if IsNoReturn(mName) then
   begin
-    // noreturn-Routinen (ab Delphi 13) kehren wie Abort nie normal zurück. Mit Lookup entscheidet er auch über
-    // Abort: Eine eigene Methode Abort der Datei (TTunnelLocalThread.Abort in mORMot2) löst nicht aus.
-
     Jump(mNode, FRaiseTargets.Last);
     Result := nil;
   end
@@ -986,10 +987,10 @@ end;
 
 procedure TFlowAnalyzer.Touch(const AName: string; AMaybeRead: Boolean);
 begin
-  AddName(FNode.FTouches, AName);
+  TTextArrays.AddText(FNode.FTouches, AName);
   if AMaybeRead then
   begin
-    AddName(FNode.FMaybeReads, AName);
+    TTextArrays.AddText(FNode.FMaybeReads, AName);
   end;
 end;
 
@@ -1139,7 +1140,7 @@ procedure TFlowAnalyzer.AddNode(AExpression: TSyntaxNode);
 begin
   case AExpression.Kind of
     TSyntaxKind.Identifier:
-      AddName(FNode.FReads, AExpression.Name);
+      TTextArrays.AddText(FNode.FReads, AExpression.Name);
     TSyntaxKind.TypeReference, TSyntaxKind.GenericArgs, TSyntaxKind.Literal:
       ;
     TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl:
@@ -1549,6 +1550,19 @@ begin
     end;
   end;
   Result := nil;
+end;
+
+function TControlFlowGraph.EnclosingNodeOf(ASyntax: TSyntaxNode): TFlowNode;
+var
+  mSyntax: TSyntaxNode;
+begin
+  Result := nil;
+  mSyntax := ASyntax;
+  while (mSyntax <> nil) and (Result = nil) do
+  begin
+    Result := NodeOf(mSyntax);
+    mSyntax := mSyntax.Parent;
+  end;
 end;
 
 function TControlFlowGraph.IsReachable(ANode: TFlowNode): TFlowAnswer;

@@ -35,20 +35,10 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.CreateMethod;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Editing.CreateMethod,
+  Atlas.Tests.SourceText;
 
 /// <summary>Aufrufstelle am "|" in AMarked.</summary>
 function SiteOf(const AMarked: string; out ASite: TCreateCallSite; out ATree: TSyntaxTree): Boolean;
@@ -208,7 +198,7 @@ end;
 /// <summary>Klasse TRechner, deren Methode Rechne das noch fehlende Pruefe aufruft.</summary>
 function RechnerCallsPruefe: string;
 begin
-  Result := Join([
+  Result := TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -241,7 +231,7 @@ begin
   mTree := TPascalParser.Parse(mText);
   try
     Assert.IsTrue(TCreateMethod.MethodEdits(mText, mTree, mPlan, mEdits));
-    Assert.AreEqual(Join([
+    Assert.AreEqual(TTestSource.Lines([
       'unit U;',
       'interface',
       'type',
@@ -261,13 +251,14 @@ begin
       'begin',
       '  $0',
       'end;',
-      'end.']), TChangeSignature.ApplyEdits(mText, mEdits));
+      '',
+      'end.']), TTextChanges.Apply(mText, mEdits));
     // public vorhanden: dort am Ende.
     mPlan.Section := 'public';
     mPlan.CaretInBody := False;
     Assert.IsTrue(TCreateMethod.MethodEdits(mText, mTree, mPlan, mEdits));
-    Assert.IsTrue(TChangeSignature.ApplyEdits(mText, mEdits).Contains(
-      '    procedure Rechne;'#10'    procedure Pruefe;'#10'  end;'), TChangeSignature.ApplyEdits(mText, mEdits));
+    Assert.IsTrue(TTextChanges.Apply(mText, mEdits).Contains(
+      '    procedure Rechne;'#10'    procedure Pruefe;'#10'  end;'), TTextChanges.Apply(mText, mEdits));
     // Unbekannte Klasse: nichts.
     mPlan.TypeName := 'TFremd';
     Assert.IsFalse(TCreateMethod.MethodEdits(mText, mTree, mPlan, mEdits));
@@ -282,7 +273,7 @@ var
   mTree: TSyntaxTree;
   mPlan: TCreateMethodPlan;
 begin
-  mText := Join([
+  mText := TTestSource.Lines([
     'program P;',
     '',
     '// Hauptarbeit',
@@ -298,7 +289,7 @@ begin
   mPlan.Style := TFormatStyle.Default;
   mTree := TPascalParser.Parse(mText);
   try
-    Assert.AreEqual(Join([
+    Assert.AreEqual(TTestSource.Lines([
       'program P;',
       '',
       'function Hole: Integer;',
@@ -312,7 +303,7 @@ begin
       '  X := Hole(1);',
       'end;',
       'begin',
-      'end.']), TChangeSignature.ApplyEdits(mText, [TCreateMethod.RoutineEdit(mText,
+      'end.']), TTextChanges.Apply(mText, [TCreateMethod.RoutineEdit(mText,
       TRoutineBody.RoutineAt(mTree, Pos('Hole', mText) - 1), mPlan)]));
   finally
     mTree.Free;

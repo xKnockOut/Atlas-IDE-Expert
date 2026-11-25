@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasExpressionTypeTipTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure TextsFromStrings;
     [Test]
@@ -29,7 +26,7 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.ExpressionType,
   Atlas.UI.Strings,
   Atlas.UI.Editor.ExpressionType;
@@ -57,12 +54,6 @@ begin
 end;
 
 { TAtlasExpressionTypeTipTests }
-
-procedure TAtlasExpressionTypeTipTests.WarmUpFirstUse;
-begin
-  TextsFromStrings;
-  RowsAndLink;
-end;
 
 procedure TAtlasExpressionTypeTipTests.TextsFromStrings;
 var

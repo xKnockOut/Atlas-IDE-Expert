@@ -44,7 +44,7 @@ uses
   Atlas.Core.Commands.KeyMap,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Commands.KeyMap,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasIdeKeyMap = class
@@ -77,7 +77,7 @@ type
     class function SetupKeys: TArray<TAtlasSetupKey>; static;
     /// <summary>Taste eines Atlas-Befehls der Palette als Text, wenn Atlas sie belegt, sonst '': Belegungen und
     /// Konflikte einmal auswerten, dann nur nachschlagen. Die ganze Palette fragte sonst je Befehl alle
-    /// Einstellungen und Aktionen der IDE ab (Willkommensseite: 60 s Start, 06.11.2026).</summary>
+    /// Einstellungen und Aktionen der IDE ab (die Willkommensseite brauchte so 60 s zum Start).</summary>
     class function AtlasShortCuts: TFunc<string, string>; static;
     /// <summary>Ziel des HTML-Exports.</summary>
     class function ExportFile: string; static;
@@ -89,7 +89,7 @@ type
     /// </summary>
     procedure ShowAll;
     /// <summary>„Tastenkürzel-Übersicht…“ in der Befehlspalette, sichtbar nach keys.overview.</summary>
-    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+    class procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry); static;
     /// <summary>Package geladen: nach StartDelayMs einmal die eigenen Tasten prüfen (keys.startupCheck).</summary>
     procedure CheckAtStart;
     /// <summary>Eigene Tasten prüfen und neue Konflikte melden; offenes Fenster neu einlesen.</summary>
@@ -108,7 +108,7 @@ uses
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Commands.KeyScan,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
@@ -118,7 +118,8 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Commands.Palette;
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>
@@ -436,7 +437,11 @@ begin
     Result := AKeyboard.LookupKeyBinding([TShortCut(AKey)], mBinding);
   except
     // Eine Taste, die die IDE nicht auflösen kann, zählt als frei.
-    Result := False;
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Tastenbelegung nicht auflösbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      Result := False;
+    end;
   end;
   if Result then
   begin
@@ -649,9 +654,11 @@ var
 begin
   mEntries := AtlasEntries;
   // Liste statt Anhängen ans Array: Die IDE hat weit über tausend Aktionen.
-  mItems := TList<TAtlasKeyItem>.Create;
-  mOrigins := TOrigins.Create;
+  mItems := nil;
+  mOrigins := nil;
   try
+    mItems := TList<TAtlasKeyItem>.Create;
+    mOrigins := TOrigins.Create;
     AddAtlasKeys(mItems, mEntries);
     AddActions(mItems, mOrigins, mEntries);
     AddKnownIdeKeys(mItems);
@@ -801,7 +808,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeKeyMap.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+class procedure TAtlasIdeKeyMap.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 var
   mRun: TProc;
   mVisible: TFunc<Boolean>;

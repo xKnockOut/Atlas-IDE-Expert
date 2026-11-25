@@ -21,7 +21,7 @@
 //   Dateinamen in %LOCALAPPDATA%\Atlas\Logs\Diagnose\atlas-diagnosemodus.txt.
 // - „Bericht kopieren“: Zeitwerte, Atlas- und IDE-Version, Einstellungen mit
 //   gekürzten Pfaden, kein Quelltext, Dateinamen nur mit Häkchen.
-// - Plugin-Zeiten (Variante A): Mit dem Modus misst TAtlasIdePluginTimings
+// - Plugin-Zeiten: Mit dem Modus misst TAtlasIdePluginTimings
 //   auch Hauptthread je Funktion, Server, Hintergrund und Hänger (abschaltbar
 //   mit diagnosticMode.pluginTimings); Bericht und letzte Diagnosedaten
 //   enthalten dann den Abschnitt „Plugin-Zeiten“.
@@ -32,14 +32,14 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.ExtCtrls,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Status.Lines,
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Build.IdleGate,
   Atlas.IDE.Diagnostics.PluginTimings,
   Atlas.UI.Diagnostics.PluginFrame,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Contract;
 
 type
   TAtlasIdeDiagnosticMode = class
@@ -85,7 +85,7 @@ type
     /// <summary>Fenster zeigen; der Modus bleibt, wie er ist.</summary>
     procedure ShowWindow;
     /// <summary>Befehl „Atlas: Diagnosefenster zeigen“ (schaltet bei Bedarf ein).</summary>
-    procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+    class procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry); static;
     procedure ThemeChanged;
     /// <summary>Modus umschalten wie der Schnellschalter (Taste, Palette).</summary>
     class procedure Toggle; static;
@@ -100,21 +100,20 @@ implementation
 
 uses
   System.IOUtils,
-  System.JSON,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Timing,
-  Atlas.Core.Diagnostics.Export,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Timing,
+  Atlas.Plugin.Diagnostics.Export,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.History,
   Atlas.Core.Updates.Check,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.QuickToggles,
-  Atlas.IDE.Diagnostics.TimingWindow;
+  Atlas.IDE.Diagnostics.TimingWindow,
+  Atlas.IDE.Diagnostics.BugReport;
 
 { TAtlasIdeDiagnosticMode }
 
@@ -139,6 +138,8 @@ begin
         FInstance.FrameCreated(AFrame);
       end;
     end;
+  // Vor dem Laden des Desktops anmelden, sonst verliert das angedockte Fenster seinen Platz.
+  TAtlasIdeTimingWindow.Prepare;
   FKey := TAtlasIdeKeyBinding.Create('Atlas.DiagnosticMode', 'Atlas-Diagnosemodus', TAtlasFeature.Settings,
     procedure
     begin
@@ -200,7 +201,7 @@ begin
   mVersion := TAtlasQueryTimings.Shared.Version;
   if AForce then
   begin
-    AFrame.SetColors(TAtlasIdeStyle.Colors);
+    AFrame.SetColors(TAtlasIdeStyle.WindowColors);
   end
   else if mVersion = FShownVersion then
   begin
@@ -384,7 +385,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDiagnosticMode.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
+class procedure TAtlasIdeDiagnosticMode.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 begin
   ARegistry.RegisterCommand('Atlas.DiagnosticWindow',
     TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticPaletteShow), '',
@@ -411,18 +412,6 @@ begin
   Refresh(TAtlasIdeTimingWindow.ExistingFrame, True);
 end;
 
-function SettingsJson: string;
-var
-  mValues: TJSONObject;
-begin
-  mValues := TAtlasMemorySettingsStore.FromSettings(TAtlasIdeSettings.Current).ToJson;
-  try
-    Result := mValues.Format(2);
-  finally
-    mValues.Free;
-  end;
-end;
-
 class procedure TAtlasIdeDiagnosticMode.Toggle;
 begin
   TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -445,7 +434,7 @@ begin
   {$ELSE}
   mInput.Platform := 'Win32';
   {$ENDIF}
-  mInput.Settings := SettingsJson;
+  mInput.Settings := TAtlasIdeBugReport.SettingsJson;
   mInput.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
     GetEnvironmentVariable('USERDOMAIN')];
   mInput.FileNames := AFileNames;

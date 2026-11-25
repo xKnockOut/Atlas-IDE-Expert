@@ -53,14 +53,14 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Builtin.Generics,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 function Findings(const ASource: string): TArray<TRuleFinding>; overload;
 begin
@@ -72,26 +72,9 @@ begin
   Result := TRuleAssert.Findings(TGenericConstraintViolatedRule.Create, ASource, AConfig, APath);
 end;
 
-/// <summary>Offset (ab 1) der Position APosition in AText mit #10 als Zeilenende.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine: Integer;
-begin
-  Result := 1;
-  for mLine := 1 to APosition.Line do
-  begin
-    Result := Pos(#10, AText, Result) + 1;
-  end;
-  Inc(Result, APosition.Character);
-end;
-
 function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mEdit: TRuleEdit;
 begin
-  mEdit := AFix.Edits[0];
-  Result := Copy(AText, 1, OffsetOf(AText, mEdit.Range.StartPos) - 1) + mEdit.NewText +
-    Copy(AText, OffsetOf(AText, mEdit.Range.EndPos), MaxInt);
+  Result := TTestEdits.Apply(AText, AFix.Edits[0]);
 end;
 
 /// <summary>TFabrik mit Einschränkung AConstraint ('' ohne), Neu legt ein T an.</summary>
@@ -264,18 +247,8 @@ end;
 
 /// <summary>Meldungen von AFound mit Zeile (ab 1), getrennt durch |.</summary>
 function InferenceMessages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
 begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + '|';
-    end;
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line + 1) + ': ' + mFinding.Message;
-  end;
+  Result := TRuleAssert.NumberedMessages(AFound, '|', 1);
 end;
 
 /// <summary>Unit mit TKlasse (Neu&lt;T&gt;: T, Paar&lt;T&gt;(A, B: T), Liste&lt;T&gt;(const A: array of T))

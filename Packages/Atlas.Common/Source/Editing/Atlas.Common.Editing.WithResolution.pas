@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract;
 
 type
@@ -74,8 +74,8 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -97,15 +97,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function Compare(const A, B: TTextPosition): Integer;
-begin
-  Result := A.Line - B.Line;
-  if Result = 0 then
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 { TWithResolution }
 
 class function TWithResolution.WithAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
@@ -124,7 +115,7 @@ begin
     mDescended := False;
     for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (Compare(mNode[mIndex].StartPos, APosition) <= 0) and (Compare(APosition, mNode[mIndex].EndPos) <= 0) then
+      if (TTextPosition.Compare(mNode[mIndex].StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, mNode[mIndex].EndPos) <= 0) then
       begin
         mNode := mNode[mIndex];
         if mNode.Kind = TSyntaxKind.WithStatement then
@@ -432,7 +423,7 @@ begin
   end;
   FDeclarations := FDeclarations + mName + ' := ' + TRoutineBody.TextOf(FText, mNode) + ';' + FLineBreak +
     FWithIndent;
-  if (AProbed.UnitName <> '') and TUsesClauses.AddUnit(FTree.Tokens, FWith.StartOffset, AProbed.UnitName,
+  if (AProbed.UnitName <> '') and TPascalUsesEdits.AddUnit(FTree.Tokens, FWith.StartOffset, AProbed.UnitName,
     FLineBreak, mUsesEdit) then
   begin
     FEdits := FEdits + [mUsesEdit];

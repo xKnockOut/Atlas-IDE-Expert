@@ -27,11 +27,13 @@ uses
   Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Commands.Palette,
-  Atlas.UI.Commands.Palette;
+  Atlas.UI.Commands.Palette,
+  Atlas.Core.Commands.Contract;
 
 type
-  /// <summary>Ohne Referenzzählung (TNoRefCountObject): Die Composition gibt die Palette frei.</summary>
-  TAtlasIdePalette = class(TNoRefCountObject, IAtlasCommandRegistry)
+  /// <summary>Die Composition gibt die Palette frei; als IAtlasCommandRegistry reicht sie
+  /// Atlas.IDE.Commands.Adapters.PaletteRegistry weiter.</summary>
+  TAtlasIdePalette = class
   private type
     TBinding = class(TNotifierObject, IOTAKeyboardBinding)
     private
@@ -62,9 +64,9 @@ type
     function IsVisible(const AId: string): Boolean;
     /// <summary>Sichtbare Befehle der angemeldeten Module (#1455, IAtlasCommandSource), bei jedem Aufruf neu
     /// gefragt: Sie kommen und gehen mit ihrem Modul.</summary>
-    function ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
+    class function ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>; static;
     /// <summary>Befehl AId eines Moduls ausführen; False, wenn ihn keins anbietet.</summary>
-    function RunModuleCommand(const AId: string): Boolean;
+    class function RunModuleCommand(const AId: string): Boolean; static;
     /// <summary>Tasten aller Atlas-Befehle, einmal je Aufruf ausgewertet (ShortCutsOf); nil ohne.</summary>
     function ShortCuts: TFunc<string, string>;
     /// <summary>Atlas-Befehl mit seiner Taste aus AShortCuts (nil: ohne Taste).</summary>
@@ -100,8 +102,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
@@ -111,7 +113,7 @@ uses
   Vcl.ActnList,
   Vcl.Forms,
   Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Commands.ShortcutTips,
@@ -300,7 +302,7 @@ begin
   Result := not FVisible.TryGetValue(AId, mVisible) or mVisible();
 end;
 
-function TAtlasIdePalette.ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
+class function TAtlasIdePalette.ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
 var
   mModuleCommand: TAtlasModuleCommand;
   mCommand: TAtlasCommand;
@@ -320,14 +322,14 @@ begin
   end;
 end;
 
-function TAtlasIdePalette.RunModuleCommand(const AId: string): Boolean;
+class function TAtlasIdePalette.RunModuleCommand(const AId: string): Boolean;
 var
   mCommand: TAtlasModuleCommand;
 begin
   Result := TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run);
   if Result then
   begin
-    mCommand.Run();
+    TAtlasCommandScope.Run(TAtlasFeature.Palette, mCommand.Caption, mCommand.Run);
   end;
 end;
 
@@ -457,7 +459,7 @@ begin
   except
     // Der Befehl läuft trotzdem; der Grund steht einmal im Protokoll.
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Verlauf der Befehlspalette', E);
+      TAtlasDataFile.ReportNotWritten(TAtlasCommandHistory.cDefaultKind, E);
   end;
   // Vor dem Ausführen: Die Aktion der IDE zählt dann nicht noch einmal über OnActionExecute.
   TAtlasIdeShortcutTips.Invoked(ACommand.Id);
@@ -468,7 +470,8 @@ begin
     begin
       if mPair.Key.Id = ACommand.Id then
       begin
-        mPair.Value();
+        // Ein Befehl des Benutzers: Sein erster Fehler erscheint in der Meldungsansicht.
+        TAtlasCommandScope.Run(TAtlasFeature.Palette, ACommand.Caption, mPair.Value);
         mFound := True;
       end;
     end;

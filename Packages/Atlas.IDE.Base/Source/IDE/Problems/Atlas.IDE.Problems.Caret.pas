@@ -16,9 +16,9 @@ type
 implementation
 
 uses
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.Core.Problems.AtCaret,
-  Atlas.IDE.Foundation.ActiveEditor,
+  Atlas.IDE.Foundation.Host,
   Atlas.IDE.Problems.Controller;
 
 { TAtlasIdeProblemAtCaret }
@@ -27,8 +27,9 @@ class function TAtlasIdeProblemAtCaret.Rule(out ARule: string): Boolean;
 var
   mEditor: IAtlasActiveEditor;
 begin
-  mEditor := TAtlasIdeActiveEditor.Create;
-  Result := TAtlasProblemAtCaret.Rule(mEditor, TAtlasProblemsController.Current, ARule);
+  ARule := '';
+  mEditor := TAtlasIdeHost.ActiveEditor;
+  Result := (mEditor <> nil) and TAtlasProblemAtCaret.Rule(mEditor, TAtlasProblemsController.Current, ARule);
 end;
 
 end.

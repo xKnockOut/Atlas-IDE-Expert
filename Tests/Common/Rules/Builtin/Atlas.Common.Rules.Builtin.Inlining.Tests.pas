@@ -395,18 +395,6 @@ begin
   Result := Findings(ASource, '');
 end;
 
-function Messages(const AFindings: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFindings do
-  begin
-    Result := Result + Format('%d:%d %s|', [mFinding.Range.StartPos.Line, mFinding.Range.StartPos.Character,
-      mFinding.Message]);
-  end;
-end;
-
 { TInliningRulesTests }
 
 procedure TInliningRulesTests.MissingUnitIsReported;
@@ -416,7 +404,7 @@ begin
   mFound := Findings(Haupt('Werk.Json', '  X := F.Anzahl;'#10'  X := Doppelt(X);'#10));
   Assert.AreEqual('8:9 Inline-Funktion TJsonFeld.Anzahl wird nicht eingebettet: Werk.Listen fehlt in uses ' +
     '(wie H2443).|9:7 Inline-Funktion Doppelt wird nicht eingebettet: Werk.Mathe fehlt in uses (wie H2443).|',
-    Messages(mFound));
+    TRuleAssert.PositionMessages(mFound));
   Assert.AreEqual(cInlineNotExpandedRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
@@ -424,21 +412,21 @@ end;
 
 procedure TInliningRulesTests.CorrectedUsesAreSilent;
 begin
-  Assert.AreEqual('', Messages(Findings(Haupt('Werk.Json, Werk.Listen, Werk.Mathe',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Haupt('Werk.Json, Werk.Listen, Werk.Mathe',
     '  X := F.Anzahl;'#10'  X := Doppelt(X) + F.Zahl;'#10'  for X in F do;'#10))));
 end;
 
 procedure TInliningRulesTests.NotInlineIsSilent;
 begin
   // Normal hat denselben Rumpf, ist aber nicht inline; Nochmal ruft Geheim in der eigenen Unit.
-  Assert.AreEqual('', Messages(Findings(Haupt('Werk.Json', '  X := F.Normal + F.Nochmal;'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Haupt('Werk.Json', '  X := F.Normal + F.Nochmal;'#10))));
 end;
 
 procedure TInliningRulesTests.PropertyGetterAndForIn;
 begin
   Assert.AreEqual('8:9 Inline-Funktion TJsonFeld.GetZahl wird nicht eingebettet: Werk.Listen fehlt in uses ' +
     '(wie H2443).|9:11 Inline-Funktion TJsonFeld.GetEnumerator wird nicht eingebettet: Werk.Listen fehlt in uses ' +
-    '(wie H2443).|', Messages(Findings(Haupt('Werk.Json', '  X := F.Zahl;'#10'  for X in F do;'#10))));
+    '(wie H2443).|', TRuleAssert.PositionMessages(Findings(Haupt('Werk.Json', '  X := F.Zahl;'#10'  for X in F do;'#10))));
 end;
 
 procedure TInliningRulesTests.IndexedAndSetProperties;
@@ -448,9 +436,9 @@ begin
     '(wie H2443).|9:8 Inline-Funktion TJsonFeld.GetWert wird nicht eingebettet: Werk.Listen fehlt in uses ' +
     '(wie H2443).|10:33 Inline-Funktion TJsonFeld.GetWert wird nicht eingebettet: Werk.Listen fehlt in uses ' +
     '(wie H2443).|11:14 Inline-Funktion TJsonFeld.GetStil wird nicht eingebettet: Werk.Listen fehlt in uses ' +
-    '(wie H2443).|', Messages(Findings(Haupt('Werk.Json', '  X := F.Werte[0];'#10'  X := F[1];'#10 +
+    '(wie H2443).|', TRuleAssert.PositionMessages(Findings(Haupt('Werk.Json', '  X := F.Werte[0];'#10'  X := F[1];'#10 +
     '  X := (TObject(F) as TJsonFeld).Werte[2];'#10'  F.Stil := F.Stil + [Fett];'#10))));
-  Assert.AreEqual('', Messages(Findings(Haupt('Werk.Json, Werk.Listen', '  X := F.Werte[0] + F[1];'#10 +
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Haupt('Werk.Json, Werk.Listen', '  X := F.Werte[0] + F[1];'#10 +
     '  F.Stil := F.Stil + [Fett];'#10))));
 end;
 
@@ -468,14 +456,15 @@ begin
   Assert.AreEqual('8:17 Inline-Funktion TSammlung.GetCount wird nicht eingebettet: Werk.Sammlung fehlt in uses ' +
     '(wie H2443).|9:14 Inline-Funktion TSammlung.GetEintrag wird nicht eingebettet: Werk.Generisch, Werk.Sammlung ' +
     'fehlen in uses (wie H2443).|11:15 Inline-Funktion TSchrift.GetArten wird nicht eingebettet: Werk.Typen fehlt ' +
-    'in uses (wie H2443).|', Messages(Findings(mSource)));
-  Assert.AreEqual('', Messages(Findings(StringReplace(mSource, 'uses Werk.Ansicht;',
+    'in uses (wie H2443).|', TRuleAssert.PositionMessages(Findings(mSource)));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(StringReplace(mSource, 'uses Werk.Ansicht;',
     'uses Werk.Ansicht, Werk.Sammlung, Werk.Generisch, Werk.Typen;', []))));
 end;
 
-procedure TInliningRulesTests.ImplicitSystemNeedsNoUses;
+/// <summary>Testquellen von ImplicitSystemNeedsNoUses: System und SysInit mit inline-Routinen, deren Rümpfe auf die
+/// jeweils andere implizite Unit verweisen.</summary>
 const
-  cSystem =
+  cImplicitSystem =
     'unit System;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -504,7 +493,7 @@ const
     '  Result := PosIntern(ATeil, AText) + Kennung;'#10 +
     'end;'#10 +
     'end.';
-  cSysInit =
+  cImplicitSysInit =
     'unit SysInit;'#10 +
     'interface'#10 +
     'function Kennung: Integer; inline;'#10 +
@@ -518,7 +507,7 @@ const
     '  Result := Intern + Pos(''a'', ''b'');'#10 +
     'end;'#10 +
     'end.';
-  cSource =
+  cImplicitSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -532,18 +521,20 @@ const
     '  X := Pos(''='', ''a=b'') + Kennung + Halb(2);'#10 +
     'end;'#10 +
     'end.';
+
+procedure TInliningRulesTests.ImplicitSystemNeedsNoUses;
 var
   mIndex: ISymbolIndex;
   mRefs: string;
   mSymbol: TIndexSymbol;
 begin
   mIndex := NewIndex;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cSystem, 'C:\P\System.pas', nil));
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cSysInit, 'C:\P\SysInit.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cImplicitSystem, 'C:\P\System.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cImplicitSysInit, 'C:\P\SysInit.pas', nil));
   // Die Rümpfe haben Verweise (wie in der RTL, hier auf die jeweils andere implizite Unit): Ohne die Ausnahme
   // verlangte die Regel System bzw. SysInit im uses.
   mRefs := '';
-  for mSymbol in TIndexExtractor.ExtractText(cSystem, 'C:\P\System.pas', nil).Symbols do
+  for mSymbol in TIndexExtractor.ExtractText(cImplicitSystem, 'C:\P\System.pas', nil).Symbols do
   begin
     if mSymbol.InlineRefs <> nil then
     begin
@@ -551,7 +542,7 @@ begin
     end;
   end;
   Assert.AreEqual('TMonitor.Enter=Kennung|Pos=Kennung|TMonitor.Enter=Kennung|Pos=Kennung|', mRefs);
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cImplicitSource, mIndex, '',
     'Haupt.pas')));
 end;
 
@@ -587,7 +578,7 @@ begin
   mIndex.AddUnit(TIndexExtractor.ExtractText(cHalter, 'C:\P\Werk.Halter.pas', nil));
   // Vorher: „Werk.Generisch fehlt in uses“ für TFolge.GetItem. Aus dem Rumpf einer Routine einer anderen Unit
   // heraus braucht das Mitglied seine Unit weiter (OwnUnitInstanceMembersAndResultAlias, Spalten[X]).
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
     'Haupt.pas')));
 end;
 
@@ -617,9 +608,10 @@ begin
     TIncludeFiles.Resolver(TArray<string>.Create(TPath.Combine(ARoot, 'sys'), TPath.Combine(ARoot, 'common')))));
 end;
 
-procedure TInliningRulesTests.RealRtlNeedsNoImplicitOrGenericUnit;
+/// <summary>Testquellen von RealRtlNeedsNoImplicitOrGenericUnit: Halter mit generischen Listen der RTL und eine Unit,
+/// die sie benutzt.</summary>
 const
-  cHalter =
+  cRtlHalter =
     'unit Werk.Halter;'#10 +
     'interface'#10 +
     'uses System.Generics.Collections;'#10 +
@@ -631,7 +623,7 @@ const
     '  end;'#10 +
     'implementation'#10 +
     'end.';
-  cSource =
+  cRtlSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -650,6 +642,8 @@ const
     '    X := Ord(C);'#10 +
     'end;'#10 +
     'end.';
+
+procedure TInliningRulesTests.RealRtlNeedsNoImplicitOrGenericUnit;
 var
   mRoot: string;
   mIndex: ISymbolIndex;
@@ -668,7 +662,7 @@ begin
   AddRtlUnit(mIndex, mRoot, 'sys', 'SysInit.pas');
   AddRtlUnit(mIndex, mRoot, 'common', 'System.Generics.Defaults.pas');
   AddRtlUnit(mIndex, mRoot, 'common', 'System.Generics.Collections.pas');
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cHalter, 'C:\P\Werk.Halter.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cRtlHalter, 'C:\P\Werk.Halter.pas', nil));
   // Die Rümpfe haben Verweise: Ohne die Ausnahmen verlangte die Regel System bzw. System.Generics.Collections.
   Assert.IsTrue(mIndex.FindUnit('System', mUnit));
   mWithRefs := '';
@@ -682,14 +676,15 @@ begin
   end;
   Assert.IsTrue(ContainsText(mWithRefs, 'TMonitor.Enter|'), mWithRefs);
   Assert.IsTrue(ContainsText(mWithRefs, 'Pos|'), mWithRefs);
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cRtlSource, mIndex, '',
     'Haupt.pas')));
   mWithRefs := '';
 end;
 
-procedure TInliningRulesTests.AliasParameterNeedsTargetUnit;
+/// <summary>Testquellen von AliasParameterNeedsTargetUnit: Parameter über einen Typalias, dessen Ziel in einer dritten
+/// Unit steht.</summary>
 const
-  cBasis =
+  cAliasBasis =
     'unit Werk.Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -699,7 +694,7 @@ const
     '  end;'#10 +
     'implementation'#10 +
     'end.';
-  cVertrag =
+  cAliasVertrag =
     'unit Werk.Vertrag;'#10 +
     'interface'#10 +
     'uses Werk.Basis;'#10 +
@@ -707,7 +702,7 @@ const
     '  TPunkt = Werk.Basis.TPunkt;'#10 +
     'implementation'#10 +
     'end.';
-  cZeiger =
+  cAliasZeiger =
     'unit Werk.Zeiger;'#10 +
     'interface'#10 +
     'uses Werk.Vertrag;'#10 +
@@ -718,7 +713,7 @@ const
     '  Result := (A.Zeile < B.Zeile) or ((A.Zeile = B.Zeile) and (A.Spalte < B.Spalte));'#10 +
     'end;'#10 +
     'end.';
-  cSource =
+  cAliasSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -729,26 +724,28 @@ const
     '    Exit;'#10 +
     'end;'#10 +
     'end.';
+
+procedure TInliningRulesTests.AliasParameterNeedsTargetUnit;
 var
   mIndex: ISymbolIndex;
   mRefs: string;
   mSymbol: TIndexSymbol;
 begin
   mIndex := NewIndex;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cBasis, 'C:\P\Werk.Basis.pas', nil));
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cVertrag, 'C:\P\Werk.Vertrag.pas', nil));
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cZeiger, 'C:\P\Werk.Zeiger.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cAliasBasis, 'C:\P\Werk.Basis.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cAliasVertrag, 'C:\P\Werk.Vertrag.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cAliasZeiger, 'C:\P\Werk.Zeiger.pas', nil));
   // Der Index merkt sich die gelesenen Mitglieder der Parameter (Kopf und Implementierung).
   mRefs := '';
-  for mSymbol in TIndexExtractor.ExtractText(cZeiger, 'C:\P\Werk.Zeiger.pas', nil).Symbols do
+  for mSymbol in TIndexExtractor.ExtractText(cAliasZeiger, 'C:\P\Werk.Zeiger.pas', nil).Symbols do
   begin
     mRefs := mRefs + mSymbol.Name + '=' + String.Join(',', mSymbol.InlineRefs) + '|';
   end;
   Assert.AreEqual('Vor=:TPunkt#Zeile,:TPunkt#Spalte|Vor=:TPunkt#Zeile,:TPunkt#Spalte|', mRefs);
   Assert.AreEqual('6:5 Inline-Funktion Vor wird nicht eingebettet: Werk.Basis fehlt in uses (wie H2443).|',
-    Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '', 'Haupt.pas')));
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create,
-    StringReplace(cSource, 'uses Werk.Vertrag,', 'uses Werk.Basis, Werk.Vertrag,', []), mIndex, '', 'Haupt.pas')));
+    TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cAliasSource, mIndex, '', 'Haupt.pas')));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create,
+    StringReplace(cAliasSource, 'uses Werk.Vertrag,', 'uses Werk.Basis, Werk.Vertrag,', []), mIndex, '', 'Haupt.pas')));
 end;
 
 procedure TInliningRulesTests.QuickFixAddsUnit;
@@ -756,7 +753,7 @@ var
   mFound: TArray<TRuleFinding>;
 begin
   mFound := Findings(Haupt('Werk.Json', '  X := F.Anzahl;'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.PositionMessages(mFound));
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('uses Werk.Listen ergänzen', mFound[0].Fixes[0].Title);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes[0].Edits)));
@@ -768,7 +765,7 @@ procedure TInliningRulesTests.StrictPrivateMember;
 begin
   // Delphi 13 bettet auch mit Zugriff auf strict private aus einer anderen Unit ohne H2444 ein (#1383,
   // Cm.H2440b, Cm.H2444).
-  Assert.AreEqual('', Messages(Findings(Haupt('Werk.Json', '  X := F.Geheim;'#10))));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(Haupt('Werk.Json', '  X := F.Geheim;'#10))));
 end;
 
 procedure TInliningRulesTests.StrictPrivateInSameUnit;
@@ -801,9 +798,9 @@ const
     'end.';
 begin
   // In derselben Unit ebenso still (#1383), mit und ohne Projektindex.
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, nil, '',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, nil, '',
     'Haupt.pas')));
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource,
+  Assert.AreEqual('', TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource,
     TSymbolIndex.Create, '', 'Haupt.pas')));
 end;
 
@@ -827,7 +824,7 @@ const
 begin
   Assert.AreEqual('7:12 Inline-Funktion Doppelt wird nicht eingebettet: Werk.Json steht nur im uses des ' +
     'implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).|',
-    Messages(Findings(cSource)));
+    TRuleAssert.PositionMessages(Findings(cSource)));
 end;
 
 procedure TInliningRulesTests.InlineCallerWithoutBodyReferences;
@@ -850,8 +847,8 @@ const
 begin
   Assert.AreEqual('7:12 Inline-Funktion Halb wird nicht eingebettet: Werk.Mathe steht nur im uses des ' +
     'implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).|',
-    Messages(Findings(cSource)));
-  Assert.AreEqual('', Messages(Findings(ReplaceStr(ReplaceStr(cSource, 'uses Werk.Mathe;'#10, ''),
+    TRuleAssert.PositionMessages(Findings(cSource)));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(Findings(ReplaceStr(ReplaceStr(cSource, 'uses Werk.Mathe;'#10, ''),
     'interface'#10, 'interface'#10'uses Werk.Mathe;'#10))));
 end;
 
@@ -883,7 +880,7 @@ var
 begin
   mIndex := NewIndex;
   mIndex.AddUnit(TIndexExtractor.ExtractText(cZirkel, 'C:\P\Werk.Zirkel.pas', nil));
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+  Assert.AreEqual('', TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
     'Haupt.pas')));
 end;
 
@@ -942,7 +939,7 @@ begin
   mIndex.AddUnit(TIndexExtractor.ExtractText(cArten, 'C:\P\Werk.Arten.pas', nil));
   mIndex.AddUnit(TIndexExtractor.ExtractText(cStapel, 'C:\P\Werk.Stapel.pas', nil));
   Assert.AreEqual('9:11 Inline-Funktion TStapel.Eigen wird nicht eingebettet: Werk.Arten fehlt in uses ' +
-    '(wie H2443).|', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+    '(wie H2443).|', TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
     'Haupt.pas')));
 end;
 
@@ -980,7 +977,7 @@ begin
   mIndex := NewIndex;
   mIndex.AddUnit(TIndexExtractor.ExtractText(cZirkel, 'C:\P\Werk.Zirkel.pas', nil));
   Assert.AreEqual('6:19 Inline-Funktion Vier wird nicht eingebettet: Werk.Zirkel verwendet die übersetzte Unit ' +
-    'Haupt (wie H2456).|', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+    'Haupt (wie H2456).|', TRuleAssert.PositionMessages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
     'Haupt.pas')));
 end;
 
@@ -1001,7 +998,7 @@ const
 begin
   Assert.AreEqual('8:7 Inline-Funktion Eins wird nicht eingebettet: Werk.Kreis verwendet die übersetzte Unit ' +
     'Haupt (wie H2456).|8:14 Inline-Funktion Zwei wird nicht eingebettet: Werk.Ring verwendet die übersetzte ' +
-    'Unit Haupt indirekt über Werk.Kreis (wie H2457).|', Messages(Findings(cSource)));
+    'Unit Haupt indirekt über Werk.Kreis (wie H2457).|', TRuleAssert.PositionMessages(Findings(cSource)));
 end;
 
 procedure TInliningRulesTests.SwitchableAndInlineOff;
@@ -1079,9 +1076,9 @@ begin
   // RenameFile kennt der Index nicht (RTL fehlt): Die Regel kann die Zeile nicht entscheiden, ihr lsp-ignore ist
   // keine unused-suppression. In einer Zeile mit nur bekannten Namen schon.
   mFound := Findings(Haupt('Werk.Json', '  RenameFile(''a'', ''b''); // lsp-ignore: inline-not-expanded'#10));
-  Assert.AreEqual(0, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(0, Integer(Length(mFound)), TRuleAssert.PositionMessages(mFound));
   mFound := Findings(Haupt('Werk.Json', '  X := 1; // lsp-ignore: inline-not-expanded'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.PositionMessages(mFound));
   Assert.AreEqual('unused-suppression', mFound[0].RuleId);
 end;
 
@@ -1144,7 +1141,7 @@ begin
   mWatch.Stop;
   System.Writeln(Format('inline-not-expanded: %d Aufrufe, uses-Kette %d Units: %d ms',
     [cRoutines * cCallsPerRoutine, cChainLength, mWatch.ElapsedMilliseconds]));
-  Assert.AreEqual('', Messages(mFound));
+  Assert.AreEqual('', TRuleAssert.PositionMessages(mFound));
   Assert.IsTrue(mWatch.ElapsedMilliseconds < 1000, Format('zu langsam: %d ms', [mWatch.ElapsedMilliseconds]));
 end;
 

@@ -129,6 +129,9 @@ type
     /// <summary>Beschriftung von AEntry in der gewünschten Sprache mit Rückfall auf die andere, die
     /// Beschreibung (erster Satz) und den Schlüssel.</summary>
     class function CaptionOf(const AEntry: TAtlasCatalogEntry; AEnglish: Boolean): string; static;
+    /// <summary>Anzeigename des Moduls mit Schalter ASwitch (Module eines Treffers): ANameOf (darf nil sein),
+    /// sonst der Schalter; ohne Schalter „Base“.</summary>
+    class function ModuleCaption(const ASwitch: string; const ANameOf: TFunc<string, string>): string; static;
   end;
 
 implementation
@@ -141,7 +144,7 @@ uses
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Settings.ModuleSwitches,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -396,17 +399,22 @@ begin
 end;
 
 class function TAtlasSettingsSearch.TypoScore(const AWord: string; const ATexts: TArray<string>): Integer;
+const
+  /// <summary>Kürzere Wörter gelten nie als Tippfehler; bis cShortWord ist nur ein Fehler erlaubt, sonst zwei.
+  /// </summary>
+  cMinWord = 4;
+  cShortWord = 5;
 var
   mText, mPart: string;
   mLimit, mScore: Integer;
 begin
   Result := 0;
-  if Length(AWord) < 4 then
+  if Length(AWord) < cMinWord then
   begin
     Exit;
   end;
   mLimit := 2;
-  if Length(AWord) <= 5 then
+  if Length(AWord) <= cShortWord then
   begin
     mLimit := 1;
   end;
@@ -632,6 +640,25 @@ begin
     mParts := mParts + [Format(UiText(TSearchText.Project), [AHit.ProjectPath])];
   end;
   Result := string.Join(UiText(TSearchText.Separator), mParts);
+end;
+
+class function TAtlasSettingsSearch.ModuleCaption(const ASwitch: string; const ANameOf: TFunc<string, string>):
+  string;
+begin
+  if ASwitch = '' then
+  begin
+    Result := 'Base';
+    Exit;
+  end;
+  Result := '';
+  if Assigned(ANameOf) then
+  begin
+    Result := ANameOf(ASwitch);
+  end;
+  if Result = '' then
+  begin
+    Result := ASwitch;
+  end;
 end;
 
 class function TAtlasSettingsSearch.CaptionOf(const AEntry: TAtlasCatalogEntry; AEnglish: Boolean): string;

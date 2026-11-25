@@ -6,7 +6,9 @@
 // (#869), „Neu starten“ (#872, Strg+Umschalt+F2), „Erneut anhängen“ (#2171,
 // Menü Start, Taste debug.reattach.key), Leck- und Absturzberichte aus der
 // Zwischenablage (#74), die Startverbünde (#867, F9 und Strg+F2 mit
-// aktivem Verbund) und den Profiler (#2057, aus
+// aktivem Verbund), „Debug-Zustand festhalten“ (#582), das Schließen vom
+// Debugger geöffneter Dateien (#842), die angedockte Konsolenausgabe (#581)
+// und den Profiler (#2057, aus
 // Atlas.IDE.Debug.Composition.Profiler). Liefert Teile der
 // Feature-Tabelle, Befehle, Menüeinträge, Tasten und das Weiterreichen von
 // Einstellungen und Thema; Atlas.IDE.Debug.Composition stellt sie über den
@@ -36,21 +38,29 @@ uses
   System.Classes,
   Winapi.Windows,
   Vcl.Menus,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Registry,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.EventLog,
   Atlas.IDE.Debug.Logpoints,
+  Atlas.IDE.Debug.LogpointValues,
+  Atlas.UI.Debug.Logpoints.Strings,
   Atlas.IDE.Debug.LogpointGutter,
   Atlas.IDE.Debug.NoSource,
   Atlas.IDE.Debug.Restart,
   Atlas.IDE.Debug.Reattach,
   Atlas.IDE.Debug.RuntimeReport,
   Atlas.IDE.Debug.LaunchGroups,
+  Atlas.IDE.Debug.Note,
+  Atlas.UI.Debug.Note.Strings,
+  Atlas.IDE.Debug.OpenedFiles,
+  Atlas.UI.Debug.OpenedFiles.Strings,
+  Atlas.IDE.Debug.ConsoleCapture,
+  Atlas.UI.Debug.Console.Strings,
   Atlas.IDE.Debug.Composition.Profiler,
   Atlas.UI.Debug.Commands.Strings;
 
@@ -62,6 +72,10 @@ const
   cLaunchGroupsCommand = 'Atlas.LaunchGroups';
   cLaunchRunCommand = 'Atlas.LaunchGroupRun';
   cLaunchStopCommand = 'Atlas.LaunchGroupStop';
+  cNoteCommand = 'Atlas.DebugNote';
+  cKeepOpenedFileCommand = 'Atlas.DebugKeepOpenedFile';
+  cConsoleOutputCommand = 'Atlas.ConsoleOutput';
+  cConsoleRunCommand = 'Atlas.ConsoleRunNoDebug';
 
 { Dienste von Base }
 
@@ -104,6 +118,12 @@ end;
 function LogpointsVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DebugLogpoints;
+end;
+
+/// <summary>Logpunkt-Verlauf (#2552): braucht Logpunkte und das Ereignisprotokoll, aus dem er liest.</summary>
+function LogpointValuesVisible: Boolean;
+begin
+  Result := LogpointsVisible and EventLogVisible and TAtlasIdeSettings.Current.DebugLogpointsRecordValues;
 end;
 
 procedure StartNoSource;
@@ -157,6 +177,73 @@ begin
     end, TAtlasStatusRegistry.Default);
 end;
 
+function NoteVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugNote;
+end;
+
+/// <summary>Debug-Zustand festhalten (#582): Werte über Serverbefehle im Hintergrund über Base und den Scope des
+/// Moduls; die Antwort kommt nur, solange das Modul angemeldet ist.</summary>
+function NoteStarter(const AScope: TFunc<IAtlasModuleScope>): TProc;
+begin
+  Result :=
+    procedure
+    var
+      mServices: TAtlasDebugNoteServices;
+    begin
+      mServices := Default(TAtlasDebugNoteServices);
+      mServices.Message :=
+        procedure(AText: string)
+        begin
+          TAtlasIdeHost.Message(AText);
+        end;
+      mServices.Session :=
+        function: TLspSession
+        begin
+          Result := TAtlasIdeHost.RunningSession;
+        end;
+      mServices.Run :=
+        function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+        begin
+          Result := TAtlasIdeHost.RunServerCommandAsync(AScope(), TAtlasFeature.Debugger, ACommand, AArgumentsJson,
+            ATimeoutMs, ADone);
+        end;
+      TAtlasIdeDebugNote.Start(mServices);
+    end;
+end;
+
+procedure StartOpenedFiles;
+begin
+  TAtlasIdeOpenedFiles.Start(
+    procedure(AText: string)
+    begin
+      TAtlasIdeHost.Message(AText);
+    end);
+end;
+
+procedure StartLogpointValues;
+begin
+  TAtlasIdeLogpointValues.Start(
+    procedure(AText: string)
+    begin
+      TAtlasIdeHost.Message(AText);
+    end);
+end;
+
+function ConsoleVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugCaptureConsole;
+end;
+
+procedure StartConsoleCapture;
+begin
+  TAtlasIdeConsoleCapture.Start(
+    procedure(AText: string)
+    begin
+      TAtlasIdeHost.Message(AText);
+    end);
+end;
+
 procedure StartLogpoints;
 begin
   TAtlasIdeLogpoints.Start(
@@ -181,39 +268,10 @@ begin
   Result.Visible := AVisible;
 end;
 
-function RunParts(const AScope: TFunc<IAtlasModuleScope>): TArray<IAtlasFeaturePart>;
+/// <summary>Neu starten, erneut anhängen und Startverbünde.</summary>
+function LaunchParts: TArray<IAtlasFeaturePart>;
 begin
   Result := [
-    // Ereignisprotokoll (#580): Zuhörer der Debug-Sitzung, Mitlesen erst mit einer Sitzung.
-    TAtlasFeaturePart.When('DebugEventLog',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and EventLogVisible;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugEventLog.Started;
-      end, StartEventLog, TAtlasIdeDebugEventLog.Release),
-    // Logpunkte (#583): Haltepunkte der IDE ohne Anhalten, Text im Ereignisprotokoll.
-    TAtlasFeaturePart.When('DebugLogpoints',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and LogpointsVisible;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeLogpoints.Started;
-      end, StartLogpoints, TAtlasIdeLogpoints.Release),
-    // Fenster „Kein Quelltext“ (#869): Zuhörer der Debug-Sitzung.
-    TAtlasFeaturePart.When('DebugNoSource',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugNoSourcePage;
-      end,
-      function: Boolean
-      begin
-        Result := TAtlasIdeDebugNoSource.Started;
-      end, StartNoSource, TAtlasIdeDebugNoSource.Release),
     // Neu starten (#872): Befehl und Taste; der Zuhörer merkt Haltepunkte und Ende der Sitzung.
     TAtlasFeaturePart.When('DebugRestart',
       function(ALevel: TAtlasSafeLevel): Boolean
@@ -243,7 +301,83 @@ begin
       function: Boolean
       begin
         Result := TAtlasIdeLaunchGroups.Started;
-      end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release)];
+      end, StartLaunchGroups, TAtlasIdeLaunchGroups.Release),
+    // Konsolenausgabe andocken (#581): Prüfung vor dem Start, Fenster, Eintrag im Menü Start.
+    TAtlasFeaturePart.When('DebugCaptureConsole',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and ConsoleVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeConsoleCapture.Started;
+      end, StartConsoleCapture, TAtlasIdeConsoleCapture.Release)];
+end;
+
+function RunParts(const AScope: TFunc<IAtlasModuleScope>): TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    // Ereignisprotokoll (#580): Zuhörer der Debug-Sitzung, Mitlesen erst mit einer Sitzung.
+    TAtlasFeaturePart.When('DebugEventLog',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and EventLogVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugEventLog.Started;
+      end, StartEventLog, TAtlasIdeDebugEventLog.Release),
+    // Logpunkte (#583): Haltepunkte der IDE ohne Anhalten, Text im Ereignisprotokoll.
+    TAtlasFeaturePart.When('DebugLogpoints',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and LogpointsVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeLogpoints.Started;
+      end, StartLogpoints, TAtlasIdeLogpoints.Release),
+    // Logpunkt-Verlauf (#2552): hört nach dem Ereignisprotokoll mit.
+    TAtlasFeaturePart.When('DebugLogpointValues',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and LogpointValuesVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeLogpointValues.Started;
+      end, StartLogpointValues, TAtlasIdeLogpointValues.Release),
+    // Fenster „Kein Quelltext“ (#869): Zuhörer der Debug-Sitzung.
+    TAtlasFeaturePart.When('DebugNoSource',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeSettings.Current.DebugNoSourcePage;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugNoSource.Started;
+      end, StartNoSource, TAtlasIdeDebugNoSource.Release)];
+  Result := Result + LaunchParts + [
+    // Debug-Zustand festhalten (#582): Befehl; die Werte des Halts sammelt er selbst.
+    TAtlasFeaturePart.When('DebugNote',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and NoteVisible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeDebugNote.Started;
+      end, NoteStarter(AScope), TAtlasIdeDebugNote.Release),
+    // Vom Debugger geöffnete Dateien schließen (#842): IDE-Notifier und Zuhörer der Sitzung.
+    TAtlasFeaturePart.When('DebugOpenedFiles',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := NotMinimal(ALevel) and TAtlasIdeOpenedFiles.Visible;
+      end,
+      function: Boolean
+      begin
+        Result := TAtlasIdeOpenedFiles.Started;
+      end, StartOpenedFiles, TAtlasIdeOpenedFiles.Release)];
   // Profiler (#2057): nur mit debug.profiler.
   Result := Result + ProfilerParts(AScope);
 end;
@@ -280,6 +414,8 @@ begin
       TAtlasIdeLogpoints.EnableAll, LogpointsVisible),
     RunCommand('Atlas.LogpointsDelete', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LogpointDeleteAll),
       TAtlasIdeLogpoints.DeleteAll, LogpointsVisible),
+    RunCommand('Atlas.DebugLogpointValues', TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.ValuesCommand),
+      TAtlasIdeLogpointValues.ShowWindow, LogpointValuesVisible),
     RunCommand(cRestartCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RestartCommand),
       TAtlasIdeDebugRestart.Execute, RestartVisible),
     RunCommand(cReattachCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.ReattachCommandPlain),
@@ -299,7 +435,15 @@ begin
     RunCommand(cLaunchRunCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandRun),
       TAtlasIdeLaunchGroups.RunActive, LaunchGroupsVisible),
     RunCommand(cLaunchStopCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandStop),
-      TAtlasIdeLaunchGroups.StopAll, LaunchGroupsVisible)];
+      TAtlasIdeLaunchGroups.StopAll, LaunchGroupsVisible),
+    RunCommand(cNoteCommand, TAtlasNoteStrings.Text(TAtlasNoteTextId.NoteCommand), TAtlasIdeDebugNote.Execute,
+      NoteVisible),
+    RunCommand(cKeepOpenedFileCommand, TAtlasOpenedFilesStrings.Text(TAtlasOpenedFilesTextId.PinCommand),
+      TAtlasIdeOpenedFiles.PinCurrent, TAtlasIdeOpenedFiles.Visible),
+    RunCommand(cConsoleOutputCommand, TAtlasConsoleStrings.Text(TAtlasConsoleTextId.CommandWindow),
+      TAtlasIdeConsoleCapture.ShowWindow, ConsoleVisible),
+    RunCommand(cConsoleRunCommand, TAtlasConsoleStrings.Text(TAtlasConsoleTextId.CommandRunNoDebug),
+      TAtlasIdeConsoleCapture.RunWithoutDebugger, ConsoleVisible)];
   // Profiler (#2057); nur sichtbar, solange debug.profiler an ist.
   Result := Result + ProfilerCommands;
 end;
@@ -414,6 +558,8 @@ procedure ApplyRunSettings;
 begin
   // debug.eventLog aus: Fenster zu; debug.eventLogColors: neu zeichnen.
   TAtlasIdeDebugEventLog.ApplySettings;
+  // debug.logpoints.recordValues aus: Fenster zu; recordLimit: Reihen kürzen (#2552).
+  TAtlasIdeLogpointValues.ApplySettings;
   // debug.profiler aus: Fenster „Atlas: Profil“ zu (#2057).
   ApplyProfilerSettings;
 end;
@@ -421,9 +567,12 @@ end;
 procedure RunThemeChanged;
 begin
   TAtlasIdeDebugEventLog.ThemeChanged;
+  TAtlasIdeLogpointValues.ThemeChanged;
   TAtlasIdeDebugNoSource.ThemeChanged;
   TAtlasIdeDebugRestart.ThemeChanged;
   TAtlasIdeLaunchGroups.ThemeChanged;
+  TAtlasIdeOpenedFiles.ThemeChanged;
+  TAtlasIdeConsoleCapture.ThemeChanged;
   ProfilerThemeChanged;
 end;
 

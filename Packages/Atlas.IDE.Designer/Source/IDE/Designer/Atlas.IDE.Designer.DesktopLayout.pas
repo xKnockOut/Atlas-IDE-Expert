@@ -52,10 +52,10 @@ uses
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Designer.DesktopSwitch,
   Atlas.UI.Designer.ViewStrings,
-  Atlas.IDE.Foundation.DesignerView,
+  Atlas.ToolsApi.Designer.View,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -85,8 +85,8 @@ type
     FOnMessage: TProc<string>;
     FSwitch: TAtlasDesktopSwitch;
     FTimer: TTimer;
-    /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt (vorher alle 100 ms, auch ohne
-    /// Projekt).</summary>
+    /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt, sonst liefe er alle
+    /// 100 ms, auch ohne Projekt.</summary>
     FOpen: TAtlasDesignerOpenWatch;
     FNotifier: TProjectNotifier;
     FNotifierIndex: Integer;

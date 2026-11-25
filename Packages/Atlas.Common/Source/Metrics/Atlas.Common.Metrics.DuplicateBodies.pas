@@ -81,6 +81,9 @@ type
     /// <summary>Erzeugte Unit: Der Kopf (erste 15 Zeilen) sagt „nicht von Hand ändern“, „do not edit“ oder
     /// „generated“.</summary>
     class function IsGenerated(const AText: string): Boolean; static;
+    /// <summary>APaths nach Pfad sortiert, ohne Groß-/Kleinschreibung, bei Gleichstand ordinal (TArray.Sort ist
+    /// nicht stabil).</summary>
+    class function SortedPaths(const APaths: TArray<string>): TArray<string>; static;
     /// <summary>Gruppen in AUnits mit Rümpfen ab AMinLines Zeilen und Mitgliedern in mindestens zwei Units; nach
     /// Zeilen absteigend, dann nach Fingerabdruck.</summary>
     class function Find(const AUnits: TArray<TDuplicateBodyUnit>; AMinLines: Integer): TArray<TDuplicateBodyGroup>;
@@ -93,7 +96,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   /// <summary>Zeilen am Anfang der Unit, in denen IsGenerated die Marke sucht.</summary>
@@ -135,22 +139,6 @@ begin
     begin
       Exit(ARoutine[mIndex]);
     end;
-  end;
-end;
-
-function QualifiedName(ARoutine: TSyntaxNode): string;
-var
-  mParent: TSyntaxNode;
-begin
-  Result := ARoutine.Name;
-  mParent := ARoutine.Parent;
-  while mParent <> nil do
-  begin
-    if mParent.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Result := mParent.Name + '.' + Result;
-    end;
-    mParent := mParent.Parent;
   end;
 end;
 
@@ -228,7 +216,7 @@ begin
   begin
     Exit(False);
   end;
-  ABody.Name := QualifiedName(ARoutine);
+  ABody.Name := TSyntaxNodes.RoutinePath(ARoutine);
   ABody.Line := ARoutine.StartPos.Line + 1;
   ABody.BodyLines := mTokens[mLast].EndPos.Line - mTokens[mFirst].StartPos.Line + 1;
   ABody.Hash := TDuplicateBodies.Fingerprint(TDuplicateBodies.Normalized(mTokens, mFirst, mLast));
@@ -302,6 +290,20 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TDuplicateBodies.SortedPaths(const APaths: TArray<string>): TArray<string>;
+begin
+  Result := Copy(APaths);
+  TArray.Sort<string>(Result, TComparer<string>.Construct(
+    function(const ALeft, ARight: string): Integer
+    begin
+      Result := CompareText(ALeft, ARight);
+      if Result = 0 then
+      begin
+        Result := CompareStr(ALeft, ARight);
+      end;
+    end));
 end;
 
 class function TDuplicateBodies.Bodies(ATree: TSyntaxTree): TArray<TRoutineBody>;

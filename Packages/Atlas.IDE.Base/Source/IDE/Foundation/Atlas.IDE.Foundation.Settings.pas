@@ -3,7 +3,8 @@
 // Einstellungen des Plugins in der Registry (HKCU\Software\Atlas\IdePlugin,
 // #227) und der aktuelle Stand für alle Teile des Plugins. Gelesen wird
 // einmal beim ersten Zugriff, geschrieben über Update (Optionsseite, gezogene
-// Breiten, eingeklapptes Panel).
+// Breiten, eingeklapptes Panel). Die Ablage in der Registry setzt die
+// Kompositionswurzel ein (StoreFactory, Atlas.IDE.Foundation.Adapters.RegistryStore).
 // Schnellschalter (#604): Current liefert die wirksamen Werte, also die
 // gespeicherten mit den Sitzungswerten darüber (nur für diese Sitzung, „Alles
 // aus“); Stored die gespeicherten für Optionsseite und Update. Sitzungswerte
@@ -35,22 +36,30 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Problems.InlineHints,
-  Atlas.Core.Editor.SelectionMatches,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Settings.ModuleSwitches;
 
 type
+  PAtlasPluginSettings = ^TAtlasPluginSettings;
+
+  /// <summary>Ablage der gespeicherten Plugin-Einstellungen (Registry); AWrite: zum Schreiben öffnen. Muss auch
+  /// IAtlasSettingsNames unterstützen.</summary>
+  TAtlasSettingsStoreFactory = reference to function(AWrite: Boolean): IAtlasSettingsStore;
+
   TAtlasIdeSettings = class
   private class var
     FOnChanged: TProc;
+    FStoreFactory: TAtlasSettingsStoreFactory;
   private
     class procedure EnsureLoaded; static;
     class procedure Changed; static;
+    /// <summary>Ablage in der Registry (AWrite: zum Schreiben); ohne StoreFactory eine leere Ablage im Speicher.
+    /// </summary>
+    class function Store(AWrite: Boolean): IAtlasSettingsStore; static;
   public
     /// <summary>Globale Einstellungsdatei; öffentlich für die Seite Prüfregeln und das Fenster Atlas-Prüfung
     /// (#909), die Regeln ohne Projekt dort speichern.</summary>
@@ -63,51 +72,9 @@ type
     class function Current: TAtlasPluginSettings; static;
     /// <summary>Gespeicherte Werte (Registry) ohne Sitzungswerte; Grundlage für Optionsseite und Update.</summary>
     class function Stored: TAtlasPluginSettings; static;
-    /// <summary>Plugin eingeschaltet und Inlay-Hints an; ohne Kopie des Einstellungsrecords.</summary>
-    class function InlayHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Typmarken an (#453); ohne Kopie des Einstellungsrecords.</summary>
-    class function InlayTypeHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Include-Symbole hinter {$I} an (#860); ohne Kopie des
-    /// Einstellungsrecords.</summary>
-    class function InlayDefineHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Codes von Steuerzeichen an (#862).</summary>
-    class function InlayCharHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Marken „braucht kein Self“ an (#686).</summary>
-    class function InlayMethodHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Blockende-Beschriftungen an (#620); ohne Kopie des Einstellungsrecords.
-    /// </summary>
-    class function BlockEndLabelsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und ungenutzte uses abblenden an (#621); ohne Kopie des Einstellungsrecords.
-    /// </summary>
-    class function DimUnusedUsesOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Rekursionssymbole an (#623); ohne Kopie des Einstellungsrecords.</summary>
-    class function RecursionMarkersOn: Boolean; static;
-    /// <summary>editor.recursionMarkers.depth (#623).</summary>
-    class function RecursionMarkersDepth: Integer; static;
-    /// <summary>Plugin eingeschaltet und Atlas-Spalte in der Zeilenleiste an (#768); ohne Kopie des
-    /// Einstellungsrecords.</summary>
-    class function GutterColumnOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und gleichen Text hervorheben an (#709); AOptions und ANavigateF3 aus
-    /// highlight.selectionMatches.*, ohne Kopie des Einstellungsrecords.</summary>
-    class function SelectionMatchesOn(out AOptions: TAtlasSelectionMatchOptions; out ANavigateF3: Boolean): Boolean;
-      static;
-    /// <summary>Plugin eingeschaltet und Austrittspunkte hervorheben an (#698); die Schalter aus
-    /// editor.exitPoints.*, ohne Kopie des Einstellungsrecords.</summary>
-    class function ExitPointsOn(out AExceptions, ALoops, ABadge: Boolean): Boolean; static;
-    /// <summary>Plugin eingeschaltet und neu zugewiesene Variablen unterstreichen an (#712); Arten, Linie und Farbe
-    /// aus highlight.reassigned.*, ohne Kopie des Einstellungsrecords.</summary>
-    class function ReassignedOn(out ATargets, AStyle, AColor: string): Boolean; static;
-    /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords.</summary>
-    class function ProblemMarksOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Marken folgen ihrer Zeile sofort (#1818, editor.trackLines); ohne Kopie des
-    /// Einstellungsrecords.</summary>
-    class function TrackLinesOn: Boolean; static;
-    /// <summary>Fehlertext am Zeilenende (#509); Off, wenn das Plugin oder die Problem-Markierungen aus sind.
-    /// </summary>
-    class function InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode; static;
-    /// <summary>Plugin, Probleme und Zähler in der Statusleiste an (#509), außer die Atlas-Statusleiste am Editor
-    /// zeigt ihre Befundzähler (#1155): Dann stünden Zahlen doppelt.</summary>
-    class function ProblemsStatusCounterOn: Boolean; static;
+    /// <summary>Wirksame Werte ohne Kopie, für häufige Abfragen beim Zeichnen (TAtlasIdeEditorSettings); nur lesen,
+    /// nur im Hauptthread.</summary>
+    class function CurrentRef: PAtlasPluginSettings; static;
     /// <summary>Übernimmt und speichert ASettings (gespeicherte Werte, ohne Sitzungswerte).</summary>
     class procedure Update(const ASettings: TAtlasPluginSettings); static;
     /// <summary>Inhalt von %APPDATA%\Atlas\settings.json ('' ohne Datei) für Export und Import (#723).</summary>
@@ -141,6 +108,9 @@ type
     class procedure Reload; static;
     /// <summary>Nach Update (Optionsseite, Menü Atlas): z. B. Tastenkürzel neu belegen (#494).</summary>
     class property OnChanged: TProc read FOnChanged write FOnChanged;
+    /// <summary>Legt die Ablage in der Registry an; setzt die Kompositionswurzel, bevor jemand Einstellungen liest
+    /// (Atlas.IDE.Foundation.Adapters.RegistryStore).</summary>
+    class property StoreFactory: TAtlasSettingsStoreFactory read FStoreFactory write FStoreFactory;
   end;
 
 const
@@ -150,153 +120,18 @@ implementation
 
 uses
   Atlas.Core.Settings.QueryMigration,
-  Winapi.Windows,
   System.IOUtils,
   System.DateUtils,
-  System.Win.Registry,
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.Experimental,
-  Atlas.Core.Problems.Switches,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
-  Atlas.UI.Strings;
-
-type
-  TRegistryStore = class(TInterfacedObject, IAtlasSettingsStore, IAtlasSettingsNames)
-  private
-    FRegistry: TRegistry;
-    FWritable: Boolean;
-  public
-    constructor Create(AWrite: Boolean);
-    destructor Destroy; override;
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
-    function Contains(const AName: string): Boolean;
-    procedure Remove(const AName: string);
-  end;
-
-{ TRegistryStore }
-
-constructor TRegistryStore.Create(AWrite: Boolean);
-begin
-  inherited Create;
-  if AWrite then
-  begin
-    FRegistry := TRegistry.Create(KEY_READ or KEY_WRITE);
-  end
-  else
-  begin
-    FRegistry := TRegistry.Create(KEY_READ);
-  end;
-  FRegistry.RootKey := HKEY_CURRENT_USER;
-  if AWrite then
-  begin
-    FWritable := FRegistry.OpenKey(cAtlasRegistryKey, True);
-  end
-  else
-  begin
-    FRegistry.OpenKeyReadOnly(cAtlasRegistryKey);
-  end;
-end;
-
-destructor TRegistryStore.Destroy;
-begin
-  FRegistry.Free;
-  inherited Destroy;
-end;
-
-function TRegistryStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
-begin
-  Result := ADefault;
-  try
-    if (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName) and
-      (FRegistry.GetDataType(AName) = rdInteger) then
-    begin
-      Result := FRegistry.ReadInteger(AName);
-    end;
-  except
-    on ERegistryException do
-      Result := ADefault;
-  end;
-end;
-
-procedure TRegistryStore.WriteInteger(const AName: string; AValue: Integer);
-begin
-  if not FWritable then
-  begin
-    Exit;
-  end;
-  try
-    FRegistry.WriteInteger(AName, AValue);
-  except
-    // Ohne Schreibrecht bleiben die Werte für diese Sitzung bestehen.
-    on ERegistryException do
-      ;
-  end;
-end;
-
-function TRegistryStore.ReadString(const AName, ADefault: string): string;
-begin
-  Result := ADefault;
-  try
-    if (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName) and
-      (FRegistry.GetDataType(AName) in [rdString, rdExpandString]) then
-    begin
-      Result := FRegistry.ReadString(AName);
-    end;
-  except
-    on ERegistryException do
-      Result := ADefault;
-  end;
-end;
-
-procedure TRegistryStore.WriteString(const AName, AValue: string);
-begin
-  if not FWritable then
-  begin
-    Exit;
-  end;
-  try
-    FRegistry.WriteString(AName, AValue);
-  except
-    // Ohne Schreibrecht bleiben die Werte für diese Sitzung bestehen.
-    on ERegistryException do
-      ;
-  end;
-end;
-
-function TRegistryStore.Contains(const AName: string): Boolean;
-begin
-  try
-    Result := (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName);
-  except
-    on ERegistryException do
-      Result := False;
-  end;
-end;
-
-procedure TRegistryStore.Remove(const AName: string);
-begin
-  if not FWritable then
-  begin
-    Exit;
-  end;
-  try
-    if FRegistry.ValueExists(AName) then
-    begin
-      FRegistry.DeleteValue(AName);
-    end;
-  except
-    // Ohne Schreibrecht bleibt der alte Wert; die Übernahme versucht es beim nächsten Start erneut.
-    on ERegistryException do
-      ;
-  end;
-end;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.UI.Strings,
+  Atlas.Core.Settings.Contract,
+  Atlas.Plugin.Files.Contract;
 
 type
   /// <summary>Zustand von TAtlasIdeSettings (gelesene, wirksame Werte, Schnellschalter, Stände, Katalogteile).
@@ -326,16 +161,14 @@ var
 /// einmal im Protokoll.</summary>
 procedure ApplyRenames;
 var
-  mRegistry: TRegistryStore;
   mStore: IAtlasSettingsStore;
   mCatalog: TAtlasSettingsCatalog;
   mRename: TAtlasSettingsRename;
 begin
-  mRegistry := TRegistryStore.Create(True);
-  mStore := mRegistry;
+  mStore := TAtlasIdeSettings.Store(True);
   mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    for mRename in TAtlasSettingsRenames.Apply(mStore, mRegistry, mCatalog) do
+    for mRename in TAtlasSettingsRenames.Apply(mStore, mStore as IAtlasSettingsNames, mCatalog) do
     begin
       TAtlasGuard.Log(mRename.LogLine);
     end;
@@ -349,26 +182,22 @@ end;
 function MigrateQuery(const ARouted: IAtlasSettingsStore;
   out AMigration: TAtlasSettingsQueryMigration): Boolean;
 var
-  mRegistry: TRegistryStore;
   mLegacy: IAtlasSettingsStore;
 begin
-  mRegistry := TRegistryStore.Create(False);
-  mLegacy := mRegistry;
-  AMigration := TAtlasSettingsQueryMigrations.Migrate(mLegacy, mRegistry, ARouted);
+  mLegacy := TAtlasIdeSettings.Store(False);
+  AMigration := TAtlasSettingsQueryMigrations.Migrate(mLegacy, mLegacy as IAtlasSettingsNames, ARouted);
   Result := AMigration.Moved;
 end;
 
 procedure RemoveLegacyQuery(const AMigration: TAtlasSettingsQueryMigration);
 var
-  mRegistry: TRegistryStore;
   mNames: IAtlasSettingsNames;
 begin
   if not AMigration.Found then
   begin
     Exit;
   end;
-  mRegistry := TRegistryStore.Create(True);
-  mNames := mRegistry;
+  mNames := TAtlasIdeSettings.Store(True) as IAtlasSettingsNames;
   TAtlasSettingsQueryMigrations.RemoveLegacy(mNames);
   TAtlasGuard.Log(AMigration.LogLine);
 end;
@@ -417,7 +246,7 @@ begin
   GState.Stored := TAtlasPluginSettings.Defaults;
   ApplyRenames;
   mReadable := LoadGlobal(mContent);
-  mRouted := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(False), mContent.Text);
+  mRouted := TAtlasRoutedSettingsStore.Create(Store(False), mContent.Text);
   mStore := mRouted;
   // Einmalig: Werte, die bis hierher in der Registry lagen, nach settings.json.
   mChanged := mRouted.Migrate;
@@ -449,6 +278,20 @@ begin
   end;
 end;
 
+class function TAtlasIdeSettings.Store(AWrite: Boolean): IAtlasSettingsStore;
+begin
+  Result := nil;
+  if Assigned(FStoreFactory) then
+  begin
+    Result := FStoreFactory(AWrite);
+  end;
+  if Result = nil then
+  begin
+    // Ohne Kompositionswurzel (Werkzeuge, Tests): Vorgaben, nichts landet in der Registry.
+    Result := TAtlasMemorySettingsStore.Create;
+  end;
+end;
+
 class function TAtlasIdeSettings.GlobalFile: string;
 begin
   Result := TAtlasSettingsFiles.GlobalFile(GetEnvironmentVariable('APPDATA'));
@@ -466,8 +309,12 @@ begin
     end;
   except
     // Gesperrt oder unlesbar: wie keine Datei für diese Sitzung, aber nicht überschreiben.
-    on Exception do
+    on E: Exception do
     begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       AContent.Text := '';
       Result := False;
     end;
@@ -510,118 +357,10 @@ begin
   Result := GState.Stored;
 end;
 
-class function TAtlasIdeSettings.InlayHintsOn: Boolean;
+class function TAtlasIdeSettings.CurrentRef: PAtlasPluginSettings;
 begin
   EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayHints;
-end;
-
-class function TAtlasIdeSettings.InlayTypeHintsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayTypeHints;
-end;
-
-class function TAtlasIdeSettings.InlayDefineHintsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayDefineHints;
-end;
-
-class function TAtlasIdeSettings.InlayCharHintsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayCharHints;
-end;
-
-class function TAtlasIdeSettings.InlayMethodHintsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayMethodHints;
-end;
-
-class function TAtlasIdeSettings.BlockEndLabelsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.BlockEndLabels;
-end;
-
-class function TAtlasIdeSettings.DimUnusedUsesOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.DimUnusedUses;
-end;
-
-class function TAtlasIdeSettings.RecursionMarkersOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.RecursionMarkers;
-end;
-
-class function TAtlasIdeSettings.RecursionMarkersDepth: Integer;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.RecursionMarkersDepth;
-end;
-
-class function TAtlasIdeSettings.GutterColumnOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.GutterColumn;
-end;
-
-class function TAtlasIdeSettings.SelectionMatchesOn(out AOptions: TAtlasSelectionMatchOptions;
-  out ANavigateF3: Boolean): Boolean;
-begin
-  EnsureLoaded;
-  AOptions.MinLength := GState.Effective.SelectionMatchesMinLength;
-  AOptions.CaseSensitive := GState.Effective.SelectionMatchesCaseSensitive;
-  AOptions.WholeWord := GState.Effective.SelectionMatchesWholeWord;
-  AOptions.MaxMatches := GState.Effective.SelectionMatchesMaxMatches;
-  ANavigateF3 := GState.Effective.SelectionMatchesNavigateF3;
-  Result := GState.Effective.Enabled and GState.Effective.SelectionMatches;
-end;
-
-class function TAtlasIdeSettings.ExitPointsOn(out AExceptions, ALoops, ABadge: Boolean): Boolean;
-begin
-  EnsureLoaded;
-  AExceptions := GState.Effective.ExitPointsExceptions;
-  ALoops := GState.Effective.ExitPointsLoops;
-  ABadge := GState.Effective.ExitPointsBadge;
-  Result := GState.Effective.Enabled and GState.Effective.ExitPoints;
-end;
-
-class function TAtlasIdeSettings.ReassignedOn(out ATargets, AStyle, AColor: string): Boolean;
-begin
-  EnsureLoaded;
-  ATargets := GState.Effective.ReassignedTargets;
-  AStyle := GState.Effective.ReassignedStyle;
-  AColor := GState.Effective.ReassignedColor;
-  Result := GState.Effective.Enabled and GState.Effective.Reassigned;
-end;
-
-class function TAtlasIdeSettings.ProblemMarksOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.Problems;
-end;
-
-class function TAtlasIdeSettings.TrackLinesOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.TrackLines;
-end;
-
-class function TAtlasIdeSettings.InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode;
-begin
-  EnsureLoaded;
-  Result := TAtlasProblemSwitches.InlineDiagnostics(GState.Effective);
-end;
-
-class function TAtlasIdeSettings.ProblemsStatusCounterOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := TAtlasProblemSwitches.ProblemsStatusCounter(GState.Effective);
+  Result := @GState.Effective;
 end;
 
 class procedure TAtlasIdeSettings.Update(const ASettings: TAtlasPluginSettings);
@@ -648,7 +387,7 @@ begin
   GState.Loaded := True;
   // settings.json frisch lesen: Der Dialog der globalen Einstellungen schreibt dieselbe Datei.
   mReadable := LoadGlobal(mContent);
-  mRouted := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(True), mContent.Text);
+  mRouted := TAtlasRoutedSettingsStore.Create(Store(True), mContent.Text);
   mStore := mRouted;
   GState.Stored.Save(mStore);
   if mReadable then
@@ -758,10 +497,19 @@ begin
 end;
 
 class function TAtlasIdeSettings.History: TAtlasSettingsHistory;
+var
+  mCatalog: TAtlasSettingsCatalog;
 begin
   if GState.History = nil then
   begin
     GState.History := TAtlasSettingsHistory.Create;
+    // Zustände (x-state) wie gemerkte Knöpfe und Breiten verdrängen keine echten Stände (#2546).
+    mCatalog := TAtlasSettingsCatalog.CreateDefault;
+    try
+      GState.History.Ignored := TAtlasSettingsHistory.StateNames(mCatalog);
+    finally
+      mCatalog.Free;
+    end;
     // Fehlt, unbrauchbar (dann als .defekt beiseitegelegt) oder gesperrt: ohne gemerkte Stände weiter.
     GState.HistoryKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(HistoryFile, 'Einstellungsverlauf',
       function(const AText: string): Boolean

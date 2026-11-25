@@ -16,9 +16,6 @@ type
     FResolver: TNameResolver;
     function Describe(const AHints: TArray<TInlayHint>): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -71,7 +68,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.CodeActions.Contract;
 
 const
   cHauptFile = 'C:\P\Haupt.pas';
@@ -267,16 +264,6 @@ begin
   for mHint in AHints do
   begin
     Result := Result + Format('%d:%d %s|', [mHint.Position.Line, mHint.Position.Character, mHint.Text]);
-  end;
-end;
-
-procedure TLspInlayHintsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    EndMarkersCarryBlockStartAndRequestMinLines;
-  finally
-    TearDown;
   end;
 end;
 
@@ -504,15 +491,17 @@ var
 
 begin
   mStore := TDocumentStore.Create;
-  mHints := TLspInlayHints.Create(mStore, FIndex, ReadFile,
-    function(const AUri: string): TInlayHintSettings
-    begin
-      Result := TInlayHintSettings.Default;
-      Result.ParameterNames := False;
-      Result.InferredTypes := False;
-    end);
-  mDispatcher := TJsonRpcDispatcher.Create;
+  mHints := nil;
+  mDispatcher := nil;
   try
+    mHints := TLspInlayHints.Create(mStore, FIndex, ReadFile,
+      function(const AUri: string): TInlayHintSettings
+      begin
+        Result := TInlayHintSettings.Default;
+        Result.ParameterNames := False;
+        Result.InferredTypes := False;
+      end);
+    mDispatcher := TJsonRpcDispatcher.Create;
     mHints.Attach(mDispatcher);
     mUri := TDocumentUris.FromPath(cHauptFile);
     mStore.Open(mUri, 'delphi', 1, cUnitBloecke);

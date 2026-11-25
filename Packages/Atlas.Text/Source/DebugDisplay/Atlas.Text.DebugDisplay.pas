@@ -25,6 +25,8 @@ type
   TDebugDisplaySegmentKind = (Text, Placeholder);
   /// <summary>Woher eine Regel stammt: Kommentar, Attribut oder Projektdatei .atlas.</summary>
   TDebugDisplayOrigin = (Comment, Attribute, Project);
+  /// <summary>Warum eine Vorlage nicht gilt; die Texte dazu liefert die Seite, die sie zeigt.</summary>
+  TDebugDisplayError = (None, MissingClose, StrayClose, EmptyPlaceholder);
 {$SCOPEDENUMS OFF}
 
   TDebugDisplaySegment = record
@@ -44,8 +46,8 @@ type
   TDebugDisplayTemplate = record
     Source: string;
     Segments: TArray<TDebugDisplaySegment>;
-    /// <summary>'' oder der Grund, warum die Vorlage nicht gilt (offene Klammer, leerer Platzhalter).</summary>
-    Error: string;
+    /// <summary>None oder der Grund, warum die Vorlage nicht gilt (offene Klammer, leerer Platzhalter).</summary>
+    Error: TDebugDisplayError;
     ErrorOffset: Integer;
     function Valid: Boolean;
     function Placeholders: TArray<TDebugDisplaySegment>;
@@ -151,7 +153,7 @@ end;
 
 function TDebugDisplayTemplate.Valid: Boolean;
 begin
-  Result := Error = '';
+  Result := Error = TDebugDisplayError.None;
 end;
 
 function TDebugDisplayTemplate.Placeholders: TArray<TDebugDisplaySegment>;
@@ -242,28 +244,28 @@ end;
 class function TDebugDisplayTemplate.Parse(const AText: string): TDebugDisplayTemplate;
 var
   mIndex: Integer;
-  mLiteral: string;
+  mLiteral: TStringBuilder;
   mOk: Boolean;
 
   procedure FlushLiteral;
   var
     mItem: TDebugDisplaySegment;
   begin
-    if mLiteral = '' then
+    if mLiteral.Length = 0 then
     begin
       Exit;
     end;
     mItem := Default(TDebugDisplaySegment);
     mItem.Kind := TDebugDisplaySegmentKind.Text;
-    mItem.Text := mLiteral;
+    mItem.Text := mLiteral.ToString;
     mItem.Offset := -1;
     Result.Segments := Result.Segments + [mItem];
-    mLiteral := '';
+    mLiteral.Clear;
   end;
 
-  procedure Fail(const AMessage: string; AOffset: Integer);
+  procedure Fail(AError: TDebugDisplayError; AOffset: Integer);
   begin
-    Result.Error := AMessage;
+    Result.Error := AError;
     Result.ErrorOffset := AOffset;
   end;
 
@@ -278,14 +280,14 @@ var
     mStop := PlaceholderEnd(AText, mStart, mColon);
     if mStop > Length(AText) then
     begin
-      Fail('Platzhalter ohne schließende Klammer', mStart - 2);
+      Fail(TDebugDisplayError.MissingClose, mStart - 2);
       Exit;
     end;
     FlushLiteral;
     mSegment := PlaceholderSegment(AText, mStart, mColon, mStop);
     if mSegment.Text = '' then
     begin
-      Fail('Leerer Platzhalter', mStart - 2);
+      Fail(TDebugDisplayError.EmptyPlaceholder, mStart - 2);
       Exit;
     end;
     Result.Segments := Result.Segments + [mSegment];
@@ -297,35 +299,39 @@ begin
   Result := Default(TDebugDisplayTemplate);
   Result.Source := AText;
   Result.ErrorOffset := -1;
-  mLiteral := '';
-  mIndex := 1;
-  while mIndex <= Length(AText) do
-  begin
-    if IsDoubled(AText, mIndex, '{') or IsDoubled(AText, mIndex, '}') then
+  mLiteral := TStringBuilder.Create;
+  try
+    mIndex := 1;
+    while mIndex <= Length(AText) do
     begin
-      mLiteral := mLiteral + AText[mIndex];
-      Inc(mIndex, 2);
-    end
-    else if AText[mIndex] = '}' then
-    begin
-      Fail('Schließende Klammer ohne öffnende', mIndex - 1);
-      Exit;
-    end
-    else if AText[mIndex] <> '{' then
-    begin
-      mLiteral := mLiteral + AText[mIndex];
-      Inc(mIndex);
-    end
-    else
-    begin
-      ReadPlaceholder(mOk);
-      if not mOk then
+      if IsDoubled(AText, mIndex, '{') or IsDoubled(AText, mIndex, '}') then
       begin
+        mLiteral.Append(AText[mIndex]);
+        Inc(mIndex, 2);
+      end
+      else if AText[mIndex] = '}' then
+      begin
+        Fail(TDebugDisplayError.StrayClose, mIndex - 1);
         Exit;
+      end
+      else if AText[mIndex] <> '{' then
+      begin
+        mLiteral.Append(AText[mIndex]);
+        Inc(mIndex);
+      end
+      else
+      begin
+        ReadPlaceholder(mOk);
+        if not mOk then
+        begin
+          Exit;
+        end;
       end;
     end;
+    FlushLiteral;
+  finally
+    mLiteral.Free;
   end;
-  FlushLiteral;
 end;
 
 { TDebugDisplaySource }
@@ -355,17 +361,17 @@ begin
     begin
       if (mIndex < Length(AText)) and (AText[mIndex + 1] = '''') then
       begin
-        AValue := AValue + '''';
         Inc(mIndex, 2);
         Continue;
       end;
       AEnd := mIndex + 1;
-      Exit(True);
+      Break;
     end;
-    AValue := AValue + AText[mIndex];
     Inc(mIndex);
   end;
-  Result := False;
+  // Im Stück stehen Anführungszeichen nur verdoppelt; ohne schließendes bleibt der Text bis zum Ende.
+  AValue := StringReplace(Copy(AText, AStart + 1, mIndex - AStart - 1), '''''', '''', [rfReplaceAll]);
+  Result := AEnd > AStart;
 end;
 
 /// <summary>Text hinter „//“ und dem Schlüssel AKey (ohne Groß-/Kleinschreibung); AStart 1-basiert dahinter.

@@ -29,7 +29,7 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   /// <summary>Gewählter Eintrag: Bereich für ein Element oder „Einstellungen dazu …“.</summary>
@@ -67,7 +67,7 @@ type
     property OnChoose: TProc<TAtlasHideChoice> read FOnChoose write FOnChoose;
   end;
 
-  TAtlasHideNoticeWindow = class(TAtlasPopupWindow)
+  TAtlasHideNoticeWindow = class(TAtlasLayoutPopupWindow)
   public const
     cVisibleMs = 6000;
     /// <summary>Abstand unter dem Element, logische Pixel.</summary>
@@ -81,12 +81,11 @@ type
     FTimer: TTimer;
     FOnUndo: TNotifyEvent;
     procedure TimerTick(Sender: TObject);
-    function Layout(ADraw: Boolean): TSize;
     /// <summary>„  ·  Rückgängig“ ab AX in der Zeile AY (nur mit FCanUndo); merkt FUndoRect.</summary>
     procedure LayoutUndo(ADraw: Boolean; var AX: Integer; AY, ATextHeight: Integer);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -112,10 +111,9 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;
@@ -245,47 +243,50 @@ end;
 
 class function TAtlasHideMenu.ElementName(AElement: TAtlasDrawnElement; APlural: Boolean): string;
 const
-  cSingular: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetrics,
-    TAtlasTextId.ElementCodeLensTests, TAtlasTextId.ElementCodeLensTestUnit, TAtlasTextId.ElementBlockEndLabels,
-    TAtlasTextId.ElementInlayHints, TAtlasTextId.ElementProblems, TAtlasTextId.ElementNotes,
-    TAtlasTextId.ElementBookmarks, TAtlasTextId.ElementPairColors, TAtlasTextId.ElementPairGuides,
-    TAtlasTextId.ElementPairOwners, TAtlasTextId.ElementInactiveDim, TAtlasTextId.ElementCompletionPreview,
-    TAtlasTextId.ElementUnusedUses, TAtlasTextId.ElementRecursion, TAtlasTextId.ElementInlineDiagnostics,
-    TAtlasTextId.ElementInlayTypeHints, TAtlasTextId.ElementGitGutter, TAtlasTextId.ElementGitBlame,
-    TAtlasTextId.ElementPatternPreview, TAtlasTextId.ElementGutterColumn, TAtlasTextId.ElementSelectionMatches,
-    TAtlasTextId.ElementInlayDefineHints, TAtlasTextId.ElementInlayCharHints, TAtlasTextId.ElementQuickBookmarks,
-    TAtlasTextId.ElementInlayMethodHints,
-    TAtlasTextId.ElementExitPoints, TAtlasTextId.ElementReassigned, TAtlasTextId.ElementLearnedSuggestions,
-    TAtlasTextId.ElementCodeLensCoveredBy, TAtlasTextId.ElementThreadsInSource,
-    TAtlasTextId.ElementCodeLensUntested,
-    TAtlasTextId.ElementTestCoverage, TAtlasTextId.ElementOwnershipHints,
-    TAtlasTextId.ElementMutationResults);
-  cPlural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
-    TAtlasTextId.ElementCodeLensTestsPlural, TAtlasTextId.ElementCodeLensTestUnitPlural,
-    TAtlasTextId.ElementBlockEndLabelsPlural, TAtlasTextId.ElementInlayHintsPlural,
-    TAtlasTextId.ElementProblemsPlural, TAtlasTextId.ElementNotesPlural, TAtlasTextId.ElementBookmarksPlural,
-    TAtlasTextId.ElementPairColorsPlural, TAtlasTextId.ElementPairGuidesPlural,
-    TAtlasTextId.ElementPairOwnersPlural, TAtlasTextId.ElementInactiveDimPlural,
-    TAtlasTextId.ElementCompletionPreviewPlural, TAtlasTextId.ElementUnusedUsesPlural,
-    TAtlasTextId.ElementRecursionPlural, TAtlasTextId.ElementInlineDiagnosticsPlural,
-    TAtlasTextId.ElementInlayTypeHintsPlural, TAtlasTextId.ElementGitGutterPlural, TAtlasTextId.ElementGitBlamePlural,
-    TAtlasTextId.ElementPatternPreviewPlural, TAtlasTextId.ElementGutterColumnPlural,
-    TAtlasTextId.ElementSelectionMatchesPlural, TAtlasTextId.ElementInlayDefineHintsPlural,
-    TAtlasTextId.ElementInlayCharHintsPlural, TAtlasTextId.ElementQuickBookmarksPlural,
-    TAtlasTextId.ElementInlayMethodHintsPlural,
-    TAtlasTextId.ElementExitPointsPlural, TAtlasTextId.ElementReassignedPlural,
-    TAtlasTextId.ElementLearnedSuggestionsPlural, TAtlasTextId.ElementCodeLensCoveredByPlural,
-    TAtlasTextId.ElementThreadsInSourcePlural, TAtlasTextId.ElementCodeLensUntestedPlural,
-    TAtlasTextId.ElementTestCoveragePlural, TAtlasTextId.ElementOwnershipHintsPlural,
-    TAtlasTextId.ElementMutationResultsPlural);
+  cSingular: array[TAtlasDrawnElement] of TAtlasEditorTextId = (TAtlasEditorTextId.ElementCodeLensMetrics,
+    TAtlasEditorTextId.ElementCodeLensTests, TAtlasEditorTextId.ElementCodeLensTestUnit,
+    TAtlasEditorTextId.ElementBlockEndLabels, TAtlasEditorTextId.ElementInlayHints, TAtlasEditorTextId.ElementProblems,
+    TAtlasEditorTextId.ElementNotes, TAtlasEditorTextId.ElementBookmarks, TAtlasEditorTextId.ElementPairColors,
+    TAtlasEditorTextId.ElementPairGuides, TAtlasEditorTextId.ElementPairOwners, TAtlasEditorTextId.ElementInactiveDim,
+    TAtlasEditorTextId.ElementCompletionPreview, TAtlasEditorTextId.ElementUnusedUses,
+    TAtlasEditorTextId.ElementRecursion, TAtlasEditorTextId.ElementInlineDiagnostics,
+    TAtlasEditorTextId.ElementInlayTypeHints, TAtlasEditorTextId.ElementGitGutter, TAtlasEditorTextId.ElementGitBlame,
+    TAtlasEditorTextId.ElementPatternPreview, TAtlasEditorTextId.ElementGutterColumn,
+    TAtlasEditorTextId.ElementSelectionMatches, TAtlasEditorTextId.ElementInlayDefineHints,
+    TAtlasEditorTextId.ElementInlayCharHints, TAtlasEditorTextId.ElementQuickBookmarks,
+    TAtlasEditorTextId.ElementInlayMethodHints, TAtlasEditorTextId.ElementExitPoints,
+    TAtlasEditorTextId.ElementReassigned, TAtlasEditorTextId.ElementLearnedSuggestions,
+    TAtlasEditorTextId.ElementCodeLensCoveredBy, TAtlasEditorTextId.ElementThreadsInSource,
+    TAtlasEditorTextId.ElementCodeLensUntested, TAtlasEditorTextId.ElementTestCoverage,
+    TAtlasEditorTextId.ElementOwnershipHints, TAtlasEditorTextId.ElementMutationResults,
+    TAtlasEditorTextId.ElementMovableUses);
+  cPlural: array[TAtlasDrawnElement] of TAtlasEditorTextId = (TAtlasEditorTextId.ElementCodeLensMetricsPlural,
+    TAtlasEditorTextId.ElementCodeLensTestsPlural, TAtlasEditorTextId.ElementCodeLensTestUnitPlural,
+    TAtlasEditorTextId.ElementBlockEndLabelsPlural, TAtlasEditorTextId.ElementInlayHintsPlural,
+    TAtlasEditorTextId.ElementProblemsPlural, TAtlasEditorTextId.ElementNotesPlural,
+    TAtlasEditorTextId.ElementBookmarksPlural, TAtlasEditorTextId.ElementPairColorsPlural,
+    TAtlasEditorTextId.ElementPairGuidesPlural, TAtlasEditorTextId.ElementPairOwnersPlural,
+    TAtlasEditorTextId.ElementInactiveDimPlural, TAtlasEditorTextId.ElementCompletionPreviewPlural,
+    TAtlasEditorTextId.ElementUnusedUsesPlural, TAtlasEditorTextId.ElementRecursionPlural,
+    TAtlasEditorTextId.ElementInlineDiagnosticsPlural, TAtlasEditorTextId.ElementInlayTypeHintsPlural,
+    TAtlasEditorTextId.ElementGitGutterPlural, TAtlasEditorTextId.ElementGitBlamePlural,
+    TAtlasEditorTextId.ElementPatternPreviewPlural, TAtlasEditorTextId.ElementGutterColumnPlural,
+    TAtlasEditorTextId.ElementSelectionMatchesPlural, TAtlasEditorTextId.ElementInlayDefineHintsPlural,
+    TAtlasEditorTextId.ElementInlayCharHintsPlural, TAtlasEditorTextId.ElementQuickBookmarksPlural,
+    TAtlasEditorTextId.ElementInlayMethodHintsPlural, TAtlasEditorTextId.ElementExitPointsPlural,
+    TAtlasEditorTextId.ElementReassignedPlural, TAtlasEditorTextId.ElementLearnedSuggestionsPlural,
+    TAtlasEditorTextId.ElementCodeLensCoveredByPlural, TAtlasEditorTextId.ElementThreadsInSourcePlural,
+    TAtlasEditorTextId.ElementCodeLensUntestedPlural, TAtlasEditorTextId.ElementTestCoveragePlural,
+    TAtlasEditorTextId.ElementOwnershipHintsPlural, TAtlasEditorTextId.ElementMutationResultsPlural,
+    TAtlasEditorTextId.ElementMovableUsesPlural);
 begin
   if APlural then
   begin
-    Result := TAtlasStrings.Text(cPlural[AElement]);
+    Result := TAtlasEditorStrings.Text(cPlural[AElement]);
   end
   else
   begin
-    Result := TAtlasStrings.Text(cSingular[AElement]);
+    Result := TAtlasEditorStrings.Text(cSingular[AElement]);
   end;
 end;
 
@@ -312,27 +313,6 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := cVisibleMs;
   FTimer.OnTimer := TimerTick;
-end;
-
-procedure TAtlasHideNoticeWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-/// <summary>Schreibt AText bei AX, AY in AColor (nur wenn ADraw) und rückt AX um seine Breite weiter.</summary>
-procedure PutText(ACanvas: TCanvas; ADraw: Boolean; var AX: Integer; AY: Integer; const AText: string;
-  AColor: TColor);
-begin
-  if ADraw then
-  begin
-    ACanvas.Font.Color := AColor;
-    ACanvas.TextOut(AX, AY, AText);
-  end;
-  Inc(AX, ACanvas.TextWidth(AText));
 end;
 
 procedure TAtlasHideNoticeWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -398,12 +378,12 @@ begin
   if FTitle <> '' then
   begin
     Canvas.Font.Style := [fsBold];
-    PutText(Canvas, ADraw, mX, mY, FTitle, ToColor(Colors.Text));
+    PutRun(ADraw, mX, mY, FTitle, Colors.Text);
     Canvas.Font.Style := [];
   end
   else
   begin
-    PutText(Canvas, ADraw, mX, mY, mDetail, ToColor(Colors.Text));
+    PutRun(ADraw, mX, mY, mDetail, Colors.Text);
     mDetail := '';
   end;
   LayoutUndo(ADraw, mX, mY, mTextHeight);
@@ -412,7 +392,7 @@ begin
   begin
     mY := mY + mTextHeight + Scale(cRowGap);
     mX := Scale(cPad);
-    PutText(Canvas, ADraw, mX, mY, mDetail, ToColor(Colors.Muted));
+    PutRun(ADraw, mX, mY, mDetail, Colors.Muted);
     mWidth := Max(mWidth, mX);
   end;
   if ADraw then
@@ -433,13 +413,13 @@ begin
     Exit;
   end;
   mUndo := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideUndo);
-  PutText(Canvas, ADraw, AX, AY, '  ·  ', ToColor(Colors.Muted));
+  PutRun(ADraw, AX, AY, '  ·  ', Colors.Muted);
   FUndoRect := Rect(AX, AY, AX + Canvas.TextWidth(mUndo), AY + ATextHeight);
   if ADraw and FUndoHot then
   begin
     Canvas.Font.Style := [fsUnderline];
   end;
-  PutText(Canvas, ADraw, AX, AY, mUndo, ToColor(Colors.Accent));
+  PutRun(ADraw, AX, AY, mUndo, Colors.Accent);
   Canvas.Font.Style := [];
 end;
 

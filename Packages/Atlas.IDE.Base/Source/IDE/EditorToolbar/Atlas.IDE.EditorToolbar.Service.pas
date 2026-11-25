@@ -41,7 +41,8 @@ uses
   System.SysUtils,
   Atlas.Core.Commands.Palette,
   Atlas.Core.EditorToolbar.Sections,
-  Atlas.UI.EditorToolbar.Customize;
+  Atlas.UI.EditorToolbar.Customize,
+  Atlas.ToolsApi.EditorBars.Host;
 
 type
   TAtlasIdeEditorToolbar = class
@@ -64,7 +65,7 @@ type
       Message: TProc<string>;
     end;
   private class var
-    FState: TObject;
+    FState: TAtlasEditorBarState;
     FHooks: THooks;
     class procedure Say(const AText: string); static;
   public
@@ -98,8 +99,8 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
@@ -108,10 +109,9 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.EditorToolbar.Bar,
-  Atlas.IDE.Foundation.EditorBarHost,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
@@ -123,7 +123,7 @@ const
   cSlowTicks = TAtlasToolbarPlan.cSlowTicks;
 
 type
-  TToolbarState = class
+  TToolbarState = class(TAtlasEditorBarState)
   private
     FTimer: TTimer;
     FHost: TAtlasEditorBarHost;
@@ -143,8 +143,8 @@ type
     FLastFile: string;
     FLastLine: Integer;
     procedure Tick(Sender: TObject);
-    function ToolbarOn: Boolean;
-    function CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
+    class function ToolbarOn: Boolean; static;
+    class function CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar; static;
     function CreateBar: TAtlasEditorToolbar;
     procedure Place(ABar: TAtlasEditorToolbar; AHost: TWinControl);
     procedure Track(const AView: IOTAEditView; const AFileName: string; ALine: Integer);
@@ -164,8 +164,8 @@ type
     constructor Create;
     destructor Destroy; override;
     /// <summary>Nach geänderten Einstellungen: Leisten neu anlegen (Position, Belegung), Befehle neu lesen.</summary>
-    procedure Reset;
-    procedure ApplyTheme;
+    procedure Reset; override;
+    procedure ApplyTheme; override;
     /// <summary>Abschnitte der Datei aus dem aktuellen Editortext.</summary>
     function SectionsOf(const AView: IOTAEditView; out AFileName: string): TAtlasUnitSections;
     property Points: TAtlasReturnPoints read FPoints;
@@ -270,7 +270,7 @@ begin
       Place(TAtlasEditorToolbar(ABar), AEditorParent);
     end);
   // Nur im Code-Editor; im Formular-Designer steht die Designer-Leiste (#1442).
-  FHost.ShowIn := TAtlasEditorBarView.Code;
+  FHost.Placement.ShowIn := TAtlasEditorBarView.Code;
   FPoints := TAtlasReturnPoints.Create;
   FLineCounts := TDictionary<string, Integer>.Create;
   FLastLine := -1;
@@ -322,12 +322,12 @@ begin
     end);
 end;
 
-function TToolbarState.ToolbarOn: Boolean;
+class function TToolbarState.ToolbarOn: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.EditorToolbar;
 end;
 
-function TToolbarState.CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
+class function TToolbarState.CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
 var
   mIndex: Integer;
 begin
@@ -349,7 +349,7 @@ var
 begin
   mBar := TAtlasEditorToolbar.Create(nil);
   mHost := FHost;
-  mBar.SetColors(TAtlasIdeStyle.BarColors);
+  mBar.SetColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
   mBar.Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
   mBar.MoreHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarMore);
   mBar.GearHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarCustomizeCommand);
@@ -735,7 +735,7 @@ begin
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
-      TAtlasEditorToolbar(ABar).SetColors(TAtlasIdeStyle.BarColors);
+      TAtlasEditorToolbar(ABar).SetColors(TAtlasIdeStyle.BarColors(TAtlasIdeSettings.Current.BreadcrumbsIdeColors));
     end);
 end;
 
@@ -780,18 +780,12 @@ end;
 
 class procedure TAtlasIdeEditorToolbar.ApplySettings;
 begin
-  if FState <> nil then
-  begin
-    State.Reset;
-  end;
+  TAtlasEditorBarState.ResetOf(FState);
 end;
 
 class procedure TAtlasIdeEditorToolbar.ThemeChanged;
 begin
-  if FState <> nil then
-  begin
-    State.ApplyTheme;
-  end;
+  TAtlasEditorBarState.ThemeOf(FState);
 end;
 
 class function TAtlasIdeEditorToolbar.Enabled: Boolean;

@@ -22,9 +22,9 @@ uses
   Vcl.Forms,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Monitor.Settings,
-  Atlas.Windows.Monitor.Adapters.System,
-  Shell.Bootstrap,
-  Shell.Monitor.MainForm;
+  Atlas.Windows.Monitor.System,
+  Core.Bootstrap,
+  Monitor.MainForm;
 
 const
   cMutexName = 'Local\AtlasMonitor';
@@ -54,7 +54,7 @@ var
   mGlobal: string;
 begin
   try
-    mGlobal := TShellBootstrap.LoadGlobalSettings(nil);
+    mGlobal := TCoreBootstrap.LoadGlobalSettings(nil);
   except
     // lsp-ignore: catch-all-without-raise -- unlesbare settings.json: Sprache von Windows
     on Exception do

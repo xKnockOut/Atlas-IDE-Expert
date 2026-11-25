@@ -172,7 +172,9 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Metrics.Report,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Arrays,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -223,39 +225,6 @@ const
 const
   cLineBreak = #10;
 
-function CompareNames(const ALeft, ARight: string): Integer;
-begin
-  Result := CompareText(ALeft, ARight);
-  if Result = 0 then
-  begin
-    Result := CompareStr(ALeft, ARight);
-  end;
-end;
-
-function SectionText(AInterface: Boolean): string;
-begin
-  if AInterface then
-  begin
-    Result := 'interface';
-  end
-  else
-  begin
-    Result := 'implementation';
-  end;
-end;
-
-function RoleText(ARole: TOverviewUnitRole): string;
-begin
-  case ARole of
-    TOverviewUnitRole.Foundation:
-      Result := 'foundation';
-    TOverviewUnitRole.Hub:
-      Result := 'hub';
-  else
-    Result := '';
-  end;
-end;
-
 { TSnapshotEdge }
 
 function TSnapshotEdge.Key: string;
@@ -282,17 +251,12 @@ end;
 { TArchitectureSnapshot }
 
 function TArchitectureSnapshot.IndexOf(const AName: string): Integer;
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(Units) do
-  begin
-    if SameText(Units[mIndex].Name, AName) then
+  Result := TTextArrays.IndexOfText<TSnapshotUnit>(Units, AName,
+    function(AUnit: TSnapshotUnit): string
     begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
+      Result := AUnit.Name;
+    end);
 end;
 
 function TArchitectureSnapshot.InterfaceCycleCount: Integer;
@@ -318,28 +282,16 @@ begin
   Result.Interface_ := AEdge.Section = TUsesSection.Interface_;
 end;
 
-function SubsystemOf(const AOverview: TArchitectureOverview; ASubsystem: Integer): string;
-begin
-  if (ASubsystem >= 0) and (ASubsystem < Length(AOverview.Subsystems)) then
-  begin
-    Result := AOverview.Subsystems[ASubsystem].Name;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
 function SnapshotUnitOf(const AOverview: TArchitectureOverview; const AItem: TOverviewUnit): TSnapshotUnit;
 begin
   Result := Default(TSnapshotUnit);
   Result.Name := AItem.Name;
   Result.FileName := AOverview.RelativePath(AItem.FileName);
-  Result.Subsystem := SubsystemOf(AOverview, AItem.Subsystem);
+  Result.Subsystem := TArchitectureAnalyzer.SubsystemName(AOverview, AItem.Subsystem);
   Result.Direct := AItem.Direct;
   Result.Total := AItem.Total;
   Result.Uses_ := AItem.Uses_;
-  Result.Role := RoleText(AItem.Role);
+  Result.Role := TArchitectureAnalyzer.RoleKey(AItem.Role);
   Result.Library_ := AItem.Library_;
 end;
 
@@ -381,7 +333,7 @@ function SnapshotOutlierOf(const AOverview: TArchitectureOverview; const AOutlie
 begin
   Result := Default(TSnapshotOutlier);
   Result.Unit_ := AOverview.Units[AOutlier.Unit_].Name;
-  Result.Suggested := SubsystemOf(AOverview, AOutlier.Suggested);
+  Result.Suggested := TArchitectureAnalyzer.SubsystemName(AOverview, AOutlier.Suggested);
   if AOutlier.Reason = TOverviewOutlierReason.Namespace then
   begin
     Result.Reason := 'namespace';
@@ -411,8 +363,8 @@ function SnapshotCrossLinkOf(const AOverview: TArchitectureOverview; const ALink
 begin
   Result := Default(TSnapshotCrossLink);
   Result.Edge := EdgeOf(AOverview, ALink.Edge);
-  Result.FromSubsystem := SubsystemOf(AOverview, ALink.FromSubsystem);
-  Result.ToSubsystem := SubsystemOf(AOverview, ALink.ToSubsystem);
+  Result.FromSubsystem := TArchitectureAnalyzer.SubsystemName(AOverview, ALink.FromSubsystem);
+  Result.ToSubsystem := TArchitectureAnalyzer.SubsystemName(AOverview, ALink.ToSubsystem);
   if ALink.Reason = TOverviewCrossReason.Rare then
   begin
     Result.Reason := 'rare';
@@ -474,10 +426,10 @@ end;
 
 function CompareEdges(const ALeft, ARight: TSnapshotEdge): Integer;
 begin
-  Result := CompareNames(ALeft.Source, ARight.Source);
+  Result := TTextNames.Compare(ALeft.Source, ARight.Source);
   if Result = 0 then
   begin
-    Result := CompareNames(ALeft.Target, ARight.Target);
+    Result := TTextNames.Compare(ALeft.Target, ARight.Target);
   end;
   // interface vor implementation.
   if Result = 0 then
@@ -524,7 +476,6 @@ begin
       mText := TEncoding.UTF8.GetString(mBytes);
     end;
   except
-    // lsp-ignore: catch-all-without-raise -- Fehler geht als AError an den Aufrufer
     on E: Exception do
     begin
       AError := cTexts[TSnapshotText.ArchitectureStateNotReadable].Fmt([AFileName]) + E.Message;
@@ -541,18 +492,6 @@ end;
 function Text(const AValue: string): string;
 begin
   Result := TMetricsReport.JsonString(AValue);
-end;
-
-function Bool(AValue: Boolean): string;
-begin
-  if AValue then
-  begin
-    Result := 'true';
-  end
-  else
-  begin
-    Result := 'false';
-  end;
 end;
 
 function Number(AValue: Double): string;
@@ -578,7 +517,7 @@ end;
 
 function EdgeJson(const AEdge: TSnapshotEdge): string;
 begin
-  Result := '[' + Text(AEdge.Source) + ', ' + Text(AEdge.Target) + ', ' + Text(SectionText(AEdge.Interface_)) + ']';
+  Result := '[' + Text(AEdge.Source) + ', ' + Text(AEdge.Target) + ', ' + Text(TTextNames.SectionKeyword(AEdge.Interface_)) + ']';
 end;
 
 /// <summary>Trenner vor dem Eintrag AIndex einer Liste: Komma ab dem zweiten, dann neue eingerückte Zeile.
@@ -599,7 +538,7 @@ begin
     .Append('"kind": ').Append(Text(TArchitectureSnapshots.cKind)).Append(',').Append(cLineBreak)
     .Append('"title": ').Append(Text(ASnapshot.Title)).Append(',').Append(cLineBreak)
     .Append('"scope": ').Append(Text(ASnapshot.Scope)).Append(',').Append(cLineBreak)
-    .Append('"includeLibrary": ').Append(Bool(ASnapshot.IncludeLibrary)).Append(',').Append(cLineBreak)
+    .Append('"includeLibrary": ').Append(TJsonText.Bool(ASnapshot.IncludeLibrary)).Append(',').Append(cLineBreak)
     .Append('"excludes": ').Append(Names(ASnapshot.Excludes)).Append(',').Append(cLineBreak)
     .Append('"grouping": {"resolution": ').Append(Number(ASnapshot.Grouping.Clamped.Resolution)).Append('},')
     .Append(cLineBreak)
@@ -629,7 +568,7 @@ begin
       .Append(', "total": ').Append(mItem.Total)
       .Append(', "uses": ').Append(mItem.Uses_)
       .Append(', "role": ').Append(Text(mItem.Role))
-      .Append(', "library": ').Append(Bool(mItem.Library_)).Append('}');
+      .Append(', "library": ').Append(TJsonText.Bool(mItem.Library_)).Append('}');
   end;
   ABuilder.Append(cLineBreak).Append('],').Append(cLineBreak).Append('"edges": [');
   for mIndex := 0 to High(ASnapshot.Edges) do
@@ -649,7 +588,7 @@ begin
     .Append(', "inner": ').Append(ASubsystem.Inner)
     .Append(', "outer": ').Append(ASubsystem.Outer)
     .Append(', "cohesion": ').Append(Number(ASubsystem.Cohesion))
-    .Append(', "isolated": ').Append(Bool(ASubsystem.Isolated));
+    .Append(', "isolated": ').Append(TJsonText.Bool(ASubsystem.Isolated));
   // Nur bei nachgeteilten Teilsystemen: Stände ohne Nachteilung bleiben wie vor #1364.
   if ASubsystem.Foundation then
   begin
@@ -698,7 +637,7 @@ begin
   begin
     mCycle := ASnapshot.Cycles[mIndex];
     Separate(ABuilder, mIndex);
-    ABuilder.Append('{"interfaceOnly": ').Append(Bool(mCycle.InterfaceOnly))
+    ABuilder.Append('{"interfaceOnly": ').Append(TJsonText.Bool(mCycle.InterfaceOnly))
       .Append(', "units": ').Append(Names(mCycle.Units))
       .Append(', "edges": [');
     for mInner := 0 to High(mCycle.Edges) do
@@ -726,7 +665,7 @@ begin
     Separate(ABuilder, mIndex);
     ABuilder.Append('{"source": ').Append(Text(mLink.Edge.Source))
       .Append(', "target": ').Append(Text(mLink.Edge.Target))
-      .Append(', "section": ').Append(Text(SectionText(mLink.Edge.Interface_)))
+      .Append(', "section": ').Append(Text(TTextNames.SectionKeyword(mLink.Edge.Interface_)))
       .Append(', "from": ').Append(Text(mLink.FromSubsystem))
       .Append(', "to": ').Append(Text(mLink.ToSubsystem))
       .Append(', "reason": ').Append(Text(mLink.Reason))
@@ -1259,11 +1198,7 @@ var
 begin
   ASnapshot := Default(TArchitectureSnapshot);
   AError := '';
-  try
-    mRoot := TJSONObject.ParseJSONValue(AText);
-  except
-    mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AText);
   try
     if not (mRoot is TJSONObject) then
     begin
@@ -1300,7 +1235,7 @@ begin
   TArray.Sort<TSnapshotUnit>(ASnapshot.Units, TComparer<TSnapshotUnit>.Construct(
     function(const ALeft, ARight: TSnapshotUnit): Integer
     begin
-      Result := CompareNames(ALeft.Name, ARight.Name);
+      Result := TTextNames.Compare(ALeft.Name, ARight.Name);
     end));
   TArray.Sort<TSnapshotEdge>(ASnapshot.Edges, TComparer<TSnapshotEdge>.Construct(
     function(const ALeft, ARight: TSnapshotEdge): Integer
@@ -1312,13 +1247,13 @@ begin
     TArray.Sort<string>(ASnapshot.Subsystems[mIndex].Units, TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer
       begin
-        Result := CompareNames(ALeft, ARight);
+        Result := TTextNames.Compare(ALeft, ARight);
       end));
   end;
   TArray.Sort<TSnapshotOutlier>(ASnapshot.Outliers, TComparer<TSnapshotOutlier>.Construct(
     function(const ALeft, ARight: TSnapshotOutlier): Integer
     begin
-      Result := CompareNames(ALeft.Unit_, ARight.Unit_);
+      Result := TTextNames.Compare(ALeft.Unit_, ARight.Unit_);
     end));
   TArray.Sort<TSnapshotCycle>(ASnapshot.Cycles, TComparer<TSnapshotCycle>.Construct(
     function(const ALeft, ARight: TSnapshotCycle): Integer

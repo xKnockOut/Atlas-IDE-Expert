@@ -58,7 +58,6 @@ type
     procedure CollectCall(ANode: TSyntaxNode);
     procedure Collect(ANode: TSyntaxNode);
     procedure CollectStatement(AStatement: TSyntaxNode);
-    function Path(ALine: Integer): TArray<TSyntaxNode>;
     function StatementAt(ALine: Integer; out ARoutine: TSyntaxNode): TSyntaxNode;
     procedure AddLocalsOf(ARoutine: TSyntaxNode);
     procedure AddScopedLocals(ARoutine: TSyntaxNode; ALine: Integer);
@@ -82,7 +81,10 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Lines,
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cStatementKinds = [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.IfStatement,
@@ -105,21 +107,6 @@ end;
 function Before(const A, B: TTextPosition): Boolean;
 begin
   Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
-end;
-
-/// <summary>Namen einer Deklaration „A,B“ einzeln.</summary>
-function NamesOf(ANode: TSyntaxNode): TArray<string>;
-var
-  mName: string;
-begin
-  Result := nil;
-  for mName in ANode.Name.Split([',']) do
-  begin
-    if Trim(mName) <> '' then
-    begin
-      Result := Result + [Trim(mName)];
-    end;
-  end;
 end;
 
 function IsNoValueWord(const AText: string): Boolean;
@@ -166,7 +153,7 @@ begin
   end;
   Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   // Mehrzeilig bzw. mit Leerraum: in eine Zeile, ohne Leerzeichen um Punkte und Klammern.
-  Result := Result.Replace(#13, ' ').Replace(#10, ' ').Replace(#9, ' ');
+  Result := TTextLines.NormalizeLineBreaks(Result, ' ').Replace(#9, ' ');
   while Pos('  ', Result) > 0 do
   begin
     Result := Result.Replace('  ', ' ');
@@ -256,7 +243,7 @@ begin
   begin
     for mIndex := 0 to mParams.ChildCount - 1 do
     begin
-      AddAll(NamesOf(mParams.Children[mIndex]));
+      AddAll(TTextNames.SplitList(mParams.Children[mIndex].Name));
     end;
   end;
   // Ergebnistyp direkt am Kopf: Funktion bzw. Operator.
@@ -275,7 +262,7 @@ begin
   begin
     if ASection.Children[mDecl].Kind = TSyntaxKind.VarDecl then
     begin
-      AddAll(NamesOf(ASection.Children[mDecl]));
+      AddAll(TTextNames.SplitList(ASection.Children[mDecl].Name));
     end;
   end;
 end;
@@ -367,36 +354,12 @@ begin
   // Schleifen- und Inline-Variablen tragen ihren Namen am Knoten.
   if AStatement.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.InlineVar] then
   begin
-    AddAll(NamesOf(AStatement));
+    AddAll(TTextNames.SplitList(AStatement.Name));
   end;
   // Nur die Ausdrücke der Anweisung selbst: Rümpfe und Zweige sind eigene Anweisungen.
   for mIndex := 0 to AStatement.ChildCount - 1 do
   begin
     Collect(AStatement.Children[mIndex]);
-  end;
-end;
-
-function TLspDebugVariables.Path(ALine: Integer): TArray<TSyntaxNode>;
-var
-  mNode, mNext: TSyntaxNode;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mNode := FTree.Root;
-  while mNode <> nil do
-  begin
-    Result := Result + [mNode];
-    // Reichen mehrere Kinder in die Zeile, gilt das letzte (wie bei „Warum bin ich hier?“).
-    mNext := nil;
-    for mIndex := mNode.ChildCount - 1 downto 0 do
-    begin
-      if Contains(mNode.Children[mIndex], ALine) then
-      begin
-        mNext := mNode.Children[mIndex];
-        Break;
-      end;
-    end;
-    mNode := mNext;
   end;
 end;
 
@@ -411,7 +374,7 @@ begin
   begin
     Exit;
   end;
-  mPath := Path(ALine);
+  mPath := TSyntaxNodes.LinePath(FTree.Root, ALine);
   for mIndex := High(mPath) downto 0 do
   begin
     if (Result = nil) and (mPath[mIndex].Kind in cStatementKinds) then
@@ -474,7 +437,7 @@ begin
         ((ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and Contains(ANode, ALine));
       if mScoped then
       begin
-        AddAll(NamesOf(ANode));
+        AddAll(TTextNames.SplitList(ANode.Name));
       end;
     end);
 end;

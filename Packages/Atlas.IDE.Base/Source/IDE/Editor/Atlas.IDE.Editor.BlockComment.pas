@@ -38,27 +38,14 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Editor.LineMove,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot;
-
-function EditPos(const ALines: TArray<string>; const APosition: TLspTextPosition; ATabWidth: Integer): TOTAEditPos;
-var
-  mLineText: string;
-begin
-  mLineText := '';
-  if (APosition.Line >= 0) and (APosition.Line < Length(ALines)) then
-  begin
-    mLineText := ALines[APosition.Line];
-  end;
-  Result.Line := APosition.Line + 1;
-  Result.Col := TLspSession.IndexToColumn(mLineText, APosition.Character, ATabWidth);
-end;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
+  Atlas.IDE.Foundation.Navigation;
 
 function PositionOf(const ALines: TArray<string>; ARow, AColumn, ATabWidth: Integer): TLspTextPosition;
 var
@@ -122,26 +109,20 @@ end;
 procedure WriteToggled(const ASource: TBlockCommentSource; const AToggled: TAtlasBlockCommentResult);
 var
   mView: IOTAEditView;
-  mStart, mOldLength: Integer;
-  mInsert: string;
 begin
   mView := ASource.View;
-  if TAtlasLineMover.Difference(ASource.Text, string.Join(ASource.LineBreak, AToggled.Lines), mStart, mOldLength,
-    mInsert) then
-  begin
-    TAtlasEditorSnapshots.ReplaceText(mView.Buffer, ASource.Text, mStart, mOldLength, mInsert);
-  end;
+  TAtlasEditorSnapshots.WriteDifference(mView.Buffer, ASource.Text, string.Join(ASource.LineBreak, AToggled.Lines));
   if ASource.HasSelection then
   begin
     mView.Block.Style := btNonInclusive;
-    mView.CursorPos := EditPos(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
+    mView.CursorPos := TAtlasIdeNavigation.EditPosOf(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
     mView.Block.BeginBlock;
-    mView.CursorPos := EditPos(AToggled.Lines, AToggled.SelectionEnd, ASource.TabWidth);
+    mView.CursorPos := TAtlasIdeNavigation.EditPosOf(AToggled.Lines, AToggled.SelectionEnd, ASource.TabWidth);
     mView.Block.EndBlock;
   end
   else
   begin
-    mView.CursorPos := EditPos(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
+    mView.CursorPos := TAtlasIdeNavigation.EditPosOf(AToggled.Lines, AToggled.SelectionStart, ASource.TabWidth);
   end;
   mView.MoveViewToCursor;
   mView.Paint;

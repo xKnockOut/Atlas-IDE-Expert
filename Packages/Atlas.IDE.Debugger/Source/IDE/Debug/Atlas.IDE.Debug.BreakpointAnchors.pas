@@ -29,7 +29,7 @@ uses
   Atlas.Core.Editor.MethodAnchor,
   Atlas.Core.Debug.BreakpointAnchors,
   Atlas.Core.Debug.BreakpointAnchorFlow,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   /// <summary>Ergebnis eines Durchlaufs: neue Anker, Verschiebungen, Verwaiste.</summary>
@@ -98,13 +98,14 @@ uses
   System.Hash,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Files.DataFile,
-  Atlas.IDE.Foundation.Files,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.BreakpointRules,
   Atlas.UI.Debug.BreakpointAnchors,
-  Atlas.UI.Debug.Breakpoints.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings,
+  Atlas.ToolsApi.Debugger.Services;
 
 /// <summary>Quelltext-Haltepunkte der IDE je Datei (Schlüssel: Dateiname wie in der IDE), Zeilen ab 0.</summary>
 function BreakpointsByFile: TDictionary<string, TArray<Integer>>;
@@ -115,7 +116,7 @@ var
   mLines: TArray<Integer>;
 begin
   Result := TDictionary<string, TArray<Integer>>.Create;
-  mServices := TAtlasIdeBreakpoints.Debugger;
+  mServices := TAtlasIdeDebugger.Services;
   if mServices = nil then
   begin
     Exit;

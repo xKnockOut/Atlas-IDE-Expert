@@ -14,9 +14,6 @@ type
   [TestFixture]
   TAtlasUpdateConsentTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure AsksOnceAndRunsFirstAnswer;
     [Test]
@@ -44,10 +41,9 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,
-  Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page,
   Atlas.UI.Settings.Page.TestSupport,
@@ -59,12 +55,6 @@ uses
   Atlas.UI.Settings.Page.Startup;
 
 { TAtlasUpdateConsentTests }
-
-procedure TAtlasUpdateConsentTests.WarmUpFirstUse;
-begin
-  AsksOnceAndRunsFirstAnswer;
-  SettingsPageShowsVersionAndSwitch;
-end;
 
 procedure TAtlasUpdateConsentTests.AsksOnceAndRunsFirstAnswer;
 var
@@ -84,11 +74,11 @@ begin
     begin
       Inc(mNo);
     end;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentTitle), mConsent.Caption);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText), mConsent.TextLabel.Caption);
+  Assert.AreEqual(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentTitle), mConsent.Caption);
+  Assert.AreEqual(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentText), mConsent.TextLabel.Caption);
   Assert.Contains(mConsent.TextLabel.Caption, 'IDE-Version');
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentYes), mConsent.YesButton.Caption);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.UpdatesConsentNo), mConsent.NoButton.Caption);
+  Assert.AreEqual(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentYes), mConsent.YesButton.Caption);
+  Assert.AreEqual(TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesConsentNo), mConsent.NoButton.Caption);
   // Nur die erste Antwort zählt; ausgeführt nach dem Schließen (das Fenster gibt sich selbst frei).
   mConsent.YesButton.Click;
   mConsent.NoButton.Click;
@@ -179,6 +169,14 @@ begin
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorUnexpected), TAtlasUpdateTexts.ErrorText('neu', ''),
     'unbekannter Code: unerwartet');
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorStart), TAtlasUpdateTexts.ErrorText('start', ''));
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorManifestSignature),
+    TAtlasUpdateTexts.ErrorText(TUpdateErrors.cManifestSignature, ''));
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorManifestUnsigned) + ' (HTTP 404)',
+    TAtlasUpdateTexts.ErrorText(TUpdateErrors.cManifestUnsigned, 'HTTP 404'));
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorSourceConfirm),
+    TAtlasUpdateTexts.ErrorText(TUpdateErrors.cSourceConfirm, ''));
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesErrorHost) + ' (example.org)',
+    TAtlasUpdateTexts.ErrorText(TUpdateErrors.cHost, 'example.org'));
 end;
 
 procedure TAtlasUpdateInstallUiTests.StageAndOutcomeTexts;
@@ -193,6 +191,12 @@ begin
   mStage.Phase := TUpdatePhase.Ready;
   mStage.AskSelection := True;
   Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesStageChoose), TAtlasUpdateTexts.StageText(mStage));
+  mStage.Phase := TUpdatePhase.Failed;
+  mStage.Error := TUpdateErrors.cSourceConfirm;
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesStageConfirmSource), TAtlasUpdateTexts.StageText(mStage));
+  mStage.Error := TUpdateErrors.cHash;
+  Assert.AreEqual(Txt(TAtlasUpdatesTextId.UpdatesStageFailed), TAtlasUpdateTexts.StageText(mStage));
+  mStage.Error := '';
   mOutcome := Default(TUpdateOutcome);
   mOutcome.Kind := TUpdateOutcomeKind.Installed;
   mOutcome.Version := '2.1.0';
@@ -204,6 +208,11 @@ begin
   mOutcome.Reason := TUpdateErrors.cLocked;
   Assert.IsTrue(TAtlasUpdateTexts.OutcomeText(mOutcome).Contains(Txt(TAtlasUpdatesTextId.UpdatesErrorLocked)));
   mOutcome.Added := nil;
+  // Hinweis bei unsignierter Versionsdatei in eigener Zeile, sonst die Meldung allein.
+  Assert.AreEqual('fertig' + sLineBreak + Txt(TAtlasUpdatesTextId.UpdatesWarningManifestUnsigned),
+    TAtlasUpdateTexts.WithWarning('fertig', TUpdateErrors.cManifestUnsigned));
+  Assert.AreEqual('fertig', TAtlasUpdateTexts.WithWarning('fertig', ''));
+  Assert.AreEqual('fertig', TAtlasUpdateTexts.WithWarning('fertig', 'unbekannt'));
 end;
 
 procedure TAtlasUpdateInstallUiTests.SelectionKeepsRequiredPackages;
@@ -215,7 +224,7 @@ begin
     Candidate('Atlas.IDE.Notes', False, False, True)));
   try
     mDialog.Fill;
-    Assert.AreEqual(3, mDialog.List.Items.Count);
+    Assert.AreEqual(3, Integer(mDialog.List.Items.Count));
     Assert.IsFalse(mDialog.List.ItemEnabled[0], 'Kern nicht abwählbar');
     Assert.AreEqual(Fmt(TAtlasUpdatesTextId.UpdatesSelectionNew, ['Atlas.IDE.Notes']), mDialog.List.Items[2]);
     mDialog.List.Checked[1] := False;

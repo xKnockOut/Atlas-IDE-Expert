@@ -45,7 +45,7 @@ uses
   Atlas.Core.Completion.Controller,
   Atlas.Core.Debug.DialogCompletion,
   Atlas.UI.Completion.Popup,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -127,7 +127,7 @@ type
     procedure Commit(const AItem: TAtlasCompletionItem);
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
     procedure HandleKey(AKey: Word);
-    procedure Say(const AText: string);
+    procedure LogLine(const AText: string);
     procedure LogDialog(AForm: TCustomForm);
   public
     destructor Destroy; override;
@@ -149,16 +149,23 @@ uses
   Winapi.Messages,
   Vcl.StdCtrls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Debug.CallStack,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Sources,
-  Atlas.Core.Debug.DialogInput;
+  Atlas.Core.Debug.DialogInput,
+  Atlas.Plugin.Calls.Optional,
+  Atlas.IDE.Debug.EvaluateStore;
+
+const
+  /// <summary>Name der Ablage im Protokoll (TAtlasDataFile).</summary>
+  cHistoryKind = 'Verlauf der Debug-Ausdrücke';
+
 
 type
   // FocusControl ist in TCustomLabel geschützt.
@@ -223,23 +230,6 @@ function HistoryFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
     TAtlasIdeDebugDialogCompletion.cHistoryFileName);
-end;
-
-function CurrentProject: string;
-var
-  mProject: IOTAProject;
-begin
-  // Beim Debuggen das gestartete Projekt, sonst das aktive.
-  Result := TAtlasIdeDebugSession.LaunchProject;
-  if Result <> '' then
-  begin
-    Exit;
-  end;
-  mProject := GetActiveProject;
-  if mProject <> nil then
-  begin
-    Result := mProject.FileName;
-  end;
 end;
 
 /// <summary>Label mit FocusControl = AControl; False ohne.</summary>
@@ -450,7 +440,7 @@ begin
   end;
   FLoaded := True;
   // Gesperrt: leer beginnen und die Datei nicht überschreiben; TAtlasDataFile protokolliert ohne Pfad.
-  FKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(HistoryFile, 'Verlauf der Debug-Ausdrücke',
+  FKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(HistoryFile, cHistoryKind,
     function(const AText: string): Boolean
     begin
       FLock.Acquire;
@@ -490,7 +480,7 @@ begin
   Load;
   FLock.Acquire;
   try
-    mChanged := FHistory.Add(CurrentProject, AExpression);
+    mChanged := FHistory.Add(TAtlasIdeEvaluateStore.CurrentProject, AExpression);
     mText := FHistory.ToText;
   finally
     FLock.Release;
@@ -503,7 +493,7 @@ begin
     TAtlasDataFile.Write(HistoryFile, mText);
   except
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Verlauf der Debug-Ausdrücke', E);
+      TAtlasDataFile.ReportNotWritten(cHistoryKind, E);
   end;
 end;
 
@@ -548,7 +538,7 @@ begin
       Result := FHistory.Items;
     end);
   FPopup := TAtlasCompletionPopup.Create(nil);
-  FController := TAtlasCompletionController.Create(FProviderRef, FPopup);
+  FController := TAtlasCompletionController.Create(FProviderRef, TAtlasCompletionViews.ViewOf(FPopup));
   FController.OnCommit :=
     procedure(const AItem: TAtlasCompletionItem)
     begin
@@ -775,7 +765,7 @@ begin
   mContext.Text := FText;
   mContext.Character := FCaret;
   mContext.Prefix := TAtlasExpressionEdit.PrefixAt(FText, FCaret);
-  FHistory.UseProject(CurrentProject);
+  FHistory.UseProject(TAtlasIdeEvaluateStore.CurrentProject);
   if AHistory then
   begin
     FHistory.Load;
@@ -802,7 +792,7 @@ begin
   FWordStart := FCaret - Length(mContext.Prefix);
   FPopup.Anchor := Anchor(FEdit, FWordStart, FText);
   // Ohne Ausdruck, Datei und Zeile: Das Diagnoselog soll weitergegeben werden können (#647).
-  Say(Format('Debug-Dialog: Vervollständigung (Verlauf %s, Präfix %d Zeichen)',
+  LogLine(Format('Debug-Dialog: Vervollständigung (Verlauf %s, Präfix %d Zeichen)',
     [BoolToStr(AHistory, True), Length(mContext.Prefix)]));
   if FController.Active and not AHistory then
   begin
@@ -882,18 +872,16 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugDialogCompletion.Say(const AText: string);
+procedure TAtlasIdeDebugDialogCompletion.LogLine(const AText: string);
 begin
-  if Assigned(FLog) then
-  begin
-    FLog(AText);
-  end;
+  TAtlasCalls.Send(FLog, AText);
 end;
 
 procedure TAtlasIdeDebugDialogCompletion.LogDialog(AForm: TCustomForm);
 var
-  mKey, mLabels: string;
+  mKey: string;
   mIndex: Integer;
+  mLabels: TStringBuilder;
 begin
   // Ohne Ausdrücke und Pfade: Klasse, Titel und Beschriftungen des Dialogs.
   mKey := AForm.ClassName + '|' + AForm.Caption;
@@ -902,15 +890,20 @@ begin
     Exit;
   end;
   FLogged.Add(mKey);
-  mLabels := '';
-  for mIndex := 0 to AForm.ComponentCount - 1 do
-  begin
-    if AForm.Components[mIndex] is TCustomLabel then
+  mLabels := TStringBuilder.Create;
+  try
+    for mIndex := 0 to AForm.ComponentCount - 1 do
     begin
-      mLabels := mLabels + ' [' + TLabelAccess(AForm.Components[mIndex]).Caption + ']';
+      if AForm.Components[mIndex] is TCustomLabel then
+      begin
+        mLabels.Append(' [').Append(TLabelAccess(AForm.Components[mIndex]).Caption).Append(']');
+      end;
     end;
+    LogLine(Format('Debug-Dialog erkannt: %s „%s“, Beschriftungen:%s', [AForm.ClassName, AForm.Caption,
+      mLabels.ToString]));
+  finally
+    mLabels.Free;
   end;
-  Say(Format('Debug-Dialog erkannt: %s „%s“, Beschriftungen:%s', [AForm.ClassName, AForm.Caption, mLabels]));
 end;
 
 class procedure TAtlasIdeDebugDialogCompletion.Start(const ASession: TAtlasDialogSessionFunc;

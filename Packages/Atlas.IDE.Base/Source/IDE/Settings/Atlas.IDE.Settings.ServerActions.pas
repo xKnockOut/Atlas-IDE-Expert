@@ -28,10 +28,10 @@ type
 implementation
 
 uses
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Settings.Strings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   // Exit-Code des Servers bei einem Fehler des Werkzeugs und sein Text in der Meldung.
@@ -50,6 +50,9 @@ end;
 
 class function TAtlasIdeServerActions.RunTool(const AArguments: string; ATimeoutMs: Cardinal;
   out AOutput: string): string;
+const
+  // Exit-Code des Werkzeugs bei einem Fehler
+  cToolErrorExit = 3;
 var
   mCall: TAtlasServerToolCall;
   mResult: TAtlasServerToolResult;
@@ -63,7 +66,7 @@ begin
   begin
     Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ServerPageToolFailed, [mResult.Error]);
   end
-  else if mResult.ExitCode = 3 then
+  else if mResult.ExitCode = cToolErrorExit then
   begin
     Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ServerPageToolFailed, [cToolErrorExitText]);
   end;

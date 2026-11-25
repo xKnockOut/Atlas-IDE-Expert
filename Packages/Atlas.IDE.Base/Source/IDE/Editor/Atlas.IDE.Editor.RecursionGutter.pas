@@ -6,7 +6,7 @@
 //   er atlas.server.recursion mit der Datei und der Tiefe
 //   (editor.recursionMarkers.depth), nur, wenn der Server ohnehin läuft, und
 //   merkt sich die Antwort je Datei, Textstand und Tiefe. Der Befehl läuft im
-//   Hintergrund (TAtlasLensPoll.AskAsync); vorher wartete der Hauptthread alle
+//   Hintergrund (TAtlasLensPoll.AskAsync); sonst wartete der Hauptthread alle
 //   250 ms bis zu 800 ms auf den Server.
 // - Symbol: ein Kreispfeil (↻) neben jeder Zeile mit einem Aufruf, der über
 //   höchstens „Tiefe“ Methoden derselben Unit zur aufrufenden zurückführt;
@@ -26,9 +26,9 @@ uses
   System.JSON,
   Vcl.Graphics,
   Vcl.ExtCtrls,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Recursion,
   Atlas.Core.Lsp.Session,
@@ -90,19 +90,21 @@ uses
   ToolsAPI,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorSettings,
+  Atlas.ToolsApi.Editor.Buffer;
 
 { TAtlasIdeRecursionGutter }
 
 constructor TAtlasIdeRecursionGutter.Create(const ASession: TAtlasRecursionSessionFunc;
   const ARun: TAtlasLensCommandProc);
+const
+  cTickMs = 250;
 begin
   inherited Create;
   FSession := ASession;
   FRun := ARun;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -127,7 +129,7 @@ end;
 
 function TAtlasIdeRecursionGutter.Wanted: Boolean;
 begin
-  Result := TAtlasIdeSettings.RecursionMarkersOn;
+  Result := TAtlasIdeEditorSettings.RecursionMarkersOn;
 end;
 
 procedure TAtlasIdeRecursionGutter.Track(const AFileName, AText: string; AOpened: Boolean);
@@ -163,6 +165,10 @@ end;
 
 procedure TAtlasIdeRecursionGutter.PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
   ABack: TAtlasColor);
+const
+  cArrowTone = 0.9;
+  cPenDivisor = 8;
+  cThirds = 3;
 var
   mSize, mLeft, mTop, mHead: Integer;
   mBox: TRect;
@@ -173,18 +179,18 @@ begin
   mTop := AIcon.Top + (AIcon.Height - mSize) div 2;
   mBox := TRect.Create(mLeft + 1, mTop + 1, mLeft + mSize - 1, mTop + mSize - 1);
   ACanvas.Brush.Style := bsClear;
-  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.9));
-  ACanvas.Pen.Width := Max(1, mSize div 8);
+  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, cArrowTone));
+  ACanvas.Pen.Width := Max(1, mSize div cPenDivisor);
   // Arc läuft gegen den Uhrzeigersinn vom Start- zum Endpunkt: von oben rechts über links bis oben.
-  ACanvas.Arc(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mBox.Right, mBox.Top + mBox.Height div 3,
+  ACanvas.Arc(mBox.Left, mBox.Top, mBox.Right, mBox.Bottom, mBox.Right, mBox.Top + mBox.Height div cThirds,
     mBox.Left + mBox.Width div 2, mBox.Top);
-  mHead := Max(2, mSize div 3);
+  mHead := Max(2, mSize div cThirds);
   ACanvas.Pen.Width := 1;
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := ACanvas.Pen.Color;
-  ACanvas.Polygon([Point(mBox.Right, mBox.Top + mBox.Height div 3 + 1),
-    Point(mBox.Right - mHead, mBox.Top + mBox.Height div 3 - mHead div 2),
-    Point(mBox.Right + 1, mBox.Top + mBox.Height div 3 - mHead)]);
+  ACanvas.Polygon([Point(mBox.Right, mBox.Top + mBox.Height div cThirds + 1),
+    Point(mBox.Right - mHead, mBox.Top + mBox.Height div cThirds - mHead div 2),
+    Point(mBox.Right + 1, mBox.Top + mBox.Height div cThirds - mHead)]);
 end;
 
 function TAtlasIdeRecursionGutter.TipText(const AFileName: string; ALine: Integer;
@@ -236,7 +242,7 @@ begin
     begin
       Exit;
     end;
-    mDepth := TAtlasIdeSettings.RecursionMarkersDepth;
+    mDepth := TAtlasIdeEditorSettings.RecursionMarkersDepth;
     // Andere Tiefe: der geholte Stand gilt nicht mehr.
     if (mDepth <> FFetchedDepth) and (FPoll.FetchedFile <> '') then
     begin

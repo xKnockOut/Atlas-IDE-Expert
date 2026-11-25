@@ -10,10 +10,12 @@ interface
 
 uses
   System.Classes,
+  System.UITypes,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Vcl.StdCtrls,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasDesignerDialog = class(TAtlasDialog)
@@ -26,7 +28,11 @@ type
     /// <summary>Neue Zeile unter allen bisherigen (alTop, Höhe nach Inhalt).</summary>
     function AddFlowRow: TFlowPanel;
     /// <summary>Beschriftung ACaption in AParent, auf Höhe des Texts eines Eingabefelds daneben.</summary>
-    procedure AddFlowLabel(AParent: TWinControl; const ACaption: string);
+    function AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
+    /// <summary>Breite eines Kontroll- oder Optionsfelds mit ACaption: Kästchen und Text.</summary>
+    function CheckWidth(const ACaption: string): Integer;
+    /// <summary>Knopf ACaption in AParent mit Ergebnis AResult, ausgerichtet nach AAlign mit Rand.</summary>
+    function AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult; AAlign: TAlign): TButton;
   public
     /// <summary>Leeren Dialog mit Titel ACaption, Innenbreite AWidth96 (logische Pixel) und Rahmen ABorder
     /// anlegen.</summary>
@@ -36,12 +42,11 @@ type
 
 implementation
 
-uses
-  Vcl.StdCtrls;
-
 const
   /// <summary>Abstand der Beschriftung nach oben, damit sie auf der Textzeile eines Eingabefelds steht.</summary>
   cLabelTop = 3;
+  /// <summary>Kästchen eines Kontroll- oder Optionsfelds samt Abstand zum Text, logische Pixel.</summary>
+  cCheckBox = 24;
 
 { TAtlasDesignerDialog }
 
@@ -77,15 +82,29 @@ begin
   Result.Parent := Self;
 end;
 
-procedure TAtlasDesignerDialog.AddFlowLabel(AParent: TWinControl; const ACaption: string);
-var
-  mLabel: TLabel;
+function TAtlasDesignerDialog.AddFlowLabel(AParent: TWinControl; const ACaption: string): TLabel;
 begin
-  mLabel := TLabel.Create(Self);
-  mLabel.Parent := AParent;
-  mLabel.Caption := ACaption;
-  mLabel.AlignWithMargins := True;
-  mLabel.Margins.SetBounds(0, ScaleValue(cLabelTop), Gap div 2, 0);
+  Result := TLabel.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(0, ScaleValue(cLabelTop), Gap div 2, 0);
+end;
+
+function TAtlasDesignerDialog.CheckWidth(const ACaption: string): Integer;
+begin
+  Result := Canvas.TextWidth(ACaption) + ScaleValue(cCheckBox);
+end;
+
+function TAtlasDesignerDialog.AddButton(AParent: TWinControl; const ACaption: string; AResult: TModalResult;
+  AAlign: TAlign): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.ModalResult := AResult;
+  Result.Align := AAlign;
+  Result.AlignWithMargins := True;
 end;
 
 end.

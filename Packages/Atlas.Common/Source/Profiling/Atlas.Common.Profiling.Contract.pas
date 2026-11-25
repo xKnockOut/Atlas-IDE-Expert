@@ -28,6 +28,8 @@ type
     MainModule: Integer;
     Stacks: TArray<TAtlasRawStack>;
     DurationMs: Int64;
+    /// <summary>Fehler, der die Abtastung vorzeitig beendet hat; '' ohne.</summary>
+    Error: string;
   end;
 
   /// <summary>Nimmt Proben eines laufenden Prozesses in einem eigenen Thread.</summary>

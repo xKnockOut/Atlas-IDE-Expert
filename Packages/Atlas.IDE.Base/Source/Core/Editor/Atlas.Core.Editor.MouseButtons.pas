@@ -20,6 +20,8 @@ type
   TAtlasMouseButtons = class
   public const
     cWmXButtonUp = $020C;
+    /// <summary>Verschiebung zum oberen Wort (HIWORD).</summary>
+    cHighWordShift = 16;
     cWmAppCommand = $0319;
     cXButton1 = 1;
     cXButton2 = 2;
@@ -28,22 +30,26 @@ type
     /// <summary>Gerätebits im oberen Wort von lParam (FAPPCOMMAND_MASK).</summary>
     cAppCommandDeviceMask = $F000;
   public
-    /// <summary>Richtung zur Nachricht AMessage mit AWParam/ALParam; None, wenn sie keine Verlaufstaste ist.</summary>
-    class function DirectionOf(AMessage: Cardinal; AWParam, ALParam: NativeInt): TAtlasNavDirection; static;
+    /// <summary>Richtung zur Nachricht AMessage mit AWParam/ALParam; None, wenn sie keine Verlaufstaste ist.
+    /// AWParam ist vorzeichenlos wie WPARAM, ALParam vorzeichenbehaftet wie LPARAM: Der Aufrufer reicht jede
+    /// Nachricht der IDE durch, auch mit gesetztem oberstem Bit.</summary>
+    class function DirectionOf(AMessage: Cardinal; AWParam: NativeUInt; ALParam: NativeInt): TAtlasNavDirection;
+      static;
   end;
 
 implementation
 
 { TAtlasMouseButtons }
 
-class function TAtlasMouseButtons.DirectionOf(AMessage: Cardinal; AWParam, ALParam: NativeInt): TAtlasNavDirection;
+class function TAtlasMouseButtons.DirectionOf(AMessage: Cardinal; AWParam: NativeUInt;
+  ALParam: NativeInt): TAtlasNavDirection;
 var
   mCode: Integer;
 begin
   Result := TAtlasNavDirection.None;
   if AMessage = cWmXButtonUp then
   begin
-    mCode := (AWParam shr 16) and $FFFF;
+    mCode := (AWParam shr cHighWordShift) and $FFFF;
     if mCode = cXButton1 then
     begin
       Result := TAtlasNavDirection.Back;
@@ -55,7 +61,7 @@ begin
   end
   else if AMessage = cWmAppCommand then
   begin
-    mCode := ((ALParam shr 16) and $FFFF) and not cAppCommandDeviceMask;
+    mCode := ((ALParam shr cHighWordShift) and $FFFF) and not cAppCommandDeviceMask;
     if mCode = cAppCommandBrowserBackward then
     begin
       Result := TAtlasNavDirection.Back;

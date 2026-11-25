@@ -45,7 +45,7 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Choices,
   Atlas.Core.Settings.Validation,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Auswahl für ein Feld (Pfad); leer = keine eigene Auswahl.</summary>
@@ -201,27 +201,20 @@ type
 
   TAtlasProjectSettingsDialogClass = class of TAtlasProjectSettingsDialog;
 
-  /// <summary>Dialogklasse mit Regel-Editor; das Modul Prüfregeln stellt sie bereit (#1755), der Aufrufer fragt
-  /// laufende Module bei jedem Öffnen. Ohne Modul gilt TAtlasProjectSettingsDialog.</summary>
-  IAtlasSettingsDialogProvider = interface
-    ['{C41D7E62-9B35-4F08-A2D7-5E8F13B9C604}']
-    function DialogClass: TAtlasProjectSettingsDialogClass;
-  end;
-
 implementation
 
 uses
   Atlas.Core.Settings.Schema,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Settings.PageNames,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.Text.Json;
 
 const
@@ -231,9 +224,50 @@ const
 const
   cGap = 8;
   cControlWidth = 320;
+  // Einrückung der Zeilen der Seite (logische Pixel).
+  cIndent = 2 * cGap;
   cRulesPath = 'rules';
   /// <summary>Data der Gruppenknoten ab hier; darunter der Index der Seite.</summary>
   cGroupBase = 10000;
+  /// <summary>Anfangsgröße des Dialogs (logische Pixel).</summary>
+  cDialogWidth = 960;
+  cDialogHeight = 660;
+  /// <summary>Knöpfe der Leiste unten: Oberkante und Höhe; Leiste: Höhe.</summary>
+  cButtonTop = 8;
+  cButtonHeight = 28;
+  cBottomHeight = 44;
+  /// <summary>Name der Datei in der Leiste unten: rechts neben „Datei öffnen“ (Breite cOpenFileWidth).</summary>
+  cFileLabelLeft = 170;
+  cFileLabelTop = 14;
+  cOpenFileWidth = 150;
+  /// <summary>Breite des Baums der Seiten links.</summary>
+  cPageTreeWidth = 190;
+  /// <summary>Zeile einer Einstellung: Höhe einer Textzeile, Breite des Namens und Abstand darunter, Abstand unter
+  /// einem Hinweis.</summary>
+  cLineHeight = 16;
+  cHeaderWidth = 400;
+  cHeaderStep = 20;
+  cNoteGap = 4;
+  /// <summary>Höhe eines Eingabefelds und der Knöpfe daneben.</summary>
+  cControlHeight = 24;
+  /// <summary>JSON-Feld: Höhe und Platz rechts daneben für Zustand und „Zurücksetzen“.</summary>
+  cJsonHeight = 120;
+  cJsonRightReserve = 300;
+  /// <summary>Feld für Listen (eine Zeile je Eintrag): Höhe.</summary>
+  cListMemoHeight = 72;
+  /// <summary>Knopf „…“ neben einem Dateipfad: Breite und Lücke zum Feld.</summary>
+  cBrowseWidth = 30;
+  cBrowseGap = 4;
+  /// <summary>Zustand neben dem Feld: Breite und Versatz nach unten (auf Höhe des Textes im Feld).</summary>
+  cStateWidth = 150;
+  cStateOffset = 4;
+  /// <summary>Breite des Knopfs „Zurücksetzen“.</summary>
+  cResetWidth = 140;
+  /// <summary>Höchstlänge geerbter und vorgegebener Werte im Zustand.</summary>
+  cValuePreviewLength = 60;
+  /// <summary>Ränder einer Zeile im Kasten zusammen: links 2 cGap, rechts 3 cGap (Platz für die Bildlaufleiste).
+  /// </summary>
+  cRowMargins = 5 * cGap;
 
 /// <summary>Gültiger JSON-Wert (auch Zahl oder String)?</summary>
 function IsJsonValue(const AText: string): Boolean;
@@ -278,7 +312,7 @@ function NewButton(AParent: TWinControl; const ACaption: string; ALeft, AWidth: 
 begin
   Result := TButton.Create(AParent.Owner);
   Result.Parent := AParent;
-  Result.SetBounds(ALeft, 8, AWidth, 28);
+  Result.SetBounds(ALeft, Result.ScaleValue(cButtonTop), AWidth, Result.ScaleValue(cButtonHeight));
   Result.Caption := ACaption;
 end;
 
@@ -329,8 +363,8 @@ begin
   FModel := AModel;
   Caption := DialogTitle(FModel.Global);
   BorderStyle := bsSizeable;
-  Width := ScaleValue(960);
-  Height := ScaleValue(660);
+  Width := ScaleValue(cDialogWidth);
+  Height := ScaleValue(cDialogHeight);
   FServerChecks := True;
   CreateButtons(AFileName);
   CreateHint;
@@ -367,23 +401,24 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := mBottom.ScaleValue(44);
+  mBottom.Height := mBottom.ScaleValue(cBottomHeight);
   mBottom.BevelOuter := bvNone;
   mFileLabel := TLabel.Create(Self);
   mFileLabel.Parent := mBottom;
-  mFileLabel.Left := mFileLabel.ScaleValue(170);
-  mFileLabel.Top := mFileLabel.ScaleValue(14);
+  mFileLabel.Left := mFileLabel.ScaleValue(cFileLabelLeft);
+  mFileLabel.Top := mFileLabel.ScaleValue(cFileLabelTop);
   mFileLabel.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsFile, [AFileName]);
-  mButton := NewButton(mBottom, OpenFileCaption(FModel.Global), cGap, 150);
+  mButton := NewButton(mBottom, OpenFileCaption(FModel.Global), ScaleValue(cGap), ScaleValue(cOpenFileWidth));
   mButton.OnClick := OpenClick;
   mButton := NewButton(mBottom, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsOk),
-    mBottom.Width - 2 * (cDialogButtonWidth + cGap),
-    cDialogButtonWidth);
+    mBottom.Width - 2 * ScaleValue(cDialogButtonWidth + cGap),
+    ScaleValue(cDialogButtonWidth));
   mButton.Anchors := [akTop, akRight];
   mButton.Default := True;
   mButton.OnClick := OkClick;
-  mButton := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel), mBottom.Width - (90 + cGap),
-    90);
+  mButton := NewButton(mBottom, TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel),
+    mBottom.Width - ScaleValue(cDialogButtonWidth + cGap),
+    ScaleValue(cDialogButtonWidth));
   mButton.Anchors := [akTop, akRight];
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
@@ -396,7 +431,7 @@ begin
   FHint.Parent := Self;
   FHint.Align := alTop;
   FHint.AlignWithMargins := True;
-  FHint.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FHint, clGrayText);
   FHint.Visible := False;
 end;
 
@@ -463,7 +498,7 @@ begin
   FPageTree := TTreeView.Create(Self);
   FPageTree.Parent := Self;
   FPageTree.Align := alLeft;
-  FPageTree.Width := FPageTree.ScaleValue(190);
+  FPageTree.Width := FPageTree.ScaleValue(cPageTreeWidth);
   FPageTree.ReadOnly := True;
   FPageTree.HideSelection := False;
   FPageTree.ShowLines := False;
@@ -617,6 +652,8 @@ type
     Top: Integer;
     Width_: Integer;
     Control: TControl;
+    /// <summary>AValue (logische Pixel) in Gerätepixeln der Seite; Top und Width_ sind Gerätepixel.</summary>
+    function Px(AValue: Integer): Integer;
     procedure Header;
     procedure Note(const AText: string; AGray: Boolean);
     procedure Notes;
@@ -636,13 +673,18 @@ type
 
 { TSettingsFieldRow }
 
+function TSettingsFieldRow.Px(AValue: Integer): Integer;
+begin
+  Result := Box.ScaleValue(AValue);
+end;
+
 procedure TSettingsFieldRow.Header;
 var
   mName: TLabel;
 begin
   mName := TLabel.Create(Box);
   mName.Parent := Box;
-  mName.SetBounds(cGap * 2, Top, 400, 16);
+  mName.SetBounds(Px(cIndent), Top, Px(cHeaderWidth), Px(cLineHeight));
   mName.Font.Style := [fsBold];
   mName.Caption := Field.Path;
   if Field.Experimental then
@@ -650,7 +692,7 @@ begin
     mName.Caption := mName.Caption + '  [' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalTag) +
       ']';
   end;
-  Inc(Top, 20);
+  Inc(Top, Px(cHeaderStep));
 end;
 
 procedure TSettingsFieldRow.Note(const AText: string; AGray: Boolean);
@@ -660,9 +702,9 @@ begin
   mNote := Dialog.AddLabel(AText, Top);
   if AGray then
   begin
-    mNote.Font.Color := clGrayText;
+    TAtlasUiTheme.UseFontColor(mNote, clGrayText);
   end;
-  Inc(Top, mNote.Height + 4);
+  Inc(Top, mNote.Height + Px(cNoteGap));
 end;
 
 procedure TSettingsFieldRow.Notes;
@@ -689,14 +731,14 @@ begin
   Note(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsJsonHint), True);
   mMemo := TMemo.Create(Box);
   mMemo.Parent := Box;
-  mMemo.Height := mMemo.ScaleValue(120);
+  mMemo.Height := mMemo.ScaleValue(cJsonHeight);
   mMemo.ScrollBars := ssBoth;
   mMemo.WordWrap := False;
   mMemo.Font.Name := 'Consolas';
   mMemo.Text := Dialog.FRaw[Index];
   mMemo.OnChange := Dialog.JsonChange;
   Control := mMemo;
-  Width_ := Max(cControlWidth, Box.ClientWidth - cGap * 5 - 300);
+  Width_ := Max(Px(cControlWidth), Box.ClientWidth - Px(cRowMargins + cJsonRightReserve));
 end;
 
 function TSettingsFieldRow.NewCheck: TControl;
@@ -767,10 +809,10 @@ var
   mBrowse: TButton;
 begin
   Dialog.FFileEdits[Index] := AEdit;
-  Width_ := cControlWidth - 34;
+  Width_ := Px(cControlWidth - cBrowseWidth - cBrowseGap);
   mBrowse := TButton.Create(Box);
   mBrowse.Parent := Box;
-  mBrowse.SetBounds(cGap * 2 + cControlWidth - 30, Top, 30, 24);
+  mBrowse.SetBounds(Px(cIndent + cControlWidth - cBrowseWidth), Top, Px(cBrowseWidth), Px(cControlHeight));
   mBrowse.Caption := '…';
   mBrowse.Tag := Index;
   mBrowse.OnClick := Dialog.BrowseClick;
@@ -821,7 +863,7 @@ var
 begin
   mMemo := TMemo.Create(Box);
   mMemo.Parent := Box;
-  mMemo.Height := mMemo.ScaleValue(72);
+  mMemo.Height := mMemo.ScaleValue(cListMemoHeight);
   mMemo.ScrollBars := ssVertical;
   AddJsonStrings(mMemo.Lines, Dialog.FModel.Effective(Index));
   mMemo.OnChange := Dialog.MemoChange;
@@ -856,19 +898,20 @@ begin
   if Control <> nil then
   begin
     Control.Tag := Index;
-    Control.SetBounds(cGap * 2, Top, Width_, Control.Height);
-    mState.SetBounds(cGap * 2 + Width_ + cGap, Top + 4, 150, 16);
+    Control.SetBounds(Px(cIndent), Top, Width_, Control.Height);
+    mState.SetBounds(Px(cIndent) + Width_ + Px(cGap), Top + Px(cStateOffset), Px(cStateWidth), Px(cLineHeight));
   end
   else
   begin
-    mState.SetBounds(cGap * 2, Top, 150, 16);
+    mState.SetBounds(Px(cIndent), Top, Px(cStateWidth), Px(cLineHeight));
   end;
-  mState.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mState, clGrayText);
   Dialog.FStates[Index] := mState;
   // Eine Ebene je Datei: Ohne den Schlüssel gilt immer der Standard.
   mReset := TButton.Create(Box);
   mReset.Parent := Box;
-  mReset.SetBounds(mState.Left + 150 + cGap, mState.Top - 4, 140, 24);
+  mReset.SetBounds(mState.Left + Px(cStateWidth + cGap), mState.Top - Px(cStateOffset), Px(cResetWidth),
+    Px(cControlHeight));
   mReset.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProjectSettingsResetDefault);
   mReset.Tag := Index;
   mReset.OnClick := Dialog.ResetClick;
@@ -883,7 +926,7 @@ begin
   Index := AIndex;
   Field := ADialog.FModel.Fields[AIndex];
   Top := ATop;
-  Width_ := cControlWidth;
+  Width_ := Px(cControlWidth);
   Control := nil;
   Header;
   Notes;
@@ -901,10 +944,10 @@ begin
     ValueControl;
   end;
   StateAndReset;
-  Result := Top + 24 + cGap * 2;
+  Result := Top + Px(cControlHeight + cIndent);
   if Control <> nil then
   begin
-    Result := Top + Control.Height + cGap * 2;
+    Result := Top + Control.Height + Px(cIndent);
   end;
 end;
 
@@ -947,7 +990,7 @@ begin
   ClearBox;
   FCurrentPage := APage;
   FCurrentGroup := -1;
-  mTop := cGap;
+  mTop := FBox.ScaleValue(cGap);
   for mIndex := 0 to FModel.Count - 1 do
   begin
     if SameText(FModel.Fields[mIndex].Page, FPages[APage]) then
@@ -1158,8 +1201,7 @@ begin
   // Mit seFont übergeht der Stil Font.Color: ungültiger Text zeichnet seine Farbe selbst.
   if FRawValid[mIndex] then
   begin
-    TMemo(Sender).StyleElements := TMemo(Sender).StyleElements + [seFont];
-    TMemo(Sender).Font.Color := clWindowText;
+    TAtlasUiTheme.UseFontColor(TMemo(Sender), clDefault);
   end
   else
   begin
@@ -1222,7 +1264,8 @@ begin
   Result := TAtlasWrapLabel.Create(FBox);
   Result.Parent := FBox;
   Result.AutoSize := True;
-  Result.SetBounds(cGap * 2, ATop, FBox.ClientWidth - cGap * 5, 16);
+  Result.SetBounds(FBox.ScaleValue(cIndent), ATop, FBox.ClientWidth - FBox.ScaleValue(cRowMargins),
+    FBox.ScaleValue(cLineHeight));
   Result.Caption := AText;
 end;
 
@@ -1262,13 +1305,13 @@ begin
       else
       begin
         mText := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsInherited,
-          [Copy(TAtlasSettingsSchema.Display(FModel.Inherited_(AIndex)), 1, 60)]);
+          [Copy(TAtlasSettingsSchema.Display(FModel.Inherited_(AIndex)), 1, cValuePreviewLength)]);
       end;
   else
     if FModel.Fields[AIndex].DefaultJson <> '' then
     begin
       mText := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.ProjectSettingsDefault,
-        [Copy(TAtlasSettingsSchema.Display(FModel.Fields[AIndex].DefaultJson), 1, 60)]);
+        [Copy(TAtlasSettingsSchema.Display(FModel.Fields[AIndex].DefaultJson), 1, cValuePreviewLength)]);
     end
     else
     begin

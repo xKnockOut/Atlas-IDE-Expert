@@ -36,9 +36,6 @@ type
     function Complete(const AText: string): TJSONObject; overload;
     function Complete(const AText, ATrigger, AToken: string): TJSONObject; overload;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -211,22 +208,6 @@ begin
     Result := mResponse.GetValue('result').Clone as TJSONObject;
   finally
     mResponse.Free;
-  end;
-end;
-
-procedure TLspCompletionHandleTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    DataNameInStringIsExclusive;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    PartialSendsEnumsThenStages;
-  finally
-    TearDown;
   end;
 end;
 

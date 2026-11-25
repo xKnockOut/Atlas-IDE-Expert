@@ -24,7 +24,7 @@
 // textDocument/diagnostic hat Vorrang: Während es rechnet, beginnt die
 // Projektprüfung keine neue Datei.
 //
-// Laufzeit (Diagnoselog 15.10.2026): Die Prüfregeln fragen vor jeder Regel das
+// Laufzeit: Die Prüfregeln fragen vor jeder Regel das
 // Abbruchsignal der Anfrage. Ein Zeitlimit, $/cancelRequest oder eine Änderung
 // des Dokuments (ContentModified) beendet die Prüfung, statt sie bis zu vier
 // Minuten weiterlaufen zu lassen. Fragen mehrere Anfragen dieselbe Datei im
@@ -240,7 +240,7 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.CompactJson,
   Atlas.Common.Diagnostics.RequestScope,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.TextDocument,
   Atlas.Common.Localization.Texts;
@@ -511,7 +511,7 @@ end;
 procedure TLspPullDiagnostics.FilesChanged(const AFiles: TArray<string>);
 begin
   NextGeneration;
-  // Nur diese Dateien (#1247): Früher veralteten nach jedem Build die Befunde aller Units.
+  // Nur diese Dateien (#1247), sonst veralten nach jedem Build die Befunde aller Units.
   FCheck.Affected(AFiles, False);
 end;
 
@@ -709,7 +709,6 @@ begin
         mItems.Free;
       end;
     except
-      // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Hintergrundjobs; AJob.Fail meldet
       on E: Exception do
       begin
         AJob.Fail(E);
@@ -929,8 +928,8 @@ begin
   end;
 end;
 
-/// <summary>Befunde gebündelt ausliefern: Solange der Lauf rechnet, folgen gleich weitere. Früher kam jede Unit
-/// einzeln, der Client fragte sofort neu, und das Plugin baute seine Ansicht je Unit neu auf.</summary>
+/// <summary>Befunde gebündelt ausliefern: Solange der Lauf rechnet, folgen gleich weitere. Käme jede Unit
+/// einzeln, fragte der Client sofort neu, und das Plugin baute seine Ansicht je Unit neu auf.</summary>
 function ReadyToSend(ACheck: TLspWorkspaceCheck; AItems: TJSONArray; const AClock: TStopwatch): Boolean;
 begin
   Result := (AItems.Count > 0) and ((AClock.ElapsedMilliseconds >= TLspPullDiagnostics.cBatchMs) or

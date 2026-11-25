@@ -82,6 +82,7 @@ implementation
 
 uses
   System.IOUtils,
+  Atlas.Text.Locked,
   Atlas.Common.Documents.FileEncoding;
 
 { TPackageCompiledFiles }
@@ -140,14 +141,16 @@ end;
 
 class function TPackageCompiledFiles.Bytes: Int64;
 var
-  mEntry: TEntry;
+  mPair: TPair<string, TEntry>;
 begin
   Result := 0;
   TMonitor.Enter(FLock);
   try
-    for mEntry in FFiles.Values do
+    // Über die Paare statt über Values: Values legt beim ersten Aufruf eine Sammlung an, die das Wörterbuch bis
+    // zu seiner Freigabe behält.
+    for mPair in FFiles do
     begin
-      Inc(Result, Length(mEntry.Data));
+      Inc(Result, Length(mPair.Value.Data));
     end;
   finally
     TMonitor.Exit(FLock);
@@ -171,7 +174,8 @@ begin
   Result :=
     function(const AFileName: string; out AData: TBytes): Boolean
     begin
-      // Übersetzte Packages geteilt über alle Locatoren (Speicher, Rückmeldung 01.11.2026).
+      // Übersetzte Packages geteilt über alle Locatoren: Jeder Arbeitsbereich hat einen eigenen,
+      // dieselbe .dcp liegt nur einmal im Speicher.
       if SameText(ExtractFileExt(AFileName), '.dcp') then
       begin
         Exit(TPackageCompiledFiles.Read(AFileName, AData));
@@ -459,7 +463,7 @@ begin
 end;
 
 initialization
-  TPackageCompiledFiles.FLock := TObject.Create;
+  TPackageCompiledFiles.FLock := TAtlasSharedLock.New;
   TPackageCompiledFiles.FFiles := TDictionary<string, TPackageCompiledFiles.TEntry>.Create;
 
 finalization

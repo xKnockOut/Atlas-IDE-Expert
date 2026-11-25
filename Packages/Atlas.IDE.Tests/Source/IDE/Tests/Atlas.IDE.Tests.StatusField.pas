@@ -74,14 +74,15 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Text.TestResults,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Projects,
-  Atlas.UI.Tests.Strings;
+  Atlas.UI.Tests.Strings,
+  Atlas.ToolsApi.Files.Service;
 
 type
 {$SCOPEDENUMS ON}
@@ -128,16 +129,6 @@ begin
   if (mView <> nil) and (mView.Buffer <> nil) then
   begin
     Result := mView.Buffer.FileName;
-  end;
-end;
-
-/// <summary>Datei des aktiven Projekts; '' ohne.</summary>
-function ActiveProjectFile: string;
-begin
-  Result := '';
-  if GetActiveProject <> nil then
-  begin
-    Result := GetActiveProject.FileName;
   end;
 end;
 
@@ -210,7 +201,7 @@ var
   mFound: TArray<IOTAProject>;
 begin
   mFile := TopFileName;
-  mFor := AnsiLowerCase(mFile + '|' + ActiveProjectFile);
+  mFor := AnsiLowerCase(mFile + '|' + TAtlasIdeFiles.ActiveProjectFile);
   if mFor = FResolvedFor then
   begin
     Exit;
@@ -304,13 +295,8 @@ begin
 end;
 
 procedure TAtlasIdeTestStatusField.RunAll;
-var
-  mReason: string;
 begin
-  if (FProject <> '') and not FTests.RunProject(FProject, mReason) and (mReason <> '') then
-  begin
-    FTests.Say(mReason);
-  end;
+  FTests.RunProjectOrSay(FProject);
 end;
 
 procedure TAtlasIdeTestStatusField.RunFailed;
@@ -330,7 +316,7 @@ begin
     mNames := mNames + [mCase.FullName];
     if mFile = '' then
     begin
-      mFile := TAtlasIdeTests.UnitFileOf(FProject, mCase.UnitName);
+      mFile := TAtlasIdeTestProjects.UnitFileOf(FProject, mCase.UnitName);
     end;
   end;
   if (Length(mNames) = 0) or (mFile = '') then

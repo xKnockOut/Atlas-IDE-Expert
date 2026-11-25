@@ -9,65 +9,35 @@ interface
 
 uses
   System.Classes,
-  Vcl.StdCtrls;
+  Atlas.Vcl.Options.ChoiceBox;
 
 type
   /// <summary>Klappliste, deren Einträge erst mit Fenster in die Liste kommen (CreateWnd); Values und Choice gelten
   /// auch ohne Fenster.</summary>
-  TAtlasNewIssueBox = class(TComboBox)
+  TAtlasNewIssueBox = class(TAtlasHeldChoiceBox)
   private
     FValues: TArray<string>;
-    FChoice: Integer;
-    function GetChoice: Integer;
-    procedure SetChoice(AValue: Integer);
   protected
     procedure CreateWnd; override;
     procedure DestroyWnd; override;
   public
-    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     /// <summary>Einträge setzen; ein eingetippter Text bleibt.</summary>
     procedure SetValues(const AValues: TArray<string>);
     property Values: TArray<string> read FValues;
-    /// <summary>Gewählter Eintrag (csDropDownList), -1 = keiner.</summary>
-    property Choice: Integer read GetChoice write SetChoice;
   end;
 
 implementation
 
-{ TAtlasNewIssueBox }
+uses
+  Vcl.StdCtrls;
 
-constructor TAtlasNewIssueBox.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  FChoice := -1;
-end;
+{ TAtlasNewIssueBox }
 
 destructor TAtlasNewIssueBox.Destroy;
 begin
   FValues := nil;
   inherited Destroy;
-end;
-
-function TAtlasNewIssueBox.GetChoice: Integer;
-begin
-  if HandleAllocated then
-  begin
-    Result := ItemIndex;
-  end
-  else
-  begin
-    Result := FChoice;
-  end;
-end;
-
-procedure TAtlasNewIssueBox.SetChoice(AValue: Integer);
-begin
-  FChoice := AValue;
-  if HandleAllocated then
-  begin
-    ItemIndex := AValue;
-  end;
 end;
 
 procedure TAtlasNewIssueBox.CreateWnd;

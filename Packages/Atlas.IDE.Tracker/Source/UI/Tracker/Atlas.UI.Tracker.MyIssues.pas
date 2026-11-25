@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.MyIssues;
 
-// Bereich „Meine Issues“ der Willkommensseite (#765, Mockup #ws12), ohne
+// Bereich „Meine Issues“ der Willkommensseite (#765), ohne
 // Open Tools API. Selbst gezeichnet, je Issue zwei Zeilen im Raster:
 //   #753     Atlas-Bereiche und Layout der Willkommens…   [Beginnen]
 //            (plugin) (welcome) (PR #760 · CI grün)
@@ -52,57 +52,14 @@ uses
   Vcl.Graphics,
   Vcl.StdCtrls,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.Tracker.Reopened,
-  Atlas.UI.Style.Canvas,
+  Atlas.Vcl.Theme.Canvas,
   Atlas.UI.Tracker.MyIssues.Text,
   Atlas.UI.Tracker.ProjectPicker,
-  Atlas.UI.Tracker.TileView;
+  Atlas.UI.Tracker.TileView,
+  Atlas.Core.Tracker.Contract.MyIssues,
+  Atlas.UI.Tracker.Contract.MyIssues;
 
 type
-  /// <summary>Aktionen an einer Zeile: an einem wieder geöffneten Issue (#2127) Weiterarbeiten auf dem alten
-  /// Branch, Marke ausblenden, Grund in der Vorschau am Kommentar zeigen; „Prüfen“ (#2126).</summary>
-  // Mit Gültigkeitsbereich: Ein Wert Continue verdeckte sonst in der ganzen Unit die Anweisung Continue (E2014).
-  {$SCOPEDENUMS ON}
-  TAtlasIssueAction = (Continue, Dismiss, Reason, Review);
-  {$SCOPEDENUMS OFF}
-
-  IAtlasIssuesSource = interface
-    ['{8D3F6A21-5C4B-4E97-A1D8-2B7E9C05F364}']
-    function View: TAtlasIssuesView;
-    /// <summary>Der Bereich wird gezeigt: bei Bedarf den Tracker im Hintergrund fragen.</summary>
-    procedure Shown;
-    /// <summary>„Beginnen“ mit AMode (Branch anlegen oder nur merken).</summary>
-    procedure Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
-    procedure Browse(const AIssue: TAtlasTrackerIssue);
-    /// <summary>Issue im Fenster „Atlas-Issue“ zeigen (#1264).</summary>
-    procedure Preview(const AIssue: TAtlasTrackerIssue);
-    procedure BrowsePullRequest(const AIssue: TAtlasTrackerIssue);
-    /// <summary>Tracker jetzt abfragen (ohne auf den Abstand zu warten).</summary>
-    procedure QueryNow;
-    /// <summary>„Zugang zum Issue-Tracker hinterlegen …“.</summary>
-    procedure Credentials;
-    /// <summary>Befehl für den Zugang eingeschaltet (Einstellung TrackerLogin).</summary>
-    function CanEnterCredentials: Boolean;
-    /// <summary>Aktuelles Issue beenden (mit Rückfrage).</summary>
-    procedure EndActive;
-    /// <summary>„zuordnen …“ (#1261): Seite Issue-Tracker mit einer Zeile für das Projekt öffnen.</summary>
-    procedure AssignProject;
-    /// <summary>Abfrage AName für das Projekt wählen und gleich abfragen (#1262).</summary>
-    procedure SelectQuery(const AName: string);
-    /// <summary>„Abfragen bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
-    procedure EditQueries;
-    /// <summary>Filter der Sprint-Kachel aufheben (#1277): wieder alle meine Issues.</summary>
-    procedure ClearFilter;
-    /// <summary>Tracker-Projekt wählen (#1927): '' = automatisch, "*" = alle (#1928), sonst
-    /// „projekt@verbindung“.</summary>
-    procedure SelectProject(const AKey: string);
-    /// <summary>„Tracker-Projekte bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
-    procedure EditProjects;
-    /// <summary>Aktion AAction an der Zeile AIssue (wieder geöffnet #2127, „Prüfen“ #2126).</summary>
-    procedure IssueAction(const AIssue: TAtlasTrackerIssue; AAction: TAtlasIssueAction);
-  end;
-
   TAtlasTrackerIssuesView = class;
 
   /// <summary>Zeile der Chips beim Zeichnen: Zeichenfläche, nächste linke Kante, Oberkante, rechte Grenze.</summary>
@@ -129,7 +86,6 @@ type
     /// <summary>Zeile „Gefiltert: … · alle zeigen“ (#1277); leer ohne Filter.</summary>
     FFilterRect: TRect;
     function Scaled(AValue: Integer): Integer;
-    function Color(ASystemColor: TColor): TColor;
     function TextArea(ATop, AHeight: Integer): TRect;
     function LinkArea(ACanvas: TCanvas; ATop: Integer; const AText: string): TRect;
     function ChipWidth(ACanvas: TCanvas; const AText: string): Integer;
@@ -315,14 +271,17 @@ uses
   System.UITypes,
   System.Math,
   System.DateUtils,
-  Vcl.Themes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Tracker.MyIssues.Strings;
+  Atlas.UI.Tracker.MyIssues.Strings,
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Core.Tracker.MyIssues,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Theme.Service;
 
 const
   cMenuLine = '-';
@@ -348,11 +307,6 @@ end;
 function TAtlasTrackerIssuesPainter.Scaled(AValue: Integer): Integer;
 begin
   Result := FOwner.ScaleValue(AValue);
-end;
-
-function TAtlasTrackerIssuesPainter.Color(ASystemColor: TColor): TColor;
-begin
-  Result := StyleServices(FOwner).GetSystemColor(ASystemColor);
 end;
 
 function TAtlasTrackerIssuesPainter.TextArea(ATop, AHeight: Integer): TRect;
@@ -420,21 +374,21 @@ begin
   end;
   mWidth := ACanvas.TextWidth(mText) + 2 * Scaled(TAtlasTrackerIssuesView.cButtonPadding);
   mHeight := Scaled(TAtlasTrackerIssuesView.cButtonHeight);
-  // Über beide Zeilen der Zeile mittig (Mockup).
+  // Über beide Zeilen der Zeile mittig.
   mTop := RowTop(AIndex) + (RowHeight(AIndex) - mHeight) div 2;
   mArea := Rect(ARight - mWidth, mTop, ARight, mTop + mHeight);
   FStartRects[AIndex] := mArea;
   mRadius := Scaled(TAtlasTrackerIssuesView.cButtonRadius);
   ACanvas.Brush.Style := bsClear;
-  ACanvas.Pen.Color := Color(clBtnShadow);
+  ACanvas.Pen.Color := TAtlasUiTheme.SystemColor(FOwner, clBtnShadow);
   ACanvas.RoundRect(mArea.Left, mArea.Top, mArea.Right, mArea.Bottom, mRadius, mRadius);
   if FOwner.CanStart then
   begin
-    ACanvas.Font.Color := Color(clWindowText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clWindowText);
   end
   else
   begin
-    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   end;
   ACanvas.TextOut(mArea.Left + (mArea.Width - ACanvas.TextWidth(mText)) div 2,
     mArea.Top + (mArea.Height - ACanvas.TextHeight(mText)) div 2, mText);
@@ -452,7 +406,7 @@ begin
   ACanvas.Brush.Style := bsClear;
   ACanvas.Font.Assign(FOwner.Font);
   ACanvas.Font.Name := TAtlasTrackerIssuesView.cMonoFont;
-  ACanvas.Font.Color := Color(clGrayText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   FKeyRects[AIndex] := Rect(mLeft, ATop, Min(mLeft + ACanvas.TextWidth(mKey), ALimit), ATop + mLine);
   ACanvas.TextRect(FKeyRects[AIndex], mLeft, ATop + Scaled(1), mKey);
   // Neue Änderungen seit dem letzten Öffnen (#1271): Punkt im Rand vor der Kennung.
@@ -460,7 +414,7 @@ begin
   begin
     mDot := Scaled(TAtlasTrackerIssuesView.cUnseenDot);
     ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := Color(clHighlight);
+    ACanvas.Brush.Color := TAtlasUiTheme.SystemColor(FOwner, clHighlight);
     ACanvas.Pen.Color := ACanvas.Brush.Color;
     ACanvas.Ellipse(Rect((mLeft - mDot) div 2, ATop + (mLine - mDot) div 2, (mLeft + mDot) div 2,
       ATop + (mLine + mDot) div 2));
@@ -490,12 +444,12 @@ begin
   end;
   if SameText(mItem.Key, FOwner.View.Active.Key) then
   begin
-    PaintChip(mLine, TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesActive), Color(clHighlight), True,
-      mChip);
+    PaintChip(mLine, TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesActive),
+      TAtlasUiTheme.SystemColor(FOwner, clHighlight), True, mChip);
   end;
   for mField in TAtlasMyIssues.Fields(mItem) do
   begin
-    PaintChip(mLine, mField, Color(clGrayText), False, mChip);
+    PaintChip(mLine, mField, TAtlasUiTheme.SystemColor(FOwner, clGrayText), False, mChip);
   end;
   mText := TAtlasTrackerIssuesText.PullRequestText(mItem.PullRequest);
   if mText <> '' then
@@ -518,10 +472,10 @@ begin
   mLeft := Scaled(TAtlasTrackerIssuesView.cIndent);
   mRight := FOwner.PaintBox.Width - mLeft;
   mLine := Scaled(TAtlasTrackerIssuesView.cLineHeight);
-  // Trennlinie zwischen den Zeilen (Mockup).
+  // Trennlinie zwischen den Zeilen.
   if AIndex > 0 then
   begin
-    ACanvas.Pen.Color := Color(clBtnFace);
+    ACanvas.Pen.Color := TAtlasUiTheme.SystemColor(FOwner, clBtnFace);
     ACanvas.MoveTo(mLeft, mTop);
     ACanvas.LineTo(mRight, mTop);
   end;
@@ -533,7 +487,7 @@ begin
     ACanvas.TextWidth(mItem.Key) + Scaled(TAtlasTrackerIssuesView.cKeyGap));
   // Titel, abgeschnitten.
   ACanvas.Font.Assign(FOwner.Font);
-  ACanvas.Font.Color := Color(clWindowText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clWindowText);
   if SameText(mItem.Key, FOwner.View.Active.Key) then
   begin
     ACanvas.Font.Style := [fsBold];
@@ -573,7 +527,7 @@ begin
   Result := Rect(ALeft, ATop, ALeft + mWidth, ATop + Scaled(TAtlasTrackerIssuesView.cActionHeight));
   mRadius := Scaled(TAtlasTrackerIssuesView.cButtonRadius);
   ACanvas.Brush.Style := bsClear;
-  ACanvas.Pen.Color := Color(clBtnShadow);
+  ACanvas.Pen.Color := TAtlasUiTheme.SystemColor(FOwner, clBtnShadow);
   ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, mRadius, mRadius);
   ACanvas.TextOut(Result.Left + Scaled(TAtlasTrackerIssuesView.cChipPadding),
     Result.Top + (Result.Height - ACanvas.TextHeight(AText)) div 2, AText);
@@ -590,7 +544,7 @@ begin
   // Grund: Klick öffnet die Vorschau am Kommentar.
   ACanvas.Font.Assign(FOwner.Font);
   ACanvas.Font.Size := FOwner.Font.Size - 1;
-  ACanvas.Font.Color := Color(clHotLight);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clHotLight);
   mText := TAtlasTrackerIssuesText.ReasonText(AReopen, TTimeZone.Local.ToUniversalTime(Now));
   if ALeft < ALimit then
   begin
@@ -601,15 +555,15 @@ begin
   ACanvas.Font.Assign(FOwner.Font);
   if FOwner.CanStart then
   begin
-    ACanvas.Font.Color := Color(clWindowText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clWindowText);
   end
   else
   begin
-    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   end;
   FContinueRects[AIndex] := PaintButton(ACanvas, TAtlasTrackerIssuesText.ContinueText(AReopen), ALeft, ATop + mLine,
     ALimit);
-  ACanvas.Font.Color := Color(clWindowText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clWindowText);
   if not FContinueRects[AIndex].IsEmpty then
   begin
     FDismissRects[AIndex] := PaintButton(ACanvas,
@@ -636,7 +590,7 @@ begin
   end
   else
   begin
-    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   end;
   mTop := Scaled(TAtlasTrackerIssuesView.cIndent) div 2;
   ACanvas.TextRect(TextArea(mTop, Scaled(TAtlasTrackerIssuesView.cStatusHeight)),
@@ -658,7 +612,7 @@ begin
   end;
   mTop := FilterTop + Scaled(2);
   ACanvas.Font.Size := FOwner.Font.Size - 1;
-  ACanvas.Font.Color := Color(clHotLight);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clHotLight);
   FFilterRect := LinkArea(ACanvas, mTop, mText);
   ACanvas.TextRect(TextArea(mTop, Scaled(TAtlasTrackerIssuesView.cStatusHeight)),
     Scaled(TAtlasTrackerIssuesView.cIndent), mTop, mText);
@@ -678,7 +632,7 @@ begin
   end;
   mTop := SourceTop + Scaled(TAtlasTrackerIssuesView.cFooterOffset);
   ACanvas.Font.Size := FOwner.Font.Size - 1;
-  ACanvas.Font.Color := Color(clGrayText);
+  ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   ACanvas.TextRect(TextArea(mTop, Scaled(TAtlasTrackerIssuesView.cFooterHeight)),
     Scaled(TAtlasTrackerIssuesView.cIndent), mTop, mText);
   ACanvas.Font.Assign(FOwner.Font);
@@ -704,12 +658,12 @@ begin
   else if TAtlasTrackerIssuesText.FooterIsAssign(FOwner.View) then
   begin
     // Link „zuordnen …“: Akzentfarbe, Klickfläche nur über dem Text.
-    ACanvas.Font.Color := Color(clHotLight);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clHotLight);
     FAssignRect := LinkArea(ACanvas, mTop, mText);
   end
   else
   begin
-    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
   end;
   ACanvas.TextRect(TextArea(mTop, Scaled(TAtlasTrackerIssuesView.cFooterHeight)),
     Scaled(TAtlasTrackerIssuesView.cIndent), mTop, mText);
@@ -737,7 +691,7 @@ begin
     ACanvas.Font.Assign(FOwner.Font);
     ACanvas.Font.Size := FOwner.Font.Size - 1;
     ACanvas.Font.Style := [fsBold];
-    ACanvas.Font.Color := Color(clGrayText);
+    ACanvas.Font.Color := TAtlasUiTheme.SystemColor(FOwner, clGrayText);
     ACanvas.TextRect(mArea, mArea.Left, mTop + Scaled(cGroupTextOffset),
       TAtlasTrackerIssuesText.GroupCaption(mGroup));
     mNote := TAtlasTrackerIssuesText.GroupNote(mGroup);
@@ -1117,11 +1071,11 @@ begin
   FLabel.Parent := FBar;
   FLabel.Align := alRight;
   FLabel.AlignWithMargins := True;
-  FLabel.Margins.SetBounds(cQueryMargin, cQueryMargin, cQueryMarginRight, 0);
+  TAtlasControlScaling.SetMargins(FLabel, cQueryMargin, cQueryMargin, cQueryMarginRight, 0);
   FLabel.Cursor := crHandPoint;
   FLabel.ShowHint := True;
   FLabel.Hint := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesQueryHint);
-  FLabel.Font.Color := clHotLight;
+  TAtlasUiTheme.UseFontColor(FLabel, clHotLight);
   FLabel.Visible := False;
   FLabel.OnClick := LabelClick;
   FProjects := TAtlasTrackerProjectPicker.Create(AOwner, FBar,
@@ -1151,12 +1105,9 @@ begin
 end;
 
 procedure TAtlasTrackerIssuesQueries.LabelClick(Sender: TObject);
-var
-  mPoint: TPoint;
 begin
   Fill;
-  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
-  FMenu.Popup(mPoint.X, mPoint.Y);
+  TAtlasMenus.PopupBelow(FMenu, FLabel);
 end;
 
 procedure TAtlasTrackerIssuesQueries.ItemClick(Sender: TObject);
@@ -1271,11 +1222,7 @@ end;
 procedure TAtlasTrackerIssuesView.SetSource(const AValue: IAtlasIssuesSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  SourceChanged(FSource);
 end;
 
 function TAtlasTrackerIssuesView.BodyHeight: Integer;

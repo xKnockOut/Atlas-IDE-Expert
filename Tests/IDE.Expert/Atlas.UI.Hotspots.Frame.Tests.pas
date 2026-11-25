@@ -23,9 +23,6 @@ type
     FLine: Integer;
     FImpactMethod: string;
   public
-    /// <summary>Einmalige VCL-Puffer (PageControl, Listen, Diagramm) vor dem Leckmonitor anlegen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -54,16 +51,6 @@ uses
   Atlas.Core.Hotspots.Model.Tests;
 
 { TAtlasHotspotsFrameTests }
-
-procedure TAtlasHotspotsFrameTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    FillsListsOnUnitLevel;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasHotspotsFrameTests.SetUp;
 var

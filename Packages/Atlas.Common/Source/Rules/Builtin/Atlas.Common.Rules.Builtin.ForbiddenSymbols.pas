@@ -14,7 +14,10 @@
 //                     qualifizierten Namens gar nicht auflösbar (Unit nicht
 //                     indexiert), vergleicht die Regel den geschriebenen Namen
 //                     mit dem Ende des Eintrags (TThread.Queue gegen
-//                     System.Classes.TThread.Queue). Ohne Liste ist die Regel
+//                     System.Classes.TThread.Queue). Ebenso ein einfacher,
+//                     nicht auflösbarer Name aus einer eingebundenen, aber
+//                     nicht indexierten Unit (CreateProcess bei uses
+//                     Winapi.Windows ohne RTL-Quelltext). Ohne Liste ist die Regel
 //                     stumm. Je Eintrag: message, replacement (Korrektur),
 //                     severity, units (Unit-Muster, "!" schließt aus),
 //                     firstArgument (nur mit diesem ersten Argument, z. B. nil)
@@ -82,12 +85,14 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -122,6 +127,9 @@ type
     Resolved: Boolean;
     /// <summary>Qualifizierter Name, dessen linker Teil nicht auflösbar ist.</summary>
     LeftUnknown: Boolean;
+    /// <summary>Einfacher Name, nicht auflösbar: kann aus einer eingebundenen, nicht indexierten Unit stammen.
+    /// </summary>
+    BareUnknown: Boolean;
     Symbol: TResolvedSymbol;
     Names: TArray<string>;
   end;
@@ -157,18 +165,10 @@ begin
   end;
 end;
 
-function LastSegment(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  mDot := LastDelimiter('.', AName);
-  Result := Copy(AName, mDot + 1, MaxInt);
-end;
-
 /// <summary>Name ohne Unit-Präfix (System.TextFile → TextFile).</summary>
 function WithoutUnit(const AName: string): string;
 begin
-  Result := LastSegment(AName);
+  Result := TTextNames.LastPart(AName);
 end;
 
 { TForbiddenSymbol }
@@ -248,7 +248,7 @@ end;
 
 function TForbiddenSymbol.MayMatch(const ALastName: string): Boolean;
 begin
-  Result := MatchesGlob(LastSegment(Name), ALastName);
+  Result := MatchesGlob(TTextNames.LastPart(Name), ALastName);
 end;
 
 { TForbiddenSymbolRule }
@@ -268,6 +268,8 @@ type
     FReport: IRuleReport;
     FEntries: TArray<TForbiddenSymbol>;
     FScope: TTypedScope;
+    /// <summary>Eingebundene Units, die der Index nicht kennt (ohne Quelltext, etwa die RTL unter Linux).</summary>
+    FUnknownUnits: TArray<string>;
     function Resolved(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
     function KindMatches(AKind: TForbiddenKind; const ASymbol: TResolvedSymbol): Boolean;
     function FullNames(const ASymbol: TResolvedSymbol): TArray<string>;
@@ -280,6 +282,8 @@ type
     procedure Report(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode; const AShown: string);
     function SymbolOf(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol; out AResolved: Boolean): Boolean;
     procedure Lookup(ANode: TSyntaxNode; const AWritten: string; var ALookup: TNodeLookup);
+    function FromUnknownUnit(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode): Boolean;
+    procedure CollectUnknownUnits;
     function Hits(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode; const AWritten: string;
       var ALookup: TNodeLookup): Boolean;
     procedure CheckNode(ANode: TSyntaxNode);
@@ -381,7 +385,7 @@ begin
   if (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 1) and
     (mParent[0] = ANode) then
   begin
-    Result := Unwrapped(mParent[1]);
+    Result := TSyntaxNodes.Unparen(mParent[1]);
   end
   else
   begin
@@ -542,6 +546,40 @@ begin
   // Linker Teil gar nicht auflösbar (Unit nicht indexiert): Dann zählt der geschriebene Name.
   ALookup.LeftUnknown := not ALookup.Resolved and (Pos('.', AWritten) > 0) and
     not Resolved(Leftmost(ANode), mLeft);
+  ALookup.BareUnknown := not ALookup.Resolved and (ANode.Kind = TSyntaxKind.Identifier) and
+    (AWritten = ANode.Name);
+end;
+
+/// <summary>Ist AEntry Unit.Name einer eingebundenen, nicht indexierten Unit und ANode dieser Name? Ein eigener
+/// oder indexierter gleichnamiger Name wäre aufgelöst; ohne Index der Unit bleibt nur der Name.</summary>
+function TForbiddenSymbolScan.FromUnknownUnit(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode): Boolean;
+var
+  mUnit: string;
+begin
+  for mUnit in FUnknownUnits do
+  begin
+    if MatchesGlob(AEntry.Name, mUnit + '.' + ANode.Name) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TForbiddenSymbolScan.CollectUnknownUnits;
+var
+  mUnit: string;
+  mSymbol: TResolvedSymbol;
+begin
+  FUnknownUnits := nil;
+  for mUnit in TPascalUses.UsedUnits(FContext.Tree.Tokens) do
+  begin
+    mSymbol := FScope.Resolver.ResolveChain(FContext.Tree, FScope.FileName, mUnit.Split(['.']), 0);
+    if mSymbol.Kind = TResolvedKind.None then
+    begin
+      FUnknownUnits := FUnknownUnits + [mUnit];
+    end;
+  end;
 end;
 
 function TForbiddenSymbolScan.Hits(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode; const AWritten: string;
@@ -557,6 +595,10 @@ begin
   if ALookup.LeftUnknown then
   begin
     Exit(AEntry.MatchesTail(AWritten));
+  end;
+  if ALookup.BareUnknown then
+  begin
+    Exit(FromUnknownUnit(AEntry, ANode));
   end;
   if not ALookup.HasSymbol or not KindMatches(AEntry.Kind, ALookup.Symbol) then
   begin
@@ -661,7 +703,7 @@ begin
     Exit;
   end;
   // Name aus dem Quelltext (unit X), sonst aus dem Dateinamen.
-  mUnitName := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  mUnitName := TPascalUses.OwnName(FContext.Tree.Tokens);
   if mUnitName = '' then
   begin
     mUnitName := FContext.UnitName;
@@ -681,6 +723,7 @@ begin
   FEntries := mApplying;
   FScope := TTypedScope.Create(FContext);
   try
+    CollectUnknownUnits;
     Visit(FContext.Tree.Root);
   finally
     FScope.Free;

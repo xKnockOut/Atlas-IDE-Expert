@@ -19,8 +19,7 @@
 //                              #1380), auf ein Mitglied, das kein Feld ist
 //                              (E2461), oder auf ein fehlendes Feld (E2562).
 //                              Delphi 13 meldet falsche Signaturen und das Feld
-//                              hinter einer Array-Property als E2008 (dcc-Lauf
-//                              vom 29.10.2026, #1369).
+//                              hinter einer Array-Property als E2008 (#1369).
 //   default-property-invalid   default falsch (#1073): an einer Property ohne
 //                              Index (E2132), zweite default-Property mit
 //                              denselben Indextypen oder mit einem anderen
@@ -109,11 +108,11 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Editing.AccessorCreation,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Text.Fuzzy,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.Attributes;
 
 {$SCOPEDENUMS ON}
 
@@ -205,7 +204,7 @@ type
     FCache: IRuleDerivedCache;
     FTokens: TArray<TPascalToken>;
     FAncestry: TAncestry;
-    FActions: TClassActionContext;
+    FActions: TClassEditRequest;
     FShape: TPropertyShape;
     FChain: TArray<TSymbolLocation>;
     FComplete: Boolean;
@@ -222,6 +221,8 @@ type
     /// <summary>Mitglieder namens AName auf der nächsten Stufe der Kette, die es dort gibt. False, wenn keine
     /// Aussage möglich ist (Kette bricht ab, nur in inaktivem Zweig, für die Klasse unsichtbar).</summary>
     function Lookup(const AName: string; out AFound: TArray<TIndexSymbol>): Boolean;
+    /// <summary>Plan der fehlenden Zugriffsmethode; False, wenn keine Korrektur passt.</summary>
+    function PlanOf(const AAccessor: TPropertyAccessor; out APlan: TAccessorPlan): Boolean;
     /// <summary>Korrektur "F/Get/SetName anlegen", wenn der fehlende Name der Konvention folgt.</summary>
     function CreateFixes(const AAccessor: TPropertyAccessor): TArray<TRuleFix>;
     /// <summary>Erwarteter Kopf der Zugriffsmethode, z. B. "function GetName(Index: Integer): string".</summary>
@@ -271,7 +272,7 @@ begin
   FCache := TRuleDerived.Open(AContext);
   FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(FCache, AContext));
-  FActions := TClassActionContext.Default;
+  FActions := TClassEditRequest.Create(AContext.Text, 0);
   FActions.Index := AContext.Index;
   FActions.Namespaces := AContext.Namespaces;
   FActions.DelphiVersion := AContext.DelphiVersion;
@@ -346,12 +347,12 @@ begin
   Result := FComplete;
 end;
 
-function TAccessorScan.CreateFixes(const AAccessor: TPropertyAccessor): TArray<TRuleFix>;
+function TAccessorScan.PlanOf(const AAccessor: TPropertyAccessor; out APlan: TAccessorPlan): Boolean;
 var
   mPlan: TAccessorPlan;
-  mAction: TCodeAction;
 begin
-  Result := nil;
+  Result := False;
+  APlan := Default(TAccessorPlan);
   if (AAccessor.Selectors <> nil) or FShape.IsClass or not FShape.SingleLine or (FShape.TypeText = '') then
   begin
     Exit;
@@ -389,8 +390,18 @@ begin
   begin
     Exit;
   end;
-  if TClassActions.CreateAccessor(FContext.Text, FTokens[AAccessor.First].StartPos.Line, mPlan, FActions,
-    mAction) then
+  APlan := mPlan;
+  Result := True;
+end;
+
+function TAccessorScan.CreateFixes(const AAccessor: TPropertyAccessor): TArray<TRuleFix>;
+var
+  mPlan: TAccessorPlan;
+  mAction: TCodeAction;
+begin
+  Result := nil;
+  if PlanOf(AAccessor, mPlan) and (FContext.Refactorings.Classes <> nil) and
+    FContext.Refactorings.Classes.CreateAccessor(FActions.At(FTokens[AAccessor.First].StartPos.Line), mPlan, mAction) then
   begin
     Result := [TRuleFix.Create(mAction.Title, mAction.Edits)];
   end;
@@ -1364,16 +1375,6 @@ begin
   end;
 end;
 
-/// <summary>Name einer Attributklasse ohne die Endung Attribute.</summary>
-function AttributeName(const AName: string): string;
-begin
-  Result := AName;
-  if EndsText('Attribute', Result) and (Length(Result) > Length('Attribute')) then
-  begin
-    Result := Copy(Result, 1, Length(Result) - Length('Attribute'));
-  end;
-end;
-
 /// <summary>Änderung der Klammertiefe rückwärts gelesen: +1 bei "]" und ")", -1 bei "[" und "(".</summary>
 function BackwardDepthStep(const AToken: TPascalToken): Integer;
 begin
@@ -1442,7 +1443,7 @@ var
 begin
   for mPattern in FAllowed do
   begin
-    if SameText(AttributeName(AName), AttributeName(mPattern)) then
+    if SameText(TAttributes.ShortName(AName), TAttributes.ShortName(mPattern)) then
     begin
       Exit(True);
     end;

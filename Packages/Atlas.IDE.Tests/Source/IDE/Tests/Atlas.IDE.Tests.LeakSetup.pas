@@ -7,7 +7,8 @@
 //   3. Einfügungen in den Hauptquelltext mit Vorschau wie beim Umbenennen
 //      (rückgängig im Editor), Symbole über die Projektoptionen der IDE in die
 //      Konfiguration Debug (nie in Release), DLL nur nach Rückfrage kopieren.
-// Nur im Hauptthread; die Antworten des Servers kommen über TAtlasIdeHost.
+// Nur im Hauptthread; die Antworten des Servers kommen über TAtlasIdeHost. Fehler darin meldet die Sicherung
+// wie bei jedem Befehl des Benutzers sofort in der Meldungsansicht (die Antwort läuft als dieser Befehl).
 
 interface
 
@@ -32,13 +33,13 @@ uses
   System.JSON,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.ProjectSelection,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Tests.LeakSetup,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit,
@@ -62,6 +63,8 @@ end;
 procedure Report(AId: TAtlasTestsTextId; const AArgs: array of const);
 begin
   TAtlasIdeHost.Message(TAtlasTestsStrings.Fmt(AId, AArgs));
+  // Der Befehl hat keinen eigenen Rückkanal: ohne geöffnete Meldungsansicht sah man weder Ergebnis noch Grund.
+  TAtlasIdeHost.ShowMessages;
 end;
 
 { Symbole }

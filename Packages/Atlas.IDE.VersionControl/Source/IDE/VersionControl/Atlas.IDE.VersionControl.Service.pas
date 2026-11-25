@@ -44,7 +44,7 @@ uses
   Atlas.Core.Projects.VersionControl;
 
 type
-  TAtlasIdeVcsMessage = reference to procedure(const AText: string);
+  TAtlasIdeVcsMessage = TProc<string>;
   /// <summary>Umsetzung für AFolder; ATimeoutMs = 0: Vorgabe-Zeitlimit.</summary>
   TAtlasIdeVcsOpen = reference to function(const AFolder: string; AProvider: TAtlasVcsProvider;
     const ARunner: IAtlasVcsRunner; ATimeoutMs: Cardinal): IAtlasVersionControl;
@@ -126,22 +126,22 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   System.Classes,
   System.SyncObjs,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Detection,
   Atlas.Core.VersionControl.Plan,
-  Atlas.Core.VersionControl.Worker,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   System.Generics.Collections,
   Winapi.Windows,
   Vcl.ExtCtrls,
   Atlas.WinBase.Process,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Projects.VcsSettings,
@@ -157,15 +157,21 @@ type
     Vcs: TAtlasTeamVcs;
   end;
 
+const
+  /// <summary>Zeitstempel für CachedAge: noch nichts gemerkt bzw. ohne Einstellungsdatei (dann gelten die
+  /// Vorgaben, und der Unterschied zu cNotCached hält sie im Zwischenspeicher).</summary>
+  cNotCached = -1;
+  cNoSettingsFile = -2;
+
 var
-  Worker: TAtlasVcsWorker;
+  Worker: TAtlasBackgroundJobs;
   Runner: IAtlasVcsRunner;
   Backend: TAtlasIdeVcsBackend;
   Message_: TAtlasIdeVcsMessage;
   Lock: TCriticalSection;
   // vcs.* mit Zeitstempel der Datei, aus der die Werte stammen.
   Cached: TVcsSettings;
-  CachedAge: TDateTime = -1;
+  CachedAge: TDateTime = cNotCached;
   // .atlas je Datei (klein geschrieben); gilt die Datei (Einstellung TeamFile)?
   TeamCache: TDictionary<string, TTeamEntry>;
   TeamFileOn: Boolean;
@@ -255,8 +261,14 @@ begin
     Result := TVcsSettings.Parse(TAtlasTextFile.Load(AFileName).Text);
   except
     // Gesperrt oder unlesbar: Vorgaben.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Result := TVcsSettings.Default;
+    end;
   end;
 end;
 
@@ -276,7 +288,7 @@ begin
   if (mFileName = '') or not FileAge(mFileName, mAge) then
   begin
     Result := TVcsSettings.Default;
-    mAge := -2;
+    mAge := cNoSettingsFile;
   end
   else
   begin
@@ -352,6 +364,33 @@ begin
   Result := FileExists(APath) or DirectoryExists(APath);
 end;
 
+/// <summary>Abschnitt vcs der .atlas AFileName in AVcs (leer, wenn sie ungültig ist); False, wenn sie gesperrt
+/// (gerade gespeichert) oder gelöscht ist: ohne Abschnitt, beim nächsten Mal neu.</summary>
+function ReadTeamVcs(const AFileName: string; out AVcs: TAtlasTeamVcs): Boolean;
+var
+  mTeam: TAtlasTeamSettings;
+begin
+  AVcs := Default(TAtlasTeamVcs);
+  Result := True;
+  try
+    mTeam := TAtlasTeamFile.Parse(TAtlasTextFile.Load(AFileName).Text, AFileName,
+      TAtlasTeamFile.RootOf(ExtractFileDir(AFileName), TeamPathExists));
+    if mTeam.Valid then
+    begin
+      AVcs := mTeam.Vcs;
+    end;
+  except
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
+      Result := False;
+    end;
+  end;
+end;
+
 /// <summary>Abschnitt vcs der .atlas für AFolder (dort, sonst in der Wurzel des Repositorys); leer ohne Datei,
 /// wenn sie nicht lesbar ist oder die Einstellung TeamFile aus ist.</summary>
 function TeamVcsOf(const AFolder: string): TAtlasTeamVcs;
@@ -359,7 +398,6 @@ var
   mFileName, mKey: string;
   mAge: TDateTime;
   mEntry: TTeamEntry;
-  mTeam: TAtlasTeamSettings;
 begin
   Result := Default(TAtlasTeamVcs);
   if not TeamFileOn or (AFolder = '') then
@@ -381,17 +419,9 @@ begin
   finally
     Lock.Leave;
   end;
-  try
-    mTeam := TAtlasTeamFile.Parse(TAtlasTextFile.Load(mFileName).Text, mFileName,
-      TAtlasTeamFile.RootOf(ExtractFileDir(mFileName), TeamPathExists));
-    if mTeam.Valid then
-    begin
-      Result := mTeam.Vcs;
-    end;
-  except
-    // Gesperrt (gerade gespeichert) oder gelöscht: ohne Abschnitt, beim nächsten Mal neu.
-    on Exception do
-      Exit;
+  if not ReadTeamVcs(mFileName, Result) then
+  begin
+    Exit;
   end;
   mEntry.Age := mAge;
   mEntry.Vcs := Result;
@@ -414,7 +444,7 @@ begin
   TeamFileOn := TAtlasIdeTeamFile.Wanted;
   Lock.Enter;
   try
-    CachedAge := -1;
+    CachedAge := cNotCached;
     TeamCache.Clear;
   finally
     Lock.Leave;
@@ -504,7 +534,7 @@ begin
   end;
   if Worker = nil then
   begin
-    Worker := TAtlasVcsWorker.Create;
+    Worker := TAtlasBackgroundJobs.Create(HInstance);
   end;
   Backend.SetToolMissing(ToolMissing);
 end;

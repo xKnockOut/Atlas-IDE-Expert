@@ -37,10 +37,10 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
-  Atlas.Core.Tracker.Reopened,
   Atlas.UI.Notifications.Notice,
   Atlas.IDE.Tracker.IssueContext,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   /// <summary>Alle Tracker, die abgefragt werden sollen (auch doppelte; gezählt wird je Verbindung).</summary>
@@ -155,20 +155,20 @@ uses
   System.Types,
   System.DateUtils,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Tracker.NotifyPlan,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Tracker.Notify,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Diagnostics.UserIdle;
+  Atlas.Plugin.Diagnostics.UserIdle;
 
 { TAtlasIdeIssueNotify }
 
@@ -548,7 +548,7 @@ begin
   end;
   if TAtlasNotifyPlan.AsksLogin(Result.Job.Poll.Me, AJob.Provider.ProbeUrl(AJob.Target)) and
     mTransport.Get(AJob.Provider.ProbeUrl(AJob.Target), TAtlasTrackerNotify.cTimeoutMs, mStatus, mText,
-    mIgnored) and (mStatus = 200) then
+    mIgnored) and (mStatus = TAtlasHttpStatus.cOk) then
   begin
     Result.Job.Poll.Me := TAtlasTrackerNotify.LoginOf(mText);
   end;

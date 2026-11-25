@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Lsp.Completion.Hooks;
 
 // Rückrufe und Schalter der Vervollständigung, die die Komposition setzt (Einstellungen je Dokument, Lesen von
-// Dateien, Benachrichtigungen, Angebote aus anderen Teilen des Servers). Aus Atlas.Common.Lsp.Completion
-// herausgelöst; die Fälle der Vervollständigung lesen sie über TCompletionAnswer.Hooks.
+// Dateien, Benachrichtigungen, Angebote aus anderen Teilen des Servers). Teil der Vervollständigung
+// (Atlas.Common.Lsp.Completion); die Fälle der Vervollständigung lesen sie über TCompletionAnswer.Hooks.
 
 interface
 
@@ -17,7 +17,7 @@ uses
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.IdeTypes,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Lsp.Completion.Postfix;
 

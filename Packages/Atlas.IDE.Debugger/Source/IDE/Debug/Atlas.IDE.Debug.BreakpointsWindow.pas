@@ -46,8 +46,8 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.BreakpointList,
   Atlas.UI.Debug.Breakpoints.Strings,
-  Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.Vcl.Images.Symbol,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TBreakpointsDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -215,7 +215,6 @@ end;
 
 class function TAtlasIdeDebugBreakpointsWindow.Show: TAtlasDebugBreakpointsFrame;
 begin
-  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
   Host.Present;
   Result := ExistingFrame;

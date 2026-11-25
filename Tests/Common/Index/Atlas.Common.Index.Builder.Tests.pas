@@ -21,9 +21,6 @@ type
     FIndex: ISymbolIndex;
     function Resolve(const AUnitName: string): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -73,12 +70,12 @@ type
     /// <summary>Ein nicht geschriebener Cache wird gemeldet statt verschluckt.</summary>
     [Test]
     procedure ServiceReportsUnwrittenCache;
-    /// <summary>Rückmeldung 22.10.2026 (3 GB bei acht Projekten): Projekte, die zusammen aufbauen, schreiben
+    /// <summary>Speicher (3 GB bei acht Projekten): Projekte, die zusammen aufbauen, schreiben
     /// den gemeinsamen Bibliotheks-Cache nur einmal, statt jedes für sich gegen seinen Startstand.</summary>
     [Test]
     [IgnoreMemoryLeaks]
     procedure ConcurrentServicesWriteLibraryCacheOnce;
-    /// <summary>Diagnoselog nennt, warum Units nicht aus dem Cache kamen (Rückmeldung 22.10.2026).</summary>
+    /// <summary>Diagnoselog nennt, warum Units nicht aus dem Cache kamen .</summary>
     [Test]
     procedure CountsWhyUnitsWereParsed;
     [Test]
@@ -109,7 +106,7 @@ type
     procedure RestartDoesNotWaitForRunningBuild;
   end;
 
-  /// <summary>Speicher bei Projektgruppen (Rückmeldung 01.11.2026): gemeinsamer Suchpfad-Cache und keine doppelte
+  /// <summary>Speicher bei Projektgruppen: gemeinsamer Suchpfad-Cache und keine doppelte
   /// Übernahme. Eigene Klasse neben TIndexBuilderTests, deren Dateien sie über PutBuilderFiles teilt.</summary>
   [TestFixture]
   TIndexGroupCacheTests = class
@@ -124,11 +121,11 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    /// <summary>Speicher (Rückmeldung 01.11.2026): Suchpfad-Units stehen in einem gemeinsamen Cache statt im Cache
+    /// <summary>Speicher: Suchpfad-Units stehen in einem gemeinsamen Cache statt im Cache
     /// jedes Projekts; ein zweites Projekt mit denselben Suchpfaden liest sie von dort.</summary>
     [Test]
     procedure ServiceSharesSearchPathCache;
-    /// <summary>Speicher (Rückmeldung 01.11.2026): Ein weiteres Projekt der Gruppe übernimmt Units, die mit gleichem
+    /// <summary>Speicher: Ein weiteres Projekt der Gruppe übernimmt Units, die mit gleichem
     /// Stand und gleichen Defines schon im Index stehen, nicht noch einmal; mit anderen Defines liest es neu.</summary>
     [Test]
     procedure BuilderSkipsUnitsAlreadyIndexed;
@@ -224,16 +221,6 @@ end;
 function TIndexBuilderTests.Resolve(const AUnitName: string): string;
 begin
   Result := ResolveLibraryUnit(AUnitName);
-end;
-
-procedure TIndexBuilderTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ServiceSharesLibraryCache;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TIndexBuilderTests.Setup;
@@ -338,9 +325,11 @@ var
   mEvents: TList<TIndexProgressKind>;
   mBuildResult: TIndexBuildResult;
 begin
-  mEvents := TList<TIndexProgressKind>.Create;
-  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
+  mEvents := nil;
+  mBuilder := nil;
   try
+    mEvents := TList<TIndexProgressKind>.Create;
+    mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, nil);
     mBuildResult := mBuilder.Build(['C:\P\A.pas', 'C:\Lib\C.pas'],
       procedure(AKind: TIndexProgressKind; const AMessage: string; APercent: Integer)
       begin
@@ -555,7 +544,7 @@ var
   mCache: TArray<TUnitIndex>;
   mBuildResult: TIndexBuildResult;
 begin
-  // Diagnoselog 15.10.2026: Bei knappem Budget stehen Bibliotheken kompakt im Cache. Sie werden
+  // Bei knappem Budget stehen Bibliotheken kompakt im Cache. Sie werden
   // wiederverwendet, solange ein Budget gilt; ohne Budget braucht es alle Symbole.
   FFiles.Put('C:\Lib\K.pas', cUnitText, 1);
   FIndex.SetBudget(1);
@@ -660,10 +649,13 @@ var
   mWatch: TStopwatch;
 begin
   // #617: Eine Anfrage, die gerade eine Unit sucht und parst, hält die anderen nicht auf.
-  mEntered := TEvent.Create(nil, True, False, '');
-  mRelease := TEvent.Create(nil, True, False, '');
-  mService := TIndexService.Create(FIndex, FFileSystem);
+  mEntered := nil;
+  mRelease := nil;
+  mService := nil;
   try
+    mEntered := TEvent.Create(nil, True, False, '');
+    mRelease := TEvent.Create(nil, True, False, '');
+    mService := TIndexService.Create(FIndex, FFileSystem);
     mRequest := Default(TIndexRequest);
     mRequest.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
     mRequest.ResolveUnit :=
@@ -925,24 +917,27 @@ begin
   // Ein anderer schreibt gerade und gibt die Sperre nach kurzer Zeit frei. Die Sperre gehört allein dem Thread:
   // Delphi hält das Interface-Ergebnis von TryLockWrite sonst in einem Zwischenwert bis zum Ende der Methode.
   mFiles := FFileSystem;
-  mLocked := TEvent.Create;
-  mReleaser := TThread.CreateAnonymousThread(
-    procedure
-    var
-      Held: IInterface;
-    begin
-      Held := mFiles.TryLockWrite(cLibraryCache);
-      mLocked.SetEvent;
-      TThread.Sleep(300);
-      Held := nil;
-    end);
-  mReleaser.FreeOnTerminate := False;
-  mReleaser.Start;
-  Assert.AreEqual<TWaitResult>(wrSignaled, mLocked.WaitFor(5000), 'Sperre genommen');
-  Assert.IsNull(FFileSystem.TryLockWrite(cLibraryCache), 'nur ein Schreiber');
-  mNotWritten := '';
-  mService := TIndexService.Create(FIndex, FFileSystem);
+  mLocked := nil;
+  mService := nil;
+  mReleaser := nil;
   try
+    mLocked := TEvent.Create;
+    mReleaser := TThread.CreateAnonymousThread(
+      procedure
+      var
+        Held: IInterface;
+      begin
+        Held := mFiles.TryLockWrite(cLibraryCache);
+        mLocked.SetEvent;
+        TThread.Sleep(300);
+        Held := nil;
+      end);
+    mReleaser.FreeOnTerminate := False;
+    mReleaser.Start;
+    Assert.AreEqual<TWaitResult>(wrSignaled, mLocked.WaitFor(5000), 'Sperre genommen');
+    Assert.IsNull(FFileSystem.TryLockWrite(cLibraryCache), 'nur ein Schreiber');
+    mNotWritten := '';
+    mService := TIndexService.Create(FIndex, FFileSystem);
     mService.OnCacheNotWritten :=
       procedure(const AFileName, AReason: string)
       begin
@@ -1032,9 +1027,11 @@ begin
           TInterlocked.Increment(mLibraryWrites);
         end;
       end;
-    mFirst := TIndexService.Create(FIndex, FFileSystem);
-    mSecond := TIndexService.Create(FIndex, FFileSystem);
+    mFirst := nil;
+    mSecond := nil;
     try
+      mFirst := TIndexService.Create(FIndex, FFileSystem);
+      mSecond := TIndexService.Create(FIndex, FFileSystem);
       mFirst.OnCacheWritten := mCounted;
       mSecond.OnCacheWritten := mCounted;
       StartTwoProjects(mFirst, mSecond, Resolve);
@@ -1512,6 +1509,19 @@ begin
   end;
 end;
 
+// Bisher gelaufene Schritte, durch Komma getrennt.
+function StepsOf(AOrder: TThreadList<string>): string;
+var
+  mSeen: TList<string>;
+begin
+  mSeen := AOrder.LockList;
+  try
+    Result := string.Join(',', mSeen.ToArray);
+  finally
+    AOrder.UnlockList;
+  end;
+end;
+
 procedure TIndexBuilderTests.RestartDoesNotWaitForRunningBuild;
 var
   mService: TIndexService;
@@ -1519,14 +1529,16 @@ var
   mEntered, mRelease: TEvent;
   mOrder: TThreadList<string>;
   mWatch: TStopwatch;
-  mSeen: TList<string>;
-  mSteps: string;
 begin
-  mEntered := TEvent.Create(nil, True, False, '');
-  mRelease := TEvent.Create(nil, True, False, '');
-  mOrder := TThreadList<string>.Create;
-  mService := TIndexService.Create(FIndex, FFileSystem);
+  mEntered := nil;
+  mRelease := nil;
+  mOrder := nil;
+  mService := nil;
   try
+    mEntered := TEvent.Create(nil, True, False, '');
+    mRelease := TEvent.Create(nil, True, False, '');
+    mOrder := TThreadList<string>.Create;
+    mService := TIndexService.Create(FIndex, FFileSystem);
     mFirst := Default(TIndexRequest);
     mFirst.Files := ['C:\P\P.dpr', 'C:\P\A.pas'];
     mFirst.ResolveUnit := Resolve;
@@ -1549,21 +1561,10 @@ begin
     mWatch := TStopwatch.StartNew;
     mService.Start(mSecond);
     Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, 'Start wartet nicht auf den laufenden Aufbau');
-    mSeen := mOrder.LockList;
-    try
-      Assert.AreEqual(0, Integer(mSeen.Count), 'der neue Aufbau beginnt nicht neben dem alten');
-    finally
-      mOrder.UnlockList;
-    end;
+    Assert.AreEqual('', StepsOf(mOrder), 'der neue Aufbau beginnt nicht neben dem alten');
     mRelease.SetEvent;
     mService.WaitFor;
-    mSeen := mOrder.LockList;
-    try
-      mSteps := string.Join(',', mSeen.ToArray);
-    finally
-      mOrder.UnlockList;
-    end;
-    Assert.AreEqual('erster,zweiter', mSteps);
+    Assert.AreEqual('erster,zweiter', StepsOf(mOrder));
     Assert.AreEqual(5, mService.Index.UnitCount, 'der zweite Aufbau läuft vollständig');
   finally
     mService.Free;

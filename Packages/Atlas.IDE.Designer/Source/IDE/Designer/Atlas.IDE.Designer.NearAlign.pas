@@ -42,11 +42,12 @@ type
     FTimer: TTimer;
     procedure TimerTick(Sender: TObject);
     procedure ShowOutlines(ARoot: TWinControl; const AOutlines: TArray<TAtlasOutline>);
-    procedure HideOutlines;
     procedure DoShow;
     procedure DoFixAll;
     procedure DoMark(AAdd: Boolean);
   public
+    /// <summary>Stoppt auch den Takt der verzögerten Anzeige.</summary>
+    procedure HideOutlines; override;
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
     destructor Destroy; override;
@@ -67,7 +68,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Text.Numbers;
 
 const
   cListLimit = 10;
@@ -247,19 +249,10 @@ begin
   end;
 end;
 
-/// <summary>Versatz mit Vorzeichen (Format kennt kein „+“).</summary>
-function Signed(AValue: Integer): string;
-begin
-  Result := IntToStr(AValue);
-  if AValue > 0 then
-  begin
-    Result := '+' + Result;
-  end;
-end;
-
 function FindingText(const AGroup: TNearGroup; const AFinding: TAtlasNearFinding): string;
 begin
-  Result := TAtlasNearAlign.KeyOf(AGroup.Items[AFinding.Item].Name, AFinding.Edge) + ' ' + Signed(AFinding.Offset);
+  Result := TAtlasNearAlign.KeyOf(AGroup.Items[AFinding.Item].Name, AFinding.Edge) + ' ' +
+    TTextNumbers.Signed(AFinding.Offset);
 end;
 
 /// <summary>Ein Rahmen je betroffenem Steuerelement, beschriftet mit Kanten und Versatz.</summary>
@@ -268,25 +261,25 @@ var
   mGroup: TNearGroup;
   mIndex: Integer;
   mFinding: TAtlasNearFinding;
-  mText: string;
+  mParts: TArray<string>;
 begin
   Result := nil;
   for mGroup in AScan.Groups do
   begin
     for mIndex := 0 to High(mGroup.Controls) do
     begin
-      mText := '';
+      mParts := nil;
       for mFinding in mGroup.Findings do
       begin
         if mFinding.Item = mIndex then
         begin
-          mText := mText + ' ' + TAtlasNearAlign.EdgeName(mFinding.Edge) + ' ' + Signed(mFinding.Offset);
+          mParts := mParts + [TAtlasNearAlign.EdgeName(mFinding.Edge) + ' ' + TTextNumbers.Signed(mFinding.Offset)];
         end;
       end;
-      if mText <> '' then
+      if Length(mParts) > 0 then
       begin
         Result := Result + [TAtlasOutline.Create(TAtlasDesignerAccess.BoundsInRoot(mGroup.Controls[mIndex],
-          AScan.Root), mGroup.Controls[mIndex].Name + ':' + mText, True)];
+          AScan.Root), mGroup.Controls[mIndex].Name + ': ' + string.Join(' ', mParts), True)];
       end;
     end;
   end;
@@ -341,10 +334,7 @@ end;
 procedure TAtlasIdeNearAlign.HideOutlines;
 begin
   FTimer.Enabled := False;
-  if HasOutlines then
-  begin
-    Outlines.HideOutlines;
-  end;
+  inherited HideOutlines;
 end;
 
 procedure TAtlasIdeNearAlign.DoShow;

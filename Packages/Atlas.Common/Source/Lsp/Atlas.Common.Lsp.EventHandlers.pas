@@ -45,8 +45,6 @@ type
     FBodies: TObjectDictionary<string, TDictionary<string, TEventHandlerBody>>;
     function BodiesOf(const AFileName: string): TDictionary<string, TEventHandlerBody>;
     function ResolveInAncestors(var AHandler: TEventHandler): Boolean;
-    /// <summary>Die .pas-Dateien aus AFiles, ohne Angabe die Projekt-Units des Index.</summary>
-    function SourceFiles(const AFiles: TArray<string>): TArray<string>;
     /// <summary>Lesbare Formulardateien zur Unit AFileName mit dem Text AText.</summary>
     function FormsOf(const AFileName, AText: string): TArray<TEventHandlerForm>;
   public
@@ -58,6 +56,9 @@ type
     /// </summary>
     function Collect(const AFiles: TArray<string>; out AUnresolved: Integer): TArray<TEventHandler>;
     class function ToJson(const AHandlers: TArray<TEventHandler>; AUnresolved: Integer): string; static;
+    /// <summary>Die .pas-Dateien aus AFiles, ohne Angabe die Projekt-Units von AIndex (auch für
+    /// atlas.server.dataAccessSites, #870).</summary>
+    class function SourceFiles(const AIndex: ISymbolIndex; const AFiles: TArray<string>): TArray<string>; static;
     /// <summary>Symbolindex für Projekt-Units und Vorfahren; ohne Index nur die übergebenen Dateien.</summary>
     property Index: ISymbolIndex read FIndex write FIndex;
   end;
@@ -156,7 +157,8 @@ begin
   end;
 end;
 
-function TLspEventHandlers.SourceFiles(const AFiles: TArray<string>): TArray<string>;
+class function TLspEventHandlers.SourceFiles(const AIndex: ISymbolIndex;
+  const AFiles: TArray<string>): TArray<string>;
 var
   mFileName: string;
   mUnit: TUnitIndex;
@@ -173,11 +175,11 @@ begin
     end;
     Exit;
   end;
-  if FIndex = nil then
+  if AIndex = nil then
   begin
     Exit;
   end;
-  for mUnit in FIndex.Units do
+  for mUnit in AIndex.Units do
   begin
     if not mUnit.Library_ then
     begin
@@ -235,7 +237,7 @@ begin
   begin
     Exit;
   end;
-  for mFileName in SourceFiles(AFiles) do
+  for mFileName in SourceFiles(FIndex, AFiles) do
   begin
     if not FReadText(mFileName, mText) then
     begin

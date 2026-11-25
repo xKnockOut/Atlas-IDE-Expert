@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Tracker.PathSuggestions;
 
 // „Vorschlagen …“ für die Arbeitskopien einer Zeile von issues.projects
-// (#1929, Mockup Runde 82 TP4), ohne VCL, Open Tools API und Prozesse.
+// (#1929), ohne VCL, Open Tools API und Prozesse.
 // Gesucht wird nur dort, wo Atlas schon war: Arbeitskopie der Zeile, deren
 // svn:externals bzw. Git-Submodule, die Projekte der .groupproj und bei
 // GitHub-Projekten die zuletzt geöffneten Projekte, deren origin auf
@@ -70,7 +70,7 @@ implementation
 uses
   System.StrUtils,
   System.RegularExpressions,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.Core.Tracker.Projects;
 
 const

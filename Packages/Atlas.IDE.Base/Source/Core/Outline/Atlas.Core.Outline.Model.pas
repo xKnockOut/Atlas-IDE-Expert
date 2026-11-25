@@ -92,6 +92,9 @@ type
     /// <summary>Sichtbarkeiten, die der Filter anbietet (strict zählt zur einfachen).</summary>
     cFilterVisibilities: array[0..3] of TAtlasOutlineVisibility = (TAtlasOutlineVisibility.Private,
       TAtlasOutlineVisibility.Protected, TAtlasOutlineVisibility.Public, TAtlasOutlineVisibility.Published);
+    /// <summary>Schlüsselwörter der Sichtbarkeiten, klein; leer bei None.</summary>
+    cVisibilityNames: array[TAtlasOutlineVisibility] of string = ('', 'strict private', 'private',
+      'strict protected', 'protected', 'public', 'published');
   public
     class function VisibilityOf(const AText: string): TAtlasOutlineVisibility; static;
     class function CategoryOf(AKind: Integer; AInType: Boolean): TAtlasOutlineCategory; static;
@@ -178,36 +181,22 @@ end;
 class function TAtlasOutline.VisibilityOf(const AText: string): TAtlasOutlineVisibility;
 var
   mText: string;
+  mVisibility: TAtlasOutlineVisibility;
 begin
   mText := LowerCase(Trim(AText));
-  if mText = 'strict private' then
+  // automated gilt wie public.
+  if mText = 'automated' then
   begin
-    Result := TAtlasOutlineVisibility.StrictPrivate;
-  end
-  else if mText = 'private' then
-  begin
-    Result := TAtlasOutlineVisibility.Private;
-  end
-  else if mText = 'strict protected' then
-  begin
-    Result := TAtlasOutlineVisibility.StrictProtected;
-  end
-  else if mText = 'protected' then
-  begin
-    Result := TAtlasOutlineVisibility.Protected;
-  end
-  else if (mText = 'public') or (mText = 'automated') then
-  begin
-    Result := TAtlasOutlineVisibility.Public;
-  end
-  else if mText = 'published' then
-  begin
-    Result := TAtlasOutlineVisibility.Published;
-  end
-  else
-  begin
-    Result := TAtlasOutlineVisibility.None;
+    Exit(TAtlasOutlineVisibility.Public);
   end;
+  for mVisibility := Low(TAtlasOutlineVisibility) to High(TAtlasOutlineVisibility) do
+  begin
+    if cVisibilityNames[mVisibility] = mText then
+    begin
+      Exit(mVisibility);
+    end;
+  end;
+  Result := TAtlasOutlineVisibility.None;
 end;
 
 class function TAtlasOutline.CategoryOf(AKind: Integer; AInType: Boolean): TAtlasOutlineCategory;

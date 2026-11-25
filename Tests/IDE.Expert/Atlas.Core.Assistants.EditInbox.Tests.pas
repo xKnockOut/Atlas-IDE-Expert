@@ -79,7 +79,7 @@ var
 begin
   Put(FFolder, 'r2.json', '{"file":"A.pas","expected":"","text":"x"}');
   Assert.IsTrue(TAtlasEditInbox.Take(TPath.Combine(FFolder, 'r2.json'), mRequest));
-  TAtlasEditInbox.Answer(FFolder, mRequest, False, True, 'nicht offen');
+  TAtlasEditInbox.Answer(FFolder, mRequest, False, True, 'nicht offen', False);
   Assert.IsFalse(FileExists(TPath.Combine(FFolder, 'r2.taken')));
   mJson := TJSONObject.ParseJSONValue(TFile.ReadAllText(TPath.Combine(FFolder, 'r2.result.json'), TEncoding.UTF8));
   try

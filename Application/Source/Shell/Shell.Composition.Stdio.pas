@@ -13,7 +13,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.TracingTransport,
   Atlas.Common.Diagnostics.Anonymizer,
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   /// <summary>Was der stdio-Betrieb der Komposition mitgibt.</summary>
@@ -61,7 +61,8 @@ uses
   Atlas.Common.Logging.RotatingFileStream,
   Atlas.Common.JsonRpc.StreamTransport,
   Atlas.Common.Lsp.Adapters.LogMessageSink,
-  Shell.Platform,
+  Platform.Server,
+  Shell.Composition.Platform,
   Shell.Diagnostics,
   Atlas.Text.LogMarks;
 
@@ -77,7 +78,7 @@ begin
   TStackTrace.Install;
   // Schutzseite nach Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE, soweit die
   // Plattform sie braucht.
-  TShellPlatform.InstallGuards;
+  TServerPlatform.InstallGuards;
   mLoggerImpl := NewLogger(AOptions, Result.RecentLog, Result.Anonymizer);
   Result.Logger := mLoggerImpl;
   Result.Transport := NewTransport(AOptions, Result.Logger, Result.Tracing);
@@ -99,7 +100,7 @@ var
   mRecentSink: TRecentLogSink;
 begin
   Result := TLogger.Create;
-  mDebugSink := TShellPlatform.DebugLogSink;
+  mDebugSink := TShellPlatformAdapters.DebugLogSink;
   if mDebugSink <> nil then
   begin
     Result.AddSink(mDebugSink, TLogLevel.Debug);

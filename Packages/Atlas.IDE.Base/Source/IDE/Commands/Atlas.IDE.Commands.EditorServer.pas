@@ -4,9 +4,8 @@
 // TAtlasIdeEditorCommands (Atlas.IDE.Commands.Editor, Beschreibung dort):
 // qualifizierter Name (#128), Formatieren (#43), Unit ⇄ Testunit (#189) und die
 // Schnellbefehle mit „/“ samt ///-Gerüsten (#293, #88).
-// Die Schnellbefehle fragen im Hintergrund (TAtlasBackgroundRequest): Die
-// Diagnose vom 06.11.2026 zeigte Hänger bis 3 s, solange der Hauptthread auf
-// onTypeFormatting wartete. Die Antwort gilt nur für den unveränderten Text
+// Die Schnellbefehle fragen im Hintergrund (TAtlasBackgroundRequest): Wartet
+// der Hauptthread auf onTypeFormatting, hängt die IDE bis zu 3 s. Die Antwort gilt nur für den unveränderten Text
 // (TAtlasSlashTrigger.StillValid); wurde weitergetippt, verfällt sie.
 // Ebenso Unit ⇄ Testunit: Ein Klick auf die Code Lens hielt die IDE 9 s an,
 // solange atlas.server.testUnit lief; jetzt öffnet die Antwort das Ziel.
@@ -14,9 +13,9 @@
 interface
 
 uses
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   ToolsAPI,
-  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.Editor.SlashTrigger,
   Atlas.Core.Editor.TestUnit,
   Atlas.IDE.Commands.EditorSelection;
@@ -67,20 +66,20 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   System.SysUtils,
   System.JSON,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.FormatLog,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
   Atlas.UI.Commands.Strings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.WorkspaceEdit;

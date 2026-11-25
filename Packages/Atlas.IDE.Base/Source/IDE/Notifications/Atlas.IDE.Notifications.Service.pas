@@ -28,8 +28,9 @@ uses
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Verdict,
-  Atlas.Core.Notifications.Contract,
+  Atlas.Plugin.Notifications.Contract,
   Atlas.Core.Notifications.Build,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Notifications.Window;
 
 type
@@ -37,11 +38,10 @@ type
   /// </summary>
   TAtlasNotificationBadgeEvent = reference to procedure(AUnread: Integer; AWorst: TAtlasNotificationSeverity);
 
-  TAtlasIdeNotifications = class(TComponent)
+  TAtlasIdeNotifications = class(TAtlasPopupFormHolder<TAtlasNotificationsWindow>)
   private class var
     FInstance: TAtlasIdeNotifications;
   private
-    FWindow: TAtlasNotificationsWindow;
     FListener: Integer;
     FPending: Integer;
     FOnAnchor: TFunc<TPoint>;
@@ -51,8 +51,6 @@ type
     procedure Changed;
     procedure Refresh;
     procedure Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -87,14 +85,14 @@ implementation
 uses
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.UI.Notifications.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Host;
 
@@ -138,22 +136,9 @@ begin
   begin
     FInstance := nil;
   end;
-  if FWindow <> nil then
-  begin
-    FWindow.RemoveFreeNotification(Self);
-    FreeAndNil(FWindow);
-  end;
+  FreeWindow;
   FreeAndNil(FCheckErrors);
   inherited;
-end;
-
-procedure TAtlasIdeNotifications.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited;
-  if (Operation = opRemove) and (AComponent = FWindow) then
-  begin
-    FWindow := nil;
-  end;
 end;
 
 procedure TAtlasIdeNotifications.Changed;
@@ -178,9 +163,9 @@ begin
   begin
     FOnBadge(mUnread, mWorst);
   end;
-  if FWindow <> nil then
+  if Window <> nil then
   begin
-    FWindow.Reload;
+    Window.Reload;
   end;
 end;
 
@@ -224,9 +209,9 @@ begin
   if not mCenter.Enabled then
   begin
     FCheckErrors.Clear;
-    if FWindow <> nil then
+    if Window <> nil then
     begin
-      FWindow.Dismiss;
+      Window.Dismiss;
     end;
   end;
   Changed;
@@ -235,19 +220,18 @@ end;
 procedure TAtlasIdeNotifications.Show(const AAnchor: TPoint);
 begin
   // Zweiter Aufruf schließt.
-  if FWindow <> nil then
+  if Window <> nil then
   begin
-    FWindow.Dismiss;
+    Window.Dismiss;
     Exit;
   end;
   if not Active then
   begin
     Exit;
   end;
-  FWindow := TAtlasNotificationsWindow.CreateList(Application, TAtlasIdeStyle.Colors,
-    TAtlasNotificationCenter.Default);
-  FWindow.FreeNotification(Self);
-  FWindow.OnModeChange :=
+  Hold(TAtlasNotificationsWindow.CreateList(Application, TAtlasIdeStyle.Colors,
+    TAtlasNotificationCenter.Default));
+  Window.OnModeChange :=
     procedure(const ASource: string; AMode: TAtlasNotificationMode)
     begin
       TAtlasGuard.Run(TAtlasFeature.Notifications,
@@ -256,26 +240,12 @@ begin
           SaveMode(ASource, AMode);
         end);
     end;
-  FWindow.ShowAbove(AAnchor);
+  Window.ShowAbove(AAnchor);
 end;
 
 procedure TAtlasIdeNotifications.Show;
-var
-  mAnchor: TPoint;
-  mArea: TRect;
 begin
-  mAnchor := Point(MaxInt, MaxInt);
-  if Assigned(FOnAnchor) then
-  begin
-    mAnchor := FOnAnchor();
-  end;
-  if mAnchor.X = MaxInt then
-  begin
-    // Ohne Statusfeld: unten links im aktiven Fenster.
-    mArea := TAtlasIdeHost.PopupArea;
-    mAnchor := Point(mArea.Left + 40, mArea.Bottom - 40);
-  end;
-  Show(mAnchor);
+  Show(TAtlasIdeHost.PopupAnchor(FOnAnchor));
 end;
 
 procedure TAtlasIdeNotifications.BuildFinished(const AMessages: TArray<TAtlasCompilerMessage>;
@@ -351,6 +321,9 @@ begin
 end;
 
 procedure TAtlasIdeNotifications.Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
+const
+  /// <summary>Stelle der ersten Meldung: Datei(Zeile): Text.</summary>
+  cTargetFormat = '%s(%d): %s';
 var
   mNotice: TAtlasBuildNotice;
   mProject, mTitle, mText, mAction: string;
@@ -375,7 +348,7 @@ begin
   if mNotice.HasTarget then
   begin
     mTarget := mNotice.Target;
-    mText := mText + ' · ' + Format('%s(%d): %s', [ExtractFileName(mTarget.FileName), mTarget.Line, mTarget.Text]);
+    mText := mText + ' · ' + Format(cTargetFormat, [ExtractFileName(mTarget.FileName), mTarget.Line, mTarget.Text]);
     mActions := [TAtlasNotificationCenter.Action(mAction,
       procedure
       begin

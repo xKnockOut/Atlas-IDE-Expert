@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Diagnostics.KnownPackages;
 
-// Module unter „Known Packages“ der IDE (Meldung vom 05.11.2026: zwischen 05:34
-// und 06:31 stand dort nur noch Base, die 11 Module fehlten; Ursache offen):
+// Module unter „Known Packages“ der IDE (es kam vor, dass dort über Nacht nur
+// noch Base stand und alle Module fehlten; Ursache offen):
 // - Start: Die Liste der IDE (HKCU\<GetBaseRegistryKey>\Known Packages, die
 //   64-Bit-IDE „… x64“) wird mit den Modul-BPLs im Ordner von Base verglichen
 //   (TAtlasKnownPackages.Check). Das Ergebnis steht im Protokoll, dazu die Zahl
@@ -87,14 +87,14 @@ uses
   System.Win.Registry,
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Projects.PathCheck,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources;
+  Atlas.Plugin.Projects.PathCheck,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources;
 
 {$SCOPEDENUMS ON}
 
@@ -168,30 +168,37 @@ var
   mChanged: TEvent;
   mHandles: array[0..1] of THandle;
 begin
-  if RegOpenKeyEx(HKEY_CURRENT_USER, PChar(FKey), 0, KEY_NOTIFY or KEY_READ, mKey) <> ERROR_SUCCESS then
-  begin
-    TAtlasGuard.Log('Known Packages: Schlüssel lässt sich nicht beobachten'); // german-ok Protokoll
-    Exit;
-  end;
-  mChanged := TEvent.Create(nil, False, False, '');
   try
-    mHandles[0] := FStop.Handle;
-    mHandles[1] := mChanged.Handle;
-    while not Terminated do
+    if RegOpenKeyEx(HKEY_CURRENT_USER, PChar(FKey), 0, KEY_NOTIFY or KEY_READ, mKey) <> ERROR_SUCCESS then
     begin
-      if RegNotifyChangeKeyValue(mKey, False, cNotifyFilter, mChanged.Handle, True) <> ERROR_SUCCESS then
-      begin
-        Break;
-      end;
-      if WaitForMultipleObjects(2, @mHandles, False, INFINITE) <> WAIT_OBJECT_0 + 1 then
-      begin
-        Break;
-      end;
-      Changed;
+      TAtlasGuard.Log('Known Packages: Schlüssel lässt sich nicht beobachten'); // german-ok Protokoll
+      Exit;
     end;
-  finally
-    mChanged.Free;
-    RegCloseKey(mKey);
+    mChanged := TEvent.Create(nil, False, False, '');
+    try
+      mHandles[0] := FStop.Handle;
+      mHandles[1] := mChanged.Handle;
+      while not Terminated do
+      begin
+        if RegNotifyChangeKeyValue(mKey, False, cNotifyFilter, mChanged.Handle, True) <> ERROR_SUCCESS then
+        begin
+          Break;
+        end;
+        if WaitForMultipleObjects(2, @mHandles, False, INFINITE) <> WAIT_OBJECT_0 + 1 then
+        begin
+          Break;
+        end;
+        Changed;
+      end;
+    finally
+      mChanged.Free;
+      RegCloseKey(mKey);
+    end;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Known Packages: ' + TAtlasGuard.ErrorText(E));
+    end;
   end;
 end;
 
@@ -277,6 +284,12 @@ begin
     end;
 end;
 
+const
+  // Registrierungsschlüssel der IDE unterhalb des Schlüssels der Version.
+  cKnownPackages = 'Known Packages';
+  cDisabledPackages = 'Disabled Packages';
+  cWin64Suffix = ' x64';
+
 class procedure TAtlasIdeKnownPackages.Restore(const AKey: string; const AMissing: TArray<string>);
 var
   mNames, mError: string;
@@ -286,7 +299,7 @@ begin
   try
     if not WriteMissing(AKey, AMissing) then
     begin
-      mError := 'Known Packages';
+      mError := cKnownPackages;
     end;
   except
     on mFailure: Exception do
@@ -384,18 +397,18 @@ end;
 class function TAtlasIdeKnownPackages.KnownKey(const ARegistryKey: string): string;
 begin
 {$IFDEF WIN64}
-  Result := ARegistryKey + '\Known Packages x64';
+  Result := ARegistryKey + '\' + cKnownPackages + cWin64Suffix;
 {$ELSE}
-  Result := ARegistryKey + '\Known Packages';
+  Result := ARegistryKey + '\' + cKnownPackages;
 {$ENDIF}
 end;
 
 class function TAtlasIdeKnownPackages.DisabledKey(const ARegistryKey: string): string;
 begin
 {$IFDEF WIN64}
-  Result := ARegistryKey + '\Disabled Packages x64';
+  Result := ARegistryKey + '\' + cDisabledPackages + cWin64Suffix;
 {$ELSE}
-  Result := ARegistryKey + '\Disabled Packages';
+  Result := ARegistryKey + '\' + cDisabledPackages;
 {$ENDIF}
 end;
 

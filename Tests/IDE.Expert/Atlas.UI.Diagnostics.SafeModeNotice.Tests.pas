@@ -12,9 +12,6 @@ type
   [TestFixture]
   TAtlasSafeModeNoticeTests = class
   public
-    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure AskOffersSafeNormalDetails;
     [Test]
@@ -38,11 +35,6 @@ uses
   Atlas.UI.Diagnostics.SafeModeNotice;
 
 { TAtlasSafeModeNoticeTests }
-
-procedure TAtlasSafeModeNoticeTests.WarmUpFirstUse;
-begin
-  AskOffersSafeNormalDetails;
-end;
 
 procedure TAtlasSafeModeNoticeTests.AskOffersSafeNormalDetails;
 var

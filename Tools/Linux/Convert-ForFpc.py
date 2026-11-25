@@ -28,7 +28,7 @@ Die Anpassungen sind rein mechanisch und ändern keine Logik:
 - Ressourcen ({$R}) und {$MAXSTACKSIZE} entfallen; die Stapelgröße setzt der Linker
   (siehe Build-AtlasServer.sh).
 
-Die Windows-Adapter (Atlas.Windows.*) erreicht der Linux-Bau nicht: Shell.Platform
+Die Windows-Adapter (Atlas.Windows.*) erreicht der Linux-Bau nicht: Platform.Server
 wählt unter Linux die Adapter aus Packages/Atlas.Linux.
 """
 import json

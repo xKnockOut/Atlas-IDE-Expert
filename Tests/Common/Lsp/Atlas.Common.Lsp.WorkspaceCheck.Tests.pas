@@ -397,7 +397,7 @@ begin
           mUris.Add(UriOf(mReport));
         end;
         mUris.Sort;
-        Assert.AreEqual(2, mUris.Count);
+        Assert.AreEqual(2, Integer(mUris.Count));
         Assert.AreEqual(TDocumentUris.FromPath(cFileA), mUris[0]);
         Assert.AreEqual(TDocumentUris.FromPath(cFileB), mUris[1]);
       finally
@@ -554,7 +554,7 @@ begin
     mFixture.Check.Want;
     Assert.IsTrue(mFixture.Check.WaitIdle(cIdleMs));
     Assert.AreEqual(3, mFixture.Check.Computed);
-    Assert.AreEqual(3, mFixture.Order.Count);
+    Assert.AreEqual(3, Integer(mFixture.Order.Count));
     Assert.AreEqual('A.pas', mFixture.Order[2], 'A zuletzt');
     Assert.AreEqual(3, mFixture.Check.Run.Done);
     mReports := mFixture.Collect;
@@ -575,7 +575,7 @@ var
   mReport: TJSONValue;
   mEmpty: Integer;
 begin
-  // Früher scheiterte an einer kaputten Unit jede Anfrage, bis der Server starb (#1094).
+  // Eine kaputte Unit darf nicht jede Anfrage scheitern lassen, bis der Server stirbt (#1094).
   mFixture := TFixture.Create;
   try
     mFixture.Behavior.Add(cFileA, 'fail');

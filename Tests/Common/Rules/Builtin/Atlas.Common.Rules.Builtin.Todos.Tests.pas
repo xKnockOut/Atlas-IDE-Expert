@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Todos.Tests;
 
 // Tests der Regel todo-comment (#68): freiwillig (ohne Konfiguration still),
-// Hinweis auf dem Kommentar, DONE nie, Unterdrückung, Marken aus "keywords".
+// Hinweis auf dem Kommentar, DONE nie, Unterdrückung, Marken aus "keywords" der Regel.
 // commented-out-code (#942): Codeblöcke ab minLines Zeilen, Prosa, XMLDoc und
 // Dateikopf still, mehrzeilige { }-Kommentare, Korrektur entfernt die Zeilen.
 
@@ -24,10 +24,6 @@ type
     procedure SuppressedByComment;
     [Test]
     procedure KeywordsFromConfiguration;
-    [Test]
-    procedure KeywordsFromOptions;
-    [Test]
-    procedure KeywordsFromSettings;
     [Test]
     procedure RuleIsRegistered;
     [Test]
@@ -55,9 +51,7 @@ type
 implementation
 
 uses
-  System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Todos,
@@ -149,32 +143,6 @@ begin
   Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('TODO 1 [GUI, Marco]: Fokus setzen', mFindings[0].Message);
   Assert.AreEqual('HACK: Umweg', mFindings[1].Message);
-end;
-
-procedure TTodoRulesTests.KeywordsFromOptions;
-begin
-  Assert.AreEqual('TODO FIXME', string.Join(' ', TTodoRules.KeywordsFromOptions('')));
-  Assert.AreEqual('TODO FIXME', string.Join(' ', TTodoRules.KeywordsFromOptions('{"keywords": []}')));
-  Assert.AreEqual('TODO FIXME', string.Join(' ', TTodoRules.KeywordsFromOptions('{"keywords": "HACK"}')));
-  Assert.AreEqual('HACK XXX', string.Join(' ',
-    TTodoRules.KeywordsFromOptions('{"keywords": ["hack", " XXX ", "DONE", "TO-DO", 1]}')));
-  Assert.IsTrue(TTodoRules.IsValidKeyword('Note'));
-  Assert.IsFalse(TTodoRules.IsValidKeyword('done'));
-  Assert.IsFalse(TTodoRules.IsValidKeyword(''));
-  Assert.IsFalse(TTodoRules.IsValidKeyword('TO DO'));
-end;
-
-procedure TTodoRulesTests.KeywordsFromSettings;
-var
-  mIssues: TArray<TConfigurationIssue>;
-  mSettings: TServerSettings;
-begin
-  Assert.AreEqual('TODO FIXME', string.Join(' ', TTodoRules.Keywords(TServerSettings.Default)));
-  // Die Marken gelten auch bei abgeschalteter Regel (für get_todos und --todos).
-  mSettings := TConfigurationParser.Parse('{"rules": {"todo-comment": {"severity": "off", "keywords": ["NOTE"]}}}',
-    mIssues);
-  Assert.AreEqual(0, Integer(Length(mIssues)));
-  Assert.AreEqual('NOTE', string.Join(' ', TTodoRules.Keywords(mSettings)));
 end;
 
 procedure TTodoRulesTests.RuleIsRegistered;

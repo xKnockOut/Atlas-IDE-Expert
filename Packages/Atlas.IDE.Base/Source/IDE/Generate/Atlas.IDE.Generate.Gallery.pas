@@ -34,9 +34,10 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
+  Atlas.Core.Modules.Watch,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Generate.Gallery,
   Atlas.IDE.Foundation.Settings;
@@ -64,12 +65,6 @@ type
     { IOTARepositoryWizard80 }
     function GetGalleryCategory: IOTAGalleryCategory;
     function GetPersonality: string;
-  end;
-
-  /// <summary>Hört auf die Registry und gleicht die Assistenten an.</summary>
-  TGalleryWatch = class(TInterfacedObject, IAtlasRegistryListener)
-  public
-    procedure RegistryChanged(const AChange: TAtlasRegistryChange);
   end;
 
 var
@@ -163,7 +158,7 @@ begin
     TAtlasGuard.Log('Gallery: command ' + ACommandId + ' is gone');
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.Generate, mCommand.Run);
+  TAtlasCommandScope.Run(TAtlasFeature.Generate, mCommand.Caption, mCommand.Run);
 end;
 
 { TGalleryWizard }
@@ -191,7 +186,11 @@ end;
 
 procedure TGalleryWizard.Execute;
 begin
-  RunCommand(FItem.CommandId);
+  TAtlasGuard.Run(TAtlasFeature.Generate,
+    procedure
+    begin
+      RunCommand(FItem.CommandId);
+    end);
 end;
 
 function TGalleryWizard.GetAuthor: string;
@@ -230,16 +229,13 @@ begin
   Result := sDelphiPersonality;
 end;
 
-{ TGalleryWatch }
-
 procedure RefreshGallery;
 begin
   TAtlasIdeGallery.Refresh;
 end;
 
-{ TGalleryWatch }
-
-procedure TGalleryWatch.RegistryChanged(const AChange: TAtlasRegistryChange);
+/// <summary>Hört auf die Registry und gleicht die Assistenten an.</summary>
+procedure GalleryRegistryChanged(const AChange: TAtlasRegistryChange);
 begin
   if AChange.Kind in [rcModuleAdded, rcModuleRemoved, rcProvided, rcRevoked] then
   begin
@@ -256,7 +252,7 @@ begin
     Exit;
   end;
   GInstalled := True;
-  GSubscription := AtlasModuleRegistry.Subscribe(TGalleryWatch.Create);
+  GSubscription := TAtlasRegistryWatch.Subscribe(AtlasModuleRegistry, GalleryRegistryChanged);
   Refresh;
 end;
 

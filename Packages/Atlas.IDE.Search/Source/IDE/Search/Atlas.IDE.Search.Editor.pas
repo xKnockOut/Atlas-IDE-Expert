@@ -45,7 +45,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Search.Scopes,
   Atlas.Text.Lines,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.ToolsApi.Editor.Buffer;
 
 /// <summary>Zeile ARow (0-basiert) oder '' außerhalb.</summary>
 function LineAt(const ALines: TArray<string>; ARow: Integer): string;
@@ -207,10 +207,13 @@ begin
 end;
 
 class function TAtlasIdeSearchEditor.TabWidth: Integer;
+const
+  /// <summary>Tabulatorweite ohne offenen Editor.</summary>
+  cDefaultTabWidth = 8;
 var
   mView: IOTAEditView;
 begin
-  Result := 8;
+  Result := cDefaultTabWidth;
   if TopView(mView) then
   begin
     Result := TAtlasEditorBuffer.TabWidth(mView.Buffer);

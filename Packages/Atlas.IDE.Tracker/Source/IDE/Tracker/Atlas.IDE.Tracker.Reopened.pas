@@ -27,7 +27,8 @@ uses
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.Reopened,
-  Atlas.IDE.Tracker.IssuesContext;
+  Atlas.IDE.Tracker.IssuesContext,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 type
   // Benannte Typen: Delphi kennt keine Felder mit direkt angegebenem `reference to` (FPC schon).
@@ -87,7 +88,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.Workflow,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.Workflow;

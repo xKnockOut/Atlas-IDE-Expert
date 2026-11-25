@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Lsp.Completion.InheritedCalls;
 
 // Vollständige inherited-Aufrufe (#482) nach "inherited " vor den Namen der Vorfahrmethoden. Die Teile ohne
-// Namensauflösung stehen in Atlas.Common.Lsp.CompletionInherited. Aus Atlas.Common.Lsp.Completion
-// herausgelöst.
+// Namensauflösung stehen in Atlas.Common.Lsp.CompletionInherited. Teil der Vervollständigung
+// (Atlas.Common.Lsp.Completion).
 
 interface
 
@@ -29,7 +29,6 @@ uses
   System.StrUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionInherited;
 
@@ -159,12 +158,12 @@ begin
   if ASite.WithResult then
   begin
     mColumn := Pos('inherited', LowerCase(ASite.LineBefore)) - 1;
-    Result.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line, mColumn, ARequest.Position.Line,
+    Result.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position.Line, mColumn, ARequest.Position.Line,
       ARequest.Position.Character), 'Result := inherited ' + mText);
   end
   else
   begin
-    Result.TextEdit := TRuleEdit.Create(TTextRange.Create(ARequest.Position.Line,
+    Result.TextEdit := TTextEdit.Create(TTextRange.Create(ARequest.Position.Line,
       ARequest.Position.Character - Length(AContext.Prefix), ARequest.Position.Line, ARequest.Position.Character),
       mText);
   end;

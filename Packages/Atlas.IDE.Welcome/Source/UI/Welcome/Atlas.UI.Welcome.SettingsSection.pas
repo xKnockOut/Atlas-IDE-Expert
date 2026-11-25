@@ -13,7 +13,8 @@
 //   zurücksetzen“ und „Gesperrte Tipps wieder zeigen“ (#757, über Hooks; ohne
 //   Haken nichts), Ordnerauswahl der Hilfe.
 // Close gibt eigene Steuerelemente und Haken frei; danach erreicht den
-// Abschnitt nichts mehr (Regel 3).
+// Abschnitt nichts mehr (Regel 3). Für die Seite von Base hüllt ihn
+// Atlas.IDE.Welcome.Adapters.SettingsSection in IAtlasSettingsSection.
 
 interface
 
@@ -25,7 +26,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.SettingsLayouts;
@@ -141,7 +142,8 @@ type
     NewFromTemplate: TCheckBox;
   end;
 
-  TAtlasWelcomeSettingsSection = class(TInterfacedObject, IAtlasSettingsSection)
+  /// <summary>Gehört dem, der ihn anlegt; die Methoden wie in IAtlasSettingsSection.</summary>
+  TAtlasWelcomeSettingsSection = class
   public const
     cOwnerId = 'atlas.welcome';
     cAreaId = 'welcome';
@@ -160,6 +162,7 @@ type
     function Line(const AKey: string; AText: TAtlasWelcomeTextId): TEdit;
     function OwnCheck(const AKey, ACaption: string): TCheckBox;
     function KeyEdit(const AKey, ACaption: string): TEdit;
+    /// <summary>Knopf in AParent; ALeft und AWidth in logischen Pixeln (96 dpi).</summary>
     function AddButton(AParent: TWinControl; ALeft, AWidth: Integer; const ACaption: string;
       AClick: TNotifyEvent): TButton;
     procedure BuildStart;
@@ -174,14 +177,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    { IAtlasSettingsSection }
-    function OwnerId: string;
-    function AreaId: string;
+    { wie IAtlasSettingsSection }
     procedure Build(const AHost: IAtlasSettingsSectionHost);
     procedure Load(const AValues: IAtlasSettingsValues);
     procedure Save(const AValues: IAtlasSettingsValues);
     procedure WindowReady;
-    function Show(const AKey, AArgument: string): Boolean;
     procedure Close;
     property Closed: Boolean read FClosed;
     property Hooks: TAtlasWelcomeSettingsHooks read FHooks;
@@ -200,7 +200,8 @@ uses
   Atlas.Core.Welcome.Trends,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.QuickActions.Texts,
-  Atlas.UI.Welcome.Trends;
+  Atlas.UI.Welcome.Trends,
+  Atlas.UI.Settings.Page.Sheets;
 
 const
   cRowHeight = 26;
@@ -212,6 +213,12 @@ const
   cCheckWidth = 400;
   cBrowseWidth = 30;
   cBrowseGap = 6;
+  /// <summary>Knöpfe „Nutzung zurücksetzen“ und „Tipps wieder zeigen“ nebeneinander, Knopf zu den Einstellungen
+  /// einer Modul-Kachel.</summary>
+  cResetUsageWidth = 180;
+  cUnblockTipsWidth = 200;
+  cTileLinkWidth = 200;
+  cRowButtonGap = 10;
   cLayoutKey = 'welcomePage.layout';
   cSearchKey = 'welcomePage.search.key';
   cSeriesKey = 'welcomePage.trends.series';
@@ -377,13 +384,7 @@ end;
 function TAtlasWelcomeSettingsSection.AddButton(AParent: TWinControl; ALeft, AWidth: Integer;
   const ACaption: string; AClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(FOwner);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.Left := ALeft;
-  Result.Top := Result.ScaleValue(cButtonTop);
-  Result.Width := AWidth;
-  Result.OnClick := AClick;
+  Result := TAtlasSettingsPageSheets.NewRowButton(FOwner, AParent, ALeft, AWidth, ACaption, AClick);
 end;
 
 procedure TAtlasWelcomeSettingsSection.BuildStart;
@@ -507,10 +508,10 @@ begin
   FMore.Discover := Check('welcomePage.discover', TAtlasWelcomeTextId.SettingsWelcomeDiscover);
   FMore.TipsUsageTracking := Check('tips.usageTracking', TAtlasWelcomeTextId.SettingsTipsUsageTracking);
   mRow := FHost.AddRow(cButtonRow, nil);
-  FMore.ResetUsage := AddButton(mRow, 0, 180, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsResetUsage),
-    FHooks.ResetUsageClick);
-  FMore.UnblockTips := AddButton(mRow, 190, 200, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsUnblockTips),
-    FHooks.UnblockTipsClick);
+  FMore.ResetUsage := AddButton(mRow, 0, cResetUsageWidth,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsResetUsage), FHooks.ResetUsageClick);
+  FMore.UnblockTips := AddButton(mRow, cResetUsageWidth + cRowButtonGap, cUnblockTipsWidth,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsUnblockTips), FHooks.UnblockTipsClick);
   FHost.Attach(mRow, FMore.Discover);
 end;
 
@@ -524,9 +525,11 @@ begin
   FMore.HelpReportFolder.TextHint := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeHelpDesktop);
   FMore.HelpReportFolder.Width := FMore.HelpReportFolder.Width -
     FMore.HelpReportFolder.ScaleValue(cBrowseWidth + cBrowseGap);
-  FMore.HelpFolderBrowse := AddButton(FMore.HelpReportFolder.Parent,
-    FMore.HelpReportFolder.Left + FMore.HelpReportFolder.Width + cBrowseGap, cBrowseWidth, '…',
+  FMore.HelpFolderBrowse := AddButton(FMore.HelpReportFolder.Parent, 0, cBrowseWidth, '…',
     FHooks.HelpFolderBrowseClick);
+  // Neben dem Feld: dessen Lage ist schon in Gerätepixeln.
+  FMore.HelpFolderBrowse.Left := FMore.HelpReportFolder.Left + FMore.HelpReportFolder.Width +
+    FMore.HelpFolderBrowse.ScaleValue(cBrowseGap);
   FMore.HelpFolderBrowse.Top := 0;
   FMore.HelpFolderBrowse.Anchors := [akTop, akRight];
 end;
@@ -550,8 +553,8 @@ begin
     if FHooks.TileSwitches[mIndex].SettingsKey <> '' then
     begin
       mRow := FHost.AddRow(cButtonRow, nil);
-      mLink := AddButton(mRow, 0, 200, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink),
-        FHooks.TileLinkClick);
+      mLink := AddButton(mRow, 0, cTileLinkWidth,
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink), FHooks.TileLinkClick);
       mLink.Tag := mIndex;
       FHost.Attach(mRow, mCheck);
     end;
@@ -593,16 +596,6 @@ begin
   end;
   Add('WelcomePageHelp', FMore.Help);
   FLayouts.Track(mSwitches, FStart.WhatsNew);
-end;
-
-function TAtlasWelcomeSettingsSection.OwnerId: string;
-begin
-  Result := cOwnerId;
-end;
-
-function TAtlasWelcomeSettingsSection.AreaId: string;
-begin
-  Result := cAreaId;
 end;
 
 procedure TAtlasWelcomeSettingsSection.Build(const AHost: IAtlasSettingsSectionHost);
@@ -711,12 +704,6 @@ begin
       FTiles.ModuleTileLinks[mIndex].Visible := FHost.Shows(FHooks.TileSwitches[mIndex].SettingsKey);
     end;
   end;
-end;
-
-function TAtlasWelcomeSettingsSection.Show(const AKey, AArgument: string): Boolean;
-begin
-  // „Einstellung zeigen“ findet die Seite über die gebundenen Schlüssel selbst; keine Vorgaben.
-  Result := False;
 end;
 
 procedure TAtlasWelcomeSettingsSection.Close;

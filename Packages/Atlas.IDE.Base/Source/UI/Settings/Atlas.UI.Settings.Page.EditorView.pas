@@ -9,7 +9,7 @@ uses
   System.SysUtils,
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.EditorToolbar.Customize,
   Atlas.UI.Settings.Page.Host;
 
@@ -249,7 +249,7 @@ end;
 
 procedure TAtlasSettingsEditorViewPart.Build;
 begin
-  AddSheet(TAtlasTextId.SettingsTabEditor);
+  AddSheet(TAtlasSettingsTextId.SettingsTabEditor);
   BindCheck('HoverTooltip', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHover)));
   // Aktionszeile unter Befunden im Hover (#909).
   BindCheck('HoverProblemActions',
@@ -300,6 +300,8 @@ begin
   BindText('BlockEndLabelsMinLines',
     AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBlockEndLabelsMinLines)));
   BindCheck('DimUnusedUses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDimUnusedUses)));
+  BindCheck('HighlightMovableUses',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHighlightMovableUses)));
   BuildBreadcrumbs;
   BindCheck('MouseNavButtons', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMouseNavButtons)));
   BuildEditorToolbar;

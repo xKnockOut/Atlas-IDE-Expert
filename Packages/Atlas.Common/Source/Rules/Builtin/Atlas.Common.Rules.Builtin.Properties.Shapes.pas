@@ -59,35 +59,12 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Pascal.DirectiveNames;
+  Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Common.Pascal.TokenCursor;
 
 function IsWord(const AToken: TPascalToken; const AWord: string): Boolean;
 begin
   Result := (AToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(AToken.Text, AWord);
-end;
-
-/// <summary>Index der schließenden Klammer zur öffnenden bei AOpen; 0 ohne.</summary>
-function ClosingParen(const ASignature: string; AOpen: Integer): Integer;
-var
-  mDepth, mIndex: Integer;
-begin
-  mDepth := 0;
-  for mIndex := AOpen to Length(ASignature) do
-  begin
-    if ASignature[mIndex] = '(' then
-    begin
-      Inc(mDepth);
-    end
-    else if (ASignature[mIndex] = ')') and (mDepth = 1) then
-    begin
-      Exit(mIndex);
-    end
-    else if ASignature[mIndex] = ')' then
-    begin
-      Dec(mDepth);
-    end;
-  end;
-  Result := 0;
 end;
 
 /// <summary>Parametergruppen ("const A, B: Integer") zwischen den Klammern AOpen und AClose.</summary>
@@ -152,7 +129,7 @@ begin
   begin
     Exit;
   end;
-  mClose := ClosingParen(ASignature, mOpen);
+  mClose := MatchingParen(ASignature, mOpen);
   if mClose = 0 then
   begin
     Exit;

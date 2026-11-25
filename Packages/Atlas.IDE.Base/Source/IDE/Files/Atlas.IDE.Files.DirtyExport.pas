@@ -11,9 +11,10 @@
 // "activeProject" das aktive: build_project wählt danach IDE und Projekt
 // (#261).
 // Beim Beenden löscht das Plugin seine Datei; Dateien beendeter Prozesse
-// übergeht der Server. Beim Start räumt das Plugin die Dateien und
-// Build-Eingänge (ide-builds\<pid>) abgestürzter oder hart beendeter Prozesse
-// weg (Atlas.Core.Files.ProcessLeftovers).
+// übergeht der Server. Beim Start räumt das Plugin die Dateien, den Zustand
+// für KI-Assistenten (ide-context-<pid>.json, #2050) und Build-Eingänge
+// (ide-builds\<pid>) abgestürzter oder hart beendeter Prozesse weg
+// (Atlas.Plugin.Files.ProcessLeftovers).
 
 interface
 
@@ -49,11 +50,14 @@ uses
   System.IOUtils,
   System.JSON,
   ToolsAPI,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Files.ProcessLeftovers;
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Files.ProcessLeftovers,
+  Atlas.Text.Files;
 
 const
   cPROCESS_QUERY_LIMITED_INFORMATION = $1000;
+  /// <summary>Art der Datei im Protokoll, wenn sie nicht geschrieben werden konnte.</summary>
+  cDataKind = 'Liste ungespeicherter Dateien';
 
 /// <summary>Läuft unter APid dasselbe Programm wie im eigenen Prozess (bds.exe)? Eine wiederverwendete Nummer
 /// gehört oft einem ganz anderen Programm, auch einem, das sich nicht öffnen lässt. Die Prozessliste von Windows
@@ -121,8 +125,8 @@ begin
   end;
 end;
 
-/// <summary>Exportierte Dateien in AFolder mit der Prozessnummer im Namen.</summary>
-function DirtyFiles(const AFolder: string): TArray<TAtlasLeftover>;
+/// <summary>Exportierte Dateien APrefix…json in AFolder mit der Prozessnummer im Namen.</summary>
+function PidFiles(const AFolder, APrefix: string): TArray<TAtlasLeftover>;
 var
   mPath: string;
   mPid: Cardinal;
@@ -132,10 +136,9 @@ begin
   begin
     Exit;
   end;
-  for mPath in TDirectory.GetFiles(AFolder, TAtlasProcessLeftovers.cDirtyPrefix + '*') do
+  for mPath in TDirectory.GetFiles(AFolder, APrefix + '*') do
   begin
-    if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), TAtlasProcessLeftovers.cDirtyPrefix,
-      TAtlasProcessLeftovers.cDirtySuffix, mPid) then
+    if TAtlasProcessLeftovers.PidOf(ExtractFileName(mPath), APrefix, TAtlasProcessLeftovers.cDirtySuffix, mPid) then
     begin
       Result := Result + [TAtlasLeftover.Create(mPath, mPid, TFile.GetLastWriteTime(mPath))];
     end;
@@ -168,7 +171,8 @@ procedure RemoveLeftovers(const AFolder: string);
 var
   mPath: string;
 begin
-  for mPath in TAtlasProcessLeftovers.Stale(DirtyFiles(AFolder) + BuildFolders(AFolder), GetCurrentProcessId,
+  for mPath in TAtlasProcessLeftovers.Stale(PidFiles(AFolder, TAtlasProcessLeftovers.cDirtyPrefix) +
+    PidFiles(AFolder, TAtlasProcessLeftovers.cContextPrefix) + BuildFolders(AFolder), GetCurrentProcessId,
     ProcessAlive) do
   begin
     try
@@ -182,8 +186,13 @@ begin
       end;
     except
       // Gesperrt oder schon weg: beim nächsten Start wieder versuchen.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
+      end;
     end;
   end;
 end;
@@ -191,6 +200,8 @@ end;
 { TAtlasDirtyExport }
 
 constructor TAtlasDirtyExport.Create;
+const
+  cTickMs = 1000;
 begin
   inherited Create;
   FFileName := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
@@ -199,11 +210,16 @@ begin
     RemoveLeftovers(ExtractFileDir(FFileName));
   except
     // Aufräumen ist Nebensache; die Liste dieses Prozesses entsteht trotzdem.
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
+    end;
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 1000;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -211,16 +227,8 @@ end;
 destructor TAtlasDirtyExport.Destroy;
 begin
   FTimer.Free;
-  try
-    if FileExists(FFileName) then
-    begin
-      TFile.Delete(FFileName);
-    end;
-  except
-    // Ein liegengebliebener Eintrag wird vom Server übergangen (Prozess beendet).
-    on Exception do
-      ;
-  end;
+  // Ein liegengebliebener Eintrag wird vom Server übergangen (Prozess beendet).
+  TAtlasDataFile.RemoveQuietly(FFileName);
   inherited Destroy;
 end;
 
@@ -267,7 +275,7 @@ begin
   except
     // Ohne Liste schützt der Server weiter über den Vergleich mit der Platte; der Grund steht einmal im Protokoll.
     on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Liste ungespeicherter Dateien', E);
+      TAtlasDataFile.ReportNotWritten(cDataKind, E);
   end;
 end;
 

@@ -28,44 +28,22 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Projects,
-  Atlas.Core.Welcome.Continue;
+  Atlas.Core.Welcome.Contract;
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>Zustand eines Issues: unbekannt, offen oder behoben bzw. geschlossen.</summary>
-  TAtlasIssueStateKind = (Unknown, Open, Resolved);
+  TAtlasIssueStateKind = Atlas.Core.Welcome.Contract.TAtlasIssueStateKind;
   /// <summary>Branch bei „Fortsetzen“: bleiben (gleich oder keiner gespeichert), nach Rückfrage wechseln, oder es
   /// gibt ihn nicht mehr (nur Reiter).</summary>
   TAtlasIssueBranchStep = (Keep, Ask, Missing);
 {$SCOPEDENUMS OFF}
 
-  /// <summary>Gespeicherter Arbeitsstand eines Issues.</summary>
-  TAtlasIssueWorkEntry = record
-    /// <summary>Kennung wie im Tracker ("#1926", "ATL-12").</summary>
-    Key: string;
-    /// <summary>Titel beim Speichern; '' unbekannt.</summary>
-    Title: string;
-    /// <summary>Branch des Issues; '' ohne.</summary>
-    Branch: string;
-    State: TAtlasWorkState;
-    class function Create(const AKey, ATitle, ABranch: string; const AState: TAtlasWorkState): TAtlasIssueWorkEntry;
-      static;
-  end;
+  TAtlasIssueWorkEntry = Atlas.Core.Welcome.Contract.TAtlasIssueWorkEntry;
 
   TAtlasIssueWorkEntries = TArray<TAtlasIssueWorkEntry>;
 
-  /// <summary>Eine Zeile des Reiters „Issues“.</summary>
-  TAtlasIssueWorkRow = record
-    /// <summary>Projekt bzw. Projektgruppe (vollständiger Pfad).</summary>
-    Project: string;
-    Entry: TAtlasIssueWorkEntry;
-    /// <summary>Open oder Unknown; behobene Issues stehen nicht in der Liste.</summary>
-    Status: TAtlasIssueStateKind;
-    /// <summary>Zuletzt bearbeitete Datei (TAtlasWorkState.LastIndex); leer ohne Reiter.</summary>
-    function LastTab: TAtlasWorkTab;
-  end;
-
-  TAtlasIssueWorkRows = TArray<TAtlasIssueWorkRow>;
+  TAtlasIssueWorkRow = Atlas.Core.Welcome.Contract.TAtlasIssueWorkRow;
+  TAtlasIssueWorkRows = Atlas.Core.Welcome.Contract.TAtlasIssueWorkRows;
 
   /// <summary>Zustand der Issues AKeys im Tracker von AProject, in derselben Reihenfolge; fehlende Einträge gelten als
   /// unbekannt.</summary>
@@ -132,37 +110,12 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json,
+  Atlas.Core.Welcome.Continue;
 
 const
   cTitle = 'title';
   cBranch = 'branch';
-
-{ TAtlasIssueWorkEntry }
-
-class function TAtlasIssueWorkEntry.Create(const AKey, ATitle, ABranch: string;
-  const AState: TAtlasWorkState): TAtlasIssueWorkEntry;
-begin
-  Result := Default(TAtlasIssueWorkEntry);
-  Result.Key := Trim(AKey);
-  Result.Title := ATitle;
-  Result.Branch := Trim(ABranch);
-  Result.State := AState;
-end;
-
-{ TAtlasIssueWorkRow }
-
-function TAtlasIssueWorkRow.LastTab: TAtlasWorkTab;
-var
-  mIndex: Integer;
-begin
-  Result := Default(TAtlasWorkTab);
-  mIndex := Entry.State.LastIndex;
-  if mIndex >= 0 then
-  begin
-    Result := Entry.State.Tabs[mIndex];
-  end;
-end;
 
 { JSON }
 
@@ -211,20 +164,10 @@ begin
   end;
 end;
 
-/// <summary>AEntry nach Zeit einsortieren, neueste zuerst; bei Gleichstand bleibt die Reihenfolge (stabil).</summary>
-procedure InsertEntry(var AFound: TAtlasIssueWorkEntries; const AEntry: TAtlasIssueWorkEntry);
-var
-  mIndex, mPosition: Integer;
+/// <summary>Arbeitsstand von AEntry für TAtlasWorkOrder.</summary>
+function IssueStateOf(const AEntry: TAtlasIssueWorkEntry): TAtlasWorkState;
 begin
-  mPosition := Length(AFound);
-  for mIndex := High(AFound) downto 0 do
-  begin
-    if AEntry.State.At > AFound[mIndex].State.At then
-    begin
-      mPosition := mIndex;
-    end;
-  end;
-  Insert(AEntry, AFound, mPosition);
+  Result := AEntry.State;
 end;
 
 /// <summary>Einträge aus dem Abschnitt, neueste zuerst; Einträge ohne Kennung oder Objekt fallen weg.</summary>
@@ -254,7 +197,7 @@ begin
     mEntry.Branch := Trim(TJsonRead.Text(TJSONObject(mPair.JsonValue), cBranch));
     if TAtlasWelcomeContinue.FromJson(mPair.JsonValue.ToJSON, mEntry.State) then
     begin
-      InsertEntry(Result, mEntry);
+      TAtlasWorkOrder.InsertNewestFirst<TAtlasIssueWorkEntry>(Result, mEntry, IssueStateOf);
     end;
   end;
 end;

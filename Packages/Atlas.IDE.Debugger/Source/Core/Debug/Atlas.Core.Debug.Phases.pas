@@ -3,7 +3,8 @@
 // Phasen einer Debug-Sitzung ohne Open Tools API (#517 und folgende): Prozesse zählen, Halt, Weiterlaufen,
 // Ende, verzögert gemeldeter Halt, Filter für Halte, Zuhörer benachrichtigen. Die IDE-Schicht
 // (Atlas.IDE.Debug.Session) übersetzt den Notifier des Debuggers in die Ereignisse ProcessCreated,
-// ProcessDestroyed und StateChanged und gibt über IAtlasDebugTarget Auskunft über den Debugger. Tests
+// ProcessDestroyed und StateChanged und gibt über IAtlasDebugTarget (Atlas.Core.Debug.Contract) Auskunft über den
+// Debugger. Tests
 // ersetzen ihn durch eine Fälschung.
 //   - Gestartet: erster Prozess angelegt.
 //   - Angehalten: StateChanged mit Stopped (Haltepunkt, Schritt, Pause), Exception (Sprach-Exception) bzw.
@@ -13,68 +14,79 @@
 //   - Fortgesetzt: Running nach einem Halt.
 //   - Beendet: letzter Prozess abgebaut.
 // Zustandswechsel zwischen BeginInternal und EndInternal (eigene Auswertungen) zählen nicht. Ein Halt, den
-// der Filter erledigt, erreicht die Zuhörer nicht, auch nicht das Weiterlaufen danach. Jeder Zuhörer läuft
-// einzeln über IAtlasDebugTarget.Run (in der IDE unter der Sicherung). Nur im Hauptthread verwenden.
+// ein Filter erledigt, erreicht die Zuhörer nicht, auch nicht das Weiterlaufen danach. Filter stehen unter einem
+// Namen (je Funktion einer); der erste, der den Halt erledigt, beendet die Runde. Jeder Zuhörer und jeder Filter
+// läuft einzeln über IAtlasDebugTarget.Run (in der IDE unter der Sicherung).
+// Laufzeit (#579): Mit Uhr (Clock) zählen die Phasen die Zeit, in der der Prozess läuft. Halte, die der Filter
+// erledigt, unterbrechen die Zählung nur; eigene Auswertungen zählen nicht. Beim gemeldeten Halt steht die Summe
+// seit dem vorigen gemeldeten Halt bzw. dem Start in RunTimeBeforeStop. Nur im Hauptthread verwenden.
 
 interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Debug.Contract;
 
 type
-  {$SCOPEDENUMS ON}
-  /// <summary>Grund eines Halts.</summary>
-  TAtlasDebugStop = (Paused, Exception, Fault);
-  /// <summary>Zustand des Prozesses, wie ihn der Debugger meldet; Other für alle übrigen (beendet, ohne).
-  /// </summary>
-  TAtlasDebugProcessState = (Other, Running, Stopped, Exception, Fault);
-  {$SCOPEDENUMS OFF}
-
-  IAtlasDebugListener = interface
-    ['{6E4F2A8C-1B7D-4C55-9E2A-3F0B8D61C7A4}']
-    /// <summary>Erster Prozess der Sitzung angelegt.</summary>
-    procedure DebugStarted;
-    /// <summary>Prozess angehalten; AStop nennt den Grund.</summary>
-    procedure DebugStopped(AStop: TAtlasDebugStop);
-    /// <summary>Prozess läuft nach einem Halt weiter.</summary>
-    procedure DebugResumed;
-    /// <summary>Letzter Prozess abgebaut.</summary>
-    procedure DebugEnded;
-  end;
-
-  /// <summary>Der Debugger, wie ihn die Phasen sehen; in der IDE über IOTADebuggerServices.</summary>
-  IAtlasDebugTarget = interface
-    ['{B4D17E2A-6C93-4F0B-8E51-2A7C9D03F6B8}']
-    /// <summary>Anzahl der Prozesse der Sitzung.</summary>
-    function ProcessCount: Integer;
-    /// <summary>Zustand des aktuellen Prozesses; Other ohne Prozess.</summary>
-    function CurrentState: TAtlasDebugProcessState;
-    /// <summary>Ist der aktuelle Prozess angehalten und hat er einen aktuellen Thread?</summary>
-    function HasStoppedThread: Boolean;
-    /// <summary>TAtlasDebugPhases.Tick einmal aufrufen, sobald die Benachrichtigung des Debuggers vorbei ist.
-    /// </summary>
-    procedure RequestTick;
-    /// <summary>AProc geschützt ausführen (Zuhörer, Filter); ein Fehler darf die übrigen nicht aufhalten.
-    /// </summary>
-    procedure Run(const AProc: TProc);
+  /// <summary>Zuhörer mit leeren Methoden zum Überschreiben.</summary>
+  TAtlasDebugListener = class(TInterfacedObject, IAtlasDebugListener)
+  public
+    procedure DebugStarted; virtual;
+    procedure DebugStopped(AStop: TAtlasDebugStop); virtual;
+    procedure DebugResumed; virtual;
+    procedure DebugEnded; virtual;
   end;
 
   /// <summary>Prüft einen Halt vor den Zuhörern; True = erledigt (etwa fortgesetzt), die Zuhörer erfahren nichts.
   /// </summary>
   TAtlasDebugStopFilter = reference to function(AStop: TAtlasDebugStop): Boolean;
 
+  /// <summary>Uhr für die Laufzeit in Mikrosekunden (monoton).</summary>
+  TAtlasDebugClock = reference to function: Int64;
+
+  /// <summary>Laufzeit des Prozesses (#579): summiert die Abschnitte zwischen Run und Pause; TakeAtStop legt die Summe
+  /// als Laufzeit vor dem gemeldeten Halt ab und beginnt neu. Ohne Clock bleibt alles 0.</summary>
+  TAtlasDebugRunTime = record
+  private
+    FRunning: Boolean;
+    FSince: Int64;
+    FSum: Int64;
+    FAtStop: Int64;
+    function Now: Int64;
+  public
+    Clock: TAtlasDebugClock;
+    /// <summary>Neue Sitzung: alles auf 0, nicht laufend.</summary>
+    procedure Reset;
+    /// <summary>Der Prozess läuft (ab jetzt, wenn er stand).</summary>
+    procedure Run;
+    /// <summary>Der Prozess steht: Abschnitt bis jetzt zählen.</summary>
+    procedure Pause;
+    /// <summary>Gemeldeter Halt: Summe nach AtStop, neu beginnen.</summary>
+    procedure TakeAtStop;
+    /// <summary>Laufzeit vor dem zuletzt gemeldeten Halt in Mikrosekunden.</summary>
+    function AtStop: Int64;
+  end;
+
   TAtlasDebugPhases = class
+  private type
+    TNamedFilter = record
+      Name: string;
+      Filter: TAtlasDebugStopFilter;
+    end;
   private
     FTarget: IAtlasDebugTarget;
     FListeners: TList<IAtlasDebugListener>;
-    FFilter: TAtlasDebugStopFilter;
+    FFilters: TArray<TNamedFilter>;
     FProcesses: Integer;
     FStopped: Boolean;
     FInternal: Integer;
     FStopCount: Integer;
     FPendingStop: TAtlasDebugStop;
     FPendingCount: Integer;
+    FRunTime: TAtlasDebugRunTime;
+    function GetClock: TAtlasDebugClock;
+    procedure SetClock(const AClock: TAtlasDebugClock);
     procedure Halted(AState: TAtlasDebugProcessState);
     function Filtered(AStop: TAtlasDebugStop): Boolean;
   public
@@ -93,8 +105,12 @@ type
     function Listeners: TArray<IAtlasDebugListener>;
     /// <summary>AEvent für jeden noch angemeldeten Zuhörer, jeder einzeln über IAtlasDebugTarget.Run.</summary>
     procedure Notify(const AEvent: TProc<IAtlasDebugListener>);
-    /// <summary>Filter für Halte (nil = keiner); es gibt nur einen.</summary>
+    /// <summary>Filter für Halte ohne Namen (nil = keiner); wie SetNamedStopFilter('', AFilter).</summary>
     procedure SetStopFilter(const AFilter: TAtlasDebugStopFilter);
+    /// <summary>Filter für Halte unter AName setzen bzw. ersetzen; nil entfernt ihn.</summary>
+    procedure SetNamedStopFilter(const AName: string; const AFilter: TAtlasDebugStopFilter);
+    /// <summary>Anzahl der gesetzten Filter.</summary>
+    function StopFilterCount: Integer;
     { Ereignisse des Debuggers }
     procedure ProcessCreated;
     procedure ProcessDestroyed;
@@ -111,9 +127,32 @@ type
     function Stopped: Boolean;
     /// <summary>Halt Nummer n der Sitzung (zählt jeden Halt); 0 vor dem ersten.</summary>
     function StopCount: Integer;
+    /// <summary>Laufzeit in Mikrosekunden vor dem zuletzt gemeldeten Halt (#579): seit dem vorigen gemeldeten Halt
+    /// bzw. dem Start, ohne angehaltene Zeit und ohne eigene Auswertungen; 0 ohne Uhr.</summary>
+    function RunTimeBeforeStop: Int64;
+    /// <summary>Uhr für die Laufzeit; nil = keine Messung.</summary>
+    property Clock: TAtlasDebugClock read GetClock write SetClock;
   end;
 
 implementation
+
+{ TAtlasDebugListener }
+
+procedure TAtlasDebugListener.DebugStarted;
+begin
+end;
+
+procedure TAtlasDebugListener.DebugStopped(AStop: TAtlasDebugStop);
+begin
+end;
+
+procedure TAtlasDebugListener.DebugResumed;
+begin
+end;
+
+procedure TAtlasDebugListener.DebugEnded;
+begin
+end;
 
 { TAtlasDebugPhases }
 
@@ -127,7 +166,8 @@ end;
 destructor TAtlasDebugPhases.Destroy;
 begin
   FListeners.Free;
-  FFilter := nil;
+  FFilters := nil;
+  FRunTime.Clock := nil;
   FTarget := nil;
   inherited Destroy;
 end;
@@ -154,6 +194,11 @@ procedure TAtlasDebugPhases.Attach;
 begin
   FProcesses := FTarget.ProcessCount;
   FStopped := IsStop(FTarget.CurrentState);
+  FRunTime.Reset;
+  if (FProcesses > 0) and not FStopped then
+  begin
+    FRunTime.Run;
+  end;
 end;
 
 procedure TAtlasDebugPhases.Reset;
@@ -206,7 +251,34 @@ end;
 
 procedure TAtlasDebugPhases.SetStopFilter(const AFilter: TAtlasDebugStopFilter);
 begin
-  FFilter := AFilter;
+  SetNamedStopFilter('', AFilter);
+end;
+
+procedure TAtlasDebugPhases.SetNamedStopFilter(const AName: string; const AFilter: TAtlasDebugStopFilter);
+var
+  mIndex: Integer;
+  mEntry: TNamedFilter;
+begin
+  for mIndex := High(FFilters) downto 0 do
+  begin
+    if SameText(FFilters[mIndex].Name, AName) then
+    begin
+      FFilters[mIndex].Filter := nil;
+      Delete(FFilters, mIndex, 1);
+    end;
+  end;
+  if Assigned(AFilter) then
+  begin
+    mEntry.Name := AName;
+    mEntry.Filter := AFilter;
+    SetLength(FFilters, Length(FFilters) + 1);
+    FFilters[High(FFilters)] := mEntry;
+  end;
+end;
+
+function TAtlasDebugPhases.StopFilterCount: Integer;
+begin
+  Result := Length(FFilters);
 end;
 
 procedure TAtlasDebugPhases.ProcessCreated;
@@ -218,6 +290,8 @@ begin
   end;
   FStopped := False;
   FStopCount := 0;
+  FRunTime.Reset;
+  FRunTime.Run;
   Notify(
     procedure(AListener: IAtlasDebugListener)
     begin
@@ -251,9 +325,14 @@ begin
   end;
   if IsStop(AState) then
   begin
+    FRunTime.Pause;
     Halted(AState);
   end
-  else if (AState = TAtlasDebugProcessState.Running) and FStopped then
+  else if AState = TAtlasDebugProcessState.Running then
+  begin
+    FRunTime.Run;
+  end;
+  if (AState = TAtlasDebugProcessState.Running) and FStopped then
   begin
     FStopped := False;
     Notify(
@@ -274,24 +353,42 @@ begin
   FTarget.RequestTick;
 end;
 
-function TAtlasDebugPhases.Filtered(AStop: TAtlasDebugStop): Boolean;
+/// <summary>AFilter für AStop über ATarget.Run fragen; ein Fehler gilt als nicht erledigt.</summary>
+function AskFilter(const ATarget: IAtlasDebugTarget; const AFilter: TAtlasDebugStopFilter;
+  AStop: TAtlasDebugStop): Boolean;
 var
-  mFilter: TAtlasDebugStopFilter;
   mHandled: Boolean;
 begin
-  mFilter := FFilter;
-  if not Assigned(mFilter) then
+  mHandled := False;
+  ATarget.Run(
+    procedure
+    begin
+      mHandled := AFilter(AStop);
+    end);
+  Result := mHandled;
+end;
+
+function TAtlasDebugPhases.Filtered(AStop: TAtlasDebugStop): Boolean;
+var
+  mFilters: TArray<TNamedFilter>;
+  mIndex: Integer;
+  mHandled: Boolean;
+begin
+  // Kopie: Ein Filter darf sich dabei ab- oder einen anderen anmelden.
+  mFilters := Copy(FFilters);
+  if Length(mFilters) = 0 then
   begin
     Exit(False);
   end;
-  // Vorher als weitergelaufen markieren: Setzt der Filter fort, meldet StateChanged kein DebugResumed.
+  // Vorher als weitergelaufen markieren: Setzt ein Filter fort, meldet StateChanged kein DebugResumed.
   FStopped := False;
   mHandled := False;
-  FTarget.Run(
-    procedure
-    begin
-      mHandled := mFilter(AStop);
-    end);
+  mIndex := 0;
+  while not mHandled and (mIndex <= High(mFilters)) do
+  begin
+    mHandled := AskFilter(FTarget, mFilters[mIndex].Filter, AStop);
+    Inc(mIndex);
+  end;
   if not mHandled then
   begin
     FStopped := True;
@@ -313,6 +410,8 @@ begin
   begin
     Exit;
   end;
+  // Laufzeit bis zu diesem Halt; ein vom Filter erledigter Halt hat die Zählung nur unterbrochen.
+  FRunTime.TakeAtStop;
   Notify(
     procedure(AListener: IAtlasDebugListener)
     begin
@@ -346,6 +445,77 @@ end;
 function TAtlasDebugPhases.StopCount: Integer;
 begin
   Result := FStopCount;
+end;
+
+function TAtlasDebugPhases.RunTimeBeforeStop: Int64;
+begin
+  Result := FRunTime.AtStop;
+end;
+
+function TAtlasDebugPhases.GetClock: TAtlasDebugClock;
+begin
+  Result := FRunTime.Clock;
+end;
+
+procedure TAtlasDebugPhases.SetClock(const AClock: TAtlasDebugClock);
+begin
+  FRunTime.Clock := AClock;
+end;
+
+{ TAtlasDebugRunTime }
+
+function TAtlasDebugRunTime.Now: Int64;
+begin
+  Result := 0;
+  if Assigned(Clock) then
+  begin
+    Result := Clock();
+  end;
+end;
+
+procedure TAtlasDebugRunTime.Reset;
+begin
+  FRunning := False;
+  FSince := 0;
+  FSum := 0;
+  FAtStop := 0;
+end;
+
+procedure TAtlasDebugRunTime.Run;
+begin
+  if FRunning then
+  begin
+    Exit;
+  end;
+  FRunning := True;
+  FSince := Now;
+end;
+
+procedure TAtlasDebugRunTime.Pause;
+var
+  mNow: Int64;
+begin
+  if not FRunning then
+  begin
+    Exit;
+  end;
+  FRunning := False;
+  mNow := Now;
+  if mNow > FSince then
+  begin
+    Inc(FSum, mNow - FSince);
+  end;
+end;
+
+procedure TAtlasDebugRunTime.TakeAtStop;
+begin
+  FAtStop := FSum;
+  FSum := 0;
+end;
+
+function TAtlasDebugRunTime.AtStop: Int64;
+begin
+  Result := FAtStop;
 end;
 
 end.

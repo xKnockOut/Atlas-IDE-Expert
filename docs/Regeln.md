@@ -8,11 +8,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 88 |
+| [Fehler finden](#gruppe-find-bugs) | 91 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 15 |
+| [Threads](#gruppe-threads) | 18 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 96 |
+| [Compiler vorab](#gruppe-compiler) | 101 |
 | [Robustheit und Muster](#gruppe-robustness) | 15 |
 | [Migration](#gruppe-migration) | 6 |
 | [Performance](#gruppe-performance) | 6 |
@@ -21,7 +21,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 57 |
-| [Packages und Tests](#gruppe-packages) | 13 |
+| [Packages und Tests](#gruppe-packages) | 15 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
 <a id="gruppe-find-bugs"></a>
@@ -35,6 +35,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`trygetvalue-out-default`](#trygetvalue-out-default) | TryGetValue überschreibt die Vorbelegung | Bug | Warnung |
 | [`record-array-shared`](#record-array-shared) | Kopierter Record teilt sein Array | Bug | Warnung |
 | [`extractfile-forward-slash`](#extractfile-forward-slash) | Dateiname mit / zerlegt | Bug | Warnung |
+| [`line-break-split-replace`](#line-break-split-replace) | #13 und #10 getrennt ersetzt | Bug | Warnung |
 | [`hash-overflow-checked`](#hash-overflow-checked) | Gewollter Überlauf mit Überlaufprüfung | Bug | Warnung |
 | [`unreachable-code`](#unreachable-code) | Unerreichbarer Code | Bug | Warnung |
 | [`duplicate-assignment`](#duplicate-assignment) | Feld oder Property wird zweimal gesetzt | Bug | Warnung |
@@ -93,6 +94,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`raw-memory-leak`](#raw-memory-leak) | GetMem oder New ohne Freigabe | Bug | Warnung |
 | [`local-object-not-freed`](#local-object-not-freed) | Lokales Objekt nie freigegeben | Bug | Warnung |
 | [`created-result-not-freed`](#created-result-not-freed) | Neues Objekt aus einer Funktion nie freigegeben | Bug | Warnung |
+| [`multiple-create-in-try`](#multiple-create-in-try) | Mehrere Objekte vor bzw. in einem gemeinsamen try … finally | Bug | Warnung |
 | [`anonymous-method-self-cycle`](#anonymous-method-self-cycle) | Anonyme Methode hält ihren eigenen Rahmen fest | Bug | Warnung |
 | [`event-handler-not-unhooked`](#event-handler-not-unhooked) | Ereignis eines fremden Objekts nicht zurückgesetzt | Bug | Hinweis |
 | [`interface-object-mixed`](#interface-object-mixed) | Objekt mit Referenzzählung als Objekt und als Interface benutzt | Bug | Warnung |
@@ -116,6 +118,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`pos-arguments-swapped`](#pos-arguments-swapped) | Argumente von Pos vertauscht | Bug | Warnung |
 | [`integer-division-to-float`](#integer-division-to-float) | Ganzzahldivision an Gleitkommazahl | Bug | Warnung |
 | [`ignored-result`](#ignored-result) | Ergebnis einer Funktion ohne Seiteneffekte verworfen | Bug | Warnung |
+| [`virtual-call-in-constructor`](#virtual-call-in-constructor) | Virtuelle Methode im Konstruktor liest ein Feld, das der Nachfahr später setzt | Bug | Warnung |
 | [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
@@ -146,10 +149,13 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`threadvar-managed`](#threadvar-managed) | threadvar mit verwaltetem Typ | Bug | Warnung |
 | [`processmessages-in-loop`](#processmessages-in-loop) | Application.ProcessMessages in Schleifen | Code Smell | Hinweis |
 | [`queue-nil-in-package`](#queue-nil-in-package) | TThread.Queue(nil, …) in einem Package | Bug | Warnung |
+| [`queue-without-remove`](#queue-without-remove) | Thread reiht ein, entfernt die Einträge aber nie | Bug | Warnung |
 | [`blocking-call-in-main-thread`](#blocking-call-in-main-thread) | Blockierender Aufruf im Hauptthread | Code Smell | Warnung |
 | [`thread-loop-without-terminated`](#thread-loop-without-terminated) | Thread-Schleife ohne Terminated | Bug | Warnung |
 | [`anonymous-thread-not-started`](#anonymous-thread-not-started) | Anonymer Thread nie gestartet | Bug | Warnung |
 | [`task-exception-unobserved`](#task-exception-unobserved) | Exception in TTask geht verloren | Code Smell | Hinweis |
+| [`thread-execute-without-except`](#thread-execute-without-except) | Ausnahme in TThread.Execute beendet den Thread still | Bug | Warnung |
+| [`sleep-polling-loop`](#sleep-polling-loop) | Warteschleife mit Sleep statt Warten auf ein Ereignis | Code Smell | Hinweis |
 | [`parallel-for-shared-write`](#parallel-for-shared-write) | Gemeinsame Variable in TParallel.For geschrieben | Bug | Warnung |
 | [`thread-unsafe-increment`](#thread-unsafe-increment) | Zähler im Thread ohne TInterlocked | Bug | Warnung |
 
@@ -251,11 +257,16 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`generic-inference-failed`](#generic-inference-failed) | Typargumente lassen sich nicht ableiten | Bug | Fehler |
 | [`dunitx-areequal-length`](#dunitx-areequal-length) | Assert.AreEqual mit Ganzzahl und NativeInt | Bug | Fehler |
 | [`exit-array-literal`](#exit-array-literal) | Exit mit Array-Literal | Bug | Fehler |
+| [`method-reference-called`](#method-reference-called) | Methodenreferenz wird aufgerufen statt übergeben | Bug | Fehler |
 | [`caption-string-helper`](#caption-string-helper) | String-Helfer auf TCaption | Bug | Fehler |
 | [`uses-order-hides-type`](#uses-order-hides-type) | Unit verdeckt einen Typ | Bug | Fehler |
 | [`interface-uses-missing`](#interface-uses-missing) | Unit nur im uses des implementation-Teils | Bug | Fehler |
 | [`winapi-declaration-missing`](#winapi-declaration-missing) | Fehlt in Delphis Winapi.Windows | Bug | Fehler |
 | [`winapi-uses-missing`](#winapi-uses-missing) | Winapi.Windows fehlt in uses | Bug | Fehler |
+| [`class-constant-unqualified`](#class-constant-unqualified) | Konstante einer anderen Klasse ohne Klassennamen | Bug | Fehler |
+| [`enum-hides-keyword`](#enum-hides-keyword) | Aufzählungswert verdeckt eine Standardprozedur | Bug | Warnung |
+| [`inline-reference-type`](#inline-reference-type) | reference to ohne benannten Typ | Bug | Fehler |
+| [`member-hides-unit-symbol`](#member-hides-unit-symbol) | Mitglied verdeckt einen Namen der Unit | Bug | Warnung |
 | [`stream-write-nativeint`](#stream-write-nativeint) | Write ohne NativeInt-Überladung | Bug | Warnung |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
@@ -446,6 +457,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
 | [`ota-notifier-not-removed`](#ota-notifier-not-removed) | IDE-Notifier ohne RemoveNotifier | Bug | Warnung |
+| [`ota-entry-without-guard`](#ota-entry-without-guard) | Einstiegspunkt der IDE lässt Ausnahmen durch | Bug | Warnung |
+| [`register-does-work`](#register-does-work) | Register startet Arbeit statt nur anzumelden | Code Smell | Warnung |
 | [`dunitx-test-without-assert`](#dunitx-test-without-assert) | DUnitX-Test ohne Assert | Code Smell | Hinweis |
 | [`dunitx-testcase-mismatch`](#dunitx-testcase-mismatch) | TestCase passt nicht zur Methode | Bug | Warnung |
 | [`dunitx-fixture-not-registered`](#dunitx-fixture-not-registered) | DUnitX-Testklasse nie registriert | Bug | Warnung |
@@ -764,6 +777,7 @@ Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rule
 |---|---|---|---|
 | `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common"; ohne Angabe meldet die Regel nichts. |
 | `hostRoles` | string-list | `["Foundation","Core","Shell","Adapters","Platform"]` | Erste Namenssegmente der Host-Units ohne Präfix. |
+| `hostedFeatures` | string-list | `[]` | Hosted-Features der Anwendung: erstes Namenssegment ohne Präfix; sie importieren nur Foundation und Platform-Features, nie einander. |
 | `allow` | string-list | `[]` | Genehmigte Ausnahmen "Quelle -> Ziel" (beide Globs). |
 
 Mit Treffer:
@@ -821,7 +835,7 @@ type
 
 **Verbotenes Symbol verwendet** · Code Smell · Warnung · Gruppe Architektur
 
-Eine Liste unter "symbols" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürzen (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexiert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacement, severity, units (Muster der Unit-Namen, "!" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput); beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Ersatz ersetzen.
+Eine Liste unter "symbols" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürzen (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexiert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Ebenso gilt ein einfacher, nicht auflösbarer Name als Unit.Name einer eingebundenen, aber nicht indexierten Unit (CreateProcess bei uses Winapi.Windows ohne RTL-Quelltext). Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacement, severity, units (Muster der Unit-Namen, "!" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput); beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Ersatz ersetzen.
 
 Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
@@ -1149,6 +1163,28 @@ Richtig:
 
 ```pascal
 Name := ExtractFileName(StringReplace(Pfad, '/', PathDelim, [rfReplaceAll]));
+```
+
+<a id="line-break-split-replace"></a>
+### line-break-split-replace
+
+**#13 und #10 getrennt ersetzt** · Bug · Warnung · Gruppe Fehler finden
+
+Eine Routine ersetzt #13 und #10 in zwei getrennten Aufrufen (StringReplace, ReplaceStr, ReplaceText, .Replace), ohne vorher #13#10 bzw. sLineBreak zu ersetzen. Aus einem Windows-Zeilenende #13#10 werden so zwei Zeichen, etwa zwei Leerzeichen statt einem. Unter Linux, wo sLineBreak #10 ist, merken Tests das nicht. Die Aufrufe zählen in der Reihenfolge, in der sie laufen (in einer Kette zuerst die inneren). Still, wenn der erste Aufruf #13 entfernt oder zu #10 macht bzw. der zweite #13 entfernt: Dann bleibt genau ein Zeichen.
+
+Mit Treffer:
+
+```pascal
+Result := StringReplace(AText, #13, ' ', [rfReplaceAll]);
+Result := StringReplace(Result, #10, ' ', [rfReplaceAll]);
+```
+
+Richtig:
+
+```pascal
+Result := StringReplace(AText, #13#10, ' ', [rfReplaceAll]);
+Result := StringReplace(Result, #13, ' ', [rfReplaceAll]);
+Result := StringReplace(Result, #10, ' ', [rfReplaceAll]);
 ```
 
 <a id="hash-overflow-checked"></a>
@@ -1703,7 +1739,7 @@ Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));
 
 **Feste Größe oder Lage von Steuerelementen** · Code Smell · Warnung · Gruppe Komponenten
 
-Code in einer VCL-Unit setzt Width, Height, Left, Top, ClientWidth oder ClientHeight auf einen festen Pixelwert (eine Zahl oder eine Konstante der Unit wie cRowHeight = 24). Im Code angelegte Steuerelemente skaliert die VCL nicht mit; Dialoge und Spalten bleiben über 96 dpi zu klein. Werte über ScaleValue, MulDiv oder eine Methode der Klasse, die selbst skaliert, 0, 1 und -1, Faktoren von Multiplikationen und Divisionen, Werte ab 10000 (Reihenfolge für Align), Pen.Width, Font.Height sowie Zuweisungen in Paint oder Resize einer Komponente (component-fixed-pixels) werden nicht gemeldet. Die Korrektur skaliert mit ScaleValue des Steuerelements selbst (bei Margins, Padding und Constraints des Steuerelements, zu dem sie gehören): Das stimmt, ob es schon eingehängt ist oder beim Einhängen mitskaliert wird.
+Code in einer VCL-Unit setzt Width, Height, Left, Top, ClientWidth oder ClientHeight (bei Margins und Padding auch Right und Bottom, dazu die Argumente von SetBounds) auf einen festen Pixelwert (eine Zahl oder eine Konstante der Unit wie cRowHeight = 24). Im Code angelegte Steuerelemente skaliert die VCL nicht mit; Dialoge und Spalten bleiben über 96 dpi zu klein. Werte über ScaleValue, MulDiv oder eine Methode der Klasse, die selbst skaliert, 0, 1 und -1, Faktoren von Multiplikationen und Divisionen, Werte ab 10000 (Reihenfolge für Align), Pen.Width, Font.Height sowie Zuweisungen in Paint oder Resize einer Komponente (component-fixed-pixels) werden nicht gemeldet. Die Korrektur skaliert mit ScaleValue des Steuerelements selbst (bei Margins, Padding und Constraints des Steuerelements, zu dem sie gehören): Das stimmt, ob es schon eingehängt ist oder beim Einhängen mitskaliert wird.
 
 Mit Treffer:
 
@@ -2232,6 +2268,10 @@ In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourc
 
 Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
 
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ignoreCalls` | string-list | `[]` | Weitere Routinen, deren Text-Argumente niemand übersetzt, z. B. eine eigene Pick(Englisch, 'en', 'de'). Protokoll-, Prüf-, Vergleichs- und Registry-Aufrufe gelten immer. |
+
 Mit Treffer:
 
 ```pascal
@@ -2564,7 +2604,7 @@ List := TStringList.Create;
 
 **Formatierung abhängig vom Gebietsschema** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
-Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (: / . ,) wie 'yyyy"-"mm"-"dd' oder 'ddddd t'. Eigene Routinen gleichen Namens bleiben still, wenn die Namensauflösung sie findet: lokale Routinen, Methoden der eigenen Klasse, Routinen der eigenen Unit und einer Unit, die in uses nach System.SysUtils steht.
+Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (: / . ,) wie 'yyyy"-"mm"-"dd' oder 'ddddd t'. Eigene Routinen gleichen Namens bleiben still, wenn die Namensauflösung sie findet: lokale Routinen, Methoden der eigenen Klasse, Routinen der eigenen Unit und einer Unit, die in uses nach System.SysUtils steht. Ist der Name nicht auflösbar (Prüfung ohne Index, etwa im Editor während des Indexaufbaus, oder Unit außerhalb der Suchpfade), schweigt die Regel, wenn in uses nach System.SysUtils eine Unit steht, die weder zur RTL gehört noch im Index steht.
 
 Mit Treffer:
 
@@ -2625,9 +2665,14 @@ raise ECustomerMissing.Create('Customer missing');
 
 **Exception-Handler ohne erneutes raise** · Code Smell · Warnung · Gruppe Exceptions
 
-Ein Handler für Exception, der weder erneut auslöst noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode.
+Ein Handler für Exception oder ein except-Teil ohne on, der weder erneut auslöst, den Fehler über einen Aufruf aus reporters meldet noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode und für Code mit eigener Fehlermeldung.
 
 Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowExceptionUse` | boolean | `false` | Ein Handler on E: Exception do, der seine Ausnahme liest (E.Message an den Aufrufer, E an eine Routine), reicht den Fehler weiter und gilt als behandelt. |
+| `reporters` | string-list | `[]` | Aufrufe, die die Ausnahme melden (Muster mit * und ? über den Namen mit Qualifizierern, z. B. TAtlasGuard.* oder *Logger.Error); ein Block, der einen enthält, gilt als behandelt. |
 
 Mit Treffer:
 
@@ -3492,7 +3537,7 @@ end;
 
 **Vorrang von not übersehen** · Bug · Warnung · Gruppe Fehler finden
 
-In Pascal bindet not stärker als in und Vergleiche: not X in Menge heißt (not X) in Menge, not A = B heißt (not A) = B, bei Ganzzahlen wird not bitweise. Die Regel meldet diese Formen, wenn der deklarierte Typ des Operanden zeigt, dass es nicht gemeint sein kann (kein Boolean). Schnellkorrektur: Klammern setzen, not (X in Menge).
+In Pascal bindet not stärker als in und Vergleiche: not X in Menge heißt (not X) in Menge, not A = B heißt (not A) = B, bei Ganzzahlen wird not bitweise. Die Regel meldet diese Formen, wenn der deklarierte Typ des Operanden zeigt, dass es nicht gemeint sein kann (kein Boolean). not E is T heißt (not E) is T und übersetzt in Delphi bei keinem Typ (E2015, Free Pascal nimmt es an); das meldet die Regel immer. Schnellkorrektur: Klammern setzen, not (X in Menge).
 
 Mit Treffer:
 
@@ -4370,7 +4415,7 @@ Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Ver
 
 **Klasse mit zu vielen Membern** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Die Klasse hat mehr Member als der Grenzwert (Vorgabe 40): Feldnamen, Methoden, Properties mit eigenem Typ und class var. Properties, die nur die Sichtbarkeit anheben (property Align;), und geschachtelte Typen zählen nicht; eine geschachtelte Klasse wird für sich gemessen. Erscheint auch in der Metrik-Linse über der Klasse. Die Klasse aufteilen oder Teile in Hilfsklassen auslagern; „Klasse in eigene Unit verschieben“ (#103) hilft, wenn auch die Unit voll ist.
+Die Klasse hat mehr Member als der Grenzwert (Vorgabe 40): Feldnamen, Methoden, Properties mit eigenem Typ und class var, dazu jede freie Routine derselben Unit, die über einen Parameter oder eine Variable dieses Typs auf ein privates oder geschütztes Mitglied der Klasse zugreift (eine solche Routine ist eine Methode außerhalb der Klasse). Properties, die nur die Sichtbarkeit anheben (property Align;), und geschachtelte Typen zählen nicht; eine geschachtelte Klasse wird für sich gemessen. Ein Feld vom Typ eines Records zählt als ein Member, auch wenn der Record mehrere Werte bündelt: Was zusammengehört (etwa der Zeichenzustand eines Steuerelements), in einem Record zu sammeln, soll die Regel nicht bestrafen. Ein Record, der nur die Zahl senkt, nimmt der Klasse aber keine Aufgabe ab; dann besser teilen. Erscheint auch in der Metrik-Linse über der Klasse. Die Klasse aufteilen oder Teile in Hilfsklassen auslagern; „Klasse in eigene Unit verschieben“ (#103) hilft, wenn auch die Unit voll ist.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4764,12 +4809,48 @@ TAtlasMainThread.Queue(
   end);
 ```
 
+<a id="queue-without-remove"></a>
+### queue-without-remove
+
+**Thread reiht ein, entfernt die Einträge aber nie** · Bug · Warnung · Gruppe Threads
+
+Ein Nachfahr von TThread reiht am eigenen Thread in den Hauptthread ein (Queue(…), ForceQueue(…), TThread.Queue(Self, …) oder TThread.Queue(CurrentThread, …)), aber niemand entfernt die Einträge mit RemoveQueuedEvents. Was beim Anhalten des Threads noch wartet, läuft danach mit freigegebenen Objekten bzw. nach dem Entladen des Packages in fremdem Speicher. Als Entfernen zählt ein Aufruf in einer Methode der Klasse oder eines Vorfahren der Unit, ein Aufruf mit einem anderen Argument als Self oder nil an anderer Stelle der Unit (der Besitzer räumt beim Anhalten auf, TThread.RemoveQueuedEvents(FWorker)) und eine andere Unit des Projekts, die Klasse und RemoveQueuedEvents nennt (Index mit index.usages). Synchronize wartet und wird nicht gemeldet; Queue(nil, …) meldet queue-nil-in-package; eine eigene Methode namens Queue zählt nicht. Sicherheit hoch; niedrig, wenn ein Vorfahr aus einer anderen Unit die Einträge entfernen könnte. Korrektur: RemoveQueuedEvents(Self) im Destruktor vor inherited ergänzen (legt den Destruktor hinter dem letzten Konstruktor an, wenn er fehlt; nicht bei eingebetteten Klassen).
+
+Mit Treffer:
+
+```pascal
+procedure TOrderWorker.Execute;
+begin
+  Queue(procedure begin FForm.Caption := 'fertig' end);
+end;
+
+destructor TOrderWorker.Destroy;
+begin
+  inherited;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TOrderWorker.Execute;
+begin
+  Queue(procedure begin FForm.Caption := 'fertig' end);
+end;
+
+destructor TOrderWorker.Destroy;
+begin
+  RemoveQueuedEvents(Self);
+  inherited;
+end;
+```
+
 <a id="ota-notifier-not-removed"></a>
 ### ota-notifier-not-removed
 
 **IDE-Notifier ohne RemoveNotifier** · Bug · Warnung · Gruppe Packages und Tests
 
-AddNotifier an IOTAServices, IOTAEditorServices, IOTAModule usw. (oder ein anderes Paar aus registerPairs), dessen Index nie an RemoveNotifier geht: Der Aufruf steht als Anweisung ohne Zuweisung, oder die Variable, der er zugewiesen wird, erhält in der Unit kein RemoveNotifier (in finalization, im Destruktor oder in Destroyed). Die IDE ruft den Notifier dann nach dem Entladen des Packages in fremdem Speicher auf. Register…-Aufrufe in der Prozedur Register sind ausgenommen: Diese Wizards entfernt die IDE selbst. Sicherheit mittel. Korrektur in Methoden: Index in ein Feld legen (FNotifierIndex im private-Abschnitt) und RemoveNotifier im Destruktor ergänzen, der bei Bedarf angelegt wird; in Prozeduren der Unit: globale Variable mit -1 und RemoveNotifier in finalization. Keine Korrektur, wenn der Empfänger ein Parameter oder eine lokale Variable ist.
+AddNotifier an IOTAServices, IOTAEditorServices, IOTAModule usw. (oder ein anderes Paar aus registerPairs), dessen Index nie an RemoveNotifier geht: Der Aufruf steht als Anweisung ohne Zuweisung, oder die Variable, der er zugewiesen wird, erhält in der Unit kein RemoveNotifier (in finalization, im Destruktor oder in Destroyed). Die IDE ruft den Notifier dann nach dem Entladen des Packages in fremdem Speicher auf. Register…-Aufrufe in der Prozedur Register sind ausgenommen: Diese Wizards entfernt die IDE selbst. Ebenso Result := X.AddNotifier(…) in einer eigenen Methode AddNotifier (Umsetzung einer Schnittstelle mit eigenem Notifier-Paar): Den Index bekommt der Aufrufer, er meldet über RemoveNotifier ab. Sicherheit mittel. Korrektur in Methoden: Index in ein Feld legen (FNotifierIndex im private-Abschnitt) und RemoveNotifier im Destruktor ergänzen, der bei Bedarf angelegt wird; in Prozeduren der Unit: globale Variable mit -1 und RemoveNotifier in finalization. Keine Korrektur, wenn der Empfänger ein Parameter oder eine lokale Variable ist.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4800,6 +4881,78 @@ initialization
 finalization
   if NotifierIndex >= 0 then
     (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);
+```
+
+<a id="ota-entry-without-guard"></a>
+### ota-entry-without-guard
+
+**Einstiegspunkt der IDE lässt Ausnahmen durch** · Bug · Warnung · Gruppe Packages und Tests
+
+Eine Methode, die die IDE aufruft, kann eine Ausnahme in die IDE durchlassen; die IDE zeigt sie als Fehlermeldung, im schlimmsten Fall bricht sie Speichern oder Laden ab. Einstiegspunkte sind die public- und published-Methoden einer Klasse, die ein Interface aus der Option interfaces implementiert, auch über Vorfahren (Vorgabe IOTA*Notifier*, INTA*Notifier*, IOTA*Wizard*, IOTAKeyboardBinding, INTACustomDrawMessage, IOTALocalMenu, IOTAProjectManagerMenu), die Methoden, die eine solche Klasse an AddKeyBinding oder AddMenuCommand übergibt, und in Units eines Packages, die Menüeinträge in die IDE hängen (INTAServices, MainMenu, AddActionMenu, Editor- oder Projektmenü), die Methoden, die eine Routine OnClick oder OnExecute zuweist, wenn sie TMenuItem oder TAction nennt; Handler eines eigenen Kontextmenüs fängt die Anwendung. Gemeldet wird ein Rumpf mit etwas, das werfen kann (Aufruf, raise, Umwandlung mit as), außerhalb eines try … except, das jede Ausnahme fängt, und außerhalb des Aufrufs einer Schutzroutine aus der Option guards; ein raise im Handler zählt. Nicht als Wurf zählen eingebaute und reine RTL-Routinen (Length, Assigned, Supports, Copy, SameText …), Typumwandlungen (auch T…(x) und I…(x) mit Typen, die der Index nicht kennt, etwa der VCL), inherited, anonyme Methoden (laufen später) und Aufrufe von Routinen der Unit, deren Rumpf nicht werfen kann. Rümpfe, die nur Werte zuweisen (Felder, Result), bleiben still. Sicherheit hoch. Korrekturen: den Rumpf als anonyme Methode an die erste Schutzroutine übergeben (mit Klammer ist der Eintrag der Anfang des Aufrufs, z. B. "TAtlasGuard.Run(TAtlasFeature.Menu, "; nicht, wenn der Rumpf Result, var- oder out-Parameter oder inherited nutzt) oder, mit einem Feld vom Typ ILogger, in try … except legen und die Meldung mit Error protokollieren.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `guards` | string-list | `[]` | Schutzroutinen, die den Rumpf absichern, z. B. TAtlasGuard.Run; es zählt der Text vor einer Klammer. Die Korrektur nimmt den ersten Eintrag, mit Klammer als Anfang des Aufrufs. |
+| `interfaces` | string-list | `["IOTA*Notifier*","INTA*Notifier*","IOTA*Wizard*","IOTAKeyboardBinding","INTACustomDrawMessage","IOTALocalMenu","IOTAProjectManagerMenu"]` | Interfaces, deren Methoden Einstiegspunkte sind (Muster mit * und ?). |
+
+Mit Treffer:
+
+```pascal
+procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;
+  const FileName: string; var Cancel: Boolean);
+begin
+  if FileName = '' then
+    raise Exception.Create('leer');
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;
+  const FileName: string; var Cancel: Boolean);
+begin
+  try
+    Pruefen(FileName);
+  except
+    on E: Exception do
+      FLogger.Error(E.Message);
+  end;
+end;
+```
+
+<a id="register-does-work"></a>
+### register-does-work
+
+**Register startet Arbeit statt nur anzumelden** · Code Smell · Warnung · Gruppe Packages und Tests
+
+Die Prozedur Register eines Packages (bzw. eine andere Einstiegsroutine aus der Option entries) startet Arbeit, statt nur anzumelden: einen Aufruf aus workCalls (Vorgabe Sleep, WaitFor…, CreateProcess, ShellExecute…, Application.CreateForm, ShowModal, ShowMessage, MessageDlg, TTask.Run, TThread.CreateAnonymousThread) oder das Erzeugen einer Klasse aus workClasses bzw. eines Nachfahren (Vorgabe TTimer, TThread, TForm, THTTPClient, TIdHTTP). Register läuft beim Start der IDE in nicht garantierter Reihenfolge der Packages; Arbeit dort verlängert den Start und greift womöglich auf noch nicht geladene Packages zu. Geprüft werden auch Routinen der Unit, die nur von der Einstiegsroutine aus erreicht werden (freie Routinen des implementation-Teils, private Methoden derselben Klasse); anonyme Methoden und als Argument übergebene Routinen laufen später und zählen nicht. Anmelden bleibt erlaubt (RegisterPackageWizard, RegisterComponents, AddNotifier …). Ein Eintrag mit Punkt passt auf den ganzen Routinennamen (*.RegisterModule), ohne Punkt nur auf freie Routinen. Sicherheit hoch in der Einstiegsroutine, mittel in einer Hilfsroutine. Keine Korrektur: den Start in einen Wizard, einen Notifier oder die Feature-Tabelle verlegen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `workCalls` | string-list | `["Sleep","WaitFor*","CreateProcess","ShellExecute*","Application.CreateForm","ShowModal","ShowMessage","MessageDlg","TTask.Run","TThread.CreateAnonymousThread"]` | Aufrufe, die als Arbeit gelten; mit Punkt der ganze Aufruf (TTask.Run), sonst der letzte Namensteil; Muster mit * und ?. |
+| `workClasses` | string-list | `["TTimer","TThread","TForm","THTTPClient","TIdHTTP"]` | Klassen, deren Erzeugen als Arbeit gilt, samt Nachfahren. |
+| `entries` | string-list | `["Register"]` | Einstiegsroutinen, z. B. auch *.RegisterModule; mit Punkt der ganze Name, sonst nur freie Routinen. |
+
+Mit Treffer:
+
+```pascal
+procedure Register;
+begin
+  GTimer := TTimer.Create(nil);
+  GTimer.Enabled := True;
+  RegisterPackageWizard(TMyWizard.Create);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Register;
+begin
+  // The wizard starts the timer once the IDE has loaded.
+  RegisterPackageWizard(TMyWizard.Create);
+end;
 ```
 
 <a id="dunitx-test-without-assert"></a>
@@ -5271,6 +5424,43 @@ Richtig:
   end;
 ```
 
+<a id="multiple-create-in-try"></a>
+### multiple-create-in-try
+
+**Mehrere Objekte vor bzw. in einem gemeinsamen try … finally** · Bug · Warnung · Gruppe Fehler finden
+
+Zwei oder mehr lokale Variablen (auch Inline-Variablen) erhalten T.Create(…) einer Klasse ohne Owner (gleiche Erkennung wie local-object-not-freed), und ein gemeinsames try … finally gibt sie frei (Free, Destroy, DisposeOf, FreeAndNil). Form 1: Die Zuweisungen stehen vor dem try. Scheitert ein späteres Create (oder eine Anweisung dazwischen), ist das frühere Objekt schon da, das try aber noch nicht betreten: Es leckt. Gemeldet am zweiten und jedem weiteren Create mit dem gefährdeten Objekt („Scheitert TFileStream.Create, wird mList nicht freigegeben.“). Still, wenn alle weiteren Konstruktoren nicht scheitern können und nichts dazwischen steht: Sammlungen auch mit Argumenten (TList<T>, TObjectList<T>, TStringList, TDictionary<K,V>, TObjectDictionary<K,V>, TStack<T>, TQueue<T>, THashSet<T>, TThreadList<T> und ihre TObject-Fassungen) sowie ohne Argumente TObject, TMemoryStream, TBytesStream, TStringBuilder, TJSONObject, TJSONArray, TInterfaceList und TBits. Form 2: Die Zuweisungen stehen im try, und mindestens eine Variable ist vor dem try nicht auf nil gesetzt; scheitert ein Create, gibt das finally eine nicht gesetzte Variable frei. Gemeldet an ihrer ersten Freigabe. Still bei verschachtelten try … finally je Objekt, Interface-Variablen, Records, Komponenten mit Owner, Feldern und einem einzigen Objekt. Ein solches Leck zeigt sich nur, wenn der Konstruktor wirklich scheitert, also selten in Tests und Leckprüfung. Konfidenz hoch. Korrektur (sicher): alle beteiligten Variablen vor dem try auf nil setzen und die Create in den try-Block verschieben (Inline-Variablen werden zu var X: T := nil); die Reihenfolge der Freigaben bleibt.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix multiple-create-in-try`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+mList := TStringList.Create;
+mStream := TFileStream.Create(AFile, fmOpenRead);
+try
+  mList.LoadFromStream(mStream);
+finally
+  mStream.Free;
+  mList.Free;
+end;
+```
+
+Richtig:
+
+```pascal
+mList := nil;
+mStream := nil;
+try
+  mList := TStringList.Create;
+  mStream := TFileStream.Create(AFile, fmOpenRead);
+  mList.LoadFromStream(mStream);
+finally
+  mStream.Free;
+  mList.Free;
+end;
+```
+
 <a id="anonymous-method-self-cycle"></a>
 ### anonymous-method-self-cycle
 
@@ -5468,7 +5658,7 @@ if Pos(';', Zeile) > 0 then
 
 **DelimitedText ohne StrictDelimiter** · Bug · Warnung · Gruppe Fehler finden
 
-Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass StrictDelimiter gesetzt wird: DelimitedText trennt dann auch an Leerzeichen, 'Max Muster;Berlin' ergibt drei statt zwei Einträge. Bei Feldern zählt StrictDelimiter in der ganzen Unit (oft im Konstruktor); StrictDelimiter := False ist bewusst und bleibt still, ebenso DelimitedText ohne eigenen Delimiter. Sicherheit hoch. Korrektur: StrictDelimiter := True; vor der Zuweisung einfügen.
+Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass StrictDelimiter gesetzt wird: DelimitedText trennt dann auch an Leerzeichen, 'Max Muster;Berlin' ergibt drei statt zwei Einträge. StrictDelimiter zählt auch in with Liste do und über eine Typumwandlung (TStringList(Liste), Liste as TStringList), bei Feldern in der ganzen Unit (oft im Konstruktor). Bei Parametern und Listen, die die Routine nicht selbst erzeugt (Funktionsergebnis), bleibt die Regel still: StrictDelimiter setzt dort der Aufrufer bzw. die erzeugende Funktion; StrictDelimiter := False ist bewusst und bleibt still, ebenso DelimitedText ohne eigenen Delimiter. Sicherheit hoch. Korrektur: StrictDelimiter := True; vor der Zuweisung einfügen.
 
 Mit Treffer:
 
@@ -5800,6 +5990,64 @@ TTask.Run(
       end;
     end;
   end);
+```
+
+<a id="thread-execute-without-except"></a>
+### thread-execute-without-except
+
+**Ausnahme in TThread.Execute beendet den Thread still** · Bug · Warnung · Gruppe Threads
+
+Eine Überschreibung von Execute in einem Nachfahren von TThread (aus Unit und Index, auch über eigene Thread-Vorfahren), deren Rumpf nicht ganz in einem try … except steht, das jede Ausnahme fängt (except ohne on, on E: Exception, on TObject oder ein else-Teil). Eine Ausnahme, die Execute verlässt, beendet den Thread still: Delphi legt sie nur in FatalException ab, und gemeldet wird nichts, solange niemand die Eigenschaft liest. Um den Schutz erlaubt sind ein try … finally und ein vorangestelltes NameThreadForDebugging. Ein Rumpf, der nur eine Routine aufruft (auch mit Methodenreferenz als Argument, inherited, eine Methode der Klasse oder eine eingebettete Routine), gilt als geschützt, wenn diese Routine selbst geschützt ist; steht ihr Rumpf nicht in der Unit, hat der Befund Konfidenz niedrig und nennt die Routine. Still, wenn die Klasse FatalException auswertet: eine andere Methode der Klasse oder eines Vorfahren (DoTerminate) liest sie, eine Routine, die die Klasse nennt, liest sie (Code nach WaitFor, OnTerminate-Handler) oder weist einen solchen OnTerminate-Handler zu, oder eine andere Unit des Projekts nennt Klasse und FatalException (Index mit index.usages). Konfidenz hoch. Korrektur nur, wenn die Klasse ein Feld vom Typ ILogger hat: den Rumpf in try … except on E: Exception do einschließen und die Meldung mit Error protokollieren (ergänzt System.SysUtils, wenn es fehlt); ohne Protokoll keine Korrektur, damit kein leerer Handler entsteht. catch-all-without-raise bleibt für diesen äußeren Handler still.
+
+Mit Treffer:
+
+```pascal
+procedure TIndexWorker.Execute;
+begin
+  while not Terminated do
+    ProcessNext;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TIndexWorker.Execute;
+begin
+  try
+    while not Terminated do
+      ProcessNext;
+  except
+    on E: Exception do
+      FLogger.Error(ClassName + '.Execute: ' + E.Message);
+  end;
+end;
+```
+
+<a id="sleep-polling-loop"></a>
+### sleep-polling-loop
+
+**Warteschleife mit Sleep statt Warten auf ein Ereignis** · Code Smell · Hinweis · Gruppe Threads
+
+Eine while- oder repeat-Schleife, deren Rumpf nur mit Sleep oder SleepEx wartet (optional mit Zähler, Zeitmessung in lokalen Variablen oder einer Zeitprüfung, die mit Exit, Break oder raise abbricht), und deren Bedingung einen Zustand außerhalb der Routine liest: ein Feld, eine Eigenschaft, eine globale Variable oder eine Funktion (nicht nur lokale Variablen, Konstanten, Zeitfunktionen oder Terminated). Eine solche Schleife reagiert spät (bis zu einem Sleep-Intervall), kostet bei jedem Durchlauf Rechenzeit und hängt still, wenn sich der Zustand nie ändert. Die Meldung nennt den abgefragten Zustand und den Ersatz: TThread.WaitFor bei Finished, ITask.Wait bei Status, sonst TEvent.WaitFor bzw. TLightweightEvent.WaitFor mit Zeitgrenze. Still, wenn der Rumpf anderes tut, schon auf ein Ereignis wartet, bei Sleep(0) (Zeitscheibe abgeben im Spinlock), bei Bedingungen, die eine Aktion wiederholen (Aufruf mit Argumenten wie TryReplace(…)), für die Zeitgrenze selbst (Vergleich mit GetTickCount64 oder ElapsedMilliseconds), bei Schleifen in anonymen Methoden (für sich geprüft) und wo eine andere Regel die Schleife schon meldet: Methoden von Thread-Klassen ohne Terminated in der Schleife (thread-loop-without-terminated) und Methoden, die im Hauptthread laufen, etwa Formulare, Frames und Ereignis-Handler (blocking-call-in-main-thread). Konfidenz mittel; keine Korrektur, weil das Ereignis dort gesetzt werden muss, wo sich der Zustand ändert.
+
+Mit Treffer:
+
+```pascal
+procedure TAtlasBuildInbox.WaitForSignal;
+begin
+  while not FSignalled do
+    Sleep(25);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TAtlasBuildInbox.WaitForSignal;
+begin
+  FSignal.WaitFor(cTimeoutMs);
+end;
 ```
 
 <a id="dataset-loop-without-next"></a>
@@ -6795,7 +7043,7 @@ exports
 
 **Unit-Name kollidiert** · Bug · Fehler · Gruppe Compiler vorab
 
-Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen der .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen.
+Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), ein Teil des Unit-Namens im Kopf oder in uses/contains ist ein reserviertes Wort wie inline, object oder string (wie E2029; Free Pascal nimmt es an, ein Teil mit & davor bleibt still), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen der .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen.
 
 Entspricht der Compilermeldung `E2272`, `E2242`.
 
@@ -6962,7 +7210,7 @@ type
 
 **Sprachregel für Records, Inline und Helfer verletzt** · Bug · Fehler · Gruppe Compiler vorab
 
-Feste Sprachregeln, die erst der Compiler meldet: virtuelle Methoden (wie E2379) oder andere virtuelle Direktiven (override, abstract, reintroduce, message, final; E2463) in Records, parameterlose Konstruktoren (E2394), Konstruktoren, deren Parameter alle Vorgabewerte haben (E2471), und Destruktoren (E2465) in Records, Klassenmethoden in Records ohne static (E2398); in Record-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), ein Destruktor in einem Class-Helfer (E2295; Klassenkonstruktoren und Helfer-Konstruktoren ohne Konstruktoraufruf übersetzt dcc, Skia4Delphi), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei bekannter Vorfahrenkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstruktoren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virtuellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Variablen oder typisierten Konstanten des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte, Typen und Routinen übersetzt dcc, mORMot2, Clipper2, dcc-Lauf vom 29.10.2026), als lokale Routine mit Zugriff auf Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.
+Feste Sprachregeln, die erst der Compiler meldet: virtuelle Methoden (wie E2379) oder andere virtuelle Direktiven (override, abstract, reintroduce, message, final; E2463) in Records, parameterlose Konstruktoren (E2394), Konstruktoren, deren Parameter alle Vorgabewerte haben (E2471), und Destruktoren (E2465) in Records, Klassenmethoden in Records ohne static (E2398); in Record-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), ein Destruktor in einem Class-Helfer (E2295; Klassenkonstruktoren und Helfer-Konstruktoren ohne Konstruktoraufruf übersetzt dcc, Skia4Delphi), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei bekannter Vorfahrenkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstruktoren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virtuellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Variablen oder typisierten Konstanten des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte, Typen und Routinen übersetzt dcc, etwa in mORMot2 und Clipper2), als lokale Routine mit Zugriff auf Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.
 
 Entspricht der Compilermeldung `E2189`, `E2190`, `E2194`, `E2294`, `E2295`, `E2359`, `E2360`, `E2379`, `E2394`, `E2398`, `E2425`, `E2426`, `E2433`, `E2434`, `E2435`, `E2436`, `E2437`, `E2439`, `E2441`, `E2442`, `E2449`, `E2463`, `E2465`, `E2471`, `E2475`, `E2501`, `E2527`, `E2534`, `E2589`, `E2598`, `E2599`.
 
@@ -9209,6 +9457,38 @@ begin
 end;
 ```
 
+<a id="virtual-call-in-constructor"></a>
+### virtual-call-in-constructor
+
+**Virtuelle Methode im Konstruktor liest ein Feld, das der Nachfahr später setzt** · Bug · Warnung · Gruppe Fehler finden
+
+Ein Konstruktor ruft eine virtuelle oder dynamische Methode von Self auf (unqualifiziert oder Self.M, auch über nicht virtuelle Methoden der eigenen Klasse und eingebettete Routinen, bis zu vier Stufen), und ein Nachfahr überschreibt sie so, dass die Überschreibung ein Feld liest, das der Nachfahr selbst deklariert und erst in seinem Konstruktor nach inherited setzt. Die Überschreibung läuft dann, bevor das Feld steht. Nachfahren kommen aus der Unit und über den Index aus anderen Units des Projekts (ihr Quelltext wird bei Bedarf gelesen). Die Meldung nennt Nachfahr und Feld: „BuildControls ist virtuell; TAtlasRuleDialog.BuildControls liest FRules, das erst nach inherited Create gesetzt wird.“ Still bei Methoden, die kein Nachfahr überschreibt, abstrakten Methoden ohne Überschreibung, Überschreibungen, die das Feld auf nil prüfen (Assigned(F), F <> nil), Feldern, die vor inherited gesetzt werden, Zuweisungen, FreeAndNil und Free. Ohne Index und ohne eindeutigen Fall in der Unit nur ein Hinweis mit niedriger Konfidenz, wenn der Aufruf vor inherited steht (sichtbar ab minConfidence low). Konfidenz mittel; keine Korrektur (den Aufbau an eine spätere Stelle verschieben, etwa CreateWnd, Loaded oder AfterConstruction). Die Code-Aktion springt zur Überschreibung, wenn sie in derselben Datei steht.
+
+Mit Treffer:
+
+```pascal
+constructor TAtlasDialog.Create(AOwner: TComponent);
+begin
+  inherited CreateNew(AOwner);
+  BuildControls;
+end;
+
+procedure TAtlasRuleDialog.BuildControls;
+begin
+  FRules.Add('Regel');
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TAtlasDialog.AfterConstruction;
+begin
+  inherited;
+  BuildControls;
+end;
+```
+
 <a id="redundant-jump"></a>
 ### redundant-jump
 
@@ -9346,6 +9626,43 @@ begin
   Result := ['a', 'b'];
   Exit;
 end;
+```
+
+<a id="method-reference-called"></a>
+### method-reference-called
+
+**Methodenreferenz wird aufgerufen statt übergeben** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Variable, ein Parameter oder ein Feld vom Typ einer Referenz auf eine Funktion (TFunc<…>, TPredicate<T> oder ein eigener reference to function-Typ) steht als einziges Argument in Exit(…) einer Funktion, die eine Methodenreferenz liefert, oder als Element eines Array-Literals neben + (FHandlers + [AHandler]), dessen anderer Operand ein Array von Methodenreferenzen ist. Delphi ruft die Referenz dort auf, statt sie als Wert zu nehmen (E2035 bzw. E2010); Free Pascal nimmt den Wert. Der Typ kommt aus der Deklaration in der Datei (Parameter, lokale Variable, Feld der eigenen Klasse); ein eigener Typ zählt, wenn die Datei oder der Symbolindex ihn als reference to function deklariert. Referenzen auf Prozeduren (TProc) nimmt Delphi als Wert; sie bleiben still. Exit(AFunc) in einer Funktion mit anderem Ergebnistyp ruft gewollt auf und bleibt still. Umgekehrt meldet die Regel eine parameterlose Funktion, die eine Methodenreferenz liefert (TTransport.Fabrik: TFabrik), wenn sie ohne () als Argument steht und eine Fassung der gerufenen Routine dort einen Parameter vom Ergebnistyp hat: Delphi nimmt die Funktion selbst (E2010, bei Überladungen E2250). Funktion und gerufene Routine kommen aus dem Symbolindex. Korrektur bei Exit (sicher): Result := ARef; Exit;. Beim Array-Literal: Länge mit SetLength erhöhen und das Element zuweisen. Bei der Fabrik (sicher): () anhängen.
+
+Entspricht der Compilermeldung `E2035`, `E2010`.
+
+Stufe B (Namensauflösung über Units).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix method-reference-called`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+function Wahl(const ALookup: TLookup): TLookup;
+begin
+  Exit(ALookup);
+end;
+…
+  FHandlers := FHandlers + [AHandler];
+```
+
+Richtig:
+
+```pascal
+function Wahl(const ALookup: TLookup): TLookup;
+begin
+  Result := ALookup;
+  Exit;
+end;
+…
+  SetLength(FHandlers, Length(FHandlers) + 1);
+  FHandlers[High(FHandlers)] := AHandler;
 ```
 
 <a id="caption-string-helper"></a>
@@ -9501,6 +9818,131 @@ uses
   Winapi.Windows, System.SysUtils;
 …
   mStart := GetTickCount64;
+```
+
+<a id="class-constant-unqualified"></a>
+### class-constant-unqualified
+
+**Konstante einer anderen Klasse ohne Klassennamen** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Bezeichner ohne Klassennamen ist eine Konstante einer anderen Klasse bzw. eines anderen Records derselben Unit (cHeadCacheMs aus TWorkingCopies in einer Methode von TWorkingHeads) oder in der Deklaration einer Klasse eine Konstante eines Vorfahren (cRows = 2 * cGap). Delphi sieht beide dort nicht (E2003); Free Pascal löst den Namen auf und übersetzt die Unit. In Methodenrümpfen sind geerbte Konstanten sichtbar, verschachtelte Typen sehen die Konstanten der umgebenden Typen. Still, wenn ein lokaler Name, ein Mitglied der eigenen Klasse samt Vorfahren und umgebenden Typen oder ein Name der Unit-Ebene so heißt, wenn mehrere Klassen die Konstante deklarieren, und innerhalb von with. Verlässt die Klassenkette die Datei, schweigt die Regel, wenn der Symbolindex den Namen in einer anderen Unit kennt. Korrektur (sicher): Klassennamen davor setzen.
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe B (Namensauflösung über Units).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix class-constant-unqualified`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+Mit Treffer:
+
+```pascal
+type
+  TWorkingCopies = class
+  public const
+    cHeadCacheMs = 500;
+  end;
+…
+function TWorkingHeads.Fresh: Boolean;
+begin
+  Result := FAge < cHeadCacheMs;
+end;
+```
+
+Richtig:
+
+```pascal
+function TWorkingHeads.Fresh: Boolean;
+begin
+  Result := FAge < TWorkingCopies.cHeadCacheMs;
+end;
+```
+
+<a id="enum-hides-keyword"></a>
+### enum-hides-keyword
+
+**Aufzählungswert verdeckt eine Standardprozedur** · Bug · Warnung · Gruppe Compiler vorab
+
+Eine Aufzählung ohne {$SCOPEDENUMS ON} hat einen Wert Continue, Break, Exit oder Halt. Der Wert verdeckt die gleichnamige Standardprozedur in jeder Unit, die den Typ sieht: Continue; wird dort zur Ausdrucksanweisung (E2014), und in einer Unit ohne solche Anweisung schnappt die Falle erst später zu. Ob {$SCOPEDENUMS} gilt, entscheidet die letzte Direktive vor dem Typ. Keine Korrektur: {$SCOPEDENUMS ON} ändert jede Verwendung der Werte, Umbenennen den Typ.
+
+Entspricht der Compilermeldung `E2014`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+type
+  TReopenedAction = (Continue, Dismiss, Reason);
+```
+
+Richtig:
+
+```pascal
+{$SCOPEDENUMS ON}
+type
+  TReopenedAction = (Continue, Dismiss, Reason);
+{$SCOPEDENUMS OFF}
+```
+
+<a id="inline-reference-type"></a>
+### inline-reference-type
+
+**reference to ohne benannten Typ** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Feld oder eine Variable hat direkt den Typ reference to procedure … bzw. reference to function …. Delphi nimmt Methodenreferenztypen nur in einer Typdeklaration an und meldet E2003 für 'reference' mit vielen Folgefehlern; Free Pascal übersetzt die Deklaration. Keine Korrektur: benannten Typ deklarieren und verwenden.
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+type
+  TReopened = record
+    Peek: reference to function(const A: string): Boolean;
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TPeek = reference to function(const A: string): Boolean;
+  TReopened = record
+    Peek: TPeek;
+  end;
+```
+
+<a id="member-hides-unit-symbol"></a>
+### member-hides-unit-symbol
+
+**Mitglied verdeckt einen Namen der Unit** · Bug · Warnung · Gruppe Compiler vorab
+
+Eine Methode verwendet ohne Unit-Namen einen Namen, den die Unit als Routine, Konstante oder Variable deklariert, während die Klasse ein gleichnamiges Mitglied von einem Vorfahren erbt (Scaled aus TCustomForm, AddLabel eines Basisdialogs, Padding aus TControl). In Methoden löst Delphi den Namen zum Mitglied auf, nicht zum Namen der Unit, und meldet je nach Gebrauch E2066, E2010, E2015 oder E2034; Free Pascal nimmt unter Umständen den Namen der Unit und übersetzt. Ein Mitglied, das die Klasse selbst deklariert, ist gewollt und bleibt still, ebenso lokale Namen, qualifizierte Namen und Code in with. Vorfahren außerhalb der Datei kommen aus dem Symbolindex; ohne Index bleibt die Regel für sie still. Korrektur (nicht sicher, vielleicht ist das Mitglied gemeint): Unit-Namen davor setzen oder die Routine umbenennen.
+
+Entspricht der Compilermeldung `E2066`, `E2010`, `E2015`, `E2034`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+function Scaled(AValue: Integer): Integer;
+…
+function TFenster.Breite: Integer;
+begin
+  Result := Scaled(4); // TCustomForm.Scaled
+end;
+```
+
+Richtig:
+
+```pascal
+function TFenster.Breite: Integer;
+begin
+  Result := U.Scaled(4);
+end;
 ```
 
 <a id="stream-write-nativeint"></a>

@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Tests.SettingsSection.Tests;
 
 // Abschnitte des Moduls Tests (#1456) auf den Seiten „Compiler“, „Debuggen“ und „Editor“: Laden und Speichern
-// über die Seite (vorher in den Tests der Seite von Base) und der Platz auf den Reitern.
+// über die Seite und der Platz auf den Reitern.
 
 interface
 
@@ -16,8 +16,6 @@ type
   private
     FRegistrations: TArray<IAtlasRegistration>;
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -40,11 +38,6 @@ uses
   Atlas.UI.Tests.SettingsSection;
 
 { TTestsSettingsSectionTests }
-
-procedure TTestsSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TTestsSettingsSectionTests.Setup;
 begin

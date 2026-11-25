@@ -1,6 +1,6 @@
 ﻿unit Atlas.UI.Tracker.SuggestDialog;
 
-// Dialog „Arbeitskopien vorschlagen“ (#1929, Mockup Runde 82 TP4), reine VCL:
+// Dialog „Arbeitskopien vorschlagen“ (#1929), reine VCL:
 //   Arbeitskopien vorschlagen – YouTrack · KASSE
 //   Gefunden in … Häkchen setzen, dann „Übernehmen“.
 //   [x] D:\SVN\Kasse\trunk          svn  Arbeitskopie von Kasse.groupproj
@@ -23,7 +23,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Tracker.PathSuggestions,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Lebt der Empfänger noch? Eine Arbeit im Hintergrund hält die Marke, nicht den Empfänger.</summary>
@@ -89,9 +89,10 @@ type
 implementation
 
 uses
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.NewIssue.Strings;
+  Atlas.UI.Tracker.NewIssue.Strings,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 10;
@@ -127,7 +128,7 @@ begin
   FIntro.Top := NextTop;
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
-  FIntro.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FIntro, cGap, cGap, cGap, 0);
   FIntro.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestIntro);
 
   FList := TListView.Create(Self);
@@ -136,7 +137,7 @@ begin
   FList.Height := ScaleValue(cListHeight);
   FList.Align := alTop;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
+  TAtlasControlScaling.SetMargins(FList, cGap, cGap, cGap, 0);
   FList.ViewStyle := vsReport;
   FList.Checkboxes := True;
   FList.ReadOnly := True;
@@ -150,7 +151,7 @@ begin
   FNote.Top := NextTop;
   FNote.Align := alTop;
   FNote.AlignWithMargins := True;
-  FNote.Margins.SetBounds(cGap, cGap div 2, cGap, 0);
+  TAtlasControlScaling.SetMargins(FNote, cGap, cGap div 2, cGap, 0);
   FNote.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestSearching);
 
   AddButtons;

@@ -18,8 +18,9 @@
 // Inaktive {$IFDEF}-Zweige (#615) liefert InactiveSpans je Zeile als Spalten
 // des Editors, auch für Zweige, die innerhalb einer Zeile beginnen oder enden.
 // Hinweise zu uses-Einträgen (#621, data.uses) sind weder Probleme noch
-// inaktive Zweige: UsesSpans liefert die ungenutzten zum Abblenden, UsesAt die
-// an einer Stelle für den Tooltip.
+// inaktive Zweige: UsesSpans liefert die ungenutzten zum Abblenden,
+// MovableSpans die nur in der implementation gebrauchten zum Einfärben (#2465),
+// UsesAt die an einer Stelle für den Tooltip.
 // Fehlgeschlagene Tests (#69) stehen als dritte Art neben Atlas- und
 // Compilermeldungen (Quelle "DUnitX"): SetTests ersetzt die eines Testlaufs,
 // Update des Servers lässt sie stehen, Edit führt sie wie Atlas-Meldungen mit.
@@ -54,6 +55,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Plugin.Files.Entries,
   Atlas.Core.Problems.Contract;
 
 type
@@ -92,7 +94,9 @@ type
       FVisibleValid: Boolean;
       FInactiveList: TArray<TAtlasProblem>;
       FInactiveValid: Boolean;
+      // Ungenutzte und verschiebbare uses-Einträge, zusammen aufgebaut (CacheUses).
       FUsesList: TArray<TAtlasProblem>;
+      FMovableList: TArray<TAtlasProblem>;
       FUsesValid: Boolean;
       // Zeilen von Text, bei Bedarf.
       FLines: TArray<string>;
@@ -101,7 +105,7 @@ type
       FStamp: Integer;
     end;
   protected
-    FEntries: TObjectDictionary<string, TEntry>;
+    FEntries: TAtlasFileEntries<TEntry>;
     FVersion: Integer;
     // Über alle Speicher hinweg fortlaufend: Ein neuer Speicher (Neustart des Servers) wiederholt keinen Stand.
     class var FLastStamp: Integer;
@@ -111,12 +115,15 @@ type
     function Ensure(const AFileName: string): TEntry;
     /// <summary>Neuer Stand für AEntry (Stamp).</summary>
     class procedure Touch(AEntry: TEntry); static;
+    /// <summary>Ungenutzte und verschiebbare uses-Einträge von AEntry merken, bis sich etwas ändert.</summary>
+    class procedure CacheUses(AEntry: TEntry); static;
     /// <summary>Positionen auf ANewText bringen; ADropDeleted: Meldungen in rein gelöschten Zeilen entfernen.
     /// </summary>
     class procedure Shift(AEntry: TEntry; const ANewText: string; ADropDeleted: Boolean); static;
   public
     constructor Create;
     destructor Destroy; override;
+    /// <summary>Schlüssel der Ablage zu AFileName.</summary>
     class function Key(const AFileName: string): string; static;
     /// <summary>Fehler der IDE für AFileName (#1819): ersetzt die bisherigen; Positionen zum Text der letzten
     /// Prüfung. Ohne Eintrag der Datei geschieht nichts.</summary>
@@ -190,6 +197,9 @@ type
     function UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
     /// <summary>Spalten ungenutzter uses-Einträge in der Zeile (0-basiert), wie InactiveSpans.</summary>
     function UsesSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
+    /// <summary>Spalten der uses-Einträge im interface, die nur die implementation braucht (#2465), in der Zeile
+    /// (0-basiert), wie UsesSpans.</summary>
+    function MovableSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
     /// <summary>Hinweise zu uses-Einträgen an der Stelle (0-basiert), auch behaltene und verschiebbare.</summary>
     function UsesAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
     /// <summary>Probleme, die die Zeile (0-basiert) berühren.</summary>
@@ -265,7 +275,7 @@ end;
 constructor TAtlasProblemEntries.Create;
 begin
   inherited Create;
-  FEntries := TObjectDictionary<string, TEntry>.Create([doOwnsValues]);
+  FEntries := TAtlasFileEntries<TEntry>.Create([doOwnsValues]);
 end;
 
 { TAtlasProblemStore }
@@ -338,16 +348,18 @@ begin
   end;
   for mFileName in mEmptied do
   begin
-    FEntries.Remove(Key(mFileName));
+    FEntries.Drop(mFileName);
   end;
 end;
 
 function TAtlasProblemEntries.Find(const AFileName: string): TEntry;
 begin
-  if not FEntries.TryGetValue(Key(AFileName), Result) then
-  begin
-    Result := nil;
-  end;
+  Result := FEntries.Find(AFileName);
+end;
+
+class function TAtlasProblemEntries.Key(const AFileName: string): string;
+begin
+  Result := TAtlasFileEntries<TEntry>.Key(AFileName);
 end;
 
 function TAtlasProblemEntries.Ensure(const AFileName: string): TEntry;
@@ -358,7 +370,7 @@ begin
     Result := TEntry.Create;
     Result.FFileName := AFileName;
     Touch(Result);
-    FEntries.Add(Key(AFileName), Result);
+    FEntries.Put(AFileName, Result);
   end;
 end;
 
@@ -366,6 +378,30 @@ class procedure TAtlasProblemEntries.Touch(AEntry: TEntry);
 begin
   Inc(FLastStamp);
   AEntry.FStamp := FLastStamp;
+end;
+
+class procedure TAtlasProblemEntries.CacheUses(AEntry: TEntry);
+var
+  mProblem: TAtlasProblem;
+begin
+  if AEntry.FUsesValid then
+  begin
+    Exit;
+  end;
+  AEntry.FUsesList := nil;
+  AEntry.FMovableList := nil;
+  for mProblem in AEntry.FAtlas do
+  begin
+    if mProblem.UsesState = TAtlasProblem.cUsesUnused then
+    begin
+      AEntry.FUsesList := AEntry.FUsesList + [mProblem];
+    end
+    else if mProblem.UsesState = TAtlasProblem.cUsesImplementation then
+    begin
+      AEntry.FMovableList := AEntry.FMovableList + [mProblem];
+    end;
+  end;
+  AEntry.FUsesValid := True;
 end;
 
 procedure TAtlasProblemStore.Update(const AFileName, AText: string; ATextKnown: Boolean;
@@ -543,7 +579,7 @@ begin
   begin
     Exit;
   end;
-  FEntries.Remove(Key(AFileName));
+  FEntries.Drop(AFileName);
   Inc(FVersion);
 end;
 
@@ -843,11 +879,6 @@ begin
   end;
 end;
 
-class function TAtlasProblemEntries.Key(const AFileName: string): string;
-begin
-  Result := AnsiLowerCase(AFileName);
-end;
-
 procedure TAtlasProblemEntries.SetIdeErrors(const AFileName: string; const AErrors: TArray<TAtlasProblem>);
 var
   mEntry: TEntry;
@@ -997,32 +1028,33 @@ end;
 function TAtlasProblemStore.UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
 var
   mEntry: TEntry;
-  mProblem: TAtlasProblem;
 begin
   Result := nil;
   mEntry := Find(AFileName);
-  if mEntry = nil then
+  if mEntry <> nil then
   begin
-    Exit;
+    CacheUses(mEntry);
+    Result := mEntry.FUsesList;
   end;
-  if mEntry.FUsesValid then
-  begin
-    Exit(mEntry.FUsesList);
-  end;
-  for mProblem in mEntry.FAtlas do
-  begin
-    if mProblem.UsesState = TAtlasProblem.cUsesUnused then
-    begin
-      Result := Result + [mProblem];
-    end;
-  end;
-  mEntry.FUsesList := Result;
-  mEntry.FUsesValid := True;
 end;
 
 function TAtlasProblemStore.UsesSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
 begin
   Result := SpansOf(AFileName, UnusedUses(AFileName), ALine, ATabWidth);
+end;
+
+function TAtlasProblemStore.MovableSpans(const AFileName: string; ALine, ATabWidth: Integer):
+  TArray<TAtlasColumnSpan>;
+var
+  mEntry: TEntry;
+begin
+  Result := nil;
+  mEntry := Find(AFileName);
+  if mEntry <> nil then
+  begin
+    CacheUses(mEntry);
+    Result := SpansOf(AFileName, mEntry.FMovableList, ALine, ATabWidth);
+  end;
 end;
 
 function TAtlasProblemStore.UsesAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;

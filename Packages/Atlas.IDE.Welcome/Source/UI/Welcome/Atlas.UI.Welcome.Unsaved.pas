@@ -32,23 +32,10 @@ uses
   Vcl.Menus,
   Vcl.Graphics,
   Atlas.Core.Welcome.Unsaved,
-  Atlas.UI.Welcome.Frame;
+  Atlas.UI.Welcome.Frame,
+  Atlas.UI.Welcome.Contract;
 
 type
-  IAtlasUnsavedSource = interface
-    ['{8C2D4E61-3A7B-4F95-B1E8-6D0C9A2F5E73}']
-    /// <summary>Zeilen und Zustand des Bereichs.</summary>
-    function View: TAtlasUnsavedView;
-    /// <summary>„Ansehen“: Projekt öffnen und die betroffenen Dateien zeigen.</summary>
-    procedure Show(const ARow: TAtlasUnsavedRow);
-    /// <summary>„Push …“: Ziel und Commits zeigen, nur nach Bestätigung pushen.</summary>
-    procedure Push(const ARow: TAtlasUnsavedRow);
-    procedure OpenFolder(const ARow: TAtlasUnsavedRow);
-    /// <summary>„Ignorieren bis morgen“.</summary>
-    procedure Ignore(const ARow: TAtlasUnsavedRow);
-    /// <summary>Der Bereich wird gezeigt: bei Bedarf im Hintergrund frisch abfragen.</summary>
-    procedure Shown;
-  end;
 
   TAtlasUnsavedHit = record
     /// <summary>Zeile; -1 = keine.</summary>
@@ -108,7 +95,7 @@ type
     procedure SetSource(const AValue: IAtlasUnsavedSource);
     procedure BoxPaint(Sender: TObject);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
-    procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure BoxLeftClick(Sender: TObject; AX, AY: Integer);
     procedure MenuPopup(Sender: TObject);
     procedure OpenFolderClick(Sender: TObject);
     procedure IgnoreClick(Sender: TObject);
@@ -140,11 +127,12 @@ implementation
 
 uses
   System.UITypes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.DateUtils,
   Vcl.Themes,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.Plugin.Calls.Optional;
 
 const
   cSeparator = ' · ';
@@ -162,7 +150,7 @@ begin
   FBox.ShowHint := True;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseMove := BoxMouseMove;
-  FBox.OnMouseUp := BoxMouseUp;
+  FBox.OnLeftClick := BoxLeftClick;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
   FOpenFolderItem := TMenuItem.Create(Self);
@@ -179,11 +167,7 @@ end;
 procedure TAtlasWelcomeUnsavedFrame.SetSource(const AValue: IAtlasUnsavedSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  TAtlasCalls.ShowSource(FSource, UpdateContent);
 end;
 
 function TAtlasWelcomeUnsavedFrame.BodyHeight: Integer;
@@ -236,7 +220,8 @@ begin
   if Length(FView.Rows) = 0 then
   begin
     mCanvas.Font.Color := mPalette.Muted;
-    mCanvas.TextOut(ScaleValue(cIndent), RowTop(0) + ScaleValue(4), TAtlasUnsavedTexts.EmptyText(FView));
+    mCanvas.TextOut(ScaleValue(cIndent), RowTop(0) + ScaleValue(TAtlasWelcomeRow.cEmptyTop),
+      TAtlasUnsavedTexts.EmptyText(FView));
     Exit;
   end;
   LayoutButtons;
@@ -447,11 +432,11 @@ begin
   // Dieselben Töne wie die Marken im Bereich „Projekte“: lesbar im hellen und im dunklen Thema.
   case ALevel of
     TAtlasUnsavedLevel.Warning:
-      Result := TColor($001A8CC9);
+      Result := TAtlasWelcomeMarks.cWarning;
     TAtlasUnsavedLevel.Alert:
-      Result := TColor($002E22CF);
+      Result := TAtlasWelcomeMarks.cError;
   else
-    Result := TColor($0043A02E);
+    Result := TAtlasWelcomeMarks.cGood;
   end;
 end;
 
@@ -492,11 +477,7 @@ end;
 
 class function TAtlasUnsavedTexts.LocalText(AUtc: TDateTime): string;
 begin
-  Result := '';
-  if AUtc > 0 then
-  begin
-    Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
-  end;
+  Result := TAtlasWelcomeStrings.LocalTime(AUtc);
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -528,13 +509,9 @@ begin
   Application.CancelHint;
 end;
 
-procedure TAtlasWelcomeUnsavedFrame.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X,
-  Y: Integer);
+procedure TAtlasWelcomeUnsavedFrame.BoxLeftClick(Sender: TObject; AX, AY: Integer);
 begin
-  if Button = mbLeft then
-  begin
-    ClickAt(HitTest(X, Y));
-  end;
+  ClickAt(HitTest(AX, AY));
 end;
 
 procedure TAtlasWelcomeUnsavedFrame.MenuPopup(Sender: TObject);
@@ -603,7 +580,7 @@ procedure TAtlasWelcomeUnsavedFrame.PaintRow(ACanvas: TCanvas; ARow: Integer; co
   AStamp: TDateTime);
 var
   mData: TAtlasUnsavedRow;
-  mLeft, mTop, mDot, mLimit: Integer;
+  mLeft, mTop, mDot, mLimit, mNameTop, mNameBottom, mDetailTop: Integer;
 begin
   mData := FView.Rows[ARow];
   mTop := RowTop(ARow);
@@ -613,27 +590,30 @@ begin
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := TAtlasUnsavedTexts.LevelColor(mData.Level);
   ACanvas.Pen.Color := ACanvas.Brush.Color;
-  ACanvas.Ellipse(mLeft, mTop + ScaleValue(6), mLeft + mDot, mTop + ScaleValue(6) + mDot);
+  ACanvas.Ellipse(mLeft, mTop + ScaleValue(TAtlasWelcomeRow.cDotTop), mLeft + mDot,
+    mTop + ScaleValue(TAtlasWelcomeRow.cDotTop) + mDot);
   ACanvas.Brush.Style := bsClear;
-  Inc(mLeft, mDot + ScaleValue(6));
+  Inc(mLeft, mDot + ScaleValue(TAtlasWelcomeRow.cDotGap));
+  mNameTop := mTop + ScaleValue(TAtlasWelcomeRow.cNameTop);
+  mNameBottom := mTop + ScaleValue(TAtlasWelcomeRow.cNameBottom);
+  mDetailTop := mTop + ScaleValue(TAtlasWelcomeRow.cDetailTop);
   mLimit := FButtonRects[ARow].Left - ScaleValue(cIndent);
   ACanvas.Font.Assign(Font);
   ACanvas.Font.Color := APalette.Text;
   ACanvas.Font.Style := [fsBold];
-  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), mLimit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
-    mData.Name);
+  ACanvas.TextRect(Rect(mLeft, mNameTop, mLimit, mNameBottom), mLeft, mNameTop, mData.Name);
   Inc(mLeft, ACanvas.TextWidth(mData.Name));
   ACanvas.Font.Style := [];
   if (mData.Branch <> '') and (mLeft < mLimit) then
   begin
     ACanvas.Font.Color := APalette.Muted;
-    ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(3), mLimit, mTop + ScaleValue(21)), mLeft, mTop + ScaleValue(3),
-      cSeparator + mData.Branch);
+    ACanvas.TextRect(Rect(mLeft, mNameTop, mLimit, mNameBottom), mLeft, mNameTop, cSeparator + mData.Branch);
   end;
   // Zweite Zeile.
-  mLeft := ScaleValue(cIndent) + mDot + ScaleValue(6);
+  mLeft := ScaleValue(cIndent) + mDot + ScaleValue(TAtlasWelcomeRow.cDotGap);
   ACanvas.Font.Color := APalette.Muted;
-  ACanvas.TextRect(Rect(mLeft, mTop + ScaleValue(23), mLimit, mTop + ScaleValue(41)), mLeft, mTop + ScaleValue(23),
+  ACanvas.TextRect(Rect(mLeft, mDetailTop, mLimit, mTop + ScaleValue(TAtlasWelcomeRow.cDetailBottom)), mLeft,
+    mDetailTop,
     TAtlasUnsavedTexts.DetailText(mData, AStamp));
   PaintButton(ACanvas, FButtonRects[ARow], TAtlasUnsavedTexts.ButtonText(mData.Item), APalette);
 end;
@@ -643,7 +623,8 @@ procedure TAtlasWelcomeUnsavedFrame.PaintButton(ACanvas: TCanvas; const AButton:
 begin
   ACanvas.Pen.Color := APalette.Line;
   ACanvas.Brush.Style := bsClear;
-  ACanvas.RoundRect(AButton.Left, AButton.Top, AButton.Right, AButton.Bottom, ScaleValue(6), ScaleValue(6));
+  ACanvas.RoundRect(AButton.Left, AButton.Top, AButton.Right, AButton.Bottom,
+    ScaleValue(TAtlasWelcomeRow.cButtonRadius), ScaleValue(TAtlasWelcomeRow.cButtonRadius));
   ACanvas.Font.Color := APalette.Text;
   ACanvas.TextOut(AButton.Left + (AButton.Width - ACanvas.TextWidth(AText)) div 2,
     AButton.Top + (AButton.Height - ACanvas.TextHeight(AText)) div 2, AText);

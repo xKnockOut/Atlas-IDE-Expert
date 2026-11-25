@@ -122,18 +122,18 @@ uses
   System.JSON,
   System.Types,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit;
@@ -440,7 +440,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameFailed, [E.Message]));
+      Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameFailed, [E.Message]));
     end;
   end;
 end;
@@ -467,7 +467,7 @@ begin
   mAnswer := Default(TAtlasUnitRenameAnswer);
   if not TAtlasIdeServerEdit.Fetch(mSession, TAtlasServerEditCommand.Create(TAtlasUnitRename.cCommand,
     TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, ScopeFiles(AEvent.ProjectFile, AScope)), cTimeoutMs,
-    TAtlasTextId.UnitRenameFailed),
+    TAtlasEditorTextId.UnitRenameFailed),
     procedure(const AReply: TJSONObject)
     begin
       mAnswer := TAtlasUnitRename.ReadAnswer(AReply);
@@ -633,11 +633,7 @@ end;
 
 function TAtlasIdeUnitRename.CurrentSession: TLspSession;
 begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
+  Result := TLspSession.From(FSessionOf);
 end;
 
 class function TAtlasIdeUnitRename.RunAction(const AEvent: TAtlasUnitRenameEvent;

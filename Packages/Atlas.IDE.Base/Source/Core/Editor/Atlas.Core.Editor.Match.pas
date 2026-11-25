@@ -63,9 +63,11 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Core.Editor.Pairs,
-  Atlas.Core.Editor.MethodToggle;
+  Atlas.Core.Editor.MethodToggle,
+  Atlas.Text.Chars;
 
 type
 {$SCOPEDENUMS ON}
@@ -163,11 +165,11 @@ end;
 
 function RoleOfWord(const AWord: string): TRole;
 begin
-  if (AWord = 'end') or (AWord = 'until') then
+  if MatchStr(AWord, ['end', 'until']) then
   begin
     Result := TRole.Closer;
   end
-  else if (AWord = 'finally') or (AWord = 'except') then
+  else if MatchStr(AWord, ['finally', 'except']) then
   begin
     Result := TRole.Middle;
   end
@@ -385,29 +387,18 @@ begin
   Result := mSearch.Run(AText, ALine, ACharacter, AMatch);
 end;
 
-function IsOneOf(const AText: string; const AList: array of string): Boolean;
-var
-  mItem: string;
-begin
-  Result := False;
-  for mItem in AList do
-  begin
-    Result := Result or (AText = mItem);
-  end;
-end;
-
 function RoleOfDirective(const AName: string): TRole;
 begin
   Result := TRole.Other;
-  if IsOneOf(AName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
+  if MatchStr(AName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
   begin
     Result := TRole.Opener;
   end
-  else if IsOneOf(AName, ['ELSE', 'ELSEIF']) then
+  else if MatchStr(AName, ['ELSE', 'ELSEIF']) then
   begin
     Result := TRole.Middle;
   end
-  else if IsOneOf(AName, ['ENDIF', 'IFEND']) then
+  else if MatchStr(AName, ['ENDIF', 'IFEND']) then
   begin
     Result := TRole.Closer;
   end;
@@ -417,11 +408,7 @@ end;
 
 function TDirectiveScanner.CharAt(AIndex: Integer): Char;
 begin
-  Result := #0;
-  if (AIndex >= 1) and (AIndex <= Length(FText)) then
-  begin
-    Result := FText[AIndex];
-  end;
+  Result := TTextChars.CharAt(FText, AIndex);
 end;
 
 procedure TDirectiveScanner.NewLine;
@@ -479,7 +466,7 @@ end;
 
 procedure TDirectiveScanner.AddDirective(AStart, AStop: Integer);
 var
-  mNameEnd: Integer;
+  mNameStart, mNameEnd: Integer;
   mName: string;
   mDirective: TDirective;
 begin
@@ -492,12 +479,12 @@ begin
   if CharAt(mNameEnd) = '$' then
   begin
     Inc(mNameEnd);
-    mName := '';
+    mNameStart := mNameEnd;
     while (mNameEnd <= AStop) and CharInSet(CharAt(mNameEnd), ['A'..'Z', 'a'..'z']) do
     begin
-      mName := mName + UpCase(FText[mNameEnd]);
       Inc(mNameEnd);
     end;
+    mName := UpperCase(Copy(FText, mNameStart, mNameEnd - mNameStart));
     mDirective.Role := RoleOfDirective(mName);
     if (mDirective.Role <> TRole.Other) and (Pos(#10, Copy(FText, AStart, AStop - AStart + 1)) = 0) then
     begin

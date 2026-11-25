@@ -1,5 +1,6 @@
 ﻿package Atlas.IDE.Rules;
 
+{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -44,8 +45,9 @@ requires
 
 contains
   Atlas.IDE.Editor.DfmPropertyRules in 'Source\IDE\Editor\Atlas.IDE.Editor.DfmPropertyRules.pas',
+  Atlas.IDE.Rules.Adapters.Module in 'Source\IDE\Rules\Atlas.IDE.Rules.Adapters.Module.pas',
   Atlas.IDE.Rules.Composition in 'Source\IDE\Rules\Atlas.IDE.Rules.Composition.pas',
-  Atlas.IDE.Rules.BulkFix in 'Source\IDE\Rules\Atlas.IDE.Rules.BulkFix.pas',
+  Atlas.IDE.Rules.Adapters.BulkFix in 'Source\IDE\Rules\Atlas.IDE.Rules.Adapters.BulkFix.pas',
   Atlas.IDE.Rules.Baseline in 'Source\IDE\Rules\Atlas.IDE.Rules.Baseline.pas',
   Atlas.UI.Rules.Strings in 'Source\UI\Rules\Atlas.UI.Rules.Strings.pas',
   Atlas.Core.Problems.BulkFix in 'Source\Core\Problems\Atlas.Core.Problems.BulkFix.pas',
@@ -57,10 +59,11 @@ contains
   Atlas.Core.Rules.OwnershipPlan in 'Source\Core\Rules\Atlas.Core.Rules.OwnershipPlan.pas',
   Atlas.UI.Rules.Editor in 'Source\UI\Rules\Atlas.UI.Rules.Editor.pas',
   Atlas.UI.Rules.SettingsDialog in 'Source\UI\Rules\Atlas.UI.Rules.SettingsDialog.pas',
-  Atlas.IDE.Rules.FindingActions in 'Source\IDE\Rules\Atlas.IDE.Rules.FindingActions.pas',
-  Atlas.IDE.Rules.IdeErrors in 'Source\IDE\Rules\Atlas.IDE.Rules.IdeErrors.pas',
+  Atlas.IDE.Rules.Adapters.SettingsDialog in 'Source\IDE\Rules\Atlas.IDE.Rules.Adapters.SettingsDialog.pas',
+  Atlas.IDE.Rules.Adapters.FindingActions in 'Source\IDE\Rules\Atlas.IDE.Rules.Adapters.FindingActions.pas',
+  Atlas.IDE.Rules.Adapters.IdeErrors in 'Source\IDE\Rules\Atlas.IDE.Rules.Adapters.IdeErrors.pas',
   Atlas.IDE.Rules.Maintenance in 'Source\IDE\Rules\Atlas.IDE.Rules.Maintenance.pas',
   Atlas.IDE.Rules.OwnershipHints in 'Source\IDE\Rules\Atlas.IDE.Rules.OwnershipHints.pas',
-  Atlas.IDE.Rules.Settings in 'Source\IDE\Rules\Atlas.IDE.Rules.Settings.pas';
+  Atlas.IDE.Rules.Adapters.Settings in 'Source\IDE\Rules\Atlas.IDE.Rules.Adapters.Settings.pas';
 
 end.

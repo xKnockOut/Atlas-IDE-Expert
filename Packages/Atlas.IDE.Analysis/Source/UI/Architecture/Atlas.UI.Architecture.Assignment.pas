@@ -17,7 +17,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Architecture.Model;
 
 type
@@ -27,6 +27,10 @@ type
     cPadding = 8;
     cColumnGap = 12;
     cDotSize = 9;
+    /// <summary>Abstand zwischen Farbpunkt und Name in Bildpunkten bei 96 dpi.</summary>
+    cDotGap = 6;
+    /// <summary>Spalten der Tabelle: Teilsystem, interface, implementation, Summe.</summary>
+    cColumns = 4;
   public
     /// <summary>Die Unit hat eine Zuordnung zum Zeigen.</summary>
     class function Available(const AModel: TAtlasArchitectureModel; AUnit: Integer): Boolean; static;
@@ -56,7 +60,8 @@ uses
   System.UITypes,
   Winapi.Windows,
   Atlas.UI.Strings,
-  Atlas.UI.Analysis.Strings;
+  Atlas.UI.Analysis.Strings,
+  Atlas.Core.Architecture.Resolution;
 
 { TAtlasArchitectureAssignment }
 
@@ -216,7 +221,7 @@ var
   mRow, mCell: Integer;
   mCells: TArray<string>;
 begin
-  SetLength(AWidths, 4);
+  SetLength(AWidths, TAtlasArchitectureAssignment.cColumns);
   ALine := ACanvas.TextHeight('Ag') + MulDiv(2, APpi, 96);
   for mRow := 0 to High(AModel.Units[AUnit].Assignment) do
   begin
@@ -226,14 +231,14 @@ begin
       AWidths[mCell] := Max(AWidths[mCell], ACanvas.TextWidth(mCells[mCell]));
     end;
   end;
-  Inc(AWidths[0], MulDiv(TAtlasArchitectureAssignment.cDotSize + 6, APpi, 96));
+  Inc(AWidths[0], MulDiv(TAtlasArchitectureAssignment.cDotSize + TAtlasArchitectureAssignment.cDotGap, APpi, 96));
 end;
 
 class function TAtlasArchitectureAssignment.Measure(ACanvas: TCanvas; const AModel: TAtlasArchitectureModel;
   AUnit, APpi: Integer): TSize;
 var
   mWidths: TArray<Integer>;
-  mLine, mWidth, mPadding, mGap: Integer;
+  mLine, mWidth, mPadding, mGap, mColumn: Integer;
   mStyle: TFontStyles;
 begin
   Result := TSize.Create(0, 0);
@@ -244,7 +249,11 @@ begin
   Columns(ACanvas, AModel, AUnit, APpi, mWidths, mLine);
   mPadding := MulDiv(cPadding, APpi, 96);
   mGap := MulDiv(cColumnGap, APpi, 96);
-  mWidth := mWidths[0] + mWidths[1] + mWidths[2] + mWidths[3] + 3 * mGap;
+  mWidth := (cColumns - 1) * mGap;
+  for mColumn := 0 to High(mWidths) do
+  begin
+    Inc(mWidth, mWidths[mColumn]);
+  end;
   mStyle := ACanvas.Font.Style;
   ACanvas.Font.Style := mStyle + [fsBold];
   mWidth := Max(mWidth, ACanvas.TextWidth(AModel.Units[AUnit].Name));
@@ -298,9 +307,9 @@ begin
   begin
     mCanvas.Font.Color := TColor(ATable.Colors.Muted);
   end;
-  mCanvas.TextOut(AX + ATable.Dot + MulDiv(6, ATable.Ppi, 96), AY, mCells[0]);
+  mCanvas.TextOut(AX + ATable.Dot + MulDiv(TAtlasArchitectureAssignment.cDotGap, ATable.Ppi, 96), AY, mCells[0]);
   mLeft := AX + ATable.Widths[0];
-  for mCell := 1 to 3 do
+  for mCell := 1 to TAtlasArchitectureAssignment.cColumns - 1 do
   begin
     mCanvas.TextOut(mLeft + ATable.Gap + ATable.Widths[mCell] - mCanvas.TextWidth(mCells[mCell]), AY,
       mCells[mCell]);

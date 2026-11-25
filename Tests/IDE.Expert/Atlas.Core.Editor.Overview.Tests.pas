@@ -31,13 +31,15 @@ type
     procedure ProblemsBySeverityWithoutUsesAndInactive;
     [Test]
     procedure ChangesWithTextOfTheirKind;
+    [Test]
+    procedure IndexesOfKindByLine;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.Overview;
 
@@ -189,12 +191,12 @@ begin
   mProblems[4].UsesUnit := 'System.Math';
   mMarks := TAtlasOverview.ProblemMarks(mProblems);
   Assert.AreEqual(3, Integer(Length(mMarks)), 'ohne inaktive Zweige und uses-Einträge');
-  Assert.IsTrue(mMarks[0].Kind = TAtlasOverviewMarkKind.Error);
-  Assert.AreEqual(3, mMarks[0].Count, 'über alle Zeilen des Befunds');
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Error, mMarks[0].Kind);
+  Assert.AreEqual(3, Integer(mMarks[0].Count), 'über alle Zeilen des Befunds');
   Assert.AreEqual('m4', mMarks[0].Text);
-  Assert.IsTrue(mMarks[1].Kind = TAtlasOverviewMarkKind.Warning);
-  Assert.AreEqual(1, mMarks[1].Count, 'mindestens eine Zeile');
-  Assert.IsTrue(mMarks[2].Kind = TAtlasOverviewMarkKind.Info);
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Warning, mMarks[1].Kind);
+  Assert.AreEqual(1, Integer(mMarks[1].Count), 'mindestens eine Zeile');
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Info, mMarks[2].Kind);
 end;
 
 procedure TAtlasOverviewTests.ChangesWithTextOfTheirKind;
@@ -207,18 +209,38 @@ begin
   mChange.Line := 5;
   mChange.Count := 2;
   mMark := TAtlasOverview.ChangeMark(mChange, 20, 'neu', 'anders', 'weg');
-  Assert.IsTrue(mMark.Kind = TAtlasOverviewMarkKind.Modified);
-  Assert.AreEqual(2, mMark.Count);
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Modified, mMark.Kind);
+  Assert.AreEqual(2, Integer(mMark.Count));
   Assert.AreEqual('anders', mMark.Text);
   mChange.Kind := TAtlasLineChangeKind.Deleted;
   mChange.Line := 20;
   mChange.Count := 0;
   mMark := TAtlasOverview.ChangeMark(mChange, 20, 'neu', 'anders', 'weg');
-  Assert.IsTrue(mMark.Kind = TAtlasOverviewMarkKind.Deleted);
+  Assert.AreEqual<TAtlasOverviewMarkKind>(TAtlasOverviewMarkKind.Deleted, mMark.Kind);
   Assert.AreEqual(19, mMark.Line, 'am Ende auf die letzte Zeile');
-  Assert.AreEqual(1, mMark.Count);
+  Assert.AreEqual(1, Integer(mMark.Count));
   mChange.Kind := TAtlasLineChangeKind.Added;
   Assert.AreEqual('neu', TAtlasOverview.ChangeMark(mChange, 30, 'neu', 'anders', 'weg').Text);
+end;
+
+procedure TAtlasOverviewTests.IndexesOfKindByLine;
+var
+  mMarks: TAtlasOverviewMarks;
+  mIndexes: TArray<Integer>;
+begin
+  mMarks := TAtlasOverviewMarks.Create(
+    TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 9, 1),
+    TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Search, 1, 1),
+    TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 3, 1),
+    TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Error, 3, 2));
+  mIndexes := TAtlasOverviewMark.IndexesOfKind(mMarks, TAtlasOverviewMarkKind.Error);
+  Assert.AreEqual(3, Integer(Length(mIndexes)));
+  Assert.AreEqual(2, mIndexes[0]);
+  Assert.AreEqual(3, mIndexes[1]);
+  Assert.AreEqual(0, mIndexes[2]);
+  Assert.AreEqual(0, Integer(Length(TAtlasOverviewMark.IndexesOfKind(mMarks, TAtlasOverviewMarkKind.Cursor))));
+  mMarks := nil;
+  mIndexes := nil;
 end;
 
 initialization

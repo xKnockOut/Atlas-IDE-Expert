@@ -47,7 +47,6 @@ uses
   System.Types,
   Winapi.Windows,
   Vcl.Controls,
-  Atlas.UI.Strings,
   Atlas.UI.SymbolPath.Strings,
   Atlas.UI.Analysis.Strings,
   Atlas.Core.SymbolPath.Model,
@@ -94,10 +93,11 @@ begin
   mLines := mChain.Lines;
   Assert.AreEqual(7, Integer(Length(mLines)));
   Assert.AreEqual('1  TKundenForm · uKundenForm · uKundenForm.pas:5', mLines[0]);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeContains), mLines[1]);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeCalls) + ' · uKundenForm.pas:21', mLines[3]);
+  Assert.AreEqual(TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathEdgeContains), mLines[1]);
+  Assert.AreEqual(TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathEdgeCalls) + ' · uKundenForm.pas:21',
+    mLines[3]);
   // Erschlossene Kante mit Kennzeichen.
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplementedBy) + ' [' +
+  Assert.AreEqual(TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathEdgeImplementedBy) + ' [' +
     TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathInferred) + '] · uKundenRepo.pas:8', mLines[5]);
   // Die Kette wächst mit ihrem Inhalt; Zeilen liegen untereinander.
   Assert.IsTrue(mChain.RowRect(6).Bottom <= mChain.Height);
@@ -177,21 +177,26 @@ var
 begin
   mStep := Default(TAtlasSymbolPathStep);
   mStep.Kind := 'uses';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUses), TAtlasSymbolPathChain.StepCaption(mStep));
+  Assert.AreEqual(TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathEdgeUses),
+    TAtlasSymbolPathChain.StepCaption(mStep));
   mStep.Implementation_ := True;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUsesImpl), TAtlasSymbolPathChain.StepCaption(mStep));
+  Assert.AreEqual(TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathEdgeUsesImpl),
+    TAtlasSymbolPathChain.StepCaption(mStep));
   mStep := Default(TAtlasSymbolPathStep);
   mStep.Kind := 'implements';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplements), TAtlasSymbolPathChain.StepCaption(mStep));
+  Assert.AreEqual(TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathEdgeImplements),
+    TAtlasSymbolPathChain.StepCaption(mStep));
   mStep.Reverse := True;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplementedBy),
+  Assert.AreEqual(TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathEdgeImplementedBy),
     TAtlasSymbolPathChain.StepCaption(mStep));
   mStep := Default(TAtlasSymbolPathStep);
   mStep.Kind := 'hasField';
   mStep.Caption := 'vom Typ';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeOfType), TAtlasSymbolPathChain.StepCaption(mStep));
+  Assert.AreEqual(TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathEdgeOfType),
+    TAtlasSymbolPathChain.StepCaption(mStep));
   mStep.Caption := 'hat Feld';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeHasField), TAtlasSymbolPathChain.StepCaption(mStep));
+  Assert.AreEqual(TAtlasSymbolPathStrings.Text(TAtlasSymbolPathTextId.SymbolPathEdgeHasField),
+    TAtlasSymbolPathChain.StepCaption(mStep));
   mStep.Kind := 'neu';
   mStep.Caption := 'vom Server';
   Assert.AreEqual('vom Server', TAtlasSymbolPathChain.StepCaption(mStep));
@@ -223,7 +228,7 @@ begin
     mDialog.ToEdit.Text := 'TKunden';
     mDialog.Suggest(mDialog.ToEdit);
     Assert.IsTrue(mDialog.SuggestionList.Visible);
-    Assert.AreEqual(2, mDialog.SuggestionList.Items.Count);
+    Assert.AreEqual(2, Integer(mDialog.SuggestionList.Items.Count));
     mDialog.SuggestionList.ItemIndex := 1;
     mDialog.TakeSuggestion;
     Assert.AreEqual('TKundenRepo.Laden', mDialog.ToEdit.Text);

@@ -1,7 +1,7 @@
 ﻿unit Atlas.UI.Editor.Hide.Tests;
 
 // Ausblenden am Element (#628), Fensterteil: Menü mit den Bereichen, die das
-// Element anbietet (Mockup Runde 25 Z6 plus „In dieser Datei“), Untermenüs
+// Element anbietet (dazu „In dieser Datei“), Untermenüs
 // bei mehreren Elementen, Wahl an OnChoose; Hinweis „Ausgeblendet ·
 // Rückgängig“ mit Lage unter dem Element und Klick auf „Rückgängig“; die
 // Optionsseite kennt zu jedem Element und jedem Bereich der Willkommensseite
@@ -16,9 +16,6 @@ type
   [TestFixture]
   TAtlasHideUiTests = class
   public
-    /// <summary>Erste Benutzung von Menü, Hinweisfenster und Einstellungsseite ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -55,7 +52,7 @@ uses
   Vcl.ComCtrls,
   Vcl.StdCtrls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
   Atlas.UI.Strings,
@@ -93,23 +90,6 @@ begin
 end;
 
 { TAtlasHideUiTests }
-
-procedure TAtlasHideUiTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    try
-      MenuOfBlockEndLabelLikeMockup;
-      NoticeUndoRaisesEventAndHides;
-      PageRevealsEverySettingOfElementsAndWelcome;
-    except
-      on Exception do
-        ;
-    end;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasHideUiTests.Setup;
 begin

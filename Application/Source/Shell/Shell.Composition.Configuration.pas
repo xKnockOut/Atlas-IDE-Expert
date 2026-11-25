@@ -13,7 +13,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Configuration,
-  Shell.Platform,
+  Platform.Server,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
 
@@ -73,8 +73,9 @@ uses
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Documents.Uris,
-  Shell.Bootstrap,
-  Shell.Workspace,
+  Core.Bootstrap,
+  Core.Workspace,
+  Shell.Composition.Platform,
   Atlas.Text.LogMarks;
 
 { TShellConfiguration }
@@ -120,7 +121,7 @@ end;
 
 procedure TShellConfiguration.DidChangeConfiguration(const AParams: TJSONValue);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   FServices.Settings.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
   for mWorkspace in FServices.Workspaces.Items.ToArray do
@@ -148,10 +149,10 @@ begin
   end
   else
   begin
-    FGlobalSettingsFile := TShellBootstrap.GlobalSettingsFile;
+    FGlobalSettingsFile := TCoreBootstrap.GlobalSettingsFile;
   end;
   LoadGlobalSettings;
-  FFileWatcher := TFileWatcher.Create(FServices.FilesChanged);
+  FFileWatcher := TFileWatcher.Create(FServices.FilesChanged, FServices.Logger);
 end;
 
 procedure TShellConfiguration.StopWatching;
@@ -162,10 +163,10 @@ end;
 procedure TShellConfiguration.LoadGlobalSettings;
 var
   mText: string;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   // Nicht lesbar (gerade geschrieben oder gesperrt): Warnung im Log, der Beobachter meldet die Datei erneut.
-  mText := TShellBootstrap.LoadGlobalSettings(FGlobalSettingsFile, FServices.Logger);
+  mText := TCoreBootstrap.LoadGlobalSettings(FGlobalSettingsFile, FServices.Logger);
   if not FServices.Settings.SetGlobalSettings(mText) then
   begin
     Exit;
@@ -183,7 +184,7 @@ end;
 procedure TShellConfiguration.UpdateWatchedFiles;
 var
   mFiles: TArray<string>;
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   if FFileWatcher = nil then
   begin
@@ -209,7 +210,7 @@ end;
 
 procedure TShellConfiguration.FileChanged(const AFileName: string);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   for mWorkspace in FServices.Workspaces.Items.ToArray do
   begin
@@ -222,7 +223,7 @@ end;
 
 procedure TShellConfiguration.DocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   System.TMonitor.Enter(FServices.Workspaces.Lock);
   try

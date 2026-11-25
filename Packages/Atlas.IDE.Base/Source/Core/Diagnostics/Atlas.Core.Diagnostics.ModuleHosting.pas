@@ -34,23 +34,16 @@ type
       Part: IAtlasFeaturePart;
       Name: string;
     end;
-
-    /// <summary>Hört auf die Registry; FOwner ist nil, sobald der Wirt abgebaut wird.</summary>
-    TListener = class(TInterfacedObject, IAtlasRegistryListener)
-    private
-      FOwner: TAtlasModuleHosting;
-    public
-      procedure RegistryChanged(const AChange: TAtlasRegistryChange);
-    end;
   private
     FRegistry: IAtlasModuleRegistry;
     FFeatures: TAtlasFeatureTable;
-    FListener: TListener;
-    FListenerRef: IAtlasRegistryListener;
+    /// <summary>Anmeldung an der Registry (TAtlasRegistryWatch); Destroy löst sie, bevor der Wirt abgebaut wird.
+    /// </summary>
     FSubscription: IAtlasRegistration;
     FOnChanged: TProc;
     FParts: TArray<TPartEntry>;
     FFailures: TArray<string>;
+    procedure RegistryChanged(const AChange: TAtlasRegistryChange);
     procedure Added(const AModuleId: string);
     procedure Removed(const AModuleId: string);
     procedure AddPart(const AModule: IAtlasModule);
@@ -89,32 +82,27 @@ type
 implementation
 
 uses
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Core.Modules.Watch;
 
-{ TAtlasModuleHosting.TListener }
+{ TAtlasModuleHosting }
 
-procedure TAtlasModuleHosting.TListener.RegistryChanged(const AChange: TAtlasRegistryChange);
+procedure TAtlasModuleHosting.RegistryChanged(const AChange: TAtlasRegistryChange);
 begin
-  if FOwner = nil then
-  begin
-    Exit;
-  end;
   case AChange.Kind of
     rcModuleAdded:
-      FOwner.Added(AChange.ModuleId);
+      Added(AChange.ModuleId);
     rcModuleRemoved:
-      FOwner.Removed(AChange.ModuleId);
+      Removed(AChange.ModuleId);
     rcProvided, rcRevoked:
-      if IsEqualGUID(AChange.IID, IAtlasFeaturePart) and FOwner.SyncParts and Assigned(FOwner.FOnChanged) then
+      if IsEqualGUID(AChange.IID, IAtlasFeaturePart) and SyncParts and Assigned(FOnChanged) then
       begin
-        FOwner.FOnChanged();
+        FOnChanged();
       end;
   else
     // Bereitstellungen und die Liste bekannter Module ändern die Tabelle nicht.
   end;
 end;
-
-{ TAtlasModuleHosting }
 
 constructor TAtlasModuleHosting.Create(const ARegistry: IAtlasModuleRegistry; AFeatures: TAtlasFeatureTable);
 var
@@ -123,9 +111,6 @@ begin
   inherited Create;
   FRegistry := ARegistry;
   FFeatures := AFeatures;
-  FListener := TListener.Create;
-  FListener.FOwner := Self;
-  FListenerRef := FListener;
   if FRegistry = nil then
   begin
     Exit;
@@ -135,18 +120,16 @@ begin
     AddPart(mModule);
   end;
   SyncParts;
-  FSubscription := FRegistry.Subscribe(FListenerRef);
+  FSubscription := TAtlasRegistryWatch.Subscribe(FRegistry, RegistryChanged);
 end;
 
 destructor TAtlasModuleHosting.Destroy;
 begin
-  FListener.FOwner := nil;
   if FSubscription <> nil then
   begin
     FSubscription.Revoke;
   end;
   FSubscription := nil;
-  FListenerRef := nil;
   FParts := nil;
   FRegistry := nil;
   inherited;
@@ -264,6 +247,8 @@ begin
 end;
 
 procedure TAtlasModuleHosting.AppendPart(const AItem: TAtlasProvided; const APart: IAtlasFeaturePart);
+const
+  cDuplicatePart = 'Teil %s gibt es schon (Modul %s)';
 var
   mEntry: TPartEntry;
   mSwitch: string;
@@ -272,7 +257,7 @@ begin
   mEntry.Name := APart.Name;
   if FFeatures.Contains(mEntry.Name) then
   begin
-    raise EAtlasModuleRegistry.CreateFmt('Teil %s gibt es schon (Modul %s)', [mEntry.Name, AItem.OwnerId]);
+    raise EAtlasModuleRegistry.CreateFmt(cDuplicatePart, [mEntry.Name, AItem.OwnerId]);
   end;
   FFeatures.AddWanted(mEntry.Name, PartWanted(APart), PartIsActive(APart), PartStart(APart), PartStop(APart));
   mSwitch := SwitchOf(AItem.OwnerId);

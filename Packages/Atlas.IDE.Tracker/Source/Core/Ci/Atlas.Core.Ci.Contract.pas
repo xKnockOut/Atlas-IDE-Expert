@@ -7,15 +7,15 @@
 //   GitLab CI, TeamCity) kommen als eigene Umsetzung dazu, ohne dass sich der
 //   Bereich ändert; die Komposition wählt sie über TAtlasCiJob.Provider.
 // - IAtlasCiTransport: ein GET mit Zeitlimit. Die echte Umsetzung
-//   (Atlas.Core.Ci.Adapters.Http) sendet Benutzer und Token aus dem
-//   Anmeldespeicher von Windows (Atlas.Core.Ci.Adapters.Credentials); Tests
+//   (Atlas.Core.Ci.Providers.Http) sendet Benutzer und Token aus dem
+//   Anmeldespeicher von Windows (Atlas.Core.Ci.Providers.Credentials); Tests
 //   setzen eine Fassung mit festen Antworten ein.
 // - IAtlasCiSend (#1273): Schreiben (POST, PATCH) mit JSON, nur angemeldet;
 //   die Issue-Vorschau schreibt darüber abgehakte Checklisten zurück.
 // - TAtlasCiJob, TAtlasCiBuild und die Fehlerart liegen als Daten in Base
 //   (Atlas.Core.CiBuild.Contract, #1455), weil die Projekt-Zusammenfassung sie
 //   speichert.
-// - IAtlasCiCredentialStore und IAtlasCiTransports (#1455, Rolle Adapters):
+// - IAtlasCiCredentialStore und IAtlasCiTransports (#1455, Rolle Providers):
 //   Anmeldespeicher und Transporte als Schnittstellen; die Umsetzungen
 //   erzeugt nur Atlas.IDE.Tracker.Composition.
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
@@ -27,6 +27,26 @@ uses
   Atlas.Core.CiBuild.Contract;
 
 type
+  /// <summary>HTTP-Statuscodes, die Tracker und CI-Anbieter auswerten.</summary>
+  TAtlasHttpStatus = record
+  public const
+    cOk = 200;
+    cCreated = 201;
+    cLastSuccess = 299;
+    cMovedPermanently = 301;
+    cFound = 302;
+    cSeeOther = 303;
+    cNotModified = 304;
+    cTemporaryRedirect = 307;
+    cPermanentRedirect = 308;
+    cBadRequest = 400;
+    cUnauthorized = 401;
+    cForbidden = 403;
+    cNotFound = 404;
+    cGone = 410;
+    cUnprocessable = 422;
+  end;
+
   /// <summary>Antwort einer Anfrage über IAtlasCiSend, IAtlasCiPost und IAtlasCiConditional.</summary>
   TAtlasCiResponse = record
     /// <summary>HTTP-Status; 0 ohne Antwort.</summary>
@@ -76,6 +96,13 @@ type
   IAtlasCiCancel = interface
     ['{9C4F2A71-6D3B-4E58-B1A7-3E0D5C8F9A24}']
     procedure Cancel;
+  end;
+
+  /// <summary>Abbrechen über einen Transport, der es vielleicht nicht kann.</summary>
+  TAtlasCiCancels = record
+    /// <summary>ACancel.Cancel, wenn ACancel da ist (nil: nichts läuft oder der Transport kann nicht abbrechen).
+    /// </summary>
+    class procedure Cancel(const ACancel: IAtlasCiCancel); static;
   end;
 
   /// <summary>Bedingte Abfrage (#1271, GitHub /notifications): sendet If-Modified-Since und liest Last-Modified und
@@ -134,6 +161,16 @@ type
   end;
 
 implementation
+
+{ TAtlasCiCancels }
+
+class procedure TAtlasCiCancels.Cancel(const ACancel: IAtlasCiCancel);
+begin
+  if ACancel <> nil then
+  begin
+    ACancel.Cancel;
+  end;
+end;
 
 { TAtlasCiResponse }
 

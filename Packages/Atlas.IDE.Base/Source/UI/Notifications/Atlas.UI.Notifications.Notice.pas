@@ -21,11 +21,10 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Color,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
-  TAtlasNoticeWindow = class(TAtlasPopupWindow)
+  TAtlasNoticeWindow = class(TAtlasLayoutPopupWindow)
   public const
     cVisibleMs = 20000;
     /// <summary>Abstand zum Rand des Bereichs, logische Pixel.</summary>
@@ -40,17 +39,14 @@ type
     FTimer: TTimer;
     FOnAction: TProc<Integer>;
     procedure TimerTick(Sender: TObject);
-    function Layout(ADraw: Boolean): TSize;
     /// <summary>Breite des Fensters: Überschrift mit „×“, längste Textzeile, Zeile der Aktionen.</summary>
     function MeasureWidth: Integer;
-    /// <summary>AText an AX, AY in AColor, nur mit ADraw.</summary>
-    procedure PutText(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
     /// <summary>Zeile der Aktionen ab AX, AY; legt FActionRects an.</summary>
     procedure LayoutActions(ADraw: Boolean; AX, AY, ATextHeight: Integer);
     function HitTest(const APoint: TPoint): Integer;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -77,8 +73,9 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;
@@ -102,15 +99,6 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := cVisibleMs;
   FTimer.OnTimer := TimerTick;
-end;
-
-procedure TAtlasNoticeWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 procedure TAtlasNoticeWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -234,15 +222,6 @@ begin
     Result := Max(Result, Scale(cPad) + Canvas.TextWidth(string.Join(cSeparator, FActions)));
   end;
   Result := Result + Scale(cPad);
-end;
-
-procedure TAtlasNoticeWindow.PutText(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
-begin
-  if ADraw then
-  begin
-    Canvas.Font.Color := ToColor(AColor);
-    Canvas.TextOut(AX, AY, AText);
-  end;
 end;
 
 procedure TAtlasNoticeWindow.LayoutActions(ADraw: Boolean; AX, AY, ATextHeight: Integer);

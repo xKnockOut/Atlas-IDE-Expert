@@ -10,7 +10,7 @@ uses
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Lsp.WorkspaceCheck,
-  Shell.Workspace,
+  Core.Workspace,
   Shell.Composition.Contract,
   Shell.Composition.Status.Contract,
   Shell.Composition.Status;
@@ -30,9 +30,6 @@ type
     procedure CheckStatus(var AStatus: TServerStatus; out AQueue: TWorkspaceCheckQueue);
     function IndexQueue: TIndexSchedulerQueue;
   public
-    /// <summary>Einmalige Anlagen beim ersten Gebrauch zählen nicht als Leck.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [TearDown]
     procedure TearDown;
     /// <summary>Der anonyme Status fragt Compiler, Prüflauf und Index-Warteschlange und schreibt ins Log.</summary>
@@ -171,18 +168,12 @@ begin
   Result := Default(TIndexSchedulerQueue);
 end;
 
-procedure TShellStatusReportsTests.WarmUpFirstUse;
-begin
-  StatusAsksAllStates;
-  TearDown;
-  FCompilerAsked := 0;
-  FCheckAsked := 0;
-  FQueueAsked := 0;
-end;
-
 procedure TShellStatusReportsTests.TearDown;
 begin
   FLog := nil;
+  FCompilerAsked := 0;
+  FCheckAsked := 0;
+  FQueueAsked := 0;
 end;
 
 procedure TShellStatusReportsTests.StatusAsksAllStates;
@@ -217,10 +208,13 @@ var
   mAnswer: TJSONValue;
   mText: string;
 begin
-  mReports := TShellStatusReports.Create(NewServices);
-  mCommands := TLspCommands.Create;
-  mArguments := TJSONArray.Create;
+  mReports := nil;
+  mCommands := nil;
+  mArguments := nil;
   try
+    mReports := TShellStatusReports.Create(NewServices);
+    mCommands := TLspCommands.Create;
+    mArguments := TJSONArray.Create;
     mReports.RegisterCommands(mCommands);
     mAnswer := mCommands.Execute(TBugReport.cCommand, mArguments);
     try

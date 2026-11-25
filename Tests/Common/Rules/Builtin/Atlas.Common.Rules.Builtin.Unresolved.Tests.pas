@@ -83,6 +83,10 @@ type
     procedure NotATypeCodesLikeDelphi13;
     [Test]
     procedure SilentCases;
+    /// <summary>Typname gleich dem Parameternamen nach einer Umbenennung (AWParam: AWParam, #1896): Der Parameter
+    /// gilt im Kopf noch nicht, der Typ fehlt; auch im Rumpfkopf und bei lokalen Variablen.</summary>
+    [Test]
+    procedure ParameterNamedLikeItsType;
     [Test]
     procedure TypeOffGroupAndExclude;
     /// <summary>Die IDE kennt den Typ in einer Unit aus uses, deren Quelltext ihn nicht (mehr) deklariert.
@@ -101,7 +105,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
@@ -112,10 +115,11 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Projects.UnitLookup,
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Projects.Adapters.UnitLookup,
   Atlas.Common.Rules.Builtin.Unresolved,
-  Atlas.Common.Lsp.IdeTypes,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 const
   cDproj =
@@ -129,19 +133,12 @@ const
     '        </BuildConfiguration>'#13#10 +
     '    </ItemGroup>'#13#10 +
     '</Project>'#13#10;
-  cLibraryNames: array[0..4] of string = ('C:\BDS\lib\System.dcu', 'C:\BDS\lib\SysInit.dcu',
-    'C:\BDS\lib\System.SysUtils.dcu', 'C:\BDS\lib\Vcl.Forms.dcu', 'C:\BDS\lib\rtl.dcp');
   cMainFile = 'C:\P\Src\Haupt.pas';
 
 function LibraryFiles: TArray<string>;
-var
-  mName: string;
 begin
-  Result := nil;
-  for mName in cLibraryNames do
-  begin
-    Result := Result + [mName];
-  end;
+  Result := TArray<string>.Create('C:\BDS\lib\System.dcu', 'C:\BDS\lib\SysInit.dcu',
+    'C:\BDS\lib\System.SysUtils.dcu', 'C:\BDS\lib\Vcl.Forms.dcu', 'C:\BDS\lib\rtl.dcp');
 end;
 
 /// <summary>Unit-Suche über die Dateien AFiles mit Projekt C:\P\App.dproj (Suchpfad C:\P\Src).</summary>
@@ -515,19 +512,6 @@ begin
     'Tests/KundeTests.pas');
 end;
 
-/// <summary>Wendet das Edit an (eine Zeile, Zeilen mit #10).</summary>
-function Applied(const AText: string; const AEdit: TTextEdit): string;
-var
-  mLines: TArray<string>;
-  mLine: string;
-begin
-  mLines := AText.Split([#10]);
-  mLine := mLines[AEdit.Range.StartPos.Line];
-  mLines[AEdit.Range.StartPos.Line] := Copy(mLine, 1, AEdit.Range.StartPos.Character) + AEdit.NewText +
-    Copy(mLine, AEdit.Range.EndPos.Character + 1, MaxInt);
-  Result := string.Join(#10, mLines);
-end;
-
 { TUnresolvedAttributeTests }
 
 procedure TUnresolvedAttributeTests.IssueExampleWithFix;
@@ -545,7 +529,7 @@ begin
     'Unit DUnitX.TestFramework fehlt.', mFound[1].Message);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('uses DUnitX.TestFramework ergänzen', mFound[0].Fixes[0].Title);
-  mFixed := Applied(TestUnit('System.SysUtils'), mFound[0].Fixes[0].Edits[0]);
+  mFixed := TTestEdits.Apply(TestUnit('System.SysUtils'), mFound[0].Fixes[0].Edits[0]);
   // Steht die Liste in eigener Zeile, kommt die Unit in eine neue Zeile (wie "uses … ergänzen").
   Assert.AreEqual(TestUnit('System.SysUtils,'#10'  DUnitX.TestFramework'), mFixed);
   Assert.AreEqual(0, Integer(Length(AttributeFindings(mFixed))));
@@ -690,7 +674,7 @@ begin
   Assert.AreEqual(23, mFound[0].Range.EndPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('uses System.Generics.Collections ergänzen', mFound[0].Fixes[0].Title);
-  mFixed := Applied(mSource, mFound[0].Fixes[0].Edits[0]);
+  mFixed := TTestEdits.Apply(mSource, mFound[0].Fixes[0].Edits[0]);
   Assert.AreEqual(KundenUnit('System.SysUtils,'#10'  System.Generics.Collections', '  TKunden = TObjectList<TKunde>;'#10),
     mFixed);
   Assert.AreEqual(0, Integer(Length(TypeFindings(mFixed))), mFixed);
@@ -773,6 +757,29 @@ begin
     '  TX = class(TBasiz)'#10'  end;'#10)))));
 end;
 
+procedure TUnresolvedTypeTests.ParameterNamedLikeItsType;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := TypeFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10 +
+    '  THaken = class'#10'    procedure Zeige(AWParam: AWParam);'#10'  end;'#10 +
+    'function KeyboardProc(ACode: Integer; AHWnd: AHWnd): Integer;'#10'implementation'#10 +
+    'procedure THaken.Zeige(AWParam: AWParam);'#10'var'#10'  mWert: AWert;'#10'begin'#10'end;'#10 +
+    'function KeyboardProc(ACode: Integer; AHWnd: AHWnd): Integer;'#10'begin'#10'  Result := ACode;'#10'end;'#10 +
+    'end.');
+  Assert.AreEqual(5, Integer(Length(mFound)));
+  Assert.AreEqual('Typ AWParam ist nicht deklariert (wie E2003).', mFound[0].Message);
+  Assert.AreEqual(6, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('Typ AHWnd ist nicht deklariert (wie E2003).', mFound[1].Message);
+  Assert.AreEqual(8, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual('Typ AWParam ist nicht deklariert (wie E2003).', mFound[2].Message);
+  Assert.AreEqual(10, mFound[2].Range.StartPos.Line);
+  Assert.AreEqual('Typ AWert ist nicht deklariert (wie E2003).', mFound[3].Message);
+  Assert.AreEqual('Typ AHWnd ist nicht deklariert (wie E2003).', mFound[4].Message);
+  Assert.AreEqual(15, mFound[4].Range.StartPos.Line);
+  mFound := nil;
+end;
+
 procedure TUnresolvedTypeTests.TypeOffGroupAndExclude;
 var
   mText: string;
@@ -793,21 +800,26 @@ begin
     '  TVendorAlt = class'#10'  end;'#10'implementation'#10'end.', 'C:\Vendor\Vendor.Grid.pas', nil));
 end;
 
+type
+  /// <summary>Typen der IDE: TVendorGrid in Vendor.Grid.</summary>
+  TVendorIdeTypes = class(TInterfacedObject, IRuleIdeTypes)
+  public
+    function UnitsOf(const ATypeName: string): TArray<string>;
+  end;
+
+function TVendorIdeTypes.UnitsOf(const ATypeName: string): TArray<string>;
+begin
+  Result := nil;
+  if SameText(ATypeName, 'TVendorGrid') then
+  begin
+    Result := TArray<string>.Create('Vendor.Grid');
+  end;
+end;
+
 /// <summary>Katalog der IDE: TVendorGrid in Vendor.Grid.</summary>
 function VendorTypes: IRuleIdeTypes;
-var
-  mCatalog: TIdeTypeCatalog;
-  mValue: TJSONValue;
 begin
-  mCatalog := TIdeTypeCatalog.Create;
-  Result := mCatalog;
-  mValue := TJSONObject.ParseJSONValue('{"units":[{"unit":"Vendor.Grid","types":[{"name":"TVendorGrid",' +
-    '"parent":"Vcl.Controls.TCustomControl"}]}]}');
-  try
-    mCatalog.Replace(mValue);
-  finally
-    mValue.Free;
-  end;
+  Result := TVendorIdeTypes.Create;
 end;
 
 /// <summary>Die Regel unresolved-identifier aus der Registrierung der Unit.</summary>

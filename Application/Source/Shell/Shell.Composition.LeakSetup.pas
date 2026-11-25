@@ -53,10 +53,11 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
+  Atlas.Common.Leaks.Contract,
   Atlas.Common.Lsp.LeakSetup,
   Atlas.Common.Localization.Texts,
   Atlas.Text.LogMarks,
-  Shell.Workspace;
+  Core.Workspace;
 
 {$SCOPEDENUMS ON}
 
@@ -124,9 +125,9 @@ begin
 end;
 
 /// <summary>Arbeitsbereich mit der Projekt- oder Hauptdatei AFileName, sonst der zur Datei.</summary>
-function WorkspaceFor(const AWorkspaces: TShellWorkspaceRegistry; const AFileName: string): TShellWorkspace;
+function WorkspaceFor(const AWorkspaces: TShellWorkspaceRegistry; const AFileName: string): TCoreWorkspace;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
   mProject: TProjectInfo;
 begin
   for mWorkspace in AWorkspaces.Items do
@@ -144,7 +145,7 @@ end;
 function LoadedProject(const AServices: TShellLeakSetupServices; const AFileName: string;
   out AProject: TProjectInfo; out AFolders, AFiles: TArray<string>): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mWorkspace: TCoreWorkspace;
 begin
   AProject := Default(TProjectInfo);
   AFolders := nil;

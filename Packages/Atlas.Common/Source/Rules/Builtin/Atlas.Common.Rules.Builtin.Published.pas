@@ -5,7 +5,7 @@
 //                           (#1004): Property vom Typ statisches Array,
 //                           Zeiger oder Prozedurtyp ohne "of object" (E2188;
 //                           Records und dynamische Arrays übersetzt dcc,
-//                           PU1-PU3 im dcc-Lauf vom 29.10.2026, #1328), Real48
+//                           PU1-PU3 in Tests/DccFaelle, #1328), Real48
 //                           (E2186), Menge über 4 Byte (E2187), Feld, das
 //                           keine Klasse und kein Interface ist (E2217), mehr
 //                           als eine published-Überladung (E2266),

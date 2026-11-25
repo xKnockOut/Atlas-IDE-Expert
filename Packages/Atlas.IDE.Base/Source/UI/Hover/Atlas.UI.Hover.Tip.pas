@@ -35,7 +35,8 @@
 // Beim Wechsel des Inhalts bleibt die Position, das Fenster wächst höchstens.
 // Satz: Positionen, Klickflächen und Bausteine rechnet
 // Atlas.Core.Hover.Layout ohne VCL einmal je Inhalt, Breite und Doku-Höhe;
-// Paint zeichnet nur die Bausteine und färbt den Hot-Zustand.
+// Paint zeichnet nur die Bausteine und färbt den Hot-Zustand. Gemessen wird über
+// Atlas.UI.Hover.Adapters.TipMeasure (TAtlasHoverMeasures.Factory, eingesetzt von der Kompositionswurzel).
 
 interface
 
@@ -47,15 +48,15 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.Controls,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.View,
   Atlas.UI.Documentation.View,
-  Atlas.UI.Popup.Styled,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Styled,
+  Atlas.Vcl.Popup.Window;
 
 type
 
@@ -78,6 +79,22 @@ type
     SignatureParams: Boolean;
     /// <summary>Link „Beispiel zeigen“ unter Regelbefunden (hover.ruleExamples, #145).</summary>
     RuleExamples: Boolean;
+  end;
+
+  /// <summary>Messung für TAtlasHoverLayout in ACanvas: Editorschrift AFont, UI-Schrift AUIFont, eingefärbte
+  /// Deklaration ADeclaration. Gilt für einen Satz.</summary>
+  TAtlasHoverMeasureFactory = reference to function(ACanvas: TCanvas; AFont, AUIFont: TFont;
+    const ADeclaration: TAtlasStyledText): IAtlasHoverMeasure;
+
+  /// <summary>Fabrik der Messung (Atlas.UI.Hover.Adapters.TipMeasure); setzt die Kompositionswurzel.</summary>
+  TAtlasHoverMeasures = class
+  private class var
+    FFactory: TAtlasHoverMeasureFactory;
+  public
+    /// <summary>Messung über ACanvas; löst EInvalidOpException aus, solange keine Fabrik eingesetzt ist.</summary>
+    class function Measure(ACanvas: TCanvas; AFont, AUIFont: TFont;
+      const ADeclaration: TAtlasStyledText): IAtlasHoverMeasure; static;
+    class property Factory: TAtlasHoverMeasureFactory read FFactory write FFactory;
   end;
 
   /// <summary>Inhalt des Tooltips: Satz, Doku und Zeichnen.</summary>
@@ -225,28 +242,56 @@ type
     property OnDebugRow: TAtlasHoverDebugRowEvent read FOnDebugRow write FOnDebugRow;
   end;
 
+/// <summary>Wählt die Schrift AFace in ACanvas; Kleinere Schrift für Beschriftungen (UI) bzw. Abschnittstitel
+/// (Editorschrift).</summary>
+procedure ApplyHoverFace(ACanvas: TCanvas; AFont, AUIFont: TFont; const AFace: TAtlasHoverFace;
+  ABadgeHeight: Integer);
+
 implementation
 
 uses
-  Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Texts,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   System.StrUtils,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
   Atlas.UI.Strings,
   Atlas.UI.Hover.Strings,
-  Atlas.UI.Popup.Draw,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Draw,
+  Atlas.Vcl.Popup.Accessibility,
+  Atlas.Core.Hover.Layout.Input;
 
 const
+  /// <summary>Programmierfehler: Die Komposition hat TAtlasHoverMeasures.Factory nicht gesetzt.</summary>
+  cNoMeasure = 'Atlas: Messung des Tooltips nicht eingesetzt.'; // german-ok Programmierfehler
   /// <summary>So viele Zeilen des aufgeklappten Debug-Werts (#895) ohne Scrollen.</summary>
   cDebugRows = 12;
   /// <summary>Zeilen je Rasterstufe des Mausrads in den Rollbereichen.</summary>
   cWheelRows = 3;
+  /// <summary>Kleine Schriften: Anteil an der UI- bzw. Editorschrift.</summary>
+  cSmallUiShare = 0.88;
+  cSmallMonoShare = 0.8;
+  /// <summary>So viele Zeichen der Doku liest die Sprachausgabe mit vor.</summary>
+  cSpokenDocChars = 300;
+  /// <summary>Logische Bildpunkte bei 96 dpi. Breite: Einzug von Debug-Wert und Problemen, Ränder zusammen,
+  /// kleinste Breite; Rand links und rechts der Doku; Trefferzone neben der Doku links und rechts.</summary>
+  cItemIndent = 9;
+  cSidePadding = 26;
+  cMinWidth = 200;
+  cDocInset = 22;
+  cDocSlackLeft = 4;
+  cDocSlackRight = 8;
+  /// <summary>Platz: Abstand zum Wort, Rand zum Arbeitsbereich beim Zeigen, Anpassen und Nachladen, kleinste
+  /// Höhe beim Nachladen.</summary>
+  cWordGap = 4;
+  cWordMargin = 12;
+  cScreenMargin = 8;
+  cBottomMargin = 4;
+  cMinUpdateHeight = 80;
 
 function HoverKindCaption(const AKind: string): string;
 const
@@ -366,8 +411,6 @@ begin
   end;
 end;
 
-/// <summary>Wählt die Schrift AFace in ACanvas; Kleinere Schrift für Beschriftungen (UI) bzw. Abschnittstitel
-/// (Editorschrift).</summary>
 procedure ApplyHoverFace(ACanvas: TCanvas; AFont, AUIFont: TFont; const AFace: TAtlasHoverFace;
   ABadgeHeight: Integer);
 begin
@@ -377,18 +420,18 @@ begin
     TAtlasHoverFont.SmallUi:
       begin
         ACanvas.Font := AUIFont;
-        ACanvas.Font.Height := Round(AUIFont.Height * 0.88);
+        ACanvas.Font.Height := Round(AUIFont.Height * cSmallUiShare);
       end;
     TAtlasHoverFont.SmallMono:
       begin
         ACanvas.Font := AFont;
-        ACanvas.Font.Height := Round(AFont.Height * 0.8);
+        ACanvas.Font.Height := Round(AFont.Height * cSmallMonoShare);
       end;
     TAtlasHoverFont.Badge:
       begin
         // Größe aus der Höhe des Kästchens: nur für Kästchen fester Größe (Kopfzeile), nicht zum Messen.
         ACanvas.Font := AFont;
-        ACanvas.Font.Height := -Round(ABadgeHeight * 0.62);
+        ACanvas.Font.Height := -Round(ABadgeHeight * cAtlasBadgeFontShare);
       end;
   else
     ACanvas.Font := AUIFont;
@@ -411,60 +454,16 @@ begin
   Result := Result or AView.Data.Location.HasLocation or AView.Pinned or (Length(AView.Data.Members) > 0);
 end;
 
-type
-  /// <summary>Messen über die Zeichenfläche des Tooltips für TAtlasHoverLayout.</summary>
-  TTipMeasure = class(TInterfacedObject, IAtlasHoverMeasure)
-  private
-    FTip: TAtlasHoverTipView;
-  public
-    constructor Create(ATip: TAtlasHoverTipView);
-    function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
-    function TextHeight(const AFace: TAtlasHoverFace): Integer;
-    function BlockHeight(const AText: string; AWidth: Integer): Integer;
-    function DeclarationWidth(AFrom, ATill: Integer): Integer;
-    function DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
+{ TAtlasHoverMeasures }
+
+class function TAtlasHoverMeasures.Measure(ACanvas: TCanvas; AFont, AUIFont: TFont;
+  const ADeclaration: TAtlasStyledText): IAtlasHoverMeasure;
+begin
+  if not Assigned(FFactory) then
+  begin
+    raise EInvalidOpException.Create(cNoMeasure);
   end;
-
-{ TTipMeasure }
-
-constructor TTipMeasure.Create(ATip: TAtlasHoverTipView);
-begin
-  inherited Create;
-  FTip := ATip;
-end;
-
-function TTipMeasure.TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
-begin
-  ApplyHoverFace(FTip.Canvas, FTip.Font, FTip.UIFont, AFace, 0);
-  Result := FTip.Canvas.TextWidth(AText);
-end;
-
-function TTipMeasure.TextHeight(const AFace: TAtlasHoverFace): Integer;
-begin
-  ApplyHoverFace(FTip.Canvas, FTip.Font, FTip.UIFont, AFace, 0);
-  Result := FTip.Canvas.TextHeight('Wg');
-end;
-
-function TTipMeasure.BlockHeight(const AText: string; AWidth: Integer): Integer;
-var
-  mArea: TRect;
-begin
-  FTip.Canvas.Font := FTip.UIFont;
-  mArea := Rect(0, 0, AWidth, 0);
-  DrawText(FTip.Canvas.Handle, PChar(AText), -1, mArea, DT_WORDBREAK or DT_NOPREFIX or DT_CALCRECT);
-  Result := mArea.Bottom;
-end;
-
-function TTipMeasure.DeclarationWidth(AFrom, ATill: Integer): Integer;
-begin
-  FTip.Canvas.Font := FTip.Font;
-  Result := FTip.FDeclaration.Width(FTip.Canvas, AFrom, ATill);
-end;
-
-function TTipMeasure.DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
-begin
-  FTip.Canvas.Font := FTip.Font;
-  Result := FTip.FDeclaration.WrapAtSpaces(FTip.Canvas, AWidth, AIndent);
+  Result := FFactory(ACanvas, AFont, AUIFont, ADeclaration);
 end;
 
 { TAtlasHoverTipView }
@@ -593,7 +592,7 @@ begin
     Exit;
   end;
   HandleNeeded;
-  FDoc.Build(Canvas, mContent, AWidth - Scale(22), TAtlasDocFonts.Create(Font, UIFont, PPI),
+  FDoc.Build(Canvas, mContent, AWidth - Scale(cDocInset), TAtlasDocFonts.Create(Font, UIFont, PPI),
     TAtlasStrings.DocLabels);
 end;
 
@@ -650,7 +649,7 @@ begin
   mInput.Members := FMembers;
   mInput.DebugRows := FDebugRows;
   mInput.DebugSelectedRow := FDebugSelectedRow;
-  FLayout := TAtlasHoverLayout.Build(mInput, TTipMeasure.Create(Self));
+  FLayout := TAtlasHoverLayout.Build(mInput, TAtlasHoverMeasures.Measure(Canvas, Font, UIFont, FDeclaration));
   // Nach Umschalten oder Kürzen kann der Versatz zu groß sein; der Satz hat ihn begrenzt.
   FMembers.Scroll := FLayout.Members.Scroll;
   FDebugRows.Scroll := FLayout.DebugRows.Scroll;
@@ -700,29 +699,29 @@ begin
   mWidest := Canvas.TextWidth(FView.Data.Declaration);
   if FView.DebugValue.Visible then
   begin
-    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Expression) + Scale(9));
+    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Expression) + Scale(cItemIndent));
   end;
   Canvas.Font := UIFont;
   if FView.DebugValue.Visible then
   begin
-    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Text) + Scale(9));
+    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Text) + Scale(cItemIndent));
   end;
   mWidest := Max(mWidest, Canvas.TextWidth(FView.Data.UnitName));
   for mProblem in FView.Problems do
   begin
-    mWidest := Max(mWidest, Canvas.TextWidth(mProblem.Caption) + Scale(9));
+    mWidest := Max(mWidest, Canvas.TextWidth(mProblem.Caption) + Scale(cItemIndent));
   end;
   if NeedsFullWidth(FView) then
   begin
     mWidest := Scale(cMaxWidth);
   end;
-  Result := EnsureRange(mWidest + Scale(26), Scale(200), Scale(cMaxWidth));
+  Result := EnsureRange(mWidest + Scale(cSidePadding), Scale(cMinWidth), Scale(cMaxWidth));
 end;
 
 function TAtlasHoverTipView.InDoc(AX, AY: Integer): Boolean;
 begin
-  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(4)) and
-    (AX < FLayout.DocLeft + FDoc.Width + Scale(8)) and
+  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(cDocSlackLeft)) and
+    (AX < FLayout.DocLeft + FDoc.Width + Scale(cDocSlackRight)) and
     (AY >= FLayout.DocTop) and (AY < FLayout.DocTop + FDoc.Height);
 end;
 
@@ -850,8 +849,8 @@ begin
       begin
         Canvas.Font := Font;
         mX := AItem.Rect.Left;
-        FDeclaration.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), Point(AItem.From, AItem.Till), mX,
-          AItem.Rect, False);
+        FDeclaration.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(TAtlasStyledTarget.cRadius)),
+          Point(AItem.From, AItem.Till), mX, AItem.Rect, False);
       end;
     TAtlasHoverItemKind.Doc:
       FDoc.Paint(Canvas, Colors, AItem.Rect.Left, AItem.Rect.Top);
@@ -864,7 +863,7 @@ var
   mNewHeight: Integer;
 begin
   mArea := WorkAreaAt(BoundsRect.TopLeft);
-  mNewHeight := FitHeight(Width, mArea.Height - Scale(8));
+  mNewHeight := FitHeight(Width, mArea.Height - Scale(cScreenMargin));
   mBounds := TRect.Create(BoundsRect.TopLeft, Width, mNewHeight);
   // Wächst nach unten; über dem Wort bzw. ohne Platz darunter nach oben.
   if FAbove or (mBounds.Bottom > mArea.Bottom) then
@@ -1142,12 +1141,12 @@ begin
   PrepareDoc(mWidth);
   mArea := WorkAreaAt(AWord.TopLeft);
   // Höchstens so hoch wie der größere Platz unter bzw. über dem Wort; darüber scrollt die Doku.
-  mHeight := FitHeight(mWidth, Max(mArea.Bottom - AWord.Bottom, AWord.Top - mArea.Top) - Scale(12));
-  mBounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), mWidth, mHeight);
+  mHeight := FitHeight(mWidth, Max(mArea.Bottom - AWord.Bottom, AWord.Top - mArea.Top) - Scale(cWordMargin));
+  mBounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(cWordGap)), mWidth, mHeight);
   FAbove := mBounds.Bottom > mArea.Bottom;
   if FAbove then
   begin
-    mBounds.SetLocation(mBounds.Left, AWord.Top - mHeight - Scale(4));
+    mBounds.SetLocation(mBounds.Left, AWord.Top - mHeight - Scale(cWordGap));
   end;
   if mBounds.Right > mArea.Right then
   begin
@@ -1156,7 +1155,7 @@ begin
   ShowAt(mBounds);
   // Sprachausgabe (#447): Deklaration und Anfang der Doku.
   SetAccessible(cUiaToolTipControlType, TAtlasHoverStrings.Text(TAtlasHoverTextId.AccessHover));
-  mSpoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300));
+  mSpoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, cSpokenDocChars));
   // Wert im Debugger (#891) zuerst.
   if AView.DebugValue.PlainText <> '' then
   begin
@@ -1278,8 +1277,8 @@ begin
   mWidth := Max(BoundsRect.Width, PreferredWidth);
   PrepareDoc(mWidth);
   mArea := WorkAreaAt(BoundsRect.TopLeft);
-  mHeight := Max(BoundsRect.Height, FitHeight(mWidth, mArea.Bottom - BoundsRect.Top - Scale(4)));
-  mHeight := Min(mHeight, Max(mArea.Bottom - BoundsRect.Top, Scale(80)));
+  mHeight := Max(BoundsRect.Height, FitHeight(mWidth, mArea.Bottom - BoundsRect.Top - Scale(cBottomMargin)));
+  mHeight := Min(mHeight, Max(mArea.Bottom - BoundsRect.Top, Scale(cMinUpdateHeight)));
   mBounds := TRect.Create(BoundsRect.TopLeft, mWidth, mHeight);
   ShowAt(mBounds);
   Invalidate;

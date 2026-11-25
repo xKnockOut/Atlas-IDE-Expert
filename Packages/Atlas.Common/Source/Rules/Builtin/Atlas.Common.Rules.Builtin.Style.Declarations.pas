@@ -118,11 +118,7 @@ end;
 
 function TPublicFieldScan.LineOf(ALine: Integer): string;
 begin
-  Result := '';
-  if (ALine >= 0) and (ALine <= High(FLines)) then
-  begin
-    Result := FLines[ALine];
-  end;
+  Result := TTextLines.LineAt(FLines, ALine);
 end;
 
 // Steht ANode allein in seiner Zeile (nur Leerraum davor und dahinter)?

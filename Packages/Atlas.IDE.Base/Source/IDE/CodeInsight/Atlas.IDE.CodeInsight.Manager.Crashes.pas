@@ -16,9 +16,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.CrashCases,
+  Atlas.Plugin.Lsp.CrashCases,
   Atlas.IDE.CodeInsight.Manager.Commands;
 
 type
@@ -52,14 +52,14 @@ uses
   System.JSON,
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Crashes,
-  Atlas.Core.Lsp.IdeMembers,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Lsp.Crashes,
+  Atlas.Plugin.Lsp.IdeMembers,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.CodeInsight.Manager.State,
   Atlas.IDE.CodeInsight.Manager.Handlers;
 
@@ -256,6 +256,8 @@ begin
 end;
 
 function TAtlasCodeInsightCrashes.RetryAction(const AUri: string): TProc;
+const
+  cRetryTimeoutMs = 5000;
 var
   mManager: TAtlasCodeInsightCrashes;
   mUri: string;
@@ -274,7 +276,7 @@ begin
       end;
       mArguments := TAtlasCrashCases.RetryArguments(mUri);
       try
-        mManager.RunServerCommandAsync(TAtlasCrashCases.cRetryCommand, mArguments.ToJSON, 5000, nil);
+        mManager.RunServerCommandAsync(TAtlasCrashCases.cRetryCommand, mArguments.ToJSON, cRetryTimeoutMs, nil);
       finally
         mArguments.Free;
       end;

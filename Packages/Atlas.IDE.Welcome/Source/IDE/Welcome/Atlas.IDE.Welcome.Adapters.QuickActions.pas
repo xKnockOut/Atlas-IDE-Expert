@@ -1,0 +1,987 @@
+﻿unit Atlas.IDE.Welcome.Adapters.QuickActions;
+
+// Schnellaktionen je Projekt auf der Willkommensseite in der IDE (#764):
+// Quelle der Knopfleiste (IAtlasQuickActionsSource) in den Bereichen
+// „Projekte“ (#592) und „Weiterarbeiten“ (#755).
+// - „Öffnen und bauen“: öffnet das Projekt bzw. die Projektgruppe wie die
+//   IDE (eine neue Gruppe fragt nach dem Speichern der offenen) und baut über
+//   den Läufer der Builds auf Auftrag (#261, Auftraggeber "welcome", Haken
+//   OnBuild) mit der gewählten bzw. zuletzt benutzten Konfiguration und
+//   Plattform; eine Gruppe baut ihre Projekte nacheinander. Der
+//   Release-Wächter (#533) gilt: sein Abbruch endet als „nicht gebaut“ mit
+//   Grund. Das Ergebnis zeigt die Marke „Build 0/0/0“ des Bereichs (der
+//   Build zählt als Build des Benutzers).
+// - „Tests“: öffnet das Projekt, nimmt das Testprojekt (Kern:
+//   TestProjectFor; bei mehreren fragt die Leiste) bei Bedarf in die Gruppe
+//   auf und startet den Lauf über den Haken OnTests (#69, immer mit Build
+//   vorab). Das Ergebnis kommt über TestsFinished (Composition, derselbe Weg
+//   wie zur Karte Testergebnisse #763); endet der Lauf ohne Ergebnis, steht
+//   „Tests nicht gelaufen“ mit Verweis auf die Meldungsansicht.
+// - „Startprofil ▾“: Profile über OnProfiles, Start über OnRun (#575) für das
+//   Projekt bzw. das aktive Projekt der Gruppe.
+// - „Pull“ bzw. „Aktualisieren“ (SVN): im Hintergrund über TAtlasIdeVcs.Run
+//   mit Zeitlimit, nur vorwärts, vorher frisch auf lokale Änderungen geprüft;
+//   danach fragt „Projekte“ Branch und Änderungen neu ab. Unter SVN nach
+//   vcs.externals.update (#1292): mit Externals, ohne (--ignore-externals)
+//   oder mit Auswahl am Knopf (AskExternals). Den Index der geholten Ordner
+//   frischt die Dateiüberwachung (#395) auf, sie umfasst die Projektordner.
+// - „Aufgaben ▾“ (#900): Namen über OnTaskNames, Start über OnRunTask (der
+//   Aufgabenläufer des Moduls Build, im Hintergrund); das Ende meldet
+//   TaskFinished (IAtlasTaskListener) mit dem Ergebnis („Delphi-12-Prüfung: 2 Fehler 14:03“). Ohne tasks.enabled bzw.
+//   ohne Aufgaben im Projekt gibt es den Knopf nicht.
+// - „Ordner“: Explorer wie im Kontextmenü von „Projekte“. „Konsole“:
+//   welcomePage.quickActions.console im Projektordner, ohne Windows-Terminal
+//   cmd.exe.
+// - Stand je Projekt in dieser Sitzung (läuft seit, Ergebnis, Grund);
+//   Meldungen mit Pfaden nur in die Meldungsansicht (AMessage).
+// - Strg+B und Strg+T (einstellbar) nimmt die Quelle vor den Tasten der IDE
+//   ab, solange die unsichtbare Tastatur-Steuerung einer Leiste den Fokus hat
+//   (Atlas.IDE.Welcome.QuickActions.Keys).
+// - Nutzung: Ein Klick zählt als Aufruf per Maus (Tastenkürzel-Tipps #600,
+//   Atlas.WelcomeQuickBuild bzw. Atlas.WelcomeQuickTests); die Taste zählt
+//   die Beobachtung der Tastatur selbst.
+
+interface
+
+uses
+  System.SysUtils,
+  System.Generics.Collections,
+  Vcl.ExtCtrls,
+  Atlas.IDE.Contracts.BuildTools,
+  Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.Welcome.QuickActionRuns,
+  Atlas.IDE.Welcome.QuickActions.Keys,
+  Atlas.Plugin.Notifications.MessageSink,
+  Atlas.UI.Welcome.Contract,
+  Atlas.IDE.Welcome.Neighbors,
+  Atlas.Core.Projects.Contract.Summary;
+
+type
+  /// <summary>Was die Schnellaktionen von „Projekte“ brauchen; die Composition verbindet beide.</summary>
+  TAtlasQuickProjects = record
+    /// <summary>Stand der Versionsverwaltung von AProject (Branch, Rückstand, Änderungen).</summary>
+    VcsOf: TFunc<string, TAtlasProjectVcs>;
+    OpenFolder: TProc<string>;
+    /// <summary>Stand von AProject neu abfragen (nach Pull).</summary>
+    Refresh: TProc<string>;
+  end;
+
+  TAtlasIdeQuickActions = class(TInterfacedObject, IAtlasQuickActionsSource)
+  private
+    FHooks: TAtlasQuickActionHooks;
+  public const
+    /// <summary>Takt der Prüfung, ob ein Testlauf ohne Ergebnis endete.</summary>
+    cWatchMs = 500;
+    /// <summary>So lange nach dem Start gilt ein Testlauf ohne Busy noch nicht als beendet.</summary>
+    cWatchGraceMs = 1500;
+    /// <summary>So lange nach Strg+B bzw. Strg+T zählt ein Aufruf nicht als Mausklick.</summary>
+    cKeyUseMs = 1000;
+    cBuildCommandId = 'Atlas.WelcomeQuickBuild';
+    cTestsCommandId = 'Atlas.WelcomeQuickTests';
+  private type
+    TInput = record
+      Watch: TTimer;
+      Keys: TAtlasQuickActionKeys;
+      KeyAt: UInt64;
+    end;
+  private
+    FMessage: TAtlasMessageSink;
+    FProjects: TAtlasQuickProjects;
+    FStopped: Boolean;
+    /// <summary>Stand je Projekt, laufende Testläufe und Projektaufgaben dieser Sitzung.</summary>
+    FRuns: TAtlasQuickActionRuns;
+    FInput: TInput;
+    procedure Changed;
+    procedure StartAction(const AProject: string; AAction: TAtlasQuickAction);
+    procedure Finish(const AProject: string; AAction: TAtlasQuickAction; APhase: TAtlasQuickActionPhase;
+      const ADetail: string);
+    procedure BuildNext(const ARow: string; const AProjects: TArray<string>; AIndex: Integer;
+      const AConfiguration, APlatform: string);
+    procedure Pull(const AProject: string); overload;
+    procedure WatchTick(Sender: TObject);
+    function KeyAccepted(AShortCut: Integer): Boolean;
+  public
+    property Hooks: TAtlasQuickActionHooks read FHooks write FHooks;
+    /// <summary>AProjects: Quelle von „Projekte“ (Branch und Änderungen, Ordner, Neu-Abfrage nach Pull);
+    /// AMessage: Zeile in die Meldungsansicht.</summary>
+    constructor Create(const AProjects: TAtlasQuickProjects; const AMessage: TProc<string>);
+    destructor Destroy; override;
+    /// <summary>Tastaturbeobachtung anmelden.</summary>
+    procedure Start;
+    /// <summary>Alles abmelden (beim Entladen); danach wirkungslos.</summary>
+    procedure Stop;
+    /// <summary>Nach einer Einstellungsänderung: Bereiche neu zeichnen.</summary>
+    procedure Refresh;
+    /// <summary>Ein Testlauf (#69) von ATestProject ist fertig; gehört er zu einer Schnellaktion, steht das
+    /// Ergebnis in deren Zeile. Hauptthread.</summary>
+    procedure TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
+    /// <summary>Eine Projektaufgabe von AProject ist fertig; hat die Schnellaktion sie gestartet, steht das
+    /// Ergebnis in deren Zeile. Hauptthread.</summary>
+    procedure TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
+    { IAtlasQuickActionsSource }
+    function Enabled: Boolean;
+    function Buttons(const AProject: string): TAtlasQuickActionButtons;
+    function State(const AProject: string): TAtlasQuickActionState;
+    function NowMs: UInt64;
+    procedure Execute(const AProject: string; AAction: TAtlasQuickAction);
+    function Targets(const AProject: string; out AConfiguration, APlatform: string): TAtlasProjectTargets;
+    procedure Build(const AProject, AConfiguration, APlatform: string);
+    function TestProjects(const AProject: string): TArray<string>;
+    procedure RunTests(const AProject, ATestProject: string);
+    function Profiles(const AProject: string; out AActive: string): TArray<string>;
+    procedure Run(const AProject, AProfile: string);
+    function TaskNames(const AProject: string): TArray<string>;
+    procedure RunTask(const AProject, AName: string);
+    procedure Pull(const AProject: string; AIgnoreExternals: Boolean); overload;
+    function BuildKey: Integer;
+    function TestKey: Integer;
+    function ConsoleProgram: string;
+  end;
+
+implementation
+
+uses
+  Atlas.Core.Projects.Summary,
+  Winapi.Windows,
+  Winapi.ShellAPI,
+  System.Classes,
+  Vcl.Forms,
+  ToolsAPI,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Pull,
+  Atlas.Core.Welcome.Sections,
+  Atlas.UI.Strings,
+  Atlas.UI.Welcome.Strings,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Commands.ShortcutTips,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.IDE.Projects.Summaries;
+
+const
+  /// <summary>ShellExecute meldet Erfolg mit einem Wert über 32, kleinere Werte sind Fehlercodes.</summary>
+  cShellExecuteErrorLimit = 32;
+
+function Settings: TAtlasPluginSettings;
+begin
+  Result := TAtlasIdeSettings.Current;
+end;
+
+function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
+begin
+  ALines := nil;
+  try
+    ALines := TAtlasTextFile.LoadLines(AFileName);
+    Result := True;
+  except
+    // Nicht lesbar: zählt wie nicht vorhanden.
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
+      Result := False;
+    end;
+  end;
+end;
+
+{ Hilfen }
+
+function Key(const AProject: string): string;
+begin
+  Result := TAtlasProjectSummaries.NormalizedPath(AProject);
+end;
+
+function NameOf(const AProject: string): string;
+begin
+  Result := ChangeFileExt(ExtractFileName(AProject), '');
+end;
+
+function IdeBusy(ARuns: TAtlasQuickActionRuns; const AHooks: TAtlasQuickActionHooks; const AProject: string): Boolean;
+begin
+  // Die IDE öffnet immer nur ein Projekt zur Zeit: eine laufende Aktion eines anderen Projekts sperrt.
+  Result := ARuns.OtherUsesIde(AProject) or (Assigned(AHooks.OnIdeBusy) and AHooks.OnIdeBusy());
+end;
+
+function ProjectOpen(const AFileName: string): Boolean;
+var
+  mModules: IOTAModuleServices;
+begin
+  Result := Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.FindModule(AFileName) <> nil);
+end;
+
+function GroupMembers(const AGroup: string): TArray<string>;
+var
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) or
+    not Supports(mModules.FindModule(AGroup), IOTAProjectGroup, mGroup) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mGroup.ProjectCount - 1 do
+  begin
+    if (mGroup.Projects[mIndex] <> nil) and (mGroup.Projects[mIndex].FileName <> '') then
+    begin
+      Result := Result + [mGroup.Projects[mIndex].FileName];
+    end;
+  end;
+end;
+
+function ActiveProjectOf(const AGroup: string): string;
+var
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+begin
+  Result := '';
+  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) and
+    Supports(mModules.FindModule(AGroup), IOTAProjectGroup, mGroup) and (mGroup.ActiveProject <> nil) then
+  begin
+    Result := mGroup.ActiveProject.FileName;
+  end;
+end;
+
+function EnsureOpen(const AProject: string; out AReason: string): Boolean;
+var
+  mActions: IOTAActionServices;
+begin
+  AReason := '';
+  if ProjectOpen(AProject) then
+  begin
+    Exit(True);
+  end;
+  if not FileExists(AProject) then
+  begin
+    AReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonMissing);
+    Exit(False);
+  end;
+  // Wie „Öffnen“ der IDE: Eine neue Gruppe fragt nach dem Speichern der offenen; Abbrechen lässt sie offen.
+  if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AProject, True);
+      end);
+  end;
+  Result := ProjectOpen(AProject);
+  if not Result then
+  begin
+    AReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNotOpened);
+  end;
+end;
+
+/// <summary>Aufruf AId per Maus zählen (#600); AKeyAt: Zeitpunkt der letzten Taste der Leiste.</summary>
+procedure CountUse(AKeyAt: UInt64; const AId: string);
+begin
+  // Über die Taste: zählt die Beobachtung der Tastatur (#600) schon.
+  if TAtlasQuickActionSteps.ByKey(GetTickCount64, AKeyAt, TAtlasIdeQuickActions.cKeyUseMs) then
+  begin
+    Exit;
+  end;
+  TAtlasIdeShortcutTips.Invoked(AId);
+end;
+
+/// <summary>Konsole AProgram im Ordner von AProject öffnen; False, wenn sie nicht startet.</summary>
+function OpenConsole(const AProgram, AProject: string): Boolean;
+var
+  mDir, mFileName, mParameters, mFallback: string;
+
+  function Launch(const AProgram: string): Boolean;
+  begin
+    Result := TAtlasWelcomeQuickActions.ConsoleCommand(AProgram, mDir, mFileName, mParameters) and
+      (ShellExecute(0, 'open', PChar(mFileName), PChar(mParameters), PChar(mDir), SW_SHOWNORMAL) > cShellExecuteErrorLimit);
+  end;
+
+begin
+  mDir := ExtractFileDir(AProject);
+  Result := DirectoryExists(mDir) and Launch(AProgram);
+  // Ohne Windows-Terminal: cmd.exe (nur für die Vorgabe; ein eigenes Programm meldet seinen Fehler).
+  if not Result and DirectoryExists(mDir) and TAtlasQuickActionSteps.ConsoleFallback(AProgram, mFallback) then
+  begin
+    Result := Launch(mFallback);
+  end;
+end;
+
+function PullFailedText(const AProject: string; AReason: TAtlasVcsOutcome; AUpdate: Boolean): string;
+begin
+  if AUpdate then
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgUpdateFailed, [NameOf(AProject),
+      AtlasVcsOutcomeName(AReason)]);
+  end
+  else
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgPullFailed, [NameOf(AProject),
+      AtlasVcsOutcomeName(AReason)]);
+  end;
+end;
+
+/// <summary>Testprojekt außerhalb der Gruppe in die offene Gruppe aufnehmen (wie „Projekt hinzufügen“); Grund,
+/// wenn es nicht geht, sonst ''.</summary>
+function AddTestProject(const ATestProject: string): string;
+var
+  mActions: IOTAActionServices;
+begin
+  Result := '';
+  if not FileExists(ATestProject) then
+  begin
+    Exit(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonMissing));
+  end;
+  if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(ATestProject, False);
+      end);
+  end;
+  if not ProjectOpen(ATestProject) then
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNotOpened);
+  end;
+end;
+
+procedure StopWatch(AWatch: TTimer);
+begin
+  if AWatch <> nil then
+  begin
+    AWatch.Enabled := False;
+  end;
+end;
+
+/// <summary>Stand AState von AProject nach einem Pull, Meldungen bei Fehlern an AMessage; AUpdate: SVN
+/// („Aktualisieren“).</summary>
+function PullResult(const AState: TAtlasQuickActionState; AMessage: TAtlasMessageSink; const AProject: string;
+  AOutcome: TAtlasPullOutcome; AReason: TAtlasVcsOutcome; AUpdate: Boolean): TAtlasQuickActionState;
+var
+  mNote: TAtlasPullNote;
+begin
+  // Was gilt, entscheidet Core (AfterPull); hier nur die Texte.
+  Result := AState.AfterPull(AOutcome, AReason, mNote);
+  case mNote of
+    TAtlasPullNote.None:
+      ;
+    TAtlasPullNote.LocalChanges:
+      begin
+        Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLocalChanges);
+        AMessage.Say(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [NameOf(AProject)]));
+      end;
+    TAtlasPullNote.NoWorkingCopy:
+      Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullNoWorkingCopy);
+    TAtlasPullNote.Login:
+      begin
+        Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLogin);
+        AMessage.Say(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [NameOf(AProject)]));
+      end;
+    TAtlasPullNote.Failed:
+      AMessage.Say(PullFailedText(AProject, AReason, AUpdate));
+  end;
+end;
+
+{ TAtlasIdeQuickActions }
+
+constructor TAtlasIdeQuickActions.Create(const AProjects: TAtlasQuickProjects; const AMessage: TProc<string>);
+begin
+  inherited Create;
+  FProjects := AProjects;
+  FMessage := TAtlasMessageSink.Create(AMessage);
+  FRuns := TAtlasQuickActionRuns.Create(Key);
+end;
+
+destructor TAtlasIdeQuickActions.Destroy;
+begin
+  Stop;
+  FRuns.Free;
+  inherited;
+end;
+
+procedure TAtlasIdeQuickActions.Changed;
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cProjects);
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cContinue);
+end;
+
+procedure TAtlasIdeQuickActions.StartAction(const AProject: string; AAction: TAtlasQuickAction);
+begin
+  FRuns.SetState(AProject, TAtlasQuickActionState.Started(AAction, NowMs));
+  Changed;
+end;
+
+procedure TAtlasIdeQuickActions.Finish(const AProject: string; AAction: TAtlasQuickAction;
+  APhase: TAtlasQuickActionPhase; const ADetail: string);
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  FRuns.Finish(AProject, AAction, APhase, ADetail);
+  Changed;
+end;
+
+procedure TAtlasIdeQuickActions.BuildNext(const ARow: string; const AProjects: TArray<string>; AIndex: Integer;
+  const AConfiguration, APlatform: string);
+var
+  mRow, mConfiguration, mPlatform, mReason: string;
+  mProjects: TArray<string>;
+  mIndex: Integer;
+  mKeep: IInterface;
+begin
+  mRow := ARow;
+  mProjects := AProjects;
+  mIndex := AIndex;
+  mConfiguration := AConfiguration;
+  mPlatform := APlatform;
+  mKeep := Self;
+  mReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
+  if not Assigned(Hooks.OnBuild) or not Hooks.OnBuild(mProjects[mIndex], mConfiguration, mPlatform,
+    procedure(ASucceeded: Boolean; const AError: string)
+    begin
+      // Keep hält die Quelle bis hierher am Leben.
+      if (mKeep = nil) or FStopped then
+      begin
+        Exit;
+      end;
+      case TAtlasQuickActionSteps.AfterBuild(AError, ASucceeded, mIndex, Length(mProjects)) of
+        TAtlasQuickBuildStep.Refused:
+          begin
+            Finish(mRow, TAtlasQuickAction.Build, TAtlasQuickActionPhase.Refused, AError);
+            FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgBuildRefused,
+              [NameOf(mProjects[mIndex]), AError]));
+          end;
+        TAtlasQuickBuildStep.Failed:
+          Finish(mRow, TAtlasQuickAction.Build, TAtlasQuickActionPhase.Failed, '');
+        TAtlasQuickBuildStep.Next:
+          // Nächstes Projekt der Gruppe nicht im Rückruf des Läufers: Er schließt seinen Auftrag erst danach ab.
+          TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+            procedure
+            begin
+              if (mKeep <> nil) and not FStopped then
+              begin
+                BuildNext(mRow, mProjects, mIndex + 1, mConfiguration, mPlatform);
+              end;
+            end);
+        TAtlasQuickBuildStep.Done:
+          Finish(mRow, TAtlasQuickAction.Build, TAtlasQuickActionPhase.Succeeded, '');
+      end;
+    end, mReason) then
+  begin
+    Finish(mRow, TAtlasQuickAction.Build, TAtlasQuickActionPhase.Refused, mReason);
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgBuildRefused,
+      [NameOf(mProjects[mIndex]), mReason]));
+  end;
+end;
+
+procedure TAtlasIdeQuickActions.Pull(const AProject: string);
+begin
+  // Ohne Auswahl (Taste, Kontextmenü ohne Untermenü): „ask“ holt wie „with“ samt Externals.
+  Pull(AProject, AtlasVcsExternalsUpdateOf(Settings.VcsExternalsUpdate) =
+    TAtlasVcsExternalsUpdate.WithoutExternals);
+end;
+
+procedure TAtlasIdeQuickActions.WatchTick(Sender: TObject);
+var
+  mRow: string;
+begin
+  try
+    if FStopped or not FRuns.TestsPending then
+    begin
+      StopWatch(FInput.Watch);
+      Exit;
+    end;
+    // Läuft nichts mehr und kam kein Ergebnis: Der Läufer hat abgelehnt oder abgebrochen (Grund in der
+    // Meldungsansicht).
+    if Assigned(Hooks.OnTestsBusy) and Hooks.OnTestsBusy() then
+    begin
+      Exit;
+    end;
+    for mRow in FRuns.EndTests(NowMs, cWatchGraceMs) do
+    begin
+      Finish(mRow, TAtlasQuickAction.Tests, TAtlasQuickActionPhase.Failed,
+        TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonSeeMessages));
+    end;
+    if not FRuns.TestsPending then
+    begin
+      StopWatch(FInput.Watch);
+    end;
+  except
+    on E: Exception do
+    begin
+      StopWatch(FInput.Watch);
+      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+    end;
+  end;
+end;
+
+function TAtlasIdeQuickActions.KeyAccepted(AShortCut: Integer): Boolean;
+begin
+  Result := not FStopped and Enabled and ((AShortCut = BuildKey) or (AShortCut = TestKey));
+  if Result then
+  begin
+    FInput.KeyAt := NowMs;
+  end;
+end;
+
+procedure TAtlasIdeQuickActions.Start;
+begin
+  FStopped := False;
+  if FInput.Keys = nil then
+  begin
+    FInput.Keys := TAtlasQuickActionKeys.Create(KeyAccepted);
+  end;
+  if FInput.Watch = nil then
+  begin
+    FInput.Watch := TTimer.Create(nil);
+    FInput.Watch.Enabled := False;
+    FInput.Watch.Interval := cWatchMs;
+    FInput.Watch.OnTimer := WatchTick;
+  end;
+end;
+
+procedure TAtlasIdeQuickActions.Stop;
+begin
+  FStopped := True;
+  FreeAndNil(FInput.Keys);
+  FreeAndNil(FInput.Watch);
+  FProjects := Default(TAtlasQuickProjects);
+  Hooks := Default(TAtlasQuickActionHooks);
+end;
+
+procedure TAtlasIdeQuickActions.Refresh;
+begin
+  Changed;
+end;
+
+procedure TAtlasIdeQuickActions.TestsFinished(const ATestProject: string; APassed, AFailed: Integer);
+begin
+  if not FStopped and FRuns.TestsFinished(ATestProject, APassed, AFailed) then
+  begin
+    Changed;
+  end;
+end;
+
+procedure TAtlasIdeQuickActions.TaskFinished(const AProject: string; const AResult: TAtlasTaskResult);
+var
+  mPhase: TAtlasQuickActionPhase;
+begin
+  if FStopped or not FRuns.TaskFinished(AProject, AResult.Name) then
+  begin
+    Exit;
+  end;
+  if AResult.Passed then
+  begin
+    mPhase := TAtlasQuickActionPhase.Succeeded;
+  end
+  else
+  begin
+    mPhase := TAtlasQuickActionPhase.Failed;
+  end;
+  Finish(AProject, TAtlasQuickAction.Tasks, mPhase,
+    TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickTasksResult,
+    [AResult.Name, AResult.Summary]));
+end;
+
+function TAtlasIdeQuickActions.Enabled: Boolean;
+begin
+  Result := not FStopped and Settings.WelcomePage and Settings.WelcomePageQuickActions;
+end;
+
+function TAtlasIdeQuickActions.Buttons(const AProject: string): TAtlasQuickActionButtons;
+var
+  mItems: TAtlasQuickActions;
+  mVcs: TAtlasProjectVcs;
+  mHasTasks: Boolean;
+begin
+  Result := nil;
+  if not Enabled or not Assigned(FProjects.VcsOf) then
+  begin
+    Exit;
+  end;
+  mItems := TAtlasWelcomeQuickActions.ParseItems(Settings.WelcomePageQuickActionsItems);
+  // Aufgaben des Projekts nur nachschlagen, wenn der Knopf eingestellt ist.
+  mHasTasks := (TAtlasQuickAction.Tasks in mItems) and Settings.TasksEnabled and (Length(TaskNames(AProject)) > 0);
+  mItems := TAtlasQuickActionSteps.ShownItems(mItems, Settings.TestRun, mHasTasks);
+  mVcs := FProjects.VcsOf(AProject);
+  Result := TAtlasWelcomeQuickActions.Buttons(mItems, mVcs, State(AProject).Running, IdeBusy(FRuns, Hooks,
+    AProject));
+  // vcs.externals.update = ask (#1292): „Aktualisieren ▾“ mit Auswahl.
+  if AtlasVcsExternalsUpdateOf(Settings.VcsExternalsUpdate) = TAtlasVcsExternalsUpdate.Ask then
+  begin
+    TAtlasWelcomeQuickActions.AskExternals(Result);
+  end;
+end;
+
+function TAtlasIdeQuickActions.State(const AProject: string): TAtlasQuickActionState;
+begin
+  Result := FRuns.State(AProject);
+end;
+
+function TAtlasIdeQuickActions.NowMs: UInt64;
+begin
+  Result := GetTickCount64;
+end;
+
+procedure TAtlasIdeQuickActions.Execute(const AProject: string; AAction: TAtlasQuickAction);
+var
+  mConfiguration, mPlatform: string;
+  mCandidates, mNames: TArray<string>;
+begin
+  if FStopped or not Enabled then
+  begin
+    Exit;
+  end;
+  case AAction of
+    TAtlasQuickAction.Build:
+      begin
+        Targets(AProject, mConfiguration, mPlatform);
+        Build(AProject, mConfiguration, mPlatform);
+      end;
+    TAtlasQuickAction.Tests:
+      begin
+        mCandidates := TestProjects(AProject);
+        if Length(mCandidates) = 0 then
+        begin
+          CountUse(FInput.KeyAt, cTestsCommandId);
+          FRuns.SetState(AProject, TAtlasQuickActionState.Started(TAtlasQuickAction.Tests, NowMs));
+          Finish(AProject, TAtlasQuickAction.Tests, TAtlasQuickActionPhase.Refused,
+            TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNoTestProject));
+          FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgNoTestProject, [NameOf(AProject)]));
+        end
+        else
+        begin
+          // Mehrere: Die Leiste fragt vorher; ohne Auswahl (etwa aus dem Kontextmenü) das erste.
+          RunTests(AProject, mCandidates[0]);
+        end;
+      end;
+    TAtlasQuickAction.Run:
+      Run(AProject, '');
+    TAtlasQuickAction.Pull:
+      Pull(AProject);
+    TAtlasQuickAction.Folder:
+      if Assigned(FProjects.OpenFolder) then
+      begin
+        FProjects.OpenFolder(AProject);
+      end;
+    TAtlasQuickAction.Console:
+      if not OpenConsole(ConsoleProgram, AProject) then
+      begin
+        FRuns.SetState(AProject, TAtlasQuickActionState.Started(TAtlasQuickAction.Console, NowMs));
+        Finish(AProject, TAtlasQuickAction.Console, TAtlasQuickActionPhase.Failed, '');
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgConsoleFailed, [ConsoleProgram]));
+      end;
+    TAtlasQuickAction.Tasks:
+      begin
+        // Ohne Auswahl (Kontextmenü, Enter) die erste Aufgabe; die Leiste fragt sonst vorher.
+        mNames := TaskNames(AProject);
+        if Length(mNames) > 0 then
+        begin
+          RunTask(AProject, mNames[0]);
+        end;
+      end;
+  end;
+end;
+
+function TAtlasIdeQuickActions.Targets(const AProject: string; out AConfiguration,
+  APlatform: string): TAtlasProjectTargets;
+var
+  mSummary: TAtlasProjectSummary;
+  mText: string;
+begin
+  Result := Default(TAtlasProjectTargets);
+  AConfiguration := '';
+  APlatform := '';
+  // Eine Gruppe baut wie in der IDE eingestellt.
+  if TAtlasWelcomeQuickActions.IsGroup(AProject) or not FileExists(AProject) then
+  begin
+    Exit;
+  end;
+  try
+    mText := TAtlasTextFile.LoadText(AProject);
+  except
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
+      Exit;
+    end;
+  end;
+  Result := TAtlasWelcomeQuickActions.ReadTargets(mText);
+  // Vorgabe: zuletzt benutzt (Abschnitt "build" der Zusammenfassung), wenn das Projekt sie noch kennt.
+  if TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, mSummary) and mSummary.Build.Known then
+  begin
+    TAtlasWelcomeQuickActions.ChooseTarget(Result, mSummary.Build.Configuration, mSummary.Build.Platform,
+      AConfiguration, APlatform);
+  end;
+end;
+
+procedure TAtlasIdeQuickActions.Build(const AProject, AConfiguration, APlatform: string);
+var
+  mReason: string;
+  mList: TArray<string>;
+begin
+  if FStopped or not Enabled or State(AProject).Running then
+  begin
+    Exit;
+  end;
+  CountUse(FInput.KeyAt, cBuildCommandId);
+  StartAction(AProject, TAtlasQuickAction.Build);
+  if not EnsureOpen(AProject, mReason) then
+  begin
+    Finish(AProject, TAtlasQuickAction.Build, TAtlasQuickActionPhase.Refused, mReason);
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgBuildRefused,
+      [NameOf(AProject), mReason]));
+    Exit;
+  end;
+  mList := [AProject];
+  if TAtlasWelcomeQuickActions.IsGroup(AProject) then
+  begin
+    mList := GroupMembers(AProject);
+  end;
+  if Length(mList) = 0 then
+  begin
+    Finish(AProject, TAtlasQuickAction.Build, TAtlasQuickActionPhase.Succeeded, '');
+    Exit;
+  end;
+  BuildNext(AProject, mList, 0, AConfiguration, APlatform);
+end;
+
+function TAtlasIdeQuickActions.TestProjects(const AProject: string): TArray<string>;
+var
+  mFound: string;
+  mCandidates: TArray<string>;
+begin
+  mFound := TAtlasWelcomeQuickActions.TestProjectFor(AProject,
+    function(const AFileName: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+    end,
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      Result := ReadLines(AFileName, ALines);
+    end, mCandidates);
+  if mFound <> '' then
+  begin
+    Result := [mFound];
+  end
+  else
+  begin
+    Result := mCandidates;
+  end;
+end;
+
+procedure TAtlasIdeQuickActions.RunTests(const AProject, ATestProject: string);
+var
+  mReason: string;
+begin
+  if FStopped or not Enabled or State(AProject).Running then
+  begin
+    Exit;
+  end;
+  CountUse(FInput.KeyAt, cTestsCommandId);
+  StartAction(AProject, TAtlasQuickAction.Tests);
+  if EnsureOpen(AProject, mReason) and not ProjectOpen(ATestProject) then
+  begin
+    mReason := AddTestProject(ATestProject);
+  end;
+  if (mReason = '') and not Assigned(Hooks.OnTests) then
+  begin
+    mReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonTestsOff);
+  end
+  else if mReason = '' then
+  begin
+    // Vor dem Start eintragen: Das Ergebnis (TestsFinished) findet so die Zeile in jedem Fall.
+    FRuns.TestsStarted(ATestProject, AProject);
+    if not Hooks.OnTests(ATestProject, mReason) and (mReason = '') then
+    begin
+      mReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonSeeMessages);
+    end;
+  end;
+  if mReason <> '' then
+  begin
+    FRuns.TestsDropped(ATestProject);
+    Finish(AProject, TAtlasQuickAction.Tests, TAtlasQuickActionPhase.Refused, mReason);
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgTestsRefused,
+      [NameOf(AProject), mReason]));
+  end
+  else if FInput.Watch <> nil then
+  begin
+    // Ohne Ergebnis endet der Lauf, wenn der Läufer nicht mehr beschäftigt ist (WatchTick).
+    FInput.Watch.Enabled := FRuns.TestsPending(ATestProject);
+  end;
+end;
+
+function TAtlasIdeQuickActions.Profiles(const AProject: string; out AActive: string): TArray<string>;
+begin
+  Result := nil;
+  AActive := '';
+  // Eine Gruppe startet ihr aktives Projekt mit dessen Auswahl (erst nach dem Öffnen bekannt).
+  if TAtlasWelcomeQuickActions.IsGroup(AProject) or not Assigned(Hooks.OnProfiles) then
+  begin
+    Exit;
+  end;
+  Result := Hooks.OnProfiles(AProject, AActive);
+end;
+
+procedure TAtlasIdeQuickActions.Run(const AProject, AProfile: string);
+var
+  mReason, mTarget: string;
+begin
+  if FStopped or not Enabled or State(AProject).Running then
+  begin
+    Exit;
+  end;
+  StartAction(AProject, TAtlasQuickAction.Run);
+  mTarget := '';
+  if EnsureOpen(AProject, mReason) then
+  begin
+    mTarget := AProject;
+    if TAtlasWelcomeQuickActions.IsGroup(AProject) then
+    begin
+      mTarget := ActiveProjectOf(AProject);
+    end;
+    if mTarget = '' then
+    begin
+      mReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNotOpened);
+    end
+    else if not Assigned(Hooks.OnRun) then
+    begin
+      mReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNotOpened);
+    end
+    else if not Hooks.OnRun(mTarget, AProfile, mReason) and (mReason = '') then
+    begin
+      mReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonSeeMessages);
+    end;
+  end;
+  if mReason <> '' then
+  begin
+    Finish(AProject, TAtlasQuickAction.Run, TAtlasQuickActionPhase.Refused, mReason);
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgRunRefused, [NameOf(AProject), mReason]));
+    Exit;
+  end;
+  Finish(AProject, TAtlasQuickAction.Run, TAtlasQuickActionPhase.Succeeded, '');
+end;
+
+function TAtlasIdeQuickActions.TaskNames(const AProject: string): TArray<string>;
+begin
+  Result := nil;
+  if not FStopped and Settings.TasksEnabled and Assigned(Hooks.OnTaskNames) then
+  begin
+    Result := Hooks.OnTaskNames(AProject);
+  end;
+end;
+
+procedure TAtlasIdeQuickActions.RunTask(const AProject, AName: string);
+var
+  mReason: string;
+begin
+  if FStopped or not Enabled or State(AProject).Running then
+  begin
+    Exit;
+  end;
+  StartAction(AProject, TAtlasQuickAction.Tasks);
+  mReason := '';
+  // Vor dem Start eintragen: Ein sofort scheiternder Lauf meldet sein Ende schon im Start.
+  FRuns.TaskStarted(AProject, AName);
+  if not Assigned(Hooks.OnRunTask) then
+  begin
+    mReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonTasksOff);
+  end
+  else if not Hooks.OnRunTask(AProject, AName, mReason) and (mReason = '') then
+  begin
+    mReason := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonSeeMessages);
+  end;
+  if mReason = '' then
+  begin
+    Exit;
+  end;
+  FRuns.TaskDropped(AProject);
+  Finish(AProject, TAtlasQuickAction.Tasks, TAtlasQuickActionPhase.Refused, mReason);
+  FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgTaskRefused,
+    [AName, NameOf(AProject), mReason]));
+end;
+
+procedure TAtlasIdeQuickActions.Pull(const AProject: string; AIgnoreExternals: Boolean);
+var
+  mKeep: IInterface;
+  mIgnore: Boolean;
+  mProject, mDir: string;
+  mVcs: TAtlasProjectVcs;
+  mUpdate: Boolean;
+  mOutcome: TAtlasPullOutcome;
+  mReason: TAtlasVcsOutcome;
+begin
+  if FStopped or not Enabled or State(AProject).Running or not Assigned(FProjects.VcsOf) then
+  begin
+    Exit;
+  end;
+  mVcs := FProjects.VcsOf(AProject);
+  mUpdate := TAtlasWelcomeQuickActions.IsUpdate(mVcs);
+  // Der Knopf ist dann gesperrt; aus dem Kontextmenü bzw. der Taste noch einmal prüfen.
+  if TAtlasWelcomeQuickActions.PullBlock(mVcs) = TAtlasPullBlock.LocalChanges then
+  begin
+    FMessage.Say(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [NameOf(AProject)]));
+    Exit;
+  end;
+  StartAction(AProject, TAtlasQuickAction.Pull);
+  mKeep := Self;
+  mProject := AProject;
+  mDir := ExtractFileDir(AProject);
+  mOutcome := TAtlasPullOutcome.Failed;
+  mReason := TAtlasVcsOutcome.Failed;
+  mIgnore := AIgnoreExternals;
+  // Arbeit und Ergebnis teilen sich Outcome und Reason; das Ergebnis kommt erst nach der Arbeit.
+  if not TAtlasIdeVcs.Run(
+    procedure
+    begin
+      mOutcome := TAtlasVcsPull.Pull(TAtlasIdeVcs.ForFolder(mDir,
+        TAtlasIdeVcs.AtLeast(TAtlasWelcomeQuickActions.cPullTimeoutMs)), mIgnore, mReason);
+    end,
+    procedure
+    begin
+      if (mKeep = nil) or FStopped then
+      begin
+        Exit;
+      end;
+      FRuns.SetState(mProject, PullResult(State(mProject), FMessage, mProject, mOutcome, mReason, mUpdate));
+      // Branch, Rückstand und Änderungen frisch abfragen; „Projekte“ meldet sich danach selbst.
+      if Assigned(FProjects.Refresh) then
+      begin
+        FProjects.Refresh(mProject);
+      end;
+      Changed;
+    end) then
+  begin
+    Finish(AProject, TAtlasQuickAction.Pull, TAtlasQuickActionPhase.Failed,
+      TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonVcsNotReady));
+  end;
+end;
+
+function TAtlasIdeQuickActions.BuildKey: Integer;
+begin
+  Result := Settings.WelcomePageQuickActionsBuildKey;
+end;
+
+function TAtlasIdeQuickActions.TestKey: Integer;
+begin
+  Result := Settings.WelcomePageQuickActionsTestKey;
+end;
+
+function TAtlasIdeQuickActions.ConsoleProgram: string;
+begin
+  Result := TAtlasWelcomeQuickActions.NormalizedConsole(Settings.WelcomePageQuickActionsConsole);
+end;
+
+end.

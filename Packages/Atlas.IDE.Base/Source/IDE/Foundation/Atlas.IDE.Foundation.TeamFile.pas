@@ -25,6 +25,8 @@
 //   Willkommensseite: Build-Server #763, Tracker #765, Startprofile #764).
 // - Version zählt jeden neu gelesenen Stand (für Zwischenspeicher wie die
 //   ausgeblendeten Stellen, #628).
+// - TargetFile: wohin Änderungen aus dem Plugin gehen (Ausblenden #628,
+//   Exception-Regeln #838): die gelesene Datei, sonst neben der .dproj.
 // - OpenInEditor: legt die Datei mit Gerüst (TAtlasTeamFile.Skeleton, UTF-8
 //   ohne BOM) neben der .dproj an, wenn es noch keine gibt, und öffnet sie.
 // Nur im Hauptthread verwenden.
@@ -86,6 +88,8 @@ type
     class procedure Refresh; static;
     /// <summary>Befehl Atlas.TeamFile: anlegen, falls nötig, und im Editor öffnen.</summary>
     class procedure OpenInEditor; static;
+    /// <summary>Gelesene .atlas des aktiven Projekts, sonst der Pfad neben der .dproj; '' ohne Projekt.</summary>
+    class function TargetFile: string; static;
   end;
 
 implementation
@@ -94,13 +98,13 @@ uses
   Winapi.Windows,
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.TextFile,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Foundation.Strings,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Host,
-  Atlas.IDE.Foundation.OpenWatch;
+  Atlas.ToolsApi.Files.OpenWatch;
 
 const
   cCheckMs = 2000;
@@ -217,8 +221,14 @@ begin
     mContent := TAtlasTextFile.Load(AFileName);
   except
     // Gesperrt (gerade gespeichert) oder gelöscht: wie noch nicht gelesen.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Exit(False);
+    end;
   end;
   ATeam := TAtlasTeamFile.Parse(mContent.Text, AFileName,
     TAtlasTeamFile.RootOf(ExtractFileDir(AFileName), PathExists));
@@ -371,6 +381,22 @@ begin
   FInstance.FStamp := '';
   FInstance.FLocatedAt := 0;
   FInstance.Check;
+end;
+
+class function TAtlasIdeTeamFile.TargetFile: string;
+var
+  mProject: string;
+begin
+  Result := Current.FileName;
+  if Result <> '' then
+  begin
+    Exit;
+  end;
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
+  if mProject <> '' then
+  begin
+    Result := TPath.Combine(ExtractFileDir(mProject), TAtlasTeamFile.cFileName);
+  end;
 end;
 
 class procedure TAtlasIdeTeamFile.OpenInEditor;

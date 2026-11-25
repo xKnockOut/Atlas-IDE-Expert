@@ -8,11 +8,11 @@ interface
 
 uses
   System.Types,
-  Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
-  Atlas.Core.Hover.Layout.Contract,
+  Atlas.Core.Hover.Layout.Input,
   Atlas.Core.Hover.View,
-  Atlas.Core.Hover.Texts;
+  Atlas.Core.Hover.Texts,
+  Atlas.Core.Hover.Contract;
 
 type
   /// <summary>Messung der Tests mit festen Werten je Schrift.</summary>
@@ -41,9 +41,8 @@ function ActionsView: TAtlasHoverView;
 implementation
 
 uses
-  Atlas.Core.Hover.Contract,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Wrap;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Wrap;
 
 { TFakeMeasure }
 

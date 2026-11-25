@@ -50,15 +50,15 @@ uses
   System.Types,
   System.IOUtils,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Settings.QuickToggles,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Settings.Strings;
 
 const
@@ -160,8 +160,14 @@ begin
   try
     mText := TAtlasTextFile.Load(mConfig).Text;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Exit;
+    end;
   end;
   if FCore.Wanted(mConfig, mText, TAtlasIdeSettings.ModuleOn(cModule)) then
   begin

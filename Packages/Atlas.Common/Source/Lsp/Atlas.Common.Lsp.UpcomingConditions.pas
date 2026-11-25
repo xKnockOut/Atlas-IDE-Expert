@@ -96,7 +96,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Pascal.RoutineLocals;
 
 const
   cListKinds = [TSyntaxKind.Block, TSyntaxKind.RepeatStatement, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock,

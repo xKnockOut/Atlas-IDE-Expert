@@ -23,6 +23,8 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
+    procedure LazyCreatesOnceAndKeepsInstance;
+    [Test]
     procedure CoversEveryPluginSetting;
     [Test]
     procedure PluginDefaultsMatchSettingsDefaults;
@@ -38,6 +40,11 @@ type
     procedure ResolvesRegistryNamesAndFormerKeys;
     [Test]
     procedure ChecksValuesAgainstSchema;
+    [Test]
+    procedure LooksUpLikeLinearSearch;
+    [Test]
+    [Category('Benchmark')]
+    procedure LooksUpEverySettingQuickly;
   end;
 
   [TestFixture]
@@ -104,6 +111,9 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
+  System.Diagnostics,
+  Atlas.Core.Settings.Groups,
+  Atlas.Core.Settings.NodeScope,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.History,
@@ -200,6 +210,22 @@ end;
 procedure TAtlasSettingsCatalogTests.TearDown;
 begin
   FreeAndNil(FCatalog);
+end;
+
+procedure TAtlasSettingsCatalogTests.LazyCreatesOnceAndKeepsInstance;
+var
+  mHeld, mFirst: TAtlasSettingsCatalog;
+begin
+  mHeld := nil;
+  try
+    mFirst := TAtlasSettingsCatalog.Lazy(mHeld);
+    Assert.IsNotNull(mFirst);
+    Assert.AreSame(mHeld, mFirst, 'Lazy legt den Katalog in die Variable');
+    Assert.AreSame(mFirst, TAtlasSettingsCatalog.Lazy(mHeld), 'zweiter Aufruf liefert dieselbe Instanz');
+    Assert.IsTrue(mHeld.IndexOfKey('settings.exportImport') >= 0);
+  finally
+    mHeld.Free;
+  end;
 end;
 
 procedure TAtlasSettingsCatalogTests.CoversEveryPluginSetting;
@@ -366,6 +392,76 @@ begin
     Assert.IsTrue(mMigrated, 'x-formerKeys');
   finally
     mCatalog.Free;
+  end;
+end;
+
+/// <summary>Erster Eintrag mit Schlüssel AKey (bzw. Plugin-Eintrag mit Namen AName), von vorn gesucht.</summary>
+function LinearIndex(ACatalog: TAtlasSettingsCatalog; const AText: string; AByName: Boolean): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to ACatalog.Count - 1 do
+  begin
+    if AByName and (ACatalog[mIndex].Source = asPlugin) and SameText(ACatalog[mIndex].Name, AText) then
+    begin
+      Exit(mIndex);
+    end;
+    if not AByName and SameText(ACatalog[mIndex].Key, AText) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
+procedure TAtlasSettingsCatalogTests.LooksUpLikeLinearSearch;
+var
+  mIndex: Integer;
+  mEntry: TAtlasCatalogEntry;
+begin
+  // Das Verzeichnis (#2372) liefert dasselbe wie die Suche von vorn, ohne Groß-/Kleinschreibung.
+  for mIndex := 0 to FCatalog.Count - 1 do
+  begin
+    mEntry := FCatalog[mIndex];
+    Assert.AreEqual(LinearIndex(FCatalog, mEntry.Key, False), FCatalog.IndexOfKey(UpperCase(mEntry.Key)), mEntry.Key);
+    Assert.AreEqual(LinearIndex(FCatalog, mEntry.Name, True), FCatalog.IndexOfName(LowerCase(mEntry.Name)),
+      mEntry.Name);
+  end;
+  Assert.AreEqual(-1, FCatalog.IndexOfKey('gibt.es.nicht'));
+  Assert.AreEqual(-1, FCatalog.IndexOfName('GibtEsNicht'));
+end;
+
+procedure TAtlasSettingsCatalogTests.LooksUpEverySettingQuickly;
+var
+  mGroups: TAtlasSettingsGroups;
+  mWatch: TStopwatch;
+  mName: string;
+  mFound, mInModule: Integer;
+begin
+  // Die Optionsseite fragt je Element Name und Modul samt Hauptschaltern (#2372); linear dauerte ein Durchlauf
+  // über alle Einstellungen unter FPC über 600 ms.
+  mGroups := TAtlasSettingsGroups.Create(FCatalog);
+  try
+    mFound := 0;
+    mInModule := 0;
+    mWatch := TStopwatch.StartNew;
+    for mName in mGroups.Names do
+    begin
+      if FCatalog.IndexOfName(mName) >= 0 then
+      begin
+        Inc(mFound);
+      end;
+      if TAtlasSettingsNodeScope.ModuleOf(FCatalog, mGroups, mName) <> '' then
+      begin
+        Inc(mInModule);
+      end;
+    end;
+    mWatch.Stop;
+    Assert.AreEqual(Integer(Length(mGroups.Names)), mFound);
+    Assert.IsTrue(mInModule > 0, 'Einstellungen der Module');
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 50, 'Dauer ' + IntToStr(mWatch.ElapsedMilliseconds) + ' ms');
+  finally
+    mGroups.Free;
   end;
 end;
 

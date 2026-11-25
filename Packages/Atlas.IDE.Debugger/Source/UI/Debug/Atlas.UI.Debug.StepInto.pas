@@ -22,29 +22,26 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Debug.StepInto,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasStepIntoIndexEvent = reference to procedure(AIndex: Integer);
 
-  TAtlasStepIntoWindow = class(TAtlasPopupWindow)
+  TAtlasStepIntoWindow = class(TAtlasPickPopupWindow)
   public const
     /// <summary>Abstand unter der Zeile, logische Pixel.</summary>
     cGap = 4;
   private
     FRows: TArray<TAtlasStepRow>;
     FRow: Integer;
-    FRowRects: TArray<TRect>;
     FOnAccept: TAtlasStepIntoIndexEvent;
-    FOnCancel: TProc;
-    function Layout(ADraw: Boolean): TSize;
     /// <summary>Schriftfarbe der Zeile AIndex: gewählt, wählbar oder grau.</summary>
     function RowColor(AIndex: Integer): TColor;
     /// <summary>Zeile AIndex auf Höhe AY anordnen (mit ADraw auch zeichnen), Ort ab ARightX; Ergebnis: rechter Rand.
     /// </summary>
     function LayoutRow(AIndex, AY, ARightX, ATextHeight: Integer; ADraw: Boolean): Integer;
   protected
-    procedure Paint; override;
+    function Layout(ADraw: Boolean): TSize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
@@ -57,30 +54,26 @@ type
     class function RowCaption(const ARows: TArray<TAtlasStepRow>; AIndex: Integer): string; static;
     /// <summary>Zeigt ARows unter APoint (Bildschirm) und wählt den ersten wählbaren Eintrag.</summary>
     procedure ShowFor(const ARows: TArray<TAtlasStepRow>; const APoint: TPoint);
-    procedure Dismiss;
     /// <summary>Nächster bzw. voriger wählbarer Eintrag; False ohne solche.</summary>
     function MoveRow(ADelta: Integer): Boolean;
     /// <summary>Ziffer 1–9: Eintrag wählen und übernehmen; False, wenn er nicht wählbar ist.</summary>
     function AcceptDigit(ADigit: Integer): Boolean;
     procedure Select(AIndex: Integer);
-    function RowRect(AIndex: Integer): TRect;
     /// <summary>Gewählten Eintrag übernehmen (OnAccept); ohne Wahl nichts.</summary>
     procedure Accept;
-    procedure Cancel;
     property Rows: TArray<TAtlasStepRow> read FRows;
     property Row: Integer read FRow;
     property OnAccept: TAtlasStepIntoIndexEvent read FOnAccept write FOnAccept;
-    property OnCancel: TProc read FOnCancel write FOnCancel;
   end;
 
 implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;
@@ -96,15 +89,6 @@ begin
   GuardFeature := TAtlasFeature.Debugger;
   FRow := -1;
   SetAccessible(cUiaListControlType, TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
-end;
-
-procedure TAtlasStepIntoWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
 end;
 
 procedure TAtlasStepIntoWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -347,11 +331,6 @@ begin
   end;
 end;
 
-procedure TAtlasStepIntoWindow.Dismiss;
-begin
-  HidePopup;
-end;
-
 function TAtlasStepIntoWindow.MoveRow(ADelta: Integer): Boolean;
 var
   mNext: Integer;
@@ -389,15 +368,6 @@ begin
   Announce(RowCaption(FRows, FRow));
 end;
 
-function TAtlasStepIntoWindow.RowRect(AIndex: Integer): TRect;
-begin
-  Result := TRect.Empty;
-  if (AIndex >= 0) and (AIndex <= High(FRowRects)) then
-  begin
-    Result := FRowRects[AIndex];
-  end;
-end;
-
 procedure TAtlasStepIntoWindow.Accept;
 var
   mChosen: Integer;
@@ -411,15 +381,6 @@ begin
   if Assigned(FOnAccept) then
   begin
     FOnAccept(mChosen);
-  end;
-end;
-
-procedure TAtlasStepIntoWindow.Cancel;
-begin
-  Dismiss;
-  if Assigned(FOnCancel) then
-  begin
-    FOnCancel();
   end;
 end;
 

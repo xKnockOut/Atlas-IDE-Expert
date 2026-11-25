@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.Completion.Context;
 
 // Was an der Cursorstelle vervollständigt wird (#31, #188, #450, #465, #483) und welcher Typ dort erwartet
-// wird (#417, #468). Aus Atlas.Common.Lsp.Completion herausgelöst; die Fälle der Vervollständigung bauen
+// wird (#417, #468). Teil der Vervollständigung (Atlas.Common.Lsp.Completion); die Fälle der Vervollständigung bauen
 // darauf auf.
 
 interface
@@ -33,10 +33,6 @@ type
     class function Keywords(APlace: TCompletionPlace): TArray<string>; static;
   end;
 
-/// <summary>Negativ, wenn A vor B liegt, 0 bei Gleichheit, sonst positiv.</summary>
-function ComparePositions(const A, B: TTextPosition): Integer;
-/// <summary>Name ohne führendes &amp;.</summary>
-function CleanName(const AText: string): string;
 /// <summary>Index der öffnenden Klammer zu ")" an AIndex; -1, wenn sie fehlt.</summary>
 function OpeningParen(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 /// <summary>Steht das Token AIndex in einer uses-, contains- oder requires-Klausel?</summary>
@@ -53,7 +49,8 @@ uses
   Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Lsp.CompletionAttributes,
   Atlas.Common.Lsp.CompletionExceptions,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 const
   // Schlüsselwörter je Stelle (#31).
@@ -68,30 +65,6 @@ const
     'virtual', 'override', 'overload', 'abstract', 'reintroduce', 'dynamic', 'static', 'message');
   /// <summary>Ergebnis von AssignmentBefore, wenn die Kette vor dem Cursor kein Bezeichner ist.</summary>
   cBrokenChain = -2;
-
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
-function CleanName(const AText: string): string;
-begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
 
 function OpeningParen(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 var
@@ -142,22 +115,6 @@ begin
     Dec(AIndex);
   end;
   Result := False;
-end;
-
-/// <summary>Letztes Token, das vor APosition beginnt; -1 ohne.</summary>
-function LastTokenBefore(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if ComparePositions(ATokens[mIndex].StartPos, APosition) >= 0 then
-    begin
-      Break;
-    end;
-    Result := mIndex;
-  end;
 end;
 
 /// <summary>Anweisung, Deklaration oder Klassenrumpf an AOffset (#31): innerster Knoten, dann nach außen die
@@ -310,7 +267,7 @@ begin
   Result := Copy(AToken.Text, 1, APosition.Character - AToken.StartPos.Character);
   if AToken.Kind = TPascalTokenKind.Identifier then
   begin
-    Result := CleanName(Result);
+    Result := TTextNames.WithoutAmpersand(Result);
   end;
 end;
 
@@ -323,7 +280,7 @@ var
 begin
   mToken := ATree.Tokens[ALast];
   AContext.Offset := mToken.Offset + Length(mToken.Text);
-  if ComparePositions(APosition, mToken.EndPos) < 0 then
+  if TTextPosition.Compare(APosition, mToken.EndPos) < 0 then
   begin
     // Cursor mitten in einem Token: in Kommentaren, Strings und Zahlen nichts anbieten.
     if DiamondContext(ATree, ALast, APosition, AContext) or (mToken.Kind <> TPascalTokenKind.Identifier) then
@@ -333,7 +290,7 @@ begin
   end;
   Result := True;
   if (mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-    (ComparePositions(APosition, mToken.EndPos) <= 0) then
+    (TTextPosition.Compare(APosition, mToken.EndPos) <= 0) then
   begin
     AContext.Prefix := PrefixOf(mToken, APosition);
     AContext.Offset := mToken.Offset;
@@ -342,7 +299,7 @@ begin
   else if IsTrivia(mToken) then
   begin
     // Zeilenkommentar reicht bis zum Zeilenende.
-    Result := not ((ComparePositions(APosition, mToken.EndPos) <= 0) and mToken.Text.StartsWith('//'));
+    Result := not ((TTextPosition.Compare(APosition, mToken.EndPos) <= 0) and mToken.Text.StartsWith('//'));
     ALast := PreviousCode(ATree.Tokens, ALast + 1);
   end;
 end;
@@ -386,7 +343,7 @@ begin
     begin
       Break;
     end;
-    ANames := [CleanName(ATokens[mIndex].Text)] + ANames;
+    ANames := [TTextNames.WithoutAmpersand(ATokens[mIndex].Text)] + ANames;
     AContext.ChainStart := ATokens[mIndex].StartPos;
     mIndex := PreviousCode(ATokens, mIndex);
     if (mIndex < 0) or not ATokens[mIndex].IsSymbol('.') then
@@ -488,9 +445,9 @@ end;
 /// cBrokenChain, wenn vor einem Punkt kein Bezeichner steht.</summary>
 function AssignmentBefore(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 begin
-  Result := PreviousCode(ATokens, LastTokenBefore(ATokens, APosition) + 1);
+  Result := PreviousCode(ATokens, TokenBeforePosition(ATokens, APosition) + 1);
   if (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-    (ComparePositions(APosition, ATokens[Result].EndPos) <= 0) then
+    (TTextPosition.Compare(APosition, ATokens[Result].EndPos) <= 0) then
   begin
     Result := PreviousCode(ATokens, Result);
   end;
@@ -542,7 +499,7 @@ begin
   mIndex := PreviousCode(ATokens, AIndex);
   while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
-    Result := [CleanName(ATokens[mIndex].Text)] + Result;
+    Result := [TTextNames.WithoutAmpersand(ATokens[mIndex].Text)] + Result;
     mIndex := PreviousCode(ATokens, mIndex);
     if (mIndex < 0) or not ATokens[mIndex].IsSymbol('.') then
     begin
@@ -636,7 +593,7 @@ begin
     Exit;
   end;
   mTokens := ATree.Tokens;
-  mLast := LastTokenBefore(mTokens, APosition);
+  mLast := TokenBeforePosition(mTokens, APosition);
   Result.Offset := 0;
   if (mLast >= 0) and not ReadAtCursor(ATree, APosition, mLast, Result) then
   begin

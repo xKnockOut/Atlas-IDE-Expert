@@ -17,7 +17,7 @@ interface
 uses
   System.Classes,
   Atlas.Core.Hover.Contract,
-  Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Hover.View,
   Atlas.Core.Problems.Explanation;
 
@@ -156,7 +156,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Core.Completion.Word,
+  Atlas.Plugin.Editor.Word,
   Atlas.Core.Hover.Declaration,
   Atlas.Core.Settings.Reassigned;
 

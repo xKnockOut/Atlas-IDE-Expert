@@ -21,12 +21,18 @@ type
     /// <summary>Zwei Frames am selben Besitzer: kein doppelter Name.</summary>
     [Test]
     procedure TwoFramesShareAnOwner;
+    /// <summary>OnPainted erst, wenn das Fenster zu sehen ist: Daran wacht der ruhende Takt wieder auf, wenn
+    /// ein Reiter, eine Leiste oder der Desktop das Fenster wieder zeigt.</summary>
+    [Test]
+    procedure PaintedOnlyWhenVisible;
   end;
 
 implementation
 
 uses
+  Vcl.Controls,
   Vcl.Forms,
+  Vcl.Graphics,
   Atlas.UI.Designer.StructureFrame;
 
 { TAtlasStructureFrameTests }
@@ -62,6 +68,43 @@ begin
     mFirst := TAtlasStructureFrame.Create(mHost);
     mSecond := TAtlasStructureFrame.Create(mHost);
     Assert.AreNotSame(mFirst, mSecond);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasStructureFrameTests.PaintedOnlyWhenVisible;
+var
+  mHost: TForm;
+  mFrame: TAtlasStructureFrame;
+  mCount: Integer;
+  mBitmap: TBitmap;
+begin
+  mCount := 0;
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.SetBounds(0, 0, 300, 300);
+    mFrame := TAtlasStructureFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Align := alClient;
+    mFrame.OnPainted :=
+      procedure
+      begin
+        Inc(mCount);
+      end;
+    mHost.HandleNeeded;
+    Application.ProcessMessages;
+    Assert.AreEqual(0, mCount, 'versteckt: nichts gezeichnet');
+    // Zeichnen ohne Bildschirm: Der Testlauf startet versteckt, ein gezeigtes Formular bekäme dort kein WM_PAINT.
+    mBitmap := TBitmap.Create;
+    try
+      mBitmap.SetSize(mHost.ClientWidth, mHost.ClientHeight);
+      mFrame.PaintTo(mBitmap.Canvas, 0, 0);
+    finally
+      mBitmap.Free;
+    end;
+    Assert.IsTrue(mCount > 0, 'Baum gezeichnet, also zu sehen');
+    mFrame.OnPainted := nil;
   finally
     mHost.Free;
   end;

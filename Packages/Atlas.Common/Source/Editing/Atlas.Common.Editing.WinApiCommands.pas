@@ -27,7 +27,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -84,11 +85,6 @@ const
     'UnlockFile', 'GetFileTime', 'SetFileTime', 'GetComputerName', 'GetUserName', 'SystemParametersInfo',
     'SetFileAttributes', 'CreateProcess', 'ReleaseSemaphore', 'SetThreadPriority');
   cBoolTypes: array[0..3] of string = ('BOOL', 'LongBool', 'Boolean', 'WordBool');
-
-function IsCode(const AToken: TPascalToken): Boolean;
-begin
-  Result := not (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
-end;
 
 { /external }
 
@@ -719,23 +715,16 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterWinApiCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('external', cTexts[TWinApiCommandsText.ImportAFunctionFromA].Text,
-    cTexts[TWinApiCommandsText.ExternalExample].Text,
-    ExecuteExternal));
-  ARegister(Command('exports', cTexts[TWinApiCommandsText.ExportRoutinesOfTheLibrary].Text, '/exports',
-    ExecuteExports));
-  ARegister(Command('oscheck', cTexts[TWinApiCommandsText.CheckTheWindowsAPICall].Text, '/oscheck', ExecuteOsCheck));
-  ARegister(Command('olecheck', cTexts[TWinApiCommandsText.CheckTheCOMCallBelow].Text, '/olecheck', ExecuteOleCheck));
+  ARegister(TSlashCommand.Create('external', cTexts[TWinApiCommandsText.ImportAFunctionFromA].Text,
+      cTexts[TWinApiCommandsText.ExternalExample].Text, ExecuteExternal));
+  ARegister(TSlashCommand.Create('exports', cTexts[TWinApiCommandsText.ExportRoutinesOfTheLibrary].Text, '/exports',
+      ExecuteExports));
+  ARegister(TSlashCommand.Create('oscheck', cTexts[TWinApiCommandsText.CheckTheWindowsAPICall].Text, '/oscheck',
+      ExecuteOsCheck));
+  ARegister(TSlashCommand.Create('olecheck', cTexts[TWinApiCommandsText.CheckTheCOMCallBelow].Text, '/olecheck',
+      ExecuteOleCheck));
 end;
 
 initialization

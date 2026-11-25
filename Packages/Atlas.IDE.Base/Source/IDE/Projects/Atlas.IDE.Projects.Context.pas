@@ -29,8 +29,8 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Projects.Contract,
-  Atlas.Core.Projects.PathCheck;
+  Atlas.Plugin.Projects.Contract,
+  Atlas.Plugin.Projects.PathCheck;
 
 type
   TAtlasIdeProjectContext = class
@@ -73,7 +73,10 @@ uses
   Winapi.Windows,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Versions.Project,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Foundation.Host,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Text.Files;
 
 /// <summary>Konfiguration AConfiguration ('' = aktive), für APlatform deren Plattformkonfiguration; nil ohne.
 /// </summary>
@@ -124,6 +127,8 @@ end;
 /// <summary>Wert mit geerbten Werten; AResolved wird True, wenn das Plugin $(AName) selbst einsetzen musste.</summary>
 function ConfigValue(const ABuild: IOTABuildConfiguration; const AName: string; ADepth: Integer;
   var AResolved: Boolean): string;
+const
+  cMaxDepth = 8;
 var
   mParent: IOTABuildConfiguration;
 begin
@@ -133,7 +138,7 @@ begin
     Exit;
   end;
   mParent := ABuild.Parent;
-  if (mParent = nil) or (ADepth > 8) then
+  if (mParent = nil) or (ADepth > cMaxDepth) then
   begin
     Result := TAtlasProjectContext.Inherit(Result, AName, '');
   end
@@ -149,8 +154,11 @@ begin
   try
     Result := TAtlasProjectContext.Inherit(VarToStr(AProject.ProjectOptions.Values[AName]), AName, '');
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Projekt: Option nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := '';
+    end;
   end;
 end;
 
@@ -175,9 +183,12 @@ begin
       Exit;
     end;
   except
-    on Exception do
-      ; // Ersatzweg unten.
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Projekt: Option nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      // Ersatzweg unten.
   end;
+    end;
   if AProject.ProjectOptions = nil then
   begin
     Exit;
@@ -209,17 +220,6 @@ begin
   end;
 end;
 
-function BaseRegistryKey: string;
-var
-  mServices: IOTAServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Result := mServices.GetBaseRegistryKey;
-  end;
-end;
-
 /// <summary>Umgebungsvariablen der IDE-Optionen unter ABaseKey in AMacros; nichts ohne Schlüssel.</summary>
 procedure AddIdeEnvironment(var AMacros: TAtlasPathMacros; const ABaseKey: string);
 var
@@ -240,11 +240,10 @@ begin
       mRegistry.GetValueNames(mNames);
       for mName in mNames do
       begin
-        try
+        // Nur Texte; andere Arten (etwa REG_DWORD) übergehen.
+        if mRegistry.GetDataType(mName) in [rdString, rdExpandString] then
+        begin
           AMacros.Add(mName, mRegistry.ReadString(mName));
-        except
-          on Exception do
-            ; // Kein Text (etwa REG_DWORD): übergehen.
         end;
       end;
     end;
@@ -298,7 +297,7 @@ begin
   Result.Project := AProject.FileName;
   Result.Configuration := AProject.CurrentConfiguration;
   Result.Platform := AProject.CurrentPlatform;
-  mBaseKey := BaseRegistryKey;
+  mBaseKey := TAtlasIdeHost.BaseRegistryKey;
   Result.BdsVersion := TAtlasProjectContext.VersionOfRegistryKey(mBaseKey);
   ReadOptions(AProject, Result);
   Result.LibraryPaths := LibraryPaths(mBaseKey, Result.Platform);
@@ -345,7 +344,7 @@ begin
       Result := GetEnvironmentVariable(AName);
     end);
   // Umgebungsvariablen aus den IDE-Optionen (Tools › Optionen › Umgebungsvariablen) gehen allem vor.
-  AddIdeEnvironment(Result, BaseRegistryKey);
+  AddIdeEnvironment(Result, TAtlasIdeHost.BaseRegistryKey);
   // Ordner der laufenden IDE.
   if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
@@ -361,9 +360,15 @@ begin
       Result.AddDefault('BDSCatalogRepository', IncludeTrailingPathDelimiter(TPath.GetDocumentsPath) + mStudio +
         '\CatalogRepository');
     except
-      on Exception do
-        ; // Ordner nicht ermittelbar: dann gilt die Umgebung des Prozesses.
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
+        // Ordner nicht ermittelbar: dann gilt die Umgebung des Prozesses.
     end;
+      end;
   end;
   Result.AddProject(AContext.Project, AContext.Platform, AContext.Configuration);
 end;
@@ -387,9 +392,12 @@ begin
       Exit(ConfigValue(mBuild, AName, 0, mResolved));
     end;
   except
-    on Exception do
-      ; // Ersatzweg unten.
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Projekt: Option nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      // Ersatzweg unten.
   end;
+    end;
   if (AProject.ProjectOptions <> nil) and
     ((AConfiguration = '') or SameText(AConfiguration, AProject.CurrentConfiguration)) then
   begin
@@ -412,8 +420,11 @@ begin
       end;
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Projekt: Konfigurationen nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
+    end;
   end;
 end;
 

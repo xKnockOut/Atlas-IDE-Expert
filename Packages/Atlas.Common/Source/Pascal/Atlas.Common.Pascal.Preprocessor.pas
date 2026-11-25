@@ -42,9 +42,7 @@ uses
   Atlas.Common.Pascal.Contract;
 
 type
-  /// <summary>Sucht eine Include-Datei; AFromFile ist die einbindende Datei ('' = Hauptdatei).</summary>
-  TIncludeResolver = reference to function(const AName, AFromFile: string;
-    out AFileName, AText: string): Boolean;
+  TIncludeResolver = Atlas.Common.Pascal.Contract.TIncludeResolver;
 
   /// <summary>Ausgewertete $IF-, $ELSEIF- oder $IFOPT-Direktive (#847).</summary>
   TConditionCheck = record
@@ -158,6 +156,8 @@ type
     /// auf die Zweige der Datei.</summary>
     class function EditorOptions(const ADefines: TArray<string>; const AFileName: string;
       const AResolver: TIncludeResolver): TPreprocessorOptions; overload; static;
+    /// <summary>Optionen wie beim Editor-Baum für die Datei ASource (Symbole, Dateiname, Include-Suche).</summary>
+    class function SourceOptions(const ASource: TPascalSource): TPreprocessorOptions; static;
     /// <summary>Inaktive Bereiche der Hauptdatei (ohne Include-Dateien).</summary>
     class function MainInactive(const AResult: TPreprocessorResult): TArray<TTextRange>; static;
     /// <summary>Zweige der Hauptdatei (ohne Include-Dateien).</summary>
@@ -1410,6 +1410,11 @@ begin
   Result := EditorOptions(ADefines);
   Result.FileName := AFileName;
   Result.ResolveInclude := AResolver;
+end;
+
+class function TPascalPreprocessor.SourceOptions(const ASource: TPascalSource): TPreprocessorOptions;
+begin
+  Result := EditorOptions(ASource.Defines, ASource.FileName, ASource.ResolveInclude);
 end;
 
 class function TPascalPreprocessor.MainInactive(const AResult: TPreprocessorResult): TArray<TTextRange>;

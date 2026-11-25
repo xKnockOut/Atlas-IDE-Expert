@@ -24,7 +24,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Text.Lines,
   System.StrUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Documents.Contract,
@@ -32,7 +31,8 @@ uses
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -287,7 +287,7 @@ begin
   Result := (mParent <> nil) and (mParent = ANext.Parent);
   if Result then
   begin
-    mPosition := PositionIn(mParent, AStatement);
+    mPosition := TSyntaxNodes.IndexOf(mParent, AStatement);
     Result := (mPosition >= 0) and (mPosition + 1 < mParent.ChildCount) and (mParent[mPosition + 1] = ANext);
   end;
 end;
@@ -318,15 +318,12 @@ end;
 type
   /// <summary>Prüfung einer Unit für deref-before-nil-check; hält Text, Graph und die Pfade der Routine.
   /// </summary>
-  TDerefCheck = class
+  TDerefCheck = class(TFlowFileCheck)
   strict private
-    FContext: TRuleContext;
-    FReport: IRuleReport;
     FGraph: TControlFlowGraph;
     FChecked: TArray<string>;
     FLocals: TArray<string>;
     FDone: TArray<string>;
-    FLineBreak: string;
     function CheckedBefore(ANode: TFlowNode; const APath: string): Boolean;
     function CreatedBefore(ANode: TFlowNode; const APath: string): Boolean;
     function CheckAfter(ANode: TFlowNode; const APath: string; ALocal: Boolean): TFlowNode;
@@ -343,19 +340,10 @@ type
     procedure CheckNode(ANode: TFlowNode);
     procedure CheckRoutine(const ACache: IRuleDerivedCache; ARoutine: TSyntaxNode);
   public
-    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
   end;
 
 { TDerefCheck }
-
-constructor TDerefCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
-begin
-  inherited Create;
-  FContext := AContext;
-  FReport := AReport;
-  FLineBreak := TTextLines.LineBreakOf(AContext.Text);
-end;
 
 /// <summary>Wird APath auf einem Weg zu ANode schon geprüft (ohne Zuweisung dazwischen)? Rückwärts beenden nur
 /// sichere Zuweisungen den Weg: lieber eine Prüfung zu viel finden.</summary>

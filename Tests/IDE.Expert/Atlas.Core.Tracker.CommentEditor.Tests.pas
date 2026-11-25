@@ -78,17 +78,17 @@ uses
   System.DateUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.GitHubParse,
   Atlas.Core.Tracker.YouTrackApi,
-  Atlas.Core.Tracker.YouTrackParse;
+  Atlas.Core.Tracker.YouTrackParse,
+  Atlas.Core.Tracker.Contract.CommentAssist;
 
 type
   /// <summary>Transport mit einer festen Antwort; merkt die Adressen.</summary>
@@ -364,7 +364,7 @@ end;
 
 procedure TAtlasCommentEditorTests.SnippetsJson;
 var
-  mSnippets: TArray<TAtlasCommentSnippet>;
+  mSnippets, mBack: TArray<TAtlasCommentSnippet>;
 begin
   Assert.IsTrue(TAtlasCommentSnippets.Parse('[{"name":"A","text":"Erste"},{"name":"","text":"x"},' +
     '{"name":"B","text":"  "},3,{"name":" C ","text":"Zeile 1\nZeile 2"}]', mSnippets));
@@ -372,14 +372,16 @@ begin
   Assert.AreEqual('A', mSnippets[0].Name);
   Assert.AreEqual('C', mSnippets[1].Name, 'Name ohne Leerraum');
   Assert.AreEqual('Zeile 1'#10'Zeile 2', mSnippets[1].Text);
-  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasCommentSnippets.ToJson(mSnippets), mSnippets));
-  Assert.AreEqual(2, Integer(Length(mSnippets)), 'hin und zurück');
-  Assert.AreEqual('Zeile 1'#10'Zeile 2', mSnippets[1].Text);
+  // Eigene Variable: FPC leert den out-Parameter vor dem Auswerten von ToJson(mSnippets).
+  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasCommentSnippets.ToJson(mSnippets), mBack));
+  Assert.AreEqual(2, Integer(Length(mBack)), 'hin und zurück');
+  Assert.AreEqual('Zeile 1'#10'Zeile 2', mBack[1].Text);
   Assert.AreEqual(0, Integer(Length(TAtlasCommentSnippets.Read('[]', False))), 'leere Liste bleibt leer');
   Assert.AreEqual(Integer(Length(TAtlasCommentSnippets.Defaults(False))),
     Integer(Length(TAtlasCommentSnippets.Read('kein JSON', False))), 'ungültig: Vorgaben');
   Assert.IsFalse(TAtlasCommentSnippets.Parse('{"name":"A"}', mSnippets), 'keine Liste');
   mSnippets := nil;
+  mBack := nil;
 end;
 
 procedure TAtlasCommentEditorTests.SnippetDefaultsMatchSetting;
@@ -433,13 +435,13 @@ begin
     mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, 'Entwurf eins', 1);
     mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd, 'Beim Beenden', 2);
     mDrafts.Put('github.com/beispiel/atlas', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, 'anderer Tracker', 3);
-    Assert.AreEqual(3, mDrafts.Count);
+    Assert.AreEqual(3, Integer(mDrafts.Count));
     Assert.IsTrue(mDrafts.Get('YT.firma.de/ATL', 'atl-1', TAtlasCommentDrafts.cFieldPreview, mText, mSaved));
     Assert.AreEqual('Entwurf eins', mText, 'ohne Groß-/Kleinschreibung');
     Assert.IsTrue(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd, mText, mSaved));
     Assert.AreEqual('Beim Beenden', mText, 'je Feld');
     mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, 'Entwurf zwei', 4);
-    Assert.AreEqual(3, mDrafts.Count, 'ersetzt, nicht doppelt');
+    Assert.AreEqual(3, Integer(mDrafts.Count), 'ersetzt, nicht doppelt');
     Assert.IsTrue(mDrafts.Get('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, mText, mSaved));
     Assert.AreEqual('Entwurf zwei', mText);
     mDrafts.Put('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldPreview, '  '#13#10, 5);
@@ -447,7 +449,7 @@ begin
       'nur Leerraum löscht');
     Assert.IsTrue(mDrafts.Delete('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd));
     Assert.IsFalse(mDrafts.Delete('yt.firma.de/atl', 'ATL-1', TAtlasCommentDrafts.cFieldEnd), 'schon weg');
-    Assert.AreEqual(1, mDrafts.Count);
+    Assert.AreEqual(1, Integer(mDrafts.Count));
     mDrafts.Clear;
     for mIndex := 1 to TAtlasCommentDrafts.cMaxDrafts + 5 do
     begin
@@ -468,10 +470,12 @@ var
   mSaved, mWhen: TDateTime;
 begin
   mWhen := EncodeDateTime(2026, 10, 28, 14, 30, 0, 0);
-  mDrafts := TAtlasCommentDrafts.Create;
-  mRead := TAtlasCommentDrafts.Create;
-  mFile := TPath.Combine(TPath.GetTempPath, 'atlas-drafts-' + TGUID.NewGuid.ToString + '.json');
+  mDrafts := nil;
+  mRead := nil;
   try
+    mDrafts := TAtlasCommentDrafts.Create;
+    mRead := TAtlasCommentDrafts.Create;
+    mFile := TPath.Combine(TPath.GetTempPath, 'atlas-drafts-' + TGUID.NewGuid.ToString + '.json');
     mDrafts.Put('yt.firma.de/atl', 'ATL-12', TAtlasCommentDrafts.cFieldPreview, 'Zeile 1'#10'**fett** "zitiert"',
       mWhen);
     Assert.IsTrue(mRead.Parse(mDrafts.ToJson));
@@ -479,13 +483,13 @@ begin
     Assert.AreEqual('Zeile 1'#10'**fett** "zitiert"', mText);
     Assert.IsTrue(SameDateTime(mWhen, mSaved), 'Zeit unverändert (UTC)');
     Assert.IsFalse(mRead.Parse('{"version":99,"drafts":[]}'), 'fremde Version');
-    Assert.AreEqual(0, mRead.Count);
+    Assert.AreEqual(0, Integer(mRead.Count));
     Assert.IsFalse(mRead.Parse('kein JSON'));
     Assert.IsTrue(mDrafts.SaveToFile(mFile));
     Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Loaded, mRead.LoadFromFile(mFile));
-    Assert.AreEqual(1, mRead.Count);
+    Assert.AreEqual(1, Integer(mRead.Count));
     Assert.AreEqual<TAtlasDataLoad>(TAtlasDataLoad.Missing, mRead.LoadFromFile(mFile + '.fehlt'));
-    Assert.AreEqual(0, mRead.Count);
+    Assert.AreEqual(0, Integer(mRead.Count));
   finally
     if TFile.Exists(mFile) then
     begin

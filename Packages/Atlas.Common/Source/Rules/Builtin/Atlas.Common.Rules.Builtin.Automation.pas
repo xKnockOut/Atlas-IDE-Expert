@@ -135,15 +135,12 @@ type
     FOwnUnit: TUnitIndex;
     function FirstToken(ANode: TSyntaxNode): Integer;
     function StopToken(ANode: TSyntaxNode): Integer;
-    function NextCode(AIndex, AStop: Integer): Integer;
     function Unconditional(ANode: TSyntaxNode): Boolean;
     function TokenRange(AIndex: Integer): TTextRange;
     function NodeText(ANode: TSyntaxNode): string;
     /// <summary>Erstes Token mit dem Namen ANode.Name (bei Feldern der erste Name) ab dem Anfang des Knotens.
     /// </summary>
     function NameRange(ANode: TSyntaxNode): TTextRange;
-    /// <summary>Text der Token AFirst..AStop-1 ohne Kommentare und Leerraum.</summary>
-    function TokenText(AFirst, AStop: Integer): string;
     function HasDirective(AHeader: TSyntaxNode; const AName: string): Boolean;
     /// <summary>Typ ATypeNode, wenn er im Abschnitt automated sicher nicht erlaubt ist: Record, Zeiger, Menge.
     /// </summary>
@@ -240,15 +237,6 @@ begin
   Result := TokenFrom(FTokens, ANode.EndOffset);
 end;
 
-function TAutomationCheck.NextCode(AIndex, AStop: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result < AStop) and IsTrivia(FTokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 function TAutomationCheck.Unconditional(ANode: TSyntaxNode): Boolean;
 begin
   Result := TConditionalBranches.PathAt(FPaths, FirstToken(ANode)) = '';
@@ -283,20 +271,6 @@ begin
     end;
   end;
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
-end;
-
-function TAutomationCheck.TokenText(AFirst, AStop: Integer): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := AFirst to AStop - 1 do
-  begin
-    if not IsTrivia(FTokens[mIndex]) then
-    begin
-      Result := Result + FTokens[mIndex].Text;
-    end;
-  end;
 end;
 
 function TAutomationCheck.HasDirective(AHeader: TSyntaxNode; const AName: string): Boolean;
@@ -416,7 +390,7 @@ var
   mIndex: Integer;
   mDirective: TSyntaxNode;
 begin
-  mFirst := NextCode(FirstToken(AHeader), StopToken(AHeader));
+  mFirst := NextCode(FTokens, FirstToken(AHeader), StopToken(AHeader));
   mWord := LowerCase(FTokens[mFirst].Text);
   if (mWord = 'constructor') or (mWord = 'destructor') then
   begin
@@ -450,7 +424,7 @@ begin
       else
       begin
         CheckDispid(TTextRange.Create(mDirective.StartPos, mDirective.EndPos),
-          TokenText(FirstToken(mDirective) + 1, StopToken(mDirective)), AHeader.Name, ADispids);
+          CodeText(FTokens, FirstToken(mDirective) + 1, StopToken(mDirective)), AHeader.Name, ADispids);
       end;
     end;
   end;
@@ -486,8 +460,8 @@ procedure TAutomationCheck.CheckAccessor(AClass: TSyntaxNode; AIndex, AStop: Int
 var
   mArgument, mNext: Integer;
 begin
-  mArgument := NextCode(AIndex + 1, AStop);
-  mNext := NextCode(mArgument + 1, AStop);
+  mArgument := NextCode(FTokens, AIndex + 1, AStop);
+  mNext := NextCode(FTokens, mArgument + 1, AStop);
   // read FPunkt.X ist ein Feldzugriff, aber nicht sicher dasselbe Feld.
   if (mArgument < AStop) and (FTokens[mArgument].Kind = TPascalTokenKind.Identifier) and
     ((mNext >= AStop) or not FTokens[mNext].IsSymbol('.')) and IsClassField(AClass, FTokens[mArgument].Text) then
@@ -511,7 +485,7 @@ begin
     Inc(mArgument);
   end;
   CheckDispid(TTextRange.Create(FTokens[AIndex].StartPos, FTokens[mArgument - 1].EndPos),
-    TokenText(AIndex + 1, mArgument), AProperty.Name, ADispids);
+    CodeText(FTokens, AIndex + 1, mArgument), AProperty.Name, ADispids);
 end;
 
 procedure TAutomationCheck.CheckClause(const AClause: TAutomationClause; const AWord: string);

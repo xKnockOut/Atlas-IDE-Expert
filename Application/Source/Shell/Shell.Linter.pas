@@ -68,12 +68,13 @@
 // Geschrieben wird atomar über eine Nachbardatei; Kodierung und Zeilenenden
 // bleiben, außer format.endOfLine verlangt andere. Exit-Codes in
 // Atlas.Common.Rules.FormatOutput.
-// Wortgleiche Rümpfe (Kopien-Prüfung): --check-duplicates statt der Regeln, siehe Shell.Linter.Duplicates.
+// Wortgleiche Rümpfe (Kopien-Prüfung): --check-duplicates statt der Regeln, siehe Core.Linter.Duplicates.
 
 interface
 
 uses
-  Shell.CommandLine;
+  Core.CommandLine,
+  Core.Linter.Host;
 
 type
   TLinterShell = class
@@ -109,6 +110,12 @@ type
     /// --output. Exit-Code 0; 2, wenn alle Tests nötig sind; 3 bei Fehlern oder mit tests.affected = false.
     /// </summary>
     class function AffectedTests(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--write-instructions bzw. --check-instructions (#2615): Anweisungsdateien für KI-Assistenten, siehe
+    /// Core.Linter.Instructions.</summary>
+    class function Instructions(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>Was die Befehle in Core.Linter.* von der Shell brauchen: Delphi-Versionen, git und svn,
+    /// Arbeitsbereiche, Anweisungsdateien.</summary>
+    class function Host: TCoreLinterHost; static;
   end;
 
 implementation
@@ -116,18 +123,34 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Rules.Output,
-  Atlas.Common.Index.Adapters.CacheDirectory,
-  Shell.Linter.Output,
-  Shell.Linter.Check,
-  Shell.Linter.Fix,
-  Shell.Linter.Architecture,
-  Shell.Linter.Query,
-  Shell.Linter.Hotspots,
-  Shell.Linter.Mutation,
-  Shell.Linter.Formatting,
-  Shell.Linter.Duplicates,
-  Shell.Linter.AffectedTests,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Index.CacheDirectory,
+  Core.Linter.Output,
+  Core.Linter.Check,
+  Core.Linter.Fix,
+  Core.Linter.Architecture,
+  Core.Linter.Query,
+  Core.Linter.Hotspots,
+  Core.Linter.Mutation,
+  Core.Linter.Formatting,
+  Core.Linter.Duplicates,
+  Core.Linter.AffectedTests,
+  Core.Linter.Instructions,
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Common.Logging.Providers.StreamSink,
+  Atlas.Common.Lsp.Instructions,
+  Platform.Server,
+  Core.Bootstrap,
+  Core.VersionControlChanges,
+  Core.WorkspaceGroup,
+  Shell.Composition.Platform,
+  Shell.Composition.Instructions,
+  Shell.Composition.RuleRefactorings;
 
 type
 {$SCOPEDENUMS ON}
@@ -138,7 +161,62 @@ const
   cTexts: array[TLinterShellText] of TAtlasText = (
     (De: '%d Index-Caches gelöscht in %s'; En: '%d index caches deleted in %s'));
 
+/// <summary>Logger nur für Warnungen und Fehler auf stderr; stdout gehört dem Ergebnis.</summary>
+function ErrorLogger: ILogger;
+var
+  mLogger: TLogger;
+begin
+  mLogger := TLogger.Create;
+  Result := mLogger;
+  mLogger.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Warning);
+end;
+
+/// <summary>Gruppe über AConfigRoot mit AIndex. Als anonyme Methode statt TCoreBootstrap.ReadSourceText: Free
+/// Pascal (Linux-Bau) bricht an der Umwandlung einer Klassenmethode in eine Methodenreferenz intern ab.</summary>
+function NewGroup(const AConfigRoot: string; const AIndex: ISymbolIndex): TCoreWorkspaceGroup;
+var
+  mStore: IDocumentStore;
+begin
+  mStore := TDocumentStore.Create(
+    function(const APath: string): string
+    begin
+      Result := TServerPlatform.CanonicalizePath(APath);
+    end);
+  Result := TCoreWorkspaceGroup.Create(ExcludeTrailingPathDelimiter(AConfigRoot), mStore, ErrorLogger, AIndex,
+    'atlas-check-index', TShellPlatformAdapters.WorkspaceFactories,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
+    end);
+  Result.Refactorings := TShellRuleRefactorings.Create;
+end;
+
+function InstalledVersions: TArray<string>;
+begin
+  Result := TDelphiInstallation.Versions;
+end;
+
+function VcsAccess: TCoreVcsAccess;
+begin
+  Result := TShellPlatformAdapters.VcsAccess;
+end;
+
+function WriteInstructions(const ARoot: string; const ASettings: TServerSettings; AWrite: Boolean):
+  TArray<TInstructionsFile>;
+begin
+  Result := TShellInstructions.Run(ARoot, ASettings, AWrite);
+end;
+
 { TLinterShell }
+
+class function TLinterShell.Host: TCoreLinterHost;
+begin
+  Result := Default(TCoreLinterHost);
+  Result.InstalledVersions := InstalledVersions;
+  Result.Vcs := VcsAccess;
+  Result.NewGroup := NewGroup;
+  Result.Instructions := WriteInstructions;
+end;
 
 class function TLinterShell.Run(const AOptions: TCommandLineOptions): Integer;
 begin
@@ -152,42 +230,47 @@ begin
   end
   else if AOptions.CheckDuplicates then
   begin
-    Result := TLinterDuplicates.Run(AOptions);
+    Result := TLinterDuplicates.Run(AOptions, Host);
   end
   else
   begin
-    Result := TLinterCheck.Run(AOptions);
+    Result := TLinterCheck.Run(AOptions, Host);
   end;
 end;
 
 class function TLinterShell.Fix(const AOptions: TCommandLineOptions): Integer;
 begin
-  Result := TLinterFix.Run(AOptions);
+  Result := TLinterFix.Run(AOptions, Host);
 end;
 
 class function TLinterShell.Architecture(const AOptions: TCommandLineOptions): Integer;
 begin
-  Result := TLinterArchitecture.Run(AOptions);
+  Result := TLinterArchitecture.Run(AOptions, Host);
 end;
 
 class function TLinterShell.Query(const AOptions: TCommandLineOptions): Integer;
 begin
-  Result := TLinterQuery.Run(AOptions);
+  Result := TLinterQuery.Run(AOptions, Host);
 end;
 
 class function TLinterShell.Hotspots(const AOptions: TCommandLineOptions): Integer;
 begin
-  Result := TLinterHotspots.Run(AOptions);
+  Result := TLinterHotspots.Run(AOptions, Host);
 end;
 
 class function TLinterShell.Mutate(const AOptions: TCommandLineOptions): Integer;
 begin
-  Result := TLinterMutation.Run(AOptions);
+  Result := TLinterMutation.Run(AOptions, Host);
 end;
 
 class function TLinterShell.Formatting(const AOptions: TCommandLineOptions): Integer;
 begin
-  Result := TLinterFormatting.Run(AOptions);
+  Result := TLinterFormatting.Run(AOptions, Host);
+end;
+
+class function TLinterShell.Instructions(const AOptions: TCommandLineOptions): Integer;
+begin
+  Result := TLinterInstructions.Run(AOptions, Host);
 end;
 
 class function TLinterShell.ClearCache: Integer;
@@ -207,7 +290,7 @@ end;
 
 class function TLinterShell.AffectedTests(const AOptions: TCommandLineOptions): Integer;
 begin
-  Result := TLinterAffectedTests.Run(AOptions);
+  Result := TLinterAffectedTests.Run(AOptions, Host);
 end;
 
 initialization

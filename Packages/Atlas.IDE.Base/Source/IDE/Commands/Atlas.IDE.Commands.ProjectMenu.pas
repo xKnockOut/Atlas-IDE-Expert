@@ -45,7 +45,7 @@ implementation
 uses
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
@@ -365,7 +365,7 @@ begin
     TAtlasGuard.Log('Project manager: command ' + AId + ' is gone');
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+  TAtlasCommandScope.Run(TAtlasFeature.EditorCommands, mCommand.Caption, mCommand.Run);
 end;
 
 { TProjectMenuItem }

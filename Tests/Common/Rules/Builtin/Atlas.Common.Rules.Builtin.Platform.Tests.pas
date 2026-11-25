@@ -56,7 +56,7 @@ uses
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Unit mit einer Routine Pruefen aus AVars und ABody.</summary>
@@ -202,7 +202,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual('TEncoding.UTF8 ergänzen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Routine('var'#10'  Zeilen: TStringList;'#10, '  Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);'), mFixed);
   TRuleAssert.Silent(TLoadWithoutEncodingRule.Create, mFixed);
 end;
@@ -222,7 +222,7 @@ begin
     'verloren.', mFindings[0].Message);
   Assert.AreEqual('TFile.ReadAllText ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.',
     mFindings[3].Message);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[3].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[3].Fixes[0].Edits);
   Assert.IsTrue(Pos('TFile.ReadAllText(Pfad, TEncoding.UTF8)', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('System.SysUtils', mFixed) > 0, 'uses ergänzt: ' + mFixed);
 end;
@@ -251,7 +251,7 @@ begin
   mFindings := TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, mSource,
     '{"rules": {"load-without-encoding": {"defaultEncoding": "unicode"}}}', 'Werkzeug.pas');
   Assert.AreEqual('TEncoding.Unicode ergänzen', mFindings[0].Fixes[0].Title);
-  Assert.IsTrue(Pos('LoadFromFile(Pfad, TEncoding.Unicode)', TChangeSignature.ApplyEdits(mSource,
+  Assert.IsTrue(Pos('LoadFromFile(Pfad, TEncoding.Unicode)', TTextChanges.Apply(mSource,
     mFindings[0].Fixes[0].Edits)) > 0);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, mSource,
     '{"rules": {"load-without-encoding": "off"}}', 'Werkzeug.pas'))));
@@ -278,7 +278,7 @@ begin
     'landet in der Virtualisierung.', mFindings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
   Assert.AreEqual('HKEY_CURRENT_USER verwenden', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('Reg.RootKey := HKEY_CURRENT_USER;', mFixed) > 0, mFixed);
   TRuleAssert.Silent(TRegistryHklmWriteRule.Create, mFixed);
   // Nur WriteInteger, ohne OpenKey.
@@ -329,7 +329,7 @@ begin
     mFindings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
   Assert.AreEqual('In TStopwatch umwandeln', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual('unit Werkzeug;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils,'#10 +
     '  System.Diagnostics;'#10'procedure Pruefen;'#10'var'#10'  Uhr: TStopwatch;'#10'begin'#10 +
     '  Uhr := TStopwatch.StartNew;'#10'  Importieren;'#10'  Log(Uhr.ElapsedMilliseconds.ToString + '' ms'');'#10 +
@@ -353,7 +353,7 @@ begin
   mSource := Routine('', '  var T := Now;'#10'  Uhr := 1;'#10'  Arbeiten;'#10'  Sekunden := SecondsBetween(Now, T);');
   mFindings := TRuleAssert.Findings(TNowForElapsedTimeRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.IsTrue(Pos('  var T := TStopwatch.StartNew;', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('Sekunden := T.ElapsedMilliseconds div 1000;', mFixed) > 0, mFixed);
 end;

@@ -1,7 +1,8 @@
 ﻿unit Shell.Mcp.ServerSetup;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Einrichtung des Servers: Werkzeuge und Sicherheit (#99), abgeschaltete
-// Werkzeuge (#227), Konventionen, Nachladen geänderter Dateien vor jedem Werkzeugaufruf und die Prompts (#1357).
+// Werkzeuge (#227), Konventionen, Nachladen geänderter Dateien vor jedem Werkzeugaufruf, batch (#2638) und die
+// Prompts (#1357).
 
 interface
 
@@ -26,15 +27,19 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Adapters.DiskFileSystem,
+  Atlas.Common.Index.Providers.DiskFileSystem,
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.Paths,
+  Atlas.Common.Mcp.BatchTool,
   Atlas.Common.Localization.Texts,
-  Shell.Workspace,
-  Shell.Mcp.Context,
-  Shell.Mcp.Tools,
-  Shell.Mcp.Changes,
-  Shell.Mcp.Conventions;
+  Core.Workspace,
+  Core.Mcp.Context,
+  Shell.Mcp.RefactorSources,
+  Core.Mcp.Tools,
+  Core.Mcp.Changes,
+  Core.Mcp.Conventions;
 
 type
 {$SCOPEDENUMS ON}
@@ -79,7 +84,7 @@ begin
   end;
 end;
 
-function DisabledToolsOf(AWorkspace: TShellWorkspace): TFunc<TArray<string>>;
+function DisabledToolsOf(AWorkspace: TCoreWorkspace): TFunc<TArray<string>>;
 begin
   Result :=
     function: TArray<string>
@@ -125,18 +130,42 @@ begin
     end;
 end;
 
+/// <summary>Grenzen von batch (#2638): requestTimeoutMs und Abbruch über notifications/cancelled.</summary>
+function BatchLimitsOf(AWorkspace: TCoreWorkspace): TFunc<TMcpBatchLimits>;
+begin
+  Result :=
+    function: TMcpBatchLimits
+    var
+      Token: IJsonRpcCancellationToken;
+    begin
+      Result := Default(TMcpBatchLimits);
+      Result.TimeoutMs := AWorkspace.Configuration.Settings.RequestTimeoutMs;
+      Token := TJsonRpcCurrentRequest.Token;
+      Result.Cancelled :=
+        function: Boolean
+        begin
+          Result := (Token <> nil) and Token.IsCancellationRequested;
+        end;
+    end;
+end;
+
 procedure ConfigureServer(AServer: TMcpServer; const AServices: TMcpServices; ARestricted: Boolean;
   const ALogger: ILogger);
+var
+  mContext: TMcpToolContext;
 begin
-  RegisterContextTools(AServices.ToolContext(AServer));
+  mContext := AServices.ToolContext(AServer);
+  TMcpRefactorSources.Attach(mContext, ALogger);
+  RegisterContextTools(mContext);
+  TMcpBatchTool.Register(AServer, BatchLimitsOf(AServices.Workspace));
   AServer.Restricted := ARestricted;
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);
-  TMcpConventions.Register(AServer, AServices.Workspace);
+  TMcpConventions.Register(AServer, AServices.Workspace, mContext.Adapters.Conventions);
   AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
 end;
 
-function PromptSettingsOf(AWorkspace: TShellWorkspace): TFunc<TServerSettings>;
+function PromptSettingsOf(AWorkspace: TCoreWorkspace): TFunc<TServerSettings>;
 begin
   Result :=
     function: TServerSettings
@@ -160,7 +189,7 @@ begin
   Result.ReadText := ReadSourceText;
   Result.ResolveFile := ResolveFileOf(AServices.Guard);
   Result.ResolveUnit := UnitFileOf(AServices.Index, AServices.Group, AServices.Guard);
-  Result.Changes := ChangesOf(AServices.Group, AServices.Root);
+  Result.Changes := ChangesOf(TMcpServices.HostAdapters, AServices.Group, AServices.Root);
   Result.Register;
 end;
 

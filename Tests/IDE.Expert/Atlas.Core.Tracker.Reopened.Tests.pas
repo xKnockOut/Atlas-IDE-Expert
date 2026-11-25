@@ -55,7 +55,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Notify,
-  Atlas.Core.Tracker.Reopened;
+  Atlas.Core.Tracker.Reopened,
+  Atlas.Core.Tracker.Contract.MyIssues;
 
 function T0: TDateTime;
 begin
@@ -277,7 +278,7 @@ begin
   TAtlasTrackerReopened.TakeComment(mReopen, Comment('Jana', T0 + 1, 'älter'));
   Assert.AreEqual('neuer', mReopen.Comment, 'ein älterer ersetzt nicht');
   TAtlasTrackerReopened.TakeComment(mReopen, Comment('Jana', T0 + 6, StringOfChar('x', 300)));
-  Assert.AreEqual(TAtlasTrackerReopened.cMaxComment, Length(mReopen.Comment));
+  Assert.AreEqual(Integer(TAtlasTrackerReopened.cMaxComment), Integer(Length(mReopen.Comment)));
   Assert.AreEqual('Jana', mReopen.CommentBy);
   mComments := nil;
 end;
@@ -338,7 +339,7 @@ begin
   mSection := TJSONObject.Create;
   try
     TAtlasTrackerReopened.WriteJson(mSection, nil, nil);
-    Assert.AreEqual(0, mSection.Count);
+    Assert.AreEqual(0, Integer(mSection.Count));
   finally
     mSection.Free;
   end;
