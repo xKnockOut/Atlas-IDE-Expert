@@ -222,8 +222,6 @@
         "Atlas.Common.Mcp.ImplementationTools -> Atlas.Common.Lsp.References",
         "Atlas.Common.Mcp.IndexTools -> Atlas.Common.Lsp.Rationale",
         "Atlas.Common.Rules.Builtin.Collections -> Atlas.Common.Editing.GenericLists",
-        "Atlas.Common.Rules.Builtin.Declarations -> Atlas.Common.Editing.ClassBodies",
-        "Atlas.Common.Rules.Builtin.Declarations -> Atlas.Common.Editing.ClassCompletion",
         "Atlas.Common.Rules.Builtin.Declarations.Defaults -> Atlas.Common.Editing.ChangeSignature",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.MaintenanceCommands",
