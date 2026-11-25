@@ -2,13 +2,14 @@
 
 // Host-Rolle Core: MCP-Modus (--mcp, #48), Ressource „Projektkonventionen“ (#272): Regelprofil, Formatstil,
 // Benennungsregeln, aktive Prüfregeln und geschützte Dateien (#2608) des Projekts als Markdown. Name und
-// Beschreibung der Ressource in der Sprache der Oberfläche (#1458). Eigene Unit, damit Shell.Mcp die Prüfregeln
-// nicht kennen muss.
+// Beschreibung der Ressource in der Sprache der Oberfläche (#1458). Den Teil der Prüfregeln liefert IMcpConventions
+// (Rules über den Host-Adapter Adapters.Mcp.Conventions).
 
 interface
 
 uses
   Atlas.Common.Mcp.Server,
+  Atlas.Common.Mcp.Contract.Conventions,
   Core.Workspace;
 
 type
@@ -17,18 +18,15 @@ type
     /// <summary>Uri der Ressource.</summary>
     const cUri = 'delphi://conventions';
     /// <summary>Meldet die Ressource an AServer an; gelesen wird erst beim Abruf, mit den Einstellungen von
-    /// AWorkspace zu diesem Zeitpunkt.</summary>
-    class procedure Register(AServer: TMcpServer; AWorkspace: TCoreWorkspace); static;
+    /// AWorkspace zu diesem Zeitpunkt und den Konventionen aus AConventions.</summary>
+    class procedure Register(AServer: TMcpServer; AWorkspace: TCoreWorkspace; const AConventions: IMcpConventions);
+      static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Prompt,
-  Atlas.Common.Rules.Conventions,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.ProtectedFiles,
   Atlas.Common.Localization.Texts;
 
@@ -45,22 +43,19 @@ const
     En: 'Rule profile, format style, naming rules, active check rules and protected files of the project as ' +
       'Markdown.'));
 
-/// <summary>Projektkonventionen (#272) als Markdown; eigene Routine, damit die anonyme Methode nur AWorkspace
-/// einfängt.</summary>
-function ConventionsOf(AWorkspace: TCoreWorkspace): TFunc<string>;
+/// <summary>Projektkonventionen (#272) als Markdown; eigene Routine, damit die anonyme Methode nur AWorkspace und
+/// AConventions einfängt.</summary>
+function ConventionsOf(AWorkspace: TCoreWorkspace; const AConventions: IMcpConventions): TFunc<string>;
+var
+  mConventions: IMcpConventions;
 begin
+  mConventions := AConventions;
   Result :=
     function: string
     var
-      mCatalog: TRuleCatalog;
       mProtected: string;
     begin
-      mCatalog := TFindingPrompt.GermanCatalog;
-      try
-        Result := TRuleConventions.Markdown(BuiltinRules, AWorkspace.Configuration.Settings, mCatalog);
-      finally
-        mCatalog.Free;
-      end;
+      Result := mConventions.Markdown(AWorkspace.Configuration.Settings);
       mProtected := TMcpProtectedFiles.Markdown(AWorkspace.Configuration.Settings.AssistantProtected);
       if mProtected <> '' then
       begin
@@ -71,10 +66,11 @@ end;
 
 { TMcpConventions }
 
-class procedure TMcpConventions.Register(AServer: TMcpServer; AWorkspace: TCoreWorkspace);
+class procedure TMcpConventions.Register(AServer: TMcpServer; AWorkspace: TCoreWorkspace;
+  const AConventions: IMcpConventions);
 begin
   AServer.AddResource(cUri, cTexts[TMcpConventionsText.Name].Text, cTexts[TMcpConventionsText.Description].Text,
-    'text/markdown', ConventionsOf(AWorkspace));
+    'text/markdown', ConventionsOf(AWorkspace, AConventions));
 end;
 
 initialization

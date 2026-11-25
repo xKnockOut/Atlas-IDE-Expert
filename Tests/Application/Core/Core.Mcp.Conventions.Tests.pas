@@ -29,6 +29,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Common.Mcp.Server,
+  Shell.Composition.Mcp,
   Core.Mcp.Conventions;
 
 { TMcpConventionsTests }
@@ -53,7 +54,7 @@ begin
   TAtlasLocale.Use(ALanguage);
   mServer := TMcpServer.Create('Atlas', '0');
   try
-    TMcpConventions.Register(mServer, nil);
+    TMcpConventions.Register(mServer, nil, TMcpComposition.Conventions);
     mListed := mServer.ListResources;
     try
       mItem := mListed.GetValue<TJSONArray>('resources').Items[0];

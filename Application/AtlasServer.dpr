@@ -51,6 +51,7 @@ uses
   Adapters.Mcp.Formatting in 'Source\Adapters\Adapters.Mcp.Formatting.pas',
   Adapters.Mcp.CompilerFixes in 'Source\Adapters\Adapters.Mcp.CompilerFixes.pas',
   Adapters.Mcp.BulkFix in 'Source\Adapters\Adapters.Mcp.BulkFix.pas',
+  Adapters.Mcp.Conventions in 'Source\Adapters\Adapters.Mcp.Conventions.pas',
   Shell.Composition.Configuration in 'Source\Shell\Shell.Composition.Configuration.pas',
   Shell.Composition.FileChanges in 'Source\Shell\Shell.Composition.FileChanges.pas',
   Shell.Composition.Sources in 'Source\Shell\Shell.Composition.Sources.pas',
