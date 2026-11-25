@@ -87,7 +87,8 @@ uses
   Core.Bootstrap,
   Shell.Composition.RuleRefactorings,
   Adapters.Mcp.Workspace,
-  Adapters.Mcp.Process;
+  Adapters.Mcp.Process,
+  Adapters.Mcp.Vcs;
 
 function NewProcess: ICompilerProcess;
 begin
@@ -457,6 +458,7 @@ begin
   Result.NewProcess := NewProcess;
   Result.Process := TMcpProcessAdapter.New;
   Result.VcsAccess := VcsAccess;
+  Result.Vcs := TMcpVcsAdapter.New(VcsAccess);
   Result.GitDir := GitDirOf;
   Result.CompilerFixes := TMcpComposition.CompilerFixes;
   Result.Conventions := TMcpComposition.Conventions;

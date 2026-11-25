@@ -34,7 +34,6 @@ uses
   Atlas.Common.Hotspots.Report,
   Atlas.Common.Lsp.Hotspots,
   Core.AffectedTests,
-  Core.Hotspots,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Localization.RequestTexts;
 
@@ -300,7 +299,7 @@ begin
   mLimit := HotspotLimitOf(AArguments);
   mRequest := HotspotRequestOf(AContext, mSettings, AArguments);
   // Ohne Versionsverwaltung ein Hinweis statt einer leeren Liste.
-  if not TCoreHotspotVcs.Detect(AContext.Adapters.VcsAccess(), AContext.Root, mSettings, mVcs, mError) then
+  if not AContext.Adapters.Vcs.Hotspots(AContext.Root, mSettings, mVcs, mError) then
   begin
     Exit(cTexts[TMcpChangeText.NoHotspots].Fmt([mError]));
   end;

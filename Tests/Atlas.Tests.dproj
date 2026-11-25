@@ -2704,12 +2704,14 @@
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.RuleDocs.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Workspace.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Process.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Vcs.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.DeadCode.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.BulkFix.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.TextChecks.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.RuleDocs.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.Workspace.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.Process.Tests.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.Vcs.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.DeadCode.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Conventions.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.Conventions.Tests.pas"/>

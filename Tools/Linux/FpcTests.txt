@@ -290,6 +290,7 @@ Adapters.Mcp.TextChecks.Tests
 Adapters.Mcp.RuleDocs.Tests
 Adapters.Mcp.Workspace.Tests
 Adapters.Mcp.Process.Tests
+Adapters.Mcp.Vcs.Tests
 Adapters.Mcp.DeadCode.Tests
 Adapters.Mcp.Conventions.Tests
 Atlas.Common.Compiler.MessageTexts.Tests

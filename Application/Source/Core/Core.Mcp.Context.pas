@@ -20,6 +20,7 @@ uses
   Atlas.Common.Mcp.Contract.TextChecks,
   Atlas.Common.Mcp.Contract.Workspace,
   Atlas.Common.Mcp.Contract.Process,
+  Atlas.Common.Mcp.Contract.Vcs,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.SymbolPath,
@@ -54,7 +55,9 @@ type
     /// <summary>Prozesse und Ordnersignale des Servers (laufende IDEs, Antworten des Plugins, get_server_status).
     /// </summary>
     Process: IMcpProcessHost;
-    /// <summary>Zugang zur Versionsverwaltung (Änderungen, Hotspots, Verlauf).</summary>
+    /// <summary>Änderungen, Hotspots und Verlauf aus Git oder SVN.</summary>
+    Vcs: IMcpVcs;
+    /// <summary>Zugang zur Versionsverwaltung (betroffene Tests).</summary>
     VcsAccess: TFunc<TCoreVcsAccess>;
     /// <summary>Git-Verzeichnis des Ordners ('' ohne Git).</summary>
     GitDir: TFunc<string, string>;
