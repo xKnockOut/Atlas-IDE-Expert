@@ -12,8 +12,7 @@
 // "fehlende Unit ergänzen" und "ins implementation verschieben" kommen mit den
 // übrigen Korrekturen, sobald UsesContextFor gesetzt ist. Weitere Aktionen
 // mit Dateioperationen (Testunit anlegen, #274) kommen über ExtraActions.
-// Abwählbare Teile einer Aktion (#2054) stehen in data.choices ([{title, range}]) und data.editChoices (je Edit
-// des Dokuments die Indizes der Teile, die alle gewählt sein müssen; [] gilt immer).
+// Die Aktionen schreibt Atlas.Common.CodeActions.Json.
 
 interface
 
@@ -91,15 +90,10 @@ type
     class function Capability: TJSONObject; static;
     /// <summary>True, wenn AKind unter einer der angefragten Arten liegt (LSP "only"); leeres AOnly = alle.</summary>
     class function KindRequested(const AKind: string; const AOnly: TArray<string>): Boolean; static;
-    /// <summary>Eine Aktion als LSP-CodeAction. Der Aufrufer übernimmt das Objekt.</summary>
-    class function ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject; static;
     /// <summary>Alle Code-Aktionen an ARange im geöffneten Dokument AUri wie textDocument/codeAction ohne "only",
     /// ohne Abbruch (MCP-Werkzeug refactor, #2150); leer, wenn das Dokument nicht geöffnet ist. Der Aufrufer übernimmt
     /// das Array.</summary>
     function ActionsAt(const AUri: string; const ARange: TTextRange): TJSONArray;
-    /// <summary>WorkspaceEdit {"changes": {AUri: [...]}} für Befehle, die Änderungen liefern (#668). Der Aufrufer
-    /// übernimmt das Objekt.</summary>
-    class function WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject; static;
     /// <summary>Ohne Zuweisung werden uses nicht sortiert, nur doppelte entfernt.</summary>
     property UsesOrderFor: TUsesOrderProvider read FUsesOrderFor write FUsesOrderFor;
     /// <summary>Ohne Zuweisung keine uses-Aktionen (#284).</summary>
@@ -150,7 +144,8 @@ uses
   Atlas.Common.Editing.FreeFields,
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Common.CodeActions.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -199,7 +194,7 @@ begin
   begin
     for mAction in FFormActions(AUri, AText, ARange) do
     begin
-      Result.AddElement(ActionToJson(AUri, mAction));
+      Result.AddElement(TCodeActionsJson.ActionToJson(AUri, mAction));
     end;
   end;
 end;
@@ -224,140 +219,6 @@ begin
   Result.AddPair('codeActionKinds', mKinds);
 end;
 
-function CommandJson(const AAction: TCodeAction): TJSONObject;
-var
-  mArguments: TJSONArray;
-  mArgument: string;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('title', AAction.Title);
-  Result.AddPair('command', AAction.Command);
-  mArguments := TJSONArray.Create;
-  for mArgument in AAction.CommandArguments do
-  begin
-    mArguments.Add(mArgument);
-  end;
-  Result.AddPair('arguments', mArguments);
-end;
-
-/// <summary>Abwählbare Teile (#2054): {"title", "range"} je Teil.</summary>
-function ChoicesJson(const AAction: TCodeAction): TJSONArray;
-var
-  mChoice: TCodeActionChoice;
-  mItem: TJSONObject;
-begin
-  Result := TJSONArray.Create;
-  for mChoice in AAction.Choices do
-  begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('title', mChoice.Title);
-    mItem.AddPair('range', TLspPositions.RangeToJson(mChoice.Range));
-    Result.AddElement(mItem);
-  end;
-end;
-
-/// <summary>Je Edit des Dokuments die Teile, die alle gewählt sein müssen (#2054); [] gilt immer.</summary>
-function EditChoicesJson(const AAction: TCodeAction): TJSONArray;
-var
-  mIndex, mChoice: Integer;
-  mItem: TJSONArray;
-begin
-  Result := TJSONArray.Create;
-  for mIndex := 0 to High(AAction.Edits) do
-  begin
-    mItem := TJSONArray.Create;
-    if mIndex <= High(AAction.EditChoices) then
-    begin
-      for mChoice in AAction.EditChoices[mIndex] do
-      begin
-        mItem.Add(mChoice);
-      end;
-    end;
-    Result.AddElement(mItem);
-  end;
-end;
-
-/// <summary>Kennung für Clients, die eine bestimmte Aktion suchen (#621), Vorschau vor dem Übernehmen (#663),
-/// abwählbare Teile (#2054).</summary>
-function DataJson(const AAction: TCodeAction): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  if AAction.Choices <> nil then
-  begin
-    Result.AddPair('choices', ChoicesJson(AAction));
-    Result.AddPair('editChoices', EditChoicesJson(AAction));
-  end;
-  if AAction.Tag <> '' then
-  begin
-    Result.AddPair('tag', AAction.Tag);
-  end;
-  if AAction.Preview <> '' then
-  begin
-    Result.AddPair('preview', AAction.Preview);
-  end;
-end;
-
-function DiagnosticsJson(const AAction: TCodeAction): TJSONArray;
-var
-  mDiagnostic: TJSONObject;
-begin
-  mDiagnostic := TJSONObject.Create;
-  mDiagnostic.AddPair('range', TLspPositions.RangeToJson(AAction.DiagnosticRange));
-  mDiagnostic.AddPair('code', AAction.RuleId);
-  mDiagnostic.AddPair('source', TLspSyntaxDiagnostics.cSource);
-  mDiagnostic.AddPair('message', '');
-  Result := TJSONArray.Create;
-  Result.AddElement(mDiagnostic);
-end;
-
-function ChangesJson(const AUri: string; const AAction: TCodeAction): TJSONObject;
-var
-  mFileEdits: TFileTextEdits;
-begin
-  Result := TJSONObject.Create;
-  // Nur Edits in anderen Dateien (Formulardatei, #309): das Dokument bleibt unverändert.
-  if (AAction.Edits <> nil) or (AAction.FileEdits = nil) then
-  begin
-    Result.AddPair(AUri, TLspPositions.EditsToJson(AAction.Edits));
-  end;
-  for mFileEdits in AAction.FileEdits do
-  begin
-    Result.AddPair(TDocumentUris.FromPath(mFileEdits.FileName), TLspPositions.EditsToJson(mFileEdits.Edits));
-  end;
-end;
-
-class function TLspCodeActions.ActionToJson(const AUri: string; const AAction: TCodeAction): TJSONObject;
-var
-  mWorkspaceEdit: TJSONObject;
-begin
-  mWorkspaceEdit := TJSONObject.Create;
-  mWorkspaceEdit.AddPair('changes', ChangesJson(AUri, AAction));
-  Result := TJSONObject.Create;
-  Result.AddPair('title', AAction.Title);
-  Result.AddPair('kind', AAction.Kind);
-  if AAction.Command <> '' then
-  begin
-    Result.AddPair('command', CommandJson(AAction));
-  end;
-  if AAction.IsPreferred then
-  begin
-    Result.AddPair('isPreferred', TJSONBool.Create(True));
-  end;
-  if (AAction.Tag <> '') or (AAction.Preview <> '') or (AAction.Choices <> nil) then
-  begin
-    Result.AddPair('data', DataJson(AAction));
-  end;
-  // Hinweis statt Aktion (LSP 3.16 disabled).
-  if AAction.Disabled <> '' then
-  begin
-    Result.AddPair('disabled', TJSONObject.Create(TJSONPair.Create('reason', AAction.Disabled)));
-  end;
-  if AAction.RuleId <> '' then
-  begin
-    Result.AddPair('diagnostics', DiagnosticsJson(AAction));
-  end;
-  Result.AddPair('edit', mWorkspaceEdit);
-end;
 
 type
   /// <summary>Sammelt die Aktionen einer Anfrage in einer Unit.</summary>
@@ -548,7 +409,7 @@ end;
 
 procedure TCodeActionBuilder.Add(const AAction: TCodeAction);
 begin
-  FResult.AddElement(TLspCodeActions.ActionToJson(FUri, AAction));
+  FResult.AddElement(TCodeActionsJson.ActionToJson(FUri, AAction));
 end;
 
 procedure TCodeActionBuilder.Add(const AActions: TArray<TCodeAction>);
@@ -851,16 +712,6 @@ begin
   // Ohne Anfrage gibt es kein Abbruchsignal; der Builder prüft trotzdem eins.
   mNever := TJsonRpcCancellation.Create;
   Result := Collect(AUri, ARange, nil, mNever);
-end;
-
-class function TLspCodeActions.WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
-var
-  mChanges: TJSONObject;
-begin
-  mChanges := TJSONObject.Create;
-  mChanges.AddPair(AUri, TLspPositions.EditsToJson(AEdits));
-  Result := TJSONObject.Create;
-  Result.AddPair('changes', mChanges);
 end;
 
 initialization

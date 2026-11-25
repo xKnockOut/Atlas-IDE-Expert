@@ -263,6 +263,7 @@ Atlas.Common.Semantics.Implementations.Tests
 Atlas.Common.Lsp.Implementations.Tests
 Atlas.Common.Semantics.Definitions.Tests
 Atlas.Common.Lsp.Definition.Tests
+Atlas.Common.CodeActions.Json.Tests
 Atlas.Common.Lsp.Rename.Tests
 Atlas.Common.Lsp.ResourceStringCommands.Tests
 Atlas.Common.Lsp.RoutineParameters.Tests

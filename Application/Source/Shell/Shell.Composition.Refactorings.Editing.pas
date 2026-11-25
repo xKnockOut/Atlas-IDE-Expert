@@ -38,12 +38,12 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
-  Atlas.Common.Localization.RequestTexts;
+  Atlas.Common.Localization.RequestTexts,
+  Atlas.Common.CodeActions.Json;
 
 /// <summary>Ist eins der Refactorings aus Atlas.Common.Lsp.Refactorings eingeschaltet?</summary>
 function AnyEnabled(const ASettings: TRefactoringSettings): Boolean;
@@ -81,7 +81,7 @@ begin
   for mAction in TLspRefactorings.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, ARange,
     mContext) do
   begin
-    Result := Result + [TLspCodeActions.ActionToJson(AUri, mAction)];
+    Result := Result + [TCodeActionsJson.ActionToJson(AUri, mAction)];
   end;
 end;
 

@@ -124,6 +124,7 @@
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.UnitAliases.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.UnitLookup.pas"/>
         <DCCReference Include="Source\CodeActions\Atlas.Common.CodeActions.Contract.pas"/>
+        <DCCReference Include="Source\CodeActions\Atlas.Common.CodeActions.Json.pas"/>
         <DCCReference Include="Source\ClassActions\Atlas.Common.ClassActions.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Contract.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.OutputParser.pas"/>

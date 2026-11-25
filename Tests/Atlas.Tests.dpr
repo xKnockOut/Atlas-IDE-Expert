@@ -188,6 +188,7 @@ uses
   Atlas.Common.Lsp.Completion.FormProposals.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.FormProposals.Tests.pas',
   Atlas.Common.Lsp.Completion.Handle.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Handle.Tests.pas',
   Atlas.Common.Lsp.CodeActions.Tests in 'Common\Lsp\Atlas.Common.Lsp.CodeActions.Tests.pas',
+  Atlas.Common.CodeActions.Json.Tests in 'Common\CodeActions\Atlas.Common.CodeActions.Json.Tests.pas',
   Atlas.Common.Lsp.Completion.Contexts.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Contexts.Tests.pas',
   Atlas.Common.Lsp.CompletionEnums.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionEnums.Tests.pas',
   Atlas.Common.Lsp.CompletionGenerics.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompletionGenerics.Tests.pas',

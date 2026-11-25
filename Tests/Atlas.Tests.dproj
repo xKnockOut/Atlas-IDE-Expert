@@ -301,6 +301,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.FormProposals.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Handle.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CodeActions.Tests.pas"/>
+        <DCCReference Include="Common\CodeActions\Atlas.Common.CodeActions.Json.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Contexts.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionEnums.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompletionGenerics.Tests.pas"/>

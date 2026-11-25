@@ -86,6 +86,7 @@ contains
   Atlas.Common.Projects.UnitAliases in 'Source\Projects\Atlas.Common.Projects.UnitAliases.pas',
   Atlas.Common.Rules.Providers.UnitLookup in 'Source\Rules\Atlas.Common.Rules.Providers.UnitLookup.pas',
   Atlas.Common.CodeActions.Contract in 'Source\CodeActions\Atlas.Common.CodeActions.Contract.pas',
+  Atlas.Common.CodeActions.Json in 'Source\CodeActions\Atlas.Common.CodeActions.Json.pas',
   Atlas.Common.ClassActions.Contract in 'Source\ClassActions\Atlas.Common.ClassActions.Contract.pas',
   Atlas.Common.Compiler.Contract in 'Source\Compiler\Atlas.Common.Compiler.Contract.pas',
   Atlas.Common.Compiler.OutputParser in 'Source\Compiler\Atlas.Common.Compiler.OutputParser.pas',

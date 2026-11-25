@@ -73,10 +73,10 @@ uses
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.PromoteVariable,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.CodeActions.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -344,7 +344,7 @@ begin
   end;
   if TAnonymousMethods.Embed(InputOf(ARequest), mEmbedded, mReason) then
   begin
-    Result := Result + [TLspCodeActions.ActionToJson(ARequest.Uri, mEmbedded)];
+    Result := Result + [TCodeActionsJson.ActionToJson(ARequest.Uri, mEmbedded)];
   end;
 end;
 
@@ -365,7 +365,7 @@ begin
     mWarnings.Add(mWarning);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(ARequest.Uri, mConverted.Edits));
+  Result.AddPair('edit', TCodeActionsJson.WorkspaceEditJson(ARequest.Uri, mConverted.Edits));
   Result.AddPair('warnings', mWarnings);
   Result.AddPair('places', TJSONNumber.Create(Length(mConverted.Edits)));
   Result.AddPair('files', TJSONNumber.Create(1));

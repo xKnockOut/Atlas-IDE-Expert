@@ -36,11 +36,11 @@ type
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443),
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.RaiseVisibility,
-  Atlas.Common.Lsp.CodeActions;
+  Atlas.Common.CodeActions.Json;
 
 { TLspRaiseVisibility }
 
@@ -52,7 +52,7 @@ begin
   Result := nil;
   for mAction in TRaiseVisibility.Actions(AText, ATree, ARange.StartPos, '', False) do
   begin
-    Result := Result + [TLspCodeActions.ActionToJson(AUri, mAction)];
+    Result := Result + [TCodeActionsJson.ActionToJson(AUri, mAction)];
   end;
 end;
 
@@ -67,7 +67,7 @@ begin
   try
     for mAction in TRaiseVisibility.Actions(AText, mTree, APosition, AName, True) do
     begin
-      Result.AddElement(TLspCodeActions.ActionToJson(AUri, mAction));
+      Result.AddElement(TCodeActionsJson.ActionToJson(AUri, mAction));
     end;
   finally
     mTree.Free;

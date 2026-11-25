@@ -46,12 +46,12 @@ uses
   Atlas.Common.Editing.SuggestConst,
   Atlas.Common.Editing.VarBlock,
   Atlas.Common.Projects.MissingUnit,
-  Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.CompilerFixes,
   Atlas.Common.Lsp.MissingUnit,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.CodeActions.Json;
 
 type
 {$SCOPEDENUMS ON}
@@ -226,7 +226,7 @@ begin
     if TLspInlayHints.ExplicitTypeAction(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AUri), APosition, LineBreakOf(mDocument.Text), mAction) then
     begin
-      Result := [TLspCodeActions.ActionToJson(AUri, mAction)];
+      Result := [TCodeActionsJson.ActionToJson(AUri, mAction)];
     end;
   finally
     mResolver.Free;
@@ -258,7 +258,7 @@ begin
       if TSuggestConst.Action(mDocument.Text, mShared.Tree, APosition, TResolvedSignatures.Lookup(mResolver,
         mShared.Tree, mFileName), mAction) then
       begin
-        Result := [TLspCodeActions.ActionToJson(AUri, mAction)];
+        Result := [TCodeActionsJson.ActionToJson(AUri, mAction)];
       end;
     finally
       mResolver.UnpinTree;
@@ -300,7 +300,7 @@ begin
       mOptions.Types := VarBlockTypes(mResolver, mShared.Tree, mFileName, LineBreakOf(mDocument.Text));
       for mAction in TVarBlock.Actions(mDocument.Text, mShared.Tree, APosition, mOptions) do
       begin
-        Result := Result + [TLspCodeActions.ActionToJson(AUri, mAction)];
+        Result := Result + [TCodeActionsJson.ActionToJson(AUri, mAction)];
       end;
     finally
       mResolver.UnpinTree;
