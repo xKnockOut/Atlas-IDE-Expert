@@ -1,6 +1,6 @@
-﻿unit Core.Texts;
+﻿unit Atlas.Common.Localization.RequestTexts;
 
-// Host-Rolle Core: gemeinsame Benutzertexte des Hosts in beiden Sprachen (#1458), die mehrere Units gleich
+// Gemeinsame Benutzertexte zu Anfragen in beiden Sprachen (#1458), die Host, MCP-Werkzeuge und Befehle gleich
 // brauchen: fehlende Argumente einer Anfrage oder eines MCP-Werkzeugs, erlaubte Werte eines Arguments und
 // „kein Projekt geladen“. Aufzählungen werden in der Sprache der Texte verbunden („a, b und c“ bzw.
 // „a, b and c“), damit nicht jede Unit eigene Varianten je Anzahl braucht.
@@ -8,8 +8,8 @@
 interface
 
 type
-  /// <summary>Gemeinsame Texte der Shell in der aktuellen Sprache (TAtlasLocale).</summary>
-  TCoreTexts = record
+  /// <summary>Gemeinsame Texte zu Anfragen in der aktuellen Sprache (TAtlasLocale).</summary>
+  TRequestTexts = record
   public
     /// <summary>AItems verbunden mit Komma und zuletzt „und“ (AOr = False) bzw. „oder“.</summary>
     class function Joined(const AItems: array of string; AOr: Boolean): string; static;
@@ -30,11 +30,11 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TCoreText = (AndWord, OrWord, MissingOne, MissingMany, Choice, NoProject, NoProjectGiveFile);
+  TRequestText = (AndWord, OrWord, MissingOne, MissingMany, Choice, NoProject, NoProjectGiveFile);
 {$SCOPEDENUMS OFF}
 
 const
-  cTexts: array[TCoreText] of TAtlasText = (
+  cTexts: array[TRequestText] of TAtlasText = (
     (De: 'und'; En: 'and'),
     (De: 'oder'; En: 'or'),
     (De: 'Argument %s fehlt'; En: 'Argument %s is missing'),
@@ -43,9 +43,9 @@ const
     (De: 'Kein Projekt geladen'; En: 'No project loaded'),
     (De: 'Kein Projekt geladen; Datei angeben'; En: 'No project loaded; specify a file'));
 
-{ TCoreTexts }
+{ TRequestTexts }
 
-class function TCoreTexts.Joined(const AItems: array of string; AOr: Boolean): string;
+class function TRequestTexts.Joined(const AItems: array of string; AOr: Boolean): string;
 var
   mIndex: Integer;
   mLast: string;
@@ -55,10 +55,10 @@ begin
   begin
     Exit;
   end;
-  mLast := cTexts[TCoreText.AndWord].Text;
+  mLast := cTexts[TRequestText.AndWord].Text;
   if AOr then
   begin
-    mLast := cTexts[TCoreText.OrWord].Text;
+    mLast := cTexts[TRequestText.OrWord].Text;
   end;
   Result := AItems[0];
   for mIndex := 1 to High(AItems) do
@@ -74,7 +74,7 @@ begin
   end;
 end;
 
-class function TCoreTexts.Missing(const ANames: array of string): string;
+class function TRequestTexts.Missing(const ANames: array of string): string;
 var
   mQuoted: TArray<string>;
   mIndex: Integer;
@@ -86,30 +86,30 @@ begin
   end;
   if Length(mQuoted) = 1 then
   begin
-    Result := cTexts[TCoreText.MissingOne].Fmt([mQuoted[0]]);
+    Result := cTexts[TRequestText.MissingOne].Fmt([mQuoted[0]]);
   end
   else
   begin
-    Result := cTexts[TCoreText.MissingMany].Fmt([Joined(mQuoted, False)]);
+    Result := cTexts[TRequestText.MissingMany].Fmt([Joined(mQuoted, False)]);
   end;
 end;
 
-class function TCoreTexts.Choice(const AName: string; const AChoices: array of string): string;
+class function TRequestTexts.Choice(const AName: string; const AChoices: array of string): string;
 begin
-  Result := cTexts[TCoreText.Choice].Fmt([AName, Joined(AChoices, True)]);
+  Result := cTexts[TRequestText.Choice].Fmt([AName, Joined(AChoices, True)]);
 end;
 
-class function TCoreTexts.NoProject: string;
+class function TRequestTexts.NoProject: string;
 begin
-  Result := cTexts[TCoreText.NoProject].Text;
+  Result := cTexts[TRequestText.NoProject].Text;
 end;
 
-class function TCoreTexts.NoProjectGiveFile: string;
+class function TRequestTexts.NoProjectGiveFile: string;
 begin
-  Result := cTexts[TCoreText.NoProjectGiveFile].Text;
+  Result := cTexts[TRequestText.NoProjectGiveFile].Text;
 end;
 
 initialization
-  TAtlasTextTables.Add('Core.Texts', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Localization.RequestTexts', cTexts);
 
 end.

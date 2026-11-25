@@ -1,7 +1,7 @@
 ﻿unit Atlas.Plugin.Notifications.OrderedItems.Tests;
 
 // Liste angemeldeter Einträge mit Kennung und Reihenfolge (TAtlasOrderedItems<T>): Reihenfolge, Ersetzen,
-// Entfernen, Suchen und unveränderliche Schnappschüsse.
+// Entfernen (auch mit dem entfernten bzw. ersetzten Eintrag), Suchen und unveränderliche Schnappschüsse.
 
 interface
 
@@ -20,6 +20,9 @@ type
     procedure PutReplacesSameId;
     [Test]
     procedure RemoveTellsWhetherFound;
+    /// <summary>Put und Take nennen den Eintrag, den die Liste abgibt (der Besitzer löst ihn dann).</summary>
+    [Test]
+    procedure PutAndTakeHandBackTheReleasedItem;
     [Test]
     procedure FindWithoutItemGivesDefault;
     /// <summary>Ein herausgegebenes Array bleibt, wie es war, auch wenn danach Einträge kommen und gehen.</summary>
@@ -129,6 +132,30 @@ begin
   finally
     mItems.Free;
   end;
+end;
+
+procedure TAtlasOrderedItemsTests.PutAndTakeHandBackTheReleasedItem;
+var
+  mItems: TEntries;
+  mOut: TEntry;
+begin
+  mItems := TEntries.Create;
+  try
+    Assert.IsFalse(mItems.Put(Entry('a', cFirst), mOut), 'neu: nichts ersetzt');
+    Assert.AreEqual('', mOut.Id);
+    Assert.IsTrue(mItems.Put(Entry('A', cSecond), mOut));
+    Assert.AreEqual('a', mOut.Id);
+    Assert.AreEqual(cFirst, mOut.Order);
+    Assert.IsFalse(mItems.Take('b', mOut));
+    Assert.AreEqual('', mOut.Id);
+    Assert.IsTrue(mItems.Take('a', mOut));
+    Assert.AreEqual('A', mOut.Id);
+    Assert.AreEqual(cSecond, mOut.Order);
+    Assert.AreEqual(0, Integer(Length(mItems.ToArray)));
+  finally
+    mItems.Free;
+  end;
+  mOut.Id := '';
 end;
 
 procedure TAtlasOrderedItemsTests.FindWithoutItemGivesDefault;

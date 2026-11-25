@@ -31,6 +31,14 @@ type
     procedure KeepsOrderOfNotificationsAndRequests;
     [Test]
     procedure RaisesTransportErrorOfBrokenStream;
+    /// <summary>Schließt die Gegenseite (IDE beendet), endet die Schleife wie bei geschlossener Eingabe: kein
+    /// Fehler, keine weitere Nachricht wird verarbeitet.</summary>
+    [Test]
+    procedure EndsWithoutErrorWhenPeerClosesOutput;
+    /// <summary>Antworten aus Workern an eine geschlossene Gegenseite werden verworfen, nicht als Fehler gemeldet.
+    /// </summary>
+    [Test]
+    procedure DropsWorkerAnswersWhenPeerClosesOutput;
     [Test]
     procedure PostedMessageRunsBeforeRemainingInput;
     [Test]
@@ -189,6 +197,41 @@ begin
       mConnection.Free;
     end;
     Result := TJsonRpcTestSupport.ReadMessages(mOutput);
+  finally
+    mOutput.Free;
+    mInput.Free;
+  end;
+end;
+
+// Lässt eine Verbindung über die Eingabe laufen, deren Ausgabe wie eine geschlossene Pipe scheitert, und liefert
+// die Schreibversuche. Fehler aus OnError sammelt AErrors.
+function RunConnectionToClosedPeer(const AInput: array of string; ADispatcher: TJsonRpcDispatcher;
+  AErrors: TStrings): Integer;
+var
+  mInput: TBytesStream;
+  mOutput: TJsonRpcFailingOutput;
+  mConnection: TJsonRpcConnection;
+begin
+  mInput := TJsonRpcTestSupport.InputOf(AInput);
+  mOutput := TJsonRpcFailingOutput.Create(ofPeerClosed);
+  try
+    mConnection := TJsonRpcConnection.Create(TJsonRpcStreamTransport.Create(mInput, mOutput, False), ADispatcher);
+    try
+      mConnection.OnError :=
+        procedure(const AError: Exception)
+        begin
+          TMonitor.Enter(AErrors);
+          try
+            AErrors.Add(AError.ClassName + ': ' + AError.Message);
+          finally
+            TMonitor.Exit(AErrors);
+          end;
+        end;
+      mConnection.Run;
+    finally
+      mConnection.Free;
+    end;
+    Result := mOutput.Writes;
   finally
     mOutput.Free;
     mInput.Free;
@@ -490,6 +533,72 @@ begin
       EJsonRpcTransportError);
   finally
     mDispatcher.Free;
+  end;
+end;
+
+procedure TJsonRpcConnectionTests.EndsWithoutErrorWhenPeerClosesOutput;
+var
+  mDispatcher: TJsonRpcDispatcher;
+  mErrors: TStringList;
+  mNotes: Integer;
+  mWrites: Integer;
+begin
+  mErrors := TStringList.Create;
+  mDispatcher := CreateEchoDispatcher;
+  try
+    mNotes := 0;
+    mDispatcher.RegisterNotification('note',
+      procedure(const AParams: TJSONValue)
+      begin
+        Inc(mNotes);
+      end);
+    mWrites := RunConnectionToClosedPeer([
+      '{"jsonrpc":"2.0","id":1,"method":"echo","params":1}',
+      '{"jsonrpc":"2.0","method":"note"}',
+      '{"jsonrpc":"2.0","id":2,"method":"echo","params":2}'], mDispatcher, mErrors);
+    Assert.AreEqual('', mErrors.Text, 'geschlossene Gegenseite ist kein Fehler');
+    Assert.AreEqual(0, mNotes, 'nach dem Ende der Verbindung nichts mehr verarbeiten');
+    Assert.AreEqual(1, mWrites, 'nur die erste Antwort erreicht die Ausgabe');
+  finally
+    mDispatcher.Free;
+    mErrors.Free;
+  end;
+end;
+
+procedure TJsonRpcConnectionTests.DropsWorkerAnswersWhenPeerClosesOutput;
+var
+  mDispatcher: TJsonRpcDispatcher;
+  mErrors: TStringList;
+  mWorkers: TJoinedWorkers;
+  mWrites: Integer;
+begin
+  mErrors := TStringList.Create;
+  try
+    mWorkers := TJoinedWorkers.Create;
+    try
+      mDispatcher := CreateEchoDispatcher;
+      try
+        mDispatcher.Scheduler := mWorkers.Scheduler();
+        mDispatcher.RegisterConcurrentRequest('parallel',
+          function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+          begin
+            Result := TJSONString.Create('aus dem Worker');
+          end);
+        mWrites := RunConnectionToClosedPeer([
+          '{"jsonrpc":"2.0","id":1,"method":"parallel"}',
+          '{"jsonrpc":"2.0","id":2,"method":"parallel"}',
+          '{"jsonrpc":"2.0","id":3,"method":"parallel"}'], mDispatcher, mErrors);
+        mWorkers.JoinAll;
+        Assert.AreEqual('', mErrors.Text, 'Antworten an eine geschlossene Gegenseite sind kein Fehler');
+        Assert.AreEqual(1, mWrites, 'nach dem Schließen fasst niemand die Ausgabe an');
+      finally
+        mDispatcher.Free;
+      end;
+    finally
+      mWorkers.Free;
+    end;
+  finally
+    mErrors.Free;
   end;
 end;
 

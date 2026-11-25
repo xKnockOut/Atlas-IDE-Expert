@@ -64,6 +64,13 @@ function Set-CopyText([string] $Relative, [string] $Text) {
     [IO.File]::WriteAllText($Path, $Text, [Text.UTF8Encoding]::new($true))
 }
 
+function Remove-CopyFile([string] $Relative) {
+    # Löscht eine Datei der Kopie; Reset-Copy legt sie wieder an.
+    $Path = Join-Path $CopyRoot $Relative
+    if (-not $Touched.ContainsKey($Path)) { $Touched[$Path] = [IO.File]::ReadAllText($Path) }
+    Remove-Item -Force $Path
+}
+
 function Reset-Copy {
     foreach ($Path in @($Touched.Keys)) {
         if ($null -eq $Touched[$Path]) { Remove-Item -Force $Path }
@@ -118,6 +125,35 @@ function Add-Implementer([string] $Package, [string] $Folder, [string] $Name, [s
     if (Test-Path (Join-Path $CopyRoot "Packages/$Package/Source")) { $Base = "Packages/$Package/Source" }
     Set-CopyText "$Base/$Folder/$Name.pas" ("unit $Name;`r`n`r`ninterface`r`n`r`nuses`r`n  $Uses;`r`n`r`ntype`r`n" +
         "  TProbe = class(TInterfacedObject, $Interface)`r`n  end;`r`n`r`nimplementation`r`n`r`nend.`r`n")
+}
+
+function Get-LayerPackages {
+    return @((Get-Content -Raw -Encoding UTF8 (Join-Path $CopyRoot 'atlas.json') | ConvertFrom-Json).rules.'architecture-role-import'.layerPackages)
+}
+
+function Set-LayerPackages([string[]] $Packages, [switch] $RoleImportOnly) {
+    # Setzt "layerPackages" beider Architekturregeln der Kopie (mit -RoleImportOnly nur architecture-role-import).
+    $Json = Get-Content -Raw -Encoding UTF8 (Join-Path $CopyRoot 'atlas.json') | ConvertFrom-Json
+    foreach ($Rule in 'architecture-role-import', 'architecture-contract-content') {
+        if ($RoleImportOnly -and $Rule -ne 'architecture-role-import') { continue }
+        $Json.rules.$Rule.layerPackages = @($Packages)
+    }
+    Set-CopyText 'atlas.json' ($Json | ConvertTo-Json -Depth 20)
+}
+
+function Switch-Package([string] $Package) {
+    # Stellt ein Modul in der Kopie um: aus "layerPackages" streichen, Units mit Schichtnamen und ihre Zeilen der
+    # Zuordnung entfernen. Neue Units heißen danach <Package>.*.
+    Set-LayerPackages @(Get-LayerPackages | Where-Object { $_ -ne $Package })
+    foreach ($File in Get-ChildItem -Path (Join-Path $CopyRoot "Packages/$Package/Source") -Recurse -File -Filter '*.pas') {
+        Remove-CopyFile ($File.FullName.Substring($CopyRoot.Length + 1))
+    }
+    $Lines = @([IO.File]::ReadAllLines((Join-Path $CopyRoot $Assignment)) | Where-Object { -not $_.StartsWith("$Package`t") })
+    Set-CopyText $Assignment (($Lines -join "`n") + "`n")
+}
+
+function Add-HelpUnit([string] $Folder, [string] $Name, [string[]] $Uses) {
+    Add-UnitIn 'Packages/Atlas.IDE.Help/Source' $Folder $Name $Uses
 }
 
 function Invoke-Check {
@@ -269,6 +305,66 @@ try {
         $Base = 'Packages/Atlas.IDE.Tracker/Source/IDE/Tracker'
         Set-CopyText "$Base/Atlas.IDE.Tracker.Composition.Probe.pas" ("unit Atlas.IDE.Tracker.Composition.Probe;`r`n`r`n" +
             "interface`r`n`r`nuses`r`n  Atlas.Core.Projects.Internals.Probe;`r`n`r`nimplementation`r`n`r`nend.`r`n")
+    }
+
+    Test-Fails 'Umgestelltes Package trägt noch Schichtnamen' 'trägt einen Schichtnamen; Atlas.IDE.Help steht nicht mehr in "layerPackages"' {
+        Set-LayerPackages @(Get-LayerPackages | Where-Object { $_ -ne 'Atlas.IDE.Help' })
+    }
+
+    Test-Passes 'Umgestelltes Package nach Host-Rollen und Hosted-Features, ohne Zeilen der Zuordnung' {
+        Switch-Package 'Atlas.IDE.Help'
+        Add-HelpUnit 'Shell' 'Atlas.IDE.Help.Shell.Composition' @('Atlas.IDE.Help.Topics.Links',
+            'Atlas.IDE.Help.Topics.Hosting.Pages', 'Atlas.IDE.Base.Foundation.Help', 'Atlas.Core.Settings.Contract')
+        Add-HelpUnit 'Topics' 'Atlas.IDE.Help.Topics.Contract' @()
+        Add-HelpUnit 'Topics' 'Atlas.IDE.Help.Topics.Links' @('Atlas.IDE.Help.Topics.Contract', 'Atlas.IDE.Help.Foundation.Texts',
+            'Atlas.IDE.Base.Foundation.Help', 'Atlas.Plugin.Files.Watcher')
+        Add-HelpUnit 'Topics' 'Atlas.IDE.Help.Topics.Hosting.Pages' @('Vcl.Forms', 'ToolsAPI', 'Atlas.IDE.Help.Topics.Contract')
+    }
+
+    Test-Fails 'Feature eines umgestellten Moduls bindet VCL ein' 'Rollenmatrix: Framework aus Root' {
+        Switch-Package 'Atlas.IDE.Help'
+        Add-HelpUnit 'Topics' 'Atlas.IDE.Help.Topics.Links' @('Vcl.Forms')
+    }
+
+    Test-Fails 'Feature eines umgestellten Moduls verwendet Base außerhalb von Foundation' 'Rollenmatrix: fremdes Hosted-Feature Atlas.Core.Settings aus Root' {
+        Switch-Package 'Atlas.IDE.Help'
+        Add-HelpUnit 'Topics' 'Atlas.IDE.Help.Topics.Links' @('Atlas.Core.Settings.Contract')
+    }
+
+    Test-Fails 'Hosted-Features eines Moduls importieren einander nicht' 'Rollenmatrix: fremdes Hosted-Feature Atlas.IDE.Help.Pages aus Root' {
+        Switch-Package 'Atlas.IDE.Help'
+        Add-HelpUnit 'Topics' 'Atlas.IDE.Help.Topics.Links' @('Atlas.IDE.Help.Pages.Contract')
+    }
+
+    Test-Fails 'Umgestelltes Modul verwendet ein anderes umgestelltes Modul' 'Rollenmatrix: Fachcode-Package Atlas.IDE.Tracker aus Host-Shell' {
+        Switch-Package 'Atlas.IDE.Help'
+        Switch-Package 'Atlas.IDE.Tracker'
+        Add-UnitIn 'Packages/Atlas.IDE.Tracker/Source' 'Foundation' 'Atlas.IDE.Tracker.Foundation.Issues' @()
+        Add-HelpUnit 'Shell' 'Atlas.IDE.Help.Shell.Composition' @('Atlas.IDE.Tracker.Foundation.Issues')
+    }
+
+    # Ein Modul aus "layerPackages" hat Schichtnamen; die Rollenmatrix liest sie als Base, die Modulgrenze fängt es.
+    Test-Fails 'Umgestelltes Modul verwendet ein Modul mit Schichtnamen' 'uses Atlas.Core.Ci.Contract – Modulgrenze' {
+        Switch-Package 'Atlas.IDE.Help'
+        Add-HelpUnit 'Shell' 'Atlas.IDE.Help.Shell.Composition' @('Atlas.Core.Ci.Contract')
+    }
+
+    Test-Fails 'Zeile der Zuordnung für eine Unit mit Package im Namen' 'Atlas.IDE.Help.Topics.Links trägt sein Package im Namen' {
+        Switch-Package 'Atlas.IDE.Help'
+        Add-HelpUnit 'Topics' 'Atlas.IDE.Help.Topics.Links' @()
+        Add-AssignmentRow 'Atlas.IDE.Help' 'Atlas.IDE.Help.Topics.Links' 'Topics/Atlas.IDE.Help.Topics.Links.pas' 'Probe'
+    }
+
+    Test-Fails 'layerPackages nennt kein Fachcode-Package' '"layerPackages" nennt Atlas.IDE.Gibtsnicht' {
+        Set-LayerPackages (@(Get-LayerPackages) + 'Atlas.IDE.Gibtsnicht')
+    }
+
+    Test-Fails 'Geplantes Modul ohne Ordner nicht mehr in layerPackages' 'nennt Atlas.IDE.Editor ohne Ordner' {
+        Set-LayerPackages @(Get-LayerPackages | Where-Object { $_ -ne 'Atlas.IDE.Editor' })
+    }
+
+    Test-Fails 'Architekturregeln ordnen verschieden ein' '"layerPackages" von architecture-role-import' {
+        Set-LayerPackages @(Get-LayerPackages | Where-Object { $_ -ne 'Atlas.IDE.Welcome' }) -RoleImportOnly
     }
 
     Test-Fails 'Behobener Altfall der Adapter-Rollen bleibt stehen' 'adapter-name Atlas.IDE.Undo.Gone TGone IAtlasUndoTarget kommt nicht mehr vor' {

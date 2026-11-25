@@ -20,7 +20,7 @@ uses
   Atlas.Common.Mcp.CodeTools,
   Atlas.Common.Mcp.ImplementationTools,
   Atlas.Common.Localization.Texts,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -192,7 +192,7 @@ end;
 
 function ToolFindReferences(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
+  AContext.Code.Namespaces := AContext.Workspace.Namespaces;
   Result := AContext.Code.References(TMcpArgs.RequiredString(AArguments, 'name'));
 end;
 
@@ -206,7 +206,7 @@ end;
 
 function ToolGetCallHierarchy(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
+  AContext.Code.Namespaces := AContext.Workspace.Namespaces;
   Result := AContext.Code.CallHierarchy(TMcpArgs.RequiredString(AArguments, 'name'),
     TMcpCodeTools.ParseDirection(TMcpArgs.OptionalString(AArguments, 'direction')));
 end;
@@ -229,9 +229,9 @@ begin
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'text') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['text', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['text', 'json']));
   end;
-  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
+  AContext.Code.Namespaces := AContext.Workspace.Namespaces;
   if AArguments.TryGetValue<Integer>('depth', mDepth) then
   begin
     Result := AContext.Code.Impact(mName, mDepth, SameText(mFormat, 'json'));
@@ -265,13 +265,13 @@ begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not (AArguments.TryGetValue<Integer>('line', mLine) and AArguments.TryGetValue<Integer>('column', mColumn)) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Missing(['line', 'column']));
+    raise EMcpToolError.Create(TRequestTexts.Missing(['line', 'column']));
   end;
   if not AArguments.TryGetValue<Boolean>('withParameters', mWithParameters) then
   begin
     mWithParameters := False;
   end;
-  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
+  AContext.Code.Namespaces := AContext.Workspace.Namespaces;
   Result := AContext.Code.QualifiedName(mFileName, mLine, mColumn, mWithParameters);
 end;
 
@@ -306,9 +306,9 @@ begin
   if (mFileName = '') or not (AArguments.TryGetValue<Integer>('line', mLine) and
     AArguments.TryGetValue<Integer>('column', mColumn)) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Missing(['name', 'file', 'line', 'column']));
+    raise EMcpToolError.Create(TRequestTexts.Missing(['name', 'file', 'line', 'column']));
   end;
-  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
+  AContext.Code.Namespaces := AContext.Workspace.Namespaces;
   Result := AContext.Code.QualifiedName(AContext.Guard.Resolve(mFileName), mLine, mColumn, False);
 end;
 
@@ -321,7 +321,7 @@ begin
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['markdown', 'json']));
   end;
   if not AArguments.TryGetValue<Boolean>('includeBody', mIncludeBody) then
   begin

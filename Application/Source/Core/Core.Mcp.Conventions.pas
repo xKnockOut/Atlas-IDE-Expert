@@ -10,7 +10,7 @@ interface
 uses
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract.Conventions,
-  Core.Workspace;
+  Atlas.Common.Mcp.Contract.Workspace;
 
 type
   TMcpConventions = class
@@ -19,7 +19,7 @@ type
     const cUri = 'delphi://conventions';
     /// <summary>Meldet die Ressource an AServer an; gelesen wird erst beim Abruf, mit den Einstellungen von
     /// AWorkspace zu diesem Zeitpunkt und den Konventionen aus AConventions.</summary>
-    class procedure Register(AServer: TMcpServer; AWorkspace: TCoreWorkspace; const AConventions: IMcpConventions);
+    class procedure Register(AServer: TMcpServer; const AWorkspace: IMcpWorkspace; const AConventions: IMcpConventions);
       static;
   end;
 
@@ -45,7 +45,7 @@ const
 
 /// <summary>Projektkonventionen (#272) als Markdown; eigene Routine, damit die anonyme Methode nur AWorkspace und
 /// AConventions einfängt.</summary>
-function ConventionsOf(AWorkspace: TCoreWorkspace; const AConventions: IMcpConventions): TFunc<string>;
+function ConventionsOf(const AWorkspace: IMcpWorkspace; const AConventions: IMcpConventions): TFunc<string>;
 var
   mConventions: IMcpConventions;
 begin
@@ -55,8 +55,8 @@ begin
     var
       mProtected: string;
     begin
-      Result := mConventions.Markdown(AWorkspace.Configuration.Settings);
-      mProtected := TMcpProtectedFiles.Markdown(AWorkspace.Configuration.Settings.AssistantProtected);
+      Result := mConventions.Markdown(AWorkspace.Settings);
+      mProtected := TMcpProtectedFiles.Markdown(AWorkspace.Settings.AssistantProtected);
       if mProtected <> '' then
       begin
         Result := TrimRight(Result) + sLineBreak + sLineBreak + mProtected;
@@ -66,7 +66,7 @@ end;
 
 { TMcpConventions }
 
-class procedure TMcpConventions.Register(AServer: TMcpServer; AWorkspace: TCoreWorkspace;
+class procedure TMcpConventions.Register(AServer: TMcpServer; const AWorkspace: IMcpWorkspace;
   const AConventions: IMcpConventions);
 begin
   AServer.AddResource(cUri, cTexts[TMcpConventionsText.Name].Text, cTexts[TMcpConventionsText.Description].Text,

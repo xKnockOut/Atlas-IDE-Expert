@@ -26,7 +26,7 @@ uses
   Atlas.Common.Mutation.Contract,
   Atlas.Common.Mutation.Report,
   Atlas.Common.Lsp.BoundaryCases,
-  Core.Texts,
+  Atlas.Common.Localization.RequestTexts,
   Atlas.Common.Localization.Texts;
 
 type
@@ -126,7 +126,7 @@ begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not TMutationReport.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json', 'diff']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['markdown', 'json', 'diff']));
   end;
   mOptions := TMutationOptions.Default;
   mOptions.Routine := Trim(TMcpArgs.OptionalString(AArguments, 'routine'));
@@ -180,7 +180,7 @@ begin
   mFormat := LowerCase(Trim(TMcpArgs.OptionalString(AArguments, 'format')));
   if (mFormat <> '') and (mFormat <> 'markdown') and (mFormat <> 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['markdown', 'json']));
   end;
   if not ReadSourceText(mFileName, mText) then
   begin

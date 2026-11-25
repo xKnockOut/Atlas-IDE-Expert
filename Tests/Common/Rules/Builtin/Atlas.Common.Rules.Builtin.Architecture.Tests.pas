@@ -49,6 +49,14 @@ type
     procedure DescribesOwnAndForeign;
     [Test]
     procedure DescribesNestedAndHostRoles;
+    [Test]
+    procedure ClassifiesDomainPackage;
+    [Test]
+    procedure ClassifiesLayerPackageAndTargets;
+    [Test]
+    procedure ClassifiesBaseBeforeSwitch;
+    [Test]
+    procedure DescribesDomainPackage;
   end;
 
   [TestFixture]
@@ -74,6 +82,8 @@ type
     procedure TestUnitIsSilent;
     [Test]
     procedure ParsesOptions;
+    [Test]
+    procedure ChecksDomainPackage;
   end;
 
   [TestFixture]
@@ -95,6 +105,8 @@ type
     procedure ApprovedTypeIsSilent;
     [Test]
     procedure ChecksRoleAfterThingAndSubContract;
+    [Test]
+    procedure ChecksContractOfDomainPackage;
   end;
 
 implementation
@@ -107,8 +119,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Architecture,
-  Atlas.Tests.RuleAssert,
-  Atlas.Text.Json;
+  Atlas.Tests.RuleAssert;
 
 const
   cLayerConfig =
@@ -345,37 +356,35 @@ end;
 
 procedure TArchitectureMatrixTests.MatrixCasesFromFile;
 var
-  mFileName: string;
+  mFileName, mText: string;
   mRoot: TJSONValue;
   mData: TJSONObject;
   mItem: TJSONValue;
   mCase_: TJSONObject;
-  mCasePrefixes, mCaseHosts, mCaseHosted: TArray<string>;
+  mOptions: TRoleImportOptions;
   mSource, mTarget: TArchitectureUnit;
   mCount: Integer;
 begin
   mFileName := RoleImportsFile;
   Assert.AreNotEqual('', mFileName, 'Tests\Data\Architecture\role-imports.json nicht gefunden');
-  mRoot := TJSONObject.ParseJSONValue(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+  mText := TFile.ReadAllText(mFileName, TEncoding.UTF8);
+  // Dieselben Schlüssel wie die Optionen der Regel in atlas.json.
+  mOptions := TRoleImportRule.ParseOptions(mText);
+  mRoot := TJSONObject.ParseJSONValue(mText);
   try
     Assert.IsTrue(mRoot is TJSONObject);
     mData := TJSONObject(mRoot);
-    mCasePrefixes := TJsonRead.Strings(mData, 'prefixes');
-    mCaseHosts := TJsonRead.Strings(mData, 'hostRoles');
-    mCaseHosted := TJsonRead.Strings(mData, 'hostedFeatures');
     mCount := 0;
     for mItem in mData.GetValue<TJSONArray>('cases') do
     begin
       mCase_ := mItem as TJSONObject;
-      mSource := TArchitectureMatrix.Classify(mCase_.GetValue<string>('from'), mCasePrefixes, mCaseHosts,
-        mCaseHosted);
-      mTarget := TArchitectureMatrix.Classify(mCase_.GetValue<string>('to'), mCasePrefixes, mCaseHosts,
-        mCaseHosted);
+      mSource := TArchitectureMatrix.ClassifySource(mCase_.GetValue<string>('from'), mOptions);
+      mTarget := TArchitectureMatrix.ClassifyTarget(mSource, mCase_.GetValue<string>('to'), mOptions);
       Assert.AreEqual(mCase_.GetValue<Boolean>('allowed'), TArchitectureMatrix.Allowed(mSource, mTarget),
         mCase_.GetValue<string>('from') + ' -> ' + mCase_.GetValue<string>('to'));
       Inc(mCount);
     end;
-    Assert.IsTrue(mCount > 100, 'Fallliste unvollständig');
+    Assert.IsTrue(mCount > 600, 'Fallliste unvollständig');
   finally
     mRoot.Free;
   end;
@@ -403,6 +412,118 @@ begin
     Classify('Atlas.Common.Logging.Providers.Logger')));
   Assert.AreEqual('fremde Host-Shell aus Host-Core', TArchitectureMatrix.Describe(Classify('Core.Settings'),
     Classify('Shell.Main')));
+end;
+
+const
+  cDomainKeys = '"prefixes": ["Atlas.Plugin", "Atlas.IDE.Base", "Atlas.IDE.Modul", "Atlas.IDE.Andere", ' +
+    '"Atlas.IDE.Alt"], "domainPackages": ["Atlas.IDE.Base", "Atlas.IDE.Modul", "Atlas.IDE.Andere", ' +
+    '"Atlas.IDE.Alt"], "basePackage": "Atlas.IDE.Base", "layerPrefixes": ["Atlas.Core", "Atlas.IDE"], ' +
+    '"layerPackages": ["Atlas.IDE.Alt"], "frameworks": ["Vcl", "ToolsAPI"]';
+
+function DomainOptions: TRoleImportOptions;
+begin
+  Result := TRoleImportRule.ParseOptions('{ ' + cDomainKeys + ' }');
+end;
+
+procedure TArchitectureMatrixTests.ClassifiesDomainPackage;
+var
+  U: TArchitectureUnit;
+begin
+  // Host-Rolle im Fachcode-Package (Konzept 8.1).
+  U := TArchitectureMatrix.ClassifySource('Atlas.IDE.Modul.Shell.Composition', DomainOptions);
+  Assert.AreEqual(Ord(TArchitectureRole.Host), Ord(U.Role));
+  Assert.AreEqual('Shell', U.Feature);
+  Assert.AreEqual('Atlas.IDE.Modul', U.Package);
+  Assert.AreEqual('Atlas.IDE.Base', U.BasePackage);
+  Assert.IsFalse(U.Hosted);
+  // Hosted-Feature des Packages (8.2), Rolle wie bei jedem Feature.
+  U := TArchitectureMatrix.ClassifySource('Atlas.IDE.Modul.Topics.Hosting.Pages', DomainOptions);
+  Assert.IsTrue(U.Hosted);
+  Assert.AreEqual('Atlas.IDE.Modul', U.Artefact);
+  Assert.AreEqual('Topics', U.Feature);
+  Assert.AreEqual(Ord(TArchitectureRole.Hosting), Ord(U.Role));
+  // Platform-Feature und Framework.
+  U := TArchitectureMatrix.ClassifySource('Atlas.Plugin.Files.Watcher', DomainOptions);
+  Assert.AreEqual('', U.Package);
+  Assert.IsFalse(U.Hosted);
+  U := TArchitectureMatrix.ClassifySource('ToolsAPI.Editor', DomainOptions);
+  Assert.IsTrue(U.Framework);
+  Assert.IsFalse(U.Known);
+  Assert.IsFalse(TArchitectureMatrix.ClassifySource('VclTee.Chart', DomainOptions).Framework);
+end;
+
+procedure TArchitectureMatrixTests.ClassifiesLayerPackageAndTargets;
+var
+  mSource, mTarget: TArchitectureUnit;
+begin
+  // Ein Package aus "layerPackages" heißt noch nach Schichten: Atlas.IDE ist das Präfix, Alt das Feature.
+  mSource := TArchitectureMatrix.ClassifySource('Atlas.IDE.Alt.Composition', DomainOptions);
+  Assert.IsTrue(mSource.Layer);
+  Assert.AreEqual('Atlas.IDE', mSource.Artefact);
+  Assert.AreEqual('Alt', mSource.Feature);
+  Assert.AreEqual(Ord(TArchitectureRole.Composition), Ord(mSource.Role));
+  // Seine Ziele ebenso, auch mit dem Präfix eines umgestellten Packages.
+  mTarget := TArchitectureMatrix.ClassifyTarget(mSource, 'Atlas.IDE.Base.Foundation.Probe', DomainOptions);
+  Assert.IsTrue(mTarget.Layer);
+  Assert.AreEqual('Base', mTarget.Feature);
+  // Aus einem Fachcode-Package: ein Schichtname ist ein Hosted-Feature von Base, auch mit dem Präfix eines
+  // Packages aus "layerPackages" (Atlas.IDE.Editor.* in Base vor dem Modul Editor).
+  mSource := TArchitectureMatrix.ClassifySource('Atlas.IDE.Modul.Topics.Links', DomainOptions);
+  mTarget := TArchitectureMatrix.ClassifyTarget(mSource, 'Atlas.IDE.Alt.Foundation.Sache', DomainOptions);
+  Assert.IsTrue(mTarget.Layer);
+  Assert.AreEqual('Atlas.IDE.Base', mTarget.Package);
+  Assert.IsTrue(mTarget.Hosted);
+  Assert.AreEqual('Alt', mTarget.Feature);
+  mTarget := TArchitectureMatrix.ClassifyTarget(mSource, 'Atlas.Core.Settings.Contract', DomainOptions);
+  Assert.AreEqual('Atlas.IDE.Base', mTarget.Package);
+  Assert.IsTrue(mTarget.Hosted);
+  Assert.AreEqual(Ord(TArchitectureRole.Contract), Ord(mTarget.Role));
+  // Aus einem Platform-Feature: umgestellte Fachcode-Packages nach ihrem Präfix, die übrigen nach Schichtnamen.
+  mSource := TArchitectureMatrix.ClassifySource('Atlas.Plugin.Files.Watcher', DomainOptions);
+  Assert.AreEqual('Atlas.IDE.Modul', TArchitectureMatrix.ClassifyTarget(mSource, 'Atlas.IDE.Modul.Sache',
+    DomainOptions).Package);
+  Assert.AreEqual('', TArchitectureMatrix.ClassifyTarget(mSource, 'Atlas.IDE.Alt.Sache', DomainOptions).Package);
+end;
+
+procedure TArchitectureMatrixTests.ClassifiesBaseBeforeSwitch;
+var
+  mOptions: TRoleImportOptions;
+  mSource, mTarget: TArchitectureUnit;
+begin
+  // Base steht noch in "layerPackages", hat aber schon Units mit seinem Namen (Foundation): Als Ziel aus einem
+  // umgestellten Modul gilt sein Präfix, als Quelle noch der Schichtname.
+  mOptions := TRoleImportRule.ParseOptions('{ "prefixes": ["Atlas.IDE.Base", "Atlas.IDE.Modul"], ' +
+    '"domainPackages": ["Atlas.IDE.Base", "Atlas.IDE.Modul"], "basePackage": "Atlas.IDE.Base", ' +
+    '"layerPrefixes": ["Atlas.IDE"], "layerPackages": ["Atlas.IDE.Base"] }');
+  mSource := TArchitectureMatrix.ClassifySource('Atlas.IDE.Modul.Topics.Links', mOptions);
+  mTarget := TArchitectureMatrix.ClassifyTarget(mSource, 'Atlas.IDE.Base.Foundation.Probe', mOptions);
+  Assert.AreEqual('Atlas.IDE.Base', mTarget.Package);
+  Assert.AreEqual(Ord(TArchitectureRole.Host), Ord(mTarget.Role));
+  Assert.IsTrue(TArchitectureMatrix.Allowed(mSource, mTarget));
+  Assert.IsTrue(TArchitectureMatrix.ClassifySource('Atlas.IDE.Base.Foundation.Probe', mOptions).Layer);
+end;
+
+procedure TArchitectureMatrixTests.DescribesDomainPackage;
+var
+  mSource: TArchitectureUnit;
+
+  function DescribeTarget(const ATarget: string): string;
+  begin
+    Result := TArchitectureMatrix.Describe(mSource, TArchitectureMatrix.ClassifyTarget(mSource, ATarget,
+      DomainOptions));
+  end;
+
+begin
+  mSource := TArchitectureMatrix.ClassifySource('Atlas.IDE.Modul.Topics.Links', DomainOptions);
+  Assert.AreEqual('Framework aus Root; nur Hosting und Host-Rollen binden es ein', DescribeTarget('Vcl.Forms'));
+  Assert.AreEqual('Fachcode-Package Atlas.IDE.Andere aus Root', DescribeTarget('Atlas.IDE.Andere.Topics.Contract'));
+  Assert.AreEqual('fremdes Hosted-Feature Atlas.Core.Settings aus Root', DescribeTarget('Atlas.Core.Settings.Contract'));
+  Assert.AreEqual('fremdes Hosted-Feature Atlas.IDE.Modul.Pages aus Root', DescribeTarget('Atlas.IDE.Modul.Pages.Contract'));
+  Assert.AreEqual('fremde Host-Core aus Root', DescribeTarget('Atlas.IDE.Base.Core.Probe'));
+  mSource := TArchitectureMatrix.ClassifySource('Atlas.IDE.Modul.Core.Run', DomainOptions);
+  Assert.AreEqual('fremde Host-Shell aus Host-Core', DescribeTarget('Atlas.IDE.Base.Shell.Register'));
+  mSource := TArchitectureMatrix.ClassifySource('Atlas.Plugin.Files.Watcher', DomainOptions);
+  Assert.AreEqual('Fachcode-Package Atlas.IDE.Base aus Root', DescribeTarget('Atlas.IDE.Base.Foundation.Probe'));
 end;
 
 { TRoleImportRuleTests }
@@ -551,6 +672,43 @@ begin
   Assert.AreEqual(1, Integer(Length(mOptions.HostRoles)));
   Assert.AreEqual(2, Integer(Length(mOptions.HostedFeatures)));
   Assert.AreEqual(0, Integer(Length(TRoleImportRule.ParseOptions('kein json').Prefixes)));
+  mOptions := DomainOptions;
+  Assert.AreEqual(4, Integer(Length(mOptions.DomainPackages)));
+  Assert.AreEqual('Atlas.IDE.Base', mOptions.BasePackage);
+  Assert.AreEqual(2, Integer(Length(mOptions.LayerPrefixes)));
+  Assert.AreEqual(1, Integer(Length(mOptions.LayerPackages)));
+  Assert.AreEqual(2, Integer(Length(mOptions.Frameworks)));
+end;
+
+procedure TRoleImportRuleTests.ChecksDomainPackage;
+const
+  cConfig = '{ "rules": { "architecture-role-import": { "severity": "warning", ' + cDomainKeys + ' } } }';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Feature eines Moduls: von Base nur Foundation, kein anderes Feature, kein Framework außerhalb von Hosting.
+  mFindings := TRuleAssert.Findings(TRoleImportRule.Create,
+    'unit Atlas.IDE.Modul.Topics.Links;'#10'interface'#10 +
+    'uses Vcl.Forms, Atlas.IDE.Base.Foundation.Probe, Atlas.IDE.Base.Core.Probe, Atlas.Core.Settings.Contract, ' +
+    'Atlas.IDE.Modul.Pages.Contract, Atlas.IDE.Modul.Topics.Contract, Atlas.Plugin.Files.Watcher;'#10 +
+    'implementation'#10'end.', cConfig, 'Source/x.pas');
+  Assert.AreEqual(4, Integer(Length(mFindings)));
+  Assert.IsTrue(Pos('Vcl.Forms', mFindings[0].Message) > 0, mFindings[0].Message);
+  Assert.IsTrue(Pos('Atlas.IDE.Base.Core.Probe', mFindings[1].Message) > 0, mFindings[1].Message);
+  Assert.IsTrue(Pos('Atlas.Core.Settings.Contract', mFindings[2].Message) > 0, mFindings[2].Message);
+  Assert.IsTrue(Pos('Atlas.IDE.Modul.Pages.Contract', mFindings[3].Message) > 0, mFindings[3].Message);
+  // Hosting kapselt das Framework; die Shell des Moduls sieht Host-Rollen und Features von Base.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
+    'unit Atlas.IDE.Modul.Topics.Hosting.Pages;'#10'interface'#10'uses Vcl.Forms, ToolsAPI, ' +
+    'Atlas.IDE.Modul.Topics.Contract;'#10'implementation'#10'end.', cConfig, 'Source/x.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
+    'unit Atlas.IDE.Modul.Shell.Composition;'#10'interface'#10'uses Atlas.IDE.Base.Core.Probe, ' +
+    'Atlas.Core.Settings.Store, Atlas.IDE.Modul.Topics.Providers.Store;'#10'implementation'#10'end.', cConfig,
+    'Source/x.pas'))));
+  // Ein Package aus "layerPackages" prüft die alte Regel.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRoleImportRule.Create,
+    'unit Atlas.IDE.Alt.Composition;'#10'interface'#10'uses Vcl.Forms, Atlas.IDE.Base.Foundation.Probe;'#10 +
+    'implementation'#10'end.', cConfig, 'Source/x.pas'))));
 end;
 
 { TContractContentRuleTests }
@@ -642,6 +800,17 @@ begin
     'type'#10'  TCacheList = class'#10'  end;'#10'implementation'#10'end.'))), 'Sub-Contract');
   Assert.AreEqual(0, Integer(Length(ContractFindings('unit App.Orders.Contract.Internals.Lists;'#10'interface'#10 +
     'type'#10'  TOrderList = class'#10'  end;'#10'implementation'#10'end.'))), 'Internals einer Struktur');
+end;
+
+procedure TContractContentRuleTests.ChecksContractOfDomainPackage;
+const
+  cConfig = '{ "rules": { "architecture-contract-content": { "severity": "warning", "prefixes": ["App.Modul"], ' +
+    '"domainPackages": ["App.Modul"] } } }';
+begin
+  Assert.AreEqual(1, Integer(Length(ContractFindings('unit App.Modul.Orders.Contract;'#10'interface'#10'type'#10 +
+    '  TOrderList = class'#10'  end;'#10'implementation'#10'end.', cConfig))), 'Contract eines Hosted-Features');
+  Assert.AreEqual(0, Integer(Length(ContractFindings('unit App.Modul.Foundation.Orders;'#10'interface'#10'type'#10 +
+    '  TOrderList = class'#10'  end;'#10'implementation'#10'end.', cConfig))), 'Host-Rolle, kein Contract');
 end;
 
 initialization
