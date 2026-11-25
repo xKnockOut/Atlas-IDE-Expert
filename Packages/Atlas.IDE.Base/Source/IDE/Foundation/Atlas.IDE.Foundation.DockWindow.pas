@@ -55,7 +55,6 @@ type
     /// </summary>
     class var FDockForms: TArray<TCustomForm>;
     class var FOnFrameCreated: TProc<string, TCustomFrame>;
-    class function IsDockForm(AForm: TCustomForm): Boolean; static;
     /// <summary>Thema der IDE an der Form: Grund per ApplyTheme, bei dunklem Thema eine dunkle Titelleiste von
     /// Windows. Kein VCL-Stil an der Form: Der zeichnete die Titelleiste selbst und verlor beim Ziehen die
     /// Schaltflächen.</summary>
@@ -78,6 +77,10 @@ type
     /// <summary>Atlas-Symbol (#751) als Icon der Form von AHost (Fenstertitel, schwebend); nichts ohne Fenster
     /// oder Form.</summary>
     class procedure UpdateIcon(AHost: TAtlasIdeDockWindow); static;
+    /// <summary>AForm ist die Form eines Atlas-Dockfensters. Wer Fenster der IDE nach dem Namen sucht
+    /// (Ereignisprotokoll, #580), überspringt damit die eigenen; sonst liest Atlas seine eigenen Zeilen wieder ein.
+    /// </summary>
+    class function IsDockForm(AForm: TCustomForm): Boolean; static;
     /// <summary>Aus INTACustomDockableForm.FrameCreated aufrufen: merkt Frame und Form.</summary>
     procedure FrameCreated(AFrame: TCustomFrame);
     /// <summary>Fenster zeigen, bei Bedarf (neu) anlegen, ein neues mit Atlas-Symbol; ACreated: neu angelegt.
