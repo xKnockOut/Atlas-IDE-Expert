@@ -115,6 +115,7 @@ begin
     Assert.AreEqual(Ord(TRuleSeverity.Hint),
       Ord(mWorkspace.SettingsOf(Path('Fremd.pas')).RuleSeverity('empty-except', TRuleSeverity.Default)));
     Assert.AreEqual(Path('atlas.json'), mWorkspace.SettingsFile);
+    Assert.AreEqual(TCoreBootstrap.GlobalSettingsFile, mWorkspace.GlobalSettingsFile);
     Assert.AreEqual(string.Join('|', mGroup.Main.State.ProjectFiles), string.Join('|', mWorkspace.ProjectFiles));
     Assert.AreEqual(string.Join('|', mGroup.AllFiles), string.Join('|', mWorkspace.AllFiles));
     Assert.AreEqual(string.Join('|', mGroup.Main.State.Namespaces), string.Join('|', mWorkspace.Namespaces));

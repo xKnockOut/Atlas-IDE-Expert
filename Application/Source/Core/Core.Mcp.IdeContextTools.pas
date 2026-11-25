@@ -55,15 +55,17 @@ end;
 function ToolGetIdeContext(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
   mRequest: TMcpIdeContextRequest;
+  mIde: TMcpIde;
   mContexts: TArray<TIdeContext>;
   mIndex: Integer;
   mReason: string;
 begin
   mRequest := TMcpIdeContextRequest.FromArguments(AArguments);
-  mContexts := IdeContexts;
+  mIde := TMcpIde.Create(AContext.Adapters.Process);
+  mContexts := mIde.IdeContexts;
   if Length(mContexts) = 0 then
   begin
-    Exit(TMcpIdeContext.NoContext(RunningIdePids));
+    Exit(TMcpIdeContext.NoContext(mIde.RunningIdePids));
   end;
   mIndex := TMcpIdeContext.Pick(mContexts, mRequest.Ide, mReason);
   if mIndex < 0 then

@@ -19,7 +19,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Findings.Filter,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.BulkFix,
   Core.CommandLine,

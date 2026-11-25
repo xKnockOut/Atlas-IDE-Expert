@@ -383,6 +383,8 @@ type
     property TrackLines: Boolean read FEditorTyping.TrackLines write FEditorTyping.TrackLines;
     property ProblemsStatusCounter: Boolean read FEditorInsight.ProblemsStatusCounter
       write FEditorInsight.ProblemsStatusCounter;
+    property ProblemsHideWhileDebugging: Boolean read FEditorInsight.ProblemsHideWhileDebugging
+      write FEditorInsight.ProblemsHideWhileDebugging;
     property NextProblemKey: Integer read FNavigationKeys.NextProblemKey write FNavigationKeys.NextProblemKey;
     property PreviousProblemKey: Integer read FNavigationKeys.PreviousProblemKey
       write FNavigationKeys.PreviousProblemKey;

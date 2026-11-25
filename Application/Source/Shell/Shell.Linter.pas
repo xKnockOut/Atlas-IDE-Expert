@@ -122,7 +122,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Index.CacheDirectory,
   Core.Linter.Output,
   Core.Linter.Check,

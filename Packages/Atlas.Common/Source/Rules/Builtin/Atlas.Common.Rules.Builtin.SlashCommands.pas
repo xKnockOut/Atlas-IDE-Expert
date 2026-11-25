@@ -30,13 +30,12 @@ implementation
 
 uses
   System.StrUtils,
+  Atlas.Common.Pascal.CommandLines,
+  Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.SlashCommands,
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.MaintenanceCommands,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -62,9 +61,13 @@ end;
 
 procedure TSlashCommandRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  mProblem: TSlashProblem;
+  mProblem: TRuleSlashProblem;
 begin
-  for mProblem in TSlashCommandRegistry.Shared.Problems(AContext.Text, nil, AContext.Index, AContext.DelphiVersion) do
+  if AContext.Refactorings.Commands = nil then
+  begin
+    Exit;
+  end;
+  for mProblem in AContext.Refactorings.Commands.Problems(AContext.Text, AContext.Index, AContext.DelphiVersion) do
   begin
     AReport.Add(mProblem.Range, mProblem.Message);
   end;
@@ -105,7 +108,7 @@ var
   mIndex, mSpace: Integer;
   mName, mArguments, mId: string;
 begin
-  if Pos('/ignore', AContext.Text) = 0 then
+  if (AContext.Refactorings.Commands = nil) or (Pos('/ignore', AContext.Text) = 0) then
   begin
     Exit;
   end;
@@ -113,7 +116,7 @@ begin
   mTokens := nil;
   for mIndex := 0 to High(mLines) - 1 do
   begin
-    if not TSlashCommandRegistry.Split(mLines[mIndex], mName, mArguments) or not SameText(mName, 'ignore') or
+    if not TPascalCommandLines.Split(mLines[mIndex], mName, mArguments) or not SameText(mName, 'ignore') or
       (Trim(mLines[mIndex + 1]) = '') then
     begin
       Continue;
@@ -128,11 +131,11 @@ begin
     begin
       mTokens := ContextTokens(AContext);
     end;
-    if TSlashCommandRegistry.IsCodeLine(mTokens, mIndex) then
+    if TPascalCommandLines.IsCodeLine(mTokens, mIndex) then
     begin
       AReport.Add(TTextRange.Create(TTextPosition.Create(mIndex, 0),
         TTextPosition.Create(mIndex, Length(mLines[mIndex]))),
-        Format(IgnoreNoHitHint, [mId]));
+        AContext.Refactorings.Commands.IgnoreWithoutHit(mId));
     end;
   end;
 end;

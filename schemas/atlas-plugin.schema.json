@@ -4605,6 +4605,24 @@
       "x-page": "Compiler",
       "x-issue": "#509"
     },
+    "ProblemsHideWhileDebugging": {
+      "type": "boolean",
+      "default": true,
+      "description": "Solange ein Programm im Debugger läuft (vom Start bis zum Ende der Sitzung), keine Wellenlinien, keinen Fehlertext am Zeilenende und keine Befunde im Hover zeigen, damit Debug-Werte und Tooltips der IDE frei bleiben; danach erscheinen sie sofort wieder. Fenster „Atlas-Prüfung“, Zähler, Atlas-Spalte und Übersichtsleiste bleiben.",
+      "x-key": "problems.hideWhileDebugging",
+      "x-area": "editor",
+      "x-page": "Compiler",
+      "x-parent": "problems.enabled",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Befunde im Editor beim Debuggen ausblenden",
+      "x-captionEn": "Hide findings in the editor while debugging",
+      "x-issue": "#2962",
+      "x-keywords": [
+        "Debugger",
+        "Debuggen",
+        "Squiggles"
+      ]
+    },
     "ProblemsWindow": {
       "type": "boolean",
       "default": true,

@@ -12,8 +12,6 @@ type
   TSlashCommandsTests = class
   public
     [Test]
-    procedure SplitsCommandLines;
-    [Test]
     procedure UsesRunsThroughRegistry;
     [Test]
     procedure UnknownCommandStaysWithHint;
@@ -90,22 +88,6 @@ begin
 end;
 
 { TSlashCommandsTests }
-
-procedure TSlashCommandsTests.SplitsCommandLines;
-var
-  mName, mArguments: string;
-begin
-  Assert.IsTrue(TSlashCommandRegistry.Split('  /uses A, B', mName, mArguments));
-  Assert.AreEqual('uses', mName);
-  Assert.AreEqual('A, B', mArguments);
-  Assert.IsTrue(TSlashCommandRegistry.Split('/const! X = 1', mName, mArguments));
-  Assert.AreEqual('const!', mName);
-  Assert.IsTrue(TSlashCommandRegistry.Split('/guid', mName, mArguments));
-  Assert.AreEqual('', mArguments);
-  Assert.IsFalse(TSlashCommandRegistry.Split('// Kommentar', mName, mArguments));
-  Assert.IsFalse(TSlashCommandRegistry.Split('A / B', mName, mArguments));
-  Assert.IsFalse(TSlashCommandRegistry.Split('/ 2', mName, mArguments));
-end;
 
 procedure TSlashCommandsTests.UsesRunsThroughRegistry;
 var
