@@ -48,7 +48,7 @@ uses
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Hotspots.Service,
   Atlas.IDE.SymbolPath.Service,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Analysis.Strings;
 
 /// <summary>„Weg von hier nach …“ im Kontextmenü des Editors; ohne Symbol am Cursor trotzdem der Dialog („Von“

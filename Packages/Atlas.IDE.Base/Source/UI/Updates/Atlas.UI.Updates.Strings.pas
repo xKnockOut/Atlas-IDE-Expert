@@ -4,7 +4,7 @@
 // Optionsseite, Angebot, Auswahl der Module, Stand, Ergebnis und Fehlercodes
 // von AtlasUpdate.exe sowie die Meldung einer gescheiterten Update-Prüfung.
 // Die Sprache bestimmt TAtlasStrings.Language; die Texte der Update-Prüfung
-// (#495) bleiben in Atlas.UI.Strings.
+// (#495) bleiben in Atlas.Plugin.Localization.Strings.
 
 interface
 
@@ -42,7 +42,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasUpdatesTextId] of string = (

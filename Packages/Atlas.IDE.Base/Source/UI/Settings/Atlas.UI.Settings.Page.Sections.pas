@@ -78,12 +78,12 @@ uses
   System.SysUtils,
   Vcl.StdCtrls,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.StoreValues,
-  Atlas.Core.Settings.PageNames,
+  Atlas.Plugin.Settings.PageNames,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Watch,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cSectionKeyMissing = 'Einstellung %s ist keine Plugin-Einstellung';

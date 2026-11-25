@@ -38,7 +38,7 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.OwnCode,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Sources,

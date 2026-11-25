@@ -61,7 +61,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Text.Defines,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Build.Target,
   Atlas.IDE.Foundation.Settings,

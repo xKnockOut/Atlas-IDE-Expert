@@ -460,8 +460,8 @@ $JsonParseLockNames = @('ParseObject', 'ParseValue', 'ParseJson', 'Parse', 'Pars
 $AllowedJsonParseLocal = @{
     'Atlas.Plugin.Settings.JsonText:Parse'                   = 'Deklaration von TAtlasJsonText.Parse'
     'Atlas.Plugin.Settings.JsonText:TAtlasJsonText.Parse'    = 'entfernt Kommentare (JSONC), leitet an TJsonRead.ParseObject weiter'
-    'Atlas.Core.Settings.Catalog:Parse'                    = 'Deklaration von TAtlasJsonValues.Parse'
-    'Atlas.Core.Settings.Catalog:TAtlasJsonValues.Parse'   = 'liest auch einzelne Zahlen, Strings und Wahrheitswerte (über ein Hüllobjekt)'
+    'Atlas.Plugin.Settings.Catalog:Parse'                    = 'Deklaration von TAtlasJsonValues.Parse'
+    'Atlas.Plugin.Settings.Catalog:TAtlasJsonValues.Parse'   = 'liest auch einzelne Zahlen, Strings und Wahrheitswerte (über ein Hüllobjekt)'
 }
 
 # Kopien-Sperre für JSON schreiben: nach Form statt nach Namen, damit neue Namen derselben Kopie auffallen.

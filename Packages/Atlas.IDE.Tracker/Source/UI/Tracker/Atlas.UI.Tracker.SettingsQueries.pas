@@ -74,7 +74,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Settings.Strings,
   Atlas.UI.Tracker.QueryDialog;
 

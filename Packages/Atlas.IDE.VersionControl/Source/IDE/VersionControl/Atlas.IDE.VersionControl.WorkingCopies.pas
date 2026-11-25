@@ -73,7 +73,7 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.Pull,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.ToolsApi.Windows.DockWindow,
   Atlas.ToolsApi.Files.Service,

@@ -97,7 +97,7 @@ uses
   System.Classes,
   Vcl.Forms,
   Atlas.Core.Debug.ThreadMarks,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,

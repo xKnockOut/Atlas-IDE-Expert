@@ -9,7 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 type
   [TestFixture]

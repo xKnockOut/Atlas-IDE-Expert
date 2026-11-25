@@ -49,7 +49,7 @@ uses
   Atlas.Vcl.Theme.Service,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.KeyMap;
 
 var

@@ -97,7 +97,7 @@ implementation
 uses
   System.Math,
   System.UITypes,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Attach.Strings,
+  Atlas.Plugin.Localization.Strings,  Atlas.UI.Tracker.Attach.Strings,
   Atlas.Vcl.Theme.Scaling;
 
 const

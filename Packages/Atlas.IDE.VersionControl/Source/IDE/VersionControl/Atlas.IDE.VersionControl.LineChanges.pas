@@ -96,7 +96,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Vcl.Popup.TitledTip,
   Atlas.ToolsApi.Editor.Buffer,

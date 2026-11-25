@@ -141,7 +141,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Vcl.Theme.Scaling;

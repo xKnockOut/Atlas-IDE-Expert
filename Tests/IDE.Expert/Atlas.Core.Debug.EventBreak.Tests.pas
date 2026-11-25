@@ -41,7 +41,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.EventBreakNames,
+  Atlas.Plugin.Settings.EventBreakNames,
   System.SysUtils,
   System.JSON;
 

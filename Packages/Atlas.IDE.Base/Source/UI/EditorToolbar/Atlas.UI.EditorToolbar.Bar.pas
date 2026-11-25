@@ -175,7 +175,7 @@ implementation
 
 uses
   Atlas.Plugin.Style.Color,
-  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Plugin.Settings.ToolbarItems,
   System.Math,
   Vcl.Forms,
   Atlas.Plugin.Diagnostics.Guard,

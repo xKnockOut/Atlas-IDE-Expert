@@ -7,7 +7,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Groups;
 
 type

@@ -24,7 +24,7 @@ uses
   Vcl.Menus,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Vcl.Options.ChoiceBox;
 
 type

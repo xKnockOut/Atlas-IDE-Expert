@@ -109,7 +109,7 @@ uses
   System.IOUtils,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Files.TextFile,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tests.Strings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.ToolsApi.Files.Service,

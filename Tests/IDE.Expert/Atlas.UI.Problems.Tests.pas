@@ -9,7 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 type
   [TestFixture]
@@ -79,7 +79,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Problems.ScopeProjects,
-  Atlas.Core.Settings.ProblemsUpdate,
+  Atlas.Plugin.Settings.ProblemsUpdate,
   Atlas.UI.Problems.ScopeBox,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain;

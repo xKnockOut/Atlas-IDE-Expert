@@ -10,7 +10,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Settings.Catalog;
+  Atlas.Plugin.Settings.Catalog;
 
 type
   [TestFixture]
@@ -117,7 +117,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.ProfileData,
+  Atlas.Plugin.Settings.ProfileData,
   Atlas.Core.Settings.Transfer;
 
 const

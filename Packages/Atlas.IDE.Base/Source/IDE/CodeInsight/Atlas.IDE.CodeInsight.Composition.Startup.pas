@@ -38,7 +38,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Win.Registry,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Plugin.Localization.Language,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Diagnostics.Watchdog,

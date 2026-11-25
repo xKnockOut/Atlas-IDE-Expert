@@ -55,7 +55,7 @@ uses
   Atlas.Core.Editor.Pairs,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.VersionControl.LineChangesPlan,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.Navigation;

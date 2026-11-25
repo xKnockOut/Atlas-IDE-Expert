@@ -28,7 +28,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog;
+  Atlas.Plugin.Settings.Catalog;
 
 type
   /// <summary>Wert einer Umgebungsvariablen (APPDATA, LOCALAPPDATA, USERPROFILE, USERNAME); '' = unbekannt. Wie
@@ -228,7 +228,7 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Settings.QueryMigration,
-  Atlas.Core.Settings.ProblemsUpdate,
+  Atlas.Plugin.Settings.ProblemsUpdate,
   Atlas.Plugin.Localization.Language,
   Atlas.Text.Json,
   Atlas.Core.Settings.Contract;

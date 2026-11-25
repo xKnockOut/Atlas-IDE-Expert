@@ -13,7 +13,7 @@ uses
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Vcl.Options.ChoiceBox;
 

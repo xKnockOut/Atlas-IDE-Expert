@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Core.Debug.Visualizers;
 
 type

@@ -13,12 +13,12 @@
 // Holen (workspace/diagnostic/refresh) entscheidet der Controller selbst.
 // Angeforderte Dateien (RequestFiles, „Mit Atlas prüfen“ in der Projektverwaltung, #1817) holt der Controller im
 // nächsten Takt, auch ungeöffnete.
-// Die Werte der Einstellungen stehen in Atlas.Core.Settings.ProblemsUpdate.
+// Die Werte der Einstellungen stehen in Atlas.Plugin.Settings.ProblemsUpdate.
 
 interface
 
 uses
-  Atlas.Core.Settings.ProblemsUpdate;
+  Atlas.Plugin.Settings.ProblemsUpdate;
 
 type
   /// <summary>Stand der offenen Datei für die Entscheidung, ob jetzt geprüft wird.</summary>

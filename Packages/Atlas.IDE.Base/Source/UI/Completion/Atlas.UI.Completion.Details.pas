@@ -102,7 +102,7 @@ uses
   Atlas.Vcl.Popup.Draw,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Completion.Strings;
 
 const
@@ -657,7 +657,7 @@ begin
     mExpanded := View.FDoc.Expanded;
   end;
   View.FDoc.Build(Canvas, TAtlasDocContent.Create(View.FDocData, TAtlasDocSignature.Parse(View.FDetails.Declaration),
-    mExpanded), Right - Left, TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasStrings.DocLabels);
+    mExpanded), Right - Left, TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasDocLabelTexts.Current);
   View.FDocWidth := Right - Left;
 end;
 

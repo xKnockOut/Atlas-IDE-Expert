@@ -35,7 +35,7 @@ security-insecure-http,Atlas.Common.Rules.Builtin.Security.pas,433,falsch,2026-1
 security-insecure-http,Atlas.Common.Rules.Builtin.Security.pas,440,falsch,2026-10-17
 security-insecure-http,Atlas.Common.Rules.Catalog.Data.pas,1042,falsch,2026-10-17
 security-insecure-http,Atlas.Plugin.Diagnostics.Package.pas,504,falsch,2026-10-17
-security-insecure-http,Atlas.Core.Settings.PluginSchemaData.pas,17,falsch,2026-10-17
+security-insecure-http,Atlas.Plugin.Settings.PluginSchemaData.pas,17,falsch,2026-10-17
 security-insecure-http,Atlas.IDE.Hover.Editor.pas,745,falsch,2026-10-17
 security-sql-injection,Atlas.IDE.Bookmarks.Service.pas,358,falsch,2026-10-17
 security-sql-injection,Atlas.IDE.Notes.Service.pas,302,falsch,2026-10-17

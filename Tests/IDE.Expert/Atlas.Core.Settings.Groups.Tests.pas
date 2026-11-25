@@ -45,7 +45,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Settings.Groups;
 

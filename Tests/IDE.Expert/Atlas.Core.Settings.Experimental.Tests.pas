@@ -35,10 +35,10 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.Core.Settings.ProfileData,
-  Atlas.Core.Settings.SchemaData,
+  Atlas.Plugin.Settings.ProfileData,
+  Atlas.Plugin.Settings.SchemaData,
   Atlas.Core.Settings.Experimental;
 
 const

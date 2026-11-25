@@ -56,7 +56,7 @@ uses
   Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Status.Lines,
   Atlas.Core.Setup.Checklist,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Vcl.Graphics,
   Atlas.Vcl.Theme.Service,
   Atlas.UI.Setup.Strings,

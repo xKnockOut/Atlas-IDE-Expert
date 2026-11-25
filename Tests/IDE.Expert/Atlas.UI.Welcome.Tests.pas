@@ -90,7 +90,7 @@ uses
   Atlas.Plugin.Status.Lines,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Layout,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Header,

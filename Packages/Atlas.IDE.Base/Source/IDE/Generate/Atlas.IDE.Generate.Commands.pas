@@ -81,7 +81,7 @@ uses
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Generate.Protocol,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Generate.Strings,
   Atlas.UI.Generate.Window,
   Atlas.ToolsApi.Editor.Buffer,

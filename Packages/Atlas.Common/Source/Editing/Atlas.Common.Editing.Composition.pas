@@ -9,7 +9,8 @@ uses
   Atlas.Common.Editing.Contract.ClassActions,
   Atlas.Common.Editing.Contract.CompilerFixes,
   Atlas.Common.Editing.Contract.Extract,
-  Atlas.Common.Editing.Contract.Formatting;
+  Atlas.Common.Editing.Contract.Formatting,
+  Atlas.Common.Editing.Contract.MethodWithoutSelf;
 
 type
   TEditingComposition = record
@@ -19,6 +20,8 @@ type
     class function Extract: IEditingExtract; static;
     /// <summary>Bedingung auslagern, Konstante einführen (Korrekturen der Prüfregeln).</summary>
     class function ExtractFixes: IEditingExtractFixes; static;
+    /// <summary>Methoden ohne Self samt Umwandlung in class-Methoden.</summary>
+    class function MethodsWithoutSelf: IEditingMethodsWithoutSelf; static;
     /// <summary>Formatierer mit Abweichungen.</summary>
     class function Formatting: IEditingFormatting; static;
     /// <summary>Schnellkorrekturen für Compilermeldungen.</summary>
@@ -31,7 +34,8 @@ uses
   Atlas.Common.Editing.Providers.ClassActions,
   Atlas.Common.Editing.Providers.CompilerFixes,
   Atlas.Common.Editing.Providers.Extract,
-  Atlas.Common.Editing.Providers.Formatting;
+  Atlas.Common.Editing.Providers.Formatting,
+  Atlas.Common.Editing.Providers.MethodWithoutSelf;
 
 { TEditingComposition }
 
@@ -48,6 +52,11 @@ end;
 class function TEditingComposition.ExtractFixes: IEditingExtractFixes;
 begin
   Result := TEditingExtractProvider.Create;
+end;
+
+class function TEditingComposition.MethodsWithoutSelf: IEditingMethodsWithoutSelf;
+begin
+  Result := TEditingMethodsWithoutSelfProvider.Create;
 end;
 
 class function TEditingComposition.Formatting: IEditingFormatting;

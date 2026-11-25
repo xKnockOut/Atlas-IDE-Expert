@@ -174,7 +174,7 @@ uses
   Atlas.Core.Tasks.Plan,
   Atlas.Core.Tasks.PreBuild,
   Atlas.Core.Tasks.Reports,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Build.Strings,
   Atlas.UI.Tasks.Texts,
   Atlas.IDE.Foundation.Settings,

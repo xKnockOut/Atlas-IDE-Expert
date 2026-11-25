@@ -97,7 +97,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.ServerActions,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings;
 
 function HookText(const AHook: TFunc<string>): string;

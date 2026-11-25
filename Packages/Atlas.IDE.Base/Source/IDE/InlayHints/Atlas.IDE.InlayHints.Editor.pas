@@ -171,7 +171,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.ToolsApi.Editor.Refresh,
   Atlas.ToolsApi.Editor.CodeView;
 

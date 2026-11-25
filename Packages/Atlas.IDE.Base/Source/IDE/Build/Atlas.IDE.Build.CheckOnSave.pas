@@ -91,7 +91,7 @@ uses
   Vcl.Menus,
   System.StrUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Plugin.Notifications.Contract,

@@ -140,7 +140,7 @@ uses
   Atlas.Plugin.Notifications.Center,
   Atlas.Plugin.Notifications.Sources,
   Atlas.Vcl.Popup.Window,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Theme.Style,

@@ -42,8 +42,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Plugin.Settings.JsonText,
-  Atlas.Core.Settings.Schema,
-  Atlas.Core.Settings.SchemaData;
+  Atlas.Plugin.Settings.Schema,
+  Atlas.Plugin.Settings.SchemaData;
 
 const
   cLB = #13#10;

@@ -209,7 +209,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Style.Signal,
   Atlas.Core.Problems.Colors,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Problems.Strings,
   Atlas.UI.Problems.KindIcon,
   Atlas.Core.Problems.IdeErrors;

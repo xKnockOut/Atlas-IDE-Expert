@@ -15,7 +15,7 @@
       x-quickToggle (mit x-plugin, x-caption, x-captionEn) an einer booleschen
       Einstellung macht sie zum Schnellschalter im Plugin (#604).
     - docs/en/Settings.md (#1458): dieselbe Tabelle auf Englisch; Seitennamen wie in
-      Atlas.Core.Settings.PageNames, Bedienelemente und die Zeilen von Hand aus
+      Atlas.Plugin.Settings.PageNames, Bedienelemente und die Zeilen von Hand aus
       englischen Gegenstücken im Skript (gleiche Anzahl, sonst Abbruch).
     - x-experimental (#834) an einer Einstellung beider Schemata: experimentelle
       Funktion, Kennzeichen in Konfiguration.md und Einstellungen.md (Abschnitt
@@ -35,9 +35,9 @@
       x-key, x-area, x-page (#723). Wächter: genau die Namen aus
       TAtlasPluginSettings.Save, Bereiche aus x-areas, x-key eindeutig. Jeder
       globale Schlüssel in atlas.schema.json braucht x-area. Daraus entstehen
-      Atlas.Core.Settings.PluginSchemaData, der Abschnitt „Bereiche für Export,
+      Atlas.Plugin.Settings.PluginSchemaData, der Abschnitt „Bereiche für Export,
       Import und Zurücksetzen“ in Einstellungen.md und aus Setup/Profile/*.json
-      die Unit Atlas.Core.Settings.ProfileData (eingebaute Profile).
+      die Unit Atlas.Plugin.Settings.ProfileData (eingebaute Profile).
     - Gruppen der Optionsseite (#890): x-parent (x-key des Hauptschalters, ""
       = keiner, sonst Präfixregel) und x-node (Kennung aus x-nodes, "" =
       Hauptknoten, sonst vom Hauptschalter geerbt). Wächter: x-parent bekannt
@@ -249,7 +249,7 @@ $script:En = $false
 function Tr([string] $De, [string] $En) { if ($script:En) { return $En }; return $De }
 
 # Englische Seitennamen (x-page ist der deutsche Schlüssel): dieselbe Zuordnung wie in
-# Packages/Atlas.IDE.Base/Source/Core/Settings/Atlas.Core.Settings.PageNames.pas; dazu die Seiten der
+# Packages/Atlas.Plugin/Source/Settings/Atlas.Plugin.Settings.PageNames.pas; dazu die Seiten der
 # Zeilen von Hand (Baseline, Projektdatei). Unbekannte Seiten bleiben, wie sie sind.
 $PageNamesEn = @{
     'Allgemein' = 'General'; 'Architektur' = 'Architecture'; 'Befehle' = 'Commands'; 'Compiler' = 'Compiler'
@@ -1120,16 +1120,16 @@ function Text-Unit([string] $UnitName, [string[]] $Comment, [string] $Summary, [
         @('', "function $FunctionName`: string;", 'var', '  mChunk: string;', 'begin', "  Result := '';",
         '  for mChunk in cChunks do', '  begin', '    Result := Result + mChunk;', '  end;', 'end;', '', 'end.')
 }
-$SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
+$SettingsFolder = Join-Path $Root 'Packages/Atlas.Plugin/Source/Settings'
 
 # Schema für den Einstellungsdialog im Plugin (#227)
-Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.SchemaData.pas') (Text-Unit 'Atlas.Core.Settings.SchemaData' @(
+Sync-Unit (Join-Path $SettingsFolder 'Atlas.Plugin.Settings.SchemaData.pas') (Text-Unit 'Atlas.Plugin.Settings.SchemaData' @(
     '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas.schema.json;',
     '// nicht von Hand ändern. JSON-Schema von atlas.json für den Einstellungsdialog (#227).') `
     'Inhalt von atlas.schema.json.' 'AtlasSchemaJson' ([IO.File]::ReadAllText($SchemaPath, $Utf8)))
 
 # Katalog der Plugin-Einstellungen (#604, #723)
-Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.PluginSchemaData.pas') (Text-Unit 'Atlas.Core.Settings.PluginSchemaData' @(
+Sync-Unit (Join-Path $SettingsFolder 'Atlas.Plugin.Settings.PluginSchemaData.pas') (Text-Unit 'Atlas.Plugin.Settings.PluginSchemaData' @(
     '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus schemas/atlas-plugin.schema.json;',
     '// nicht von Hand ändern. Katalog der Plugin-Einstellungen: Schnellschalter (#604),',
     '// Bereiche für Export, Import und Zurücksetzen (#723).') `
@@ -1138,7 +1138,7 @@ Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.PluginSchemaData.pas')
 # Eingebaute Profile (#723) aus Setup/Profile/*.json
 $Profiles = @(Get-ChildItem -Path $ProfileFolder -Filter '*.json' -File | Sort-Object Name)
 if ($Profiles.Count -eq 0) { $Problems.Add('Setup/Profile: keine Profile gefunden') }
-$ProfileLines = @('unit Atlas.Core.Settings.ProfileData;', '',
+$ProfileLines = @('unit Atlas.Plugin.Settings.ProfileData;', '',
     '// Erzeugt von Tools/Update-ConfigDoc.ps1 aus Setup/Profile/*.json;',
     '// nicht von Hand ändern. Eingebaute Profile für den Import der Einstellungen (#723).', '',
     'interface', '',
@@ -1167,7 +1167,7 @@ for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
     $ProfileLines += '  end;'
 }
 $ProfileLines += @('end;', '', 'end.')
-Sync-Unit (Join-Path $SettingsFolder 'Atlas.Core.Settings.ProfileData.pas') $ProfileLines
+Sync-Unit (Join-Path $SettingsFolder 'Atlas.Plugin.Settings.ProfileData.pas') $ProfileLines
 
 # --- Ort der Schlüssel für den Server: UTF-8 mit BOM, CRLF ---
 $ScopeUnitPath = Join-Path $Root 'Packages/Atlas.Common/Source/Configuration/Internals/Atlas.Common.Configuration.Internals.ScopeData.pas'

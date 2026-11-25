@@ -109,7 +109,7 @@ uses
   ToolsAPI,
   Atlas.Core.Commands.KeyScan,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,

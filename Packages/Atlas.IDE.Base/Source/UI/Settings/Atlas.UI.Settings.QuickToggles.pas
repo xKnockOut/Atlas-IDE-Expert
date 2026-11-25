@@ -156,8 +156,8 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Settings.PageNames,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Settings.PageNames,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings;
 
 const

@@ -45,7 +45,7 @@ uses
   Vcl.Forms,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.SprintTile,
   Atlas.UI.Tracker.Contract.Sprint;
 

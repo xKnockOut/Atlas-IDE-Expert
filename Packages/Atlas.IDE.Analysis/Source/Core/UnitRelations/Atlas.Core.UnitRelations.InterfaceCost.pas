@@ -11,7 +11,7 @@
 // - Visible: Feld in der Statusleiste nur mit build.showInterfaceCost, im
 //   interface-Teil und wenn mindestens eine Unit neu übersetzt wird.
 // - UnitList nennt die ersten Units („A, B, C“) und wie viele es außerdem
-//   sind; die Wörter dazu setzt der Aufrufer (Atlas.UI.Strings).
+//   sind; die Wörter dazu setzt der Aufrufer (Atlas.Plugin.Localization.Strings).
 
 interface
 
