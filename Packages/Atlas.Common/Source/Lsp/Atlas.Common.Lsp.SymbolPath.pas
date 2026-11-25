@@ -28,7 +28,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.UsesService,
-  Atlas.Common.Lsp.SymbolPath.Search;
+  Atlas.Common.Semantics.SymbolPath.Search;
 
 type
   /// <summary>Einstellungen und Namensräume zum Arbeitsbereich von AFileName ('' = der einzige oder erste);
@@ -56,8 +56,6 @@ type
     function Request(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     /// <summary>Befehl atlas.symbolPath: [uri, Optionen]; der Aufrufer übernimmt das Ergebnis.</summary>
     function Execute(const AArguments: TJSONArray): TJSONValue;
-    /// <summary>from, to, via, maxSteps und all aus AParams; EJsonRpcError bei ungültigen Werten.</summary>
-    class function ReadRequest(const AParams: TJSONObject): TSymbolPathRequest; static;
   end;
 
 implementation
@@ -68,6 +66,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Semantics.SymbolPath.Request,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 
@@ -75,15 +74,10 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspSymbolPathText = (ViaKnowsUsesInheritsImplements, MaxStepsLiesBetween1And, FromAndToAreRequired,
-    NoProjectLoaded);
+  TLspSymbolPathText = (NoProjectLoaded);
 
 const
   cTexts: array[TLspSymbolPathText] of TAtlasText = (
-    (De: '"via" kennt uses, inherits, implements, hasField, parameter, result, calls, contains und library';
-     En: '"via" knows uses, inherits, implements, hasField, parameter, result, calls, contains and library'),
-    (De: '"maxSteps" liegt zwischen 1 und %d'; En: '"maxSteps" lies between 1 and %d'),
-    (De: '"from" und "to" sind nötig'; En: '"from" and "to" are required'),
     (De: 'Kein Projekt geladen'; En: 'No project loaded'));
 
 {$SCOPEDENUMS OFF}
@@ -134,47 +128,6 @@ begin
 end;
 
 /// <summary>Liest "via" (Kantenarten und library) in ARequest.</summary>
-procedure ReadVia(AValue: TJSONArray; var ARequest: TSymbolPathRequest);
-var
-  mItem: TJSONValue;
-  mKind: TSymbolPathEdgeKind;
-  mLibrary: Boolean;
-begin
-  ARequest.Via := [];
-  for mItem in AValue do
-  begin
-    if not (mItem is TJSONString) or not TSymbolPathSearch.TryParseEdge(mItem.Value, mKind, mLibrary) then
-    begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-        cTexts[TLspSymbolPathText.ViaKnowsUsesInheritsImplements].Text);
-    end;
-    if mLibrary then
-    begin
-      ARequest.ThroughLibrary := True;
-    end
-    else
-    begin
-      Include(ARequest.Via, mKind);
-    end;
-  end;
-  // Nur "library": alle Kantenarten, Bibliothek als Durchgang.
-  if ARequest.Via = [] then
-  begin
-    ARequest.Via := cAllSymbolPathEdges;
-  end;
-end;
-
-/// <summary>"maxSteps" zwischen 1 und TSymbolPathRequest.cMaxStepsLimit.</summary>
-function ReadMaxSteps(AValue: TJSONNumber): Integer;
-begin
-  Result := AValue.AsInt;
-  if (Result < 1) or (Result > TSymbolPathRequest.cMaxStepsLimit) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspSymbolPathText.MaxStepsLiesBetween1And].Fmt([TSymbolPathRequest.cMaxStepsLimit]));
-  end;
-end;
-
 function TLspSymbolPath.Execute(const AArguments: TJSONArray): TJSONValue;
 var
   mParams: TJSONObject;
@@ -247,7 +200,7 @@ begin
     mAnswer.AddPair('enabled', TJSONBool.Create(mSettings.Navigation.SymbolPath));
     if mSettings.Navigation.SymbolPath then
     begin
-      mSearch := ReadRequest(mParams);
+      mSearch := TSymbolPathRequests.Read(mParams);
       mSearch.TimeoutMs := mSettings.RequestTimeoutMs div 5 * 4;
       // Namensräume des Projekts: neuer Graph nur, wenn sie sich ändern.
       if string.Join(',', FGraphs.Options.Namespaces) <> string.Join(',', mNamespaces) then
@@ -275,34 +228,6 @@ begin
     mAnswer := nil;
   finally
     mAnswer.Free;
-  end;
-end;
-
-class function TLspSymbolPath.ReadRequest(const AParams: TJSONObject): TSymbolPathRequest;
-var
-  mValue: TJSONValue;
-begin
-  Result := TSymbolPathRequest.Default;
-  Result.From := TJsonRead.TrimmedText(AParams, 'from');
-  Result.To_ := TJsonRead.TrimmedText(AParams, 'to');
-  if (Result.From = '') or (Result.To_ = '') then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSymbolPathText.FromAndToAreRequired].Text);
-  end;
-  mValue := TJsonRead.Value(AParams, 'via');
-  if mValue is TJSONArray then
-  begin
-    ReadVia(TJSONArray(mValue), Result);
-  end;
-  mValue := TJsonRead.Value(AParams, 'maxSteps');
-  if mValue is TJSONNumber then
-  begin
-    Result.MaxSteps := ReadMaxSteps(TJSONNumber(mValue));
-  end;
-  mValue := TJsonRead.Value(AParams, 'all');
-  if mValue is TJSONBool then
-  begin
-    Result.All := TJSONBool(mValue).AsBoolean;
   end;
 end;
 

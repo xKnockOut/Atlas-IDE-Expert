@@ -28,7 +28,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Semantics.References;
 
 type
@@ -87,7 +86,7 @@ type
     function HandleRename(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function SettingsOf(const AUri: string): TReferenceSettings;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -132,7 +131,7 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   System.StrUtils,
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Documents.FileEncoding,
@@ -144,7 +143,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Dfm.ComponentRename,
   Atlas.Common.Pascal.TypeComments,
@@ -202,12 +201,12 @@ end;
 
 function TLspRename.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspRename.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspRename.ProjectFiles: TArray<string>;

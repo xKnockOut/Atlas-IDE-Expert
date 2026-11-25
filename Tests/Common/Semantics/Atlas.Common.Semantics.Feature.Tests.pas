@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Internals.Feature.Tests;
+﻿unit Atlas.Common.Semantics.Feature.Tests;
 
 // Gemeinsame Grundlage der LSP-Dienste: Felder aus dem Konstruktor.
 
@@ -23,17 +23,17 @@ implementation
 
 uses
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Semantics.Feature;
 
 type
-  TProjectFeatureProbe = class(TLspProjectFeature)
+  TProjectFeatureProbe = class(TProjectFeature)
   public
     function ReadsWith(const AFileName: string; out AText: string): Boolean;
     function FileCount: Integer;
     function EnsuresWith(const AUnitName: string): Boolean;
   end;
 
-  TIndexFeatureProbe = class(TLspIndexFeature)
+  TIndexFeatureProbe = class(TIndexFeature)
   public
     function HasEnsureUnit: Boolean;
     function HasStore: Boolean;

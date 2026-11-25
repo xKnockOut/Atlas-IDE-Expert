@@ -86,7 +86,7 @@ uses
   System.Math,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Pascal.Contract,

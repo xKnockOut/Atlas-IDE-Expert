@@ -70,7 +70,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.FlowSignatures,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.ResolvedSignatures,

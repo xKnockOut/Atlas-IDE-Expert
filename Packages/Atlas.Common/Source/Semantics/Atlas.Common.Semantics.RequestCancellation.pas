@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Internals.Cancellation;
+﻿unit Atlas.Common.Semantics.RequestCancellation;
 
 // Reicht das Abbruchsignal einer JSON-RPC-Anfrage an den Parser weiter, damit
 // abgebrochene oder zu lange Anfragen nicht bis zum Ende parsen.

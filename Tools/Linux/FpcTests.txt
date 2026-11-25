@@ -247,8 +247,8 @@ Atlas.Common.Lsp.FoldingRanges.Tests
 Atlas.Common.Lsp.BlockFolds.Tests
 Atlas.Common.Lsp.FuzzyMatch.Tests
 Atlas.Common.Lsp.HoverValues.Tests
-Atlas.Common.Lsp.Internals.Cancellation.Tests
-Atlas.Common.Lsp.Internals.Feature.Tests
+Atlas.Common.Semantics.RequestCancellation.Tests
+Atlas.Common.Semantics.Feature.Tests
 Atlas.Common.Lsp.KeywordHighlights.Tests
 Atlas.Common.Lsp.KeywordReference.Tests
 Atlas.Common.Lsp.MethodBreakpoints.Tests
@@ -256,9 +256,10 @@ Atlas.Common.Lsp.MissingUnit.Tests
 Atlas.Common.Semantics.ParameterHeaders.Tests
 Atlas.Common.Lsp.Processes.Tests
 Atlas.Common.Lsp.RaiseVisibility.Tests
-Atlas.Common.Lsp.Rationale.Tests
+Atlas.Common.Semantics.Rationale.Tests
 Atlas.Common.Semantics.ReferenceConfidence.Tests
 Atlas.Common.Semantics.References.Tests
+Atlas.Common.Semantics.SymbolPath.Request.Tests
 Atlas.Common.Semantics.Implementations.Tests
 Atlas.Common.Lsp.Implementations.Tests
 Atlas.Common.Semantics.Definitions.Tests

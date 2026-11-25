@@ -23,7 +23,7 @@ uses
   Atlas.Common.Lsp.Query,
   Atlas.Common.Lsp.UnitRelations,
   Atlas.Common.Lsp.SymbolPath,
-  Atlas.Common.Lsp.Rationale,
+  Atlas.Common.Semantics.Rationale,
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.CodeLens,
   Core.Workspace,

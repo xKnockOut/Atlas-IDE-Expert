@@ -109,7 +109,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Editing.Formatter,
   Atlas.Common.Pascal.DocComments,
   Atlas.Common.Localization.Texts;

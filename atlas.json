@@ -225,14 +225,9 @@
         "Atlas.Common.Lsp.WorkspaceChanges -> Atlas.Common.Editing.TestUnits",
         "Atlas.Common.Lsp.WorkspaceChanges -> Atlas.Common.Editing.UnitTemplates",
         "Atlas.Common.Lsp.WorkspaceSymbols -> Atlas.Common.Editing.Bookmarks",
-        "Atlas.Common.Mcp.CodeTools -> Atlas.Common.Lsp.Hierarchies",
         "Atlas.Common.Mcp.CodeTools -> Atlas.Common.Lsp.Impact",
-        "Atlas.Common.Mcp.CodeTools -> Atlas.Common.Lsp.QualifiedNames",
-        "Atlas.Common.Mcp.CodeTools -> Atlas.Common.Lsp.References",
-        "Atlas.Common.Mcp.EditTools -> Atlas.Common.Lsp.References",
         "Atlas.Common.Mcp.EditTools -> Atlas.Common.Lsp.Rename",
-        "Atlas.Common.Mcp.ImplementationTools -> Atlas.Common.Lsp.Impact",
-        "Atlas.Common.Mcp.IndexTools -> Atlas.Common.Lsp.Rationale"
+        "Atlas.Common.Mcp.ImplementationTools -> Atlas.Common.Lsp.Impact"
       ]
     },
     "forbidden-symbol": {

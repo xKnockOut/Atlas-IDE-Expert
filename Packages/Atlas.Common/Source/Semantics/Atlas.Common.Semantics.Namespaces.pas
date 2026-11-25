@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Internals.Namespaces;
+﻿unit Atlas.Common.Semantics.Namespaces;
 
 // Namespaces der LSP-Features: Die Komposition ersetzt sie
 // beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads. Die Zuweisung
@@ -8,7 +8,7 @@
 interface
 
 type
-  TLspNamespaces = class
+  TSharedNamespaces = class
   strict private
     class var FLock: TObject;
     class constructor Create;
@@ -26,19 +26,19 @@ implementation
 uses
   Atlas.Text.Locked;
 
-{ TLspNamespaces }
+{ TSharedNamespaces }
 
-class constructor TLspNamespaces.Create;
+class constructor TSharedNamespaces.Create;
 begin
   FLock := TAtlasSharedLock.New;
 end;
 
-class destructor TLspNamespaces.Destroy;
+class destructor TSharedNamespaces.Destroy;
 begin
   FLock.Free;
 end;
 
-class function TLspNamespaces.Read(var AField: TArray<string>): TArray<string>;
+class function TSharedNamespaces.Read(var AField: TArray<string>): TArray<string>;
 begin
   TMonitor.Enter(FLock);
   try
@@ -48,7 +48,7 @@ begin
   end;
 end;
 
-class procedure TLspNamespaces.Write(var AField: TArray<string>; const AValue: TArray<string>);
+class procedure TSharedNamespaces.Write(var AField: TArray<string>; const AValue: TArray<string>);
 begin
   TMonitor.Enter(FLock);
   try

@@ -32,7 +32,7 @@ uses
   Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.Processes,
   Atlas.Common.Lsp.PullDiagnostics,
-  Atlas.Common.Lsp.QualifiedNames,
+  Atlas.Common.Semantics.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
   Atlas.Common.Lsp.Baseline,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.QualifiedNames;
+﻿unit Atlas.Common.Semantics.QualifiedNames;
 
 // Voll qualifizierter Name des Symbols unter dem Cursor (#128), z. B. für
 // Dokumentation, Commit-Nachrichten oder Anfragen an KI-Assistenten. LSP hat
@@ -414,6 +414,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.QualifiedNames', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.QualifiedNames', cTexts);
 
 end.

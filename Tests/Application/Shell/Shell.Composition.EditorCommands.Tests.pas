@@ -51,7 +51,7 @@ uses
   Atlas.Common.Lsp.MethodOrder,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.InterfaceMethods,
-  Atlas.Common.Lsp.QualifiedNames,
+  Atlas.Common.Semantics.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
