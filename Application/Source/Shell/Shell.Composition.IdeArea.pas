@@ -82,7 +82,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.FormatArgs,
   Core.Workspace;
 

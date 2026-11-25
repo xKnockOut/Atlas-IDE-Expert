@@ -377,6 +377,7 @@ Atlas.Common.Pascal.WarningCodes.Tests
 Atlas.Common.Pascal.XmlDoc.Tests
 Atlas.Common.Product.Version.Tests
 Atlas.Common.Projects.DelphiVersions.Tests
+Atlas.Common.Projects.Facts.Tests
 Atlas.Common.Projects.GroupProjects.Tests
 Atlas.Common.Projects.DprojEditor.Tests
 Atlas.Common.Projects.MissingUnit.Tests
@@ -516,7 +517,7 @@ Atlas.Common.Compiler.MessageCatalog.Tests
 Atlas.Common.Compiler.Releases.Tests
 Atlas.Common.Compiler.Pitfalls.Tests
 Atlas.Common.Compiler.PitfallFixes.Tests
-Atlas.Common.Rules.Options.Tests
+Atlas.Common.Configuration.RuleOptions.Tests
 Atlas.Common.Findings.Output.Tests
 Atlas.Common.Findings.Filter.Tests
 Atlas.Common.Rules.Checker.Tests

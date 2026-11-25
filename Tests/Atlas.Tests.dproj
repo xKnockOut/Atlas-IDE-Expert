@@ -471,6 +471,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitAliases.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.Facts.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.GroupProjects.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas"/>
@@ -626,7 +627,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatOutput.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Options.Tests.pas"/>
+        <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.RuleOptions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.WarnSwitches.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.SuppressionStats.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Catalog.Tests.pas"/>

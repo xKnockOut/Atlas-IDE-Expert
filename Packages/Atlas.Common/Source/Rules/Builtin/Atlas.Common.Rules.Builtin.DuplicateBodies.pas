@@ -37,7 +37,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Metrics.DuplicateBodies,
   Atlas.Common.Metrics.DuplicateCatalog,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

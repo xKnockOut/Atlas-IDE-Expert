@@ -92,7 +92,7 @@ uses
   Atlas.Common.Pascal.Signatures,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.WarnSwitches,
   Atlas.Common.Rules.Builtin.TypeChecks.Types,

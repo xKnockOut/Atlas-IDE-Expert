@@ -387,7 +387,8 @@ def convert(txt, is_program):
     txt = ascii_fix(txt)
     txt = re.sub(r"(?im)^\s*\{\$R\s[^}]*\}\s*$", '', txt)
     txt = re.sub(r"(?im)\{\$MAXSTACKSIZE[^}]*\}", '', txt)
-    txt = re.sub(r"(?im)\{\$APPTYPE[^}]*\}", '', txt)
+    # Nur die Direktive auf eigener Zeile (.dpr): {$APPTYPE …} in Zeichenketten (Regeltexte, Testquellen) bleibt.
+    txt = re.sub(r"(?im)^\s*\{\$APPTYPE[^}]*\}\s*$", '', txt)
     txt = sub_code(USES, fix_uses, txt)
     txt = add_compat(txt, is_program)
     # Qualifizierte Bezeichner (System.SysUtils.DeleteFile) wie die uses-Einträge umbenennen.

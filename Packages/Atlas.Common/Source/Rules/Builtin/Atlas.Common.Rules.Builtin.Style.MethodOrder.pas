@@ -28,7 +28,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Pascal.TreeHandles,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

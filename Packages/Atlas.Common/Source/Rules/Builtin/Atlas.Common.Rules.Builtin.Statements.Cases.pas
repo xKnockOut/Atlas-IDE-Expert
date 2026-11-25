@@ -60,7 +60,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.CaseCompletion,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
   Atlas.Common.Localization.Texts;
 

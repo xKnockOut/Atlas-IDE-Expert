@@ -43,7 +43,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Testing.Classes,
   Atlas.Common.Localization.Texts,

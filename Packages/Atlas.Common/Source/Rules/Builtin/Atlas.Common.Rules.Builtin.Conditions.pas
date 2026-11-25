@@ -125,7 +125,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.Conditions.Values,
   Atlas.Common.Rules.Builtin.Conditions.Jumps,
   Atlas.Common.Localization.Texts,

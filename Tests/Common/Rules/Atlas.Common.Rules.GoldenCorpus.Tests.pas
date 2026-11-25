@@ -77,7 +77,9 @@ uses
   Atlas.Common.Localization.Texts,
   System.StrUtils,
   Atlas.Tests.Files,
-  Atlas.Common.Checks.Contract;
+  Atlas.Common.Checks.Contract,
+  Atlas.Common.Projects.Facts,
+  Atlas.Common.Projects.Contract.Group;
 
 function Finding(const ARuleId: string; ALine: Integer): TRuleFinding;
 begin
@@ -392,7 +394,7 @@ begin
   // Laufzeit je Regel über den ganzen Korpus, um langsame Regeln zu erkennen.
   for mTiming in TGoldenCorpus.TimeRules(mRules, TServerSettings.Default, mTexts) do
   begin
-    System.Writeln(Format('  %s: %.1f ms', [mTiming.RuleId, mTiming.Milliseconds]));
+    System.Writeln(Format('  %s: %.1f ms', [mTiming.RuleId, mTiming.Milliseconds], TFormatSettings.Invariant));
   end;
   Assert.AreEqual('', mProblems, 'Golden-Korpus weicht ab:' + mProblems);
 end;
@@ -576,11 +578,16 @@ end;
 /// <summary>Projekt für die Unit AUnitFile (Datei AFileName) wie im Linter.</summary>
 function MutationProject(const ARun: TMutationRun; const AUnitFile, AFileName: string): TCheckProject;
 begin
-  Result := TFileChecker.PackageOf(ARun.Packages, ChangeFileExt(AUnitFile, ''));
-  // Units eines Programms: CreateForm-Reihenfolge seiner .dpr wie im Linter (#956).
-  if Result.Name = '' then
+  Result := Default(TCheckProject);
+  Result.Name := TProjectFacts.PackageNameOf(ARun.Packages, ChangeFileExt(AUnitFile, ''));
+  if Result.Name <> '' then
   begin
-    Result.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(ARun.Programs,
+    Result.Application := TApplicationKind.Package;
+  end
+  // Units eines Programms: CreateForm-Reihenfolge seiner .dpr wie im Linter (#956).
+  else
+  begin
+    Result.AutoCreateForms := TProjectFacts.FormsOfProgram(ARun.Programs,
       ChangeFileExt(AUnitFile, ''));
   end;
   // Formulardatei neben der Unit wie im Linter (#1054).

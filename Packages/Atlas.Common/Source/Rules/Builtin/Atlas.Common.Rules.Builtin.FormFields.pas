@@ -47,11 +47,6 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-    /// <summary>Variablen aus Application.CreateForm(TKlasse, Variable) der .dpr in Aufrufreihenfolge.</summary>
-    class function AutoCreatedForms(const AMainSource: string): TArray<string>; static;
-    /// <summary>AutoCreatedForms des ersten Programms aus APrograms (Quelltexte der .dpr), dessen uses die Unit
-    /// AUnitName nennt; nil ohne (Linter, Golden-Korpus).</summary>
-    class function FormsOfProgram(const APrograms: TArray<string>; const AUnitName: string): TArray<string>; static;
     /// <summary>Name des OnCreate-Handlers des Formulars selbst aus der Formulardatei; '' ohne.</summary>
     class function CreateHandler(const AFormText: string): string; static;
   end;
@@ -787,62 +782,6 @@ var
 begin
   mScan := TFormAccessBeforeCreateScan.Create(AContext, AReport);
   mScan.Run;
-end;
-
-class function TFormAccessBeforeCreateRule.AutoCreatedForms(const AMainSource: string): TArray<string>;
-var
-  mTokens: TArray<TPascalToken>;
-  mCode: TArray<Integer>;
-  mIndex, mPosition: Integer;
-
-  function IsText(APosition: Integer; const AText: string): Boolean;
-  begin
-    Result := (APosition <= High(mCode)) and SameText(mTokens[mCode[APosition]].Text, AText);
-  end;
-
-  /// <summary>Steht ab APosition "Application.CreateForm(Klasse, Name)" mit einem Bezeichner als Name?</summary>
-  function IsCreateForm(APosition: Integer): Boolean;
-  begin
-    Result := IsText(APosition, 'Application') and IsText(APosition + 1, '.') and
-      IsText(APosition + 2, 'CreateForm') and IsText(APosition + 3, '(');
-    Result := Result and IsText(APosition + 5, ',') and IsText(APosition + 7, ')') and
-      (mTokens[mCode[APosition + 6]].Kind = TPascalTokenKind.Identifier);
-  end;
-
-begin
-  Result := nil;
-  mTokens := TPascalLexer.Tokenize(AMainSource);
-  mCode := nil;
-  for mIndex := 0 to High(mTokens) do
-  begin
-    if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-    begin
-      mCode := mCode + [mIndex];
-    end;
-  end;
-  // Application.CreateForm(TfrmHaupt, frmHaupt);
-  for mPosition := 0 to High(mCode) - 7 do
-  begin
-    if IsCreateForm(mPosition) then
-    begin
-      Result := Result + [mTokens[mCode[mPosition + 6]].Text];
-    end;
-  end;
-end;
-
-class function TFormAccessBeforeCreateRule.FormsOfProgram(const APrograms: TArray<string>;
-  const AUnitName: string): TArray<string>;
-var
-  mMain: string;
-begin
-  for mMain in APrograms do
-  begin
-    if MatchText(AUnitName, TPascalUses.UsedUnitsOf(mMain)) then
-    begin
-      Exit(AutoCreatedForms(mMain));
-    end;
-  end;
-  Result := nil;
 end;
 
 class function TFormAccessBeforeCreateRule.CreateHandler(const AFormText: string): string;

@@ -9,7 +9,6 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Projects.Contract.Group,
-  Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.IdeProject,
   Core.Workspace.Setup,
   Core.Workspace.State,
@@ -55,10 +54,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Rules.WarnSwitches,
-  Atlas.Common.Rules.Builtin.RtlTypePatterns,
-  Atlas.Common.Rules.Builtin.FormFields,
-  Core.Workspace.Packages;
+  Core.Workspace.Packages,
+  Atlas.Common.Projects.Facts;
 
 { TCoreRuleProjects }
 
@@ -75,10 +72,10 @@ begin
   begin
     Exit;
   end;
-  Result.Application := TWritelnInGuiAppRule.ApplicationKind(ConsoleTargetOf(AProject), mMainText);
+  Result.Application := TProjectFacts.ApplicationKind(ConsoleTargetOf(AProject), mMainText);
   Result.Name := ChangeFileExt(ExtractFileName(AProject.MainSource), '');
   // Reihenfolge von Application.CreateForm für form-access-before-create (#956).
-  Result.AutoCreateForms := TFormAccessBeforeCreateRule.AutoCreatedForms(mMainText);
+  Result.AutoCreateForms := TProjectFacts.AutoCreatedForms(mMainText);
   // .dpr für die Korrektur von form-autocreate-and-manual (#1055).
   Result.ProjectMainSource := AProject.MainSource;
 end;
@@ -182,7 +179,7 @@ begin
   Result := nil;
   for mPair in AProject.Properties do
   begin
-    mEntry := TRuleWarnSwitches.ProjectEntry(mPair.Key, mPair.Value);
+    mEntry := TProjectFacts.WarningEntry(mPair.Key, mPair.Value);
     if mEntry <> '' then
     begin
       Result := Result + [mEntry];

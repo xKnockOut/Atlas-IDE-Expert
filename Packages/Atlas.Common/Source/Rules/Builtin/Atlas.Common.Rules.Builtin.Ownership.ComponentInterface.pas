@@ -52,7 +52,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Ownership,

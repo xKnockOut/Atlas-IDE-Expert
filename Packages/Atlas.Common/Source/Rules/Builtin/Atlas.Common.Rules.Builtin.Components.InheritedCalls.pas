@@ -56,7 +56,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Components.Model,

@@ -90,8 +90,6 @@ type
     [Test]
     procedure WritelnInGuiAppIssueExample;
     [Test]
-    procedure WritelnInGuiAppApplicationKind;
-    [Test]
     procedure WritelnInGuiAppVariants;
     [Test]
     procedure WritelnInGuiAppSilentCases;
@@ -925,28 +923,6 @@ begin
     TRuleApplicationKind.Console))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create, mSource,
     TRuleApplicationKind.Unknown))));
-end;
-
-procedure TRtlTypePatternRulesTests.WritelnInGuiAppApplicationKind;
-begin
-  Assert.AreEqual(Ord(TRuleApplicationKind.Gui), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'program P;'#10'uses Vcl.Forms;'#10'{$R *.res}'#10'begin'#10'end.')));
-  Assert.AreEqual(Ord(TRuleApplicationKind.Console), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'program P;'#10'{$APPTYPE CONSOLE}'#10'begin'#10'end.')));
-  Assert.AreEqual(Ord(TRuleApplicationKind.Console), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'program P;'#10'{$IFNDEF TESTINSIGHT}'#10'{$apptype console}'#10'{$ENDIF}'#10'begin'#10'end.')));
-  Assert.AreEqual(Ord(TRuleApplicationKind.Console), Ord(TWritelnInGuiAppRule.ApplicationKind('true',
-    'program P;'#10'begin'#10'end.')));
-  // Auskommentiert zählt nicht.
-  Assert.AreEqual(Ord(TRuleApplicationKind.Gui), Ord(TWritelnInGuiAppRule.ApplicationKind('false',
-    '// Werkzeug'#10'program P;'#10'// {$APPTYPE CONSOLE}'#10'begin'#10'end.')));
-  // DLL ohne Formulare (#1060); writeln-in-gui-app bleibt dort still.
-  Assert.AreEqual(Ord(TRuleApplicationKind.Library_), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    'library L;'#10'begin'#10'end.')));
-  Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TWritelnInGuiAppRule.ApplicationKind('', '')));
-  // Packages (#943).
-  Assert.AreEqual(Ord(TRuleApplicationKind.Package), Ord(TWritelnInGuiAppRule.ApplicationKind('',
-    '// Kopf'#10'package Atlas.IDE.Expert;'#10'requires rtl;'#10'end.')));
 end;
 
 procedure TRtlTypePatternRulesTests.WritelnInGuiAppVariants;

@@ -54,7 +54,7 @@ uses
   Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;

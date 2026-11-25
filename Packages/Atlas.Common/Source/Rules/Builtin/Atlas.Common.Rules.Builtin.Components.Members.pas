@@ -37,7 +37,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Builtin.Inheritance,

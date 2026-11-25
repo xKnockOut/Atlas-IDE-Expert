@@ -113,7 +113,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.LanguageFeatures,

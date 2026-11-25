@@ -104,7 +104,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,

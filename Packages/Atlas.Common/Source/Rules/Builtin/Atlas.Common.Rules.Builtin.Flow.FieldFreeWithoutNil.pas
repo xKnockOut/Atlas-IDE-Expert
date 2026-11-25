@@ -31,7 +31,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow.Shared,
   Atlas.Common.Localization.Texts;

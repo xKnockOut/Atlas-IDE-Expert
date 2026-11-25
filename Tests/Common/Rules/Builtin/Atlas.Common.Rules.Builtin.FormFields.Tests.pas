@@ -180,18 +180,6 @@ begin
     ['frmHaupt', 'dmDaten', 'frmLog'], '', '');
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('frmLog wird in der .dpr erst nach frmHaupt erzeugt und ist hier noch nil.', mFindings[0].Message);
-  // Reihenfolge aus der .dpr.
-  Assert.AreEqual('frmHaupt,dmDaten', string.Join(',', TFormAccessBeforeCreateRule.AutoCreatedForms(
-    'program P;'#10'uses Vcl.Forms;'#10'begin'#10'  Application.Initialize;'#10 +
-    '  Application.CreateForm(TfrmHaupt, frmHaupt);'#10'  // Application.CreateForm(TfrmAlt, frmAlt);'#10 +
-    '  Application.CreateForm(TdmDaten, dmDaten);'#10'  Application.Run;'#10'end.')));
-  // Programm, dessen uses die Unit nennt.
-  Assert.AreEqual('frmB', string.Join(',', TFormAccessBeforeCreateRule.FormsOfProgram([
-    'program A;'#10'uses Vcl.Forms, Andere;'#10'begin'#10'  Application.CreateForm(TfrmA, frmA);'#10'end.',
-    'program B;'#10'uses Vcl.Forms, Haupt in ''Haupt.pas'' {frmB};'#10'begin'#10 +
-    '  Application.CreateForm(TfrmB, frmB);'#10'end.'], 'Haupt')));
-  Assert.AreEqual(0, Integer(Length(TFormAccessBeforeCreateRule.FormsOfProgram(['program A;'#10'begin'#10'end.'],
-    'Haupt'))));
   Assert.AreEqual('Anlegen', TFormAccessBeforeCreateRule.CreateHandler('object frmHaupt: TfrmHaupt'#10 +
     '  OnCreate = Anlegen'#10'end'#10));
   Assert.AreEqual('', TFormAccessBeforeCreateRule.CreateHandler('object frmHaupt: TfrmHaupt'#10 +
