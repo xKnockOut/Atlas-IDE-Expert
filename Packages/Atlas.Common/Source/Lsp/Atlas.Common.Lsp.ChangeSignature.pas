@@ -32,7 +32,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.Signatures,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.SignatureChanges,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Lsp.ChangeSignature.Collector;
 

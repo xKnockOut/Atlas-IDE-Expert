@@ -11,7 +11,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.SignatureChanges,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.ChangeSignature.Collector;
 

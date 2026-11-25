@@ -81,7 +81,7 @@ Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
 Atlas.Common.Editing.AssignFields.Tests
 Atlas.Common.Pascal.CaseCompletion.Tests
-Atlas.Common.Editing.ChangeSignature.Tests
+Atlas.Common.Pascal.SignatureChanges.Tests
 Atlas.Common.Editing.ClassBodies.Tests
 Atlas.Common.Pascal.BodySpacing.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
