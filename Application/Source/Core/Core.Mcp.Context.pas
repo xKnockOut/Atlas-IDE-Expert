@@ -14,6 +14,7 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.Contract.CompilerFixes,
+  Atlas.Common.Mcp.Contract.Conventions,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Lsp.SymbolPath.Search,
@@ -51,6 +52,10 @@ type
     GitDir: TFunc<string, string>;
     /// <summary>Sichere Korrekturen zu Compilermeldungen (explain_compiler_message).</summary>
     CompilerFixes: IMcpCompilerFixes;
+    /// <summary>Projektkonventionen (delphi://conventions).</summary>
+    Conventions: IMcpConventions;
+    /// <summary>Auftrag zu einem Befund (explain_finding).</summary>
+    FindingPrompts: IMcpFindingPrompts;
   end;
 
   /// <summary>Was die Werkzeuge des MCP-Modus brauchen; ToolNames füllt nur Server (die Werkzeuge greifen erst

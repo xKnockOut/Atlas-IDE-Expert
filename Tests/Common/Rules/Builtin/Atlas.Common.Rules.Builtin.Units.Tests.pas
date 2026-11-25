@@ -52,6 +52,8 @@ type
     [Test]
     procedure ConflictReservedName;
     [Test]
+    procedure ConflictReservedWordInName;
+    [Test]
     procedure ConflictNoInclude;
     [Test]
     procedure ConflictOptions;
@@ -651,6 +653,28 @@ begin
   // Das Beispiel aus #1079 übersetzt Delphi: keine Meldung.
   Assert.AreEqual(0, Integer(Length(Run(TUnitNameConflictRule.Create, 'unit Kunden;'#10'interface'#10'uses'#10 +
     '  Kunden.Daten;'#10'implementation'#10'end.', 'Kunden.pas'))));
+end;
+
+procedure TUnitRulesTests.ConflictReservedWordInName;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Kopf und uses: inline ist ein reserviertes Wort (wie E2029).
+  mFound := Run(TUnitNameConflictRule.Create, 'unit Tracker.Markdown.Inline;'#10'interface'#10 +
+    'implementation'#10'end.', 'Tracker.Markdown.Inline.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Der Teil „Inline“ des Unit-Namens Tracker.Markdown.Inline ist ein reserviertes Wort; Delphi ' +
+    'lehnt den Namen in uses ab (wie E2029). Die Unit umbenennen.', mFound[0].Message);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Character);
+  mFound := Run(TUnitNameConflictRule.Create, 'program Werkzeug;'#10'uses'#10 +
+    '  Tracker.Markdown.Inline in ''Tracker.Markdown.Inline.pas'','#10'  Daten.Object;'#10'begin'#10'end.',
+    'Werkzeug.dpr');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(3, mFound[1].Range.StartPos.Line);
+  // Direktiven wie Forward oder Message sind keine reservierten Wörter; mit & ist der Teil ein Bezeichner.
+  Assert.AreEqual(0, Integer(Length(Run(TUnitNameConflictRule.Create, 'unit Kunden.Message;'#10'interface'#10 +
+    'uses'#10'  Kunden.Forward, Kunden.&Type;'#10'implementation'#10'end.', 'Kunden.Message.pas'))));
 end;
 
 procedure TUnitRulesTests.ConflictNoInclude;

@@ -29,10 +29,8 @@ uses
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Findings.Scopes,
-  Atlas.Common.Rules.Prompt,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
   Core.Bootstrap,
@@ -386,7 +384,6 @@ var
   mFileName, mText, mRuleId, mRelativePath: string;
   mLine: Integer;
   mFinding: TRuleFinding;
-  mCatalog: TRuleCatalog;
   mScopes: TFindingScopes;
 begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
@@ -405,23 +402,18 @@ begin
     mRelativePath := Copy(mFileName, Length(IncludeTrailingPathDelimiter(AContext.Root)) + 1, MaxInt);
   end;
   Result := '';
-  mCatalog := TFindingPrompt.GermanCatalog;
-  try
-    for mFinding in TFileChecker.CheckText(BuiltinRules, AContext.Group.Main.Configuration.Settings, mRelativePath,
-      mText,
-      TCheckOrigin.Make(AContext.CheckProject(mFileName), AContext.Group.Main.State.CheckSource(mFileName)), mScopes) do
+  for mFinding in TFileChecker.CheckText(BuiltinRules, AContext.Group.Main.Configuration.Settings, mRelativePath,
+    mText, TCheckOrigin.Make(AContext.CheckProject(mFileName), AContext.Group.Main.State.CheckSource(mFileName)),
+    mScopes) do
+  begin
+    if (mFinding.Range.StartPos.Line = mLine - 1) and ((mRuleId = '') or SameText(mRuleId, mFinding.RuleId)) then
     begin
-      if (mFinding.Range.StartPos.Line = mLine - 1) and ((mRuleId = '') or SameText(mRuleId, mFinding.RuleId)) then
+      if Result <> '' then
       begin
-        if Result <> '' then
-        begin
-          Result := Result + sLineBreak + sLineBreak;
-        end;
-        Result := Result + TFindingPrompt.Markdown(mFinding, mFileName, mText, mCatalog);
+        Result := Result + sLineBreak + sLineBreak;
       end;
+      Result := Result + AContext.Adapters.FindingPrompts.Markdown(mFinding, mFileName, mText);
     end;
-  finally
-    mCatalog.Free;
   end;
   if Result = '' then
   begin
