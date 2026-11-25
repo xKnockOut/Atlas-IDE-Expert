@@ -54,7 +54,8 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Findings.Suppressions;
 
 const
   cLB = #13#10;

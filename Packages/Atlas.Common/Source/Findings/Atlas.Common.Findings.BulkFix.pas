@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.BulkFix;
+﻿unit Atlas.Common.Findings.BulkFix;
 
 // Sammelkorrektur (#1352): wendet die sicheren Korrekturen ausgewählter Regeln
 // auf ganze Dateien an, für die Kommandozeile (--fix), MCP (fix_findings) und
@@ -30,11 +30,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.FileBatch,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Findings.Baseline,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Checks.Contract;
+  Atlas.Common.Findings.Contract,
+  Atlas.Common.Pascal.Contract;
 
 type
   /// <summary>Warum ein Treffer nicht korrigiert wurde.</summary>
@@ -55,6 +52,10 @@ type
 
   /// <summary>Was korrigiert werden soll.</summary>
   TBulkFixOptions = record
+  public const
+    /// <summary>Eintrag für alle Regeln in der Liste von --fix bzw. fix_findings.</summary>
+    cAll = 'all';
+  public
     /// <summary>Kennungen der Regeln (klein); nur mit All = False.</summary>
     Rules: TArray<string>;
     /// <summary>--fix all: alle Regeln.</summary>
@@ -63,9 +64,10 @@ type
     MinConfidence: TRuleConfidence;
     /// <summary>Regeln mit "safeFix" im Katalog (klein).</summary>
     SafeRules: TArray<string>;
-    /// <summary>Regeln aus der Liste von --fix bzw. fix_findings ("all" = alle), Untergrenze und Katalog.</summary>
+    /// <summary>Regeln aus der Liste von --fix bzw. fix_findings ("all" = alle), Untergrenze und die Regeln mit
+    /// sicherer Korrektur (ASafeRules, klein; TRuleBulkFix.SafeRulesOf aus dem Katalog).</summary>
     class function Create(const ARules: TArray<string>; AMinConfidence: TRuleConfidence;
-      const ACatalog: TArray<TRuleCatalogEntry>): TBulkFixOptions; static;
+      const ASafeRules: TArray<string>): TBulkFixOptions; static;
     function Wants(const ARuleId: string): Boolean;
   end;
 
@@ -144,34 +146,17 @@ type
     /// werden die schon geschriebenen auf OldText zurückgesetzt und EBulkFixWrite ausgelöst. Liefert die Anzahl der
     /// Dateien.</summary>
     class function WriteAll(const AFiles: TArray<TBulkFixFile>; const AWrite: TBulkFixWrite): Integer; static;
-    /// <summary>Kennungen (klein) der Regeln mit "safeFix" in ACatalog.</summary>
-    class function SafeRulesOf(const ACatalog: TArray<TRuleCatalogEntry>): TArray<string>; static;
     /// <summary>Untergrenze eines Aufrufs (fix_findings, Befehl des Plugins): ARequested ("medium", "high"; ''
     /// = Einstellung) darf ASetting (fix.minConfidence) nur anheben. False mit Grund in AError.</summary>
     class function MinConfidenceOf(ASetting: TRuleConfidence; const ARequested: string;
       out AConfidence: TRuleConfidence; out AError: string): Boolean; static;
-    /// <summary>Regeln für die Durchgänge: nur die aus AFixRules, damit jeder Durchgang schnell bleibt. Mit "all"
-    /// oder einer Kennung, die keine Regel aus AAll ist (syntax, unused-suppression, unknown-rule-id entstehen in
-    /// Checker bzw. Engine und brauchen die übrigen Regeln), alle.</summary>
-    class function RulesFor(const AAll: TArray<IRule>; const AFixRules: TArray<string>): TArray<IRule>; static;
-    /// <summary>Prüfung je Durchgang ohne weitere Filter (MCP, Plugin): Regeln, Einstellungen, Projekt und Symbole
-    /// wie TFileChecker.CheckText.</summary>
-    class function CheckWith(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-      const ARelativePath: string; const AProject: TCheckProject; const ASource: TCheckSource): TBulkFixCheck;
-      overload; static;
-    /// <summary>Wie oben ohne die Treffer aus ABaseline (#97): Was festgehalten ist, bleibt unverändert.</summary>
-    class function CheckWith(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-      const ARelativePath: string; const AProject: TCheckProject; const ASource: TCheckSource;
-      const ABaseline: IRuleBaseline): TBulkFixCheck; overload; static;
     /// <summary>Syntaxfehler eines Texts mit den Symbolen und Include-Dateien aus ASource.</summary>
-    class function SyntaxErrorsWith(const ASource: TCheckSource): TBulkFixSyntaxErrors; static;
+    class function SyntaxErrorsWith(const ASource: TPascalSource): TBulkFixSyntaxErrors; static;
   end;
 
 implementation
 
 uses
-  Atlas.Common.Findings.Contract,
-  Atlas.Common.Findings.Scopes,
   System.Math,
   System.StrUtils,
   System.Generics.Collections,
@@ -206,9 +191,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-const
-  cAllRules = 'all';
-
 type
   /// <summary>Korrektur eines Treffers für einen Durchgang.</summary>
   TCandidate = record
@@ -238,16 +220,16 @@ end;
 { TBulkFixOptions }
 
 class function TBulkFixOptions.Create(const ARules: TArray<string>; AMinConfidence: TRuleConfidence;
-  const ACatalog: TArray<TRuleCatalogEntry>): TBulkFixOptions;
+  const ASafeRules: TArray<string>): TBulkFixOptions;
 var
   mRule: string;
 begin
   Result := Default(TBulkFixOptions);
   Result.MinConfidence := AMinConfidence;
-  Result.SafeRules := TBulkFix.SafeRulesOf(ACatalog);
+  Result.SafeRules := ASafeRules;
   for mRule in ARules do
   begin
-    if SameText(Trim(mRule), cAllRules) then
+    if SameText(Trim(mRule), cAll) then
     begin
       Result.All := True;
     end
@@ -462,20 +444,6 @@ begin
   Result := TFileBatch.WriteAll(mNames, mOld, mNew, AWrite);
 end;
 
-class function TBulkFix.SafeRulesOf(const ACatalog: TArray<TRuleCatalogEntry>): TArray<string>;
-var
-  mEntry: TRuleCatalogEntry;
-begin
-  Result := nil;
-  for mEntry in ACatalog do
-  begin
-    if mEntry.SafeFix then
-    begin
-      Result := Result + [LowerCase(mEntry.Id)];
-    end;
-  end;
-end;
-
 class function TBulkFix.MinConfidenceOf(ASetting: TRuleConfidence; const ARequested: string;
   out AConfidence: TRuleConfidence; out AError: string): Boolean;
 begin
@@ -497,35 +465,6 @@ begin
     AError := cTexts[TBulkFixText.MinConfidenceBelow].Fmt([Trim(ARequested),
       ConfidenceText(ASetting)]);
     Result := False;
-  end;
-end;
-
-class function TBulkFix.RulesFor(const AAll: TArray<IRule>; const AFixRules: TArray<string>): TArray<IRule>;
-var
-  mRule: IRule;
-  mId: string;
-  mFound: Boolean;
-begin
-  Result := nil;
-  for mId in AFixRules do
-  begin
-    if SameText(Trim(mId), cAllRules) then
-    begin
-      Exit(AAll);
-    end;
-    mFound := False;
-    for mRule in AAll do
-    begin
-      if SameText(mRule.Descriptor.Id, Trim(mId)) then
-      begin
-        Result := Result + [mRule];
-        mFound := True;
-      end;
-    end;
-    if not mFound then
-    begin
-      Exit(AAll);
-    end;
   end;
 end;
 
@@ -700,19 +639,6 @@ begin
   end;
 end;
 
-class function TBulkFix.CheckWith(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const ARelativePath: string; const AProject: TCheckProject; const ASource: TCheckSource): TBulkFixCheck;
-begin
-  Result :=
-    function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
-    var
-      mScopes: TFindingScopes;
-    begin
-      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
-        TCheckOrigin.Make(AProject, ASource), mScopes);
-    end;
-end;
-
 /// <summary>Zeile "Übersprungen: …"; '' ohne übersprungene Treffer.</summary>
 function SkippedLine(const ASkipped: TBulkFixSkipCounts): string;
 begin
@@ -803,26 +729,7 @@ begin
   Result := string.Join(ALineBreak, mLines);
 end;
 
-class function TBulkFix.CheckWith(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const ARelativePath: string; const AProject: TCheckProject; const ASource: TCheckSource;
-  const ABaseline: IRuleBaseline): TBulkFixCheck;
-begin
-  if ABaseline = nil then
-  begin
-    Exit(CheckWith(ARules, ASettings, ARelativePath, AProject, ASource));
-  end;
-  Result :=
-    function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
-    var
-      mScopes: TFindingScopes;
-    begin
-      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
-        TCheckOrigin.Make(AProject, ASource), mScopes);
-      Result := ABaseline.Filter(ARelativePath, AText, mScopes, Result);
-    end;
-end;
-
-class function TBulkFix.SyntaxErrorsWith(const ASource: TCheckSource): TBulkFixSyntaxErrors;
+class function TBulkFix.SyntaxErrorsWith(const ASource: TPascalSource): TBulkFixSyntaxErrors;
 begin
   Result :=
     function(const AText: string): Integer
@@ -840,6 +747,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.BulkFix', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Findings.BulkFix', cTexts);
 
 end.

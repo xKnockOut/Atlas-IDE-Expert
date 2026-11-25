@@ -525,7 +525,7 @@ Atlas.Common.Rules.Checker.Tests
 Atlas.Common.Rules.Prompt.Tests
 Atlas.Common.Rules.Profiles.Tests
 Atlas.Common.Findings.Scopes.Tests
-Atlas.Common.Rules.SuppressionStats.Tests
+Atlas.Common.Findings.SuppressionStats.Tests
 Atlas.Common.Rules.TypedScope.Tests
 Atlas.Common.Rules.WarnSwitches.Tests
 Atlas.Common.Semantics.ControlFlow.Tests

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.SuppressionStats.Tests;
+﻿unit Atlas.Common.Findings.SuppressionStats.Tests;
 
 // Tests für die Auswertung der Unterdrückungskommentare (#147).
 
@@ -30,10 +30,10 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Engine,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Findings.Output,
-  Atlas.Common.Rules.SuppressionStats;
+  Atlas.Common.Findings.SuppressionStats,
+  Atlas.Common.Findings.Suppressions;
 
 const
   cCode =

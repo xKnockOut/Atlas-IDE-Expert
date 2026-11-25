@@ -114,7 +114,7 @@ type
     /// Core.Linter.Instructions.</summary>
     class function Instructions(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>Was die Befehle in Core.Linter.* von der Shell brauchen: Delphi-Versionen, git und svn,
-    /// Arbeitsbereiche, Anweisungsdateien.</summary>
+    /// Arbeitsbereiche, Anweisungsdateien, Prüfregeln.</summary>
     class function Host: TCoreLinterHost; static;
   end;
 
@@ -144,6 +144,8 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Rules.InstructionFiles,
+  Atlas.Common.Rules.Instructions,
+  Shell.Composition.LinterRules,
   Platform.Server,
   Core.Bootstrap,
   Core.VersionControlChanges,
@@ -202,9 +204,24 @@ begin
 end;
 
 function WriteInstructions(const ARoot: string; const ASettings: TServerSettings; AWrite: Boolean):
-  TArray<TInstructionsFile>;
+  TArray<TCoreInstructionsFile>;
+const
+  cStates: array[TInstructionsState] of TCoreInstructionsState = (TCoreInstructionsState.Current,
+    TCoreInstructionsState.Stale, TCoreInstructionsState.Missing);
+var
+  mFiles: TArray<TInstructionsFile>;
+  mIndex: Integer;
 begin
-  Result := TShellInstructions.Run(ARoot, ASettings, AWrite);
+  mFiles := TShellInstructions.Run(ARoot, ASettings, AWrite);
+  Result := nil;
+  SetLength(Result, Length(mFiles));
+  for mIndex := 0 to High(mFiles) do
+  begin
+    Result[mIndex].FileName := mFiles[mIndex].FileName;
+    Result[mIndex].State := cStates[mFiles[mIndex].State];
+    Result[mIndex].Written := mFiles[mIndex].Written;
+    Result[mIndex].Error := mFiles[mIndex].Error;
+  end;
 end;
 
 { TLinterShell }
@@ -216,6 +233,7 @@ begin
   Result.Vcs := VcsAccess;
   Result.NewGroup := NewGroup;
   Result.Instructions := WriteInstructions;
+  Result.Rules := TShellLinterRules.Create;
 end;
 
 class function TLinterShell.Run(const AOptions: TCommandLineOptions): Integer;

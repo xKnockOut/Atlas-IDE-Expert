@@ -21,6 +21,10 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract;
 
+const
+  /// <summary>Regel für Unterdrückungen, die nichts unterdrücken.</summary>
+  cUnusedSuppressionRuleId = 'unused-suppression';
+
 type
   TSuppressionEntry = record
     /// <summary>Bereich des Kommentars.</summary>

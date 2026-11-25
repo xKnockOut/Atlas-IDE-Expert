@@ -91,7 +91,8 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Findings.Baseline,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Findings.Suppressions;
 
 const
   cOriginal = 'unit U;' + #10 + 'begin' + #10 + '  X := 1;' + #10 + 'end.';
