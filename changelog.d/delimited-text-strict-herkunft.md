@@ -1,0 +1,2 @@
+### Behoben
+- Prüfregel `delimited-text-without-strict`: kein Fehlalarm mehr, wenn `StrictDelimiter` in einem `with`-Block (`with Liste do StrictDelimiter := True`) oder über eine Typumwandlung (`TStringList(Liste)`, `(Liste as TStringList)`) gesetzt wird. Bei Parametern und bei Listen, die die Routine nicht selbst erzeugt (Funktionsergebnis), bleibt die Regel still, denn dort setzt der Aufrufer bzw. die erzeugende Funktion `StrictDelimiter`.

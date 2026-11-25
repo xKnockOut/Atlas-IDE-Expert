@@ -5691,7 +5691,7 @@ if Pos(';', Zeile) > 0 then
 
 **DelimitedText without StrictDelimiter** · Bug · Warning · Group Find bugs
 
-List.DelimitedText := ... after List.Delimiter := ... in the same routine without StrictDelimiter being set: DelimitedText then also splits at spaces, 'Max Muster;Berlin' becomes three entries instead of two. For fields, StrictDelimiter anywhere in the unit counts (often in the constructor); StrictDelimiter := False is deliberate and stays silent, as does DelimitedText without a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.
+List.DelimitedText := ... after List.Delimiter := ... in the same routine without StrictDelimiter being set: DelimitedText then also splits at spaces, 'Max Muster;Berlin' becomes three entries instead of two. StrictDelimiter also counts in with List do and through a typecast (TStringList(List), List as TStringList), for fields anywhere in the unit (often in the constructor). For parameters and lists the routine does not create itself (function result) the rule stays silent: the caller or the creating function sets StrictDelimiter there; StrictDelimiter := False is deliberate and stays silent, as does DelimitedText without a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.
 
 Flagged:
 
