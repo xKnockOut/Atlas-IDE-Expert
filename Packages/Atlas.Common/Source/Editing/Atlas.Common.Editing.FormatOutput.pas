@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.FormatOutput;
+﻿unit Atlas.Common.Editing.FormatOutput;
 
 // Ausgabe von --format-check und --format-write (#1358) als Text, JSON oder
 // vereinigter Diff, dazu der Exit-Code. Zeilen beginnen überall bei 1.
@@ -60,7 +60,8 @@ uses
   System.Math,
   Atlas.Text.Lines,
   Atlas.Text.Diff,
-  Atlas.Common.Rules.Output,
+  Atlas.Text.Json,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -211,19 +212,19 @@ var
   mDeviation: TFormatDeviation;
   mFirst: Boolean;
 begin
-  ABuilder.Append('{"path":').Append(TFindingsOutput.JsonString(SlashPath(AFile.Path)));
+  ABuilder.Append('{"path":').Append(TJsonText.Quote(SlashPath(AFile.Path)));
   ABuilder.Append(',"changed":').Append(JsonBool(AFile.Outcome.Changed));
   ABuilder.Append(',"stable":').Append(JsonBool(AFile.Outcome.Stable));
   ABuilder.Append(',"written":').Append(JsonBool(AFile.Written));
   if AFile.Error <> '' then
   begin
-    ABuilder.Append(',"error":').Append(TFindingsOutput.JsonString(AFile.Error));
+    ABuilder.Append(',"error":').Append(TJsonText.Quote(AFile.Error));
   end;
   if AFile.Outcome.HasSyntaxError then
   begin
     ABuilder.Append(',"syntaxError":{"line":').Append(AFile.Outcome.SyntaxError.StartPos.Line + 1)
       .Append(',"column":').Append(AFile.Outcome.SyntaxError.StartPos.Character + 1)
-      .Append(',"message":').Append(TFindingsOutput.JsonString(AFile.Outcome.SyntaxError.Message)).Append('}');
+      .Append(',"message":').Append(TJsonText.Quote(AFile.Outcome.SyntaxError.Message)).Append('}');
   end;
   ABuilder.Append(',"deviations":[');
   mFirst := True;
@@ -235,8 +236,8 @@ begin
     end;
     mFirst := False;
     ABuilder.Append('{"line":').Append(mDeviation.Line + 1);
-    ABuilder.Append(',"kind":').Append(TFindingsOutput.JsonString(TFormatCheck.KindName(mDeviation.Kind)));
-    ABuilder.Append(',"message":').Append(TFindingsOutput.JsonString(mDeviation.Message)).Append('}');
+    ABuilder.Append(',"kind":').Append(TJsonText.Quote(TFormatCheck.KindName(mDeviation.Kind)));
+    ABuilder.Append(',"message":').Append(TJsonText.Quote(mDeviation.Message)).Append('}');
   end;
   ABuilder.Append(']}');
 end;
@@ -392,21 +393,21 @@ class function TFormatOutput.ExitCode(const AFiles: TArray<TFormattedFile>; AWri
 var
   mFile: TFormattedFile;
 begin
-  Result := TFindingsOutput.cExitClean;
+  Result := TFindingsExitCodes.cClean;
   for mFile in AFiles do
   begin
     if mFile.Error <> '' then
     begin
-      Exit(TFindingsOutput.cExitFailure);
+      Exit(TFindingsExitCodes.cFailure);
     end;
     if mFile.Outcome.HasSyntaxError or not mFile.Outcome.Stable or (not AWrite and mFile.Outcome.Changed) then
     begin
-      Result := TFindingsOutput.cExitFindings;
+      Result := TFindingsExitCodes.cFindings;
     end;
   end;
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.FormatOutput', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.FormatOutput', cTexts);
 
 end.

@@ -476,7 +476,7 @@ Atlas.Common.Rules.Providers.OwnershipReport.Tests
 Atlas.Common.Rules.Providers.DocumentChecks.Tests
 Atlas.Common.Rules.Providers.DocumentActions.Tests
 Atlas.Common.Rules.CheckContext.Tests
-Atlas.Common.Rules.FormatOutput.Tests
+Atlas.Common.Editing.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
 Atlas.Common.Compiler.MessageCatalog.Tests
 Atlas.Common.Compiler.Releases.Tests
