@@ -69,7 +69,6 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  cUnusedSuppressionRuleId = 'unused-suppression';
   cUnknownRuleIdRuleId = 'unknown-rule-id';
   /// <summary>Hinweis, dass die Regeln eine Unit wegen MaxTreeDepth übersprungen haben.</summary>
   cUnitTooDeepRuleId = 'unit-too-deep';

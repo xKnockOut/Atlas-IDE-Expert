@@ -629,7 +629,7 @@
         <DCCReference Include="Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Configuration\Atlas.Common.Configuration.RuleOptions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.WarnSwitches.Tests.pas"/>
-        <DCCReference Include="Common\Rules\Atlas.Common.Rules.SuppressionStats.Tests.pas"/>
+        <DCCReference Include="Common\Findings\Atlas.Common.Findings.SuppressionStats.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Catalog.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.MessageCatalog.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Releases.Tests.pas"/>

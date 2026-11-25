@@ -603,7 +603,7 @@ uses
   Atlas.Common.Findings.Scopes.Tests in 'Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas',
   Atlas.Common.Configuration.RuleOptions.Tests in 'Common\Configuration\Atlas.Common.Configuration.RuleOptions.Tests.pas',
   Atlas.Common.Rules.WarnSwitches.Tests in 'Common\Rules\Atlas.Common.Rules.WarnSwitches.Tests.pas',
-  Atlas.Common.Rules.SuppressionStats.Tests in 'Common\Rules\Atlas.Common.Rules.SuppressionStats.Tests.pas',
+  Atlas.Common.Findings.SuppressionStats.Tests in 'Common\Findings\Atlas.Common.Findings.SuppressionStats.Tests.pas',
   Atlas.Common.Rules.Catalog.Tests in 'Common\Rules\Atlas.Common.Rules.Catalog.Tests.pas',
   Atlas.Common.Compiler.MessageCatalog.Tests in 'Common\Compiler\Atlas.Common.Compiler.MessageCatalog.Tests.pas',
   Atlas.Common.Compiler.Releases.Tests in 'Common\Compiler\Atlas.Common.Compiler.Releases.Tests.pas',

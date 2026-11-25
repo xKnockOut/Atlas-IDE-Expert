@@ -212,7 +212,7 @@
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Baseline.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Scopes.pas"/>
         <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.RuleOptions.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.SuppressionStats.pas"/>
+        <DCCReference Include="Source\Findings\Atlas.Common.Findings.SuppressionStats.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.MessageCatalog.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Releases.pas"/>

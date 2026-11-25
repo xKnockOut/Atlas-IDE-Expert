@@ -20,7 +20,7 @@ uses
   Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Findings.Scopes,
-  Atlas.Common.Rules.SuppressionStats,
+  Atlas.Common.Findings.SuppressionStats,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Diagnostics.CheckProfile,
