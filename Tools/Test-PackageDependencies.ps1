@@ -316,9 +316,17 @@ try {
         Add-HelpUnit 'Topics' 'Atlas.IDE.Help.Topics.Links' @('Atlas.IDE.Help.Pages.Contract')
     }
 
-    Test-Fails 'Umgestelltes Modul verwendet ein anderes Modul' 'Rollenmatrix: Fachcode-Package Atlas.IDE.Tracker aus Host-Shell' {
+    Test-Fails 'Umgestelltes Modul verwendet ein anderes umgestelltes Modul' 'Rollenmatrix: Fachcode-Package Atlas.IDE.Tracker aus Host-Shell' {
         Switch-Package 'Atlas.IDE.Help'
+        Switch-Package 'Atlas.IDE.Tracker'
+        Add-UnitIn 'Packages/Atlas.IDE.Tracker/Source' 'Foundation' 'Atlas.IDE.Tracker.Foundation.Issues' @()
         Add-HelpUnit 'Shell' 'Atlas.IDE.Help.Shell.Composition' @('Atlas.IDE.Tracker.Foundation.Issues')
+    }
+
+    # Ein Modul aus "layerPackages" hat Schichtnamen; die Rollenmatrix liest sie als Base, die Modulgrenze fängt es.
+    Test-Fails 'Umgestelltes Modul verwendet ein Modul mit Schichtnamen' 'uses Atlas.Core.Ci.Contract – Modulgrenze' {
+        Switch-Package 'Atlas.IDE.Help'
+        Add-HelpUnit 'Shell' 'Atlas.IDE.Help.Shell.Composition' @('Atlas.Core.Ci.Contract')
     }
 
     Test-Fails 'Zeile der Zuordnung für eine Unit mit Package im Namen' 'Atlas.IDE.Help.Topics.Links trägt sein Package im Namen' {
