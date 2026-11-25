@@ -13,13 +13,13 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.RefactorTools,
   Shell.Composition.Refactorings.Services,
-  Shell.Composition.Refactorings;
+  Shell.Composition.Refactorings,
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Einstellungen der Datei (atlas.json ihres Arbeitsbereichs).</summary>

@@ -1,0 +1,180 @@
+﻿unit Atlas.Common.Semantics.Implementations.Tests;
+
+interface
+
+uses
+  DUnitX.TestFramework,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.Definitions;
+
+type
+  [TestFixture]
+  TImplementationsTests = class
+  private
+    FIndex: ISymbolIndex;
+    FResolver: TNameResolver;
+    function TargetsAt(const AMarker: string; AOffset: Integer): TArray<TDefinitionTarget>;
+    function Lines(const ATargets: TArray<TDefinitionTarget>): string;
+  public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
+    [Test]
+    procedure VirtualMethodListsOwnAndOverridingBodies;
+    [Test]
+    procedure InterfaceMethodListsImplementingClasses;
+    [Test]
+    procedure TypeListsAllDescendants;
+    [Test]
+    procedure InheritedWithNameJumpsToAncestorBody;
+    [Test]
+    procedure BareInheritedUsesEnclosingMethod;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Semantics.Implementations;
+
+const
+  cHauptFile = 'C:\P\Haupt.pas';
+
+  cUnitHaupt =
+    'unit Haupt;'#10 +                                     // 0
+    'interface'#10 +                                       // 1
+    'type'#10 +                                            // 2
+    '  IZeichner = interface'#10 +                         // 3
+    '    procedure Zeichne;'#10 +                          // 4
+    '  end;'#10 +                                          // 5
+    '  TBasis = class(TInterfacedObject, IZeichner)'#10 + // 6
+    '    procedure Zeichne; virtual;'#10 +                 // 7
+    '    procedure Leer; virtual; abstract;'#10 +          // 8
+    '  end;'#10 +                                          // 9
+    '  TMitte = class(TBasis)'#10 +                        // 10
+    '    procedure Zeichne; override;'#10 +                // 11
+    '  end;'#10 +                                          // 12
+    '  TBlatt = class(TMitte)'#10 +                        // 13
+    '    procedure Zeichne; override;'#10 +                // 14
+    '    procedure Leer; override;'#10 +                   // 15
+    '  end;'#10 +                                          // 16
+    'implementation'#10 +                                  // 17
+    'procedure TBasis.Zeichne;'#10 +                       // 18
+    'begin'#10 +                                           // 19
+    'end;'#10 +                                            // 20
+    'procedure TMitte.Zeichne;'#10 +                       // 21
+    'begin'#10 +                                           // 22
+    '  inherited Zeichne;'#10 +                            // 23
+    'end;'#10 +                                            // 24
+    'procedure TBlatt.Zeichne;'#10 +                       // 25
+    'begin'#10 +                                           // 26
+    '  inherited;'#10 +                                    // 27
+    'end;'#10 +                                            // 28
+    'procedure TBlatt.Leer;'#10 +                          // 29
+    'begin'#10 +                                           // 30
+    'end;'#10 +                                            // 31
+    'end.';
+
+function PositionOf(const AText, AMarker: string; AOffset: Integer): TTextPosition;
+var
+  mIndex, mLine, mLineStart, mScan: Integer;
+begin
+  mIndex := Pos(AMarker, AText);
+  if mIndex = 0 then
+  begin
+    Assert.Fail(Format('"%s" nicht gefunden', [AMarker]));
+  end;
+  Inc(mIndex, AOffset);
+  mLine := 0;
+  mLineStart := 1;
+  for mScan := 1 to mIndex - 1 do
+  begin
+    if AText[mScan] = #10 then
+    begin
+      Inc(mLine);
+      mLineStart := mScan + 1;
+    end;
+  end;
+  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
+end;
+
+{ TImplementationsTests }
+
+function TImplementationsTests.TargetsAt(const AMarker: string; AOffset: Integer): TArray<TDefinitionTarget>;
+var
+  mTree: TSyntaxTree;
+begin
+  mTree := TPascalParser.Parse(cUnitHaupt);
+  try
+    Result := TImplementations.Targets(FResolver, FIndex, mTree, cHauptFile,
+      PositionOf(cUnitHaupt, AMarker, AOffset));
+  finally
+    mTree.Free;
+  end;
+end;
+
+function TImplementationsTests.Lines(const ATargets: TArray<TDefinitionTarget>): string;
+var
+  mItem: TDefinitionTarget;
+begin
+  Result := '';
+  for mItem in ATargets do
+  begin
+    Result := Result + IntToStr(mItem.SelectionRange.StartPos.Line) + ' ';
+  end;
+  Result := Trim(Result);
+end;
+
+procedure TImplementationsTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitHaupt, cHauptFile, nil));
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TImplementationsTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
+end;
+
+procedure TImplementationsTests.VirtualMethodListsOwnAndOverridingBodies;
+begin
+  // Auf der Deklaration in TBasis: eigener Rumpf, dann TMitte und TBlatt.
+  Assert.AreEqual('18 21 25', Lines(TargetsAt('Zeichne; virtual', 0)));
+  // Abstrakt: nur der Rumpf in TBlatt.
+  Assert.AreEqual('29', Lines(TargetsAt('Leer; virtual', 0)));
+end;
+
+procedure TImplementationsTests.InterfaceMethodListsImplementingClasses;
+begin
+  Assert.AreEqual('18 21 25', Lines(TargetsAt('Zeichne;'#10'  end;'#10'  TBasis', 0)));
+end;
+
+procedure TImplementationsTests.TypeListsAllDescendants;
+begin
+  Assert.AreEqual('10 13', Lines(TargetsAt('TBasis = class', 0)));
+  Assert.AreEqual('6 10 13', Lines(TargetsAt('IZeichner = interface', 0)));
+end;
+
+procedure TImplementationsTests.InheritedWithNameJumpsToAncestorBody;
+begin
+  Assert.AreEqual('18', Lines(TargetsAt('inherited Zeichne', 2)));
+end;
+
+procedure TImplementationsTests.BareInheritedUsesEnclosingMethod;
+begin
+  Assert.AreEqual('21', Lines(TargetsAt('inherited;', 2)));
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TImplementationsTests);
+
+end.

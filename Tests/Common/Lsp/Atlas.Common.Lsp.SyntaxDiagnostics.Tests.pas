@@ -102,7 +102,7 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.TreeCache,
   System.Classes,
@@ -433,7 +433,7 @@ var
 begin
   mDocument := FStore.Open(cUri, 'objectpascal', 1, cValidCode);
   mInput := Default(TSyntaxDiagnosticsInput);
-  mInput.Inactive := TLspInactiveRegions.FromRanges(
+  mInput.Inactive := TInactiveRegions.FromRanges(
     [TTextRange.Create(TTextPosition.Create(1, 0), TTextPosition.Create(2, 0))]);
   mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, mInput);
   try
@@ -463,11 +463,11 @@ const
 var
   mRanges: TArray<TTextRange>;
 begin
-  mRanges := TLspInactiveRegions.Ranges(cCode, ['WIN64']);
+  mRanges := TInactiveRegions.Ranges(cCode, ['WIN64']);
   Assert.AreEqual(1, Integer(Length(mRanges)));
   Assert.AreEqual(4, mRanges[0].StartPos.Line);
   Assert.AreEqual(6, mRanges[0].EndPos.Line);
-  mRanges := TLspInactiveRegions.Ranges(cCode, nil);
+  mRanges := TInactiveRegions.Ranges(cCode, nil);
   Assert.AreEqual(1, Integer(Length(mRanges)));
   Assert.AreEqual(2, mRanges[0].StartPos.Line);
 end;
@@ -484,13 +484,13 @@ const
     '{$IFDEF DEBUG}{$IFDEF WIN64} const B = 1; {$ENDIF}{$ENDIF}'#10 +
     'end.';
 var
-  mRegions: TArray<TLspInactiveRegion>;
+  mRegions: TArray<TInactiveRegion>;
 begin
-  mRegions := TLspInactiveRegions.Regions(cCode, ['WIN64']);
+  mRegions := TInactiveRegions.Regions(cCode, ['WIN64']);
   Assert.AreEqual(2, Integer(Length(mRegions)));
   Assert.AreEqual('not WIN64', mRegions[0].Condition);
   Assert.AreEqual('DEBUG', mRegions[1].Condition);
-  mRegions := TLspInactiveRegions.Regions(cCode, ['DEBUG']);
+  mRegions := TInactiveRegions.Regions(cCode, ['DEBUG']);
   Assert.AreEqual(2, Integer(Length(mRegions)));
   Assert.AreEqual('WIN64', mRegions[0].Condition);
   // Zweig innerhalb einer Zeile, verschachtelt (#615).

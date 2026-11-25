@@ -10,7 +10,6 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Mcp.EditTools;
 
 type
@@ -43,7 +42,8 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Mcp.Contract.Extract,
   Atlas.Common.Mcp.Server,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Semantics.References;
 
 {$SCOPEDENUMS ON}
 

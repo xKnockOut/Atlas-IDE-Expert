@@ -10,7 +10,7 @@ interface
 
 uses
   Atlas.Common.Editing.PromoteVariable,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TLspFormMentions = class

@@ -85,7 +85,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Tests.TextEdits;
 
 /// <summary>Kleiner Index: Units.A (Foo), Units.B (Bar), Units.Reg (Init), Units.C (Baz, Mitglied Qux).</summary>
@@ -507,14 +507,14 @@ begin
   mText := Source('Units.A, {$IFDEF X}Units.B,{$ENDIF} Units.C', '', '',
     'procedure P;'#10'begin'#10'  Baz;'#10'  {$IFDEF X}Bar;{$ENDIF}'#10'end;'#10);
   // X nicht gesetzt: Units.B steht im inaktiven Zweig und fällt nicht auf; Units.A ist ungenutzt.
-  Assert.AreEqual('Units.A:unused|Units.C:impl|', States(mText, TLspInactiveRegions.Ranges(mText, []), nil));
+  Assert.AreEqual('Units.A:unused|Units.C:impl|', States(mText, TInactiveRegions.Ranges(mText, []), nil));
   // X gesetzt: Units.B wird im aktiven Zweig benutzt.
-  Assert.AreEqual('Units.A:unused|Units.B:impl|Units.C:impl|', States(mText, TLspInactiveRegions.Ranges(mText, ['X']),
+  Assert.AreEqual('Units.A:unused|Units.B:impl|Units.C:impl|', States(mText, TInactiveRegions.Ranges(mText, ['X']),
     nil));
   // Benutzt nur im inaktiven Zweig zählt nicht.
   mText := Source('', '', 'Units.B', 'procedure P;'#10'begin'#10'  {$IFDEF X}Bar;{$ENDIF}'#10'end;'#10);
-  Assert.AreEqual('Units.B:unused|', States(mText, TLspInactiveRegions.Ranges(mText, []), nil));
-  Assert.AreEqual('', States(mText, TLspInactiveRegions.Ranges(mText, ['X']), nil));
+  Assert.AreEqual('Units.B:unused|', States(mText, TInactiveRegions.Ranges(mText, []), nil));
+  Assert.AreEqual('', States(mText, TInactiveRegions.Ranges(mText, ['X']), nil));
 end;
 
 procedure TUsesActionsTests.ProjectUsesAreNeverUnused;

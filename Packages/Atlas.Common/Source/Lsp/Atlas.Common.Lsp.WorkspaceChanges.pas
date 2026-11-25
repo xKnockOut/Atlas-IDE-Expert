@@ -18,7 +18,7 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TWorkspaceFileEdits = record

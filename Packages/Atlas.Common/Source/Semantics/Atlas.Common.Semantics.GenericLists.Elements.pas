@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GenericLists.Elements;
+﻿unit Atlas.Common.Semantics.GenericLists.Elements;
 
 // Elemente der Listenumwandlung prüfen (#1105, #1106): Jedes Argument, das in die Liste kommt (Add, Insert,
 // L[I] := X …), muss vom Elementtyp T oder einem Nachfahren sein. Zeiger und Ganzzahlen verhindern die Umwandlung,
@@ -9,8 +9,8 @@ interface
 uses
   System.Generics.Collections,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.GenericLists.Source,
-  Atlas.Common.Editing.GenericLists.State;
+  Atlas.Common.Semantics.GenericLists.Source,
+  Atlas.Common.Semantics.GenericLists.State;
 
 type
   {$SCOPEDENUMS ON}
@@ -42,7 +42,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Semantics.LegacyListKinds,
-  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Semantics.GenericLists.Syntax,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -122,6 +122,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Elements', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.GenericLists.Elements', cTexts);
 
 end.

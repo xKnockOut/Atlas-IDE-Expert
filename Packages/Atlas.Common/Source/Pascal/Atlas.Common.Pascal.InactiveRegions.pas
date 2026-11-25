@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.InactiveRegions;
+﻿unit Atlas.Common.Pascal.InactiveRegions;
 
 // Inaktive Bereiche der bedingten Kompilierung ({$IFDEF} usw.) einer Datei
 // für das Abblenden im Editor. Ein Bereich reicht vom Ende der Direktive,
@@ -21,13 +21,13 @@ uses
 type
   /// <summary>Inaktiver Bereich mit der Bedingung seines Zweigs ("WIN64", "not DEBUG",
   /// "DEBUG und WIN64"); '' wenn unbekannt, etwa bei $IFOPT.</summary>
-  TLspInactiveRegion = record
+  TInactiveRegion = record
     Range: TTextRange;
     Condition: string;
-    class function Create(const ARange: TTextRange; const ACondition: string): TLspInactiveRegion; static;
+    class function Create(const ARange: TTextRange; const ACondition: string): TInactiveRegion; static;
   end;
 
-  TLspInactiveRegions = record
+  TInactiveRegions = record
   public
     /// <summary>Inaktive Zeilenbereiche in AText für die Symbole ADefines.</summary>
     class function Ranges(const AText: string; const ADefines: TArray<string>): TArray<TTextRange>; overload; static;
@@ -36,19 +36,19 @@ type
     class function Ranges(const AText: string; const ADefines: TArray<string>; const AFileName: string;
       const AResolver: TIncludeResolver; out AIssues: TArray<TPreprocessorIssue>): TArray<TTextRange>; overload; static;
     /// <summary>Wie Ranges, je Bereich mit der Bedingung des Zweigs.</summary>
-    class function Regions(const AText: string; const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
+    class function Regions(const AText: string; const ADefines: TArray<string>): TArray<TInactiveRegion>;
       overload; static;
     class function Regions(const AText: string; const ADefines: TArray<string>; const AFileName: string;
-      const AResolver: TIncludeResolver; out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
+      const AResolver: TIncludeResolver; out AIssues: TArray<TPreprocessorIssue>): TArray<TInactiveRegion>;
       overload; static;
     /// <summary>Wie oben aus dem Lauf AProcessed (#860); Include-Befunde nur mit AReportIncludes (der Lauf hatte
     /// einen Resolver; ohne wäre jedes $I "nicht gefunden").</summary>
     class function Regions(const AProcessed: TPreprocessorResult; AReportIncludes: Boolean;
-      out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>; overload; static;
+      out AIssues: TArray<TPreprocessorIssue>): TArray<TInactiveRegion>; overload; static;
     /// <summary>Nur die Bereiche, etwa für die Prüfung der Sprachmerkmale.</summary>
-    class function RangesOf(const ARegions: TArray<TLspInactiveRegion>): TArray<TTextRange>; static;
+    class function RangesOf(const ARegions: TArray<TInactiveRegion>): TArray<TTextRange>; static;
     /// <summary>Bereiche ohne Bedingung.</summary>
-    class function FromRanges(const ARanges: TArray<TTextRange>): TArray<TLspInactiveRegion>; static;
+    class function FromRanges(const ARanges: TArray<TTextRange>): TArray<TInactiveRegion>; static;
   end;
 
 implementation
@@ -68,40 +68,40 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspInactiveRegion }
+{ TInactiveRegion }
 
-class function TLspInactiveRegion.Create(const ARange: TTextRange; const ACondition: string): TLspInactiveRegion;
+class function TInactiveRegion.Create(const ARange: TTextRange; const ACondition: string): TInactiveRegion;
 begin
   Result.Range := ARange;
   Result.Condition := ACondition;
 end;
 
-{ TLspInactiveRegions }
+{ TInactiveRegions }
 
-class function TLspInactiveRegions.Ranges(const AText: string; const ADefines: TArray<string>): TArray<TTextRange>;
+class function TInactiveRegions.Ranges(const AText: string; const ADefines: TArray<string>): TArray<TTextRange>;
 var
   mIssues: TArray<TPreprocessorIssue>;
 begin
   Result := Ranges(AText, ADefines, '', nil, mIssues);
 end;
 
-class function TLspInactiveRegions.Ranges(const AText: string; const ADefines: TArray<string>; const AFileName: string;
+class function TInactiveRegions.Ranges(const AText: string; const ADefines: TArray<string>; const AFileName: string;
   const AResolver: TIncludeResolver; out AIssues: TArray<TPreprocessorIssue>): TArray<TTextRange>;
 begin
   Result := RangesOf(Regions(AText, ADefines, AFileName, AResolver, AIssues));
 end;
 
-class function TLspInactiveRegions.Regions(const AText: string;
-  const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
+class function TInactiveRegions.Regions(const AText: string;
+  const ADefines: TArray<string>): TArray<TInactiveRegion>;
 var
   mIssues: TArray<TPreprocessorIssue>;
 begin
   Result := Regions(AText, ADefines, '', nil, mIssues);
 end;
 
-class function TLspInactiveRegions.Regions(const AText: string; const ADefines: TArray<string>;
+class function TInactiveRegions.Regions(const AText: string; const ADefines: TArray<string>;
   const AFileName: string; const AResolver: TIncludeResolver;
-  out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
+  out AIssues: TArray<TPreprocessorIssue>): TArray<TInactiveRegion>;
 var
   mOptions: TPreprocessorOptions;
 begin
@@ -112,7 +112,7 @@ begin
   Result := Regions(TPascalPreprocessor.Process(AText, mOptions), Assigned(AResolver), AIssues);
 end;
 
-class function TLspInactiveRegions.RangesOf(const ARegions: TArray<TLspInactiveRegion>): TArray<TTextRange>;
+class function TInactiveRegions.RangesOf(const ARegions: TArray<TInactiveRegion>): TArray<TTextRange>;
 var
   mIndex: Integer;
 begin
@@ -123,14 +123,14 @@ begin
   end;
 end;
 
-class function TLspInactiveRegions.FromRanges(const ARanges: TArray<TTextRange>): TArray<TLspInactiveRegion>;
+class function TInactiveRegions.FromRanges(const ARanges: TArray<TTextRange>): TArray<TInactiveRegion>;
 var
   mIndex: Integer;
 begin
   SetLength(Result, Length(ARanges));
   for mIndex := 0 to High(ARanges) do
   begin
-    Result[mIndex] := TLspInactiveRegion.Create(ARanges[mIndex], '');
+    Result[mIndex] := TInactiveRegion.Create(ARanges[mIndex], '');
   end;
 end;
 
@@ -185,8 +185,8 @@ begin
   end;
 end;
 
-class function TLspInactiveRegions.Regions(const AProcessed: TPreprocessorResult; AReportIncludes: Boolean;
-  out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
+class function TInactiveRegions.Regions(const AProcessed: TPreprocessorResult; AReportIncludes: Boolean;
+  out AIssues: TArray<TPreprocessorIssue>): TArray<TInactiveRegion>;
 var
   mInactive: TInactiveRange;
   mRange: TTextRange;
@@ -207,11 +207,11 @@ begin
       Continue;
     end;
     // Der Bereich beginnt hinter der Direktive, die den Zweig abschaltet, wie der Zweig selbst.
-    Result := Result + [TLspInactiveRegion.Create(mRange, ConditionAt(AProcessed, mRange.StartPos))];
+    Result := Result + [TInactiveRegion.Create(mRange, ConditionAt(AProcessed, mRange.StartPos))];
   end;
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.InactiveRegions', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Pascal.InactiveRegions', cTexts);
 
 end.

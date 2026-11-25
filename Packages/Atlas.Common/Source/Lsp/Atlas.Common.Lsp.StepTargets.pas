@@ -140,11 +140,11 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Files,
-  Atlas.Common.Lsp.Definition,
-  Atlas.Common.Lsp.Implementations,
+  Atlas.Common.Semantics.Definitions,
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Text.Names,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Common.Semantics.Implementations;
 
 const
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -362,7 +362,7 @@ begin
     Exit;
   end;
   // Überschreibungen in allen Nachfahren bzw. Klassen, die das Interface implementieren.
-  for mLocation in TLspImplementations.AllDescendantsOf(FIndex, ACall.Container) do
+  for mLocation in TImplementations.AllDescendantsOf(FIndex, ACall.Container) do
   begin
     if Length(ACall.Targets) >= cMaxTargets then
     begin
@@ -603,7 +603,7 @@ var
   mTarget: TLspStepTarget;
 begin
   Result := False;
-  mFound := TLspImplementations.Targets(FResolver, FIndex, FTree, FFileName, APosition);
+  mFound := TImplementations.Targets(FResolver, FIndex, FTree, FFileName, APosition);
   for mItem in mFound do
   begin
     if not UnitOf(mItem.FileName, mOwner) then

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GenericLists.UsesEdits;
+﻿unit Atlas.Common.Semantics.GenericLists.UsesEdits;
 
 // uses-Listen einer Datei der Listenumwandlung (#1105, #1106): System.Generics.Collections kommt in das uses des
 // Abschnitts, in dem der generische Typ steht (aus dem implementation-uses wandert es ins interface, wenn der Typ
@@ -9,7 +9,7 @@ interface
 
 uses
   Atlas.Common.Semantics.LegacyListKinds,
-  Atlas.Common.Editing.GenericLists.Source;
+  Atlas.Common.Semantics.GenericLists.Source;
 
 type
   /// <summary>Edits der uses-Listen einer Datei.</summary>
@@ -413,6 +413,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.UsesEdits', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.GenericLists.UsesEdits', cTexts);
 
 end.
