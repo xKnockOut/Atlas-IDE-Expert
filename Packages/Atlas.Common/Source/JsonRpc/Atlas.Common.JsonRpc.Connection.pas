@@ -10,6 +10,11 @@
 //   Worker           nebenläufige Anfragen laufen im Thread-Pool und antworten
 //                    selbst; der Transport schreibt threadsicher.
 //
+// Schließt die Gegenseite die Verbindung (EJsonRpcPeerClosed beim Schreiben, etwa
+// weil die IDE beendet wurde), ist das kein Fehler, sondern das Ende der
+// Verbindung: Die Schleife endet wie bei geschlossener Eingabe, offene Anfragen
+// werden abgebrochen und ihre Antworten verworfen.
+//
 // Zustand, der nur im Thread von Run geändert werden darf (z. B. Neuladen eines
 // Arbeitsbereichs), stellen andere Threads über Queue in die Schleife
 //.
@@ -49,9 +54,12 @@ type
     procedure RunWork(const AWork: TProc);
     procedure ReportError(const AError: Exception);
     procedure ReportProblem(const AText: string);
+    /// <summary>Schreibt AMessage und gibt sie frei; hat die Gegenseite geschlossen, endet die Schleife.</summary>
     procedure Send(AMessage: TJSONObject);
     procedure Process(const AMessage: TJSONObject; AQueueMs: Int64);
-    function CreateResponder: TJsonRpcResponder;
+    /// <summary>Antwortet aus Workern; hat die Gegenseite geschlossen, wird die Antwort verworfen und die Schleife
+    /// über AInbox beendet.</summary>
+    function CreateResponder(const AInbox: IInterface): TJsonRpcResponder;
   public
     /// <summary>Der Dispatcher bleibt im Besitz des Aufrufers.</summary>
     constructor Create(const ATransport: IJsonRpcTransport; ADispatcher: TJsonRpcDispatcher);
@@ -499,6 +507,13 @@ end;
 
 procedure TJsonRpcConnection.ReportError(const AError: Exception);
 begin
+  // Ein Handler oder eine eingereihte Arbeit schrieb an eine Gegenseite, die geschlossen hat: Ende der Verbindung,
+  // kein Fehler der Verarbeitung. Nur aus dem Thread von Run.
+  if AError is EJsonRpcPeerClosed then
+  begin
+    FStopped := True;
+    Exit;
+  end;
   if Assigned(FOnError) then
   begin
     FOnError(AError);
@@ -520,7 +535,13 @@ end;
 procedure TJsonRpcConnection.Send(AMessage: TJSONObject);
 begin
   try
-    FTransport.WriteMessage(AMessage);
+    try
+      FTransport.WriteMessage(AMessage);
+    except
+      // Niemand liest mehr: Verbindungsende wie bei geschlossener Eingabe, kein Fehler der Verarbeitung.
+      on EJsonRpcPeerClosed do
+        FStopped := True;
+    end;
   finally
     AMessage.Free;
   end;
@@ -548,15 +569,17 @@ begin
   end;
 end;
 
-function TJsonRpcConnection.CreateResponder: TJsonRpcResponder;
+function TJsonRpcConnection.CreateResponder(const AInbox: IInterface): TJsonRpcResponder;
 var
   mTransport: IJsonRpcTransport;
   mOnError: TJsonRpcErrorEvent;
+  mInbox: IJsonRpcInbox;
 begin
   // Ohne Self: ein Worker kann die Verbindung überleben, wenn er beim Beenden
-  // nicht rechtzeitig fertig wird.
+  // nicht rechtzeitig fertig wird. Der Posteingang ist referenzgezählt; nach dem Ende von Run verwirft er.
   mTransport := FTransport;
   mOnError := FOnError;
+  mInbox := AInbox as IJsonRpcInbox;
   Result :=
     procedure(const AResponse: TJSONObject)
     begin
@@ -567,6 +590,9 @@ begin
           AResponse.Free;
         end;
       except
+        // Die Gegenseite ist weg: Antwort verwerfen und die Schleife beenden wie bei geschlossener Eingabe.
+        on EJsonRpcPeerClosed do
+          mInbox.Put(InboxItem(ikClosed));
         // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Workers; Fehler wird gemeldet
         on E: Exception do
           if Assigned(mOnError) then
@@ -673,7 +699,7 @@ begin
   mOwnResponder := not Assigned(FDispatcher.Responder);
   if mOwnResponder then
   begin
-    FDispatcher.Responder := CreateResponder();
+    FDispatcher.Responder := CreateResponder(mInbox);
   end;
 
   mFailure := nil;
