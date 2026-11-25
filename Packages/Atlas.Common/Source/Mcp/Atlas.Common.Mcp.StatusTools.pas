@@ -15,7 +15,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Mcp.Statistics;
 
 type

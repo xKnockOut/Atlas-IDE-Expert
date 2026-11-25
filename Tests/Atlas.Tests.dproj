@@ -223,7 +223,7 @@
         <DCCReference Include="Common\Index\Atlas.Common.Index.DocWiki.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CompilerDirectives.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ConditionalSymbols.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Status.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.ServerStatus.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.BugReport.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.Anonymity.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.CheckMemory.Tests.pas"/>

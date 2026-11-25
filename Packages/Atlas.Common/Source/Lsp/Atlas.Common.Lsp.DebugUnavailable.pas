@@ -87,7 +87,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,

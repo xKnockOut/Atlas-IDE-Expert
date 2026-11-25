@@ -86,7 +86,7 @@ uses
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.WorkspaceChanges,

@@ -32,7 +32,7 @@ uses
   Atlas.Common.Mcp.DeadCodeTools,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Index.CacheDirectory,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Mcp.StatusTools,
   Atlas.Common.Mcp.StatisticsHistory,
   Atlas.Common.Diagnostics.StatusFile,

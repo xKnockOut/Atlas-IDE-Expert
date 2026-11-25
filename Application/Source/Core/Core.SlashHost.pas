@@ -124,7 +124,7 @@ implementation
 uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts;

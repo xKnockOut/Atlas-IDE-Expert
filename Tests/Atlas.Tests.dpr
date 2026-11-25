@@ -400,7 +400,7 @@ uses
   Atlas.Common.Projects.MissingUnit.Tests in 'Common\Projects\Atlas.Common.Projects.MissingUnit.Tests.pas',
   Atlas.Common.Lsp.CompilerFixes.Tests in 'Common\Lsp\Atlas.Common.Lsp.CompilerFixes.Tests.pas',
   Atlas.Common.Lsp.SemanticTokens.Tests in 'Common\Lsp\Atlas.Common.Lsp.SemanticTokens.Tests.pas',
-  Atlas.Common.Lsp.Status.Tests in 'Common\Lsp\Atlas.Common.Lsp.Status.Tests.pas',
+  Atlas.Common.JsonRpc.ServerStatus.Tests in 'Common\JsonRpc\Atlas.Common.JsonRpc.ServerStatus.Tests.pas',
   Atlas.Common.Diagnostics.BugReport.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.BugReport.Tests.pas',
   Atlas.Common.Diagnostics.Anonymity.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.Anonymity.Tests.pas',
   Atlas.Common.Diagnostics.CheckMemory.Tests in 'Common\Diagnostics\Atlas.Common.Diagnostics.CheckMemory.Tests.pas',

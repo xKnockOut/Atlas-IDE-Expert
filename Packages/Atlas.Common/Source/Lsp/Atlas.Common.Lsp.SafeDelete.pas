@@ -103,7 +103,7 @@ uses
   Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.WorkspaceChanges,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;

@@ -86,7 +86,7 @@ uses
   Atlas.Common.Pascal.CaseCompletion,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;

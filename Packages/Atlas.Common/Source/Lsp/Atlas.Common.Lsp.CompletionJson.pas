@@ -28,7 +28,7 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.JsonRpc.Positions;
 
 type
   /// <summary>Schreibt eine Gruppe von data-Feldern, wenn der Eintrag sie hat.</summary>

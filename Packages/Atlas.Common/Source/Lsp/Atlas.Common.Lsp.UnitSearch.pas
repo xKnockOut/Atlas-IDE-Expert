@@ -167,7 +167,7 @@ uses
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.StringLiterals,
   Atlas.Text.Json,
   Atlas.Text.Lines;

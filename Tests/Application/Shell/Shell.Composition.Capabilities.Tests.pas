@@ -25,7 +25,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Core.CrashCases,
   Shell.Composition.Capabilities;
 

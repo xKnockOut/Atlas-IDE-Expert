@@ -37,7 +37,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.TypeAlias,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.TypeAlias,
   Atlas.Common.Lsp.EnumTables,
   Atlas.Common.Lsp.Overloads,
