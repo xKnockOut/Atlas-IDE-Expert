@@ -9,9 +9,11 @@
 // ausgehend; nur solange callHierarchy.diagram an ist.
 // Vor jeder Anfrage bekommt der Server den aktuellen Text der offenen Dateien.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
-// Referenzen (Befehl, Brotkrumen, „Verwendungen“ im Tooltip) fragt der Server im Hintergrund ab
-// (TAtlasBackgroundRequest); die Suche geht über das ganze Projekt und darf die IDE nicht anhalten. Kommt eine
-// neue Anfrage, während eine läuft, folgt sie danach; ihre Antwort zeigt das Ergebnisfenster.
+// Alle Anfragen an den Server laufen im Hintergrund (TAtlasBackgroundQueue), die Suchen gehen über das ganze
+// Projekt und dürfen die IDE nicht anhalten: Referenzen (Befehl, Brotkrumen, „Verwendungen“ im Tooltip),
+// Implementierungen, Hierarchien, Datenfluss und das Aufklappen ihrer Bäume. Ein Befehl während eines laufenden
+// ersetzt ihn (nur der jüngste zeigt sein Ergebnis); Aufklappen reiht sich ein. Einträge und Ergebnisfenster
+// entstehen im Hauptthread.
 // Datenfluss (#690): „Woher kommt der Wert?“ und „Wohin geht der Wert?“ als Baum; jede aufgeklappte Quelle
 // fragt mit dem Pfad ihrer Vorfahren und den Filtern der ersten Anfrage nach (navigation.dataFlow).
 
@@ -22,22 +24,15 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Lsp.DataFlow,
   Atlas.Plugin.Lsp.BackgroundRequest,
-  Atlas.Core.Results.Model;
+  Atlas.Core.Results.Model,
+  Atlas.UI.Results.CallDiagram,
+  Atlas.UI.Results.DataFlow;
 
 type
   /// <summary>Referenzen sind gezeigt: Anzahl der Fundstellen, -1, wenn die Suche scheiterte.</summary>
   TAtlasReferencesDone = TProc<Integer>;
 
   TAtlasIdeResults = class
-  private type
-    /// <summary>Wartende Referenzsuche, solange die vorige läuft.</summary>
-    TReferencesQuery = record
-      FileName: string;
-      Line: Integer;
-      Character: Integer;
-      Name: string;
-      Done: TAtlasReferencesDone;
-    end;
   private
     class var FSessionOf: TFunc<TLspSession>;
     class var FMessage: TProc<string>;
@@ -45,18 +40,26 @@ type
     class var FFlowRequest: TAtlasDataFlowRequest;
     /// <summary>Wort am Cursor zur ersten Anfrage, für den Titel eines leeren Baums.</summary>
     class var FFlowName: string;
-    class var FReferencesRequest: TAtlasBackgroundRequest;
-    class var FPendingReferences: TReferencesQuery;
-    class var FHasPendingReferences: Boolean;
-    /// <summary>Suche im Hintergrund starten; das Ergebnis zeigt ReferencesDone.</summary>
-    class procedure StartReferences(ASession: TLspSession; const AQuery: TReferencesQuery); static;
-    class procedure ReferencesDone(const AQuery: TReferencesQuery; const ALocations: TArray<TLspLocation>;
-      AOk: Boolean; const AError: string); static;
+    class var FQueue: TAtlasBackgroundQueue;
+    /// <summary>Anfragen an den Server, angelegt beim ersten Gebrauch.</summary>
+    class function Queue: TAtlasBackgroundQueue; static;
+    /// <summary>Befehl: AWork im Hintergrund, danach AShow im Hauptthread; ersetzt einen laufenden Befehl. Scheitert
+    /// die Anfrage, nur eine Zeile in der Meldungsansicht und AFailed (darf nil sein).</summary>
+    class procedure RunCommand(const AWork, AShow, AFailed: TProc); static;
+    class procedure ShowReferenceList(const AName: string; const ALocations: TArray<TLspLocation>;
+      const ADone: TAtlasReferencesDone); static;
+    class procedure ShowImplementationList(const AName: string; const ALocations: TArray<TLspLocation>); static;
+    class procedure ShowHierarchyRoots(ADirection: TAtlasHierarchyDirection; const ARoots: TArray<TAtlasHierarchyItem>;
+      AAsDiagram: Boolean); static;
+    class procedure ShowFlow(const AFound: TAtlasDataFlowResult; AFromFilter: Boolean); static;
+    /// <summary>Nächste Ebene einer Hierarchie im Hintergrund; ADone bekommt sie, leer bei Fehler.</summary>
+    class procedure ExpandHierarchy(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem;
+      const ADone: TAtlasCallLoaded); static;
     class function Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>; static;
     /// <summary>Erste Ebene holen und zeigen; AFromFilter: kein „nichts gefunden“, der Baum leert sich nur.</summary>
     class procedure RunDataFlow(AFromFilter: Boolean); static;
-    class function ExpandDataFlow(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
-      const APath: TArray<string>): TAtlasDataFlowResult; static;
+    class procedure ExpandDataFlow(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+      const APath: TArray<string>; const ADone: TAtlasDataFlowLoaded); static;
   public
     /// <summary>ASessionOf: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
@@ -99,8 +102,6 @@ implementation
 uses
   System.Types,
   Atlas.Plugin.Diagnostics.Guard,
-  Vcl.Controls,
-  Vcl.Forms,
   ToolsAPI,
   Atlas.Plugin.Lsp.Client,
   Atlas.Core.Results.Plan,
@@ -126,48 +127,6 @@ const
 function ReadText(const AFileName: string): string;
 begin
   Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
-end;
-
-/// <summary>Kinder einer Hierarchie-Ebene unter dem Wächter; leer ohne Server oder bei Fehler (mit Meldung).</summary>
-function GuardedChildren(ADirection: TAtlasHierarchyDirection;
-  const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
-var
-  mChildren: TArray<TAtlasHierarchyItem>;
-begin
-  mChildren := nil;
-  TAtlasGuard.Run(TAtlasFeature.Results,
-    procedure
-    var
-      mCurrent: TLspSession;
-    begin
-      mCurrent := TAtlasIdeResults.Session;
-      if mCurrent = nil then
-      begin
-        Exit;
-      end;
-      try
-        mChildren := mCurrent.HierarchyChildren(ADirection, AItem);
-      except
-        on E: ELspClientError do
-          TAtlasIdeResults.Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
-      end;
-    end);
-  Result := mChildren;
-end;
-
-/// <summary>Nächste Ebene des Datenflusses unter dem Wächter.</summary>
-function GuardedFlow(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
-  const APath: TArray<string>): TAtlasDataFlowResult;
-var
-  mFound: TAtlasDataFlowResult;
-begin
-  mFound := Default(TAtlasDataFlowResult);
-  TAtlasGuard.Run(TAtlasFeature.Results,
-    procedure
-    begin
-      mFound := TAtlasIdeResults.ExpandDataFlow(ADirection, ASource, APath);
-    end);
-  Result := mFound;
 end;
 
 /// <summary>Symbole zum Muster; leer ohne Server, ohne Muster oder bei Fehler.</summary>
@@ -210,12 +169,50 @@ begin
     end);
 end;
 
+class function TAtlasIdeResults.Queue: TAtlasBackgroundQueue;
+begin
+  if FQueue = nil then
+  begin
+    FQueue := TAtlasBackgroundQueue.Create(TAtlasFeature.Results);
+  end;
+  Result := FQueue;
+end;
+
+/// <summary>Abschluss eines Befehls: AShow bzw. Meldung und AFailed, unter der Sicherung.</summary>
+function CommandDone(const AShow, AFailed: TProc): TAtlasRequestDone;
+begin
+  Result :=
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      try
+        if AOk then
+        begin
+          AShow();
+        end
+        else
+        begin
+          TAtlasIdeResults.Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [AError]));
+          if Assigned(AFailed) then
+          begin
+            AFailed();
+          end;
+        end;
+      except
+        on E: Exception do
+          TAtlasGuard.Report(TAtlasFeature.Results, E);
+      end;
+    end;
+end;
+
+class procedure TAtlasIdeResults.RunCommand(const AWork, AShow, AFailed: TProc);
+begin
+  Queue.AddLatest(AWork, CommandDone(AShow, AFailed));
+end;
+
 class procedure TAtlasIdeResults.RunDataFlow(AFromFilter: Boolean);
-const
-  cTitles: array[TAtlasDataFlowDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsDataFlowSources,
-    TAtlasResultsTextId.ResultsDataFlowTargets);
 var
   mCurrent: TLspSession;
+  mRequest: TAtlasDataFlowRequest;
   mFound: TAtlasDataFlowResult;
 begin
   mCurrent := Session;
@@ -224,20 +221,28 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  Screen.Cursor := crHourGlass;
-  try
-    try
-      mFound := mCurrent.DataFlow(FFlowRequest);
-    except
-      on E: ELspClientError do
-      begin
-        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-  finally
-    Screen.Cursor := crDefault;
-  end;
+  mRequest := FFlowRequest;
+  mFound := Default(TAtlasDataFlowResult);
+  RunCommand(
+    procedure
+    begin
+      mFound := mCurrent.DataFlow(mRequest);
+    end,
+    procedure
+    begin
+      ShowFlow(mFound, AFromFilter);
+    end,
+    nil);
+end;
+
+class procedure TAtlasIdeResults.ShowFlow(const AFound: TAtlasDataFlowResult; AFromFilter: Boolean);
+const
+  cTitles: array[TAtlasDataFlowDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsDataFlowSources,
+    TAtlasResultsTextId.ResultsDataFlowTargets);
+var
+  mFound: TAtlasDataFlowResult;
+begin
+  mFound := AFound;
   // Nach einem Filterwechsel bleibt der Baum stehen, auch wenn er leer wird: Die Filter lassen sich zurücknehmen.
   if (not mFound.Found) and (not AFromFilter) then
   begin
@@ -253,34 +258,112 @@ begin
     TAtlasIdeSettings.Current.DataFlowMaxDepth, FFlowRequest.OnlyProject, FFlowRequest.ExcludeTests);
 end;
 
-class function TAtlasIdeResults.ExpandDataFlow(ADirection: TAtlasDataFlowDirection;
-  const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>): TAtlasDataFlowResult;
+/// <summary>Abschluss einer Ebene: ADone mit dem Ergebnis, bei Fehler leer und eine Zeile.</summary>
+function FlowLevelDone(const AFound: TFunc<TAtlasDataFlowResult>; const ADone: TAtlasDataFlowLoaded):
+  TAtlasRequestDone;
+begin
+  Result :=
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      try
+        if AOk then
+        begin
+          ADone(AFound());
+        end
+        else
+        begin
+          TAtlasIdeResults.Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [AError]));
+          ADone(Default(TAtlasDataFlowResult));
+        end;
+      except
+        on E: Exception do
+          TAtlasGuard.Report(TAtlasFeature.Results, E);
+      end;
+    end;
+end;
+
+class procedure TAtlasIdeResults.ExpandDataFlow(ADirection: TAtlasDataFlowDirection;
+  const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>; const ADone: TAtlasDataFlowLoaded);
 var
   mCurrent: TLspSession;
   mRequest: TAtlasDataFlowRequest;
+  mFound: TAtlasDataFlowResult;
 begin
-  Result := Default(TAtlasDataFlowResult);
   mCurrent := Session;
   if mCurrent = nil then
   begin
+    ADone(Default(TAtlasDataFlowResult));
     Exit;
   end;
   // Gefragt wird an der Deklaration der Quelle; der Pfad lässt den Server Zyklen erkennen.
   mRequest := TAtlasDataFlowRequest.Create(ADirection, ASource.FileName, ASource.Line, ASource.Character);
-  mRequest.Path := APath;
+  mRequest.Path := Copy(APath);
   mRequest.OnlyProject := FFlowRequest.OnlyProject;
   mRequest.ExcludeTests := FFlowRequest.ExcludeTests;
-  Screen.Cursor := crHourGlass;
-  try
-    try
-      Result := mCurrent.DataFlow(mRequest);
-    except
-      on E: ELspClientError do
-        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
+  mFound := Default(TAtlasDataFlowResult);
+  Queue.Add(
+    procedure
+    begin
+      mFound := mCurrent.DataFlow(mRequest);
+    end,
+    FlowLevelDone(
+      function: TAtlasDataFlowResult
+      begin
+        Result := mFound;
+      end,
+      ADone));
+end;
+
+/// <summary>Abschluss einer Ebene der Hierarchie: ADone mit den Kindern, bei Fehler leer und eine Zeile.</summary>
+function HierarchyLevelDone(const AChildren: TFunc<TArray<TAtlasHierarchyItem>>; const ADone: TAtlasCallLoaded):
+  TAtlasRequestDone;
+begin
+  Result :=
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      try
+        if AOk then
+        begin
+          ADone(AChildren());
+        end
+        else
+        begin
+          TAtlasIdeResults.Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [AError]));
+          ADone(nil);
+        end;
+      except
+        on E: Exception do
+          TAtlasGuard.Report(TAtlasFeature.Results, E);
+      end;
     end;
-  finally
-    Screen.Cursor := crDefault;
+end;
+
+class procedure TAtlasIdeResults.ExpandHierarchy(ADirection: TAtlasHierarchyDirection;
+  const AItem: TAtlasHierarchyItem; const ADone: TAtlasCallLoaded);
+var
+  mCurrent: TLspSession;
+  mItem: TAtlasHierarchyItem;
+  mChildren: TArray<TAtlasHierarchyItem>;
+begin
+  mCurrent := Session;
+  if mCurrent = nil then
+  begin
+    ADone(nil);
+    Exit;
   end;
+  mItem := AItem;
+  mChildren := nil;
+  Queue.Add(
+    procedure
+    begin
+      mChildren := mCurrent.HierarchyChildren(ADirection, mItem);
+    end,
+    HierarchyLevelDone(
+      function: TArray<TAtlasHierarchyItem>
+      begin
+        Result := mChildren;
+      end,
+      ADone));
 end;
 
 class procedure TAtlasIdeResults.Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>);
@@ -297,9 +380,9 @@ begin
         end);
     end;
   TAtlasIdeResultsWindow.OnExpand :=
-    function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
+    procedure(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem; const ADone: TAtlasCallLoaded)
     begin
-      Result := GuardedChildren(ADirection, AItem);
+      ExpandHierarchy(ADirection, AItem, ADone);
     end;
   // Aufrufdiagramm (#1122): nach callHierarchy.diagram; „Nur Projekt-Units“ über die Projektgruppe.
   TAtlasIdeResultsWindow.DiagramAllowed :=
@@ -313,10 +396,10 @@ begin
       Result := TAtlasIdeFiles.ProjectOfFile(AFileName) <> '';
     end;
   TAtlasIdeResultsWindow.OnFlowExpand :=
-    function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
-      const APath: TArray<string>): TAtlasDataFlowResult
+    procedure(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>;
+      const ADone: TAtlasDataFlowLoaded)
     begin
-      Result := GuardedFlow(ADirection, ASource, APath);
+      ExpandDataFlow(ADirection, ASource, APath, ADone);
     end;
   TAtlasIdeResultsWindow.OnFlowFilter :=
     procedure(AOnlyProject, AExcludeTests: Boolean)
@@ -341,10 +424,9 @@ begin
   TAtlasIdeResultsWindow.IsProjectFile := nil;
   FFlowRequest := Default(TAtlasDataFlowRequest);
   FFlowName := '';
-  // Wartet eine laufende Suche ab (Zeitlimit oder Abbruchsignal des Entladens) und verwirft ihr Ergebnis.
-  FreeAndNil(FReferencesRequest);
-  FHasPendingReferences := False;
-  FPendingReferences := Default(TReferencesQuery);
+  // Wartet eine laufende Anfrage ab (Zeitlimit oder Abbruchsignal des Entladens) und verwirft ihr Ergebnis und die
+  // wartenden, bevor das Fenster geht.
+  FreeAndNil(FQueue);
   TAtlasIdeResultsWindow.Release;
 end;
 
@@ -420,26 +502,33 @@ class procedure TAtlasIdeResults.FindImplementations;
 var
   mFileName, mName: string;
   mLine, mCharacter: Integer;
-  mFound: TArray<TAtlasResultEntry>;
+  mCurrent: TLspSession;
+  mFound: TArray<TLspLocation>;
 begin
   if not AtCursor(mFileName, mLine, mCharacter, mName) then
   begin
     Exit;
   end;
-  Screen.Cursor := crHourGlass;
-  try
-    try
-      mFound := Entries(Session.Implementations(mFileName, mLine, mCharacter));
-    except
-      on E: ELspClientError do
-      begin
-        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-  finally
-    Screen.Cursor := crDefault;
-  end;
+  mCurrent := Session;
+  mFound := nil;
+  RunCommand(
+    procedure
+    begin
+      mFound := mCurrent.Implementations(mFileName, mLine, mCharacter);
+    end,
+    procedure
+    begin
+      ShowImplementationList(mName, mFound);
+    end,
+    nil);
+end;
+
+class procedure TAtlasIdeResults.ShowImplementationList(const AName: string; const ALocations: TArray<TLspLocation>);
+var
+  mFound: TArray<TAtlasResultEntry>;
+begin
+  // Im Hauptthread: Die Einträge lesen den Text offener Editoren.
+  mFound := Entries(ALocations);
   // Genau eine Implementierung: gleich hinspringen wie „Gehe zu“.
   case TAtlasResultsPlan.Found(Length(mFound)) of
     TAtlasResultsFound.Jump:
@@ -448,7 +537,7 @@ begin
       Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
   else
     TAtlasIdeResultsWindow.ShowEntries(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsImplementations,
-      [mName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
+      [AName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
   end;
 end;
 
@@ -458,39 +547,43 @@ begin
 end;
 
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean);
-const
-  cTitles: array[TAtlasHierarchyDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsIncoming,
-    TAtlasResultsTextId.ResultsOutgoing, TAtlasResultsTextId.ResultsSupertypes, TAtlasResultsTextId.ResultsSubtypes);
 var
   mFileName, mName: string;
   mLine, mCharacter: Integer;
+  mCurrent: TLspSession;
   mRoots: TArray<TAtlasHierarchyItem>;
 begin
   if not AtCursor(mFileName, mLine, mCharacter, mName) then
   begin
     Exit;
   end;
-  Screen.Cursor := crHourGlass;
-  try
-    try
-      mRoots := Session.PrepareHierarchy(ADirection, mFileName, mLine, mCharacter);
-    except
-      on E: ELspClientError do
-      begin
-        Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [E.Message]));
-        Exit;
-      end;
-    end;
-  finally
-    Screen.Cursor := crDefault;
-  end;
-  if Length(mRoots) = 0 then
+  mCurrent := Session;
+  mRoots := nil;
+  RunCommand(
+    procedure
+    begin
+      mRoots := mCurrent.PrepareHierarchy(ADirection, mFileName, mLine, mCharacter);
+    end,
+    procedure
+    begin
+      ShowHierarchyRoots(ADirection, mRoots, AAsDiagram);
+    end,
+    nil);
+end;
+
+class procedure TAtlasIdeResults.ShowHierarchyRoots(ADirection: TAtlasHierarchyDirection;
+  const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean);
+const
+  cTitles: array[TAtlasHierarchyDirection] of TAtlasResultsTextId = (TAtlasResultsTextId.ResultsIncoming,
+    TAtlasResultsTextId.ResultsOutgoing, TAtlasResultsTextId.ResultsSupertypes, TAtlasResultsTextId.ResultsSubtypes);
+begin
+  if Length(ARoots) = 0 then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasResultsStrings.Fmt(cTitles[ADirection], [mRoots[0].Name]), ADirection,
-    mRoots, AAsDiagram);
+  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasResultsStrings.Fmt(cTitles[ADirection], [ARoots[0].Name]), ADirection,
+    ARoots, AAsDiagram);
 end;
 
 class procedure TAtlasIdeResults.ShowCallDiagram;
@@ -588,7 +681,7 @@ class procedure TAtlasIdeResults.ShowReferences(const AFileName: string; ALine, 
   const AName: string; const ADone: TAtlasReferencesDone);
 var
   mCurrent: TLspSession;
-  mQuery: TReferencesQuery;
+  mLocations: TArray<TLspLocation>;
 begin
   mCurrent := Session;
   if mCurrent = nil then
@@ -596,83 +689,37 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  mQuery := Default(TReferencesQuery);
-  mQuery.FileName := AFileName;
-  mQuery.Line := ALine;
-  mQuery.Character := ACharacter;
-  mQuery.Name := AName;
-  mQuery.Done := ADone;
-  if FReferencesRequest = nil then
-  begin
-    FReferencesRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Results);
-  end;
-  if FReferencesRequest.Busy then
-  begin
-    // Die jüngste Anfrage zählt; sie folgt, sobald die laufende fertig ist.
-    FPendingReferences := mQuery;
-    FHasPendingReferences := True;
-    Exit;
-  end;
-  StartReferences(mCurrent, mQuery);
-end;
-
-class procedure TAtlasIdeResults.StartReferences(ASession: TLspSession; const AQuery: TReferencesQuery);
-var
-  mQuery: TReferencesQuery;
-  mLocations: TArray<TLspLocation>;
-begin
-  mQuery := AQuery;
   mLocations := nil;
-  FReferencesRequest.Start(
+  RunCommand(
     procedure
     begin
-      mLocations := ASession.References(mQuery.FileName, mQuery.Line, mQuery.Character);
+      mLocations := mCurrent.References(AFileName, ALine, ACharacter);
     end,
-    procedure(AOk: Boolean; const AError: string)
+    procedure
     begin
-      ReferencesDone(mQuery, mLocations, AOk, AError);
+      ShowReferenceList(AName, mLocations, ADone);
+    end,
+    procedure
+    begin
+      if Assigned(ADone) then
+      begin
+        ADone(-1);
+      end;
     end);
 end;
 
-class procedure TAtlasIdeResults.ReferencesDone(const AQuery: TReferencesQuery;
-  const ALocations: TArray<TLspLocation>; AOk: Boolean; const AError: string);
+class procedure TAtlasIdeResults.ShowReferenceList(const AName: string; const ALocations: TArray<TLspLocation>;
+  const ADone: TAtlasReferencesDone);
 var
   mFound: TArray<TAtlasResultEntry>;
-  mCurrent: TLspSession;
-  mCount: Integer;
 begin
-  if FHasPendingReferences then
+  // Im Hauptthread: Die Einträge lesen den Text offener Editoren.
+  mFound := Entries(ALocations);
+  TAtlasIdeResultsWindow.ShowReferences(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsReferences,
+    [AName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
+  if Assigned(ADone) then
   begin
-    FHasPendingReferences := False;
-    mCurrent := Session;
-    if mCurrent <> nil then
-    begin
-      StartReferences(mCurrent, FPendingReferences);
-    end;
-    FPendingReferences := Default(TReferencesQuery);
-    Exit;
-  end;
-  try
-    mCount := -1;
-    if AOk then
-    begin
-      // Im Hauptthread: Die Einträge lesen den Text offener Editoren.
-      mFound := Entries(ALocations);
-      mCount := Length(mFound);
-      TAtlasIdeResultsWindow.ShowReferences(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsReferences,
-        [AQuery.Name, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
-    end
-    else
-    begin
-      Say(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsFailed, [AError]));
-    end;
-    if Assigned(AQuery.Done) then
-    begin
-      AQuery.Done(mCount);
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Results, E);
+    ADone(Length(mFound));
   end;
 end;
 
