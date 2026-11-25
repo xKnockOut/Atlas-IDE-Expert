@@ -12,7 +12,7 @@
 //   metric-unit-length            Zeilen je Unit (Vorgabe 2000, #939), Treffer auf dem Unit-Namen
 //   metric-uses-count             Units im uses (Vorgabe 30, #939), Treffer auf dem ersten uses
 //   metric-boolean-operands       Operanden einer Bedingung (Vorgabe 5, #980), Treffer auf der Bedingung,
-//                                 Korrektur „Bedingung in Funktion auslagern“ (Editing.Extract)
+//                                 Korrektur „Bedingung in Funktion auslagern“ (TRuleRefactorings.Extract)
 //   metric-local-count            lokale Variablen je Routine (Vorgabe 12, #980)
 //   metric-exit-points            Exit und raise je Routine (Vorgabe 4, #980)
 //   metric-inheritance-depth      Vorfahren ohne RTL, VCL und Bibliotheken (Vorgabe 5, #980), Treffer auf
@@ -86,7 +86,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Metrics.Calculator,
-  Atlas.Common.Editing.Extract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Semantics.Ancestry,
@@ -376,18 +375,16 @@ end;
 procedure CheckConditions(const AContext: TRuleContext; const AReport: IRuleReport; ALimit: Integer);
 var
   mCondition: TConditionMetrics;
-  mOptions: TExtractOptions;
   mAction: TCodeAction;
   mFixes: TArray<TRuleFix>;
 begin
-  mOptions := TExtractOptions.Default;
-  mOptions.Style := AContext.Formatting;
   for mCondition in TMetricsCalculator.Conditions(AContext.Tree) do
   begin
     if mCondition.Operands > ALimit then
     begin
       mFixes := nil;
-      if TExtractRefactoring.ExtractCondition(AContext.Text, AContext.Tree, mCondition.Range, mOptions, mAction) then
+      if (AContext.Refactorings.Extract <> nil) and
+        AContext.Refactorings.Extract.ExtractCondition(AContext.Text, mCondition.Range, AContext.Formatting, mAction) then
       begin
         mFixes := [TRuleFix.Create(mAction.Title, mAction.Edits)];
       end;
