@@ -71,7 +71,7 @@ uses
   Vcl.Clipbrd,
   Atlas.Plugin.Product.Version,
   Atlas.Core.Updates.Check,
-  Atlas.Core.Settings.Choices,
+  Atlas.Plugin.Settings.Choices,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.Export,
   Atlas.Core.Welcome.Help,

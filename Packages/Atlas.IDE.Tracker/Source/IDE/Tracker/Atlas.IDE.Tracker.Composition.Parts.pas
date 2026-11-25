@@ -69,7 +69,7 @@ uses
   Atlas.IDE.Tracker.NewIssue,
   Atlas.IDE.Tracker.TestResults,
   Atlas.IDE.Tracker.WelcomeLink,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Tracker.Composition.HostAdapters;

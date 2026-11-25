@@ -224,7 +224,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Rules.Strings,
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Vcl.Theme.Scaling,

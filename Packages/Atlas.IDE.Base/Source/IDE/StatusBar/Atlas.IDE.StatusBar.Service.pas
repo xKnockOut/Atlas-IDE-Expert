@@ -97,7 +97,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.StatusBarItems,
+  Atlas.Plugin.Settings.StatusBarItems,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,

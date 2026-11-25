@@ -17,7 +17,7 @@ procedure AddEditingCommands(APalette: TAtlasIdePalette);
 implementation
 
 uses
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.RegionFolds,
   Atlas.UI.Editor.LearnedSuggestions,
   Atlas.Core.Settings.Plugin,

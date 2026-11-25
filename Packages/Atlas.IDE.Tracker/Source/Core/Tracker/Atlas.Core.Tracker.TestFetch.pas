@@ -11,7 +11,7 @@ interface
 
 uses
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Tracker.TestResults;
 
 type

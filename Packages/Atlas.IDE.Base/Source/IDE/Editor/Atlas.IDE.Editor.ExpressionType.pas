@@ -100,7 +100,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Lsp.Client,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,

@@ -23,8 +23,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
-  Atlas.UI.Strings.Tests,
+  Atlas.Plugin.Localization.Strings,
+  Atlas.Plugin.Localization.Strings.Tests,
   Atlas.UI.Welcome.Strings,
   System.SysUtils;
 

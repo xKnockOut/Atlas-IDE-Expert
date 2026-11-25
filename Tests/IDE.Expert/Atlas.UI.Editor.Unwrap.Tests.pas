@@ -32,7 +32,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.Unwrap,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Unwrap;
 
 function Entry(const AKind, AVariant: string; AVariants: Integer; AAvailable: Boolean): TAtlasUnwrapEntry;

@@ -77,7 +77,7 @@ uses
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.FormatLog,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Settings,

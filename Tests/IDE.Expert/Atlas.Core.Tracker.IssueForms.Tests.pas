@@ -74,7 +74,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Plugin.Product.Version,
   Atlas.Tests.SourceText;
 

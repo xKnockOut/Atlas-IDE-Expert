@@ -23,7 +23,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Debug.Visualizers,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.IDE.Hover.DebugValue;
 
 type

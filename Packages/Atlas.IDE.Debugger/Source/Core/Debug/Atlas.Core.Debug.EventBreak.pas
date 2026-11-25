@@ -7,7 +7,7 @@
 //   Datenmengen): Maus, Tastatur, Timer, Fenster, Datenbank, Aktionen,
 //   Sonstige.
 // - Häufig feuernde Ereignisse (debug.breakOnNextEvent.excluded, Liste aus
-//   Atlas.Core.Settings.EventBreakNames, dazu Timer unter 100 ms) nur, wenn
+//   Atlas.Plugin.Settings.EventBreakNames, dazu Timer unter 100 ms) nur, wenn
 //   man sie ausdrücklich einschließt.
 // - Einschränkung auf ein Formular oder die gerade sichtbaren (deren Klassen
 //   ermittelt die IDE-Seite über Screen.Forms).

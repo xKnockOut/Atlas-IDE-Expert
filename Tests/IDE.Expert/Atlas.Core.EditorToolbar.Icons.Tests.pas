@@ -29,7 +29,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Plugin.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.EditorToolbar.Glyphs;
 

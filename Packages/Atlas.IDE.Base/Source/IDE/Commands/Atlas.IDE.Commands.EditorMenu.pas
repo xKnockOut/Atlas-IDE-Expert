@@ -46,7 +46,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Results.Impact,
@@ -64,7 +64,7 @@ uses
   Atlas.IDE.Commands.EditorActions,
   Atlas.IDE.Commands.MenuContext,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Settings.ContextMenuGroups,
+  Atlas.Plugin.Settings.ContextMenuGroups,
   Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}

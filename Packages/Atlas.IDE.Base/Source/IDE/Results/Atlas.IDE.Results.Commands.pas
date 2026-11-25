@@ -81,7 +81,7 @@ uses
   Atlas.Plugin.Lsp.Client,
   Atlas.Core.Results.Plan,
   Atlas.Core.Commands.Palette,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Results.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.ToolsApi.Editor.Buffer,

@@ -7,7 +7,7 @@
 interface
 
 uses
-  Atlas.Core.Settings.KeyCodes,
+  Atlas.Plugin.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const

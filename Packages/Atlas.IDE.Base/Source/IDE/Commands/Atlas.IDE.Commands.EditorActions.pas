@@ -57,7 +57,7 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Results.Model,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Results.View,

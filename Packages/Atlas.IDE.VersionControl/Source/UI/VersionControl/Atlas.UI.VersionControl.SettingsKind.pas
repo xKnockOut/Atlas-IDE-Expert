@@ -9,7 +9,7 @@ interface
 uses
   Vcl.Controls,
   Vcl.StdCtrls,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.VersionControl.SettingsPart;

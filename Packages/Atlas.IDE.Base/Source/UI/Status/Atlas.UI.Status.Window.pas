@@ -82,7 +82,7 @@ uses
   Atlas.Plugin.Status.Signal,
   Atlas.Vcl.Controls.Helpers,
   Atlas.Vcl.Popup.Draw,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   // Alle Maße bei 96 dpi. Kopf: Einzug links und rechts, Abstand des Texts hinter dem Punkt, Abstand der Trennlinie

@@ -28,10 +28,10 @@ implementation
 uses
   System.SysUtils,
   Atlas.UI.Settings.ProjectDialog,
-  Atlas.Core.Settings.Schema,
-  Atlas.Core.Settings.SchemaData,
-  Atlas.Core.Settings.Layers,
-  Atlas.Core.Settings.Validation,
+  Atlas.Plugin.Settings.Schema,
+  Atlas.Plugin.Settings.SchemaData,
+  Atlas.Plugin.Settings.Layers,
+  Atlas.Plugin.Settings.Validation,
   Vcl.Controls,
   Vcl.StdCtrls;
 

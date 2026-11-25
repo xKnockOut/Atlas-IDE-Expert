@@ -38,7 +38,7 @@ uses
   Atlas.Core.Settings.NodeScope,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Section,
   Atlas.UI.Settings.Page,

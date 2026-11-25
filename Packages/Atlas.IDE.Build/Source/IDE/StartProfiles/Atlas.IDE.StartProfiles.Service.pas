@@ -40,10 +40,10 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
   Atlas.Core.StartProfiles.Flow,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Build.Strings;
 
 type

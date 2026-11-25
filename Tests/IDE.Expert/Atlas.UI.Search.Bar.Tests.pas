@@ -12,7 +12,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 type
   [TestFixture]

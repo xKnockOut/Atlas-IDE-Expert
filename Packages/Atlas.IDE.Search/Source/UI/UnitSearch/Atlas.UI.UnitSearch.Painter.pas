@@ -125,7 +125,7 @@ uses
   System.Math,
   Atlas.Core.UnitSearch.UseUnit,
   Atlas.Core.Completion.Presentation,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Vcl.Theme.Service,
   Atlas.UI.Search.Strings;
 

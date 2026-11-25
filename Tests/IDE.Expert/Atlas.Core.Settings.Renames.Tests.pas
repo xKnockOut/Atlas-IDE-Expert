@@ -42,7 +42,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.QueryMigration,

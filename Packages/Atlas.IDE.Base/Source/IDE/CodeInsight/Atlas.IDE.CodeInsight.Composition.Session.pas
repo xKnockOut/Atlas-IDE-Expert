@@ -15,7 +15,7 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Plugin.Status.Lines,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.CodeInsight.Manager;
 

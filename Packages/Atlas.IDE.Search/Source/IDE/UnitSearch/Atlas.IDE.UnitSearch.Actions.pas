@@ -78,7 +78,7 @@ uses
   Atlas.Core.Editor.TestUnit,
   Atlas.Core.UnitSearch.Plan,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Search.Strings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Navigation,

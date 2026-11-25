@@ -30,7 +30,7 @@ uses
   System.Types,
   System.Classes,
   Atlas.Core.Editor.Hide,
-  Atlas.Core.Settings.HiddenPlaces,
+  Atlas.Plugin.Settings.HiddenPlaces,
   Atlas.UI.Editor.Hide;
 
 type
@@ -109,7 +109,7 @@ uses
   Atlas.Plugin.Notifications.Contract,
   Atlas.Plugin.Notifications.Center,
   Atlas.Plugin.Notifications.Sources,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,

@@ -129,7 +129,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   System.Classes,
   System.SyncObjs,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Diagnostics.Guard,
@@ -142,8 +142,8 @@ uses
   Vcl.ExtCtrls,
   Atlas.WinBase.Process,
   Atlas.Plugin.Projects.Matching,
-  Atlas.Core.Settings.Layers,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.Layers,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Projects.VcsSettings,
   Atlas.IDE.Foundation.TeamFile;
 

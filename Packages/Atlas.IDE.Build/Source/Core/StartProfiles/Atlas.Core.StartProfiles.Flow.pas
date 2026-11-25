@@ -14,7 +14,7 @@
 interface
 
 uses
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
   Atlas.Core.StartProfiles.Picker;
 

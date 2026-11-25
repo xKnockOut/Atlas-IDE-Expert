@@ -284,7 +284,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.VersionControl.BranchNames,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Plugin.Style.Signal,
   Atlas.Vcl.Theme.Service,

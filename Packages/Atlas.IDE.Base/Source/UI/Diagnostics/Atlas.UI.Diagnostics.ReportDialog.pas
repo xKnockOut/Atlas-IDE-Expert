@@ -128,7 +128,7 @@ uses
   System.Math,
   Vcl.Dialogs,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Vcl.Theme.Scaling;

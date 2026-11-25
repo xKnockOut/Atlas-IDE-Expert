@@ -42,9 +42,9 @@ uses
   Vcl.ComCtrls,
   Vcl.Dialogs,
   Vcl.Graphics,
-  Atlas.Core.Settings.Layers,
-  Atlas.Core.Settings.Choices,
-  Atlas.Core.Settings.Validation,
+  Atlas.Plugin.Settings.Layers,
+  Atlas.Plugin.Settings.Choices,
+  Atlas.Plugin.Settings.Validation,
   Atlas.Vcl.Forms.Dialog;
 
 type
@@ -204,13 +204,13 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.Schema,
+  Atlas.Plugin.Settings.Schema,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Atlas.Plugin.Settings.JsonText,
-  Atlas.Core.Settings.PageNames,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Settings.PageNames,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Plugin.Style.Signal,
   Atlas.Vcl.Theme.Service,

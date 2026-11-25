@@ -230,7 +230,7 @@ uses
   Atlas.Plugin.Style.Palette,
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Settings.StatusBarItems,
+  Atlas.Plugin.Settings.StatusBarItems,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.EditorToolbar.Glyphs,
   Atlas.UI.Problems.KindIcon,

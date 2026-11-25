@@ -7,7 +7,7 @@
 interface
 
 uses
-  Atlas.Core.Settings.KeyCodes,
+  Atlas.Plugin.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const
@@ -929,9 +929,9 @@ implementation
 uses
   System.Math,
   System.SysUtils,
-  Atlas.Core.Settings.OverviewKinds,
-  Atlas.Core.Settings.StatusBarItems,
-  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Plugin.Settings.OverviewKinds,
+  Atlas.Plugin.Settings.StatusBarItems,
+  Atlas.Plugin.Settings.ToolbarItems,
   Atlas.Core.Settings.Contract;
 
 const

@@ -88,7 +88,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Vcl.Graphics,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Settings.Marks,

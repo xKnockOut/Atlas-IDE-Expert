@@ -2,7 +2,7 @@
 
 // Oberflächentexte des Moduls Analyse auf Deutsch und Englisch (#1455). Die Sprache
 // bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu, ein Sprachwechsel braucht
-// daher keine eigene Meldung. Kerntexte bleiben in `Atlas.UI.Strings`.
+// daher keine eigene Meldung. Kerntexte bleiben in `Atlas.Plugin.Localization.Strings`.
 
 interface
 
@@ -90,7 +90,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasAnalysisTextId] of string = (

@@ -47,7 +47,7 @@ uses
   Atlas.Plugin.Projects.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Status.Lines,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Setup.Strings,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Foundation.StructureSwitch,

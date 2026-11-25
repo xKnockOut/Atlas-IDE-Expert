@@ -79,7 +79,7 @@ uses
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.BuildPipeline.ReleaseGuard,
   Atlas.IDE.BuildPipeline.Summary,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.BuildPipeline.Strings,
   Atlas.Core.Build.Pipeline,
   Atlas.Core.Build.Events;

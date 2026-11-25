@@ -24,9 +24,9 @@ implementation
 
 uses
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Commands.SettingsPalette,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Settings.QuickToggles,

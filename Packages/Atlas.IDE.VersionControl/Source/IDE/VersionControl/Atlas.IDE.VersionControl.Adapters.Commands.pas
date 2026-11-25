@@ -24,7 +24,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Summaries,

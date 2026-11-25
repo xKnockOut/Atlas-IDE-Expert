@@ -251,7 +251,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Tracker.Connections,
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.IDE.Contracts.WelcomeTiles,

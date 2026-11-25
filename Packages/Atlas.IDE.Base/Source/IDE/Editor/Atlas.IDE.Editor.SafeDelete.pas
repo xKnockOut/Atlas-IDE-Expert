@@ -40,7 +40,7 @@ uses
   Vcl.Dialogs,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Plugin.Lsp.Client,
   Atlas.Core.Results.Model,

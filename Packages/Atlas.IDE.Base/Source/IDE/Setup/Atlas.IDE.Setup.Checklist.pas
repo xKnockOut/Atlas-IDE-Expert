@@ -128,7 +128,7 @@ uses
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Updates.Check,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Setup.Strings,
   Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;

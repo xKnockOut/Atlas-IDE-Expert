@@ -2,7 +2,7 @@
 
 // Sprache der Plugin-Texte (#446, #1458) für alle Schichten. Die IDE-Schicht
 // setzt sie beim Laden nach der Sprache der IDE (TAtlasStrings.Language ist
-// nur ein anderer Zugang dazu). Core darf Atlas.UI.Strings nicht verwenden
+// nur ein anderer Zugang dazu). Core darf Atlas.Plugin.Localization.Strings nicht verwenden
 // (Architektur, #406); seine Units halten ihre Benutzertexte deshalb neben dem
 // Code in eigenen Tabellen
 //   cTexts: array[TAtlasLanguage, TXyzText] of string = ((…deutsch…), (…englisch…));
@@ -211,8 +211,8 @@ begin
 end;
 
 initialization
-  // Wie Atlas.UI.Strings: Deutsch, bis die IDE-Schicht die Sprache der IDE setzt (Tests sehen die bisherigen
-  // Texte).
+  // Wie Atlas.Plugin.Localization.Strings: Deutsch, bis die IDE-Schicht die Sprache der IDE setzt (Tests sehen die
+  // bisherigen Texte).
   TAtlasTextLanguage.Current := TAtlasLanguage.German;
 
 end.
