@@ -285,6 +285,7 @@ Atlas.Common.Editing.Providers.CompilerFixes.Tests
 Adapters.Mcp.CompilerFixes.Tests
 Adapters.Mcp.BulkFix.Tests
 Adapters.Mcp.TextChecks.Tests
+Adapters.Mcp.DeadCode.Tests
 Adapters.Mcp.Conventions.Tests
 Atlas.Common.Compiler.MessageTexts.Tests
 Atlas.Common.Mcp.RefactorTools.Tests
@@ -472,6 +473,7 @@ Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.Providers.InheritanceDepths.Tests
 Atlas.Common.Rules.Providers.BulkFix.Tests
 Atlas.Common.Rules.Providers.TextChecks.Tests
+Atlas.Common.Rules.Providers.DeadCode.Tests
 Atlas.Common.Rules.Providers.Conventions.Tests
 Atlas.Common.Rules.Providers.FindingPrompts.Tests
 Atlas.Common.Rules.Providers.OwnershipReport.Tests

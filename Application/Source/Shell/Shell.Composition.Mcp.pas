@@ -6,11 +6,13 @@
 interface
 
 uses
+  Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Mcp.Contract.BulkFix,
   Atlas.Common.Mcp.Contract.CompilerFixes,
   Atlas.Common.Mcp.Contract.Conventions,
+  Atlas.Common.Mcp.Contract.DeadCode,
   Atlas.Common.Mcp.Contract.Extract,
   Atlas.Common.Mcp.Contract.Formatting,
   Atlas.Common.Mcp.Contract.TextChecks;
@@ -33,6 +35,10 @@ type
     /// <summary>Wie TextChecks mit den Regeln ARules.</summary>
     class function TextChecksWith(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
       const ASource: TCheckSourceFunc): IMcpTextChecks; static;
+    /// <summary>Regeln für ungenutzten Code aus Rules mit den eingebauten Regeln, dem Index AIndex, den Projekten
+    /// AProjectFiles (nil = keine Datei lesbar) und den Namensräumen ANamespaces.</summary>
+    class function DeadCode(const AIndex: ISymbolIndex; const AProjectFiles: IRuleProjectFiles;
+      const ANamespaces: TArray<string>): IMcpDeadCode; static;
     /// <summary>Projektkonventionen aus Rules mit den eingebauten Regeln.</summary>
     class function Conventions: IMcpConventions; static;
     /// <summary>Auftrag zu einem Befund aus Rules.</summary>
@@ -46,12 +52,14 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Providers.BulkFix,
   Atlas.Common.Rules.Providers.Conventions,
+  Atlas.Common.Rules.Providers.DeadCode,
   Atlas.Common.Rules.Providers.FindingPrompts,
   Atlas.Common.Rules.Providers.TextChecks,
   Atlas.Common.Editing.Composition,
   Adapters.Mcp.BulkFix,
   Adapters.Mcp.CompilerFixes,
   Adapters.Mcp.Conventions,
+  Adapters.Mcp.DeadCode,
   Adapters.Mcp.Extract,
   Adapters.Mcp.Formatting,
   Adapters.Mcp.TextChecks;
@@ -95,6 +103,15 @@ var
 begin
   mChecks := TRuleTextChecksProvider.Create(ARules, AProject, ASource);
   Result := TMcpTextChecksAdapter.Create(mChecks);
+end;
+
+class function TMcpComposition.DeadCode(const AIndex: ISymbolIndex; const AProjectFiles: IRuleProjectFiles;
+  const ANamespaces: TArray<string>): IMcpDeadCode;
+var
+  mDeadCode: IRuleDeadCode;
+begin
+  mDeadCode := TRuleDeadCodeProvider.Create(BuiltinRules, AIndex, AProjectFiles, ANamespaces);
+  Result := TMcpDeadCodeAdapter.Create(mDeadCode);
 end;
 
 class function TMcpComposition.Conventions: IMcpConventions;
