@@ -32,6 +32,8 @@ type
     [Test]
     procedure OwnAssignThatKeepsIsNoReadingCall;
     [Test]
+    procedure RecordOfUsedUnitBeatsClassOfSameName;
+    [Test]
     procedure RuleCanBeTurnedOff;
   end;
 
@@ -231,6 +233,26 @@ begin
     TTestIndex.Build([cText, 'Werte.pas']), '', 'Werte.pas'))));
   // Assign einer unbekannten Klasse bleibt lesend: Das Objekt ist ein Leck.
   Assert.AreEqual(1, Integer(Length(CrossUnitFindings('  Halter.Assign(Liste);'#10))));
+end;
+
+procedure TLocalObjectNotFreedTests.RecordOfUsedUnitBeatsClassOfSameName;
+const
+  cRecord = 'unit Satz;'#10'interface'#10'type'#10'  TLayout = record'#10'    Breite: Integer;'#10 +
+    '    class function Create(ABreite: Integer): TLayout; static;'#10'  end;'#10'implementation'#10 +
+    'class function TLayout.Create(ABreite: Integer): TLayout;'#10'begin'#10'  Result.Breite := ABreite;'#10 +
+    'end;'#10'end.';
+  cClass = 'unit Klasse;'#10'interface'#10'type'#10'  TLayout = class'#10'  public'#10 +
+    '    constructor Create(ABreite: Integer);'#10'  end;'#10'implementation'#10 +
+    'constructor TLayout.Create(ABreite: Integer);'#10'begin'#10'end;'#10'end.';
+  cUser = 'unit Nutzer;'#10'interface'#10'implementation'#10'uses Satz;'#10'procedure Lauf;'#10'var'#10 +
+    '  Layout: TLayout;'#10'begin'#10'  Layout := TLayout.Create(3);'#10'  Lauf2(Layout.Breite);'#10'end;'#10 +
+    'end.';
+begin
+  // Welche gleichnamige Art zählt, entscheidet die uses-Liste, nicht die Reihenfolge im Index.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLocalObjectNotFreedRule.Create, cUser,
+    TTestIndex.Build([cClass, 'Klasse.pas', cRecord, 'Satz.pas']), '', 'Nutzer.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLocalObjectNotFreedRule.Create, cUser,
+    TTestIndex.Build([cRecord, 'Satz.pas', cClass, 'Klasse.pas']), '', 'Nutzer.pas'))));
 end;
 
 procedure TLocalObjectNotFreedTests.RuleCanBeTurnedOff;
