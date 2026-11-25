@@ -256,8 +256,6 @@
         "Atlas.Common.Mcp.IndexTools -> Atlas.Common.Lsp.Rationale",
         "Atlas.Common.Mcp.Prompts -> Atlas.Common.Rules.Output",
         "Atlas.Common.Mcp.ProtectedFiles -> Atlas.Common.Rules.Output",
-        "Atlas.Common.Mcp.RefactorTools -> Atlas.Common.Lsp.Positions",
-        "Atlas.Common.Mcp.StatusTools -> Atlas.Common.Lsp.Status",
         "Atlas.Common.Rules.Builtin.Collections -> Atlas.Common.Editing.GenericLists",
         "Atlas.Common.Rules.Builtin.Declarations -> Atlas.Common.Editing.ClassBodies",
         "Atlas.Common.Rules.Builtin.Declarations -> Atlas.Common.Editing.ClassCompletion",
