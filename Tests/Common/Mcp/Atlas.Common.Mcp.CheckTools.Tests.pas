@@ -32,11 +32,11 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.References,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
+  Shell.Composition.Mcp,
   Atlas.Common.Mcp.CheckTools;
 
 { TMcpCheckToolsTests }
@@ -45,7 +45,8 @@ procedure TMcpCheckToolsTests.ListsDiagnosticsWithLocation;
 var
   mText: string;
 begin
-  mText := TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+  mText := TMcpCheckTools.Diagnostics(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+    TServerSettings.Default, 'C:\P'),
     ['C:\P\Kaputt.pas'],
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -60,13 +61,14 @@ procedure TMcpCheckToolsTests.HookDiagnosticsReportsWarningsAsHookOutput;
 var
   mText: string;
 begin
-  mText := TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+  mText := TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+    TServerSettings.Default, 'C:\P'),
     'C:\P\Kaputt.pas',
     function(const AFileName: string; out AText: string): Boolean
     begin
       AText := 'unit Kaputt;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10'  if then'#10'end;'#10'end.';
       Result := True;
-    end, nil, nil, TRuleSeverity.Warning);
+    end, TRuleSeverity.Warning);
   Assert.StartsWith('{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"', mText);
   Assert.Contains(mText, 'C:\\P\\Kaputt.pas');
   Assert.Contains(mText, '6:');
@@ -77,26 +79,28 @@ var
   mRead: Boolean;
 begin
   mRead := False;
-  Assert.AreEqual('', TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+  Assert.AreEqual('', TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+    TServerSettings.Default, 'C:\P'),
     'C:\P\README.md',
     function(const AFileName: string; out AText: string): Boolean
     begin
       mRead := True;
       AText := 'if then';
       Result := True;
-    end, nil, nil, TRuleSeverity.Warning));
+    end, TRuleSeverity.Warning));
   Assert.IsFalse(mRead, 'Andere Dateien liest hook_check gar nicht erst');
 end;
 
 procedure TMcpCheckToolsTests.HookDiagnosticsIsEmptyWithoutFindings;
 begin
-  Assert.AreEqual('', TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+  Assert.AreEqual('', TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+    TServerSettings.Default, 'C:\P'),
     'C:\P\Gut.pas',
     function(const AFileName: string; out AText: string): Boolean
     begin
       AText := 'unit Gut;'#10'interface'#10'implementation'#10'end.';
       Result := True;
-    end, nil, nil, TRuleSeverity.Error));
+    end, TRuleSeverity.Error));
 end;
 
 procedure TMcpCheckToolsTests.ParsesHookSeverity;
