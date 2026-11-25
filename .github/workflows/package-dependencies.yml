@@ -1,43 +1,51 @@
 name: Package-Abhängigkeiten
 
+# Pflichtprüfung für main-merging ist der Job check (docs/Zusammenfuehren.md). Er sammelt nur die Ergebnisse der Jobs
+# pruefungen (alle Check-Skripte nacheinander, etwa acht Minuten) und modulgrenzen (Selbsttest der Modulgrenzen, auf
+# mehrere Jobs verteilt), die gleichzeitig laufen. So bleibt der Name der Pflichtprüfung gleich, und der langsamste
+# Teil bestimmt die Dauer statt der Summe.
+
 on:
   push:
     # main-merging: nach jedem Merge den zusammengeführten Stand prüfen (docs/Zusammenfuehren.md).
     branches: [main, main-merging, 'release/**']
   pull_request:
+  # Merge Queue (nur in Repositorys einer Organisation): prüft den Stand aller PRs davor wie nach einem Merge.
+  merge_group:
   # Nach einem Push des automatischen Abgleichs mit GITHUB_TOKEN (pr-abgleich.yml) startet die Prüfung so; der Lauf
   # prüft den Branch gegen seine Basis mit main-merging wie ein Pull Request.
   workflow_dispatch:
 
+concurrency:
+  # Je Branch ein Lauf und höchstens ein wartender (der neueste). Nach mehreren Merges kurz hintereinander auf
+  # main-merging prüft so nur der letzte Stand, statt dass jeder Merge einen vollen Lauf belegt.
+  group: package-dependencies-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  check:
+  pruefungen:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           # Release-Tags für Check-ContractVersion.ps1
           fetch-depth: 0
-      - name: Vergleichsstand und geänderte Dateien
+      - name: Vergleichsstand
         id: stand
+        env:
+          MERGE_GROUP_BASIS: ${{ github.event.merge_group.base_sha }}
         run: |
-          # Pull Request: Merge-Commit, erster Elter ist das Ziel. workflow_dispatch: Basis mit main-merging.
+          # Pull Request: Merge-Commit, erster Elter ist das Ziel. Merge Queue: Stand des Ziels vor der Gruppe.
+          # workflow_dispatch: Basis mit main-merging.
           basis=''
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
             basis=$(git rev-parse HEAD^1)
+          elif [ "$GITHUB_EVENT_NAME" = merge_group ]; then
+            basis="$MERGE_GROUP_BASIS"
           elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             basis=$(git merge-base HEAD origin/main-merging)
           fi
           echo "basis=$basis" >> "$GITHUB_OUTPUT"
-          # Der Selbsttest der Modulgrenzen dauert etwa sechs Minuten. Im Pull Request läuft er nur, wenn sich die
-          # Prüfung selbst, Verträge oder Units, auf die sich seine Fälle stützen, ändern (gelöscht/verschoben);
-          # nach jedem Merge auf main-merging läuft er immer.
-          grenzen=true
-          if [ -n "$basis" ] && ! git diff --name-only "$basis" HEAD | grep -qE \
-              '^(Tools/(Check|Test)-PackageDependencies\.ps1|\.github/workflows/package-dependencies\.yml|Packages/Atlas\.IDE\.Base/Source/Foundation/)' \
-            && [ -z "$(git diff --name-only --diff-filter=DR "$basis" HEAD -- Packages)" ]; then
-            grenzen=false
-          fi
-          echo "grenzen=$grenzen" >> "$GITHUB_OUTPUT"
       - name: Merge-Helfer, Selbsttest
         run: python3 Tools/Merge-Integration.py --selbsttest
       - name: Units umbenennen, Selbsttest
@@ -124,10 +132,6 @@ jobs:
             $ref = 'HEAD'
           }
           ./Tools/Check-Baselines.ps1 -BaseRef $ref -DuplicatesReason $grund -LargerClasses $klassen
-      - name: "Modulgrenzen: Selbsttest mit absichtlichen Verstößen (#1455)"
-        if: steps.stand.outputs.grenzen == 'true'
-        shell: pwsh
-        run: ./Tools/Test-PackageDependencies.ps1
       - name: Keine Ausgaben auf stdout
         shell: pwsh
         run: ./Tools/Check-ConsoleOutput.ps1
@@ -228,6 +232,53 @@ jobs:
       - name: Drittanbieter-Hinweise aktuell (#77)
         shell: pwsh
         run: ./Tools/Update-ThirdPartyNotices.ps1 -Check
+
+  # Selbsttest der Modulgrenzen (#1455): jeder Fall ruft die Prüfung über eine Kopie des Repositorys auf (etwa zwei
+  # Minuten), nacheinander zusammen über 40 Minuten. Die Fälle laufen deshalb verteilt auf mehrere Jobs.
+  # Im Pull Request nur, wenn sich die Prüfung selbst, Verträge oder Units, auf die sich seine Fälle stützen, ändern
+  # (gelöscht/verschoben); nach jedem Merge auf main-merging und in der Merge Queue immer.
+  modulgrenzen:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        teil: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
+      - name: Nötig?
+        id: noetig
+        run: |
+          grenzen=true
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            basis=$(git rev-parse HEAD^1)
+            if ! git diff --name-only "$basis" HEAD | grep -qE \
+                '^(Tools/(Check|Test)-PackageDependencies\.ps1|\.github/workflows/package-dependencies\.yml|Packages/Atlas\.IDE\.Base/Source/Foundation/)' \
+              && [ -z "$(git diff --name-only --diff-filter=DR "$basis" HEAD -- Packages)" ]; then
+              grenzen=false
+              echo 'Keine Änderung, die den Selbsttest betrifft; er läuft nach dem Merge auf main-merging.'
+            fi
+          fi
+          echo "grenzen=$grenzen" >> "$GITHUB_OUTPUT"
+      - name: "Modulgrenzen: Selbsttest mit absichtlichen Verstößen (#1455), Teil ${{ matrix.teil }}"
+        if: steps.noetig.outputs.grenzen == 'true'
+        shell: pwsh
+        run: ./Tools/Test-PackageDependencies.ps1 -Shard ${{ matrix.teil }} -Shards 5
+
+  # Pflichtprüfung: grün nur, wenn pruefungen und alle Teile von modulgrenzen grün sind.
+  check:
+    needs: [pruefungen, modulgrenzen]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ergebnisse
+        env:
+          PRUEFUNGEN: ${{ needs.pruefungen.result }}
+          MODULGRENZEN: ${{ needs.modulgrenzen.result }}
+        run: |
+          echo "pruefungen: $PRUEFUNGEN, modulgrenzen: $MODULGRENZEN"
+          [ "$PRUEFUNGEN" = success ] && [ "$MODULGRENZEN" = success ]
 
   # Rot auf main-merging sofort sichtbar machen: Issue „main-merging rot“ und Kommentar am verursachenden Pull Request.
   melden:
