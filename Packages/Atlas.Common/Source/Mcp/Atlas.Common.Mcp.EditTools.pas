@@ -25,8 +25,8 @@
 // unter „wartet in der IDE“, und der Assistent soll sie nicht erneut senden. Erst werden alle solchen Dateien an die
 // IDE gegeben (lehnt sie die erste ab, ist nichts geändert), dann die übrigen geschrieben. Zu löschende Dateien mit
 // ungespeicherten Änderungen brechen weiter ab.
-// apply_code_action prüft mit den Symbolen des Projekts (CheckSource, #860) und
-// mit Symbolindex und Projektdiensten (CheckProject, #1112) wie der Server.
+// apply_code_action prüft über AScope.Checks mit den Symbolen des Projekts (#860)
+// und mit Symbolindex und Projektdiensten (#1112) wie der Server.
 // rename_symbol ändert nur sichere Stellen (#1119); erschlossene nennt der
 // Bericht unter „Nicht geändert, bitte prüfen“.
 // Rückfragen (#2620, mcp.confirm, Weg über TMcpConfirm): Mit dryRun=false fragt rename_symbol bei erschlossenen
@@ -50,7 +50,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.References,
   Atlas.Common.CodeActions.Contract,
@@ -192,8 +192,7 @@ type
     FProjectFiles: TFunc<TArray<string>>;
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
-    FCheckSource: TCheckSourceFunc;
-    FCheckProject: TCheckProjectFunc;
+    FCheckSource: TPascalSourceFunc;
     FSettingsFor: TReferenceSettingsProvider;
     FChoose: TMcpChooseFunc;
     FExtract: IMcpExtract;
@@ -235,10 +234,8 @@ type
     function FormatCode(const AStyle: TFormatStyle; const AFileName: string; const ALines: TMcpFormatLines;
       ADryRun: Boolean): string; overload;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
-    /// <summary>Symbole und Include-Dateien für die Regelprüfung (#860); nil = Vordefinitionen (Win32).</summary>
-    property CheckSource: TCheckSourceFunc read FCheckSource write FCheckSource;
-    /// <summary>Projekt, Symbolindex und Projektdienste für die Regelprüfung (#1112); nil = ohne Index.</summary>
-    property CheckProject: TCheckProjectFunc read FCheckProject write FCheckProject;
+    /// <summary>Symbole und Include-Dateien für format_code (#860); nil = Vordefinitionen (Win32).</summary>
+    property CheckSource: TPascalSourceFunc read FCheckSource write FCheckSource;
     /// <summary>Einstellungen references.* (#1119); nicht gesetzt: Vorgaben.</summary>
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
     /// <summary>„Methode extrahieren“ für extract_method (#2054); setzt der Host.</summary>
@@ -261,9 +258,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.ReferenceConfidence,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.CodeActions,
-  Atlas.Common.Findings.Scopes,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Documents.FileBatch,
   Atlas.Common.Documents.TextChanges,
@@ -888,16 +883,14 @@ function TMcpEditTools.ActionsAt(const AScope: TMcpRuleScope; const AFileName: s
 var
   mText: string;
   mAction: TCodeAction;
-  mScopes: TFindingScopes;
 begin
   if not TryRead(AFileName, mText) then
   begin
     raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
   end;
   Result := nil;
-  for mAction in TRuleCodeActions.ForRange(TFileChecker.CheckText(AScope.Rules, AScope.Settings,
-    TTextNames.RelativeTo(AScope.Root, AFileName), mText, TCheckOrigin.ForFile(FCheckProject, FCheckSource, AFileName),
-    mScopes), mText,
+  for mAction in TRuleCodeActions.ForRange(AScope.Checks.Check(AFileName,
+    TTextNames.RelativeTo(AScope.Root, AFileName), mText, AScope.Settings), mText,
     TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
   begin
     if (Length(mAction.Edits) > 0) and (mAction.Command = '') then
@@ -1184,7 +1177,7 @@ function TMcpEditTools.ApplyCodeAction(const AScope: TMcpRuleScope; const AFileN
 var
   mActions: TArray<TCodeAction>;
   mChosen: Integer;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mEdits: TArray<TMcpFileEdit>;
 begin
   mActions := ActionsAt(AScope, AFileName, ALine);
@@ -1348,7 +1341,7 @@ end;
 
 /// <summary>Formatiert AText; EMcpToolError bei Syntaxfehlern.</summary>
 function FormatOrFail(const AFormatting: IMcpFormatting; const AStyle: TFormatStyle; const AFileName,
-  AText: string; const ALines: TMcpFormatLines; const ASource: TCheckSource): TMcpFormatOutcome;
+  AText: string; const ALines: TMcpFormatLines; const ASource: TPascalSource): TMcpFormatOutcome;
 begin
   Result := AFormatting.Format(AText, AStyle, ALines, ASource);
   if Result.HasSyntaxError then
@@ -1364,7 +1357,7 @@ var
   mOutcome: TMcpFormatOutcome;
 begin
   mOutcome := FormatOrFail(FFormatting, AStyle, AFileName, AText, ALines,
-    TFileChecker.SourceOf(FCheckSource, AFileName));
+    TPascalSources.ForFile(FCheckSource, AFileName));
   if not mOutcome.Changed then
   begin
     Exit(cTexts[TEditToolsText.NoDeviationFromTheFormat].Text);
@@ -1386,7 +1379,7 @@ begin
     raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
   end;
   mOutcome := FormatOrFail(FFormatting, AStyle, AFileName, mText, ALines,
-    TFileChecker.SourceOf(FCheckSource, AFileName));
+    TPascalSources.ForFile(FCheckSource, AFileName));
   if not mOutcome.Changed then
   begin
     Exit(cTexts[TEditToolsText.NoDeviationFromTheFormat2].Fmt([ExtractFileName(AFileName)]));

@@ -46,7 +46,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.EditTools,
@@ -299,13 +298,15 @@ begin
     mProtection := TMcpProtectedFiles.Create('', mEntries);
     mFiles.Files.Add('U.pas', cAssignedFree);
     mEdit.ProtectedReport := ReportOf(mProtection);
-    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'],
+    mReport := mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, ''), ['U.pas'],
       ['redundant-assigned-free'], '', True);
     Assert.Contains(mReport, 'Fremdcode', 'Vorschau nennt die geschützte Datei');
     mError := ToolError(
       procedure
       begin
-        mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'],
+        mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+          TServerSettings.Default, ''), ['U.pas'],
           ['redundant-assigned-free'], '', False);
       end);
     Assert.Contains(mError, 'U.pas');

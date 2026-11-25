@@ -77,6 +77,9 @@ type
     procedure RecordsConditionChecks;
     [Test]
     procedure SourceOptionsCarryFileDefinesAndIncludes;
+    /// <summary>Quelle je Datei: aus der Funktion, ohne Funktion die Vorgabe.</summary>
+    [Test]
+    procedure SourceForFileAsksFunctionOrDefaults;
   end;
 
 implementation
@@ -692,6 +695,24 @@ begin
   Assert.AreEqual(TPascalPreprocessor.EditorOptions(['WIN64']).CompilerVersion, mOptions.CompilerVersion, 0);
   Assert.AreEqual('', TPascalPreprocessor.SourceOptions(TPascalSource.Default).FileName);
   Assert.IsFalse(Assigned(TPascalPreprocessor.SourceOptions(TPascalSource.Default).ResolveInclude));
+end;
+
+procedure TPascalPreprocessorTests.SourceForFileAsksFunctionOrDefaults;
+var
+  mSource: TPascalSourceFunc;
+  mFound: TPascalSource;
+begin
+  mSource :=
+    function(const AFileName: string): TPascalSource
+    begin
+      Result := TPascalSource.Create(AFileName, ['WIN64'], nil);
+    end;
+  mFound := TPascalSources.ForFile(mSource, 'C:\P\U.pas');
+  Assert.AreEqual('C:\P\U.pas', mFound.FileName);
+  Assert.AreEqual('WIN64', mFound.Defines[0]);
+  mFound := TPascalSources.ForFile(nil, 'C:\P\U.pas');
+  Assert.AreEqual('', mFound.FileName);
+  Assert.AreEqual(0, Integer(Length(mFound.Defines)));
 end;
 
 initialization
