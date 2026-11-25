@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.KnownErrors;
+﻿unit Atlas.IDE.Base.Foundation.KnownErrors;
 
 // Vertrag zwischen Modulen (#2460, Modulregeln 6 und 9): bekannte Fehler beim
 // Exception-Halt. Der Debugger kennt den Halt und zeigt die Exception-Leiste,

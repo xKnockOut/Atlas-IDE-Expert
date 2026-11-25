@@ -20,7 +20,7 @@ interface
 
 uses
   Atlas.Core.Modules.Contract,
-  Atlas.IDE.Contracts.DebugStop;
+  Atlas.IDE.Base.Foundation.DebugStop;
 
 type
   TAtlasIdeTestFromDebug = class

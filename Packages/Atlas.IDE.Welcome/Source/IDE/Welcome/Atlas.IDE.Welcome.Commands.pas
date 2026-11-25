@@ -45,7 +45,7 @@
 //   letzten Builds des in „Projekte“ gewählten Projekts; meldet sich selbst
 //   an.
 // - „Meine Issues“, „Sprint“ und „Testergebnisse“ (#765, #1277, #763) sind
-//   Kacheln des Moduls Tracker (Atlas.IDE.Contracts.WelcomeTiles).
+//   Kacheln des Moduls Tracker (Atlas.IDE.Base.Foundation.WelcomeTiles).
 // - Bereich „Nicht gesichert“ (#762, Unsaved): nicht Committetes, nicht
 //   Gepushtes und Stashes je Projekt; meldet sich selbst an.
 // - Zustandskachel „Atlas“ (#754, State): Server, Version, Index,

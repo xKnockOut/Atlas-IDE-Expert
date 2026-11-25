@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.Adapters.KnownErrors;
 
 // Bekannte Fehler beim Exception-Halt (#2460), Teil des Trackers, über den
-// Vertrag Atlas.IDE.Contracts.KnownErrors (Debugger und Tracker kennen sich
+// Vertrag Atlas.IDE.Base.Foundation.KnownErrors (Debugger und Tracker kennen sich
 // nicht). TAtlasTrackerKnownErrors stellt IAtlasKnownErrors bereit, solange
 // „Meine Issues“ läuft:
 // - Lookup: Signatur und Suchtexte aus Atlas.Core.Tracker.KnownErrors; Treffer
@@ -25,7 +25,7 @@ uses
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Contract,
   Atlas.Core.KnownErrors.Contract,
-  Atlas.IDE.Contracts.KnownErrors,
+  Atlas.IDE.Base.Foundation.KnownErrors,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.IssuesServices;
 

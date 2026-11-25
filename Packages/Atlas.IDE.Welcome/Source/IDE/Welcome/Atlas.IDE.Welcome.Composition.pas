@@ -17,7 +17,7 @@
 // - den Abschnitt der Optionsseite (Atlas.IDE.Welcome.Adapters.Settings).
 // Modulklasse, Befehle und Menüeinträge stehen in Atlas.IDE.Welcome.Adapters.Module.
 // Andere Module erreicht die Seite nur über Verträge (TAtlasWelcomeNeighbors,
-// Kacheln über Atlas.IDE.Contracts.WelcomeTiles). Abmelden in der
+// Kacheln über Atlas.IDE.Base.Foundation.WelcomeTiles). Abmelden in der
 // Finalisierung, solange Base läuft (Regel 5); passt die Vertragsversion von
 // Base nicht, meldet sich das Modul nicht an (Regel 7).
 

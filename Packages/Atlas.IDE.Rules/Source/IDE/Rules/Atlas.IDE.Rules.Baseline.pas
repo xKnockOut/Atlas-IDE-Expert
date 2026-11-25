@@ -22,7 +22,7 @@ interface
 
 uses
   Atlas.Core.Modules.Contract,
-  Atlas.IDE.Contracts.Rules;
+  Atlas.IDE.Base.Foundation.Rules;
 
 type
   TAtlasIdeRulesBaseline = class

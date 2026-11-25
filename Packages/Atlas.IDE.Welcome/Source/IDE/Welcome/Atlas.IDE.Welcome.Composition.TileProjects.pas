@@ -23,7 +23,7 @@ implementation
 
 uses
   Atlas.Core.Welcome.Projects,
-  Atlas.IDE.Contracts.WelcomeTiles;
+  Atlas.IDE.Base.Foundation.WelcomeTiles;
 
 /// <summary>Bereich „Projekte“; nil ohne Bereich.</summary>
 function ProjectsOf(const ACurrent: TFunc<TAtlasIdeProjects>): TAtlasIdeProjects;

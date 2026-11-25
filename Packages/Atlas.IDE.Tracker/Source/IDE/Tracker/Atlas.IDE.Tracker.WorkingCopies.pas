@@ -68,7 +68,7 @@ uses
   Atlas.Core.Tracker.Projects,
   Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Base.Foundation.VersionControl;
 
 type
   TAtlasTrackerWorkingHeads = class(TInterfacedObject, IAtlasTrackerWorkingHeads)

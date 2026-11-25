@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Tracker.TestResults;
 
 // Kachel „Testergebnisse“ in der IDE (#763; Kachel des Moduls
-// Tracker über Atlas.IDE.Contracts.WelcomeTiles): Quelle der Kachel (für sie
+// Tracker über Atlas.IDE.Base.Foundation.WelcomeTiles): Quelle der Kachel (für sie
 // über Atlas.IDE.Tracker.Adapters.TestResults), Abfrage beim Build-Server im Hintergrund und die
 // Aktionen.
 // - Projekte: dieselbe Liste wie der Bereich „Projekte“ der Willkommensseite

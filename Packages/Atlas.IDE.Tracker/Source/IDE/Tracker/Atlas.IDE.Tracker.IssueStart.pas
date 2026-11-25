@@ -143,7 +143,7 @@ uses
   Atlas.UI.Tracker.SprintDialog,
   Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Tracker.IssueWorkLink,
   Atlas.IDE.Tracker.SprintTile,
   Atlas.IDE.Tracker.Workflow,

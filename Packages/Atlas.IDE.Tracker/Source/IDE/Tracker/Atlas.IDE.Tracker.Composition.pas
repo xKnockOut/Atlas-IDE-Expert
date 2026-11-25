@@ -48,7 +48,7 @@ uses
   Atlas.IDE.Tracker.Composition.Parts,
   Atlas.IDE.Tracker.Adapters.Settings,
   Atlas.UI.Tracker.SettingsBranches,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.UI.Settings.Contract,
   Atlas.IDE.Tracker.Adapters.Access,
   Atlas.IDE.Tracker.Adapters.Module;

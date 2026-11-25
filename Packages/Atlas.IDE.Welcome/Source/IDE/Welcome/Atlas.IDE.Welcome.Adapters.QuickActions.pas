@@ -47,7 +47,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Vcl.ExtCtrls,
-  Atlas.IDE.Contracts.BuildTools,
+  Atlas.IDE.Base.Foundation.BuildTools,
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.QuickActionRuns,
   Atlas.IDE.Welcome.QuickActions.Keys,
@@ -156,7 +156,7 @@ uses
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.Plugin.Files.TextFile,
   Atlas.IDE.Projects.Summaries;

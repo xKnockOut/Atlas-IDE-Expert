@@ -13,7 +13,7 @@ uses
   System.SysUtils,
   Atlas.Core.Setup.Checklist,
   Atlas.Plugin.Files.Contract,
-  Atlas.IDE.Contracts.GhostSuggestions,
+  Atlas.IDE.Base.Foundation.GhostSuggestions,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Setup.Checklist,
   Atlas.Core.Commands.Contract,

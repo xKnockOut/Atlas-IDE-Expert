@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.Rules;
+﻿unit Atlas.IDE.Base.Foundation.Rules;
 
 // Vertrag zwischen Modulen (#1455, Modulregel 6): Das Modul Prüfregeln
 // stellt über seinen Scope eine IAtlasBaselineSource bereit (Baseline des
@@ -17,7 +17,7 @@
 // Prüfung einer Datei danach (problems.ideErrors) und stellt sie neben die
 // Atlas-Befunde. Die Werte kommen roh wie von der IDE, umgerechnet wird in Base
 // (Atlas.Core.Problems.IdeErrors). Ohne Modul gibt es keine Fehler der IDE.
-// Nur Interfaces und Typen, kein Code. Liegt in Base (Source/Contracts, #1456).
+// Nur Interfaces und Typen, kein Code. Liegt in Base (Source/Foundation, #1456).
 
 interface
 

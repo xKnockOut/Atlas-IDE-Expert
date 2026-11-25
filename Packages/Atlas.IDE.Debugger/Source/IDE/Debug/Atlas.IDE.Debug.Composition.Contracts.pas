@@ -37,10 +37,10 @@ uses
   Atlas.IDE.Debug.Adapters.ProcessMemory,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.ObjectCount,
-  Atlas.IDE.Contracts.DebugControl,
-  Atlas.IDE.Contracts.KnownErrors,
-  Atlas.IDE.Contracts.DebugReport,
-  Atlas.IDE.Contracts.DebugStop;
+  Atlas.IDE.Base.Foundation.DebugControl,
+  Atlas.IDE.Base.Foundation.KnownErrors,
+  Atlas.IDE.Base.Foundation.DebugReport,
+  Atlas.IDE.Base.Foundation.DebugStop;
 
 procedure ProvideDebugContracts(const AScope: IAtlasModuleScope);
 begin

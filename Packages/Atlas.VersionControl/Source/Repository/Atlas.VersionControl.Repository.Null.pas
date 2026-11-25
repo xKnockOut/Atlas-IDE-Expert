@@ -6,7 +6,7 @@
 // gilt auch für IAtlasVcsLocalWork (#762), IAtlasVcsIncoming (#755) und
 // IAtlasVcsUpdate (#764), IAtlasVcsBranching (#765), IAtlasVcsLineHistory (#1275) und
 // IAtlasVcsHistory (#1269).
-// Ein Null-Objekt ist ein Newable und liegt deshalb im Root des Features: Auch Atlas.IDE.Contracts.VersionControl
+// Ein Null-Objekt ist ein Newable und liegt deshalb im Root des Features: Auch Atlas.IDE.Base.Foundation.VersionControl
 // legt es ohne Modul an, Providers erzeugt weiter nur die Composition.
 
 interface

@@ -42,7 +42,7 @@ uses
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Modules.Registry,
-  Atlas.IDE.Contracts.DebugReport;
+  Atlas.IDE.Base.Foundation.DebugReport;
 
 /// <summary>Bild eines Formulars bzw. Frames im Designer; nil ohne Fenster.</summary>
 function RootImage(ARoot: TComponent): TBitmap;

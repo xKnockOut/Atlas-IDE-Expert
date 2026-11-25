@@ -85,7 +85,7 @@ uses
   Atlas.Core.Debug.BreakpointSetFlow,
   Atlas.VersionControl.Repository.Contract,
   Atlas.VersionControl.Repository.Switches,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,

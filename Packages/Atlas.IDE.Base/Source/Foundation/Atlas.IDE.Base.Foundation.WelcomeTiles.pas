@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.WelcomeTiles;
+﻿unit Atlas.IDE.Base.Foundation.WelcomeTiles;
 
 // Vertrag zwischen Modulen (#1455, Modulregeln 4 und 6): Kacheln anderer
 // Module auf der Willkommensseite. Ein Modul (Tracker: „Meine Issues“,
@@ -10,7 +10,7 @@
 // Umgekehrt stellt die Willkommensseite IAtlasWelcomeBoard (Inhalt einer
 // Kachel geändert) und IAtlasWelcomeProjects (Projektliste und gewähltes
 // Projekt) bereit. Nur Interfaces und Records, kein Code; die Ansicht
-// übergibt ein Steuerelement, daher Vcl.Controls. Liegt in Base (Source/Contracts, #1456).
+// übergibt ein Steuerelement, daher Vcl.Controls. Liegt in Base (Source/Foundation, #1456).
 // Alle Aufrufe im Hauptthread.
 
 interface

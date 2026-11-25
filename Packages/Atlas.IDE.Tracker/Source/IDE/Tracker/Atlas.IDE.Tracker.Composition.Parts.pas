@@ -57,7 +57,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.LineChanges,
+  Atlas.IDE.Base.Foundation.LineChanges,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,

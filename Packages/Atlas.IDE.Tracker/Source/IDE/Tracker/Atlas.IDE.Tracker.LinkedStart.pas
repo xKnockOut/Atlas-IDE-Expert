@@ -52,7 +52,7 @@ uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
   Atlas.VersionControl.Repository.Contract,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Tracker.PathSuggestions,
   Atlas.IDE.Tracker.Workflow,
   Atlas.UI.Tracker.GitHubStrings,
