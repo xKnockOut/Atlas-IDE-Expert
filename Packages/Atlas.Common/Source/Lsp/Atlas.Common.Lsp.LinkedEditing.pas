@@ -85,7 +85,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Lsp.Internals.Namespaces,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,

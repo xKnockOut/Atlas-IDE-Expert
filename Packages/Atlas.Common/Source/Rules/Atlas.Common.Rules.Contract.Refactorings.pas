@@ -7,6 +7,10 @@
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Index.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.CodeActions.Contract.Classes;
 
@@ -23,9 +27,62 @@ type
       out AAction: TCodeAction): Boolean;
   end;
 
+  /// <summary>„Konstante extrahieren“ für viele Literale desselben Textes.</summary>
+  IRuleConstantExtraction = interface
+    ['{413771C5-D0DB-4B00-AA72-7A50F25B7310}']
+    /// <summary>Konstante für das Literal in ARange; False, wenn dort keins steht.</summary>
+    function Run(const ARange: TTextRange; out AAction: TCodeAction): Boolean;
+  end;
+
+  /// <summary>Extrahieren als Korrektur: Bedingung in Funktion auslagern, Konstante einführen.</summary>
+  IRuleExtractRefactorings = interface
+    ['{70350A32-331D-4BB4-85DC-954DCCABFBE2}']
+    /// <summary>„Bedingung in Funktion auslagern“ für die ganze Bedingung in ARange; False, wenn es nicht geht.
+    /// </summary>
+    function ExtractCondition(const AText: string; const ARange: TTextRange; const AStyle: TFormatStyle;
+      out AAction: TCodeAction): Boolean;
+    /// <summary>„Konstante extrahieren“ für AText; neue Namen mit den Präfixen ANames.</summary>
+    function ConstantExtraction(const AText: string; const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
+  end;
+
+  /// <summary>Was die Suche nach Methoden ohne Self über eine Unit wissen muss.</summary>
+  TRuleMethodScan = record
+    /// <summary>Dateiname für die Namensauflösung (TRuleContext.ResolverFileName).</summary>
+    FileName: string;
+    Text: string;
+    /// <summary>Inhalt der Formulardatei; '' ohne.</summary>
+    FormText: string;
+    Index: ISymbolIndex;
+    EnsureUnit: TEnsureUnitFunc;
+    Namespaces: TArray<string>;
+    /// <summary>class-Methoden mit static (refactoring.methodKind).</summary>
+    WithStatic: Boolean;
+    Style: TFormatStyle;
+  end;
+
+  /// <summary>Eine Methode, die Self nicht braucht.</summary>
+  TRuleMethodWithoutSelf = record
+    ClassName: string;
+    Name: string;
+    /// <summary>Name im Kopf der Implementierung.</summary>
+    NamePosition: TTextPosition;
+    /// <summary>Umwandlung in eine class-Methode, nur in dieser Unit; ohne HasFix nicht möglich.</summary>
+    HasFix: Boolean;
+    Fix: TCodeAction;
+  end;
+
+  /// <summary>Methoden ohne Self samt Korrektur „In class-Methode umwandeln“.</summary>
+  IRuleMethodRefactorings = interface
+    ['{49CD21CC-66DB-477C-9138-3E794F2B58A8}']
+    function WithoutSelf(const AScan: TRuleMethodScan): TArray<TRuleMethodWithoutSelf>;
+  end;
+
   /// <summary>Alle Refactorings, die Prüfregeln als Korrektur nutzen; je Eintrag nil = nicht verfügbar.</summary>
   TRuleRefactorings = record
     Classes: IRuleClassRefactorings;
+    Extract: IRuleExtractRefactorings;
+    /// <summary>Ohne Eintrag schweigt method-without-self: Erkennung und Korrektur gehören zusammen.</summary>
+    Methods: IRuleMethodRefactorings;
   end;
 
 implementation

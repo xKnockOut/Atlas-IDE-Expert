@@ -76,7 +76,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ResourceStrings.Tests;
+﻿unit Atlas.Common.Pascal.ResourceStrings.Tests;
 
 // Tests für das Auslagern von String-Literalen als resourcestring (#473):
 // Namen, Literal am Cursor, zulässige Stellen, Einträge und Einfügestelle.
@@ -51,7 +51,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Common.Pascal.ResourceStrings,
   Atlas.Tests.SourceText;
 
 /// <summary>Position des "|" in AMarked; AText ohne "|".</summary>

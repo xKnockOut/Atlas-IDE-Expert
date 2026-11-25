@@ -74,7 +74,7 @@ uses
   Atlas.Common.Projects.Paths,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.WorkspaceChanges,
   Atlas.Common.Localization.Texts;
 

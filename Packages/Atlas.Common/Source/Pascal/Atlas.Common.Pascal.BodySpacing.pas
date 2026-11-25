@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.BodySpacing;
+﻿unit Atlas.Common.Pascal.BodySpacing;
 
 // Einheitliche Leerzeilen um Methodenrümpfe (#1839), wenn Atlas Rümpfe anlegt
 // oder ordnet (classCompletion.blankLines):

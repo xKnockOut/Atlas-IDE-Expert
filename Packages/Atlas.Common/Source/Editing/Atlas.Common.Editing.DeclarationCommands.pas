@@ -31,7 +31,7 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Common.Pascal.ResourceStrings,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

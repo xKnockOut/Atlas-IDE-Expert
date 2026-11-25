@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Status.Tests;
+﻿unit Atlas.Common.JsonRpc.ServerStatus.Tests;
 
 // Tests für den Status-Befehl (#28): Antwortzeiten, Befehle und Ausgabe.
 
@@ -61,7 +61,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Diagnostics.CheckProfile;
 
 { TLspStatusTests }

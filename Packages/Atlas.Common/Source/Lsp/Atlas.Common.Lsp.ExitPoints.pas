@@ -72,7 +72,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

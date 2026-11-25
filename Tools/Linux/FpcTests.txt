@@ -83,7 +83,7 @@ Atlas.Common.Editing.AssignFields.Tests
 Atlas.Common.Pascal.CaseCompletion.Tests
 Atlas.Common.Editing.ChangeSignature.Tests
 Atlas.Common.Editing.ClassBodies.Tests
-Atlas.Common.Editing.BodySpacing.Tests
+Atlas.Common.Pascal.BodySpacing.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
 Atlas.Common.Pascal.ClassLayout.Tests
 Atlas.Common.Pascal.Destructors.Tests
@@ -92,7 +92,7 @@ Atlas.Common.Pascal.Colors.Tests
 Atlas.Common.Editing.CompilerFixes.Tests
 Atlas.Common.Compiler.ProcessRuns.Tests
 Atlas.Common.Editing.SourceFiles.Tests
-Atlas.Common.Editing.ConditionalExpression.Tests
+Atlas.Common.Semantics.ConditionalExpression.Tests
 Atlas.Common.Editing.Conditions.Tests
 Atlas.Common.Editing.BoundaryCases.Tests
 Atlas.Common.Editing.CreateMethod.Tests
@@ -100,8 +100,8 @@ Atlas.Common.Editing.DataFieldNames.Tests
 Atlas.Common.Editing.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests
 Atlas.Common.Pascal.DocComments.Tests
-Atlas.Common.Editing.EnumTables.Tests
-Atlas.Common.Editing.ExpressionText.Tests
+Atlas.Common.Pascal.EnumTables.Tests
+Atlas.Common.Pascal.ExpressionText.Tests
 Atlas.Common.Editing.Extract.Duplicates.Tests
 Atlas.Common.Editing.Extract.Shared.Tests
 Atlas.Common.Editing.Extract.Tests
@@ -117,7 +117,7 @@ Atlas.Common.Editing.FreeFields.Tests
 Atlas.Common.Editing.GenericLists.Parts.Tests
 Atlas.Common.Editing.GitUser.Tests
 Atlas.Common.Editing.GuardFree.Tests
-Atlas.Common.Editing.InlineAccessor.Tests
+Atlas.Common.Semantics.InlineAccessor.Tests
 Atlas.Common.Editing.Inlining.Method.Tests
 Atlas.Common.Editing.Inlining.Syntax.Tests
 Atlas.Common.Editing.Inlining.Tests
@@ -125,7 +125,7 @@ Atlas.Common.Editing.Inlining.Types.Tests
 Atlas.Common.Editing.InterfaceStubs.Tests
 Atlas.Common.Editing.InvertBoolean.Tests
 Atlas.Common.Editing.MemberOrder.Tests
-Atlas.Common.Editing.MemberTransfer.Tests
+Atlas.Common.Pascal.MemberTransfer.Tests
 Atlas.Common.Editing.MethodMatching.Tests
 Atlas.Common.Editing.MethodOrder.Tests
 Atlas.Common.Editing.MethodWithoutSelf.Lookup.Tests
@@ -140,7 +140,7 @@ Atlas.Common.Editing.PostfixTemplates.Tests
 Atlas.Common.Editing.PromoteVariable.Tests
 Atlas.Common.Editing.PropertyFromAccessors.Tests
 Atlas.Common.Editing.RaiseVisibility.Tests
-Atlas.Common.Editing.ResourceStrings.Tests
+Atlas.Common.Pascal.ResourceStrings.Tests
 Atlas.Common.Pascal.RoutineLocals.Tests
 Atlas.Common.Editing.RoutineParts.Tests
 Atlas.Common.Editing.SafeDelete.Tests
@@ -257,7 +257,7 @@ Atlas.Common.Lsp.SmartIndent.Tests
 Atlas.Common.Lsp.SmartPaste.Tests
 Atlas.Common.Lsp.ServerActivity.Tests
 Atlas.Common.Lsp.Adapters.ServerActivityObserver.Tests
-Atlas.Common.Lsp.StatusFile.Tests
+Atlas.Common.Diagnostics.StatusFile.Tests
 Atlas.Common.Lsp.StatusHeartbeat.Tests
 Atlas.Common.Lsp.StringLiteralCommands.Tests
 Atlas.Common.Lsp.TestCases.Tests
@@ -284,6 +284,7 @@ Adapters.Mcp.Formatting.Tests
 Atlas.Common.Editing.Providers.CompilerFixes.Tests
 Adapters.Mcp.CompilerFixes.Tests
 Adapters.Mcp.BulkFix.Tests
+Adapters.Mcp.Conventions.Tests
 Atlas.Common.Compiler.MessageTexts.Tests
 Atlas.Common.Mcp.RefactorTools.Tests
 Atlas.Common.Mcp.ProtectedFiles.Tests
@@ -469,13 +470,16 @@ Atlas.Common.Rules.Derived.Tests
 Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.Providers.InheritanceDepths.Tests
 Atlas.Common.Rules.Providers.BulkFix.Tests
+Atlas.Common.Rules.Providers.Conventions.Tests
+Atlas.Common.Rules.Providers.FindingPrompts.Tests
 Atlas.Common.Rules.Providers.OwnershipReport.Tests
 Atlas.Common.Rules.Providers.DocumentChecks.Tests
 Atlas.Common.Rules.Providers.DocumentActions.Tests
 Atlas.Common.Rules.CheckContext.Tests
 Atlas.Common.Rules.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
-Atlas.Common.Rules.MessageCatalog.Tests
+Atlas.Common.Compiler.MessageCatalog.Tests
+Atlas.Common.Compiler.Releases.Tests
 Atlas.Common.Rules.CompilerPitfalls.Tests
 Atlas.Common.Rules.CompilerPitfallFixes.Tests
 Atlas.Common.Rules.Options.Tests
@@ -850,6 +854,7 @@ Atlas.Core.Editor.Pairs.Tests
 Adapters.Rules.IdeTypes.Tests
 Adapters.Rules.Refactorings.Tests
 Atlas.Common.Editing.Providers.ClassActions.Tests
+Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests
 Adapters.Lsp.InheritanceDepths.Tests
 Adapters.Lsp.OwnershipReport.Tests
 Adapters.Lsp.RuleDiagnostics.Tests

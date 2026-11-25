@@ -74,7 +74,7 @@ uses
   Atlas.Common.Projects.Paths,
   Atlas.Common.Editing.TestUnits,
   Atlas.Common.Editing.UnitTemplates,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

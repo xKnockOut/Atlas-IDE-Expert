@@ -79,7 +79,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists.Syntax,
   Atlas.Common.Localization.Texts;
 

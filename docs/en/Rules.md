@@ -3537,7 +3537,7 @@ end;
 
 **Precedence of not overlooked** · Bug · Warning · Group Find bugs
 
-In Pascal not binds more tightly than in and comparisons: not X in Set means (not X) in Set, not A = B means (not A) = B, and on integers not works bitwise. The rule reports these forms when the declared type of the operand shows that this cannot be meant (not Boolean). Quick fix: add parentheses, not (X in Set).
+In Pascal not binds more tightly than in and comparisons: not X in Set means (not X) in Set, not A = B means (not A) = B, and on integers not works bitwise. The rule reports these forms when the declared type of the operand shows that this cannot be meant (not Boolean). not E is T means (not E) is T and does not compile in Delphi for any type (E2015, Free Pascal accepts it); the rule always reports it. Quick fix: add parentheses, not (X in Set).
 
 Flagged:
 
@@ -5658,7 +5658,7 @@ if Pos(';', Zeile) > 0 then
 
 **DelimitedText without StrictDelimiter** · Bug · Warning · Group Find bugs
 
-List.DelimitedText := ... after List.Delimiter := ... in the same routine without StrictDelimiter being set: DelimitedText then also splits at spaces, 'Max Muster;Berlin' becomes three entries instead of two. For fields, StrictDelimiter anywhere in the unit counts (often in the constructor); StrictDelimiter := False is deliberate and stays silent, as does DelimitedText without a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.
+List.DelimitedText := ... after List.Delimiter := ... in the same routine without StrictDelimiter being set: DelimitedText then also splits at spaces, 'Max Muster;Berlin' becomes three entries instead of two. StrictDelimiter also counts in with List do and through a typecast (TStringList(List), List as TStringList), for fields anywhere in the unit (often in the constructor). For parameters and lists the routine does not create itself (function result) the rule stays silent: the caller or the creating function sets StrictDelimiter there; StrictDelimiter := False is deliberate and stays silent, as does DelimitedText without a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.
 
 Flagged:
 
@@ -7043,7 +7043,7 @@ exports
 
 **Unit name conflicts** · Bug · Error · Group Compiler ahead
 
-A unit is named like a unit reserved for the compiler, System or SysInit (like E2272), or {$NOINCLUDE X} names a unit the compiler does not know (like E2242); the latter needs the project's unit search and stays silent when it gives no sure answer. The RTL sources (source/rtl) are not checked. Not reported: E2447, W1051 and X2421 belong to the namespaces of .NET metadata, which dcc32/dcc64 do not create; for E2399 the documentation gives no condition, and a unit Kunden next to Kunden.Daten compiles without error in Delphi (Spring.pas next to Spring.Collections.pas). Quick fix for {$NOINCLUDE}: use a similarly spelled known unit.
+A unit is named like a unit reserved for the compiler, System or SysInit (like E2272), a part of the unit name in the header or in uses/contains is a reserved word such as inline, object or string (like E2029; Free Pascal accepts it, a part prefixed with & stays silent), or {$NOINCLUDE X} names a unit the compiler does not know (like E2242); the latter needs the project's unit search and stays silent when it gives no sure answer. The RTL sources (source/rtl) are not checked. Not reported: E2447, W1051 and X2421 belong to the namespaces of .NET metadata, which dcc32/dcc64 do not create; for E2399 the documentation gives no condition, and a unit Kunden next to Kunden.Daten compiles without error in Delphi (Spring.pas next to Spring.Collections.pas). Quick fix for {$NOINCLUDE}: use a similarly spelled known unit.
 
 Matches the compiler message `E2272`, `E2242`.
 
@@ -9633,7 +9633,7 @@ end;
 
 **Method reference is called instead of passed** · Bug · Error · Group Compiler ahead
 
-A variable, parameter or field whose type is a reference to a function (TFunc<…>, TPredicate<T> or an own reference to function type) is the only argument of Exit(…) in a function that returns a method reference, or an element of an array literal next to + (FHandlers + [AHandler]) whose other operand is an array of method references. Delphi calls the reference there instead of taking it as a value (E2035 or E2010); Free Pascal takes the value. The type is read from the declaration in the file (parameter, local variable, field of the own class); an own type counts if the file or the symbol index declares it as reference to function. References to procedures (TProc) are taken as values by Delphi and stay silent. Exit(AFunc) in a function with another result type calls on purpose and stays silent. Quick fix for Exit (safe): Result := ARef; Exit;. For the array literal: grow the array with SetLength and assign the element.
+A variable, parameter or field whose type is a reference to a function (TFunc<…>, TPredicate<T> or an own reference to function type) is the only argument of Exit(…) in a function that returns a method reference, or an element of an array literal next to + (FHandlers + [AHandler]) whose other operand is an array of method references. Delphi calls the reference there instead of taking it as a value (E2035 or E2010); Free Pascal takes the value. The type is read from the declaration in the file (parameter, local variable, field of the own class); an own type counts if the file or the symbol index declares it as reference to function. References to procedures (TProc) are taken as values by Delphi and stay silent. Exit(AFunc) in a function with another result type calls on purpose and stays silent. Conversely the rule reports a parameterless function returning a method reference (TTransport.Factory: TFactory) passed without () as an argument where a version of the called routine has a parameter of the result type: Delphi takes the function itself (E2010, E2250 with overloads). Function and called routine come from the symbol index. Quick fix for Exit (safe): Result := ARef; Exit;. For the array literal: grow the array with SetLength and assign the element. For the factory (safe): append ().
 
 Matches the compiler message `E2035`, `E2010`.
 

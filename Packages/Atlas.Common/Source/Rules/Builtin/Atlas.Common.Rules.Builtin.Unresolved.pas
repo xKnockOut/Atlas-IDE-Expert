@@ -512,7 +512,13 @@ var
   mToken: TPascalToken;
 begin
   mToken := FTokens[AIndex];
-  if mToken.IsKeyword('in') then
+  // Ein reserviertes Wort hinter dem Punkt (Kunden.Inline) gehört zum Namen; unit-name-conflict meldet es.
+  if not FDraft.AfterIn and (mToken.Kind = TPascalTokenKind.Keyword) and EndsStr('.', FDraft.Name) then
+  begin
+    FDraft.Last := AIndex;
+    FDraft.Name := FDraft.Name + mToken.Text;
+  end
+  else if mToken.IsKeyword('in') then
   begin
     FDraft.AfterIn := True;
   end

@@ -72,7 +72,7 @@ uses
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Editing.PromoteVariable,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.PromoteVariable,
   Atlas.Common.Localization.Texts,

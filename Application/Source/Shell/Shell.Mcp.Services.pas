@@ -392,6 +392,8 @@ begin
   Result.VcsAccess := VcsAccess;
   Result.GitDir := GitDirOf;
   Result.CompilerFixes := TMcpComposition.CompilerFixes;
+  Result.Conventions := TMcpComposition.Conventions;
+  Result.FindingPrompts := TMcpComposition.FindingPrompts;
 end;
 
 end.

@@ -17,12 +17,13 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.Providers.ClassActions,
+  Atlas.Common.Editing.Composition,
   Adapters.Rules.Refactorings;
 
 class function TShellRuleRefactorings.Create: TRuleRefactorings;
 begin
-  Result := TRuleRefactoringsAdapters.Create(TEditingClassActionsProvider.New);
+  Result := TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, TEditingComposition.ExtractFixes,
+    TEditingComposition.MethodsWithoutSelf);
 end;
 
 end.

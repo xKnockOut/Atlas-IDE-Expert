@@ -25,7 +25,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.InlineAccessor,
+  Atlas.Common.Semantics.InlineAccessor,
   Atlas.Common.Lsp.References;
 
 type
@@ -80,7 +80,7 @@ uses
   Atlas.Common.Pascal.ClassLayout,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.WorkspaceChanges,
   Atlas.Common.Localization.Texts;
 

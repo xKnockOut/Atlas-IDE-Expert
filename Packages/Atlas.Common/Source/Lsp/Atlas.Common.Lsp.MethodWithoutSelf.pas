@@ -74,7 +74,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.FormMentions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;

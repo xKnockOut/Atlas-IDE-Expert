@@ -50,7 +50,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.MoveMember,
   Atlas.Common.JsonRpc.TestSupport,
   Atlas.Common.Lsp.Edits.TestSupport;

@@ -135,7 +135,7 @@ uses
   System.StrUtils,
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.CurrentRequest,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Index.Contract,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Pascal.SyntaxTree,

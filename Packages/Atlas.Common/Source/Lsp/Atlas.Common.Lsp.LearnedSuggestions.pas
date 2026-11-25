@@ -68,7 +68,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.SuggestionContext,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

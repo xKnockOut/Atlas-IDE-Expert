@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Positions;
+﻿unit Atlas.Common.JsonRpc.Positions;
 
 // Umwandlung zwischen den LSP-Typen Position und Range und den Typen der
 // Dokumentverwaltung. Fehlende oder falsche Felder führen zu InvalidParams.
@@ -130,6 +130,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Positions', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.Positions', cTexts);
 
 end.

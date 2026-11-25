@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.InlineAccessor;
+﻿unit Atlas.Common.Semantics.InlineAccessor;
 
 // Triviale Zugriffsmethode durch Feld ersetzen (#717), Gegenstück zu #682:
 //   - Trivial ist ein Getter, der nur "Result := FX;" (auch "Exit(FX);",
@@ -98,7 +98,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
@@ -989,6 +989,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.InlineAccessor', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.InlineAccessor', cTexts);
 
 end.

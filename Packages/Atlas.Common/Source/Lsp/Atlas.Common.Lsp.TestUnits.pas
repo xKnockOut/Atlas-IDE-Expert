@@ -151,7 +151,7 @@ uses
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.UnitTemplates,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

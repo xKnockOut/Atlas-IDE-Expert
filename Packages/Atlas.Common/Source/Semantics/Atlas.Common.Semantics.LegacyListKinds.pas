@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GenericLists.Kinds;
+﻿unit Atlas.Common.Semantics.LegacyListKinds;
 
 // Was eine ungenerische Listenklasse kann (#1105, #1106): TLegacyListKind beschreibt je alter Klasse (TList,
 // TObjectList, TStack, TQueue, TObjectStack, TObjectQueue) das generische Gegenstück und ordnet ihre Mitglieder ein.
@@ -316,6 +316,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Kinds', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.LegacyListKinds', cTexts);
 
 end.

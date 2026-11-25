@@ -81,7 +81,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,

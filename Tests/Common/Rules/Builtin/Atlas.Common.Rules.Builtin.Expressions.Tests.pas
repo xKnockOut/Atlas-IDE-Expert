@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Expressions.Tests;
 
-// Tests der Regel operator-precedence (#911): not vor in und Vergleichen bei
+// Tests der Regel operator-precedence (#911): not vor in, is und Vergleichen bei
 // Aufzählungen und Ganzzahlen, Klammern als Korrektur, keine Meldung bei
 // Boolean, unbekanntem Typ und geklammerter Form, Abschalten und Ausnahmen;
 // duplicate-condition (#928); string-index-base (#951); null-compare (#953);
@@ -22,6 +22,8 @@ type
     procedure NotOnIntegerComparisonIsBitwise;
     [Test]
     procedure NotOnEnumComparison;
+    [Test]
+    procedure NotBeforeIsIsReportedForAnyType;
     [Test]
     procedure ParenthesizedFormIsSilent;
     [Test]
@@ -163,11 +165,25 @@ begin
     'Gemeint ist vermutlich not (FZustand <> zsNeu).', mFindings[0].Message);
 end;
 
+procedure TExpressionRulesTests.NotBeforeIsIsReportedForAnyType;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Der Typ von E ist in der Datei nicht deklariert; not E is T übersetzt trotzdem nie (E2015).
+  mFindings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
+    Body('  if not E is EAbort then'#10'    Bearbeiten;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('„not“ gilt nur für E, „is“ prüft dann den Wahrheitswert: Delphi übersetzt das nicht ' +
+    '(wie E2015). Gemeint ist not (E is EAbort).', mFindings[0].Message);
+  Assert.AreEqual('(E is EAbort)', mFindings[0].Fixes[0].Edits[0].NewText);
+end;
+
 procedure TExpressionRulesTests.ParenthesizedFormIsSilent;
 begin
   TRuleAssert.Silent(TOperatorPrecedenceRule.Create,
     Body('  if not (Zustand in [zsOffen, zsGesperrt]) then'#10'    Bearbeiten;'#10 +
-    '  if not (FAnzahl = 0) then'#10'    Bearbeiten;'#10));
+    '  if not (FAnzahl = 0) then'#10'    Bearbeiten;'#10 +
+    '  if not (E is EAbort) then'#10'    Bearbeiten;'#10));
 end;
 
 procedure TExpressionRulesTests.BooleanAndUnknownTypesAreSilent;

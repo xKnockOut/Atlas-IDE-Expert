@@ -137,7 +137,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Pascal.Contract,

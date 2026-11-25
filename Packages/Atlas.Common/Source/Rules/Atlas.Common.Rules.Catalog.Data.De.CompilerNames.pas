@@ -111,10 +111,11 @@ const
     '{',
     '      "id": "unit-name-conflict",',
     '      "name": "Unit-Name kollidiert",',
-    '      "description": "Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür ' +
-    'braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen de' +
-    'r .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collec' +
-    'tions.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen."',
+    '      "description": "Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), ein Teil des Unit-Namens im Kopf oder in uses/contains ist ein reserviertes Wort wie ' +
+    'inline, object oder string (wie E2029; Free Pascal nimmt es an, ein Teil mit & davor bleibt still), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür braucht die Reg' +
+    'el die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen der .NET-Metadate' +
+    'n, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas). Sch' +
+    'nellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen."',
     '    },',
     '{',
     '      "id": "anonymous-capture-invalid",',
@@ -369,8 +370,10 @@ const
     'nt in Exit(…) einer Funktion, die eine Methodenreferenz liefert, oder als Element eines Array-Literals neben + (FHandlers + [AHandler]), dessen anderer Operand ein Array von Methodenreferenzen ist. De' +
     'lphi ruft die Referenz dort auf, statt sie als Wert zu nehmen (E2035 bzw. E2010); Free Pascal nimmt den Wert. Der Typ kommt aus der Deklaration in der Datei (Parameter, lokale Variable, Feld der eigen' +
     'en Klasse); ein eigener Typ zählt, wenn die Datei oder der Symbolindex ihn als reference to function deklariert. Referenzen auf Prozeduren (TProc) nimmt Delphi als Wert; sie bleiben still. Exit(AFunc)' +
-    ' in einer Funktion mit anderem Ergebnistyp ruft gewollt auf und bleibt still. Korrektur bei Exit (sicher): Result := ARef; Exit;. Beim Array-Literal: Länge mit SetLength erhöhen und das Element zuweis' +
-    'en."',
+    ' in einer Funktion mit anderem Ergebnistyp ruft gewollt auf und bleibt still. Umgekehrt meldet die Regel eine parameterlose Funktion, die eine Methodenreferenz liefert (TTransport.Fabrik: TFabrik), we' +
+    'nn sie ohne () als Argument steht und eine Fassung der gerufenen Routine dort einen Parameter vom Ergebnistyp hat: Delphi nimmt die Funktion selbst (E2010, bei Überladungen E2250). Funktion und gerufe' +
+    'ne Routine kommen aus dem Symbolindex. Korrektur bei Exit (sicher): Result := ARef; Exit;. Beim Array-Literal: Länge mit SetLength erhöhen und das Element zuweisen. Bei der Fabrik (sicher): () anhänge' +
+    'n."',
     '    },',
     '{',
     '      "id": "interface-uses-missing",',

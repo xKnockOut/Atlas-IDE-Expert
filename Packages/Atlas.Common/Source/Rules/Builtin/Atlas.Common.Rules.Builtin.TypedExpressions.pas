@@ -125,7 +125,7 @@ uses
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Constants,
-  Atlas.Common.Editing.EnumTables,
+  Atlas.Common.Pascal.EnumTables,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,

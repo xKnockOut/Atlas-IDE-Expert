@@ -14,6 +14,12 @@ type
     [Test]
     procedure WithoutClassActionsNoEntry;
     [Test]
+    procedure WithoutExtractNoEntry;
+    [Test]
+    procedure ConstantGoesToEditing;
+    [Test]
+    procedure MethodWithoutSelfGoesToEditing;
+    [Test]
     procedure OverrideGoesToEditing;
     [Test]
     procedure CreateAccessorGoesToEditing;
@@ -24,10 +30,13 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Common.Rules.Contract.Refactorings,
-  Atlas.Common.Editing.Providers.ClassActions,
+  Atlas.Common.Editing.Composition,
   Atlas.Tests.TextEdits,
   Adapters.Rules.Refactorings;
 
@@ -55,16 +64,76 @@ const
     ''#13#10 +
     'end.'#13#10;
 
+  // Zeile 4: Literal 42 ab Spalte 10.
+  cCall =
+    'unit U;'#13#10 +
+    'implementation'#13#10 +
+    'procedure P;'#13#10 +
+    'begin'#13#10 +
+    '  Writeln(42);'#13#10 +
+    'end;'#13#10 +
+    'end.'#13#10;
+
+  // Zeile 7: Kopf von THilfe.Doppelt, braucht Self nicht.
+  cHelper =
+    'unit U;'#13#10 +
+    'interface'#13#10 +
+    'type'#13#10 +
+    '  THilfe = class'#13#10 +
+    '    function Doppelt(A: Integer): Integer;'#13#10 +
+    '  end;'#13#10 +
+    'implementation'#13#10 +
+    'function THilfe.Doppelt(A: Integer): Integer;'#13#10 +
+    'begin'#13#10 +
+    '  Result := A * 2;'#13#10 +
+    'end;'#13#10 +
+    'end.'#13#10;
+
 function Refactorings: TRuleRefactorings;
 begin
-  Result := TRuleRefactoringsAdapters.Create(TEditingClassActionsProvider.New);
+  Result := TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, TEditingComposition.ExtractFixes,
+    TEditingComposition.MethodsWithoutSelf);
 end;
 
 { TRuleRefactoringsAdapterTests }
 
 procedure TRuleRefactoringsAdapterTests.WithoutClassActionsNoEntry;
 begin
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(nil).Classes);
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(nil, TEditingComposition.ExtractFixes, nil).Classes);
+end;
+
+procedure TRuleRefactoringsAdapterTests.WithoutExtractNoEntry;
+begin
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, nil, nil).Extract);
+end;
+
+procedure TRuleRefactoringsAdapterTests.ConstantGoesToEditing;
+var
+  mAction: TCodeAction;
+begin
+  Assert.IsTrue(Refactorings.Extract.ConstantExtraction(cCall, Default(TPascalNamePrefixes)).Run(
+    TTextRange.Create(4, 10, 4, 12), mAction));
+  Assert.IsTrue(Pos('= 42;', TTestEdits.Apply(cCall, mAction.Edits)) > 0);
+end;
+
+procedure TRuleRefactoringsAdapterTests.MethodWithoutSelfGoesToEditing;
+var
+  mScan: TRuleMethodScan;
+  mFound: TArray<TRuleMethodWithoutSelf>;
+begin
+  Assert.IsNull(TRuleRefactoringsAdapters.Create(nil, nil, nil).Methods);
+  mScan := Default(TRuleMethodScan);
+  mScan.FileName := 'U.pas';
+  mScan.Text := cHelper;
+  mScan.WithStatic := True;
+  mScan.Style := TFormatStyle.Default;
+  mFound := Refactorings.Methods.WithoutSelf(mScan);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('THilfe', mFound[0].ClassName);
+  Assert.AreEqual('Doppelt', mFound[0].Name);
+  Assert.AreEqual(7, mFound[0].NamePosition.Line);
+  Assert.IsTrue(mFound[0].HasFix);
+  Assert.IsTrue(Length(mFound[0].Fix.Edits) > 0);
 end;
 
 procedure TRuleRefactoringsAdapterTests.OverrideGoesToEditing;
