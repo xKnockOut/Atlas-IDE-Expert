@@ -21,7 +21,7 @@ uses
   Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Output,
   Atlas.Common.Findings.Baseline,
-  Atlas.Common.Rules.BulkFix,
+  Atlas.Common.Findings.BulkFix,
   Core.CommandLine,
   Core.VersionControlChanges,
   Core.WorkspaceGroup,
@@ -99,7 +99,8 @@ uses
   Core.Linter.Changes,
   Core.Linter.Index,
   Core.Linter.Baseline,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Rules.BulkFixRules;
 
 type
 {$SCOPEDENUMS ON}
@@ -189,8 +190,9 @@ begin
   TLinterSettings.ApplyProfile(FOptions, FSettings);
   FFilter := TLinterSettings.FilterOf(FOptions);
   FAllRules := BuiltinRules;
-  FFixRules := TBulkFix.RulesFor(FAllRules, FOptions.FixRules);
-  FFixOptions := TBulkFixOptions.Create(FOptions.FixRules, FSettings.FixMinConfidence, TRuleCatalog.Shared.Entries);
+  FFixRules := TRuleBulkFix.RulesFor(FAllRules, FOptions.FixRules);
+  FFixOptions := TBulkFixOptions.Create(FOptions.FixRules, FSettings.FixMinConfidence,
+    TRuleBulkFix.SafeRulesOf(TRuleCatalog.Shared.Entries));
   // Baseline (#97): Ihre Treffer bleiben unberührt. --fix verträgt sich nicht mit --update-baseline.
   mBaselinePath := TLinterBaseline.PathOf(FOptions, AConfigRoot);
   Result := TLinterBaseline.Load(FOptions, mBaselinePath, FBaseline);

@@ -39,9 +39,10 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.BulkFix,
+  Atlas.Common.Findings.BulkFix,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Checks.Contract;
+  Atlas.Common.Checks.Contract,
+  Atlas.Common.Rules.BulkFixRules;
 
 /// <summary>Ergebnis einer Datei für die API; Diff mit ADiffPath.</summary>
 function OutputOf(const AResult: TBulkFixFile; const ADiffPath: string): TRuleBulkFixOutput;
@@ -95,8 +96,9 @@ begin
   begin
     Exit;
   end;
-  mOptions := TBulkFixOptions.Create(AFixRules, mConfidence, TRuleCatalog.Shared.Entries);
-  mRules := TBulkFix.RulesFor(FRules, AFixRules);
+  mOptions := TBulkFixOptions.Create(AFixRules, mConfidence,
+    TRuleBulkFix.SafeRulesOf(TRuleCatalog.Shared.Entries));
+  mRules := TRuleBulkFix.RulesFor(FRules, AFixRules);
   mResults := nil;
   SetLength(mResults, Length(AFiles));
   SetLength(ARun.Files, Length(AFiles));
@@ -104,7 +106,7 @@ begin
   begin
     mSource := TFileChecker.SourceOf(FSource, AFiles[mIndex].FileName);
     mResults[mIndex] := TBulkFix.Run(AFiles[mIndex].FileName, AFiles[mIndex].Text, mOptions,
-      TBulkFix.CheckWith(mRules, ASettings, AFiles[mIndex].RelativePath,
+      TRuleBulkFix.CheckWith(mRules, ASettings, AFiles[mIndex].RelativePath,
       TFileChecker.ProjectOf(FProject, AFiles[mIndex].FileName), mSource), TBulkFix.SyntaxErrorsWith(mSource));
     ARun.Files[mIndex] := OutputOf(mResults[mIndex], AFiles[mIndex].RelativePath);
   end;
@@ -152,8 +154,9 @@ begin
     end;
     mSource := TFileChecker.SourceOf(FSource, mFileName);
     mResult := TBulkFix.Run(mFileName, mText, TBulkFixOptions.Create(AFixRules, mConfidence,
-      TRuleCatalog.Shared.Entries), TBulkFix.CheckWith(TBulkFix.RulesFor(mContext.Rules, AFixRules),
-      mContext.Settings, mRelativePath, ProjectOf(mContext, mFileName), mSource, mContext.Baseline),
+      TRuleBulkFix.SafeRulesOf(TRuleCatalog.Shared.Entries)),
+      TRuleBulkFix.CheckWith(TRuleBulkFix.RulesFor(mContext.Rules, AFixRules), mContext.Settings,
+        mRelativePath, ProjectOf(mContext, mFileName), mSource, mContext.Baseline),
       TBulkFix.SyntaxErrorsWith(mSource));
     mResults := mResults + [mResult];
     ARun.Files := ARun.Files + [OutputOf(mResult, mRelativePath)];

@@ -75,7 +75,7 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Baseline,
-  Atlas.Common.Rules.BulkFix,
+  Atlas.Common.Findings.BulkFix,
   Atlas.Common.Editing.FormatOutput,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.Overview,

@@ -63,11 +63,12 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.BulkFix,
+  Atlas.Common.Findings.BulkFix,
   Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert,
-  Atlas.Common.Checks.Contract;
+  Atlas.Common.Checks.Contract,
+  Atlas.Common.Rules.BulkFixRules;
 
 const
   cHelper = 'unit Hilfe;'#13#10#13#10'interface'#13#10#13#10'procedure Tu;'#13#10#13#10'implementation'#13#10#13#10 +
@@ -268,8 +269,9 @@ begin
   // Hilfe und Dritte stehen nebeneinander: Ihre Korrekturen überlappen am Komma, die zweite folgt im nächsten
   // Durchgang.
   mResult := TBulkFix.Run('Bericht.pas', UnitText('Hilfe, Dritte, Andere, Start'), TBulkFixOptions.Create(
-    TArray<string>.Create(cUnusedUsesRuleId), mSettings.FixMinConfidence, TRuleCatalog.Shared.Entries),
-    TBulkFix.CheckWith(TArray<IRule>.Create(TUnusedUsesRule.Create), mSettings, 'Bericht.pas', Project(mIndex),
+    TArray<string>.Create(cUnusedUsesRuleId), mSettings.FixMinConfidence,
+    TRuleBulkFix.SafeRulesOf(TRuleCatalog.Shared.Entries)),
+    TRuleBulkFix.CheckWith(TArray<IRule>.Create(TUnusedUsesRule.Create), mSettings, 'Bericht.pas', Project(mIndex),
     TCheckSource.Default), TBulkFix.SyntaxErrorsWith(TCheckSource.Default));
   Assert.AreEqual(UnitText('Andere, Start'), mResult.NewText);
   Assert.AreEqual(2, mResult.FixCount);
