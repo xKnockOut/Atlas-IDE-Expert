@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Editing.Providers.MethodWithoutSelf;
 
-// IEditingMethodsWithoutSelf über TMethodWithoutSelf: parst den Text, löst Mitglieder über einen eigenen
-// TNameResolver auf und bietet je Methode die Umwandlung in eine class-Methode an. Aufrufe über Instanzen bleiben
-// gültig, darum ändert sie nur die Unit selbst.
+// IEditingMethodsWithoutSelf über TMethodWithoutSelf: arbeitet auf dem Baum des Aufrufers, löst Mitglieder über
+// einen eigenen TNameResolver auf und bietet je Methode die Umwandlung in eine class-Methode an. Aufrufe über
+// Instanzen bleiben gültig, darum ändert sie nur die Unit selbst.
 
 interface
 
@@ -22,7 +22,7 @@ uses
   System.StrUtils,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.EventAssignments,
   Atlas.Common.Semantics.NameResolver,
@@ -112,37 +112,33 @@ var
   mItem: TEditingMethodWithoutSelf;
 begin
   Result := nil;
-  mTree := TSyntaxTreeCache.Parse(AScan.Text);
+  mTree := TSyntaxTreeHandles.TreeOf(AScan.Tree);
+  if (mTree = nil) or (mTree.Root = nil) then
+  begin
+    Exit;
+  end;
+  mResolver := TNameResolver.Create(AScan.Index, AScan.EnsureUnit);
   try
-    if mTree.Root = nil then
-    begin
-      Exit;
-    end;
-    mResolver := TNameResolver.Create(AScan.Index, AScan.EnsureUnit);
+    mResolver.Namespaces := AScan.Namespaces;
+    mResolver.PinTree(mTree, AScan.FileName);
     try
-      mResolver.Namespaces := AScan.Namespaces;
-      mResolver.PinTree(mTree, AScan.FileName);
-      try
-        mLookup := TMethodLookup.FromResolver(mResolver, mTree, AScan.FileName);
-        // Ereignisse der Formulardatei und im Code zugewiesene Ereignisse brauchen eine Methode des Objekts.
-        mLookup.InForm := EventCheck(AScan.FormText, mTree);
-        for mTarget in TMethodWithoutSelf.Candidates(AScan.Text, mTree, mLookup) do
-        begin
-          mItem := Default(TEditingMethodWithoutSelf);
-          mItem.ClassName := mTarget.ClassName;
-          mItem.Name := mTarget.Name;
-          mItem.NamePosition := mTarget.NamePosition;
-          mItem.HasFix := ClassMethodFix(AScan, mTree, mTarget, mLookup, mItem.Fix);
-          Result := Result + [mItem];
-        end;
-      finally
-        mResolver.UnpinTree;
+      mLookup := TMethodLookup.FromResolver(mResolver, mTree, AScan.FileName);
+      // Ereignisse der Formulardatei und im Code zugewiesene Ereignisse brauchen eine Methode des Objekts.
+      mLookup.InForm := EventCheck(AScan.FormText, mTree);
+      for mTarget in TMethodWithoutSelf.Candidates(AScan.Text, mTree, mLookup) do
+      begin
+        mItem := Default(TEditingMethodWithoutSelf);
+        mItem.ClassName := mTarget.ClassName;
+        mItem.Name := mTarget.Name;
+        mItem.NamePosition := mTarget.NamePosition;
+        mItem.HasFix := ClassMethodFix(AScan, mTree, mTarget, mLookup, mItem.Fix);
+        Result := Result + [mItem];
       end;
     finally
-      mResolver.Free;
+      mResolver.UnpinTree;
     end;
   finally
-    mTree.Free;
+    mResolver.Free;
   end;
 end;
 

@@ -961,6 +961,7 @@ contains
   Atlas.Common.Pascal.Parser.Expressions in 'Source\Pascal\Atlas.Common.Pascal.Parser.Expressions.pas',
   Atlas.Common.Pascal.Parser.Types in 'Source\Pascal\Atlas.Common.Pascal.Parser.Types.pas',
   Atlas.Common.Pascal.TreeCache in 'Source\Pascal\Atlas.Common.Pascal.TreeCache.pas',
+  Atlas.Common.Pascal.TreeHandles in 'Source\Pascal\Atlas.Common.Pascal.TreeHandles.pas',
   Atlas.Common.Pascal.IncludeFiles in 'Source\Pascal\Atlas.Common.Pascal.IncludeFiles.pas',
   Atlas.Common.Pascal.LanguageFeatures in 'Source\Pascal\Atlas.Common.Pascal.LanguageFeatures.pas',
   Atlas.Common.Pascal.Preprocessor in 'Source\Pascal\Atlas.Common.Pascal.Preprocessor.pas',

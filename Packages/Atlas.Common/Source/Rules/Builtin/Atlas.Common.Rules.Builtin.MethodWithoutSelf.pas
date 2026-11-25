@@ -38,6 +38,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -71,6 +72,7 @@ begin
   Result := Default(TRuleMethodScan);
   Result.FileName := AContext.ResolverFileName;
   Result.Text := AContext.Text;
+  Result.Tree := TSyntaxTreeHandles.Wrap(AContext.Tree);
   Result.FormText := AContext.FormText;
   Result.Index := AContext.Index;
   Result.EnsureUnit := AContext.EnsureUnit;
