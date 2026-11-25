@@ -23,8 +23,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
-  Atlas.Common.Rules.CallOwnership;
+  Atlas.Common.Rules.Builtin.Inheritance.Ancestry;
 
 const
   cLocalObjectNotFreedRuleId = 'local-object-not-freed';
@@ -98,7 +97,7 @@ uses
   Atlas.Common.Pascal.SyntaxNodes,
   Atlas.Common.Pascal.ObjectUses,
   Atlas.Common.Pascal.ParamOwnership,
-  Atlas.Common.Semantics.CallOwnership,
+  Atlas.Common.Rules.CallOwnership,
   Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
@@ -563,7 +562,8 @@ begin
   end;
 end;
 
-/// <summary>Weitergabe als Argument: Was die gerufene Routine laut Index damit macht.</summary>
+/// <summary>Weitergabe als Argument: Was die gerufene Routine laut Index damit macht; weiß er nichts, leihen nur
+/// lesende Routinen wie Assign.</summary>
 function TLocalObjectScan.UseInCall(const AUse: TObjectUse): TLocalUse;
 begin
   case FCalls.EffectOf(AUse.Node, AUse.Argument).Effect of
@@ -571,9 +571,15 @@ begin
       Result := TLocalUse.Release;
     TParamEffect.Borrows:
       Result := TLocalUse.Use;
+    TParamEffect.Keeps:
+      Result := TLocalUse.Escape;
   else
-    // Übernimmt oder unklar: Die Routine kann das Objekt behalten.
+    // Unklar: Die Routine kann das Objekt behalten, außer sie liest dem Namen nach nur.
     Result := TLocalUse.Escape;
+    if AUse.Reading then
+    begin
+      Result := TLocalUse.Use;
+    end;
   end;
 end;
 

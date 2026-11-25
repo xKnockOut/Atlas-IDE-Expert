@@ -4,14 +4,15 @@
 // Anweisung eingeordnet. Gemeinsam für die Leckregel local-object-not-freed
 // (lokale Variablen) und die Zusammenfassung je Parameter im Index (was eine
 // Routine mit einem übergebenen Objekt macht, Atlas.Common.Pascal.ParamOwnership):
-//   Use        nur gelesen: Mitglied aufgerufen, verglichen, an eine lesende Routine übergeben
+//   Use        nur gelesen: Mitglied aufgerufen, verglichen
 //   Assigned   links von := (neu belegt); Anweisung in Node
 //   Release    freigegeben: Free, Destroy, DisposeOf, Release, FreeAndNil und Routinen mit
 //              Free/Release/Destroy/Dispose im Namen
 //   Escape     verlässt die Routine bzw. geht an einen neuen Besitzer: rechts von :=, Exit(X), raise X,
 //              X as I, @X, [X], with X, X.Parent := …, Show/Start/Execute (verwaltet sich selbst)
-//   Argument   als Argument an einen Aufruf, der weder freigibt noch nur liest; Aufruf in Node, Stelle des
-//              Arguments (ab 0) in Argument. Was die Routine damit macht, klärt der Aufrufer (Index).
+//   Argument   als Argument an einen Aufruf, der nicht freigibt; Aufruf in Node, Stelle des Arguments (ab 0)
+//              in Argument. Was die Routine damit macht, klärt der Aufrufer (Index); Reading sagt, ob der Name
+//              der einer lesenden Routine ist (Assign, AddStrings, …), falls der Index nichts weiß.
 // Typumwandlungen wie TFoo(X) und Klammern zählen nicht.
 
 interface
@@ -30,6 +31,9 @@ type
     Node: TSyntaxNode;
     /// <summary>Bei Argument die Stelle des Arguments ab 0; sonst -1.</summary>
     Argument: Integer;
+    /// <summary>Bei Argument: Der Name ist der einer lesenden Routine (cReadingCalls). Gilt nur, wenn über die
+    /// gerufene Routine sonst nichts bekannt ist; eine eigene Methode Assign kann das Objekt behalten.</summary>
+    Reading: Boolean;
   end;
 
   TObjectUses = class
@@ -68,6 +72,7 @@ begin
   Result.Kind := AKind;
   Result.Node := ANode;
   Result.Argument := AArgument;
+  Result.Reading := False;
 end;
 
 /// <summary>Folgt AName der Namensregel für Typen (TName)?</summary>
@@ -111,10 +116,6 @@ begin
   begin
     AUse.Kind := TObjectUseKind.Release;
   end
-  else if MatchText(ACall.Name, TObjectUses.cReadingCalls) then
-  begin
-    AUse.Kind := TObjectUseKind.Use;
-  end
   else if TObjectUses.IsTypeCast(ACall) then
   begin
     Result := False;
@@ -127,6 +128,7 @@ begin
   begin
     // Weitergabe als Argument: Was die Routine damit macht, weiß nur der Index.
     AUse := NewUse(TObjectUseKind.Argument, ACall, TSyntaxNodes.IndexOf(ACall, ACurrent) - 1);
+    AUse.Reading := MatchText(ACall.Name, TObjectUses.cReadingCalls);
   end;
 end;
 

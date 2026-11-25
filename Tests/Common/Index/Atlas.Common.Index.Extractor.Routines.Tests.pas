@@ -53,10 +53,12 @@ var
   mSection: TSyntaxNode;
   mIndex, mFound: Integer;
 begin
+  mSymbols := nil;
+  mRoutines := nil;
   mTree := TSyntaxTreeCache.Parse(AText);
-  mSymbols := TList<TIndexSymbol>.Create;
-  mRoutines := TIndexRoutineSymbols.Create(mSymbols);
   try
+    mSymbols := TList<TIndexSymbol>.Create;
+    mRoutines := TIndexRoutineSymbols.Create(mSymbols);
     mSymbols.AddRange(TIndexExtractor.ExtractText(AText, 'U.pas', nil).Symbols);
     mSection := mTree.Root.FindChild(TSyntaxKind.ImplementationSection);
     mFound := -1;

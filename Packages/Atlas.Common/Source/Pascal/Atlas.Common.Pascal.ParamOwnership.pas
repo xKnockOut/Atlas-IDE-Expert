@@ -66,6 +66,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Text.Names,
   Atlas.Common.Pascal.ObjectUses,
   Atlas.Common.Pascal.RoutineBody,
@@ -170,7 +171,11 @@ begin
     TObjectUseKind.Escape:
       Kept := True;
     TObjectUseKind.Argument:
-      AddForward(mUse);
+      // Lesende Routinen (Assign, AddStrings, …) leihen nur; ohne Index bleibt der Name das einzige Zeichen.
+      if not mUse.Reading then
+      begin
+        AddForward(mUse);
+      end;
   else
     // Use: nur gelesen.
   end;
@@ -240,6 +245,7 @@ var
   mName: string;
   mUnclear: Boolean;
   mSummary: TParamSummary;
+  mSummaries: TList<TParamSummary>;
 begin
   Result := nil;
   mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
@@ -254,27 +260,32 @@ begin
     Exit;
   end;
   mUnclear := HasAsmOrWith(ARoutine);
-  for mIndex := 0 to mParams.ChildCount - 1 do
-  begin
-    mParam := mParams[mIndex];
-    if mParam.Kind <> TSyntaxKind.Parameter then
+  mSummaries := TList<TParamSummary>.Create;
+  try
+    for mIndex := 0 to mParams.ChildCount - 1 do
     begin
-      Continue;
-    end;
-    for mName in mParam.Name.Split([',']) do
-    begin
-      if mUnclear and not IsNoObjectType(mParam) then
+      mParam := mParams[mIndex];
+      if mParam.Kind <> TSyntaxKind.Parameter then
       begin
-        mSummary := Default(TParamSummary);
-        mSummary.Effect := TParamEffect.Unknown;
-      end
-      else
-      begin
-        mSummary := SummaryOf(ARoutine, mBody, mParam, Trim(mName));
+        Continue;
       end;
-      SetLength(Result, Length(Result) + 1);
-      Result[High(Result)] := mSummary;
+      for mName in mParam.Name.Split([',']) do
+      begin
+        if mUnclear and not IsNoObjectType(mParam) then
+        begin
+          mSummary := Default(TParamSummary);
+          mSummary.Effect := TParamEffect.Unknown;
+        end
+        else
+        begin
+          mSummary := SummaryOf(ARoutine, mBody, mParam, Trim(mName));
+        end;
+        mSummaries.Add(mSummary);
+      end;
     end;
+    Result := mSummaries.ToArray;
+  finally
+    mSummaries.Free;
   end;
 end;
 

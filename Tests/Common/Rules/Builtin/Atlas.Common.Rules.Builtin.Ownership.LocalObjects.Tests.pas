@@ -30,6 +30,8 @@ type
     [Test]
     procedure RoutineOfOtherUnitFreesOrKeeps;
     [Test]
+    procedure OwnAssignThatKeepsIsNoReadingCall;
+    [Test]
     procedure RuleCanBeTurnedOff;
   end;
 
@@ -214,6 +216,21 @@ begin
   // Unklar (Aufruf einer Methode des Objekts) und unbekannte Routinen bleiben still.
   Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Anders(Liste);'#10))));
   Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Unbekannt(Liste);'#10))));
+end;
+
+procedure TLocalObjectNotFreedTests.OwnAssignThatKeepsIsNoReadingCall;
+const
+  cText = 'unit Werte;'#10'interface'#10'procedure Lauf;'#10'implementation'#10'type'#10'  TBau = class'#10 +
+    '  end;'#10'  TWert = class'#10'  public'#10'    Aktuell: TBau;'#10 +
+    '    procedure Assign(ABau: TBau);'#10'  end;'#10'procedure TWert.Assign(ABau: TBau);'#10'begin'#10 +
+    '  Aktuell := ABau;'#10'end;'#10'procedure Lauf;'#10'var'#10'  Wert: TWert;'#10'  Bau: TBau;'#10'begin'#10 +
+    '  Wert := nil;'#10'  Bau := TBau.Create;'#10'  Wert.Assign(Bau);'#10'end;'#10'end.';
+begin
+  // Assign gilt als lesend nur, solange der Index nichts über die Routine weiß; diese behält das Objekt.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLocalObjectNotFreedRule.Create, cText,
+    TTestIndex.Build([cText, 'Werte.pas']), '', 'Werte.pas'))));
+  // Assign einer unbekannten Klasse bleibt lesend: Das Objekt ist ein Leck.
+  Assert.AreEqual(1, Integer(Length(CrossUnitFindings('  Halter.Assign(Liste);'#10))));
 end;
 
 procedure TLocalObjectNotFreedTests.RuleCanBeTurnedOff;

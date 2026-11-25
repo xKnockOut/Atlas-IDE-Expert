@@ -15,7 +15,9 @@ type
     [Test]
     procedure ReleasesAreRelease;
     [Test]
-    procedure MembersAndReadingCallsAreUse;
+    procedure MembersAreUse;
+    [Test]
+    procedure ReadingCallsAreMarkedArguments;
     [Test]
     procedure ArgumentKnowsCallAndPosition;
     [Test]
@@ -70,12 +72,30 @@ begin
   Assert.AreEqual(Ord(TObjectUseKind.Release), Ord(KindOf('ObjektFreigeben(X);')));
 end;
 
-procedure TObjectUsesTests.MembersAndReadingCallsAreUse;
+procedure TObjectUsesTests.ReadingCallsAreMarkedArguments;
+var
+  mTree: TSyntaxTree;
+  mUse: TObjectUse;
+begin
+  // Assign und AddStrings lesen dem Namen nach nur; ob das stimmt, entscheidet der Index beim Aufrufer.
+  mTree := TSyntaxTreeCache.Parse('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10 +
+    '  Ziel.Assign(X);'#10'  Weiter(X);'#10'end;'#10'end.');
+  try
+    mUse := TObjectUses.Classify(TSyntaxNode.IdentifierUses(mTree.Root, 'X')[0]);
+    Assert.AreEqual(Ord(TObjectUseKind.Argument), Ord(mUse.Kind));
+    Assert.IsTrue(mUse.Reading);
+    mUse := TObjectUses.Classify(TSyntaxNode.IdentifierUses(mTree.Root, 'X')[1]);
+    Assert.AreEqual(Ord(TObjectUseKind.Argument), Ord(mUse.Kind));
+    Assert.IsFalse(mUse.Reading);
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TObjectUsesTests.MembersAreUse;
 begin
   Assert.AreEqual(Ord(TObjectUseKind.Use), Ord(KindOf('X.Add(''a'');')));
   Assert.AreEqual(Ord(TObjectUseKind.Use), Ord(KindOf('if X.Count > 0 then Exit;')));
-  Assert.AreEqual(Ord(TObjectUseKind.Use), Ord(KindOf('Ziel.Assign(X);')));
-  Assert.AreEqual(Ord(TObjectUseKind.Use), Ord(KindOf('Ziel.AddStrings(X);')));
   Assert.AreEqual(Ord(TObjectUseKind.Use), Ord(KindOf('if X = nil then Exit;')));
 end;
 

@@ -455,13 +455,19 @@ begin
 end;
 
 /// <summary>Was die gerufene Routine laut Index mit dem Argument AArgument von ACall macht, auch in einer anderen
-/// Unit: freigeben, übernehmen, nur leihen; unklar bleibt weitergegeben.</summary>
+/// Unit: freigeben, übernehmen, nur leihen; unklar bleibt weitergegeben. Lesende Routinen wie Assign zählen nur,
+/// wenn der Index nichts weiß: Eine eigene Methode Assign, die das Objekt behält, geht vor.</summary>
 procedure TOwnershipScan.CalleeVerdict(ACall, AArgument: TSyntaxNode; var ASite: TOwnershipSite);
 var
   mEffect: TCallEffect;
   mDetail: string;
 begin
   mEffect := FCalls.EffectOf(ACall, TSyntaxNodes.IndexOf(ACall, AArgument) - 1);
+  if (mEffect.Effect in [TParamEffect.Unknown, TParamEffect.NoObject]) and
+    MatchText(ACall[0].Name, TObjectUses.cReadingCalls) then
+  begin
+    Exit;
+  end;
   mDetail := mEffect.Callee;
   if mDetail = '' then
   begin
@@ -484,7 +490,7 @@ begin
 end;
 
 /// <summary>Das Objekt geht als Argument AArgument an ACall: Exit gibt zurück, Add… einer besitzenden Liste übergibt
-/// den Besitz, lesende Routinen zählen nicht, sonst entscheidet die gerufene Routine (CalleeVerdict).</summary>
+/// den Besitz, sonst entscheidet die gerufene Routine (CalleeVerdict).</summary>
 procedure TOwnershipScan.Handover(const AClassName: string; ACall, AArgument: TSyntaxNode;
   var ASite: TOwnershipSite);
 var
@@ -495,10 +501,6 @@ begin
   if (mCallee.Kind = TSyntaxKind.Identifier) and SameText(mCallee.Name, 'Exit') then
   begin
     Take(ASite, TOwnershipKind.Returned, -1, '');
-    Exit;
-  end;
-  if MatchText(mCallee.Name, TObjectUses.cReadingCalls) then
-  begin
     Exit;
   end;
   if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount = 1) and
