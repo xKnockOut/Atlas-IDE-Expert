@@ -410,6 +410,7 @@ var
   mOutput: TJsonRpcFailingOutput;
   mTransport: IJsonRpcTransport;
   mRaised: string;
+  mFirst: Integer;
 begin
   mOutput := TJsonRpcFailingOutput.Create(ofWriteFails);
   try
@@ -422,13 +423,19 @@ begin
         mRaised := E.ClassName;
     end;
     Assert.AreEqual(EWriteError.ClassName, mRaised);
-    Assert.WillRaise(
-      procedure
-      begin
-        WriteNote(mTransport);
-      end,
-      EWriteError);
-    Assert.AreEqual(2, mOutput.Writes, 'ein anderer Schreibfehler schließt die Ausgabe nicht');
+    // Wie oft WriteBuffer Write je Nachricht aufruft, hängt von der RTL ab (Delphi Win64 zweimal, FPC einmal):
+    // geprüft wird nur, dass die zweite Nachricht die Ausgabe noch erreicht.
+    mFirst := mOutput.Writes;
+    // try/except statt Assert.WillRaise: Die anonyme Methode hielte mTransport fest (Leckmonitor).
+    mRaised := '';
+    try
+      WriteNote(mTransport);
+    except
+      on E: Exception do
+        mRaised := E.ClassName;
+    end;
+    Assert.AreEqual(EWriteError.ClassName, mRaised);
+    Assert.IsTrue(mOutput.Writes > mFirst, 'ein anderer Schreibfehler schließt die Ausgabe nicht');
     mTransport := nil;
   finally
     mOutput.Free;
