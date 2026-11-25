@@ -863,6 +863,7 @@ Adapters.Rules.IdeTypes.Tests
 Adapters.Rules.Refactorings.Tests
 Atlas.Common.Editing.Providers.ClassActions.Tests
 Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests
+Atlas.Common.Editing.Providers.ClassCompletion.Tests
 Atlas.Common.Editing.Providers.MethodOrder.Tests
 Adapters.Lsp.InheritanceDepths.Tests
 Adapters.Lsp.OwnershipReport.Tests
