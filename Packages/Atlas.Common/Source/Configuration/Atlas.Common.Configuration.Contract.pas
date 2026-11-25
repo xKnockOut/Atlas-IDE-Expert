@@ -370,6 +370,11 @@ type
     class function Default: TFormatStyle; static;
   end;
 
+  /// <summary>Formatstil für AUri. Der eine gemeinsame Typ: Gleich aufgebaute eigene Typen je Unit sind in Delphi 12
+  /// verschieden und lassen sich nicht einander zuweisen (E2010). Andere Namen nur als Alias (= TFormatStyleFunc).
+  /// </summary>
+  TFormatStyleFunc = reference to function(const AUri: string): TFormatStyle;
+
   /// <summary>Weg zum Compiler (#261): auto wählt nach der erkannten Ausgabe, dcc = Kommandozeilen-Compiler,
   /// off = nie kompilieren. Ein alter Wert "ide" gilt als off (#1904).</summary>
   {$SCOPEDENUMS ON}

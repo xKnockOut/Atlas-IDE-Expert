@@ -27,7 +27,8 @@ type
   /// <summary>Liste von Namen, z. B. Dateien des Projekts oder Namensräume.</summary>
   TShellNamesFunc = reference to function: TArray<string>;
   TShellRefactoringSettingsFunc = reference to function(const AUri: string): TRefactoringSettings;
-  TShellFormatStyleFunc = reference to function(const AUri: string): TFormatStyle;
+  // Alias, kein eigener Typ: wird an TCodeActionStyleProvider zugewiesen (E2010 unter Delphi 12).
+  TShellFormatStyleFunc = TFormatStyleFunc;
   /// <summary>Text zu einer Datei, z. B. Sprachversion oder Delphi-Version.</summary>
   TShellUriTextFunc = reference to function(const AUri: string): string;
   TShellCompilerMessagesFunc = reference to function(const AFileName: string): TArray<TCompilerMessage>;

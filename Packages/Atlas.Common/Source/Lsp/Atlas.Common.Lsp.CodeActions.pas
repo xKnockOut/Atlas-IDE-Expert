@@ -48,7 +48,7 @@ type
   /// <summary>Einstellungen "memberOrder" für AUri (#89).</summary>
   TMemberOrderProvider = reference to function(const AUri: string): TMemberOrderSettings;
   /// <summary>Formatstil für AUri (#43), etwa für die Einrückung von try/finally (#42).</summary>
-  TCodeActionStyleProvider = reference to function(const AUri: string): TFormatStyle;
+  TCodeActionStyleProvider = TFormatStyleFunc;
   /// <summary>Einstellungen "refactoring" für AUri, etwa tryFinally und classActions (#42).</summary>
   TCodeActionRefactoringProvider = reference to function(const AUri: string): TRefactoringSettings;
   /// <summary>Index, Namespaces und Version für die Klassen-Aktionen (#42).</summary>

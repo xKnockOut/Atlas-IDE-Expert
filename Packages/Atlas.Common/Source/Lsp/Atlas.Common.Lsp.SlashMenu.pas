@@ -37,7 +37,7 @@ type
   /// <summary>Delphi-Version (BDS-Nummer) je Dokument; '' = unbekannt.</summary>
   TSlashMenuVersionFunc = reference to function(const AUri: string): string;
   /// <summary>Formatstil je Dokument (#43: .editorconfig und "format").</summary>
-  TSlashMenuStyleFunc = reference to function(const AUri: string): TFormatStyle;
+  TSlashMenuStyleFunc = TFormatStyleFunc;
 
   TLspSlashMenu = class
   public const

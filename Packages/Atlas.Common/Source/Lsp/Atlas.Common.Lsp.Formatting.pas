@@ -33,7 +33,7 @@ type
   TFormattingEnabledFunc = reference to function(const AUri: string): Boolean;
 
   /// <summary>Block "format" aus atlas.json bzw. dem Editor für AUri.</summary>
-  TFormatStyleProvider = reference to function(const AUri: string): TFormatStyle;
+  TFormatStyleProvider = TFormatStyleFunc;
 
   TLspFormatting = class
   public const
