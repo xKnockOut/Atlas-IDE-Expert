@@ -161,7 +161,7 @@ begin
   AServer.Restricted := ARestricted;
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);
-  TMcpConventions.Register(AServer, AServices.Workspace);
+  TMcpConventions.Register(AServer, AServices.Workspace, mContext.Adapters.Conventions);
   AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
 end;
 

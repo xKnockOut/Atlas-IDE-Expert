@@ -140,6 +140,22 @@ type
       out AError: string): Boolean;
   end;
 
+  /// <summary>Projektkonventionen (#272) für Assistenten: Regelprofil, Formatstil, Benennungsregeln und aktive
+  /// Prüfregeln als Markdown; die Regeln hat der Anbieter.</summary>
+  IRuleConventions = interface
+    ['{96DA34FA-2B2E-4949-9785-AC67FF766D65}']
+    /// <summary>Konventionen nach den Einstellungen ASettings.</summary>
+    function Markdown(const ASettings: TServerSettings): string;
+  end;
+
+  /// <summary>Auftrag an einen Assistenten zu einem Befund (#158, explain_finding): Regel, Beschreibung, Vorher/Nachher
+  /// und Ausschnitt aus dem Text als Markdown.</summary>
+  IRuleFindingPrompts = interface
+    ['{311A7027-B860-4D22-8BD7-36EA64E58AE1}']
+    /// <summary>Markdown zu AFinding in AText (Datei AFileName).</summary>
+    function Markdown(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+  end;
+
 implementation
 
 end.
