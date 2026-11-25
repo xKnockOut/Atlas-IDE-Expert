@@ -157,7 +157,7 @@ contains
   Atlas.Common.Rules.GoldenCorpus in 'Source\Rules\Atlas.Common.Rules.GoldenCorpus.pas',
   Atlas.Common.Rules.Filter in 'Source\Rules\Atlas.Common.Rules.Filter.pas',
   Atlas.Common.Rules.Output in 'Source\Rules\Atlas.Common.Rules.Output.pas',
-  Atlas.Common.Rules.FormatOutput in 'Source\Rules\Atlas.Common.Rules.FormatOutput.pas',
+  Atlas.Common.Editing.FormatOutput in 'Source\Editing\Atlas.Common.Editing.FormatOutput.pas',
   Atlas.Common.Rules.Baseline in 'Source\Rules\Atlas.Common.Rules.Baseline.pas',
   Atlas.Common.Findings.Scopes in 'Source\Findings\Atlas.Common.Findings.Scopes.pas',
   Atlas.Common.Rules.Options in 'Source\Rules\Atlas.Common.Rules.Options.pas',

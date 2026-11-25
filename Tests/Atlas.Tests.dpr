@@ -575,7 +575,7 @@ uses
   Atlas.Common.Rules.Contract.Tests in 'Common\Rules\Atlas.Common.Rules.Contract.Tests.pas',
   Atlas.Common.Rules.Output.Tests in 'Common\Rules\Atlas.Common.Rules.Output.Tests.pas',
   Atlas.Common.Rules.Prompt.Tests in 'Common\Rules\Atlas.Common.Rules.Prompt.Tests.pas',
-  Atlas.Common.Rules.FormatOutput.Tests in 'Common\Rules\Atlas.Common.Rules.FormatOutput.Tests.pas',
+  Atlas.Common.Editing.FormatOutput.Tests in 'Common\Editing\Atlas.Common.Editing.FormatOutput.Tests.pas',
   Atlas.Common.Rules.Baseline.Tests in 'Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas',
   Atlas.Common.Findings.Scopes.Tests in 'Common\Findings\Atlas.Common.Findings.Scopes.Tests.pas',
   Atlas.Common.Rules.Options.Tests in 'Common\Rules\Atlas.Common.Rules.Options.Tests.pas',
