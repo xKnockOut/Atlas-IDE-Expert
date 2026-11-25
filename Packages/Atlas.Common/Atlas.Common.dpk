@@ -537,7 +537,7 @@ contains
   Atlas.Common.Editing.MemberOrder in 'Source\Editing\Atlas.Common.Editing.MemberOrder.pas',
   Atlas.Common.Editing.ProjectCommands in 'Source\Editing\Atlas.Common.Editing.ProjectCommands.pas',
   Atlas.Common.Dfm.SqlText in 'Source\Dfm\Atlas.Common.Dfm.SqlText.pas',
-  Atlas.Common.Editing.DataFieldNames in 'Source\Editing\Atlas.Common.Editing.DataFieldNames.pas',
+  Atlas.Common.Dfm.DataFieldNames in 'Source\Dfm\Atlas.Common.Dfm.DataFieldNames.pas',
   Atlas.Common.Pascal.GuardFree in 'Source\Pascal\Atlas.Common.Pascal.GuardFree.pas',
   Atlas.Common.Pascal.TryFinally in 'Source\Pascal\Atlas.Common.Pascal.TryFinally.pas',
   Atlas.Common.Editing.DatabaseCommands in 'Source\Editing\Atlas.Common.Editing.DatabaseCommands.pas',

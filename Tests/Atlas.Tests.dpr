@@ -2885,7 +2885,7 @@ uses
   Atlas.Common.Editing.MemberOrder.Tests in 'Common\Editing\Atlas.Common.Editing.MemberOrder.Tests.pas',
   Atlas.Common.Editing.ProjectCommands.Tests in 'Common\Editing\Atlas.Common.Editing.ProjectCommands.Tests.pas',
   Atlas.Common.Dfm.SqlText.Tests in 'Common\Dfm\Atlas.Common.Dfm.SqlText.Tests.pas',
-  Atlas.Common.Editing.DataFieldNames.Tests in 'Common\Editing\Atlas.Common.Editing.DataFieldNames.Tests.pas',
+  Atlas.Common.Dfm.DataFieldNames.Tests in 'Common\Dfm\Atlas.Common.Dfm.DataFieldNames.Tests.pas',
   Atlas.Common.Pascal.GuardFree.Tests in 'Common\Pascal\Atlas.Common.Pascal.GuardFree.Tests.pas',
   Atlas.Common.Pascal.TryFinally.Tests in 'Common\Pascal\Atlas.Common.Pascal.TryFinally.Tests.pas',
   Atlas.Common.Editing.DatabaseCommands.Tests in 'Common\Editing\Atlas.Common.Editing.DatabaseCommands.Tests.pas',
