@@ -14,6 +14,8 @@ type
     [Test]
     procedure RaisesOnErrorResponse;
     [Test]
+    procedure ErrorCodesGiveTheirClass;
+    [Test]
     procedure AnswersServerRequestWithNull;
     [Test]
     procedure RejectsRequestsAfterClose;
@@ -136,6 +138,48 @@ begin
   mText := TEncoding.UTF8.GetString(ABytes);
   Result := TJSONObject.ParseJSONValue(mText.Substring(mText.IndexOf(#13#10#13#10) + 4)) as TJSONObject;
 end;
+/// <summary>Ausnahme, die eine Anfrage bei der Fehlerantwort mit ACode auslöst (nil ohne); ACodeSeen: Code der
+/// Ausnahme bei ELspResponseError, sonst 0.</summary>
+function ErrorClassFor(ACode: Integer; out ACodeSeen: Integer): TClass;
+var
+  mClient: TLspClient;
+begin
+  Result := nil;
+  ACodeSeen := 0;
+  mClient := nil;
+  mClient := TLspClient.Create(
+    procedure(const ABytes: TBytes)
+    var
+      mRequest: TJSONObject;
+      mReply: TBytes;
+    begin
+      mRequest := Unframe(ABytes);
+      try
+        mReply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"error":{"code":%d,"message":"nein"}}',
+          [mRequest.GetValue<Integer>('id'), ACode]));
+      finally
+        mRequest.Free;
+      end;
+      mClient.Receive(mReply, Length(mReply));
+    end);
+  try
+    try
+      mClient.Request('test', nil, 1000).Free;
+    except
+      on E: Exception do
+      begin
+        Result := E.ClassType;
+        if E is ELspResponseError then
+        begin
+          ACodeSeen := ELspResponseError(E).Code;
+        end;
+      end;
+    end;
+  finally
+    mClient.Free;
+  end;
+end;
+
 /// <summary>Client, der Gesendetes in ASent sammelt; antwortet auf initialize.</summary>
 function ApplyEditClient(ASent: TList<string>): TLspClient;
 var
@@ -291,6 +335,21 @@ begin
   finally
     mClient.Free;
   end;
+end;
+
+procedure TLspClientTests.ErrorCodesGiveTheirClass;
+var
+  mCode: Integer;
+begin
+  // Ein Fehler im Server: eigene Klasse mit Code, damit Hintergrundanfragen ihn melden.
+  Assert.AreEqual<TClass>(ELspResponseError, ErrorClassFor(-32603, mCode));
+  Assert.AreEqual(-32603, mCode);
+  Assert.AreEqual<TClass>(ELspResponseError, ErrorClassFor(-32601, mCode));
+  // Antworten, keine Fehler: Abbruch und veralteter Stand wie ein Abbruch, begründete Ablehnung eigen.
+  Assert.AreEqual<TClass>(ELspCancelledError, ErrorClassFor(-32800, mCode));
+  Assert.AreEqual<TClass>(ELspCancelledError, ErrorClassFor(-32801, mCode));
+  Assert.AreEqual<TClass>(ELspCancelledError, ErrorClassFor(-32802, mCode));
+  Assert.AreEqual<TClass>(ELspRefusedError, ErrorClassFor(-32803, mCode));
 end;
 
 procedure TLspClientTests.AnswersServerRequestWithNull;

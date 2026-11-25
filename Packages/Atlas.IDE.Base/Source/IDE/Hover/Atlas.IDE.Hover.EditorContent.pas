@@ -10,6 +10,9 @@
 //   - TAtlasEditorHoverActions: Klicks im Tooltip (Typen, Pfad, Zurück, Aktionsleiste, Aktionen unter
 //     Problemen #621/#909, Links der XMLDoc #654). „Beispiel zeigen“ (#145) holt den Katalogtext über
 //     OnRuleExample, klappt ihn im Tooltip auf und heftet ihn an; ein neuer Hover beginnt zugeklappt.
+//     Ein Klick auf einen Typ holt dessen Inhalt im Hintergrund (TAtlasBackgroundRequest); der Hauptthread
+//     wartet nie auf den Server. Bleibt die Antwort aus (Zeitlimit, Server weg), bleibt der Tooltip, wie er
+//     ist, und das Protokoll bekommt eine Zeile, kein Fehlerbericht.
 // Die Stufen bauen aufeinander auf; TAtlasEditorHover ist die oberste.
 
 interface
@@ -21,6 +24,7 @@ uses
   Vcl.Menus,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
   Atlas.Core.Hover.View,
@@ -111,7 +115,6 @@ type
     procedure Log(const AMessage: string);
     function Handles(const AFileName: string): Boolean;
     function CurrentSession: TLspSession;
-    function Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
     /// <summary>Inhalt für den Tooltip aus Verlauf, Einstellungen und Problemen.</summary>
     function CurrentView: TAtlasHoverView; virtual;
     /// <summary>Erklärungen zu AProblems (#54); nil, wenn abgeschaltet.</summary>
@@ -211,14 +214,28 @@ type
     procedure TipProblemAction(Sender: TObject; AProblem: Integer; AAction: TAtlasHoverProblemAction;
       AItem: Integer);
     procedure ShowUsages;
+    /// <summary>Referenzsuche fertig: Anzahl in den Tooltip, wenn er noch denselben Verlauf (AStamp) zeigt.
+    /// </summary>
+    procedure UsagesDone(AStamp, ACount: Integer);
     /// <summary>Strg+C: markierter Doku-Text, Liste der published-Mitglieder oder Deklaration.</summary>
     procedure CopyToClipboard(const AData: TAtlasHoverData);
+    /// <summary>Inhalt zum Typ ARef im Hintergrund holen; das Ergebnis kommt in LinkDone.</summary>
+    procedure StartLink(ASession: TLspSession; const ARef: TAtlasHoverTypeRef);
+    /// <summary>Antwort im Hauptthread: anhängen, wenn der Tooltip noch denselben Verlauf (AStamp) zeigt; ein
+    /// inzwischen geklickter Typ wird danach geholt.</summary>
+    procedure LinkDone(const ARef: TAtlasHoverTypeRef; const AData: TAtlasHoverData; AStamp: Integer; AOk: Boolean;
+      const AError: string);
   protected
+    // Klick auf einen Typ (#588): eine Anfrage zur Zeit; ein Klick währenddessen wartet in FPendingLink.
+    FLinkRequest: TAtlasBackgroundRequest;
+    FPendingLink: TAtlasHoverTypeRef;
+    FHasPendingLink: Boolean;
     procedure TipBack(Sender: TObject);
     procedure Execute(AAction: TAtlasHoverAction);
   public
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
       const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
+    destructor Destroy; override;
     /// <summary>Aktion unter einem uses-Hinweis (#621); setzt die Kompositionswurzel (der Tooltip kennt die
     /// Editorbefehle nicht), ohne Zuweisung keine.</summary>
     class property OnProblemAction: TAtlasHoverProblemActionProc read FOnProblemAction write FOnProblemAction;
@@ -255,7 +272,7 @@ begin
   FHandles := AHandles;
   FUsagesCount := -1;
   FTip := TAtlasHoverTip.Create(nil);
-  FHistory := TAtlasHoverHistory.Create(Fetch);
+  FHistory := TAtlasHoverHistory.Create;
   FAlive := TAtlasHoverAlive.Create;
   FAlive.Alive := True;
   FAliveRef := FAlive;
@@ -291,21 +308,6 @@ begin
   if Assigned(FSession) then
   begin
     Result := FSession();
-  end;
-end;
-
-function TAtlasEditorHoverContent.Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
-var
-  mSession: TLspSession;
-begin
-  AData := Default(TAtlasHoverData);
-  mSession := CurrentSession;
-  Result := (mSession <> nil) and ARef.HasLocation;
-  if Result then
-  begin
-    // Sprung im Tooltip: Der Hauptthread wartet, deshalb kurzes Zeitlimit.
-    AData := mSession.HoverDataAt(ARef.FileName, ARef.Line, ARef.Character, TLspSession.cMainThreadTimeoutMs);
-    Result := AData.Found;
   end;
 end;
 
@@ -697,12 +699,20 @@ constructor TAtlasEditorHoverActions.Create(const ASession: TAtlasHoverSessionFu
   const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
 begin
   inherited Create(ASession, ALog, AProblemsAt, AHandles);
+  FLinkRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Hover);
   FTip.OnLink := TipLink;
   FTip.OnPath := TipPath;
   FTip.OnBack := TipBack;
   FTip.OnAction := TipAction;
   FTip.OnUrl := TipUrl;
   FTip.OnProblemAction := TipProblemAction;
+end;
+
+destructor TAtlasEditorHoverActions.Destroy;
+begin
+  // Zuerst: Der Destruktor wartet die laufende Anfrage ab und verwirft ihren Abschluss.
+  FreeAndNil(FLinkRequest);
+  inherited Destroy;
 end;
 
 procedure TAtlasEditorHoverActions.ToggleExample(AProblem: Integer);
@@ -774,6 +784,8 @@ begin
 end;
 
 procedure TAtlasEditorHoverActions.TipLink(Sender: TObject; const ARef: TAtlasHoverTypeRef; AControl: Boolean);
+var
+  mSession: TLspSession;
 begin
   try
     // Strg+Klick: wie bisher zur Deklaration im Quelltext.
@@ -786,10 +798,28 @@ begin
       end;
       Exit;
     end;
-    if FHistory.Open(ARef) then
-    begin
-      FUsagesCount := -1;
-      Refresh;
+    case FHistory.BeginOpen(ARef) of
+      TAtlasHoverOpenStep.Shown:
+        begin
+          FUsagesCount := -1;
+          Refresh;
+        end;
+      TAtlasHoverOpenStep.Fetch:
+        begin
+          mSession := CurrentSession;
+          if mSession = nil then
+          begin
+            Exit;
+          end;
+          if FLinkRequest.Busy then
+          begin
+            // Der jüngste Klick zählt; die laufende Antwort wird dann verworfen.
+            FPendingLink := ARef;
+            FHasPendingLink := True;
+            Exit;
+          end;
+          StartLink(mSession, ARef);
+        end;
     end;
   except
     on E: Exception do
@@ -797,6 +827,62 @@ begin
       Log('Hover: ' + E.Message);
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
     end;
+  end;
+end;
+
+procedure TAtlasEditorHoverActions.StartLink(ASession: TLspSession; const ARef: TAtlasHoverTypeRef);
+var
+  mOwner: TAtlasEditorHoverActions;
+  mRef: TAtlasHoverTypeRef;
+  mStamp: Integer;
+  mData: TAtlasHoverData;
+begin
+  mOwner := Self;
+  mRef := ARef;
+  mStamp := FHistory.Stamp;
+  mData := Default(TAtlasHoverData);
+  // Den Abschluss ruft FLinkRequest nur, solange es lebt; es gehört diesem Objekt.
+  FLinkRequest.Start(
+    procedure
+    begin
+      mData := ASession.HoverDataAt(mRef.FileName, mRef.Line, mRef.Character, 0);
+    end,
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      mOwner.LinkDone(mRef, mData, mStamp, AOk, AError);
+    end);
+end;
+
+procedure TAtlasEditorHoverActions.LinkDone(const ARef: TAtlasHoverTypeRef; const AData: TAtlasHoverData;
+  AStamp: Integer; AOk: Boolean; const AError: string);
+var
+  mSession: TLspSession;
+begin
+  try
+    if FHasPendingLink then
+    begin
+      FHasPendingLink := False;
+      mSession := CurrentSession;
+      if mSession <> nil then
+      begin
+        StartLink(mSession, FPendingLink);
+      end;
+      Exit;
+    end;
+    if not AOk then
+    begin
+      // Zeitlimit oder Server weg: kein Fehler von Atlas, der Tooltip bleibt.
+      Log('Hover: ' + AError);
+      Exit;
+    end;
+    if FTip.IsShown and FHistory.FinishOpen(ARef, AData, AStamp) then
+    begin
+      FUsagesCount := -1;
+      Refresh;
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
   end;
 end;
 
@@ -877,16 +963,47 @@ end;
 procedure TAtlasEditorHoverActions.ShowUsages;
 var
   mData: TAtlasHoverData;
+  mOwner: TAtlasEditorHoverActions;
+  mAlive: TAtlasHoverAlive;
+  mAliveRef: IInterface;
+  mStamp: Integer;
 begin
   mData := FHistory.Current;
   if (CurrentSession = nil) or not mData.Location.HasLocation then
   begin
     Exit;
   end;
-  // Im Ergebnisfenster (#400), nach Unit gruppiert, samt Fundstellen in Formularen.
-  FUsagesCount := TAtlasIdeResults.ShowReferences(mData.Location.FileName, mData.Location.Line,
-    mData.Location.Character, mData.Title);
-  Refresh;
+  mOwner := Self;
+  mAlive := FAlive;
+  mAliveRef := FAliveRef;
+  mStamp := FHistory.Stamp;
+  // Im Ergebnisfenster (#400), nach Unit gruppiert, samt Fundstellen in Formularen. Die Suche läuft im
+  // Hintergrund; die Zahl kommt in den Tooltip, solange er denselben Verlauf zeigt.
+  TAtlasIdeResults.ShowReferences(mData.Location.FileName, mData.Location.Line, mData.Location.Character,
+    mData.Title,
+    procedure(ACount: Integer)
+    begin
+      // mAliveRef hält die Markierung, bis die Suche fertig ist; das Objekt selbst kann schon weg sein.
+      if mAlive.Alive and (mAliveRef <> nil) then
+      begin
+        mOwner.UsagesDone(mStamp, ACount);
+      end;
+    end);
+end;
+
+procedure TAtlasEditorHoverActions.UsagesDone(AStamp, ACount: Integer);
+begin
+  try
+    if not FTip.IsShown or (FHistory.Stamp <> AStamp) or (ACount < 0) then
+    begin
+      Exit;
+    end;
+    FUsagesCount := ACount;
+    Refresh;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hover, E);
+  end;
 end;
 
 procedure TAtlasEditorHoverActions.CopyToClipboard(const AData: TAtlasHoverData);
