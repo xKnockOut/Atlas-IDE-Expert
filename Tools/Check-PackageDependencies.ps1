@@ -106,14 +106,9 @@
     Atlas.Common.Rules.Builtin.Architecture entsprechen; beide prüfen die
     Fallliste Tests/Data/Architecture/role-imports.json (-SelfTest).
 
-    Featurerichtung Rules/Editing: Rules darf Editing
-    verwenden (Korrekturen nutzen Editing-Helfer), Editing aber nicht Rules.
-    Gemeinsame Wertetypen wie TTextEdit liegen in Documents.Contract.
-
     Plugin-Struktur: Atlas.IDE.Foundation.* verwendet aus
-    der IDE-Schicht nur Atlas.IDE.Foundation.*; die Features von Atlas.Core
-    und Atlas.IDE bilden keinen Zyklus (ohne Foundation, Kompositionswurzel
-    und Verweise auf *.Contract).
+    der IDE-Schicht nur Atlas.IDE.Foundation.*. Zyklen und Richtungen
+    zwischen Features prüft Tools/Check-FeatureCycles.ps1.
 
     Modulgrenzen (#1455): Welche Unit des Plugins in welches
     Package gehört, steht als Daten in Tools/UnitAssignment.tsv (eine Zeile
@@ -656,9 +651,14 @@ $ModuleHostCalls = @('\.UnregisterModule\s*\(', '\bTAtlasContractHandshake\.Chec
 $ModuleHostHomes = @('Atlas.IDE.Base.Core.ModuleHost', 'Atlas.IDE.Base.Core.Modules.Registry', 'Atlas.IDE.Base.Core.Modules.Handshake')
 
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
-# entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json.
+# entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json. Präfixe und Hosted-Features stehen gleich in
+# "prefixes" und "hostedFeatures" beider Architekturregeln in atlas.json (wird geprüft); Fachcode-Packages,
+# Schichtpräfixe, noch nicht umgestellte Packages und Frameworks liest das Skript von dort.
 $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Plugin', 'Atlas.Vcl',
-    'Atlas.ToolsApi', 'Atlas.VersionControl', 'Atlas.Core', 'Atlas.UI', 'Atlas.IDE')
+    'Atlas.ToolsApi', 'Atlas.VersionControl', 'Atlas.IDE.Base', 'Atlas.IDE.Analysis', 'Atlas.IDE.Assistants', 'Atlas.IDE.Bookmarks',
+    'Atlas.IDE.Build', 'Atlas.IDE.BuildPipeline', 'Atlas.IDE.Debugger', 'Atlas.IDE.Designer', 'Atlas.IDE.Editor', 'Atlas.IDE.Help',
+    'Atlas.IDE.Rules', 'Atlas.IDE.Search', 'Atlas.IDE.Tests', 'Atlas.IDE.Tracker', 'Atlas.IDE.VersionControl',
+    'Atlas.IDE.Welcome')
 $HostRoles    = @('Foundation', 'Core', 'Shell', 'Adapters', 'Platform')
 # Hosted-Features der Anwendung (Konzept 8.2): erstes Segment eines Namens ohne Präfix; wie "hostedFeatures" in atlas.json.
 $HostedFeatures = @('Replay', 'Monitor', 'Update')
@@ -691,20 +691,81 @@ $HostHostAllowed = @{
     Platform   = @('Platform')
 }
 
-function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts, [string[]] $Hosted = @()) {
-    # Einordnung nach Ausgabeartefakt.Feature.Rolle.Sache; $null für externe Units (RTL, VCL, Setup, Tests).
-    # Rolle ist der erste Rollenbezeichner nach dem Feature; jeder weitere eröffnet eine Verschachtelung
-    # (Konzept 7.4). Positions nennt die Stellen der Rollenbezeichner in Segments (Segments[0] = Feature),
-    # ein Bezeichner gleich dem vorigen zählt als Sache ("Keine Wiederholung").
-    $best = ''
-    $isHosted = $false
-    $hostedName = $Hosted | Where-Object { $_ -ieq $Name.Split('.')[0] } | Select-Object -First 1
-    if ($hostedName -and $Name.Contains('.')) {
-        $best = $hostedName
-        $isHosted = $true
+function Get-OptionList($Options, [string] $Name) {
+    # Liste aus einem JSON-Objekt (atlas.json bzw. Fallliste); leer, wenn der Schlüssel fehlt. Aufrufer fassen in @().
+    if ($null -ne $Options -and $Options.PSObject.Properties[$Name]) { return @($Options.$Name | Where-Object { $_ -ne '' }) }
+    return @()
+}
+
+function New-RoleScheme([string[]] $Prefixes, [string[]] $Hosts, [string[]] $Hosted, $Options) {
+    # Einordnungsschema wie TRoleImportOptions: Präfixe, Host-Rollen, Hosted-Features der Anwendung und aus $Options
+    # domainPackages, basePackage, layerPrefixes, layerPackages, frameworks. Active nennt je Umfang die Präfixe:
+    # Switched = Fachcode-Packages außer layerPackages (deren Units tragen noch Schichtnamen, auch Atlas.IDE.Editor.* in
+    # Base), Target = dazu basePackage (Base bekommt Foundation vor der Umstellung), None = keines (Ziele einer Unit
+    # mit Schichtnamen).
+    $domain = @(Get-OptionList $Options 'domainPackages')
+    $layerPackages = @(Get-OptionList $Options 'layerPackages')
+    $base = ''
+    if ($null -ne $Options -and $Options.PSObject.Properties['basePackage']) { $base = [string] $Options.basePackage }
+    $scheme = [pscustomobject]@{
+        Prefixes = @($Prefixes); HostRoles = @($Hosts); HostedFeatures = @($Hosted); DomainPackages = $domain
+        BasePackage = $base.ToLowerInvariant(); BaseName = $base; LayerPrefixes = @(Get-OptionList $Options 'layerPrefixes')
+        LayerPackages = $layerPackages; Frameworks = @(Get-OptionList $Options 'frameworks'); Active = @{}
     }
-    foreach ($prefix in $Prefixes) {
-        if ($isHosted) { break }
+    foreach ($scope in 'Switched', 'Target', 'None') {
+        $active = @()
+        foreach ($prefix in @($scheme.Prefixes) + @($scheme.LayerPrefixes) + @($domain)) {
+            $isDomain = @($domain | Where-Object { $_ -ieq $prefix }).Count -gt 0
+            $isLayer = @($layerPackages | Where-Object { $_ -ieq $prefix }).Count -gt 0
+            if (-not $isDomain -or ($scope -ne 'None' -and -not $isLayer) -or ($scope -eq 'Target' -and $prefix -ieq $base)) {
+                $active += $prefix
+            }
+        }
+        $scheme.Active[$scope] = $active
+    }
+    return $scheme
+}
+
+function New-RoleUnit([string] $Artefact, [string[]] $Rest, [bool] $Hosted) {
+    # Feature-Unit aus den Segmenten nach dem Präfix: Rolle ist der erste Rollenbezeichner nach dem Feature; jeder
+    # weitere eröffnet eine Verschachtelung (Konzept 7.4). Positions nennt die Stellen der Rollenbezeichner in
+    # Segments (Segments[0] = Feature), ein Bezeichner gleich dem vorigen zählt als Sache ("Keine Wiederholung").
+    $positions = @()
+    $roles = @()
+    for ($index = 1; $index -lt $Rest.Count; $index++) {
+        $hit = $FeatureRoles | Where-Object { $_ -ieq $Rest[$index] } | Select-Object -First 1
+        if ($hit -and ($roles.Count -eq 0 -or $roles[-1] -ne $hit)) {
+            $positions += $index
+            $roles += $hit
+        }
+    }
+    $role = 'Root'
+    if ($roles.Count -gt 0) { $role = $roles[0] }
+    return [pscustomobject]@{ Artefact = $Artefact; Feature = $Rest[0]; Role = $role; Segments = $Rest
+        Positions = $positions; Roles = $roles; HostRole = ''; Hosted = $Hosted; Package = ''; BasePackage = ''
+        Layer = $false; Framework = $false; Display = ''; PackageName = '' }
+}
+
+function Get-UnitRole([string] $Name, $Scheme, [string] $Scope = 'Switched') {
+    # Einordnung nach Ausgabeartefakt.Feature.Rolle.Sache; $null für externe Units (RTL, VCL, Setup, Tests),
+    # Framework = $true für Units aus "frameworks".
+    foreach ($framework in $Scheme.Frameworks) {
+        if ($Name -ieq $framework -or $Name.StartsWith("$framework.", [StringComparison]::OrdinalIgnoreCase)) {
+            return [pscustomobject]@{ Artefact = ''; Feature = ''; Role = 'None'; Segments = @(); Positions = @()
+                Roles = @(); HostRole = ''; Hosted = $false; Package = ''; BasePackage = ''; Layer = $false; Framework = $true
+                Display = $Name; PackageName = '' }
+        }
+    }
+    $first = $Name.Split('.')[0]
+    $hostedName = $Scheme.HostedFeatures | Where-Object { $_ -ieq $first } | Select-Object -First 1
+    if ($hostedName -and $Name.Contains('.')) {
+        # Hosted-Feature der Anwendung: kein Präfix, das erste Segment ist das Feature.
+        $unit = New-RoleUnit '' @($Name.ToLowerInvariant().Split('.')) $true
+        $unit.Display = $first
+        return $unit
+    }
+    $best = ''
+    foreach ($prefix in $Scheme.Active[$Scope]) {
         if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) {
             $best = $prefix
         }
@@ -712,32 +773,52 @@ function Get-UnitRole([string] $Name, [string[]] $Prefixes, [string[]] $Hosts, [
     if ($best -ne '') {
         $rest = @($Name.Substring($best.Length + 1).ToLowerInvariant().Split('.'))
         $artefact = $best.ToLowerInvariant()
-        if ($isHosted) {
-            # Hosted-Feature: kein Präfix, das erste Segment ist das Feature.
-            $rest = @($Name.ToLowerInvariant().Split('.'))
-            $artefact = ''
+        $display = $Name.Substring(0, [Math]::Min($Name.Length, $best.Length + 1 + $rest[0].Length))
+        if (@($Scheme.DomainPackages | Where-Object { $_ -ieq $best }).Count -eq 0) {
+            $unit = New-RoleUnit $artefact $rest $false
+            $unit.Layer = @($Scheme.LayerPrefixes | Where-Object { $_ -ieq $best }).Count -gt 0
+            $unit.Display = $display
+            return $unit
         }
-        $positions = @()
-        $roles = @()
-        for ($index = 1; $index -lt $rest.Count; $index++) {
-            $hit = $FeatureRoles | Where-Object { $_ -ieq $rest[$index] } | Select-Object -First 1
-            if ($hit -and ($roles.Count -eq 0 -or $roles[-1] -ne $hit)) {
-                $positions += $index
-                $roles += $hit
-            }
+        if ($rest[0] -eq '') { return $null }
+        # Fachcode-Package (Konzept 6.2): Host-Rollen im Package (8.1), sonst Hosted-Features des Packages (8.2).
+        $hostRole = $Scheme.HostRoles | Where-Object { $_ -ieq $rest[0] } | Select-Object -First 1
+        if ($hostRole) {
+            $unit = [pscustomobject]@{ Artefact = $artefact; Feature = $hostRole.ToLowerInvariant(); Role = 'Host'
+                HostRole = $hostRole; Segments = @(); Positions = @(); Roles = @(); Hosted = $false; Package = $artefact
+                BasePackage = $Scheme.BasePackage; Layer = $false; Framework = $false; Display = $display
+                PackageName = $Name.Substring(0, $best.Length) }
+            return $unit
         }
-        $role = 'Root'
-        if ($roles.Count -gt 0) { $role = $roles[0] }
-        return [pscustomobject]@{ Artefact = $artefact; Feature = $rest[0]; Role = $role
-            Segments = $rest; Positions = $positions; Roles = $roles; HostRole = ''; Hosted = $isHosted }
+        $unit = New-RoleUnit $artefact $rest $true
+        $unit.Package = $artefact
+        $unit.BasePackage = $Scheme.BasePackage
+        $unit.Display = $display
+        $unit.PackageName = $Name.Substring(0, $best.Length)
+        return $unit
     }
-    $first = $Name.Split('.')[0]
-    $hostRole = $Hosts | Where-Object { $_ -ieq $first } | Select-Object -First 1
+    $hostRole = $Scheme.HostRoles | Where-Object { $_ -ieq $first } | Select-Object -First 1
     if ($hostRole -and $Name.Contains('.')) {
         return [pscustomobject]@{ Artefact = ''; Feature = $hostRole.ToLowerInvariant(); Role = 'Host'; HostRole = $hostRole
-            Segments = @(); Positions = @(); Roles = @(); Hosted = $false }
+            Segments = @(); Positions = @(); Roles = @(); Hosted = $false; Package = ''; BasePackage = ''; Layer = $false
+            Framework = $false; Display = $first; PackageName = '' }
     }
     return $null
+}
+
+function Get-TargetRole($Source, [string] $Name, $Scheme) {
+    # Ziel von $Source: Von einer Unit mit Schichtnamen aus alles nach Schichtnamen (alte Regel), sonst jedes
+    # Fachcode-Package nach seinem Präfix; aus einem Fachcode-Package ist ein Schichtname eine Unit von Base.
+    $scope = 'Target'
+    if ($null -ne $Source -and $Source.Layer) { $scope = 'None' }
+    $target = Get-UnitRole $Name $Scheme $scope
+    if ($null -ne $Source -and $Source.Package -ne '' -and $null -ne $target -and $target.Layer -and $Scheme.BasePackage -ne '') {
+        $target.Package = $Scheme.BasePackage
+        $target.BasePackage = $Scheme.BasePackage
+        $target.PackageName = $Scheme.BaseName
+        $target.Hosted = $true
+    }
+    return $target
 }
 
 function Test-Within($Unit, [int] $Length, $Carrier) {
@@ -800,33 +881,8 @@ function Get-TargetView($Unit, [int] $Length) {
     return [pscustomobject]@{ Kind = $kind; Outer = $roles[0] }
 }
 
-function Test-RoleImport($Source, $Target) {
-    if ($null -eq $Source -or $null -eq $Target) { return $true }
-    # Platform-Features importieren nie den Host (8.3), Hosted-Features nur die Foundation (8.2).
-    if ($Target.Role -eq 'Host') {
-        if ($Source.Hosted) { return $Target.HostRole -eq 'Foundation' }
-        return $Source.Role -eq 'Host' -and $HostHostAllowed[$Source.HostRole] -contains $Target.HostRole
-    }
-    if ($Source.Role -eq 'Host') {
-        $kind = (Get-TargetView $Target 1).Kind
-        if ($Target.Hosted) {
-            # 8.1, Zeilen Hosted-Feature: Shell alles außer Internals, Host-Adapters nur Contract und Sub-Contract.
-            switch ($Source.HostRole) {
-                'Shell'    { return $HostAllowed.Shell -contains $kind }
-                'Adapters' { return $kind -in @('Contract', 'SubContract') }
-                default    { return $false }
-            }
-        }
-        return $HostAllowed[$Source.HostRole] -contains $kind
-    }
-    $same = $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature
-    # Platform-Features importieren keine Hosted-Features (8.3), Hosted-Features einander nie (8.2).
-    if ($Target.Hosted -and -not $same) { return $false }
-    if (-not $same) {
-        $view = (Get-TargetView $Target 1).Kind
-        if ((Get-SourceRights $Source 1) -eq 'Contract') { return $view -eq 'Contract' }
-        return $view -in @('Contract', 'Root')
-    }
+function Test-OwnImport($Source, $Target) {
+    # Gleiches Feature: Matrix relativ zum tiefsten gemeinsamen Träger.
     $length = Get-CarrierLength $Source $Target
     $rights = Get-SourceRights $Source $length
     $view = Get-TargetView $Target $length
@@ -837,8 +893,86 @@ function Test-RoleImport($Source, $Target) {
     }
 }
 
+function Test-HostToHosted($Source, $Target) {
+    # 8.1, Zeilen Hosted-Feature: Shell alles außer Internals, Host-Adapters nur Contract und Sub-Contract.
+    $kind = (Get-TargetView $Target 1).Kind
+    switch ($Source.HostRole) {
+        'Shell'    { return $HostAllowed.Shell -contains $kind }
+        'Adapters' { return $kind -in @('Contract', 'SubContract') }
+        default    { return $false }
+    }
+}
+
+function Test-ForeignImport($Source, $Target) {
+    # Fremdes Platform-Feature: Contract nur Contract, alle anderen Rollen Contract und Root.
+    $view = (Get-TargetView $Target 1).Kind
+    if ((Get-SourceRights $Source 1) -eq 'Contract') { return $view -eq 'Contract' }
+    return $view -in @('Contract', 'Root')
+}
+
+function Test-SameHost($Source, $Target) {
+    # Konzept 8.1: Der Inhalt eines Packages zählt zum Host, der es aufnimmt; Base also zum Host jedes Moduls.
+    return $Target.Package -ne '' -and ($Target.Package -eq $Source.Package -or $Target.Package -eq $Source.BasePackage)
+}
+
+function Test-FrameworkAllowed($Source) {
+    # Konzept 6.1: In einem Fachcode-Package binden nur Hosting und die Host-Rollen ein Framework des Hosts ein.
+    return $null -eq $Source -or $Source.Package -eq '' -or $Source.Role -eq 'Host' -or $Source.Roles -contains 'Hosting'
+}
+
+function Test-DomainImport($Source, $Target) {
+    # Platform-Features und die Anwendung importieren kein Fachcode-Package, Fachcode-Packages einander nicht.
+    if ($Source.Package -eq '' -or ($Target.Package -ne '' -and -not (Test-SameHost $Source $Target))) { return $false }
+    if ($Target.Package -eq '') {
+        # Platform-Feature; Host und Hosted-Features der Anwendung sind ein anderer Host.
+        if ($Target.Role -eq 'Host' -or $Target.Hosted) { return $false }
+        if ($Source.Role -eq 'Host') { return $HostAllowed[$Source.HostRole] -contains (Get-TargetView $Target 1).Kind }
+        return Test-ForeignImport $Source $Target
+    }
+    if ($Target.Role -eq 'Host') {
+        if ($Source.Hosted) { return $Target.HostRole -eq 'Foundation' }
+        return $HostHostAllowed[$Source.HostRole] -contains $Target.HostRole
+    }
+    if ($Source.Role -eq 'Host') { return Test-HostToHosted $Source $Target }
+    # Hosted-Features importieren einander nie (8.2), innen gilt die Matrix des Features.
+    if ($Source.Artefact -ne $Target.Artefact -or $Source.Feature -ne $Target.Feature) { return $false }
+    return Test-OwnImport $Source $Target
+}
+
+function Test-RoleImport($Source, $Target) {
+    if ($null -ne $Target -and $Target.Framework) { return Test-FrameworkAllowed $Source }
+    if ($null -eq $Source -or $null -eq $Target) { return $true }
+    if ($Source.Package -ne '' -or $Target.Package -ne '') { return Test-DomainImport $Source $Target }
+    # Platform-Features importieren nie den Host (8.3), Hosted-Features nur die Foundation (8.2).
+    if ($Target.Role -eq 'Host') {
+        if ($Source.Hosted) { return $Target.HostRole -eq 'Foundation' }
+        return $Source.Role -eq 'Host' -and $HostHostAllowed[$Source.HostRole] -contains $Target.HostRole
+    }
+    if ($Source.Role -eq 'Host') {
+        if ($Target.Hosted) { return Test-HostToHosted $Source $Target }
+        return $HostAllowed[$Source.HostRole] -contains (Get-TargetView $Target 1).Kind
+    }
+    $same = $Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature
+    # Platform-Features importieren keine Hosted-Features (8.3), Hosted-Features einander nie (8.2).
+    if ($Target.Hosted -and -not $same) { return $false }
+    if (-not $same) { return Test-ForeignImport $Source $Target }
+    return Test-OwnImport $Source $Target
+}
+
+function Get-RoleName($Unit) {
+    if ($Unit.Role -eq 'Host') { return "Host-$($Unit.HostRole)" }
+    return $Unit.Role
+}
+
 function Get-RoleDescription($Source, $Target) {
     # Kurztext wie TArchitectureMatrix.Describe, z. B. "fremde Adapters aus Root".
+    if ($Target.Framework) { return "Framework aus $(Get-RoleName $Source); nur Hosting und Host-Rollen binden es ein" }
+    if ($Target.Package -ne '' -and -not ($Source.Package -ne '' -and (Test-SameHost $Source $Target))) {
+        return "Fachcode-Package $($Target.PackageName) aus $(Get-RoleName $Source)"
+    }
+    if ($Target.Hosted -and $Source.Role -ne 'Host' -and -not ($Source.Artefact -eq $Target.Artefact -and $Source.Feature -eq $Target.Feature)) {
+        return "fremdes Hosted-Feature $($Target.Display) aus $(Get-RoleName $Source)"
+    }
     $kind = 'fremde'
     $length = 1
     $sourceRole = $Source.Role
@@ -869,9 +1003,10 @@ function Test-ContractRole($Unit) {
 if ($SelfTest) {
     $data = Get-Content -Raw -Encoding UTF8 (Join-Path $Root 'Tests/Data/Architecture/role-imports.json') | ConvertFrom-Json
     $failures = @()
+    $scheme = New-RoleScheme @($data.prefixes) @($data.hostRoles) @(Get-OptionList $data 'hostedFeatures') $data
     foreach ($case in $data.cases) {
-        $hosted = @($data.hostedFeatures)
-        $actual = Test-RoleImport (Get-UnitRole $case.from $data.prefixes $data.hostRoles $hosted) (Get-UnitRole $case.to $data.prefixes $data.hostRoles $hosted)
+        $from = Get-UnitRole $case.from $scheme
+        $actual = Test-RoleImport $from (Get-TargetRole $from $case.to $scheme)
         if ($actual -ne [bool] $case.allowed) {
             $failures += "$($case.from) -> $($case.to): erwartet $($case.allowed), erhalten $actual"
         }
@@ -885,18 +1020,53 @@ if ($SelfTest) {
     exit 0
 }
 
-# Genehmigte Ausnahmen aus atlas.json (dieselbe Liste liest der Linter).
+# Genehmigte Ausnahmen und Einordnung der Fachcode-Packages aus atlas.json (dieselben Listen liest der Linter).
 $RoleImportAllow = @()
 $ContractContentAllow = @()
+$RoleOptions = $null
+$SchemeProblems = @()
 $atlasJson = Join-Path $Root 'atlas.json'
 if (Test-Path $atlasJson) {
     $config = Get-Content -Raw -Encoding UTF8 $atlasJson | ConvertFrom-Json
     if ($config.PSObject.Properties['rules']) {
         $rule = $config.rules.PSObject.Properties['architecture-role-import']
+        if ($rule) { $RoleOptions = $rule.Value }
         if ($rule -and $rule.Value.PSObject.Properties['allow']) { $RoleImportAllow = @($rule.Value.allow) }
-        $rule = $config.rules.PSObject.Properties['architecture-contract-content']
-        if ($rule -and $rule.Value.PSObject.Properties['allow']) { $ContractContentAllow = @($rule.Value.allow) }
+        $contentRule = $config.rules.PSObject.Properties['architecture-contract-content']
+        if ($contentRule -and $contentRule.Value.PSObject.Properties['allow']) { $ContractContentAllow = @($contentRule.Value.allow) }
+        # Beide Regeln ordnen gleich ein, und die Präfixe gleichen denen dieses Skripts.
+        $expected = @{ prefixes = $RolePrefixes; hostedFeatures = $HostedFeatures }
+        foreach ($key in 'prefixes', 'hostedFeatures', 'domainPackages', 'basePackage', 'layerPrefixes', 'layerPackages', 'frameworks') {
+            $left = @(Get-OptionList $RoleOptions $key) -join ', '
+            $right = ''
+            if ($contentRule) {
+                $right = @(Get-OptionList $contentRule.Value $key) -join ', '
+            }
+            if ($left -ne $right) {
+                $SchemeProblems += "atlas.json: ""$key"" von architecture-role-import ($left) und architecture-contract-content ($right) weichen ab"
+            }
+            if ($expected.ContainsKey($key) -and $left -ne ($expected[$key] -join ', ')) {
+                $SchemeProblems += "atlas.json: ""$key"" von architecture-role-import muss lauten wie in Check-PackageDependencies.ps1: $($expected[$key] -join ', ')"
+            }
+        }
     }
+}
+$RoleScheme = New-RoleScheme $RolePrefixes $HostRoles $HostedFeatures $RoleOptions
+# Fachcode-Packages sind die Plugin-Packages und geplante Module ohne Ordner (nur in "layerPackages", z. B.
+# Atlas.IDE.Editor, dessen Namen heute als Schichtnamen in Base stehen); Base nimmt die anderen auf.
+# "layerPackages" ist der Geltungsbereich der alten Schichtregel (keine Befund-Liste) und schrumpft je
+# umgestelltem Package.
+foreach ($folder in $PluginFolders | Where-Object { $RoleScheme.DomainPackages -notcontains $_ }) {
+    $SchemeProblems += "atlas.json: ""domainPackages"" nennt das Plugin-Package $folder nicht"
+}
+foreach ($name in $RoleScheme.DomainPackages | Where-Object { $PluginFolders -notcontains $_ -and $RoleScheme.LayerPackages -notcontains $_ }) {
+    $SchemeProblems += "atlas.json: ""domainPackages"" nennt $name ohne Ordner Packages/$name; ein geplantes Modul steht bis zu seinem Ordner in ""layerPackages"""
+}
+if ($RoleScheme.BasePackage -ne $PluginBaseFolder.ToLowerInvariant()) {
+    $SchemeProblems += "atlas.json: ""basePackage"" muss $PluginBaseFolder sein"
+}
+foreach ($name in $RoleScheme.LayerPackages | Where-Object { $RoleScheme.DomainPackages -notcontains $_ }) {
+    $SchemeProblems += "atlas.json: ""layerPackages"" nennt $name, das ist kein Fachcode-Package aus ""domainPackages"""
 }
 
 # Frameworks im Contract (Konzept 7.1): Ein Vertrag legt seine Konsumenten nicht auf VCL, FMX, Windows-API oder
@@ -913,7 +1083,7 @@ function Test-RoleApproved([string] $Source, [string] $Target) {
     return $false
 }
 
-$violations = @()
+$violations = @($SchemeProblems)
 
 foreach ($package in $Packages) {
     $packageDir = Join-Path $Root $package.Path
@@ -1034,11 +1204,11 @@ foreach ($dir in @('Packages', 'Application')) {
     foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
         $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
         $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
-        $source = Get-UnitRole $ownUnit $RolePrefixes $HostRoles $HostedFeatures
+        $source = Get-UnitRole $ownUnit $RoleScheme
         if ($null -eq $source) { continue }
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
         foreach ($unit in Get-ClauseEntries $text 'uses') {
-            $target = Get-UnitRole $unit.Name $RolePrefixes $HostRoles $HostedFeatures
+            $target = Get-TargetRole $source $unit.Name $RoleScheme
             # Genehmigte Ausnahmen gelten nie für Internals: Ein Platzhalter wie Atlas.Core.* gibt sie nicht frei.
             $internals = $null -ne $target -and $target.Role -ne 'Host' -and $target.Roles -contains 'Internals'
             if ((Test-RoleImport $source $target) -or ((Test-RoleApproved $ownUnit $unit.Name) -and -not $internals)) { continue }
@@ -1064,111 +1234,18 @@ foreach ($dir in @('Packages', 'Application')) {
     }
 }
 
-# Featurerichtung: keine Unit unter Source/Editing importiert Atlas.Common.Rules.*
-$editingDir = Join-Path $Root 'Packages/Atlas.Common/Source/Editing'
-if (Test-Path $editingDir) {
-    foreach ($file in Get-ChildItem -Path $editingDir -Recurse -File -Include '*.pas') {
-        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
-        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
-        foreach ($unit in Get-ClauseEntries $text 'uses') {
-            if ($unit.Name.StartsWith('Atlas.Common.Rules.', [StringComparison]::OrdinalIgnoreCase)) {
-                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Editing darf Rules nicht verwenden; gemeinsame Typen nach Documents.Contract oder Pascal verschieben"
-            }
-        }
-    }
-}
-
-# Grundbausteine und Feature-Zyklen des Plugins
-# - Atlas.IDE.Foundation.* (Einstellungen, Editorpuffer, Tasten, Ergebnisfenster …) sind die Basis aller
-#   IDE-Features und verwenden selbst kein anderes Atlas.IDE.* außer Foundation und Core von Base
-#   (Atlas.IDE.Base.Foundation.*, Atlas.IDE.Base.Core.*: Verträge, Registry und Modul-Host).
-# - Die Features von Atlas.Core und Atlas.IDE bilden keinen Zyklus (Tarjan über die uses aller Units).
-#   Nicht mitgezählt: Atlas.IDE.Foundation.*, die Kompositionswurzel und Verweise auf *.Contract und auf die
-#   Foundation von Base (Atlas.IDE.Base.Foundation.*; Contracts verwenden nur Contracts und schließen darum
-#   keinen Zyklus).
-$PluginSource = Join-Path $Root "Packages/$PluginBaseFolder/Source"
+# Grundbausteine des Plugins: Atlas.IDE.Foundation.* (Einstellungen, Editorpuffer, Tasten, Ergebnisfenster …) sind
+# die Basis aller IDE-Features und verwenden selbst kein anderes Atlas.IDE.* außer Foundation und Core von Base
+# (Atlas.IDE.Base.Foundation.*, Atlas.IDE.Base.Core.*: Verträge, Registry und Modul-Host). Zyklen zwischen Features
+# prüft Tools/Check-FeatureCycles.ps1.
 $PluginSources = @($PluginFolders | ForEach-Object { Join-Path $Root "Packages/$_/Source" } | Where-Object { Test-Path $_ })
-$CompositionRoots = @('Atlas.IDE.CodeInsight.Composition')
-if (Test-Path $PluginSource) {
-    $featureEdges = @{}
-    function Get-PluginFeature([string] $Name) {
-        if ($Name -match '^(?i)Atlas\.IDE\.Foundation\.') { return $null }
-        $match = [regex]::Match($Name, '^(?i)Atlas\.(Core|IDE)\.(\w+)\.')
-        if (-not $match.Success) { return $null }
-        return "Atlas.$($match.Groups[1].Value).$($match.Groups[2].Value)"
-    }
-    foreach ($file in Get-ChildItem -Path $PluginSources -Recurse -File -Include '*.pas') {
-        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
-        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
-        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
-        $entries = @(Get-ClauseEntries $text 'uses')
-        if ($ownUnit -match '^(?i)Atlas\.IDE\.Foundation\.') {
-            foreach ($unit in $entries) {
-                if ($unit.Name -match '^(?i)Atlas\.IDE\.' -and $unit.Name -notmatch '^(?i)Atlas\.IDE\.(Foundation|Base\.Foundation|Base\.Core)\.') {
-                    $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.IDE.Foundation.* verwendet aus der IDE-Schicht nur Atlas.IDE.Foundation.*, Atlas.IDE.Base.Foundation.* und Atlas.IDE.Base.Core.*"
-                }
-            }
-            continue
+foreach ($file in Get-ChildItem -Path $PluginSources -Recurse -File -Include 'Atlas.IDE.Foundation.*.pas') {
+    $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+    $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+    foreach ($unit in Get-ClauseEntries $text 'uses') {
+        if ($unit.Name -match '^(?i)Atlas\.IDE\.' -and $unit.Name -notmatch '^(?i)Atlas\.IDE\.(Foundation|Base\.Foundation|Base\.Core)\.') {
+            $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.IDE.Foundation.* verwendet aus der IDE-Schicht nur Atlas.IDE.Foundation.*, Atlas.IDE.Base.Foundation.* und Atlas.IDE.Base.Core.*"
         }
-        # Die Wurzel und ihre Teile Atlas.IDE.CodeInsight.Composition.<Teil> verbinden alle Features.
-        if (@($CompositionRoots | Where-Object { $ownUnit -eq $_ -or $ownUnit -like "$_.*" }).Count -gt 0) { continue }
-        $from = Get-PluginFeature $ownUnit
-        if ($null -eq $from) { continue }
-        foreach ($unit in $entries) {
-            if ($unit.Name -match '\.Contract$' -or $unit.Name -match '^(?i)Atlas\.IDE\.Base\.Foundation\.') { continue }
-            $to = Get-PluginFeature $unit.Name
-            if ($null -eq $to -or $to -eq $from) { continue }
-            if (-not $featureEdges.ContainsKey($from)) { $featureEdges[$from] = @{} }
-            if (-not $featureEdges[$from].ContainsKey($to)) { $featureEdges[$from][$to] = "$ownUnit -> $($unit.Name)" }
-        }
-    }
-    # Tarjan, starke Zusammenhangskomponenten mit mehr als einem Feature sind Zyklen.
-    $script:tarjanIndex = 0
-    $script:tarjanStack = [Collections.Generic.Stack[string]]::new()
-    $script:tarjanOn = @{}
-    $script:tarjanNumber = @{}
-    $script:tarjanLow = @{}
-    $script:tarjanComponents = @()
-    function Invoke-Tarjan([string] $Node) {
-        $script:tarjanNumber[$Node] = $script:tarjanIndex
-        $script:tarjanLow[$Node] = $script:tarjanIndex
-        $script:tarjanIndex++
-        $script:tarjanStack.Push($Node)
-        $script:tarjanOn[$Node] = $true
-        if ($featureEdges.ContainsKey($Node)) {
-            foreach ($next in @($featureEdges[$Node].Keys)) {
-                if (-not $script:tarjanNumber.ContainsKey($next)) {
-                    Invoke-Tarjan $next
-                    $script:tarjanLow[$Node] = [Math]::Min($script:tarjanLow[$Node], $script:tarjanLow[$next])
-                }
-                elseif ($script:tarjanOn[$next]) {
-                    $script:tarjanLow[$Node] = [Math]::Min($script:tarjanLow[$Node], $script:tarjanNumber[$next])
-                }
-            }
-        }
-        if ($script:tarjanLow[$Node] -eq $script:tarjanNumber[$Node]) {
-            $component = @()
-            do {
-                $member = $script:tarjanStack.Pop()
-                $script:tarjanOn[$member] = $false
-                $component += $member
-            } while ($member -ne $Node)
-            if ($component.Count -gt 1) { $script:tarjanComponents += , $component }
-        }
-    }
-    foreach ($node in @($featureEdges.Keys | Sort-Object)) {
-        if (-not $script:tarjanNumber.ContainsKey($node)) { Invoke-Tarjan $node }
-    }
-    foreach ($component in $script:tarjanComponents) {
-        $members = @($component | Sort-Object)
-        $examples = @()
-        foreach ($from in $members) {
-            if (-not $featureEdges.ContainsKey($from)) { continue }
-            foreach ($to in @($featureEdges[$from].Keys | Sort-Object)) {
-                if ($members -contains $to) { $examples += $featureEdges[$from][$to] }
-            }
-        }
-        $violations += "Feature-Zyklus: $($members -join ', ') – $($examples -join '; ')"
     }
 }
 
@@ -1276,6 +1353,7 @@ function Find-BoundaryEntry($Entries, [string] $Source, [string] $Target, [strin
     return $null
 }
 
+$PluginSource = Join-Path $Root "Packages/$PluginBaseFolder/Source"
 $assignmentMissing = @($AssignmentFile, $FolderFile, $BoundaryFile | Where-Object { -not (Test-Path (Join-Path $Root $_)) })
 if ((Test-Path $PluginSource) -and $assignmentMissing.Count -gt 0) {
     $violations += "$($assignmentMissing -join ', '): fehlt; die Modulgrenzen (#1455) lassen sich ohne Zuordnung nicht prüfen"
@@ -1303,8 +1381,24 @@ elseif (Test-Path $PluginSource) {
         }
     }
 
+    # Umgestellte Fachcode-Packages (nicht mehr in "layerPackages"): Jede Unit trägt das Package im Namen und
+    # braucht darum keine Zeile der Zuordnung; ein Schichtname ist ein Fehler.
+    function Test-SwitchedPackage([string] $Folder) {
+        return $RoleScheme.DomainPackages -contains $Folder -and $RoleScheme.LayerPackages -notcontains $Folder
+    }
+    function Test-NamedByPackage([string] $Name, [string] $Folder) {
+        return (Test-SwitchedPackage $Folder) -and $Name.StartsWith("$Folder.", [StringComparison]::OrdinalIgnoreCase)
+    }
+    foreach ($name in @($pluginUnits.Keys | Sort-Object)) {
+        $folder = $pluginUnits[$name].Folder
+        if ((Test-SwitchedPackage $folder) -and -not (Test-NamedByPackage $name $folder)) {
+            $violations += "Packages/$folder/Source/$($pluginUnits[$name].File): $name trägt einen Schichtnamen; $folder steht nicht mehr in ""layerPackages"" (atlas.json), darum heißen seine Units $folder.*"
+        }
+    }
+
     # Vollständigkeit und Abweichungen von der Ordnertabelle
     foreach ($name in @($pluginUnits.Keys | Sort-Object)) {
+        if (Test-NamedByPackage $name $pluginUnits[$name].Folder) { continue }
         if (-not $map.Rows.ContainsKey($name)) {
             $violations += "${AssignmentFile}: $name ($($pluginUnits[$name].File)) fehlt in der Zuordnung; Zeile mit Package $(Get-FolderPackage $map $pluginUnits[$name].File $pluginUnits[$name].Folder) sortiert eintragen"
         }
@@ -1313,6 +1407,10 @@ elseif (Test-Path $PluginSource) {
         $row = $map.Rows[$name]
         if (-not $pluginUnits.ContainsKey($name)) {
             $violations += "${AssignmentFile}:$($row.Line): $name gibt es nicht mehr in den Plugin-Packages (Packages/Atlas.IDE.*/Source); Zeile streichen oder nachziehen"
+            continue
+        }
+        if (Test-NamedByPackage $name $pluginUnits[$name].Folder) {
+            $violations += "${AssignmentFile}:$($row.Line): $name trägt sein Package im Namen ($($pluginUnits[$name].Folder) ist umgestellt); Zeile streichen"
             continue
         }
         $actual = $pluginUnits[$name].File
@@ -1333,6 +1431,7 @@ elseif (Test-Path $PluginSource) {
     }
 
     function Get-AssignedPackage([string] $Name) {
+        if (Test-NamedByPackage $Name $pluginUnits[$Name].Folder) { return $pluginUnits[$Name].Folder }
         if ($map.Rows.ContainsKey($Name)) { return $map.Rows[$Name].Package }
         return Get-FolderPackage $map $pluginUnits[$Name].File $pluginUnits[$Name].Folder
     }
@@ -1710,7 +1809,7 @@ $AdapterRolesFile = Join-Path $Root 'Tools/AdapterRoles.known.txt'
 function Get-FeatureName([string] $Name) {
     # Ausgabeartefakt.Feature in der Schreibweise der Unit, z. B. "Atlas.IDE.Welcome".
     $best = ''
-    foreach ($prefix in $RolePrefixes) {
+    foreach ($prefix in $RoleScheme.Active['Switched']) {
         if ($Name.StartsWith("$prefix.", [StringComparison]::OrdinalIgnoreCase) -and $prefix.Length -gt $best.Length) { $best = $prefix }
     }
     if ($best -eq '') { return $Name.Split('.')[0] }
@@ -1718,7 +1817,10 @@ function Get-FeatureName([string] $Name) {
 }
 
 function Test-ContractUnit([string] $Name) {
-    return (Test-ContractRole (Get-UnitRole $Name $RolePrefixes $HostRoles $HostedFeatures)) -or $Name -match '^(?i)Atlas\.IDE\.Base\.Foundation\.'
+    # Contract, Verträge zwischen Modulen und die Host-Rolle Foundation eines Fachcode-Packages (nur Verträge).
+    $named = Get-UnitRole $Name $RoleScheme 'Target'
+    return (Test-ContractRole (Get-UnitRole $Name $RoleScheme)) -or $Name -match '^(?i)Atlas\.IDE\.Base\.Foundation\.' -or
+        ($null -ne $named -and $named.Package -ne '' -and $named.HostRole -eq 'Foundation')
 }
 
 function Get-AdapterRoleFindings([string] $BaseDir) {
@@ -1729,7 +1831,7 @@ function Get-AdapterRoleFindings([string] $BaseDir) {
         if (-not (Test-Path $path)) { continue }
         foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
             $name = [IO.Path]::GetFileNameWithoutExtension($file.Name)
-            $role = Get-UnitRole $name $RolePrefixes $HostRoles $HostedFeatures
+            $role = Get-UnitRole $name $RoleScheme
             if ($null -eq $role) { continue }
             $relative = $file.FullName.Substring((Resolve-Path $BaseDir).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
             $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
@@ -1798,14 +1900,14 @@ function Get-AdapterRoleFindings([string] $BaseDir) {
             $ancestor = $base.Ancestor
         }
         foreach ($item in $chain) {
-            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles $HostedFeatures
+            $homeRole = Get-UnitRole $item.Home $RoleScheme
             $same = $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
             if ((Test-ContractUnit $item.Home) -and (($own.Role -eq 'Adapters' -and -not $same) -or ($own.Role -eq 'Providers' -and $same))) {
                 $fitting[$unit.Name]++
             }
         }
         foreach ($item in $class.Implemented) {
-            $homeRole = Get-UnitRole $item.Home $RolePrefixes $HostRoles $HostedFeatures
+            $homeRole = Get-UnitRole $item.Home $RoleScheme
             $same = $own.Role -ne 'Host' -and $homeRole.Role -ne 'Host' -and
                 $own.Artefact -eq $homeRole.Artefact -and $own.Feature -eq $homeRole.Feature
             $where = "$($unit.Relative):$($class.Line)"

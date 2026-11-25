@@ -195,7 +195,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.UI.Tests.Strings,
   Atlas.Core.Editor.Elements,
   Atlas.ToolsApi.Editor.Buffer,
@@ -572,7 +572,7 @@ class function TAtlasIdeLensPill.LeftOf(const AContext: INTACodeEditorPaintConte
 var
   mColumn: Integer;
 begin
-  mColumn := Length(TrimRight(TAtlasPairs.DisplayLine(ALine, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) +
+  mColumn := Length(TrimRight(TTextColumns.DisplayLine(ALine, TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer)))) +
     1;
   Result := AContext.EditorState.GetCharacterPosPx(mColumn + cGapColumns, AContext.EditorLineNum).Left;
 end;

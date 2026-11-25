@@ -51,6 +51,10 @@ type
     procedure JumpDropsLaterSteps;
     [Test]
     procedure NothingToShowKeepsState;
+    [Test]
+    procedure LateAnswerAfterBackIsDropped;
+    [Test]
+    procedure AnswerWithoutContentAddsNothing;
   end;
 
 implementation
@@ -78,15 +82,9 @@ const
     '{"name": "TObject", "unit": "System", "file": "C:\\RTL\\System.pas", "line": 10, "character": 2}]}}';
 
 function Parse(const AJson: string): TAtlasHoverData;
-var
-  mValue: TJSONValue;
 begin
-  mValue := TJSONObject.ParseJSONValue(AJson);
-  try
-    Result := TAtlasHoverData.FromHover(mValue);
-  finally
-    mValue.Free;
-  end;
+  // FromResponse liest wie FromHover und gibt die Antwort frei.
+  Result := TAtlasHoverData.FromResponse(TJSONObject.ParseJSONValue(AJson));
 end;
 
 function Ref(const AName: string; ALine: Integer): TAtlasHoverTypeRef;
@@ -105,11 +103,22 @@ begin
   Result.Location.Name := '';
 end;
 
-/// <summary>Holt zu jedem Typ mit Fundort einen Inhalt; ohne Fundort nichts.</summary>
-function Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
+/// <summary>Klick wie im Tooltip: Inhalt sofort geholt (DataFor) und angehängt.</summary>
+function Open(AHistory: TAtlasHoverHistory; const ARef: TAtlasHoverTypeRef): Boolean;
+var
+  mStamp: Integer;
 begin
-  AData := DataFor(ARef);
-  Result := ARef.HasLocation;
+  case AHistory.BeginOpen(ARef) of
+    TAtlasHoverOpenStep.Shown:
+      Result := True;
+    TAtlasHoverOpenStep.Fetch:
+      begin
+        mStamp := AHistory.Stamp;
+        Result := AHistory.FinishOpen(ARef, DataFor(ARef), mStamp);
+      end;
+  else
+    Result := False;
+  end;
 end;
 
 { TAtlasHoverTests }
@@ -147,6 +156,7 @@ begin
   Assert.AreEqual(0, Integer(Length(mData.Links)));
   Assert.IsFalse(mData.Location.HasLocation);
   Assert.IsFalse(TAtlasHoverData.FromHover(nil).Found);
+  Assert.IsFalse(TAtlasHoverData.FromResponse(nil).Found);
 end;
 
 procedure TAtlasHoverTests.ShortensLongChains;
@@ -328,15 +338,15 @@ procedure TAtlasHoverHistoryTests.ClickPinsAndBackReturns;
 var
   mHistory: TAtlasHoverHistory;
 begin
-  mHistory := TAtlasHoverHistory.Create(Fetch);
+  mHistory := TAtlasHoverHistory.Create;
   try
     mHistory.Start(DataFor(Ref('TGalleryFrameClass', 18)));
     Assert.IsFalse(mHistory.Pinned, 'Kurzform');
-    Assert.IsTrue(mHistory.Open(Ref('TBFrame', 19)));
+    Assert.IsTrue(Open(mHistory, Ref('TBFrame', 19)));
     Assert.IsTrue(mHistory.Pinned, 'erster Klick heftet an');
     Assert.AreEqual(2, Integer(mHistory.Count));
     Assert.AreEqual('TBFrame', mHistory.Current.Location.Name);
-    Assert.IsTrue(mHistory.Open(Ref('TFrame', 500)));
+    Assert.IsTrue(Open(mHistory, Ref('TFrame', 500)));
     // Klick auf TFrame, dann Rücktaste: wieder TBFrame.
     Assert.IsTrue(mHistory.Back);
     Assert.AreEqual('TBFrame', mHistory.Current.Location.Name);
@@ -352,10 +362,10 @@ procedure TAtlasHoverHistoryTests.SameTypeAddsNoStep;
 var
   mHistory: TAtlasHoverHistory;
 begin
-  mHistory := TAtlasHoverHistory.Create(Fetch);
+  mHistory := TAtlasHoverHistory.Create;
   try
     mHistory.Start(DataFor(Ref('TBFrame', 19)));
-    Assert.IsTrue(mHistory.Open(Ref('TBFrame', 19)));
+    Assert.IsTrue(Open(mHistory, Ref('TBFrame', 19)));
     Assert.AreEqual(1, Integer(mHistory.Count), 'derselbe Typ: kein neuer Eintrag');
     Assert.IsTrue(mHistory.Pinned);
   finally
@@ -369,13 +379,13 @@ var
   mIndex: Integer;
   mPath: TArray<TAtlasHoverPathItem>;
 begin
-  mHistory := TAtlasHoverHistory.Create(Fetch);
+  mHistory := TAtlasHoverHistory.Create;
   try
     mHistory.Start(DataFor(Ref('TStart', 0)));
     // Elf Klicks: zehn Schritte bleiben, die ältesten fallen weg.
     for mIndex := 1 to 11 do
     begin
-      Assert.IsTrue(mHistory.Open(Ref('T' + IntToStr(mIndex), mIndex)));
+      Assert.IsTrue(Open(mHistory, Ref('T' + IntToStr(mIndex), mIndex)));
     end;
     Assert.AreEqual(TAtlasHoverHistory.cMaxSteps, mHistory.Count);
     Assert.AreEqual('T2', mHistory.Items[0].Location.Name);
@@ -395,11 +405,11 @@ procedure TAtlasHoverHistoryTests.JumpDropsLaterSteps;
 var
   mHistory: TAtlasHoverHistory;
 begin
-  mHistory := TAtlasHoverHistory.Create(Fetch);
+  mHistory := TAtlasHoverHistory.Create;
   try
     mHistory.Start(DataFor(Ref('TA', 1)));
-    mHistory.Open(Ref('TB', 2));
-    mHistory.Open(Ref('TC', 3));
+    Open(mHistory, Ref('TB', 2));
+    Open(mHistory, Ref('TC', 3));
     Assert.AreEqual(3, Integer(Length(mHistory.Path)), 'ohne … bei wenigen Einträgen');
     Assert.IsTrue(mHistory.JumpTo(1));
     Assert.AreEqual(2, Integer(mHistory.Count));
@@ -415,16 +425,61 @@ var
   mHistory: TAtlasHoverHistory;
   mNoLocation: TAtlasHoverTypeRef;
 begin
-  mHistory := TAtlasHoverHistory.Create(Fetch);
+  mHistory := TAtlasHoverHistory.Create;
   try
     mHistory.Start(DataFor(Ref('TA', 1)));
     mNoLocation := Default(TAtlasHoverTypeRef);
     mNoLocation.Name := 'TUnbekannt';
-    Assert.IsFalse(mHistory.Open(mNoLocation));
+    Assert.IsFalse(Open(mHistory, mNoLocation));
     Assert.AreEqual(1, Integer(mHistory.Count));
     Assert.IsFalse(mHistory.Pinned);
     mHistory.Clear;
-    Assert.IsFalse(mHistory.Open(Ref('TB', 2)), 'ohne Start nichts');
+    Assert.IsFalse(Open(mHistory, Ref('TB', 2)), 'ohne Start nichts');
+  finally
+    mHistory.Free;
+  end;
+end;
+
+procedure TAtlasHoverHistoryTests.LateAnswerAfterBackIsDropped;
+var
+  mHistory: TAtlasHoverHistory;
+  mStamp: Integer;
+begin
+  mHistory := TAtlasHoverHistory.Create;
+  try
+    mHistory.Start(DataFor(Ref('TA', 1)));
+    Assert.IsTrue(Open(mHistory, Ref('TB', 2)));
+    Assert.AreEqual<TAtlasHoverOpenStep>(TAtlasHoverOpenStep.Fetch, mHistory.BeginOpen(Ref('TC', 3)));
+    Assert.IsTrue(mHistory.Pinned, 'angeheftet, solange die Antwort unterwegs ist');
+    mStamp := mHistory.Stamp;
+    // Während die Anfrage läuft, geht der Benutzer zurück: Die Antwort gehört zu einem anderen Stand.
+    Assert.IsTrue(mHistory.Back);
+    Assert.IsFalse(mHistory.FinishOpen(Ref('TC', 3), DataFor(Ref('TC', 3)), mStamp));
+    Assert.AreEqual(1, Integer(mHistory.Count));
+    Assert.AreEqual('TA = class', mHistory.Current.Declaration);
+    // Ebenso nach einem neuen Tooltip.
+    mStamp := mHistory.Stamp;
+    mHistory.Start(DataFor(Ref('TX', 9)));
+    Assert.IsFalse(mHistory.FinishOpen(Ref('TC', 3), DataFor(Ref('TC', 3)), mStamp));
+    Assert.AreEqual(1, Integer(mHistory.Count));
+  finally
+    mHistory.Free;
+  end;
+end;
+
+procedure TAtlasHoverHistoryTests.AnswerWithoutContentAddsNothing;
+var
+  mHistory: TAtlasHoverHistory;
+  mStamp: Integer;
+begin
+  mHistory := TAtlasHoverHistory.Create;
+  try
+    mHistory.Start(DataFor(Ref('TA', 1)));
+    Assert.AreEqual<TAtlasHoverOpenStep>(TAtlasHoverOpenStep.Fetch, mHistory.BeginOpen(Ref('TB', 2)));
+    mStamp := mHistory.Stamp;
+    Assert.IsFalse(mHistory.FinishOpen(Ref('TB', 2), Default(TAtlasHoverData), mStamp), 'Server liefert nichts');
+    Assert.AreEqual(1, Integer(mHistory.Count));
+    Assert.AreEqual(mStamp, mHistory.Stamp, 'nichts geändert');
   finally
     mHistory.Free;
   end;

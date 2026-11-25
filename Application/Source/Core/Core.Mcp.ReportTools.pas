@@ -27,7 +27,7 @@ uses
   Atlas.Common.Diagnostics.RuntimeReport,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Text.CrashReport,
-  Core.WorkspaceGroup;
+  Atlas.Common.Mcp.Contract.Workspace;
 
 type
 {$SCOPEDENUMS ON}
@@ -130,11 +130,11 @@ end;
 function UnitFileOf(const AContext: TMcpToolContext): TReportUnitFileFunc;
 var
   mIndex: ISymbolIndex;
-  mGroup: TCoreWorkspaceGroup;
+  mWorkspace: IMcpWorkspace;
   mRoot: string;
 begin
   mIndex := AContext.Index;
-  mGroup := AContext.Group;
+  mWorkspace := AContext.Workspace;
   mRoot := AContext.Root;
   Result :=
     function(const AUnitName, AFileName: string): string
@@ -147,7 +147,7 @@ begin
       begin
         Exit;
       end;
-      if not mIndex.FindUnit(AUnitName, mUnit) and (mGroup <> nil) and mGroup.EnsureUnit(AUnitName) then
+      if not mIndex.FindUnit(AUnitName, mUnit) and (mWorkspace <> nil) and mWorkspace.EnsureUnit(AUnitName) then
       begin
         mIndex.FindUnit(AUnitName, mUnit);
       end;

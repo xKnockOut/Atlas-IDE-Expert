@@ -36,7 +36,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Semantics.ControlFlow.Signatures,
+  Atlas.Common.Pascal.FlowSignatures,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Rules.Options,

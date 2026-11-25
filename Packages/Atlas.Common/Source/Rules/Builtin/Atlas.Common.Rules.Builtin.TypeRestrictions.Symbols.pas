@@ -10,7 +10,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin.Inheritance;
+  Atlas.Common.Semantics.Ancestry;
 
 const
   // Mitglieder von TObject, die im Rumpf einer Methode ohne Self sichtbar sind (E2506).

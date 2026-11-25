@@ -4,7 +4,7 @@
 
 *Deutsche Fassung: [README_DE.md](README_DE.md). The user documentation is available in English ([Documentation](#documentation)); developer documents such as the architecture and the handover notes are German.*
 
-Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 367 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and 14 module packages that you install as needed ([Structure](#structure)).
+Atlas is an expert for RAD Studio (Delphi/Object Pascal). It replaces the built-in Code Insight with its own windows and adds code analysis with 368 check rules, refactorings, navigation, form support, testing and debugging aids and its own welcome page to the IDE. The data comes from the **Atlas server**, a language server (LSP) of its own that indexes the project and also runs without the IDE as a linter or as an MCP server for Claude Code. From 2.0 the plugin consists of the core package `Atlas.IDE.Base` and 14 module packages that you install as needed ([Structure](#structure)).
 
 Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -89,7 +89,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Fold large blocks:** collapse `if`/`else` branches, loops, `try`, `repeat` and `case` blocks from 15 lines (`editor.blockFolds.minLines`) through temporary region markers on the same lines, removed again before saving
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
-- **367 check rules** while you type: 246 bugs, 110 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
+- **368 check rules** while you type: 246 bugs, 111 code smells, 11 security rules; findings follow their line immediately while you edit, before the server answers (`editor.trackLines`)
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group; optionally the IDE errors (Error Insight) appear next to them, with a "Source" column and filter (`problems.ideErrors`)
 - **Findings as a task for an AI assistant:** "Copy as task for an AI assistant" in the "Atlas Findings" window (also several findings, grouped per file) and in the editor puts rule, message, code excerpt, explanation and the MCP tool to verify the fix into the clipboard

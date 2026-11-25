@@ -46,7 +46,7 @@ uses
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Configuration.Contract,
-  Core.Texts,
+  Atlas.Common.Localization.RequestTexts,
   Core.Mcp.Ide,
   Atlas.Common.Localization.Texts;
 

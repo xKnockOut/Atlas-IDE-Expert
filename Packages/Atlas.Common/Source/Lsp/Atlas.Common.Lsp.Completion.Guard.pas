@@ -30,7 +30,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.GuardFree,
+  Atlas.Common.Pascal.GuardFree,
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Internals.CompletionSource,
   Atlas.Common.Localization.Texts;

@@ -241,11 +241,12 @@ begin
   mRequest.DelphiVersion := BdsVersionOf(TMcpArgs.OptionalString(AArguments, 'delphiVersion'));
   if mRequest.DelphiVersion = '' then
   begin
-    mRequest.DelphiVersion := AContext.Group.Main.Configuration.Settings.DelphiVersion;
+    mRequest.DelphiVersion := AContext.Workspace.Settings.DelphiVersion;
   end;
   mRequest.Json := SameText(TMcpArgs.OptionalString(AArguments, 'format'), 'json');
   mRequest.ReadText := WorkspaceReader(AContext.Root);
   mRequest.CompilerFixes := AContext.Adapters.CompilerFixes;
+  mRequest.RuleDocs := AContext.Adapters.RuleDocs;
   Result := TMcpCompilerMessageTools.Explain(mRequest);
 end;
 

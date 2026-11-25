@@ -4,7 +4,9 @@
 // IOTACompileNotifier (unabhängig vom Feature „Compile“, das abgeschaltet sein
 // kann) und ein Zeitgeber, der wartende Aufträge ausführt, sobald Ruhe ist.
 // Run reiht einen Auftrag ein, etwa das automatische Öffnen eines
-// Dockfensters; Destroy meldet den Notifier ab und verwirft offene Aufträge.
+// Dockfensters oder das Erfassen von Rückgängig im Designer; Idle sagt, ob
+// gerade Ruhe ist. Destroy meldet den Notifier ab und verwirft offene
+// Aufträge.
 
 interface
 
@@ -46,6 +48,8 @@ type
     destructor Destroy; override;
     /// <summary>AProc ausführen, sobald kein Compile läuft und Ruhe ist (im Hauptthread).</summary>
     procedure Run(const AProc: TProc);
+    /// <summary>Jetzt Ruhe: kein Compile aktiv und die Ruhezeit seit dem letzten Compile-Ereignis vorbei.</summary>
+    function Idle: Boolean;
   end;
 
 implementation
@@ -159,6 +163,11 @@ procedure TAtlasIdeBuildIdleGate.Run(const AProc: TProc);
 begin
   FPending.Add(AProc);
   FTimer.Enabled := True;
+end;
+
+function TAtlasIdeBuildIdleGate.Idle: Boolean;
+begin
+  Result := FGate.Idle(Now);
 end;
 
 end.

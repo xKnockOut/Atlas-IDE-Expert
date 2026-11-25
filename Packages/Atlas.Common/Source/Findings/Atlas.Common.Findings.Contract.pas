@@ -98,6 +98,54 @@ type
     class function Create(const AFinding: TRuleFinding; const AFileName, AText: string): TFindingPromptItem; static;
   end;
 
+  /// <summary>Option einer Regel mit ihrer Vorgabe als JSON-Text.</summary>
+  TFindingRuleOption = record
+    Name: string;
+    DefaultJson: string;
+  end;
+
+  /// <summary>Eine Regel des Regelkatalogs für Anzeigen außerhalb der Prüfregeln (Doku-Suche, Erklärung von
+  /// Compilermeldungen, Ausgaben); Name, Beschreibung und Beispiele in der erfragten Sprache.</summary>
+  TFindingRuleInfo = record
+    Id: string;
+    Name: string;
+    Description: string;
+    /// <summary>Name der Kategorie, z. B. "bug".</summary>
+    Category: string;
+    /// <summary>Kennung der Gruppe, z. B. "find-bugs" (#909).</summary>
+    Group: string;
+    /// <summary>Schlüssel des Hauptschalters der Gruppe in "rules", z. B. "group:find-bugs".</summary>
+    GroupKey: string;
+    DefaultSeverity: TRuleSeverity;
+    /// <summary>Nur im Profil strict oder ausdrücklich eingeschaltet (#834).</summary>
+    Experimental: Boolean;
+    Options: TArray<TFindingRuleOption>;
+    /// <summary>Beispiel mit Treffer und korrigiertes Beispiel; '' ohne.</summary>
+    Bad: string;
+    Good: string;
+    /// <summary>Link zur Benutzerdokumentation der Regel.</summary>
+    HelpUri: string;
+    /// <summary>Compilermeldungen, denen die Regel entspricht (#938); nil = keine.</summary>
+    CompilerCodes: TArray<string>;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>Woher der wirksame Schweregrad einer Regel im Projekt kommt: "rules" in den Einstellungen,
+  /// abgeschaltete Gruppe, abgeschaltete Kennzahlen oder das Profil.</summary>
+  TFindingRuleOrigin = (Rules, Group, Metrics, Profile);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Zustand einer Regel unter den Einstellungen eines Projekts.</summary>
+  TFindingRuleState = record
+    /// <summary>Wirksamer Schweregrad; Off, wenn die Regel nicht läuft.</summary>
+    Severity: TRuleSeverity;
+    Origin: TFindingRuleOrigin;
+    /// <summary>Schlüssel der Gruppe (Origin Group) bzw. Name des Profils (Origin Profile); sonst ''.</summary>
+    Detail: string;
+    /// <summary>Optionen der Regel aus den Einstellungen als JSON-Text; '' ohne.</summary>
+    ProjectOptions: string;
+  end;
+
   /// <summary>True, wenn die Prüfung abgebrochen werden soll (Zeitlimit, Dokument geändert).</summary>
   TRuleCancelled = reference to function: Boolean;
 

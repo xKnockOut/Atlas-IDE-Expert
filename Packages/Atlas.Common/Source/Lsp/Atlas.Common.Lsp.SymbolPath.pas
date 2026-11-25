@@ -28,7 +28,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.UsesService,
-  Atlas.Common.Architecture.SymbolPath;
+  Atlas.Common.Lsp.SymbolPath.Search;
 
 type
   /// <summary>Einstellungen und Namensräume zum Arbeitsbereich von AFileName ('' = der einzige oder erste);

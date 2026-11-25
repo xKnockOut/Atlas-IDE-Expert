@@ -19,7 +19,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Sicherheit](#gruppe-security) | 12 |
 | [Komponenten](#gruppe-components) | 9 |
 | [Formulare und Daten](#gruppe-forms) | 15 |
-| [Architektur](#gruppe-architecture) | 5 |
+| [Architektur](#gruppe-architecture) | 6 |
 | [Stil und Metriken](#gruppe-style) | 57 |
 | [Packages und Tests](#gruppe-packages) | 15 |
 | [Atlas intern](#gruppe-internal) | 4 |
@@ -385,6 +385,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`uses-cycle`](#uses-cycle) | Zirkuläre Unit-Referenz über uses | Code Smell | Warnung |
 | [`architecture-role-import`](#architecture-role-import) | Import verletzt die Rollenmatrix | Code Smell | Warnung |
 | [`architecture-contract-content`](#architecture-contract-content) | Klasse in einer Contract-Unit | Code Smell | Warnung |
+| [`architecture-feature-cycle`](#architecture-feature-cycle) | Zyklus zwischen Features | Code Smell | Warnung |
 | [`forbidden-symbol`](#forbidden-symbol) | Verbotenes Symbol verwendet | Code Smell | Warnung |
 
 <a id="gruppe-style"></a>
@@ -778,6 +779,11 @@ Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rule
 | `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common"; ohne Angabe meldet die Regel nichts. |
 | `hostRoles` | string-list | `["Foundation","Core","Shell","Adapters","Platform"]` | Erste Namenssegmente der Host-Units ohne Präfix. |
 | `hostedFeatures` | string-list | `[]` | Hosted-Features der Anwendung: erstes Namenssegment ohne Präfix; sie importieren nur Foundation und Platform-Features, nie einander. |
+| `domainPackages` | string-list | `[]` | Fachcode-Packages des Plugins (Base und die Module); ihre Units heißen <Package>.<Host-Rolle>.* oder <Package>.<Feature>.<Rolle>.* und folgen Host- und Hosted-Feature-Matrix. |
+| `basePackage` | string | `""` | Fachcode-Package, das für jedes andere Fachcode-Package zum Host zählt; Hosted-Features eines Moduls sehen nur seine Foundation. |
+| `layerPrefixes` | string-list | `[]` | Präfixe der alten Schichtnamen (z. B. "Atlas.Core", "Atlas.UI", "Atlas.IDE") für Packages in "layerPackages". |
+| `layerPackages` | string-list | `[]` | Fachcode-Packages, die noch nach ihrer Schicht heißen; für sie gilt die alte Schichtregel. |
+| `frameworks` | string-list | `[]` | Framework-Units als Name oder Namensanfang vor einem Punkt (z. B. "Vcl", "ToolsAPI"); nur Hosting und Host-Rollen binden sie ein. |
 | `allow` | string-list | `[]` | Genehmigte Ausnahmen "Quelle -> Ziel" (beide Globs). |
 
 Mit Treffer:
@@ -808,6 +814,10 @@ Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rule
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common". |
+| `domainPackages` | string-list | `[]` | Fachcode-Packages des Plugins (Base und die Module); ihre Units heißen <Package>.<Host-Rolle>.* oder <Package>.<Feature>.<Rolle>.* und folgen Host- und Hosted-Feature-Matrix. |
+| `basePackage` | string | `""` | Fachcode-Package, das für jedes andere Fachcode-Package zum Host zählt; Hosted-Features eines Moduls sehen nur seine Foundation. |
+| `layerPrefixes` | string-list | `[]` | Präfixe der alten Schichtnamen (z. B. "Atlas.Core", "Atlas.UI", "Atlas.IDE") für Packages in "layerPackages". |
+| `layerPackages` | string-list | `[]` | Fachcode-Packages, die noch nach ihrer Schicht heißen; für sie gilt die alte Schichtregel. |
 | `allow` | string-list | `[]` | Genehmigte Ausnahmen "Unit.Typ" als Glob. |
 
 Mit Treffer:
@@ -828,6 +838,38 @@ interface
 type
   IOrderList = interface
   end;
+```
+
+<a id="architecture-feature-cycle"></a>
+### architecture-feature-cycle
+
+**Zyklus zwischen Features** · Code Smell · Warnung · Gruppe Architektur
+
+Ein uses-Eintrag schließt einen Zyklus zwischen Features desselben Ausgabeartefakts (Atlas.Core.Lsp verwendet Atlas.Core.Hover, das wieder Atlas.Core.Lsp verwendet) oder läuft gegen eine Richtung aus "directions". Es zählt jeder uses-Eintrag, interface und implementation, auch auf Contract-Units. Standardmäßig aus; in atlas.json mit der Option "prefixes" einschalten. Bestehende Zyklen stehen unter "known" als schrumpfende Liste: Ein Zyklus innerhalb eines Eintrags bleibt still. Tools/Check-PackageDependencies.ps1 prüft dasselbe und meldet zusätzlich Einträge, die nicht mehr stimmen. Testunits prüft die Regel nicht.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Core"; das Feature ist das nächste Namenssegment. Ohne Angabe meldet die Regel nichts. |
+| `known` | string-list | `[]` | Bekannte Zyklen "Präfix: Feature, Feature"; schrumpft mit der Zeit. |
+| `directions` | string-list | `[]` | Richtungen "Präfix: A < B < C" (B und C dürfen A verwenden, nicht umgekehrt) und "Präfix: A | B" (keine Kante zwischen A und B). |
+| `knownEdges` | string-list | `[]` | Bekannte Kanten gegen eine Richtung "Quelle -> Ziel" (Unit-Namen); schrumpft mit der Zeit. |
+
+Mit Treffer:
+
+```pascal
+unit Atlas.Core.Lsp.Session;
+interface
+uses Atlas.Core.Hover.Contract; // Atlas.Core.Hover.View uses Atlas.Core.Lsp.Contract
+```
+
+Richtig:
+
+```pascal
+unit Atlas.Core.Lsp.Session;
+interface
+uses Atlas.Core.Lsp.Contract; // Hover registers itself through a contract of Lsp
 ```
 
 <a id="forbidden-symbol"></a>

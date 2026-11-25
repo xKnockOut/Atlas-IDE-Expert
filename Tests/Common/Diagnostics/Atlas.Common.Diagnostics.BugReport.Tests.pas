@@ -35,6 +35,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.RecentSink,
+  Atlas.Common.Diagnostics.Contract,
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Diagnostics.BugReport;

@@ -59,7 +59,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;

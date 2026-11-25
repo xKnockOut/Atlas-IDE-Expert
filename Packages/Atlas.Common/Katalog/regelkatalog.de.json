@@ -90,6 +90,26 @@
           "description": "Hosted-Features der Anwendung: erstes Namenssegment ohne Präfix; sie importieren nur Foundation und Platform-Features, nie einander."
         },
         {
+          "name": "domainPackages",
+          "description": "Fachcode-Packages des Plugins (Base und die Module); ihre Units heißen <Package>.<Host-Rolle>.* oder <Package>.<Feature>.<Rolle>.* und folgen Host- und Hosted-Feature-Matrix."
+        },
+        {
+          "name": "basePackage",
+          "description": "Fachcode-Package, das für jedes andere Fachcode-Package zum Host zählt; Hosted-Features eines Moduls sehen nur seine Foundation."
+        },
+        {
+          "name": "layerPrefixes",
+          "description": "Präfixe der alten Schichtnamen (z. B. \"Atlas.Core\", \"Atlas.UI\", \"Atlas.IDE\") für Packages in \"layerPackages\"."
+        },
+        {
+          "name": "layerPackages",
+          "description": "Fachcode-Packages, die noch nach ihrer Schicht heißen; für sie gilt die alte Schichtregel."
+        },
+        {
+          "name": "frameworks",
+          "description": "Framework-Units als Name oder Namensanfang vor einem Punkt (z. B. \"Vcl\", \"ToolsAPI\"); nur Hosting und Host-Rollen binden sie ein."
+        },
+        {
           "name": "allow",
           "description": "Genehmigte Ausnahmen \"Quelle -> Ziel\" (beide Globs)."
         }
@@ -105,8 +125,49 @@
           "description": "Präfixe der Ausgabeartefakte, z. B. \"Atlas.Common\"."
         },
         {
+          "name": "domainPackages",
+          "description": "Fachcode-Packages des Plugins (Base und die Module); ihre Units heißen <Package>.<Host-Rolle>.* oder <Package>.<Feature>.<Rolle>.* und folgen Host- und Hosted-Feature-Matrix."
+        },
+        {
+          "name": "basePackage",
+          "description": "Fachcode-Package, das für jedes andere Fachcode-Package zum Host zählt; Hosted-Features eines Moduls sehen nur seine Foundation."
+        },
+        {
+          "name": "layerPrefixes",
+          "description": "Präfixe der alten Schichtnamen (z. B. \"Atlas.Core\", \"Atlas.UI\", \"Atlas.IDE\") für Packages in \"layerPackages\"."
+        },
+        {
+          "name": "layerPackages",
+          "description": "Fachcode-Packages, die noch nach ihrer Schicht heißen; für sie gilt die alte Schichtregel."
+        },
+        {
           "name": "allow",
           "description": "Genehmigte Ausnahmen \"Unit.Typ\" als Glob."
+        }
+      ]
+    },
+    {
+      "id": "architecture-feature-cycle",
+      "name": "Zyklus zwischen Features",
+      "description": "Ein uses-Eintrag schließt einen Zyklus zwischen Features desselben Ausgabeartefakts (Atlas.Core.Lsp verwendet Atlas.Core.Hover, das wieder Atlas.Core.Lsp verwendet) oder läuft gegen eine Richtung aus \"directions\". Es zählt jeder uses-Eintrag, interface und implementation, auch auf Contract-Units. Standardmäßig aus; in atlas.json mit der Option \"prefixes\" einschalten. Bestehende Zyklen stehen unter \"known\" als schrumpfende Liste: Ein Zyklus innerhalb eines Eintrags bleibt still. Tools/Check-PackageDependencies.ps1 prüft dasselbe und meldet zusätzlich Einträge, die nicht mehr stimmen. Testunits prüft die Regel nicht.",
+      "bad": "unit Atlas.Core.Lsp.Session;\ninterface\nuses Atlas.Core.Hover.Contract; // Atlas.Core.Hover.View verwendet Atlas.Core.Lsp.Contract",
+      "good": "unit Atlas.Core.Lsp.Session;\ninterface\nuses Atlas.Core.Lsp.Contract; // Hover meldet sich über einen Vertrag von Lsp an",
+      "options": [
+        {
+          "name": "prefixes",
+          "description": "Präfixe der Ausgabeartefakte, z. B. \"Atlas.Core\"; das Feature ist das nächste Namenssegment. Ohne Angabe meldet die Regel nichts."
+        },
+        {
+          "name": "known",
+          "description": "Bekannte Zyklen \"Präfix: Feature, Feature\"; schrumpft mit der Zeit."
+        },
+        {
+          "name": "directions",
+          "description": "Richtungen \"Präfix: A < B < C\" (B und C dürfen A verwenden, nicht umgekehrt) und \"Präfix: A | B\" (keine Kante zwischen A und B)."
+        },
+        {
+          "name": "knownEdges",
+          "description": "Bekannte Kanten gegen eine Richtung \"Quelle -> Ziel\" (Unit-Namen); schrumpft mit der Zeit."
         }
       ]
     },

@@ -127,7 +127,7 @@ uses
   Core.Workspace.RuleProjects,
   Atlas.Text.LogMarks,
   Atlas.Common.Localization.Texts,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -349,7 +349,7 @@ begin
   begin
     AJob := Default(TCoreCompileJob);
     AJob.Settings := FConfiguration.Settings.Compiler;
-    AError := TCoreTexts.NoProject;
+    AError := TRequestTexts.NoProject;
     Exit;
   end;
   Result := TCoreWorkspaceJobs.CompileJobOf(mProject, FState.Install, FConfiguration.Settings.Compiler, AJob,

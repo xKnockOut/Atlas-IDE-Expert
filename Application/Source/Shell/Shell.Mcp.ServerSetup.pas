@@ -155,13 +155,13 @@ var
   mContext: TMcpToolContext;
 begin
   mContext := AServices.ToolContext(AServer);
-  TMcpRefactorSources.Attach(mContext, ALogger);
+  TMcpRefactorSources.Attach(mContext, AServices.Group, ALogger);
   RegisterContextTools(mContext);
   TMcpBatchTool.Register(AServer, BatchLimitsOf(AServices.Workspace));
   AServer.Restricted := ARestricted;
   AServer.OnDisabledTools := DisabledToolsOf(AServices.Workspace);
   AServer.OnAudit := ServerAuditOf(ALogger);
-  TMcpConventions.Register(AServer, AServices.Workspace, mContext.Adapters.Conventions);
+  TMcpConventions.Register(AServer, AServices.McpWorkspace, mContext.Adapters.Conventions);
   AServer.OnBeforeToolCall := BeforeToolCallOf(AServices, ALogger);
 end;
 
@@ -188,8 +188,8 @@ begin
   Result := TMcpPrompts.Create(AServer, PromptSettingsOf(AServices.Workspace));
   Result.ReadText := ReadSourceText;
   Result.ResolveFile := ResolveFileOf(AServices.Guard);
-  Result.ResolveUnit := UnitFileOf(AServices.Index, AServices.Group, AServices.Guard);
-  Result.Changes := ChangesOf(TMcpServices.GroupAdapters(AServices.Group), AServices.Group, AServices.Root);
+  Result.ResolveUnit := UnitFileOf(AServices.Index, AServices.McpWorkspace, AServices.Guard);
+  Result.Changes := ChangesOf(TMcpServices.GroupAdapters(AServices.Group), AServices.McpWorkspace, AServices.Root);
   Result.Register;
 end;
 

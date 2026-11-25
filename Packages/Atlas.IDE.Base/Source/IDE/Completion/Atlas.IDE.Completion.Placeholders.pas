@@ -106,7 +106,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Editor.Pairs,
+  Atlas.Text.Columns,
   Atlas.Core.Editor.PlaceholderPlan,
   Atlas.Plugin.Editor.TextOffsets,
   Atlas.ToolsApi.Editor.Buffer,
@@ -546,12 +546,12 @@ type
 
 function TPlaceholderPaint.Matches: Boolean;
 begin
-  Result := TAtlasPairs.SameDisplayLine(Context.LineState.Text, Text, TabWidth);
+  Result := TTextColumns.SameDisplayLine(Context.LineState.Text, Text, TabWidth);
 end;
 
 function TPlaceholderPaint.Pixel(ACharacter: Integer): Integer;
 begin
-  Result := Context.EditorState.GetCharacterPosPx(TAtlasPairs.DisplayColumn(Text, ACharacter, TabWidth),
+  Result := Context.EditorState.GetCharacterPosPx(TTextColumns.DisplayColumn(Text, ACharacter, TabWidth),
     Context.EditorLineNum).Left;
 end;
 

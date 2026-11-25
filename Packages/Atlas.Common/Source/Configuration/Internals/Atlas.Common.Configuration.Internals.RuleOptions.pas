@@ -120,14 +120,15 @@ const
     'checkReturns', 'checkFree', 'allowFirstElement', 'implementation', 'managedFields', 'frameworkMembers',
     'ignoreStrictPrivate', 'allowExceptionUse');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  cStringListRuleOptions: array[0..49] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  cStringListRuleOptions: array[0..56] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
     'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'allowTypes',
     'formatMethods', 'unitKinds', 'keep', 'pureFunctions', 'factories',
     'registrationCalls', 'prefixes', 'hostRoles', 'hostedFeatures', 'deferredApis', 'patterns', 'ignoreCalls', 'guards',
-    'interfaces', 'workCalls', 'workClasses', 'entries', 'reporters');
+    'interfaces', 'workCalls', 'workClasses', 'entries', 'reporters', 'domainPackages', 'layerPrefixes',
+    'layerPackages', 'frameworks', 'known', 'directions', 'knownEdges');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   cDeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>
@@ -136,8 +137,8 @@ const
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   cNumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
-  cStringRuleOptions: array[0..11] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
-    'defaultEncoding', 'scope', 'local', 'field', 'parameter', 'constant', 'placement');
+  cStringRuleOptions: array[0..12] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
+    'defaultEncoding', 'scope', 'local', 'field', 'parameter', 'constant', 'placement', 'basePackage');
   /// <summary>Kodierungen der Korrektur von load-without-encoding (#1061).</summary>
   cLoadEncodings: array[0..6] of string = ('UTF8', 'Unicode', 'BigEndianUnicode', 'ANSI', 'ASCII', 'UTF7',
     'Default');

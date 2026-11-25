@@ -22,6 +22,9 @@
 // Ende der Verbindung: CloseInfo nennt die zuletzt gesendete
 // Anfrage, die beim Ende noch offenen und, wenn der Transport sie über
 // CloseWith mitgibt, Exit-Code, Laufzeit und Zeilen auf stderr des Servers.
+// Fehlerantworten: Abbruch, veralteter Stand und abgelehnte Anfrage (-32800 bis -32803) sind Antworten wie andere
+// und kommen als ELspCancelledError bzw. ELspRefusedError; jede andere ist ein Fehler im Server und kommt als
+// ELspResponseError mit Code. Eine beendete Verbindung bleibt ELspClientError.
 
 interface
 
@@ -48,8 +51,18 @@ type
   ELspClientError = Atlas.Plugin.Lsp.Framing.ELspClientError;
   /// <summary>Keine Antwort innerhalb des Zeitlimits.</summary>
   ELspTimeoutError = class(ELspClientError);
-  /// <summary>Der Aufrufer hat die Anfrage abgebrochen.</summary>
+  /// <summary>Der Aufrufer oder der Server hat die Anfrage abgebrochen, oder ihr Stand ist veraltet.</summary>
   ELspCancelledError = class(ELspClientError);
+  /// <summary>Der Server lehnt die Anfrage begründet ab (RequestFailed); die Meldung nennt den Grund.</summary>
+  ELspRefusedError = class(ELspClientError);
+  /// <summary>Fehlerantwort des Servers, die auf einen Fehler im Server deutet (etwa InternalError).</summary>
+  ELspResponseError = class(ELspClientError)
+  private
+    FCode: Integer;
+  public
+    constructor CreateCode(const AMessage: string; ACode: Integer);
+    property Code: Integer read FCode;
+  end;
 
   /// <summary>Ringpuffer der Antwortzeiten der letzten Samples Anfragen (#591); nicht threadsicher, TLspClient
   /// sperrt.</summary>
@@ -77,6 +90,10 @@ type
       Done: TEvent;
       Result: TJSONValue;
       Error: string;
+      /// <summary>Error stammt aus einer Fehlerantwort (sonst: Verbindung beendet); ErrorCode deren Code.
+      /// </summary>
+      Answered: Boolean;
+      ErrorCode: Integer;
       constructor Create;
       destructor Destroy; override;
     end;
@@ -187,6 +204,11 @@ type
 {$SCOPEDENUMS OFF}
 
 const
+  // Fehlercodes nach LSP, die eine Antwort und keinen Fehler im Server bedeuten.
+  cLspRequestCancelled = -32800;
+  cLspContentModified = -32801;
+  cLspServerCancelled = -32802;
+  cLspRequestFailed = -32803;
   cTexts: array[TAtlasLanguage, TClientText] of string = (
     ('Fehlerantwort des Servers',
      'Verbindung zum Server ist beendet',
@@ -221,6 +243,8 @@ type
     function WaitSliced: TWaitResult;
     function Wait: TWaitResult;
     procedure Check(AWait: TWaitResult; AElapsedMs: Int64);
+    /// <summary>Fehler aus FPending als passende Ausnahme (siehe Kopf der Unit).</summary>
+    procedure RaiseError;
   public
     constructor Create(AClient: TLspClient; const AMethod: string; ATimeoutMs: Cardinal;
       const ACancelled: TFunc<Boolean>);
@@ -338,6 +362,8 @@ begin
     if mErrorValue is TJSONObject then
     begin
       mPending.Error := TJSONObject(mErrorValue).GetValue<string>('message', UiText(TClientText.ErrorResponseFromTheServer));
+      mPending.Answered := True;
+      mPending.ErrorCode := TJSONObject(mErrorValue).GetValue<Integer>('code', 0);
     end
     else if (mResultValue <> nil) and not (mResultValue is TJSONNull) then
     begin
@@ -477,10 +503,33 @@ begin
   end;
   if FPending.Error <> '' then
   begin
-    raise ELspClientError.Create(FPending.Error);
+    RaiseError;
   end;
   Result := FPending.Result;
   FPending.Result := nil;
+end;
+
+procedure TLspRequestRun.RaiseError;
+begin
+  if not FPending.Answered then
+  begin
+    raise ELspClientError.Create(FPending.Error);
+  end;
+  case FPending.ErrorCode of
+    cLspRequestCancelled, cLspContentModified, cLspServerCancelled:
+      raise ELspCancelledError.Create(FPending.Error);
+    cLspRequestFailed:
+      raise ELspRefusedError.Create(FPending.Error);
+  end;
+  raise ELspResponseError.CreateCode(FPending.Error, FPending.ErrorCode);
+end;
+
+{ ELspResponseError }
+
+constructor ELspResponseError.CreateCode(const AMessage: string; ACode: Integer);
+begin
+  inherited Create(AMessage);
+  FCode := ACode;
 end;
 
 { TLspClient.TPending }

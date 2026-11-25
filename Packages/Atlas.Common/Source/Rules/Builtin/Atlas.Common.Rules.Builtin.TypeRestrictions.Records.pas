@@ -63,7 +63,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Inheritance,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
   Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols,
   Atlas.Common.Localization.Texts,

@@ -64,14 +64,39 @@ Bedingungen für den späteren Umzug nach `Application/Source/Features/<Feature>
 läuft in der CI, und der Umzug geschieht
 lokal mit Compiler als rein mechanischer Commit je Feature (zuerst Namenspräfix, dann `git mv`).
 
-Featurerichtung zwischen den Fach-Features:
+Featurerichtung zwischen den Fach-Features: `Lsp`, `Rules`, `Editing` und `Mcp` werden Hosted-Features und
+verwenden einander nie (`Atlas.Common: Lsp | Rules | Editing | Mcp`). `Semantics` bleibt Platform-Feature in
+`Atlas.Common`; Platform-Features verwenden nie ein Hosted-Feature (`Atlas.Common: Semantics < Lsp` usw.), Hosted-
+Features dürfen `Semantics` verwenden. Was zwei Hosted-Features teilen, liegt in einem Platform-Feature (`Pascal`,
+`Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das der Host verbindet.
 
-| Von | Nach | Erlaubt | Grund |
+Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
+`atlas.json` (Stand des Umbaus: 128 Kanten, kein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
+
+| Von | Nach | Erlaubt | Stand |
 |---|---|---|---|
-| `Rules` | `Editing` | ja | Korrekturen nutzen Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen) |
-| `Editing` | `Rules` | nein | gemeinsame Wertetypen liegen tiefer: `TTextEdit` in `Documents.Contract` (`TRuleEdit` ist ein Alias), `TDeclaredTypes` in `Pascal.DeclaredTypes`, `IsTestUnit` in `Pascal.UsesClauses`; die Brücke Treffer → Code-Aktionen ist `Rules.CodeActions` |
+| `Lsp` | `Rules`, `Editing` | nein | heute die meisten Kanten: Der Server ruft Prüfregeln und Refactorings direkt |
+| `Mcp` | `Lsp`, `Editing` | nein | MCP-Werkzeuge nutzen heute dieselben Dienste wie die LSP-Methoden |
+| `Rules` | `Editing` | nein | Korrekturen nutzen heute Editing-Helfer (uses-Listen, Klassenvervollständigung, Code-Aktionen) |
+| `Editing`, `Rules` | ein Hosted-Feature weiter oben | nein | schon heute ohne Kante: gemeinsame Wertetypen liegen tiefer (`TTextEdit` in `Documents.Contract`, `TDeclaredTypes` in `Pascal.DeclaredTypes`), Links ins Wiki im Index (`Index.DocWiki`), die Unit-Suche bei den Regeln (`Rules.Providers.UnitLookup`) |
+| `Lsp`, `Rules`, `Editing`, `Mcp` | `Semantics` | ja | Namensauflösung und Datenfluss sind Platform |
+| `Semantics` | `Lsp`, `Rules`, `Editing`, `Mcp` | nein | ohne Kante |
 
-`Tools/Check-PackageDependencies.ps1` meldet jede Unit unter `Source/Editing`, die `Atlas.Common.Rules.*` verwendet.
+### Keine Zyklen zwischen Features
+
+Features desselben Ausgabeartefakts (`Atlas.Core.Lsp`, `Atlas.Core.Hover` …) bilden keinen Zyklus. Gezählt wird
+jeder uses-Eintrag, interface und implementation, auch auf Contract-Units: Ein Contract, der einen anderen Contract
+verwendet, bindet sein Feature ebenso an. Tests, Werkzeuge und Vorlagen zählen nicht.
+
+- `Tools/Check-FeatureCycles.ps1` prüft das ganze Repository, die Regel `architecture-feature-cycle` meldet im Editor
+  den uses-Eintrag, der einen Zyklus schließt oder gegen eine Richtung läuft. Beide lesen die Optionen der Regel aus
+  `atlas.json` und prüfen die Fallliste `Tests/Data/Architecture/feature-cycles.json`.
+- Richtungen stehen unter `directions`: `Präfix: A < B < C` (B und C dürfen A verwenden, nicht umgekehrt) und
+  `Präfix: A | B` (keine Kante zwischen A und B).
+- Bestehende Zyklen stehen unter `known`, Kanten gegen eine Richtung unter `knownEdges`. Beide Listen schrumpfen
+  nur: Ein Eintrag, der nicht mehr genau stimmt, ist ein Fehler und wird gekürzt.
+- Zyklus auflösen: die gemeinsamen Typen in das untere Feature verschieben (oft ein Contract), eine Unit in das
+  Feature verschieben, zu dem sie gehört, oder die Abhängigkeit über einen Haken umdrehen, den die Komposition setzt.
 
 ## Verzeichnisstruktur
 
@@ -130,11 +155,11 @@ Die Anwendung und das Testprojekt binden die Packages statisch ein: Sie finden d
 Ausgabeartefakt.Feature.Rolle.Sache
 ```
 
-- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Text`, `Atlas.WinBase`, `Atlas.Common`, `Atlas.Windows`, `Atlas.Linux`, `Atlas.Plugin`, `Atlas.Vcl`, `Atlas.ToolsApi`, `Atlas.VersionControl`, `Atlas.IDE.Base`
+- Präfixe der Ausgabeartefakte (Whitelist): `Atlas.Text`, `Atlas.WinBase`, `Atlas.Common`, `Atlas.Windows`, `Atlas.Linux`, `Atlas.Plugin`, `Atlas.Vcl`, `Atlas.ToolsApi`, `Atlas.VersionControl`, `Atlas.IDE.Base` und die Modul-Packages `Atlas.IDE.<Modul>` (Fachcode-Packages); das längste passende Präfix gilt
 - `Atlas.Text`-Units heißen `Atlas.Text.<Feature>` (Feature-Wurzel ohne Rolle, z. B. `Atlas.Text.Lines`); sie enthalten nur reine Funktionen und Records ohne Zustand, ohne `inline` und ohne Standardparameter, keine Contracts oder Provider
 - Units der Anwendung tragen kein Präfix, z. B. `Shell.Application`
 - Units im Wurzelverzeichnis eines Features tragen keinen Rollenbezeichner, z. B. `Atlas.Common.Product.Version`
-- Ausnahme Plugin (#406): Die Units von `Atlas.IDE.Base` heißen nach ihrer Schicht `Atlas.Core.*` (Datenmodell, Matching, LSP-Client; ohne VCL und Open Tools API), `Atlas.UI.*` (Fenster; nur VCL) und `Atlas.IDE.*` (Open Tools API, Tastaturbindung, Einstellungen), darunter `Feature.Rolle.Sache`. `Core` und `UI` verwenden nie `Atlas.IDE.*` außer der Foundation von Base (`Atlas.IDE.Base.Foundation.*`, nach Konzept 8.1 sichtbar für jedes Feature von Base), `Core` nie `Atlas.UI.*`; geprüft durch `Tools/Check-PackageDependencies.ps1`. Was schon nach seiner Host-Rolle heißt (`Atlas.IDE.Base.Foundation.*`, `Atlas.IDE.Base.Core.*`), trägt keinen Schichtnamen. So lassen sich `Core` und `UI` später ohne Codeänderung in ein Runtime-Package auslagern.
+- Ausnahme Plugin (#406): Die Units von `Atlas.IDE.Base` heißen nach ihrer Schicht `Atlas.Core.*` (Datenmodell, Matching, LSP-Client; ohne VCL und Open Tools API), `Atlas.UI.*` (Fenster; nur VCL) und `Atlas.IDE.*` (Open Tools API, Tastaturbindung, Einstellungen), darunter `Feature.Rolle.Sache`. `Core` und `UI` verwenden nie `Atlas.IDE.*` außer der Foundation von Base (`Atlas.IDE.Base.Foundation.*`, nach Konzept 8.1 sichtbar für jedes Feature von Base), `Core` nie `Atlas.UI.*`; geprüft durch `Tools/Check-PackageDependencies.ps1`. Was schon nach seiner Host-Rolle heißt (`Atlas.IDE.Base.Foundation.*`, `Atlas.IDE.Base.Core.*`), trägt keinen Schichtnamen. So lassen sich `Core` und `UI` später ohne Codeänderung in ein Runtime-Package auslagern. Die Ausnahme gilt je Package, solange es in `layerPackages` steht (siehe [Fachcode-Packages des Plugins](#fachcode-packages-des-plugins)); danach heißen seine Units `<Package>.<Host-Rolle>.*` oder `<Package>.<Feature>.<Rolle>.*`.
 - Rollenbezeichner sind reserviert: `Contract`, `Providers`, `Adapters`, `Internals`, `Hosting`, `Composition` (Features) sowie `Foundation`, `Core`, `Shell`, `Adapters`, `Platform` (Host)
 
 ## Importregeln
@@ -165,6 +190,18 @@ Ein Platform-Feature importiert nie eine Host-Unit und kein Hosted-Feature.
 
 Hosted-Features der Anwendung heißen `Feature.Rolle.Sache` ohne Präfix und liegen unter `Application/Source/Features/<Feature>/`; ihr erstes Namenssegment steht in der Liste `hostedFeatures` (`atlas.json`, Regel `architecture-role-import`) und in `$HostedFeatures` von `Tools/Check-PackageDependencies.ps1`. Innerhalb des Features gilt die Matrix oben. Nach außen importiert ein Hosted-Feature nur `Foundation.*` sowie Contract und Root von Platform-Features (der Contract nur Contracts), nie Core, Platform, Adapters oder Shell des Hosts und nie ein anderes Hosted-Feature. Vom Host aus importiert es nur die Shell (alles außer Internals); Host-Adapters sehen nur seinen Contract und implementieren seine Sub-Contracts.
 
+### Fachcode-Packages des Plugins
+
+`Atlas.IDE.Base` und die Modul-Packages (`Atlas.IDE.<Modul>`) sind Fachcode-Packages: Jedes ist ein eigener Host mit Hosted-Features. Ihre Units heißen `<Package>.<Host-Rolle>.*` (`Foundation`, `Core`, `Shell`, `Adapters`, `Platform`) oder `<Package>.<Feature>.<Rolle>.*`.
+
+- **Host-Rollen** folgen der Host-Matrix oben, bezogen auf das eigene Package: `Atlas.IDE.Tracker.Core.X` darf `Atlas.IDE.Tracker.Foundation.*` einbinden, aber nicht `Atlas.IDE.Tracker.Shell.*`.
+- **Hosted-Features** folgen der Hosted-Feature-Matrix: Innerhalb des Features gilt die Feature-Matrix; nach außen nur `Foundation` des eigenen Packages sowie Contract und Root von Platform-Features. Hosted-Features eines Packages importieren sich nie gegenseitig, auch nicht den Contract. `Hosting` importiert nur `Foundation`, eigenes Contract und Hosting sowie Contract und Root von Platform-Features.
+- **Modul → Base:** Für ein Modul zählt `Atlas.IDE.Base` zum Host. Die Host-Rollen des Moduls sehen die Host-Rollen von Base nach der Host-Matrix (Shell alle, Core nur `Foundation`, `Core` und `Platform` usw.), die Hosted-Features des Moduls nur `Atlas.IDE.Base.Foundation.*`. Hosted-Features von Base sieht ein Modul nie; Verträge zwischen Modulen gehören deshalb nach `Atlas.IDE.Base.Foundation`.
+- **Fremde Packages:** Ein Fachcode-Package importiert nie ein anderes Modul-Package, und Base importiert kein Modul.
+- **Frameworks:** VCL, Open Tools API und die Designer-Units (`frameworks`) binden nur `Hosting`, die Host-Rollen eines Fachcode-Packages, die Platform-Packages `Atlas.Vcl` und `Atlas.ToolsApi` und der Host der Anwendung ein; sonst ist es ein Verstoß, gleich in welcher Rolle.
+
+Übergang: `layerPackages` nennt die Packages, deren Units noch nach der Schicht heißen (`Atlas.Core.*`, `Atlas.UI.*`, `Atlas.IDE.*`, siehe Ausnahme Plugin unter [Benennung](#benennung)); anfangs alle. Für sie gilt weiter die alte Schichtregel, auch für Ziele in einem solchen Package. Wer ein Package umgestellt hat, streicht es aus der Liste: Dann gelten die Regeln oben, Units mit Schichtnamen in seinem Ordner sind ein Fehler, und Units mit seinem Namen brauchen keine Zeile in `Tools/UnitAssignment.tsv` mehr. Aus einem umgestellten Package gesehen ist eine Unit mit Schichtnamen ein Hosted-Feature von Base. Ein Name mit dem Präfix eines Packages aus `layerPackages` ist ebenfalls ein Schichtname, nie eine Unit dieses Packages: Base hat Units `Atlas.IDE.Editor.*` (Schicht IDE, Feature Editor), bevor es das Modul `Atlas.IDE.Editor` gibt. Ausgenommen ist nur `basePackage` als Ziel, weil Base seine `Foundation` (Verträge zwischen Modulen) vor der eigenen Umstellung bekommt. Ein geplantes Modul ohne Ordner darf in `domainPackages` stehen, solange es in `layerPackages` steht.
+
 #### Verschachtelung
 
 Ein Provider oder Adapter kann eigene Bedürfnisse haben (eigener Contract, Internals, Providers). Sie liegen bei ihm, nicht beim Feature: Ein zweiter Rollenbezeichner im Namen eröffnet eine Verschachtelung, das Fragment davor ist ihr Träger. Unter `Atlas.Common.Server.Providers.Authentication.` sind `Cache` der Träger (Root der Struktur mit den Eigenschaften von Providers), `Cache.Store` ein weiteres Root-Fragment, `Cache.Contract` der Sub-Contract und `Cache.Internals.*` die Internals der Struktur.
@@ -180,6 +217,7 @@ Die Matrix wird zweimal umgesetzt und gegen dieselbe Fallliste `Tests/Data/Archi
 
 - `Tools/Check-PackageDependencies.ps1` (CI, ohne Delphi) prüft alle Units unter `Packages/` und `Application/`; `-SelfTest` prüft nur die Fallliste.
 - Die Prüfregeln `architecture-role-import` und `architecture-contract-content` (`Atlas.Common.Rules.Builtin.Architecture`, `TArchitectureMatrix`) zeigen Verstöße im Editor und in der Selbstprüfung des Servers. Sie sind experimentell und ohne `prefixes` stumm.
+- Für die Fachcode-Packages tragen beide Regeln dieselben Optionen (das Skript prüft die Gleichheit): `domainPackages` (Base und alle Modul-Packages, gleich den Ordnern unter `Packages/Atlas.IDE.*`), `basePackage` (`Atlas.IDE.Base`), `layerPrefixes` (`Atlas.Core`, `Atlas.UI`, `Atlas.IDE`), `layerPackages` (Teilmenge von `domainPackages`) und `frameworks` (Namen oder Namensanfänge vor einem Punkt, z. B. `Vcl`, `ToolsAPI`, `DesignIntf`). Die Fallliste deckt jede Zelle von Host- und Hosted-Feature-Matrix in einem Fachcode-Package sowie Modul → Base ab.
 
 Eingeordnet wird nach `Ausgabeartefakt.Feature.Rolle.Sache`: längstes passendes Präfix, dann Feature, dann der erste Rollenbezeichner an beliebiger Stelle danach oder Root (`Atlas.Common.Lsp.Hover.Contract` ist ein Contract von `Lsp`); jeder weitere Rollenbezeichner eröffnet eine [Verschachtelung](#verschachtelung). Units ohne Präfix mit einer Host-Rolle als erstem Segment gehören zum Host; alles andere (RTL, VCL, `Setup.*`, Tests) wird nicht geprüft. Contract-Units, auch Sub-Contracts, dürfen im interface keine Klassen deklarieren und kein Framework (VCL, FMX, Windows-API, Open Tools API) einbinden, außer genehmigten Ausnahmen. Gemeinsame Typen mehrerer Units eines Features, die kein Vertrag nach außen sind, heißen `…<Sache>.Types` (Root), nicht `…<Sache>.Contract`.
 
@@ -332,11 +370,12 @@ Das Plugin nutzt `Atlas.Common` nicht; es spricht mit dem Server nur über LSP.
 ### Struktur der IDE-Schicht
 
 - **Grundbausteine `Atlas.IDE.Foundation.*`** (`Source/IDE/Foundation/`): Einstellungen, Editorstand, Tastenbelegung, Ergebnisfenster, Rinne, gezeichnete Elemente (#628), Strukturhervorhebung, Projekte der IDE, Navigation. Was nur die Open Tools API kapselt (Editorpuffer, Editorstil, Tastenhaken, Atlas-Symbol, Andockfenster, Editorleisten, Dateien der IDE), liegt im Platform-Package `Atlas.ToolsApi`. Sie verwenden aus der IDE-Schicht nur andere Grundbausteine und sind die Basis aller IDE-Features; ein Feature verwendet sie wie einen Contract.
-- **Keine Zyklen zwischen Features:** Die Features von `Atlas.Core` und `Atlas.IDE` hängen nur in einer Richtung voneinander ab. Gezählt wird über die uses aller Units, ohne Grundbausteine, ohne die Kompositionswurzel und ohne Verweise auf `*.Contract` (Contracts verwenden nur Contracts und schließen darum keinen Zyklus). Wo ein Feature ein anderes aufrufen muss, das schon von ihm abhängt, setzt die Kompositionswurzel einen Haken (z. B. `TAtlasEditorTestUnitLens.OnSwitchTestUnit`, `TAtlasOptionsHooks`) oder reicht eine Schnittstelle (`IAtlasCommandRegistry`) durch.
+- **Keine Zyklen zwischen Features:** Die Features von `Atlas.Core` und `Atlas.IDE` hängen nur in einer Richtung voneinander ab, gezählt über alle uses, auch auf Contracts (Abschnitt „Keine Zyklen zwischen Features“). Wo ein Feature ein anderes aufrufen muss, das schon von ihm abhängt, setzt die Kompositionswurzel einen Haken (z. B. `TAtlasEditorTestUnitLens.OnSwitchTestUnit`, `TAtlasOptionsHooks`) oder reicht eine Schnittstelle (`IAtlasCommandRegistry`) durch.
 - **Host-Rolle Core von Base `Atlas.IDE.Base.Core.*`** (`Source/Core/Modules/`): Registry der Module, Handschlag, Beiträge, Teile der Feature-Tabelle, bekannte Packages, Beobachter der Registry und späte Antworten (`…Core.Modules.*`), Modul-Host, Feature-Tabelle, abgesicherter Start und die Build-Pipeline über die Beiträge der Module (`…Core.ModuleHost`, `…ModuleHosting`, `…FeatureTable`, `…SafeMode`, `…BuildPipeline`). Features von Base sehen davon nichts (Konzept 8.1): Braucht ein Feature die Registry, reicht die Shell sie ihm (z. B. `TAtlasSettingsSectionsPart.UseRegistry` mit `TAtlasRegistrySubscribe`).
 - **Kompositionswurzel `Atlas.IDE.CodeInsight.Composition`:** Die Wurzel selbst hält nur `Register` und `Unregister` und legt die Reihenfolge fest; die Teile liegen in `Atlas.IDE.CodeInsight.Composition.<Teil>` (Adapters, Session, Status, Build, Tools, Background, Drawing, Palette …, Features, Settings, Services, Leftovers), die einander ohne Zyklus verwenden. Nur `.Adapters` erzeugt Providers, Adapters und Compositions der Core-Features (genehmigte Ausnahme oben). Die Teile des Plugins stehen in `.Features` in Startreihenfolge in einer `TAtlasFeatureTable` (`Atlas.IDE.Base.Core.FeatureTable`): je Teil die Stufe des abgesicherten Starts bzw. die Einstellung, unter der es läuft, Start und Stop. `RegisterFeatures` startet beim Laden und nach jeder Einstellungsänderung, was gewünscht ist und noch fehlt; `Unregister` baut rückwärts ab.
+- **Kompositionswurzel `Atlas.IDE.CodeInsight.Composition`:** Die Wurzel selbst hält nur `Register` und `Unregister` und legt die Reihenfolge fest; die Teile liegen in `Atlas.IDE.CodeInsight.Composition.<Teil>` (Adapters, Session, Status, Build, Tools, Background, Drawing, Palette …, Features, Settings, Services, Leftovers), die einander ohne Zyklus verwenden. Nur `.Adapters` erzeugt Providers, Adapters und Compositions der Core-Features (genehmigte Ausnahme oben). Die Teile des Plugins stehen in `.Features` in Startreihenfolge in einer `TAtlasFeatureTable` (`Atlas.Core.Diagnostics.FeatureTable`): je Teil die Stufe des abgesicherten Starts bzw. die Einstellung, unter der es läuft, Start und Stop. `RegisterFeatures` startet beim Laden und nach jeder Einstellungsänderung, was gewünscht ist und noch fehlt; `Unregister` baut rückwärts ab.
 - **Workspace-Edits:** `Atlas.Core.Editor.WorkspacePlan` (ohne Open Tools API, getestet) plant aus einem LSP-Workspace-Edit die Schritte je Datei (Puffer, Formular, Platte, Anlegen, Umbenennen, Löschen); `Atlas.IDE.Editor.WorkspaceEdit` führt den Plan in der IDE aus und protokolliert ihn als einen Satz im Änderungsprotokoll.
-- `Tools/Check-PackageDependencies.ps1` prüft beides: Grundbausteine ohne andere `Atlas.IDE.*`-Units und Feature-Zyklen (Tarjan) in `Atlas.Core` und `Atlas.IDE`.
+- `Tools/Check-PackageDependencies.ps1` prüft die Grundbausteine ohne andere `Atlas.IDE.*`-Units, `Tools/Check-FeatureCycles.ps1` die Feature-Zyklen.
 
 ### Module und Verträge des Plugins (ab 2.0)
 

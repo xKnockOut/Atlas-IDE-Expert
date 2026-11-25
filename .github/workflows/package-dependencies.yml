@@ -74,6 +74,12 @@ jobs:
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1
+      - name: "Feature-Zyklen: Selbsttest"
+        shell: pwsh
+        run: ./Tools/Check-FeatureCycles.ps1 -SelfTest
+      - name: Keine Zyklen zwischen Features, Richtungen eingehalten
+        shell: pwsh
+        run: ./Tools/Check-FeatureCycles.ps1
       - name: "Baselines: Selbsttest des Vergleichs je Kopie und der größeren Klassen"
         shell: pwsh
         run: ./Tools/Check-Baselines.ps1 -SelfTest

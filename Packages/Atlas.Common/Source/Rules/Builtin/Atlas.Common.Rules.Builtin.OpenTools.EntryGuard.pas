@@ -42,7 +42,7 @@ uses
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
+  Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
   Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute,
   Atlas.Common.Rules.Builtin.Flow.Shared,

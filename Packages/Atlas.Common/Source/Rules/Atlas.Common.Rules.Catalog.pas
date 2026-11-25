@@ -26,7 +26,8 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Configuration.Contract;
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Localization.Texts;
 
 type
   TRuleCategory = (Bug, Vulnerability, CodeSmell, SecurityHotspot);
@@ -127,6 +128,9 @@ type
     /// Overlay regelkatalog.de.json; einmal je Sprache gelesen; nicht freigeben. Für alles, was der Benutzer
     /// liest (Erklärung, Hover); Regel-Engine und SARIF bleiben bei Shared.</summary>
     class function Localized: TRuleCatalog; static;
+    /// <summary>Katalog in ALanguage: englisch Shared, deutsch mit dem Overlay; einmal je Sprache gelesen; nicht
+    /// freigeben.</summary>
+    class function InLanguage(ALanguage: TTextLanguage): TRuleCatalog; static;
   end;
 
 const
@@ -137,7 +141,6 @@ implementation
 uses
   System.JSON,
   System.SyncObjs,
-  Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Catalog.Data,
   Atlas.Text.Json;
 
@@ -804,7 +807,12 @@ end;
 
 class function TRuleCatalog.Localized: TRuleCatalog;
 begin
-  if TAtlasLocale.Language = TTextLanguage.English then
+  Result := InLanguage(TAtlasLocale.Language);
+end;
+
+class function TRuleCatalog.InLanguage(ALanguage: TTextLanguage): TRuleCatalog;
+begin
+  if ALanguage = TTextLanguage.English then
   begin
     Exit(Shared);
   end;

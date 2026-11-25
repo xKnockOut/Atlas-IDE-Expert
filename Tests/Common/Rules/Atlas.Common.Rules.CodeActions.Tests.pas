@@ -27,6 +27,21 @@ type
     procedure FixWithOtherFiles;
     [Test]
     procedure UnitRelationsFixRunsClientCommand;
+    [Test]
+    procedure SuppressLineInsertsCommentAbove;
+    [Test]
+    procedure SuppressLineExtendsExistingComment;
+    /// <summary>Zeilen auch bei CR allein getrennt (TTextLines.SplitLines).</summary>
+    [Test]
+    procedure SuppressLineInCrOnlyText;
+    [Test]
+    procedure SuppressFileAtTop;
+    [Test]
+    procedure UnusedSuppressionReportedWithRemoval;
+    [Test]
+    procedure UsedSuppressionNotReported;
+    [Test]
+    procedure SuppressionForUnknownRuleNotReported;
   end;
 
 implementation
@@ -34,9 +49,12 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Engine,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Rules.CodeActions;
+  Atlas.Common.Rules.CodeActions,
+  Atlas.Tests.RuleAssert;
 
 const
   cLB = #13#10;
@@ -172,6 +190,76 @@ begin
   Assert.AreEqual('Graph zeigen (Unit-Beziehungen)', mActions[0].Title);
   Assert.AreEqual(cShowUnitRelationsCommand, mActions[0].Command);
   Assert.AreEqual(0, Integer(Length(mActions[0].Edits)));
+end;
+
+procedure TRuleCodeActionTests.SuppressLineInsertsCommentAbove;
+var
+  mEdit: TRuleEdit;
+begin
+  mEdit := TRuleCodeActions.SuppressLine(cBody, 5, 'marker');
+  Assert.AreEqual(5, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(0, mEdit.Range.StartPos.Character);
+  Assert.AreEqual('  // lsp-ignore: marker' + cLB, mEdit.NewText);
+end;
+
+procedure TRuleCodeActionTests.SuppressLineExtendsExistingComment;
+var
+  mEdit: TRuleEdit;
+begin
+  mEdit := TRuleCodeActions.SuppressLine('begin' + cLB + '  // lsp-ignore: a' + cLB + '  X;' + cLB + 'end;', 2, 'b');
+  Assert.AreEqual(1, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), mEdit.Range.StartPos.Character);
+  Assert.AreEqual(', b', mEdit.NewText);
+end;
+
+procedure TRuleCodeActionTests.SuppressLineInCrOnlyText;
+var
+  mEdit: TRuleEdit;
+begin
+  mEdit := TRuleCodeActions.SuppressLine('begin'#13'  // lsp-ignore: a'#13'  X;'#13'end;', 2, 'b');
+  Assert.AreEqual(1, mEdit.Range.StartPos.Line);
+  Assert.AreEqual(Integer(Length('  // lsp-ignore: a')), mEdit.Range.StartPos.Character);
+  Assert.AreEqual(', b', mEdit.NewText);
+end;
+
+procedure TRuleCodeActionTests.SuppressFileAtTop;
+var
+  mEdit: TRuleEdit;
+begin
+  mEdit := TRuleCodeActions.SuppressFile('unit U;' + #10, 'marker');
+  Assert.AreEqual(0, mEdit.Range.StartPos.Line);
+  Assert.AreEqual('// lsp-ignore-file: marker' + #10, mEdit.NewText);
+end;
+
+procedure TRuleCodeActionTests.UnusedSuppressionReportedWithRemoval;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TMarkerRule.Create,
+    'unit U; interface implementation' + cLB + '  // lsp-ignore: marker' + cLB + 'var X: Integer;' + cLB + 'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(cUnusedSuppressionRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual(1, Integer(Length(mFindings[0].Fixes)));
+  // Eigene Zeile: Die ganze Zeile entfällt.
+  Assert.AreEqual(1, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Line);
+  Assert.AreEqual(0, mFindings[0].Fixes[0].Edits[0].Range.StartPos.Character);
+  Assert.AreEqual(2, mFindings[0].Fixes[0].Edits[0].Range.EndPos.Line);
+  // Ungenutzte Unterdrückungen zu entfernen ist sicher und läuft über source.fixAll (#182).
+  Assert.IsTrue(mFindings[0].Fixes[0].Safe);
+end;
+
+procedure TRuleCodeActionTests.UsedSuppressionNotReported;
+begin
+  TRuleAssert.Silent(TMarkerRule.Create,
+    'unit U; interface implementation' + cLB + '  // lsp-ignore: marker' + cLB + 'var Marker: Integer;' + cLB + 'end.');
+end;
+
+procedure TRuleCodeActionTests.SuppressionForUnknownRuleNotReported;
+begin
+  // Kennung einer Regel, die hier nicht lief: keine unused-suppression (unbekannte Kennungen siehe #41).
+  TRuleAssert.Silent(TMarkerRule.Create,
+    'unit U; interface implementation' + cLB + 'var X: Integer; // lsp-ignore: empty-except' + cLB + 'end.');
 end;
 
 initialization

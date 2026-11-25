@@ -11,15 +11,15 @@ uses
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.Service,
-  Core.Workspace,
+  Atlas.Common.Mcp.Contract.Workspace,
   Core.Mcp.Context;
 
 /// <summary>find_path über einen eigenen Uses-Graphen samt Bibliotheks-Units. In eigener Routine, damit die
 /// anonyme Methode nicht den Rahmen von Run einfängt (Leck unter Delphi).</summary>
 function FindPathOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
-  AWorkspace: TCoreWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
+  const AWorkspace: IMcpWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
 /// <summary>get_architecture über AArchitecture für den Ordner von AWorkspace.</summary>
-function ArchitectureOf(AWorkspace: TCoreWorkspace; AArchitecture: TArchitectureService;
+function ArchitectureOf(const AWorkspace: IMcpWorkspace; AArchitecture: TArchitectureService;
   const AAllFiles: TFunc<TArray<string>>; const ARoot: string): TMcpArchitectureFunc;
 /// <summary>Meldet get_architecture und find_path an.</summary>
 procedure RegisterArchitectureTools(const AContext: TMcpToolContext);
@@ -37,11 +37,11 @@ uses
   Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Comparison,
-  Atlas.Common.Architecture.SymbolPath,
+  Atlas.Common.Lsp.SymbolPath.Search,
   Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Localization.Texts,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -113,12 +113,12 @@ end;
 
 /// <summary>Anfrage für die Architekturübersicht des Ordners; AResolution > 0 gilt nur für diesen Aufruf (#1366).
 /// </summary>
-function ArchitectureRequestOf(AWorkspace: TCoreWorkspace; const AAllFiles: TFunc<TArray<string>>;
+function ArchitectureRequestOf(const AWorkspace: IMcpWorkspace; const AAllFiles: TFunc<TArray<string>>;
   const ARoot: string; AResolution: Double): TArchitectureRequest;
 var
   mSettings: TServerSettings;
 begin
-  mSettings := AWorkspace.Configuration.Settings;
+  mSettings := AWorkspace.Settings;
   if not mSettings.ArchitectureEnabled then
   begin
     raise EMcpToolError.Create(cTexts[TMcpArchitectureText.ArchitectureOff].Text);
@@ -130,11 +130,11 @@ begin
   end;
   Result.Title := ExtractFileName(ARoot);
   Result.Root := ARoot;
-  Result.Namespaces := AWorkspace.State.Namespaces;
+  Result.Namespaces := AWorkspace.Namespaces;
   // Projektgruppe (#648): die Dateien aller geladenen Projekte, sonst nur die des Hauptprojekts.
   if Result.Scope = 'project' then
   begin
-    Result.Files := AWorkspace.State.ProjectFiles;
+    Result.Files := AWorkspace.ProjectFiles;
   end
   else
   begin
@@ -142,7 +142,7 @@ begin
   end;
   if Length(Result.Files) = 0 then
   begin
-    raise EMcpToolError.Create(TCoreTexts.NoProject);
+    raise EMcpToolError.Create(TRequestTexts.NoProject);
   end;
   // Derselbe zuletzt berechnete Stand wie im LSP-Prozess (#1367).
   Result.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot, Result.ScopeKey);
@@ -169,7 +169,7 @@ end;
 
 /// <summary>Text der Architekturübersicht für get_architecture über AArchitecture; in eigener Routine, damit die
 /// anonyme Methode nicht den Rahmen von Run einfängt.</summary>
-function ArchitectureOf(AWorkspace: TCoreWorkspace; AArchitecture: TArchitectureService;
+function ArchitectureOf(const AWorkspace: IMcpWorkspace; AArchitecture: TArchitectureService;
   const AAllFiles: TFunc<TArray<string>>; const ARoot: string): TMcpArchitectureFunc;
 var
   mRoot: string;
@@ -185,7 +185,7 @@ begin
       mOverview := AArchitecture.Overview(ArchitectureRequestOf(AWorkspace, mAllFiles, mRoot, AResolution));
       if ACompareWith <> '' then
       begin
-        Result := ComparisonText(mOverview, ACompareWith, AWorkspace.Configuration.Settings.ArchitectureFailOn);
+        Result := ComparisonText(mOverview, ACompareWith, AWorkspace.Settings.ArchitectureFailOn);
       end
       else if AUnit <> '' then
       begin
@@ -221,7 +221,7 @@ end;
 /// <summary>find_path über einen eigenen Uses-Graphen samt Bibliotheks-Units. In eigener Routine, damit die
 /// anonyme Methode nicht den Rahmen von Run einfängt (Leck unter Delphi).</summary>
 function FindPathOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
-  AWorkspace: TCoreWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
+  const AWorkspace: IMcpWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
 begin
   Result :=
     function(const ARequest: TSymbolPathRequest): string
@@ -234,8 +234,8 @@ begin
     begin
       Request := ARequest;
       // Grenze requestTimeoutMs; Abbruch über notifications/cancelled des MCP-Clients.
-      Request.TimeoutMs := AWorkspace.Configuration.Settings.RequestTimeoutMs;
-      Namespaces := AWorkspace.State.Namespaces;
+      Request.TimeoutMs := AWorkspace.Settings.RequestTimeoutMs;
+      Namespaces := AWorkspace.Namespaces;
       if string.Join(',', AGraphs.Options.Namespaces) <> string.Join(',', Namespaces) then
       begin
         Options := AGraphs.Options;
@@ -262,7 +262,7 @@ var
 begin
   if not TArchitectureReport.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), mSection) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('section',
+    raise EMcpToolError.Create(TRequestTexts.Choice('section',
       ['overview', 'central', 'subsystems', 'cycles', 'crossLinks']));
   end;
   mResolution := 0;
