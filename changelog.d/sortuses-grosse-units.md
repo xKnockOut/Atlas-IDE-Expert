@@ -1,0 +1,2 @@
+### Behoben
+- `/sortuses` in großen Units (30.000 Zeilen und mehr): Der Befehl kam oft nicht an, weil der Server länger brauchte, als die IDE nach Enter wartet. Die Unit wird nicht mehr zweimal übersetzt, und die Namensauflösung prüft eine weitere Verwendung nur, solange sie am Ergebnis noch etwas ändert (bei 37.000 Zeilen 1,1 s statt 3,2 s). Davon profitieren auch `/cleanuses` und die Prüfung `unused-uses`.
