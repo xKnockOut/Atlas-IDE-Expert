@@ -100,7 +100,7 @@ Atlas.Common.Semantics.ConditionalExpression.Tests
 Atlas.Common.Editing.Conditions.Tests
 Atlas.Common.Editing.BoundaryCases.Tests
 Atlas.Common.Editing.CreateMethod.Tests
-Atlas.Common.Editing.DataFieldNames.Tests
+Atlas.Common.Dfm.DataFieldNames.Tests
 Atlas.Common.Editing.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests
 Atlas.Common.Pascal.DocComments.Tests
@@ -129,7 +129,7 @@ Atlas.Common.Editing.Inlining.Method.Tests
 Atlas.Common.Editing.Inlining.Syntax.Tests
 Atlas.Common.Editing.Inlining.Tests
 Atlas.Common.Editing.Inlining.Types.Tests
-Atlas.Common.Editing.InterfaceStubs.Tests
+Atlas.Common.Pascal.InterfaceStubs.Tests
 Atlas.Common.Editing.InvertBoolean.Tests
 Atlas.Common.Editing.MemberOrder.Tests
 Atlas.Common.Pascal.MemberTransfer.Tests

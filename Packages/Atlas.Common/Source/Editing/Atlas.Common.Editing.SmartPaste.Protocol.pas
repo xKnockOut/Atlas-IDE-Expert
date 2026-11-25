@@ -18,8 +18,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.SmartPaste;
+  Atlas.Common.Editing.SmartPaste,
+  Atlas.Common.Semantics.Contract;
 
 type
   TSmartPasteProtocol = class

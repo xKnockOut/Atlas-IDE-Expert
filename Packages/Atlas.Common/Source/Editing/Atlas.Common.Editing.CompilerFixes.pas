@@ -28,8 +28,8 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.Contract.CompilerFixes;
+  Atlas.Common.Editing.Contract.CompilerFixes,
+  Atlas.Common.Semantics.Contract;
 
 type
   TFixMessage = Atlas.Common.Editing.Contract.CompilerFixes.TFixMessage;

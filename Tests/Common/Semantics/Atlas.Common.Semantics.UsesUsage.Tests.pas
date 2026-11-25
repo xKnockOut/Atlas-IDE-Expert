@@ -65,10 +65,10 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Semantics.InlineCallees,
-  Atlas.Common.Semantics.UsesUsage;
+  Atlas.Common.Semantics.UsesUsage,
+  Atlas.Common.Semantics.Contract;
 
 const
   cListe = 'unit Liste;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10 +

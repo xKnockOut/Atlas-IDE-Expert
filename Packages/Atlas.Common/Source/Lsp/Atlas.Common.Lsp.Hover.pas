@@ -146,7 +146,7 @@ uses
   Atlas.Common.Lsp.Hover.Lookup,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Semantics.RequestCancellation,
-  Atlas.Common.Editing.DataFieldNames,
+  Atlas.Common.Dfm.DataFieldNames,
   Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.Hover.UnitContents,

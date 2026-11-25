@@ -77,7 +77,8 @@ uses
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
   Atlas.Text.Lines,
-  Atlas.Tests.SourceText;
+  Atlas.Tests.SourceText,
+  Atlas.Common.Semantics.Contract;
 
 type
   TFakeHost = class(TInterfacedObject, ISlashHost)

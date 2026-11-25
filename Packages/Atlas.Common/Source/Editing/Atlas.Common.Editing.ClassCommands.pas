@@ -58,7 +58,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Pascal.TypeComments,

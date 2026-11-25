@@ -15,7 +15,6 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Results,
-  Atlas.Common.Editing.Contract,
   Shell.Composition.Stdio,
   Shell.Composition.Core,
   Shell.Composition.Protocol,
@@ -27,7 +26,8 @@ uses
   Shell.Composition.IdeArea,
   Shell.Composition.EditingArea,
   Shell.Composition.IndexArea,
-  Shell.Composition.Compile;
+  Shell.Composition.Compile,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Hält die Teile der Komposition; öffentliche Felder, weil nur Komposition und Verdrahtung sie

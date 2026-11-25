@@ -744,7 +744,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MemberOrder.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ProjectCommands.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.SqlText.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.DataFieldNames.Tests.pas"/>
+        <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.DataFieldNames.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.GuardFree.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TryFinally.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DatabaseCommands.Tests.pas"/>
@@ -818,7 +818,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugScope.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.RoutineParameters.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.UpcomingConditions.Tests.pas"/>
-        <DCCReference Include="Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.InterfaceStubs.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Names.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Hooks.Tests.pas"/>

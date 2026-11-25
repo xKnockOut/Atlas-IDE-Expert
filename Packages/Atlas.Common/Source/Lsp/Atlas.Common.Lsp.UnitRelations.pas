@@ -102,7 +102,6 @@ implementation
 
 uses
   Atlas.Common.Semantics.UsesActions,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Architecture.UnitRelations,
   System.Generics.Collections,
   System.StrUtils,
@@ -115,7 +114,8 @@ uses
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Semantics.Contract;
 
 {$SCOPEDENUMS ON}
 

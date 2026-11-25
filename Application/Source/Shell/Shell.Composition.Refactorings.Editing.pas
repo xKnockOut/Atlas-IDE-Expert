@@ -35,7 +35,6 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.Refactorings,
@@ -43,7 +42,8 @@ uses
   Atlas.Common.Editing.UnitRename.Protocol,
   Atlas.Common.Editing.SmartPaste.Protocol,
   Atlas.Common.Localization.RequestTexts,
-  Atlas.Common.CodeActions.Json;
+  Atlas.Common.CodeActions.Json,
+  Atlas.Common.Semantics.Contract;
 
 /// <summary>Ist eins der Refactorings aus Atlas.Common.Lsp.Refactorings eingeschaltet?</summary>
 function AnyEnabled(const ASettings: TRefactoringSettings): Boolean;

@@ -37,7 +37,6 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.TextDocumentSync,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Results,
@@ -49,7 +48,8 @@ uses
   Shell.Composition.Capabilities,
   Shell.Composition.Protocol,
   Shell.Composition.CompileSetup,
-  Shell.Composition.DiagnosticsArea;
+  Shell.Composition.DiagnosticsArea,
+  Atlas.Common.Semantics.Contract;
 
 /// <summary>Kanonischer Pfad für den Dokumentspeicher.</summary>
 function CanonicalPath(const APath: string): string;

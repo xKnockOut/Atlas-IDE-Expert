@@ -63,7 +63,7 @@ uses
   System.JSON,
   System.StrUtils,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Semantics.Contract;
 
 function MakeUnit(const AName, AFile: string; const AUses: TArray<string>; const AClass: string;
   const AAncestor: string): TUnitIndex; overload;

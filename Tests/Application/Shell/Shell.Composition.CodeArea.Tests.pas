@@ -45,11 +45,11 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.CodeActions;
+  Atlas.Common.Lsp.CodeActions,
+  Atlas.Common.Semantics.Contract;
 
 function NoIndex: ISymbolIndex;
 begin

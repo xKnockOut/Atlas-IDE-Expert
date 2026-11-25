@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.InterfaceStubs;
+﻿unit Atlas.Common.Pascal.InterfaceStubs;
 
 // Fehlende Interface-Methoden einer Klasse anlegen (#466), ohne Namensauflösung. Gemeinsamer Erzeuger für die
 // Vervollständigung (#466), die Code-Aktion „Interface-Methoden implementieren“ (#42) und den Schnellbefehl

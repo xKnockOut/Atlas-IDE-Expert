@@ -455,7 +455,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Unwrap.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Unwrap.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StepTargets.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.InterfaceStubs.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.InterfaceStubs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.StringLiteralCommands.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SlashMenu.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.DocWiki.pas"/>
@@ -500,7 +500,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MemberOrder.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ProjectCommands.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.SqlText.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DataFieldNames.pas"/>
+        <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.DataFieldNames.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.GuardFree.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TryFinally.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DatabaseCommands.pas"/>

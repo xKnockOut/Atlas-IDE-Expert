@@ -85,7 +85,7 @@ uses
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Text.Lines,

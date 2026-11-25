@@ -27,7 +27,8 @@ uses
   Shell.Composition.Refactorings,
   Shell.Composition.Completion,
   Shell.Composition.CodeActions,
-  Shell.Composition.TestUnits;
+  Shell.Composition.TestUnits,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Projektkontext der IDE zur Projektdatei AProjectFile (#396).</summary>

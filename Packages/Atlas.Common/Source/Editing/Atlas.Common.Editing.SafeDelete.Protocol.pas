@@ -31,9 +31,9 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SafeDelete,
-  Atlas.Common.Semantics.References;
+  Atlas.Common.Semantics.References,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>uses-Kontext einer Datei (wie die uses-Aktionen).</summary>

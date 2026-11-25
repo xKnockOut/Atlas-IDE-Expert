@@ -123,7 +123,6 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.Contract,
   System.Generics.Collections,
   System.Diagnostics,
   System.StrUtils,
@@ -145,7 +144,8 @@ uses
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json,
-  Atlas.Common.CodeActions.Json;
+  Atlas.Common.CodeActions.Json,
+  Atlas.Common.Semantics.Contract;
 
 {$SCOPEDENUMS ON}
 

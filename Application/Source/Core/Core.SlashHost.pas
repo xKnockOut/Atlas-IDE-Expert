@@ -28,7 +28,8 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Editing.Contract,
-  Core.Workspace;
+  Core.Workspace,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Ordner zur Datei AUri; nil ohne.</summary>

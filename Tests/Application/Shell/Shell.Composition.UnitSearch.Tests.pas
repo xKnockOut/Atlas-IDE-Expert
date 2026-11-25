@@ -7,9 +7,9 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Editing.Contract,
   Shell.Composition.Contract,
-  Shell.Composition.UnitSearch;
+  Shell.Composition.UnitSearch,
+  Atlas.Common.Semantics.Contract;
 
 type
   [TestFixture]

@@ -116,12 +116,12 @@ uses
   Rules.Builtin.DeadCode,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Rules.CheckContext,
   Atlas.Tests.LspRules,
   Atlas.Common.Lsp.DiagnosticItems,
-  Atlas.Common.Findings.Contract;
+  Atlas.Common.Findings.Contract,
+  Atlas.Common.Semantics.Contract;
 
 function CompilerMessage(ALine, AColumn: Integer; ASeverity: TCompilerSeverity): TCompilerMessage;
 begin

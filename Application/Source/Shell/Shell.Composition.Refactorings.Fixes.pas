@@ -40,7 +40,6 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ResolvedSignatures,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.CompilerFixes,
   Atlas.Common.Editing.SuggestConst,
@@ -52,7 +51,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.CodeActions.Json,
   Atlas.Common.Semantics.InferredTypes,
-  Atlas.Common.Editing.ExplicitType;
+  Atlas.Common.Editing.ExplicitType,
+  Atlas.Common.Semantics.Contract;
 
 type
 {$SCOPEDENUMS ON}

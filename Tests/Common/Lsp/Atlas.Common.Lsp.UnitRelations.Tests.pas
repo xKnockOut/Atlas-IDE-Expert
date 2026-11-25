@@ -57,14 +57,14 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesGraph.Tests,
   Atlas.Common.Architecture.UnitRelations.Tests,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Common.Semantics.Contract;
 
 function FileOf(const AName: string): string;
 begin

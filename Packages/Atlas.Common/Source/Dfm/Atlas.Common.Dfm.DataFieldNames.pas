@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.DataFieldNames;
+﻿unit Atlas.Common.Dfm.DataFieldNames;
 
 // Feld- und Parameternamen in FieldByName('…'), FindField('…') und
 // ParamByName('…') (#461): den Aufruf am Cursor in einer Zeile erkennen, die
