@@ -3,7 +3,7 @@
 // Haltepunktfenster (#863), Oberfläche: Zellen und Gruppenüberschriften, Liste
 // mit Suche, Chips und Gruppen, Auswahl über SetRows hinweg, Befehle melden die
 // gewählten Haltepunkte (ohne Doppel bei zwei Etiketten), Spalten ein- und
-// ausblenden.
+// ausblenden, Leisten brechen bei schmalem Fenster um statt abzuschneiden.
 
 interface
 
@@ -36,6 +36,8 @@ type
     procedure CommandsReportSelectedRows;
     [Test]
     procedure ColumnsHideAndShow;
+    [Test]
+    procedure BarsWrapInNarrowWindow;
   end;
 
 implementation
@@ -43,6 +45,7 @@ implementation
 uses
   System.Classes, // Inline-Funktion TCollection.GetCount (H2443)
   System.SysUtils,
+  Vcl.Controls,
   Vcl.Forms,
   Atlas.Core.Debug.BreakpointList,
   Atlas.Core.Debug.BreakpointRules,
@@ -281,5 +284,50 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TAtlasDebugBreakpointsFrameTests);
+
+/// <summary>Höhe der Leiste mit Gruppierung und Chips, wenn der Frame AWidth breit ist; prüft dabei, dass jedes
+/// Element der drei oberen Leisten ganz in seiner Leiste liegt und die Leisten nicht in die Liste ragen.</summary>
+function FilterBarHeight(AWidth: Integer): Integer;
+var
+  mHost: TForm;
+  mFrame: TAtlasDebugBreakpointsFrame;
+  mBar: TWinControl;
+  mIndex: Integer;
+  mControl: TControl;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.ClientWidth := AWidth;
+    mHost.ClientHeight := 400;
+    mFrame := TAtlasDebugBreakpointsFrame.Create(mHost);
+    mFrame.Align := alClient;
+    mFrame.Parent := mHost;
+    mFrame.HandleNeeded;
+    mFrame.Realign;
+    for mBar in TArray<TWinControl>.Create(mFrame.Search.Parent, mFrame.Grouping.Parent, mFrame.TagBox.Parent) do
+    begin
+      Assert.IsTrue(mBar.Top + mBar.Height <= mFrame.List.Top, 'Leiste ragt in die Liste');
+      for mIndex := 0 to mBar.ControlCount - 1 do
+      begin
+        mControl := mBar.Controls[mIndex];
+        Assert.IsTrue(mControl.Left >= 0, mControl.ClassName + ' links abgeschnitten');
+        Assert.IsTrue(mControl.Left + mControl.Width <= mBar.ClientWidth, mControl.ClassName + ' rechts abgeschnitten');
+        Assert.IsTrue(mControl.Top + mControl.Height <= mBar.ClientHeight, mControl.ClassName + ' unten abgeschnitten');
+      end;
+    end;
+    Result := mFrame.Grouping.Parent.Height;
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasDebugBreakpointsFrameTests.BarsWrapInNarrowWindow;
+var
+  mNarrow, mWide: Integer;
+begin
+  mWide := FilterBarHeight(1200);
+  mNarrow := FilterBarHeight(260);
+  Assert.IsTrue(mNarrow > mWide, Format('schmal %d, breit %d: Chips brechen nicht um', [mNarrow, mWide]));
+end;
 
 end.
