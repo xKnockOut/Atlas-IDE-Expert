@@ -13,12 +13,22 @@
     auch auf die Verträge in Base) müssen bestehen. Nach jedem Fall wird die Kopie
     zurückgesetzt.
 
+    Jeder Fall ruft die Prüfung einmal über die ganze Kopie auf (etwa zwei Minuten). Mit -Shard und
+    -Shards läuft nur jeder Shards-te Fall ab Nummer Shard; die CI verteilt die Fälle so auf mehrere
+    Jobs (package-dependencies.yml, Job modulgrenzen).
+
 .EXAMPLE
     pwsh Tools/Test-PackageDependencies.ps1
+
+.EXAMPLE
+    pwsh Tools/Test-PackageDependencies.ps1 -Shard 2 -Shards 4
 #>
 [CmdletBinding()]
 param(
-    [string] $Root = (Split-Path -Parent $PSScriptRoot)
+    [string] $Root = (Split-Path -Parent $PSScriptRoot),
+    # Teil (1 bis Shards), der laufen soll; die Fälle werden reihum verteilt.
+    [ValidateRange(1, 64)] [int] $Shard = 1,
+    [ValidateRange(1, 64)] [int] $Shards = 1
 )
 
 Set-StrictMode -Version Latest
@@ -30,6 +40,8 @@ $Boundaries = 'Tools/UnitAssignment.Boundaries.tsv'
 $Source = 'Packages/Atlas.IDE.Base/Source'
 $Failures = [System.Collections.Generic.List[string]]::new()
 $Touched = @{}
+$CaseNumber = 0
+if ($Shard -gt $Shards) { throw "Shard $Shard gibt es bei $Shards Teilen nicht." }
 
 $CopyRoot = Join-Path ([IO.Path]::GetTempPath()) ('atlas-modules-' + [Guid]::NewGuid().ToString('N'))
 foreach ($Item in 'Packages', 'Application', 'Tests/Atlas.Tests.dpr', 'Tests/Data/Architecture', 'Tools/AdapterRoles.known.txt', $Assignment, 'Tools/UnitAssignment.Folders.tsv', $Boundaries, 'atlas.json') {
@@ -149,7 +161,14 @@ function Invoke-Check {
     return @{ Code = $LASTEXITCODE; Output = $Output }
 }
 
+function Test-Mine {
+    # Zählt den Fall und sagt, ob er in diesen Teil gehört.
+    $script:CaseNumber++
+    return (($script:CaseNumber - 1) % $Shards) -eq ($Shard - 1)
+}
+
 function Test-Fails([string] $Name, [string] $Expected, [scriptblock] $Break) {
+    if (-not (Test-Mine)) { return }
     try {
         & $Break
         $Result = Invoke-Check
@@ -161,6 +180,7 @@ function Test-Fails([string] $Name, [string] $Expected, [scriptblock] $Break) {
 }
 
 function Test-Passes([string] $Name, [scriptblock] $Change) {
+    if (-not (Test-Mine)) { return }
     try {
         & $Change
         $Result = Invoke-Check
@@ -361,5 +381,7 @@ if ($Failures.Count -gt 0) {
     $Failures | ForEach-Object { Write-Host "  $_" }
     exit 1
 }
-Write-Host 'Modulgrenzen: alle Fälle wie erwartet.' -ForegroundColor Green
+$Suffix = ''
+if ($Shards -gt 1) { $Suffix = " (Teil $Shard von $Shards)" }
+Write-Host "Modulgrenzen: alle Fälle wie erwartet$Suffix." -ForegroundColor Green
 exit 0

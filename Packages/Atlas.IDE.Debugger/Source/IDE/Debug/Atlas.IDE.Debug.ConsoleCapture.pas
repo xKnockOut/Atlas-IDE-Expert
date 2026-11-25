@@ -88,6 +88,8 @@ type
     /// </summary>
     function Tick: Boolean;
     function Running: Boolean;
+    /// <summary>Läuft das Programm frei (nicht mehr angehalten bis zum Anhängen des Debuggers)?</summary>
+    function Resumed: Boolean;
     /// <summary>Zustandszeile; ARunning, solange das Programm Eingaben nimmt.</summary>
     function StateText(out ARunning: Boolean): string;
     procedure Send(const AText: string);
@@ -124,6 +126,9 @@ type
     FRun: TAtlasIdeConsoleRun;
     /// <summary>Vom abgelehnten Start der IDE: Projekt, das der nächste Takt startet ('' = keins).</summary>
     FQueued: string;
+    /// <summary>Eingabefeld fokussieren, sobald das Programm läuft und die IDE ihr Fenster wieder freigibt; 0 = nichts
+    /// offen, sonst Zeitpunkt des Starts.</summary>
+    FFocusSince: UInt64;
     constructor Create(const AMessage: TProc<string>);
     procedure Say(const AText: string);
     procedure Tick;
@@ -132,6 +137,7 @@ type
     function Choose(const AProject: IOTAProject): TAtlasConsoleLaunchChoice;
     procedure Launch(const AProject: IOTAProject; ADebug: Boolean);
     procedure ShowState;
+    procedure FocusWhenReady;
     procedure WireFrame(AFrame: TAtlasDebugConsoleFrame);
     function Frame: TAtlasDebugConsoleFrame;
     procedure Refill;
@@ -175,6 +181,8 @@ uses
 
 const
   cTickMs = 50;
+  /// <summary>So lange nach dem Start wird das Eingabefeld noch fokussiert (Anhängen bis cAttachTimeoutMs).</summary>
+  cFocusWithinMs = TAtlasIdeConsoleRun.cAttachTimeoutMs + 2000;
   cIdentifier = 'AtlasConsoleOutput';
   cRunItemName = 'AtlasConsoleRunNoDebug';
 
@@ -226,6 +234,11 @@ end;
 function TAtlasIdeConsoleRun.Running: Boolean;
 begin
   Result := FProcess <> nil;
+end;
+
+function TAtlasIdeConsoleRun.Resumed: Boolean;
+begin
+  Result := (FProcess <> nil) and (FPhase = TPhase.Running);
 end;
 
 function TAtlasIdeConsoleRun.Start(const AProject: IOTAProject; ADebug: Boolean): Boolean;
@@ -716,9 +729,29 @@ begin
   FRun.Start(AProject, ADebug);
   ShowState;
   Refill;
-  if Frame <> nil then
+  // Nicht hier fokussieren: Beim Start mit F9 sperrt die IDE ihr Hauptfenster noch (Übersetzen, Wechsel ins
+  // Debug-Layout), und das Programm steht bis zum Anhängen. FocusWhenReady holt es im Takt nach.
+  FFocusSince := NowMs;
+end;
+
+procedure TAtlasIdeConsoleCapture.FocusWhenReady;
+var
+  mFrame: TAtlasDebugConsoleFrame;
+begin
+  if FFocusSince = 0 then
   begin
-    Frame.FocusInput;
+    Exit;
+  end;
+  // Später nicht mehr: Wer inzwischen woanders arbeitet, behält den Fokus.
+  if (FRun = nil) or not FRun.Running or (NowMs - FFocusSince > cFocusWithinMs) then
+  begin
+    FFocusSince := 0;
+    Exit;
+  end;
+  mFrame := Frame;
+  if FRun.Resumed and (mFrame <> nil) and mFrame.FocusInput then
+  begin
+    FFocusSince := 0;
   end;
 end;
 
@@ -740,6 +773,7 @@ begin
     ShowState;
     Refill;
   end;
+  FocusWhenReady;
 end;
 
 procedure TAtlasIdeConsoleCapture.SendInput(const AText: string);

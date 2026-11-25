@@ -91,10 +91,11 @@ type
     /// <summary>Kürzel „Anweisung vervollständigen“ (#697, keys.completeStatement); Vorgabe Strg+Umschalt+Enter.
     /// </summary>
     CompleteStatementKey: Integer;
-    /// <summary>Kürzel „Formatieren“ (#43, keys.format); Vorgabe Strg+Umschalt+Alt+F, weil Strg+D die
-    /// Mehrfachmarken haben und RAD Studio 13 keinen eigenen Formatierer mehr hat.</summary>
+    /// <summary>Kürzel „Formatieren“ (#43, keys.format); Vorgabe Strg+Umschalt+Alt+L, weil Strg+D „Methode suchen“
+    /// hat (#2938) und RAD Studio 13 keinen eigenen Formatierer mehr hat.</summary>
     FormatCodeKey: Integer;
-    /// <summary>Kürzel der Mehrfachmarken (#589, keys.multiCursor.*): nächstes Vorkommen (Strg+D), Überspringen
+    /// <summary>Kürzel der Mehrfachmarken (#589, keys.multiCursor.*): nächstes Vorkommen (Strg+Alt+D; bis #2938
+    /// Strg+D), Überspringen
     /// (zweite Taste nach Strg+K, Vorgabe Strg+D), Marken an den Zeilenenden (Alt+Umschalt+I), Marke darüber
     /// bzw. darunter (Strg+Alt+↑/↓).</summary>
     MultiCursorNextKey: Integer;
@@ -102,12 +103,20 @@ type
     MultiCursorLineEndsKey: Integer;
     MultiCursorAboveKey: Integer;
     MultiCursorBelowKey: Integer;
+    /// <summary>Frei zugewiesene Tasten der Palettenbefehle ohne eigene Einstellung (#2938, keys.commands):
+    /// „Befehlskennung=Taste“ durch „;“ getrennt (TAtlasCommandKeys); Vorgabe Strg+D für „Methode suchen …“.
+    /// </summary>
+    CommandKeys: string;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginEditingKeysSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
+  private
+    /// <summary>keys.commands lesen bzw. schreiben; beim ersten Laden die Vorgabe der Mehrfachmarken nachziehen.
+    /// </summary>
+    procedure ExchangeCommandKeys(const AIo: TAtlasSettingsExchange);
   end;
 
   /// <summary>Plugin-Einstellungen: Vorrang der Atlas-Tastenkürzel vor der IDE.</summary>
@@ -238,6 +247,12 @@ uses
   System.Math,
   Atlas.Plugin.Settings.KeyCodes;
 
+const
+  /// <summary>Vorgabe von keys.commands: Strg+D (16452) für „Methode suchen …“ (#2938).</summary>
+  cDefaultCommandKeys = 'Atlas.FindMethod=16452';
+  /// <summary>Kein gespeicherter Wert (kann in keys.commands nicht vorkommen).</summary>
+  cMissing = #1;
+
 { TAtlasPluginEditingKeysSettings }
 
 class function TAtlasPluginEditingKeysSettings.Defaults: TAtlasPluginEditingKeysSettings;
@@ -280,11 +295,12 @@ begin
   Result.CompleteStatementKey := cKeyShift + cKeyCtrl + cKeyReturn; // Strg+Umschalt+Enter
   // Strg+Umschalt+Alt+F hat die Suche in der Methode (#877).
   Result.FormatCodeKey := cKeyShift + cKeyCtrl + cKeyAlt + Ord('L'); // Strg+Umschalt+Alt+L
-  Result.MultiCursorNextKey := cKeyCtrl + Ord('D'); // Strg+D
+  Result.MultiCursorNextKey := cKeyCtrl + cKeyAlt + Ord('D'); // Strg+Alt+D
   Result.MultiCursorSkipKey := cKeyCtrl + Ord('D'); // Strg+K, Strg+D
   Result.MultiCursorLineEndsKey := cKeyShift + cKeyAlt + Ord('I'); // Alt+Umschalt+I
   Result.MultiCursorAboveKey := cKeyCtrl + cKeyAlt + cKeyUp; // Strg+Alt+↑
   Result.MultiCursorBelowKey := cKeyCtrl + cKeyAlt + cKeyDown; // Strg+Alt+↓
+  Result.CommandKeys := cDefaultCommandKeys;
 end;
 
 procedure TAtlasPluginEditingKeysSettings.Normalize;
@@ -366,6 +382,21 @@ begin
   AIo.Number('MultiCursorLineEndsKey', MultiCursorLineEndsKey);
   AIo.Number('MultiCursorAboveKey', MultiCursorAboveKey);
   AIo.Number('MultiCursorBelowKey', MultiCursorBelowKey);
+  ExchangeCommandKeys(AIo);
+end;
+
+procedure TAtlasPluginEditingKeysSettings.ExchangeCommandKeys(const AIo: TAtlasSettingsExchange);
+var
+  mFirst: Boolean;
+begin
+  // Erstes Laden mit keys.commands (#2938): Strg+D geht an „Methode suchen“. Steht für das nächste Vorkommen der
+  // Mehrfachmarken noch die frühere Vorgabe Strg+D, bekommt es die neue; eine eigene Wahl bleibt.
+  mFirst := not AIo.Writing and (AIo.Store.ReadString('CommandKeys', cMissing) = cMissing);
+  AIo.Text('CommandKeys', CommandKeys);
+  if mFirst and (MultiCursorNextKey = cKeyCtrl + Ord('D')) then
+  begin
+    MultiCursorNextKey := cKeyCtrl + cKeyAlt + Ord('D');
+  end;
 end;
 
 { TAtlasPluginKeyPrioritiesSettings }
