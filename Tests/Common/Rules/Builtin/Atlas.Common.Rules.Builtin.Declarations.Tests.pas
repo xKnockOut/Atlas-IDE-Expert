@@ -382,7 +382,7 @@ var
   mFindings: TArray<TRuleFinding>;
 begin
   // Wie mORMot: Rümpfe in einer Include-Datei des implementation-Teils, je Compiler eine eigene.
-  mContext := Default(TRuleContext);
+  mContext := TRuleAssert.EmptyContext;
   mContext.RelativePath := 'U.pas';
   mContext.FileName := 'C:\P\U.pas';
   mContext.Text := 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  public type'#10 +
@@ -1007,7 +1007,7 @@ var
   mIndex: Integer;
   mWatch: TStopwatch;
 begin
-  mContext := Default(TRuleContext);
+  mContext := TRuleAssert.EmptyContext;
   mContext.Text := LargeUnit(50, 100, 1000);
   mRules := [TDeclaredNotImplementedRule.Create as IRule, TImplementedNotDeclaredRule.Create as IRule,
     TSignatureMismatchRule.Create as IRule];

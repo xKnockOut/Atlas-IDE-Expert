@@ -7,6 +7,7 @@ interface
 
 uses
   Atlas.Common.Editing.Contract.ClassActions,
+  Atlas.Common.Editing.Contract.ClassCompletion,
   Atlas.Common.Editing.Contract.CompilerFixes,
   Atlas.Common.Editing.Contract.Extract,
   Atlas.Common.Editing.Contract.Formatting,
@@ -17,6 +18,8 @@ type
   TEditingComposition = record
     /// <summary>Klassen-Aktionen: überschreiben, Interface implementieren, Zugriffsmethode anlegen.</summary>
     class function ClassActions: IEditingClassActions; static;
+    /// <summary>Klassenvervollständigung: Zuordnung von Deklarationen und Rümpfen samt Korrekturen.</summary>
+    class function ClassCompletion: IEditingClassCompletion; static;
     /// <summary>„Methode extrahieren“.</summary>
     class function Extract: IEditingExtract; static;
     /// <summary>Bedingung auslagern, Konstante einführen (Korrekturen der Prüfregeln).</summary>
@@ -35,6 +38,7 @@ implementation
 
 uses
   Atlas.Common.Editing.Providers.ClassActions,
+  Atlas.Common.Editing.Providers.ClassCompletion,
   Atlas.Common.Editing.Providers.CompilerFixes,
   Atlas.Common.Editing.Providers.Extract,
   Atlas.Common.Editing.Providers.Formatting,
@@ -46,6 +50,11 @@ uses
 class function TEditingComposition.ClassActions: IEditingClassActions;
 begin
   Result := TEditingClassActionsProvider.New;
+end;
+
+class function TEditingComposition.ClassCompletion: IEditingClassCompletion;
+begin
+  Result := TEditingClassCompletionProvider.Create;
 end;
 
 class function TEditingComposition.Extract: IEditingExtract;
