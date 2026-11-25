@@ -11,7 +11,7 @@ function AtlasDocsIndexJson: string;
 implementation
 
 const
-  cChunks: array[0..1155] of string = (
+  cChunks: array[0..1156] of string = (
     '[' + #10,
     '{"kind":"setting","id":"delphiVersion","source":"global","type":"string","page":"Allgemein","pageEn":"General","description":"Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in de' + 'r Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: passend zur ProjectVersion der .dproj, sonst die nächsthöhere, sonst die neueste installierte Version. Ist die eingestellte Version n' + 'icht installiert, warnt das Serverprotokoll mit der Stelle in settings.json, und die automatische Wahl greift. Ohne jede Installation (Linux, CI) gilt die eingestellte bzw. zur ProjectVersion passende' + ', sonst die neueste bekannte Version, nur für CompilerVersion und VERxxx. In der IDE gilt immer die laufende IDE.","descriptionEn":"Delphi version as product number (\"13\", \"12\", \"10.4\") or as in' +
       ' the registry (\"37.0\" for Delphi 13, \"23.0\" for Delphi 12). Empty: matching the ProjectVersion of the .dproj, otherwise the next higher one, otherwise the newest installed version. If the configur' + 'ed version is not installed, the server log warns with the location in settings.json and the automatic choice applies. Without any installation (Linux, CI) the configured version or the one matching t' + 'he ProjectVersion applies, otherwise the newest known version, only for CompilerVersion and VERxxx. In the IDE the running IDE always applies.","issue":"#47, #258"},' + #10,
