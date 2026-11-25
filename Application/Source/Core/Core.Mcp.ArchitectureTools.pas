@@ -37,8 +37,8 @@ uses
   Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Comparison,
-  Atlas.Common.Lsp.SymbolPath.Search,
-  Atlas.Common.Lsp.SymbolPath,
+  Atlas.Common.Semantics.SymbolPath.Search,
+  Atlas.Common.Semantics.SymbolPath.Request,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Localization.RequestTexts;
@@ -104,7 +104,7 @@ const
 function FindPathRequest(const AArguments: TJSONObject): TSymbolPathRequest;
 begin
   try
-    Result := TLspSymbolPath.ReadRequest(AArguments);
+    Result := TSymbolPathRequests.Read(AArguments);
   except
     on E: EJsonRpcError do
       raise EMcpToolError.Create(E.Message);

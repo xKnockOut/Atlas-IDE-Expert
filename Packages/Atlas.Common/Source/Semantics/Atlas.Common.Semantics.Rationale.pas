@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Rationale;
+﻿unit Atlas.Common.Semantics.Rationale;
 
 // Begründungen (#1123) für Hover und MCP. OfSymbol sammelt die Einträge eines
 // Symbols aus dem Index, bei Routinen mit getrennter Implementierung auch die
@@ -39,7 +39,7 @@ type
     class function FromSettings(const ASettings: TServerSettings; const ARoot: string): TRationaleOptions; static;
   end;
 
-  TLspRationale = class
+  TRationaleSelection = class
   public const
     cSectionKind = 'rationale';
     /// <summary>Ziel eines Issue-Links: issue:312.</summary>
@@ -113,12 +113,12 @@ class function TRationaleOptions.FromSettings(const ASettings: TServerSettings;
   const ARoot: string): TRationaleOptions;
 begin
   Result.Enabled := ASettings.Hints.Rationale;
-  Result.Markers := TLspRationale.Markers(ASettings.Hints);
+  Result.Markers := TRationaleSelection.Markers(ASettings.Hints);
   Result.Excluded := TTodoKeywords.FromSettings(ASettings);
-  Result.AdrFolder := TLspRationale.AdrFolder(ASettings.Hints.AdrFolder, ARoot);
+  Result.AdrFolder := TRationaleSelection.AdrFolder(ASettings.Hints.AdrFolder, ARoot);
 end;
 
-{ TLspRationale }
+{ TRationaleSelection }
 
 function IsRoutine(AKind: TIndexSymbolKind): Boolean;
 begin
@@ -205,9 +205,9 @@ begin
   end;
 end;
 
-{ TLspRationale }
+{ TRationaleSelection }
 
-class function TLspRationale.OfSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol):
+class function TRationaleSelection.OfSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol):
   TArray<TRationaleEntry>;
 var
   mPart: TIndexSymbol;
@@ -227,7 +227,7 @@ begin
   SortByLine(Result);
 end;
 
-class function TLspRationale.Markers(const AHints: THintSettings): TArray<string>;
+class function TRationaleSelection.Markers(const AHints: THintSettings): TArray<string>;
 begin
   Result := AHints.RationaleMarkers;
   if Length(Result) = 0 then
@@ -236,13 +236,13 @@ begin
   end;
 end;
 
-class function TLspRationale.ByMarkers(const AEntries: TArray<TRationaleEntry>;
+class function TRationaleSelection.ByMarkers(const AEntries: TArray<TRationaleEntry>;
   const AOptions: TRationaleOptions): TArray<TRationaleEntry>;
 begin
   Result := TRationale.Filter(AEntries, AOptions.Markers, AOptions.Excluded);
 end;
 
-class function TLspRationale.Select(const AEntries: TArray<TRationaleEntry>;
+class function TRationaleSelection.Select(const AEntries: TArray<TRationaleEntry>;
   const AOptions: TRationaleOptions): TArray<TRationaleEntry>;
 begin
   Result := nil;
@@ -252,7 +252,7 @@ begin
   end;
 end;
 
-class function TLspRationale.AdrFolder(const AFolder, ARoot: string): string;
+class function TRationaleSelection.AdrFolder(const AFolder, ARoot: string): string;
 begin
   Result := Trim(AFolder);
   if Result = '' then
@@ -271,7 +271,7 @@ begin
   Result := ExcludeTrailingPathDelimiter(TPath.Combine(ARoot, Result));
 end;
 
-class function TLspRationale.AdrFiles(const AFolder: string): TArray<string>;
+class function TRationaleSelection.AdrFiles(const AFolder: string): TArray<string>;
 var
   mFile: string;
 begin
@@ -326,7 +326,7 @@ begin
         Result := TJSONObject.Create;
         Result.AddPair('kind', 'link');
         Result.AddPair('text', AText);
-        Result.AddPair('target', TLspRationale.cIssuePrefix + ALink.Key);
+        Result.AddPair('target', TRationaleSelection.cIssuePrefix + ALink.Key);
       end;
   else
     Result := TJSONObject.Create;
@@ -336,7 +336,7 @@ begin
   end;
 end;
 
-class procedure TLspRationale.AddSections(ASections: TJSONArray; const AEntries: TArray<TRationaleEntry>;
+class procedure TRationaleSelection.AddSections(ASections: TJSONArray; const AEntries: TArray<TRationaleEntry>;
   const AAdrFiles: TArray<string>);
 var
   mEntry: TRationaleEntry;
@@ -371,7 +371,7 @@ begin
   end;
 end;
 
-class function TLspRationale.ToMarkdown(const AEntries: TArray<TRationaleEntry>): string;
+class function TRationaleSelection.ToMarkdown(const AEntries: TArray<TRationaleEntry>): string;
 var
   mEntry: TRationaleEntry;
 begin
@@ -387,7 +387,7 @@ begin
   end;
 end;
 
-class function TLspRationale.ToPlainText(const AEntries: TArray<TRationaleEntry>): string;
+class function TRationaleSelection.ToPlainText(const AEntries: TArray<TRationaleEntry>): string;
 var
   mEntry: TRationaleEntry;
 begin
@@ -404,6 +404,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.Rationale', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.Rationale', cTexts);
 
 end.

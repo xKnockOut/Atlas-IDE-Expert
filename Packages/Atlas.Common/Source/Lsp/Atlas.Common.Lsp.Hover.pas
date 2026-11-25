@@ -21,7 +21,7 @@
 // „Feld nicht gefunden in qryOrders“ (#461); keine Diagnose.
 //
 // Begründungen (// WHY: …, #1123) des Symbols bzw. der Unit kommen aus dem
-// Index (TLspRationale.OfSymbol) und erscheinen nach der XMLDoc, gefiltert nach
+// Index (TRationaleSelection.OfSymbol) und erscheinen nach der XMLDoc, gefiltert nach
 // hints.rationale und hints.rationaleMarkers; im Atlas-Tooltip als Abschnitte
 // "rationale" der strukturierten Doku mit anklickbaren ADR- und Issue-Verweisen.
 //
@@ -46,7 +46,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.ConditionalSymbols,
-  Atlas.Common.Lsp.Rationale,
+  Atlas.Common.Semantics.Rationale,
   Atlas.Common.Lsp.Hover.Info;
 
 type
@@ -87,7 +87,7 @@ type
     procedure ApplySettings(const AUri: string; var AInfo: THoverInfo);
     function InfoAnswer(const AUri: string; const AInfo: THoverInfo): TJSONObject;
   private
-    /// <summary>Unter TLspNamespaces gelesen und ersetzt: Die Komposition setzt sie
+    /// <summary>Unter TSharedNamespaces gelesen und ersetzt: Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
     function GetNamespaces: TArray<string>;
     procedure SetNamespaces(const AValue: TArray<string>);
@@ -138,14 +138,14 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Diagnostics,
-  Atlas.Common.Lsp.Internals.Namespaces,
+  Atlas.Common.Semantics.Namespaces,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.CompilerDirectives,
   Atlas.Common.Lsp.KeywordReference,
   Atlas.Common.Lsp.Hover.Lookup,
   Atlas.Common.Diagnostics.RequestScope,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Lsp.Reassigned,
@@ -239,12 +239,12 @@ end;
 
 function TLspHover.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspHover.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspHover.HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -413,10 +413,10 @@ begin
   begin
     mRationale := FRationaleFor(AUri);
   end;
-  AInfo.Rationale := TLspRationale.Select(AInfo.Rationale, mRationale);
+  AInfo.Rationale := TRationaleSelection.Select(AInfo.Rationale, mRationale);
   if Length(AInfo.Rationale) > 0 then
   begin
-    AInfo.AdrFiles := TLspRationale.AdrFiles(mRationale.AdrFolder);
+    AInfo.AdrFiles := TRationaleSelection.AdrFiles(mRationale.AdrFolder);
   end;
 end;
 

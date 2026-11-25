@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Rationale.Tests;
+﻿unit Atlas.Common.Semantics.Rationale.Tests;
 
 interface
 
@@ -7,7 +7,7 @@ uses
 
 type
   [TestFixture]
-  TLspRationaleTests = class
+  TRationaleSelectionTests = class
   public
     [Test]
     procedure SelectsConfiguredMarkers;
@@ -40,7 +40,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rationale.Contract,
   Atlas.Common.Rationale.References,
-  Atlas.Common.Lsp.Rationale;
+  Atlas.Common.Semantics.Rationale;
 
 function Entries: TArray<TRationaleEntry>;
 begin
@@ -58,61 +58,61 @@ begin
   Result := TRationaleOptions.FromSettings(mSettings, '');
 end;
 
-{ TLspRationaleTests }
+{ TRationaleSelectionTests }
 
-procedure TLspRationaleTests.SelectsConfiguredMarkers;
+procedure TRationaleSelectionTests.SelectsConfiguredMarkers;
 var
   mSelected: TArray<TRationaleEntry>;
 begin
-  mSelected := TLspRationale.Select(Entries, TRationaleOptions.Default);
+  mSelected := TRationaleSelection.Select(Entries, TRationaleOptions.Default);
   Assert.AreEqual(2, Integer(Length(mSelected)));
   Assert.AreEqual('WHY', mSelected[0].Marker);
   Assert.AreEqual('NOTE', mSelected[1].Marker);
-  mSelected := TLspRationale.Select(Entries, OptionsOf('{}'));
+  mSelected := TRationaleSelection.Select(Entries, OptionsOf('{}'));
   Assert.AreEqual(2, Integer(Length(mSelected)));
   // Eigene Marke, Groß-/Kleinschreibung egal.
-  mSelected := TLspRationale.Select(Entries, OptionsOf('{"hints": {"rationaleMarkers": ["perf"]}}'));
+  mSelected := TRationaleSelection.Select(Entries, OptionsOf('{"hints": {"rationaleMarkers": ["perf"]}}'));
   Assert.AreEqual(1, Integer(Length(mSelected)));
   Assert.AreEqual('PERF', mSelected[0].Marker);
 end;
 
-procedure TLspRationaleTests.SelectsNothingWhenSwitchedOff;
+procedure TRationaleSelectionTests.SelectsNothingWhenSwitchedOff;
 var
   mOptions: TRationaleOptions;
 begin
   mOptions := OptionsOf('{"hints": {"rationale": false}}');
-  Assert.AreEqual(0, Integer(Length(TLspRationale.Select(Entries, mOptions))));
+  Assert.AreEqual(0, Integer(Length(TRationaleSelection.Select(Entries, mOptions))));
   // get_rationale filtert nur nach Marken.
-  Assert.AreEqual(2, Integer(Length(TLspRationale.ByMarkers(Entries, mOptions))));
+  Assert.AreEqual(2, Integer(Length(TRationaleSelection.ByMarkers(Entries, mOptions))));
 end;
 
-procedure TLspRationaleTests.NeverSelectsTodoMarkers;
+procedure TRationaleSelectionTests.NeverSelectsTodoMarkers;
 var
   mSelected: TArray<TRationaleEntry>;
 begin
-  mSelected := TLspRationale.Select(Entries, OptionsOf('{"hints": {"rationaleMarkers": ["TODO", "WHY"]}}'));
+  mSelected := TRationaleSelection.Select(Entries, OptionsOf('{"hints": {"rationaleMarkers": ["TODO", "WHY"]}}'));
   Assert.AreEqual(1, Integer(Length(mSelected)));
   Assert.AreEqual('WHY', mSelected[0].Marker);
   // Eine Marke der TODO-Übersicht (Option keywords von todo-comment) gilt nur dort.
-  mSelected := TLspRationale.Select(Entries, OptionsOf('{"rules": {"todo-comment": {"keywords": ["NOTE"]}}}'));
+  mSelected := TRationaleSelection.Select(Entries, OptionsOf('{"rules": {"todo-comment": {"keywords": ["NOTE"]}}}'));
   Assert.AreEqual(1, Integer(Length(mSelected)));
   Assert.AreEqual('WHY', mSelected[0].Marker);
 end;
 
-procedure TLspRationaleTests.ResolvesAdrFolder;
+procedure TRationaleSelectionTests.ResolvesAdrFolder;
 var
   mRoot: string;
 begin
   mRoot := TPath.Combine(TPath.GetTempPath, 'Projekt');
-  Assert.AreEqual(TPath.Combine(mRoot, 'docs' + PathDelim + 'adr'), TLspRationale.AdrFolder('', mRoot));
+  Assert.AreEqual(TPath.Combine(mRoot, 'docs' + PathDelim + 'adr'), TRationaleSelection.AdrFolder('', mRoot));
   Assert.AreEqual(TPath.Combine(mRoot, 'doc' + PathDelim + 'decisions'),
-    TLspRationale.AdrFolder('doc/decisions', mRoot));
+    TRationaleSelection.AdrFolder('doc/decisions', mRoot));
   // Relativ ohne Arbeitsbereich: kein Ordner; absolut bleibt.
-  Assert.AreEqual('', TLspRationale.AdrFolder('docs/adr', ''));
-  Assert.AreEqual(mRoot, TLspRationale.AdrFolder(mRoot, ''));
+  Assert.AreEqual('', TRationaleSelection.AdrFolder('docs/adr', ''));
+  Assert.AreEqual(mRoot, TRationaleSelection.AdrFolder(mRoot, ''));
 end;
 
-procedure TLspRationaleTests.ListsAdrFiles;
+procedure TRationaleSelectionTests.ListsAdrFiles;
 var
   mFolder: string;
   mFiles: TArray<string>;
@@ -121,23 +121,23 @@ begin
   TDirectory.CreateDirectory(mFolder);
   try
     TFile.WriteAllText(TPath.Combine(mFolder, '0007-ganzzahlen.md'), '# 7');
-    mFiles := TLspRationale.AdrFiles(mFolder);
+    mFiles := TRationaleSelection.AdrFiles(mFolder);
     Assert.AreEqual(1, Integer(Length(mFiles)));
     Assert.AreEqual(TPath.Combine(mFolder, '0007-ganzzahlen.md'), TRationaleReferences.AdrFile('7', mFiles));
-    Assert.AreEqual(0, Integer(Length(TLspRationale.AdrFiles(TPath.Combine(mFolder, 'fehlt')))));
+    Assert.AreEqual(0, Integer(Length(TRationaleSelection.AdrFiles(TPath.Combine(mFolder, 'fehlt')))));
   finally
     TDirectory.Delete(mFolder, True);
   end;
 end;
 
-procedure TLspRationaleTests.KeepsAdrWithoutFileAsText;
+procedure TRationaleSelectionTests.KeepsAdrWithoutFileAsText;
 var
   mSections: TJSONArray;
   mRuns: TJSONArray;
 begin
   mSections := TJSONArray.Create;
   try
-    TLspRationale.AddSections(mSections, [TRationaleEntry.Create('WHY', 'Siehe ADR 9', 0)], ['C:\adr\0007-a.md']);
+    TRationaleSelection.AddSections(mSections, [TRationaleEntry.Create('WHY', 'Siehe ADR 9', 0)], ['C:\adr\0007-a.md']);
     mRuns := mSections.Items[0].GetValue<TJSONArray>('runs');
     Assert.AreEqual(2, mRuns.Count);
     Assert.AreEqual('text', mRuns.Items[1].GetValue<string>('kind'));
@@ -147,14 +147,14 @@ begin
   end;
 end;
 
-procedure TLspRationaleTests.WritesUrlsAsLinks;
+procedure TRationaleSelectionTests.WritesUrlsAsLinks;
 var
   mSections: TJSONArray;
   mRuns: TJSONArray;
 begin
   mSections := TJSONArray.Create;
   try
-    TLspRationale.AddSections(mSections, [TRationaleEntry.Create('HACK', 'https://example.org/qc/1', 0)], nil);
+    TRationaleSelection.AddSections(mSections, [TRationaleEntry.Create('HACK', 'https://example.org/qc/1', 0)], nil);
     mRuns := mSections.Items[0].GetValue<TJSONArray>('runs');
     Assert.AreEqual(1, mRuns.Count);
     Assert.AreEqual('link', mRuns.Items[0].GetValue<string>('kind'));
@@ -164,7 +164,7 @@ begin
   end;
 end;
 
-procedure TLspRationaleTests.CollectsDeclarationAndImplementationOfOverload;
+procedure TRationaleSelectionTests.CollectsDeclarationAndImplementationOfOverload;
 const
   cSource =
     'unit U;'#10 +
@@ -198,7 +198,7 @@ begin
     if (mSymbol.Name = 'P') and mSymbol.InInterface and (Length(mSymbol.ParamTypes) = 1) and
       SameText(mSymbol.ParamTypes[0], 'Integer') then
     begin
-      mFound := TLspRationale.OfSymbol(mUnit, mSymbol);
+      mFound := TRationaleSelection.OfSymbol(mUnit, mSymbol);
     end;
   end;
   Assert.AreEqual(2, Integer(Length(mFound)));
@@ -207,6 +207,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspRationaleTests);
+  TDUnitX.RegisterTestFixture(TRationaleSelectionTests);
 
 end.

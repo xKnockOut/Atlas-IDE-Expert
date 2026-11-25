@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Internals.Namespaces.Tests;
+﻿unit Atlas.Common.Semantics.Namespaces.Tests;
 
 // Namespaces der LSP-Features unter gemeinsamer Sperre.
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TLspNamespacesTests = class
+  TSharedNamespacesTests = class
   public
     [Test]
     procedure ReadReturnsWrittenValue;
@@ -24,23 +24,23 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Common.Lsp.Internals.Namespaces;
+  Atlas.Common.Semantics.Namespaces;
 
-{ TLspNamespacesTests }
+{ TSharedNamespacesTests }
 
-procedure TLspNamespacesTests.ReadReturnsWrittenValue;
+procedure TSharedNamespacesTests.ReadReturnsWrittenValue;
 var
   mField, mValue: TArray<string>;
 begin
   mField := nil;
-  TLspNamespaces.Write(mField, ['System', 'Vcl']);
-  mValue := TLspNamespaces.Read(mField);
+  TSharedNamespaces.Write(mField, ['System', 'Vcl']);
+  mValue := TSharedNamespaces.Read(mField);
   Assert.AreEqual(2, Integer(Length(mValue)));
   Assert.AreEqual('System', mValue[0]);
   Assert.AreEqual('Vcl', mValue[1]);
 end;
 
-procedure TLspNamespacesTests.ParallelReadAndWriteKeepArraysIntact;
+procedure TSharedNamespacesTests.ParallelReadAndWriteKeepArraysIntact;
 const
   cRounds = 200000;
 var
@@ -61,11 +61,11 @@ begin
       begin
         if Odd(Index) then
         begin
-          TLspNamespaces.Write(mField, ['C']);
+          TSharedNamespaces.Write(mField, ['C']);
         end
         else
         begin
-          TLspNamespaces.Write(mField, ['A', 'B']);
+          TSharedNamespaces.Write(mField, ['A', 'B']);
         end;
       end;
       mDone := True;
@@ -74,7 +74,7 @@ begin
   try
     mWriter.Start;
     repeat
-      mValue := TLspNamespaces.Read(mField);
+      mValue := TSharedNamespaces.Read(mField);
       if Length(mValue) = 1 then
       begin
         if mValue[0] <> 'C' then
@@ -95,6 +95,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspNamespacesTests);
+  TDUnitX.RegisterTestFixture(TSharedNamespacesTests);
 
 end.

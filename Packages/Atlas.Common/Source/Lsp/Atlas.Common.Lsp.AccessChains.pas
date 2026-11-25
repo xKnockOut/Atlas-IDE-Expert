@@ -28,7 +28,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.Feature,
   Atlas.Common.Semantics.References;
 
 type
@@ -88,7 +88,7 @@ type
     Chains: TArray<TAccessChain>;
   end;
 
-  TLspAccessChains = class(TLspIndexFeature)
+  TLspAccessChains = class(TIndexFeature)
   public const
     cMethod = 'atlas/accessChains';
     cMaxChains = 50;
@@ -120,8 +120,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Internals.Namespaces,
-  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Semantics.Namespaces,
+  Atlas.Common.Semantics.RequestCancellation,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
@@ -1158,12 +1158,12 @@ end;
 
 function TLspAccessChains.GetNamespaces: TArray<string>;
 begin
-  Result := TLspNamespaces.Read(FNamespaces);
+  Result := TSharedNamespaces.Read(FNamespaces);
 end;
 
 procedure TLspAccessChains.SetNamespaces(const AValue: TArray<string>);
 begin
-  TLspNamespaces.Write(FNamespaces, AValue);
+  TSharedNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspAccessChains.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;

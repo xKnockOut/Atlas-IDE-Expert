@@ -33,7 +33,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Semantics.References;
 
@@ -344,7 +344,7 @@ begin
         Continue;
       end;
       mMethod := Default(TCoveredMethod);
-      if not TLspHierarchies.RoutineAt(mTree, AFileName, mNode.StartPos, mMethod.Item) then
+      if not THierarchies.RoutineAt(mTree, AFileName, mNode.StartPos, mMethod.Item) then
       begin
         Continue;
       end;

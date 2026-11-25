@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Internals.Cancellation.Tests;
+﻿unit Atlas.Common.Semantics.RequestCancellation.Tests;
 
 // Tests für die Weitergabe des Abbruchsignals an den Parser (#415): ohne
 // Token nie abgebrochen, sonst folgt IsCancelled dem Token der Anfrage.
@@ -24,7 +24,7 @@ uses
   System.SysUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Semantics.RequestCancellation;
 
 type
   TFakeToken = class(TInterfacedObject, IJsonRpcCancellationToken)

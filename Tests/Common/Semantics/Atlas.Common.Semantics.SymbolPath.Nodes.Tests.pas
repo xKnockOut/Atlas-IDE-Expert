@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SymbolPath.Nodes.Tests;
+﻿unit Atlas.Common.Semantics.SymbolPath.Nodes.Tests;
 
 // Tests der Knoten und Kanten der Pfadsuche (#1117): Typnamen in Typangaben,
 // uses-Treffer, eine Routine als ein Knoten, Endpunkte, Sortierung der Kanten.
@@ -8,7 +8,7 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.SymbolPath.Nodes;
+  Atlas.Common.Semantics.SymbolPath.Nodes;
 
 type
   [TestFixture]

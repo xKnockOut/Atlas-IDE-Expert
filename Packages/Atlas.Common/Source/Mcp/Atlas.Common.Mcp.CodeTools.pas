@@ -21,7 +21,6 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Mcp.Contract,
@@ -103,8 +102,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Hierarchies,
-  Atlas.Common.Lsp.QualifiedNames,
+  Atlas.Common.Semantics.Hierarchies,
+  Atlas.Common.Semantics.QualifiedNames,
   Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Mcp.IndexTools,
@@ -542,7 +541,7 @@ begin
       mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
       try
         mResolver.Namespaces := FNamespaces;
-        if not TLspHierarchies.CallItemAt(mResolver, mTree, mLocation.FileName,
+        if not THierarchies.CallItemAt(mResolver, mTree, mLocation.FileName,
           mLocation.Symbol.SelectionRange.StartPos, mItem) then
         begin
           Exit(cTexts[TCodeToolsText.IsNotARoutineOr].Fmt([mLocation.Symbol.QualifiedName]));
@@ -551,13 +550,13 @@ begin
         if ADirection in [TMcpCallDirection.Incoming, TMcpCallDirection.Both] then
         begin
           AddCalls(mLines, cTexts[TCodeToolsText.CalledBy].Text, '←',
-            TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(mResolver, FIndex, FReadText, nil), mItem, mFiles,
+            THierarchies.IncomingCalls(THierarchyCallSource.Create(mResolver, FIndex, FReadText, nil), mItem, mFiles,
             SettingsOf(mItem.FileName)));
         end;
         if ADirection in [TMcpCallDirection.Outgoing, TMcpCallDirection.Both] then
         begin
           AddCalls(mLines, cTexts[TCodeToolsText.Calls].Text, '→',
-            TLspHierarchies.OutgoingCalls(mResolver, FIndex, mItem,
+            THierarchies.OutgoingCalls(mResolver, FIndex, mItem,
             FReadText, nil));
         end;
       finally
@@ -711,7 +710,7 @@ begin
     mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
       mResolver.Namespaces := FNamespaces;
-      if not TLspHierarchies.SymbolItemAt(mResolver, mTree, mLocation.FileName,
+      if not THierarchies.SymbolItemAt(mResolver, mTree, mLocation.FileName,
         mLocation.Symbol.SelectionRange.StartPos, mStart) then
       begin
         Exit(cTexts[TCodeToolsText.ThereIsNoDeclarationFor].Fmt([mLocation.Symbol.QualifiedName]));

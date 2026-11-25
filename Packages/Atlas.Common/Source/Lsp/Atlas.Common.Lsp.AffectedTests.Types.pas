@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.History.ChangedFiles,
-  Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Semantics.Hierarchies,
   Atlas.Common.Lsp.Impact;
 
 const
