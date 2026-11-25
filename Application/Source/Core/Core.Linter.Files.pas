@@ -11,7 +11,7 @@ uses
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Projects.PackageReader,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Checker;
+  Atlas.Common.Pascal.Contract;
 
 type
   TLinterFiles = class
@@ -21,11 +21,11 @@ type
     /// <summary>Endung einer Berichtsdatei erlaubt (.md, .html, .htm, .json)?</summary>
     class function IsReportFile(const AFileName: string): Boolean; static;
     /// <summary>Symbole und Include-Dateien der Prüfung (#860): ADefines und die Suchpfade des Projekts.</summary>
-    class function SourcesOf(const ADefines, AIncludePaths: TArray<string>): TCheckSourceFunc; static;
+    class function SourcesOf(const ADefines, AIncludePaths: TArray<string>): TPascalSourceFunc; static;
     /// <summary>Dateien von ATarget; ARoot ist der Ordner, zu dem die Pfade relativ sind. AVersions nennt die
     /// installierten Delphi-Versionen (TCoreLinterHost.InstalledVersions).</summary>
     class function Collect(const ATarget: string; const ASettings: TServerSettings;
-      const AVersions: TFunc<TArray<string>>; out ARoot: string; out ASources: TCheckSourceFunc): TArray<string>;
+      const AVersions: TFunc<TArray<string>>; out ARoot: string; out ASources: TPascalSourceFunc): TArray<string>;
       static;
     /// <summary>Lesbares Projekt mit Konfiguration und Plattform aus ASettings.</summary>
     class function DprojOptionsOf(const ASettings: TServerSettings): TDprojOptions; static;
@@ -39,7 +39,7 @@ type
     /// <summary>Text von AFileName in seiner Kodierung; False, wenn er nicht lesbar ist.</summary>
     class function ReadText(const AFileName: string; out AText: string): Boolean; static;
     /// <summary>Index nur aus AFiles (keine Bibliothek), mit ihren Symbolen; Fehler je Datei auf stderr.</summary>
-    class function IndexOf(const AFiles: TArray<string>; const ASources: TCheckSourceFunc): ISymbolIndex; static;
+    class function IndexOf(const AFiles: TArray<string>; const ASources: TPascalSourceFunc): ISymbolIndex; static;
   end;
 
 implementation
@@ -76,7 +76,7 @@ begin
   Result := (mExt = '.md') or (mExt = '.html') or (mExt = '.htm') or (mExt = '.json');
 end;
 
-class function TLinterFiles.SourcesOf(const ADefines, AIncludePaths: TArray<string>): TCheckSourceFunc;
+class function TLinterFiles.SourcesOf(const ADefines, AIncludePaths: TArray<string>): TPascalSourceFunc;
 var
   mResolver: TIncludeResolver;
   mDefines: TArray<string>;
@@ -84,9 +84,9 @@ begin
   mResolver := TIncludeFiles.Resolver(AIncludePaths);
   mDefines := ADefines;
   Result :=
-    function(const AFileName: string): TCheckSource
+    function(const AFileName: string): TPascalSource
     begin
-      Result := TCheckSource.Create(AFileName, mDefines, mResolver);
+      Result := TPascalSource.Create(AFileName, mDefines, mResolver);
     end;
 end;
 
@@ -138,7 +138,7 @@ end;
 /// <summary>Dateien der .dproj AFileName. Symbole wie im Editor: .dproj, Plattform, Compilerversion und Schalter
 /// (#860); ohne installiertes Delphi die Version, die das Projekt erwartet (#1321).</summary>
 function ProjectSources(const AFileName: string; const ASettings: TServerSettings;
-  const AVersions: TFunc<TArray<string>>; AFiles: TList<string>): TCheckSourceFunc;
+  const AVersions: TFunc<TArray<string>>; AFiles: TList<string>): TPascalSourceFunc;
 var
   mProject: TProjectInfo;
   mVersion: string;
@@ -151,7 +151,7 @@ begin
 end;
 
 class function TLinterFiles.Collect(const ATarget: string; const ASettings: TServerSettings;
-  const AVersions: TFunc<TArray<string>>; out ARoot: string; out ASources: TCheckSourceFunc): TArray<string>;
+  const AVersions: TFunc<TArray<string>>; out ARoot: string; out ASources: TPascalSourceFunc): TArray<string>;
 var
   mFiles: TList<string>;
   mFullPath: string;
@@ -229,11 +229,11 @@ begin
   Result := TCoreFileAccess.ReadText(AFileName, AText);
 end;
 
-class function TLinterFiles.IndexOf(const AFiles: TArray<string>; const ASources: TCheckSourceFunc): ISymbolIndex;
+class function TLinterFiles.IndexOf(const AFiles: TArray<string>; const ASources: TPascalSourceFunc): ISymbolIndex;
 var
   mFileName, mText: string;
   mFormat: TFileFormat;
-  mSource: TCheckSource;
+  mSource: TPascalSource;
 begin
   Result := TSymbolIndex.Create;
   for mFileName in AFiles do

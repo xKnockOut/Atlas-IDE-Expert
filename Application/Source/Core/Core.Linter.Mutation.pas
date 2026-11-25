@@ -34,7 +34,7 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Output,
   Atlas.Common.Mutation.Report,
   Core.Linter.Output,
@@ -103,7 +103,7 @@ var
   mTarget: TLinterTarget;
   mSettings: TServerSettings;
   mRoot: string;
-  mSources: TCheckSourceFunc;
+  mSources: TPascalSourceFunc;
 begin
   Result := nil;
   if not SameText(ExtractFileExt(AOptions.CheckTarget), '.dproj') or

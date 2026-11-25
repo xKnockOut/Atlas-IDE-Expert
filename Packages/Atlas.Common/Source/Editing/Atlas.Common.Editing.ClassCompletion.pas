@@ -204,6 +204,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.RoutineSignatures,
+  Atlas.Common.Pascal.MethodText,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Pascal.BodySpacing,
