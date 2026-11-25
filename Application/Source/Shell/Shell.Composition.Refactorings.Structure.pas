@@ -12,9 +12,9 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.ExtractInterface,
-  Atlas.Common.Lsp.ExtractSuperclass,
-  Atlas.Common.Lsp.MoveMember,
+  Atlas.Common.Editing.ExtractInterface.Protocol,
+  Atlas.Common.Editing.ExtractSuperclass.Protocol,
+  Atlas.Common.Editing.MoveMember.Protocol,
   Shell.Composition.Refactorings.Services;
 
 type
@@ -67,10 +67,10 @@ uses
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Semantics.InlineAccessor,
-  Atlas.Common.Lsp.MoveClass,
+  Atlas.Common.Editing.MoveClass.Protocol,
   Atlas.Common.Lsp.PropertyFromAccessors,
-  Atlas.Common.Lsp.InlineAccessor,
-  Atlas.Common.Lsp.SafeDelete,
+  Atlas.Common.Editing.InlineAccessor.Protocol,
+  Atlas.Common.Editing.SafeDelete.Protocol,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.References;
 
@@ -167,17 +167,17 @@ procedure TShellStructureRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspChangeSignature.cPrepareCommand, ChangeSignaturePrepare);
   ACommands.Register(TLspChangeSignature.cApplyCommand, ChangeSignature);
-  ACommands.Register(TLspMoveClass.cApplyCommand, MoveClass);
+  ACommands.Register(TMoveClassProtocol.cApplyCommand, MoveClass);
   ACommands.Register(TLspPropertyFromAccessors.cApplyCommand, PropertyFromAccessors);
-  ACommands.Register(TLspInlineAccessor.cApplyCommand, InlineAccessor);
-  ACommands.Register(TLspSafeDelete.cPrepareCommand, SafeDeletePrepare);
-  ACommands.Register(TLspSafeDelete.cApplyCommand, SafeDelete);
-  ACommands.Register(TLspExtractInterface.cPrepareCommand, ExtractInterfacePrepare);
-  ACommands.Register(TLspExtractInterface.cApplyCommand, ExtractInterface);
-  ACommands.Register(TLspExtractSuperclass.cPrepareCommand, ExtractSuperclassPrepare);
-  ACommands.Register(TLspExtractSuperclass.cApplyCommand, ExtractSuperclass);
-  ACommands.Register(TLspMoveMember.cPrepareCommand, MoveMemberPrepare);
-  ACommands.Register(TLspMoveMember.cApplyCommand, MoveMember);
+  ACommands.Register(TInlineAccessorProtocol.cApplyCommand, InlineAccessor);
+  ACommands.Register(TSafeDeleteProtocol.cPrepareCommand, SafeDeletePrepare);
+  ACommands.Register(TSafeDeleteProtocol.cApplyCommand, SafeDelete);
+  ACommands.Register(TExtractInterfaceProtocol.cPrepareCommand, ExtractInterfacePrepare);
+  ACommands.Register(TExtractInterfaceProtocol.cApplyCommand, ExtractInterface);
+  ACommands.Register(TExtractSuperclassProtocol.cPrepareCommand, ExtractSuperclassPrepare);
+  ACommands.Register(TExtractSuperclassProtocol.cApplyCommand, ExtractSuperclass);
+  ACommands.Register(TMoveMemberProtocol.cPrepareCommand, MoveMemberPrepare);
+  ACommands.Register(TMoveMemberProtocol.cApplyCommand, MoveMember);
 end;
 
 function TShellStructureRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -286,7 +286,7 @@ begin
   end;
   mResolver := NewResolver;
   try
-    Result := TLspMoveClass.Actions(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    Result := TMoveClassProtocol.Actions(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AUri), mDocument.Text, AUri, APosition);
   finally
     mResolver.Free;
@@ -317,7 +317,7 @@ begin
   mContext.TypeComments := TypeComments(mUri);
   mResolver := NewResolver;
   try
-    mAnswer := TLspMoveClass.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree, mFileName, mDocument.Text,
+    mAnswer := TMoveClassProtocol.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree, mFileName, mDocument.Text,
       TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
@@ -396,7 +396,7 @@ begin
     mOffer.Bulk := mSettings.InlineAccessorBulk;
     mOffer.Options := InlineAccessorOptionsOf(mSettings);
     mOffer.Index := Index;
-    Result := TLspInlineAccessor.Actions(mOffer, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
+    Result := TInlineAccessorProtocol.Actions(mOffer, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
       APosition);
   end;
 end;
@@ -417,7 +417,7 @@ begin
   mSettings := Settings(mUri);
   Allow(mSettings.InlineAccessor,
     Disabled(cTexts[TStructureRefactoringText.InlineAccessor].Text, 'refactoring.inlineAccessor'));
-  Allow((mScope = TLspInlineAccessor.cScopeHere) or mSettings.InlineAccessorBulk,
+  Allow((mScope = TInlineAccessorProtocol.cScopeHere) or mSettings.InlineAccessorBulk,
     cTexts[TStructureRefactoringText.BulkOff].Text);
   mDocument := Open(mUri);
   mContext := Default(TInlineAccessorContext);
@@ -428,7 +428,7 @@ begin
   mContext.Scope := mScope;
   mResolver := NewResolver;
   try
-    mAnswer := TLspInlineAccessor.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TInlineAccessorProtocol.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
@@ -446,7 +446,7 @@ begin
   Result := nil;
   if TryOpen(AUri, Settings(AUri).SafeDelete, mDocument) then
   begin
-    Result := TLspSafeDelete.Actions(True, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
+    Result := TSafeDeleteProtocol.Actions(True, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
       APosition);
   end;
 end;
@@ -473,7 +473,7 @@ begin
   mContext.UsesFor := UsesForFunc(UsesProvider);
   mResolver := NewResolver;
   try
-    mAnswer := TLspSafeDelete.Prepare(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TSafeDeleteProtocol.Prepare(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
@@ -514,7 +514,7 @@ begin
   mContext.Choices := mChoices;
   mResolver := NewResolver;
   try
-    mAnswer := TLspSafeDelete.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TSafeDeleteProtocol.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
   finally
     mResolver.Free;
@@ -531,7 +531,7 @@ begin
   Result := nil;
   if TryOpen(AUri, Settings(AUri).ExtractInterface, mDocument) then
   begin
-    Result := TLspExtractInterface.Actions(True, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
+    Result := TExtractInterfaceProtocol.Actions(True, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
       APosition);
   end;
 end;
@@ -555,7 +555,7 @@ begin
   mUri := AArguments.Items[0].Value;
   mDocument := Open(mUri, Settings(mUri).ExtractInterface,
     Disabled(cTexts[TStructureRefactoringText.ExtractInterface].Text, 'refactoring.extractInterface'));
-  Result := TLspExtractInterface.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
+  Result := TExtractInterfaceProtocol.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
     TLspPositions.ReadPosition(AArguments.Items[1]), ExtractInterfaceContextOf(mUri));
 end;
 
@@ -575,7 +575,7 @@ begin
   mContext := ExtractInterfaceContextOf(mUri);
   mContext.Resolver := NewResolver;
   try
-    mAnswer := TLspExtractInterface.Execute(TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
+    mAnswer := TExtractInterfaceProtocol.Execute(TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
       mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), AArguments.Items[2], mContext);
   finally
     mContext.Resolver.Free;
@@ -592,7 +592,7 @@ begin
   Result := nil;
   if TryOpen(AUri, Settings(AUri).ExtractSuperclass, mDocument) then
   begin
-    Result := TLspExtractSuperclass.Actions(True, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
+    Result := TExtractSuperclassProtocol.Actions(True, TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, AUri,
       APosition);
   end;
 end;
@@ -623,7 +623,7 @@ begin
   mUri := AArguments.Items[0].Value;
   mDocument := Open(mUri, Settings(mUri).ExtractSuperclass,
     Disabled(cTexts[TStructureRefactoringText.ExtractSuperclass].Text, 'refactoring.extractSuperclass'));
-  Result := TLspExtractSuperclass.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
+  Result := TExtractSuperclassProtocol.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
     TLspPositions.ReadPosition(AArguments.Items[1]), ExtractSuperclassContextOf(mUri));
 end;
 
@@ -643,7 +643,7 @@ begin
   mContext := ExtractSuperclassContextOf(mUri);
   mContext.Resolver := NewResolver;
   try
-    mAnswer := TLspExtractSuperclass.Execute(TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
+    mAnswer := TExtractSuperclassProtocol.Execute(TSyntaxTreeCache.Get(mDocument, nil).Tree, TDocumentUris.ToPath(mUri),
       mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), AArguments.Items[2], mContext);
   finally
     mContext.Resolver.Free;
@@ -660,7 +660,7 @@ begin
   Result := nil;
   if TryOpen(AUri, Settings(AUri).MoveMember, mDocument) then
   begin
-    Result := TLspMoveMember.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
+    Result := TMoveMemberProtocol.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
       TDocumentUris.ToPath(AUri), AUri, APosition, Index);
   end;
 end;
@@ -687,7 +687,7 @@ var
   mContext: TMoveMemberContext;
 begin
   mContext := MoveMemberContextOf(AArguments, mDocument);
-  Result := TLspMoveMember.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
+  Result := TMoveMemberProtocol.Prepare(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text,
     TDocumentUris.ToPath(AArguments.Items[0].Value), TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
 end;
 
@@ -704,7 +704,7 @@ begin
   mContext.Request := AArguments.Items[3];
   mResolver := NewResolver;
   try
-    mAnswer := TLspMoveMember.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    mAnswer := TMoveMemberProtocol.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AArguments.Items[0].Value), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]),
       mContext);
   finally

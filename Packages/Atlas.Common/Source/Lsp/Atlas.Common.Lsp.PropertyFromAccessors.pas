@@ -58,8 +58,6 @@ type
     /// APosition keine Property fehlt oder das Ergebnis nicht parst. Der Aufrufer übernimmt das Objekt.</summary>
     class function Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
       const APosition: TTextPosition; const AContext: TPropertyFromAccessorsContext): TJSONObject; static;
-    /// <summary>Ist ATypeName ein prozeduraler Typ (procedure/function … of object, reference to)?</summary>
-    class function IsProcedural(const ATypeName: string; const AIndex: ISymbolIndex): Boolean; static;
   end;
 
 implementation
@@ -77,7 +75,8 @@ uses
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Semantics.TypeKinds;
 
 {$SCOPEDENUMS ON}
 
@@ -107,10 +106,6 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  cProceduralPattern = '=\s*(reference\s+to\s+)?(procedure|function)\b';
-  /// <summary>Bekannte Methodenzeiger der RTL, falls die RTL nicht im Index steht.</summary>
-  cKnownProcedural: array[0..5] of string = ('TProc', 'TFunc', 'TPredicate', 'TNotifyEvent', 'TThreadMethod',
-    'TThreadProcedure');
   /// <summary>Eingebaute Routinen, deren Argumente Werte sind.</summary>
   cValueIntrinsics: array[0..13] of string = ('Exit', 'Write', 'Writeln', 'Length', 'Ord', 'Chr', 'Inc', 'Dec', 'Abs',
     'Round', 'Trunc', 'Succ', 'Pred', 'High');
@@ -233,7 +228,7 @@ end;
 /// <summary>Wert oder Methodenzeiger nach dem Typnamen ATypeName.</summary>
 function ByType(const ATypeName: string; const AIndex: ISymbolIndex): TUnclearResult;
 begin
-  if TLspPropertyFromAccessors.IsProcedural(ATypeName, AIndex) then
+  if TResolvedTypeKinds.IsProceduralName(ATypeName, AIndex) then
   begin
     Result := TUnclearResult.Pointer_;
   end
@@ -284,8 +279,8 @@ begin
   begin
     Exit(TUnclearResult.Unknown);
   end;
-  if mResolved.Builtin or (not TRegEx.IsMatch(mResolved.Signature, cProceduralPattern, [roIgnoreCase]) and
-    not TLspPropertyFromAccessors.IsProcedural(mResolved.Name, AIndex)) then
+  if mResolved.Builtin or (not TRegEx.IsMatch(mResolved.Signature, TResolvedTypeKinds.cProceduralPattern, [roIgnoreCase]) and
+    not TResolvedTypeKinds.IsProceduralName(mResolved.Name, AIndex)) then
   begin
     Result := TUnclearResult.Value;
   end
@@ -315,7 +310,7 @@ begin
   begin
     if AArgument <= High(mCandidate.ParamTypes) then
     begin
-      if TLspPropertyFromAccessors.IsProcedural(mCandidate.ParamTypes[AArgument], AIndex) then
+      if TResolvedTypeKinds.IsProceduralName(mCandidate.ParamTypes[AArgument], AIndex) then
       begin
         Exit(TUnclearResult.Pointer_);
       end;
@@ -755,42 +750,6 @@ begin
   finally
     mRun.Free;
   end;
-end;
-
-class function TLspPropertyFromAccessors.IsProcedural(const ATypeName: string; const AIndex: ISymbolIndex): Boolean;
-var
-  mName: string;
-  mLocation: TSymbolLocation;
-begin
-  if TRegEx.IsMatch(ATypeName, '^\s*(reference\s+to\s+)?(procedure|function)\b', [roIgnoreCase]) then
-  begin
-    Exit(True);
-  end;
-  mName := Trim(ATypeName);
-  if Pos('<', mName) > 0 then
-  begin
-    mName := Copy(mName, 1, Pos('<', mName) - 1);
-  end;
-  if Pos('.', mName) > 0 then
-  begin
-    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
-  end;
-  if IndexText(mName, cKnownProcedural) >= 0 then
-  begin
-    Exit(True);
-  end;
-  if AIndex <> nil then
-  begin
-    for mLocation in AIndex.FindSymbols(mName) do
-    begin
-      if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
-        TRegEx.IsMatch(mLocation.Symbol.Signature, cProceduralPattern, [roIgnoreCase]) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-  Result := False;
 end;
 
 initialization

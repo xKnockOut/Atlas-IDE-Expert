@@ -26,7 +26,7 @@
 //
 // Die Texte aller betroffenen Dateien liegen in TMemberFiles; der Umbau
 // ändert sie Schritt für Schritt (anwenden, neu parsen). uses-Einträge
-// ergänzt Atlas.Common.Lsp.MoveMember.
+// ergänzt Atlas.Common.Editing.MoveMember.Protocol.
 
 interface
 

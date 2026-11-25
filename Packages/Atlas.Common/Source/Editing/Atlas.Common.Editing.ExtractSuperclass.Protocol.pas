@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ExtractSuperclass;
+﻿unit Atlas.Common.Editing.ExtractSuperclass.Protocol;
 
 // „Basisklasse herauslösen“ über das Protokoll (#713):
 //   - Code-Aktion „Basisklasse aus TFoo herauslösen …“ auf der Kopfzeile einer
@@ -52,7 +52,7 @@ type
     Resolver: TNameResolver;
   end;
 
-  TLspExtractSuperclass = class
+  TExtractSuperclassProtocol = class
   public const
     cClientCommand = 'atlas.extractSuperclass';
     cPrepareCommand = 'atlas.server.extractSuperclass.prepare';
@@ -90,10 +90,9 @@ uses
   Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Editing.ExtractSuperclass,
   Atlas.Common.Editing.MoveClass,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.MoveClass,
-  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Editing.MoveClass.Protocol,
+  Atlas.Common.Editing.WorkspaceChanges,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 
@@ -101,12 +100,12 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspExtractSuperclassText = (ExtractSuperclass, ExtractSuperclassFrom, AfterTheChangeNoLonger,
+  TExtractSuperclassProtocolText = (ExtractSuperclass, ExtractSuperclassFrom, AfterTheChangeNoLonger,
     RequestWithNameUnitAnd, IsNotAValidUnit, TheBaseClassCannotBe, UnknownOriginOfTheNew, WithMembersFiles,
     ExtractSuperclass2, AlreadyExists, IsAlreadyInTheProject);
 
 const
-  cTexts: array[TLspExtractSuperclassText] of TAtlasText = (
+  cTexts: array[TExtractSuperclassProtocolText] of TAtlasText = (
     (De: 'Basisklasse herauslösen: '; En: 'Extract superclass: '),
     (De: 'Basisklasse aus %s herauslösen …'; En: 'Extract superclass from %s …'),
     (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
@@ -126,8 +125,8 @@ const
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed,
-    cTexts[TLspExtractSuperclassText.ExtractSuperclass].Text + AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
+    cTexts[TExtractSuperclassProtocolText.ExtractSuperclass].Text + AMessage);
 end;
 
 /// <summary>Ist AName ein Interface: im Baum oder im Index.</summary>
@@ -199,9 +198,9 @@ begin
     end;
 end;
 
-{ TLspExtractSuperclass }
+{ TExtractSuperclassProtocol }
 
-class function TLspExtractSuperclass.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
+class function TExtractSuperclassProtocol.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
 var
   mInfo: TSuperclassInfo;
@@ -219,7 +218,7 @@ begin
   begin
     Exit;
   end;
-  mTitle := cTexts[TLspExtractSuperclassText.ExtractSuperclassFrom].Fmt([mInfo.ClassName]);
+  mTitle := cTexts[TExtractSuperclassProtocolText.ExtractSuperclassFrom].Fmt([mInfo.ClassName]);
   mArguments := TJSONArray.Create;
   mArguments.Add(AUri);
   mArguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -259,7 +258,7 @@ begin
   Result.AddPair('needs', mNeeds);
 end;
 
-class function TLspExtractSuperclass.Prepare(ATree: TSyntaxTree; const AText: string;
+class function TExtractSuperclassProtocol.Prepare(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TExtractSuperclassContext): TJSONObject;
 var
   mInfo: TSuperclassInfo;
@@ -313,7 +312,7 @@ begin
   try
     if Length(mCheck.Diagnostics) > ABefore then
     begin
-      raise Failed(cTexts[TLspExtractSuperclassText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
+      raise Failed(cTexts[TExtractSuperclassProtocolText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
         mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
     end;
   finally
@@ -398,7 +397,7 @@ var
 begin
   if Assigned(FContext.Exists) and FContext.Exists(FNewFile) then
   begin
-    raise Failed(cTexts[TLspExtractSuperclassText.AlreadyExists].Fmt([ExtractFileName(FNewFile)]));
+    raise Failed(cTexts[TExtractSuperclassProtocolText.AlreadyExists].Fmt([ExtractFileName(FNewFile)]));
   end;
   if not FContext.HasProject then
   begin
@@ -408,7 +407,7 @@ begin
   begin
     if SameText(mItem.Name, FUnitName) then
     begin
-      raise Failed(cTexts[TLspExtractSuperclassText.IsAlreadyInTheProject].Fmt([FUnitName]));
+      raise Failed(cTexts[TExtractSuperclassProtocolText.IsAlreadyInTheProject].Fmt([FUnitName]));
     end;
   end;
 end;
@@ -423,10 +422,10 @@ begin
     FContext.Resolver.PinTree(mTree, FFileName);
     try
       if not TMoveClass.Plan(TMoveClassSource.Create(FFileName, FPlan.Text, mTree),
-        TTextPosition.Create(FPlan.BaseLine, 0), FUnitName, TLspMoveClass.Lookup(FContext.Resolver), Result,
+        TTextPosition.Create(FPlan.BaseLine, 0), FUnitName, TMoveClassProtocol.Lookup(FContext.Resolver), Result,
         mReason) then
       begin
-        raise Failed(cTexts[TLspExtractSuperclassText.TheBaseClassCannotBe].Fmt([mReason]));
+        raise Failed(cTexts[TExtractSuperclassProtocolText.TheBaseClassCannotBe].Fmt([mReason]));
       end;
     finally
       FContext.Resolver.UnpinTree;
@@ -448,7 +447,7 @@ begin
   FChanges.CreateFile(FNewFile, mMove.Text);
   if mMove.Unresolved <> nil then
   begin
-    FChanges.Warn(cTexts[TLspExtractSuperclassText.UnknownOriginOfTheNew].Fmt([string.Join(', ', mMove.Unresolved)]));
+    FChanges.Warn(cTexts[TExtractSuperclassProtocolText.UnknownOriginOfTheNew].Fmt([string.Join(', ', mMove.Unresolved)]));
   end;
 end;
 
@@ -458,10 +457,10 @@ var
   mDescription: string;
 begin
   mMoved := Length(FPlan.Moved) + Length(FPlan.Abstracts);
-  mDescription := cTexts[TLspExtractSuperclassText.WithMembersFiles].Fmt([FPlan.BaseName, mMoved, FChanges.FileCount]);
+  mDescription := cTexts[TExtractSuperclassProtocolText.WithMembersFiles].Fmt([FPlan.BaseName, mMoved, FChanges.FileCount]);
   Result := TJSONObject.Create;
-  Result.AddPair('edit', FChanges.ToJson(TLspExtractSuperclass.cAnnotationId,
-    cTexts[TLspExtractSuperclassText.ExtractSuperclass2].Text,
+  Result.AddPair('edit', FChanges.ToJson(TExtractSuperclassProtocol.cAnnotationId,
+    cTexts[TExtractSuperclassProtocolText.ExtractSuperclass2].Text,
     mDescription));
   Result.AddPair('warnings', FChanges.WarningsJson);
   Result.AddPair('file', TDocumentUris.FromPath(FNewFile));
@@ -485,7 +484,7 @@ begin
   if not (ARequest is TJSONObject) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspExtractSuperclassText.RequestWithNameUnitAnd].Text);
+      cTexts[TExtractSuperclassProtocolText.RequestWithNameUnitAnd].Text);
   end;
   mBody := TJSONObject(ARequest);
   FRequest := Default(TSuperclassRequest);
@@ -497,7 +496,7 @@ begin
   FRequest.RaiseVisibility := RaiseVisibilityOf(FContext.RaiseVisibility);
   if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
   begin
-    raise Failed(cTexts[TLspExtractSuperclassText.IsNotAValidUnit].Fmt([FUnitName]));
+    raise Failed(cTexts[TExtractSuperclassProtocolText.IsNotAValidUnit].Fmt([FUnitName]));
   end;
 end;
 
@@ -525,7 +524,7 @@ begin
   Result := Answer;
 end;
 
-class function TLspExtractSuperclass.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
+class function TExtractSuperclassProtocol.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
   const APosition: TTextPosition; ARequest: TJSONValue; const AContext: TExtractSuperclassContext): TJSONObject;
 var
   mExtraction: TSuperclassExtraction;
@@ -540,6 +539,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.ExtractSuperclass', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.ExtractSuperclass.Protocol', cTexts);
 
 end.

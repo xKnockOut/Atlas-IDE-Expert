@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SafeDelete;
+﻿unit Atlas.Common.Editing.SafeDelete.Protocol;
 
 // „Sicher löschen“ über das Protokoll (#716):
 //   - Code-Aktion „Methode „Run“ sicher löschen …“ auf jedem Symbol, das
@@ -60,7 +60,7 @@ type
     Choices: TSafeDeleteChoices;
   end;
 
-  TLspSafeDelete = class
+  TSafeDeleteProtocol = class
   public const
     cClientCommand = 'atlas.safeDelete';
     cPrepareCommand = 'atlas.server.safeDelete.prepare';
@@ -102,9 +102,8 @@ uses
   Atlas.Common.Semantics.InlineAccessor,
   Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Editing.WorkspaceChanges,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 
@@ -112,13 +111,13 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspSafeDeleteText = (IsMappedToAnInterface, WhetherImplementsAMethodOf, IsStoredAsBinaryAnd, FormBelongsToTheClass,
+  TSafeDeleteProtocolText = (IsMappedToAnInterface, WhetherImplementsAMethodOf, IsStoredAsBinaryAnd, FormBelongsToTheClass,
     ThereIsNothingHereThat, IsPublishedFormsAndRTTI, OverridesAnInheritedMethodCalls, AfterDeletingNoLongerParses,
     TheUsesEntryInCould, Overrides, SafeDelete, IsStillUsed, DeletedDespiteUses, UsesSymbolsFrom, Includes,
     SymbolsFiles, Implements);
 
 const
-  cTexts: array[TLspSafeDeleteText] of TAtlasText = (
+  cTexts: array[TSafeDeleteProtocolText] of TAtlasText = (
     (De: '%s ist einer Interface-Methode zugeordnet.'; En: '%s is mapped to an interface method.'),
     (De: 'Ob %s eine Methode von %s implementiert, ist unbekannt.';
      En: 'Whether %s implements a method of %s is unknown.'),
@@ -219,7 +218,7 @@ type
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, AMessage);
 end;
 
 function InSpans(const ASpans: TArray<TLineSpan>; ALine: Integer): Boolean;
@@ -362,7 +361,7 @@ begin
   end;
   if TInlineAccessor.IsResolution(ALayout, Target.Name) then
   begin
-    AddUsage(FFileName, Target.NameRange.StartPos, cTexts[TLspSafeDeleteText.IsMappedToAnInterface].Fmt([Target.Name]),
+    AddUsage(FFileName, Target.NameRange.StartPos, cTexts[TSafeDeleteProtocolText.IsMappedToAnInterface].Fmt([Target.Name]),
       'interface');
   end;
   mInterfaces := TInlineAccessor.IndexInterfaces(FContext.Index);
@@ -375,12 +374,12 @@ begin
     end;
     if mAnswer = TInterfaceAnswer.Yes then
     begin
-      AddUsage(FFileName, Target.NameRange.StartPos, cTexts[TLspSafeDeleteText.Implements].Fmt([ALayout.Name,
+      AddUsage(FFileName, Target.NameRange.StartPos, cTexts[TSafeDeleteProtocolText.Implements].Fmt([ALayout.Name,
         Target.Name, ALayout.Ancestors[mIndex], Target.Name]), 'interface');
     end
     else if (mAnswer = TInterfaceAnswer.Unknown) and (mIndex > 0) then
     begin
-      Warnings := Warnings + [cTexts[TLspSafeDeleteText.WhetherImplementsAMethodOf].Fmt([Target.Name,
+      Warnings := Warnings + [cTexts[TSafeDeleteProtocolText.WhetherImplementsAMethodOf].Fmt([Target.Name,
         ALayout.Ancestors[mIndex]])];
     end;
   end;
@@ -427,7 +426,7 @@ begin
     end;
     if TFileEncoding.IsBinaryFormFile(mForm) then
     begin
-      Warnings := Warnings + [cTexts[TLspSafeDeleteText.IsStoredAsBinaryAnd].Fmt([ExtractFileName(mForm)])];
+      Warnings := Warnings + [cTexts[TSafeDeleteProtocolText.IsStoredAsBinaryAnd].Fmt([ExtractFileName(mForm)])];
       Continue;
     end;
     mDocument := TDfmParser.Parse(mText);
@@ -438,7 +437,7 @@ begin
       end;
       if Target.Kind = TSafeDeleteKind.Type_ then
       begin
-        AddUsage(mForm, mDocument.Root.TypeRange.StartPos, cTexts[TLspSafeDeleteText.FormBelongsToTheClass].Fmt([
+        AddUsage(mForm, mDocument.Root.TypeRange.StartPos, cTexts[TSafeDeleteProtocolText.FormBelongsToTheClass].Fmt([
           ExtractFileName(mForm)]), 'form');
       end
       else
@@ -675,12 +674,12 @@ begin
     end
     else if Assigned(FContext.UsesFor) then
     begin
-      AddUsage(mFileName, TTextPosition.Create(0, 0), cTexts[TLspSafeDeleteText.UsesSymbolsFrom].Fmt([
+      AddUsage(mFileName, TTextPosition.Create(0, 0), cTexts[TSafeDeleteProtocolText.UsesSymbolsFrom].Fmt([
         ExtractFileName(mFileName), mUnitName]), 'uses');
     end
     else
     begin
-      AddUsage(mFileName, TTextPosition.Create(0, 0), cTexts[TLspSafeDeleteText.Includes].Fmt([
+      AddUsage(mFileName, TTextPosition.Create(0, 0), cTexts[TSafeDeleteProtocolText.Includes].Fmt([
         ExtractFileName(mFileName),
         mUnitName]), 'uses');
     end;
@@ -772,7 +771,7 @@ begin
     end
     else
     begin
-      AChanges.Warn(cTexts[TLspSafeDeleteText.TheUsesEntryInCould].Fmt([ExtractFileName(mFileName)]));
+      AChanges.Warn(cTexts[TSafeDeleteProtocolText.TheUsesEntryInCould].Fmt([ExtractFileName(mFileName)]));
     end;
   end;
   AChanges.DeleteFile(FFileName);
@@ -795,7 +794,7 @@ begin
   begin
     if mReason = '' then
     begin
-      mReason := cTexts[TLspSafeDeleteText.ThereIsNothingHereThat].Text;
+      mReason := cTexts[TSafeDeleteProtocolText.ThereIsNothingHereThat].Text;
     end;
     raise Fail(mReason);
   end;
@@ -808,11 +807,11 @@ begin
   FindReferences;
   if Target.IsPublished then
   begin
-    Warnings := Warnings + [cTexts[TLspSafeDeleteText.IsPublishedFormsAndRTTI].Fmt([Target.Name])];
+    Warnings := Warnings + [cTexts[TSafeDeleteProtocolText.IsPublishedFormsAndRTTI].Fmt([Target.Name])];
   end;
   if Target.IsOverride then
   begin
-    Warnings := Warnings + [cTexts[TLspSafeDeleteText.OverridesAnInheritedMethodCalls].Fmt([Target.Name])];
+    Warnings := Warnings + [cTexts[TSafeDeleteProtocolText.OverridesAnInheritedMethodCalls].Fmt([Target.Name])];
   end;
   if Target.Kind = TSafeDeleteKind.Type_ then
   begin
@@ -871,7 +870,7 @@ begin
   try
     if Length(mAfter.Diagnostics) > Length(mBefore.Diagnostics) then
     begin
-      raise Fail(cTexts[TLspSafeDeleteText.AfterDeletingNoLongerParses].Fmt([ExtractFileName(AFileName),
+      raise Fail(cTexts[TSafeDeleteProtocolText.AfterDeletingNoLongerParses].Fmt([ExtractFileName(AFileName),
         mAfter.Diagnostics[0].StartPos.Line + 1, mAfter.Diagnostics[0].Message]));
     end;
   finally
@@ -945,9 +944,9 @@ begin
   end;
 end;
 
-{ TLspSafeDelete }
+{ TSafeDeleteProtocol }
 
-class function TLspSafeDelete.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
+class function TSafeDeleteProtocol.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
 var
   mTarget: TSafeDeleteTarget;
@@ -985,7 +984,7 @@ begin
   Result.AddPair('kind', AKind);
 end;
 
-class function TLspSafeDelete.Prepare(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+class function TSafeDeleteProtocol.Prepare(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
   AText: string; const APosition: TTextPosition; const AContext: TSafeDeleteContext): TJSONObject;
 var
   mPlan: TSafeDeletePlan;
@@ -1045,7 +1044,7 @@ begin
   end;
   for mHit in APlan.Overrides do
   begin
-    Result := Result + [cTexts[TLspSafeDeleteText.Overrides].Fmt([ExtractFileName(mHit.FileName), mHit.Position.Line +
+    Result := Result + [cTexts[TSafeDeleteProtocolText.Overrides].Fmt([ExtractFileName(mHit.FileName), mHit.Position.Line +
       1,
       APlan.Target.Name])];
   end;
@@ -1069,15 +1068,15 @@ end;
 function ExecuteJson(AChanges: TWorkspaceChanges; ADeleted: Integer): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('edit', AChanges.ToJson(TLspSafeDelete.cAnnotationId, cTexts[TLspSafeDeleteText.SafeDelete].Text,
-    cTexts[TLspSafeDeleteText.SymbolsFiles].Fmt([ADeleted, AChanges.FileCount])));
+  Result.AddPair('edit', AChanges.ToJson(TSafeDeleteProtocol.cAnnotationId, cTexts[TSafeDeleteProtocolText.SafeDelete].Text,
+    cTexts[TSafeDeleteProtocolText.SymbolsFiles].Fmt([ADeleted, AChanges.FileCount])));
   Result.AddPair('warnings', AChanges.WarningsJson);
   Result.AddPair('deleted', TJSONNumber.Create(ADeleted));
   Result.AddPair('edits', TJSONNumber.Create(AChanges.EditCount));
   Result.AddPair('files', TJSONNumber.Create(AChanges.FileCount));
 end;
 
-class function TLspSafeDelete.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+class function TSafeDeleteProtocol.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
   AText: string; const APosition: TTextPosition; const AContext: TSafeDeleteContext): TJSONObject;
 var
   mPlan: TSafeDeletePlan;
@@ -1094,7 +1093,7 @@ begin
     mBlocking := BlockingOf(mPlan, AContext.Choices.Overrides);
     if (mBlocking <> nil) and not AContext.Choices.Force then
     begin
-      raise Fail(cTexts[TLspSafeDeleteText.IsStillUsed].Fmt([mPlan.Target.Name, string.Join('; ', mBlocking)]));
+      raise Fail(cTexts[TSafeDeleteProtocolText.IsStillUsed].Fmt([mPlan.Target.Name, string.Join('; ', mBlocking)]));
     end;
     for mWarning in mPlan.Warnings do
     begin
@@ -1102,7 +1101,7 @@ begin
     end;
     if mBlocking <> nil then
     begin
-      mChanges.Warn(cTexts[TLspSafeDeleteText.DeletedDespiteUses].Fmt([Length(mBlocking)]));
+      mChanges.Warn(cTexts[TSafeDeleteProtocolText.DeletedDespiteUses].Fmt([Length(mBlocking)]));
     end;
     mPlan.Build(AContext.Choices, mChanges);
     Result := ExecuteJson(mChanges, DeletedCount(mPlan, AContext.Choices));
@@ -1113,6 +1112,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.SafeDelete', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.SafeDelete.Protocol', cTexts);
 
 end.

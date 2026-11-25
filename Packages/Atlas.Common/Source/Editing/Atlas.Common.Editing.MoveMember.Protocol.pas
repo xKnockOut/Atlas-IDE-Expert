@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.MoveMember;
+﻿unit Atlas.Common.Editing.MoveMember.Protocol;
 
 // „Mitglied in Vorfahr oder Nachfahr verschieben“ über das Protokoll (#675):
 //   - Code-Aktionen „„Run“ in Vorfahr verschieben …“ (der Vorfahr liegt im
@@ -46,7 +46,7 @@ type
     Request: TJSONValue;
   end;
 
-  TLspMoveMember = class
+  TMoveMemberProtocol = class
   public const
     cClientCommand = 'atlas.moveMember';
     cPrepareCommand = 'atlas.server.moveMember.prepare';
@@ -86,10 +86,9 @@ uses
   Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Editing.MoveMember,
   Atlas.Common.Editing.MoveClass,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.MoveClass,
-  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Editing.MoveClass.Protocol,
+  Atlas.Common.Editing.WorkspaceChanges,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
 
@@ -97,13 +96,13 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspMoveMemberText = (DirectionUpOrDownMissing, HasNoAncestorInThe, HasNoDescendantsInThe, CannotBeRead,
+  TMoveMemberProtocolText = (DirectionUpOrDownMissing, HasNoAncestorInThe, HasNoDescendantsInThe, CannotBeRead,
     IsOnlyInTheImplementation, ComesFromWhichWouldHave, IsNoLongerReadableAfter, AfterTheChangeNoLonger,
     PleaseChooseATargetThat, RequestWithMembersAndTargets, MoveMember, MoveToAncestor, MoveToDescendants,
     MembersFiles, MoveMember2);
 
 const
-  cTexts: array[TLspMoveMemberText] of TAtlasText = (
+  cTexts: array[TMoveMemberProtocolText] of TAtlasText = (
     (De: 'Richtung "up" oder "down" fehlt'; En: 'Direction "up" or "down" missing'),
     (De: '%s hat keinen Vorfahren im Projekt.'; En: '%s has no ancestor in the project.'),
     (De: '%s hat keine Nachfahren im Projekt.'; En: '%s has no descendants in the project.'),
@@ -139,7 +138,7 @@ const
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TLspMoveMemberText.MoveMember].Text + AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TMoveMemberProtocolText.MoveMember].Text + AMessage);
 end;
 
 function IsUp(const ADirection: string): Boolean;
@@ -155,7 +154,7 @@ begin
   else
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspMoveMemberText.DirectionUpOrDownMissing].Text);
+      cTexts[TMoveMemberProtocolText.DirectionUpOrDownMissing].Text);
   end;
 end;
 
@@ -308,7 +307,7 @@ begin
   mArguments.Add(ADirection);
   mCommand := TJSONObject.Create;
   mCommand.AddPair('title', ATitle);
-  mCommand.AddPair('command', TLspMoveMember.cClientCommand);
+  mCommand.AddPair('command', TMoveMemberProtocol.cClientCommand);
   mCommand.AddPair('arguments', mArguments);
   Result := TJSONObject.Create;
   Result.AddPair('title', ATitle);
@@ -316,9 +315,9 @@ begin
   Result.AddPair('command', mCommand);
 end;
 
-{ TLspMoveMember }
+{ TMoveMemberProtocol }
 
-class function TLspMoveMember.Actions(ATree: TSyntaxTree; const AText, AFileName, AUri: string;
+class function TMoveMemberProtocol.Actions(ATree: TSyntaxTree; const AText, AFileName, AUri: string;
   const APosition: TTextPosition; const AIndex: ISymbolIndex): TArray<TJSONObject>;
 var
   mFound: TMoveMemberInfo;
@@ -332,12 +331,12 @@ begin
   end;
   if FindClass(ATree, AText, AFileName, AIndex, mFound.Ancestor, mHit) then
   begin
-    Result := Result + [Action(cTexts[TLspMoveMemberText.MoveToAncestor].Fmt([mFound.SelectedName]), AUri, APosition,
+    Result := Result + [Action(cTexts[TMoveMemberProtocolText.MoveToAncestor].Fmt([mFound.SelectedName]), AUri, APosition,
       'up')];
   end;
   if DirectDescendants(ATree, AText, AFileName, AIndex, mFound.ClassName) <> nil then
   begin
-    Result := Result + [Action(cTexts[TLspMoveMemberText.MoveToDescendants].Fmt([mFound.SelectedName]), AUri, APosition,
+    Result := Result + [Action(cTexts[TMoveMemberProtocolText.MoveToDescendants].Fmt([mFound.SelectedName]), AUri, APosition,
       'down')];
   end;
 end;
@@ -411,7 +410,7 @@ begin
   Result.AddPair('value', TJSONBool.Create(AUp));
 end;
 
-class function TLspMoveMember.Prepare(ATree: TSyntaxTree; const AText, AFileName: string;
+class function TMoveMemberProtocol.Prepare(ATree: TSyntaxTree; const AText, AFileName: string;
   const APosition: TTextPosition; const AContext: TMoveMemberContext): TJSONObject;
 var
   mFound: TMoveMemberInfo;
@@ -425,11 +424,11 @@ begin
   mHits := TargetHits(ATree, AText, AFileName, AContext.Index, mFound, mUp);
   if (mHits = nil) and mUp then
   begin
-    raise Failed(cTexts[TLspMoveMemberText.HasNoAncestorInThe].Fmt([mFound.ClassName]));
+    raise Failed(cTexts[TMoveMemberProtocolText.HasNoAncestorInThe].Fmt([mFound.ClassName]));
   end;
   if mHits = nil then
   begin
-    raise Failed(cTexts[TLspMoveMemberText.HasNoDescendantsInThe].Fmt([mFound.ClassName]));
+    raise Failed(cTexts[TMoveMemberProtocolText.HasNoDescendantsInThe].Fmt([mFound.ClassName]));
   end;
   Result := TJSONObject.Create;
   Result.AddPair('className', mFound.ClassName);
@@ -456,7 +455,7 @@ function ReadFile(const AContext: TMoveMemberContext; const AFileName: string): 
 begin
   if not (Assigned(AContext.ReadText) and AContext.ReadText(AFileName, Result)) then
   begin
-    raise Failed(cTexts[TLspMoveMemberText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
+    raise Failed(cTexts[TMoveMemberProtocolText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
 end;
 
@@ -626,7 +625,7 @@ begin
   FTree := ATree;
   FFileName := AFileName;
   FUp := AUp;
-  FLookup := TLspMoveClass.Lookup(AResolver);
+  FLookup := TMoveClassProtocol.Lookup(AResolver);
   FSourceUnit := TPascalUses.OwnName(ATree.Tokens);
   FImplementationLine := SectionLine(ATree, TSyntaxKind.ImplementationSection);
 end;
@@ -635,7 +634,7 @@ procedure TUsesScan.NoteSourceUnit(const ADisplay: string; ALine: Integer; ADecl
 begin
   if (FImplementationLine >= 0) and (ALine > FImplementationLine) then
   begin
-    raise Failed(cTexts[TLspMoveMemberText.IsOnlyInTheImplementation].Fmt([ADisplay, FSourceUnit, FTargetUnit]));
+    raise Failed(cTexts[TMoveMemberProtocolText.IsOnlyInTheImplementation].Fmt([ADisplay, FSourceUnit, FTargetUnit]));
   end;
   // Nachfahren binden die Quelle ohnehin ein.
   if not FUp then
@@ -644,7 +643,7 @@ begin
   end;
   if ADeclaration and FInInterface then
   begin
-    raise Failed(cTexts[TLspMoveMemberText.ComesFromWhichWouldHave].Fmt([ADisplay, FSourceUnit, FTargetUnit]));
+    raise Failed(cTexts[TMoveMemberProtocolText.ComesFromWhichWouldHave].Fmt([ADisplay, FSourceUnit, FTargetUnit]));
   end;
   AddOnce(ImplementationUnits, FSourceUnit);
 end;
@@ -757,7 +756,7 @@ begin
   mTarget := TMemberTransfer.ParseLayout(mText, ATarget.ClassName, mTargetTree);
   if mTarget = nil then
   begin
-    raise Failed(cTexts[TLspMoveMemberText.IsNoLongerReadableAfter].Fmt([ATarget.ClassName]));
+    raise Failed(cTexts[TMoveMemberProtocolText.IsNoLongerReadableAfter].Fmt([ATarget.ClassName]));
   end;
   try
     AScan.Scan(ASource, mTarget, TPascalUses.OwnName(mTargetTree.Tokens), AIds, ABodyIds);
@@ -806,7 +805,7 @@ begin
   try
     if Length(mCheck.Diagnostics) > Length(mBefore.Diagnostics) then
     begin
-      raise Failed(cTexts[TLspMoveMemberText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
+      raise Failed(cTexts[TMoveMemberProtocolText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
         mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
     end;
   finally
@@ -904,7 +903,7 @@ begin
   end;
   if FTargets = nil then
   begin
-    raise Failed(cTexts[TLspMoveMemberText.PleaseChooseATargetThat].Text);
+    raise Failed(cTexts[TMoveMemberProtocolText.PleaseChooseATargetThat].Text);
   end;
 end;
 
@@ -1048,10 +1047,10 @@ begin
         mChanges.Add(mFileName, TTextChanges.Diff(FFiles.Original(mFileName), FFiles.Text(mFileName)));
       end;
     end;
-    mDescription := cTexts[TLspMoveMemberText.MembersFiles].Fmt([Length(FPlan.Moved) + Length(FPlan.Abstracts),
+    mDescription := cTexts[TMoveMemberProtocolText.MembersFiles].Fmt([Length(FPlan.Moved) + Length(FPlan.Abstracts),
       mChanges.FileCount]);
     Result := TJSONObject.Create;
-    Result.AddPair('edit', mChanges.ToJson(TLspMoveMember.cAnnotationId, cTexts[TLspMoveMemberText.MoveMember2].Text,
+    Result.AddPair('edit', mChanges.ToJson(TMoveMemberProtocol.cAnnotationId, cTexts[TMoveMemberProtocolText.MoveMember2].Text,
       mDescription));
     Result.AddPair('warnings', mChanges.WarningsJson);
     Result.AddPair('file', TDocumentUris.FromPath(FTargets[0].FileName));
@@ -1070,7 +1069,7 @@ begin
   if not (FContext.Request is TJSONObject) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLspMoveMemberText.RequestWithMembersAndTargets].Text);
+      cTexts[TMoveMemberProtocolText.RequestWithMembersAndTargets].Text);
   end;
   mBody := TJSONObject(FContext.Request);
   FUp := IsUp(FContext.Direction);
@@ -1095,7 +1094,7 @@ begin
   Result := Answer;
 end;
 
-class function TLspMoveMember.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+class function TMoveMemberProtocol.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
   AText: string; const APosition: TTextPosition; const AContext: TMoveMemberContext): TJSONObject;
 var
   mRun: TMemberMoveRun;
@@ -1109,6 +1108,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.MoveMember', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.MoveMember.Protocol', cTexts);
 
 end.

@@ -76,7 +76,7 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.ChangeSignature,
-  Atlas.Common.Lsp.SafeDelete,
+  Atlas.Common.Editing.SafeDelete.Protocol,
   Atlas.Common.Editing.TypeAlias.Protocol,
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.StepFilter,
@@ -164,7 +164,7 @@ begin
     mCapability.Free;
   end;
   Assert.IsTrue(Pos(TLspChangeSignature.cPrepareCommand, mText) > 0, 'Aufbau');
-  Assert.IsTrue(Pos(TLspSafeDelete.cApplyCommand, mText) > 0, 'Aufbau');
+  Assert.IsTrue(Pos(TSafeDeleteProtocol.cApplyCommand, mText) > 0, 'Aufbau');
   Assert.IsTrue(Pos(TTypeAliasProtocol.cInlineApplyCommand, mText) > 0, 'Typen');
   Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, mText) > 0, 'Korrekturen');
   Assert.IsTrue(Pos(TUnitRenameProtocol.cCommand, mText) > 0, 'Bearbeiten');
@@ -188,7 +188,7 @@ var
   mMessage: string;
 begin
   FDocuments.Open(cUri, 'pascal', 1, cSource);
-  mMessage := ErrorOf(TLspSafeDelete.cPrepareCommand, '["' + cUri + '", {"line": 3, "character": 11}]', mCode);
+  mMessage := ErrorOf(TSafeDeleteProtocol.cPrepareCommand, '["' + cUri + '", {"line": 3, "character": 11}]', mCode);
   Assert.AreEqual(TLspErrorCode.cRequestFailed, mCode);
   Assert.IsTrue(Pos('refactoring.safeDelete', mMessage) > 0, mMessage);
 end;
@@ -211,7 +211,7 @@ var
   mMessage: string;
 begin
   FSettings.SafeDelete := True;
-  mMessage := ErrorOf(TLspSafeDelete.cPrepareCommand, '["' + cUri + '", {"line": 3, "character": 11}]', mCode);
+  mMessage := ErrorOf(TSafeDeleteProtocol.cPrepareCommand, '["' + cUri + '", {"line": 3, "character": 11}]', mCode);
   Assert.AreEqual(TLspErrorCode.cRequestFailed, mCode);
   Assert.AreEqual('Die Datei ist nicht geöffnet.', mMessage);
 end;

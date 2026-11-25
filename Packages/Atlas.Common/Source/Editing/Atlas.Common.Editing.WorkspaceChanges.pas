@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.WorkspaceChanges;
+﻿unit Atlas.Common.Editing.WorkspaceChanges;
 
 // Gemeinsamer Baustein der Umbauten, die mehrere Dateien ändern und neue Units
 // anlegen („Klasse verschieben“ #103, „Interface herauslösen“ #664,
@@ -301,6 +301,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.WorkspaceChanges', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.WorkspaceChanges', cTexts);
 
 end.

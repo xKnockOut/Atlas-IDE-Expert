@@ -48,9 +48,10 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Text.Json,
-  Atlas.Common.Lsp.Edits.TestSupport;
+  Atlas.Common.Lsp.Edits.TestSupport,
+  Atlas.Common.Semantics.TypeKinds,
+  Atlas.Common.Lsp.PropertyFromAccessors;
 
 const
   cPanelsFile = 'C:\P\Panels.pas';
@@ -295,11 +296,11 @@ end;
 
 procedure TLspPropertyFromAccessorsTests.KnowsProceduralTypes;
 begin
-  Assert.IsTrue(TLspPropertyFromAccessors.IsProcedural('TTextFunc', FIndex));
-  Assert.IsTrue(TLspPropertyFromAccessors.IsProcedural('TProc<Integer>', FIndex));
-  Assert.IsTrue(TLspPropertyFromAccessors.IsProcedural('reference to function: string', FIndex));
-  Assert.IsFalse(TLspPropertyFromAccessors.IsProcedural('TPanel', FIndex));
-  Assert.IsFalse(TLspPropertyFromAccessors.IsProcedural('string', FIndex));
+  Assert.IsTrue(TResolvedTypeKinds.IsProceduralName('TTextFunc', FIndex));
+  Assert.IsTrue(TResolvedTypeKinds.IsProceduralName('TProc<Integer>', FIndex));
+  Assert.IsTrue(TResolvedTypeKinds.IsProceduralName('reference to function: string', FIndex));
+  Assert.IsFalse(TResolvedTypeKinds.IsProceduralName('TPanel', FIndex));
+  Assert.IsFalse(TResolvedTypeKinds.IsProceduralName('string', FIndex));
 end;
 
 initialization
