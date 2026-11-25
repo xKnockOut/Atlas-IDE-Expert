@@ -112,7 +112,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.ApplyEdit,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
@@ -204,7 +204,7 @@ begin
     Exit;
   end;
   // Dieselbe Analyse wie die abgeblendeten uses im Editor (#621), mit Namensauflösung (#1925).
-  mInactive := TLspInactiveRegions.Ranges(AText, DefinesOf(AFileName));
+  mInactive := TInactiveRegions.Ranges(AText, DefinesOf(AFileName));
   for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), mInactive, mContext.Info, mContext.Keep,
     mContext.Resolution(AText, mInactive)) do
   begin
@@ -401,7 +401,7 @@ begin
       mUnitName]));
   end;
   mFound := False;
-  mInactive := TLspInactiveRegions.Ranges(mText, DefinesOf(mFileName));
+  mInactive := TInactiveRegions.Ranges(mText, DefinesOf(mFileName));
   for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(mText), mInactive, mContext.Info, mContext.Keep,
     mContext.Resolution(mText, mInactive)) do
   begin

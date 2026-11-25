@@ -26,7 +26,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TMethodKindContext = record
@@ -307,7 +307,7 @@ var
 begin
   FDeclaring := TMethodSource.Create(FFileName, FText, FTree, nil);
   FLines := TLineTable.Build(FText);
-  for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
+  for mLocation in TReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
     FTarget.NamePosition, False, FContext.Files, FContext.ReadText)) do
   begin
     AddUse(mLocation);

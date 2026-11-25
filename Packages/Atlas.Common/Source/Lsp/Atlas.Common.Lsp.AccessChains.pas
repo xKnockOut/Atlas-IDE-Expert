@@ -28,8 +28,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.References;
 
 type
   {$SCOPEDENUMS ON}

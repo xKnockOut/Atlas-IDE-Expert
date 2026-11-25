@@ -10,10 +10,10 @@ uses
   System.JSON,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Commands,
   Shell.Composition.Workspaces,
-  Shell.Composition.RuleContext;
+  Shell.Composition.RuleContext,
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Was der Befehl von der Komposition braucht.</summary>

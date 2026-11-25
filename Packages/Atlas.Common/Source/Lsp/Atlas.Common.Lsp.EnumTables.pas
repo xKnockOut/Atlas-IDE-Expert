@@ -27,7 +27,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.EnumTables,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TEnumTablesContext = record
@@ -89,7 +89,8 @@ uses
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Lsp.References;
 
 {$SCOPEDENUMS ON}
 

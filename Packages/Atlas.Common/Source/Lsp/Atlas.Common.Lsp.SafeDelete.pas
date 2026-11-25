@@ -33,7 +33,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SafeDelete,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>uses-Kontext einer Datei (wie die uses-Aktionen).</summary>
@@ -300,7 +300,7 @@ end;
 
 function TSafeDeletePlan.References(const APosition: TTextPosition): TArray<TReferenceLocation>;
 begin
-  Result := TLspReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName, APosition,
+  Result := TReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName, APosition,
     False, FContext.Files, FContext.ReadText));
 end;
 

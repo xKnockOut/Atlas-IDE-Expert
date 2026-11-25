@@ -52,12 +52,12 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Definition,
-  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.Impact.Forms,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.References;
 
 type
 {$SCOPEDENUMS ON}
@@ -224,7 +224,8 @@ uses
   Atlas.Text.DUnitX,
   Atlas.Text.DUnitX.CommandLine,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Semantics.Definitions;
 
 {$SCOPEDENUMS ON}
 
@@ -572,7 +573,7 @@ begin
   begin
     Exit;
   end;
-  mTargets := TLspDefinition.Targets(FResolver, FIndex, mTree, AItem.FileName, AItem.SelectionRange.StartPos, True);
+  mTargets := TDefinitions.Targets(FResolver, FIndex, mTree, AItem.FileName, AItem.SelectionRange.StartPos, True);
   Result := Length(mTargets) > 0;
   if Result then
   begin
@@ -879,7 +880,7 @@ begin
   begin
     Exit;
   end;
-  mLocations := TLspReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(AItem.FileName,
+  mLocations := TReferences.Find(FResolver, FIndex, mTree, TReferenceSearch.Create(AItem.FileName,
     AItem.SelectionRange.StartPos, False, TImpactAnalysis.CandidateFiles(FIndex, FSources.Files, AItem.Name),
     FSources.ReadText), FOptions.References, FToken);
   mEdge := TImpactEdge.Reference;

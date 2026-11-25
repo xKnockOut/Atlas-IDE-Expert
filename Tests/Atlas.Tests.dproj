@@ -205,6 +205,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.LanguageFeatures.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TreeUnits.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Definitions.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.PublishedMembers.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeInfoClasses.Tests.pas"/>
@@ -285,9 +286,9 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.PromoteVariable.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.FormMentions.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PromoteVariable.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.References.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ReferenceConfidence.Tests.pas"/>
-        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ParameterHeaders.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.References.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ReferenceConfidence.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.ParameterHeaders.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Completion.TestSupport.pas"/>
@@ -320,6 +321,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AffectedTests.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AffectedTests.Report.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.CoveredBy.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Implementations.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas"/>
         <DCCReference Include="Common\Index\Atlas.Common.Index.ImplementationSites.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas"/>

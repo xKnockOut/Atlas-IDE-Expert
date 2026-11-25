@@ -11,8 +11,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.History.Contract;
+  Atlas.Common.History.Contract,
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Argumente eines Aufrufs.</summary>

@@ -86,9 +86,9 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.ReferenceConfidence,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Mcp.CodeTools;
+  Atlas.Common.Semantics.ReferenceConfidence,
+  Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Semantics.References;
 
 const
   cWerkzeugFile = 'C:\P\Werkzeug.pas';
@@ -247,7 +247,7 @@ begin
   mIndex := Pos(AMarker, AText);
   if mIndex = 0 then
   begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+    Assert.Fail(Format('"%s" nicht gefunden', [AMarker]));
   end;
   mIndex := mIndex + Pos(AName, AMarker) - 1;
   mLine := 0;

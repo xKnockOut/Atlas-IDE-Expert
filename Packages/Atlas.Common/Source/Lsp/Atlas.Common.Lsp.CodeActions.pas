@@ -148,7 +148,7 @@ uses
   Atlas.Common.Editing.Extract,
   Atlas.Common.Pascal.Destructors,
   Atlas.Common.Editing.FreeFields,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
 
@@ -517,7 +517,7 @@ begin
   mUsesContext.Inactive := nil;
   if FWantsEditing and Assigned(FOwner.FDefinesFor) and FOwner.FDefinesFor(FUri, mDefines) then
   begin
-    mUsesContext.Inactive := TLspInactiveRegions.Ranges(FText, mDefines);
+    mUsesContext.Inactive := TInactiveRegions.Ranges(FText, mDefines);
   end;
   Result := TCodeActions.UsesActions(FText, FTree, FRange, mUsesContext, FWantsEditing, FWantsRemoveUnused);
 end;

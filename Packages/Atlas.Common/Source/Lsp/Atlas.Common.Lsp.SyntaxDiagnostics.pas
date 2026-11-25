@@ -41,7 +41,7 @@ uses
   Atlas.Common.Findings.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Compiler.Contract,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.DiagnosticItems,
   Atlas.Common.Editing.Contract;
@@ -88,7 +88,7 @@ type
   /// <summary>Was BuildParams außer dem Dokument braucht.</summary>
   TSyntaxDiagnosticsInput = record
     /// <summary>Inaktive Bereiche mit Bedingung als Hinweise (Tag Unnecessary).</summary>
-    Inactive: TArray<TLspInactiveRegion>;
+    Inactive: TArray<TInactiveRegion>;
     /// <summary>Sprachmerkmale, die diese Version nicht kennt, werden gemeldet; '' = unbekannt.</summary>
     DelphiVersion: string;
     /// <summary>Prüfregeln des Dokuments; nil = keine Treffer.</summary>
@@ -207,12 +207,12 @@ end;
 /// <summary>Inaktive Bereiche aus demselben Lauf wie der Baum in BuildParams (#860): kein zweiter
 /// Präprozessor-Lauf. AIssues: Befunde des Präprozessors (Include-Dateien).</summary>
 function InactiveOf(const ADocument: ITextDocument; const ADefines: TArray<string>;
-  out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
+  out AIssues: TArray<TPreprocessorIssue>): TArray<TInactiveRegion>;
 var
   mShared: ISharedSyntaxTree;
 begin
   mShared := TSyntaxTreeCache.GetFor(ADocument, ADefines);
-  Result := TLspInactiveRegions.Regions(mShared.Processed, mShared.IncludesResolved, AIssues);
+  Result := TInactiveRegions.Regions(mShared.Processed, mShared.IncludesResolved, AIssues);
 end;
 
 /// <summary>Compilermeldungen zu Zeilen, die das Dokument hat, mit Zeilentext.</summary>
@@ -461,7 +461,7 @@ var
   mInput: TSyntaxDiagnosticsInput;
 begin
   mInput := Default(TSyntaxDiagnosticsInput);
-  mInput.Inactive := TLspInactiveRegions.FromRanges(AInactive);
+  mInput.Inactive := TInactiveRegions.FromRanges(AInactive);
   mInput.DelphiVersion := ADelphiVersion;
   mInput.Rules := ARules;
   Result := BuildParams(ADocument, mInput);
@@ -471,7 +471,7 @@ class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInput: TSyntaxDiagnosticsInput): TJSONObject;
 var
   mFinding: TRuleFinding;
-  mRegion: TLspInactiveRegion;
+  mRegion: TInactiveRegion;
   mItems: TJSONArray;
 begin
   mItems := TJSONArray.Create;
@@ -488,7 +488,7 @@ begin
     // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109). Als Treffer der Regel
     // language-feature wie im Linter und in den MCP-Werkzeugen (#1126); DelphiVersion ist der Sprachstand.
     for mFinding in AInput.Rules.LanguageFeatureFindings(ADocument, AInput.Defines, AInput.DelphiVersion,
-      TLspInactiveRegions.RangesOf(AInput.Inactive)) do
+      TInactiveRegions.RangesOf(AInput.Inactive)) do
     begin
       mItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding, AInput.Rules.Catalog));
     end;
@@ -539,7 +539,7 @@ begin
   end;
   mSuppressions := TSuppressions.Create(mTree.Tree.Tokens);
   try
-    TLspDiagnosticItems.AddUses(AItems, ADocument.Text, TLspInactiveRegions.RangesOf(AInput.Inactive), mUses,
+    TLspDiagnosticItems.AddUses(AItems, ADocument.Text, TInactiveRegions.RangesOf(AInput.Inactive), mUses,
       mSuppressions, mShown);
   finally
     mSuppressions.Free;

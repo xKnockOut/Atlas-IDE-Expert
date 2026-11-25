@@ -13,9 +13,9 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Todos.Contract,
-  Atlas.Common.Mcp.Contract;
+  Atlas.Common.Mcp.Contract,
+  Atlas.Common.Semantics.References;
 
 type
   TMcpCheckTools = class

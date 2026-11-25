@@ -25,7 +25,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Query.Contract,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Eingaben einer Abfrage-Datenquelle (TLspQuery.Source).</summary>
@@ -80,7 +80,7 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Query.Output,
   System.Generics.Collections,
