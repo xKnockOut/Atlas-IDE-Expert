@@ -518,6 +518,7 @@ uses
   Atlas.Common.Pascal.Parser.Tests in 'Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas',
   Atlas.Common.Pascal.SyntaxChecks.Tests in 'Common\Pascal\Atlas.Common.Pascal.SyntaxChecks.Tests.pas',
   Atlas.Common.Pascal.TreeCache.Tests in 'Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas',
+  Atlas.Common.Pascal.TreeHandles.Tests in 'Common\Pascal\Atlas.Common.Pascal.TreeHandles.Tests.pas',
   Atlas.Common.Pascal.ActiveBranches.Tests in 'Common\Pascal\Atlas.Common.Pascal.ActiveBranches.Tests.pas',
   Atlas.Common.Pascal.VariantRecords.Tests in 'Common\Pascal\Atlas.Common.Pascal.VariantRecords.Tests.pas',
   Atlas.Common.Pascal.HelperAncestors.Tests in 'Common\Pascal\Atlas.Common.Pascal.HelperAncestors.Tests.pas',

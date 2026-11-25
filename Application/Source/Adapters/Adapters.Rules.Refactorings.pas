@@ -38,9 +38,10 @@ type
     FExtract: IEditingExtractFixes;
   public
     constructor Create(const AExtract: IEditingExtractFixes);
-    function ExtractCondition(const AText: string; const ARange: TTextRange; const AStyle: TFormatStyle;
-      out AAction: TCodeAction): Boolean;
-    function ConstantExtraction(const AText: string; const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
+    function ExtractCondition(const AText: string; const ATree: IPascalSyntaxTree; const ARange: TTextRange;
+      const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+    function ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
+      const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
   end;
 
   /// <summary>IRuleMethodRefactorings über die Methoden ohne Self von Editing.</summary>
@@ -118,16 +119,23 @@ begin
   FExtract := AExtract;
 end;
 
-function TRuleExtractRefactoringsAdapter.ExtractCondition(const AText: string; const ARange: TTextRange;
-  const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+function TRuleExtractRefactoringsAdapter.ExtractCondition(const AText: string; const ATree: IPascalSyntaxTree;
+  const ARange: TTextRange; const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
 begin
-  Result := FExtract.ExtractCondition(AText, ARange, AStyle, AAction);
+  Result := FExtract.ExtractCondition(AText, ATree, ARange, AStyle, AAction);
 end;
 
-function TRuleExtractRefactoringsAdapter.ConstantExtraction(const AText: string;
+function TRuleExtractRefactoringsAdapter.ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
   const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
+var
+  mExtraction: IEditingConstantExtraction;
 begin
-  Result := TRuleConstantExtractionAdapter.Create(FExtract.ConstantExtraction(AText, ANames));
+  Result := nil;
+  mExtraction := FExtract.ConstantExtraction(AText, ATree, ANames);
+  if mExtraction <> nil then
+  begin
+    Result := TRuleConstantExtractionAdapter.Create(mExtraction);
+  end;
 end;
 
 { TRuleMethodRefactoringsAdapter }
@@ -147,6 +155,7 @@ begin
   mScan := Default(TEditingMethodScan);
   mScan.FileName := AScan.FileName;
   mScan.Text := AScan.Text;
+  mScan.Tree := AScan.Tree;
   mScan.FormText := AScan.FormText;
   mScan.Index := AScan.Index;
   mScan.EnsureUnit := AScan.EnsureUnit;

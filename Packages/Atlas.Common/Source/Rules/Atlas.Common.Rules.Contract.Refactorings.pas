@@ -39,10 +39,12 @@ type
     ['{70350A32-331D-4BB4-85DC-954DCCABFBE2}']
     /// <summary>„Bedingung in Funktion auslagern“ für die ganze Bedingung in ARange; False, wenn es nicht geht.
     /// </summary>
-    function ExtractCondition(const AText: string; const ARange: TTextRange; const AStyle: TFormatStyle;
-      out AAction: TCodeAction): Boolean;
-    /// <summary>„Konstante extrahieren“ für AText; neue Namen mit den Präfixen ANames.</summary>
-    function ConstantExtraction(const AText: string; const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
+    function ExtractCondition(const AText: string; const ATree: IPascalSyntaxTree; const ARange: TTextRange;
+      const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+    /// <summary>„Konstante extrahieren“ für AText mit dem Baum ATree der Regel; neue Namen mit den Präfixen ANames.
+    /// Gilt, solange der Baum hinter ATree lebt; nil ohne Baum.</summary>
+    function ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
+      const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
   end;
 
   /// <summary>Was die Suche nach Methoden ohne Self über eine Unit wissen muss.</summary>
@@ -50,6 +52,8 @@ type
     /// <summary>Dateiname für die Namensauflösung (TRuleContext.ResolverFileName).</summary>
     FileName: string;
     Text: string;
+    /// <summary>Baum der Regel zu Text (aktive Zweige).</summary>
+    Tree: IPascalSyntaxTree;
     /// <summary>Inhalt der Formulardatei; '' ohne.</summary>
     FormText: string;
     Index: ISymbolIndex;

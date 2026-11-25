@@ -516,6 +516,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.Parser.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SyntaxChecks.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TreeCache.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TreeHandles.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ActiveBranches.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.VariantRecords.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.HelperAncestors.Tests.pas"/>

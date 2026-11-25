@@ -81,6 +81,7 @@ implementation
 
 uses
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Metrics.Limits,
   System.SysUtils,
   System.Generics.Collections,
@@ -384,7 +385,8 @@ begin
     begin
       mFixes := nil;
       if (AContext.Refactorings.Extract <> nil) and
-        AContext.Refactorings.Extract.ExtractCondition(AContext.Text, mCondition.Range, AContext.Formatting, mAction) then
+        AContext.Refactorings.Extract.ExtractCondition(AContext.Text, TSyntaxTreeHandles.Wrap(AContext.Tree),
+        mCondition.Range, AContext.Formatting, mAction) then
       begin
         mFixes := [TRuleFix.Create(mAction.Title, mAction.Edits)];
       end;

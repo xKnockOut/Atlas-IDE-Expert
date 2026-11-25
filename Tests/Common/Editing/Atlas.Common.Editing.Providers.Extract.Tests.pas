@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Editing.Providers.Extract.Tests;
 
 // Tests für IEditingExtract (#2054): mit Duplicates samt gleicher Stelle, ohne gleiche Stelle nur die Auswahl mit
-// Grund, nicht extrahierbare Zeilen mit Grund; Bedingung auslagern und Konstante einführen für die Prüfregeln.
+// Grund, nicht extrahierbare Zeilen mit Grund; Bedingung auslagern und Konstante einführen für die Prüfregeln,
+// ohne Baum keine Korrektur.
 
 interface
 
@@ -22,6 +23,8 @@ type
     procedure ExtractsCondition;
     [Test]
     procedure ExtractsConstantsOfOneText;
+    [Test]
+    procedure NoTreeNoFix;
   end;
 
 implementation
@@ -32,6 +35,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Editing.Contract.Extract,
   Atlas.Tests.TextEdits,
   Atlas.Common.Editing.Composition;
@@ -118,11 +124,17 @@ end;
 
 procedure TEditingExtractProviderTests.ExtractsCondition;
 var
+  mTree: TSyntaxTree;
   mAction: TCodeAction;
   mText: string;
 begin
-  Assert.IsTrue(TEditingComposition.ExtractFixes.ExtractCondition(cRoutine, TTextRange.Create(5, 5, 5, 24),
-    TFormatStyle.Default, mAction));
+  mTree := TSyntaxTreeCache.Parse(cRoutine);
+  try
+    Assert.IsTrue(TEditingComposition.ExtractFixes.ExtractCondition(cRoutine, TSyntaxTreeHandles.Wrap(mTree),
+      TTextRange.Create(5, 5, 5, 24), TFormatStyle.Default, mAction));
+  finally
+    mTree.Free;
+  end;
   mText := TTestEdits.Apply(cRoutine, mAction.Edits);
   Assert.IsTrue(Pos('function ', mText) > 0, mText);
   Assert.IsFalse(Pos('if (A > 1) and (B > 2) then', mText) > 0, mText);
@@ -130,16 +142,34 @@ end;
 
 procedure TEditingExtractProviderTests.ExtractsConstantsOfOneText;
 var
+  mTree: TSyntaxTree;
   mExtraction: IEditingConstantExtraction;
   mAction: TCodeAction;
 begin
-  mExtraction := TEditingComposition.ExtractFixes.ConstantExtraction(cRoutine, Default(TPascalNamePrefixes));
-  Assert.IsTrue(mExtraction.Run(TTextRange.Create(6, 12, 6, 14), mAction));
-  Assert.IsTrue(Pos('= 42;', TTestEdits.Apply(cRoutine, mAction.Edits)) > 0);
-  Assert.IsTrue(mExtraction.Run(TTextRange.Create(6, 16, 6, 17), mAction));
-  Assert.IsTrue(Pos('= 7;', TTestEdits.Apply(cRoutine, mAction.Edits)) > 0);
-  // Kein Literal: nichts zu tun.
-  Assert.IsFalse(mExtraction.Run(TTextRange.Create(3, 0, 3, 9), mAction));
+  mTree := TSyntaxTreeCache.Parse(cRoutine);
+  try
+    mExtraction := TEditingComposition.ExtractFixes.ConstantExtraction(cRoutine, TSyntaxTreeHandles.Wrap(mTree),
+      Default(TPascalNamePrefixes));
+    Assert.IsTrue(mExtraction.Run(TTextRange.Create(6, 12, 6, 14), mAction));
+    Assert.IsTrue(Pos('= 42;', TTestEdits.Apply(cRoutine, mAction.Edits)) > 0);
+    Assert.IsTrue(mExtraction.Run(TTextRange.Create(6, 16, 6, 17), mAction));
+    Assert.IsTrue(Pos('= 7;', TTestEdits.Apply(cRoutine, mAction.Edits)) > 0);
+    // Kein Literal: nichts zu tun.
+    Assert.IsFalse(mExtraction.Run(TTextRange.Create(3, 0, 3, 9), mAction));
+    // Die Extraktion gilt nur, solange der Baum lebt.
+    mExtraction := nil;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TEditingExtractProviderTests.NoTreeNoFix;
+var
+  mAction: TCodeAction;
+begin
+  Assert.IsFalse(TEditingComposition.ExtractFixes.ExtractCondition(cRoutine, nil, TTextRange.Create(5, 5, 5, 24),
+    TFormatStyle.Default, mAction));
+  Assert.IsNull(TEditingComposition.ExtractFixes.ConstantExtraction(cRoutine, nil, Default(TPascalNamePrefixes)));
 end;
 
 initialization
