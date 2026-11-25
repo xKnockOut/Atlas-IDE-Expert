@@ -93,7 +93,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Configuration.TestSupport,
@@ -207,7 +207,7 @@ end;
 function ScenarioProjectFiles(const AScenario: TScenario; const AIndex: ISymbolIndex;
   const ATexts: TDictionary<string, string>; AIncomplete: Boolean): IRuleProjectFiles;
 begin
-  Result := TRuleProjectFiles.Create(AScenario.Projects, AIndex,
+  Result := TProjectGroupFiles.Create(AScenario.Projects, AIndex,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := ATexts.TryGetValue(UpperCase(AFileName), AText);

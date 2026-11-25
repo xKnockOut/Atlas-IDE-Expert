@@ -8,7 +8,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Rules.Contract.UnitLookup,
+  Atlas.Common.Projects.Contract.UnitLookup,
   Atlas.Common.Index.ProjectFiles;
 
 type

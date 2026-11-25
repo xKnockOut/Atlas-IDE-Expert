@@ -6,7 +6,12 @@
 // - Rewrite (#284) schreibt die schlichten Listen neu: doppelte entfernen,
 //   sortieren (alphabetisch, nach Namespace gruppiert oder nach Herkunft
 //   gegliedert, #2794), Namen streichen. Listen mit Direktiven ({$IFDEF})
-//   oder //-Kommentaren bleiben unberührt.
+//   bleiben unberührt.
+// - Kommentare in der Liste: Eine Kommentarzeile beginnt einen Abschnitt
+//   (// Formulare); sortiert wird nur innerhalb der Abschnitte, die
+//   Kommentarzeilen bleiben stehen. Ein Kommentar hinter einem Eintrag (in
+//   derselben Zeile) wandert mit dem Eintrag. Ohne Sortieren bleibt die
+//   Zeilenaufteilung, nur gestrichene Einträge entfallen.
 // - Nach Herkunft: je Gruppe (TUsesGroups) eine eigene Zeile, bei Bedarf
 //   umbrochen, mit Gruppenkommentar { System } darüber, sobald es mehr als
 //   eine Gruppe gibt. Alte Gruppenkommentare entfallen, andere Kommentare vor
@@ -14,8 +19,10 @@
 //
 // - Abschnitt: in einer Unit interface oder implementation, je nachdem, wo der
 //   Cursor steht; in Programmen und Packages die uses nach dem Kopf.
-// - Gibt es dort schon ein uses, kommt der Name vor dessen Semikolon; steht die
-//   Liste über mehrere Zeilen, in eine eigene Zeile mit gleicher Einrückung.
+// - Gibt es dort schon ein uses, kommt der Name vor dessen Semikolon, hinter den
+//   letzten Eintrag in dessen Zeile. Eine eigene Zeile mit gleicher Einrückung
+//   bekommt er nur, wenn die mehrzeilige Liste einen Eintrag je Zeile führt
+//   oder die letzte Zeile sonst zu lang würde.
 //   Sonst entsteht hinter dem Abschnittswort ein neues uses.
 // - Eine Unit gilt als eingebunden, wenn sie in einem der beiden uses steht,
 //   auch ohne Namespace-Präfix (SysUtils für System.SysUtils, wenn "System"
@@ -86,6 +93,16 @@ type
     Order: Integer;
     /// <summary>Nur beim Gliedern nach Herkunft gesetzt.</summary>
     Group: TUsesGroup;
+    /// <summary>Kommentar hinter dem Eintrag in derselben Zeile (nur in Listen mit Abschnitten).</summary>
+    Comment: string;
+    /// <summary>Zeile des Eintrags im Quelltext (nur in Listen mit Abschnitten).</summary>
+    Line: Integer;
+  end;
+
+  /// <summary>Abschnitt einer uses-Liste: Kommentarzeilen darüber und die Einträge bis zum nächsten.</summary>
+  TUsesSection = record
+    Heading: TArray<string>;
+    Items: TArray<TUsesItem>;
   end;
 
 function TokenEnd(const AToken: TPascalToken): Integer;
@@ -175,6 +192,39 @@ begin
   end;
 end;
 
+/// <summary>Steht jeder Eintrag der Liste zwischen uses (AUses) und ASemicolon in einer eigenen Zeile (mindestens
+/// zwei Einträge, kein Komma mit einem Eintrag dahinter in derselben Zeile)?</summary>
+function OnePerLine(const ATokens: TArray<TPascalToken>; AUses, ASemicolon: Integer): Boolean;
+var
+  mIndex, mNext, mCommas: Integer;
+begin
+  mCommas := 0;
+  for mIndex := AUses + 1 to ASemicolon - 1 do
+  begin
+    if ATokens[mIndex].IsSymbol(',') then
+    begin
+      Inc(mCommas);
+      mNext := NextCodeAfter(ATokens, mIndex);
+      if (mNext < ASemicolon) and (ATokens[mNext].StartPos.Line = ATokens[mIndex].EndPos.Line) then
+      begin
+        Exit(False);
+      end;
+    end;
+  end;
+  Result := mCommas > 0;
+end;
+
+/// <summary>Kommt ", AUnitName" hinter den letzten Eintrag (ALastName) in dessen Zeile? Ja, wenn die Liste nicht
+/// einen Eintrag je Zeile führt, das Semikolon direkt dahinter in derselben Zeile steht (kein Kommentar dazwischen)
+/// und die Zeile kürzer als TUsesRewrite.cDefaultLineLength bleibt.</summary>
+function FitsBehind(const ATokens: TArray<TPascalToken>; AUses, ALastName, ASemicolon: Integer;
+  const AUnitName: string): Boolean;
+begin
+  Result := (ASemicolon = ALastName + 1) and (ATokens[ASemicolon].StartPos.Line = ATokens[ALastName].EndPos.Line) and
+    (ATokens[ASemicolon].StartPos.Character + Length(', ' + AUnitName + ';') <= TUsesRewrite.cDefaultLineLength) and
+    not OnePerLine(ATokens, AUses, ASemicolon);
+end;
+
 class function TPascalUsesEdits.AddUnit(const ATokens: TArray<TPascalToken>; AOffset: Integer;
   const AUnitName, ALineBreak: string; out AEdit: TTextEdit): Boolean;
 var
@@ -201,9 +251,11 @@ begin
     begin
       Dec(mLastName);
     end;
-    if ATokens[mLastName].StartPos.Line > ATokens[mUsesIndex].StartPos.Line then
+    if (ATokens[mLastName].StartPos.Line > ATokens[mUsesIndex].StartPos.Line) and
+      not FitsBehind(ATokens, mUsesIndex, mLastName, mSemicolon, AUnitName) then
     begin
-      // Mehrzeilige Liste: eigene Zeile, eingerückt wie die Zeile des letzten Eintrags.
+      // Mehrzeilige Liste mit einem Eintrag je Zeile oder voller letzter Zeile: eigene Zeile, eingerückt wie die
+      // Zeile des letzten Eintrags.
       while (mLastName > mUsesIndex) and (ATokens[mLastName - 1].StartPos.Line = ATokens[mLastName].StartPos.Line) do
       begin
         Dec(mLastName);
@@ -353,6 +405,19 @@ type
     procedure RewriteGrouped(AIndex, ASemicolon: Integer; const AKept: TArray<TUsesItem>);
     /// <summary>Schreibt die schlichte Liste zwischen uses (AIndex) und ASemicolon um.</summary>
     procedure RewriteList(AIndex, ASemicolon: Integer);
+    /// <summary>Eintrag aus den Token AFirst bis ALast.</summary>
+    function SectionItem(AFirst, ALast: Integer): TUsesItem;
+    /// <summary>Abschnitte der Liste zwischen uses (AIndex) und ASemicolon.</summary>
+    function ReadSections(AIndex, ASemicolon: Integer): TArray<TUsesSection>;
+    /// <summary>Streicht und sortiert in jedem Abschnitt für sich.</summary>
+    procedure ArrangeSections(var ASections: TArray<TUsesSection>);
+    /// <summary>Zeilen der Abschnitte; AReflow füllt die Zeilen bis zur Zeilenlänge, sonst bleibt die
+    /// Zeilenaufteilung des Quelltexts. Der letzte Eintrag trägt das Semikolon.</summary>
+    function SectionLines(const ASections: TArray<TUsesSection>; const AIndent: string;
+      AReflow: Boolean): TArray<string>;
+    /// <summary>Wie RewriteList für eine Liste mit Kommentar-Abschnitten; ersetzt bis einschließlich Semikolon.
+    /// </summary>
+    procedure RewriteSections(AIndex, ASemicolon: Integer);
   end;
 
 { TUsesRewriter }
@@ -566,6 +631,294 @@ begin
   end;
 end;
 
+function IsLineComment(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind = TPascalTokenKind.Comment) and StartsStr('//', AToken.Text);
+end;
+
+/// <summary>Gruppenkommentar, den das Gliedern nach Herkunft selbst schreibt (und neu setzt)?</summary>
+function IsOwnLabel(const AToken: TPascalToken; AGrouped: Boolean): Boolean;
+begin
+  Result := AGrouped and TUsesGroups.IsLabel(AToken.Text);
+end;
+
+/// <summary>Braucht die Liste zwischen uses (AIndex) und ASemicolon Abschnitte? Ja bei einem Kommentar hinter dem
+/// ersten Eintrag, der nicht im Eintrag selbst steht (wie {Form1} hinter in 'Main.pas'): //-Kommentar, Kommentar
+/// in eigener Zeile oder hinter einem Komma.</summary>
+function HasSectionComments(const ATokens: TArray<TPascalToken>; AIndex, ASemicolon: Integer;
+  AGrouped: Boolean): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := NextCodeAfter(ATokens, AIndex) + 1 to ASemicolon - 1 do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Comment) and not IsOwnLabel(ATokens[mIndex], AGrouped) and
+      (IsLineComment(ATokens[mIndex]) or ATokens[mIndex - 1].IsSymbol(',') or
+      (ATokens[mIndex].StartPos.Line > ATokens[mIndex - 1].EndPos.Line)) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Letztes Token des Eintrags ab AFirst vor dem Komma bzw. ASemicolon; ein //-Kommentar oder ein
+/// Kommentar in einer späteren Zeile gehört nicht mehr dazu.</summary>
+function SectionItemEnd(const ATokens: TArray<TPascalToken>; AFirst, ASemicolon: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := AFirst;
+  mIndex := AFirst + 1;
+  while (mIndex < ASemicolon) and not ATokens[mIndex].IsSymbol(',') do
+  begin
+    if IsLineComment(ATokens[mIndex]) or (ATokens[mIndex].StartPos.Line > ATokens[Result].EndPos.Line) then
+    begin
+      Break;
+    end;
+    Result := mIndex;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Kommentar AToken in die Abschnitte: in der Zeile des letzten Eintrags (ALine) hängt er an diesem,
+/// sonst ist er eine Kommentarzeile, die einen neuen Abschnitt beginnt.</summary>
+procedure AddSectionComment(var ASection: TUsesSection; var ASections: TArray<TUsesSection>;
+  const AToken: TPascalToken; ALine: Integer);
+var
+  mLast: Integer;
+begin
+  mLast := High(ASection.Items);
+  if (mLast >= 0) and (AToken.StartPos.Line = ALine) then
+  begin
+    if ASection.Items[mLast].Comment <> '' then
+    begin
+      ASection.Items[mLast].Comment := ASection.Items[mLast].Comment + ' ';
+    end;
+    ASection.Items[mLast].Comment := ASection.Items[mLast].Comment + AToken.Text;
+    Exit;
+  end;
+  if mLast >= 0 then
+  begin
+    ASections := ASections + [ASection];
+    ASection := Default(TUsesSection);
+  end;
+  ASection.Heading := ASection.Heading + [AToken.Text];
+end;
+
+function TUsesRewriter.SectionItem(AFirst, ALast: Integer): TUsesItem;
+var
+  mIndex: Integer;
+  mAfterIn: Boolean;
+begin
+  Result := Default(TUsesItem);
+  mAfterIn := False;
+  for mIndex := AFirst to ALast do
+  begin
+    if Tokens[mIndex].IsKeyword('in') then
+    begin
+      mAfterIn := True;
+    end
+    else if not mAfterIn and ((Tokens[mIndex].Kind = TPascalTokenKind.Identifier) or Tokens[mIndex].IsSymbol('.')) then
+    begin
+      Result.Name := Result.Name + Tokens[mIndex].Text;
+    end;
+  end;
+  Result.Text := Copy(Text, Tokens[AFirst].Offset + 1, TokenEnd(Tokens[ALast]) - Tokens[AFirst].Offset);
+  Result.Line := Tokens[AFirst].StartPos.Line;
+end;
+
+function TUsesRewriter.ReadSections(AIndex, ASemicolon: Integer): TArray<TUsesSection>;
+var
+  mIndex, mLast, mLine: Integer;
+  mSection: TUsesSection;
+  mItem: TUsesItem;
+begin
+  Result := nil;
+  mSection := Default(TUsesSection);
+  // Zeile, in der der letzte Eintrag bzw. sein Komma endet: Kommentare dort hängen am Eintrag.
+  mLine := -1;
+  mIndex := AIndex + 1;
+  while mIndex < ASemicolon do
+  begin
+    if Tokens[mIndex].IsSymbol(',') then
+    begin
+      mLine := Tokens[mIndex].EndPos.Line;
+    end
+    else if Tokens[mIndex].Kind = TPascalTokenKind.Comment then
+    begin
+      if not IsOwnLabel(Tokens[mIndex], Options.Sort and Assigned(Options.GroupOf)) then
+      begin
+        AddSectionComment(mSection, Result, Tokens[mIndex], mLine);
+      end;
+    end
+    else
+    begin
+      mLast := SectionItemEnd(Tokens, mIndex, ASemicolon);
+      mItem := SectionItem(mIndex, mLast);
+      mItem.Order := Length(mSection.Items);
+      mSection.Items := mSection.Items + [mItem];
+      mLine := Tokens[mLast].EndPos.Line;
+      mIndex := mLast;
+    end;
+    Inc(mIndex);
+  end;
+  Result := Result + [mSection];
+end;
+
+procedure TUsesRewriter.ArrangeSections(var ASections: TArray<TUsesSection>);
+var
+  mSection, mItem: Integer;
+begin
+  for mSection := 0 to High(ASections) do
+  begin
+    ASections[mSection].Items := Keep(ASections[mSection].Items);
+    if Options.Sort and Assigned(Options.GroupOf) then
+    begin
+      for mItem := 0 to High(ASections[mSection].Items) do
+      begin
+        ASections[mSection].Items[mItem].Group := Options.GroupOf(ASections[mSection].Items[mItem].Name);
+      end;
+      SortGrouped(ASections[mSection].Items);
+    end;
+  end;
+end;
+
+/// <summary>Abschnitt und Stelle des letzten Eintrags; -1, wenn kein Eintrag bleibt.</summary>
+function LastSection(const ASections: TArray<TUsesSection>): Integer;
+begin
+  Result := High(ASections);
+  while (Result >= 0) and (ASections[Result].Items = nil) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+/// <summary>Beginnt der Eintrag AItem eine neue Zeile? AReflow: bei voller Zeile oder neuer Gruppe (AGrouped);
+/// sonst, wo er auch im Quelltext in einer neuen Zeile stand.</summary>
+function StartsLine(const ALine, APiece: string; const AItem, APrevious: TUsesItem; AReflow, AGrouped: Boolean;
+  AMaxLength: Integer): Boolean;
+begin
+  if ALine = '' then
+  begin
+    Result := False;
+  end
+  else if AReflow then
+  begin
+    Result := (AGrouped and (AItem.Group <> APrevious.Group)) or (Length(ALine) + 1 + Length(APiece) > AMaxLength);
+  end
+  else
+  begin
+    Result := AItem.Line <> APrevious.Line;
+  end;
+end;
+
+/// <summary>Hängt die angefangene Zeile ALine an ALines an (wenn es eine gibt) und leert sie.</summary>
+procedure FlushLine(var ALines: TArray<string>; var ALine: string);
+begin
+  if ALine <> '' then
+  begin
+    ALines := ALines + [ALine];
+    ALine := '';
+  end;
+end;
+
+/// <summary>Setzt APiece (Eintrag mit Komma bzw. Semikolon) und den Kommentar AComment in die Zeile ALine; hinter
+/// einem //-Kommentar geht es in der nächsten Zeile weiter.</summary>
+procedure PutPiece(var ALines: TArray<string>; var ALine: string; const AIndent, APiece, AComment: string);
+begin
+  if ALine = '' then
+  begin
+    ALine := AIndent + APiece;
+  end
+  else
+  begin
+    ALine := ALine + ' ' + APiece;
+  end;
+  if AComment <> '' then
+  begin
+    ALine := ALine + ' ' + AComment;
+    if Pos('//', AComment) > 0 then
+    begin
+      FlushLine(ALines, ALine);
+    end;
+  end;
+end;
+
+function TUsesRewriter.SectionLines(const ASections: TArray<TUsesSection>; const AIndent: string;
+  AReflow: Boolean): TArray<string>;
+var
+  mLastSection, mSection, mIndex, mMaxLength: Integer;
+  mLine, mPiece, mHeading: string;
+  mItems: TArray<TUsesItem>;
+begin
+  Result := nil;
+  mMaxLength := Options.MaxLineLength;
+  if mMaxLength <= 0 then
+  begin
+    mMaxLength := TUsesRewrite.cDefaultLineLength;
+  end;
+  mLastSection := LastSection(ASections);
+  mLine := '';
+  for mSection := 0 to High(ASections) do
+  begin
+    // Jeder Abschnitt beginnt eine neue Zeile.
+    FlushLine(Result, mLine);
+    for mHeading in ASections[mSection].Heading do
+    begin
+      Result := Result + [AIndent + mHeading];
+    end;
+    mItems := ASections[mSection].Items;
+    for mIndex := 0 to High(mItems) do
+    begin
+      mPiece := mItems[mIndex].Text + ',';
+      if (mSection = mLastSection) and (mIndex = High(mItems)) then
+      begin
+        mPiece := mItems[mIndex].Text + ';';
+      end;
+      if (mIndex > 0) and StartsLine(mLine, mPiece, mItems[mIndex], mItems[mIndex - 1], AReflow,
+        Assigned(Options.GroupOf), mMaxLength) then
+      begin
+        FlushLine(Result, mLine);
+      end;
+      PutPiece(Result, mLine, AIndent, mPiece, mItems[mIndex].Comment);
+    end;
+  end;
+  FlushLine(Result, mLine);
+end;
+
+procedure TUsesRewriter.RewriteSections(AIndex, ASemicolon: Integer);
+var
+  mSections: TArray<TUsesSection>;
+  mLines: TArray<string>;
+  mIndent, mOld, mNew: string;
+  mStart: Integer;
+begin
+  mSections := ReadSections(AIndex, ASemicolon);
+  ArrangeSections(mSections);
+  mIndent := StringOfChar(' ', ItemIndent(Tokens, AIndex));
+  mLines := SectionLines(mSections, mIndent, Options.Sort);
+  if LastSection(mSections) < 0 then
+  begin
+    // Kein Eintrag bleibt: uses entfällt, die Kommentarzeilen bleiben stehen.
+    Edits := Edits + [TTextEdit.Create(TTextRange.Create(Tokens[AIndex].StartPos, Tokens[ASemicolon].EndPos),
+      TrimLeft(string.Join(LineBreak, mLines)))];
+    Exit;
+  end;
+  mNew := LineBreak + string.Join(LineBreak, mLines);
+  if not Options.Sort and (Tokens[NextCodeAfter(Tokens, AIndex)].StartPos.Line = Tokens[AIndex].StartPos.Line) then
+  begin
+    // Liste begann hinter uses: dort bleibt sie.
+    mNew := ' ' + TrimLeft(string.Join(LineBreak, mLines));
+  end;
+  mStart := TokenEnd(Tokens[AIndex]);
+  mOld := Copy(Text, mStart + 1, TokenEnd(Tokens[ASemicolon]) - mStart);
+  if mNew <> mOld then
+  begin
+    Edits := Edits + [TTextEdit.Create(TTextRange.Create(Tokens[AIndex].EndPos, Tokens[ASemicolon].EndPos), mNew)];
+  end;
+end;
+
 class function TPascalUsesEdits.Rewrite(const ATokens: TArray<TPascalToken>; const AText: string;
   const AOptions: TUsesRewrite; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 var
@@ -592,14 +945,18 @@ begin
     begin
       Break;
     end;
-    if TPascalUses.IsPlainList(ATokens, mIndex + 1, mSemicolon - 1) then
-    begin
-      mRewriter.RewriteList(mIndex, mSemicolon);
-    end
-    else
+    if TPascalUses.HasDirectives(ATokens, mIndex + 1, mSemicolon - 1) then
     begin
       // Unangetastet, aber die Namen zählen für spätere Listen.
       mRewriter.Seen := mRewriter.Seen + mNames;
+    end
+    else if HasSectionComments(ATokens, mIndex, mSemicolon, AOptions.Sort and Assigned(AOptions.GroupOf)) then
+    begin
+      mRewriter.RewriteSections(mIndex, mSemicolon);
+    end
+    else
+    begin
+      mRewriter.RewriteList(mIndex, mSemicolon);
     end;
     mIndex := mSemicolon + 1;
   end;

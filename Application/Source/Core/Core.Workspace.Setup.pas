@@ -17,7 +17,9 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Rules.Contract.UnitLookup,
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Projects.Contract.Group,
+  Atlas.Common.Architecture.UsesService,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Index.Processes;
@@ -26,6 +28,12 @@ type
   /// <summary>Installation zu AVersion mit ihren Bibliothekspfaden; löst EProjectError aus, wenn sie nicht lesbar
   /// ist.</summary>
   TCoreInstallationFactory = reference to function(const AVersion: string): ILibraryPathProvider;
+
+  /// <summary>Die Projekte der Gruppe für projektweite Auswertungen über Index und Uses-Graph (#1102);
+  /// AUsesGraph gehört dem Aufrufer.</summary>
+  TCoreGroupFilesFactory = reference to function(const AProjects: TArray<TGroupProject>; const AIndex: ISymbolIndex;
+    const AReadText: TProjectReadText; const AComplete: TProjectGroupComplete;
+    AUsesGraph: TUsesGraphService): IProjectGroupFiles;
 
   /// <summary>Adapter, die ein Arbeitsbereich braucht, als Host-Core aber nicht selbst erzeugt (Konzept 8.1):
   /// Die Shell setzt sie zusammen (TShellPlatformAdapters.WorkspaceFactories). Ohne Erzeuger gibt es keine
@@ -37,6 +45,8 @@ type
     /// <summary>Dateizugriff des Indexaufbaus; Pflicht.</summary>
     IndexFileSystem: TFunc<IIndexFileSystem>;
     UnitLookup: TUnitLookupFactory;
+    /// <summary>Projekte der Gruppe für projektweite Regeln; nil = unbekannt, die Regeln schweigen.</summary>
+    GroupFiles: TCoreGroupFilesFactory;
     /// <summary>Installierte Versionen; leer ohne Erzeuger.</summary>
     function Versions: TArray<string>;
     /// <summary>Installation zu AVersion; nil ohne Version oder Erzeuger. Löst EProjectError aus wie der

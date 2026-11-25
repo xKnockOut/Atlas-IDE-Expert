@@ -7,7 +7,7 @@ interface
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Editing.FormatCheck,
   Core.CommandLine,
   Core.VersionControlChanges,

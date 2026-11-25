@@ -12,7 +12,7 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Findings.Memo,
   Atlas.Common.Rules.CheckContext,
   Core.Workspace,
@@ -35,7 +35,7 @@ type
     Queries: TShellRuleQueriesFunc;
     EnsureUnit: TEnsureUnitFunc;
     /// <summary>Geöffnete Dokumente vor der Platte.</summary>
-    ReadText: TRuleProjectReadText;
+    ReadText: TProjectReadText;
   end;
 
   /// <summary>Umfeld der Prüfregeln je Datei.</summary>
@@ -68,6 +68,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Architecture.Adapters.GroupFiles,
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
@@ -175,7 +176,7 @@ begin
     AContext.Services.Index := nil;
     AContext.Services.EnsureUnit := nil;
   end;
-  AContext.Services.ProjectFiles := TRuleProjectFiles.Create(mWorkspaces.RuleProjects, FServices.Index(),
+  AContext.Services.ProjectFiles := TProjectGroupFiles.Create(mWorkspaces.RuleProjects, FServices.Index(),
     FServices.ReadText,
     function(out AReason: string): Boolean
     begin

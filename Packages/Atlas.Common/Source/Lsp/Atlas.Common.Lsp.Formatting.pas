@@ -4,6 +4,9 @@
 // Einstellungen kommen in drei Ebenen: die FormattingOptions des Editors,
 // darüber .editorconfig und darüber ausdrücklich gesetzte Werte aus
 // "format" in atlas.json. Die Logik liegt in Atlas.Common.Editing.Formatter.
+// Mit format.sortUses sortiert das Formatieren der ganzen Datei auch die uses wie
+// /sortuses, streicht aber nichts; Formatierungen innerhalb der neu geschriebenen
+// uses-Listen entfallen dann.
 //
 // textDocument/onTypeFormatting führt nach Enter Schnellbefehle wie "/uses Unit"
 // über das Register aus (#293, "slashCommands"; #254 "usesCommand" bleibt Alias).
@@ -32,6 +35,10 @@ type
   /// <summary>Eingabehilfe für AUri eingeschaltet, etwa "completeBlocks.docComment" (#88).</summary>
   TFormattingEnabledFunc = reference to function(const AUri: string): Boolean;
 
+  /// <summary>Änderungen, die die uses von AContext.Text sortieren, ohne zu streichen; False ohne.</summary>
+  TFormattingUsesSortFunc = reference to function(const AContext: TSlashContext;
+    out AEdits: TArray<TTextEdit>): Boolean;
+
   /// <summary>Block "format" aus atlas.json bzw. dem Editor für AUri.</summary>
   TFormatStyleProvider = reference to function(const AUri: string): TFormatStyle;
 
@@ -49,6 +56,7 @@ type
     FDocCommentsFor: TFormattingEnabledFunc;
     FIndex: ISymbolIndex;
     FSlashHost: ISlashHost;
+    FSortUses: TFormattingUsesSortFunc;
     /// <summary>Einstellungen für AUri: Editor-Optionen aus AParams, .editorconfig und "format".</summary>
     function StyleFor(AParams: TJSONObject; const AUri: string): TFormatStyle;
     /// <summary>Gerüst des Dokumentationskommentars nach "///" (#88) nach AResult.</summary>
@@ -58,6 +66,9 @@ type
     procedure AddSlashCommand(AParams: TJSONObject; const ADocument: ITextDocument; const AUri: string;
       const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken;
       AResult: TJSONArray);
+    /// <summary>Änderungen für die sortierten uses von ADocument (format.sortUses); False ohne.</summary>
+    function SortedUses(const ADocument: ITextDocument; const AUri: string; const AStyle: TFormatStyle;
+      out AEdits: TArray<TTextEdit>): Boolean;
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean;
       const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -75,6 +86,8 @@ type
       const AReadFile: TEditorConfigReadFile): TFormatStyle; static;
     /// <summary>Projekt und Editor für Schnellbefehle wie /define und /dfm (#301); nil ohne.</summary>
     property SlashHost: ISlashHost read FSlashHost write FSlashHost;
+    /// <summary>Sortiert die uses beim Formatieren (format.sortUses); ohne Zuweisung nie.</summary>
+    property SortUses: TFormattingUsesSortFunc read FSortUses write FSortUses;
     /// <summary>Ohne Zuweisung sind alle Schnellbefehle eingeschaltet.</summary>
     property SlashCommandsFor: TSlashCommandsProvider read FSlashCommandsFor write FSlashCommandsFor;
     /// <summary>Delphi-Version je Dokument für versionsabhängige Schnellbefehle (#303); ohne Zuweisung ''.</summary>
@@ -89,6 +102,8 @@ implementation
 
 uses
   System.Generics.Collections,
+  System.Generics.Defaults,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Lexer,
@@ -358,6 +373,66 @@ begin
   end;
 end;
 
+/// <summary>Überschneiden sich A und B (auch nur an einer Grenze)?</summary>
+function Touches(const A, B: TTextRange): Boolean;
+begin
+  Result := (TTextPosition.Compare(A.StartPos, B.EndPos) <= 0) and
+    (TTextPosition.Compare(B.StartPos, A.EndPos) <= 0);
+end;
+
+/// <summary>AFormat ohne die Änderungen, die eine aus AUses berühren, dazu AUses; nach Anfang sortiert.</summary>
+function MergeUsesEdits(const AFormat, AUses: TArray<TTextEdit>): TArray<TTextEdit>;
+var
+  mEdit, mUses: TTextEdit;
+  mKeep: Boolean;
+  mList: TList<TTextEdit>;
+begin
+  mList := TList<TTextEdit>.Create;
+  try
+    for mEdit in AFormat do
+    begin
+      mKeep := True;
+      for mUses in AUses do
+      begin
+        mKeep := mKeep and not Touches(mEdit.Range, mUses.Range);
+      end;
+      if mKeep then
+      begin
+        mList.Add(mEdit);
+      end;
+    end;
+    mList.AddRange(AUses);
+    mList.Sort(TComparer<TTextEdit>.Construct(
+      function(const A, B: TTextEdit): Integer
+      begin
+        Result := TTextPosition.Compare(A.Range.StartPos, B.Range.StartPos);
+      end));
+    Result := mList.ToArray;
+  finally
+    mList.Free;
+  end;
+end;
+
+function TLspFormatting.SortedUses(const ADocument: ITextDocument; const AUri: string; const AStyle: TFormatStyle;
+  out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mContext: TSlashContext;
+begin
+  AEdits := nil;
+  Result := False;
+  if not AStyle.SortUses or not Assigned(FSortUses) then
+  begin
+    Exit;
+  end;
+  mContext := Default(TSlashContext);
+  mContext.Text := ADocument.Text;
+  mContext.Uri := AUri;
+  mContext.Index := FIndex;
+  mContext.Host := FSlashHost;
+  mContext.Style := AStyle;
+  Result := FSortUses(mContext, AEdits);
+end;
+
 function TLspFormatting.Handle(const AParams: TJSONValue; AWithRange: Boolean;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
@@ -365,6 +440,7 @@ var
   mDocument: ITextDocument;
   mSettings: TFormatStyle;
   mFirstLine, mLastLine: Integer;
+  mEdits, mUsesEdits: TArray<TTextEdit>;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
@@ -384,9 +460,15 @@ begin
   end;
   // Die Einstellungen können Dateien lesen (.editorconfig); danach nicht mehr formatieren.
   ACancellation.ThrowIfCancellationRequested;
+  mEdits := TFormatter.Edits(mDocument.Text, TPascalLexer.Tokenize(mDocument.Text), mSettings, mFirstLine,
+    mLastLine);
+  // uses nur beim Formatieren der ganzen Datei sortieren, nie streichen.
+  if not AWithRange and SortedUses(mDocument, mUri, mSettings, mUsesEdits) then
+  begin
+    mEdits := MergeUsesEdits(mEdits, mUsesEdits);
+  end;
   Result := TJSONArray.Create;
-  AddEdits(TJSONArray(Result), TFormatter.Edits(mDocument.Text, TPascalLexer.Tokenize(mDocument.Text), mSettings,
-    mFirstLine, mLastLine));
+  AddEdits(TJSONArray(Result), mEdits);
 end;
 
 class function TLspFormatting.OnTypeCapability: TJSONObject;
@@ -413,6 +495,7 @@ begin
   Result.AlignAssignments := AConfigured.AlignAssignments;
   Result.AlignDeclarations := AConfigured.AlignDeclarations;
   Result.AlignComments := AConfigured.AlignComments;
+  Result.SortUses := AConfigured.SortUses;
   Result.Given := AConfigured.Given;
 end;
 

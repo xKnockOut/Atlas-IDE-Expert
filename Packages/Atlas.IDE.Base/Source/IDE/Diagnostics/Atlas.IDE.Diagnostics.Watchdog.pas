@@ -13,6 +13,15 @@
 // samt Anteilen von Atlas meldet die Composition). Ebenso das
 // Beenden: ohne sichtbares Hauptfenster oder nach Application.Terminate wird
 // nichts gemeldet.
+// Während die IDE übersetzt (SetCompiling), misst der Wächter nicht: Der
+// Compiler belegt den Hauptthread bei jeder größeren Unit länger als die
+// Schwelle, das ist kein Hänger. Angehalten und ausgewertet werden darf der
+// Hauptthread dann nicht, denn die Meldung liefe in der Nachrichtenschleife
+// des Fortschrittsdialogs mitten im Compile (Map-Datei, Server,
+// Meldungsfenster), und der Compiler der IDE verträgt das nicht (interne
+// Fehler F2084 beim Erzeugen). Ein schon festgehaltener Hänger wird dann
+// verworfen. Bleibt das Ende eines Compiles aus, misst der Wächter nach
+// cMaxCompileMs wieder.
 
 interface
 
@@ -32,6 +41,8 @@ type
     cWM_ATLAS_PING = WM_APP + $4A1;
     cWM_ATLAS_STARTUP = WM_APP + $4A2;
     cPeriodMs = 100;
+    /// <summary>Längstens so lange gilt ein gemeldeter Compile; danach misst der Wächter wieder.</summary>
+    cMaxCompileMs = 30 * 60 * 1000;
     // 512 KB unter x64: Ruft Atlas eine lange Arbeit der IDE auf, liegt sein Rahmen tief (#1989).
     cStackWords = 65536;
   private type
@@ -53,6 +64,8 @@ type
     FPong: Integer;
     FStarted: Integer;
     FThresholdMs: Integer;
+    // Beginn des laufenden Compiles (NowMs) oder 0; aus beiden Threads gelesen.
+    FCompilingSince: Int64;
     FOnHang: TAtlasHangProc;
     FThresholdFunc: TFunc<Integer>;
     // Kopie beim Hänger; nur im Wächter-Thread beschrieben, vor dem Anhalten angelegt.
@@ -66,12 +79,16 @@ type
     function TakeAddresses: TArray<UInt64>;
     class function NowMs: Int64; static;
     class function ForegroundWindowText: string; static;
+    /// <summary>Übersetzt die IDE gerade (höchstens cMaxCompileMs lang)? Aus jedem Thread.</summary>
+    function Compiling: Boolean;
   public
     /// <summary>AThreshold liefert die Schwelle (im Hauptthread gelesen).</summary>
     constructor Create(const AThreshold: TFunc<Integer>);
     destructor Destroy; override;
     /// <summary>Zeitpunkt in ms (monoton) für ALoadedAt.</summary>
     class function Timestamp: Int64; static;
+    /// <summary>Im Hauptthread bei Beginn (True) und Ende (False) eines Compiles der IDE.</summary>
+    procedure SetCompiling(AOn: Boolean);
     /// <summary>Im Hauptthread nach dem Ende eines Hängers über der Schwelle.</summary>
     property OnHang: TAtlasHangProc read FOnHang write FOnHang;
   end;
@@ -82,6 +99,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Diagnostics.StackCapture,
   System.Diagnostics,
+  System.Math,
   Vcl.Forms;
 
 /// <summary>IDE läuft normal: Hauptfenster sichtbar, nicht im Beenden. Liest nur Felder, aus jedem Thread.</summary>
@@ -150,6 +168,11 @@ begin
     var
       mModules: TArray<TAtlasModuleRange>;
     begin
+      // Hat inzwischen ein Compile begonnen, liefe die Auswertung in seiner Nachrichtenschleife: verwerfen.
+      if FOwner.Compiling then
+      begin
+        Exit;
+      end;
       // Module erst jetzt im Hauptthread: Die Ladersperre ist frei.
       // Rahmen im Atlas-Modul mit Unit, Routine und Zeile, wenn die Map-Datei neben der BPL liegt.
       mModules := TAtlasIdeStackCapture.Modules;
@@ -176,7 +199,8 @@ begin
   while not Terminated and (TInterlocked.CompareExchange(FOwner.FPong, 0, 0) <> ASeq) do
   begin
     FOwner.FWake.WaitFor(cPollMs);
-    if not Result and (NowMs - ASentAt >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running then
+    if not Result and (NowMs - ASentAt >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running and
+      not FOwner.Compiling then
     begin
       Result := True;
       AHang.At := Now;
@@ -326,6 +350,27 @@ begin
   begin
     Result[mIndex + 1] := FStack[mIndex];
   end;
+end;
+
+procedure TAtlasWatchdog.SetCompiling(AOn: Boolean);
+var
+  mSince: Int64;
+begin
+  mSince := 0;
+  if AOn then
+  begin
+    // 0 heißt „kein Compile“; die monotone Uhr ist nach dem Start nie 0, sicher ist sicher.
+    mSince := Max(NowMs, 1);
+  end;
+  TInterlocked.Exchange(FCompilingSince, mSince);
+end;
+
+function TAtlasWatchdog.Compiling: Boolean;
+var
+  mSince: Int64;
+begin
+  mSince := TInterlocked.Read(FCompilingSince);
+  Result := (mSince <> 0) and (NowMs - mSince < cMaxCompileMs);
 end;
 
 class function TAtlasWatchdog.NowMs: Int64;

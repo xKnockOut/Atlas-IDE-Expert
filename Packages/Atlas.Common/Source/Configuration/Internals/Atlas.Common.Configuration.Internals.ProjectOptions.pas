@@ -203,7 +203,8 @@ begin
   AReader.ReadObject(ANode, 'format', [TFlagOption.Create('reindent', ASettings.Formatting.Reindent),
     TFlagOption.Create('alignAssignments', ASettings.Formatting.AlignAssignments),
     TFlagOption.Create('alignDeclarations', ASettings.Formatting.AlignDeclarations),
-    TFlagOption.Create('alignComments', ASettings.Formatting.AlignComments)], cFormatMembers, ASettings);
+    TFlagOption.Create('alignComments', ASettings.Formatting.AlignComments),
+    TFlagOption.Create('sortUses', ASettings.Formatting.SortUses)], cFormatMembers, ASettings);
 end;
 
 procedure TakeFormat(const ASource: TServerSettings; const AFileText: string; var ATarget: TServerSettings);

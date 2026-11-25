@@ -47,6 +47,24 @@ type
     procedure GroupedSingleGroupWithoutComment;
     [Test]
     procedure AddMissingUnitSkipsUsedUnits;
+    [Test]
+    procedure AppendsBehindLastEntryOfMultiLineUses;
+    [Test]
+    procedure AppendsOnOwnLineWhenLastLineIsFull;
+    [Test]
+    procedure SortKeepsCommentSections;
+    [Test]
+    procedure GroupedKeepsCommentSections;
+    [Test]
+    procedure TrailingCommentMovesWithEntry;
+    [Test]
+    procedure DropKeepsLayoutAndComments;
+    [Test]
+    procedure CommentAfterCommaIsKept;
+    [Test]
+    procedure SectionsTwiceGiveNothing;
+    [Test]
+    procedure ListWithDirectiveStaysUntouched;
   end;
 
 implementation
@@ -332,6 +350,107 @@ begin
     'Vcl.Forms', nil, #10, mEdit));
   Assert.AreEqual('uses System.SysUtils, Werkzeug in ''Werkzeug.pas'', Vcl.Forms;',
     Apply(cUnitText, mEdit).Split([#10])[2]);
+end;
+
+procedure TUsesClauseTests.AppendsBehindLastEntryOfMultiLineUses;
+const
+  cText = 'unit A;'#10'interface'#10'uses'#10'  Classes, SysUtils;'#10'implementation'#10'end.';
+var
+  mEdit: TRuleEdit;
+begin
+  // Mehrere Einträge je Zeile: Die neue Unit kommt dahinter, nicht in eine eigene Zeile.
+  Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(cText), OffsetOf(cText, 'interface'), 'Vcl.Forms', #10,
+    mEdit));
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  Classes, SysUtils, Vcl.Forms;'#10'implementation'#10'end.',
+    Apply(cText, mEdit));
+end;
+
+procedure TUsesClauseTests.AppendsOnOwnLineWhenLastLineIsFull;
+var
+  mText: string;
+  mEdit: TRuleEdit;
+begin
+  mText := 'unit A;'#10'interface'#10'uses'#10'  ' + StringOfChar('X', 110) + ', Y;'#10'implementation'#10'end.';
+  Assert.IsTrue(TPascalUsesEdits.AddUnit(TPascalLexer.Tokenize(mText), OffsetOf(mText, 'interface'), 'Vcl.Forms', #10,
+    mEdit));
+  Assert.IsTrue(Pos(', Y,'#10'  Vcl.Forms;', Apply(mText, mEdit)) > 0, Apply(mText, mEdit));
+end;
+
+const
+  cSectionUses = 'unit A;'#10'interface'#10'uses'#10'  Dialogs, RTTI,'#10'  // Formulare - ABC'#10 +
+    '  uFormC, uFormA, uFormB,'#10'  // Formulare - DEF'#10'  uFormF, uFormD, System.SysUtils;'#10'implementation'#10 +
+    'end.';
+
+procedure TUsesClauseTests.SortKeepsCommentSections;
+begin
+  // Kommentarzeilen bleiben Überschriften, sortiert wird je Abschnitt (#2794 mit Kommentaren).
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  Dialogs, RTTI,'#10'  // Formulare - ABC'#10 +
+    '  uFormA, uFormB, uFormC,'#10'  // Formulare - DEF'#10'  System.SysUtils, uFormD, uFormF;'#10'implementation'#10 +
+    'end.', Organized(cSectionUses, True));
+end;
+
+procedure TUsesClauseTests.GroupedKeepsCommentSections;
+begin
+  // Nach Herkunft: je Abschnitt nach Gruppe, neue Zeile bei neuer Gruppe, keine Gruppenkommentare.
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  Dialogs, RTTI,'#10'  // Formulare - ABC'#10 +
+    '  uFormA, uFormB, uFormC,'#10'  // Formulare - DEF'#10'  System.SysUtils,'#10'  uFormD, uFormF;'#10 +
+    'implementation'#10'end.', Grouped(cSectionUses, TUsesGroupStyle.Comments, 0));
+end;
+
+procedure TUsesClauseTests.TrailingCommentMovesWithEntry;
+begin
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  Alpha, Beta, // für Rechne'#10'  Gamma;'#10 +
+    'implementation'#10'end.', Organized('unit A;'#10'interface'#10'uses'#10'  Gamma,'#10 +
+    '  Beta, // für Rechne'#10'  Alpha;'#10'implementation'#10'end.', True));
+  // Landet ein Eintrag mit //-Kommentar am Ende, steht das Semikolon vor dem Kommentar.
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  Alpha, Beta; // für Rechne'#10 +
+    'implementation'#10'end.', Organized('unit A;'#10'interface'#10'uses'#10'  Beta, // für Rechne'#10 +
+    '  Alpha;'#10'implementation'#10'end.', True));
+end;
+
+procedure TUsesClauseTests.DropKeepsLayoutAndComments;
+var
+  mOptions: TUsesRewrite;
+  mEdits: TArray<TRuleEdit>;
+  mText: string;
+begin
+  // Ohne Sortieren (/cleanuses): Zeilen und Kommentare bleiben, nur der gestrichene Eintrag fällt weg.
+  mText := 'unit A;'#10'interface'#10'uses'#10'  Gamma, Beta,'#10'  // Formulare'#10'  uFormB, uFormA;'#10 +
+    'implementation'#10'end.';
+  mOptions := Default(TUsesRewrite);
+  mOptions.Drop := ['Beta'];
+  Assert.IsTrue(TPascalUsesEdits.Rewrite(TPascalLexer.Tokenize(mText), mText, mOptions, #10, mEdits));
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  Gamma,'#10'  // Formulare'#10'  uFormB, uFormA;'#10 +
+    'implementation'#10'end.', ApplyAll(mText, mEdits));
+end;
+
+procedure TUsesClauseTests.CommentAfterCommaIsKept;
+begin
+  Assert.AreEqual('unit A;'#10'interface'#10'uses'#10'  Alpha, { alt } Beta;'#10'implementation'#10'end.',
+    Organized('unit A;'#10'interface'#10'uses'#10'  Beta, Alpha, { alt }'#10'  Beta;'#10'implementation'#10'end.',
+    True));
+end;
+
+procedure TUsesClauseTests.SectionsTwiceGiveNothing;
+var
+  mText: string;
+  mOptions: TUsesRewrite;
+  mEdits: TArray<TRuleEdit>;
+begin
+  mText := Grouped(cSectionUses, TUsesGroupStyle.Comments, 0);
+  mOptions := Default(TUsesRewrite);
+  mOptions.Dedupe := True;
+  mOptions.Sort := True;
+  mOptions.GroupOf := NameGroups();
+  Assert.IsFalse(TPascalUsesEdits.Rewrite(TPascalLexer.Tokenize(mText), mText, mOptions, #10, mEdits));
+end;
+
+procedure TUsesClauseTests.ListWithDirectiveStaysUntouched;
+const
+  cText = 'unit A;'#10'interface'#10'uses'#10'  Beta, // b'#10'  {$IFDEF X} Alpha, {$ENDIF}'#10'  Gamma;'#10 +
+    'implementation'#10'end.';
+begin
+  Assert.AreEqual(cText, Organized(cText, True));
 end;
 
 initialization

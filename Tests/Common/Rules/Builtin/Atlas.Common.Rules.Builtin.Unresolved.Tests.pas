@@ -115,8 +115,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Rules.Contract.UnitLookup,
-  Atlas.Common.Rules.Providers.UnitLookup,
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Projects.UnitLookup,
   Atlas.Common.Rules.Builtin.Unresolved,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.TextEdits;
@@ -531,7 +531,7 @@ begin
   Assert.AreEqual('uses DUnitX.TestFramework ergänzen', mFound[0].Fixes[0].Title);
   mFixed := TTestEdits.Apply(TestUnit('System.SysUtils'), mFound[0].Fixes[0].Edits[0]);
   // Steht die Liste in eigener Zeile, kommt die Unit in eine neue Zeile (wie "uses … ergänzen").
-  Assert.AreEqual(TestUnit('System.SysUtils,'#10'  DUnitX.TestFramework'), mFixed);
+  Assert.AreEqual(TestUnit('System.SysUtils, DUnitX.TestFramework'), mFixed);
   Assert.AreEqual(0, Integer(Length(AttributeFindings(mFixed))));
 end;
 
@@ -675,7 +675,7 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('uses System.Generics.Collections ergänzen', mFound[0].Fixes[0].Title);
   mFixed := TTestEdits.Apply(mSource, mFound[0].Fixes[0].Edits[0]);
-  Assert.AreEqual(KundenUnit('System.SysUtils,'#10'  System.Generics.Collections', '  TKunden = TObjectList<TKunde>;'#10),
+  Assert.AreEqual(KundenUnit('System.SysUtils, System.Generics.Collections', '  TKunden = TObjectList<TKunde>;'#10),
     mFixed);
   Assert.AreEqual(0, Integer(Length(TypeFindings(mFixed))), mFixed);
 end;

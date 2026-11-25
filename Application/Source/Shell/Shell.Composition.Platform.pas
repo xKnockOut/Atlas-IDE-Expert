@@ -53,11 +53,13 @@ implementation
 
 uses
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Rules.Contract.UnitLookup,
-  Atlas.Common.Rules.Providers.UnitLookup,
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Projects.UnitLookup,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Providers.DiskFileSystem,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Projects.Contract.Group,
+  Atlas.Common.Architecture.UsesService,
+  Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.VersionControl.Repository.Composition,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
@@ -82,9 +84,16 @@ begin
   Result := TDiskIndexFileSystem.Create;
 end;
 
-function UnitLookupOf(const ASetup: TUnitLookupSetup): IRuleUnitLookup;
+function UnitLookupOf(const ASetup: TUnitLookupSetup): IUnitLookup;
 begin
   Result := TUnitLookup.Create(ASetup);
+end;
+
+function GroupFilesOf(const AProjects: TArray<TGroupProject>; const AIndex: ISymbolIndex;
+  const AReadText: TProjectReadText; const AComplete: TProjectGroupComplete;
+  AUsesGraph: TUsesGraphService): IProjectGroupFiles;
+begin
+  Result := TProjectGroupFiles.Create(AProjects, AIndex, AReadText, AComplete, AUsesGraph);
 end;
 
 function OpenVersionControl(const AWorkingCopy: TAtlasVcsWorkingCopy; const ARunner: IAtlasVcsRunner;
@@ -130,6 +139,7 @@ begin
   Result.Installation := InstallationOf;
   Result.IndexFileSystem := NewIndexFileSystem;
   Result.UnitLookup := UnitLookupOf;
+  Result.GroupFiles := GroupFilesOf;
 end;
 
 class function TShellPlatformAdapters.VcsAccess: TCoreVcsAccess;

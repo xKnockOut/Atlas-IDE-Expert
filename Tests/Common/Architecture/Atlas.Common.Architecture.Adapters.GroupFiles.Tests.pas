@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.ProjectFiles.Tests;
+﻿unit Atlas.Common.Architecture.Adapters.GroupFiles.Tests;
 
 // Tests der Projektdateien für projektweite Regeln (#1102): Reihenfolge der
 // Projekte, NameIn über die Verwendungen des Index und über den Text
@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TRuleProjectFilesTests = class
+  TProjectGroupFilesTests = class
   public
     [Test]
     procedure ProjectsOfPutsOwnProjectsFirst;
@@ -27,8 +27,6 @@ type
     procedure NameInReadsEachFileOnce;
     [Test]
     procedure CompleteAsksHost;
-    [Test]
-    procedure KindAndTestsFromMainSource;
   end;
 
 implementation
@@ -39,14 +37,14 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.ProjectFiles;
+  Atlas.Common.Projects.Contract.Group,
+  Atlas.Common.Architecture.Adapters.GroupFiles;
 
-function Project(const AFileName: string; const ASources: TArray<string>): TRuleProject;
+function Project(const AFileName: string; const ASources: TArray<string>): TGroupProject;
 begin
-  Result := Default(TRuleProject);
+  Result := Default(TGroupProject);
   Result.FileName := AFileName;
-  Result.Kind := TRuleProjectKind.Application;
+  Result.Kind := TGroupProjectKind.Application;
   Result.Sources := ASources;
 end;
 
@@ -55,9 +53,9 @@ const
     '  Speichern; // Kommentar: Vergessen'#10'  Writeln(''Vergessen'');'#10'end;'#10'end.';
 
 function Files(const AIndex: ISymbolIndex; const ATexts: TDictionary<string, string>;
-  const AComplete: Boolean): IRuleProjectFiles;
+  const AComplete: Boolean): IProjectGroupFiles;
 begin
-  Result := TRuleProjectFiles.Create([Project('C:\P\App.dproj', ['C:\P\App.dpr', 'C:\P\A.pas']),
+  Result := TProjectGroupFiles.Create([Project('C:\P\App.dproj', ['C:\P\App.dpr', 'C:\P\A.pas']),
     Project('C:\P\Werkzeug.dproj', ['C:\P\Werkzeug.dpr']), Project('C:\P\Dll.dproj', ['C:\P\Dll.dpr', 'C:\P\A.pas'])],
     AIndex,
     function(const AFileName: string; out AText: string): Boolean
@@ -74,11 +72,11 @@ begin
     end);
 end;
 
-{ TRuleProjectFilesTests }
+{ TProjectGroupFilesTests }
 
-procedure TRuleProjectFilesTests.ProjectsOfPutsOwnProjectsFirst;
+procedure TProjectGroupFilesTests.ProjectsOfPutsOwnProjectsFirst;
 var
-  mFound: TArray<TRuleProject>;
+  mFound: TArray<TGroupProject>;
 begin
   mFound := Files(nil, nil, True).ProjectsOf('C:\P\A.pas', False);
   Assert.AreEqual(2, Integer(Length(mFound)));
@@ -90,26 +88,26 @@ begin
   Assert.AreEqual(0, Integer(Length(Files(nil, nil, True).ProjectsOf('C:\Fremd.pas', True))));
 end;
 
-procedure TRuleProjectFilesTests.NameInUsesIndexUsages;
+procedure TProjectGroupFilesTests.NameInUsesIndexUsages;
 var
   mIndex: ISymbolIndex;
-  mProvider: IRuleProjectFiles;
+  mProvider: IProjectGroupFiles;
 begin
   mIndex := TSymbolIndex.Create;
   mIndex.AddUnit(TIndexExtractor.ExtractText(cUnitA, 'C:\P\A.pas', nil, nil, True));
   // Ohne Texte: die Antwort kommt allein aus dem Index.
   mProvider := Files(mIndex, nil, True);
-  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'speichern'));
-  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Vergessen'), 'Kommentar und String');
+  Assert.AreEqual<TNameAnswer>(TNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'speichern'));
+  Assert.AreEqual<TNameAnswer>(TNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Vergessen'), 'Kommentar und String');
   // Die eigene Deklaration ist keine Verwendung, Laden steht aber im Rumpf-Kopf als Deklaration.
-  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Laden'));
+  Assert.AreEqual<TNameAnswer>(TNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Laden'));
 end;
 
-procedure TRuleProjectFilesTests.NameInFallsBackToText;
+procedure TProjectGroupFilesTests.NameInFallsBackToText;
 var
   mIndex: ISymbolIndex;
   mTexts: TDictionary<string, string>;
-  mProvider: IRuleProjectFiles;
+  mProvider: IProjectGroupFiles;
 begin
   mIndex := TSymbolIndex.Create;
   // Ohne Verwendungen im Index.
@@ -117,25 +115,25 @@ begin
   mTexts := TDictionary<string, string>.Create;
   try
     mProvider := Files(mIndex, mTexts, True);
-    Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Unknown, mProvider.NameIn('C:\P\A.pas', 'Speichern'), 'nicht lesbar');
+    Assert.AreEqual<TNameAnswer>(TNameAnswer.Unknown, mProvider.NameIn('C:\P\A.pas', 'Speichern'), 'nicht lesbar');
     mTexts.Add('C:\P\A.pas', cUnitA + #10'// Override'#10);
-    Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'Speichern'));
-    Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Vergessen'));
+    Assert.AreEqual<TNameAnswer>(TNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'Speichern'));
+    Assert.AreEqual<TNameAnswer>(TNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Vergessen'));
     // Direktivenwörter zählt der Index nicht; im Kommentar zählen sie auch nicht.
-    Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Override'));
+    Assert.AreEqual<TNameAnswer>(TNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Override'));
     mTexts.Add('C:\P\App.dpr', 'program App;'#10'begin'#10'  Override := 1;'#10'end.');
-    Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('C:\P\App.dpr', 'override'));
+    Assert.AreEqual<TNameAnswer>(TNameAnswer.Present, mProvider.NameIn('C:\P\App.dpr', 'override'));
     mProvider := nil;
   finally
     mTexts.Free;
   end;
 end;
 
-procedure TRuleProjectFilesTests.NameInReadsIncludes;
+procedure TProjectGroupFilesTests.NameInReadsIncludes;
 var
   mIndex: ISymbolIndex;
   mTexts: TDictionary<string, string>;
-  mProvider: IRuleProjectFiles;
+  mProvider: IProjectGroupFiles;
   mIndexed: TUnitIndex;
 begin
   mIndex := TSymbolIndex.Create;
@@ -146,21 +144,21 @@ begin
   try
     mTexts.Add('C:\P\A.pas', cUnitA);
     mProvider := Files(mIndex, mTexts, True);
-    Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Unknown, mProvider.NameIn('C:\P\A.pas', 'Drucken'), 'Include fehlt');
+    Assert.AreEqual<TNameAnswer>(TNameAnswer.Unknown, mProvider.NameIn('C:\P\A.pas', 'Drucken'), 'Include fehlt');
     mTexts.Add('C:\P\Teil.inc', 'procedure X;'#10'begin'#10'  Drucken;'#10'end;');
-    Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'Drucken'));
-    Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Fehlt'));
+    Assert.AreEqual<TNameAnswer>(TNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'Drucken'));
+    Assert.AreEqual<TNameAnswer>(TNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Fehlt'));
     mProvider := nil;
   finally
     mTexts.Free;
   end;
 end;
 
-procedure TRuleProjectFilesTests.NameInReadsEachFileOnce;
+procedure TProjectGroupFilesTests.NameInReadsEachFileOnce;
 var
   mReads: Integer;
-  mRead: TRuleProjectReadText;
-  mProvider: IRuleProjectFiles;
+  mRead: TProjectReadText;
+  mProvider: IProjectGroupFiles;
 begin
   // Ohne Verwendungen im Index (ausgelagert): NameIn darf die Datei nicht für jeden Namen neu lesen und parsen;
   // unused-public-member fragt je Mitglied alle Dateien der Gruppe, der Prüflauf stünde sonst still.
@@ -172,16 +170,16 @@ begin
       AText := cUnitA;
       Result := True;
     end;
-  mProvider := TRuleProjectFiles.Create([Project('C:\P\App.dproj', ['C:\P\A.pas'])], nil, mRead, nil);
-  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'Speichern'));
-  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Present, mProvider.NameIn('c:\p\a.pas', 'LADEN'));
-  Assert.AreEqual<TRuleNameAnswer>(TRuleNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Vergessen'));
+  mProvider := TProjectGroupFiles.Create([Project('C:\P\App.dproj', ['C:\P\A.pas'])], nil, mRead, nil);
+  Assert.AreEqual<TNameAnswer>(TNameAnswer.Present, mProvider.NameIn('C:\P\A.pas', 'Speichern'));
+  Assert.AreEqual<TNameAnswer>(TNameAnswer.Present, mProvider.NameIn('c:\p\a.pas', 'LADEN'));
+  Assert.AreEqual<TNameAnswer>(TNameAnswer.Absent, mProvider.NameIn('C:\P\A.pas', 'Vergessen'));
   Assert.AreEqual(1, mReads);
   mProvider := nil;
   mRead := nil;
 end;
 
-procedure TRuleProjectFilesTests.CompleteAsksHost;
+procedure TProjectGroupFilesTests.CompleteAsksHost;
 var
   mReason: string;
 begin
@@ -189,22 +187,10 @@ begin
   Assert.AreEqual('', mReason);
   Assert.IsFalse(Files(nil, nil, False).Complete(mReason));
   Assert.AreEqual('Index läuft', mReason);
-  Assert.IsTrue((TRuleProjectFiles.Create(nil, nil, nil, nil) as IRuleProjectFiles).Complete(mReason));
-end;
-
-procedure TRuleProjectFilesTests.KindAndTestsFromMainSource;
-begin
-  Assert.AreEqual<TRuleProjectKind>(TRuleProjectKind.Application, TRuleProjectFiles.KindOfSource('App.dpr',
-    '{ Kopf }'#10'program App;'#10'begin'#10'end.'));
-  Assert.AreEqual<TRuleProjectKind>(TRuleProjectKind.Library_, TRuleProjectFiles.KindOfSource('Dll.dpr', 'library Dll;'#10'begin'#10'end.'));
-  Assert.AreEqual<TRuleProjectKind>(TRuleProjectKind.Package, TRuleProjectFiles.KindOfSource('Pak.dpk', ''));
-  Assert.AreEqual<TRuleProjectKind>(TRuleProjectKind.Package, TRuleProjectFiles.KindOfSource('Pak.dpr', 'package Pak;'#10'end.'));
-  Assert.AreEqual<TRuleProjectKind>(TRuleProjectKind.Unknown, TRuleProjectFiles.KindOfSource('X.pas', 'unit X;'));
-  Assert.IsTrue(TRuleProjectFiles.IsTestSource('program T;'#10'uses'#10'  DUnitX.TestFramework;'#10'begin'#10'end.'));
-  Assert.IsFalse(TRuleProjectFiles.IsTestSource('program App;'#10'uses'#10'  Vcl.Forms;'#10'begin'#10'end.'));
+  Assert.IsTrue((TProjectGroupFiles.Create(nil, nil, nil, nil) as IProjectGroupFiles).Complete(mReason));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TRuleProjectFilesTests);
+  TDUnitX.RegisterTestFixture(TProjectGroupFilesTests);
 
 end.

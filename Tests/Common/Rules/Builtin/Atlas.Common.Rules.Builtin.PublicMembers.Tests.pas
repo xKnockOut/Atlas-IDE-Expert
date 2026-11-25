@@ -90,7 +90,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.Common.Rules.Builtin.PublicMembers,
   Atlas.Tests.RuleAssert,
   Atlas.Common.Configuration.TestSupport,
@@ -245,7 +245,7 @@ begin
       mContext.Text := AScenario.Text(ACheck);
       mContext.Tree := mTree;
       mContext.Index := mIndex;
-      mContext.ProjectFiles := TRuleProjectFiles.Create(AScenario.Projects, mIndex,
+      mContext.ProjectFiles := TProjectGroupFiles.Create(AScenario.Projects, mIndex,
         function(const AFileName: string; out AText: string): Boolean
         begin
           Result := not SameText(AFileName, mUnreadable) and mTexts.TryGetValue(UpperCase(AFileName), AText);
@@ -797,9 +797,8 @@ begin
   mWatch := TStopwatch.StartNew;
   Run(mData, cServiceFile);
   mWatch.Stop;
-  System.Writeln(Format('unused-public-member: Prüfung bei %d Units in %d ms', [cUnitCount + 3,
-    mWatch.ElapsedMilliseconds]));
-  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, 'zu langsam');
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, Format('unused-public-member: Prüfung bei %d Units in %d ms',
+    [cUnitCount + 3, mWatch.ElapsedMilliseconds]));
 end;
 
 initialization

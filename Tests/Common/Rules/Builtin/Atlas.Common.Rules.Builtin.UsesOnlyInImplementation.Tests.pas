@@ -151,7 +151,7 @@ begin
   mText := UnitText('Andere, Typen', 'Hilfe');
   mFindings := Check(mText);
   Assert.AreEqual('Andere wird nur im implementation-Teil gebraucht;', Names(mFindings));
-  Assert.AreEqual(UnitText('Typen', 'Hilfe,'#13#10'  Andere'), TTextChanges.Apply(mText, mFindings[0].Fixes[0].Edits));
+  Assert.AreEqual(UnitText('Typen', 'Hilfe, Andere'), TTextChanges.Apply(mText, mFindings[0].Fixes[0].Edits));
 end;
 
 procedure TUsesOnlyInImplementationTests.InterfaceUseIsQuiet;
