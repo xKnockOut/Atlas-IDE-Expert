@@ -26,7 +26,7 @@ uses
   Atlas.Common.Mcp.HistoryTools,
   Atlas.Common.Localization.Texts,
   Core.SymbolHistory,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -81,7 +81,7 @@ begin
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['markdown', 'json']));
   end;
   Result.Json := SameText(mFormat, 'json');
 end;

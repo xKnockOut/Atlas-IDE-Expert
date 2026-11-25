@@ -34,7 +34,7 @@ uses
   Atlas.Common.Mcp.CheckTools,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Localization.Texts,
-  Core.Texts,
+  Atlas.Common.Localization.RequestTexts,
   Core.WorkspaceGroup,
   Atlas.Text.Names;
 
@@ -173,7 +173,7 @@ begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<Integer>('line', mLine) or not AArguments.TryGetValue<Integer>('column', mColumn) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Missing(['line', 'column']));
+    raise EMcpToolError.Create(TRequestTexts.Missing(['line', 'column']));
   end;
   AContext.Edit.Namespaces := AContext.Group.Main.State.Namespaces;
   Result := AContext.Edit.RenameSymbol(mFileName, mLine, mColumn, TMcpArgs.RequiredString(AArguments, 'newName'),
@@ -206,7 +206,7 @@ begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<Integer>('line', mLine) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Missing(['line']));
+    raise EMcpToolError.Create(TRequestTexts.Missing(['line']));
   end;
   Result := AContext.Edit.ApplyCodeAction(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
     AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, mLine,
@@ -259,7 +259,7 @@ begin
   end;
   if Length(mFiles) = 0 then
   begin
-    raise EMcpToolError.Create(TCoreTexts.NoProjectGiveFile);
+    raise EMcpToolError.Create(TRequestTexts.NoProjectGiveFile);
   end;
   Result := AContext.Edit.FixFindings(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
     AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, mRules,
@@ -348,7 +348,7 @@ begin
   mRequest.FileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<Integer>('startLine', mRequest.StartLine) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Missing(['startLine']));
+    raise EMcpToolError.Create(TRequestTexts.Missing(['startLine']));
   end;
   if not AArguments.TryGetValue<Integer>('endLine', mRequest.EndLine) then
   begin
@@ -393,7 +393,7 @@ var
 begin
   if not AArguments.TryGetValue<Integer>('line', mLine) or not AArguments.TryGetValue<Integer>('column', mColumn) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Missing(['line', 'column']));
+    raise EMcpToolError.Create(TRequestTexts.Missing(['line', 'column']));
   end;
   if not AArguments.TryGetValue<Integer>('endLine', mEndLine) then
   begin

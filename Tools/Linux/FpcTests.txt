@@ -196,6 +196,7 @@ Atlas.Common.Rules.Ownership.Tests
 Atlas.Common.Lsp.Ownership.Tests
 Atlas.Common.Lsp.RuntimeReport.Tests
 Atlas.Common.Localization.Texts.Tests
+Atlas.Common.Localization.RequestTexts.Tests
 Atlas.Common.Logging.EntryText.Tests
 Atlas.Common.Logging.Providers.Logger.Tests
 Atlas.Common.Logging.Providers.StreamSink.Tests

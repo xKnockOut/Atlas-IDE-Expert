@@ -36,7 +36,7 @@ uses
   Core.AffectedTests,
   Core.Hotspots,
   Atlas.Common.Localization.Texts,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -168,7 +168,7 @@ begin
   end;
   if not TAffectedReport.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['text', 'json', 'dunitx']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['text', 'json', 'dunitx']));
   end;
   mReadText := TCoreAffectedTests.FileReader();
   // Über eine Variable halten: als const-Argument würde der Probelauf nie freigegeben.
@@ -214,7 +214,7 @@ begin
   if (Result <> '') and not SameText(Result, 'text') and not SameText(Result, 'markdown') and
     not SameText(Result, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['text', 'markdown', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['text', 'markdown', 'json']));
   end;
 end;
 
@@ -255,7 +255,7 @@ begin
   end;
   if Length(Result.Files) = 0 then
   begin
-    raise EMcpToolError.Create(TCoreTexts.NoProject);
+    raise EMcpToolError.Create(TRequestTexts.NoProject);
   end;
 end;
 
@@ -294,7 +294,7 @@ begin
   end;
   if not THotspotReport.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), mSection) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('section', ['hotspots', 'coupling']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('section', ['hotspots', 'coupling']));
   end;
   mFormat := HotspotFormatOf(AArguments);
   mLimit := HotspotLimitOf(AArguments);

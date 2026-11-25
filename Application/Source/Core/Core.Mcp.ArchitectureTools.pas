@@ -41,7 +41,7 @@ uses
   Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Localization.Texts,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -142,7 +142,7 @@ begin
   end;
   if Length(Result.Files) = 0 then
   begin
-    raise EMcpToolError.Create(TCoreTexts.NoProject);
+    raise EMcpToolError.Create(TRequestTexts.NoProject);
   end;
   // Derselbe zuletzt berechnete Stand wie im LSP-Prozess (#1367).
   Result.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot, Result.ScopeKey);
@@ -262,7 +262,7 @@ var
 begin
   if not TArchitectureReport.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), mSection) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('section',
+    raise EMcpToolError.Create(TRequestTexts.Choice('section',
       ['overview', 'central', 'subsystems', 'cycles', 'crossLinks']));
   end;
   mResolution := 0;

@@ -44,7 +44,7 @@ uses
   Atlas.Common.Query.Output,
   Platform.Server,
   Atlas.Common.Localization.Texts,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -158,7 +158,7 @@ begin
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['markdown', 'json']));
   end;
   Result := TMcpStatusTools.ServerStatus(TIndexCacheDirectory.DefaultRoot, AContext.Root, SameText(mFormat, 'json'), Now,
     function: TServerStatus
@@ -226,7 +226,7 @@ begin
   Result := TMcpArgs.OptionalString(AArguments, 'format');
   if (Result <> '') and not SameText(Result, 'markdown') and not SameText(Result, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['markdown', 'json']));
   end;
 end;
 
@@ -302,7 +302,7 @@ begin
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['markdown', 'json']));
   end;
   if mFileName <> '' then
   begin
@@ -314,7 +314,7 @@ begin
   end;
   if Length(mFiles) = 0 then
   begin
-    raise EMcpToolError.Create(TCoreTexts.NoProjectGiveFile);
+    raise EMcpToolError.Create(TRequestTexts.NoProjectGiveFile);
   end;
   Result := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Checking(nil, AContext.Group.Main.Configuration.Settings,
     AContext.Root), mFiles, AContext.Adapters.DeadCode(), SameText(mFormat, 'json'));
@@ -344,7 +344,7 @@ begin
   end;
   if not TMcpDeadCodeTools.ParseDirection(TMcpArgs.OptionalString(AArguments, 'direction'), mDirection) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('direction', ['uses', 'usedBy', 'both']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('direction', ['uses', 'usedBy', 'both']));
   end;
   if not AArguments.TryGetValue<Boolean>('transitive', mTransitive) then
   begin
@@ -353,7 +353,7 @@ begin
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['markdown', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['markdown', 'json']));
   end;
   mText := '';
   AContext.Group.UsesGraph.Read(

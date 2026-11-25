@@ -134,7 +134,6 @@ uses
   Core.Linter.Check in 'Source\Core\Core.Linter.Check.pas',
   Core.Linter.Reports in 'Source\Core\Core.Linter.Reports.pas',
   Core.SlashHost in 'Source\Core\Core.SlashHost.pas',
-  Core.Texts in 'Source\Core\Core.Texts.pas',
   Core.VersionControlChanges in 'Source\Core\Core.VersionControlChanges.pas',
   Core.AffectedTests in 'Source\Core\Core.AffectedTests.pas',
   Core.Hotspots in 'Source\Core\Core.Hotspots.pas',

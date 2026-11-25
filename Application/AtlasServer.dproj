@@ -180,7 +180,6 @@
         <DCCReference Include="Source\Core\Core.Linter.Check.pas"/>
         <DCCReference Include="Source\Core\Core.Linter.Reports.pas"/>
         <DCCReference Include="Source\Core\Core.SlashHost.pas"/>
-        <DCCReference Include="Source\Core\Core.Texts.pas"/>
         <DCCReference Include="Source\Core\Core.VersionControlChanges.pas"/>
         <DCCReference Include="Source\Core\Core.AffectedTests.pas"/>
         <DCCReference Include="Source\Core\Core.Hotspots.pas"/>

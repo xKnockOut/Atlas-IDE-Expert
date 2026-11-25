@@ -2636,8 +2636,7 @@
         <DCCReference Include="..\Application\Source\Core\Core.Commands.Build.pas"/>
         <DCCReference Include="..\Application\Source\Core\Core.Commands.Index.pas"/>
         <DCCReference Include="Application\Core\Core.Commands.Tests.pas"/>
-        <DCCReference Include="..\Application\Source\Core\Core.Texts.pas"/>
-        <DCCReference Include="Application\Core\Core.Texts.Tests.pas"/>
+        <DCCReference Include="Common\Localization\Atlas.Common.Localization.RequestTexts.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Core\Core.VersionControlChanges.pas"/>
         <DCCReference Include="Application\Core\Core.VersionControlChanges.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Core\Core.AffectedTests.pas"/>
