@@ -19,11 +19,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Architecture.UsesGraph,
-  Atlas.Common.Mcp.Contract;
+  Atlas.Common.Mcp.Contract,
+  Atlas.Common.Mcp.Contract.DeadCode;
 
 {$SCOPEDENUMS ON}
 
@@ -34,12 +32,10 @@ type
   public const
     cMaxFindings = 200;
   public
-    /// <summary>Die Regeln für ungenutzten Code aus ARules, in der Reihenfolge von ARules.</summary>
-    class function DeadCodeRules(const ARules: TArray<IRule>): TArray<IRule>; static;
-    /// <summary>find_unused_code: Befunde der Regeln für ungenutzten Code aus AScope.Rules in AFiles. Texte über
-    /// AProjectFiles.ReadText, Pfade im Bericht relativ zu AScope.Root.</summary>
-    class function FindUnused(const AScope: TMcpRuleScope; const AFiles: TArray<string>; const AIndex: ISymbolIndex;
-      const AProjectFiles: IRuleProjectFiles; const ANamespaces: TArray<string>; AJson: Boolean): string; static;
+    /// <summary>find_unused_code: Befunde der Regeln für ungenutzten Code aus ADeadCode in AFiles mit den
+    /// Einstellungen aus AScope. Texte über ADeadCode.ReadText, Pfade im Bericht relativ zu AScope.Root.</summary>
+    class function FindUnused(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
+      const ADeadCode: IMcpDeadCode; AJson: Boolean): string; static;
     /// <summary>"uses", "usedBy" oder "both" ('' = both); False bei anderem Text.</summary>
     class function ParseDirection(const AText: string; out ADirection: TMcpUsesDirection): Boolean; static;
     /// <summary>get_unit_dependencies für die Unit AUnit (Name oder absoluter Pfad); EMcpToolError-frei: eine
@@ -56,12 +52,6 @@ uses
   System.Classes,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Builtin.Visibility,
-  Atlas.Common.Rules.Builtin.PublicMembers,
-  Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Names;
 
@@ -94,9 +84,6 @@ const
     (De: '## Verwendet (%d)'; En: '## Uses (%d)'),
     (De: '## Zyklen'; En: '## Cycles'));
 
-const
-  cDeadCodeIds: array[0..3] of string = (cUnusedPrivateMemberRuleId, cUnusedPublicMemberRuleId,
-    cUnusedDeclarationRuleId, cUnusedUnitRuleId);
 
 // Pfad relativ zu ARoot; beide Trenner gelten, weil Pfade aus dem Index und
 // vom Client unter Windows wie unter Linux vorkommen.
@@ -123,29 +110,12 @@ end;
 
 { TMcpDeadCodeTools }
 
-class function TMcpDeadCodeTools.DeadCodeRules(const ARules: TArray<IRule>): TArray<IRule>;
-var
-  mRule: IRule;
-begin
-  Result := nil;
-  for mRule in ARules do
-  begin
-    if IndexText(mRule.Descriptor.Id, cDeadCodeIds) >= 0 then
-    begin
-      Result := Result + [mRule];
-    end;
-  end;
-end;
-
 type
   /// <summary>Sammelt die Befunde von find_unused_code als Markdown-Zeilen und JSON.</summary>
   TUnusedCollector = class
   private
     FScope: TMcpRuleScope;
-    FRules: TArray<IRule>;
-    FIndex: ISymbolIndex;
-    FProjectFiles: IRuleProjectFiles;
-    FNamespaces: TArray<string>;
+    FDeadCode: IMcpDeadCode;
     FLines: TStringList;
     /// <summary>JSON-Bericht; die Befunde stehen unter "findings".</summary>
     FRoot: TJSONObject;
@@ -154,12 +124,10 @@ type
     /// <summary>Alle Projekte geladen und indiziert, beim Start ermittelt; sonst Grund in FReason.</summary>
     FComplete: Boolean;
     FReason: string;
-    function ContextOf(const AFileName, AText: string; ATree: TSyntaxTree): TRuleContext;
     procedure AddFinding(const AFileName: string; const AFinding: TRuleFinding; var ACurrent: string);
     procedure AddHeader;
   public
-    constructor Create(const AScope: TMcpRuleScope; const AIndex: ISymbolIndex;
-      const AProjectFiles: IRuleProjectFiles; const ANamespaces: TArray<string>);
+    constructor Create(const AScope: TMcpRuleScope; const ADeadCode: IMcpDeadCode);
     destructor Destroy; override;
     procedure CheckFile(const AFileName: string);
     function Report(AJson: Boolean): string;
@@ -167,19 +135,15 @@ type
 
 { TUnusedCollector }
 
-constructor TUnusedCollector.Create(const AScope: TMcpRuleScope; const AIndex: ISymbolIndex;
-  const AProjectFiles: IRuleProjectFiles; const ANamespaces: TArray<string>);
+constructor TUnusedCollector.Create(const AScope: TMcpRuleScope; const ADeadCode: IMcpDeadCode);
 begin
   inherited Create;
   FScope := AScope;
-  FRules := TMcpDeadCodeTools.DeadCodeRules(AScope.Rules);
-  FIndex := AIndex;
-  FProjectFiles := AProjectFiles;
-  FNamespaces := ANamespaces;
+  FDeadCode := ADeadCode;
   FLines := TStringList.Create;
   FRoot := TJSONObject.Create;
   FRoot.AddPair('findings', TJSONArray.Create);
-  FComplete := (AProjectFiles = nil) or AProjectFiles.Complete(FReason);
+  FComplete := ADeadCode.Complete(FReason);
 end;
 
 destructor TUnusedCollector.Destroy;
@@ -187,24 +151,6 @@ begin
   FRoot.Free;
   FLines.Free;
   inherited;
-end;
-
-function TUnusedCollector.ContextOf(const AFileName, AText: string; ATree: TSyntaxTree): TRuleContext;
-begin
-  Result := Default(TRuleContext);
-  Result.FileName := AFileName;
-  Result.RelativePath := StringReplace(RelativeTo(FScope.Root, AFileName), '\', '/', [rfReplaceAll]);
-  Result.UnitName := ChangeFileExt(ExtractFileName(AFileName), '');
-  Result.Text := AText;
-  Result.Tree := ATree;
-  Result.Index := FIndex;
-  Result.Namespaces := FNamespaces;
-  Result.ProjectFiles := FProjectFiles;
-  if SameText(ExtractFileExt(AFileName), '.pas') and not FProjectFiles.ReadText(ChangeFileExt(AFileName, '.dfm'),
-    Result.FormText) then
-  begin
-    FProjectFiles.ReadText(ChangeFileExt(AFileName, '.fmx'), Result.FormText);
-  end;
 end;
 
 procedure TUnusedCollector.AddFinding(const AFileName: string; const AFinding: TRuleFinding; var ACurrent: string);
@@ -244,35 +190,29 @@ begin
   begin
     FLines.Insert(0, cTexts[TDeadCodeToolsText.NoteUnusedPublicMemberAnd].Fmt([FReason]));
   end;
-  if FRules = nil then
+  if not FDeadCode.Available then
   begin
     FLines.Insert(0, cTexts[TDeadCodeToolsText.TheRulesForUnusedCode].Text);
   end;
-  FLines.Insert(0, cTexts[TDeadCodeToolsText.FindingsInFiles].Fmt([FCount, FChecked, string.Join(', ', cDeadCodeIds)]));
+  FLines.Insert(0, cTexts[TDeadCodeToolsText.FindingsInFiles].Fmt([FCount, FChecked, string.Join(', ', FDeadCode.RuleIds)]));
   FLines.Insert(0, cTexts[TDeadCodeToolsText.UnusedCode].Text);
 end;
 
 procedure TUnusedCollector.CheckFile(const AFileName: string);
 var
   mText, mCurrent: string;
-  mTree: TSyntaxTree;
   mFinding: TRuleFinding;
 begin
-  if (FProjectFiles = nil) or not FProjectFiles.ReadText(AFileName, mText) then
+  if not FDeadCode.ReadText(AFileName, mText) then
   begin
     FLines.Add(cTexts[TDeadCodeToolsText.NotReadable].Fmt([RelativeTo(FScope.Root, AFileName)]));
     Exit;
   end;
   Inc(FChecked);
-  mTree := TSyntaxTreeCache.Parse(mText);
-  try
-    mCurrent := '';
-    for mFinding in TRuleEngine.Run(FRules, FScope.Settings, ContextOf(AFileName, mText, mTree)) do
-    begin
-      AddFinding(AFileName, mFinding, mCurrent);
-    end;
-  finally
-    mTree.Free;
+  mCurrent := '';
+  for mFinding in FDeadCode.Check(AFileName, RelativeTo(FScope.Root, AFileName), mText, FScope.Settings) do
+  begin
+    AddFinding(AFileName, mFinding, mCurrent);
   end;
 end;
 
@@ -293,13 +233,12 @@ begin
 end;
 
 class function TMcpDeadCodeTools.FindUnused(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
-  const AIndex: ISymbolIndex; const AProjectFiles: IRuleProjectFiles; const ANamespaces: TArray<string>;
-  AJson: Boolean): string;
+  const ADeadCode: IMcpDeadCode; AJson: Boolean): string;
 var
   mCollector: TUnusedCollector;
   mFileName: string;
 begin
-  mCollector := TUnusedCollector.Create(AScope, AIndex, AProjectFiles, ANamespaces);
+  mCollector := TUnusedCollector.Create(AScope, ADeadCode);
   try
     for mFileName in AFiles do
     begin

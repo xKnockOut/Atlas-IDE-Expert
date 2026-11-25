@@ -190,6 +190,25 @@ type
       out ARun: TRuleBulkFixRun; out AError: string): Boolean;
   end;
 
+  /// <summary>Regeln für ungenutzten Code (#64, find_unused_code) über die Dateien eines Laufs; Regeln, Index,
+  /// Projekte und Namensräume hat der Anbieter beim Anlegen bekommen.</summary>
+  IRuleDeadCode = interface
+    ['{C8069B2F-F025-4B08-9E7E-A6DE46C195C6}']
+    /// <summary>Kennungen der Regeln für ungenutzten Code in der Reihenfolge des Berichts.</summary>
+    function RuleIds: TArray<string>;
+    /// <summary>Gibt es unter den Regeln des Anbieters welche für ungenutzten Code?</summary>
+    function Available: Boolean;
+    /// <summary>Alle Projekte geladen und indiziert? Sonst Grund in AReason; die projektweiten Regeln schweigen.
+    /// </summary>
+    function Complete(out AReason: string): Boolean;
+    /// <summary>Text von AFileName, geöffnete Dokumente zuerst; False, wenn nicht lesbar.</summary>
+    function ReadText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Treffer der Regeln für ungenutzten Code in AText, dem Inhalt von AFileName; ARelativePath für
+    /// Regeln, Optionen und deadCode.keep* aus ASettings.</summary>
+    function Check(const AFileName, ARelativePath, AText: string; const ASettings: TServerSettings):
+      TArray<TRuleFinding>;
+  end;
+
   /// <summary>Prüfregeln über einen Text, etwa für get_diagnostics, hook_check, check_code und explain_finding:
   /// Syntaxfehler, Sprachmerkmale und die Treffer der Regeln. Regeln, Projekt (Symbolindex, Projektdienste, #1112)
   /// und Symbole samt Include-Dateien (#860) je Datei hat der Anbieter.</summary>
