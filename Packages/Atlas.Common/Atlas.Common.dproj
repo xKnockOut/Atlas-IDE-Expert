@@ -176,6 +176,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.BulkFix.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.TextChecks.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.RuleDocs.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.DeadCode.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.Conventions.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.FindingPrompts.pas"/>
@@ -206,8 +207,8 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.MessageCatalog.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Releases.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.CompilerPitfalls.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.CompilerPitfallFixes.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.Pitfalls.pas"/>
+        <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.PitfallFixes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.Data.En.Architecture.pas"/>
@@ -823,6 +824,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.CompilerFixes.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.BulkFix.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.TextChecks.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.RuleDocs.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.DeadCode.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Conventions.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CheckTools.pas"/>

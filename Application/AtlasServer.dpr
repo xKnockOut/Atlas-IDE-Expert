@@ -52,6 +52,7 @@ uses
   Adapters.Mcp.CompilerFixes in 'Source\Adapters\Adapters.Mcp.CompilerFixes.pas',
   Adapters.Mcp.BulkFix in 'Source\Adapters\Adapters.Mcp.BulkFix.pas',
   Adapters.Mcp.TextChecks in 'Source\Adapters\Adapters.Mcp.TextChecks.pas',
+  Adapters.Mcp.RuleDocs in 'Source\Adapters\Adapters.Mcp.RuleDocs.pas',
   Adapters.Mcp.DeadCode in 'Source\Adapters\Adapters.Mcp.DeadCode.pas',
   Adapters.Mcp.Conventions in 'Source\Adapters\Adapters.Mcp.Conventions.pas',
   Shell.Composition.Configuration in 'Source\Shell\Shell.Composition.Configuration.pas',

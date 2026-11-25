@@ -15,6 +15,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Mcp.Contract.CompilerFixes,
+  Atlas.Common.Mcp.Contract.RuleDocs,
   Atlas.Common.Mcp.IndexTools;
 
 type
@@ -36,6 +37,9 @@ type
     ReadText: TMcpReadText;
     /// <summary>Sichere Korrekturen zu einer Meldung; nil = nur die Korrekturen der Fallen.</summary>
     CompilerFixes: IMcpCompilerFixes;
+    /// <summary>Regelkatalog für die Regeln, die eine Meldung vorwegnehmen; nil = nur die Regeln der Fallen.
+    /// </summary>
+    RuleDocs: IMcpRuleDocs;
   end;
 
   TMcpCompilerMessageTools = class
@@ -65,9 +69,9 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Compiler.MessageTexts,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.CompilerPitfalls,
-  Atlas.Common.Rules.CompilerPitfallFixes,
+  Atlas.Common.Findings.Contract,
+  Atlas.Common.Compiler.Pitfalls,
+  Atlas.Common.Compiler.PitfallFixes,
   Atlas.Common.Compiler.MessageCatalog,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Mcp.Server;
@@ -229,10 +233,11 @@ begin
 end;
 
 /// <summary>Regeln der Fallen mit Merkmal, dann die Regeln mit ACode in "compilerCodes".</summary>
-function RulesOf(const ACode: string; const APitfalls: TArray<TPitfallMatch>): TArray<string>;
+function RulesOf(const ACode: string; const APitfalls: TArray<TPitfallMatch>; const ARuleDocs: IMcpRuleDocs):
+  TArray<string>;
 var
   mMatch: TPitfallMatch;
-  mEntry: TRuleCatalogEntry;
+  mRule: TFindingRuleInfo;
 begin
   Result := nil;
   for mMatch in APitfalls do
@@ -242,11 +247,15 @@ begin
       AddRule(Result, TCompilerPitfalls.Info(mMatch.Pitfall, TAtlasLocale.Language).Rule);
     end;
   end;
-  for mEntry in TRuleCatalog.Shared.Entries do
+  if ARuleDocs = nil then
   begin
-    if IndexText(ACode, mEntry.CompilerCodes) >= 0 then
+    Exit;
+  end;
+  for mRule in ARuleDocs.Rules(TAtlasLocale.Code(TTextLanguage.English)) do
+  begin
+    if IndexText(ACode, mRule.CompilerCodes) >= 0 then
     begin
-      AddRule(Result, mEntry.Id);
+      AddRule(Result, mRule.Id);
     end;
   end;
 end;
@@ -358,7 +367,7 @@ begin
   mSource := SourceOf(ARequest, Result.Message, Result);
   Result.Pitfalls := TCompilerPitfalls.Match(TPitfallMessage.Create(Result.Message.Code, Result.Message.Text,
     mSource.Line), mSource.Text);
-  Result.Rules := RulesOf(Result.Message.Code, Result.Pitfalls);
+  Result.Rules := RulesOf(Result.Message.Code, Result.Pitfalls, ARequest.RuleDocs);
   Result.DocWiki := TCompilerMessageCatalog.DocWikiUrl(Result.Message.Code, ARequest.DelphiVersion);
   if mSource.Line >= 0 then
   begin
