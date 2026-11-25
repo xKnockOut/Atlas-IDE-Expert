@@ -11,7 +11,7 @@ interface
 
 uses
   Vcl.StdCtrls,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
   Atlas.Vcl.Options.ChoiceBox;

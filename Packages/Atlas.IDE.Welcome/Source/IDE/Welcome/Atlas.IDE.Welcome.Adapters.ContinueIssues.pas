@@ -30,14 +30,15 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueIssues,
   Atlas.IDE.Base.Foundation.IssueWork,
   Atlas.IDE.Welcome.Continue.Editor,
   Atlas.IDE.Welcome.ContinueIssueLink,
   Atlas.Plugin.Notifications.MessageSink,
-  Atlas.UI.Welcome.Contract;
+  Atlas.UI.Welcome.Contract,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TAtlasIdeContinueIssues = class(TAtlasIdeContinueIssueLink, IAtlasContinueIssuesSource)

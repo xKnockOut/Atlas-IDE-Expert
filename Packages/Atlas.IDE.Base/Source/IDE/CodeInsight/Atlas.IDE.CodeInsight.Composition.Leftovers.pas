@@ -22,7 +22,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry;
+  Atlas.IDE.Base.Core.Modules.Registry;
 
 type
   /// <summary>Streicht Funde, die beim Freigeben eines anderen Fundes mit frei werden.</summary>

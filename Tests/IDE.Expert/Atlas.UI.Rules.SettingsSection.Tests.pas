@@ -8,8 +8,8 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Modules.Contract,
-  Atlas.UI.Rules.SettingsSection;
+  Atlas.UI.Rules.SettingsSection,
+  Atlas.Plugin.Registration.Contract;
 
 type
   [TestFixture]

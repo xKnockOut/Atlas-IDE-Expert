@@ -28,7 +28,7 @@ uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Tests.Coverage,
   Atlas.IDE.Foundation.GutterMarks;
 

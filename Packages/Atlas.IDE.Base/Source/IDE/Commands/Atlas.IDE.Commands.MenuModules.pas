@@ -20,7 +20,7 @@ interface
 uses
   System.Classes,
   Vcl.Menus,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   /// <summary>Einträge der Module im Atlas-Menü und unter Ansicht › Atlas.</summary>
@@ -71,8 +71,8 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Commands.MenuContext,
   Atlas.IDE.Commands.MenuContext,
   Atlas.IDE.Commands.ShortcutTips;

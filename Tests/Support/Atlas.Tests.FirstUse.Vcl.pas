@@ -22,8 +22,7 @@ uses
   System.Types,
   System.Classes,
   Atlas.Vcl.Theme.Service,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Section,
   Atlas.UI.Settings.Page,
@@ -34,7 +33,8 @@ uses
   Vcl.ComCtrls,
   Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Settings.Keys,
-  Atlas.UI.Settings.Overview;
+  Atlas.UI.Settings.Overview,
+  Atlas.Plugin.Registration.Contract;
 
 /// <summary>Abonnenten des IDE-Themas (TAtlasUiTheme): Die Liste entsteht beim ersten Abonnenten und wird im
 /// Klassendestruktor freigegeben; ihre Kapazität wächst beim ersten Eintrag.</summary>

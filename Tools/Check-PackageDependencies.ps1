@@ -66,7 +66,7 @@
     (Baseline atlas-duplicates.json).
     Module melden sich nur über TAtlasModuleHost
     an und ab: UnregisterModule und TAtlasContractHandshake.Check ruft nur
-    Atlas.Core.Diagnostics.ModuleHost.
+    Atlas.IDE.Base.Core.ModuleHost.
     Dasselbe gilt für JSON-Lesehelfer (#1969): Eine Routine TextOf, StringOf,
     NumberOf, IntOf, FlagOf, ObjectOf, ArrayOf usw. mit einem TJSONObject und
     einem Namen als Parametern gibt es nur als TJsonRead in Atlas.Text.Json;
@@ -289,19 +289,24 @@ foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) 
 # Units der Open Tools API und des Designers (designide)
 $OpenToolsPrefix = @('ToolsAPI', 'DesignIntf', 'DesignEditors', 'DesignMenus', 'DesignWindows', 'PropInspAPI', 'DockForm')
 
-# Schichten im Plugin (#406): gelten zusätzlich je nach Präfix der Unit selbst.
+# Schichten im Plugin (#406): gelten zusätzlich je nach Präfix der Unit selbst. Die Foundation von Base
+# (Atlas.IDE.Base.Foundation.*, nur Verträge ohne Framework) sehen nach Konzept 8.1 alle Features von Base, auch die
+# Schichten Core und UI; Core, Shell und Adapters von Base nicht.
+$BaseFoundationPrefix = 'Atlas.IDE.Base.Foundation.'
 $Layers = @(
     @{
         UnitPrefix      = 'Atlas.Core.'
         ForbiddenPrefix = @('Vcl.', 'Atlas.UI.', 'Atlas.IDE.', 'Atlas.Vcl.', 'Atlas.ToolsApi.') + $OpenToolsPrefix
+        AllowedPrefix   = @($BaseFoundationPrefix)
         ForbiddenUnits  = $LegacyVclUnits
-        Reason          = 'frei von VCL, Open Tools API, Atlas.UI, Atlas.IDE, Atlas.Vcl und Atlas.ToolsApi'
+        Reason          = 'frei von VCL, Open Tools API, Atlas.UI, Atlas.IDE (außer der Foundation von Base), Atlas.Vcl und Atlas.ToolsApi'
     },
     @{
         UnitPrefix      = 'Atlas.UI.'
         ForbiddenPrefix = @('Atlas.IDE.', 'Atlas.ToolsApi.') + $OpenToolsPrefix
+        AllowedPrefix   = @($BaseFoundationPrefix)
         ForbiddenUnits  = @()
-        Reason          = 'frei von Open Tools API, Atlas.IDE und Atlas.ToolsApi'
+        Reason          = 'frei von Open Tools API, Atlas.IDE (außer der Foundation von Base) und Atlas.ToolsApi'
     }
 )
 
@@ -648,7 +653,7 @@ $PluginLock = @(
 
 # An- und Abmelden der Module nur über TAtlasModuleHost: Aufrufe, die nur diese Units enthalten dürfen.
 $ModuleHostCalls = @('\.UnregisterModule\s*\(', '\bTAtlasContractHandshake\.Check\s*\(')
-$ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Registry', 'Atlas.Core.Modules.Handshake')
+$ModuleHostHomes = @('Atlas.IDE.Base.Core.ModuleHost', 'Atlas.IDE.Base.Core.Modules.Registry', 'Atlas.IDE.Base.Core.Modules.Handshake')
 
 # Rollenmatrix. Muss TArchitectureMatrix in Atlas.Common.Rules.Builtin.Architecture
 # entsprechen; beide prüfen Tests/Data/Architecture/role-imports.json. Präfixe und Hosted-Features stehen gleich in
@@ -1117,6 +1122,9 @@ foreach ($package in $Packages) {
             }
             if ($layer) {
                 $prefixHit = $layer.ForbiddenPrefix | Where-Object { $unit.Name.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
+                if ($layer.AllowedPrefix | Where-Object { $unit.Name.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }) {
+                    $prefixHit = $null
+                }
                 $unitHit = $layer.ForbiddenUnits | Where-Object { $unit.Name -ieq $_ }
                 if ($prefixHit -or $unitHit) {
                     $violations += "${relative}:$($unit.Line): uses $($unit.Name) – $($layer.UnitPrefix)* muss $($layer.Reason) sein"
@@ -1247,7 +1255,8 @@ if (Test-Path $editingDir) {
 
 # Grundbausteine und Feature-Zyklen des Plugins
 # - Atlas.IDE.Foundation.* (Einstellungen, Editorpuffer, Tasten, Ergebnisfenster …) sind die Basis aller
-#   IDE-Features und verwenden selbst kein anderes Atlas.IDE.*.
+#   IDE-Features und verwenden selbst kein anderes Atlas.IDE.* außer Foundation und Core von Base
+#   (Atlas.IDE.Base.Foundation.*, Atlas.IDE.Base.Core.*: Verträge, Registry und Modul-Host).
 # - Die Features von Atlas.Core und Atlas.IDE bilden keinen Zyklus (Tarjan über die uses aller Units).
 #   Nicht mitgezählt: Atlas.IDE.Foundation.*, die Kompositionswurzel und Verweise auf *.Contract und auf die
 #   Foundation von Base (Atlas.IDE.Base.Foundation.*; Contracts verwenden nur Contracts und schließen darum
@@ -1270,8 +1279,8 @@ if (Test-Path $PluginSource) {
         $entries = @(Get-ClauseEntries $text 'uses')
         if ($ownUnit -match '^(?i)Atlas\.IDE\.Foundation\.') {
             foreach ($unit in $entries) {
-                if ($unit.Name -match '^(?i)Atlas\.IDE\.' -and $unit.Name -notmatch '^(?i)Atlas\.IDE\.Foundation\.') {
-                    $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.IDE.Foundation.* verwendet nur Atlas.IDE.Foundation.* aus der IDE-Schicht"
+                if ($unit.Name -match '^(?i)Atlas\.IDE\.' -and $unit.Name -notmatch '^(?i)Atlas\.IDE\.(Foundation|Base\.Foundation|Base\.Core)\.') {
+                    $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.IDE.Foundation.* verwendet aus der IDE-Schicht nur Atlas.IDE.Foundation.*, Atlas.IDE.Base.Foundation.* und Atlas.IDE.Base.Core.*"
                 }
             }
             continue
@@ -1876,7 +1885,7 @@ foreach ($file in Get-ChildItem -Path (Join-Path $Root 'Packages') -Recurse -Fil
     foreach ($call in $ModuleHostCalls) {
         foreach ($match in [regex]::Matches($text, '(?i)' + $call)) {
             $line = ($text.Substring(0, $match.Index) -split "`n").Count
-            $violations += "${relative}:${line}: Module melden sich nur über TAtlasModuleHost (Atlas.Core.Diagnostics.ModuleHost) an und ab"
+            $violations += "${relative}:${line}: Module melden sich nur über TAtlasModuleHost (Atlas.IDE.Base.Core.ModuleHost) an und ab"
         }
     }
 }

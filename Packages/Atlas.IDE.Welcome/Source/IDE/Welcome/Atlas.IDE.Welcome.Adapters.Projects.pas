@@ -24,13 +24,13 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Modules.Contract,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Projects,
   Atlas.IDE.Projects.Summaries,
   Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract,
-  Atlas.IDE.Base.Foundation.Projects;
+  Atlas.IDE.Base.Foundation.Projects,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TAtlasIdeProjects = class(TInterfacedObject, IAtlasProjectsSource, IAtlasProjectSummaryListener)
@@ -93,7 +93,7 @@ uses
   System.Classes,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,

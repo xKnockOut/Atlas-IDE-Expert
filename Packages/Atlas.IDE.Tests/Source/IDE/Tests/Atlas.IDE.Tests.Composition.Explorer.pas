@@ -13,7 +13,7 @@ interface
 
 uses
   Atlas.Text.TestResults,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.LastRun,
   Atlas.IDE.Tests.Runner,

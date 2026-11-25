@@ -46,7 +46,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.GutterMarks,
-  Atlas.Core.Modules.Watch,
+  Atlas.IDE.Base.Core.Modules.Watch,
   Atlas.Vcl.Popup.TitledTip;
 
 type
@@ -187,7 +187,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.ToolsApi.Theme.Style,
   Atlas.ToolsApi.Editor.Buffer,

@@ -12,7 +12,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   /// <summary>Was die Modulklasse aus den Teilen der Composition braucht.</summary>
@@ -48,7 +48,7 @@ implementation
 
 uses
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.IDE.Tests.FromDebugStop,
   Atlas.UI.Tests.Strings;
 

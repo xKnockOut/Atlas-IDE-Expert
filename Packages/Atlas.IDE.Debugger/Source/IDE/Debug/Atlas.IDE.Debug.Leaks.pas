@@ -25,7 +25,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.ExtCtrls,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Debug.LeakCapture,
   Atlas.Core.Debug.LeakView,
   Atlas.Core.Debug.Phases,
