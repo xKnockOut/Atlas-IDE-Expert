@@ -2,7 +2,7 @@
 
 // Kommt ein Name in einer Projekt-Unit vor? Antwort aus den Verwendungen des
 // Index (#492, index.usages), ohne die Datei zu lesen. Gemeinsam für die
-// projektweiten Prüfregeln (TRuleProjectFiles.NameIn, #1102) und die
+// projektweiten Prüfregeln (TProjectGroupFiles.NameIn, #1102) und die
 // Vorfilterung der Auswirkungsanalyse (#1120).
 //
 // Je Projekt-Unit liegen im Index alle Bezeichner außer Deklarationen,

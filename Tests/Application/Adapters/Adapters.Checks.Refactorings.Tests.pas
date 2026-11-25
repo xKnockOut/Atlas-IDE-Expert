@@ -1,4 +1,4 @@
-﻿unit Adapters.Rules.Refactorings.Tests;
+﻿unit Adapters.Checks.Refactorings.Tests;
 
 // Tests für den Host-Adapter, der den Prüfregeln die Klassen-Aktionen von Editing als Korrektur gibt.
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TRuleRefactoringsAdapterTests = class
+  TCheckRefactoringsAdapterTests = class
   public
     [Test]
     procedure WithoutClassActionsNoEntry;
@@ -45,10 +45,10 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.ClassActions.Contract,
-  Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Editing.Composition,
   Atlas.Tests.TextEdits,
-  Adapters.Rules.Refactorings;
+  Adapters.Checks.Refactorings;
 
 const
   // Zeile 8: Kopf von TKind, Zeile 10: Eigenschaft ohne Feld.
@@ -119,9 +119,9 @@ const
     'end.'#13#10;
 
 /// <summary>Alle APIs von Editing, die die Prüfregeln nutzen.</summary>
-function Sources: TRuleRefactoringSources;
+function Sources: TCheckRefactoringSources;
 begin
-  Result := Default(TRuleRefactoringSources);
+  Result := Default(TCheckRefactoringSources);
   Result.Classes := TEditingComposition.ClassActions;
   Result.Extract := TEditingComposition.ExtractFixes;
   Result.Methods := TEditingComposition.MethodsWithoutSelf;
@@ -130,35 +130,35 @@ begin
   Result.Commands := TEditingComposition.SlashChecks;
 end;
 
-function Refactorings: TRuleRefactorings;
+function Refactorings: TCheckRefactorings;
 begin
-  Result := TRuleRefactoringsAdapters.Create(Sources);
+  Result := TCheckRefactoringsAdapters.Create(Sources);
 end;
 
-{ TRuleRefactoringsAdapterTests }
+{ TCheckRefactoringsAdapterTests }
 
-procedure TRuleRefactoringsAdapterTests.WithoutClassActionsNoEntry;
+procedure TCheckRefactoringsAdapterTests.WithoutClassActionsNoEntry;
 var
-  mSources: TRuleRefactoringSources;
+  mSources: TCheckRefactoringSources;
 begin
   mSources := Sources;
   mSources.Classes := nil;
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(mSources).Classes);
+  Assert.IsNull(TCheckRefactoringsAdapters.Create(mSources).Classes);
 end;
 
-procedure TRuleRefactoringsAdapterTests.WithoutExtractNoEntry;
+procedure TCheckRefactoringsAdapterTests.WithoutExtractNoEntry;
 var
-  mSources: TRuleRefactoringSources;
+  mSources: TCheckRefactoringSources;
 begin
   mSources := Sources;
   mSources.Extract := nil;
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(mSources).Extract);
+  Assert.IsNull(TCheckRefactoringsAdapters.Create(mSources).Extract);
 end;
 
-procedure TRuleRefactoringsAdapterTests.ConstantGoesToEditing;
+procedure TCheckRefactoringsAdapterTests.ConstantGoesToEditing;
 var
   mTree: TSyntaxTree;
-  mExtraction: IRuleConstantExtraction;
+  mExtraction: ICheckConstantExtraction;
   mAction: TCodeAction;
 begin
   mTree := TSyntaxTreeCache.Parse(cCall);
@@ -173,14 +173,14 @@ begin
   Assert.IsTrue(Pos('= 42;', TTestEdits.Apply(cCall, mAction.Edits)) > 0);
 end;
 
-procedure TRuleRefactoringsAdapterTests.MethodWithoutSelfGoesToEditing;
+procedure TCheckRefactoringsAdapterTests.MethodWithoutSelfGoesToEditing;
 var
   mTree: TSyntaxTree;
-  mScan: TRuleMethodScan;
-  mFound: TArray<TRuleMethodWithoutSelf>;
+  mScan: TCheckMethodScan;
+  mFound: TArray<TCheckMethodWithoutSelf>;
 begin
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(Default(TRuleRefactoringSources)).Methods);
-  mScan := Default(TRuleMethodScan);
+  Assert.IsNull(TCheckRefactoringsAdapters.Create(Default(TCheckRefactoringSources)).Methods);
+  mScan := Default(TCheckMethodScan);
   mScan.FileName := 'U.pas';
   mScan.Text := cHelper;
   mScan.WithStatic := True;
@@ -201,15 +201,15 @@ begin
   Assert.IsTrue(Length(mFound[0].Fix.Edits) > 0);
 end;
 
-procedure TRuleRefactoringsAdapterTests.MethodOrderGoesToEditing;
+procedure TCheckRefactoringsAdapterTests.MethodOrderGoesToEditing;
 var
-  mRequest: TRuleMethodOrderRequest;
+  mRequest: TCheckMethodOrderRequest;
   mTree: TSyntaxTree;
-  mReview: TRuleMethodOrderReview;
+  mReview: TCheckMethodOrderReview;
   mText: string;
 begin
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(Default(TRuleRefactoringSources)).Order);
-  mRequest := Default(TRuleMethodOrderRequest);
+  Assert.IsNull(TCheckRefactoringsAdapters.Create(Default(TCheckRefactoringSources)).Order);
+  mRequest := Default(TCheckMethodOrderRequest);
   mRequest.Placement := 'declaration';
   mRequest.TypeComment := 'brace';
   mTree := TSyntaxTreeCache.Parse(cOrder);
@@ -227,7 +227,7 @@ begin
   Assert.IsTrue(Pos('procedure TFoo.A;'#13#10'begin', mText) < Pos('procedure TFoo.B;'#13#10'begin', mText), mText);
 end;
 
-procedure TRuleRefactoringsAdapterTests.ClassCompletionGoesToEditing;
+procedure TCheckRefactoringsAdapterTests.ClassCompletionGoesToEditing;
 const
   // Foo weicht im Modifizierer ab, Bar fehlt der Rumpf.
   cPair =
@@ -245,15 +245,15 @@ const
     'end.'#13#10;
 var
   mTree: TSyntaxTree;
-  mScan: IRuleClassCompletionScan;
-  mPairs: TArray<TRuleSignaturePair>;
+  mScan: ICheckClassCompletionScan;
+  mPairs: TArray<TCheckSignaturePair>;
   mFixes: TArray<TCodeAction>;
-  mMissing: TArray<TRuleUnmatchedMethod>;
-  mMethod: TRuleUnmatchedMethod;
-  mShape: TRuleSignatureShape;
+  mMissing: TArray<TCheckUnmatchedMethod>;
+  mMethod: TCheckUnmatchedMethod;
+  mShape: TCheckSignatureShape;
   mAction: TCodeAction;
 begin
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(Default(TRuleRefactoringSources)).Completion);
+  Assert.IsNull(TCheckRefactoringsAdapters.Create(Default(TCheckRefactoringSources)).Completion);
   mTree := TSyntaxTreeCache.Parse(cPair);
   try
     mScan := Refactorings.Completion.Scan(cPair, TSyntaxTreeHandles.Wrap(mTree), TIndexExtractor.Extract(mTree, ''),
@@ -284,7 +284,7 @@ begin
   end;
 end;
 
-procedure TRuleRefactoringsAdapterTests.OverrideGoesToEditing;
+procedure TCheckRefactoringsAdapterTests.OverrideGoesToEditing;
 var
   mAction: TCodeAction;
   mText: string;
@@ -295,7 +295,7 @@ begin
   Assert.IsTrue(Pos('procedure TKind.Zeichne;', mText) > 0, mText);
 end;
 
-procedure TRuleRefactoringsAdapterTests.CreateAccessorGoesToEditing;
+procedure TCheckRefactoringsAdapterTests.CreateAccessorGoesToEditing;
 var
   mPlan: TAccessorPlan;
   mAction: TCodeAction;
@@ -311,11 +311,11 @@ begin
   Assert.IsTrue(Pos('FName: string;', mText) > 0, mText);
 end;
 
-procedure TRuleRefactoringsAdapterTests.SlashCommandsGoToEditing;
+procedure TCheckRefactoringsAdapterTests.SlashCommandsGoToEditing;
 var
-  mProblems: TArray<TRuleSlashProblem>;
+  mProblems: TArray<TCheckSlashProblem>;
 begin
-  Assert.IsNull(TRuleRefactoringsAdapters.Create(Default(TRuleRefactoringSources)).Commands);
+  Assert.IsNull(TCheckRefactoringsAdapters.Create(Default(TCheckRefactoringSources)).Commands);
   mProblems := Refactorings.Commands.Problems('unit U;'#10'implementation'#10'  /gibtsnicht X'#10'end.', nil, '');
   Assert.AreEqual(1, Integer(Length(mProblems)));
   Assert.AreEqual(2, mProblems[0].Range.StartPos.Line);
@@ -323,7 +323,7 @@ begin
   Assert.Contains(Refactorings.Commands.IgnoreWithoutHit('probe-line'), 'probe-line');
 end;
 
-procedure TRuleRefactoringsAdapterTests.NothingToDoGivesFalse;
+procedure TCheckRefactoringsAdapterTests.NothingToDoGivesFalse;
 var
   mAction: TCodeAction;
 begin
@@ -334,6 +334,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TRuleRefactoringsAdapterTests);
+  TDUnitX.RegisterTestFixture(TCheckRefactoringsAdapterTests);
 
 end.

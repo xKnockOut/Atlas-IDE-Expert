@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TLspHierarchiesTests = class
+  THierarchiesTests = class
   private
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
@@ -163,9 +163,9 @@ begin
   end;
 end;
 
-{ TLspHierarchiesTests }
+{ THierarchiesTests }
 
-function TLspHierarchiesTests.ItemAt(const AMarker: string; ACall: Boolean): THierarchyItem;
+function THierarchiesTests.ItemAt(const AMarker: string; ACall: Boolean): THierarchyItem;
 var
   mTree: TSyntaxTree;
   mFound: Boolean;
@@ -189,7 +189,7 @@ begin
   end;
 end;
 
-function TLspHierarchiesTests.Names(const AItems: TArray<THierarchyItem>): string;
+function THierarchiesTests.Names(const AItems: TArray<THierarchyItem>): string;
 var
   mItem: THierarchyItem;
 begin
@@ -201,7 +201,7 @@ begin
   Result := Trim(Result);
 end;
 
-function TLspHierarchiesTests.Names(const ACalls: TArray<THierarchyCall>): string;
+function THierarchiesTests.Names(const ACalls: TArray<THierarchyCall>): string;
 var
   mCall: THierarchyCall;
 begin
@@ -213,7 +213,7 @@ begin
   Result := Trim(Result);
 end;
 
-procedure TLspHierarchiesTests.Setup;
+procedure THierarchiesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, cWerkzeugFile, nil));
@@ -221,13 +221,13 @@ begin
   FResolver := TNameResolver.Create(FIndex);
 end;
 
-procedure TLspHierarchiesTests.TearDown;
+procedure THierarchiesTests.TearDown;
 begin
   FResolver.Free;
   FIndex := nil;
 end;
 
-procedure TLspHierarchiesTests.PrepareTypeFromVariableAndTypeName;
+procedure THierarchiesTests.PrepareTypeFromVariableAndTypeName;
 var
   mItem: THierarchyItem;
 begin
@@ -239,7 +239,7 @@ begin
   Assert.AreEqual(cWerkzeugFile, mItem.FileName);
 end;
 
-procedure TLspHierarchiesTests.SupertypesFollowAncestorChain;
+procedure THierarchiesTests.SupertypesFollowAncestorChain;
 var
   mSupers: TArray<THierarchyItem>;
 begin
@@ -252,13 +252,13 @@ begin
   Assert.AreEqual('', Names(THierarchies.Supertypes(FResolver, mSupers[0], ReadFile)));
 end;
 
-procedure TLspHierarchiesTests.SubtypesAreDirectDescendants;
+procedure THierarchiesTests.SubtypesAreDirectDescendants;
 begin
   Assert.AreEqual('TFoo', Names(THierarchies.Subtypes(FIndex, ItemAt('TBasis, IZaehlbar', False))));
   Assert.AreEqual('TKind', Names(THierarchies.Subtypes(FIndex, ItemAt('TFoo)', False))));
 end;
 
-procedure TLspHierarchiesTests.IncomingCallsGroupedByCaller;
+procedure THierarchiesTests.IncomingCallsGroupedByCaller;
 var
   mItem: THierarchyItem;
   mCalls: TArray<THierarchyCall>;
@@ -278,13 +278,13 @@ begin
     [cHauptFile, cWerkzeugFile], ReadFile)));
 end;
 
-procedure TLspHierarchiesTests.OutgoingCallsFromBody;
+procedure THierarchiesTests.OutgoingCallsFromBody;
 begin
   Assert.AreEqual('Rechne(2) Baz(1)', Names(THierarchies.OutgoingCalls(FResolver,
     ItemAt('Bar;'#10'    procedure', True), ReadFile)));
 end;
 
-procedure TLspHierarchiesTests.ItemRoundTripsThroughJson;
+procedure THierarchiesTests.ItemRoundTripsThroughJson;
 var
   mItem, mBack: THierarchyItem;
   mJson: TJSONObject;
@@ -303,7 +303,7 @@ begin
   Assert.AreEqual(cHauptFile, mBack.FileName);
 end;
 
-procedure TLspHierarchiesTests.OutgoingCallsMarkInterfaceAndVirtual;
+procedure THierarchiesTests.OutgoingCallsMarkInterfaceAndVirtual;
 var
   mIndex: ISymbolIndex;
   mResolver: TNameResolver;
@@ -351,6 +351,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspHierarchiesTests);
+  TDUnitX.RegisterTestFixture(THierarchiesTests);
 
 end.

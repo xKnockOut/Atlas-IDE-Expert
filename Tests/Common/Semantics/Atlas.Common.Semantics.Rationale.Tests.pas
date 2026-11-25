@@ -7,7 +7,7 @@ uses
 
 type
   [TestFixture]
-  TLspRationaleTests = class
+  TRationaleSelectionTests = class
   public
     [Test]
     procedure SelectsConfiguredMarkers;
@@ -58,9 +58,9 @@ begin
   Result := TRationaleOptions.FromSettings(mSettings, '');
 end;
 
-{ TLspRationaleTests }
+{ TRationaleSelectionTests }
 
-procedure TLspRationaleTests.SelectsConfiguredMarkers;
+procedure TRationaleSelectionTests.SelectsConfiguredMarkers;
 var
   mSelected: TArray<TRationaleEntry>;
 begin
@@ -76,7 +76,7 @@ begin
   Assert.AreEqual('PERF', mSelected[0].Marker);
 end;
 
-procedure TLspRationaleTests.SelectsNothingWhenSwitchedOff;
+procedure TRationaleSelectionTests.SelectsNothingWhenSwitchedOff;
 var
   mOptions: TRationaleOptions;
 begin
@@ -86,7 +86,7 @@ begin
   Assert.AreEqual(2, Integer(Length(TRationaleSelection.ByMarkers(Entries, mOptions))));
 end;
 
-procedure TLspRationaleTests.NeverSelectsTodoMarkers;
+procedure TRationaleSelectionTests.NeverSelectsTodoMarkers;
 var
   mSelected: TArray<TRationaleEntry>;
 begin
@@ -99,7 +99,7 @@ begin
   Assert.AreEqual('WHY', mSelected[0].Marker);
 end;
 
-procedure TLspRationaleTests.ResolvesAdrFolder;
+procedure TRationaleSelectionTests.ResolvesAdrFolder;
 var
   mRoot: string;
 begin
@@ -112,7 +112,7 @@ begin
   Assert.AreEqual(mRoot, TRationaleSelection.AdrFolder(mRoot, ''));
 end;
 
-procedure TLspRationaleTests.ListsAdrFiles;
+procedure TRationaleSelectionTests.ListsAdrFiles;
 var
   mFolder: string;
   mFiles: TArray<string>;
@@ -130,7 +130,7 @@ begin
   end;
 end;
 
-procedure TLspRationaleTests.KeepsAdrWithoutFileAsText;
+procedure TRationaleSelectionTests.KeepsAdrWithoutFileAsText;
 var
   mSections: TJSONArray;
   mRuns: TJSONArray;
@@ -147,7 +147,7 @@ begin
   end;
 end;
 
-procedure TLspRationaleTests.WritesUrlsAsLinks;
+procedure TRationaleSelectionTests.WritesUrlsAsLinks;
 var
   mSections: TJSONArray;
   mRuns: TJSONArray;
@@ -164,7 +164,7 @@ begin
   end;
 end;
 
-procedure TLspRationaleTests.CollectsDeclarationAndImplementationOfOverload;
+procedure TRationaleSelectionTests.CollectsDeclarationAndImplementationOfOverload;
 const
   cSource =
     'unit U;'#10 +
@@ -207,6 +207,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspRationaleTests);
+  TDUnitX.RegisterTestFixture(TRationaleSelectionTests);
 
 end.

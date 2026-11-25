@@ -12,7 +12,7 @@
 //   metric-unit-length            Zeilen je Unit (Vorgabe 2000, #939), Treffer auf dem Unit-Namen
 //   metric-uses-count             Units im uses (Vorgabe 30, #939), Treffer auf dem ersten uses
 //   metric-boolean-operands       Operanden einer Bedingung (Vorgabe 5, #980), Treffer auf der Bedingung,
-//                                 Korrektur „Bedingung in Funktion auslagern“ (TRuleRefactorings.Extract)
+//                                 Korrektur „Bedingung in Funktion auslagern“ (TCheckRefactorings.Extract)
 //   metric-local-count            lokale Variablen je Routine (Vorgabe 12, #980)
 //   metric-exit-points            Exit und raise je Routine (Vorgabe 4, #980)
 //   metric-inheritance-depth      Vorfahren ohne RTL, VCL und Bibliotheken (Vorgabe 5, #980), Treffer auf

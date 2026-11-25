@@ -43,7 +43,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.Common.Rules.Builtin.Testing.Registration,
   Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
@@ -102,7 +102,7 @@ begin
   mContext.RelativePath := 'Src/Fall.Tests.pas';
   mContext.UnitName := 'Fall.Tests';
   mContext.Text := ASource;
-  mContext.ProjectFiles := TRuleProjectFiles.Create(AProjects, nil,
+  mContext.ProjectFiles := TProjectGroupFiles.Create(AProjects, nil,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := mTexts.TryGetValue(AFileName, AText);

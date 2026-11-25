@@ -77,14 +77,14 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.SafeDelete,
-  Atlas.Common.Lsp.TypeAlias,
+  Atlas.Common.Editing.TypeAlias.Protocol,
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.MethodBreakpoints,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.UnitRename,
-  Atlas.Common.Lsp.RaiseVisibility,
+  Atlas.Common.Editing.UnitRename.Protocol,
+  Atlas.Common.Editing.RaiseVisibility.Protocol,
   Atlas.Common.Lsp.Profiler,
   Shell.Composition.Profiler,
   Shell.Composition.Refactorings.TestSupport;
@@ -165,12 +165,12 @@ begin
   end;
   Assert.IsTrue(Pos(TLspChangeSignature.cPrepareCommand, mText) > 0, 'Aufbau');
   Assert.IsTrue(Pos(TLspSafeDelete.cApplyCommand, mText) > 0, 'Aufbau');
-  Assert.IsTrue(Pos(TLspTypeAlias.cInlineApplyCommand, mText) > 0, 'Typen');
+  Assert.IsTrue(Pos(TTypeAliasProtocol.cInlineApplyCommand, mText) > 0, 'Typen');
   Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, mText) > 0, 'Korrekturen');
-  Assert.IsTrue(Pos(TLspUnitRename.cCommand, mText) > 0, 'Bearbeiten');
+  Assert.IsTrue(Pos(TUnitRenameProtocol.cCommand, mText) > 0, 'Bearbeiten');
   Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, mText) > 0, 'Debugger');
   Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, mText) > 0, 'Methodenhaltepunkte');
-  Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, mText) > 0, 'Sichtbarkeit');
+  Assert.IsTrue(Pos(TRaiseVisibilityProtocol.cCommand, mText) > 0, 'Sichtbarkeit');
 end;
 
 procedure TShellRefactoringsTests.DisabledRefactoringsOfferNoActions;
@@ -218,7 +218,7 @@ end;
 
 procedure TShellRefactoringsTests.UnitRenameFollowUpOff;
 begin
-  Assert.AreEqual('{"enabled":false}', Run(TLspUnitRename.cCommand, '["file:///tmp/Alt.pas", "' + cUri + '", []]'));
+  Assert.AreEqual('{"enabled":false}', Run(TUnitRenameProtocol.cCommand, '["file:///tmp/Alt.pas", "' + cUri + '", []]'));
 end;
 
 procedure TShellRefactoringsTests.StepFilterFindsRoutineOfOpenDocument;
@@ -309,9 +309,9 @@ procedure TShellRefactoringsTests.MemberActionsNeedReadableFile;
 var
   mCode: Integer;
 begin
-  ErrorOf(TLspRaiseVisibility.cCommand, '["' + cUri + '", {"line": 5, "character": 4}]', mCode);
+  ErrorOf(TRaiseVisibilityProtocol.cCommand, '["' + cUri + '", {"line": 5, "character": 4}]', mCode);
   Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode, 'Name fehlt');
-  ErrorOf(TLspRaiseVisibility.cCommand, '["' + cUri + '", {"line": 5, "character": 4}, "FName"]', mCode);
+  ErrorOf(TRaiseVisibilityProtocol.cCommand, '["' + cUri + '", {"line": 5, "character": 4}, "FName"]', mCode);
   Assert.AreEqual(TLspErrorCode.cRequestFailed, mCode, 'nicht lesbar');
 end;
 

@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TLspNamespacesTests = class
+  TSharedNamespacesTests = class
   public
     [Test]
     procedure ReadReturnsWrittenValue;
@@ -26,9 +26,9 @@ uses
   System.Classes,
   Atlas.Common.Semantics.Namespaces;
 
-{ TLspNamespacesTests }
+{ TSharedNamespacesTests }
 
-procedure TLspNamespacesTests.ReadReturnsWrittenValue;
+procedure TSharedNamespacesTests.ReadReturnsWrittenValue;
 var
   mField, mValue: TArray<string>;
 begin
@@ -40,7 +40,7 @@ begin
   Assert.AreEqual('Vcl', mValue[1]);
 end;
 
-procedure TLspNamespacesTests.ParallelReadAndWriteKeepArraysIntact;
+procedure TSharedNamespacesTests.ParallelReadAndWriteKeepArraysIntact;
 const
   cRounds = 200000;
 var
@@ -95,6 +95,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspNamespacesTests);
+  TDUnitX.RegisterTestFixture(TSharedNamespacesTests);
 
 end.

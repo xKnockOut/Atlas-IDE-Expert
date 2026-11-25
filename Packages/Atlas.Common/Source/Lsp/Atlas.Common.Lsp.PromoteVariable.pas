@@ -59,10 +59,10 @@ uses
   Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.FormMentions,
   Atlas.Common.Lsp.InlayHints,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.CodeActions.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -155,7 +155,7 @@ begin
     mWarnings.Add(mWarning);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, mPromoted.Edits));
+  Result.AddPair('edit', TCodeActionsJson.WorkspaceEditJson(AUri, mPromoted.Edits));
   Result.AddPair('warnings', mWarnings);
   Result.AddPair('places', TJSONNumber.Create(mPromoted.Places));
   Result.AddPair('files', TJSONNumber.Create(1));

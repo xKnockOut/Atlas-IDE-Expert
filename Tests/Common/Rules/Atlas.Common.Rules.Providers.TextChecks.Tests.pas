@@ -33,7 +33,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.TextChecks;
+  Atlas.Common.Rules.Providers.TextChecks,
+  Atlas.Common.Checks.Contract;
 
 const
   cAssignedFree = 'unit U;'#10#10'interface'#10#10'uses'#10'  System.Classes;'#10#10'implementation'#10#10 +

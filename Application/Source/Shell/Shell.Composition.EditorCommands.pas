@@ -20,7 +20,7 @@ uses
   Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Lsp.SmartIndent,
   Atlas.Common.Lsp.LearnedSuggestions,
-  Atlas.Common.Lsp.MethodOrder;
+  Atlas.Common.Editing.MethodOrder.Protocol;
 
 type
   TShellEditorReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -127,7 +127,7 @@ end;
 
 function TShellEditorCommands.RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TLspMethodOrder.Execute(FServices.Documents, FServices.MethodOrderFor, AArguments);
+  Result := TMethodOrderProtocol.Execute(FServices.Documents, FServices.MethodOrderFor, AArguments);
 end;
 
 function TShellEditorCommands.RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
@@ -241,7 +241,7 @@ begin
   // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
   ACommands.RegisterConcurrent(TLspExpressionType.cCommand, RunExpressionType);
   // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
-  ACommands.RegisterConcurrent(TLspMethodOrder.cCommand, RunMethodOrder);
+  ACommands.RegisterConcurrent(TMethodOrderProtocol.cCommand, RunMethodOrder);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
   ACommands.RegisterConcurrent(TLspOverrideMarks.cCommand, RunOverrideMarks);
   ACommands.RegisterConcurrent(TLspInterfaceMethods.cCommand, RunInterfaceMethods);

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.RaiseVisibility;
+﻿unit Atlas.Common.Editing.RaiseVisibility.Protocol;
 
 // „Sichtbarkeit anheben“ und „Eigenschaft anlegen“ über das Protokoll (#2108):
 //   - Code-Aktionen „Sichtbarkeit von X auf protected/public anheben“ auf der
@@ -18,7 +18,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree;
 
 type
-  TLspRaiseVisibility = class
+  TRaiseVisibilityProtocol = class
   public const
     cCommand = 'atlas.server.memberActions';
   public
@@ -36,15 +36,15 @@ type
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443),
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.RaiseVisibility,
-  Atlas.Common.Lsp.CodeActions;
+  Atlas.Common.CodeActions.Json;
 
-{ TLspRaiseVisibility }
+{ TRaiseVisibilityProtocol }
 
-class function TLspRaiseVisibility.Actions(const AUri, AText: string; ATree: TSyntaxTree;
+class function TRaiseVisibilityProtocol.Actions(const AUri, AText: string; ATree: TSyntaxTree;
   const ARange: TTextRange): TArray<TJSONObject>;
 var
   mAction: TCodeAction;
@@ -52,11 +52,11 @@ begin
   Result := nil;
   for mAction in TRaiseVisibility.Actions(AText, ATree, ARange.StartPos, '', False) do
   begin
-    Result := Result + [TLspCodeActions.ActionToJson(AUri, mAction)];
+    Result := Result + [TCodeActionsJson.ActionToJson(AUri, mAction)];
   end;
 end;
 
-class function TLspRaiseVisibility.Execute(const AUri, AText: string; const APosition: TTextPosition;
+class function TRaiseVisibilityProtocol.Execute(const AUri, AText: string; const APosition: TTextPosition;
   const AName: string): TJSONArray;
 var
   mTree: TSyntaxTree;
@@ -67,7 +67,7 @@ begin
   try
     for mAction in TRaiseVisibility.Actions(AText, mTree, APosition, AName, True) do
     begin
-      Result.AddElement(TLspCodeActions.ActionToJson(AUri, mAction));
+      Result.AddElement(TCodeActionsJson.ActionToJson(AUri, mAction));
     end;
   finally
     mTree.Free;

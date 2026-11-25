@@ -255,7 +255,7 @@ Atlas.Common.Lsp.MethodBreakpoints.Tests
 Atlas.Common.Lsp.MissingUnit.Tests
 Atlas.Common.Semantics.ParameterHeaders.Tests
 Atlas.Common.Lsp.Processes.Tests
-Atlas.Common.Lsp.RaiseVisibility.Tests
+Atlas.Common.Editing.RaiseVisibility.Protocol.Tests
 Atlas.Common.Semantics.Rationale.Tests
 Atlas.Common.Semantics.ReferenceConfidence.Tests
 Atlas.Common.Semantics.References.Tests
@@ -264,6 +264,7 @@ Atlas.Common.Semantics.Implementations.Tests
 Atlas.Common.Lsp.Implementations.Tests
 Atlas.Common.Semantics.Definitions.Tests
 Atlas.Common.Lsp.Definition.Tests
+Atlas.Common.CodeActions.Json.Tests
 Atlas.Common.Lsp.Rename.Tests
 Atlas.Common.Lsp.ResourceStringCommands.Tests
 Atlas.Common.Lsp.RoutineParameters.Tests
@@ -376,6 +377,7 @@ Atlas.Common.Pascal.WarningCodes.Tests
 Atlas.Common.Pascal.XmlDoc.Tests
 Atlas.Common.Product.Version.Tests
 Atlas.Common.Projects.DelphiVersions.Tests
+Atlas.Common.Projects.GroupProjects.Tests
 Atlas.Common.Projects.DprojEditor.Tests
 Atlas.Common.Projects.MissingUnit.Tests
 Atlas.Common.Projects.PackageReader.Tests
@@ -589,6 +591,7 @@ Atlas.Core.Problems.Plan.Tests
 Atlas.Core.Problems.Flow.Tests
 Atlas.Core.Problems.Marks.Tests
 Atlas.Core.Editor.LineTracking.Tests
+Atlas.Core.Status.Tests
 Atlas.Core.Status.FieldPlan.Tests
 Atlas.Core.Status.FieldFlow.Tests
 Atlas.Plugin.Status.Signal.Tests
@@ -887,8 +890,8 @@ Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
 
 # Server (Shell)
-Adapters.Rules.IdeTypes.Tests
-Adapters.Rules.Refactorings.Tests
+Adapters.Checks.IdeTypes.Tests
+Adapters.Checks.Refactorings.Tests
 Atlas.Common.Editing.Providers.ClassActions.Tests
 Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests
 Atlas.Common.Editing.Providers.ClassCompletion.Tests

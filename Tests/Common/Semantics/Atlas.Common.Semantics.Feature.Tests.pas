@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TLspFeatureTests = class
+  TIndexFeatureTests = class
   public
     [Test]
     procedure ProjectFeatureKeepsServices;
@@ -80,9 +80,9 @@ begin
   Result := AUnitName = 'A';
 end;
 
-{ TLspFeatureTests }
+{ TIndexFeatureTests }
 
-procedure TLspFeatureTests.ProjectFeatureKeepsServices;
+procedure TIndexFeatureTests.ProjectFeatureKeepsServices;
 var
   mFeature: TProjectFeatureProbe;
   mText: string;
@@ -99,7 +99,7 @@ begin
   end;
 end;
 
-procedure TLspFeatureTests.IndexFeatureWithoutEnsureUnit;
+procedure TIndexFeatureTests.IndexFeatureWithoutEnsureUnit;
 var
   mFeature: TIndexFeatureProbe;
 begin
@@ -112,7 +112,7 @@ begin
   end;
 end;
 
-procedure TLspFeatureTests.UnitOfFilePrefersCurrent;
+procedure TIndexFeatureTests.UnitOfFilePrefersCurrent;
 var
   mCurrent, mUnit: TUnitIndex;
 begin
@@ -127,6 +127,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspFeatureTests);
+  TDUnitX.RegisterTestFixture(TIndexFeatureTests);
 
 end.

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.UnitRename;
+﻿unit Atlas.Common.Editing.UnitRename.Protocol;
 
 // uses nachziehen nach dem Umbenennen einer Unit über das Protokoll (#512):
 // Befehl atlas.server.unitRenamed [alte URI, neue URI, [URIs des Bereichs]].
@@ -16,7 +16,7 @@ uses
   Atlas.Common.Semantics.References;
 
 type
-  TLspUnitRename = class
+  TUnitRenameProtocol = class
   public const
     cCommand = 'atlas.server.unitRenamed';
   public
@@ -81,9 +81,9 @@ begin
   end;
 end;
 
-{ TLspUnitRename }
+{ TUnitRenameProtocol }
 
-class function TLspUnitRename.Execute(const AOldFile, ANewFile: string; const AFiles: TArray<string>;
+class function TUnitRenameProtocol.Execute(const AOldFile, ANewFile: string; const AFiles: TArray<string>;
   const AReadText: TReferenceReadText): TJSONObject;
 var
   mOldName, mNewName, mFileName: string;

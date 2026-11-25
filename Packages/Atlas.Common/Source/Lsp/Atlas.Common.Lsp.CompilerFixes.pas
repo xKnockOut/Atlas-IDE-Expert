@@ -46,7 +46,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.Compiler.MessageTexts,
-  Atlas.Common.Lsp.CodeActions;
+  Atlas.Common.CodeActions.Json;
 
 { TLspCompilerFixes }
 
@@ -73,7 +73,7 @@ begin
   mAction.Kind := cQuickFixKind;
   mAction.Edits := AFix.Edits;
   mAction.IsPreferred := AFix.Preferred;
-  Result := TLspCodeActions.ActionToJson(AUri, mAction);
+  Result := TCodeActionsJson.ActionToJson(AUri, mAction);
 end;
 
 /// <summary>Steht APosition auf dem Bezeichner AName? Dann bietet die uses-Aktion (#284) die Units schon an.

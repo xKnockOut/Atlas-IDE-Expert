@@ -38,12 +38,12 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Lsp.Unwrap,
-  Atlas.Common.Lsp.UnitRename,
+  Atlas.Common.Editing.UnitRename.Protocol,
   Atlas.Common.Lsp.SmartPaste,
-  Atlas.Common.Localization.RequestTexts;
+  Atlas.Common.Localization.RequestTexts,
+  Atlas.Common.CodeActions.Json;
 
 /// <summary>Ist eins der Refactorings aus Atlas.Common.Lsp.Refactorings eingeschaltet?</summary>
 function AnyEnabled(const ASettings: TRefactoringSettings): Boolean;
@@ -58,7 +58,7 @@ end;
 procedure TShellEditingRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspUnwrap.cCommand, Unwrap);
-  ACommands.Register(TLspUnitRename.cCommand, UnitRenamed);
+  ACommands.Register(TUnitRenameProtocol.cCommand, UnitRenamed);
   ACommands.Register(TLspSmartPaste.cCommand, PasteUses);
 end;
 
@@ -81,7 +81,7 @@ begin
   for mAction in TLspRefactorings.Actions(TSyntaxTreeCache.Get(mDocument, nil).Tree, mDocument.Text, ARange,
     mContext) do
   begin
-    Result := Result + [TLspCodeActions.ActionToJson(AUri, mAction)];
+    Result := Result + [TCodeActionsJson.ActionToJson(AUri, mAction)];
   end;
 end;
 
@@ -147,7 +147,7 @@ begin
   begin
     mFiles := mFiles + [TDocumentUris.ToPath(mItem.Value)];
   end;
-  mAnswer := TLspUnitRename.Execute(TDocumentUris.ToPath(AArguments.Items[0].Value),
+  mAnswer := TUnitRenameProtocol.Execute(TDocumentUris.ToPath(AArguments.Items[0].Value),
     TDocumentUris.ToPath(AArguments.Items[1].Value), mFiles, Reader);
   Log(Format('Unit umbenannt: %d von %d Dateien betroffen', [Number(mAnswer, 'count'), Length(mFiles)]));
   Result := mAnswer;

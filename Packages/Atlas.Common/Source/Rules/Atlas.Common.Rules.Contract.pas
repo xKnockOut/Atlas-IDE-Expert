@@ -13,13 +13,16 @@ uses
   Atlas.Common.Findings.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Projects.Contract.Group,
+  Atlas.Common.Projects.Contract.UnitLookup,
   // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): der Syntaxbaum ist
   // Datengrundlage jeder Regel und hängt selbst nur an Contracts.
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Query.Contract,
   Atlas.Common.Semantics.Contract,
-  Atlas.Common.Rules.Contract.Refactorings;
+  Atlas.Common.Checks.Contract,
+  Atlas.Common.Checks.Contract.Refactorings;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
@@ -49,55 +52,14 @@ type
   TRuleFileReader = reference to function(const AFileName: string; out AData: TBytes): Boolean;
   /// <summary>Gibt es die Datei AFileName, relativ zum Ordner der Unit oder absolut (#1379)? Liest nichts.</summary>
   TRuleFileExists = reference to function(const AFileName: string): Boolean;
-  /// <summary>Gehört eine Unit zu einem Package (#46)? Unknown, wenn das Package nicht gefunden wird.</summary>
-{$SCOPEDENUMS ON}
-  TRulePackageAnswer = (No, Yes, Unknown);
-{$SCOPEDENUMS OFF}
-  /// <summary>Gehört AUnitName zu Package APackage (aus requires)? Über dessen .dpk bzw. .dcp (#46).</summary>
-  TRulePackageProvides = reference to function(const APackage, AUnitName: string): TRulePackageAnswer;
-  /// <summary>Namen aus requires des Packages APackage (aus seiner .dpk); leer ohne Quelle.</summary>
-  TRulePackageRequires = reference to function(const APackage: string): TArray<string>;
-  /// <summary>Antwort der Unit-Suche (#1016): gefunden, sicher nicht gefunden oder ohne Aussage (Pfade der
-  /// Installation unbekannt, Makro in einem Pfad offen, Inhalt eines Packages unbekannt).</summary>
-{$SCOPEDENUMS ON}
-  TRuleUnitAnswer = (Found, Missing, Unknown);
-  /// <summary>Wo gesucht wird (#1016): wie der Compiler (Projekt, Suchpfade der .dproj, Bibliothek) bzw. was
-  /// Atlas kennt (Index, Quellpfade der Installation).</summary>
-  TRuleUnitSource = (Project, Atlas);
-{$SCOPEDENUMS OFF}
-  TRuleUnitSources = set of TRuleUnitSource;
-
-  /// <summary>Typen, die die laufende IDE aus ihren geladenen Packages kennt (RTTI der BPLs, über
-  /// RegisterComponents angemeldete Komponenten), auch ohne Quelltext. unresolved-type und unresolved-identifier
-  /// schweigen für einen solchen Typ, wenn seine Unit im uses steht. nil = ohne IDE (Linter, MCP).</summary>
-  IRuleIdeTypes = interface
-    ['{5B0E7C42-91D3-4F6A-8E27-C4A1D96B3F05}']
-    /// <summary>Units, in denen die IDE einen Typ ATypeName (ohne Unit-Präfix, ohne Groß-/Kleinschreibung)
-    /// kennt; nil = unbekannt.</summary>
-    function UnitsOf(const ATypeName: string): TArray<string>;
-  end;
-
-  /// <summary>Unit-Suche wie beim Compiler für uses-unit-not-found (#1016); nil = unbekannt, die Regel
-  /// schweigt bis auf Prüfungen ohne Pfade.</summary>
-  IRuleUnitLookup = interface
-    ['{7866E50C-6086-4876-A359-8193140A05BD}']
-    /// <summary>Findet der Compiler AUnitName, verwendet in AFromFile (absolut)? AInPath ist der Text aus
-    /// "in '…'" ('' ohne); dann zählt nur diese Datei.</summary>
-    function Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
-    /// <summary>Package aus requires als .dpk oder .dcp (E2202).</summary>
-    function FindPackage(const APackage: string): TRuleUnitAnswer;
-    /// <summary>Datei aus {$I} bzw. {$R} (AFileName so, wie sie dort steht) wie beim Compiler (#1379): Ordner
-    /// von AFromFile (absolut), Projektordner, Suchpfade der .dproj (auch DCC_IncludePath und DCC_ResourcePath),
-    /// Bibliothekspfade der Installation. Missing nur mit bekannter Installation und ohne offenes Makro.</summary>
-    function FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
-    /// <summary>Namen aller Units, die die Suche findet, für Vorschläge.</summary>
-    function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
-    /// <summary>Ordner unter dem Projektordner, der AUnitName.pas enthält, aber in keinem Suchpfad steht;
-    /// relativ zur .dproj, '' ohne.</summary>
-    function FolderOutsidePaths(const AUnitName: string): string;
-    /// <summary>Pfad und Text der .dproj; False ohne Projekt.</summary>
-    function ReadProject(out AFileName, AText: string): Boolean;
-  end;
+  /// <summary>Unit-Suche und Packages (Atlas.Common.Projects.Contract.UnitLookup) unter den Namen der Regeln.</summary>
+  TRulePackageAnswer = Atlas.Common.Projects.Contract.UnitLookup.TPackageAnswer;
+  TRulePackageProvides = Atlas.Common.Projects.Contract.UnitLookup.TPackageProvides;
+  TRulePackageRequires = Atlas.Common.Projects.Contract.UnitLookup.TPackageRequires;
+  TRuleUnitAnswer = Atlas.Common.Projects.Contract.UnitLookup.TUnitAnswer;
+  TRuleUnitSource = Atlas.Common.Projects.Contract.UnitLookup.TUnitSource;
+  TRuleUnitSources = Atlas.Common.Projects.Contract.UnitLookup.TUnitSources;
+  IRuleUnitLookup = Atlas.Common.Projects.Contract.UnitLookup.IUnitLookup;
 
   TRuleCancelled = Atlas.Common.Findings.Contract.TRuleCancelled;
 
@@ -115,99 +77,17 @@ type
     procedure Clear;
   end;
 
-  /// <summary>Art der Anwendung, zu der die Datei gehört (#926): mit oder ohne Konsole, Package (#943),
-  /// Windows-Dienst und DLL ohne Formulare (#1060). Eine DLL mit Formularen ist Unknown.</summary>
-{$SCOPEDENUMS ON}
-  TRuleApplicationKind = (Unknown, Console, Gui, Package, Service, Library_);
-{$SCOPEDENUMS OFF}
-
-  /// <summary>Art eines Projekts für projektweite Regeln (#1102): Anwendung (program), Package (.dpk) oder DLL
-  /// (library).</summary>
-{$SCOPEDENUMS ON}
-  TRuleProjectKind = (Unknown, Application, Package, Library_);
-{$SCOPEDENUMS OFF}
-
-  /// <summary>Ein Projekt der Projektgruppe mit seinen Quelltexten und Formularen (#1102).</summary>
-  TRuleProject = record
-    /// <summary>Projektdatei (.dproj, .dpr oder .dpk).</summary>
-    FileName: string;
-    Kind: TRuleProjectKind;
-    /// <summary>DUnitX- oder DUnit-Testprojekt.</summary>
-    IsTest: Boolean;
-    /// <summary>Absolute Pfade der Units samt Hauptquelltext (.dpr/.dpk).</summary>
-    Sources: TArray<string>;
-    /// <summary>Absolute Pfade der Formulardateien (.dfm/.fmx) neben den Units.</summary>
-    Forms: TArray<string>;
-  end;
-
-  /// <summary>Antwort auf "kommt der Name in der Datei vor?" (#1102).</summary>
-{$SCOPEDENUMS ON}
-  TRuleNameAnswer = (Absent, Present, Unknown);
-{$SCOPEDENUMS OFF}
-
-  /// <summary>Ein uses-Eintrag auf einem Weg durch den Uses-Graphen (#64): die Unit, zu der er führt, und ob
-  /// er im interface-Teil steht. SourceFileName ist die Datei mit dem Eintrag, UsesName der Name, wie er dort
-  /// steht (#896, Sprung zum Eintrag).</summary>
-  TRuleUsesStep = record
-    UnitName: string;
-    FileName: string;
-    InInterface: Boolean;
-    SourceFileName: string;
-    UsesName: string;
-  end;
-
-  /// <summary>Ein uses-Eintrag des Uses-Graphen zwischen zwei Units (ohne Programme und Packages).</summary>
-  TRuleUsesEdge = record
-    SourceUnit: string;
-    SourceFileName: string;
-    TargetUnit: string;
-    TargetFileName: string;
-    InInterface: Boolean;
-  end;
-
-  /// <summary>Leitet aus allen uses-Einträgen einen Wert ab, etwa eine Auswertung über den ganzen Graphen.</summary>
-  TRuleUsesDerive = reference to function(const AEdges: TArray<TRuleUsesEdge>): IInterface;
-
-  /// <summary>Die Projekte der Gruppe für projektweite Regeln wie unused-public-member (#1102); nil = unbekannt
-  /// (Linter, Datei ohne Projekt), die Regeln schweigen.</summary>
-  IRuleProjectFiles = interface
-    ['{3F0B6C1D-9A47-4E2B-8D15-6C7A2E94B0F3}']
-    /// <summary>Sind alle Projekte geladen und indiziert? Sonst nennt AReason den Grund ("Index läuft (180 von
-    /// 214 Units)"), und projektweite Regeln schweigen.</summary>
-    function Complete(out AReason: string): Boolean;
-    /// <summary>Projekte, zu denen AFileName gehört, zuerst; mit AWholeGroup danach alle übrigen der Gruppe.
-    /// AFileName '' liefert alle Projekte der Gruppe.</summary>
-    function ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
-    /// <summary>Kommt AName als Bezeichner in AFileName vor (ohne Groß-/Kleinschreibung)? Unknown, wenn die
-    /// Datei nicht gelesen werden kann.</summary>
-    function NameIn(const AFileName, AName: string): TRuleNameAnswer;
-    /// <summary>Text der Datei, geöffnete Dokumente zuerst; False, wenn sie nicht lesbar ist.</summary>
-    function ReadText(const AFileName: string; out AText: string): Boolean;
-    /// <summary>Kürzester Weg über uses von der Unit AFromUnit (Name wie im uses, auch ohne Namensraum) zur
-    /// Datei AToFile (#64): je uses-Eintrag ein Schritt, der letzte führt zu AToFile. Mit AInterfaceOnly nur
-    /// über Einträge im interface-Teil. nil, wenn es keinen Weg gibt oder der Uses-Graph (#268) eine der
-    /// Units nicht kennt.</summary>
-    function UsesPath(const AFromUnit, AToFile: string; AInterfaceOnly: Boolean): TArray<TRuleUsesStep>;
-    /// <summary>Units, die AFileName direkt im uses nennen, auch Programme und Packages (#64); False, wenn
-    /// der Uses-Graph die Unit nicht kennt.</summary>
-    function UsedBy(const AFileName: string; out AUsers: TArray<TRuleUsesStep>): Boolean;
-    /// <summary>Aus allen uses-Einträgen des Uses-Graphen abgeleiteter Wert: ADerive läuft je Schlüssel
-    /// einmal und erst wieder, wenn sich der Graph geändert hat. AKey nennt die Ableitung samt ihren Optionen.
-    /// nil ohne Uses-Graph.</summary>
-    function UsesDerived(const AKey: string; const ADerive: TRuleUsesDerive): IInterface;
-  end;
-
-  /// <summary>Art eines Namens mit Präfix-Vorgabe (#1111).</summary>
-{$SCOPEDENUMS ON}
-  TRuleNamingKind = (Local, Field, Parameter, Constant);
-{$SCOPEDENUMS OFF}
-
-  /// <summary>Präfix-Vorgaben der Projektdatei .atlas (naming, #452, #1111); Known = gesetzt, auch leer (= ohne
-  /// Präfix).</summary>
-  TRuleNaming = record
-    Prefixes: array[TRuleNamingKind] of string;
-    Known: array[TRuleNamingKind] of Boolean;
-  end;
+  /// <summary>Projekte der Gruppe (Atlas.Common.Projects.Contract.Group) unter den Namen der Regeln.</summary>
+  TRuleApplicationKind = Atlas.Common.Projects.Contract.Group.TApplicationKind;
+  TRuleProjectKind = Atlas.Common.Projects.Contract.Group.TGroupProjectKind;
+  TRuleProject = Atlas.Common.Projects.Contract.Group.TGroupProject;
+  TRuleNameAnswer = Atlas.Common.Projects.Contract.Group.TNameAnswer;
+  TRuleUsesStep = Atlas.Common.Projects.Contract.Group.TGroupUsesStep;
+  TRuleUsesEdge = Atlas.Common.Projects.Contract.Group.TGroupUsesEdge;
+  TRuleUsesDerive = Atlas.Common.Projects.Contract.Group.TGroupUsesDerive;
+  IRuleProjectFiles = Atlas.Common.Projects.Contract.Group.IProjectGroupFiles;
+  TRuleNamingKind = Atlas.Common.Projects.Contract.Group.TProjectNamingKind;
+  TRuleNaming = Atlas.Common.Projects.Contract.Group.TProjectNaming;
 
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
   TRuleContext = record
@@ -345,48 +225,15 @@ type
     /// <summary>Code-Abfragen des Arbeitsbereichs (#1351) für die Regeln query:&lt;name&gt;; nil = keine, gespeicherte
     /// Abfragen mit failIfAny laufen dann nicht.</summary>
     Queries: ICodeQueries;
-    /// <summary>Typen der laufenden IDE ohne Quelltext (IRuleIdeTypes); nil = ohne IDE.</summary>
-    IdeTypes: IRuleIdeTypes;
-    /// <summary>Refactorings für Korrekturen (TRuleRefactorings); je Eintrag nil = diese Korrektur nicht anbieten.</summary>
-    Refactorings: TRuleRefactorings;
+    /// <summary>Typen der laufenden IDE ohne Quelltext (ICheckIdeTypes); nil = ohne IDE.</summary>
+    IdeTypes: ICheckIdeTypes;
+    /// <summary>Refactorings für Korrekturen (TCheckRefactorings); je Eintrag nil = diese Korrektur nicht anbieten.</summary>
+    Refactorings: TCheckRefactorings;
     /// <summary>Dateiname für die Namensauflösung (TNameResolver): FileName, sonst RelativePath, sonst
     /// UnitName mit ".pas".</summary>
     function ResolverFileName: string;
-  end;
-
-  /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
-  /// Packages, Projekte der Gruppe und Namenskonvention. Ein Weg für LSP-Server, MCP und Linter: Der
-  /// Arbeitsbereich liefert sie (TCoreWorkspace.RuleServices), ApplyTo trägt sie in den Regelkontext ein.
-  /// Default = ohne Index; Regeln, die ihn brauchen, schweigen dann.</summary>
-  TRuleServices = record
-    /// <summary>Symbolindex für Typen aus anderen Units und der RTL (#125); nil = keiner.</summary>
-    Index: ISymbolIndex;
-    /// <summary>Units bedarfsweise nachladen (Namensauflösung, #178); nil = nur der vorhandene Index.</summary>
-    EnsureUnit: TEnsureUnitFunc;
-    /// <summary>Namespaces des Projekts für Unit-Namen ohne Präfix; leer ohne Projekt.</summary>
-    Namespaces: TArray<string>;
-    /// <summary>Unit-Suche wie beim Compiler (#1016); nil = unbekannt.</summary>
-    Units: IRuleUnitLookup;
-    /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt.</summary>
-    PackageProvides: TRulePackageProvides;
-    /// <summary>requires eines Packages (für die Kette der requires); nil = nur die direkten.</summary>
-    PackageRequires: TRulePackageRequires;
-    /// <summary>Antworten zum Index über alle Units des Arbeitsbereichs; nil = je Unit neu.</summary>
-    NameFacts: IIndexNameFacts;
-    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt.</summary>
-    ProjectFiles: IRuleProjectFiles;
-    /// <summary>Präfixe der Projektdatei .atlas (#1111); leer = unbekannt.</summary>
-    Naming: TRuleNaming;
-    /// <summary>Warnungen der .dproj als "Bezeichner=Wert" (#1378); leer = ohne Projekt.</summary>
-    ProjectWarnings: TArray<string>;
-    /// <summary>Code-Abfragen des Arbeitsbereichs (#1351); nil = keine.</summary>
-    Queries: ICodeQueries;
-    /// <summary>Typen der laufenden IDE ohne Quelltext; nil = ohne IDE.</summary>
-    IdeTypes: IRuleIdeTypes;
-    /// <summary>Refactorings für Korrekturen, vom Host über Adapter; je Eintrag nil = nicht verfügbar.</summary>
-    Refactorings: TRuleRefactorings;
-    /// <summary>Trägt die Dienste in AContext ein.</summary>
-    procedure ApplyTo(var AContext: TRuleContext);
+    /// <summary>Trägt die Dienste des Projekts (Index, Unit-Suche, IDE-Typen, Refactorings …) ein.</summary>
+    procedure UseServices(const AServices: TCheckServices);
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
@@ -515,23 +362,21 @@ begin
   end;
 end;
 
-{ TRuleServices }
-
-procedure TRuleServices.ApplyTo(var AContext: TRuleContext);
+procedure TRuleContext.UseServices(const AServices: TCheckServices);
 begin
-  AContext.Index := Index;
-  AContext.EnsureUnit := EnsureUnit;
-  AContext.Namespaces := Namespaces;
-  AContext.Units := Units;
-  AContext.PackageProvides := PackageProvides;
-  AContext.PackageRequires := PackageRequires;
-  AContext.NameFacts := NameFacts;
-  AContext.ProjectFiles := ProjectFiles;
-  AContext.Naming := Naming;
-  AContext.ProjectWarnings := ProjectWarnings;
-  AContext.Queries := Queries;
-  AContext.IdeTypes := IdeTypes;
-  AContext.Refactorings := Refactorings;
+  Index := AServices.Index;
+  EnsureUnit := AServices.EnsureUnit;
+  Namespaces := AServices.Namespaces;
+  Units := AServices.Units;
+  PackageProvides := AServices.PackageProvides;
+  PackageRequires := AServices.PackageRequires;
+  NameFacts := AServices.NameFacts;
+  ProjectFiles := AServices.ProjectFiles;
+  Naming := AServices.Naming;
+  ProjectWarnings := AServices.ProjectWarnings;
+  Queries := AServices.Queries;
+  IdeTypes := AServices.IdeTypes;
+  Refactorings := AServices.Refactorings;
 end;
 
 { TRuleDescriptor }

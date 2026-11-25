@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.TypeAlias;
+﻿unit Atlas.Common.Editing.TypeAlias.Protocol;
 
 // Typ-Alias einführen und auflösen über das Protokoll (#681):
 //   - Code-Aktionen auf einem Typausdruck, nur mit refactoring.typeAlias:
@@ -42,7 +42,7 @@ type
     Scope: string;
   end;
 
-  TLspTypeAlias = class
+  TTypeAliasProtocol = class
   public const
     cClientCommand = 'atlas.typeAlias';
     cApplyCommand = 'atlas.server.typeAlias';
@@ -75,7 +75,6 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
@@ -84,11 +83,11 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspTypeAliasText = (CannotBeRead, TypeAliasNotPossible, ResolvingTheAliasNotPossible,
+  TTypeAliasProtocolText = (CannotBeRead, TypeAliasNotPossible, ResolvingTheAliasNotPossible,
     ResolvingTheAliasNotPossible2, PlacesInFiles, UnknownScope);
 
 const
-  cTexts: array[TLspTypeAliasText] of TAtlasText = (
+  cTexts: array[TTypeAliasProtocolText] of TAtlasText = (
     (De: '%s lässt sich nicht lesen'; En: '%s cannot be read'),
     (De: 'Typ-Alias geht nicht: '; En: 'Type alias not possible: '),
     (De: 'Alias auflösen geht nicht: %s steht in %s'; En: 'Resolving the alias not possible: %s is in %s'),
@@ -104,7 +103,7 @@ const
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, AMessage);
 end;
 
 function NameParts(ANode: TSyntaxNode): TArray<string>;
@@ -179,9 +178,9 @@ begin
     end;
 end;
 
-{ TLspTypeAlias }
+{ TTypeAliasProtocol }
 
-class function TLspTypeAlias.Lookup(AResolver: TNameResolver): TTypeAliasLookup;
+class function TTypeAliasProtocol.Lookup(AResolver: TNameResolver): TTypeAliasLookup;
 begin
   Result := TTypeAliasLookup.FromTree;
   Result.Key := KeyFunc(AResolver);
@@ -226,8 +225,8 @@ begin
   mArguments.AddElement(TLspPositions.PositionToJson(ATarget.Range.StartPos));
   mArguments.Add(ATarget.Suggestion);
   mArguments.Add(TTypeAlias.ScopeName(AScope));
-  Result := NewAction(Format(ATitle, [Shortened(ATarget.TypeText)]), TLspTypeAlias.cIntroduceKind, mArguments,
-    TLspTypeAlias.cClientCommand);
+  Result := NewAction(Format(ATitle, [Shortened(ATarget.TypeText)]), TTypeAliasProtocol.cIntroduceKind, mArguments,
+    TTypeAliasProtocol.cClientCommand);
 end;
 
 function ScopeTitle(AScope: TTypeAliasScope): string;
@@ -242,7 +241,7 @@ begin
   end;
 end;
 
-class function TLspTypeAlias.Actions(ATree: TSyntaxTree; const AText, AUri: string; const APosition: TTextPosition;
+class function TTypeAliasProtocol.Actions(ATree: TSyntaxTree; const AText, AUri: string; const APosition: TTextPosition;
   ADefaultScope: TTypeAliasScope; const ALookup: TTypeAliasLookup): TArray<TJSONObject>;
 var
   mTargets: TArray<TTypeAliasTarget>;
@@ -304,7 +303,7 @@ begin
     mItem := TJSONObject.Create;
     mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
     mItem.AddPair('newText', mEdit.NewText);
-    mItem.AddPair('annotationId', TLspTypeAlias.cAnnotationId);
+    mItem.AddPair('annotationId', TTypeAliasProtocol.cAnnotationId);
     mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
@@ -327,10 +326,10 @@ begin
   mAnnotation := TJSONObject.Create;
   mAnnotation.AddPair('label', ALabel);
   mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  mAnnotation.AddPair('description', cTexts[TLspTypeAliasText.PlacesInFiles].Fmt([AResult.Places,
+  mAnnotation.AddPair('description', cTexts[TTypeAliasProtocolText.PlacesInFiles].Fmt([AResult.Places,
     Length(AResult.Files)]));
   mAnnotations := TJSONObject.Create;
-  mAnnotations.AddPair(TLspTypeAlias.cAnnotationId, mAnnotation);
+  mAnnotations.AddPair(TTypeAliasProtocol.cAnnotationId, mAnnotation);
   mEdit := TJSONObject.Create;
   mEdit.AddPair('documentChanges', mChanges);
   mEdit.AddPair('changeAnnotations', mAnnotations);
@@ -388,7 +387,7 @@ var
 begin
   if not Assigned(AContext.ReadText) or not AContext.ReadText(AFileName, mText) then
   begin
-    raise Fail(cTexts[TLspTypeAliasText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
+    raise Fail(cTexts[TTypeAliasProtocolText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
   Result := FileOf(AFileName, mText);
 end;
@@ -453,7 +452,7 @@ begin
   end;
 end;
 
-class function TLspTypeAlias.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
+class function TTypeAliasProtocol.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
   const APosition: TTextPosition; const AContext: TTypeAliasContext): TJSONObject;
 var
   mScope: TTypeAliasScope;
@@ -463,7 +462,7 @@ var
 begin
   if not TTypeAlias.ScopeOf(AContext.Scope, mScope) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspTypeAliasText.UnknownScope].Fmt([
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TTypeAliasProtocolText.UnknownScope].Fmt([
       AContext.Scope]));
   end;
   mFiles := nil;
@@ -477,7 +476,7 @@ begin
       if not TTypeAlias.Introduce(TTypeAliasSource.Create(AFileName, AText, ATree), SourcesOf(mFiles),
         TTypeAliasRequest.Create(APosition, Trim(AContext.Name), mScope, Lookup(AResolver)), mOutcome, mReason) then
       begin
-        raise Fail(cTexts[TLspTypeAliasText.TypeAliasNotPossible].Text + mReason);
+        raise Fail(cTexts[TTypeAliasProtocolText.TypeAliasNotPossible].Text + mReason);
       end;
     finally
       UnpinAll(AResolver, mFiles);
@@ -497,7 +496,7 @@ begin
   begin
     if MatchText(ExtractFileExt(mLocation.FileName), ['.dfm', '.fmx']) then
     begin
-      raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible].Fmt([ATargetName,
+      raise Fail(cTexts[TTypeAliasProtocolText.ResolvingTheAliasNotPossible].Fmt([ATargetName,
         ExtractFileName(mLocation.FileName)]));
     end;
   end;
@@ -520,7 +519,7 @@ begin
   AFiles := AFiles + [Result];
 end;
 
-class function TLspTypeAlias.ExecuteInline(AResolver: TNameResolver; ATree: TSyntaxTree;
+class function TTypeAliasProtocol.ExecuteInline(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, AText: string; const APosition: TTextPosition; const AContext: TTypeAliasContext): TJSONObject;
 var
   mTarget: TInlineAliasTarget;
@@ -535,7 +534,7 @@ var
 begin
   if not TTypeAlias.InlineTarget(AText, ATree, APosition, mTarget, mReason) then
   begin
-    raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible2].Text + mReason);
+    raise Fail(cTexts[TTypeAliasProtocolText.ResolvingTheAliasNotPossible2].Text + mReason);
   end;
   mLocations := TReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
     mTarget.NamePosition, False, AContext.Files, AContext.ReadText));
@@ -561,7 +560,7 @@ begin
       if not TTypeAlias.InlineAlias(mDeclaring, SourcesOf(mFiles), APosition, Lookup(AResolver), mOutcome,
         mReason) then
       begin
-        raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible2].Text + mReason);
+        raise Fail(cTexts[TTypeAliasProtocolText.ResolvingTheAliasNotPossible2].Text + mReason);
       end;
     finally
       UnpinAll(AResolver, mFiles);
@@ -573,6 +572,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.TypeAlias', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.TypeAlias.Protocol', cTexts);
 
 end.

@@ -150,7 +150,7 @@ uses
   Core.WorkspaceGroup,
   Shell.Composition.Platform,
   Shell.Composition.Instructions,
-  Shell.Composition.RuleRefactorings;
+  Shell.Composition.CheckRefactorings;
 
 type
 {$SCOPEDENUMS ON}
@@ -188,7 +188,7 @@ begin
     begin
       Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
     end);
-  Result.Refactorings := TShellRuleRefactorings.Create;
+  Result.Refactorings := TShellCheckRefactorings.Create;
 end;
 
 function InstalledVersions: TArray<string>;

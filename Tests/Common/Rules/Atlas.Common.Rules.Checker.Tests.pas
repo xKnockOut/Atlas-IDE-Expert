@@ -39,7 +39,8 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Builtin.Concurrency.MainThread,
-  Atlas.Common.Projects.PackageReader;
+  Atlas.Common.Projects.PackageReader,
+  Atlas.Common.Checks.Contract;
 
 function Settings(const AJson: string): TServerSettings;
 var

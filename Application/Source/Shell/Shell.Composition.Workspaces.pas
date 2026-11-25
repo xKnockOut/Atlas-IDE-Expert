@@ -11,7 +11,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Projects.Contract.Group,
   Core.Workspace,
   Shell.Composition.Contract;
 
@@ -27,7 +27,7 @@ type
     SelectedProject: TShellRegistrySelectedFunc;
     ActiveProject: TShellRegistryActiveFunc;
     /// <summary>Geöffnete Dokumente vor der Platte, für Hauptquelltexte und Formulare der Prüfprojekte.</summary>
-    ReadText: TRuleProjectReadText;
+    ReadText: TProjectReadText;
   end;
 
   /// <summary>Arbeitsbereiche des Servers. Ändern nur im Thread der Nachrichtenschleife unter Lock, weil
@@ -106,6 +106,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Projects.GroupProjects,
   System.SysUtils,
   System.Math,
   Atlas.Common.Lsp.WorkspaceFolders,
@@ -574,7 +575,7 @@ begin
   // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen (dieselbe Regel wie find_unused_code, #64).
   for mIndex := 0 to High(Result) do
   begin
-    Result[mIndex] := TRuleProjectFiles.ProjectOf(Result[mIndex].FileName, mMainSources[mIndex],
+    Result[mIndex] := TGroupProjects.ProjectOf(Result[mIndex].FileName, mMainSources[mIndex],
       Result[mIndex].Sources, FServices.ReadText);
   end;
   StoreRuleProjects(Result, mStamp);

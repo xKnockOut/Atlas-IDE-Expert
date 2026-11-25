@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.RaiseVisibility.Tests;
+﻿unit Atlas.Common.Editing.RaiseVisibility.Protocol.Tests;
 
 // Tests für „Sichtbarkeit anheben“ über das Protokoll (#2108): Code-Aktionen auf
 // der Deklaration (nur Anheben) und der Befehl für die Vervollständigung (auch
@@ -11,7 +11,7 @@ uses
 
 type
   [TestFixture]
-  TLspRaiseVisibilityTests = class
+  TRaiseVisibilityProtocolTests = class
   public
     [Test]
     procedure ActionsOnDeclaration;
@@ -30,7 +30,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.RaiseVisibility;
+  Atlas.Common.Editing.RaiseVisibility.Protocol;
 
 const
   cUri = 'file:///C:/P/Zaehler.pas';
@@ -60,9 +60,9 @@ begin
   end;
 end;
 
-{ TLspRaiseVisibilityTests }
+{ TRaiseVisibilityProtocolTests }
 
-procedure TLspRaiseVisibilityTests.ActionsOnDeclaration;
+procedure TRaiseVisibilityProtocolTests.ActionsOnDeclaration;
 var
   mTree: TSyntaxTree;
   mActions: TArray<TJSONObject>;
@@ -70,7 +70,7 @@ var
 begin
   mTree := TSyntaxTreeCache.Parse(cSource);
   try
-    mActions := TLspRaiseVisibility.Actions(cUri, cSource, mTree, TTextRange.Create(TTextPosition.Create(5, 6),
+    mActions := TRaiseVisibilityProtocol.Actions(cUri, cSource, mTree, TTextRange.Create(TTextPosition.Create(5, 6),
       TTextPosition.Create(5, 6)));
     try
       Assert.AreEqual(2, Integer(Length(mActions)));
@@ -88,12 +88,12 @@ begin
   end;
 end;
 
-procedure TLspRaiseVisibilityTests.CommandListsPropertyAndRaise;
+procedure TRaiseVisibilityProtocolTests.CommandListsPropertyAndRaise;
 var
   mAnswer: TJSONArray;
   mChanges: TJSONObject;
 begin
-  mAnswer := TLspRaiseVisibility.Execute(cUri, cSource, TTextPosition.Create(5, 4), 'FEintraege');
+  mAnswer := TRaiseVisibilityProtocol.Execute(cUri, cSource, TTextPosition.Create(5, 4), 'FEintraege');
   try
     Assert.AreEqual('Eigenschaft Eintraege in TZaehler anlegen (nur lesen)|' +
       'Eigenschaft Eintraege in TZaehler anlegen (lesen und schreiben)|' +
@@ -107,17 +107,17 @@ begin
   end;
 end;
 
-procedure TLspRaiseVisibilityTests.CommandWithoutMemberIsEmpty;
+procedure TRaiseVisibilityProtocolTests.CommandWithoutMemberIsEmpty;
 var
   mAnswer: TJSONArray;
 begin
-  mAnswer := TLspRaiseVisibility.Execute(cUri, cSource, TTextPosition.Create(7, 4), 'Run');
+  mAnswer := TRaiseVisibilityProtocol.Execute(cUri, cSource, TTextPosition.Create(7, 4), 'Run');
   try
     Assert.AreEqual(0, mAnswer.Count, 'public');
   finally
     mAnswer.Free;
   end;
-  mAnswer := TLspRaiseVisibility.Execute(cUri, 'unit Leer;'#10'interface'#10'implementation'#10'end.'#10,
+  mAnswer := TRaiseVisibilityProtocol.Execute(cUri, 'unit Leer;'#10'interface'#10'implementation'#10'end.'#10,
     TTextPosition.Create(1, 0), 'FEintraege');
   try
     Assert.AreEqual(0, mAnswer.Count, 'keine Klasse');
@@ -127,6 +127,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspRaiseVisibilityTests);
+  TDUnitX.RegisterTestFixture(TRaiseVisibilityProtocolTests);
 
 end.

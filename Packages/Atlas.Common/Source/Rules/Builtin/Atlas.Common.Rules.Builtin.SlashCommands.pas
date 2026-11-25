@@ -31,7 +31,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Pascal.CommandLines,
-  Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
@@ -61,7 +61,7 @@ end;
 
 procedure TSlashCommandRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  mProblem: TRuleSlashProblem;
+  mProblem: TCheckSlashProblem;
 begin
   if AContext.Refactorings.Commands = nil then
   begin

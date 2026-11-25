@@ -33,7 +33,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Catalog;
+  Atlas.Common.Rules.Catalog,
+  Atlas.Common.Checks.Contract;
 
 type
   /// <summary>Warum ein Treffer nicht korrigiert wurde.</summary>

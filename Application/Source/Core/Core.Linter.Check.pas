@@ -94,7 +94,8 @@ uses
   Core.Linter.Files,
   Core.Linter.Changes,
   Core.Linter.Index,
-  Core.Linter.Reports;
+  Core.Linter.Reports,
+  Atlas.Common.Checks.Contract;
 
 { TLinterCheck }
 
