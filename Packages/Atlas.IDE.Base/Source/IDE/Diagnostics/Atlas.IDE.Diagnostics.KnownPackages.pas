@@ -26,7 +26,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Core.Modules.KnownPackages;
+  Atlas.IDE.Base.Core.Modules.KnownPackages;
 
 type
   TAtlasIdeKnownPackages = class
@@ -89,8 +89,8 @@ uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Localization.Language,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Plugin.Projects.PathCheck,
   Atlas.Plugin.Notifications.Contract,
   Atlas.Plugin.Notifications.Center,

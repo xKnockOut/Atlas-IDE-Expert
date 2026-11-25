@@ -104,9 +104,9 @@ implementation
 uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Files.DataFile,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   System.IOUtils,
   System.Types,
   System.Actions,

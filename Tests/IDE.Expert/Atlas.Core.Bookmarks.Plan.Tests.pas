@@ -38,7 +38,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Bookmarks.Plan;
 
 { TAtlasBookmarksPlanTests }

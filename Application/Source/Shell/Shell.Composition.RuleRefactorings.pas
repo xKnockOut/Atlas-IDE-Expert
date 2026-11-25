@@ -29,6 +29,7 @@ begin
   mSources.Extract := TEditingComposition.ExtractFixes;
   mSources.Methods := TEditingComposition.MethodsWithoutSelf;
   mSources.Order := TEditingComposition.MethodOrder;
+  mSources.Completion := TEditingComposition.ClassCompletion;
   Result := TRuleRefactoringsAdapters.Create(mSources);
 end;
 

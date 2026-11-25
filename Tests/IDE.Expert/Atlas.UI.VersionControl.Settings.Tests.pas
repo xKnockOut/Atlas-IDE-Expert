@@ -51,14 +51,14 @@ uses
   Atlas.UI.Settings.Marks,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Page.TestSupport,
   Atlas.UI.VersionControl.SettingsKind,
   Atlas.UI.VersionControl.SettingsProject,
   Atlas.UI.VersionControl.SettingsProjects,
   Atlas.UI.VersionControl.SettingsTools,
-  Atlas.UI.VersionControl.SettingsSection;
+  Atlas.UI.VersionControl.SettingsSection,
+  Atlas.Plugin.Registration.Contract;
 
 var
   /// <summary>Abschnitt der laufenden Seite; NewPage legt ihn an, FreePage gibt ihn frei.</summary>

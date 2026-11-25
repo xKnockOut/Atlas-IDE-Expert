@@ -40,6 +40,10 @@
 // Die Tasten der Atlas-Suche (#877, #878) und von „Units suchen“ (#777)
 // kommen vom Modul Suche (#1455); F3/Umschalt+F3 hier gelten nur, wenn es sie
 // nicht belegt.
+// Frei zugewiesene Tasten der Palettenbefehle (#2938, keys.commands, Vorgabe Strg+D für „Methode suchen …“)
+// kommen zuerst: Die Wahl des Benutzers geht den festen Atlas-Tasten vor. Sie führen den Befehl über
+// TAtlasIdeHost.ExecuteCommand aus und suchen ihn erst beim Drücken, so erreicht die Taste ein abgemeldetes
+// Modul nicht mehr.
 // Die Tasten selbst nimmt TAtlasEditorKeyList (Atlas.IDE.Commands.KeyList) auf; die Gruppen stehen in
 // Atlas.IDE.Commands.KeysEditing und Atlas.IDE.Commands.KeysNavigation.
 
@@ -48,7 +52,7 @@ interface
 uses
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Commands.KeyList;
 
 type
@@ -71,6 +75,8 @@ type
     FBindingIndex: Integer;
     /// <summary>Taste eines Moduls (#1455) nach ihrem Vorrang.</summary>
     procedure AddModuleKey(const AKey: TAtlasModuleKey);
+    /// <summary>Frei zugewiesene Tasten der Palettenbefehle (#2938).</summary>
+    procedure AddCommandKeys(const ACommandKeys: string);
   public
     constructor Create;
     destructor Destroy; override;
@@ -90,10 +96,14 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
+  Atlas.IDE.Foundation.Host,
+  Atlas.Core.Commands.Contract,
+  Atlas.Core.Commands.CustomKeys,
+  Atlas.Core.Commands.KeyMap,
   Atlas.IDE.Commands.KeysEditing,
   Atlas.IDE.Commands.KeysNavigation;
 
@@ -134,6 +144,16 @@ begin
           Exit;
         end;
       end;
+    end;
+end;
+
+/// <summary>Palettenbefehl AId über seine Taste (#2938): läuft nach der Tastenverarbeitung.</summary>
+function CommandRun(const AId: string): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      TAtlasIdeHost.ExecuteCommand(AId);
     end;
 end;
 
@@ -337,6 +357,25 @@ begin
     end;
 end;
 
+procedure TAtlasIdeEditorKeys.AddCommandKeys(const ACommandKeys: string);
+var
+  mKeys: TArray<TAtlasCommandKey>;
+  mKey: TAtlasCommandKey;
+  mCommands: TArray<TAtlasCommand>;
+begin
+  mKeys := TAtlasCommandKeys.Parse(ACommandKeys);
+  if mKeys = nil then
+  begin
+    Exit;
+  end;
+  mCommands := TAtlasIdeHost.PaletteCommands;
+  for mKey in mKeys do
+  begin
+    AddKey(TAtlasFeature.Palette, mKey.Key, TAtlasKeyMap.CommandCaption(mCommands, mKey.CommandId),
+      CommandRun(mKey.CommandId));
+  end;
+end;
+
 procedure TAtlasIdeEditorKeys.Rebind;
 var
   mSettings: TAtlasPluginSettings;
@@ -350,6 +389,7 @@ begin
   mSettings := TAtlasIdeSettings.Current;
   mPrevious := Bound;
   Clear;
+  AddCommandKeys(mSettings.CommandKeys);
   TAtlasEditingKeys.AddBasics(Self, mSettings);
   TAtlasEditingKeys.AddChecks(Self, mSettings);
   TAtlasEditingKeys.AddTextEdits(Self, mSettings);

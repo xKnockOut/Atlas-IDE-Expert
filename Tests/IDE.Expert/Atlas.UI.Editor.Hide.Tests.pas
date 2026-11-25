@@ -41,7 +41,6 @@ type
 implementation
 
 uses
-  Atlas.Core.Modules.Contract,
   Atlas.UI.Welcome.TestSupport,
   System.SysUtils,
   System.Types,
@@ -64,7 +63,8 @@ uses
   Atlas.UI.Tests.SettingsSection,
   Atlas.UI.Bookmarks.SettingsSection,
   Atlas.UI.Debug.SettingsSection,
-  Atlas.UI.Rules.SettingsSection;
+  Atlas.UI.Rules.SettingsSection,
+  Atlas.Plugin.Registration.Contract;
 
 type
   /// <summary>Zählt „Rückgängig“ (TNotifyEvent braucht eine Methode).</summary>

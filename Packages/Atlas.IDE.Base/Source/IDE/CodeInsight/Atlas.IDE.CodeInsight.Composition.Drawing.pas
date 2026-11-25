@@ -52,7 +52,7 @@ uses
   Atlas.Plugin.Lsp.TextChanges,
   Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Editor.Pairs,
   Atlas.IDE.Foundation.Elements,

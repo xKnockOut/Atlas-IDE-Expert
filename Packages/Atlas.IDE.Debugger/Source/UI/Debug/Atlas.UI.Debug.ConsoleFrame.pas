@@ -116,8 +116,9 @@ type
     procedure Refill;
     /// <summary>Zustandszeile; ARunning gibt Eingabe und „Beenden“ frei.</summary>
     procedure SetState(const AText: string; ARunning: Boolean);
-    /// <summary>Eingabefeld fokussieren, wenn das Fenster zu sehen ist.</summary>
-    procedure FocusInput;
+    /// <summary>Eingabefeld fokussieren, wenn das Programm läuft und das Fenster samt Formular den Fokus nehmen kann;
+    /// True, wenn fokussiert.</summary>
+    function FocusInput: Boolean;
     property List: TAtlasConsoleList read FList;
     property OnSend: TProc<string> read FEvents.Send write FEvents.Send;
     property OnCloseInput: TProc read FEvents.CloseInput write FEvents.CloseInput;
@@ -133,6 +134,7 @@ uses
   Vcl.Themes,
   Atlas.Plugin.Style.Color,
   Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Debug.Console.Strings;
 
 {$R *.dfm}
@@ -580,9 +582,11 @@ begin
   UpdateButtons;
 end;
 
-procedure TAtlasDebugConsoleFrame.FocusInput;
+function TAtlasDebugConsoleFrame.FocusInput: Boolean;
 begin
-  if FRunning and FInput.CanFocus and Showing then
+  // CanFocus allein prüft das Formular nicht; ist es gesperrt oder versteckt, würfe SetFocus.
+  Result := FRunning and TAtlasControls.CanFocusNow(FInput);
+  if Result then
   begin
     FInput.SetFocus;
   end;

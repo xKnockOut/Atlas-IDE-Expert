@@ -1,0 +1,294 @@
+﻿unit Atlas.IDE.Base.Core.Modules.Watch.Tests;
+
+// Tests zu TAtlasProvidedWatch (#1455): Die Liste folgt Bereitstellen und
+// Zurückziehen sofort, OnChanged nur bei einer echten Änderung. TAtlasRegistryWatch reicht jede Änderung an die
+// Methodenreferenz weiter, bis die Anmeldung gelöst ist.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TProvidedWatchTests = class
+  public
+    [Test]
+    procedure FollowsProvideAndUnregister;
+    [Test]
+    procedure OtherInterfacesDoNotNotify;
+    [Test]
+    procedure WithoutRegistryEmpty;
+    [Test]
+    procedure DestroyedWatchHearsNothing;
+  end;
+
+  [TestFixture]
+  TRegistryWatchTests = class
+  public
+    [Test]
+    procedure ForwardsEveryChange;
+    [Test]
+    procedure RevokedHearsNothing;
+    [Test]
+    procedure WithoutRegistryNil;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Watch,
+  Atlas.Plugin.Registration.Contract;
+
+type
+  IWatchTestThing = interface
+    ['{4C0D7B52-91E3-4A86-B5F2-0E6A3D17C948}']
+    function Name: string;
+  end;
+
+  IWatchTestOther = interface
+    ['{D2A85E16-37BC-4F09-8E41-6B9C0F7A2D53}']
+  end;
+
+  TThing = class(TInterfacedObject, IWatchTestThing, IWatchTestOther)
+  private
+    FName: string;
+  public
+    constructor Create(const AName: string);
+    function Name: string;
+  end;
+
+  TFakeModule = class(TInterfacedObject, IAtlasModule)
+  private
+    FId: string;
+  public
+    constructor Create(const AId: string);
+    function Info: TAtlasModuleInfo;
+    procedure Start;
+    procedure Stop;
+    function IsActive: Boolean;
+  end;
+
+{ TThing }
+
+constructor TThing.Create(const AName: string);
+begin
+  inherited Create;
+  FName := AName;
+end;
+
+function TThing.Name: string;
+begin
+  Result := FName;
+end;
+
+{ TFakeModule }
+
+constructor TFakeModule.Create(const AId: string);
+begin
+  inherited Create;
+  FId := AId;
+end;
+
+function TFakeModule.Info: TAtlasModuleInfo;
+begin
+  Result := Default(TAtlasModuleInfo);
+  Result.Id := FId;
+end;
+
+procedure TFakeModule.Start;
+begin
+end;
+
+procedure TFakeModule.Stop;
+begin
+end;
+
+function TFakeModule.IsActive: Boolean;
+begin
+  Result := False;
+end;
+
+{ TProvidedWatchTests }
+
+procedure TProvidedWatchTests.FollowsProvideAndUnregister;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mWatch: TAtlasProvidedWatch;
+  mCount: Integer;
+begin
+  mRegistry := TAtlasModuleRegistry.Create;
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  mScope.Provide(IWatchTestThing, TThing.Create('vorher') as IWatchTestThing);
+  mWatch := TAtlasProvidedWatch.Create(mRegistry, IWatchTestThing);
+  try
+    mCount := 0;
+    mWatch.OnChanged :=
+      procedure
+      begin
+        Inc(mCount);
+      end;
+    Assert.AreEqual(1, Integer(Length(mWatch.Items)), 'schon bereitgestellte sofort');
+    mScope.Provide(IWatchTestThing, TThing.Create('nachher') as IWatchTestThing);
+    Assert.AreEqual(2, Integer(Length(mWatch.Items)));
+    Assert.AreEqual('nachher', (mWatch.Items[1] as IWatchTestThing).Name);
+    Assert.AreEqual(1, mCount);
+    mScope := nil;
+    mRegistry.UnregisterModule('atlas.a');
+    Assert.AreEqual(0, Integer(Length(mWatch.Items)), 'mit dem Modul weg');
+    Assert.IsTrue(mCount >= 2);
+  finally
+    mWatch.Free;
+  end;
+  mRegistry := nil;
+end;
+
+procedure TProvidedWatchTests.OtherInterfacesDoNotNotify;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mWatch: TAtlasProvidedWatch;
+  mCount: Integer;
+begin
+  mRegistry := TAtlasModuleRegistry.Create;
+  mWatch := TAtlasProvidedWatch.Create(mRegistry, IWatchTestThing);
+  try
+    mCount := 0;
+    mWatch.OnChanged :=
+      procedure
+      begin
+        Inc(mCount);
+      end;
+    mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+    mScope.Provide(IWatchTestOther, TThing.Create('x') as IWatchTestOther);
+    Assert.AreEqual(0, mCount);
+    Assert.AreEqual(0, Integer(Length(mWatch.Items)));
+    mScope := nil;
+    mRegistry.UnregisterModule('atlas.a');
+    Assert.AreEqual(0, mCount, 'Abmelden ohne eigene Objekte meldet nichts');
+  finally
+    mWatch.Free;
+  end;
+  mRegistry := nil;
+end;
+
+procedure TProvidedWatchTests.WithoutRegistryEmpty;
+var
+  mWatch: TAtlasProvidedWatch;
+begin
+  mWatch := TAtlasProvidedWatch.Create(nil, IWatchTestThing);
+  try
+    Assert.AreEqual(0, Integer(Length(mWatch.Items)));
+  finally
+    mWatch.Free;
+  end;
+end;
+
+procedure TProvidedWatchTests.DestroyedWatchHearsNothing;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mWatch: TAtlasProvidedWatch;
+  mCalls: Integer;
+begin
+  mCalls := 0;
+  mRegistry := TAtlasModuleRegistry.Create;
+  mWatch := TAtlasProvidedWatch.Create(mRegistry, IWatchTestThing);
+  mWatch.OnChanged :=
+    procedure
+    begin
+      Inc(mCalls);
+    end;
+  mWatch.Free;
+  // Nach Destroy darf eine Bereitstellung den freigegebenen Beobachter nicht erreichen.
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  mScope.Provide(IWatchTestThing, TThing.Create('x') as IWatchTestThing);
+  mScope := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  mRegistry := nil;
+  Assert.AreEqual(0, mCalls);
+end;
+
+{ TRegistryWatchTests }
+
+procedure TRegistryWatchTests.ForwardsEveryChange;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mRegistration: IAtlasRegistration;
+  mProvided: Integer;
+  mRevoked: Integer;
+begin
+  mProvided := 0;
+  mRevoked := 0;
+  mRegistry := TAtlasModuleRegistry.Create;
+  mRegistration := TAtlasRegistryWatch.Subscribe(mRegistry,
+    procedure(const AChange: TAtlasRegistryChange)
+    begin
+      if (AChange.Kind = rcProvided) and IsEqualGUID(AChange.IID, IWatchTestThing) then
+      begin
+        Inc(mProvided);
+      end;
+      if (AChange.Kind = rcRevoked) and IsEqualGUID(AChange.IID, IWatchTestThing) then
+      begin
+        Inc(mRevoked);
+      end;
+    end);
+  Assert.IsNotNull(mRegistration);
+  Assert.IsFalse(mRegistration.IsRevoked);
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  mScope.Provide(IWatchTestThing, TThing.Create('x') as IWatchTestThing);
+  Assert.AreEqual(1, mProvided);
+  mScope := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  Assert.AreEqual(1, mRevoked, 'Abmelden zieht die Objekte zurück');
+  mRegistration.Revoke;
+  mRegistration := nil;
+  mRegistry := nil;
+end;
+
+procedure TRegistryWatchTests.RevokedHearsNothing;
+var
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+  mRegistration: IAtlasRegistration;
+  mCalls: Integer;
+begin
+  mCalls := 0;
+  mRegistry := TAtlasModuleRegistry.Create;
+  mRegistration := TAtlasRegistryWatch.Subscribe(mRegistry,
+    procedure(const AChange: TAtlasRegistryChange)
+    begin
+      Inc(mCalls);
+    end);
+  mRegistration.Revoke;
+  Assert.IsTrue(mRegistration.IsRevoked);
+  mScope := mRegistry.RegisterModule(TFakeModule.Create('atlas.a') as IAtlasModule);
+  mScope.Provide(IWatchTestThing, TThing.Create('x') as IWatchTestThing);
+  mScope := nil;
+  mRegistry.UnregisterModule('atlas.a');
+  Assert.AreEqual(0, mCalls);
+  mRegistration := nil;
+  mRegistry := nil;
+end;
+
+procedure TRegistryWatchTests.WithoutRegistryNil;
+var
+  mRegistration: IAtlasRegistration;
+begin
+  mRegistration := TAtlasRegistryWatch.Subscribe(nil,
+    procedure(const AChange: TAtlasRegistryChange)
+    begin
+    end);
+  Assert.IsNull(mRegistration);
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TProvidedWatchTests);
+  TDUnitX.RegisterTestFixture(TRegistryWatchTests);
+
+end.

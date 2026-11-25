@@ -35,12 +35,13 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Watch,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Watch,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Generate.Gallery,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.Plugin.Registration.Contract;
 
 type
   /// <summary>Ein Assistent der Galerie; die IDE hält ihn bis RemoveWizard.</summary>

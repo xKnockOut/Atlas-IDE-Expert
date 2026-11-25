@@ -57,7 +57,7 @@ implementation
 uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.IDE.Projects.Summaries;
 
 // Dienste der Willkommensseite aus der Registry.

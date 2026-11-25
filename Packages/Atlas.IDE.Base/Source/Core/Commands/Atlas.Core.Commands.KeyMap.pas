@@ -25,11 +25,17 @@
 // - „Units suchen“ übernimmt Strg+F12 (#777): Die Taste bleibt bei der Aktion
 //   der IDE; die Übersicht zeigt die Aktion als Atlas-Zeile (Quelle Action,
 //   Kontext global), solange die Übernahme an ist.
+// - Tasten zuweisen (#2938): Atlas-Zeilen nennen ihren Palettenbefehl
+//   (CommandId). KeylessItems liefert die Atlas-Befehle der Palette ohne Taste
+//   als Zeilen ohne Kürzel; Assign schreibt eine neue Taste in die eigene
+//   Einstellung keys.* der Funktion oder, ohne solche, nach keys.commands;
+//   HoldersOf nennt, wer die gewählte Taste schon hat.
 
 interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.Contract;
 
@@ -99,12 +105,19 @@ type
     /// Zählung.</summary>
     MouseUses: Integer;
     KeyUses: Integer;
+    /// <summary>Befehl der Befehlspalette, dem die Zeile eine Taste gibt (#2938); '' ohne.</summary>
+    CommandId: string;
+    /// <summary>Taste aus keys.commands bzw. Palettenbefehl ohne eigene Tasten-Einstellung (#2938).</summary>
+    Custom: Boolean;
     class function Create(AShortCut: Word; const AKeyText, ACommand: string;
       const AOwner: TAtlasKeyProvenance): TAtlasKeyItem; static;
     /// <summary>„Befehl (Herkunft)“ für Meldungen.</summary>
     function Holder: string;
     /// <summary>Selten per Tastatur genutzt (TAtlasCommandUsage.IsRarelyByKeyboard).</summary>
     function RarelyByKeyboard: Boolean;
+    /// <summary>Taste im Fenster zuweisbar (#2938): Atlas-Zeile aus keys.commands oder mit eigener Einstellung;
+    /// nicht die übernommene Aktion Strg+F12 (#777).</summary>
+    function Assignable: Boolean;
   end;
 
   /// <summary>Suche in der Übersicht.</summary>
@@ -131,6 +144,11 @@ type
   public const
     cIdeName = 'IDE';
     cAtlasName = 'Atlas';
+    /// <summary>Anfang der Kennung einer Zeile für einen Palettenbefehl ohne eigene Tasten-Einstellung (#2938).
+    /// </summary>
+    cCommandIdPrefix = 'command:';
+    /// <summary>Platz der Editorbefehle in der Anmeldung (eine gemeinsame Bindung).</summary>
+    cEditorBindOrder = 3;
     cScShift = TAtlasKeyConflicts.cScShift;
     cScCtrl = TAtlasKeyConflicts.cScCtrl;
     cScAlt = TAtlasKeyConflicts.cScAlt;
@@ -171,6 +189,23 @@ type
     /// <summary>Taste aus Text: Umschalttasten deutsch oder englisch, dann eine Taste; 0, wenn nicht erkannt.
     /// AModifiers bekommt die Umschalttasten auch ohne Taste.</summary>
     class function ParseShortCut(const AText: string; out AModifiers: Word): Word; static;
+    /// <summary>Funktion mit eigener Tasten-Einstellung zum Palettenbefehl AId (die erste, CommandIdOf); False ohne.
+    /// </summary>
+    class function FunctionOfCommand(const AId: string; out AFunc: TAtlasKeyFunction): Boolean; static;
+    /// <summary>Atlas-Befehle der Palette (IsAtlas) ohne Taste als Zeilen ohne Kürzel (#2938), ausgenommen die
+    /// Befehle, die in AItems schon eine Zeile mit Taste haben. Befehle mit eigener Einstellung tragen ihre
+    /// Funktion, die übrigen sind Custom.</summary>
+    class function KeylessItems(const ACommands: TArray<TAtlasCommand>;
+      const AItems: TArray<TAtlasKeyItem>): TArray<TAtlasKeyItem>; static;
+    /// <summary>Titel des Palettenbefehls AId ohne vorangestelltes „Atlas: “; ohne Treffer die Kennung.</summary>
+    class function CommandCaption(const ACommands: TArray<TAtlasCommand>; const AId: string): string; static;
+    /// <summary>Taste AKey (0 = keine) für die Zeile AItem in ASettings: Custom nach keys.commands, sonst in die
+    /// Einstellung der Funktion (alle Tasten dieser Funktion, wie TAtlasKeyEntry.ToSettings).</summary>
+    class procedure Assign(const AItem: TAtlasKeyItem; AKey: Word; var ASettings: TAtlasPluginSettings); static;
+    /// <summary>Wer AKey im Kontext von AItem schon belegt, außer AItem selbst: „Befehl (Herkunft)“ durch
+    /// „, “ getrennt; '' = frei.</summary>
+    class function HoldersOf(const AItems: TArray<TAtlasKeyItem>; const AItem: TAtlasKeyItem;
+      AKey: Word): string; static;
     /// <summary>Druckbare HTML-Seite: Titel, Unterzeile, Knopf „Drucken“, Tabelle; Zeilen mit Konflikt rot.</summary>
     class function Html(const ALanguage, ATitle, ASubtitle, APrint: string; const AHeaders: TArray<string>;
       const ARows: TArray<TAtlasKeyHtmlRow>): string; static;
@@ -183,7 +218,46 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Commands.Usage;
+  Atlas.Core.Commands.Usage,
+  Atlas.Core.Commands.CustomKeys;
+
+const
+  cAtlasPrefix = 'Atlas: ';
+
+/// <summary>AItems hat eine Zeile mit Taste für den Palettenbefehl AId.</summary>
+function HasKeyedRow(const AItems: TArray<TAtlasKeyItem>; const AId: string): Boolean;
+var
+  mItem: TAtlasKeyItem;
+begin
+  for mItem in AItems do
+  begin
+    if (mItem.ShortCut <> 0) and SameText(mItem.CommandId, AId) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Titel des Palettenbefehls ohne vorangestelltes „Atlas: “.</summary>
+function PlainCaption(const ACaption: string): string;
+begin
+  Result := ACaption;
+  if StartsText(cAtlasPrefix, Result) then
+  begin
+    Result := Copy(Result, Length(cAtlasPrefix) + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Beide Zeilen meinen denselben Befehl (Palettenbefehl oder Atlas-Belegung gleicher Kennung).</summary>
+function SameRow(const A, B: TAtlasKeyItem): Boolean;
+begin
+  if (A.CommandId <> '') and SameText(A.CommandId, B.CommandId) then
+  begin
+    Exit(True);
+  end;
+  Result := (A.Origin = TAtlasKeyOrigin.Atlas) and (B.Origin = TAtlasKeyOrigin.Atlas) and (A.Id = B.Id);
+end;
 
 { TAtlasKeyProvenance }
 
@@ -232,6 +306,11 @@ end;
 function TAtlasKeyItem.RarelyByKeyboard: Boolean;
 begin
   Result := TAtlasCommandUsage.IsRarelyByKeyboard(MouseUses, KeyUses);
+end;
+
+function TAtlasKeyItem.Assignable: Boolean;
+begin
+  Result := (Origin = TAtlasKeyOrigin.Atlas) and (Custom or (Func <> TAtlasKeyFunction.UnitSearchIde));
 end;
 
 { TAtlasKeyQuery }
@@ -393,6 +472,108 @@ const
 class function TAtlasKeyMap.CommandIdOf(AFunc: TAtlasKeyFunction): string;
 begin
   Result := cCommandIds[AFunc];
+end;
+
+class function TAtlasKeyMap.FunctionOfCommand(const AId: string; out AFunc: TAtlasKeyFunction): Boolean;
+var
+  mFunc: TAtlasKeyFunction;
+begin
+  AFunc := TAtlasKeyFunction.Palette;
+  for mFunc := Low(TAtlasKeyFunction) to High(TAtlasKeyFunction) do
+  begin
+    // Strg+F12 (#777) ist fest; „Units suchen“ hat seine eigene Taste.
+    if (mFunc <> TAtlasKeyFunction.UnitSearchIde) and (cCommandIds[mFunc] <> '') and
+      SameText(cCommandIds[mFunc], AId) then
+    begin
+      AFunc := mFunc;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TAtlasKeyMap.CommandCaption(const ACommands: TArray<TAtlasCommand>; const AId: string): string;
+var
+  mCommand: TAtlasCommand;
+begin
+  Result := AId;
+  for mCommand in ACommands do
+  begin
+    if SameText(mCommand.Id, AId) then
+    begin
+      Exit(PlainCaption(mCommand.Caption));
+    end;
+  end;
+end;
+
+class function TAtlasKeyMap.KeylessItems(const ACommands: TArray<TAtlasCommand>;
+  const AItems: TArray<TAtlasKeyItem>): TArray<TAtlasKeyItem>;
+var
+  mCommand: TAtlasCommand;
+  mItem: TAtlasKeyItem;
+  mFunc: TAtlasKeyFunction;
+begin
+  Result := nil;
+  for mCommand in ACommands do
+  begin
+    if not mCommand.IsAtlas or (mCommand.Id = '') or HasKeyedRow(AItems, mCommand.Id) then
+    begin
+      Continue;
+    end;
+    mItem := TAtlasKeyItem.Create(0, '', PlainCaption(mCommand.Caption), TAtlasKeyProvenance.Create(
+      TAtlasKeyOrigin.Atlas, cAtlasName, TAtlasKeyContext.Editor, TAtlasKeySource.Binding,
+      cCommandIdPrefix + mCommand.Id, cEditorBindOrder));
+    mItem.Category := cAtlasName;
+    mItem.CommandId := mCommand.Id;
+    mItem.Custom := not FunctionOfCommand(mCommand.Id, mFunc);
+    mItem.Func := mFunc;
+    Result := Result + [mItem];
+  end;
+end;
+
+class procedure TAtlasKeyMap.Assign(const AItem: TAtlasKeyItem; AKey: Word; var ASettings: TAtlasPluginSettings);
+var
+  mEntries: TArray<TAtlasKeyEntry>;
+  mIndex: Integer;
+begin
+  if AItem.Custom then
+  begin
+    ASettings.CommandKeys := TAtlasCommandKeys.Assign(ASettings.CommandKeys, AItem.CommandId, AKey);
+    Exit;
+  end;
+  mEntries := TAtlasKeyEntry.AllFromSettings(ASettings);
+  for mIndex := 0 to High(mEntries) do
+  begin
+    if mEntries[mIndex].Func = AItem.Func then
+    begin
+      mEntries[mIndex].Key := AKey;
+    end;
+  end;
+  TAtlasKeyEntry.ToSettings(mEntries, ASettings);
+end;
+
+class function TAtlasKeyMap.HoldersOf(const AItems: TArray<TAtlasKeyItem>; const AItem: TAtlasKeyItem;
+  AKey: Word): string;
+var
+  mOther: TAtlasKeyItem;
+begin
+  Result := '';
+  if AKey = 0 then
+  begin
+    Exit;
+  end;
+  for mOther in AItems do
+  begin
+    if (mOther.ShortCut <> AKey) or not Overlaps(mOther.Context, AItem.Context) or SameRow(mOther, AItem) then
+    begin
+      Continue;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + ', ';
+    end;
+    Result := Result + mOther.Holder;
+  end;
 end;
 
 class function TAtlasKeyMap.ContextOfCategory(const ACategory: string): TAtlasKeyContext;

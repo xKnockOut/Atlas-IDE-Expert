@@ -91,6 +91,8 @@ type
     class procedure NoFindings(const AFound: TArray<TRuleFinding>; const ASource: string); static;
     /// <summary>Eine eingebaute Regel trägt die Kennung ARuleId.</summary>
     class function IsBuiltin(const ARuleId: string): Boolean; static;
+    /// <summary>Leerer Regelkontext mit den Refactorings des Hosts, für Tests, die ihn selbst füllen.</summary>
+    class function EmptyContext: TRuleContext; static;
   end;
 
   /// <summary>Testregel "marker": meldet jeden Bezeichner Marker.</summary>
@@ -135,6 +137,11 @@ end;
 
 
 { TRuleAssert }
+
+class function TRuleAssert.EmptyContext: TRuleContext;
+begin
+  Result := NewContext;
+end;
 
 class function TRuleAssert.Findings(ARule: IRule; const ASource: string): TArray<TRuleFinding>;
 begin
