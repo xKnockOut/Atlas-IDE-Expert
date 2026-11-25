@@ -196,6 +196,23 @@ type
       const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle): IRuleClassCompletionScan;
   end;
 
+  /// <summary>Befehlszeile "/name", die stehen bleibt, samt Grund.</summary>
+  TRuleSlashProblem = record
+    Range: TTextRange;
+    Message: string;
+  end;
+
+  /// <summary>Schnellbefehle von Editing: welche Befehlszeilen nicht ausgeführt würden (Regel slash-command).
+  /// </summary>
+  IRuleSlashCommands = interface
+    ['{A724AD51-3173-4798-A78E-5E96B33CD2C5}']
+    /// <summary>Befehlszeilen in AText, die stehen blieben, samt Grund. AIndex darf nil sein.</summary>
+    function Problems(const AText: string; const AIndex: ISymbolIndex;
+      const ADelphiVersion: string): TArray<TRuleSlashProblem>;
+    /// <summary>Hinweis zu "/ignore ARuleId", wenn die Regel in der Zeile darunter nichts meldet.</summary>
+    function IgnoreWithoutHit(const ARuleId: string): string;
+  end;
+
   /// <summary>Alle Refactorings, die Prüfregeln als Korrektur nutzen; je Eintrag nil = nicht verfügbar.</summary>
   TRuleRefactorings = record
     Classes: IRuleClassRefactorings;
@@ -207,6 +224,8 @@ type
     /// <summary>Ohne Eintrag schweigen declared-not-implemented, implemented-not-declared und signature-mismatch.
     /// </summary>
     Completion: IRuleClassCompletionRefactorings;
+    /// <summary>Ohne Eintrag schweigt slash-command.</summary>
+    Commands: IRuleSlashCommands;
   end;
 
 implementation

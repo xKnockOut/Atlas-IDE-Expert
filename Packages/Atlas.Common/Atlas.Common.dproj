@@ -415,6 +415,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordReference.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignmentSwap.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SignatureChanges.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CommandLines.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.LegacyListKinds.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Syntax.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Source.pas"/>
@@ -540,6 +541,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.MethodOrder.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.MethodOrder.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Providers.SlashCommands.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Contract.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DeclarationCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CommandSource.pas"/>

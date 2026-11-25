@@ -30,7 +30,6 @@ interface
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.Contract,
@@ -73,10 +72,6 @@ type
     function Find(const AName: string; out ACommand: TSlashCommand): Boolean;
     /// <summary>Alle Befehle, nach Namen sortiert.</summary>
     function Commands: TArray<TSlashCommand>;
-    /// <summary>Ist ALine ein Befehl "/name Argumente"? Ohne Prüfung, ob der Name bekannt ist.</summary>
-    class function Split(const ALine: string; out AName, AArguments: string): Boolean; static;
-    /// <summary>Steht Zeile ALine im Code (nicht in Kommentar, String oder asm)?</summary>
-    class function IsCodeLine(const ATokens: TArray<TPascalToken>; ALine: Integer): Boolean; static;
     /// <summary>Edits nach Enter in APosition.Line für die Befehlszeile darüber. False, wenn dort kein
     /// ausführbarer Befehl steht (dann bleibt die Zeile stehen).</summary>
     function AfterEnter(const AText: string; const APosition: TTextPosition; const AEnvironment: TSlashEnvironment;
@@ -118,6 +113,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Defaults,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.CommandLines,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesCommand,
   Atlas.Common.Editing.DeclarationCommands,
@@ -343,66 +340,6 @@ begin
     end));
 end;
 
-class function TSlashCommandRegistry.Split(const ALine: string; out AName, AArguments: string): Boolean;
-var
-  mText: string;
-  mIndex: Integer;
-begin
-  AName := '';
-  AArguments := '';
-  mText := Trim(ALine);
-  // "/name": Buchstabe direkt nach "/"; "//" ist ein Kommentar.
-  if (Length(mText) < 2) or (mText[1] <> '/') or not CharInSet(mText[2], ['A'..'Z', 'a'..'z']) then
-  begin
-    Exit(False);
-  end;
-  mIndex := 2;
-  while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '!', '-']) do
-  begin
-    Inc(mIndex);
-  end;
-  if (mIndex <= Length(mText)) and (mText[mIndex] <> ' ') then
-  begin
-    Exit(False);
-  end;
-  AName := Copy(mText, 2, mIndex - 2);
-  AArguments := Trim(Copy(mText, mIndex, MaxInt));
-  Result := True;
-end;
-
-class function TSlashCommandRegistry.IsCodeLine(const ATokens: TArray<TPascalToken>; ALine: Integer): Boolean;
-var
-  mToken: TPascalToken;
-  mInAsm: Boolean;
-begin
-  mInAsm := False;
-  for mToken in ATokens do
-  begin
-    if mToken.StartPos.Line > ALine then
-    begin
-      Break;
-    end;
-    // Mehrzeiliger Kommentar oder String über der Zeile.
-    if (mToken.StartPos.Line < ALine) and (mToken.EndPos.Line >= ALine) and
-      (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) then
-    begin
-      Exit(False);
-    end;
-    if mToken.StartPos.Line < ALine then
-    begin
-      if mToken.IsKeyword('asm') then
-      begin
-        mInAsm := True;
-      end
-      else if mInAsm and mToken.IsKeyword('end') then
-      begin
-        mInAsm := False;
-      end;
-    end;
-  end;
-  Result := not mInAsm;
-end;
-
 function TSlashCommandRegistry.AfterEnter(const AText: string; const APosition: TTextPosition;
   const AEnvironment: TSlashEnvironment; out AEdits: TArray<TTextEdit>): Boolean;
 var
@@ -511,7 +448,7 @@ begin
   if Result then
   begin
     AContext.LineText := mLines[ALine];
-    Result := TSlashCommandRegistry.Split(AContext.LineText, AContext.Name, AContext.Arguments);
+    Result := TPascalCommandLines.Split(AContext.LineText, AContext.Name, AContext.Arguments);
   end;
 end;
 
@@ -536,7 +473,7 @@ function CommandIssue(ARegistry: TSlashCommandRegistry; const AText: string; con
   const ADisabled: TArray<string>; out ACommand: TSlashCommand): string;
 begin
   Result := KnownIssue(ARegistry, AContext.Name, ADisabled, ACommand);
-  if (Result = '') and not TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(AText), AContext.Line) then
+  if (Result = '') and not TPascalCommandLines.IsCodeLine(TPascalLexer.Tokenize(AText), AContext.Line) then
   begin
     Result := cTexts[TSlashCommandsText.SlashCommandsDoNotApply].Text;
   end;
@@ -650,7 +587,7 @@ begin
   for mLine := 0 to High(mLines) do
   begin
     mContext := Default(TSlashContext);
-    if not Split(mLines[mLine], mContext.Name, mContext.Arguments) then
+    if not TPascalCommandLines.Split(mLines[mLine], mContext.Name, mContext.Arguments) then
     begin
       Continue;
     end;
@@ -658,7 +595,7 @@ begin
     begin
       mTokens := TPascalLexer.Tokenize(AText);
     end;
-    if not IsCodeLine(mTokens, mLine) then
+    if not TPascalCommandLines.IsCodeLine(mTokens, mLine) then
     begin
       Continue;
     end;
