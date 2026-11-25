@@ -24,7 +24,8 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Semantics.UnresolvedNames,
-  Atlas.Common.Mcp.Contract;
+  Atlas.Common.Mcp.Contract,
+  Atlas.Common.Semantics.References;
 
 {$SCOPEDENUMS ON}
 
@@ -104,7 +105,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.QualifiedNames,
-  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Mcp.IndexTools,
   Atlas.Common.Mcp.Server,
@@ -316,7 +317,7 @@ begin
     mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
       mResolver.Namespaces := FNamespaces;
-      Result := TLspReferences.Find(mResolver, FIndex, mTree, TReferenceSearch.Create(ALocation.FileName,
+      Result := TReferences.Find(mResolver, FIndex, mTree, TReferenceSearch.Create(ALocation.FileName,
         ALocation.Symbol.SelectionRange.StartPos, False, mFiles, FReadText), SettingsOf(ALocation.FileName), nil);
     finally
       mResolver.Free;

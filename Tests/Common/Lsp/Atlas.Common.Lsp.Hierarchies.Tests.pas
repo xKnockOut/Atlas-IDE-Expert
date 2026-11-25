@@ -48,7 +48,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Tests.SourceText;
 
 const
@@ -185,7 +185,7 @@ begin
   end;
   if not mFound then
   begin
-    raise Exception.CreateFmt('Kein Element bei "%s"', [AMarker]);
+    Assert.Fail(Format('Kein Element bei "%s"', [AMarker]));
   end;
 end;
 

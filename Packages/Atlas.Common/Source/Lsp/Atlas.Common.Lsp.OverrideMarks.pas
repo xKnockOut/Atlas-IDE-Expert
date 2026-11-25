@@ -69,8 +69,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CodeLens,
-  Atlas.Common.Lsp.Implementations,
-  Atlas.Common.Lsp.Internals.Feature;
+  Atlas.Common.Lsp.Internals.Feature,
+  Atlas.Common.Semantics.Implementations;
 
 const
   cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -118,7 +118,7 @@ var
   mBody: TIndexSymbol;
 begin
   Result := nil;
-  for mLocation in TLspImplementations.AllDescendantsOf(AIndex, ATypeName) do
+  for mLocation in TImplementations.AllDescendantsOf(AIndex, ATypeName) do
   begin
     if Length(Result) >= TLspOverrideMarks.cMaxTargets then
     begin

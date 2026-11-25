@@ -26,7 +26,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.InlineAccessor,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TInlineAccessorContext = record
@@ -393,7 +393,7 @@ var
   mLocation: TReferenceLocation;
 begin
   Result := nil;
-  for mLocation in TLspReferences.Find(FResolver, FContext.Index, AUnit.Tree, TReferenceSearch.Create(AUnit.FileName,
+  for mLocation in TReferences.Find(FResolver, FContext.Index, AUnit.Tree, TReferenceSearch.Create(AUnit.FileName,
     AAccessor.NamePos, False, FContext.Files, FContext.ReadText)) do
   begin
     if not SameText(mLocation.FileName, AUnit.FileName) or not TInlineAccessor.IsOwnReference(ALayout, AAccessor,

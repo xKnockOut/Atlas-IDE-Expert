@@ -25,7 +25,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.MoveClass,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Gibt es die Datei (auf der Platte oder als offenes Dokument)?</summary>
@@ -291,7 +291,7 @@ begin
     mNewFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFileName), mPlan.NewUnit + '.pas');
     CheckNewUnit(AContext, mPlan, mNewFile);
     // Verwendende Units über die Referenzsuche (#29).
-    mReferences := TLspReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
+    mReferences := TReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
       mDecl.StartPos, False, AContext.Files, AContext.ReadText));
   finally
     AResolver.UnpinTree;

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GenericLists.Declarations;
+﻿unit Atlas.Common.Semantics.GenericLists.Declarations;
 
 // Zweite Stufe der Listenumwandlung (#1105, #1106): die Deklaration der Liste (Feld, Variable, Inline-Variable)
 // einordnen und umschreiben (bei "A, L, B: TList" wird L abgespalten), Properties, die das Feld direkt lesen,
@@ -9,8 +9,8 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.GenericLists.Source,
-  Atlas.Common.Editing.GenericLists.State;
+  Atlas.Common.Semantics.GenericLists.Source,
+  Atlas.Common.Semantics.GenericLists.State;
 
 type
   /// <summary>Deklaration, Properties und Create der Liste.</summary>
@@ -52,7 +52,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Semantics.GenericLists.Syntax,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;
 
@@ -434,6 +434,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Declarations', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.GenericLists.Declarations', cTexts);
 
 end.

@@ -10,7 +10,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Dfm.FormModel,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Bindung einer Stelle in einem Formular: Ereignis-Handler oder Komponentenname.</summary>

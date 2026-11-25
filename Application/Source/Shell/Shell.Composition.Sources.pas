@@ -26,10 +26,10 @@ uses
   Atlas.Common.Lsp.Rationale,
   Atlas.Common.Lsp.Hover,
   Atlas.Common.Lsp.CodeLens,
-  Atlas.Common.Lsp.References,
   Core.Workspace,
   Shell.Composition.Workspaces,
-  Shell.Composition.Settings;
+  Shell.Composition.Settings,
+  Atlas.Common.Semantics.References;
 
 type
   TShellSourcesIndexFunc = reference to function: ISymbolIndex;

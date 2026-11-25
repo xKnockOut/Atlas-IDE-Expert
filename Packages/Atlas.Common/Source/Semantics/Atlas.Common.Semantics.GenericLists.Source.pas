@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.GenericLists.Source;
+﻿unit Atlas.Common.Semantics.GenericLists.Source;
 
 // Eine Datei der Listenumwandlung (#1105, #1106): Syntaxbaum, Text und die gesammelten Edits. Merkt sich, wo der
 // generische Typ neu im Text steht (für das uses) und welche alten Klassennamen umgeschrieben werden (ob Contnrs
@@ -80,7 +80,7 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.LegacyListKinds,
-  Atlas.Common.Editing.GenericLists.Syntax,
+  Atlas.Common.Semantics.GenericLists.Syntax,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -292,6 +292,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.GenericLists.Source', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.GenericLists.Source', cTexts);
 
 end.

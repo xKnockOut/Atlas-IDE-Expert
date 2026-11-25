@@ -144,10 +144,10 @@ uses
   Atlas.Text.Chars,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Semantics.Implementations;
 
 {$SCOPEDENUMS ON}
 
@@ -879,7 +879,7 @@ begin
   begin
     Exit;
   end;
-  for mLocation in TLspImplementations.AllDescendantsOf(FIndex, ACandidate.Symbol.Container) do
+  for mLocation in TImplementations.AllDescendantsOf(FIndex, ACandidate.Symbol.Container) do
   begin
     if mLocation.Symbol.Kind in cClassKinds then
     begin
@@ -894,7 +894,7 @@ var
   mInterface: string;
 begin
   mInterface := ACandidate.Symbol.Container;
-  for mLocation in TLspImplementations.AllDescendantsOf(FIndex, mInterface) do
+  for mLocation in TImplementations.AllDescendantsOf(FIndex, mInterface) do
   begin
     if not (mLocation.Symbol.Kind in cClassKinds) then
     begin

@@ -58,7 +58,8 @@ uses
   Atlas.Common.Mcp.Contract.BulkFix,
   Atlas.Common.Mcp.Contract.Extract,
   Atlas.Common.Mcp.Contract.Formatting,
-  Atlas.Common.Mcp.Confirm;
+  Atlas.Common.Mcp.Confirm,
+  Atlas.Common.Semantics.References;
 
 type
   TMcpFileEdit = record
@@ -257,7 +258,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Documents.FileBatch,
   Atlas.Common.Documents.TextChanges,

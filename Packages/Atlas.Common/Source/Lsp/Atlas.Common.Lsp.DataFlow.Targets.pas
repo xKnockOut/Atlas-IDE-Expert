@@ -12,9 +12,9 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.DataFlow.Types,
-  Atlas.Common.Lsp.DataFlow.Sources;
+  Atlas.Common.Lsp.DataFlow.Sources,
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Wie es nach einem Schritt nach oben weitergeht: weiter steigen, als Verwendung enden (Blatt) oder

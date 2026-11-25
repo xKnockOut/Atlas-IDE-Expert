@@ -43,8 +43,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.History.ChangedFiles,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.AffectedTests.Types;
+  Atlas.Common.Lsp.AffectedTests.Types,
+  Atlas.Common.Semantics.References;
 
 type
   TAffectedTests = class
@@ -91,7 +91,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Lsp.Hierarchies,
   Atlas.Common.Lsp.Impact,
   Atlas.Text.Lines,

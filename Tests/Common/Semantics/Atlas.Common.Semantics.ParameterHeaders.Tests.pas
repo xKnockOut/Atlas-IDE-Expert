@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ParameterHeaders.Tests;
+﻿unit Atlas.Common.Semantics.ParameterHeaders.Tests;
 
 // Tests für Parameter in Deklarations- und Rumpfkopf (#2425): Umbenennen und Verweise aus jedem Kopf und jeder
 // Verwendung liefern dieselben sicheren Stellen, gleichnamige Parameter anderer Routinen sind keine Stellen.
@@ -50,9 +50,9 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Rename,
-  Atlas.Common.Lsp.ParameterHeaders;
+  Atlas.Common.Semantics.ParameterHeaders,
+  Atlas.Common.Semantics.References;
 
 const
   cProbeFile = 'C:\P\Probe.pas';
@@ -140,7 +140,7 @@ begin
   end;
   if mIndex = 0 then
   begin
-    raise Exception.CreateFmt('"%s" fehlt in Zeile %d', [AName, ALine]);
+    Assert.Fail(Format('"%s" fehlt in Zeile %d', [AName, ALine]));
   end;
   Result := TTextPosition.Create(ALine, mIndex - 1);
 end;
@@ -357,7 +357,7 @@ begin
   mTree := TSyntaxTreeCache.Parse(cUnitProbe);
   try
     mPositions := nil;
-    for mLocation in TLspReferences.Find(mResolver, mIndex, mTree, TReferenceSearch.Create(cProbeFile,
+    for mLocation in TReferences.Find(mResolver, mIndex, mTree, TReferenceSearch.Create(cProbeFile,
       SpotOf(11, 'ANummer'), True, [cProbeFile], ReadProbe), TReferenceSettings.Default, nil) do
     begin
       Assert.IsTrue(mLocation.Confidence.IsSure, SpotText(mLocation.Range.StartPos));
