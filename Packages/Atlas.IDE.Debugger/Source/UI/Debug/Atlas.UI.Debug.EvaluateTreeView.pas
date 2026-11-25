@@ -197,7 +197,7 @@ begin
   begin
     mCanvas.Font.Style := [fsBold];
   end;
-  if cdsSelected in State then
+  if Node.Selected then
   begin
     mCanvas.Brush.Color := TAtlasUiTheme.SystemColor(FTree, clHighlight);
     mCanvas.Font.Color := TAtlasUiTheme.SystemColor(FTree, clHighlightText);
