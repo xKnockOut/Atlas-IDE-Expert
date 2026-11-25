@@ -6,6 +6,9 @@
 //   Starter ablehnt (Refuses, etwa fehlender Kommandozeilen-Compiler), wird
 //   mit Grund übersprungen. Läuft dieselbe Aufgabe im selben Projekt schon,
 //   startet sie nicht noch einmal.
+// - Wirft der Starter beim Start, endet der Lauf sofort als nicht gestartet
+//   (StartFailed mit dem Fehlertext): Er gilt danach nicht als laufend, und
+//   eine Reihe zählt ihn wie einen Lauf, dessen Prozess nicht startete.
 // - Ist eine Reihe vor dem Build fertig, entscheidet TAtlasTaskGate über
 //   Abbruch; bestandene block-Läufe melden Passed (neu bauen).
 // - Prozess, Thread und Ausgabe übernimmt IAtlasTaskLauncher (Atlas.Core.Tasks.
@@ -67,6 +70,12 @@ type
       Mode: TAtlasTaskBeforeBuild;
     end;
 
+    {$SCOPEDENUMS ON}
+    /// <summary>Running: Lauf gestartet. AlreadyRunning: dieselbe Aufgabe läuft schon. Failed: der Starter warf,
+    /// der Lauf ist schon als nicht gestartet beendet.</summary>
+    TStart = (Running, AlreadyRunning, Failed);
+    {$SCOPEDENUMS OFF}
+
     TBatch = class
     public
       Id: Integer;
@@ -92,7 +101,9 @@ type
     function JobIndex(AId: Integer): Integer;
     function FindBatch(AId: Integer): TBatch;
     function Start(const ATarget: TAtlasTaskTarget; const ATask: TAtlasTaskDefinition; ABatch: Integer;
-      AMode: TAtlasTaskBeforeBuild; AShow: Boolean): Boolean;
+      AMode: TAtlasTaskBeforeBuild; AShow: Boolean): TStart;
+    procedure LaunchFailed(const AJob: TJob; const ATask: TAtlasTaskDefinition; const AError: string);
+    class procedure AddEntry(ABatch: TBatch; AMode: TAtlasTaskBeforeBuild; const ARun: TAtlasTaskRun); static;
     procedure StartNextOf(ABatch: TBatch);
     procedure BatchDone(ABatch: TBatch);
   public
@@ -104,7 +115,8 @@ type
     function IsRunning(const AKey, AName: string): Boolean;
     /// <summary>Läuft überhaupt etwas?</summary>
     function Busy: Boolean;
-    /// <summary>Einzelner Lauf (merkt ihn für „wiederholen“); False, wenn er schon läuft.</summary>
+    /// <summary>Einzelner Lauf (merkt ihn für „wiederholen“); False, wenn er schon läuft. Wirft der Starter, ist
+    /// der Lauf schon als nicht gestartet beendet (Ergebnis True).</summary>
     function Run(const ATarget: TAtlasTaskTarget; const ATask: TAtlasTaskDefinition): Boolean;
     /// <summary>Reihe ATasks mit den Modi AModes (je Aufgabe); APreBuild: vor dem Build (Ausgabe nicht zeigen,
     /// am Ende entscheiden); AParallel: alle zugleich statt nacheinander.</summary>
@@ -228,14 +240,14 @@ begin
 end;
 
 function TAtlasTaskFlow.Start(const ATarget: TAtlasTaskTarget; const ATask: TAtlasTaskDefinition; ABatch: Integer;
-  AMode: TAtlasTaskBeforeBuild; AShow: Boolean): Boolean;
+  AMode: TAtlasTaskBeforeBuild; AShow: Boolean): TStart;
 var
   mJob: TJob;
   mNote: TAtlasTaskFlowNote;
 begin
   if IsRunning(ATarget.Key, ATask.Name) then
   begin
-    Exit(False);
+    Exit(TStart.AlreadyRunning);
   end;
   Inc(FNextId);
   mJob.Id := FNextId;
@@ -243,13 +255,21 @@ begin
   mJob.Key := ATarget.Key;
   mJob.Batch := ABatch;
   mJob.Mode := AMode;
-  SetLength(FJobs, Length(FJobs) + 1);
-  FJobs[High(FJobs)] := mJob;
-  FLauncher.Launch(mJob.Id, ATarget.Project, ATask, AShow);
   if ABatch = 0 then
   begin
     FLast := ATarget;
     FLastName := ATask.Name;
+  end;
+  SetLength(FJobs, Length(FJobs) + 1);
+  FJobs[High(FJobs)] := mJob;
+  try
+    FLauncher.Launch(mJob.Id, ATarget.Project, ATask, AShow);
+  except
+    on E: Exception do
+    begin
+      LaunchFailed(mJob, ATask, E.Message);
+      Exit(TStart.Failed);
+    end;
   end;
   mNote := Default(TAtlasTaskFlowNote);
   mNote.Kind := TAtlasTaskFlowNoteKind.Started;
@@ -257,12 +277,60 @@ begin
   mNote.Name := ATask.Name;
   mNote.Key := ATarget.Key;
   Note(mNote);
-  Result := True;
+  Result := TStart.Running;
+end;
+
+procedure TAtlasTaskFlow.LaunchFailed(const AJob: TJob; const ATask: TAtlasTaskDefinition; const AError: string);
+var
+  mIndex: Integer;
+  mNote: TAtlasTaskFlowNote;
+  mBatch: TBatch;
+begin
+  // Der Lauf hat nie begonnen: nicht mehr als laufend führen, sonst startet die Aufgabe bis zum Neustart nicht.
+  mIndex := JobIndex(AJob.Id);
+  if mIndex >= 0 then
+  begin
+    Delete(FJobs, mIndex, 1);
+  end;
+  FLauncher.Release(AJob.Id);
+  mNote := Default(TAtlasTaskFlowNote);
+  mNote.Kind := TAtlasTaskFlowNoteKind.Ended;
+  mNote.Id := AJob.Id;
+  mNote.Name := AJob.Name;
+  mNote.Key := AJob.Key;
+  mNote.Run.Name := ATask.Name;
+  mNote.Run.CommandLine := ATask.CommandLine;
+  mNote.Run.Cwd := ATask.Cwd;
+  mNote.Run.Outcome := TAtlasTaskOutcome.StartFailed;
+  mNote.Run.ExitCode := -1;
+  mNote.Run.FinishedAt := Now;
+  mNote.Run.Error := AError;
+  Note(mNote);
+  if AJob.Batch = 0 then
+  begin
+    Exit;
+  end;
+  // Nach dem Rückruf suchen: Er kann Reihen abgebrochen haben. Die Reihe zählt den Lauf mit (StartNextOf).
+  mBatch := FindBatch(AJob.Batch);
+  if mBatch <> nil then
+  begin
+    AddEntry(mBatch, AJob.Mode, mNote.Run);
+  end;
+end;
+
+class procedure TAtlasTaskFlow.AddEntry(ABatch: TBatch; AMode: TAtlasTaskBeforeBuild; const ARun: TAtlasTaskRun);
+var
+  mEntry: TAtlasTaskGateEntry;
+begin
+  mEntry.Mode := AMode;
+  mEntry.Run := ARun;
+  SetLength(ABatch.Entries, Length(ABatch.Entries) + 1);
+  ABatch.Entries[High(ABatch.Entries)] := mEntry;
 end;
 
 function TAtlasTaskFlow.Run(const ATarget: TAtlasTaskTarget; const ATask: TAtlasTaskDefinition): Boolean;
 begin
-  Result := Start(ATarget, ATask, 0, TAtlasTaskBeforeBuild.Off, True);
+  Result := Start(ATarget, ATask, 0, TAtlasTaskBeforeBuild.Off, True) <> TStart.AlreadyRunning;
 end;
 
 procedure TAtlasTaskFlow.RunBatch(const ATarget: TAtlasTaskTarget; const ATasks: TAtlasTaskDefinitions;
@@ -308,7 +376,7 @@ begin
       Note(mNote);
       Continue;
     end;
-    if Start(ABatch.Target, mTask, ABatch.Id, mMode, not ABatch.PreBuild) then
+    if Start(ABatch.Target, mTask, ABatch.Id, mMode, not ABatch.PreBuild) = TStart.Running then
     begin
       Inc(ABatch.Running);
       if not ABatch.Parallel then
@@ -361,7 +429,6 @@ var
   mIndex: Integer;
   mJob: TJob;
   mBatch: TBatch;
-  mEntry: TAtlasTaskGateEntry;
   mNote: TAtlasTaskFlowNote;
 begin
   mIndex := JobIndex(AId);
@@ -389,10 +456,7 @@ begin
   begin
     Exit;
   end;
-  mEntry.Mode := mJob.Mode;
-  mEntry.Run := ARun;
-  SetLength(mBatch.Entries, Length(mBatch.Entries) + 1);
-  mBatch.Entries[High(mBatch.Entries)] := mEntry;
+  AddEntry(mBatch, mJob.Mode, ARun);
   Dec(mBatch.Running);
   StartNextOf(mBatch);
 end;

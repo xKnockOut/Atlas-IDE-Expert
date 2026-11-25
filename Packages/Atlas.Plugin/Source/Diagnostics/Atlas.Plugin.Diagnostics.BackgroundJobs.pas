@@ -11,7 +11,9 @@
 //     procedure begin Outcome := Vcs.Head(Head); end,     // Hintergrund
 //     procedure begin Zeigen(Outcome, Head); end);         // Hauptthread
 // Die Arbeit fängt ihre Fehler selbst; eine Ausnahme verwirft der Auftrag und
-// ruft ADone trotzdem.
+// ruft ADone trotzdem. ADone läuft unter der Sicherung (TAtlasGuard) des
+// Features aus dem Konstruktor: Eine Ausnahme darin zählt für dieses Feature
+// und erreicht nie die IDE (wie bei TAtlasMainThread).
 // Threads, die nach Stop noch laufen, gehen an TAtlasOverdueThreads, zusammen
 // mit dem Package, in dem der Code der Arbeit liegt (AModule, im Package
 // HInstance): Die Liste gibt sie nach ihrem Ende frei, und die Modulverwaltung
@@ -30,7 +32,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   /// <summary>Merker, ob die Aufträge noch Ergebnisse zustellen; eingereihte Ergebnisse halten ihn selbst.</summary>
@@ -46,6 +49,7 @@ type
     cDestroyStopMs = 1000;
   private
     FModule: HMODULE;
+    FFeature: TAtlasFeature;
     FLock: TCriticalSection;
     FThreads: TList<TThread>;
     FStopped: Boolean;
@@ -55,9 +59,14 @@ type
     function Take(AThread: TThread): Boolean;
     /// <summary>Die Threads der Liste; AClear leert sie dabei.</summary>
     function Snapshot(AClear: Boolean): TArray<TThread>;
+    /// <summary>Was im Hauptthread nach dem Ende von AThread läuft: ADone unter der Sicherung von AFeature, dann
+    /// AOwner.Finished; nichts mehr, sobald AAlive nach Stop nicht mehr lebt.</summary>
+    class function Delivery(const AAlive: IAtlasBackgroundJobsAlive; AOwner: TAtlasBackgroundJobs;
+      AFeature: TAtlasFeature; AThread: TThread; const ADone: TProc): TThreadProcedure; static;
   public
-    /// <summary>AModule: Package, in dem der Code der Arbeit (AWork, ADone) liegt (im Package HInstance).</summary>
-    constructor Create(AModule: HMODULE);
+    /// <summary>AModule: Package, in dem der Code der Arbeit (AWork, ADone) liegt (im Package HInstance);
+    /// AFeature: Sicherung, unter der ADone läuft.</summary>
+    constructor Create(AModule: HMODULE; AFeature: TAtlasFeature);
     /// <summary>Stop mit cDestroyStopMs; Threads, die dann noch laufen, gibt TAtlasOverdueThreads nach ihrem Ende frei.
     /// </summary>
     destructor Destroy; override;
@@ -75,8 +84,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Plugin.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TJobsAlive = class(TInterfacedObject, IAtlasBackgroundJobsAlive)
@@ -108,10 +116,11 @@ end;
 
 { TAtlasBackgroundJobs }
 
-constructor TAtlasBackgroundJobs.Create(AModule: HMODULE);
+constructor TAtlasBackgroundJobs.Create(AModule: HMODULE; AFeature: TAtlasFeature);
 begin
   inherited Create;
   FModule := AModule;
+  FFeature := AFeature;
   FLock := TCriticalSection.Create;
   FThreads := TList<TThread>.Create;
   FAlive := TJobsAlive.Create;
@@ -159,12 +168,36 @@ begin
   end;
 end;
 
+class function TAtlasBackgroundJobs.Delivery(const AAlive: IAtlasBackgroundJobsAlive; AOwner: TAtlasBackgroundJobs;
+  AFeature: TAtlasFeature; AThread: TThread; const ADone: TProc): TThreadProcedure;
+begin
+  Result :=
+    procedure
+    begin
+      // Nach Stop gehört der Thread nicht mehr diesem Objekt, und der Aufrufer ist womöglich schon frei.
+      if not AAlive.Alive then
+      begin
+        Exit;
+      end;
+      try
+        if Assigned(ADone) then
+        begin
+          // Eingereiht über TThread.Queue mit dem eigenen Thread (Stop entfernt es), darum hier die Sicherung.
+          TAtlasGuard.Run(AFeature, ADone);
+        end;
+      finally
+        AOwner.Finished(AThread);
+      end;
+    end;
+end;
+
 function TAtlasBackgroundJobs.Run(const AWork, ADone: TProc): Boolean;
 var
   mThread: TThread;
   mWork, mDone: TProc;
   mAlive: IAtlasBackgroundJobsAlive;
   mOwner: TAtlasBackgroundJobs;
+  mFeature: TAtlasFeature;
 begin
   Result := False;
   if FStopped then
@@ -175,6 +208,7 @@ begin
   mDone := ADone;
   mAlive := FAlive;
   mOwner := Self;
+  mFeature := FFeature;
   mThread := TThread.CreateAnonymousThread(
     procedure
     var
@@ -192,23 +226,7 @@ begin
         Exit;
       end;
       mCurrent := TThread.Current;
-      TThread.Queue(mCurrent,
-        procedure
-        begin
-          // Nach Stop gehört der Thread nicht mehr diesem Objekt, und der Aufrufer ist womöglich schon frei.
-          if not mAlive.Alive then
-          begin
-            Exit;
-          end;
-          try
-            if Assigned(mDone) then
-            begin
-              mDone();
-            end;
-          finally
-            mOwner.Finished(mCurrent);
-          end;
-        end);
+      TThread.Queue(mCurrent, Delivery(mAlive, mOwner, mFeature, mCurrent, mDone));
     end);
   mThread.FreeOnTerminate := False;
   FLock.Enter;

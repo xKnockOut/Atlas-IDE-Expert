@@ -21,9 +21,15 @@ uses
   Adapters.Rules.Refactorings;
 
 class function TShellRuleRefactorings.Create: TRuleRefactorings;
+var
+  mSources: TRuleRefactoringSources;
 begin
-  Result := TRuleRefactoringsAdapters.Create(TEditingComposition.ClassActions, TEditingComposition.ExtractFixes,
-    TEditingComposition.MethodsWithoutSelf);
+  mSources := Default(TRuleRefactoringSources);
+  mSources.Classes := TEditingComposition.ClassActions;
+  mSources.Extract := TEditingComposition.ExtractFixes;
+  mSources.Methods := TEditingComposition.MethodsWithoutSelf;
+  mSources.Order := TEditingComposition.MethodOrder;
+  Result := TRuleRefactoringsAdapters.Create(mSources);
 end;
 
 end.

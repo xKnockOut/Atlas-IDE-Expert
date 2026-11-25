@@ -115,9 +115,13 @@ end;
 
 procedure TAtlasLeakSetupDialog.AddChoices(const AInfo: TAtlasLeakSetupInfo);
 var
+  mGroup: TWinControl;
   mChoice: TAtlasLeakChoice;
   mCaption: string;
 begin
+  // Ein gemeinsames Feld für alle Varianten: Nur Auswahlknöpfe unter demselben Parent bilden für die VCL eine
+  // Gruppe (Anhaken wählt die übrigen ab, Tabstopp nur am gewählten, Pfeiltasten wechseln die Variante).
+  mGroup := AddRow(cLineHeight * (Ord(High(TAtlasLeakChoice)) + 1));
   for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
   begin
     mCaption := TAtlasTestsStrings.Text(cChoiceTexts[mChoice]);
@@ -126,8 +130,11 @@ begin
       mCaption := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.LeakChoiceUnavailable, [mCaption]);
     end;
     FChoices[mChoice] := TRadioButton.Create(Self);
-    FChoices[mChoice].Parent := AddRow(cLineHeight);
-    FChoices[mChoice].Align := alClient;
+    // Lage vor Align und Parent: alTop ordnet nach der vorläufigen Lage.
+    FChoices[mChoice].Top := Ord(mChoice) * ScaleValue(cLineHeight);
+    FChoices[mChoice].Height := ScaleValue(cLineHeight);
+    FChoices[mChoice].Align := alTop;
+    FChoices[mChoice].Parent := mGroup;
     FChoices[mChoice].Caption := mCaption;
     FChoices[mChoice].Enabled := AInfo.Available(mChoice);
   end;
@@ -158,15 +165,6 @@ var
   mAny: Boolean;
   mChoice: TAtlasLeakChoice;
 begin
-  // Jeder Knopf liegt in einer eigenen Zeile, also unter einem eigenen Parent: Die VCL schaltet beim Anhaken nur
-  // Geschwister mit demselben Parent aus. Die übrigen Knöpfe deshalb hier abwählen (Checked := False klickt nicht).
-  for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
-  begin
-    if (FChoices[mChoice] <> Sender) and (Sender is TRadioButton) and TRadioButton(Sender).Checked then
-    begin
-      FChoices[mChoice].Checked := False;
-    end;
-  end;
   mAny := False;
   for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
   begin

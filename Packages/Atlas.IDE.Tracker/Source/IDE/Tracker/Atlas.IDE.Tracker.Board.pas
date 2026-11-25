@@ -108,7 +108,7 @@ begin
   FHooks := AHooks;
   FMessage := TAtlasMessageSink.Create(FHooks.Message);
   // Ein Worker für Laden und Verschieben: Stop wartet auf beide.
-  FWorker := TAtlasBackgroundJobs.Create(HInstance);
+  FWorker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Tracker);
   FLoad := TAtlasIdeBoardLoad.Create(AHooks, ACacheFolder, FWorker);
   FLoadRef := FLoad;
   FMove := TAtlasIdeBoardMove.Create(FLoad, AHooks, FWorker);

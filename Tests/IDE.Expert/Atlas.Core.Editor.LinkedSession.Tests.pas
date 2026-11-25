@@ -6,7 +6,8 @@
 // ein Rückgängig-Schritt, Ende an den Rändern des Namens und bei Zeichen, die
 // kein Bezeichner sind, Änderung der IDE am Namen (nachziehen) und anderswo
 // (enden), Konflikte samt Esc, Cursor verlässt den Namen, Puffer anders als
-// gerechnet, Zurücknehmen verweigert, Markierung.
+// gerechnet, Zurücknehmen verweigert, Markierung, Puffer wirft beim
+// Schreiben.
 
 interface
 
@@ -75,6 +76,8 @@ type
     procedure EditsAreSortedAndUnique;
     [Test]
     procedure FinishReportsOnce;
+    [Test]
+    procedure ThrowingWriteEndsSession;
   end;
 
 implementation
@@ -382,6 +385,25 @@ begin
   FSession.Finish;
   Assert.AreEqual(1, FFinishes);
   Assert.AreEqual('', FSession.FileName);
+end;
+
+procedure TAtlasLinkedSessionTests.ThrowingWriteEndsSession;
+begin
+  Assert.IsTrue(StartCount(4, 4));
+  FFake.OnWrite :=
+    procedure
+    begin
+      raise EInOutError.Create('Puffer gesperrt');
+    end;
+  Assert.WillRaise(
+    procedure
+    begin
+      Key(TAtlasLinkedKey.Insert, 'X');
+    end, EInOutError);
+  FFake.OnWrite := nil;
+  Assert.IsFalse(FSession.Active, 'der Stand des Puffers ist unbekannt');
+  Assert.AreEqual(1, FFinishes);
+  Assert.AreEqual(0, FRefreshes);
 end;
 
 initialization
