@@ -143,7 +143,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
-  Atlas.Common.Lsp.Instructions,
+  Atlas.Common.Rules.InstructionFiles,
   Platform.Server,
   Core.Bootstrap,
   Core.VersionControlChanges,

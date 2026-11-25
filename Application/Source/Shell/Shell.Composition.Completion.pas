@@ -84,7 +84,10 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Pascal.LanguageFeatures;
+  Atlas.Common.Pascal.LanguageFeatures,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.Providers.CatalogInfo,
+  Adapters.Lsp.RuleCatalog;
 
 { TShellCompletion }
 
@@ -158,11 +161,15 @@ begin
 end;
 
 procedure TShellCompletion.WireCallbacks;
+var
+  mCatalog: IRuleCatalogInfo;
 begin
   FCompletion.Hooks.MatchingFor := MatchingFor;
   FCompletion.Hooks.SettingsFor := FServices.CompletionSettingsFor;
   FCompletion.Hooks.SlashCommandsFor := FServices.SlashCommandsFor;
   FCompletion.Hooks.RuleIdsFor := FServices.RuleIdsFor;
+  mCatalog := TRuleCatalogInfo.Create;
+  FCompletion.Hooks.RuleCatalog := TLspRuleCatalogAdapter.Wrap(mCatalog);
   FCompletion.Hooks.PostfixFor := PostfixOptionsFor;
   // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
   FCompletion.Hooks.WithFor := WithEdits;

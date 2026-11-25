@@ -87,11 +87,30 @@ type
     Related: TArray<TRuleRelated>;
   end;
 
+  /// <summary>Ein Befund für einen Auftrag an einen KI-Assistenten (#2570): Datei, wie sie im Text erscheint,
+  /// Quelltext und Befund.</summary>
+  TFindingPromptItem = record
+    FileName: string;
+    Text: string;
+    Finding: TRuleFinding;
+    /// <summary>Compilermeldung ohne Atlas-Regel: ohne Konfidenz und ohne Korrekturwerkzeug.</summary>
+    Compiler: Boolean;
+    class function Create(const AFinding: TRuleFinding; const AFileName, AText: string): TFindingPromptItem; static;
+  end;
+
   /// <summary>True, wenn die Prüfung abgebrochen werden soll (Zeitlimit, Dokument geändert).</summary>
   TRuleCancelled = reference to function: Boolean;
 
   /// <summary>Die Prüfung wurde über TRuleCancelled abgebrochen; es gibt kein Ergebnis.</summary>
   ERuleCheckCancelled = class(Exception);
+
+const
+  /// <summary>Regel der ungenutzten uses (#1135); der Editor zeigt die Einträge selbst und fragt die Unterdrückung
+  /// unter dieser Kennung. Gleich cUnusedUsesRuleId der Regel (Rules.Builtin.DeadCode, Test FindingIdsMatchRuleIds).
+  /// </summary>
+  cUnusedUsesFindingId = 'unused-uses';
+  /// <summary>Regel der uses, die nur die implementation braucht (#1136); wie cUnusedUsesFindingId.</summary>
+  cUsesOnlyInImplementationFindingId = 'uses-only-in-implementation';
 
 /// <summary>Kennwort der Konfidenz: "hoch", "mittel", "niedrig".</summary>
 function ConfidenceText(AConfidence: TRuleConfidence): string;
@@ -103,6 +122,17 @@ function ConfidenceText(AConfidence: TRuleConfidence): string;
 function ConfidenceName(AConfidence: TRuleConfidence): string;
 
 implementation
+
+{ TFindingPromptItem }
+
+class function TFindingPromptItem.Create(const AFinding: TRuleFinding;
+  const AFileName, AText: string): TFindingPromptItem;
+begin
+  Result := Default(TFindingPromptItem);
+  Result.Finding := AFinding;
+  Result.FileName := AFileName;
+  Result.Text := AText;
+end;
 
 function ConfidenceText(AConfidence: TRuleConfidence): string;
 begin

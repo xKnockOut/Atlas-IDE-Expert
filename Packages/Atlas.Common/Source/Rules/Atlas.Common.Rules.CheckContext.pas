@@ -12,7 +12,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Findings.Memo,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Baseline;
+  Atlas.Common.Findings.Baseline;
 
 type
   /// <summary>Was die Prüfregeln für ein Dokument brauchen.</summary>

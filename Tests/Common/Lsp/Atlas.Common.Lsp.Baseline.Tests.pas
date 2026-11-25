@@ -51,7 +51,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Baseline;
 

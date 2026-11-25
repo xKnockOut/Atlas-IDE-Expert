@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Baseline.Tests;
+﻿unit Atlas.Common.Findings.Baseline.Tests;
 
 // Tests für die Baseline bekannter Treffer (#97): Zuordnung über Regel,
 // Routine und Zeile, ältere Dateien ohne Routine, umbenannte Routinen über
@@ -90,7 +90,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Findings.Scopes,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Tests.RuleAssert;
 
 const

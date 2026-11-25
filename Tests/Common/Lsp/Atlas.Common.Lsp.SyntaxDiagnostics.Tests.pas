@@ -100,7 +100,7 @@ implementation
 
 uses
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Pascal.Preprocessor,
@@ -665,7 +665,7 @@ begin
   mFinding.Message := 'Meldung';
   mFinding.Severity := TRuleSeverity.Information;
   mFinding.Confidence := TRuleConfidence.Medium;
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.AreEqual(3, mItem.GetValue<Integer>('severity'));
     // Konfidenz als eigenes Feld, nicht im Meldungstext (#144).
@@ -688,7 +688,7 @@ begin
   mFinding.Message := 'Leerer except-Block';
   mFinding.Severity := TRuleSeverity.Warning;
   mFinding.Fixes := [TRuleFix.Create('Ausnahme protokollieren', nil)];
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.AreEqual('exceptions', mItem.GetValue<string>('data.group'));
     Assert.AreEqual('code-smell', mItem.GetValue<string>('data.category'));
@@ -701,7 +701,7 @@ begin
   // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc im Plugin.
   mFinding.RuleId := 'argument-count-mismatch';
   mFinding.Fixes := nil;
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.AreEqual('compiler', mItem.GetValue<string>('data.group'));
     Assert.AreEqual('["E2034","E2035"]', (mItem.GetValue('data') as TJSONObject).GetValue('compilerCodes').ToJSON);
@@ -712,7 +712,7 @@ begin
   end;
   // Zusatz für den Befund-Hover (#1102).
   mFinding.Details := 'Durchsucht: 3 Dateien der Projektgruppe';
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', mItem.GetValue<string>('data.details'));
   finally
@@ -735,7 +735,7 @@ begin
   mRelated.Range := TTextRange.Create(3, 2, 3, 3);
   mRelated.Message := 'C';
   mFinding.Related := [mRelated];
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     mItems := mItem.GetValue('relatedInformation') as TJSONArray;
     Assert.AreEqual(1, mItems.Count);
@@ -748,7 +748,7 @@ begin
   end;
   // Ohne weitere Stellen kein Feld.
   mFinding.Related := nil;
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.IsNull(mItem.FindValue('relatedInformation'));
   finally
@@ -770,7 +770,7 @@ begin
   mFirst.Alternative := True;
   mSecond := TRuleFix.Create('Bevorzugt', nil);
   mFinding.Fixes := [mSecond, mFirst];
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     mData := mItem.GetValue('data') as TJSONObject;
     Assert.IsNull(mData.FindValue('group'));
@@ -781,7 +781,7 @@ begin
   end;
   // Steht eine Alternative vorn, gibt es wie bei den Code-Aktionen keine bevorzugte Korrektur.
   mFinding.Fixes := [mFirst, mSecond];
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     mData := mItem.GetValue('data') as TJSONObject;
     Assert.IsNull(mData.FindValue('fix'));

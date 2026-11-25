@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Instructions;
+﻿unit Atlas.Common.Rules.InstructionFiles;
 
 // Anweisungsdateien für KI-Assistenten (#2615): Stand und Schreiben des Abschnitts aus Atlas.Common.Rules.Instructions
 // in jeder Datei aus assistants.instructions.file (relativ zum Ordner der atlas.json). Gemeinsam für die
@@ -17,9 +17,9 @@ uses
 
 type
   /// <summary>Liest eine Datei; False, wenn sie fehlt.</summary>
-  TLspInstructionsRead = reference to function(const AFileName: string; out ABytes: TBytes): Boolean;
+  TRuleInstructionsRead = reference to function(const AFileName: string; out ABytes: TBytes): Boolean;
   /// <summary>Schreibt eine Datei so, dass kein Leser einen halben Stand sieht; False mit Grund in AError.</summary>
-  TLspInstructionsWrite = reference to function(const AFileName: string; const ABytes: TBytes;
+  TRuleInstructionsWrite = reference to function(const AFileName: string; const ABytes: TBytes;
     out AError: string): Boolean;
 
   /// <summary>Eine Anweisungsdatei: Stand vor dem Lauf, alter und neuer Abschnitt, ob geschrieben.</summary>
@@ -35,15 +35,15 @@ type
     Error: string;
   end;
 
-  TLspInstructions = class
+  TRuleInstructionFiles = class
   public const
     cCommand = 'atlas.server.assistantInstructions';
   private
-    FRead: TLspInstructionsRead;
-    FWrite: TLspInstructionsWrite;
+    FRead: TRuleInstructionsRead;
+    FWrite: TRuleInstructionsWrite;
     function Inspect(const ARoot, AFileName, ASection: string; AWrite: Boolean): TInstructionsFile;
   public
-    constructor Create(const ARead: TLspInstructionsRead; const AWrite: TLspInstructionsWrite);
+    constructor Create(const ARead: TRuleInstructionsRead; const AWrite: TRuleInstructionsWrite);
     /// <summary>Stand jeder Datei aus ASettings.AssistantsInstructionFiles unter ARoot; mit AWrite werden
     /// veraltete und fehlende Abschnitte geschrieben.</summary>
     function Run(const ARoot: string; const ASettings: TServerSettings; const ARules: TArray<IRule>;
@@ -89,16 +89,16 @@ begin
   Result := IncludeTrailingPathDelimiter(ARoot) + mName;
 end;
 
-{ TLspInstructions }
+{ TRuleInstructionFiles }
 
-constructor TLspInstructions.Create(const ARead: TLspInstructionsRead; const AWrite: TLspInstructionsWrite);
+constructor TRuleInstructionFiles.Create(const ARead: TRuleInstructionsRead; const AWrite: TRuleInstructionsWrite);
 begin
   inherited Create;
   FRead := ARead;
   FWrite := AWrite;
 end;
 
-function TLspInstructions.Inspect(const ARoot, AFileName, ASection: string; AWrite: Boolean): TInstructionsFile;
+function TRuleInstructionFiles.Inspect(const ARoot, AFileName, ASection: string; AWrite: Boolean): TInstructionsFile;
 var
   mPath, mText: string;
   mBytes: TBytes;
@@ -124,7 +124,7 @@ begin
   end;
 end;
 
-function TLspInstructions.Run(const ARoot: string; const ASettings: TServerSettings; const ARules: TArray<IRule>;
+function TRuleInstructionFiles.Run(const ARoot: string; const ASettings: TServerSettings; const ARules: TArray<IRule>;
   AWrite: Boolean): TArray<TInstructionsFile>;
 var
   mSection, mFileName: string;
@@ -137,7 +137,7 @@ begin
   end;
 end;
 
-class function TLspInstructions.SectionFor(const ASettings: TServerSettings; const ARules: TArray<IRule>): string;
+class function TRuleInstructionFiles.SectionFor(const ASettings: TServerSettings; const ARules: TArray<IRule>): string;
 var
   mLanguage: TTextLanguage;
   mCatalog: TRuleCatalog;
@@ -166,7 +166,7 @@ begin
   end;
 end;
 
-class function TLspInstructions.WriteRequested(const AArguments: TJSONArray): Boolean;
+class function TRuleInstructionFiles.WriteRequested(const AArguments: TJSONArray): Boolean;
 var
   mArguments: TJSONObject;
 begin
@@ -175,7 +175,7 @@ begin
     TJSONBool(mArguments.GetValue('write')).AsBoolean;
 end;
 
-class function TLspInstructions.UriOf(const AArguments: TJSONArray): string;
+class function TRuleInstructionFiles.UriOf(const AArguments: TJSONArray): string;
 var
   mArguments: TJSONObject;
 begin
@@ -187,7 +187,7 @@ begin
   end;
 end;
 
-class function TLspInstructions.StaleCount(const AFiles: TArray<TInstructionsFile>): Integer;
+class function TRuleInstructionFiles.StaleCount(const AFiles: TArray<TInstructionsFile>): Integer;
 var
   mFile: TInstructionsFile;
 begin
@@ -201,12 +201,12 @@ begin
   end;
 end;
 
-class function TLspInstructions.StateName(AState: TInstructionsState): string;
+class function TRuleInstructionFiles.StateName(AState: TInstructionsState): string;
 begin
   Result := cStateNames[AState];
 end;
 
-class function TLspInstructions.ToJson(const AFiles: TArray<TInstructionsFile>): TJSONObject;
+class function TRuleInstructionFiles.ToJson(const AFiles: TArray<TInstructionsFile>): TJSONObject;
 var
   mFiles: TJSONArray;
   mFile: TInstructionsFile;

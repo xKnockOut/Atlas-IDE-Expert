@@ -136,6 +136,9 @@
         <DCCReference Include="Source\Adapters\Adapters.Lsp.OwnershipReport.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Lsp.RuleDiagnostics.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Lsp.RuleActions.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Lsp.RuleCatalog.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Lsp.FindingsPrompt.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Lsp.BulkFix.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.ClientStart.pas"/>

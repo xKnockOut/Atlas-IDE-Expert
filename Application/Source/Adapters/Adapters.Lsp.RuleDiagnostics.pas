@@ -28,6 +28,7 @@ type
   TLspDocumentRulesAdapter = class(TInterfacedObject, ILspDocumentRules)
   private
     FCheck: IRuleDocumentCheck;
+    FCatalog: ILspRuleCatalog;
   public
     constructor Create(const ACheck: IRuleDocumentCheck);
     function SyntaxFindings(const ADocument: ITextDocument; const ADefines: TArray<string>): TArray<TRuleFinding>;
@@ -36,9 +37,13 @@ type
     function RuleFindings(const ADocument: ITextDocument; const ADefines: TArray<string>): TArray<TRuleFinding>;
     function UnusedUsesShown: Boolean;
     function OnlyImplementationShown: Boolean;
+    function Catalog: ILspRuleCatalog;
   end;
 
 implementation
+
+uses
+  Adapters.Lsp.RuleCatalog;
 
 { TLspRuleDiagnosticsAdapter }
 
@@ -69,6 +74,7 @@ constructor TLspDocumentRulesAdapter.Create(const ACheck: IRuleDocumentCheck);
 begin
   inherited Create;
   FCheck := ACheck;
+  FCatalog := TLspRuleCatalogAdapter.Wrap(ACheck.Catalog);
 end;
 
 function TLspDocumentRulesAdapter.SyntaxFindings(const ADocument: ITextDocument;
@@ -97,6 +103,11 @@ end;
 function TLspDocumentRulesAdapter.OnlyImplementationShown: Boolean;
 begin
   Result := FCheck.OnlyImplementationShown;
+end;
+
+function TLspDocumentRulesAdapter.Catalog: ILspRuleCatalog;
+begin
+  Result := FCatalog;
 end;
 
 end.
