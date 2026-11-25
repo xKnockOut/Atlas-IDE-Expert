@@ -55,7 +55,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,

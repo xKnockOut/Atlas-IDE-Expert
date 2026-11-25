@@ -8,7 +8,7 @@ uses
   System.SysUtils,
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.UI.Settings.Page.Host;
 
 type

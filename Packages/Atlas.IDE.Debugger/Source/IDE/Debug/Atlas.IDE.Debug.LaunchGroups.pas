@@ -107,7 +107,7 @@ uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Status.Registry,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
   Atlas.Core.Debug.Reattach,
   Atlas.ToolsApi.Theme.Style,

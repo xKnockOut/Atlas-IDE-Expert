@@ -74,7 +74,7 @@ implementation
 
 uses
   Atlas.Core.Debug.InstanceBreakpoint,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.Evaluator,

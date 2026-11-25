@@ -30,7 +30,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Graphics,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Plugin.Diagnostics.Processes,
   Atlas.Vcl.Forms.Dialog;
 

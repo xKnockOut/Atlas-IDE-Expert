@@ -30,7 +30,7 @@ uses
   System.SysUtils,
   Vcl.Forms,
   Atlas.Plugin.Status.Lines,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Status.Registry,
   Atlas.Core.Welcome.State,

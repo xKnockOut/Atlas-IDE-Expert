@@ -35,7 +35,7 @@ uses
   Atlas.Core.Settings.Experimental,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 { TAtlasIdeExperimental }
 

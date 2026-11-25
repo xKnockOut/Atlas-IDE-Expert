@@ -17,7 +17,7 @@ uses
   System.Types,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Settings.Reassigned;
+  Atlas.Plugin.Settings.Reassigned;
 
 type
   TAtlasReassignedUse = record

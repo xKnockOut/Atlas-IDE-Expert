@@ -30,7 +30,7 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.LineChanges,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Contracts.LineChanges,

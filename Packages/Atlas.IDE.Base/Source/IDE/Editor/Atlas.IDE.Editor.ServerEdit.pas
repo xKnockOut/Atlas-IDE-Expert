@@ -13,7 +13,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Lsp.WorkspaceEdits,

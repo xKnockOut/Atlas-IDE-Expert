@@ -18,7 +18,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ActnList,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Groups,
   Atlas.Core.Settings.Search;
 
@@ -83,7 +83,7 @@ uses
   System.Actions,
   Vcl.Menus,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings;
 
 { TAtlasSettingsSearchBox }

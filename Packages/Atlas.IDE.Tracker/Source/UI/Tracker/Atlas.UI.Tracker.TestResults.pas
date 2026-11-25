@@ -269,7 +269,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Text.TestResults,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.UI.Tracker.TestResults.Strings,
   Atlas.Core.Tracker.TestResults,

@@ -18,7 +18,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Transfer;
 
 type
@@ -67,9 +67,9 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Vcl.Forms,
-  Atlas.Core.Settings.ProfileData,
+  Atlas.Plugin.Settings.ProfileData,
   Atlas.Core.Projects.Setup,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Transfer,
   Atlas.IDE.Foundation.Settings,

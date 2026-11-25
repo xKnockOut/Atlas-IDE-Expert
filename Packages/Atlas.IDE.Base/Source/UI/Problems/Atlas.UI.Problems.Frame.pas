@@ -58,7 +58,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Problems.ScopeProjects,
-  Atlas.Core.Settings.ProblemsUpdate,
+  Atlas.Plugin.Settings.ProblemsUpdate,
   Atlas.UI.Problems.ScopeBox,
   Atlas.UI.Problems.Frame.List;
 
@@ -180,7 +180,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Problems.Prompt,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Problems.Strings,
   Atlas.Vcl.Theme.Service;
 

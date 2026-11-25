@@ -8,7 +8,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Core.Debug.MethodBreakpoints,
   Atlas.UI.Debug.MethodBreakpoints;
 

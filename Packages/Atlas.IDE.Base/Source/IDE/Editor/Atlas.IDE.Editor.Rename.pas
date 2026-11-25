@@ -38,7 +38,7 @@ uses
   System.JSON,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Lsp.WorkspaceEdits,

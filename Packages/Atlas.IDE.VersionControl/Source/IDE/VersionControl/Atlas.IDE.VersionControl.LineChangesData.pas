@@ -135,7 +135,7 @@ uses
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Plugin.Lsp.TextChanges,
   Atlas.Plugin.Lsp.WorkspaceEdits,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.ToolsApi.Editor.Refresh,

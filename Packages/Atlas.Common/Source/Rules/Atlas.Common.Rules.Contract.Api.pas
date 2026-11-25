@@ -190,6 +190,17 @@ type
       out ARun: TRuleBulkFixRun; out AError: string): Boolean;
   end;
 
+  /// <summary>Prüfregeln über einen Text, etwa für get_diagnostics, hook_check, check_code und explain_finding:
+  /// Syntaxfehler, Sprachmerkmale und die Treffer der Regeln. Regeln, Projekt (Symbolindex, Projektdienste, #1112)
+  /// und Symbole samt Include-Dateien (#860) je Datei hat der Anbieter.</summary>
+  IRuleTextChecks = interface
+    ['{CDB52403-25B0-43A2-A3F4-9B097D36A81D}']
+    /// <summary>Treffer in AText, dem Inhalt von AFileName (absoluter Pfad); ARelativePath (relativ zum
+    /// Arbeitsordner) für Regeln, overrides und Ausschlüsse aus ASettings.</summary>
+    function Check(const AFileName, ARelativePath, AText: string; const ASettings: TServerSettings):
+      TArray<TRuleFinding>;
+  end;
+
   /// <summary>Projektkonventionen (#272) für Assistenten: Regelprofil, Formatstil, Benennungsregeln und aktive
   /// Prüfregeln als Markdown; die Regeln hat der Anbieter.</summary>
   IRuleConventions = interface

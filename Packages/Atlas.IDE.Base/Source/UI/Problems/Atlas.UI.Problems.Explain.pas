@@ -106,7 +106,7 @@ uses
   System.Math,
   Vcl.Graphics,
   Atlas.Vcl.Controls.WrapLabel,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Problems.Strings;
 
 const

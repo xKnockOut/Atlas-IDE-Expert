@@ -2,7 +2,7 @@
 
 // Texte zu „Regionen beim Öffnen“ (#1814, editor.regionFolds): Befehle zum Zu- und Aufklappen aller Regionen und
 // die Auswahl auf der Optionsseite, deutsch und englisch. Dazu „Große Blöcke einklappen“ (#2795, editor.blockFolds):
-// Befehle, Einstellungen und Meldungen. Eigene Tabelle, weil Atlas.UI.Strings über der Grenze
+// Befehle, Einstellungen und Meldungen. Eigene Tabelle, weil Atlas.Plugin.Localization.Strings über der Grenze
 // der Unitlänge liegt.
 
 interface

@@ -84,7 +84,7 @@ uses
   Atlas.IDE.Contracts.Tests,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.IDE.Contracts.Rules,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings;
 
 function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;

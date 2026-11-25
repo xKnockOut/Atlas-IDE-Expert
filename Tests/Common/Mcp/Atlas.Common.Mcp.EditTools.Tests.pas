@@ -184,6 +184,13 @@ begin
   Inc(Writes);
 end;
 
+/// <summary>Scope, der nur mit ARule prüft, ohne Projekt und Symbole. ARule ohne const: Ein direkt übergebenes
+/// T….Create wird sonst nie freigegeben.</summary>
+function ScopeWith(ARule: IRule): TMcpRuleScope;
+begin
+  Result := TMcpRuleScope.Checking(TMcpComposition.TextChecksWith([ARule], nil, nil), Default(TServerSettings), '');
+end;
+
 function Tools(AFiles: TMemoryFiles): TMcpEditTools;
 begin
   Result := TMcpEditTools.Create(nil,
@@ -565,11 +572,11 @@ begin
   mEdit := Tools(mFiles);
   try
     mFiles.Files.Add('U.pas', 'unit U;'#10'interface'#10'var'#10'  Alt: Integer;'#10'implementation'#10'end.');
-    mListed := mEdit.ApplyCodeAction(TMcpRuleScope.Create([TRenameRule.Create], Default(TServerSettings), ''),
+    mListed := mEdit.ApplyCodeAction(ScopeWith(TRenameRule.Create),
       'U.pas', 4, '', False);
     Assert.Contains(mListed, 'Alt durch Neu ersetzen');
     Assert.AreEqual(0, mFiles.Writes, 'ohne title nur auflisten');
-    mEdit.ApplyCodeAction(TMcpRuleScope.Create([TRenameRule.Create], Default(TServerSettings), ''),
+    mEdit.ApplyCodeAction(ScopeWith(TRenameRule.Create),
       'U.pas', 4, 'test-alt', False);
     Assert.Contains(mFiles.Files['U.pas'], '  Neu: Integer;');
     // Die Regelkennung wählt nie das Unterdrücken (#1109); das geht nur über seinen Titel.
@@ -577,11 +584,11 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        mEdit.ApplyCodeAction(TMcpRuleScope.Create([TNoFixRule.Create], Default(TServerSettings), ''),
+        mEdit.ApplyCodeAction(ScopeWith(TNoFixRule.Create),
           'U.pas', 4, 'test-ohne', False);
       end, EMcpToolError);
     Assert.IsFalse(Pos('lsp-ignore', mFiles.Files['U.pas']) > 0, 'nichts unterdrückt');
-    mEdit.ApplyCodeAction(TMcpRuleScope.Create([TNoFixRule.Create], Default(TServerSettings), ''), 'U.pas', 4,
+    mEdit.ApplyCodeAction(ScopeWith(TNoFixRule.Create), 'U.pas', 4,
       '"test-ohne" für diese Zeile unterdrücken', False);
     Assert.IsTrue(Pos('lsp-ignore: test-ohne', mFiles.Files['U.pas']) > 0, 'mit Titel unterdrückt');
   finally
@@ -656,14 +663,16 @@ begin
         mAudit := mAudit + AText;
       end;
     mFiles.Files.Add('U.pas', cAssignedFree);
-    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
+    mReport := mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, ''),
       ['U.pas'], ['redundant-assigned-free'], '', True);
     Assert.Contains(mReport, 'Vorschau: 1 Korrekturen in 1 Dateien');
     Assert.Contains(mReport, '--- a/U.pas');
     Assert.Contains(mReport, '-  if Assigned(AList) then');
     Assert.AreEqual(0, mFiles.Writes, 'Vorschau schreibt nichts');
     Assert.AreEqual('', mAudit);
-    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
+    mReport := mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, ''),
       ['U.pas'], ['redundant-assigned-free'], '', False);
     Assert.Contains(mReport, '1 Korrekturen in 1 Dateien geschrieben');
     Assert.AreEqual(1, mFiles.Writes);
@@ -707,7 +716,8 @@ begin
       mFiles.Files.Add(mNames[High(mNames)], StringReplace(cAssignedFree, 'unit U;',
         Format('unit U%d;', [mIndex]), []));
     end;
-    Result := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), mNames,
+    Result := mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, ''), mNames,
       ['redundant-assigned-free'], '', False);
     AWrites := mFiles.Writes;
   finally
@@ -749,7 +759,8 @@ begin
       end;
     mFiles.Files.Add('U.pas', cAssignedFree);
     mFiles.Files.Add('V.pas', StringReplace(cAssignedFree, 'unit U;', 'unit V;', []));
-    mReport := mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas', 'V.pas'],
+    mReport := mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+      TServerSettings.Default, ''), ['U.pas', 'V.pas'],
       ['redundant-assigned-free'], '', False);
     Assert.Contains(mReport, 'Nicht angefasst (ungespeicherte Änderungen im Editor): U.pas');
     Assert.AreEqual(cAssignedFree, mFiles.Files['U.pas']);
@@ -772,13 +783,14 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
+        mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil), TServerSettings.Default, ''),
           ['U.pas'], ['redundant-assigned-free'], 'medium', True);
       end, EMcpToolError);
     Assert.WillRaise(
       procedure
       begin
-        mEdit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'], nil, '', True);
+        mEdit.FixFindings(TMcpRuleScope.Checking(TMcpComposition.TextChecks(nil, nil),
+          TServerSettings.Default, ''), ['U.pas'], nil, '', True);
       end, EMcpToolError);
     Assert.AreEqual(0, mFiles.Writes);
   finally

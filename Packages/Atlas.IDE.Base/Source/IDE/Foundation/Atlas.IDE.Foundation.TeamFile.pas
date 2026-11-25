@@ -2,7 +2,7 @@
 
 // Projektdatei .atlas des aktiven Projekts (#486) für alle Teile des Plugins.
 // Foundation: nur Open Tools API, VCL-Zeitgeber und Atlas.Core; Lesen
-// und Prüfen in Atlas.Core.Settings.TeamFile.
+// und Prüfen in Atlas.Plugin.Settings.TeamFile.
 // - Current: gelesener Stand für das aktive Projekt; ohne Projekt, ohne Datei,
 //   mit ausgeschalteter Einstellung TeamFile oder vor Start leer (Empty). Eine
 //   fehlerhafte Datei ergibt Valid = False: Es gelten die persönlichen
@@ -37,7 +37,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.ExtCtrls,
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 type
   TAtlasIdeTeamFile = class

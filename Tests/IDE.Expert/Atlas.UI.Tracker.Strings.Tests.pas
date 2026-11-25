@@ -24,8 +24,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings,
-  Atlas.UI.Strings.Tests,
+  Atlas.Plugin.Localization.Strings,
+  Atlas.Plugin.Localization.Strings.Tests,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Development.Strings,
   Atlas.UI.Tracker.Board.Strings,

@@ -97,6 +97,7 @@
         <DCCReference Include="Source\Adapters\Adapters.Mcp.Formatting.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Mcp.CompilerFixes.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Mcp.BulkFix.pas"/>
+        <DCCReference Include="Source\Adapters\Adapters.Mcp.TextChecks.pas"/>
         <DCCReference Include="Source\Adapters\Adapters.Mcp.Conventions.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.Configuration.pas"/>
         <DCCReference Include="Source\Shell\Shell.Composition.FileChanges.pas"/>

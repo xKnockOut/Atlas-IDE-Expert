@@ -37,7 +37,7 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.BuildPipeline.Strings;
 
 { TAtlasIdeBuildSummary }

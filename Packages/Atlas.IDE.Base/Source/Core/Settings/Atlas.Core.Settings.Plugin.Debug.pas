@@ -7,7 +7,7 @@
 interface
 
 uses
-  Atlas.Core.Settings.KeyCodes,
+  Atlas.Plugin.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const
@@ -461,9 +461,9 @@ implementation
 uses
   System.Math,
   System.SysUtils,
-  Atlas.Core.Settings.EventBreakNames,
-  Atlas.Core.Settings.DataBreakClasses,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.EventBreakNames,
+  Atlas.Plugin.Settings.DataBreakClasses,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Text.StepFilter;
 
 { TAtlasPluginDebugSettings }

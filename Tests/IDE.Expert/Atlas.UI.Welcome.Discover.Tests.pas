@@ -29,7 +29,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   System.DateUtils,
   Atlas.Core.Welcome.Discover,
   Atlas.UI.Welcome.Discover,

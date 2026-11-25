@@ -30,7 +30,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.ProcessesDialog;
 

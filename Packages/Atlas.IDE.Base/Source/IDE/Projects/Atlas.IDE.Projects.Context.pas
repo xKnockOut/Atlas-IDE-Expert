@@ -71,7 +71,7 @@ uses
   System.Variants,
   System.Win.Registry,
   Winapi.Windows,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Versions.Project,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Host,

@@ -61,8 +61,8 @@ uses
   Atlas.Plugin.Files.ExternalChanges,
   Atlas.Plugin.Files.Format,
   Atlas.Plugin.Localization.Language,
-  Atlas.UI.Strings,
-  Atlas.UI.Strings.Tests;
+  Atlas.Plugin.Localization.Strings,
+  Atlas.Plugin.Localization.Strings.Tests;
 
 { TAtlasTextLanguageTests }
 

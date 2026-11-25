@@ -39,7 +39,7 @@ uses
   Atlas.Plugin.Files.TextFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Settings.ModuleSwitches;
 
@@ -122,14 +122,14 @@ uses
   Atlas.Core.Settings.QueryMigration,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Settings.SchemaData,
-  Atlas.Core.Settings.Layers,
+  Atlas.Plugin.Settings.SchemaData,
+  Atlas.Plugin.Settings.Layers,
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.Experimental,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Files.DataFile,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Core.Settings.Contract,
   Atlas.Plugin.Files.Contract;
 

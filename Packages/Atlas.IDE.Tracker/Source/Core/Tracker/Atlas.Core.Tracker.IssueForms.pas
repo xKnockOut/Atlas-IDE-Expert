@@ -25,7 +25,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 type
 {$SCOPEDENUMS ON}

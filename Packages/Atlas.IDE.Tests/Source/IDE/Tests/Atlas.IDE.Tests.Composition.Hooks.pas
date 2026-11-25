@@ -66,7 +66,7 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Tests.LeakSetup,
   Atlas.IDE.Projects.Summaries,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 /// <summary>Builds auf Auftrag des Moduls Build-Pipeline (Vertrag); False ohne laufendes Modul.</summary>
 function BuildJobs(out AJobs: IAtlasBuildJobs): Boolean;

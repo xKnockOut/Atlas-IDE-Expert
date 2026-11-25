@@ -55,7 +55,7 @@ uses
   System.Classes,
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Reassigned,
+  Atlas.Plugin.Settings.Reassigned,
   Atlas.UI.Settings.Page,
   Vcl.Menus,
   Atlas.UI.Settings.Page.TestSupport,

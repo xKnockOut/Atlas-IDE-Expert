@@ -116,7 +116,7 @@ uses
   Vcl.Graphics,
   Vcl.Clipbrd,
   Atlas.Core.UnitSearch.Sections,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Search.Strings;
 
 function WindowCaption(const AOptions: TAtlasUnitSearchOptions): string;

@@ -37,7 +37,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.Baseline,
+  Atlas.Plugin.Settings.Baseline,
   Atlas.Core.Projects.Summary;
 
 type

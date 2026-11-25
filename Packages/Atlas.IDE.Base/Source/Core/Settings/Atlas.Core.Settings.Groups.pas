@@ -27,7 +27,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Settings.Catalog;
+  Atlas.Plugin.Settings.Catalog;
 
 type
   /// <summary>Warum eine Einstellung gesperrt ist: nicht, Hauptschalter aus, experimentelle Funktionen aus.</summary>

@@ -59,7 +59,7 @@ implementation
 uses
   Winapi.Windows,
   System.JSON,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.CodeInsight.Strings,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Status.Registry,

@@ -17,7 +17,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>Art einer Vorlage; der Name kommt aus Atlas.UI.Strings.</summary>
+  /// <summary>Art einer Vorlage; der Name kommt aus Atlas.Plugin.Localization.Strings.</summary>
   TAtlasTrackerTemplateKind = (AssignedToMe, CurrentSprint, CreatedByMe, RecentlyChanged);
 {$SCOPEDENUMS OFF}
 

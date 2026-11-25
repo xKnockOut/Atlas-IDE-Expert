@@ -30,7 +30,7 @@ uses
   Atlas.Text.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Help.Strings,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings;

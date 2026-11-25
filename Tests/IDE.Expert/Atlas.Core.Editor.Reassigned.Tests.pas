@@ -37,7 +37,7 @@ uses
   Atlas.Core.Editor.Reassigned,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Reassigned,
+  Atlas.Plugin.Settings.Reassigned,
   Atlas.Plugin.Style.Color;
 
 const

@@ -10,24 +10,18 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.CheckContext,
   Atlas.Common.Rules.Contract.Api;
 
 type
-  TRuleBulkFixProvider = class(TInterfacedObject, IRuleBulkFix, IRuleWorkspaceBulkFix)
+  /// <summary>ARules im Konstruktor von TBoundRuleProvider: alle Regeln.</summary>
+  TRuleBulkFixProvider = class(TBoundRuleProvider, IRuleBulkFix, IRuleWorkspaceBulkFix)
   private
-    FRules: TArray<IRule>;
-    FProject: TCheckProjectFunc;
-    FSource: TCheckSourceFunc;
     FContexts: TRuleContextProvider;
     FRead: TDocumentReadText;
     function IRuleWorkspaceBulkFix.Run = RunFiles;
   public
-    /// <summary>ARules: alle Regeln; AProject nil = ohne Index, ASource nil = Vordefinitionen (Win32).</summary>
-    constructor Create(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
-      const ASource: TCheckSourceFunc);
     /// <summary>Für IRuleWorkspaceBulkFix: AContexts gibt das Umfeld je Datei (URI), ARead den Text (Editor vor
     /// Platte), ASource die Symbole (nil = Vordefinitionen).</summary>
     constructor CreateForWorkspace(const AContexts: TRuleContextProvider; const ARead: TDocumentReadText;
@@ -44,6 +38,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Uris,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Rules.Catalog;
 
@@ -82,15 +77,6 @@ end;
 
 { TRuleBulkFixProvider }
 
-constructor TRuleBulkFixProvider.Create(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
-  const ASource: TCheckSourceFunc);
-begin
-  inherited Create;
-  FRules := ARules;
-  FProject := AProject;
-  FSource := ASource;
-end;
-
 function TRuleBulkFixProvider.Run(const AFiles: TArray<TRuleBulkFixInput>; const AFixRules: TArray<string>;
   const AMinConfidence: string; const ASettings: TServerSettings; out ARun: TRuleBulkFixRun;
   out AError: string): Boolean;
@@ -128,10 +114,9 @@ end;
 constructor TRuleBulkFixProvider.CreateForWorkspace(const AContexts: TRuleContextProvider;
   const ARead: TDocumentReadText; const ASource: TCheckSourceFunc);
 begin
-  inherited Create;
+  inherited Create(nil, nil, ASource);
   FContexts := AContexts;
   FRead := ARead;
-  FSource := ASource;
 end;
 
 function TRuleBulkFixProvider.RunFiles(const AFileNames: TArray<string>; const AFixRules: TArray<string>;

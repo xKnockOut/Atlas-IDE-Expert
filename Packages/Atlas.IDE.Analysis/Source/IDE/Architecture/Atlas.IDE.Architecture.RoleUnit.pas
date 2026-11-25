@@ -30,7 +30,7 @@ uses
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Problems.Files,
   Atlas.IDE.Generate.NewFile,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.Architecture.RoleUnitDialog;
 

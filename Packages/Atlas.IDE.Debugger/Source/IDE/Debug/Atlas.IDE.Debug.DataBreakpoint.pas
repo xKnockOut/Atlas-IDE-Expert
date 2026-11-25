@@ -100,7 +100,7 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Core.Debug.InstanceBreakpoint,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Host,

@@ -45,7 +45,7 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Setup,

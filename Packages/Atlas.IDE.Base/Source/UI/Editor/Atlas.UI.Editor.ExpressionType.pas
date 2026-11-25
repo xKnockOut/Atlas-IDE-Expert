@@ -62,7 +62,7 @@ uses
   System.UITypes,
   System.Math,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Vcl.Popup.Accessibility;
 

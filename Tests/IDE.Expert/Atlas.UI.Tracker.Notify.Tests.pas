@@ -28,7 +28,7 @@ uses
   System.SysUtils,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Notify,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Notify;
 
 function Notice(const AKey: string): TAtlasTrackerNotice;

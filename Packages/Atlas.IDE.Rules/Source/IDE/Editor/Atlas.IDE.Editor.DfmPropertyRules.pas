@@ -38,7 +38,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   ToolsAPI,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Rules.Strings,
   Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Lsp.WorkspaceEdits,

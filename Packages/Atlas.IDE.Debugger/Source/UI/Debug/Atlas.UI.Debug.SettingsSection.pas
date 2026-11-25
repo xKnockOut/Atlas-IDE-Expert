@@ -14,7 +14,7 @@ interface
 uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Text.StepFilter,
   Atlas.UI.Settings.Section;
 
@@ -60,12 +60,12 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.EventBreakNames,
-  Atlas.Core.Settings.DataBreakClasses,
+  Atlas.Plugin.Settings.EventBreakNames,
+  Atlas.Plugin.Settings.DataBreakClasses,
   Atlas.Core.Settings.Plugin.Debug,
-  Atlas.Core.Settings.FolderList,
+  Atlas.Plugin.Settings.FolderList,
   Atlas.Core.Debug.EventLog,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Leaks.Strings,
   Atlas.UI.Debug.Settings.Strings,
   Atlas.UI.Debug.Values.Strings,

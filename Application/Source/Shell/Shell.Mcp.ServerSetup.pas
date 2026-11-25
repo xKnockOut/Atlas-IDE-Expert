@@ -189,7 +189,7 @@ begin
   Result.ReadText := ReadSourceText;
   Result.ResolveFile := ResolveFileOf(AServices.Guard);
   Result.ResolveUnit := UnitFileOf(AServices.Index, AServices.Group, AServices.Guard);
-  Result.Changes := ChangesOf(TMcpServices.HostAdapters, AServices.Group, AServices.Root);
+  Result.Changes := ChangesOf(TMcpServices.GroupAdapters(AServices.Group), AServices.Group, AServices.Root);
   Result.Register;
 end;
 

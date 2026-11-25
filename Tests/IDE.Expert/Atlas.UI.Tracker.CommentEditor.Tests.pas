@@ -70,7 +70,7 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.CommentEditor,
