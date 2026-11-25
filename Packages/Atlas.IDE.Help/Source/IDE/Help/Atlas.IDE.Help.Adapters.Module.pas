@@ -11,7 +11,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Base.Foundation.Help;
 
 type
@@ -38,7 +38,7 @@ uses
   Winapi.Windows,
   Vcl.Menus,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Core.Help.Links,
   Atlas.UI.Help.Strings,
   Atlas.IDE.Problems.Caret,

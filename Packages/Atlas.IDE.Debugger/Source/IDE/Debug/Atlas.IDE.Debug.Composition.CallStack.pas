@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 /// <summary>Teil „DebugCallStackWindow“; Serverantworten über AScope.</summary>
 function CallStackParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePart>;
@@ -22,7 +22,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.CallStack,

@@ -29,7 +29,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.MutationResults,

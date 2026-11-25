@@ -11,7 +11,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   TAtlasAnalysisModule = class(TInterfacedObject, IAtlasModule, IAtlasCommandSource, IAtlasMenuSource,
@@ -40,7 +40,7 @@ implementation
 uses
   Atlas.Text.Product.Version,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Core.Commands.ProjectSelection,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Architecture.Service,

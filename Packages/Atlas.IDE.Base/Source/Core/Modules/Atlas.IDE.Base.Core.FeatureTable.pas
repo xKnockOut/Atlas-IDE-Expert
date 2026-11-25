@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.FeatureTable;
+﻿unit Atlas.IDE.Base.Core.FeatureTable;
 
 // Teile des Plugins in Startreihenfolge: je Teil eine
 // Bedingung (Stufe des abgesicherten Starts #722 und Einstellungen), eine
@@ -20,13 +20,13 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Diagnostics.StartTimes;
 
 type
   /// <summary>Bedingung je Stufe des abgesicherten Starts (#722) und Einstellung; der Typ steht im Modulvertrag.
   /// </summary>
-  TAtlasFeatureWanted = Atlas.Core.Modules.Contract.TAtlasFeatureWanted;
+  TAtlasFeatureWanted = Atlas.IDE.Base.Foundation.Modules.TAtlasFeatureWanted;
   /// <summary>Ist das Modul AModule an (Modul-Schalter, #1454)?</summary>
   TAtlasModuleIsOn = reference to function(const AModule: string): Boolean;
 

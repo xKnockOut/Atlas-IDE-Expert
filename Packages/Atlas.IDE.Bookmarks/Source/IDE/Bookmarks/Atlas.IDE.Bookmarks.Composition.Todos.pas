@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 /// <summary>Alle TODOs des aktiven Projekts.</summary>
 procedure AllProjectTodos(const AScope: IAtlasModuleScope);

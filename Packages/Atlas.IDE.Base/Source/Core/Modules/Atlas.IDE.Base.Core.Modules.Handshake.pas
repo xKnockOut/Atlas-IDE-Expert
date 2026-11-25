@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Handshake;
+﻿unit Atlas.IDE.Base.Core.Modules.Handshake;
 
 // Versions-Handschlag zwischen Base und Modul (#1455, Regel 7): Base
 // exportiert AtlasCoreContractVersion unter festem Namen. Ein Modul fragt sie
@@ -47,7 +47,7 @@ function AtlasCoreContractVersion: Integer; stdcall;
 implementation
 
 uses
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 function AtlasCoreContractVersion: Integer; stdcall;
 begin

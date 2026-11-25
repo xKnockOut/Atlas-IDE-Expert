@@ -30,12 +30,13 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.ExtCtrls,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Base.Foundation.WelcomeTiles,
-  Atlas.IDE.Welcome.Adapters.Tiles;
+  Atlas.IDE.Welcome.Adapters.Tiles,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TFakeView = class(TInterfacedObject, IAtlasWelcomeTileView)

@@ -13,7 +13,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   /// <summary>Ein Assistent der Galerie: Befehl, Name und Beschreibung.</summary>

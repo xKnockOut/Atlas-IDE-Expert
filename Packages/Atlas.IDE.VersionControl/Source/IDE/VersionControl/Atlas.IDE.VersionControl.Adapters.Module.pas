@@ -9,7 +9,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   TAtlasVcsModule = class(TInterfacedObject, IAtlasModule, IAtlasAppliesSettings, IAtlasFollowsTheme)
@@ -33,7 +33,7 @@ implementation
 
 uses
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.VersionControl.LineChanges;
 

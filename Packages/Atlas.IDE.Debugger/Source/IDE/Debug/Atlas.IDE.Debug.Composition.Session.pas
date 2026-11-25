@@ -16,7 +16,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 /// <summary>Exception-Verlauf, nur eigener Code und Exception-Leiste.</summary>
 function DebugExceptionParts: TArray<IAtlasFeaturePart>;
@@ -63,7 +63,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.Plugin.Status.Registry,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,

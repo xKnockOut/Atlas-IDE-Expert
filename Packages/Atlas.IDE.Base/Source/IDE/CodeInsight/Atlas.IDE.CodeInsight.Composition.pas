@@ -23,7 +23,7 @@ uses
   Atlas.Plugin.Diagnostics.Teardown,
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Plugin.Diagnostics.Hangs,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.StackCapture,
   Atlas.IDE.Foundation.Settings,
@@ -41,7 +41,7 @@ uses
   Atlas.IDE.CodeInsight.Composition.Settings,
   Atlas.IDE.CodeInsight.Composition.Services,
   Atlas.IDE.CodeInsight.Composition.Leftovers,
-  Atlas.Core.Diagnostics.ModuleHost;
+  Atlas.IDE.Base.Core.ModuleHost;
 
 /// <summary>Sicherung, Protokoll, Stacktraces, Sprache, Versionsverwaltung und Atlas-Symbol: vor allen Teilen.
 /// </summary>

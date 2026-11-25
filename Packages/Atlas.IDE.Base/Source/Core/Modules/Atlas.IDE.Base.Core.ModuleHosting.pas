@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.ModuleHosting;
+﻿unit Atlas.IDE.Base.Core.ModuleHosting;
 
 // Base startet die angemeldeten Module über seine Feature-Tabelle (#1455,
 // Modulregeln 1, 2 und 5):
@@ -21,8 +21,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.FeatureTable;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.FeatureTable,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TAtlasModuleHosting = class
@@ -83,7 +84,7 @@ implementation
 
 uses
   Atlas.Text.LogMarks,
-  Atlas.Core.Modules.Watch;
+  Atlas.IDE.Base.Core.Modules.Watch;
 
 { TAtlasModuleHosting }
 

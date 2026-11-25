@@ -10,7 +10,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Base.Foundation.BuildTools,
   Atlas.IDE.Tasks.Runner;
 
@@ -53,7 +53,7 @@ implementation
 uses
   Atlas.Text.Product.Version,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Core.StartProfiles.Store,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.CompilerSwitches,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.ModuleHosting.Tests;
+﻿unit Atlas.IDE.Base.Core.ModuleHosting.Tests;
 
 // Tests zu TAtlasModuleHosting (#1455): Module der Registry als Teile der
 // Feature-Tabelle, spätes An- und Abmelden, Mindeststufe und Modulschalter.
@@ -32,11 +32,11 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.FeatureParts,
-  Atlas.Core.Diagnostics.ModuleHosting,
-  Atlas.Core.Diagnostics.FeatureTable,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.ModuleHosting,
+  Atlas.IDE.Base.Core.FeatureTable,
   Atlas.Tests.Lists;
 
 type

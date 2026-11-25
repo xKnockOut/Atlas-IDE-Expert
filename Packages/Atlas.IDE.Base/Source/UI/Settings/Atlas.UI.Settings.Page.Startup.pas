@@ -45,7 +45,6 @@ implementation
 uses
   System.Math,
   Vcl.Controls,
-  Atlas.Core.Diagnostics.SafeMode,
   Atlas.UI.Settings.Bindings,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.Plugin.Localization.Strings,
@@ -62,6 +61,9 @@ const
   cUpdatesInstallModes: array[0..2] of string = ('ask', 'auto', 'off');
   cUpdatesChannels: array[0..1] of string = ('stable', 'prerelease');
   cUpdatesNewModulesModes: array[0..2] of string = ('ask', 'install', 'skip');
+  /// <summary>Taste für den abgesicherten Start (SafeStartupKey) in der Reihenfolge der Anzeige; unbekannt gilt die
+  /// erste (wie beim Start).</summary>
+  cSafeKeys: array[0..2] of string = ('shift', 'ctrl', 'none');
   /// <summary>Breite der Auswahl der Taste für den abgesicherten Start (kurze Namen).</summary>
   cSafeKeyWidth = 120;
 
@@ -69,14 +71,7 @@ const
 
 procedure TAtlasSettingsStartupPart.Load(const ASettings: TAtlasPluginSettings);
 begin
-  case TAtlasSafeMode.KeyOf(ASettings.SafeStartupKey) of
-    TAtlasStartupKey.Ctrl:
-      FSafeKey.Choice := 1;
-    TAtlasStartupKey.None:
-      FSafeKey.Choice := 2;
-  else
-    FSafeKey.Choice := 0;
-  end;
+  FSafeKey.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.SafeStartupKey, cSafeKeys);
   FUndoOnConflict.Choice := Ord(TAtlasUndoNames.ParseConflictMode(ASettings.UndoMultiFileOnConflict));
   FUndoNewFiles.Choice := Ord(TAtlasUndoNames.ParseNewFiles(ASettings.UndoMultiFileNewFiles));
   FUpdatesInstall.Choice := TAtlasSettingsBindings.ChoiceOf(ASettings.UpdatesInstall, cUpdatesInstallModes);
@@ -86,14 +81,7 @@ end;
 
 procedure TAtlasSettingsStartupPart.Save(var ASettings: TAtlasPluginSettings);
 begin
-  case FSafeKey.Choice of
-    1:
-      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Ctrl);
-    2:
-      ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.None);
-  else
-    ASettings.SafeStartupKey := TAtlasSafeMode.KeyText(TAtlasStartupKey.Shift);
-  end;
+  ASettings.SafeStartupKey := cSafeKeys[EnsureRange(FSafeKey.Choice, 0, 2)];
   ASettings.UndoMultiFileOnConflict := TAtlasUndoNames.ConflictModeName(TAtlasUndoConflictMode(
     Max(0, FUndoOnConflict.Choice)));
   ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
@@ -124,7 +112,7 @@ begin
   FSafeKey.Left := FSafeKey.ScaleValue(cFieldLeft);
   FSafeKey.Top := 1;
   FSafeKey.Width := FSafeKey.ScaleValue(cSafeKeyWidth);
-  // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
+  // Reihenfolge wie cSafeKeys: Umschalt, Strg, keine.
   FSafeKey.SetChoices([TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyShift),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyCtrl),
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsSafeKeyNone)]);

@@ -27,8 +27,8 @@ uses
   System.Classes,
   System.SyncObjs,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.SafeMode,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.SafeMode,
   Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Status.Registry,
   Atlas.UI.Diagnostics.SafeModeNotice;

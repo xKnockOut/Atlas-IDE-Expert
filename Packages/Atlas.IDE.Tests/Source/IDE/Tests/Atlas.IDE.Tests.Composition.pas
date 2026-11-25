@@ -64,16 +64,16 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Build.Contract,
   Atlas.IDE.Base.Foundation.Tests,
   Atlas.UI.Tests.SettingsSection,
   Atlas.Text.Product.Version,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.VersionControl.Repository.Contract,
   Atlas.VersionControl.Repository.Providers.ProcessRunner,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Tests.Debug, // TAtlasTestCompareHooks
   Atlas.IDE.Tests.Output,

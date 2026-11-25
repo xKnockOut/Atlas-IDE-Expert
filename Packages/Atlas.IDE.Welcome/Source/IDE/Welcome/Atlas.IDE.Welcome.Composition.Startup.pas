@@ -14,7 +14,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Welcome.Composition.Areas;
 
@@ -35,7 +35,7 @@ implementation
 uses
   System.Types,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Plugin.Status.Lines,
   Atlas.Core.Welcome.Sections,
   Atlas.IDE.Base.Foundation.BuildTools,
@@ -54,7 +54,8 @@ uses
   Atlas.IDE.Welcome.Adapters.Projects,
   Atlas.IDE.Welcome.Adapters.Tiles,
   Atlas.IDE.Welcome.Adapters.Listener,
-  Atlas.Core.Commands.Contract;
+  Atlas.Core.Commands.Contract,
+  Atlas.Plugin.Registration.Contract;
 
 var
   GWelcome: TAtlasIdeWelcome;

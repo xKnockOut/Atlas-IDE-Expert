@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.KnownPackages.Tests;
+﻿unit Atlas.IDE.Base.Core.Modules.KnownPackages.Tests;
 
 // Module unter „Known Packages“: Erkennen der
 // Modul-BPLs neben Base, fehlende, abgeschaltete und aus anderem Ordner
@@ -31,7 +31,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.KnownPackages;
+  Atlas.IDE.Base.Core.Modules.KnownPackages;
 
 const
   cDir = 'C:\Atlas\Win32\';

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.SafeMode.Tests;
+﻿unit Atlas.IDE.Base.Core.SafeMode.Tests;
 
 // Abgesicherter Start (#722): Startmarke anlegen und lesen, Erkennung eines
 // Absturzes, Zählung wiederholter Abstürze, langsamer Start ist kein Absturz
@@ -67,8 +67,8 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.SafeMode;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.SafeMode;
 
 function Options: TAtlasSafeOptions;
 begin

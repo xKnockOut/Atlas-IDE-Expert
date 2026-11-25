@@ -139,8 +139,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Recording,
   Atlas.Core.Projects.Trends,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Editor.SourceFiles,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Base.Foundation.VersionControl;
