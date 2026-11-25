@@ -94,6 +94,12 @@ type
     procedure NoteText(AKind: TAtlasMutationNoteKind; const AText: string);
     procedure CloseProject;
     procedure Step;
+    /// <summary>Stand ALines ins Schattenprojekt schreiben; False, wenn das scheiterte (Lauf dann beendet).</summary>
+    function WriteMutant(const ALines: TArray<string>): Boolean;
+    /// <summary>Schattenprojekt bauen; lehnt es ab oder wirft es, endet der Lauf.</summary>
+    procedure BuildMutant;
+    /// <summary>Test-EXE AExecutable zum Lauf ARun starten; wirft das, endet der Lauf.</summary>
+    procedure RunTests(ARun: Integer; const AExecutable: string);
     procedure Rate(AStatus: TAtlasMutationStatus; const ABy: string);
     procedure Advance;
     procedure Finish(ACancelled: Boolean);
@@ -276,14 +282,8 @@ end;
 
 procedure TAtlasMutationFlow.Step;
 var
-  mProject: IAtlasMutationShadowProject;
   mLines: TArray<string>;
-  mReason: string;
-  mBuilds: Boolean;
-  mRun: Integer;
 begin
-  mProject := FProject;
-  mRun := FRun;
   if FCancelled then
   begin
     Finish(True);
@@ -295,8 +295,24 @@ begin
     Rate(TAtlasMutationStatus.Invalid, '');
     Exit;
   end;
+  if WriteMutant(mLines) then
+  begin
+    BuildMutant;
+  end;
+end;
+
+function TAtlasMutationFlow.WriteMutant(const ALines: TArray<string>): Boolean;
+var
+  mProject: IAtlasMutationShadowProject;
+  mRun: Integer;
+begin
+  // Eigene Referenz: Endet der Lauf im Aufruf, kann er FProject freigeben.
+  mProject := FProject;
+  mRun := FRun;
+  Result := False;
   try
-    mProject.Write(mLines);
+    mProject.Write(ALines);
+    Result := True;
   except
     on E: Exception do
     begin
@@ -304,10 +320,22 @@ begin
       begin
         raise;
       end;
-      Exit;
     end;
   end;
+end;
+
+procedure TAtlasMutationFlow.BuildMutant;
+var
+  mProject: IAtlasMutationShadowProject;
+  mReason: string;
+  mBuilds: Boolean;
+  mRun: Integer;
+begin
+  mProject := FProject;
+  mRun := FRun;
   FStartedAt := TAtlasTicks.Now;
+  // Wirft der Bau, beendet StopOnError den Lauf schon; dann nicht noch einmal über StopWith.
+  mBuilds := True;
   try
     mBuilds := mProject.Build(BuiltProc(Self, FRun), mReason);
   except
@@ -317,7 +345,6 @@ begin
       begin
         raise;
       end;
-      Exit;
     end;
   end;
   if not mBuilds then
@@ -327,8 +354,6 @@ begin
 end;
 
 procedure TAtlasMutationFlow.Built(ARun: Integer; ASucceeded: Boolean; const AExecutable, AError: string);
-var
-  mProject: IAtlasMutationShadowProject;
 begin
   if not FActive or (ARun <> FRun) then
   begin
@@ -347,8 +372,17 @@ begin
   if AExecutable = '' then
   begin
     StopWith(TAtlasMutationNoteKind.NoExecutable, '');
-    Exit;
+  end
+  else
+  begin
+    RunTests(ARun, AExecutable);
   end;
+end;
+
+procedure TAtlasMutationFlow.RunTests(ARun: Integer; const AExecutable: string);
+var
+  mProject: IAtlasMutationShadowProject;
+begin
   mProject := FProject;
   try
     mProject.Run(AExecutable, RanProc(Self, ARun));

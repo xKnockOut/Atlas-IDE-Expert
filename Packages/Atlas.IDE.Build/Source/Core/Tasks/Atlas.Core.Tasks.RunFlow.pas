@@ -103,7 +103,7 @@ type
     function Start(const ATarget: TAtlasTaskTarget; const ATask: TAtlasTaskDefinition; ABatch: Integer;
       AMode: TAtlasTaskBeforeBuild; AShow: Boolean): TStart;
     procedure LaunchFailed(const AJob: TJob; const ATask: TAtlasTaskDefinition; const AError: string);
-    procedure AddEntry(ABatch: TBatch; AMode: TAtlasTaskBeforeBuild; const ARun: TAtlasTaskRun);
+    class procedure AddEntry(ABatch: TBatch; AMode: TAtlasTaskBeforeBuild; const ARun: TAtlasTaskRun); static;
     procedure StartNextOf(ABatch: TBatch);
     procedure BatchDone(ABatch: TBatch);
   public
@@ -318,7 +318,7 @@ begin
   end;
 end;
 
-procedure TAtlasTaskFlow.AddEntry(ABatch: TBatch; AMode: TAtlasTaskBeforeBuild; const ARun: TAtlasTaskRun);
+class procedure TAtlasTaskFlow.AddEntry(ABatch: TBatch; AMode: TAtlasTaskBeforeBuild; const ARun: TAtlasTaskRun);
 var
   mEntry: TAtlasTaskGateEntry;
 begin

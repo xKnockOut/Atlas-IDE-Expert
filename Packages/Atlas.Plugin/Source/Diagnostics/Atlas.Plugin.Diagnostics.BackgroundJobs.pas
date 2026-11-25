@@ -84,8 +84,7 @@ implementation
 
 uses
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Plugin.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TJobsAlive = class(TInterfacedObject, IAtlasBackgroundJobsAlive)
