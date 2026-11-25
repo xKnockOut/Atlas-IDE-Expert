@@ -267,11 +267,9 @@
         "Atlas.Common.Rules.Builtin.MethodWithoutSelf -> Atlas.Common.Editing.MethodWithoutSelf.Lookup",
         "Atlas.Common.Rules.Builtin.MethodWithoutSelf -> Atlas.Common.Editing.MethodWithoutSelf.Types",
         "Atlas.Common.Rules.Builtin.MethodWithoutSelf -> Atlas.Common.Editing.PromoteVariable",
-        "Atlas.Common.Rules.Builtin.Metrics -> Atlas.Common.Editing.Extract",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.MaintenanceCommands",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.SlashCommands",
-        "Atlas.Common.Rules.Builtin.Style -> Atlas.Common.Editing.Extract",
         "Atlas.Common.Rules.Builtin.Style.MethodOrder -> Atlas.Common.Editing.MethodOrder",
         "Atlas.Common.Rules.CodeActions -> Atlas.Common.Editing.CodeActions",
         "Atlas.Common.Rules.FormatOutput -> Atlas.Common.Editing.FormatCheck"
