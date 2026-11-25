@@ -73,7 +73,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Filter,
+  Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Editing.FormatOutput,

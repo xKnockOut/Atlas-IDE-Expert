@@ -83,7 +83,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Filter,
+  Atlas.Common.Findings.Filter,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.Output,
