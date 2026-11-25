@@ -541,6 +541,7 @@ Atlas.Common.Semantics.StepCalls.Tests
 Atlas.Common.Semantics.DataAccessCalls.Tests
 Atlas.Common.Semantics.TypeCompatibility.Tests
 Atlas.Common.Semantics.TypeKinds.Tests
+Atlas.Common.Semantics.InferredTypes.Tests
 Atlas.Common.Semantics.UnresolvedNames.Tests
 Atlas.Common.Todos.Report.Tests
 Atlas.Common.Todos.Keywords.Tests

@@ -46,12 +46,13 @@ uses
   Atlas.Common.Editing.SuggestConst,
   Atlas.Common.Editing.VarBlock,
   Atlas.Common.Projects.MissingUnit,
-  Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Editing.DisableWarning.Protocol,
   Atlas.Common.Editing.CompilerFixes.Protocol,
   Atlas.Common.Lsp.MissingUnit,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.CodeActions.Json;
+  Atlas.Common.CodeActions.Json,
+  Atlas.Common.Semantics.InferredTypes,
+  Atlas.Common.Editing.ExplicitType;
 
 type
 {$SCOPEDENUMS ON}
@@ -76,10 +77,10 @@ begin
       AType := '';
       AEdits := nil;
       Result := False;
-      for mFound in TLspInlayHints.Inferred(AResolver, ATree, AFileName, TTextRange.Create(ADecl.StartPos,
+      for mFound in TInferredTypes.Find(AResolver, ATree, AFileName, TTextRange.Create(ADecl.StartPos,
         ADecl.EndPos)) do
       begin
-        if not mFound.ForIn and TLspInlayHints.ExplicitTypeAction(AResolver, ATree, AFileName, mFound.NameStart,
+        if not mFound.ForIn and TExplicitType.Action(AResolver, ATree, AFileName, mFound.NameStart,
           ALineBreak, mAction) and (mAction.Edits <> nil) then
         begin
           // Erstes Edit ": Typ", die übrigen ergänzen uses.
@@ -223,7 +224,7 @@ begin
   end;
   mResolver := NewResolver;
   try
-    if TLspInlayHints.ExplicitTypeAction(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+    if TExplicitType.Action(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
       TDocumentUris.ToPath(AUri), APosition, LineBreakOf(mDocument.Text), mAction) then
     begin
       Result := [TCodeActionsJson.ActionToJson(AUri, mAction)];

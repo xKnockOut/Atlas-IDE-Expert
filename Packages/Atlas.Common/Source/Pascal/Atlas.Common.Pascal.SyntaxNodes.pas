@@ -55,6 +55,9 @@ type
     class function RoutinePath(ARoutine: TSyntaxNode): string; static;
     /// <summary>Alle Knoten der Art AKind unter ARoot (samt ARoot) in der Reihenfolge von TSyntaxNode.Walk.</summary>
     class function OfKind(ARoot: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>; static;
+    /// <summary>Alle Knoten einer der Arten AKinds unter ARoot (samt ARoot) in der Reihenfolge von
+    /// TSyntaxNode.Walk.</summary>
+    class function OfKinds(ARoot: TSyntaxNode; const AKinds: TSyntaxKinds): TArray<TSyntaxNode>; static;
     /// <summary>Block (begin…end) der Routine ARoutine; nil ohne Routine oder Rumpf.</summary>
     class function BlockOf(ARoutine: TSyntaxNode): TSyntaxNode; static;
     /// <summary>Weg von ARoot hinab zur Zeile ALine: ARoot, dann je Stufe das letzte Kind, das die Zeile
@@ -304,6 +307,11 @@ begin
 end;
 
 class function TSyntaxNodes.OfKind(ARoot: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>;
+begin
+  Result := OfKinds(ARoot, [AKind]);
+end;
+
+class function TSyntaxNodes.OfKinds(ARoot: TSyntaxNode; const AKinds: TSyntaxKinds): TArray<TSyntaxNode>;
 var
   mNode: TSyntaxNode;
   mCount: Integer;
@@ -312,7 +320,7 @@ begin
   mCount := 0;
   for mNode in TSyntaxNode.PreOrder(ARoot) do
   begin
-    if mNode.Kind = AKind then
+    if mNode.Kind in AKinds then
     begin
       if mCount = Length(Result) then
       begin

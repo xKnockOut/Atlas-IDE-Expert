@@ -71,7 +71,7 @@ Features dürfen `Semantics` verwenden. Was zwei Hosted-Features teilen, liegt i
 `Documents`, `Semantics` …) oder als Interface im Contract des anbietenden Features, das der Host verbindet.
 
 Die Kanten von heute stehen als schrumpfende Liste unter `knownEdges` der Regel `architecture-feature-cycle` in
-`atlas.json` (Stand des Umbaus: 86 Kanten, kein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
+`atlas.json` (Stand des Umbaus: 77 Kanten, kein Zyklus). Eine neue Kante ist ein Befund, eine abgebaute wird gestrichen.
 
 | Von | Nach | Erlaubt | Stand |
 |---|---|---|---|
@@ -252,7 +252,7 @@ Jedes Plugin-Package (`Packages/Atlas.IDE.*`) hat eine eigene `atlas.json` und `
 Auch über implementation-uses bilden die Units unter `Packages/` und `Application/` keinen Zyklus: `AtlasServer --check . --units 'Packages/**,Application/**' --rules uses-cycle` meldet nichts. Eine Unit eines Zyklus ließe sich weder allein testen noch austauschen. Die Muster dafür:
 
 - Gemeinsame Typen eines Features stehen in seiner Contract-Unit. `Atlas.Common.Editing.Contract` trägt die Typen der Schnellbefehle (`TSlashContext`, `TSlashCommand`, `ISlashHost`, `TSlashSettings` …) und den Kontext der uses-Aktionen (`TUsesContext`). Die Befehls-Units (`*Commands`) binden nur den Contract ein und melden ihre Befehle über `TSlashRegister`; nur das Register `Atlas.Common.Editing.SlashCommands` bindet alle Befehls-Units ein. Es bleibt eine Root-Unit, weil Lsp, Rules und `ClassActions` es nutzen (eine Composition dürften sie nach der Matrix nicht einbinden).
-- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Atlas.Common.Lsp.Contract`, die Formularprüfung in `Atlas.Common.Lsp.FormMentions`, JSON-Strings schreiben und JSON nachsichtig lesen in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Plugin.Lsp.Uris`, die Steuerelemente `Atlas.Vcl.Options.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
+- Was zwei Units gemeinsam brauchen, kommt in eine tiefere Unit: `TLspSymbolKind` in `Atlas.Common.Lsp.Contract`, die Formularprüfung in `Atlas.Common.Editing.FormMentions`, JSON-Strings schreiben und JSON nachsichtig lesen in `Atlas.Text.Json`, Dateiadressen des Plugins in `Atlas.Plugin.Lsp.Uris`, die Steuerelemente `Atlas.Vcl.Options.ChoiceBox` und `Atlas.UI.Tracker.DocBox`.
 - Eine Funktion gehört zu ihren Daten: Die Nutzung je Befehl fragt `TAtlasIdeCommandUsage.UsageOf`, nicht die Tastenkürzel-Tipps; der Rückruf „Testen“ des Abfragedialogs (`TAtlasQueryTestEvent`) steht beim Dialog, nicht auf der Seite, die ihn öffnet.
 
 ### Genehmigte Ausnahmen

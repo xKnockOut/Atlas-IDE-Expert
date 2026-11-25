@@ -79,6 +79,8 @@ function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer; AStop: I
 function NextUncommented(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 /// <summary>Erstes Code-Token hinter AIndex (AIndex ausgeschlossen); Length(ATokens) ohne.</summary>
 function NextCodeAfter(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+/// <summary>Letztes Token der Kette ab AFirst (Name.Name.Name), höchstens bis ALimit.</summary>
+function NameChainEnd(const ATokens: TArray<TPascalToken>; AFirst, ALimit: Integer): Integer;
 /// <summary>Gegenstück zu PreviousCode: erstes Code-Token hinter AIndex (AIndex ausgeschlossen); -1 ohne.
 /// </summary>
 function FollowingCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
@@ -236,6 +238,21 @@ begin
     Exit(Length(ATokens));
   end;
   Result := NextCode(ATokens, AIndex + 1);
+end;
+
+function NameChainEnd(const ATokens: TArray<TPascalToken>; AFirst, ALimit: Integer): Integer;
+var
+  mDot, mName: Integer;
+begin
+  Result := AFirst;
+  mDot := NextCodeAfter(ATokens, Result);
+  mName := NextCodeAfter(ATokens, mDot);
+  while (mName <= ALimit) and ATokens[mDot].IsSymbol('.') and (ATokens[mName].Kind = TPascalTokenKind.Identifier) do
+  begin
+    Result := mName;
+    mDot := NextCodeAfter(ATokens, Result);
+    mName := NextCodeAfter(ATokens, mDot);
+  end;
 end;
 
 function FollowingCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
