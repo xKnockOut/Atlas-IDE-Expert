@@ -9,7 +9,7 @@
 // Ein Typ ist ein Name oder ein Objekt mit Namen und, bei Klassen, dem direkten Vorfahren samt Unit (parent).
 // Jede Meldung ersetzt den ganzen Stand. TIdeTypeCatalog hält ihn threadsicher und beantwortet über
 // ILspIdeTypes, in welchen Units die IDE einen Typ kennt: für die Vervollständigung und, über den Host-Adapter
-// Adapters.Rules.IdeTypes, für die Prüfregeln. Ohne Plugin (Linter, MCP) bleibt der Katalog leer.
+// Adapters.Checks.IdeTypes, für die Prüfregeln. Ohne Plugin (Linter, MCP) bleibt der Katalog leer.
 
 interface
 

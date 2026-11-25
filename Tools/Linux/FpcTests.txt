@@ -883,8 +883,8 @@ Atlas.Common.Rules.Builtin.XmlDoc.Tests
 Atlas.Core.Editor.Pairs.Tests
 
 # Server (Shell)
-Adapters.Rules.IdeTypes.Tests
-Adapters.Rules.Refactorings.Tests
+Adapters.Checks.IdeTypes.Tests
+Adapters.Checks.Refactorings.Tests
 Atlas.Common.Editing.Providers.ClassActions.Tests
 Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests
 Atlas.Common.Editing.Providers.ClassCompletion.Tests

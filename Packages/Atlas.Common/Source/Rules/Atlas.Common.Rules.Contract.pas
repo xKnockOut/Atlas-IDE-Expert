@@ -21,7 +21,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Query.Contract,
   Atlas.Common.Semantics.Contract,
-  Atlas.Common.Rules.Contract.Refactorings;
+  Atlas.Common.Checks.Contract,
+  Atlas.Common.Checks.Contract.Refactorings;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
@@ -59,16 +60,6 @@ type
   TRuleUnitSource = Atlas.Common.Projects.Contract.UnitLookup.TUnitSource;
   TRuleUnitSources = Atlas.Common.Projects.Contract.UnitLookup.TUnitSources;
   IRuleUnitLookup = Atlas.Common.Projects.Contract.UnitLookup.IUnitLookup;
-
-  /// <summary>Typen, die die laufende IDE aus ihren geladenen Packages kennt (RTTI der BPLs, über
-  /// RegisterComponents angemeldete Komponenten), auch ohne Quelltext. unresolved-type und unresolved-identifier
-  /// schweigen für einen solchen Typ, wenn seine Unit im uses steht. nil = ohne IDE (Linter, MCP).</summary>
-  IRuleIdeTypes = interface
-    ['{5B0E7C42-91D3-4F6A-8E27-C4A1D96B3F05}']
-    /// <summary>Units, in denen die IDE einen Typ ATypeName (ohne Unit-Präfix, ohne Groß-/Kleinschreibung)
-    /// kennt; nil = unbekannt.</summary>
-    function UnitsOf(const ATypeName: string): TArray<string>;
-  end;
 
   TRuleCancelled = Atlas.Common.Findings.Contract.TRuleCancelled;
 
@@ -234,48 +225,15 @@ type
     /// <summary>Code-Abfragen des Arbeitsbereichs (#1351) für die Regeln query:&lt;name&gt;; nil = keine, gespeicherte
     /// Abfragen mit failIfAny laufen dann nicht.</summary>
     Queries: ICodeQueries;
-    /// <summary>Typen der laufenden IDE ohne Quelltext (IRuleIdeTypes); nil = ohne IDE.</summary>
-    IdeTypes: IRuleIdeTypes;
-    /// <summary>Refactorings für Korrekturen (TRuleRefactorings); je Eintrag nil = diese Korrektur nicht anbieten.</summary>
-    Refactorings: TRuleRefactorings;
+    /// <summary>Typen der laufenden IDE ohne Quelltext (ICheckIdeTypes); nil = ohne IDE.</summary>
+    IdeTypes: ICheckIdeTypes;
+    /// <summary>Refactorings für Korrekturen (TCheckRefactorings); je Eintrag nil = diese Korrektur nicht anbieten.</summary>
+    Refactorings: TCheckRefactorings;
     /// <summary>Dateiname für die Namensauflösung (TNameResolver): FileName, sonst RelativePath, sonst
     /// UnitName mit ".pas".</summary>
     function ResolverFileName: string;
-  end;
-
-  /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
-  /// Packages, Projekte der Gruppe und Namenskonvention. Ein Weg für LSP-Server, MCP und Linter: Der
-  /// Arbeitsbereich liefert sie (TCoreWorkspace.RuleServices), ApplyTo trägt sie in den Regelkontext ein.
-  /// Default = ohne Index; Regeln, die ihn brauchen, schweigen dann.</summary>
-  TRuleServices = record
-    /// <summary>Symbolindex für Typen aus anderen Units und der RTL (#125); nil = keiner.</summary>
-    Index: ISymbolIndex;
-    /// <summary>Units bedarfsweise nachladen (Namensauflösung, #178); nil = nur der vorhandene Index.</summary>
-    EnsureUnit: TEnsureUnitFunc;
-    /// <summary>Namespaces des Projekts für Unit-Namen ohne Präfix; leer ohne Projekt.</summary>
-    Namespaces: TArray<string>;
-    /// <summary>Unit-Suche wie beim Compiler (#1016); nil = unbekannt.</summary>
-    Units: IRuleUnitLookup;
-    /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt.</summary>
-    PackageProvides: TRulePackageProvides;
-    /// <summary>requires eines Packages (für die Kette der requires); nil = nur die direkten.</summary>
-    PackageRequires: TRulePackageRequires;
-    /// <summary>Antworten zum Index über alle Units des Arbeitsbereichs; nil = je Unit neu.</summary>
-    NameFacts: IIndexNameFacts;
-    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt.</summary>
-    ProjectFiles: IRuleProjectFiles;
-    /// <summary>Präfixe der Projektdatei .atlas (#1111); leer = unbekannt.</summary>
-    Naming: TRuleNaming;
-    /// <summary>Warnungen der .dproj als "Bezeichner=Wert" (#1378); leer = ohne Projekt.</summary>
-    ProjectWarnings: TArray<string>;
-    /// <summary>Code-Abfragen des Arbeitsbereichs (#1351); nil = keine.</summary>
-    Queries: ICodeQueries;
-    /// <summary>Typen der laufenden IDE ohne Quelltext; nil = ohne IDE.</summary>
-    IdeTypes: IRuleIdeTypes;
-    /// <summary>Refactorings für Korrekturen, vom Host über Adapter; je Eintrag nil = nicht verfügbar.</summary>
-    Refactorings: TRuleRefactorings;
-    /// <summary>Trägt die Dienste in AContext ein.</summary>
-    procedure ApplyTo(var AContext: TRuleContext);
+    /// <summary>Trägt die Dienste des Projekts (Index, Unit-Suche, IDE-Typen, Refactorings …) ein.</summary>
+    procedure UseServices(const AServices: TCheckServices);
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>
@@ -404,23 +362,21 @@ begin
   end;
 end;
 
-{ TRuleServices }
-
-procedure TRuleServices.ApplyTo(var AContext: TRuleContext);
+procedure TRuleContext.UseServices(const AServices: TCheckServices);
 begin
-  AContext.Index := Index;
-  AContext.EnsureUnit := EnsureUnit;
-  AContext.Namespaces := Namespaces;
-  AContext.Units := Units;
-  AContext.PackageProvides := PackageProvides;
-  AContext.PackageRequires := PackageRequires;
-  AContext.NameFacts := NameFacts;
-  AContext.ProjectFiles := ProjectFiles;
-  AContext.Naming := Naming;
-  AContext.ProjectWarnings := ProjectWarnings;
-  AContext.Queries := Queries;
-  AContext.IdeTypes := IdeTypes;
-  AContext.Refactorings := Refactorings;
+  Index := AServices.Index;
+  EnsureUnit := AServices.EnsureUnit;
+  Namespaces := AServices.Namespaces;
+  Units := AServices.Units;
+  PackageProvides := AServices.PackageProvides;
+  PackageRequires := AServices.PackageRequires;
+  NameFacts := AServices.NameFacts;
+  ProjectFiles := AServices.ProjectFiles;
+  Naming := AServices.Naming;
+  ProjectWarnings := AServices.ProjectWarnings;
+  Queries := AServices.Queries;
+  IdeTypes := AServices.IdeTypes;
+  Refactorings := AServices.Refactorings;
 end;
 
 { TRuleDescriptor }

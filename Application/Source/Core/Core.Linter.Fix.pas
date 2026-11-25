@@ -25,7 +25,8 @@ uses
   Core.CommandLine,
   Core.VersionControlChanges,
   Core.WorkspaceGroup,
-  Core.Linter.Host;
+  Core.Linter.Host,
+  Atlas.Common.Checks.Contract;
 
 type
   /// <summary>Was die Prüfung einer Datei für die Sammelkorrektur braucht.</summary>

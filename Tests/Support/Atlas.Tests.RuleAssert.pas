@@ -126,13 +126,13 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Pascal.Contract,
-  Shell.Composition.RuleRefactorings;
+  Shell.Composition.CheckRefactorings;
 
 /// <summary>Leerer Regelkontext mit den Refactorings des Hosts, damit Korrekturen wie im Betrieb entstehen.</summary>
 function NewContext: TRuleContext;
 begin
   Result := Default(TRuleContext);
-  Result.Refactorings := TShellRuleRefactorings.Create;
+  Result.Refactorings := TShellCheckRefactorings.Create;
 end;
 
 

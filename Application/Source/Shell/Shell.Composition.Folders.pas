@@ -19,17 +19,17 @@ uses
   Atlas.Common.Projects.Selection,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.WorkspaceFolders,
-  Atlas.Common.Rules.Contract,
   Core.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,
-  Shell.Composition.Configuration;
+  Shell.Composition.Configuration,
+  Atlas.Common.Checks.Contract;
 
 type
   TShellFoldersIndexFunc = reference to function: ISymbolIndex;
   TShellFoldersIdeProjectFunc = reference to function: TLspIdeProject;
   /// <summary>Typen der laufenden IDE (atlas/ideTypes); nil ohne Plugin.</summary>
-  TShellFoldersIdeTypesFunc = reference to function: IRuleIdeTypes;
+  TShellFoldersIdeTypesFunc = reference to function: ICheckIdeTypes;
   TShellFoldersSelectionFunc = reference to function: TProjectSelection;
   TShellFoldersAnonymizerFunc = reference to function: ILogAnonymizer;
   TShellFoldersTextFunc = reference to function: string;
@@ -115,7 +115,7 @@ uses
   Atlas.Text.LogMarks,
   Atlas.Text.Files,
   Shell.Composition.Platform,
-  Shell.Composition.RuleRefactorings;
+  Shell.Composition.CheckRefactorings;
 
 /// <summary>Gehört AFileName zu AWorkspace? Mit fester Projektdatei nur die Projekt- und Suchpfad-Units, sonst
 /// alles unter dem Ordner.</summary>
@@ -276,7 +276,7 @@ begin
   begin
     Result.Setup.IdeTypes := FServices.IdeTypes();
   end;
-  Result.Setup.Refactorings := TShellRuleRefactorings.Create;
+  Result.Setup.Refactorings := TShellCheckRefactorings.Create;
   Result.Setup.Origin := AOrigin;
   Result.Setup.Selection := FServices.Selection();
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).

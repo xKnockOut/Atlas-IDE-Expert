@@ -119,7 +119,8 @@ uses
   Atlas.Common.Projects.UnitLookup,
   Atlas.Common.Rules.Builtin.Unresolved,
   Atlas.Tests.RuleAssert,
-  Atlas.Tests.TextEdits;
+  Atlas.Tests.TextEdits,
+  Atlas.Common.Checks.Contract;
 
 const
   cDproj =
@@ -802,7 +803,7 @@ end;
 
 type
   /// <summary>Typen der IDE: TVendorGrid in Vendor.Grid.</summary>
-  TVendorIdeTypes = class(TInterfacedObject, IRuleIdeTypes)
+  TVendorIdeTypes = class(TInterfacedObject, ICheckIdeTypes)
   public
     function UnitsOf(const ATypeName: string): TArray<string>;
   end;
@@ -817,7 +818,7 @@ begin
 end;
 
 /// <summary>Katalog der IDE: TVendorGrid in Vendor.Grid.</summary>
-function VendorTypes: IRuleIdeTypes;
+function VendorTypes: ICheckIdeTypes;
 begin
   Result := TVendorIdeTypes.Create;
 end;
@@ -836,7 +837,7 @@ begin
   end;
 end;
 
-function IdeFindings(ARule: IRule; const ASource: string; const ATypes: IRuleIdeTypes;
+function IdeFindings(ARule: IRule; const ASource: string; const ATypes: ICheckIdeTypes;
   const ANamespaces: TArray<string>): TArray<TRuleFinding>;
 var
   mContext: TRuleContext;
