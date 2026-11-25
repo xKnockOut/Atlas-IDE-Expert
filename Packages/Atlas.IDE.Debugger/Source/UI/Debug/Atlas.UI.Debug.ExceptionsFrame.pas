@@ -492,14 +492,14 @@ procedure TAtlasDebugExceptionsFrame.ListCustomDrawItem(Sender: TCustomListView;
 begin
   DefaultDraw := True;
   // Still fortgesetzt: ganze Zeile grau.
-  TAtlasDebugExceptionStack.RowColors(Sender.Canvas, FList, State, ShownIgnored(FShown, Item));
+  TAtlasUiTheme.RowColors(Sender.Canvas, FList, Item.Selected, ShownIgnored(FShown, Item));
 end;
 
 procedure TAtlasDebugExceptionsFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
   SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
-  TAtlasDebugExceptionStack.RowColors(Sender.Canvas, FList, State, ShownIgnored(FShown, Item));
+  TAtlasUiTheme.RowColors(Sender.Canvas, FList, Item.Selected, ShownIgnored(FShown, Item));
 end;
 
 procedure TAtlasDebugExceptionsFrame.SetHistory(const AHistory: TAtlasDebugExceptionHistory;

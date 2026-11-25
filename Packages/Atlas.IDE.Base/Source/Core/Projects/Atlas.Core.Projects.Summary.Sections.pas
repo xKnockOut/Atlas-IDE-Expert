@@ -11,17 +11,17 @@ interface
 
 uses
   System.JSON,
-  Atlas.Core.Projects.Contract.Summary;
+  Atlas.Plugin.Projects.Contract.Summary;
 
 type
-  TAtlasSetupFinding = Atlas.Core.Projects.Contract.Summary.TAtlasSetupFinding;
-  TAtlasProjectSetup = Atlas.Core.Projects.Contract.Summary.TAtlasProjectSetup;
-  TAtlasProjectTestFailure = Atlas.Core.Projects.Contract.Summary.TAtlasProjectTestFailure;
-  TAtlasProjectSlowTest = Atlas.Core.Projects.Contract.Summary.TAtlasProjectSlowTest;
-  TAtlasProjectTests = Atlas.Core.Projects.Contract.Summary.TAtlasProjectTests;
-  TAtlasProjectReleaseBuild = Atlas.Core.Projects.Contract.Summary.TAtlasProjectReleaseBuild;
-  TAtlasProjectRelease = Atlas.Core.Projects.Contract.Summary.TAtlasProjectRelease;
-  TAtlasProjectCi = Atlas.Core.Projects.Contract.Summary.TAtlasProjectCi;
+  TAtlasSetupFinding = Atlas.Plugin.Projects.Contract.Summary.TAtlasSetupFinding;
+  TAtlasProjectSetup = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectSetup;
+  TAtlasProjectTestFailure = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectTestFailure;
+  TAtlasProjectSlowTest = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectSlowTest;
+  TAtlasProjectTests = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectTests;
+  TAtlasProjectReleaseBuild = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectReleaseBuild;
+  TAtlasProjectRelease = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectRelease;
+  TAtlasProjectCi = Atlas.Plugin.Projects.Contract.Summary.TAtlasProjectCi;
 
   /// <summary>Lesen und Schreiben der Abschnitte; AOriginal ist der Abschnitt der gelesenen Datei (darf nil sein),
   /// seine unbekannten Felder bleiben erhalten.</summary>
@@ -51,7 +51,7 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   System.Math,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Projects.Summary.Json,
   Atlas.Text.Json;
 

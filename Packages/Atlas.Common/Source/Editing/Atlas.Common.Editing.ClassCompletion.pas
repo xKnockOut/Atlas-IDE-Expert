@@ -41,52 +41,16 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Editing.Contract.ClassCompletion,
   Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.MethodMatching;
 
 type
-  /// <summary>Methode ohne Gegenstück (#124).</summary>
-  TUnmatchedMethod = record
-    /// <summary>Typ, ggf. mit umgebendem Typ (TAussen.TInnen).</summary>
-    TypeName: string;
-    Symbol: TIndexSymbol;
-    /// <summary>True: deklariert, aber ohne Rumpf; False: Rumpf ohne Deklaration.</summary>
-    Declared: Boolean;
-    /// <summary>Kopf ohne ";", z. B. "procedure TFoo.Bar(A: Integer)" beim Rumpf.</summary>
-    Header: string;
-  end;
-
-  /// <summary>Ein Parameter eines Methodenkopfs (#996).</summary>
-  TShapeParameter = record
-    /// <summary>const, var, out, constref oder '' (Kleinbuchstaben).</summary>
-    Modifier: string;
-    Name: string;
-    /// <summary>Typ wie geschrieben; '' bei untypisierten Parametern.</summary>
-    TypeName: string;
-  end;
-
-  /// <summary>Zerlegter Kopf einer Methode (#996).</summary>
-  TSignatureShape = record
-    /// <summary>procedure, function, constructor, destructor oder operator.</summary>
-    Kind: string;
-    Parameters: TArray<TShapeParameter>;
-    /// <summary>Ergebnistyp wie geschrieben; '' ohne.</summary>
-    ResultType: string;
-    /// <summary>Aufrufkonvention in Kleinbuchstaben (stdcall, cdecl …); '' ohne Angabe.</summary>
-    Convention: string;
-    ConventionRange: TTextRange;
-    /// <summary>Im Kopf steht bedingte Übersetzung ({$IFDEF} …); welche Parameter gelten, ist offen (#1324).
-    /// </summary>
-    Conditional: Boolean;
-  end;
-
-  /// <summary>Deklaration und Rumpf gleichen Namens, deren Köpfe voneinander abweichen (#996).</summary>
-  TSignaturePair = record
-    Declaration: TUnmatchedMethod;
-    Body: TUnmatchedMethod;
-    DeclarationShape: TSignatureShape;
-    BodyShape: TSignatureShape;
-  end;
+  /// <summary>Liegen im Contract (Atlas.Common.Editing.Contract.ClassCompletion).</summary>
+  TUnmatchedMethod = TEditingUnmatchedMethod;
+  TShapeParameter = TEditingShapeParameter;
+  TSignatureShape = TEditingSignatureShape;
+  TSignaturePair = TEditingSignaturePair;
 
   /// <summary>Deklarierte Methode eines Typs mit ihrem Rumpf (#660).</summary>
   TDeclaredMethod = record
@@ -204,6 +168,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.RoutineSignatures,
+  Atlas.Common.Pascal.MethodText,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.TypeComments,
   Atlas.Common.Pascal.BodySpacing,

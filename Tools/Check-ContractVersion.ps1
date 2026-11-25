@@ -3,7 +3,7 @@
     Prüft, dass die Vertragsversion von Base höchstens einmal je Release steigt.
 
 .DESCRIPTION
-    cAtlasCoreContractVersion (Atlas.Core.Modules.Contract) schützt Module vor einem Base aus einem anderen
+    cAtlasCoreContractVersion (Atlas.IDE.Base.Foundation.Modules) schützt Module vor einem Base aus einem anderen
     Stand (Modulregel 7). Base und Module werden immer gemeinsam gebaut und ausgeliefert; eine neue Nummer je
     Release genügt deshalb. Erhöhte dagegen jeder Pull Request, der einen Vertrag ändert, um eins, änderten
     parallele Pull Requests dieselbe Zeile verschieden, und jeder Merge erzeugte einen Konflikt.
@@ -30,7 +30,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$RelPath = 'Packages/Atlas.IDE.Base/Source/Core/Modules/Atlas.Core.Modules.Contract.pas'
+$RelPath = 'Packages/Atlas.IDE.Base/Source/Foundation/Atlas.IDE.Base.Foundation.Modules.pas'
+# Frühere Orte der Unit: Release-Tags und Ziel-Branches vor dem Umzug lesen sie dort.
+$OlderPaths = @('Packages/Atlas.IDE.Base/Source/Core/Modules/Atlas.Core.Modules.Contract.pas')
 $Pattern = 'cAtlasCoreContractVersion\s*=\s*(\d+)\s*;'
 
 function Get-ContractVersion([string] $Text, [string] $Where) {
@@ -40,9 +42,11 @@ function Get-ContractVersion([string] $Text, [string] $Where) {
 }
 
 function Get-VersionAt([string] $Ref) {
-    $Text = (& git -C $Root show "${Ref}:$RelPath" 2>$null) -join "`n"
-    if ($LASTEXITCODE -ne 0) { throw "$RelPath im Stand $Ref nicht lesbar" }
-    return Get-ContractVersion $Text $Ref
+    foreach ($path in @($RelPath) + $OlderPaths) {
+        $Text = (& git -C $Root show "${Ref}:$path" 2>$null) -join "`n"
+        if ($LASTEXITCODE -eq 0) { return Get-ContractVersion $Text $Ref }
+    }
+    throw "$RelPath im Stand $Ref nicht lesbar (auch nicht unter $($OlderPaths -join ', '))"
 }
 
 # versionsort.suffix: Vorabversionen (v2.2.0-rc.2) vor dem Release (v2.2.0) einordnen; ohne die Einstellung sortiert

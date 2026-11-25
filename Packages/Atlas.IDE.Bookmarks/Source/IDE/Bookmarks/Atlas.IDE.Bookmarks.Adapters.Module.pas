@@ -11,8 +11,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Editor.Contract;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.Plugin.Editor.Contract;
 
 type
   /// <summary>Was die Modulklasse von der Composition braucht.</summary>
@@ -51,7 +51,7 @@ implementation
 uses
   Atlas.Text.Product.Version,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Core.Bookmarks.Store,
   Atlas.Core.Bookmarks.Quick,
   Atlas.Core.Bookmarks.Plan,

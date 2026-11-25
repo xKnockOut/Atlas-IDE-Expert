@@ -50,7 +50,7 @@ uses
   System.SysUtils,
   System.Types,
   Vcl.Controls,
-  Atlas.Core.KnownErrors.Contract,
+  Atlas.Plugin.KnownErrors.Contract,
   Atlas.UI.Debug.ExceptionBarPainter,
   Atlas.Core.Debug.ExceptionBanner;
 

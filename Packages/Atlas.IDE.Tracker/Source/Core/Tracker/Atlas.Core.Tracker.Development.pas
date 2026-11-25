@@ -34,7 +34,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.VersionControl.Repository.Contract;
 

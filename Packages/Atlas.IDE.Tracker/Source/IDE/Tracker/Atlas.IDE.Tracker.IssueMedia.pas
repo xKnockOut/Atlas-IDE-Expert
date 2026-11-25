@@ -39,7 +39,7 @@ type
 implementation
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   System.IOUtils,
   System.StrUtils,
   Vcl.Graphics,

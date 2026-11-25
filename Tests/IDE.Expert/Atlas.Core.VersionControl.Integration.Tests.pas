@@ -48,6 +48,7 @@ uses
   Atlas.VersionControl.Repository.Tools,
   Atlas.VersionControl.Repository.Switches,
   Atlas.Plugin.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.VersionControl.Repository.Composition,
   Atlas.VersionControl.Repository.Providers.ProcessRunner,
   Atlas.Core.Welcome.Unsaved,
@@ -687,7 +688,7 @@ begin
   mDone := False;
   mInMain := False;
   mOutcome := TAtlasVcsOutcome.Failed;
-  mWorker := TAtlasBackgroundJobs.Create(HInstance);
+  mWorker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Status);
   try
     Assert.IsTrue(mWorker.Run(
       procedure

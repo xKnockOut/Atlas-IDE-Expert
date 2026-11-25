@@ -18,11 +18,12 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Tracker.Contract,
   Atlas.IDE.Base.Foundation.IssueWork,
   Atlas.IDE.Tracker.IssuesContext,
-  Atlas.IDE.Tracker.IssuesServices;
+  Atlas.IDE.Tracker.IssuesServices,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TAtlasTrackerIssueWork = class(TInterfacedObject, IAtlasIssueWorkSource)
@@ -48,7 +49,7 @@ type
 implementation
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.IssueWork,
   Atlas.Core.Tracker.MyIssues,
   Atlas.ToolsApi.Files.Service,

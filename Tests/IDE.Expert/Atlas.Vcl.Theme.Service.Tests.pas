@@ -5,7 +5,8 @@
 // Abonnenten bei jedem Wechsel bis zum Abmelden, Fehler ins Protokoll,
 // Textfarben der Meldungen aus der Palette, Dialogschrift, Fensterfarben aus
 // dem Stil des Steuerelements (nicht der festen Palette), Systemfarben über den
-// Stil und Schriftfarben, die dem Thema folgen, bis das Steuerelement geht.
+// Stil, Zeilenfarben selbst gefärbter Listen und Schriftfarben, die dem Thema
+// folgen, bis das Steuerelement geht.
 
 interface
 
@@ -36,6 +37,8 @@ type
     procedure WindowColorsComeFromStyleOfControl;
     [Test]
     procedure SystemColorComesFromStyleOfControl;
+    [Test]
+    procedure RowColorsFollowSelectionAndControl;
     [Test]
     procedure FontColorFollowsThemeUntilDefault;
     [Test]
@@ -233,6 +236,31 @@ begin
     // Keine Systemfarbe: unverändert.
     Assert.AreEqual(Integer(TColor($123456)), Integer(TAtlasUiTheme.SystemColor(mForm, TColor($123456))));
   finally
+    mForm.Free;
+  end;
+end;
+
+procedure TAtlasUiThemeTests.RowColorsFollowSelectionAndControl;
+var
+  mForm: TForm;
+  mBitmap: TBitmap;
+begin
+  mForm := TForm.CreateNew(nil);
+  mBitmap := TBitmap.Create;
+  try
+    mForm.Color := TColor($203040);
+    mForm.Font.Color := TColor($E0E0E0);
+    TAtlasUiTheme.RowColors(mBitmap.Canvas, mForm, True, False);
+    Assert.AreEqual(Integer(TAtlasUiTheme.SystemColor(mForm, clHighlight)), Integer(mBitmap.Canvas.Brush.Color));
+    Assert.AreEqual(Integer(TAtlasUiTheme.SystemColor(mForm, clHighlightText)), Integer(mBitmap.Canvas.Font.Color));
+    // Nicht gewählt: Fläche und Schrift des Steuerelements, nie die weiße Fläche von Windows.
+    TAtlasUiTheme.RowColors(mBitmap.Canvas, mForm, False, False);
+    Assert.AreEqual(Integer(TColor($203040)), Integer(mBitmap.Canvas.Brush.Color), 'Fläche');
+    Assert.AreEqual(Integer(TColor($E0E0E0)), Integer(mBitmap.Canvas.Font.Color), 'Schrift');
+    TAtlasUiTheme.RowColors(mBitmap.Canvas, mForm, False, True);
+    Assert.AreEqual(Integer(TAtlasUiTheme.SystemColor(mForm, clGrayText)), Integer(mBitmap.Canvas.Font.Color), 'grau');
+  finally
+    mBitmap.Free;
     mForm.Free;
   end;
 end;

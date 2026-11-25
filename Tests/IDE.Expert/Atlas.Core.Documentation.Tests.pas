@@ -92,7 +92,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.Core.Documentation.Typeset,
   System.SysUtils,
   System.JSON,

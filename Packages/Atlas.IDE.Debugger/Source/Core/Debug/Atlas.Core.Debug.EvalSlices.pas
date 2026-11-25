@@ -13,13 +13,16 @@
 //   - Der Wert kommt über den Schlüssel an seinen Knoten: Ist die Zeile
 //     inzwischen weg, fällt er weg. Drop verwirft eine laufende Auswertung,
 //     wenn ihre Zeile entfernt wird; ein später Rückruf kommt nicht mehr an.
+//   - Wirft der Debugger bei einer Auswertung, steht der Fehlertext an der
+//     Zeile, und die übrigen werden weiter ausgewertet; sonst bliebe die Zeile
+//     offen und jede Zeitscheibe scheiterte an ihr von Neuem.
 // Nur im Hauptthread verwenden.
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.EvaluateRows;
@@ -169,11 +172,20 @@ function TAtlasEvalSlices.EvaluateOne(AList: TAtlasEvalList; ANode: TAtlasEvalNo
   const APlace: TAtlasEvalPlace): TAtlasEvalSliceStep;
 var
   mValue: TAtlasDebugValue;
+  mExpression: string;
 begin
   Inc(FRequest);
   // ",r": Records mit Feldnamen, sonst zeigt der Baum nur [0], [1], … (Werte ohne Namen).
-  mValue := FEvaluator.Evaluate(TAtlasEvalText.WithFieldNames(ANode.Expression), APlace.FileName, APlace.Line + 1,
-    APlace.SideEffects, ValueDone(Self, FRequest));
+  mExpression := TAtlasEvalText.WithFieldNames(ANode.Expression);
+  try
+    mValue := FEvaluator.Evaluate(mExpression, APlace.FileName, APlace.Line + 1, APlace.SideEffects,
+      ValueDone(Self, FRequest));
+  except
+    on E: Exception do
+    begin
+      mValue := TAtlasDebugValue.Failed(mExpression, E.Message);
+    end;
+  end;
   case mValue.State of
     TAtlasDebugValueState.Pending:
       begin

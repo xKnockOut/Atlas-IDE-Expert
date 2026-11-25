@@ -17,7 +17,7 @@ uses
   System.SysUtils,
   System.Types,
   ToolsAPI.Editor,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
   Atlas.Vcl.Popup.TitledTip,

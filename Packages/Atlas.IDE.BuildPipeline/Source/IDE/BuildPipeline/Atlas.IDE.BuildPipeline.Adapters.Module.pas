@@ -4,7 +4,7 @@
 // (Atlas.IDE.BuildPipeline.Composition) über den Scope des Moduls bereitstellt:
 // - den Befehl „Release-Build prüfen“ (#533, Palette),
 // - für Base die Hörer der gelesenen Compilermeldungen und die Bewertung eines Builds des Benutzers (#530,
-//   Atlas.Core.Build.Pipeline); die Folgen gehen über TAtlasBuildPipeline.Announce an jeden
+//   Atlas.IDE.Base.Core.BuildPipeline); die Folgen gehen über TAtlasBuildPipeline.Announce an jeden
 //   IAtlasBuildVerdictListener,
 // - für andere Module und die Willkommensseite die Builds auf Auftrag (IAtlasBuildJobs), für das Modul
 //   KI-Assistenten dieselben Builds samt Compilermeldungen (IAtlasBuildRequests, #1888).
@@ -15,12 +15,12 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Requests,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.Plugin.Build.Contract.Requests,
   Atlas.Core.BuildPipeline.ReleaseGuard,
   Atlas.IDE.Base.Foundation.BuildPipeline,
   Atlas.IDE.Base.Foundation.BuildRequests,
-  Atlas.Core.Build.Contract,
+  Atlas.Plugin.Build.Contract,
   Atlas.IDE.BuildPipeline.Runner;
 
 type
@@ -70,7 +70,7 @@ uses
   System.JSON,
   Atlas.Text.Product.Version,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Build.Verdict,
@@ -81,7 +81,7 @@ uses
   Atlas.IDE.BuildPipeline.Summary,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.BuildPipeline.Strings,
-  Atlas.Core.Build.Pipeline,
+  Atlas.IDE.Base.Core.BuildPipeline,
   Atlas.Core.Build.Events;
 
 class function TAtlasBuildPipelineModule.ReleaseSettings: TAtlasReleaseSettings;

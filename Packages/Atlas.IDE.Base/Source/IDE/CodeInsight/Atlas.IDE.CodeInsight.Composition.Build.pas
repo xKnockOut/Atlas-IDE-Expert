@@ -42,10 +42,9 @@ uses
   Atlas.UI.CodeInsight.Strings,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Pipeline,
+  Atlas.IDE.Base.Core.BuildPipeline,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.Metrics,
@@ -60,7 +59,8 @@ uses
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.Plugin.Localization.Language,
-  Atlas.Core.Build.Contract;
+  Atlas.Plugin.Build.Contract,
+  Atlas.Plugin.Registration.Contract;
 
 {$SCOPEDENUMS ON}
 

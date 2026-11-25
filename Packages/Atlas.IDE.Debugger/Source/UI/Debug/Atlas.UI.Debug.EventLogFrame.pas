@@ -87,7 +87,7 @@ type
       var DefaultDraw: Boolean);
     procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
       State: TCustomDrawState; var DefaultDraw: Boolean);
-    procedure RowColor(AItem: TListItem; AState: TCustomDrawState);
+    procedure RowColor(AItem: TListItem);
   protected
     procedure CreateWnd; override;
   public
@@ -444,21 +444,21 @@ procedure TAtlasDebugEventLogFrame.ListCustomDrawItem(Sender: TCustomListView; I
   State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
-  RowColor(Item, State);
+  RowColor(Item);
 end;
 
 procedure TAtlasDebugEventLogFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
   SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
-  RowColor(Item, State);
+  RowColor(Item);
 end;
 
-procedure TAtlasDebugEventLogFrame.RowColor(AItem: TListItem; AState: TCustomDrawState);
+procedure TAtlasDebugEventLogFrame.RowColor(AItem: TListItem);
 var
   mColor: TAtlasColor;
 begin
-  if (cdsSelected in AState) or (FLog = nil) or (AItem = nil) or (AItem.Index > High(FShown)) or
+  if (AItem = nil) or AItem.Selected or (FLog = nil) or (AItem.Index > High(FShown)) or
     (FShown[AItem.Index] >= FLog.Count) then
   begin
     Exit;

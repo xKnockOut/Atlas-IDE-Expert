@@ -41,6 +41,10 @@ type
     /// </summary>
     [Test]
     procedure BelowLeftAndShownCaption;
+    /// <summary>CanFocusNow: ohne Fenster bzw. bei gesperrtem Formular False (CanFocus allein sagt dort True),
+    /// gezeigt und freigegeben True.</summary>
+    [Test]
+    procedure CanFocusNowChecksTheForm;
   end;
 
 implementation
@@ -61,6 +65,7 @@ const
   cSomeRow = 3;
   cOldHeight = 10;
   cNewHeight = 25;
+  cOffScreen = 10000;
 
 { TAtlasControlsTests }
 
@@ -282,6 +287,31 @@ begin
     Assert.AreEqual('Status', TAtlasControls.ShownCaption(mLabel));
     mLabel.Visible := False;
     Assert.AreEqual('', TAtlasControls.ShownCaption(mLabel));
+  finally
+    mForm.Free;
+  end;
+end;
+
+procedure TAtlasControlsTests.CanFocusNowChecksTheForm;
+var
+  mForm: TForm;
+  mEdit: TEdit;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mForm.Position := poDesigned;
+    mForm.SetBounds(-cOffScreen, -cOffScreen, cNewHeight * 10, cNewHeight * 4);
+    mEdit := TEdit.Create(mForm);
+    mEdit.Parent := mForm;
+    Assert.IsFalse(TAtlasControls.CanFocusNow(nil));
+    Assert.IsFalse(TAtlasControls.CanFocusNow(mEdit), 'Formular nicht gezeigt');
+    mForm.Show;
+    Assert.IsTrue(TAtlasControls.CanFocusNow(mEdit), 'gezeigt und freigegeben');
+    mForm.Enabled := False;
+    Assert.IsTrue(mEdit.CanFocus, 'CanFocus prüft das Formular nicht');
+    Assert.IsFalse(TAtlasControls.CanFocusNow(mEdit), 'Formular gesperrt');
+    mForm.Enabled := True;
+    mForm.Hide;
   finally
     mForm.Free;
   end;

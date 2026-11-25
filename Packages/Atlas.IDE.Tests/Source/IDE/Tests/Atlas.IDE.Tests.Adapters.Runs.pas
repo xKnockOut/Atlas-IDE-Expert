@@ -12,8 +12,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.Plugin.Build.Contract,
   Atlas.IDE.Base.Foundation.Tests,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,

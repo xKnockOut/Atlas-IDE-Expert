@@ -19,8 +19,8 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Problems.Contract,
-  Atlas.Core.Modules.Contract,
+  Atlas.Plugin.Problems.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
   Atlas.IDE.Tests.Runner,
@@ -55,8 +55,8 @@ implementation
 uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Tests.Debug,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,

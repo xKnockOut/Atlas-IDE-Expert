@@ -31,7 +31,7 @@ uses
   Vcl.Forms,
   Vcl.AppEvnts,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Editor.MouseButtons,
+  Atlas.Plugin.Editor.MouseButtons,
   Atlas.IDE.Base.Foundation.MouseHistory,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.NavHistory;

@@ -140,14 +140,7 @@ end;
 
 procedure TAtlasBreakpointSetDialog.CreateList;
 begin
-  FList := TListBox.Create(Self);
-  // Lage vor Align und Parent wie bei AddRow.
-  FList.Top := NextTop;
-  FList.Height := ScaleValue(cListHeight);
-  FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowGap), ScaleValue(cRowGap), 0);
-  FList.Align := alTop;
-  FList.Parent := Self;
+  FList := AddList(cListHeight, cRowGap);
   FList.OnDblClick := ListDblClick;
 end;
 

@@ -13,7 +13,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Base.Foundation.Rules;
 
 type
@@ -43,7 +43,7 @@ implementation
 uses
   System.JSON,
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Rules.CustomLayer,
   Atlas.IDE.Foundation.Host,

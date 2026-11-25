@@ -53,7 +53,7 @@ uses
   Atlas.Plugin.Settings.StatusBarItems,
   Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Status.Registry,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.StatusBar.Strings,

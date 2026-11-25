@@ -41,7 +41,7 @@ uses
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.BreakpointCheck,
   Atlas.Core.Debug.AssistantControl,
-  Atlas.Core.DebugControl.Types;
+  Atlas.Plugin.DebugControl.Contract;
 
 function LaunchOf(const AArguments, ATest: string): TAtlasDebugControlLaunch;
 begin

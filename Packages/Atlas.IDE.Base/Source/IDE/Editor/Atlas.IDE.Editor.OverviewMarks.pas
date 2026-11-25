@@ -25,17 +25,17 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Editor.LineChanges,
+  Atlas.Plugin.Editor.LineChanges,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Base.Foundation.LineChanges,
   Atlas.ToolsApi.Debugger.Services,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 const
   cBookmarkCount = 10;

@@ -16,7 +16,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.SavedPlaces.Contract,
+  Atlas.Plugin.SavedPlaces.Contract,
   Atlas.Core.Welcome.Setup,
   Atlas.IDE.Base.Foundation.IssueWork;
 
@@ -77,8 +77,8 @@ uses
   Atlas.Core.Generate.FileTemplates,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Generate.NewFile,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Welcome.QuickActions,
   Atlas.IDE.Base.Foundation.BuildPipeline,
   Atlas.IDE.Base.Foundation.Tests,

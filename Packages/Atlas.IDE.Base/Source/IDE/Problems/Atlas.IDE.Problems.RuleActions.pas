@@ -11,7 +11,7 @@
 interface
 
 uses
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.IDE.Base.Foundation.Rules;
 
 type
@@ -30,8 +30,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions;
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions;
 
 /// <summary>Aktionen des ersten laufenden Moduls; False ohne.</summary>
 function Find(out AActions: IAtlasRuleActions): Boolean;

@@ -124,7 +124,7 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Files,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -147,7 +147,7 @@ begin
   inherited Create;
   FHooks := AHooks;
   FCacheFolder := ACacheFolder;
-  FWorker := TAtlasBackgroundJobs.Create(HInstance);
+  FWorker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Tracker);
   FState.Calendar := TAtlasSprintCalendar.WorkWeek;
 end;
 

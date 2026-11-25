@@ -163,7 +163,7 @@ uses
   System.DateUtils,
   Atlas.Text.Json,
   Atlas.Text.Uris,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Internals.GitHubProjects;
 

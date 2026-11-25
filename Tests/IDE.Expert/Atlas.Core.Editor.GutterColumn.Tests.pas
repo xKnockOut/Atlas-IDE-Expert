@@ -7,7 +7,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Editor.GutterColumn;
 
 type

@@ -37,7 +37,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.NotifyPlan,

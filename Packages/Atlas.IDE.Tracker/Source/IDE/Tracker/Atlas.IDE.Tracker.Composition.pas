@@ -26,11 +26,11 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Commands.Contract,
   Atlas.Text.Product.Version,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Ci.Providers.Credentials,
   Atlas.Core.Credentials.Contract,

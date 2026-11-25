@@ -6,7 +6,8 @@
 // Rückgängig-Schritt, Rückgängig der IDE bringt die Marken zurück, Änderung
 // der IDE an der Hauptmarke (Mirror) und anderswo (verschieben), Datei
 // gewechselt, Kopieren, Einfügen je Marke, Umschließen, Bewegen, Klick,
-// Zeilenenden, schreibgeschützt, Hauptmarke nachziehen.
+// Zeilenenden, schreibgeschützt, Hauptmarke nachziehen, Puffer wirft beim
+// Schreiben.
 
 interface
 
@@ -15,7 +16,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Core.Editor.MultiCursorSession,
   Atlas.Tests.EditSurfaceFake,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   [TestFixture]
@@ -65,6 +66,8 @@ type
     procedure SyncMainFollowsIdeCursor;
     [Test]
     procedure FinishReportsOnce;
+    [Test]
+    procedure ThrowingWriteEndsCarets;
   end;
 
 implementation
@@ -293,6 +296,26 @@ begin
   FSession.Finish;
   Assert.AreEqual(1, FFinishes);
   Assert.AreEqual('', FSession.FileName);
+end;
+
+procedure TAtlasMultiCursorSessionTests.ThrowingWriteEndsCarets;
+begin
+  SelectAllX;
+  FFake.OnWrite :=
+    procedure
+    begin
+      raise EInOutError.Create('Puffer gesperrt');
+    end;
+  Assert.WillRaise(
+    procedure
+    begin
+      FSession.DoEdit(FSurface, TAtlasCaretEditKind.Insert, 'y');
+    end, EInOutError);
+  FFake.OnWrite := nil;
+  Assert.IsFalse(FSession.Active, 'Marken passen nicht mehr sicher');
+  Assert.AreEqual(1, FFinishes);
+  FFake.Caret(0, 5);
+  Assert.IsTrue(FSession.Next(FSurface), 'neue Sitzung möglich');
 end;
 
 initialization

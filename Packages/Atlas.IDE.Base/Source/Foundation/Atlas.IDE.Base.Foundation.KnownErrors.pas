@@ -8,13 +8,13 @@
 // (Öffnen, als Kommentar anhängen, wieder öffnen, neues Issue). Der Debugger stellt
 // IAtlasKnownErrorsView bereit und erfährt dort, dass ein Ergebnis nachkommt.
 // Fehlt eines der Module, fragt das andere ins Leere und tut nichts. Nur
-// Interfaces, kein Code; die Records stehen in Atlas.Core.KnownErrors.Contract.
+// Interfaces, kein Code; die Records stehen in Atlas.Plugin.KnownErrors.Contract.
 // Alle Aufrufe im Hauptthread der IDE.
 
 interface
 
 uses
-  Atlas.Core.KnownErrors.Contract;
+  Atlas.Plugin.KnownErrors.Contract;
 
 type
   /// <summary>Stellt der Tracker bereit: bekannte Fehler zu einem Halt.</summary>

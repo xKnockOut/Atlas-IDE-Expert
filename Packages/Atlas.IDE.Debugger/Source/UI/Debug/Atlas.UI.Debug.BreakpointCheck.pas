@@ -134,7 +134,7 @@ end;
 
 procedure TAtlasBreakpointCheckDialog.CreateList;
 begin
-  FList := AddListBox(cListHeight);
+  FList := AddList(cListHeight, 0);
   FList.OnDblClick := ListDblClick;
   FList.OnKeyPress := ListKeyPress;
 end;

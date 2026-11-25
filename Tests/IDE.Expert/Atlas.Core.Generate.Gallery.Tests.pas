@@ -25,7 +25,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Generate.Gallery;
 
 function Command(const AId, ACaption, ADescription: string): TAtlasModuleCommand;

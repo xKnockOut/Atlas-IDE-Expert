@@ -7,12 +7,12 @@
 // Registry. Fehlt das Modul Build-Pipeline, lehnt der Eingang mit Grund ab.
 // Geht der Auftraggeber während eines Builds (Modul entladen, #1906), meldet er
 // sich mit Forget ab: Der Build läuft zu Ende, sein Rückruf wird verworfen (Regel 3).
-// Daten in Atlas.Core.Build.Requests; hier nur das Interface. Liegt in Base (Source/Foundation).
+// Daten in Atlas.Plugin.Build.Contract.Requests; hier nur das Interface. Liegt in Base (Source/Foundation).
 
 interface
 
 uses
-  Atlas.Core.Build.Requests;
+  Atlas.Plugin.Build.Contract.Requests;
 
 type
   /// <summary>Builds auf Auftrag in der laufenden IDE (Hauptthread).</summary>

@@ -13,7 +13,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.Plugin.Notifications.MessageSink,
@@ -60,9 +60,9 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Contributions,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Plugin.Settings.TeamFile,
   Atlas.IDE.Base.Foundation.Tests,
   Atlas.IDE.Foundation.Settings,

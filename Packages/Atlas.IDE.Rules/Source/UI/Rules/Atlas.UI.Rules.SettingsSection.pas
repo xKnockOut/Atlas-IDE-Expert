@@ -94,6 +94,7 @@ uses
   System.UITypes,
   Vcl.Graphics,
   Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.UI.Rules.Strings,
   Atlas.Vcl.Theme.Scaling;
 
@@ -231,7 +232,7 @@ begin
   // Unterdrückungen „lsp-ignore“ je Regel (#147, nur Anzeige); gefüllt erst auf Klick (startet AtlasServer.exe).
   Title(TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageSuppressionsTitle));
   mRow := AddRow(cSuppressionsHeight);
-  FSuppressions := TListBox.Create(FControls);
+  FSuppressions := TAtlasListBox.Create(FControls);
   FSuppressions.Parent := mRow;
   FSuppressions.Align := alClient;
   mRow := AddRow(cRowHeight);

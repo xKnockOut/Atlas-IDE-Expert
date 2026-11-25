@@ -8,7 +8,7 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Filter,
+  Atlas.Common.Findings.Filter,
   Core.CommandLine;
 
 type

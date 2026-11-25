@@ -84,6 +84,10 @@ type
     /// <summary>Argumenttyp nicht sicher: Variant, überladene Funktion im Argument, untypisierte Konstante.</summary>
     [Test]
     procedure UncertainArguments;
+    /// <summary>string.Join mit einem Char-Literal im Array-Literal (E2251 nur unter Delphi 12), auch ohne Index;
+    /// Fall aus Atlas.Common.Editing.SmartIndent.Tests.</summary>
+    [Test]
+    procedure JoinWithCharLiteral;
     [Test]
     procedure FitTable;
     [Test]
@@ -802,6 +806,30 @@ begin
   Assert.IsTrue(TOverloadResolutionRule.SameTypeName('System.Char', 'WideChar'));
   Assert.IsFalse(TOverloadResolutionRule.SameTypeName('Integer', 'Int64'));
   Assert.IsFalse(TOverloadResolutionRule.SameTypeName('', ''));
+end;
+
+procedure TOverloadResolutionTests.JoinWithCharLiteral;
+const
+  cKopf = 'unit Faelle;'#10'interface'#10'implementation'#10'procedure Fall;'#10'var'#10'  mText: string;'#10 +
+    'begin'#10;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := TRuleAssert.Findings(TOverloadResolutionRule.Create, cKopf +
+    '  mText := string.Join(#10, [''{'', ''X := 1;'', ''}'']);'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Aufruf von string.Join ist unter Delphi 12 mehrdeutig: Das Array-Literal enthält das ' +
+    'Char-Literal ''{'' und passt damit zu array of const und array of string (wie E2251).', mFound[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('TArray<string>.Create(…) übergeben', mFound[0].Fixes[0].Title);
+  Assert.AreEqual('TArray<string>.Create(''{'', ''X := 1;'', ''}'')', mFound[0].Fixes[0].Edits[0].NewText);
+  // #13 und '''' sind Char-Literale, #13#10 und '' nicht.
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TOverloadResolutionRule.Create, cKopf +
+    '  mText := string.Join('','', [''a1'', #13]);'#10'  mText := String.Join('','', ['''''''', ''b2'']);'#10 +
+    'end;'#10'end.'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadResolutionRule.Create, cKopf +
+    '  mText := string.Join('','', [''a1'', ''b2'']);'#10'  mText := string.Join('','', [#13#10, '''']);'#10 +
+    '  mText := string.Join('','', TArray<string>.Create(''{'', ''}''));'#10'end;'#10'end.'))));
 end;
 
 procedure TOverloadResolutionTests.Options;

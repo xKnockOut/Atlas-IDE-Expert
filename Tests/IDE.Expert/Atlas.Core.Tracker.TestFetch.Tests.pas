@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Tracker.TestFetch,
   Atlas.Core.Tracker.TestResults;

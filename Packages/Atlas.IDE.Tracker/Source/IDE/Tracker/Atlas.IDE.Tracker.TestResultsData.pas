@@ -9,7 +9,7 @@ interface
 
 uses
   System.Generics.Collections,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
   Atlas.IDE.Tracker.WelcomeLink;

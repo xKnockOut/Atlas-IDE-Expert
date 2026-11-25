@@ -24,7 +24,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Build.Requests,
+  Atlas.Plugin.Build.Contract.Requests,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.Tracker.Review,
@@ -110,8 +110,8 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Commands.Palette,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Contributions,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.VersionControl.Repository.BranchPlan,
   Atlas.IDE.Base.Foundation.BuildRequests,

@@ -43,7 +43,7 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Projects.Contract.Summary,
+  Atlas.Plugin.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract,
   Atlas.IDE.Base.Foundation.BuildTools,
   Atlas.IDE.Foundation.Host,

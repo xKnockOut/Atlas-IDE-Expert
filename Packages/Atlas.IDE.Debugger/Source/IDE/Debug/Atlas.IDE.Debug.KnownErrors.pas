@@ -16,7 +16,7 @@
 interface
 
 uses
-  Atlas.Core.KnownErrors.Contract,
+  Atlas.Plugin.KnownErrors.Contract,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.IDE.Debug.Exceptions;
 
@@ -45,7 +45,7 @@ uses
   System.SysUtils,
   Atlas.IDE.Base.Foundation.KnownErrors,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Debug.KnownErrors,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.ExceptionBar;

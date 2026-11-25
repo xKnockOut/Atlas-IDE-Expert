@@ -13,7 +13,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Builder,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
   Core.Workspace.Setup,
   Core.Workspace.Packages;
 
@@ -104,7 +104,7 @@ type
     function Packages: IPackageLocatorHold;
     /// <summary>Symbole und Include-Dateien des Projekts für die Regelprüfung von AFileName (#860); ohne
     /// Projekt die Vordefinitionen, $I dann nur im Ordner der Datei.</summary>
-    function CheckSource(const AFileName: string): TCheckSource;
+    function CheckSource(const AFileName: string): TPascalSource;
     /// <summary>Projekt für projektweite Regeln (#1102) mit Datei und Quelltexten, dazu der Hauptquelltext;
     /// False ohne geladenes Projekt. Liest keine Dateien; Art, Test-Projekt und Formulare ergänzt
     /// TRuleProjectFiles.ProjectOf außerhalb von Sperren.</summary>
@@ -343,7 +343,7 @@ begin
   end;
 end;
 
-function TCoreProjectState.CheckSource(const AFileName: string): TCheckSource;
+function TCoreProjectState.CheckSource(const AFileName: string): TPascalSource;
 var
   mSymbols: TArray<string>;
 begin
@@ -351,7 +351,7 @@ begin
   begin
     mSymbols := nil;
   end;
-  Result := TCheckSource.Create(AFileName, mSymbols, TIncludeFiles.Resolver(IncludePaths));
+  Result := TPascalSource.Create(AFileName, mSymbols, TIncludeFiles.Resolver(IncludePaths));
 end;
 
 function TCoreProjectState.RuleProject(out AProject: TRuleProject; out AMainSource: string): Boolean;

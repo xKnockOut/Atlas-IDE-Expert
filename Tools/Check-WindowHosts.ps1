@@ -45,6 +45,10 @@
       verlangen das Senken der Baseline (-UpdateBaseline). Eine Zeile mit
       // window-ok ist ausgenommen (Überlagerungen und Popups ohne
       Dialogcharakter, mit Begründung im Kommentar).
+    - Listen sind TAtlasListBox (Atlas.Vcl.Controls.ListBox): Unter dem
+      Stil der IDE zeichnet eine TListBox beim Wechsel des Fokus die ganze
+      Fläche in der Grundfarbe vor den Zeilen, die Liste blitzt leer auf
+      (TListBox.Create steht nur dort).
     - Ein Teiler (TSplitter) bekommt vor dem Ausrichten seine Lage (Top bei
       alTop/alBottom, Left bei alLeft/alRight) neben dem Steuerelement, das er
       verstellt (splitter-position). Die VCL ordnet gleich ausgerichtete
@@ -63,6 +67,19 @@
       Zeilen mit // window-ok und Begründung (Werte, die der Stil danach
       abbildet, Farben ohne IDE-Thema, Farbwerte für entworfene Formulare).
       Zeichenketten zählen nicht (Namen der Farben im Visualisierer).
+    - Selbst gefärbte Zeilen von Listen und Bäumen fragen nicht cdsSelected
+      ab (cds-selected): Die IDE meldet es bei jeder Zeile; wer dann nur die
+      Auswahlschrift setzt, zeichnet hell auf der weißen Fläche von Windows.
+      Gewählt ist, was Item.Selected bzw. Node.Selected sagt;
+      TAtlasUiTheme.RowColors färbt die Zeile.
+    - Eine Liste wird nur in einer Methode CreateWnd virtuell
+      (Style := lbVirtual bzw. lbVirtualOwnerDraw; virtual-listbox-style):
+      SetStyle leert die Einträge per LB_RESETCONTENT und legt dafür das
+      Fenster der Liste an. Im Konstruktor fehlt der Parent bzw. dessen
+      Fenster (die IDE hängt den Frame eines Dockfensters erst nach dem
+      Anlegen ein): „Element … hat kein übergeordnetes Fenster“, und die
+      Sicherung schaltet die Funktion ab. In CreateWnd des Frames bzw. des
+      Parents ist dessen Fenster da.
     - Der Frame eines andockbaren Fensters (Ergebnis von GetFrameClass) hat
       eine DFM: {$R *.dfm} in seiner Unit und die .dfm daneben. Die IDE legt
       ihn über TCustomFrame.Create an, das ohne Ressource EResNotFound
@@ -100,6 +117,7 @@ $RefreshUnit = 'Atlas.ToolsApi.Editor.Refresh.pas'
 $DialogUnit = 'Atlas.Vcl.Forms.Dialog.pas'
 $ThemeUnit = 'Atlas.Vcl.Theme.Service.pas'
 $WrapLabelUnit = 'Atlas.Vcl.Controls.WrapLabel.pas'
+$ListBoxUnit = 'Atlas.Vcl.Controls.ListBox.pas'
 $BaselineFile = Join-Path $Root 'Tools/WindowHosts.baseline.json'
 
 function Remove-PascalComments([string] $Text) {
@@ -163,7 +181,11 @@ $Rules = @(
     @{ Pattern = '(?i)\(\s*(F?Host)\s*<>\s*nil\s*\)\s*and\s*\1\s*\.\s*Shown\b'; Allowed = $DockUnit
        Message = 'Sichtbarkeit des Dockfensters mit eigener nil-Prüfung; TAtlasIdeDockWindow.IsShown verwenden' },
     @{ Pattern = '(?is)\.\s*Show\s*\(\s*(\w+)\s*\)\s*;\s*if\s+\1\s+then\s+begin\s+TAtlasIdeDockWindow\s*\.\s*UpdateIcon\s*\(\s*\w+\s*\)\s*;\s*end\b'; Allowed = $DockUnit
-       Message = 'Symbol nach Show(…) noch einmal gesetzt (Show setzt es beim Anlegen selbst); TAtlasIdeDockWindow.Present verwenden' }
+       Message = 'Symbol nach Show(…) noch einmal gesetzt (Show setzt es beim Anlegen selbst); TAtlasIdeDockWindow.Present verwenden' },
+    @{ Pattern = '(?i)\bTListBox\s*\.\s*Create\b'; Allowed = $ListBoxUnit
+       Message = 'TListBox flackert unter dem Stil der IDE (leere Fläche vor den Zeilen); TAtlasListBox verwenden' },
+    @{ Pattern = '(?i)\bcdsSelected\b'; Allowed = ''
+       Message = 'cdsSelected ist in der IDE bei jeder Zeile gesetzt (helle Auswahlschrift auf weißer Fläche); Item.Selected bzw. Node.Selected und TAtlasUiTheme.RowColors verwenden' }
 )
 
 # Dialogregeln (#2064): gezählt je Datei gegen Tools/WindowHosts.baseline.json.
@@ -250,6 +272,18 @@ foreach ($file in $files) {
         $mName = [regex]::Escape($match.Groups[1].Value) -replace '\\\.', '\s*\.\s*'
         if ($text -notmatch ('(?i)(?<![\w.])' + $mName + '\s*\.\s*(Top|Left)\s*:=')) {
             $violations += "${relative}:${mLine}: Teiler ohne Top bzw. Left; vor Align und Parent neben das Steuerelement setzen, das er verstellt (die VCL ordnet gleich ausgerichtete Steuerelemente nach ihrer Lage, sonst zieht der Teiler den falschen Nachbarn)"
+        }
+    }
+
+    # Virtuelle Liste nur in CreateWnd: SetStyle braucht das Fenster des Parents (virtual-listbox-style).
+    foreach ($match in [regex]::Matches($text, '(?i)\bStyle\s*:=\s*lbVirtual(OwnerDraw)?\b')) {
+        $mLine = Get-LineNumber $text $match.Index
+        if ($exempt.Contains($mLine)) { continue }
+        $mHeads = [regex]::Matches($text.Substring(0, $match.Index), '(?im)^\s*(class\s+)?(procedure|function|constructor|destructor)\s+([\w.]+)')
+        $mRoutine = ''
+        if ($mHeads.Count -gt 0) { $mRoutine = $mHeads[$mHeads.Count - 1].Groups[3].Value }
+        if ($mRoutine -notmatch '(?i)(^|\.)CreateWnd$') {
+            $violations += "${relative}:${mLine}: Liste außerhalb von CreateWnd virtuell geschaltet ($mRoutine); SetStyle leert per LB_RESETCONTENT und braucht das Fenster des Parents (im Konstruktor: kein übergeordnetes Fenster). In CreateWnd des Parents setzen"
         }
     }
 

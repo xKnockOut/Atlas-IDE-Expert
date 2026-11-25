@@ -1,14 +1,14 @@
 ﻿unit Atlas.IDE.Tracker.Adapters.NewIssue;
 
 // „Issue anlegen“ für Base (#1268, #1355), Rolle Adapters: TAtlasIdeIssueCreation
-// erfüllt IAtlasIssueCreation aus Atlas.Core.Modules.Contract, wandelt die
+// erfüllt IAtlasIssueCreation aus Atlas.IDE.Base.Foundation.Modules, wandelt die
 // Records des Vertrags und ruft TAtlasIdeNewIssue (Atlas.IDE.Tracker.NewIssue).
 // Anlegen nur in der Komposition des Moduls.
 
 interface
 
 uses
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   /// <summary>„Issue anlegen“ für Base (#1268, #1355): wandelt die Records des Vertrags und ruft

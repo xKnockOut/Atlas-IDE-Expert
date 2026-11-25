@@ -61,7 +61,7 @@ uses
   Atlas.UI.CodeInsight.Strings,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Lsp.Crashes,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Plugin.Notifications.Center,

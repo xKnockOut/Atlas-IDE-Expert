@@ -167,6 +167,7 @@ uses
   System.Types,
   System.Math,
   Vcl.Forms,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.UI.Search.Strings,
   Atlas.Vcl.Theme.Scaling;
 
@@ -309,7 +310,7 @@ begin
   FError.Visible := False;
 
   // Über der Liste, unter der Eingabezeile.
-  FSuggest := TListBox.Create(Self);
+  FSuggest := TAtlasListBox.Create(Self);
   FSuggest.Parent := AHost;
   FSuggest.Visible := False;
   FSuggest.TabStop := False;

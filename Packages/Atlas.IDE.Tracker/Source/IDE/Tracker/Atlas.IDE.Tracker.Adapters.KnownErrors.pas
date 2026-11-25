@@ -23,11 +23,12 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.KnownErrors,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.KnownErrors.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.Plugin.KnownErrors.Contract,
   Atlas.IDE.Base.Foundation.KnownErrors,
   Atlas.IDE.Tracker.IssuesContext,
-  Atlas.IDE.Tracker.IssuesServices;
+  Atlas.IDE.Tracker.IssuesServices,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TAtlasTrackerKnownErrors = class(TInterfacedObject, IAtlasKnownErrors)
@@ -73,11 +74,11 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Tracker.Files,
   Atlas.IDE.Foundation.Settings,

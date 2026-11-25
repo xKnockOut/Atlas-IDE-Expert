@@ -22,7 +22,7 @@ uses
   System.SysUtils,
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Designer.Usages,
   Atlas.UI.Designer.Bar,

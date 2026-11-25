@@ -135,7 +135,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.Plugin.Localization.Strings,
   Atlas.Plugin.Style.Color,
   Atlas.Vcl.Popup.Draw,

@@ -16,7 +16,7 @@ uses
   ToolsAPI,
   Atlas.Text.Diff,
   Atlas.VersionControl.Repository.Contract,
-  Atlas.Core.Editor.LineChanges;
+  Atlas.Plugin.Editor.LineChanges;
 
 type
   /// <summary>Ganze Nachrichten zu den Revisionen aus blame; läuft im Hintergrund.</summary>

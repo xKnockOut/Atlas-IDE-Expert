@@ -43,7 +43,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Plugin.Settings.ProblemsUpdate;
 
@@ -128,8 +128,8 @@ uses
   Atlas.UI.Problems.Strings,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.RuleActions,
   Atlas.IDE.Problems.IdeErrors,

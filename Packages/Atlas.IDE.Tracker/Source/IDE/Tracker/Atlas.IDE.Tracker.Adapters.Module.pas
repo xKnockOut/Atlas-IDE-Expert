@@ -10,7 +10,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Commands.Contract;
 
 type
@@ -50,7 +50,7 @@ implementation
 
 uses
   Atlas.Text.Product.Version,
-  Atlas.Core.Diagnostics.ModuleHost;
+  Atlas.IDE.Base.Core.ModuleHost;
 
 { TAtlasTrackerModule }
 

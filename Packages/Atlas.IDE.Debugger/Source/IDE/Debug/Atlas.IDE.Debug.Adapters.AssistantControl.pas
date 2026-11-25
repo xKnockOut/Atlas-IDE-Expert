@@ -20,7 +20,7 @@ interface
 uses
   System.Generics.Collections,
   ToolsAPI,
-  Atlas.Core.DebugControl.Types,
+  Atlas.Plugin.DebugControl.Contract,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract,
   Atlas.IDE.Debug.Session,

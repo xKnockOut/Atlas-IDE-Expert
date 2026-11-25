@@ -30,7 +30,7 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   ToolsAPI.Editor,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Core.Rules.Ownership,
   Atlas.Vcl.Popup.TitledTip;
 

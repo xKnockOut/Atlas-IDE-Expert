@@ -83,7 +83,7 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Ci.Internals.Addresses,
   Atlas.Core.Ci.Providers.Jenkins;
 

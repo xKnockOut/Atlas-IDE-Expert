@@ -14,8 +14,8 @@ implementation
 
 uses
   Atlas.Text.Product.Version,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.ModuleHost,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.ModuleHost,
   Atlas.IDE.Base.Foundation.Help,
   Atlas.UI.Help.SettingsSection,
   Atlas.IDE.Help.Adapters.Module;

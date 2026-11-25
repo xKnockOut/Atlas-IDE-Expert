@@ -41,7 +41,7 @@ uses
   Atlas.VersionControl.Repository.Tools,
   Atlas.VersionControl.Repository.ToolCheck,
   Atlas.VersionControl.Repository.ServerCheck,
-  Atlas.Core.Projects.VersionControl;
+  Atlas.Plugin.Projects.VersionControl;
 
 type
   TAtlasIdeVcsMessage = TProc<string>;
@@ -534,7 +534,7 @@ begin
   end;
   if Worker = nil then
   begin
-    Worker := TAtlasBackgroundJobs.Create(HInstance);
+    Worker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Status);
   end;
   Backend.SetToolMissing(ToolMissing);
 end;
