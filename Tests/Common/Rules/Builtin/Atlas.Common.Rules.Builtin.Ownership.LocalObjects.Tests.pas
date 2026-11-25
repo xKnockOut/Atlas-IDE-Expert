@@ -2,7 +2,7 @@
 
 // Tests von local-object-not-freed und created-result-not-freed (#1876): Beispiel mit Korrektur, Inline-Variablen,
 // Freigaben und Weitergaben, Owner und Threads, Fabrikfunktionen der Datei und aus der Option factories,
-// Abschalten.
+// Abschalten; Weitergabe an Routinen anderer Units über die Besitz-Zusammenfassung im Index.
 
 interface
 
@@ -25,6 +25,10 @@ type
     procedure OwnersThreadsAndRecordsAreSilent;
     [Test]
     procedure UnknownClassIsSilent;
+    [Test]
+    procedure RoutineOfOtherUnitOnlyBorrows;
+    [Test]
+    procedure RoutineOfOtherUnitFreesOrKeeps;
     [Test]
     procedure RuleCanBeTurnedOff;
   end;
@@ -51,6 +55,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
   Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Index.Contract,
+  Atlas.Tests.SymbolIndex,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.SourceText;
 
@@ -169,6 +175,45 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[1].Confidence));
   Assert.Contains(mFound[1].Message, 'TStringList');
+end;
+
+const
+  cHelfer = 'unit Helfer;'#10'interface'#10'uses System.Classes;'#10'type'#10'  THalter = class'#10 +
+    '  private'#10'    FListe: TStrings;'#10'  public'#10'    constructor Create(AListe: TStrings);'#10'  end;'#10 +
+    'procedure StrBreakApart(const S, Trenner: string; Teile: TStrings);'#10'procedure Weg(A: TObject);'#10 +
+    'procedure Weiter(A: TObject);'#10'procedure Anders(A: TObject);'#10'implementation'#10 +
+    'constructor THalter.Create(AListe: TStrings);'#10'begin'#10'  FListe := AListe;'#10'end;'#10 +
+    'procedure StrBreakApart(const S, Trenner: string; Teile: TStrings);'#10'begin'#10'  Teile.Add(S);'#10 +
+    'end;'#10'procedure Weg(A: TObject);'#10'begin'#10'  A.Free;'#10'end;'#10 +
+    'procedure Weiter(A: TObject);'#10'begin'#10'  Weg(A);'#10'end;'#10 +
+    'procedure Anders(A: TObject);'#10'begin'#10'  A.Dispatch(A);'#10'end;'#10'end.';
+
+/// <summary>Treffer für den Rumpf ABody (Variable Liste: TStringList) in einer Unit, die Helfer einbindet.
+/// </summary>
+function CrossUnitFindings(const ABody: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.IndexFindings(TLocalObjectNotFreedRule.Create,
+    'unit Nutzer;'#10'interface'#10'implementation'#10'uses System.Classes, Helfer;'#10'procedure Lauf;'#10 +
+    'var'#10'  Liste: TStringList;'#10'  Halter: THalter;'#10'begin'#10'  Liste := TStringList.Create;'#10 +
+    ABody + 'end;'#10'end.', TTestIndex.Build([cHelfer, 'Helfer.pas']), '', 'Nutzer.pas');
+end;
+
+procedure TLocalObjectNotFreedTests.RoutineOfOtherUnitOnlyBorrows;
+begin
+  // StrBreakApart füllt die Liste nur: Sie bleibt ein Leck des Aufrufers.
+  Assert.AreEqual(1, Integer(Length(CrossUnitFindings('  StrBreakApart(''a,b'', '','', Liste);'#10))));
+  Assert.AreEqual(1, Integer(Length(CrossUnitFindings('  ExtractStrings(['',''], [], ''a,b'', Liste);'#10))));
+end;
+
+procedure TLocalObjectNotFreedTests.RoutineOfOtherUnitFreesOrKeeps;
+begin
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Weg(Liste);'#10))));
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Weiter(Liste);'#10))));
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Halter := THalter.Create(Liste);'#10 +
+    '  Halter.Free;'#10))));
+  // Unklar (Aufruf einer Methode des Objekts) und unbekannte Routinen bleiben still.
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Anders(Liste);'#10))));
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Unbekannt(Liste);'#10))));
 end;
 
 procedure TLocalObjectNotFreedTests.RuleCanBeTurnedOff;

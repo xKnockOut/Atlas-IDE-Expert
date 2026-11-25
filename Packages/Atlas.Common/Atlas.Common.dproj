@@ -153,6 +153,8 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Conditions.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.InlineRefs.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.ParamOwnership.pas"/>
+        <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Routines.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Patterns.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.Tokens.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Extractor.TypeText.pas"/>
@@ -428,6 +430,8 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CaseCompletion.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignFields.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineBody.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ParamOwnership.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ObjectUses.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ExpressionText.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.StatementText.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.IfCase.pas"/>
@@ -573,6 +577,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ErrorCommands.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UnresolvedNames.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.InlineCallees.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.CallOwnership.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.UsesUsage.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Architecture.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Concurrency.pas"/>
@@ -688,6 +693,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LeakCandidates.pas"/>
         <DCCReference Include="Source\Rules\Internals\Atlas.Common.Rules.Internals.OwnershipTree.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Ownership.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.CallOwnership.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Ownership.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.RuntimeReport.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TestCases.pas"/>

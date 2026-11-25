@@ -9,7 +9,8 @@
 //   meldet.
 // - Ton: grün (Safe) bei Destroy, finally, Owner, besitzender Liste und
 //   Referenzzählung; gelb (Elsewhere) bei Freigabe in einer anderen Methode,
-//   Rückgabe, Weitergabe und unklar; rot (Never) bei „nie freigegeben“.
+//   Rückgabe, Weitergabe, Freigabe oder Übernahme durch eine gerufene Routine,
+//   Leihgabe und unklar; rot (Never) bei „nie freigegeben“.
 // - Eine Marke zählt nur, solange ihre Zeile noch so lautet wie beim Abruf
 //   (lineText), damit sie nach dem Tippen nicht an fremden Zeilen steht.
 // - Neu fragen: bei einer anderen Datei und nach jeder neuen Prüfung dieser
@@ -25,7 +26,8 @@ uses
 type
 {$SCOPEDENUMS ON}
   /// <summary>Art der Freigabe wie TOwnershipSites.cKindNames des Servers.</summary>
-  TAtlasOwnershipKind = (InDestroy, InFinally, Freed, Owner, OwnedList, RefCounted, Returned, Passed, Unknown, Never);
+  TAtlasOwnershipKind = (InDestroy, InFinally, Freed, Owner, OwnedList, RefCounted, Returned, Passed, Unknown, Never,
+    FreedBy, TakenBy, Lent);
   /// <summary>Farbe der Marke: grün, gelb, rot.</summary>
   TAtlasOwnershipTone = (Safe, Elsewhere, Never);
   /// <summary>Behälter-Hinweis wie TOwnershipSites.cContainerNames.</summary>
@@ -53,8 +55,8 @@ type
 
   /// <summary>Texte der Marken und Tooltips in der Sprache der IDE (aus Atlas.UI.Rules.Strings).</summary>
   TAtlasOwnershipTexts = record
-    /// <summary>Beschriftung je Art; InDestroy, InFinally und Freed mit %d (Zeile), Owner, OwnedList und Passed
-    /// mit %s.</summary>
+    /// <summary>Beschriftung je Art; InDestroy, InFinally und Freed mit %d (Zeile), Owner, OwnedList, Passed,
+    /// FreedBy, TakenBy und Lent mit %s.</summary>
     Labels: array[TAtlasOwnershipKind] of string;
     /// <summary>Freed mit Methode: %s, %d.</summary>
     FreedIn: string;
@@ -88,7 +90,7 @@ type
   public const
     cCommand = 'atlas.server.ownership';
     cKindNames: array[TAtlasOwnershipKind] of string = ('destroy', 'finally', 'freed', 'owner', 'ownedList',
-      'interface', 'returned', 'passed', 'unknown', 'never');
+      'interface', 'returned', 'passed', 'unknown', 'never', 'freedBy', 'takenBy', 'lent');
     cContainerNames: array[TAtlasOwnershipContainer] of string = ('', 'ownsElements', 'elementsOwned');
   public
     /// <summary>Argumente des Befehls: ["AUri"].</summary>
@@ -313,7 +315,8 @@ begin
       begin
         Result := Format(mLabel, [AMark.FreeLine + 1]);
       end;
-    TAtlasOwnershipKind.Owner, TAtlasOwnershipKind.OwnedList:
+    TAtlasOwnershipKind.Owner, TAtlasOwnershipKind.OwnedList, TAtlasOwnershipKind.FreedBy,
+    TAtlasOwnershipKind.TakenBy, TAtlasOwnershipKind.Lent:
       Result := Format(mLabel, [AMark.Detail]);
     TAtlasOwnershipKind.Passed:
       if AMark.Detail <> '' then

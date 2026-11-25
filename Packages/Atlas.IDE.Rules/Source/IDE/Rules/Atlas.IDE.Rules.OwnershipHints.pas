@@ -603,6 +603,9 @@ begin
   Result.Labels[TAtlasOwnershipKind.Passed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipPassed);
   Result.Labels[TAtlasOwnershipKind.Unknown] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipUnknown);
   Result.Labels[TAtlasOwnershipKind.Never] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipNever);
+  Result.Labels[TAtlasOwnershipKind.FreedBy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFreedBy);
+  Result.Labels[TAtlasOwnershipKind.TakenBy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipTakenBy);
+  Result.Labels[TAtlasOwnershipKind.Lent] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipLent);
   Result.FreedIn := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFreedIn);
   Result.PassedSomewhere := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipPassedSomewhere);
   Result.Reasons[TAtlasOwnershipKind.InDestroy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyDestroy);
@@ -616,6 +619,9 @@ begin
   Result.Reasons[TAtlasOwnershipKind.Passed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyPassed);
   Result.Reasons[TAtlasOwnershipKind.Unknown] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyUnknown);
   Result.Reasons[TAtlasOwnershipKind.Never] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyNever);
+  Result.Reasons[TAtlasOwnershipKind.FreedBy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyFreedBy);
+  Result.Reasons[TAtlasOwnershipKind.TakenBy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyTakenBy);
+  Result.Reasons[TAtlasOwnershipKind.Lent] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyLent);
   Result.ContainerLabels[TAtlasOwnershipContainer.OwnsElements] :=
     TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipOwnsElements);
   Result.ContainerLabels[TAtlasOwnershipContainer.ElementsOwned] :=
