@@ -43,7 +43,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Logging.Providers.Logger,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Lsp.AffectedTests;
 

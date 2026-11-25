@@ -103,6 +103,7 @@
         <DCCReference Include="Source\DebugDisplay\Atlas.Text.DebugDisplay.pas"/>
         <DCCReference Include="Source\DUnitX\Atlas.Text.DUnitX.pas"/>
         <DCCReference Include="Source\DUnitX\Atlas.Text.DUnitX.CommandLine.pas"/>
+        <DCCReference Include="Source\DUnitX\Atlas.Text.DUnitX.UnitNames.pas"/>
         <DCCReference Include="Source\TestResults\Atlas.Text.TestResults.pas"/>
         <DCCReference Include="Source\McpStatistics\Atlas.Text.McpStatistics.pas"/>
         <DCCReference Include="Source\TestResults\Atlas.Text.TestRunFile.pas"/>

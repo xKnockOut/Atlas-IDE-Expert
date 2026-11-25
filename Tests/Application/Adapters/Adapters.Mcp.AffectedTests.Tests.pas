@@ -37,7 +37,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Query.Contract,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Common.Mcp.Contract.AffectedTests,
   Atlas.Common.Mcp.Contract.Workspace,
   Adapters.Mcp.AffectedTests,

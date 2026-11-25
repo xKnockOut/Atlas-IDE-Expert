@@ -62,7 +62,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Impact;
+  Atlas.Common.Semantics.Impact;
 
 const
   cBasisFile = 'C:\P\Basis.pas';

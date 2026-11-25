@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.Impact.Tests;
+﻿unit Atlas.Common.Semantics.Impact.Tests;
 
 interface
 
@@ -7,7 +7,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Hierarchies,
-  Atlas.Common.Lsp.Impact;
+  Atlas.Common.Semantics.Impact;
 
 type
   [TestFixture]

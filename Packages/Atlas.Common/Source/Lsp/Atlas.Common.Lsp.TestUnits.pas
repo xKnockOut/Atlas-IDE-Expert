@@ -27,6 +27,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.TestUnits,
+  Atlas.Text.DUnitX.UnitNames,
   Atlas.Common.Editing.TestDrafts;
 
 type
@@ -366,13 +367,13 @@ begin
   begin
     Result.UnitName := ChangeFileExt(ExtractFileName(AFileName), '');
   end;
-  if TTestUnits.TestedUnitName(Result.UnitName, AContext.Settings.Pattern, mTested) and
+  if TTestUnitNames.TestedUnitName(Result.UnitName, AContext.Settings.Pattern, mTested) and
     TPascalUses.IsTestUnit(ATokens) then
   begin
     SetTested(Result, mTested, AContext);
     Exit;
   end;
-  Result.Counterpart := TTestUnits.TestUnitName(Result.UnitName, AContext.Settings.Pattern);
+  Result.Counterpart := TTestUnitNames.TestUnitName(Result.UnitName, AContext.Settings.Pattern);
   mFolder := TestFolder(AContext, AFileName, Result.UnitName);
   FindTestFile(Result, AContext, mFolder);
   if Result.CounterpartFile = '' then

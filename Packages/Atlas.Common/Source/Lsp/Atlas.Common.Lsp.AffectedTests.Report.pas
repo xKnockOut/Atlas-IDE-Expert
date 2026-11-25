@@ -33,8 +33,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Impact,
-  Atlas.Text.DUnitX,
+  Atlas.Common.Semantics.Impact,
   Atlas.Text.DUnitX.CommandLine,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;

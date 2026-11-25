@@ -91,7 +91,7 @@ uses
   System.Diagnostics,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Semantics.Impact,
   Atlas.Tests.SourceText;
 
 const

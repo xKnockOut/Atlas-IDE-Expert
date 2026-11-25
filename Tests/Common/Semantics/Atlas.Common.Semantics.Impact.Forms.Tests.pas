@@ -1,10 +1,10 @@
-﻿unit Atlas.Common.Lsp.Impact.Forms.Tests;
+﻿unit Atlas.Common.Semantics.Impact.Forms.Tests;
 
 interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Lsp.Impact.Forms;
+  Atlas.Common.Semantics.Impact.Forms;
 
 type
   [TestFixture]
