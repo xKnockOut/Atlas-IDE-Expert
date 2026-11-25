@@ -35,7 +35,7 @@
 //                    der else-Zweig zählt mit), die denselben ordinalen Ausdruck
 //                    ohne Seiteneffekte mit Konstanten vergleicht und sich ohne
 //                    Bedeutungsänderung als case schreiben lässt (#646; Erkennung
-//                    und Korrektur aus Editing.IfCase, Typen über die
+//                    und Korrektur aus Semantics.IfCase, Typen über die
 //                    Namensauflösung). Standard aus. Keine Meldung bei Direktiven
 //                    in der Kette.
 
