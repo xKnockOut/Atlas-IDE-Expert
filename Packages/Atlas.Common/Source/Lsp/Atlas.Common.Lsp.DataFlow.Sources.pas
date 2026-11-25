@@ -10,9 +10,9 @@ interface
 
 uses
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.DataFlow.Types,
-  Atlas.Common.Lsp.DataFlow.Base;
+  Atlas.Common.Lsp.DataFlow.Base,
+  Atlas.Common.Semantics.References;
 
 type
   TDataFlowSources = class(TDataFlowBase)
@@ -66,7 +66,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Definition,
+  Atlas.Common.Semantics.Definitions,
   Atlas.Common.Lsp.DataFlow.Syntax,
   Atlas.Text.Names;
 
@@ -617,7 +617,7 @@ var
   mPosition: TTextPosition;
 begin
   Result := nil;
-  mTargets := TLspDefinition.Targets(FResolver, FIndex, FFiles.TreeOf(ASymbol.FileName), ASymbol.FileName,
+  mTargets := TDefinitions.Targets(FResolver, FIndex, FFiles.TreeOf(ASymbol.FileName), ASymbol.FileName,
     ASymbol.Position, False);
   ABodyFile := ASymbol.FileName;
   mPosition := ASymbol.Position;

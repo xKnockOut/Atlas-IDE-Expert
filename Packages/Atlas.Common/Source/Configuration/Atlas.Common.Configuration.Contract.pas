@@ -368,6 +368,8 @@ type
     AlignDeclarations: Boolean;
     /// <summary>Kommentare am Zeilenende untereinander stehender Zeilen ausrichten (#43).</summary>
     AlignComments: Boolean;
+    /// <summary>Beim Formatieren der ganzen Datei die uses sortieren wie /sortuses, ohne zu streichen.</summary>
+    SortUses: Boolean;
     Given: TFormatKeys;
     class function Default: TFormatStyle; static;
     /// <summary>Eine Einrückstufe: Tab, IndentSize Leerzeichen oder (ohne Größe) zwei Leerzeichen.</summary>
@@ -1380,6 +1382,7 @@ begin
   Result.AlignAssignments := False;
   Result.AlignDeclarations := False;
   Result.AlignComments := False;
+  Result.SortUses := False;
   Result.Given := [];
 end;
 

@@ -17,7 +17,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.Signatures,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 const
   cSignatureRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -904,7 +904,7 @@ begin
         Continue;
       end;
       mUnit := Source(mMember.FileName);
-      for mLocation in TLspReferences.Find(FSource.Resolver, FSource.Index, mUnit.Tree,
+      for mLocation in TReferences.Find(FSource.Resolver, FSource.Index, mUnit.Tree,
         TReferenceSearch.Create(mMember.FileName, mUnit.Tokens[mMember.Decl.NameToken].StartPos, True, FSource.Files,
         FSource.ReadText), FSource.Cancellation) do
       begin

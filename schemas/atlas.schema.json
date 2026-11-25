@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Konfiguration",
   "description": "Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): \"project\" in atlas.json im Projektordner (Atlas › Projekt-Einstellungen), \"global\" in %APPDATA%\\Atlas\\settings.json für alle Projekte (Tools › Optionen › Atlas). \"both\" an beiden Orten: Die globale Datei gilt für alle Projekte, atlas.json übersteuert je Glied (rules: je Regel). Ein Schlüssel am falschen Ort wird ignoriert und gemeldet.",
@@ -4095,6 +4095,13 @@
           "default": false,
           "description": "Kommentare am Zeilenende untereinander stehender Zeilen ausrichten.",
           "x-description-en": "Align end-of-line comments of consecutive lines."
+        },
+        "sortUses": {
+          "type": "boolean",
+          "default": false,
+          "description": "Beim Formatieren der ganzen Datei im Editor (nicht bei einer Auswahl, nicht --format-check/--format-write) die uses-Listen sortieren wie /sortuses: Reihenfolge nach slashCommands.sortUsesOrder, Gruppen nach usesGroupStyle, Kommentar-Abschnitte bleiben, doppelte Einträge fallen weg. Ungenutzte Units streicht das Formatieren nie; Listen mit {$IFDEF} bleiben unberührt. Achtung: Die Reihenfolge bestimmt die Initialisierung der Units.",
+          "x-description-en": "When formatting the whole file in the editor (not for a selection, not --format-check/--format-write) sort the uses lists like /sortuses: order from slashCommands.sortUsesOrder, groups as in usesGroupStyle, comment sections stay, duplicate entries are dropped. Formatting never removes unused units; lists with {$IFDEF} stay untouched. Caution: the order determines the initialization of the units.",
+          "x-issue": "#2965"
         }
       },
       "x-scope": "project",

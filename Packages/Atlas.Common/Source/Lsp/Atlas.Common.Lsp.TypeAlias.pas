@@ -27,7 +27,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.TypeAlias,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TTypeAliasContext = record
@@ -537,7 +537,7 @@ begin
   begin
     raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible2].Text + mReason);
   end;
-  mLocations := TLspReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
+  mLocations := TReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
     mTarget.NamePosition, False, AContext.Files, AContext.ReadText));
   CheckNoForms(mLocations, mTarget.Name);
   mFiles := nil;

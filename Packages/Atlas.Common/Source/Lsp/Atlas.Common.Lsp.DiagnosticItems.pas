@@ -16,7 +16,7 @@ uses
   Atlas.Common.Findings.Suppressions,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Contract;
@@ -51,7 +51,7 @@ type
     class function InactiveMessageOf(const ACondition, APlatform, AConfig: string): string; static;
     /// <summary>Inaktiver Bereich als Hinweis mit dem Tag Unnecessary; Bedingung, Plattform und Konfiguration
     /// einzeln in data.inactive (#615).</summary>
-    class function InactiveToJson(const ARegion: TLspInactiveRegion; const APlatform, AConfig: string)
+    class function InactiveToJson(const ARegion: TInactiveRegion; const APlatform, AConfig: string)
       : TJSONObject; static;
     /// <summary>Befund des Präprozessors: Include-Zyklus als Warnung, sonst Hinweis.</summary>
     class function IssueToJson(const AIssue: TPreprocessorIssue): TJSONObject; static;
@@ -375,7 +375,7 @@ begin
   Result := Result + Format(InactiveTargetSuffix, [mPlatform, mConfig]);
 end;
 
-class function TLspDiagnosticItems.InactiveToJson(const ARegion: TLspInactiveRegion;
+class function TLspDiagnosticItems.InactiveToJson(const ARegion: TInactiveRegion;
   const APlatform, AConfig: string): TJSONObject;
 var
   mData: TJSONObject;

@@ -28,7 +28,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Semantics.References;
 
 type
   TRenameEdit = record
@@ -104,7 +105,7 @@ type
     /// <summary>'' oder der Grund, warum ANewName die Bedeutung ändern würde: Eine lokale Variable, ein
     /// Parameter oder ein Feld mit dem neuen Namen verdeckt danach eine umbenannte Stelle, oder das
     /// umbenannte Symbol verdeckt eine vorhandene Verwendung von ANewName. ALocations sind die Stellen aus
-    /// TLspReferences.Find samt Deklaration; ASearch nennt Datei, Stelle und das Lesen weiterer Dateien.</summary>
+    /// TReferences.Find samt Deklaration; ASearch nennt Datei, Stelle und das Lesen weiterer Dateien.</summary>
     class function Conflict(AResolver: TNameResolver; ATree: TSyntaxTree; const ASearch: TReferenceSearch;
       const ANewName: string; const ALocations: TArray<TReferenceLocation>): string; static;
     /// <summary>Alle zu ersetzenden Stellen für das Symbol an ASearch.Position (die Deklaration zählt immer
@@ -138,8 +139,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.Definition,
-  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Semantics.Definitions,
+  Atlas.Common.Semantics.ReferenceConfidence,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TreeCache,
@@ -582,7 +583,7 @@ begin
     begin
       Continue;
     end;
-    for mLocation in TLspReferences.Find(AScope.Resolver, AScope.Index, ATree, TReferenceSearch.Create(AFileName,
+    for mLocation in TReferences.Find(AScope.Resolver, AScope.Index, ATree, TReferenceSearch.Create(AFileName,
       mHandler.SelectionRange.StartPos, True, AScope.Search.Files, AScope.Search.ReadText),
       AScope.Request.Cancellation) do
     begin
@@ -739,7 +740,7 @@ begin
     Result.Name := Copy(Result.Name, 2, MaxInt);
   end;
   // Wie die Referenzsuche: Parameter auch aus dem Kopf ohne Rumpf (#2425).
-  mTargets := TLspReferences.Targets(AResolver, AIndex, ATree, AFileName, APosition);
+  mTargets := TReferences.Targets(AResolver, AIndex, ATree, AFileName, APosition);
   if Length(mTargets) > 0 then
   begin
     Result.DeclarationFile := mTargets[0].FileName;
@@ -825,7 +826,7 @@ begin
   mScope.Search := ASearch;
   mScope.Search.Declaration := True;
   mScope.Request := ARequest;
-  mLocations := RenameableOf(TLspReferences.Find(AResolver, AIndex, ATree, mScope.Search, ARequest.Settings,
+  mLocations := RenameableOf(TReferences.Find(AResolver, AIndex, ATree, mScope.Search, ARequest.Settings,
     ARequest.Cancellation), AUnchanged);
   mReason := Conflict(AResolver, ATree, mScope.Search, ARequest.NewName, mLocations);
   if mReason <> '' then

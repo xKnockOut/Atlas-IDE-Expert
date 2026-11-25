@@ -106,7 +106,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Umbenennen** projektweit samt Formularen, **Signatur ändern**, **sicheres Löschen**
 - **Methode extrahieren, Variable einführen, `if` ⇄ `case`** und viele weitere Umwandlungen; *Methode extrahieren* ersetzt auf Wunsch auch gleiche Stellen der Unit, jede in der Vorschau abwählbar
 - **Klassenaktionen:** Interface implementieren, Interface oder Basisklasse herauslösen, Properties erzeugen, Sichtbarkeit eines Mitglieds anheben
-- **uses:** fehlende Units ergänzen, sortieren (mit `/sortuses` nach Herkunft gegliedert: System, Delphi-Komponenten, VCL/FMX, Bibliothek, Packages der Projektgruppe, Projekt), ungenutzte entfernen; eine Unit gilt nur als benutzt, wenn ein Name wirklich zu ihr aufgelöst wird, so wie dcc entscheidet (Mitglieder ihrer Klassen und später verdeckte Namen zählen nicht, Aufzählungswerte, Helper, Attribute und inline-Rümpfe schon)
+- **uses:** fehlende Units ergänzen, sortieren (mit `/sortuses` nach Herkunft gegliedert: System, Delphi-Komponenten, VCL/FMX, Bibliothek, Packages der Projektgruppe, Projekt; wahlweise auch beim Formatieren der ganzen Datei, `format.sortUses`), ungenutzte entfernen; eine Unit gilt nur als benutzt, wenn ein Name wirklich zu ihr aufgelöst wird, so wie dcc entscheidet (Mitglieder ihrer Klassen und später verdeckte Namen zählen nicht, Aufzählungswerte, Helper, Attribute und inline-Rümpfe schon)
 - **Schnellkorrekturen** für viele Regeln (Alt+Enter) und **Atlas-Änderungen rückgängig** über Dateien hinweg
 
 ### [Formulare](docs/features/de/Formulare.md)

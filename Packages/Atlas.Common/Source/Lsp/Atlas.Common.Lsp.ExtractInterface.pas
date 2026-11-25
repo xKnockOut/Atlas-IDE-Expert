@@ -29,7 +29,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.ExtractInterface,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   /// <summary>Gibt es die Datei (auf der Platte oder als offenes Dokument)?</summary>

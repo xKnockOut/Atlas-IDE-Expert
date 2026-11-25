@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.ParameterHeaders;
+﻿unit Atlas.Common.Semantics.ParameterHeaders;
 
 // Parameter einer Routine in ihren Köpfen (#2425). Ein Parameter steht im Kopf mit Rumpf und, wenn die Routine
 // vorher deklariert ist, ein zweites Mal im Kopf ohne Rumpf: in der Klasse, im interface-Teil oder in der
@@ -44,7 +44,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Lsp.Definition;
+  Atlas.Common.Semantics.Definitions;
 
 type
   /// <summary>Ein Parameter in einem Kopf: Kopf, Stelle in der Liste aller Namen und Token des Namens.</summary>
@@ -222,7 +222,7 @@ begin
   end;
   // Wie „Gehe zu Definition“ auf dem Namen: vom Kopf ohne Rumpf zum Rumpf und umgekehrt, bei Überladungen die
   // Variante mit denselben Parametertypen.
-  mTargets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, ATree.Tokens[mName].StartPos, False);
+  mTargets := TDefinitions.Targets(AResolver, AIndex, ATree, AFileName, ATree.Tokens[mName].StartPos, False);
   if (Length(mTargets) = 0) or not SameText(mTargets[0].FileName, AFileName) or
     (mTargets[0].SelectionRange.StartPos = ATree.Tokens[mName].StartPos) then
   begin

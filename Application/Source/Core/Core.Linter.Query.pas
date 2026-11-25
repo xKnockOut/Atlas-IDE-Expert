@@ -41,7 +41,6 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Diagnostics.CheckProfile,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Query,
   Atlas.Common.Query.Output,
   Atlas.Common.Query.Service,

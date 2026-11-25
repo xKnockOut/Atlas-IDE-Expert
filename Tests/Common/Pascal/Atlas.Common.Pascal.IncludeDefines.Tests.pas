@@ -61,7 +61,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Lsp.InactiveRegions,
+  Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Lsp.InlayHints;
 
 const
@@ -195,21 +195,21 @@ procedure TIncludeDefinesTests.InactiveRegionsFromSharedRun;
 var
   mTree: TSyntaxTree;
   mProcessed: TPreprocessorResult;
-  mRegions: TArray<TLspInactiveRegion>;
+  mRegions: TArray<TInactiveRegion>;
   mIssues: TArray<TPreprocessorIssue>;
 begin
   DefsText := '{$DEFINE FOO}';
   mTree := TPascalParser.ParseActive(cAccepted + #10'{$I fehlt.inc}', TPascalPreprocessor.EditorOptions(nil,
     cMainFile, Resolver()), nil, mProcessed);
   try
-    mRegions := TLspInactiveRegions.Regions(mProcessed, True, mIssues);
+    mRegions := TInactiveRegions.Regions(mProcessed, True, mIssues);
     Assert.AreEqual(1, Integer(Length(mRegions)));
     Assert.AreEqual(4, mRegions[0].Range.StartPos.Line);
     Assert.AreEqual('not FOO', mRegions[0].Condition);
     Assert.AreEqual(1, Integer(Length(mIssues)), 'fehlt.inc');
     Assert.AreEqual(7, mIssues[0].Range.StartPos.Line);
     // Ohne Resolver im Lauf keine Include-Befunde.
-    mRegions := TLspInactiveRegions.Regions(mProcessed, False, mIssues);
+    mRegions := TInactiveRegions.Regions(mProcessed, False, mIssues);
     Assert.AreEqual(0, Integer(Length(mIssues)));
   finally
     mTree.Free;

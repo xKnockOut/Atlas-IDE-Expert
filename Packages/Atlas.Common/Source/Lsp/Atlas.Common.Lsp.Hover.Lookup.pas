@@ -44,7 +44,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.XmlDoc,
   Atlas.Common.Dfm.FormInfo,
-  Atlas.Common.Lsp.Definition,
+  Atlas.Common.Semantics.Definitions,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Index.DocWiki,
   Atlas.Common.Lsp.WinApiDocs,
@@ -349,7 +349,7 @@ function THoverLookupRun.FindTarget: Boolean;
 var
   mTargets: TArray<TDefinitionTarget>;
 begin
-  mTargets := TLspDefinition.Targets(FSource.Resolver, FSource.Index, FTree, FFileName, FPosition, True);
+  mTargets := TDefinitions.Targets(FSource.Resolver, FSource.Index, FTree, FFileName, FPosition, True);
   Result := Length(mTargets) > 0;
   if Result then
   begin

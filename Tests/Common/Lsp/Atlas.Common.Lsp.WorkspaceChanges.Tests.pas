@@ -41,8 +41,8 @@ implementation
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Documents.TextChanges;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Semantics.References;
 
 const
   cProgramFile = 'C:\P\Projekt.dpr';

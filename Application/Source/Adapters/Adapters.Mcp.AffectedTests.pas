@@ -35,13 +35,13 @@ implementation
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.AffectedTests.Report,
   Atlas.Common.Lsp.AffectedTests.Types,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Localization.RequestTexts,
-  Core.AffectedTests;
+  Core.AffectedTests,
+  Atlas.Common.Semantics.References;
 
 type
 {$SCOPEDENUMS ON}

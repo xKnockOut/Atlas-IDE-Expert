@@ -1,0 +1,519 @@
+﻿unit Atlas.Common.Semantics.References;
+
+// Referenzsuche (#29): alle Stellen im Projekt, die zur selben Deklaration auflösen
+// wie der Bezeichner an einer Stelle; die Anfrage textDocument/references
+// beantwortet Atlas.Common.Lsp.References.
+//
+// Durchsucht werden die Projektdateien und die geöffneten Dokumente; Dateien,
+// in denen der Name nicht einmal als Text vorkommt, werden nicht geparst.
+// Steht die Deklaration in einer Unit mit Formular, zählen auch Verweise aus
+// der .dfm daneben: Ereignis-Handler (OnClick = Button1Click) und
+// Komponentennamen (object Button1: TButton).
+// Jede Stelle trägt eine Einstufung (#1119, TReferenceClassifier): sicher oder
+// erschlossen mit Grund. Die Überladung von Find ohne Einstellungen liefert
+// nur sichere Stellen wie bisher; Umbauten wie Methode verschieben nutzen sie.
+
+interface
+
+uses
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Semantics.Definitions,
+  Atlas.Common.Pascal.InactiveRegions,
+  Atlas.Common.Semantics.ReferenceConfidence;
+
+type
+  TReferenceLocation = record
+    FileName: string;
+    Range: TTextRange;
+    /// <summary>Sicher oder erschlossen mit Grund (#1119).</summary>
+    Confidence: TReferenceConfidence;
+  end;
+
+  /// <summary>Text einer Datei, geöffnete Dokumente zuerst; False, wenn sie nicht lesbar ist.</summary>
+  TReferenceReadText = TDocumentReadText;
+  /// <summary>Was die Referenzsuche sucht: das Symbol an Position in FileName, in Files über ReadText.</summary>
+  TReferenceSearch = record
+    FileName: string;
+    Position: TTextPosition;
+    /// <summary>Auch die Deklaration selbst.</summary>
+    Declaration: Boolean;
+    Files: TArray<string>;
+    ReadText: TReferenceReadText;
+    class function Create(const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean;
+      const AFiles: TArray<string>; const AReadText: TReferenceReadText): TReferenceSearch; static;
+  end;
+
+  /// <summary>Referenzsuche über Namensauflösung und Index.</summary>
+  TReferences = class
+  public
+    /// <summary>Alle sicheren Verweise auf das Symbol an ASearch.Position; mit ASearch.Declaration auch die
+    /// Deklaration selbst.</summary>
+    class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const ASearch: TReferenceSearch; const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>;
+      overload; static;
+    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
+    class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const ASearch: TReferenceSearch): TArray<TReferenceLocation>; overload; static;
+    /// <summary>Wie oben, mit erschlossenen Stellen nach ASettings (#1119).</summary>
+    class function Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const ASearch: TReferenceSearch; const ASettings: TReferenceSettings;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>; overload; static;
+    /// <summary>Ziel der Suche an APosition wie TDefinitions.Targets zur Deklaration. Ein Parameter zielt auf
+    /// seinen Namen im Kopf mit Rumpf, den die Namensauflösung kennt, auch vom Kopf ohne Rumpf aus; hat seine
+    /// Routine keinen Rumpf (abstract), auf seinen Namen im Kopf (#2425). Leer, wenn nichts auflöst.</summary>
+    class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
+    /// <summary>Inaktive Bereiche von AText unter den Symbolen, mit denen der Editor die Datei liest; leer ohne
+    /// references.inferred.</summary>
+    class function InactiveFor(const AFileName, AText: string;
+      const ASettings: TReferenceSettings): TArray<TInactiveRegion>; static;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.StrUtils,
+  System.Generics.Collections,
+  Atlas.Common.Dfm.FormFiles,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Dfm.FormModel,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Semantics.ParameterHeaders,
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
+
+/// <summary>Andere Schreibweise eines Attributnamens: Foo zu FooAttribute und umgekehrt.</summary>
+function AlternativeName(const AName: string): string;
+begin
+  if EndsText('Attribute', AName) and (Length(AName) > Length('Attribute')) then
+  begin
+    Result := Copy(AName, 1, Length(AName) - Length('Attribute'));
+  end
+  else
+  begin
+    Result := AName + 'Attribute';
+  end;
+end;
+
+/// <summary>Ereignis-Handler und Komponentennamen AName in einer Formulardatei, über das
+/// Formularmodell (#267).</summary>
+function InForm(const AFormText, AName: string): TArray<TTextRange>;
+var
+  mModel: TFormModel;
+begin
+  mModel := TFormModel.Create(AFormText);
+  try
+    Result := mModel.Occurrences(AName);
+  finally
+    mModel.Free;
+  end;
+end;
+
+/// <summary>Stellen in ATree mit dem Namen AName, je eingestuft (#1119): Bezeichner über AClassifier.Classify,
+/// String-Literale über TextMatch. AInactive: inaktive Bereiche der Datei.</summary>
+function HitsInTree(AClassifier: TReferenceClassifier; ATree: TSyntaxTree; const AFileName, AName: string;
+  const AInactive: TArray<TInactiveRegion>; const ACancellation: IJsonRpcCancellationToken):
+  TArray<TReferenceHit>;
+var
+  mIndex: Integer;
+  mAlternative: string;
+  mHit: TReferenceHit;
+  mHits: TList<TReferenceHit>;
+begin
+  Result := nil;
+  mAlternative := AlternativeName(AName);
+  mHits := TList<TReferenceHit>.Create;
+  // Den Baum einmal auswerten statt je Treffer; verschachtelt zulässig, wenn der
+  // Aufrufer ihn schon gepinnt hat.
+  AClassifier.Resolver.PinTree(ATree, AFileName);
+  try
+    // Über den Index statt for-in: keine Kopie des Token-Records je Token.
+    for mIndex := 0 to High(ATree.Tokens) do
+    begin
+      if ATree.Tokens[mIndex].Kind = TPascalTokenKind.StringLiteral then
+      begin
+        // Nur der Name zwischen den Hochkommas, damit die Markierung genau ihn trifft.
+        if AClassifier.TextMatch(ATree.Tokens[mIndex], mHit.Confidence) then
+        begin
+          mHit.Range := TTextRange.Create(
+            TTextPosition.Create(ATree.Tokens[mIndex].StartPos.Line, ATree.Tokens[mIndex].StartPos.Character + 1),
+            TTextPosition.Create(ATree.Tokens[mIndex].EndPos.Line, ATree.Tokens[mIndex].EndPos.Character - 1));
+          mHits.Add(mHit);
+        end;
+        Continue;
+      end;
+      // Attribute (#119): [TestFixture] verwendet TestFixtureAttribute.
+      if (ATree.Tokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
+        not (SameText(TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text), AName) or
+        SameText(TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text), mAlternative)) then
+      begin
+        Continue;
+      end;
+      if ACancellation <> nil then
+      begin
+        ACancellation.ThrowIfCancellationRequested;
+      end;
+      if AClassifier.Classify(ATree, AFileName, mIndex, AInactive, mHit.Confidence) then
+      begin
+        mHit.Range := TTextRange.Create(ATree.Tokens[mIndex].StartPos, ATree.Tokens[mIndex].EndPos);
+        mHits.Add(mHit);
+      end;
+    end;
+    Result := mHits.ToArray;
+  finally
+    AClassifier.Resolver.UnpinTree;
+    mHits.Free;
+  end;
+end;
+
+class function TReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ASearch: TReferenceSearch; const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>;
+begin
+  Result := Find(AResolver, AIndex, ATree, ASearch, TReferenceSettings.SureOnly, ACancellation);
+end;
+
+
+type
+  /// <summary>Ein Lauf der Referenzsuche: Fundstellen und schon durchsuchte Dateien.</summary>
+  TReferenceRun = class
+  private
+    FResolver: TNameResolver;
+    FIndex: ISymbolIndex;
+    FSearch: TReferenceSearch;
+    FSettings: TReferenceSettings;
+    FCancellation: IJsonRpcCancellationToken;
+    FClassifier: TReferenceClassifier;
+    FName: string;
+    // Listen statt Result := Result + [...]; bei vielen Treffern quadratisch.
+    FLocations: TList<TReferenceLocation>;
+    FSearched: TDictionary<string, Boolean>;
+    procedure AddRanges(const AFile: string; const ARanges: TArray<TTextRange>);
+    procedure AddHits(const AFile: string; const AHits: TArray<TReferenceHit>);
+    procedure SearchFile(const AFileName: string);
+  public
+    constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ASearch: TReferenceSearch;
+      const ASettings: TReferenceSettings; const ACancellation: IJsonRpcCancellationToken);
+    destructor Destroy; override;
+    /// <summary>Einstufung für AWanted mit dem Namen AName (ohne &amp;).</summary>
+    procedure Prepare(ATree: TSyntaxTree; const AWanted: TDefinitionTarget; const AName: string);
+    procedure SearchOwn(ATree: TSyntaxTree);
+    procedure SearchFiles;
+    /// <summary>Formulare zur Unit der Deklaration, bei FMX samt Plattformansichten (#87).</summary>
+    procedure SearchForms(const AWanted: TDefinitionTarget);
+    /// <summary>Die Fundstellen; ohne FSearch.Declaration ohne die Deklaration AWanted.</summary>
+    function Locations(const AWanted: TDefinitionTarget): TArray<TReferenceLocation>;
+  end;
+
+{ TReferenceRun }
+
+constructor TReferenceRun.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ASearch: TReferenceSearch;
+  const ASettings: TReferenceSettings; const ACancellation: IJsonRpcCancellationToken);
+begin
+  inherited Create;
+  FResolver := AResolver;
+  FIndex := AIndex;
+  FSearch := ASearch;
+  FSettings := ASettings;
+  FCancellation := ACancellation;
+  FLocations := TList<TReferenceLocation>.Create;
+  FSearched := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TReferenceRun.Destroy;
+begin
+  FClassifier.Free;
+  FSearched.Free;
+  FLocations.Free;
+  inherited;
+end;
+
+procedure TReferenceRun.AddRanges(const AFile: string; const ARanges: TArray<TTextRange>);
+var
+  mRange: TTextRange;
+  mLocation: TReferenceLocation;
+begin
+  for mRange in ARanges do
+  begin
+    mLocation.FileName := AFile;
+    mLocation.Range := mRange;
+    mLocation.Confidence := TReferenceConfidence.Sure;
+    FLocations.Add(mLocation);
+  end;
+end;
+
+procedure TReferenceRun.AddHits(const AFile: string; const AHits: TArray<TReferenceHit>);
+var
+  mHit: TReferenceHit;
+  mLocation: TReferenceLocation;
+begin
+  for mHit in AHits do
+  begin
+    mLocation.FileName := AFile;
+    mLocation.Range := mHit.Range;
+    mLocation.Confidence := mHit.Confidence;
+    FLocations.Add(mLocation);
+  end;
+end;
+
+procedure TReferenceRun.SearchFile(const AFileName: string);
+var
+  mText: string;
+  mTree: TSyntaxTree;
+begin
+  if FSearched.ContainsKey(AnsiUpperCase(AFileName)) then
+  begin
+    Exit;
+  end;
+  FSearched.Add(AnsiUpperCase(AFileName), True);
+  // Die kürzere Schreibweise ist in der längeren enthalten.
+  if not (Assigned(FSearch.ReadText) and FSearch.ReadText(AFileName, mText)) or not (ContainsText(mText, FName) or
+    ContainsText(mText, AlternativeName(FName))) then
+  begin
+    Exit;
+  end;
+  // Parse liest alle Zweige; die inaktiven erkennt Classify an den Bereichen.
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    AddHits(AFileName, HitsInTree(FClassifier, mTree, AFileName, FName,
+      TReferences.InactiveFor(AFileName, mText, FSettings), FCancellation));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TReferenceRun.Prepare(ATree: TSyntaxTree; const AWanted: TDefinitionTarget; const AName: string);
+var
+  mSymbol: TIndexSymbol;
+begin
+  FName := AName;
+  // Interface und virtual brauchen die Deklaration; ohne erschlossene Treffer genügt das Ziel.
+  if FSettings.Inferred and TReferenceClassifier.SymbolOf(FResolver, FIndex, ATree, FSearch.FileName, AWanted,
+    mSymbol) then
+  begin
+    FClassifier := TReferenceClassifier.Create(FResolver, FIndex, AWanted, mSymbol, AName, FSettings);
+  end
+  else
+  begin
+    FClassifier := TReferenceClassifier.Create(FResolver, FIndex, AWanted, AName, FSettings);
+  end;
+end;
+
+procedure TReferenceRun.SearchOwn(ATree: TSyntaxTree);
+var
+  mText: string;
+  mInactive: TArray<TInactiveRegion>;
+begin
+  // Auch der Baum des Editors (#845) führt die Tokens aller Zweige; welche inaktiv sind, sagen die Bereiche.
+  mInactive := nil;
+  if FSettings.Inferred and Assigned(FSearch.ReadText) and FSearch.ReadText(FSearch.FileName, mText) then
+  begin
+    mInactive := TReferences.InactiveFor(FSearch.FileName, mText, FSettings);
+  end;
+  AddHits(FSearch.FileName, HitsInTree(FClassifier, ATree, FSearch.FileName, FName, mInactive, FCancellation));
+  FSearched.AddOrSetValue(AnsiUpperCase(FSearch.FileName), True);
+end;
+
+procedure TReferenceRun.SearchFiles;
+var
+  mFileName: string;
+begin
+  for mFileName in FSearch.Files do
+  begin
+    SearchFile(mFileName);
+  end;
+end;
+
+procedure TReferenceRun.SearchForms(const AWanted: TDefinitionTarget);
+var
+  mText, mDfmName: string;
+begin
+  if not Assigned(FSearch.ReadText) then
+  begin
+    Exit;
+  end;
+  if not FSearch.ReadText(AWanted.FileName, mText) then
+  begin
+    mText := '';
+  end;
+  for mDfmName in TFormFiles.FormFiles(AWanted.FileName, mText) do
+  begin
+    if FSearch.ReadText(mDfmName, mText) then
+    begin
+      AddRanges(mDfmName, InForm(mText, FName));
+    end;
+  end;
+end;
+
+function TReferenceRun.Locations(const AWanted: TDefinitionTarget): TArray<TReferenceLocation>;
+var
+  mIndex: Integer;
+begin
+  if not FSearch.Declaration then
+  begin
+    for mIndex := FLocations.Count - 1 downto 0 do
+    begin
+      if SameText(FLocations[mIndex].FileName, AWanted.FileName) and
+        (FLocations[mIndex].Range.StartPos = AWanted.SelectionRange.StartPos) then
+      begin
+        FLocations.Delete(mIndex);
+      end;
+    end;
+  end;
+  Result := FLocations.ToArray;
+end;
+
+{ TReferenceSearch }
+
+class function TReferenceSearch.Create(const AFileName: string; const APosition: TTextPosition;
+  ADeclaration: Boolean; const AFiles: TArray<string>; const AReadText: TReferenceReadText): TReferenceSearch;
+begin
+  Result.FileName := AFileName;
+  Result.Position := APosition;
+  Result.Declaration := ADeclaration;
+  Result.Files := AFiles;
+  Result.ReadText := AReadText;
+end;
+
+{ TReferences }
+
+class function TReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ASearch: TReferenceSearch): TArray<TReferenceLocation>;
+begin
+  Result := Find(AResolver, AIndex, ATree, ASearch, nil);
+end;
+
+/// <summary>Stellen eines Parameters (#2425): die Fundstellen AFound aus seiner Routine, dazu sein Name in den
+/// Köpfen ohne Rumpf als sichere Stellen; die nur ohne ADeclaration nicht. Gleichnamiges außerhalb der Routine
+/// meint ihn nie.</summary>
+function ParameterLocations(const AFound: TArray<TReferenceLocation>; const AHeaders: TParameterHeaders;
+  const AFileName: string; ADeclaration: Boolean): TArray<TReferenceLocation>;
+var
+  mLocation: TReferenceLocation;
+  mRange: TTextRange;
+begin
+  Result := nil;
+  for mLocation in AFound do
+  begin
+    if SameText(mLocation.FileName, AFileName) and (not AHeaders.HasBody or
+      AHeaders.Routine.Contains(mLocation.Range.StartPos)) and
+      not TTextRange.AnyContains(AHeaders.Declarations, mLocation.Range.StartPos) then
+    begin
+      Result := Result + [mLocation];
+    end;
+  end;
+  if not ADeclaration then
+  begin
+    Exit;
+  end;
+  for mRange in AHeaders.Declarations do
+  begin
+    mLocation.FileName := AFileName;
+    mLocation.Range := mRange;
+    mLocation.Confidence := TReferenceConfidence.Sure;
+    Result := Result + [mLocation];
+  end;
+end;
+
+class function TReferences.Find(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const ASearch: TReferenceSearch; const ASettings: TReferenceSettings;
+  const ACancellation: IJsonRpcCancellationToken): TArray<TReferenceLocation>;
+var
+  mIndex: Integer;
+  mWanted: TArray<TDefinitionTarget>;
+  mRun: TReferenceRun;
+  mParameter: Boolean;
+  mHeaders: TParameterHeaders;
+  mPosition: TTextPosition;
+begin
+  Result := nil;
+  mIndex := IdentifierAt(ATree.Tokens, ASearch.Position);
+  if mIndex < 0 then
+  begin
+    Exit;
+  end;
+  mRun := TReferenceRun.Create(AResolver, AIndex, ASearch, ASettings, ACancellation);
+  // Den eigenen Baum einmal auswerten: Targets und HitsInTree nutzen ihn; die Fremdbäume
+  // pinnt HitsInTree darüber und löst sie wieder.
+  AResolver.PinTree(ATree, ASearch.FileName);
+  try
+    // Ein Parameter ist ein Symbol mit Kopf ohne und Kopf mit Rumpf (#2425); gesucht wird vom Kopf mit Rumpf aus,
+    // den die Namensauflösung kennt.
+    mParameter := TParameterHeaders.Find(AResolver, AIndex, ATree, ASearch.FileName, ASearch.Position, mHeaders);
+    mPosition := ASearch.Position;
+    if mParameter and mHeaders.HasBody then
+    begin
+      mPosition := mHeaders.Body.StartPos;
+    end;
+    mWanted := TDefinitions.Targets(AResolver, AIndex, ATree, ASearch.FileName, mPosition, True);
+    if Length(mWanted) = 0 then
+    begin
+      // Parameter einer Routine ohne Rumpf (abstract, Interface): nur die Köpfe.
+      if mParameter then
+      begin
+        Result := ParameterLocations(nil, mHeaders, ASearch.FileName, ASearch.Declaration);
+      end;
+      Exit;
+    end;
+    mRun.Prepare(ATree, mWanted[0], TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text));
+    mRun.SearchOwn(ATree);
+    // Ein Parameter kommt nur in seiner Routine vor.
+    if not mParameter then
+    begin
+      mRun.SearchFiles;
+      mRun.SearchForms(mWanted[0]);
+    end;
+    Result := mRun.Locations(mWanted[0]);
+    if mParameter then
+    begin
+      Result := ParameterLocations(Result, mHeaders, ASearch.FileName, ASearch.Declaration);
+    end;
+  finally
+    AResolver.UnpinTree;
+    mRun.Free;
+  end;
+end;
+
+class function TReferences.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition): TArray<TDefinitionTarget>;
+var
+  mHeaders: TParameterHeaders;
+  mTarget: TDefinitionTarget;
+begin
+  if not TParameterHeaders.Find(AResolver, AIndex, ATree, AFileName, APosition, mHeaders) then
+  begin
+    Result := TDefinitions.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+  end
+  else if mHeaders.HasBody then
+  begin
+    Result := TDefinitions.Targets(AResolver, AIndex, ATree, AFileName, mHeaders.Body.StartPos, True);
+  end
+  else
+  begin
+    mTarget.FileName := AFileName;
+    mTarget.Range := mHeaders.Declarations[0];
+    mTarget.SelectionRange := mHeaders.Declarations[0];
+    Result := [mTarget];
+  end;
+end;
+
+class function TReferences.InactiveFor(const AFileName, AText: string;
+  const ASettings: TReferenceSettings): TArray<TInactiveRegion>;
+begin
+  if ASettings.Inferred then
+  begin
+    Result := TReferenceClassifier.InactiveOf(AText, TSyntaxTreeCache.DefinesOf(TDocumentUris.FromPath(AFileName)));
+  end
+  else
+  begin
+    Result := nil;
+  end;
+end;
+
+end.

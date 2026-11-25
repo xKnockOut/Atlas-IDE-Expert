@@ -35,7 +35,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Semantics.References;
 
 type
   TInvertBooleanContext = record
@@ -95,7 +95,8 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Names,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Text.Arrays;
+  Atlas.Text.Arrays,
+  Atlas.Common.Lsp.References;
 
 {$SCOPEDENUMS ON}
 
@@ -783,7 +784,7 @@ var
   mToken: Integer;
 begin
   mOrigin := ReadableSource(AFileName);
-  for mLocation in TLspReferences.Find(FResolver, FContext.Index, mOrigin.Tree, TReferenceSearch.Create(AFileName,
+  for mLocation in TReferences.Find(FResolver, FContext.Index, mOrigin.Tree, TReferenceSearch.Create(AFileName,
     APosition, True, FContext.Files, FContext.ReadText)) do
   begin
     if not ReferenceToken(mLocation, mUnit, mToken) then
