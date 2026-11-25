@@ -4,7 +4,11 @@
 // „Ereignisprotokoll“ der IDE mit. Die Open Tools API meldet Ausgaben von
 // OutputDebugString und Haltepunkt-Meldungen nicht; das Fenster der IDE hat
 // sie. Gesucht wird ein Formular, dessen Name oder Klasse „EventLog“ enthält,
-// darin die erste Liste (TCustomListBox bzw. TCustomListView). StartSession
+// darin die erste Liste (TCustomListBox bzw. TCustomListView). Atlas-eigene
+// Dockfenster zählen nicht: Das Atlas-Fenster „Ereignisprotokoll“ heißt nach
+// seiner Kennung AtlasDebugEventLog; mitgelesen schrieb es jede eigene Zeile
+// als neuen Eintrag zurück (Rückkopplung, der Text wuchs um die Zeitstempel der
+// Vorgänger). StartSession
 // merkt die Zeilenzahl, NewLines liefert nur Zeilen danach; wird die Liste
 // kürzer (geleert), beginnt es vorn. Was gefunden wurde, steht einmal je
 // Sitzung im Diagnoseprotokoll, damit sich eine abweichende IDE erkennen
@@ -43,7 +47,8 @@ implementation
 uses
   Vcl.Forms,
   Vcl.StdCtrls,
-  Vcl.ComCtrls;
+  Vcl.ComCtrls,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 const
   cFormMark = 'EVENTLOG';
@@ -111,6 +116,11 @@ begin
     for mIndex := 0 to Screen.CustomFormCount - 1 do
     begin
       mForm := Screen.CustomForms[mIndex];
+      // Eigene Fenster nie mitlesen, auch wenn ihr Name passt (Rückkopplung).
+      if TAtlasIdeDockWindow.IsDockForm(mForm) then
+      begin
+        Continue;
+      end;
       if (Pos(cFormMark, UpperCase(mForm.Name)) = 0) and (Pos(cFormMark, UpperCase(mForm.ClassName)) = 0) then
       begin
         Continue;

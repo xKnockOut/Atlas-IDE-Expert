@@ -26,6 +26,7 @@ type
     function Settings: TServerSettings;
     function SettingsOf(const AFileName: string): TServerSettings;
     function SettingsFile: string;
+    function GlobalSettingsFile: string;
     function Namespaces: TArray<string>;
     function ProjectFiles: TArray<string>;
     function AllFiles: TArray<string>;
@@ -39,6 +40,9 @@ type
   end;
 
 implementation
+
+uses
+  Core.Bootstrap;
 
 { TMcpWorkspaceAdapter }
 
@@ -66,6 +70,11 @@ end;
 function TMcpWorkspaceAdapter.SettingsFile: string;
 begin
   Result := FGroup.Main.Configuration.Files.Read;
+end;
+
+function TMcpWorkspaceAdapter.GlobalSettingsFile: string;
+begin
+  Result := TCoreBootstrap.GlobalSettingsFile;
 end;
 
 function TMcpWorkspaceAdapter.Namespaces: TArray<string>;

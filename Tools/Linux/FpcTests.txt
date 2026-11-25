@@ -84,6 +84,7 @@ Atlas.Common.Editing.AnonymousMethods.Tests
 Atlas.Common.Editing.AssignFields.Tests
 Atlas.Common.Pascal.CaseCompletion.Tests
 Atlas.Common.Pascal.SignatureChanges.Tests
+Atlas.Common.Pascal.CommandLines.Tests
 Atlas.Common.Editing.ClassBodies.Tests
 Atlas.Common.Pascal.BodySpacing.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
@@ -292,6 +293,9 @@ Adapters.Mcp.BulkFix.Tests
 Adapters.Mcp.TextChecks.Tests
 Adapters.Mcp.RuleDocs.Tests
 Adapters.Mcp.Workspace.Tests
+Adapters.Mcp.Process.Tests
+Adapters.Mcp.Vcs.Tests
+Adapters.Mcp.AffectedTests.Tests
 Adapters.Mcp.DeadCode.Tests
 Adapters.Mcp.Conventions.Tests
 Atlas.Common.Compiler.MessageTexts.Tests
@@ -625,6 +629,7 @@ Atlas.Core.Editor.Unwrap.Tests
 Atlas.Core.Editor.SmartPaste.Tests
 Atlas.Core.Editor.LineItems.Tests
 Atlas.Core.Build.Events.Tests
+Atlas.Core.Build.CheckOnSave.Tests
 Atlas.Core.Editor.GutterColumn.Tests
 Atlas.Core.Editor.ExpressionType.Tests
 Atlas.Core.Editor.Overview.Tests
@@ -878,6 +883,7 @@ Atlas.Common.Editing.Providers.ClassActions.Tests
 Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests
 Atlas.Common.Editing.Providers.ClassCompletion.Tests
 Atlas.Common.Editing.Providers.MethodOrder.Tests
+Atlas.Common.Editing.Providers.SlashCommands.Tests
 Adapters.Lsp.InheritanceDepths.Tests
 Adapters.Lsp.OwnershipReport.Tests
 Adapters.Lsp.RuleDiagnostics.Tests

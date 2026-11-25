@@ -19,15 +19,17 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.Commands,
+  Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.Refactorings;
 
 type
   /// <summary>Liste von Namen, z. B. Dateien des Projekts oder Namensräume.</summary>
   TShellNamesFunc = reference to function: TArray<string>;
   TShellRefactoringSettingsFunc = reference to function(const AUri: string): TRefactoringSettings;
-  TShellFormatStyleFunc = reference to function(const AUri: string): TFormatStyle;
+  /// <summary>Formatstil für AUri; derselbe Typ wie bei den Code-Aktionen (Delphi 12 hält zwei gleich gebaute
+  /// Methodenreferenztypen auseinander).</summary>
+  TShellFormatStyleFunc = TCodeActionStyleProvider;
   /// <summary>Text zu einer Datei, z. B. Sprachversion oder Delphi-Version.</summary>
   TShellUriTextFunc = reference to function(const AUri: string): string;
   TShellCompilerMessagesFunc = reference to function(const AFileName: string): TArray<TCompilerMessage>;

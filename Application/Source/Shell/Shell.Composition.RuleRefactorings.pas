@@ -30,6 +30,7 @@ begin
   mSources.Methods := TEditingComposition.MethodsWithoutSelf;
   mSources.Order := TEditingComposition.MethodOrder;
   mSources.Completion := TEditingComposition.ClassCompletion;
+  mSources.Commands := TEditingComposition.SlashChecks;
   Result := TRuleRefactoringsAdapters.Create(mSources);
 end;
 

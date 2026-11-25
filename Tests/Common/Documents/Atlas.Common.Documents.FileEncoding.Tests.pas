@@ -82,6 +82,8 @@ type
     [Test]
     procedure LoadTextAndLinesDetectEncoding;
     [Test]
+    procedure TryLoadTextNeedsExistingFile;
+    [Test]
     procedure TextFormRoundTripKeepsBytes;
     [Test]
     procedure DetectsBinaryForms;
@@ -419,6 +421,20 @@ begin
   Assert.AreEqual(1250, mFormat.CodePage);
   TFileEncoding.SaveToFile(mFileName, mText + #$0160, mFormat);
   Assert.IsTrue(SameBytes(TBytes.Create($61, $0D, $0A, $8A), ReadAll(mFileName)));
+end;
+
+procedure TFileEncodingDefaultTests.TryLoadTextNeedsExistingFile;
+var
+  mFileName, mText: string;
+begin
+  mFileName := FFolder + 'Kunde.pas';
+  Assert.IsFalse(TFileEncoding.TryLoadText(mFileName, mText), 'fehlt');
+  Assert.AreEqual('', mText);
+  Assert.IsFalse(TFileEncoding.TryLoadText('', mText), 'ohne Namen');
+  WriteBytes(mFileName, TBytes.Create($C3, $A4));
+  Assert.IsTrue(TFileEncoding.TryLoadText(mFileName, mText));
+  Assert.AreEqual(#$E4, mText);
+  mText := '';
 end;
 
 procedure TFileEncodingDefaultTests.LoadTextAndLinesDetectEncoding;

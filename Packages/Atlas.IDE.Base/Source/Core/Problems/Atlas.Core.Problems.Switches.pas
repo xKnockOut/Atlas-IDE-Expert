@@ -5,6 +5,8 @@
 //   InlineDiagnostics.
 // - Zähler der Befunde in der Statusleiste der IDE: nur, wenn die eigene Statusleiste des Editors die Befunde nicht
 //   schon zeigt (sonst stünden sie doppelt da).
+// - Befunde beim Debuggen (#2962): Solange ein Programm im Debugger läuft, blendet problems.hideWhileDebugging
+//   Wellenlinien, Fehlertext am Zeilenende und Befunde im Hover aus, damit die Debug-Werte frei bleiben.
 
 interface
 
@@ -19,6 +21,10 @@ type
     class function InlineDiagnostics(const ASettings: TAtlasPluginSettings): TAtlasInlineDiagnosticsMode; static;
     /// <summary>Befundzähler in der Statusleiste der IDE zeigen?</summary>
     class function ProblemsStatusCounter(const ASettings: TAtlasPluginSettings): Boolean; static;
+    /// <summary>Befunde im Editor ausblenden (#2962)? Nur, solange ADebugging (ein Programm läuft im Debugger) und
+    /// die Einstellung an ist.</summary>
+    class function HiddenWhileDebugging(const ASettings: TAtlasPluginSettings; ADebugging: Boolean): Boolean;
+      static;
   end;
 
 implementation
@@ -43,6 +49,12 @@ begin
   Result := ASettings.Enabled and ASettings.Problems and ASettings.ProblemsStatusCounter and
     not (ASettings.EditorStatusBar and TAtlasStatusBarItems.Contains(
     TAtlasStatusBarItems.Parse(ASettings.EditorStatusBarItems), TAtlasStatusBarItems.cFindings));
+end;
+
+class function TAtlasProblemSwitches.HiddenWhileDebugging(const ASettings: TAtlasPluginSettings;
+  ADebugging: Boolean): Boolean;
+begin
+  Result := ADebugging and ASettings.ProblemsHideWhileDebugging;
 end;
 
 end.

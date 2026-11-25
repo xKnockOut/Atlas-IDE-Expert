@@ -12,6 +12,7 @@ uses
   Atlas.Common.Editing.Contract.Extract,
   Atlas.Common.Editing.Contract.Formatting,
   Atlas.Common.Editing.Contract.MethodOrder,
+  Atlas.Common.Editing.Contract.SlashCommands,
   Atlas.Common.Editing.Contract.MethodWithoutSelf;
 
 type
@@ -28,6 +29,8 @@ type
     class function MethodsWithoutSelf: IEditingMethodsWithoutSelf; static;
     /// <summary>Prüfung der Methodenordnung je Typ samt Korrekturen.</summary>
     class function MethodOrder: IEditingMethodOrderReview; static;
+    /// <summary>Prüfung der Schnellbefehle.</summary>
+    class function SlashChecks: IEditingSlashChecks; static;
     /// <summary>Formatierer mit Abweichungen.</summary>
     class function Formatting: IEditingFormatting; static;
     /// <summary>Schnellkorrekturen für Compilermeldungen.</summary>
@@ -43,7 +46,8 @@ uses
   Atlas.Common.Editing.Providers.Extract,
   Atlas.Common.Editing.Providers.Formatting,
   Atlas.Common.Editing.Providers.MethodOrder,
-  Atlas.Common.Editing.Providers.MethodWithoutSelf;
+  Atlas.Common.Editing.Providers.MethodWithoutSelf,
+  Atlas.Common.Editing.Providers.SlashCommands;
 
 { TEditingComposition }
 
@@ -75,6 +79,11 @@ end;
 class function TEditingComposition.MethodOrder: IEditingMethodOrderReview;
 begin
   Result := TEditingMethodOrderProvider.Create;
+end;
+
+class function TEditingComposition.SlashChecks: IEditingSlashChecks;
+begin
+  Result := TEditingSlashChecksProvider.Create;
 end;
 
 class function TEditingComposition.Formatting: IEditingFormatting;

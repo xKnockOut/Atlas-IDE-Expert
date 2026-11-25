@@ -257,6 +257,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.KeywordReference.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.AssignmentSwap.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.SignatureChanges.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.CommandLines.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.GenericLists.Parts.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.StringLiterals.Tests.pas"/>
@@ -647,6 +648,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.MethodWithoutSelf.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.MethodOrder.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.Providers.SlashCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.PropertyGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.InterfaceGolden.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassActions.OverrideGolden.pas"/>
@@ -2713,11 +2715,17 @@
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.TextChecks.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.RuleDocs.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Workspace.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Process.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Vcs.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.AffectedTests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.DeadCode.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.BulkFix.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.TextChecks.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.RuleDocs.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.Workspace.Tests.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.Process.Tests.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.Vcs.Tests.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Mcp.AffectedTests.Tests.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.DeadCode.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Mcp.Conventions.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Mcp.Conventions.Tests.pas"/>

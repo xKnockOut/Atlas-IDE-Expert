@@ -25,7 +25,6 @@ uses
   Atlas.Common.History.Service,
   Atlas.Common.Mcp.HistoryTools,
   Atlas.Common.Localization.Texts,
-  Core.SymbolHistory,
   Atlas.Common.Localization.RequestTexts;
 
 type
@@ -112,8 +111,7 @@ begin
   mArgs.TimeoutMs := mSettings.RequestTimeoutMs;
   mArgs.Cancelled := CancelledOf(TJsonRpcCurrentRequest.Token);
   // Ohne Versionsverwaltung ein Hinweis statt eines Fehlers.
-  if not TCoreSymbolHistoryVcs.DetectHistory(AContext.Adapters.VcsAccess(), AContext.Root, mSettings, mVcs,
-    mError) then
+  if not AContext.Adapters.Vcs.SymbolHistory(AContext.Root, mSettings, mVcs, mError) then
   begin
     Exit(TMcpHistoryTools.NoVcs(mError));
   end;

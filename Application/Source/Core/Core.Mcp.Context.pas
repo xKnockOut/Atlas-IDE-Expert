@@ -19,6 +19,9 @@ uses
   Atlas.Common.Mcp.Contract.RuleDocs,
   Atlas.Common.Mcp.Contract.TextChecks,
   Atlas.Common.Mcp.Contract.Workspace,
+  Atlas.Common.Mcp.Contract.Process,
+  Atlas.Common.Mcp.Contract.Vcs,
+  Atlas.Common.Mcp.Contract.AffectedTests,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
   Atlas.Common.Lsp.SymbolPath.Search,
@@ -29,8 +32,7 @@ uses
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.RefactorTools,
-  Atlas.Common.Compiler.Contract,
-  Core.VersionControlChanges;
+  Atlas.Common.Compiler.Contract;
 
 type
   /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
@@ -50,8 +52,14 @@ type
   TMcpHostAdapters = record
     /// <summary>Neuer Prozess für Testläufe (run_tests).</summary>
     NewProcess: TFunc<ICompilerProcess>;
-    /// <summary>Zugang zur Versionsverwaltung (Änderungen, Hotspots, Verlauf).</summary>
-    VcsAccess: TFunc<TCoreVcsAccess>;
+    /// <summary>Prozesse und Ordnersignale des Servers (laufende IDEs, Antworten des Plugins, get_server_status).
+    /// </summary>
+    Process: IMcpProcessHost;
+    /// <summary>Änderungen, Hotspots und Verlauf aus Git oder SVN.</summary>
+    Vcs: IMcpVcs;
+    /// <summary>Betroffene Tests (get_affected_tests); nil, wenn die Adapter ohne Arbeitsbereich entstanden sind.
+    /// </summary>
+    AffectedTests: IMcpAffectedTests;
     /// <summary>Git-Verzeichnis des Ordners ('' ohne Git).</summary>
     GitDir: TFunc<string, string>;
     /// <summary>Sichere Korrekturen zu Compilermeldungen (explain_compiler_message).</summary>
@@ -137,7 +145,6 @@ uses
   Atlas.Common.Lsp.Formatting,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Core.Bootstrap,
   Atlas.Text.Json,
   Atlas.Text.Files,
   Atlas.Common.Documents.FileEncoding;
@@ -174,7 +181,7 @@ end;
 // Als gewöhnliche Funktion, weil sie als TReadText-Rückruf an mehrere Werkzeuge geht.
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
+  Result := TFileEncoding.TryLoadText(AFileName, AText);
 end;
 
 function FormatStyleOf(const AWorkspace: IMcpWorkspace; const AFileName: string): TFormatStyle;

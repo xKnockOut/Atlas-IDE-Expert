@@ -349,8 +349,9 @@ begin
     begin
       Exit;
     end;
-    // Compilerprüfung (#548) oder ein Auftrag des Läufers (#261, #69) läuft gerade.
-    if FEvents.Background or (FEvents.RequestedBy <> '') then
+    // Compilerprüfung (#548) oder ein Auftrag des Läufers (#261, #69) läuft gerade; im Fortschrittsdialog eines
+    // Builds oder einem modalen Dialog nie den Compiler starten.
+    if FEvents.Background or (FEvents.RequestedBy <> '') or TAtlasIdeCheckOnSave.CompilerBusy then
     begin
       Exit;
     end;
