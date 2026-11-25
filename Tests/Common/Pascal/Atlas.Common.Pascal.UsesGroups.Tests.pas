@@ -20,6 +20,12 @@ type
     [Test]
     procedure FileOriginDecidesOutsideInstallation;
     [Test]
+    procedure InstallPathUnderBdsRoot;
+    [Test]
+    procedure InstallPathOfOtherDelphiVersion;
+    [Test]
+    procedure NoInstallPathOutsideInstallation;
+    [Test]
     procedure UnknownOriginFallsBackToName;
     [Test]
     procedure RecognizesLabelsInBothLanguages;
@@ -82,6 +88,36 @@ begin
     FileAt(TUsesFileOrigin.OwnProject, ''))));
   Assert.AreEqual(Ord(TUsesGroup.ProjectGroup), Ord(TUsesGroups.OfFile('Firma.Common.Logging',
     FileAt(TUsesFileOrigin.ProjectGroup, ''))));
+end;
+
+procedure TUsesGroupsTests.InstallPathUnderBdsRoot;
+var
+  mPath: string;
+begin
+  Assert.IsTrue(TUsesGroups.InstallPathOf('C:\Delphi\source\rtl\common\System.Classes.pas', 'c:\delphi', mPath));
+  Assert.AreEqual('source\rtl\common\System.Classes.pas', mPath);
+end;
+
+procedure TUsesGroupsTests.InstallPathOfOtherDelphiVersion;
+var
+  mPath: string;
+begin
+  // Suchpfad auf die Quellen von Delphi 12, das Projekt läuft unter Delphi 13: trotzdem die Installation.
+  Assert.IsTrue(TUsesGroups.InstallPathOf(
+    'C:\Program Files (x86)\Embarcadero\Studio\23.0\source\rtl\common\System.Classes.pas',
+    'C:\Program Files (x86)\Embarcadero\Studio\37.0', mPath));
+  Assert.AreEqual('source\rtl\common\System.Classes.pas', mPath);
+  Assert.AreEqual(Ord(TUsesGroup.RuntimeLibrary), Ord(TUsesGroups.OfFile('Classes',
+    FileAt(TUsesFileOrigin.Installation, mPath))));
+end;
+
+procedure TUsesGroupsTests.NoInstallPathOutsideInstallation;
+var
+  mPath: string;
+begin
+  Assert.IsFalse(TUsesGroups.InstallPathOf('C:\Projekte\App\Haupt.pas', 'C:\Delphi', mPath));
+  Assert.AreEqual('', mPath);
+  Assert.IsFalse(TUsesGroups.InstallPathOf('C:\Projekte\App\Haupt.pas', '', mPath));
 end;
 
 procedure TUsesGroupsTests.UnknownOriginFallsBackToName;

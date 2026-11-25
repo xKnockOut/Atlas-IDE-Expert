@@ -21,9 +21,7 @@ function Schmal(const AText: string): AnsiString;
 implementation
 
 uses
-  System.SysUtils,
-  System.Classes,
-  System.Generics.Collections;
+  System.SysUtils, System.Classes, System.Generics.Collections;
 
 function Anzahl(AListe: TJSONArray): Integer;
 begin

@@ -309,6 +309,7 @@ begin
   mSource.EnsureUnit := FServices.EnsureUnit;
   mSource.Namespaces := mWorkspace.Namespaces;
   AContext.Resolve := TUsesUsage.ResolveFunc(mSource, TDocumentUris.ToPath(AUri), AContext.Info);
+  AContext.ResolveTree := TUsesUsage.ResolveTreeFunc(mSource, TDocumentUris.ToPath(AUri), AContext.Info);
   AContext.Declaring := DeclaringFunc(FServices.Index);
   AContext.GroupOf := GroupOf(AUri);
   Result := True;

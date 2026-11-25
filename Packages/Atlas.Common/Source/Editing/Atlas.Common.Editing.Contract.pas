@@ -24,6 +24,7 @@ type
   TUsesUnitInfoFunc = Atlas.Common.Semantics.Contract.TUsesUnitInfoFunc;
   TUsesResolution = Atlas.Common.Semantics.Contract.TUsesResolution;
   TUsesResolveFunc = Atlas.Common.Semantics.Contract.TUsesResolveFunc;
+  TUsesTreeResolveFunc = Atlas.Common.Semantics.Contract.TUsesTreeResolveFunc;
 
   TUnitsDeclaringFunc = Atlas.Common.Semantics.Contract.TUnitsDeclaringFunc;
 
@@ -39,6 +40,8 @@ type
     Inactive: TArray<TTextRange>;
     /// <summary>Namensauflösung für die Datei (#1925); nil = nur Namensvergleich.</summary>
     Resolve: TUsesResolveFunc;
+    /// <summary>Wie Resolve für einen schon übersetzten Baum; nil = über Resolve mit dem Text.</summary>
+    ResolveTree: TUsesTreeResolveFunc;
     /// <summary>Gruppe nach Fundort der Unit (#2794); nil = nur nach Namespace.</summary>
     GroupOf: TUsesGroupFunc;
     /// <summary>Resolve für AText, sonst eine Nutzung ohne Active.</summary>

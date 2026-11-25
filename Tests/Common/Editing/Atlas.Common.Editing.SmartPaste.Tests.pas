@@ -172,7 +172,7 @@ begin
   Assert.IsTrue(TSmartPaste.InInterface(TPascalLexer.Tokenize(cTarget), TTextPosition.Create(6, 4)));
   Assert.IsFalse(TSmartPaste.InInterface(TPascalLexer.Tokenize(cTarget), TTextPosition.Create(16, 2)));
   Assert.AreEqual(
-    StringReplace(StringReplace(cTarget, '  System.SysUtils;', '  System.SysUtils,'#10'  System.JSON;', []),
+    StringReplace(StringReplace(cTarget, '  System.SysUtils;', '  System.SysUtils, System.JSON;', []),
       'implementation'#10, 'implementation'#10#10'uses'#10'  Kunden;'#10, []),
     Added(cTarget, TTextPosition.Create(6, 4), ['System.JSON', 'Kunden', 'System.SysUtils', 'system.json', 'Ziel'],
       mMoved));
@@ -195,7 +195,7 @@ const
 var
   mMoved: string;
 begin
-  Assert.AreEqual(StringReplace(cProgram_, '  System.SysUtils;', '  System.SysUtils,'#10'  Kunden;', []),
+  Assert.AreEqual(StringReplace(cProgram_, '  System.SysUtils;', '  System.SysUtils, Kunden;', []),
     Added(cProgram_, TTextPosition.Create(4, 0), ['Kunden'], mMoved));
 end;
 

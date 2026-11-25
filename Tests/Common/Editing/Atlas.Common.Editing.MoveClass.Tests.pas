@@ -187,7 +187,7 @@ begin
     '  TStock = class(TBase)', '    function Count: Integer;', '  end;', '', 'implementation', '',
     'function TStock.Count: Integer;', 'begin', '  Result := Max;', 'end;', '', 'end.']), mNewText);
   Assert.AreEqual(TTestSource.Lines(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '  end;', '', 'const',
-    '  Max = 10;', '', 'implementation', '', 'uses', '  Helpers,', '  Stock;', '', 'initialization',
+    '  Max = 10;', '', 'implementation', '', 'uses', '  Helpers, Stock;', '', 'initialization',
     '  TStock.Create.Free;', 'end.']), mOrigin);
 end;
 

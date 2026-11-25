@@ -84,7 +84,7 @@ begin
   Assert.AreEqual('{"units":["System.JSON"],"choices":[{"name":"TList","units":["System.Classes",' +
     '"System.Generics.Collections"]}],"interface":true}', Run('["u",' + cRange + ']'));
   Assert.AreEqual('{"edit":{"changes":{"file:///c%3A/p/Ziel.pas":[{"range":{"start":{"line":3,"character":17},' +
-    '"end":{"line":3,"character":17}},"newText":",\n  System.JSON, System.Classes"}]}},' +
+    '"end":{"line":3,"character":17}},"newText":", System.JSON, System.Classes"}]}},' +
     '"added":["System.JSON","System.Classes"],"toImplementation":[]}',
     Run('["u",' + cRange + ',["System.JSON","System.Classes"]]'));
   Assert.AreEqual('{"edit":null,"added":[],"toImplementation":[]}', Run('["u",' + cRange + ',["System.SysUtils"]]'));
