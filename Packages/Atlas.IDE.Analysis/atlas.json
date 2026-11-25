@@ -21,7 +21,8 @@
       "hostedFeatures": [
         "Replay",
         "Monitor",
-        "Update"
+        "Update",
+        "Rules"
       ],
       "prefixes": [
         "Atlas.Text",
@@ -134,7 +135,8 @@
       "hostedFeatures": [
         "Replay",
         "Monitor",
-        "Update"
+        "Update",
+        "Rules"
       ],
       "prefixes": [
         "Atlas.Text",
