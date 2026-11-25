@@ -142,11 +142,11 @@ begin
     TAtlasCiFetchError.Network, TAtlasCiFetchError.Timeout:
       Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorNetwork, [AServer]);
   else
-    if AStatus = TAtlasHttpStatus.cBadRequest then
+    if AStatus = 400 then
     begin
       Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorQuery, [AServer, AStatus]);
     end
-    else if AStatus = TAtlasHttpStatus.cOk then
+    else if AStatus = 200 then
     begin
       Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueNotifyErrorUnreadable, [AServer]);
     end
