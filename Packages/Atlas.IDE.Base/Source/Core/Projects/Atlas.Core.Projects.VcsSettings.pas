@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Projects.VersionControl;
 
 type

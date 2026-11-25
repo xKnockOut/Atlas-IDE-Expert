@@ -17,7 +17,7 @@
 interface
 
 uses
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   /// <summary>Was das Fenster „alter Stand“ beim Takt tut.</summary>

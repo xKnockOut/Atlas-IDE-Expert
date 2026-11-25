@@ -1,7 +1,7 @@
 ﻿unit Adapters.VersionControl.LinuxRunner;
 
 // Prozessläufer für git und svn unter Linux (#1109): Gegenstück zu
-// Atlas.Core.VersionControl.Providers.ProcessRunner, das Windows-Pipes nutzt und im
+// Atlas.VersionControl.Repository.Providers.ProcessRunner, das Windows-Pipes nutzt und im
 // Windows-Bau bleibt. Gleiches Verhalten: stdout und stderr getrennt, im Takt
 // von SliceMs gelesen, damit keine volle Pipe den Prozess anhält; Zeitlimit und
 // Abbruch beenden den Prozess; stdin ist leer, git und svn fragen nie nach
@@ -12,7 +12,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   TLinuxVcsRunner = class(TInterfacedObject, IAtlasVcsRunner)
@@ -39,7 +39,7 @@ uses
   System.Classes,
   Pipes,
   Process,
-  Atlas.Core.VersionControl.ServerAccess;
+  Atlas.VersionControl.Repository.ServerAccess;
 
 const
   cSliceMs = 10;

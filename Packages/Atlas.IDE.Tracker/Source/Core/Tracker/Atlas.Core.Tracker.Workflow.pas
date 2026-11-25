@@ -33,7 +33,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   TAtlasTrackerSyncOptions = record
@@ -218,7 +218,7 @@ uses
   System.StrUtils,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Transitions,
-  Atlas.Core.VersionControl.BranchNames,
+  Atlas.VersionControl.Repository.BranchNames,
   Atlas.Text.Lines;
 
 { TAtlasTrackerSyncOptions }

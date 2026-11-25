@@ -38,8 +38,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
   Atlas.UI.VersionControl.BranchDialog;
 
 type
@@ -125,11 +125,11 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   ToolsAPI,
-  Atlas.Core.VersionControl.ExternalRules,
+  Atlas.VersionControl.Repository.ExternalRules,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Setup.Checklist,
-  Atlas.Core.VersionControl.BranchNames,
+  Atlas.VersionControl.Repository.BranchNames,
   Atlas.Core.VersionControl.Plan,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,

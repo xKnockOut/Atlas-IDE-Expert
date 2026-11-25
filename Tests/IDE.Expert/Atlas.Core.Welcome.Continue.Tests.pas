@@ -89,8 +89,8 @@ uses
   System.SysUtils,
   System.DateUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Null,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Null,
   Atlas.Core.Welcome.Projects,
   Atlas.Core.Welcome.Continue,
   Atlas.Tests.Lists;

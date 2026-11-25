@@ -11,7 +11,7 @@ uses
   System.SysUtils,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Profiling.Contract,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Core.Workspace.Setup,
   Core.VersionControlChanges,
 {$IFDEF MSWINDOWS}
@@ -58,11 +58,11 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Providers.DiskFileSystem,
   Atlas.Common.Rules.Contract,
-  Atlas.Core.VersionControl.Composition,
+  Atlas.VersionControl.Repository.Composition,
 {$IFDEF MSWINDOWS}
   Atlas.Windows.Diagnostics.Adapters.DebugOutputSink,
   Atlas.Windows.Profiling.Adapters.Sampler,
-  Atlas.Core.VersionControl.Providers.ProcessRunner;
+  Atlas.VersionControl.Repository.Providers.ProcessRunner;
 {$ELSE}
   Adapters.VersionControl.LinuxRunner;
 {$ENDIF}

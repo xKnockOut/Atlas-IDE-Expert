@@ -366,7 +366,7 @@ end;
 
 procedure TFileRulesTests.FilenameComparePlatformDependent;
 begin
-  // Atlas.Core.VersionControl.Internals.Text: unter Windows SameText, sonst genau.
+  // Atlas.VersionControl.Repository.Internals.Text: unter Windows SameText, sonst genau.
   Assert.AreEqual(0, StatementCount('  if (Root <> '''') and ((PathDelim = ''\'') and SameText(Root, FileName) or ' +
     '(Root = FileName)) then'#10'    Exit(True);'));
   Assert.AreEqual(0, StatementCount('  Result := ((PathDelim = ''\'') and AnsiSameText(FileName, Root)) or ' +

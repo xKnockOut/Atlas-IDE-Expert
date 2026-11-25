@@ -32,7 +32,7 @@ uses
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   /// <summary>Wünsche der Ansicht an die IDE-Schicht.</summary>

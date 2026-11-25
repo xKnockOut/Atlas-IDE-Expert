@@ -30,8 +30,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Menus,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.WorkingCopies,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.WorkingCopies,
   Atlas.Vcl.Forms.Dialog;
 
 type

@@ -35,7 +35,7 @@ uses
   Atlas.Core.Tests.Stale,
   Atlas.Core.Tests.Durations,
   Atlas.Core.Tests.Flaky,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
 {$SCOPEDENUMS ON}

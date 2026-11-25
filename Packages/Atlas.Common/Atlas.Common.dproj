@@ -176,6 +176,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.BulkFix.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.TextChecks.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.DeadCode.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.Conventions.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.FindingPrompts.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.OwnershipReport.pas"/>
@@ -195,7 +196,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.GoldenCorpus.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Filter.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Output.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.FormatOutput.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatOutput.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Baseline.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Scopes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Options.pas"/>
@@ -816,6 +817,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.CompilerFixes.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.BulkFix.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.TextChecks.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.DeadCode.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Conventions.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CheckTools.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Prompt.pas"/>

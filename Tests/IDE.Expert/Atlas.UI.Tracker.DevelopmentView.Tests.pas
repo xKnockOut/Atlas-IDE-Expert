@@ -47,7 +47,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Tracker.DevelopmentView,
   Atlas.Tests.Files;
 

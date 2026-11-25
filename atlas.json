@@ -40,7 +40,7 @@
       "exclude": ["Tests/**"],
       "hostedFeatures": ["Replay", "Monitor", "Update"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
-        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
+        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
       "allow": [
         "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
@@ -59,8 +59,9 @@
         "Atlas.IDE.Debug.Composition -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.Tests.Composition -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*",
-        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.*.Providers.*",
-        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.VersionControl.Composition"
+        "Atlas.IDE.Tests.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.VersionControl.Repository.Composition"
       ]
     },
     "architecture-contract-content": {
@@ -68,7 +69,7 @@
       "exclude": ["Tests/**"],
       "hostedFeatures": ["Replay", "Monitor", "Update"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
-        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
+        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
       "allow": ["Atlas.Common.Dfm.Contract.TDfm*"]
     },
     "architecture-feature-cycle": {

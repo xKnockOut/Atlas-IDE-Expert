@@ -11,7 +11,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Projects.Contract.Summary,
   Atlas.Plugin.Status.Contract,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   {$SCOPEDENUMS ON}

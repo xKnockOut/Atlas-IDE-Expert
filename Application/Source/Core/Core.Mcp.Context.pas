@@ -15,6 +15,7 @@ uses
   Atlas.Common.Mcp.EditTools,
   Atlas.Common.Mcp.Contract.CompilerFixes,
   Atlas.Common.Mcp.Contract.Conventions,
+  Atlas.Common.Mcp.Contract.DeadCode,
   Atlas.Common.Mcp.Contract.TextChecks,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
@@ -61,6 +62,9 @@ type
     /// (get_diagnostics, hook_check, check_code, apply_code_action, explain_finding, Änderungen); nil, wenn die
     /// Adapter ohne Gruppe entstanden sind.</summary>
     TextChecks: IMcpTextChecks;
+    /// <summary>Neuer Lauf von find_unused_code mit Index, Projekten und Namensräumen der Gruppe; nil, wenn die
+    /// Adapter ohne Gruppe entstanden sind.</summary>
+    DeadCode: TMcpDeadCodeFunc;
   end;
 
   /// <summary>Was die Werkzeuge des MCP-Modus brauchen; ToolNames füllt nur Server (die Werkzeuge greifen erst

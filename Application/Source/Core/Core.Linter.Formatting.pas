@@ -5,7 +5,7 @@
 // --changed-lines nur die geänderten Zeilen. Formatregeln wie „Dokument formatieren“: format.* aus atlas.json über
 // .editorconfig über den Vorgaben (ohne die Einrückung der IDE-Optionen). Geschrieben wird atomar über eine
 // Nachbardatei; Kodierung und Zeilenenden bleiben, außer format.endOfLine verlangt andere. Exit-Codes in
-// Atlas.Common.Rules.FormatOutput.
+// Atlas.Common.Editing.FormatOutput.
 
 interface
 
@@ -14,7 +14,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Filter,
-  Atlas.Common.Rules.FormatOutput,
+  Atlas.Common.Editing.FormatOutput,
   Core.CommandLine,
   Core.VersionControlChanges,
   Core.Linter.Host;

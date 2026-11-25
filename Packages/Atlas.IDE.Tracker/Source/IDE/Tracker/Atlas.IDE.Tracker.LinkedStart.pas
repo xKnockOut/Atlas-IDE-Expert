@@ -51,7 +51,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.PathSuggestions,
   Atlas.IDE.Tracker.Workflow,

@@ -9,6 +9,7 @@
     "Atlas.Plugin",
     "Atlas.Vcl",
     "Atlas.ToolsApi",
+    "Atlas.VersionControl",
     "Atlas.Core",
     "Atlas.UI",
     "Atlas.IDE"
@@ -1266,6 +1267,24 @@
       "to": "Atlas.ToolsApi.Editor.Internals.Sache",
       "allowed": false,
       "note": "gleicher Feature-Name in Atlas.IDE und Atlas.ToolsApi ist ein fremdes Feature"
+    },
+    {
+      "from": "Atlas.VersionControl.Repository.Providers.Git",
+      "to": "Atlas.VersionControl.Repository.Internals.Text",
+      "allowed": true,
+      "note": "Atlas.VersionControl ist ein eigenes Artefakt; im eigenen Feature sind Internals erlaubt"
+    },
+    {
+      "from": "Atlas.Core.VersionControl.Plan",
+      "to": "Atlas.VersionControl.Repository.Contract",
+      "allowed": true,
+      "note": "Contract eines Platform-Features"
+    },
+    {
+      "from": "Atlas.Core.VersionControl.Plan",
+      "to": "Atlas.VersionControl.Repository.Internals.Text",
+      "allowed": false,
+      "note": "Internals eines fremden Platform-Features"
     }
   ]
 }

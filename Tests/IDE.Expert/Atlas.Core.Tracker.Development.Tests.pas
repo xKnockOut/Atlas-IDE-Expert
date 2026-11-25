@@ -54,10 +54,10 @@ uses
   Atlas.Text.CommandLine,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.Composition,
-  Atlas.Core.VersionControl.Providers.ProcessRunner,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.Composition,
+  Atlas.VersionControl.Repository.Providers.ProcessRunner,
   Atlas.Tests.Files;
 
 type
