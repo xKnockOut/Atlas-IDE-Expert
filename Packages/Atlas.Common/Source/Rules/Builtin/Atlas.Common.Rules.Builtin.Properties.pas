@@ -105,7 +105,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Builtin.Properties.Shapes,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.CodeActions.Contract,

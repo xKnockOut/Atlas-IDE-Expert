@@ -84,7 +84,8 @@ uses
   Atlas.Common.Rules.Builtin.Forms,
   Atlas.Common.Rules.Checker,
   Atlas.Tests.RuleAssert,
-  Atlas.Tests.TextEdits;
+  Atlas.Tests.TextEdits,
+  Atlas.Common.Projects.Facts;
 
 const
   cKundeForm =
@@ -182,7 +183,7 @@ begin
   Result.UnitName := 'Haupt';
   Result.Text := ASource;
   Result.ProjectName := 'Projekt';
-  Result.AutoCreateForms := TFormAccessBeforeCreateRule.AutoCreatedForms(cProjektDpr);
+  Result.AutoCreateForms := TProjectFacts.AutoCreatedForms(cProjektDpr);
   if AMainSource = '' then
   begin
     Exit;
@@ -511,7 +512,7 @@ begin
     mTree.Free;
   end;
   // Danach erzeugt nur noch der Code das Formular.
-  Assert.AreEqual('frmHaupt', string.Join(',', TFormAccessBeforeCreateRule.AutoCreatedForms(mFixed)));
+  Assert.AreEqual('frmHaupt', string.Join(',', TProjectFacts.AutoCreatedForms(mFixed)));
 end;
 
 procedure TFormRulesTests.AutoCreateGuardsAreSilent;

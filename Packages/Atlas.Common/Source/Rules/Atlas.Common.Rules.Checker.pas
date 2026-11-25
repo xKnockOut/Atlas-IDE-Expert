@@ -28,7 +28,6 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Findings.Scopes,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Projects.PackageReader,
   Atlas.Common.Checks.Contract;
 
 const
@@ -113,8 +112,6 @@ type
     class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARelativePath, AText: string; const AProject: TCheckProject; out AScopes: TFindingScopes):
       TArray<TRuleFinding>; overload; static;
-    /// <summary>Das Package aus APackages, dessen contains die Unit AUnitName nennt; sonst Default.</summary>
-    class function PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string): TCheckProject;
       static;
     /// <summary>Wie oben mit den Symbolen und Include-Dateien aus ASource (#860).</summary>
     class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -385,23 +382,6 @@ class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettin
 begin
   Result := CheckText(ARules, ASettings, ARelativePath, AText,
     TCheckOrigin.Make(AProject, TCheckSource.Default), AScopes);
-end;
-
-class function TFileChecker.PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string):
-  TCheckProject;
-var
-  mSource: TPackageSource;
-begin
-  Result := Default(TCheckProject);
-  for mSource in APackages do
-  begin
-    if mSource.IsPackage and (mSource.ContainsIndex(AUnitName) >= 0) then
-    begin
-      Result.Application := TRuleApplicationKind.Package;
-      Result.Name := mSource.Name;
-      Exit;
-    end;
-  end;
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;

@@ -97,7 +97,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,

@@ -7,7 +7,7 @@
 //                                  ohne BOM gilt die ANSI-Codepage des Rechners (#1061)
 //   registry-hklm-write            TRegistry mit RootKey HKEY_LOCAL_MACHINE und schreibendem Zugriff (#1062)
 //   now-for-elapsed-time           Laufzeit mit Now gemessen statt mit TStopwatch (#1063)
-// Die Anwendungsart liefert TRuleContext.Application (TWritelnInGuiAppRule.ApplicationKind); eine Unit mit
+// Die Anwendungsart liefert TRuleContext.Application (TProjectFacts.ApplicationKind); eine Unit mit
 // einer Klasse, die von TService erbt, gilt auch ohne Projekt als Dienst.
 
 interface
@@ -70,13 +70,14 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.SyntaxNodes;
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Common.Projects.Facts;
 
 {$SCOPEDENUMS ON}
 
@@ -373,7 +374,7 @@ begin
   // Ohne Projekt nur die .dpr selbst.
   if mKind = TRuleApplicationKind.Unknown then
   begin
-    mKind := TWritelnInGuiAppRule.ApplicationKind('', AContext.Text);
+    mKind := TProjectFacts.ApplicationKind('', AContext.Text);
   end;
   mConfidence := TRuleConfidence.High;
   mAdvice := cTexts[TPlatformText.LogInstead].Text;

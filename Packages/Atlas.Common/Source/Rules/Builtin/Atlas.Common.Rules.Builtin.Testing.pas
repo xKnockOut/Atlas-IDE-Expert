@@ -61,7 +61,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.Attributes,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.Testing.AreEqual,
   Atlas.Common.Rules.Builtin.Testing.Asserts,
   Atlas.Common.Rules.Builtin.Testing.TestCases,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Options.Tests;
+﻿unit Atlas.Common.Configuration.RuleOptions.Tests;
 
 // Optionen einer Prüfregel lesen (#909): Wahrheitswert, Zahl und Liste mit
 // Vorgabe bei fehlender Option, falschem Typ und leerem Text.
@@ -28,7 +28,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Rules.Options;
+  Atlas.Common.Configuration.RuleOptions;
 
 { TRuleOptionsTests }
 

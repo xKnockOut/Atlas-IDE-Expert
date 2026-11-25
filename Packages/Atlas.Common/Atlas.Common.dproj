@@ -110,6 +110,7 @@
         <DCCReference Include="Source\Documents\Atlas.Common.Documents.FileEncoding.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.Group.pas"/>
+        <DCCReference Include="Source\Projects\Atlas.Common.Projects.Facts.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.GroupProjects.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Contract.UnitLookup.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.Paths.pas"/>
@@ -208,7 +209,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatOutput.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Baseline.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Scopes.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Options.pas"/>
+        <DCCReference Include="Source\Configuration\Atlas.Common.Configuration.RuleOptions.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.SuppressionStats.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Catalog.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Common.Compiler.MessageCatalog.pas"/>

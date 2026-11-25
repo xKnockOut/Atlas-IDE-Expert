@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Options;
+﻿unit Atlas.Common.Configuration.RuleOptions;
 
 // Optionen einer Prüfregel aus atlas.json lesen (#909): TRuleContext.Options
 // ist der JSON-Text des Regelobjekts, z. B. {"severity": "warning",

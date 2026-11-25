@@ -72,7 +72,7 @@ uses
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Pascal.DocComments,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines,
   Atlas.Text.Fuzzy,

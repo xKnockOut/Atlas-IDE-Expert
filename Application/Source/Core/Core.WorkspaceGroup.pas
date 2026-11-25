@@ -24,7 +24,6 @@ uses
   Atlas.Common.Index.Processes,
   Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Checks.Contract.Refactorings,
-  Atlas.Common.Rules.Checker,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Query.Contract,
   Core.Workspace.Setup,

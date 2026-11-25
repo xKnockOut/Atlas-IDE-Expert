@@ -55,10 +55,6 @@ type
     function MentionsAny(const ANames: array of string): Boolean;
     /// <summary>Meldet dcc die Warnung in diesem Stand (an oder als Fehler)?</summary>
     class function Reported(AState: TRuleWarnState): Boolean; static;
-    /// <summary>Eintrag für TRuleContext.ProjectWarnings aus einer Eigenschaft der .dproj ("DCC_SYMBOL_PLATFORM",
-    /// "false" ergibt "SYMBOL_PLATFORM=false"; DCC_Warnings ergibt "WARNINGS=…"); '' für andere Eigenschaften.
-    /// </summary>
-    class function ProjectEntry(const AProperty, AValue: string): string; static;
   end;
 
 implementation
@@ -67,11 +63,9 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.ConditionalBranches;
 
 const
-  cPropertyPrefix = 'DCC_';
   cWarningsName = 'WARNINGS';
 
 { TRuleWarnSwitches }
@@ -252,23 +246,6 @@ end;
 class function TRuleWarnSwitches.Reported(AState: TRuleWarnState): Boolean;
 begin
   Result := AState in [TRuleWarnState.Enabled, TRuleWarnState.AsError];
-end;
-
-class function TRuleWarnSwitches.ProjectEntry(const AProperty, AValue: string): string;
-var
-  mName: string;
-begin
-  Result := '';
-  if not StartsText(cPropertyPrefix, AProperty) then
-  begin
-    Exit;
-  end;
-  mName := UpperCase(Copy(AProperty, Length(cPropertyPrefix) + 1, MaxInt));
-  if (mName <> cWarningsName) and (IndexText(mName, TDirectiveNames.Warnings) < 0) then
-  begin
-    Exit;
-  end;
-  Result := mName + '=' + LowerCase(Trim(AValue));
 end;
 
 /// <summary>Stand nach einem benannten Schalter; ABase für DEFAULT.</summary>
