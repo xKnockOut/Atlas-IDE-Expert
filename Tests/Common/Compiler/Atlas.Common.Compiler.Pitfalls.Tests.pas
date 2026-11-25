@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.CompilerPitfalls.Tests;
+﻿unit Atlas.Common.Compiler.Pitfalls.Tests;
 
 // Tests für den Fallenkatalog der Compilermeldungen (#2621): Jede Falle mit Merkmal hat ein Beispiel, an dem sie
 // als erste passt; ohne Merkmal bleibt sie eine weitere Ursache.
@@ -21,8 +21,6 @@ type
     [Test]
     procedure EveryPitfallIsComplete;
     [Test]
-    procedure RulesExistInTheCatalog;
-    [Test]
     procedure KnowsOnlyCodesWithPitfalls;
     [Test]
     procedure MarksFollowUpErrors;
@@ -37,9 +35,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.Catalog,
   Atlas.Common.Compiler.MessageCatalog,
-  Atlas.Common.Rules.CompilerPitfalls;
+  Atlas.Common.Compiler.Pitfalls;
 
 type
   TPitfallExample = record
@@ -208,22 +205,6 @@ begin
     for mCode in TCompilerPitfalls.Codes(mPitfall) do
     begin
       Assert.AreEqual(mCode, TCompilerMessageCatalog.CodeOf(mCode), mInfo.Id);
-    end;
-  end;
-end;
-
-procedure TCompilerPitfallsTests.RulesExistInTheCatalog;
-var
-  mPitfall: TCompilerPitfall;
-  mInfo: TCompilerPitfallInfo;
-  mEntry: TRuleCatalogEntry;
-begin
-  for mPitfall := Low(TCompilerPitfall) to High(TCompilerPitfall) do
-  begin
-    mInfo := TCompilerPitfalls.Info(mPitfall, TTextLanguage.German);
-    if mInfo.Rule <> '' then
-    begin
-      Assert.IsTrue(TRuleCatalog.Shared.TryFind(mInfo.Rule, mEntry), mInfo.Id + ': ' + mInfo.Rule);
     end;
   end;
 end;

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.CompilerPitfalls;
+﻿unit Atlas.Common.Compiler.Pitfalls;
 
 // Fallenkatalog der Compilermeldungen (#2621): bekannte Delphi-Fallen, bei denen der Meldungstext allein die
 // Ursache nicht verrät (zwei gleich gebaute Methodenreferenztypen unter Delphi 12, TMonitor aus Vcl.Forms,
@@ -680,8 +680,8 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.CompilerPitfalls.Titles', cTitles);
-  TAtlasTextTables.Add('Atlas.Common.Rules.CompilerPitfalls.Reasons', cReasons);
-  TAtlasTextTables.Add('Atlas.Common.Rules.CompilerPitfalls.Fixes', cFixes);
+  TAtlasTextTables.Add('Atlas.Common.Compiler.Pitfalls.Titles', cTitles);
+  TAtlasTextTables.Add('Atlas.Common.Compiler.Pitfalls.Reasons', cReasons);
+  TAtlasTextTables.Add('Atlas.Common.Compiler.Pitfalls.Fixes', cFixes);
 
 end.

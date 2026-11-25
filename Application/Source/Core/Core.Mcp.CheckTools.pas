@@ -443,6 +443,7 @@ begin
   mRequest := TMcpDocsTools.RequestOf(AArguments);
   mRequest.Settings := AContext.Group.Main.Configuration.Settings;
   mRequest.ProjectText := SettingsText(AContext.Group.Main.Configuration.Files.Read);
+  mRequest.RuleDocs := AContext.Adapters.RuleDocs;
   if mRequest.Settings.McpGlobalSettings then
   begin
     mRequest.GlobalText := SettingsText(TCoreBootstrap.GlobalSettingsFile);

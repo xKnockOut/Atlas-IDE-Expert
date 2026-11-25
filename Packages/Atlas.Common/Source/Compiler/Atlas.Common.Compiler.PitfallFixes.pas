@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.CompilerPitfallFixes;
+﻿unit Atlas.Common.Compiler.PitfallFixes;
 
 // Sichere Korrekturen aus dem Fallenkatalog der Compilermeldungen (#2621, TCompilerPitfalls): System. vor
 // TMonitor., eine Unit ins uses des Abschnitts der Zeile, Exit([...]) als Result := [...]; Exit;. Jede Korrektur
@@ -10,7 +10,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.CompilerPitfalls;
+  Atlas.Common.Compiler.Pitfalls;
 
 type
   TCompilerPitfallFixes = class

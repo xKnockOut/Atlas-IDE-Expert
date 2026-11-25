@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.CompilerPitfallFixes.Tests;
+﻿unit Atlas.Common.Compiler.PitfallFixes.Tests;
 
 // Tests für die sicheren Korrekturen des Fallenkatalogs (#2621): Jede Korrektur greift nur, wenn ihre Voraussetzung
 // am Text erfüllt ist.
@@ -36,8 +36,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Rules.CompilerPitfalls,
-  Atlas.Common.Rules.CompilerPitfallFixes;
+  Atlas.Common.Compiler.Pitfalls,
+  Atlas.Common.Compiler.PitfallFixes;
 
 const
   cUnit = 'unit A;'#13#10#13#10'interface'#13#10#13#10'uses'#13#10'  System.SysUtils;'#13#10#13#10 +

@@ -419,6 +419,7 @@ begin
   Result.CompilerFixes := TMcpComposition.CompilerFixes;
   Result.Conventions := TMcpComposition.Conventions;
   Result.FindingPrompts := TMcpComposition.FindingPrompts;
+  Result.RuleDocs := TMcpComposition.RuleDocs;
 end;
 
 class function TMcpServices.GroupAdapters(AGroup: TCoreWorkspaceGroup): TMcpHostAdapters;
