@@ -307,41 +307,6 @@ begin
   Result := TLspSession.From(FSession);
 end;
 
-<<<<<<< HEAD
-function TAtlasEditorHoverContent.Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
-var
-  mSession: TLspSession;
-begin
-  AData := Default(TAtlasHoverData);
-  mSession := CurrentSession;
-  Result := (mSession <> nil) and ARef.HasLocation;
-  if Result then
-  begin
-    // Sprung im Tooltip: Der Hauptthread wartet, deshalb kurzes Zeitlimit.
-    AData := TAtlasHoverData.FromResponse(mSession.HoverResponseAt(ARef.FileName, ARef.Line, ARef.Character,
-      TLspSession.cMainThreadTimeoutMs));
-    Result := AData.Found;
-  end;
-end;
-
-||||||| 2927015ba
-function TAtlasEditorHoverContent.Fetch(const ARef: TAtlasHoverTypeRef; out AData: TAtlasHoverData): Boolean;
-var
-  mSession: TLspSession;
-begin
-  AData := Default(TAtlasHoverData);
-  mSession := CurrentSession;
-  Result := (mSession <> nil) and ARef.HasLocation;
-  if Result then
-  begin
-    // Sprung im Tooltip: Der Hauptthread wartet, deshalb kurzes Zeitlimit.
-    AData := mSession.HoverDataAt(ARef.FileName, ARef.Line, ARef.Character, TLspSession.cMainThreadTimeoutMs);
-    Result := AData.Found;
-  end;
-end;
-
-=======
->>>>>>> refs/remotes/origin/main-merging
 /// <summary>Neu zugewiesen (#712): nur mit der Einstellung und für die gewählten Arten; der Server kennt sie
 /// nicht.</summary>
 function ShowsReassigned(const AData: TAtlasHoverData): Boolean;
@@ -876,7 +841,8 @@ begin
   FLinkRequest.Start(
     procedure
     begin
-      mData := ASession.HoverDataAt(mRef.FileName, mRef.Line, mRef.Character, 0);
+      mData := TAtlasHoverData.FromResponse(ASession.HoverResponseAt(mRef.FileName, mRef.Line, mRef.Character,
+        0));
     end,
     procedure(AOk: Boolean; const AError: string)
     begin

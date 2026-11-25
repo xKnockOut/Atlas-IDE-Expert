@@ -21,14 +21,8 @@ uses
   Atlas.Common.Mcp.Contract.Workspace,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
-<<<<<<< HEAD
   Atlas.Common.Lsp.SymbolPath.Search,
-||||||| 2927015ba
-  Atlas.Common.Architecture.SymbolPath,
-=======
-  Atlas.Common.Architecture.SymbolPath,
   Atlas.Common.Architecture.UsesService,
->>>>>>> refs/remotes/origin/main-merging
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Hotspots.Service,
