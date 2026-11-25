@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.StatusFile.Tests;
+﻿unit Atlas.Common.Diagnostics.StatusFile.Tests;
 
 // Tests für die Statusdatei des Servers (#1356, #1901), aus der get_server_status die
 // Zahlen des Fensters „Atlas-Server“ und AtlasMonitor alle Server liest: Schreiben,
@@ -54,7 +54,7 @@ uses
   System.IOUtils,
   System.JSON,
   System.DateUtils,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Tests.TempFolder;
 
 const

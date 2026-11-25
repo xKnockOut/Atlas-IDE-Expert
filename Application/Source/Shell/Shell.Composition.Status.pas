@@ -10,7 +10,7 @@ uses
   System.JSON,
   System.Diagnostics,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Text.LogMarks,
   Core.Workspace,

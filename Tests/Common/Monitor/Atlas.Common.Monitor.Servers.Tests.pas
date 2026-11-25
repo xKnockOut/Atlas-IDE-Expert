@@ -45,7 +45,7 @@ uses
   System.SysUtils,
   System.DateUtils,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Monitor.Servers;
 
 const

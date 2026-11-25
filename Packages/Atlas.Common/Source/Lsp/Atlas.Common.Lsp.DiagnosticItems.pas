@@ -77,7 +77,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.Math,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,

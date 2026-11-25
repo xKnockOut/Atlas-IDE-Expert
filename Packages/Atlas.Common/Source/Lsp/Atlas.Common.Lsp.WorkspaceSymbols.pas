@@ -69,7 +69,7 @@ uses
   System.Generics.Defaults,
   System.Math,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Localization.Texts;
 

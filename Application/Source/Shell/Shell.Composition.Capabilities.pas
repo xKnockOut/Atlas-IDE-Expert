@@ -29,7 +29,7 @@ uses
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.DocumentLinks,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.Processes,
   Atlas.Common.Lsp.PullDiagnostics,
   Atlas.Common.Lsp.QualifiedNames,

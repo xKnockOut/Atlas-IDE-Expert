@@ -22,7 +22,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Menus,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Monitor.Servers,
   Atlas.Common.Monitor.Settings,
   Monitor.CheckPage;

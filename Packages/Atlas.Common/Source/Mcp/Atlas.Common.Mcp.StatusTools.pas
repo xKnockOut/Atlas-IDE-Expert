@@ -15,7 +15,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Common.Lsp.Status,
+  Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Mcp.Statistics;
 
 type
@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Mcp.StatisticsText,
   Atlas.Common.Mcp.StatisticsHistory,
   Atlas.Common.Localization.Texts,

@@ -76,7 +76,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 

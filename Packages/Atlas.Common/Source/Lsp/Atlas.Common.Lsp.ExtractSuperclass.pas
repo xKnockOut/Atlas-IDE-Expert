@@ -91,7 +91,7 @@ uses
   Atlas.Common.Editing.ExtractSuperclass,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.WorkspaceChanges,
   Atlas.Common.Localization.Texts,
