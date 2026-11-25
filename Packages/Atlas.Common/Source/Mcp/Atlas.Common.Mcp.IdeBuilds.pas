@@ -342,27 +342,16 @@ begin
   Result := TMcpOpenProjects.Ask;
 end;
 
-class function TMcpIdeBuilds.MayOpen(APolicy: TMcpOpenProjects; const AProjectFile: string;
-  const AChoose: TMcpChooseFunc; out AReason: string): Boolean;
+/// <summary>Fragt über AChoose, ob AName geöffnet werden darf; ohne Ja steht der Grund in AReason.</summary>
+function AskToOpen(const AName: string; const AChoose: TMcpChooseFunc; out AReason: string): Boolean;
 var
-  mName: string;
   mChoice: Integer;
 begin
   AReason := '';
-  mName := ExtractFileName(AProjectFile.Replace('/', PathDelim));
-  case APolicy of
-    TMcpOpenProjects.Always:
-      Exit(True);
-    TMcpOpenProjects.Never:
-      begin
-        AReason := cTexts[TIdeBuildsText.OpenNever].Fmt([mName]);
-        Exit(False);
-      end;
-  end;
   mChoice := TMcpConfirm.cNotAsked;
   if Assigned(AChoose) then
   begin
-    mChoice := AChoose(cTexts[TIdeBuildsText.OpenQuestion].Fmt([mName]),
+    mChoice := AChoose(cTexts[TIdeBuildsText.OpenQuestion].Fmt([AName]),
       TArray<string>.Create(cTexts[TIdeBuildsText.OpenYes].Text, cTexts[TIdeBuildsText.OpenNo].Text));
   end;
   Result := mChoice = 0;
@@ -372,11 +361,35 @@ begin
   end;
   if mChoice = TMcpConfirm.cNotAsked then
   begin
-    AReason := cTexts[TIdeBuildsText.OpenNotAsked].Fmt([mName]);
+    AReason := cTexts[TIdeBuildsText.OpenNotAsked].Fmt([AName]);
   end
   else
   begin
-    AReason := cTexts[TIdeBuildsText.OpenDeclined].Fmt([mName]);
+    AReason := cTexts[TIdeBuildsText.OpenDeclined].Fmt([AName]);
+  end;
+end;
+
+class function TMcpIdeBuilds.MayOpen(APolicy: TMcpOpenProjects; const AProjectFile: string;
+  const AChoose: TMcpChooseFunc; out AReason: string): Boolean;
+var
+  mName: string;
+begin
+  AReason := '';
+  mName := ExtractFileName(AProjectFile.Replace('/', PathDelim));
+  Result := False;
+  case APolicy of
+    TMcpOpenProjects.Ask:
+      begin
+        Result := AskToOpen(mName, AChoose, AReason);
+      end;
+    TMcpOpenProjects.Always:
+      begin
+        Result := True;
+      end;
+    TMcpOpenProjects.Never:
+      begin
+        AReason := cTexts[TIdeBuildsText.OpenNever].Fmt([mName]);
+      end;
   end;
 end;
 
