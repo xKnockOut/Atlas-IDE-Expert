@@ -46,7 +46,7 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.Contract,
   Atlas.Core.Debug.EvalSlices,

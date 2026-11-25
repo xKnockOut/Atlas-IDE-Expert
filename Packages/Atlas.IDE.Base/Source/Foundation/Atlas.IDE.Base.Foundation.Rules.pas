@@ -22,7 +22,7 @@
 interface
 
 uses
-  Atlas.Core.Problems.Contract;
+  Atlas.Plugin.Problems.Contract;
 
 type
   /// <summary>Ergebnis des Aktualisierens im Hauptthread: ASucceeded mit Treffern ATotal in AFiles Dateien, sonst
@@ -61,9 +61,9 @@ type
     procedure Disable(const ARule: string);
   end;
 
-  /// <summary>Ein Fehler aus Error Insight (#1819); liegt bei den Problemen im Kern (Atlas.Core.Problems.Contract).
+  /// <summary>Ein Fehler aus Error Insight (#1819); liegt bei den Problemen im Kern (Atlas.Plugin.Problems.Contract).
   /// </summary>
-  TAtlasIdeError = Atlas.Core.Problems.Contract.TAtlasIdeError;
+  TAtlasIdeError = Atlas.Plugin.Problems.Contract.TAtlasIdeError;
 
   /// <summary>Fehler der IDE zu einer Datei (#1819). Aufruf im Hauptthread der IDE.</summary>
   IAtlasIdeErrors = interface

@@ -197,7 +197,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Checker.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.BulkFix.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.GoldenCorpus.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Filter.pas"/>
+        <DCCReference Include="Source\Findings\Atlas.Common.Findings.Filter.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Output.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatOutput.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Baseline.pas"/>
@@ -1000,6 +1000,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Contract.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Cancellation.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Lexer.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.MethodText.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxNodes.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxTree.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SyntaxChecks.pas"/>

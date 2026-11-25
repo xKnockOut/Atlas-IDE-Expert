@@ -58,7 +58,7 @@ uses
   Atlas.Core.Editor.SafeDelete,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Build.Target,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Text.Defines,
   Atlas.Plugin.Localization.Strings,

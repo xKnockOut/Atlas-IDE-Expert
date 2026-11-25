@@ -8,8 +8,8 @@ interface
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Generate.Contract,
-  Atlas.Core.Projects.Contract.Summary,
+  Atlas.Plugin.Generate.Contract,
+  Atlas.Plugin.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract,
   Atlas.Plugin.Calls.Contract;
 

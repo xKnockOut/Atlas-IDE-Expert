@@ -16,8 +16,9 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.PackageReader,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Filter,
+  Atlas.Common.Findings.Filter,
   Atlas.Common.Rules.Output,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.BulkFix,
@@ -34,7 +35,7 @@ type
     RelativePath: string;
     FileName: string;
     Project: TCheckProject;
-    Source: TCheckSource;
+    Source: TPascalSource;
     /// <summary>Deren Treffer bleiben; nil ohne Baseline.</summary>
     Baseline: IRuleBaseline;
     Filter: TFindingFilter;
@@ -63,9 +64,9 @@ type
     FResults: TArray<TBulkFixFile>;
     FRemaining: TArray<TCheckedFile>;
     function Prepare(const AConfigRoot: string): Boolean;
-    function Candidates(const AConfigRoot: string; out ASources: TCheckSourceFunc): TArray<string>;
-    function CheckOf(const AFileName, ARelativePath: string; const ASource: TCheckSource): TLinterFixCheck;
-    procedure FixFile(const AFileName: string; const ASource: TCheckSource);
+    function Candidates(const AConfigRoot: string; out ASources: TPascalSourceFunc): TArray<string>;
+    function CheckOf(const AFileName, ARelativePath: string; const ASource: TPascalSource): TLinterFixCheck;
+    procedure FixFile(const AFileName: string; const ASource: TPascalSource);
     procedure Report;
   public
     constructor Create(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost);
@@ -199,7 +200,7 @@ begin
   end;
 end;
 
-function TLinterFix.Candidates(const AConfigRoot: string; out ASources: TCheckSourceFunc): TArray<string>;
+function TLinterFix.Candidates(const AConfigRoot: string; out ASources: TPascalSourceFunc): TArray<string>;
 var
   mTimings: TCheckTimings;
 begin
@@ -219,7 +220,7 @@ begin
   end;
 end;
 
-function TLinterFix.CheckOf(const AFileName, ARelativePath: string; const ASource: TCheckSource): TLinterFixCheck;
+function TLinterFix.CheckOf(const AFileName, ARelativePath: string; const ASource: TPascalSource): TLinterFixCheck;
 begin
   Result := Default(TLinterFixCheck);
   Result.Rules := FFixRules;
@@ -234,7 +235,7 @@ begin
   Result.ChangedLines := FOptions.ChangedLines;
 end;
 
-procedure TLinterFix.FixFile(const AFileName: string; const ASource: TCheckSource);
+procedure TLinterFix.FixFile(const AFileName: string; const ASource: TPascalSource);
 var
   mRelativePath, mText: string;
   mFormat: TFileFormat;
@@ -310,7 +311,7 @@ end;
 function TLinterFix.Execute(const AConfigRoot: string): Integer;
 var
   mFileName: string;
-  mSources: TCheckSourceFunc;
+  mSources: TPascalSourceFunc;
 begin
   if not Prepare(AConfigRoot) then
   begin

@@ -214,7 +214,7 @@ type
 implementation
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   System.StrUtils,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Transitions,

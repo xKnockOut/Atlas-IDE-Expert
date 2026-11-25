@@ -40,10 +40,10 @@ uses
   Atlas.Common.Metrics.DuplicateBodies,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Rules.Filter,
+  Atlas.Common.Findings.Filter,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Output,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Text.Json,
   Core.Linter.Output,
@@ -292,7 +292,7 @@ var
   mRuleOptions, mRoot, mBaselinePath: string;
   mMinLines: Integer;
   mFiles: TArray<string>;
-  mSources: TCheckSourceFunc;
+  mSources: TPascalSourceFunc;
   mUnits: TArray<TDuplicateBodyUnit>;
   mGroups: TArray<TDuplicateBodyGroup>;
   mBaseline: TDuplicateBaseline;

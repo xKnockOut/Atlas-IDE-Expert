@@ -10,7 +10,7 @@ interface
 
 uses
   Atlas.Plugin.Lsp.Contract,
-  Atlas.Core.Problems.Contract;
+  Atlas.Plugin.Problems.Contract;
 
 type
   /// <summary>Ein Auftrag an textDocument/diagnostic: Datei, abgeglichener Text, vorige Ergebnis-Id ('' = alles

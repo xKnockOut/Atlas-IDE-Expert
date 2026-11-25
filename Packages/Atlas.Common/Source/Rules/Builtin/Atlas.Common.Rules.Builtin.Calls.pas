@@ -23,7 +23,12 @@
 //
 //   overload-resolution      Keine Überladung passt zu den Argumenten (#1371,
 //                            wie E2250) oder mehrere passen gleich gut (wie
-//                            E2251).
+//                            E2251). Ohne Index: string.Join mit einem
+//                            Array-Literal, das ein Char-Literal enthält
+//                            (['{', 'X']), passt unter Delphi 12 zu array of
+//                            const und array of string (wie E2251); FPC und
+//                            Delphi 13 nehmen es an. Korrektur:
+//                            TArray<string>.Create(…).
 //
 // Korrektur „Signaturhilfe öffnen“: springt in die Klammern des Aufrufs und
 // öffnet dort den Parameter-Hint (Client-Befehl atlas.showSignatureHelp);
@@ -116,7 +121,7 @@ type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TCallsText = (Title, IsMissing, AndWord, OneArgument, Arguments, NonePassed, OnePassed, Passed, OpenSignatureHelp,
     ExpectsNone, Expects, ExpectsAtMost, ExpectsMissing, ExpectsAtLeast, OverloadTitle, NoOverloadNoArgs,
-    NoOverloadFits, Ambiguous, AreMissing);
+    NoOverloadFits, Ambiguous, AreMissing, JoinCharLiteral, JoinFix);
 
 const
   cTexts: array[TCallsText] of TAtlasText = (
@@ -141,7 +146,12 @@ const
      En: 'None of the %d overloads of %s matches the arguments (%s) (like E2250).'),
     (De: 'Aufruf von %s ist mehrdeutig: %s passen gleich gut (wie E2251).';
      En: 'Call to %s is ambiguous: %s match equally well (like E2251).'),
-    (De: ' fehlen'; En: ' are missing'));
+    (De: ' fehlen'; En: ' are missing'),
+    (De: 'Aufruf von string.Join ist unter Delphi 12 mehrdeutig: Das Array-Literal enthält das Char-Literal %s und ' +
+      'passt damit zu array of const und array of string (wie E2251).';
+     En: 'Call to string.Join is ambiguous under Delphi 12: the array literal contains the char literal %s and so ' +
+      'fits array of const and array of string (like E2251).'),
+    (De: 'TArray<string>.Create(…) übergeben'; En: 'Pass TArray<string>.Create(…)'));
 
 {$SCOPEDENUMS OFF}
 
@@ -1529,10 +1539,84 @@ begin
   end;
 end;
 
+/// <summary>Ist AText ein Char-Literal ('{', '''', #10, #$41)?</summary>
+function IsCharLiteral(const AText: string): Boolean;
+var
+  mText: string;
+begin
+  mText := Trim(AText);
+  Result := ((Length(mText) = 3) and (mText[1] = '''') and (mText[3] = '''') and (mText[2] <> '''')) or
+    (mText = '''''''''') or ((Length(mText) > 1) and (mText[1] = '#') and (Pos('#', mText, 2) = 0));
+end;
+
+/// <summary>string.Join(…, [… Char-Literal …]) im Baum von AContext (E2251 unter Delphi 12); braucht keinen
+/// Index.</summary>
+procedure ReportJoinCharLiterals(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode, mArray, mElement: TSyntaxNode;
+  mIndex: Integer;
+  mFix: TRuleFix;
+
+  function TextOf(ANode: TSyntaxNode): string;
+  begin
+    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  function CharElement(AArray: TSyntaxNode): TSyntaxNode;
+  var
+    mChild: Integer;
+  begin
+    Result := nil;
+    for mChild := 0 to AArray.ChildCount - 1 do
+    begin
+      if (Result = nil) and (AArray[mChild].Kind = TSyntaxKind.Literal) and IsCharLiteral(TextOf(AArray[mChild])) then
+      begin
+        Result := AArray[mChild];
+      end;
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(AContext.Tree.Root);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount = 3) and
+        (mNode[0].Kind = TSyntaxKind.MemberAccess) and SameText(TextOf(mNode[0]).Replace(' ', ''), 'string.Join') and
+        (mNode[2].Kind = TSyntaxKind.SetConstructor) then
+      begin
+        mArray := mNode[2];
+        mElement := CharElement(mArray);
+        if mElement <> nil then
+        begin
+          mFix := TRuleFix.Create(cTexts[TCallsText.JoinFix].Text, [TTextEdit.Create(TTextRange.Create(mArray.StartPos,
+            mArray.EndPos), 'TArray<string>.Create(' + Copy(TextOf(mArray), 2, Length(TextOf(mArray)) - 2) + ')')]);
+          AReport.Add(TTextRange.Create(mNode.StartPos, mNode.EndPos),
+            cTexts[TCallsText.JoinCharLiteral].Fmt([TextOf(mElement)]), TRuleConfidence.High, [mFix]);
+        end;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
 procedure TOverloadResolutionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mScan: TOverloadResolutionScan;
 begin
+  ReportJoinCharLiterals(AContext, AReport);
   mScan := TOverloadResolutionScan.Create(AContext, AReport);
   mScan.Run;
 end;

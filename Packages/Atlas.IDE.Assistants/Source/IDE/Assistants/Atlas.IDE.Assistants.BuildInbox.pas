@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   Vcl.ExtCtrls,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.Requests,
+  Atlas.Plugin.Build.Contract.Requests,
   Atlas.Core.Build.Messages,
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.InboxPace,

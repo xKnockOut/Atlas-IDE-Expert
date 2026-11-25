@@ -44,7 +44,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Providers.GitHub,

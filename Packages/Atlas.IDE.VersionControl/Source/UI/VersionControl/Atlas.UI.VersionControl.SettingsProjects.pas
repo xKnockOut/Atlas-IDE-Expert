@@ -13,7 +13,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Menus,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Projects.VersionControl,
+  Atlas.Plugin.Projects.VersionControl,
   Atlas.VersionControl.Repository.ServerCheck,
   Atlas.Plugin.Localization.Strings,
   Atlas.Vcl.Options.ChoiceBox,

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Filter;
+﻿unit Atlas.Common.Findings.Filter;
 
 // Filter des Kommandozeilen-Linters nach Regeln, Units und Mindest-Schweregrad.
 
@@ -7,7 +7,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Findings.Contract;
 
 type
   TFindingFilter = record

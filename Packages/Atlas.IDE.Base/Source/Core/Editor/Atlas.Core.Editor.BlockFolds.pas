@@ -17,7 +17,7 @@ interface
 uses
   System.JSON,
   Atlas.Text.Lines,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   /// <summary>Ein Block, wie der Server ihn meldet.</summary>

@@ -32,7 +32,7 @@ implementation
 uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Editor.GutterPanel;
 

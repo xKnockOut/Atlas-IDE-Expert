@@ -93,7 +93,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Projects.Contract.Summary,
+  Atlas.Plugin.Projects.Contract.Summary,
   Atlas.Plugin.Projects.Summary.Json;
 
 const

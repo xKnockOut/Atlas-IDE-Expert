@@ -11,7 +11,7 @@ interface
 
 uses
   Winapi.Windows,
-  Atlas.Core.Editor.MouseButtons;
+  Atlas.Plugin.Editor.MouseButtons;
 
 type
   /// <summary>AWindow liegt im eigenen Fenster: Verlauf in ADirection blättern und True; sonst False.</summary>

@@ -7,8 +7,8 @@
 interface
 
 uses
-  Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Projects.Contract.Summary;
+  Atlas.Plugin.CiBuild.Contract,
+  Atlas.Plugin.Projects.Contract.Summary;
 
 type
 {$SCOPEDENUMS ON}

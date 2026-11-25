@@ -35,7 +35,7 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Build.Contract,
+  Atlas.Plugin.Build.Contract,
   Atlas.Core.BuildPipeline.Gate,
   Atlas.Core.BuildPipeline.ReleaseGuard,
   Atlas.IDE.Base.Foundation.BuildPipeline,

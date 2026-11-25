@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.KnownErrors.Contract;
+﻿unit Atlas.Plugin.KnownErrors.Contract;
 
 // Daten der bekannten Fehler beim Exception-Halt (#2460) ohne VCL und Open
 // Tools API: der Halt, wie ihn der Debugger meldet, die Treffer und die

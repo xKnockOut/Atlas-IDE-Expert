@@ -38,7 +38,7 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.DebugControl.Types,
+  Atlas.Plugin.DebugControl.Contract,
   Atlas.Core.Assistants.DebugInbox;
 
 function Texts: TAtlasDebugInboxTexts;

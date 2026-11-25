@@ -18,7 +18,7 @@ uses
   System.Classes,
   Vcl.ExtCtrls,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.PaletteSearchPlan,

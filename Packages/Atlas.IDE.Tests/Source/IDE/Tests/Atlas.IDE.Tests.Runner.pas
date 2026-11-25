@@ -57,7 +57,7 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.VersionControl.Repository.Contract,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,

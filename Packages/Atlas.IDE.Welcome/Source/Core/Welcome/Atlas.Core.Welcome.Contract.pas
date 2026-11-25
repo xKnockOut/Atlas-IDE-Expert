@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Projects.Contract.Summary,
+  Atlas.Plugin.Projects.Contract.Summary,
   Atlas.Plugin.Status.Contract,
   Atlas.VersionControl.Repository.Contract;
 

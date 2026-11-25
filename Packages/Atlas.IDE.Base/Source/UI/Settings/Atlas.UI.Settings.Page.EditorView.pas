@@ -68,7 +68,7 @@ uses
   Vcl.Controls,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.Core.Editor.RoutineNesting,
   Atlas.Plugin.Settings.ToolbarItems,
   Atlas.Plugin.Settings.StatusBarItems;

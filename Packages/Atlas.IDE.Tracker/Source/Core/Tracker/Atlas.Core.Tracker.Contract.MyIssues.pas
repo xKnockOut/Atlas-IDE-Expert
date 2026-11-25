@@ -9,7 +9,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Contract;
 

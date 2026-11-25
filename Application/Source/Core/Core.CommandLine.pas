@@ -252,7 +252,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Rules.Filter,
+  Atlas.Common.Findings.Filter,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Architecture.Comparison;
 

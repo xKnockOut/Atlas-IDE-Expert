@@ -45,7 +45,7 @@ uses
   Atlas.Common.Lsp.Query,
   Atlas.Common.Query.Output,
   Atlas.Common.Query.Service,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Output,
   Core.WorkspaceGroup,
   Core.Linter.Output,
@@ -128,7 +128,7 @@ class function TLinterQuery.InFolder(const ATarget: string; const ASettings: TSe
 var
   mFiles: TArray<string>;
   mRoot: string;
-  mSources: TCheckSourceFunc;
+  mSources: TPascalSourceFunc;
 begin
   mFiles := TLinterFiles.Collect(ATarget, ASettings, AHost.InstalledVersions, mRoot, mSources);
   Result := FolderQueries(TLinterFiles.IndexOf(mFiles, mSources), mRoot, mFiles, ASettings.References).Execute(

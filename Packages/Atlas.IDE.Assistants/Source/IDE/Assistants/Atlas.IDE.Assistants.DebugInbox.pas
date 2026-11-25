@@ -83,7 +83,7 @@ uses
   Winapi.Windows,
   System.IOUtils,
   System.JSON,
-  Atlas.Core.DebugControl.Types,
+  Atlas.Plugin.DebugControl.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Assistants.Inbox,
   Atlas.UI.Assistants.Strings;
