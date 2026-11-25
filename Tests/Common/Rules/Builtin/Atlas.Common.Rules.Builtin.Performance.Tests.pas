@@ -226,7 +226,7 @@ begin
 end;
 
 /// <summary>.Text eines Record-Felds liest nur (Atlas.Core.Documentation.Layout, Settings.JsonText); Delete ändert
-/// die Variable der Bedingung (Slashed in Atlas.Core.VersionControl.WorkingCopies).</summary>
+/// die Variable der Bedingung (Slashed in Atlas.VersionControl.Repository.WorkingCopies).</summary>
 procedure TPerformanceRulesTests.FieldTextAndDeleteInLoopSilent;
 const
   cSource = 'unit U;'#10'interface'#10'type'#10'  TSpan = record'#10'    Text: string;'#10'  end;'#10 +

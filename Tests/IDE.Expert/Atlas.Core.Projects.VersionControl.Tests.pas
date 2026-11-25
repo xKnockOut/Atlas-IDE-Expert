@@ -42,7 +42,7 @@ uses
   System.SysUtils,
   Atlas.Plugin.Projects.Matching,
   Atlas.Core.Projects.VersionControl,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 const
   cKasseFolder = 'C:\Projekte\Kasse';

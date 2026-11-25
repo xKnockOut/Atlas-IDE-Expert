@@ -31,7 +31,7 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.VersionControl.Plan;
 
 { TAtlasVcsPlanTests }

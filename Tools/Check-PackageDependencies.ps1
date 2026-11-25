@@ -21,8 +21,11 @@
     - Atlas.ToolsApi: Platform-Package des Plugins, das die Open Tools API kapselt (Editorpuffer, Andockfenster,
         Editorleisten, Neuzeichnen, Tasten, Gutter, Dateien der IDE); RTL, Winapi.*, VCL, Open Tools API, Atlas.Text,
         Atlas.WinBase, Atlas.Plugin, Atlas.Vcl; ohne Fachcode von Base; Quelltext unter Packages/Atlas.ToolsApi/Source
-    - Atlas.Core.VersionControl.* (Versionsverwaltung, #571): übersetzt auch der Server
-        mit; darum nur RTL, Winapi, Atlas.Text.*, Atlas.WinBase.* und eigene Atlas.Core.VersionControl.*-Units
+    - Atlas.VersionControl: Platform-Package der Versionsverwaltung (#571), Quelltext unter
+        Packages/Atlas.VersionControl/Source, den Base und der Server mitübersetzen; darum nur RTL, Winapi,
+        Atlas.Text und Atlas.WinBase
+    - Atlas.Core.VersionControl.* (Pläne des Moduls Versionsverwaltung): nur RTL, Winapi, Atlas.Text.*,
+        Atlas.WinBase.*, Atlas.VersionControl.* und eigene Atlas.Core.VersionControl.*-Units
 
     Atlas.Text und Atlas.WinBase im Plugin: Das Plugin requiret
     beide nicht, sondern übersetzt deren Units selbst mit (contains … in
@@ -258,6 +261,17 @@ $Packages += @{
     ForbiddenPrefix  = @('FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.', 'Setup.')
     ForbiddenUnits   = @()
     Reason           = 'frei von Fachcode von Base (nur RTL, Windows-API, VCL, Open Tools API, Atlas.Text, Atlas.WinBase, Atlas.Plugin, Atlas.Vcl)'
+}
+# Versionsverwaltung: übersetzt auch der Server mit (AtlasServer.dpr), darum ohne jedes Package des Plugins.
+$Packages += @{
+    Name             = 'Atlas.VersionControl'
+    Path             = 'Packages/Atlas.VersionControl'
+    AllowedRequires  = @()
+    ForbiddenPrefix  = @('Vcl.', 'FMX.', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Core.', 'Atlas.UI.', 'Atlas.IDE.',
+                         'Atlas.Plugin.', 'Atlas.Vcl.', 'Atlas.ToolsApi.', 'Setup.', 'ToolsAPI', 'DesignIntf',
+                         'DesignEditors', 'DesignMenus', 'DesignWindows', 'PropInspAPI', 'DockForm')
+    ForbiddenUnits   = $LegacyVclUnits
+    Reason           = 'übersetzt auch der Server mit (nur RTL, Windows-API, Atlas.Text, Atlas.WinBase)'
 }
 # Module requiren nur Base, das auch die Verträge zwischen Modulen enthält (Regel 9).
 foreach ($folder in $PluginFolders | Where-Object { $_ -ne $PluginBaseFolder }) {
@@ -641,7 +655,7 @@ $ModuleHostHomes = @('Atlas.Core.Diagnostics.ModuleHost', 'Atlas.Core.Modules.Re
 # "prefixes" und "hostedFeatures" beider Architekturregeln in atlas.json (wird geprüft); Fachcode-Packages,
 # Schichtpräfixe, noch nicht umgestellte Packages und Frameworks liest das Skript von dort.
 $RolePrefixes = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Common', 'Atlas.Windows', 'Atlas.Linux', 'Atlas.Plugin', 'Atlas.Vcl',
-    'Atlas.ToolsApi', 'Atlas.IDE.Base', 'Atlas.IDE.Analysis', 'Atlas.IDE.Assistants', 'Atlas.IDE.Bookmarks',
+    'Atlas.ToolsApi', 'Atlas.VersionControl', 'Atlas.IDE.Base', 'Atlas.IDE.Analysis', 'Atlas.IDE.Assistants', 'Atlas.IDE.Bookmarks',
     'Atlas.IDE.Build', 'Atlas.IDE.BuildPipeline', 'Atlas.IDE.Debugger', 'Atlas.IDE.Designer', 'Atlas.IDE.Help',
     'Atlas.IDE.Rules', 'Atlas.IDE.Search', 'Atlas.IDE.Tests', 'Atlas.IDE.Tracker', 'Atlas.IDE.VersionControl',
     'Atlas.IDE.Welcome')
@@ -1077,14 +1091,15 @@ foreach ($package in $Packages) {
         $layer = $Layers | Where-Object { $ownUnit.StartsWith($_.UnitPrefix, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
 
         foreach ($unit in Get-ClauseEntries $text 'uses') {
-            # Geteilte Units (#571): nur Atlas.Core.VersionControl.* aus dem eigenen Feature, Atlas.Text.* und
-            # Atlas.WinBase.* (Server und Plugin haben beide).
+            # Pläne der Versionsverwaltung (#571): nur Atlas.Core.VersionControl.* aus dem eigenen Feature,
+            # Atlas.VersionControl.*, Atlas.Text.* und Atlas.WinBase.*.
             if ($ownUnit.StartsWith('Atlas.Core.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
                 $unit.Name.StartsWith('Atlas.', [StringComparison]::OrdinalIgnoreCase) -and
                 -not $unit.Name.StartsWith('Atlas.Core.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
+                -not $unit.Name.StartsWith('Atlas.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
                 -not $unit.Name.StartsWith('Atlas.Text.', [StringComparison]::OrdinalIgnoreCase) -and
                 -not $unit.Name.StartsWith('Atlas.WinBase.', [StringComparison]::OrdinalIgnoreCase)) {
-                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.Core.VersionControl.* übersetzt auch der Server mit und darf nur Atlas.Core.VersionControl.*, Atlas.Text.* und Atlas.WinBase.* verwenden"
+                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.Core.VersionControl.* darf nur Atlas.Core.VersionControl.*, Atlas.VersionControl.*, Atlas.Text.* und Atlas.WinBase.* verwenden"
             }
             $prefixHit = $package.ForbiddenPrefix | Where-Object { $unit.Name.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
             $unitHit = $package.ForbiddenUnits | Where-Object { $unit.Name -ieq $_ }
@@ -1112,7 +1127,7 @@ foreach ($package in $Packages) {
 
 # Atlas.Text und Atlas.WinBase im Plugin: als Quelltext, genau mit den Units ihres dpk. Platform-Packages ohne dpk
 # (Atlas.Plugin, Atlas.Vcl, Atlas.ToolsApi): genau mit allen Units unter ihrem Ordner Source.
-$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi')
+$SharedSourcePackages = @('Atlas.Text', 'Atlas.WinBase', 'Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi', 'Atlas.VersionControl')
 $pluginDpkName = "Packages/$PluginBaseFolder/$PluginBaseFolder.dpk"
 $pluginDpk = Join-Path $Root $pluginDpkName
 if (Test-Path $pluginDpk) {

@@ -9,6 +9,7 @@
     "Atlas.Plugin",
     "Atlas.Vcl",
     "Atlas.ToolsApi",
+    "Atlas.VersionControl",
     "Atlas.IDE.Base",
     "Atlas.IDE.Modul",
     "Atlas.IDE.Andere",
@@ -3698,6 +3699,24 @@
       "to": "Vcl.Forms",
       "allowed": true,
       "note": "6.1: Host-Rollen dürfen Frameworks einbinden"
+    },
+    {
+      "from": "Atlas.VersionControl.Repository.Providers.Git",
+      "to": "Atlas.VersionControl.Repository.Internals.Text",
+      "allowed": true,
+      "note": "Atlas.VersionControl ist ein eigenes Artefakt; im eigenen Feature sind Internals erlaubt"
+    },
+    {
+      "from": "Atlas.Core.VersionControl.Plan",
+      "to": "Atlas.VersionControl.Repository.Contract",
+      "allowed": true,
+      "note": "Contract eines Platform-Features"
+    },
+    {
+      "from": "Atlas.Core.VersionControl.Plan",
+      "to": "Atlas.VersionControl.Repository.Internals.Text",
+      "allowed": false,
+      "note": "Internals eines fremden Platform-Features"
     }
   ]
 }

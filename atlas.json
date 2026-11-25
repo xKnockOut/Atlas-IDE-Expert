@@ -40,7 +40,7 @@
       "exclude": ["Tests/**"],
       "hostedFeatures": ["Replay", "Monitor", "Update"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
-        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
+        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
         "Atlas.IDE.Bookmarks", "Atlas.IDE.Build", "Atlas.IDE.BuildPipeline", "Atlas.IDE.Debugger", "Atlas.IDE.Designer",
         "Atlas.IDE.Help", "Atlas.IDE.Rules", "Atlas.IDE.Search", "Atlas.IDE.Tests", "Atlas.IDE.Tracker",
         "Atlas.IDE.VersionControl", "Atlas.IDE.Welcome"],
@@ -74,8 +74,9 @@
         "Atlas.IDE.Debug.Composition -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.Tests.Composition -> Atlas.Core.*.Providers.*",
         "Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*",
-        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.*.Providers.*",
-        "Atlas.IDE.VersionControl.Composition -> Atlas.Core.VersionControl.Composition"
+        "Atlas.IDE.Tests.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.VersionControl.Repository.Providers.ProcessRunner",
+        "Atlas.IDE.VersionControl.Composition -> Atlas.VersionControl.Repository.Composition"
       ]
     },
     "architecture-contract-content": {
@@ -83,7 +84,7 @@
       "exclude": ["Tests/**"],
       "hostedFeatures": ["Replay", "Monitor", "Update"],
       "prefixes": ["Atlas.Text", "Atlas.WinBase", "Atlas.Common", "Atlas.Windows", "Atlas.Linux", "Atlas.Plugin",
-        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
+        "Atlas.Vcl", "Atlas.ToolsApi", "Atlas.VersionControl", "Atlas.IDE.Base", "Atlas.IDE.Analysis", "Atlas.IDE.Assistants",
         "Atlas.IDE.Bookmarks", "Atlas.IDE.Build", "Atlas.IDE.BuildPipeline", "Atlas.IDE.Debugger", "Atlas.IDE.Designer",
         "Atlas.IDE.Help", "Atlas.IDE.Rules", "Atlas.IDE.Search", "Atlas.IDE.Tests", "Atlas.IDE.Tracker",
         "Atlas.IDE.VersionControl", "Atlas.IDE.Welcome"],

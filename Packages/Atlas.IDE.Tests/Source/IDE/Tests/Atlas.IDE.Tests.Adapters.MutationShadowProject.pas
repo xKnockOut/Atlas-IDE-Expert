@@ -60,7 +60,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tests.MutationFlow,
   Atlas.Text.DUnitX.CommandLine,
   Atlas.UI.Tests.Strings,

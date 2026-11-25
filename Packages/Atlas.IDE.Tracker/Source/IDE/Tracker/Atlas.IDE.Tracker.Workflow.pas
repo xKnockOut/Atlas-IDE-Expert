@@ -200,7 +200,7 @@ uses
   System.Math,
   Atlas.Core.CiBuild.Contract,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.IDE.Tracker.EndPull,

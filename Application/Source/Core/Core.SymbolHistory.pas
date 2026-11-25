@@ -45,7 +45,7 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Common.History.Commits;
 
 /// <summary>Pfad oder Stand, der für git wie eine Option aussähe.</summary>

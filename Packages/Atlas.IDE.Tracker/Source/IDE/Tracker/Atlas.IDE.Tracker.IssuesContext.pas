@@ -16,7 +16,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.IDE.Tracker.CommentAssist,
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.WelcomeLink,

@@ -27,7 +27,7 @@ implementation
 
 uses
   Atlas.Core.Results.Model,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.ResultsWindow,

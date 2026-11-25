@@ -10,7 +10,7 @@
 // ein Null-Objekt: keine Arbeitskopie, kein Hintergrundlauf, keine Dialoge.
 // Threadsicher, weil ForFolder auch in Hintergrundläufen gefragt wird.
 // Die Daten (Records, Aufzählungen, IAtlasVersionControl) stehen in
-// Atlas.Core.VersionControl.Contract und den reinen Units unter Source/Core/Vcs von Base;
+// Atlas.VersionControl.Repository.Contract und den reinen Units unter Source/Core/Vcs von Base;
 // git und svn rufen nur die Umsetzungen im Modul auf.
 // Liegt in Base (Source/Contracts).
 
@@ -18,11 +18,11 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.ToolCheck,
-  Atlas.Core.VersionControl.ServerCheck,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.ToolCheck,
+  Atlas.VersionControl.Repository.ServerCheck,
   Atlas.Core.Projects.VersionControl;
 
 type
@@ -174,7 +174,7 @@ implementation
 
 uses
   System.SyncObjs,
-  Atlas.Core.VersionControl.Null;
+  Atlas.VersionControl.Repository.Null;
 
 var
   GLock: TCriticalSection;

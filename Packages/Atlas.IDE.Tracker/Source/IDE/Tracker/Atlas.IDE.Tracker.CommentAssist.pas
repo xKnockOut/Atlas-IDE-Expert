@@ -158,7 +158,7 @@ uses
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Plugin.Files.DataFile,
   Atlas.Core.Tracker.CommentPlan,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Contracts.VersionControl,

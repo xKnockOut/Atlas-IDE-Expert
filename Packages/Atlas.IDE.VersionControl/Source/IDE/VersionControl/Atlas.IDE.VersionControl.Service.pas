@@ -22,7 +22,7 @@
 //     lehnt den Hauptthread ab, beendet git bzw. svn nach dem Zeitlimit und
 //     beim Entladen (TAtlasShutdown)
 //   - Serverzugang (#1287): CheckServer prüft auf Klick einmal im
-//     Hintergrund (Atlas.Core.VersionControl.ServerCheck), das Ergebnis merkt sich die
+//     Hintergrund (Atlas.VersionControl.Repository.ServerCheck), das Ergebnis merkt sich die
 //     Sitzung je Ordner (nur im Speicher); OpenServerLogin öffnet eine
 //     sichtbare Konsole mit git fetch bzw. svn info ^/ und meldet ihr Ende
 //     (Zeitgeber im Hauptthread, kein wartender Thread)
@@ -37,10 +37,10 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.ToolCheck,
-  Atlas.Core.VersionControl.ServerCheck,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.ToolCheck,
+  Atlas.VersionControl.Repository.ServerCheck,
   Atlas.Core.Projects.VersionControl;
 
 type
@@ -134,7 +134,7 @@ uses
   Atlas.Plugin.Files.TextFile,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.VersionControl.Detection,
+  Atlas.VersionControl.Repository.Detection,
   Atlas.Core.VersionControl.Plan,
   Atlas.Plugin.Diagnostics.BackgroundJobs,
   System.Generics.Collections,

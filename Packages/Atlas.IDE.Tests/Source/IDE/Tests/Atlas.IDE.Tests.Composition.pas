@@ -71,8 +71,8 @@ uses
   Atlas.Text.Product.Version,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Diagnostics.ModuleHost,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Providers.ProcessRunner,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Providers.ProcessRunner,
   Atlas.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Tests.Debug, // TAtlasTestCompareHooks
