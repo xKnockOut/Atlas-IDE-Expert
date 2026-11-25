@@ -68,6 +68,11 @@ type
   /// Text nicht auflösen lässt (Syntaxfehler, kein Index).</summary>
   TUsesResolveFunc = reference to function(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
 
+  /// <summary>Wie TUsesResolveFunc für einen schon übersetzten Baum (ohne zweites Parsen, etwa für /sortuses in
+  /// großen Units); der Baum bleibt beim Aufrufer.</summary>
+  TUsesTreeResolveFunc = reference to function(ATree: TSyntaxTree;
+    const AInactive: TArray<TTextRange>): TUsesResolution;
+
   /// <summary>Unit-Index genau eines Syntaxbaums, einmal ausgewertet und von allen Resolvern eines Laufs
   /// geteilt (#1322). Gilt nur in einem Thread und nur, solange der Baum lebt: Der Besitzer ruft Clear,
   /// bevor er den Baum freigibt.</summary>

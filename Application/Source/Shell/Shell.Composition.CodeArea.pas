@@ -133,7 +133,7 @@ begin
     function(const AUri, AFileName: string): TUsesUnitFile
     var
       mOwn, mOther: TCoreWorkspace;
-      mRoot: string;
+      mInstallPath: string;
     begin
       Result := Default(TUsesUnitFile);
       System.TMonitor.Enter(AWorkspaces.Lock);
@@ -141,6 +141,14 @@ begin
         mOwn := AWorkspaces.Pick(TDocumentUris.ToPath(AUri));
         if (mOwn = nil) or (AFileName = '') then
         begin
+          Exit;
+        end;
+        // Die Installation zuerst: Viele Projekte haben $(BDS)\source\rtl\... im Suchpfad, dann gehörten
+        // System.Classes & Co. sonst zum eigenen Projekt oder (über ein anderes Projekt) zu den Packages.
+        if TUsesGroups.InstallPathOf(AFileName, mOwn.State.BdsRoot, mInstallPath) then
+        begin
+          Result.Origin := TUsesFileOrigin.Installation;
+          Result.InstallPath := mInstallPath;
           Exit;
         end;
         if mOwn.State.ContainsFile(AFileName) then
@@ -156,14 +164,7 @@ begin
             Exit;
           end;
         end;
-        mRoot := mOwn.State.BdsRoot;
         Result.Origin := TUsesFileOrigin.LibraryPath;
-        if (mRoot <> '') and SameText(Copy(AFileName, 1, Length(IncludeTrailingPathDelimiter(mRoot))),
-          IncludeTrailingPathDelimiter(mRoot)) then
-        begin
-          Result.Origin := TUsesFileOrigin.Installation;
-          Result.InstallPath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(mRoot)) + 1, MaxInt);
-        end;
       finally
         System.TMonitor.Exit(AWorkspaces.Lock);
       end;

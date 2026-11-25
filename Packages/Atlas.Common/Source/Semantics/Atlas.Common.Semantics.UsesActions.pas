@@ -805,6 +805,22 @@ begin
   end;
 end;
 
+/// <summary>Namen der Listen ohne Direktiven (auch mit Kommentaren): Diese schreibt RemoveUnits um.
+/// </summary>
+function RewritableNames(const AClauses: TArray<TUsesClauseInfo>): TArray<string>;
+var
+  mClause: TUsesClauseInfo;
+begin
+  Result := nil;
+  for mClause in AClauses do
+  begin
+    if mClause.Rewritable then
+    begin
+      Result := Result + mClause.Names;
+    end;
+  end;
+end;
+
 /// <summary>Bekannte Unit ohne initialization, die genau in den Teilen AMask benutzt wird.</summary>
 function IsUsedOnlyIn(const AName: string; const AInfo: TUsesUnitInfo; AIdentifiers: TDictionary<string, Integer>;
   AMask: Integer; const AResolution: TUsesResolution): Boolean;
@@ -834,7 +850,7 @@ begin
   mClauses := TPascalUses.Clauses(ATokens);
   mIdentifiers := CollectIdentifiers(ATokens, mClauses, AResolution);
   try
-    for mName in PlainNames(mClauses, False) do
+    for mName in RewritableNames(mClauses) do
     begin
       if not (MatchText(mName, AKeep) or MatchText(mName, Result)) and
         IsUsedOnlyIn(mName, AInfo(mName), mIdentifiers, 0, AResolution) then
