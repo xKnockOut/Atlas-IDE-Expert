@@ -46,7 +46,7 @@ uses
   Atlas.Core.Diagnostics.ModuleHost,
   Atlas.Core.Modules.FeatureParts,
   Atlas.UI.Settings.Contract,
-  Atlas.IDE.Contracts.Rules,
+  Atlas.IDE.Base.Foundation.Rules,
   Atlas.IDE.Rules.Baseline,
   Atlas.IDE.Rules.Adapters.BulkFix,
   Atlas.IDE.Rules.Adapters.FindingActions,

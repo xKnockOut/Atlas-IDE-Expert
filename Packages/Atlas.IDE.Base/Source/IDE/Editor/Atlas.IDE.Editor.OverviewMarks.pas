@@ -33,7 +33,7 @@ uses
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Contracts.LineChanges,
+  Atlas.IDE.Base.Foundation.LineChanges,
   Atlas.ToolsApi.Debugger.Services,
   Atlas.Core.Editor.Contract;
 

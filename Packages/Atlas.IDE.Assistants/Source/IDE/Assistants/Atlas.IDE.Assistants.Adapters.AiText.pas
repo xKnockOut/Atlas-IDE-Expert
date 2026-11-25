@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Assistants.Adapters.AiText;
 
 // Text vom eingestellten KI-Anbieter für andere Module (#2462, Vertrag
-// Atlas.IDE.Contracts.AiText): Anbieter, Modell und Schlüssel wie beim
+// Atlas.IDE.Base.Foundation.AiText): Anbieter, Modell und Schlüssel wie beim
 // KI-Schattentext (assistants.provider, Anmeldespeicher), ohne Tagesgrenze, weil
 // jede Anfrage ein Knopfdruck ist.
 // - Jede Anfrage bekommt ihren eigenen Transport: Cancel bricht nur sie ab.
@@ -20,7 +20,7 @@ uses
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.AiProviders.Contract,
   Atlas.Core.AiProviders.Catalog,
-  Atlas.IDE.Contracts.AiText;
+  Atlas.IDE.Base.Foundation.AiText;
 
 type
   /// <summary>Neuer Transport je Anfrage.</summary>

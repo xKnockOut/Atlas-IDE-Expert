@@ -1,15 +1,15 @@
 ﻿unit Atlas.IDE.VersionControl.Adapters.LineChanges;
 
 // Die Änderungsmarken und die Zeilenhistorie des Moduls für Base und Tracker (IAtlasLineChanges aus
-// Atlas.IDE.Contracts.LineChanges, #1905). Leitet an TAtlasIdeLineChanges weiter; die Komposition meldet den Adapter
-// bei TAtlasLineChangeMarks an.
+// Atlas.IDE.Base.Foundation.LineChanges, #1905). Leitet an TAtlasIdeLineChanges weiter; die Komposition meldet
+// den Adapter bei TAtlasLineChangeMarks an.
 
 interface
 
 uses
   Winapi.Windows,
   Atlas.Core.Editor.LineChanges,
-  Atlas.IDE.Contracts.LineChanges;
+  Atlas.IDE.Base.Foundation.LineChanges;
 
 type
   /// <summary>Die Marken für Base und Tracker (IAtlasLineChanges, #1905).</summary>

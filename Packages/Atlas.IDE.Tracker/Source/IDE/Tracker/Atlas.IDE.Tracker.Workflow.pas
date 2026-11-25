@@ -205,7 +205,7 @@ uses
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.IDE.Tracker.EndPull,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.Core.Tracker.CommentEditor;
 
 const

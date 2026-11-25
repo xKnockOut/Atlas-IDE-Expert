@@ -166,7 +166,7 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Contracts.DebugStop,
+  Atlas.IDE.Base.Foundation.DebugStop,
   Atlas.IDE.Debug.ExceptionRules,
   Atlas.UI.Debug.Exceptions.Strings;
 

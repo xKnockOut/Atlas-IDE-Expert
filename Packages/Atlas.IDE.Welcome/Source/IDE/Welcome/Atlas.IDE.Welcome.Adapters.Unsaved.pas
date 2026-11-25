@@ -120,7 +120,7 @@ uses
   Atlas.UI.Welcome.Push,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
   Atlas.UI.Welcome.Unsaved,

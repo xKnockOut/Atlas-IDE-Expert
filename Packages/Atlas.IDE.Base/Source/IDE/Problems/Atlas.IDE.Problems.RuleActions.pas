@@ -2,7 +2,7 @@
 
 // Regel-Aktionen am Befund (#909, #1755) für Base: „Regel einstellen…“, „Für
 // diese Zeile unterdrücken“ und „Regel abschalten“ setzt das Modul Prüfregeln
-// über IAtlasRuleActions um (Atlas.IDE.Contracts.Rules). Fenster
+// über IAtlasRuleActions um (Atlas.IDE.Base.Foundation.Rules). Fenster
 // „Atlas-Prüfung“, Befund-Hover, Statusleiste und Serverfenster rufen nur diese
 // Unit; sie fragt bei jedem Aufruf die laufenden Module (Regel 3: das Modul
 // kann inzwischen fort sein). Ohne Modul geschieht nichts, Available ist dann
@@ -12,7 +12,7 @@ interface
 
 uses
   Atlas.Core.Problems.Contract,
-  Atlas.IDE.Contracts.Rules;
+  Atlas.IDE.Base.Foundation.Rules;
 
 type
   TAtlasRuleActions = class

@@ -2,7 +2,7 @@
 
 // Builds auf Auftrag (#261, #1888) ohne Open Tools API: Auftrag, Ergebnis samt Compilermeldungen und Rückruf.
 // Gemeinsame Daten des Läufers (Modul Build-Pipeline), des Eingangs der KI-Assistenten und des Vertrags
-// Atlas.IDE.Contracts.BuildRequests; ein Typ je Rückruf, sonst E2010 unter Delphi 12.
+// Atlas.IDE.Base.Foundation.BuildRequests; ein Typ je Rückruf, sonst E2010 unter Delphi 12.
 
 interface
 

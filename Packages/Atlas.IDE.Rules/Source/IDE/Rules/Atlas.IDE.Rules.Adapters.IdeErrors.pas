@@ -3,7 +3,7 @@
 // Fehler der IDE (#1819, problems.ideErrors) im Modul Prüfregeln: liest
 // Error Insight über die Open Tools API (IOTAModuleServices.FindModule,
 // IOTAModuleErrors.GetErrors) und gibt die Werte unverändert über
-// IAtlasIdeErrors (Atlas.IDE.Contracts.Rules) an Base. Umrechnen, Abgleich mit
+// IAtlasIdeErrors (Atlas.IDE.Base.Foundation.Rules) an Base. Umrechnen, Abgleich mit
 // den Atlas-Befunden und Protokoll liegen im Kern von Base. Base fragt nur nach
 // einer Prüfung, nie beim Tippen. Nur im Hauptthread.
 // Felder von TOTAError laut DocWiki: Text: string; Start, Stop: TOTACharPos
@@ -13,7 +13,7 @@
 interface
 
 uses
-  Atlas.IDE.Contracts.Rules;
+  Atlas.IDE.Base.Foundation.Rules;
 
 type
   TAtlasIdeRulesIdeErrors = class(TInterfacedObject, IAtlasIdeErrors)

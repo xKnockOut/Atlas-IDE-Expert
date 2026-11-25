@@ -5,7 +5,7 @@
 // über seinen Scope eine IAtlasSavedPlacesSource bereit; der Reiter
 // „Gemerkt“ der Willkommensseite (#755) fragt sie über die Registry und kommt
 // ohne das Modul aus (dann nur mit den Favoriten von Base). Liegt unter
-// Core/SavedPlaces statt bei den Verträgen unter Source/Contracts, weil die
+// Core/SavedPlaces statt bei den Verträgen unter Source/Foundation, weil die
 // Kern-Units beider Module die Einträge als Daten verwenden (wie
 // Atlas.Core.CiBuild.Contract). Nur
 // Interfaces und Records, kein Code.

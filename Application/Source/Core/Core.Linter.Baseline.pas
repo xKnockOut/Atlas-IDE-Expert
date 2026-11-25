@@ -10,7 +10,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Filter,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Core.CommandLine,
   Core.VersionControlChanges;
 

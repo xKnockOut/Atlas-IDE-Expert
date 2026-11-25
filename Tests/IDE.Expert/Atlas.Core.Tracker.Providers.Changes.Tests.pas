@@ -23,6 +23,10 @@ type
     procedure YouTrackActivities;
     [Test]
     procedure YouTrackChangesOverTransport;
+    /// <summary>YouTrack liest Suchbegriffe in seiner Systemsprache: Lehnt der Server die englische Abfrage ab
+    /// (400), gilt die deutsche, und die gelungene Sprache kommt beim nächsten Mal zuerst.</summary>
+    [Test]
+    procedure YouTrackChangesInServerLanguage;
     [Test]
     procedure GitHubNotificationsOnlyIssues;
     [Test]
@@ -77,17 +81,27 @@ procedure TAtlasTrackerChangesTests.YouTrackScopeAndUrls;
 var
   mUrl: string;
 begin
-  Assert.AreEqual('for: me', TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.Assigned));
+  Assert.AreEqual('for: me', TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.Assigned, ''));
   Assert.AreEqual('(for: me or reporter: me)',
-    TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.AssignedOrCreated));
+    TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.AssignedOrCreated, 'en'));
   Assert.AreEqual('(for: me or reporter: me or has: star)',
-    TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.Watched));
-  mUrl := TAtlasYouTrackApi.ChangedIssuesUrl(YouTrackTarget, Since, TAtlasTrackerNotifyScope.AssignedOrCreated);
+    TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.Watched, ''));
+  Assert.AreEqual('assignee: meine', TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.Assigned, 'de'));
+  Assert.AreEqual('(assignee: meine OR reporter: meine)',
+    TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.AssignedOrCreated, 'de-DE'));
+  Assert.AreEqual('(assignee: meine OR reporter: meine OR has: star)',
+    TAtlasYouTrackApi.ScopeQuery(TAtlasTrackerNotifyScope.Watched, 'de'));
+  mUrl := TAtlasYouTrackApi.ChangedIssuesUrl(YouTrackTarget, Since, TAtlasTrackerNotifyScope.AssignedOrCreated, '');
   Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues?query='), mUrl);
   // Einen Tag früher (Zeitzone des Servers); ohne Projekt: alle Projekte der Verbindung.
   Assert.IsTrue(Pos(TTextUris.PercentEncode('(for: me or reporter: me) updated: 2025-12-30 .. *'), mUrl) > 0, mUrl);
+  mUrl := TAtlasYouTrackApi.ChangedIssuesUrl(YouTrackTarget, Since, TAtlasTrackerNotifyScope.Assigned, 'de');
+  Assert.IsTrue(Pos(TTextUris.PercentEncode('assignee: meine Aktualisiert: 2025-12-30 .. *'), mUrl) > 0, mUrl);
   Assert.AreEqual('', TAtlasYouTrackApi.ChangedIssuesUrl(TAtlasTrackerTarget.Create('youtrack', '', '', ''),
-    Since, TAtlasTrackerNotifyScope.Assigned));
+    Since, TAtlasTrackerNotifyScope.Assigned, ''));
+  Assert.AreEqual('en,de', string.Join(',', TAtlasYouTrackApi.QueryLanguages('')));
+  Assert.AreEqual('de,en', string.Join(',', TAtlasYouTrackApi.QueryLanguages('de')));
+  Assert.AreEqual('en,de', string.Join(',', TAtlasYouTrackApi.QueryLanguages('en')));
   mUrl := TAtlasYouTrackApi.ActivitiesUrl(YouTrackTarget, 'ATL-1', Since);
   Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues/ATL-1/activities?categories='), mUrl);
   Assert.IsTrue(Pos('&start=1767182400001&', mUrl) > 0, 'Millisekunden nach dem Stand: ' + mUrl);
@@ -165,6 +179,58 @@ begin
   Assert.IsTrue(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
   Assert.AreEqual(Integer(1), Integer(Length(mChanges)));
   Assert.AreEqual<TAtlasTrackerChangeKind>(TAtlasTrackerChangeKind.Other, mChanges[0].Kind);
+end;
+
+procedure TAtlasTrackerChangesTests.YouTrackChangesInServerLanguage;
+const
+  cIssues = 'https://beispiel.youtrack.cloud/api/issues?query=';
+var
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mPoll: TAtlasTrackerPoll;
+  mChanges: TArray<TAtlasTrackerChange>;
+  mError: TAtlasCiFetchError;
+begin
+  mProvider := TAtlasYouTrackTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cIssues + TTextUris.PercentEncode('for: me'), 400,
+    '{"error":"bad_request","error_description":"Unbekannter Suchbegriff: for"}');
+  mTransport.Answer(cIssues + TTextUris.PercentEncode('assignee: meine'), 200, Fixture('YouTrack', 'changed-issues.json'));
+  mPoll := TAtlasTrackerPoll.Create(Since, 'marco', TAtlasTrackerNotifyScope.Assigned);
+  Assert.IsTrue(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.AreEqual('de', mPoll.Language, 'gelungene Sprache');
+  Assert.AreEqual(Integer(0), mPoll.FailedStatus, 'Erfolg ohne Fehlerstatus');
+  Assert.AreEqual('', mPoll.FailedMessage);
+  Assert.AreEqual(Integer(1), Integer(Length(mChanges)));
+  Assert.IsTrue(Pos(TTextUris.PercentEncode('for: me'), mTransport.Calls[0]) > 0, 'zuerst Englisch');
+  Assert.IsTrue(Pos(TTextUris.PercentEncode('assignee: meine'), mTransport.Calls[1]) > 0, 'dann Deutsch');
+  // Nächste Abfrage: gleich auf Deutsch, ohne die abgelehnte.
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cIssues + TTextUris.PercentEncode('assignee: meine'), 200, Fixture('YouTrack', 'changed-issues.json'));
+  Assert.IsTrue(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.IsTrue(Pos(TTextUris.PercentEncode('assignee: meine'), mTransport.Calls[0]) > 0, mTransport.Calls[0]);
+  // Beide abgelehnt: Fehler mit Status und Meldung des Servers.
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cIssues, 400, '{"error":"bad_request","error_description":"Abfrage ungültig"}');
+  mPoll := TAtlasTrackerPoll.Create(Since, 'marco', TAtlasTrackerNotifyScope.Assigned);
+  Assert.IsFalse(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mError);
+  Assert.AreEqual(Integer(400), mPoll.FailedStatus);
+  Assert.AreEqual('Abfrage ungültig', mPoll.FailedMessage);
+  Assert.AreEqual(Integer(2), Integer(Length(mTransport.Calls)), 'jede Sprache einmal');
+  Assert.AreEqual('', mPoll.Language, 'keine gelungene Sprache');
+  // Andere Fehler als 400 versuchen keine zweite Sprache.
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cIssues, 503, '');
+  Assert.IsFalse(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Server, mError);
+  Assert.AreEqual(Integer(503), mPoll.FailedStatus);
+  Assert.AreEqual(Integer(1), Integer(Length(mTransport.Calls)));
 end;
 
 procedure TAtlasTrackerChangesTests.GitHubNotificationsOnlyIssues;
@@ -272,15 +338,18 @@ begin
   mTransport.Answer('https://api.github.com/notifications', 401, '{}');
   Assert.IsFalse(mProvider.Changes(GitHubTarget, mTransportRef, 5000, mPoll, mChanges, mError));
   Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, mError);
+  Assert.AreEqual(Integer(401), mPoll.FailedStatus);
   mTransport.FailWith(TAtlasCiFetchError.Timeout);
   Assert.IsFalse(mProvider.Changes(GitHubTarget, mTransportRef, 5000, mPoll, mChanges, mError));
   Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Timeout, mError);
+  Assert.AreEqual(Integer(0), mPoll.FailedStatus, 'ohne Antwort');
   mProvider := TAtlasYouTrackTracker.Create;
   mTransport := TFakeTransport.Create;
   mTransportRef := mTransport;
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues?', 200, '<html>Anmeldung</html>');
   Assert.IsFalse(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
   Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Invalid, mError, 'Anmeldeseite statt JSON');
+  Assert.AreEqual(Integer(200), mPoll.FailedStatus, 'Antwort kam, aber kein JSON');
   Assert.AreEqual<TDateTime>(Since, mPoll.Since, 'Stand unverändert');
 end;
 

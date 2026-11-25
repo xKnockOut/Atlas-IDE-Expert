@@ -45,7 +45,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract,
-  Atlas.IDE.Contracts.BuildTools,
+  Atlas.IDE.Base.Foundation.BuildTools,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Welcome.ContinueIssueLink,

@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Contracts.BuildPipeline;
+﻿unit Atlas.IDE.Base.Foundation.BuildPipeline;
 
 // Vertrag zwischen Modulen (#1455, Modulregel 6): Das Modul
 // Build-Pipeline (atlas.buildpipeline) stellt über seinen Scope ein
@@ -6,7 +6,7 @@
 // den Tests bauen), Build-Werkzeuge (Neubau nach den Projektaufgaben) und die
 // Willkommensseite (Schnellaktion „Build“, #764) fragen es über die Registry
 // und kommen ohne das Modul aus. Nur Interfaces und Records mit einfachen
-// Typen, kein Code. Liegt in Base (Source/Contracts, #1456).
+// Typen, kein Code. Liegt in Base (Source/Foundation, #1456).
 
 interface
 

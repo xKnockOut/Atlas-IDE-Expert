@@ -3,7 +3,7 @@
 // Andere Module für die Willkommensseite (#1455, Modulregel 6): Builds
 // auf Auftrag (Build-Pipeline), Testprojekte (Tests), Startprofile und
 // Projektaufgaben (Build-Werkzeuge) und die Baseline (Prüfregeln) erreicht
-// die Seite nur über deren Verträge in Base (Atlas.IDE.Contracts.*) und fragt bei
+// die Seite nur über deren Verträge in Base (Atlas.IDE.Base.Foundation.*) und fragt bei
 // jedem Aufruf neu (Regel 2): Fehlt ein Modul oder ist es aus, meldet die
 // Schnellaktion den Grund, statt etwas zu tun. Vorher klebte die
 // Kompositionswurzel diese Verbindungen. Die Einrichtung (#759) bekommt hier
@@ -18,7 +18,7 @@ uses
   System.SysUtils,
   Atlas.Core.SavedPlaces.Contract,
   Atlas.Core.Welcome.Setup,
-  Atlas.IDE.Contracts.IssueWork;
+  Atlas.IDE.Base.Foundation.IssueWork;
 
 type
   /// <summary>Ende eines Builds: AError &lt;&gt; '' = nicht gebaut (Grund), sonst Erfolg.</summary>
@@ -80,10 +80,10 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Welcome.QuickActions,
-  Atlas.IDE.Contracts.BuildPipeline,
-  Atlas.IDE.Contracts.Tests,
-  Atlas.IDE.Contracts.BuildTools,
-  Atlas.IDE.Contracts.Rules,
+  Atlas.IDE.Base.Foundation.BuildPipeline,
+  Atlas.IDE.Base.Foundation.Tests,
+  Atlas.IDE.Base.Foundation.BuildTools,
+  Atlas.IDE.Base.Foundation.Rules,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings;
 

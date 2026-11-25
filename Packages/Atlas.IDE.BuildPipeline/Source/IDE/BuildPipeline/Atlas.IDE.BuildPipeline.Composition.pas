@@ -13,7 +13,7 @@
 //   eines Builds des Benutzers (Atlas.Core.Build.Pipeline); die Folgen gehen
 //   über TAtlasBuildPipeline.Announce an jeden IAtlasBuildVerdictListener,
 // - für andere Module und die Willkommensseite die Builds auf Auftrag
-//   (IAtlasBuildJobs, Atlas.IDE.Contracts.BuildPipeline), für das Modul KI-Assistenten
+//   (IAtlasBuildJobs, Atlas.IDE.Base.Foundation.BuildPipeline), für das Modul KI-Assistenten
 //   dieselben Builds samt Compilermeldungen (IAtlasBuildRequests, #1888).
 // Compile-Ereignisse und Server erreicht das Modul nur über TAtlasIdeHost;
 // seine Teilnehmer meldet es beim Stoppen ab, Antworten des Servers kommen
@@ -38,8 +38,8 @@ uses
   Atlas.Core.Build.Contract,
   Atlas.Core.BuildPipeline.Gate,
   Atlas.Core.BuildPipeline.ReleaseGuard,
-  Atlas.IDE.Contracts.BuildPipeline,
-  Atlas.IDE.Contracts.BuildRequests,
+  Atlas.IDE.Base.Foundation.BuildPipeline,
+  Atlas.IDE.Base.Foundation.BuildRequests,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Summaries,

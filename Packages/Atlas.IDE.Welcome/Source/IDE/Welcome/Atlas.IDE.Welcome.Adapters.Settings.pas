@@ -42,7 +42,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Plugin.Settings.Catalog,
-  Atlas.IDE.Contracts.WelcomeTiles,
+  Atlas.IDE.Base.Foundation.WelcomeTiles,
   Atlas.IDE.Commands.Usage;
 
 /// <summary>Schalter der Kacheln anderer Module in Reihenfolge ihrer Kacheln.</summary>

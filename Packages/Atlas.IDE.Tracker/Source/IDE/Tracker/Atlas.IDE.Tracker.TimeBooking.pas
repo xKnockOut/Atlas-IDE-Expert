@@ -77,7 +77,7 @@ uses
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.TimeList,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Contracts.VersionControl;
+  Atlas.IDE.Base.Foundation.VersionControl;
 
 type
   /// <summary>Der offene Buchungsdialog für nachgeladene Werte; nil, sobald er geschlossen ist.</summary>

@@ -87,7 +87,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.NewIssuePlace,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.ToolsApi.Files.Service;
 

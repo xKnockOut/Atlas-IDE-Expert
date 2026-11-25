@@ -33,9 +33,12 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Lsp.BulkFix;
+  Atlas.Common.Rules.CheckContext,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Lsp.BulkFix,
+  Atlas.Tests.LspRules;
 
 const
   cAssignedFree = 'unit U;'#13#10#13#10'interface'#13#10#13#10'uses'#13#10'  System.Classes;'#13#10#13#10 +
@@ -46,28 +49,43 @@ const
 var
   Baseline: IRuleBaseline;
 
-function Input(const AFileName: string; out AInput: TLspBulkFixInput): Boolean;
+/// <summary>Text der Testdatei AFileName (U.pas, V.pas); '' für jede andere.</summary>
+function TextOf(const AFileName: string): string;
+var
+  mName: string;
 begin
-  AInput := Default(TLspBulkFixInput);
-  Result := SameText(ExtractFileName(AFileName), 'U.pas') or SameText(ExtractFileName(AFileName), 'V.pas');
-  if not Result then
+  mName := LowerCase(ExtractFileName(AFileName));
+  Result := '';
+  if mName = 'u.pas' then
   begin
-    Exit;
+    Result := cAssignedFree;
   end;
-  AInput.Rules := BuiltinRules;
-  AInput.Settings := TServerSettings.Default;
-  AInput.RelativePath := ExtractFileName(AFileName);
-  if SameText(ExtractFileName(AFileName), 'U.pas') then
+  if mName = 'v.pas' then
   begin
-    AInput.Text := cAssignedFree;
-  end
-  else
-  begin
-    AInput.Text := cClean;
+    Result := cClean;
   end;
-  AInput.Project.FileName := AFileName;
-  AInput.Source := TCheckSource.Default;
-  AInput.Baseline := Baseline;
+end;
+
+/// <summary>Nur U.pas und V.pas sind lesbar.</summary>
+function ReadText(const AFileName: string; out AText: string): Boolean;
+begin
+  AText := TextOf(AFileName);
+  Result := AText <> '';
+end;
+
+/// <summary>Umfeld wie im Editor: eingebaute Regeln, Vorgaben, Pfad U.pas bzw. V.pas, Baseline.</summary>
+function Contexts: TRuleContextProvider;
+begin
+  Result :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      AContext := Default(TRuleCheckContext);
+      AContext.Rules := BuiltinRules;
+      AContext.Settings := TServerSettings.Default;
+      AContext.RelativePath := ExtractFileName(TDocumentUris.PathOrSelf(AUri));
+      AContext.Baseline := Baseline;
+      Result := True;
+    end;
 end;
 
 function Execute(const AArguments: string): TJSONObject;
@@ -75,7 +93,7 @@ var
   mFix: TLspBulkFix;
   mArguments: TJSONArray;
 begin
-  mFix := TLspBulkFix.Create(Input);
+  mFix := TLspBulkFix.Create(TTestLspRules.BulkFix(Contexts(), ReadText));
   mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
   try
     Result := mFix.Execute(mArguments) as TJSONObject;

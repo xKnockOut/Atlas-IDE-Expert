@@ -16,7 +16,7 @@ uses
   Atlas.Text.Product.Version,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.ModuleHost,
-  Atlas.IDE.Contracts.Help,
+  Atlas.IDE.Base.Foundation.Help,
   Atlas.UI.Help.SettingsSection,
   Atlas.IDE.Help.Adapters.Module;
 

@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.Rules.Adapters.FindingActions;
 
 // Regel-Aktionen am Befund im Modul Prüfregeln (#909, #1755). Base fragt laufende Module nach
-// IAtlasRuleActions (Atlas.IDE.Contracts.Rules), aus dem Fenster
+// IAtlasRuleActions (Atlas.IDE.Base.Foundation.Rules), aus dem Fenster
 // „Atlas-Prüfung“, dem Befund-Hover und dem Serverfenster:
 // - „Regel einstellen…“ öffnet den Dialog der Projekt-Einstellungen (ohne
 //   Projekt den der globalen) im Knoten der Gruppe der Regel
@@ -16,7 +16,7 @@
 interface
 
 uses
-  Atlas.IDE.Contracts.Rules;
+  Atlas.IDE.Base.Foundation.Rules;
 
 type
   TAtlasIdeRuleActions = class(TInterfacedObject, IAtlasRuleActions)

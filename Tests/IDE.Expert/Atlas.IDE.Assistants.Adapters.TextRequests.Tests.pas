@@ -8,7 +8,7 @@ interface
 uses
   DUnitX.TestFramework,
   System.Generics.Collections,
-  Atlas.IDE.Contracts.AiText,
+  Atlas.IDE.Base.Foundation.AiText,
   Atlas.Core.Assistants.Contract.IdeAi,
   Atlas.IDE.Assistants.Adapters.TextRequests;
 

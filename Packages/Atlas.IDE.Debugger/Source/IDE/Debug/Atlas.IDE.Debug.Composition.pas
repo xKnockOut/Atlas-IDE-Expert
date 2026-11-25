@@ -15,7 +15,7 @@
 // - Hörer für Einstellungen, Thema und Ansichtswechsel sowie die Werte im
 //   Tooltip,
 // - für andere Module den Bericht über die Debug-Sitzung
-//   (IAtlasDebugReportSource, Atlas.IDE.Contracts.DebugReport) und den Halt
+//   (IAtlasDebugReportSource, Atlas.IDE.Base.Foundation.DebugReport) und den Halt
 //   für „Test daraus anlegen …“ (IAtlasDebugStopSource, #1873); beide stellt
 //   Atlas.IDE.Debug.Composition.Contracts bereit.
 // Das erste Teil („DebugCommands“, ab dem abgesicherten Start) installiert

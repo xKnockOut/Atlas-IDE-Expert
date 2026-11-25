@@ -203,7 +203,7 @@ Atlas.Common.Lsp.Adapters.LogMessageSink.Tests
 Atlas.Common.Lsp.AffectedTests.Report.Tests
 Atlas.Common.Lsp.ApplyEdit.Tests
 Atlas.Common.Lsp.Baseline.Tests
-Atlas.Common.Lsp.Instructions.Tests
+Atlas.Common.Rules.InstructionFiles.Tests
 Atlas.Common.Rules.Instructions.Tests
 Atlas.Common.Lsp.FindingsPrompt.Tests
 Atlas.Common.Lsp.BreakpointCheck.Tests
@@ -360,7 +360,7 @@ Atlas.Common.Projects.PackageReader.Tests
 Atlas.Common.Query.Language.Tests
 Atlas.Common.Rationale.References.Tests
 Atlas.Common.Rationale.Scanner.Tests
-Atlas.Common.Rules.Baseline.Tests
+Atlas.Common.Findings.Baseline.Tests
 Atlas.Common.Rules.Builtin.Architecture.Tests
 Atlas.Common.Rules.Builtin.Assembler.Tests
 Atlas.Common.Rules.Builtin.Calls.Tests
@@ -480,6 +480,8 @@ Atlas.Common.Rules.Providers.FindingPrompts.Tests
 Atlas.Common.Rules.Providers.OwnershipReport.Tests
 Atlas.Common.Rules.Providers.DocumentChecks.Tests
 Atlas.Common.Rules.Providers.DocumentActions.Tests
+Atlas.Common.Rules.Providers.CatalogInfo.Tests
+Atlas.Common.Rules.SettingsCatalog.Tests
 Atlas.Common.Rules.CheckContext.Tests
 Atlas.Common.Editing.FormatOutput.Tests
 Atlas.Common.Rules.LibrarySources.Tests
@@ -865,6 +867,9 @@ Adapters.Lsp.InheritanceDepths.Tests
 Adapters.Lsp.OwnershipReport.Tests
 Adapters.Lsp.RuleDiagnostics.Tests
 Adapters.Lsp.RuleActions.Tests
+Adapters.Lsp.RuleCatalog.Tests
+Adapters.Lsp.FindingsPrompt.Tests
+Adapters.Lsp.BulkFix.Tests
 Core.Mcp.IssueTools.Tests
 Core.Mcp.IssueText.Tests
 Atlas.Core.Designer.Names.Tests

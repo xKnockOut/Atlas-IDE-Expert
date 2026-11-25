@@ -36,7 +36,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Baseline,
+  Atlas.Common.Findings.Baseline,
   Atlas.Common.Rules.Builtin.SavedQueries,
   Atlas.Common.Query.Contract,
   Atlas.Common.Query.Service,

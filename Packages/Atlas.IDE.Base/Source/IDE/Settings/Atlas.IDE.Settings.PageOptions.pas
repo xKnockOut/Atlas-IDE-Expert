@@ -47,7 +47,7 @@ uses
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Page.Index,
   Atlas.Plugin.Settings.Catalog,
-  Atlas.IDE.Contracts.Help,
+  Atlas.IDE.Base.Foundation.Help,
   Atlas.IDE.ElementHelp.Keys,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Settings.TeamFile,

@@ -41,7 +41,7 @@ uses
   Atlas.VersionControl.Repository.Tools,
   Atlas.VersionControl.Repository.ToolCheck,
   Atlas.VersionControl.Repository.ServerCheck,
-  Atlas.IDE.Contracts.VersionControl,
+  Atlas.IDE.Base.Foundation.VersionControl,
   Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.TeamFile;
 
