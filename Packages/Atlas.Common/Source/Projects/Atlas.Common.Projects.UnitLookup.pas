@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Providers.UnitLookup;
+﻿unit Atlas.Common.Projects.UnitLookup;
 
 // Unit-Suche wie beim Compiler für uses-unit-not-found (#1016). Anders als
 // TUnitResolver, der Quelltexte für den Index sucht, zählt hier auch die
@@ -38,12 +38,11 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Rules.Contract.UnitLookup,
-  Atlas.Common.Projects.UnitAliases,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Projects.Contract.UnitLookup,
+  Atlas.Common.Projects.UnitAliases;
 
 type
-  TUnitLookup = class(TInterfacedObject, IRuleUnitLookup)
+  TUnitLookup = class(TInterfacedObject, IUnitLookup)
   private const
     /// <summary>So tief sucht FolderOutsidePaths unter dem Projektordner.</summary>
     cMaxFolderDepth = 4;
@@ -83,10 +82,10 @@ type
   public
     constructor Create(const ASetup: TUnitLookupSetup);
     destructor Destroy; override;
-    function Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
-    function FindPackage(const APackage: string): TRuleUnitAnswer;
-    function FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
-    function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
+    function Find(const AUnitName, AInPath, AFromFile: string; ASources: TUnitSources): TUnitAnswer;
+    function FindPackage(const APackage: string): TUnitAnswer;
+    function FindFile(const AFileName, AFromFile: string): TUnitAnswer;
+    function KnownUnits(ASources: TUnitSources): TArray<string>;
     function FolderOutsidePaths(const AUnitName: string): string;
     function ReadProject(out AFileName, AText: string): Boolean;
     /// <summary>Ordner, die der Compiler durchsucht (ohne den der verwendenden Datei).</summary>
@@ -404,9 +403,9 @@ begin
       for mName in ANames do
       begin
         case ASetup.PackageProvides(mPackage, mName) of
-          TRulePackageAnswer.Yes:
+          TPackageAnswer.Yes:
             Result := True;
-          TRulePackageAnswer.Unknown:
+          TPackageAnswer.Unknown:
             AUnsure := True;
         end;
       end;
@@ -508,19 +507,19 @@ begin
 end;
 
 /// <summary>Gibt es die Datei APath? Unbekannt ohne FileExists oder bei relativem Pfad.</summary>
-function FileAnswer(const ASetup: TUnitLookupSetup; const APath: string): TRuleUnitAnswer;
+function FileAnswer(const ASetup: TUnitLookupSetup; const APath: string): TUnitAnswer;
 begin
   if not Assigned(ASetup.FileExists) or not TProjectPaths.IsAbsolute(APath) then
   begin
-    Result := TRuleUnitAnswer.Unknown;
+    Result := TUnitAnswer.Unknown;
   end
   else if ASetup.FileExists(TProjectPaths.Normalize(APath)) then
   begin
-    Result := TRuleUnitAnswer.Found;
+    Result := TUnitAnswer.Found;
   end
   else
   begin
-    Result := TRuleUnitAnswer.Missing;
+    Result := TUnitAnswer.Missing;
   end;
 end;
 
@@ -565,7 +564,7 @@ begin
   end;
 end;
 
-function TUnitLookup.Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
+function TUnitLookup.Find(const AUnitName, AInPath, AFromFile: string; ASources: TUnitSources): TUnitAnswer;
 var
   mUnsure: Boolean;
 begin
@@ -575,49 +574,49 @@ begin
     Exit(FileAnswer(FSetup, BesideFile(AInPath, AFromFile)));
   end;
   mUnsure := False;
-  if ((TRuleUnitSource.Project in ASources) and FindInProject(AUnitName, AFromFile, mUnsure)) or
-    ((TRuleUnitSource.Atlas in ASources) and FindInAtlas(AUnitName)) then
+  if ((TUnitSource.Project in ASources) and FindInProject(AUnitName, AFromFile, mUnsure)) or
+    ((TUnitSource.Atlas in ASources) and FindInAtlas(AUnitName)) then
   begin
-    Result := TRuleUnitAnswer.Found;
+    Result := TUnitAnswer.Found;
   end
   else if mUnsure or FUncertain or not FSetup.LibraryKnown or not Assigned(FSetup.ListFiles) then
   begin
-    Result := TRuleUnitAnswer.Unknown;
+    Result := TUnitAnswer.Unknown;
   end
-  else if (ASources = [TRuleUnitSource.Atlas]) and not Assigned(FSetup.IndexKnows) then
+  else if (ASources = [TUnitSource.Atlas]) and not Assigned(FSetup.IndexKnows) then
   begin
     // Nur Atlas ohne Index: Die Units der Installation stehen dann nirgends.
-    Result := TRuleUnitAnswer.Unknown;
+    Result := TUnitAnswer.Unknown;
   end
   else
   begin
-    Result := TRuleUnitAnswer.Missing;
+    Result := TUnitAnswer.Missing;
   end;
 end;
 
-function TUnitLookup.FindPackage(const APackage: string): TRuleUnitAnswer;
+function TUnitLookup.FindPackage(const APackage: string): TUnitAnswer;
 begin
   // Ein Package derselben Projektgruppe entsteht beim Bauen der Gruppe, auch wenn seine .dcp noch fehlt.
   if PackageInGroup(APackage) then
   begin
-    Exit(TRuleUnitAnswer.Found);
+    Exit(TUnitAnswer.Found);
   end;
   if not Assigned(FSetup.PackageExists) or not FSetup.LibraryKnown or FUncertain then
   begin
-    Exit(TRuleUnitAnswer.Unknown);
+    Exit(TUnitAnswer.Unknown);
   end;
   if FSetup.PackageExists(APackage) then
   begin
-    Exit(TRuleUnitAnswer.Found);
+    Exit(TUnitAnswer.Found);
   end;
-  Result := TRuleUnitAnswer.Missing;
+  Result := TUnitAnswer.Missing;
 end;
 
-function TUnitLookup.FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
+function TUnitLookup.FindFile(const AFileName, AFromFile: string): TUnitAnswer;
 begin
   if not Assigned(FSetup.FileExists) or (AFileName = '') then
   begin
-    Result := TRuleUnitAnswer.Unknown;
+    Result := TUnitAnswer.Unknown;
   end
   else if TProjectPaths.IsAbsolute(AFileName) then
   begin
@@ -625,19 +624,19 @@ begin
   end
   else if ExistsInFileFolders(AFileName, AFromFile) then
   begin
-    Result := TRuleUnitAnswer.Found;
+    Result := TUnitAnswer.Found;
   end
   else if FUncertain or not FSetup.LibraryKnown then
   begin
-    Result := TRuleUnitAnswer.Unknown;
+    Result := TUnitAnswer.Unknown;
   end
   else
   begin
-    Result := TRuleUnitAnswer.Missing;
+    Result := TUnitAnswer.Missing;
   end;
 end;
 
-function TUnitLookup.KnownUnits(ASources: TRuleUnitSources): TArray<string>;
+function TUnitLookup.KnownUnits(ASources: TUnitSources): TArray<string>;
 var
   mSeen: TDictionary<string, Boolean>;
   mFolders: TArray<string>;
@@ -648,7 +647,7 @@ begin
   mSeen := TDictionary<string, Boolean>.Create;
   try
     mFolders := nil;
-    if TRuleUnitSource.Project in ASources then
+    if TUnitSource.Project in ASources then
     begin
       for mProjectUnit in FSetup.Project.Units do
       begin
@@ -656,7 +655,7 @@ begin
       end;
       mFolders := FProjectFolders;
     end;
-    if TRuleUnitSource.Atlas in ASources then
+    if TUnitSource.Atlas in ASources then
     begin
       mFolders := mFolders + FSetup.BrowsingPaths;
       if Assigned(FSetup.IndexUnits) then

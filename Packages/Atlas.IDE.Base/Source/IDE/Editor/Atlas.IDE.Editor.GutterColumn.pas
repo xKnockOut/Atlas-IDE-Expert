@@ -114,6 +114,8 @@ type
     /// <summary>Tafel zu ↑/↓: die Methoden als Links; False ohne Überschreibung.</summary>
     function OverridesPanel(const ARow: TRow; var APanel: TPanel): Boolean;
     procedure Click(const ARow: TRow);
+    /// <summary>Click(ARow) für TAtlasIdeNavigation.AfterClick: erst nach dem Loslassen der Maustaste.</summary>
+    function ClickAction(const ARow: TRow): TProc;
     procedure OpenActions(const ARow: TRow);
     function ActionsAction(const ARow: TRow): TProc;
   public
@@ -451,6 +453,7 @@ destructor TAtlasIdeGutterColumn.Destroy;
 var
   mEditors: INTACodeEditorServices;
 begin
+  TAtlasIdeNavigation.CancelAfterClick(Self);
   FTimer.Free;
   TAtlasIdeGutterColumns.Unregister(FColumnsHandle);
   // Erst Spalte und Notifier abmelden, dann freigeben (#493).
@@ -676,7 +679,9 @@ begin
     FHovering := False;
     FHoverScreen := TRect.Create(Editor.ClientToScreen(mRow.Rect.TopLeft),
       Editor.ClientToScreen(mRow.Rect.BottomRight));
-    Click(mRow);
+    // Der Editor wertet den Klick in der Leiste selbst aus und markiert die Zeile; erst nach dem
+    // Loslassen handeln und die Markierung zurücksetzen.
+    TAtlasIdeNavigation.AfterClick(TAtlasFeature.GutterColumn, Self, ClickAction(mRow));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.GutterColumn, E);
@@ -840,6 +845,18 @@ begin
   begin
     FOpenActions();
   end;
+end;
+
+function TAtlasIdeGutterColumn.ClickAction(const ARow: TRow): TProc;
+var
+  mRow: TRow;
+begin
+  mRow := ARow;
+  Result :=
+    procedure
+    begin
+      Click(mRow);
+    end;
 end;
 
 function TAtlasIdeGutterColumn.ActionsAction(const ARow: TRow): TProc;

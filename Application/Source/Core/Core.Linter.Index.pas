@@ -44,7 +44,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.Diagnostics,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Rules.Builtin.FormFields,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
@@ -191,7 +191,7 @@ begin
   // Datei zu einem geladenen Projekt, gelten dessen Anwendungsart und Formulare.
   mIndexed := AGroup.RuleProject(Result.FileName);
   Result.Services := mIndexed.Services;
-  if mIndexed.Application <> TRuleApplicationKind.Unknown then
+  if mIndexed.Application <> TApplicationKind.Unknown then
   begin
     Result.Application := mIndexed.Application;
     Result.Name := mIndexed.Name;

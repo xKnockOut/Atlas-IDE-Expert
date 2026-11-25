@@ -41,7 +41,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Mcp.Contract,
   Shell.Composition.Mcp,
@@ -108,7 +108,7 @@ begin
   mProject.FileName := 'C:\P\App.dproj';
   mProject.Kind := TRuleProjectKind.Application;
   mProject.Sources := Result.Sources;
-  Result.Files := TRuleProjectFiles.Create([mProject], Result.Index,
+  Result.Files := TProjectGroupFiles.Create([mProject], Result.Index,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := mTexts.TryGetValue(UpperCase(AFileName), AText);
