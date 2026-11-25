@@ -25,7 +25,6 @@ uses
   Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Rules.Contract.Refactorings,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Projects.GroupProjects,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Query.Contract,
   Core.Workspace.Setup,
@@ -134,6 +133,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Projects.GroupProjects,
   Atlas.Common.Architecture.UsesGraph,
   System.Classes,
   System.Diagnostics,

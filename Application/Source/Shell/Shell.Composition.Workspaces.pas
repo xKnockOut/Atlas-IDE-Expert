@@ -12,7 +12,6 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Contract.Group,
-  Atlas.Common.Projects.GroupProjects,
   Core.Workspace,
   Shell.Composition.Contract;
 
@@ -107,6 +106,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Projects.GroupProjects,
   System.SysUtils,
   System.Math,
   Atlas.Common.Lsp.WorkspaceFolders,

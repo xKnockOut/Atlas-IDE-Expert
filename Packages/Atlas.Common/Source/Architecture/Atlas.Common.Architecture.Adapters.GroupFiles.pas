@@ -85,9 +85,7 @@ uses
   Atlas.Common.Index.Usages,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Pascal.UsesClauses;
+  Atlas.Common.Pascal.TreeCache;
 
 { TProjectFileNames }
 

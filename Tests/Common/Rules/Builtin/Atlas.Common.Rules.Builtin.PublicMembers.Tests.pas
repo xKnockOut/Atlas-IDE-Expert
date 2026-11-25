@@ -797,9 +797,8 @@ begin
   mWatch := TStopwatch.StartNew;
   Run(mData, cServiceFile);
   mWatch.Stop;
-  System.Writeln(Format('unused-public-member: Prüfung bei %d Units in %d ms', [cUnitCount + 3,
-    mWatch.ElapsedMilliseconds]));
-  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, 'zu langsam');
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, Format('unused-public-member: Prüfung bei %d Units in %d ms',
+    [cUnitCount + 3, mWatch.ElapsedMilliseconds]));
 end;
 
 initialization

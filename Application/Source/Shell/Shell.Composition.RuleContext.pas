@@ -12,7 +12,6 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Architecture.Adapters.GroupFiles,
   Atlas.Common.Projects.Contract.Group,
   Atlas.Common.Findings.Memo,
   Atlas.Common.Rules.CheckContext,
@@ -69,6 +68,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Architecture.Adapters.GroupFiles,
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
