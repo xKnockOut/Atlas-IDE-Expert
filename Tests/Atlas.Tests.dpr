@@ -464,6 +464,7 @@ uses
   Atlas.Common.Editing.TypeAlias.Names.Tests in 'Common\Editing\Atlas.Common.Editing.TypeAlias.Names.Tests.pas',
   Atlas.Common.Editing.TypeAlias.Protocol.Tests in 'Common\Editing\Atlas.Common.Editing.TypeAlias.Protocol.Tests.pas',
   Atlas.Common.Pascal.EnumTables.Tests in 'Common\Pascal\Atlas.Common.Pascal.EnumTables.Tests.pas',
+  Atlas.Common.Pascal.TypeTexts.Tests in 'Common\Pascal\Atlas.Common.Pascal.TypeTexts.Tests.pas',
   Atlas.Common.Lsp.EnumTables.Tests in 'Common\Lsp\Atlas.Common.Lsp.EnumTables.Tests.pas',
   Atlas.Common.Editing.Overloads.Tests in 'Common\Editing\Atlas.Common.Editing.Overloads.Tests.pas',
   Atlas.Common.Editing.Overloads.Protocol.Tests in 'Common\Editing\Atlas.Common.Editing.Overloads.Protocol.Tests.pas',

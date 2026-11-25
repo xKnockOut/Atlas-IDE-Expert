@@ -169,14 +169,13 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.SignatureHelp,
-  Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Common.Editing.PostfixTemplates,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Text.Chars,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.TypeTexts;
 
 {$SCOPEDENUMS ON}
 
@@ -606,7 +605,7 @@ begin
     mUnqualified := mUnqualified + [Copy(mBinding, 1, Pos('=', mBinding)) +
       AResolver.Queries.UnqualifyType(Copy(mBinding, Pos('=', mBinding) + 1, MaxInt))];
   end;
-  Result := TInterfaceStubs.SubstituteWords(AText, mUnqualified);
+  Result := TPascalTypeTexts.SubstituteWords(AText, mUnqualified);
 end;
 
 /// <summary>Namen der Kette A.B.C von AFirst bis ALast; False, wenn dort etwas anderes steht (z. B. ein Aufruf).
@@ -641,13 +640,13 @@ begin
   begin
     mOwnerType := mOwnerType + '<' + AOwner.TypeArgs + '>';
   end;
-  Result := TPostfixTemplates.ElementOf(mOwnerType);
+  Result := TPascalTypeTexts.ElementOf(mOwnerType);
   if (Result = '') and ATypeFound then
   begin
-    Result := TPostfixTemplates.ElementOf(ATypeInfo.TypeName);
+    Result := TPascalTypeTexts.ElementOf(ATypeInfo.TypeName);
   end;
-  if (Result = '') and (TPostfixTemplates.IsStringType(AOwner.TypeName) or
-    (ATypeFound and ATypeInfo.Builtin and TPostfixTemplates.IsStringType(ATypeInfo.Name))) then
+  if (Result = '') and (TPascalTypeTexts.IsStringType(AOwner.TypeName) or
+    (ATypeFound and ATypeInfo.Builtin and TPascalTypeTexts.IsStringType(ATypeInfo.Name))) then
   begin
     Result := 'Char';
   end;

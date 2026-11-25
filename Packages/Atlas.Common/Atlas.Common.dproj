@@ -397,6 +397,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TypeComments.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TypeTexts.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassBodies.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodMatching.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.BodySpacing.pas"/>

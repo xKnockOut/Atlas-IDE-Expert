@@ -139,7 +139,7 @@ type
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
+  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443),
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Index.Files,
   System.Math,
@@ -155,9 +155,9 @@ uses
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Editing.InterfaceStubs,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TypeTexts;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -1201,7 +1201,7 @@ begin
   Result := Copy(FLines);
   for mLine := AStart.Line to Min(High(Result), AStart.Line + cMaxHeaderLines) do
   begin
-    Result[mLine] := TInterfaceStubs.SubstituteWords(Result[mLine], ABindings);
+    Result[mLine] := TPascalTypeTexts.SubstituteWords(Result[mLine], ABindings);
   end;
 end;
 

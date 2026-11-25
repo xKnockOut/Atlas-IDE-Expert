@@ -104,6 +104,7 @@ Atlas.Common.Editing.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests
 Atlas.Common.Pascal.DocComments.Tests
 Atlas.Common.Pascal.EnumTables.Tests
+Atlas.Common.Pascal.TypeTexts.Tests
 Atlas.Common.Pascal.ExpressionText.Tests
 Atlas.Common.Editing.Extract.Duplicates.Tests
 Atlas.Common.Editing.Extract.Shared.Tests
