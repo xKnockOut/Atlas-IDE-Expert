@@ -91,10 +91,10 @@ uses
   Atlas.Plugin.Localization.Language,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Projects.PathCheck,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources;
+  Atlas.Plugin.Projects.PathCheck,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources;
 
 {$SCOPEDENUMS ON}
 

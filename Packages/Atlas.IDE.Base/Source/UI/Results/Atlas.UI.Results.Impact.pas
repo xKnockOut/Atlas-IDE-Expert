@@ -10,7 +10,7 @@ interface
 uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.UI.Results.View;
 
 type

@@ -89,7 +89,7 @@ uses
   System.JSON,
   Winapi.Windows,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,

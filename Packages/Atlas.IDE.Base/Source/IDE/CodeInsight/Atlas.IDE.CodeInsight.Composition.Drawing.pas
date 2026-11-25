@@ -49,7 +49,7 @@ uses
   System.JSON,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Modules.Contract,

@@ -22,7 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Welcome.Contract;
 
 type
@@ -55,7 +55,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Status.Lines;
+  Atlas.Plugin.Status.Lines;
 
 { TAtlasWelcomeState }
 
@@ -166,15 +166,14 @@ end;
 
 class function TAtlasWelcomeState.Buttons(const ARows: TAtlasStateRows): TArray<TAtlasStateButton>;
 begin
-  // Einzeln zuweisen: Eine Liste von Aufzählungswerten in eckigen Klammern liest der Compiler als Menge.
-  SetLength(Result, 3);
-  Result[0] := TAtlasStateButton.Restart;
-  Result[1] := TAtlasStateButton.Settings;
-  Result[2] := TAtlasStateButton.LogFolder;
+  // TArray.Create statt eckiger Klammern: Eine Liste von Aufzählungswerten in eckigen Klammern liest der Compiler
+  // als Menge.
+  Result := TArray<TAtlasStateButton>.Create(TAtlasStateButton.Restart, TAtlasStateButton.Settings,
+    TAtlasStateButton.LogFolder);
   if UpdateReady(ARows) then
   begin
-    SetLength(Result, 4);
-    Result[3] := TAtlasStateButton.Update;
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := TAtlasStateButton.Update;
   end;
 end;
 

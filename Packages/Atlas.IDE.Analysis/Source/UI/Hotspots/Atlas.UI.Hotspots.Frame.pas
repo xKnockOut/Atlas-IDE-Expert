@@ -198,6 +198,13 @@ const
   cSharedWidth = 80;
   cRatioWidth = 70;
   cRevisionWidth = 80;
+  /// <summary>Breiten der Leiste bei 96 dpi.</summary>
+  cRefreshWidth = 110;
+  cSaveWidth = 130;
+  cLevelWidth = 110;
+  /// <summary>Höhe der Grafik und kleinste Höhe beim Ziehen des Teilers bei 96 dpi.</summary>
+  cChartHeight = 220;
+  cSplitterMinSize = 80;
   cDateWidth = 90;
   cAuthorWidth = 120;
   cSummaryWidth = 300;
@@ -556,19 +563,19 @@ begin
   AFrame.FParts.Refresh.Parent := mTop;
   AFrame.FParts.Refresh.AlignWithMargins := True;
   AFrame.FParts.Refresh.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsRefresh);
-  AFrame.FParts.Refresh.Width := AFrame.FParts.Refresh.ScaleValue(110);
+  AFrame.FParts.Refresh.Width := AFrame.FParts.Refresh.ScaleValue(cRefreshWidth);
   AFrame.FParts.Refresh.OnClick := AEvents.RefreshClick;
   AFrame.FParts.Save := TButton.Create(AFrame);
   AFrame.FParts.Save.Parent := mTop;
   AFrame.FParts.Save.AlignWithMargins := True;
   AFrame.FParts.Save.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsSaveReport);
-  AFrame.FParts.Save.Width := AFrame.FParts.Save.ScaleValue(130);
+  AFrame.FParts.Save.Width := AFrame.FParts.Save.ScaleValue(cSaveWidth);
   AFrame.FParts.Save.OnClick := AEvents.SaveClick;
   AFrame.FParts.Level := TComboBox.Create(AFrame);
   AFrame.FParts.Level.Parent := mTop;
   AFrame.FParts.Level.AlignWithMargins := True;
   AFrame.FParts.Level.Style := csDropDownList;
-  AFrame.FParts.Level.Width := AFrame.FParts.Level.ScaleValue(110);
+  AFrame.FParts.Level.Width := AFrame.FParts.Level.ScaleValue(cLevelWidth);
   AFrame.FParts.Level.OnChange := AEvents.LevelChange;
   AFrame.FParts.Filter := TEdit.Create(AFrame);
   AFrame.FParts.Filter.Parent := mTop;
@@ -633,7 +640,7 @@ begin
   mChart.Parent := AFrame;
   mChart.Align := alTop;
   mChart.AlignWithMargins := True;
-  mChart.Height := MulDiv(220, AFrame.CurrentPPI, 96);
+  mChart.Height := MulDiv(cChartHeight, AFrame.CurrentPPI, 96);
   mChart.EmptyText := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsChartHint);
   mChart.PopupMenu := AFrame.FParts.Menu;
   mChart.OnSelect := ChartSelectHandler(AFrame);
@@ -643,7 +650,7 @@ begin
   AFrame.FParts.Splitter.Parent := AFrame;
   AFrame.FParts.Splitter.Align := alTop;
   AFrame.FParts.Splitter.Top := mChart.Top + mChart.Height + 1;
-  AFrame.FParts.Splitter.MinSize := MulDiv(80, AFrame.CurrentPPI, 96);
+  AFrame.FParts.Splitter.MinSize := MulDiv(cSplitterMinSize, AFrame.CurrentPPI, 96);
   AFrame.FParts.Pages := TPageControl.Create(AFrame);
   AFrame.FParts.Pages.Parent := AFrame;
   AFrame.FParts.Pages.Align := alClient;

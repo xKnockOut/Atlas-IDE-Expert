@@ -33,7 +33,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Status.Server;
+  Atlas.Plugin.Status.Server;
 
 type
   /// <summary>Speicher: je Bereich ein Balken gegen den Maßstab, senkrechter Strich beim Budget, darunter

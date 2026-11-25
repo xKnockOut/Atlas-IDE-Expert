@@ -136,6 +136,10 @@ type
     /// <summary>So lange nach dem Anfordern darf die Spalte ungezeichnet bleiben, bevor das Protokoll es meldet.
     /// </summary>
     cPaintWaitMs = 5000;
+    /// <summary>Zeilenhöhe bei 96 dpi, solange der Editor keine gemeldet hat.</summary>
+    cDefaultLineHeight = 20;
+    /// <summary>Abstand des Tipps rechts neben der Spalte.</summary>
+    cTipGap = 4;
   private
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
@@ -230,10 +234,21 @@ begin
   end;
 end;
 
+const
+  /// <summary>Kerbe: ein Fünftel der Bandhöhe.</summary>
+  cNotchShareOf = 5;
+  /// <summary>Ziffer: vier Fünftel der Bandhöhe über der Kerbe, mindestens so viele Pixel.</summary>
+  cDigitShare = 4;
+  cDigitShareOf = 5;
+  cMinDigitHeight = 7;
+  /// <summary>Gefüllte Ecke bei mehreren Markern: ein Drittel der Bandbreite, mindestens so viele Pixel.</summary>
+  cCornerShareOf = 3;
+  cMinCorner = 3;
+
 /// <summary>Band mit Kerbe unten wie bei den benannten Lesezeichen (#622); liefert die Höhe der Kerbe.</summary>
 function PaintBand(ACanvas: TCanvas; const ABand: TRect; AFill, ALine: TAtlasColor): Integer;
 begin
-  Result := Max(2, ABand.Height div 5);
+  Result := Max(2, ABand.Height div cNotchShareOf);
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := TColor(AFill);
   ACanvas.Pen.Color := TColor(ALine);
@@ -256,7 +271,7 @@ begin
   try
     mOldFont.Assign(ACanvas.Font);
     ACanvas.Font.Style := [fsBold];
-    ACanvas.Font.Height := -Max(7, (ABand.Height - ANotch) * 4 div 5);
+    ACanvas.Font.Height := -Max(cMinDigitHeight, (ABand.Height - ANotch) * cDigitShare div cDigitShareOf);
     ACanvas.Font.Color := TColor(AColor);
     ACanvas.Brush.Style := bsClear;
     mSize := ACanvas.TextExtent(mDigit);
@@ -273,6 +288,9 @@ const
   cMarkFill = 0.85;
   /// <summary>Anteil der Ziffernfarbe auf dem blassen Vorschlag.</summary>
   cFreeDigit = 0.7;
+  /// <summary>Anteil der Warnfarbe in Fläche und Rand des blassen Vorschlags.</summary>
+  cFreeFill = 0.15;
+  cFreeLine = 0.45;
 
 procedure PaintMarks(ACanvas: TCanvas; const ARow: TAtlasIdeQuickColumn.TRow; const AColors: TAtlasColors;
   ABack: TAtlasColor);
@@ -287,7 +305,7 @@ begin
   // Mehr als ein Marker: gefüllte Ecke oben rechts.
   if Length(ARow.Marks) > 1 then
   begin
-    mCorner := Max(3, mBand.Width div 3);
+    mCorner := Max(cMinCorner, mBand.Width div cCornerShareOf);
     ACanvas.Brush.Color := TColor(AColors.Warn);
     ACanvas.Polygon([Point(mBand.Right - 1 - mCorner, mBand.Top), Point(mBand.Right - 1, mBand.Top),
       Point(mBand.Right - 1, mBand.Top + mCorner)]);
@@ -310,8 +328,8 @@ begin
   // alle neun belegt, ohne Nummer.
   mBand := ARect;
   InflateRect(mBand, -1, -1);
-  mFill := TAtlasColorMath.Mix(AColors.Warn, ABack, 0.15);
-  mNotch := PaintBand(ACanvas, mBand, mFill, TAtlasColorMath.Mix(AColors.Warn, ABack, 0.45));
+  mFill := TAtlasColorMath.Mix(AColors.Warn, ABack, cFreeFill);
+  mNotch := PaintBand(ACanvas, mBand, mFill, TAtlasColorMath.Mix(AColors.Warn, ABack, cFreeLine));
   if ANumber > 0 then
   begin
     PaintDigit(ACanvas, mBand, mNotch, ANumber, TAtlasColorMath.Mix(TAtlasQuickColumnPlan.DigitColor(mFill), mFill,
@@ -624,7 +642,7 @@ var
 begin
   if FSlot.WantedWidth <= 0 then
   begin
-    FSlot.WantedWidth := TAtlasQuickBookmarks.ColumnWidth(MulDiv(20, Screen.PixelsPerInch, 96));
+    FSlot.WantedWidth := TAtlasQuickBookmarks.ColumnWidth(MulDiv(cDefaultLineHeight, Screen.PixelsPerInch, 96));
   end;
   if (FSlot.Column >= 0) and (FSlot.Width = FSlot.WantedWidth) then
   begin
@@ -1056,7 +1074,7 @@ begin
   end;
   if TAtlasQuickColumnPlan.TipDue(FTip.IsShown, FHover.Since, TThread.GetTickCount64, cHoverMs) then
   begin
-    FTip.Show(FHover.Row.Marks, Point(FHover.ScreenRect.Right + 4, FHover.ScreenRect.Bottom + 2));
+    FTip.Show(FHover.Row.Marks, Point(FHover.ScreenRect.Right + cTipGap, FHover.ScreenRect.Bottom + 2));
   end;
 end;
 

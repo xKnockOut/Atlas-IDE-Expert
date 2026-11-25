@@ -15,7 +15,7 @@
 //   herein); danach stehen die neuen Treffer der Zusammenfassung auf 0.
 // - Schritt 4 „Suchpfade und Defines prüfen“: Projektkontext der aktiven
 //   Konfiguration (#396), Dateien des Projekts und .dproj im Hintergrund
-//   (Atlas.Core.Projects.PathCheck); das Ergebnis kommt in den Abschnitt
+//   (Atlas.Plugin.Projects.PathCheck); das Ergebnis kommt in den Abschnitt
 //   "setup" der Projekt-Zusammenfassung. Ein Klick öffnet die Projektoptionen.
 //   $(…) in Suchpfaden löst TAtlasIdeProjectContext.Macros auf (IDE vor
 //   Prozess); bleibt ein Makro unbekannt, fällt der Pfad weg und die Funde
@@ -46,7 +46,7 @@ uses
   Atlas.Core.Welcome.Setup,
   Atlas.IDE.Welcome.Setup.Paths,
   Atlas.IDE.Welcome.Setup.ProjectEvents,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
 
 type
@@ -137,7 +137,7 @@ uses
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Plugin.Files.DataFile,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Projects.PathCheck,
+  Atlas.Plugin.Projects.PathCheck,
   Atlas.Core.Projects.Baseline,
   Atlas.Core.Settings.SchemaData,
   Atlas.UI.Welcome.Strings,

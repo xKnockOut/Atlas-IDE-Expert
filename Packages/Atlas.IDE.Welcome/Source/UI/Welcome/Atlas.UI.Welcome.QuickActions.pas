@@ -235,6 +235,11 @@ uses
   Atlas.Plugin.Diagnostics.Guard;
 
 const
+  // Maße in logischen Pixeln bei 96 dpi.
+  /// <summary>Abstand des Trennstrichs vor ▾ von Ober- und Unterkante des Knopfs.</summary>
+  cMenuDividerInset = 4;
+  /// <summary>Abstand des Fokusrahmens vom Rand des Knopfs.</summary>
+  cFocusInset = 2;
   cSeparator = ' · ';
 
 type
@@ -546,7 +551,8 @@ begin
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := Colors.Accent;
     Canvas.Pen.Color := Colors.Accent;
-    Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(6), Scaled(6));
+    Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(TAtlasWelcomeRow.cButtonRadius),
+      Scaled(TAtlasWelcomeRow.cButtonRadius));
     Canvas.Font.Color := Colors.AccentText;
     Exit;
   end;
@@ -556,7 +562,8 @@ begin
   begin
     Canvas.Pen.Color := Colors.Accent;
   end;
-  Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(6), Scaled(6));
+  Canvas.RoundRect(AArea.Left, AArea.Top, AArea.Right, AArea.Bottom, Scaled(TAtlasWelcomeRow.cButtonRadius),
+    Scaled(TAtlasWelcomeRow.cButtonRadius));
   Canvas.Font.Color := Colors.Muted;
   if mButton.Enabled then
   begin
@@ -582,8 +589,8 @@ begin
   Canvas.TextOut(AArea.Left + (AArea.Width - mPart - Canvas.TextWidth(mText)) div 2,
     AArea.Top + (AArea.Height - Canvas.TextHeight(mText)) div 2, mText);
   Canvas.Pen.Color := Canvas.Font.Color;
-  Canvas.MoveTo(AArea.Right - mPart, AArea.Top + Scaled(4));
-  Canvas.LineTo(AArea.Right - mPart, AArea.Bottom - Scaled(4));
+  Canvas.MoveTo(AArea.Right - mPart, AArea.Top + Scaled(cMenuDividerInset));
+  Canvas.LineTo(AArea.Right - mPart, AArea.Bottom - Scaled(cMenuDividerInset));
   Canvas.TextOut(AArea.Right - mPart + (mPart - Canvas.TextWidth(TAtlasQuickActionTexts.cMenuArrow)) div 2,
     AArea.Top + (AArea.Height - Canvas.TextHeight(TAtlasQuickActionTexts.cMenuArrow)) div 2,
     TAtlasQuickActionTexts.cMenuArrow);
@@ -596,7 +603,7 @@ begin
   if Bar.FSink.Focused and (Row = Bar.FRows.Selection.KeyRow) and (AIndex = Bar.FRows.Selection.KeyButton) then
   begin
     mFocus := AArea;
-    InflateRect(mFocus, -2, -2);
+    InflateRect(mFocus, -Scaled(cFocusInset), -Scaled(cFocusInset));
     Canvas.Brush.Style := bsSolid;
     Canvas.DrawFocusRect(mFocus);
     Canvas.Brush.Style := bsClear;

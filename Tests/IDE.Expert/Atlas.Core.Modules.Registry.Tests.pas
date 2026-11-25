@@ -79,7 +79,7 @@ uses
   System.SyncObjs,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Plugin.Diagnostics.TimeLimit,
   Atlas.Plugin.Diagnostics.UnloadSafety,
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Modules.Contract,

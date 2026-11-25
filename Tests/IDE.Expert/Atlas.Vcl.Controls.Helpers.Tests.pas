@@ -153,10 +153,10 @@ begin
   try
     mPages := TPageControl.Create(mForm);
     mSheet := TAtlasControls.NewHiddenSheet(mForm, mPages, 'Reiter');
-    Assert.IsTrue(mSheet.PageControl = mPages);
+    Assert.AreSame(mPages, mSheet.PageControl);
     Assert.IsFalse(mSheet.TabVisible);
     Assert.AreEqual('Reiter', mSheet.Caption);
-    Assert.IsTrue(mSheet.Owner = mForm);
+    Assert.AreSame(mForm, mSheet.Owner);
   finally
     mForm.Free;
   end;
@@ -265,15 +265,19 @@ var
   mForm: TForm;
   mLabel: TLabel;
   mPoint: TPoint;
+  mHeight: Integer;
 begin
   mForm := TForm.CreateNew(nil);
   try
     mLabel := TLabel.Create(mForm);
-    mLabel.SetBounds(10, 20, 50, cNewHeight);
+    // Ohne das passt AutoSize die Höhe an die Schrift an, sobald die Beschriftung gesetzt ist.
+    mLabel.AutoSize := False;
+    mHeight := mForm.ScaleValue(cNewHeight);
+    mLabel.Height := mHeight;
     mLabel.Parent := mForm;
     mLabel.Caption := 'Status';
     mPoint := TAtlasControls.BelowLeft(mLabel);
-    Assert.AreEqual(mLabel.ClientToScreen(TPoint.Create(0, 0)).Y + cNewHeight, mPoint.Y);
+    Assert.AreEqual(mLabel.ClientToScreen(TPoint.Create(0, 0)).Y + mHeight, mPoint.Y);
     Assert.AreEqual(mLabel.ClientToScreen(TPoint.Create(0, 0)).X, mPoint.X);
     Assert.AreEqual('Status', TAtlasControls.ShownCaption(mLabel));
     mLabel.Visible := False;

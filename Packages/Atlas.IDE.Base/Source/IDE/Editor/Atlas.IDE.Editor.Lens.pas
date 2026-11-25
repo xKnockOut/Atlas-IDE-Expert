@@ -108,7 +108,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.Math,
   Winapi.Windows,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.Pairs,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,

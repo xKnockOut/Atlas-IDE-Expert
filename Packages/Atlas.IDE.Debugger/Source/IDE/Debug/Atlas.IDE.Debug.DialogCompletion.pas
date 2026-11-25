@@ -159,7 +159,7 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Sources,
   Atlas.Core.Debug.DialogInput,
-  Atlas.Core.Foundation.Calls,
+  Atlas.Plugin.Calls.Optional,
   Atlas.IDE.Debug.EvaluateStore;
 
 const

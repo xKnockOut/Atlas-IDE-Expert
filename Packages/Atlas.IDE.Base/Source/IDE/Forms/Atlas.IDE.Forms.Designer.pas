@@ -34,7 +34,7 @@ uses
   ToolsAPI,
   DesignIntf,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Forms.Changes;
 
 type
@@ -114,7 +114,7 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Plugin.Localization.Language,
   Atlas.ToolsApi.Designer.View,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 {$SCOPEDENUMS ON}
 

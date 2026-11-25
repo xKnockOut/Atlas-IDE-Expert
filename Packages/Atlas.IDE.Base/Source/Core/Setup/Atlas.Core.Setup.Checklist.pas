@@ -25,8 +25,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Setup.Contract;
 

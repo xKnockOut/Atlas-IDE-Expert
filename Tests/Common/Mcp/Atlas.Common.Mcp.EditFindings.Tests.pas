@@ -41,6 +41,7 @@ type
 implementation
 
 uses
+  Shell.Composition.Mcp,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -148,6 +149,7 @@ begin
       Result := nil;
     end,
     nil);
+  Result.BulkFix := TMcpComposition.BulkFix(nil, nil);
 end;
 
 /// <summary>Reicht an die Auswertung weiter und merkt sich das Werkzeug.</summary>

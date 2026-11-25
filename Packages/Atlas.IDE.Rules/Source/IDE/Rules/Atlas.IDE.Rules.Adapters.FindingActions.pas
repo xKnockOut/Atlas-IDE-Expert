@@ -32,7 +32,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Plugin.Files.TextFile,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Rules.Table,
   Atlas.IDE.Foundation.Host,

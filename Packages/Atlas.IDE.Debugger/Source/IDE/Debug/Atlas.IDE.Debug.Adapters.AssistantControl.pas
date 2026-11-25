@@ -2,9 +2,12 @@
 
 // Steuerung des Debuggers für KI-Assistenten (#1874): stellt IAtlasDebugControl bereit. Das Modul KI-Assistenten
 // nimmt die Aufträge der MCP-Werkzeuge an und fragt den Vertrag über die Registry; den Debugger kennt es nicht.
-//   - Launch: Projekt (sonst das aktive) aktiv machen, Konfiguration und Plattform umstellen und „Start“ der IDE
-//     auslösen. Eigene Argumente oder ein Test gelten nur für diesen Lauf (TAtlasIdeStartOptions.RunTemporary);
-//     am Ende der Sitzung stellt der Hörer sie zurück.
+//   - Launch: Projekt (sonst das aktive) aktiv machen, ist es nicht offen, zur Projektgruppe hinzu öffnen (der
+//     MCP-Server hat vorher nach mcp.openProjects gefragt, #2895), Konfiguration und Plattform umstellen und „Start“
+//     der IDE auslösen. Eigene Argumente oder ein Test gelten nur für diesen Lauf
+//     (TAtlasIdeStartOptions.RunTemporary); am Ende der Sitzung stellt der Hörer sie zurück. Die Haltepunkt-Prüfung
+//     zeigt bei diesem Start keinen Dialog (TAtlasIdeBreakpointCheck.QuietLaunch); ihre Funde stehen einmal im
+//     nächsten Zustand (Warnings).
 //   - Schritte über TAtlasIdeDebugSession.RunMode, „Bis Zeile“ über TAtlasIdeRunTo (Zeilen dort 0-basiert).
 //   - Zustand: Aufrufstapel mit eigenem Code (#578), Exception aus dem Exception-Verlauf (#517), lokale Namen aus
 //     dem Fenster Variablen (ohne das Fenster keine), Threads des Prozesses.
@@ -50,6 +53,7 @@ type
     function StopReason(const AFileName: string; ALine: Integer): string;
     procedure ReadLocals(var AState: TAtlasDebugControlState);
     procedure ReadThreads(var AState: TAtlasDebugControlState);
+    procedure ReadWarnings(var AState: TAtlasDebugControlState);
   public
     constructor Create;
     destructor Destroy; override;
@@ -78,7 +82,10 @@ uses
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
+  Atlas.Core.Debug.BreakpointCheck,
   Atlas.IDE.Debug.Breakpoints,
+  Atlas.IDE.Debug.BreakpointCheck,
+  Atlas.UI.Debug.BreakpointCheck,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.RunTo,
   Atlas.IDE.Debug.Sources,
@@ -168,13 +175,15 @@ begin
   end
   else
   begin
-    mProject := TAtlasIdeStartOptions.FindProject(ALaunch.Project);
+    mProject := TAtlasIdeStartOptions.OpenProject(ALaunch.Project);
   end;
   if mProject = nil then
   begin
     AReason := TAtlasSessionStrings.Fmt(TAtlasSessionTextId.AssistantNoProject, [ExtractFileName(ALaunch.Project)]);
     Exit(False);
   end;
+  // Kein Dialog, der auf den Benutzer wartet: Die Funde der Haltepunkt-Prüfung gehen in die Antwort (#2895).
+  TAtlasIdeBreakpointCheck.QuietLaunch(mProject.FileName);
   // Bleibt nach dem Lauf eingestellt: Der Assistent debuggt, was er gewählt hat, auch beim nächsten Start.
   if (ALaunch.Configuration <> '') and not SameText(mProject.CurrentConfiguration, ALaunch.Configuration) then
   begin
@@ -210,9 +219,16 @@ begin
     Exit(False);
   end;
   FStepFrom := -1;
-  Result := StartProject(ALaunch, AReason);
+  try
+    Result := StartProject(ALaunch, AReason);
+  except
+    // Abbruch beim Bauen oder Starten: Der nächste Start des Benutzers prüft wieder mit Dialog.
+    TAtlasIdeBreakpointCheck.QuietLaunch('');
+    raise;
+  end;
   if not Result then
   begin
+    TAtlasIdeBreakpointCheck.QuietLaunch('');
     AReason := TAtlasSessionStrings.Fmt(TAtlasSessionTextId.AssistantStartFailed, [AReason]);
   end;
 end;
@@ -321,6 +337,20 @@ begin
   end;
 end;
 
+procedure TAtlasIdeDebugAssistantControl.ReadWarnings(var AState: TAtlasDebugControlState);
+var
+  mProblems: TAtlasBreakpointProblems;
+  mIndex: Integer;
+begin
+  mProblems := TAtlasIdeBreakpointCheck.TakeQuietProblems;
+  SetLength(AState.Warnings, Length(mProblems));
+  for mIndex := 0 to High(mProblems) do
+  begin
+    AState.Warnings[mIndex] := TAtlasDebugAssistantControl.Warning(mProblems[mIndex],
+      TAtlasBreakpointCheckDialog.ReasonText(mProblems[mIndex]));
+  end;
+end;
+
 function TAtlasIdeDebugAssistantControl.ReadState(AFrames: Integer; ALocals: Boolean;
   out AState: TAtlasDebugControlState): Boolean;
 var
@@ -329,6 +359,7 @@ var
 begin
   AState := Default(TAtlasDebugControlState);
   AState.Phase := Phase;
+  ReadWarnings(AState);
   Result := True;
   if AState.Phase <> TAtlasDebugControlPhase.Stopped then
   begin

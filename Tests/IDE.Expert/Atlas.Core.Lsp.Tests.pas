@@ -117,17 +117,17 @@ uses
   System.Generics.Collections,
   System.SyncObjs,
   System.Diagnostics,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Plugin.Files.WatchedChanges,
-  Atlas.Core.Projects.Contract,
+  Atlas.Plugin.Projects.Contract,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Lsp.Framing,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Diagnostics.PluginTimings,
+  Atlas.Plugin.Lsp.Framing,
+  Atlas.Plugin.Lsp.Contract;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
 function Unframe(const ABytes: TBytes): TJSONObject;

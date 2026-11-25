@@ -47,7 +47,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   System.SysUtils;
 
 function Refs: TAtlasInlineValueRefs;

@@ -9,7 +9,7 @@
 // Checklisten (#1273): Fortschritt in der Kopfzeile, Kästchen, „Punkt
 // hinzufügen …“, nur lesbar, abgeschaltet; Reiter „Details“ und „Entwicklung“
 // mit Schalter (#1269); Teile des Frames: Ablage im Bildlauf (Reihenfolge,
-// Karten, Leeren) und Wünsche nach dem Klick (Reihenfolge, nur einmal);
+// Karten, Leeren, keine Überlappung bei Höhenänderungen) und Wünsche nach dem Klick (Reihenfolge, nur einmal);
 // „Zusammenfassen“ mit KI (#2462): Knopf und Menüeintrag nach Schaltern, Karte
 // mit Stand, Fragen, Units als Links, „veraltet“ und „Als Kommentar übernehmen“.
 
@@ -61,10 +61,14 @@ type
     /// <summary>#2126: „Prüfen …“ nur mit CanReview und Issue, meldet OnReview.</summary>
     [Test]
     procedure ReviewButton;
-    /// <summary>Ablage: untereinander in Anlegereihenfolge, Teile einer Karte in der Karte, Clear gibt alles frei.
-    /// </summary>
+    /// <summary>Ablage: untereinander in Anlegereihenfolge ohne Überlappung, Teile einer Karte in der Karte, Clear
+    /// gibt alles frei, danach legt die Fläche neu ab, ohne Freigegebenes anzufassen.</summary>
     [Test]
     procedure LayoutPlacesInOrderAndClears;
+    /// <summary>Ablagefläche: Teile untereinander in der Reihenfolge des Einhängens, auch wenn ein Teil seine
+    /// Höhe erst aus der Breite rechnet oder sie später ändert; die Fläche wächst mit.</summary>
+    [Test]
+    procedure StackKeepsPartsApart;
     /// <summary>Wünsche nach dem Klick: erst Neuaufbau, dann Link, Kästchen, „Punkt hinzufügen …“, „Neu
     /// zusammenfassen“ (#2462); je nur einmal.</summary>
     [Test]
@@ -85,8 +89,10 @@ uses
   Atlas.UI.Tracker.Issue.Strings,
   System.SysUtils,
   Vcl.Forms,
+  Vcl.Controls,
   Vcl.ComCtrls,
   Vcl.StdCtrls,
+  Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Preview,
@@ -99,6 +105,46 @@ uses
 
 const
   cNow = 46323.5;
+
+type
+  /// <summary>Rechnet seine Höhe in Resize aus der Breite, wie Doku, Abzeichen und Bilder.</summary>
+  TGrowingBox = class(TCustomControl)
+  private
+    FExtra: Integer;
+  protected
+    procedure Resize; override;
+  public
+    /// <summary>Höhe zur Breite: ein Viertel davon und AExtra.</summary>
+    function Wanted: Integer;
+    /// <summary>Später um AExtra höher, wie nach dem Laden eines Bilds.</summary>
+    procedure Grow(AExtra: Integer);
+  end;
+
+function TGrowingBox.Wanted: Integer;
+begin
+  Result := Width div 4 + FExtra;
+end;
+
+procedure TGrowingBox.Resize;
+begin
+  inherited;
+  if Height <> Wanted then
+  begin
+    Height := Wanted;
+  end;
+end;
+
+procedure TGrowingBox.Grow(AExtra: Integer);
+begin
+  FExtra := AExtra;
+  Height := Wanted;
+end;
+
+/// <summary>AUpper steht ganz über ALower (mit Abstand der Margins).</summary>
+procedure AssertApart(AUpper, ALower: TControl; const AMessage: string);
+begin
+  Assert.IsTrue(AUpper.Top + AUpper.Height + AUpper.Margins.Bottom + ALower.Margins.Top <= ALower.Top, AMessage);
+end;
 
 /// <summary>Adressen aller Bilder im Inhalt.</summary>
 function ImageUrls(AFrame: TAtlasIssueFrame): TArray<string>;
@@ -743,22 +789,90 @@ begin
     mBox := TScrollBox.Create(mHost);
     mBox.Parent := mHost;
     mLayout := TAtlasIssueLayout.Create(mHost, mBox, nil);
-    mLayout.AddSection('Abschnitt');
-    mCard := mLayout.BeginCard(0.1);
-    mInside := mLayout.AddText('in der Karte', False);
-    Assert.AreEqual(Int64(mCard.Fill), Int64(mLayout.ContentColors.Surface), 'in der Karte deren Fläche');
-    mLayout.EndCard;
-    mBelow := mLayout.AddText('darunter', True);
-    Assert.AreEqual(3, mBox.ControlCount, 'Überschrift, Karte, Text');
+    mLayout.BeginUpdate;
+    try
+      mLayout.AddSection('Abschnitt');
+      mCard := mLayout.BeginCard(0.1);
+      mInside := mLayout.AddText('in der Karte', False);
+      Assert.AreEqual(Int64(mCard.Fill), Int64(mLayout.ContentColors.Surface), 'in der Karte deren Fläche');
+      mLayout.EndCard;
+      mBelow := mLayout.AddText('darunter', True);
+    finally
+      mLayout.EndUpdate;
+    end;
+    Assert.AreEqual(1, mBox.ControlCount, 'nur die Ablagefläche im Bildlauf');
+    Assert.AreEqual(3, mLayout.Stack.ControlCount, 'Überschrift, Karte, Text');
     Assert.AreSame(mCard, mInside.Parent);
-    Assert.AreSame(mBox, mBelow.Parent);
-    Assert.IsTrue(mBelow.Top > mCard.Top, 'in der Reihenfolge des Anlegens');
+    Assert.AreSame(mLayout.Stack, mBelow.Parent);
+    AssertApart(mCard, mBelow, 'in der Reihenfolge des Anlegens, ohne Überlappung');
+    Assert.IsTrue(mCard.Height >= mInside.Top + mInside.Height, 'Karte umfasst ihren Inhalt');
     Assert.AreEqual(Int64(mLayout.Colors.Surface), Int64(mLayout.ContentColors.Surface),
       'nach der Karte wieder der Bildlauf');
     mLayout.Clear;
-    Assert.AreEqual(0, mBox.ControlCount, 'alles frei');
+    Assert.AreEqual(0, mLayout.Stack.ControlCount, 'alles frei');
+    // Neu ablegen nach dem Freigeben einer Karte samt Inhalt: Die Fläche hält nichts Freigegebenes fest.
+    mLayout.BeginUpdate;
+    try
+      mBelow := mLayout.AddText('neu', False);
+    finally
+      mLayout.EndUpdate;
+    end;
+    Assert.AreEqual(1, mLayout.Stack.ControlCount, 'nur der neue Text');
+    Assert.AreEqual(Integer(mLayout.Stack.Padding.Top + mBelow.Margins.Top), mBelow.Top, 'oben in der Fläche');
   finally
     mLayout.Free;
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.StackKeepsPartsApart;
+var
+  mHost: TForm;
+  mStack: TAtlasIssueStack;
+  mFirst: TPanel;
+  mGrowing: TGrowingBox;
+  mLast: TPanel;
+  mWidth: Integer;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.Width := 400;
+    mHost.Height := 300;
+    mStack := TAtlasIssueStack.Create(mHost);
+    mStack.Parent := mHost;
+    mStack.Align := alTop;
+    mFirst := TPanel.Create(mHost);
+    mFirst.Height := 30;
+    mFirst.AlignWithMargins := True;
+    mFirst.Parent := mStack;
+    mGrowing := TGrowingBox.Create(mHost);
+    mGrowing.AlignWithMargins := True;
+    mGrowing.Parent := mStack;
+    mLast := TPanel.Create(mHost);
+    // Top zählt nicht: Reihenfolge des Einhängens.
+    mLast.Top := 0;
+    mLast.Height := 20;
+    mLast.AlignWithMargins := True;
+    mLast.Parent := mStack;
+    mGrowing.HandleNeeded;
+    mStack.Arrange;
+    Assert.IsTrue(mGrowing.Height > 0, 'Höhe aus der Breite');
+    Assert.AreEqual(mGrowing.Wanted, mGrowing.Height);
+    AssertApart(mFirst, mGrowing, 'erstes über dem wachsenden');
+    AssertApart(mGrowing, mLast, 'wachsendes über dem letzten');
+    // Später höher (z. B. Bild geladen): Die Fläche richtet über RequestAlign neu aus.
+    mGrowing.Grow(50);
+    Assert.AreEqual(mGrowing.Wanted, mGrowing.Height, 'später höher');
+    AssertApart(mGrowing, mLast, 'nach der späteren Änderung');
+    Assert.IsTrue(mStack.Height >= mLast.Top + mLast.Height, 'Fläche wächst mit');
+    // Breiteres Fenster: mehr Höhe, nichts überlappt.
+    mWidth := mGrowing.Width;
+    mHost.Width := mHost.Width + 200;
+    mStack.Arrange;
+    Assert.IsTrue(mGrowing.Width > mWidth, 'volle Breite');
+    Assert.AreEqual(mGrowing.Wanted, mGrowing.Height, 'neue Breite, neue Höhe');
+    AssertApart(mGrowing, mLast, 'nach neuer Breite');
+  finally
     mHost.Free;
   end;
 end;

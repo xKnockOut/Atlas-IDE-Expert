@@ -55,7 +55,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   System.SysUtils;
 
 { TAtlasBlockCommentTests }

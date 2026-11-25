@@ -41,6 +41,9 @@ type
     class function Debugging: Boolean; static;
     /// <summary>Geöffnetes Projekt AFileName; nil, wenn es nicht offen ist.</summary>
     class function FindProject(const AFileName: string): IOTAProject; static;
+    /// <summary>Projekt AFileName, bei Bedarf zur offenen Projektgruppe hinzu geöffnet (#2895); nil, wenn die Datei
+    /// fehlt oder die IDE sie nicht öffnet.</summary>
+    class function OpenProject(const AFileName: string): IOTAProject; static;
     /// <summary>Aktives Projekt, nur gespeicherte .dproj (die lokale Datei hängt am Pfad); sonst nil.</summary>
     class function ActiveProject: IOTAProject; static;
     /// <summary>AProject zum aktiven Projekt der Gruppe machen („Start“ startet das aktive Projekt).</summary>
@@ -256,6 +259,25 @@ begin
   Result := False;
 end;
 
+class function TAtlasIdeStartOptions.OpenProject(const AFileName: string): IOTAProject;
+var
+  mActions: IOTAActionServices;
+begin
+  Result := FindProject(AFileName);
+  if (Result <> nil) or (AFileName = '') or not FileExists(AFileName) or
+    not Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  begin
+    Exit;
+  end;
+  // Arbeit der IDE (Projekt laden), zählt nicht als Zeit von Atlas.
+  TAtlasGuard.RunIde(
+    procedure
+    begin
+      mActions.OpenProject(AFileName, False);
+    end);
+  Result := FindProject(AFileName);
+end;
+
 /// <summary>Projekt für den Lauf: offen, aktiv, ein abgebrochener Lauf zurückgestellt; False mit AReason.</summary>
 function ProjectForRun(const AFileName: string; out AProject: IOTAProject; out AReason: string): Boolean;
 begin
@@ -325,7 +347,14 @@ begin
   end
   else
   begin
-    Result := Execute(ADebugger, AReason);
+    try
+      Result := Execute(ADebugger, AReason);
+    except
+      // Bricht der Start mit einer Exception ab (EAbort, wenn eine Prüfung vor dem Start ablehnt), gelten die
+      // vorübergehenden Parameter nicht weiter (#2895).
+      EndTemporary(mProject.FileName, mChanged);
+      raise;
+    end;
   end;
   if not Result then
   begin

@@ -7,8 +7,8 @@ interface
 
 uses
   Atlas.Core.Results.Model,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.Core.Results.DataFlow;
 
 type

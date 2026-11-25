@@ -172,6 +172,21 @@ uses
   Atlas.UI.Welcome.Strings,
   Atlas.Vcl.Theme.Service;
 
+const
+  /// <summary>Rand der Leiste über und unter den Knöpfen zusammen (logische Pixel bei 96 dpi).</summary>
+  cStripBorder = 8;
+  /// <summary>Radius der Ecken der Knöpfe.</summary>
+  cPartRadius = 6;
+  /// <summary>Abstand der Knöpfe zum Rand der Leiste.</summary>
+  cStripMargin = 4;
+  /// <summary>Punkte des Griffs (⠿): Spalten und Zeilen, je ein Punkt Abstand dazwischen.</summary>
+  cGripColumns = 2;
+  cGripRows = 3;
+  /// <summary>Größe des Symbols für die Breite und das Auge.</summary>
+  cToolSymbolSize = 12;
+  /// <summary>Das Auge ist so hoch wie ein Drittel (nach oben und unten) seiner Breite.</summary>
+  cEyeHeightDivisor = 3;
+
 { TAtlasArrangePart }
 
 class function TAtlasArrangePart.Create(AKind: TAtlasArrangePartKind; const AValue, ACaption, AHint: string;
@@ -193,7 +208,7 @@ begin
   FHot := -1;
   FPressed := -1;
   ShowHint := True;
-  Height := ScaleValue(cPartHeight) + ScaleValue(8);
+  Height := ScaleValue(cPartHeight) + ScaleValue(cStripBorder);
 end;
 
 procedure TAtlasArrangeStrip.Paint;
@@ -209,7 +224,7 @@ begin
   mLineColor := TAtlasUiTheme.SystemColor(Self, clBtnShadow);
   mAccentColor := TAtlasUiTheme.SystemColor(Self, clHighlight);
   mAccentText := TAtlasUiTheme.SystemColor(Self, clHighlightText);
-  mRadius := ScaleValue(6);
+  mRadius := ScaleValue(cPartRadius);
   Canvas.Font := Font;
   for mIndex := 0 to High(FParts) do
   begin
@@ -346,7 +361,7 @@ begin
   mLine := ScaleValue(cPartHeight);
   mPad := ScaleValue(cPartPadding);
   mGap := ScaleValue(cPartGap);
-  mMargin := ScaleValue(4);
+  mMargin := ScaleValue(cStripMargin);
   X := mMargin + mGap;
   Y := mMargin;
   for mIndex := 0 to High(FParts) do
@@ -432,7 +447,7 @@ function TAtlasArrangeStrip.PreferredHeight: Integer;
 var
   mPart: TAtlasArrangePart;
 begin
-  Result := ScaleValue(cPartHeight + 8);
+  Result := ScaleValue(cPartHeight + cStripBorder);
   if not HandleAllocated then
   begin
     Exit;
@@ -440,9 +455,9 @@ begin
   Measure;
   for mPart in FParts do
   begin
-    if mPart.Rect.Bottom + ScaleValue(4) > Result then
+    if mPart.Rect.Bottom + ScaleValue(cStripMargin) > Result then
     begin
-      Result := mPart.Rect.Bottom + ScaleValue(4);
+      Result := mPart.Rect.Bottom + ScaleValue(cStripMargin);
     end;
   end;
 end;
@@ -469,8 +484,8 @@ begin
   Canvas.FillRect(ClientRect);
   // Sechs Punkte wie ein Griff (⠿).
   mSize := ScaleValue(2);
-  mLeft := (ClientWidth - 3 * mSize) div 2;
-  mTop := (ClientHeight - 5 * mSize) div 2;
+  mLeft := (ClientWidth - (2 * cGripColumns - 1) * mSize) div 2;
+  mTop := (ClientHeight - (2 * cGripRows - 1) * mSize) div 2;
   if Focused then
   begin
     Canvas.Brush.Color := TAtlasUiTheme.SystemColor(Self, clHighlight);
@@ -479,9 +494,9 @@ begin
   begin
     Canvas.Brush.Color := TAtlasUiTheme.SystemColor(Self, clGrayText);
   end;
-  for mRow := 0 to 2 do
+  for mRow := 0 to cGripRows - 1 do
   begin
-    for mColumn := 0 to 1 do
+    for mColumn := 0 to cGripColumns - 1 do
     begin
       Canvas.FillRect(TRect.Create(mLeft + mColumn * 2 * mSize, mTop + mRow * 2 * mSize,
         mLeft + mColumn * 2 * mSize + mSize, mTop + mRow * 2 * mSize + mSize));
@@ -632,7 +647,7 @@ begin
   Canvas.Brush.Color := TAtlasWelcomeCanvas.BackgroundOf(Self);
   Canvas.FillRect(ClientRect);
   mHalf := ClientWidth div 2;
-  mSize := ScaleValue(12);
+  mSize := ScaleValue(cToolSymbolSize);
   // Breite: ein bzw. zwei Rechtecke nebeneinander; gefüllt, was der Bereich gerade belegt.
   if FHot = TAtlasWelcomeTool.Width then
   begin
@@ -671,7 +686,8 @@ begin
   Canvas.Brush.Style := bsClear;
   mMid := mHalf + mHalf div 2;
   mTop := ClientHeight div 2;
-  Canvas.Ellipse(mMid - mSize div 2, mTop - mSize div 3, mMid + mSize div 2, mTop + mSize div 3);
+  Canvas.Ellipse(mMid - mSize div 2, mTop - mSize div cEyeHeightDivisor, mMid + mSize div 2,
+    mTop + mSize div cEyeHeightDivisor);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := mColor_;
   Canvas.Ellipse(mMid - ScaleValue(2), mTop - ScaleValue(2), mMid + ScaleValue(2), mTop + ScaleValue(2));

@@ -31,7 +31,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Graphics,
   Atlas.UI.Strings,
-  Atlas.Core.Diagnostics.Processes,
+  Atlas.Plugin.Diagnostics.Processes,
   Atlas.Vcl.Forms.Dialog;
 
 type

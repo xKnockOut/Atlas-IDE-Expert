@@ -82,7 +82,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Colors,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   System.Generics.Collections;
 
 function Problem(ALine, ACharacter: Integer; const AMessage: string; const ASource: string;

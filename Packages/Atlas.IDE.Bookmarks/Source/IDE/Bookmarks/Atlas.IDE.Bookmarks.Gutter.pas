@@ -51,6 +51,15 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Foundation.Settings;
 
+const
+  // Band: drei Viertel der Symbolbreite, mindestens 4 Pixel; Kerbe ein Viertel der Höhe.
+  cBandShare = 3;
+  cBandShareOf = 4;
+  cMinBandWidth = 4;
+  cNotchShareOf = 4;
+  // Anteil der Warnfarbe in der Füllung (Rest Hintergrund).
+  cBandFillMix = 0.85;
+
 { TAtlasIdeBookmarksGutter }
 
 function TAtlasIdeBookmarksGutter.Feature: TAtlasFeature;
@@ -92,14 +101,15 @@ end;
 procedure TAtlasIdeBookmarksGutter.PaintIcon(ACanvas: TCanvas; const AIcon: TRect; const AColors: TAtlasColors;
   ABack: TAtlasColor);
 var
-  mNotch, mLeft, mRight: Integer;
+  mNotch, mLeft, mRight, mWidth: Integer;
 begin
   // Lesezeichenband: schmales Rechteck mit Kerbe unten, in der Warnfarbe.
-  mLeft := AIcon.Left + Max(0, (AIcon.Width - Max(4, (AIcon.Width * 3) div 4)) div 2);
-  mRight := mLeft + Max(4, (AIcon.Width * 3) div 4);
-  mNotch := Max(2, AIcon.Height div 4);
+  mWidth := Max(cMinBandWidth, (AIcon.Width * cBandShare) div cBandShareOf);
+  mLeft := AIcon.Left + Max(0, (AIcon.Width - mWidth) div 2);
+  mRight := mLeft + mWidth;
+  mNotch := Max(2, AIcon.Height div cNotchShareOf);
   ACanvas.Brush.Style := bsSolid;
-  ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.85));
+  ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, cBandFillMix));
   ACanvas.Pen.Color := TColor(AColors.Warn);
   ACanvas.Pen.Width := 1;
   ACanvas.Polygon([Point(mLeft, AIcon.Top), Point(mRight, AIcon.Top), Point(mRight, AIcon.Bottom),

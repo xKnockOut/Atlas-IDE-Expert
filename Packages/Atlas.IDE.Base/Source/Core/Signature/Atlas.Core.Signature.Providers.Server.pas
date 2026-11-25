@@ -27,7 +27,7 @@ uses
   System.JSON,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Diagnostics.ThreadList;
+  Atlas.Plugin.Diagnostics.ThreadList;
 
 type
   TAtlasSignatureCallback = Atlas.Core.Signature.Contract.TAtlasSignatureCallback;
@@ -78,10 +78,10 @@ uses
   System.Generics.Collections,
   System.Diagnostics,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.TimeLimit,
+  Atlas.Plugin.Diagnostics.TimeLimit,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}

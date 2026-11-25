@@ -18,7 +18,7 @@ uses
   System.SyncObjs,
   Atlas.Core.Completion.Contract,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.ThreadList;
+  Atlas.Plugin.Diagnostics.ThreadList;
 
 type
   /// <summary>True, sobald der Query abgebrochen oder durch einen neuen ersetzt ist.</summary>

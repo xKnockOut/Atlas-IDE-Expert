@@ -49,7 +49,7 @@ uses
   Atlas.Text.DebugDisplay,
   Atlas.Core.Hover.DebugValue,
   Atlas.Plugin.Editor.Word,
-  Atlas.Core.Lsp.IdeMembers,
+  Atlas.Plugin.Lsp.IdeMembers,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Hover.DebugValue;

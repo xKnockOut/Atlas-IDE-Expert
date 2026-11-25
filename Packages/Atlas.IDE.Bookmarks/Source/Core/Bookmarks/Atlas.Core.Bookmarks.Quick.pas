@@ -56,7 +56,7 @@ type
 
   TAtlasQuickBookmarks = class
   public const
-    cMaxNumber = 9;
+    cMaxNumber = cMaxBookmarkNumber;
     /// <summary>Zweite Teile der Faltungsakkorde nach Strg+Umschalt+K in der Standard-Tastaturbelegung.</summary>
     cFoldLetters = 'ACEGMNOPRTU';
     cMinColumnWidth = 10;
@@ -131,6 +131,11 @@ uses
 const
   cKeyMask = $00FF;
   cModifierMask = $FF00;
+  // Tasten darunter sind ASCII-Zeichen (Buchstaben der Faltungsakkorde).
+  cFirstNonAscii = $80;
+  // Breite der Spalte: vier Fünftel der Zeilenhöhe.
+  cColumnShare = 4;
+  cColumnShareOf = 5;
   // Umschalttasten selbst (VK_SHIFT, VK_CONTROL, VK_MENU, linke/rechte Varianten): Der Nutzer hält sie noch.
   cModifierKeys: array[0..8] of Word = ($10, $11, $12, $A0, $A1, $A2, $A3, $A4, $A5);
 
@@ -521,7 +526,7 @@ begin
       Result := TAtlasChordAction.Wait;
     end;
   end
-  else if not mLate and (AKey < $80) and (Pos(Char(AKey), cFoldLetters) > 0) then
+  else if not mLate and (AKey < cFirstNonAscii) and (Pos(Char(AKey), cFoldLetters) > 0) then
   begin
     Result := TAtlasChordAction.PassOn;
   end
@@ -534,7 +539,7 @@ end;
 
 class function TAtlasQuickBookmarks.ColumnWidth(ALineHeight: Integer): Integer;
 begin
-  Result := (ALineHeight * 4) div 5;
+  Result := (ALineHeight * cColumnShare) div cColumnShareOf;
   if Result < cMinColumnWidth then
   begin
     Result := cMinColumnWidth;

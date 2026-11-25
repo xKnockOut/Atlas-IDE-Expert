@@ -86,8 +86,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Commands.ShortcutTips,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.UI.Notifications.Window,
   Atlas.Vcl.Theme.Service;
 

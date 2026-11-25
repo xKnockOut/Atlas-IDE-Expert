@@ -127,6 +127,10 @@ uses
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Vcl.Theme.Service;
 
+const
+  /// <summary>Schmaler bricht der Text eines Eintrags nicht um (logische Pixel bei 96 dpi).</summary>
+  cMinEntryWidth = 120;
+
 type
   /// <summary>Legt die Steuerelemente der Karte an: Überschriften, Zeilen mit Schalter und „Ausprobieren“, den
   /// Knopf zum Schließen. Schreibt in die Felder der Karte.</summary>
@@ -362,9 +366,9 @@ begin
   // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
   Arrange;
   Result := FContentHeight;
-  if Result < ScaleValue(40) then
+  if Result < ScaleValue(cMinBodyHeight) then
   begin
-    Result := ScaleValue(40);
+    Result := ScaleValue(cMinBodyHeight);
   end;
 end;
 
@@ -483,7 +487,7 @@ var
     if ARow.Text <> nil then
     begin
       // Breite zuerst: Das Label bricht danach um und passt seine Höhe an.
-      ARow.Text.Width := Max(mRight - mLeft, ScaleValue(120));
+      ARow.Text.Width := Max(mRight - mLeft, ScaleValue(cMinEntryWidth));
       // AutoSize neu setzen: Erst das misst den umbrochenen Text für die neue Breite.
       ARow.Text.AutoSize := False;
       ARow.Text.AutoSize := True;

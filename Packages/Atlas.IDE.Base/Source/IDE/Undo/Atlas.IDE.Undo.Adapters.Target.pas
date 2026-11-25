@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Forms.Changes,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,

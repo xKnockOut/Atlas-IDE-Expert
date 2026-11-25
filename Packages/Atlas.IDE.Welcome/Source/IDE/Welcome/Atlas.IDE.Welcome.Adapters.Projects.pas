@@ -28,7 +28,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Projects,
   Atlas.IDE.Projects.Summaries,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract,
   Atlas.IDE.Projects.Contract;
 

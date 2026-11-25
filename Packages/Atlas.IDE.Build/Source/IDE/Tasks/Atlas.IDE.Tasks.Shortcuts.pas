@@ -11,8 +11,8 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Tasks.Contract,
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Tasks.Projects;

@@ -116,7 +116,7 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Rules.OwnershipPlan,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,

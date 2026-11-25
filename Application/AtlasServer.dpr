@@ -50,6 +50,7 @@ uses
   Adapters.Mcp.Extract in 'Source\Adapters\Adapters.Mcp.Extract.pas',
   Adapters.Mcp.Formatting in 'Source\Adapters\Adapters.Mcp.Formatting.pas',
   Adapters.Mcp.CompilerFixes in 'Source\Adapters\Adapters.Mcp.CompilerFixes.pas',
+  Adapters.Mcp.BulkFix in 'Source\Adapters\Adapters.Mcp.BulkFix.pas',
   Shell.Composition.Configuration in 'Source\Shell\Shell.Composition.Configuration.pas',
   Shell.Composition.FileChanges in 'Source\Shell\Shell.Composition.FileChanges.pas',
   Shell.Composition.Sources in 'Source\Shell\Shell.Composition.Sources.pas',

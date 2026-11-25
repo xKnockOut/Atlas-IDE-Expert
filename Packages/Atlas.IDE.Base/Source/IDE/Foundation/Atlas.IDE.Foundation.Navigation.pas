@@ -10,7 +10,7 @@ interface
 
 uses
   ToolsAPI,
-  Atlas.Core.Lsp.TextChanges;
+  Atlas.Plugin.Lsp.TextChanges;
 
 type
   TAtlasIdeNavigation = class
@@ -37,7 +37,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.IdeMembers,
+  Atlas.Plugin.Lsp.IdeMembers,
   Atlas.Core.Lsp.Session;
 
 /// <summary>Modul von AFileName; öffnet die Datei nur, wenn sie noch nicht offen ist. OpenFile öffnete sie sonst

@@ -85,6 +85,8 @@ uses
   Atlas.Text.Lines;
 
 const
+  // Die Marke steht im Kopf des Hooks: nur so viele Zeichen am Anfang durchsuchen.
+  cMarkerArea = 200;
   cLf = #10;
 
 /// <summary>Text ohne Zeilenumbrüche: Sie würden das Skript zerreißen.</summary>
@@ -151,7 +153,7 @@ end;
 
 class function TAtlasAffectedHook.IsOwn(const AContent: string): Boolean;
 begin
-  Result := Pos(cMarker, Copy(AContent, 1, 200)) > 0;
+  Result := Pos(cMarker, Copy(AContent, 1, cMarkerArea)) > 0;
 end;
 
 class function TAtlasAffectedHook.HookFile(const AHooksDir: string): string;

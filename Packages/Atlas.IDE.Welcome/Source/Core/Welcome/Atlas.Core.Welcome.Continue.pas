@@ -207,8 +207,12 @@ uses
   System.DateUtils,
   Atlas.Core.Editor.MethodToggle,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Text.Uris;
+
+const
+  /// <summary>Bis zu dieser Zahl Minuten zeigt das Alter Minuten, danach Stunden.</summary>
+  cMinutesPerHour = 60;
 
 { JSON }
 
@@ -589,7 +593,7 @@ begin
   begin
     Exit(TAtlasContinueAge.JustNow);
   end;
-  if mMinutes < 60 then
+  if mMinutes < cMinutesPerHour then
   begin
     AValue := Integer(mMinutes);
     Exit(TAtlasContinueAge.Minutes);

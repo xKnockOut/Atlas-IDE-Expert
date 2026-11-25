@@ -70,6 +70,10 @@ uses
   System.SysUtils,
   Atlas.Core.Editor.LineAnchor;
 
+const
+  /// <summary>Höchste Nummer eines nummerierten Lesezeichens (Strg+1…9).</summary>
+  cMaxBookmarkNumber = 9;
+
 type
   {$SCOPEDENUMS ON}
   /// <summary>Named: benanntes Lesezeichen (#622); Quick: schnelles Lesezeichen aus dem Zeilenrand oder per Taste
@@ -83,7 +87,7 @@ type
     /// <summary>Bei schnellen Lesezeichen leer, bis man ihnen einen Namen gibt.</summary>
     Name: string;
     Kind: TAtlasBookmarkKind;
-    /// <summary>1–9 bei nummerierten Lesezeichen, sonst 0.</summary>
+    /// <summary>1 bis cMaxBookmarkNumber bei nummerierten Lesezeichen, sonst 0.</summary>
     Number: Integer;
     /// <summary>Vollständiger Pfad der Datei.</summary>
     FileName: string;
@@ -211,9 +215,10 @@ uses
   System.JSON,
   System.Math,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Plugin.Files.DataFile,
   Atlas.Core.Marks.Ids,
+  Atlas.Text.Encoding,
   Atlas.Text.Json,
   Atlas.Text.Uris,
   Atlas.Text.Files,
@@ -605,12 +610,14 @@ end;
 function ReadText(const AFileName: string): string;
 var
   mBytes: TBytes;
+  mBomLength: Integer;
 begin
   mBytes := TFile.ReadAllBytes(AFileName);
   // Mit oder ohne BOM.
-  if (Length(mBytes) >= 3) and (mBytes[0] = $EF) and (mBytes[1] = $BB) and (mBytes[2] = $BF) then
+  if TTextEncodingProbe.BomOf(mBytes) = TTextBom.Utf8 then
   begin
-    Result := TEncoding.UTF8.GetString(mBytes, 3, Length(mBytes) - 3);
+    mBomLength := TTextEncodingProbe.BomLength(TTextBom.Utf8);
+    Result := TEncoding.UTF8.GetString(mBytes, mBomLength, Length(mBytes) - mBomLength);
   end
   else
   begin
@@ -670,7 +677,7 @@ begin
     AMark.Kind := TAtlasBookmarkKind.Quick;
   end;
   AMark.Number := TJsonRead.IntOr(AObject, 'number', 0);
-  if (AMark.Number < 1) or (AMark.Number > 9) then
+  if (AMark.Number < 1) or (AMark.Number > cMaxBookmarkNumber) then
   begin
     AMark.Number := 0;
   end;

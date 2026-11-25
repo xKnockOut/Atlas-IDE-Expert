@@ -3,12 +3,15 @@
 // Kern der Debug-Steuerung für KI-Assistenten (#1874), ohne IDE: Startparameter aus dem Auftrag (eigene Argumente
 // oder die des Projekts, mit test nur dieser DUnitX-Test), Rahmen des Aufrufstapels für den Vertrag
 // IAtlasDebugControl, Ort des Halts (erster Rahmen mit Quelltext) und Grund des Halts als festes Wort des Protokolls
-// (exception, breakpoint, step, pause). Die IDE-Schicht ist Atlas.IDE.Debug.Adapters.AssistantControl.
+// (exception, breakpoint, step, pause). Haltepunkte, die nicht greifen werden (#577), meldet ein Start durch den
+// Assistenten in der Antwort statt im Dialog (#2895): Warning macht aus einem Fund einen Eintrag des Vertrags. Die
+// IDE-Schicht ist Atlas.IDE.Debug.Adapters.AssistantControl.
 
 interface
 
 uses
   Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.BreakpointCheck,
   Atlas.Core.DebugControl.Types;
 
 type
@@ -20,6 +23,8 @@ type
   TAtlasDebugAssistantControl = class
   public const
     cStopNames: array[TAtlasDebugAssistantStop] of string = ('pause', 'step', 'breakpoint', 'exception');
+    cWarningReasons: array[TAtlasBreakpointReason] of string = ('noCode', 'inactive', 'noDebugInfo',
+      'notInProject', 'unreadable');
   public
     /// <summary>Startparameter: ALaunch.Arguments, sonst AExisting (die des Projekts); mit ALaunch.Test dazu
     /// --run:&lt;Test&gt; und --exitbehavior:Continue (sonst wartet das Testprogramm am Ende auf Enter).</summary>
@@ -33,6 +38,10 @@ type
       static;
     /// <summary>Grund des Halts aus den Beobachtungen der IDE-Schicht.</summary>
     class function StopOf(AException, ABreakpoint, AStepped: Boolean): TAtlasDebugAssistantStop; static;
+    /// <summary>Fund der Haltepunkt-Prüfung (Zeilen ab 0) als Eintrag des Vertrags (Zeilen ab 1, NextLine 0 ohne);
+    /// AText ist der Grund in der Sprache der Oberfläche.</summary>
+    class function Warning(const AProblem: TAtlasBreakpointProblem; const AText: string): TAtlasDebugControlWarning;
+      static;
   end;
 
 implementation
@@ -124,6 +133,20 @@ begin
     Exit(TAtlasDebugAssistantStop.Step);
   end;
   Result := TAtlasDebugAssistantStop.Pause;
+end;
+
+class function TAtlasDebugAssistantControl.Warning(const AProblem: TAtlasBreakpointProblem;
+  const AText: string): TAtlasDebugControlWarning;
+begin
+  Result := Default(TAtlasDebugControlWarning);
+  Result.FileName := AProblem.FileName;
+  Result.Line := AProblem.Line + 1;
+  Result.Reason := cWarningReasons[AProblem.Reason];
+  Result.Text := AText;
+  if AProblem.NextLine >= 0 then
+  begin
+    Result.NextLine := AProblem.NextLine + 1;
+  end;
 end;
 
 end.

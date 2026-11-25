@@ -115,7 +115,7 @@ uses
   System.Math,
   Atlas.Plugin.Files.TextDiff,
   Atlas.Core.Undo.LinePatch,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 { TAtlasUndoOptions }
 

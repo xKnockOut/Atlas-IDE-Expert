@@ -49,7 +49,7 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.Core.Hover.Contract.DebugValue,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,

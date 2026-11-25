@@ -47,6 +47,16 @@ type
     /// <summary>Höhe eines Hinweises mit zwei bzw. drei Zeilen.</summary>
     cNoteHeight = 36;
     cLongNoteHeight = 52;
+    /// <summary>Feldzeile (AddFieldRow): Höhe, Oberkante der Beschriftung, linke Kante des Felds.</summary>
+    cFieldRowHeight = 26;
+    cFieldCaptionTop = 5;
+    cFieldLeft = 90;
+    /// <summary>Höhe einer Zeile mit Knöpfen oder Kästchen nebeneinander.</summary>
+    cButtonRowHeight = 32;
+    /// <summary>Höhe einer Zeile mit einem einzeiligen Hinweis unter einem Feld oder einer Liste.</summary>
+    cStateRowHeight = 18;
+    /// <summary>Oberkante eines Kästchens bzw. einer Beschriftung in einer Zeile ohne Eingabefeld.</summary>
+    cCheckTop = 3;
   protected
     /// <summary>Besitzer der eigenen Steuerelemente; nil vor Build und nach Close.</summary>
     FPage: TAtlasVcsSettingsOwner;
@@ -181,14 +191,14 @@ function TAtlasVcsSettingsPart.AddFieldRowCaption(const ACaption: string; AContr
 var
   mCaption: TLabel;
 begin
-  Result := AddPanel(26);
+  Result := AddPanel(cFieldRowHeight);
   mCaption := TLabel.Create(FPage);
   mCaption.Parent := Result;
   mCaption.Caption := ACaption + ':';
   mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
+  mCaption.Top := mCaption.ScaleValue(cFieldCaptionTop);
   AControl.Parent := Result;
-  AControl.Left := AControl.ScaleValue(90);
+  AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := 1;
   AControl.Width := AControl.ScaleValue(AWidth);
 end;

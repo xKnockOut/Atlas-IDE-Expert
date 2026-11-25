@@ -218,12 +218,12 @@ var
   mResult: TReplayResult;
 begin
   mResult := TReplayPlayer.Run(SampleCase, TReplayPlace.Isolated, SilentLogger,
-    FakeServer(TJsonRpcErrorCode.cInternalError, 'ECrashTest: künstlich', mMethods), TReplayTransport.Factory);
+    FakeServer(TJsonRpcErrorCode.cInternalError, 'ECrashTest: künstlich', mMethods), TReplayTransport.Factory());
   Assert.AreEqual<TReplayOutcome>(TReplayOutcome.Reproduced, mResult.Outcome, mResult.Text);
   Assert.IsFalse(mResult.Original);
   Assert.AreEqual('initialize;initialized;textDocument/didOpen;textDocument/hover;shutdown;exit;', mMethods());
   mResult := TReplayPlayer.Run(SampleCase, TReplayPlace.Isolated, SilentLogger, FakeServer(0, '', mMethods),
-    TReplayTransport.Factory);
+    TReplayTransport.Factory());
   Assert.AreEqual<TReplayOutcome>(TReplayOutcome.NotReproduced, mResult.Outcome, mResult.Text);
 end;
 
@@ -233,7 +233,7 @@ var
   mResult: TReplayResult;
 begin
   mResult := TReplayPlayer.Run(TPath.Combine(TPath.GetTempPath, 'gibts-nicht-' + TGUID.NewGuid.ToString + '.json'),
-    SilentLogger, FakeServer(0, '', mMethods), TReplayTransport.Factory);
+    SilentLogger, FakeServer(0, '', mMethods), TReplayTransport.Factory());
   Assert.AreEqual(TReplayPlayer.cExitUnreadable, TReplayPlayer.ExitCodeOf(mResult));
 end;
 

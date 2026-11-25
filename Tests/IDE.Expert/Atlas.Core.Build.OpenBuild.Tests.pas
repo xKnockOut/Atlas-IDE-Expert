@@ -56,7 +56,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Notifications.Contract,
+  Atlas.Plugin.Notifications.Contract,
   Atlas.Core.Build.OpenBuildSettings,
   Atlas.Core.Build.OpenBuild;
 

@@ -77,6 +77,11 @@ const
   /// jeder Fassung von Winapi.Windows gleich typisiert).</summary>
   cJobKillOnClose = $00002000;
   cJobExtendedLimitClass = 9;
+  // So lange auf das Ende eines beendeten Prozesses warten.
+  cKillWaitMs = 1000;
+  cMsPerSecond = 1000;
+  // Größe eines Lesevorgangs aus der Ausgabe.
+  cChunkSize = 16384;
 
 function CreateJob(AAttributes: Pointer; AName: PWideChar): THandle; stdcall;
   external kernel32 name 'CreateJobObjectW';
@@ -273,7 +278,7 @@ begin
   begin
     TerminateProcess(AHandles.Process.hProcess, 1);
   end;
-  WaitForSingleObject(AHandles.Process.hProcess, 1000);
+  WaitForSingleObject(AHandles.Process.hProcess, cKillWaitMs);
 end;
 
 function DeadlineOf(ATimeoutSec: Integer): UInt64;
@@ -281,7 +286,7 @@ begin
   Result := High(UInt64);
   if ATimeoutSec > 0 then
   begin
-    Result := TThread.GetTickCount64 + UInt64(ATimeoutSec) * 1000;
+    Result := TThread.GetTickCount64 + UInt64(ATimeoutSec) * cMsPerSecond;
   end;
 end;
 
@@ -293,7 +298,7 @@ var
   mDeadline: UInt64;
   mLine: string;
 begin
-  SetLength(mChunk, 16384);
+  SetLength(mChunk, cChunkSize);
   Result := TAtlasTaskOutcome.Finished;
   mDeadline := DeadlineOf(ATimeoutSec);
   repeat

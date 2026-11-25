@@ -45,7 +45,7 @@ uses
   Vcl.Controls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Vcl.Controls.WndProcHook,
   Atlas.UI.Status.Window;
 
@@ -174,7 +174,7 @@ uses
   Atlas.ToolsApi.Theme.Style,
   Atlas.Plugin.Style.Symbol,
   Atlas.Plugin.Style.Signal,
-  Atlas.Core.Status.Signal,
+  Atlas.Plugin.Status.Signal,
   Atlas.Vcl.Images.Symbol,
   Atlas.ToolsApi.Theme.Symbol;
 

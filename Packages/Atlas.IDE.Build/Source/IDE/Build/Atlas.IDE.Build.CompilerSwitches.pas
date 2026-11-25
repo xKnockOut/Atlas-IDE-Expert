@@ -316,7 +316,7 @@ begin
       // Server langsam oder weg: kein Stand.
       on E: Exception do
       begin
-        if not E is ELspClientError then
+        if not (E is ELspClientError) then
         begin
           raise;
         end;

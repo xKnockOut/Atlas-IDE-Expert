@@ -366,9 +366,9 @@ end;
 class function TAtlasJenkinsProvider.ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError;
 begin
   case AStatus of
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result := TAtlasCiFetchError.Unauthorized;
-    404:
+    TAtlasHttpStatus.cNotFound:
       Result := TAtlasCiFetchError.NotFound;
   else
     Result := TAtlasCiFetchError.Server;
@@ -401,7 +401,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := ErrorOfStatus(mStatus);
   end
@@ -420,7 +420,7 @@ begin
     Exit;
   end;
   if ATransport.Get(TestReportApiUrl(AJob, ABuild.Number), Integer(mRest), mStatus, mText, AError) and
-    (mStatus = 200) then
+    (mStatus = TAtlasHttpStatus.cOk) then
   begin
     ParseTestReport(mText, ABuild);
   end;

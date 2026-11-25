@@ -26,6 +26,9 @@ type
     /// <summary>#2611: mcp.statistics, Vorgabe an.</summary>
     [Test]
     procedure ReadsMcpStatistics;
+    /// <summary>#2895: mcp.openProjects ask (Vorgabe), always, never; anderes gemeldet.</summary>
+    [Test]
+    procedure ReadsMcpOpenProjects;
     /// <summary>#1357: Fehler in eigenen Prompts (Name, Text, include, Platzhalter) werden gemeldet.</summary>
     [Test]
     procedure ChecksMcpCustomPrompts;
@@ -246,6 +249,23 @@ begin
   Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Include)));
   Assert.AreEqual('metrics', mSettings.McpCustomPrompts[0].Include[1]);
 end;
+procedure TConfigurationFeatureTests.ReadsMcpOpenProjects;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual('ask', mSettings.McpOpenProjects);
+  mSettings := Parse('{"mcp": {"openProjects": "always"}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('always', mSettings.McpOpenProjects);
+  mSettings := Parse('{"mcp": {"openProjects": "never"}}', mIssues);
+  Assert.AreEqual('never', mSettings.McpOpenProjects);
+  mSettings := Parse('{"mcp": {"openProjects": "sometimes"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'nur ask, always oder never');
+  Assert.AreEqual('ask', mSettings.McpOpenProjects, 'ungültiger Wert lässt die Vorgabe');
+end;
+
 procedure TConfigurationFeatureTests.ChecksMcpCustomPrompts;
 var
   mSettings: TServerSettings;

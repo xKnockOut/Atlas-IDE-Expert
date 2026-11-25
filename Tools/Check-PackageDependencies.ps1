@@ -467,7 +467,7 @@ $AllowedJsonParseLocal = @{
 # Kopien-Sperre für JSON schreiben: nach Form statt nach Namen, damit neue Namen derselben Kopie auffallen.
 # Erlaubte eigene Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $AllowedJsonWriteLocal = @{
-    'Atlas.Core.Lsp.Session.Json:TLspSessionJson.ProjectFolders' = 'baut Objekte mit uri und name, keine Liste von Strings'
+    'Atlas.Plugin.Lsp.Session.Json:TLspSessionJson.ProjectFolders' = 'baut Objekte mit uri und name, keine Liste von Strings'
 }
 
 # Kopien-Sperre für JSON lesen (Array -> Liste von Strings): nach Form wie beim Schreiben.
@@ -496,13 +496,13 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Welcome'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Notifications.MessageSink'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Plugin.Notifications.MessageSink'
         Allowed = @{}
     }
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Tracker'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Notifications.MessageSink'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Plugin.Notifications.MessageSink'
         Allowed = @{
             'Atlas.IDE.Tracker.IssuesServices:Report'                   = 'Methodendeklaration von TAtlasIssuesLink'
             'Atlas.IDE.Tracker.IssuesServices:TAtlasIssuesLink.Report'  = 'meldet nur, solange der Kontext lebt (Keep)'
@@ -512,7 +512,7 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Debugger'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Notifications.MessageSink'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Plugin.Notifications.MessageSink'
         Allowed = @{
             'Atlas.IDE.Debug.AsyncOrigin:TAtlasIdeDebugAsyncOrigin.Report'  = 'zeigt den Ursprung als Meldung oder in der Ergebnisliste'
             'Atlas.IDE.Debug.ReattachWait:TAtlasIdeReattachWaiter.Report'   = 'meldet einen gefundenen Prozess, keine Textzeile'

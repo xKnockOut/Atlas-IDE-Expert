@@ -106,7 +106,7 @@ implementation
 uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Vcl.Forms,
   DockForm,
   Atlas.Core.Signature.CallScanner,

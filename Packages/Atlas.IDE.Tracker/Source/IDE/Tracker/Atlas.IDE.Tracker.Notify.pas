@@ -158,9 +158,9 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Shutdown,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Tracker.NotifyPlan,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
@@ -168,7 +168,7 @@ uses
   Atlas.UI.Tracker.Notify,
   Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Diagnostics.UserIdle;
+  Atlas.Plugin.Diagnostics.UserIdle;
 
 { TAtlasIdeIssueNotify }
 
@@ -548,7 +548,7 @@ begin
   end;
   if TAtlasNotifyPlan.AsksLogin(Result.Job.Poll.Me, AJob.Provider.ProbeUrl(AJob.Target)) and
     mTransport.Get(AJob.Provider.ProbeUrl(AJob.Target), TAtlasTrackerNotify.cTimeoutMs, mStatus, mText,
-    mIgnored) and (mStatus = 200) then
+    mIgnored) and (mStatus = TAtlasHttpStatus.cOk) then
   begin
     Result.Job.Poll.Me := TAtlasTrackerNotify.LoginOf(mText);
   end;

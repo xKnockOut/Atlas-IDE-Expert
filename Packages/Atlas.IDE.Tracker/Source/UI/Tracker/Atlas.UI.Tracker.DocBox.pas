@@ -36,6 +36,8 @@ type
     procedure Paint; override;
     procedure Resize; override;
     procedure CreateWnd; override;
+    /// <summary>Andere DPI (zweiter Monitor): neu setzen, auch wenn die Breite gleich bleibt.</summary>
+    procedure ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -68,6 +70,10 @@ uses
   Atlas.Core.Documentation.Typeset,
   Atlas.Core.Tracker.Markdown;
 
+const
+  /// <summary>Höhe vor dem ersten Inhalt (96 dpi); danach richtet sie sich nach dem Text.</summary>
+  cInitialHeight = 16;
+
 function ToColor(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
@@ -83,7 +89,7 @@ begin
   FColors := TAtlasColors.Light;
   TabStop := True;
   DoubleBuffered := True;
-  Height := ScaleValue(16);
+  Height := ScaleValue(cInitialHeight);
 end;
 
 destructor TAtlasIssueDocBox.Destroy;
@@ -110,6 +116,13 @@ procedure TAtlasIssueDocBox.CreateWnd;
 begin
   inherited;
   // Messen braucht ein Fenster.
+  FBuiltWidth := -1;
+  Rebuild;
+end;
+
+procedure TAtlasIssueDocBox.ChangeScale(AM, AD: Integer; AIsDpiChange: Boolean);
+begin
+  inherited ChangeScale(AM, AD, AIsDpiChange);
   FBuiltWidth := -1;
   Rebuild;
 end;

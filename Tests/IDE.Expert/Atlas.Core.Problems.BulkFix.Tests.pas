@@ -35,7 +35,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Problems.BulkFix;

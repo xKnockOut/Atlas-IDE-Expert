@@ -13,7 +13,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasIdeContinueHost = class(TInterfacedObject, IAtlasContinueHost)

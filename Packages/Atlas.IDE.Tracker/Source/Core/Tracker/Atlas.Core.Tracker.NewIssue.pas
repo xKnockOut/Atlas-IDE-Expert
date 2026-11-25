@@ -261,9 +261,6 @@ uses
   System.StrUtils;
 
 const
-  /// <summary>Antworten auf das Anlegen: 200 (YouTrack) bzw. 201 Created (GitHub).</summary>
-  cHttpOk = 200;
-  cHttpCreated = 201;
   // Übliche Namen der Felder in YouTrack, auch auf Deutsch angelegte Projekte.
   cYouTrackTypeNames: array[0..1] of string = ('Type', 'Typ');
   cYouTrackPriorityNames: array[0..1] of string = ('Priority', 'Priorität');
@@ -775,12 +772,16 @@ begin
 end;
 
 function ShortCommit(const ACommit: string): string;
+const
+  // Längere Angaben sind Git-Hashs; SVN-Revisionen sind kürzer.
+  cMaxRevisionLength = 12;
+  cGitShortLength = 7;
 begin
   Result := Trim(ACommit);
   // Git-Hash auf 7 Zeichen; SVN-Revisionen sind kurz.
-  if Length(Result) > 12 then
+  if Length(Result) > cMaxRevisionLength then
   begin
-    Result := Copy(Result, 1, 7);
+    Result := Copy(Result, 1, cGitShortLength);
   end;
 end;
 
@@ -1356,7 +1357,8 @@ var
   mError: TAtlasCiFetchError;
 begin
   AText := '';
-  Result := (AUrl <> '') and ATransport.Get(AUrl, Remaining(AWatch), mStatus, AText, mError) and (mStatus = 200);
+  Result := (AUrl <> '') and ATransport.Get(AUrl, Remaining(AWatch), mStatus, AText, mError) and
+    (mStatus = TAtlasHttpStatus.cOk);
 end;
 
 class function TAtlasNewIssues.LoadFields(const AProvider: IAtlasTrackerProvider;
@@ -1407,11 +1409,11 @@ end;
 function OutcomeOfStatus(AStatus: Integer): TAtlasNewIssueOutcome;
 begin
   case AStatus of
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result := TAtlasNewIssueOutcome.Rejected;
-    404:
+    TAtlasHttpStatus.cNotFound:
       Result := TAtlasNewIssueOutcome.ProjectUnknown;
-    400, 422:
+    TAtlasHttpStatus.cBadRequest, TAtlasHttpStatus.cUnprocessable:
       Result := TAtlasNewIssueOutcome.Invalid;
   else
     Result := TAtlasNewIssueOutcome.ServerError;
@@ -1472,7 +1474,7 @@ begin
   begin
     AFailure := TAtlasNewIssueResult.Create(OutcomeOfError(mError));
   end
-  else if mStatus <> 200 then
+  else if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AFailure := Failure(mStatus, mText);
   end
@@ -1552,7 +1554,7 @@ function Answered(const AProvider: IAtlasTrackerProvider; const ACall: TAtlasTra
   const ASend: IAtlasCiSend; const ADraft: TAtlasNewIssueDraft; const AResponse: TAtlasCiResponse):
   TAtlasNewIssueResult;
 begin
-  if (AResponse.Status <> cHttpOk) and (AResponse.Status <> cHttpCreated) then
+  if (AResponse.Status <> TAtlasHttpStatus.cOk) and (AResponse.Status <> TAtlasHttpStatus.cCreated) then
   begin
     Exit(Failure(AResponse.Status, AResponse.Text));
   end;

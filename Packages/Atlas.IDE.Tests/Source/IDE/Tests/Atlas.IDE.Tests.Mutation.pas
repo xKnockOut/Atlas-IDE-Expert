@@ -116,7 +116,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Plugin.Files.TextFile,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.Core.Tests.MutationShadow,
   Atlas.Core.Tests.Mutants,
   Atlas.UI.Tests.Strings,

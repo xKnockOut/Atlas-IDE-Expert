@@ -45,7 +45,7 @@ implementation
 uses
   System.JSON,
   Atlas.UI.Editor.Strings,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.UI.Editor.ExtractMembers,
   Atlas.IDE.Editor.Rename,
   Atlas.Text.Json;

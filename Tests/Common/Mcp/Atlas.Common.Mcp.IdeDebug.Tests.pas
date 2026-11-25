@@ -46,6 +46,12 @@ type
     procedure ReportsRefusalOfThePlugin;
     [Test]
     procedure ExplainsWhenNobodyTakesTheRequest;
+    /// <summary>#2895: Liegt ein übernommener Auftrag ohne Antwort, nennt der Grund den früheren Auftrag statt
+    /// „abgeschaltet“.</summary>
+    [Test]
+    procedure ExplainsEarlierRequestWithoutAnswer;
+    [Test]
+    procedure AnsweredRequestIsNotPending;
   end;
 
 implementation
@@ -376,6 +382,32 @@ begin
       Inc(GNow, 100);
     end, Clock, 5000, 5000), mResult, mReason)));
   Assert.IsNotEmpty(mReason);
+  Assert.DoesNotContain(mReason, 'früheren');
+end;
+
+procedure TMcpIdeDebugTests.ExplainsEarlierRequestWithoutAnswer;
+var
+  mResult, mReason: string;
+begin
+  ForceDirectories(FInbox);
+  TFile.WriteAllText(TPath.Combine(FInbox, 'alt.taken'), '{"command":"debug_start"}', TEncoding.UTF8);
+  Assert.IsTrue(TMcpIdeDebug.HasUnanswered(FInbox));
+  Assert.AreEqual(Ord(TMcpIdeDebugOutcome.NotTaken), Ord(TMcpIdeDebug.Send(FInbox, '{"command":"debug_state"}',
+    TMcpIdeWaiting.Make(
+    procedure
+    begin
+      Inc(GNow, 100);
+    end, Clock, 5000, 5000), mResult, mReason)));
+  Assert.Contains(mReason, 'debug_continue');
+end;
+
+procedure TMcpIdeDebugTests.AnsweredRequestIsNotPending;
+begin
+  Assert.IsFalse(TMcpIdeDebug.HasUnanswered(FInbox), 'ohne Ordner');
+  ForceDirectories(FInbox);
+  TFile.WriteAllText(TPath.Combine(FInbox, 'alt.taken'), '{}', TEncoding.UTF8);
+  TFile.WriteAllText(TPath.Combine(FInbox, 'alt.result.json'), '{"ok":true}', TEncoding.UTF8);
+  Assert.IsFalse(TMcpIdeDebug.HasUnanswered(FInbox));
 end;
 
 initialization

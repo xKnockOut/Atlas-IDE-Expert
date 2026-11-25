@@ -26,7 +26,7 @@ uses
   Atlas.UI.Debug.MethodBreakpoints,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.BreakpointListMenu,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 
@@ -90,7 +90,7 @@ implementation
 uses
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Files.DataFile,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.MethodBreakpoints.Strings,

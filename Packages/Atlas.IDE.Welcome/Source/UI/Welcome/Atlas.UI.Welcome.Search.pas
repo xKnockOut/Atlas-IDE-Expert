@@ -113,6 +113,15 @@ uses
 const
   cVisibleRows = 18;
   cListWidth = 460;
+  // Maße der Liste in logischen Pixeln bei 96 dpi. Die Liste hängt nur über ParentWindow an der IDE und kennt
+  // deren dpi nicht, daher skaliert sie mit Screen.PixelsPerInch.
+  /// <summary>Einzug der Treffer unter ihrer Gruppe und Zugabe zur Breite des Titels.</summary>
+  cHitIndent = 12;
+  cCaptionSlack = 4;
+  /// <summary>Zeilenhöhe über der Texthöhe.</summary>
+  cRowSpacing = 8;
+  /// <summary>Wartezeit nach der letzten Eingabe, bis die Suche läuft (ms).</summary>
+  cSearchDelay = 150;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -203,7 +212,7 @@ begin
         begin
           mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSearchMore, [mRow.Index]);
         end;
-        Inc(mPart.Left, MulDiv(12, Screen.PixelsPerInch, 96));
+        Inc(mPart.Left, MulDiv(cHitIndent, Screen.PixelsPerInch, 96));
         DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
         Canvas.Font.Style := [];
       end;
@@ -227,9 +236,10 @@ begin
     Canvas.FillRect(ARect);
     Canvas.Brush.Style := bsClear;
   end;
-  Inc(APart.Left, MulDiv(12, Screen.PixelsPerInch, 96));
+  Inc(APart.Left, MulDiv(cHitIndent, Screen.PixelsPerInch, 96));
   Canvas.Font.Color := ToColor(FBox.FColors.Text);
-  mWidth := Min(Canvas.TextWidth(mHit.Caption) + MulDiv(4, Screen.PixelsPerInch, 96), APart.Width);
+  mWidth := Min(Canvas.TextWidth(mHit.Caption) + MulDiv(cCaptionSlack, Screen.PixelsPerInch, 96),
+    APart.Width);
   mCell := Rect(APart.Left, APart.Top, APart.Left + mWidth, APart.Bottom);
   DrawText(Canvas.Handle, PChar(mHit.Caption), -1, mCell, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
     DT_END_ELLIPSIS);
@@ -245,7 +255,7 @@ end;
 function TAtlasWelcomeSearchList.RowHeight: Integer;
 begin
   Canvas.Font := Font;
-  Result := Canvas.TextHeight('Wg') + MulDiv(8, Screen.PixelsPerInch, 96);
+  Result := Canvas.TextHeight('Wg') + MulDiv(cRowSpacing, Screen.PixelsPerInch, 96);
 end;
 
 function TAtlasWelcomeSearchList.RowAt(AY: Integer): Integer;
@@ -276,7 +286,7 @@ begin
   FEdit.OnKeyPress := EditKeyPress;
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := 150;
+  FTimer.Interval := cSearchDelay;
   FTimer.OnTimer := TimerTick;
   FSelected := -1;
 end;

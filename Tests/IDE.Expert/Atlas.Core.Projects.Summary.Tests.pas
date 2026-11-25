@@ -97,7 +97,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Plugin.Files.DataFile,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Core.Projects.Summary.Sections,
   Atlas.Text.Json,
   Atlas.Tests.TempFolder;

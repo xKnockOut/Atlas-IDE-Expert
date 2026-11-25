@@ -103,6 +103,10 @@ uses
   Atlas.Text.Json,
   Atlas.Text.Chars;
 
+const
+  /// <summary>Teile einer Versionsnummer (Major.Minor.Patch).</summary>
+  cVersionParts = 3;
+
 function Flag(AObject: TJSONObject; const AName: string): Boolean;
 begin
   // Auch "true" als Zeichenkette (von Hand gepflegte Datei).
@@ -275,7 +279,7 @@ end;
 function Padded(const AParts: TArray<string>): TArray<string>;
 begin
   Result := AParts;
-  while Length(Result) < 3 do
+  while Length(Result) < cVersionParts do
   begin
     Result := Result + ['0'];
   end;

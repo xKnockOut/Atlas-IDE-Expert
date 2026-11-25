@@ -9,7 +9,7 @@
 //   Einfache Zeilenumbrüche bleiben Umbrüche, wie in Issues bei GitHub und
 //   YouTrack.
 // - InlineRuns setzt einen Absatz in Doku-Läufe; den Fließtext liest
-//   Atlas.Core.Tracker.Markdown.Inline.
+//   Atlas.Core.Tracker.Markdown.Spans.
 // - Segments liefert Doku-Abschnitte und dazwischen die alleinstehenden
 //   Bilder, damit das Fenster sie als Vorschau zeigen kann. Codeblöcke tragen
 //   die Sprache (TAtlasDocRun.Target); Delphi und ohne Angabe werden
@@ -117,13 +117,27 @@ implementation
 uses
   System.StrUtils,
   System.Math,
-  Atlas.Core.Tracker.Markdown.Inline;
+  Atlas.Core.Tracker.Markdown.Spans;
 
 const
   cBullet = '•';
   cTaskOpen = '☐';
   cTaskDone = '☑';
   cQuoteMarker = '│';
+  /// <summary>Spalten eines Tabulators beim Zählen der Einrückung.</summary>
+  cTabWidth = 4;
+  /// <summary>Ab dieser Einrückung ist eine Zeile eingerückter Code; Blöcke dürfen weniger haben.</summary>
+  cCodeIndent = 4;
+  cMaxBlockIndent = cCodeIndent - 1;
+  /// <summary>Mindestzahl der Zeichen eines Codezauns und einer Trennlinie.</summary>
+  cMinFenceLength = 3;
+  cMinRuleMarks = 3;
+  cMaxHeadingLevel = 6;
+  /// <summary>Höchstens so viele Ziffern hat die Nummer eines Listenpunkts.</summary>
+  cMaxListDigits = 9;
+  /// <summary>Aufgabenkästchen „[ ]“ bzw. „[x]“.</summary>
+  cTaskBoxLength = 3;
+  cImageStart = '![';
 
 { TAtlasMarkdownLink }
 
@@ -148,7 +162,7 @@ begin
     end
     else if ALine[mIndex] = #9 then
     begin
-      Inc(Result, 4);
+      Inc(Result, cTabWidth);
     end
     else
     begin
@@ -171,12 +185,12 @@ begin
   Result := False;
   AFence := '';
   ALanguage := '';
-  if Indent(ALine) > 3 then
+  if Indent(ALine) > cMaxBlockIndent then
   begin
     Exit;
   end;
   mText := TrimLeft(ALine);
-  if Length(mText) < 3 then
+  if Length(mText) < cMinFenceLength then
   begin
     Exit;
   end;
@@ -190,7 +204,7 @@ begin
   begin
     Inc(mCount);
   end;
-  if mCount < 3 then
+  if mCount < cMinFenceLength then
   begin
     Exit;
   end;
@@ -211,7 +225,7 @@ var
   mText: string;
 begin
   mText := Trim(ALine);
-  Result := (Indent(ALine) <= 3) and (Length(mText) >= Length(AFence)) and
+  Result := (Indent(ALine) <= cMaxBlockIndent) and (Length(mText) >= Length(AFence)) and
     (mText = StringOfChar(AFence[1], Length(mText)));
 end;
 
@@ -222,7 +236,7 @@ begin
   Result := False;
   ALevel := 0;
   AText := '';
-  if Indent(ALine) > 3 then
+  if Indent(ALine) > cMaxBlockIndent then
   begin
     Exit;
   end;
@@ -231,7 +245,7 @@ begin
   begin
     Inc(ALevel);
   end;
-  if (ALevel < 1) or (ALevel > 6) then
+  if (ALevel < 1) or (ALevel > cMaxHeadingLevel) then
   begin
     Exit;
   end;
@@ -256,7 +270,7 @@ var
   mIndex, mCount: Integer;
 begin
   Result := False;
-  if Indent(ALine) > 3 then
+  if Indent(ALine) > cMaxBlockIndent then
   begin
     Exit;
   end;
@@ -282,7 +296,7 @@ begin
       Exit;
     end;
   end;
-  Result := mCount >= 3;
+  Result := mCount >= cMinRuleMarks;
 end;
 
 function QuoteOf(const ALine: string; out AText: string): Boolean;
@@ -291,7 +305,7 @@ var
 begin
   AText := '';
   mText := TrimLeft(ALine);
-  Result := (Indent(ALine) <= 3) and (mText <> '') and (mText[1] = '>');
+  Result := (Indent(ALine) <= cMaxBlockIndent) and (mText <> '') and (mText[1] = '>');
   if not Result then
   begin
     Exit;
@@ -323,7 +337,7 @@ begin
     Exit;
   end;
   mDigits := 0;
-  while (mDigits < Length(AText)) and (mDigits < 9) and CharInSet(AText[mDigits + 1], ['0'..'9']) do
+  while (mDigits < Length(AText)) and (mDigits < cMaxListDigits) and CharInSet(AText[mDigits + 1], ['0'..'9']) do
   begin
     Inc(mDigits);
   end;
@@ -351,7 +365,7 @@ begin
   end;
   if Result <> TAtlasMarkdownTask.None then
   begin
-    AText := Trim(Copy(AText, 4, MaxInt));
+    AText := Trim(Copy(AText, cTaskBoxLength + 1, MaxInt));
   end;
 end;
 
@@ -516,7 +530,7 @@ var
   mClose, mStop: Integer;
 begin
   mText := Trim(ALine);
-  if HtmlImageOf(mText, AAlt, AUrl) or not StartsStr('![', mText) then
+  if HtmlImageOf(mText, AAlt, AUrl) or not StartsStr(cImageStart, mText) then
   begin
     Exit(AUrl <> '');
   end;
@@ -531,7 +545,7 @@ begin
   begin
     Exit(False);
   end;
-  AAlt := Copy(mText, 3, mClose - 3);
+  AAlt := Copy(mText, Length(cImageStart) + 1, mClose - Length(cImageStart) - 1);
   AUrl := Trim(Copy(mText, mClose + 2, mStop - mClose - 2));
   // Titel nach der Adresse: ![a](bild.png "Titel").
   if Pos(' ', AUrl) > 0 then
@@ -812,15 +826,15 @@ function TBlockReader.TryIndentedCode: Boolean;
 var
   mCode: string;
 begin
-  Result := Indent(CurrentLine) >= 4;
+  Result := Indent(CurrentLine) >= cCodeIndent;
   if not Result then
   begin
     Exit;
   end;
   mCode := '';
-  while HasLine and (IsBlank(CurrentLine) or (Indent(CurrentLine) >= 4)) do
+  while HasLine and (IsBlank(CurrentLine) or (Indent(CurrentLine) >= cCodeIndent)) do
   begin
-    AppendLine(mCode, Copy(CurrentLine, 5, MaxInt));
+    AppendLine(mCode, Copy(CurrentLine, cCodeIndent + 1, MaxInt));
     Inc(Index);
   end;
   Add(NewBlock(TAtlasMarkdownBlockKind.Code, TrimRight(mCode)));
