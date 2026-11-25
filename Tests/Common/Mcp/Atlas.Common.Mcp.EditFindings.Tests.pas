@@ -47,10 +47,10 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.EditTools,
-  Atlas.Common.Mcp.EditFindings;
+  Atlas.Common.Mcp.EditFindings,
+  Atlas.Common.Findings.Contract;
 
 type
   /// <summary>Dateien im Speicher.</summary>

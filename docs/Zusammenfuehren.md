@@ -9,7 +9,7 @@ Viele Pull Requests laufen gleichzeitig gegen den Integrationsbranch `main-mergi
 | `CHANGELOG.md` | Eintrag als Fragment in `changelog.d/` (Aufbau in `changelog.d/README.md`). Der Release übernimmt die Fragmente. Die CI meldet neue Einträge direkt in `CHANGELOG.md` als Fehler. |
 | Vertragsversion `cAtlasCoreContractVersion` | Steigt höchstens einmal je Release. Steht sie noch auf dem Wert des letzten Release-Tags und ändert sich ein Vertrag von Base, auf diesen Wert + 1 setzen, sonst stehen lassen. `Tools/Check-ContractVersion.ps1` prüft das in der CI. Keine neue Zeile in der Versionsliste im Kommentar. |
 | Pakettabelle im README (Spalten Umfang und Units) | Neue Funktionen als Aufzählungspunkt unter „Features“ bzw. „Funktionen“ und auf der Funktionsseite in `docs/features`. Die Spalte Units erneuert `Tools/Set-Version.ps1` beim Release. |
-| Erzeugte Dateien von Hand | Nur über ihr Werkzeug ändern: `Tools/Update-ConfigDoc.ps1` (Einstellungsdoku, `*SchemaData.pas`, `ProfileData.pas`, `ScopeData.pas`), `Tools/Update-RuleCatalog.ps1` (Regeldoku, `Atlas.Common.Rules.Catalog.Data*.pas`, Regelzahlen im README). |
+| Erzeugte Dateien von Hand | Nur über ihr Werkzeug ändern: `Tools/Update-ConfigDoc.ps1` (Einstellungsdoku, `*SchemaData.pas`, `ProfileData.pas`, `ScopeData.pas`), `Tools/Update-RuleCatalog.ps1` (Regeldoku, `Rules.Catalog.Data*.pas`, Regelzahlen im README). |
 
 Erzeugte Dateien tragen in `.gitattributes` die Markierung `linguist-generated`; GitHub klappt sie im Diff zu.
 

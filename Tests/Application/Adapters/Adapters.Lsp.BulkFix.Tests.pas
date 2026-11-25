@@ -25,10 +25,10 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.CheckContext,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.BulkFix,
+  Rules.Builtin,
+  Rules.CheckContext,
+  Rules.Contract.Api,
+  Rules.Providers.BulkFix,
   Adapters.Lsp.BulkFix;
 
 const

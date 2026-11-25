@@ -4,7 +4,7 @@
 // gleichnamigen Regel, z. B.
 //   "rules": { "metric-cyclomatic-complexity": { "severity": "warning", "max": 10 } }
 // Fehlende oder ungültige Werte (keine ganze Zahl ab 1) nehmen die Vorgabe aus TMetricLimits.Default. Die
-// Regeln (Atlas.Common.Rules.Builtin.Metrics), Code Lens und Bericht lesen dieselben Grenzwerte.
+// Regeln (Rules.Builtin.Metrics), Code Lens und Bericht lesen dieselben Grenzwerte.
 
 interface
 

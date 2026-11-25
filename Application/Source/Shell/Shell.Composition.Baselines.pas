@@ -17,7 +17,7 @@ uses
   Atlas.Common.Lsp.FindingsPrompt,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Preprocessor;
 
@@ -85,9 +85,9 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Providers.DiskFileSystem,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.FindingPrompts,
-  Atlas.Common.Rules.Providers.BulkFix,
+  Rules.Contract.Api,
+  Rules.Providers.FindingPrompts,
+  Rules.Providers.BulkFix,
   Adapters.Lsp.FindingsPrompt,
   Adapters.Lsp.BulkFix,
   Atlas.Common.Pascal.SyntaxTree,

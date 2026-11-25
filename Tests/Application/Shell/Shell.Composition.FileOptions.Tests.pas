@@ -49,9 +49,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Builtin,
+  Rules.Contract,
+  Rules.Engine,
+  Rules.Builtin,
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Editing.SmartIndent;
 

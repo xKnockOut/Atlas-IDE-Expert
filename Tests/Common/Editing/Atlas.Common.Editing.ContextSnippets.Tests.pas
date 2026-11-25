@@ -47,7 +47,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
@@ -161,7 +160,7 @@ var
   mText, mCode: string;
   mCharacter: Integer;
   mContext: TSlashContext;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mSnippets := SnippetsAt(Format(cAnzeige, ['pro|']));
   // FRand hat schon eine Property.
@@ -172,7 +171,7 @@ begin
   // Eingesetzt mit den Vorgaben: Deklaration im private-Abschnitt, Rumpf mit Prüfung und Invalidate.
   mCode := Format(cAnzeige, ['pro|']);
   mContext := ContextAt(mCode, mCharacter);
-  mEdits := mSnippets[0].AdditionalEdits + [TRuleEdit.Create(TTextRange.Create(mContext.Line, 4, mContext.Line,
+  mEdits := mSnippets[0].AdditionalEdits + [TTextEdit.Create(TTextRange.Create(mContext.Line, 4, mContext.Line,
     mCharacter), TContextSnippets.ToPlain(mSnippets[0].Text))];
   mText := TTestEdits.Apply(mCode, mEdits);
   Assert.Contains(mText, '    property Farbe: TColor read FFarbe write SetFarbe;'#10'  private'#10 +
@@ -258,7 +257,7 @@ end;
 procedure TContextSnippetsTests.PropCommandWritesSameSetter;
 var
   mCode, mText: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // /prop und die Vorlage nutzen denselben Erzeuger (#51 „Abgrenzung zu Code-Aktionen“).
   mCode := Format(cAnzeige, ['/prop Breite: Integer']);

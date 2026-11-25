@@ -23,8 +23,8 @@ uses
   System.StrUtils,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.CatalogInfo,
+  Rules.Contract.Api,
+  Rules.Providers.CatalogInfo,
   Adapters.Lsp.RuleCatalog;
 
 { TLspRuleCatalogAdapterTests }

@@ -80,10 +80,10 @@ implementation
 uses
   System.IOUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.CheckContext,
-  Atlas.Common.Rules.Providers.DocumentChecks,
-  Atlas.Common.Rules.Providers.CatalogInfo,
+  Rules.Contract.Api,
+  Rules.CheckContext,
+  Rules.Providers.DocumentChecks,
+  Rules.Providers.CatalogInfo,
   Adapters.Lsp.RuleDiagnostics,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Text.LogMarks;

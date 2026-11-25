@@ -61,7 +61,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
@@ -116,7 +115,7 @@ const
     #10 +                                           // 19
     'end.';
 
-function Run(const AText: string; ALine: Integer; out AEdits: TArray<TRuleEdit>): Boolean;
+function Run(const AText: string; ALine: Integer; out AEdits: TArray<TTextEdit>): Boolean;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits);
 end;
@@ -128,7 +127,7 @@ end;
 
 function Expand(const ACommand: string): string;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run(WithCommand(ACommand), 15, mEdits), ACommand);
   Result := TTestEdits.Apply(WithCommand(ACommand), mEdits);
@@ -148,7 +147,7 @@ end;
 procedure TWrapCommandsTests.TryOnResultUsesExcept;
 var
   mText: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mText := StringReplace(WithCommand('/try'), 'Liste := TStringList.Create;', 'Result := TStringList.Create;', []);
   Assert.IsTrue(Run(mText, 15, mEdits));
@@ -160,7 +159,7 @@ procedure TWrapCommandsTests.TryFollowsFormatStyle;
 var
   mText, mWide: string;
   mStyle: TFormatStyle;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Datei mit vier Leerzeichen je Ebene.
   mWide := StringReplace(WithCommand('/try'), #10'  ', #10'    ', [rfReplaceAll]);
@@ -204,7 +203,7 @@ const
   cText = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  try'#10 +
     '    L := TList.Create;'#10'    /try'#10'    L.Clear;'#10'  finally'#10'    X;'#10'  end;'#10'end;'#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(Run(cText, 7, mEdits));
   Assert.AreEqual('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  try'#10 +
@@ -215,7 +214,7 @@ end;
 procedure TWrapCommandsTests.LockUsesMonitor;
 var
   mText: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mText := StringReplace(WithCommand('/lock'), 'FSperre: TCriticalSection;', 'FAnzahl: Integer;', []);
   Assert.IsTrue(Run(mText, 15, mEdits));
@@ -307,7 +306,7 @@ end;
 
 function ExpandCase(const ABranches: string): string;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mText := Format(cCaseUnit, [ABranches]);
@@ -346,7 +345,7 @@ end;
 
 procedure TWrapCommandsTests.CaseKeepsScopedLabels;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mReason: string;
   mText: string;
 begin
@@ -363,7 +362,7 @@ end;
 
 procedure TWrapCommandsTests.CaseWithSelection;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mReason: string;
   mText: string;
 begin

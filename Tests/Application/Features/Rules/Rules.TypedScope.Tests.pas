@@ -1,0 +1,234 @@
+﻿unit Rules.TypedScope.Tests;
+
+// Tests des gemeinsamen Rahmens der Regeln mit Ausdruckstypen (#1129): Text
+// ohne Zeilenumbrüche, sicherer Typ einer Variablen, unsichere Deklaration im
+// bedingten Zweig, Ausdruck ohne Klammern, Typbereich eines Laufs.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TTypedScopeTests = class
+  public
+    [Test]
+    procedure TextCollapsesWhitespace;
+    [Test]
+    procedure SureTypeOfVariable;
+    [Test]
+    procedure ConditionalDeclarationIsNotSure;
+    [Test]
+    procedure UnwrappedDropsParens;
+    [Test]
+    procedure RunHoldsScopeOfContext;
+    [Test]
+    procedure ExpressionRunKnowsDeclaredType;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  System.Generics.Collections,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Rules.Contract,
+  Atlas.Common.Semantics.NameResolver,
+  Rules.TypedScope,
+  Atlas.Common.Pascal.SyntaxNodes;
+
+const
+  cSource = 'unit Werte;'#10'interface'#10'implementation'#10'procedure Pruefen;'#10'var'#10 +
+    '  mZahl: Integer;'#10'{$IFDEF TEXT}'#10'  mWert: string;'#10'{$ELSE}'#10'  mWert: Integer;'#10'{$ENDIF}'#10 +
+    'begin'#10'  mZahl := (mZahl'#10'    + 1);'#10'  mZahl := ((mWert));'#10'end;'#10'end.';
+
+/// <summary>Der (ASkip+1)-te Knoten der Art AKind ab ANode in Vorordnung, dessen Name ANamed ist ('' = jeder);
+/// nil ohne.</summary>
+function Find(ANode: TSyntaxNode; AKind: TSyntaxKind; const ANamed: string; ASkip: Integer): TSyntaxNode;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mSkip, mIndex: Integer;
+begin
+  Result := nil;
+  mSkip := ASkip;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = AKind) and ((ANamed = '') or SameText(mNode.Name, ANamed)) then
+      begin
+        if mSkip = 0 then
+        begin
+          Exit(mNode);
+        end;
+        Dec(mSkip);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+function Context(ATree: TSyntaxTree): TRuleContext;
+begin
+  Result := Default(TRuleContext);
+  Result.Text := cSource;
+  Result.Tree := ATree;
+  Result.UnitName := 'Werte';
+  Result.FileName := 'C:\Projekt\Werte.pas';
+end;
+
+type
+  /// <summary>Macht den Typbereich eines Laufs für den Test sichtbar.</summary>
+  TTypedScopeRunProbe = class(TTypedScopeRun)
+  public
+    function Scope: TTypedScope;
+  end;
+
+function TTypedScopeRunProbe.Scope: TTypedScope;
+begin
+  Result := FScope;
+end;
+
+type
+  /// <summary>Macht den Typnamen eines Laufs mit Ausdruckstypen für den Test sichtbar.</summary>
+  TTypedExpressionRunProbe = class(TTypedExpressionRun)
+  public
+    function TypeOfNode(ANode: TSyntaxNode): string;
+  end;
+
+function TTypedExpressionRunProbe.TypeOfNode(ANode: TSyntaxNode): string;
+begin
+  Result := TypeNameOf(ANode);
+end;
+
+{ TTypedScopeTests }
+
+procedure TTypedScopeTests.TextCollapsesWhitespace;
+var
+  mTree: TSyntaxTree;
+  mScope: TTypedScope;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mScope := TTypedScope.Create(Context(mTree));
+    try
+      Assert.AreEqual('mZahl + 1', mScope.Text(TSyntaxNodes.Unparen(Find(mTree.Root, TSyntaxKind.ParenExpr, '', 0))));
+    finally
+      mScope.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TTypedScopeTests.SureTypeOfVariable;
+var
+  mTree: TSyntaxTree;
+  mScope: TTypedScope;
+  mSymbol, mType: TResolvedSymbol;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mScope := TTypedScope.Create(Context(mTree));
+    try
+      Assert.IsTrue(mScope.SureType(Find(mTree.Root, TSyntaxKind.Identifier, 'mZahl', 0), mSymbol, mType));
+      Assert.AreEqual('mZahl', mSymbol.Name);
+      Assert.AreEqual('Integer', mType.Name);
+    finally
+      mScope.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TTypedScopeTests.ConditionalDeclarationIsNotSure;
+var
+  mTree: TSyntaxTree;
+  mScope: TTypedScope;
+  mSymbol, mType: TResolvedSymbol;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mScope := TTypedScope.Create(Context(mTree));
+    try
+      // mWert ist je nach TEXT string oder Integer.
+      Assert.IsFalse(mScope.SureType(Find(mTree.Root, TSyntaxKind.Identifier, 'mWert', 0), mSymbol, mType));
+    finally
+      mScope.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TTypedScopeTests.UnwrappedDropsParens;
+var
+  mTree: TSyntaxTree;
+  mParen: TSyntaxNode;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    // ((mWert)): die äußere Klammer ist der zweite ParenExpr.
+    mParen := Find(mTree.Root, TSyntaxKind.ParenExpr, '', 1);
+    Assert.IsNotNull(mParen);
+    Assert.AreEqual(Ord(TSyntaxKind.Identifier), Ord(TSyntaxNodes.Unparen(mParen).Kind));
+    Assert.AreEqual('mWert', TSyntaxNodes.Unparen(mParen).Name);
+    Assert.IsNull(TSyntaxNodes.Unparen(nil));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TTypedScopeTests.RunHoldsScopeOfContext;
+var
+  mTree: TSyntaxTree;
+  mRun: TTypedScopeRunProbe;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mRun := TTypedScopeRunProbe.Create(Context(mTree), nil);
+    try
+      // Der Lauf legt den Typbereich der Unit an; Destroy gibt ihn frei (der Leckmonitor prüft das).
+      Assert.IsNotNull(mRun.Scope);
+      Assert.AreEqual('mZahl + 1', mRun.Scope.Text(TSyntaxNodes.Unparen(Find(mTree.Root, TSyntaxKind.ParenExpr, '', 0))));
+    finally
+      mRun.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TTypedScopeTests.ExpressionRunKnowsDeclaredType;
+var
+  mTree: TSyntaxTree;
+  mRun: TTypedExpressionRunProbe;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mRun := TTypedExpressionRunProbe.Create(Context(mTree), nil);
+    try
+      Assert.AreEqual('Integer', mRun.TypeOfNode(Find(mTree.Root, TSyntaxKind.Identifier, 'mZahl', 0)));
+    finally
+      mRun.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TTypedScopeTests);
+
+end.

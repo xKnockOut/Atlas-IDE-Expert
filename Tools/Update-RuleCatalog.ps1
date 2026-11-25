@@ -6,8 +6,8 @@
     Einzige Quelle ist Packages/Atlas.Common/Katalog/regelkatalog.json mit den
     Übersetzungen regelkatalog.<sprache>.json (#145). Daraus entstehen:
 
-    - Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.pas und die Teil-Units
-      Atlas.Common.Rules.Catalog.Data.<Sprache>.<Gruppe>.pas (je Regelgruppe, compiler je Stufe)
+    - Application/Source/Features/Rules/Rules.Catalog.Data.pas und die Teil-Units
+      Rules.Catalog.Data.<Sprache>.<Gruppe>.pas (je Regelgruppe, compiler je Stufe)
     - docs/Regeln.md und docs/en/Rules.md (#1458)
     - die Regelzahlen in README.md, README_DE.md und den Seiten Code-Analyse (docs/features)
 
@@ -41,8 +41,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $CatalogDir = Join-Path $Root 'Packages/Atlas.Common/Katalog'
-$SourceDir = Join-Path $Root 'Packages/Atlas.Common/Source'
-$UnitPath = Join-Path $SourceDir 'Rules/Atlas.Common.Rules.Catalog.Data.pas'
+$SourceDir = Join-Path $Root 'Application/Source/Features'
+$UnitPath = Join-Path $SourceDir 'Rules/Rules.Catalog.Data.pas'
 $DocPath = Join-Path $Root 'docs/Regeln.md'
 $DocPathEn = Join-Path $Root 'docs/en/Rules.md'
 $Utf8Bom = New-Object System.Text.UTF8Encoding($true)
@@ -259,12 +259,12 @@ foreach ($Language in $Overlays.Keys) {
 # Eingebettete Units. Je Katalog konstante Arrays mit einer JSON-Zeile je Element, zur Laufzeit mit #10 verbunden.
 # Ein einziger Ausdruck aus über 5000 mit + verketteten Literalen je Katalog lässt den Compiler
 # der IDE (32 Bit) aus dem Speicher laufen (F2046 „Zu wenig Arbeitsspeicher“). Die Regeln stehen deshalb in Teil-Units je
-# Gruppe der Einstellungsseite (#909), Atlas.Common.Rules.Catalog.Data.<Sprache>.<Gruppe>, die Gruppe compiler
+# Gruppe der Einstellungsseite (#909), Rules.Catalog.Data.<Sprache>.<Gruppe>, die Gruppe compiler
 # zusätzlich nach Stufe geteilt (CompilerSyntax, CompilerNames, CompilerTypes). So bleibt jede Unit unter der Grenze
-# von metric-unit-length (2000), und der Name sagt, welche Regeln sie enthält. Atlas.Common.Rules.Catalog.Data fügt
-# über Atlas.Common.Rules.Catalog.Data.<Sprache> die Teile in der Reihenfolge der Gruppen zusammen; innerhalb einer Gruppe gilt die Reihenfolge des Katalogs.
+# von metric-unit-length (2000), und der Name sagt, welche Regeln sie enthält. Rules.Catalog.Data fügt
+# über Rules.Catalog.Data.<Sprache> die Teile in der Reihenfolge der Gruppen zusammen; innerhalb einer Gruppe gilt die Reihenfolge des Katalogs.
 $PartLimit = 1900
-$PartPrefix = 'Atlas.Common.Rules.Catalog.Data.'
+$PartPrefix = 'Rules.Catalog.Data.'
 $CompilerLevelParts = [ordered]@{ 'A' = 'CompilerSyntax'; 'B' = 'CompilerNames'; 'T' = 'CompilerTypes' }
 
 function ConvertTo-DelphiLine([string] $Line) {
@@ -379,7 +379,7 @@ foreach ($Key in $Catalogs.Keys) {
     $PartConsts[$Key] = $Consts
 }
 
-# Je Sprache eine Unit Atlas.Common.Rules.Catalog.Data.<Sprache>, die ihre Teile zum JSON zusammenfügt; so bindet
+# Je Sprache eine Unit Rules.Catalog.Data.<Sprache>, die ihre Teile zum JSON zusammenfügt; so bindet
 # keine Unit mehr als 30 Units ein (metric-uses-count).
 function New-LanguageUnit([string] $Key, [string] $Source) {
     $Name = "$PartPrefix$Key"
@@ -401,7 +401,7 @@ foreach ($Key in $Catalogs.Keys) {
 }
 
 $Unit = New-Object System.Text.StringBuilder
-[void]$Unit.Append("unit Atlas.Common.Rules.Catalog.Data;`r`n`r`n")
+[void]$Unit.Append("unit Rules.Catalog.Data;`r`n`r`n")
 [void]$Unit.Append("// Erzeugt von Tools/Update-RuleCatalog.ps1 aus Katalog\regelkatalog*.json.`r`n")
 [void]$Unit.Append("// Nicht von Hand ändern. Je Sprache eine Unit $PartPrefix<Sprache>,`r`n// die Regeln je Gruppe in deren Teil-Units.`r`n`r`ninterface`r`n`r`n")
 [void]$Unit.Append("/// <summary>Englischer Grundkatalog als JSON.</summary>`r`nfunction RuleCatalogBaseJson: string;`r`n")
@@ -560,7 +560,7 @@ foreach ($Name in $PartUnits.Keys) {
 }
 # Teil-Units, die der Katalog nicht mehr braucht, und Teile, die im Package fehlen.
 foreach ($File in Get-ChildItem (Join-Path $SourceDir 'Rules') -Filter "$PartPrefix*.pas") {
-    if (($File.BaseName -match '^Atlas\.Common\.Rules\.Catalog\.Data\.[\w.]+$') -and -not $PartUnits.Contains($File.BaseName)) {
+    if (($File.BaseName -match '^Rules\.Catalog\.Data\.[\w.]+$') -and -not $PartUnits.Contains($File.BaseName)) {
         if ($Check) {
             $Problems.Add("$($File.Name) gehört nicht mehr zum Katalog; pwsh Tools/Update-RuleCatalog.ps1 ausführen")
         }
@@ -569,15 +569,15 @@ foreach ($File in Get-ChildItem (Join-Path $SourceDir 'Rules') -Filter "$PartPre
         }
     }
 }
-$PackageDir = Join-Path $Root 'Packages/Atlas.Common'
-$Dpk = Read-Text (Join-Path $PackageDir 'Atlas.Common.dpk')
-$Dproj = Read-Text (Join-Path $PackageDir 'Atlas.Common.dproj')
+$ProgramDir = Join-Path $Root 'Application'
+$Dpk = Read-Text (Join-Path $ProgramDir 'AtlasServer.dpr')
+$Dproj = Read-Text (Join-Path $ProgramDir 'AtlasServer.dproj')
 foreach ($Name in $PartUnits.Keys) {
-    if (-not $Dpk.Contains("$Name in 'Source\Rules\$Name.pas'")) {
-        $Problems.Add("$Name fehlt in Atlas.Common.dpk")
+    if (-not $Dpk.Contains("$Name in 'Source\Features\Rules\$Name.pas'")) {
+        $Problems.Add("$Name fehlt in AtlasServer.dpr")
     }
-    if (-not $Dproj.Contains("Source\Rules\$Name.pas")) {
-        $Problems.Add("$Name fehlt in Atlas.Common.dproj (DCCReference)")
+    if (-not $Dproj.Contains("Source\Features\Rules\$Name.pas")) {
+        $Problems.Add("$Name fehlt in AtlasServer.dproj (DCCReference)")
     }
 }
 Sync-File $DocPath $DocText

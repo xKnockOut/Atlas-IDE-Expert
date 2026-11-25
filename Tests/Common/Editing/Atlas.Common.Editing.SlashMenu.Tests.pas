@@ -62,7 +62,6 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
@@ -118,16 +117,16 @@ begin
   Result := TSlashSpot.Create(ALine, 0, AEndLine);
 end;
 
-function Key(const AEdit: TRuleEdit): Int64;
+function Key(const AEdit: TTextEdit): Int64;
 begin
   Result := Int64(AEdit.Range.StartPos.Line) * 100000 + AEdit.Range.StartPos.Character;
 end;
 
 /// <summary>Wendet AEdits (nicht überlappend) auf AText an.</summary>
-function Apply(const AText: string; AEdits: TArray<TRuleEdit>): string;
+function Apply(const AText: string; AEdits: TArray<TTextEdit>): string;
 var
   mLines: TArray<string>;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mOffsets: TArray<Integer>;
   mIndex, mStart, mStop: Integer;
 begin
@@ -162,7 +161,7 @@ end;
 function RunAt(const AText: string; const ASpot: TSlashSpot; const AName, AArguments: string;
   out AReason: string): string;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Result := '';
   if TSlashMenu.Run(TSlashCommandRegistry.Shared, AText, ASpot, TSlashMenuCall.Create(AName, AArguments,
@@ -367,7 +366,7 @@ end;
 procedure TSlashMenuTests.RunReportsReason;
 var
   mReason: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.AreEqual('', RunAt(cClassUnit, Spot(26), 'ctor', '', mReason));
   Assert.AreEqual('/ctor gilt nur in einer Klasse oder einer ihrer Methoden', mReason);
@@ -466,10 +465,10 @@ end;
 
 procedure TSlashMenuTests.MapEditsKeepsIndentAndLineBreak;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Gedachter Text: Zeile 1 = "  /x". Ersetzt wird nur "/x": Einrückung und Zeilenende bleiben stehen.
-  mEdits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(1, 2, 1, 4), 'Neu;')], 1, '  /x', #10);
+  mEdits := TSlashMenu.MapEdits([TTextEdit.Create(TTextRange.Create(1, 2, 1, 4), 'Neu;')], 1, '  /x', #10);
   Assert.AreEqual(1, Integer(Length(mEdits)));
   Assert.AreEqual(1, mEdits[0].Range.StartPos.Line);
   Assert.AreEqual(0, mEdits[0].Range.StartPos.Character);
@@ -477,13 +476,13 @@ begin
   Assert.AreEqual(0, mEdits[0].Range.EndPos.Character);
   Assert.AreEqual('  Neu;'#10, mEdits[0].NewText);
   // Zeile samt Zeilenende entfernt: entfällt; spätere Zeilen rücken eine Zeile nach oben.
-  mEdits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(1, 0, 2, 0), ''),
-    TRuleEdit.Create(TTextRange.Create(5, 3, 5, 3), 'X')], 1, '  /x', #10);
+  mEdits := TSlashMenu.MapEdits([TTextEdit.Create(TTextRange.Create(1, 0, 2, 0), ''),
+    TTextEdit.Create(TTextRange.Create(5, 3, 5, 3), 'X')], 1, '  /x', #10);
   Assert.AreEqual(1, Integer(Length(mEdits)));
   Assert.AreEqual(4, mEdits[0].Range.StartPos.Line);
   Assert.AreEqual(3, mEdits[0].Range.StartPos.Character);
   // Davor bleibt alles, wie es ist.
-  mEdits := TSlashMenu.MapEdits([TRuleEdit.Create(TTextRange.Create(0, 1, 0, 2), 'Y')], 1, '  /x', #10);
+  mEdits := TSlashMenu.MapEdits([TTextEdit.Create(TTextRange.Create(0, 1, 0, 2), 'Y')], 1, '  /x', #10);
   Assert.AreEqual(0, mEdits[0].Range.StartPos.Line);
   Assert.AreEqual(1, mEdits[0].Range.StartPos.Character);
   Assert.AreEqual('Y', mEdits[0].NewText);

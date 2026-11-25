@@ -42,7 +42,6 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Core.Designer.Undo,
-  Atlas.Core.Designer.UndoApply,
   Atlas.Core.Designer.UndoFlow.Tests;
 
 { TAtlasDesignerUndoFlowVclTests }

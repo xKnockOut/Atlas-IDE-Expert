@@ -10,7 +10,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Mcp.Contract.Conventions,
-  Atlas.Common.Rules.Contract.Api;
+  Rules.Contract.Api;
 
 type
   TMcpConventionsAdapter = class(TInterfacedObject, IMcpConventions)

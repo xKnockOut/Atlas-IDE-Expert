@@ -30,11 +30,11 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Rules.CodeActions,
+  Rules.CodeActions,
   Atlas.Common.Lsp.DfmPropertyRules,
-  Atlas.Common.CodeActions.Json;
+  Atlas.Common.CodeActions.Json,
+  Atlas.Common.Findings.Contract;
 
 const
   cUnitA = 'C:\P\A.pas';
@@ -48,7 +48,7 @@ begin
   Result := Default(TRuleFinding);
   Result.RuleId := ARuleId;
   Result.Range := TTextRange.Create(ALine, 0, ALine, 4);
-  mFix := TRuleFix.Create('Korrektur', [TRuleEdit.Create(TTextRange.Create(ALine, 4, ALine, 9), ANewText)]);
+  mFix := TRuleFix.Create('Korrektur', [TTextEdit.Create(TTextRange.Create(ALine, 4, ALine, 9), ANewText)]);
   mFix.FileName := AFileName;
   Result.Fixes := [mFix];
 end;

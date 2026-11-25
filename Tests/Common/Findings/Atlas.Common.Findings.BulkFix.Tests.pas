@@ -4,7 +4,7 @@
 // (Konfidenz, safeFix, Auswahl, andere Dateien), Reihenfolge und Konflikte
 // überlappender Korrekturen, mehrere Durchgänge, Verwerfen bei neuen
 // Syntaxfehlern, Zeilentabelle, Schreiben mit Zurücksetzen und Zusammenfassung.
-// Die Regelseite prüft Atlas.Common.Rules.BulkFixRules.Tests.
+// Die Regelseite prüft Rules.BulkFixRules.Tests.
 
 interface
 

@@ -81,7 +81,6 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
@@ -208,7 +207,7 @@ procedure TTypeCommandsTests.HelperForEnumSwitchedOff;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mHost := TRecordingSlashHost.Create;
@@ -261,7 +260,7 @@ procedure TTypeCommandsTests.HelperForSetSwitchedOff;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mText: string;
 begin
   mHost := TRecordingSlashHost.Create;
@@ -298,7 +297,7 @@ procedure TTypeCommandsTests.SingletonNamesExistingConstructor;
 var
   mHost: TRecordingSlashHost;
   mKeep: ISlashHost;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // #298: Der vorhandene Konstruktor bleibt; ein Hinweis nennt ihn.
   mHost := TRecordingSlashHost.Create;

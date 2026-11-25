@@ -97,9 +97,9 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
-  Atlas.Tests.TextEdits;
+  Rules.Checker,
+  Atlas.Tests.TextEdits,
+  Atlas.Common.Findings.Contract;
 
 function Lines(const ALines: array of string): string;
 begin

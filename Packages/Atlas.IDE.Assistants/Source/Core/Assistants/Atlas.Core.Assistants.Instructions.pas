@@ -2,7 +2,7 @@
 
 // Anweisungsdateien für KI-Assistenten (#2615), Kern des Plugins ohne VCL: Argumente und Antwort des Serverbefehls
 // atlas.server.assistantInstructions und der Vergleich alt/neu für die Meldungsansicht. Den Abschnitt erzeugt und
-// schreibt der Server (Atlas.Common.Rules.InstructionFiles); das Plugin baut keinen zweiten Text.
+// schreibt der Server (Rules.InstructionFiles); das Plugin baut keinen zweiten Text.
 
 interface
 

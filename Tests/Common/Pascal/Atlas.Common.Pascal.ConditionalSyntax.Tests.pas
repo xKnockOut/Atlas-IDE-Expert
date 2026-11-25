@@ -87,10 +87,10 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Rules.Checker,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Tests.LspRules;
+  Atlas.Tests.LspRules,
+  Atlas.Common.Findings.Contract;
 
 const
   cCrlf = #13#10;

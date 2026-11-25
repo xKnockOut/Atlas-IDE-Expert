@@ -50,7 +50,7 @@ uses
   Atlas.Common.Lsp.Baseline,
   Atlas.Common.Lsp.BulkFix,
   Atlas.Common.Lsp.CompilerBaseline,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Tests.TempFolder;
 

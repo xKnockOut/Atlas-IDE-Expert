@@ -4,7 +4,7 @@
 // Befehls atlas.server.ownership lesen, Ton und Beschriftung je Stelle, Filter
 // „nur Problemfälle“ (editor.ownershipHints.onlyProblems), Marke einer Zeile
 // samt Sprungziel und Tooltip, und wann neu zu fragen ist.
-// - Die Einstufung rechnet der Server (Atlas.Common.Rules.Ownership) mit den
+// - Die Einstufung rechnet der Server (Rules.Ownership) mit den
 //   Befunden der Leck-Regeln desselben Textes: Rot steht nur, wo eine Regel
 //   meldet.
 // - Ton: grün (Safe) bei Destroy, finally, Owner, besitzender Liste und

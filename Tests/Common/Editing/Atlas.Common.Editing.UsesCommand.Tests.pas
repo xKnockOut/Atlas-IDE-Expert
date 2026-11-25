@@ -28,7 +28,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.UsesCommand;
 
 const
@@ -61,7 +60,7 @@ end;
 
 procedure TUsesCommandTests.AddsToImplementationAndRemovesLine;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(TUsesCommand.AfterEnter(cUnitText, TTextPosition.Create(7, 0), nil, mEdits));
   Assert.AreEqual(2, Integer(Length(mEdits)));
@@ -77,7 +76,7 @@ procedure TUsesCommandTests.AddsToInterfaceWhenTypedThere;
 const
   cText = 'unit A;'#13#10'interface'#13#10'uses Classes;'#13#10'/uses Vcl.Forms'#13#10#13#10'implementation'#13#10'end.';
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(TUsesCommand.AfterEnter(cText, TTextPosition.Create(4, 0), nil, mEdits));
   Assert.AreEqual(', Vcl.Forms', mEdits[0].NewText);
@@ -86,7 +85,7 @@ end;
 
 procedure TUsesCommandTests.SkipsUsedUnitsButRemovesLine;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(TUsesCommand.AfterEnter(StringReplace(cUnitText, 'System.SysUtils, Vcl.Forms', 'Classes', []),
     TTextPosition.Create(7, 0), nil, mEdits));
@@ -99,7 +98,7 @@ end;
 
 procedure TUsesCommandTests.IgnoresOtherLines;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsFalse(TUsesCommand.AfterEnter(cUnitText, TTextPosition.Create(6, 0), nil, mEdits));
   Assert.IsFalse(TUsesCommand.AfterEnter(cUnitText, TTextPosition.Create(0, 0), nil, mEdits));

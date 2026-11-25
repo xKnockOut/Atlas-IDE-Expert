@@ -1,0 +1,377 @@
+﻿unit Rules.Builtin.Platform.Tests;
+
+// Tests der Regeln zur Laufzeitumgebung aus Rules.Builtin.Platform: je Regel
+// das Beispiel aus dem Issue, Varianten, stille Fälle, Korrekturen und
+// Einstellungen.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TPlatformRulesTests = class
+  public
+    [Test]
+    procedure UiCallIssueExample;
+    [Test]
+    procedure UiCallApplicationKinds;
+    [Test]
+    procedure UiCallVariants;
+    [Test]
+    procedure UiCallSilentCases;
+    [Test]
+    procedure UiCallOptions;
+    [Test]
+    procedure EncodingIssueExample;
+    [Test]
+    procedure EncodingVariants;
+    [Test]
+    procedure EncodingSilentCases;
+    [Test]
+    procedure EncodingOptions;
+    [Test]
+    procedure RegistryIssueExample;
+    [Test]
+    procedure RegistrySilentCases;
+    [Test]
+    procedure RegistryOptions;
+    [Test]
+    procedure ElapsedIssueExample;
+    [Test]
+    procedure ElapsedVariants;
+    [Test]
+    procedure ElapsedSilentCases;
+    [Test]
+    procedure ElapsedOptions;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Rules.Builtin.Platform,
+  Rules.Builtin.RtlTypePatterns,
+  Atlas.Common.Configuration.Parser,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Projects.Contract.Group,
+  Atlas.Common.Findings.Contract;
+
+/// <summary>Unit mit einer Routine Pruefen aus AVars und ABody.</summary>
+function Routine(const AVars, ABody: string): string;
+begin
+  Result := 'unit Werkzeug;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10 +
+    'procedure Pruefen;'#10 + AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+/// <summary>Unit eines Windows-Dienstes mit ServiceExecute aus ABody.</summary>
+function ServiceUnit(const ABody: string): string;
+begin
+  Result := 'unit DatenDienst;'#10'interface'#10'uses'#10'  Vcl.SvcMgr;'#10'type'#10 +
+    '  TDatenDienst = class(TService)'#10'    procedure ServiceExecute(Sender: TService);'#10'  end;'#10 +
+    'implementation'#10'uses'#10'  Vcl.Dialogs;'#10'procedure TDatenDienst.ServiceExecute(Sender: TService);'#10 +
+    'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+{ ui-call-in-console-or-service }
+
+{ TPlatformRulesTests }
+
+procedure TPlatformRulesTests.UiCallIssueExample;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TUiCallInConsoleOrServiceRule.Create,
+    ServiceUnit('  if not Verbinden then'#10'    ShowMessage(''Keine Verbindung'');'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('ShowMessage in einem Windows-Dienst blockiert unsichtbar; protokollieren statt anzeigen.',
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(14, mFindings[0].Range.StartPos.Line);
+  // Korrigiert: protokollieren.
+  TRuleAssert.Silent(TUiCallInConsoleOrServiceRule.Create,
+    ServiceUnit('  if not Verbinden then'#10'    LogMessage(''Keine Verbindung'');'));
+end;
+
+procedure TPlatformRulesTests.UiCallApplicationKinds;
+begin
+  // writeln-in-gui-app: auch ein Dienst hat keine Konsole.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ApplicationFindings(TWritelnInGuiAppRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'  Writeln(''x'');'#10'end;'#10'end.',
+    TApplicationKind.Service))));
+end;
+
+procedure TPlatformRulesTests.UiCallVariants;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Konsolenprogramm: MessageDlg im Ausdruck, qualifiziert, InputBox, Application.MessageBox.
+  mFindings := TRuleAssert.ApplicationFindings(TUiCallInConsoleOrServiceRule.Create, Routine('',
+    '  if MessageDlg(''Weiter?'', mtConfirmation, [mbYes, mbNo], 0) = mrYes then'#10'    Weiter;'#10 +
+    '  Vcl.Dialogs.ShowMessage(''x'');'#10'  Name := InputBox(''Name'', ''Name:'', '''');'#10 +
+    '  Application.MessageBox(''x'', ''y'', 0);'#10'  TDialogService.ShowMessage(''z'');'),
+    TApplicationKind.Console);
+  Assert.AreEqual(5, Integer(Length(mFindings)));
+  Assert.AreEqual('MessageDlg in einem Konsolenprogramm wartet auf einen Klick, wenn das Programm ' +
+    'unbeaufsichtigt läuft; protokollieren statt anzeigen.', mFindings[0].Message);
+  Assert.AreEqual('Vcl.Dialogs.ShowMessage', Copy(mFindings[1].Message, 1, Length('Vcl.Dialogs.ShowMessage')));
+  Assert.IsTrue(mFindings[3].Message.StartsWith('Application.MessageBox in'), mFindings[3].Message);
+  // DLL ohne Formulare: mittlere Konfidenz.
+  mFindings := TRuleAssert.ApplicationFindings(TUiCallInConsoleOrServiceRule.Create, Routine('',
+    '  ShowMessageFmt(''%d'', [1]);'), TApplicationKind.Library_);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('ShowMessageFmt in einer DLL ohne Formulare blockiert, wenn der Host keine Oberfläche hat ' +
+    '(Dienst, Webserver); protokollieren oder einen Fehler zurückgeben.', mFindings[0].Message);
+  // Eine Unit des Dienstprojekts ohne eigene TService-Klasse.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ApplicationFindings(TUiCallInConsoleOrServiceRule.Create,
+    Routine('', '  ShowMessage(''x'');'), TApplicationKind.Service))));
+  // Die .dpr eines Konsolenprogramms ohne Projekt.
+  TRuleAssert.Reports(TUiCallInConsoleOrServiceRule.Create, 'program Werkzeug;'#10'{$APPTYPE CONSOLE}'#10 +
+    'uses'#10'  Vcl.Dialogs;'#10'begin'#10'  ShowMessage(''Fertig'');'#10'end.');
+end;
+
+procedure TPlatformRulesTests.UiCallSilentCases;
+const
+  cBody = '  ShowMessage(''x'');';
+begin
+  // GUI-Programm und Unit ohne Projekt.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TUiCallInConsoleOrServiceRule.Create,
+    Routine('', cBody), TApplicationKind.Gui))));
+  TRuleAssert.Silent(TUiCallInConsoleOrServiceRule.Create, Routine('', cBody));
+  // Unit mit Formular in einem Konsolenprogramm.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TUiCallInConsoleOrServiceRule.Create,
+    'program Werkzeug;'#10'{$APPTYPE CONSOLE}'#10'begin'#10 + cBody + #10'end.', 'object frmHaupt: TfrmHaupt'#10'end'))));
+  // Unter IsConsole, eigene Routine ShowMessage, Methode eines anderen Objekts.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TUiCallInConsoleOrServiceRule.Create,
+    Routine('', '  if not IsConsole then'#10'    ShowMessage(''x'');'#10'  Log.ShowMessage(''y'');'#10 +
+    '  Fenster.MessageBox(''z'');'), TApplicationKind.Console))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TUiCallInConsoleOrServiceRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10'procedure ShowMessage(const S: string);'#10'begin'#10'end;'#10 +
+    'procedure P;'#10'begin'#10 + cBody + #10'end;'#10'end.', TApplicationKind.Console))));
+  // Package und DLL mit Formularen (Unknown).
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ApplicationFindings(TUiCallInConsoleOrServiceRule.Create,
+    Routine('', cBody), TApplicationKind.Package))));
+  TRuleAssert.Silent(TUiCallInConsoleOrServiceRule.Create, 'library L;'#10'uses'#10'  Vcl.Forms;'#10'begin'#10 +
+    cBody + #10'end.');
+end;
+
+procedure TPlatformRulesTests.UiCallOptions;
+var
+  mSource: string;
+begin
+  mSource := ServiceUnit('  ShowMessage(''x'');');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUiCallInConsoleOrServiceRule.Create, mSource, '',
+    'Dienst/DatenDienst.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUiCallInConsoleOrServiceRule.Create, mSource,
+    '{"rules": {"ui-call-in-console-or-service": "off"}}', 'Dienst/DatenDienst.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUiCallInConsoleOrServiceRule.Create, mSource,
+    '{"rules": {"ui-call-in-console-or-service": {"exclude": ["Dienst/*"]}}}', 'Dienst/DatenDienst.pas'))));
+end;
+
+{ load-without-encoding }
+
+procedure TPlatformRulesTests.EncodingIssueExample;
+var
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  mSource := Routine('var'#10'  Zeilen: TStringList;'#10, '  Zeilen.LoadFromFile(Pfad);');
+  mFindings := TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('LoadFromFile ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
+  Assert.AreEqual('TEncoding.UTF8 ergänzen', mFindings[0].Fixes[0].Title);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual(Routine('var'#10'  Zeilen: TStringList;'#10, '  Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);'), mFixed);
+  TRuleAssert.Silent(TLoadWithoutEncodingRule.Create, mFixed);
+end;
+
+procedure TPlatformRulesTests.EncodingVariants;
+var
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // SaveToFile, Memo.Lines, Query.SQL, TFile.ReadAllText; System.SysUtils fehlt im uses.
+  mSource := 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.IOUtils;'#10'procedure P;'#10 +
+    'var'#10'  Liste: TStrings;'#10'begin'#10'  Liste.SaveToFile(Pfad);'#10'  Memo1.Lines.LoadFromFile(Pfad);'#10 +
+    '  Abfrage.SQL.LoadFromStream(Strom);'#10'  Text := TFile.ReadAllText(Pfad);'#10'end;'#10'end.';
+  mFindings := TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, mSource);
+  Assert.AreEqual(4, Integer(Length(mFindings)));
+  Assert.AreEqual('SaveToFile ohne Kodierung schreibt mit der ANSI-Codepage; Umlaute gehen auf anderen Rechnern ' +
+    'verloren.', mFindings[0].Message);
+  Assert.AreEqual('TFile.ReadAllText ohne Kodierung liest Dateien ohne BOM mit der ANSI-Codepage.',
+    mFindings[3].Message);
+  mFixed := TTextChanges.Apply(mSource, mFindings[3].Fixes[0].Edits);
+  Assert.IsTrue(Pos('TFile.ReadAllText(Pfad, TEncoding.UTF8)', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('System.SysUtils', mFixed) > 0, 'uses ergänzt: ' + mFixed);
+end;
+
+procedure TPlatformRulesTests.EncodingSilentCases;
+begin
+  // Mit Kodierung, DefaultEncoding gesetzt, Speichern nach Laden mit Kodierung.
+  TRuleAssert.Silent(TLoadWithoutEncodingRule.Create, Routine('var'#10'  Zeilen: TStringList;'#10,
+    '  Zeilen.LoadFromFile(Pfad, TEncoding.UTF8);'#10'  Zeilen.SaveToFile(Pfad);'));
+  TRuleAssert.Silent(TLoadWithoutEncodingRule.Create, Routine('var'#10'  Zeilen: TStringList;'#10,
+    '  Zeilen.DefaultEncoding := TEncoding.UTF8;'#10'  Zeilen.LoadFromFile(Pfad);'));
+  // Andere Typen: Bilder, Streams, Datenmengen, unbekannter Typ; TFile.WriteAllText und TStreamReader nehmen UTF-8.
+  TRuleAssert.Silent(TLoadWithoutEncodingRule.Create, Routine('var'#10'  Bild: TBitmap;'#10'  Puffer: TMemoryStream;'#10,
+    '  Bild.LoadFromFile(Pfad);'#10'  Puffer.SaveToFile(Pfad);'#10'  Tabelle.SaveToFile(Pfad);'#10 +
+    '  TFile.WriteAllText(Pfad, Text);'#10'  Leser := TStreamReader.Create(Pfad);'#10 +
+    '  Text := TFile.ReadAllText(Pfad, TEncoding.UTF8);'));
+end;
+
+procedure TPlatformRulesTests.EncodingOptions;
+var
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSource := Routine('var'#10'  Zeilen: TStringList;'#10, '  Zeilen.LoadFromFile(Pfad);');
+  mFindings := TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, mSource,
+    '{"rules": {"load-without-encoding": {"defaultEncoding": "unicode"}}}', 'Werkzeug.pas');
+  Assert.AreEqual('TEncoding.Unicode ergänzen', mFindings[0].Fixes[0].Title);
+  Assert.IsTrue(Pos('LoadFromFile(Pfad, TEncoding.Unicode)', TTextChanges.Apply(mSource,
+    mFindings[0].Fixes[0].Edits)) > 0);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, mSource,
+    '{"rules": {"load-without-encoding": "off"}}', 'Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TLoadWithoutEncodingRule.Create, mSource,
+    '{"rules": {"load-without-encoding": {"exclude": ["Werkzeug"]}}}', 'Werkzeug.pas'))));
+  TConfigurationParser.Parse('{"rules": {"load-without-encoding": {"defaultEncoding": "Latin1"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('"defaultEncoding" muss UTF8, Unicode, BigEndianUnicode, ANSI, ASCII, UTF7 oder Default sein',
+    mIssues[0].Message);
+end;
+
+{ registry-hklm-write }
+
+procedure TPlatformRulesTests.RegistryIssueExample;
+var
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  mSource := Routine('', '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10'  Reg.OpenKey(''Software\Firma\Programm'', True);'#10 +
+    '  Reg.WriteString(''Sprache'', Sprache);');
+  mFindings := TRuleAssert.Findings(TRegistryHklmWriteRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Schreiben nach HKEY_LOCAL_MACHINE braucht Administratorrechte; ohne sie schlägt es fehl oder ' +
+    'landet in der Virtualisierung.', mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual('HKEY_CURRENT_USER verwenden', mFindings[0].Fixes[0].Title);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.IsTrue(Pos('Reg.RootKey := HKEY_CURRENT_USER;', mFixed) > 0, mFixed);
+  TRuleAssert.Silent(TRegistryHklmWriteRule.Create, mFixed);
+  // Nur WriteInteger, ohne OpenKey.
+  TRuleAssert.Reports(TRegistryHklmWriteRule.Create, Routine('', '  R.RootKey := HKEY_LOCAL_MACHINE;'#10 +
+    '  R.DeleteValue(''Alt'');'));
+end;
+
+procedure TPlatformRulesTests.RegistrySilentCases;
+begin
+  // Nur lesen, OpenKey ohne Anlegen, anderes Objekt, RootKey vor dem Schreiben zurückgesetzt.
+  TRuleAssert.Silent(TRegistryHklmWriteRule.Create, Routine('', '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10 +
+    '  if Reg.OpenKeyReadOnly(''Software\Firma'') then'#10'    Pfad := Reg.ReadString(''Pfad'');'#10 +
+    '  Reg.OpenKey(''Software\Firma'', False);'#10'  Andere.WriteString(''a'', ''b'');'));
+  TRuleAssert.Silent(TRegistryHklmWriteRule.Create, Routine('', '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10 +
+    '  Pfad := Reg.ReadString(''Pfad'');'#10'  Reg.RootKey := HKEY_CURRENT_USER;'#10 +
+    '  Reg.WriteString(''Pfad'', Pfad);'));
+  // Schreiben nur im anderen Zweig der bedingten Übersetzung.
+  TRuleAssert.Silent(TRegistryHklmWriteRule.Create, Routine('', '{$IFDEF INSTALLER}'#10 +
+    '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10'  Pfad := Reg.ReadString(''Pfad'');'#10'{$ELSE}'#10 +
+    '  Reg.WriteString(''Pfad'', Pfad);'#10'{$ENDIF}'));
+end;
+
+procedure TPlatformRulesTests.RegistryOptions;
+var
+  mSource: string;
+begin
+  mSource := Routine('', '  Reg.RootKey := HKEY_LOCAL_MACHINE;'#10'  Reg.WriteBool(''Aktiv'', True);');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TRegistryHklmWriteRule.Create, mSource, '',
+    'Setup/Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRegistryHklmWriteRule.Create, mSource,
+    '{"rules": {"registry-hklm-write": "off"}}', 'Setup/Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRegistryHklmWriteRule.Create, mSource,
+    '{"rules": {"registry-hklm-write": {"exclude": ["Setup/**"]}}}', 'Setup/Werkzeug.pas'))));
+end;
+
+{ now-for-elapsed-time }
+
+procedure TPlatformRulesTests.ElapsedIssueExample;
+var
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  mSource := Routine('var'#10'  Start: TDateTime;'#10, '  Start := Now;'#10'  Importieren;'#10 +
+    '  Log(MilliSecondsBetween(Now, Start).ToString + '' ms'');');
+  mFindings := TRuleAssert.Findings(TNowForElapsedTimeRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Laufzeit mit Now gemessen; TStopwatch ist genauer und unabhängig von der Uhrzeit.',
+    mFindings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFindings[0].Severity));
+  Assert.AreEqual('In TStopwatch umwandeln', mFindings[0].Fixes[0].Title);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.AreEqual('unit Werkzeug;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils,'#10 +
+    '  System.Diagnostics;'#10'procedure Pruefen;'#10'var'#10'  Uhr: TStopwatch;'#10'begin'#10 +
+    '  Uhr := TStopwatch.StartNew;'#10'  Importieren;'#10'  Log(Uhr.ElapsedMilliseconds.ToString + '' ms'');'#10 +
+    'end;'#10'end.', mFixed);
+  TRuleAssert.Silent(TNowForElapsedTimeRule.Create, mFixed);
+end;
+
+procedure TPlatformRulesTests.ElapsedVariants;
+var
+  mSource, mFixed: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Differenz, Ende - Start, Feld; ohne Korrektur, weil Start auch anders benutzt wird.
+  mFindings := TRuleAssert.Findings(TNowForElapsedTimeRule.Create, Routine('var'#10'  Start, Ende: TDateTime;'#10,
+    '  Start := Now;'#10'  Arbeiten;'#10'  Ende := Now;'#10'  Dauer := Ende - Start;'#10 +
+    '  FBeginn := Now;'#10'  if Now - FBeginn > 1 / 24 then'#10'    Abbrechen;'));
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  Assert.AreEqual(0, Integer(Length(mFindings[1].Fixes)));
+  // Inline-Variable, SecondsBetween, Name Uhr schon vergeben.
+  mSource := Routine('', '  var T := Now;'#10'  Uhr := 1;'#10'  Arbeiten;'#10'  Sekunden := SecondsBetween(Now, T);');
+  mFindings := TRuleAssert.Findings(TNowForElapsedTimeRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
+  Assert.IsTrue(Pos('  var T := TStopwatch.StartNew;', mFixed) > 0, mFixed);
+  Assert.IsTrue(Pos('Sekunden := T.ElapsedMilliseconds div 1000;', mFixed) > 0, mFixed);
+end;
+
+procedure TPlatformRulesTests.ElapsedSilentCases;
+begin
+  // Zeitstempel ohne Messung, TStopwatch, Now in einer anderen Routine, Abstand zweier fremder Zeitpunkte.
+  TRuleAssert.Silent(TNowForElapsedTimeRule.Create, Routine('var'#10'  Erstellt: TDateTime;'#10,
+    '  Erstellt := Now;'#10'  Speichern(Erstellt);'#10'  Tage := DaysBetween(Ende, Beginn);'#10 +
+    '  Uhr := TStopwatch.StartNew;'));
+  TRuleAssert.Silent(TNowForElapsedTimeRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure A;'#10'begin'#10'  FStart := Now;'#10'end;'#10'procedure B;'#10'begin'#10 +
+    '  Dauer := Now - FStart;'#10'end;'#10'end.');
+  // Start nur im anderen Zweig der bedingten Übersetzung.
+  TRuleAssert.Silent(TNowForElapsedTimeRule.Create, Routine('', '{$IFDEF MESSEN}'#10'  Start := Now;'#10 +
+    '{$ELSE}'#10'  Dauer := Now - Start;'#10'{$ENDIF}'));
+end;
+
+procedure TPlatformRulesTests.ElapsedOptions;
+var
+  mSource: string;
+begin
+  mSource := Routine('', '  Start := Now;'#10'  Dauer := Now - Start;');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TNowForElapsedTimeRule.Create, mSource, '',
+    'Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNowForElapsedTimeRule.Create, mSource,
+    '{"rules": {"now-for-elapsed-time": "off"}}', 'Werkzeug.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TNowForElapsedTimeRule.Create, mSource,
+    '{"rules": {"now-for-elapsed-time": {"exclude": ["*.pas"]}}}', 'Werkzeug.pas'))));
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TPlatformRulesTests);
+
+end.

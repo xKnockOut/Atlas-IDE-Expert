@@ -24,17 +24,16 @@ implementation
 
 uses
   DUnitX.TestFramework,
-  Atlas.Text.Lines,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SlashCommands,
-  Atlas.Tests.TextEdits;
+  Atlas.Tests.TextEdits,
+  Atlas.Common.Documents.Contract;
 
 { TSlashTest }
 
 class function TSlashTest.Expand(const AText: string; ALine: Integer): string;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, mEdits),
     AText);
@@ -43,7 +42,7 @@ end;
 
 class function TSlashTest.ExpandOrEmpty(const AText: string; ALine: Integer): string;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Result := '';
   if TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, mEdits) then
@@ -54,7 +53,7 @@ end;
 
 class function TSlashTest.ExpandOrEmpty(const AText: string; ALine: Integer; const AVersion: string): string;
 var
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   Result := '';
   if TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0),

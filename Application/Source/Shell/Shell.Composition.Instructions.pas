@@ -2,7 +2,7 @@
 
 // Internals-Rolle Shell: Anweisungsdateien für KI-Assistenten (#2615). Befehl atlas.server.assistantInstructions
 // für das Plugin (Stand prüfen bzw. schreiben, Arbeitsbereich zur URI, sonst der einzige) und das Lesen und
-// atomare Schreiben auf der Platte, das auch die Kommandozeile nutzt. Logik in Atlas.Common.Rules.InstructionFiles.
+// atomare Schreiben auf der Platte, das auch die Kommandozeile nutzt. Logik in Rules.InstructionFiles.
 
 interface
 
@@ -11,7 +11,7 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Rules.InstructionFiles,
+  Rules.InstructionFiles,
   Shell.Composition.Workspaces;
 
 type
@@ -33,7 +33,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Providers.DiskFileSystem,
-  Atlas.Common.Rules.Builtin,
+  Rules.Builtin,
   Core.Workspace;
 
 function ReadInstructions(const AFileName: string; out ABytes: TBytes): Boolean;

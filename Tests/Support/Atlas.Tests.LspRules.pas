@@ -8,7 +8,7 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.CheckContext;
+  Rules.CheckContext;
 
 type
   TTestLspRules = class
@@ -39,12 +39,12 @@ type
 implementation
 
 uses
-  Atlas.Common.Rules.Contract.Api,
-  Atlas.Common.Rules.Providers.DocumentChecks,
-  Atlas.Common.Rules.Providers.DocumentActions,
-  Atlas.Common.Rules.Providers.CatalogInfo,
-  Atlas.Common.Rules.Providers.FindingPrompts,
-  Atlas.Common.Rules.Providers.BulkFix,
+  Rules.Contract.Api,
+  Rules.Providers.DocumentChecks,
+  Rules.Providers.DocumentActions,
+  Rules.Providers.CatalogInfo,
+  Rules.Providers.FindingPrompts,
+  Rules.Providers.BulkFix,
   Adapters.Lsp.RuleCatalog,
   Adapters.Lsp.FindingsPrompt,
   Adapters.Lsp.BulkFix,

@@ -10,7 +10,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Metrics.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api;
+  Rules.Contract.Api;
 
 type
   /// <summary>ILspInheritanceDepths über die API der Prüfregeln.</summary>

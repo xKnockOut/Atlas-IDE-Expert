@@ -1,0 +1,602 @@
+﻿unit Rules.Builtin.Visibility.Tests;
+
+// Tests der Regeln zur Sichtbarkeit von Klassenmitgliedern:
+// inaccessible-member (#1008): Beispiel aus dem Issue (E2124), private und
+// protected aus einer anderen Unit (E2361, E2362), strict private in derselben
+// Unit, stille Fälle (Nachfahren, protected über eine Klasse der eigenen Unit,
+// with, class var), W1045 und die Einstellungen; Fälle, die dcc übersetzt
+// (#1328, Tests/DccFaelle: class constructor neben geerbtem Create,
+// Klassenmethoden-Überladung in einer Klassenmethode).
+// unused-private-member (#1020): Beispiel aus dem Issue mit Korrektur, stille
+// Fälle (Verwendung, property read, message, override, Interfaces, Attribute,
+// Formulardatei, Include), Option includeFields und die Einstellungen.
+
+interface
+
+uses
+  DUnitX.TestFramework;
+
+type
+  [TestFixture]
+  TInaccessibleMemberTests = class
+  public
+    [Test]
+    procedure IssueExampleInstanceFieldInClassMethod;
+    [Test]
+    procedure ClassMethodSilentCases;
+    [Test]
+    procedure PrivateAndProtectedOfOtherUnit;
+    /// <summary>Fundstelle aus Atlas.IDE.Debug.Reattach (#2309): private statische Klassenmethode einer anderen
+    /// Unit hinter einem public const-Abschnitt, gerufen aus einer Klassenmethode mit verschachteltem Typ.</summary>
+    [Test]
+    procedure PrivateStaticClassMethodOfOtherUnit;
+    [Test]
+    procedure DescendantsAndLocalClassesSeeProtected;
+    [Test]
+    procedure ProtectedPropertyThroughCast;
+    [Test]
+    procedure ProtectedConstInDescendantDeclaration;
+    [Test]
+    procedure StrictPrivateInSameUnit;
+    /// <summary>Überladung mit public-Variante neben einer strict private (wie System.TMonitor.Enter).</summary>
+    [Test]
+    procedure OverloadWithPublicVariantIsVisible;
+    [Test]
+    procedure PropertyReferencesAncestorPrivate;
+    [Test]
+    procedure ClassConstructorDoesNotHideInheritedCreate;
+    [Test]
+    procedure ClassOverloadInClassMethodIsReachable;
+    [Test]
+    procedure ProtectedThroughGenericReceiverIsVisible;
+    /// <summary>Konstante eines Nachfahren aus der protected-Konstante des Vorfahren (TBasis.cAbstand).</summary>
+    [Test]
+    procedure ProtectedConstantInDescendantDeclaration;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TUnusedPrivateMemberTests = class
+  public
+    [Test]
+    procedure IssueExampleWithFixes;
+    [Test]
+    procedure UsedMembersAreSilent;
+    [Test]
+    procedure ExemptMembersAreSilent;
+    [Test]
+    procedure ConstantsAndProperties;
+    [Test]
+    procedure IncludeFieldsOption;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
+  Rules.Builtin.Visibility,
+  Atlas.Tests.RuleAssert,
+  Atlas.Common.Findings.Contract;
+
+/// <summary>System mit TObject und Unit Basis mit TBasis (private, strict private, protected, public) und TSperre
+/// (Überladung strict private und public wie System.TMonitor.Enter).</summary>
+function BasisIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
+    '  public'#10'    procedure Free;'#10'  end;'#10'implementation'#10'procedure TObject.Free;'#10'begin'#10'end;'#10 +
+    'end.', 'C:\BDS\source\System.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10 +
+    '  private'#10'    FGeheim: Integer;'#10'  strict private'#10'    FStreng: Integer;'#10'  protected'#10 +
+    '    procedure Schuetzen;'#10'  strict protected'#10'    procedure StrengSchuetzen;'#10'  public'#10 +
+    '    procedure Oeffnen;'#10'  end;'#10'  TSperre = record'#10'  strict private'#10 +
+    '    function Betreten(Zeit: Cardinal): Boolean; overload;'#10'  public'#10 +
+    '    class procedure Betreten(const AObjekt: TObject); overload; static;'#10'  end;'#10'implementation'#10 +
+    'procedure TBasis.Schuetzen;'#10'begin'#10'end;'#10 +
+    'procedure TBasis.StrengSchuetzen;'#10'begin'#10'end;'#10'procedure TBasis.Oeffnen;'#10'begin'#10'end;'#10 +
+    'function TSperre.Betreten(Zeit: Cardinal): Boolean;'#10'begin'#10'  Result := True;'#10'end;'#10 +
+    'class procedure TSperre.Betreten(const AObjekt: TObject);'#10'begin'#10'end;'#10 +
+    'end.', 'C:\Projekt\Basis.pas', nil));
+end;
+
+/// <summary>BasisIndex und Unit Inspektor mit TInspektor (private class constructor Create) und TVersteckt
+/// (private constructor Create).</summary>
+function InspektorIndex: ISymbolIndex;
+begin
+  Result := BasisIndex;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Inspektor;'#10'interface'#10'type'#10'  TInspektor = class'#10 +
+    '  private'#10'    class constructor Create;'#10'  end;'#10'  TVersteckt = class'#10'  private'#10 +
+    '    constructor Create;'#10'  end;'#10'implementation'#10'class constructor TInspektor.Create;'#10'begin'#10 +
+    'end;'#10'constructor TVersteckt.Create;'#10'begin'#10'end;'#10'end.', 'C:\Projekt\Inspektor.pas', nil));
+end;
+
+/// <summary>BasisIndex und Unit Rahmen mit TRahmen (Konstanten protected und strict protected).</summary>
+function RahmenIndex: ISymbolIndex;
+begin
+  Result := BasisIndex;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Rahmen;'#10'interface'#10'type'#10'  TRahmen = class'#10 +
+    '  protected const'#10'    cAbstand = 8;'#10'  strict protected const'#10'    cRand = 2;'#10'  end;'#10 +
+    'implementation'#10'end.', 'C:\Projekt\Rahmen.pas', nil));
+end;
+
+function Findings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, ASource, BasisIndex, '', 'Kunden.pas');
+end;
+
+function Findings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, ASource, BasisIndex, AConfig, APath);
+end;
+
+/// <summary>Unit Kunden mit TKonfig (FBasisPfad, Pfad, class var Zaehler) und der Klassenmethode Standard.</summary>
+function Konfig(const ABody: string): string;
+begin
+  Result := 'unit Kunden;'#10'interface'#10'type'#10'  TKonfig = class'#10'  private'#10 +
+    '    FBasisPfad: string;'#10'    class var FZaehler: Integer;'#10'    function GetName: string;'#10'  public'#10 +
+    '    Pfad: string;'#10'    property Name: string read GetName;'#10'    class function Standard: TKonfig;'#10 +
+    '    class function Leer: TKonfig; static;'#10'  end;'#10'implementation'#10 +
+    'function TKonfig.GetName: string;'#10'begin'#10'  Result := FBasisPfad;'#10'end;'#10 +
+    'class function TKonfig.Standard: TKonfig;'#10'begin'#10 + ABody + 'end;'#10 +
+    'class function TKonfig.Leer: TKonfig;'#10'begin'#10'  Result := nil;'#10'  Pfad := '''';'#10'end;'#10'end.';
+end;
+
+/// <summary>Unit Kunden, die Basis einbindet; AType im interface, ABody in der Routine Arbeiten(B: TBasis).
+/// </summary>
+function Fremd(const AType, ABody: string): string;
+begin
+  Result := 'unit Kunden;'#10'interface'#10'uses'#10'  Basis;'#10'type'#10 + AType + 'implementation'#10 +
+    'procedure Arbeiten(B: TBasis);'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+{ TInaccessibleMemberTests }
+
+procedure TInaccessibleMemberTests.IssueExampleInstanceFieldInClassMethod;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := Findings(Konfig('  Result := TKonfig.Create;'#10'  Result.Pfad := FBasisPfad;'#10));
+  // Die statische Methode Leer greift ebenfalls auf ein Instanzfeld zu.
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('FBasisPfad ist ein Instanzfeld und in der Klassenmethode Standard nicht erreichbar (wie E2124).',
+    mFound[0].Message);
+  Assert.AreEqual(22, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(17, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('Pfad ist ein Instanzfeld und in der Klassenmethode Leer nicht erreichbar (wie E2124).',
+    mFound[1].Message);
+  mFound := Findings(Konfig('  Result := nil;'#10'  if Name = '''' then'#10'    Free;'#10));
+  Assert.AreEqual(3, Integer(Length(mFound)));
+  Assert.AreEqual('Name ist eine Instanz-Property und in der Klassenmethode Standard nicht erreichbar (wie E2124).',
+    mFound[0].Message);
+  Assert.AreEqual('Free ist eine Instanzmethode und in der Klassenmethode Standard nicht erreichbar (wie E2124).',
+    mFound[1].Message);
+end;
+
+procedure TInaccessibleMemberTests.ClassMethodSilentCases;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Korrigierte Form, class var, Konstruktor, with und lokale Variable.
+  mFound := Findings(Konfig('  Result := TKonfig.Create;'#10'  Result.Pfad := Result.FBasisPfad;'#10 +
+    '  Inc(FZaehler);'#10'  with Result do'#10'    Pfad := FBasisPfad;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)), 'nur Leer');
+  Assert.AreEqual(30, mFound[0].Range.StartPos.Line);
+  mFound := Findings(Konfig('  Result := Create;'#10).Replace('begin'#10'  Result := Create',
+    'var'#10'  Pfad: string;'#10'begin'#10'  Pfad := '''';'#10'  Result := Create'));
+  Assert.AreEqual(1, Integer(Length(mFound)), 'nur Leer');
+end;
+
+procedure TInaccessibleMemberTests.PrivateAndProtectedOfOtherUnit;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := Findings(Fremd('', '  B.FGeheim := 1;'#10'  B.Schuetzen;'#10'  B.StrengSchuetzen;'#10 +
+    '  B.Oeffnen;'#10'  Unbekannt.FGeheim := 2;'#10));
+  Assert.AreEqual(3, Integer(Length(mFound)));
+  Assert.AreEqual('TBasis.FGeheim ist private und hier nicht sichtbar (wie E2361).', mFound[0].Message);
+  Assert.AreEqual(8, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(11, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual('TBasis.Schuetzen ist protected und hier nicht sichtbar (wie E2362).', mFound[1].Message);
+  Assert.AreEqual('TBasis.StrengSchuetzen ist strict protected und hier nicht sichtbar (wie E2362).',
+    mFound[2].Message);
+end;
+
+procedure TInaccessibleMemberTests.PrivateStaticClassMethodOfOtherUnit;
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mIndex := BasisIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Korrekturen;'#10'interface'#10'type'#10 +
+    '  TKorrekturen = class'#10'  public const'#10'    cName = ''Debug'';'#10'  private'#10 +
+    '    class function Confirm(const AText: string): Boolean; static;'#10'  public'#10 +
+    '    class function FixText: string; static;'#10'  end;'#10'implementation'#10 +
+    'class function TKorrekturen.Confirm(const AText: string): Boolean;'#10'begin'#10'  Result := AText <> '''';'#10 +
+    'end;'#10'class function TKorrekturen.FixText: string;'#10'begin'#10'  Result := '''';'#10'end;'#10'end.',
+    'C:\Projekt\Korrekturen.pas', nil));
+  mSource := 'unit Kunden;'#10'interface'#10'type'#10'  TAnhaengen = class'#10'  public const'#10 +
+    '    cDatei = ''a.json'';'#10'  private type'#10'    THandler = class'#10'    end;'#10'  public'#10 +
+    '    class procedure Anbieten(const APfad: string); static;'#10'  end;'#10'implementation'#10'uses'#10 +
+    '  Korrekturen;'#10'class procedure TAnhaengen.Anbieten(const APfad: string);'#10'begin'#10 +
+    '  if TKorrekturen.Confirm(APfad + TKorrekturen.FixText) then'#10'    Exit;'#10'end;'#10'end.';
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource, mIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TKorrekturen.Confirm ist private und hier nicht sichtbar (wie E2361).', mFound[0].Message);
+  Assert.AreEqual(17, mFound[0].Range.StartPos.Line);
+  mFound := nil;
+end;
+
+procedure TInaccessibleMemberTests.DescendantsAndLocalClassesSeeProtected;
+var
+  mSource: string;
+begin
+  // Methode eines Nachfahren und protected über eine Klasse der eigenen Unit (TZugang(B).Schuetzen).
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Basis;'#10'type'#10'  TKunde = class(TBasis)'#10 +
+    '    procedure Laden(B: TBasis);'#10'  end;'#10'  TZugang = class(TBasis)'#10'  end;'#10'implementation'#10 +
+    'procedure TKunde.Laden(B: TBasis);'#10'begin'#10'  Schuetzen;'#10'  Self.StrengSchuetzen;'#10 +
+    '  B.Schuetzen;'#10'end;'#10'procedure Arbeiten(B: TBasis);'#10'begin'#10'  TZugang(B).Schuetzen;'#10 +
+    'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(Findings(mSource))));
+  // private bleibt auch für Nachfahren in einer anderen Unit unsichtbar.
+  Assert.AreEqual(1, Integer(Length(Findings(mSource.Replace('  B.Schuetzen;', '  B.FGeheim := 0;')))));
+end;
+
+procedure TInaccessibleMemberTests.ProtectedPropertyThroughCast;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+  mText: string;
+  mFinding: TRuleFinding;
+begin
+  // TCustomTreeView(x).Items: Items ist dort protected, erst TTreeView veröffentlicht es (#1345, wie E2362).
+  mIndex := BasisIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Baum;'#10'interface'#10'type'#10'  TCustomBaum = class'#10 +
+    '  private'#10'    FItems: Integer;'#10'  protected'#10'    property Items: Integer read FItems;'#10'  end;'#10 +
+    '  TBaum = class(TCustomBaum)'#10'  public'#10'    property Items;'#10'  end;'#10'implementation'#10'end.',
+    'C:\Projekt\Baum.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, 'unit Kunden;'#10'interface'#10'uses'#10 +
+    '  Baum;'#10'implementation'#10'procedure Arbeiten(O: TObject; B: TBaum);'#10'var'#10'  X: Integer;'#10 +
+    'begin'#10'  X := TCustomBaum(O).Items;'#10'  X := (O as TCustomBaum).Items;'#10'  X := TBaum(O).Items;'#10 +
+    '  X := B.Items;'#10'end;'#10'end.', mIndex, '', 'Kunden.pas');
+  mText := '';
+  for mFinding in mFound do
+  begin
+    mText := mText + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + '|';
+  end;
+  Assert.AreEqual('9: TCustomBaum.Items ist protected und hier nicht sichtbar (wie E2362).|' +
+    '10: TCustomBaum.Items ist protected und hier nicht sichtbar (wie E2362).|', mText);
+end;
+
+procedure TInaccessibleMemberTests.ProtectedConstInDescendantDeclaration;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  // cRand = 2 * TDialogBasis.cAbstand in der Deklaration eines Nachfahren: dcc übersetzt das (Delphi 13,
+  // Atlas.UI.Designer.PropertyDialog); in einer Routine außerhalb der Klasse bleibt es E2362.
+  mIndex := BasisIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Dialog;'#10'interface'#10'type'#10'  TDialogBasis = class'#10 +
+    '  protected const'#10'    cAbstand = 10;'#10'  end;'#10'implementation'#10'end.', 'C:\Projekt\Dialog.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, 'unit Kunden;'#10'interface'#10'uses'#10 +
+    '  Dialog;'#10'type'#10'  TMein = class(TDialogBasis)'#10'  private const'#10 +
+    '    cRand = 2 * TDialogBasis.cAbstand;'#10'  end;'#10'implementation'#10'procedure Arbeiten;'#10'var'#10 +
+    '  X: Integer;'#10'begin'#10'  X := TDialogBasis.cAbstand;'#10'end;'#10'end.', mIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(14, mFound[0].Range.StartPos.Line);
+end;
+
+procedure TInaccessibleMemberTests.StrictPrivateInSameUnit;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := 'unit Kunden;'#10'interface'#10'type'#10'  TLager = class'#10'  private'#10'    FBestand: Integer;'#10 +
+    '  strict private'#10'    FReserve: Integer;'#10'  end;'#10'  TKasse = class'#10'    procedure Buchen(L: TLager);'#10 +
+    '  end;'#10'implementation'#10'procedure TKasse.Buchen(L: TLager);'#10'begin'#10'  L.FBestand := 1;'#10 +
+    '  L.FReserve := 2;'#10'end;'#10'end.';
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TLager.FReserve ist strict private und hier nicht sichtbar (wie E2361).', mFound[0].Message);
+  Assert.AreEqual(16, mFound[0].Range.StartPos.Line);
+end;
+
+procedure TInaccessibleMemberTests.OverloadWithPublicVariantIsVisible;
+var
+  mSource: string;
+begin
+  Assert.AreEqual(0, Integer(Length(Findings(Fremd('', '  TSperre.Betreten(B);'#10)))));
+  // Typ im implementation-Teil (Skia4Delphi, #1328): Auch dort zählt die public-Überladung.
+  mSource := 'unit Kunden;'#10'interface'#10'implementation'#10'type'#10'  THelfer = record'#10'  strict private'#10 +
+    '    class function Lies(const A: string): string; overload; static;'#10'  public'#10 +
+    '    class function Lies(const A: string; B: Integer): string; overload; static;'#10'  end;'#10 +
+    '  TNutzer = record'#10'    class procedure Lauf; static;'#10'  end;'#10 +
+    'class function THelfer.Lies(const A: string; B: Integer): string;'#10'begin'#10'  Result := A;'#10'end;'#10 +
+    'class function THelfer.Lies(const A: string): string;'#10'begin'#10'  Result := A;'#10'end;'#10 +
+    'class procedure TNutzer.Lauf;'#10'begin'#10'  THelfer.Lies(''x'', 1);'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(Findings(mSource))));
+  // Gegentest: nur die strict private-Überladung.
+  Assert.AreEqual(1, Integer(Length(Findings(mSource.Replace('  public'#10 +
+    '    class function Lies(const A: string; B: Integer)', '    class function Lies(const A: string; B: Integer)')))));
+end;
+
+procedure TInaccessibleMemberTests.PropertyReferencesAncestorPrivate;
+var
+  mFound: TArray<TRuleFinding>;
+  mSource: string;
+begin
+  mSource := 'unit Kunden;'#10'interface'#10'type'#10'  TBasis = class'#10'  private'#10'    FWert: Integer;'#10 +
+    '  protected'#10'    FSchutz: Integer;'#10'  end;'#10'  TKind = class(TBasis)'#10'  public'#10 +
+    '    property Wert: Integer read FWert write FWert;'#10'    property Schutz: Integer read FSchutz;'#10 +
+    '  end;'#10'implementation'#10'end.';
+  mFound := Findings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Die Property Wert verweist auf TBasis.FWert, das im Vorfahren private ist (wie W1045).',
+    mFound[0].Message);
+  Assert.AreEqual(Integer(Ord(TRuleSeverity.Warning)), Integer(Ord(mFound[0].Severity)));
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Line);
+  // Eigenes Feld derselben Klasse: still.
+  Assert.AreEqual(0, Integer(Length(Findings(mSource.Replace('  TKind = class(TBasis)'#10'  public'#10,
+    '  TKind = class(TBasis)'#10'  private'#10'    FWert: Integer;'#10'  public'#10)))));
+end;
+
+procedure TInaccessibleMemberTests.ClassConstructorDoesNotHideInheritedCreate;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Minimalfall IM4 (Spring4D Spring.Container): TInspektor.Create ist TObject.Create.
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Inspektor;'#10'implementation'#10 +
+    'function Neu: TObject;'#10'begin'#10'  Result := TInspektor.Create;'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource,
+    InspektorIndex, '', 'Kunden.pas'))));
+  // Gegentest: ein privater Konstruktor bleibt unsichtbar.
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource.Replace('TInspektor', 'TVersteckt'),
+    InspektorIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TVersteckt.Create ist private und hier nicht sichtbar (wie E2361).', mFound[0].Message);
+end;
+
+procedure TInaccessibleMemberTests.ClassOverloadInClassMethodIsReachable;
+var
+  mSource: string;
+begin
+  // Minimalfall IM5 (DMVC ActiveRecord, JCL): Waehle(TAktiv, …) ist die Klassenmethode.
+  mSource := 'unit Kunden;'#10'interface'#10'type'#10'  TAktiv = class'#10'  public'#10 +
+    '    function Waehle(const AText: string): Integer; overload;'#10 +
+    '    class function Waehle(AKlasse: TClass; const AText: string): Integer; overload;'#10 +
+    '    class function NachName(const AName: string): Integer;'#10'  end;'#10'implementation'#10 +
+    'function TAktiv.Waehle(const AText: string): Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
+    'class function TAktiv.Waehle(AKlasse: TClass; const AText: string): Integer;'#10'begin'#10 +
+    '  Result := 1;'#10'end;'#10'class function TAktiv.NachName(const AName: string): Integer;'#10'begin'#10 +
+    '  Result := Waehle(TAktiv, AName);'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(Findings(mSource))));
+  // Gegentest: ohne die Klassenmethode bleibt nur die Instanzmethode.
+  Assert.AreEqual(1, Integer(Length(Findings(mSource.Replace(
+    '    class function Waehle(AKlasse: TClass; const AText: string): Integer; overload;'#10, '').Replace(
+    'class function TAktiv.Waehle(AKlasse: TClass; const AText: string): Integer;'#10'begin'#10 +
+    '  Result := 1;'#10'end;'#10, '').Replace('Waehle(TAktiv, AName)', 'Waehle(AName)')))));
+end;
+
+/// <summary>Index mit der Unit Knoten: TKnoten&lt;T&gt; und TEinfach mit protected-Feldern.</summary>
+function KnotenIndex: ISymbolIndex;
+begin
+  Result := BasisIndex;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Knoten;'#10'interface'#10'type'#10'  TKnoten<T> = class'#10 +
+    '  protected'#10'    FNaechster: TKnoten<T>;'#10'  strict protected'#10'    FGeheim: Integer;'#10'  end;'#10 +
+    '  TEinfach = class'#10'  protected'#10'    FWert: Integer;'#10'  end;'#10'implementation'#10'end.',
+    'C:\Projekt\Knoten.pas', nil));
+end;
+
+procedure TInaccessibleMemberTests.ProtectedThroughGenericReceiverIsVisible;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Minimalfall IM1 (Spring4D TLinkedListNode<T>): protected über einen generischen Empfänger aus generischem
+  // Code. Aus nicht generischem Code (Folge, SG3) meldet dcc E2362.
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Knoten;'#10'type'#10'  TListe<T> = class'#10 +
+    '    FKopf: TKnoten<T>;'#10'    function Zweiter: TKnoten<T>;'#10'  end;'#10'implementation'#10 +
+    'function TListe<T>.Zweiter: TKnoten<T>;'#10'begin'#10'  Result := FKopf.FNaechster;'#10'end;'#10 +
+    'function Folge(AKnoten: TKnoten<Integer>): TKnoten<Integer>;'#10'begin'#10 +
+    '  Result := AKnoten.FNaechster;'#10'end;'#10'end.';
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource, KnotenIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(16, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('TKnoten.FNaechster ist protected und hier nicht sichtbar (wie E2362).', mFound[0].Message);
+  // Gegentests: strict protected am generischen Typ und protected an einem nicht generischen Typ.
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Knoten;'#10'implementation'#10 +
+    'function Geheim(AKnoten: TKnoten<Integer>; AEinfach: TEinfach): Integer;'#10'begin'#10 +
+    '  Result := AKnoten.FGeheim + AEinfach.FWert;'#10'end;'#10'end.';
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource, KnotenIndex, '', 'Kunden.pas');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('TKnoten.FGeheim ist strict protected und hier nicht sichtbar (wie E2362).', mFound[0].Message);
+  Assert.AreEqual('TEinfach.FWert ist protected und hier nicht sichtbar (wie E2362).', mFound[1].Message);
+end;
+
+procedure TInaccessibleMemberTests.ProtectedConstantInDescendantDeclaration;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // dcc übersetzt TKind (Nachfahr); TFremd ohne Vorfahren TRahmen meldet es (E2362).
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, 'unit Kunden;'#10'interface'#10'uses'#10 +
+    '  Rahmen;'#10'type'#10'  TKind = class(TRahmen)'#10'  private const'#10 +
+    '    cDoppelt = 2 * TRahmen.cAbstand;'#10'    cInnen = TRahmen.cRand + 1;'#10'  end;'#10 +
+    '  TFremd = class'#10'  private const'#10'    cFremd = 2 * TRahmen.cAbstand;'#10'  end;'#10 +
+    'implementation'#10'end.', RahmenIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TRahmen.cAbstand ist protected und hier nicht sichtbar (wie E2362).', mFound[0].Message);
+  Assert.AreEqual(12, mFound[0].Range.StartPos.Line);
+end;
+
+procedure TInaccessibleMemberTests.OffAndExclude;
+var
+  mSource: string;
+begin
+  mSource := Fremd('', '  B.FGeheim := 1;'#10);
+  Assert.AreEqual(1, Integer(Length(Findings(mSource, '', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"inaccessible-member": "off"}}',
+    'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"group:compiler": "off"}}', 'Source/Kunden.pas'))));
+  Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"inaccessible-member": {"exclude": ["Source/*.pas"]}}}',
+    'Source/Kunden.pas'))));
+end;
+
+{ TUnusedPrivateMemberTests }
+
+function UnusedFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TUnusedPrivateMemberRule.Create, ASource);
+end;
+
+function UnusedFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TUnusedPrivateMemberRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit Import mit TImport: AMembers im private-Abschnitt, Run in public, ABody im Rumpf von Run.
+/// </summary>
+function Import(const AMembers, ABody: string): string;
+begin
+  Result := 'unit Import;'#10'interface'#10'type'#10'  TImport = class'#10'  private'#10 + AMembers +
+    '  public'#10'    procedure Run;'#10'  end;'#10'implementation'#10'procedure TImport.Run;'#10'begin'#10 + ABody +
+    'end;'#10'end.';
+end;
+
+/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an.</summary>
+function ApplyFix(const ASource: string; const AFix: TRuleFix): string;
+var
+  mLines: TArray<string>;
+  mIndex, mEdit: Integer;
+  mText: string;
+begin
+  Result := ASource;
+  for mEdit := High(AFix.Edits) downto 0 do
+  begin
+    mLines := Result.Split([#10]);
+    mText := '';
+    for mIndex := 0 to High(mLines) do
+    begin
+      if (mIndex < AFix.Edits[mEdit].Range.StartPos.Line) or (mIndex >= AFix.Edits[mEdit].Range.EndPos.Line) then
+      begin
+        mText := mText + mLines[mIndex] + #10;
+      end;
+    end;
+    Result := Copy(mText, 1, Length(mText) - 1);
+  end;
+end;
+
+{ TUnusedPrivateMemberTests }
+
+procedure TUnusedPrivateMemberTests.IssueExampleWithFixes;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := Import('    FAltFormat: Boolean;'#10'    procedure KonvertiereAlt;'#10, '').Replace(
+    'implementation'#10'procedure TImport.Run;', 'implementation'#10'procedure TImport.KonvertiereAlt;'#10 +
+    'begin'#10'end;'#10#10'procedure TImport.Run;');
+  mFound := UnusedFindings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Privates Feld FAltFormat wird nie verwendet (wie H2219).', mFound[0].Message);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual('Private Methode KonvertiereAlt wird nie verwendet (wie H2219).', mFound[1].Message);
+  Assert.AreEqual(Integer(Ord(TRuleSeverity.Hint)), Integer(Ord(mFound[1].Severity)));
+  Assert.AreEqual(1, Integer(Length(mFound[1].Fixes)));
+  Assert.AreEqual('KonvertiereAlt entfernen', mFound[1].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[1].Fixes[0]);
+  Assert.AreEqual(0, Pos('KonvertiereAlt', mFixed), mFixed);
+  Assert.IsTrue(Pos('implementation'#10'procedure TImport.Run;', mFixed) > 0, mFixed);
+  mFixed := ApplyFix(mFixed, UnusedFindings(mFixed)[0].Fixes[0]);
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(mFixed))), mFixed);
+  Assert.IsTrue(Pos('  private'#10'  public', mFixed) > 0, mFixed);
+end;
+
+procedure TUnusedPrivateMemberTests.UsedMembersAreSilent;
+begin
+  // Lesen, Schreiben, Aufruf, Verwendung nur in einem {$IFDEF}-Zweig und über eine Property.
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    FAltFormat: Boolean;'#10 +
+    '    FWert: Integer;'#10'    FText: string;'#10'    function Pruefen: Boolean;'#10 +
+    '    property Text: string read FText;'#10, '  FAltFormat := True;'#10'  {$IFDEF DEBUG}'#10 +
+    '  if Pruefen then'#10'    Exit;'#10'  {$ENDIF}'#10'  Writeln(FWert, Text);'#10).Replace(
+    'procedure TImport.Run;', 'function TImport.Pruefen: Boolean;'#10'begin'#10'  Result := False;'#10'end;'#10 +
+    'procedure TImport.Run;')))));
+  // Verwendung über Self.
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    FWert: Integer;'#10, '  Self.FWert := 1;'#10)))));
+end;
+
+procedure TUnusedPrivateMemberTests.ExemptMembersAreSilent;
+var
+  mSource: string;
+begin
+  mSource := Import('    procedure WMSize(var Msg: TMessage); message 5;'#10 +
+    '    procedure Paint; override;'#10'    [Weak] FBesitzer: TObject;'#10'    Button1: TObject;'#10, '');
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.FormFindings(TUnusedPrivateMemberRule.Create, mSource,
+    'object Form1: TForm1'#10'  object Button1: TButton'#10'  end'#10'end'))));
+  Assert.AreEqual(1, Integer(Length(UnusedFindings(mSource))), 'Button1 ohne Formulardatei');
+  // Methoden eines Typs mit Interface können Interface-Methoden umsetzen.
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    function GetName: string;'#10, '').Replace(
+    'TImport = class', 'TImport = class(TInterfacedObject, INamed)')))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    function GetName: string;'#10, '').Replace(
+    'TImport = class', 'TImport = class(INamed)')))));
+  // Include-Dateien können die Mitglieder verwenden.
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('    FAltFormat: Boolean;'#10, '  {$I Teil.inc}'#10)))));
+end;
+
+procedure TUnusedPrivateMemberTests.ConstantsAndProperties;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := UnusedFindings(Import('    const Grenze = 10;'#10'    function GetAnzahl: Integer;'#10 +
+    '    property Anzahl: Integer read GetAnzahl;'#10, '').Replace('procedure TImport.Run;',
+    'function TImport.GetAnzahl: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10'procedure TImport.Run;'));
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Private Konstante Grenze wird nie verwendet (wie H2219).', mFound[0].Message);
+  Assert.AreEqual('Private Property Anzahl wird nie verwendet (wie H2219).', mFound[1].Message);
+  // strict private zählt wie private, public nie.
+  Assert.AreEqual(1, Integer(Length(UnusedFindings(Import('  strict private'#10'    FA: Integer;'#10, '')))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(Import('  public'#10'    FA: Integer;'#10, '')))));
+  // Zwei Felder in einer Zeile: Meldung ohne Korrektur.
+  mFound := UnusedFindings(Import('    FA, FB: Integer;'#10, '  FB := 1;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+end;
+
+procedure TUnusedPrivateMemberTests.IncludeFieldsOption;
+var
+  mSource: string;
+begin
+  mSource := Import('    FAltFormat: Boolean;'#10'    procedure KonvertiereAlt;'#10, '');
+  Assert.AreEqual(2, Integer(Length(UnusedFindings(mSource, '', 'Import.pas'))));
+  Assert.AreEqual(1, Integer(Length(UnusedFindings(mSource,
+    '{"rules": {"unused-private-member": {"includeFields": false}}}', 'Import.pas'))));
+end;
+
+procedure TUnusedPrivateMemberTests.OffAndExclude;
+var
+  mSource: string;
+begin
+  mSource := Import('    FAltFormat: Boolean;'#10, '');
+  Assert.AreEqual(1, Integer(Length(UnusedFindings(mSource, '', 'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(mSource, '{"rules": {"unused-private-member": "off"}}',
+    'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(mSource, '{"rules": {"group:compiler": "off"}}',
+    'Source/Import.pas'))));
+  Assert.AreEqual(0, Integer(Length(UnusedFindings(mSource,
+    '{"rules": {"unused-private-member": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TInaccessibleMemberTests);
+  TDUnitX.RegisterTestFixture(TUnusedPrivateMemberTests);
+
+end.

@@ -8,7 +8,7 @@ interface
 
 uses
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Core.Workspace,
   Shell.Composition.Core,
   Shell.Composition.Editing,

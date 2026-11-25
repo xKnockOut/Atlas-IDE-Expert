@@ -50,10 +50,10 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Findings.Baseline,
   Atlas.Common.Lsp.Metrics,
-  Atlas.Common.Lsp.Baseline;
+  Atlas.Common.Lsp.Baseline,
+  Atlas.Common.Findings.Contract;
 
 const
   cRoot = 'C:\Projekt';

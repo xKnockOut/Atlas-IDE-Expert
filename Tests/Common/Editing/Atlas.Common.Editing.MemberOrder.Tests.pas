@@ -50,12 +50,12 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.MemberOrder,
-  Atlas.Tests.SourceText;
+  Atlas.Tests.SourceText,
+  Atlas.Common.Documents.Contract;
 
 function Wrap(const ABody: string): string;
 begin
@@ -66,7 +66,7 @@ end;
 function Sorted(const AText: string; const ASettings: TMemberOrderSettings): string; overload;
 var
   mTree: TSyntaxTree;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
   mLines: TArray<string>;
   mIndex, mStart, mLine: Integer;
 begin
@@ -268,7 +268,7 @@ procedure TMemberOrderTests.UnchangedReturnsFalse;
 var
   mSource: string;
   mTree: TSyntaxTree;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   mSource := Wrap('  private'#10'    FA: Integer;'#10'  public'#10'    constructor Create;'#10'    procedure Run;'#10);
   mTree := TPascalParser.Parse(mSource);
@@ -283,7 +283,7 @@ procedure TMemberOrderTests.CrlfIsPreserved;
 var
   mSource: string;
   mTree: TSyntaxTree;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   mSource := StringReplace(Wrap('  public'#10'    procedure Run;'#10'    constructor Create;'#10), #10, #13#10,
     [rfReplaceAll]);

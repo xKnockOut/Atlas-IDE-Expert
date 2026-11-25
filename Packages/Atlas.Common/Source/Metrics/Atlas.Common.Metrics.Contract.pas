@@ -30,7 +30,7 @@
 //   - Vererbungstiefe (#980): Vorfahren einer Klasse, die nicht aus RTL,
 //     VCL oder anderen Bibliotheken stammen; braucht den Index und steht
 //     darum nicht in TMetricsCalculator.Structure, sondern in
-//     TMetricRules.InheritanceDepths (Atlas.Common.Rules.Builtin.Metrics).
+//     TMetricRules.InheritanceDepths (Rules.Builtin.Metrics).
 //   Unit-Länge und uses-Anzahl nur für Units: Das uses eines Programms oder
 //   einer Bibliothek zählt die Units des Projekts auf.
 // Grenzwerte (Vorgaben aus der Spezifikation, Abschnitt 4.13) stehen in

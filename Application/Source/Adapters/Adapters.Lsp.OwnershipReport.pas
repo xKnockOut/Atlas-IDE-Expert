@@ -9,7 +9,7 @@ interface
 uses
   System.JSON,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api;
+  Rules.Contract.Api;
 
 type
   /// <summary>ILspOwnershipReport über die API der Prüfregeln.</summary>

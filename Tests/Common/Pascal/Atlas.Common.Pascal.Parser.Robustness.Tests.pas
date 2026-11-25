@@ -62,10 +62,10 @@ uses
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Builtin,
-  Atlas.Common.Rules.Checker,
-  Atlas.Tests.SmallStack;
+  Rules.Builtin,
+  Rules.Checker,
+  Atlas.Tests.SmallStack,
+  Atlas.Common.Findings.Contract;
 
 const
   cFuzzSeed = 20261007;

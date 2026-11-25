@@ -78,7 +78,6 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.UsesActions,
@@ -155,7 +154,7 @@ end;
 function RemoveUnused(const AText: string; const AKeep: TArray<string>): string; overload;
 var
   mTokens: TArray<TPascalToken>;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mTokens := TPascalLexer.Tokenize(AText);
   if TUsesActions.RemoveUnits(mTokens, AText, TUsesActions.UnusedUnits(mTokens, Info, AKeep), #10, mEdits) then
@@ -292,7 +291,7 @@ var
   mText: string;
   mTokens: TArray<TPascalToken>;
   mUnits: TArray<string>;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mText := Source('Units.A, Units.B', 'type'#10'  T = Bar;'#10, 'Units.C',
     'procedure P;'#10'begin'#10'  Foo; Baz;'#10'end;'#10);
@@ -307,7 +306,7 @@ end;
 procedure TUsesActionsTests.MovesUnitToInterface;
 var
   mText: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   // Unit-Beziehungen (#593): aus dem implementation- ins interface-uses, auch ohne interface-uses.
   mText := Source('Units.A', '', 'Units.B, Units.C', '');
@@ -333,7 +332,7 @@ end;
 procedure TUsesActionsTests.SortsByNamespace;
 var
   mText: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
 begin
   mText := Source('Eigen, Vcl.Forms, Data.DB, Abc, Vcl.Controls, Data.Bind', '', '', '');
   Assert.IsTrue(TPascalUsesEdits.Organize(TPascalLexer.Tokenize(mText), mText, True, #10, mEdits, True));
@@ -432,7 +431,7 @@ end;
 procedure TUsesActionsTests.AddsUnitsToMatchingSection;
 var
   mText: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mAdded: TArray<string>;
 begin
   // Units suchen (#777): Foo steht im interface, also Units.A dorthin; Units.C ins implementation-uses;
@@ -459,7 +458,7 @@ end;
 procedure TUsesActionsTests.AddsUnitsToChosenSection;
 var
   mText: string;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mAdded: TArray<string>;
 begin
   // Unit verwenden (#786): Der Umschalter gilt fest, auch wenn der interface-Teil Foo aus Units.A nennt.

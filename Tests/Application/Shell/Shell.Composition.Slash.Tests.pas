@@ -8,7 +8,7 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.CheckContext,
+  Rules.CheckContext,
   Atlas.Common.Lsp.TestUnits,
   Shell.Composition.Slash;
 

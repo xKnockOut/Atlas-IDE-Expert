@@ -114,8 +114,8 @@ foreach ($dir in $SourceDirs) {
         $tested = $testNames.Contains($unit) -or $testNames.Contains("$unit.Tests")
         $relative = [IO.Path]::GetRelativePath($Root, $file.FullName)
         # Regelkatalog je Sprache und seine Teile je Gruppe: Update-RuleCatalog.ps1 erzeugt und prüft sie, die Tests von
-        # Atlas.Common.Rules.Catalog lesen sie über Atlas.Common.Rules.Catalog.Data.
-        if ($unit -match '^Atlas\.Common\.Rules\.Catalog\.Data\.[\w.]+$') { continue }
+        # Rules.Catalog lesen sie über Rules.Catalog.Data.
+        if ($unit -match '^Rules\.Catalog\.Data\.[\w.]+$') { continue }
         if ($Exempt.ContainsKey($unit)) {
             if ($tested) { $problems += "${relative}: hat jetzt Tests, Ausnahme streichen" }
         } elseif (-not $tested) {

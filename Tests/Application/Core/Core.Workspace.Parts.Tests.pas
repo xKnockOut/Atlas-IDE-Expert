@@ -73,8 +73,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,
   System.JSON,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Rules.Checker,
   Core.Compiler,
   Core.Workspace.Listings,
   Core.Workspace.Setup,
@@ -85,7 +84,8 @@ uses
   Core.Workspace.RuleProjects,
   Core.Workspace.Jobs,
   Core.Workspace.Packages,
-  Core.Workspace.Loader;
+  Core.Workspace.Loader,
+  Atlas.Common.Projects.Contract.Group;
 
 function ProjectWith(const AConfigs, APlatforms: TArray<string>): TProjectInfo;
 begin
@@ -351,7 +351,7 @@ procedure TCoreWorkspacePartsTests.RuleProjectsNamingFromIdeContext;
 var
   mValue: TJSONValue;
   mContext: TIdeProjectContext;
-  mNaming: TRuleNaming;
+  mNaming: TProjectNaming;
 begin
   mValue := TJSONObject.ParseJSONValue(
     '{"project":"C:\\P\\A.dproj","naming":{"field":"F","local":"m","constant":"c"}}');
@@ -361,11 +361,11 @@ begin
     mValue.Free;
   end;
   mNaming := TCoreRuleProjects.NamingOf(mContext);
-  Assert.IsTrue(mNaming.Known[TRuleNamingKind.Field]);
-  Assert.AreEqual('F', mNaming.Prefixes[TRuleNamingKind.Field]);
-  Assert.AreEqual('m', mNaming.Prefixes[TRuleNamingKind.Local]);
-  Assert.AreEqual('c', mNaming.Prefixes[TRuleNamingKind.Constant]);
-  Assert.IsFalse(mNaming.Known[TRuleNamingKind.Parameter]);
+  Assert.IsTrue(mNaming.Known[TProjectNamingKind.Field]);
+  Assert.AreEqual('F', mNaming.Prefixes[TProjectNamingKind.Field]);
+  Assert.AreEqual('m', mNaming.Prefixes[TProjectNamingKind.Local]);
+  Assert.AreEqual('c', mNaming.Prefixes[TProjectNamingKind.Constant]);
+  Assert.IsFalse(mNaming.Known[TProjectNamingKind.Parameter]);
 end;
 
 procedure TCoreWorkspacePartsTests.JobsWithoutInstallation;

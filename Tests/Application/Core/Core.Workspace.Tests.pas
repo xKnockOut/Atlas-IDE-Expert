@@ -37,14 +37,14 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,
   System.Generics.Collections,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
+  Rules.Checker,
   Core.Workspace.Setup,
   Core.Workspace.RuleProjects,
   Atlas.Common.Localization.Texts,
   Core.Workspace,
   Shell.Composition.Platform,
-  Atlas.Common.Checks.Contract;
+  Atlas.Common.Checks.Contract,
+  Atlas.Common.Projects.Contract.Group;
 
 function NewWorkspace(const AName: string): TCoreWorkspace;
 begin
@@ -109,7 +109,7 @@ begin
   end;
 end;
 
-function Member(const AName: string; AKind: TRuleApplicationKind): TCheckProject;
+function Member(const AName: string; AKind: TApplicationKind): TCheckProject;
 begin
   Result := Default(TCheckProject);
   Result.Application := AKind;
@@ -124,19 +124,19 @@ begin
   mOutside := Default(TCheckProject);
   mMerged := TCoreRuleProjects.MergeRuleProjects(nil, 'U.pas');
   Assert.AreEqual('U.pas', mMerged.FileName);
-  Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Unknown, mMerged.Application, 'Ohne Projekt unbekannt');
-  mMerged := TCoreRuleProjects.MergeRuleProjects([mOutside, Member('Tests', TRuleApplicationKind.Console)], 'U.pas');
-  Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Console,
+  Assert.AreEqual<TApplicationKind>(TApplicationKind.Unknown, mMerged.Application, 'Ohne Projekt unbekannt');
+  mMerged := TCoreRuleProjects.MergeRuleProjects([mOutside, Member('Tests', TApplicationKind.Console)], 'U.pas');
+  Assert.AreEqual<TApplicationKind>(TApplicationKind.Console,
     mMerged.Application, 'Projekt ohne die Datei zählt nicht');
   Assert.AreEqual('Tests', mMerged.Name);
   Assert.AreEqual('U.pas', mMerged.FileName);
-  mMerged := TCoreRuleProjects.MergeRuleProjects([Member('A', TRuleApplicationKind.Gui),
-    Member('B', TRuleApplicationKind.Gui)], 'U.pas');
-  Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Gui, mMerged.Application, 'Gleiche Art bleibt');
+  mMerged := TCoreRuleProjects.MergeRuleProjects([Member('A', TApplicationKind.Gui),
+    Member('B', TApplicationKind.Gui)], 'U.pas');
+  Assert.AreEqual<TApplicationKind>(TApplicationKind.Gui, mMerged.Application, 'Gleiche Art bleibt');
   Assert.AreEqual('A', mMerged.Name, 'Das erste Projekt liefert den Namen');
-  mMerged := TCoreRuleProjects.MergeRuleProjects([Member('Tests', TRuleApplicationKind.Console),
-    Member('Plugin', TRuleApplicationKind.Package), Member('Noch', TRuleApplicationKind.Console)], 'U.pas');
-  Assert.AreEqual<TRuleApplicationKind>(TRuleApplicationKind.Unknown,
+  mMerged := TCoreRuleProjects.MergeRuleProjects([Member('Tests', TApplicationKind.Console),
+    Member('Plugin', TApplicationKind.Package), Member('Noch', TApplicationKind.Console)], 'U.pas');
+  Assert.AreEqual<TApplicationKind>(TApplicationKind.Unknown,
     mMerged.Application, 'Verschiedene Arten ergeben Unknown');
   Assert.AreEqual('Tests', mMerged.Name);
 end;

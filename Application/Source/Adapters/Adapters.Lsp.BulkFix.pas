@@ -7,7 +7,7 @@ interface
 
 uses
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Rules.Contract.Api;
+  Rules.Contract.Api;
 
 type
   /// <summary>ILspBulkFix über die API der Prüfregeln.</summary>
