@@ -65,7 +65,8 @@ uses
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.TypeConversions,
   Atlas.Common.Lsp.Internals.CompletionSource,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TypeTexts;
 
 type
   /// <summary>Texte der Deklarations-Vervollständigung in beiden Sprachen (#1458).</summary>
@@ -835,8 +836,8 @@ function TInterfaceItemsBuilder.StubOf(const AMissing: TResolvedSymbol; const AS
   out AStub: TInterfaceStub): Boolean;
 begin
   // Generische Interfaces: Typargumente in die Deklaration einsetzen (IComparer<TKunde>: T → TKunde).
-  Result := TInterfaceStubs.Make(TInterfaceStubs.GenericName(AMissing.Container, AMissing.Bindings), FTypeName,
-    TInterfaceStubs.SubstituteWords(TInterfaceStubs.DeclarationOf(ASourceLines, AMissing.Range),
+  Result := TInterfaceStubs.Make(TPascalTypeTexts.GenericName(AMissing.Container, AMissing.Bindings), FTypeName,
+    TPascalTypeTexts.SubstituteWords(TInterfaceStubs.DeclarationOf(ASourceLines, AMissing.Range),
     AMissing.Bindings), FRequest.LineBreak, AStub);
 end;
 

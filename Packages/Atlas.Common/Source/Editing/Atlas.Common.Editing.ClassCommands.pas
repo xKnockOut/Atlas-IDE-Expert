@@ -67,7 +67,8 @@ uses
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Lines,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.TypeTexts;
 
 {$SCOPEDENUMS ON}
 
@@ -1196,8 +1197,8 @@ var
 begin
   Result := nil;
   mSource := ATarget.Source;
-  if not MemberLines(ATarget, AMember, mLines) or not TInterfaceStubs.Make(TInterfaceStubs.GenericName(
-    AMember.Container, AMember.Bindings), ATarget.TypeName, TInterfaceStubs.SubstituteWords(
+  if not MemberLines(ATarget, AMember, mLines) or not TInterfaceStubs.Make(TPascalTypeTexts.GenericName(
+    AMember.Container, AMember.Bindings), ATarget.TypeName, TPascalTypeTexts.SubstituteWords(
     TInterfaceStubs.DeclarationOf(mLines, AMember.Range), AMember.Bindings), mSource.LineBreak, mStub) then
   begin
     Exit;

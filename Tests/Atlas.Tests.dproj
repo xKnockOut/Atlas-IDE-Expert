@@ -284,6 +284,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeAlias.Names.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeAlias.Protocol.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.EnumTables.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.TypeTexts.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EnumTables.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Overloads.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Overloads.Protocol.Tests.pas"/>

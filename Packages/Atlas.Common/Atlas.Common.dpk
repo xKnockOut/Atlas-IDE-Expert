@@ -362,6 +362,7 @@ contains
   Atlas.Common.Editing.MethodOrder.Protocol in 'Source\Editing\Atlas.Common.Editing.MethodOrder.Protocol.pas',
   Atlas.Common.Editing.MethodOrder in 'Source\Editing\Atlas.Common.Editing.MethodOrder.pas',
   Atlas.Common.Pascal.TypeComments in 'Source\Pascal\Atlas.Common.Pascal.TypeComments.pas',
+  Atlas.Common.Pascal.TypeTexts in 'Source\Pascal\Atlas.Common.Pascal.TypeTexts.pas',
   Atlas.Common.Editing.ClassBodies in 'Source\Editing\Atlas.Common.Editing.ClassBodies.pas',
   Atlas.Common.Editing.MethodMatching in 'Source\Editing\Atlas.Common.Editing.MethodMatching.pas',
   Atlas.Common.Pascal.BodySpacing in 'Source\Pascal\Atlas.Common.Pascal.BodySpacing.pas',

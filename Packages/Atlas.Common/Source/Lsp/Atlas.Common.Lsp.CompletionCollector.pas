@@ -180,12 +180,12 @@ uses
   Atlas.Common.Index.NameIndex,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,
-  Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionSameNames,
   Atlas.Common.Lsp.Completion.TypeConversions,
   Atlas.Text.Fuzzy,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TypeTexts;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -651,7 +651,7 @@ begin
   end;
   mScored.Item.AdditionalEdits := AEdits;
   FillFromSymbol(Self, ASymbol, mScored.Item);
-  mScored.Item.Detail := TInterfaceStubs.SubstituteWords(ADetail, mScored.Item.Bindings);
+  mScored.Item.Detail := TPascalTypeTexts.SubstituteWords(ADetail, mScored.Item.Bindings);
   mScored.Item.Kind := AKind;
   // Der Editor filtert selbst nach dem getippten Wort; unscharfe Treffer bekommen es
   // als filterText, damit er sie nicht verwirft.

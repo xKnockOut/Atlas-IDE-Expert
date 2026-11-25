@@ -16,10 +16,6 @@ type
     [Test]
     procedure AppliesByType;
     [Test]
-    procedure ElementTypes;
-    [Test]
-    procedure StringAndPointerTypes;
-    [Test]
     procedure AppliesNewTemplates;
     [Test]
     procedure ExpandsNewTemplates;
@@ -77,27 +73,6 @@ begin
   Assert.IsTrue(TPostfixTemplates.Applies('tryf', mTraits, True));
   Assert.IsFalse(TPostfixTemplates.Applies('fmt', mTraits, True));
   Assert.IsFalse(TPostfixTemplates.Applies('unbekannt', mTraits, True));
-end;
-
-procedure TPostfixTemplatesTests.ElementTypes;
-begin
-  Assert.AreEqual('Integer', TPostfixTemplates.ElementOf('TArray<Integer>'));
-  Assert.AreEqual('TPair<string, Integer>', TPostfixTemplates.ElementOf('TArray<TPair<string, Integer>>'));
-  Assert.AreEqual('string', TPostfixTemplates.ElementOf('array of string'));
-  Assert.AreEqual('Byte', TPostfixTemplates.ElementOf('array[0..9] of Byte'));
-  Assert.AreEqual('TFarbe', TPostfixTemplates.ElementOf('set of TFarbe'));
-  Assert.AreEqual('', TPostfixTemplates.ElementOf('array of const'));
-  Assert.AreEqual('', TPostfixTemplates.ElementOf('TStringList'));
-end;
-
-procedure TPostfixTemplatesTests.StringAndPointerTypes;
-begin
-  Assert.IsTrue(TPostfixTemplates.IsStringType('string'));
-  Assert.IsTrue(TPostfixTemplates.IsStringType('AnsiString'));
-  Assert.IsFalse(TPostfixTemplates.IsStringType('Char'));
-  Assert.IsTrue(TPostfixTemplates.IsPointerType('Pointer'));
-  Assert.IsTrue(TPostfixTemplates.IsPointerType('^TKunde'));
-  Assert.IsFalse(TPostfixTemplates.IsPointerType('TKunde'));
 end;
 
 procedure TPostfixTemplatesTests.AppliesNewTemplates;
