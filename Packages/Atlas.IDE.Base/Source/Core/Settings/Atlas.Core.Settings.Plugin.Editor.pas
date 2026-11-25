@@ -260,6 +260,9 @@ type
     HoverSignatureParams: Boolean;
     /// <summary>Zähler „Fehler/Warnungen/Hinweise“ in der Statusleiste (#509); Klick öffnet die Liste.</summary>
     ProblemsStatusCounter: Boolean;
+    /// <summary>Wellenlinien, Fehlertext am Zeilenende und Befunde im Hover ausblenden, solange ein Programm im
+    /// Debugger läuft (#2962, problems.hideWhileDebugging).</summary>
+    ProblemsHideWhileDebugging: Boolean;
     /// <summary>Code Lens „Testunit“ bzw. „Unit“ hinter der Zeile unit … (#189, codeLens.testUnit);
     /// der Befehl bleibt auch ohne sie verfügbar.</summary>
     CodeLensTestUnit: Boolean;
@@ -1125,6 +1128,7 @@ begin
   Result.HoverMembersMaxLines := cDefaultHoverMembersLines;
   Result.HoverSignatureParams := True;
   Result.ProblemsStatusCounter := True;
+  Result.ProblemsHideWhileDebugging := True;
   Result.CodeLensTestUnit := True;
   Result.CodeLensMetrics := True;
   Result.Metrics := True;
@@ -1196,6 +1200,7 @@ begin
   AIo.Number('HoverMembersMaxLines', HoverMembersMaxLines);
   AIo.Flag('HoverSignatureParams', HoverSignatureParams);
   AIo.Flag('ProblemsStatusCounter', ProblemsStatusCounter);
+  AIo.Flag('ProblemsHideWhileDebugging', ProblemsHideWhileDebugging);
   AIo.Flag('CodeLensTestUnit', CodeLensTestUnit);
   AIo.Flag('CodeLensMetrics', CodeLensMetrics);
   AIo.Flag('Metrics', Metrics);
