@@ -138,6 +138,9 @@ type
   protected
     procedure DoClose(var Action: TCloseAction); override;
   public
+    /// <summary>Fenster mit Titel ACaption und einer Kopie von AGraphic anlegen, so groß wie das Bild (höchstens die
+    /// Arbeitsfläche); noch nicht gezeigt.</summary>
+    constructor CreateFor(AOwner: TComponent; AGraphic: TGraphic; const ACaption: string);
     /// <summary>Bild von ASource in eigenem Fenster zeigen; ohne Bild nichts.</summary>
     class procedure Enlarge(ASource: TAtlasIssueImageBox); static;
   end;
@@ -674,34 +677,35 @@ begin
   Action := caFree;
 end;
 
-class procedure TAtlasIssueImageWindow.Enlarge(ASource: TAtlasIssueImageBox);
+constructor TAtlasIssueImageWindow.CreateFor(AOwner: TComponent; AGraphic: TGraphic; const ACaption: string);
 var
-  mForm: TAtlasIssueImageWindow;
   mBox: TScrollBox;
   mImage: TImage;
-  mSource: TAtlasIssueImageBox;
 begin
-  mSource := ASource;
-  if (mSource = nil) or (mSource.Graphic = nil) then
+  // TAtlasDialog: IDE-Thema; die Größe setzt das Fenster unten nach dem Bild.
+  inherited CreateDialog(AOwner, ACaption, 0);
+  BorderStyle := bsSizeable;
+  Position := poScreenCenter;
+  Width := Min(AGraphic.Width + ScaleValue(cImageWindowExtraWidth),
+    Screen.WorkAreaWidth - ScaleValue(cImageWindowScreenMargin));
+  Height := Min(AGraphic.Height + ScaleValue(cImageWindowExtraHeight),
+    Screen.WorkAreaHeight - ScaleValue(cImageWindowScreenMargin));
+  mBox := TScrollBox.Create(Self);
+  mBox.Parent := Self;
+  mBox.Align := alClient;
+  mImage := TImage.Create(Self);
+  mImage.Parent := mBox;
+  mImage.AutoSize := True;
+  mImage.Picture.Assign(AGraphic);
+end;
+
+class procedure TAtlasIssueImageWindow.Enlarge(ASource: TAtlasIssueImageBox);
+begin
+  if (ASource = nil) or (ASource.Graphic = nil) then
   begin
     Exit;
   end;
-  // TAtlasDialog: IDE-Thema; die Größe setzt das Fenster unten nach dem Bild.
-  mForm := TAtlasIssueImageWindow.CreateDialog(nil, mSource.Alt, 0);
-  mForm.BorderStyle := bsSizeable;
-  mForm.Position := poScreenCenter;
-  mForm.Width := Min(mSource.Graphic.Width + mForm.ScaleValue(cImageWindowExtraWidth),
-    Screen.WorkAreaWidth - mForm.ScaleValue(cImageWindowScreenMargin));
-  mForm.Height := Min(mSource.Graphic.Height + mForm.ScaleValue(cImageWindowExtraHeight),
-    Screen.WorkAreaHeight - mForm.ScaleValue(cImageWindowScreenMargin));
-  mBox := TScrollBox.Create(mForm);
-  mBox.Parent := mForm;
-  mBox.Align := alClient;
-  mImage := TImage.Create(mForm);
-  mImage.Parent := mBox;
-  mImage.AutoSize := True;
-  mImage.Picture.Assign(mSource.Graphic);
-  mForm.Show;
+  TAtlasIssueImageWindow.CreateFor(nil, ASource.Graphic, ASource.Alt).Show;
 end;
 
 { TAtlasIssueLinkText }
