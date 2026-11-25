@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.LearnedSuggestions;
+﻿unit Atlas.Common.Editing.LearnedSuggestions.Protocol;
 
 // Gelernte Vorschläge (#1890) über das Protokoll. Das Plugin schickt vorher
 // den Puffer.
@@ -37,7 +37,7 @@ type
   TLearnedOptionsFunc = reference to function(const AUri: string; const AEditorOptions: TJSONValue):
     TLearnedOptions;
 
-  TLspLearnedSuggestions = class
+  TLearnedSuggestionsProtocol = class
   public const
     cSuggestCommand = 'atlas.server.suggestNext';
     cListCommand = 'atlas.server.learnedPatterns';
@@ -91,9 +91,9 @@ const
   cMinShareLow = 50;
   cMinShareHigh = 100;
 
-{ TLspLearnedSuggestions }
+{ TLearnedSuggestionsProtocol }
 
-class procedure TLspLearnedSuggestions.ReadOptions(const AValue: TJSONValue; var AOptions: TLearnedOptions);
+class procedure TLearnedSuggestionsProtocol.ReadOptions(const AValue: TJSONValue; var AOptions: TLearnedOptions);
 var
   mObject, mAdjust: TJSONObject;
   mPair: TJSONPair;
@@ -179,7 +179,7 @@ begin
   Result.AddPair('cursor', mCursor);
 end;
 
-class function TLspLearnedSuggestions.ExecuteSuggest(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+class function TLearnedSuggestionsProtocol.ExecuteSuggest(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AOptionsFor: TLearnedOptionsFunc; const AArguments: TJSONArray): TJSONValue;
 var
   mUri: string;
@@ -224,7 +224,7 @@ begin
   Result := SuggestionJson(mSuggestion, mLine);
 end;
 
-class function TLspLearnedSuggestions.ExecuteList(const AIndex: ISymbolIndex; const AOptionsFor: TLearnedOptionsFunc;
+class function TLearnedSuggestionsProtocol.ExecuteList(const AIndex: ISymbolIndex; const AOptionsFor: TLearnedOptionsFunc;
   const AArguments: TJSONArray): TJSONValue;
 var
   mUri: string;
@@ -265,7 +265,7 @@ begin
   ALine := TJSONNumber(AArguments.Items[1]).AsInt;
 end;
 
-class function TLspLearnedSuggestions.ExecuteContext(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+class function TLearnedSuggestionsProtocol.ExecuteContext(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AArguments: TJSONArray): TJSONValue;
 var
   mUri, mDeclaration: string;
@@ -288,7 +288,7 @@ begin
   Result := mResult;
 end;
 
-class function TLspLearnedSuggestions.ExecuteCheck(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+class function TLearnedSuggestionsProtocol.ExecuteCheck(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AArguments: TJSONArray): TJSONValue;
 var
   mUri: string;
@@ -328,6 +328,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.LearnedSuggestions', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.LearnedSuggestions.Protocol', cTexts);
 
 end.

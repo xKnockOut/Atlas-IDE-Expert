@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.DocumentLinks;
+﻿unit Atlas.Common.Editing.DocumentLinks.Protocol;
 
 // Anklickbare Verweise (textDocument/documentLink, #25): Include- und
 // Ressourcendateien, URLs und Dateinamen in Strings. Die Suche liegt in
@@ -18,7 +18,7 @@ type
   /// <summary>Zusätzliche Suchpfade für Include-Dateien des Dokuments AUri. Hintergrund-Thread.</summary>
   TSearchPathsProvider = reference to function(const AUri: string): TArray<string>;
 
-  TLspDocumentLinks = class
+  TDocumentLinksProtocol = class
   public const
     cMethod = 'textDocument/documentLink';
   private
@@ -60,9 +60,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspDocumentLinks }
+{ TDocumentLinksProtocol }
 
-constructor TLspDocumentLinks.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider;
+constructor TDocumentLinksProtocol.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider;
   const AFileExists: TFileExistsFunc);
 begin
   inherited Create;
@@ -79,17 +79,17 @@ begin
   end;
 end;
 
-constructor TLspDocumentLinks.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider);
+constructor TDocumentLinksProtocol.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider);
 begin
   Create(AStore, ASearchPaths, nil);
 end;
 
-constructor TLspDocumentLinks.Create(const AStore: IDocumentStore);
+constructor TDocumentLinksProtocol.Create(const AStore: IDocumentStore);
 begin
   Create(AStore, nil, nil);
 end;
 
-function TLspDocumentLinks.HandleLinks(const AParams: TJSONValue;
+function TDocumentLinksProtocol.HandleLinks(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mUri: string;
@@ -122,18 +122,18 @@ begin
   end;
 end;
 
-procedure TLspDocumentLinks.Attach(ADispatcher: TJsonRpcDispatcher);
+procedure TDocumentLinksProtocol.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, HandleLinks);
 end;
 
-class function TLspDocumentLinks.Capability: TJSONObject;
+class function TDocumentLinksProtocol.Capability: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('resolveProvider', TJSONBool.Create(False));
 end;
 
-class function TLspDocumentLinks.LinkToJson(const ALink: TDocumentLink): TJSONObject;
+class function TDocumentLinksProtocol.LinkToJson(const ALink: TDocumentLink): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('range', TLspPositions.RangeToJson(ALink.Range));
@@ -149,6 +149,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.DocumentLinks', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.DocumentLinks.Protocol', cTexts);
 
 end.

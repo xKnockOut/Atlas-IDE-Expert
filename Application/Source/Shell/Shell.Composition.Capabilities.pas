@@ -28,7 +28,7 @@ uses
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Lsp.DocumentLinks,
+  Atlas.Common.Editing.DocumentLinks.Protocol,
   Atlas.Common.JsonRpc.ServerStatus,
   Atlas.Common.Lsp.Processes,
   Atlas.Common.Lsp.PullDiagnostics,
@@ -77,7 +77,7 @@ begin
   Result.AddPair('codeLensProvider', TLspCodeLens.Capability);
   Result.AddPair('semanticTokensProvider', TLspSemanticTokens.Capability);
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);
-  Result.AddPair('documentLinkProvider', TLspDocumentLinks.Capability);
+  Result.AddPair('documentLinkProvider', TDocumentLinksProtocol.Capability);
   Result.AddPair('colorProvider', TJSONBool.Create(True));
   mCommands := TJSONArray.Create;
   mCommands.Add(cStatusCommand);

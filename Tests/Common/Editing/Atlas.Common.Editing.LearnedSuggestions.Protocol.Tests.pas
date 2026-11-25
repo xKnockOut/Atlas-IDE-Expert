@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.LearnedSuggestions.Tests;
+﻿unit Atlas.Common.Editing.LearnedSuggestions.Protocol.Tests;
 
 // Tests für atlas.server.suggestNext und atlas.server.learnedPatterns (#1890):
 // Antwort mit Zeilen, Schreibmarke und Belegen, Schwellen aus den Argumenten,
@@ -15,7 +15,7 @@ uses
 
 type
   [TestFixture]
-  TLspLearnedSuggestionsTests = class
+  TLearnedSuggestionsProtocolTests = class
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -67,7 +67,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.LearnedSuggestions,
-  Atlas.Common.Lsp.LearnedSuggestions;
+  Atlas.Common.Editing.LearnedSuggestions.Protocol;
 
 const
   cUri = 'file:///C:/P/Haupt.pas';
@@ -130,16 +130,16 @@ begin
   Result := TLearnedOptions.Default;
 end;
 
-{ TLspLearnedSuggestionsTests }
+{ TLearnedSuggestionsProtocolTests }
 
-function TLspLearnedSuggestionsTests.Run(const AArguments: string): string;
+function TLearnedSuggestionsProtocolTests.Run(const AArguments: string): string;
 var
   mArguments: TJSONArray;
   mAnswer: TJSONValue;
 begin
   mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
   try
-    mAnswer := TLspLearnedSuggestions.ExecuteSuggest(FStore, FIndex, OptionsFor, mArguments);
+    mAnswer := TLearnedSuggestionsProtocol.ExecuteSuggest(FStore, FIndex, OptionsFor, mArguments);
     try
       Result := mAnswer.ToJSON;
     finally
@@ -150,14 +150,14 @@ begin
   end;
 end;
 
-function TLspLearnedSuggestionsTests.Check(const ALines: string): string;
+function TLearnedSuggestionsProtocolTests.Check(const ALines: string): string;
 var
   mArguments: TJSONArray;
   mAnswer: TJSONValue;
 begin
   mArguments := TJSONObject.ParseJSONValue('["' + cUri + '", 6, ' + ALines + ']') as TJSONArray;
   try
-    mAnswer := TLspLearnedSuggestions.ExecuteCheck(FStore, FIndex, mArguments);
+    mAnswer := TLearnedSuggestionsProtocol.ExecuteCheck(FStore, FIndex, mArguments);
     try
       Result := mAnswer.ToJSON;
     finally
@@ -168,14 +168,14 @@ begin
   end;
 end;
 
-function TLspLearnedSuggestionsTests.Context(const AArguments: string): string;
+function TLearnedSuggestionsProtocolTests.Context(const AArguments: string): string;
 var
   mArguments: TJSONArray;
   mAnswer: TJSONValue;
 begin
   mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
   try
-    mAnswer := TLspLearnedSuggestions.ExecuteContext(FStore, FIndex, mArguments);
+    mAnswer := TLearnedSuggestionsProtocol.ExecuteContext(FStore, FIndex, mArguments);
     try
       Result := mAnswer.ToJSON;
     finally
@@ -186,7 +186,7 @@ begin
   end;
 end;
 
-procedure TLspLearnedSuggestionsTests.Setup;
+procedure TLearnedSuggestionsProtocolTests.Setup;
 var
   mIndex: Integer;
   mLibrary: TUnitIndex;
@@ -206,13 +206,13 @@ begin
   FIndex.AddUnit(mLibrary);
 end;
 
-procedure TLspLearnedSuggestionsTests.TearDown;
+procedure TLearnedSuggestionsProtocolTests.TearDown;
 begin
   FStore := nil;
   FIndex := nil;
 end;
 
-procedure TLspLearnedSuggestionsTests.SuggestsTryFinally;
+procedure TLearnedSuggestionsProtocolTests.SuggestsTryFinally;
 var
   mAnswer: string;
 begin
@@ -226,13 +226,13 @@ begin
   Assert.IsTrue(Pos('"evidence":[{"uri":"', mAnswer) > 0, mAnswer);
 end;
 
-procedure TLspLearnedSuggestionsTests.ThresholdsFromArguments;
+procedure TLearnedSuggestionsProtocolTests.ThresholdsFromArguments;
 begin
   Assert.AreEqual('null', Run('["' + cUri + '", 6, null, {"minCount": 7}]'));
   Assert.AreNotEqual('null', Run('["' + cUri + '", 6, null, {"minCount": 6}]'));
 end;
 
-procedure TLspLearnedSuggestionsTests.AdjustFromArguments;
+procedure TLearnedSuggestionsProtocolTests.AdjustFromArguments;
 var
   mId: string;
 begin
@@ -240,13 +240,13 @@ begin
   Assert.AreEqual('null', Run('["' + cUri + '", 6, null, {"adjust": {"' + mId + '": -40}}]'));
 end;
 
-procedure TLspLearnedSuggestionsTests.NullWithoutDocument;
+procedure TLearnedSuggestionsProtocolTests.NullWithoutDocument;
 begin
   Assert.AreEqual('null', Run('["file:///C:/P/Fehlt.pas", 6]'));
   Assert.AreEqual('null', Run('["' + cUri + '", 2]'), 'keine leere Zeile nach einem Auslöser');
 end;
 
-procedure TLspLearnedSuggestionsTests.RejectsMissingLine;
+procedure TLearnedSuggestionsProtocolTests.RejectsMissingLine;
 begin
   Assert.WillRaise(
     procedure
@@ -255,7 +255,7 @@ begin
     end, EArgumentException);
 end;
 
-procedure TLspLearnedSuggestionsTests.ListsPatterns;
+procedure TLearnedSuggestionsProtocolTests.ListsPatterns;
 var
   mArguments: TJSONArray;
   mAnswer: TJSONValue;
@@ -263,7 +263,7 @@ var
 begin
   mArguments := TJSONObject.ParseJSONValue('["' + cUri + '"]') as TJSONArray;
   try
-    mAnswer := TLspLearnedSuggestions.ExecuteList(FIndex, OptionsFor, mArguments);
+    mAnswer := TLearnedSuggestionsProtocol.ExecuteList(FIndex, OptionsFor, mArguments);
     try
       mText := mAnswer.ToJSON;
     finally
@@ -277,7 +277,7 @@ begin
   Assert.IsTrue(Pos('"trigger":"$S := $T.Create"', mText) > 0, mText);
 end;
 
-procedure TLspLearnedSuggestionsTests.ReadOptionsClampsThresholds;
+procedure TLearnedSuggestionsProtocolTests.ReadOptionsClampsThresholds;
 var
   mOptions: TLearnedOptions;
   mValue: TJSONValue;
@@ -285,7 +285,7 @@ begin
   mOptions := TLearnedOptions.Default;
   mValue := TJSONObject.ParseJSONValue('{"minCount": 1, "minShare": 300, "adjust": {"a": 5, "b": "x"}}');
   try
-    TLspLearnedSuggestions.ReadOptions(mValue, mOptions);
+    TLearnedSuggestionsProtocol.ReadOptions(mValue, mOptions);
   finally
     mValue.Free;
   end;
@@ -295,23 +295,23 @@ begin
   Assert.AreEqual(5, mOptions.AdjustOf('A'));
 end;
 
-procedure TLspLearnedSuggestionsTests.CheckAcceptsKnownNames;
+procedure TLearnedSuggestionsProtocolTests.CheckAcceptsKnownNames;
 begin
   // Liste steht in der Datei, Free im Index.
   Assert.AreEqual('{"valid":true}', Check('["  Liste.Free;"]'));
 end;
 
-procedure TLspLearnedSuggestionsTests.CheckRejectsUnknownName;
+procedure TLearnedSuggestionsProtocolTests.CheckRejectsUnknownName;
 begin
   Assert.AreEqual('{"valid":false}', Check('["  Zauberwort.Free;"]'));
 end;
 
-procedure TLspLearnedSuggestionsTests.CheckRejectsNewSyntaxError;
+procedure TLearnedSuggestionsProtocolTests.CheckRejectsNewSyntaxError;
 begin
   Assert.AreEqual('{"valid":false}', Check('["  Liste.Free(;"]'));
 end;
 
-procedure TLspLearnedSuggestionsTests.CheckRejectsMissingLines;
+procedure TLearnedSuggestionsProtocolTests.CheckRejectsMissingLines;
 begin
   Assert.WillRaise(
     procedure
@@ -320,14 +320,14 @@ begin
     end, EArgumentException);
 end;
 
-procedure TLspLearnedSuggestionsTests.CheckIsInvalidWithoutDocument;
+procedure TLearnedSuggestionsProtocolTests.CheckIsInvalidWithoutDocument;
 var
   mArguments: TJSONArray;
   mAnswer: TJSONValue;
 begin
   mArguments := TJSONObject.ParseJSONValue('["file:///C:/P/Fehlt.pas", 1, ["  X;"]]') as TJSONArray;
   try
-    mAnswer := TLspLearnedSuggestions.ExecuteCheck(FStore, FIndex, mArguments);
+    mAnswer := TLearnedSuggestionsProtocol.ExecuteCheck(FStore, FIndex, mArguments);
     try
       Assert.AreEqual('{"valid":false}', mAnswer.ToJSON);
     finally
@@ -338,7 +338,7 @@ begin
   end;
 end;
 
-procedure TLspLearnedSuggestionsTests.ContextListsMembersOfTheClass;
+procedure TLearnedSuggestionsProtocolTests.ContextListsMembersOfTheClass;
 var
   mText: string;
 begin
@@ -348,13 +348,13 @@ begin
   Assert.IsTrue(Pos('procedure Speichern', mText) > 0, mText);
 end;
 
-procedure TLspLearnedSuggestionsTests.ContextIsEmptyOutsideMethods;
+procedure TLearnedSuggestionsProtocolTests.ContextIsEmptyOutsideMethods;
 begin
   Assert.AreEqual('{"declarations":[]}', Context('["' + cMethodUri + '", 1]'));
   Assert.AreEqual('{"declarations":[]}', Context('["' + cUri + '", 6]'), 'Routine ohne Klasse');
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspLearnedSuggestionsTests);
+  TDUnitX.RegisterTestFixture(TLearnedSuggestionsProtocolTests);
 
 end.

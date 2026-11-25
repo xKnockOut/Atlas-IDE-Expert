@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.DisableWarning;
+﻿unit Atlas.Common.Editing.DisableWarning.Protocol;
 
 // „Warnung hier abschalten“ über das Protokoll (#531):
 //   - Code-Aktionen auf Zeilen mit einer Warnung oder einem Hinweis des
@@ -34,7 +34,7 @@ type
     Version: string;
   end;
 
-  TLspDisableWarning = class
+  TDisableWarningProtocol = class
   public const
     cClientCommand = 'atlas.disableWarning';
     cProjectCommand = 'atlas.disableWarningProject';
@@ -59,7 +59,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts;
 
@@ -90,14 +89,14 @@ const
 const
   cScopeNames: array[TDisableWarningScope] of string = ('line', 'routine', 'unit');
 
-{ TLspDisableWarning }
+{ TDisableWarningProtocol }
 
-class function TLspDisableWarning.ScopeName(AScope: TDisableWarningScope): string;
+class function TDisableWarningProtocol.ScopeName(AScope: TDisableWarningScope): string;
 begin
   Result := cScopeNames[AScope];
 end;
 
-class function TLspDisableWarning.TryParseScope(const AName: string; out AScope: TDisableWarningScope): Boolean;
+class function TDisableWarningProtocol.TryParseScope(const AName: string; out AScope: TDisableWarningScope): Boolean;
 var
   mScope: TDisableWarningScope;
 begin
@@ -132,7 +131,7 @@ begin
   mCommand.AddPair('arguments', AArguments);
   Result := TJSONObject.Create;
   Result.AddPair('title', ATitle);
-  Result.AddPair('kind', TLspDisableWarning.cKind);
+  Result.AddPair('kind', TDisableWarningProtocol.cKind);
   if APreferred then
   begin
     Result.AddPair('isPreferred', TJSONBool.Create(True));
@@ -157,9 +156,9 @@ begin
   mArguments.Add(ASpot.Uri);
   mArguments.AddElement(TJSONNumber.Create(ASpot.Line));
   mArguments.Add(ASpot.Switch.Code);
-  mArguments.Add(TLspDisableWarning.ScopeName(AScope));
+  mArguments.Add(TDisableWarningProtocol.ScopeName(AScope));
   mArguments.AddElement(TJSONBool.Create(AOptions.AskReason));
-  Result := CommandAction(ATitle, TLspDisableWarning.cClientCommand, mArguments, APreferred);
+  Result := CommandAction(ATitle, TDisableWarningProtocol.cClientCommand, mArguments, APreferred);
 end;
 
 function SpotOf(const AUri: string; ALine: Integer; const ASwitch: TDisableWarningSwitch): TWarningSpot;
@@ -179,10 +178,10 @@ begin
   mArguments.Add(ASpot.Switch.Code);
   mArguments.Add(ASpot.Switch.Identifier);
   Result := CommandAction(cTexts[TDisableWarningText.SwitchOffInTheWhole2].Fmt([ASpot.Switch.Code]),
-    TLspDisableWarning.cProjectCommand, mArguments, False);
+    TDisableWarningProtocol.cProjectCommand, mArguments, False);
 end;
 
-class function TLspDisableWarning.Actions(const AOptions: TDisableWarningOptions; ATree: TSyntaxTree;
+class function TDisableWarningProtocol.Actions(const AOptions: TDisableWarningOptions; ATree: TSyntaxTree;
   const AUri: string; AFirstLine, ALastLine: Integer; const AMessages: TArray<TCompilerMessage>):
   TArray<TJSONObject>;
 var
@@ -277,7 +276,7 @@ begin
   end;
 end;
 
-class function TLspDisableWarning.Execute(const AArguments: TJSONArray; const AText: string; ATree: TSyntaxTree;
+class function TDisableWarningProtocol.Execute(const AArguments: TJSONArray; const AText: string; ATree: TSyntaxTree;
   const AVersion: string): TJSONValue;
 var
   mScope: TDisableWarningScope;
@@ -297,13 +296,13 @@ begin
   end;
   if not TDisableWarning.SwitchFor(AArguments.Items[2].Value, AVersion, mSwitch) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
       AArguments.Items[2].Value + cTexts[TDisableWarningText.IsNeitherAWarningNor].Text);
   end;
   if not TDisableWarning.Edits(AText, ATree, StrToIntDef(AArguments.Items[1].Value, -1),
     TDisableWarningRequest.Create(mSwitch, mScope, ReasonArgument(AArguments)), mEdits) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
       cTexts[TDisableWarningText.ThereIsNoMatchingRange].Text);
   end;
   mAnswer := TJSONObject.Create;
@@ -313,6 +312,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.DisableWarning', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.DisableWarning.Protocol', cTexts);
 
 end.

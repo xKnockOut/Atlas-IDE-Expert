@@ -409,8 +409,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.BulkFix.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FindingsPrompt.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DisableWarning.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerFixes.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DisableWarning.Protocol.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.CompilerFixes.Protocol.pas"/>
         <DCCReference Include="Source\Projects\Atlas.Common.Projects.MissingUnit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MissingUnit.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SemanticTokens.pas"/>
@@ -421,7 +421,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.Collector.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MoveClass.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.Protocol.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SmartPaste.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartPaste.Protocol.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.ServerStatus.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.QualifiedNames.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WinApiDocs.pas"/>
@@ -533,7 +533,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerDirectives.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ConditionalSymbols.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Colors.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentLinks.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentLinks.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.CodeActions.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.CodeActions.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.UsesEdits.pas"/>
@@ -790,8 +790,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LinkedEditing.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineValues.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Formatting.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SmartIndent.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LearnedSuggestions.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartIndent.Protocol.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.LearnedSuggestions.Protocol.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FuzzyMatch.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentHighlights.pas"/>

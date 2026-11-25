@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SmartPaste.Tests;
+﻿unit Atlas.Common.Editing.SmartPaste.Protocol.Tests;
 
 // Tests für Einfügen mit uses-Ergänzung über das Protokoll (#515): Analyse
 // mit eindeutigen und mehrdeutigen Units, Edit für die gewählten.
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TLspSmartPasteTests = class
+  TSmartPasteProtocolTests = class
   public
     [Test]
     procedure AnalyzesAndEdits;
@@ -28,7 +28,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Editing.SmartPaste,
-  Atlas.Common.Lsp.SmartPaste;
+  Atlas.Common.Editing.SmartPaste.Protocol;
 
 const
   cTarget =
@@ -63,7 +63,7 @@ begin
   mArguments := TJSONObject.ParseJSONValue(AArguments);
   mTree := TPascalParser.Parse(cTarget);
   try
-    mAnswer := TLspSmartPaste.Execute(TJSONArray(mArguments), 'file:///c%3A/p/Ziel.pas', cTarget, mTree, Context, nil);
+    mAnswer := TSmartPasteProtocol.Execute(TJSONArray(mArguments), 'file:///c%3A/p/Ziel.pas', cTarget, mTree, Context, nil);
     try
       Result := mAnswer.ToJSON;
     finally
@@ -75,9 +75,9 @@ begin
   end;
 end;
 
-{ TLspSmartPasteTests }
+{ TSmartPasteProtocolTests }
 
-procedure TLspSmartPasteTests.AnalyzesAndEdits;
+procedure TSmartPasteProtocolTests.AnalyzesAndEdits;
 const
   cRange = '{"start":{"line":6,"character":0},"end":{"line":8,"character":0}}';
 begin
@@ -90,7 +90,7 @@ begin
   Assert.AreEqual('{"edit":null,"added":[],"toImplementation":[]}', Run('["u",' + cRange + ',["System.SysUtils"]]'));
 end;
 
-procedure TLspSmartPasteTests.RejectsMissingRange;
+procedure TSmartPasteProtocolTests.RejectsMissingRange;
 begin
   Assert.WillRaise(
     procedure
@@ -100,6 +100,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspSmartPasteTests);
+  TDUnitX.RegisterTestFixture(TSmartPasteProtocolTests);
 
 end.

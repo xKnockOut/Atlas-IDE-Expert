@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.CompilerFixes.Tests;
+﻿unit Atlas.Common.Editing.CompilerFixes.Protocol.Tests;
 
 // Tests für die Code-Aktionen an Compilermeldungen, Teil 2 (#549).
 
@@ -9,7 +9,7 @@ uses
 
 type
   [TestFixture]
-  TLspCompilerFixesTests = class
+  TCompilerFixesProtocolTests = class
   public
     [Test]
     procedure OffersFixAndFixAll;
@@ -33,7 +33,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.CompilerFixes,
-  Atlas.Common.Lsp.CompilerFixes;
+  Atlas.Common.Editing.CompilerFixes.Protocol;
 
 const
   cUri = 'file:///C:/Projekt/A.pas';
@@ -91,7 +91,7 @@ begin
     mRequest.Uri := cUri;
     mRequest.Range := ARange;
     mRequest.Context := Context;
-    mActions := TLspCompilerFixes.Actions(AEnabled, mRequest,
+    mActions := TCompilerFixesProtocol.Actions(AEnabled, mRequest,
       [Msg(8, 'W1057', 'x ''AnsiString'' y ''string'''), Msg(8, 'W1057', 'x ''AnsiString'' y ''string'''),
       Msg(9, 'W1057', 'x ''AnsiString'' y ''string'''), Msg(6, 'E2003', 'Undeclared identifier: ''TStringList'''),
       Msg(-1, 'W1057', 'ohne Zeile')]);
@@ -105,32 +105,32 @@ begin
   end;
 end;
 
-{ TLspCompilerFixesTests }
+{ TCompilerFixesProtocolTests }
 
-procedure TLspCompilerFixesTests.OffersFixAndFixAll;
+procedure TCompilerFixesProtocolTests.OffersFixAndFixAll;
 begin
   Assert.AreEqual('Explizit umwandeln: string(…) (W1057) [quickfix]|' +
     'Alle W1057 in der Datei beheben (2) [quickfix]|', Titles(True, TTextRange.Create(8, 2, 8, 2)));
 end;
 
-procedure TLspCompilerFixesTests.OnlyLinesOfRange;
+procedure TCompilerFixesProtocolTests.OnlyLinesOfRange;
 begin
   Assert.AreEqual('', Titles(True, TTextRange.Create(10, 0, 10, 0)));
   Assert.AreEqual('uses System.Classes ergänzen (E2003: TStringList) [quickfix]|',
     Titles(True, TTextRange.Create(6, 0, 6, 0)));
 end;
 
-procedure TLspCompilerFixesTests.DisabledOffersNothing;
+procedure TCompilerFixesProtocolTests.DisabledOffersNothing;
 begin
   Assert.AreEqual('', Titles(False, TTextRange.Create(8, 0, 9, 0)));
 end;
 
-procedure TLspCompilerFixesTests.E2003NotTwiceOnIdentifier;
+procedure TCompilerFixesProtocolTests.E2003NotTwiceOnIdentifier;
 begin
   Assert.AreEqual('', Titles(True, TTextRange.Create(6, 6, 6, 6)));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspCompilerFixesTests);
+  TDUnitX.RegisterTestFixture(TCompilerFixesProtocolTests);
 
 end.

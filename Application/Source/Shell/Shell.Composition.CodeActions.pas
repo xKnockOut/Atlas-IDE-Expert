@@ -20,7 +20,7 @@ uses
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Rules.CheckContext,
   Atlas.Common.Lsp.CodeActions,
-  Atlas.Common.Lsp.DocumentLinks,
+  Atlas.Common.Editing.DocumentLinks.Protocol,
   Atlas.Common.Lsp.Colors;
 
 type
@@ -72,7 +72,7 @@ type
   private
     FServices: TShellCodeActionServices;
     FCodeActions: TLspCodeActions;
-    FDocumentLinks: TLspDocumentLinks;
+    FDocumentLinks: TDocumentLinksProtocol;
     FColors: TLspColors;
     function ClassActionContextOf(const AUri: string): TClassActionContext;
     function MemberOrderOf(const AUri: string): TMemberOrderSettings;
@@ -169,7 +169,7 @@ begin
   FCodeActions.UsesContextFor := UsesContextOf;
   FCodeActions.DefinesFor := FServices.DefinesFor;
   FCodeActions.ExtraActions := FServices.ExtraActions;
-  FDocumentLinks := TLspDocumentLinks.Create(FServices.Documents, IncludePathsOf);
+  FDocumentLinks := TDocumentLinksProtocol.Create(FServices.Documents, IncludePathsOf);
   FColors := TLspColors.Create(FServices.Documents, PlatformSystemColor);
 end;
 

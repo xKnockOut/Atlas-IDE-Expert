@@ -78,7 +78,7 @@ uses
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Editing.SafeDelete.Protocol,
   Atlas.Common.Editing.TypeAlias.Protocol,
-  Atlas.Common.Lsp.DisableWarning,
+  Atlas.Common.Editing.DisableWarning.Protocol,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.MethodBreakpoints,
   Atlas.Common.Documents.Uris,
@@ -166,7 +166,7 @@ begin
   Assert.IsTrue(Pos(TLspChangeSignature.cPrepareCommand, mText) > 0, 'Aufbau');
   Assert.IsTrue(Pos(TSafeDeleteProtocol.cApplyCommand, mText) > 0, 'Aufbau');
   Assert.IsTrue(Pos(TTypeAliasProtocol.cInlineApplyCommand, mText) > 0, 'Typen');
-  Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, mText) > 0, 'Korrekturen');
+  Assert.IsTrue(Pos(TDisableWarningProtocol.cApplyCommand, mText) > 0, 'Korrekturen');
   Assert.IsTrue(Pos(TUnitRenameProtocol.cCommand, mText) > 0, 'Bearbeiten');
   Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, mText) > 0, 'Debugger');
   Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, mText) > 0, 'Methodenhaltepunkte');

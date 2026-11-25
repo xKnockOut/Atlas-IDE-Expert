@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SmartIndent;
+﻿unit Atlas.Common.Editing.SmartIndent.Protocol;
 
 // Einrückung beim Tippen (#1827) über das Protokoll: Befehl
 // atlas.server.smartIndent. Das Plugin schickt vorher den Puffer.
@@ -26,7 +26,7 @@ type
   TSmartIndentOptionsFunc = reference to function(const AUri: string; const AEditorOptions: TJSONValue;
     out AOptions: TSmartIndentOptions): Boolean;
 
-  TLspSmartIndent = class
+  TSmartIndentProtocol = class
   public const
     cCommand = 'atlas.server.smartIndent';
     /// <summary>Viertes Argument: nur die Spalte.</summary>
@@ -61,9 +61,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-{ TLspSmartIndent }
+{ TSmartIndentProtocol }
 
-class function TLspSmartIndent.OptionsFrom(const ASettings: TSmartIndentSettings; const AStyle: TFormatStyle;
+class function TSmartIndentProtocol.OptionsFrom(const ASettings: TSmartIndentSettings; const AStyle: TFormatStyle;
   out AOptions: TSmartIndentOptions): Boolean;
 begin
   AOptions := TSmartIndentOptions.Default;
@@ -111,7 +111,7 @@ begin
   Result := TJSONObject.Create(TJSONPair.Create('column', TJSONNumber.Create(mColumn)));
 end;
 
-class function TLspSmartIndent.Execute(const AStore: IDocumentStore; const AOptionsFor: TSmartIndentOptionsFunc;
+class function TSmartIndentProtocol.Execute(const AStore: IDocumentStore; const AOptionsFor: TSmartIndentOptionsFunc;
   const AArguments: TJSONArray): TJSONValue;
 var
   mUri: string;
@@ -148,6 +148,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.SmartIndent', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.SmartIndent.Protocol', cTexts);
 
 end.
