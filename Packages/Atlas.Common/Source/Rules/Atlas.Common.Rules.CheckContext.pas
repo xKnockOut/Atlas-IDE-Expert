@@ -54,6 +54,9 @@ type
     /// <summary>Treffer der Prüfregeln für AText (Baum ATree), ohne die Baseline abzuziehen; so prüft auch
     /// atlas.updateBaseline (#97). Leer ohne Regeln.</summary>
     function Findings(const AText: string; ATree: TSyntaxTree): TArray<TRuleFinding>;
+    /// <summary>Regelkontext für AText und ATree mit allen Diensten und Angaben dieses Umfelds (wie für Findings).
+    /// </summary>
+    function RuleContext(const AText: string; ATree: TSyntaxTree): TRuleContext;
     /// <summary>Wie Findings über Memo (#1761): Treffer am selben Text aus dem Memo, nach Warten auf einen
     /// laufenden Lauf am selben Text oder selbst gerechnet und abgelegt. Ohne Memo wie Findings.
     /// AWaitCancelled (nil = nie) beendet nur das Warten auf einen fremden Lauf (ERuleCheckCancelled).</summary>
@@ -83,32 +86,34 @@ uses
 
 { TRuleCheckContext }
 
+function TRuleCheckContext.RuleContext(const AText: string; ATree: TSyntaxTree): TRuleContext;
+begin
+  Result := Default(TRuleContext);
+  Result.RelativePath := RelativePath;
+  Result.UnitName := ChangeFileExt(ExtractFileName(StringReplace(RelativePath, '/', '\', [rfReplaceAll])), '');
+  Result.Text := AText;
+  Result.Tree := ATree;
+  Services.ApplyTo(Result);
+  Result.FormText := FormText;
+  Result.FormFile := FormFile;
+  Result.ReadFile := ReadFile;
+  Result.FileExists := FileExists;
+  Result.FileName := FileName;
+  Result.Application := Application;
+  Result.ProjectName := ProjectName;
+  Result.AutoCreateForms := AutoCreateForms;
+  Result.ProjectMainSource := ProjectMainSource;
+  Result.Cancelled := Cancelled;
+  Result.Live := Live;
+end;
+
 function TRuleCheckContext.Findings(const AText: string; ATree: TSyntaxTree): TArray<TRuleFinding>;
-var
-  mContext: TRuleContext;
 begin
   if Length(Rules) = 0 then
   begin
     Exit(nil);
   end;
-  mContext := Default(TRuleContext);
-  mContext.RelativePath := RelativePath;
-  mContext.UnitName := ChangeFileExt(ExtractFileName(StringReplace(RelativePath, '/', '\', [rfReplaceAll])), '');
-  mContext.Text := AText;
-  mContext.Tree := ATree;
-  Services.ApplyTo(mContext);
-  mContext.FormText := FormText;
-  mContext.FormFile := FormFile;
-  mContext.ReadFile := ReadFile;
-  mContext.FileExists := FileExists;
-  mContext.FileName := FileName;
-  mContext.Application := Application;
-  mContext.ProjectName := ProjectName;
-  mContext.AutoCreateForms := AutoCreateForms;
-  mContext.ProjectMainSource := ProjectMainSource;
-  mContext.Cancelled := Cancelled;
-  mContext.Live := Live;
-  Result := TRuleEngine.Run(Rules, Settings, mContext);
+  Result := TRuleEngine.Run(Rules, Settings, RuleContext(AText, ATree));
 end;
 
 /// <summary>Lauf der Prüfregeln für Obtain.</summary>

@@ -116,6 +116,7 @@ Atlas.Common.Editing.Formatter.Layout.Tests
 Atlas.Common.Editing.Formatter.Tests
 Atlas.Common.Pascal.ForwardDeclarations.Tests
 Atlas.Common.Semantics.OwnedFields.Tests
+Atlas.Common.Semantics.CallOwnership.Tests
 Atlas.Common.Editing.FreeFields.Tests
 Atlas.Common.Semantics.GenericLists.Parts.Tests
 Atlas.Common.Editing.GitUser.Tests
@@ -182,6 +183,8 @@ Atlas.Common.History.Service.Tests
 Atlas.Common.History.Report.Tests
 Atlas.Common.Index.Extractor.Conditions.Tests
 Atlas.Common.Index.Extractor.InlineRefs.Tests
+Atlas.Common.Index.Extractor.Routines.Tests
+Atlas.Common.Index.Extractor.ParamOwnership.Tests
 Atlas.Common.Index.Extractor.Tokens.Tests
 Atlas.Common.Index.Extractor.TypeText.Tests
 Atlas.Common.Index.Processes.Tests
@@ -198,6 +201,7 @@ Atlas.Common.Leaks.Setup.Tests
 Atlas.Common.Leaks.Candidates.Tests
 Atlas.Common.Lsp.LeakCandidates.Tests
 Atlas.Common.Rules.Ownership.Tests
+Atlas.Common.Rules.CallOwnership.Tests
 Atlas.Common.Lsp.Ownership.Tests
 Atlas.Common.Lsp.RuntimeReport.Tests
 Atlas.Common.Localization.Texts.Tests
@@ -363,6 +367,8 @@ Atlas.Common.Pascal.Signatures.Tests
 Atlas.Common.Pascal.SyntaxChecks.Tests
 Atlas.Common.Pascal.SyntaxNodes.Tests
 Atlas.Common.Pascal.SyntaxTree.Tests
+Atlas.Common.Pascal.ParamOwnership.Tests
+Atlas.Common.Pascal.ObjectUses.Tests
 Atlas.Common.Pascal.TokenCursor.Tests
 Atlas.Common.Pascal.TreeHandles.Tests
 Atlas.Common.Pascal.WarningCodes.Tests

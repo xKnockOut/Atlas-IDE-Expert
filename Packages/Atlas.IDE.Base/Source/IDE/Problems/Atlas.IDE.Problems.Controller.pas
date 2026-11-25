@@ -24,6 +24,9 @@
 // BeginShutdown hält das Holen an, bevor die Sitzung endet: Der Manager
 // schließt dazwischen die Verbindung, damit laufende Anfragen sofort
 // zurückkehren, und wartet dann mit WaitShutdown.
+// Beim Debuggen (#2962, problems.hideWhileDebugging): Jeder Takt sieht nach, ob
+// ein Programm im Debugger läuft; wechselt der Zustand, zeichnet der Zeichner
+// nichts mehr bzw. wieder, und ProblemsAt liefert dem Hover so lange nichts.
 
 interface
 
@@ -74,6 +77,9 @@ type
     class var FServerFactory: TAtlasProblemsServerFactory;
     class var FEditorsFactory: TAtlasProblemsEditorsFactory;
     procedure Tick(Sender: TObject);
+    /// <summary>Befunde beim Debuggen aus- bzw. wieder einblenden (#2962); zeichnet nur bei einem Wechsel neu.
+    /// </summary>
+    procedure FollowDebugging;
     procedure Publish;
     procedure PublishCounts;
     procedure DeliverDocument(const APull: TAtlasProblemsPull; const AReport: TLspDiagnosticReport);
@@ -117,6 +123,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Problems.Plan,
+  Atlas.Core.Problems.Switches,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Problems.Strings,
   Atlas.IDE.Foundation.Settings;
@@ -139,6 +146,7 @@ begin
     Exit;
   end;
   try
+    FollowDebugging;
     FFlow.Tick(TAtlasIdeSettings.Current);
     // Kürzere Verzögerung als der Takt: öfter nachsehen.
     FTimer.Interval := FFlow.TickMs;
@@ -179,6 +187,19 @@ begin
       FList.Clear;
     end;
   end;
+end;
+
+procedure TAtlasProblemsController.FollowDebugging;
+var
+  mHidden: Boolean;
+begin
+  mHidden := TAtlasProblemSwitches.HiddenWhileDebugging(TAtlasIdeSettings.CurrentRef^, Paused);
+  if mHidden = FPainter.Hidden then
+  begin
+    Exit;
+  end;
+  FPainter.Hidden := mHidden;
+  TAtlasProblemsPainter.Invalidate;
 end;
 
 procedure TAtlasProblemsController.PublishCounts;
@@ -271,6 +292,11 @@ var
   mStore: TAtlasProblemStore;
 begin
   Result := nil;
+  // Beim Debuggen ausgeblendet (#2962): Der Hover zeigt nur den Wert.
+  if FPainter.Hidden then
+  begin
+    Exit;
+  end;
   mStore := FFlow.Results.Store;
   if TAtlasProblemsPlan.Shown(TAtlasIdeSettings.Current) then
   begin

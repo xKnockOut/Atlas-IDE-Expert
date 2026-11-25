@@ -5,11 +5,16 @@
 // und Unit-Suche importierten dafür den Hover. Nur im Hauptthread.
 // Ersatz-Units des Servers (atlas-ide:…, nur aus der RTTI der Packages) gibt es nicht als Datei: kein Sprung
 // dorthin, die IDE legte sonst einen leeren Reiter unter diesem Namen an.
+// Sprung nach einem Klick in den Text des Editors (Marken, Inlay-Hinweise, Kopf des Sticky Scroll) über
+// JumpAfterClick: erst nach dem Loslassen der Maustaste, sonst zieht der Editor ab der Klickstelle eine Markierung
+// bis zur Sprungstelle auf.
 
 interface
 
 uses
+  System.SysUtils,
   ToolsAPI,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Lsp.TextChanges;
 
 type
@@ -18,6 +23,13 @@ type
     /// <summary>Zeigt AFileName (öffnet sie nur, wenn sie noch nicht offen ist) und setzt den Cursor auf
     /// ALine/ACharacter (0-basiert).</summary>
     class procedure GoToLocation(const AFileName: string; ALine, ACharacter: Integer); static;
+    /// <summary>GoToLocation nach einem Klick in den Text des Editors: erst, wenn die linke Maustaste wieder oben
+    /// ist, danach eine Markierung verwerfen. Solange sie gedrückt ist, zieht der Editor ab der Klickstelle eine
+    /// Markierung bis zur Sprungstelle auf. AThen läuft nach dem Sprung, geschützt über AFeature; nur aus Base
+    /// übergeben, ein Modul kann bis dahin entladen sein. Ein neuer Klick ersetzt einen noch wartenden Sprung.
+    /// </summary>
+    class procedure JumpAfterClick(AFeature: TAtlasFeature; const AFileName: string; ALine, ACharacter: Integer;
+      const AThen: TProc); static;
     /// <summary>Zeigt AFileName ohne Sprung; öffnet sie nur, wenn sie noch nicht offen ist. False, wenn die IDE sie
     /// nicht öffnen kann.</summary>
     class function ShowFile(const AFileName: string): Boolean; static;
@@ -36,9 +48,99 @@ type
 implementation
 
 uses
-  System.SysUtils,
+  Winapi.Windows,
+  Vcl.ExtCtrls,
   Atlas.Plugin.Lsp.IdeMembers,
   Atlas.Core.Lsp.Session;
+
+type
+  /// <summary>Ein wartender Sprung nach einem Klick; der Takt prüft, ob die Maustaste oben ist.</summary>
+  TClickJump = class
+  private
+    FTimer: TTimer;
+    FFeature: TAtlasFeature;
+    FFileName: string;
+    FLine: Integer;
+    FCharacter: Integer;
+    FThen: TProc;
+    procedure Tick(Sender: TObject);
+  public
+    destructor Destroy; override;
+    procedure Start(AFeature: TAtlasFeature; const AFileName: string; ALine, ACharacter: Integer;
+      const AThen: TProc);
+  end;
+
+const
+  // Takt, in dem geprüft wird, ob die Maustaste oben ist (ms).
+  cClickJumpInterval = 20;
+
+var
+  GClickJump: TClickJump;
+
+{ TClickJump }
+
+destructor TClickJump.Destroy;
+begin
+  FTimer.Free;
+  FThen := nil;
+  inherited Destroy;
+end;
+
+procedure TClickJump.Start(AFeature: TAtlasFeature; const AFileName: string; ALine, ACharacter: Integer;
+  const AThen: TProc);
+begin
+  FFeature := AFeature;
+  FFileName := AFileName;
+  FLine := ALine;
+  FCharacter := ACharacter;
+  FThen := AThen;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Interval := cClickJumpInterval;
+    FTimer.OnTimer := Tick;
+  end;
+  FTimer.Enabled := True;
+end;
+
+procedure TClickJump.Tick(Sender: TObject);
+var
+  mFileName: string;
+  mLine, mCharacter: Integer;
+  mThen: TProc;
+begin
+  if GetAsyncKeyState(VK_LBUTTON) < 0 then
+  begin
+    Exit;
+  end;
+  FTimer.Enabled := False;
+  mFileName := FFileName;
+  mLine := FLine;
+  mCharacter := FCharacter;
+  mThen := FThen;
+  FThen := nil;
+  TAtlasGuard.Run(FFeature,
+    procedure
+    var
+      mEditors: IOTAEditorServices;
+      mView: IOTAEditView;
+    begin
+      TAtlasIdeNavigation.GoToLocation(mFileName, mLine, mCharacter);
+      // Was der Editor beim Klick als Markierung begonnen hat, verwerfen.
+      if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+      begin
+        mView := mEditors.TopView;
+        if (mView <> nil) and (mView.Block <> nil) then
+        begin
+          mView.Block.Reset;
+        end;
+      end;
+      if Assigned(mThen) then
+      begin
+        mThen();
+      end;
+    end);
+end;
 
 /// <summary>Modul von AFileName; öffnet die Datei nur, wenn sie noch nicht offen ist. OpenFile öffnete sie sonst
 /// jedes Mal neu (Doppelklick in „Atlas-Prüfung“), bei Formular-Units samt Designer. nil, wenn das scheitert.
@@ -108,6 +210,16 @@ begin
   mView.CursorPos := mCursor;
   mView.MoveViewToCursor;
   mView.Paint;
+end;
+
+class procedure TAtlasIdeNavigation.JumpAfterClick(AFeature: TAtlasFeature; const AFileName: string; ALine,
+  ACharacter: Integer; const AThen: TProc);
+begin
+  if GClickJump = nil then
+  begin
+    GClickJump := TClickJump.Create;
+  end;
+  GClickJump.Start(AFeature, AFileName, ALine, ACharacter, AThen);
 end;
 
 class function TAtlasIdeNavigation.ShowFile(const AFileName: string): Boolean;
@@ -205,5 +317,10 @@ begin
   Result.Line := APosition.Line + 1;
   Result.Col := TLspSession.IndexToColumn(mLineText, APosition.Character, ATabWidth);
 end;
+
+initialization
+
+finalization
+  FreeAndNil(GClickJump);
 
 end.

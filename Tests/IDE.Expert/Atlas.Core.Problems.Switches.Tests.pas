@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Problems.Switches.Tests;
 
 // Tests für die zusammengesetzten Schalter des Plugins (#1967): Inline-Diagnosen hängen an Hauptschalter und
-// Problemen, der Befundzähler der IDE weicht der eigenen Statusleiste mit Befunden.
+// Problemen, der Befundzähler der IDE weicht der eigenen Statusleiste mit Befunden; beim Debuggen blendet
+// problems.hideWhileDebugging die Befunde im Editor aus (#2962).
 
 interface
 
@@ -20,6 +21,10 @@ type
     procedure StatusCounterOnByItsSwitches;
     [Test]
     procedure StatusCounterYieldsToEditorStatusBarFindings;
+    [Test]
+    procedure HiddenOnlyWhileDebugging;
+    [Test]
+    procedure HiddenWhileDebuggingFollowsSetting;
   end;
 
 implementation
@@ -93,6 +98,26 @@ begin
   // Eigene Statusleiste ohne Befunde: Zähler bleibt.
   mSettings.EditorStatusBarItems := 'status';
   Assert.IsTrue(TAtlasProblemSwitches.ProblemsStatusCounter(mSettings));
+end;
+
+procedure TAtlasProblemSwitchesTests.HiddenOnlyWhileDebugging;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := CounterSettings;
+  Assert.IsTrue(mSettings.ProblemsHideWhileDebugging, 'Vorgabe an');
+  Assert.IsTrue(TAtlasProblemSwitches.HiddenWhileDebugging(mSettings, True));
+  Assert.IsFalse(TAtlasProblemSwitches.HiddenWhileDebugging(mSettings, False));
+end;
+
+procedure TAtlasProblemSwitchesTests.HiddenWhileDebuggingFollowsSetting;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := CounterSettings;
+  mSettings.ProblemsHideWhileDebugging := False;
+  Assert.IsFalse(TAtlasProblemSwitches.HiddenWhileDebugging(mSettings, True));
+  Assert.IsFalse(TAtlasProblemSwitches.HiddenWhileDebugging(mSettings, False));
 end;
 
 end.

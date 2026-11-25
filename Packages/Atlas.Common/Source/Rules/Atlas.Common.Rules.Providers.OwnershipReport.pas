@@ -129,8 +129,8 @@ begin
   mRules.Memo := nil;
   mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Result := TOwnershipSites.Analyze(mTree, AText, ARules.Services.Index,
-      mRules.Findings(AText, mTree));
+    // Derselbe Kontext wie für die Regeln: Index, Nachladen und Namespaces klären gerufene Routinen anderer Units.
+    Result := TOwnershipSites.Analyze(ARules.RuleContext(AText, mTree), mRules.Findings(AText, mTree));
   finally
     mTree.Free;
   end;

@@ -1,9 +1,12 @@
 ﻿unit Atlas.UI.Debug.BreakpointsFrame;
 
-// Inhalt des Haltepunktfensters (#863): oben Suche, Gruppierung und „Zähler
-// zurücksetzen“, darunter die Filterchips und die Zeile für Etiketten (mit
-// Vervollständigung der schon benutzten), dann die Liste mit auf- und
-// zuklappbaren Gruppen, unten die Zusammenfassung.
+// Inhalt des Haltepunktfensters (#863): oben die Suche über die ganze Breite,
+// darunter Gruppierung, Filterchips und „Zähler zurücksetzen“, dann die Zeile
+// für Etiketten (mit Vervollständigung der schon benutzten), dann die Liste mit
+// auf- und zuklappbaren Gruppen, unten die Zusammenfassung.
+// Die beiden mittleren Leisten fließen: Bei schmalem Fenster brechen ihre
+// Bedienelemente in weitere Zeilen um, statt rechts abgeschnitten zu werden;
+// Knöpfe und Chips sind so breit wie ihr Text.
 // Die Liste zeigt, was die IDE-Schicht mit SetRows liefert; Suche, Chips und
 // Gruppierung wendet der Frame selbst an (Atlas.Core.Debug.BreakpointList).
 // Befehle gehen mit den gewählten Zeilen an die IDE-Schicht (On…), die die
@@ -146,6 +149,7 @@ implementation
 uses
   Winapi.Windows,
   Winapi.CommCtrl,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Debug.Breakpoints.Strings;
 
 {$R *.dfm}
@@ -157,7 +161,11 @@ const
   cKeySeparator = '|';
   cTagSeparator = ', ';
   cBarHeight = 30;
-  cButtonWidth = 120;
+  // Höhe der Knöpfe und Chips einer Leiste (Chips gleich hoch, damit ihr Text mittig zu den Knöpfen steht).
+  cControlHeight = 25;
+  // Rand rechts und links des Knopftexts, Platz für Kästchen und Abstand vor dem Chiptext.
+  cButtonPadding = 24;
+  cCheckBoxGlyph = 24;
   cGroupingWidth = 140;
   cTagWidth = 160;
   cDefaultPpi = 96;
@@ -378,16 +386,56 @@ begin
   Result.ParentBackground := True;
 end;
 
+/// <summary>Leiste, deren Bedienelemente bei schmalem Fenster in weitere Zeilen umbrechen; ihre Höhe folgt den
+/// Zeilen. Die Elemente stehen in der Reihenfolge, in der sie angelegt werden.</summary>
+function AddFlowBar(AFrame: TAtlasDebugBreakpointsFrame; ATop: Integer): TFlowPanel;
+begin
+  Result := TFlowPanel.Create(AFrame);
+  // Top vor Align und Parent: alTop ordnet nach Top.
+  Result.Top := ATop;
+  Result.Height := ScaleLogical(AFrame, cBarHeight);
+  Result.Align := alTop;
+  Result.Parent := AFrame;
+  Result.BevelOuter := bvNone;
+  Result.ShowCaption := False;
+  Result.ParentBackground := True;
+  Result.AutoWrap := True;
+  Result.AutoSize := True;
+end;
+
 function AddButton(AFrame: TAtlasDebugBreakpointsFrame; AParent: TWinControl; AText: TAtlasBreakpointsTextId;
   AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(AFrame);
   Result.Parent := AParent;
-  Result.Align := alRight;
   Result.AlignWithMargins := True;
-  Result.Width := ScaleLogical(AFrame, cButtonWidth);
+  Result.Height := ScaleLogical(AFrame, cControlHeight);
   Result.Caption := TAtlasBreakpointsStrings.Text(AText);
   Result.OnClick := AClick;
+end;
+
+/// <summary>Knöpfe und Chips in ABar so breit wie ihr Text in der Schrift von AFrame.</summary>
+/// <remarks>Erst mit Fenster (CreateWnd): Vorher hat der Frame noch nicht die Schrift seines Fensters. Ein
+/// DPI-Wechsel skaliert die Breiten danach mit.</remarks>
+procedure FitWidths(AFrame: TCustomFrame; ABar: TWinControl);
+var
+  mIndex: Integer;
+  mControl: TControl;
+begin
+  for mIndex := 0 to ABar.ControlCount - 1 do
+  begin
+    mControl := ABar.Controls[mIndex];
+    if mControl is TButton then
+    begin
+      mControl.Width := TAtlasDialog.TextWidth(AFrame.Font, TButton(mControl).Caption) +
+        ScaleLogical(AFrame, cButtonPadding);
+    end
+    else if mControl is TCheckBox then
+    begin
+      mControl.Width := TAtlasDialog.TextWidth(AFrame.Font, TCheckBox(mControl).Caption) +
+        ScaleLogical(AFrame, cCheckBoxGlyph);
+    end;
+  end;
 end;
 
 function AddMenuItem(AFrame: TAtlasDebugBreakpointsFrame; AParent: TMenuItem; const ACaption: string;
@@ -399,66 +447,66 @@ begin
   AParent.Add(Result);
 end;
 
-procedure CreateTopBar(AFrame: TAtlasDebugBreakpointsFrame; AActions: TBreakpointsActions);
+/// <summary>Suche über die ganze Breite.</summary>
+procedure CreateSearchBar(AFrame: TAtlasDebugBreakpointsFrame);
 var
   mBar: TPanel;
 begin
   mBar := AddBar(AFrame, 0);
-  AFrame.FControls.ResetHits := AddButton(AFrame, mBar, TAtlasBreakpointsTextId.BreakpointsResetHits,
-    AActions.ResetHitsClick);
-  AFrame.FControls.Grouping := TComboBox.Create(AFrame);
-  AFrame.FControls.Grouping.Parent := mBar;
-  AFrame.FControls.Grouping.Align := alRight;
-  AFrame.FControls.Grouping.AlignWithMargins := True;
-  AFrame.FControls.Grouping.Width := ScaleLogical(AFrame, cGroupingWidth);
-  AFrame.FControls.Grouping.Style := csDropDownList;
-  AFrame.FControls.Grouping.OnChange := AFrame.FilterChanged;
   AFrame.FControls.Search := TEdit.Create(AFrame);
   AFrame.FControls.Search.Parent := mBar;
   AFrame.FControls.Search.Align := alClient;
   AFrame.FControls.Search.AlignWithMargins := True;
   AFrame.FControls.Search.TextHint := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsSearchHint);
   AFrame.FControls.Search.OnChange := AFrame.FilterChanged;
-  // Einträge erst mit Fenster (CreateWnd); bis dahin merkt Tag die Wahl.
-  AFrame.FControls.Grouping.Tag := Ord(TAtlasBreakpointGrouping.None);
 end;
 
-procedure CreateChipBar(AFrame: TAtlasDebugBreakpointsFrame);
+/// <summary>Gruppierung, Filterchips und „Zähler zurücksetzen“ in einer fließenden Leiste.</summary>
+procedure CreateFilterBar(AFrame: TAtlasDebugBreakpointsFrame; AActions: TBreakpointsActions);
 var
-  mBar: TPanel;
+  mBar: TFlowPanel;
   mFilter: TAtlasBreakpointFilter;
   mChip: TCheckBox;
 begin
-  mBar := AddBar(AFrame, ScaleLogical(AFrame, cBarHeight));
+  mBar := AddFlowBar(AFrame, ScaleLogical(AFrame, cBarHeight));
+  AFrame.FControls.Grouping := TComboBox.Create(AFrame);
+  AFrame.FControls.Grouping.Parent := mBar;
+  AFrame.FControls.Grouping.AlignWithMargins := True;
+  AFrame.FControls.Grouping.Width := ScaleLogical(AFrame, cGroupingWidth);
+  AFrame.FControls.Grouping.Style := csDropDownList;
+  AFrame.FControls.Grouping.OnChange := AFrame.FilterChanged;
+  // Einträge erst mit Fenster (CreateWnd); bis dahin merkt Tag die Wahl.
+  AFrame.FControls.Grouping.Tag := Ord(TAtlasBreakpointGrouping.None);
   for mFilter := High(TAtlasBreakpointFilter) downto Low(TAtlasBreakpointFilter) do
   begin
     mChip := TCheckBox.Create(AFrame);
     mChip.Parent := mBar;
-    mChip.Align := alLeft;
     mChip.AlignWithMargins := True;
+    mChip.Height := ScaleLogical(AFrame, cControlHeight);
     mChip.Caption := TAtlasBreakpointsStrings.Text(cChipTexts[mFilter]);
-    mChip.Width := ScaleLogical(AFrame, cButtonWidth);
     mChip.OnClick := AFrame.FilterChanged;
     AFrame.FControls.Chips[mFilter] := mChip;
   end;
+  AFrame.FControls.ResetHits := AddButton(AFrame, mBar, TAtlasBreakpointsTextId.BreakpointsResetHits,
+    AActions.ResetHitsClick);
 end;
 
+/// <summary>Etikett und seine Knöpfe in einer fließenden Leiste.</summary>
 procedure CreateTagBar(AFrame: TAtlasDebugBreakpointsFrame; AActions: TBreakpointsActions);
 var
-  mBar: TPanel;
+  mBar: TFlowPanel;
 begin
-  mBar := AddBar(AFrame, 2 * ScaleLogical(AFrame, cBarHeight));
-  AFrame.FControls.RemoveTag := AddButton(AFrame, mBar, TAtlasBreakpointsTextId.BreakpointsRemoveTag,
-    AActions.RemoveTagClick);
-  AFrame.FControls.AddTag := AddButton(AFrame, mBar, TAtlasBreakpointsTextId.BreakpointsAddTag, AActions.AddTagClick);
+  mBar := AddFlowBar(AFrame, 2 * ScaleLogical(AFrame, cBarHeight));
   AFrame.FControls.Tag := TComboBox.Create(AFrame);
   AFrame.FControls.Tag.Parent := mBar;
-  AFrame.FControls.Tag.Align := alRight;
   AFrame.FControls.Tag.AlignWithMargins := True;
   AFrame.FControls.Tag.Width := ScaleLogical(AFrame, cTagWidth);
   AFrame.FControls.Tag.Style := csDropDown;
   AFrame.FControls.Tag.AutoComplete := True;
   AFrame.FControls.Tag.TextHint := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsTagHint);
+  AFrame.FControls.AddTag := AddButton(AFrame, mBar, TAtlasBreakpointsTextId.BreakpointsAddTag, AActions.AddTagClick);
+  AFrame.FControls.RemoveTag := AddButton(AFrame, mBar, TAtlasBreakpointsTextId.BreakpointsRemoveTag,
+    AActions.RemoveTagClick);
 end;
 
 procedure CreateList(AFrame: TAtlasDebugBreakpointsFrame; AActions: TBreakpointsActions);
@@ -671,8 +719,8 @@ begin
   FEvents := TAtlasBreakpointsFrameEvents.Create;
   mActions := TBreakpointsActions.CreateFor(Self);
   // Von oben nach unten (alTop ordnet nach Top); die Liste füllt den Rest.
-  CreateTopBar(Self, mActions);
-  CreateChipBar(Self);
+  CreateSearchBar(Self);
+  CreateFilterBar(Self, mActions);
   CreateTagBar(Self, mActions);
   CreateList(Self, mActions);
   CreateMenu(Self, mActions);
@@ -703,6 +751,8 @@ var
   mGrouping: TAtlasBreakpointGrouping;
 begin
   inherited CreateWnd;
+  FitWidths(Self, FControls.Grouping.Parent);
+  FitWidths(Self, FControls.Tag.Parent);
   // Combobox und Liste brauchen ein Fenster.
   if FControls.Grouping.Items.Count = 0 then
   begin
