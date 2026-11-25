@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.CompilerFixes;
+﻿unit Atlas.Common.Editing.CompilerFixes.Protocol;
 
 // Schnellkorrekturen für Compilermeldungen über das Protokoll (#549): Code-
 // Aktionen mit Änderung auf den Zeilen der Auswahl, an denen der letzte
@@ -29,7 +29,7 @@ type
     Context: TCompilerFixContext;
   end;
 
-  TLspCompilerFixes = class
+  TCompilerFixesProtocol = class
   public
     /// <summary>Meldungen in der Form der Korrekturen.</summary>
     class function FixMessages(const AMessages: TArray<TCompilerMessage>): TArray<TFixMessage>; static;
@@ -48,9 +48,9 @@ uses
   Atlas.Common.Compiler.MessageTexts,
   Atlas.Common.CodeActions.Json;
 
-{ TLspCompilerFixes }
+{ TCompilerFixesProtocol }
 
-class function TLspCompilerFixes.FixMessages(const AMessages: TArray<TCompilerMessage>): TArray<TFixMessage>;
+class function TCompilerFixesProtocol.FixMessages(const AMessages: TArray<TCompilerMessage>): TArray<TFixMessage>;
 var
   mMessage: TCompilerMessage;
 begin
@@ -119,7 +119,7 @@ begin
   Result := (Length(mNames) = 0) or not OnName(ARequest.Tree, ARequest.Range.StartPos, mNames[0]);
 end;
 
-class function TLspCompilerFixes.Actions(AEnabled: Boolean; const ARequest: TCompilerFixRequest;
+class function TCompilerFixesProtocol.Actions(AEnabled: Boolean; const ARequest: TCompilerFixRequest;
   const AMessages: TArray<TCompilerMessage>): TArray<TJSONObject>;
 var
   mMessages: TArray<TFixMessage>;

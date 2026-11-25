@@ -18,8 +18,8 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Lsp.ResourceStringCommands,
-  Atlas.Common.Lsp.SmartIndent,
-  Atlas.Common.Lsp.LearnedSuggestions,
+  Atlas.Common.Editing.SmartIndent.Protocol,
+  Atlas.Common.Editing.LearnedSuggestions.Protocol,
   Atlas.Common.Editing.MethodOrder.Protocol;
 
 type
@@ -187,7 +187,7 @@ end;
 function TShellEditorCommands.RunSmartIndent(const AArguments: TJSONArray): TJSONValue;
 begin
   try
-    Result := TLspSmartIndent.Execute(FServices.Documents, FServices.SmartIndentFor, AArguments);
+    Result := TSmartIndentProtocol.Execute(FServices.Documents, FServices.SmartIndentFor, AArguments);
   except
     on E: EArgumentException do
       raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
@@ -197,7 +197,7 @@ end;
 function TShellEditorCommands.RunSuggestNext(const AArguments: TJSONArray): TJSONValue;
 begin
   try
-    Result := TLspLearnedSuggestions.ExecuteSuggest(FServices.Documents, FServices.Index, FServices.LearnedOptionsFor,
+    Result := TLearnedSuggestionsProtocol.ExecuteSuggest(FServices.Documents, FServices.Index, FServices.LearnedOptionsFor,
       AArguments);
   except
     on E: EArgumentException do
@@ -207,13 +207,13 @@ end;
 
 function TShellEditorCommands.RunLearnedPatterns(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TLspLearnedSuggestions.ExecuteList(FServices.Index, FServices.LearnedOptionsFor, AArguments);
+  Result := TLearnedSuggestionsProtocol.ExecuteList(FServices.Index, FServices.LearnedOptionsFor, AArguments);
 end;
 
 function TShellEditorCommands.RunSuggestionContext(const AArguments: TJSONArray): TJSONValue;
 begin
   try
-    Result := TLspLearnedSuggestions.ExecuteContext(FServices.Documents, FServices.Index, AArguments);
+    Result := TLearnedSuggestionsProtocol.ExecuteContext(FServices.Documents, FServices.Index, AArguments);
   except
     on E: EArgumentException do
       raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
@@ -223,7 +223,7 @@ end;
 function TShellEditorCommands.RunCheckSuggestion(const AArguments: TJSONArray): TJSONValue;
 begin
   try
-    Result := TLspLearnedSuggestions.ExecuteCheck(FServices.Documents, FServices.Index, AArguments);
+    Result := TLearnedSuggestionsProtocol.ExecuteCheck(FServices.Documents, FServices.Index, AArguments);
   except
     on E: EArgumentException do
       raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
@@ -257,12 +257,12 @@ begin
   ACommands.Register(TResourceStringCommands.cAddCommand, RunAddResourceString);
   ACommands.RegisterConcurrent(TStringLiteralCommands.cPlainTextCommand, RunPlainText);
   ACommands.RegisterConcurrent(TStringLiteralCommands.cToLiteralCommand, RunToLiteral);
-  ACommands.RegisterConcurrent(TLspSmartIndent.cCommand, RunSmartIndent);
-  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cSuggestCommand, RunSuggestNext);
-  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cListCommand, RunLearnedPatterns);
+  ACommands.RegisterConcurrent(TSmartIndentProtocol.cCommand, RunSmartIndent);
+  ACommands.RegisterConcurrent(TLearnedSuggestionsProtocol.cSuggestCommand, RunSuggestNext);
+  ACommands.RegisterConcurrent(TLearnedSuggestionsProtocol.cListCommand, RunLearnedPatterns);
   // Wissen und Prüfung für Vorschläge eines KI-Anbieters im Plugin (#1922).
-  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cContextCommand, RunSuggestionContext);
-  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cCheckCommand, RunCheckSuggestion);
+  ACommands.RegisterConcurrent(TLearnedSuggestionsProtocol.cContextCommand, RunSuggestionContext);
+  ACommands.RegisterConcurrent(TLearnedSuggestionsProtocol.cCheckCommand, RunCheckSuggestion);
 end;
 
 end.

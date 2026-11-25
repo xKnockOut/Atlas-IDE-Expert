@@ -55,8 +55,8 @@ uses
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.ResourceStringCommands,
   Atlas.Common.Lsp.StringLiteralCommands,
-  Atlas.Common.Lsp.SmartIndent,
-  Atlas.Common.Lsp.LearnedSuggestions;
+  Atlas.Common.Editing.SmartIndent.Protocol,
+  Atlas.Common.Editing.LearnedSuggestions.Protocol;
 
 { TShellEditorCommandsTests }
 
@@ -103,9 +103,9 @@ begin
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand, TLspExpressionType.cCommand,
       TMethodOrderProtocol.cCommand, TLspOverrideMarks.cCommand, TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand,
       TEnumValueCommands.cCommand, TResourceStringCommands.cAddCommand, TStringLiteralCommands.cPlainTextCommand,
-      TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand, TLspLearnedSuggestions.cSuggestCommand,
-      TLspLearnedSuggestions.cListCommand, TLspLearnedSuggestions.cContextCommand,
-      TLspLearnedSuggestions.cCheckCommand) do
+      TStringLiteralCommands.cToLiteralCommand, TSmartIndentProtocol.cCommand, TLearnedSuggestionsProtocol.cSuggestCommand,
+      TLearnedSuggestionsProtocol.cListCommand, TLearnedSuggestionsProtocol.cContextCommand,
+      TLearnedSuggestionsProtocol.cCheckCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -131,9 +131,9 @@ begin
     for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand,
       TLspExpressionType.cCommand, TMethodOrderProtocol.cCommand, TLspOverrideMarks.cCommand,
       TLspInterfaceMethods.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
-      TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand,
-      TLspLearnedSuggestions.cSuggestCommand, TLspLearnedSuggestions.cListCommand,
-      TLspLearnedSuggestions.cContextCommand, TLspLearnedSuggestions.cCheckCommand) do
+      TStringLiteralCommands.cPlainTextCommand, TStringLiteralCommands.cToLiteralCommand, TSmartIndentProtocol.cCommand,
+      TLearnedSuggestionsProtocol.cSuggestCommand, TLearnedSuggestionsProtocol.cListCommand,
+      TLearnedSuggestionsProtocol.cContextCommand, TLearnedSuggestionsProtocol.cCheckCommand) do
     begin
       Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;
@@ -197,7 +197,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        mResult := mCommands.Execute(TLspSmartIndent.cCommand, mArguments);
+        mResult := mCommands.Execute(TSmartIndentProtocol.cCommand, mArguments);
         mResult.Free;
       end, EJsonRpcError);
   finally

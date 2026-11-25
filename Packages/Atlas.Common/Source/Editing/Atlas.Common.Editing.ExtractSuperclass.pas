@@ -3,7 +3,7 @@
 // „Basisklasse herauslösen“ (#713): Gewählte Felder, Methoden und Properties
 // einer Klasse wandern in eine neue Vorfahrklasse, die direkt über der Klasse
 // in derselben Unit entsteht (eine neue Unit macht daraus
-// Atlas.Common.Lsp.ExtractSuperclass über „Klasse verschieben“).
+// Atlas.Common.Editing.ExtractSuperclass.Protocol über „Klasse verschieben“).
 //
 //   - Die neue Klasse erbt vom bisherigen Vorfahren (ohne Interfaces), die
 //     Klasse von der neuen; Interfaces bleiben bei der Klasse.

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.SmartPaste;
+﻿unit Atlas.Common.Editing.SmartPaste.Protocol;
 
 // Einfügen mit uses-Ergänzung (#515) über das Protokoll: Befehl
 // atlas.server.pasteUses.
@@ -22,7 +22,7 @@ uses
   Atlas.Common.Editing.SmartPaste;
 
 type
-  TLspSmartPaste = class
+  TSmartPasteProtocol = class
   public const
     cCommand = 'atlas.server.pasteUses';
   public
@@ -103,9 +103,9 @@ begin
   Result.AddPair('changes', mChanges);
 end;
 
-{ TLspSmartPaste }
+{ TSmartPasteProtocol }
 
-class function TLspSmartPaste.Execute(const AArguments: TJSONArray; const AUri, AText: string; ATree: TSyntaxTree;
+class function TSmartPasteProtocol.Execute(const AArguments: TJSONArray; const AUri, AText: string; ATree: TSyntaxTree;
   const AUses: TUsesContext; const AInterfaceUses: TInterfaceUsesFunc): TJSONObject;
 var
   mRange: TTextRange;
@@ -142,6 +142,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.SmartPaste', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.SmartPaste.Protocol', cTexts);
 
 end.

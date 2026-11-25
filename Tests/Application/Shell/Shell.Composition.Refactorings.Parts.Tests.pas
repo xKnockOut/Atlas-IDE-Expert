@@ -32,9 +32,9 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.ChangeSignature,
-  Atlas.Common.Lsp.SafeDelete,
+  Atlas.Common.Editing.SafeDelete.Protocol,
   Atlas.Common.Editing.TypeAlias.Protocol,
-  Atlas.Common.Lsp.DisableWarning,
+  Atlas.Common.Editing.DisableWarning.Protocol,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.MethodBreakpoints,
   Atlas.Common.Editing.UnitRename.Protocol,
@@ -99,9 +99,9 @@ begin
   Assert.IsTrue(Pos(TLspChangeSignature.cApplyCommand, mText) > 0, 'Aufbau');
   Assert.IsFalse(Pos(TLspStepFilter.cCommand, mText) > 0, 'Aufbau ohne Debugger');
   mText := CommandsOf(TShellConversionRefactorings.Create(FServices));
-  Assert.IsFalse(Pos(TLspSafeDelete.cApplyCommand, mText) > 0, 'Umwandlungen ohne Sicher löschen');
+  Assert.IsFalse(Pos(TSafeDeleteProtocol.cApplyCommand, mText) > 0, 'Umwandlungen ohne Sicher löschen');
   Assert.IsTrue(Pos(TTypeAliasProtocol.cApplyCommand, CommandsOf(TShellTypeRefactorings.Create(FServices))) > 0, 'Typen');
-  Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, CommandsOf(TShellFixRefactorings.Create(FServices))) > 0,
+  Assert.IsTrue(Pos(TDisableWarningProtocol.cApplyCommand, CommandsOf(TShellFixRefactorings.Create(FServices))) > 0,
     'Korrekturen');
   Assert.IsTrue(Pos(TUnitRenameProtocol.cCommand, CommandsOf(TShellEditingRefactorings.Create(FServices))) > 0,
     'Bearbeiten');
