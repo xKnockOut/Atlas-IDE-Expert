@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.TypeAlias.Tests;
+﻿unit Atlas.Common.Editing.TypeAlias.Protocol.Tests;
 
 // Typ-Alias über das Protokoll (#681): Code-Aktionen mit Reichweiten und
 // Client-Befehl, abgeschaltete Aktion bei offenen generischen Parametern,
@@ -15,7 +15,7 @@ uses
 
 type
   [TestFixture]
-  TLspTypeAliasTests = class
+  TTypeAliasProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -52,7 +52,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.TypeAlias,
-  Atlas.Common.Lsp.TypeAlias,
+  Atlas.Common.Editing.TypeAlias.Protocol,
   Atlas.Common.JsonRpc.TestSupport;
 
 const
@@ -137,9 +137,9 @@ begin
   end;
 end;
 
-{ TLspTypeAliasTests }
+{ TTypeAliasProtocolTests }
 
-procedure TLspTypeAliasTests.Setup;
+procedure TTypeAliasProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cKunden, cKundenFile, nil));
@@ -148,7 +148,7 @@ begin
   FIndex.AddUnit(TIndexExtractor.ExtractText(cAndere, cAndereFile, nil));
 end;
 
-procedure TLspTypeAliasTests.TearDown;
+procedure TTypeAliasProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
@@ -163,8 +163,8 @@ begin
   try
     mResolver.PinTree(mTree, cKundenFile);
     try
-      Result := TLspTypeAlias.Actions(mTree, cKunden, TDocumentUris.FromPath(cKundenFile),
-        TTextPosition.Create(ALine, ACharacter), TTypeAliasScope.InUnit, TLspTypeAlias.Lookup(mResolver));
+      Result := TTypeAliasProtocol.Actions(mTree, cKunden, TDocumentUris.FromPath(cKundenFile),
+        TTextPosition.Create(ALine, ACharacter), TTypeAliasScope.InUnit, TTypeAliasProtocol.Lookup(mResolver));
     finally
       mResolver.UnpinTree;
     end;
@@ -194,7 +194,7 @@ begin
   mTree := TPascalParser.Parse(cKunden);
   mResolver := TNameResolver.Create(AIndex);
   try
-    Result := TLspTypeAlias.Execute(mResolver, mTree, cKundenFile, cKunden, TTextPosition.Create(ALine, ACharacter),
+    Result := TTypeAliasProtocol.Execute(mResolver, mTree, cKundenFile, cKunden, TTextPosition.Create(ALine, ACharacter),
       mRequest);
   finally
     mResolver.Free;
@@ -210,7 +210,7 @@ begin
   mTree := TPascalParser.Parse(cKunden);
   mResolver := TNameResolver.Create(AIndex);
   try
-    Result := TLspTypeAlias.ExecuteInline(mResolver, mTree, cKundenFile, cKunden, TTextPosition.Create(ALine,
+    Result := TTypeAliasProtocol.ExecuteInline(mResolver, mTree, cKundenFile, cKunden, TTextPosition.Create(ALine,
       ACharacter), Context(AIndex));
   finally
     mResolver.Free;
@@ -218,7 +218,7 @@ begin
   end;
 end;
 
-procedure TLspTypeAliasTests.ActionsOfferScopes;
+procedure TTypeAliasProtocolTests.ActionsOfferScopes;
 var
   mActions: TArray<TJSONObject>;
   mArguments: TJSONArray;
@@ -232,8 +232,8 @@ begin
       mActions[1].GetValue<string>('title'));
     Assert.AreEqual('Typ-Alias einführen, im Projekt (TDictionary<string, TKunde>)',
       mActions[2].GetValue<string>('title'));
-    Assert.AreEqual(TLspTypeAlias.cIntroduceKind, mActions[0].GetValue<string>('kind'));
-    Assert.AreEqual(TLspTypeAlias.cClientCommand, mActions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TTypeAliasProtocol.cIntroduceKind, mActions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TTypeAliasProtocol.cClientCommand, mActions[0].GetValue<string>('command.command'));
     mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(4, mArguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(cKundenFile), mArguments.Items[0].Value);
@@ -247,7 +247,7 @@ begin
   end;
 end;
 
-procedure TLspTypeAliasTests.OpenParamsGiveDisabledAction;
+procedure TTypeAliasProtocolTests.OpenParamsGiveDisabledAction;
 var
   mActions: TArray<TJSONObject>;
 begin
@@ -261,7 +261,7 @@ begin
   end;
 end;
 
-procedure TLspTypeAliasTests.InlineActionOnAliasName;
+procedure TTypeAliasProtocolTests.InlineActionOnAliasName;
 var
   mActions: TArray<TJSONObject>;
   mArguments: TJSONArray;
@@ -270,8 +270,8 @@ begin
   try
     Assert.AreEqual(1, Integer(Length(mActions)));
     Assert.AreEqual('Alias auflösen (TKundenListe)', mActions[0].GetValue<string>('title'));
-    Assert.AreEqual(TLspTypeAlias.cInlineKind, mActions[0].GetValue<string>('kind'));
-    Assert.AreEqual(TLspTypeAlias.cInlineClientCommand, mActions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TTypeAliasProtocol.cInlineKind, mActions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TTypeAliasProtocol.cInlineClientCommand, mActions[0].GetValue<string>('command.command'));
     mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(2, mArguments.Count);
     Assert.AreEqual(6, mArguments.Items[1].GetValue<Integer>('line'));
@@ -281,7 +281,7 @@ begin
   end;
 end;
 
-procedure TLspTypeAliasTests.ExecuteProjectMatchesQualifiedNames;
+procedure TTypeAliasProtocolTests.ExecuteProjectMatchesQualifiedNames;
 var
   mAnswer: TJSONObject;
   mJson: string;
@@ -309,7 +309,7 @@ begin
   end;
 end;
 
-procedure TLspTypeAliasTests.ExecuteInlineChangesOtherUnit;
+procedure TTypeAliasProtocolTests.ExecuteInlineChangesOtherUnit;
 var
   mAnswer: TJSONObject;
   mJson: string;
@@ -328,7 +328,7 @@ begin
   end;
 end;
 
-procedure TLspTypeAliasTests.ErrorsCarryReason;
+procedure TTypeAliasProtocolTests.ErrorsCarryReason;
 begin
   Assert.WillRaise(
     procedure
@@ -350,6 +350,6 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspTypeAliasTests);
+  TDUnitX.RegisterTestFixture(TTypeAliasProtocolTests);
 
 end.

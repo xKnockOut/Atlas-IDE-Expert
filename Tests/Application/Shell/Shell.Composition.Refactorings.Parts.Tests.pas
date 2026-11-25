@@ -33,12 +33,12 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.SafeDelete,
-  Atlas.Common.Lsp.TypeAlias,
+  Atlas.Common.Editing.TypeAlias.Protocol,
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.MethodBreakpoints,
-  Atlas.Common.Lsp.UnitRename,
-  Atlas.Common.Lsp.RaiseVisibility,
+  Atlas.Common.Editing.UnitRename.Protocol,
+  Atlas.Common.Editing.RaiseVisibility.Protocol,
   Shell.Composition.Refactorings.Structure,
   Shell.Composition.Refactorings.Visibility,
   Shell.Composition.Refactorings.Conversions,
@@ -100,15 +100,15 @@ begin
   Assert.IsFalse(Pos(TLspStepFilter.cCommand, mText) > 0, 'Aufbau ohne Debugger');
   mText := CommandsOf(TShellConversionRefactorings.Create(FServices));
   Assert.IsFalse(Pos(TLspSafeDelete.cApplyCommand, mText) > 0, 'Umwandlungen ohne Sicher löschen');
-  Assert.IsTrue(Pos(TLspTypeAlias.cApplyCommand, CommandsOf(TShellTypeRefactorings.Create(FServices))) > 0, 'Typen');
+  Assert.IsTrue(Pos(TTypeAliasProtocol.cApplyCommand, CommandsOf(TShellTypeRefactorings.Create(FServices))) > 0, 'Typen');
   Assert.IsTrue(Pos(TLspDisableWarning.cApplyCommand, CommandsOf(TShellFixRefactorings.Create(FServices))) > 0,
     'Korrekturen');
-  Assert.IsTrue(Pos(TLspUnitRename.cCommand, CommandsOf(TShellEditingRefactorings.Create(FServices))) > 0,
+  Assert.IsTrue(Pos(TUnitRenameProtocol.cCommand, CommandsOf(TShellEditingRefactorings.Create(FServices))) > 0,
     'Bearbeiten');
   Assert.IsTrue(Pos(TLspStepFilter.cCountsCommand, CommandsOf(TShellStepping.Create(FServices))) > 0, 'Debugger');
   Assert.IsTrue(Pos(TLspMethodBreakpoints.cCommand, CommandsOf(TShellMethodBreakpoints.Create(FServices))) > 0,
     'Methodenhaltepunkte');
-  Assert.IsTrue(Pos(TLspRaiseVisibility.cCommand, CommandsOf(TShellVisibilityRefactorings.Create(FServices))) > 0,
+  Assert.IsTrue(Pos(TRaiseVisibilityProtocol.cCommand, CommandsOf(TShellVisibilityRefactorings.Create(FServices))) > 0,
     'Sichtbarkeit');
 end;
 

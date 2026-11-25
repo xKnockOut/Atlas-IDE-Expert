@@ -40,7 +40,7 @@ uses
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Lsp.Unwrap,
-  Atlas.Common.Lsp.UnitRename,
+  Atlas.Common.Editing.UnitRename.Protocol,
   Atlas.Common.Lsp.SmartPaste,
   Atlas.Common.Localization.RequestTexts,
   Atlas.Common.CodeActions.Json;
@@ -58,7 +58,7 @@ end;
 procedure TShellEditingRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspUnwrap.cCommand, Unwrap);
-  ACommands.Register(TLspUnitRename.cCommand, UnitRenamed);
+  ACommands.Register(TUnitRenameProtocol.cCommand, UnitRenamed);
   ACommands.Register(TLspSmartPaste.cCommand, PasteUses);
 end;
 
@@ -147,7 +147,7 @@ begin
   begin
     mFiles := mFiles + [TDocumentUris.ToPath(mItem.Value)];
   end;
-  mAnswer := TLspUnitRename.Execute(TDocumentUris.ToPath(AArguments.Items[0].Value),
+  mAnswer := TUnitRenameProtocol.Execute(TDocumentUris.ToPath(AArguments.Items[0].Value),
     TDocumentUris.ToPath(AArguments.Items[1].Value), mFiles, Reader);
   Log(Format('Unit umbenannt: %d von %d Dateien betroffen', [Number(mAnswer, 'count'), Length(mFiles)]));
   Result := mAnswer;

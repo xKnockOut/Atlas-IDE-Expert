@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.RaiseVisibility;
+﻿unit Atlas.Common.Editing.RaiseVisibility.Protocol;
 
 // „Sichtbarkeit anheben“ und „Eigenschaft anlegen“ über das Protokoll (#2108):
 //   - Code-Aktionen „Sichtbarkeit von X auf protected/public anheben“ auf der
@@ -18,7 +18,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree;
 
 type
-  TLspRaiseVisibility = class
+  TRaiseVisibilityProtocol = class
   public const
     cCommand = 'atlas.server.memberActions';
   public
@@ -42,9 +42,9 @@ uses
   Atlas.Common.Editing.RaiseVisibility,
   Atlas.Common.CodeActions.Json;
 
-{ TLspRaiseVisibility }
+{ TRaiseVisibilityProtocol }
 
-class function TLspRaiseVisibility.Actions(const AUri, AText: string; ATree: TSyntaxTree;
+class function TRaiseVisibilityProtocol.Actions(const AUri, AText: string; ATree: TSyntaxTree;
   const ARange: TTextRange): TArray<TJSONObject>;
 var
   mAction: TCodeAction;
@@ -56,7 +56,7 @@ begin
   end;
 end;
 
-class function TLspRaiseVisibility.Execute(const AUri, AText: string; const APosition: TTextPosition;
+class function TRaiseVisibilityProtocol.Execute(const AUri, AText: string; const APosition: TTextPosition;
   const AName: string): TJSONArray;
 var
   mTree: TSyntaxTree;

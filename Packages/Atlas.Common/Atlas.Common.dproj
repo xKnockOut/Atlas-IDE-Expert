@@ -392,7 +392,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExitPoints.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Reassigned.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionType.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodOrder.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TypeComments.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassBodies.pas"/>
@@ -415,7 +415,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ChangeSignature.Collector.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveClass.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitRename.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.UnitRename.Protocol.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SmartPaste.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.ServerStatus.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.QualifiedNames.pas"/>
@@ -462,11 +462,11 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SourceFiles.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.Names.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.Texts.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TypeAlias.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.Protocol.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.EnumTables.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EnumTables.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Overloads.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Overloads.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.Overloads.Protocol.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PromoteVariable.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormMentions.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PromoteVariable.pas"/>
@@ -510,7 +510,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MoveMember.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.InlineAccessor.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RaiseVisibility.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.RaiseVisibility.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.RaiseVisibility.Protocol.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineAccessor.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.SafeDelete.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SafeDelete.pas"/>
