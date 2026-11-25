@@ -29,7 +29,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Lsp.InlayHints,
-  Atlas.Common.Editing.GuardFree,
+  Atlas.Common.Pascal.GuardFree,
   Atlas.Tests.SmallStack;
 
 const

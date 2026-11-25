@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.CodeActions.TryFinallyGolden;
+﻿unit Atlas.Common.Pascal.TryFinallyGolden;
 
 // Golden-Datei für "try/finally ergänzen" (#42): genau das, was die Aktion
 // aus den Routinen ohne try erzeugt. Der Test wendet die Aktion auf jede
