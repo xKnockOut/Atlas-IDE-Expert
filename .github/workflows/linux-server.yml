@@ -11,6 +11,11 @@ name: AtlasServer für Linux
 # Tools/Linux/Build-AtlasServer.sh lädt beides und nimmt das Programm nur, wenn der Fingerabdruck passt.
 # Auf Branches und in Pull Requests baut der Job nur (Prüfung, dass der Linux-Bau nicht bricht).
 #
+# Ablauf: server übersetzt und reicht das Programm als Artefakt weiter, pruefen prüft damit in vier gleichzeitigen
+# Jobs (drei Teile der Plugin-Packages, ein Teil Metriken, Kopien und Regex-Probe), bauen sammelt die Ergebnisse.
+# bauen ist der Name der Pflichtprüfung; so bleibt der Branch-Schutz gleich, und der längste Teil (Base) bestimmt die
+# Dauer statt der Summe.
+#
 # Außerdem laufen in jedem Pull Request die plattformunabhängigen DUnitX-Tests unter FPC
 # (Tools/Linux/Test-Fpc.sh, Liste Tools/Linux/FpcTests.txt) im eigenen Job fpc-tests, parallel zu bauen. Ohne
 # Delphi-Runner ist das die einzige Testausführung in der CI; deshalb hat pull_request keinen Pfadfilter.
@@ -27,6 +32,8 @@ on:
       - 'Tools/Linux/**'
       - '.github/workflows/linux-server.yml'
   pull_request:
+  # Merge Queue (nur in Repositorys einer Organisation).
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -40,7 +47,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 jobs:
-  bauen:
+  # Übersetzt den Server und reicht ihn als Artefakt an die Prüfjobs weiter.
+  server:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -76,9 +84,64 @@ jobs:
             timeout 60 Output/Linux64/Bin/AtlasServer --mcp > "$RUNNER_TEMP/mcp.out" || true
           grep -q '"get_diagnostics"' "$RUNNER_TEMP/mcp.out" || { cat "$RUNNER_TEMP/mcp.out"; exit 1; }
 
-      - name: Selbstprüfung je Plugin-Package
-        # Jedes Packages/Atlas.IDE.* mit seiner atlas.json und Baseline; jeder neue Treffer bricht ab.
-        run: Tools/Linux/Check-PluginPackages.sh Output/Linux64/Bin/AtlasServer
+      - name: Server für die Prüfjobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlasserver
+          path: Output/Linux64/Bin/AtlasServer
+          retention-days: 1
+
+      - name: Paket für das Release cloud-linux
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-linux
+          path: ${{ runner.temp }}/cloud-linux/*
+          retention-days: 1
+
+  # Selbstprüfung mit dem gebauten Server, auf gleichzeitige Jobs verteilt. Base allein ist der längste Teil.
+  pruefen:
+    needs: server
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        teil: ['1/3', '2/3', '3/3', repo]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Pull Request: erster Elter des Merge-Commits ist der Stand von main-merging (Packages nach Änderung).
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
+
+      - name: Laufzeitbibliothek
+        run: |
+          for mVersuch in 1 2 3 4; do
+            sudo apt-get update && sudo apt-get install -y libpcre2-16-0 && exit 0
+            sleep $((mVersuch * 15))
+          done
+          exit 1
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: atlasserver
+          path: Output/Linux64/Bin
+
+      - name: Server ausführbar
+        run: chmod +x Output/Linux64/Bin/AtlasServer
+
+      - name: Selbstprüfung je Plugin-Package, Teil ${{ matrix.teil }}
+        # Jedes Packages/Atlas.IDE.* mit seiner atlas.json und Baseline; jeder neue Treffer bricht ab. Im Pull Request
+        # nur die betroffenen Packages (ändert er nur Module, nur diese; Tools/Linux/Check-PluginPackages.sh), nach dem
+        # Merge auf main-merging alle.
+        if: matrix.teil != 'repo'
+        env:
+          ATLAS_SHARD: ${{ matrix.teil }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            Tools/Linux/Check-PluginPackages.sh Output/Linux64/Bin/AtlasServer --seit HEAD^1
+          else
+            Tools/Linux/Check-PluginPackages.sh Output/Linux64/Bin/AtlasServer
+          fi
 
       - name: Metrikregeln außerhalb der Plugin-Packages
         # Atlas.Common, Atlas.Windows, Application und Tests laufen mit der atlas.json im Wurzelordner. Dort sind
@@ -86,6 +149,7 @@ jobs:
         # schrumpfen darf (Check-Baselines.ps1). Jede neue zu lange oder zu verzweigte Routine bricht ab, auch als
         # Hinweis (--fail-on kennt keine Hinweise, deshalb die Auswertung des JSON). Das Profil metriken (atlas.json)
         # lässt die teuren Regeln weg; --rules allein filtert nur die Ausgabe.
+        if: matrix.teil == 'repo'
         run: |
           Output/Linux64/Bin/AtlasServer --check . --no-index --profile metriken \
             --rules metric-method-length,metric-cyclomatic-complexity --format json --fail-on never \
@@ -107,11 +171,13 @@ jobs:
         # Vergleicht die Rümpfe aller Routinen des Repositorys mit atlas-duplicates.json; neue Kopien und
         # entfernte, aber noch eingetragene Kopien brechen ab. Nach dem Zusammenlegen von Kopien die Baseline mit
         # --update-baseline neu schreiben.
+        if: matrix.teil == 'repo'
         run: Output/Linux64/Bin/AtlasServer --check . --check-duplicates
 
       - name: Regex zählt Zeichen (#1751)
         # Hinter „für“ steht im anonymen Log der Arbeitsbereich als name#1. Zählt TMatch.Index UTF-8-Bytes statt
         # Zeichen, setzt der Anonymisierer die Zeile falsch zusammen („fürrnname1: DDelphi“).
+        if: matrix.teil == 'repo'
         run: |
           mkdir -p "$RUNNER_TEMP/probe/Kasse"
           python3 - Output/Linux64/Bin/AtlasServer "$RUNNER_TEMP/probe/Kasse" "$RUNNER_TEMP/probe.log" <<'PY'
@@ -133,10 +199,33 @@ jobs:
           PY
           grep -q 'Einstellungen für name#1: Delphi' "$RUNNER_TEMP/probe.log" || { cat "$RUNNER_TEMP/probe.log"; exit 1; }
 
+  # Pflichtprüfung (Name wie bisher): grün nur, wenn Bau und alle Prüfteile grün sind. Auf main ersetzt sie danach die
+  # Dateien des Releases cloud-linux.
+  bauen:
+    needs: [server, pruefen]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Ergebnisse
+        env:
+          SERVER: ${{ needs.server.result }}
+          PRUEFEN: ${{ needs.pruefen.result }}
+        run: |
+          echo "server: $SERVER, pruefen: $PRUEFEN"
+          [ "$SERVER" = success ] && [ "$PRUEFEN" = success ]
+
+      - name: Paket holen
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/download-artifact@v4
+        with:
+          name: cloud-linux
+          path: ${{ runner.temp }}/cloud-linux
+
       - name: Release cloud-linux aktualisieren
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           if ! gh release view cloud-linux >/dev/null 2>&1; then
             gh release create cloud-linux --prerelease --title "AtlasServer für Claude-Code-Cloud (Linux)" \
