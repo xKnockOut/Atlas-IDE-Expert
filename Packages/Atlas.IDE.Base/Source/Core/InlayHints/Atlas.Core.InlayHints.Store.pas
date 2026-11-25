@@ -32,11 +32,11 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Plugin.Files.Entries,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract;
 
 type
-  // Der Eintrag steht in Atlas.Core.Lsp.Contract, weil die Sitzung ihn liefert; hier als Alias weiter.
-  TAtlasInlayHint = Atlas.Core.Lsp.Contract.TAtlasInlayHint;
+  // Der Eintrag steht in Atlas.Plugin.Lsp.Contract, weil die Sitzung ihn liefert; hier als Alias weiter.
+  TAtlasInlayHint = Atlas.Plugin.Lsp.Contract.TAtlasInlayHint;
 
   TAtlasInlayHintStore = class
   public const

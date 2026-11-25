@@ -50,7 +50,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Findings.Suppressions,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
   Atlas.Core.Settings.HiddenPlaces,

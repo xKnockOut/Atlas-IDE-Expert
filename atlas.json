@@ -257,8 +257,6 @@
         "Atlas.Common.Mcp.EditTools -> Atlas.Common.Lsp.ReferenceConfidence",
         "Atlas.Common.Mcp.EditTools -> Atlas.Common.Lsp.References",
         "Atlas.Common.Mcp.EditTools -> Atlas.Common.Lsp.Rename",
-        "Atlas.Common.Mcp.EditTools -> Atlas.Common.Rules.BulkFix",
-        "Atlas.Common.Mcp.EditTools -> Atlas.Common.Rules.Catalog",
         "Atlas.Common.Mcp.EditTools -> Atlas.Common.Rules.Checker",
         "Atlas.Common.Mcp.EditTools -> Atlas.Common.Rules.CodeActions",
         "Atlas.Common.Mcp.EditTools -> Atlas.Common.Rules.Contract",
