@@ -27,6 +27,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Findings.Contract,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Localization.Texts;
 
 type
@@ -131,6 +133,11 @@ type
     /// <summary>Katalog in ALanguage: englisch Shared, deutsch mit dem Overlay; einmal je Sprache gelesen; nicht
     /// freigeben.</summary>
     class function InLanguage(ALanguage: TTextLanguage): TRuleCatalog; static;
+    /// <summary>AEntry als reiner Wert für Anzeigen außerhalb der Prüfregeln (Doku-Suche, Ausgaben).</summary>
+    class function InfoOf(const AEntry: TRuleCatalogEntry): TFindingRuleInfo; static;
+    /// <summary>Die Regeln eines Laufs für die Ausgabe (SARIF, Atlas.Common.Findings.Output): englische Texte aus
+    /// Shared, Standard-Schweregrad aus ARules; ohne Katalogeintrag Name '' und die Beschreibung aus ARules.</summary>
+    class function RuleInfos(const ARules: TArray<TRuleDescriptor>): TArray<TFindingRuleInfo>; static;
   end;
 
 const
@@ -825,6 +832,55 @@ begin
     Result := FGerman;
   finally
     SharedLock.Release;
+  end;
+end;
+
+class function TRuleCatalog.InfoOf(const AEntry: TRuleCatalogEntry): TFindingRuleInfo;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TFindingRuleInfo);
+  Result.Id := AEntry.Id;
+  Result.Name := AEntry.Name;
+  Result.Description := AEntry.Description;
+  Result.Category := CategoryName(AEntry.Category);
+  Result.Group := GroupName(AEntry.Group);
+  Result.GroupKey := GroupKey(AEntry.Group);
+  Result.DefaultSeverity := AEntry.DefaultSeverity;
+  Result.Experimental := AEntry.Experimental;
+  SetLength(Result.Options, Length(AEntry.Options));
+  for mIndex := 0 to High(AEntry.Options) do
+  begin
+    Result.Options[mIndex].Name := AEntry.Options[mIndex].Name;
+    Result.Options[mIndex].DefaultJson := AEntry.Options[mIndex].DefaultJson;
+  end;
+  Result.Bad := AEntry.Bad;
+  Result.Good := AEntry.Good;
+  Result.HelpUri := HelpUri(AEntry.Id);
+  Result.CompilerCodes := Copy(AEntry.CompilerCodes);
+end;
+
+class function TRuleCatalog.RuleInfos(const ARules: TArray<TRuleDescriptor>): TArray<TFindingRuleInfo>;
+var
+  mEntry: TRuleCatalogEntry;
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(ARules));
+  for mIndex := 0 to High(ARules) do
+  begin
+    if Shared.TryFind(ARules[mIndex].Id, mEntry) then
+    begin
+      Result[mIndex] := InfoOf(mEntry);
+    end
+    else
+    begin
+      Result[mIndex] := Default(TFindingRuleInfo);
+      Result[mIndex].Id := ARules[mIndex].Id;
+      Result[mIndex].Description := ARules[mIndex].Description;
+      Result[mIndex].HelpUri := HelpUri(ARules[mIndex].Id);
+    end;
+    Result[mIndex].DefaultSeverity := ARules[mIndex].DefaultSeverity;
   end;
 end;
 

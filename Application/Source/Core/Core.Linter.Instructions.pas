@@ -22,7 +22,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Rules.Instructions,
   Atlas.Common.Rules.InstructionFiles,
   Atlas.Common.Localization.Texts,

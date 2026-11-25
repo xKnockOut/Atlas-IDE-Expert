@@ -48,7 +48,7 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Preprocessor,
   System.IOUtils,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Editing.EditorConfig,
   Atlas.Common.Lsp.Formatting,

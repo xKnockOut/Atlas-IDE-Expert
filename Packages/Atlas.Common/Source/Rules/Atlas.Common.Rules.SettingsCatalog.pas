@@ -29,7 +29,7 @@ implementation
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Common.Rules.Catalog.Data,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Product.Version,
   Atlas.Text.Json;
 

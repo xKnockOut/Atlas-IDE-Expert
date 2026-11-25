@@ -493,7 +493,9 @@ Atlas.Common.Compiler.Releases.Tests
 Atlas.Common.Compiler.Pitfalls.Tests
 Atlas.Common.Compiler.PitfallFixes.Tests
 Atlas.Common.Rules.Options.Tests
-Atlas.Common.Rules.Output.Tests
+Atlas.Common.Findings.Output.Tests
+Atlas.Common.Findings.Filter.Tests
+Atlas.Common.Rules.Checker.Tests
 Atlas.Common.Rules.Prompt.Tests
 Atlas.Common.Rules.Profiles.Tests
 Atlas.Common.Findings.Scopes.Tests
