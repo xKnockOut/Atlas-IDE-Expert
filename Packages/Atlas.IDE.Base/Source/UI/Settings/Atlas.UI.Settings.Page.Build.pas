@@ -62,6 +62,9 @@ begin
   // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
   AddSheet(TAtlasSettingsTextId.SettingsTabCompiler);
   BindCheck('Problems', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblems)));
+  // Befunde beim Debuggen ausblenden (#2962).
+  BindCheck('ProblemsHideWhileDebugging',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsHideWhileDebugging)));
   BindCheck('ProblemsStatusCounter',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsStatusCounter)));
   // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).

@@ -35,7 +35,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Editing.FormatCheck,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Editing.FormatOutput;
 
 function FileOf(const APath, AText: string): TFormattedFile;

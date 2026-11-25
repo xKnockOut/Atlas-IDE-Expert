@@ -35,6 +35,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  Atlas.Common.Pascal.CommandLines,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Semantics.NameResolver,
@@ -93,7 +94,7 @@ end;
 /// <summary>Steht der Cursor in einer Codezeile (nicht in Kommentar oder String)?</summary>
 function InCodeLine(ARequest: TCompletionRequest): Boolean;
 begin
-  Result := TSlashCommandRegistry.IsCodeLine(TPascalLexer.Tokenize(ARequest.Text), ARequest.Position.Line);
+  Result := TPascalCommandLines.IsCodeLine(TPascalLexer.Tokenize(ARequest.Text), ARequest.Position.Line);
 end;
 
 /// <summary>Einträge für die Argumente AChoices von /AName. Typen aus nicht eingebundenen Units bringen ihren
@@ -179,7 +180,7 @@ begin
   mBefore := ARequest.LineBefore;
   mName := '';
   mArguments := '';
-  if (Trim(mBefore) <> '/') and not TSlashCommandRegistry.Split(mBefore, mName, mArguments) then
+  if (Trim(mBefore) <> '/') and not TPascalCommandLines.Split(mBefore, mName, mArguments) then
   begin
     Exit(False);
   end;

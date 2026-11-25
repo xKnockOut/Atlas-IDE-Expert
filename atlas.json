@@ -240,10 +240,7 @@
         "Atlas.Common.Mcp.ImplementationTools -> Atlas.Common.Lsp.Implementations",
         "Atlas.Common.Mcp.ImplementationTools -> Atlas.Common.Lsp.References",
         "Atlas.Common.Mcp.IndexTools -> Atlas.Common.Lsp.Rationale",
-        "Atlas.Common.Rules.Builtin.Collections -> Atlas.Common.Editing.GenericLists",
-        "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.Contract",
-        "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.MaintenanceCommands",
-        "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.SlashCommands"
+        "Atlas.Common.Rules.Builtin.Collections -> Atlas.Common.Editing.GenericLists"
       ]
     },
     "forbidden-symbol": {

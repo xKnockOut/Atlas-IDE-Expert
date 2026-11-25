@@ -31,7 +31,7 @@ uses
 
 function ToolAskUser(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := AskInIde(AContext.Root, AContext.Workspace.Client, AArguments);
+  Result := TMcpIde.Create(AContext.Adapters.Process).AskInIde(AContext.Root, AContext.Workspace.Client, AArguments);
 end;
 
 // Jede Frage-Funktion in eigener Routine: Fingen sich anonyme Methoden derselben Routine gegenseitig ein, hielte
@@ -45,12 +45,12 @@ begin
     end;
 end;
 
-function IdeAsk(const ARoot: string): TMcpAskFunc;
+function IdeAsk(const AIde: TMcpIde; const ARoot: string): TMcpAskFunc;
 begin
   Result :=
     function(const AQuestion: TMcpIdeQuestion; out AAnswer: string): TMcpQuestionOutcome
     begin
-      Result := AskQuestionInIde(ARoot, AQuestion, AAnswer);
+      Result := AIde.AskQuestionInIde(ARoot, AQuestion, AAnswer);
     end;
 end;
 
@@ -66,7 +66,7 @@ begin
   mServer := AContext.Server;
   mWorkspace := AContext.Workspace;
   mClient := ClientAsk(mServer);
-  mIde := IdeAsk(AContext.Root);
+  mIde := IdeAsk(TMcpIde.Create(AContext.Adapters.Process), AContext.Root);
   Result :=
     function(const AText: string; const AOptions: TArray<string>): Integer
     var

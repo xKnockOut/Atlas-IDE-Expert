@@ -30,7 +30,6 @@ uses
   Atlas.Common.Todos.Contract,
   Atlas.Common.Findings.Contract,
   Atlas.Common.Localization.Texts,
-  Core.Bootstrap,
   Atlas.Common.Localization.RequestTexts;
 
 type
@@ -446,7 +445,7 @@ begin
   mRequest.RuleDocs := AContext.Adapters.RuleDocs;
   if mRequest.Settings.McpGlobalSettings then
   begin
-    mRequest.GlobalText := SettingsText(TCoreBootstrap.GlobalSettingsFile);
+    mRequest.GlobalText := SettingsText(AContext.Workspace.GlobalSettingsFile);
   end;
   Result := TMcpDocsTools.Search(mRequest);
 end;

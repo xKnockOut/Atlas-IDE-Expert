@@ -1,8 +1,7 @@
-﻿unit Atlas.Common.Rules.Output.Tests;
+﻿unit Atlas.Common.Findings.Output.Tests;
 
-// Tests für den Kommandozeilen-Linter: Prüfung eines Textes, Filter,
-// Ausgabe als Text, JSON und SARIF, Quellwurzel für SARIF und Exit-Code
-// nach --fail-on (#95).
+// Tests für die Ausgabe des Kommandozeilen-Linters: Text, JSON und SARIF, Quellwurzel für SARIF und
+// Exit-Code nach --fail-on (#95).
 
 interface
 
@@ -11,28 +10,8 @@ uses
 
 type
   [TestFixture]
-  TLinterOutputTests = class
+  TFindingsOutputTests = class
   public
-    [Test]
-    procedure CheckerReportsSyntaxErrors;
-    [Test]
-    procedure CheckerSilentOnValidCode;
-    [Test]
-    procedure CheckerSkipsExcludedFile;
-    [Test]
-    procedure CheckerSyntaxRuleCanBeTurnedOff;
-    [Test]
-    procedure CheckerReportsLanguageFeaturesBelowMinDelphiVersion;
-    [Test]
-    procedure CheckerLeavesIfExpressionsToTheirRule;
-    [Test]
-    procedure FilterByRule;
-    [Test]
-    procedure FilterBySeverity;
-    [Test]
-    procedure FilterByUnitNameAndGlob;
-    [Test]
-    procedure SplitListTrimsAndSkipsEmpty;
     [Test]
     procedure RendersTextLikeCompiler;
     [Test]
@@ -68,10 +47,6 @@ type
     procedure SarifNumbersIdenticalFingerprints;
     [Test]
     procedure SarifWithoutBaselineHasNoState;
-    [Test]
-    procedure CheckerReturnsScopes;
-    [Test]
-    procedure CheckerPassesPackageToRules;
   end;
 
 implementation
@@ -80,15 +55,9 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Configuration.Parser,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Findings.Filter,
-  Atlas.Common.Findings.Scopes,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Findings.Baseline,
-  Atlas.Common.Rules.Output,
-  Atlas.Common.Rules.Builtin.Concurrency.MainThread,
-  Atlas.Common.Projects.PackageReader;
+  Atlas.Common.Findings.Output;
 
 function MakeFinding(const ARuleId: string; ASeverity: TRuleSeverity; ALine: Integer): TRuleFinding; overload;
 begin
@@ -129,119 +98,21 @@ begin
   Result.State := AState;
 end;
 
-function Settings(const AJson: string): TServerSettings;
-var
-  mIssues: TArray<TConfigurationIssue>;
+/// <summary>Regel "syntax" mit den englischen Texten des Katalogs, wie sie der Aufrufer für SARIF übergibt.</summary>
+function SyntaxRule: TFindingRuleInfo;
 begin
-  Result := TConfigurationParser.Parse(AJson, mIssues);
+  Result := Default(TFindingRuleInfo);
+  Result.Id := 'syntax';
+  Result.Name := 'Syntax error';
+  Result.Description := 'The source code does not parse. Atlas reports where the parser stopped.';
+  Result.Category := 'bug';
+  Result.DefaultSeverity := TRuleSeverity.Error;
+  Result.HelpUri := 'https://github.com/xKnockOut/Atlas-IDE-Expert/blob/main/docs/Regeln.md#syntax';
 end;
 
-{ TLinterOutputTests }
+{ TFindingsOutputTests }
 
-procedure TLinterOutputTests.CheckerReportsSyntaxErrors;
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  mFindings := TFileChecker.CheckText(nil, TServerSettings.Default, 'U.pas',
-    'unit U; interface implementation procedure P; begin if then end; end.');
-  Assert.IsTrue(Length(mFindings) > 0);
-  Assert.AreEqual(cSyntaxRuleId, mFindings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
-end;
-
-procedure TLinterOutputTests.CheckerSilentOnValidCode;
-begin
-  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, TServerSettings.Default, 'U.pas',
-    'unit U; interface implementation end.'))));
-end;
-
-procedure TLinterOutputTests.CheckerSkipsExcludedFile;
-begin
-  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{ "exclude": ["Gen/**"] }'),
-    'Gen\U.pas', 'unit U; begin if then'))));
-end;
-
-procedure TLinterOutputTests.CheckerSyntaxRuleCanBeTurnedOff;
-begin
-  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{ "rules": { "syntax": "off" } }'),
-    'U.pas', 'unit U; begin if then'))));
-end;
-
-procedure TLinterOutputTests.CheckerReportsLanguageFeaturesBelowMinDelphiVersion;
-const
-  cSource = 'unit U; interface implementation function F(A: TObject): Boolean; ' +
-    'begin Result := A is not TList; end; end.';
-var
-  mFindings: TArray<TRuleFinding>;
-begin
-  // #1126: Ohne Sprachstand meldet Atlas nichts; mit minDelphiVersion 12 ist "is not" (Delphi 13) ein Befund.
-  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{}'), 'U.pas', cSource))));
-  mFindings := TFileChecker.CheckText(nil, Settings('{ "minDelphiVersion": "12" }'), 'U.pas', cSource);
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(cLanguageFeatureRuleId, mFindings[0].RuleId);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
-  Assert.IsTrue(Pos('Delphi 13', mFindings[0].Message) > 0, mFindings[0].Message);
-  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{ "minDelphiVersion": "13" }'), 'U.pas',
-    cSource))));
-  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil,
-    Settings('{ "minDelphiVersion": "12", "rules": { "language-feature": "off" } }'), 'U.pas', cSource))));
-end;
-
-procedure TLinterOutputTests.CheckerLeavesIfExpressionsToTheirRule;
-const
-  cSource = 'unit U; interface implementation function F(A: Boolean): Integer; ' +
-    'begin Result := if A then 1 else 2; end; end.';
-begin
-  // #684 mit #1126: Bedingungsausdrücke meldet conditional-expression-version als Fehler mit Korrektur, nicht
-  // zusätzlich language-feature.
-  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{ "minDelphiVersion": "12" }'), 'U.pas',
-    cSource))));
-end;
-
-procedure TLinterOutputTests.FilterByRule;
-var
-  mFilter: TFindingFilter;
-begin
-  mFilter := Default(TFindingFilter);
-  mFilter.Rules := ['Empty-Except'];
-  Assert.IsTrue(mFilter.AcceptsFinding(MakeFinding('empty-except', TRuleSeverity.Hint)));
-  Assert.IsFalse(mFilter.AcceptsFinding(MakeFinding('syntax', TRuleSeverity.Error)));
-end;
-
-procedure TLinterOutputTests.FilterBySeverity;
-var
-  mFilter: TFindingFilter;
-begin
-  mFilter := Default(TFindingFilter);
-  mFilter.MinSeverity := TRuleSeverity.Warning;
-  Assert.AreEqual(2, Integer(Length(mFilter.Apply([MakeFinding('a', TRuleSeverity.Hint),
-    MakeFinding('b', TRuleSeverity.Warning), MakeFinding('c', TRuleSeverity.Information),
-    MakeFinding('d', TRuleSeverity.Error)]))));
-end;
-
-procedure TLinterOutputTests.FilterByUnitNameAndGlob;
-var
-  mFilter: TFindingFilter;
-begin
-  mFilter := Default(TFindingFilter);
-  Assert.IsTrue(mFilter.AcceptsFile('Src\Any.pas'));
-  mFilter.Units := ['Main.Form', 'Legacy/**'];
-  Assert.IsTrue(mFilter.AcceptsFile('Src\Main.Form.pas'));
-  Assert.IsTrue(mFilter.AcceptsFile('Legacy\Alt\X.pas'));
-  Assert.IsFalse(mFilter.AcceptsFile('Src\Other.pas'));
-end;
-
-procedure TLinterOutputTests.SplitListTrimsAndSkipsEmpty;
-var
-  mParts: TArray<string>;
-begin
-  mParts := TFindingFilter.SplitList(' a, ,b ,');
-  Assert.AreEqual(2, Integer(Length(mParts)));
-  Assert.AreEqual('a', mParts[0]);
-  Assert.AreEqual('b', mParts[1]);
-end;
-
-procedure TLinterOutputTests.RendersTextLikeCompiler;
+procedure TFindingsOutputTests.RendersTextLikeCompiler;
 var
   mOutput: string;
 begin
@@ -251,7 +122,7 @@ begin
   Assert.IsTrue(Pos('1 Treffer in 1 von 2 Dateien', mOutput) > 0, mOutput);
 end;
 
-procedure TLinterOutputTests.RendersJsonWithSummary;
+procedure TFindingsOutputTests.RendersJsonWithSummary;
 var
   mOutput: string;
 begin
@@ -263,12 +134,12 @@ begin
     '"information":0,"hints":0}}', mOutput);
 end;
 
-procedure TLinterOutputTests.RendersSarifResult;
+procedure TFindingsOutputTests.RendersSarifResult;
 var
   mOutput: string;
 begin
   mOutput := TFindingsOutput.Render([MakeFile('Src\U.pas', [MakeFinding('syntax', TRuleSeverity.Hint, 0)])],
-    TFindingsFormat.Sarif, [TFileChecker.SyntaxDescriptor]);
+    TFindingsFormat.Sarif, [SyntaxRule]);
   Assert.IsTrue(Pos('"version":"2.1.0"', mOutput) > 0, mOutput);
   Assert.IsTrue(Pos('"rules":[{"id":"syntax","name":"Syntax error"', mOutput) > 0, mOutput);
   Assert.IsTrue(Pos('"fullDescription":{"text":"The source code does not parse. ', mOutput) > 0, mOutput);
@@ -279,12 +150,12 @@ begin
   Assert.IsTrue(Pos('"region":{"startLine":1,"startColumn":3,"endLine":1,"endColumn":6}', mOutput) > 0, mOutput);
 end;
 
-procedure TLinterOutputTests.EscapesJsonStrings;
+procedure TFindingsOutputTests.EscapesJsonStrings;
 begin
   Assert.AreEqual('"a\"b\\c\nd\u0001"', TFindingsOutput.JsonString('a"b\c'#10'd'#1));
 end;
 
-procedure TLinterOutputTests.SarifPathsRelativeToSourceRoot;
+procedure TFindingsOutputTests.SarifPathsRelativeToSourceRoot;
 var
   mOutput: string;
 begin
@@ -293,7 +164,7 @@ begin
     MakeFile('Main.dpr', [MakeFinding('syntax', TRuleSeverity.Error)], 'C:\Repo\App\Main.dpr'),
     MakeFile('..\Shared\X.pas', [MakeFinding('syntax', TRuleSeverity.Error)], 'C:\Repo\Shared\X.pas'),
     MakeFile('..\..\Fremd\Y.pas', [MakeFinding('syntax', TRuleSeverity.Error)], 'D:\Fremd\Y.pas')],
-    TFindingsFormat.Sarif, [TFileChecker.SyntaxDescriptor], 'C:\Repo');
+    TFindingsFormat.Sarif, [SyntaxRule], 'C:\Repo');
   Assert.IsTrue(Pos('"originalUriBaseIds":{"%SRCROOT%":{"uri":"file:///C:/Repo/"}}', mOutput) > 0, mOutput);
   Assert.IsTrue(Pos('"artifactLocation":{"uri":"App/Main.dpr","uriBaseId":"%SRCROOT%"}', mOutput) > 0, mOutput);
   Assert.IsTrue(Pos('"artifactLocation":{"uri":"Shared/X.pas","uriBaseId":"%SRCROOT%"}', mOutput) > 0, mOutput);
@@ -301,7 +172,7 @@ begin
   Assert.AreEqual(0, Pos('../', mOutput), mOutput);
 end;
 
-procedure TLinterOutputTests.SarifMessageEnglishWithoutConfidence;
+procedure TFindingsOutputTests.SarifMessageEnglishWithoutConfidence;
 var
   mFinding: TRuleFinding;
   mOutput: string;
@@ -309,13 +180,13 @@ begin
   mFinding := MakeFinding('syntax', TRuleSeverity.Error);
   mFinding.Confidence := TRuleConfidence.Medium;
   mOutput := TFindingsOutput.Render([MakeFile('U.pas', [mFinding])], TFindingsFormat.Sarif,
-    [TFileChecker.SyntaxDescriptor]);
+    [SyntaxRule]);
   Assert.IsTrue(Pos('"message":{"text":"Syntax error"}', mOutput) > 0, mOutput);
   Assert.AreEqual(0, Pos('Konfidenz', mOutput), mOutput);
   Assert.IsTrue(Pos('"properties":{"confidence":"medium","detail":"Meldung"}', mOutput) > 0, mOutput);
 end;
 
-procedure TLinterOutputTests.JsonConfidenceInProperties;
+procedure TFindingsOutputTests.JsonConfidenceInProperties;
 var
   mFinding: TRuleFinding;
   mOutput: string;
@@ -328,7 +199,7 @@ begin
   Assert.AreEqual(0, Pos('Konfidenz', mOutput), mOutput);
 end;
 
-procedure TLinterOutputTests.FileUriEncodesSpecialCharacters;
+procedure TFindingsOutputTests.FileUriEncodesSpecialCharacters;
 var
   mRelative: Boolean;
 begin
@@ -341,7 +212,7 @@ begin
   Assert.IsFalse(mRelative, 'Präfix ohne Trennzeichen ist kein Unterordner');
 end;
 
-procedure TLinterOutputTests.FindGitRootWalksUp;
+procedure TFindingsOutputTests.FindGitRootWalksUp;
 var
   mRepo, mApp: string;
 begin
@@ -359,7 +230,7 @@ begin
     end));
 end;
 
-procedure TLinterOutputTests.ExitCodeFailOnError;
+procedure TFindingsOutputTests.ExitCodeFailOnError;
 begin
   Assert.AreEqual(0, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Warning)])]));
   Assert.AreEqual(0, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Warning)])],
@@ -369,7 +240,7 @@ begin
   Assert.AreEqual(0, TFindingsOutput.ExitCode(nil));
 end;
 
-procedure TLinterOutputTests.ExitCodeFailOnWarning;
+procedure TFindingsOutputTests.ExitCodeFailOnWarning;
 begin
   Assert.AreEqual(1, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Warning)])],
     TFailOn.Warning));
@@ -379,13 +250,13 @@ begin
     MakeFinding('y', TRuleSeverity.Hint)])], TFailOn.Warning));
 end;
 
-procedure TLinterOutputTests.ExitCodeFailOnNever;
+procedure TFindingsOutputTests.ExitCodeFailOnNever;
 begin
   Assert.AreEqual(0, TFindingsOutput.ExitCode([MakeFile('a', [MakeFinding('x', TRuleSeverity.Error)])],
     TFailOn.Never));
 end;
 
-procedure TLinterOutputTests.ParsesFormat;
+procedure TFindingsOutputTests.ParsesFormat;
 var
   mFormat: TFindingsFormat;
 begin
@@ -394,7 +265,7 @@ begin
   Assert.IsFalse(TFindingsOutput.TryParseFormat('xml', mFormat));
 end;
 
-procedure TLinterOutputTests.ParsesFailOn;
+procedure TFindingsOutputTests.ParsesFailOn;
 var
   mFailOn: TFailOn;
 begin
@@ -406,7 +277,7 @@ begin
   Assert.AreEqual(Ord(TFailOn.Error), Ord(mFailOn));
 end;
 
-procedure TLinterOutputTests.SarifCarriesFingerprintsAndBaselineState;
+procedure TFindingsOutputTests.SarifCarriesFingerprintsAndBaselineState;
 var
   mCheckedFile: TCheckedFile;
   mAbsent: TBaselineMark;
@@ -417,7 +288,7 @@ begin
   mAbsent.Finding.RuleId := 'syntax';
   mCheckedFile.Marks := [MakeMark(MakeFinding('syntax', TRuleSeverity.Error, 3), TBaselineState.New, 'TFoo.Bar'),
     MakeMark(MakeFinding('syntax', TRuleSeverity.Error, 7), TBaselineState.Unchanged, 'TFoo.Baz'), mAbsent];
-  mOutput := TFindingsOutput.Render([mCheckedFile], TFindingsFormat.Sarif, [TFileChecker.SyntaxDescriptor]);
+  mOutput := TFindingsOutput.Render([mCheckedFile], TFindingsFormat.Sarif, [SyntaxRule]);
   mHash := TRuleBaseline.SarifFingerprint(mCheckedFile.Marks[0]);
   Assert.IsTrue(Pos('"partialFingerprints":{"atlasBaseline/v1":"' + mHash + ':1","atlasContext/v1":"c0ffee00:1"}',
     mOutput) > 0, mOutput);
@@ -435,7 +306,7 @@ begin
   Assert.AreEqual(TFindingsOutput.cExitClean, TFindingsOutput.ExitCode([mCheckedFile], TFailOn.Warning));
 end;
 
-procedure TLinterOutputTests.SarifNumbersIdenticalFingerprints;
+procedure TFindingsOutputTests.SarifNumbersIdenticalFingerprints;
 var
   mCheckedFile: TCheckedFile;
   mOutput, mHash: string;
@@ -450,7 +321,7 @@ begin
   Assert.IsTrue(Pos('"atlasContext/v1":"c0ffee00:2"', mOutput) > 0, mOutput);
 end;
 
-procedure TLinterOutputTests.SarifWithoutBaselineHasNoState;
+procedure TFindingsOutputTests.SarifWithoutBaselineHasNoState;
 var
   mCheckedFile: TCheckedFile;
   mOutput: string;
@@ -465,40 +336,7 @@ begin
   Assert.AreEqual(0, Pos('partialFingerprints', TFindingsOutput.Render([mCheckedFile], TFindingsFormat.Json, nil)));
 end;
 
-procedure TLinterOutputTests.CheckerReturnsScopes;
-var
-  mScopes: TFindingScopes;
-begin
-  TFileChecker.CheckText(nil, Settings('{}'), 'U.pas',
-    'unit U; interface implementation procedure TFoo.Bar; begin end; end.', mScopes);
-  Assert.AreEqual(1, mScopes.RoutineCount);
-  Assert.AreEqual('TFoo.Bar', mScopes.At(0));
-end;
-
-procedure TLinterOutputTests.CheckerPassesPackageToRules;
-const
-  cSource = 'unit Laden;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10 +
-    '  TThread.Queue(nil, Start);'#10'end;'#10'end.';
-var
-  mPackages: TArray<TPackageSource>;
-  mProject: TCheckProject;
-  mFindings: TArray<TRuleFinding>;
-begin
-  mPackages := [TPackageReader.Read('package Werkzeuge;'#10'requires rtl;'#10'contains'#10 +
-    '  Laden in ''Laden.pas'';'#10'end.')];
-  mProject := TFileChecker.PackageOf(mPackages, 'laden');
-  Assert.AreEqual(Ord(TRuleApplicationKind.Package), Ord(mProject.Application));
-  Assert.AreEqual('Werkzeuge', mProject.Name);
-  Assert.AreEqual(Ord(TRuleApplicationKind.Unknown), Ord(TFileChecker.PackageOf(mPackages, 'Andere').Application));
-  // queue-nil-in-package (#943) meldet nur mit Package.
-  mFindings := TFileChecker.CheckText([TQueueNilInPackageRule.Create], Settings('{}'), 'Laden.pas', cSource, mProject);
-  Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.Contains(mFindings[0].Message, 'Werkzeuge.bpl');
-  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText([TQueueNilInPackageRule.Create], Settings('{}'),
-    'Laden.pas', cSource))));
-end;
-
 initialization
-  TDUnitX.RegisterTestFixture(TLinterOutputTests);
+  TDUnitX.RegisterTestFixture(TFindingsOutputTests);
 
 end.
