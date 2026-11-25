@@ -85,7 +85,8 @@ uses
   System.Math,
   Vcl.Controls,
   Atlas.Core.Designer.Layout,
-  Atlas.UI.Designer.ViewStrings;
+  Atlas.UI.Designer.ViewStrings,
+  Atlas.Vcl.Controls.ListBox;
 
 const
   cPercent = 100;
@@ -105,7 +106,7 @@ begin
   FMeasure := Vcl.Graphics.TBitmap.Create; // Winapi.Windows verdeckt TBitmap
   inherited CreatePreview(AOwner, AData.Form, AColors);
   Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleTitle, [AData.Form.FormName]);
-  FList := TListBox.Create(Self);
+  FList := TAtlasListBox.Create(Self);
   FList.Parent := Self;
   FList.Align := alBottom;
   FList.Height := S(cListHeight);

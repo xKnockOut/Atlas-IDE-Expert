@@ -6,6 +6,14 @@
 // Fenster auch, wenn der Manager leeres HTML liefert. Atlas blendet das
 // Fenster deshalb aus, sobald es erscheint. Hier steht nur die Entscheidung;
 // Atlas.IDE.Hover.IdeHelpInsight beobachtet die Fenster.
+// - Welche Datei zählt: die im Editor unter der Maus (Help Insight erscheint
+//   beim Zeigen); ist keine bekannt, die im obersten Editor.
+// - Der Wächter hängt am internen Klassennamen. Hat er in einer Sitzung, in
+//   der Atlas den Tooltip zeigte, nie ein solches Fenster gesehen, steht das
+//   im Protokoll: Dann hat die IDE die Klasse umbenannt oder Help Insight ist
+//   aus.
+// - Delphi 13: Ob die IDE die Schalter dort behält und der Umweg entfallen
+//   kann, ist nicht geprüft; er gilt für beide Fassungen.
 
 interface
 
@@ -21,6 +29,11 @@ type
     /// Tooltip selbst zeigt (AOwnTooltip) und die Datei im Editor bedient (AHandlesFile); sonst gehört der
     /// Hinweis der IDE.</summary>
     class function ShouldHide(const AWindowClass: string; AOwnTooltip, AHandlesFile: Boolean): Boolean; static;
+    /// <summary>Datei, nach der entschieden wird: AMouseFile (Editor unter der Maus), ohne sie ATopFile.</summary>
+    class function FileToDecide(const AMouseFile, ATopFile: string): string; static;
+    /// <summary>Protokollzeile beim Abbau, dass das Fenster nie erschien? Nur, wenn der Haken lief
+    /// (AHooked), Atlas den Tooltip in einem Editor zeigte (AHovered) und das Fenster nie kam (not ASeen).</summary>
+    class function ReportUnseen(AHooked, AHovered, ASeen: Boolean): Boolean; static;
   end;
 
 implementation
@@ -40,6 +53,20 @@ class function TAtlasIdeHelpInsight.ShouldHide(const AWindowClass: string; AOwnT
   Boolean;
 begin
   Result := AOwnTooltip and AHandlesFile and IsHelpInsightWindow(AWindowClass);
+end;
+
+class function TAtlasIdeHelpInsight.FileToDecide(const AMouseFile, ATopFile: string): string;
+begin
+  Result := AMouseFile;
+  if Result = '' then
+  begin
+    Result := ATopFile;
+  end;
+end;
+
+class function TAtlasIdeHelpInsight.ReportUnseen(AHooked, AHovered, ASeen: Boolean): Boolean;
+begin
+  Result := AHooked and AHovered and not ASeen;
 end;
 
 end.

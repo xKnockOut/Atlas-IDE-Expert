@@ -378,7 +378,9 @@ begin
         ANote.Totals.Killed + ANote.Totals.TimedOut, ANote.Totals.Survived,
         ANote.Totals.BuildFailed + ANote.Totals.Invalid, ScoreText(ANote.Totals)]);
     TAtlasMutationNoteKind.NotStarted:
-      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationTestsNotStarted, [ANote.Shadow]);
+      // Text: Fehler, wenn schon der Start der Test-EXE warf.
+      Result := Trim(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationTestsNotStarted, [ANote.Shadow]) + ' ' +
+        ANote.Text);
     TAtlasMutationNoteKind.CloseFailed:
       Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowNotClosed, [ANote.Shadow, ANote.Text]);
   else
