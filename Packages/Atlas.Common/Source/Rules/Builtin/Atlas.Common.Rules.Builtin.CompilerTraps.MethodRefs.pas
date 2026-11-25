@@ -10,6 +10,12 @@
 //                            der eigenen Klasse); ein eigener Typ zählt, wenn die Datei oder der Index ihn als
 //                            reference to function deklariert. Referenzen auf Prozeduren (TProc) nimmt Delphi als
 //                            Wert (Links + [AAction] übersetzt).
+//                            Umgekehrt: Eine parameterlose Funktion, die eine Methodenreferenz liefert
+//                            (TTransport.Fabrik: TFabrik), steht ohne () als Argument, und der Parameter der gerufenen
+//                            Routine hat den Ergebnistyp. Delphi nimmt dort die Funktion selbst statt ihres Ergebnisses
+//                            (wie E2010 bzw. E2250 bei Überladungen); Korrektur (sicher): (). Nur in der Form
+//                            Typ.Name; Funktion und gerufene Routine kommen aus dem Symbolindex, ohne sie bleibt die
+//                            Regel still.
 
 interface
 
@@ -50,7 +56,7 @@ uses
 
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
-  TMethodRefText = (Title, ExitMessage, ExitFix, LiteralMessage);
+  TMethodRefText = (Title, ExitMessage, ExitFix, LiteralMessage, FactoryMessage, FactoryFix);
 
   /// <summary>Art eines Typs: keine Methodenreferenz, Referenz auf eine Prozedur oder auf eine Funktion.</summary>
   TReferenceKind = (None, Procedure_, Function_);
@@ -66,7 +72,12 @@ const
     (De: '[%s]: %0:s ist eine Methodenreferenz (%s); im Array-Literal neben + ruft Delphi sie auf (wie E2035 bzw. ' +
       'E2010). Länge mit SetLength erhöhen und das Element zuweisen.';
      En: '[%s]: %0:s is a method reference (%s); in an array literal next to + Delphi calls it (like E2035 or ' +
-      'E2010). Grow the array with SetLength and assign the element.'));
+      'E2010). Grow the array with SetLength and assign the element.'),
+    (De: '%s liefert eine Methodenreferenz (%s); ohne () übergibt Delphi die Funktion selbst statt ihres Ergebnisses ' +
+      '(wie E2010 bzw. E2250). %0:s() schreiben.';
+     En: '%s returns a method reference (%s); without () Delphi passes the function itself instead of its result ' +
+      '(like E2010 or E2250). Write %0:s().'),
+    (De: '%s() schreiben'; En: 'Write %s()'));
 
 {$SCOPEDENUMS OFF}
 
@@ -93,6 +104,9 @@ type
     function ElementType(AOperand: TSyntaxNode): string;
     procedure CheckExit(ACall: TSyntaxNode);
     procedure CheckLiteral(ALiteral: TSyntaxNode);
+    function FactoryResult(const AContainer, AName: string): string;
+    function TakesType(ACallee: TSyntaxNode; APosition: Integer; const ATypeText: string): Boolean;
+    procedure CheckFactoryArguments(ACall: TSyntaxNode);
   public
     constructor Create(const AText: string; ARoot: TSyntaxNode; const AIndex: ISymbolIndex;
       const AReport: IRuleReport);
@@ -444,6 +458,103 @@ begin
   end;
 end;
 
+/// <summary>Typ und Name eines Arguments Name bzw. Typ.Name; False bei anderen Ausdrücken.</summary>
+function SplitName(ANode: TSyntaxNode; out AContainer, AName: string): Boolean;
+begin
+  AContainer := '';
+  AName := ANode.Name;
+  Result := ANode.Kind = TSyntaxKind.Identifier;
+  if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+    (ANode[0].Kind = TSyntaxKind.Identifier) then
+  begin
+    AContainer := ANode[0].Name;
+    Result := True;
+  end;
+end;
+
+function TMethodRefScan.FactoryResult(const AContainer, AName: string): string;
+var
+  mLocation: TSymbolLocation;
+begin
+  // Ergebnistyp der parameterlosen Funktion AContainer.AName, wenn er eine Methodenreferenz ist; '' sonst.
+  Result := '';
+  if FIndex = nil then
+  begin
+    Exit;
+  end;
+  for mLocation in FIndex.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
+      SameText(mLocation.Symbol.Container, AContainer) then
+    begin
+      // Gleichnamige mit Parametern oder anderem Ergebnis: nicht eindeutig.
+      if (mLocation.Symbol.MaxArgs <> 0) or not IsReferenceType(mLocation.Symbol.TypeName) or
+        ((Result <> '') and not SameText(Result, mLocation.Symbol.TypeName)) then
+      begin
+        Exit('');
+      end;
+      Result := mLocation.Symbol.TypeName;
+    end;
+  end;
+end;
+
+function TMethodRefScan.TakesType(ACallee: TSyntaxNode; APosition: Integer; const ATypeText: string): Boolean;
+var
+  mContainer, mName: string;
+  mLocation: TSymbolLocation;
+begin
+  // Hat eine Fassung der gerufenen Routine an der Stelle APosition (ab 0) einen Parameter vom Typ ATypeText?
+  Result := False;
+  if not SplitName(ACallee, mContainer, mName) then
+  begin
+    Exit;
+  end;
+  for mLocation in FIndex.FindSymbols(mName) do
+  begin
+    if (mLocation.Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
+      TIndexSymbolKind.Constructor_]) and ((mContainer = '') or SameText(mLocation.Symbol.Container, mContainer)) and
+      (APosition <= High(mLocation.Symbol.ParamTypes)) and
+      SameText(mLocation.Symbol.ParamTypes[APosition], ATypeText) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure TMethodRefScan.CheckFactoryArguments(ACall: TSyntaxNode);
+var
+  mIndex: Integer;
+  mArgument: TSyntaxNode;
+  mContainer, mName, mType, mShown: string;
+begin
+  for mIndex := 1 to ACall.ChildCount - 1 do
+  begin
+    mArgument := ACall[mIndex];
+    if not SplitName(mArgument, mContainer, mName) then
+    begin
+      Continue;
+    end;
+    // Nur Typ.Fabrik: Ein bloßer Name kann ein Mitglied der eigenen Klasse mit Parametern sein (Methodenwert).
+    if mContainer = '' then
+    begin
+      Continue;
+    end;
+    mType := FactoryResult(mContainer, mName);
+    if (mType = '') or not TakesType(ACall[0], mIndex - 1, mType) then
+    begin
+      Continue;
+    end;
+    mShown := mName;
+    if mContainer <> '' then
+    begin
+      mShown := mContainer + '.' + mName;
+    end;
+    FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos), cTexts[TMethodRefText.FactoryMessage].Fmt(
+      [mShown, mType]), TRuleConfidence.High, [TRuleFix.Create(cTexts[TMethodRefText.FactoryFix].Fmt([mShown]),
+      [TTextEdit.Create(TTextRange.Create(mArgument.EndPos, mArgument.EndPos), '()')], True)]);
+  end;
+end;
+
 /// <summary>Exit(Name) als Anweisung: der Aufruf, sonst nil.</summary>
 function ExitWithName(ANode: TSyntaxNode): TSyntaxNode;
 begin
@@ -469,6 +580,10 @@ begin
       if mCall <> nil then
       begin
         CheckExit(mCall);
+      end
+      else if (ANode.Kind = TSyntaxKind.Call) and (FIndex <> nil) then
+      begin
+        CheckFactoryArguments(ANode);
       end
       else if (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.Name = '+') then
       begin

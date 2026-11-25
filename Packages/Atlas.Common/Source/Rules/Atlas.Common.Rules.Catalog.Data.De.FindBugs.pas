@@ -289,7 +289,8 @@ const
     '      "id": "operator-precedence",',
     '      "name": "Vorrang von not übersehen",',
     '      "description": "In Pascal bindet not stärker als in und Vergleiche: not X in Menge heißt (not X) in Menge, not A = B heißt (not A) = B, bei Ganzzahlen wird not bitweise. Die Regel meldet diese F' +
-    'ormen, wenn der deklarierte Typ des Operanden zeigt, dass es nicht gemeint sein kann (kein Boolean). Schnellkorrektur: Klammern setzen, not (X in Menge)."',
+    'ormen, wenn der deklarierte Typ des Operanden zeigt, dass es nicht gemeint sein kann (kein Boolean). not E is T heißt (not E) is T und übersetzt in Delphi bei keinem Typ (E2015, Free Pascal nimmt es a' +
+    'n); das meldet die Regel immer. Schnellkorrektur: Klammern setzen, not (X in Menge)."',
     '    },',
     '{',
     '      "id": "empty-statement",',

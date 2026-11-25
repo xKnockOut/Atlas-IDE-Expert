@@ -191,7 +191,7 @@ begin
   AParts.Operand := NextCode(ATokens, AIndex + 1);
   AParts.Op := NextCode(ATokens, AParts.Operand + 1);
   Result := IsPlainIdentifier(ATokens, AParts.Operand) and (AParts.Op <= High(ATokens)) and
-    (ATokens[AParts.Op].IsKeyword('in') or IsComparison(ATokens[AParts.Op]));
+    (ATokens[AParts.Op].IsKeyword('in') or ATokens[AParts.Op].IsKeyword('is') or IsComparison(ATokens[AParts.Op]));
   if Result then
   begin
     AParts.Right := NextCode(ATokens, AParts.Op + 1);
