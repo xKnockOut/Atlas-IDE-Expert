@@ -2,7 +2,8 @@
 
 // Tests zu TAtlasModuleHost (#1455): Beschreibung eines Moduls, Zulassung und die
 // gemeinsame Abmeldung mit ihrer Reihenfolge (stoppen und Anmeldungen lösen,
-// dann die Schritte des Moduls, zuletzt überfällige Threads des Packages).
+// dann die Schritte des Moduls, dann löst Base, was es vom Modul hält, zuletzt
+// überfällige Threads des Packages).
 
 interface
 
@@ -31,6 +32,13 @@ type
     /// Package fest, bevor es entladen wird.</summary>
     [Test]
     procedure UnregisterPinsPackageWithOverdueThread;
+    /// <summary>Schritt 4: Nach den Schritten des Moduls bekommt Base das HInstance, solange der Code geladen ist;
+    /// ohne Package (0) nicht.</summary>
+    [Test]
+    procedure UnregisterReleasesModuleCodeAfterRelease;
+    /// <summary>Scheitert Schritt 4, steht es im Protokoll und die Abmeldung geht weiter.</summary>
+    [Test]
+    procedure ReleaseFailureIsLogged;
   end;
 
 implementation
@@ -323,6 +331,60 @@ begin
     mRelease.Free;
     mLog.Free;
     mPinned := nil;
+  end;
+end;
+
+/// <summary>Haken für Schritt 4, der „base:<HInstance>“ in ALog schreibt.</summary>
+function ReleasedInto(ALog: TLog): TProc<NativeUInt>;
+begin
+  Result :=
+    procedure(AInstance: NativeUInt)
+    begin
+      ALog.Add(Format('base:%x', [AInstance]));
+    end;
+end;
+
+procedure TModuleHostTests.UnregisterReleasesModuleCodeAfterRelease;
+var
+  mLog: TLog;
+  mRegistry: IAtlasModuleRegistry;
+  mScope: IAtlasModuleScope;
+begin
+  mLog := TLog.Create;
+  try
+    TAtlasModuleHost.OnModuleReleased := ReleasedInto(mLog);
+    mRegistry := TAtlasModuleRegistry.Create;
+    mScope := RegisterActive(mRegistry, mLog, False);
+    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, cInstance, Logged(mLog, 'release'), LogSink(mLog));
+    Assert.AreEqual('stop,release,base:5A5B0000', mLog.Text);
+    mLog.Text := '';
+    mScope := RegisterActive(mRegistry, mLog, False);
+    TAtlasModuleHost.UnregisterFrom(mRegistry, mScope, cId, 0, Logged(mLog, 'release'), LogSink(mLog));
+    Assert.AreEqual('stop,release', mLog.Text, 'ohne Package nichts zu lösen');
+  finally
+    TAtlasModuleHost.OnModuleReleased := nil;
+    mLog.Free;
+  end;
+end;
+
+procedure TModuleHostTests.ReleaseFailureIsLogged;
+var
+  mLog: TLog;
+  mScope: IAtlasModuleScope;
+begin
+  mLog := TLog.Create;
+  try
+    TAtlasModuleHost.OnModuleReleased :=
+      procedure(AInstance: NativeUInt)
+      begin
+        raise EInvalidOp.Create('Lösen gescheitert');
+      end;
+    mScope := nil;
+    TAtlasModuleHost.UnregisterFrom(nil, mScope, cId, cInstance, nil, LogSink(mLog));
+    Assert.AreEqual('log:Module $5A5B0000: releasing its callbacks in Base failed: EInvalidOp', mLog.Text);
+  finally
+    TAtlasModuleHost.OnModuleReleased := nil;
+    mLog.Free;
   end;
 end;
 

@@ -4,7 +4,8 @@
 // IAtlasNotificationCenter, Zusammenfassen gleichartiger Hinweise innerhalb
 // von 10 s, Begrenzung der Liste, Gelesen-Status, Aktionen, Verhalten je
 // Quelle (einblenden und sammeln, nur sammeln, aus) samt Einstellung
-// notifications.sources und die Einträge für Build und Hintergrundprüfung.
+// notifications.sources und die Einträge für Build und Hintergrundprüfung,
+// dazu das Lösen der Aktionen und Beobachter eines abgemeldeten Moduls.
 
 interface
 
@@ -50,6 +51,13 @@ type
     procedure FilterBySourceAndClear;
     [Test]
     procedure DefaultStaysOffUntilEnabled;
+    /// <summary>Regel 3: Ein abgemeldetes Modul verliert seine Aktionen in allen Einträgen, auch in Kopien, die
+    /// schon vorher gelesen wurden; Titel, Text und fremde Aktionen bleiben, seine Beobachter gehen.</summary>
+    [Test]
+    procedure ReleaseOwnedDropsModuleActionsEverywhere;
+    /// <summary>Ohne Code des Moduls: keine Änderung, keine Meldung.</summary>
+    [Test]
+    procedure ReleaseOwnedWithoutModuleCodeChangesNothing;
   private
     FNow: TDateTime;
     function NewCenter: TAtlasNotificationCenter;
@@ -89,6 +97,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Notifications.Listeners,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
@@ -385,6 +394,91 @@ begin
   mCenter.RemoveListener(mHandle);
   mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'b', '');
   Assert.AreEqual(3, mCalls, 'abgemeldet');
+end;
+
+/// <summary>Dem Modul gehören genau die Methodenreferenzen an AModule.</summary>
+function OwnedIs(const AModule: TArray<Pointer>): TAtlasOwnedCode;
+var
+  mModule: TArray<Pointer>;
+begin
+  mModule := AModule;
+  Result :=
+    function(AReference: Pointer): Boolean
+    var
+      mCode: Pointer;
+    begin
+      Result := False;
+      for mCode in mModule do
+      begin
+        Result := Result or (mCode = AReference);
+      end;
+    end;
+end;
+
+procedure TAtlasNotificationCenterTests.ReleaseOwnedDropsModuleActionsEverywhere;
+var
+  mCenter: TAtlasNotificationCenter;
+  mCenterRef: IAtlasNotificationCenter;
+  mModuleRun, mBaseRun, mListener: TProc;
+  mBefore: IAtlasNotification;
+  mCalls: Integer;
+begin
+  mCalls := 0;
+  mModuleRun :=
+    procedure
+    begin
+    end;
+  mBaseRun :=
+    procedure
+    begin
+    end;
+  mListener :=
+    procedure
+    begin
+      Inc(mCalls);
+    end;
+  mCenter := NewCenter;
+  mCenterRef := mCenter;
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Issue', 'ATL-1',
+    [TAtlasNotificationCenter.Action('Öffnen', mModuleRun), TAtlasNotificationCenter.Action('Protokoll', mBaseRun)]);
+  // Kopie vor dem Lesen, wie sie die offene Liste hält.
+  mBefore := mCenter.Items()[0];
+  mCenter.MarkRead(1);
+  mCenter.AddListener(mListener);
+  Assert.AreEqual(2, mCenter.ReleaseOwned(OwnedIs(TArray<Pointer>.Create(PPointer(@mModuleRun)^,
+    PPointer(@mListener)^))), 'eine Aktion, ein Beobachter');
+  Assert.AreEqual(0, mCalls, 'Beobachter des Moduls nicht mehr gerufen');
+  Assert.AreEqual(1, Integer(Length(mCenter.Items()[0].Actions)), 'gelesener Eintrag');
+  Assert.AreEqual('Protokoll', mCenter.Items()[0].Actions[0].Caption);
+  Assert.AreEqual(1, Integer(Length(mBefore.Actions)), 'Kopie in der Liste');
+  Assert.AreEqual('Issue', mCenter.Items()[0].Title);
+  Assert.AreEqual('ATL-1', mCenter.Items()[0].Text);
+  Assert.AreEqual(1, Integer(Length(mCenter.Items())));
+  mBefore := nil;
+  mCenterRef := nil;
+  mModuleRun := nil;
+  mBaseRun := nil;
+  mListener := nil;
+end;
+
+procedure TAtlasNotificationCenterTests.ReleaseOwnedWithoutModuleCodeChangesNothing;
+var
+  mCenter: TAtlasNotificationCenter;
+  mCenterRef: IAtlasNotificationCenter;
+  mBefore: Integer;
+begin
+  mCenter := NewCenter;
+  mCenterRef := mCenter;
+  mCenter.Notify(cServerSource, TAtlasNotificationSeverity.Info, 'Server', '',
+    [TAtlasNotificationCenter.Action('Protokoll',
+    procedure
+    begin
+    end)]);
+  mBefore := mCenter.Version;
+  Assert.AreEqual(0, mCenter.ReleaseOwned(OwnedIs(nil)), 'nichts vom Modul');
+  Assert.AreEqual(mBefore, mCenter.Version, 'keine Meldung');
+  Assert.AreEqual(1, Integer(Length(mCenter.Items()[0].Actions)));
+  mCenterRef := nil;
 end;
 
 procedure TAtlasNotificationCenterTests.FilterBySourceAndClear;

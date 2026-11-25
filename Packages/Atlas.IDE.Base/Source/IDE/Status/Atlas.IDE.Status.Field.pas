@@ -247,6 +247,10 @@ type
     /// <summary>Wie ein Klick (AContext: Rechtsklick) auf das Zusatzfeld AId mit der linken Oberkante an APoint;
     /// ohne Feld bzw. ohne passenden Klick nichts.</summary>
     procedure ClickExtra(const AId: string; const APoint: TPoint; AContext: Boolean);
+    /// <summary>Zusatzfelder entfernen, deren Links- oder Rechtsklick AOwned gehört (ein Modul meldet sich ab);
+    /// Ergebnis: ihre Zahl. Sonst gäbe das Feld beim Freigeben Code eines entladenen Moduls frei. Nur im
+    /// Hauptthread.</summary>
+    function ReleaseOwned(const AOwned: TFunc<Pointer, Boolean>): Integer;
   end;
 
 implementation
@@ -1275,6 +1279,32 @@ begin
     FWindow.Dismiss;
   end;
   FEvents.OnContext(APoint);
+end;
+
+/// <summary>Gehört ein Klick von AExtra AOwned?</summary>
+function ExtraOwned(const AExtra: TAtlasStatusExtra; const AOwned: TFunc<Pointer, Boolean>): Boolean;
+begin
+  Result := (Assigned(AExtra.OnClick) and AOwned(PPointer(@AExtra.OnClick)^)) or
+    (Assigned(AExtra.OnContext) and AOwned(PPointer(@AExtra.OnContext)^));
+end;
+
+function TAtlasStatusField.ReleaseOwned(const AOwned: TFunc<Pointer, Boolean>): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex := High(FExtras) downto 0 do
+  begin
+    if ExtraOwned(FExtras[mIndex], AOwned) then
+    begin
+      Delete(FExtras, mIndex, 1);
+      Inc(Result);
+    end;
+  end;
+  if Result > 0 then
+  begin
+    RequestRefresh;
+  end;
 end;
 
 procedure TAtlasStatusField.SetExtra(const AExtra: TAtlasStatusExtra);

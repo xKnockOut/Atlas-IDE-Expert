@@ -16,7 +16,12 @@
 //    protokollieren, nicht abbrechen,
 // 3. die modulspezifischen Schritte (ARelease), auch wenn Base schon abgebaut
 //    ist: Danach erreicht nichts mehr das Modul (Regel 3),
-// 4. zuletzt, auch ohne Scope: Laufen noch überfällige Threads aus dem Package
+// 4. OnModuleReleased mit dem HInstance des Moduls, solange sein Code noch
+//    geladen ist: Base nimmt Aktionen, Zeilen und Rückrufe mit Code des Moduls
+//    aus seinen eigenen Listen (Benachrichtigungen, Statusfeld), auch die, die
+//    das Modul nicht selbst abgemeldet hat. Sonst gäbe Base sie erst beim
+//    eigenen Abbau frei, nach dem Entladen des Moduls (Zugriffsverletzung),
+// 5. zuletzt, auch ohne Scope: Laufen noch überfällige Threads aus dem Package
 //    des Moduls, wartet TAtlasOverdueThreads.SettleBeforeUnload kurz und hält
 //    das Package sonst im Speicher. Das wirkt nur hier, vor FreeLibrary; der
 //    Rückruf beim Entladen käme zu spät.
@@ -49,13 +54,18 @@ type
       const AScope: IAtlasModuleScope; const ALog: TProc<string>): Boolean; static;
     /// <summary>Modul AId abmelden (Finalisierung seiner Kompositions-Unit): AScope vergessen, bei der Registry
     /// abmelden, solange Base läuft, dann ARelease (darf nil sein). Ohne AScope (nie angemeldet oder schon
-    /// abgemeldet) entfallen diese Schritte. Zuletzt immer die überfälligen Threads des Packages AInstance (das
-    /// HInstance des Moduls; 0 = keins) abwarten bzw. das Package festhalten.</summary>
+    /// abgemeldet) entfallen diese Schritte. Dann löst Base über OnModuleReleased, was es noch mit Code des Packages
+    /// AInstance (das HInstance des Moduls; 0 = keins) hält, und zuletzt werden dessen überfällige Threads
+    /// abgewartet bzw. wird das Package festgehalten.</summary>
     class procedure Unregister(var AScope: IAtlasModuleScope; const AId: string; AInstance: HMODULE;
       const ARelease: TProc); static;
     /// <summary>Wie Unregister mit ARegistry (nil: Base ist abgebaut) und ALog für die Fehler des Abbaus.</summary>
     class procedure UnregisterFrom(const ARegistry: IAtlasModuleRegistry; var AScope: IAtlasModuleScope;
       const AId: string; AInstance: HMODULE; const ARelease: TProc; const ALog: TProc<string>); static;
+  public class var
+    /// <summary>Schritt 4 der Abmeldung: mit dem HInstance des Moduls, nach ARelease und vor dem Entladen. Setzt
+    /// die Komposition von Base; nil vorher und nach ihrem Abbau.</summary>
+    OnModuleReleased: TProc<NativeUInt>;
   end;
 
 implementation
@@ -70,6 +80,7 @@ const
   cLogContractMismatch = 'Module %s: contract version of Base does not match, not registered';
   cLogProductMismatch = 'Module %s: built for another Atlas version than Base, not registered';
   cLogUnregisterFailed = 'Module %s not unregistered cleanly: %s';
+  cLogReleaseFailed = 'Module $%x: releasing its callbacks in Base failed: %s';
 
 procedure LogToGuard(AText: string);
 begin
@@ -157,6 +168,24 @@ begin
   end;
 end;
 
+/// <summary>Schritt 4 der Abmeldung über OnModuleReleased; ein Fehler darf das Entladen nicht aufhalten.</summary>
+procedure ReleaseModuleCode(AInstance: HMODULE; const ALog: TProc<string>);
+var
+  mReleased: TProc<NativeUInt>;
+begin
+  mReleased := TAtlasModuleHost.OnModuleReleased;
+  if not Assigned(mReleased) then
+  begin
+    Exit;
+  end;
+  try
+    mReleased(NativeUInt(AInstance));
+  except
+    on E: Exception do
+      ALog(Format(cLogReleaseFailed, [NativeUInt(AInstance), E.ClassName], TFormatSettings.Invariant));
+  end;
+end;
+
 class procedure TAtlasModuleHost.UnregisterFrom(const ARegistry: IAtlasModuleRegistry;
   var AScope: IAtlasModuleScope; const AId: string; AInstance: HMODULE; const ARelease: TProc;
   const ALog: TProc<string>);
@@ -165,11 +194,14 @@ begin
   begin
     ReleaseScope(ARegistry, AScope, AId, ARelease, ALog);
   end;
-  // Schritt 4, auch ohne Scope: ARelease kann eben noch Threads an TAtlasOverdueThreads übergeben haben.
-  if AInstance <> 0 then
+  if AInstance = 0 then
   begin
-    TAtlasOverdueThreads.SettleBeforeUnload(AInstance);
+    Exit;
   end;
+  // Schritt 4: Was Base noch vom Modul hält, jetzt lösen, solange sein Code geladen ist.
+  ReleaseModuleCode(AInstance, ALog);
+  // Schritt 5, auch ohne Scope: ARelease kann eben noch Threads an TAtlasOverdueThreads übergeben haben.
+  TAtlasOverdueThreads.SettleBeforeUnload(AInstance);
 end;
 
 end.

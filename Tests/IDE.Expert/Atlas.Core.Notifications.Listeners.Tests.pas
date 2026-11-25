@@ -17,6 +17,9 @@ type
     procedure RemovedListenerIsNotCalled;
     [Test]
     procedure FailingListenerDoesNotStopOthers;
+    /// <summary>RemoveOwned meldet genau die Beobachter ab, deren Code dem Modul gehört.</summary>
+    [Test]
+    procedure RemoveOwnedDropsOnlyModuleListeners;
   end;
 
 implementation
@@ -106,6 +109,48 @@ begin
   finally
     mListeners.Free;
   end;
+end;
+
+procedure TAtlasNotificationListenersTests.RemoveOwnedDropsOnlyModuleListeners;
+var
+  mListeners: TAtlasNotificationListeners;
+  mModule, mOther: TProc;
+  mModuleCode: Pointer;
+  mCalls: Integer;
+begin
+  mCalls := 0;
+  mModule :=
+    procedure
+    begin
+      Inc(mCalls, 10);
+    end;
+  mOther :=
+    procedure
+    begin
+      Inc(mCalls);
+    end;
+  mModuleCode := PPointer(@mModule)^;
+  mListeners := TAtlasNotificationListeners.Create;
+  try
+    mListeners.Add(mModule);
+    mListeners.Add(mOther);
+    Assert.AreEqual(1, mListeners.RemoveOwned(
+      function(AReference: Pointer): Boolean
+      begin
+        Result := AReference = mModuleCode;
+      end));
+    mListeners.Changed;
+    Assert.AreEqual(1, mCalls, 'nur der fremde Beobachter');
+    Assert.AreEqual(0, mListeners.RemoveOwned(
+      function(AReference: Pointer): Boolean
+      begin
+        Result := AReference = mModuleCode;
+      end), 'schon abgemeldet');
+  finally
+    mListeners.Free;
+  end;
+  mModule := nil;
+  mOther := nil;
 end;
 
 initialization

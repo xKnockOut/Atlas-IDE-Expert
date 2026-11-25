@@ -24,6 +24,7 @@ uses
   Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Modules.Registry,
+  Atlas.Core.Diagnostics.ModuleHost,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.StackCapture,
   Atlas.IDE.Foundation.Settings,
@@ -127,6 +128,8 @@ begin
   InstallHost;
   InstallFoundation;
   InstallAlways;
+  // Ab jetzt löst Base beim Abmelden eines Moduls alles, was es noch mit dessen Code hält.
+  TAtlasModuleHost.OnModuleReleased := ReleaseModuleCallbacks;
   RegisterFeatures;
   TAtlasIdeExperimental.ApplySettings;
   InstallSettings;
@@ -141,6 +144,8 @@ begin
   // Vor allem anderen: Was jetzt noch wartet oder während des Abbaus eingereiht wird, liefe nach dem Entladen
   // in nicht mehr geladenem Code. Queue im Hauptthread läuft weiter sofort.
   ATeardown.Step('MainThread', TAtlasMainThread.Stop);
+  // Zentrale und Statusfeld werden gleich abgebaut; ein Modul, das danach geht, findet nichts mehr zu lösen.
+  TAtlasModuleHost.OnModuleReleased := nil;
   ATeardown.Step('Experimental', TAtlasIdeExperimental.Stop);
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.OnTripped := nil;

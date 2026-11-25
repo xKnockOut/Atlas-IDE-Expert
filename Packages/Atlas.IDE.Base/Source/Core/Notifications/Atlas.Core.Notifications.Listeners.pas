@@ -6,6 +6,9 @@
 // Änderungen) und ruft die Beobachter außerhalb der Sperre, damit sie die
 // meldende Liste lesen dürfen; ein Fehler im Beobachter darf die meldende
 // Funktion nicht stören. Threadsicher.
+// RemoveOwned meldet alle Beobachter ab, deren Code einem Modul gehört, das
+// gerade entladen wird (TAtlasOwnedCode); sonst riefe die nächste Meldung
+// Code, der nicht mehr im Speicher liegt.
 
 interface
 
@@ -15,6 +18,12 @@ uses
   System.Generics.Collections;
 
 type
+  /// <summary>Gehört die Methodenreferenz bzw. das Interface an AReference (der Zeiger auf die Schnittstelle) dem
+  /// Modul, das gerade abgemeldet wird? Die Komposition entscheidet über das Modul des Codes; Tests über die
+  /// Instanz. Ein Typ für alle Listen, die Rückrufe von Modulen halten: TFunc der RTL, damit Aufrufer ihn ohne
+  /// diese Unit bilden können (Delphi 12 hält gleich gebaute Methodenreferenztypen auseinander).</summary>
+  TAtlasOwnedCode = TFunc<Pointer, Boolean>;
+
   TAtlasNotificationListeners = class
   private
     FLock: TCriticalSection;
@@ -28,6 +37,9 @@ type
     function Add(const AListener: TProc): Integer;
     /// <summary>Beobachter mit dem Griff AHandle abmelden; unbekannte Griffe werden übergangen.</summary>
     procedure Remove(AHandle: Integer);
+    /// <summary>Alle Beobachter abmelden, deren Code AOwned gehört; Ergebnis: ihre Zahl. Freigegeben werden sie
+    /// außerhalb der Sperre.</summary>
+    function RemoveOwned(const AOwned: TAtlasOwnedCode): Integer;
     /// <summary>Version erhöhen und alle Beobachter rufen.</summary>
     procedure Changed;
     /// <summary>Zahl der Änderungen bisher (steigt mit jedem Changed).</summary>
@@ -72,6 +84,38 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+function TAtlasNotificationListeners.RemoveOwned(const AOwned: TAtlasOwnedCode): Integer;
+var
+  mPair: TPair<Integer, TProc>;
+  mHandles: TArray<Integer>;
+  mDropped: TArray<TProc>;
+  mIndex: Integer;
+begin
+  mHandles := nil;
+  mDropped := nil;
+  FLock.Enter;
+  try
+    for mPair in FListeners do
+    begin
+      if AOwned(PPointer(@mPair.Value)^) then
+      begin
+        SetLength(mHandles, Length(mHandles) + 1);
+        mHandles[High(mHandles)] := mPair.Key;
+      end;
+    end;
+    SetLength(mDropped, Length(mHandles));
+    for mIndex := 0 to High(mHandles) do
+    begin
+      mDropped[mIndex] := FListeners[mHandles[mIndex]];
+      FListeners.Remove(mHandles[mIndex]);
+    end;
+  finally
+    FLock.Leave;
+  end;
+  // mDropped wird erst beim Verlassen frei, außerhalb der Sperre.
+  Result := Length(mDropped);
 end;
 
 procedure TAtlasNotificationListeners.Changed;

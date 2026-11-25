@@ -14,6 +14,12 @@
 //   Einblendung nur bei Show. Ausgeschaltet (Enabled = False, Vorgabe bis das
 //   Plugin sie einschaltet) gilt für alle Quellen Show und es entsteht kein
 //   Eintrag: Alles verhält sich wie vor #601.
+// - Aktionen und Beobachter gehören oft einem Modul. ReleaseOwned nimmt beim
+//   Abmelden eines Moduls alle heraus, deren Code ihm gehört (Regel 3): Die
+//   Einträge bleiben mit Titel und Text stehen, nur ohne seine Aktionen. Alle
+//   Kopien eines Eintrags (gelesen, zusammengefasst, in der offenen Liste)
+//   teilen dieselben Aktionen; so erreicht das Abmelden auch die Kopien, und
+//   keine gibt beim Freigeben später Code des entladenen Moduls frei.
 
 interface
 
@@ -27,13 +33,27 @@ uses
 type
   TAtlasNotificationClock = reference to function: TDateTime;
 
+  /// <summary>Aktionen eines Eintrags, geteilt von allen seinen Kopien; nur für die Zentrale.</summary>
+  IAtlasNotificationActions = interface
+    ['{8B1F4C3E-6A2D-4E97-B05C-3D9E1A7F2C68}']
+    function Items: TArray<TAtlasNotificationAction>;
+    /// <summary>Aktionen ohne Code von AOwned behalten; Ergebnis: Zahl der verworfenen.</summary>
+    function DropOwned(const AOwned: TAtlasOwnedCode): Integer;
+  end;
+
+  /// <summary>Zugang der Zentrale zu den geteilten Aktionen eines ihrer Einträge.</summary>
+  IAtlasNotificationEntry = interface
+    ['{2E7A9D41-C85B-4F13-9A6E-0B4D7C2F81A5}']
+    function SharedActions: IAtlasNotificationActions;
+  end;
+
   TAtlasNotificationCenter = class(TInterfacedObject, IAtlasNotificationCenter)
   public const
     cDefaultMaxEntries = 200;
     cMinEntries = 10;
     cMaxMaxEntries = 1000;
   private type
-    TEntry = class(TInterfacedObject, IAtlasNotification)
+    TEntry = class(TInterfacedObject, IAtlasNotification, IAtlasNotificationEntry)
     private
       FId: Integer;
       FSource: string;
@@ -43,7 +63,7 @@ type
       FTime: TDateTime;
       FCount: Integer;
       FRead: Boolean;
-      FActions: TArray<TAtlasNotificationAction>;
+      FActions: IAtlasNotificationActions;
     public
       function Id: Integer;
       function Source: string;
@@ -55,6 +75,7 @@ type
       function Read: Boolean;
       function Actions: TArray<TAtlasNotificationAction>;
       function Caption: string;
+      function SharedActions: IAtlasNotificationActions;
     end;
   private
     FLock: TCriticalSection;
@@ -98,6 +119,9 @@ type
     function Version: Integer;
     function AddListener(const AListener: TProc): Integer;
     procedure RemoveListener(AHandle: Integer);
+    /// <summary>Aktionen und Beobachter, deren Code AOwned gehört (ein Modul meldet sich ab), aus allen Einträgen
+    /// und ihren Kopien nehmen; Ergebnis: ihre Zahl. Mit einer Änderung meldet die Zentrale sie.</summary>
+    function ReleaseOwned(const AOwned: TAtlasOwnedCode): Integer;
     /// <summary>Alle Verhalten aus notifications.sources setzen; nicht genannte Quellen zeigen wieder (Show).
     /// </summary>
     procedure ApplyModes(const ASpec: string);
@@ -113,11 +137,81 @@ type
     class function Action(const ACaption: string; const ARun: TProc): TAtlasNotificationAction; static;
   end;
 
+/// <summary>Wie TAtlasNotificationCenter.ReleaseOwned an der Zentrale des Plugins, falls es sie gibt; legt keine an.
+/// </summary>
+function ReleaseOwnedNotifications(const AOwned: TAtlasOwnedCode): Integer;
+
 implementation
 
 uses
   System.Math,
   Atlas.Core.Notifications.Sources;
+
+type
+  /// <summary>Geteilte Aktionen; DropOwned ersetzt die Liste unter der Sperre; Leser behalten die Liste zum
+  /// Zeitpunkt des Lesens.</summary>
+  TSharedActions = class(TInterfacedObject, IAtlasNotificationActions)
+  private
+    FLock: TCriticalSection;
+    FItems: TArray<TAtlasNotificationAction>;
+  public
+    constructor Create(const AItems: TArray<TAtlasNotificationAction>);
+    destructor Destroy; override;
+    function Items: TArray<TAtlasNotificationAction>;
+    function DropOwned(const AOwned: TAtlasOwnedCode): Integer;
+  end;
+
+constructor TSharedActions.Create(const AItems: TArray<TAtlasNotificationAction>);
+begin
+  inherited Create;
+  FLock := TCriticalSection.Create;
+  FItems := Copy(AItems);
+end;
+
+destructor TSharedActions.Destroy;
+begin
+  FItems := nil;
+  FLock.Free;
+  inherited Destroy;
+end;
+
+function TSharedActions.Items: TArray<TAtlasNotificationAction>;
+begin
+  FLock.Enter;
+  try
+    Result := FItems;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSharedActions.DropOwned(const AOwned: TAtlasOwnedCode): Integer;
+var
+  mOld, mKept: TArray<TAtlasNotificationAction>;
+  mAction: TAtlasNotificationAction;
+begin
+  mKept := nil;
+  FLock.Enter;
+  try
+    mOld := FItems;
+    for mAction in mOld do
+    begin
+      if not Assigned(mAction.Run) or not AOwned(PPointer(@mAction.Run)^) then
+      begin
+        mKept := mKept + [mAction];
+      end;
+    end;
+    Result := Length(mOld) - Length(mKept);
+    if Result > 0 then
+    begin
+      FItems := mKept;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  // mOld und mAction werden erst beim Verlassen frei, außerhalb der Sperre: Was die Aktionen einfangen, darf beim
+  // Freigeben wieder melden.
+end;
 
 const
   /// <summary>Gleichartige Hinweise innerhalb dieser Sekunden werden zusammengefasst.</summary>
@@ -197,6 +291,15 @@ begin
 end;
 
 function TAtlasNotificationCenter.TEntry.Actions: TArray<TAtlasNotificationAction>;
+begin
+  Result := nil;
+  if FActions <> nil then
+  begin
+    Result := FActions.Items;
+  end;
+end;
+
+function TAtlasNotificationCenter.TEntry.SharedActions: IAtlasNotificationActions;
 begin
   Result := FActions;
 end;
@@ -294,7 +397,8 @@ begin
   Result.FTime := AEntry.Time;
   Result.FCount := AEntry.Count;
   Result.FRead := AEntry.Read;
-  Result.FActions := AEntry.Actions;
+  // Dieselben Aktionen, keine Kopie: ReleaseOwned erreicht so jede Kopie des Eintrags.
+  Result.FActions := (AEntry as IAtlasNotificationEntry).SharedActions;
 end;
 
 function ClockNow(const AClock: TAtlasNotificationClock): TDateTime;
@@ -408,7 +512,7 @@ begin
     mEntry.FText := AText;
     mEntry.FTime := mStamp;
     mEntry.FRead := False;
-    mEntry.FActions := Copy(AActions);
+    mEntry.FActions := TSharedActions.Create(AActions);
     FItems.Insert(0, mEntry);
     TrimTo(FItems, FMaxEntries);
   finally
@@ -666,6 +770,38 @@ end;
 procedure TAtlasNotificationCenter.RemoveListener(AHandle: Integer);
 begin
   FListeners.Remove(AHandle);
+end;
+
+function TAtlasNotificationCenter.ReleaseOwned(const AOwned: TAtlasOwnedCode): Integer;
+var
+  mEntry: IAtlasNotification;
+  mShared: IAtlasNotificationActions;
+begin
+  Result := FListeners.RemoveOwned(AOwned);
+  for mEntry in Items do
+  begin
+    mShared := (mEntry as IAtlasNotificationEntry).SharedActions;
+    if mShared <> nil then
+    begin
+      Inc(Result, mShared.DropOwned(AOwned));
+    end;
+  end;
+  if Result > 0 then
+  begin
+    Changed;
+  end;
+end;
+
+function ReleaseOwnedNotifications(const AOwned: TAtlasOwnedCode): Integer;
+var
+  mCenter: IAtlasNotificationCenter;
+begin
+  Result := 0;
+  mCenter := GDefaultCenter;
+  if mCenter <> nil then
+  begin
+    Result := GDefaultCenterObject.ReleaseOwned(AOwned);
+  end;
 end;
 
 procedure TAtlasNotificationCenter.ApplyModes(const ASpec: string);
