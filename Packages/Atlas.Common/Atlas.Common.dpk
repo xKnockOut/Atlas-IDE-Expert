@@ -783,6 +783,7 @@ contains
   Atlas.Common.Mcp.Contract.BulkFix in 'Source\Mcp\Atlas.Common.Mcp.Contract.BulkFix.pas',
   Atlas.Common.Mcp.Contract.TextChecks in 'Source\Mcp\Atlas.Common.Mcp.Contract.TextChecks.pas',
   Atlas.Common.Mcp.Contract.RuleDocs in 'Source\Mcp\Atlas.Common.Mcp.Contract.RuleDocs.pas',
+  Atlas.Common.Mcp.Contract.Workspace in 'Source\Mcp\Atlas.Common.Mcp.Contract.Workspace.pas',
   Atlas.Common.Mcp.Contract.DeadCode in 'Source\Mcp\Atlas.Common.Mcp.Contract.DeadCode.pas',
   Atlas.Common.Mcp.Contract.Conventions in 'Source\Mcp\Atlas.Common.Mcp.Contract.Conventions.pas',
   Atlas.Common.Mcp.CheckTools in 'Source\Mcp\Atlas.Common.Mcp.CheckTools.pas',

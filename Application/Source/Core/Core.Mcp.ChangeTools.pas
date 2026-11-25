@@ -19,7 +19,7 @@ procedure RegisterHotspotTools(const AContext: TMcpToolContext);
 implementation
 
 uses
-  Core.WorkspaceGroup,
+  Atlas.Common.Mcp.Contract.Workspace,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Hotspots.Service,
   System.JSON,
@@ -107,7 +107,7 @@ function AffectedRequestOf(const AContext: TMcpToolContext; const ASettings: TSe
   const AReadText: TReferenceReadText): TAffectedRequest;
 begin
   Result := Default(TAffectedRequest);
-  Result.Files := AContext.Group.AllFiles;
+  Result.Files := AContext.Workspace.AllFiles;
   Result.TestPrograms := TCoreAffectedTests.TestPrograms(Result.Files, AReadText);
   Result.Options := AContext.ImpactOptionsFor('');
   // Testunits aus allen Testprogrammen der Gruppe.
@@ -115,18 +115,18 @@ begin
 end;
 
 /// <summary>Betroffene Tests über den Index der Gruppe; Fehler der Versionsverwaltung als EMcpToolError.</summary>
-function FindAffected(const AAccess: TCoreVcsAccess; AGroup: TCoreWorkspaceGroup; const ASettings: TServerSettings;
+function FindAffected(const AAccess: TCoreVcsAccess; const AWorkspace: IMcpWorkspace; const ASettings: TServerSettings;
   const AQuery: TCoreAffectedQuery; const ARequest: TAffectedRequest; const AReadText: TReferenceReadText):
   TAffectedResult;
 var
   mResolver: TNameResolver;
 begin
-  mResolver := TNameResolver.Create(AGroup.Index, AGroup.UnitLoader());
+  mResolver := TNameResolver.Create(AWorkspace.Index, AWorkspace.UnitLoader());
   try
-    mResolver.Namespaces := AGroup.Main.State.Namespaces;
+    mResolver.Namespaces := AWorkspace.Namespaces;
     try
       Result := TCoreAffectedTests.Run(AAccess, ASettings, AQuery,
-        TCoreAffectedSources.New(mResolver, AGroup.Index, AReadText), ARequest, nil);
+        TCoreAffectedSources.New(mResolver, AWorkspace.Index, AReadText), ARequest, nil);
     except
       on E: EVcsChanges do
         raise EMcpToolError.Create(E.Message);
@@ -161,7 +161,7 @@ var
   mFound: TAffectedResult;
   mAccess: TCoreVcsAccess;
 begin
-  mSettings := AContext.Group.Main.Configuration.Settings;
+  mSettings := AContext.Workspace.Settings;
   if not mSettings.Tests.Affected then
   begin
     raise EMcpToolError.Create(TCoreAffectedTests.OffMessage);
@@ -173,7 +173,7 @@ begin
   mReadText := TCoreAffectedTests.FileReader();
   // Über eine Variable halten: als const-Argument würde der Probelauf nie freigegeben.
   mAccess := AContext.Adapters.VcsAccess();
-  mFound := FindAffected(mAccess, AContext.Group, mSettings, AffectedQueryOf(AContext.Root, AArguments),
+  mFound := FindAffected(mAccess, AContext.Workspace, mSettings, AffectedQueryOf(AContext.Root, AArguments),
     AffectedRequestOf(AContext, mSettings, mReadText), mReadText);
   if mFormat = TAffectedFormat.DUnitX then
   begin
@@ -244,14 +244,14 @@ begin
   end;
   Result.Title := ExtractFileName(AContext.Root);
   Result.Root := AContext.Root;
-  Result.Namespaces := AContext.Group.Main.State.Namespaces;
+  Result.Namespaces := AContext.Workspace.Namespaces;
   if ASettings.ArchitectureScope = 'project' then
   begin
-    Result.Files := AContext.Group.Main.State.ProjectFiles;
+    Result.Files := AContext.Workspace.ProjectFiles;
   end
   else
   begin
-    Result.Files := AContext.Group.AllFiles;
+    Result.Files := AContext.Workspace.AllFiles;
   end;
   if Length(Result.Files) = 0 then
   begin
@@ -287,7 +287,7 @@ var
   mFormat, mError: string;
   mLimit: Integer;
 begin
-  mSettings := AContext.Group.Main.Configuration.Settings;
+  mSettings := AContext.Workspace.Settings;
   if not mSettings.HotspotsEnabled then
   begin
     raise EMcpToolError.Create(cTexts[TMcpChangeText.HotspotsOff].Text);

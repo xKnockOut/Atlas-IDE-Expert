@@ -35,7 +35,7 @@ uses
   Atlas.Common.Findings.Contract,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Localization.RequestTexts,
-  Core.WorkspaceGroup,
+  Atlas.Common.Mcp.Contract.Workspace,
   Atlas.Text.Names;
 
 type
@@ -175,7 +175,7 @@ begin
   begin
     raise EMcpToolError.Create(TRequestTexts.Missing(['line', 'column']));
   end;
-  AContext.Edit.Namespaces := AContext.Group.Main.State.Namespaces;
+  AContext.Edit.Namespaces := AContext.Workspace.Namespaces;
   Result := AContext.Edit.RenameSymbol(mFileName, mLine, mColumn, TMcpArgs.RequiredString(AArguments, 'newName'),
     DryRunOf(AArguments));
 end;
@@ -209,7 +209,7 @@ begin
     raise EMcpToolError.Create(TRequestTexts.Missing(['line']));
   end;
   Result := AContext.Edit.ApplyCodeAction(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, mLine,
+    AContext.Workspace.Settings, AContext.Root), mFileName, mLine,
     TMcpArgs.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
 end;
 
@@ -255,14 +255,14 @@ begin
   end
   else
   begin
-    mFiles := AContext.Group.Main.State.ProjectFiles;
+    mFiles := AContext.Workspace.ProjectFiles;
   end;
   if Length(mFiles) = 0 then
   begin
     raise EMcpToolError.Create(TRequestTexts.NoProjectGiveFile);
   end;
   Result := AContext.Edit.FixFindings(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, mRules,
+    AContext.Workspace.Settings, AContext.Root), mFiles, mRules,
     TMcpArgs.OptionalString(AArguments, 'minConfidence'), DryRunOf(AArguments));
 end;
 
@@ -286,7 +286,7 @@ end;
 /// <summary>Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben.</summary>
 function StyleFor(const AContext: TMcpToolContext; const AFileName: string): TFormatStyle;
 begin
-  Result := FormatStyleOf(AContext.Group, AFileName);
+  Result := FormatStyleOf(AContext.Workspace, AFileName);
 end;
 
 function ToolFormatCode(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
@@ -354,7 +354,7 @@ begin
   begin
     mRequest.EndLine := mRequest.StartLine;
   end;
-  mRefactoring := AContext.Group.WorkspaceOf(mRequest.FileName).Configuration.Settings.Refactoring;
+  mRefactoring := AContext.Workspace.SettingsOf(mRequest.FileName).Refactoring;
   mRequest.Name := TMcpArgs.OptionalString(AArguments, 'name');
   if not AArguments.TryGetValue<Boolean>('replaceDuplicates', mRequest.ReplaceDuplicates) then
   begin
@@ -429,7 +429,7 @@ begin
   end;
   mRequest.DryRun := DryRunOf(AArguments);
   mRequest.Json := SameText(TMcpArgs.OptionalString(AArguments, 'format'), 'json');
-  AContext.Edit.Namespaces := AContext.Group.Main.State.Namespaces;
+  AContext.Edit.Namespaces := AContext.Workspace.Namespaces;
   Result := AContext.Refactor(AContext.Edit, mRequest);
 end;
 
@@ -462,9 +462,9 @@ begin
 end;
 
 /// <summary>Geschützte Dateien (#2608) für die schreibenden Werkzeuge, bei jedem Aufruf aus den aktuellen
-/// Einstellungen; eigene Routine, damit die anonyme Methode nur AGroup und AGuard einfängt. Ohne Gruppe (Tests) nichts
+/// Einstellungen; eigene Routine, damit die anonyme Methode nur AWorkspace und AGuard einfängt. Ohne Gruppe (Tests) nichts
 /// geschützt.</summary>
-function ProtectedReportOf(AGroup: TCoreWorkspaceGroup; AGuard: TMcpPathGuard): TMcpProtectedReport;
+function ProtectedReportOf(const AWorkspace: IMcpWorkspace; AGuard: TMcpPathGuard): TMcpProtectedReport;
 begin
   Result :=
     function(const AFileNames: TArray<string>; ADryRun: Boolean): string
@@ -472,11 +472,11 @@ begin
       mProtection: TMcpProtectedFiles;
     begin
       Result := '';
-      if (AGroup = nil) or (AGuard = nil) then
+      if (AWorkspace = nil) or (AGuard = nil) then
       begin
         Exit;
       end;
-      mProtection := TMcpProtectedFiles.Create(AGuard.Root, AGroup.Main.Configuration.Settings.AssistantProtected);
+      mProtection := TMcpProtectedFiles.Create(AGuard.Root, AWorkspace.Settings.AssistantProtected);
       try
         Result := mProtection.Report(AFileNames, ADryRun);
       finally
@@ -487,29 +487,29 @@ end;
 
 /// <summary>Befunde wie get_diagnostics (#2603): Regeln und overrides für den Pfad relativ zu ARoot, mit Symbolen,
 /// Include-Dateien und Index des Projekts aus AChecks. Ohne Gruppe oder Prüfung (Tests) keine.</summary>
-function FindingsOf(AGroup: TCoreWorkspaceGroup; const ARoot: string; const AChecks: IMcpTextChecks):
+function FindingsOf(const AWorkspace: IMcpWorkspace; const ARoot: string; const AChecks: IMcpTextChecks):
   TMcpFindingsFunc;
 begin
   Result :=
     function(const AFileName, AText: string): TArray<TRuleFinding>
     begin
       Result := nil;
-      if (AGroup = nil) or (AChecks = nil) then
+      if (AWorkspace = nil) or (AChecks = nil) then
       begin
         Exit;
       end;
       Result := AChecks.Check(AFileName, TTextNames.RelativeTo(ARoot, AFileName), AText,
-        AGroup.Main.Configuration.Settings);
+        AWorkspace.Settings);
     end;
 end;
 
 /// <summary>mcp.reportFindingsAfterEdit, bei jedem Aufruf neu gelesen.</summary>
-function ReportFindingsOf(AGroup: TCoreWorkspaceGroup): TFunc<Boolean>;
+function ReportFindingsOf(const AWorkspace: IMcpWorkspace): TFunc<Boolean>;
 begin
   Result :=
     function: Boolean
     begin
-      Result := (AGroup <> nil) and AGroup.Main.Configuration.Settings.McpReportFindingsAfterEdit;
+      Result := (AWorkspace <> nil) and AWorkspace.Settings.McpReportFindingsAfterEdit;
     end;
 end;
 
@@ -537,8 +537,8 @@ procedure AddEditFindings(const AContext: TMcpToolContext);
 var
   mEvaluation: IMcpEditEvaluation;
 begin
-  mEvaluation := TMcpEditEvaluation.Create(AContext.Root, FindingsOf(AContext.Group, AContext.Root,
-    AContext.Adapters.TextChecks), ReadSourceText, ReportFindingsOf(AContext.Group));
+  mEvaluation := TMcpEditEvaluation.Create(AContext.Root, FindingsOf(AContext.Workspace, AContext.Root,
+    AContext.Adapters.TextChecks), ReadSourceText, ReportFindingsOf(AContext.Workspace));
   if AContext.Edit <> nil then
   begin
     AContext.Edit.AfterWrite := AfterWriteOf(mEvaluation);
@@ -551,7 +551,7 @@ procedure RegisterEditingTools(const AContext: TMcpToolContext);
 begin
   if AContext.Edit <> nil then
   begin
-    AContext.Edit.ProtectedReport := ProtectedReportOf(AContext.Group, AContext.Guard);
+    AContext.Edit.ProtectedReport := ProtectedReportOf(AContext.Workspace, AContext.Guard);
   end;
   AddEditFindings(AContext);
   AddRenameSymbol(AContext);

@@ -23,6 +23,7 @@ uses
   Atlas.Common.Hotspots.Service,
   Core.Workspace,
   Core.WorkspaceGroup,
+  Atlas.Common.Mcp.Contract.Workspace,
   Core.Mcp.Context;
 
 type
@@ -34,6 +35,8 @@ type
     /// <summary>Hauptprojekt und übrige Projekte der Gruppe in einem Index (Plugin-Units hinter dem Testprojekt).
     /// </summary>
     Group: TCoreWorkspaceGroup;
+    /// <summary>Group für die MCP-Werkzeuge (Adapters.Mcp.Workspace).</summary>
+    McpWorkspace: IMcpWorkspace;
     Tools: TMcpIndexTools;
     Code: TMcpCodeTools;
     Guard: TMcpPathGuard;
@@ -82,7 +85,8 @@ uses
   Core.VersionControlChanges,
   Shell.Composition.Platform,
   Core.Bootstrap,
-  Shell.Composition.RuleRefactorings;
+  Shell.Composition.RuleRefactorings,
+  Adapters.Mcp.Workspace;
 
 function NewProcess: ICompilerProcess;
 begin
@@ -263,7 +267,7 @@ function NewCodeTools(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; c
 begin
   Result := TMcpCodeTools.Create(AIndex, ReadSourceText, ReferenceFilesOf(AGroup), AGroup.UnitLoader());
   // Nicht auflösbare Bezeichner mit den Symbolen und Include-Dateien des Projekts (#860).
-  Result.CheckSource := CheckSourceOf(AGroup);
+  Result.CheckSource := CheckSourceOf(TMcpWorkspaceAdapter.ForGroup(AGroup));
   Result.SettingsFor := ReferenceSettingsOf(AGroup.Main);
   Result.ImpactOptionsFor := ImpactOptionsOf(AGroup.Main, ARoot);
 end;
@@ -352,6 +356,7 @@ begin
   mIdentity.Client := 'MCP-Client';
   Result.Group.ProcessIdentity := mIdentity;
   Result.Group.Refactorings := TShellRuleRefactorings.Create;
+  Result.McpWorkspace := TMcpWorkspaceAdapter.ForGroup(Result.Group);
   Result.Tools := NewIndexTools(Result.Index, Result.Group.Main, ARoot);
   Result.Code := NewCodeTools(Result.Index, Result.Group, ARoot);
   Result.Guard := NewGuard(Result.Group.Main, ARoot);
@@ -378,6 +383,7 @@ begin
   Hotspots.Free;
   PathLocator.Free;
   PathGraphs.Free;
+  McpWorkspace := nil;
   Group.Free;
 end;
 
@@ -397,12 +403,13 @@ begin
   Result.Server := AServer;
   Result.Tools := Tools;
   Result.Code := Code;
-  Result.Group := Group;
+  Result.Workspace := McpWorkspace;
+  Result.UsesGraph := Group.UsesGraph;
   Result.Root := Root;
   Result.Guard := Guard;
   Result.Edit := Edit;
-  Result.Architecture := ArchitectureOf(Group.Main, Architecture, AllFiles(), Root);
-  Result.FindPath := FindPathOf(Index, PathGraphs, PathLocator, Group.Main, EnsureUnitOf(Group), Root);
+  Result.Architecture := ArchitectureOf(McpWorkspace, Architecture, AllFiles(), Root);
+  Result.FindPath := FindPathOf(Index, PathGraphs, PathLocator, McpWorkspace, EnsureUnitOf(Group), Root);
   Result.Index := Index;
   Result.Hotspots := Hotspots;
   Result.ImpactOptionsFor := Code.ImpactOptionsFor;
@@ -425,7 +432,8 @@ end;
 class function TMcpServices.GroupAdapters(AGroup: TCoreWorkspaceGroup): TMcpHostAdapters;
 begin
   Result := HostAdapters;
-  Result.TextChecks := TMcpComposition.TextChecks(CheckProjectOf(AGroup), CheckSourceOf(AGroup));
+  Result.TextChecks := TMcpComposition.TextChecks(CheckProjectOf(AGroup),
+    CheckSourceOf(TMcpWorkspaceAdapter.ForGroup(AGroup)));
   Result.DeadCode := DeadCodeOf(AGroup);
 end;
 

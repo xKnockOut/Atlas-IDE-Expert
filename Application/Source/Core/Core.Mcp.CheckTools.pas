@@ -140,16 +140,16 @@ begin
   end
   else
   begin
-    mFiles := AContext.Group.Main.State.ProjectFiles;
+    mFiles := AContext.Workspace.ProjectFiles;
   end;
   if Length(mFiles) = 0 then
   begin
     raise EMcpToolError.Create(TRequestTexts.NoProjectGiveFile);
   end;
   Result := TMcpCheckTools.Diagnostics(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, ReadSourceText);
+    AContext.Workspace.Settings, AContext.Root), mFiles, ReadSourceText);
   // Solange der Index lädt, sehen Regeln, die Typen anderer Units brauchen, noch nicht alles (#1112).
-  if not AContext.Group.Ready(mReason) then
+  if not AContext.Workspace.Ready(mReason) then
   begin
     Result := cTexts[TMcpCheckText.IndexLoading].Fmt([mReason]) + sLineBreak + Result;
   end;
@@ -181,7 +181,7 @@ begin
   end;
   // Geschützte Dateien (#2608) vor den Befunden: vor dem Schreiben ablehnen, danach als Fehler melden.
   mProtection := TMcpProtectedFiles.Create(AContext.Guard.Root,
-    AContext.Group.Main.Configuration.Settings.AssistantProtected);
+    AContext.Workspace.Settings.AssistantProtected);
   try
     Result := mProtection.HookOutput(mFileName, mMoment);
   finally
@@ -192,7 +192,7 @@ begin
     Exit;
   end;
   Result := TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, ReadSourceText, mSeverity);
+    AContext.Workspace.Settings, AContext.Root), mFileName, ReadSourceText, mSeverity);
 end;
 
 procedure AddHookCheck(const AContext: TMcpToolContext);
@@ -222,13 +222,13 @@ begin
   end
   else
   begin
-    mFiles := AContext.Group.Main.State.ProjectFiles;
+    mFiles := AContext.Workspace.ProjectFiles;
   end;
   if Length(mFiles) = 0 then
   begin
     raise EMcpToolError.Create(TRequestTexts.NoProjectGiveFile);
   end;
-  Result := TMcpCheckTools.Metrics(AContext.Group.Main.Configuration.Settings, AContext.Root, mFiles, ReadSourceText,
+  Result := TMcpCheckTools.Metrics(AContext.Workspace.Settings, AContext.Root, mFiles, ReadSourceText,
     SameText(mFormat, 'json'));
 end;
 
@@ -272,13 +272,13 @@ begin
   end
   else
   begin
-    mFiles := AContext.Group.Main.State.ProjectFiles;
+    mFiles := AContext.Workspace.ProjectFiles;
   end;
   if Length(mFiles) = 0 then
   begin
     raise EMcpToolError.Create(TRequestTexts.NoProjectGiveFile);
   end;
-  Result := TMcpCheckTools.Todos(AContext.Group.Main.Configuration.Settings, AContext.Root, mFiles, ReadSourceText,
+  Result := TMcpCheckTools.Todos(AContext.Workspace.Settings, AContext.Root, mFiles, ReadSourceText,
     mFilter,
     SameText(mFormat, 'json'));
 end;
@@ -323,7 +323,7 @@ begin
     mEndLine := mStartLine;
   end;
   Result := AContext.Code.CheckCode(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, mText, mStartLine, mEndLine);
+    AContext.Workspace.Settings, AContext.Root), mFileName, mText, mStartLine, mEndLine);
 end;
 
 procedure AddCheckCode(const AContext: TMcpToolContext);
@@ -396,7 +396,7 @@ begin
   end;
   Result := '';
   for mFinding in AContext.Adapters.TextChecks.Check(mFileName, mRelativePath, mText,
-    AContext.Group.Main.Configuration.Settings) do
+    AContext.Workspace.Settings) do
   begin
     if (mFinding.Range.StartPos.Line = mLine - 1) and ((mRuleId = '') or SameText(mRuleId, mFinding.RuleId)) then
     begin
@@ -441,8 +441,8 @@ var
   mRequest: TMcpDocsRequest;
 begin
   mRequest := TMcpDocsTools.RequestOf(AArguments);
-  mRequest.Settings := AContext.Group.Main.Configuration.Settings;
-  mRequest.ProjectText := SettingsText(AContext.Group.Main.Configuration.Files.Read);
+  mRequest.Settings := AContext.Workspace.Settings;
+  mRequest.ProjectText := SettingsText(AContext.Workspace.SettingsFile);
   mRequest.RuleDocs := AContext.Adapters.RuleDocs;
   if mRequest.Settings.McpGlobalSettings then
   begin

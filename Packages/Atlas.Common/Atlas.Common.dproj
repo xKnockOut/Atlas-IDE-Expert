@@ -821,6 +821,7 @@
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.BulkFix.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.TextChecks.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.RuleDocs.pas"/>
+        <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Workspace.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.DeadCode.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Contract.Conventions.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.CheckTools.pas"/>

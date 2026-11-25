@@ -108,7 +108,7 @@ var
 begin
   // Argumente zuerst: Ungültige Aufrufe enden, bevor Einstellungen oder Versionsverwaltung gelesen werden.
   mArgs := HistoryArgsOf(AArguments);
-  mSettings := AContext.Group.Main.Configuration.Settings;
+  mSettings := AContext.Workspace.Settings;
   mArgs.TimeoutMs := mSettings.RequestTimeoutMs;
   mArgs.Cancelled := CancelledOf(TJsonRpcCurrentRequest.Token);
   // Ohne Versionsverwaltung ein Hinweis statt eines Fehlers.
