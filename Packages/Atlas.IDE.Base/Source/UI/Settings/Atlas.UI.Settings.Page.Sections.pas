@@ -4,7 +4,8 @@
 // IAtlasSettingsSectionProvider der Registry liefert einen eigenen Abschnitt, den der Teil in den Reiter seiner
 // Seite (x-page) bzw. seines Bereichs (x-area) baut (Bausteine über IAtlasSettingsSectionHost). Reiter, die erst für
 // Abschnitte entstehen, folgen der Reihenfolge des Katalogs. Geht ein Modul, schließt er seinen Abschnitt; seine
-// Werte bleiben erhalten.
+// Werte bleiben erhalten. Registry und Anmeldung für ihre Änderungen reicht die Shell über UseRegistry (die IDE legt
+// die Seite selbst an); ohne Registry zeigt die Seite keine Abschnitte der Module.
 
 interface
 
@@ -15,9 +16,10 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.UI.Settings.Bindings,
-  Atlas.UI.Settings.Page.Host;
+  Atlas.UI.Settings.Page.Host,
+  Atlas.Plugin.Registration.Contract;
 
 type
   /// <summary>Abschnitte der Module (#1455) mit ihrer Anmeldung und ihrem Host, gleicher Index; der letzte Teil der
@@ -32,9 +34,11 @@ type
     /// <summary>Reiter, die erst für einen Abschnitt entstanden sind: Bereich und Index in den Reitern der Seite.
     /// </summary>
     FAreas: TArray<TPair<string, Integer>>;
-    /// <summary>Anmeldung bei der Registry (TAtlasRegistryWatch): Geht ein Modul, schließt die Seite seinen
-    /// Abschnitt (Regel 2).</summary>
+    /// <summary>Anmeldung bei der Registry: Geht ein Modul, schließt die Seite seinen Abschnitt (Regel 2).</summary>
     FWatchRegistration: IAtlasRegistration;
+    /// <summary>Registry der Module und Anmeldung für ihre Änderungen, für alle Seiten (UseRegistry).</summary>
+    class var FRegistry: IAtlasModuleRegistry;
+    class var FSubscribe: TAtlasRegistrySubscribe;
     /// <summary>Erster Reiter mit einer Einstellung der Seite (AByPage) bzw. des Bereichs AArea; -1 ohne.</summary>
     function SheetWith(const AArea: string; AByPage: Boolean): Integer;
     /// <summary>Reiter der Seite bzw. des Bereichs AArea (x-page oder x-area); -1 ohne.</summary>
@@ -58,6 +62,10 @@ type
   public
     constructor Create(APage: TAtlasSettingsPageHost);
     destructor Destroy; override;
+    /// <summary>Registry, aus der jede neue Seite die Abschnitte der Module holt, und ASubscribe, das auf ihre
+    /// Änderungen hört; die Shell setzt beides beim Start und nimmt es beim Abbau mit nil zurück.</summary>
+    class procedure UseRegistry(const ARegistry: IAtlasModuleRegistry; const ASubscribe: TAtlasRegistrySubscribe);
+      static;
     /// <summary>Abschnitte der Module aus der Registry bauen und auf Abmeldungen hören.</summary>
     procedure Build;
     procedure Load(const ASettings: TAtlasPluginSettings); override;
@@ -81,8 +89,6 @@ uses
   Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.StoreValues,
   Atlas.Plugin.Settings.PageNames,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Watch,
   Atlas.Plugin.Localization.Strings;
 
 const
@@ -609,8 +615,9 @@ begin
   end;
 end;
 
-/// <summary>Modul, das AProvider in der Registry angemeldet hat; '' für Base, AFallback, wenn es fehlt.</summary>
-function OwnerOfProvider(const AProvider: IAtlasSettingsSectionProvider; const AFallback: string): string;
+/// <summary>Modul, das AProvider in ARegistry angemeldet hat; '' für Base, AFallback, wenn es fehlt.</summary>
+function OwnerOfProvider(const ARegistry: IAtlasModuleRegistry; const AProvider: IAtlasSettingsSectionProvider;
+  const AFallback: string): string;
 var
   mItem: TAtlasProvided;
   mWanted: IInterface;
@@ -621,7 +628,7 @@ begin
     Exit;
   end;
   mWanted := AProvider as IInterface;
-  for mItem in AtlasModuleRegistry.Provisions(IAtlasSettingsSectionProvider) do
+  for mItem in ARegistry.Provisions(IAtlasSettingsSectionProvider) do
   begin
     if (mItem.Instance as IInterface) = mWanted then
     begin
@@ -633,18 +640,18 @@ end;
 /// <summary>Knoten, in dem ASection steht: das Modul, das seinen Anbieter angemeldet hat (nicht OwnerId: Abschnitt
 /// und Modul dürfen anders heißen, z. B. atlas.buildTools und atlas.build), bei einem Beitrag das Modul, das dessen
 /// Vertrag bereitstellt. False, wenn der Gastgeber fehlt.</summary>
-function NodeOfSection(const AProvider: IAtlasSettingsSectionProvider; const ASection: IAtlasSettingsSection;
-  out ANode: string): Boolean;
+function NodeOfSection(const ARegistry: IAtlasModuleRegistry; const AProvider: IAtlasSettingsSectionProvider;
+  const ASection: IAtlasSettingsSection; out ANode: string): Boolean;
 var
   mContribution: IAtlasSettingsContribution;
   mProvided: TArray<TAtlasProvided>;
 begin
-  ANode := OwnerOfProvider(AProvider, ASection.OwnerId);
+  ANode := OwnerOfProvider(ARegistry, AProvider, ASection.OwnerId);
   if not Supports(ASection, IAtlasSettingsContribution, mContribution) then
   begin
     Exit(True);
   end;
-  mProvided := AtlasModuleRegistry.Provisions(mContribution.HostContract);
+  mProvided := ARegistry.Provisions(mContribution.HostContract);
   Result := Length(mProvided) > 0;
   if Result then
   begin
@@ -693,7 +700,7 @@ begin
     Exit;
   end;
   // Beitrag zu einem anderen Modul (#1903): steht im Knoten des Gastgebers; ohne Gastgeber gar nicht.
-  if not NodeOfSection(AProvider, ASection, mNode) then
+  if not NodeOfSection(FRegistry, AProvider, ASection, mNode) then
   begin
     ASection.Close;
     Exit;
@@ -790,7 +797,11 @@ var
 begin
   // Ein abgemeldetes Modul erreicht danach nichts mehr (Regel 3): Abschnitt schließen und vergessen. Seine
   // Werte bleiben, gebundene Felder gehören der Seite. Neue Abschnitte zeigt erst die nächste Seite.
-  mCurrent := AtlasModuleRegistry.FindAll(IAtlasSettingsSectionProvider);
+  mCurrent := nil;
+  if FRegistry <> nil then
+  begin
+    mCurrent := FRegistry.FindAll(IAtlasSettingsSectionProvider);
+  end;
   mKeep := nil;
   mKeepProviders := nil;
   mKeepHosts := nil;
@@ -862,9 +873,13 @@ var
 begin
   // Abschnitte der Module (#1455): in den Reiter ihrer Seite, hinter die Einstellungen von Base. Neue Reiter in der
   // Reihenfolge des Katalogs, nicht in der zufälligen Reihenfolge der Anmeldung.
+  if FRegistry = nil then
+  begin
+    Exit;
+  end;
   mPending := TAtlasPendingSections.Create(FPage.Catalog);
   try
-    for mItem in AtlasModuleRegistry.FindAll(IAtlasSettingsSectionProvider) do
+    for mItem in FRegistry.FindAll(IAtlasSettingsSectionProvider) do
     begin
       if Supports(mItem, IAtlasSettingsSectionProvider, mProvider) then
       begin
@@ -878,7 +893,17 @@ begin
   finally
     mPending.Free;
   end;
-  FWatchRegistration := TAtlasRegistryWatch.Subscribe(AtlasModuleRegistry, RegistryChanged);
+  if Assigned(FSubscribe) then
+  begin
+    FWatchRegistration := FSubscribe(FRegistry, RegistryChanged);
+  end;
+end;
+
+class procedure TAtlasSettingsSectionsPart.UseRegistry(const ARegistry: IAtlasModuleRegistry;
+  const ASubscribe: TAtlasRegistrySubscribe);
+begin
+  FRegistry := ARegistry;
+  FSubscribe := ASubscribe;
 end;
 
 function TAtlasSettingsSectionsPart.ShowSettingArgument(const AName, AArgument: string): Boolean;

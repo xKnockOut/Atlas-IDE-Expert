@@ -26,8 +26,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Core.Assistants.DebugGate,
   Atlas.IDE.Base.Foundation.DebugControl,
   Atlas.IDE.Foundation.Host,

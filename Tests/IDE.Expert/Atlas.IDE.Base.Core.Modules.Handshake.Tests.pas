@@ -1,7 +1,7 @@
-﻿unit Atlas.Core.Modules.Handshake.Tests;
+﻿unit Atlas.IDE.Base.Core.Modules.Handshake.Tests;
 
 // Versions-Handschlag zwischen Base und Modul (#1455, Regel 7): Das
-// Testprogramm bindet Atlas.Core.Modules.Handshake ein und exportiert damit
+// Testprogramm bindet Atlas.IDE.Base.Core.Modules.Handshake ein und exportiert damit
 // AtlasCoreContractVersion selbst; Windows-Module ohne den Export stehen für
 // ein Base, das fehlt oder kein Atlas ist.
 
@@ -31,8 +31,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Modules.Handshake;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.Modules.Handshake;
 
 { TContractHandshakeTests }
 

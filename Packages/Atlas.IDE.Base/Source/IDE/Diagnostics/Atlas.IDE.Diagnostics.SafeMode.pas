@@ -27,8 +27,8 @@ uses
   System.Classes,
   System.SyncObjs,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.SafeMode,
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.SafeMode,
   Atlas.Plugin.Status.Contract,
   Atlas.Plugin.Status.Registry,
   Atlas.UI.Diagnostics.SafeModeNotice;
@@ -415,7 +415,7 @@ begin
     end);
   if FLevel <> TAtlasSafeLevel.Normal then
   begin
-    TAtlasIdeSettings.SetSession(TAtlasQuickToggles.SafeSession(TAtlasIdeSettings.QuickToggles));
+    TAtlasIdeSettings.SetSession(TAtlasSafeMode.SafeSession(TAtlasIdeSettings.QuickToggles));
   end;
   FMarker := TAtlasSessionMarker.Create(GetCurrentProcessId, TAtlasPluginVersion.cVersion, mStartedAt);
   FMarker.Level := FLevel;
@@ -536,7 +536,7 @@ begin
   end;
   mToggles := TAtlasIdeSettings.QuickToggles;
   mNames := nil;
-  for mKey in TAtlasQuickToggles.SafeSuggestions(mToggles, AChangedKeys, ACrashed) do
+  for mKey in TAtlasSafeMode.Suggest(mToggles, AChangedKeys, ACrashed) do
   begin
     if TAtlasQuickToggles.Find(mToggles, mKey, mToggle) then
     begin

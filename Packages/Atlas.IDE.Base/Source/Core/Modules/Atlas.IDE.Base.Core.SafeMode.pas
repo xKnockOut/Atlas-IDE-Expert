@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.SafeMode;
+﻿unit Atlas.IDE.Base.Core.SafeMode;
 
 // Abgesicherter Start nach einem Absturz (#722), Teil ohne Windows und ohne
 // Open Tools API:
@@ -16,11 +16,9 @@
 //   Statusfeld (Minimal); zwei Abstürze innerhalb von RepeatWindowMinutes →
 //   abgesichert ohne Rückfrage; ein Absturz → abgesichert, bis die Rückfrage
 //   beantwortet ist; sonst normal.
-// - Abgesichert heißt: alle Schnellschalter (#604) für diese Sitzung aus
-//   (TAtlasQuickToggles.SafeSession); TAtlasQuickToggles.SafeSuggestions nennt,
-//   womit man beim Wiedereinschalten anfängt (zuletzt geänderte Einstellungen,
-//   dann Funktionen mit Fehlern). Beides liegt bei den Schnellschaltern:
-//   Settings verwendet Diagnostics, nicht umgekehrt.
+// - Abgesichert heißt: alle Schnellschalter (#604) für diese Sitzung aus;
+//   Suggest nennt, womit man beim Wiedereinschalten anfängt (zuletzt
+//   geänderte Einstellungen, dann Funktionen mit Fehlern).
 // - Sitzungen ohne Marke: Ein Prozess mit ATLAS_NO_SESSION_MARKER=1 (z. B.
 //   die Bau-IDE von Tools/Build-Ide.ps1, die abgewürgt werden darf) schreibt keine Marke,
 //   wertet keine fremden aus und lässt den Zustand unberührt
@@ -33,8 +31,9 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
+  Atlas.Core.Settings.QuickToggles,
   // TAtlasSafeLevel (Stufe des abgesicherten Starts) steht im Modulvertrag (#1455).
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
 {$SCOPEDENUMS ON}
@@ -119,6 +118,12 @@ type
     /// <summary>Taste aus safeMode.startupKey ("shift", "ctrl", "none").</summary>
     class function KeyOf(const AText: string): TAtlasStartupKey; static;
     class function KeyText(AKey: TAtlasStartupKey): string; static;
+    /// <summary>Sitzungswerte für den abgesicherten Start: alle Schnellschalter aus.</summary>
+    class function SafeSession(const AToggles: TArray<TAtlasQuickToggle>): TAtlasToggleSession; static;
+    /// <summary>Womit man beim Wiedereinschalten anfängt: zuletzt geänderte Einstellungen, dann Funktionen mit
+    /// den meisten Fehlern der abgestürzten Sitzung (x-feature), jeweils nur Schnellschalter.</summary>
+    class function Suggest(const AToggles: TArray<TAtlasQuickToggle>; const AChangedKeys: TArray<string>;
+      const ACrashed: TAtlasSessionMarker): TArray<string>; static;
     /// <summary>Text der Details: Version, Start, Ladezeit, aktive Funktionen, Fehler je Feature.</summary>
     class function Details(const AMarker: TAtlasSessionMarker): TArray<string>; static;
     /// <summary>Zeilen des Plugin-Protokolls (Zeitstempel "yyyy-mm-dd hh:nn:ss.zzz" in Ortszeit) ab AFrom und vor
@@ -172,6 +177,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Math,
   System.Classes,
   System.IOUtils,
@@ -551,6 +557,62 @@ begin
   end;
 end;
 
+class function TAtlasSafeMode.SafeSession(const AToggles: TArray<TAtlasQuickToggle>): TAtlasToggleSession;
+var
+  mToggle: TAtlasQuickToggle;
+begin
+  Result := Default(TAtlasToggleSession);
+  for mToggle in AToggles do
+  begin
+    Result.Put(mToggle.Key, False);
+  end;
+end;
+
+class function TAtlasSafeMode.Suggest(const AToggles: TArray<TAtlasQuickToggle>; const AChangedKeys: TArray<string>;
+  const ACrashed: TAtlasSessionMarker): TArray<string>;
+var
+  mToggle: TAtlasQuickToggle;
+  mKey: string;
+  mCandidates: TArray<TPair<string, Integer>>;
+  mIndex, mOther: Integer;
+  mSwap: TPair<string, Integer>;
+begin
+  Result := nil;
+  // Zuerst, was zuletzt geändert wurde: das ist am ehesten die Ursache.
+  for mKey in AChangedKeys do
+  begin
+    if TAtlasQuickToggles.Find(AToggles, mKey, mToggle) and not MatchText(mToggle.Key, Result) then
+    begin
+      Result := Result + [mToggle.Key];
+    end;
+  end;
+  // Dann Funktionen mit Fehlern in der abgestürzten Sitzung, die meisten zuerst; bei Gleichstand Katalog.
+  mCandidates := nil;
+  for mToggle in AToggles do
+  begin
+    if (mToggle.Feature <> '') and (ACrashed.FailureCount(mToggle.Feature) > 0) and
+      not MatchText(mToggle.Key, Result) then
+    begin
+      mCandidates := mCandidates + [TPair<string, Integer>.Create(mToggle.Key, ACrashed.FailureCount(mToggle.Feature))];
+    end;
+  end;
+  for mIndex := 1 to High(mCandidates) do
+  begin
+    mOther := mIndex;
+    while (mOther > 0) and (mCandidates[mOther - 1].Value < mCandidates[mOther].Value) do
+    begin
+      mSwap := mCandidates[mOther - 1];
+      mCandidates[mOther - 1] := mCandidates[mOther];
+      mCandidates[mOther] := mSwap;
+      Dec(mOther);
+    end;
+  end;
+  for mIndex := 0 to High(mCandidates) do
+  begin
+    Result := Result + [mCandidates[mIndex].Key];
+  end;
+end;
+
 function LineStamp(const ALine: string; out AStamp: TDateTime): Boolean;
 const
   // Protokollzeilen beginnen mit "yyyy-mm-dd hh:nn:ss.zzz".
@@ -831,6 +893,6 @@ begin
 end;
 
 initialization
-  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.SafeMode', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Base.Core.SafeMode', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

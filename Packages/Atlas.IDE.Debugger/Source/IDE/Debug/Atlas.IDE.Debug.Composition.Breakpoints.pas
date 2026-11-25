@@ -16,7 +16,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 /// <summary>Teile für Haltepunkte in ihrer Startreihenfolge.</summary>
 function BreakpointParts: TArray<IAtlasFeaturePart>;
@@ -41,7 +41,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -63,7 +63,7 @@ uses
   Atlas.IDE.Debug.NextStatementColumn,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.NextStatement.Strings,
-  Atlas.Core.Modules.Contributions;
+  Atlas.IDE.Base.Core.Modules.Contributions;
 
 const
   /// <summary>Strg+F4: nur im angehaltenen Zustand, sonst schließt die IDE wie gewohnt die Datei.</summary>

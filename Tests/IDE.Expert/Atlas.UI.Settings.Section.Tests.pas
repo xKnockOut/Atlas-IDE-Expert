@@ -34,15 +34,15 @@ uses
   Vcl.Controls,
   Vcl.ComCtrls,
   Vcl.StdCtrls,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Core.Settings.NodeScope,
-  Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Section,
   Atlas.UI.Settings.Page,
-  Atlas.UI.Settings.Page.TestSupport;
+  Atlas.UI.Settings.Page.TestSupport,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TTestSection = class(TAtlasSettingsSection)

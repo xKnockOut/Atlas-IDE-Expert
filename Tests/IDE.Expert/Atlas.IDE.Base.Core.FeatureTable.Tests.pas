@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.FeatureTable.Tests;
+﻿unit Atlas.IDE.Base.Core.FeatureTable.Tests;
 
 // Startreihenfolge, Abbau und Stufen der Feature-Tabelle;
 // Startanteile je Teil; Modul-Schalter (#1454).
@@ -40,9 +40,9 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Diagnostics.StartTimes,
-  Atlas.Core.Diagnostics.FeatureTable;
+  Atlas.IDE.Base.Core.FeatureTable;
 
 type
   /// <summary>Protokolliert Start und Stop; je Teil ein Schalter „läuft“.</summary>

@@ -10,7 +10,7 @@
 interface
 
 uses
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Tests.Output,
   Atlas.IDE.Tests.Runner;
 
@@ -45,7 +45,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.FeatureParts,
+  Atlas.IDE.Base.Core.Modules.FeatureParts,
   Atlas.Core.Tests.MutationPlan,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Composition.Hooks,

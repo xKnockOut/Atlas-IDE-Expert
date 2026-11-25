@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Diagnostics.SafeMode.Tests;
+﻿unit Atlas.IDE.Base.Core.SafeMode.Tests;
 
 // Abgesicherter Start (#722): Startmarke anlegen und lesen, Erkennung eines
 // Absturzes, Zählung wiederholter Abstürze, langsamer Start ist kein Absturz
@@ -67,8 +67,8 @@ uses
   Atlas.Core.Settings.History,
   Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
-  Atlas.Core.Modules.Contract,
-  Atlas.Core.Diagnostics.SafeMode;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.IDE.Base.Core.SafeMode;
 
 function Options: TAtlasSafeOptions;
 begin
@@ -306,7 +306,7 @@ var
   mEffective, mStored: TAtlasPluginSettings;
 begin
   mToggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, '');
-  mSession := TAtlasQuickToggles.SafeSession(mToggles);
+  mSession := TAtlasSafeMode.SafeSession(mToggles);
   Assert.AreEqual(Integer(Length(mToggles)), Integer(Length(mSession.Overrides)));
   mStored := TAtlasPluginSettings.Defaults;
   mEffective := mSession.Apply(mStored, mToggles);
@@ -341,7 +341,7 @@ begin
   mMarker.AddFailure('Hover');
   mMarker.AddFailure('Problems');
   mMarker.AddFailure('Problems');
-  mKeys := TAtlasQuickToggles.SafeSuggestions(mToggles, ['VisibleRows', 'PairGuides'], mMarker);
+  mKeys := TAtlasSafeMode.Suggest(mToggles, ['VisibleRows', 'PairGuides'], mMarker);
   // Zuerst zuletzt geändert (nur Schnellschalter), dann Fehler: Probleme (2) vor Hover (1).
   // Zum Feature Hover gehören zwei Schalter (DebugHoverValues, #891), zu Problems vier
   // (Marke „Wer gibt das frei?“ #1877, Fenster „Atlas-Prüfung“ #909, offene Units zuerst #1108);
@@ -354,8 +354,7 @@ begin
   Assert.AreEqual('ProblemsWindowOpenFirst', mKeys[4]);
   Assert.AreEqual('HoverTooltip', mKeys[5]);
   Assert.AreEqual('DebugHoverValues', mKeys[6]);
-  Assert.AreEqual(0, Integer(Length(TAtlasQuickToggles.SafeSuggestions(mToggles, nil,
-    TAtlasSessionMarker.Create(1, '', 0)))));
+  Assert.AreEqual(0, Integer(Length(TAtlasSafeMode.Suggest(mToggles, nil, TAtlasSessionMarker.Create(1, '', 0)))));
   Assert.IsTrue(Length(TAtlasSafeMode.Details(mMarker)) >= 5);
 end;
 

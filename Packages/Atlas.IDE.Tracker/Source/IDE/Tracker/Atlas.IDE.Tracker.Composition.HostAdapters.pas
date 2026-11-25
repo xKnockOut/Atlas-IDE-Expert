@@ -10,11 +10,12 @@ interface
 
 uses
   Atlas.Core.Commands.Contract,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.IDE.Tracker.CommentAssist,
   Atlas.IDE.Tracker.MyIssues,
   Atlas.IDE.Tracker.Review,
-  Atlas.IDE.Tracker.TestResults;
+  Atlas.IDE.Tracker.TestResults,
+  Atlas.Plugin.Registration.Contract;
 
 type
   TAtlasTrackerAdapters = class

@@ -40,7 +40,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Registry,
   Atlas.Plugin.Settings.Catalog,
   Atlas.IDE.Base.Foundation.WelcomeTiles,
   Atlas.IDE.Commands.Usage;

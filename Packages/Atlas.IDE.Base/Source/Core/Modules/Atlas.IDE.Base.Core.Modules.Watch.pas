@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Watch;
+﻿unit Atlas.IDE.Base.Core.Modules.Watch;
 
 // Bereitgestellte Objekte eines Interfaces beobachten (#1455, Regel 2 und 3):
 // Ein Verbraucher in Base (Rinne, Übersichtsleiste, Statusfeld …) hält die
@@ -15,23 +15,22 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules,
+  Atlas.Plugin.Registration.Contract,
+  Atlas.Plugin.Registration;
 
 type
-  /// <summary>Rückruf für jede Änderung der Registry (TAtlasRegistryWatch).</summary>
-  TAtlasRegistryChangeProc = reference to procedure(const AChange: TAtlasRegistryChange);
-
   /// <summary>Hört über eine Methodenreferenz auf die Registry (Regel 2).</summary>
   TAtlasRegistryWatch = class
   private type
-    TListener = class(TInterfacedObject, IAtlasRegistryListener, IAtlasRegistration)
+    TListener = class(TAtlasRegistration, IAtlasRegistryListener)
     private
       FOnChange: TAtlasRegistryChangeProc;
       FSubscription: IAtlasRegistration;
+    protected
+      procedure DoRevoke; override;
     public
       procedure RegistryChanged(const AChange: TAtlasRegistryChange);
-      procedure Revoke;
-      function IsRevoked: Boolean;
     end;
   public
     /// <summary>AOnChange bei jeder Änderung von ARegistry, bis Revoke der Anmeldung; nach Revoke kommt nichts
@@ -85,7 +84,7 @@ begin
   end;
 end;
 
-procedure TAtlasRegistryWatch.TListener.Revoke;
+procedure TAtlasRegistryWatch.TListener.DoRevoke;
 var
   mSubscription: IAtlasRegistration;
 begin
@@ -96,11 +95,6 @@ begin
   begin
     mSubscription.Revoke;
   end;
-end;
-
-function TAtlasRegistryWatch.TListener.IsRevoked: Boolean;
-begin
-  Result := FSubscription = nil;
 end;
 
 { TAtlasRegistryWatch }

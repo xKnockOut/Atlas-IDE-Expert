@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.KnownPackages;
+﻿unit Atlas.IDE.Base.Core.Modules.KnownPackages;
 
 // Module unter „Known Packages“ der IDE (es kam vor, dass dort über Nacht nur
 // noch Base stand und alle Module fehlten), ohne VCL und Open Tools API:

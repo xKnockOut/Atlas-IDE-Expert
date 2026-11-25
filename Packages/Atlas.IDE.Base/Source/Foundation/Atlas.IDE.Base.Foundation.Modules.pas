@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Contract;
+﻿unit Atlas.IDE.Base.Foundation.Modules;
 
 // Allgemeine Verträge zwischen Base und den Modulen des Plugins (#1455,
 // Modulregeln 1–9 in docs/Architektur.md „Module und Verträge des
@@ -17,7 +17,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Plugin.Registration.Contract;
 
 const
   /// <summary>Vertragsversion von Base (Regel 7). Delphi prüft die Binärschnittstelle zwischen Packages nicht.
@@ -61,7 +62,7 @@ const
   /// debug.hoverExpand, debug.hoverChanges, debug.hoverMaxChildren.
   cAtlasCoreContractVersion = 35;
   /// <summary>Name der exportierten Funktion, die cAtlasCoreContractVersion liefert
-  /// (Atlas.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
+  /// (Atlas.IDE.Base.Core.Modules.Handshake); ein Modul fragt sie über GetProcAddress ab.</summary>
   cAtlasCoreContractExport = 'AtlasCoreContractVersion';
 
 type
@@ -104,14 +105,6 @@ type
   TAtlasKnownModule = record
     Info: TAtlasModuleInfo;
     Installed: Boolean;
-  end;
-
-  /// <summary>Eine Anmeldung mit Besitzer (Regel 4). Revoke löst sie; mehrfach aufrufbar, danach erreicht über
-  /// diese Anmeldung kein Aufruf mehr den Besitzer.</summary>
-  IAtlasRegistration = interface
-    ['{955A70D5-92CA-4E1D-B41A-40BFCDFB9BB5}']
-    procedure Revoke;
-    function IsRevoked: Boolean;
   end;
 
   /// <summary>Ablage von Texten je Name, in die Base Verwaltungsdaten schreibt (Liste der bekannten Module unter
@@ -321,6 +314,9 @@ type
     procedure RegistryChanged(const AChange: TAtlasRegistryChange);
   end;
 
+  /// <summary>Rückruf für jede Änderung der Registry, ohne eigene Klasse mit IAtlasRegistryListener.</summary>
+  TAtlasRegistryChangeProc = reference to procedure(const AChange: TAtlasRegistryChange);
+
   /// <summary>Alles, was ein Modul in Base anmeldet, läuft hierüber und trägt dessen Id (Regel 4). Beim Abmelden
   /// des Moduls löst Base jede Anmeldung in umgekehrter Reihenfolge; danach ist der Scope geschlossen.</summary>
   IAtlasModuleScope = interface
@@ -379,6 +375,11 @@ type
     /// <summary>Auf Änderungen hören; Module nehmen IAtlasModuleScope.Subscribe.</summary>
     function Subscribe(const AListener: IAtlasRegistryListener): IAtlasRegistration;
   end;
+
+  /// <summary>AOnChange bei jeder Änderung von ARegistry rufen, bis Revoke der Anmeldung; ohne Registry nil. Die
+  /// Shell reicht so das Hören auf die Registry an Teile, die keinen eigenen Hörer anlegen.</summary>
+  TAtlasRegistrySubscribe = reference to function(const ARegistry: IAtlasModuleRegistry;
+    const AOnChange: TAtlasRegistryChangeProc): IAtlasRegistration;
 
   /// <summary>Falsche Benutzung der Registry (leere oder doppelte Modul-Id, Objekt ohne das Interface).</summary>
   EAtlasModuleRegistry = class(Exception);

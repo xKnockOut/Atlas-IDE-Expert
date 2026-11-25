@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.Pipeline;
+﻿unit Atlas.IDE.Base.Core.BuildPipeline;
 
 // Verträge und Beiträge der Build-Pipeline, soweit Base sie braucht (#1455,
 // Modulregel 6): Base reicht dem Modul atlas.buildpipeline die
@@ -20,7 +20,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract,
+  Atlas.IDE.Base.Foundation.Modules,
   Atlas.Plugin.Build.Contract;
 
 type
@@ -55,8 +55,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Modules.Registry,
-  Atlas.Core.Modules.Contributions,
+  Atlas.IDE.Base.Core.Modules.Registry,
+  Atlas.IDE.Base.Core.Modules.Contributions,
   Atlas.Text.LogMarks,
   Atlas.Core.Build.Verdict;
 

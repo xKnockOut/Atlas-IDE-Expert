@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Modules.Contributions;
+﻿unit Atlas.IDE.Base.Core.Modules.Contributions;
 
 // Beiträge der Module einsammeln (#1455, Regel 2 und 4): Base fragt die
 // Registry bei Bedarf nach allen bereitgestellten Quellen, statt sie einmal
@@ -15,7 +15,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Modules.Contract;
+  Atlas.IDE.Base.Foundation.Modules;
 
 type
   TAtlasModuleContributions = class
