@@ -254,7 +254,7 @@ begin
 end;
 
 /// <summary>Mit build: true vorher in der IDE bauen; True mit dem Bericht in AReport, wenn das scheitert.</summary>
-function BuildBeforeTestsFailed(const ARoot: string; const ATarget: TMcpTestTarget; const AArguments: TJSONObject;
+function BuildBeforeTestsFailed(const AIde: TMcpIde; const ARoot: string; const ATarget: TMcpTestTarget; const AArguments: TJSONObject;
   out AReport: string): Boolean;
 var
   mBuildFirst: Boolean;
@@ -268,7 +268,7 @@ begin
   Result := False;
   if mBuildFirst then
   begin
-    mBuild := BuildInIde(ARoot, ATarget.Project, 'make', ATarget.Configuration, ATarget.Platform,
+    mBuild := AIde.BuildInIde(ARoot, ATarget.Project, 'make', ATarget.Configuration, ATarget.Platform,
       Default(TMcpIdeOpen));
     Result := not mBuild.Success;
     if Result then
@@ -323,7 +323,7 @@ begin
   mTarget := TestTargetOf(TestProjectOf(AContext.Root, AArguments), AArguments, mInfo);
   mTests := TMcpTestTools.TestsOf(AArguments);
   mTimeout := TestTimeoutOf(AArguments);
-  if BuildBeforeTestsFailed(AContext.Root, mTarget, AArguments, Result) then
+  if BuildBeforeTestsFailed(TMcpIde.Create(AContext.Adapters.Process), AContext.Root, mTarget, AArguments, Result) then
   begin
     Exit;
   end;
@@ -406,7 +406,7 @@ begin
     raise EMcpToolError.Create(mReason);
   end;
   Result := TMcpLastTests.Report(mRuns[mIndex], TMcpLastTests.StaleUnits(mRuns[mIndex], WrittenUtc,
-    EditorDirtyFiles), mRequest);
+    TMcpIde.Create(AContext.Adapters.Process).EditorDirtyFiles), mRequest);
 end;
 
 procedure AddGetLastTests(const AContext: TMcpToolContext);

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.Output;
+﻿unit Atlas.Common.Findings.Output;
 
 // Ausgabe des Kommandozeilen-Linters als Text, JSON oder SARIF 2.1.0 und
 // Exit-Code nach --fail-on. Positionen in Text und SARIF beginnen bei 1, im
@@ -11,6 +11,9 @@
 // properties.confidence, die deutsche Meldung des Treffers in properties.detail.
 // Im JSON steht die Konfidenz ebenso in properties.confidence und zusätzlich
 // als "confidence" neben "severity" (älteres Feld, bleibt erhalten).
+//
+// Regeln für SARIF kommen als TFindingRuleInfo (englische Katalogtexte) vom Aufrufer: Die Ausgabe kennt die
+// Prüfregeln nicht.
 //
 // Baseline (#97): Trägt TCheckedFile.Marks die Treffer mit Fingerabdrücken,
 // bekommt jedes Ergebnis partialFingerprints mit dem Baseline-Fingerabdruck
@@ -28,10 +31,21 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Checker;
+  Atlas.Common.Findings.Baseline;
 
 type
+  /// <summary>Treffer einer geprüften Datei.</summary>
+  TCheckedFile = record
+    /// <summary>Pfad relativ zum Ordner der Konfiguration, mit "\" oder "/".</summary>
+    Path: string;
+    /// <summary>Vollständiger Pfad für SARIF (#95); '' = unbekannt, dann gilt Path.</summary>
+    FullPath: string;
+    Findings: TArray<TRuleFinding>;
+    /// <summary>Für SARIF (#97): alle Treffer mit Fingerabdrücken und Zustand gegenüber der Baseline, samt der
+    /// unveränderten und nicht mehr gefundenen. Leer = SARIF nimmt Findings ohne Fingerabdrücke.</summary>
+    Marks: TArray<TBaselineMark>;
+  end;
+
   TFindingsFormat = (Text, Json, Sarif);
 
   /// <summary>Ab welchem Schweregrad der Linter mit Exit-Code 1 endet (--fail-on).</summary>
@@ -51,12 +65,14 @@ type
   public
     class function TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean; static;
     class function TryParseFailOn(const AText: string; out AFailOn: TFailOn): Boolean; static;
-    /// <summary>ASourceRoot: Quellwurzel für SARIF; '' = Pfade aus TCheckedFile.Path ohne uriBaseId.</summary>
+    /// <summary>ARules: die Regeln des Laufs für SARIF mit englischen Katalogtexten (Name '' = ohne
+    /// Katalogeintrag, dann gilt Description); ASourceRoot: Quellwurzel für SARIF; '' = Pfade aus TCheckedFile.Path
+    /// ohne uriBaseId.</summary>
     class function Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
-      const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string): string; overload; static;
+      const ARules: TArray<TFindingRuleInfo>; const ASourceRoot: string): string; overload; static;
     /// <summary>Wie oben ohne Quellwurzel (ASourceRoot = '').</summary>
     class function Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
-      const ARules: TArray<TRuleDescriptor>): string; overload; static;
+      const ARules: TArray<TFindingRuleInfo>): string; overload; static;
     /// <summary>1, wenn ein Treffer AFailOn erreicht (Standard: ein Fehler), sonst 0.</summary>
     class function ExitCode(const AFiles: TArray<TCheckedFile>; AFailOn: TFailOn): Integer; overload; static;
     /// <summary>Wie oben mit AFailOn = Error.</summary>
@@ -78,9 +94,6 @@ implementation
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Product.Version,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data,
-  Atlas.Common.Findings.Baseline,
   Atlas.Text.Json,
   System.Generics.Collections,
   Atlas.Common.Localization.Texts;
@@ -163,7 +176,7 @@ begin
 end;
 
 class function TFindingsOutput.Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
-  const ARules: TArray<TRuleDescriptor>): string;
+  const ARules: TArray<TFindingRuleInfo>): string;
 begin
   Result := Render(AFiles, AFormat, ARules, '');
 end;
@@ -385,21 +398,6 @@ begin
   end;
 end;
 
-/// <summary>Englischer Katalogname der Regel; ohne Katalogeintrag die Meldung ohne Konfidenz-Zusatz.</summary>
-function SarifMessage(ACatalog: TRuleCatalog; const AFinding: TRuleFinding): string;
-var
-  mEntry: TRuleCatalogEntry;
-begin
-  if ACatalog.TryFind(AFinding.RuleId, mEntry) and (mEntry.Name <> '') then
-  begin
-    Result := mEntry.Name;
-  end
-  else
-  begin
-    Result := AFinding.Message;
-  end;
-end;
-
 function BaselineStateName(AState: TBaselineState): string;
 begin
   case AState of
@@ -428,53 +426,48 @@ begin
   Result := AKey + ':' + IntToStr(mCount);
 end;
 
-/// <summary>Standard-Schweregrad der Regel ARuleId aus ARules; Hinweis, wenn sie fehlt.</summary>
-function DefaultSeverityOf(const ARules: TArray<TRuleDescriptor>; const ARuleId: string): TRuleSeverity;
-var
-  mRule: TRuleDescriptor;
-begin
-  for mRule in ARules do
-  begin
-    if SameText(mRule.Id, ARuleId) then
-    begin
-      Exit(mRule.DefaultSeverity);
-    end;
-  end;
-  Result := TRuleSeverity.Hint;
-end;
-
 type
   /// <summary>Schreibt einen SARIF-Lauf: Regeln, Wurzel und Ergebnisse. Immer der englische Katalog: stabile Texte
   /// für GitHub Code Scanning.</summary>
   TSarifWriter = class
   private
     FBuilder: TStringBuilder;
-    FCatalog: TRuleCatalog;
-    FRules: TArray<TRuleDescriptor>;
+    FRules: TArray<TFindingRuleInfo>;
+    /// <summary>Regel je Kennung (ohne Groß-/Kleinschreibung) als Index in FRules.</summary>
+    FRuleIndex: TDictionary<string, Integer>;
     FSourceRoot: string;
     FFirst: Boolean;
     FLineCounts: TDictionary<string, Integer>;
     FContextCounts: TDictionary<string, Integer>;
     procedure Separate;
-    procedure AppendRule(const ARule: TRuleDescriptor);
+    function TryFindRule(const ARuleId: string; out ARule: TFindingRuleInfo): Boolean;
+    function DefaultSeverityOf(const ARuleId: string): TRuleSeverity;
+    function MessageOf(const AFinding: TRuleFinding): string;
+    procedure AppendRule(const ARule: TFindingRuleInfo);
     procedure AppendRegion(const ARange: TTextRange);
     procedure AppendMark(const ACheckedFile: TCheckedFile; const AMark: TBaselineMark);
     procedure AppendFinding(const ACheckedFile: TCheckedFile; const AFinding: TRuleFinding);
     procedure AppendFile(const ACheckedFile: TCheckedFile);
   public
-    constructor Create(const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string);
+    constructor Create(const ARules: TArray<TFindingRuleInfo>; const ASourceRoot: string);
     destructor Destroy; override;
     function Render(const AFiles: TArray<TCheckedFile>): string;
   end;
 
 { TSarifWriter }
 
-constructor TSarifWriter.Create(const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string);
+constructor TSarifWriter.Create(const ARules: TArray<TFindingRuleInfo>; const ASourceRoot: string);
+var
+  mIndex: Integer;
 begin
   inherited Create;
   FRules := ARules;
   FSourceRoot := ASourceRoot;
-  FCatalog := TRuleCatalog.Create(RuleCatalogBaseJson);
+  FRuleIndex := TDictionary<string, Integer>.Create(Length(ARules));
+  for mIndex := 0 to High(ARules) do
+  begin
+    FRuleIndex.AddOrSetValue(LowerCase(ARules[mIndex].Id), mIndex);
+  end;
   FBuilder := TStringBuilder.Create;
   FLineCounts := TDictionary<string, Integer>.Create;
   FContextCounts := TDictionary<string, Integer>.Create;
@@ -485,7 +478,7 @@ begin
   FContextCounts.Free;
   FLineCounts.Free;
   FBuilder.Free;
-  FCatalog.Free;
+  FRuleIndex.Free;
   inherited;
 end;
 
@@ -499,26 +492,58 @@ begin
   FFirst := False;
 end;
 
-procedure TSarifWriter.AppendRule(const ARule: TRuleDescriptor);
+function TSarifWriter.TryFindRule(const ARuleId: string; out ARule: TFindingRuleInfo): Boolean;
 var
-  mEntry: TRuleCatalogEntry;
+  mIndex: Integer;
+begin
+  Result := FRuleIndex.TryGetValue(LowerCase(ARuleId), mIndex);
+  if Result then
+  begin
+    ARule := FRules[mIndex];
+  end;
+end;
+
+/// <summary>Standard-Schweregrad der Regel ARuleId; Hinweis, wenn sie fehlt.</summary>
+function TSarifWriter.DefaultSeverityOf(const ARuleId: string): TRuleSeverity;
+var
+  mRule: TFindingRuleInfo;
+begin
+  Result := TRuleSeverity.Hint;
+  if TryFindRule(ARuleId, mRule) then
+  begin
+    Result := mRule.DefaultSeverity;
+  end;
+end;
+
+/// <summary>Englischer Katalogname der Regel; ohne Katalogeintrag die Meldung ohne Konfidenz-Zusatz.</summary>
+function TSarifWriter.MessageOf(const AFinding: TRuleFinding): string;
+var
+  mRule: TFindingRuleInfo;
+begin
+  Result := AFinding.Message;
+  if TryFindRule(AFinding.RuleId, mRule) and (mRule.Name <> '') then
+  begin
+    Result := mRule.Name;
+  end;
+end;
+
+procedure TSarifWriter.AppendRule(const ARule: TFindingRuleInfo);
 begin
   Separate;
   FBuilder.Append('{"id":').Append(TFindingsOutput.JsonString(ARule.Id));
-  if FCatalog.TryFind(ARule.Id, mEntry) then
+  if ARule.Name <> '' then
   begin
-    FBuilder.Append(',"name":').Append(TFindingsOutput.JsonString(mEntry.Name));
-    FBuilder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(mEntry.Name));
-    FBuilder.Append('},"fullDescription":{"text":').Append(TFindingsOutput.JsonString(mEntry.Description));
-    FBuilder.Append('},"properties":{"tags":[').Append(TFindingsOutput.JsonString(
-      TRuleCatalog.CategoryName(mEntry.Category)));
+    FBuilder.Append(',"name":').Append(TFindingsOutput.JsonString(ARule.Name));
+    FBuilder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(ARule.Name));
+    FBuilder.Append('},"fullDescription":{"text":').Append(TFindingsOutput.JsonString(ARule.Description));
+    FBuilder.Append('},"properties":{"tags":[').Append(TFindingsOutput.JsonString(ARule.Category));
     FBuilder.Append(']}');
   end
   else
   begin
     FBuilder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(ARule.Description)).Append('}');
   end;
-  FBuilder.Append(',"helpUri":').Append(TFindingsOutput.JsonString(TRuleCatalog.HelpUri(ARule.Id)));
+  FBuilder.Append(',"helpUri":').Append(TFindingsOutput.JsonString(ARule.HelpUri));
   FBuilder.Append(',"defaultConfiguration":{"level":').Append(TFindingsOutput.JsonString(
     SarifLevel(ARule.DefaultSeverity)));
   FBuilder.Append('}}');
@@ -541,11 +566,11 @@ begin
   mSeverity := mFinding.Severity;
   if (AMark.State = TBaselineState.Absent) and (mFinding.Severity in [TRuleSeverity.Default, TRuleSeverity.Off]) then
   begin
-    mSeverity := DefaultSeverityOf(FRules, mFinding.RuleId);
+    mSeverity := DefaultSeverityOf(mFinding.RuleId);
   end;
   FBuilder.Append('{"ruleId":').Append(TFindingsOutput.JsonString(mFinding.RuleId));
   FBuilder.Append(',"level":').Append(TFindingsOutput.JsonString(SarifLevel(mSeverity)));
-  FBuilder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(SarifMessage(FCatalog, mFinding)));
+  FBuilder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(MessageOf(mFinding)));
   FBuilder.Append('},"locations":[{"physicalLocation":{"artifactLocation":');
   FBuilder.Append(SarifLocation(ACheckedFile, FSourceRoot)).Append('}');
   // Nicht mehr gefunden: keine Stelle im aktuellen Text.
@@ -581,7 +606,7 @@ procedure TSarifWriter.AppendFinding(const ACheckedFile: TCheckedFile; const AFi
 begin
   FBuilder.Append('{"ruleId":').Append(TFindingsOutput.JsonString(AFinding.RuleId));
   FBuilder.Append(',"level":').Append(TFindingsOutput.JsonString(SarifLevel(AFinding.Severity)));
-  FBuilder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(SarifMessage(FCatalog, AFinding)));
+  FBuilder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(MessageOf(AFinding)));
   FBuilder.Append('},"locations":[{"physicalLocation":{"artifactLocation":');
   FBuilder.Append(SarifLocation(ACheckedFile, FSourceRoot)).Append('}');
   AppendRegion(AFinding.Range);
@@ -619,7 +644,7 @@ end;
 
 function TSarifWriter.Render(const AFiles: TArray<TCheckedFile>): string;
 var
-  mRule: TRuleDescriptor;
+  mRule: TFindingRuleInfo;
   mCheckedFile: TCheckedFile;
   mRootUri: string;
 begin
@@ -653,7 +678,7 @@ begin
   Result := FBuilder.ToString;
 end;
 
-function RenderSarif(const AFiles: TArray<TCheckedFile>; const ARules: TArray<TRuleDescriptor>;
+function RenderSarif(const AFiles: TArray<TCheckedFile>; const ARules: TArray<TFindingRuleInfo>;
   const ASourceRoot: string): string;
 var
   mWriter: TSarifWriter;
@@ -667,7 +692,7 @@ begin
 end;
 
 class function TFindingsOutput.Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
-  const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string): string;
+  const ARules: TArray<TFindingRuleInfo>; const ASourceRoot: string): string;
 begin
   case AFormat of
     TFindingsFormat.Json:
@@ -707,6 +732,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.Output', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Findings.Output', cTexts);
 
 end.

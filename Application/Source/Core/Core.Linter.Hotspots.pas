@@ -31,7 +31,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Rules.Output,
+  Atlas.Common.Findings.Output,
   Atlas.Common.Hotspots.Service,
   Atlas.Common.Hotspots.Report,
   Core.Hotspots,

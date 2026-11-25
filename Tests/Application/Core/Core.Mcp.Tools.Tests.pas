@@ -59,6 +59,7 @@ uses
   Core.CommandLine,
   Core.Mcp.Context,
   Core.Mcp.Ide,
+  Adapters.Mcp.Process,
   Shell.Mcp.Services,
   Shell.Mcp.Startup,
   Core.Mcp.Tools,
@@ -360,7 +361,7 @@ begin
   try
     mFile := TPath.Combine(mFolder, 'Datei.pas');
     TFile.WriteAllText(mFile, 'unit Datei;'#13#10, TEncoding.UTF8);
-    WriteSourceText(mFile, 'unit Datei;'#10'end.'#10);
+    TMcpIde.Create(TMcpProcessAdapter.New).WriteSourceText(mFile, 'unit Datei;'#10'end.'#10);
     Assert.IsTrue(Pos(#13#10'end.', TFile.ReadAllText(mFile, TEncoding.UTF8)) > 0, 'Zeilenende der Datei bleibt CRLF');
   finally
     TDirectory.Delete(mFolder, True);

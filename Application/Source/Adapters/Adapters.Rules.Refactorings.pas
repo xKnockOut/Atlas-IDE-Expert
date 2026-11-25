@@ -18,7 +18,8 @@ uses
   Atlas.Common.Editing.Contract.ClassCompletion,
   Atlas.Common.Editing.Contract.Extract,
   Atlas.Common.Editing.Contract.MethodOrder,
-  Atlas.Common.Editing.Contract.MethodWithoutSelf;
+  Atlas.Common.Editing.Contract.MethodWithoutSelf,
+  Atlas.Common.Editing.Contract.SlashCommands;
 
 type
   /// <summary>IRuleClassRefactorings über die Klassen-Aktionen von Editing.</summary>
@@ -76,6 +77,17 @@ type
       const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle): IRuleClassCompletionScan;
   end;
 
+  /// <summary>IRuleSlashCommands über die Prüfung der Schnellbefehle von Editing.</summary>
+  TRuleSlashCommandsAdapter = class(TInterfacedObject, IRuleSlashCommands)
+  private
+    FChecks: IEditingSlashChecks;
+  public
+    constructor Create(const AChecks: IEditingSlashChecks);
+    function Problems(const AText: string; const AIndex: ISymbolIndex;
+      const ADelphiVersion: string): TArray<TRuleSlashProblem>;
+    function IgnoreWithoutHit(const ARuleId: string): string;
+  end;
+
   /// <summary>Die APIs von Editing, aus denen die Korrekturen der Prüfregeln entstehen; nil = nicht anbieten.
   /// </summary>
   TRuleRefactoringSources = record
@@ -84,6 +96,7 @@ type
     Methods: IEditingMethodsWithoutSelf;
     Order: IEditingMethodOrderReview;
     Completion: IEditingClassCompletion;
+    Commands: IEditingSlashChecks;
   end;
 
   /// <summary>Die Refactorings für die Prüfregeln aus den APIs von Editing.</summary>
@@ -93,6 +106,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Common.Editing.Contract;
 
 { TRuleClassRefactoringsAdapter }
 
@@ -414,6 +430,34 @@ begin
   end;
 end;
 
+{ TRuleSlashCommandsAdapter }
+
+constructor TRuleSlashCommandsAdapter.Create(const AChecks: IEditingSlashChecks);
+begin
+  inherited Create;
+  FChecks := AChecks;
+end;
+
+function TRuleSlashCommandsAdapter.Problems(const AText: string; const AIndex: ISymbolIndex;
+  const ADelphiVersion: string): TArray<TRuleSlashProblem>;
+var
+  mFound: TArray<TSlashProblem>;
+  mIndex: Integer;
+begin
+  mFound := FChecks.Problems(AText, AIndex, ADelphiVersion);
+  SetLength(Result, Length(mFound));
+  for mIndex := 0 to High(mFound) do
+  begin
+    Result[mIndex].Range := mFound[mIndex].Range;
+    Result[mIndex].Message := mFound[mIndex].Message;
+  end;
+end;
+
+function TRuleSlashCommandsAdapter.IgnoreWithoutHit(const ARuleId: string): string;
+begin
+  Result := FChecks.IgnoreWithoutHit(ARuleId);
+end;
+
 { TRuleRefactoringsAdapters }
 
 class function TRuleRefactoringsAdapters.Create(const ASources: TRuleRefactoringSources): TRuleRefactorings;
@@ -438,6 +482,10 @@ begin
   if ASources.Completion <> nil then
   begin
     Result.Completion := TRuleClassCompletionRefactoringsAdapter.Create(ASources.Completion);
+  end;
+  if ASources.Commands <> nil then
+  begin
+    Result.Commands := TRuleSlashCommandsAdapter.Create(ASources.Commands);
   end;
 end;
 
