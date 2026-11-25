@@ -4,6 +4,7 @@
 // zusammengefasste Stellen mit ihren Fundorten darunter, dann die Quellen bzw. Ziele (← bzw. →), die beim Aufklappen
 // über OnExpand die nächste Ebene holen, bis zur Tiefengrenze. Konstanten, Stellen außerhalb des Projekts und Zyklen
 // bleiben Blätter. Oben die Filter „Nur Projektcode“ und „Tests ausblenden“ (OnFilter).
+// OnExpand antwortet aus dem Hintergrund: Der Knoten zeigt „…“, bis die Ebene da ist.
 
 interface
 
@@ -16,10 +17,12 @@ uses
   Atlas.UI.Results.View;
 
 type
+  /// <summary>Antwort auf TAtlasDataFlowExpand im Hauptthread; leer, wenn die Anfrage scheiterte.</summary>
+  TAtlasDataFlowLoaded = reference to procedure(const AResult: TAtlasDataFlowResult);
   /// <summary>Nächste Ebene des Datenflusses (#690) unter ASource; APath: Schlüssel der Vorfahren samt ASource.
-  /// </summary>
-  TAtlasDataFlowExpand = reference to function(ADirection: TAtlasDataFlowDirection;
-    const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>): TAtlasDataFlowResult;
+  /// ADone genau einmal, gleich oder später.</summary>
+  TAtlasDataFlowExpand = reference to procedure(ADirection: TAtlasDataFlowDirection;
+    const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>; const ADone: TAtlasDataFlowLoaded);
   /// <summary>Filter des Datenflusses geändert: die erste Ebene neu holen.</summary>
   TAtlasDataFlowFilter = reference to procedure(AOnlyProject, AExcludeTests: Boolean);
 
@@ -46,6 +49,8 @@ type
     procedure AddChild(AParent: TTreeNode; const AChild: TAtlasDataFlowChild; ALevel: Integer;
       const APath: TArray<string>);
     procedure FilterClick(Sender: TObject);
+    /// <summary>Ebene zum Knoten mit ALoadId ist da; ALevel und APath wie beim Aufklappen.</summary>
+    procedure Loaded(ALoadId, ALevel: Integer; const APath: TArray<string>; const AFlow: TAtlasDataFlowResult);
   protected
     procedure Reset; override;
     function Expand(ANode: TTreeNode; const AData: TAtlasResultsNode; var AAllowExpansion: Boolean): Boolean;
@@ -67,7 +72,6 @@ implementation
 
 uses
   Vcl.Controls,
-  Vcl.Forms,
   Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts;
 
@@ -95,38 +99,60 @@ begin
   FParts.Bar.Visible := False;
 end;
 
+/// <summary>Antwort für den Knoten mit ALoadId an APart.Loaded.</summary>
+function LoadedFor(APart: TAtlasResultsFlowPart; ALoadId, ALevel: Integer;
+  const APath: TArray<string>): TAtlasDataFlowLoaded;
+var
+  mPath: TArray<string>;
+begin
+  mPath := Copy(APath);
+  Result :=
+    procedure(const AFlow: TAtlasDataFlowResult)
+    begin
+      APart.Loaded(ALoadId, ALevel, mPath, AFlow);
+    end;
+end;
+
 function TAtlasResultsFlowPart.Expand(ANode: TTreeNode; const AData: TAtlasResultsNode;
   var AAllowExpansion: Boolean): Boolean;
 var
-  mData: TAtlasResultsNode;
-  mFlow: TAtlasDataFlowResult;
+  mDone: TAtlasDataFlowLoaded;
 begin
   Result := AData.Kind = TAtlasResultsNodeKind.FlowSource;
   if not Result then
   begin
     Exit;
   end;
-  mData := AData;
-  mData.Loaded := True;
-  View.Store(ANode, mData);
-  mFlow := Default(TAtlasDataFlowResult);
+  mDone := LoadedFor(Self, View.BeginLoad(ANode), AData.FlowLevel + 1, AData.FlowPath);
+  // Der Platzhalter „…“ bleibt stehen, bis die Ebene da ist; kommt sie gleich, ersetzt Loaded ihn schon hier.
   if Assigned(FHandlers.OnExpand) then
   begin
-    Screen.Cursor := crHourGlass;
-    try
-      mFlow := FHandlers.OnExpand(FDirection, mData.FlowSource, mData.FlowPath);
-    finally
-      Screen.Cursor := crDefault;
-    end;
+    FHandlers.OnExpand(FDirection, AData.FlowSource, AData.FlowPath, mDone);
+  end
+  else
+  begin
+    mDone(Default(TAtlasDataFlowResult));
+  end;
+  AAllowExpansion := ANode.HasChildren;
+end;
+
+procedure TAtlasResultsFlowPart.Loaded(ALoadId, ALevel: Integer; const APath: TArray<string>;
+  const AFlow: TAtlasDataFlowResult);
+var
+  mNode: TTreeNode;
+begin
+  mNode := View.NodeOfLoad(ALoadId);
+  if mNode = nil then
+  begin
+    Exit;
   end;
   View.Tree.Items.BeginUpdate;
   try
-    ANode.DeleteChildren;
-    AddNodes(ANode, mFlow.Nodes, mData.FlowLevel + 1, mData.FlowPath);
+    mNode.DeleteChildren;
+    AddNodes(mNode, AFlow.Nodes, ALevel, APath);
   finally
     View.Tree.Items.EndUpdate;
   end;
-  AAllowExpansion := ANode.HasChildren;
 end;
 
 procedure TAtlasResultsFlowPart.AddNodes(AParent: TTreeNode; const ANodes: TArray<TAtlasDataFlowNode>;

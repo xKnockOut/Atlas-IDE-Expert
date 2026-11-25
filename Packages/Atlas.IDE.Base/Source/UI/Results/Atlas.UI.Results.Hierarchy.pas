@@ -6,6 +6,8 @@
 // DiagramAllowed, also callHierarchy.diagram), darunter eine Leiste mit Richtung (ausgehend oder eingehend, lädt mit
 // denselben Wurzeln neu), „Nur Projekt-Units“, „Einpassen“ und „Als HTML speichern …“; die Ansicht selbst ist
 // TAtlasCallDiagramView, ihre Ebenen kommen über OnExpand wie im Baum.
+// OnExpand antwortet aus dem Hintergrund: Der aufgeklappte Knoten zeigt „…“, bis die Ebene da ist; gibt es keine,
+// verschwindet das Aufklappzeichen.
 
 interface
 
@@ -19,8 +21,8 @@ uses
   Atlas.UI.Results.View;
 
 type
-  TAtlasHierarchyExpand = reference to function(ADirection: TAtlasHierarchyDirection;
-    const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+  /// <summary>Nächste Ebene, gleich oder später über ADone; derselbe Typ wie beim Diagramm.</summary>
+  TAtlasHierarchyExpand = TAtlasCallLoad;
 
   /// <summary>Steuerelemente des Aufrufdiagramms (#1122).</summary>
   TAtlasResultsDiagramControls = record
@@ -46,8 +48,10 @@ type
     procedure CreateBar;
     procedure CreateDiagram;
     procedure AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
-    function Load(ADirection: TAtlasHierarchyDirection;
-      const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+    procedure Load(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem;
+      const ADone: TAtlasCallLoaded);
+    /// <summary>Ebene zum Knoten mit der Ladekennung ALoadId ist da.</summary>
+    procedure Loaded(ALoadId: Integer; const AChildren: TArray<TAtlasHierarchyItem>);
     function IsCallHierarchy: Boolean;
     procedure UpdateControls;
     procedure SetDiagramAllowed(AValue: Boolean);
@@ -93,7 +97,6 @@ uses
   System.Classes,
   System.IOUtils,
   Vcl.Controls,
-  Vcl.Forms,
   Vcl.Dialogs,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Results.Strings,
@@ -178,34 +181,45 @@ begin
   UpdateControls;
 end;
 
+/// <summary>Antwort für den Knoten mit ALoadId an APart.Loaded.</summary>
+function LoadedFor(APart: TAtlasResultsHierarchyPart; ALoadId: Integer): TAtlasCallLoaded;
+begin
+  Result :=
+    procedure(const AChildren: TArray<TAtlasHierarchyItem>)
+    begin
+      APart.Loaded(ALoadId, AChildren);
+    end;
+end;
+
 function TAtlasResultsHierarchyPart.Expand(ANode: TTreeNode; const AData: TAtlasResultsNode;
   var AAllowExpansion: Boolean): Boolean;
-var
-  mData: TAtlasResultsNode;
-  mChildren: TArray<TAtlasHierarchyItem>;
 begin
   Result := AData.Kind = TAtlasResultsNodeKind.Hierarchy;
   if not Result then
   begin
     Exit;
   end;
-  mData := AData;
-  mData.Loaded := True;
-  View.Store(ANode, mData);
-  Screen.Cursor := crHourGlass;
-  try
-    mChildren := Load(FDirection, mData.Item);
-  finally
-    Screen.Cursor := crDefault;
+  // Der Platzhalter „…“ bleibt stehen, bis die Ebene da ist; kommt sie gleich, ersetzt Loaded ihn schon hier.
+  Load(FDirection, AData.Item, LoadedFor(Self, View.BeginLoad(ANode)));
+  AAllowExpansion := ANode.HasChildren;
+end;
+
+procedure TAtlasResultsHierarchyPart.Loaded(ALoadId: Integer; const AChildren: TArray<TAtlasHierarchyItem>);
+var
+  mNode: TTreeNode;
+begin
+  mNode := View.NodeOfLoad(ALoadId);
+  if mNode = nil then
+  begin
+    Exit;
   end;
   View.Tree.Items.BeginUpdate;
   try
-    ANode.DeleteChildren;
-    AddHierarchy(ANode, mChildren);
+    mNode.DeleteChildren;
+    AddHierarchy(mNode, AChildren);
   finally
     View.Tree.Items.EndUpdate;
   end;
-  AAllowExpansion := ANode.HasChildren;
 end;
 
 procedure TAtlasResultsHierarchyPart.CreateBar;
@@ -266,13 +280,16 @@ begin
   end;
 end;
 
-function TAtlasResultsHierarchyPart.Load(ADirection: TAtlasHierarchyDirection;
-  const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+procedure TAtlasResultsHierarchyPart.Load(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem;
+  const ADone: TAtlasCallLoaded);
 begin
-  Result := nil;
   if Assigned(FOnExpand) then
   begin
-    Result := FOnExpand(ADirection, AItem);
+    FOnExpand(ADirection, AItem, ADone);
+  end
+  else
+  begin
+    ADone(nil);
   end;
 end;
 

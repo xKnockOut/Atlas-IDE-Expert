@@ -14,6 +14,9 @@
 //   (ELspResponseError), und alle anderen Ausnahmen meldet die Sicherung für AFeature im Hauptthread; ADone läuft
 //   auch dann (AOk = False, bei der Fehlerantwort mit ihrer Meldung).
 // Start, Busy und der Destruktor nur im Hauptthread.
+// TAtlasBackgroundQueue reiht mehrere Anfragen hintereinander über eine TAtlasBackgroundRequest (etwa Befehle des
+// Ergebnisfensters und das Aufklappen ihrer Bäume): Add hängt an, AddLatest ersetzt wartende AddLatest-Aufträge, und
+// das Ergebnis eines laufenden verfällt, sobald ein neuerer AddLatest-Auftrag kommt (der jüngste Befehl zählt).
 
 interface
 
@@ -47,6 +50,33 @@ type
     function Start(const AWork: TProc; const ADone: TAtlasRequestDone): Boolean;
     /// <summary>Läuft gerade eine Anfrage?</summary>
     function Busy: Boolean;
+  end;
+
+  TAtlasBackgroundQueue = class
+  private type
+    TJob = record
+      Work: TProc;
+      Done: TAtlasRequestDone;
+      /// <summary>Laufende Nummer eines AddLatest-Auftrags; 0 bei Add.</summary>
+      Latest: Integer;
+    end;
+  private
+    FRequest: TAtlasBackgroundRequest;
+    FJobs: TArray<TJob>;
+    FLatest: Integer;
+    procedure Next;
+    procedure Finished(const AJob: TJob; AOk: Boolean; const AError: string);
+  public
+    constructor Create(AFeature: TAtlasFeature);
+    /// <summary>Wartet die laufende Anfrage ab; wartende und ihr Abschluss verfallen.</summary>
+    destructor Destroy; override;
+    /// <summary>AWork nach den wartenden im Hintergrund, danach ADone im Hauptthread.</summary>
+    procedure Add(const AWork: TProc; const ADone: TAtlasRequestDone);
+    /// <summary>Wie Add, ersetzt aber wartende AddLatest-Aufträge; ein laufender bekommt keinen Abschluss mehr.
+    /// </summary>
+    procedure AddLatest(const AWork: TProc; const ADone: TAtlasRequestDone);
+    /// <summary>Wartende Aufträge (ohne den laufenden).</summary>
+    function Waiting: Integer;
   end;
 
 implementation
@@ -184,6 +214,94 @@ begin
       end;
       TAtlasMainThread.Queue(mFeature, Finish(ARequest, mAlive, ADone, mError, mFailure));
     end;
+end;
+
+{ TAtlasBackgroundQueue }
+
+constructor TAtlasBackgroundQueue.Create(AFeature: TAtlasFeature);
+begin
+  inherited Create;
+  FRequest := TAtlasBackgroundRequest.Create(AFeature);
+end;
+
+destructor TAtlasBackgroundQueue.Destroy;
+begin
+  FJobs := nil;
+  FreeAndNil(FRequest);
+  inherited;
+end;
+
+function TAtlasBackgroundQueue.Waiting: Integer;
+begin
+  Result := Length(FJobs);
+end;
+
+procedure TAtlasBackgroundQueue.Add(const AWork: TProc; const ADone: TAtlasRequestDone);
+var
+  mJob: TJob;
+begin
+  mJob.Work := AWork;
+  mJob.Done := ADone;
+  mJob.Latest := 0;
+  FJobs := FJobs + [mJob];
+  Next;
+end;
+
+procedure TAtlasBackgroundQueue.AddLatest(const AWork: TProc; const ADone: TAtlasRequestDone);
+var
+  mJob: TJob;
+  mIndex: Integer;
+begin
+  for mIndex := High(FJobs) downto 0 do
+  begin
+    if FJobs[mIndex].Latest > 0 then
+    begin
+      Delete(FJobs, mIndex, 1);
+    end;
+  end;
+  Inc(FLatest);
+  mJob.Work := AWork;
+  mJob.Done := ADone;
+  mJob.Latest := FLatest;
+  FJobs := FJobs + [mJob];
+  Next;
+end;
+
+/// <summary>Abschluss eines Auftrags: AQueue.Finished im Hauptthread.</summary>
+function JobDone(AQueue: TAtlasBackgroundQueue; const AJob: TAtlasBackgroundQueue.TJob): TAtlasRequestDone;
+begin
+  Result :=
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      AQueue.Finished(AJob, AOk, AError);
+    end;
+end;
+
+procedure TAtlasBackgroundQueue.Next;
+var
+  mJob: TJob;
+begin
+  if FRequest.Busy or (Length(FJobs) = 0) then
+  begin
+    Exit;
+  end;
+  mJob := FJobs[0];
+  Delete(FJobs, 0, 1);
+  // Der Abschluss läuft nur, solange FRequest lebt; es gehört der Schlange.
+  FRequest.Start(mJob.Work, JobDone(Self, mJob));
+end;
+
+procedure TAtlasBackgroundQueue.Finished(const AJob: TJob; AOk: Boolean; const AError: string);
+begin
+  try
+    // Ein neuerer AddLatest-Auftrag ersetzt das Ergebnis eines älteren.
+    if (AJob.Latest = 0) or (AJob.Latest = FLatest) then
+    begin
+      AJob.Done(AOk, AError);
+    end;
+  finally
+    Next;
+  end;
 end;
 
 function TAtlasBackgroundRequest.Start(const AWork: TProc; const ADone: TAtlasRequestDone): Boolean;
