@@ -43,14 +43,14 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Lsp.CompletionEnums,
   Atlas.Common.Lsp.CompletionGenerics,
   Atlas.Common.Lsp.CompletionAttributes,
   Atlas.Common.Lsp.CompletionExceptions,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.TypeTexts;
 
 const
   // Schlüsselwörter je Stelle (#31).
@@ -437,7 +437,7 @@ begin
   // Mitglied einer generischen Instanz (TBox<TKunde>.Where): Typparameter der Klasse einsetzen (#468).
   if mCallee.Found and (mSite.ActiveParameter < Length(mCallee.ParamTypes)) then
   begin
-    AType := TInterfaceStubs.SubstituteWords(mCallee.ParamTypes[mSite.ActiveParameter], mCallee.Bindings);
+    AType := TPascalTypeTexts.SubstituteWords(mCallee.ParamTypes[mSite.ActiveParameter], mCallee.Bindings);
   end;
 end;
 

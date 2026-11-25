@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.PromoteVariable.Tests;
+﻿unit Atlas.Common.Editing.PromoteVariable.Protocol.Tests;
 
 // „Lokale Variable und Feld umwandeln“ über das Protokoll (#668): Code-Aktion
 // mit Client-Befehl und Vorschlag, Antwort des Server-Befehls, Fehler mit
@@ -13,7 +13,7 @@ uses
 
 type
   [TestFixture]
-  TLspPromoteVariableTests = class
+  TPromoteVariableProtocolTests = class
   private
     FIndex: ISymbolIndex;
   public
@@ -49,7 +49,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.PromoteVariable,
-  Atlas.Common.Lsp.PromoteVariable;
+  Atlas.Common.Editing.PromoteVariable.Protocol;
 
 const
   cFileName = 'C:\P\Haupt.pas';
@@ -89,15 +89,15 @@ begin
   end;
 end;
 
-{ TLspPromoteVariableTests }
+{ TPromoteVariableProtocolTests }
 
-procedure TLspPromoteVariableTests.Setup;
+procedure TPromoteVariableProtocolTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
   FIndex.AddUnit(TIndexExtractor.ExtractText(cText, cFileName, nil));
 end;
 
-procedure TLspPromoteVariableTests.TearDown;
+procedure TPromoteVariableProtocolTests.TearDown;
 begin
   FIndex := nil;
 end;
@@ -113,8 +113,8 @@ begin
   try
     mResolver.PinTree(mTree, cFileName);
     try
-      Result := TLspPromoteVariable.Actions(mTree, cText, TDocumentUris.FromPath(cFileName), TTextPosition.Create(ALine,
-        ACharacter), TLspPromoteVariable.Lookup(mResolver, mTree, cFileName, ReadFile));
+      Result := TPromoteVariableProtocol.Actions(mTree, cText, TDocumentUris.FromPath(cFileName), TTextPosition.Create(ALine,
+        ACharacter), TPromoteVariableProtocol.Lookup(mResolver, mTree, cFileName, ReadFile));
     finally
       mResolver.UnpinTree;
     end;
@@ -136,10 +136,10 @@ begin
   try
     mResolver.PinTree(mTree, cFileName);
     try
-      mContext.Lookup := TLspPromoteVariable.Lookup(mResolver, mTree, cFileName, ReadFile);
+      mContext.Lookup := TPromoteVariableProtocol.Lookup(mResolver, mTree, cFileName, ReadFile);
       mContext.Style := TFormatStyle.Default;
       mContext.NewName := AName;
-      Result := TLspPromoteVariable.Execute(mTree, cText, TDocumentUris.FromPath(cFileName), TTextPosition.Create(ALine,
+      Result := TPromoteVariableProtocol.Execute(mTree, cText, TDocumentUris.FromPath(cFileName), TTextPosition.Create(ALine,
         ACharacter), mContext);
     finally
       mResolver.UnpinTree;
@@ -150,7 +150,7 @@ begin
   end;
 end;
 
-procedure TLspPromoteVariableTests.ActionCarriesClientCommand;
+procedure TPromoteVariableProtocolTests.ActionCarriesClientCommand;
 var
   mActions: TArray<TJSONObject>;
   mAction: TJSONObject;
@@ -159,9 +159,9 @@ begin
   mActions := ActionsAt(FIndex, 16, 3);
   try
     Assert.AreEqual(1, Integer(Length(mActions)));
-    Assert.AreEqual(TLspPromoteVariable.cKind, mActions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TPromoteVariableProtocol.cKind, mActions[0].GetValue<string>('kind'));
     Assert.IsTrue(mActions[0].GetValue<string>('title').StartsWith(TPromoteVariable.ToFieldTitle + ' (LTotal'));
-    Assert.AreEqual(TLspPromoteVariable.cClientCommand, mActions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TPromoteVariableProtocol.cClientCommand, mActions[0].GetValue<string>('command.command'));
     mArguments := mActions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(3, mArguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(cFileName), mArguments.Items[0].Value);
@@ -178,7 +178,7 @@ begin
   Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
-procedure TLspPromoteVariableTests.ExecuteAnswersEditAndCounts;
+procedure TPromoteVariableProtocolTests.ExecuteAnswersEditAndCounts;
 var
   mAnswer, mChanges: TJSONObject;
   mEdits: TJSONArray;
@@ -199,7 +199,7 @@ begin
   end;
 end;
 
-procedure TLspPromoteVariableTests.ConflictIsAnError;
+procedure TPromoteVariableProtocolTests.ConflictIsAnError;
 begin
   Assert.WillRaise(
     procedure
@@ -213,7 +213,7 @@ begin
     end, EJsonRpcError);
 end;
 
-procedure TLspPromoteVariableTests.ResolverSuppliesTypesAndAncestors;
+procedure TPromoteVariableProtocolTests.ResolverSuppliesTypesAndAncestors;
 var
   mAnswer: TJSONObject;
 begin
@@ -233,13 +233,13 @@ begin
     end, EJsonRpcError);
 end;
 
-procedure TLspPromoteVariableTests.FormFieldIsNotOffered;
+procedure TPromoteVariableProtocolTests.FormFieldIsNotOffered;
 begin
   // FLabel steht in Haupt.dfm: kein „In lokale Variable umwandeln“.
   Assert.AreEqual(0, Integer(Length(ActionsAt(FIndex, 9, 5))));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TLspPromoteVariableTests);
+  TDUnitX.RegisterTestFixture(TPromoteVariableProtocolTests);
 
 end.

@@ -73,6 +73,7 @@ uses
   Shell.Composition.DfmPropertyRules in 'Source\Shell\Shell.Composition.DfmPropertyRules.pas',
   Shell.Composition.LeakSetup in 'Source\Shell\Shell.Composition.LeakSetup.pas',
   Shell.Composition.Instructions in 'Source\Shell\Shell.Composition.Instructions.pas',
+  Shell.Composition.LinterRules in 'Source\Shell\Shell.Composition.LinterRules.pas',
   Shell.Composition.LeakCandidates in 'Source\Shell\Shell.Composition.LeakCandidates.pas',
   Shell.Composition.RuntimeReport in 'Source\Shell\Shell.Composition.RuntimeReport.pas',
   Shell.Composition.Core in 'Source\Shell\Shell.Composition.Core.pas',

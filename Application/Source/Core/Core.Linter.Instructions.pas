@@ -23,8 +23,6 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Findings.Output,
-  Atlas.Common.Rules.Instructions,
-  Atlas.Common.Rules.InstructionFiles,
   Atlas.Common.Localization.Texts,
   Core.Linter.Output,
   Core.Linter.Settings;
@@ -47,11 +45,11 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  cStateTexts: array[TInstructionsState] of TLinterInstructionsText = (TLinterInstructionsText.Current,
+  cStateTexts: array[TCoreInstructionsState] of TLinterInstructionsText = (TLinterInstructionsText.Current,
     TLinterInstructionsText.Stale, TLinterInstructionsText.Missing);
 
 /// <summary>Zeile zu einer Datei auf stderr; False, wenn Schreiben scheiterte.</summary>
-function Report(const AFile: TInstructionsFile): Boolean;
+function Report(const AFile: TCoreInstructionsFile): Boolean;
 begin
   Result := AFile.Error = '';
   if not Result then
@@ -68,6 +66,21 @@ begin
   end;
 end;
 
+/// <summary>Dateien, deren Abschnitt fehlt oder veraltet ist und die nicht geschrieben wurden.</summary>
+function StaleCount(const AFiles: TArray<TCoreInstructionsFile>): Integer;
+var
+  mFile: TCoreInstructionsFile;
+begin
+  Result := 0;
+  for mFile in AFiles do
+  begin
+    if (mFile.State <> TCoreInstructionsState.Current) and not mFile.Written then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 { TLinterInstructions }
 
 class function TLinterInstructions.Run(const AOptions: TCommandLineOptions; const AHost: TCoreLinterHost):
@@ -75,8 +88,8 @@ class function TLinterInstructions.Run(const AOptions: TCommandLineOptions; cons
 var
   mTarget: TLinterTarget;
   mSettings: TServerSettings;
-  mFiles: TArray<TInstructionsFile>;
-  mFile: TInstructionsFile;
+  mFiles: TArray<TCoreInstructionsFile>;
+  mFile: TCoreInstructionsFile;
   mRoot: string;
 begin
   if not TLinterTarget.ResolveOrCurrent(AOptions.CheckTarget, mTarget) then
@@ -102,7 +115,7 @@ begin
       Result := TFindingsOutput.cExitFailure;
     end;
   end;
-  if (Result = TFindingsOutput.cExitClean) and (TRuleInstructionFiles.StaleCount(mFiles) > 0) then
+  if (Result = TFindingsOutput.cExitClean) and (StaleCount(mFiles) > 0) then
   begin
     Result := TFindingsOutput.cExitFindings;
   end;

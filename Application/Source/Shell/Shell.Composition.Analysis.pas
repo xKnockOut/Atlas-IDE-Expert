@@ -94,7 +94,23 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Rules.Contract.Api,
   Atlas.Common.Rules.Providers.InheritanceDepths,
-  Adapters.Lsp.InheritanceDepths;
+  Adapters.Lsp.InheritanceDepths,
+  Atlas.Common.Editing.MethodWithoutSelf.Protocol,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Semantics.NameResolver;
+
+/// <summary>Stellen der Marke „braucht kein Self“ aus Editing; eigene Routine, damit die anonyme Methode
+/// nichts aus dem Konstruktor einfängt.</summary>
+function MethodWithoutSelfMarkers: TInlayMethodMarkers;
+begin
+  Result :=
+    function(AResolver: TNameResolver; ATree: TSyntaxTree; const ATreeText, AFileName: string;
+      const ARange: TTextRange; const AReadText: TDocumentReadText): TArray<TTextPosition>
+    begin
+      Result := TMethodWithoutSelfProtocol.MarkerPositions(AResolver, ATree, ATreeText, AFileName, ARange,
+        AReadText);
+    end;
+end;
 
 { TShellAnalysis }
 
@@ -160,6 +176,8 @@ begin
   mDepths := TLspInheritanceDepthsAdapter.Wrap(mRuleDepths);
   FInlayHints := TLspInlayHints.Create(FServices.Documents, FServices.Index, ReadText,
     FServices.InlayHintSettingsFor, FServices.EnsureUnit);
+  // Marke „braucht kein Self“ (#686): Editing meldet die Stellen an, Lsp kennt Editing nicht.
+  FInlayHints.MethodMarkers := MethodWithoutSelfMarkers();
   FCodeLens := TLspCodeLens.Create(FServices.Documents, FServices.Index, ReadText, FServices.ProjectFiles,
     FServices.EnsureUnit);
   FCodeLens.MetricsFor := FServices.CodeLensMetricsFor;

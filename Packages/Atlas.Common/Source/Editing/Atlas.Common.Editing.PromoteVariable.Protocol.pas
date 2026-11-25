@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.PromoteVariable;
+﻿unit Atlas.Common.Editing.PromoteVariable.Protocol;
 
 // „Lokale Variable und Feld umwandeln“ über das Protokoll (#668):
 //   - Code-Aktion „In Feld umwandeln (X → FX)“ bzw. „In lokale Variable
@@ -33,7 +33,7 @@ type
     NewName: string;
   end;
 
-  TLspPromoteVariable = class
+  TPromoteVariableProtocol = class
   public const
     cClientCommand = 'atlas.promoteVariable';
     cApplyCommand = 'atlas.server.promoteVariable';
@@ -57,28 +57,27 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.RoutineLocals,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.FormMentions,
-  Atlas.Common.Lsp.InlayHints,
+  Atlas.Common.Editing.FormMentions,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.CodeActions.Json;
+  Atlas.Common.CodeActions.Json,
+  Atlas.Common.Semantics.InferredTypes;
 
 {$SCOPEDENUMS ON}
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspPromoteVariableText = (ConversionNotPossible);
+  TPromoteVariableProtocolText = (ConversionNotPossible);
 
 const
-  cTexts: array[TLspPromoteVariableText] of TAtlasText = (
+  cTexts: array[TPromoteVariableProtocolText] of TAtlasText = (
     (De: 'Umwandeln geht nicht: '; En: 'Conversion not possible: '));
 
 {$SCOPEDENUMS OFF}
 
-{ TLspPromoteVariable }
+{ TPromoteVariableProtocol }
 
-class function TLspPromoteVariable.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+class function TPromoteVariableProtocol.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TPromoteLookup;
 var
   mFileName: string;
@@ -91,7 +90,7 @@ begin
       Found: TInferredType;
     begin
       Result := '';
-      for Found in TLspInlayHints.Inferred(AResolver, ATree, mFileName, TTextRange.Create(ALocal.Decl.StartPos,
+      for Found in TInferredTypes.Find(AResolver, ATree, mFileName, TTextRange.Create(ALocal.Decl.StartPos,
         ALocal.Decl.EndPos)) do
       begin
         if SameText(Found.Name, ALocal.Name) and not Found.ForIn then
@@ -105,10 +104,10 @@ begin
     begin
       Result := AResolver.ResolveChain(ATree, mFileName, (AClassName + '.' + AName).Split(['.']), AOffset).Found;
     end;
-  Result.InForm := TLspFormMentions.Lookup(AFileName, AReadText);
+  Result.InForm := TFormMentions.Lookup(AFileName, AReadText);
 end;
 
-class function TLspPromoteVariable.Actions(ATree: TSyntaxTree; const AText, AUri: string;
+class function TPromoteVariableProtocol.Actions(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition; const ALookup: TPromoteLookup): TArray<TJSONObject>;
 var
   mTarget: TPromoteTarget;
@@ -136,7 +135,7 @@ begin
   Result := [mAction];
 end;
 
-class function TLspPromoteVariable.Execute(ATree: TSyntaxTree; const AText, AUri: string;
+class function TPromoteVariableProtocol.Execute(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition; const AContext: TPromoteVariableContext): TJSONObject;
 var
   mPromoted: TPromoteResult;
@@ -146,8 +145,8 @@ begin
   if not TPromoteVariable.Execute(AText, ATree, TPromoteRequest.Create(APosition, AContext.Lookup, AContext.Style,
     AContext.NewName), mPromoted, mReason) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed,
-      cTexts[TLspPromoteVariableText.ConversionNotPossible].Text + mReason);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
+      cTexts[TPromoteVariableProtocolText.ConversionNotPossible].Text + mReason);
   end;
   mWarnings := TJSONArray.Create;
   for mWarning in mPromoted.Warnings do
@@ -162,6 +161,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.PromoteVariable', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.PromoteVariable.Protocol', cTexts);
 
 end.

@@ -105,6 +105,7 @@ Atlas.Common.Editing.DeclareUnknown.Tests
 Atlas.Common.Editing.DisableWarning.Tests
 Atlas.Common.Pascal.DocComments.Tests
 Atlas.Common.Pascal.EnumTables.Tests
+Atlas.Common.Pascal.TypeTexts.Tests
 Atlas.Common.Pascal.ExpressionText.Tests
 Atlas.Common.Editing.Extract.Duplicates.Tests
 Atlas.Common.Editing.Extract.Shared.Tests
@@ -525,7 +526,7 @@ Atlas.Common.Rules.Checker.Tests
 Atlas.Common.Rules.Prompt.Tests
 Atlas.Common.Rules.Profiles.Tests
 Atlas.Common.Findings.Scopes.Tests
-Atlas.Common.Rules.SuppressionStats.Tests
+Atlas.Common.Findings.SuppressionStats.Tests
 Atlas.Common.Rules.TypedScope.Tests
 Atlas.Common.Rules.WarnSwitches.Tests
 Atlas.Common.Semantics.ControlFlow.Tests
@@ -542,6 +543,7 @@ Atlas.Common.Semantics.StepCalls.Tests
 Atlas.Common.Semantics.DataAccessCalls.Tests
 Atlas.Common.Semantics.TypeCompatibility.Tests
 Atlas.Common.Semantics.TypeKinds.Tests
+Atlas.Common.Semantics.InferredTypes.Tests
 Atlas.Common.Semantics.UnresolvedNames.Tests
 Atlas.Common.Todos.Report.Tests
 Atlas.Common.Todos.Keywords.Tests

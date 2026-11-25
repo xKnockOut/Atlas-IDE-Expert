@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.FormMentions;
+﻿unit Atlas.Common.Editing.FormMentions;
 
 // Steht ein Name in der Formulardatei zur Unit (.dfm bzw. .fmx daneben)? Das
 // fragen „Variable befördern“ (#668) und „Methode ohne Self“ (#686): Ein Feld,
@@ -13,7 +13,7 @@ uses
   Atlas.Common.Semantics.References;
 
 type
-  TLspFormMentions = class
+  TFormMentions = class
   public
     /// <summary>Kommt AName als ganzes Wort in AText vor (Groß-/Kleinschreibung egal)?</summary>
     class function MentionsWord(const AText, AName: string): Boolean; static;
@@ -32,9 +32,9 @@ uses
 const
   cFormExtensions: array[0..1] of string = ('.dfm', '.fmx');
 
-{ TLspFormMentions }
+{ TFormMentions }
 
-class function TLspFormMentions.MentionsWord(const AText, AName: string): Boolean;
+class function TFormMentions.MentionsWord(const AText, AName: string): Boolean;
 var
   mStart: Integer;
   mText, mName: string;
@@ -54,7 +54,7 @@ begin
   Result := False;
 end;
 
-class function TLspFormMentions.Lookup(const AFileName: string; const AReadText: TReferenceReadText):
+class function TFormMentions.Lookup(const AFileName: string; const AReadText: TReferenceReadText):
   TPromoteInFormFunc;
 var
   mFileName: string;

@@ -40,7 +40,7 @@ type
     MemberLevel: TMemberLevelFunc;
     InterfaceMember: TMethodTypeMemberFunc;
     /// <summary>Steht AName in der Formulardatei? Derselbe Typ wie bei „Variable befördern“, weil
-    /// TLspMethodWithoutSelf.Lookup das Feld von dort übernimmt (Delphi 12 lehnt gleich aufgebaute, aber
+    /// TMethodWithoutSelfProtocol.Lookup das Feld von dort übernimmt (Delphi 12 lehnt gleich aufgebaute, aber
     /// verschieden deklarierte Methodenreferenztypen ab).</summary>
     InForm: TPromoteInFormFunc;
     VisibleHelper: TMethodHelperFunc;

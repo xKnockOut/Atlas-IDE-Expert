@@ -95,7 +95,8 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Common.Compiler.Pitfalls,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Catalog.Data;
+  Atlas.Common.Rules.Catalog.Data,
+  Atlas.Common.Findings.Suppressions;
 
 const
   cBase = '{"rules":[{"id":"a-rule","name":"A rule","category":"code-smell","severity":"warning",' +

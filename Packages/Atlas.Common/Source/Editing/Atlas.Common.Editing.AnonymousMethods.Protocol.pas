@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.AnonymousMethods;
+﻿unit Atlas.Common.Editing.AnonymousMethods.Protocol;
 
 // „Anonyme Methode und Methode umwandeln“ über das Protokoll (#680):
 //   - Code-Aktion „In Methode umwandeln (Name)“ bzw. „In Routine umwandeln
@@ -41,7 +41,7 @@ type
     Style: TFormatStyle;
   end;
 
-  TLspAnonymousMethods = class
+  TAnonymousMethodsProtocol = class
   public const
     cClientCommand = 'atlas.anonymousMethod';
     cApplyCommand = 'atlas.server.anonymousMethod';
@@ -71,9 +71,8 @@ uses
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Editing.PromoteVariable,
-  Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
-  Atlas.Common.Lsp.PromoteVariable,
+  Atlas.Common.Editing.PromoteVariable.Protocol,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.CodeActions.Json;
@@ -82,10 +81,10 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TLspAnonymousMethodsText = (ConversionNotPossible);
+  TAnonymousMethodsProtocolText = (ConversionNotPossible);
 
 const
-  cTexts: array[TLspAnonymousMethodsText] of TAtlasText = (
+  cTexts: array[TAnonymousMethodsProtocolText] of TAtlasText = (
     (De: 'Umwandeln geht nicht: '; En: 'Conversion not possible: '));
 
 {$SCOPEDENUMS OFF}
@@ -273,9 +272,9 @@ begin
 end;
 
 
-{ TLspAnonymousMethods }
+{ TAnonymousMethodsProtocol }
 
-class function TLspAnonymousMethods.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+class function TAnonymousMethodsProtocol.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TAnonymousLookup;
 var
   mPromote: TPromoteLookup;
@@ -283,7 +282,7 @@ var
   mFileName: string;
 begin
   Result := TAnonymousLookup.FromTree(ATree);
-  mPromote := TLspPromoteVariable.Lookup(AResolver, ATree, AFileName, AReadText);
+  mPromote := TPromoteVariableProtocol.Lookup(AResolver, ATree, AFileName, AReadText);
   mNested := TNestedRoutineLookup.FromResolver(AResolver, ATree, AFileName);
   Result.InlineType := mPromote.InlineType;
   Result.MemberExists := mPromote.MemberExists;
@@ -297,7 +296,7 @@ begin
     end;
 end;
 
-class function TLspAnonymousMethods.CaptureOf(const ASetting: string): TDeferredCapture;
+class function TAnonymousMethodsProtocol.CaptureOf(const ASetting: string): TDeferredCapture;
 begin
   if SameText(ASetting, 'fields') then
   begin
@@ -317,7 +316,7 @@ begin
   Result.Style := ARequest.Style;
 end;
 
-class function TLspAnonymousMethods.Actions(const ARequest: TAnonymousMethodRequest): TArray<TJSONObject>;
+class function TAnonymousMethodsProtocol.Actions(const ARequest: TAnonymousMethodRequest): TArray<TJSONObject>;
 var
   mTarget: TAnonymousTarget;
   mReason: string;
@@ -348,7 +347,7 @@ begin
   end;
 end;
 
-class function TLspAnonymousMethods.Execute(const ARequest: TAnonymousMethodRequest; const AName: string): TJSONObject;
+class function TAnonymousMethodsProtocol.Execute(const ARequest: TAnonymousMethodRequest; const AName: string): TJSONObject;
 var
   mConverted: TAnonymousResult;
   mReason, mWarning: string;
@@ -356,8 +355,8 @@ var
 begin
   if not TAnonymousMethods.Execute(InputOf(ARequest), AName, mConverted, mReason) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed,
-      cTexts[TLspAnonymousMethodsText.ConversionNotPossible].Text + mReason);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
+      cTexts[TAnonymousMethodsProtocolText.ConversionNotPossible].Text + mReason);
   end;
   mWarnings := TJSONArray.Create;
   for mWarning in mConverted.Warnings do
@@ -373,6 +372,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Lsp.AnonymousMethods', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Editing.AnonymousMethods.Protocol', cTexts);
 
 end.

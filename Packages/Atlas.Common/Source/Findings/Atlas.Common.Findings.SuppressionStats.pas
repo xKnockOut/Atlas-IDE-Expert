@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Rules.SuppressionStats;
+﻿unit Atlas.Common.Findings.SuppressionStats;
 
 // Auswertung der Unterdrückungskommentare über ein ganzes Projekt (#147):
 // Welche Regeln werden wie oft unterdrückt? Häufig unterdrückte Regeln sind
@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Rules.Contract,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Findings.Output;
 
 type
@@ -55,7 +55,6 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Findings.Suppressions,
-  Atlas.Common.Rules.Engine,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -236,6 +235,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Rules.SuppressionStats', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Findings.SuppressionStats', cTexts);
 
 end.
