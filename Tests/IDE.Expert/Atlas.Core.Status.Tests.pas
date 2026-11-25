@@ -27,6 +27,13 @@ type
     /// <summary>#1356: Die Aktion der Zeile „Server“ gilt nur mit server.statusWindow.</summary>
     [Test]
     procedure ActionFollowsEnabled;
+    /// <summary>Abgemeldete Zeile gibt die Rückrufe des Moduls sofort frei, auch wenn Statusfeld oder Fenster sie
+    /// noch halten (sonst erst nach dem Entladen des Moduls: Zugriffsverletzung).</summary>
+    [Test]
+    procedure RemovedLineReleasesModuleCallbacks;
+    /// <summary>Wie oben, wenn eine neue Zeile mit derselben Kennung die alte ersetzt.</summary>
+    [Test]
+    procedure ReplacedLineReleasesModuleCallbacks;
     [Test]
     procedure OverallIsWorstState;
     [Test]
@@ -144,6 +151,66 @@ type
     function ReadString(const AName, ADefault: string): string;
     procedure WriteString(const AName, AValue: string);
   end;
+
+  /// <summary>Steht für etwas, das ein Modul in seinen Rückrufen hält; meldet sein Freigeben.</summary>
+  TModuleProbe = class(TInterfacedObject)
+  private
+    FFreed: PBoolean;
+  public
+    constructor Create(AFreed: PBoolean);
+    destructor Destroy; override;
+  end;
+
+{ TModuleProbe }
+
+constructor TModuleProbe.Create(AFreed: PBoolean);
+begin
+  inherited Create;
+  FFreed := AFreed;
+end;
+
+destructor TModuleProbe.Destroy;
+begin
+  FFreed^ := True;
+  inherited Destroy;
+end;
+
+/// <summary>Aktion, die AProbe hält (eigene Routine: Der Rahmen des Tests hielte sie sonst selbst).</summary>
+function ActionHolding(const AProbe: IInterface): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      if AProbe = nil then
+      begin
+        Exit;
+      end;
+    end;
+end;
+
+/// <summary>Schalter, der AProbe hält.</summary>
+function EnabledHolding(const AProbe: IInterface): TFunc<Boolean>;
+begin
+  Result :=
+    function: Boolean
+    begin
+      Result := AProbe <> nil;
+    end;
+end;
+
+/// <summary>Zeile AId mit Aktion und Schalter, die beide eine neue Probe halten; AFreed meldet deren Freigeben.
+/// </summary>
+function ProbedLine(const ARegistry: IAtlasStatusRegistry; const AId: string; AFreed: PBoolean): IAtlasStatusItem;
+var
+  mProbe: IInterface;
+  mAction: TProc;
+  mEnabled: TFunc<Boolean>;
+begin
+  mProbe := TModuleProbe.Create(AFreed);
+  mAction := ActionHolding(mProbe);
+  mEnabled := EnabledHolding(mProbe);
+  Result := TAtlasStatusLine.Create(ARegistry, AId, 0, mAction, mEnabled);
+end;
 
 { TForeignItem }
 
@@ -396,6 +463,51 @@ begin
   Assert.IsTrue(mRef.HasAction);
   mRef.Execute;
   Assert.AreEqual(1, mRuns);
+end;
+
+procedure TAtlasStatusRegistryTests.RemovedLineReleasesModuleCallbacks;
+var
+  mRegistry: IAtlasStatusRegistry;
+  mShown: TArray<IAtlasStatusItem>;
+  mFreed: Boolean;
+begin
+  mRegistry := TAtlasStatusRegistry.Create;
+  mFreed := False;
+  mRegistry.Add(ProbedLine(mRegistry, 'modul.zeile', @mFreed));
+  // Wie das Statusfeld: Es hält die Zeilen des letzten Zeichnens.
+  mShown := mRegistry.Items;
+  Assert.IsTrue(mShown[0].HasAction);
+  Assert.IsFalse(mFreed);
+  mRegistry.Remove('modul.zeile');
+  Assert.IsTrue(mFreed, 'Rückrufe beim Abmelden frei');
+  Assert.IsFalse(mShown[0].HasAction, 'gehaltene Zeile nicht mehr anklickbar');
+  mShown[0].Execute;
+  mShown := nil;
+end;
+
+procedure TAtlasStatusRegistryTests.ReplacedLineReleasesModuleCallbacks;
+var
+  mRegistry: IAtlasStatusRegistry;
+  mShown: TArray<IAtlasStatusItem>;
+  mOldFreed, mNewFreed: Boolean;
+  mNew: IAtlasStatusItem;
+begin
+  mRegistry := TAtlasStatusRegistry.Create;
+  mOldFreed := False;
+  mNewFreed := False;
+  mRegistry.Add(ProbedLine(mRegistry, 'modul.zeile', @mOldFreed));
+  mShown := mRegistry.Items;
+  mNew := ProbedLine(mRegistry, 'modul.zeile', @mNewFreed);
+  mRegistry.Add(mNew);
+  Assert.IsTrue(mOldFreed, 'ersetzte Zeile gibt ihre Rückrufe frei');
+  Assert.IsFalse(mShown[0].HasAction);
+  Assert.IsFalse(mNewFreed, 'die neue bleibt');
+  mRegistry.Add(mNew);
+  Assert.IsTrue(mNew.HasAction, 'dieselbe Zeile erneut: nicht gelöst');
+  mShown := nil;
+  mNew := nil;
+  mRegistry := nil;
+  Assert.IsTrue(mNewFreed);
 end;
 
 procedure TAtlasStatusRegistryTests.OverallIsWorstState;

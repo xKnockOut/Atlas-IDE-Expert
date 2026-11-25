@@ -10,6 +10,10 @@
 // - TAtlasStatusSummary: was das Feld zeigt: sichtbare Zeilen (ohne
 //   statusField.hidden), Gesamtzustand (der schlechteste aller Zeilen), Text
 //   „Atlas“ bzw. „Atlas · 2 Fehler“ und Tooltip mit den Zeilen, die nicht grün sind.
+//   Gibt die Registry eine Zeile ab (Remove oder Ersetzen), löst sie sie über
+//   IAtlasStatusDetach: Aktion und Schalter gehören dem anmeldenden Modul, die
+//   Zeile aber lebt weiter, solange Statusfeld oder Fenster sie halten, auch
+//   über das Entladen des Moduls hinaus.
 
 interface
 
@@ -48,7 +52,7 @@ type
 
   /// <summary>Zeile mit festen Daten, die der Besitzer über Update setzt. Die Registry hält die Zeile;
   /// die Zeile kennt die Registry nur schwach und muss vor ihr abgemeldet werden.</summary>
-  TAtlasStatusLine = class(TInterfacedObject, IAtlasStatusItem, IAtlasStatusBrief)
+  TAtlasStatusLine = class(TInterfacedObject, IAtlasStatusItem, IAtlasStatusBrief, IAtlasStatusDetach)
   private
     FLock: TCriticalSection;
     FId: string;
@@ -87,7 +91,8 @@ type
     /// <summary>Mit Kurzform und Zusatz rechts für die Zustandskachel (#754).</summary>
     procedure Update(const AText: string; AState: TAtlasStatusState; const ASummary, ABrief,
       ADetail: string); overload;
-    /// <summary>Löst die Verbindung zur Registry; danach meldet Update nichts mehr.</summary>
+    /// <summary>Löst die Verbindung zur Registry und gibt Aktion und Schalter frei; danach meldet Update nichts
+    /// mehr und die Zeile ist nicht mehr anklickbar. Die Registry ruft es beim Abgeben selbst.</summary>
     procedure Detach;
   end;
 
@@ -158,9 +163,21 @@ begin
   FListeners.Changed;
 end;
 
+/// <summary>Abgegebene Zeile lösen: Ihre Rückrufe gehören dem Modul, sie selbst lebt in Kopien weiter.</summary>
+procedure DetachItem(const AItem: IAtlasStatusItem);
+var
+  mDetach: IAtlasStatusDetach;
+begin
+  if Supports(AItem, IAtlasStatusDetach, mDetach) then
+  begin
+    mDetach.Detach;
+  end;
+end;
+
 procedure TAtlasStatusRegistry.Remove(const AId: string);
 var
   mIndex: Integer;
+  mRemoved: IAtlasStatusItem;
 begin
   FLock.Enter;
   try
@@ -169,10 +186,13 @@ begin
     begin
       Exit;
     end;
+    mRemoved := FItems[mIndex];
     FItems.Delete(mIndex);
   finally
     FLock.Leave;
   end;
+  // Außerhalb der Sperre: Detach nimmt die Sperre der Zeile.
+  DetachItem(mRemoved);
   Notify;
 end;
 
@@ -191,16 +211,19 @@ end;
 procedure TAtlasStatusRegistry.Add(const AItem: IAtlasStatusItem);
 var
   mIndex, mExisting: Integer;
+  mReplaced: IAtlasStatusItem;
 begin
   if AItem = nil then
   begin
     Exit;
   end;
+  mReplaced := nil;
   FLock.Enter;
   try
     mExisting := IndexOf(AItem.Id);
     if mExisting >= 0 then
     begin
+      mReplaced := FItems[mExisting];
       FItems.Delete(mExisting);
     end;
     mIndex := 0;
@@ -211,6 +234,10 @@ begin
     FItems.Insert(mIndex, AItem);
   finally
     FLock.Leave;
+  end;
+  if (mReplaced <> nil) and (mReplaced <> AItem) then
+  begin
+    DetachItem(mReplaced);
   end;
   Notify;
 end;
@@ -352,15 +379,38 @@ begin
 end;
 
 function TAtlasStatusLine.HasAction: Boolean;
+var
+  mAction: TProc;
+  mEnabled: TFunc<Boolean>;
 begin
-  Result := Assigned(FAction) and (not Assigned(FEnabled) or FEnabled());
+  // Kopien unter der Sperre: Detach kann Aktion und Schalter aus einem anderen Thread freigeben.
+  FLock.Enter;
+  try
+    mAction := FAction;
+    mEnabled := FEnabled;
+  finally
+    FLock.Leave;
+  end;
+  Result := Assigned(mAction) and (not Assigned(mEnabled) or mEnabled());
 end;
 
 procedure TAtlasStatusLine.Execute;
+var
+  mAction: TProc;
 begin
-  if HasAction then
+  if not HasAction then
   begin
-    FAction();
+    Exit;
+  end;
+  FLock.Enter;
+  try
+    mAction := FAction;
+  finally
+    FLock.Leave;
+  end;
+  if Assigned(mAction) then
+  begin
+    mAction();
   end;
 end;
 
@@ -424,6 +474,9 @@ begin
   FLock.Enter;
   try
     FRegistry := nil;
+    // Rückrufe jetzt freigeben, solange das Modul noch geladen ist; wer die Zeile hält, erreicht es danach nicht mehr.
+    FAction := nil;
+    FEnabled := nil;
   finally
     FLock.Leave;
   end;

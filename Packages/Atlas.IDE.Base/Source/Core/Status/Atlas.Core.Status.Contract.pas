@@ -50,6 +50,16 @@ type
     function Detail: string;
   end;
 
+  /// <summary>Optional: Zeile, deren Aktion und Schalter dem anmeldenden Modul gehören. Die Registry ruft Detach,
+  /// sobald sie die Zeile abgibt (Remove oder Ersetzen): Wer die Zeile danach noch hält (Statusfeld, Fenster,
+  /// Kachel bis zum nächsten Zeichnen), erreicht keinen Code des Moduls mehr, auch nach dessen Entladen.</summary>
+  IAtlasStatusDetach = interface
+    ['{781EAA1C-EC00-4A4F-BE40-F800CF6B19FD}']
+    /// <summary>Registry, Aktion und Schalter vergessen; danach HasAction False, Execute und Update wirkungslos
+    /// nach außen.</summary>
+    procedure Detach;
+  end;
+
   /// <summary>Zusatzfeld hinter dem Atlas-Feld (TAtlasIdeHost.SetStatusItem): Kennung, Text ('' entfernt es),
   /// Tooltip, Zustand (Neutral = ohne Punkt; sonst Punkt in der Farbe des Zustands, nur in der Atlas-Statusleiste
   /// #1155), Linksklick und Rechtsklick (nil = keiner) mit der linken Oberkante des Felds (Bildschirm).</summary>
