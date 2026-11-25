@@ -92,7 +92,6 @@ type
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     procedure HoverTick(Sender: TObject);
     procedure HideTip;
-    procedure QueueJump(ALine: Integer);
   public
     /// <summary>AScope ist der Scope des Moduls: Antworten erreichen die Marke nur, solange er offen ist.</summary>
     constructor Create(const AScope: IAtlasModuleScope);
@@ -111,7 +110,6 @@ implementation
 uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
@@ -458,7 +456,8 @@ begin
     mLine := TAtlasOwnershipMarks.JumpLine(FHits[mHit].Marks);
     if mLine >= 0 then
     begin
-      QueueJump(mLine);
+      // Erst nach dem Loslassen: Solange die Taste gedrückt ist, markiert der Editor bis zur Sprungstelle.
+      TAtlasIdeNavigation.JumpAfterClick(TAtlasFeature.Problems, FFileName, mLine, 0, nil);
     end;
   except
     on E: Exception do
@@ -549,26 +548,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeOwnershipHints.QueueJump(ALine: Integer);
-var
-  mState: IInterface;
-  mFileName: string;
-  mLine: Integer;
-begin
-  mState := FStateRef;
-  mFileName := FFileName;
-  mLine := ALine;
-  // Erst nach dem Mausereignis: Der Editor setzt sonst den Cursor danach.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Problems,
-    procedure
-    begin
-      if TState(mState as TObject).Alive then
-      begin
-        TAtlasIdeNavigation.GoToLocation(mFileName, mLine, 0);
-      end;
-    end);
-end;
-
 procedure TAtlasIdeOwnershipHints.ApplySettings;
 begin
   FTexts := Texts;
@@ -603,6 +582,9 @@ begin
   Result.Labels[TAtlasOwnershipKind.Passed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipPassed);
   Result.Labels[TAtlasOwnershipKind.Unknown] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipUnknown);
   Result.Labels[TAtlasOwnershipKind.Never] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipNever);
+  Result.Labels[TAtlasOwnershipKind.FreedBy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFreedBy);
+  Result.Labels[TAtlasOwnershipKind.TakenBy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipTakenBy);
+  Result.Labels[TAtlasOwnershipKind.Lent] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipLent);
   Result.FreedIn := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFreedIn);
   Result.PassedSomewhere := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipPassedSomewhere);
   Result.Reasons[TAtlasOwnershipKind.InDestroy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyDestroy);
@@ -616,6 +598,9 @@ begin
   Result.Reasons[TAtlasOwnershipKind.Passed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyPassed);
   Result.Reasons[TAtlasOwnershipKind.Unknown] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyUnknown);
   Result.Reasons[TAtlasOwnershipKind.Never] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyNever);
+  Result.Reasons[TAtlasOwnershipKind.FreedBy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyFreedBy);
+  Result.Reasons[TAtlasOwnershipKind.TakenBy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyTakenBy);
+  Result.Reasons[TAtlasOwnershipKind.Lent] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyLent);
   Result.ContainerLabels[TAtlasOwnershipContainer.OwnsElements] :=
     TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipOwnsElements);
   Result.ContainerLabels[TAtlasOwnershipContainer.ElementsOwned] :=

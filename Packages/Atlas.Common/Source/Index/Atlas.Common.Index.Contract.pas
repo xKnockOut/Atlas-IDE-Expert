@@ -93,6 +93,11 @@ type
     /// Deklaration. Sie sind keine eigenen Mitglieder (#849), zählen aber als Implementierung der
     /// Interface-Methode (interface-not-implemented, hresult-integer-mix).</summary>
     Resolutions: TArray<string>;
+    /// <summary>Nur bei Routinen mit Rumpf: was sie mit einem übergebenen Objekt macht, je Parameter (gibt frei,
+    /// übernimmt, leiht, reicht weiter an …), kodiert wie TParamOwnership.Encode
+    /// (Atlas.Common.Pascal.ParamOwnership); '' ohne Aussage. Deklaration und Implementierung tragen denselben
+    /// Wert.</summary>
+    ParamOwnership: string;
     /// <summary>XMLDoc-Kurztext: Klartext von &lt;summary&gt; aus den ///-Zeilen darüber, eine Zeile,
     /// höchstens TIndexSymbol.cMaxSummary Zeichen; '' ohne Doku (#492).</summary>
     Summary: string;

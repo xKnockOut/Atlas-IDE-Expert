@@ -3,19 +3,21 @@
 // Tests für „Wer gibt das frei?“ (#1877): Einstufung jeder Erzeugung zusammen mit den Leck-Regeln (frei im
 // Destruktor, im finally, Owner, besitzende Liste und Elemente einer anderen Liste, Referenzzählung, Rückgabe,
 // Weitergabe, nie freigegeben genau wie field-not-freed, local-object-not-freed und create-without-assignment),
-// raise und Records übergehen.
+// raise und Records übergehen; Weitergabe an Routinen anderer Units, die freigeben, übernehmen oder nur leihen.
 
 interface
 
 uses
   DUnitX.TestFramework,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Ownership;
 
 type
   [TestFixture]
   TOwnershipSitesTests = class
   private
-    function Sites(const ASource: string): TArray<TOwnershipSite>;
+    function Sites(const ASource: string): TArray<TOwnershipSite>; overload;
+    function Sites(const ASource: string; const AIndex: ISymbolIndex): TArray<TOwnershipSite>; overload;
     function SiteOf(const ASites: TArray<TOwnershipSite>; const AClassName, ATarget: string): TOwnershipSite;
   public
     [Test]
@@ -36,6 +38,8 @@ type
     procedure StatementWithoutAssignment;
     [Test]
     procedure ReturnedAndPassed;
+    [Test]
+    procedure PassedToRoutineOfOtherUnit;
     [Test]
     procedure InterfaceIsRefCounted;
     [Test]
@@ -65,7 +69,8 @@ uses
   Atlas.Common.Rules.Builtin.FreeFields,
   Atlas.Common.Rules.Builtin.Ownership,
   Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
-  Atlas.Common.Rules.Internals.OwnershipTree;
+  Atlas.Common.Rules.Internals.OwnershipTree,
+  Atlas.Tests.SymbolIndex;
 
 const
   cNl = #10;
@@ -79,6 +84,11 @@ end;
 { TOwnershipSitesTests }
 
 function TOwnershipSitesTests.Sites(const ASource: string): TArray<TOwnershipSite>;
+begin
+  Result := Sites(ASource, nil);
+end;
+
+function TOwnershipSitesTests.Sites(const ASource: string; const AIndex: ISymbolIndex): TArray<TOwnershipSite>;
 var
   mTree: TSyntaxTree;
   mContext: TRuleContext;
@@ -91,6 +101,8 @@ begin
     mContext := Default(TRuleContext);
     mContext.Text := ASource;
     mContext.Tree := mTree;
+    mContext.Index := AIndex;
+    mContext.FileName := 'U.pas';
     mRules := nil;
     // Erst in Interface-Variablen: direkt übergeben gibt Delphi die Objekte nie frei.
     mRule := TOwnedFieldNotFreedRule.Create;
@@ -102,7 +114,7 @@ begin
     mRule := TCreatedResultNotFreedRule.Create;
     mRules := mRules + [mRule];
     mFindings := TRuleEngine.Run(mRules, TServerSettings.Default, mContext);
-    Result := TOwnershipSites.Analyze(mTree, ASource, nil, mFindings);
+    Result := TOwnershipSites.Analyze(mContext, mFindings);
   finally
     mTree.Free;
   end;
@@ -167,13 +179,17 @@ procedure TOwnershipSitesTests.FieldWithoutFindingIsUnknown;
 var
   mSource: string;
   mTree: TSyntaxTree;
+  mContext: TRuleContext;
   mSites: TArray<TOwnershipSite>;
 begin
   // Ohne Befund der Regel (abgeschaltet, ignoreTypes) bleibt die Stelle unklar statt rot.
   mSource := UnitText(cFieldWithoutFree, cFieldCreated);
   mTree := TSyntaxTreeCache.Parse(mSource);
   try
-    mSites := TOwnershipSites.Analyze(mTree, mSource, nil, nil);
+    mContext := Default(TRuleContext);
+    mContext.Text := mSource;
+    mContext.Tree := mTree;
+    mSites := TOwnershipSites.Analyze(mContext, nil);
   finally
     mTree.Free;
   end;
@@ -283,6 +299,35 @@ begin
   Assert.AreEqual('Liste', mSites[2].Target);
 end;
 
+const
+  cHelfer = 'unit Helfer;'#10'interface'#10'uses System.Classes;'#10'type'#10'  THalter = class'#10 +
+    '  private'#10'    FListe: TStrings;'#10'  public'#10'    constructor Create(AListe: TStrings);'#10'  end;'#10 +
+    'procedure StrBreakApart(const S, Trenner: string; Teile: TStrings);'#10'procedure Weg(A: TObject);'#10 +
+    'procedure Weiter(A: TObject);'#10'implementation'#10 +
+    'constructor THalter.Create(AListe: TStrings);'#10'begin'#10'  FListe := AListe;'#10'end;'#10 +
+    'procedure StrBreakApart(const S, Trenner: string; Teile: TStrings);'#10'begin'#10'  Teile.Add(S);'#10 +
+    'end;'#10'procedure Weg(A: TObject);'#10'begin'#10'  A.Free;'#10'end;'#10 +
+    'procedure Weiter(A: TObject);'#10'begin'#10'  Weg(A);'#10'end;'#10'end.';
+
+procedure TOwnershipSitesTests.PassedToRoutineOfOtherUnit;
+var
+  mIndex: ISymbolIndex;
+  mSites: TArray<TOwnershipSite>;
+begin
+  mIndex := TTestIndex.Build([cHelfer, 'Helfer.pas']);
+  mSites := Sites('unit U;' + cNl + 'interface' + cNl + 'implementation' + cNl + 'uses System.Classes, Helfer;' +
+    cNl + 'procedure Lauf;' + cNl + 'begin' + cNl + '  StrBreakApart(''a'', '','', TStringList.Create);' + cNl +
+    '  Weg(TStringList.Create);' + cNl + '  THalter.Create(TStringList.Create).Free;' + cNl +
+    '  Weiter(TStringList.Create);' + cNl + 'end;' + cNl + 'end.', mIndex);
+  Assert.AreEqual('lent', KindName(mSites[0]));
+  Assert.AreEqual('StrBreakApart', mSites[0].Detail);
+  Assert.AreEqual('freedBy', KindName(mSites[1]));
+  Assert.AreEqual('Weg', mSites[1].Detail);
+  Assert.AreEqual('takenBy', KindName(mSites[3]));
+  Assert.AreEqual('freedBy', KindName(mSites[4]));
+  Assert.AreEqual('Weiter › Weg', mSites[4].Detail);
+end;
+
 procedure TOwnershipSitesTests.InterfaceIsRefCounted;
 var
   mSites: TArray<TOwnershipSite>;
@@ -308,6 +353,9 @@ begin
   Assert.AreEqual('destroy', TOwnershipSites.cKindNames[TOwnershipKind.InDestroy]);
   Assert.AreEqual('interface', TOwnershipSites.cKindNames[TOwnershipKind.RefCounted]);
   Assert.AreEqual('never', TOwnershipSites.cKindNames[TOwnershipKind.Never]);
+  Assert.AreEqual('freedBy', TOwnershipSites.cKindNames[TOwnershipKind.FreedBy]);
+  Assert.AreEqual('takenBy', TOwnershipSites.cKindNames[TOwnershipKind.TakenBy]);
+  Assert.AreEqual('lent', TOwnershipSites.cKindNames[TOwnershipKind.Lent]);
   Assert.IsTrue(TOwnershipSites.IsOwnershipRule('field-not-freed'));
   Assert.IsFalse(TOwnershipSites.IsOwnershipRule('owned-item-freed'));
 end;

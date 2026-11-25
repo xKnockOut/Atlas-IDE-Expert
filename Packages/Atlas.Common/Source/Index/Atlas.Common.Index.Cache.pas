@@ -96,7 +96,8 @@ type
     // 33: Folgemuster der Projekt-Units im Kopf (#1890, gelernte Vorschläge).
     // 34: Typverweise in InlineRefs nennen das benutzte Mitglied (":TList<T>#Count", ":TList<T>#[]", #2309).
     // 35: Mitglieder von Parametern in InlineRefs (":TTextPosition#Line" bei A.Line, #2309).
-    const cFormatVersion = 35;
+    // 36: Besitz-Zusammenfassung je Parameter (ParamOwnership, Freigabe über Unit-Grenzen).
+    const cFormatVersion = 36;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -396,6 +397,7 @@ begin
   WriteList(AWriter, ATable, ASymbol.InlineRefs);
   WriteList(AWriter, ATable, ASymbol.Resolutions);
   WriteList(AWriter, ATable, ASymbol.Rationale);
+  AWriter.WriteVar(ATable.IndexOf(ASymbol.ParamOwnership));
 end;
 
 procedure WriteUsage(AWriter: TCacheWriter; ATable: TStringTable; const AUsage: TIndexUsage);
@@ -709,6 +711,7 @@ begin
   Result.InlineRefs := AReader.ReadList(AStrings);
   Result.Resolutions := AReader.ReadList(AStrings);
   Result.Rationale := AReader.ReadList(AStrings);
+  Result.ParamOwnership := AReader.ReadString(AStrings);
 end;
 
 function ReadUsage(var AReader: TIndexCacheReader; const AStrings: TArray<string>): TIndexUsage;

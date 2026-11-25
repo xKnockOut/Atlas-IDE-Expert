@@ -2,7 +2,7 @@
 
 // Tests von local-object-not-freed und created-result-not-freed (#1876): Beispiel mit Korrektur, Inline-Variablen,
 // Freigaben und Weitergaben, Owner und Threads, Fabrikfunktionen der Datei und aus der Option factories,
-// Abschalten.
+// Abschalten; Weitergabe an Routinen anderer Units über die Besitz-Zusammenfassung im Index.
 
 interface
 
@@ -25,6 +25,14 @@ type
     procedure OwnersThreadsAndRecordsAreSilent;
     [Test]
     procedure UnknownClassIsSilent;
+    [Test]
+    procedure RoutineOfOtherUnitOnlyBorrows;
+    [Test]
+    procedure RoutineOfOtherUnitFreesOrKeeps;
+    [Test]
+    procedure OwnAssignThatKeepsIsNoReadingCall;
+    [Test]
+    procedure RecordOfUsedUnitBeatsClassOfSameName;
     [Test]
     procedure RuleCanBeTurnedOff;
   end;
@@ -51,6 +59,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Ownership.LocalObjects,
   Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Index.Contract,
+  Atlas.Tests.SymbolIndex,
   Atlas.Tests.RuleAssert,
   Atlas.Tests.SourceText;
 
@@ -169,6 +179,80 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[1].Confidence));
   Assert.Contains(mFound[1].Message, 'TStringList');
+end;
+
+const
+  cHelfer = 'unit Helfer;'#10'interface'#10'uses System.Classes;'#10'type'#10'  THalter = class'#10 +
+    '  private'#10'    FListe: TStrings;'#10'  public'#10'    constructor Create(AListe: TStrings);'#10'  end;'#10 +
+    'procedure StrBreakApart(const S, Trenner: string; Teile: TStrings);'#10'procedure Weg(A: TObject);'#10 +
+    'procedure Weiter(A: TObject);'#10'procedure Anders(A: TObject);'#10'implementation'#10 +
+    'constructor THalter.Create(AListe: TStrings);'#10'begin'#10'  FListe := AListe;'#10'end;'#10 +
+    'procedure StrBreakApart(const S, Trenner: string; Teile: TStrings);'#10'begin'#10'  Teile.Add(S);'#10 +
+    'end;'#10'procedure Weg(A: TObject);'#10'begin'#10'  A.Free;'#10'end;'#10 +
+    'procedure Weiter(A: TObject);'#10'begin'#10'  Weg(A);'#10'end;'#10 +
+    'procedure Anders(A: TObject);'#10'begin'#10'  A.Dispatch(A);'#10'end;'#10'end.';
+
+/// <summary>Treffer für den Rumpf ABody (Variable Liste: TStringList) in einer Unit, die Helfer einbindet.
+/// </summary>
+function CrossUnitFindings(const ABody: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.IndexFindings(TLocalObjectNotFreedRule.Create,
+    'unit Nutzer;'#10'interface'#10'implementation'#10'uses System.Classes, Helfer;'#10'procedure Lauf;'#10 +
+    'var'#10'  Liste: TStringList;'#10'  Halter: THalter;'#10'begin'#10'  Liste := TStringList.Create;'#10 +
+    ABody + 'end;'#10'end.', TTestIndex.Build([cHelfer, 'Helfer.pas']), '', 'Nutzer.pas');
+end;
+
+procedure TLocalObjectNotFreedTests.RoutineOfOtherUnitOnlyBorrows;
+begin
+  // StrBreakApart füllt die Liste nur: Sie bleibt ein Leck des Aufrufers.
+  Assert.AreEqual(1, Integer(Length(CrossUnitFindings('  StrBreakApart(''a,b'', '','', Liste);'#10))));
+  Assert.AreEqual(1, Integer(Length(CrossUnitFindings('  ExtractStrings(['',''], [], ''a,b'', Liste);'#10))));
+end;
+
+procedure TLocalObjectNotFreedTests.RoutineOfOtherUnitFreesOrKeeps;
+begin
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Weg(Liste);'#10))));
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Weiter(Liste);'#10))));
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Halter := THalter.Create(Liste);'#10 +
+    '  Halter.Free;'#10))));
+  // Unklar (Aufruf einer Methode des Objekts) und unbekannte Routinen bleiben still.
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Anders(Liste);'#10))));
+  Assert.AreEqual(0, Integer(Length(CrossUnitFindings('  Unbekannt(Liste);'#10))));
+end;
+
+procedure TLocalObjectNotFreedTests.OwnAssignThatKeepsIsNoReadingCall;
+const
+  cText = 'unit Werte;'#10'interface'#10'procedure Lauf;'#10'implementation'#10'type'#10'  TBau = class'#10 +
+    '  end;'#10'  TWert = class'#10'  public'#10'    Aktuell: TBau;'#10 +
+    '    procedure Assign(ABau: TBau);'#10'  end;'#10'procedure TWert.Assign(ABau: TBau);'#10'begin'#10 +
+    '  Aktuell := ABau;'#10'end;'#10'procedure Lauf;'#10'var'#10'  Wert: TWert;'#10'  Bau: TBau;'#10'begin'#10 +
+    '  Wert := nil;'#10'  Bau := TBau.Create;'#10'  Wert.Assign(Bau);'#10'end;'#10'end.';
+begin
+  // Assign gilt als lesend nur, solange der Index nichts über die Routine weiß; diese behält das Objekt.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLocalObjectNotFreedRule.Create, cText,
+    TTestIndex.Build([cText, 'Werte.pas']), '', 'Werte.pas'))));
+  // Assign einer unbekannten Klasse bleibt lesend: Das Objekt ist ein Leck.
+  Assert.AreEqual(1, Integer(Length(CrossUnitFindings('  Halter.Assign(Liste);'#10))));
+end;
+
+procedure TLocalObjectNotFreedTests.RecordOfUsedUnitBeatsClassOfSameName;
+const
+  cRecord = 'unit Satz;'#10'interface'#10'type'#10'  TLayout = record'#10'    Breite: Integer;'#10 +
+    '    class function Create(ABreite: Integer): TLayout; static;'#10'  end;'#10'implementation'#10 +
+    'class function TLayout.Create(ABreite: Integer): TLayout;'#10'begin'#10'  Result.Breite := ABreite;'#10 +
+    'end;'#10'end.';
+  cClass = 'unit Klasse;'#10'interface'#10'type'#10'  TLayout = class'#10'  public'#10 +
+    '    constructor Create(ABreite: Integer);'#10'  end;'#10'implementation'#10 +
+    'constructor TLayout.Create(ABreite: Integer);'#10'begin'#10'end;'#10'end.';
+  cUser = 'unit Nutzer;'#10'interface'#10'implementation'#10'uses Satz;'#10'procedure Lauf;'#10'var'#10 +
+    '  Layout: TLayout;'#10'begin'#10'  Layout := TLayout.Create(3);'#10'  Lauf2(Layout.Breite);'#10'end;'#10 +
+    'end.';
+begin
+  // Welche gleichnamige Art zählt, entscheidet die uses-Liste, nicht die Reihenfolge im Index.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLocalObjectNotFreedRule.Create, cUser,
+    TTestIndex.Build([cClass, 'Klasse.pas', cRecord, 'Satz.pas']), '', 'Nutzer.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLocalObjectNotFreedRule.Create, cUser,
+    TTestIndex.Build([cRecord, 'Satz.pas', cClass, 'Klasse.pas']), '', 'Nutzer.pas'))));
 end;
 
 procedure TLocalObjectNotFreedTests.RuleCanBeTurnedOff;
