@@ -33,6 +33,7 @@ uses
   Atlas.Core.Results.DataFlow,
   Atlas.UI.Results.Strings,
   Atlas.UI.Results.Texts,
+  Atlas.UI.Results.DataFlow,
   Atlas.UI.Results.Frame;
 
 function Place(ALine: Integer; const AText: string): TAtlasDataFlowPlace;
@@ -140,13 +141,13 @@ procedure WireDataFlow(const ATarget: TAtlasResultsFrame; const AProbe: TDataFlo
 begin
   AProbe.FAsked := 0;
   ATarget.Flow.OnExpand :=
-    function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
-      const APath: TArray<string>): TAtlasDataFlowResult
+    procedure(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+      const APath: TArray<string>; const ADone: TAtlasDataFlowLoaded)
     begin
       Inc(AProbe.FAsked);
       AProbe.FAskedKey := ASource.Key;
       AProbe.FAskedPath := APath;
-      Result := Answer([Assignment('5', [Place(20, 'Summe := 5;')], nil)]);
+      ADone(Answer([Assignment('5', [Place(20, 'Summe := 5;')], nil)]));
     end;
   AProbe.FOpenedLine := -1;
   ATarget.OnOpen :=
