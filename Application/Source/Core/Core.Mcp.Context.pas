@@ -18,9 +18,17 @@ uses
   Atlas.Common.Mcp.Contract.DeadCode,
   Atlas.Common.Mcp.Contract.RuleDocs,
   Atlas.Common.Mcp.Contract.TextChecks,
+  Atlas.Common.Mcp.Contract.Workspace,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Architecture.Report,
+<<<<<<< HEAD
   Atlas.Common.Lsp.SymbolPath.Search,
+||||||| 2927015ba
+  Atlas.Common.Architecture.SymbolPath,
+=======
+  Atlas.Common.Architecture.SymbolPath,
+  Atlas.Common.Architecture.UsesService,
+>>>>>>> refs/remotes/origin/main-merging
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Hotspots.Service,
@@ -28,8 +36,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Mcp.RefactorTools,
   Atlas.Common.Compiler.Contract,
-  Core.VersionControlChanges,
-  Core.WorkspaceGroup;
+  Core.VersionControlChanges;
 
 type
   /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
@@ -76,7 +83,10 @@ type
     Server: TMcpServer;
     Tools: TMcpIndexTools;
     Code: TMcpCodeTools;
-    Group: TCoreWorkspaceGroup;
+    /// <summary>Arbeitsbereich des Servers; nil, wenn nur die Namen der Werkzeuge gebraucht werden.</summary>
+    Workspace: IMcpWorkspace;
+    /// <summary>Uses-Graph der Gruppe (#64); nil wie Workspace.</summary>
+    UsesGraph: TUsesGraphService;
     Root: string;
     Guard: TMcpPathGuard;
     Edit: TMcpEditTools;
@@ -85,7 +95,7 @@ type
     Refactor: TMcpRefactorFunc;
     Architecture: TMcpArchitectureFunc;
     FindPath: TMcpFindPathFunc;
-    /// <summary>Symbole und Include-Dateien je Datei (#860) aus Group.</summary>
+    /// <summary>Symbole und Include-Dateien je Datei (#860) aus Workspace.</summary>
     CheckSource: TPascalSourceFunc;
     Index: ISymbolIndex;
     Hotspots: THotspotService;
@@ -112,17 +122,17 @@ function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 /// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
 function LoadProject(const AFileName, AConfiguration, APlatform: string; out AInfo: TProjectInfo): Boolean;
 /// <summary>Formatregeln wie im Editor für AFileName: format.* über .editorconfig über den Vorgaben.</summary>
-function FormatStyleOf(AGroup: TCoreWorkspaceGroup; const AFileName: string): TFormatStyle;
+function FormatStyleOf(const AWorkspace: IMcpWorkspace; const AFileName: string): TFormatStyle;
 /// <summary>DUnitX-Testprojekt: Die Hauptdatei verwendet DUnitX.TestFramework (#69).</summary>
 function IsTestProject(const AFileName: string): Boolean;
 /// <summary>Projektdateien unter ARoot ohne Sicherungsordner der IDE.</summary>
 function ProjectFilesUnder(const ARoot: string): TArray<string>;
-/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an
+/// <summary>AWorkspace.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an
 /// der
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
-/// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
-function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TPascalSourceFunc;
+/// (Leck unter Delphi). AWorkspace erst beim Aufruf: Tests registrieren die Werkzeuge ohne Arbeitsbereich.</summary>
+function CheckSourceOf(const AWorkspace: IMcpWorkspace): TPascalSourceFunc;
 
 implementation
 
@@ -173,9 +183,9 @@ begin
   Result := TCoreBootstrap.ReadSourceText(AFileName, AText);
 end;
 
-function FormatStyleOf(AGroup: TCoreWorkspaceGroup; const AFileName: string): TFormatStyle;
+function FormatStyleOf(const AWorkspace: IMcpWorkspace; const AFileName: string): TFormatStyle;
 begin
-  Result := TLspFormatting.Resolve(nil, AFileName, AGroup.WorkspaceOf(AFileName).Configuration.Settings.Formatting,
+  Result := TLspFormatting.Resolve(nil, AFileName, AWorkspace.SettingsOf(AFileName).Formatting,
     function(const AConfigFile: string; out AConfigText: string): Boolean
     begin
       Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
@@ -240,17 +250,17 @@ begin
   end;
 end;
 
-/// <summary>AGroup.Main.State.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an
+/// <summary>AWorkspace.CheckSource als Methodenreferenz. Als anonyme Methode, weil Free Pascal (Linux-Bau) an
 /// der
 /// Umwandlung einer Methode eines anderen Objekts intern abbricht; in eigener Routine, weil eine anonyme Methode in
 /// einer Variablen, die die anderen anonymen Methoden derselben Routine einfangen, ihren eigenen Rahmen festhält
-/// (Leck unter Delphi). Main erst beim Aufruf: Tests registrieren die Werkzeuge ohne Gruppe.</summary>
-function CheckSourceOf(AGroup: TCoreWorkspaceGroup): TPascalSourceFunc;
+/// (Leck unter Delphi). AWorkspace erst beim Aufruf: Tests registrieren die Werkzeuge ohne Arbeitsbereich.</summary>
+function CheckSourceOf(const AWorkspace: IMcpWorkspace): TPascalSourceFunc;
 begin
   Result :=
     function(const AFileName: string): TPascalSource
     begin
-      Result := AGroup.Main.State.CheckSource(AFileName);
+      Result := AWorkspace.CheckSource(AFileName);
     end;
 end;
 

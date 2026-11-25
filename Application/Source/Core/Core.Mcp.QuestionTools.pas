@@ -27,11 +27,11 @@ uses
   Atlas.Common.Mcp.IdeQuestions,
   Atlas.Common.Mcp.IdeBuilds,
   Atlas.Common.Mcp.Confirm,
-  Core.WorkspaceGroup;
+  Atlas.Common.Mcp.Contract.Workspace;
 
 function ToolAskUser(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
-  Result := AskInIde(AContext.Root, AContext.Group.ProcessIdentity.Client, AArguments);
+  Result := AskInIde(AContext.Root, AContext.Workspace.Client, AArguments);
 end;
 
 // Jede Frage-Funktion in eigener Routine: Fingen sich anonyme Methoden derselben Routine gegenseitig ein, hielte
@@ -56,15 +56,15 @@ end;
 
 /// <summary>Fragt den Menschen: über den Client, wenn er Rückfragen anbietet, sonst in der IDE. AGate: nur fragen,
 /// wenn die Einstellung es erlaubt (nil = immer).</summary>
-function HumanChooser(const AContext: TMcpToolContext; const AGate: TFunc<TCoreWorkspaceGroup, Boolean>):
+function HumanChooser(const AContext: TMcpToolContext; const AGate: TFunc<IMcpWorkspace, Boolean>):
   TMcpChooseFunc;
 var
   mServer: TMcpServer;
-  mGroup: TCoreWorkspaceGroup;
+  mWorkspace: IMcpWorkspace;
   mClient, mIde: TMcpAskFunc;
 begin
   mServer := AContext.Server;
-  mGroup := AContext.Group;
+  mWorkspace := AContext.Workspace;
   mClient := ClientAsk(mServer);
   mIde := IdeAsk(AContext.Root);
   Result :=
@@ -72,7 +72,7 @@ begin
     var
       mViaClient: TMcpAskFunc;
     begin
-      if (mGroup = nil) or (Assigned(AGate) and not AGate(mGroup)) then
+      if (mWorkspace = nil) or (Assigned(AGate) and not AGate(mWorkspace)) then
       begin
         Exit(TMcpConfirm.cNotAsked);
       end;
@@ -82,17 +82,17 @@ begin
         mViaClient := mClient;
       end;
       Result := TMcpConfirm.Choose(mViaClient, mIde,
-        TMcpConfirm.Question(AText, AOptions, mGroup.ProcessIdentity.Client));
+        TMcpConfirm.Question(AText, AOptions, mWorkspace.Client));
     end;
 end;
 
 /// <summary>mcp.confirm erlaubt Rückfragen der schreibenden Werkzeuge.</summary>
-function ConfirmAllowed: TFunc<TCoreWorkspaceGroup, Boolean>;
+function ConfirmAllowed: TFunc<IMcpWorkspace, Boolean>;
 begin
   Result :=
-    function(AGroup: TCoreWorkspaceGroup): Boolean
+    function(AWorkspace: IMcpWorkspace): Boolean
     begin
-      Result := AGroup.Main.Configuration.Settings.McpConfirm;
+      Result := AWorkspace.Settings.McpConfirm;
     end;
 end;
 
@@ -102,7 +102,7 @@ begin
 end;
 
 /// <summary>Zustimmung nach mcp.openProjects; liest die Einstellung bei jedem Aufruf.</summary>
-function OpenConsent(AGroup: TCoreWorkspaceGroup; const AChoose: TMcpChooseFunc): TMcpMayOpenFunc;
+function OpenConsent(const AWorkspace: IMcpWorkspace; const AChoose: TMcpChooseFunc): TMcpMayOpenFunc;
 begin
   Result :=
     function(const AProjectFile: string; out AReason: string): Boolean
@@ -110,9 +110,9 @@ begin
       mPolicy: TMcpOpenProjects;
     begin
       mPolicy := TMcpOpenProjects.Ask;
-      if AGroup <> nil then
+      if AWorkspace <> nil then
       begin
-        mPolicy := TMcpIdeBuilds.OpenPolicyOf(AGroup.Main.Configuration.Settings.McpOpenProjects);
+        mPolicy := TMcpIdeBuilds.OpenPolicyOf(AWorkspace.Settings.McpOpenProjects);
       end;
       Result := TMcpIdeBuilds.MayOpen(mPolicy, AProjectFile, AChoose, AReason);
     end;
@@ -132,7 +132,7 @@ function IdeOpenOf(const AContext: TMcpToolContext): TMcpIdeOpen;
 begin
   Result := Default(TMcpIdeOpen);
   Result.Candidates := ProjectCandidates(AContext.Root);
-  Result.MayOpen := OpenConsent(AContext.Group, HumanChooser(AContext, nil));
+  Result.MayOpen := OpenConsent(AContext.Workspace, HumanChooser(AContext, nil));
 end;
 
 procedure RegisterQuestionTools(const AContext: TMcpToolContext);

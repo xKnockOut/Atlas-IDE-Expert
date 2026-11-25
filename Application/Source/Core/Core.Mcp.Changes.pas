@@ -10,17 +10,17 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.Prompts,
   Atlas.Common.Index.Contract,
-  Core.WorkspaceGroup,
+  Atlas.Common.Mcp.Contract.Workspace,
   Core.Mcp.Context;
 
 /// <summary>Unit-Name oder Pfad → Datei, geprüft wie Pfadparameter (#99): Units außerhalb des Arbeitsbereichs
 /// und seiner Bibliothekspfade ergeben einen Fehler mit Begründung (#1357).</summary>
-function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; AGuard: TMcpPathGuard):
+function UnitFileOf(const AIndex: ISymbolIndex; const AWorkspace: IMcpWorkspace; AGuard: TMcpPathGuard):
   TFunc<string, string>;
 /// <summary>Änderungen laut Git oder SVN für prepare_commit (#1357): geänderte Dateien unter ARoot und ihre Befunde
 /// in geänderten Zeilen wie --changed-lines, dazu der Commit-Präfix, den das Plugin für das aktuelle Issue in
 /// &lt;gitdir&gt;/atlas-commit-prefix schreibt (#765).</summary>
-function ChangesOf(const AAdapters: TMcpHostAdapters; AGroup: TCoreWorkspaceGroup; const ARoot: string):
+function ChangesOf(const AAdapters: TMcpHostAdapters; const AWorkspace: IMcpWorkspace; const ARoot: string):
   TMcpChangesFunc;
 
 implementation
@@ -50,7 +50,7 @@ const
 
 /// <summary>Unit-Name oder Pfad → Datei, geprüft wie Pfadparameter (#99): Units außerhalb des Arbeitsbereichs
 /// und seiner Bibliothekspfade ergeben einen Fehler mit Begründung (#1357).</summary>
-function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; AGuard: TMcpPathGuard):
+function UnitFileOf(const AIndex: ISymbolIndex; const AWorkspace: IMcpWorkspace; AGuard: TMcpPathGuard):
   TFunc<string, string>;
 begin
   Result :=
@@ -63,7 +63,7 @@ begin
         Exit(AGuard.Resolve(AUnit));
       end;
       // Units anderer Projekte der Gruppe erst bei Bedarf (#1112).
-      AGroup.EnsureUnit(AUnit);
+      AWorkspace.EnsureUnit(AUnit);
       if not AIndex.FindUnit(AUnit, mUnit) then
       begin
         raise EMcpToolError.Create(cTexts[TMcpChangesText.NotInIndex].Fmt([AUnit]));
@@ -105,7 +105,7 @@ end;
 
 /// <summary>Geänderte Datei relativ zu ARoot mit ihren Befunden in geänderten Zeilen (wie --changed-lines); ohne
 /// AChecks ohne Befunde.</summary>
-function ChangedFileOf(AGroup: TCoreWorkspaceGroup; AVcs: TVcsChanges; const ARoot, AFile: string;
+function ChangedFileOf(const AWorkspace: IMcpWorkspace; AVcs: TVcsChanges; const ARoot, AFile: string;
   const AChecks: IMcpTextChecks): TMcpChangedFile;
 var
   mText: string;
@@ -121,7 +121,7 @@ begin
   begin
     Exit;
   end;
-  for mFinding in AChecks.Check(AFile, Result.Path, mText, AGroup.Main.Configuration.Settings) do
+  for mFinding in AChecks.Check(AFile, Result.Path, mText, AWorkspace.Settings) do
   begin
     if mLines.Contains(mFinding.Range.StartPos.Line) then
     begin
@@ -131,7 +131,7 @@ begin
 end;
 
 /// <summary>Änderungen unter ARoot gegenüber ABase samt Befunden und Commit-Präfix.</summary>
-function ChangeSetOf(const AAdapters: TMcpHostAdapters; AGroup: TCoreWorkspaceGroup; const ARoot, ABase: string):
+function ChangeSetOf(const AAdapters: TMcpHostAdapters; const AWorkspace: IMcpWorkspace; const ARoot, ABase: string):
   TMcpChangeSet;
 var
   mAccess: TCoreVcsAccess;
@@ -143,7 +143,7 @@ begin
   Result.Base := BaseOrHead(ABase);
   // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
   mAccess := AAdapters.VcsAccess();
-  if not LoadChanges(mAccess, AGroup.Main.Configuration.Settings, ARoot, ABase, mVcs, Result.Error) then
+  if not LoadChanges(mAccess, AWorkspace.Settings, ARoot, ABase, mVcs, Result.Error) then
   begin
     Exit;
   end;
@@ -153,7 +153,7 @@ begin
     begin
       if TMcpPathGuard.IsInside(ARoot, mFile) then
       begin
-        Result.Files := Result.Files + [ChangedFileOf(AGroup, mVcs, ARoot, mFile, AAdapters.TextChecks)];
+        Result.Files := Result.Files + [ChangedFileOf(AWorkspace, mVcs, ARoot, mFile, AAdapters.TextChecks)];
       end;
     end;
     if mVcs is TGitChanges then
@@ -170,7 +170,7 @@ end;
 /// <summary>Änderungen laut Git oder SVN für prepare_commit (#1357): geänderte Dateien unter ARoot und ihre Befunde
 /// in geänderten Zeilen wie --changed-lines, dazu der Commit-Präfix, den das Plugin für das aktuelle Issue in
 /// &lt;gitdir&gt;/atlas-commit-prefix schreibt (#765).</summary>
-function ChangesOf(const AAdapters: TMcpHostAdapters; AGroup: TCoreWorkspaceGroup; const ARoot: string):
+function ChangesOf(const AAdapters: TMcpHostAdapters; const AWorkspace: IMcpWorkspace; const ARoot: string):
   TMcpChangesFunc;
 var
   mRoot: string;
@@ -181,7 +181,7 @@ begin
   Result :=
     function(const ABase: string): TMcpChangeSet
     begin
-      Result := ChangeSetOf(mAdapters, AGroup, mRoot, ABase);
+      Result := ChangeSetOf(mAdapters, AWorkspace, mRoot, ABase);
     end;
 end;
 

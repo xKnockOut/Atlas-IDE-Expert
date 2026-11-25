@@ -33,7 +33,7 @@ uses
   Atlas.Common.Localization.Texts,
   Atlas.Core.Tracker.CurrentIssue,
   Core.Mcp.IssueText,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -146,12 +146,12 @@ var
 begin
   if not TMcpCurrentIssueText.ParseSection(TMcpArgs.OptionalString(AArguments, 'section'), ASection) then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('section', ['summary', 'checklist', 'body', 'comments', 'all']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('section', ['summary', 'checklist', 'body', 'comments', 'all']));
   end;
   mFormat := TMcpArgs.OptionalString(AArguments, 'format');
   if (mFormat <> '') and not SameText(mFormat, 'text') and not SameText(mFormat, 'json') then
   begin
-    raise EMcpToolError.Create(TCoreTexts.Choice('format', ['text', 'json']));
+    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['text', 'json']));
   end;
   AJson := SameText(mFormat, 'json');
 end;

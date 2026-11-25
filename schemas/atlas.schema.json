@@ -199,6 +199,43 @@
                 "description": "Nur architecture-role-import und architecture-contract-content: Hosted-Features der Anwendung, erstes Namenssegment ohne Präfix (Feature.Rolle.Sache). Sie importieren nur Foundation und Platform-Features, nie einander. Vorgabe: keine.",
                 "x-description-en": "Only architecture-role-import and architecture-contract-content: hosted features of the application, first name segment without prefix (Feature.Role.Thing). They import only Foundation and platform features, never each other. Default: none."
               },
+              "domainPackages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-role-import und architecture-contract-content: Präfixe der Fachcode-Packages. Ihre Units heißen Package.Host-Rolle.Sache (Host-Rollen im Package) oder Package.Feature.Rolle.Sache (Hosted-Features); Hosted-Features importieren einander nie und vom Host nur Foundation, Fachcode-Packages einander nicht. Vorgabe: keine.",
+                "x-description-en": "Only architecture-role-import and architecture-contract-content: prefixes of the domain packages. Their units are named Package.HostRole.Thing (host roles in the package) or Package.Feature.Role.Thing (hosted features); hosted features never import each other and only Foundation from the host, domain packages do not import each other. Default: none."
+              },
+              "basePackage": {
+                "type": "string",
+                "description": "Nur architecture-role-import und architecture-contract-content: das Fachcode-Package, das die anderen aufnimmt. Beim Import aus einem anderen Fachcode-Package gilt es als Teil des Hosts; Hosted-Features sehen von ihm nur Foundation.",
+                "x-description-en": "Only architecture-role-import and architecture-contract-content: the domain package that hosts the others. On import from another domain package it counts as part of the host; hosted features see only its Foundation."
+              },
+              "layerPrefixes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-role-import und architecture-contract-content: Präfixe alter Schichtnamen, die wie Ausgabeartefakte eingeordnet werden, solange Units sie tragen. Aus einem Fachcode-Package gilt eine solche Unit als Hosted-Feature von basePackage. Vorgabe: keine.",
+                "x-description-en": "Only architecture-role-import and architecture-contract-content: prefixes of old layer names, classified like output artifacts as long as units carry them. From a domain package such a unit counts as a hosted feature of basePackage. Default: none."
+              },
+              "layerPackages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-role-import und architecture-contract-content: Fachcode-Packages, deren Units noch Schichtnamen tragen. Ihr Präfix gilt bis zur Umstellung nicht, für ihre Units gilt die alte Regel. Vorgabe: keine.",
+                "x-description-en": "Only architecture-role-import and architecture-contract-content: domain packages whose units still carry layer names. Their prefix does not apply until they are switched over, the old rule applies to their units. Default: none."
+              },
+              "frameworks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-role-import: host-spezifische Frameworks als Unit-Name oder Namensanfang vor einem Punkt, z. B. \"Vcl\", \"ToolsAPI\". In Fachcode-Packages binden sie nur Host-Rollen und die Rolle Hosting ein. Vorgabe: keine.",
+                "x-description-en": "Only architecture-role-import: host-specific frameworks as unit name or name start before a dot, e.g. \"Vcl\", \"ToolsAPI\". In domain packages only host roles and the role Hosting use them. Default: none."
+              },
               "allow": {
                 "type": "array",
                 "items": {

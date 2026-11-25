@@ -340,7 +340,7 @@ begin
   try
     mServices := TMcpServices.Create(mFolder, mLogger);
     try
-      mChanges := ChangesOf(TMcpServices.GroupAdapters(mServices.Group), mServices.Group, mFolder)('');
+      mChanges := ChangesOf(TMcpServices.GroupAdapters(mServices.Group), mServices.McpWorkspace, mFolder)('');
       Assert.AreEqual('HEAD', mChanges.Base);
       Assert.AreNotEqual('', mChanges.Error, 'ohne Git oder SVN ein Grund');
       Assert.AreEqual(0, Integer(Length(mChanges.Files)));

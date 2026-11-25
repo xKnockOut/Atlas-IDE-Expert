@@ -779,6 +779,11 @@ Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rule
 | `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common"; ohne Angabe meldet die Regel nichts. |
 | `hostRoles` | string-list | `["Foundation","Core","Shell","Adapters","Platform"]` | Erste Namenssegmente der Host-Units ohne Präfix. |
 | `hostedFeatures` | string-list | `[]` | Hosted-Features der Anwendung: erstes Namenssegment ohne Präfix; sie importieren nur Foundation und Platform-Features, nie einander. |
+| `domainPackages` | string-list | `[]` | Fachcode-Packages des Plugins (Base und die Module); ihre Units heißen <Package>.<Host-Rolle>.* oder <Package>.<Feature>.<Rolle>.* und folgen Host- und Hosted-Feature-Matrix. |
+| `basePackage` | string | `""` | Fachcode-Package, das für jedes andere Fachcode-Package zum Host zählt; Hosted-Features eines Moduls sehen nur seine Foundation. |
+| `layerPrefixes` | string-list | `[]` | Präfixe der alten Schichtnamen (z. B. "Atlas.Core", "Atlas.UI", "Atlas.IDE") für Packages in "layerPackages". |
+| `layerPackages` | string-list | `[]` | Fachcode-Packages, die noch nach ihrer Schicht heißen; für sie gilt die alte Schichtregel. |
+| `frameworks` | string-list | `[]` | Framework-Units als Name oder Namensanfang vor einem Punkt (z. B. "Vcl", "ToolsAPI"); nur Hosting und Host-Rollen binden sie ein. |
 | `allow` | string-list | `[]` | Genehmigte Ausnahmen "Quelle -> Ziel" (beide Globs). |
 
 Mit Treffer:
@@ -809,6 +814,10 @@ Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rule
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common". |
+| `domainPackages` | string-list | `[]` | Fachcode-Packages des Plugins (Base und die Module); ihre Units heißen <Package>.<Host-Rolle>.* oder <Package>.<Feature>.<Rolle>.* und folgen Host- und Hosted-Feature-Matrix. |
+| `basePackage` | string | `""` | Fachcode-Package, das für jedes andere Fachcode-Package zum Host zählt; Hosted-Features eines Moduls sehen nur seine Foundation. |
+| `layerPrefixes` | string-list | `[]` | Präfixe der alten Schichtnamen (z. B. "Atlas.Core", "Atlas.UI", "Atlas.IDE") für Packages in "layerPackages". |
+| `layerPackages` | string-list | `[]` | Fachcode-Packages, die noch nach ihrer Schicht heißen; für sie gilt die alte Schichtregel. |
 | `allow` | string-list | `[]` | Genehmigte Ausnahmen "Unit.Typ" als Glob. |
 
 Mit Treffer:

@@ -62,7 +62,7 @@ uses
   Atlas.Common.Pascal.CompilerSwitches,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Localization.Texts,
-  Core.Texts;
+  Atlas.Common.Localization.RequestTexts;
 
 type
 {$SCOPEDENUMS ON}
@@ -78,7 +78,7 @@ function LineOf(const AArguments: TJSONArray): Integer;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TCoreTexts.Missing(['uri', 'line']));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TRequestTexts.Missing(['uri', 'line']));
   end;
   Result := TJSONNumber(AArguments.Items[1]).AsInt;
 end;

@@ -9,6 +9,7 @@ interface
 uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Mcp.EditTools,
+  Core.WorkspaceGroup,
   Core.Mcp.Context;
 
 type
@@ -16,7 +17,8 @@ type
   public
     /// <summary>Gibt AContext die Quelle von refactor (Code-Aktionen und Refactorings des Servers über Index und
     /// Gruppe des Kontexts) und den Bearbeitungswerkzeugen das Anlegen und Löschen von Dateien.</summary>
-    class procedure Attach(var AContext: TMcpToolContext; const ALogger: ILogger); static;
+    class procedure Attach(var AContext: TMcpToolContext; AGroup: TCoreWorkspaceGroup; const ALogger: ILogger);
+      static;
     /// <summary>Neue Dateien als UTF-8 mit BOM und CRLF anlegen, Dateien von der Platte löschen.</summary>
     class function FileOperations: TMcpFileOperations; static;
   end;
@@ -37,9 +39,9 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Server,
   Core.Workspace,
-  Core.WorkspaceGroup,
   Shell.Composition.Refactorings.Services,
   Shell.Mcp.RefactorHost,
+  Adapters.Mcp.Workspace,
   Atlas.Common.Mcp.RefactorTools;
 
 /// <summary>Neue Datei aus refactor (#2150): UTF-8 mit BOM und CRLF wie neue Units der IDE, Ordner wird angelegt.
@@ -142,7 +144,7 @@ begin
   Result :=
     function(const AUri: string): TFormatStyle
     begin
-      Result := FormatStyleOf(AGroup, TDocumentUris.ToPath(AUri));
+      Result := FormatStyleOf(TMcpWorkspaceAdapter.ForGroup(AGroup), TDocumentUris.ToPath(AUri));
     end;
 end;
 
@@ -175,9 +177,10 @@ end;
 
 { TMcpRefactorSources }
 
-class procedure TMcpRefactorSources.Attach(var AContext: TMcpToolContext; const ALogger: ILogger);
+class procedure TMcpRefactorSources.Attach(var AContext: TMcpToolContext; AGroup: TCoreWorkspaceGroup;
+  const ALogger: ILogger);
 begin
-  AContext.Refactor := RefactorOf(NewHost(AContext.Index, AContext.Group, ALogger));
+  AContext.Refactor := RefactorOf(NewHost(AContext.Index, AGroup, ALogger));
   AContext.Edit.Files := FileOperations;
 end;
 
