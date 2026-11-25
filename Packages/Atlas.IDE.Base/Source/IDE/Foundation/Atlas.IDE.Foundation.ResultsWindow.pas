@@ -114,6 +114,7 @@ uses
   ToolsAPI,
   Vcl.Graphics,
   Atlas.UI.Foundation.Strings,
+  Atlas.UI.Results.CallDiagram,
   Atlas.Vcl.Images.Symbol,
   Atlas.ToolsApi.Windows.DockWindow;
 
@@ -223,22 +224,28 @@ begin
       end;
     end;
   AFrame.Hierarchy.OnExpand :=
-    function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
+    procedure(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem; const ADone: TAtlasCallLoaded)
     begin
-      Result := nil;
       if Assigned(TAtlasIdeResultsWindow.OnExpand) then
       begin
-        Result := TAtlasIdeResultsWindow.OnExpand(ADirection, AItem);
+        TAtlasIdeResultsWindow.OnExpand(ADirection, AItem, ADone);
+      end
+      else
+      begin
+        ADone(nil);
       end;
     end;
   AFrame.Flow.OnExpand :=
-    function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
-      const APath: TArray<string>): TAtlasDataFlowResult
+    procedure(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+      const APath: TArray<string>; const ADone: TAtlasDataFlowLoaded)
     begin
-      Result := Default(TAtlasDataFlowResult);
       if Assigned(TAtlasIdeResultsWindow.OnFlowExpand) then
       begin
-        Result := TAtlasIdeResultsWindow.OnFlowExpand(ADirection, ASource, APath);
+        TAtlasIdeResultsWindow.OnFlowExpand(ADirection, ASource, APath, ADone);
+      end
+      else
+      begin
+        ADone(Default(TAtlasDataFlowResult));
       end;
     end;
   AFrame.Flow.OnFilter :=
