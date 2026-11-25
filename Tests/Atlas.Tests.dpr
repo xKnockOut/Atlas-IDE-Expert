@@ -2713,6 +2713,8 @@ uses
   Adapters.Lsp.RuleCatalog.Tests in 'Application\Adapters\Adapters.Lsp.RuleCatalog.Tests.pas',
   Adapters.Lsp.FindingsPrompt in '..\Application\Source\Adapters\Adapters.Lsp.FindingsPrompt.pas',
   Adapters.Lsp.FindingsPrompt.Tests in 'Application\Adapters\Adapters.Lsp.FindingsPrompt.Tests.pas',
+  Adapters.Lsp.BulkFix in '..\Application\Source\Adapters\Adapters.Lsp.BulkFix.pas',
+  Adapters.Lsp.BulkFix.Tests in 'Application\Adapters\Adapters.Lsp.BulkFix.Tests.pas',
   Shell.Composition.FeatureWiring in '..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas',
   Shell.Composition.CommandWiring in '..\Application\Source\Shell\Shell.Composition.CommandWiring.pas',
   Shell.Composition.ClientStart in '..\Application\Source\Shell\Shell.Composition.ClientStart.pas',

@@ -2,6 +2,7 @@
 
 // Tests des Anbieters der Sammelkorrektur (#1352) für andere Features: korrigiert Texte, ohne zu schreiben, liefert
 // Diff mit / im Pfad und beide Zusammenfassungen; eine niedrigere Untergrenze als fix.minConfidence lehnt er ab.
+// Über Dateien des Arbeitsbereichs: Umfeld und Text je Datei, Baseline-Treffer bleiben, unlesbare Dateien fehlen.
 
 interface
 
@@ -18,12 +19,23 @@ type
     procedure LeavesCleanFileUnchanged;
     [Test]
     procedure RefusesLowerConfidence;
+    [Test]
+    procedure WorkspaceFixesWithContextOfFile;
+    [Test]
+    procedure WorkspaceKeepsBaselineFindings;
+    [Test]
+    procedure WorkspaceRefusesLowerConfidence;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Findings.Baseline,
+  Atlas.Common.Rules.Checker,
+  Atlas.Common.Rules.CheckContext,
+  Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Contract.Api,
   Atlas.Common.Rules.Providers.BulkFix;
@@ -45,6 +57,48 @@ end;
 function Provider: IRuleBulkFix;
 begin
   Result := TRuleBulkFixProvider.Create(BuiltinRules, nil, nil);
+end;
+
+var
+  Baseline: IRuleBaseline;
+
+/// <summary>Text von U.pas und V.pas; andere Dateien sind nicht lesbar.</summary>
+function ReadText(const AFileName: string; out AText: string): Boolean;
+begin
+  AText := '';
+  Result := True;
+  if SameText(ExtractFileName(AFileName), 'U.pas') then
+  begin
+    AText := cAssignedFree;
+  end
+  else if SameText(ExtractFileName(AFileName), 'V.pas') then
+  begin
+    AText := cClean;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Umfeld je Datei: eingebaute Regeln, Vorgaben, Pfad unter Src, Baseline.</summary>
+function Contexts: TRuleContextProvider;
+begin
+  Result :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      AContext := Default(TRuleCheckContext);
+      AContext.Rules := BuiltinRules;
+      AContext.Settings := TServerSettings.Default;
+      AContext.RelativePath := 'Src\' + ExtractFileName(TDocumentUris.ToPath(AUri));
+      AContext.Baseline := Baseline;
+      Result := True;
+    end;
+end;
+
+function Workspace: IRuleWorkspaceBulkFix;
+begin
+  Result := TRuleBulkFixProvider.CreateForWorkspace(Contexts(), ReadText, nil);
 end;
 
 { TRuleBulkFixProviderTests }
@@ -87,6 +141,54 @@ var
 begin
   Assert.IsFalse(Provider.Run([Input('C:\P\U.pas', 'U.pas', cAssignedFree)], ['redundant-assigned-free'], 'medium',
     TServerSettings.Default, mRun, mError));
+  Assert.Contains(mError, 'fix.minConfidence');
+  Assert.AreEqual(0, Integer(Length(mRun.Files)));
+end;
+
+procedure TRuleBulkFixProviderTests.WorkspaceFixesWithContextOfFile;
+var
+  mRun: TRuleBulkFixRun;
+  mError: string;
+begin
+  Baseline := nil;
+  Assert.IsTrue(Workspace.Run(['C:\P\Src\U.pas', 'C:\P\Fehlt.pas'], ['redundant-assigned-free'], '', mRun,
+    mError), mError);
+  Assert.AreEqual(1, Integer(Length(mRun.Files)));
+  Assert.IsTrue(mRun.Files[0].Changed);
+  Assert.IsFalse(mRun.Files[0].Rejected);
+  Assert.AreEqual(1, mRun.Files[0].FixCount);
+  Assert.AreEqual(1, Integer(Length(mRun.Files[0].Applied)));
+  Assert.AreEqual('redundant-assigned-free', mRun.Files[0].Applied[0].RuleId);
+  Assert.Contains(mRun.Files[0].Diff, '--- a/Src/U.pas');
+  Assert.Contains(mRun.PreviewSummary, 'Vorschau: 1 Korrekturen in 1 Dateien');
+end;
+
+procedure TRuleBulkFixProviderTests.WorkspaceKeepsBaselineFindings;
+var
+  mSource: TBaselineSource;
+  mRun: TRuleBulkFixRun;
+  mError: string;
+begin
+  mSource.Path := 'Src\U.pas';
+  mSource.Text := cAssignedFree;
+  mSource.Findings := TFileChecker.CheckText(BuiltinRules, TServerSettings.Default, 'Src\U.pas', cAssignedFree);
+  Baseline := TRuleBaseline.FromJson(TRuleBaseline.Build(TArray<TBaselineSource>.Create(mSource)));
+  try
+    Assert.IsTrue(Workspace.Run(['C:\P\Src\U.pas'], ['redundant-assigned-free'], '', mRun, mError), mError);
+    Assert.AreEqual(1, Integer(Length(mRun.Files)));
+    Assert.IsFalse(mRun.Files[0].Changed);
+  finally
+    Baseline := nil;
+  end;
+end;
+
+procedure TRuleBulkFixProviderTests.WorkspaceRefusesLowerConfidence;
+var
+  mRun: TRuleBulkFixRun;
+  mError: string;
+begin
+  Baseline := nil;
+  Assert.IsFalse(Workspace.Run(['C:\P\Src\U.pas'], ['redundant-assigned-free'], 'medium', mRun, mError));
   Assert.Contains(mError, 'fix.minConfidence');
   Assert.AreEqual(0, Integer(Length(mRun.Files)));
 end;

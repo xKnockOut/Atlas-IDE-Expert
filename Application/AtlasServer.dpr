@@ -89,6 +89,7 @@ uses
   Adapters.Lsp.RuleActions in 'Source\Adapters\Adapters.Lsp.RuleActions.pas',
   Adapters.Lsp.RuleCatalog in 'Source\Adapters\Adapters.Lsp.RuleCatalog.pas',
   Adapters.Lsp.FindingsPrompt in 'Source\Adapters\Adapters.Lsp.FindingsPrompt.pas',
+  Adapters.Lsp.BulkFix in 'Source\Adapters\Adapters.Lsp.BulkFix.pas',
   Shell.Composition.FeatureWiring in 'Source\Shell\Shell.Composition.FeatureWiring.pas',
   Shell.Composition.CommandWiring in 'Source\Shell\Shell.Composition.CommandWiring.pas',
   Shell.Composition.ClientStart in 'Source\Shell\Shell.Composition.ClientStart.pas',

@@ -201,6 +201,43 @@ type
     function Report(const AUri: string): TJSONObject;
   end;
 
+  /// <summary>Angewendete Korrekturen einer Regel in einer Datei (atlas.server.fixFindings).</summary>
+  TLspBulkFixCount = record
+    RuleId: string;
+    Count: Integer;
+  end;
+
+  /// <summary>Ergebnis der Sammelkorrektur für eine Datei.</summary>
+  TLspBulkFixFile = record
+    FileName: string;
+    OldText: string;
+    NewText: string;
+    /// <summary>Text geändert und nicht verworfen.</summary>
+    Changed: Boolean;
+    /// <summary>Verworfen, weil neue Syntaxfehler entstanden wären.</summary>
+    Rejected: Boolean;
+    FixCount: Integer;
+    Applied: TArray<TLspBulkFixCount>;
+    /// <summary>Vereinigter Diff; leer ohne Änderung.</summary>
+    Diff: string;
+  end;
+
+  TLspBulkFixRun = record
+    Files: TArray<TLspBulkFixFile>;
+    /// <summary>Zusammenfassung der Vorschau wie auf stderr des Linters.</summary>
+    Summary: string;
+  end;
+
+  /// <summary>Sammelkorrektur für atlas.server.fixFindings (#1352); der Host fragt die Prüfregeln. Schreibt nichts.
+  /// </summary>
+  ILspBulkFix = interface
+    ['{F55A58A4-D3AF-41C2-8A74-75A9F7344D16}']
+    /// <summary>Korrigiert AFileNames mit AFixRules ("all" = alle) ab AMinConfidence ('' = fix.minConfidence der
+    /// Datei); False mit Grund in AError. Nicht lesbare Dateien fehlen im Ergebnis.</summary>
+    function Run(const AFileNames: TArray<string>; const AFixRules: TArray<string>; const AMinConfidence: string;
+      out ARun: TLspBulkFixRun; out AError: string): Boolean;
+  end;
+
   /// <summary>Text von atlas.server.findingsPrompt (#2570); der Host fragt die Prüfregeln.</summary>
   ILspFindingsPrompt = interface
     ['{E37C5400-D146-4F02-A9CD-7215525CC752}']

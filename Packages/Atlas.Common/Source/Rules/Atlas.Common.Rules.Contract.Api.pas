@@ -144,6 +144,12 @@ type
     Text: string;
   end;
 
+  /// <summary>Angewendete Korrekturen einer Regel in einer Datei.</summary>
+  TRuleBulkFixCount = record
+    RuleId: string;
+    Count: Integer;
+  end;
+
   /// <summary>Ergebnis der Sammelkorrektur für eine Datei.</summary>
   TRuleBulkFixOutput = record
     FileName: string;
@@ -152,6 +158,12 @@ type
     NewText: string;
     /// <summary>Text geändert und nicht verworfen.</summary>
     Changed: Boolean;
+    /// <summary>Verworfen, weil neue Syntaxfehler entstanden wären; NewText = OldText.</summary>
+    Rejected: Boolean;
+    /// <summary>Anzahl der angewendeten Korrekturen.</summary>
+    FixCount: Integer;
+    /// <summary>Korrekturen je Regel in der Reihenfolge des ersten Auftretens.</summary>
+    Applied: TArray<TRuleBulkFixCount>;
     /// <summary>Vereinigter Diff mit RelativePath (/ als Trenner); leer ohne Änderung.</summary>
     Diff: string;
   end;
@@ -175,6 +187,17 @@ type
     function Run(const AFiles: TArray<TRuleBulkFixInput>; const AFixRules: TArray<string>;
       const AMinConfidence: string; const ASettings: TServerSettings; out ARun: TRuleBulkFixRun;
       out AError: string): Boolean;
+  end;
+
+  /// <summary>Sammelkorrektur über Dateien des Arbeitsbereichs (#1352, atlas.server.fixFindings): Text,
+  /// Regeln, Einstellungen, Projekt und Baseline (#97) je Datei wie bei der Prüfung im Editor; schreibt nichts.
+  /// </summary>
+  IRuleWorkspaceBulkFix = interface
+    ['{252AD7D1-91BB-4E13-A999-2902E620923A}']
+    /// <summary>Korrigiert AFileNames wie IRuleBulkFix.Run; Untergrenze je Datei aus deren fix.minConfidence.
+    /// Dateien ohne Text oder ohne Umfeld fehlen im Ergebnis.</summary>
+    function Run(const AFileNames: TArray<string>; const AFixRules: TArray<string>; const AMinConfidence: string;
+      out ARun: TRuleBulkFixRun; out AError: string): Boolean;
   end;
 
 implementation

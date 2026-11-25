@@ -2731,6 +2731,8 @@
         <DCCReference Include="Application\Adapters\Adapters.Lsp.RuleCatalog.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.FindingsPrompt.pas"/>
         <DCCReference Include="Application\Adapters\Adapters.Lsp.FindingsPrompt.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Adapters\Adapters.Lsp.BulkFix.pas"/>
+        <DCCReference Include="Application\Adapters\Adapters.Lsp.BulkFix.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.FeatureWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.CommandWiring.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Composition.ClientStart.pas"/>

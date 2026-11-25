@@ -6,6 +6,7 @@
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Rules.CheckContext;
 
@@ -30,6 +31,9 @@ type
     class function Catalog: ILspRuleCatalog; static;
     /// <summary>Auftrag an KI-Assistenten wie in der Komposition.</summary>
     class function FindingsPrompt: ILspFindingsPrompt; static;
+    /// <summary>Sammelkorrektur wie in der Komposition: Umfeld aus AContexts, Text aus ARead.</summary>
+    class function BulkFix(const AContexts: TRuleContextProvider; const ARead: TDocumentReadText): ILspBulkFix;
+      static;
   end;
 
 implementation
@@ -40,8 +44,10 @@ uses
   Atlas.Common.Rules.Providers.DocumentActions,
   Atlas.Common.Rules.Providers.CatalogInfo,
   Atlas.Common.Rules.Providers.FindingPrompts,
+  Atlas.Common.Rules.Providers.BulkFix,
   Adapters.Lsp.RuleCatalog,
   Adapters.Lsp.FindingsPrompt,
+  Adapters.Lsp.BulkFix,
   Adapters.Lsp.RuleDiagnostics,
   Adapters.Lsp.RuleActions;
 
@@ -107,6 +113,15 @@ var
 begin
   mPrompts := TRuleFindingPrompts.Create;
   Result := TLspFindingsPromptAdapter.Wrap(mPrompts);
+end;
+
+class function TTestLspRules.BulkFix(const AContexts: TRuleContextProvider;
+  const ARead: TDocumentReadText): ILspBulkFix;
+var
+  mBulkFix: IRuleWorkspaceBulkFix;
+begin
+  mBulkFix := TRuleBulkFixProvider.CreateForWorkspace(AContexts, ARead, nil);
+  Result := TLspBulkFixAdapter.Wrap(mBulkFix);
 end;
 
 end.
