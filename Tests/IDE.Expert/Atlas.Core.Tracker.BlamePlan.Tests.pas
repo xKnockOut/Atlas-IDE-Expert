@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.BlamePlan;
 
 function Shown(AKnown: Boolean; AState: TAtlasBlameKeyState; ACached: Boolean): Integer;

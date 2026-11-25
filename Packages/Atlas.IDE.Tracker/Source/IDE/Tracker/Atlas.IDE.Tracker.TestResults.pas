@@ -38,7 +38,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.TestFetch,
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.TestActions,

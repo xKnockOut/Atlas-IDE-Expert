@@ -36,7 +36,7 @@ implementation
 
 uses
   Atlas.Plugin.Settings.TeamFile,
-  Atlas.Core.Projects.VersionControl,
+  Atlas.Plugin.Projects.VersionControl,
   Atlas.VersionControl.Repository.Contract,
   Atlas.VersionControl.Repository.Tools,
   Atlas.VersionControl.Repository.ToolCheck,

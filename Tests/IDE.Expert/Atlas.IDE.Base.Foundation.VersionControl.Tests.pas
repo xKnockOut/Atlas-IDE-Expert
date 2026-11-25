@@ -34,7 +34,7 @@ uses
   System.SysUtils,
   Atlas.VersionControl.Repository.Contract,
   Atlas.VersionControl.Repository.BranchPlan,
-  Atlas.Core.Projects.VersionControl,
+  Atlas.Plugin.Projects.VersionControl,
   Atlas.IDE.Base.Foundation.VersionControl;
 
 type

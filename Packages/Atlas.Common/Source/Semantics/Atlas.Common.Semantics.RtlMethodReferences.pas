@@ -1,12 +1,14 @@
 ﻿unit Atlas.Common.Semantics.RtlMethodReferences;
 
-// Methodenreferenzen aus System.SysUtils (TProc, TProc<…>, TFunc<…>, TPredicate<T>) ohne Quelltext der RTL
-// (#468, #2309). Ohne Delphi-Installation (Cloud, CI unter Linux) steht System.SysUtils nicht im Index; die
-// Vervollständigung braucht die Köpfe trotzdem für ihr Gerüst, die Regel type-mismatch für ihre Prüfung von
-// Routinen, die ohne () übergeben werden. Die Deklarationen entsprechen denen der RTL:
+// Methodenreferenzen aus System.SysUtils (TProc, TProc<…>, TFunc<…>, TPredicate<T>) und System.Classes
+// (TThreadProcedure) ohne Quelltext der RTL (#468, #2309). Ohne Delphi-Installation (Cloud, CI unter Linux) steht
+// System.SysUtils nicht im Index; die Vervollständigung braucht die Köpfe trotzdem für ihr Gerüst, die Regel
+// type-mismatch für ihre Prüfung von Routinen, die ohne () übergeben werden, und von Methodenreferenzen anderen
+// Namens (TProc an TThreadProcedure). Die Deklarationen entsprechen denen der RTL:
 //   TProc<T1, T2> = reference to procedure(Arg1: T1; Arg2: T2);
 //   TFunc<T, TResult> = reference to function(Arg1: T): TResult;
 //   TPredicate<T> = reference to function(Arg1: T): Boolean;
+//   TThreadProcedure = reference to procedure;   (System.Classes)
 // Bis zu vier Parameter, wie in der RTL. Was der Index kennt, geht immer vor; diese Unit ergänzt nur.
 
 interface
@@ -17,8 +19,10 @@ uses
 type
   /// <summary>Ein Typ aus System.SysUtils mit eingesetzten Typargumenten.</summary>
   TRtlMethodReference = record
-    /// <summary>TProc, TFunc oder TPredicate.</summary>
+    /// <summary>TProc, TFunc, TPredicate oder TThreadProcedure.</summary>
     Name: string;
+    /// <summary>Unit der Deklaration: System.SysUtils, bei TThreadProcedure System.Classes.</summary>
+    UnitName: string;
     /// <summary>Deklaration wie im Index: "TProc&lt;T&gt; = reference to procedure(Arg1: T);".</summary>
     Signature: string;
     /// <summary>Bindungen der Typparameter wie im Index: "T=string".</summary>
@@ -37,10 +41,12 @@ type
     /// ohne.</summary>
     class function Declaration(const ABase: string; AArgCount: Integer): string; static;
     /// <summary>Typ ATypeText ("TProc&lt;string&gt;", "SysUtils.TFunc&lt;Integer&gt;", "TProc") als Typ aus
-    /// System.SysUtils; False bei anderen Namen und unpassender Zahl der Typargumente.</summary>
+    /// System.SysUtils bzw. System.Classes; False bei anderen Namen und unpassender Zahl der Typargumente.</summary>
     class function Find(const ATypeText: string; out AReference: TRtlMethodReference): Boolean; static;
     /// <summary>Ist AUnitName System.SysUtils (auch ohne Namespace)?</summary>
     class function IsSysUtils(const AUnitName: string): Boolean; static;
+    /// <summary>Ist AUnitName die Unit AHome ("System.Classes"), auch ohne Namespace ("Classes")?</summary>
+    class function IsUnit(const AUnitName, AHome: string): Boolean; static;
   end;
 
 implementation
@@ -80,17 +86,37 @@ begin
   Result := Result + [Trim(Copy(mText, mStart, Length(mText) - mStart))];
 end;
 
-/// <summary>ABase ohne System.SysUtils. bzw. SysUtils. davor.</summary>
+const
+  cThreadProcedure = 'TThreadProcedure';
+  cSysUtils = 'System.SysUtils';
+  cClasses = 'System.Classes';
+
+/// <summary>Unit, in der die RTL den Typ AName deklariert.</summary>
+function HomeUnit(const AName: string): string;
+begin
+  Result := cSysUtils;
+  if SameText(AName, cThreadProcedure) then
+  begin
+    Result := cClasses;
+  end;
+end;
+
+/// <summary>ABase ohne System.SysUtils. bzw. SysUtils. (System.Classes. bzw. Classes.) davor; '' bei einem
+/// Namen, der nicht zur genannten Unit gehört (System.Classes.TProc).</summary>
 function RtlName(const ABase: string): string;
+var
+  mDot: Integer;
 begin
   Result := ABase;
-  if StartsText('System.SysUtils.', Result) then
+  mDot := LastDelimiter('.', Result);
+  if mDot = 0 then
   begin
-    Result := Copy(Result, Length('System.SysUtils.') + 1, MaxInt);
-  end
-  else if StartsText('SysUtils.', Result) then
+    Exit;
+  end;
+  Result := Copy(ABase, mDot + 1, MaxInt);
+  if not TRtlMethodReferences.IsUnit(Copy(ABase, 1, mDot - 1), HomeUnit(Result)) then
   begin
-    Result := Copy(Result, Length('SysUtils.') + 1, MaxInt);
+    Result := '';
   end;
 end;
 
@@ -110,6 +136,10 @@ begin
   else if SameText(AName, 'TPredicate') and (AArgCount = 1) then
   begin
     Result := 1;
+  end
+  else if SameText(AName, cThreadProcedure) and (AArgCount = 0) then
+  begin
+    Result := 0;
   end;
   if Result > TRtlMethodReferences.cMaxParams then
   begin
@@ -183,7 +213,11 @@ begin
   begin
     mGeneric := '<' + mGeneric + '>';
   end;
-  if SameText(mName, 'TProc') then
+  if SameText(mName, cThreadProcedure) then
+  begin
+    Result := cThreadProcedure + ' = reference to procedure;';
+  end
+  else if SameText(mName, 'TProc') then
   begin
     Result := 'TProc' + mGeneric + ' = reference to procedure' + ParamList(mParams) + ';';
   end
@@ -212,6 +246,7 @@ begin
     Exit;
   end;
   AReference.Name := RtlName(mBase);
+  AReference.UnitName := HomeUnit(AReference.Name);
   mParams := TypeParams(AReference.Name, RtlParamCount(AReference.Name, Length(mArgs)));
   for mIndex := 0 to High(mArgs) do
   begin
@@ -221,7 +256,12 @@ end;
 
 class function TRtlMethodReferences.IsSysUtils(const AUnitName: string): Boolean;
 begin
-  Result := SameText(AUnitName, 'System.SysUtils') or SameText(AUnitName, 'SysUtils');
+  Result := IsUnit(AUnitName, cSysUtils);
+end;
+
+class function TRtlMethodReferences.IsUnit(const AUnitName, AHome: string): Boolean;
+begin
+  Result := SameText(AUnitName, AHome) or SameText('System.' + AUnitName, AHome);
 end;
 
 end.

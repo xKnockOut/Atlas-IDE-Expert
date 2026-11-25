@@ -36,7 +36,7 @@ uses
   Vcl.Controls,
   Vcl.Menus,
   Vcl.Graphics,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Vcl.Theme.Canvas,
   Atlas.UI.Tracker.TileView,

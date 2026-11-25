@@ -65,6 +65,13 @@ type
     /// (Hover: FOnDebugTree(…, DebugTreeRefresh)).</summary>
     [Test]
     procedure ProceduralCalleeArguments;
+    /// <summary>Variable eines Methodenreferenztyps an einen anderen gleich gebauten (Delphi 12, wie E2010):
+    /// TProc an TThreadProcedure (Atlas.IDE.Assistants: PostToMainThread an TAtlasMainThread.Queue).</summary>
+    [Test]
+    procedure ReferenceTypesOfOtherName;
+    /// <summary>Dasselbe ohne RTL im Index: TProc aus System.SysUtils, TThreadProcedure aus System.Classes.</summary>
+    [Test]
+    procedure ReferenceTypesOfOtherNameWithoutRtl;
     [Test]
     procedure ConditionalDeclarationsAndWithAreSilent;
     [Test]
@@ -532,6 +539,48 @@ begin
   // Eine fremde Unit hinter System.SysUtils kann TProc verdecken; ohne System.SysUtils gibt es keinen.
   Assert.AreEqual('', Messages(WithoutRtlFindings('  System.SysUtils,'#10'  Fremd', cRoutinen, cAnweisungen)));
   Assert.AreEqual('', Messages(WithoutRtlFindings('  System.Classes', cRoutinen, cAnweisungen)));
+end;
+
+procedure TTypeMismatchTests.ReferenceTypesOfOtherName;
+const
+  cDeklarationen = 'type'#10'  TA = reference to procedure;'#10'  TB = reference to procedure;'#10'  TC = TA;'#10 +
+    'var'#10'  GA: TA;'#10'  GB: TB;'#10'  GC: TC;'#10'  GP: TProc;'#10'  GT: TThreadProcedure;'#10 +
+    'procedure Queue(const AProc: TThreadProcedure);'#10'begin'#10'end;'#10 +
+    'procedure Post(const AWork: TProc);'#10'begin'#10'  Queue(AWork);'#10'end;'#10;
+  cWie = '; zwei Methodenreferenztypen sind unter Delphi 12 auch bei gleicher Signatur verschiedene Typen (wie ' +
+    'E2010).';
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+begin
+  mIndex := SysUtilsIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit System.Classes;'#10'interface'#10'type'#10 +
+    '  TThreadProcedure = reference to procedure;'#10'implementation'#10'end.', 'C:\BDS\source\System.Classes.pas',
+    nil));
+  mSource := 'unit Fall;'#10'interface'#10'uses'#10'  System.SysUtils,'#10'  System.Classes;'#10'implementation'#10 +
+    cDeklarationen + 'procedure Fall;'#10'begin'#10'  GB := GA;'#10'  Queue(GP);'#10'  GT := GP;'#10 +
+    '  GA := GC;'#10'  GC := GA;'#10'  GP := GP;'#10'  Queue(GT);'#10'  Queue(procedure begin end);'#10'end;'#10'end.';
+  Assert.AreEqual('21: Inkompatible Typen: ''TThreadProcedure'' und ''TProc''' + cWie +
+    ' | 25: Inkompatible Typen: ''TB'' und ''TA''' + cWie +
+    ' | 26: Inkompatible Typen: ''TThreadProcedure'' und ''TProc''' + cWie +
+    ' | 27: Inkompatible Typen: ''TThreadProcedure'' und ''TProc''' + cWie,
+    Messages(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, mSource, mIndex, '', 'Fall.pas')));
+end;
+
+procedure TTypeMismatchTests.ReferenceTypesOfOtherNameWithoutRtl;
+const
+  cRumpf = 'implementation'#10'procedure Queue(const AProc: TThreadProcedure);'#10'begin'#10'end;'#10 +
+    'procedure Post(const AWork: TProc);'#10'begin'#10'  Queue(AWork);'#10'end;'#10'end.';
+begin
+  Assert.AreEqual('11: Inkompatible Typen: ''TThreadProcedure'' und ''TProc''; zwei Methodenreferenztypen sind ' +
+    'unter Delphi 12 auch bei gleicher Signatur verschiedene Typen (wie E2010).',
+    Messages(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, 'unit Fall;'#10'interface'#10'uses'#10 +
+    '  System.SysUtils,'#10'  System.Classes;'#10 + cRumpf, SystemIndex, '', 'Fall.pas')));
+  // Ohne System.Classes gibt es kein TThreadProcedure; eine fremde Unit dahinter kann es verdecken.
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, 'unit Fall;'#10'interface'#10 +
+    'uses'#10'  System.SysUtils;'#10 + cRumpf, SystemIndex, '', 'Fall.pas')));
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, 'unit Fall;'#10'interface'#10 +
+    'uses'#10'  System.SysUtils,'#10'  System.Classes,'#10'  Fremd;'#10 + cRumpf, SystemIndex, '', 'Fall.pas')));
 end;
 
 procedure TTypeMismatchTests.NestedTypeHidesUsedType;

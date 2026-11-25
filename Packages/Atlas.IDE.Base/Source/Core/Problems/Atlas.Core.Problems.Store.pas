@@ -56,7 +56,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Plugin.Files.Entries,
-  Atlas.Core.Problems.Contract;
+  Atlas.Plugin.Problems.Contract;
 
 type
   /// <summary>Spalten einer Editorzeile (1-basiert, Tabs aufgelöst), Last einschließlich;

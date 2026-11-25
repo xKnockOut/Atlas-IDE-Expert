@@ -14,7 +14,7 @@
 interface
 
 uses
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.IDE.Debug.ThreadEvaluator;
 
 type

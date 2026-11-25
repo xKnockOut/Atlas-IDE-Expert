@@ -55,7 +55,7 @@ uses
   System.StrUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Internals.GitHubJson,

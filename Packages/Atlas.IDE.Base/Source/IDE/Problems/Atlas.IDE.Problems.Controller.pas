@@ -30,7 +30,7 @@ interface
 uses
   Vcl.ExtCtrls,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Contract.Sync,
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.InlineHints,

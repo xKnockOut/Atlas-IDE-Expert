@@ -68,7 +68,7 @@ uses
   System.DateUtils,
   Vcl.Forms,
   Vcl.Graphics,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Queries,
   Atlas.VersionControl.Repository.Contract,

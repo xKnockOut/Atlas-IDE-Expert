@@ -29,7 +29,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Editor.Hide,
   Atlas.Core.Problems.Marks;
 

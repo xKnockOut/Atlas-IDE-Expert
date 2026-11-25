@@ -29,7 +29,7 @@ uses
   Atlas.Core.Notes.Store,
   Atlas.Core.Bookmarks.Store,
   Atlas.Core.Bookmarks.SavedPlaces,
-  Atlas.Core.SavedPlaces.Contract;
+  Atlas.Plugin.SavedPlaces.Contract;
 
 function Note(const AId, AFileName, AText: string; ALine: Integer): TAtlasNote;
 begin

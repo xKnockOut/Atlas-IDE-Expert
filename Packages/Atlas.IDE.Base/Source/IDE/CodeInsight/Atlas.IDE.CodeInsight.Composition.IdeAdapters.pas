@@ -61,7 +61,7 @@ uses
   Atlas.IDE.Status.Adapters.FieldSurface,
   Atlas.IDE.CodeInsight.Composition.UiAdapters,
   Atlas.IDE.CodeInsight.Composition.ProblemsAdapters,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 procedure InstallIdeAdapters;
 begin

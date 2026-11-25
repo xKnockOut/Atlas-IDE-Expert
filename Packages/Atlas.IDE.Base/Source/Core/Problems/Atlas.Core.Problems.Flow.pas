@@ -201,7 +201,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Plan,
   Atlas.Core.Problems.Refresh,
   Atlas.Plugin.Settings.ProblemsUpdate;

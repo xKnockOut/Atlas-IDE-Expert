@@ -50,7 +50,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Plugin.Lsp.TextChanges,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Modules.Contract,
   Atlas.IDE.Settings.Options,

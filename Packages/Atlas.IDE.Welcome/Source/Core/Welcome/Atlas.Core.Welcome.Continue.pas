@@ -38,7 +38,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Contract.Summary,
+  Atlas.Plugin.Projects.Contract.Summary,
   Atlas.Core.Welcome.Projects,
   Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Welcome.Contract;

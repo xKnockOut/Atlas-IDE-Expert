@@ -1,7 +1,7 @@
 ﻿unit Atlas.IDE.CodeInsight.Adapters.BuildNotifications;
 
 // Bewertung eines Builds (#530) an die Benachrichtigungszentrale (#601): TAtlasNotificationsVerdictListener erfüllt
-// IAtlasBuildVerdictListener (Atlas.Core.Build.Contract) für das Modul Build-Pipeline bzw. die Bewertung nur nach
+// IAtlasBuildVerdictListener (Atlas.Plugin.Build.Contract) für das Modul Build-Pipeline bzw. die Bewertung nur nach
 // dem Compiler (Modul aus). Die Benachrichtigungszentrale lebt kürzer als die Compile-Ereignisse; die
 // Kompositionswurzel (Atlas.IDE.CodeInsight.Composition.Build) reicht sie über ANotifications herein.
 
@@ -9,7 +9,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Build.Contract,
+  Atlas.Plugin.Build.Contract,
   Atlas.IDE.Notifications.Service;
 
 type

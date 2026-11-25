@@ -33,10 +33,10 @@ uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Problems.Store,
-  Atlas.IDE.Projects.Contract;
+  Atlas.IDE.Base.Foundation.Projects;
 
 type
-  IAtlasProjectSummaryListener = Atlas.IDE.Projects.Contract.IAtlasProjectSummaryListener;
+  IAtlasProjectSummaryListener = Atlas.IDE.Base.Foundation.Projects.IAtlasProjectSummaryListener;
 
   TAtlasIdeProjectSummaries = class
   private type

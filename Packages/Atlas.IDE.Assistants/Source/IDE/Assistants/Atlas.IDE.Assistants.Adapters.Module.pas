@@ -12,7 +12,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Contract,
+  Atlas.Plugin.Build.Contract,
   Atlas.IDE.Assistants.DebugBar,
   Atlas.IDE.Assistants.ContextExport;
 

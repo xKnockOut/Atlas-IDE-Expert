@@ -9,7 +9,7 @@ interface
 
 uses
   Atlas.VersionControl.Repository.Contract,
-  Atlas.Core.Projects.VersionControl;
+  Atlas.Plugin.Projects.VersionControl;
 
 type
   TAtlasVcsPluginSettings = record

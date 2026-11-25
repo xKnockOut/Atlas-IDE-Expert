@@ -68,7 +68,7 @@ implementation
 uses
   System.UITypes,
   Vcl.Dialogs,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.TimePlan,
   Atlas.Core.Tracker.Workflow,

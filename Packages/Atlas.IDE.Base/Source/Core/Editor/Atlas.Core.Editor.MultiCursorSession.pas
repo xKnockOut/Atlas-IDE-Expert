@@ -25,7 +25,7 @@ uses
   System.SysUtils,
   Atlas.Core.Editor.MultiCursor,
   Atlas.Core.Editor.CaretSteps,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   TAtlasMultiCursorSession = class

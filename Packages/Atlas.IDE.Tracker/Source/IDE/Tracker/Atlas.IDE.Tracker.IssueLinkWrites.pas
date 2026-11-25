@@ -11,7 +11,7 @@
 interface
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   System.SysUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,

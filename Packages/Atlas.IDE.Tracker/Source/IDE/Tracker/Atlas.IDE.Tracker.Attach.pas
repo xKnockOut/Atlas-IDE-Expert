@@ -88,7 +88,7 @@ type
 implementation
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   System.UITypes,
   System.IOUtils,
   Vcl.Graphics,

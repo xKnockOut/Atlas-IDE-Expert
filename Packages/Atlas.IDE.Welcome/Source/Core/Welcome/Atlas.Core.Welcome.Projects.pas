@@ -22,7 +22,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Contract.Summary,
+  Atlas.Plugin.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract;
 
 type

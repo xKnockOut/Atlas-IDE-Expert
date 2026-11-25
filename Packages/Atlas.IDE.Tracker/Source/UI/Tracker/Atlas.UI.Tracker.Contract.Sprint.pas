@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract.Sprint,
   Atlas.Plugin.Calls.Contract;
 

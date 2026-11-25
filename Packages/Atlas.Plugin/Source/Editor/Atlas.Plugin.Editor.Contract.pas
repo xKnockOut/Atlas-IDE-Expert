@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Editor.Contract;
+﻿unit Atlas.Plugin.Editor.Contract;
 
 // Contract des Plugin-Features Editor (#1443): Marken der Übersichtsleiste (#1104),
 // Ersetzungen im Text und die Schnittstellen zum Editorpuffer (IAtlasEditSurface), zur

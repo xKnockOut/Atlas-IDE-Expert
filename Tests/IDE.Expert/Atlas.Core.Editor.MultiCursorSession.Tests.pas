@@ -16,7 +16,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Core.Editor.MultiCursorSession,
   Atlas.Tests.EditSurfaceFake,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   [TestFixture]

@@ -25,7 +25,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Tasks.Contract,
   Atlas.Core.Tasks.Matchers,
   Atlas.Core.Tasks.Reports;

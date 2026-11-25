@@ -211,7 +211,7 @@ begin
   Assert.AreEqual(2, mColumn);
   Assert.IsTrue(TSmartIndent.ColumnAt(string.Join(cLF, ['begin', '  case A of', '    1:', 'X := 1;']), 3, 2, mColumn));
   Assert.AreEqual(6, mColumn);
-  Assert.IsFalse(TSmartIndent.ColumnAt(string.Join(cLF, ['{', 'X := 1;', '}']), 1, 2, mColumn));
+  Assert.IsFalse(TSmartIndent.ColumnAt(string.Join(cLF, TArray<string>.Create('{', 'X := 1;', '}')), 1, 2, mColumn));
 end;
 
 initialization

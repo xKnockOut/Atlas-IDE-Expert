@@ -76,7 +76,7 @@ uses
   Vcl.Menus,
   Vcl.ComCtrls,
   Vcl.Buttons,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Problems.ScopeProjects,
   Atlas.Plugin.Settings.ProblemsUpdate,

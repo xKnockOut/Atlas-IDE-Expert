@@ -70,7 +70,7 @@ uses
   System.DateUtils,
   ToolsAPI,
   Atlas.Text.Lines,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,

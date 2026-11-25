@@ -15,7 +15,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   Atlas.VersionControl.Repository.Contract,
-  Atlas.Core.Editor.LineChanges;
+  Atlas.Plugin.Editor.LineChanges;
 
 type
   /// <summary>Commit der Zeilenhistorie (#1275), wie ihn Randanzeige und Hover zeigen.</summary>
