@@ -531,7 +531,8 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "In Pascal not binds more tightly than in and comparisons: not X in Set means (not X) in Set, not A = B means (not A) = B, and on integers not works bitwise. The rule reports thes' +
-    'e forms when the declared type of the operand shows that this cannot be meant (not Boolean). Quick fix: add parentheses, not (X in Set).",',
+    'e forms when the declared type of the operand shows that this cannot be meant (not Boolean). not E is T means (not E) is T and does not compile in Delphi for any type (E2015, Free Pascal accepts it); ' +
+    'the rule always reports it. Quick fix: add parentheses, not (X in Set).",',
     '      "bad": "if not Zustand in [zsOffen, zsGesperrt] then\n  Bearbeiten;",',
     '      "good": "if not (Zustand in [zsOffen, zsGesperrt]) then\n  Bearbeiten;",',
     '      "safeFix": false',

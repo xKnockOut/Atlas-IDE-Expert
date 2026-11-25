@@ -3,7 +3,8 @@
 // Regeln für Ausdrücke, die anders gebunden werden als gemeint (#909):
 //   operator-precedence   not bindet stärker als in und Vergleiche (#911):
 //                         "not X in Menge" ist "(not X) in Menge", "not A = B"
-//                         ist "(not A) = B", bei Ganzzahlen bitweise.
+//                         ist "(not A) = B", bei Ganzzahlen bitweise. "not X is T" ist "(not X) is T" und
+//                         übersetzt in Delphi nie (E2015); das meldet die Regel bei jedem Typ.
 // Gemeldet wird nur, wenn der Typ des Operanden in der Datei deklariert und
 // kein Boolean ist (Atlas.Common.Pascal.DeclaredTypes); unbekannte Typen und
 // Variants bleiben stumm.
@@ -129,21 +130,25 @@ uses
 
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
-  TExpressionsText = (NotTitle, NotIn, NotBitwise, NotCompare, AddParens, IndexTitle, DeleteZero, StartZero, StartOne,
+  TExpressionsText = (NotTitle, NotIn, NotBitwise, NotCompare, NotIs, AddParens, IndexTitle, DeleteZero, StartZero, StartOne,
     FixComparison, AlwaysTrue, NeverTrue, MissesFirst, FirstNotFound, NullTitle, NullField, NullVariant, ReplaceWith,
     SwappedTitle, SwappedText, SwappedPart, SwapArguments, DivTitle, DivLoses, ReplaceDiv, ConditionalTitle,
     ConditionalVersion);
 
 const
   cTexts: array[TExpressionsText] of TAtlasText = (
-    (De: 'Vorrang von not vor in und Vergleichen übersehen';
-     En: 'Precedence of not over in and comparisons overlooked'),
+    (De: 'Vorrang von not vor in, is und Vergleichen übersehen';
+     En: 'Precedence of not over in, is and comparisons overlooked'),
     (De: '„not“ gilt nur für %s, nicht für den in-Ausdruck. Gemeint ist vermutlich not (%s).';
      En: '“not” applies only to %s, not to the in expression. Probably not (%s) is meant.'),
     (De: '„not“ kehrt die Ganzzahl %s bitweise um, nicht den Vergleich. Gemeint ist vermutlich not (%s).';
      En: '“not” inverts the integer %s bitwise, not the comparison. Probably not (%s) is meant.'),
     (De: '„not“ gilt nur für %s, nicht für den Vergleich. Gemeint ist vermutlich not (%s).';
      En: '“not” applies only to %s, not to the comparison. Probably not (%s) is meant.'),
+    (De: '„not“ gilt nur für %s, „is“ prüft dann den Wahrheitswert: Delphi übersetzt das nicht (wie E2015). ' +
+      'Gemeint ist not (%s).';
+     En: '“not” applies only to %s, “is” then tests the Boolean result: Delphi does not compile this (like E2015). ' +
+      'Meant is not (%s).'),
     (De: 'Klammern setzen: not (%s)'; En: 'Add parentheses: not (%s)'),
     (De: 'String-Index ab 0 oder Pos-Ergebnis mit -1 verglichen';
      En: 'String index from 0 or Pos result compared with -1'),
@@ -203,7 +208,11 @@ end;
 /// <summary>Meldung für "not X op Y" (AShown) mit dem Operator AOp und dem Typ ATypeName von X.</summary>
 function PrecedenceMessage(const AOp: TPascalToken; const ATypeName, AName, AShown: string): string;
 begin
-  if AOp.IsKeyword('in') then
+  if AOp.IsKeyword('is') then
+  begin
+    Result := cTexts[TExpressionsText.NotIs].Fmt([AName, AShown]);
+  end
+  else if AOp.IsKeyword('in') then
   begin
     Result := cTexts[TExpressionsText.NotIn].Fmt([AName, AShown]);
   end
@@ -258,7 +267,8 @@ begin
         Continue;
       end;
       mTypeName := mTypes.DeclaredType(mTokens[mParts.Operand].Text, mTokens[mParts.Operand].StartPos);
-      if (mTypeName <> '') and not IsLogical(mTypeName) then
+      // not X is T übersetzt bei keinem Typ von X.
+      if mTokens[mParts.Op].IsKeyword('is') or ((mTypeName <> '') and not IsLogical(mTypeName)) then
       begin
         ReportPrecedence(AContext, AReport, mTokens, mParts, mTypeName);
       end;
