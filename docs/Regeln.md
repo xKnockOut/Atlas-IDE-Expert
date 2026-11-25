@@ -5658,7 +5658,7 @@ if Pos(';', Zeile) > 0 then
 
 **DelimitedText ohne StrictDelimiter** · Bug · Warnung · Gruppe Fehler finden
 
-Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass StrictDelimiter gesetzt wird: DelimitedText trennt dann auch an Leerzeichen, 'Max Muster;Berlin' ergibt drei statt zwei Einträge. Bei Feldern zählt StrictDelimiter in der ganzen Unit (oft im Konstruktor); StrictDelimiter := False ist bewusst und bleibt still, ebenso DelimitedText ohne eigenen Delimiter. Sicherheit hoch. Korrektur: StrictDelimiter := True; vor der Zuweisung einfügen.
+Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass StrictDelimiter gesetzt wird: DelimitedText trennt dann auch an Leerzeichen, 'Max Muster;Berlin' ergibt drei statt zwei Einträge. StrictDelimiter zählt auch in with Liste do und über eine Typumwandlung (TStringList(Liste), Liste as TStringList), bei Feldern in der ganzen Unit (oft im Konstruktor). Bei Parametern und Listen, die die Routine nicht selbst erzeugt (Funktionsergebnis), bleibt die Regel still: StrictDelimiter setzt dort der Aufrufer bzw. die erzeugende Funktion; StrictDelimiter := False ist bewusst und bleibt still, ebenso DelimitedText ohne eigenen Delimiter. Sicherheit hoch. Korrektur: StrictDelimiter := True; vor der Zuweisung einfügen.
 
 Mit Treffer:
 
