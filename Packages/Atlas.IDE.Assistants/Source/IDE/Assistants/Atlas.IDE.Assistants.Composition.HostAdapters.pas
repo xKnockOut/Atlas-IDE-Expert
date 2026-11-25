@@ -42,6 +42,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
   Atlas.Core.AiProviders.Contract,
   Atlas.Core.AiProviders.Providers.Http,
   Atlas.Core.Credentials.Contract,
@@ -322,7 +323,7 @@ begin
   end;
 end;
 
-procedure PostToMainThread(const AWork: TProc);
+procedure PostToMainThread(const AWork: TThreadProcedure);
 begin
   TAtlasMainThread.Queue(TAtlasFeature.Settings, AWork);
 end;
