@@ -229,12 +229,6 @@
         "Atlas.Common.Mcp.CompilerMessageTools -> Atlas.Common.Rules.Catalog",
         "Atlas.Common.Mcp.CompilerMessageTools -> Atlas.Common.Rules.CompilerPitfallFixes",
         "Atlas.Common.Mcp.CompilerMessageTools -> Atlas.Common.Rules.CompilerPitfalls",
-        "Atlas.Common.Mcp.Contract -> Atlas.Common.Rules.Contract",
-        "Atlas.Common.Mcp.DeadCodeTools -> Atlas.Common.Rules.Builtin.DeadCode",
-        "Atlas.Common.Mcp.DeadCodeTools -> Atlas.Common.Rules.Builtin.PublicMembers",
-        "Atlas.Common.Mcp.DeadCodeTools -> Atlas.Common.Rules.Builtin.Visibility",
-        "Atlas.Common.Mcp.DeadCodeTools -> Atlas.Common.Rules.Contract",
-        "Atlas.Common.Mcp.DeadCodeTools -> Atlas.Common.Rules.Engine",
         "Atlas.Common.Mcp.DocsIndex -> Atlas.Common.Rules.Catalog",
         "Atlas.Common.Mcp.DocsTools -> Atlas.Common.Rules.Catalog",
         "Atlas.Common.Mcp.DocsTools -> Atlas.Common.Rules.Catalog.Data",
@@ -262,8 +256,7 @@
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.MaintenanceCommands",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.SlashCommands",
         "Atlas.Common.Rules.Builtin.Style.MethodOrder -> Atlas.Common.Editing.MethodOrder",
-        "Atlas.Common.Rules.CodeActions -> Atlas.Common.Editing.CodeActions",
-        "Atlas.Common.Rules.FormatOutput -> Atlas.Common.Editing.FormatCheck"
+        "Atlas.Common.Rules.CodeActions -> Atlas.Common.Editing.CodeActions"
       ]
     },
     "forbidden-symbol": {
