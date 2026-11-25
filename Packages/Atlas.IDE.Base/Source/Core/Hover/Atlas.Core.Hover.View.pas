@@ -13,7 +13,7 @@ interface
 uses
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Contract.DebugValue;

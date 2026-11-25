@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.Contract;
+﻿unit Atlas.Plugin.Build.Contract;
 
 // Contract des Plugin-Features Build (#1443): Compilermeldungen, Projekt eines Compiles und
 // Bewertung eines Builds, dazu die Schnittstellen, über die Module Builds hören und

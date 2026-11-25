@@ -60,7 +60,7 @@ uses
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.Plugin.Localization.Language,
-  Atlas.Core.Build.Contract;
+  Atlas.Plugin.Build.Contract;
 
 {$SCOPEDENUMS ON}
 

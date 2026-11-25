@@ -36,7 +36,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Build.Requests,
+  Atlas.Plugin.Build.Contract.Requests,
   System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,

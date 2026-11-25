@@ -11,7 +11,7 @@ uses
   Winapi.Windows,
   System.Types,
   Atlas.Plugin.Style.Color,
-  Atlas.Core.Editor.LineChanges;
+  Atlas.Plugin.Editor.LineChanges;
 
 type
   TAtlasLineChangesPaint = class

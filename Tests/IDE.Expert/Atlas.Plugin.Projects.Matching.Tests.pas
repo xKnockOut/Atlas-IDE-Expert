@@ -6,7 +6,7 @@
 // Ordner (längster Ordner, bei Gleichstand .dproj vor .groupproj vor Ordner)
 // und Zeilen, die nicht zählen dürfen. Die Tracker-Zuordnung
 // (Atlas.Core.Tracker.Projects.Tests) und die Versionsverwaltung je Projekt
-// (Atlas.Core.Projects.VersionControl.Tests) prüfen dieselbe Auflösung über ihre Zeilen.
+// (Atlas.Plugin.Projects.VersionControl.Tests) prüfen dieselbe Auflösung über ihre Zeilen.
 
 interface
 

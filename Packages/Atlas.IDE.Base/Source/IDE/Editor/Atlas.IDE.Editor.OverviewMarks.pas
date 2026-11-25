@@ -29,7 +29,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Editor.LineChanges,
+  Atlas.Plugin.Editor.LineChanges,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Problems.Controller,

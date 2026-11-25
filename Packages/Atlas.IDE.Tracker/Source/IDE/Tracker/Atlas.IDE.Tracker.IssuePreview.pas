@@ -156,7 +156,7 @@ uses
   Vcl.Graphics,
   Vcl.Clipbrd,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Editor.MouseButtons,
+  Atlas.Plugin.Editor.MouseButtons,
   Atlas.IDE.Base.Foundation.MouseHistory,
   Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,

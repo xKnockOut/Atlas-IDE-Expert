@@ -26,7 +26,7 @@ uses
   System.SysUtils,
   Atlas.Plugin.Settings.OverviewKinds,
   Atlas.Plugin.Lsp.Contract,
-  Atlas.Core.Editor.LineChanges,
+  Atlas.Plugin.Editor.LineChanges,
   Atlas.Core.Editor.Contract;
 
 type

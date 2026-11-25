@@ -40,7 +40,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Lsp.Contract,
-  Atlas.Core.Editor.LineChanges,
+  Atlas.Plugin.Editor.LineChanges,
   Atlas.Core.Editor.Overview;
 
 { TAtlasOverviewTests }

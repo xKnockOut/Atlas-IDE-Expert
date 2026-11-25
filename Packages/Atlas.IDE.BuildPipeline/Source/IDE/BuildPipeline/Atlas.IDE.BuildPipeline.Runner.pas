@@ -32,10 +32,10 @@ uses
   PlatformAPI,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Build.Requests;
+  Atlas.Plugin.Build.Contract.Requests;
 
 type
-  // TAtlasBuildDoneProc steht in Atlas.Core.Build.Requests (ein Typ, sonst E2010 unter Delphi 12).
+  // TAtlasBuildDoneProc steht in Atlas.Plugin.Build.Contract.Requests (ein Typ, sonst E2010 unter Delphi 12).
   TAtlasIdeBuildRunner = class
   public const
     cMessagesWaitMs = 5000;

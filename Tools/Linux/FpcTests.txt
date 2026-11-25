@@ -601,7 +601,7 @@ Atlas.Core.Editor.MultiCursorSession.Tests
 Atlas.Core.Editor.MultiCursor.Tests
 Atlas.Core.Editor.LineMove.Tests
 Atlas.Core.Editor.LinkedEditing.Tests
-Atlas.Core.Editor.MouseButtons.Tests
+Atlas.Plugin.Editor.MouseButtons.Tests
 Atlas.Core.Diagnostics.SafeMode.Tests
 Atlas.Core.Editor.GuideStroke.Tests
 Atlas.Core.Editor.MultiCursorKeys.Tests

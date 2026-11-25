@@ -5,13 +5,13 @@
 // Atlas-KI setzen und entfernen, weiterlaufen und Schritte, Zustand lesen und Ausdrücke auswerten. Das Modul
 // KI-Assistenten nimmt die Debug-Aufträge von MCP-Clients an (debug_start … debug_evaluate), prüft Rechte und Pause
 // und fragt den Vertrag bei jedem Auftrag neu über die Registry (Regel 2). Fehlt der Debugger, lehnt der Eingang mit
-// Grund ab. Haltepunkte des Benutzers fasst der Vertrag nie an. Daten in Atlas.Core.DebugControl.Types; hier nur
+// Grund ab. Haltepunkte des Benutzers fasst der Vertrag nie an. Daten in Atlas.Plugin.DebugControl.Contract; hier nur
 // das Interface.
 
 interface
 
 uses
-  Atlas.Core.DebugControl.Types;
+  Atlas.Plugin.DebugControl.Contract;
 
 type
   /// <summary>Steuerung des Debuggers für KI-Assistenten. Alle Aufrufe im Hauptthread der IDE.</summary>

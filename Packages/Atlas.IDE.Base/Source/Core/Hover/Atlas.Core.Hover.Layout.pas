@@ -92,7 +92,7 @@ uses
   System.SysUtils,
   System.Math,
   System.StrUtils,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Problems.Colors,
   Atlas.Core.Hover.Layout.Painter,

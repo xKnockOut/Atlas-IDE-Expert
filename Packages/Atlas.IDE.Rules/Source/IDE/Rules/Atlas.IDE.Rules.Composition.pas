@@ -55,7 +55,7 @@ uses
   Atlas.IDE.Rules.Adapters.Settings,
   Atlas.IDE.Rules.Adapters.SettingsDialog,
   Atlas.UI.Rules.SettingsSection,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.IDE.Rules.Adapters.Module;
 
 var

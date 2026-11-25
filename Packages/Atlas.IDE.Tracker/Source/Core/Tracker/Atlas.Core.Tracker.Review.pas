@@ -18,7 +18,7 @@
 interface
 
 uses
-  Atlas.Core.Build.Requests,
+  Atlas.Plugin.Build.Contract.Requests,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.Tracker.MyIssues,

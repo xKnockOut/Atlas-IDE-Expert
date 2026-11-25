@@ -51,7 +51,7 @@ type
 implementation
 
 uses
-  Atlas.Core.DebugControl.Types,
+  Atlas.Plugin.DebugControl.Contract,
   Atlas.Core.Assistants.DebugInbox;
 
 function Request(ACommand: TAtlasDebugCommand): TAtlasDebugRequest;

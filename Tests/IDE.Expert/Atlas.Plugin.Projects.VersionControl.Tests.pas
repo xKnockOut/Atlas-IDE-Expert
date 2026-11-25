@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Projects.VersionControl.Tests;
+﻿unit Atlas.Plugin.Projects.VersionControl.Tests;
 
 // Versionsverwaltung und Hauptbranch je Projekt (#1286) ohne Dateien und
 // Prozesse: Liste lesen und schreiben, Reihenfolge der Auflösung (.atlas →
@@ -41,7 +41,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Projects.Matching,
-  Atlas.Core.Projects.VersionControl,
+  Atlas.Plugin.Projects.VersionControl,
   Atlas.VersionControl.Repository.Contract;
 
 const
