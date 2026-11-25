@@ -89,7 +89,7 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.ChangeSignature,
-  Atlas.Common.Lsp.Rename,
+  Atlas.Common.Semantics.Renames,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor,

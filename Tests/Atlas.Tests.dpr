@@ -181,7 +181,7 @@ uses
   Atlas.Common.Semantics.References.Tests in 'Common\Semantics\Atlas.Common.Semantics.References.Tests.pas',
   Atlas.Common.Semantics.ReferenceConfidence.Tests in 'Common\Semantics\Atlas.Common.Semantics.ReferenceConfidence.Tests.pas',
   Atlas.Common.Semantics.ParameterHeaders.Tests in 'Common\Semantics\Atlas.Common.Semantics.ParameterHeaders.Tests.pas',
-  Atlas.Common.Lsp.Rename.Tests in 'Common\Lsp\Atlas.Common.Lsp.Rename.Tests.pas',
+  Atlas.Common.Semantics.Renames.Tests in 'Common\Semantics\Atlas.Common.Semantics.Renames.Tests.pas',
   Atlas.Common.Lsp.Completion.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Tests.pas',
   Atlas.Common.Lsp.Completion.TestSupport in 'Common\Lsp\Atlas.Common.Lsp.Completion.TestSupport.pas',
   Atlas.Common.Lsp.Completion.Server.TestSupport in 'Common\Lsp\Atlas.Common.Lsp.Completion.Server.TestSupport.pas',

@@ -27,7 +27,6 @@ uses
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Report,
-  Atlas.Common.Lsp.Hotspots,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Localization.RequestTexts;
 
@@ -158,7 +157,7 @@ var
   mError: string;
 begin
   Result := THotspotRequest.FromSettings(ASettings);
-  if not TLspHotspots.ApplyOptions(AArguments, Result, mError) then
+  if not THotspotReport.ApplyOptions(AArguments, Result, mError) then
   begin
     raise EMcpToolError.Create(mError);
   end;
@@ -185,11 +184,11 @@ function HotspotText(const AResult: THotspotResult; const AFormat: string; ASect
 begin
   if SameText(AFormat, 'json') then
   begin
-    Result := THotspotReport.Json(TLspHotspots.Limited(AResult, ALimit));
+    Result := THotspotReport.Json(THotspotReport.Limited(AResult, ALimit));
   end
   else if SameText(AFormat, 'markdown') then
   begin
-    Result := THotspotReport.Markdown(TLspHotspots.Limited(AResult, ALimit));
+    Result := THotspotReport.Markdown(THotspotReport.Limited(AResult, ALimit));
   end
   else
   begin

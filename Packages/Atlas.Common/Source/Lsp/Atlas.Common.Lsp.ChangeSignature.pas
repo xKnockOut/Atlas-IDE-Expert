@@ -33,7 +33,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.Signatures,
   Atlas.Common.Pascal.SignatureChanges,
-  Atlas.Common.Lsp.Rename,
+  Atlas.Common.Semantics.Renames,
   Atlas.Common.Lsp.ChangeSignature.Collector;
 
 type

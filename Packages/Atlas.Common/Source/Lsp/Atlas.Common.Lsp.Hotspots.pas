@@ -117,12 +117,6 @@ type
     /// <summary>Befehl atlas.hotspots.saveReport; der Aufrufer übernimmt das Ergebnis.</summary>
     function SaveReport(const AArguments: TJSONArray): TJSONValue;
     class function TryParseFormat(const AText: string; out AFormat: TLspHotspotFormat): Boolean; static;
-    /// <summary>Werte aus params bzw. MCP-Argumenten (level, months) in ARequest übernehmen; False mit AError bei
-    /// ungültigem Wert.</summary>
-    class function ApplyOptions(const AParams: TJSONObject; var ARequest: THotspotRequest;
-      out AError: string): Boolean; static;
-    /// <summary>Listen des Ergebnisses auf ALimit kürzen (0 = alle).</summary>
-    class function Limited(const AResult: THotspotResult; ALimit: Integer): THotspotResult; static;
   end;
 
 implementation
@@ -140,14 +134,13 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  THotspotsText = (LevelIsUnitOrMethod, MonthsIsAWholeNumber, NoProjectLoaded, NoVersionControlFound,
+  THotspotsText = (LevelIsUnitOrMethod, NoProjectLoaded, NoVersionControlFound,
     FormatIsJsonMarkdownHtml, SectionIsHotspotsOrCoupling, LimitIsAWholeNumber, HotspotDataIsNotValid,
     TargetFileMissingMdHtml, HotspotsAreSwitchedOffHotspots);
 
 const
   cTexts: array[THotspotsText] of TAtlasText = (
     (De: '"level" ist unit oder method'; En: '"level" is unit or method'),
-    (De: '"months" ist eine ganze Zahl von 1 bis 60'; En: '"months" is a whole number from 1 to 60'),
     (De: 'Kein Projekt geladen'; En: 'No project loaded'),
     (De: 'Keine Versionsverwaltung gefunden'; En: 'No version control found'),
     (De: '"format" ist json, markdown, html oder text'; En: '"format" is json, markdown, html or text'),
@@ -158,25 +151,6 @@ const
     (De: 'Hotspots sind ausgeschaltet (hotspots.enabled)'; En: 'Hotspots are switched off (hotspots.enabled)'));
 
 {$SCOPEDENUMS OFF}
-
-/// <summary>Ganze Zahl AName; ADefault ohne Angabe, False bei einem anderen Typ.</summary>
-function IntegerOf(const AObject: TJSONObject; const AName: string; ADefault: Integer; out AValue: Integer): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AValue := ADefault;
-  Result := True;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if mValue = nil then
-  begin
-    Exit;
-  end;
-  Result := (mValue is TJSONNumber) and TryStrToInt(mValue.Value, AValue);
-end;
 
 { TLspHotspots }
 
@@ -265,7 +239,7 @@ begin
   Result := False;
   if AOutcome.Enabled then
   begin
-    if not ApplyOptions(AParams, ARequest, mError) then
+    if not THotspotReport.ApplyOptions(AParams, ARequest, mError) then
     begin
       raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, mError);
     end;
@@ -400,49 +374,6 @@ begin
   end;
 end;
 
-class function TLspHotspots.ApplyOptions(const AParams: TJSONObject; var ARequest: THotspotRequest;
-  out AError: string): Boolean;
-var
-  mLevel: THotspotLevel;
-  mMonths: Integer;
-begin
-  AError := '';
-  if not THotspots.TryLevelOf(TJsonRead.TrimmedText(AParams, 'level'), mLevel) then
-  begin
-    AError := cTexts[THotspotsText.LevelIsUnitOrMethod].Text;
-    Exit(False);
-  end;
-  ARequest.Level := mLevel;
-  if not IntegerOf(AParams, 'months', ARequest.Options.Months, mMonths) or (mMonths < 1) or (mMonths > 60) then
-  begin
-    AError := cTexts[THotspotsText.MonthsIsAWholeNumber].Text;
-    Exit(False);
-  end;
-  ARequest.Options.Months := mMonths;
-  Result := True;
-end;
-
-class function TLspHotspots.Limited(const AResult: THotspotResult; ALimit: Integer): THotspotResult;
-begin
-  Result := AResult;
-  if ALimit <= 0 then
-  begin
-    Exit;
-  end;
-  if Length(Result.Units) > ALimit then
-  begin
-    Result.Units := Copy(Result.Units, 0, ALimit);
-  end;
-  if Length(Result.Methods) > ALimit then
-  begin
-    Result.Methods := Copy(Result.Methods, 0, ALimit);
-  end;
-  if Length(Result.Coupling) > ALimit then
-  begin
-    Result.Coupling := Copy(Result.Coupling, 0, ALimit);
-  end;
-end;
-
 /// <summary>Format, Abschnitt und Listenlänge aus AParams; Fehler der Anfrage bei ungültigen Werten.</summary>
 function ViewOf(const AParams: TJSONObject): TLspHotspotView;
 begin
@@ -460,7 +391,7 @@ begin
   begin
     Result.Limit := THotspotReport.cTextLimit;
   end;
-  if not IntegerOf(AParams, 'limit', Result.Limit, Result.Limit) or (Result.Limit < 0) then
+  if not THotspotReport.IntegerOption(AParams, 'limit', Result.Limit, Result.Limit) or (Result.Limit < 0) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.LimitIsAWholeNumber].Text);
   end;
@@ -524,7 +455,7 @@ begin
     end
     else
     begin
-      AddReport(AAnswer, TLspHotspots.Limited(AOutcome.Result, AView.Limit), AView);
+      AddReport(AAnswer, THotspotReport.Limited(AOutcome.Result, AView.Limit), AView);
     end;
   end;
 end;
