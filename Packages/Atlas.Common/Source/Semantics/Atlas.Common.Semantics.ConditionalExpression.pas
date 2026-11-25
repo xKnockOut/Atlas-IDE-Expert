@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ConditionalExpression;
+﻿unit Atlas.Common.Semantics.ConditionalExpression;
 
 // if-Anweisung und Bedingungsausdruck (Delphi 13: X := if C then A else B)
 // ineinander umwandeln (#684):
@@ -92,7 +92,7 @@ uses
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.ExpressionText,
+  Atlas.Common.Pascal.ExpressionText,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes;
@@ -1069,6 +1069,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.ConditionalExpression', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Semantics.ConditionalExpression', cTexts);
 
 end.

@@ -26,7 +26,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.EnumTables,
+  Atlas.Common.Pascal.EnumTables,
   Atlas.Common.Lsp.References;
 
 type

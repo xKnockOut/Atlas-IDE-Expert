@@ -67,7 +67,7 @@ uses
   Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Editing.PropertyFromAccessors,
-  Atlas.Common.Editing.InlineAccessor,
+  Atlas.Common.Semantics.InlineAccessor,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.PropertyFromAccessors,
   Atlas.Common.Lsp.InlineAccessor,

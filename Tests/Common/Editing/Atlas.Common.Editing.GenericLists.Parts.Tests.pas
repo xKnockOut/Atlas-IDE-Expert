@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Editing.GenericLists.Parts.Tests;
 
-// Tests für die Teile der Listenumwandlung (#1105, #1106): Listenarten (Atlas.Common.Editing.GenericLists.Kinds),
+// Tests für die Teile der Listenumwandlung (#1105, #1106): Listenarten (Atlas.Common.Semantics.LegacyListKinds),
 // Abfragen am Syntaxbaum (.Syntax), Edits je Datei (.Source), uses-Listen (.UsesEdits), Zielprüfung (.State),
 // Elementprüfung (.Elements) und DeclarationAt (.Declarations). Die Verwendungen
 // (Atlas.Common.Editing.GenericLists.Usages) prüfen die Umwandlungstests in Atlas.Common.Editing.GenericLists.Tests.
@@ -47,7 +47,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists.Syntax,
   Atlas.Common.Editing.GenericLists.Source,
   Atlas.Common.Editing.GenericLists.UsesEdits,

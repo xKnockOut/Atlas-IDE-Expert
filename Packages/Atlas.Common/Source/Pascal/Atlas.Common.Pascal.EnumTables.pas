@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.EnumTables;
+﻿unit Atlas.Common.Pascal.EnumTables;
 
 // Aufzählung mit Namenstabelle (#667):
 //   - Target und CreateTable: auf einem Aufzählungstyp ohne feste Werte die
@@ -133,7 +133,7 @@ uses
   System.Character,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Common.Pascal.ResourceStrings,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -1732,6 +1732,6 @@ begin
 end;
 
 initialization
-  TAtlasTextTables.Add('Atlas.Common.Editing.EnumTables', cTexts);
+  TAtlasTextTables.Add('Atlas.Common.Pascal.EnumTables', cTexts);
 
 end.

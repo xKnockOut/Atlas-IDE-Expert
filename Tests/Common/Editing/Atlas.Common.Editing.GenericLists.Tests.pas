@@ -106,7 +106,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Documents.TextChanges,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists;
 
 const

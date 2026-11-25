@@ -118,7 +118,7 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.StatementText,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.ConditionalExpression,
+  Atlas.Common.Semantics.ConditionalExpression,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Expressions.Tokens,
   Atlas.Common.Rules.Builtin.Expressions.DuplicateConditions,

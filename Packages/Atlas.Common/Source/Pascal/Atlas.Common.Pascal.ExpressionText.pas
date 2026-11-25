@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ExpressionText;
+﻿unit Atlas.Common.Pascal.ExpressionText;
 
 // Ausdrücke aus dem Syntaxbaum als Text für Umformungen (Kette L: #646, #656,
 // #684): Vorrang nach Delphi, Klammern nur, wo der Vorrang sie verlangt,
