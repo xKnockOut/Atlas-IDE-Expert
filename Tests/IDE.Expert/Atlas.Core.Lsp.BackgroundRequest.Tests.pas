@@ -261,7 +261,7 @@ begin
     mProbe := TDoneProbe.Create;
     mRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.Outline);
     mRequest.Start(Raising(ELspResponseError.CreateCode('kaputt', -32603)), mProbe.Done());
-    Assert.IsTrue(TTestWait.Synchronized(Reached(mProbe, 1)));
+    Assert.IsTrue(WaitUntil(Reached(mProbe, 1)));
     Assert.IsFalse(mProbe.Ok);
     Assert.AreEqual('kaputt', mProbe.Error, 'der Aufrufer bekommt die Meldung');
     Assert.AreEqual('gemeldet', mReported, 'ein Fehler im Server geht ins Fehlerprotokoll');
