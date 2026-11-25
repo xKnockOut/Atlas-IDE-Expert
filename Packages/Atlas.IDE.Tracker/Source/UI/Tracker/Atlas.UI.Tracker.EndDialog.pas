@@ -327,7 +327,7 @@ uses
   System.Math,
   Vcl.Graphics,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Transitions,
   Atlas.Core.Tracker.TimeLog,
   Atlas.UI.Tracker.Workflow.Strings,

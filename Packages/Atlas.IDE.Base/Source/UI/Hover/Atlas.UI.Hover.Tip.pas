@@ -250,9 +250,9 @@ procedure ApplyHoverFace(ACanvas: TCanvas; AFont, AUIFont: TFont; const AFace: T
 implementation
 
 uses
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.Core.Hover.Texts,
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,

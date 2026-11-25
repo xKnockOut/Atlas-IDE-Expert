@@ -28,7 +28,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Documentation.Contract;
+  Atlas.Plugin.Documentation.Contract;
 
 type
 {$SCOPEDENUMS ON}

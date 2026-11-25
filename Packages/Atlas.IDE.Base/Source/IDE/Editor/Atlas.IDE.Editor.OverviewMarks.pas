@@ -29,13 +29,13 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.Core.Problems.Store,
-  Atlas.Core.Editor.LineChanges,
+  Atlas.Plugin.Editor.LineChanges,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Base.Foundation.LineChanges,
   Atlas.ToolsApi.Debugger.Services,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 const
   cBookmarkCount = 10;

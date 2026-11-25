@@ -61,7 +61,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Contract,
+  Atlas.Plugin.Build.Contract,
   Atlas.Core.Assistants.Activity,
   Atlas.Core.Assistants.BuildInbox,
   Atlas.Core.Assistants.Log,

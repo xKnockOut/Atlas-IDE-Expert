@@ -41,7 +41,7 @@ uses
   Atlas.VersionControl.Repository.Tools,
   Atlas.VersionControl.Repository.ToolCheck,
   Atlas.VersionControl.Repository.ServerCheck,
-  Atlas.Core.Projects.VersionControl;
+  Atlas.Plugin.Projects.VersionControl;
 
 type
   TAtlasIdeVcsMessage = TProc<string>;

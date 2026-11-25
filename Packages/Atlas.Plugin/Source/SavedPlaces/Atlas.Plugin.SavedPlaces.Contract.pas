@@ -1,13 +1,12 @@
-﻿unit Atlas.Core.SavedPlaces.Contract;
+﻿unit Atlas.Plugin.SavedPlaces.Contract;
 
 // Gemerkte Stellen als allgemeiner Vertrag von Base (#1456, Modulregel 6):
 // Ein Modul, das gemerkte Stellen kennt (Lesezeichen und Notizen), stellt
 // über seinen Scope eine IAtlasSavedPlacesSource bereit; der Reiter
 // „Gemerkt“ der Willkommensseite (#755) fragt sie über die Registry und kommt
-// ohne das Modul aus (dann nur mit den Favoriten von Base). Liegt unter
-// Core/SavedPlaces statt bei den Verträgen unter Source/Foundation, weil die
-// Kern-Units beider Module die Einträge als Daten verwenden (wie
-// Atlas.Core.CiBuild.Contract). Nur
+// ohne das Modul aus (dann nur mit den Favoriten von Base). Liegt in Atlas.Plugin
+// statt in der Foundation von Base, weil die Kern-Units beider Module die
+// Einträge als Daten verwenden (wie Atlas.Plugin.CiBuild.Contract). Nur
 // Interfaces und Records, kein Code.
 
 interface

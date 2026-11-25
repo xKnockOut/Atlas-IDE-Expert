@@ -54,7 +54,7 @@ uses
   Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,

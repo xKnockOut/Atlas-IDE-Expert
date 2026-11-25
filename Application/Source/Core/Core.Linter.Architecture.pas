@@ -40,7 +40,7 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Checker,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Output,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.Report,
@@ -65,7 +65,7 @@ const
     (De: 'Architekturübersicht ist ausgeschaltet (architecture.enabled in settings.json)';
     En: 'Architecture overview is turned off (architecture.enabled in settings.json)'));
 
-function DefinesFunc(const ASources: TCheckSourceFunc): TUsesDefinesFunc;
+function DefinesFunc(const ASources: TPascalSourceFunc): TUsesDefinesFunc;
 begin
   Result :=
     function(const AFileName: string): TArray<string>
@@ -80,7 +80,7 @@ class function TLinterArchitecture.OverviewOf(const ATarget: TLinterTarget;
   const ASettings: TServerSettings; const AHost: TCoreLinterHost): TArchitectureOverview;
 var
   mRoot: string;
-  mSources: TCheckSourceFunc;
+  mSources: TPascalSourceFunc;
   mIndex: ISymbolIndex;
   mService: TArchitectureService;
   mRequest: TArchitectureRequest;

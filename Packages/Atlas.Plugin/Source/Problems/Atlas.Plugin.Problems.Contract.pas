@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Problems.Contract;
+﻿unit Atlas.Plugin.Problems.Contract;
 
 // Probleme im Editor (#398): Diagnosen des Servers (Syntaxfehler, Regeltreffer,
 // Compilermeldungen mit source "dcc") als Datensatz des Plugins. Positionen

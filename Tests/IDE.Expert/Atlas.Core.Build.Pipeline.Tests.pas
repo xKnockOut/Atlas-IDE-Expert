@@ -33,7 +33,7 @@ uses
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Build.Pipeline,
-  Atlas.Core.Build.Contract;
+  Atlas.Plugin.Build.Contract;
 
 type
   TFakeModule = class(TInterfacedObject, IAtlasModule)

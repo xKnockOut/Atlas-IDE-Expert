@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.DebugControl.Types;
+﻿unit Atlas.Plugin.DebugControl.Contract;
 
 // Steuerung des Debuggers für KI-Assistenten (#1874) ohne Open Tools API: Daten des Vertrags
 // Atlas.IDE.Base.Foundation.DebugControl, gemeinsam für den Debugger (führt aus) und das Modul

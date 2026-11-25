@@ -67,6 +67,14 @@
       Zeilen mit // window-ok und Begründung (Werte, die der Stil danach
       abbildet, Farben ohne IDE-Thema, Farbwerte für entworfene Formulare).
       Zeichenketten zählen nicht (Namen der Farben im Visualisierer).
+    - Eine Liste wird nur in einer Methode CreateWnd virtuell
+      (Style := lbVirtual bzw. lbVirtualOwnerDraw; virtual-listbox-style):
+      SetStyle leert die Einträge per LB_RESETCONTENT und legt dafür das
+      Fenster der Liste an. Im Konstruktor fehlt der Parent bzw. dessen
+      Fenster (die IDE hängt den Frame eines Dockfensters erst nach dem
+      Anlegen ein): „Element … hat kein übergeordnetes Fenster“, und die
+      Sicherung schaltet die Funktion ab. In CreateWnd des Frames bzw. des
+      Parents ist dessen Fenster da.
     - Der Frame eines andockbaren Fensters (Ergebnis von GetFrameClass) hat
       eine DFM: {$R *.dfm} in seiner Unit und die .dfm daneben. Die IDE legt
       ihn über TCustomFrame.Create an, das ohne Ressource EResNotFound
@@ -257,6 +265,18 @@ foreach ($file in $files) {
         $mName = [regex]::Escape($match.Groups[1].Value) -replace '\\\.', '\s*\.\s*'
         if ($text -notmatch ('(?i)(?<![\w.])' + $mName + '\s*\.\s*(Top|Left)\s*:=')) {
             $violations += "${relative}:${mLine}: Teiler ohne Top bzw. Left; vor Align und Parent neben das Steuerelement setzen, das er verstellt (die VCL ordnet gleich ausgerichtete Steuerelemente nach ihrer Lage, sonst zieht der Teiler den falschen Nachbarn)"
+        }
+    }
+
+    # Virtuelle Liste nur in CreateWnd: SetStyle braucht das Fenster des Parents (virtual-listbox-style).
+    foreach ($match in [regex]::Matches($text, '(?i)\bStyle\s*:=\s*lbVirtual(OwnerDraw)?\b')) {
+        $mLine = Get-LineNumber $text $match.Index
+        if ($exempt.Contains($mLine)) { continue }
+        $mHeads = [regex]::Matches($text.Substring(0, $match.Index), '(?im)^\s*(class\s+)?(procedure|function|constructor|destructor)\s+([\w.]+)')
+        $mRoutine = ''
+        if ($mHeads.Count -gt 0) { $mRoutine = $mHeads[$mHeads.Count - 1].Groups[3].Value }
+        if ($mRoutine -notmatch '(?i)(^|\.)CreateWnd$') {
+            $violations += "${relative}:${mLine}: Liste außerhalb von CreateWnd virtuell geschaltet ($mRoutine); SetStyle leert per LB_RESETCONTENT und braucht das Fenster des Parents (im Konstruktor: kein übergeordnetes Fenster). In CreateWnd des Parents setzen"
         }
     }
 

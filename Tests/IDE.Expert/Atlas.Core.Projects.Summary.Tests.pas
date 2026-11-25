@@ -94,7 +94,7 @@ uses
   System.IOUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Files.DataFile,
   Atlas.Core.Projects.Summary,
   Atlas.Plugin.Projects.Summary.Json,

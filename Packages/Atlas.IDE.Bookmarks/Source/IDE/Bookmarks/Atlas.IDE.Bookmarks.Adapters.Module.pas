@@ -12,7 +12,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   /// <summary>Was die Modulklasse von der Composition braucht.</summary>

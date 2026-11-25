@@ -71,10 +71,18 @@ begin
   Assert.AreEqual('TFunc', mReference.Name);
   Assert.AreEqual('T=Integer|TResult=TArray<string>', string.Join('|', mReference.Bindings));
   Assert.IsTrue(TRtlMethodReferences.Find('TProc', mReference));
+  Assert.AreEqual('System.SysUtils', mReference.UnitName);
   Assert.AreEqual(0, Integer(Length(mReference.Bindings)));
   Assert.IsFalse(TRtlMethodReferences.Find('TFunc', mReference));
   Assert.IsFalse(TRtlMethodReferences.Find('TList<string>', mReference));
   Assert.IsFalse(TRtlMethodReferences.Find('TProc<A, B, C, D, E>', mReference));
+  // TThreadProcedure steht in System.Classes, ohne Typargumente.
+  Assert.IsTrue(TRtlMethodReferences.Find('Classes.TThreadProcedure', mReference));
+  Assert.AreEqual('TThreadProcedure = reference to procedure;', mReference.Signature);
+  Assert.AreEqual('System.Classes', mReference.UnitName);
+  Assert.IsFalse(TRtlMethodReferences.Find('TThreadProcedure<string>', mReference));
+  Assert.IsFalse(TRtlMethodReferences.Find('System.SysUtils.TThreadProcedure', mReference));
+  Assert.IsFalse(TRtlMethodReferences.Find('System.Classes.TProc', mReference));
 end;
 
 procedure TRtlMethodReferencesTests.RecognizesSysUtils;
@@ -82,6 +90,8 @@ begin
   Assert.IsTrue(TRtlMethodReferences.IsSysUtils('System.SysUtils'));
   Assert.IsTrue(TRtlMethodReferences.IsSysUtils('sysutils'));
   Assert.IsFalse(TRtlMethodReferences.IsSysUtils('System.Classes'));
+  Assert.IsTrue(TRtlMethodReferences.IsUnit('Classes', 'System.Classes'));
+  Assert.IsFalse(TRtlMethodReferences.IsUnit('System.SysUtils', 'System.Classes'));
 end;
 
 initialization

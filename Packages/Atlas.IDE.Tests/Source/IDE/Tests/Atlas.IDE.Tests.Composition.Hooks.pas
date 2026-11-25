@@ -19,7 +19,7 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,

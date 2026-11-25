@@ -58,7 +58,7 @@ uses
   System.SysUtils,
   Atlas.Core.Build.Messages,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Build.Requests,
+  Atlas.Plugin.Build.Contract.Requests,
   Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,

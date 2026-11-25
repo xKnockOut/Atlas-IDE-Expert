@@ -103,9 +103,9 @@ uses
   Atlas.Core.Hover.History,
   System.SysUtils,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Explanation,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Hover.Layout.TestSupport;
 
 function Unavailable(const AReason: string): TAtlasDebugValue;

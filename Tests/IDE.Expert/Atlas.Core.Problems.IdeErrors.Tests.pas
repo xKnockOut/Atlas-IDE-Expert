@@ -49,7 +49,7 @@ implementation
 uses
   System.SysUtils,
   System.Diagnostics,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.IdeErrors,
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.Findings;

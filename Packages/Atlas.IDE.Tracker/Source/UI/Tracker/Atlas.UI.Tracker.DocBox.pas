@@ -14,7 +14,7 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Documentation.Contract,
+  Atlas.Plugin.Documentation.Contract,
   Atlas.UI.Documentation.View;
 
 type

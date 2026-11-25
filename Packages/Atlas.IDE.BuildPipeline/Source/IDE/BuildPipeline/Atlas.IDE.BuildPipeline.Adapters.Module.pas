@@ -16,11 +16,11 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Build.Requests,
+  Atlas.Plugin.Build.Contract.Requests,
   Atlas.Core.BuildPipeline.ReleaseGuard,
   Atlas.IDE.Base.Foundation.BuildPipeline,
   Atlas.IDE.Base.Foundation.BuildRequests,
-  Atlas.Core.Build.Contract,
+  Atlas.Plugin.Build.Contract,
   Atlas.IDE.BuildPipeline.Runner;
 
 type

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Editor.LineChanges.Tests;
+﻿unit Atlas.Plugin.Editor.LineChanges.Tests;
 
 // Änderungsmarken und Zeilenhistorie (#507): Blöcke hinzugefügt, geändert
 // und gelöscht, Marken je Zeile, nächste/vorige Änderung reihum,
@@ -35,7 +35,7 @@ implementation
 uses
   System.SysUtils,
   System.DateUtils,
-  Atlas.Core.Editor.LineChanges;
+  Atlas.Plugin.Editor.LineChanges;
 
 function Apply(const ALines: TArray<string>; const AEdit: TAtlasLineEdit): string;
 var

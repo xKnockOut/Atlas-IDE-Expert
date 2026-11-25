@@ -99,7 +99,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Settings.StatusBarItems,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
   Atlas.ToolsApi.EditorBars.Order,

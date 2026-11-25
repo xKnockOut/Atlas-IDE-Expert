@@ -45,7 +45,7 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Build.Messages,
   Atlas.VersionControl.Repository.Contract,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Projects.Recording,
   Atlas.Core.Welcome.Projects,

@@ -36,7 +36,7 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Core.Projects.Contract.Summary,
+  Atlas.Plugin.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.ContinueWork;

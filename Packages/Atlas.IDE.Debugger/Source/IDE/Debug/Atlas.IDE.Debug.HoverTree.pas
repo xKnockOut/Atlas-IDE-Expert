@@ -17,7 +17,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.HoverTree,
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Debug.StopView;

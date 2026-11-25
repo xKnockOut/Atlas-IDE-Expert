@@ -38,7 +38,7 @@ uses
   Atlas.UI.Settings.Page.Tree,
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Projects.VersionControl,
+  Atlas.Plugin.Projects.VersionControl,
   Atlas.UI.Settings.Page,
   Atlas.VersionControl.Repository.Contract,
   Atlas.VersionControl.Repository.Tools,

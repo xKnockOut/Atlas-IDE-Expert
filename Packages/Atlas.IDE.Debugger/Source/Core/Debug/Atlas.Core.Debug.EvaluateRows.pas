@@ -9,7 +9,7 @@ interface
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Evaluate;
 
 type

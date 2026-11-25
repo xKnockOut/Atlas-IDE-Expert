@@ -79,7 +79,7 @@ uses
   System.JSON,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Colors,
   Atlas.Core.Problems.Store,
   Atlas.Plugin.Lsp.Session.Json,

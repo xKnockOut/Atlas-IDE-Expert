@@ -14,7 +14,7 @@ interface
 uses
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
-  Atlas.Core.Problems.Contract;
+  Atlas.Plugin.Problems.Contract;
 
 /// <summary>Farbe von AProblem in den Rollen AColors; blasse Probleme abgeschwächt.</summary>
 function ProblemColor(const AColors: TAtlasColors; const AProblem: TAtlasProblem): TAtlasColor;
