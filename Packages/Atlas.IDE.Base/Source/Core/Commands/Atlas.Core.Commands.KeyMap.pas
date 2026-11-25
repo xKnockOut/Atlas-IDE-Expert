@@ -37,7 +37,7 @@ uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.Core.Commands.Contract;
+  Atlas.Core.Commands.Palette;
 
 type
   {$SCOPEDENUMS ON}
@@ -229,6 +229,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Core.Commands.Usage,

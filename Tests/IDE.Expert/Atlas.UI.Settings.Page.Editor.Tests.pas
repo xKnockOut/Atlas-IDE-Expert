@@ -487,7 +487,8 @@ begin
     // #658 steht daneben, ebenfalls experimentell und aus.
     Assert.IsFalse(CheckOf(mPage, 'LinkedEditing').Checked);
     Assert.AreEqual(0, mPage.Part<TAtlasSettingsEditorCodePart>.MultiCursorModifier.Choice);
-    Assert.AreEqual(ShortCutToText(TShortCut($4044)), EditOf(mPage, 'MultiCursorNextKey').Text);
+    // Strg+Alt+D: Strg+D gehört seit #2938 „Methode suchen …“.
+    Assert.AreEqual(ShortCutToText(TShortCut($C044)), EditOf(mPage, 'MultiCursorNextKey').Text);
     Assert.AreEqual(ShortCutToText(TShortCut($4044)), EditOf(mPage, 'MultiCursorSkipKey').Text);
     Assert.AreEqual(ShortCutToText(TShortCut($A049)), EditOf(mPage, 'MultiCursorLineEndsKey').Text);
     Assert.AreEqual(ShortCutToText(TShortCut($C026)), EditOf(mPage, 'MultiCursorAboveKey').Text);

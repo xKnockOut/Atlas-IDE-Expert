@@ -20,7 +20,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Commands.KeyMap,
-  Atlas.Core.Commands.Contract,
+  Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.CustomKeys;
 
 type

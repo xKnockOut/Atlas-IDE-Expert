@@ -57,6 +57,7 @@ implementation
 uses
   Winapi.CommCtrl,
   System.Classes,
+  Winapi.Windows, // Inline-Funktion ListView_GetExtendedListViewStyle (H2443)
   System.SysUtils,
   Vcl.Graphics,
   Vcl.Controls,

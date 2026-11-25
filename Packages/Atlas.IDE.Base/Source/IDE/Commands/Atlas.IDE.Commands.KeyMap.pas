@@ -128,7 +128,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Commands.Palette,
+  Atlas.Core.Settings.Plugin,
   Atlas.UI.Commands.KeyAssign;
 
 type

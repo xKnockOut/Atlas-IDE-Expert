@@ -101,7 +101,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Keys,
   Atlas.IDE.Foundation.Host,
-  Atlas.Core.Commands.Contract,
+  Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.CustomKeys,
   Atlas.Core.Commands.KeyMap,
   Atlas.IDE.Commands.KeysEditing,
