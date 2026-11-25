@@ -29,9 +29,6 @@ uses
   Atlas.Common.Mcp.Contract,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Findings.Contract,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Findings.Scopes,
-  Atlas.Common.Rules.Builtin,
   Atlas.Common.Localization.Texts,
   Core.Bootstrap,
   Core.Texts;
@@ -149,9 +146,8 @@ begin
   begin
     raise EMcpToolError.Create(TCoreTexts.NoProjectGiveFile);
   end;
-  Result := TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, ReadSourceText,
-    AContext.CheckSource, AContext.CheckProject);
+  Result := TMcpCheckTools.Diagnostics(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), mFiles, ReadSourceText);
   // Solange der Index lädt, sehen Regeln, die Typen anderer Units brauchen, noch nicht alles (#1112).
   if not AContext.Group.Ready(mReason) then
   begin
@@ -195,9 +191,8 @@ begin
   begin
     Exit;
   end;
-  Result := TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Create(BuiltinRules,
-    AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, ReadSourceText,
-    AContext.CheckSource, AContext.CheckProject, mSeverity);
+  Result := TMcpCheckTools.HookDiagnostics(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, ReadSourceText, mSeverity);
 end;
 
 procedure AddHookCheck(const AContext: TMcpToolContext);
@@ -327,9 +322,8 @@ begin
   begin
     mEndLine := mStartLine;
   end;
-  Result := AContext.Code.CheckCode(TMcpRuleScope.Create(BuiltinRules, AContext.Group.Main.Configuration.Settings,
-    AContext.Root), mFileName, mText,
-    mStartLine, mEndLine);
+  Result := AContext.Code.CheckCode(TMcpRuleScope.Checking(AContext.Adapters.TextChecks,
+    AContext.Group.Main.Configuration.Settings, AContext.Root), mFileName, mText, mStartLine, mEndLine);
 end;
 
 procedure AddCheckCode(const AContext: TMcpToolContext);
@@ -384,7 +378,6 @@ var
   mFileName, mText, mRuleId, mRelativePath: string;
   mLine: Integer;
   mFinding: TRuleFinding;
-  mScopes: TFindingScopes;
 begin
   mFileName := AContext.Guard.Resolve(TMcpArgs.RequiredString(AArguments, 'file'));
   if not AArguments.TryGetValue<Integer>('line', mLine) then
@@ -402,9 +395,8 @@ begin
     mRelativePath := Copy(mFileName, Length(IncludeTrailingPathDelimiter(AContext.Root)) + 1, MaxInt);
   end;
   Result := '';
-  for mFinding in TFileChecker.CheckText(BuiltinRules, AContext.Group.Main.Configuration.Settings, mRelativePath,
-    mText, TCheckOrigin.Make(AContext.CheckProject(mFileName), AContext.Group.Main.State.CheckSource(mFileName)),
-    mScopes) do
+  for mFinding in AContext.Adapters.TextChecks.Check(mFileName, mRelativePath, mText,
+    AContext.Group.Main.Configuration.Settings) do
   begin
     if (mFinding.Range.StartPos.Line = mLine - 1) and ((mRuleId = '') or SameText(mRuleId, mFinding.RuleId)) then
     begin
