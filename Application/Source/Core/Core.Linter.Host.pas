@@ -10,7 +10,6 @@ uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.InstructionFiles,
   Core.VersionControlChanges,
   Core.WorkspaceGroup;
 
@@ -19,9 +18,24 @@ type
   TCoreLinterGroupFactory = reference to function(const AConfigRoot: string; const AIndex: ISymbolIndex):
     TCoreWorkspaceGroup;
 
+{$SCOPEDENUMS ON}
+  /// <summary>Stand des Atlas-Abschnitts in einer Anweisungsdatei.</summary>
+  TCoreInstructionsState = (Current, Stale, Missing);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Ergebnis je Anweisungsdatei.</summary>
+  TCoreInstructionsFile = record
+    /// <summary>Wie in atlas.json angegeben.</summary>
+    FileName: string;
+    State: TCoreInstructionsState;
+    Written: Boolean;
+    /// <summary>Grund, wenn Schreiben scheiterte; sonst ''.</summary>
+    Error: string;
+  end;
+
   /// <summary>Anweisungsdateien für KI-Assistenten unter ARoot prüfen bzw. mit AWrite schreiben (#2615).</summary>
   TCoreLinterInstructions = reference to function(const ARoot: string; const ASettings: TServerSettings;
-    AWrite: Boolean): TArray<TInstructionsFile>;
+    AWrite: Boolean): TArray<TCoreInstructionsFile>;
 
   TCoreLinterHost = record
     /// <summary>Installierte Delphi-Versionen (BDS-Nummern).</summary>
