@@ -1464,8 +1464,10 @@ begin
   Assert.IsTrue(mSettings.Formatting.Reindent);
   Assert.AreEqual<TBlockPlacement>(TBlockPlacement.Preserve, mSettings.Formatting.BeginPlacement);
   Assert.AreEqual(0, mSettings.Formatting.MaxLineLength);
+  Assert.IsFalse(mSettings.Formatting.SortUses);
   mSettings := Parse('{"format": {"reindent": false, "beginPlacement": "newLine", "elsePlacement": "sameLine", ' +
-    '"maxLineLength": 100, "alignAssignments": true, "alignDeclarations": true, "alignComments": true}}', mIssues);
+    '"maxLineLength": 100, "alignAssignments": true, "alignDeclarations": true, "alignComments": true, ' +
+    '"sortUses": true}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.IsFalse(mSettings.Formatting.Reindent);
   Assert.AreEqual<TBlockPlacement>(TBlockPlacement.NewLine, mSettings.Formatting.BeginPlacement);
@@ -1474,6 +1476,7 @@ begin
   Assert.IsTrue(mSettings.Formatting.AlignAssignments);
   Assert.IsTrue(mSettings.Formatting.AlignDeclarations);
   Assert.IsTrue(mSettings.Formatting.AlignComments);
+  Assert.IsTrue(mSettings.Formatting.SortUses);
   Assert.AreEqual<TFormatKeys>([TFormatKey.MaxLineLength], mSettings.Formatting.Given);
   Parse('{"format": {"beginPlacement": "below", "maxLineLength": -1}}', mIssues);
   Assert.AreEqual(2, Integer(Length(mIssues)));
