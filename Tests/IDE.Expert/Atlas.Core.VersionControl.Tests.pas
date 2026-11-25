@@ -102,6 +102,7 @@ uses
   Atlas.VersionControl.Repository.Composition,
   Atlas.VersionControl.Repository.BranchPlan,
   Atlas.Plugin.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.VersionControl.TestSupport;
 
 type
@@ -790,7 +791,7 @@ var
 begin
   // #592: Ohne Start kommt kein Ergebnis; der Aufrufer muss das wissen, sonst bleibt „wird abgefragt …“.
   mDone := False;
-  mWorker := TAtlasBackgroundJobs.Create(HInstance);
+  mWorker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Status);
   try
     Assert.IsTrue(mWorker.Run(
       procedure

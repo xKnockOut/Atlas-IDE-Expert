@@ -83,6 +83,7 @@ uses
   System.Actions,
   Vcl.Menus,
   Vcl.Forms,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings;
 
@@ -103,7 +104,7 @@ begin
   FEdit.ShowHint := True;
   FEdit.OnChange := EditChange;
   FEdit.OnKeyDown := EditKeyDown;
-  FList := TListBox.Create(AOwner);
+  FList := TAtlasListBox.Create(AOwner);
   FList.Parent := AParent;
   FList.Align := alClient;
   FList.AlignWithMargins := True;

@@ -15,12 +15,12 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Build.Contract;
+  Atlas.Plugin.Build.Contract;
 
 type
-  TAtlasCompilerSeverity = Atlas.Core.Build.Contract.TAtlasCompilerSeverity;
+  TAtlasCompilerSeverity = Atlas.Plugin.Build.Contract.TAtlasCompilerSeverity;
 
-  TAtlasCompilerMessage = Atlas.Core.Build.Contract.TAtlasCompilerMessage;
+  TAtlasCompilerMessage = Atlas.Plugin.Build.Contract.TAtlasCompilerMessage;
 
   TAtlasCompilerMessages = class
   public

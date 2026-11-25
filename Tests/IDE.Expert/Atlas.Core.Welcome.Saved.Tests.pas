@@ -35,7 +35,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Completion.Favorites,
-  Atlas.Core.SavedPlaces.Contract,
+  Atlas.Plugin.SavedPlaces.Contract,
   Atlas.Core.Welcome.IndexFiles,
   Atlas.Core.Welcome.Saved;
 

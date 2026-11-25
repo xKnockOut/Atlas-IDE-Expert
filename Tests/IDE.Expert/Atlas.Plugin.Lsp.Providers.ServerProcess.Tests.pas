@@ -44,7 +44,7 @@ uses
   Atlas.Plugin.Lsp.Contract,
   Atlas.Plugin.Lsp.Crashes,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Tests.Wait;
 
 /// <summary>Zahl der offenen Handles des Prozesses (eigene Deklaration, unabhängig von der Delphi-Version).</summary>

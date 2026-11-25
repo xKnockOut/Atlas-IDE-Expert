@@ -8,7 +8,7 @@ interface
 
 uses
   Vcl.Graphics,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Contract.MyIssues;

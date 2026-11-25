@@ -2,7 +2,7 @@
 
 // Bekannte Fehler beim Exception-Halt (#2460), Teil des Trackers, ohne VCL und
 // Open Tools API. Der Debugger meldet den Halt über den Vertrag
-// Atlas.Core.KnownErrors.Contract; hier steht, was der Tracker daraus macht:
+// Atlas.Plugin.KnownErrors.Contract; hier steht, was der Tracker daraus macht:
 // - Signatur: Exception-Klasse, Meldung ohne Zahlen, Adressen, Pfade und
 //   Anführungsinhalte, oberste eigene Methode ohne Unit ("TFoo.Bar").
 // - Suche: bis zu drei Freitextsuchen beim Tracker in der Rangfolge Klasse und
@@ -21,7 +21,7 @@ interface
 uses
   System.Generics.Collections,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.KnownErrors.Contract;
+  Atlas.Plugin.KnownErrors.Contract;
 
 type
   /// <summary>Signatur eines Halts.</summary>

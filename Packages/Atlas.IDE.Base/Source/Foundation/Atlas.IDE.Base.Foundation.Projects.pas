@@ -1,4 +1,4 @@
-﻿unit Atlas.IDE.Projects.Contract;
+﻿unit Atlas.IDE.Base.Foundation.Projects;
 
 // Contract des Features Projects im IDE-Teil (#1443): Module hören über ihn auf geänderte
 // Projekt-Zusammenfassungen, die Atlas.IDE.Projects.Summaries schreibt.

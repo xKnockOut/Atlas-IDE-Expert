@@ -342,9 +342,21 @@ begin
   mTask := TAtlasTasks.Expand(ATask, TAtlasIdeTaskProjects.VariablesOf(AProject));
   mProjectFiles := TAtlasIdeTaskProjects.ProjectFilesOf(AProject, mSearchPath);
   FSink.Output.Started(AId, mTask.Name, mTask.CommandLine, mTask.TimeoutSec, AShow);
+  // Wirft Launch, beendet der Ablauf den Lauf als nicht gestartet: Kein angelegter Thread darf dann stehen bleiben.
+  // Ein nie gestarteter Thread führt beim Freigeben Execute nicht mehr aus.
   mWorker := TWorker.Create(FSink, FProcess, AId, mTask, mProjectFiles, mSearchPath);
-  FWorkers.Add(AId, mWorker);
-  mWorker.Start;
+  try
+    FWorkers.Add(AId, mWorker);
+  except
+    mWorker.Free;
+    raise;
+  end;
+  try
+    mWorker.Start;
+  except
+    FWorkers.Remove(AId);
+    raise;
+  end;
 end;
 
 procedure TAtlasIdeTaskLauncher.Cancel(AId: Integer);

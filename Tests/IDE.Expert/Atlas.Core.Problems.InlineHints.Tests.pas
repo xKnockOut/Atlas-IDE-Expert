@@ -40,7 +40,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Deadline,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.LineTail;

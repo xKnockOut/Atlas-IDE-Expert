@@ -4,7 +4,8 @@
 // Rückgängig (TAtlasDesignerCreated) gegen die Fälschung des Designers
 // (TAtlasDesignSurfaceFake): Löschen rückwärts, vom Benutzer gelöschte,
 // umbenannte und neu unter gleichem Namen angelegte Komponenten, Container
-// mit Kindern, geschlossenes und anderes Formular, Löschen verweigert.
+// mit Kindern, geschlossenes und anderes Formular, Löschen verweigert,
+// Designer wirft beim Löschen.
 // Mit einem TDataModule als Formular, damit die Tests auch unter FPC laufen.
 
 interface
@@ -26,6 +27,7 @@ type
   private
     FInner: IAtlasDesignSurface;
     FKeys: TStringList;
+    FFailKey: string;
   public
     constructor Create(const AInner: IAtlasDesignSurface);
     destructor Destroy; override;
@@ -37,6 +39,8 @@ type
     function CreateMethod(const AName: string; ATypeData: PTypeData): TMethod;
     function MethodName(const AMethod: TMethod): string;
     property Keys: TStringList read FKeys;
+    /// <summary>Löschen dieses Schlüssels wirft (EAtlasDesignSurfaceFakeFailure).</summary>
+    property FailKey: string read FFailKey write FFailKey;
   end;
 
   [TestFixture]
@@ -72,6 +76,10 @@ type
     procedure OtherFormIsNotTouched;
     [Test]
     procedure RefusedDeleteIsNotCounted;
+    [Test]
+    procedure ThrowingDeleteForgetsTheRest;
+    [Test]
+    procedure OwnedInstanceIgnoresOwnRemoval;
     [Test]
     procedure ClearForgetsWithoutDeleting;
     [Test]
@@ -113,6 +121,10 @@ end;
 function TAtlasCreatedDeleteLog.DeleteComponent(const AKey: string): Boolean;
 begin
   FKeys.Add(AKey);
+  if AKey = FFailKey then
+  begin
+    raise EAtlasDesignSurfaceFakeFailure.Create('DeleteComponent');
+  end;
   Result := FInner.DeleteComponent(AKey);
 end;
 
@@ -273,6 +285,41 @@ begin
   Assert.AreEqual('AtlasCreatedWidget2,AtlasCreatedWidget1', FLog.Keys.CommaText);
   Assert.IsNotNull(Find('AtlasCreatedWidget1'));
   Assert.AreEqual(0, Integer(FCreated.Count), 'danach nichts mehr gemerkt');
+end;
+
+procedure TAtlasDesignerCreatedTests.ThrowingDeleteForgetsTheRest;
+begin
+  CreateOne;
+  CreateOne;
+  CreateOne;
+  FLog.FailKey := 'AtlasCreatedWidget2';
+  Assert.WillRaise(
+    procedure
+    begin
+      FCreated.Undo(FLogRef);
+    end, EAtlasDesignSurfaceFakeFailure);
+  Assert.AreEqual('AtlasCreatedWidget3,AtlasCreatedWidget2', FLog.Keys.CommaText, 'rückwärts bis zum Fehler');
+  Assert.IsNull(Find('AtlasCreatedWidget3'));
+  Assert.IsNotNull(Find('AtlasCreatedWidget1'));
+  Assert.AreEqual(0, FCreated.Count, 'ein zweites Rückgängig scheiterte an derselben Stelle');
+  Assert.IsFalse(FCreated.Holds(FSurface));
+end;
+
+procedure TAtlasDesignerCreatedTests.OwnedInstanceIgnoresOwnRemoval;
+var
+  mOwner: TComponent;
+  mCreated: TAtlasDesignerCreated;
+begin
+  mOwner := TComponent.Create(nil);
+  try
+    mCreated := TAtlasDesignerCreated.Create(mOwner);
+    mCreated.Add(FSurface.CreateComponent(TAtlasCreatedWidget, nil));
+    // Beim Austragen aus dem Besitzer meldet TComponent das Entfernen auch an mCreated selbst, nach seinem Destroy.
+    mCreated.Free;
+    Assert.AreEqual(0, mOwner.ComponentCount);
+  finally
+    mOwner.Free;
+  end;
 end;
 
 procedure TAtlasDesignerCreatedTests.ClearForgetsWithoutDeleting;

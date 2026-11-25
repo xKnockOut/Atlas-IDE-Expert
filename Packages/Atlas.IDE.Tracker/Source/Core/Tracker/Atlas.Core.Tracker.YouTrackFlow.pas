@@ -23,7 +23,7 @@ uses
   System.SysUtils,
   System.Diagnostics,
   System.JSON,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.FlowMap;
 

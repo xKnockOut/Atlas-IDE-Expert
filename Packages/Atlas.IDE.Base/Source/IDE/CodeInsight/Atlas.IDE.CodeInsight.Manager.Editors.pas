@@ -88,7 +88,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Problems.Contract;
+  Atlas.Plugin.Problems.Contract;
 
 { TAtlasCodeInsightEditors }
 

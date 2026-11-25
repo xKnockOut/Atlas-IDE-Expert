@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Hover.Contract.DebugValue;
+﻿unit Atlas.Plugin.Hover.Contract.DebugValue;
 
 // Wert eines Ausdrucks im angehaltenen Debugger (#891), wie ihn der Hover
 // zeigt und die Auswertung der Debug-Schicht liefert (IAtlasDebugEvaluator im

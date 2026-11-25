@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Documentation.Contract;
+﻿unit Atlas.Plugin.Documentation.Contract;
 
 // Strukturierte XMLDoc (#654) aus "atlas.documentation" der Hover-Antwort bzw.
 // "data.atlas.documentation" der Resolve-Antwort: Abschnitte (summary, param,

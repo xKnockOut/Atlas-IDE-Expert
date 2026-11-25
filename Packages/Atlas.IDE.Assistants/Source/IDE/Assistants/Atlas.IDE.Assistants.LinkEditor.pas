@@ -42,7 +42,7 @@ uses
   Atlas.Plugin.Files.Contract,
   Atlas.Plugin.Lsp.Session.Json,
   Atlas.Plugin.Lsp.TextChanges,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Assistants.LinkState,
   Atlas.IDE.Foundation.Host,

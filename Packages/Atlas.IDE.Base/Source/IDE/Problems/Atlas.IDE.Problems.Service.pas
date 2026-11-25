@@ -43,7 +43,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Plugin.Settings.ProblemsUpdate;
 

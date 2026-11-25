@@ -10,7 +10,7 @@
 interface
 
 uses
-  Atlas.Core.Problems.Contract;
+  Atlas.Plugin.Problems.Contract;
 
 type
   TAtlasProblemMarks = record

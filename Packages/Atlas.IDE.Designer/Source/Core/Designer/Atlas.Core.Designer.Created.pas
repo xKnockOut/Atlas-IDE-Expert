@@ -10,7 +10,10 @@
 // FreeNotification fällt sie aus der Liste, sobald sie freigegeben wird,
 // auch zusammen mit ihrem Container oder Formular. Rückgängig löscht die
 // übrigen über den Designer (samt Feld in der Klasse) unter ihrem jetzigen
-// Namen, rückwärts, damit Kinder vor ihren Containern gehen.
+// Namen, rückwärts, damit Kinder vor ihren Containern gehen. Wirft der
+// Designer dabei, sind die übrigen trotzdem vergessen (ein zweites
+// Rückgängig scheiterte an derselben Stelle), und die Ausnahme geht an den
+// Aufrufer.
 // Nur im Hauptthread.
 
 interface
@@ -62,7 +65,8 @@ end;
 destructor TAtlasDesignerCreated.Destroy;
 begin
   Clear;
-  FItems.Free;
+  // Notification prüft FItems auf nil: Eine späte Benachrichtigung darf die freigegebene Liste nicht treffen.
+  FreeAndNil(FItems);
   inherited Destroy;
 end;
 
@@ -157,19 +161,22 @@ begin
     Exit;
   end;
   mItems := FItems.ToArray;
-  for mIndex := High(mItems) downto 0 do
-  begin
-    // Mit einem Container gelöschte Kinder sind schon aus der Liste gefallen.
-    if FItems.Contains(mItems[mIndex]) then
+  try
+    for mIndex := High(mItems) downto 0 do
     begin
-      mKey := KeyOf(ASurface.Root, mItems[mIndex]);
-      if (mKey <> '') and ASurface.DeleteComponent(mKey) then
+      // Mit einem Container gelöschte Kinder sind schon aus der Liste gefallen.
+      if FItems.Contains(mItems[mIndex]) then
       begin
-        Inc(Result);
+        mKey := KeyOf(ASurface.Root, mItems[mIndex]);
+        if (mKey <> '') and ASurface.DeleteComponent(mKey) then
+        begin
+          Inc(Result);
+        end;
       end;
     end;
+  finally
+    Clear;
   end;
-  Clear;
 end;
 
 end.

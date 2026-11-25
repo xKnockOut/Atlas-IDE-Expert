@@ -20,7 +20,7 @@ interface
 uses
   System.Types,
   Vcl.Graphics,
-  Atlas.Core.KnownErrors.Contract,
+  Atlas.Plugin.KnownErrors.Contract,
   Atlas.Plugin.Style.Palette,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.Core.Debug.ExceptionBarLayout;

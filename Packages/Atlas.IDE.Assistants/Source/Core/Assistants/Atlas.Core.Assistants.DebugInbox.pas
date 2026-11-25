@@ -21,7 +21,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.DebugControl.Types;
+  Atlas.Plugin.DebugControl.Contract;
 
 type
   TAtlasDebugCommand = (Start, Stop, SetBreakpoint, RemoveBreakpoint, Resume, Step, State, Evaluate);

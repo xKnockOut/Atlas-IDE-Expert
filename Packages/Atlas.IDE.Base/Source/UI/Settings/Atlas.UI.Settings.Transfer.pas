@@ -113,6 +113,7 @@ implementation
 uses
   Vcl.Graphics,
   Vcl.Menus,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Vcl.Controls.WrapLabel,
@@ -674,7 +675,7 @@ begin
   FDescription.ShowAccelChar := False;
   FDescription.AutoSize := False;
   FDescription.Height := ScaleValue(cProfileDescriptionHeight);
-  FList := TListBox.Create(Self);
+  FList := TAtlasListBox.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;

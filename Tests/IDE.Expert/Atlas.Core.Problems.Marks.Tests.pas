@@ -27,7 +27,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Marks;
 
 function Problem(AStartLine, AStartCharacter, AEndLine, AEndCharacter: Integer): TAtlasProblem;

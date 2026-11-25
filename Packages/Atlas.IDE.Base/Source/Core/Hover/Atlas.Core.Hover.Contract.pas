@@ -16,7 +16,7 @@ interface
 uses
   System.Types,
   System.JSON,
-  Atlas.Core.Documentation.Contract;
+  Atlas.Plugin.Documentation.Contract;
 
 type
   /// <summary>Typ mit Fundort (0-basiert); FileName '' ohne Fundort.</summary>

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Projects.VersionControl;
+﻿unit Atlas.Plugin.Projects.VersionControl;
 
 // Versionsverwaltung und Hauptbranch je Projekt (#1286), ohne VCL, Open Tools
 // API und Prozess.

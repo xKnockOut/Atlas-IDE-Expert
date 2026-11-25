@@ -27,7 +27,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Build.Events,
-  Atlas.Core.Build.Requests;
+  Atlas.Plugin.Build.Contract.Requests;
 
 type
   /// <summary>Gründe, aus denen ein Auftrag nicht lesbar ist, in der Sprache der Oberfläche.</summary>

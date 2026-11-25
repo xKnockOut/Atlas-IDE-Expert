@@ -26,7 +26,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.InlineValuesFlow;
 
 { TAtlasInlineValuesFlowTests }

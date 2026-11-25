@@ -27,7 +27,7 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Setup,
   Atlas.Plugin.Projects.PathCheck,
-  Atlas.Core.Settings.GenerateMenu.Contract,
+  Atlas.Plugin.Generate.Contract,
   Atlas.Core.Welcome.Contract;
 
 type

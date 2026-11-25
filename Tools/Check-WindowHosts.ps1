@@ -45,6 +45,10 @@
       verlangen das Senken der Baseline (-UpdateBaseline). Eine Zeile mit
       // window-ok ist ausgenommen (Überlagerungen und Popups ohne
       Dialogcharakter, mit Begründung im Kommentar).
+    - Listen sind TAtlasListBox (Atlas.Vcl.Controls.ListBox): Unter dem
+      Stil der IDE zeichnet eine TListBox beim Wechsel des Fokus die ganze
+      Fläche in der Grundfarbe vor den Zeilen, die Liste blitzt leer auf
+      (TListBox.Create steht nur dort).
     - Ein Teiler (TSplitter) bekommt vor dem Ausrichten seine Lage (Top bei
       alTop/alBottom, Left bei alLeft/alRight) neben dem Steuerelement, das er
       verstellt (splitter-position). Die VCL ordnet gleich ausgerichtete
@@ -100,6 +104,7 @@ $RefreshUnit = 'Atlas.ToolsApi.Editor.Refresh.pas'
 $DialogUnit = 'Atlas.Vcl.Forms.Dialog.pas'
 $ThemeUnit = 'Atlas.Vcl.Theme.Service.pas'
 $WrapLabelUnit = 'Atlas.Vcl.Controls.WrapLabel.pas'
+$ListBoxUnit = 'Atlas.Vcl.Controls.ListBox.pas'
 $BaselineFile = Join-Path $Root 'Tools/WindowHosts.baseline.json'
 
 function Remove-PascalComments([string] $Text) {
@@ -163,7 +168,9 @@ $Rules = @(
     @{ Pattern = '(?i)\(\s*(F?Host)\s*<>\s*nil\s*\)\s*and\s*\1\s*\.\s*Shown\b'; Allowed = $DockUnit
        Message = 'Sichtbarkeit des Dockfensters mit eigener nil-Prüfung; TAtlasIdeDockWindow.IsShown verwenden' },
     @{ Pattern = '(?is)\.\s*Show\s*\(\s*(\w+)\s*\)\s*;\s*if\s+\1\s+then\s+begin\s+TAtlasIdeDockWindow\s*\.\s*UpdateIcon\s*\(\s*\w+\s*\)\s*;\s*end\b'; Allowed = $DockUnit
-       Message = 'Symbol nach Show(…) noch einmal gesetzt (Show setzt es beim Anlegen selbst); TAtlasIdeDockWindow.Present verwenden' }
+       Message = 'Symbol nach Show(…) noch einmal gesetzt (Show setzt es beim Anlegen selbst); TAtlasIdeDockWindow.Present verwenden' },
+    @{ Pattern = '(?i)\bTListBox\s*\.\s*Create\b'; Allowed = $ListBoxUnit
+       Message = 'TListBox flackert unter dem Stil der IDE (leere Fläche vor den Zeilen); TAtlasListBox verwenden' }
 )
 
 # Dialogregeln (#2064): gezählt je Datei gegen Tools/WindowHosts.baseline.json.

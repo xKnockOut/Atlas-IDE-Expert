@@ -54,7 +54,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Editor.MultiCursorSession,
-  Atlas.Core.Editor.Contract;
+  Atlas.Plugin.Editor.Contract;
 
 type
   /// <summary>Statusfeld setzen; AText '' entfernt es.</summary>

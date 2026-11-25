@@ -38,7 +38,7 @@ uses
   System.Classes,
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Hover.Contract.DebugValue,
+  Atlas.Plugin.Hover.Contract.DebugValue,
   Atlas.Core.Debug.Unavailable,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract,

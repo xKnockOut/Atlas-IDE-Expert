@@ -17,7 +17,7 @@ interface
 {$SCOPEDENUMS ON}
 
 uses
-  Atlas.Core.DebugControl.Types,
+  Atlas.Plugin.DebugControl.Contract,
   Atlas.Core.Assistants.DebugInbox;
 
 type

@@ -4,7 +4,7 @@
 // gefälschten Thread (TAtlasDebugEvaluatorFake) mit einer Uhr des Tests:
 // Ort und Nebenwirkungen, Zeitgrenze der Scheibe, Reihenfolge der Listen,
 // verzögerte Werte (ankommend, überfällig, verworfen, Zeile entfernt), Halt
-// vorbei, Fehlertexte mit „kein Zugriff“ und ohne Meldung.
+// vorbei, Fehlertexte mit „kein Zugriff“ und ohne Meldung, Debugger wirft.
 
 interface
 
@@ -68,6 +68,8 @@ type
     procedure CancelIgnoresLateAnswer;
     [Test]
     procedure ModifiedValueShowsAfterRestart;
+    [Test]
+    procedure ThrowingEvaluateFailsOnlyItsRow;
   end;
 
 implementation
@@ -355,6 +357,31 @@ begin
   Assert.IsTrue(Row(0).Changed);
   Assert.IsFalse(FEvaluator.Modify('Fehlt', 'Unit1.pas', 42, '3', mResult));
   Assert.AreEqual('cannot modify Fehlt', mResult);
+end;
+
+procedure TAtlasEvalSlicesTests.ThrowingEvaluateFailsOnlyItsRow;
+var
+  mChanged: Boolean;
+begin
+  FFake.Value('A', '1');
+  FFake.Value('C', '3');
+  FList.Add('A');
+  FList.Add('B');
+  FList.Add('C');
+  FFake.OnEvaluate :=
+    procedure
+    begin
+      if FFake.Calls.Count = 2 then
+      begin
+        raise EArgumentException.Create('Thread nicht angehalten');
+      end;
+    end;
+  Assert.AreEqual(Ord(TAtlasEvalSliceStep.Done), Ord(Slice(mChanged)), 'die Scheibe läuft weiter');
+  Assert.AreEqual(3, FFake.Calls.Count);
+  Assert.AreEqual(Ord(TAtlasEvalState.Error), Ord(Row(1).State));
+  Assert.AreEqual('Thread nicht angehalten', Row(1).Value);
+  Assert.AreEqual('3', Row(2).Value);
+  Assert.AreEqual(0, Integer(Length(FList.Pending)), 'keine Zeile bleibt offen');
 end;
 
 end.

@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Build.Requests;
+﻿unit Atlas.Plugin.Build.Contract.Requests;
 
 // Builds auf Auftrag (#261, #1888) ohne Open Tools API: Auftrag, Ergebnis samt Compilermeldungen und Rückruf.
 // Gemeinsame Daten des Läufers (Modul Build-Pipeline), des Eingangs der KI-Assistenten und des Vertrags
@@ -7,8 +7,7 @@
 interface
 
 uses
-  Atlas.Core.Build.Events,
-  Atlas.Core.Build.Messages;
+  Atlas.Plugin.Build.Contract;
 
 type
   /// <summary>Ein Build-Auftrag.</summary>

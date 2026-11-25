@@ -42,7 +42,7 @@ uses
   Vcl.Graphics,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Problems.Contract,
+  Atlas.Plugin.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.LineTracking,
   Atlas.Vcl.Theme.EditorFont;

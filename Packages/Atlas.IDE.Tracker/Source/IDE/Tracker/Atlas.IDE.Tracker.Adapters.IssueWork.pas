@@ -48,7 +48,7 @@ type
 implementation
 
 uses
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.IssueWork,
   Atlas.Core.Tracker.MyIssues,
   Atlas.ToolsApi.Files.Service,

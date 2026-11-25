@@ -3,7 +3,8 @@
 // Tests für den Ablauf der Projektaufgaben gegen die Fälschung des Starters:
 // einzelne Läufe, Reihen nacheinander und gleichzeitig, übersprungene
 // Aufgaben, Entscheidung vor dem Build, Abbruch, verspätete Enden und ein
-// Rückruf, der während des Endes neue Läufe startet.
+// Rückruf, der während des Endes neue Läufe startet, und ein Starter, der
+// beim Start wirft.
 
 interface
 
@@ -55,6 +56,10 @@ type
     procedure UnknownOrRepeatedEndIsIgnored;
     [Test]
     procedure BatchStartedFromEndKeepsBothApart;
+    [Test]
+    procedure ThrowingLaunchEndsRunAsNotStarted;
+    [Test]
+    procedure ThrowingLaunchInBatchBlocksTheBuild;
   end;
 
 implementation
@@ -378,6 +383,48 @@ begin
   Assert.AreEqual(-1, FFake.Calls.IndexOf('launch:6:C:' + cProject + ':show'), 'Ende von Z startet nicht C');
   FFlow.Finished(5, Ran('B', 0));
   Assert.IsTrue(FFake.Calls.IndexOf('launch:6:C:' + cProject + ':show') >= 0);
+end;
+
+procedure TAtlasTaskFlowTests.ThrowingLaunchEndsRunAsNotStarted;
+var
+  mEnded: TArray<TAtlasTaskFlowNote>;
+begin
+  FFake.Throwing.Add('Lint');
+  Assert.IsTrue(FFlow.Run(Target, Task('Lint')), 'nicht „läuft schon“');
+  Assert.AreEqual('launch:1:Lint:' + cProject + ':show,release:1', FFake.CallText);
+  Assert.AreEqual('Ended:Lint', NoteText, 'ohne Started');
+  mEnded := NotesOf(TAtlasTaskFlowNoteKind.Ended);
+  Assert.AreEqual(1, mEnded[0].Id);
+  Assert.AreEqual(cKey, mEnded[0].Key);
+  Assert.AreEqual<TAtlasTaskOutcome>(TAtlasTaskOutcome.StartFailed, mEnded[0].Run.Outcome);
+  Assert.AreEqual('Lint startet nicht', mEnded[0].Run.Error);
+  Assert.AreEqual('tool.exe', mEnded[0].Run.CommandLine);
+  Assert.IsFalse(FFlow.Busy);
+  Assert.IsFalse(FFlow.IsRunning(cKey, 'Lint'));
+  Assert.AreEqual('Lint', FFlow.LastName, 'wiederholen bleibt möglich');
+  FFake.Throwing.Clear;
+  Assert.IsTrue(FFlow.Run(Target, Task('Lint')), 'startet wieder');
+  Assert.IsTrue(FFlow.IsRunning(cKey, 'Lint'));
+end;
+
+procedure TAtlasTaskFlowTests.ThrowingLaunchInBatchBlocksTheBuild;
+var
+  mBlocked: TArray<TAtlasTaskFlowNote>;
+begin
+  FFake.Throwing.Add('B');
+  FFlow.PreBuild.Decide(Compile, True, False, 0);
+  FFlow.RunBatch(Target, Tasks('A', 'B', 'C'), Modes(TAtlasTaskBeforeBuild.Block, 3), True, False);
+  FFlow.Finished(2, Ran('A', 0));
+  Assert.AreEqual('launch:2:A:' + cProject + ',release:2,launch:3:B:' + cProject + ',release:3,launch:4:C:' +
+    cProject, FFake.CallText, 'nach B geht die Reihe weiter');
+  Assert.IsTrue(FFlow.PreBuild.Running, 'C läuft noch');
+  FFlow.Finished(4, Ran('C', 0));
+  mBlocked := NotesOf(TAtlasTaskFlowNoteKind.Blocked);
+  Assert.AreEqual(1, Integer(Length(mBlocked)));
+  Assert.AreEqual('B', mBlocked[0].Run.Name);
+  Assert.AreEqual(0, Integer(Length(NotesOf(TAtlasTaskFlowNoteKind.Passed))));
+  Assert.IsFalse(FFlow.PreBuild.Running);
+  Assert.IsFalse(FFlow.Busy);
 end;
 
 end.

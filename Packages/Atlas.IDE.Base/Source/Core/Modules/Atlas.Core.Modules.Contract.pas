@@ -30,7 +30,7 @@ const
   /// 4 (#1906): IAtlasBuildRequests.Forget.
   /// 5 (#1817): TAtlasMenuPlace.ProjectContext.
   /// 6 (#1821): TAtlasMenuPlace.Gallery.
-  /// 7 (#1819): IAtlasIdeErrors (Atlas.IDE.Base.Foundation.Rules), TAtlasIdeError (Atlas.Core.Problems.Contract),
+  /// 7 (#1819): IAtlasIdeErrors (Atlas.IDE.Base.Foundation.Rules), TAtlasIdeError (Atlas.Plugin.Problems.Contract),
   /// TAtlasProblem.IdeConfirmed.
   /// 8 (#2052): IAtlasIssueWork und IAtlasIssueWorkSource, welcomePage.continue.issues(.count).
   /// 9: TAtlasMenuEntry.Group und When, TAtlasMenuContext, TAtlasMenuWhen (Kontextmenü des Editors).

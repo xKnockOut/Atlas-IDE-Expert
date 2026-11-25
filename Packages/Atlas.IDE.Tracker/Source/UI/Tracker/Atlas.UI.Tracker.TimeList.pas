@@ -64,6 +64,7 @@ implementation
 
 uses
   Atlas.Core.Tracker.Workflow,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.UI.Tracker.Time.Strings,
   Atlas.Vcl.Theme.Scaling;
 
@@ -92,7 +93,7 @@ begin
   FEmpty.Caption := TAtlasTimeStrings.Text(TAtlasTimeTextId.TimeOpenEmpty);
   FEmpty.Visible := Length(FItems) = 0;
 
-  FList := TListBox.Create(Self);
+  FList := TAtlasListBox.Create(Self);
   FList.Parent := Self;
   FList.Align := alTop;
   FList.AlignWithMargins := True;

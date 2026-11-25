@@ -198,7 +198,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Tracker.Workflow.Strings,
@@ -297,7 +297,7 @@ begin
   inherited Create;
   FTransport := ATransport;
   FMessage := TAtlasMessageSink.Create(AReport);
-  FWorker := TAtlasBackgroundJobs.Create(HInstance);
+  FWorker := TAtlasBackgroundJobs.Create(HInstance, TAtlasFeature.Tracker);
 end;
 
 destructor TAtlasIdeTrackerSync.Destroy;

@@ -57,7 +57,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.GenerateMenu.Contract,
+  Atlas.Plugin.Generate.Contract,
   Atlas.Plugin.Settings.ContextMenuGroups;
 
 { TAtlasPluginCodeActionsSettings }

@@ -112,7 +112,7 @@ implementation
 
 uses
   Atlas.UI.Tracker.IssueFrame.Types,
-  Atlas.Core.CiBuild.Contract,
+  Atlas.Plugin.CiBuild.Contract,
   Atlas.Core.Tracker.DevelopmentPlan,
   Atlas.Core.Tracker.Preview,
   ToolsAPI,

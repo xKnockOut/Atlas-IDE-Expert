@@ -22,7 +22,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.CiBuild.Contract;
+  Atlas.Plugin.CiBuild.Contract;
 
 type
   TAtlasJenkinsProvider = class(TInterfacedObject, IAtlasCiProvider)

@@ -54,7 +54,8 @@ uses
   Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.Plugin.Style.Palette,
-  Atlas.Plugin.Style.Signal;
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Controls.ListBox;
 
 type
 {$SCOPEDENUMS ON}
@@ -134,9 +135,9 @@ type
     destructor Destroy; override;
     /// <summary>Zeile ohne Rahmen mit Höhe AHeight96 (logische Pixel) unter dem bisher Untersten.</summary>
     function AddRow(AHeight96: Integer): TPanel;
-    /// <summary>Liste mit Höhe AHeight96 (logische Pixel) unter dem bisher Untersten, seitlich cRowGap Rand.
-    /// </summary>
-    function AddListBox(AHeight96: Integer): TListBox;
+    /// <summary>Liste mit Höhe AHeight96 unter dem bisher Untersten, seitlich Rand wie die Zeilen, oben ATopGap96
+    /// (logische Pixel).</summary>
+    function AddList(AHeight96, ATopGap96: Integer): TAtlasListBox;
     /// <summary>Beschriftung links in AParent.</summary>
     function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
     /// <summary>Knopfleiste unter dem bisher Untersten.</summary>
@@ -457,6 +458,21 @@ begin
   Result.Parent := Self;
 end;
 
+function TAtlasDialog.AddList(AHeight96, ATopGap96: Integer): TAtlasListBox;
+var
+  mTop: Integer;
+begin
+  mTop := NextTop;
+  Result := TAtlasListBox.Create(Self);
+  // Lage vor Align und Parent wie bei AddRow.
+  Result.Top := mTop;
+  Result.Height := ScaleValue(AHeight96);
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(ATopGap96), ScaleValue(cRowGap), 0);
+  Result.Align := alTop;
+  Result.Parent := Self;
+end;
+
 function TAtlasDialog.NewFlowRow(AGap96: Integer): TFlowPanel;
 const
   // Vorläufige Lage hinter allen bisherigen Zeilen (alTop ordnet nach Top).
@@ -493,18 +509,6 @@ begin
   Result.Top := ScaleValue(cRowGap);
   Result.Height := ScaleValue(cFooterButtonHeight);
   Result.Anchors := [akTop, akRight];
-end;
-
-function TAtlasDialog.AddListBox(AHeight96: Integer): TListBox;
-begin
-  Result := TListBox.Create(Self);
-  // Lage vor Align und Parent wie bei AddRow.
-  Result.Top := NextTop;
-  Result.Height := ScaleValue(AHeight96);
-  Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(ScaleValue(cRowGap), 0, ScaleValue(cRowGap), 0);
-  Result.Align := alTop;
-  Result.Parent := Self;
 end;
 
 function TAtlasDialog.AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
