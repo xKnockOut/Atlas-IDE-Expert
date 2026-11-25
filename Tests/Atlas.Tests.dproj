@@ -1089,6 +1089,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyScan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.KeyMap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Commands.KeyMap.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.CustomKeys.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.CustomKeys.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.KeyAssign.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Commands.KeyAssign.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Usage.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.ShortcutTips.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.ShortcutTips.Tests.pas"/>
