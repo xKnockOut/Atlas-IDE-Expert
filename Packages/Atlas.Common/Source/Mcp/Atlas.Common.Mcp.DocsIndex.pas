@@ -11,7 +11,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.Catalog;
+  Atlas.Common.Findings.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -31,7 +31,7 @@ type
     /// <summary>Eintrag des eingebetteten Index; nil bei Regeln. Gehört dem Index.</summary>
     Item: TJSONObject;
     /// <summary>Regel in der Sprache der Anfrage; nur bei Kind = Rule.</summary>
-    Rule: TRuleCatalogEntry;
+    Rule: TFindingRuleInfo;
     Fields: TArray<TDocsField>;
   end;
 
@@ -52,12 +52,12 @@ type
   private
     FItems: TJSONValue;
     FEntries: TArray<TDocsEntry>;
-    procedure AddRules(ACatalog, AOther: TRuleCatalog);
+    procedure AddRules(const ARules, AOther: TArray<TFindingRuleInfo>);
     procedure AddItems(ALanguage: TTextLanguage);
   public
-    /// <summary>Index aus AJson (Array wie AtlasDocsIndexJson) und den Regeln aus ACatalog (Sprache der Anfrage);
-    /// AOther liefert die Namen und Beschreibungen der anderen Sprache für die Suche (nil = ohne).</summary>
-    constructor Create(const AJson: string; ALanguage: TTextLanguage; ACatalog, AOther: TRuleCatalog);
+    /// <summary>Index aus AJson (Array wie AtlasDocsIndexJson) und ARules (Sprache der Anfrage); AOther liefert die
+    /// Namen und Beschreibungen der anderen Sprache für die Suche (nil = ohne).</summary>
+    constructor Create(const AJson: string; ALanguage: TTextLanguage; const ARules, AOther: TArray<TFindingRuleInfo>);
     destructor Destroy; override;
     /// <summary>Treffer nach Gewicht, höchstens ALimit; eine genaue Kennung zuerst.</summary>
     function Search(const AQuery: string; AKind: TDocsKind; ALimit: Integer): TArray<TDocsHit>;
@@ -127,14 +127,12 @@ end;
 
 { TDocsIndex }
 
-constructor TDocsIndex.Create(const AJson: string; ALanguage: TTextLanguage; ACatalog, AOther: TRuleCatalog);
+constructor TDocsIndex.Create(const AJson: string; ALanguage: TTextLanguage;
+  const ARules, AOther: TArray<TFindingRuleInfo>);
 begin
   inherited Create;
   FItems := TJSONObject.ParseJSONValue(AJson);
-  if ACatalog <> nil then
-  begin
-    AddRules(ACatalog, AOther);
-  end;
+  AddRules(ARules, AOther);
   AddItems(ALanguage);
 end;
 
@@ -144,27 +142,38 @@ begin
   inherited Destroy;
 end;
 
-procedure TDocsIndex.AddRules(ACatalog, AOther: TRuleCatalog);
+procedure TDocsIndex.AddRules(const ARules, AOther: TArray<TFindingRuleInfo>);
 var
-  mRule, mOther: TRuleCatalogEntry;
+  mOthers: TDictionary<string, Integer>;
+  mRule: TFindingRuleInfo;
   mEntry: TDocsEntry;
+  mIndex: Integer;
 begin
-  for mRule in ACatalog.Entries do
-  begin
-    mEntry := Default(TDocsEntry);
-    mEntry.Kind := TDocsKind.Rule;
-    mEntry.Id := mRule.Id;
-    mEntry.Rule := mRule;
-    AddField(mEntry.Fields, mRule.Id, cWeightId);
-    AddField(mEntry.Fields, mRule.Name, cWeightName);
-    AddField(mEntry.Fields, TRuleCatalog.GroupName(mRule.Group), cWeightPlace);
-    AddField(mEntry.Fields, mRule.Description, cWeightText);
-    if (AOther <> nil) and AOther.TryFind(mRule.Id, mOther) then
+  mOthers := TDictionary<string, Integer>.Create(Length(AOther));
+  try
+    for mIndex := 0 to High(AOther) do
     begin
-      AddField(mEntry.Fields, mOther.Name, cWeightName);
-      AddField(mEntry.Fields, mOther.Description, cWeightText);
+      mOthers.AddOrSetValue(LowerCase(AOther[mIndex].Id), mIndex);
     end;
-    FEntries := FEntries + [mEntry];
+    for mRule in ARules do
+    begin
+      mEntry := Default(TDocsEntry);
+      mEntry.Kind := TDocsKind.Rule;
+      mEntry.Id := mRule.Id;
+      mEntry.Rule := mRule;
+      AddField(mEntry.Fields, mRule.Id, cWeightId);
+      AddField(mEntry.Fields, mRule.Name, cWeightName);
+      AddField(mEntry.Fields, mRule.Group, cWeightPlace);
+      AddField(mEntry.Fields, mRule.Description, cWeightText);
+      if mOthers.TryGetValue(LowerCase(mRule.Id), mIndex) then
+      begin
+        AddField(mEntry.Fields, AOther[mIndex].Name, cWeightName);
+        AddField(mEntry.Fields, AOther[mIndex].Description, cWeightText);
+      end;
+      FEntries := FEntries + [mEntry];
+    end;
+  finally
+    mOthers.Free;
   end;
 end;
 

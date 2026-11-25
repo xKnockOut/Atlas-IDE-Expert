@@ -61,6 +61,18 @@ type
     function StruckThrough(const AFinding: TRuleFinding): Boolean;
   end;
 
+  /// <summary>Regelkatalog zum Nachschlagen (search_atlas_docs, explain_compiler_message): alle eingebauten Regeln mit
+  /// Texten in einer Sprache und ihr Zustand unter den Einstellungen eines Projekts.</summary>
+  IRuleDocs = interface
+    ['{9C134A43-846E-4416-8F87-EF2C24F33E2C}']
+    /// <summary>Alle Regeln des Katalogs; Name, Beschreibung und Beispiele in der Sprache ALanguage ("de" oder
+    /// "en" wie TAtlasLocale.Code; sonst englisch).</summary>
+    function Rules(const ALanguage: string): TArray<TFindingRuleInfo>;
+    /// <summary>Wirksamer Schweregrad von ARuleId unter ASettings, woher er kommt, und die Optionen aus ASettings;
+    /// eine unbekannte Regel gilt mit Schweregrad Default.</summary>
+    function State(const ARuleId: string; const ASettings: TServerSettings): TFindingRuleState;
+  end;
+
   /// <summary>Prüfregeln für ein Dokument der Diagnose im Editor; das Umfeld (Regeln, Einstellungen, Baseline)
   /// hat der Anbieter für die Datei gebaut.</summary>
   IRuleDocumentCheck = interface

@@ -109,6 +109,7 @@ begin
   mRequest.Json := AJson;
   mRequest.ReadText := ReaderOf(AText);
   mRequest.CompilerFixes := TMcpComposition.CompilerFixes;
+  mRequest.RuleDocs := TMcpComposition.RuleDocs;
   Result := TMcpCompilerMessageTools.Explain(mRequest);
 end;
 
