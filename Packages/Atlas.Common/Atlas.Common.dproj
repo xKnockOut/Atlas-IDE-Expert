@@ -415,7 +415,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WinApiDocs.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.KeywordReference.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.AssignmentSwap.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ChangeSignature.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.SignatureChanges.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.LegacyListKinds.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Syntax.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.GenericLists.Source.pas"/>
@@ -556,7 +556,8 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ProjectCommands.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.SqlText.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DataFieldNames.pas"/>
-        <DCCReference Include="Source\Editing\Atlas.Common.Editing.GuardFree.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.GuardFree.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TryFinally.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DatabaseCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Bookmarks.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentationCommands.pas"/>

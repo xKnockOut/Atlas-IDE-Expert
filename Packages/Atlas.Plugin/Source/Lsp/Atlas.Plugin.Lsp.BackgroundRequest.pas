@@ -8,9 +8,11 @@
 // - Lebensdauer: ADone läuft nur, solange die Instanz lebt. Der Destruktor wartet die laufende Anfrage ab (sie
 //   endet spätestens mit ihrem Zeitlimit oder beim Abbruchsignal des Entladens) und verwirft ein noch eingereihtes
 //   ADone.
-// - Keine Antwort (ELspClientError: Zeitgrenze, Fehlerantwort, beendete Verbindung) fängt die Anfrage selbst und
-//   meldet sie ADone mit AOk = False und der Meldung; der Aufrufer fragt dann später erneut. Andere Ausnahmen
-//   meldet die Sicherung für AFeature im Hauptthread; ADone läuft auch dann (AOk = False).
+// - Keine Antwort (ELspClientError: Zeitgrenze, Abbruch, veralteter Stand, begründete Ablehnung, beendete
+//   Verbindung) fängt die Anfrage selbst und meldet sie ADone mit AOk = False und der Meldung, ohne Fehlerbericht;
+//   der Aufrufer fragt dann später erneut. Eine Fehlerantwort, die auf einen Fehler im Server deutet
+//   (ELspResponseError), und alle anderen Ausnahmen meldet die Sicherung für AFeature im Hauptthread; ADone läuft
+//   auch dann (AOk = False, bei der Fehlerantwort mit ihrer Meldung).
 // Start, Busy und der Destruktor nur im Hauptthread.
 
 interface
@@ -151,6 +153,16 @@ begin
       try
         AWork();
       except
+        on E: ELspResponseError do
+        begin
+          // Ein Fehler im Server: ins Fehlerprotokoll, ADone bekommt trotzdem die Meldung.
+          mError := E.Message;
+          if mError = '' then
+          begin
+            mError := E.ClassName;
+          end;
+          mFailure := Exception(AcquireExceptionObject);
+        end;
         on E: ELspClientError do
         begin
           // Leer hieße Erfolg: eine Meldung ohne Text bekommt die Klasse.

@@ -778,6 +778,11 @@ Experimental: the rule runs only in the `strict` profile or when it gets a sever
 | `prefixes` | string-list | `[]` | Prefixes of the output artefacts, e.g. "Atlas.Common"; without them the rule reports nothing. |
 | `hostRoles` | string-list | `["Foundation","Core","Shell","Adapters","Platform"]` | First name segments of host units without prefix. |
 | `hostedFeatures` | string-list | `[]` | Hosted features of the application: first name segment without prefix; they import only Foundation and platform features, never each other. |
+| `domainPackages` | string-list | `[]` | Domain-code packages of the plugin (Base and the modules); their units are named <Package>.<host role>.* or <Package>.<Feature>.<Role>.* and follow the host and hosted-feature matrices. |
+| `basePackage` | string | `""` | Domain-code package that counts as part of the host for every other domain package; hosted features of a module see only its Foundation. |
+| `layerPrefixes` | string-list | `[]` | Prefixes of the old layer names (e.g. "Atlas.Core", "Atlas.UI", "Atlas.IDE") for packages in "layerPackages". |
+| `layerPackages` | string-list | `[]` | Domain-code packages still named after their layer; the old layer rule applies to them. |
+| `frameworks` | string-list | `[]` | Framework units as name or name start before a dot (e.g. "Vcl", "ToolsAPI"); only Hosting and host roles may use them. |
 | `allow` | string-list | `[]` | Approved exceptions "Source -> Target" (both globs). |
 
 Flagged:
@@ -808,6 +813,10 @@ Experimental: the rule runs only in the `strict` profile or when it gets a sever
 | Option | Type | Default | Meaning |
 |---|---|---|---|
 | `prefixes` | string-list | `[]` | Prefixes of the output artefacts, e.g. "Atlas.Common". |
+| `domainPackages` | string-list | `[]` | Domain-code packages of the plugin (Base and the modules); their units are named <Package>.<host role>.* or <Package>.<Feature>.<Role>.* and follow the host and hosted-feature matrices. |
+| `basePackage` | string | `""` | Domain-code package that counts as part of the host for every other domain package; hosted features of a module see only its Foundation. |
+| `layerPrefixes` | string-list | `[]` | Prefixes of the old layer names (e.g. "Atlas.Core", "Atlas.UI", "Atlas.IDE") for packages in "layerPackages". |
+| `layerPackages` | string-list | `[]` | Domain-code packages still named after their layer; the old layer rule applies to them. |
 | `allow` | string-list | `[]` | Approved exceptions "Unit.Type" as glob. |
 
 Flagged:

@@ -1,9 +1,8 @@
 ﻿unit Atlas.Common.Rules.CodeActions;
 
 // Brücke von Regeltreffern zu Code-Aktionen (#42, #182): Korrekturen der Treffer,
-// "Regel unterdrücken" und "Alle sicheren Korrekturen anwenden". In
-// Editing.CodeActions bleiben TCodeAction und die Aktionen ohne Regelbezug,
-// damit Editing nicht von Rules abhängt (Rules -> Editing ist erlaubt).
+// "Regel unterdrücken" und "Alle sicheren Korrekturen anwenden"; try/finally
+// ergänzen kommt aus Pascal.TryFinally.
 
 interface
 
@@ -12,8 +11,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.CodeActions.Contract;
 
 type
   TRuleCodeActions = class
@@ -27,6 +25,10 @@ type
     /// <summary>Wie oben mit vorhandenem Syntaxbaum und dem Formatstil der Datei für try/finally (#42).</summary>
     class function ForRange(const AFindings: TArray<TRuleFinding>; const AText: string; ATree: TSyntaxTree;
       const ARange: TTextRange; const AStyle: TFormatStyle): TArray<TCodeAction>; overload; static;
+    /// <summary>"// lsp-ignore: ARuleId" über ALine; eine solche Zeile direkt darüber wird ergänzt.</summary>
+    class function SuppressLine(const AText: string; ALine: Integer; const ARuleId: string): TTextEdit; static;
+    /// <summary>"// lsp-ignore-file: ARuleId" in Zeile 1.</summary>
+    class function SuppressFile(const AText, ARuleId: string): TTextEdit; static;
     /// <summary>Alle als sicher markierten Korrekturen der Datei in einer Aktion; überlappende
     /// Edits werden ausgelassen. False ohne sichere Korrektur.</summary>
     class function FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean; static;
@@ -37,6 +39,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.TryFinally,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -166,18 +170,50 @@ begin
   mAction := Default(TCodeAction);
   mAction.Title := cTexts[TCodeActionsText.SuppressLine].Fmt([AFinding.RuleId]);
   mAction.Kind := cQuickFixKind;
-  mAction.Edits := [TCodeActions.SuppressLine(AText, AFinding.Range.StartPos.Line, AFinding.RuleId)];
+  mAction.Edits := [TRuleCodeActions.SuppressLine(AText, AFinding.Range.StartPos.Line, AFinding.RuleId)];
   mAction.RuleId := AFinding.RuleId;
   mAction.DiagnosticRange := AFinding.Range;
   mAction.Tag := cRuleSuppressLineTag;
   Result := Result + [mAction];
   mAction.Title := cTexts[TCodeActionsText.SuppressFile].Fmt([AFinding.RuleId]);
-  mAction.Edits := [TCodeActions.SuppressFile(AText, AFinding.RuleId)];
+  mAction.Edits := [TRuleCodeActions.SuppressFile(AText, AFinding.RuleId)];
   mAction.Tag := cRuleSuppressFileTag;
   Result := Result + [mAction];
 end;
 
 { TRuleCodeActions }
+
+class function TRuleCodeActions.SuppressLine(const AText: string; ALine: Integer; const ARuleId: string): TTextEdit;
+var
+  mLines: TArray<string>;
+  mAbove, mLine: string;
+begin
+  mLines := TTextLines.SplitLines(AText);
+  if (ALine > 0) and (ALine <= High(mLines)) then
+  begin
+    mAbove := mLines[ALine - 1];
+    if StartsText('// lsp-ignore:', TrimLeft(mAbove)) then
+    begin
+      Exit(TTextEdit.Create(TTextRange.Create(ALine - 1, Length(mAbove), ALine - 1, Length(mAbove)), ', ' + ARuleId));
+    end;
+  end;
+  if (ALine >= 0) and (ALine <= High(mLines)) then
+  begin
+    mLine := mLines[ALine];
+  end
+  else
+  begin
+    mLine := '';
+  end;
+  Result := TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, 0),
+    TTextLines.IndentOf(mLine) + '// lsp-ignore: ' + ARuleId + TTextLines.LineBreakOf(AText));
+end;
+
+class function TRuleCodeActions.SuppressFile(const AText, ARuleId: string): TTextEdit;
+begin
+  Result := TTextEdit.Create(TTextRange.Create(0, 0, 0, 0),
+    '// lsp-ignore-file: ' + ARuleId + TTextLines.LineBreakOf(AText));
+end;
 
 class function TRuleCodeActions.ForFindings(const AFindings: TArray<TRuleFinding>; const AText: string;
   const ARange: TTextRange): TArray<TCodeAction>;
@@ -258,7 +294,7 @@ var
   mAction: TCodeAction;
 begin
   Result := ForFindings(AFindings, AText, ARange);
-  if TCodeActions.TryFinally(AText, ARange.StartPos.Line, mAction) then
+  if TPascalTryFinally.Offer(AText, ARange.StartPos.Line, mAction) then
   begin
     Result := Result + [mAction];
   end;
@@ -270,7 +306,7 @@ var
   mAction: TCodeAction;
 begin
   Result := ForFindings(AFindings, AText, ARange);
-  if TCodeActions.TryFinally(AText, ATree, ARange, AStyle, mAction) then
+  if TPascalTryFinally.Offer(AText, ATree, ARange, AStyle, mAction) then
   begin
     Result := Result + [mAction];
   end;
