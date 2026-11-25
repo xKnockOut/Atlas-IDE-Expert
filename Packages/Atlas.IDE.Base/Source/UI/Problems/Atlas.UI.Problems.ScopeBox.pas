@@ -7,7 +7,7 @@
 // beim aktiven „Name (aktiv)“). Die Liste ist selbst gezeichnet, damit der
 // Trennstrich eine Linie ist; wer ihn wählt, bleibt auf der vorigen Wahl.
 // Zeilenhöhe nach der Schrift, die Klappliste so breit wie der längste
-// Eintrag. Texte deutsch und englisch in eigener Tabelle (Atlas.UI.Strings
+// Eintrag. Texte deutsch und englisch in eigener Tabelle (Atlas.Plugin.Localization.Strings
 // liegt über der Unitlänge).
 
 interface

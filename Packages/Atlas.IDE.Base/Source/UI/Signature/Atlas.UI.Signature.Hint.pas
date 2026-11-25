@@ -130,7 +130,8 @@ implementation
 uses
   Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
+  Atlas.UI.Signature.FormatText,
   Atlas.Vcl.Popup.Accessibility,
   Atlas.Core.Signature.Controller;
 
@@ -396,7 +397,7 @@ end;
 
 function TAtlasSignatureHint.FormatText: string;
 begin
-  Result := TAtlasStrings.SignatureFormatLine(FFormatLine);
+  Result := TAtlasSignatureFormatText.Line(FFormatLine);
 end;
 
 function TAtlasSignatureHint.CrumbHeight: Integer;

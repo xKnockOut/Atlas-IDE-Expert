@@ -44,7 +44,7 @@ uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.General,
   Atlas.UI.Settings.Page.Sheets;

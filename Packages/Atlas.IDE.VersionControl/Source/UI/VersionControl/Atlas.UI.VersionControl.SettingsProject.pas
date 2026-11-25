@@ -55,7 +55,7 @@ uses
   Vcl.Controls,
   Vcl.ComCtrls,
   Atlas.Core.VersionControl.Tools,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings;
 
 const

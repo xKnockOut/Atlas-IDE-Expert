@@ -158,7 +158,7 @@ uses
   System.StrUtils,
   Atlas.Plugin.Editor.Word,
   Atlas.Core.Hover.Declaration,
-  Atlas.Core.Settings.Reassigned;
+  Atlas.Plugin.Settings.Reassigned;
 
 const
   // Related und ShowGraph (#896) sind Client-Aktionen: „related:<Stelle>“ springt an Problem.Related[Stelle].

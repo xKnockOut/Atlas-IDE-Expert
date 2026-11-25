@@ -77,7 +77,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.EndSteps,
   Atlas.Core.Tracker.Workflow,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.EndDialog;
 

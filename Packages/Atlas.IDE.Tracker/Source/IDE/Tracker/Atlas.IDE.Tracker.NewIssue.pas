@@ -81,7 +81,7 @@ uses
   Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.NewIssue.Strings,
   Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.Settings,

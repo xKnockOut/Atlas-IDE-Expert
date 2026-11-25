@@ -76,7 +76,7 @@ uses
   System.Math,
   Atlas.Plugin.Style.Color,
   Atlas.Plugin.Style.Palette,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Vcl.Popup.Styled,
   Atlas.Vcl.Popup.Accessibility;

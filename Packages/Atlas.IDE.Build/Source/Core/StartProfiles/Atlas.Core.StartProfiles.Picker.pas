@@ -18,7 +18,7 @@
 interface
 
 uses
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 type
   /// <summary>Was ein gewählter Eintrag der Auswahl tut.</summary>

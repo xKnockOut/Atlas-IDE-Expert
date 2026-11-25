@@ -95,7 +95,7 @@ implementation
 uses
   Atlas.Core.Welcome.Greeting,
   System.Math,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.Vcl.Theme.Scaling,
   Atlas.Vcl.Theme.Service;

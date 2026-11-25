@@ -75,7 +75,7 @@ uses
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.MyIssues,

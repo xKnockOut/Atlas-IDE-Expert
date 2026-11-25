@@ -5,7 +5,7 @@
 // als Startoptionen in das Projekt schreibt („Start“ und „Ohne Debugger
 // starten“ der IDE nutzen sie dann).
 // - Gemeinsame Profile stehen in der Projektdatei .atlas im Repository
-//   ("startProfiles", #486; gelesen von Atlas.Core.Settings.TeamFile, dort
+//   ("startProfiles", #486; gelesen von Atlas.Plugin.Settings.TeamFile, dort
 //   ohne Zugangsdaten und absolute Pfade). Pfade gelten ab dem Ordner der
 //   .atlas.
 // - Persönliche Profile, das aktive Profil und die Startoptionen von vor dem
@@ -44,7 +44,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 type
 {$SCOPEDENUMS ON}

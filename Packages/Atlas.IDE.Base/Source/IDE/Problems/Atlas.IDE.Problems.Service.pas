@@ -45,7 +45,7 @@ uses
   System.JSON,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Settings.ProblemsUpdate;
+  Atlas.Plugin.Settings.ProblemsUpdate;
 
 type
   TAtlasProblemsCommandProc = reference to procedure(const ACommand, AArgumentsJson: string;
@@ -124,7 +124,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Problems.Strings,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain,

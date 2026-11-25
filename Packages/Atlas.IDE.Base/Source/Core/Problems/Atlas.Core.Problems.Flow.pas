@@ -204,7 +204,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Plan,
   Atlas.Core.Problems.Refresh,
-  Atlas.Core.Settings.ProblemsUpdate;
+  Atlas.Plugin.Settings.ProblemsUpdate;
 
 { TAtlasProblemsTexts }
 

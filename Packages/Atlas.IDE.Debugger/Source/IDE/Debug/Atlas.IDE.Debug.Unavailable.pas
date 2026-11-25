@@ -14,7 +14,7 @@
 //     (TAtlasIdeDebugSession.LaunchValue) und ob der Halt außerhalb des
 //     eigenen Codes liegt (TAtlasIdeDebugSources.OwnCode, #578).
 //   - Texte der Ursache, der Herkunft des Schalters, der geprüften Punkte und
-//     der Korrekturen kommen aus Atlas.UI.Strings.
+//     der Korrekturen kommen aus Atlas.Plugin.Localization.Strings.
 //   - Fix (Klick auf eine Korrektur im Tooltip), jede erst nach einer Vorschau
 //     mit Bestätigung (ausgeführt von TAtlasIdeDebugUnavailableFixes):
 //       RestartWithDebug: Programm zurücksetzen (Aktion der IDE wie Strg+F2),

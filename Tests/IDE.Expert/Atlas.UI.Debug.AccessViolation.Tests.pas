@@ -8,7 +8,7 @@ interface
 uses
   System.Generics.Collections,
   DUnitX.TestFramework,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Plugin.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
   Atlas.UI.Debug.AccessViolation;

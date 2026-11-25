@@ -48,7 +48,7 @@ uses
   Atlas.Plugin.Notifications.Contract,
   Atlas.Plugin.Notifications.Center,
   Atlas.Plugin.Notifications.Sources,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Vcl.Graphics,
   Atlas.Vcl.Theme.Service,
   Atlas.UI.Notifications.Strings,

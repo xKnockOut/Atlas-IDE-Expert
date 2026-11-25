@@ -41,7 +41,7 @@ uses
   System.Generics.Defaults,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.IDE.Contracts.WelcomeTiles,
   Atlas.IDE.Commands.Usage;
 

@@ -76,8 +76,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.ToolbarItems,
-  Atlas.Core.Settings.StatusBarItems,
+  Atlas.Plugin.Settings.ToolbarItems,
+  Atlas.Plugin.Settings.StatusBarItems,
   Atlas.Core.Settings.TestSupport,
   Atlas.Core.Settings.Contract;
 

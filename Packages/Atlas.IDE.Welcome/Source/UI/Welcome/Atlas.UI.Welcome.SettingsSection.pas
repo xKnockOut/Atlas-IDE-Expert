@@ -198,7 +198,7 @@ uses
   Vcl.Menus,
   Vcl.Dialogs,
   Atlas.Core.Welcome.Trends,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.QuickActions.Texts,
   Atlas.UI.Welcome.Trends,
   Atlas.UI.Settings.Page.Sheets;

@@ -91,7 +91,7 @@ uses
   Atlas.Core.UnitRelations.Plan,
   Atlas.Core.EditorToolbar.Sections,
   Atlas.Core.Results.Model,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.UnitRelations.Frame,
   Atlas.IDE.Editor.WorkspaceEdit,

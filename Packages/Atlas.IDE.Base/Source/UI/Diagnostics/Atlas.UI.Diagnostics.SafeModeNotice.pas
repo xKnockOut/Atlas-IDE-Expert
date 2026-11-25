@@ -111,7 +111,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.Vcl.Controls.WrapLabel,
   Atlas.Vcl.Theme.Scaling;

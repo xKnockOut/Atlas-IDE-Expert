@@ -29,7 +29,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,

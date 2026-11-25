@@ -5,7 +5,7 @@
 .DESCRIPTION
     Mit englischer IDE soll Atlas englisch sprechen. Benutzertexte stehen deshalb in
     Texttabellen (array[…] of TAtlasText mit De und En, im Plugin die Sprachtabellen
-    array[TAtlasLanguage, …] of string in Atlas.UI.Strings und den Strings-Units der Module).
+    array[TAtlasLanguage, …] of string in Atlas.Plugin.Localization.Strings und den Strings-Units der Module).
     Dieses Werkzeug sucht in Packages/ und Application/ String-Literale, die nach
     deutschem Text aussehen: Umlaute oder ß, oder ein häufiges deutsches Wort
     (und, nicht, oder, der, die, das, ist, mit, für, kein, wird, …).

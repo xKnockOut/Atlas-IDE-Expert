@@ -16,7 +16,7 @@
 // Codezeilen, bei Variablen (auch Teile unter einem solchen Namen), im
 // Ereignisprotokoll und in der Meldung der Exception (Redact).
 // Die Überschriften kommen in der Sprache der Oberfläche von außen
-// (TAtlasDebugNoteTexts), Core kennt Atlas.UI.Strings nicht und hat keine
+// (TAtlasDebugNoteTexts), Core kennt Atlas.Plugin.Localization.Strings nicht und hat keine
 // eigenen Texte.
 
 interface

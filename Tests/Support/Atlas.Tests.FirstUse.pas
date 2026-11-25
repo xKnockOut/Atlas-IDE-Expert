@@ -41,7 +41,7 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Plugin.Files.DataFile,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Transfer,
   Atlas.Common.Projects.PackageLocator,

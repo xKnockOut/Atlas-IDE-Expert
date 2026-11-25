@@ -22,7 +22,7 @@ uses
   Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.HiddenPlaces;
+  Atlas.Plugin.Settings.HiddenPlaces;
 
 type
   /// <summary>Das Element, an dem ausgeblendet wird.</summary>

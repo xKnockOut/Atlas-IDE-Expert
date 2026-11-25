@@ -55,7 +55,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.StartProfiles.Picker;
 
 const

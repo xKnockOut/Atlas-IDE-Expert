@@ -25,7 +25,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,

@@ -42,7 +42,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Review,
   Atlas.Core.Tracker.Workflow,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.ReviewDialog;
 
 function Options: TAtlasTrackerSyncOptions;

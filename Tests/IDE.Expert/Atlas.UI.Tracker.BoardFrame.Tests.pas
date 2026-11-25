@@ -42,7 +42,7 @@ uses
   Vcl.Graphics,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.BoardLayout.TestSupport,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Board.Strings,
   Atlas.UI.Tracker.BoardFrame,
   Atlas.UI.Tracker.BoardPainter,

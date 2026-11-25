@@ -86,7 +86,7 @@ uses
   Atlas.Core.Completion.Favorites,
   Atlas.Plugin.Diagnostics.Timing,
   Atlas.Vcl.Popup.Draw,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Completion.Strings,
   Atlas.UI.Completion.PopupTexts,
   Atlas.UI.Completion.Details;

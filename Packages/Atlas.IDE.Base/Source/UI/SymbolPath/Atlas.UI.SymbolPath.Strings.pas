@@ -2,7 +2,7 @@
 
 // Oberflächentexte des Features Symbolpfad auf Deutsch und Englisch. Die Sprache bestimmt
 // `TAtlasStrings.Language`; jeder Aufruf liest sie neu. Eigene Unit, damit ein neuer Text des Features nicht
-// `Atlas.UI.Strings` ändert, die fast der ganze Kern verwendet; dort bleiben gemeinsame Texte.
+// `Atlas.Plugin.Localization.Strings` ändert, die fast der ganze Kern verwendet; dort bleiben gemeinsame Texte.
 
 interface
 
@@ -27,7 +27,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasSymbolPathTextId] of string = (

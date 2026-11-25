@@ -1,12 +1,12 @@
 ﻿unit Atlas.Core.Hover.Texts;
 
 // Texte des Hover-Tooltips: Das Fenster (Atlas.UI.Hover.Tip) füllt sie
-// aus Atlas.UI.Strings, der Satz (Atlas.Core.Hover.Layout) liest sie nur.
+// aus Atlas.Plugin.Localization.Strings, der Satz (Atlas.Core.Hover.Layout) liest sie nur.
 
 interface
 
 type
-  /// <summary>Texte der Oberfläche in ihrer Sprache (Core kennt Atlas.UI.Strings nicht).</summary>
+  /// <summary>Texte der Oberfläche in ihrer Sprache (Core kennt Atlas.Plugin.Localization.Strings nicht).</summary>
   TAtlasHoverTexts = record
     /// <summary>Art zu View.Data.Kind (Klasse, Methode …); '' wenn unbekannt.</summary>
     KindCaption: string;

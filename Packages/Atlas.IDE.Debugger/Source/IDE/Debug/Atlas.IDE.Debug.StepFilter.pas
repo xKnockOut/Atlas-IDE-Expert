@@ -147,7 +147,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Plugin.Lsp.Client,
   Atlas.Core.Debug.StepFilterEdit,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,

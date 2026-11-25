@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Settings.RuleChecksNotice,
+  Atlas.Plugin.Settings.RuleChecksNotice,
   Atlas.UI.Notifications.Notice;
 
 type

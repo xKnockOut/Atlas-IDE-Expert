@@ -129,7 +129,7 @@ uses
   Atlas.Plugin.Notifications.Contract,
   Atlas.Plugin.Notifications.Center,
   Atlas.Plugin.Notifications.Sources,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,

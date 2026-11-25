@@ -56,7 +56,7 @@ uses
   Atlas.IDE.Tasks.Projects,
   Atlas.IDE.Tasks.Runner,
   Atlas.UI.Tasks.Texts,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.BuildTools.Adapters.Module;
 
 const

@@ -60,7 +60,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Settings.KeyCodes;
+  Atlas.Plugin.Settings.KeyCodes;
 
 { TAtlasPluginBookmarksSettings }
 

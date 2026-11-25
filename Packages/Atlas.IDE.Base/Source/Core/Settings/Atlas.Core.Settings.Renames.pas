@@ -16,7 +16,7 @@
 interface
 
 uses
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Contract;
 
 type

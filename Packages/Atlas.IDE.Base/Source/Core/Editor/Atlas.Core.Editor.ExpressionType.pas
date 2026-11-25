@@ -72,7 +72,8 @@ type
     Link: Boolean;
   end;
 
-  /// <summary>Texte des Tooltips; die UI füllt sie aus Atlas.UI.Strings. Format-Texte mit %s.</summary>
+  /// <summary>Texte des Tooltips; die UI füllt sie aus Atlas.Plugin.Localization.Strings. Format-Texte mit %s.
+  /// </summary>
   TAtlasExpressionTypeTexts = record
     /// <summary>„= %s“.</summary>
     Value: string;

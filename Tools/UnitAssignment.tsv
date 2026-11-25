@@ -338,25 +338,13 @@ Atlas.IDE.Base	Atlas.Core.Results.DataFlow	Core/Results/Atlas.Core.Results.DataF
 Atlas.IDE.Base	Atlas.Core.Results.Model	Core/Results/Atlas.Core.Results.Model.pas	Ordner `Core/Results`
 Atlas.IDE.Base	Atlas.Core.Results.Plan	Core/Results/Atlas.Core.Results.Plan.pas	Ordner `Core/Results`
 Atlas.IDE.Base	Atlas.Core.SavedPlaces.Contract	Core/SavedPlaces/Atlas.Core.SavedPlaces.Contract.pas	Gemerkte Stellen als Daten und Quelle (Lesezeichen → Willkommensseite), #1456
-Atlas.IDE.Base	Atlas.Core.Settings.Baseline	Core/Settings/Atlas.Core.Settings.Baseline.pas	Format der Baseline-Datei; Einstellungsdialog und Stand der Datei, #1455
-Atlas.IDE.Base	Atlas.Core.Settings.Catalog	Core/Settings/Atlas.Core.Settings.Catalog.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.Choices	Core/Settings/Atlas.Core.Settings.Choices.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.ContextMenuGroups	Core/Settings/Atlas.Core.Settings.ContextMenuGroups.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Contract	Core/Settings/Atlas.Core.Settings.Contract.pas	Ordner `Core/Settings`; Vertrag für die Einstellungsteile der Module (#1455, Entscheidung 3)
-Atlas.IDE.Base	Atlas.Core.Settings.DataBreakClasses	Core/Settings/Atlas.Core.Settings.DataBreakClasses.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.EventBreakNames	Core/Settings/Atlas.Core.Settings.EventBreakNames.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Experimental	Core/Settings/Atlas.Core.Settings.Experimental.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.FolderList	Core/Settings/Atlas.Core.Settings.FolderList.pas	Ordnerliste als Einstellungswert; Optionsdialog ohne Debugger, #1455
 Atlas.IDE.Base	Atlas.Core.Settings.GenerateMenu.Contract	Core/Settings/Atlas.Core.Settings.GenerateMenu.Contract.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Groups	Core/Settings/Atlas.Core.Settings.Groups.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.HiddenPlaces	Core/Settings/Atlas.Core.Settings.HiddenPlaces.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.History	Core/Settings/Atlas.Core.Settings.History.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.KeyCodes	Core/Settings/Atlas.Core.Settings.KeyCodes.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.Layers	Core/Settings/Atlas.Core.Settings.Layers.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.ModuleSwitches	Core/Settings/Atlas.Core.Settings.ModuleSwitches.pas	Ordner `Core/Settings`; Modul-Schalter (#1454)
 Atlas.IDE.Base	Atlas.Core.Settings.NodeScope	Core/Settings/Atlas.Core.Settings.NodeScope.pas	Ordner `Core/Settings`; Knoten je Package in den Optionen (#1903)
-Atlas.IDE.Base	Atlas.Core.Settings.OverviewKinds	Core/Settings/Atlas.Core.Settings.OverviewKinds.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.PageNames	Core/Settings/Atlas.Core.Settings.PageNames.pas	Englische Seitennamen der Einstellungen, #1458
 Atlas.IDE.Base	Atlas.Core.Settings.Parts	Core/Settings/Atlas.Core.Settings.Parts.pas	Ordner `Core/Settings`; zentrale Stelle der Einstellungsteile (#1455, Entscheidung 3)
 Atlas.IDE.Base	Atlas.Core.Settings.Plugin	Core/Settings/Atlas.Core.Settings.Plugin.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Plugin.Assistants	Core/Settings/Atlas.Core.Settings.Plugin.Assistants.pas	Ordner `Core/Settings`
@@ -375,26 +363,13 @@ Atlas.IDE.Base	Atlas.Core.Settings.Plugin.Snippets	Core/Settings/Atlas.Core.Sett
 Atlas.IDE.Base	Atlas.Core.Settings.Plugin.Store	Core/Settings/Atlas.Core.Settings.Plugin.Store.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Plugin.VersionControl	Core/Settings/Atlas.Core.Settings.Plugin.VersionControl.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Plugin.Welcome	Core/Settings/Atlas.Core.Settings.Plugin.Welcome.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.PluginSchemaData	Core/Settings/Atlas.Core.Settings.PluginSchemaData.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.ProblemsUpdate	Core/Settings/Atlas.Core.Settings.ProblemsUpdate.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.ProfileData	Core/Settings/Atlas.Core.Settings.ProfileData.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.QueryMigration	Core/Settings/Atlas.Core.Settings.QueryMigration.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.QuickToggles	Core/Settings/Atlas.Core.Settings.QuickToggles.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.Reassigned	Core/Settings/Atlas.Core.Settings.Reassigned.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Renames	Core/Settings/Atlas.Core.Settings.Renames.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.RuleChecksNotice	Core/Settings/Atlas.Core.Settings.RuleChecksNotice.pas	Hinweis „Prüfregeln sind aus“, #1454
-Atlas.IDE.Base	Atlas.Core.Settings.Schema	Core/Settings/Atlas.Core.Settings.Schema.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.SchemaCheck	Core/Settings/Atlas.Core.Settings.SchemaCheck.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.SchemaData	Core/Settings/Atlas.Core.Settings.SchemaData.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Scopes	Core/Settings/Atlas.Core.Settings.Scopes.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Search	Core/Settings/Atlas.Core.Settings.Search.pas	Ordner `Core/Settings`; Suche über die Einstellungen (#1884)
-Atlas.IDE.Base	Atlas.Core.Settings.StatusBarItems	Core/Settings/Atlas.Core.Settings.StatusBarItems.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.StoreValues	Core/Settings/Atlas.Core.Settings.StoreValues.pas	Ordner `Core/Settings`; Werte des zentralen Records nach Schlüssel für die Abschnitte der Module (#1455)
-Atlas.IDE.Base	Atlas.Core.Settings.TeamFile	Core/Settings/Atlas.Core.Settings.TeamFile.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.ToolbarItems	Core/Settings/Atlas.Core.Settings.ToolbarItems.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Settings.Transfer	Core/Settings/Atlas.Core.Settings.Transfer.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.Validation	Core/Settings/Atlas.Core.Settings.Validation.pas	Ordner `Core/Settings`
-Atlas.IDE.Base	Atlas.Core.Settings.VisualizerKinds	Core/Settings/Atlas.Core.Settings.VisualizerKinds.pas	Ordner `Core/Settings`
 Atlas.IDE.Base	Atlas.Core.Setup.Checklist	Core/Setup/Atlas.Core.Setup.Checklist.pas	Ordner `Core/Setup`
 Atlas.IDE.Base	Atlas.Core.Setup.Contract	Core/Setup/Atlas.Core.Setup.Contract.pas	Contract des Features Setup, Umgebung der Prüfliste, #1443
 Atlas.IDE.Base	Atlas.Core.Signature.CallScanner	Core/Signature/Atlas.Core.Signature.CallScanner.pas	Ordner `Core/Signature`
@@ -810,13 +785,13 @@ Atlas.IDE.Base	Atlas.UI.Settings.Transfer	UI/Settings/Atlas.UI.Settings.Transfer
 Atlas.IDE.Base	Atlas.UI.Setup.Strings	UI/Setup/Atlas.UI.Setup.Strings.pas	Ordner `UI/Setup`
 Atlas.IDE.Base	Atlas.UI.Setup.Window	UI/Setup/Atlas.UI.Setup.Window.pas	Ordner `UI/Setup`
 Atlas.IDE.Base	Atlas.UI.Signature.Adapters.HintView	UI/Signature/Atlas.UI.Signature.Adapters.HintView.pas	Ordner `UI/Signature`
+Atlas.IDE.Base	Atlas.UI.Signature.FormatText	UI/Signature/Atlas.UI.Signature.FormatText.pas	Ordner `UI/Signature`
 Atlas.IDE.Base	Atlas.UI.Signature.Hint	UI/Signature/Atlas.UI.Signature.Hint.pas	Ordner `UI/Signature`
 Atlas.IDE.Base	Atlas.UI.Status.ServerFrame	UI/Status/Atlas.UI.Status.ServerFrame.pas	Ordner `UI/Status`
 Atlas.IDE.Base	Atlas.UI.Status.Strings	UI/Status/Atlas.UI.Status.Strings.pas	Ordner `UI/Status`
 Atlas.IDE.Base	Atlas.UI.Status.Window	UI/Status/Atlas.UI.Status.Window.pas	Ordner `UI/Status`
 Atlas.IDE.Base	Atlas.UI.StatusBar.Bar	UI/StatusBar/Atlas.UI.StatusBar.Bar.pas	Ordner `UI/StatusBar`
 Atlas.IDE.Base	Atlas.UI.StatusBar.Strings	UI/StatusBar/Atlas.UI.StatusBar.Strings.pas	Ordner `UI/StatusBar`
-Atlas.IDE.Base	Atlas.UI.Strings	UI/Atlas.UI.Strings.pas	Ordner `UI`
 Atlas.IDE.Base	Atlas.UI.SymbolPath.Chain	UI/SymbolPath/Atlas.UI.SymbolPath.Chain.pas	Darstellung eines Wegs zwischen Symbolen im Ergebnisfenster von Base (#1117); das Modul Analyse sucht den Weg, #1455
 Atlas.IDE.Base	Atlas.UI.SymbolPath.Strings	UI/SymbolPath/Atlas.UI.SymbolPath.Strings.pas	Texte der Kette eines Wegs (`UI.SymbolPath.Chain`) im Ergebnisfenster von Base; Suche und Dialog im Modul Analyse haben eigene Texte
 Atlas.IDE.Base	Atlas.UI.Undo.DiffView	UI/Undo/Atlas.UI.Undo.DiffView.pas	Ordner `UI/Undo`

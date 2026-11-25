@@ -79,7 +79,7 @@ uses
   System.SysUtils,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.AssistantControl,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.Core.Debug.BreakpointCheck,

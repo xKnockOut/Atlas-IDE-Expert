@@ -31,7 +31,7 @@ implementation
 
 uses
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.Tracker.TestFetch,
   Atlas.Core.Tracker.TestResults;
 

@@ -50,7 +50,7 @@ implementation
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.JSON,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.CodeInsight.Strings,
   Atlas.Plugin.Status.Lines,
   Atlas.Plugin.Diagnostics.Guard,

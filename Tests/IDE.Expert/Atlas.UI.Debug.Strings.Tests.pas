@@ -22,7 +22,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Strings.Tests,
+  Atlas.Plugin.Localization.Strings.Tests,
   Atlas.UI.Debug.AccessViolation.Strings,
   Atlas.UI.Debug.Breakpoints.Strings,
   Atlas.UI.Debug.CallStack.Strings,

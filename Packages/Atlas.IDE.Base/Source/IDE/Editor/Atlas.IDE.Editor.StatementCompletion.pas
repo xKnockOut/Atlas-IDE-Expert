@@ -52,7 +52,7 @@ uses
   Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Plugin.Lsp.Client,
   Atlas.Core.Commands.Palette,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,

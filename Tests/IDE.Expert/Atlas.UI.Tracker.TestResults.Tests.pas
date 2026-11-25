@@ -43,7 +43,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.TestResults,
   Atlas.Core.Tracker.Contract.TestResults,
   Atlas.UI.Tracker.Contract.TestResults,

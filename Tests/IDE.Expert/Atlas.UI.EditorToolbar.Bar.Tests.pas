@@ -54,7 +54,7 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
-  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Plugin.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.UI.Outline.Breadcrumbs;

@@ -31,7 +31,7 @@ uses
   System.SysUtils,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   System.DateUtils,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Welcome.Unsaved,

@@ -53,9 +53,9 @@ uses
   Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
-  Atlas.Core.Settings.HiddenPlaces,
+  Atlas.Plugin.Settings.HiddenPlaces,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 const
   cFolder = 'C:\Repo\App';

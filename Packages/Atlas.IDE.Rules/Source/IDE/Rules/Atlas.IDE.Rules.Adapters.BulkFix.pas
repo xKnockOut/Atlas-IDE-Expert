@@ -39,7 +39,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.UI.Rules.BulkFix,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Rules.Strings;
 
 const

@@ -44,7 +44,7 @@ type
     function Moved: Integer;
   end;
 
-  /// <summary>Texte der Vorschau, aus Atlas.UI.Strings.</summary>
+  /// <summary>Texte der Vorschau, aus Atlas.Plugin.Localization.Strings.</summary>
   TAtlasMethodPlacementTexts = record
     /// <summary>Mit %d: "↑ %d", "↓ %d".</summary>
     Up: string;
