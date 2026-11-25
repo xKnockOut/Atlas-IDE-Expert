@@ -73,7 +73,7 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Editing.AssignFields,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion.Context,

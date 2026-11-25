@@ -53,7 +53,7 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.RoutineBody,
-  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Editing.ClassMembers;
 
 { TAccessorCreation }

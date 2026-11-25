@@ -2962,7 +2962,7 @@ uses
   Atlas.Common.Lsp.DebugScope.Tests in 'Common\Lsp\Atlas.Common.Lsp.DebugScope.Tests.pas',
   Atlas.Common.Lsp.RoutineParameters.Tests in 'Common\Lsp\Atlas.Common.Lsp.RoutineParameters.Tests.pas',
   Atlas.Common.Lsp.UpcomingConditions.Tests in 'Common\Lsp\Atlas.Common.Lsp.UpcomingConditions.Tests.pas',
-  Atlas.Common.Editing.InterfaceStubs.Tests in 'Common\Editing\Atlas.Common.Editing.InterfaceStubs.Tests.pas',
+  Atlas.Common.Pascal.InterfaceStubs.Tests in 'Common\Pascal\Atlas.Common.Pascal.InterfaceStubs.Tests.pas',
   Atlas.Common.Lsp.Completion.Postfix.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Postfix.Tests.pas',
   Atlas.Common.Lsp.Completion.Names.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Names.Tests.pas',
   Atlas.Common.Lsp.Completion.Hooks.Tests in 'Common\Lsp\Atlas.Common.Lsp.Completion.Hooks.Tests.pas',

@@ -58,7 +58,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Pascal.InterfaceStubs,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Pascal.RoutineLocals,
   Atlas.Common.Pascal.UsesClauses,
