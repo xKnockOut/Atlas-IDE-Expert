@@ -126,6 +126,12 @@ type
     [Test]
     procedure DelimitedTextSilentCases;
     [Test]
+    procedure DelimitedTextStrictFarAway;
+    [Test]
+    procedure DelimitedTextStrictWithAndCast;
+    [Test]
+    procedure DelimitedTextUnknownOrigin;
+    [Test]
     procedure DelimitedTextOffAndExclude;
     [Test]
     procedure UncheckedEnumCastIssueExample;
@@ -1294,6 +1300,94 @@ begin
     '    Teile.DelimitedText := Zeile;'#10));
   TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.Delimiter := #32;'#10 +
     '    Teile.DelimitedText := Zeile;'#10));
+end;
+
+procedure TRtlConversionRulesTests.DelimitedTextStrictFarAway;
+const
+  cSource =
+    'unit Import;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure Zerlegen(const Zeile: string);'#10 +
+    'var'#10 +
+    '  Teile: TStringList;'#10 +
+    '  Index: Integer;'#10 +
+    'begin'#10 +
+    '  Teile := TStringList.Create;'#10 +
+    '  Teile.Delimiter := '';'';'#10 +
+    '  Teile.StrictDelimiter := True;'#10 +
+    '  try'#10 +
+    '    for Index := 0 to 3 do'#10 +
+    '    begin'#10 +
+    '      if Index > 1 then'#10 +
+    '      begin'#10 +
+    '        Teile.Clear;'#10 +
+    '      end;'#10 +
+    '    end;'#10 +
+    '    Teile.DelimitedText := Zeile;'#10 +
+    '  finally'#10 +
+    '    Teile.Free;'#10 +
+    '  end;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // Delimiter und StrictDelimiter gleich nach dem Create, DelimitedText weit danach: still.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, cSource);
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, StringReplace(cSource, '  Teile := TStringList.Create;',
+    '  Teile := TStringList.Create(True);', []));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    StringReplace(cSource, '  Teile.StrictDelimiter := True;'#10, '', [])))));
+end;
+
+procedure TRtlConversionRulesTests.DelimitedTextStrictWithAndCast;
+begin
+  // StrictDelimiter in with Liste do bzw. über eine Typumwandlung.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    with Teile do'#10'    begin'#10 +
+    '      Delimiter := '';'';'#10'      StrictDelimiter := True;'#10'    end;'#10 +
+    '    Teile.Delimiter := '','';'#10'    Teile.DelimitedText := Zeile;'#10));
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.Delimiter := '';'';'#10 +
+    '    TStringList(Teile).StrictDelimiter := True;'#10'    Teile.DelimitedText := Zeile;'#10));
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.Delimiter := '';'';'#10 +
+    '    (Teile as TStringList).StrictDelimiter := True;'#10'    Teile.DelimitedText := Zeile;'#10));
+  // with einer anderen Liste bzw. eines Mitglieds der Liste zählt nicht.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    Teilen('    with Andere do'#10'      StrictDelimiter := True;'#10'    Teile.Delimiter := '';'';'#10 +
+    '    Teile.DelimitedText := Zeile;'#10)))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    Teilen('    with Teile.Objects[0] as TStringList do'#10'      StrictDelimiter := True;'#10 +
+    '    Teile.Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10)))));
+  // with-Block, der nur den Delimiter setzt.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDelimitedTextWithoutStrictRule.Create,
+    Teilen('    with Teile do'#10'      Delimiter := '';'';'#10'    Teile.DelimitedText := Zeile;'#10)))));
+end;
+
+procedure TRtlConversionRulesTests.DelimitedTextUnknownOrigin;
+const
+  cParameter =
+    'unit Import;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure Fuellen(Teile: TStrings; const Zeile: string);'#10 +
+    'begin'#10 +
+    '  Teile.Delimiter := '';'';'#10 +
+    '  Teile.DelimitedText := Zeile;'#10 +
+    'end;'#10 +
+    'procedure Lesen(const Zeile: string);'#10 +
+    'var'#10 +
+    '  Liste: TStringList;'#10 +
+    'begin'#10 +
+    '  Liste := TStringList.Create;'#10 +
+    '  Liste.StrictDelimiter := True;'#10 +
+    '  Fuellen(Liste, Zeile);'#10 +
+    '  Liste.Free;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // Parameter: StrictDelimiter setzt der Aufrufer.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, cParameter);
+  // Liste aus einer Funktion: Die setzt StrictDelimiter.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, StringReplace(Teilen('    Teile.Delimiter := '';'';'#10 +
+    '    Teile.DelimitedText := Zeile;'#10), '  Teile := TStringList.Create;', '  Teile := NeueListe;', []));
 end;
 
 procedure TRtlConversionRulesTests.DelimitedTextOffAndExclude;
