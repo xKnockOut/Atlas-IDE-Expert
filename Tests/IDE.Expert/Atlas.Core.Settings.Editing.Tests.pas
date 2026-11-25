@@ -28,6 +28,8 @@ type
     [Test]
     procedure MultiCursorOptions;
     [Test]
+    procedure CommandKeysMoveOldMultiCursorDefault;
+    [Test]
     procedure SmartPasteOptions;
     /// <summary>Blockkommentar umschalten (#703): Vorgaben, Auswahlwerte normalisiert, Speichern und Laden.</summary>
     [Test]
@@ -199,18 +201,48 @@ begin
   mLoaded.Normalize;
   Assert.AreEqual(5, mLoaded.ContinuePatternMinLines);
 end;
+procedure TAtlasEditingSettingsTests.CommandKeysMoveOldMultiCursorDefault;
+var
+  mStore: IAtlasSettingsStore;
+  mLoaded: TAtlasPluginSettings;
+begin
+  // #2938: Gespeichert vor keys.commands mit der alten Vorgabe Strg+D: Das nächste Vorkommen bekommt Strg+Alt+D.
+  mStore := TMemoryStore.Create;
+  mStore.WriteInteger('MultiCursorNextKey', $4044);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.AreEqual($C044, mLoaded.MultiCursorNextKey, 'alte Vorgabe umgezogen');
+  Assert.AreEqual('Atlas.FindMethod=16452', mLoaded.CommandKeys);
+  // Eigene Wahl bleibt.
+  mStore := TMemoryStore.Create;
+  mStore.WriteInteger('MultiCursorNextKey', $4053);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.AreEqual($4053, mLoaded.MultiCursorNextKey, 'eigene Taste');
+  // Mit keys.commands gespeichert: Strg+D für die Mehrfachmarken ist dann bewusst gewählt.
+  mStore := TMemoryStore.Create;
+  mStore.WriteInteger('MultiCursorNextKey', $4044);
+  mStore.WriteString('CommandKeys', '');
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.AreEqual($4044, mLoaded.MultiCursorNextKey, 'bewusst gewählt');
+  Assert.AreEqual('', mLoaded.CommandKeys, 'leere Liste bleibt leer');
+end;
+
 procedure TAtlasEditingSettingsTests.MultiCursorOptions;
 var
   mSettings, mLoaded: TAtlasPluginSettings;
   mStore: IAtlasSettingsStore;
 begin
-  // #589: experimentell, also aus; Klick mit Alt; Kürzel Strg+D, Alt+Umschalt+I, Strg+Alt+↑/↓.
+  // #589: experimentell, also aus; Klick mit Alt; Kürzel Strg+Alt+D (Strg+D hat „Methode suchen“, #2938),
+  // Alt+Umschalt+I, Strg+Alt+↑/↓.
   mSettings := TAtlasPluginSettings.Defaults;
   Assert.IsFalse(mSettings.MultiCursor);
   // #658 ebenso experimentell.
   Assert.IsFalse(mSettings.LinkedEditing);
   Assert.AreEqual('alt', mSettings.MultiCursorModifier);
-  Assert.AreEqual($4044, mSettings.MultiCursorNextKey, 'Strg+D');
+  Assert.AreEqual($C044, mSettings.MultiCursorNextKey, 'Strg+Alt+D');
+  Assert.AreEqual('Atlas.FindMethod=16452', mSettings.CommandKeys, 'Strg+D für „Methode suchen“');
   Assert.AreEqual($4044, mSettings.MultiCursorSkipKey, 'Strg+K, Strg+D');
   Assert.AreEqual($A049, mSettings.MultiCursorLineEndsKey, 'Alt+Umschalt+I');
   Assert.AreEqual($C026, mSettings.MultiCursorAboveKey, 'Strg+Alt+Hoch');

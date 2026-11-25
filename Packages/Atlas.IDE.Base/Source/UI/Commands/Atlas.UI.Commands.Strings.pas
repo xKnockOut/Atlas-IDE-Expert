@@ -28,7 +28,10 @@ type
     // Untermenü „Code“ im Hauptmenü Atlas (Erzeugen, Methodenreihenfolge).
     MenuGroupCode,
     // Fenster von Base unter Ansicht › Atlas (neben „Prüfung“).
-    ViewMenuResults, ViewMenuOutline, ViewMenuServer);
+    ViewMenuResults, ViewMenuOutline, ViewMenuServer,
+    // Tasten der Palettenbefehle zuweisen (#2938).
+    KeyMapWithoutKey, KeyMapAssign, KeyMapNotAssignable, KeyAssignTitle, KeyAssignPrompt, KeyAssignFree,
+    KeyAssignTaken, KeyAssignRemove, KeyAssignOk, KeyAssignCancel, KeyMapNoKey);
 
   TAtlasCommandsStrings = class
   public
@@ -128,7 +131,18 @@ const
      'Code',
      'Ergebnisse',
      'Gliederung',
-     'Atlas-Server'),
+     'Atlas-Server',
+     'Auch Befehle ohne Taste',
+     'Zuweisen …',
+     'Nur Atlas-Befehle lassen sich hier belegen.',
+     'Tastenkürzel für „%s“',
+     'Taste drücken:',
+     'Die Taste ist frei.',
+     'Belegt von %s.',
+     'Entfernen',
+     'OK',
+     'Abbrechen',
+     '(keine)'),
     ('Project settings (atlas.json)…',
      'Atlas',
      'Options…',
@@ -211,7 +225,18 @@ const
      'Code',
      'Results',
      'Outline',
-     'Atlas server'));
+     'Atlas server',
+     'Also commands without a key',
+     'Assign …',
+     'Only Atlas commands can be assigned here.',
+     'Keyboard shortcut for “%s”',
+     'Press a key:',
+     'The key is free.',
+     'Taken by %s.',
+     'Remove',
+     'OK',
+     'Cancel',
+     '(none)'));
 
 { TAtlasCommandsStrings }
 
