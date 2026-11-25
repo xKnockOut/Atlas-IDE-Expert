@@ -237,12 +237,6 @@ type
     Known: Boolean;
     CtrlFile: string;
     CtrlTick: UInt64;
-    /// <summary>Sprung nach einem Klick auf den Kopf, ausgeführt erst nach dem Loslassen der Maustaste: Solange sie
-    /// gedrückt ist, zieht der Editor ab der verdeckten Zeile eine Markierung bis zur Sprungstelle auf.</summary>
-    JumpPending: Boolean;
-    JumpFile: string;
-    JumpLine: Integer;
-    JumpCharacter: Integer;
   end;
 
   TStickyState = class(TStickyPainter)
@@ -254,8 +248,6 @@ type
     FIndex: Integer;
     FOn: Boolean;
     procedure Tick(Sender: TObject);
-    /// <summary>Gemerkten Sprung ausführen, sobald die linke Maustaste oben ist.</summary>
-    procedure RunPendingJump;
     procedure Clear;
     procedure Update;
     procedure QueueInvalidate;
@@ -363,32 +355,9 @@ begin
   inherited Destroy;
 end;
 
-procedure TStickyState.RunPendingJump;
-begin
-  if not FPointer.JumpPending or (GetAsyncKeyState(VK_LBUTTON) < 0) then
-  begin
-    Exit;
-  end;
-  FPointer.JumpPending := False;
-  TAtlasGuard.Run(TAtlasFeature.StickyScroll,
-    procedure
-    var
-      mView: IOTAEditView;
-    begin
-      TAtlasIdeNavigation.GoToLocation(FPointer.JumpFile, FPointer.JumpLine, FPointer.JumpCharacter);
-      // Was der Editor beim Klick auf die verdeckte Zeile als Markierung begonnen hat, verwerfen.
-      mView := TAtlasEditorBuffer.ActiveView;
-      if (mView <> nil) and (mView.Block <> nil) then
-      begin
-        mView.Block.Reset;
-      end;
-    end);
-end;
-
 procedure TStickyState.Tick(Sender: TObject);
 begin
   try
-    RunPendingJump;
     Update;
   except
     on E: Exception do
@@ -924,12 +893,10 @@ begin
         Exit;
       end;
     end;
-    FPointer.JumpPending := True;
-    FPointer.JumpFile := FFileName;
-    FPointer.JumpLine := FRows[mRow].Line;
-    FPointer.JumpCharacter := FRows[mRow].Character;
-    // Gleich prüfen, falls die Taste schon wieder oben ist; sonst übernimmt der Takt.
-    TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll, RunPendingJump);
+    // Erst nach dem Loslassen: Solange die Taste gedrückt ist, zieht der Editor ab der verdeckten Zeile eine
+    // Markierung bis zur Sprungstelle auf.
+    TAtlasIdeNavigation.JumpAfterClick(TAtlasFeature.StickyScroll, FFileName, FRows[mRow].Line,
+      FRows[mRow].Character, nil);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
