@@ -55,7 +55,6 @@ type
     /// </summary>
     class var FDockForms: TArray<TCustomForm>;
     class var FOnFrameCreated: TProc<string, TCustomFrame>;
-    class function IsDockForm(AForm: TCustomForm): Boolean; static;
     /// <summary>Thema der IDE an der Form: Grund per ApplyTheme, bei dunklem Thema eine dunkle Titelleiste von
     /// Windows. Kein VCL-Stil an der Form: Der zeichnete die Titelleiste selbst und verlor beim Ziehen die
     /// Schaltflächen.</summary>
@@ -109,6 +108,10 @@ type
     class procedure HideIfAny(AHost: TAtlasIdeDockWindow); static;
     /// <summary>Thema der IDE auf AControl anwenden (beim Anlegen und bei jedem Themenwechsel).</summary>
     class procedure ApplyIdeTheme(AControl: TWinControl); static;
+    /// <summary>AForm ist die Form eines Atlas-Dockfensters. Wer Fenster der IDE nach dem Namen sucht
+    /// (Ereignisprotokoll, #580), überspringt damit die eigenen; sonst liest Atlas seine eigenen Zeilen wieder ein.
+    /// </summary>
+    class function IsDockForm(AForm: TCustomForm): Boolean; static;
     /// <summary>Rückruf für jeden neuen Frame (Kennung des Fensters, Frame); nur im Hauptthread.</summary>
     class property OnFrameCreated: TProc<string, TCustomFrame> read FOnFrameCreated write FOnFrameCreated;
   end;
