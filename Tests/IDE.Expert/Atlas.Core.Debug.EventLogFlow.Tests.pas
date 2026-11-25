@@ -28,7 +28,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Debug.EventLog,
   Atlas.Core.Debug.Logpoint,
   Atlas.Core.Debug.EventLogFlow;

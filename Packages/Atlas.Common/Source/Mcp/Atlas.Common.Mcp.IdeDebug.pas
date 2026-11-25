@@ -17,7 +17,8 @@
 //   debug_evaluate     expression, sideEffects
 // Antwort des Plugins: {"ok": true, "result": {…}} bzw. {"ok": false, "reason": "…"}. "result" geht unverändert an
 // den MCP-Client; seinen Aufbau beschreibt docs/MCP.md. Nimmt das Plugin nicht binnen cTakeMs an (abgeschaltet,
-// andere Sitzung, Pause für KI), nennt das Werkzeug den Grund.
+// andere Sitzung, Pause für KI), nennt das Werkzeug den Grund; liegt dann noch ein früherer Auftrag übernommen und
+// unbeantwortet im Eingang (#2895), sagt es das statt „abgeschaltet“.
 // Gegenstück im Plugin: Atlas.Core.Assistants.DebugInbox.
 
 interface
@@ -82,6 +83,8 @@ type
     /// <summary>Liest die Antwort des Plugins; AResultText = Objekt "result" als JSON-Text.</summary>
     class function ParseAnswer(const AText: string; out AOk: Boolean; out AResultText, AReason: string): Boolean;
       static;
+    /// <summary>Liegt in AInbox ein übernommener Auftrag (.taken) ohne Antwort?</summary>
+    class function HasUnanswered(const AInbox: string): Boolean; static;
     /// <summary>Legt den Auftrag in AInbox und wartet auf das Plugin. Done: AResultText enthält das Ergebnis.
     /// Sonst Grund in AReason.</summary>
     class function Send(const AInbox, ARequestText: string; const AWaiting: TMcpIdeWaiting;
@@ -100,7 +103,7 @@ uses
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
   TIdeDebugText = (UnknownTool, LineMissing, ExpressionMissing, KindInvalid, ToLineNeedsPlace, IdOrAll,
-    NumberRange, NotTaken, TimedOut, NoResult, Unreadable, NoIde);
+    NumberRange, NotTaken, TimedOut, NoResult, Unreadable, NoIde, StillBusy);
 
 const
   cTexts: array[TIdeDebugText] of TAtlasText = (
@@ -124,7 +127,13 @@ const
     (De: 'Keine RAD-Studio-IDE mit Atlas-Plugin läuft. Debuggen geht nur über die IDE: das Projekt dort öffnen und ' +
       'erneut aufrufen.';
      En: 'No RAD Studio IDE with the Atlas plugin is running. Debugging works only through the IDE: open the ' +
-      'project there and call again.'));
+      'project there and call again.'),
+    (De: 'Die IDE bearbeitet noch einen früheren Debug-Auftrag (etwa debug_continue, das auf den nächsten Halt ' +
+      'wartet, oder einen Start, der noch baut) und nimmt solange keinen neuen an. Warten und erneut senden; ' +
+      'antwortet sie gar nicht mehr, wartet in der IDE vielleicht ein Dialog auf den Benutzer.';
+     En: 'The IDE is still handling an earlier debug request (for example debug_continue waiting for the next stop, ' +
+      'or a start that is still building) and takes no new one meanwhile. Wait and send again; if it no longer ' +
+      'answers at all, a dialog in the IDE may be waiting for the user.'));
 
 type
   /// <summary>Erlaubte ganze Zahlen eines Arguments und die Vorgabe ohne Angabe.</summary>
@@ -433,6 +442,24 @@ begin
   end;
 end;
 
+class function TMcpIdeDebug.HasUnanswered(const AInbox: string): Boolean;
+var
+  mTaken: string;
+begin
+  Result := False;
+  if not TDirectory.Exists(AInbox) then
+  begin
+    Exit;
+  end;
+  for mTaken in TDirectory.GetFiles(AInbox, '*.taken') do
+  begin
+    if not FileExists(ChangeFileExt(mTaken, '.result.json')) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 class function TMcpIdeDebug.Send(const AInbox, ARequestText: string; const AWaiting: TMcpIdeWaiting;
   out AResultText, AReason: string): TMcpIdeDebugOutcome;
 var
@@ -445,6 +472,10 @@ begin
     TMcpIdeExchangeOutcome.NotTaken:
       begin
         AReason := cTexts[TIdeDebugText.NotTaken].Text;
+        if HasUnanswered(AInbox) then
+        begin
+          AReason := cTexts[TIdeDebugText.StillBusy].Text;
+        end;
         Exit(TMcpIdeDebugOutcome.NotTaken);
       end;
     TMcpIdeExchangeOutcome.TimedOut:

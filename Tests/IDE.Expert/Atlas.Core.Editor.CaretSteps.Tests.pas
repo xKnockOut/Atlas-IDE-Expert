@@ -38,7 +38,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Editor.MultiCursor;
 
 function Carets(ALine, ACharacter: Integer): TAtlasCarets;

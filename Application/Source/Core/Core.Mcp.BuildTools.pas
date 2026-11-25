@@ -37,6 +37,7 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Configuration.Contract,
   Core.Mcp.Ide,
+  Core.Mcp.QuestionTools,
   Atlas.Common.Localization.Texts;
 
 type
@@ -57,11 +58,13 @@ const
     En: 'Project (name or .dproj) to filter by; empty = last build'),
     (De: 'Baut ein Projekt in der laufenden RAD-Studio-IDE über das Atlas-Plugin (#261), auch ohne ' +
     'Kommandozeilen-Compiler (Starter Edition), und liefert Ergebnis und alle Compilermeldungen wie ' +
-    'get_last_build. Das Projekt muss in der IDE offen sein; ohne project baut es das aktive Projekt, wenn ' +
-    'es unter dem Arbeitsordner liegt. Wartet bis zum Ende des Builds.';
+    'get_last_build. Das gebaute Projekt wird das aktive der Projektgruppe; ist es in keiner IDE offen, öffnet ' +
+    'die IDE es nach mcp.openProjects (Vorgabe: Rückfrage). Ohne project baut es das aktive Projekt, wenn es ' +
+    'unter dem Arbeitsordner liegt. Wartet bis zum Ende des Builds.';
     En: 'Builds a project in the running RAD Studio IDE through the Atlas plugin (#261), also without a ' +
     'command-line compiler (Starter Edition), and returns the result and all compiler messages like ' +
-    'get_last_build. The project must be open in the IDE; without project it builds the active project if it ' +
+    'get_last_build. The built project becomes the active project of the group; if no IDE has it open, the IDE ' +
+    'opens it according to mcp.openProjects (default: ask). Without project it builds the active project if it ' +
     'lies below the working folder. Waits until the build has finished.'),
     (De: 'Projekt (.dproj mit Pfad, Dateiname oder Name); leer = aktives Projekt der IDE';
     En: 'Project (.dproj with path, file name or name); empty = active project of the IDE'),
@@ -137,7 +140,7 @@ function ToolBuildProject(const AContext: TMcpToolContext; const AArguments: TJS
 begin
   Result := TMcpBuildTools.Report(BuildInIde(AContext.Root, TMcpArgs.OptionalString(AArguments, 'project'),
     TMcpArgs.OptionalString(AArguments, 'mode'), TMcpArgs.OptionalString(AArguments, 'configuration'),
-    TMcpArgs.OptionalString(AArguments, 'platform')), AContext.Root, '');
+    TMcpArgs.OptionalString(AArguments, 'platform'), IdeOpenOf(AContext)), AContext.Root, '');
 end;
 
 procedure AddBuildProject(const AContext: TMcpToolContext);

@@ -57,7 +57,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}

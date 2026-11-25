@@ -27,7 +27,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Results.Plan;
 

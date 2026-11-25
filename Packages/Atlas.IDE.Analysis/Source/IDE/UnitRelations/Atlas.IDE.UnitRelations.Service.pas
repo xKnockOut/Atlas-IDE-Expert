@@ -84,7 +84,7 @@ uses
   ToolsAPI,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.UnitRelations.Model,
   Atlas.Core.UnitRelations.InterfaceCost,

@@ -26,11 +26,11 @@ uses
   System.SysUtils,
   System.Classes,
   System.JSON,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.Lsp.Session.Base,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Base,
   Atlas.Core.Lsp.Session.Requests,
-  Atlas.Core.Lsp.Framing;
+  Atlas.Plugin.Lsp.Framing;
 
 /// <summary>Methode und Parameter der gerahmten Nachricht ABytes.</summary>
 function MessageOf(const ABytes: TBytes; out AId: Integer; out AParams: string): string;

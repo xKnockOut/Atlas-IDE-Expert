@@ -59,7 +59,7 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Setup,
-  Atlas.Core.Projects.PathCheck,
+  Atlas.Plugin.Projects.PathCheck,
   Atlas.Core.Welcome.Setup;
 
 function Facts(AConfig, ABaseline, AClean: Boolean): TAtlasSetupFacts;

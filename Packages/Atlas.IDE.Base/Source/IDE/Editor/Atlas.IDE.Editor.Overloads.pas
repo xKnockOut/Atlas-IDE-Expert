@@ -41,7 +41,7 @@ implementation
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.JSON,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Completion.ServerPlaceholders,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,

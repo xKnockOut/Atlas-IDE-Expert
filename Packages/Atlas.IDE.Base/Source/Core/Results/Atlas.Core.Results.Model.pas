@@ -13,8 +13,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.WorkspaceEdits;
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.WorkspaceEdits;
 
 type
   TAtlasResultEntry = record
@@ -57,11 +57,11 @@ type
   /// <summary>Liefert den Text einer Datei (offener Puffer oder Platte); '' wenn sie fehlt.</summary>
   TAtlasReadText = reference to function(const AFileName: string): string;
 
-  /// <summary>Liegen im Lsp-Feature (Atlas.Core.Lsp.Contract); Aliase für bestehende Nutzer.</summary>
-  TAtlasSymbol = Atlas.Core.Lsp.Contract.TAtlasSymbol;
-  TAtlasHierarchyDirection = Atlas.Core.Lsp.Contract.TAtlasHierarchyDirection;
-  TAtlasHierarchyItem = Atlas.Core.Lsp.Contract.TAtlasHierarchyItem;
-  TAtlasConfidence = Atlas.Core.Lsp.Contract.TAtlasConfidence;
+  /// <summary>Liegen im Lsp-Feature (Atlas.Plugin.Lsp.Contract); Aliase für bestehende Nutzer.</summary>
+  TAtlasSymbol = Atlas.Plugin.Lsp.Contract.TAtlasSymbol;
+  TAtlasHierarchyDirection = Atlas.Plugin.Lsp.Contract.TAtlasHierarchyDirection;
+  TAtlasHierarchyItem = Atlas.Plugin.Lsp.Contract.TAtlasHierarchyItem;
+  TAtlasConfidence = Atlas.Plugin.Lsp.Contract.TAtlasConfidence;
 
   TAtlasResults = class
   public

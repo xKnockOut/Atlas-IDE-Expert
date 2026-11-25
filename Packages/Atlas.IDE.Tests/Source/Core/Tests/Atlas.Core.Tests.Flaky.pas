@@ -131,7 +131,7 @@ uses
   System.Math,
   System.JSON,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json;
 
 { TAtlasFlakyTest }
 

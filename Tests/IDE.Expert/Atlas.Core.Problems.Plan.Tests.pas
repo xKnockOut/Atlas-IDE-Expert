@@ -31,7 +31,7 @@ implementation
 
 uses
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Problems.Plan;
 
 function Base: TAtlasPluginSettings;

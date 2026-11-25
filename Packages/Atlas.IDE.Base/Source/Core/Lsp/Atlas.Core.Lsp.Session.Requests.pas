@@ -10,14 +10,14 @@ uses
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Progress,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Progress,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Plugin.Files.WatchedChanges,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.Lsp.Session.Base;
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Base;
 
 type
   /// <summary>Anfragen der LSP-Sitzung zu Hover, Orten, Symbolen, Code-Aktionen, Formatieren, Vervollständigung

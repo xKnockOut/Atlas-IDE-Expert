@@ -19,7 +19,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract;
 
 type
   TAtlasPeekPlace = record

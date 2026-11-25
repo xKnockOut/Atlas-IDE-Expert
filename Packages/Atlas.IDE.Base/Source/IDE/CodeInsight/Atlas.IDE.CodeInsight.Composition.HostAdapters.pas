@@ -26,9 +26,9 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Providers.ServerProcess,
+  Atlas.Plugin.Lsp.Providers.ServerProcess,
   Atlas.Plugin.Files.Contract,
   Atlas.Plugin.Files.WatchedChanges,
   Atlas.Plugin.Files.Providers.FolderWatcher,

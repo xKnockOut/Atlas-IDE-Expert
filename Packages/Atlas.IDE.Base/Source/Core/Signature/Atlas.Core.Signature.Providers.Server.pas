@@ -81,7 +81,7 @@ uses
   Atlas.Plugin.Diagnostics.TimeLimit,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}

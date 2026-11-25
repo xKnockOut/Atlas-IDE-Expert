@@ -37,7 +37,7 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   ToolsAPI.Editor,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.InlineValues,

@@ -281,7 +281,7 @@ uses
   Atlas.Core.VersionControl.BranchNames,
   Atlas.Core.Tracker.Naming,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json;
 
 const
   cStartNames: array[TAtlasIssueStart] of string = ('branch', 'remember');

@@ -3710,6 +3710,20 @@
           "x-control": "Kontrollkästchen",
           "x-issue": "#2620"
         },
+        "openProjects": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
+          "default": "ask",
+          "description": "debug_start und build_project mit einem Projekt, das in keiner laufenden IDE offen ist: ask fragt den Menschen (über den Client, wenn er Rückfragen anbietet, sonst im Fenster „KI-Assistent fragt“ der IDE) und öffnet das Projekt nach Zustimmung in der IDE mit dem aktiven Projekt unter dem Arbeitsordner; always öffnet ohne Rückfrage; never lehnt ab wie bisher. Ein offenes Projekt macht das Plugin vorher immer zum aktiven der Projektgruppe.",
+          "x-description-en": "debug_start and build_project with a project that is not open in any running IDE: ask asks the human (through the client when it offers questions, otherwise in the window “AI assistant asks” in the IDE) and after consent opens the project in the IDE whose active project is below the working folder; always opens without asking; never refuses as before. An open project is always made the active project of the group first by the plugin.",
+          "x-page": "MCP",
+          "x-control": "Auswahl",
+          "x-issue": "#2895"
+        },
         "promptLanguage": {
           "type": "string",
           "enum": [

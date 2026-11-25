@@ -1,4 +1,4 @@
-# Testunits, die Tools/Linux/Test-Fpc.sh unter Free Pascal übersetzt und ausführt.
+﻿# Testunits, die Tools/Linux/Test-Fpc.sh unter Free Pascal übersetzt und ausführt.
 # Nur Units ohne Windows- und VCL-Bezug, deren Tests unter FPC vollständig grün sind.
 # Nicht aufgenommen, weil die FPC-RTL abweicht: Atlas.Text.Lines.Tests (SplitHelperDropsTrailingEmpty)
 # und die Common-Testunits, deren Regex-, Codepage- oder Dateisystemfälle unter FPC anders ausgehen.
@@ -76,6 +76,7 @@ Atlas.Common.Diagnostics.CrashCase.Tests
 Atlas.Common.Diagnostics.ServerPackage.Tests
 Atlas.Common.Diagnostics.StackGuard.Tests
 Atlas.Common.Documents.Contract.Tests
+Atlas.Common.Documents.FileBatch.Tests
 Atlas.Common.Documents.TextDocument.Tests
 Atlas.Common.Documents.TextChanges.Tests
 Atlas.Common.Editing.AnonymousMethods.Shared.Tests
@@ -284,6 +285,7 @@ Atlas.Common.Editing.Providers.Formatting.Tests
 Adapters.Mcp.Formatting.Tests
 Atlas.Common.Editing.Providers.CompilerFixes.Tests
 Adapters.Mcp.CompilerFixes.Tests
+Adapters.Mcp.BulkFix.Tests
 Atlas.Common.Compiler.MessageTexts.Tests
 Atlas.Common.Mcp.RefactorTools.Tests
 Atlas.Common.Mcp.ProtectedFiles.Tests
@@ -470,6 +472,7 @@ Atlas.Common.Rules.Contract.Tests
 Atlas.Common.Rules.Derived.Tests
 Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.Providers.InheritanceDepths.Tests
+Atlas.Common.Rules.Providers.BulkFix.Tests
 Atlas.Common.Rules.Providers.OwnershipReport.Tests
 Atlas.Common.Rules.Providers.DocumentChecks.Tests
 Atlas.Common.Rules.Providers.DocumentActions.Tests
@@ -538,11 +541,11 @@ Atlas.Core.Assistants.LinkState.Tests
 Atlas.Plugin.Notifications.MessageSink.Tests
 Atlas.Plugin.Notifications.Listeners.Tests
 Atlas.Plugin.Notifications.OrderedItems.Tests
-Atlas.Core.Projects.Contract.Summary.Tests
+Atlas.Plugin.Projects.Contract.Summary.Tests
 Atlas.Core.Welcome.Contract.Tests
 Atlas.Core.Welcome.ContinueQueries.Tests
 Atlas.Core.Welcome.ContinueWork.Tests
-Atlas.Core.Projects.Summary.Json.Tests
+Atlas.Plugin.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
 Atlas.Core.Outline.CrumbPlan.Tests
@@ -560,7 +563,7 @@ Atlas.Core.Editor.PeekPlan.Tests
 Atlas.Core.Settings.NodeScope.Tests
 Atlas.Core.Settings.Plugin.Assistants.Tests
 Atlas.Core.Problems.Findings.Tests
-Atlas.Core.Projects.PathCheck.Tests
+Atlas.Plugin.Projects.PathCheck.Tests
 Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Problems.Prompt.Tests

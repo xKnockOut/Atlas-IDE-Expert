@@ -35,7 +35,8 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.AffectedTests.Types,
-  Core.AffectedTests;
+  Core.AffectedTests,
+  Core.VersionControlChanges;
 
 const
   cTestProgram =

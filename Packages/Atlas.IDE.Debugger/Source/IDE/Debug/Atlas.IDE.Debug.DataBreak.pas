@@ -105,7 +105,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.DataBreakClasses,
   Atlas.Core.Settings.VisualizerKinds,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.DataBreak.Strings,
   Atlas.Vcl.Popup.Window,

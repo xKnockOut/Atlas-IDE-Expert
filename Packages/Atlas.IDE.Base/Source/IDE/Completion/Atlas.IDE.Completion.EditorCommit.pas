@@ -68,7 +68,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Completion.Parentheses,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.IDE.Foundation.Settings,
   Atlas.ToolsApi.Editor.Buffer,
   Atlas.Text.Lines;

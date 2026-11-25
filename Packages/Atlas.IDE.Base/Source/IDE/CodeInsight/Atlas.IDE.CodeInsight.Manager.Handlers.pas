@@ -8,8 +8,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Lsp.CrashCases,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.CrashCases,
   Atlas.Plugin.Notifications.Contract;
 
 type
@@ -60,7 +60,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.CodeInsight.Strings,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Crashes,
+  Atlas.Plugin.Lsp.Crashes,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.WorkspacePlan,

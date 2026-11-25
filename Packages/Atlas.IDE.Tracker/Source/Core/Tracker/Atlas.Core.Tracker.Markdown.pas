@@ -9,7 +9,7 @@
 //   Einfache Zeilenumbrüche bleiben Umbrüche, wie in Issues bei GitHub und
 //   YouTrack.
 // - InlineRuns setzt einen Absatz in Doku-Läufe; den Fließtext liest
-//   Atlas.Core.Tracker.Markdown.Inline.
+//   Atlas.Core.Tracker.Markdown.Spans.
 // - Segments liefert Doku-Abschnitte und dazwischen die alleinstehenden
 //   Bilder, damit das Fenster sie als Vorschau zeigen kann. Codeblöcke tragen
 //   die Sprache (TAtlasDocRun.Target); Delphi und ohne Angabe werden
@@ -117,7 +117,7 @@ implementation
 uses
   System.StrUtils,
   System.Math,
-  Atlas.Core.Tracker.Markdown.Inline;
+  Atlas.Core.Tracker.Markdown.Spans;
 
 const
   cBullet = '•';

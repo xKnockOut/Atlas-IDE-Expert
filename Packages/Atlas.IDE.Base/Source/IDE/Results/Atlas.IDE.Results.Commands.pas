@@ -17,7 +17,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.Core.Results.Model;
 
 type
@@ -78,7 +78,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   ToolsAPI,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Results.Plan,
   Atlas.Core.Commands.Palette,
   Atlas.UI.Strings,

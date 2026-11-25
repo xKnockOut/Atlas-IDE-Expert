@@ -24,7 +24,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.BackgroundRequest;
+  Atlas.Plugin.Lsp.BackgroundRequest;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -122,8 +122,8 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.Recursion,

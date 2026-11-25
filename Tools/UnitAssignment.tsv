@@ -272,24 +272,8 @@ Atlas.IDE.Base	Atlas.Core.Hover.Texts	Core/Hover/Atlas.Core.Hover.Texts.pas	Ordn
 Atlas.IDE.Base	Atlas.Core.Hover.View	Core/Hover/Atlas.Core.Hover.View.pas	Ordner `Core/Hover`
 Atlas.IDE.Base	Atlas.Core.InlayHints.Store	Core/InlayHints/Atlas.Core.InlayHints.Store.pas	Ordner `Core/InlayHints`
 Atlas.IDE.Base	Atlas.Core.KnownErrors.Contract	Core/KnownErrors/Atlas.Core.KnownErrors.Contract.pas	Daten der bekannten Fehler beim Exception-Halt (Halt, Treffer, Antwort) für Debugger und Tracker, die Interfaces in `Atlas.IDE.Contracts.KnownErrors` (#2460)
-Atlas.IDE.Base	Atlas.Core.Lsp.AccessChains	Core/Lsp/Atlas.Core.Lsp.AccessChains.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.BackgroundRequest	Core/Lsp/Atlas.Core.Lsp.BackgroundRequest.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.Client	Core/Lsp/Atlas.Core.Lsp.Client.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.Contract	Core/Lsp/Atlas.Core.Lsp.Contract.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.CrashCases	Core/Lsp/Atlas.Core.Lsp.CrashCases.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.Crashes	Core/Lsp/Atlas.Core.Lsp.Crashes.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.DataFlow	Core/Lsp/Atlas.Core.Lsp.DataFlow.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.Framing	Core/Lsp/Atlas.Core.Lsp.Framing.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.IdeMembers	Core/Lsp/Atlas.Core.Lsp.IdeMembers.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.IdeTypes	Core/Lsp/Atlas.Core.Lsp.IdeTypes.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.Progress	Core/Lsp/Atlas.Core.Lsp.Progress.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.Providers.ServerProcess	Core/Lsp/Atlas.Core.Lsp.Providers.ServerProcess.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Lsp.Session	Core/Lsp/Atlas.Core.Lsp.Session.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.Session.Base	Core/Lsp/Atlas.Core.Lsp.Session.Base.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.Session.Json	Core/Lsp/Atlas.Core.Lsp.Session.Json.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Lsp.Session.Requests	Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.TextChanges	Core/Lsp/Atlas.Core.Lsp.TextChanges.pas	Ordner `Core/Lsp`
-Atlas.IDE.Base	Atlas.Core.Lsp.WorkspaceEdits	Core/Lsp/Atlas.Core.Lsp.WorkspaceEdits.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Modules.Answer	Core/Modules/Atlas.Core.Modules.Answer.pas	späte Antwort an ein Modul nur bei offenem Scope (Regel 3), #1455
 Atlas.IDE.Base	Atlas.Core.Modules.Contract	Core/Modules/Atlas.Core.Modules.Contract.pas	Allgemeine Verträge (Modul, Registry, Scope, Beiträge), #1455
 Atlas.IDE.Base	Atlas.Core.Modules.Contributions	Core/Modules/Atlas.Core.Modules.Contributions.pas	Beiträge der Module einsammeln, #1455
@@ -337,15 +321,10 @@ Atlas.IDE.Base	Atlas.Core.Problems.Store	Core/Problems/Atlas.Core.Problems.Store
 Atlas.IDE.Base	Atlas.Core.Problems.Switches	Core/Problems/Atlas.Core.Problems.Switches.pas	Ordner `Core/Problems`
 Atlas.IDE.Base	Atlas.Core.Processes.OutputLines	Core/Processes/Atlas.Core.Processes.OutputLines.pas	Zeilen aus der Ausgabe eines Prozesses für die Projektaufgaben (Modul Build) und die Konsolenausgabe (Modul Debugger), #581
 Atlas.IDE.Base	Atlas.Core.Projects.Baseline	Core/Projects/Atlas.Core.Projects.Baseline.pas	Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455
-Atlas.IDE.Base	Atlas.Core.Projects.Contract	Core/Projects/Atlas.Core.Projects.Contract.pas	Ordner `Core/Lsp`
 Atlas.IDE.Base	Atlas.Core.Projects.Contract.Summary	Core/Projects/Atlas.Core.Projects.Contract.Summary.pas	Datentypen der Projekt-Zusammenfassung und der Einrichtung als Vertrag; Willkommensseite und Tracker tragen sie in ihren Schnittstellen, #1443
-Atlas.IDE.Base	Atlas.Core.Projects.Matching	Core/Projects/Atlas.Core.Projects.Matching.pas	Ordner `Core/Projects`
-Atlas.IDE.Base	Atlas.Core.Projects.PathCheck	Core/Projects/Atlas.Core.Projects.PathCheck.pas	Ordner `Core/Projects`
-Atlas.IDE.Base	Atlas.Core.Projects.PathCheck.Scan	Core/Projects/Atlas.Core.Projects.PathCheck.Scan.pas	Ordner `Core/Projects`
 Atlas.IDE.Base	Atlas.Core.Projects.Recording	Core/Projects/Atlas.Core.Projects.Recording.pas	Build, Versionsverwaltung und Regeltreffer in die Projekt-Zusammenfassung, #1455
 Atlas.IDE.Base	Atlas.Core.Projects.Setup	Core/Projects/Atlas.Core.Projects.Setup.pas	Ordner `Core/Projects`
 Atlas.IDE.Base	Atlas.Core.Projects.Summary	Core/Projects/Atlas.Core.Projects.Summary.pas	Ordner `Core/Projects`
-Atlas.IDE.Base	Atlas.Core.Projects.Summary.Json	Core/Projects/Atlas.Core.Projects.Summary.Json.pas	Ordner `Core/Projects`
 Atlas.IDE.Base	Atlas.Core.Projects.Summary.Sections	Core/Projects/Atlas.Core.Projects.Summary.Sections.pas	Ordner `Core/Projects`
 Atlas.IDE.Base	Atlas.Core.Projects.Todos	Core/Projects/Atlas.Core.Projects.Todos.pas	Ordner `Core/Projects`
 Atlas.IDE.Base	Atlas.Core.Projects.Trends	Core/Projects/Atlas.Core.Projects.Trends.pas	Ordner `Core/Projects`
@@ -1599,7 +1578,7 @@ Atlas.IDE.Tracker	Atlas.Core.Tracker.KnownErrors	Core/Tracker/Atlas.Core.Tracker
 Atlas.IDE.Tracker	Atlas.Core.Tracker.LinkedStart	Core/Tracker/Atlas.Core.Tracker.LinkedStart.pas	Ordner `Core/Tracker`
 Atlas.IDE.Tracker	Atlas.Core.Tracker.Links	Core/Tracker/Atlas.Core.Tracker.Links.pas	Ordner `Core/Tracker`
 Atlas.IDE.Tracker	Atlas.Core.Tracker.Markdown	Core/Tracker/Atlas.Core.Tracker.Markdown.pas	Ordner `Core/Tracker`
-Atlas.IDE.Tracker	Atlas.Core.Tracker.Markdown.Inline	Core/Tracker/Atlas.Core.Tracker.Markdown.Inline.pas	Ordner `Core/Tracker`; Fließtext eines Absatzes, die Blöcke zerlegt `Atlas.Core.Tracker.Markdown`
+Atlas.IDE.Tracker	Atlas.Core.Tracker.Markdown.Spans	Core/Tracker/Atlas.Core.Tracker.Markdown.Spans.pas	Ordner `Core/Tracker`; Fließtext eines Absatzes, die Blöcke zerlegt `Atlas.Core.Tracker.Markdown`
 Atlas.IDE.Tracker	Atlas.Core.Tracker.MyIssues	Core/Tracker/Atlas.Core.Tracker.MyIssues.pas	Ordner `Core/Tracker`, Kachel aus der Willkommensseite, #1455
 Atlas.IDE.Tracker	Atlas.Core.Tracker.MyIssuesPlan	Core/Tracker/Atlas.Core.Tracker.MyIssuesPlan.pas	Ordner `Core/Tracker`; Entscheidungen von „Meine Issues“ („Alle“, projektgebundene Stände, Aktionen an Zeilen)
 Atlas.IDE.Tracker	Atlas.Core.Tracker.Naming	Core/Tracker/Atlas.Core.Tracker.Naming.pas	Ordner `Core/Tracker`

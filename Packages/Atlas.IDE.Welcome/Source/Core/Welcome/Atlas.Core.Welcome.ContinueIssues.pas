@@ -110,7 +110,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Core.Welcome.Continue;
 
 const

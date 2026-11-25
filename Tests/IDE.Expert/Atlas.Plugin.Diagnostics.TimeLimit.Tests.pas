@@ -84,7 +84,7 @@ uses
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Plugin.Diagnostics.UnloadSafety,
   Atlas.Plugin.Diagnostics.WorkerSlot,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Composite,
   Atlas.Core.Completion.Internals.Async,
@@ -727,7 +727,7 @@ var
   mProviders: TAtlasCompletionProviders;
   mProvider: IAtlasCompletionProvider;
   mHanging: IAtlasCompletionProvider;
-  mSink: TSink;
+  mSink: TCollectingSink;
   mSinkRef: IAtlasCompletionSink;
   mModule: HMODULE;
 begin
@@ -738,7 +738,7 @@ begin
   mModule := TAtlasMainThread.CodeModuleOf(mHanging);
   Assert.AreEqual<HMODULE>(HInstance, mModule, 'Package mit dem Code der Quelle');
   mProviders.Add(mHanging);
-  mSink := TSink.Create;
+  mSink := TCollectingSink.Create;
   mSinkRef := mSink;
   mProvider.Query(Context, mSinkRef);
   Assert.IsTrue(mSink.WaitDone(3000), 'Complete trotz hängender Quelle');
@@ -794,16 +794,19 @@ var
   mSink: TCollectingSink;
   mSinkRef: IAtlasCompletionSink;
   mSessionThread: TThreadID;
+  mSession: TAtlasSessionFunc;
 begin
   mSessionThread := 0;
   mProviders := TAtlasCompletionProviders.Create;
   mProvider := mProviders;
-  mProviders.Add(TAtlasServerCompletionProvider.Create(
+  // Über eine Variable: Delphi wählt bei einer anonymen Methode als Argument keine der Überladungen (E2250).
+  mSession :=
     function: TLspSession
     begin
       mSessionThread := TThread.CurrentThread.ThreadID;
       Result := nil;
-    end));
+    end;
+  mProviders.Add(TAtlasServerCompletionProvider.Create(mSession));
   mSink := TCollectingSink.Create;
   mSinkRef := mSink;
   mProvider.Query(Context, mSinkRef);
@@ -817,14 +820,16 @@ procedure TAtlasTimeLimitTests.SignatureSyncsInCallingThread;
 var
   mSignatures: TAtlasServerSignatureProvider;
   mSessionThread: TThreadID;
+  mSession: TAtlasSessionFunc;
 begin
   mSessionThread := 0;
-  mSignatures := TAtlasServerSignatureProvider.Create(
+  mSession :=
     function: TLspSession
     begin
       mSessionThread := TThread.CurrentThread.ThreadID;
       Result := nil;
-    end);
+    end;
+  mSignatures := TAtlasServerSignatureProvider.Create(mSession);
   try
     Assert.IsFalse(mSignatures.Query('C:\Projekt\Unit1.pas', 'unit Unit1;', 0, 0,
       procedure(const AHelp: TAtlasSignatureHelp)

@@ -10,7 +10,7 @@
 //   Zeile aus dem Abschnitt tracker der .atlas (#486) kommt schreibgeschützt
 //   dazu.
 // - Resolve: welcher Tracker für ein Projekt gilt (Auflösung gemeinsam mit
-//   der Versionsverwaltung je Projekt in Atlas.Core.Projects.Matching, #1286),
+//   der Versionsverwaltung je Projekt in Atlas.Plugin.Projects.Matching, #1286),
 //   in dieser Reihenfolge:
 //   1. tracker aus der .atlas (Team, Vorrang),
 //   2. Zeile für genau diese .dproj,
@@ -38,7 +38,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Contract.MyIssues;

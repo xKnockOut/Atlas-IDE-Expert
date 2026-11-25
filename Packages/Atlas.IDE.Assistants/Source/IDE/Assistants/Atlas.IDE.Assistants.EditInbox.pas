@@ -65,7 +65,7 @@ uses
   System.IOUtils,
   Atlas.Text.Files,
   Atlas.Plugin.Diagnostics.Guard,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.UI.Assistants.Strings,
   Atlas.Core.Assistants.EditInbox,
   Atlas.Core.Assistants.Inbox,

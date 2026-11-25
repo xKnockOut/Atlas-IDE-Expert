@@ -13,9 +13,9 @@
 interface
 
 uses
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   ToolsAPI,
-  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.Editor.SlashTrigger,
   Atlas.Core.Editor.TestUnit,
   Atlas.IDE.Commands.EditorSelection;
@@ -66,13 +66,13 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   System.SysUtils,
   System.JSON,
   Vcl.Clipbrd,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Editor.FormatLog,

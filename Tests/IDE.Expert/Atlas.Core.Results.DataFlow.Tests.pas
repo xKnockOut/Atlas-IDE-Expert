@@ -27,7 +27,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.DataFlow,
+  Atlas.Plugin.Lsp.DataFlow,
   Atlas.Core.Results.DataFlow;
 
 function Place(ALine: Integer): TAtlasDataFlowPlace;

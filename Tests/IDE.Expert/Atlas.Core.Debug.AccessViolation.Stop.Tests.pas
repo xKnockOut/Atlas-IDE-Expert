@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.AccessChains,
+  Atlas.Plugin.Lsp.AccessChains,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.AccessViolation;

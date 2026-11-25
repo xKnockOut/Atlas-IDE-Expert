@@ -61,7 +61,7 @@ uses
   System.SysUtils,
   System.RegularExpressions,
   Atlas.Text.Lines,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.Results,
   Atlas.Core.Search.Replace,

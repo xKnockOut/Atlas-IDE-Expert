@@ -73,7 +73,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.AccessChains,
+  Atlas.Plugin.Lsp.AccessChains,
   System.SysUtils;
 
 function Link(const AExpression: string; AKind: TAtlasAvLinkKind; const ATypeName: string): TAtlasAvLink;

@@ -40,7 +40,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.Core.Projects.VersionControl,
   Atlas.Core.VersionControl.Contract;
 

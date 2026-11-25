@@ -34,7 +34,7 @@ uses
   ToolsAPI,
   DesignIntf,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Forms.Changes;
 
 type

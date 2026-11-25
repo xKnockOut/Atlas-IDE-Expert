@@ -729,6 +729,9 @@ type
     McpConfirm: Boolean;
     /// <summary>Sprache der Anleitungen in den Prompts (mcp.promptLanguage): de (Vorgabe) oder en.</summary>
     McpPromptLanguage: string;
+    /// <summary>Projekt, das in keiner IDE offen ist, für debug_start und build_project öffnen
+    /// (mcp.openProjects, #2895): ask (Vorgabe, Rückfrage), always oder never.</summary>
+    McpOpenProjects: string;
     /// <summary>Eigene Prompts des Projekts (mcp.customPrompts).</summary>
     McpCustomPrompts: TArray<TMcpCustomPrompt>;
     /// <summary>Anweisungsdateien für KI-Assistenten relativ zu atlas.json (assistants.instructions.file, #2615);
@@ -1606,6 +1609,7 @@ begin
   ASettings.McpReportFindingsAfterEdit := True;
   ASettings.McpConfirm := True;
   ASettings.McpPromptLanguage := 'de';
+  ASettings.McpOpenProjects := 'ask';
   ASettings.McpCustomPrompts := nil;
   ASettings.AssistantsInstructionFiles := TArray<string>.Create('AGENTS.md');
   ASettings.AssistantsInstructionChecks := nil;

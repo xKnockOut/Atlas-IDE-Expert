@@ -126,10 +126,10 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Providers.XmlDoc,
   System.Diagnostics,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Providers.ServerProcess,
-  Atlas.Core.Lsp.Providers.ServerProcess.Tests,
+  Atlas.Plugin.Lsp.Providers.ServerProcess,
+  Atlas.Plugin.Lsp.Providers.ServerProcess.Tests,
   Atlas.Core.Completion.TestSupport;
 
 function Item(const AName: string): TAtlasCompletionItem;

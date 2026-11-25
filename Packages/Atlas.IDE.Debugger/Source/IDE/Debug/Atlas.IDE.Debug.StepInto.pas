@@ -111,7 +111,7 @@ uses
   Winapi.Windows,
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Stepping.Strings,

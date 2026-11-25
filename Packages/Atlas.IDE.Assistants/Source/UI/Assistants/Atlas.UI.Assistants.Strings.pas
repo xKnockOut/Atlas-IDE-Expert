@@ -15,6 +15,8 @@ type
     DebugUnknownCommand, DebugRefusedPaused, DebugRefusedUserSession, DebugRefusedRunning, DebugRefusedNoProgram,
     DebugRefusedNotStopped, DebugRefusedSideEffects, DebugRefusedModify, DebugNoDebugger, DebugSwitchedOff,
     DebugTakenOver, DebugNeedsSideEffects, DebugNoBreakpoint, DebugStarted,
+    // Auftrag scheitert, Start abgebrochen, Eingang beschäftigt (#2895).
+    DebugFailed, DebugStartAborted, DebugBusy,
     SettingsDebugMcp, SettingsDebugSideEffects, SettingsDebugModify, SettingsDebugAttach, SettingsDebugBanner,
     DebugBarText, DebugBarPausedText, DebugBarClient, DebugBarPause, DebugBarResume, DebugBarTakeOver,
     DebugBarPauseHint, DebugBarResumeHint, DebugBarTakeOverHint,
@@ -106,6 +108,10 @@ const
      'Ohne sideEffects wertet der Debugger keine Aufrufe aus.',
      'Einen Haltepunkt %d des KI-Assistenten gibt es nicht.',
      'Ein KI-Assistent debuggt %s …',
+     'Der Debug-Auftrag ist in der IDE gescheitert: %s',
+     'Der Start wurde in der IDE abgebrochen (vom Benutzer oder von einer Prüfung vor dem Start).',
+     'Die IDE bearbeitet gerade einen anderen Debug-Auftrag (etwa einen Start, der noch baut). Kurz warten und ' +
+       'erneut senden.',
      'Debuggen durch KI-Assistenten (MCP) erlauben (debug_start, debug_step, debug_evaluate …)',
      'Ausdrücke mit Aufrufen (Getter, Funktionen) erlauben',
      'Werte ändern erlauben (Zuweisungen in debug_evaluate)',
@@ -342,6 +348,10 @@ const
      'Without sideEffects the debugger does not evaluate calls.',
      'There is no breakpoint %d of the AI assistant.',
      'An AI assistant is debugging %s …',
+     'The debug request failed in the IDE: %s',
+     'The start was cancelled in the IDE (by the user or by a check before the start).',
+     'The IDE is handling another debug request right now (for example a start that is still building). Wait a ' +
+       'moment and send again.',
      'Allow debugging by AI assistants (MCP) (debug_start, debug_step, debug_evaluate …)',
      'Allow expressions with calls (getters, functions)',
      'Allow changing values (assignments in debug_evaluate)',

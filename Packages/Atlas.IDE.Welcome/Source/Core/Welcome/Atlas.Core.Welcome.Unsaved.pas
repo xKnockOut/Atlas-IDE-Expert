@@ -258,7 +258,7 @@ uses
   System.JSON,
   Atlas.Core.Projects.Recording,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json;
 
 const
   /// <summary>Präfix eines Zweigs im Ziel eines Push.</summary>

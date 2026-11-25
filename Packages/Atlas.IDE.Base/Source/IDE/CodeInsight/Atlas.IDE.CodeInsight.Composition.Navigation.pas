@@ -21,7 +21,7 @@ uses
   System.JSON,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.View,

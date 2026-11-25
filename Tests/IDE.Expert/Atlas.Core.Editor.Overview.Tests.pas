@@ -39,7 +39,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.Overview;
 

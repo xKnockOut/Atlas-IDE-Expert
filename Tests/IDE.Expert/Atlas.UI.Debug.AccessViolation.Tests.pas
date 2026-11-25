@@ -9,7 +9,7 @@ uses
   System.Generics.Collections,
   DUnitX.TestFramework,
   Atlas.UI.Strings,
-  Atlas.Core.Lsp.AccessChains,
+  Atlas.Plugin.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
   Atlas.UI.Debug.AccessViolation;
 

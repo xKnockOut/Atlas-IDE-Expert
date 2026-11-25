@@ -145,7 +145,7 @@ uses
   Atlas.Plugin.Diagnostics.Guard,
   Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Debug.StepFilterEdit,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Stepping.Strings,
