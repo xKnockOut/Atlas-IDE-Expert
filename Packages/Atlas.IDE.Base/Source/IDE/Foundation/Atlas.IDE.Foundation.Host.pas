@@ -23,15 +23,15 @@ uses
   System.SysUtils,
   System.Types,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Build.Events,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 type
   /// <summary>Befehl mit Argumenten (JSON-Array) im Hintergrund an den laufenden Server; ADone bekommt das
@@ -205,7 +205,7 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Modules.Answer;
 
 { TAtlasServerRequest }
@@ -487,9 +487,14 @@ begin
   end;
 end;
 
-/// <summary>Weiterreichen in den Hauptthread; eigene Routine, damit der Rahmen nur die Antwort hält.</summary>
+/// <summary>Weiterreichen in den Hauptthread; eigene Routine, damit der Rahmen nur die Antwort hält. Kam die
+/// Anfrage aus einem Befehl des Benutzers, läuft die Antwort wieder als dieser Befehl: Scheitert sie, steht das
+/// sofort in der Meldungsansicht (sonst täte der Befehl scheinbar nichts).</summary>
 function DeliverInMainThread(const AAnswer: IAtlasModuleAnswer; AFeature: TAtlasFeature): TProc<string>;
+var
+  mCommand: string;
 begin
+  mCommand := TAtlasCommandScope.Current;
   Result :=
     procedure(AText: string)
     var
@@ -499,7 +504,11 @@ begin
       TAtlasMainThread.Queue(AFeature,
         procedure
         begin
-          AAnswer.Deliver(mText);
+          TAtlasCommandScope.Run(AFeature, mCommand,
+            procedure
+            begin
+              AAnswer.Deliver(mText);
+            end);
         end);
     end;
 end;

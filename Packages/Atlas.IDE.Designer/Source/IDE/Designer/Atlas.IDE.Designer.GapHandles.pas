@@ -37,7 +37,7 @@ uses
   Atlas.UI.Designer.Handles,
   Atlas.IDE.Designer.HandleTool,
   Atlas.IDE.Designer.KeptForm,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   TAtlasIdeGapHandles = class;
@@ -111,7 +111,7 @@ uses
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Designer.ToolStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Foundation.Settings;

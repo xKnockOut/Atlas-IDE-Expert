@@ -126,7 +126,7 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Core.Tests.Mutants;
 
 const

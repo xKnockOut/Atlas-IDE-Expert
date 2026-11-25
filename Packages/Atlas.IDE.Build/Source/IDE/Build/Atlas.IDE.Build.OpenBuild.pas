@@ -122,15 +122,21 @@ implementation
 uses
   Atlas.Core.Build.OpenBuildSettings,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.CheckOnSave,
   Atlas.UI.Build.Strings,
-  Atlas.Core.Diagnostics.UserIdle;
+  Atlas.Plugin.Diagnostics.UserIdle;
+
+const
+  /// <summary>Tätigkeit für die Hänger-Diagnose (Protokoll).</summary>
+  cActivity = 'Bauen beim Öffnen';
+  // Takt für Start, Fortschritt und Ende des Bauens beim Öffnen.
+  cTickMs = 250;
 
 { TAtlasIdeOpenBuild.TIdeNotifier }
 
@@ -279,7 +285,7 @@ begin
     end;
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -399,7 +405,7 @@ begin
   FWaiting := False;
   // Bis zum Ende des Laufs (auch im Hintergrund) tragen die Compile-Ereignisse den Auftraggeber "open".
   FEvents.RequestedBy := TAtlasOpenBuild.cRequestedBy;
-  mActivity := TAtlasActivity.Scope('Bauen beim Öffnen');
+  mActivity := TAtlasActivity.Scope(cActivity);
   FCompiling := True;
   try
     try

@@ -6,7 +6,7 @@
 // - Run startet unsichtbar (CREATE_NO_WINDOW), stdin ist NUL, stdout und
 //   stderr gehen in eine gemeinsame Pipe (Reihenfolge wie in der Konsole).
 //   Gelesen wird im Takt von 10 ms; jede fertige Zeile geht sofort an
-//   AOnLine (TAtlasTaskLines: UTF-8, sonst OEM-Codepage).
+//   AOnLine (TAtlasOutputLines aus Base: UTF-8, sonst OEM-Codepage).
 // - Der Prozess läuft in einem Job-Objekt mit „beim Schließen beenden“:
 //   Zeitlimit, Abbruch (ACancelled, Ende des Threads) und Entladen beenden
 //   so auch Kindprozesse (pwsh startet dcc, msbuild startet Knoten).
@@ -38,7 +38,7 @@ uses
   System.Classes,
   Atlas.WinBase.Process,
   Atlas.Core.Tasks.Matchers,
-  Atlas.Core.Tasks.Runs,
+  Atlas.Core.Processes.OutputLines,
   Atlas.Core.Tasks.Commands;
 
 type
@@ -77,6 +77,11 @@ const
   /// jeder Fassung von Winapi.Windows gleich typisiert).</summary>
   cJobKillOnClose = $00002000;
   cJobExtendedLimitClass = 9;
+  // So lange auf das Ende eines beendeten Prozesses warten.
+  cKillWaitMs = 1000;
+  cMsPerSecond = 1000;
+  // Größe eines Lesevorgangs aus der Ausgabe.
+  cChunkSize = 16384;
 
 function CreateJob(AAttributes: Pointer; AName: PWideChar): THandle; stdcall;
   external kernel32 name 'CreateJobObjectW';
@@ -129,6 +134,9 @@ type
 /// <summary>Programm, Befehlszeile und Umgebung; False mit Result.Error (und Outcome), wenn nicht startbar.</summary>
 function PrepareLaunch(const ATask: TAtlasTaskDefinition; out ALaunch: TLaunch;
   var AResult: TAtlasTaskProcessResult): Boolean;
+const
+  /// <summary>Kennung für den Aufruf aus dem Hauptthread (Programmierfehler, landet im Protokoll).</summary>
+  cMainThread = 'main thread';
 var
   mBatch: Boolean;
 begin
@@ -136,7 +144,7 @@ begin
   Result := False;
   if GetCurrentThreadId = MainThreadID then
   begin
-    AResult.Error := 'main thread';
+    AResult.Error := cMainThread;
     Exit;
   end;
   ALaunch.ProgramPath := TAtlasTaskCommands.FindProgram(ATask.Command, ATask.Cwd, GetEnvironmentVariable('PATH'),
@@ -236,7 +244,7 @@ begin
 end;
 
 /// <summary>Alles Verfügbare aus der Pipe lesen und fertige Zeilen weitergeben.</summary>
-procedure Drain(AOutRead: THandle; ALines: TAtlasTaskLines; var AChunk: TBytes; const AOnLine: TAtlasTaskLineProc);
+procedure Drain(AOutRead: THandle; ALines: TAtlasOutputLines; var AChunk: TBytes; const AOnLine: TAtlasTaskLineProc);
 var
   mAvailable, mBytesRead: DWORD;
   mText: string;
@@ -270,7 +278,7 @@ begin
   begin
     TerminateProcess(AHandles.Process.hProcess, 1);
   end;
-  WaitForSingleObject(AHandles.Process.hProcess, 1000);
+  WaitForSingleObject(AHandles.Process.hProcess, cKillWaitMs);
 end;
 
 function DeadlineOf(ATimeoutSec: Integer): UInt64;
@@ -278,19 +286,19 @@ begin
   Result := High(UInt64);
   if ATimeoutSec > 0 then
   begin
-    Result := TThread.GetTickCount64 + UInt64(ATimeoutSec) * 1000;
+    Result := TThread.GetTickCount64 + UInt64(ATimeoutSec) * cMsPerSecond;
   end;
 end;
 
 /// <summary>Im Takt lesen, bis der Prozess endet, abgebrochen wird oder die Zeit abläuft; danach den Rest.</summary>
-function Watch(ATimeoutSec: Integer; var AHandles: THandles; ALines: TAtlasTaskLines;
+function Watch(ATimeoutSec: Integer; var AHandles: THandles; ALines: TAtlasOutputLines;
   const ACancelled: TFunc<Boolean>; const AOnLine: TAtlasTaskLineProc): TAtlasTaskOutcome;
 var
   mChunk: TBytes;
   mDeadline: UInt64;
   mLine: string;
 begin
-  SetLength(mChunk, 16384);
+  SetLength(mChunk, cChunkSize);
   Result := TAtlasTaskOutcome.Finished;
   mDeadline := DeadlineOf(ATimeoutSec);
   repeat
@@ -359,7 +367,7 @@ function TAtlasTaskProcess.Run(const ATask: TAtlasTaskDefinition; ACodePage: Int
 var
   mLaunch: TLaunch;
   mHandles: THandles;
-  mLines: TAtlasTaskLines;
+  mLines: TAtlasOutputLines;
 begin
   Result := Default(TAtlasTaskProcessResult);
   Result.Outcome := TAtlasTaskOutcome.StartFailed;
@@ -373,7 +381,7 @@ begin
     ACodePage := Integer(GetOEMCP);
   end;
   mHandles := NoHandles;
-  mLines := TAtlasTaskLines.Create(ACodePage);
+  mLines := TAtlasOutputLines.Create(ACodePage);
   try
     if OpenHandles(mHandles, Result) and StartProcess(mLaunch, ATask.Cwd, mHandles, Result) then
     begin

@@ -149,17 +149,19 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.UsesActions,
-  Atlas.Common.Editing.Contract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Semantics.UsesActions,
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Semantics.UsesUsage,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ConsideredUsed,
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -209,41 +211,9 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function CleanName(const AText: string): string;
-begin
-  if StartsStr('&', AText) then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
-
 function SamePosition(const A, B: TTextPosition): Boolean;
 begin
   Result := (A.Line = B.Line) and (A.Character = B.Character);
-end;
-
-/// <summary>Liegt A an oder hinter B?</summary>
-function NotBefore(const A, B: TTextPosition): Boolean;
-begin
-  Result := (A.Line > B.Line) or (A.Line = B.Line) and (A.Character >= B.Character);
-end;
-
-function Inside(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
-var
-  mRange: TTextRange;
-begin
-  for mRange in ARanges do
-  begin
-    if NotBefore(APosition, mRange.StartPos) and NotBefore(mRange.EndPos, APosition) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function HasIncludes(const ATree: TSyntaxTree): Boolean;
@@ -291,20 +261,6 @@ function IsTypeKind(AKind: TIndexSymbolKind): Boolean;
 begin
   Result := AKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
-end;
-
-function ProjectKindKey(AKind: TRuleProjectKind): string;
-begin
-  case AKind of
-    TRuleProjectKind.Application:
-      Result := 'application';
-    TRuleProjectKind.Package:
-      Result := 'package';
-    TRuleProjectKind.Library_:
-      Result := 'library';
-  else
-    Result := '';
-  end;
 end;
 
 /// <summary>Bereich des Unit-Namens im Kopf (unit A.B.C;); leer, wenn die Datei keine Unit ist.</summary>
@@ -377,11 +333,11 @@ begin
   if AContext.SortUses then
   begin
     // Wie „uses aufräumen“ mit sortUses: erst verschieben, dann sortieren, als eine kleinste Ersetzung.
-    mNewText := TChangeSignature.ApplyEdits(AContext.Text, mEdits);
-    if TUsesClauses.Organize(TPascalLexer.Tokenize(mNewText), mNewText, True, mLineBreak, mSortEdits,
+    mNewText := TTextChanges.Apply(AContext.Text, mEdits);
+    if TPascalUsesEdits.Organize(TPascalLexer.Tokenize(mNewText), mNewText, True, mLineBreak, mSortEdits,
       AContext.SortUsesByNamespace) then
     begin
-      mNewText := TChangeSignature.ApplyEdits(mNewText, mSortEdits);
+      mNewText := TTextChanges.Apply(mNewText, mSortEdits);
     end;
     mEdits := TArray<TTextEdit>.Create(SmallestEdit(AContext.Text, mNewText));
   end;
@@ -492,11 +448,11 @@ begin
     mFound := nil;
     if SameText(AFileName, FContext.FileName) then
     begin
-      mFound := TUsesClauses.References(FContext.Tree.Tokens);
+      mFound := TPascalUses.References(FContext.Tree.Tokens);
     end
     else if FContext.ProjectFiles.ReadText(AFileName, mText) then
     begin
-      mFound := TUsesClauses.References(TPascalLexer.Tokenize(mText));
+      mFound := TPascalUses.References(TPascalLexer.Tokenize(mText));
     end;
     FEntries.Add(UpperCase(AFileName), mFound);
   end;
@@ -605,9 +561,9 @@ procedure TUsesCycleCheck.CheckSelfReferences;
 var
   mReference: TUsesReference;
 begin
-  for mReference in TUsesClauses.References(FContext.Tree.Tokens) do
+  for mReference in TPascalUses.References(FContext.Tree.Tokens) do
   begin
-    if (mReference.List = TUsesListKind.UsesList) and SameText(CleanName(mReference.Name), FOwnName) then
+    if (mReference.List = TUsesListKind.UsesList) and SameText(TTextNames.WithoutAmpersand(mReference.Name), FOwnName) then
     begin
       AddFinding(mReference.Range, cTexts[TDeadCodeText.Circular].Text + FOwnName + ' → ' + FOwnName +
         cTexts[TDeadCodeText.LikeF2092].Text,
@@ -713,7 +669,7 @@ var
   mSteps: TArray<TRuleUsesStep>;
   mAllInterface: Boolean;
 begin
-  if (AReference.List <> TUsesListKind.UsesList) or SameText(CleanName(AReference.Name), FOwnName) then
+  if (AReference.List <> TUsesListKind.UsesList) or SameText(TTextNames.WithoutAmpersand(AReference.Name), FOwnName) then
   begin
     Exit;
   end;
@@ -733,7 +689,7 @@ var
   mReason: string;
   mReference: TUsesReference;
 begin
-  FOwnName := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  FOwnName := TPascalUses.OwnName(FContext.Tree.Tokens);
   CheckSelfReferences;
   if (FContext.ProjectFiles = nil) or not FContext.ProjectFiles.Complete(mReason) then
   begin
@@ -745,7 +701,7 @@ begin
   begin
     FWithImplementation := FWithImplementation and FContext.UsesCycleImplementation;
   end;
-  for mReference in TUsesClauses.References(FContext.Tree.Tokens) do
+  for mReference in TPascalUses.References(FContext.Tree.Tokens) do
   begin
     CheckReference(mReference);
   end;
@@ -935,7 +891,7 @@ begin
     mOwn := OwnRanges(ASymbol);
     for mPosition in mPositions do
     begin
-      if not Inside(mPosition, mOwn) and not AnySamePosition(mPosition, mDeclared) then
+      if not TTextRange.AnyEncloses(mOwn, mPosition) and not AnySamePosition(mPosition, mDeclared) then
       begin
         Exit(True);
       end;
@@ -961,7 +917,7 @@ begin
   begin
     for mPosition in mPositions do
     begin
-      if not Inside(mPosition, [ASymbol.Range]) then
+      if not ASymbol.Range.Encloses(mPosition) then
       begin
         Exit(True);
       end;
@@ -1028,7 +984,7 @@ begin
   begin
     if mToken.Kind = TPascalTokenKind.Identifier then
     begin
-      mName := LowerCase(CleanName(mToken.Text));
+      mName := LowerCase(TTextNames.WithoutAmpersand(mToken.Text));
       if not FOccurrences.TryGetValue(mName, mList) then
       begin
         mList := TList<TTextPosition>.Create;
@@ -1140,14 +1096,14 @@ begin
   mTree := TSyntaxTreeCache.Parse(mText);
   try
     mClauses := nil;
-    for mReference in TUsesClauses.References(mTree.Tokens) do
+    for mReference in TPascalUses.References(mTree.Tokens) do
     begin
       mClauses := mClauses + [mReference.Range];
     end;
     for mToken in mTree.Tokens do
     begin
       Result := Result or (mToken.Kind = TPascalTokenKind.Identifier) and
-        ANames.ContainsKey(LowerCase(CleanName(mToken.Text))) and not Inside(mToken.StartPos, mClauses);
+        ANames.ContainsKey(LowerCase(TTextNames.WithoutAmpersand(mToken.Text))) and not TTextRange.AnyEncloses(mClauses, mToken.StartPos);
     end;
   finally
     mTree.Free;
@@ -1208,7 +1164,7 @@ begin
   begin
     Exit;
   end;
-  mOwnName := TUsesClauses.OwnName(AContext.Tree.Tokens);
+  mOwnName := TPascalUses.OwnName(AContext.Tree.Tokens);
   if mPrograms = '' then
   begin
     AReport.Add(mRange, cTexts[TDeadCodeText.UnitUnused].Fmt([mOwnName]),

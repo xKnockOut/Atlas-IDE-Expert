@@ -105,7 +105,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,

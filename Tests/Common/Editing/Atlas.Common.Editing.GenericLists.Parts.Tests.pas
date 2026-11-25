@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Editing.GenericLists.Parts.Tests;
 
-// Tests für die Teile der Listenumwandlung (#1105, #1106): Listenarten (Atlas.Common.Editing.GenericLists.Kinds),
+// Tests für die Teile der Listenumwandlung (#1105, #1106): Listenarten (Atlas.Common.Semantics.LegacyListKinds),
 // Abfragen am Syntaxbaum (.Syntax), Edits je Datei (.Source), uses-Listen (.UsesEdits), Zielprüfung (.State),
 // Elementprüfung (.Elements) und DeclarationAt (.Declarations). Die Verwendungen
 // (Atlas.Common.Editing.GenericLists.Usages) prüfen die Umwandlungstests in Atlas.Common.Editing.GenericLists.Tests.
@@ -47,13 +47,14 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.GenericLists.Kinds,
+  Atlas.Common.Semantics.LegacyListKinds,
   Atlas.Common.Editing.GenericLists.Syntax,
   Atlas.Common.Editing.GenericLists.Source,
   Atlas.Common.Editing.GenericLists.UsesEdits,
   Atlas.Common.Editing.GenericLists.State,
   Atlas.Common.Editing.GenericLists.Elements,
-  Atlas.Common.Editing.GenericLists.Declarations;
+  Atlas.Common.Editing.GenericLists.Declarations,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cUnitText = 'unit Haupt;'#10'interface'#10'uses Classes, Contnrs;'#10'type'#10'  TListe = class'#10 +
@@ -131,8 +132,6 @@ procedure TGenericListPartsTests.SyntaxNames;
 begin
   Assert.AreEqual('TPosition', TGenericListSyntax.LastName(' Daten.TPosition '));
   Assert.AreEqual('TPosition', TGenericListSyntax.LastName('TPosition'));
-  Assert.IsTrue(TGenericListSyntax.ContainsName('FA, FListe,FB', 'fliste'));
-  Assert.IsFalse(TGenericListSyntax.ContainsName('FA, FListe', 'Liste'));
   Assert.IsTrue(TGenericListSyntax.NotAfter(TTextPosition.Create(1, 4), TTextPosition.Create(1, 4)));
   Assert.IsFalse(TGenericListSyntax.NotAfter(TTextPosition.Create(2, 0), TTextPosition.Create(1, 9)));
 end;
@@ -155,8 +154,8 @@ begin
     Assert.AreEqual('FListe', TGenericListSyntax.IdentifierAfter(mTree, mProperty, 'read'));
     Assert.AreEqual('', TGenericListSyntax.IdentifierAfter(mTree, mProperty, 'write'));
     Assert.IsTrue(TGenericListSyntax.HasInlineVar(mTree, mLoop));
-    Assert.IsNotNull(TGenericListSyntax.EnclosingRoutine(mLoop));
-    Assert.IsNull(TGenericListSyntax.EnclosingRoutine(mField));
+    Assert.IsNotNull(TSyntaxNodes.Enclosing(mLoop, [TSyntaxKind.RoutineDecl]));
+    Assert.IsNull(TSyntaxNodes.Enclosing(mField, [TSyntaxKind.RoutineDecl]));
     Assert.AreSame(mField, TGenericListSyntax.DeclarationNodeAt(mTree.Root, mField.StartPos));
   finally
     mTree.Free;

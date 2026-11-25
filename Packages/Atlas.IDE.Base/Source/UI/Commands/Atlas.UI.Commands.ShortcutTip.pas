@@ -23,7 +23,7 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Atlas.Core.Commands.ShortcutTips,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   {$SCOPEDENUMS ON}
@@ -91,9 +91,9 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Commands.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;

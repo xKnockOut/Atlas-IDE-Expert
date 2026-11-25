@@ -48,8 +48,8 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.Clipbrd,
-  Atlas.Core.Style.Palette,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Vcl.Theme.Service;
 
 { TAtlasComponentSearchWindowTests }
 

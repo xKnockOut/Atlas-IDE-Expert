@@ -24,7 +24,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Settings.StatusBarItems;
+  Atlas.Plugin.Settings.StatusBarItems;
 
 { TAtlasProblemSwitches }
 

@@ -12,7 +12,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Edition,
+  Atlas.Plugin.Diagnostics.Edition,
   Atlas.UI.Notifications.Notice;
 
 type
@@ -47,13 +47,13 @@ uses
   System.Types,
   ToolsAPI,
   Vcl.Forms,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.UI.Popup.Window,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Diagnostics.Strings;
 
 /// <summary>Ordner der Installation; '' unbekannt.</summary>

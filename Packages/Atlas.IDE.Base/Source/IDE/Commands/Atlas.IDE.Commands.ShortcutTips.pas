@@ -4,7 +4,7 @@
 // Kürzel gibt, per Maus aufruft, sieht kurz unten rechts im Editorfenster einen
 // Tipp mit dem Kürzel (TAtlasShortcutTipWindow).
 // Erkennen, wie ein Befehl aufgerufen wurde (vorher geprüft, siehe
-// docs/Architektur.md):
+// docs/architektur/Plugin-Dienste.md):
 // - Aktionen der IDE und anderer Erweiterungen: Application.OnActionExecute
 //   über TApplicationEvents (mehrere Abonnenten möglich, ändert keine Aktion).
 //   Die VCL ruft es für jede TContainedAction, deren Aktionsliste sie nicht
@@ -53,7 +53,7 @@ uses
   System.Classes,
   Vcl.AppEvnts,
   Atlas.Core.Commands.Usage,
-  Atlas.Core.Notifications.Contract,
+  Atlas.Plugin.Notifications.Contract,
   Atlas.UI.Commands.ShortcutTip,
   Atlas.IDE.Commands.Usage,
   Atlas.IDE.Commands.ShortcutKeys;
@@ -127,24 +127,24 @@ implementation
 
 uses
   Atlas.Core.Commands.ShortcutTips,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Winapi.Messages,
   System.Types,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.ActnList,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.Tips,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
-  Atlas.UI.Popup.Window,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
+  Atlas.Vcl.Popup.Window,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorWindows,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Windows,
   Atlas.IDE.Commands.KeyMap;
 
 /// <summary>Angehaltene Debug-Sitzung (Haltepunkt, Ausnahme).</summary>

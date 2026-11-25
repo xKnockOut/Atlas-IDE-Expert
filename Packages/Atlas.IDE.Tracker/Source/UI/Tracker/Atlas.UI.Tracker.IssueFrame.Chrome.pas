@@ -21,10 +21,10 @@ uses
   Vcl.ActnList,
   Vcl.Forms,
   Vcl.Menus,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.IssueFrame.Contract;
+  Atlas.UI.Tracker.IssueFrame.Types;
 
 type
   /// <summary>Werkzeugleiste, Statuszeile, Kommentarfeld und Reiter des Fensters „Atlas-Issue“; sie und die
@@ -100,10 +100,10 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.CommentEditor,
   Atlas.UI.Tracker.DevelopmentView,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   /// <summary>Maße bei 96 dpi: Knöpfe der Werkzeugleiste, Leiste, Pfeilknöpfe, Mindestbreite und Breite je Zeichen

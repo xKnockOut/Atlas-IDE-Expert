@@ -1,26 +1,29 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.IdeAdapters;
 
 // Adapter der IDE-Features von Base für die Kompositionswurzel: Einstellungsspeicher in der Registry, aktiver
-// Editor und offene Puffer, Sicht des Planers, Puffer der Editoransicht, Palette als Befehlsziel, Einrichtung und
-// Schattentext aus dem Index. Nur diese Unit erzeugt sie; die Features bekommen sie über Fabriken an ihrer Wurzel,
-// über TAtlasIdeHost oder als Parameter. Die Fenster als Ansichten der Controller setzt
-// Atlas.IDE.CodeInsight.Composition.UiAdapters ein.
+// Editor und offene Puffer, Sicht des Planers, Puffer der Editoransicht, Palette als Befehlsziel, Einrichtung,
+// Schattentext aus dem Index und Statuszeilen des Atlas-Felds. Nur diese Unit erzeugt sie; die Features bekommen
+// sie über Fabriken an ihrer Wurzel, über TAtlasIdeHost oder als Parameter. Server und IDE für den Ablauf der
+// Probleme setzt Atlas.IDE.CodeInsight.Composition.ProblemsAdapters ein, die Fenster als Ansichten der Controller
+// Atlas.IDE.CodeInsight.Composition.UiAdapters.
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Core.Setup.Checklist,
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.IDE.Contracts.GhostSuggestions,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.Setup.Checklist,
   Atlas.Core.Commands.Contract,
-  Atlas.Core.Setup.Contract;
+  Atlas.Core.Setup.Contract,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Core.Status.FieldFlow;
 
 /// <summary>Fabriken der IDE-Adapter einsetzen: Einstellungsspeicher in der Registry, Sicht des Planers, Puffer
-/// der Editoransicht, dazu die Fenster-Adapter (InstallUiAdapters). Ab der Unit-Initialisierung, vor dem ersten
-/// Lesen der Einstellungen.</summary>
+/// der Editoransicht, dazu die Adapter der Probleme (InstallProblemsAdapters) und die Fenster-Adapter
+/// (InstallUiAdapters). Ab der Unit-Initialisierung, vor dem ersten Lesen der Einstellungen.</summary>
 procedure InstallIdeAdapters;
 /// <summary>Aktiver Editor für TAtlasIdeHost.</summary>
 function ActiveEditorAdapter: IAtlasActiveEditor;
@@ -30,6 +33,9 @@ function EditorFilesAdapter: IAtlasEditorFiles;
 function PaletteRegistry(APalette: TAtlasIdePalette): IAtlasCommandRegistry;
 /// <summary>Vorschläge aus dem Index des Servers für den Schattentext (#1890).</summary>
 function LearnedGhostProvider: IAtlasGhostProvider;
+/// <summary>Atlas-Feld (#591) über ARegistry mit den Statuszeilen der Editorfenster als Oberfläche und den
+/// Einstellungen der IDE.</summary>
+function NewStatusField(const ARegistry: IAtlasStatusRegistry): TAtlasStatusFieldFlow;
 /// <summary>Was die Knöpfe der Einrichtung tun; AForgetKeys liest die Tasten beim nächsten Snapshot neu.</summary>
 function SetupEnvironment(const AHooks: TAtlasSetupHooks; out AForgetKeys: TProc;
   out ASnapshot: TAtlasSetupSnapshot): IAtlasSetupEnvironment;
@@ -52,7 +58,9 @@ uses
   Atlas.IDE.Editor.Adapters.LearnedGhost,
   Atlas.IDE.Commands.Adapters.PaletteRegistry,
   Atlas.IDE.Setup.Adapters.Environment,
+  Atlas.IDE.Status.Adapters.FieldSurface,
   Atlas.IDE.CodeInsight.Composition.UiAdapters,
+  Atlas.IDE.CodeInsight.Composition.ProblemsAdapters,
   Atlas.Core.Editor.Contract;
 
 procedure InstallIdeAdapters;
@@ -72,6 +80,7 @@ begin
     begin
       Result := TAtlasIdeEditSurface.Create(AView);
     end;
+  InstallProblemsAdapters;
   InstallUiAdapters;
 end;
 
@@ -93,6 +102,19 @@ end;
 function LearnedGhostProvider: IAtlasGhostProvider;
 begin
   Result := TAtlasLearnedGhostProvider.Create;
+end;
+
+function NewStatusField(const ARegistry: IAtlasStatusRegistry): TAtlasStatusFieldFlow;
+var
+  mSurface: IAtlasStatusFieldSurface;
+begin
+  // Erst in eine Interface-Variable: direkt an den const-Parameter übergeben zählte niemand mit.
+  mSurface := TAtlasIdeStatusFieldSurface.Create;
+  Result := TAtlasStatusFieldFlow.Create(ARegistry, mSurface,
+    function: TAtlasPluginSettings
+    begin
+      Result := TAtlasIdeSettings.Current;
+    end);
 end;
 
 /// <summary>Eigene Routine: Die Methodenreferenz fängt nur AEnvironment ein.</summary>

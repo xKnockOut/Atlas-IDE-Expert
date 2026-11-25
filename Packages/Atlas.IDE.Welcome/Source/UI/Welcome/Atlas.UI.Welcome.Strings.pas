@@ -2,7 +2,7 @@
 
 // Oberflächentexte des Moduls Willkommensseite auf Deutsch und Englisch (#1455). Die Sprache
 // bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu, ein Sprachwechsel braucht
-// daher keine eigene Meldung. Kerntexte bleiben in `Atlas.UI.Strings`.
+// daher keine eigene Meldung. Kerntexte bleiben in `Atlas.Plugin.Localization.Strings`.
 
 interface
 
@@ -130,13 +130,16 @@ type
     class function Text(AId: TAtlasWelcomeTextId): string; static;
     /// <summary>Text mit Platzhaltern wie Format.</summary>
     class function Fmt(AId: TAtlasWelcomeTextId; const AArgs: array of const): string; static;
+    /// <summary>Zeitpunkt AUtc (UTC) in Ortszeit mit kurzem Datum und Uhrzeit; '' ohne Zeitpunkt (0).</summary>
+    class function LocalTime(AUtc: TDateTime): string; static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  System.DateUtils,
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasWelcomeTextId] of string = (
@@ -1069,6 +1072,15 @@ end;
 class function TAtlasWelcomeStrings.Fmt(AId: TAtlasWelcomeTextId; const AArgs: array of const): string;
 begin
   Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
+end;
+
+class function TAtlasWelcomeStrings.LocalTime(AUtc: TDateTime): string;
+begin
+  Result := '';
+  if AUtc > 0 then
+  begin
+    Result := FormatDateTime('ddddd t', TTimeZone.Local.ToLocalTime(AUtc));
+  end;
 end;
 
 end.

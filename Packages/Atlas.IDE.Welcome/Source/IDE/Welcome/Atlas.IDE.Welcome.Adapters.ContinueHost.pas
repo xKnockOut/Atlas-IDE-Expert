@@ -13,7 +13,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Projects.Contract.Summary,
   Atlas.Core.Welcome.Contract,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasIdeContinueHost = class(TInterfacedObject, IAtlasContinueHost)
@@ -48,14 +48,15 @@ implementation
 uses
   Winapi.Windows,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Continue,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Contracts.VersionControl,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Continue.Editor;

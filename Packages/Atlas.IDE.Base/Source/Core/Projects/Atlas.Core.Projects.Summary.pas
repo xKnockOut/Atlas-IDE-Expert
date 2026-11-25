@@ -254,8 +254,8 @@ uses
   System.Classes,
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Text.Json,
   Atlas.Text.Arrays;
 
@@ -804,12 +804,7 @@ var
 begin
   AMetrics := TAtlasProjectMetrics.Empty;
   Result := False;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if not (mValue is TJSONObject) then
     begin
@@ -851,12 +846,7 @@ var
 begin
   ATodos := TAtlasProjectTodos.Empty;
   Result := False;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if not (mValue is TJSONObject) then
     begin
@@ -938,12 +928,7 @@ var
 begin
   ASummary := TAtlasProjectSummary.Create('');
   Result := False;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if not (mValue is TJSONObject) then
     begin
@@ -985,12 +970,9 @@ var
 begin
   mValue := nil;
   if ASummary.Raw <> '' then
-    try
-      mValue := TJSONObject.ParseJSONValue(ASummary.Raw);
-    except
-      on Exception do
-        mValue := nil;
-    end;
+  begin
+    mValue := TJsonRead.Parse(ASummary.Raw);
+  end;
   mRoot := TJSONObject.Create;
   try
     mOriginal := nil;
@@ -1020,12 +1002,7 @@ var
   mValue: TJSONValue;
 begin
   Result := 0;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if mValue is TJSONObject then
     begin

@@ -25,7 +25,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 type
 {$SCOPEDENUMS ON}
@@ -216,7 +216,7 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Json,
   Atlas.Text.Uris,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Tracker.Internals.FormYaml;
 
 const

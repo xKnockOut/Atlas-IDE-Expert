@@ -11,7 +11,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  Atlas.UI.Popup.Window;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasStepsBar = class(TAtlasLayoutPopupWindow)
@@ -32,6 +33,9 @@ type
     /// <summary>Rechte obere Ecke im aktiven Fenster der IDE (Bildschirm), etwas eingerückt; auch für andere
     /// Fenster des Debuggers (#869).</summary>
     class function ActiveCorner: TPoint; static;
+    /// <summary>Neue Farben AColors für ABar, wenn sie gezeigt wird; nil oder verborgen: nichts (beim Zeigen
+    /// holt der Besitzer die Farben ohnehin).</summary>
+    class procedure Recolor(ABar: TAtlasStepsBar; const AColors: TAtlasColors); static;
     property Text: string read FText;
   end;
 
@@ -42,8 +46,8 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   /// <summary>Abstand vom rechten bzw. oberen Rand des aktiven Fensters (in cPad).</summary>
@@ -127,6 +131,14 @@ begin
   mRect := mForm.BoundsRect;
   Result := TPoint.Create(mRect.Right - mForm.ScaleValue(cPad * cCornerRight),
     mRect.Top + mForm.ScaleValue(cPad * cCornerTop));
+end;
+
+class procedure TAtlasStepsBar.Recolor(ABar: TAtlasStepsBar; const AColors: TAtlasColors);
+begin
+  if (ABar <> nil) and ABar.IsShown then
+  begin
+    ABar.Colors := AColors;
+  end;
 end;
 
 end.

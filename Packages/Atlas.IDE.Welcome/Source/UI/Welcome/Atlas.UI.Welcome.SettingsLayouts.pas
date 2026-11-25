@@ -17,7 +17,7 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.Core.Welcome.Layouts;
 
 type
@@ -105,6 +105,7 @@ const
   cButtonWidth = 96;
   cButtonGap = 6;
   cChoiceWidth = 180;
+  cLabelTop = 5;
 
 { TAtlasWelcomeSettingsLayouts }
 
@@ -349,7 +350,7 @@ begin
   mCaption.Parent := mRow;
   mCaption.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeActiveLayout);
   mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
+  mCaption.Top := mCaption.ScaleValue(cLabelTop);
   // Ohne Fenster füllbar (TAtlasChoiceBox): Die IDE lädt die Seite, bevor sie ein übergeordnetes Fenster hat.
   FChoice := TAtlasChoiceBox.Create(AOwner);
   FChoice.Parent := mRow;

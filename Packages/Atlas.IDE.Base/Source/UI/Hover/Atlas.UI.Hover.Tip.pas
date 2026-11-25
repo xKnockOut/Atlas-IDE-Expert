@@ -48,15 +48,15 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.Controls,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.View,
   Atlas.UI.Documentation.View,
-  Atlas.UI.Popup.Styled,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Styled,
+  Atlas.Vcl.Popup.Window;
 
 type
 
@@ -251,18 +251,18 @@ implementation
 
 uses
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Texts,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   System.StrUtils,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Hover.Strings,
-  Atlas.UI.Popup.Draw,
-  Atlas.UI.Popup.Accessibility,
+  Atlas.Vcl.Popup.Draw,
+  Atlas.Vcl.Popup.Accessibility,
   Atlas.Core.Hover.Layout.Input;
 
 const
@@ -593,7 +593,7 @@ begin
   end;
   HandleNeeded;
   FDoc.Build(Canvas, mContent, AWidth - Scale(cDocInset), TAtlasDocFonts.Create(Font, UIFont, PPI),
-    TAtlasStrings.DocLabels);
+    TAtlasDocLabelTexts.Current);
 end;
 
 function TAtlasHoverTipView.FitHeight(AWidth, AAvailable: Integer): Integer;

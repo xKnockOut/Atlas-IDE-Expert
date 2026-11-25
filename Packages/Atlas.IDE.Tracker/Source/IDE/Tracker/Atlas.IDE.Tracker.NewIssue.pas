@@ -73,15 +73,15 @@ uses
   Atlas.Core.Tracker.IssueForms,
   Atlas.Core.Tracker.NewIssueGitHub,
   Atlas.Core.Tracker.NewIssuePlan,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Notifications.Contract,
-  Atlas.Core.Notifications.Center,
-  Atlas.Core.Notifications.Sources,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Plugin.Notifications.Center,
+  Atlas.Plugin.Notifications.Sources,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Strings,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.NewIssue.Strings,
   Atlas.UI.Tracker.NewIssueDialog,
   Atlas.IDE.Foundation.Settings,
@@ -89,7 +89,7 @@ uses
   Atlas.IDE.Tracker.NewIssuePlace,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cVcsTimeoutMs = 2000;

@@ -43,8 +43,8 @@ uses
   System.IOUtils,
   System.StrUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Package,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Package,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.ReportDialog,
   Atlas.Tests.TempFolder;

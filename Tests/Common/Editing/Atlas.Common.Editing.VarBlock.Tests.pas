@@ -61,9 +61,10 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.VarBlock;
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Editing.VarBlock,
+  Atlas.Tests.SourceText;
 
 const
   cLF = #10;
@@ -109,7 +110,7 @@ begin
       if Pos(AKind, mAction.Title) > 0 then
       begin
         ATitle := mAction.Title;
-        Result := TChangeSignature.ApplyEdits(AText, mAction.Edits);
+        Result := TTextChanges.Apply(AText, mAction.Edits);
       end;
     end;
   finally
@@ -122,18 +123,6 @@ var
   mTitle: string;
 begin
   Result := Run(AText, ANeedle, AKind, TVarBlockOptions.Default, mTitle);
-end;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
 end;
 
 { TVarBlockTests }
@@ -162,7 +151,7 @@ begin
     '  var Count := 0;' + cLF +
     '  Writeln(Count, Name);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.InlineKeepsTypeWhenNotObvious;
@@ -184,7 +173,7 @@ begin
     '  var Total: Int64 := 0;' + cLF +
     '  Writeln(Total);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.InlineWithoutStartValueWhenExpressionReadsIt;
@@ -206,7 +195,7 @@ begin
     '  var S: string;' + cLF +
     '  S := S + ''a'';' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.CommentsMoveToInline;
@@ -236,7 +225,7 @@ begin
     '  var I := 0; // Anzahl' + cLF +
     '  Writeln(I, Name);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.OuterBlockUseDeclaresInOuterBlock;
@@ -265,7 +254,7 @@ begin
     '  end;' + cLF +
     '  Writeln(I);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
   // Nur im inneren Block verwendet: dorthin.
   mChanged := Apply(Wrap(
     'procedure P(B: Boolean);' + cLF +
@@ -287,7 +276,7 @@ begin
     '    Writeln(I);' + cLF +
     '  end;' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.TryExceptUseDeclaresBeforeTry;
@@ -316,7 +305,7 @@ begin
     '    Writeln(I);' + cLF +
     '  end;' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
   // Nur im try-Teil: dort hinein.
   mChanged := Apply(Wrap(
     'procedure P;' + cLF +
@@ -340,7 +329,7 @@ begin
     '    Writeln(2);' + cLF +
     '  end;' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.NoInlineInLoopWithoutStartValue;
@@ -451,7 +440,7 @@ begin
     '  Count := 0;' + cLF +
     '  Writeln(Count);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
   // Hin und zurück ergibt wieder den Anfang (ohne offensichtlichen Typ).
   Assert.AreEqual(Wrap(
     'procedure P;' + cLF +
@@ -496,7 +485,7 @@ begin
     '  Liste := TStringList.Create;' + cLF +
     '  Writeln(A, Liste.Count);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.UninitializedInlineMovesWithComments;
@@ -523,7 +512,7 @@ begin
     '  A := 1;' + cLF +
     '  S := IntToStr(A);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.NoSectionMoveWhenNameMeansSomethingElse;
@@ -604,7 +593,7 @@ begin
     '  L := nil;' + cLF +
     '  B := '''';' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.CleanupSplitsWithoutMerge;
@@ -637,7 +626,7 @@ begin
     '  I := J;' + cLF +
     '  A := B;' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.CleanupAlphabeticalKeepsComments;
@@ -674,7 +663,7 @@ begin
     '  Text := '''';' + cLF +
     '  Anzahl := Zahl;' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.CleanupRemovesWholeSection;
@@ -694,7 +683,7 @@ begin
     'begin' + cLF +
     '  Writeln(1);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TVarBlockTests.NoCleanupWhenTidy;

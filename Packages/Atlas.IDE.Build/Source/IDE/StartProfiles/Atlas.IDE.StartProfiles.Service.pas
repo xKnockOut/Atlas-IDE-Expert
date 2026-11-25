@@ -40,10 +40,10 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
   Atlas.Core.StartProfiles.Flow,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Build.Strings;
 
 type
@@ -108,11 +108,11 @@ uses
   Vcl.Forms,
   Vcl.Dialogs,
   Atlas.Core.StartProfiles.Picker,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.UI.Commands.Palette;
@@ -215,7 +215,8 @@ end;
 
 procedure TAtlasIdeStartProfiles.Publish(const AProject: string);
 var
-  mStatus: TAtlasStartProfileStatus;
+  // Voll qualifiziert: Der Rückruftyp TAtlasStartProfileStatus dieser Unit verdeckt den Record (E2010).
+  mStatus: Atlas.Core.StartProfiles.Flow.TAtlasStartProfileStatus;
   mText, mHint: string;
 begin
   if not Assigned(FOnStatus) then

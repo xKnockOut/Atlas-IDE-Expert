@@ -33,8 +33,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Editing.ExtractInterface;
 
 type
@@ -102,8 +102,9 @@ uses
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -163,15 +164,6 @@ function Fail(const AReason: string; out AOut: string): Boolean;
 begin
   AOut := AReason;
   Result := False;
-end;
-
-function StripT(const AName: string): string;
-begin
-  Result := AName;
-  if (Length(Result) > 1) and CharInSet(Result[1], ['T', 't']) and CharInSet(Result[2], ['A'..'Z']) then
-  begin
-    Result := Copy(Result, 2, MaxInt);
-  end;
 end;
 
 /// <summary>Wortteile eines Namens in CamelCase (PdfExport → Pdf, Export; HTMLView → HTML, View).</summary>
@@ -547,7 +539,7 @@ var
   mParts: TArray<string>;
   mRest: string;
 begin
-  mRest := StripT(AClassName);
+  mRest := TTextNames.WithoutTypePrefix(AClassName);
   mParts := Words(mRest);
   if Length(mParts) > 1 then
   begin
@@ -597,11 +589,11 @@ function FullName(const AClassName, ASuffix: string): string;
 begin
   if SameText(ASuffix, 'Custom') then
   begin
-    Result := 'TCustom' + StripT(AClassName);
+    Result := 'TCustom' + TTextNames.WithoutTypePrefix(AClassName);
   end
   else
   begin
-    Result := 'T' + StripT(AClassName) + ASuffix;
+    Result := 'T' + TTextNames.WithoutTypePrefix(AClassName) + ASuffix;
   end;
 end;
 

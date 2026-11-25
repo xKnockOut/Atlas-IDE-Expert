@@ -40,11 +40,11 @@ uses
   System.SysUtils,
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.SourceFiles,
-  Atlas.Core.Files.TextFile,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorTabs,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Tabs,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Projects.Summaries;
 

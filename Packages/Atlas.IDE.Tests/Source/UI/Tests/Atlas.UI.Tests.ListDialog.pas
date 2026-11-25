@@ -17,7 +17,7 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.Core.Tests.Lists,
   Atlas.Core.Tests.ListText;
 
@@ -78,8 +78,8 @@ uses
   System.SysUtils,
   System.UITypes,
   Vcl.Forms,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.ListBox,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.UI.Tests.Strings;
 
 { TAtlasTestsListDialog }

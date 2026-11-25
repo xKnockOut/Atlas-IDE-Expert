@@ -21,7 +21,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -97,8 +97,8 @@ implementation
 uses
   System.Math,
   System.UITypes,
-  Atlas.UI.Strings,  Atlas.UI.Tracker.Attach.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Plugin.Localization.Strings,  Atlas.UI.Tracker.Attach.Strings,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
@@ -107,6 +107,13 @@ const
   cButtonHeight = 28;
   cToolButtonTop = 6;
   cBottomButtonTop = 8;
+  cTopBarHeight = 40;
+  cBottomBarHeight = 44;
+  // Größe des Dialogs (logische Pixel).
+  cDialogWidth = 1000;
+  cDialogHeight = 720;
+  /// <summary>Halber Öffnungswinkel der Pfeilspitze: Pi / 7 (gut 25 Grad).</summary>
+  cHeadAngleDivisor = 7;
 
 { TAtlasMarkupShape }
 
@@ -170,10 +177,10 @@ begin
         mAngle := ArcTan2(mTo.Y - mFrom.Y, mTo.X - mFrom.X);
         mHead := cHeadLength * AScale;
         mHeadPoints[0] := mTo;
-        mHeadPoints[1] := Point(Round(mTo.X - mHead * Cos(mAngle - Pi / 7)),
-          Round(mTo.Y - mHead * Sin(mAngle - Pi / 7)));
-        mHeadPoints[2] := Point(Round(mTo.X - mHead * Cos(mAngle + Pi / 7)),
-          Round(mTo.Y - mHead * Sin(mAngle + Pi / 7)));
+        mHeadPoints[1] := Point(Round(mTo.X - mHead * Cos(mAngle - Pi / cHeadAngleDivisor)),
+          Round(mTo.Y - mHead * Sin(mAngle - Pi / cHeadAngleDivisor)));
+        mHeadPoints[2] := Point(Round(mTo.X - mHead * Cos(mAngle + Pi / cHeadAngleDivisor)),
+          Round(mTo.Y - mHead * Sin(mAngle + Pi / cHeadAngleDivisor)));
         ACanvas.Brush.Style := bsSolid;
         ACanvas.Brush.Color := cMarkColor;
         ACanvas.Polygon(mHeadPoints);
@@ -202,8 +209,8 @@ begin
   Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkupCaption);
   BorderStyle := bsSizeable;
   KeyPreview := True;
-  Width := ScaleValue(1000);
-  Height := ScaleValue(720);
+  Width := ScaleValue(cDialogWidth);
+  Height := ScaleValue(cDialogHeight);
 
   AddToolBar;
   AddBottomButtons;
@@ -356,7 +363,7 @@ begin
   mTop := TPanel.Create(Self);
   mTop.Parent := Self;
   mTop.Align := alTop;
-  mTop.Height := mTop.ScaleValue(40);
+  mTop.Height := mTop.ScaleValue(cTopBarHeight);
   mTop.BevelOuter := bvNone;
   mLeft := cGap;
   for mTool := Low(TAtlasMarkupTool) to High(TAtlasMarkupTool) do
@@ -385,7 +392,7 @@ begin
   mBottom := TPanel.Create(Self);
   mBottom.Parent := Self;
   mBottom.Align := alBottom;
-  mBottom.Height := mBottom.ScaleValue(44);
+  mBottom.Height := mBottom.ScaleValue(cBottomBarHeight);
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;

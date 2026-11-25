@@ -1,0 +1,2 @@
+### Behoben
+- Delphi-Bau von 2.3.0-rc.1: Die Versionsressource schreibt die Produktversion numerisch (2.3.0.3001) und den Vorabnamen in „Comments“, weil der Ressourcen-Compiler `0-rc` nicht annimmt. Die Unit `Atlas.Core.Tracker.Markdown.Inline` heißt jetzt `Atlas.Core.Tracker.Markdown.Spans` (`inline` ist in Delphi ein reserviertes Wort). Dazu kommen kleinere Übersetzungsfehler, die nur Delphi meldet.

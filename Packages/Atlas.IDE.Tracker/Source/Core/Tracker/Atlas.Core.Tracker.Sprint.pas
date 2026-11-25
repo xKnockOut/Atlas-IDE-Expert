@@ -128,7 +128,7 @@ uses
 
 class function TAtlasSprintCalendar.WorkWeek: TAtlasSprintCalendar;
 begin
-  Result.Days := TArray<Integer>.Create(1, 2, 3, 4, 5);
+  Result.Days := TArray<Integer>.Create(DayMonday, DayTuesday, DayWednesday, DayThursday, DayFriday);
 end;
 
 class function TAtlasSprintCalendar.Create(const ADays: TArray<Integer>): TAtlasSprintCalendar;
@@ -139,7 +139,7 @@ begin
   Result.Days := nil;
   for mDay in ADays do
   begin
-    if (mDay < 1) or (mDay > 7) then
+    if (mDay < DayMonday) or (mDay > DaySunday) then
     begin
       Continue;
     end;

@@ -151,7 +151,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes;

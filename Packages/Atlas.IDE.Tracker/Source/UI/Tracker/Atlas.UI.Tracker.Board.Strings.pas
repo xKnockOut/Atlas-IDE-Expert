@@ -14,7 +14,7 @@ type
     BoardMoveQuestion, BoardMoveComment, BoardMoveOk, BoardMoveDontAsk, BoardMoving, BoardMoved, BoardMoveFailed,
     BoardMoveLocked, BoardMenuStart, BoardMenuPreview, BoardMenuBrowse, BoardMenuCopy, BoardMenuAssign,
     BoardAssigned, BoardAssignFailed, BoardErrorScopes, BoardMoveNoTransition, BoardMoveNotAllowed,
-    BoardMoveTransitions);
+    BoardMoveTransitions, BoardMoveStale);
 
   TAtlasBoardStrings = class
   public
@@ -27,7 +27,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasBoardTextId] of string = (
@@ -68,7 +68,8 @@ const
      'Der Token darf Projekte nicht lesen bzw. ändern (GitHub: Berechtigung „project“).',
      '%s bleibt in „%s“: Der Workflow von YouTrack erlaubt von hier aus keinen Wechsel.',
      '%s nicht nach „%s“ verschoben: Der Workflow von YouTrack erlaubt von „%s“ aus nur: %s.',
-     '%s Von „%s“ aus erlaubt der Workflow von YouTrack: %s.'),
+     '%s Von „%s“ aus erlaubt der Workflow von YouTrack: %s.',
+     '%s nicht verschoben: Das Board wurde inzwischen neu geladen.'),
     ('Atlas board',
      'Board or project',
      'Sprint or iteration',
@@ -106,7 +107,8 @@ const
      'The token may not read or change projects (GitHub: scope “project”).',
      '%s stays in “%s”: the YouTrack workflow allows no transition from here.',
      '%s not moved to “%s”: from “%s” the YouTrack workflow only allows: %s.',
-     '%s From “%s” the YouTrack workflow allows: %s.'));
+     '%s From “%s” the YouTrack workflow allows: %s.',
+     '%s not moved: the board was reloaded in the meantime.'));
 
 { TAtlasBoardStrings }
 

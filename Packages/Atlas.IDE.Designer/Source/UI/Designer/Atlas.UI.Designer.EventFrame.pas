@@ -106,10 +106,10 @@ implementation
 
 uses
   Vcl.Themes,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Designer.ViewStrings,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 {$R *.dfm}
 

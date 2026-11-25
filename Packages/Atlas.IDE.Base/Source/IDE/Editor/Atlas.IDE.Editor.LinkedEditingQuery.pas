@@ -15,7 +15,7 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.LinkedEditing,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TAtlasLinkedSessionFunc = reference to function: TLspSession;
@@ -75,9 +75,9 @@ implementation
 uses
   System.JSON,
   Atlas.Text.Chars,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Editor.Surfaces;
 
 /// <summary>Steht an oder vor ACharacter ein Zeichen eines Bezeichners?</summary>
@@ -160,7 +160,10 @@ begin
         end;
       except
         // Server langsam oder weg: keine Sitzung, die Taste geht an die IDE.
-        mRanges := nil;
+        on ELspClientError do
+        begin
+          mRanges := nil;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.LinkedEditing,

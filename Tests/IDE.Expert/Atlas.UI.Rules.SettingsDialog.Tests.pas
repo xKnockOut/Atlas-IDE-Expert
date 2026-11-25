@@ -36,9 +36,9 @@ uses
   System.Generics.Collections,
   System.Math,
   Vcl.Controls,
-  Atlas.Core.Settings.Schema,
-  Atlas.Core.Settings.SchemaData,
-  Atlas.Core.Settings.Layers,
+  Atlas.Plugin.Settings.Schema,
+  Atlas.Plugin.Settings.SchemaData,
+  Atlas.Plugin.Settings.Layers,
   Atlas.UI.Rules.Editor,
   Atlas.UI.Rules.SettingsDialog,
   Atlas.UI.Settings.Contract,
@@ -112,7 +112,7 @@ begin
       mDialog.HandleNeeded;
       mDialog.PageTree.Selected := mDialog.GroupNode('threads');
       Assert.AreEqual('threads', mDialog.RuleEditor.FixedGroup);
-      Assert.AreEqual(1, mDialog.RuleList.Items.Count);
+      Assert.AreEqual(1, Integer(mDialog.RuleList.Items.Count));
       Assert.IsTrue(mDialog.RuleEditor.Left + mDialog.RuleEditor.Width >= mDialog.RuleEditor.Parent.ClientWidth - 50,
         'Regel-Editor der Gruppe in voller Breite');
       mDialog.RuleEditor.Master.Checked := False;

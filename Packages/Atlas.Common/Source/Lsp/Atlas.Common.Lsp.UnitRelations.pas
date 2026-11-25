@@ -101,7 +101,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Architecture.UnitRelations,
   System.Generics.Collections,
@@ -110,11 +110,12 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -142,18 +143,6 @@ const
     (De: 'Argumente: [uri, Unit]'; En: 'Arguments: [uri, unit]'));
 
 {$SCOPEDENUMS OFF}
-
-function PathOf(const AText: string): string;
-begin
-  if StartsText('file:', AText) then
-  begin
-    Result := TDocumentUris.ToPath(AText);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
 
 function SameOptions(const A, B: TUsesGraphOptions): Boolean;
 begin
@@ -252,7 +241,7 @@ begin
   Result := '';
   if (AArguments <> nil) and (AArguments.Count > AIndex) and (AArguments.Items[AIndex] is TJSONString) then
   begin
-    Result := PathOf(Trim(AArguments.Items[AIndex].Value));
+    Result := TDocumentUris.PathOrSelf(Trim(AArguments.Items[AIndex].Value));
   end;
   if Result = '' then
   begin
@@ -262,11 +251,7 @@ end;
 
 procedure TLspUnitRelations.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(cMethod,
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    begin
-      Result := Request(AParams);
-    end);
+  ADispatcher.RegisterConcurrentPlain(cMethod, Request);
 end;
 
 function TLspUnitRelations.Request(const AParams: TJSONValue): TJSONValue;
@@ -286,7 +271,7 @@ begin
   mFileName := '';
   if mParams.GetValue('uri') is TJSONString then
   begin
-    mFileName := PathOf(Trim(mParams.GetValue('uri').Value));
+    mFileName := TDocumentUris.PathOrSelf(Trim(mParams.GetValue('uri').Value));
   end;
   if mFileName = '' then
   begin
@@ -498,14 +483,14 @@ begin
   // Den Eintrag in der anderen Liste suchen, Schreibweise wie im Quelltext.
   mFound := False;
   mName := AUnit;
-  for mReference in TUsesClauses.References(mTokens) do
+  for mReference in TPascalUses.References(mTokens) do
   begin
     if (mReference.List = TUsesListKind.UsesList) and SameText(mReference.Name, AUnit) then
     begin
       if mReference.InInterface = (ATarget = TUsesSection.Interface_) then
       begin
         AError := cTexts[TUnitRelationsText.IsAlreadyInTheUses].Fmt([AUnit,
-          TUnitRelationsBuilder.SectionName(ATarget)]);
+          TTextNames.SectionKeyword(ATarget = TUsesSection.Interface_)]);
         Exit(False);
       end;
       mFound := True;

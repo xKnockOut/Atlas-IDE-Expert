@@ -17,7 +17,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.SettingsTables,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Tracker.SettingsRows;
 
@@ -45,16 +45,12 @@ type
     Check: TButton;
   end;
 
-  TAtlasTrackerConnectionsPart = class
+  TAtlasTrackerConnectionsPart = class(TAtlasTrackerSettingsPart)
   private
-    FRows: TAtlasTrackerSettingsRows;
-    FHooks: TAtlasTrackerSettingsHooks;
-    FTables: TAtlasTrackerSettingsTables;
     FView: TAtlasTrackerConnectionsView;
     /// <summary>Zeile mit der Tabelle; an ihr hängen Felder und Knöpfe darunter.</summary>
     FAnchor: TWinControl;
     /// <summary>Der Teil füllt die Felder selbst: OnChange übernimmt nichts.</summary>
-    FFilling: Boolean;
     FOnChanged: TAtlasTrackerTableChanged;
     function Table: TAtlasTrackerConnectionTable;
     procedure BuildList;
@@ -96,7 +92,7 @@ implementation
 uses
   Atlas.Core.Tracker.Contract,
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Settings.Strings;
 
 const
@@ -117,10 +113,7 @@ type
 constructor TAtlasTrackerConnectionsPart.Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
   ATables: TAtlasTrackerSettingsTables; AOnChanged: TAtlasTrackerTableChanged);
 begin
-  inherited Create;
-  FRows := ARows;
-  FHooks := AHooks;
-  FTables := ATables;
+  inherited Create(ARows, AHooks, ATables);
   FOnChanged := AOnChanged;
 end;
 
@@ -375,12 +368,7 @@ end;
 
 procedure TAtlasTrackerConnectionsPart.SelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
-  if FFilling or not Selected or (Item = nil) then
-  begin
-    Exit;
-  end;
-  Table.Select(Item.Index);
-  FillFields;
+  TakeSelection(Item, Selected, Table.Select, FillFields);
 end;
 
 procedure TAtlasTrackerConnectionsPart.NameChange(Sender: TObject);

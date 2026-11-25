@@ -20,7 +20,7 @@ interface
 uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Groups;
 
 type

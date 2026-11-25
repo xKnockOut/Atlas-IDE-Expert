@@ -55,6 +55,10 @@ implementation
 uses
   Atlas.UI.Debug.AccessViolation.Strings;
 
+const
+  // Zeigergröße unter Win64: deren Musterliste enthält auch die von Win32.
+  cLargestPointerSize = 8;
+
 /// <summary>Zusatz zu „X ist nil“: Zugriff auf die VMT, das Feld (genau bzw. geschätzt) oder der Versatz nahe nil;
 /// '' ohne.</summary>
 function NilDetail(const AVerdict: TAtlasAvVerdict; const AMessage: TAtlasAvMessage): string;
@@ -194,7 +198,7 @@ begin
   Result.Active := True;
   mVerdict := AAnalysis.Verdict;
   // Die Zeigergröße steckt in der Erkennung; für den Text genügt die größere Musterliste.
-  Result.Headline := HeadlineOf(mVerdict, AAnalysis.AccessMessage, 8, mDetail);
+  Result.Headline := HeadlineOf(mVerdict, AAnalysis.AccessMessage, cLargestPointerSize, mDetail);
   Result.Detail := mDetail;
   if mVerdict.HasCulprit or (mVerdict.Kind = TAtlasAvVerdictKind.FreedMemory) then
   begin

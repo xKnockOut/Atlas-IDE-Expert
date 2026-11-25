@@ -53,7 +53,7 @@ uses
   System.SysUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

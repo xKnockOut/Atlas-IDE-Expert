@@ -34,7 +34,7 @@ uses
   Atlas.Core.Designer.UndoFlow,
   Atlas.Core.Designer.Contract,
   Atlas.UI.Designer.Bar,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -111,8 +111,8 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Foundation.Settings,

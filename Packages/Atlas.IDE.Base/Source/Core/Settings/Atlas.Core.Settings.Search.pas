@@ -21,7 +21,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Groups;
 
 type
@@ -144,7 +144,7 @@ uses
   Atlas.Core.Settings.Transfer,
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Settings.ModuleSwitches,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

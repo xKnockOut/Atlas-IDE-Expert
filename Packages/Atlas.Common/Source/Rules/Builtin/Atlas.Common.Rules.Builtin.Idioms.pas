@@ -35,7 +35,7 @@
 //                    der else-Zweig zählt mit), die denselben ordinalen Ausdruck
 //                    ohne Seiteneffekte mit Konstanten vergleicht und sich ohne
 //                    Bedeutungsänderung als case schreiben lässt (#646; Erkennung
-//                    und Korrektur aus Editing.IfCase, Typen über die
+//                    und Korrektur aus Semantics.IfCase, Typen über die
 //                    Namensauflösung). Standard aus. Keine Meldung bei Direktiven
 //                    in der Kette.
 
@@ -102,13 +102,15 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.StatementText,
-  Atlas.Common.Editing.IfCase,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.StatementText,
+  Atlas.Common.Semantics.IfCase,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -211,21 +213,6 @@ begin
   while (Result <> nil) and (Result.Kind <> AKind) do
   begin
     Result := Result.Parent;
-  end;
-end;
-
-/// <summary>Namen einer Deklaration "A,B" einzeln und ohne Leerraum.</summary>
-function NamesOf(ANode: TSyntaxNode): TArray<string>;
-var
-  mName: string;
-begin
-  Result := nil;
-  for mName in ANode.Name.Split([',']) do
-  begin
-    if Trim(mName) <> '' then
-    begin
-      Result := Result + [Trim(mName)];
-    end;
   end;
 end;
 
@@ -429,7 +416,7 @@ function TMoneyAsFloatScan.AllMoney(ANode: TSyntaxNode): Boolean;
 var
   mName: string;
 begin
-  for mName in NamesOf(ANode) do
+  for mName in TTextNames.SplitList(ANode.Name) do
   begin
     if not IsMoney(ANode, mName) then
     begin
@@ -501,7 +488,7 @@ begin
   begin
     if AType[mIndex].Kind = AKind then
     begin
-      for mName in NamesOf(AType[mIndex]) do
+      for mName in TTextNames.SplitList(AType[mIndex].Name) do
       begin
         if SameText(mName, AName) then
         begin
@@ -539,7 +526,7 @@ begin
       Exit(False);
     end;
     mField := MemberOf(mOwner, TSyntaxKind.Field, mName);
-    if (mField = nil) or (Length(NamesOf(mField)) <> 1) or
+    if (mField = nil) or (Length(TTextNames.SplitList(mField.Name)) <> 1) or
       not IsFloat(mField.FindChild(TSyntaxKind.TypeReference)) then
     begin
       Exit(False);
@@ -765,7 +752,7 @@ begin
       mFixes := [TRuleFix.Create(cTexts[TIdiomsText.ChangeToCurrency].Text, mEdits)];
     end;
   end;
-  for mName in NamesOf(ANode) do
+  for mName in TTextNames.SplitList(ANode.Name) do
   begin
     if IsMoney(ANode, mName) then
     begin
@@ -909,35 +896,6 @@ begin
   end;
 end;
 
-function UsesEdit(const AContext: TRuleContext; const ATokens: TTokens; AOffset: Integer;
-  const AUnitName: string; out AEdit: TTextEdit): Boolean;
-var
-  mUsed: TArray<string>;
-  mShort: string;
-begin
-  mUsed := TUsesClauses.UsedUnits(ATokens);
-  mShort := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
-  if TUsesClauses.IsUsed(mUsed, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(mUsed, mShort, nil) then
-  begin
-    Exit(False);
-  end;
-  Result := TUsesClauses.AddUnit(ATokens, AOffset, AUnitName, TTextLines.LineBreakOf(AContext.Text), AEdit);
-end;
-
-/// <summary>Nur Bezeichner und Punkte: S, Self.FBefehl, Edit1.Text. Iterativ (tiefe Bäume sprengen den Stapel
-/// nicht).</summary>
-function IsSubject(ANode: TSyntaxNode): Boolean;
-var
-  mNode: TSyntaxNode;
-begin
-  mNode := ANode;
-  while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) do
-  begin
-    mNode := mNode[0];
-  end;
-  Result := mNode.Kind = TSyntaxKind.Identifier;
-end;
-
 function IsStringLiteral(const AContext: TRuleContext; ANode: TSyntaxNode): Boolean;
 begin
   Result := (ANode.Kind = TSyntaxKind.Literal) and StartsStr('''', NodeText(AContext, ANode));
@@ -1037,7 +995,7 @@ begin
   begin
     ASensitive := ASensitive or mKind;
   end;
-  Result := Result and IsStringLiteral(FContext, mLiteral) and IsSubject(mSubject);
+  Result := Result and IsStringLiteral(FContext, mLiteral) and TSyntaxNodes.IsNameChain(mSubject);
   if Result and (ASubject = '') then
   begin
     ASubject := Normalized(mSubject);
@@ -1258,7 +1216,8 @@ begin
   end;
   mText := mText + FLineBreak + mIndent + 'end';
   mEdits := [TRuleEdit.Create(NodeRange(AHead), mText)];
-  if UsesEdit(FContext, FTokens, AHead.StartOffset, 'System.StrUtils', mExtra) then
+  if TPascalUsesEdits.AddMissingUnit(FTokens, AHead.StartOffset, 'System.StrUtils', FContext.Namespaces,
+    TTextLines.LineBreakOf(FContext.Text), mExtra) then
   begin
     mEdits := mEdits + [mExtra];
   end;

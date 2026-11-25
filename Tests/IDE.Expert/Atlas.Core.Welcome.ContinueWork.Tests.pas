@@ -287,6 +287,8 @@ begin
   mWork.ProjectClosing(cProject);
   Assert.AreEqual(1, mHost.HeadQueries);
   mWork.OnWritten := nil;
+  // Der gemerkte Rückruf der HEAD-Abfrage hält die Arbeit, die Arbeit den Host: Ring lösen, sonst Leck.
+  mHost.HeadDone := nil;
 end;
 
 procedure TAtlasContinueWorkTests.HeadArrivesInWrittenState;
@@ -312,6 +314,8 @@ begin
   Assert.AreEqual('abc123', mState.Head, 'HEAD nachgetragen');
   Assert.AreEqual('origin/main', mState.Upstream);
   Assert.AreEqual(2, mHost.ChangedCount);
+  // Der gemerkte Rückruf der HEAD-Abfrage hält die Arbeit, die Arbeit den Host: Ring lösen, sonst Leck.
+  mHost.HeadDone := nil;
 end;
 
 procedure TAtlasContinueWorkTests.NoAnswerAfterStop;
@@ -336,6 +340,8 @@ begin
   Assert.AreEqual('', mState.Head, 'nach Stop kommt nichts mehr an');
   Assert.AreEqual(1, mHost.ChangedCount);
   Assert.IsFalse(mWork.Enabled);
+  // Der gemerkte Rückruf der HEAD-Abfrage hält die Arbeit, die Arbeit den Host: Ring lösen, sonst Leck.
+  mHost.HeadDone := nil;
 end;
 
 procedure TAtlasContinueWorkTests.StopWritesOpenProjectWithoutQuery;

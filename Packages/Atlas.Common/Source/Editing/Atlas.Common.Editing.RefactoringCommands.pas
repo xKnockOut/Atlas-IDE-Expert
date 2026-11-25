@@ -37,7 +37,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.Inlining,
   Atlas.Common.Editing.Formatter,
@@ -437,28 +437,19 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 procedure RegisterRefactoringCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('extract', cTexts[TRefactoringCommandsText.ExtractTheStatementsBelowInto].Text,
-    cTexts[TRefactoringCommandsText.ExtractLoad].Text,
-    ExecuteExtract));
-  ARegister(Command('inline', cTexts[TRefactoringCommandsText.InlineTheCallOrVariable].Text, '/inline',
-    ExecuteInline));
-  ARegister(Command('fix', cTexts[TRefactoringCommandsText.ApplySafeFixesToThe].Text, '/fix', ExecuteFix));
-  ARegister(Command('explain', cTexts[TRefactoringCommandsText.ExplainTheFindingsOfThe].Text, '/explain',
-    ExecuteExplain));
-  ARegister(Command('fmt', cTexts[TRefactoringCommandsText.FormatTheEnclosingRoutine].Text, '/fmt', ExecuteFmt));
-  ARegister(Command('measure', cTexts[TRefactoringCommandsText.MeasureTheRunTimeOf].Text,
-    cTexts[TRefactoringCommandsText.MeasureLoad].Text,
-    ExecuteMeasure));
+  ARegister(TSlashCommand.Create('extract', cTexts[TRefactoringCommandsText.ExtractTheStatementsBelowInto].Text,
+      cTexts[TRefactoringCommandsText.ExtractLoad].Text, ExecuteExtract));
+  ARegister(TSlashCommand.Create('inline', cTexts[TRefactoringCommandsText.InlineTheCallOrVariable].Text, '/inline',
+      ExecuteInline));
+  ARegister(TSlashCommand.Create('fix', cTexts[TRefactoringCommandsText.ApplySafeFixesToThe].Text, '/fix', ExecuteFix));
+  ARegister(TSlashCommand.Create('explain', cTexts[TRefactoringCommandsText.ExplainTheFindingsOfThe].Text, '/explain',
+      ExecuteExplain));
+  ARegister(TSlashCommand.Create('fmt', cTexts[TRefactoringCommandsText.FormatTheEnclosingRoutine].Text, '/fmt',
+      ExecuteFmt));
+  ARegister(TSlashCommand.Create('measure', cTexts[TRefactoringCommandsText.MeasureTheRunTimeOf].Text,
+      cTexts[TRefactoringCommandsText.MeasureLoad].Text, ExecuteMeasure));
 end;
 
 initialization

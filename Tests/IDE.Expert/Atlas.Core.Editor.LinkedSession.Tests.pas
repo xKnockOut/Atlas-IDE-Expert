@@ -373,7 +373,7 @@ begin
   mEdits := TAtlasLinkedSession.Edits(cText, mRanges, 'N', 2);
   Assert.AreEqual(2, Integer(Length(mEdits)), 'doppelter Anfang einmal, übersprungener fehlt');
   Assert.AreEqual(Pos('Count', cText) - 1, mEdits[0].Start);
-  Assert.AreEqual(5, mEdits[0].Count);
+  Assert.AreEqual(5, Integer(mEdits[0].Count));
   Assert.AreEqual('N', mEdits[0].Insert);
   Assert.AreEqual(Pos('Count + 1', cText) - 1, mEdits[1].Start);
 end;

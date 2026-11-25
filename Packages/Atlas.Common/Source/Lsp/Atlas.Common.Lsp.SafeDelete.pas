@@ -87,7 +87,7 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Text.Lines,
@@ -98,12 +98,12 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormFiles,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.InlineAccessor,
-  Atlas.Common.Editing.MemberTransfer,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Semantics.InlineAccessor,
+  Atlas.Common.Pascal.MemberTransfer,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.WorkspaceChanges,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;

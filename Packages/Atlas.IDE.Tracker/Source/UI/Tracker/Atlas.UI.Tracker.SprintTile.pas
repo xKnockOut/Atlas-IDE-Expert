@@ -26,7 +26,7 @@ uses
   Vcl.Forms,
   Vcl.Graphics,
   Atlas.Core.CiBuild.Contract,
-  Atlas.UI.Style.Canvas,
+  Atlas.Vcl.Theme.Canvas,
   Atlas.UI.Tracker.TileView,
   Atlas.UI.Tracker.Contract.Sprint;
 
@@ -106,10 +106,10 @@ uses
   System.UITypes,
   System.DateUtils,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.UI.Foundation.Controls,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Sprint.Strings,
   Atlas.Core.Tracker.Contract.Sprint;
@@ -328,11 +328,7 @@ end;
 procedure TAtlasTrackerSprintView.SetSource(const AValue: IAtlasSprintSource);
 begin
   FSource := AValue;
-  UpdateContent;
-  if FSource <> nil then
-  begin
-    FSource.Shown;
-  end;
+  SourceChanged(FSource);
 end;
 
 function TAtlasTrackerSprintView.BodyHeight: Integer;

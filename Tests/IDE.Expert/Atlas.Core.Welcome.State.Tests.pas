@@ -120,10 +120,10 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Status.IndexStore,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Status.IndexStore,
   Atlas.Core.Updates.Check,
   Atlas.Core.Welcome.State;
 

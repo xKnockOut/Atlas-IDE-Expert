@@ -49,8 +49,8 @@ implementation
 uses
   System.IOUtils,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Report,
   Atlas.UI.Debug.Note.Strings;

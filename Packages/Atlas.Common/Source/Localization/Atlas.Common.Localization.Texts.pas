@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Localization.Texts;
 
 // Sprache der Texte, die der Server erzeugt (#1458): Befunde, Code-Aktionen,
-// Hover, Vorschauen und Meldungen an den Benutzer. Wie Atlas.UI.Strings im
+// Hover, Vorschauen und Meldungen an den Benutzer. Wie Atlas.Plugin.Localization.Strings im
 // Plugin (#446) eine Tabelle statt resourcestring, ohne Ressourcen-DLL.
 //
 // Jede umgestellte Unit hält ihre Texte in einer eigenen Tabelle neben dem
@@ -26,7 +26,7 @@ interface
 
 type
   /// <summary>Sprache der Servertexte. Eigener Name, weil das Testprojekt auch TAtlasLanguage aus
-  /// Atlas.UI.Strings sieht.</summary>
+  /// Atlas.Plugin.Localization.Strings sieht.</summary>
   TTextLanguage = (German, English);
 
   /// <summary>Ein Text in beiden Sprachen; Eintrag einer Texttabelle.</summary>

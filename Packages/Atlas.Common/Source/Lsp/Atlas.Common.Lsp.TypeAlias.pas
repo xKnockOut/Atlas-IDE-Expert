@@ -74,9 +74,9 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -169,7 +169,7 @@ begin
           begin
             Result := Resolved.UnitName;
             AImplementation := not Resolved.InInterface and
-              SameText(Resolved.UnitName, TUsesClauses.OwnName(ATree.Tokens));
+              SameText(Resolved.UnitName, TPascalUses.OwnName(ATree.Tokens));
           end;
         // Typen in Routinen sieht keine andere Unit.
         TResolvedKind.Local:
@@ -443,7 +443,7 @@ var
   mFileName, mOwnName, mText: string;
 begin
   Result := nil;
-  mOwnName := TUsesClauses.OwnName(ATree.Tokens);
+  mOwnName := TPascalUses.OwnName(ATree.Tokens);
   for mFileName in AContext.Files do
   begin
     if NamesOwnUnit(mFileName, AFileName, mOwnName, AContext, mText) then

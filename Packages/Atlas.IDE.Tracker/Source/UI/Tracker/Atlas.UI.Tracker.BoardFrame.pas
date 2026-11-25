@@ -41,7 +41,7 @@ uses
   Vcl.Buttons,
   Vcl.Menus,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.BoardLayout;
 
@@ -239,16 +239,17 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   System.Math,
   Winapi.Windows,
   Vcl.Graphics,
   Vcl.Clipbrd,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.Board.Strings,
   Atlas.UI.Tracker.BoardPainter,
   Atlas.UI.Tracker.Workflow.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling,
+  Atlas.Vcl.Controls.Helpers;
 
 {$R *.dfm}
 
@@ -1048,11 +1049,7 @@ end;
 
 function TAtlasBoardFrame.StatusText: string;
 begin
-  Result := '';
-  if FParts.Status.Visible then
-  begin
-    Result := FParts.Status.Caption;
-  end;
+  Result := TAtlasControls.ShownCaption(FParts.Status);
 end;
 
 procedure TAtlasBoardFrame.ChoiceChange(Sender: TObject);

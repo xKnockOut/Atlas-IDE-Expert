@@ -50,10 +50,10 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Text.TestRunFile,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Log,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tests.Projects;
 

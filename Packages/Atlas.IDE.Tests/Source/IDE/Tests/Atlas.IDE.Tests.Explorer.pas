@@ -145,10 +145,10 @@ uses
   System.DateUtils,
   System.StrUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Flaky,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Tests.Projects,
@@ -503,13 +503,8 @@ begin
 end;
 
 procedure TAtlasIdeTestExplorer.RunAll;
-var
-  mReason: string;
 begin
-  if (FProject <> '') and not FTests.RunProject(FProject, mReason) and (mReason <> '') then
-  begin
-    FTests.Say(mReason);
-  end;
+  FTests.RunProjectOrSay(FProject);
 end;
 
 procedure TAtlasIdeTestExplorer.RunSelected;

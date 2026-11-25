@@ -235,7 +235,7 @@ begin
   try
     Assert.AreEqual(0, Integer(Length(mHistory.Remember(TDUnitXSource.Scan(FSource), FSource,
       Cases(['Addiert=Ignored']), At(0)))));
-    Assert.AreEqual(0, mHistory.Count);
+    Assert.AreEqual(0, Integer(mHistory.Count));
   finally
     mHistory.Free;
   end;
@@ -325,7 +325,7 @@ begin
     Assert.IsFalse(mHistory.LoadJson('{"format":2,"tests":[]}'), 'neueres Format');
     Assert.IsFalse(mHistory.LoadJson('kein JSON'));
     Assert.IsTrue(mHistory.LoadJson('{"format":1,"tests":[{"test":"a.b.c","runs":[{"at":"x"}]},{"runs":[]}]}'));
-    Assert.AreEqual(0, mHistory.Count, 'Einträge ohne Ergebnis bzw. ohne Namen fallen weg');
+    Assert.AreEqual(0, Integer(mHistory.Count), 'Einträge ohne Ergebnis bzw. ohne Namen fallen weg');
   finally
     mHistory.Free;
   end;

@@ -107,6 +107,8 @@ uses
   Atlas.Text.IndexCache;
 
 const
+  /// <summary>Felder der Präfix-Zählung je Eintrag des Indexcaches (#452).</summary>
+  cPrefixCountFields = 6;
   cFlagLibrary = 1;
 
 { TAtlasWelcomeIndexFiles }
@@ -181,7 +183,7 @@ begin
   AReader.SkipList; // uses (implementation)
   AReader.SkipList; // Include-Dateien
   AReader.SkipList; // Include-Zeitstempel
-  for mPart := 1 to 6 do
+  for mPart := 1 to cPrefixCountFields do
   begin
     AReader.ReadVar; // Präfix-Zählung (#452): je Art Anzahl und mit Präfix
   end;
@@ -230,11 +232,17 @@ end;
 
 class function TAtlasWelcomeIndexFiles.ReadEntries(const AData: TBytes; AWithLibrary: Boolean;
   out AReason: string): TArray<TAtlasIndexFile>;
+const
+  // Gründe fürs Protokoll.
+  cNoIndex = 'kein Atlas-Index (Kopf fehlt)';
+  cOtherVersion = 'andere Formatversion';
+  cChecksum = 'Prüfsumme stimmt nicht';
+  cDamaged = 'Inhalt beschädigt';
 var
   mReader: TIndexCacheReader;
 begin
   Result := nil;
-  AReason := 'kein Atlas-Index (Kopf fehlt)';
+  AReason := cNoIndex;
   if not TIndexCacheReader.HasMagic(AData) then
   begin
     Exit;
@@ -245,11 +253,11 @@ begin
   try
     if mReader.ReadVar <> cFormatVersion then
     begin
-      AReason := 'andere Formatversion';
+      AReason := cOtherVersion;
     end
     else if not mReader.ChecksumMatches then
     begin
-      AReason := 'Prüfsumme stimmt nicht';
+      AReason := cChecksum;
     end
     else
     begin
@@ -260,7 +268,7 @@ begin
     on EIndexCacheFormat do
     begin
       Result := nil;
-      AReason := 'Inhalt beschädigt';
+      AReason := cDamaged;
     end;
   end;
 end;

@@ -32,14 +32,14 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Problems.BulkFix,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.UI.Problems.BulkFix,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Rules.Strings;
 
 const

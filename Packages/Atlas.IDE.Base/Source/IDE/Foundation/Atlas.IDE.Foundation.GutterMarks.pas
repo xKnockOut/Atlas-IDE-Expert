@@ -41,13 +41,13 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.GutterMarks,
   Atlas.Core.Modules.Watch,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   /// <summary>Eine Art von Markierung in der Rinne. Alle Aufrufe im Hauptthread; Ausnahmen fängt
@@ -189,10 +189,10 @@ uses
   Winapi.Windows,
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh;
 
 function LayerActive(const ALayer: IAtlasGutterLayer): Boolean;
 begin
@@ -256,15 +256,18 @@ var
   mOldPen: TPen;
 begin
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    ALayer.PaintIcon(ACanvas, ARect, AColors, ABack);
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      ALayer.PaintIcon(ACanvas, ARect, AColors, ABack);
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
+    end;
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;

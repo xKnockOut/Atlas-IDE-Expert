@@ -21,8 +21,8 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Commands.Palette;
 
 { TAtlasPaletteWindowTests }

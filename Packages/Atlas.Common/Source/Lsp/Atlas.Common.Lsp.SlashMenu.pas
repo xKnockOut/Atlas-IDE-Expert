@@ -26,7 +26,6 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Editing.Contract,
@@ -60,7 +59,7 @@ type
     function MissingInterfaceMethods(const AUri, AText: string; const ASpot: TSlashSpot;
       out AItems: TArray<TCompletionItem>; out ACommandLine: Integer): Boolean;
     function RunImplement(const AUri, AText: string; const ASpot: TSlashSpot; const AArguments: string;
-      out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+      out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
   public
     constructor Create(const AStore: IDocumentStore);
     function ExecuteMenu(const AArguments: TJSONArray): TJSONValue;
@@ -92,7 +91,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Json;
@@ -239,13 +238,13 @@ begin
 end;
 
 function TLspSlashMenu.RunImplement(const AUri, AText: string; const ASpot: TSlashSpot; const AArguments: string;
-  out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
+  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   mItems: TArray<TCompletionItem>;
   mItem: TCompletionItem;
   mCommandLine: Integer;
   mChosen: TArray<string>;
-  mEdits: TArray<TRuleEdit>;
+  mEdits: TArray<TTextEdit>;
   mLineBreak: string;
 begin
   AEdits := nil;
@@ -381,8 +380,8 @@ var
   mSpot: TSlashSpot;
   mDocument: ITextDocument;
   mDisabled: TArray<string>;
-  mEdits: TArray<TRuleEdit>;
-  mEdit: TRuleEdit;
+  mEdits: TArray<TTextEdit>;
+  mEdit: TTextEdit;
   mList: TJSONArray;
   mItem: TJSONObject;
 begin

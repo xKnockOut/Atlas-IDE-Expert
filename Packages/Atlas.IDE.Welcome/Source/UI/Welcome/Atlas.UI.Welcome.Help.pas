@@ -59,9 +59,10 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Welcome.Strings;
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.UI.Welcome.Strings,
+  Atlas.Vcl.Theme.Service;
 
 { TAtlasWelcomeHelpFrame }
 
@@ -81,7 +82,7 @@ begin
   FNote := TLabel.Create(Self);
   FNote.Parent := Body;
   FNote.ShowAccelChar := False;
-  FNote.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FNote, clGrayText);
   FNote.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpNote);
   Body.OnResize := BodyResize;
   UpdateContent;
@@ -97,7 +98,7 @@ function TAtlasWelcomeHelpFrame.BodyHeight: Integer;
 begin
   // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
   Arrange;
-  Result := Max(FContentHeight, ScaleValue(40));
+  Result := Max(FContentHeight, ScaleValue(cMinBodyHeight));
 end;
 
 procedure TAtlasWelcomeHelpFrame.UpdateContent;
@@ -163,16 +164,8 @@ begin
 end;
 
 procedure TAtlasWelcomeHelpFrame.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
 begin
-  mOldHeight := FContentHeight;
-  Arrange;
-  // Andere Reihen bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
+  Rearrange(Arrange, FContentHeight);
 end;
 
 procedure TAtlasWelcomeHelpFrame.ButtonClick(Sender: TObject);

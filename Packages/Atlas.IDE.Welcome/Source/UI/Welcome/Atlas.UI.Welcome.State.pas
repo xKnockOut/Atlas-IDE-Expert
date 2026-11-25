@@ -28,7 +28,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Welcome.State,
   Atlas.UI.Welcome.Frame,
   Atlas.UI.Welcome.Contract;
@@ -89,12 +89,16 @@ implementation
 
 uses
   System.UITypes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Vcl.Themes,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.UI.Welcome.Strings;
+
+const
+  /// <summary>Abstand zwischen dem Text und dem rechtsbündigen Zusatz (logische Pixel bei 96 dpi).</summary>
+  cDetailGap = 8;
 
 { TAtlasWelcomeStateFrame }
 
@@ -226,7 +230,7 @@ begin
   ACanvas.Ellipse(mLeft, mTop + (ScaleValue(cRowHeight) - mDot) div 2, mLeft + mDot,
     mTop + (ScaleValue(cRowHeight) - mDot) div 2 + mDot);
   ACanvas.Brush.Style := bsClear;
-  Inc(mLeft, mDot + ScaleValue(6));
+  Inc(mLeft, mDot + ScaleValue(TAtlasWelcomeRow.cDotGap));
   // Zusatz rechtsbündig in der gedämpften Farbe, Text davor gekürzt.
   mDetail := DetailText(mRow);
   mDetailWidth := 0;
@@ -235,7 +239,7 @@ begin
     ACanvas.Font.Color := AMutedColor;
     mDetailWidth := ACanvas.TextWidth(mDetail);
     ACanvas.TextOut(ARight - mDetailWidth, mTextTop, mDetail);
-    Inc(mDetailWidth, ScaleValue(8));
+    Inc(mDetailWidth, ScaleValue(cDetailGap));
   end;
   ACanvas.Font.Color := ATextColor;
   if mRow.HasAction then
@@ -436,16 +440,16 @@ end;
 
 class function TAtlasWelcomeStateFrame.DotColor(AState: TAtlasStatusState): TColor;
 begin
-  // Dieselben Töne wie die Marken der Projekte (#592): lesbar im hellen und im dunklen Thema.
+  // Dieselben Töne wie die Marken der Projekte (#592).
   case AState of
     TAtlasStatusState.Green:
-      Result := TColor($0043A02E);
+      Result := TAtlasWelcomeMarks.cGood;
     TAtlasStatusState.Yellow:
-      Result := TColor($001A8CC9);
+      Result := TAtlasWelcomeMarks.cWarning;
     TAtlasStatusState.Red:
-      Result := TColor($002E22CF);
+      Result := TAtlasWelcomeMarks.cError;
   else
-    Result := TColor($00817666);
+    Result := TAtlasWelcomeMarks.cNeutral;
   end;
 end;
 

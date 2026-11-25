@@ -17,8 +17,8 @@ uses
   System.Classes,
   System.SyncObjs,
   Atlas.Core.Completion.Contract,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.ThreadList;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.ThreadList;
 
 type
   /// <summary>True, sobald der Query abgebrochen oder durch einen neuen ersetzt ist.</summary>
@@ -83,7 +83,8 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot,
+  Atlas.Text.Reporting;
 
 { TAtlasAsyncCompletionProvider }
 
@@ -112,13 +113,14 @@ end;
 
 procedure TAtlasAsyncCompletionProvider.Failed(AE: Exception);
 begin
-  try
-    if IsFailure(AE) then
-    begin
-      TAtlasGuard.ReportProvider(ProviderName, AE);
-    end;
-  except
+  if IsFailure(AE) then
+  begin
     // Melden darf den Hintergrund-Thread nicht beenden.
+    TReporting.Quietly(
+      procedure
+      begin
+        TAtlasGuard.ReportProvider(ProviderName, AE);
+      end);
   end;
 end;
 

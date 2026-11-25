@@ -28,24 +28,12 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Editing.Contract,
+  Atlas.Common.Editing.Contract.CompilerFixes;
 
 type
-  /// <summary>Eine Compilermeldung; Line und Column ab 0, Column -1 ohne Spalte.</summary>
-  TFixMessage = record
-    Code: string;
-    Line: Integer;
-    Column: Integer;
-    Text: string;
-    class function Create(const ACode: string; ALine, AColumn: Integer; const AText: string): TFixMessage; static;
-  end;
-
-  TCompilerFix = record
-    Code: string;
-    Title: string;
-    Edits: TArray<TTextEdit>;
-    Preferred: Boolean;
-  end;
+  TFixMessage = Atlas.Common.Editing.Contract.CompilerFixes.TFixMessage;
+  TCompilerFix = Atlas.Common.Editing.Contract.CompilerFixes.TCompilerFix;
 
   TCompilerFixContext = record
     /// <summary>Units, die einen Bezeichner deklarieren; nil = keine E2003-Korrektur.</summary>
@@ -59,8 +47,6 @@ type
     class function Codes: TArray<string>; static;
     /// <summary>Hat ACode eine Korrektur, die FixAll für die ganze Datei anwenden kann?</summary>
     class function CanFixAll(const ACode: string): Boolean; static;
-    /// <summary>Namen in Hochkommas aus dem Meldungstext, in Reihenfolge.</summary>
-    class function QuotedNames(const AText: string): TArray<string>; static;
     /// <summary>Units in der Reihenfolge, in der E2003 sie anbietet.</summary>
     class function RankUnits(const AUnits: TArray<string>): TArray<string>; static;
     /// <summary>Korrekturen für AMessage im Text AText (Baum ATree).</summary>
@@ -75,7 +61,8 @@ type
 implementation
 
 uses
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Semantics.UsesActions,
+  Atlas.Common.Compiler.MessageTexts,
   System.StrUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
@@ -83,10 +70,12 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Editing.DisableWarning,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -109,16 +98,6 @@ const
   // Namespaces der RTL und der Bibliotheken von Delphi: bei E2003 zuerst.
   cLibraryNamespaces: array[0..12] of string = ('System', 'Winapi', 'Vcl', 'FMX', 'Data', 'Xml', 'Web', 'Soap',
     'REST', 'Datasnap', 'FireDAC', 'IBX', 'Posix');
-
-{ TFixMessage }
-
-class function TFixMessage.Create(const ACode: string; ALine, AColumn: Integer; const AText: string): TFixMessage;
-begin
-  Result.Code := UpperCase(Trim(ACode));
-  Result.Line := ALine;
-  Result.Column := AColumn;
-  Result.Text := AText;
-end;
 
 { Hilfen }
 
@@ -196,32 +175,6 @@ begin
   Result := MatchText(Trim(ACode), cFixAllCodes);
 end;
 
-class function TCompilerFixes.QuotedNames(const AText: string): TArray<string>;
-var
-  mIndex, mStart: Integer;
-begin
-  Result := nil;
-  mIndex := 1;
-  while mIndex <= Length(AText) do
-  begin
-    if AText[mIndex] = '''' then
-    begin
-      mStart := mIndex + 1;
-      mIndex := mStart;
-      while (mIndex <= Length(AText)) and (AText[mIndex] <> '''') do
-      begin
-        Inc(mIndex);
-      end;
-      if mIndex > Length(AText) then
-      begin
-        Break;
-      end;
-      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
-    end;
-    Inc(mIndex);
-  end;
-end;
-
 function LibraryRank(const AUnit: string): Integer;
 var
   mDot: Integer;
@@ -266,7 +219,7 @@ var
   mOffset: Integer;
 begin
   mOffset := OffsetOf(AText, AMessage.Line);
-  if (mOffset >= 0) and TUsesClauses.AddUnit(ATokens, mOffset, AUnit, TTextLines.LineBreakOf(AText), mEdit) then
+  if (mOffset >= 0) and TPascalUsesEdits.AddUnit(ATokens, mOffset, AUnit, TTextLines.LineBreakOf(AText), mEdit) then
   begin
     AFixes := AFixes + [Fix(AMessage.Code, ATitle, [mEdit], Length(AFixes) = 0)];
   end;
@@ -274,7 +227,7 @@ end;
 
 function IsUsed(const ATokens: TArray<TPascalToken>; const AUnit: string; const ANamespaces: TArray<string>): Boolean;
 begin
-  Result := TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATokens), AUnit, ANamespaces);
+  Result := TPascalUses.IsUsed(TPascalUses.UsedUnits(ATokens), AUnit, ANamespaces);
 end;
 
 function H2443Fixes(const AText: string; const ATokens: TArray<TPascalToken>; const AMessage: TFixMessage;
@@ -284,7 +237,7 @@ var
   mUnitName: string;
 begin
   Result := nil;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   if Length(mNames) < 2 then
   begin
     Exit;
@@ -315,7 +268,7 @@ var
   mFound: Boolean;
 begin
   Result := nil;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   if (Length(mNames) = 0) or not Assigned(AContext.Declaring) then
   begin
     Exit;
@@ -346,15 +299,6 @@ begin
   end;
 end;
 
-function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Namen, die in ARoutine (und umschließenden Routinen) als Variable, Parameter oder Konstante
 /// deklariert sind.</summary>
 function LocalNames(ARoutine: TSyntaxNode): TArray<string>;
@@ -377,7 +321,7 @@ begin
           mNames := mNames + [ANode.Name];
         end;
       end);
-    mRoutine := RoutineOf(mRoutine.Parent);
+    mRoutine := TSyntaxNodes.Nearest(mRoutine.Parent, [TSyntaxKind.RoutineDecl]);
   end;
   Result := mNames;
 end;
@@ -450,7 +394,7 @@ var
   mName: string;
 begin
   Result := nil;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   if Length(mNames) = 0 then
   begin
     Exit;
@@ -465,7 +409,7 @@ begin
     end;
     mValue := mStatement[1];
     // Erst Result, dann Exit: Exit([...]) liest Delphi als Menge (E2001).
-    if IsPure(mValue, LocalNames(RoutineOf(mStatement))) then
+    if IsPure(mValue, LocalNames(TSyntaxNodes.Nearest(mStatement, [TSyntaxKind.RoutineDecl]))) then
     begin
       Result := [Fix(AMessage.Code, cTexts[TCompilerFixesText.RemoveIneffectiveAssignmentTo].Fmt([mName,
         AMessage.Code]),
@@ -612,7 +556,7 @@ var
   mChosen: TSyntaxNode;
 begin
   Result := nil;
-  mNames := TCompilerFixes.QuotedNames(AMessage.Text);
+  mNames := TCompilerMessageTexts.QuotedNames(AMessage.Text);
   if Length(mNames) < 2 then
   begin
     Exit;
@@ -711,7 +655,7 @@ begin
     begin
       Continue;
     end;
-    mNames := TCompilerFixes.QuotedNames(mMessage.Text);
+    mNames := TCompilerMessageTexts.QuotedNames(mMessage.Text);
     if (Length(mNames) >= 2) and (IndexText(mNames[High(mNames)], Result) < 0) then
     begin
       Result := Result + [mNames[High(mNames)]];

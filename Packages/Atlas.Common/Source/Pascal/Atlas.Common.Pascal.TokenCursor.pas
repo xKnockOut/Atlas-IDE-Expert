@@ -74,6 +74,9 @@ function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer
 /// <summary>Wie oben, gesucht wird nur vor AStop (Index ausgeschlossen, höchstens Length(ATokens)); ohne
 /// Treffer AStop. Liegt AIndex schon bei oder hinter AStop, bleibt es AIndex.</summary>
 function NextCode(const ATokens: TArray<TPascalToken>; AIndex: Integer; AStop: Integer): Integer; overload;
+/// <summary>Erstes Token ab AIndex, das kein Kommentar ist (Direktiven zählen, anders als bei NextCode);
+/// Length(ATokens) ohne. Für Prüfungen, die bei {$IFDEF} lieber abbrechen.</summary>
+function NextUncommented(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 /// <summary>Erstes Code-Token hinter AIndex (AIndex ausgeschlossen); Length(ATokens) ohne.</summary>
 function NextCodeAfter(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 /// <summary>Gegenstück zu PreviousCode: erstes Code-Token hinter AIndex (AIndex ausgeschlossen); -1 ohne.
@@ -82,6 +85,19 @@ function FollowingCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): In
 /// <summary>Letztes Code-Token vor AIndex (AIndex ausgeschlossen, über Length(ATokens) zählt wie
 /// Length(ATokens)); -1 ohne.</summary>
 function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+/// <summary>Steht vor dem Token an AIndex (Kommentare und Direktiven übersprungen) ein Punkt, ist es also das
+/// Mitglied hinter X.?</summary>
+function AfterDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+/// <summary>Offsets der Bezeichner AName (ohne Groß-/Kleinschreibung), außer direkt hinter function bzw.
+/// procedure (dem Namen im Kopf): die Verwendungen einer Routine.</summary>
+function NameUseOffsets(const ATokens: TArray<TPascalToken>; const AName: string): TArray<Integer>;
+/// <summary>+1 für ( und [, -1 für ) und ], sonst 0: Tiefe der Klammern beim Lauf über die Token.</summary>
+function BracketDelta(const AToken: TPascalToken): Integer;
+/// <summary>Text der Code-Token von AFirst bis vor AStop ohne Zwischenraum (Kommentare und Direktiven
+/// ausgelassen).</summary>
+function CodeText(const ATokens: TArray<TPascalToken>; AFirst, AStop: Integer): string;
+/// <summary>Offset des Schlüsselworts interface (das erste) und implementation; -1, wo es fehlt.</summary>
+procedure SectionOffsets(const ATokens: TArray<TPascalToken>; out AInterface, AImplementation: Integer);
 /// <summary>Index der schließenden Klammer zur öffnenden an AOpen; runde und eckige Klammern (auch (. und .))
 /// zählen gemeinsam. Gesucht wird nur vor AStop (Index ausgeschlossen, höchstens Length(ATokens)). -1 ohne
 /// Gegenstück oder wenn an AOpen keine öffnende Klammer steht.</summary>
@@ -104,6 +120,10 @@ function CodeClosingParen(const ATokens: TArray<TPascalToken>; const ACode: TArr
 function TokenFromPosition(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 /// <summary>Index des letzten Tokens, das bei APosition oder davor beginnt (binäre Suche); -1 ohne.</summary>
 function TokenUpToPosition(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+/// <summary>Index des letzten Tokens, das vor APosition beginnt (binäre Suche); -1 ohne.</summary>
+function TokenBeforePosition(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+/// <summary>Offset des Tokens, das genau bei APosition beginnt; 0 ohne.</summary>
+function TokenOffsetAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 /// <summary>Erstes Token einer der Arten AKinds, auf dem APosition steht oder direkt dahinter (Cursor am
 /// Wortende): Es beginnt bei oder vor APosition und endet in derselben Zeile bei oder hinter ihr. Grenzen zwei
 /// Token an APosition aneinander, gilt das vordere. -1 ohne.</summary>
@@ -241,6 +261,86 @@ begin
   if Result < -1 then
   begin
     Result := -1;
+  end;
+end;
+
+function NextUncommented(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= High(ATokens)) and (ATokens[Result].Kind = TPascalTokenKind.Comment) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+function AfterDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mBefore: Integer;
+begin
+  mBefore := PreviousCode(ATokens, AIndex);
+  Result := (mBefore >= 0) and ATokens[mBefore].IsSymbol('.');
+end;
+
+function NameUseOffsets(const ATokens: TArray<TPascalToken>; const AName: string): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, AName) and
+      not ((mIndex > 0) and (ATokens[mIndex - 1].IsKeyword('function') or
+      ATokens[mIndex - 1].IsKeyword('procedure'))) then
+    begin
+      Result := Result + [ATokens[mIndex].Offset];
+    end;
+  end;
+end;
+
+function BracketDelta(const AToken: TPascalToken): Integer;
+begin
+  Result := 0;
+  if AToken.IsSymbol('(') or AToken.IsSymbol('[') then
+  begin
+    Result := 1;
+  end
+  else if AToken.IsSymbol(')') or AToken.IsSymbol(']') then
+  begin
+    Result := -1;
+  end;
+end;
+
+function CodeText(const ATokens: TArray<TPascalToken>; AFirst, AStop: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := AFirst to AStop - 1 do
+  begin
+    if IsCode(ATokens[mIndex]) then
+    begin
+      Result := Result + ATokens[mIndex].Text;
+    end;
+  end;
+end;
+
+procedure SectionOffsets(const ATokens: TArray<TPascalToken>; out AInterface, AImplementation: Integer);
+var
+  mIndex: Integer;
+begin
+  AInterface := -1;
+  AImplementation := -1;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if ATokens[mIndex].IsKeyword('interface') and (AInterface < 0) then
+    begin
+      AInterface := ATokens[mIndex].Offset;
+    end
+    else if ATokens[mIndex].IsKeyword('implementation') then
+    begin
+      AImplementation := ATokens[mIndex].Offset;
+      Break;
+    end;
   end;
 end;
 
@@ -398,6 +498,24 @@ begin
   Result := CountStartingBefore(ATokens, APosition, True) - 1;
 end;
 
+
+function TokenBeforePosition(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+begin
+  Result := TokenFromPosition(ATokens, APosition) - 1;
+end;
+
+function TokenOffsetAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  mIndex := TokenFromPosition(ATokens, APosition);
+  if (mIndex < Length(ATokens)) and (ATokens[mIndex].StartPos.Line = APosition.Line) and
+    (ATokens[mIndex].StartPos.Character = APosition.Character) then
+  begin
+    Result := ATokens[mIndex].Offset;
+  end;
+end;
 function TokenTouching(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
   const AKinds: TPascalTokenKinds): Integer;
 var

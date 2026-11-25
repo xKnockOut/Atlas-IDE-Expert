@@ -13,11 +13,11 @@ interface
 
 uses
   System.SyncObjs,
-  Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Contract,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Files.Contract,
-  Atlas.Core.Files.WatchedChanges,
+  Atlas.Plugin.Files.Contract,
+  Atlas.Plugin.Files.WatchedChanges,
   Atlas.IDE.CodeInsight.Manager.State;
 
 type
@@ -105,13 +105,13 @@ uses
   Winapi.Windows,
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.TimeLimit,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Projects.Contract,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.TimeLimit,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Projects.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Outline.Cache,
@@ -119,11 +119,11 @@ uses
   Atlas.IDE.CodeInsight.Manager.Handlers,
   Atlas.IDE.CodeInsight.IdeTypes,
   Atlas.IDE.CodeInsight.IdeMembers,
-  Atlas.Core.Lsp.IdeTypes,
-  Atlas.Core.Lsp.IdeMembers,
+  Atlas.Plugin.Lsp.IdeTypes,
+  Atlas.Plugin.Lsp.IdeMembers,
   System.Diagnostics,
-  Atlas.Core.Localization.Language,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Localization.Language,
+  Atlas.Plugin.Diagnostics.Deadline;
 
 {$SCOPEDENUMS ON}
 

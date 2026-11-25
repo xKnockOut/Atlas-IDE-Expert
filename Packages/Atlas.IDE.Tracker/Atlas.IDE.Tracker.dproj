@@ -54,6 +54,13 @@
         <DCC_DcpOutput>..\..\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
         <DCC_UnitSearchPath>..\..\Output\$(Platform)\$(Config)\Dcp;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_BplOutput>..\..\Output\$(Platform)\$(Config)\Bpl</DCC_BplOutput>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_MajorVer>2</VerInfo_MajorVer>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>0</VerInfo_Release>
+        <VerInfo_Build>3001</VerInfo_Build>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <VerInfo_Keys>CompanyName=xKnockOut;FileDescription=Atlas IDE Expert - $(MSBuildProjectName);FileVersion=2.3.0.3001;InternalName=$(MSBuildProjectName);LegalCopyright=Copyright (c) xKnockOut, MIT License;LegalTrademarks=;OriginalFilename=;ProgramID=io.github.xknockout.atlas.$(MSBuildProjectName);ProductName=Atlas IDE Expert;ProductVersion=2.3.0.3001;Comments=2.3.0-rc.1</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_UsePackage>vcl;rtl;$(DCC_UsePackage)</DCC_UsePackage>
@@ -64,9 +71,6 @@
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
-        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-        <VerInfo_Locale>1033</VerInfo_Locale>
         <BCC_EnableBatchCompilation>true</BCC_EnableBatchCompilation>
         <DCC_UsePackage>vcl;rtl;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
@@ -129,6 +133,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.IssueCache.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Links.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Markdown.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Markdown.Spans.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Contract.MyIssues.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>
@@ -141,6 +146,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Review.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearch.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Preview.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PreviewLoad.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.IssueWork.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.AiSummary.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas"/>
@@ -209,6 +215,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CodeLinkMarks.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CommentAssist.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Adapters.CommentAssist.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Adapters.Module.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Composition.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Development.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueContext.pas"/>
@@ -254,7 +261,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Adapters.PaletteSearch.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.PaletteSearchFetch.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Composition.Parts.pas"/>
-        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Composition.Adapters.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Composition.HostAdapters.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsBranches.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Adapters.Settings.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.SprintTile.pas"/>
@@ -291,7 +298,7 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ReviewDialog.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ImageMarkup.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueBoxes.pas"/>
-        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.Contract.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.Types.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.Chrome.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.Layout.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.Sections.pas"/>

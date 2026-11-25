@@ -58,9 +58,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.Extract,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.WithResolution,
   Atlas.Common.Editing.Unwrap;
 
@@ -89,6 +88,7 @@ var
   mLines: TArray<string>;
   mIndex, mColumn: Integer;
 begin
+  Result := Default(TTextPosition);
   mLines := ABody.Split([#13#10]);
   for mIndex := 0 to High(mLines) do
   begin
@@ -98,7 +98,7 @@ begin
       Exit(TTextPosition.Create(5 + mIndex, mColumn - 1));
     end;
   end;
-  raise Exception.Create('nicht gefunden: ' + ANeedle);
+  Assert.Fail('nicht gefunden: ' + ANeedle);
 end;
 
 function CandidatesOf(const ABody, ANeedle: string; const AOptions: TUnwrapOptions): TArray<TUnwrapCandidate>;
@@ -124,7 +124,7 @@ var
   mText: string;
   mTree: TSyntaxTree;
 begin
-  mText := TChangeSignature.ApplyEdits(cHead + ABody + cTail, AVariant.Edits);
+  mText := TTextChanges.Apply(cHead + ABody + cTail, AVariant.Edits);
   mTree := TPascalParser.Parse(mText);
   try
     Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), 'parst nicht: ' + mText);

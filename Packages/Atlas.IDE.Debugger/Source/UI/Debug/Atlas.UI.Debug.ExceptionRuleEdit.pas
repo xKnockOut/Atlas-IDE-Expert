@@ -22,7 +22,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.ExceptionRules,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Debug.Exceptions.Strings;
 
 type
@@ -77,7 +77,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal;
+  Atlas.Plugin.Style.Signal;
 
 const
   cWidth = 560;

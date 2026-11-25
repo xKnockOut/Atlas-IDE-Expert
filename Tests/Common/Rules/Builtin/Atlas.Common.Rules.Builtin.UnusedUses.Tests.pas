@@ -61,7 +61,7 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Rules.Builtin.DeadCode,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 const

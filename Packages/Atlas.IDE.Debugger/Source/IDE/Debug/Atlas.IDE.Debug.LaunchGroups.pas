@@ -25,7 +25,7 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Debug.LaunchGroups,
   Atlas.Core.Debug.LaunchProcesses,
   Atlas.Core.Debug.Phases,
@@ -105,12 +105,12 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
   Atlas.Core.Debug.Reattach,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.IDE.Foundation.TeamFile,
@@ -118,8 +118,8 @@ uses
   Atlas.IDE.Debug.Processes,
   Atlas.UI.Debug.LaunchGroupsDialog,
   Atlas.UI.Debug.Session.Strings,
-  Atlas.Core.Foundation.Calls,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.Plugin.Calls.Optional,
+  Atlas.ToolsApi.Debugger.Services;
 
 const
   cStatusId = 'atlas.debug.launchGroups';
@@ -622,11 +622,7 @@ end;
 
 class procedure TAtlasIdeLaunchGroups.ThemeChanged;
 begin
-  if (FBar <> nil) and FBar.IsShown then
-  begin
-    FBar.Colors := TAtlasIdeStyle.Colors;
-    FBar.Invalidate;
-  end;
+  TAtlasStepsBar.Recolor(FBar, TAtlasIdeStyle.Colors);
 end;
 
 class function TAtlasIdeLaunchGroups.Groups(out AProblems: TArray<string>): TAtlasLaunchGroupList;

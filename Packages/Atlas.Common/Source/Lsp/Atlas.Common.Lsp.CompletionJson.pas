@@ -28,8 +28,7 @@ uses
   System.Generics.Collections,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.JsonRpc.Positions;
 
 type
   /// <summary>Schreibt eine Gruppe von data-Feldern, wenn der Eintrag sie hat.</summary>
@@ -568,7 +567,7 @@ begin
     (AItem.MethodRef <> '') or (AItem.ExceptionGroup <> '') or (AItem.Unreachable <> '');
 end;
 
-function EditToJson(const AEdit: TRuleEdit): TJSONObject;
+function EditToJson(const AEdit: TTextEdit): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('range', TLspPositions.RangeToJson(AEdit.Range));
@@ -579,7 +578,7 @@ end;
 procedure AddEditsJson(AResult: TJSONObject; const AItem: TCompletionItem);
 var
   mEdits: TJSONArray;
-  mEdit: TRuleEdit;
+  mEdit: TTextEdit;
 begin
   if Length(AItem.AdditionalEdits) = 0 then
   begin

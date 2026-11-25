@@ -22,7 +22,7 @@ uses
   System.Types,
   Vcl.Graphics,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Designer.Scale,
   Atlas.UI.Designer.FormPreview;
 
@@ -86,7 +86,7 @@ uses
   Vcl.Controls,
   Atlas.Core.Designer.Layout,
   Atlas.UI.Designer.ViewStrings,
-  Atlas.UI.Foundation.ListBox;
+  Atlas.Vcl.Controls.ListBox;
 
 const
   cPercent = 100;

@@ -52,9 +52,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.RaiseVisibility;
 
 const

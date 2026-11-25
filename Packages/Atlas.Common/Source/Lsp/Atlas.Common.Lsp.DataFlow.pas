@@ -34,7 +34,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.DataFlow.Types;
+  Atlas.Common.Lsp.DataFlow.Types,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   TDataFlowDirection = Atlas.Common.Lsp.DataFlow.Types.TDataFlowDirection;
@@ -47,15 +48,10 @@ type
   TDataFlowResult = Atlas.Common.Lsp.DataFlow.Types.TDataFlowResult;
   TDataFlowRequest = Atlas.Common.Lsp.DataFlow.Types.TDataFlowRequest;
 
-  TLspDataFlow = class
+  TLspDataFlow = class(TLspProjectFeature)
   public const
     cMethod = 'atlas/dataFlow';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
-    FReadText: TReferenceReadText;
-    FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     function HandleDataFlow(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     /// <summary>Baum des Dokuments: aus dem Speicher (AShared hält ihn) oder gelesen (AOwnTree, gibt der
@@ -89,7 +85,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.DataFlow.Targets,
@@ -147,12 +143,7 @@ end;
 constructor TLspDataFlow.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
 function TLspDataFlow.GetNamespaces: TArray<string>;

@@ -131,6 +131,7 @@ uses
   System.StrUtils,
   System.JSON,
   System.Generics.Collections,
+  Atlas.Text.Locked,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Cache,
   Atlas.Common.Index.CacheHousekeeping;
@@ -225,6 +226,11 @@ begin
     cArchitectureFileName);
 end;
 
+const
+  /// <summary>Anfangsgröße der Tabelle gehaltener Sperren: eine je gestartetem Projekt; deckt große
+  /// Projektgruppen, ohne dass die Tabelle im Betrieb wächst.</summary>
+  cHeldLocksCapacity = 64;
+
 type
   /// <summary>Sperrdateien, die dieser Prozess offen hält (#1479). Das Aufräumen fragt bei jedem Projektstart
   /// alle Caches ab, ob sie gesperrt sind; in einer Projektgruppe hält der eigene Prozess die Sperren der schon
@@ -256,12 +262,8 @@ type
 
 class constructor TIndexCacheHeldLocks.Create;
 begin
-  FLock := TObject.Create;
-  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
-  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
-  System.TMonitor.Enter(FLock);
-  System.TMonitor.Exit(FLock);
-  FFiles := TDictionary<string, Boolean>.Create;
+  FLock := TAtlasSharedLock.New;
+  FFiles := TDictionary<string, Boolean>.Create(cHeldLocksCapacity);
 end;
 
 class destructor TIndexCacheHeldLocks.Destroy;
@@ -305,12 +307,6 @@ begin
   System.TMonitor.Enter(FLock);
   try
     FFiles.Remove(AKey);
-    // Remove gibt die Plätze der Tabelle nicht frei: Ohne gehaltene Sperre bliebe sie bis Programmende belegt und
-    // gälte im ersten Test, der einen Index-Cache sperrt, als Leck.
-    if FFiles.Count = 0 then
-    begin
-      FFiles.Clear;
-    end;
   finally
     System.TMonitor.Exit(FLock);
   end;

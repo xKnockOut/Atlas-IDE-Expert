@@ -68,7 +68,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.Contract,
@@ -78,7 +77,8 @@ uses
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Rules.Builtin.Style,
   Atlas.Tests.RuleAssert,
-  Atlas.Common.Rules.Profiles;
+  Atlas.Common.Rules.Profiles,
+  Atlas.Tests.TextEdits;
 
 const
   cEnabled = '{"rules": {"naming-prefix": "hint"}}';
@@ -101,38 +101,6 @@ begin
   for mFinding in AFound do
   begin
     Result := Result + mFinding.Message + '|';
-  end;
-end;
-
-/// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
-function OffsetOf(const AText: string; const APosition: TTextPosition): Integer;
-var
-  mLine, mIndex: Integer;
-begin
-  mLine := 0;
-  mIndex := 1;
-  while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-    end;
-    Inc(mIndex);
-  end;
-  Result := mIndex + APosition.Character;
-end;
-
-/// <summary>Wendet die Edits einer Korrektur von hinten nach vorn an.</summary>
-function ApplyFix(const AText: string; const AFix: TRuleFix): string;
-var
-  mIndex, mStart, mStop: Integer;
-begin
-  Result := AText;
-  for mIndex := High(AFix.Edits) downto 0 do
-  begin
-    mStart := OffsetOf(Result, AFix.Edits[mIndex].Range.StartPos);
-    mStop := OffsetOf(Result, AFix.Edits[mIndex].Range.EndPos);
-    Result := Copy(Result, 1, mStart - 1) + AFix.Edits[mIndex].NewText + Copy(Result, mStop, MaxInt);
   end;
 end;
 
@@ -172,7 +140,7 @@ begin
   Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
   Assert.AreEqual('In mCount umbenennen', mFound[0].Fixes[0].Title);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   // Self.Count ist ein anderes Symbol und bleibt.
   Assert.AreEqual(StringReplace(StringReplace(mSource, 'Count', 'mCount', [rfReplaceAll]), 'Self.mCount',
     'Self.Count', []), mFixed);
@@ -193,11 +161,11 @@ begin
     'Konstante Limit ohne Präfix c (erwartet: cLimit)|' +
     'Lokale Variable Item ohne Präfix m (erwartet: mItem)|', Messages(mFound));
   // Inline: erst ab der Deklaration; das Total davor ist ein anderes Symbol.
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.Contains(mFixed, '  Total := 0;'#10'  var mTotal := 1;');
   Assert.Contains(mFixed, 'mTotal := mTotal + Item + Limit;');
   Assert.Contains(mFixed, 'mTotal := I;');
-  mFixed := ApplyFix(mSource, mFound[2].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[2].Fixes[0]);
   Assert.Contains(mFixed, 'for var mItem in [1, 2] do'#10'    Total := Total + mItem + Limit;');
 end;
 
@@ -212,7 +180,7 @@ begin
   mFound := Findings(mSource);
   Assert.AreEqual('Feld Name ohne Präfix F (erwartet: FName)|Feld Alter ohne Präfix F (erwartet: FAlter)|',
     Messages(mFound));
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(StringReplace(mSource, 'Name', 'FName', [rfReplaceAll]), mFixed);
   // Geschützte Felder können Nachfahren in anderen Units verwenden: keine Korrektur.
   Assert.AreEqual(0, Integer(Length(mFound[1].Fixes)));
@@ -249,7 +217,7 @@ begin
   // Nur einmal an der Deklaration.
   Assert.AreEqual('Parameter Wert ohne Präfix A (erwartet: AWert)|', Messages(mFound));
   Assert.AreEqual(4, mFound[0].Range.StartPos.Line);
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.AreEqual(StringReplace(mSource, 'Wert', 'AWert', [rfReplaceAll]), mFixed);
   TRuleAssert.Silent(TNamingPrefixRule.Create, mFixed);
   Assert.AreEqual(0, Integer(Length(Findings(mFixed))));
@@ -272,11 +240,11 @@ begin
     'Parameter Zahl ohne Präfix A (erwartet: AZahl)|Parameter Teil ohne Präfix A (erwartet: ATeil)|',
     Messages(mFound));
   // Doppelt: Deklaration und Implementierung zusammen.
-  mFixed := ApplyFix(mSource, mFound[1].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[1].Fixes[0]);
   Assert.Contains(mFixed, 'function Doppelt(AWert: Integer): Integer;'#10'implementation');
   Assert.Contains(mFixed, 'Result := AWert * 2;');
   Assert.Contains(mFixed, 'reference to function(Wert: Integer)', 'der Prozedurtyp ist ein eigener Treffer');
-  mFixed := ApplyFix(mSource, mFound[3].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[3].Fixes[0]);
   Assert.Contains(mFixed, 'function(ATeil: Integer): Integer'#10'    begin'#10'      Result := ATeil;');
 end;
 
@@ -299,22 +267,22 @@ begin
   for mFinding in mFound do
   begin
     Assert.AreEqual(1, Integer(Length(mFinding.Fixes)), mFinding.Message);
-    mFixed := ApplyFix(mSource, mFinding.Fixes[0]);
+    mFixed := TTestEdits.ApplyFix(mSource, mFinding.Fixes[0]);
     Assert.DoesNotContain(mFixed, 'WParam: AWParam', mFixed);
     Assert.DoesNotContain(mFixed, 'WParam: mWParam', mFixed);
     Assert.DoesNotContain(mFixed, 'LParam: ALParam', mFixed);
     Assert.DoesNotContain(mFixed, '): AWParam;', mFixed);
     Assert.Contains(mFixed, '  WPARAM = NativeUInt;', mFixed);
   end;
-  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[0].Fixes[0]);
   Assert.Contains(mFixed, 'procedure Setzen(AWParam: WPARAM; var LParam: LPARAM);');
   Assert.Contains(mFixed, 'procedure THaken.Setzen(AWParam: WPARAM; var LParam: LPARAM);'#10'begin'#10 +
     '  LParam := AWParam;');
-  mFixed := ApplyFix(mSource, mFound[2].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[2].Fixes[0]);
   Assert.Contains(mFixed, 'function KeyboardProc(ACode: Integer; AWParam: WPARAM): WPARAM;'#10'implementation');
   Assert.Contains(mFixed, 'function KeyboardProc(ACode: Integer; AWParam: WPARAM): WPARAM;'#10'begin'#10 +
     '  Result := AWParam;');
-  mFixed := ApplyFix(mSource, mFound[3].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[3].Fixes[0]);
   Assert.Contains(mFixed, '  mWParam: WPARAM;'#10'begin'#10'  mWParam := 0;');
 end;
 
@@ -333,10 +301,10 @@ begin
     'Konstante Lokal ohne Präfix c (erwartet: cLokal)|', Messages(mFound));
   // interface: andere Units sehen sie.
   Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
-  mFixed := ApplyFix(mSource, mFound[2].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[2].Fixes[0]);
   Assert.Contains(mFixed, '  cIntern = 3;');
   Assert.Contains(mFixed, 'Oeffentlich + cIntern + Lokal');
-  mFixed := ApplyFix(mSource, mFound[3].Fixes[0]);
+  mFixed := TTestEdits.ApplyFix(mSource, mFound[3].Fixes[0]);
   Assert.Contains(mFixed, '  cLokal = 4;');
   Assert.Contains(mFixed, 'Intern + cLokal + TKunde');
 end;
@@ -543,7 +511,7 @@ const
     begin
       if (mFinding.RuleId = 'magic-number') and (Length(mFinding.Fixes) > 0) then
       begin
-        Result := ApplyFix(cSource, mFinding.Fixes[0]);
+        Result := TTestEdits.ApplyFix(cSource, mFinding.Fixes[0]);
       end;
     end;
   end;

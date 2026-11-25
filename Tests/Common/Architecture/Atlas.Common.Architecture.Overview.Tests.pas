@@ -78,6 +78,8 @@ type
     [Test]
     [Category('Benchmark')]
     procedure AssignmentsAreCheap;
+    [Test]
+    procedure RoleKeysAndSubsystemNames;
   end;
 
 /// <summary>Testgraph der Zuordnung (#1368): Z.Own.Mid mit Summe 8 im eigenen und 6 im anderen Teilsystem.
@@ -98,7 +100,8 @@ uses
   Atlas.Common.Architecture.Overview,
   Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Layout,
-  Atlas.Common.Architecture.UsesGraph.Tests;
+  Atlas.Common.Architecture.UsesGraph.Tests,
+  Atlas.Tests.RecordText;
 
 /// <summary>Drei Namensräume Core, Data, Ui mit je vier eng verbundenen Units; Data.Db → Core.Base und
 /// Ui.Main → Data.Model sind die einzigen Kanten zwischen den Teilsystemen.</summary>
@@ -662,21 +665,6 @@ begin
   Result := string.Join(',', mNames);
 end;
 
-function IntsText(const AValues: TArray<Integer>): string;
-var
-  mValue: Integer;
-begin
-  Result := '';
-  for mValue in AValues do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ',';
-    end;
-    Result := Result + IntToStr(mValue);
-  end;
-end;
-
 /// <summary>Halbiert jede Gruppe ab zwei Units (für SplitStopsAfterTwoLevels).</summary>
 function Halve(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
 begin
@@ -707,8 +695,8 @@ begin
   begin
     Assert.AreEqual(2, Integer(Length(mGroup)));
   end;
-  Assert.AreEqual('0,1', IntsText(mResult[0]));
-  Assert.AreEqual('8,9', IntsText(mResult[1]));
+  Assert.AreEqual('0,1', TRecordText.Ints(mResult[0]));
+  Assert.AreEqual('8,9', TRecordText.Ints(mResult[1]));
   Assert.AreEqual(0, mFamilies[0]);
   Assert.AreEqual(1, mFamilies[1]);
   Assert.AreEqual(0, mFamilies[2]);
@@ -1086,6 +1074,22 @@ begin
   end;
   Assert.AreEqual(2000, Integer(Length(mOverview.Assignments)));
   Assert.IsTrue(mAssign * 100 < mTotal * 5, Format('Zuordnung %d, Übersicht %d Ticks', [mAssign, mTotal]));
+end;
+
+procedure TOverviewTests.RoleKeysAndSubsystemNames;
+var
+  mOverview: TArchitectureOverview;
+begin
+  Assert.AreEqual('foundation', TArchitectureAnalyzer.RoleKey(TOverviewUnitRole.Foundation));
+  Assert.AreEqual('hub', TArchitectureAnalyzer.RoleKey(TOverviewUnitRole.Hub));
+  Assert.AreEqual('', TArchitectureAnalyzer.RoleKey(TOverviewUnitRole.None));
+  mOverview := Default(TArchitectureOverview);
+  SetLength(mOverview.Subsystems, 1);
+  mOverview.Subsystems[0].Name := 'Kern';
+  Assert.AreEqual('Kern', TArchitectureAnalyzer.SubsystemName(mOverview, 0));
+  Assert.AreEqual('', TArchitectureAnalyzer.SubsystemName(mOverview, 1));
+  Assert.AreEqual('', TArchitectureAnalyzer.SubsystemName(mOverview, -1));
+  mOverview := Default(TArchitectureOverview);
 end;
 
 initialization

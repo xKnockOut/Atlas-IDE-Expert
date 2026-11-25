@@ -14,7 +14,7 @@
 // übergeht der Server. Beim Start räumt das Plugin die Dateien, den Zustand
 // für KI-Assistenten (ide-context-<pid>.json, #2050) und Build-Eingänge
 // (ide-builds\<pid>) abgestürzter oder hart beendeter Prozesse weg
-// (Atlas.Core.Files.ProcessLeftovers).
+// (Atlas.Plugin.Files.ProcessLeftovers).
 
 interface
 
@@ -50,8 +50,9 @@ uses
   System.IOUtils,
   System.JSON,
   ToolsAPI,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Files.ProcessLeftovers;
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Files.ProcessLeftovers,
+  Atlas.Text.Files;
 
 const
   cPROCESS_QUERY_LIMITED_INFORMATION = $1000;
@@ -185,8 +186,13 @@ begin
       end;
     except
       // Gesperrt oder schon weg: beim nächsten Start wieder versuchen.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        if not TTextFiles.IsFileError(E) then
+        begin
+          raise;
+        end;
+      end;
     end;
   end;
 end;
@@ -204,8 +210,13 @@ begin
     RemoveLeftovers(ExtractFileDir(FFileName));
   except
     // Aufräumen ist Nebensache; die Liste dieses Prozesses entsteht trotzdem.
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
+    end;
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;

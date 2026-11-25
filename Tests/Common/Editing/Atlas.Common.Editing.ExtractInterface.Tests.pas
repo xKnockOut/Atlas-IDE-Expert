@@ -48,9 +48,10 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.ExtractInterface;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Editing.ExtractInterface,
+  Atlas.Tests.SourceText;
 
 const
   cGuid = '{11111111-2222-3333-4444-555555555555}';
@@ -123,18 +124,6 @@ const
     'end;'#10 +
     #10 +
     'end.';
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
 
 function NoLookup: TClassAncestorsLookup;
 begin
@@ -231,7 +220,7 @@ var
 begin
   Assert.IsTrue(TryPlan(AText, ALine, Wanted(AMembers, 'ICustomerRepository', True), ALookup, APlan, mReason), mReason);
   Result := TTextChanges.Apply(AText, APlan.Edits);
-  Assert.IsTrue(Parses(Result), Result);
+  Assert.IsTrue(TTestSource.Parses(Result), Result);
   mTree := TPascalParser.Parse(Result);
   try
     mLayout := TClassLayout.Read(mTree, Result, TClassLayout.DeclNamed(mTree, APlan.ClassName));
@@ -477,7 +466,7 @@ begin
     mTree.Free;
   end;
   mText := TTextChanges.Apply(cTarget, [mEdit]);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(mText.Contains('type'#10'  ICustomerRepository = interface'#10), mText);
 end;
 
@@ -491,7 +480,7 @@ begin
   Assert.IsTrue(TryPlan(cRepository, 3, Wanted(DefaultIds(mData), 'ICustomerRepository', False), NoLookup(), mPlan,
     mReason), mReason);
   mText := TExtractInterface.NewUnitText('CustomerRepositoryIntf', mPlan.Declaration, ['System.SysUtils'], #13#10);
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(mText.StartsWith('unit CustomerRepositoryIntf;'#13#10#13#10'interface'#13#10#13#10'uses'#13#10 +
     '  System.SysUtils;'#13#10#13#10'type'#13#10'  ICustomerRepository = interface'#13#10), mText);
 end;

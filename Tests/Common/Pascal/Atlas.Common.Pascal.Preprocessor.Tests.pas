@@ -75,6 +75,11 @@ type
     /// <summary>#847: Jede ausgewertete Bedingung steht mit Wert und Teilwerten in Checks.</summary>
     [Test]
     procedure RecordsConditionChecks;
+    [Test]
+    procedure SourceOptionsCarryFileDefinesAndIncludes;
+    /// <summary>Quelle je Datei: aus der Funktion, ohne Funktion die Vorgabe.</summary>
+    [Test]
+    procedure SourceForFileAsksFunctionOrDefaults;
   end;
 
 implementation
@@ -667,6 +672,47 @@ begin
   Assert.AreEqual('ELSEIF', R.Checks[1].Directive);
   Assert.AreEqual<TConditionValue>(TConditionValue.Yes, R.Checks[1].Value);
   Assert.AreEqual('Delphi 13', Part(R.Checks[1].Parts, 'RTLVersion111').Origin);
+end;
+
+procedure TPascalPreprocessorTests.SourceOptionsCarryFileDefinesAndIncludes;
+var
+  mResolver: TIncludeResolver;
+  mOptions: TPreprocessorOptions;
+  mText, mFile: string;
+begin
+  mResolver :=
+    function(const AName, AFromFile: string; out AFileName, AText: string): Boolean
+    begin
+      AFileName := AName;
+      AText := '{$DEFINE AUS_INCLUDE}';
+      Result := True;
+    end;
+  mOptions := TPascalPreprocessor.SourceOptions(TPascalSource.Create('C:\P\Haupt.pas', ['WIN64'], mResolver));
+  Assert.AreEqual('C:\P\Haupt.pas', mOptions.FileName);
+  Assert.IsTrue(Assigned(mOptions.ResolveInclude));
+  Assert.IsTrue(mOptions.ResolveInclude('a.inc', '', mFile, mText));
+  Assert.AreEqual('{$DEFINE AUS_INCLUDE}', mText);
+  Assert.AreEqual(TPascalPreprocessor.EditorOptions(['WIN64']).CompilerVersion, mOptions.CompilerVersion, 0);
+  Assert.AreEqual('', TPascalPreprocessor.SourceOptions(TPascalSource.Default).FileName);
+  Assert.IsFalse(Assigned(TPascalPreprocessor.SourceOptions(TPascalSource.Default).ResolveInclude));
+end;
+
+procedure TPascalPreprocessorTests.SourceForFileAsksFunctionOrDefaults;
+var
+  mSource: TPascalSourceFunc;
+  mFound: TPascalSource;
+begin
+  mSource :=
+    function(const AFileName: string): TPascalSource
+    begin
+      Result := TPascalSource.Create(AFileName, ['WIN64'], nil);
+    end;
+  mFound := TPascalSources.ForFile(mSource, 'C:\P\U.pas');
+  Assert.AreEqual('C:\P\U.pas', mFound.FileName);
+  Assert.AreEqual('WIN64', mFound.Defines[0]);
+  mFound := TPascalSources.ForFile(nil, 'C:\P\U.pas');
+  Assert.AreEqual('', mFound.FileName);
+  Assert.AreEqual(0, Integer(Length(mFound.Defines)));
 end;
 
 initialization

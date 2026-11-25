@@ -26,7 +26,7 @@ type
   private
     FAccess: IAtlasRegistryAccess;
     FMessage: TProc<string>;
-    function WelcomeKey: string;
+    class function WelcomeKey: string; static;
     function BoardPlaced: Boolean;
     function PlaceBoard: Boolean;
   public
@@ -58,8 +58,8 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Welcome.HostLayout,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Strings,
@@ -81,10 +81,12 @@ end;
 /// <summary>Textdatei lesen, mit oder ohne Byte-Order-Mark (frühere Fassungen schrieben eines); teilt Löschen,
 /// damit es das atomare Ersetzen nicht blockiert. EInOutError, wenn sie nicht lesbar ist.</summary>
 function ReadText(const AFileName: string): string;
+const
+  cNotReadable = 'Datei der Willkommensseite nicht lesbar';
 begin
   if not TAtlasDataFile.TryRead(AFileName, Result) then
   begin
-    raise EInOutError.Create('Datei der Willkommensseite nicht lesbar');
+    raise EInOutError.Create(cNotReadable);
   end;
 end;
 
@@ -117,7 +119,7 @@ begin
   end;
 end;
 
-function TAtlasIdeWelcomeIdeLayout.WelcomeKey: string;
+class function TAtlasIdeWelcomeIdeLayout.WelcomeKey: string;
 begin
   Result := TAtlasWelcomeBackup.WelcomeKey(IdeBaseKey);
 end;

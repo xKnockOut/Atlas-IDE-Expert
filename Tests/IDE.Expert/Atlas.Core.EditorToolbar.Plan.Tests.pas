@@ -44,7 +44,7 @@ uses
   System.SysUtils,
   Atlas.Core.Outline.Breadcrumbs,
   Atlas.Core.EditorToolbar.Sections,
-  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Plugin.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Plan;
 
 { TAtlasToolbarPlanTests }

@@ -32,7 +32,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.CheckLst,
   Atlas.Core.Debug.MethodBreakpoints,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Server fragen; False ohne Server oder bei Fehler (AError).</summary>
@@ -145,7 +145,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.MethodBreakpoints.Strings;
 
 const

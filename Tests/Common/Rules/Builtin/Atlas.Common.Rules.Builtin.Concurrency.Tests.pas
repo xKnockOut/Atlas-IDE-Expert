@@ -127,7 +127,6 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
@@ -135,8 +134,9 @@ uses
   Atlas.Common.Rules.Builtin.Concurrency.Threads,
   Atlas.Common.Rules.Builtin.Concurrency.MainThread,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Tests.RuleAssert;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 const
   cThreadTypes =
@@ -428,7 +428,7 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual('In try/finally einschließen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Import('  Screen.Cursor := crHourGlass;'#10'  Tabelle.DisableControls;'#10'  try'#10 +
     '    Importieren;'#10'  finally'#10'    Tabelle.EnableControls;'#10'    Screen.Cursor := crDefault;'#10 +
     '  end;'), mFixed);
@@ -569,26 +569,8 @@ const
 
 /// <summary>Quelltext nach den Korrekturen des ersten Treffers.</summary>
 function Fixed(const ASource: string; const AFinding: TRuleFinding): string;
-var
-  mLines: TArray<string>;
-  mOffsets: TArray<Integer>;
-  mIndex: Integer;
-  mEdit: TTextEdit;
 begin
-  mLines := ASource.Split([#10]);
-  SetLength(mOffsets, Length(mLines) + 1);
-  mOffsets[0] := 0;
-  for mIndex := 0 to High(mLines) do
-  begin
-    mOffsets[mIndex + 1] := mOffsets[mIndex] + Length(mLines[mIndex]) + 1;
-  end;
-  Result := ASource;
-  for mIndex := High(AFinding.Fixes[0].Edits) downto 0 do
-  begin
-    mEdit := AFinding.Fixes[0].Edits[mIndex];
-    Result := Copy(Result, 1, mOffsets[mEdit.Range.StartPos.Line] + mEdit.Range.StartPos.Character) + mEdit.NewText +
-      Copy(Result, mOffsets[mEdit.Range.EndPos.Line] + mEdit.Range.EndPos.Character + 1, MaxInt);
-  end;
+  Result := TTestEdits.ApplyFix(ASource, AFinding.Fixes[0]);
 end;
 
 procedure TConcurrencyPatternRulesTests.QueueNilIssueExample;
@@ -825,7 +807,7 @@ begin
   Assert.AreEqual(2, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual(7, mFindings[0].Range.EndPos.Character);
   Assert.AreEqual('Terminated in die Schleifenbedingung aufnehmen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(PollerExecute('  while not Terminated do'#10'  begin'#10'    Abfragen;'#10'    Sleep(1000);'#10 +
     '  end;'#10), mFixed);
   TRuleAssert.Silent(TThreadLoopWithoutTerminatedRule.Create, mFixed);
@@ -843,13 +825,13 @@ begin
   Assert.AreEqual(3, Integer(Length(mFindings)));
   Assert.AreEqual(PollerExecute('  while not FFertig and not Terminated do'#10'    FEreignis.WaitFor(500);'#10 +
     '  repeat'#10'    Abfragen;'#10'  until False;'#10'  repeat'#10'    Sleep(10);'#10'  until FFertig or FAbbruch;'#10),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   Assert.AreEqual(PollerExecute('  while not FFertig do'#10'    FEreignis.WaitFor(500);'#10'  repeat'#10 +
     '    Abfragen;'#10'  until Terminated;'#10'  repeat'#10'    Sleep(10);'#10'  until FFertig or FAbbruch;'#10),
-    TChangeSignature.ApplyEdits(mSource, mFindings[1].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[1].Fixes[0].Edits));
   Assert.AreEqual(PollerExecute('  while not FFertig do'#10'    FEreignis.WaitFor(500);'#10'  repeat'#10 +
     '    Abfragen;'#10'  until False;'#10'  repeat'#10'    Sleep(10);'#10'  until (FFertig or FAbbruch) or Terminated;'#10),
-    TChangeSignature.ApplyEdits(mSource, mFindings[2].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[2].Fixes[0].Edits));
   // Methode, die nur aus Execute kommt (auch über eine zweite), eingebettete Routine.
   mFindings := TRuleAssert.Findings(TThreadLoopWithoutTerminatedRule.Create, Poller(
     'procedure TPoller.Execute;'#10'  procedure Warten;'#10'  begin'#10'    while True do Sleep(1);'#10'  end;'#10 +
@@ -904,7 +886,7 @@ begin
   Assert.AreEqual(5, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(10, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('.Start anhängen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(Routine('  TThread.CreateAnonymousThread('#10'    procedure'#10'    begin'#10 +
     '      Synchronisieren;'#10'    end).Start;'), mFixed);
   TRuleAssert.Silent(TAnonymousThreadNotStartedRule.Create, mFixed);
@@ -923,13 +905,13 @@ begin
   Assert.AreEqual('T.Start ergänzen', mFindings[0].Fixes[0].Title);
   Assert.AreEqual(Routine('  T := System.Classes.TThread.CreateAnonymousThread(Arbeit);'#10 +
     '  T.FreeOnTerminate := False;'#10'  T.Start;'#10'  Weiter;', 'procedure TA.Run;'#10'var'#10'  T: TThread;'),
-    TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits));
+    TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits));
   // Inline-Variable.
   mFindings := TRuleAssert.Findings(TAnonymousThreadNotStartedRule.Create, Routine(
     '  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10'  Weiter;'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Routine('  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10'  Aufgabe.Start;'#10 +
-    '  Weiter;'), TChangeSignature.ApplyEdits(Routine('  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10 +
+    '  Weiter;'), TTextChanges.Apply(Routine('  var Aufgabe := TThread.CreateAnonymousThread(Arbeit);'#10 +
     '  Weiter;'), mFindings[0].Fixes[0].Edits));
 end;
 
@@ -978,7 +960,7 @@ begin
   Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(8, mFindings[0].Range.StartPos.Character);
   Assert.AreEqual('Rumpf in try … except mit Meldung über TThread.Queue einschließen', mFindings[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFindings[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFindings[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(TaskUnit('  TTask.Run('#10'    procedure'#10'    begin'#10'      try'#10 +
     '        Importieren(Datei);'#10'      except'#10'        on E: Exception do'#10'        begin'#10 +
     '          var Fehler := E.Message;'#10'          TThread.Queue(nil,'#10'            procedure'#10 +

@@ -38,7 +38,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
-  Atlas.Core.Settings.HiddenPlaces;
+  Atlas.Plugin.Settings.HiddenPlaces;
 
 type
   /// <summary>Ein gezeichnetes Element.</summary>
@@ -125,11 +125,11 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.IDE.Foundation.TeamFile,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Refresh;
 
 { TAtlasIdeElements.TEvents }
 

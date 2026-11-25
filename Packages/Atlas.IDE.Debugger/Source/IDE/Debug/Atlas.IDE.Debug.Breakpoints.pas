@@ -51,7 +51,8 @@ type
 implementation
 
 uses
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services,
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeBreakpoints }
 
@@ -130,8 +131,11 @@ begin
   try
     Result := mServices.NewSourceBreakpoint(AFileName, ALine + 1, nil);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
+    end;
   end;
 end;
 
@@ -147,8 +151,10 @@ begin
     Result.GroupName := AGroup;
   except
     // Ohne Gruppe hält der Haltepunkt genauso.
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Haltepunktgruppe nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+    end;
   end;
 end;
 
@@ -200,8 +206,11 @@ begin
         CopyProperties(ABreakpoint, Result);
       end;
     except
-      on Exception do
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Debugger: Haltepunkt nicht verschoben: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
         Result := nil;
+      end;
     end;
   end;
   if Result <> nil then
@@ -210,8 +219,10 @@ begin
       mServices.RemoveBreakpoint(ABreakpoint);
     except
       // Schon vom Benutzer gelöscht: nichts mehr zu tun.
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        TAtlasGuard.Log('Debugger: Haltepunkt nicht entfernt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      end;
     end;
   end;
 end;
@@ -245,8 +256,10 @@ begin
     AServices.RemoveBreakpoint(ABreakpoint);
   except
     // Schon vom Benutzer gelöscht: nichts mehr zu tun.
-    on Exception do
-      ;
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Haltepunkt nicht entfernt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+    end;
   end;
 end;
 

@@ -11,7 +11,7 @@
 interface
 
 uses
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Core.Tracker.Contract;
 
 {$SCOPEDENUMS ON}
@@ -59,7 +59,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasGitHubTextId] of string = (

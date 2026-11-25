@@ -26,7 +26,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract;
 
 type
   TAtlasQueryCell = record
@@ -559,8 +559,11 @@ end;
 { TAtlasQueryCompletion }
 
 function IsWordChar(AChar: Char): Boolean;
+const
+  /// <summary>Letztes ASCII-Zeichen; alles dahinter (Umlaute, Unicode) zählt zum Wort.</summary>
+  cLastAscii = 127;
 begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '@', '*', '?']) or (Ord(AChar) > 127);
+  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '@', '*', '?']) or (Ord(AChar) > cLastAscii);
 end;
 
 function IsComparisonChar(AChar: Char): Boolean;
@@ -644,6 +647,10 @@ begin
   Result.Detail := ADetail;
 end;
 
+const
+  /// <summary>Vergleiche, die die Vervollständigung nach einem Feld anbietet.</summary>
+  cComparisons: array[0..7] of string = ('=', '<>', '<', '>', '<=', '>=', 'like', 'not like');
+
 function IsComparison(const AWord: string): Boolean;
 begin
   Result := MatchStr(AWord, ['=', '<>', '!=', '<', '>', '<=', '>=', 'like']);
@@ -724,19 +731,18 @@ end;
 
 /// <summary>Regeln, die nur am letzten Wort hängen; True, wenn eine gegriffen hat (auch ohne Vorschlag).</summary>
 function SuggestAfterWord(const ALast: string; var AList: TSuggestionList): Boolean;
+const
+  // Wort, nach dem genau ein Schlüsselwort folgt.
+  cWords: array[0..3] of string = ('order', 'asc', 'desc', 'has');
+  cNext: array[0..3] of string = ('by', 'limit', 'limit', 'attribute');
+var
+  mIndex: Integer;
 begin
   Result := True;
-  if ALast = 'order' then
+  mIndex := IndexStr(ALast, cWords);
+  if mIndex >= 0 then
   begin
-    AList.AddKeywords(['by']);
-  end
-  else if (ALast = 'asc') or (ALast = 'desc') then
-  begin
-    AList.AddKeywords(['limit']);
-  end
-  else if ALast = 'has' then
-  begin
-    AList.AddKeywords(['attribute']);
+    AList.AddKeywords([cNext[mIndex]]);
   end
   else
   begin
@@ -790,7 +796,7 @@ begin
   else if IsFieldOf(AEntity, mLast) then
   begin
     // Nach einem Feld: Vergleich.
-    AList.AddKeywords(['=', '<>', '<', '>', '<=', '>=', 'like', 'not like']);
+    AList.AddKeywords(cComparisons);
   end
   else
   begin
@@ -992,31 +998,31 @@ const
   cInterface = 11;
   cFunction = 12;
   cStruct = 23;
+  // Prädikate in der Reihenfolge von cPredicates.
+  cPredicates: array[0..3] of string = ('inherits', 'implements', 'calls', 'attribute');
+  cInherits = 0;
+  cImplements = 1;
+  cCalls = 2;
+  cAttribute = 3;
 var
   mSymbol: TAtlasSymbol;
+  mPredicate: Integer;
   mFits: Boolean;
 begin
   Result := nil;
+  mPredicate := IndexStr(APredicate, cPredicates);
   for mSymbol in ASymbols do
   begin
-    if APredicate = 'inherits' then
-    begin
-      mFits := (mSymbol.Kind = cClass) or (mSymbol.Kind = cStruct) or (mSymbol.Kind = cInterface);
-    end
-    else if APredicate = 'implements' then
-    begin
-      mFits := mSymbol.Kind = cInterface;
-    end
-    else if APredicate = 'calls' then
-    begin
-      mFits := (mSymbol.Kind = cMethod) or (mSymbol.Kind = cConstructor) or (mSymbol.Kind = cFunction);
-    end
-    else if APredicate = 'attribute' then
-    begin
-      mFits := (mSymbol.Kind = cClass) and EndsText('Attribute', mSymbol.Name);
-    end
+    case mPredicate of
+      cInherits:
+        mFits := (mSymbol.Kind = cClass) or (mSymbol.Kind = cStruct) or (mSymbol.Kind = cInterface);
+      cImplements:
+        mFits := mSymbol.Kind = cInterface;
+      cCalls:
+        mFits := (mSymbol.Kind = cMethod) or (mSymbol.Kind = cConstructor) or (mSymbol.Kind = cFunction);
+      cAttribute:
+        mFits := (mSymbol.Kind = cClass) and EndsText('Attribute', mSymbol.Name);
     else
-    begin
       mFits := False;
     end;
     if mFits and (mSymbol.Name <> '') then

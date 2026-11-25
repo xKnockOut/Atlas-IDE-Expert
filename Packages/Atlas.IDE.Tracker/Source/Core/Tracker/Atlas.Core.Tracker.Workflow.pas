@@ -33,7 +33,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 type
   TAtlasTrackerSyncOptions = record
@@ -218,7 +218,7 @@ uses
   System.StrUtils,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Transitions,
-  Atlas.Core.VersionControl.BranchNames,
+  Atlas.VersionControl.Repository.BranchNames,
   Atlas.Text.Lines;
 
 { TAtlasTrackerSyncOptions }
@@ -694,21 +694,27 @@ begin
 end;
 
 class function TAtlasTrackerWorkflow.DurationText(AMinutes: Integer): string;
+const
+  // Einheiten in beiden Sprachen gleich.
+  cMinutes = '%d min';
+  cHours = '%d h';
+  cHoursMinutes = '%d h %d min';
+  cMinutesPerHour = 60;
 begin
   Result := '';
   if AMinutes <= 0 then
   begin
     Exit;
   end;
-  if AMinutes < 60 then
+  if AMinutes < cMinutesPerHour then
   begin
-    Exit(Format('%d min', [AMinutes]));
+    Exit(Format(cMinutes, [AMinutes]));
   end;
-  if AMinutes mod 60 = 0 then
+  if AMinutes mod cMinutesPerHour = 0 then
   begin
-    Exit(Format('%d h', [AMinutes div 60]));
+    Exit(Format(cHours, [AMinutes div cMinutesPerHour]));
   end;
-  Result := Format('%d h %d min', [AMinutes div 60, AMinutes mod 60]);
+  Result := Format(cHoursMinutes, [AMinutes div cMinutesPerHour, AMinutes mod cMinutesPerHour]);
 end;
 
 class function TAtlasTrackerWorkflow.LoadValues(const AWriter: IAtlasTrackerWriter;

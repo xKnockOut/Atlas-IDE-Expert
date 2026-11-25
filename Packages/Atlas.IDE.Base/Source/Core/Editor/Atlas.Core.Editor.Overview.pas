@@ -24,16 +24,16 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.OverviewKinds,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Settings.OverviewKinds,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.Contract;
 
 type
   /// <summary>Gruppe für editor.overviewRulerKinds (bei den Einstellungen, damit der Parser ohne diesen Kern
   /// auskommt).</summary>
-  TAtlasOverviewKind = Atlas.Core.Settings.OverviewKinds.TAtlasOverviewKind;
-  TAtlasOverviewKinds = Atlas.Core.Settings.OverviewKinds.TAtlasOverviewKinds;
+  TAtlasOverviewKind = Atlas.Plugin.Settings.OverviewKinds.TAtlasOverviewKind;
+  TAtlasOverviewKinds = Atlas.Plugin.Settings.OverviewKinds.TAtlasOverviewKinds;
 {$SCOPEDENUMS ON}
   TAtlasOverviewMarkKind = Atlas.Core.Editor.Contract.TAtlasOverviewMarkKind;
   /// <summary>Spur im Streifen.</summary>

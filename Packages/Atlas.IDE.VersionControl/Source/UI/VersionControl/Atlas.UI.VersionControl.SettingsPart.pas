@@ -16,10 +16,10 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Settings.Contract,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.UI.Settings.Contract,
-  Atlas.UI.Settings.ChoiceBox;
+  Atlas.Vcl.Options.ChoiceBox;
 
 const
   cVcsButtonGap = 6;
@@ -43,6 +43,20 @@ type
   /// <summary>Teil der Seite Versionsverwaltung. Maße an den Bausteinen (Höhe, Breite, Lage) in logischen Pixeln
   /// (96 dpi); skaliert wird in den Bausteinen.</summary>
   TAtlasVcsSettingsPart = class
+  protected const
+    /// <summary>Höhe eines Hinweises mit zwei bzw. drei Zeilen.</summary>
+    cNoteHeight = 36;
+    cLongNoteHeight = 52;
+    /// <summary>Feldzeile (AddFieldRow): Höhe, Oberkante der Beschriftung, linke Kante des Felds.</summary>
+    cFieldRowHeight = 26;
+    cFieldCaptionTop = 5;
+    cFieldLeft = 90;
+    /// <summary>Höhe einer Zeile mit Knöpfen oder Kästchen nebeneinander.</summary>
+    cButtonRowHeight = 32;
+    /// <summary>Höhe einer Zeile mit einem einzeiligen Hinweis unter einem Feld oder einer Liste.</summary>
+    cStateRowHeight = 18;
+    /// <summary>Oberkante eines Kästchens bzw. einer Beschriftung in einer Zeile ohne Eingabefeld.</summary>
+    cCheckTop = 3;
   protected
     /// <summary>Besitzer der eigenen Steuerelemente; nil vor Build und nach Close.</summary>
     FPage: TAtlasVcsSettingsOwner;
@@ -52,6 +66,8 @@ type
     function AddPanel(AHeight: Integer): TWinControl; overload;
     function AddPanel(AHeight: Integer; const AKeys: TArray<string>): TWinControl; overload;
     function AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
+    /// <summary>Umbrechender Hinweis in grauer Schrift des Stils.</summary>
+    function AddNote(AHeight: Integer; const ACaption: string): TLabel;
     /// <summary>Zeile mit Beschriftung links und AControl daneben.</summary>
     function AddFieldRow(AId: TAtlasVcsTextId; AControl: TWinControl; AWidth: Integer): TWinControl; overload;
     function AddFieldRow(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl; overload;
@@ -86,7 +102,9 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Foundation.ListView;
+  Vcl.Graphics,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Service;
 
 const
   cRowButtonTop = 3;
@@ -102,6 +120,8 @@ begin
 end;
 
 function TAtlasVcsSettingsOwner.Part<T>: T;
+const
+  cPartMissing = 'Teil %s fehlt im Abschnitt Versionsverwaltung'; // german-ok: Programmierfehler
 var
   mPart: TAtlasVcsSettingsPart;
 begin
@@ -112,8 +132,7 @@ begin
       Exit(T(mPart));
     end;
   end;
-  raise EArgumentException.CreateFmt('Teil %s fehlt im Abschnitt Versionsverwaltung', // german-ok: Programmierfehler
-    [T.ClassName]);
+  raise EArgumentException.CreateFmt(cPartMissing, [T.ClassName]);
 end;
 
 procedure TAtlasVcsSettingsOwner.RefreshMarks;
@@ -151,6 +170,12 @@ begin
   Result := Host.AddHint(ACaption, AHeight) as TLabel;
 end;
 
+function TAtlasVcsSettingsPart.AddNote(AHeight: Integer; const ACaption: string): TLabel;
+begin
+  Result := AddWrappedLabel(AHeight, ACaption);
+  TAtlasUiTheme.UseFontColor(Result, clGrayText);
+end;
+
 function TAtlasVcsSettingsPart.AddFieldRow(AId: TAtlasVcsTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
 begin
   Result := AddFieldRowCaption(TAtlasVcsStrings.Text(AId), AControl, AWidth);
@@ -166,14 +191,14 @@ function TAtlasVcsSettingsPart.AddFieldRowCaption(const ACaption: string; AContr
 var
   mCaption: TLabel;
 begin
-  Result := AddPanel(26);
+  Result := AddPanel(cFieldRowHeight);
   mCaption := TLabel.Create(FPage);
   mCaption.Parent := Result;
   mCaption.Caption := ACaption + ':';
   mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
+  mCaption.Top := mCaption.ScaleValue(cFieldCaptionTop);
   AControl.Parent := Result;
-  AControl.Left := AControl.ScaleValue(90);
+  AControl.Left := AControl.ScaleValue(cFieldLeft);
   AControl.Top := 1;
   AControl.Width := AControl.ScaleValue(AWidth);
 end;

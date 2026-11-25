@@ -38,7 +38,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Tests.ProjectChoice;
 
 { TAtlasTestProjectChoiceTests }

@@ -7,7 +7,7 @@
 interface
 
 uses
-  Atlas.Core.Settings.KeyCodes,
+  Atlas.Plugin.Settings.KeyCodes,
   Atlas.Core.Settings.Plugin.Store;
 
 const
@@ -63,6 +63,11 @@ const
   cMinAssistantsContextSelectionMax = 0;
   cMaxAssistantsContextSelectionMax = 50000;
   cDefaultAssistantsContextSelectionMax = 4000;
+  /// <summary>Strg+Umschalt+Alt+K (TShortCut).</summary>
+  cDefaultAssistantsLinkMentionKey = $E000 + Ord('K');
+  cMinAssistantsLogMax = 50;
+  cMaxAssistantsLogMax = 5000;
+  cDefaultAssistantsLogMax = 500;
 
 type
   /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
@@ -109,6 +114,30 @@ type
     /// <summary>assistants.instructionsHint (#2615): Hinweis in der Meldungsansicht, wenn nach dem Speichern der
     /// atlas.json der Abschnitt in einer Anweisungsdatei für KI-Assistenten veraltet ist.</summary>
     AssistantsInstructionsHint: Boolean;
+    /// <summary>assistants.link (#2377): RAD Studio als verbundene IDE für Kommandozeilen-Assistenten (WebSocket
+    /// nur auf 127.0.0.1, Lock-Datei, Werkzeuge der IDE); aus = kein Port, keine Lock-Datei.</summary>
+    AssistantsLink: Boolean;
+    /// <summary>assistants.link.shareSelection (#2377): Auswahl im Editor laufend an den Assistenten melden.
+    /// </summary>
+    AssistantsLinkShareSelection: Boolean;
+    /// <summary>assistants.link.diffPreview (#2377): Vorschläge des Assistenten als Vergleich zeigen und erst nach
+    /// der Entscheidung antworten; aus = openDiff wird nicht angeboten.</summary>
+    AssistantsLinkDiffPreview: Boolean;
+    /// <summary>assistants.link.mentionKey (#2377): Taste „Auswahl an den Assistenten“ (TShortCut, 0 = keine;
+    /// Vorgabe Strg+Umschalt+Alt+K).</summary>
+    AssistantsLinkMentionKey: Integer;
+    /// <summary>assistants.editHoldModified (#2605): Änderungen von KI-Assistenten an ungespeichert geänderten
+    /// Dateien zurückhalten, bis der Benutzer entscheidet; aus = ablehnen wie bisher.</summary>
+    AssistantsEditHoldModified: Boolean;
+    /// <summary>assistants.questionsInIde (#2620): Rückfragen von KI-Assistenten (ask_user) als Fenster in der IDE;
+    /// aus = das Werkzeug sagt, der Assistent soll im Client fragen.</summary>
+    AssistantsQuestionsInIde: Boolean;
+    /// <summary>assistants.log (#2049): Aufträge von KI-Assistenten in dieser Sitzung im Fenster
+    /// „Atlas-KI-Protokoll“ festhalten; aus = nichts festhalten.</summary>
+    AssistantsLog: Boolean;
+    /// <summary>assistants.log.max (#2049): höchstens so viele Einträge, cMinAssistantsLogMax bis
+    /// cMaxAssistantsLogMax.</summary>
+    AssistantsLogMax: Integer;
     /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE
     /// ruhig ist, über den Compiler der IDE (mit eingeschalteter Hintergrundcompilierung der IDE ohne zu
     /// blockieren). Aus = kein Bau beim Öffnen.</summary>
@@ -374,6 +403,14 @@ begin
   Result.AssistantsContextSelection := True;
   Result.AssistantsContextSelectionMax := cDefaultAssistantsContextSelectionMax;
   Result.AssistantsInstructionsHint := True;
+  Result.AssistantsLink := False;
+  Result.AssistantsLinkShareSelection := True;
+  Result.AssistantsLinkDiffPreview := True;
+  Result.AssistantsLinkMentionKey := cDefaultAssistantsLinkMentionKey;
+  Result.AssistantsEditHoldModified := True;
+  Result.AssistantsQuestionsInIde := True;
+  Result.AssistantsLog := True;
+  Result.AssistantsLogMax := cDefaultAssistantsLogMax;
   Result.BuildOnOpen := False;
   Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
   Result.BuildOnOpenScope := TAtlasOpenBuildSettings.cScopeNames[TAtlasOpenBuildScope.All];
@@ -429,6 +466,7 @@ begin
   ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
   BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
+  AssistantsLinkMentionKey := EnsureRange(AssistantsLinkMentionKey, 0, $FFFF);
   TestsAffectedDepth := EnsureRange(TestsAffectedDepth, cMinTestsAffectedDepth, cMaxTestsAffectedDepth);
   TestsCoveredByDepth := EnsureRange(TestsCoveredByDepth, cMinTestsCoveredByDepth, cMaxTestsCoveredByDepth);
   TestsUntestedWarnPercent := EnsureRange(TestsUntestedWarnPercent, cMinTestsUntestedWarnPercent,
@@ -445,6 +483,7 @@ begin
   TestsLogMaxLines := EnsureRange(TestsLogMaxLines, cMinTestsLogMaxLines, cMaxTestsLogMaxLines);
   AssistantsContextSelectionMax := EnsureRange(AssistantsContextSelectionMax, cMinAssistantsContextSelectionMax,
     cMaxAssistantsContextSelectionMax);
+  AssistantsLogMax := EnsureRange(AssistantsLogMax, cMinAssistantsLogMax, cMaxAssistantsLogMax);
 end;
 
 procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
@@ -466,6 +505,14 @@ begin
   AIo.Flag('AssistantsContextSelection', AssistantsContextSelection);
   AIo.Number('AssistantsContextSelectionMax', AssistantsContextSelectionMax);
   AIo.Flag('AssistantsInstructionsHint', AssistantsInstructionsHint);
+  AIo.Flag('AssistantsLink', AssistantsLink);
+  AIo.Flag('AssistantsLinkShareSelection', AssistantsLinkShareSelection);
+  AIo.Flag('AssistantsLinkDiffPreview', AssistantsLinkDiffPreview);
+  AIo.Number('AssistantsLinkMentionKey', AssistantsLinkMentionKey);
+  AIo.Flag('AssistantsEditHoldModified', AssistantsEditHoldModified);
+  AIo.Flag('AssistantsQuestionsInIde', AssistantsQuestionsInIde);
+  AIo.Flag('AssistantsLog', AssistantsLog);
+  AIo.Number('AssistantsLogMax', AssistantsLogMax);
   AIo.Flag('BuildOnOpen', BuildOnOpen);
   AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
   AIo.Text('BuildOnOpenScope', BuildOnOpenScope);

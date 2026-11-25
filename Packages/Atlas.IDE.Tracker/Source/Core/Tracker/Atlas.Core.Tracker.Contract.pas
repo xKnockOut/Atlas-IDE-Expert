@@ -85,6 +85,13 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract;
 
+const
+  /// <summary>Beziehungen, die GitHub als Wort liefert (TAtlasTrackerLink.Relation); die Oberfläche übersetzt sie.
+  /// </summary>
+  cGitHubRelationPull = 'pull request';
+  cGitHubRelationMentioned = 'cross-referenced';
+  cGitHubRelationDependsOn = 'depends on';
+
 type
 {$SCOPEDENUMS ON}
   /// <summary>Zustand der Prüfungen (CI) eines Pull Requests: Ampel im Bereich.</summary>
@@ -143,7 +150,9 @@ type
   /// <summary>Höchstlängen der Texte, die die Parser aus Tracker-Antworten übernehmen (Zeichen).</summary>
   TAtlasTrackerTextLimits = record
   public const
-    /// <summary>Login, Schlagwort, Beziehung.</summary>
+    /// <summary>Label, Art eines Issues.</summary>
+    cLabel = 40;
+    /// <summary>Login, Schlagwort, Beziehung, Sprint.</summary>
     cName = 60;
     /// <summary>Vollständiger Name einer Person.</summary>
     cPerson = 80;
@@ -936,7 +945,13 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils;
+
+const
+  cHttps = 'https://';
+  /// <summary>Rang eines Benutzers ohne Treffer (TAtlasTrackerUser.Rank).</summary>
+  cRankNone = 3;
 
 { TAtlasTrackerCall }
 
@@ -1056,7 +1071,7 @@ end;
 
 function TAtlasTrackerUser.Matches(const AText: string): Boolean;
 begin
-  Result := Rank(AText) < 3;
+  Result := Rank(AText) < cRankNone;
 end;
 
 function TAtlasTrackerUser.Rank(const AText: string): Integer;
@@ -1077,7 +1092,7 @@ begin
   begin
     Exit(2);
   end;
-  Result := 3;
+  Result := cRankNone;
 end;
 
 function RankedUsers(const AUsers: TArray<TAtlasTrackerUser>; const AText: string; AMax: Integer;
@@ -1085,32 +1100,35 @@ function RankedUsers(const AUsers: TArray<TAtlasTrackerUser>; const AText: strin
 var
   mRank, mIndex: Integer;
   mUser: TAtlasTrackerUser;
-  mSeen: string;
+  mSeen: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  mSeen := '|';
-  // Stabil: je Rang in der Reihenfolge der Liste (TArray.Sort ist nicht stabil).
-  for mRank := 0 to 3 do
-  begin
-    if (mRank = 3) and not AKeepOthers then
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    // Stabil: je Rang in der Reihenfolge der Liste (TArray.Sort ist nicht stabil).
+    for mRank := 0 to cRankNone do
     begin
-      Break;
-    end;
-    for mIndex := 0 to High(AUsers) do
-    begin
-      if Length(Result) >= AMax then
+      if (mRank = cRankNone) and not AKeepOthers then
       begin
-        Exit;
+        Break;
       end;
-      mUser := AUsers[mIndex];
-      if (Trim(mUser.Login) = '') or (mUser.Rank(AText) <> mRank) or
-        (Pos('|' + LowerCase(mUser.Login) + '|', mSeen) > 0) then
+      for mIndex := 0 to High(AUsers) do
       begin
-        Continue;
+        if Length(Result) >= AMax then
+        begin
+          Exit;
+        end;
+        mUser := AUsers[mIndex];
+        if (Trim(mUser.Login) = '') or (mUser.Rank(AText) <> mRank) or mSeen.ContainsKey(LowerCase(mUser.Login)) then
+        begin
+          Continue;
+        end;
+        mSeen.Add(LowerCase(mUser.Login), True);
+        Result := Result + [mUser];
       end;
-      mSeen := mSeen + LowerCase(mUser.Login) + '|';
-      Result := Result + [mUser];
     end;
+  finally
+    mSeen.Free;
   end;
 end;
 
@@ -1452,7 +1470,7 @@ end;
 
 function TAtlasTrackerTarget.Secure: Boolean;
 begin
-  Result := SameText(Copy(Server, 1, 8), 'https://');
+  Result := SameText(Copy(Server, 1, Length(cHttps)), cHttps);
 end;
 
 { TAtlasIssueSearchQuery }

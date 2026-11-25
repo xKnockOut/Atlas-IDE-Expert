@@ -32,7 +32,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Logging.Providers.Logger,
-  Shell.Compiler,
+  Core.Compiler,
   Shell.Composition.Compile;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
@@ -72,7 +72,7 @@ end;
 
 procedure TShellCompileSetupTests.NoFolderNoJob;
 var
-  mJob: TShellCompileJob;
+  mJob: TCoreCompileJob;
   mError: string;
 begin
   Assert.IsFalse(TShellCompileSetup.JobFor(FRegistry, '', mJob, mError));

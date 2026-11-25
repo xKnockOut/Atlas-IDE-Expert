@@ -51,6 +51,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON,
   Atlas.Core.AiProviders.Contract,
@@ -97,6 +98,14 @@ begin
   mValue := TJSONObject.ParseJSONValue(TAtlasAnthropicApi.RequestBody('m', PromptOf('', 'x')));
   try
     Assert.IsNull(TJSONObject(mValue).GetValue('system'), 'ohne system');
+    // PromptOf setzt 100; ohne Grenze (Smart CodeInsight) gilt die Vorgabe statt 0.
+  finally
+    mValue.Free;
+  end;
+  mValue := TJSONObject.ParseJSONValue(TAtlasAnthropicApi.RequestBody('m', Default(TAtlasAiPrompt)));
+  try
+    Assert.AreEqual(TAtlasAnthropicApi.cDefaultMaxTokens, TJSONObject(mValue).GetValue<Integer>('max_tokens'),
+      'ohne Grenze nie max_tokens 0');
   finally
     mValue.Free;
   end;
@@ -167,8 +176,13 @@ var
 begin
   mAnswer := TAtlasAnthropicApi.ReadAnswer(200, '<html>');
   Assert.AreEqual<TAtlasAiError>(TAtlasAiError.BadAnswer, mAnswer.Error);
+  Assert.AreEqual('HTTP 200: <html>', mAnswer.Detail, 'Status und Anfang des Inhalts für die Diagnose');
   mAnswer := TAtlasAnthropicApi.ReadAnswer(502, '<html>');
   Assert.AreEqual<TAtlasAiError>(TAtlasAiError.ServerError, mAnswer.Error);
+  mAnswer := TAtlasAnthropicApi.ReadAnswer(400,
+    '{"type":"error","error":{"type":"invalid_request_error","message":"needs workspace"}}');
+  Assert.AreEqual<TAtlasAiError>(TAtlasAiError.Rejected, mAnswer.Error, '400: Anfrage abgelehnt');
+  Assert.AreEqual('needs workspace', mAnswer.Detail);
 end;
 
 procedure TAtlasAnthropicApiTests.AnswerWithoutTextIsBadAnswer;
@@ -177,6 +191,10 @@ var
 begin
   mAnswer := TAtlasAnthropicApi.ReadAnswer(200, '{"stop_reason":"end_turn","content":[]}');
   Assert.AreEqual<TAtlasAiError>(TAtlasAiError.BadAnswer, mAnswer.Error);
+  mAnswer := TAtlasAnthropicApi.ReadAnswer(200,
+    '{"stop_reason":"max_tokens","content":[{"type":"thinking","thinking":"x"}]}');
+  Assert.AreEqual('HTTP 200, stop_reason=max_tokens, content=[thinking]', mAnswer.Detail,
+    'ohne Textblock: Grund und Blöcke');
 end;
 
 procedure TAtlasAnthropicApiTests.CompleteWithoutKeySendsNothing;

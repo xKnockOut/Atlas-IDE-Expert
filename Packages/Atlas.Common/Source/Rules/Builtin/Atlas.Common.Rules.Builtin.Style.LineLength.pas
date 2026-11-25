@@ -34,7 +34,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.Formatter.Layout,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Options,
   Atlas.Common.Localization.Texts;
@@ -400,7 +400,7 @@ begin
   begin
     if NeedsCheck(mLine) then
     begin
-      FContinuation := TTextLines.IndentOf(FLines[mLine]) + TFormatLayout.IndentUnit(FStyle);
+      FContinuation := TTextLines.IndentOf(FLines[mLine]) + TRoutineBody.IndentUnit(FStyle);
       CheckLine(mLine);
     end;
   end;

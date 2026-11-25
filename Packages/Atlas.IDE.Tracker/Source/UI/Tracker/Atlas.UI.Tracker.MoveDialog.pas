@@ -19,7 +19,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasBoardMoveDialog = class(TAtlasDialog)
@@ -54,13 +54,15 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Board.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 10;
+  // Platz links und rechts neben dem Text eines Knopfs.
+  cButtonPadding = 32;
 
 { TAtlasBoardMoveDialog }
 
@@ -127,7 +129,7 @@ begin
   Result := TButton.Create(Self);
   Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
+  Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding);
   Result.AlignWithMargins := True;
   TAtlasControlScaling.SetMargins(Result, 0, 0, cGap, 0);
 end;

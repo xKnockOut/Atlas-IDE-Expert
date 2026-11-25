@@ -30,13 +30,13 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Winapi.Windows,
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract.DebugValue,
-  Atlas.Core.Lsp.AccessChains,
+  Atlas.Plugin.Lsp.AccessChains,
   Atlas.Core.Debug.AccessViolation,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.Core.Debug.Phases,
@@ -99,6 +99,8 @@ type
     /// <summary>Was zum Halt gehört: Meldung, Ort, Zeigergröße und abgeglichener Text der Datei.
     /// </summary>
     TStopFacts = record
+      /// <summary>Halt der Exception; Header liest daraus Klasse und Meldung (#2460).</summary>
+      ExceptionStop: TAtlasDebugExceptionStop;
       Access: TAtlasAvMessage;
       FileName: string;
       Line: Integer;
@@ -171,10 +173,10 @@ implementation
 uses
   Vcl.Forms,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.UI.Debug.AccessViolation,
@@ -491,7 +493,10 @@ begin
         mChains := ASession.AccessChains(mFileName, mLine, mPointerSize, cRequestTimeoutMs);
       except
         // Server langsam oder weg: keine Ketten.
-        mChains := Default(TAtlasAvChains);
+        on ELspClientError do
+        begin
+          mChains := Default(TAtlasAvChains);
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,
@@ -526,6 +531,7 @@ begin
   begin
     Exit;
   end;
+  FFacts.ExceptionStop := AStop;
   FFacts.Access := TAtlasAvMessage.Parse(AStop.Exception.ExceptionClass, AStop.Exception.Message);
   if not FFacts.Access.IsAccessViolation then
   begin
@@ -727,7 +733,7 @@ end;
 
 function TAtlasIdeDebugAccessViolation.TStopFacts.Header: string;
 begin
-  Result := TAtlasAvStop.Header(Exception, Place);
+  Result := TAtlasAvStop.Header(ExceptionStop.Exception, Place);
 end;
 
 class function

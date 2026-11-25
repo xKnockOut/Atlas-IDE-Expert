@@ -67,7 +67,8 @@ type
 implementation
 
 uses
-  System.Diagnostics;
+  System.Diagnostics,
+  Atlas.Text.Locked;
 
 var
   CacheLock: TObject;
@@ -220,10 +221,7 @@ begin
 end;
 
 initialization
-  CacheLock := TObject.Create;
-  // Monitor gleich anlegen: Sonst entsteht er beim ersten Zugriff (oft in einem Test) und gilt dort als Leck.
-  TMonitor.Enter(CacheLock);
-  TMonitor.Exit(CacheLock);
+  CacheLock := TAtlasSharedLock.New;
 
 finalization
   CacheNames := Default(TImportNameIndex);

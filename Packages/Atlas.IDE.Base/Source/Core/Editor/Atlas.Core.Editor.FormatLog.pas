@@ -11,8 +11,8 @@
 interface
 
 uses
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits;
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits;
 
 type
   /// <summary>Texte fürs Protokoll beim Formatieren; nur Zahlen.</summary>

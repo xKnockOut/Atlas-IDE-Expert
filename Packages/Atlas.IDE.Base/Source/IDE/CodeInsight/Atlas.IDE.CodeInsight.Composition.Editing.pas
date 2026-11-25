@@ -37,6 +37,7 @@ uses
   Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.RegionFolds,
+  Atlas.IDE.Commands.BlockFolds,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status,
   Atlas.IDE.CodeInsight.Composition.IdeAdapters,
@@ -134,6 +135,8 @@ begin
   TAtlasIdeMethodPlacement.Install(RunningSession, TAtlasIdeHost.Messages(), UnopenedPolicy);
   // Regionen beim Öffnen auf- oder zuklappen (#1814).
   TAtlasIdeRegionFolds.Install;
+  // Große Blöcke einklappen (#2795).
+  TAtlasIdeBlockFolds.Install;
 end;
 
 procedure UninstallEditing;
@@ -143,6 +146,7 @@ begin
   TAtlasIdeUnwrap.Uninstall;
   TAtlasIdeExpressionType.Uninstall;
   TAtlasIdeMethodPlacement.Uninstall;
+  TAtlasIdeBlockFolds.Uninstall;
   TAtlasIdeRegionFolds.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;

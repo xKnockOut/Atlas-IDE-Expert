@@ -76,7 +76,7 @@ implementation
 
 uses
   Atlas.Core.Editor.LineAnchor,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   System.Classes,
   System.DateUtils,
   System.UITypes,
@@ -92,9 +92,9 @@ uses
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.Core.Foundation.Calls;
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Plugin.Calls.Optional;
 
 /// <summary>Liste der Notizen für das Ergebnisfenster mit Bearbeiten und Löschen.</summary>
 function ListOf(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;

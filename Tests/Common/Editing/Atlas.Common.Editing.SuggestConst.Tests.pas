@@ -36,8 +36,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.SuggestConst;
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Editing.SuggestConst,
+  Atlas.Tests.SourceText;
 
 const
   cLF = #10;
@@ -113,18 +114,6 @@ begin
   end;
 end;
 
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
-
 { TSuggestConstTests }
 
 procedure TSuggestConstTests.InlineVariableBecomesConst;
@@ -144,7 +133,7 @@ begin
     '  const Count = Liste.Count + 1;' + cLF +
     '  Writeln(Count);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TSuggestConstTests.TypedInlineVariableKeepsType;
@@ -185,7 +174,7 @@ begin
     '  const Name: string = Trim(Eingabe);' + cLF +
     '  Writeln(Name);' + cLF +
     'end;'), mChanged);
-  Assert.IsTrue(Parses(mChanged));
+  Assert.IsTrue(TTestSource.Parses(mChanged));
 end;
 
 procedure TSuggestConstTests.SectionVariableKeepsOtherNames;

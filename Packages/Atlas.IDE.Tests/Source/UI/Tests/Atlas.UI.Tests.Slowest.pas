@@ -19,8 +19,8 @@ uses
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Tests.Durations,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasTestsSlowestDialog = class(TAtlasDialog)
@@ -56,7 +56,7 @@ implementation
 
 uses
   System.UITypes,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Tests.Strings;
 
 { TAtlasTestsSlowestDialog }

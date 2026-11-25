@@ -4,9 +4,9 @@
 // Verbindet stdin/stdout, Transport, Dispatcher, Lebenszyklus, Dokumentverwaltung,
 // Syntaxdiagnosen, Nachrichtenschleife, Logging, Zeitlimit für Anfragen und
 // Absturzprotokoll mit Stacktrace, Absturzfällen und Sicherheitsnetz
-// (Shell.CrashCases, #1355). Jeder Ordner des Arbeitsbereichs hat
+// (Core.CrashCases, #1355). Jeder Ordner des Arbeitsbereichs hat
 // eigene Konfiguration, eigenes Projekt und eigenen Indexaufbau
-// (TShellWorkspace); der Symbolindex ist gemeinsam.
+// (TCoreWorkspace); der Symbolindex ist gemeinsam.
 // Die Teile hält TShellParts (Shell.Composition.Parts); verdrahtet werden sie in Shell.Composition.ProtocolWiring,
 // CoreWiring, FeatureWiring und CommandWiring, gestartet nach initialized in Shell.Composition.ClientStart.
 
@@ -17,8 +17,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
-  Shell.CommandLine,
-  Shell.CrashCases,
+  Core.CommandLine,
+  Core.CrashCases,
   Shell.Composition.Parts;
 
 type
@@ -38,7 +38,7 @@ type
     /// keine) statt der des Benutzers; der Server sichert dabei keine Fälle und überspringt nichts.</summary>
     procedure PrepareReplay(const ASettingsFile: string);
     /// <summary>Absturzfälle und Sicherheitsnetz (#1355).</summary>
-    function CrashCases: TShellCrashCases;
+    function CrashCases: TCoreCrashCases;
     /// <summary>Gemeinsamer Symbolindex; nil vor der Teilwurzel Index und nach dem Freigeben.</summary>
     function Index: ISymbolIndex;
     /// <summary>Geöffnete Dokumente, für Features, die Dateien auswerten.</summary>
@@ -138,7 +138,7 @@ begin
   FParts.Protocol.CrashCases.SkipEnabled := False;
 end;
 
-function TServerComposition.CrashCases: TShellCrashCases;
+function TServerComposition.CrashCases: TCoreCrashCases;
 begin
   Result := FParts.Protocol.CrashCases;
 end;

@@ -9,7 +9,7 @@
 interface
 
 uses
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   Atlas.Core.Editor.MultiCursor;
 
 type

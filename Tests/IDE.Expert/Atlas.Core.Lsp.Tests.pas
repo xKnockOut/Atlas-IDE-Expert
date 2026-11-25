@@ -117,16 +117,17 @@ uses
   System.Generics.Collections,
   System.SyncObjs,
   System.Diagnostics,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Files.WatchedChanges,
-  Atlas.Core.Projects.Contract,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Files.WatchedChanges,
+  Atlas.Plugin.Projects.Contract,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Lsp.Framing,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Diagnostics.PluginTimings,
+  Atlas.Plugin.Lsp.Framing,
+  Atlas.Plugin.Lsp.Contract;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
 function Unframe(const ABytes: TBytes): TJSONObject;
@@ -869,7 +870,7 @@ begin
   mResponse := TJSONObject.ParseJSONValue('{"items":[],"atlas":{"run":{"serial":3,"active":true,"done":40,' +
     '"total":90,"skipped":1,"paused":"compile","elapsedMs":1500}}}');
   try
-    mRun := TLspWorkspaceRun.FromJson(mResponse);
+    mRun := TLspSessionJson.WorkspaceRun(mResponse);
   finally
     mResponse.Free;
   end;
@@ -884,7 +885,7 @@ begin
   // Ältere Server ohne Laufstand.
   mResponse := TJSONObject.ParseJSONValue('{"items":[]}');
   try
-    Assert.IsFalse(TLspWorkspaceRun.FromJson(mResponse).Known);
+    Assert.IsFalse(TLspSessionJson.WorkspaceRun(mResponse).Known);
   finally
     mResponse.Free;
   end;

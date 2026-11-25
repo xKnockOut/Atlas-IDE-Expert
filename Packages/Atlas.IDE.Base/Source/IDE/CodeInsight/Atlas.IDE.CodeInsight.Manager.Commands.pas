@@ -69,9 +69,9 @@ implementation
 
 uses
   System.SyncObjs,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread;
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread;
 
 /// <summary>Antwort als JSON-Text; '' ohne Antwort. Gibt AAnswer frei.</summary>
 function TakeJson(AAnswer: TJSONValue): string;
@@ -95,7 +95,7 @@ begin
   try
     mAnswer := ASession.RunCommand(ACommand, AArguments, ATimeoutMs);
   except
-    on Exception do
+    on ELspClientError do
     begin
       mAnswer := nil;
     end;
@@ -124,7 +124,7 @@ begin
   try
     mAnswer := AWork(ASession);
   except
-    on Exception do
+    on ELspClientError do
     begin
       mAnswer := nil;
     end;
@@ -338,8 +338,9 @@ begin
           end;
         except
           // Hintergrund-Thread: nie eine Ausnahme nach außen.
-          on Exception do
+          on E: Exception do
           begin
+            TAtlasGuard.Log('Code Insight: Status im Hintergrund: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
           end;
         end;
       finally
@@ -404,8 +405,9 @@ begin
           end;
         except
           // Hintergrund-Thread: nie eine Ausnahme nach außen.
-          on Exception do
+          on E: Exception do
           begin
+            TAtlasGuard.Log('Code Insight: Befehle im Hintergrund: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
           end;
         end;
       finally

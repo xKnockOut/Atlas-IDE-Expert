@@ -8,7 +8,7 @@ interface
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 type
   TAtlasEditorFilesFake = class(TInterfacedObject, IAtlasEditorFiles)

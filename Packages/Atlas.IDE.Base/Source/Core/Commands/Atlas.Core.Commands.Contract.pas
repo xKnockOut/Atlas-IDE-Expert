@@ -106,7 +106,9 @@ type
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
     PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
     DesignerSearch, CheckFile, SectionAppend, DesignerSelectionSetsSave, DesignerShowComponent,
-    DesignerInlineCaption, DesignerSelectionBar, DesignerMagnifier, DesignerUsages, TestsListRun, DebugReattach);
+    DesignerInlineCaption, DesignerSelectionBar, DesignerMagnifier, DesignerUsages, TestsListRun, DebugReattach,
+    // Auswahl an den Assistenten (Modul KI-Assistenten): fehlte in der Übersicht der Tasten.
+    AssistantsMention);
 
   /// <summary>Aktion der IDE, die ein Modul übernommen hat, etwa Strg+F12 „Units“ für „Units suchen“ (#777).
   /// </summary>

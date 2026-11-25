@@ -110,7 +110,7 @@ implementation
 
 uses
   Atlas.Core.Debug.Visualizers.Format,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Text.Json,
   Atlas.Text.Arrays;
 

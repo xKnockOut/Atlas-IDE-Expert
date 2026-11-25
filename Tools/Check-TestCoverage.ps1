@@ -25,8 +25,8 @@
        deren Unit zu einem Modul gehört, trägt [Category('<Package>')], z. B.
        [Category('Atlas.IDE.Debugger')]; damit laufen die Tests eines Moduls
        allein (--include:Atlas.IDE.Debugger). Das Package der Unit "<Unit>"
-       steht in docs/adr/0017-unit-zuordnung.md; fehlt dort eine Zeile, gilt
-       die Ordnertabelle nach dem dritten Namensteil (Atlas.Core.Notes → Notes),
+       steht in Tools/UnitAssignment.tsv; fehlt dort eine Zeile, gilt
+       Tools/UnitAssignment.Folders.tsv nach dem dritten Namensteil (Atlas.Core.Notes → Notes),
        sofern die Testunit eine Unit dieses Moduls nennt. Tests des Kerns
        tragen keine Modulkategorie.
 
@@ -52,6 +52,7 @@ $SourceDirs = @(
     'Packages/Atlas.WinBase',
     'Packages/Atlas.Common/Source',
     'Packages/Atlas.Windows/Source',
+    'Packages/Atlas.Plugin/Source',
     'Application/Source'
 )
 # Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
@@ -61,13 +62,13 @@ $SourceDirs += @($PluginSources | ForEach-Object { "$_/Core" })
 
 # Unit → Grund. Nur, was sich ohne Betriebssystem, Netz oder IDE nicht sinnvoll prüfen lässt.
 $Exempt = @{
-    'Atlas.Windows.Editing.SystemColors'                = 'GetSysColor des laufenden Systems'
+    'Atlas.Windows.Pascal.SystemColors'                = 'GetSysColor des laufenden Systems'
     'Atlas.Windows.Diagnostics.Adapters.DebugOutputSink' = 'schreibt nur über OutputDebugString'
     'Atlas.Windows.Diagnostics.ProcessInfo'             = 'liest Angaben des eigenen Prozesses vom System'
     'Atlas.Windows.Diagnostics.DebugOutput'             = 'Hülle um OutputDebugString'
     'Atlas.Windows.Process.ParentWatcher'               = 'wartet auf das Ende des Elternprozesses'
     'Atlas.Windows.Console.StdStreams'                  = 'Handles der Konsole (stdin/stdout)'
-    'Atlas.Core.Files.Providers.FolderWatcher'          = 'Ordnerbeobachtung des Systems (ReadDirectoryChangesW)'
+    'Atlas.Plugin.Files.Providers.FolderWatcher'          = 'Ordnerbeobachtung des Systems (ReadDirectoryChangesW)'
     'Atlas.Core.Results.CallDiagramTemplate'            = 'erzeugt; Update-ArchitectureMap.ps1 prüft sie gegen Aufrufdiagramm.html'
     'Atlas.Core.Updates.Providers.HttpSource'           = 'HTTP-Zugriff; die Auswertung testet Atlas.Core.Updates'
     'Atlas.Core.Ci.Providers.Http'                      = 'HTTP-Zugriff; die Anbieter testen Atlas.Core.Ci.Providers.*'
@@ -79,20 +80,19 @@ $Exempt = @{
     'Atlas.Windows.Updates.Adapters.Registry'           = 'Registry des Benutzers; die Planung testet Atlas.Common.Updates.KnownPackages'
     'Atlas.Windows.Updates.Adapters.Files'              = 'Dateisystem; Tausch und Rückfall testet Atlas.Common.Updates.FileSwap'
     'Atlas.Windows.Updates.Adapters.Processes'          = 'Prozess- und Modulliste des Systems, Strg+C'
-    'Atlas.Windows.Updates.Adapters.Trust'              = 'WinVerifyTrust und SHA-256 echter Dateien'
     'Atlas.Windows.Updates.Adapters.Network'            = 'HTTP-Zugriff; die Auswertung testet Atlas.Common.Updates.Prepare'
     'Atlas.Windows.Updates.Adapters.Archive'            = 'Hülle um System.Zip; sichere Einträge testet Atlas.Common.Updates.Archive'
     'Atlas.Windows.Updates.Adapters.Builder'            = 'startet MSBuild der Delphi-Installation'
     'Shell.Update'                                      = 'Einstieg von AtlasUpdate.exe (Befehlszeile, Konsole)'
     'Shell.Update.System'                               = 'setzt nur die Windows-Adapter zusammen'
     'Shell.Monitor'                                     = 'Einstieg von AtlasMonitor.exe (eine Instanz, Fenster); Logik testet Atlas.Common.Monitor.*'
-    'Shell.Monitor.MainForm'                            = 'VCL-Fenster und Symbol im Infobereich; Regeln und Texte testet Atlas.Common.Monitor.*'
-    'Shell.Monitor.CheckOptions'                        = 'VCL-Spalte Optionen des Reiters Prüfen; Befehle und Stand testet Atlas.Common.Monitor.*'
-    'Shell.Monitor.CheckPage'                           = 'VCL-Reiter Prüfen; Aufrufe, Läufe und Ergebnisse testet Atlas.Common.Monitor.*'
-    'Shell.Monitor.ReportPage'                          = 'VCL-Reiter Bericht mit eingebettetem Browser (WebView2), ohne eigene Logik'
+    'Monitor.MainForm'                            = 'VCL-Fenster und Symbol im Infobereich; Regeln und Texte testet Atlas.Common.Monitor.*'
+    'Monitor.CheckOptions'                        = 'VCL-Spalte Optionen des Reiters Prüfen; Befehle und Stand testet Atlas.Common.Monitor.*'
+    'Monitor.CheckPage'                           = 'VCL-Reiter Prüfen; Aufrufe, Läufe und Ergebnisse testet Atlas.Common.Monitor.*'
+    'Monitor.ReportPage'                          = 'VCL-Reiter Bericht mit eingebettetem Browser (WebView2), ohne eigene Logik'
     'Atlas.Windows.Monitor.System'                      = 'Prozesse, Registry (Autostart) und ShellExecute des Systems'
     'Atlas.Windows.Monitor.ChildProcess'                = 'Kindprozess mit CreateProcess und Job-Objekt des Systems'
-    'Shell.Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
+    'Update.Install'                              = 'Dialog auf der Konsole; Ablauf testet Atlas.Common.Updates.Apply'
     'Atlas.Windows.Profiling.Adapters.Sampler'          = 'hält Threads eines fremden Prozesses an (SuspendThread, StackWalk64); Zusammenfassen und Auflösen testet Atlas.Common.Profiling.Sampling'
 }
 
@@ -197,25 +197,20 @@ foreach ($key in $needed.Keys) {
 }
 
 # Testkategorie je Modul (#1455).
-$assignmentPath = Join-Path $Root 'docs/adr/0017-unit-zuordnung.md'
-if (Test-Path $assignmentPath) {
+# Zuordnung der Units zu Packages: Tools/UnitAssignment.tsv (Package, Unit, Datei, Grund) und
+# Tools/UnitAssignment.Folders.tsv (Ordner, Package); die Form prüft Check-PackageDependencies.
+$assignmentPath = Join-Path $Root 'Tools/UnitAssignment.tsv'
+$folderPath = Join-Path $Root 'Tools/UnitAssignment.Folders.tsv'
+if ((Test-Path $assignmentPath) -and (Test-Path $folderPath)) {
     $unitPackage = @{}
     $folderPackage = @{}
-    $section = ''
-    foreach ($line in [IO.File]::ReadAllLines($assignmentPath)) {
-        if ($line -match '^##\s+(.+?)\s*$' -and -not $line.StartsWith('###')) { $section = $Matches[1]; continue }
-        if (-not $line.StartsWith('|') -or $line -match '^\|\s*-') { continue }
-        $cells = @($line.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
-        if ($section -eq '') {
-            if ($cells.Count -eq 2 -and $cells[1] -match '^`(Atlas\.IDE\.\w+)`$') {
-                $package = $Matches[1]
-                foreach ($m in [regex]::Matches($cells[0], '`(\w+)`')) { $folderPackage[$m.Groups[1].Value] = $package }
-            }
-            continue
-        }
-        if ($section -match '^Atlas\.IDE\.\w+$' -and $cells.Count -ge 3 -and $cells[0] -match '^`([\w.]+)`$') {
-            $unitPackage[$Matches[1]] = $section
-        }
+    foreach ($line in [IO.File]::ReadAllLines($folderPath) | Select-Object -Skip 1) {
+        $cells = $line.Split("`t")
+        if ($cells.Count -eq 2 -and $cells[0] -ne '*') { $folderPackage[$cells[0].Trim()] = $cells[1].Trim() }
+    }
+    foreach ($line in [IO.File]::ReadAllLines($assignmentPath) | Select-Object -Skip 1) {
+        $cells = $line.Split("`t")
+        if ($cells.Count -ge 2 -and -not $line.StartsWith('#')) { $unitPackage[$cells[1].Trim()] = $cells[0].Trim() }
     }
     foreach ($file in $testFiles | Where-Object { $_.Name -like '*.Tests.pas' }) {
         $unit = $file.BaseName.Substring(0, $file.BaseName.Length - '.Tests'.Length)

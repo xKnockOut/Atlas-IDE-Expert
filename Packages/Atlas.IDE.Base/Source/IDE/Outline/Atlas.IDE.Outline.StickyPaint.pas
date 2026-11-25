@@ -16,8 +16,8 @@ uses
   Vcl.Graphics,
   ToolsAPI.Editor,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Outline.StickyScroll,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.Guides,
@@ -110,7 +110,7 @@ uses
   System.Math,
   System.Win.Registry,
   ToolsAPI,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -177,8 +177,14 @@ begin
     ARegistry.CloseKey;
   except
     // Unlesbarer Eintrag: diese Art ohne Hervorhebung.
-    on Exception do
+    on E: Exception do
+    begin
+      if not ((E is EConvertError) or (E is ERegistryException)) then
+      begin
+        raise;
+      end;
       Result := Default(TAtlasStickySyntaxStyle);
+    end;
   end;
 end;
 
@@ -198,8 +204,14 @@ begin
     end;
     ARegistry.CloseKey;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not ((E is EConvertError) or (E is ERegistryException)) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 

@@ -68,7 +68,7 @@ uses
   Vcl.Menus,
   Vcl.Clipbrd,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Outline.CrumbMenu,
   Atlas.IDE.Foundation.Navigation,
   Atlas.UI.Outline.Strings;

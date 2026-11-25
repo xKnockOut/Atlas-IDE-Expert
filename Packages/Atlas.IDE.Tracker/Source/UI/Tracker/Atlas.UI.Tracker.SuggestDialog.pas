@@ -23,7 +23,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Tracker.PathSuggestions,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Lebt der Empfänger noch? Eine Arbeit im Hintergrund hält die Marke, nicht den Empfänger.</summary>
@@ -89,10 +89,10 @@ type
 implementation
 
 uses
-  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Vcl.Controls.WrapLabel,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.NewIssue.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 10;

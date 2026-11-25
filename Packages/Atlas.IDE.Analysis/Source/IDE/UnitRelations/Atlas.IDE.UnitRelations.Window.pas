@@ -6,7 +6,7 @@
 // OnFrame meldet einen neuen Frame, damit TAtlasIdeUnitRelations ihn
 // verdrahtet und füllt. Vorgabeplatz ist rechts: Beim allerersten Anlegen
 // dockt das Fenster als Reiter neben der Projektverwaltung an (Entscheidung in
-// TAtlasDockPlan.DockToDefault, gemerkt in UnitRelationsWindowPlaced); danach
+// TAtlasIdeDockWindow.PresentBesideProjectManager, gemerkt in UnitRelationsWindowPlaced); danach
 // stellt die IDE die Lage aus ihrem Desktop wieder her.
 
 interface
@@ -49,15 +49,10 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Style.Symbol,
-  Atlas.Core.Dock.Plan,
+  Atlas.Vcl.Images.Symbol,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.DockWindow;
-
-const
-  /// <summary>Name der Projektverwaltung der IDE; sie steht in der Vorgabe-Anordnung rechts.</summary>
-  cProjectManagerName = 'ProjectManagerForm';
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TUnitRelationsDock = class(TInterfacedObject, INTACustomDockableForm)
@@ -171,39 +166,6 @@ begin
   Result := False;
 end;
 
-function ProjectManager: TCustomForm;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to Screen.CustomFormCount - 1 do
-  begin
-    if SameText(Screen.CustomForms[mIndex].Name, cProjectManagerName) then
-    begin
-      Exit(Screen.CustomForms[mIndex]);
-    end;
-  end;
-end;
-
-/// <summary>Beim ersten Anlegen rechts neben die Projektverwaltung andocken (#593).</summary>
-procedure DockToDefault;
-var
-  mForm, mTarget: TCustomForm;
-  mNext: TAtlasPluginSettings;
-begin
-  mForm := Host.Form;
-  mTarget := ProjectManager;
-  if (mForm = nil) or not TAtlasDockPlan.DockToDefault(True, mForm.HostDockSite = nil,
-    TAtlasIdeSettings.Stored.UnitRelationsWindowPlaced, (mTarget <> nil) and (mTarget.HostDockSite <> nil)) then
-  begin
-    Exit;
-  end;
-  mForm.ManualDock(mTarget.HostDockSite, nil, alClient);
-  mNext := TAtlasIdeSettings.Stored;
-  mNext.UnitRelationsWindowPlaced := True;
-  TAtlasIdeSettings.Update(mNext);
-end;
-
 procedure EnsureHost;
 begin
   if Host = nil then
@@ -216,16 +178,15 @@ end;
 
 class function TAtlasIdeUnitRelationsWindow.Show: TAtlasUnitRelationsFrame;
 var
-  mCreated: Boolean;
+  mNext: TAtlasPluginSettings;
 begin
   // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
-  Host.Show(mCreated);
-  if mCreated then
+  if Host.PresentBesideProjectManager(TAtlasIdeSettings.Stored.UnitRelationsWindowPlaced) then
   begin
-    DockToDefault;
-    // Nach dem Andocken die Reiterseite wählen und Gastgeber zeigen.
-    Host.Show(mCreated);
+    mNext := TAtlasIdeSettings.Stored;
+    mNext.UnitRelationsWindowPlaced := True;
+    TAtlasIdeSettings.Update(mNext);
   end;
   Result := ExistingFrame;
 end;

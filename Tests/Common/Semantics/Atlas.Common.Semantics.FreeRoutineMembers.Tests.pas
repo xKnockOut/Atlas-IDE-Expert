@@ -75,18 +75,8 @@ begin
 end;
 
 function Messages(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
 begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ' | ';
-    end;
-    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message;
-  end;
+  Result := TRuleAssert.NumberedMessages(AFound, ' | ', 0);
 end;
 
 procedure TFreeRoutineMembersTests.MethodAsValueWithoutSystem;

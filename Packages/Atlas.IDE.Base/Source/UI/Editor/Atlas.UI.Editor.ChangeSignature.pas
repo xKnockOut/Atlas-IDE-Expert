@@ -19,7 +19,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Editor.ChangeSignature,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasChangeSignatureDialog = class(TAtlasDialog)
@@ -76,11 +76,11 @@ implementation
 uses
   Vcl.Graphics,
   Atlas.UI.Editor.Strings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.ListView,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   // Breiten der Spalten Name, Typ, Modifizierer und Vorgabewert in der Parameterliste.

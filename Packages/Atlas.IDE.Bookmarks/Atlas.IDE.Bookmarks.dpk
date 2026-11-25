@@ -1,5 +1,6 @@
 ﻿package Atlas.IDE.Bookmarks;
 
+{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -62,6 +63,7 @@ contains
   Atlas.IDE.Bookmarks.Service in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas',
   Atlas.IDE.Bookmarks.QuickService in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickService.pas',
   Atlas.IDE.Bookmarks.Adapters.SavedPlaces in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Adapters.SavedPlaces.pas',
+  Atlas.IDE.Bookmarks.Adapters.Module in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Adapters.Module.pas',
   Atlas.IDE.Bookmarks.Composition in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.pas',
   Atlas.IDE.Bookmarks.Composition.Todos in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.Todos.pas',
   Atlas.IDE.Bookmarks.Gutter in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas',

@@ -39,7 +39,7 @@ uses
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.Projects,

@@ -54,12 +54,12 @@ uses
   Vcl.Forms,
   ToolsAPI,
   DockForm,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
   Atlas.UI.Editor.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Host;
@@ -98,7 +98,8 @@ type
     FLineCounts: TDictionary<string, Integer>;
   public
     property History: TAtlasNavHistory read FHistory write FHistory;
-    property Timer: TTimer read FTimer write FTimer;
+    // Nur lesen: Der Timer gehört dem Objekt selbst (Owner Self), ein fremder bräuchte FreeNotification.
+    property Timer: TTimer read FTimer;
     property Notifier: TEditNotifier read FNotifier write FNotifier;
     property NotifierIndex: Integer read FNotifierIndex write FNotifierIndex;
     /// <summary>Letzte gelesene Stelle; FileName = '' ohne.</summary>
@@ -205,7 +206,7 @@ begin
   NotifierIndex := -1;
   History := TAtlasNavHistory.Create;
   LineCounts := TDictionary<string, Integer>.Create;
-  Timer := TTimer.Create(Self);
+  FTimer := TTimer.Create(Self);
   Timer.Interval := cTickMs;
   Timer.OnTimer := Tick;
   Timer.Enabled := True;

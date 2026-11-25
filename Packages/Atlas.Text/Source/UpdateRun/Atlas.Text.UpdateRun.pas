@@ -49,6 +49,8 @@ type
     Error: string;
     /// <summary>Datei oder Grund zum Fehler, ohne Adressen.</summary>
     Detail: string;
+    /// <summary>Kennung eines Hinweises bei gelungener Vorbereitung (TUpdateErrors), '' ohne Hinweis.</summary>
+    Warning: string;
     FromSource: Boolean;
     /// <summary>Auswahl zeigen, bevor das Update eingeplant wird (neue Module und updates.newModules = ask).
     /// </summary>
@@ -88,6 +90,10 @@ type
     cArchive = 'archive';
     cUnsigned = 'unsigned';
     cSignature = 'signature';
+    /// <summary>Versionsdatei ohne Signaturdatei (Hinweis bzw. Fehler, wenn die Signatur verlangt ist).</summary>
+    cManifestUnsigned = 'manifestUnsigned';
+    /// <summary>Signatur der Versionsdatei unlesbar oder von keinem bekannten Schlüssel.</summary>
+    cManifestSignature = 'manifestSignature';
     cBuild = 'build';
     cLocked = 'locked';
     cCopyFailed = 'copy';
@@ -95,6 +101,11 @@ type
     cCancelled = 'cancelled';
     cElevation = 'elevation';
     cSelection = 'selection';
+    /// <summary>Für die IDE gibt es kein Paket, und das Bauen aus dem Quelltext ist nicht bestätigt (Aufruf ohne
+    /// --allow-source). Nichts ist geladen; der Benutzer entscheidet im Plugin.</summary>
+    cSourceConfirm = 'sourceConfirm';
+    /// <summary>Adresse außerhalb der erlaubten Hosts (TUpdateHosts); Detail nennt den Host.</summary>
+    cHost = 'host';
     /// <summary>Unerwarteter Fehler; Detail nennt die Meldung.</summary>
     cUnexpected = 'unexpected';
   end;
@@ -144,6 +155,9 @@ type
     /// <summary>Auf das Ende dieses Prozesses warten (IDE, die apply startet); 0 = keiner.</summary>
     WaitPid: Cardinal;
     NewModules: TUpdateNewModules;
+    /// <summary>Bauen aus dem Quelltext ist bestätigt (--allow-source yes). Ein so gebautes Update ist nicht an
+    /// den Herausgeber gebunden: Die gebauten Packages tragen keine Signatur.</summary>
+    AllowSource: Boolean;
     class function Parse(const AArgs: TArray<string>): TUpdateArguments; static;
     function ToArgs: TArray<string>;
     /// <summary>Befehlszeile nach den Regeln von CommandLineToArgvW (ohne Programmname).</summary>
@@ -285,6 +299,7 @@ begin
   mRoot.AddPair('previous', Previous);
   mRoot.AddPair('error', Error);
   mRoot.AddPair('detail', Detail);
+  mRoot.AddPair('warning', Warning);
   mRoot.AddPair('fromSource', TJSONBool.Create(FromSource));
   mRoot.AddPair('askSelection', TJSONBool.Create(AskSelection));
   mRoot.AddPair('updater', Updater);
@@ -354,6 +369,7 @@ begin
     Result.Previous := TJsonRead.Text(mRoot, 'previous');
     Result.Error := TJsonRead.Text(mRoot, 'error');
     Result.Detail := TJsonRead.Text(mRoot, 'detail');
+    Result.Warning := TJsonRead.Text(mRoot, 'warning');
     Result.FromSource := TJsonRead.Flag(mRoot, 'fromSource');
     Result.AskSelection := TJsonRead.Flag(mRoot, 'askSelection');
     Result.Updater := TJsonRead.Text(mRoot, 'updater');
@@ -432,12 +448,14 @@ type
 {$SCOPEDENUMS ON}
   /// <summary>Argumente des Aktualisierers, gleich geordnet wie cArgumentNames.</summary>
   TUpdateArgument = (Manifest, Version, Ide, Platform, RegistryKey, Target, Staging, Select, WaitPid, NewModules,
-    Previous);
+    Previous, AllowSource);
 {$SCOPEDENUMS OFF}
 
 const
   cArgumentNames: array[TUpdateArgument] of string = ('manifest', 'version', 'ide', 'platform', 'registry-key',
-    'target', 'staging', 'select', 'wait-pid', 'new-modules', 'previous');
+    'target', 'staging', 'select', 'wait-pid', 'new-modules', 'previous', 'allow-source');
+  /// <summary>Wert von --allow-source, der das Bauen aus dem Quelltext bestätigt.</summary>
+  cConfirmed = 'yes';
 
 /// <summary>Prozesskennung aus dem Aufruf; 0 bei ungültigem Text oder einem Wert außerhalb von Cardinal.</summary>
 function ProcessIdOf(const AValue: string): Cardinal;
@@ -500,6 +518,8 @@ begin
       AArguments.NewModules := TUpdateNames.ParseNewModules(AValue);
     TUpdateArgument.Previous:
       AArguments.Previous := AValue;
+    TUpdateArgument.AllowSource:
+      AArguments.AllowSource := SameText(AValue, cConfirmed);
   end;
 end;
 
@@ -563,6 +583,10 @@ begin
       AddPair(mList, 'wait-pid', IntToStr(WaitPid));
     end;
     AddPair(mList, 'new-modules', TUpdateNames.NewModulesName(NewModules));
+    if AllowSource then
+    begin
+      AddPair(mList, 'allow-source', cConfirmed);
+    end;
     Result := mList.ToArray;
   finally
     mList.Free;

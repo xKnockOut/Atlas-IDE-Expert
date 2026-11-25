@@ -80,7 +80,9 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
   Atlas.Core.Settings.Contract,
-  Atlas.Core.Tracker.Contract.TestResults;
+  Atlas.Core.Tracker.Contract.TestResults,
+  Atlas.Core.Settings.TestSupport,
+  Atlas.Core.Projects.TestSupport;
 
 const
   cTestProject = 'C:\Projekte\Atlas\Atlas.Tests.dproj';
@@ -88,14 +90,6 @@ const
 function Now0: TDateTime;
 begin
   Result := EncodeDate(2026, 10, 16) + EncodeTime(19, 41, 0, 0);
-end;
-
-function Failure(const ATest, AMessage, AFile: string; ALine: Integer): TAtlasProjectTestFailure;
-begin
-  Result.Test := ATest;
-  Result.Message := AMessage;
-  Result.FileName := AFile;
-  Result.Line := ALine;
 end;
 
 function CiFailure(const ATest, AMessage: string): TAtlasCiFailure;
@@ -172,62 +166,6 @@ end;
 function NoJob: TAtlasCiJob;
 begin
   Result := TAtlasCiJob.Create('', '', '', False, '');
-end;
-
-type
-  TTestsStore = class(TInterfacedObject, IAtlasSettingsStore)
-  private
-    FValues: TDictionary<string, string>;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    function ReadInteger(const AName: string; ADefault: Integer): Integer;
-    procedure WriteInteger(const AName: string; AValue: Integer);
-    function ReadString(const AName, ADefault: string): string;
-    procedure WriteString(const AName, AValue: string);
-  end;
-
-{ TTestsStore }
-
-constructor TTestsStore.Create;
-begin
-  inherited Create;
-  FValues := TDictionary<string, string>.Create;
-end;
-
-destructor TTestsStore.Destroy;
-begin
-  FValues.Free;
-  inherited;
-end;
-
-function TTestsStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
-var
-  mText: string;
-begin
-  Result := ADefault;
-  if FValues.TryGetValue(AName, mText) then
-  begin
-    Result := StrToIntDef(mText, ADefault);
-  end;
-end;
-
-procedure TTestsStore.WriteInteger(const AName: string; AValue: Integer);
-begin
-  FValues.AddOrSetValue(AName, IntToStr(AValue));
-end;
-
-function TTestsStore.ReadString(const AName, ADefault: string): string;
-begin
-  if not FValues.TryGetValue(AName, Result) then
-  begin
-    Result := ADefault;
-  end;
-end;
-
-procedure TTestsStore.WriteString(const AName, AValue: string);
-begin
-  FValues.AddOrSetValue(AName, AValue);
 end;
 
 { TAtlasTestResultsTests }
@@ -595,7 +533,7 @@ var
   mStore: IAtlasSettingsStore;
   mSaved, mLoaded: TAtlasPluginSettings;
 begin
-  mStore := TTestsStore.Create;
+  mStore := TTextStore.Create;
   mSaved := TAtlasPluginSettings.Defaults;
   mSaved.WelcomePageTests := False;
   mSaved.WelcomePageTestsMaxFailures := 12;

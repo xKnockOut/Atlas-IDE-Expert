@@ -16,7 +16,7 @@ uses
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Hotspots.Model;
 
 type
@@ -69,13 +69,22 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Scaling,
   Atlas.UI.Analysis.Strings,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Teilstriche je Achse.</summary>
   cTicks = 4;
+  // Vorgabegröße der Grafik in logischen Pixeln.
+  cDefaultWidth = 400;
+  cDefaultHeight = 220;
+  // Abstand der Achsenbeschriftung von der Achse bzw. des Namens von der Blase in logischen Pixeln.
+  cAxisCaptionGap = 4;
+  cBubbleCaptionGap = 3;
+  // Deckkraft der Bewertungsfarbe über dem Hintergrund.
+  cBubbleAlpha = 0.75;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -93,8 +102,8 @@ begin
   ShowHint := True;
   FSelected := -1;
   FHover := -1;
-  Width := ScaleValue(400);
-  Height := ScaleValue(220);
+  Width := ScaleValue(cDefaultWidth);
+  Height := ScaleValue(cDefaultHeight);
 end;
 
 procedure TAtlasHotspotChartView.Paint;
@@ -177,7 +186,7 @@ end;
 
 function TAtlasHotspotChartView.Scale: Double;
 begin
-  Result := CurrentPPI / 96;
+  Result := CurrentPPI / TAtlasScaling.cBasePPI;
 end;
 
 procedure TAtlasHotspotChartView.Relayout;
@@ -224,12 +233,12 @@ begin
     mY := mBottom - (mBottom - mTop) * mTick div cTicks;
     mCaption := IntToStr(Round(mMaxComplexity * mTick / cTicks));
     mSize := Canvas.TextExtent(mCaption);
-    Canvas.TextOut(mLeft - mSize.cx - Round(4 * Scale), mY - mSize.cy div 2, mCaption);
+    Canvas.TextOut(mLeft - mSize.cx - Round(cAxisCaptionGap * Scale), mY - mSize.cy div 2, mCaption);
   end;
   mCaption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColChanges);
   mSize := Canvas.TextExtent(mCaption);
   Canvas.TextOut(mRight - mSize.cx, mBottom - mSize.cy - Round(2 * Scale), mCaption);
-  Canvas.TextOut(mLeft + Round(4 * Scale), mTop,
+  Canvas.TextOut(mLeft + Round(cAxisCaptionGap * Scale), mTop,
     TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColComplexity));
 end;
 
@@ -241,7 +250,7 @@ begin
   for mBubble in FBubbles do
   begin
     Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(TAtlasColor(TAtlasHotspotChart.ScoreColor(
-      FEntries[mBubble.Entry].Score)), AColors.Surface, 0.75));
+      FEntries[mBubble.Entry].Score)), AColors.Surface, cBubbleAlpha));
     if (mBubble.Entry = FSelected) or (mBubble.Entry = FHover) then
     begin
       Canvas.Pen.Color := ToColor(AColors.Accent);
@@ -268,8 +277,8 @@ begin
     begin
       Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := ToColor(AColors.Text);
-      Canvas.TextOut(mBubble.X + mBubble.Radius + Round(3 * Scale), mBubble.Y - Canvas.TextHeight('Ag') div 2,
-        FEntries[mBubble.Entry].Caption);
+      Canvas.TextOut(mBubble.X + mBubble.Radius + Round(cBubbleCaptionGap * Scale),
+        mBubble.Y - Canvas.TextHeight('Ag') div 2, FEntries[mBubble.Entry].Caption);
     end;
   end;
 end;

@@ -29,7 +29,7 @@ uses
   Vcl.AppEvnts,
   Atlas.Core.Designer.InlineCaption,
   Atlas.UI.Designer.CaptionEditor,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -104,14 +104,14 @@ uses
   Vcl.ComCtrls,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.FitText,
   Atlas.IDE.Designer.FormTextProps,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Designer.Outlines;
 

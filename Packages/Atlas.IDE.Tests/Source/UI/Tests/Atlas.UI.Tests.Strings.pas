@@ -2,7 +2,7 @@
 
 // Oberflächentexte des Moduls Tests auf Deutsch und Englisch (#1455). Die Sprache
 // bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu, ein Sprachwechsel braucht
-// daher keine eigene Meldung. Kerntexte bleiben in `Atlas.UI.Strings`.
+// daher keine eigene Meldung. Kerntexte bleiben in `Atlas.Plugin.Localization.Strings`.
 
 interface
 
@@ -69,7 +69,6 @@ type
     LeakChoiceUnavailable, LeakDownloadHint, LeakFileReportOption, LeakSetupButton, LeakCloseButton,
     LeakPreviewTitle, LeakPreviewHint, LeakPreviewApply, LeakEditAction, LeakNothingToDo, LeakDefinesDone,
     LeakDefinesFailed, LeakNoDebugConfig, LeakCopyDllAsk, LeakCopyDllDone, LeakCopyDllFailed, LeakDone,
-    LeakSetupFailed,
     SettingsLeakSetup,
     // Lecks je Test (#1774).
     TestsLensLeak, TestsLeakProblem, TestsLeaksFinished, SettingsTestsLeaks,
@@ -160,7 +159,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 const
   cTexts: array[TAtlasLanguage, TAtlasTestsTextId] of string = (
@@ -388,7 +387,6 @@ const
      'Leckprüfung: %s nach %s kopiert.',
      'Leckprüfung: %s nicht kopiert: %s',
      'Leckprüfung für %s eingerichtet.',
-     'Leckprüfung: Fehler beim Einrichten (%s). Details im Atlas-Protokoll.',
      'Befehl „Leckprüfung einrichten …“ (Projektverwaltung, Befehlspalette)',
      '%s · Leck: %d Bytes',
      'Test %s gibt Speicher nicht frei: %d Bytes (Leck)',
@@ -900,7 +898,6 @@ const
      'Leak check: %s copied to %s.',
      'Leak check: %s not copied: %s',
      'Leak check set up for %s.',
-     'Leak check: setup failed (%s). Details in the Atlas log.',
      'Command “Set up leak check…” (project manager, command palette)',
      '%s · leak: %d bytes',
      'Test %s does not free memory: %d bytes (leak)',

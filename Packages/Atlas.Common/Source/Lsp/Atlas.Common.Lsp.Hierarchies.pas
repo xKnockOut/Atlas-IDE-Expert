@@ -26,7 +26,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.ReferenceConfidence,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   THierarchyItem = record
@@ -66,7 +67,7 @@ type
       const ACancellation: IJsonRpcCancellationToken): THierarchyCallSource; static;
   end;
 
-  TLspHierarchies = class
+  TLspHierarchies = class(TLspProjectFeature)
   public const
     cPrepareTypeMethod = 'textDocument/prepareTypeHierarchy';
     cSupertypesMethod = 'typeHierarchy/supertypes';
@@ -75,11 +76,6 @@ type
     cIncomingMethod = 'callHierarchy/incomingCalls';
     cOutgoingMethod = 'callHierarchy/outgoingCalls';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
-    FReadText: TReferenceReadText;
-    FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FSettingsFor: TReferenceSettingsProvider;
     function Prepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
@@ -166,13 +162,14 @@ uses
   Atlas.Common.Lsp.Internals.Namespaces,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -193,41 +190,14 @@ const
   cRoutineKinds: TIndexSymbolKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
   cMaxCalls = 1000;
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 function RangeContains(const AOuter: TTextRange; const APosition: TTextPosition): Boolean;
 begin
-  Result := (ComparePositions(AOuter.StartPos, APosition) <= 0) and (ComparePositions(APosition, AOuter.EndPos) < 0);
+  Result := (TTextPosition.Compare(AOuter.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, AOuter.EndPos) < 0);
 end;
 
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 begin
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
-end;
-
-function WithoutGenerics(const AName: string): string;
-var
-  mBracket: Integer;
-begin
-  mBracket := Pos('<', AName);
-  if mBracket > 0 then
-  begin
-    Result := Copy(AName, 1, mBracket - 1);
-  end
-  else
-  begin
-    Result := AName;
-  end;
 end;
 
 function FromResolved(const ASymbol: TResolvedSymbol): THierarchyItem;
@@ -593,8 +563,8 @@ begin
   mOwnUnit := TIndexExtractor.Extract(ATree, AFileName);
   for mSymbol in mOwnUnit.Symbols do
   begin
-    if (mSymbol.Kind in AKinds) and (ComparePositions(mSymbol.SelectionRange.StartPos, APosition) <= 0) and
-      (ComparePositions(APosition, mSymbol.SelectionRange.EndPos) <= 0) then
+    if (mSymbol.Kind in AKinds) and (TTextPosition.Compare(mSymbol.SelectionRange.StartPos, APosition) <= 0) and
+      (TTextPosition.Compare(APosition, mSymbol.SelectionRange.EndPos) <= 0) then
     begin
       AItem := FromIndex(mOwnUnit.UnitName, AFileName, mSymbol);
       Exit(True);
@@ -639,12 +609,7 @@ end;
 constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
 constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -730,7 +695,7 @@ begin
   end;
   for mName in mNames do
   begin
-    if AResolver.ResolveTypeFrom(mOwnerUnit, WithoutGenerics(mName), mResolved) and
+    if AResolver.ResolveTypeFrom(mOwnerUnit, TTextNames.WithoutGenerics(mName), mResolved) and
       (mResolved.SymbolKind in cHierarchyTypeKinds) then
     begin
       Result := Result + [FromResolved(mResolved)];

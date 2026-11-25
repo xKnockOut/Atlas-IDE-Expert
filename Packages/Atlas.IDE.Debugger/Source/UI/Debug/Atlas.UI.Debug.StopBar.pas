@@ -14,7 +14,7 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasStopBar = class(TAtlasLayoutPopupWindow)
@@ -58,7 +58,7 @@ uses
   Winapi.Windows,
   System.Math,
   Vcl.Graphics,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cPad = 10;

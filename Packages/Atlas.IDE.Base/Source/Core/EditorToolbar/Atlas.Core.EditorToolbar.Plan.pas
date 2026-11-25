@@ -70,7 +70,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Settings.ToolbarItems;
+  Atlas.Plugin.Settings.ToolbarItems;
 
 class function TAtlasToolbarPlan.Tick(AOn: Boolean; APointCount: Integer; AEditorActive: Boolean;
   var AIdle: Integer): TAtlasToolbarTick;

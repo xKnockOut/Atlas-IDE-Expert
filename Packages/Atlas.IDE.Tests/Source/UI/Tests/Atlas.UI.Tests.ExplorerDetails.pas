@@ -66,7 +66,7 @@ implementation
 
 uses
   Vcl.Clipbrd,
-  Atlas.UI.Foundation.ListBox,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.UI.Tests.Strings;
 
 const

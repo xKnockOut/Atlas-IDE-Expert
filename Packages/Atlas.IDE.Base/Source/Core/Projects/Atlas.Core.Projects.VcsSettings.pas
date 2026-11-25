@@ -8,7 +8,7 @@
 interface
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Projects.VersionControl;
 
 type
@@ -38,7 +38,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Plugin.Settings.JsonText;
 
 /// <summary>Inhalt eines JSON-Strings (getrimmt); '' ohne Wert oder bei anderem Typ. TJSONNumber erbt unter
 /// Delphi 12 und FPC von TJSONString und wird deshalb ausdrücklich ausgeschlossen.</summary>

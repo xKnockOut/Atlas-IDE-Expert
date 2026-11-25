@@ -15,7 +15,7 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.Menus,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.UI.Designer.Overlay,
   Atlas.UI.Designer.Outlines;
 
@@ -62,7 +62,7 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Theme.Style;
 
 { TAtlasIdeDesignerTool }
 

@@ -29,11 +29,10 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Naming,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ClassActions,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.RoutineSignatures;
 
 {$SCOPEDENUMS ON}
 
@@ -111,25 +110,6 @@ begin
   AHead := mText;
 end;
 
-/// <summary>Verfolgt Klammertiefe und Standardwert-Abschnitte für WithoutDefaults: ab "=" auf Tiefe 1 wird bis
-/// zum nächsten ";" bzw. zur schließenden Klammer übersprungen.</summary>
-procedure TrackDefault(AChar: Char; var ADepth: Integer; var ASkipping: Boolean);
-begin
-  case AChar of
-    '(', '[':
-      Inc(ADepth);
-    ')', ']':
-      begin
-        Dec(ADepth);
-        ASkipping := ASkipping and (ADepth <> 0);
-      end;
-    ';':
-      ASkipping := ASkipping and (ADepth <> 1);
-    '=':
-      ASkipping := ASkipping or (ADepth = 1);
-  end;
-end;
-
 /// <summary>Kopf ohne Standardwerte der Parameter, für den Rumpf.</summary>
 function WithoutDefaults(const AHead: string): string;
 var
@@ -149,7 +129,7 @@ begin
     end;
     if not mQuoted then
     begin
-      TrackDefault(AHead[mIndex], mDepth, mSkipping);
+      TRoutineSignatures.TrackDefault(AHead[mIndex], mDepth, mSkipping);
     end;
     if not mSkipping then
     begin

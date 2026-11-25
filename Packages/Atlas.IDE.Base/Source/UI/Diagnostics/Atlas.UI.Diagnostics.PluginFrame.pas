@@ -22,9 +22,9 @@ uses
   Vcl.Forms,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.PluginTimings,
   Atlas.UI.Diagnostics.PluginParts,
   Atlas.UI.Diagnostics.MainThreadPage,
   Atlas.UI.Diagnostics.TimingFrame;
@@ -76,10 +76,11 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.PluginReport,
+  Atlas.Plugin.Diagnostics.PluginReport,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.PluginRows,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 
@@ -99,7 +100,7 @@ begin
   FBar.Align := alTop;
   FBar.Top := FTabs.Height;
   FFooter := NewLabel(alBottom);
-  FFooter.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FFooter, clGrayText);
   FOffNote := PlaceLabel(TAtlasWrapLabel.Create(Self), alTop);
   FOffNote.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagPluginOff);
   FMain := TAtlasMainThreadPage.Create(Self);

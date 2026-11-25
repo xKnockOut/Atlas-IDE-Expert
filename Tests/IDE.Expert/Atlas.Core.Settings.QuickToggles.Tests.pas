@@ -39,9 +39,9 @@ uses
   System.JSON,
   System.Generics.Collections,
   System.TypInfo,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.SchemaData,
+  Atlas.Plugin.Settings.SchemaData,
   Atlas.Core.Settings.QuickToggles;
 
 const

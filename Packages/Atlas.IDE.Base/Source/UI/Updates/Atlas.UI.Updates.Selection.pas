@@ -13,7 +13,7 @@ uses
   Vcl.StdCtrls,
   Vcl.CheckLst,
   Atlas.Text.UpdateRun,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasUpdateSelectionDialog = class(TAtlasDialog)
@@ -45,7 +45,7 @@ uses
   System.UITypes,
   Vcl.Controls,
   Atlas.UI.Updates.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   cGap = 8;

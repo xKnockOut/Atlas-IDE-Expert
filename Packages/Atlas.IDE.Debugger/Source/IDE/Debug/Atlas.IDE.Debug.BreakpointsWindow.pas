@@ -46,8 +46,8 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.BreakpointList,
   Atlas.UI.Debug.Breakpoints.Strings,
-  Atlas.UI.Style.Symbol,
-  Atlas.IDE.Foundation.DockWindow;
+  Atlas.Vcl.Images.Symbol,
+  Atlas.ToolsApi.Windows.DockWindow;
 
 type
   TBreakpointsDock = class(TInterfacedObject, INTACustomDockableForm)

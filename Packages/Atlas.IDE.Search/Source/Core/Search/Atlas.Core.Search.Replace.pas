@@ -21,7 +21,7 @@ interface
 uses
   System.SysUtils,
   System.RegularExpressions,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.Core.Search.Matching;
 
 type
@@ -52,6 +52,10 @@ type
 
 implementation
 
+uses
+  System.RegularExpressionsCore,
+  Atlas.Text.Lines;
+
 { TAtlasReplacePreview }
 
 function TAtlasReplacePreview.Caption: string;
@@ -60,16 +64,6 @@ begin
 end;
 
 { TAtlasSearchReplace }
-
-/// <summary>Zeile ohne #13 am Ende.</summary>
-function CleanLine(const ALine: string): string;
-begin
-  Result := ALine;
-  if (Result <> '') and (Result[Length(Result)] = #13) then
-  begin
-    SetLength(Result, Length(Result) - 1);
-  end;
-end;
 
 /// <summary>Wert der Gruppe (Nummer oder Name); '' wenn es sie nicht gibt oder sie nicht passte.</summary>
 function GroupValue(const AMatch: TMatch; const AName: string): string;
@@ -97,7 +91,7 @@ begin
     end;
   except
     // Unbekannter Name: die Engine meldet ihn als Fehler; für den Ersatztext heißt das „nichts“.
-    on Exception do
+    on ERegularExpressionError do
       Result := '';
   end;
 end;
@@ -161,7 +155,7 @@ begin
   begin
     Exit;
   end;
-  mLine := CleanLine(ALines[AHit.Line]);
+  mLine := TTextLines.StripTrailingCr(ALines[AHit.Line]);
   // Derselbe Ausdruck auf derselben Zeile liefert den Treffer wieder, jetzt mit Gruppen.
   mFound := TRegEx.Create(AQuery.Text, TAtlasSearchRegex.Options(AQuery.Options)).Match(mLine);
   while mFound.Success do
@@ -203,7 +197,7 @@ begin
   Result := '';
   if (AHit.Line >= 0) and (AHit.Line <= High(ALines)) then
   begin
-    Result := Copy(CleanLine(ALines[AHit.Line]), AHit.Character + 1, AHit.Length);
+    Result := Copy(TTextLines.StripTrailingCr(ALines[AHit.Line]), AHit.Character + 1, AHit.Length);
   end;
 end;
 

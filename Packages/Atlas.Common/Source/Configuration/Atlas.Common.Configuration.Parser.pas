@@ -48,7 +48,8 @@ uses
   Atlas.Common.Configuration.Internals.ProjectOptions,
   Atlas.Common.Configuration.Internals.SuggestionOptions,
   Atlas.Common.Configuration.Internals.TestListOptions,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -237,29 +238,6 @@ begin
   end;
 end;
 
-function QuoteKey(const AKey: string): string;
-var
-  mCh: Char;
-begin
-  Result := '"';
-  for mCh in AKey do
-  begin
-    if (mCh = '"') or (mCh = '\') then
-    begin
-      Result := Result + '\' + mCh;
-    end
-    else if Ord(mCh) < 32 then
-    begin
-      Result := Result + Format('\u%.4x', [Ord(mCh)]);
-    end
-    else
-    begin
-      Result := Result + mCh;
-    end;
-  end;
-  Result := Result + '"';
-end;
-
 function NodeText(const AText: string; ANode: TJsonNode): string;
 begin
   Result := Copy(AText, ANode.Start + 1, ANode.Stop - ANode.Start);
@@ -285,7 +263,7 @@ begin
   begin
     if LastKeyIndex(AUpper, ALower.Keys[mIndex]) < 0 then
     begin
-      Result := Result + [QuoteKey(ALower.Keys[mIndex]) + ': ' + NodeText(ALowerText, ALower[mIndex])];
+      Result := Result + [TJsonText.Quote(ALower.Keys[mIndex]) + ': ' + NodeText(ALowerText, ALower[mIndex])];
     end;
   end;
 end;
@@ -309,7 +287,7 @@ begin
     begin
       mValue := NodeText(AUpperText, AUpper[mIndex]);
     end;
-    mParts := mParts + [QuoteKey(AUpper.Keys[mIndex]) + ': ' + mValue];
+    mParts := mParts + [TJsonText.Quote(AUpper.Keys[mIndex]) + ': ' + mValue];
   end;
   Result := '{' + string.Join(', ', mParts) + '}';
 end;

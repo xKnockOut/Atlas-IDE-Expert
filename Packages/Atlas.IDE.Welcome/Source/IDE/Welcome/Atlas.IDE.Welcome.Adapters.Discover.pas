@@ -33,7 +33,7 @@ uses
   Atlas.Core.Commands.Tips,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Discover,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract;
 
 type
@@ -110,11 +110,11 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.ShortcutTips,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,

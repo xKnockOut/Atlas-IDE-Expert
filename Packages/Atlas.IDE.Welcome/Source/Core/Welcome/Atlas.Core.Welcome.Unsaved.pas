@@ -49,8 +49,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.WorkingCopies,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.WorkingCopies,
   Atlas.Core.Welcome.Contract;
 
 type
@@ -258,9 +258,15 @@ uses
   System.JSON,
   Atlas.Core.Projects.Recording,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json;
+  Atlas.Plugin.Projects.Summary.Json;
 
 const
+  /// <summary>Präfix eines Zweigs im Ziel eines Push.</summary>
+  cHeadsPrefix = 'refs/heads/';
+  cMinutesPerHour = 60;
+  /// <summary>Rundungszugaben: Ein Alter von genau 60 Minuten bzw. genau einer Schwelle zählt voll.</summary>
+  cMinuteEpsilon = 1E-6;
+  cHourEpsilon = 1E-9;
   cKindNames: array[TAtlasUnsavedKind] of string = ('changes', 'conflicts', 'commits', 'noUpstream', 'stashes');
   cAllKinds: TAtlasUnsavedKinds = [TAtlasUnsavedKind.Changes, TAtlasUnsavedKind.Conflicts,
     TAtlasUnsavedKind.Commits, TAtlasUnsavedKind.NoUpstream, TAtlasUnsavedKind.Stashes];
@@ -335,9 +341,9 @@ var
   mName: string;
 begin
   mName := RemoteRef;
-  if Copy(mName, 1, 11) = 'refs/heads/' then
+  if Copy(mName, 1, Length(cHeadsPrefix)) = cHeadsPrefix then
   begin
-    mName := Copy(mName, 12, MaxInt);
+    mName := Copy(mName, Length(cHeadsPrefix) + 1, MaxInt);
   end;
   Result := Remote + '/' + mName;
 end;
@@ -859,8 +865,8 @@ class procedure TAtlasWelcomeUnsaved.Age(ASince, ANowUtc: TDateTime; out AValue:
 var
   mMinutes: Int64;
 begin
-  mMinutes := Trunc(AgeHours(ASince, ANowUtc) * 60 + 1E-6);
-  if mMinutes < 60 then
+  mMinutes := Trunc(AgeHours(ASince, ANowUtc) * cMinutesPerHour + cMinuteEpsilon);
+  if mMinutes < cMinutesPerHour then
   begin
     AUnit := TAtlasUnsavedAgeUnit.Minutes;
     AValue := Integer(mMinutes);
@@ -891,7 +897,7 @@ begin
   begin
     Exit;
   end;
-  mHours := AgeHours(ASince, ANowUtc) + 1E-9;
+  mHours := AgeHours(ASince, ANowUtc) + cHourEpsilon;
   if mHours >= AOptions.AlertHours then
   begin
     Result := TAtlasUnsavedLevel.Alert;
@@ -962,7 +968,7 @@ end;
 function TViewBuild.Hidden(const AState: TAtlasUnsavedState; const AItem: TAtlasUnsavedItem): Boolean;
 begin
   Result := (AState.IgnoredUntil(AItem.Kind) > NowUtc) or ((Options.MinAgeHours > 0) and
-    (TAtlasWelcomeUnsaved.AgeHours(AItem.Since, NowUtc) + 1E-9 < Options.MinAgeHours));
+    (TAtlasWelcomeUnsaved.AgeHours(AItem.Since, NowUtc) + cHourEpsilon < Options.MinAgeHours));
 end;
 
 procedure TViewBuild.AddRow(const AProject: TAtlasUnsavedProject; AProjectIndex: Integer;

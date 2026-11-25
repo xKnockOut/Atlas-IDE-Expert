@@ -59,7 +59,7 @@ end;
 
 procedure TAtlasGitHubJsonTests.ShortenToOneLine;
 begin
-  Assert.AreEqual('erste  zweite', TAtlasGitHubJson.Shorten('  erste'#13#10'zweite ', 20), 'je Umbruchzeichen ein Leerzeichen');
+  Assert.AreEqual('erste zweite', TAtlasGitHubJson.Shorten('  erste'#13#10'zweite ', 20), 'je Umbruch ein Leerzeichen, auch bei #13#10');
   Assert.AreEqual('abc…', TAtlasGitHubJson.Shorten('abcdef', 4));
   Assert.AreEqual('abcd', TAtlasGitHubJson.Shorten('abcd', 4));
 end;

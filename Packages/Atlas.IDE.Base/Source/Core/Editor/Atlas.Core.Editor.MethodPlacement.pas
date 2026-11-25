@@ -19,7 +19,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  Atlas.Core.Lsp.WorkspaceEdits;
+  Atlas.Plugin.Lsp.WorkspaceEdits;
 
 type
   TAtlasMethodMove = record
@@ -44,7 +44,7 @@ type
     function Moved: Integer;
   end;
 
-  /// <summary>Texte der Vorschau, aus Atlas.UI.Strings.</summary>
+  /// <summary>Texte der Vorschau, aus Atlas.Plugin.Localization.Strings.</summary>
   TAtlasMethodPlacementTexts = record
     /// <summary>Mit %d: "↑ %d", "↓ %d".</summary>
     Up: string;

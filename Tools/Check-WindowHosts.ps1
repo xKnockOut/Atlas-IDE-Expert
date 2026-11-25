@@ -8,15 +8,15 @@
     nach dem Projektwechsel gesperrt). Deshalb gilt im IDE-Plugin:
 
     - Andockbare Fenster legt nur TAtlasIdeDockWindow an
-      (Atlas.IDE.Foundation.DockWindow): CreateDockableForm und
+      (Atlas.ToolsApi.Windows.DockWindow): CreateDockableForm und
       RegisterDockableForm stehen nur dort. Jede Unit mit einer Klasse, die
       INTACustomDockableForm umsetzt, erzeugt TAtlasIdeDockWindow.
     - Leisten im Editorfenster verwaltet TAtlasEditorBarHost
-      (Atlas.IDE.Foundation.EditorBarHost): Nur dort wird das Editor-
+      (Atlas.ToolsApi.EditorBars.Host): Nur dort wird das Editor-
       Steuerelement über FindComponent('Editor') gesucht; die Dienste nehmen
       EditorOf, TopEditor bzw. FocusEditor des Hosts.
     - Den Editor neu zeichnen lässt nur TAtlasIdeEditorRefresh
-      (Atlas.IDE.Foundation.EditorRefresh): InvalidateTopEditor legt ohne
+      (Atlas.ToolsApi.Editor.Refresh): InvalidateTopEditor legt ohne
       offenes Editorfenster ein neues an, beim Beenden der IDE mit Absturz
       nach dem Entladen fremder Experten (#1233).
     - Zeigen, Verstecken und Sichtbarkeit eines Dockfensters laufen über
@@ -24,7 +24,7 @@
       nil-Prüfung vor Host.Hide bzw. Host.Shown und kein zweites UpdateIcon
       nach Show (jedes neue Fenster brachte sonst dieselben Zeilen mit).
     - Im Code gebaute Dialoge erben von TAtlasDialog
-      (Atlas.UI.Foundation.Dialog, #2062): kein eigenes inherited CreateNew,
+      (Atlas.Vcl.Forms.Dialog, #2062): kein eigenes inherited CreateNew,
       keine Schrift 'Segoe UI' von Hand (TAtlasUiTheme), kein clRed als
       Fehlerfarbe (TAtlasNoteLabel bzw. TAtlasUiTheme.TextColor). Auch kein
       Formular, das von außen über X.CreateNew angelegt wird (TForm.CreateNew(nil)
@@ -35,7 +35,7 @@
       Dialogfenster an, das bsNone wieder verwirft, und Schatten, runde Ecken
       und Akzentrand müsste jedes Fenster selbst nachtragen.
     - Umbrechende Beschriftungen sind TAtlasWrapLabel
-      (Atlas.UI.Foundation.WrapLabel): Ein TLabel mit WordWrap rechnet seine
+      (Atlas.Vcl.Controls.WrapLabel): Ein TLabel mit WordWrap rechnet seine
       Höhe bei der Anfangsbreite (65 Pixel) und behält sie, wenn Align oder
       Anker es danach breiter machen; über der Liste blieb so ein großer
       leerer Bereich (wrap-label, jedes „.WordWrap := True“). Memos und
@@ -45,10 +45,28 @@
       verlangen das Senken der Baseline (-UpdateBaseline). Eine Zeile mit
       // window-ok ist ausgenommen (Überlagerungen und Popups ohne
       Dialogcharakter, mit Begründung im Kommentar).
-    - Listen sind TAtlasListBox (Atlas.UI.Foundation.ListBox): Unter dem
+    - Listen sind TAtlasListBox (Atlas.Vcl.Controls.ListBox): Unter dem
       Stil der IDE zeichnet eine TListBox beim Wechsel des Fokus die ganze
       Fläche in der Grundfarbe vor den Zeilen, die Liste blitzt leer auf
       (TListBox.Create steht nur dort).
+    - Ein Teiler (TSplitter) bekommt vor dem Ausrichten seine Lage (Top bei
+      alTop/alBottom, Left bei alLeft/alRight) neben dem Steuerelement, das er
+      verstellt (splitter-position). Die VCL ordnet gleich ausgerichtete
+      Steuerelemente nach ihrer Lage; ohne Lage landete der Teiler im Fenster
+      „Atlas-Tests“ über dem Tastenhinweis statt über den Einzelheiten und zog
+      dessen Höhe: großer leerer Bereich, der Baum schrumpfte. Geprüft wird,
+      dass die Unit Top oder Left des Teilers setzt.
+    - Systemfarben (clGrayText, clHighlight, clWindowText …) nur über den
+      Stil (system-color): TAtlasUiTheme.SystemColor zum Zeichnen,
+      TAtlasUiTheme.UseFontColor für die Schrift eines Steuerelements,
+      sonst StyleServices(…).GetSystemColor. Direkt in Canvas.Font.Color
+      oder Brush.Color nimmt eine Systemfarbe die Farbe von Windows, im
+      dunklen IDE-Thema also eine helle; in Font.Color eines Steuerelements
+      mit seFont übergeht der Stil sie ganz (ein grauer Hinweis wird zur
+      normalen Schrift). Ausgenommen sind die Unit des Themendienstes und
+      Zeilen mit // window-ok und Begründung (Werte, die der Stil danach
+      abbildet, Farben ohne IDE-Thema, Farbwerte für entworfene Formulare).
+      Zeichenketten zählen nicht (Namen der Farben im Visualisierer).
     - Der Frame eines andockbaren Fensters (Ergebnis von GetFrameClass) hat
       eine DFM: {$R *.dfm} in seiner Unit und die .dfm daneben. Die IDE legt
       ihn über TCustomFrame.Create an, das ohne Ressource EResNotFound
@@ -74,17 +92,19 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
-$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
+# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source, dazu die Platform-Packages des
+# Plugins, die Base als Quelltext mitübersetzt (Atlas.Plugin, Atlas.Vcl, Atlas.ToolsApi).
+$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory |
+    Where-Object { $_.Name -like 'Atlas.IDE.*' -or $_.Name -in @('Atlas.Plugin', 'Atlas.Vcl', 'Atlas.ToolsApi') } |
     Where-Object { Test-Path (Join-Path $_.FullName 'Source') } |
     ForEach-Object { "Packages/$($_.Name)/Source" })
-$DockUnit = 'Atlas.IDE.Foundation.DockWindow.pas'
-$BarUnit = 'Atlas.IDE.Foundation.EditorWindows.pas'
-$RefreshUnit = 'Atlas.IDE.Foundation.EditorRefresh.pas'
-$DialogUnit = 'Atlas.UI.Foundation.Dialog.pas'
-$ThemeUnit = 'Atlas.UI.Foundation.Theme.pas'
-$WrapLabelUnit = 'Atlas.UI.Foundation.WrapLabel.pas'
-$ListBoxUnit = 'Atlas.UI.Foundation.ListBox.pas'
+$DockUnit = 'Atlas.ToolsApi.Windows.DockWindow.pas'
+$BarUnit = 'Atlas.ToolsApi.Editor.Windows.pas'
+$RefreshUnit = 'Atlas.ToolsApi.Editor.Refresh.pas'
+$DialogUnit = 'Atlas.Vcl.Forms.Dialog.pas'
+$ThemeUnit = 'Atlas.Vcl.Theme.Service.pas'
+$WrapLabelUnit = 'Atlas.Vcl.Controls.WrapLabel.pas'
+$ListBoxUnit = 'Atlas.Vcl.Controls.ListBox.pas'
 $BaselineFile = Join-Path $Root 'Tools/WindowHosts.baseline.json'
 
 function Remove-PascalComments([string] $Text) {
@@ -96,6 +116,40 @@ function Remove-PascalComments([string] $Text) {
         if ($m.Value.StartsWith("'")) { return $m.Value }
         [regex]::Replace($m.Value, '[^\r\n]', ' ')
     })
+}
+
+function Remove-PascalStrings([string] $Text) {
+    # Inhalt von Zeichenketten durch Leerzeichen ersetzen (nach Remove-PascalComments): Namen von Farben in Texten
+    # sind keine Farben.
+    return [regex]::Replace($Text, '''(?:[^''\r\n]|'''')*''', {
+        param($m)
+        "'" + (' ' * ($m.Value.Length - 2)) + "'"
+    })
+}
+
+# Systemfarben der VCL (clScrollBar bis clMenuBar).
+$SystemColorPattern = '(?i)\bcl(ScrollBar|Background|ActiveCaption|InactiveCaption|Menu|Window|WindowFrame|MenuText|' +
+    'WindowText|CaptionText|ActiveBorder|InactiveBorder|AppWorkSpace|Highlight|HighlightText|BtnFace|BtnShadow|' +
+    'GrayText|BtnText|InactiveCaptionText|BtnHighlight|3DDkShadow|3DLight|InfoText|InfoBk|HotLight|' +
+    'GradientActiveCaption|GradientInactiveCaption|MenuHighlight|MenuBar)\b'
+
+function Test-StyledColor([string] $Text, [int] $Index) {
+    # Wahr, wenn die Farbe an $Index ein Argument von GetSystemColor, TAtlasUiTheme.SystemColor oder
+    # TAtlasUiTheme.UseFontColor ist: innerste offene Klammer davor suchen, dann den Namen davor.
+    $mDepth = 0
+    for ($mPos = $Index - 1; $mPos -ge 0; $mPos--) {
+        $mChar = $Text[$mPos]
+        if ($mChar -eq ')') { $mDepth++ }
+        elseif ($mChar -eq ';') { return $false }
+        elseif ($mChar -eq '(') {
+            if ($mDepth -eq 0) {
+                $mStart = [Math]::Max(0, $mPos - 40)
+                return $Text.Substring($mStart, $mPos - $mStart + 1) -match '(?i)\b(GetSystemColor|SystemColor|UseFontColor)\s*\($'
+            }
+            $mDepth--
+        }
+    }
+    return $false
 }
 
 function Get-LineNumber([string] $Text, [int] $Index) {
@@ -186,6 +240,26 @@ foreach ($file in $files) {
         }
     }
 
+    # Systemfarben am Stil vorbei (system-color).
+    if ($file.Name -ne $ThemeUnit) {
+        $mColors = Remove-PascalStrings $text
+        foreach ($match in [regex]::Matches($mColors, $SystemColorPattern)) {
+            $mLine = Get-LineNumber $mColors $match.Index
+            if ($exempt.Contains($mLine) -or (Test-StyledColor $mColors $match.Index)) { continue }
+            $violations += "${relative}:${mLine}: Systemfarbe $($match.Value) am Stil vorbei (im dunklen IDE-Thema hell bzw. ohne Wirkung); TAtlasUiTheme.SystemColor zum Zeichnen, TAtlasUiTheme.UseFontColor für die Schrift"
+        }
+    }
+
+    # Teiler ohne Lage: Die VCL ordnet gleich ausgerichtete Steuerelemente nach Top bzw. Left (splitter-position).
+    foreach ($match in [regex]::Matches($text, '(?i)\b([\w.]+)\s*:=\s*TSplitter\s*\.\s*Create\b')) {
+        $mLine = Get-LineNumber $text $match.Index
+        if ($exempt.Contains($mLine)) { continue }
+        $mName = [regex]::Escape($match.Groups[1].Value) -replace '\\\.', '\s*\.\s*'
+        if ($text -notmatch ('(?i)(?<![\w.])' + $mName + '\s*\.\s*(Top|Left)\s*:=')) {
+            $violations += "${relative}:${mLine}: Teiler ohne Top bzw. Left; vor Align und Parent neben das Steuerelement setzen, das er verstellt (die VCL ordnet gleich ausgerichtete Steuerelemente nach ihrer Lage, sonst zieht der Teiler den falschen Nachbarn)"
+        }
+    }
+
     # Rahmenlose Fenster gehören auf TAtlasPopupForm: Ein Nachfahre von TAtlasDialog (auch über TAtlasAnswerDialog),
     # der den Rahmen abschaltet. Die Unit der Basisklassen selbst schaltet ihn nur in TAtlasPopupForm.CreatePopup ab.
     $declaresPopupForm = $text -match '(?i)\bTAtlasPopupForm\s*=\s*class\s*\(\s*TForm\s*\)'
@@ -271,5 +345,5 @@ if ($violations.Count -gt 0) {
     exit 1
 }
 
-Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost, Neuzeichnen über TAtlasIdeEditorRefresh, Dialoge über TAtlasDialog (Baseline eingehalten), Frames der Dockfenster mit DFM.' -ForegroundColor Green
+Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost, Neuzeichnen über TAtlasIdeEditorRefresh, Dialoge über TAtlasDialog (Baseline eingehalten), Systemfarben über den Stil, Frames der Dockfenster mit DFM.' -ForegroundColor Green
 exit 0

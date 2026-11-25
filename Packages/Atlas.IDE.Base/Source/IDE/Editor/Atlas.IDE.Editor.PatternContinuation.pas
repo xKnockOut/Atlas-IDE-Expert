@@ -27,7 +27,7 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.PatternContinuation,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Completion.Preview;
 
 type
@@ -88,11 +88,11 @@ implementation
 uses
   System.JSON,
   Winapi.Windows,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.Text.Json;

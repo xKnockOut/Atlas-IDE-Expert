@@ -31,7 +31,8 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Tests.AffectedHook;
+  Atlas.Core.Tests.AffectedHook,
+  Atlas.Tests.TempFolder;
 
 /// <summary>Texte wie aus der UI, mit „'“ und „%“ für das Quoting.</summary>
 function Texts: TAtlasAffectedHookTexts;
@@ -64,11 +65,7 @@ end;
 
 procedure TAtlasAffectedHookTests.TearDown;
 begin
-  if TDirectory.Exists(FDir) then
-  begin
-    TDirectory.Delete(FDir, True);
-  end;
-  FDir := '';
+  TTestTempFolder.Remove(FDir);
 end;
 
 procedure TAtlasAffectedHookTests.ScriptAsksServerAndOnlyBlocksOnRequest;

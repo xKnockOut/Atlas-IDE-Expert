@@ -56,7 +56,8 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Text.Json;
 
 { TProjectSelection }
 
@@ -156,13 +157,7 @@ var
   mRoot: TJSONValue;
   mBuilds, mProjects: TJSONObject;
 begin
-  try
-    mRoot := TJSONObject.ParseJSONValue(AText);
-  except
-    // lsp-ignore: catch-all-without-raise -- Auswahldatei unlesbar heißt keine Auswahl
-    on Exception do
-      mRoot := nil;
-  end;
+  mRoot := TJsonRead.Parse(AText);
   TMonitor.Enter(FLock);
   try
     FBuilds.Clear;

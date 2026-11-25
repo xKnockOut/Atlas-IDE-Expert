@@ -28,7 +28,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Projects,
   Atlas.IDE.Projects.Summaries,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.UI.Welcome.Contract,
   Atlas.IDE.Projects.Contract;
 
@@ -92,7 +92,7 @@ uses
   Winapi.ShellAPI,
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,

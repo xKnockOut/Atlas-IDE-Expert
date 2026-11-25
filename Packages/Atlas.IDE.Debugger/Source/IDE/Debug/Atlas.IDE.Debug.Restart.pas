@@ -21,7 +21,6 @@ interface
 
 uses
   System.SysUtils,
-  Vcl.ExtCtrls,
   Atlas.Core.Debug.Restart,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract,
@@ -41,14 +40,9 @@ type
       procedure DebugStarted; override;
       procedure DebugEnded; override;
     end;
-    TTicker = class
-    public
-      procedure Tick(Sender: TObject);
-    end;
   private class var
     FListener: IAtlasDebugListener;
-    FTicker: TTicker;
-    FTimer: TTimer;
+    FPace: TAtlasIdeDebugPace;
     FBar: TAtlasStepsBar;
     FMessage: TProc<string>;
     FRun: TAtlasRestartRun;
@@ -90,28 +84,21 @@ uses
   System.Classes,
   System.Types,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Popup.Window,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Vcl.Popup.Window,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.Session.Strings,
-  Atlas.Core.Foundation.Calls,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.Plugin.Calls.Optional,
+  Atlas.ToolsApi.Debugger.Services;
 
 const
   /// <summary>Zeichen hinter fertigen bzw. gescheiterten Schritten.</summary>
   cDoneMark = '✓';
   cFailedMark = '✗';
-
-{ TAtlasIdeDebugRestart.TTicker }
-
-procedure TAtlasIdeDebugRestart.TTicker.Tick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugRestart.Tick);
-end;
 
 { TAtlasIdeDebugRestart.TListener }
 
@@ -144,7 +131,7 @@ class procedure TAtlasIdeDebugRestart.Tick;
 begin
   if FRun = nil then
   begin
-    FTimer.Enabled := False;
+    FPace.Timer.Enabled := False;
     Exit;
   end;
   if not FRun.Running then
@@ -152,7 +139,7 @@ begin
     // Leiste nach dem Ende noch kurz stehen lassen.
     if (FDoneAt > 0) and (TThread.GetTickCount64 - FDoneAt >= cDoneMs) then
     begin
-      FTimer.Enabled := False;
+      FPace.Timer.Enabled := False;
       if FBar <> nil then
       begin
         FBar.Dismiss;
@@ -276,8 +263,11 @@ begin
   try
     mProcess.Terminate;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Beenden gescheitert: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Fail(TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartFailedStop));
+    end;
   end;
 end;
 
@@ -366,16 +356,9 @@ end;
 class procedure TAtlasIdeDebugRestart.Start(const AMessage: TProc<string>);
 begin
   FMessage := AMessage;
-  if FTicker = nil then
+  if FPace = nil then
   begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
+    FPace := TAtlasIdeDebugPace.Create(cIntervalMs, Tick);
   end;
   if FListener = nil then
   begin
@@ -392,8 +375,7 @@ begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
   end;
   FListener := nil;
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
+  FreeAndNil(FPace);
   FreeAndNil(FBar);
   FreeAndNil(FRun);
   FMessage := nil;
@@ -408,11 +390,7 @@ end;
 
 class procedure TAtlasIdeDebugRestart.ThemeChanged;
 begin
-  if (FBar <> nil) and FBar.IsShown then
-  begin
-    FBar.Colors := TAtlasIdeStyle.Colors;
-    FBar.Invalidate;
-  end;
+  TAtlasStepsBar.Recolor(FBar, TAtlasIdeStyle.Colors);
 end;
 
 class procedure TAtlasIdeDebugRestart.Execute;
@@ -441,7 +419,7 @@ begin
   FRun := TAtlasRestartRun.Create(TAtlasIdeDebugSession.Active, mChanged);
   FDoneAt := 0;
   FStepDone := True;
-  FTimer.Enabled := True;
+  FPace.Timer.Enabled := True;
   Tick;
 end;
 

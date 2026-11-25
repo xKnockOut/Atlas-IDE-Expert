@@ -27,7 +27,10 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.InactiveRegions,
-  Atlas.Common.Lsp.ReferenceConfidence;
+  Atlas.Common.Lsp.ReferenceConfidence,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   TReferenceLocation = record
@@ -41,9 +44,9 @@ type
   TReferenceSettingsProvider = reference to function(const AUri: string): TReferenceSettings;
 
   /// <summary>Text einer Datei, geöffnete Dokumente zuerst; False, wenn sie nicht lesbar ist.</summary>
-  TReferenceReadText = reference to function(const AFileName: string; out AText: string): Boolean;
+  TReferenceReadText = TDocumentReadText;
   /// <summary>Dateien des Projekts, die nach Verweisen durchsucht werden.</summary>
-  TReferenceFilesProvider = reference to function: TArray<string>;
+  TReferenceFilesProvider = TLspFilesProvider;
 
   /// <summary>Was die Referenzsuche sucht: das Symbol an Position in FileName, in Files über ReadText.</summary>
   TReferenceSearch = record
@@ -57,15 +60,10 @@ type
       const AFiles: TArray<string>; const AReadText: TReferenceReadText): TReferenceSearch; static;
   end;
 
-  TLspReferences = class
+  TLspReferences = class(TLspProjectFeature)
   public const
     cMethod = 'textDocument/references';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
-    FReadText: TReferenceReadText;
-    FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
     FSettingsFor: TReferenceSettingsProvider;
     function HandleReferences(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -107,6 +105,23 @@ type
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
   end;
 
+type
+  /// <summary>Datei einer Umbaurechnung mit Text und Baum; den Baum gibt sie nur mit OwnsTree frei (sonst gehört
+  /// er dem Dokumentspeicher).</summary>
+  TLspSourceFile = class
+  public
+    FileName: string;
+    Text: string;
+    Tree: TSyntaxTree;
+    OwnsTree: Boolean;
+    destructor Destroy; override;
+  end;
+
+/// <summary>Baum zu AUri: geöffnet aus dem Speicher (AShared), sonst selbst gelesen (AOwnTree, gehört dem
+/// Aufrufer); nil, wenn die Datei nicht lesbar ist.</summary>
+function ReferenceTreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
+  const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
+
 implementation
 
 uses
@@ -115,14 +130,13 @@ uses
   System.Generics.Collections,
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
-  Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Dfm.FormModel,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.ParameterHeaders,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -136,19 +150,6 @@ const
      En: 'Fields "textDocument.uri" and "position" missing in '));
 
 {$SCOPEDENUMS OFF}
-
-function CleanName(const AText: string): string;
-begin
-  // &Begin → Begin
-  if (AText <> '') and (AText[1] = '&') then
-  begin
-    Result := Copy(AText, 2, MaxInt);
-  end
-  else
-  begin
-    Result := AText;
-  end;
-end;
 
 /// <summary>Andere Schreibweise eines Attributnamens: Foo zu FooAttribute und umgekehrt.</summary>
 function AlternativeName(const AName: string): string;
@@ -182,12 +183,7 @@ end;
 constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AReadText, AFiles, AEnsureUnit);
 end;
 
 constructor TLspReferences.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -246,8 +242,8 @@ begin
       end;
       // Attribute (#119): [TestFixture] verwendet TestFixtureAttribute.
       if (ATree.Tokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
-        not (SameText(CleanName(ATree.Tokens[mIndex].Text), AName) or
-        SameText(CleanName(ATree.Tokens[mIndex].Text), mAlternative)) then
+        not (SameText(TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text), AName) or
+        SameText(TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text), mAlternative)) then
       begin
         Continue;
       end;
@@ -556,7 +552,7 @@ begin
       end;
       Exit;
     end;
-    mRun.Prepare(ATree, mWanted[0], CleanName(ATree.Tokens[mIndex].Text));
+    mRun.Prepare(ATree, mWanted[0], TTextNames.WithoutAmpersand(ATree.Tokens[mIndex].Text));
     mRun.SearchOwn(ATree);
     // Ein Parameter kommt nur in seiner Routine vor.
     if not mParameter then
@@ -611,9 +607,18 @@ begin
   end;
 end;
 
-/// <summary>Baum zu AUri: geöffnet aus dem Speicher (AShared), sonst selbst gelesen (AOwnTree, gehört dem
-/// Aufrufer); nil, wenn die Datei nicht lesbar ist.</summary>
-function TreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
+{ TLspSourceFile }
+
+destructor TLspSourceFile.Destroy;
+begin
+  if OwnsTree then
+  begin
+    Tree.Free;
+  end;
+  inherited;
+end;
+
+function ReferenceTreeOf(const AStore: IDocumentStore; const AReadText: TReferenceReadText; const AUri: string;
   const ACancellation: IPascalCancellation; out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
 var
   mDocument: ITextDocument;
@@ -679,7 +684,7 @@ begin
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   mCancellation := TRequestCancellation.Create(ACancellation);
-  mTree := TreeOf(FStore, FReadText, mUri, mCancellation, mShared, mOwnTree);
+  mTree := ReferenceTreeOf(FStore, FReadText, mUri, mCancellation, mShared, mOwnTree);
   if mTree = nil then
   begin
     Exit(TJSONNull.Create);

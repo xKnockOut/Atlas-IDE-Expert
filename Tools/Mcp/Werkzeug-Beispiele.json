@@ -110,7 +110,7 @@
         "rules": ["redundant-cast"],
         "dryRun": true
       },
-      "contains": "Vorschau"
+      "contains": "redundant-cast: 2"
     },
     "refactor": {
       "arguments": {
@@ -131,6 +131,10 @@
     },
     "get_ide_context": {
       "arguments": { "include": ["editor", "project", "build"], "format": "json" }
+    },
+    "ask_user": {
+      "arguments": { "question": "Welche Variante?", "options": ["A", "B"], "timeoutSeconds": 10 },
+      "process": true
     },
     "build_project": {
       "arguments": { "project": "RefApp", "mode": "check" },
@@ -195,11 +199,31 @@
     },
     "get_architecture": {
       "arguments": {},
-      "contains": "Teilsysteme:"
+      "contains": "Ref.Komponenten.Anzeige"
     },
     "get_hotspots": {
       "arguments": {},
       "contains": "Hotspots"
+    },
+    "get_server_status": {
+      "arguments": { "format": "json" },
+      "contains": "\"version\""
+    },
+    "query_code": {
+      "arguments": { "query": "" },
+      "contains": "methods"
+    },
+    "format_code": {
+      "arguments": { "file": "Source/Ref.Daten.Suche.pas", "dryRun": true },
+      "contains": "Ref.Daten.Suche"
+    },
+    "extract_method": {
+      "arguments": { "file": "Source/Ref.Daten.Suche.pas", "startLine": "{{zeile:FAnbieter := AAnbieter;}}", "name": "Merken", "dryRun": true },
+      "contains": "Merken"
+    },
+    "get_profile": {
+      "arguments": {},
+      "process": true
     },
     "get_symbol_history": {
       "arguments": { "name": "TKundenSuche.Suchen" },

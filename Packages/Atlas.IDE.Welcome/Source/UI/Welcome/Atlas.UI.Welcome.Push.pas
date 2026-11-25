@@ -16,7 +16,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Welcome.Unsaved,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasPushDialog = class(TAtlasDialog)
@@ -28,7 +28,6 @@ type
     FDetails: TMemo;
     FPush: TButton;
     FCancel: TButton;
-    function AddButton(AParent: TWinControl; const ACaption: string): TButton;
   public
     constructor CreateDialog(AOwner: TComponent; const AProjectName: string;
       const APlans: TArray<TAtlasUnsavedPush>);
@@ -48,10 +47,10 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cGap = 8;
@@ -95,20 +94,17 @@ begin
   mButtons.AlignWithMargins := True;
   TAtlasControlScaling.SetMarginsAll(mButtons, cGap);
   mButtons.Top := FDetails.Top + FDetails.Height + 1;
-  FPush := AddButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushButton));
+  FPush := NewTextButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushButton),
+    cButtonPadding, cGap);
   FPush.ModalResult := mrOk;
-  FCancel := AddButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushCancel));
+  FCancel := NewTextButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedPushCancel),
+    cButtonPadding, cGap);
   FCancel.ModalResult := mrCancel;
   // Enter und Esc brechen ab: Gepusht wird nur mit einem bewussten Klick auf „Pushen“.
   FCancel.Default := True;
   FCancel.Cancel := True;
   ActiveControl := FCancel;
   ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
-end;
-
-function TAtlasPushDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
-begin
-  Result := NewTextButton(AParent, ACaption, cButtonPadding, cGap);
 end;
 
 class function TAtlasPushDialog.DetailText(const APlans: TArray<TAtlasUnsavedPush>): string;

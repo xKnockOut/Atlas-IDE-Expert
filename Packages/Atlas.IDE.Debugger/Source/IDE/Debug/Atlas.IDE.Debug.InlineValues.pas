@@ -33,11 +33,11 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Winapi.Windows,
   Vcl.Graphics,
   ToolsAPI.Editor,
-  Atlas.Core.Lsp.Contract,
+  Atlas.Plugin.Lsp.Contract,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract.DebugValue,
   Atlas.Core.Debug.InlineValues,
@@ -62,8 +62,9 @@ type
     /// <summary>So lange wartet Atlas auf einen verzögerten Wert (LLDB).</summary>
     cDeferredTimeoutMs = 500;
     cRequestTimeoutMs = 3000;
-    /// <summary>Versuche, bis der Aufrufstapel bzw. der Editor der Datei da ist (je TickMs * 5).</summary>
+    /// <summary>Versuche, bis der Aufrufstapel bzw. der Editor der Datei da ist (je cRetryTicks Takte).</summary>
     cLocationRetries = 20;
+    cRetryTicks = 5;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -137,18 +138,18 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.Core.Debug.StopProgress,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Debug.CallStack,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Unavailable,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasIdeDebugInlineValues.TEvents }
 
@@ -295,7 +296,7 @@ begin
   case FProgress.Locate(mRead = TAtlasDebugStackRead.None, mWithoutSource, mBuffer <> nil, cLocationRetries) of
     TAtlasStopLocation.Retry:
       begin
-        FTimer.Interval := cTickMs * 5;
+        FTimer.Interval := cTickMs * cRetryTicks;
         FTimer.Enabled := True;
         Exit(False);
       end;
@@ -345,7 +346,10 @@ begin
         Refs := mSession.InlineValues(mFileName, 0, mLine, mLine, cRequestTimeoutMs);
       except
         // Server langsam oder weg: keine Werte.
-        Refs := nil;
+        on ELspClientError do
+        begin
+          Refs := nil;
+        end;
       end;
       // Atlas gehört der Eintrag: beim Entladen verworfen.
       TAtlasMainThread.Queue(TAtlasFeature.Debugger,

@@ -11,13 +11,23 @@
     lehnt die API ab, und der Release-Workflow scheitert erst nach dem Bauen. Das Skript
     bricht deshalb schon vorher mit Exit-Code 1 ab, ebenso bei leeren Notizen.
 
+    Mit -UnsignedBinaries kommt am Ende ein sichtbarer Hinweis auf Deutsch und
+    Englisch dazu, dass EXE, BPL und DLL ohne Code-Signing-Zertifikat gebaut
+    sind und Updates über die signierte Versionsdatei geprüft werden. Der
+    Release-Workflow und Publish-ReleasePackage.ps1 setzen ihn, wenn die
+    Binärdateien nicht signiert sind.
+
 .EXAMPLE
     pwsh Tools/Get-ReleaseNotes.ps1 -Version 1.1.0
+
+.EXAMPLE
+    pwsh Tools/Get-ReleaseNotes.ps1 -Version 2.3.0 -UnsignedBinaries
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $Version,
-    [string] $Root = (Split-Path -Parent $PSScriptRoot)
+    [string] $Root = (Split-Path -Parent $PSScriptRoot),
+    [switch] $UnsignedBinaries
 )
 
 Set-StrictMode -Version Latest
@@ -32,6 +42,12 @@ if (Test-Path $Summary) {
 }
 if ([string]::IsNullOrWhiteSpace($Notes)) {
     Write-Error "Keine Release-Notizen für ${Version}: weder docs/Release-Notizen/$Version.md noch ein Abschnitt [$Version] in CHANGELOG.md"
+}
+if ($UnsignedBinaries) {
+    $Notes += "`n`n" + ('> **Hinweis:** Die Binärdateien dieses Releases (EXE, BPL, DLL) sind nicht signiert. ' +
+        'Updates prüft AtlasUpdate über die signierte Versionsdatei.') + "`n>`n" +
+        ('> **Note:** The binaries of this release (EXE, BPL, DLL) are not signed. ' +
+        'AtlasUpdate verifies updates through the signed version file.')
 }
 if ($Notes.Length -gt $GitHubLimit) {
     Write-Error ("Release-Notizen für $Version haben $($Notes.Length) Zeichen, GitHub nimmt höchstens $GitHubLimit; " +

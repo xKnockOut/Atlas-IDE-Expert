@@ -41,7 +41,7 @@ uses
   Vcl.Menus,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.EditorToolbar.Layout,
-  Atlas.UI.Editor.Bar;
+  Atlas.Vcl.Controls.EditorBar;
 
 type
   TAtlasToolbarButton = record
@@ -174,11 +174,11 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
-  Atlas.Core.Settings.ToolbarItems,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Settings.ToolbarItems,
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.EditorToolbar.Glyphs;
 
 const

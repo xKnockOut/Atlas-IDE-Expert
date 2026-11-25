@@ -133,16 +133,16 @@ implementation
 uses
   Vcl.Clipbrd,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.CodeLinkPlan,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.UI.Foundation.Menus;
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.Vcl.Controls.Menus;
 
 function CanStart(const AHooks: TAtlasCodeLinksHooks): Boolean;
 begin

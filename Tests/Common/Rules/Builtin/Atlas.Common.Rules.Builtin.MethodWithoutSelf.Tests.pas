@@ -124,7 +124,7 @@ begin
 end;
 
 /// <summary>Im Code einem Ereignis zugewiesen (OnClose := FormClose in Atlas.UI.Commands.KeyMap,
-/// Later.OnTimer := Later_.Tick in Atlas.IDE.Foundation.Symbol): kein Treffer; eine gewöhnliche Zuweisung des
+/// Later.OnTimer := Later_.Tick in Atlas.ToolsApi.Theme.Symbol): kein Treffer; eine gewöhnliche Zuweisung des
 /// Ergebnisses meldet weiter.</summary>
 procedure TMethodWithoutSelfRuleTests.EventAssignedInCodeIsSilent;
 const

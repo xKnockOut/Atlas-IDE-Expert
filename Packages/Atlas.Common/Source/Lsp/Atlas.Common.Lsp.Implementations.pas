@@ -19,17 +19,15 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Definition;
+  Atlas.Common.Lsp.Definition,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
-  TLspImplementations = class
+  TLspImplementations = class(TLspIndexFeature)
   public const
     cMethod = 'textDocument/implementation';
     cMaxTargets = 500;
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
@@ -66,12 +64,12 @@ uses
   Atlas.Common.Lsp.Internals.Namespaces,
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Lsp.ImplementationSites,
+  Atlas.Common.Index.ImplementationSites,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -91,21 +89,9 @@ const
   cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType];
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 function Within(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
 begin
-  Result := (ComparePositions(ARange.StartPos, APosition) <= 0) and (ComparePositions(APosition, ARange.EndPos) <= 0);
+  Result := (TTextPosition.Compare(ARange.StartPos, APosition) <= 0) and (TTextPosition.Compare(APosition, ARange.EndPos) <= 0);
 end;
 
 function Target(const AFileName: string; const ARange, ASelection: TTextRange): TDefinitionTarget;
@@ -152,11 +138,11 @@ var
 begin
   for mIndex := 0 to High(ATokens) do
   begin
-    if ComparePositions(ATokens[mIndex].StartPos, APosition) > 0 then
+    if TTextPosition.Compare(ATokens[mIndex].StartPos, APosition) > 0 then
     begin
       Break;
     end;
-    if ComparePositions(APosition, ATokens[mIndex].EndPos) <= 0 then
+    if TTextPosition.Compare(APosition, ATokens[mIndex].EndPos) <= 0 then
     begin
       Exit(mIndex);
     end;
@@ -239,10 +225,7 @@ end;
 constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FEnsureUnit := AEnsureUnit;
+  inherited Create(AStore, AIndex, AEnsureUnit);
 end;
 
 constructor TLspImplementations.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);

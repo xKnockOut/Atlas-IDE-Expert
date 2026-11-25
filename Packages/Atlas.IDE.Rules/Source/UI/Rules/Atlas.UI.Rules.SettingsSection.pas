@@ -93,10 +93,10 @@ implementation
 uses
   System.UITypes,
   Vcl.Graphics,
-  Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListBox,
+  Atlas.Vcl.Forms.Dialog,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.UI.Rules.Strings,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Theme.Scaling;
 
 const
   cButtonWidth = 210;
@@ -107,6 +107,10 @@ const
   cInfoWidth = 400;
   cInfoHeight = 16;
   cInfoTop = 6;
+  // Hinweis mit zwei Zeilen, Zeile mit Überschrift und Liste der Unterdrückungen (logische Pixel).
+  cHintHeight = 34;
+  cTitleRowHeight = 20;
+  cSuppressionsHeight = 110;
 
 { TAtlasRulesChecksSection }
 
@@ -178,7 +182,7 @@ var
 begin
   // Die Regeln stehen in atlas.json des Projekts und in settings.json („Weitere globale Einstellungen“), mit
   // einem Knoten je Gruppe; hier nur der Weg dorthin.
-  Host.AddHint(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGlobalNote), 34);
+  Host.AddHint(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGlobalNote), cHintHeight);
   mRow := AddRow(cRowHeight);
   FRulesProject := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesProjectButton), 0, RulesLinkClick);
   FRulesGlobal := AddButton(mRow, TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesGlobalButton), cButtonGap,
@@ -194,8 +198,8 @@ var
 begin
   // Profile gelten je Projekt (atlas.json), die Baseline je Projekt.
   Title(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesProfilesNode));
-  Host.AddHint(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesProfilesText), 34);
-  mRow := AddRow(20);
+  Host.AddHint(TAtlasRulesStrings.Text(TAtlasRulesTextId.RulesProfilesText), cHintHeight);
+  mRow := AddRow(cTitleRowHeight);
   mTitle := TLabel.Create(FControls);
   mTitle.Parent := mRow;
   TAtlasControlScaling.Place(mTitle, 0, 2, cInfoWidth, cInfoHeight);
@@ -227,7 +231,7 @@ var
 begin
   // Unterdrückungen „lsp-ignore“ je Regel (#147, nur Anzeige); gefüllt erst auf Klick (startet AtlasServer.exe).
   Title(TAtlasRulesStrings.Text(TAtlasRulesTextId.ServerPageSuppressionsTitle));
-  mRow := AddRow(110);
+  mRow := AddRow(cSuppressionsHeight);
   FSuppressions := TAtlasListBox.Create(FControls);
   FSuppressions.Parent := mRow;
   FSuppressions.Align := alClient;

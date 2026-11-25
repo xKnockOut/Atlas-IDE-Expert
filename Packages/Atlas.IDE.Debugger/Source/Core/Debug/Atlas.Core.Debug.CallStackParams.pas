@@ -230,17 +230,8 @@ begin
 end;
 
 class function TAtlasCallStackParams.Arguments(const AUri: string; ALine: Integer): string;
-var
-  mItems: TJSONArray;
 begin
-  mItems := TJSONArray.Create;
-  try
-    mItems.Add(AUri);
-    mItems.Add(ALine);
-    Result := mItems.ToJSON;
-  finally
-    mItems.Free;
-  end;
+  Result := TJsonBuild.UriLine(AUri, ALine);
 end;
 
 class function TAtlasCallStackParams.ReadAnswer(const AText: string; out ARoutine: string;

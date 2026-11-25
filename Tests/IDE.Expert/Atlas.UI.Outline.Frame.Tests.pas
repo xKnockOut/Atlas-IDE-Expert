@@ -50,11 +50,11 @@ uses
   Vcl.Controls,
   Vcl.Menus,
   Atlas.UI.Outline.Strings,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
-  Atlas.UI.Foundation.ListBox;
+  Atlas.Vcl.Controls.ListBox,
+  Atlas.Core.Outline.TestSupport;
 
 const
   cFormCode =
@@ -78,21 +78,8 @@ const
     'end.';
 
 function Nodes: TAtlasOutlineNodes;
-var
-  mTree: TSyntaxTree;
-  mSymbols: TJSONArray;
 begin
-  mTree := TPascalParser.Parse(cFormCode);
-  try
-    mSymbols := TLspDocumentSymbols.BuildSymbols(mTree, cFormCode);
-  finally
-    mTree.Free;
-  end;
-  try
-    Result := TAtlasOutline.FromJson(mSymbols);
-  finally
-    mSymbols.Free;
-  end;
+  Result := TOutlineTest.NodesOf(cFormCode);
 end;
 
 function Names(AFrame: TAtlasOutlineFrame): string;

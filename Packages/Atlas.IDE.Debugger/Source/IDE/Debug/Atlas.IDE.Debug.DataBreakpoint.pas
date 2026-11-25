@@ -29,7 +29,7 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.DataBreakpoint,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 
@@ -100,14 +100,15 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Plugin.Settings.VisualizerKinds,
   Atlas.Core.Debug.InstanceBreakpoint,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Debug.DataBreakpoints.Strings,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services,
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasIdeDataBreakpoint.TListener }
 
@@ -283,8 +284,11 @@ begin
     Result := mServices.NewAddressBreakpoint(mAddress, LongWord(APlan.Length), TOTAAccessType.atWrite,
       TAtlasIdeBreakpoints.StoppedProcess);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Daten-Haltepunkt nicht gesetzt: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Result := nil;
+    end;
   end;
 end;
 

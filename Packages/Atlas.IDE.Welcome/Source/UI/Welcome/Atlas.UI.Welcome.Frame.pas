@@ -2,6 +2,7 @@
 
 // Frames der Atlas-Willkommensseite (#753):
 // - TAtlasWelcomeCanvas: Zeichenfläche, Alias von TAtlasStyledCanvas aus Base.
+// - TAtlasWelcomeRow, TAtlasWelcomeMarks: gemeinsame Maße und Markenfarben der Bereiche.
 // - TAtlasWelcomeFrame: Basis mit .dfm; abgeleitete Frames (Kopf, Bereiche,
 //   Atlas-Layout) brauchen dadurch keine eigene. Der Name aus der .dfm wird
 //   gelöscht, damit mehrere Frames denselben Besitzer haben dürfen.
@@ -15,6 +16,7 @@
 interface
 
 uses
+  Winapi.Messages,
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
@@ -23,11 +25,60 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  Atlas.UI.Style.Canvas;
+  Atlas.Vcl.Theme.Canvas;
 
 type
-  /// <summary>Zeichenfläche der Bereiche ohne Flackern (Atlas.UI.Style.Canvas).</summary>
+  /// <summary>Zeichenfläche der Bereiche ohne Flackern (Atlas.Vcl.Theme.Canvas).</summary>
   TAtlasWelcomeCanvas = TAtlasStyledCanvas;
+
+  /// <summary>Maße der zweizeiligen Einträge (Projekte, Weiterarbeiten, Ungesichert) in logischen Pixeln bei
+  /// 96 dpi, gezählt ab der Oberkante des Eintrags; skaliert über ScaleValue des Frames.</summary>
+  TAtlasWelcomeRow = record
+  public const
+    /// <summary>Erste Zeile (fetter Name) von oben bis unten.</summary>
+    cNameTop = 3;
+    cNameBottom = 21;
+    /// <summary>Zweite Zeile (Detail) von oben bis unten.</summary>
+    cDetailTop = 23;
+    cDetailBottom = 41;
+    /// <summary>Oberkante der farbigen Marke vor dem Namen und Abstand zwischen Marke und Text.</summary>
+    cDotTop = 6;
+    cDotGap = 6;
+    /// <summary>Abstand nach dem fetten Namen bis zum Zusatz (Zweig).</summary>
+    cNameGap = 8;
+    /// <summary>Radius der Ecken der Knöpfe in einem Eintrag.</summary>
+    cButtonRadius = 6;
+    /// <summary>Oberkante des Hinweises, wenn es keine Einträge gibt.</summary>
+    cEmptyTop = 4;
+    /// <summary>Platz links der Schnellaktionen, der für den Namen mindestens bleibt.</summary>
+    cQuickActionsLeft = 80;
+    /// <summary>Breite des Balkens am linken Rand des gewählten Eintrags.</summary>
+    cSelectionBar = 3;
+  end;
+
+  /// <summary>Farben der Marken (#592): kräftige Töne mit weißer Schrift, lesbar im hellen und im dunklen
+  /// Thema; grün, gelb, rot, grau.</summary>
+  TAtlasWelcomeMarks = record
+  public const
+    cGood = TColor($0043A02E);
+    cWarning = TColor($001A8CC9);
+    cError = TColor($002E22CF);
+    cNeutral = TColor($00817666);
+  end;
+
+  /// <summary>Steuerelement der Willkommensseite, das Tasten vor den Tastenkürzeln des Hauptfensters in HandleKey
+  /// sieht; nicht behandelte gehen den üblichen Weg. Mit FSystemKeys auch Tasten mit Alt.</summary>
+  TAtlasWelcomeKeyControl = class(TCustomControl)
+  private
+    procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
+    procedure CNSysKeyDown(var Message: TWMKeyDown); message CN_SYSKEYDOWN;
+  protected
+    FSystemKeys: Boolean;
+  public
+    /// <summary>Taste wie gedrückt; True, wenn sie verarbeitet wurde (auch für Tests).</summary>
+    function HandleKey(AKey: Word; AShift: TShiftState): Boolean; virtual; abstract;
+  end;
+
 
   TAtlasWelcomeFrame = class(TFrame)
   private
@@ -49,6 +100,8 @@ type
     cTitleHeight = 24;
     /// <summary>Höhe ohne eigene Angabe (logische Pixel).</summary>
     cDefaultBodyHeight = 120;
+    /// <summary>Mindesthöhe der Bereiche, deren Höhe sich nach dem Inhalt richtet (logische Pixel).</summary>
+    cMinBodyHeight = 40;
   private
     FSectionId: string;
     FTitleBar: TPanel;
@@ -64,6 +117,10 @@ type
     function BodyHeight: Integer; virtual;
     /// <summary>Der Inhalt braucht eine andere Höhe (z. B. aufgeklappt, #756); meldet OnHeightChanged.</summary>
     procedure HeightChanged;
+    /// <summary>AArrange neu ordnen lassen (nach neuer Breite); ändert sich dabei AContentHeight (anderer Umbruch),
+    /// meldet es HeightChanged, damit der Frame „Atlas“ die Spalten neu ordnet. AContentHeight ist das Feld, das
+    /// AArrange setzt.</summary>
+    procedure Rearrange(const AArrange: TProc; var AContentHeight: Integer);
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Höhe, die der Frame im Atlas-Layout braucht (Titel plus Inhalt).</summary>
@@ -101,9 +158,31 @@ type
 implementation
 
 uses
-  Atlas.UI.Foundation.Controls;
+  Atlas.Vcl.Controls.Helpers;
+
+const
+  /// <summary>Oberkante des Titels in der Titelzeile (logische Pixel bei 96 dpi).</summary>
+  cTitleTop = 4;
 
 {$R *.dfm}
+
+{ TAtlasWelcomeKeyControl }
+
+procedure TAtlasWelcomeKeyControl.CNKeyDown(var Message: TWMKeyDown);
+begin
+  if not TAtlasControls.KeyHandled(Message, HandleKey) then
+  begin
+    inherited;
+  end;
+end;
+
+procedure TAtlasWelcomeKeyControl.CNSysKeyDown(var Message: TWMKeyDown);
+begin
+  if not FSystemKeys or not TAtlasControls.KeyHandled(Message, HandleKey) then
+  begin
+    inherited;
+  end;
+end;
 
 { TAtlasWelcomeFrame }
 
@@ -149,7 +228,7 @@ begin
   FTitle := TLabel.Create(Self);
   FTitle.Parent := FTitleBar;
   FTitle.Left := FTitle.ScaleValue(2);
-  FTitle.Top := FTitle.ScaleValue(4);
+  FTitle.Top := FTitle.ScaleValue(cTitleTop);
   FTitle.Font.Style := [fsBold];
   FBody := TPanel.Create(Self);
   FBody.Parent := Self;
@@ -188,6 +267,18 @@ begin
   if Assigned(FOnHeightChanged) then
   begin
     FOnHeightChanged(Self);
+  end;
+end;
+
+procedure TAtlasWelcomeSectionFrame.Rearrange(const AArrange: TProc; var AContentHeight: Integer);
+var
+  mOldHeight: Integer;
+begin
+  mOldHeight := AContentHeight;
+  AArrange();
+  if mOldHeight <> AContentHeight then
+  begin
+    HeightChanged;
   end;
 end;
 

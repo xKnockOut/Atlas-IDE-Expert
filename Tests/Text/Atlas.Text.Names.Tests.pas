@@ -17,12 +17,35 @@ type
     procedure UnitNameOnlyForPas;
     [Test]
     procedure PascalFileByExtension;
+    [Test]
+    procedure KeyWithoutHashStripsLeadingHashes;
+    [Test]
+    procedure ContainerBeforeLastDot;
+    [Test]
+    procedure AmpersandOnlyInFront;
+    [Test]
+    procedure GenericsAndUnitPrefixDropped;
+    [Test]
+    procedure TypePrefixOnlyBeforeCapital;
+    [Test]
+    procedure CapitalizedFirstLetter;
+    [Test]
+    procedure InterfaceByCapitalAfterI;
+    [Test]
+    procedure CompareIgnoresCaseFirst;
+    [Test]
+    procedure ListSplitAndSearched;
+    [Test]
+    procedure SectionKeywords;
+    [Test]
+    procedure SameTypesFolderKeyRelativeTo;
   end;
 
 implementation
 
 uses
-  Atlas.Text.Names;
+  Atlas.Text.Names,
+  System.SysUtils;
 
 { TTextNamesTests }
 
@@ -52,6 +75,95 @@ begin
   Assert.IsTrue(TTextNames.IsPascalFile('Pkg.dpk'));
   Assert.IsFalse(TTextNames.IsPascalFile('Main.dfm'));
   Assert.IsFalse(TTextNames.IsPascalFile('Ohne'));
+end;
+
+procedure TTextNamesTests.KeyWithoutHashStripsLeadingHashes;
+begin
+  Assert.AreEqual('753', TTextNames.KeyWithoutHash(' #753 '));
+  Assert.AreEqual('7', TTextNames.KeyWithoutHash('##7'));
+  Assert.AreEqual('ATL-123', TTextNames.KeyWithoutHash('ATL-123'));
+  Assert.AreEqual('', TTextNames.KeyWithoutHash('#'));
+end;
+
+procedure TTextNamesTests.ContainerBeforeLastDot;
+begin
+  Assert.AreEqual('Unit1.TWorker', TTextNames.ContainerOf('Unit1.TWorker.Run'));
+  Assert.AreEqual('', TTextNames.ContainerOf('Run'));
+end;
+
+procedure TTextNamesTests.AmpersandOnlyInFront;
+begin
+  Assert.AreEqual('Type', TTextNames.WithoutAmpersand('&Type'));
+  Assert.AreEqual('A&B', TTextNames.WithoutAmpersand('A&B'));
+end;
+
+procedure TTextNamesTests.GenericsAndUnitPrefixDropped;
+begin
+  Assert.AreEqual('TObjectList', TTextNames.WithoutGenerics(' TObjectList<TOrder> '));
+  Assert.AreEqual('System.TList', TTextNames.WithoutGenerics('System.TList<T>'));
+  Assert.AreEqual('TList', TTextNames.BareTypeName('System.Generics.Collections.TList<Integer>'));
+  Assert.AreEqual('TKunde', TTextNames.BareTypeName('TKunde'));
+end;
+
+procedure TTextNamesTests.TypePrefixOnlyBeforeCapital;
+begin
+  Assert.AreEqual('Kunde', TTextNames.WithoutTypePrefix('TKunde'));
+  Assert.AreEqual('Tabelle', TTextNames.WithoutTypePrefix('Tabelle'));
+  Assert.AreEqual('T', TTextNames.WithoutTypePrefix('T'));
+end;
+
+procedure TTextNamesTests.CapitalizedFirstLetter;
+begin
+  Assert.AreEqual('Wert', TTextNames.Capitalized('wert'));
+  Assert.AreEqual('', TTextNames.Capitalized(''));
+end;
+
+procedure TTextNamesTests.InterfaceByCapitalAfterI;
+begin
+  Assert.IsTrue(TTextNames.LooksLikeInterface('Unit1.IKunde'));
+  Assert.IsFalse(TTextNames.LooksLikeInterface('Index'));
+  Assert.IsFalse(TTextNames.LooksLikeInterface('I'));
+end;
+
+procedure TTextNamesTests.CompareIgnoresCaseFirst;
+begin
+  Assert.IsTrue(TTextNames.Compare('alpha', 'Beta') < 0);
+  Assert.IsTrue(TTextNames.Compare('Beta', 'alpha') > 0);
+  Assert.AreNotEqual(0, TTextNames.Compare('Name', 'name'), 'Gleichstand wird nach Groß-/Kleinschreibung entschieden');
+  Assert.AreEqual(0, TTextNames.Compare('Name', 'Name'));
+end;
+
+procedure TTextNamesTests.ListSplitAndSearched;
+var
+  mNames: TArray<string>;
+begin
+  mNames := TTextNames.SplitList(' A, ,B ,');
+  Assert.AreEqual(2, Integer(Length(mNames)));
+  Assert.AreEqual('A', mNames[0]);
+  Assert.AreEqual('B', mNames[1]);
+  Assert.IsTrue(TTextNames.InList('FA, FListe,FB', 'fliste'));
+  Assert.IsFalse(TTextNames.InList('FA, FListe', 'Liste'));
+  mNames := nil;
+end;
+
+procedure TTextNamesTests.SectionKeywords;
+begin
+  Assert.AreEqual('interface', TTextNames.SectionKeyword(True));
+  Assert.AreEqual('implementation', TTextNames.SectionKeyword(False));
+end;
+
+procedure TTextNamesTests.SameTypesFolderKeyRelativeTo;
+begin
+  Assert.IsTrue(TTextNames.SameTypes(TArray<string>.Create('TList<Integer>', 'string'),
+    TArray<string>.Create('tlist< integer >', 'String')));
+  Assert.IsFalse(TTextNames.SameTypes(TArray<string>.Create('Integer'), TArray<string>.Create('Integer', 'Byte')));
+  Assert.IsFalse(TTextNames.SameTypes(TArray<string>.Create('Integer'), TArray<string>.Create('Int64')));
+  Assert.AreEqual('c:\projekte\atlas', TTextNames.FolderKey('C:/Projekte/Atlas/'));
+  Assert.AreEqual('\', TTextNames.FolderKey('\'));
+  Assert.AreEqual('Src' + PathDelim + 'A.pas',
+    TTextNames.RelativeTo('Root', 'Root' + PathDelim + 'Src' + PathDelim + 'A.pas'));
+  Assert.AreEqual('Anders' + PathDelim + 'A.pas', TTextNames.RelativeTo('Root', 'Anders' + PathDelim + 'A.pas'));
+  Assert.AreEqual('A.pas', TTextNames.RelativeTo('', 'A.pas'));
 end;
 
 initialization

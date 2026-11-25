@@ -11,7 +11,7 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Completion.Favorites,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -87,7 +87,7 @@ implementation
 uses
   System.Math,
   Vcl.Controls,
-  Atlas.UI.Foundation.ListBox,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.UI.Settings.Page.Sheets,
   Atlas.UI.Editor.LearnedSuggestions,
   Atlas.UI.Settings.Strings,

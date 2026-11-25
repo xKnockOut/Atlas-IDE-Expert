@@ -84,9 +84,9 @@ uses
   System.Math,
   Vcl.Graphics,
   Atlas.UI.Designer.Strings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
+  Atlas.Vcl.Forms.Dialog;
 
 const
   cNumberWidth = 48;

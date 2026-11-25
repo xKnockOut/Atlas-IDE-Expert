@@ -22,7 +22,7 @@ implementation
 
 uses
   Atlas.Core.Editor.CrumbCard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Popup.CrumbCard;
 
 function Row(AValue, ALimit: Integer): TAtlasCardRow;

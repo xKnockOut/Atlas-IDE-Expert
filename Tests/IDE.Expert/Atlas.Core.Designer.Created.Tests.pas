@@ -188,14 +188,14 @@ begin
   FFake.Insert(TAtlasCreatedWidget, nil, 'Vorher');
   CreateOne;
   CreateOne;
-  Assert.AreEqual(2, FCreated.Count);
+  Assert.AreEqual(2, Integer(FCreated.Count));
   Assert.IsTrue(FCreated.Holds(FSurface));
   Assert.AreEqual(2, FCreated.Undo(FLogRef));
   Assert.AreEqual('AtlasCreatedWidget2,AtlasCreatedWidget1', FLog.Keys.CommaText);
   Assert.IsNull(Find('AtlasCreatedWidget1'));
   Assert.IsNull(Find('AtlasCreatedWidget2'));
   Assert.IsNotNull(Find('Vorher'), 'nicht angelegt, bleibt');
-  Assert.AreEqual(0, FCreated.Count);
+  Assert.AreEqual(0, Integer(FCreated.Count));
   Assert.IsFalse(FCreated.Holds(FSurface));
 end;
 
@@ -203,7 +203,7 @@ procedure TAtlasDesignerCreatedTests.ComponentDeletedByUserIsSkipped;
 begin
   CreateOne;
   FFake.Delete(CreateOne);
-  Assert.AreEqual(1, FCreated.Count);
+  Assert.AreEqual(1, Integer(FCreated.Count));
   Assert.AreEqual(1, FCreated.Undo(FLogRef));
   Assert.AreEqual('AtlasCreatedWidget1', FLog.Keys.CommaText);
 end;
@@ -229,7 +229,7 @@ begin
   FFake.Insert(TAtlasCreatedWidget, nil, 'AtlasCreatedWidget1');
   Assert.IsFalse(FCreated.Holds(FSurface));
   Assert.AreEqual(0, FCreated.Undo(FLogRef));
-  Assert.AreEqual(0, FLog.Keys.Count);
+  Assert.AreEqual(0, Integer(FLog.Keys.Count));
   Assert.IsNotNull(Find('AtlasCreatedWidget1'), 'gehört dem Benutzer');
 end;
 
@@ -244,7 +244,7 @@ begin
   mContainer.Components[0].Name := 'Kind1';
   mContainer.Components[1].Name := 'Kind2';
   FFake.Delete(mContainer);
-  Assert.AreEqual(0, FCreated.Count, 'Kinder mit dem Container freigegeben');
+  Assert.AreEqual(0, Integer(FCreated.Count), 'Kinder mit dem Container freigegeben');
   Assert.AreEqual(0, FCreated.Undo(FLogRef));
 end;
 
@@ -253,10 +253,10 @@ begin
   CreateOne;
   CreateOne;
   FFake.Close;
-  Assert.AreEqual(0, FCreated.Count);
+  Assert.AreEqual(0, Integer(FCreated.Count));
   Assert.IsFalse(FCreated.Holds(FSurface));
   Assert.AreEqual(0, FCreated.Undo(FLogRef));
-  Assert.AreEqual(0, FLog.Keys.Count);
+  Assert.AreEqual(0, Integer(FLog.Keys.Count));
 end;
 
 procedure TAtlasDesignerCreatedTests.OtherFormIsNotTouched;
@@ -272,7 +272,7 @@ begin
   Assert.IsFalse(FCreated.Holds(mOther));
   Assert.AreEqual(0, FCreated.Undo(mOther));
   Assert.IsNotNull(mOther.Root.FindComponent('AtlasCreatedWidget1'), 'gleicher Name im anderen Formular bleibt');
-  Assert.AreEqual(1, FCreated.Count, 'Rückgängig bleibt fürs eigene Formular');
+  Assert.AreEqual(1, Integer(FCreated.Count), 'Rückgängig bleibt fürs eigene Formular');
   Assert.AreEqual(1, FCreated.Undo(FLogRef));
 end;
 
@@ -284,7 +284,7 @@ begin
   Assert.AreEqual(1, FCreated.Undo(FLogRef));
   Assert.AreEqual('AtlasCreatedWidget2,AtlasCreatedWidget1', FLog.Keys.CommaText);
   Assert.IsNotNull(Find('AtlasCreatedWidget1'));
-  Assert.AreEqual(0, FCreated.Count, 'danach nichts mehr gemerkt');
+  Assert.AreEqual(0, Integer(FCreated.Count), 'danach nichts mehr gemerkt');
 end;
 
 procedure TAtlasDesignerCreatedTests.ThrowingDeleteForgetsTheRest;
@@ -328,12 +328,12 @@ var
 begin
   mWidget := CreateOne;
   FCreated.Clear;
-  Assert.AreEqual(0, FCreated.Count);
+  Assert.AreEqual(0, Integer(FCreated.Count));
   Assert.AreEqual(0, FCreated.Undo(FLogRef));
   Assert.AreSame(mWidget, Find('AtlasCreatedWidget1'));
   // Ohne Abmeldung bei der Komponente schlüge die Freigabe hier in die Liste durch.
   FFake.Delete(mWidget);
-  Assert.AreEqual(0, FCreated.Count);
+  Assert.AreEqual(0, Integer(FCreated.Count));
 end;
 
 procedure TAtlasDesignerCreatedTests.KeyFollowsOwners;

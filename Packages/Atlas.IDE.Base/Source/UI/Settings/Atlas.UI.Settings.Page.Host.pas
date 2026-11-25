@@ -15,10 +15,10 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Settings.Catalog,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Bindings,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Page.Sheets;
@@ -166,7 +166,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Settings.Group;
+  Atlas.Vcl.Options.Group;
 
 { TAtlasSettingsSectionOwners }
 

@@ -76,7 +76,7 @@ implementation
 
 uses
   Atlas.Core.Debug.EvaluateRows,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasEvalSlicesTests }
 
@@ -181,9 +181,9 @@ begin
   FList.Add('C');
   Assert.AreEqual(Ord(TAtlasEvalSliceStep.More), Ord(Slice(mChanged)));
   Assert.IsTrue(mChanged);
-  Assert.AreEqual(2, FFake.Calls.Count, 'nach 40 ms ist die Scheibe von 30 ms um');
+  Assert.AreEqual(2, Integer(FFake.Calls.Count), 'nach 40 ms ist die Scheibe von 30 ms um');
   Assert.AreEqual(Ord(TAtlasEvalSliceStep.Done), Ord(Slice));
-  Assert.AreEqual(3, FFake.Calls.Count);
+  Assert.AreEqual(3, Integer(FFake.Calls.Count));
   Assert.AreEqual(Ord(TAtlasEvalState.Error), Ord(Row(2).State), 'unbekannter Bezeichner');
 end;
 
@@ -207,7 +207,7 @@ begin
   Assert.AreEqual(Ord(TAtlasEvalSliceStep.Wait), Ord(Slice));
   Assert.IsTrue(FSlices.Waiting);
   Assert.IsFalse(FSlices.Overdue);
-  Assert.AreEqual(1, FFake.Calls.Count, 'wartet, bevor es weitergeht');
+  Assert.AreEqual(1, Integer(FFake.Calls.Count), 'wartet, bevor es weitergeht');
   Assert.IsTrue(FFake.Answer('7', True));
   Assert.IsFalse(FSlices.Waiting);
   Assert.AreEqual(1, FArrived);
@@ -223,7 +223,7 @@ begin
   FList.Add('Danach');
   Slice;
   Assert.AreEqual(Ord(TAtlasEvalSliceStep.Wait), Ord(Slice));
-  Assert.AreEqual(1, FFake.Calls.Count);
+  Assert.AreEqual(1, Integer(FFake.Calls.Count));
 end;
 
 procedure TAtlasEvalSlicesTests.OverdueValueExpires;
@@ -287,7 +287,7 @@ begin
   Assert.IsTrue(FFake.Answer('1', True));
   Assert.IsFalse(FSlices.Waiting);
   Assert.AreEqual(1, FArrived);
-  Assert.AreEqual(0, FList.Count);
+  Assert.AreEqual(0, Integer(FList.Count));
 end;
 
 procedure TAtlasEvalSlicesTests.StoppedProcessStopsSlice;

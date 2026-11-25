@@ -11,8 +11,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Diagnostics.PluginReport,
+  Atlas.Plugin.Diagnostics.PluginTimings,
+  Atlas.Plugin.Diagnostics.PluginReport,
   Atlas.UI.Diagnostics.Grid;
 
 type
@@ -39,7 +39,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Diagnostics.Strings;
 
 const

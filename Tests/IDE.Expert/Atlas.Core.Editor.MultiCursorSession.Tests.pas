@@ -111,14 +111,14 @@ begin
   Assert.IsTrue(FSession.Next(FSurface));
   Assert.IsTrue(FSession.Next(FSurface));
   Assert.IsTrue(FSession.Next(FSurface));
-  Assert.AreEqual(3, FSession.Count);
+  Assert.AreEqual(3, Integer(FSession.Count));
 end;
 
 procedure TAtlasMultiCursorSessionTests.TwoCarets(AFirst: Integer);
 begin
   FFake.Caret(AFirst, 0);
   Assert.IsTrue(FSession.Vertical(FSurface, False));
-  Assert.AreEqual(2, FSession.Count);
+  Assert.AreEqual(2, Integer(FSession.Count));
 end;
 
 procedure TAtlasMultiCursorSessionTests.NextSelectsWordThenAddsOccurrences;
@@ -134,7 +134,7 @@ begin
   Assert.AreEqual(1, FFake.Paints);
   Assert.IsTrue(FSession.Next(FSurface), 'nächstes Vorkommen');
   Assert.IsTrue(FSession.Active);
-  Assert.AreEqual(2, FSession.Count);
+  Assert.AreEqual(2, Integer(FSession.Count));
   Assert.AreEqual(1, FSession.Carets[1].Line);
   Assert.AreEqual(1, FFake.Revealed, 'neue Marke sichtbar');
   Assert.AreEqual(1, FRefreshes);
@@ -150,7 +150,7 @@ begin
   Assert.AreEqual('a := yz;'#10'b := yz;'#10'c := yz;', FFake.Text);
   Assert.AreEqual(1, FFake.Writes);
   Assert.AreEqual(1, FFake.UndoDepth, 'ein Schritt für alle Marken');
-  Assert.AreEqual(3, FSession.Count);
+  Assert.AreEqual(3, Integer(FSession.Count));
   Assert.AreEqual(7, FSession.Carets[2].Character);
   Assert.AreEqual('b := yz;', FSession.LineText(1));
 end;
@@ -162,7 +162,7 @@ begin
   Assert.IsTrue(FFake.Undo);
   FSession.BufferChanged;
   Assert.AreEqual(cText, FFake.Text);
-  Assert.AreEqual(3, FSession.Count);
+  Assert.AreEqual(3, Integer(FSession.Count));
   Assert.IsTrue(FSession.Carets[2].HasSelection, 'Marken samt Markierung von vorher');
   Assert.AreEqual(1, FFake.Writes, 'Rückgängig schreibt nichts');
   Assert.IsTrue(FFake.Redo);
@@ -189,7 +189,7 @@ begin
   FFake.TypeText(cLonger, 0, 0);
   FSession.BufferChanged;
   Assert.AreEqual(cLonger, FFake.Text, 'nichts geschrieben');
-  Assert.AreEqual(2, FSession.Count);
+  Assert.AreEqual(2, Integer(FSession.Count));
   Assert.AreEqual(1, FSession.Carets[1].Line);
   Assert.AreEqual('d := x;', FSession.LineText(3));
 end;
@@ -253,10 +253,10 @@ procedure TAtlasMultiCursorSessionTests.ToggleAddsAndRemovesCaret;
 begin
   FFake.Caret(0, 0);
   Assert.IsTrue(FSession.Toggle(FSurface, cFile, 2, 3));
-  Assert.AreEqual(2, FSession.Count);
+  Assert.AreEqual(2, Integer(FSession.Count));
   Assert.AreEqual(3, FSession.Carets[1].Character);
   Assert.IsTrue(FSession.Toggle(FSurface, cFile, 2, 3));
-  Assert.AreEqual(1, FSession.Count, 'zweiter Klick entfernt die Marke');
+  Assert.AreEqual(1, Integer(FSession.Count), 'zweiter Klick entfernt die Marke');
   Assert.IsFalse(FSession.Toggle(FSurface, 'C:\Projekt\Unit2.pas', 1, 0), 'Klick in andere Datei');
 end;
 
@@ -266,7 +266,7 @@ begin
   Assert.IsFalse(FSession.LineEnds(FSurface));
   FFake.SelectFrom(0, 0);
   Assert.IsTrue(FSession.LineEnds(FSurface));
-  Assert.AreEqual(3, FSession.Count);
+  Assert.AreEqual(3, Integer(FSession.Count));
   Assert.AreEqual(7, FSession.Carets[1].Character);
 end;
 

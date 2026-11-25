@@ -34,7 +34,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.DeclaredTypes,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Common.Editing.Modernizer,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Localization.Texts;
@@ -849,14 +849,6 @@ begin
   end;
 end;
 
-function Command(const AName, ASummary, AExample: string; const AExecute: TSlashExecute): TSlashCommand;
-begin
-  Result.Name := AName;
-  Result.Summary := ASummary;
-  Result.Example := AExample;
-  Result.Execute := AExecute;
-end;
-
 { /modern }
 
 /// <summary>Arten aus den Optionen -for, -inline und -free; False bei unbekannter Option.</summary>
@@ -957,23 +949,23 @@ end;
 
 procedure RegisterExpressionCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('modern', cTexts[TExpressionCommandsText.ModernizeTheEnclosingRoutineFor].Text,
-    '/modern -inline', ExecuteModern));
-  ARegister(Command('format', cTexts[TExpressionCommandsText.ConvertTheStringConcatenationBelow].Text, '/format',
-    ExecuteFormat));
-  ARegister(Command('multiline', cTexts[TExpressionCommandsText.WriteTheConcatenatedLiteralBelow].Text,
-    '/multiline',
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('modern', cTexts[TExpressionCommandsText.ModernizeTheEnclosingRoutineFor].Text,
+      '/modern -inline', ExecuteModern));
+  ARegister(TSlashCommand.Create('format', cTexts[TExpressionCommandsText.ConvertTheStringConcatenationBelow].Text,
+      '/format', ExecuteFormat));
+  ARegister(TSlashCommand.Create('multiline', cTexts[TExpressionCommandsText.WriteTheConcatenatedLiteralBelow].Text,
+      '/multiline', function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteMultiline(AContext, True, AEdits, AReason);
     end));
-  ARegister(Command('multiline!', cTexts[TExpressionCommandsText.WriteTheMultiLineString].Text, '/multiline!',
-    function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
+  ARegister(TSlashCommand.Create('multiline!', cTexts[TExpressionCommandsText.WriteTheMultiLineString].Text,
+      '/multiline!', function(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
     begin
       Result := ExecuteMultiline(AContext, False, AEdits, AReason);
     end));
-  ARegister(Command('iif', cTexts[TExpressionCommandsText.IfElseAssignmentBelowAs].Text, '/iif', ExecuteIif));
-  ARegister(Command('inc', cTexts[TExpressionCommandsText.XXNBelowAs].Text, '/inc', ExecuteInc));
+  ARegister(TSlashCommand.Create('iif', cTexts[TExpressionCommandsText.IfElseAssignmentBelowAs].Text, '/iif',
+      ExecuteIif));
+  ARegister(TSlashCommand.Create('inc', cTexts[TExpressionCommandsText.XXNBelowAs].Text, '/inc', ExecuteInc));
 end;
 
 initialization

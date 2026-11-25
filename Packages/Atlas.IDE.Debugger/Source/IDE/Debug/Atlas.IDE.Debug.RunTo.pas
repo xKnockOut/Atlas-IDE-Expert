@@ -25,7 +25,7 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.RunTo,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 
@@ -84,14 +84,14 @@ implementation
 
 uses
   System.IOUtils,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 { TAtlasIdeRunTo.TListener }
 

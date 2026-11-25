@@ -21,7 +21,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Designer.Dialog;
 
 type
@@ -89,8 +89,8 @@ uses
   System.UITypes,
   Vcl.Graphics,
   Atlas.UI.Designer.ViewStrings,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service;
 
 const
   cBasePpi = 96;

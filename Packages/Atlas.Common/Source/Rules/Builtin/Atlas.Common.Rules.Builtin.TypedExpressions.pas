@@ -121,12 +121,15 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.Constants,
-  Atlas.Common.Editing.EnumTables,
+  Atlas.Common.Pascal.EnumTables,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Numbers;
 
 {$SCOPEDENUMS ON}
 
@@ -370,13 +373,13 @@ function TComparisonAlwaysConstantScan.ConstantSide(ANode: TSyntaxNode; out AOpe
 begin
   Result := True;
   AOperation := ANode.Name;
-  if FScope.Values.EvaluateNode(Unwrapped(ANode[1]), AValue) then
+  if FScope.Values.EvaluateNode(TSyntaxNodes.Unparen(ANode[1]), AValue) then
   begin
-    AOperand := Unwrapped(ANode[0]);
+    AOperand := TSyntaxNodes.Unparen(ANode[0]);
   end
-  else if FScope.Values.EvaluateNode(Unwrapped(ANode[0]), AValue) then
+  else if FScope.Values.EvaluateNode(TSyntaxNodes.Unparen(ANode[0]), AValue) then
   begin
-    AOperand := Unwrapped(ANode[1]);
+    AOperand := TSyntaxNodes.Unparen(ANode[1]);
     AOperation := Mirrored(AOperation);
   end
   else
@@ -463,7 +466,7 @@ var
   mTypeName: string;
   mOutside: Boolean;
 begin
-  if (ANode.ChildCount = 0) or not IntegerOperand(Unwrapped(ANode[0]), mTypeName, mLowValue, mHighValue) then
+  if (ANode.ChildCount = 0) or not IntegerOperand(TSyntaxNodes.Unparen(ANode[0]), mTypeName, mLowValue, mHighValue) then
   begin
     Exit;
   end;
@@ -596,19 +599,6 @@ begin
       Result := 65536;
   else
     Result := 0;
-  end;
-end;
-
-/// <summary>"1 Wert" bzw. "3 Werte".</summary>
-function Counted(ACount: Int64; const AOne, AMany: string): string;
-begin
-  if ACount = 1 then
-  begin
-    Result := '1 ' + AOne;
-  end
-  else
-  begin
-    Result := IntToStr(ACount) + ' ' + AMany;
   end;
 end;
 
@@ -1208,10 +1198,8 @@ var
   mRepaired, mInnermost: Boolean;
 begin
   mInnermost := ADimension = AArray.ChildCount - 2;
-  mMessage := cTexts[TTypedExpressionsText.CountMismatch].Fmt([AInfo.Text, Counted(AInfo.Count,
-    cTexts[TTypedExpressionsText.ValueOne].Text, cTexts[TTypedExpressionsText.ValueMany].Text),
-    Counted(AValue.ChildCount, cTexts[TTypedExpressionsText.EntryOne].Text,
-      cTexts[TTypedExpressionsText.EntryMany].Text)]);
+  mMessage := cTexts[TTypedExpressionsText.CountMismatch].Fmt([AInfo.Text, TTextNumbers.Counted(AInfo.Count, cTexts[TTypedExpressionsText.ValueOne].Text, cTexts[TTypedExpressionsText.ValueMany].Text),
+    TTextNumbers.Counted(AValue.ChildCount, cTexts[TTypedExpressionsText.EntryOne].Text, cTexts[TTypedExpressionsText.EntryMany].Text)]);
   // Über einer Aufzählung nennt die Zuordnung die wirklich fehlenden Werte, nicht die letzten (#667).
   mRepaired := (Length(AInfo.Names) = AInfo.Count) and mInnermost and
     TEnumTables.Repair(FContext.Text, FContext.Tree, AValue, AInfo.Names,
@@ -1455,9 +1443,9 @@ begin
   end;
   mEdits := [TTextEdit.Create(TTextRange.Create(mSelector.StartPos, mSelector.EndPos), Format('IndexStr(%s, [%s])',
     [FScope.Text(mSelector), string.Join(', ', mLiterals)]))] + mEdits;
-  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FTokens), 'System.StrUtils', FContext.Namespaces) then
+  if not TPascalUses.IsUsed(TPascalUses.UsedUnits(FTokens), 'System.StrUtils', FContext.Namespaces) then
   begin
-    if not TUsesClauses.AddUnit(FTokens, ACase.StartOffset, 'System.StrUtils', TTextLines.LineBreakOf(FContext.Text),
+    if not TPascalUsesEdits.AddUnit(FTokens, ACase.StartOffset, 'System.StrUtils', TTextLines.LineBreakOf(FContext.Text),
       mUsesEdit) then
     begin
       Exit;
@@ -1480,7 +1468,7 @@ begin
   begin
     Exit;
   end;
-  mSelector := Unwrapped(ANode[0]);
+  mSelector := TSyntaxNodes.Unparen(ANode[0]);
   if not FScope.SureType(mSelector, mSymbol, mTypeInfo) then
   begin
     Exit;
@@ -1660,12 +1648,12 @@ begin
       mLabeled := mItem[mLabelIndex];
       if (mLabeled.Kind = TSyntaxKind.RangeExpr) and (mLabeled.ChildCount = 2) then
       begin
-        CheckConstant(Unwrapped(mLabeled[0]), cTexts[TTypedExpressionsText.CaseLabel].Text);
-        CheckConstant(Unwrapped(mLabeled[1]), cTexts[TTypedExpressionsText.CaseLabel].Text);
+        CheckConstant(TSyntaxNodes.Unparen(mLabeled[0]), cTexts[TTypedExpressionsText.CaseLabel].Text);
+        CheckConstant(TSyntaxNodes.Unparen(mLabeled[1]), cTexts[TTypedExpressionsText.CaseLabel].Text);
       end
       else
       begin
-        CheckConstant(Unwrapped(mLabeled), cTexts[TTypedExpressionsText.CaseLabel].Text);
+        CheckConstant(TSyntaxNodes.Unparen(mLabeled), cTexts[TTypedExpressionsText.CaseLabel].Text);
       end;
     end;
   end;
@@ -1681,8 +1669,8 @@ begin
     mBound := AArray[mIndex];
     if (mBound.Kind = TSyntaxKind.SubrangeType) and (mBound.ChildCount = 2) then
     begin
-      CheckConstant(Unwrapped(mBound[0]), cTexts[TTypedExpressionsText.ArrayBound].Text);
-      CheckConstant(Unwrapped(mBound[1]), cTexts[TTypedExpressionsText.ArrayBound].Text);
+      CheckConstant(TSyntaxNodes.Unparen(mBound[0]), cTexts[TTypedExpressionsText.ArrayBound].Text);
+      CheckConstant(TSyntaxNodes.Unparen(mBound[1]), cTexts[TTypedExpressionsText.ArrayBound].Text);
     end;
   end;
 end;
@@ -1790,18 +1778,9 @@ end;
 
 procedure TSuspiciousStringPointerCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
+  mCall: TSyntaxNode;
   mScope: TTypedScope;
   mTokens: TArray<TPascalToken>;
-
-  /// <summary>Nächstes Token ab AIndex, das kein Kommentar ist; Length(Tokens) am Ende.</summary>
-  function NextToken(AIndex: Integer): Integer;
-  begin
-    Result := AIndex;
-    while (Result <= High(mTokens)) and (mTokens[Result].Kind = TPascalTokenKind.Comment) do
-    begin
-      Inc(Result);
-    end;
-  end;
 
   /// <summary>Index des Typ-Tokens hinter "Name:", wenn die Variable ASymbol allein so deklariert ist; -1 sonst.
   /// </summary>
@@ -1817,12 +1796,12 @@ var
     begin
       Exit;
     end;
-    mIndex := NextToken(mIndex + 1);
+    mIndex := NextUncommented(mTokens, mIndex + 1);
     if (mIndex > High(mTokens)) or (mTokens[mIndex].Text <> ':') then
     begin
       Exit;
     end;
-    mIndex := NextToken(mIndex + 1);
+    mIndex := NextUncommented(mTokens, mIndex + 1);
     if mIndex <= High(mTokens) then
     begin
       Result := mIndex;
@@ -1847,7 +1826,7 @@ var
     begin
       Exit;
     end;
-    mNext := NextToken(mIndex + 1);
+    mNext := NextUncommented(mTokens, mIndex + 1);
     if (mNext > High(mTokens)) or not MatchStr(mTokens[mNext].Text, [';', '=', ':=']) then
     begin
       Exit;
@@ -1907,7 +1886,7 @@ var
       Exit;
     end;
     mPointerWidth := CharPointerWidth(ANode.Name);
-    mArgument := Unwrapped(ANode[1]);
+    mArgument := TSyntaxNodes.Unparen(ANode[1]);
     if (mPointerWidth = 0) or not mScope.SureType(mArgument, mSymbol, mTypeInfo) or
       (not mTypeInfo.Builtin and not SameText(mTypeInfo.UnitName, 'System')) then
     begin
@@ -1920,33 +1899,6 @@ var
     end;
   end;
 
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.Call then
-        begin
-          CheckCast(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
@@ -1955,7 +1907,10 @@ begin
   mTokens := AContext.Tree.Tokens;
   mScope := TTypedScope.Create(AContext);
   try
-    Visit(AContext.Tree.Root);
+    for mCall in TSyntaxNodes.OfKind(AContext.Tree.Root, TSyntaxKind.Call) do
+    begin
+      CheckCast(mCall);
+    end;
   finally
     mScope.Free;
   end;

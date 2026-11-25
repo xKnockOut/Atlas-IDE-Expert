@@ -66,7 +66,7 @@ Marks move along while typing.
 
 ## Check rules
 
-**364 check rules** in four categories: 244 bugs, 109 code smells, 6 vulnerabilities, 5 security hotspots. Among them:
+**367 check rules** in four categories: 246 bugs, 110 code smells, 6 vulnerabilities, 5 security hotspots. Among them:
 
 ### Correctness
 
@@ -146,6 +146,8 @@ Marks move along while typing.
 - `@S[1]` or `PChar(@S[1])` as the address of the characters (range error for an empty string; quick fix `PChar(S)`)
 - Loops that run at most once because every path through the body ends with Exit, Break or raise (option `allowFirstElement` for fetching the first element)
 - Format strings that do not match their arguments (`Format('%d', [Name])`, too few arguments, `%q`)
+- Several local objects sharing one `try … finally` where an earlier one leaks when a later `Create` fails (`multiple-create-in-try`, #2630; safe fix: set the variables to `nil` before the `try` and move the `Create` calls into it)
+- Constructors that call a virtual method whose override in a descendant reads a field that is only set after `inherited` (`virtual-call-in-constructor`, #2623; descendants also from other units through the index, the message names descendant and field)
 
 ### Threads
 
@@ -162,6 +164,8 @@ Marks move along while typing.
 - `TTask.Run` without `try … except` whose exceptions get lost (quick fix wraps the body)
 - Variables and collections from outside written in `TParallel.For` or in tasks started in a loop without a lock (quick fix uses `TInterlocked` or a `TMonitor` lock)
 - Counters increased with `Inc` in `Execute`, `TTask.Run` or anonymous threads without a lock (quick fix `TInterlocked.Increment`)
+- `TThread.Execute` whose body is not fully inside `try … except`: an exception otherwise ends the thread silently (`thread-execute-without-except`, #2632; silent when the class evaluates `FatalException`; quick fix reports through an `ILogger` field)
+- Waiting loops that poll a field, property or global variable with `Sleep` instead of waiting for an event (`sleep-polling-loop`, #2626; the message names `TEvent.WaitFor`, `TThread.WaitFor` or `ITask.Wait`)
 
 ### Database
 
@@ -393,6 +397,15 @@ Compiler errors while typing, without a build.
   - `@` on variables, fields and parameters (like W1047)
   - casts of a `Pointer` to a class (like W1048)
 
+#### Pitfalls that Free Pascal compiles but Delphi does not (#2095, #1345, #1899)
+
+- A function reference in `Exit(ARef)` or in an array literal next to `+` (`FHandlers + [AHandler]`): Delphi calls it instead of taking it as a value (`method-reference-called`, like E2035 or E2010; safe fix `Result := ARef; Exit;`)
+- A constant of another class or an ancestor in the class declaration without the class name (`class-constant-unqualified`, like E2003; safe fix)
+- An enumeration value `Continue`, `Break`, `Exit` or `Halt` without `{$SCOPEDENUMS ON}` (`enum-hides-keyword`, like E2014)
+- `reference to` directly as the type of a field or variable (`inline-reference-type`, like E2003)
+- An inherited member such as `Scaled` or `Padding` that hides a routine, constant or variable of the unit inside methods (`member-hides-unit-symbol`)
+- `#13` and `#10` replaced separately, which turns `#13#10` into two characters (`line-break-split-replace`)
+
 #### OLE Automation (#1373)
 
 - In the deprecated `automated` section (like E2175–E2182, E2096, E2185):
@@ -473,6 +486,12 @@ Compiler errors while typing, without a build.
 - Hard-coded drive, user and network paths (option `allowUnits`)
 - File names compared with `=` instead of `SameFileName` (silent for platform-dependent comparisons with `SameText` and in test units)
 - DLL exports without a calling convention or with strings, dynamic arrays, objects or interfaces without GUID (quick fix `stdcall`, option `allowShareMem`)
+
+### IDE packages and experts (#2751, #2752, #2753)
+
+- Package `Register` routines that start work (timers, threads, forms, `Sleep`, also through helpers called only from there) instead of only registering (`register-does-work`)
+- Public methods of notifiers, wizards and key bindings through which an exception reaches the IDE without a guard routine or `try … except` (`ota-entry-without-guard`, guard routines configurable, with a fix)
+- Threads that queue with `Queue` on their own thread while nobody removes the entries with `RemoveQueuedEvents` (`queue-without-remove`, with a fix)
 
 ### Security
 

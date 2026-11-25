@@ -17,7 +17,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Actions,
-  Atlas.IDE.Foundation.ActionHook;
+  Atlas.ToolsApi.Commands.ActionHook;
 
 type
   /// <summary>Hängt an der IDE-Aktion „Auswerten/Ändern“.</summary>
@@ -46,7 +46,7 @@ uses
   Vcl.ActnList,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   // Name der IDE-Aktion „Auswerten/Ändern“ je Delphi-Version; ungeprüft, siehe Handtest AW15.

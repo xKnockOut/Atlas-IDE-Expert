@@ -21,7 +21,7 @@ interface
 type
   /// <summary>Warum keine Antwort kam.</summary>
   TAtlasAiError = (None, NoKey, Unreachable, Timeout, Unauthorized, ModelMissing, RateLimited, ServerError,
-    BadAnswer, Cancelled, Refused);
+    BadAnswer, Cancelled, Refused, Rejected);
 
   /// <summary>Eine Aufgabe an den Anbieter.</summary>
   TAtlasAiPrompt = record
@@ -105,6 +105,7 @@ const
   /// <summary>HTTP-Status der Antworten: Erfolg, Anmeldung, Modell, Drosselung, Serverfehler.</summary>
   cAiHttpOkFirst = 200;
   cAiHttpOkLast = 299;
+  cAiHttpBadRequest = 400;
   cAiHttpUnauthorized = 401;
   cAiHttpForbidden = 403;
   cAiHttpNotFound = 404;
@@ -141,6 +142,11 @@ begin
     if AStatus >= cAiHttpServerError then
     begin
       Result := TAtlasAiError.ServerError;
+    end
+    else if AStatus >= cAiHttpBadRequest then
+    begin
+      // Übrige 4xx (etwa 400 invalid_request_error): Der Anbieter hat geantwortet und die Anfrage abgelehnt.
+      Result := TAtlasAiError.Rejected;
     end
     else
     begin

@@ -24,7 +24,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.ExceptionRules,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   {$SCOPEDENUMS ON}
@@ -79,7 +79,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.Exceptions.Strings;
 
 const

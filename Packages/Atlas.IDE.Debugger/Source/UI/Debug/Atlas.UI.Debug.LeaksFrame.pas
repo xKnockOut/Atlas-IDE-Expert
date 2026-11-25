@@ -21,7 +21,7 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Core.Debug.LeakView,
-  Atlas.UI.Foundation.FillFrame;
+  Atlas.Vcl.Forms.FillFrame;
 
 type
   TAtlasDebugLeaksFrame = class(TAtlasFillFrame)
@@ -66,8 +66,11 @@ implementation
 
 uses
   Winapi.Windows,
+  Atlas.Plugin.Calls.Optional,
+  Atlas.Vcl.Controls.Helpers,
   Atlas.UI.Debug.Leaks.Strings,
-  Atlas.UI.Debug.Leaks;
+  Atlas.UI.Debug.Leaks,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 
@@ -155,10 +158,7 @@ end;
 
 procedure TAtlasDebugLeaksFrame.FilterClick(Sender: TObject);
 begin
-  if Assigned(FOnFilter) then
-  begin
-    FOnFilter();
-  end;
+  TAtlasCalls.Call(FOnFilter);
 end;
 
 procedure TAtlasDebugLeaksFrame.MarkKnownClick(Sender: TObject);
@@ -179,11 +179,7 @@ end;
 
 procedure TAtlasDebugLeaksFrame.TreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if Key = VK_RETURN then
-  begin
-    Key := 0;
-    OpenSelected;
-  end;
+  TAtlasControls.ReturnKey(Key, OpenSelected);
 end;
 
 procedure TAtlasDebugLeaksFrame.TreeChange(Sender: TObject; Node: TTreeNode);
@@ -219,7 +215,7 @@ begin
   end;
   if FRows[mRow].Entry.Known and not (cdsSelected in State) then
   begin
-    Sender.Canvas.Font.Color := clGrayText;
+    Sender.Canvas.Font.Color := TAtlasUiTheme.SystemColor(Sender, clGrayText);
   end;
 end;
 
@@ -232,11 +228,7 @@ end;
 
 function TAtlasDebugLeaksFrame.SelectedRow: Integer;
 begin
-  Result := -1;
-  if FTree.Selected <> nil then
-  begin
-    Result := Integer(NativeInt(FTree.Selected.Data));
-  end;
+  Result := TAtlasControls.SelectedIndex(FTree);
 end;
 
 procedure TAtlasDebugLeaksFrame.OpenSelected;

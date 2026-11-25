@@ -43,18 +43,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.NameSuggestions;
-
-function Join(const ALines: array of string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result := Result + ALines[mIndex] + #10;
-  end;
-end;
+  Atlas.Common.Editing.NameSuggestions,
+  Atlas.Tests.SourceText;
 
 /// <summary>Namensposition am "|" in AMarked als "Art Typ" ("field TCustomerList", "global …"); '-' ohne.</summary>
 function SiteOf(const AMarked: string): string;
@@ -184,7 +174,7 @@ end;
 
 procedure TNameSuggestionsTests.FindsFieldSite;
 begin
-  Assert.AreEqual('field TCustomerList', SiteOf(Join([
+  Assert.AreEqual('field TCustomerList', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -194,7 +184,7 @@ begin
     '  end;',
     'implementation',
     'end.'])));
-  Assert.AreEqual('field TList<TCustomer> (FCu)', SiteOf(Join([
+  Assert.AreEqual('field TList<TCustomer> (FCu)', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -204,7 +194,7 @@ begin
     '  end;',
     'implementation',
     'end.'])));
-  Assert.AreEqual('field TPoint', SiteOf(Join([
+  Assert.AreEqual('field TPoint', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',
@@ -217,7 +207,7 @@ end;
 
 procedure TNameSuggestionsTests.FindsLocalParameterAndInlineSites;
 begin
-  Assert.AreEqual('local TCustomerList', SiteOf(Join([
+  Assert.AreEqual('local TCustomerList', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -228,7 +218,7 @@ begin
     'begin',
     'end;',
     'end.'])));
-  Assert.AreEqual('parameter TCustomer', SiteOf(Join([
+  Assert.AreEqual('parameter TCustomer', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -236,7 +226,7 @@ begin
     'begin',
     'end;',
     'end.'])));
-  Assert.AreEqual('parameter string', SiteOf(Join([
+  Assert.AreEqual('parameter string', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -244,7 +234,7 @@ begin
     'begin',
     'end;',
     'end.'])));
-  Assert.AreEqual('local TCustomerList', SiteOf(Join([
+  Assert.AreEqual('local TCustomerList', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -257,7 +247,7 @@ end;
 
 procedure TNameSuggestionsTests.FindsGlobalSiteAndRejectsOthers;
 begin
-  Assert.AreEqual('global TCustomerList', SiteOf(Join([
+  Assert.AreEqual('global TCustomerList', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'var',
@@ -265,21 +255,21 @@ begin
     'implementation',
     'end.'])));
   // Ohne Typ rechts vom Caret, in Konstanten und in Anweisungen nichts.
-  Assert.AreEqual('-', SiteOf(Join([
+  Assert.AreEqual('-', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'var',
     '  |',
     'implementation',
     'end.'])));
-  Assert.AreEqual('-', SiteOf(Join([
+  Assert.AreEqual('-', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'const',
     '  |: Integer = 5;',
     'implementation',
     'end.'])));
-  Assert.AreEqual('-', SiteOf(Join([
+  Assert.AreEqual('-', SiteOf(TTestSource.Lines([
     'unit U;',
     'interface',
     'implementation',
@@ -298,7 +288,7 @@ var
   mTree: TSyntaxTree;
   mCounts: TNamingCounts;
 begin
-  mTree := TPascalParser.Parse(Join([
+  mTree := TPascalParser.Parse(TTestSource.Lines([
     'unit U;',
     'interface',
     'type',

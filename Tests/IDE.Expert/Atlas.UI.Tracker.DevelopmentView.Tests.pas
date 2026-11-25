@@ -10,7 +10,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 type
   [TestFixture]
@@ -47,19 +47,13 @@ uses
   Vcl.Forms,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.UI.Tracker.DevelopmentView;
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.UI.Tracker.DevelopmentView,
+  Atlas.Tests.Files;
 
 function Root: string;
 begin
-  if PathDelim = '\' then
-  begin
-    Result := 'C:\Projekte\Kasse';
-  end
-  else
-  begin
-    Result := '/projekte/kasse';
-  end;
+  Result := TTestData.ProjectRoot('Kasse');
 end;
 
 function Under(const ARelative: string): string;

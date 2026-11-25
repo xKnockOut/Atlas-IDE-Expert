@@ -26,7 +26,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Actions,
-  Atlas.IDE.Foundation.ActionHook;
+  Atlas.ToolsApi.Commands.ActionHook;
 
 type
   {$SCOPEDENUMS ON}
@@ -90,7 +90,7 @@ uses
   Vcl.ActnList,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Debug.Session;
 
 { TAtlasIdeDebugTrace.THook }

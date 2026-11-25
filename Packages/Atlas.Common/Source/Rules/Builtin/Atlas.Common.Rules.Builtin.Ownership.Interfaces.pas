@@ -49,10 +49,11 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -83,19 +84,6 @@ const
 
 const
   cReleaseMembers: array[0..2] of string = ('Free', 'Destroy', 'DisposeOf');
-
-/// <summary>Folgt AName der Namensregel für Interfaces (IName, auch Unit.IName)?</summary>
-function LooksLikeInterface(const AName: string): Boolean;
-var
-  mName: string;
-begin
-  mName := AName;
-  if mName.Contains('.') then
-  begin
-    mName := Copy(mName, mName.LastIndexOf('.') + 2, MaxInt);
-  end;
-  Result := (Length(mName) > 1) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
-end;
 
 /// <summary>Die Anweisung, die ANode enthält.</summary>
 function StatementOf(ANode: TSyntaxNode): TSyntaxNode;
@@ -224,7 +212,7 @@ begin
   begin
     Exit;
   end;
-  if (AParent.ChildCount = 2) and LooksLikeInterface(AParent.Name) then
+  if (AParent.ChildCount = 2) and TTextNames.LooksLikeInterface(AParent.Name) then
   begin
     ACast := True;
     Result := True;
@@ -254,7 +242,7 @@ begin
       AUse := MemberUse(AParent, ACast);
     TSyntaxKind.BinaryExpr:
       begin
-        Result := SameText(AParent.Name, 'as') and LooksLikeInterface(AParent[1].Name);
+        Result := SameText(AParent.Name, 'as') and TTextNames.LooksLikeInterface(AParent[1].Name);
         ACast := ACast or Result;
         AUse := TMixedUse.Use;
       end;
@@ -333,7 +321,7 @@ begin
     mType := ASection[mDecl][0].Name;
     for mName in ASection[mDecl].Name.Split([',']) do
     begin
-      if LooksLikeInterface(mType) then
+      if TTextNames.LooksLikeInterface(mType) then
       begin
         FInterfaceLocals := FInterfaceLocals + [Trim(mName)];
       end
@@ -355,7 +343,7 @@ begin
   begin
     mType := mType.FindChild(TSyntaxKind.TypeReference);
   end;
-  Result := (mType <> nil) and LooksLikeInterface(mType.Name);
+  Result := (mType <> nil) and TTextNames.LooksLikeInterface(mType.Name);
 end;
 
 procedure TMixedScan.CheckVariable(ARoutine: TSyntaxNode; const AName, AClassName: string);
@@ -499,12 +487,12 @@ begin
     Exit;
   end;
   mArgs := AType.FindChild(TSyntaxKind.GenericArgs);
-  if (mArgs <> nil) and (mArgs.ChildCount = 1) and LooksLikeInterface(mArgs[0].Name) then
+  if (mArgs <> nil) and (mArgs.ChildCount = 1) and TTextNames.LooksLikeInterface(mArgs[0].Name) then
   begin
     AIsList := True;
     Result := mArgs[0].Name;
   end
-  else if (mArgs = nil) and LooksLikeInterface(AType.Name) then
+  else if (mArgs = nil) and TTextNames.LooksLikeInterface(AType.Name) then
   begin
     Result := AType.Name;
   end;
@@ -554,7 +542,7 @@ begin
   for mIndex := 0 to mBody.ChildCount - 1 do
   begin
     mNode := mBody[mIndex];
-    if (mNode.Kind = TSyntaxKind.TypeReference) and LooksLikeInterface(mNode.Name) then
+    if (mNode.Kind = TSyntaxKind.TypeReference) and TTextNames.LooksLikeInterface(mNode.Name) then
     begin
       mClass.Interfaces := mClass.Interfaces + [mNode.Name];
     end

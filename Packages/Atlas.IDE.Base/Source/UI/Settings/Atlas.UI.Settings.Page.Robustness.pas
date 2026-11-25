@@ -42,10 +42,10 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Hangs,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Foundation.ListBox,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Vcl.Controls.ListBox,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.Page.General,
   Atlas.UI.Settings.Page.Sheets;

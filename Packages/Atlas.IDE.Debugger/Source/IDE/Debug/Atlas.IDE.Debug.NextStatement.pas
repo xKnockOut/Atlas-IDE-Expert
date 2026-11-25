@@ -18,7 +18,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Debug.NextStatement,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasIdeNextStatement = class
@@ -67,12 +67,13 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   Vcl.Dialogs,
   System.UITypes,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Breakpoints,
@@ -81,6 +82,21 @@ uses
 const
   cWin32 = 'Win32';
   cWin64 = 'Win64';
+
+type
+{$IFDEF CPUX64}
+  // ToolsAPI: win32 ist Winapi.Windows.TContext, in der 64-Bit-IDE also der x64-Kontext ohne Eip (E2003 im
+  // Win64-Bau). Den Kontext eines 32-Bit-Programms liest die 64-Bit-IDE im WOW64-Aufbau.
+  PAtlasWin32Context = PWow64Context;
+{$ELSE}
+  PAtlasWin32Context = PContext;
+{$ENDIF}
+
+/// <summary>Thread-Kontext eines 32-Bit-Programms in AContext, je nach Bitbreite der IDE.</summary>
+function Win32Context(var AContext: TOTAThreadContextEx): PAtlasWin32Context;
+begin
+  Result := PAtlasWin32Context(@AContext.win32);
+end;
 
 { TAtlasIdeNextStatement }
 
@@ -240,7 +256,7 @@ begin
   end
   else
   begin
-    AAddress := mContext.win32.Eip;
+    AAddress := Win32Context(mContext)^.Eip;
   end;
   Result := AAddress <> 0;
 end;
@@ -257,7 +273,7 @@ begin
   end
   else
   begin
-    mContext.win32.Eip := Cardinal(AAddress);
+    Win32Context(mContext)^.Eip := Cardinal(AAddress);
   end;
   AThread.SetOTAThreadContextEx(mContext);
   // Nur wenn der Debugger den Wert übernommen hat.

@@ -25,16 +25,8 @@ uses
 type
   TMemberKinds = set of TIndexSymbolKind;
 
-const
-  cComponentRoots: array[0..13] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
-    'TGraphicControl', 'TForm', 'TCustomForm', 'TFrame', 'TCustomFrame', 'TDataModule', 'TDataSet', 'TCustomPanel',
-    'TPanel', 'TCustomConnection');
-  cControlRoots: array[0..9] of string = ('TControl', 'TWinControl', 'TCustomControl', 'TGraphicControl', 'TForm',
-    'TCustomForm', 'TFrame', 'TCustomFrame', 'TCustomPanel', 'TPanel');
-
 /// <summary>Vorfahren von AClassName, soweit Unit und Index sie kennen; der erste ist der direkte.</summary>
 function Ancestors(ASource: TCommandSource; const AIndex: ISymbolIndex; const AClassName: string): TArray<string>;
-function DescendsFrom(const AChain: TArray<string>; const ARoots: array of string): Boolean;
 /// <summary>ATypeName ist TComponent oder stammt davon ab.</summary>
 function IsComponentType(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string): Boolean;
 /// <summary>Mitglied AName der Klasse AClass in der Unit (Feld, Property, Methode).</summary>
@@ -67,7 +59,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Semantics.ComponentRoots;
 
 /// <summary>Erster Vorfahr von ASymbol; '' ohne.</summary>
 function FirstOf(const ASymbol: TIndexSymbol): string;
@@ -123,20 +116,6 @@ begin
     Result := Result + [mNext];
     mName := mNext;
   end;
-end;
-
-function DescendsFrom(const AChain: TArray<string>; const ARoots: array of string): Boolean;
-var
-  mName: string;
-begin
-  for mName in AChain do
-  begin
-    if MatchText(mName, ARoots) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function IsComponentType(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string): Boolean;

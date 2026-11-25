@@ -26,11 +26,11 @@ uses
   System.SysUtils,
   System.Classes,
   System.JSON,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.Lsp.Session.Base,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Base,
   Atlas.Core.Lsp.Session.Requests,
-  Atlas.Core.Lsp.Framing;
+  Atlas.Plugin.Lsp.Framing;
 
 /// <summary>Methode und Parameter der gerahmten Nachricht ABytes.</summary>
 function MessageOf(const ABytes: TBytes; out AId: Integer; out AParams: string): string;
@@ -99,7 +99,7 @@ begin
     Assert.IsTrue(mSession.SyncedText('c:\p\a.pas', mText));
     Assert.AreEqual('unit A2;', mText);
     mSession.Close('C:\P\A.pas');
-    Assert.AreEqual(3, mSeen.Count, 'gleicher Text ohne didChange');
+    Assert.AreEqual(3, Integer(mSeen.Count), 'gleicher Text ohne didChange');
     Assert.StartsWith('textDocument/didOpen ', mSeen[0]);
     Assert.StartsWith('textDocument/didChange ', mSeen[1]);
     Assert.StartsWith('textDocument/didClose ', mSeen[2]);

@@ -43,10 +43,11 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.TestResults,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.TestResults,
   Atlas.Core.Tracker.Contract.TestResults,
-  Atlas.UI.Tracker.Contract.TestResults;
+  Atlas.UI.Tracker.Contract.TestResults,
+  Atlas.Core.Projects.TestSupport;
 
 const
   cTestProject = 'C:\Projekte\Atlas\Atlas.Tests.dproj';
@@ -78,14 +79,6 @@ type
 function NowUtc0: TDateTime;
 begin
   Result := EncodeDate(2026, 10, 16) + EncodeTime(19, 41, 0, 0);
-end;
-
-function Failure(const ATest, AMessage, AFile: string; ALine: Integer): TAtlasProjectTestFailure;
-begin
-  Result.Test := ATest;
-  Result.Message := AMessage;
-  Result.FileName := AFile;
-  Result.Line := ALine;
 end;
 
 /// <summary>412 bestanden, 3 übersprungen, 2 fehlgeschlagen (Beispiel aus dem Issue).</summary>

@@ -35,7 +35,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.TeamFile,
+  Atlas.Plugin.Settings.TeamFile,
   Atlas.Core.StartProfiles.Picker;
 
 { TAtlasStartProfilePickerTests }

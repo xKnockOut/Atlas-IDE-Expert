@@ -25,7 +25,7 @@ uses
   System.Classes,
   Atlas.Core.Debug.BreakpointSets,
   Atlas.UI.Debug.BreakpointSets,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasIdeBreakpointSets = class
@@ -81,16 +81,16 @@ uses
   System.Generics.Collections,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Debug.BreakpointSetFlow,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Switches,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Switches,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.UI.Debug.Breakpoints.Strings,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 const
   cTickMs = 10000;

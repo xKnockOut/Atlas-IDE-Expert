@@ -62,7 +62,8 @@ uses
   Vcl.Graphics,
   Vcl.Dialogs,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Settings.Page.Sheets;
+  Atlas.UI.Settings.Page.Sheets,
+  Atlas.Vcl.Theme.Service;
 
 const
   /// <summary>Höhe der Kennzahlen des Index (vier Zeilen Text).</summary>
@@ -88,7 +89,7 @@ begin
   FIndexInfo.Parent := mPanel;
   FIndexInfo.Left := 0;
   FIndexInfo.Top := FIndexInfo.ScaleValue(2);
-  FIndexInfo.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FIndexInfo, clGrayText);
   mPanel := AddPanel(cButtonRowHeight);
   FIndexRefresh := AddColumnButton(mPanel, 0, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsIndexRefresh),
     IndexRefreshClick);

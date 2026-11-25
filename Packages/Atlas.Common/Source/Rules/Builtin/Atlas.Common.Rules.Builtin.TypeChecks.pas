@@ -43,8 +43,7 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Registry,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Rules.Registry;
 
 const
   cDynamicArrayMisuseRuleId = 'dynamic-array-misuse';
@@ -82,6 +81,7 @@ procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Derived,
   System.SysUtils,
@@ -96,7 +96,8 @@ uses
   Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Common.Rules.Builtin.TypeChecks.Hresult,
   Atlas.Common.Rules.Builtin.TypeChecks.VarArguments,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -360,7 +361,6 @@ type
     FNames: TStringList;
     FLines: TArray<string>;
     FParent: TSyntaxNode;
-    function OuterRoutine(ANode: TSyntaxNode): TSyntaxNode;
     function NestedOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
     function TargetType(ATarget: TSyntaxNode; out AText: string; out AUnit: TUnitIndex): Boolean;
     function ParameterType(ACall: TSyntaxNode; AArgument: Integer; out AText: string; out AUnit: TUnitIndex): Boolean;
@@ -385,15 +385,6 @@ constructor TLocalRoutineAsCallbackScan.Create(const AContext: TRuleContext; con
 begin
   FContext := AContext;
   FReport := AReport;
-end;
-
-function TLocalRoutineAsCallbackScan.OuterRoutine(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
 end;
 
 /// <summary>Verschachtelte Routine, deren Kopf ASymbol deklariert; nil, wenn ASymbol keine ist.</summary>
@@ -502,9 +493,9 @@ var
   mIndent, mText: string;
 begin
   Result := False;
-  mOuter := OuterRoutine(ARoutine);
+  mOuter := TSyntaxNodes.Enclosing(ARoutine, [TSyntaxKind.RoutineDecl]);
   // Nur eine Ebene tief: Bei tieferer Schachtelung bräuchte die mittlere Routine sie weiter.
-  if (mOuter = nil) or (OuterRoutine(mOuter) <> nil) or not SelfContained(ARoutine) then
+  if (mOuter = nil) or (TSyntaxNodes.Enclosing(mOuter, [TSyntaxKind.RoutineDecl]) <> nil) or not SelfContained(ARoutine) then
   begin
     Exit;
   end;
@@ -631,7 +622,7 @@ procedure TLocalRoutineAsCallbackScan.CheckConstant(AConst: TSyntaxNode);
 var
   mInner, mOuter: TSyntaxNode;
 begin
-  mOuter := OuterRoutine(AConst);
+  mOuter := TSyntaxNodes.Enclosing(AConst, [TSyntaxKind.RoutineDecl]);
   if (mOuter = nil) or (AConst.FindChild(TSyntaxKind.TypeReference) = nil) and
     (AConst.FindChild(TSyntaxKind.PointerType) = nil) then
   begin
@@ -656,7 +647,7 @@ begin
   Result := False;
   for mNode in FNodes do
   begin
-    if (mNode.Kind = TSyntaxKind.RoutineDecl) and (OuterRoutine(mNode) <> nil) then
+    if (mNode.Kind = TSyntaxKind.RoutineDecl) and (TSyntaxNodes.Enclosing(mNode, [TSyntaxKind.RoutineDecl]) <> nil) then
     begin
       FNested.Add(mNode);
       FNames.Add(mNode.Name);

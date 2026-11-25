@@ -14,7 +14,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasChoiceDialog = class(TAtlasDialog)
@@ -44,7 +44,7 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Generate.Choice,
-  Atlas.UI.Foundation.ListBox,
+  Atlas.Vcl.Controls.ListBox,
   Atlas.UI.Generate.Strings;
 
 const

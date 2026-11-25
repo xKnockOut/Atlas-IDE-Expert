@@ -30,7 +30,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesLocator,
-  Atlas.Common.Architecture.UsesGraph.Tests;
+  Atlas.Common.Architecture.UsesGraph.Tests,
+  Atlas.Common.Architecture.TestSupport;
 
 const
   cMainText = 'unit Main;'#10 +
@@ -60,15 +61,6 @@ begin
     begin
       ACounter.Add(AFileName);
       Result := AFiles.TryGetValue(AFileName, AText);
-    end;
-end;
-
-function NoDefines: TUsesDefinesFunc;
-begin
-  Result :=
-    function(const AFileName: string): TArray<string>
-    begin
-      Result := nil;
     end;
 end;
 

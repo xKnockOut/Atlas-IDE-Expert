@@ -48,7 +48,7 @@ uses
   Atlas.Core.Tracker.EndPull,
   Atlas.Core.Tracker.EndSteps,
   Atlas.Core.Tracker.Workflow,
-  Atlas.Core.VersionControl.Contract;
+  Atlas.VersionControl.Repository.Contract;
 
 const
   cBranch = 'feature/7-statusfeld';

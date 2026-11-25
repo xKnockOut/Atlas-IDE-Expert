@@ -10,12 +10,12 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.CrashCases,
+  Atlas.Plugin.Lsp.CrashCases,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Commands.Palette,
   Atlas.IDE.CodeInsight.Manager;
 
@@ -110,11 +110,14 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Diagnostics.BugReport,
-  Atlas.IDE.CodeInsight.Composition.Adapters,
-  Atlas.IDE.Foundation.Host;
+  Atlas.IDE.CodeInsight.Composition.HostAdapters,
+  Atlas.IDE.Foundation.Host,
+  Atlas.Plugin.Diagnostics.UnloadSafety;
 
 const
   cMessageGroup = 'Atlas';
+  /// <summary>Grund für TAtlasUnloadSafety, wenn die IDE den Manager nach dem Abmelden noch hält.</summary>
+  cManagerHeldReason = 'Code-Insight-Manager';
 
 var
   ManagerIndex: Integer = -1;
@@ -165,6 +168,10 @@ begin
       begin
         TAtlasGuard.Log(Format('Code-Insight-Manager wird nach dem Abmelden noch %d-mal von der IDE gehalten',
           [ManagerInstance.RefCount - 1]));
+        // #2372: Die IDE gibt ihre Referenz erst später frei (beim Beenden oder beim nächsten Code-Insight-Aufruf)
+        // und springt dabei in _Release und die Methoden des Managers. Ohne Festhalten läge dieser Code dann schon
+        // nicht mehr im Speicher: Zugriffsverletzung in einem „unbekannten Modul“ der IDE.
+        TAtlasUnloadSafety.MarkUnsafe(HInstance, cManagerHeldReason);
       end;
     end;
   finally
@@ -461,7 +468,7 @@ begin
   if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AId, mCommand) and Assigned(mCommand.Run) and
     TAtlasModuleContributions.IsVisible(mCommand) then
   begin
-    TAtlasGuard.Run(TAtlasFeature.EditorCommands, mCommand.Run);
+    TAtlasCommandScope.Run(TAtlasFeature.EditorCommands, mCommand.Caption, mCommand.Run);
   end;
 end;
 

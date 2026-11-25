@@ -50,9 +50,10 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.MemberTransfer,
-  Atlas.Common.Editing.ExtractSuperclass;
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Pascal.MemberTransfer,
+  Atlas.Common.Editing.ExtractSuperclass,
+  Atlas.Tests.SourceText;
 
 const
   cExport_ =
@@ -104,18 +105,6 @@ const
     'end;'#10 +
     #10 +
     'end.'#10;
-
-function Parses(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
-end;
 
 /// <summary>Index des Mitglieds AName in der Klasse auf Zeile ALine.</summary>
 function IdOf(const AText: string; ALine: Integer; const AName: string): Integer;
@@ -238,7 +227,7 @@ var
 begin
   Assert.IsTrue(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['FPages', 'WritePage'], [], True), mPlan,
     mReason), mReason);
-  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(TTestSource.Parses(mPlan.Text), mPlan.Text);
   mBase := Between(mPlan.Text, 'TExportBase = class(TComponent)', 'end;');
   Assert.IsTrue(ContainsStr(mBase, '    FPages: TStringList;'), mBase);
   Assert.IsTrue(ContainsStr(mBase, '    procedure WritePage(const AText: string);'), mBase);
@@ -262,7 +251,7 @@ var
 begin
   Assert.IsTrue(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['FTitle', 'Run', 'WritePage'], ['WritePage'],
     True), mPlan, mReason), mReason);
-  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(TTestSource.Parses(mPlan.Text), mPlan.Text);
   Assert.IsTrue(ContainsStr(mPlan.Text, '    procedure WritePage(const AText: string); virtual; abstract;'),
     mPlan.Text);
   Assert.IsTrue(ContainsStr(mPlan.Text, '    procedure WritePage(const AText: string); override;'), mPlan.Text);
@@ -306,7 +295,7 @@ var
   mReq: TSuperclassRequest;
 begin
   Assert.IsTrue(Run(cSource, 3, Request(cSource, 3, 'TFooBase', ['FCount', 'FName'], [], True), mPlan, mReason), mReason);
-  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(TTestSource.Parses(mPlan.Text), mPlan.Text);
   mBase := Between(mPlan.Text, 'TFooBase = class', 'end;');
   Assert.IsTrue(ContainsStr(mBase, '  strict private'#10'    FName: string;'), mBase);
   Assert.IsTrue(ContainsStr(mBase, '  protected'#10'    FCount: Integer;'), mBase);
@@ -341,7 +330,7 @@ begin
   Assert.IsTrue(Run(cExport_, 4, Request(cExport_, 4, 'TExportBase', ['FPages', 'FCompressed'], [], True), mPlan,
     mReason), mReason);
   mText := mPlan.Text;
-  Assert.IsTrue(Parses(mText), mText);
+  Assert.IsTrue(TTestSource.Parses(mText), mText);
   Assert.IsTrue(ContainsStr(mText, '    constructor Create(AOwner: TComponent); override;'#10 +
     '    destructor Destroy; override;'#10'  end;'), mText);
   Assert.IsTrue(ContainsStr(mText, 'constructor TExportBase.Create(AOwner: TComponent);'#10'begin'#10 +
@@ -396,7 +385,7 @@ var
   mReason: string;
 begin
   Assert.IsTrue(Run(cSource, 3, Request(cSource, 3, 'TNodeBase', ['Clone'], [], True), mPlan, mReason), mReason);
-  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(TTestSource.Parses(mPlan.Text), mPlan.Text);
   Assert.IsTrue(ContainsStr(mPlan.Text, 'type'#10'  TNode = class;'#10#10'  TNodeBase = class'#10), mPlan.Text);
   Assert.AreEqual(5, mPlan.BaseLine);
 end;
@@ -418,7 +407,7 @@ var
   mReason: string;
 begin
   Assert.IsTrue(Run(cSource, 3, Request(cSource, 3, 'TBoxBase', ['FItem', 'Get'], [], True), mPlan, mReason), mReason);
-  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(TTestSource.Parses(mPlan.Text), mPlan.Text);
   Assert.IsTrue(ContainsStr(mPlan.Text, 'TBoxBase<T: class> = class'#10), mPlan.Text);
   Assert.IsTrue(ContainsStr(mPlan.Text, 'TBox<T: class> = class(TBoxBase<T>)'), mPlan.Text);
   Assert.IsTrue(ContainsStr(mPlan.Text, 'function TBoxBase<T>.Get: T;'), mPlan.Text);
@@ -443,7 +432,7 @@ var
 begin
   Assert.IsTrue(Run(cSource, 3, Request(cSource, 3, 'TJobBase', ['Step', 'Run'], ['Step'], False), mPlan, mReason),
     mReason);
-  Assert.IsTrue(Parses(mPlan.Text), mPlan.Text);
+  Assert.IsTrue(TTestSource.Parses(mPlan.Text), mPlan.Text);
   Assert.IsTrue(ContainsStr(mPlan.Text, '  protected'#10'    procedure Step; virtual; abstract;'), mPlan.Text);
   mJob := Between(mPlan.Text, 'TJob = class(TJobBase)', 'end;');
   // Gleiche Sichtbarkeit unten (sonst H2269).

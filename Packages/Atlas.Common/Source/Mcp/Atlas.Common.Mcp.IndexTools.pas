@@ -92,7 +92,7 @@ uses
   System.StrUtils,
   System.Math,
   Atlas.Common.Rationale.Contract,
-  Atlas.Common.Lsp.PublishedMembers,
+  Atlas.Common.Index.PublishedMembers,
   Atlas.Common.Dfm.FormInfo,
   Atlas.Common.Localization.Texts;
 

@@ -32,9 +32,9 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Editor.SelectionMatches,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Vcl.Theme.EditorFont;
 
 type
   TAtlasIdeSelectionMatches = class
@@ -101,18 +101,18 @@ implementation
 uses
   System.Math,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.EditorSettings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Editor.PaintedLine;
 
 function OptionsKey(const AOptions: TAtlasSelectionMatchOptions): string;

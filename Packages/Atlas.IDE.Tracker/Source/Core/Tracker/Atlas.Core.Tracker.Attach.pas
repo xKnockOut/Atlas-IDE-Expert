@@ -228,6 +228,12 @@ const
   cRunStamp = 'yyyymmdd-hhnnss';
   cGuidStart = 2;
   cGuidLength = 8;
+  /// <summary>GUID ohne die Klammern „{“ und „}“.</summary>
+  cGuidBodyLength = 36;
+  /// <summary>Zeichen um jeden angehängten Text (fetter Name, Codezaun, Leerzeilen).</summary>
+  cTextBlockOverhead = 32;
+  /// <summary>Rücklage je Text beim Kürzen (Rahmen und Kürzungszeichen „…“).</summary>
+  cTextBudgetReserve = 64;
 
 { TAtlasAttachFile }
 
@@ -242,17 +248,20 @@ begin
 end;
 
 class function TAtlasAttachFile.CreateText(AKind: TAtlasAttachKind; const AName, AText: string): TAtlasAttachFile;
+const
+  cMarkdownType = 'text/markdown; charset=utf-8';
+  cTextType = 'text/plain; charset=utf-8';
 begin
   Result := Default(TAtlasAttachFile);
   Result.Kind := AKind;
   Result.Name := SafeName(AName);
   if SameText(ExtractFileExt(Result.Name), '.md') then
   begin
-    Result.MimeType := 'text/markdown; charset=utf-8';
+    Result.MimeType := cMarkdownType;
   end
   else
   begin
-    Result.MimeType := 'text/plain; charset=utf-8';
+    Result.MimeType := cTextType;
   end;
   Result.Data := TEncoding.UTF8.GetBytes(AText);
 end;
@@ -345,15 +354,20 @@ var
   mGuid: TGUID;
 begin
   CreateGUID(mGuid);
-  Result := '----AtlasAttach' + StringReplace(Copy(GUIDToString(mGuid), 2, 36), '-', '', [rfReplaceAll]);
+  Result := '----AtlasAttach' + StringReplace(Copy(GUIDToString(mGuid), cGuidStart, cGuidBodyLength), '-', '',
+    [rfReplaceAll]);
 end;
 
 class function TAtlasAttachMultipart.ContentType(const ABoundary: string): string;
+const
+  cMultipart = 'multipart/form-data; boundary=%s';
 begin
-  Result := 'multipart/form-data; boundary=' + ABoundary;
+  Result := Format(cMultipart, [ABoundary]);
 end;
 
 class function TAtlasAttachMultipart.Build(const ABoundary: string; const AFiles: TAtlasAttachFiles): TBytes;
+const
+  cDisposition = 'Content-Disposition: form-data; name="%s"; filename="%s"'#13#10;
 var
   mStream: TBytesStream;
   mFile: TAtlasAttachFile;
@@ -375,8 +389,7 @@ begin
     for mFile in AFiles do
     begin
       Put('--' + ABoundary + #13#10);
-      Put('Content-Disposition: form-data; name="' + cFieldName + '"; filename="' + TAtlasAttachFile.SafeName(
-        mFile.Name) + '"' + #13#10);
+      Put(Format(cDisposition, [cFieldName, TAtlasAttachFile.SafeName(mFile.Name)]));
       Put('Content-Type: ' + mFile.MimeType + #13#10#13#10);
       if Length(mFile.Data) > 0 then
       begin
@@ -752,11 +765,11 @@ begin
   mTotal := Length(AComment);
   for mIndex := 0 to High(mTexts) do
   begin
-    Inc(mTotal, Length(mTexts[mIndex]) + Length(mFiles[mIndex].DisplayName) + 32);
+    Inc(mTotal, Length(mTexts[mIndex]) + Length(mFiles[mIndex].DisplayName) + cTextBlockOverhead);
   end;
   if (AMaxLength > 0) and (mTotal > AMaxLength) and (Length(mTexts) > 0) then
   begin
-    mBudget := (AMaxLength - Length(AComment)) div Length(mTexts) - Length(mTexts) * 64;
+    mBudget := (AMaxLength - Length(AComment)) div Length(mTexts) - Length(mTexts) * cTextBudgetReserve;
     if mBudget < cMinTextLength then
     begin
       mBudget := cMinTextLength;
@@ -915,7 +928,7 @@ begin
     AResponse.Status := 0;
     Exit;
   end;
-  if (AResponse.Status <> 200) and (AResponse.Status <> 201) then
+  if (AResponse.Status <> TAtlasHttpStatus.cOk) and (AResponse.Status <> TAtlasHttpStatus.cCreated) then
   begin
     AResponse.Error := TAtlasCiFetchError.Server;
     Exit;

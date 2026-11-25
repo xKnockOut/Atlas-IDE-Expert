@@ -92,10 +92,10 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Edition,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Edition,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.Core.Tasks.Definitions,
   Atlas.UI.Build.Strings,
   Atlas.IDE.Diagnostics.Edition,

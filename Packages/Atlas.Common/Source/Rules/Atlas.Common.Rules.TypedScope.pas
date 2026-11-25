@@ -13,7 +13,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ConstantValues;
+  Atlas.Common.Semantics.ConstantValues,
+  Atlas.Common.Semantics.ExpressionTypes;
 
 type
   /// <summary>Namensauflösung und Konstantenwerte für eine Prüfung; pinnt den Baum des Kontexts bis Destroy.
@@ -59,8 +60,18 @@ type
     destructor Destroy; override;
   end;
 
-/// <summary>Ausdruck ohne umschließende Klammern.</summary>
-function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
+  /// <summary>Wie TTypedScopeRun, dazu die Ausdruckstypen der Unit ohne Umwandlungen und Konstantenwerte (nur
+  /// der deklarierte Typ zählt).</summary>
+  TTypedExpressionRun = class(TTypedScopeRun)
+  protected
+    FTypes: TExpressionTypes;
+    /// <summary>Typname von ANode: der Basistyp, wenn es einen gibt, sonst der Typ; '' bei unbekanntem Typ.
+    /// </summary>
+    function TypeNameOf(ANode: TSyntaxNode): string;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    destructor Destroy; override;
+  end;
 
 implementation
 
@@ -68,16 +79,8 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Rules.Derived;
-
-function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-end;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Semantics.ExpressionTypes.Contract;
 
 { TTypedScope }
 
@@ -202,6 +205,42 @@ destructor TTypedScopeRun.Destroy;
 begin
   FScope.Free;
   inherited Destroy;
+end;
+
+{ TTypedExpressionRun }
+
+constructor TTypedExpressionRun.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mOptions: TExpressionTypeOptions;
+begin
+  inherited Create(AContext, AReport);
+  mOptions := TExpressionTypeOptions.Default;
+  mOptions.Conversions := False;
+  mOptions.ConstValue := False;
+  FTypes := TExpressionTypes.Create(FScope.Resolver, AContext.Tree, FScope.FileName, AContext.Text, AContext.Index,
+    mOptions);
+end;
+
+destructor TTypedExpressionRun.Destroy;
+begin
+  FTypes.Free;
+  inherited Destroy;
+end;
+
+function TTypedExpressionRun.TypeNameOf(ANode: TSyntaxNode): string;
+var
+  mInfo: TExpressionTypeInfo;
+begin
+  mInfo := FTypes.Describe(ANode);
+  Result := '';
+  if mInfo.Found then
+  begin
+    Result := mInfo.TypeName;
+    if mInfo.BaseName <> '' then
+    begin
+      Result := mInfo.BaseName;
+    end;
+  end;
 end;
 
 end.

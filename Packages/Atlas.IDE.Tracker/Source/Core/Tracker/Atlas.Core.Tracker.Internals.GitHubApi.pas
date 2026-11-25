@@ -105,7 +105,14 @@ uses
   System.StrUtils,
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Internals.GitHubJson,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.Text.Names;
+
+const
+  /// <summary>Länge eines Commit-Hashs: gekürzt wie `git log --oneline` bis voll (SHA-256).</summary>
+  cMinShaLength = 7;
+  cMaxShaLength = 64;
 
 { TAtlasGitHubApi }
 
@@ -199,7 +206,7 @@ function SafeSha(const ASha: string): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := (Length(ASha) >= 7) and (Length(ASha) <= 64);
+  Result := (Length(ASha) >= cMinShaLength) and (Length(ASha) <= cMaxShaLength);
   if Result then
   begin
     for mIndex := 1 to Length(ASha) do
@@ -268,16 +275,6 @@ begin
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/commits/' + ASha + '/status';
 end;
 
-/// <summary>Kennung ohne führende "#" ("#753" → "753"), wie TAtlasTrackerNaming.BranchKey.</summary>
-function NumberText(const AKey: string): string;
-begin
-  Result := Trim(AKey);
-  while (Result <> '') and (Result[1] = '#') do
-  begin
-    Delete(Result, 1, 1);
-  end;
-end;
-
 class function TAtlasGitHubApi.AllPullsUrl(const ATarget: TAtlasTrackerTarget): string;
 begin
   Result := Base(ATarget);
@@ -292,14 +289,14 @@ end;
 class function TAtlasGitHubApi.ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError;
 begin
   case AStatus of
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result := TAtlasCiFetchError.Unauthorized;
-    404:
+    TAtlasHttpStatus.cNotFound:
       Result := TAtlasCiFetchError.NotFound;
-    400, 422:
+    TAtlasHttpStatus.cBadRequest, TAtlasHttpStatus.cUnprocessable:
       Result := TAtlasCiFetchError.Invalid;
     // Gelöschtes Issue (Vorschau, #1264).
-    410:
+    TAtlasHttpStatus.cGone:
       Result := TAtlasCiFetchError.NotFound;
   else
     Result := TAtlasCiFetchError.Server;
@@ -308,7 +305,7 @@ end;
 
 class function TAtlasGitHubApi.NumberOfKey(const AKey: string): Integer;
 begin
-  if not TryStrToInt(NumberText(AKey), Result) or (Result <= 0) then
+  if not TryStrToInt(TTextNames.KeyWithoutHash(AKey), Result) or (Result <= 0) then
   begin
     Result := 0;
   end;
@@ -332,15 +329,8 @@ begin
 end;
 
 class function TAtlasGitHubApi.Remaining(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
-var
-  mRest: Int64;
 begin
-  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
-  Result := 0;
-  if mRest > 0 then
-  begin
-    Result := Integer(mRest);
-  end;
+  Result := TAtlasTicks.LeftOf(AWatch, ATimeoutMs);
 end;
 
 class function TAtlasGitHubApi.WriteResult(ASent: Boolean; const AResponse: TAtlasCiResponse): TAtlasTrackerWriteResult;
@@ -366,7 +356,7 @@ var
   mStatus: Integer;
 begin
   Result := ATransport.Get(AUrl, ATimeoutMs, mStatus, AText, AError);
-  if Result and (mStatus <> 200) then
+  if Result and (mStatus <> TAtlasHttpStatus.cOk) then
   begin
     AError := ErrorOfStatus(mStatus);
     Result := False;
@@ -569,12 +559,12 @@ begin
   finally
     mValue.Free;
   end;
-  Result := TAtlasGitHubJson.Shorten(Result, 300);
+  Result := TAtlasGitHubJson.Shorten(Result, TAtlasTrackerTextLimits.cMessage);
 end;
 
 class function TAtlasGitHubApi.Answered(AStatus: Integer): Boolean;
 begin
-  Result := (AStatus >= 200) and (AStatus <= 299);
+  Result := (AStatus >= TAtlasHttpStatus.cOk) and (AStatus <= TAtlasHttpStatus.cLastSuccess);
 end;
 
 class function TAtlasGitHubApi.BodyJson(const AText: string): string;

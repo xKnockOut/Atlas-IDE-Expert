@@ -21,7 +21,7 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.CodeActions.Contract,
   Atlas.Common.Editing.Extract;
 
 type
@@ -74,8 +74,8 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -423,7 +423,7 @@ begin
   end;
   FDeclarations := FDeclarations + mName + ' := ' + TRoutineBody.TextOf(FText, mNode) + ';' + FLineBreak +
     FWithIndent;
-  if (AProbed.UnitName <> '') and TUsesClauses.AddUnit(FTree.Tokens, FWith.StartOffset, AProbed.UnitName,
+  if (AProbed.UnitName <> '') and TPascalUsesEdits.AddUnit(FTree.Tokens, FWith.StartOffset, AProbed.UnitName,
     FLineBreak, mUsesEdit) then
   begin
     FEdits := FEdits + [mUsesEdit];

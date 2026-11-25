@@ -22,7 +22,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Debug.StepInto,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasStepIntoIndexEvent = reference to procedure(AIndex: Integer);
@@ -70,10 +70,10 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;

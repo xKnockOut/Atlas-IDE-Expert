@@ -48,6 +48,8 @@ type
     Severity: TRuleSeverity;
     /// <summary>Weitere Optionen der Regel als JSON-Objekt (Text), sonst ''.</summary>
     Options: string;
+    /// <summary>Optionen der Regel AId aus ARules (Groß-/Kleinschreibung egal), sonst ''.</summary>
+    class function OptionsOf(const ARules: TArray<TRuleSetting>; const AId: string): string; static;
   end;
 
   /// <summary>Regelprofil (#146): eingebaut (standard, fast, strict, security, style) oder
@@ -262,8 +264,12 @@ type
   TTestUnitSettings = record
     /// <summary>Name der Testunit; {unit} steht für den Namen der getesteten Unit.</summary>
     Pattern: string;
-    /// <summary>Ordner neuer Testunits relativ zur Wurzel; leer = Ordner des Testprojekts.</summary>
+    /// <summary>Ordner neuer Testunits relativ zur Wurzel; leer = Ordner des Testprojekts. {path} = Ordner der Unit
+    /// unter SourceRoot, {namespace} = Namensraum der Unit als Ordner (#2800).</summary>
     Folder: string;
+    /// <summary>Quellordner, von denen aus {path} gerechnet wird, relativ zur Wurzel, mit ; getrennt;
+    /// leer = die Wurzel (#2800).</summary>
+    SourceRoot: string;
     /// <summary>Testprojekt (.dproj oder .dpr) relativ zur Wurzel; leer = automatisch erkennen.</summary>
     Project: string;
     class function Default: TTestUnitSettings; static;
@@ -364,6 +370,8 @@ type
     AlignComments: Boolean;
     Given: TFormatKeys;
     class function Default: TFormatStyle; static;
+    /// <summary>Eine Einrückstufe: Tab, IndentSize Leerzeichen oder (ohne Größe) zwei Leerzeichen.</summary>
+    function IndentUnit: string;
   end;
 
   /// <summary>Weg zum Compiler (#261): auto wählt nach der erkannten Ausgabe, dcc = Kommandozeilen-Compiler,
@@ -716,8 +724,14 @@ type
     /// <summary>Schreibende MCP-Werkzeuge melden neue und behobene Befunde der geänderten Dateien
     /// (mcp.reportFindingsAfterEdit, #2603); Vorgabe True.</summary>
     McpReportFindingsAfterEdit: Boolean;
+    /// <summary>Schreibende MCP-Werkzeuge fragen vor riskanten Schritten über den Client (elicitation) oder die IDE
+    /// nach (mcp.confirm, #2620); Vorgabe True.</summary>
+    McpConfirm: Boolean;
     /// <summary>Sprache der Anleitungen in den Prompts (mcp.promptLanguage): de (Vorgabe) oder en.</summary>
     McpPromptLanguage: string;
+    /// <summary>Projekt, das in keiner IDE offen ist, für debug_start und build_project öffnen
+    /// (mcp.openProjects, #2895): ask (Vorgabe, Rückfrage), always oder never.</summary>
+    McpOpenProjects: string;
     /// <summary>Eigene Prompts des Projekts (mcp.customPrompts).</summary>
     McpCustomPrompts: TArray<TMcpCustomPrompt>;
     /// <summary>Anweisungsdateien für KI-Assistenten relativ zu atlas.json (assistants.instructions.file, #2615);
@@ -786,6 +800,8 @@ type
     SlashTodoCategory: string;
     /// <summary>/sortuses streicht ungenutzte Units (#297, #284).</summary>
     SlashSortUsesRemoveUnused: Boolean;
+    /// <summary>Reihenfolge von /sortuses (#2794): origin, alphabetic oder namespace.</summary>
+    SlashSortUsesOrder: string;
     /// <summary>/helper für Aufzählungen mit cNames, ToString und FromString (#875).</summary>
     SlashEnumHelper: Boolean;
     /// <summary>/helper für Mengen mit Contains, ToText, Toggle und All (#875).</summary>
@@ -795,6 +811,10 @@ type
     SortUses: Boolean;
     /// <summary>Mit SortUses: nach Namespace gruppiert statt rein alphabetisch (#284).</summary>
     SortUsesByNamespace: Boolean;
+    /// <summary>Mit SortUses: nach Herkunft gegliedert (#2794), Vorrang vor SortUsesByNamespace.</summary>
+    SortUsesByOrigin: Boolean;
+    /// <summary>Darstellung der Gruppen nach Herkunft (#2794): comments oder lines.</summary>
+    UsesGroupStyle: string;
     /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
     UsesKeep: TArray<string>;
     /// <summary>Toter Code (#64): Attribute (z. B. JsonName) und Namensmuster (z. B. *Handler), deren Elemente als
@@ -959,6 +979,22 @@ function MatchesGlob(const APattern, APath: string): Boolean;
 function BdsVersionOf(const AText: string): string;
 
 implementation
+
+{ TRuleSetting }
+
+class function TRuleSetting.OptionsOf(const ARules: TArray<TRuleSetting>; const AId: string): string;
+var
+  mRule: TRuleSetting;
+begin
+  for mRule in ARules do
+  begin
+    if SameText(mRule.Id, AId) then
+    begin
+      Exit(mRule.Options);
+    end;
+  end;
+  Result := '';
+end;
 
 { TRuleIdAliases }
 
@@ -1265,6 +1301,7 @@ class function TTestUnitSettings.Default: TTestUnitSettings;
 begin
   Result.Pattern := '{unit}.Tests';
   Result.Folder := '';
+  Result.SourceRoot := '';
   Result.Project := '';
 end;
 
@@ -1309,6 +1346,22 @@ begin
 end;
 
 { TFormatStyle }
+
+function TFormatStyle.IndentUnit: string;
+begin
+  if UseTabs then
+  begin
+    Result := #9;
+  end
+  else if IndentSize >= 1 then
+  begin
+    Result := StringOfChar(' ', IndentSize);
+  end
+  else
+  begin
+    Result := '  ';
+  end;
+end;
 
 class function TFormatStyle.Default: TFormatStyle;
 begin
@@ -1517,10 +1570,13 @@ begin
   ASettings.SlashTodoOwner := '';
   ASettings.SlashTodoCategory := '';
   ASettings.SlashSortUsesRemoveUnused := True;
+  ASettings.SlashSortUsesOrder := 'origin';
   ASettings.SlashEnumHelper := True;
   ASettings.SlashSetHelper := True;
   ASettings.SortUses := False;
   ASettings.SortUsesByNamespace := False;
+  ASettings.SortUsesByOrigin := False;
+  ASettings.UsesGroupStyle := 'comments';
   ASettings.UsesKeep := nil;
   ASettings.DeadCodeKeepAttributes := nil;
   ASettings.DeadCodeKeepPatterns := nil;
@@ -1551,7 +1607,9 @@ begin
   ASettings.McpPrompts := True;
   ASettings.McpStatistics := True;
   ASettings.McpReportFindingsAfterEdit := True;
+  ASettings.McpConfirm := True;
   ASettings.McpPromptLanguage := 'de';
+  ASettings.McpOpenProjects := 'ask';
   ASettings.McpCustomPrompts := nil;
   ASettings.AssistantsInstructionFiles := TArray<string>.Create('AGENTS.md');
   ASettings.AssistantsInstructionChecks := nil;

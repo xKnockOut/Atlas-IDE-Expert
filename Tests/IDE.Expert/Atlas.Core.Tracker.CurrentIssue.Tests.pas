@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Tracker.CurrentIssue.Tests;
 
 // Tests der Datei atlas-current-issue.json (#2051) ohne VCL: Hin und zurück über JSON, fremde Version und fehlende
-// Kennung, Felder je Abschnitt. Die Textausgabe prüft Shell.Mcp.IssueText.Tests.
+// Kennung, Felder je Abschnitt. Die Textausgabe prüft Core.Mcp.IssueText.Tests.
 
 interface
 
@@ -123,7 +123,7 @@ begin
     Assert.IsNotNull(mObject.GetValue('checklist'));
     Assert.IsNotNull(mObject.GetValue('codeRefs'));
     Assert.IsNull(mObject.GetValue('description'), 'summary nennt nur die Länge');
-    Assert.AreEqual(Length(Sample.Description), mObject.GetValue<Integer>('descriptionLength'));
+    Assert.AreEqual(Integer(Length(Sample.Description)), mObject.GetValue<Integer>('descriptionLength'));
     Assert.IsNull(mObject.GetValue('comments'));
   finally
     mObject.Free;

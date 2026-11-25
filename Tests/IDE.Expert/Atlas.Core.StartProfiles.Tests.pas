@@ -9,7 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 type
   [TestFixture]
@@ -63,7 +63,7 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.StartProfiles.Store,
-  Atlas.Core.Files.DataFile;
+  Atlas.Plugin.Files.DataFile;
 
 const
   cProject = 'C:\Repo\App\App.dproj';

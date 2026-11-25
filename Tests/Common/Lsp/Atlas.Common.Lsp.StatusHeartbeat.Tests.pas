@@ -40,7 +40,7 @@ uses
   System.Classes,
   System.JSON,
   Atlas.Common.Product.Version,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Lsp.StatusHeartbeat;
 
 const

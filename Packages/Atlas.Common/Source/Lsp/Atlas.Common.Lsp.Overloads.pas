@@ -57,7 +57,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 

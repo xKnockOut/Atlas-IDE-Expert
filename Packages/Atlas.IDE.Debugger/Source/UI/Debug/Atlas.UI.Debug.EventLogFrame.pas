@@ -98,12 +98,11 @@ type
     procedure Refill;
     /// <summary>Gewählter Eintrag; False ohne Auswahl.</summary>
     function TrySelected(out AEntry: TAtlasEventEntry): Boolean;
+    /// <summary>Eintrag mit Zeit AElapsedMs und Text AText wählen und zeigen (Sprung aus dem Logpunkt-Verlauf);
+    /// False, wenn der Filter ihn ausblendet oder es ihn nicht mehr gibt.</summary>
+    function SelectEntry(AElapsedMs: Int64; const AText: string): Boolean;
     procedure OpenSelected;
     procedure CopySelected;
-    /// <summary>Name der Art für die Anzeige.</summary>
-    class function KindCaption(AKind: TAtlasEventKind): string; static;
-    /// <summary>Text der Spalten: Zeit, Art, Thread, Text.</summary>
-    class function Cells(const AEntry: TAtlasEventEntry): TArray<string>; static;
     property OnOpen: TProc<TAtlasEventEntry> read FEvents.Open write FEvents.Open;
     property OnSave: TProc read FEvents.Save write FEvents.Save;
     property OnClear: TProc read FEvents.Clear write FEvents.Clear;
@@ -118,9 +117,13 @@ uses
   Winapi.CommCtrl,
   Vcl.Clipbrd,
   Vcl.Themes,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.UI.Debug.EventLog.Strings,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Controls.ListView,
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Vcl.Theme.Service;
 
 {$R *.dfm}
 
@@ -138,14 +141,16 @@ const
     TAtlasEventLogTextId.DebugEventLogKindThread, TAtlasEventLogTextId.DebugEventLogKindProcess,
     TAtlasEventLogTextId.DebugEventLogKindLogpoint, TAtlasEventLogTextId.DebugEventLogKindOther);
 
-/// <summary>Spalte mit ACaption und AWidth (logische Pixel) an AList.</summary>
-procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
+/// <summary>Name der Art für die Anzeige.</summary>
+function KindCaption(AKind: TAtlasEventKind): string;
 begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := MulDiv(AWidth, AList.CurrentPPI, 96);
+  Result := TAtlasEventLogStrings.Text(cKindTexts[AKind]);
+end;
+
+/// <summary>Text der Spalten: Zeit, Art, Thread, Text.</summary>
+function Cells(const AEntry: TAtlasEventEntry): TArray<string>;
+begin
+  Result := TArray<string>.Create(AEntry.TimeText, KindCaption(AEntry.Kind), AEntry.Thread, AEntry.Text);
 end;
 
 { TAtlasDebugEventLogFrame }
@@ -161,7 +166,7 @@ begin
   FSummary.Align := alBottom;
   FSummary.AlignWithMargins := True;
   FSummary.ShowAccelChar := False;
-  FSummary.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FSummary, clGrayText);
   FSummary.Caption := '';
   FMenu := TListMenu.CreateFor(Self);
   CreateList;
@@ -170,7 +175,7 @@ begin
   FEmpty.Align := alClient;
   FEmpty.AlignWithMargins := True;
   FEmpty.ShowAccelChar := False;
-  FEmpty.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(FEmpty, clGrayText);
   FEmpty.Caption := TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogEmpty);
   FEmpty.Visible := False;
 end;
@@ -239,10 +244,7 @@ end;
 
 function TAtlasDebugEventLogFrame.TListMenu.AddItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(Self);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Items.Add(Result);
+  Result := TAtlasMenus.Add(Self, ACaption, AClick);
 end;
 
 procedure TAtlasDebugEventLogFrame.TListMenu.MenuPopup(Sender: TObject);
@@ -309,10 +311,14 @@ begin
   FList.MultiSelect := False;
   FList.ColumnClick := False;
   FList.PopupMenu := FMenu;
-  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnTime), cTimeWidth);
-  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnKind), cKindWidth);
-  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnThread), cThreadWidth);
-  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnText), cTextWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnTime), cTimeWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnKind), cKindWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnThread), cThreadWidth);
+  TAtlasListView.AddColumnTo(FList,
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnText), cTextWidth);
   FList.OnData := ListData;
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
@@ -431,16 +437,7 @@ end;
 
 procedure TAtlasDebugEventLogFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if Key = VK_RETURN then
-  begin
-    OpenSelected;
-    Key := 0;
-  end
-  else if (Key = Ord('C')) and (ssCtrl in Shift) then
-  begin
-    CopySelected;
-    Key := 0;
-  end;
+  TAtlasControls.OpenOrCopyKey(Key, Shift, OpenSelected, CopySelected);
 end;
 
 procedure TAtlasDebugEventLogFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
@@ -551,6 +548,30 @@ begin
   end;
 end;
 
+function TAtlasDebugEventLogFrame.SelectEntry(AElapsedMs: Int64; const AText: string): Boolean;
+var
+  mIndex: Integer;
+  mEntry: TAtlasEventEntry;
+begin
+  Result := False;
+  if (FLog = nil) or not FList.HandleAllocated then
+  begin
+    Exit;
+  end;
+  for mIndex := High(FShown) downto 0 do
+  begin
+    mEntry := FLog[FShown[mIndex]];
+    if (mEntry.ElapsedMs = AElapsedMs) and (mEntry.Text = AText) then
+    begin
+      ListView_SetItemState(FList.Handle, -1, 0, LVIS_SELECTED);
+      FList.Items[mIndex].Selected := True;
+      FList.Items[mIndex].Focused := True;
+      FList.Items[mIndex].MakeVisible(False);
+      Exit(True);
+    end;
+  end;
+end;
+
 procedure TAtlasDebugEventLogFrame.OpenSelected;
 var
   mEntry: TAtlasEventEntry;
@@ -569,16 +590,6 @@ begin
   begin
     Clipboard.AsText := mEntry.Text;
   end;
-end;
-
-class function TAtlasDebugEventLogFrame.KindCaption(AKind: TAtlasEventKind): string;
-begin
-  Result := TAtlasEventLogStrings.Text(cKindTexts[AKind]);
-end;
-
-class function TAtlasDebugEventLogFrame.Cells(const AEntry: TAtlasEventEntry): TArray<string>;
-begin
-  Result := TArray<string>.Create(AEntry.TimeText, KindCaption(AEntry.Kind), AEntry.Thread, AEntry.Text);
 end;
 
 end.

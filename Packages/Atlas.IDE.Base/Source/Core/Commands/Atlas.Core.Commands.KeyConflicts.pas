@@ -125,7 +125,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -281,7 +281,10 @@ begin
       ASettings.TestsLists),
     // Erneut anhängen (Debugger): ohne Funktion geht die Taste an die IDE weiter.
     TAtlasKeyEntry.Create(TAtlasKeyFunction.DebugReattach, Word(ASettings.DebugReattachKey), AShared,
-      ASettings.DebugReattach)];
+      ASettings.DebugReattach),
+    // Auswahl an den Assistenten: nur mit Kopplung (wie TAtlasAssistantsModule.Keys), sonst bleibt die Taste der IDE.
+    TAtlasKeyEntry.Create(TAtlasKeyFunction.AssistantsMention, Word(ASettings.AssistantsLinkMentionKey), AShared,
+      ASettings.AssistantsLink)];
 end;
 
 class function TAtlasKeyEntry.MoreFromSettings(const ASettings: TAtlasPluginSettings;
@@ -611,7 +614,7 @@ begin
   end;
 end;
 
-/// <summary>Teil 7 von ToSettings: Tasten der Module Tests und Debugger.</summary>
+/// <summary>Teil 7 von ToSettings: Tasten der Module Tests, Debugger und KI-Assistenten.</summary>
 procedure StoreKeys7(const AEntry: TAtlasKeyEntry; var ASettings: TAtlasPluginSettings);
 begin
   case AEntry.Func of
@@ -619,6 +622,8 @@ begin
       ASettings.TestsListsRunKey := AEntry.Key;
     TAtlasKeyFunction.DebugReattach:
       ASettings.DebugReattachKey := AEntry.Key;
+    TAtlasKeyFunction.AssistantsMention:
+      ASettings.AssistantsLinkMentionKey := AEntry.Key;
   else
     // Gehört zu einem anderen Teil.
   end;

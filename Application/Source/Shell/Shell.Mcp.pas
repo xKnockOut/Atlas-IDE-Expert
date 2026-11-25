@@ -12,7 +12,7 @@
 // Dateien der IDE meldet das Plugin in %LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json.
 // Formatieren (format_code, #1358) mit den Formatregeln des Projekts, zu dem die Datei gehört.
 // Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action, fix_findings)
-// bekommen den Symbolindex und die Projektdienste über TShellWorkspaceGroup wie
+// bekommen den Symbolindex und die Projektdienste über TCoreWorkspaceGroup wie
 // im Server (#1112); solange der Index lädt, sagt get_diagnostics das dazu.
 // get_server_status (#1356) zeigt den Status des Atlas-Servers der IDE für den
 // Ordner (aus dessen Statusdatei), sonst den dieses Prozesses.
@@ -25,7 +25,7 @@
 interface
 
 uses
-  Shell.CommandLine;
+  Core.CommandLine;
 
 type
   TMcpShell = class
@@ -47,23 +47,25 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.Connection,
+  Atlas.Common.JsonRpc.Outgoing,
   Atlas.Common.JsonRpc.LineTransport,
   Atlas.Common.JsonRpc.RecentMessages,
   Atlas.Common.Lsp.Adapters.ServerActivityObserver,
   Atlas.Common.Lsp.ServerActivity,
-  Atlas.Common.Lsp.StatusFile,
+  Atlas.Common.Diagnostics.StatusFile,
   Atlas.Common.Mcp.Server,
+  Atlas.Common.Mcp.BatchTool,
   Atlas.Common.Mcp.Prompts,
   Atlas.Text.McpStatistics,
   Atlas.Common.Mcp.Statistics,
   Atlas.Common.Mcp.StatisticsHistory,
   Atlas.Common.Index.CacheDirectory,
-  Shell.Platform,
-  Shell.CrashCases,
-  Shell.WorkspaceGroup,
-  Shell.Mcp.Context,
+  Platform.Server,
+  Core.CrashCases,
+  Core.WorkspaceGroup,
+  Core.Mcp.Context,
   Shell.Mcp.Services,
-  Shell.Mcp.Tools,
+  Core.Mcp.Tools,
   Shell.Mcp.Startup,
   Shell.Mcp.ServerSetup,
   Atlas.Text.LogMarks,
@@ -75,6 +77,8 @@ type
 {$SCOPEDENUMS OFF}
 
 const
+  /// <summary>Vor den ids eigener Anfragen an den Client.</summary>
+  cOutgoingPrefix = 'atlas/out/';
   cTexts: array[TMcpHostText] of TAtlasText = (
     (De: 'Delphi-Projekt in %s. Für Fragen zu Typen, Units und Formularen zuerst diese Werkzeuge nutzen statt ' +
     'Quelldateien vollständig zu lesen.';
@@ -99,6 +103,8 @@ begin
     mContext := Default(TMcpToolContext);
     mContext.Server := mServer;
     RegisterContextTools(mContext);
+    // batch registriert ConfigureServer eigens (nicht über RegisterContextTools); ohne Grenzen, nur der Name zählt.
+    TMcpBatchTool.Register(mServer, nil);
     mListed := mServer.ListTools;
     try
       for mTool in mListed.GetValue<TJSONArray>('tools') do
@@ -127,7 +133,7 @@ end;
 
 /// <summary>Name aus clientInfo für „Prozesse am Projekt“, Absturzfälle (#1883) und die Aufrufstatistik (#2611,
 /// AStatistics nil = aus).</summary>
-function ClientInfoOf(AGroup: TShellWorkspaceGroup; ACrashCases: TShellCrashCases; AStatistics: TMcpStatistics):
+function ClientInfoOf(AGroup: TCoreWorkspaceGroup; ACrashCases: TCoreCrashCases; AStatistics: TMcpStatistics):
   TProc<string>;
 begin
   Result :=
@@ -187,7 +193,7 @@ begin
   AStatistics.Free;
   ALogger.Info(cTexts[TMcpHostText.Statistics].Fmt([mSession.TotalCalls, mSession.TotalErrors]));
   if not TMcpStatisticsHistory.Append(TMcpStatisticsHistory.FileIn(TServerStatusFile.FolderOf(
-    TIndexCacheDirectory.DefaultRoot)), mSession, TShellPlatform.CurrentProcessId, Now) then
+    TIndexCacheDirectory.DefaultRoot)), mSession, TServerPlatform.CurrentProcessId, Now) then
   begin
     ALogger.Warning(cTexts[TMcpHostText.HistoryNotWritten].Text);
   end;
@@ -208,6 +214,17 @@ begin
   end;
 end;
 
+/// <summary>Eigene Anfragen an den Client (elicitation/create, #2620); seine Antworten fängt der Lese-Thread von
+/// AConnection ab.</summary>
+procedure ConnectOutgoing(const ATransport: IJsonRpcTransport; AConnection: TJsonRpcConnection; AServer: TMcpServer);
+var
+  mOutgoing: IJsonRpcOutgoing;
+begin
+  mOutgoing := TJsonRpcOutgoing.Create(ATransport, cOutgoingPrefix);
+  AConnection.Outgoing := mOutgoing;
+  AServer.Outgoing := mOutgoing;
+end;
+
 class function TMcpShell.Run(const AOptions: TCommandLineOptions): Integer;
 var
   mLogger: ILogger;
@@ -219,7 +236,7 @@ var
   mDispatcher: TJsonRpcDispatcher;
   mConnection: TJsonRpcConnection;
   mRecent: IJsonRpcRecentMessages;
-  mCrashCases: TShellCrashCases;
+  mCrashCases: TCoreCrashCases;
   mStatistics: TMcpStatistics;
 begin
   mLogger := NewLogger(AOptions);
@@ -237,6 +254,7 @@ begin
     mServer := TMcpServer.Create(TProductVersion.cName, TProductVersion.cVersion);
     mDispatcher := TJsonRpcDispatcher.Create;
     mConnection := TJsonRpcConnection.Create(mTransport, mDispatcher);
+    ConnectOutgoing(mTransport, mConnection, mServer);
     mRecent := TJsonRpcRecentMessages.Create;
     mDispatcher.Recent := mRecent;
     mCrashCases := NewCrashCases(mLogger, mRecent, mServices.Root);

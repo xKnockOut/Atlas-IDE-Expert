@@ -25,9 +25,9 @@ uses
   Vcl.Graphics,
   Vcl.Menus,
   Vcl.ImgList,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Designer.DataBindings,
-  Atlas.UI.Editor.Bar;
+  Atlas.Vcl.Controls.EditorBar;
 
 type
   TAtlasBindingBar = class(TAtlasEditorBar)

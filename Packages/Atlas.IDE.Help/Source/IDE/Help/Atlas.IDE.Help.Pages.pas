@@ -29,8 +29,8 @@ uses
   Winapi.ShellAPI,
   Atlas.Text.Product.Version,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Help.Strings,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings;

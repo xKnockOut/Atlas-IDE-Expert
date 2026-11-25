@@ -27,7 +27,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Unwrap,
   Atlas.UI.Editor.Unwrap,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.IDE.Editor.CaretPopup;
 
 type
@@ -95,20 +95,20 @@ uses
   Winapi.Windows,
   Vcl.Graphics,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.PaintedLine,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.ToolsApi.Editor.Caret;
 
 { TAtlasIdeUnwrap }
 

@@ -36,7 +36,8 @@ uses
   System.Net.HttpClient,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.BoundedStream;
 
 type
   TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiSend, IAtlasCiPost,
@@ -79,6 +80,10 @@ type
     /// <summary>Auf das Ende von AAsync warten; False mit AError bei Zeitgrenze, Abbruch oder Entladen.</summary>
     function AwaitResponse(const AAsync: IAsyncResult; const ADeadline: TAtlasDeadline;
       var AError: TAtlasCiFetchError): Boolean;
+    /// <summary>Anfrage samt Weiterleitungen senden und die Antwort in AReply lesen; False mit AReply.Error bei
+    /// Netzfehler, Zeitgrenze oder Abbruch.</summary>
+    function Exchange(AClient: THTTPClient; const ARequest: TRequest; ASource: TBytesStream;
+      AContent: TAtlasBoundedStream; var AReply: TReply): Boolean;
     /// <summary>Schreiben nur angemeldet beim eingetragenen Server über https, nie ohne Token.</summary>
     function MayWrite(const AUrl: string): Boolean;
     function AuthHeaders(const AUrl: string): TNetHeaders;
@@ -116,8 +121,7 @@ uses
   System.NetEncoding,
   System.NetConsts,
   System.Math,
-  Atlas.Core.Diagnostics.AsyncWait,
-  Atlas.Core.Diagnostics.BoundedStream,
+  Atlas.Plugin.Diagnostics.AsyncWait,
   Atlas.Core.Ci.Internals.Addresses;
 
 const
@@ -127,7 +131,9 @@ const
 
 function IsRedirect(AStatus: Integer): Boolean;
 begin
-  Result := (AStatus = 301) or (AStatus = 302) or (AStatus = 303) or (AStatus = 307) or (AStatus = 308);
+  Result := (AStatus = TAtlasHttpStatus.cMovedPermanently) or (AStatus = TAtlasHttpStatus.cFound) or
+    (AStatus = TAtlasHttpStatus.cSeeOther) or (AStatus = TAtlasHttpStatus.cTemporaryRedirect) or
+    (AStatus = TAtlasHttpStatus.cPermanentRedirect);
 end;
 
 { TAtlasCiHttpTransport }
@@ -311,12 +317,14 @@ end;
 
 class function TAtlasCiHttpTransport.TRequest.Create(const AMethod, AUrl, AAccept: string;
   ATimeoutMs, AMaxBytes: Integer): TRequest;
+const
+  cJsonContentType = 'application/json; charset=utf-8';
 begin
   Result := Default(TRequest);
   Result.Method := AMethod;
   Result.Url := AUrl;
   Result.Accept := AAccept;
-  Result.ContentType := 'application/json; charset=utf-8';
+  Result.ContentType := cJsonContentType;
   Result.IfModifiedSince := '';
   Result.Body := nil;
   Result.TimeoutMs := ATimeoutMs;
@@ -435,16 +443,59 @@ begin
   end;
 end;
 
-function TAtlasCiHttpTransport.Request(const ARequest: TRequest; out AReply: TReply): Boolean;
+function TAtlasCiHttpTransport.Exchange(AClient: THTTPClient; const ARequest: TRequest; ASource: TBytesStream;
+  AContent: TAtlasBoundedStream; var AReply: TReply): Boolean;
 var
-  mClient: THTTPClient;
-  mContent: TAtlasBoundedStream;
-  mSource: TBytesStream;
   mAsync: IAsyncResult;
   mResponse: IHTTPResponse;
   mDeadline: TAtlasDeadline;
   mUrl: string;
   mRedirects: Integer;
+begin
+  Result := False;
+  mUrl := ARequest.Url;
+  mRedirects := 0;
+  mDeadline := TAtlasDeadline.After(Cardinal(Max(ARequest.TimeoutMs, 0)));
+  try
+    try
+      repeat
+        mAsync := StartRequest(AClient, ARequest, mUrl, ASource, AContent);
+        if not AwaitResponse(mAsync, mDeadline, AReply.Error) then
+        begin
+          Exit;
+        end;
+        mResponse := THTTPClient.EndAsyncHTTP(mAsync);
+        if IsRedirect(mResponse.StatusCode) and not FollowRedirect(mResponse, ARequest.Method, mUrl, mRedirects,
+          AReply) then
+        begin
+          Exit;
+        end;
+      until not IsRedirect(mResponse.StatusCode);
+      ReadReply(mResponse, AContent, AReply);
+      Result := True;
+    except
+      // Kein Netz, Name unbekannt, Zertifikat abgelehnt, Antwort zu groß …: still als Fehler der Abfrage.
+      on E: Exception do
+      begin
+        if not ((E is ENetException) or (E is EStreamError) or (E is EOSError)) then
+        begin
+          raise;
+        end;
+        AReply.Error := FailureAfter(mDeadline, AContent);
+      end;
+    end;
+  finally
+    // Erst die Schnittstellen lösen, sie verweisen auf den Client.
+    mResponse := nil;
+    mAsync := nil;
+  end;
+end;
+
+function TAtlasCiHttpTransport.Request(const ARequest: TRequest; out AReply: TReply): Boolean;
+var
+  mClient: THTTPClient;
+  mContent: TAtlasBoundedStream;
+  mSource: TBytesStream;
 begin
   Result := False;
   AReply := Default(TReply);
@@ -462,33 +513,8 @@ begin
     mSource := TBytesStream.Create(ARequest.Body);
   end;
   try
-    mUrl := ARequest.Url;
-    mRedirects := 0;
-    mDeadline := TAtlasDeadline.After(Cardinal(Max(ARequest.TimeoutMs, 0)));
-    try
-      repeat
-        mAsync := StartRequest(mClient, ARequest, mUrl, mSource, mContent);
-        if not AwaitResponse(mAsync, mDeadline, AReply.Error) then
-        begin
-          Exit;
-        end;
-        mResponse := THTTPClient.EndAsyncHTTP(mAsync);
-        if IsRedirect(mResponse.StatusCode) and not FollowRedirect(mResponse, ARequest.Method, mUrl, mRedirects,
-          AReply) then
-        begin
-          Exit;
-        end;
-      until not IsRedirect(mResponse.StatusCode);
-      ReadReply(mResponse, mContent, AReply);
-      Result := True;
-    except
-      // Kein Netz, Name unbekannt, Zertifikat abgelehnt, Antwort zu groß …: still als Fehler der Abfrage.
-      AReply.Error := FailureAfter(mDeadline, mContent);
-    end;
+    Result := Exchange(mClient, ARequest, mSource, mContent, AReply);
   finally
-    // Erst die Schnittstellen lösen, sie verweisen auf den Client.
-    mResponse := nil;
-    mAsync := nil;
     mSource.Free;
     mContent.Free;
     mClient.Free;

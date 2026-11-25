@@ -20,7 +20,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Debug.NoSource,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasNoSourceWayEvent = reference to procedure(AWay: TAtlasNoSourceWay);
@@ -68,9 +68,9 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Debug.Stepping.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 { TAtlasNoSourcePopup }
 

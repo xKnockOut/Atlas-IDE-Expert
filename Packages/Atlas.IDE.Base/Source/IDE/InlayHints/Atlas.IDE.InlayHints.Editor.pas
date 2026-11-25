@@ -59,10 +59,10 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Editor.InlayPlan,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -160,20 +160,20 @@ implementation
 uses
   System.Math,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
-  Atlas.UI.Strings,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.CodeView;
+  Atlas.Plugin.Localization.Strings,
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Editor.CodeView;
 
 /// <summary>Zeichnet ALabels als Pillen ab AX (Höhe AHeight ab ATop) und rückt AX hinter die letzte; liefert die
 /// Fläche aller Pillen, leer ohne.</summary>

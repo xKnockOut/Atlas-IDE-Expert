@@ -70,9 +70,25 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.StopProgress,
   Atlas.Core.Debug.Variables,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.Core.Debug.WatchScopes,
   Atlas.IDE.Debug.Session,
+  Atlas.IDE.Debug.EvaluateStore,
   Atlas.IDE.Debug.Report;
+
+/// <summary>Alle Ausdrücke der Überwachung als Text, ohne Rücksicht auf ihre Bindung: Die Notiz hält jeden fest.
+/// </summary>
+function ExpressionsOf(const AWatches: TAtlasScopedWatches): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AWatches));
+  for mIndex := 0 to High(AWatches) do
+  begin
+    Result[mIndex] := AWatches[mIndex].Expression;
+  end;
+end;
 
 /// <summary>Antwort des Servers an AValues, solange es dieselbe Sammlung gibt.</summary>
 function Answered(AValues: TAtlasIdeDebugNoteValues; ARequest: Integer): TProc<string>;
@@ -134,8 +150,9 @@ begin
   FLists.BeginStop;
   FLists[TAtlasVariablesTab.Autos].Replace(nil);
   FLists[TAtlasVariablesTab.Locals].Replace(nil);
-  FStore.SwitchProject(mProject);
-  FLists[TAtlasVariablesTab.Watch].Replace(FStore.Items(mProject));
+  // Nur das Projekt; ob es gewechselt hat, braucht die Notiz nicht (eigener Store, jede Sammlung liest neu).
+  mProject := TAtlasIdeEvaluateStore.CurrentProject;
+  FLists[TAtlasVariablesTab.Watch].Replace(ExpressionsOf(FStore.Items(mProject)));
   if not StillAtStop then
   begin
     Finish;

@@ -1,0 +1,193 @@
+﻿unit Atlas.Plugin.Lsp.TextChanges;
+
+// Inkrementelles didChange (#395): Statt des ganzen Textes geht nur der
+// geänderte Bereich an den Server. Gleicher Anfang und gleiches Ende der
+// beiden Texte fallen weg; der Rest ist ein Bereich im alten Text (Zeile und
+// Zeichen 0-basiert in UTF-16-Einheiten) und sein neuer Inhalt.
+// Zeilenumbrüche wie beim Server: CR, LF und CRLF. Eine Grenze liegt nie
+// zwischen CR und LF und nie mitten in einem Surrogatpaar, sonst würde der
+// Server die Position anders deuten. Zeilen und Positionen rechnet
+// TLineTable aus Atlas.Text, dieselbe Tabelle wie beim Server.
+
+interface
+
+uses
+  System.SysUtils,
+  System.JSON,
+  Atlas.Text.Lines;
+
+type
+  /// <summary>Derselbe Typ wie beim Server (Zeile und Zeichen 0-basiert, Compare wie CompareText).</summary>
+  TLspTextPosition = TTextPosition;
+
+  /// <summary>Bereich im Text, Ende ausschließlich (#399).</summary>
+  TLspRange = record
+    StartPos: TLspTextPosition;
+    EndPos: TLspTextPosition;
+    class function Create(AStartLine, AStartCharacter, AEndLine, AEndCharacter: Integer): TLspRange; static;
+    function IsEmpty: Boolean;
+    function Same(const AOther: TLspRange): Boolean;
+    /// <summary>AOther liegt ganz in diesem Bereich (gleiche Grenzen eingeschlossen).</summary>
+    function Contains(const AOther: TLspRange): Boolean;
+    /// <summary>Bereich aus einem LSP-Objekt {start: {line, character}, end: {…}}; False, wenn ein Teil fehlt.
+    /// </summary>
+    class function TryRead(AValue: TJSONValue; out ARange: TLspRange): Boolean; static;
+  end;
+
+  TLspTextChange = record
+    StartPos: TLspTextPosition;
+    EndPos: TLspTextPosition;
+    /// <summary>Neuer Inhalt des Bereichs.</summary>
+    Text: string;
+  end;
+
+  TLspTextChanges = class
+  public
+    /// <summary>Kleinster zusammenhängender Bereich, der AOld in ANew überführt.
+    /// Bei gleichen Texten ein leerer Bereich am Textende mit leerem Text.</summary>
+    class function Between(const AOld, ANew: string): TLspTextChange; static;
+    /// <summary>Position zum Zeichenindex (0-basiert) in AText; ein Index zwischen CR und LF zählt
+    /// zum Zeilenende.</summary>
+    class function PositionOf(const AText: string; AOffset: Integer): TLspTextPosition; overload; static;
+    /// <summary>Wie oben mit einer schon gebauten Zeilentabelle (mehrere Abfragen auf einem Text).</summary>
+    class function PositionOf(const ALines: TLineTable; AOffset: Integer): TLspTextPosition; overload; static;
+    /// <summary>Zeichenindex (0-basiert) zur Position; hinter dem Zeilenende das Zeilenende, hinter der
+    /// letzten Zeile das Textende.</summary>
+    class function OffsetOf(const AText: string; const APosition: TLspTextPosition): Integer; overload; static;
+    class function OffsetOf(const ALines: TLineTable; const APosition: TLspTextPosition): Integer; overload;
+      static;
+  end;
+
+implementation
+
+{ TLspRange }
+
+class function TLspRange.Create(AStartLine, AStartCharacter, AEndLine, AEndCharacter: Integer): TLspRange;
+begin
+  Result.StartPos := TLspTextPosition.Create(AStartLine, AStartCharacter);
+  Result.EndPos := TLspTextPosition.Create(AEndLine, AEndCharacter);
+end;
+
+function TLspRange.IsEmpty: Boolean;
+begin
+  Result := TLspTextPosition.Compare(StartPos, EndPos) >= 0;
+end;
+
+function TLspRange.Same(const AOther: TLspRange): Boolean;
+begin
+  Result := (TLspTextPosition.Compare(StartPos, AOther.StartPos) = 0) and
+    (TLspTextPosition.Compare(EndPos, AOther.EndPos) = 0);
+end;
+
+function TLspRange.Contains(const AOther: TLspRange): Boolean;
+begin
+  Result := (TLspTextPosition.Compare(StartPos, AOther.StartPos) <= 0) and
+    (TLspTextPosition.Compare(AOther.EndPos, EndPos) <= 0);
+end;
+
+const
+  cHighSurrogateFirst = $D800;
+  cHighSurrogateLast = $DBFF;
+  cLowSurrogateFirst = $DC00;
+  cLowSurrogateLast = $DFFF;
+
+function ReadPosition(AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
+var
+  mLine, mCharacter: Integer;
+begin
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('line', mLine) and
+    TJSONObject(AValue).TryGetValue<Integer>('character', mCharacter);
+  if Result then
+  begin
+    APosition := TLspTextPosition.Create(mLine, mCharacter);
+  end;
+end;
+
+class function TLspRange.TryRead(AValue: TJSONValue; out ARange: TLspRange): Boolean;
+begin
+  ARange := Default(TLspRange);
+  Result := (AValue is TJSONObject) and ReadPosition(TJSONObject(AValue).GetValue('start'), ARange.StartPos) and
+    ReadPosition(TJSONObject(AValue).GetValue('end'), ARange.EndPos);
+end;
+
+function IsHighSurrogate(AChar: Char): Boolean;
+begin
+  Result := (Ord(AChar) >= cHighSurrogateFirst) and (Ord(AChar) <= cHighSurrogateLast);
+end;
+
+function IsLowSurrogate(AChar: Char): Boolean;
+begin
+  Result := (Ord(AChar) >= cLowSurrogateFirst) and (Ord(AChar) <= cLowSurrogateLast);
+end;
+
+{ TLspTextChanges }
+
+class function TLspTextChanges.Between(const AOld, ANew: string): TLspTextChange;
+var
+  mPrefix, mSuffix, mMaxSuffix: Integer;
+  mLines: TLineTable;
+begin
+  mPrefix := 0;
+  while (mPrefix < Length(AOld)) and (mPrefix < Length(ANew)) and (AOld[mPrefix + 1] = ANew[mPrefix + 1]) do
+  begin
+    Inc(mPrefix);
+  end;
+  // Nicht zwischen CR und LF und nicht hinter einem hohen Surrogat enden.
+  if (mPrefix > 0) and ((AOld[mPrefix] = #13) or IsHighSurrogate(AOld[mPrefix])) then
+  begin
+    Dec(mPrefix);
+  end;
+  mSuffix := 0;
+  mMaxSuffix := Length(AOld) - mPrefix;
+  if Length(ANew) - mPrefix < mMaxSuffix then
+  begin
+    mMaxSuffix := Length(ANew) - mPrefix;
+  end;
+  while (mSuffix < mMaxSuffix) and (AOld[Length(AOld) - mSuffix] = ANew[Length(ANew) - mSuffix]) do
+  begin
+    Inc(mSuffix);
+  end;
+  // Das gleiche Ende darf nicht mit LF hinter einem CR des Bereichs beginnen und nicht mit
+  // einem tiefen Surrogat.
+  if mSuffix > 0 then
+  begin
+    if (AOld[Length(AOld) - mSuffix + 1] = #10) and (Length(AOld) - mSuffix > 0) and
+      (AOld[Length(AOld) - mSuffix] = #13) then
+    begin
+      Dec(mSuffix);
+    end
+    else if IsLowSurrogate(AOld[Length(AOld) - mSuffix + 1]) then
+    begin
+      Dec(mSuffix);
+    end;
+  end;
+  mLines := TLineTable.Build(AOld);
+  Result.StartPos := PositionOf(mLines, mPrefix);
+  Result.EndPos := PositionOf(mLines, Length(AOld) - mSuffix);
+  Result.Text := Copy(ANew, mPrefix + 1, Length(ANew) - mPrefix - mSuffix);
+end;
+
+class function TLspTextChanges.PositionOf(const AText: string; AOffset: Integer): TLspTextPosition;
+begin
+  Result := PositionOf(TLineTable.Build(AText), AOffset);
+end;
+
+class function TLspTextChanges.PositionOf(const ALines: TLineTable; AOffset: Integer): TLspTextPosition;
+var
+  mPosition: TTextPosition;
+begin
+  mPosition := ALines.PositionAt(AOffset);
+  Result := TLspTextPosition.Create(mPosition.Line, mPosition.Character);
+end;
+
+class function TLspTextChanges.OffsetOf(const AText: string; const APosition: TLspTextPosition): Integer;
+begin
+  Result := OffsetOf(TLineTable.Build(AText), APosition);
+end;
+
+class function TLspTextChanges.OffsetOf(const ALines: TLineTable; const APosition: TLspTextPosition): Integer;
+begin
+  Result := ALines.OffsetAt(TTextPosition.Create(APosition.Line, APosition.Character));
+end;
+
+end.

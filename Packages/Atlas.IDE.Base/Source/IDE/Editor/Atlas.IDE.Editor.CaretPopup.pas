@@ -23,8 +23,8 @@ uses
   Winapi.Windows,
   Vcl.AppEvnts,
   ToolsAPI.Editor,
-  Atlas.UI.Popup.Window,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Vcl.Popup.Window,
+  Atlas.Plugin.Diagnostics.Guard;
 
 type
   /// <summary>Taste AKey im Editor bei stehendem Fenster; AHandled = True nimmt sie dem Editor ab.</summary>
@@ -95,8 +95,8 @@ uses
   System.SysUtils,
   Winapi.Messages,
   ToolsAPI,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh;
 
 function IsModifierKey(AKey: Word): Boolean;
 begin

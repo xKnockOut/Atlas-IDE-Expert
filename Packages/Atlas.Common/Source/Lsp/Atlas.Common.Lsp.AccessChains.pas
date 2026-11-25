@@ -28,7 +28,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   {$SCOPEDENUMS ON}
@@ -87,15 +88,12 @@ type
     Chains: TArray<TAccessChain>;
   end;
 
-  TLspAccessChains = class
+  TLspAccessChains = class(TLspIndexFeature)
   public const
     cMethod = 'atlas/accessChains';
     cMaxChains = 50;
     cMaxFields = 64;
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
     FReadText: TReferenceReadText;
     FNamespaces: TArray<string>;
     function Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -124,7 +122,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Localization.Texts;
@@ -1154,11 +1152,8 @@ end;
 constructor TLspAccessChains.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
+  inherited Create(AStore, AIndex, AEnsureUnit);
   FReadText := AReadText;
-  FEnsureUnit := AEnsureUnit;
 end;
 
 function TLspAccessChains.GetNamespaces: TArray<string>;

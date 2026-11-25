@@ -23,6 +23,8 @@ type
     procedure UnwrappedDropsParens;
     [Test]
     procedure RunHoldsScopeOfContext;
+    [Test]
+    procedure ExpressionRunKnowsDeclaredType;
   end;
 
 implementation
@@ -34,7 +36,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.TypedScope;
+  Atlas.Common.Rules.TypedScope,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 const
   cSource = 'unit Werte;'#10'interface'#10'implementation'#10'procedure Pruefen;'#10'var'#10 +
@@ -96,6 +99,18 @@ begin
   Result := FScope;
 end;
 
+type
+  /// <summary>Macht den Typnamen eines Laufs mit Ausdruckstypen für den Test sichtbar.</summary>
+  TTypedExpressionRunProbe = class(TTypedExpressionRun)
+  public
+    function TypeOfNode(ANode: TSyntaxNode): string;
+  end;
+
+function TTypedExpressionRunProbe.TypeOfNode(ANode: TSyntaxNode): string;
+begin
+  Result := TypeNameOf(ANode);
+end;
+
 { TTypedScopeTests }
 
 procedure TTypedScopeTests.TextCollapsesWhitespace;
@@ -107,7 +122,7 @@ begin
   try
     mScope := TTypedScope.Create(Context(mTree));
     try
-      Assert.AreEqual('mZahl + 1', mScope.Text(Unwrapped(Find(mTree.Root, TSyntaxKind.ParenExpr, '', 0))));
+      Assert.AreEqual('mZahl + 1', mScope.Text(TSyntaxNodes.Unparen(Find(mTree.Root, TSyntaxKind.ParenExpr, '', 0))));
     finally
       mScope.Free;
     end;
@@ -167,9 +182,9 @@ begin
     // ((mWert)): die äußere Klammer ist der zweite ParenExpr.
     mParen := Find(mTree.Root, TSyntaxKind.ParenExpr, '', 1);
     Assert.IsNotNull(mParen);
-    Assert.AreEqual(Ord(TSyntaxKind.Identifier), Ord(Unwrapped(mParen).Kind));
-    Assert.AreEqual('mWert', Unwrapped(mParen).Name);
-    Assert.IsNull(Unwrapped(nil));
+    Assert.AreEqual(Ord(TSyntaxKind.Identifier), Ord(TSyntaxNodes.Unparen(mParen).Kind));
+    Assert.AreEqual('mWert', TSyntaxNodes.Unparen(mParen).Name);
+    Assert.IsNull(TSyntaxNodes.Unparen(nil));
   finally
     mTree.Free;
   end;
@@ -186,7 +201,25 @@ begin
     try
       // Der Lauf legt den Typbereich der Unit an; Destroy gibt ihn frei (der Leckmonitor prüft das).
       Assert.IsNotNull(mRun.Scope);
-      Assert.AreEqual('mZahl + 1', mRun.Scope.Text(Unwrapped(Find(mTree.Root, TSyntaxKind.ParenExpr, '', 0))));
+      Assert.AreEqual('mZahl + 1', mRun.Scope.Text(TSyntaxNodes.Unparen(Find(mTree.Root, TSyntaxKind.ParenExpr, '', 0))));
+    finally
+      mRun.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TTypedScopeTests.ExpressionRunKnowsDeclaredType;
+var
+  mTree: TSyntaxTree;
+  mRun: TTypedExpressionRunProbe;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mRun := TTypedExpressionRunProbe.Create(Context(mTree), nil);
+    try
+      Assert.AreEqual('Integer', mRun.TypeOfNode(Find(mTree.Root, TSyntaxKind.Identifier, 'mZahl', 0)));
     finally
       mRun.Free;
     end;

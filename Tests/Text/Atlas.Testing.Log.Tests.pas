@@ -28,19 +28,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Testing.Log,
-  Atlas.Core.Tests.Log;
-
-/// <summary>Zeilen mit LF verbunden, wie sie in der Seitendatei stehen.</summary>
-function Joined(const ALines: TArray<string>): string;
-var
-  mLine: string;
-begin
-  Result := '';
-  for mLine in ALines do
-  begin
-    Result := Result + mLine + #10;
-  end;
-end;
+  Atlas.Core.Tests.Log,
+  Atlas.Tests.SourceText;
 
 { TAtlasTestingLogTests }
 
@@ -78,11 +67,11 @@ var
   mSide: string;
   mRun: TAtlasTestLogRun;
 begin
-  mSide := Joined(TAtlasTestLogger.Lines(0, 'A', TAtlasTestLogger.cFormat)) +
-    Joined(TAtlasTestLogger.Lines(1, 'F+', 'Kunden.Tests.TKundenTests')) +
-    Joined(TAtlasTestLogger.Lines(2, 'T+', cTest)) +
-    Joined(TAtlasTestLogger.Lines(3, TAtlasTestLogger.KindOf(TLogLevel.Warning), 'Zeile 1' + #10 + 'Zeile 2')) +
-    Joined(TAtlasTestLogger.Lines(4, 'T-', '')) + Joined(TAtlasTestLogger.Lines(5, 'F-', ''));
+  mSide := TTestSource.Lines(TAtlasTestLogger.Lines(0, 'A', TAtlasTestLogger.cFormat)) +
+    TTestSource.Lines(TAtlasTestLogger.Lines(1, 'F+', 'Kunden.Tests.TKundenTests')) +
+    TTestSource.Lines(TAtlasTestLogger.Lines(2, 'T+', cTest)) +
+    TTestSource.Lines(TAtlasTestLogger.Lines(3, TAtlasTestLogger.KindOf(TLogLevel.Warning), 'Zeile 1' + #10 + 'Zeile 2')) +
+    TTestSource.Lines(TAtlasTestLogger.Lines(4, 'T-', '')) + TTestSource.Lines(TAtlasTestLogger.Lines(5, 'F-', ''));
   mRun := TAtlasTestLog.Parse(mSide, '', 2000);
   Assert.IsTrue(mRun.HasLogger);
   Assert.AreEqual(2, TAtlasTestLog.CountOf(mRun, cTest));

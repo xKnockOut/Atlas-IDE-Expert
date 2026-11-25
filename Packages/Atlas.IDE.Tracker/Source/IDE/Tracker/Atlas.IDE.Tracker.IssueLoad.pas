@@ -4,9 +4,11 @@
 // - Sofort der letzte Stand aus dem Zwischenspeicher, dann die Abfrage im
 //   Hintergrund; frisch geladen ersetzt ihn, ohne Netz bleibt er mit Grund
 //   stehen.
-// - Eine Abfrage zur Zeit: Ein neuer Wunsch bricht die laufende ab
-//   (IAtlasCiCancel) und folgt ihr; Antworten älterer Generationen zählen
-//   nicht. Rückkehr über TAtlasMainThread.
+// - Den Ablauf (eine Abfrage zur Zeit, vormerken, abbrechen, Antwort nach
+//   Generation einordnen) entscheidet TAtlasIssueLoadFlow
+//   (Atlas.Core.Tracker.PreviewLoad); diese Unit ist sein Lader: zeigt, startet
+//   die Abfrage im Thread, bricht über IAtlasCiCancel ab. Rückkehr über
+//   TAtlasMainThread.
 // - Zeigt Baum oder Liste der Verknüpfungen (#1279), Knöpfe nur, wenn der
 //   Anbieter schreiben kann; Meldungen der Checklisten (#1273) und
 //   Verknüpfungen über dem frischen Stand.
@@ -21,6 +23,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
+  Atlas.Core.Tracker.PreviewLoad,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.IDE.Tracker.IssueParts;
 
@@ -35,23 +38,27 @@ type
     CanReview: TFunc<TAtlasTrackerTarget, TAtlasTrackerIssue, Boolean>;
   end;
 
-  /// <summary>Laufende Abfrage des gezeigten Issues und der Wunsch, der ihr folgt.</summary>
-  TAtlasIssueLoadState = record
-    Thread: TThread;
-    Cancel: IAtlasCiCancel;
-    Pending: TAtlasIssueHistoryEntry;
-    HasPending: Boolean;
-  end;
-
   TAtlasIdeIssueLoad = class
   private
     FParts: TAtlasIdeIssueParts;
     FHistory: TAtlasIssueHistory;
     FHooks: TAtlasIssueLoadHooks;
-    FState: TAtlasIssueLoadState;
-    procedure Loaded(AGeneration: Integer; const AEntry: TAtlasIssueHistoryEntry; ASucceeded: Boolean;
-      const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
-    /// <summary>Abfrage im Hintergrund; das Ergebnis über Loaded im Hauptthread.</summary>
+    FFlow: TAtlasIssueLoadFlow;
+    /// <summary>Thread der laufenden Abfrage und ihr Abbruch-Griff (nil ohne).</summary>
+    FThread: TThread;
+    FCancel: IAtlasCiCancel;
+    /// <summary>Lader des Ablaufs: Zeigen und Abfrage (TAtlasIssueLoaderStart).</summary>
+    function StartFor(const AEntry: TAtlasIssueHistoryEntry; out AGeneration: Integer;
+      out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>Lader des Ablaufs: eingeordnete Antwort loggen und zeigen.</summary>
+    procedure Arrived(const AAnswer: TAtlasIssueLoadAnswer; AStep: TAtlasIssueLoadStep);
+    /// <summary>Lader des Ablaufs: die laufende Abfrage abbrechen.</summary>
+    procedure CancelRunning;
+    /// <summary>Lader des Ablaufs: die laufende Abfrage ist zu Ende; Griff und Thread abgeben.</summary>
+    procedure RunEnded;
+    /// <summary>Lader des Ablaufs: Generation des jüngsten Wunsches.</summary>
+    function CurrentGeneration: Integer;
+    /// <summary>Abfrage im Hintergrund; das Ergebnis über den Ablauf (Finished) im Hauptthread.</summary>
     procedure StartLoad(AGeneration: Integer; const AEntry: TAtlasIssueHistoryEntry;
       const AProvider: IAtlasTrackerProvider; const ATransport: IAtlasCiTransport);
     /// <summary>Frisch geladen: Zwischenspeicher, zuletzt geöffnet und Fenster mit den Meldungen der Teile.</summary>
@@ -68,6 +75,7 @@ type
   public
     /// <summary>AParts und AHistory gehören dem Aufrufer.</summary>
     constructor Create(AParts: TAtlasIdeIssueParts; AHistory: TAtlasIssueHistory; const AHooks: TAtlasIssueLoadHooks);
+    destructor Destroy; override;
     /// <summary>AEntry laden und zeigen; läuft schon eine Abfrage, folgt dieser Wunsch ihr.</summary>
     procedure Load(const AEntry: TAtlasIssueHistoryEntry);
     /// <summary>Gezeigtes Issue aus dem Zwischenspeicher zeigen (neuer Frame).</summary>
@@ -78,7 +86,7 @@ type
     procedure CancelLoad;
     /// <summary>Beendete Threads freigeben; AWait: auf alle warten (Anhalten).</summary>
     procedure ReleaseThreads(AWait: Boolean);
-    /// <summary>Hooks lösen (beim Abmelden).</summary>
+    /// <summary>Hooks lösen und den Ablauf zurücksetzen (beim Abmelden, nach ReleaseThreads(True)).</summary>
     procedure Stop;
   end;
 
@@ -86,11 +94,11 @@ implementation
 
 uses
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
   Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueContext;
@@ -110,6 +118,37 @@ begin
   end;
 end;
 
+/// <summary>Lader für den Ablauf; eigene Routine, damit die anonymen Methoden nur AOwner fangen.</summary>
+function LoaderOf(AOwner: TAtlasIdeIssueLoad): TAtlasIssueLoader;
+begin
+  Result := Default(TAtlasIssueLoader);
+  Result.Start :=
+    function(const AEntry: TAtlasIssueHistoryEntry; out AGeneration: Integer; out AError: TAtlasCiFetchError): Boolean
+    begin
+      Result := AOwner.StartFor(AEntry, AGeneration, AError);
+    end;
+  Result.Cancel :=
+    procedure
+    begin
+      AOwner.CancelRunning;
+    end;
+  Result.Ended :=
+    procedure
+    begin
+      AOwner.RunEnded;
+    end;
+  Result.Generation :=
+    function: Integer
+    begin
+      Result := AOwner.CurrentGeneration;
+    end;
+  Result.Arrived :=
+    procedure(const AAnswer: TAtlasIssueLoadAnswer; AStep: TAtlasIssueLoadStep)
+    begin
+      AOwner.Arrived(AAnswer, AStep);
+    end;
+end;
+
 { TAtlasIdeIssueLoad }
 
 constructor TAtlasIdeIssueLoad.Create(AParts: TAtlasIdeIssueParts; AHistory: TAtlasIssueHistory;
@@ -119,6 +158,13 @@ begin
   FParts := AParts;
   FHistory := AHistory;
   FHooks := AHooks;
+  FFlow := TAtlasIssueLoadFlow.Create(LoaderOf(Self));
+end;
+
+destructor TAtlasIdeIssueLoad.Destroy;
+begin
+  FFlow.Free;
+  inherited;
 end;
 
 procedure TAtlasIdeIssueLoad.UpdateHistory;
@@ -255,7 +301,7 @@ begin
   mProvider := AProvider;
   mTransport := ATransport;
   mComments := TAtlasIdeSettings.Current.IssuesPreviewComments;
-  FState.Thread := TThread.CreateAnonymousThread(
+  FThread := TThread.CreateAnonymousThread(
     procedure
     var
       mResult: TAtlasTrackerDetails;
@@ -287,40 +333,42 @@ begin
         begin
           if mKeep <> nil then
           begin
-            mOwner.Loaded(AGeneration, mEntry, mOk, mResult, mError);
+            mOwner.FFlow.Finished(TAtlasIssueLoadAnswer.Create(AGeneration, mEntry, mOk, mResult, mError));
           end;
         end);
     end);
-  FState.Thread.FreeOnTerminate := False;
-  FState.Thread.Start;
+  FThread.FreeOnTerminate := False;
+  FThread.Start;
 end;
 
 procedure TAtlasIdeIssueLoad.Load(const AEntry: TAtlasIssueHistoryEntry);
+begin
+  if FParts.Context.Started then
+  begin
+    FFlow.Request(AEntry);
+  end;
+end;
+
+function TAtlasIdeIssueLoad.StartFor(const AEntry: TAtlasIssueHistoryEntry; out AGeneration: Integer;
+  out AError: TAtlasCiFetchError): Boolean;
 var
   mContext: TAtlasIdeIssueContext;
   mProvider: IAtlasTrackerProvider;
   mTransport: IAtlasCiTransport;
-  mGeneration: Integer;
 begin
   mContext := FParts.Context;
+  AGeneration := mContext.Generation;
+  AError := TAtlasCiFetchError.Cancelled;
+  Result := False;
   if not mContext.Started then
   begin
+    // Ein vorgemerkter Wunsch nach dem Abmelden: nichts mehr laden.
     Exit;
   end;
-  // Eine Abfrage zur Zeit: die laufende abbrechen, dieser Wunsch folgt ihr.
+  // Die vorige Abfrage ist zu Ende (eine zur Zeit): ihren Thread abgeben.
   ReleaseThreads(False);
-  if FState.Thread <> nil then
-  begin
-    FState.Pending := AEntry;
-    FState.HasPending := True;
-    if FState.Cancel <> nil then
-    begin
-      FState.Cancel.Cancel;
-    end;
-    Exit;
-  end;
   FParts.Media.Cancel;
-  mGeneration := mContext.Select(AEntry);
+  AGeneration := mContext.Select(AEntry);
   FParts.Comments.UpdateWrite;
   FParts.Development.Select(AEntry.Target, AEntry.Key);
   UpdateHistory;
@@ -330,51 +378,63 @@ begin
   mTransport := mContext.TransportOf(mProvider, AEntry.Target);
   if mTransport = nil then
   begin
-    Loaded(mGeneration, AEntry, False, TAtlasTrackerDetails.Empty,
-      TAtlasIssuePreview.MissingTransport(mProvider <> nil, mContext.CanTransport));
+    AError := TAtlasIssuePreview.MissingTransport(mProvider <> nil, mContext.CanTransport);
     Exit;
   end;
-  if not Supports(mTransport, IAtlasCiCancel, FState.Cancel) then
+  if not Supports(mTransport, IAtlasCiCancel, FCancel) then
   begin
-    FState.Cancel := nil;
+    FCancel := nil;
   end;
-  StartLoad(mGeneration, AEntry, mProvider, mTransport);
+  StartLoad(AGeneration, AEntry, mProvider, mTransport);
+  Result := True;
 end;
 
-procedure TAtlasIdeIssueLoad.Loaded(AGeneration: Integer; const AEntry: TAtlasIssueHistoryEntry;
-  ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
+procedure TAtlasIdeIssueLoad.Arrived(const AAnswer: TAtlasIssueLoadAnswer; AStep: TAtlasIssueLoadStep);
 var
   mContext: TAtlasIdeIssueContext;
   mProvider: IAtlasTrackerProvider;
 begin
-  FState.Cancel := nil;
-  ReleaseThreads(False);
   mContext := FParts.Context;
   if not mContext.Started then
   begin
     Exit;
   end;
-  mProvider := mContext.ProviderOf(AEntry.Target);
+  mProvider := mContext.ProviderOf(AAnswer.Entry.Target);
   if mProvider <> nil then
   begin
-    TAtlasGuard.Log(Format('Issue-Vorschau: %s, %s', [mProvider.Name, TAtlasIdeIssueContext.LoadState(ASucceeded, AError)]));
+    TAtlasGuard.Log(Format('Issue-Vorschau: %s, %s', [mProvider.Name,
+      TAtlasIdeIssueContext.LoadState(AAnswer.Succeeded, AAnswer.Error)]));
   end;
-  case TAtlasIssuePreview.LoadStep(FState.HasPending, AGeneration, mContext.Generation, ASucceeded) of
+  case AStep of
+    TAtlasIssueLoadStep.Show:
+      ShowLoaded(mContext.Frame, AAnswer.Entry, AAnswer.Details);
+    TAtlasIssueLoadStep.Fail:
+      ShowFailed(mContext.Frame, AAnswer.Entry, AAnswer.Error);
     TAtlasIssueLoadStep.Pending:
       begin
-        // Ein anderer Wunsch wartet: der zählt.
-        FState.HasPending := False;
-        Load(FState.Pending);
+        // Ein anderer Wunsch wartet und folgt gleich: nichts zeigen.
       end;
-    TAtlasIssueLoadStep.Show:
-      ShowLoaded(mContext.Frame, AEntry, ADetails);
-    TAtlasIssueLoadStep.Fail:
-      ShowFailed(mContext.Frame, AEntry, AError);
     TAtlasIssueLoadStep.Outdated:
       begin
         // Veraltet: ein neuerer Wunsch läuft.
       end;
   end;
+end;
+
+procedure TAtlasIdeIssueLoad.CancelRunning;
+begin
+  TAtlasCiCancels.Cancel(FCancel);
+end;
+
+procedure TAtlasIdeIssueLoad.RunEnded;
+begin
+  FCancel := nil;
+  ReleaseThreads(False);
+end;
+
+function TAtlasIdeIssueLoad.CurrentGeneration: Integer;
+begin
+  Result := FParts.Context.Generation;
 end;
 
 procedure TAtlasIdeIssueLoad.ShowCurrent;
@@ -407,17 +467,13 @@ end;
 
 procedure TAtlasIdeIssueLoad.CancelLoad;
 begin
-  FState.HasPending := False;
-  if FState.Cancel <> nil then
-  begin
-    FState.Cancel.Cancel;
-  end;
+  FFlow.Cancel;
 end;
 
 procedure TAtlasIdeIssueLoad.ReleaseThreads(AWait: Boolean);
 begin
-  FParts.Context.Retire(FState.Thread);
-  FState.Thread := nil;
+  FParts.Context.Retire(FThread);
+  FThread := nil;
   FParts.Media.Retire;
   FParts.Context.ReleaseThreads(AWait);
 end;
@@ -425,6 +481,8 @@ end;
 procedure TAtlasIdeIssueLoad.Stop;
 begin
   FHooks := Default(TAtlasIssueLoadHooks);
+  FCancel := nil;
+  FFlow.Reset;
 end;
 
 end.

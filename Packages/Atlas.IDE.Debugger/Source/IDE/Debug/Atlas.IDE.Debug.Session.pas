@@ -72,6 +72,20 @@ type
     procedure BreakpointsChanged;
   end;
 
+  /// <summary>Takt eines Debugger-Helfers aus Klassenmethoden: ein TTimer, anfangs aus, der ATick über
+  /// TAtlasGuard ruft (ein TTimer braucht eine Methode eines Objekts). Der Besitzer schaltet Timer.Enabled und gibt
+  /// den Takt in Release frei.</summary>
+  TAtlasIdeDebugPace = class
+  private
+    FTimer: TTimer;
+    FTick: TProc;
+    procedure TimerTick(Sender: TObject);
+  public
+    constructor Create(AIntervalMs: Integer; const ATick: TProc);
+    destructor Destroy; override;
+    property Timer: TTimer read FTimer;
+  end;
+
   TAtlasIdeDebugSession = class
   public const
     /// <summary>Beim Start festgehaltene Projektoptionen (#840): Debug-Informationen, lokale Symbole,
@@ -178,9 +192,9 @@ implementation
 uses
   System.Math,
   System.Diagnostics,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 function IsStoppedState(AState: TOTAProcessState): Boolean;
 begin
@@ -224,6 +238,29 @@ begin
   begin
     Result := (mStamp div mFrequency) * cMicrosPerSecond + ((mStamp mod mFrequency) * cMicrosPerSecond) div mFrequency;
   end;
+end;
+
+{ TAtlasIdeDebugPace }
+
+constructor TAtlasIdeDebugPace.Create(AIntervalMs: Integer; const ATick: TProc);
+begin
+  inherited Create;
+  FTick := ATick;
+  FTimer := TTimer.Create(nil);
+  FTimer.Enabled := False;
+  FTimer.Interval := AIntervalMs;
+  FTimer.OnTimer := TimerTick;
+end;
+
+destructor TAtlasIdeDebugPace.Destroy;
+begin
+  FTimer.Free;
+  inherited Destroy;
+end;
+
+procedure TAtlasIdeDebugPace.TimerTick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Debugger, FTick);
 end;
 
 { TStopTicker }
@@ -320,7 +357,9 @@ begin
         TAtlasIdeDebugSession.cLaunchOptionNames[mIndex]));
     end;
   except
-    // Nur Merkwerte; der Start geht in jedem Fall weiter.
+    // Nur Merkwerte; der Start geht in jedem Fall weiter, der Grund steht im Protokoll.
+    on E: Exception do
+      TAtlasGuard.Log('Debugsitzung: Startwerte fehlen: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
   end;
   if Project <> nil then
   begin
@@ -679,7 +718,11 @@ begin
     Result := AThread.GetThreadName;
   except
     // Ältere Debugger kennen keine Thread-Namen.
-    Result := '';
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Thread-Name nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      Result := '';
+    end;
   end;
 end;
 

@@ -120,7 +120,6 @@ const
   cMaxNesting = 256;
 
 function SameWord(const A, B: string): Boolean; inline;
-function InWords(const AText: string; const AWords: array of string): Boolean;
 function Before(const A, B: TTextPosition): Boolean; inline;
 function InRanges(const APos: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
 /// <summary>Steht ein {$I datei.inc} hinter APrevious an der Stelle eines Werts (#849)? Siehe
@@ -171,20 +170,6 @@ begin
   Result := SameText(A, B);
 end;
 
-function InWords(const AText: string; const AWords: array of string): Boolean;
-var
-  mWord: string;
-begin
-  for mWord in AWords do
-  begin
-    if SameText(AText, mWord) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function Before(const A, B: TTextPosition): Boolean; inline;
 begin
   Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
@@ -208,7 +193,7 @@ function IncludeAsValue(const APrevious: TPascalToken): Boolean;
 const
   cValueStarts: array[0..8] of string = ('=', ':=', '(', ',', '[', '+', '-', '*', '/');
 begin
-  Result := (APrevious.Kind = TPascalTokenKind.Symbol) and InWords(APrevious.Text, cValueStarts);
+  Result := (APrevious.Kind = TPascalTokenKind.Symbol) and MatchText(APrevious.Text, cValueStarts);
 end;
 
 /// <summary>Gehört AToken in die Token des Parsers? Nicht in übersprungenen Bereichen, ohne Kommentare und
@@ -319,7 +304,7 @@ end;
 
 function TParserCursor.IsKw(const AWords: array of string): Boolean;
 begin
-  Result := not AtEnd and (FTokens[FIndex].Kind = TPascalTokenKind.Keyword) and InWords(FTokens[FIndex].Text, AWords);
+  Result := not AtEnd and (FTokens[FIndex].Kind = TPascalTokenKind.Keyword) and MatchText(FTokens[FIndex].Text, AWords);
 end;
 
 function TParserCursor.IsSym(const ASymbol: string): Boolean;

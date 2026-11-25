@@ -48,10 +48,10 @@ uses
   Vcl.Forms,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Search,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Tree,
   Atlas.UI.Settings.Page.Search,
-  Atlas.UI.Style.Symbol;
+  Atlas.Vcl.Images.Symbol;
 
 type
   TAtlasSettingsPage = class(TAtlasSettingsPageTree)
@@ -130,9 +130,9 @@ uses
   Atlas.UI.Settings.Page.Transfer,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Strings,
-  Atlas.Core.Style.Symbol,
-  Atlas.Core.Diagnostics.Hangs,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.Plugin.Style.Symbol,
+  Atlas.Plugin.Diagnostics.Hangs,
+  Atlas.Vcl.Controls.WrapLabel;
 
 const
   /// <summary>Aktionen für den Einfrier-Wächter (Protokollnamen, nicht übersetzt).</summary>
@@ -411,7 +411,7 @@ begin
 end;
 
 // Art und Hauptbranch je Projekt (#1286): wie die Tabelle Projekte der Seite Issue-Tracker (#1261), dieselbe
-// Auflösung (Atlas.Core.Projects.Matching).
+// Auflösung (Atlas.Plugin.Projects.Matching).
 
 // Serverzugang (#1287): nur auf Klick, Zustand aus der Sitzung.
 

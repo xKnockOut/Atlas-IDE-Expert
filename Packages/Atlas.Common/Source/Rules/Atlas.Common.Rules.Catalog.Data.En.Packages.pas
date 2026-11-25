@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnPackages: array[0..187] of string = (
+  cCatalogLinesEnPackages: array[0..270] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implicit package import",',
@@ -27,9 +27,10 @@ const
     '      "group": "packages",',
     '      "description": "AddNotifier on IOTAServices, IOTAEditorServices, IOTAModule and so on (or another pair from registerPairs) whose index never reaches RemoveNotifier: the call is a statement witho' +
     'ut assignment, or the variable it is assigned to is never passed to RemoveNotifier in the unit (in finalization, a destructor or Destroyed). The IDE then calls the notifier after the package is unload' +
-    'ed, in memory that no longer holds the code. Register… calls inside the procedure Register are exempt: the IDE removes those wizards itself. Medium confidence. Quick fix in methods: keep the index in ' +
-    'a field (FNotifierIndex in the private section) and add RemoveNotifier to the destructor, which is created if missing; in procedures of the unit: a global variable initialized with -1 and RemoveNotifi' +
-    'er in finalization. No quick fix when the receiver is a parameter or local variable.",',
+    'ed, in memory that no longer holds the code. Register… calls inside the procedure Register are exempt: the IDE removes those wizards itself. So is Result := X.AddNotifier(…) inside a method AddNotifie' +
+    'r of your own (implementing an interface with its own notifier pair): the caller gets the index and removes it with RemoveNotifier. Medium confidence. Quick fix in methods: keep the index in a field (' +
+    'FNotifierIndex in the private section) and add RemoveNotifier to the destructor, which is created if missing; in procedures of the unit: a global variable initialized with -1 and RemoveNotifier in fin' +
+    'alization. No quick fix when the receiver is a parameter or local variable.",',
     '      "bad": "procedure Register;\nbegin\n  (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);\nend;",',
     '      "good": "var\n  NotifierIndex: Integer = -1;\n\nprocedure Register;\nbegin\n  NotifierIndex := (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);\nend;\n\ninitialization' +
     '\n\nfinalization\n  if NotifierIndex >= 0 then\n    (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);",',
@@ -48,6 +49,105 @@ const
     '            }',
     '          ],',
     '          "description": "Pairs of the Open Tools API as [{\"open\": \"AddNotifier\", \"close\": \"RemoveNotifier\"}]; replaces the default."',
+    '        }',
+    '      ],',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "ota-entry-without-guard",',
+    '      "name": "IDE entry point lets exceptions through",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "A method that the IDE calls can let an exception through to the IDE, which shows it as an error message or, in the worst case, aborts saving or loading. Entry points are the publ' +
+    'ic and published methods of a class that implements an interface from the interfaces option, also through ancestors (default IOTA*Notifier*, INTA*Notifier*, IOTA*Wizard*, IOTAKeyboardBinding, INTACust' +
+    'omDrawMessage, IOTALocalMenu, IOTAProjectManagerMenu), the methods such a class passes to AddKeyBinding or AddMenuCommand, and in package units that hang menu entries into the IDE (INTAServices, MainM' +
+    'enu, AddActionMenu, the editor or project manager menu) the methods a routine assigns to OnClick or OnExecute when it names TMenuItem or TAction; handlers of an own context menu are caught by the appl' +
+    'ication. Reported when the body contains something that can raise (a call, raise, a cast with as) outside a try … except that catches every exception and outside the call of a guard routine from the g' +
+    'uards option; a raise in the handler counts. Built-in and pure RTL routines (Length, Assigned, Supports, Copy, SameText …), type casts (also T…(x) and I…(x) with types the index does not know, such as' +
+    ' VCL types), inherited, anonymous methods (they run later) and calls of routines of the unit whose body cannot raise do not count. Bodies that only assign values (fields, Result) stay silent. High con' +
+    'fidence. Quick fixes: pass the body as an anonymous method to the first guard routine (with a parenthesis the entry is the beginning of the call, e.g. \"TAtlasGuard.Run(TAtlasFeature.Menu, \"; not whe' +
+    'n the body uses Result, var or out parameters or inherited), or, with a field of type ILogger, wrap it in try … except and log the message with Error.",',
+    '      "bad": "procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;\n  const FileName: string; var Cancel: Boolean);\nbegin\n  if FileName = '''' then\n    raise Exception.Create(''l' +
+    'eer'');\nend;",',
+    '      "good": "procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;\n  const FileName: string; var Cancel: Boolean);\nbegin\n  try\n    Pruefen(FileName);\n  except\n    on E: Ex' +
+    'ception do\n      FLogger.Error(E.Message);\n  end;\nend;",',
+    '      "options": [',
+    '        {',
+    '          "name": "guards",',
+    '          "type": "string-list",',
+    '          "default": [],',
+    '          "description": "Guard routines that protect the body, e.g. TAtlasGuard.Run; the text before a parenthesis counts. The quick fix uses the first entry, with a parenthesis as the beginning of t' +
+    'he call."',
+    '        },',
+    '        {',
+    '          "name": "interfaces",',
+    '          "type": "string-list",',
+    '          "default": [',
+    '            "IOTA*Notifier*",',
+    '            "INTA*Notifier*",',
+    '            "IOTA*Wizard*",',
+    '            "IOTAKeyboardBinding",',
+    '            "INTACustomDrawMessage",',
+    '            "IOTALocalMenu",',
+    '            "IOTAProjectManagerMenu"',
+    '          ],',
+    '          "description": "Interfaces whose methods are entry points (patterns with * and ?)."',
+    '        }',
+    '      ],',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "register-does-work",',
+    '      "name": "Register starts work instead of only registering",',
+    '      "category": "code-smell",',
+    '      "severity": "warning",',
+    '      "group": "packages",',
+    '      "description": "The procedure Register of a package (or another entry routine from the entries option) starts work instead of only registering: a call from workCalls (default Sleep, WaitFor…, Cr' +
+    'eateProcess, ShellExecute…, Application.CreateForm, ShowModal, ShowMessage, MessageDlg, TTask.Run, TThread.CreateAnonymousThread) or creating a class from workClasses or one of its descendants (defaul' +
+    't TTimer, TThread, TForm, THTTPClient, TIdHTTP). Register runs while the IDE starts, in no guaranteed order of the packages; work there lengthens the start and may touch packages that are not loaded y' +
+    'et. Routines of the unit that are only reached from the entry routine (free routines of the implementation part, private methods of the same class) are checked too; anonymous methods and routines pass' +
+    'ed as arguments run later and do not count. Registering stays allowed (RegisterPackageWizard, RegisterComponents, AddNotifier …). An entry with a dot matches the whole routine name (*.RegisterModule),' +
+    ' without a dot only free routines. High confidence in the entry routine, medium in a helper. No quick fix: move the start into a wizard, a notifier or the feature table.",',
+    '      "bad": "procedure Register;\nbegin\n  GTimer := TTimer.Create(nil);\n  GTimer.Enabled := True;\n  RegisterPackageWizard(TMyWizard.Create);\nend;",',
+    '      "good": "procedure Register;\nbegin\n  // The wizard starts the timer once the IDE has loaded.\n  RegisterPackageWizard(TMyWizard.Create);\nend;",',
+    '      "options": [',
+    '        {',
+    '          "name": "workCalls",',
+    '          "type": "string-list",',
+    '          "default": [',
+    '            "Sleep",',
+    '            "WaitFor*",',
+    '            "CreateProcess",',
+    '            "ShellExecute*",',
+    '            "Application.CreateForm",',
+    '            "ShowModal",',
+    '            "ShowMessage",',
+    '            "MessageDlg",',
+    '            "TTask.Run",',
+    '            "TThread.CreateAnonymousThread"',
+    '          ],',
+    '          "description": "Calls that count as work; with a dot the whole call (TTask.Run), otherwise the last name part; patterns with * and ?."',
+    '        },',
+    '        {',
+    '          "name": "workClasses",',
+    '          "type": "string-list",',
+    '          "default": [',
+    '            "TTimer",',
+    '            "TThread",',
+    '            "TForm",',
+    '            "THTTPClient",',
+    '            "TIdHTTP"',
+    '          ],',
+    '          "description": "Classes whose creation counts as work, including their descendants."',
+    '        },',
+    '        {',
+    '          "name": "entries",',
+    '          "type": "string-list",',
+    '          "default": [',
+    '            "Register"',
+    '          ],',
+    '          "description": "Entry routines, e.g. also *.RegisterModule; with a dot the whole name, otherwise only free routines."',
     '        }',
     '      ],',
     '      "safeFix": false',

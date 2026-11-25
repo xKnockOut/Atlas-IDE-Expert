@@ -15,7 +15,7 @@
 //   Benutzer beheben kann (Schlüssel fehlt oder abgelehnt, Modell unbekannt,
 //   Antwort verweigert) meldet das nächste Prepare im Hauptthread, je Art
 //   einmal je Sitzung.
-// - Tageszähler in %LOCALAPPDATA%\Atlas\ai-requests.json (TAtlasDataFile).
+// - Tageszähler gemeinsam mit den Anfragen der IDE (TAtlasIdeAiDailyCount, #2745).
 // - Destroy bricht laufende Anfragen ab und meldet den Anbieter bei Base ab;
 //   Base wartet dabei die laufende Arbeit ab (Regel 3).
 
@@ -25,7 +25,6 @@ uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
   Atlas.Core.AiProviders.Contract,
-  Atlas.Core.Assistants.AiGhost,
   Atlas.IDE.Contracts.GhostSuggestions;
 
 type
@@ -39,16 +38,11 @@ type
     FKeys: TAtlasAiKeyReader;
     FMessage: TProc<string>;
     FProvider: IAtlasGhostProvider;
-    FCount: TAtlasAiDailyCount;
-    /// <summary>Datei nicht lesbar: nicht überschreiben.</summary>
-    FKept: Boolean;
     /// <summary>Letzter Fehler der Arbeit (Ord von TAtlasAiError), atomar.</summary>
     FLastError: Integer;
     /// <summary>Schon gemeldete Fehlerarten und der Tag der gemeldeten Tagesgrenze.</summary>
     FReported: set of TAtlasAiError;
     FLimitDay: string;
-    procedure Load;
-    procedure Save;
     procedure ReportLastError;
     function Allowed(const AContext: TAtlasGhostContext): Boolean;
     procedure Failed(AError: TAtlasAiError);
@@ -60,28 +54,26 @@ type
     destructor Destroy; override;
     function Enabled: Boolean;
     function Prepare(const AContext: TAtlasGhostContext): TAtlasGhostWork;
-    class function CountFile: string; static;
   end;
 
 implementation
 
 uses
-  System.IOUtils,
   System.JSON,
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   Atlas.Text.Json,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.Uris,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.Uris,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.AiProviders.Catalog,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.AiErrors,
-  Atlas.UI.Assistants.Strings;
+  Atlas.IDE.Assistants.DailyCount,
+  Atlas.UI.Assistants.Strings,
+  Atlas.Core.Assistants.AiGhost;
 
 const
-  cCountFile = 'ai-requests.json';
-  cCountKind = 'KI-Anfragen'; // german-ok Protokoll
   cContextCommand = 'atlas.server.suggestionContext';
   cCheckCommand = 'atlas.server.checkSuggestion';
 
@@ -228,6 +220,12 @@ begin
       mAnswer := mJob.Provider.Complete(TAtlasAiGhost.Prompt(mJob.Request, mJob.TimeoutMs));
       if not mAnswer.Ok then
       begin
+        // Abbruch beim Weitertippen ist Alltag; alles andere ins Protokoll, mit Meldung des Anbieters.
+        if mAnswer.Error <> TAtlasAiError.Cancelled then
+        begin
+          TAtlasGuard.Log('KI-Schattentext (' + mJob.Provider.Id + '): ' + TAtlasAiErrorTexts.Text(mAnswer.Error) +
+            ' ' + TAtlasGuard.MessageText(mAnswer.Detail));
+        end;
         AOwner.Failed(mAnswer.Error);
         Exit(False);
       end;
@@ -251,8 +249,6 @@ begin
   FHttp := AHttp;
   FKeys := AKeys;
   FMessage := AMessage;
-  FCount := TAtlasAiDailyCount.Create;
-  Load;
   FProvider := TAiGhostProvider.Create(Self);
   TAtlasGhostProviders.Add(FProvider);
 end;
@@ -269,48 +265,11 @@ begin
     TAtlasGhostProviders.Remove(FProvider);
     FProvider := nil;
   end;
-  Save;
-  FreeAndNil(FCount);
   FHttp := nil;
   FKeys := nil;
   FSessionOf := nil;
   FMessage := nil;
   inherited Destroy;
-end;
-
-class function TAtlasIdeAiGhost.CountFile: string;
-begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), cCountFile);
-end;
-
-procedure TAtlasIdeAiGhost.Load;
-var
-  mLoad: TAtlasDataLoad;
-  mCount: TAtlasAiDailyCount;
-begin
-  mCount := FCount;
-  mLoad := TAtlasDataFile.Load(CountFile, cCountKind,
-    function(const AText: string): Boolean
-    begin
-      Result := mCount.FromJson(AText);
-    end);
-  FKept := not TAtlasDataFile.Writable(mLoad);
-  FCount.MarkSaved;
-end;
-
-procedure TAtlasIdeAiGhost.Save;
-begin
-  if (FCount = nil) or FKept or not FCount.Changed then
-  begin
-    Exit;
-  end;
-  try
-    TAtlasDataFile.Write(CountFile, FCount.ToJson);
-    FCount.MarkSaved;
-  except
-    on E: Exception do
-      TAtlasDataFile.ReportNotWritten(cCountKind, E);
-  end;
 end;
 
 procedure TAtlasIdeAiGhost.Failed(AError: TAtlasAiError);
@@ -365,7 +324,7 @@ begin
     Exit;
   end;
   mDay := FormatDateTime('yyyy"-"mm"-"dd', Date);
-  if not FCount.TryTake(mDay, mSettings.AssistantsDailyLimit) then
+  if not TAtlasIdeAiDailyCount.TryTake(mSettings.AssistantsDailyLimit) then
   begin
     if FLimitDay <> mDay then
     begin
@@ -374,7 +333,6 @@ begin
     end;
     Exit;
   end;
-  Save;
   Result := True;
 end;
 
@@ -415,7 +373,7 @@ begin
   end;
   mJob.Status := TAtlasAssistantsStrings.Text(TAtlasAssistantsTextId.GhostStatus);
   mJob.Hint := TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.GhostHint,
-    [mProvider.Model, FCount.CountOn(FormatDateTime('yyyy"-"mm"-"dd', Date))]);
+    [mProvider.Model, TAtlasIdeAiDailyCount.Today]);
   Result := WorkOf(Self, mJob);
 end;
 

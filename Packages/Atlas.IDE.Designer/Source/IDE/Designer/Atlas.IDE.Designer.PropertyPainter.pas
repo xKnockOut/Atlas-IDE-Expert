@@ -23,7 +23,7 @@ uses
   System.Classes,
   System.TypInfo,
   Atlas.Core.Designer.PropertyPainter,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -80,7 +80,7 @@ implementation
 uses
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.PaintDialog,
@@ -232,6 +232,9 @@ begin
           Result.Reference := nil;
         end;
       end;
+  else
+    // Übrige Arten (Variant, Record, Interface …) malt der Pinsel nicht; nichts zu merken.
+    Exit;
   end;
 end;
 
@@ -262,6 +265,9 @@ begin
           SetObjectProp(AObject, AProp, AValue.Reference);
         end;
       end;
+  else
+    // Übrige Arten hat ReadValue nicht gemerkt; nichts zurückzuschreiben.
+    Exit;
   end;
 end;
 

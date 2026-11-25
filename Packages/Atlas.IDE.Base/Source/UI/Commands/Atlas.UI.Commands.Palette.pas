@@ -38,9 +38,9 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Commands.Palette,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Zeichnen der Palette: Maße, Eingabefeld, Zeilen mit Hervorhebung, Abzeichen, Überschrift und Status
@@ -177,9 +177,9 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Color,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Completion.Presentation;
 

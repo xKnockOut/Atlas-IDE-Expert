@@ -21,7 +21,7 @@ uses
   Vcl.Graphics,
   Vcl.Controls,
   Atlas.Core.Editor.SmartPaste,
-  Atlas.UI.Popup.Window;
+  Atlas.Vcl.Popup.Window;
 
 type
   TAtlasSmartPasteWindow = class(TAtlasPickPopupWindow)
@@ -69,9 +69,9 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cPad = 10;

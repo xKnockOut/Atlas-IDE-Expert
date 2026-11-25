@@ -24,7 +24,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.CodeLinks;
 
 type
@@ -95,9 +95,13 @@ uses
   System.Generics.Collections,
   Atlas.Text.Diff,
   Atlas.Text.Lines,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Files.TextFile,
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.MethodToggle;
+
+const
+  /// <summary>Kurzform einer Git-Revision wie `git log --oneline`.</summary>
+  cGitShortLength = 7;
 
 { TAtlasBlameLinks }
 
@@ -348,7 +352,7 @@ class function TAtlasBlameLinks.ShortRevision(AKind: TAtlasVcsKind; const ARevis
 begin
   case AKind of
     TAtlasVcsKind.Git:
-      Result := Copy(ARevision, 1, 7);
+      Result := Copy(ARevision, 1, cGitShortLength);
     TAtlasVcsKind.Svn:
       Result := 'r' + ARevision;
   else

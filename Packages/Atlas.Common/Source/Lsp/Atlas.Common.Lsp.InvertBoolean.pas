@@ -84,15 +84,18 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.InvertBoolean,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.Rename,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Text.Arrays;
 
 {$SCOPEDENUMS ON}
 
@@ -156,32 +159,18 @@ const
   cFormExtensions: array[0..1] of string = ('.dfm', '.fmx');
 
 type
-  TSourceFile = class
+  TSourceFile = class(TLspSourceFile)
   public
-    FileName: string;
-    Text: string;
-    Tree: TSyntaxTree;
-    OwnsTree: Boolean;
     Lines: TLineTable;
     Targets: TInvertTargets;
     Extra: TArray<TTextEdit>;
     Resolver: TNameResolver;
-    destructor Destroy; override;
     function Offset(const APosition: TTextPosition): Integer;
     function TokenAt(const APosition: TTextPosition): Integer;
     function IsVarArgument(ACall: TSyntaxNode; AArgument: Integer): Boolean;
   end;
 
 { TSourceFile }
-
-destructor TSourceFile.Destroy;
-begin
-  if OwnsTree then
-  begin
-    Tree.Free;
-  end;
-  inherited;
-end;
 
 /// <summary>Ansatz für TLspChangeSignature.Family an APosition, ohne Abbruch.</summary>
 function FamilySource(AResolver: TNameResolver; const AContext: TInvertBooleanContext; ATree: TSyntaxTree;
@@ -752,10 +741,7 @@ end;
 
 procedure TInvertPlan.Warn(const AText: string);
 begin
-  if IndexStr(AText, Warnings) < 0 then
-  begin
-    Warnings := Warnings + [AText];
-  end;
+  TTextArrays.AddText(Warnings, AText);
 end;
 
 procedure TInvertPlan.AddVariable(const ASymbol: TResolvedSymbol; const ANewName: string; AAccessorCheck: Boolean);
@@ -1052,16 +1038,6 @@ begin
     TTextLines.LineBreakOf(AUnit.Text) + mIndent + ANewName + ' := True;')];
 end;
 
-/// <summary>Name der Klasse ohne Typparameter.</summary>
-function PlainClassName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-end;
-
 procedure TInvertPlan.AddStartValue(const ASymbol: TResolvedSymbol; const ANewName: string);
 var
   mUnit: TSourceFile;
@@ -1348,7 +1324,7 @@ begin
       ASymbol.SelectionRange.StartPos), ASymbol.Name, ANewName]));
     Exit;
   end;
-  mClassName := PlainClassName(mTypeDecl.Name);
+  mClassName := TTextNames.WithoutGenerics(mTypeDecl.Name);
   mConstructors := ClassConstructors(AUnit, mClassName);
   for mRoutine in mConstructors do
   begin
@@ -1671,7 +1647,7 @@ begin
   end;
   if Result <> nil then
   begin
-    CheckParses(mUnit, TChangeSignature.ApplyEdits(mUnit.Text, Result));
+    CheckParses(mUnit, TTextChanges.Apply(mUnit.Text, Result));
   end;
 end;
 
@@ -1747,7 +1723,7 @@ var
   mPlaces, mFiles: Integer;
   mWarnings: TArray<string>;
 begin
-  if not TLspRename.IsValidName(AContext.NewName) then
+  if not TPascalLexer.IsIdentifierName(AContext.NewName) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspInvertBooleanText.IsNotAValidIdentifier].Fmt([AContext.NewName]));

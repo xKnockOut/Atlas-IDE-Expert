@@ -1,0 +1,67 @@
+﻿unit Atlas.Plugin.Style.Scaling;
+
+// Zoom des Editors für die Atlas-Fenster (#445). Die Open Tools API meldet
+// den Zoom (Strg+Mausrad) nicht; die Editorschrift bleibt gleich groß
+// eingestellt. Der Caret aber ist so hoch wie eine Editorzeile und wächst mit.
+// Aus seiner Höhe und der Höhe der Schrift bei 100 % ergibt sich der Faktor.
+// Kleine Abweichungen (Zeilenabstand des Editors) gelten als 100 %.
+
+interface
+
+type
+  TAtlasScaling = class
+  public const
+    cMinZoom = 0.5;
+    cMaxZoom = 4.0;
+    /// <summary>Bis zu dieser Abweichung nach oben gilt der Zoom als 100 % (Zeilenabstand).</summary>
+    cTolerance = 0.25;
+    /// <summary>Bis zu dieser Abweichung nach unten gilt der Zoom als 100 % (Rundung der Schrifthöhen).</summary>
+    cToleranceBelow = 0.1;
+    /// <summary>Bezugsdichte der logischen Pixel.</summary>
+    cBasePPI = 96;
+  public
+    /// <summary>Zoomfaktor aus der Caret-Höhe und der Texthöhe der Editorschrift bei 100 % (beide in
+    /// Gerätepixeln); 1 ohne brauchbare Werte.</summary>
+    class function ZoomFromCaret(ACaretHeight, ATextHeight: Integer): Double; static;
+    /// <summary>Wert in logischen Pixeln (96 dpi) für APPI in Gerätepixeln, kaufmännisch gerundet (#2063);
+    /// APPI ≤ 0 gilt als 96 dpi, negative Werte (Sonderbreiten von Listenspalten) bleiben unverändert.</summary>
+    class function ToDevice(AValue96, APPI: Integer): Integer; static;
+  end;
+
+implementation
+
+uses
+  System.Math;
+
+{ TAtlasScaling }
+
+class function TAtlasScaling.ZoomFromCaret(ACaretHeight, ATextHeight: Integer): Double;
+begin
+  if (ACaretHeight <= 0) or (ATextHeight <= 0) then
+  begin
+    Exit(1);
+  end;
+  Result := ACaretHeight / ATextHeight;
+  // Der Caret ist bei 100 % etwas höher als der Text (Zeilenabstand), nie kleiner.
+  if (Result >= 1 - cToleranceBelow) and (Result <= 1 + cTolerance) then
+  begin
+    Exit(1);
+  end;
+  // Oberhalb: den Zeilenabstand wieder herausrechnen, damit 150 % nicht zu 160 % wird.
+  if Result > 1 then
+  begin
+    Result := Result / (1 + cTolerance / 2);
+  end;
+  Result := EnsureRange(Result, cMinZoom, cMaxZoom);
+end;
+
+class function TAtlasScaling.ToDevice(AValue96, APPI: Integer): Integer;
+begin
+  if (AValue96 < 0) or (APPI <= 0) or (APPI = cBasePPI) then
+  begin
+    Exit(AValue96);
+  end;
+  Result := (AValue96 * APPI + cBasePPI div 2) div cBasePPI;
+end;
+
+end.

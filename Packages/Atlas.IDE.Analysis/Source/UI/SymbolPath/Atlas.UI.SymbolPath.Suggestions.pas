@@ -68,7 +68,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Foundation.ListBox;
+  Atlas.Vcl.Controls.ListBox;
 
 const
   /// <summary>Pause nach dem letzten Tastendruck, bevor Vorschläge geholt werden.</summary>

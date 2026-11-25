@@ -16,7 +16,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Core.Settings.TeamFile;
+  Atlas.Plugin.Settings.TeamFile;
 
 type
   TAtlasIdeLaunchProbe = class(TThread)
@@ -64,7 +64,7 @@ uses
   Winapi.Windows,
   Winapi.Winsock2,
   Atlas.WinBase.Process,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cProcessTerminate = $0001;

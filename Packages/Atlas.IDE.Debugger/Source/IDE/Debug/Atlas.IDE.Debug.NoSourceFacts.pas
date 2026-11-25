@@ -45,13 +45,14 @@ uses
   System.IOUtils,
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Projects.Contract,
-  Atlas.Core.Projects.PathCheck,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Projects.Contract,
+  Atlas.Plugin.Projects.PathCheck,
   Atlas.Core.Debug.Unavailable,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Debug.Session,
-  Atlas.IDE.Debug.EvaluateStore;
+  Atlas.IDE.Debug.EvaluateStore,
+  Atlas.Text.Files;
 
 const
   cFoldersWhat = 'debug source folders';
@@ -167,8 +168,14 @@ begin
       TSearchOption.soAllDirectories);
   except
     // Ordner fehlt oder ist nicht lesbar: ohne Quelltext der Bibliothek.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       mFiles := nil;
+    end;
   end;
   if Length(mFiles) > 0 then
   begin
@@ -196,8 +203,14 @@ begin
     end;
   except
     // Nicht lesbar: kein Befund.
-    on Exception do
+    on E: Exception do
+    begin
+      if not TTextFiles.IsFileError(E) then
+      begin
+        raise;
+      end;
       Result := False;
+    end;
   end;
 end;
 

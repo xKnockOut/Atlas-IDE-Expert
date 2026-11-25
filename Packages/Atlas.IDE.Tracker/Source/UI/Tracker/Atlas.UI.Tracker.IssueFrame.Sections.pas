@@ -22,7 +22,7 @@ uses
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Checklist,
   Atlas.UI.Tracker.DocBox,
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.UI.Tracker.IssueFrame.Layout;
 
 type
@@ -59,6 +59,8 @@ type
     /// <summary>Enter in Anhängen und Verknüpfungsbaum: wie Klick.</summary>
     procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ClearContent;
+    /// <summary>Alle Abschnitte des Issues in FState.</summary>
+    procedure BuildDetails;
     function SelectedListLink(out ALink: TAtlasTrackerLink): Boolean;
     function SelectedTreeLink(out ALink: TAtlasTrackerLink): Boolean;
   public
@@ -90,7 +92,6 @@ implementation
 
 uses
   System.Generics.Collections,
-  System.Math,
   System.UITypes,
   Winapi.Windows,
   Vcl.StdCtrls,
@@ -164,17 +165,13 @@ begin
 end;
 
 function RelationText(const ALink: TAtlasTrackerLink): string;
-const
-  // Beziehungen, die GitHub als Wort liefert.
-  cMentioned = 'cross-referenced';
-  cPull = 'pull request';
 begin
   Result := ALink.Relation;
-  if ALink.Relation = cMentioned then
+  if ALink.Relation = cGitHubRelationMentioned then
   begin
     Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRelationMentioned);
   end
-  else if ALink.Relation = cPull then
+  else if ALink.Relation = cGitHubRelationPull then
   begin
     Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewRelationPull);
   end;
@@ -601,7 +598,7 @@ begin
   FLayout.Place(mTools);
   mTools.BevelOuter := bvNone;
   mTools.ShowCaption := False;
-  mTools.Height := MulDiv(cLinkToolsHeight, mTools.CurrentPPI, USER_DEFAULT_SCREEN_DPI);
+  mTools.Height := FLayout.Scaled(cLinkToolsHeight);
   FContent.CreateSubtask := FLayout.AddButton(mTools, TAtlasIssueTextId.IssueLinksCreateSubtask, cSubtaskWidth,
     TAtlasIssuePart.CreateSubtask);
   FContent.AddLink := FLayout.AddButton(mTools, TAtlasIssueTextId.IssueLinksAddLink, cLinkWidth,
@@ -686,16 +683,27 @@ begin
 end;
 
 procedure TAtlasIssueSections.Build(var AState: TAtlasIssueFrameState; AFlags: TAtlasIssueFlags);
-var
-  mProgress: TAtlasChecklistProgress;
 begin
   FState := AState;
   FFlags := AFlags;
-  ClearContent;
-  if not FState.HasDetails then
-  begin
-    Exit;
+  // Einmal ablegen, wenn alles steht, statt nach jedem Teil.
+  FLayout.BeginUpdate;
+  try
+    ClearContent;
+    if FState.HasDetails then
+    begin
+      BuildDetails;
+    end;
+  finally
+    FLayout.EndUpdate;
   end;
+  AState.CommentsExpanded := FState.CommentsExpanded;
+end;
+
+procedure TAtlasIssueSections.BuildDetails;
+var
+  mProgress: TAtlasChecklistProgress;
+begin
   // Checklisten (#1273): Fortschritt in der Kopfzeile, Kästchen in der Beschreibung.
   mProgress := TAtlasChecklistProgress.Create(0, 0);
   if TAtlasIssueFlag.Checklists in FFlags then
@@ -715,7 +723,6 @@ begin
   begin
     AddLinkList;
   end;
-  AState.CommentsExpanded := FState.CommentsExpanded;
 end;
 
 function TAtlasIssueSections.ImageUrls: TArray<string>;
@@ -843,16 +850,12 @@ begin
 end;
 
 function TAtlasIssueSections.ScrollToTasks: Boolean;
-var
-  mBar: TControlScrollBar;
 begin
   Result := FContent.TaskBox <> nil;
-  if not Result then
+  if Result then
   begin
-    Exit;
+    FLayout.ScrollToControl(FContent.TaskBox);
   end;
-  mBar := FLayout.Box.VertScrollBar;
-  mBar.Position := Max(0, FContent.TaskBox.Top + mBar.Position - FLayout.Box.Padding.Top);
 end;
 
 end.

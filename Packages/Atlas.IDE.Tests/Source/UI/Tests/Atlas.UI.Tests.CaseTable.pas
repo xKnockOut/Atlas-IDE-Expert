@@ -24,7 +24,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Grids,
   Atlas.Core.Tests.CaseTable,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Zeilen an den Server schicken; die Antwort kommt mit AGeneration zurück.</summary>
@@ -112,10 +112,10 @@ uses
   System.UITypes,
   Vcl.Graphics,
   Vcl.Forms,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.UI.Tests.Strings;
 
 /// <summary>Gitter der Fälle in AParent; bearbeitbar mit AEditable, sonst nur Zeilen wählen.</summary>

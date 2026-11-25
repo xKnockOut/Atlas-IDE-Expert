@@ -30,31 +30,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.SyncObjs,
-  Atlas.Core.Welcome.AccountName;
-
-/// <summary>Arbeitet eingereihte Aufrufe ab, bis ACondition gilt oder ATimeoutMs um sind.</summary>
-function WaitWithin(const ACondition: TFunc<Boolean>; ATimeoutMs: Cardinal): Boolean;
-var
-  mStart: UInt64;
-begin
-  mStart := TThread.GetTickCount64;
-  repeat
-    CheckSynchronize(5);
-    if ACondition() then
-    begin
-      Exit(True);
-    end;
-  until TThread.GetTickCount64 - mStart > ATimeoutMs;
-  Result := False;
-end;
-
-/// <summary>Wie WaitWithin mit der üblichen Wartezeit von drei Sekunden.</summary>
-function WaitUntil(const ACondition: TFunc<Boolean>): Boolean;
-const
-  cTimeoutMs = 3000;
-begin
-  Result := WaitWithin(ACondition, cTimeoutMs);
-end;
+  Atlas.Core.Welcome.AccountName,
+  Atlas.Tests.Wait;
 
 type
   /// <summary>Nachschlagen mit Zähler und Thread; Meldungen mit Zähler und Thread.</summary>
@@ -130,7 +107,7 @@ begin
     mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup(), mProbe.Changed());
     try
       Assert.AreEqual('', mName.Name, 'vor der Antwort leer');
-      Assert.IsTrue(WaitUntil(Reported(mProbe)));
+      Assert.IsTrue(TTestWait.Synchronized(Reported(mProbe)));
       Assert.AreEqual('Muster, Erika', mName.Name);
       Assert.AreNotEqual<TThreadID>(MainThreadID, mProbe.LookupThread, 'Abfrage im Hintergrund');
       Assert.AreEqual<TThreadID>(MainThreadID, mProbe.ReportThread, 'Meldung im Hauptthread');
@@ -158,13 +135,13 @@ begin
       begin
         Assert.AreEqual('', mName.Name, 'vor der Antwort leer');
       end;
-      Assert.IsTrue(WaitUntil(Reported(mProbe)));
+      Assert.IsTrue(TTestWait.Synchronized(Reported(mProbe)));
       for mIndex := 1 to 5 do
       begin
         Assert.AreEqual('Erika Muster', mName.Name);
       end;
       // Etwas Zeit für eine zweite Abfrage, die es nicht geben darf.
-      WaitWithin(
+      TTestWait.Synchronized(
         function: Boolean
         begin
           Result := mProbe.Lookups > 1;
@@ -191,9 +168,9 @@ begin
     mName := TAtlasWelcomeAccountName.Create(mProbe.Lookup(), mProbe.Changed());
     try
       Assert.AreEqual('', mName.Name);
-      Assert.IsTrue(WaitUntil(Looked(mProbe)));
+      Assert.IsTrue(TTestWait.Synchronized(Looked(mProbe)));
       // Abschluss abarbeiten lassen: Er darf nichts melden.
-      WaitWithin(Reported(mProbe), 200);
+      TTestWait.Synchronized(Reported(mProbe), 200);
       Assert.AreEqual(0, mProbe.Reports);
       Assert.AreEqual('', mName.Name);
       Assert.AreEqual(1, mProbe.Lookups, 'auch ein leerer Name wird nicht erneut erfragt');
@@ -229,7 +206,7 @@ begin
       mName.Free;
     end;
     Assert.AreEqual(1, mProbe.Lookups, 'Freigabe wartet die Abfrage ab');
-    WaitWithin(Reported(mProbe), 200);
+    TTestWait.Synchronized(Reported(mProbe), 200);
     Assert.AreEqual(0, mProbe.Reports);
   finally
     mProbe.Gate.Free;

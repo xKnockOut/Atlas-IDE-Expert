@@ -85,12 +85,14 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -163,18 +165,10 @@ begin
   end;
 end;
 
-function LastSegment(const AName: string): string;
-var
-  mDot: Integer;
-begin
-  mDot := LastDelimiter('.', AName);
-  Result := Copy(AName, mDot + 1, MaxInt);
-end;
-
 /// <summary>Name ohne Unit-Präfix (System.TextFile → TextFile).</summary>
 function WithoutUnit(const AName: string): string;
 begin
-  Result := LastSegment(AName);
+  Result := TTextNames.LastPart(AName);
 end;
 
 { TForbiddenSymbol }
@@ -254,7 +248,7 @@ end;
 
 function TForbiddenSymbol.MayMatch(const ALastName: string): Boolean;
 begin
-  Result := MatchesGlob(LastSegment(Name), ALastName);
+  Result := MatchesGlob(TTextNames.LastPart(Name), ALastName);
 end;
 
 { TForbiddenSymbolRule }
@@ -391,7 +385,7 @@ begin
   if (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 1) and
     (mParent[0] = ANode) then
   begin
-    Result := Unwrapped(mParent[1]);
+    Result := TSyntaxNodes.Unparen(mParent[1]);
   end
   else
   begin
@@ -578,7 +572,7 @@ var
   mSymbol: TResolvedSymbol;
 begin
   FUnknownUnits := nil;
-  for mUnit in TUsesClauses.UsedUnits(FContext.Tree.Tokens) do
+  for mUnit in TPascalUses.UsedUnits(FContext.Tree.Tokens) do
   begin
     mSymbol := FScope.Resolver.ResolveChain(FContext.Tree, FScope.FileName, mUnit.Split(['.']), 0);
     if mSymbol.Kind = TResolvedKind.None then
@@ -709,7 +703,7 @@ begin
     Exit;
   end;
   // Name aus dem Quelltext (unit X), sonst aus dem Dateinamen.
-  mUnitName := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  mUnitName := TPascalUses.OwnName(FContext.Tree.Tokens);
   if mUnitName = '' then
   begin
     mUnitName := FContext.UnitName;

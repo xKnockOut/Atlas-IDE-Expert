@@ -17,7 +17,7 @@ uses
   Vcl.Menus,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.SettingsTables,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Tracker.SettingsPaths,
   Atlas.UI.Tracker.SettingsRows;
 
@@ -35,14 +35,10 @@ type
     AddMenu: TPopupMenu;
   end;
 
-  TAtlasTrackerProjectsPart = class
+  TAtlasTrackerProjectsPart = class(TAtlasTrackerSettingsPart)
   private
-    FRows: TAtlasTrackerSettingsRows;
-    FHooks: TAtlasTrackerSettingsHooks;
-    FTables: TAtlasTrackerSettingsTables;
     FView: TAtlasTrackerProjectsView;
     FAnchor: TWinControl;
-    FFilling: Boolean;
     FOnChanged: TAtlasTrackerTableChanged;
     FPaths: TAtlasTrackerPathsPart;
     function Table: TAtlasTrackerProjectTable;
@@ -88,7 +84,7 @@ uses
   System.SysUtils,
   Vcl.Graphics,
   Vcl.Dialogs,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Settings.Strings;
 
 const
@@ -112,10 +108,7 @@ type
 constructor TAtlasTrackerProjectsPart.Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
   ATables: TAtlasTrackerSettingsTables; AOnChanged: TAtlasTrackerTableChanged);
 begin
-  inherited Create;
-  FRows := ARows;
-  FHooks := AHooks;
-  FTables := ATables;
+  inherited Create(ARows, AHooks, ATables);
   FOnChanged := AOnChanged;
 end;
 
@@ -337,12 +330,7 @@ end;
 
 procedure TAtlasTrackerProjectsPart.SelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
-  if FFilling or not Selected or (Item = nil) then
-  begin
-    Exit;
-  end;
-  Table.Select(Item.Index);
-  FillFields;
+  TakeSelection(Item, Selected, Table.Select, FillFields);
 end;
 
 procedure TAtlasTrackerProjectsPart.DrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
@@ -454,11 +442,7 @@ end;
 
 procedure TAtlasTrackerProjectsPart.RemoveClick(Sender: TObject);
 begin
-  if Table.Editable then
-  begin
-    Table.Remove;
-    Refresh;
-  end;
+  RemoveSelected(Table.Editable, Table.Remove, Refresh);
 end;
 
 procedure TAtlasTrackerProjectsPart.Build;

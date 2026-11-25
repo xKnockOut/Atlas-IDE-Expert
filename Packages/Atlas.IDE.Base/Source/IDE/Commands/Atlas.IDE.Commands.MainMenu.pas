@@ -71,7 +71,7 @@ uses
   System.JSON,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.IDE.Commands.MenuModules;
 
 type
@@ -108,7 +108,8 @@ type
     FMethodOrderItem: TMenuItem;
     /// <summary>Untermenü Code mit Erzeugen und Methodenreihenfolge; fehlt, wenn beide aus sind.</summary>
     FCodeGroup: TMenuItem;
-    /// <summary>„Alle Regionen zu-/aufklappen“ (#1814), nur mit editor.regionFolds nicht off.</summary>
+    /// <summary>„Alle Regionen zu-/aufklappen“ (#1814), nur mit editor.regionFolds nicht off; dahinter „Block
+    /// einklappen“, „Große Blöcke einklappen“, „Blöcke aufklappen“ (#2795), nur mit editor.blockFolds.</summary>
     FRegionItems: TArray<TMenuItem>;
     /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
     FOutlineItem: TMenuItem;
@@ -209,7 +210,8 @@ implementation
 
 uses
   Atlas.UI.Commands.Strings,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Vcl.Controls.Menus,
+  Atlas.Plugin.Diagnostics.Guard,
   ToolsAPI,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.QuickToggles,
@@ -219,14 +221,15 @@ uses
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.RegionFolds,
+  Atlas.IDE.Commands.BlockFolds,
   Atlas.UI.Editor.RegionFolds,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Commands.MenuActions,
-  Atlas.IDE.Foundation.Symbol,
+  Atlas.ToolsApi.Theme.Symbol,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Setup.Checklist,
-  Atlas.Core.Lsp.Progress;
+  Atlas.Plugin.Lsp.Progress;
 
 const
   /// <summary>Takt des Fortschritts im Menütitel, solange ein Vorgang läuft.</summary>
@@ -283,11 +286,8 @@ end;
 
 function TAtlasMainMenuItems.AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(FRoot);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AOnClick;
-  FParent.Add(Result);
+  // Als Befehl des Benutzers: Scheitert er, steht das sofort in der Meldungsansicht.
+  Result := TAtlasMenus.Add(FRoot, FParent, ACaption, ATag, AOnClick);
 end;
 
 function TAtlasMainMenuItems.AddGroup(AText: TAtlasTextId): TMenuItem;
@@ -308,9 +308,17 @@ var
   mItem: TMenuItem;
 begin
   // Regionen zu-/aufklappen (#1814) nach editor.regionFolds.
+  // Große Blöcke ein-/aufklappen (#2795) nach editor.blockFolds.
   for mItem in FRegionItems do
   begin
-    mItem.Visible := TAtlasIdeRegionFolds.Enabled;
+    if mItem.Tag >= TAtlasMenuActions.cEditorFoldBlock then
+    begin
+      mItem.Visible := TAtlasIdeBlockFolds.Enabled;
+    end
+    else
+    begin
+      mItem.Visible := TAtlasIdeRegionFolds.Enabled;
+    end;
   end;
 end;
 
@@ -453,7 +461,14 @@ begin
     AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand),
       TAtlasMenuActions.cEditorCollapseRegions, EditorClick),
     AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand),
-      TAtlasMenuActions.cEditorExpandRegions, EditorClick));
+      TAtlasMenuActions.cEditorExpandRegions, EditorClick),
+    // Große Blöcke ein-/aufklappen (#2795).
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldBlockCommand),
+      TAtlasMenuActions.cEditorFoldBlock, EditorClick),
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.FoldLargeBlocksCommand),
+      TAtlasMenuActions.cEditorFoldLargeBlocks, EditorClick),
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.UnfoldBlocksCommand),
+      TAtlasMenuActions.cEditorUnfoldBlocks, EditorClick));
 end;
 
 procedure TAtlasMainMenu.AddSearchGroups;
@@ -510,16 +525,12 @@ var
   mItem: TMenuItem;
 begin
   FRoot.Add(NewLine);
-  mItem := TMenuItem.Create(FRoot);
-  mItem.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProjectSettingsMenu);
-  mItem.OnClick := ProjectClick;
-  FRoot.Add(mItem);
+  mItem := TAtlasMenus.Add(FRoot, FRoot, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProjectSettingsMenu), 0,
+    ProjectClick);
   FImageItems := [FRoot, mItem];
   // Globale Einstellungen stehen nur unter Tools › Optionen › Atlas, kein eigener Menüpunkt mehr.
-  mItem := TMenuItem.Create(FRoot);
-  mItem.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuOptions);
-  mItem.OnClick := OptionsClick;
-  FRoot.Add(mItem);
+  mItem := TAtlasMenus.Add(FRoot, FRoot, TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuOptions), 0,
+    OptionsClick);
   FImageItems := FImageItems + [mItem];
   // Nur sichtbar, wenn die Sicherung etwas abgeschaltet hat (#493).
   FEnableAll := TMenuItem.Create(FRoot);
@@ -553,11 +564,7 @@ end;
 
 function TAtlasMainMenu.AddViewItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TMenuItem.Create(FViewAtlas);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AOnClick;
-  FViewAtlas.Add(Result);
+  Result := TAtlasMenus.Add(FViewAtlas, FViewAtlas, ACaption, ATag, AOnClick);
 end;
 
 procedure TAtlasMainMenu.AddViewMenu(AViews: TMenuItem);
@@ -644,7 +651,13 @@ end;
 
 procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);
 begin
-  TAtlasGuard.EnableAll;
+  // Nicht über Run(Menu): Auch ein abgeschaltetes Menü-Feature soll sich wieder einschalten lassen.
+  try
+    TAtlasGuard.EnableAll;
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Enable all features: ' + TAtlasGuard.ErrorText(E));
+  end;
 end;
 
 procedure TAtlasMainMenu.TimerTick(Sender: TObject);

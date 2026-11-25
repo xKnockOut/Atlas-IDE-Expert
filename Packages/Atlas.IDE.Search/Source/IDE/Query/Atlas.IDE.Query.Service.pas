@@ -63,15 +63,15 @@ uses
   System.JSON,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Query.Model,
   Atlas.UI.Search.Strings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Query.Window,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   /// <summary>Der Server bricht nach vier Fünfteln von requestTimeoutMs selbst ab; das hier ist nur die Grenze für
@@ -96,7 +96,7 @@ type
     destructor Destroy; override;
     procedure LoadCatalog;
     procedure Run(const AQuery: string);
-    procedure Cancel;
+    class procedure Cancel; static;
     procedure SaveRule(const AQuery: string);
   end;
 
@@ -337,7 +337,7 @@ begin
   end;
 end;
 
-procedure TCodeQueryState.Cancel;
+class procedure TCodeQueryState.Cancel;
 var
   mFrame: TAtlasCodeQueryFrame;
 begin

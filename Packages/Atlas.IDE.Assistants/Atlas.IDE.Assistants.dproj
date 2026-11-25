@@ -54,6 +54,13 @@
         <DCC_DcpOutput>..\..\Output\$(Platform)\$(Config)\Dcp</DCC_DcpOutput>
         <DCC_UnitSearchPath>..\..\Output\$(Platform)\$(Config)\Dcp;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_BplOutput>..\..\Output\$(Platform)\$(Config)\Bpl</DCC_BplOutput>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
+        <VerInfo_MajorVer>2</VerInfo_MajorVer>
+        <VerInfo_MinorVer>3</VerInfo_MinorVer>
+        <VerInfo_Release>0</VerInfo_Release>
+        <VerInfo_Build>3001</VerInfo_Build>
+        <VerInfo_Locale>1033</VerInfo_Locale>
+        <VerInfo_Keys>CompanyName=xKnockOut;FileDescription=Atlas IDE Expert - $(MSBuildProjectName);FileVersion=2.3.0.3001;InternalName=$(MSBuildProjectName);LegalCopyright=Copyright (c) xKnockOut, MIT License;LegalTrademarks=;OriginalFilename=;ProgramID=io.github.xknockout.atlas.$(MSBuildProjectName);ProductName=Atlas IDE Expert;ProductVersion=2.3.0.3001;Comments=2.3.0-rc.1</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_UsePackage>vcl;rtl;$(DCC_UsePackage)</DCC_UsePackage>
@@ -64,9 +71,6 @@
     <PropertyGroup Condition="'$(Base_Win64x)'!=''">
         <DCC_Namespace>Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
-        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-        <VerInfo_Locale>1033</VerInfo_Locale>
         <BCC_EnableBatchCompilation>true</BCC_EnableBatchCompilation>
         <DCC_UsePackage>vcl;rtl;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
@@ -100,7 +104,17 @@
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Inbox.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.ContextState.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.LinkFrames.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.LinkLock.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Contract.Link.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.LinkProtocol.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.LinkState.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.EditChange.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Queue.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.HeldEdits.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Questions.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Log.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Instructions.pas"/>
         <DCCReference Include="Source\Core\AiProviders\Atlas.Core.AiProviders.Contract.pas"/>
         <DCCReference Include="Source\Core\AiProviders\Atlas.Core.AiProviders.Anthropic.pas"/>
@@ -111,22 +125,51 @@
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.DebugInbox.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.DebugGate.pas"/>
         <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Activity.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.Contract.IdeAi.pas"/>
+        <DCCReference Include="Source\Core\Assistants\Atlas.Core.Assistants.IdeProviders.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.TextRequests.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.TextSource.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.IdeBridge.pas"/>
         <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.Strings.pas"/>
         <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.SettingsSection.pas"/>
+        <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.IdePluginFrame.pas">
+            <Form>AtlasAssistantsIdePluginFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.QuestionDialog.pas"/>
+        <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.LogFrame.pas">
+            <Form>AtlasAssistantsLogFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.BuildInbox.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.ContextExport.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.EditInbox.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.LogEntries.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.HeldEdits.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.QuestionInbox.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.LogWindow.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.Instructions.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.DebugInbox.pas"/>
         <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.DebugBar.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.DebugBar.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Banner.pas"/>
+        <DCCReference Include="Source\UI\Assistants\Atlas.UI.Assistants.LinkDiffView.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.LinkServer.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.LinkEditor.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.Link.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.FolderSignal.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.AiGhost.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.DailyCount.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.AiErrors.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.AiProbe.pas"/>
-        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.Adapters.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.IdeProviders.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.IdePlugin.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.HostAdapters.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.AiText.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Adapters.Module.pas"/>
+        <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.Debug.pas"/>
         <DCCReference Include="Source\IDE\Assistants\Atlas.IDE.Assistants.Composition.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

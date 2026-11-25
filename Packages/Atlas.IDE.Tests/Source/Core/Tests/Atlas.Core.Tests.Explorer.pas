@@ -207,6 +207,16 @@ type
       const AChosen: TArray<Integer>): TArray<string>; static;
   end;
 
+  /// <summary>Aufteilung des Fensters zwischen Baum und Einzelheiten: Der Baum nimmt den freien Platz, die
+  /// Einzelheiten behalten die gezogene Höhe, solange beide ihre Mindesthöhe behalten.</summary>
+  TAtlasTestExplorerLayout = record
+  public
+    /// <summary>Höhe der Einzelheiten bei AAvailable Pixeln für Baum und Einzelheiten zusammen: AWanted (zuletzt
+    /// gezogen), höchstens so viel, dass der Baum AMinTree behält, und mindestens AMinDetails. Reicht der Platz
+    /// nicht für beide Mindesthöhen, teilen sie ihn im Verhältnis der Mindesthöhen; ohne Platz 0.</summary>
+    class function DetailsHeight(AAvailable, AWanted, AMinTree, AMinDetails: Integer): Integer; static;
+  end;
+
 implementation
 
 uses
@@ -217,7 +227,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Tests.Durations,
   Atlas.Core.Tests.AssertLine,
-  Atlas.Core.Tests.Stale;
+  Atlas.Core.Tests.Stale,
+  Atlas.Text.DUnitX.CommandLine;
 
 /// <summary>Reihenfolge der Testunits: nach Unitname, bei Gleichstand nach Datei (TArray.Sort ist nicht stabil).
 /// </summary>
@@ -957,6 +968,24 @@ begin
     mNode := ANodes[mIndex];
     Result := Result + TAtlasTestShuffle.SingleNames(AUnits[mNode.UnitIndex].Found, mNode.FixtureIndex,
       mNode.TestIndex, mNode.CaseIndex);
+  end;
+end;
+
+{ TAtlasTestExplorerLayout }
+
+class function TAtlasTestExplorerLayout.DetailsHeight(AAvailable, AWanted, AMinTree, AMinDetails: Integer): Integer;
+begin
+  if AAvailable <= 0 then
+  begin
+    Result := 0;
+  end
+  else if AAvailable < AMinTree + AMinDetails then
+  begin
+    Result := Integer(Int64(AAvailable) * AMinDetails div (AMinTree + AMinDetails));
+  end
+  else
+  begin
+    Result := EnsureRange(AWanted, AMinDetails, AAvailable - AMinTree);
   end;
 end;
 

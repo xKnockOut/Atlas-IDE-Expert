@@ -68,7 +68,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.Core.Tracker.Preview,
   Atlas.IDE.Foundation.Settings,

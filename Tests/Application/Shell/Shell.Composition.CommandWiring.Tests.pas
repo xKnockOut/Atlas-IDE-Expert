@@ -34,10 +34,8 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.JsonRpc.StreamTransport,
   System.StrUtils,
-  Shell.Composition.ProtocolWiring,
-  Shell.Composition.FeatureWiring,
-  Shell.Composition.CoreWiring,
-  Shell.Composition.CommandWiring;
+  Shell.Composition.CommandWiring,
+  Shell.Composition.TestSupport;
 
 function NewParts: TShellParts;
 begin
@@ -46,26 +44,12 @@ begin
   Result.Channel.Transport := TJsonRpcStreamTransport.Create(TMemoryStream.Create, TMemoryStream.Create, True);
 end;
 
-/// <summary>Alle Teile in der Reihenfolge von TServerComposition.Create.</summary>
-procedure WireAll(AParts: TShellParts);
-begin
-  TShellProtocolWiring.Protocol(AParts);
-  TShellProtocolWiring.Documents(AParts);
-  TShellFeatureWiring.Editing(AParts);
-  TShellCoreWiring.Workspaces(AParts);
-  TShellCoreWiring.Index(AParts);
-  TShellFeatureWiring.Code(AParts);
-  TShellFeatureWiring.Analysis(AParts);
-  TShellCommandWiring.Commands(AParts);
-  TShellFeatureWiring.Ide(AParts);
-end;
-
 { TShellCommandWiringTests }
 
 procedure TShellCommandWiringTests.Setup;
 begin
   FParts := NewParts;
-  WireAll(FParts);
+  TShellTest.WireAll(FParts);
 end;
 
 procedure TShellCommandWiringTests.TearDown;

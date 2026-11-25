@@ -22,7 +22,7 @@ procedure ProfilerThemeChanged;
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,

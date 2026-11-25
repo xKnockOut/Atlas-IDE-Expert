@@ -47,7 +47,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.InvertBoolean;
 
 type
@@ -86,7 +86,7 @@ begin
   try
     mTargets := Default(TInvertTargets);
     ASetup(mTree, mTargets);
-    Result := TChangeSignature.ApplyEdits(AText, TInvertBoolean.Rewrite(mTree, AText, mTargets, AWarnings));
+    Result := TTextChanges.Apply(AText, TInvertBoolean.Rewrite(mTree, AText, mTargets, AWarnings));
   finally
     mTree.Free;
   end;
@@ -178,6 +178,7 @@ function TEvaluator.Value(const AName: string): Boolean;
 var
   mItem: string;
 begin
+  Result := False;
   if SameText(AName, 'True') then
   begin
     Exit(True);
@@ -193,7 +194,7 @@ begin
       Exit(Copy(mItem, Pos('=', mItem) + 1, MaxInt) = '1');
     end;
   end;
-  raise Exception.Create('Unbekannt: ' + AName);
+  Assert.Fail('Unbekannt: ' + AName);
 end;
 
 function TEvaluator.Expression: Boolean;
@@ -583,7 +584,7 @@ var
   mWarnings: TArray<TInvertWarning>;
   mText: string;
 begin
-  mText := TChangeSignature.ApplyEdits(cDfm, TInvertBoolean.DfmEdits(cDfm, ['TFooPanel'], 'Hidden', 'Visible',
+  mText := TTextChanges.Apply(cDfm, TInvertBoolean.DfmEdits(cDfm, ['TFooPanel'], 'Hidden', 'Visible',
     mWarnings));
   Assert.Contains(mText, '  object Panel1: TFooPanel'#13#10'    Visible = False');
   Assert.Contains(mText, '  object Panel2: TFooPanel'#13#10'    Visible = Maybe');

@@ -61,7 +61,8 @@ uses
   Atlas.Core.Tracker.Contract.Files,
   Atlas.Core.Tracker.Files.TestSupport,
   Atlas.Core.Tracker.IssueForms,
-  Atlas.Core.Tracker.NewIssueGitHub;
+  Atlas.Core.Tracker.NewIssueGitHub,
+  Atlas.Tests.TempFolder;
 
 const
   cRepo = 'https://api.github.com/repos/acme/kasse';
@@ -159,11 +160,7 @@ end;
 
 procedure TAtlasGitHubNewIssueTests.TearDown;
 begin
-  if TDirectory.Exists(FDir) then
-  begin
-    TDirectory.Delete(FDir, True);
-  end;
-  FDir := '';
+  TTestTempFolder.Remove(FDir);
 end;
 
 procedure TAtlasGitHubNewIssueTests.UrlsOfRepositoryAndOrganisation;

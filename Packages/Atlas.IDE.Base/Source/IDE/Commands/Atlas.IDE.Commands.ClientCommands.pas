@@ -64,7 +64,7 @@ uses
   Atlas.IDE.Editor.TypeAlias,
   Atlas.IDE.Editor.EnumTables,
   Atlas.IDE.Editor.Overloads,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional;
 
 const
   cCopyTextCommand = 'atlas.copyText';

@@ -70,12 +70,12 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Cache,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Tests.SourceText;
 
 const
   cUnitSystem =
@@ -190,33 +190,6 @@ const
     #10'end;'#10 +
     'end.';
 
-function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
-var
-  mIndex, mFound, mLine, mLineStart: Integer;
-begin
-  mFound := 0;
-  mIndex := 0;
-  repeat
-    mIndex := Pos(AMarker, AText, mIndex + 1);
-    if mIndex = 0 then
-    begin
-      raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-    end;
-    Inc(mFound);
-  until mFound = AOccurrence;
-  mLine := 0;
-  mLineStart := 1;
-  for mFound := 1 to mIndex - 1 do
-  begin
-    if AText[mFound] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mFound + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
-
 { TNameResolverLanguageFeatureTests }
 
 procedure TNameResolverLanguageFeatureTests.AddUnit(const AFileName, AText: string);
@@ -236,7 +209,7 @@ var
 begin
   mTree := TPascalParser.Parse(AText);
   try
-    Result := FResolver.ResolveAll(mTree, 'C:\P\Haupt.pas', PositionOf(AText, AMarker, AOccurrence));
+    Result := FResolver.ResolveAll(mTree, 'C:\P\Haupt.pas', TTestSource.PositionOf(AText, AMarker, AOccurrence));
   finally
     mTree.Free;
   end;

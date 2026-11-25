@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Expressions.Tests;
 
-// Tests der Regel operator-precedence (#911): not vor in und Vergleichen bei
+// Tests der Regel operator-precedence (#911): not vor in, is und Vergleichen bei
 // Aufzählungen und Ganzzahlen, Klammern als Korrektur, keine Meldung bei
 // Boolean, unbekanntem Typ und geklammerter Form, Abschalten und Ausnahmen;
 // duplicate-condition (#928); string-index-base (#951); null-compare (#953);
@@ -22,6 +22,8 @@ type
     procedure NotOnIntegerComparisonIsBitwise;
     [Test]
     procedure NotOnEnumComparison;
+    [Test]
+    procedure NotBeforeIsIsReportedForAnyType;
     [Test]
     procedure ParenthesizedFormIsSilent;
     [Test]
@@ -82,7 +84,6 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
@@ -91,7 +92,8 @@ uses
   Atlas.Common.Rules.Builtin.Expressions.DuplicateConditions,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.TextEdits;
 
 const
   cHeader =
@@ -163,11 +165,25 @@ begin
     'Gemeint ist vermutlich not (FZustand <> zsNeu).', mFindings[0].Message);
 end;
 
+procedure TExpressionRulesTests.NotBeforeIsIsReportedForAnyType;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Der Typ von E ist in der Datei nicht deklariert; not E is T übersetzt trotzdem nie (E2015).
+  mFindings := TRuleAssert.Findings(TOperatorPrecedenceRule.Create,
+    Body('  if not E is EAbort then'#10'    Bearbeiten;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('„not“ gilt nur für E, „is“ prüft dann den Wahrheitswert: Delphi übersetzt das nicht ' +
+    '(wie E2015). Gemeint ist not (E is EAbort).', mFindings[0].Message);
+  Assert.AreEqual('(E is EAbort)', mFindings[0].Fixes[0].Edits[0].NewText);
+end;
+
 procedure TExpressionRulesTests.ParenthesizedFormIsSilent;
 begin
   TRuleAssert.Silent(TOperatorPrecedenceRule.Create,
     Body('  if not (Zustand in [zsOffen, zsGesperrt]) then'#10'    Bearbeiten;'#10 +
-    '  if not (FAnzahl = 0) then'#10'    Bearbeiten;'#10));
+    '  if not (FAnzahl = 0) then'#10'    Bearbeiten;'#10 +
+    '  if not (E is EAbort) then'#10'    Bearbeiten;'#10));
 end;
 
 procedure TExpressionRulesTests.BooleanAndUnknownTypesAreSilent;
@@ -288,29 +304,15 @@ end;
 /// <summary>Wendet alle Änderungen der Korrektur an, von hinten nach vorn (Zeilen mit #10).</summary>
 function ApplyFixes(const AText: string; const AFindings: TArray<TRuleFinding>): string;
 var
+  mEdits: TArray<TRuleEdit>;
   mIndex: Integer;
-  mEdit: TRuleEdit;
-
-  function OffsetOf(const APosition: TTextPosition): Integer;
-  var
-    mLine, mPosition: Integer;
-  begin
-    mPosition := 0;
-    for mLine := 1 to APosition.Line do
-    begin
-      mPosition := Pos(#10, AText, mPosition + 1);
-    end;
-    Result := mPosition + APosition.Character;
-  end;
-
 begin
-  Result := AText;
-  for mIndex := High(AFindings) downto 0 do
+  SetLength(mEdits, Length(AFindings));
+  for mIndex := 0 to High(AFindings) do
   begin
-    mEdit := AFindings[mIndex].Fixes[0].Edits[0];
-    Result := Copy(Result, 1, OffsetOf(mEdit.Range.StartPos)) + mEdit.NewText +
-      Copy(Result, OffsetOf(mEdit.Range.EndPos) + 1, MaxInt);
+    mEdits[mIndex] := AFindings[mIndex].Fixes[0].Edits[0];
   end;
+  Result := TTestEdits.Apply(AText, mEdits);
 end;
 
 procedure TExpressionRulesTests.StringIndexBaseIssueExample;

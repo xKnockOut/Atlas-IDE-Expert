@@ -24,9 +24,9 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Vcl.StdCtrls,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Status.Contract,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasStatusWindow = class(TAtlasPopupForm)
@@ -75,13 +75,14 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Status.Registry,
-  Atlas.UI.Foundation.Controls,
-  Atlas.UI.Popup.Draw,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Status.Signal,
+  Atlas.Vcl.Controls.Helpers,
+  Atlas.Vcl.Popup.Draw,
+  Atlas.Plugin.Localization.Strings;
 
 const
   // Alle Maße bei 96 dpi. Kopf: Einzug links und rechts, Abstand des Texts hinter dem Punkt, Abstand der Trennlinie
@@ -318,8 +319,8 @@ var
 begin
   mRadius := ScaleValue(cDotRadius);
   // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
-  Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(AState).Ring);
-  Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(AState).Fill);
+  Canvas.Pen.Color := ToColor(TAtlasStatusSignal.ForState(Colors.Signals, AState).Ring);
+  Canvas.Brush.Color := ToColor(TAtlasStatusSignal.ForState(Colors.Signals, AState).Fill);
   Canvas.Brush.Style := bsSolid;
   Canvas.Ellipse(ACenter.X - mRadius, ACenter.Y - mRadius, ACenter.X + mRadius + 1, ACenter.Y + mRadius + 1);
 end;

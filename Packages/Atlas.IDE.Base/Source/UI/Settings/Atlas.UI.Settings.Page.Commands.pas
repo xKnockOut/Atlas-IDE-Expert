@@ -8,8 +8,8 @@ interface
 uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.ContextMenuGroups,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Plugin.Settings.ContextMenuGroups,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -38,7 +38,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings;
 
 { TAtlasSettingsCommandsPart }

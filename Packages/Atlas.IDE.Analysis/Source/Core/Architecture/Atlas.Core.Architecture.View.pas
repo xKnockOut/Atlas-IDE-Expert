@@ -17,6 +17,9 @@ type
     cMaxScale = 8.0;
     /// <summary>Rand beim Einpassen in Bildpunkten.</summary>
     cMargin = 20;
+    /// <summary>Kleinster Trefferradius in Bildpunkten, damit kleine Units weit herausgezoomt treffbar bleiben.
+    /// </summary>
+    cMinHitRadius = 4;
   public
     Scale: Double;
     OffsetX: Double;
@@ -130,8 +133,7 @@ begin
     begin
       Continue;
     end;
-    // Mindestens 4 Bildpunkte, damit kleine Units weit herausgezoomt treffbar bleiben.
-    mRadius := Max(AModel.NodeRadius(mIndex), 4 / Scale);
+    mRadius := Max(AModel.NodeRadius(mIndex), cMinHitRadius / Scale);
     if Sqr(AModel.Units[mIndex].X - X) + Sqr(AModel.Units[mIndex].Y - Y) <= Sqr(mRadius) then
     begin
       Exit(mIndex);

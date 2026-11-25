@@ -35,7 +35,7 @@ uses
   Winapi.Windows,
   System.SysUtils,
   Vcl.Forms,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.Strings,
   System.Types,
   Atlas.Core.Projects.Summary,

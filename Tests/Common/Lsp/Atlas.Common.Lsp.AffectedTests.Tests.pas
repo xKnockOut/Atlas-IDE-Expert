@@ -12,7 +12,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.AffectedTests,
   Atlas.Common.Lsp.AffectedTests.Report,
-  Atlas.Common.Lsp.AffectedTests.Contract;
+  Atlas.Common.Lsp.AffectedTests.Types;
 
 type
   [TestFixture]
@@ -85,7 +85,7 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.History.ChangedFiles,
   System.SysUtils,
   System.JSON,
   System.Diagnostics,

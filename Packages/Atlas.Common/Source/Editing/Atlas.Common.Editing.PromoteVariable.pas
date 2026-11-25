@@ -26,7 +26,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow.Signatures,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Pascal.RoutineLocals;
 
 type
   /// <summary>Typ der Inline-Variablen ALocal ohne Typangabe; '' unbekannt.</summary>
@@ -104,10 +104,11 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -251,16 +252,6 @@ begin
   Result := (ANode <> nil) and (ANode.StartOffset <= AOffset) and (AOffset <= ANode.EndOffset);
 end;
 
-/// <summary>Nächste Routine über ANode; nil außerhalb.</summary>
-function RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Äußerste Routine über ANode (die der Unit); nil außerhalb.</summary>
 function TopRoutineOf(ANode: TSyntaxNode): TSyntaxNode;
 var
@@ -386,7 +377,7 @@ function ShadowedBelow(const AText: string; ATree: TSyntaxTree; ANode, AStop: TS
 var
   mRoutine: TSyntaxNode;
 begin
-  mRoutine := RoutineOf(ANode);
+  mRoutine := TSyntaxNodes.Enclosing(ANode, [TSyntaxKind.RoutineDecl]);
   while (mRoutine <> nil) and (mRoutine <> AStop) do
   begin
     if (TRoutineBody.BodyOf(mRoutine) <> nil) and (LocalAt(TRoutineLocals.Collect(AText, ATree, mRoutine), AName,
@@ -394,23 +385,9 @@ begin
     begin
       Exit(True);
     end;
-    mRoutine := RoutineOf(mRoutine);
+    mRoutine := TSyntaxNodes.Enclosing(mRoutine, [TSyntaxKind.RoutineDecl]);
   end;
   Result := False;
-end;
-
-/// <summary>Alle Knoten der Art AKind unter ANode.</summary>
-function NodesOf(ANode: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>;
-var
-  mList: TList<TSyntaxNode>;
-begin
-  mList := TList<TSyntaxNode>.Create;
-  try
-    TRoutineLocals.CollectKind(ANode, AKind, mList);
-    Result := mList.ToArray;
-  finally
-    mList.Free;
-  end;
 end;
 
 /// <summary>Klassenmethode (class procedure, class function)?</summary>
@@ -429,14 +406,14 @@ var
   mShort: string;
 begin
   mShort := TRoutineBody.ShortNameOf(AMethod.Name);
-  for mNode in NodesOf(TRoutineBody.BodyOf(AMethod), TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(TRoutineBody.BodyOf(AMethod), TSyntaxKind.Identifier) do
   begin
     if SameText(mNode.Name, mShort) then
     begin
       Exit(True);
     end;
   end;
-  for mNode in NodesOf(TRoutineBody.BodyOf(AMethod), TSyntaxKind.MemberAccess) do
+  for mNode in TSyntaxNodes.OfKind(TRoutineBody.BodyOf(AMethod), TSyntaxKind.MemberAccess) do
   begin
     if SameText(mNode.Name, mShort) and (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, 'Self') then
     begin
@@ -492,7 +469,7 @@ begin
     begin
       Exit(True);
     end;
-    mNode := RoutineOf(mNode);
+    mNode := TSyntaxNodes.Enclosing(mNode, [TSyntaxKind.RoutineDecl]);
   end;
   Result := False;
 end;
@@ -600,7 +577,7 @@ function PropertyUsing(ATree: TSyntaxTree; const ATokens: TArray<TPascalToken>; 
 var
   mProperty: TSyntaxNode;
 begin
-  for mProperty in NodesOf(ATree.Root, TSyntaxKind.PropertyDecl) do
+  for mProperty in TSyntaxNodes.OfKind(ATree.Root, TSyntaxKind.PropertyDecl) do
   begin
     if MentionsName(ATokens, mProperty, AName) then
     begin
@@ -680,7 +657,7 @@ function NestedDeclarer(const AText: string; ATree: TSyntaxTree; AMethod: TSynta
 var
   mRoutine: TSyntaxNode;
 begin
-  for mRoutine in NodesOf(AMethod, TSyntaxKind.RoutineDecl) do
+  for mRoutine in TSyntaxNodes.OfKind(AMethod, TSyntaxKind.RoutineDecl) do
   begin
     if (mRoutine <> AMethod) and DeclaresAnywhere(AText, ATree, mRoutine, AName) then
     begin
@@ -695,7 +672,7 @@ function ClassUser(ATree: TSyntaxTree; const AClassName, AName: string): TSyntax
 var
   mNode: TSyntaxNode;
 begin
-  for mNode in NodesOf(ATree.Root, TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(ATree.Root, TSyntaxKind.Identifier) do
   begin
     if SameText(mNode.Name, AName) and (TopRoutineOf(mNode) <> nil) and
       SameText(TRoutineBody.QualifierOf(TopRoutineOf(mNode).Name), AClassName) then
@@ -761,7 +738,7 @@ begin
     Exit(cTexts[TEditingPromoteVariableText.TheLocalRoutineAlreadyDeclares].Fmt([mNested.Name, AName]));
   end;
   Result := '';
-  for mNode in NodesOf(AMethod, TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(AMethod, TSyntaxKind.Identifier) do
   begin
     if SameText(mNode.Name, AName) then
     begin
@@ -1005,7 +982,7 @@ begin
   References := nil;
   ACreated := False;
   AFreed := False;
-  for mNode in NodesOf(Method, TSyntaxKind.Identifier) do
+  for mNode in TSyntaxNodes.OfKind(Method, TSyntaxKind.Identifier) do
   begin
     if IsLocalReference(mNode, ALocals) then
     begin
@@ -1134,7 +1111,7 @@ var
 begin
   References := nil;
   mTops := nil;
-  for mNode in NodesOf(Tree.Root, TSyntaxKind.Identifier) + NodesOf(Tree.Root, TSyntaxKind.MemberAccess) do
+  for mNode in TSyntaxNodes.OfKind(Tree.Root, TSyntaxKind.Identifier) + TSyntaxNodes.OfKind(Tree.Root, TSyntaxKind.MemberAccess) do
   begin
     if not SameText(mNode.Name, Name) then
     begin
@@ -1142,7 +1119,7 @@ begin
     end;
     mTop := TopRoutineOf(mNode);
     Result := UseIssue(mNode, mTop, mSkip);
-    if (Result = '') and not mSkip and (RoutineOf(mNode) <> mTop) then
+    if (Result = '') and not mSkip and (TSyntaxNodes.Enclosing(mNode, [TSyntaxKind.RoutineDecl]) <> mTop) then
     begin
       Result := Name + cTexts[TEditingPromoteVariableText.IsUsedInALocal].Text;
     end;
@@ -1232,7 +1209,7 @@ begin
   begin
     Exit;
   end;
-  mDone := TChangeSignature.ApplyEdits(Text, mEdits);
+  mDone := TTextChanges.Apply(Text, mEdits);
   mCheck := TSyntaxTreeCache.Parse(mDone);
   try
     if Length(mCheck.Diagnostics) > 0 then

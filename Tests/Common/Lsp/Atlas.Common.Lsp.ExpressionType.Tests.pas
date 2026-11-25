@@ -42,9 +42,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.ExpressionType;
+  Atlas.Common.Lsp.ExpressionType,
+  Atlas.Tests.SymbolIndex;
 
 const
   cLB = #13#10;
@@ -109,9 +108,7 @@ end;
 procedure TLspExpressionTypeTests.Setup;
 begin
   FStore := TDocumentStore.Create;
-  FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitOther, cOtherFile, nil));
-  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitMain, cMainFile, nil));
+  FIndex := TTestIndex.Build([cUnitOther, cOtherFile, cUnitMain, cMainFile]);
 end;
 
 procedure TLspExpressionTypeTests.TearDown;

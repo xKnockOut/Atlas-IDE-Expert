@@ -79,17 +79,19 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ClassLayout,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.TextChanges,
-  Atlas.Common.Editing.MemberTransfer,
+  Atlas.Common.Pascal.ClassLayout,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Pascal.MemberTransfer,
   Atlas.Common.Editing.MoveMember,
   Atlas.Common.Editing.MoveClass,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.WorkspaceChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -140,15 +142,6 @@ begin
   Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TLspMoveMemberText.MoveMember].Text + AMessage);
 end;
 
-function PlainName(const AName: string): string;
-begin
-  Result := Trim(AName);
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Trim(Copy(Result, 1, Pos('<', Result) - 1));
-  end;
-end;
-
 function IsUp(const ADirection: string): Boolean;
 begin
   if SameText(ADirection, 'up') then
@@ -189,7 +182,7 @@ begin
   mLayout := TClassLayout.Read(ATree, AText, mDecl);
   try
     AHit.Ref := TMemberClassRef.Create(AFileName, mLayout.Name);
-    AHit.UnitName := TUsesClauses.OwnName(ATree.Tokens);
+    AHit.UnitName := TPascalUses.OwnName(ATree.Tokens);
     if mLayout.Ancestors <> nil then
     begin
       AHit.Ancestor := mLayout.Ancestors[0];
@@ -228,7 +221,7 @@ var
   mName: string;
 begin
   AHit := Default(TClassHit);
-  mName := PlainName(AName);
+  mName := TTextNames.WithoutGenerics(AName);
   Result := (mName <> '') and not SameText(mName, 'TObject') and (DeclHit(ATree, AText, AFileName, mName, AHit) or
     ((AIndex <> nil) and IndexHit(AIndex, AFileName, mName, AHit)));
 end;
@@ -263,11 +256,11 @@ begin
   begin
     mLayout := TClassLayout.Read(ATree, AText, mDecl);
     try
-      if (mLayout.Ancestors <> nil) and SameText(PlainName(mLayout.Ancestors[0]), AClassName) then
+      if (mLayout.Ancestors <> nil) and SameText(TTextNames.WithoutGenerics(mLayout.Ancestors[0]), AClassName) then
       begin
         mHit := Default(TClassHit);
         mHit.Ref := TMemberClassRef.Create(AFileName, mLayout.Name);
-        mHit.UnitName := TUsesClauses.OwnName(ATree.Tokens);
+        mHit.UnitName := TPascalUses.OwnName(ATree.Tokens);
         mHit.Ancestor := mLayout.Ancestors[0];
         Result := Result + [mHit];
       end;
@@ -283,7 +276,7 @@ begin
   begin
     if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and not SameText(mLocation.FileName, AFileName) and
       not IsLibrary(AIndex, mLocation.FileName) and (mLocation.Symbol.Ancestors <> nil) and
-      SameText(PlainName(mLocation.Symbol.Ancestors[0]), AClassName) then
+      SameText(TTextNames.WithoutGenerics(mLocation.Symbol.Ancestors[0]), AClassName) then
     begin
       mHit := Default(TClassHit);
       mHit.Ref := TMemberClassRef.Create(mLocation.FileName, mLocation.Symbol.Name);
@@ -291,18 +284,6 @@ begin
       mHit.Ancestor := mLocation.Symbol.Ancestors[0];
       Result := Result + [mHit];
     end;
-  end;
-end;
-
-function KindText(AKind: TTransferKind): string;
-begin
-  case AKind of
-    TTransferKind.Field:
-      Result := 'field';
-    TTransferKind.Property_:
-      Result := 'property';
-  else
-    Result := 'method';
   end;
 end;
 
@@ -383,7 +364,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('id', TJSONNumber.Create(AItem.Id));
   Result.AddPair('name', AItem.Name);
-  Result.AddPair('kind', KindText(AItem.Kind));
+  Result.AddPair('kind', TMemberTransfer.KindKey(AItem.Kind));
   Result.AddPair('display', AItem.Display);
   Result.AddPair('visibility', TClassEdits.VisibilityName(AItem.Visibility));
   Result.AddPair('checked', TJSONBool.Create(AItem.Id = ASelected));
@@ -452,7 +433,7 @@ begin
   end;
   Result := TJSONObject.Create;
   Result.AddPair('className', mFound.ClassName);
-  Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
+  Result.AddPair('ownUnit', TPascalUses.OwnName(ATree.Tokens));
   Result.AddPair('member', mFound.SelectedName);
   Result.AddPair('direction', LowerCase(AContext.Direction));
   Result.AddPair('name', '');
@@ -646,7 +627,7 @@ begin
   FFileName := AFileName;
   FUp := AUp;
   FLookup := TLspMoveClass.Lookup(AResolver);
-  FSourceUnit := TUsesClauses.OwnName(ATree.Tokens);
+  FSourceUnit := TPascalUses.OwnName(ATree.Tokens);
   FImplementationLine := SectionLine(ATree, TSyntaxKind.ImplementationSection);
 end;
 
@@ -745,17 +726,17 @@ var
   mOffset: Integer;
   mEdit: TTextEdit;
 begin
-  mUsed := TUsesClauses.UsedUnits(ATree.Tokens);
+  mUsed := TPascalUses.UsedUnits(ATree.Tokens);
   mMissing := nil;
   for mName in AUnits do
   begin
-    if not TUsesClauses.IsUsed(mUsed, mName, nil) and (IndexText(mName, AExcept) < 0) then
+    if not TPascalUses.IsUsed(mUsed, mName, nil) and (IndexText(mName, AExcept) < 0) then
     begin
       mMissing := mMissing + [mName];
     end;
   end;
   mOffset := SectionOffset(ATree, AKind);
-  if (mMissing <> nil) and (mOffset >= 0) and TUsesClauses.AddUnit(ATree.Tokens, mOffset, string.Join(', ', mMissing),
+  if (mMissing <> nil) and (mOffset >= 0) and TPascalUsesEdits.AddUnit(ATree.Tokens, mOffset, string.Join(', ', mMissing),
     ALineBreak, mEdit) then
   begin
     AEdits := AEdits + [mEdit];
@@ -779,7 +760,7 @@ begin
     raise Failed(cTexts[TLspMoveMemberText.IsNoLongerReadableAfter].Fmt([ATarget.ClassName]));
   end;
   try
-    AScan.Scan(ASource, mTarget, TUsesClauses.OwnName(mTargetTree.Tokens), AIds, ABodyIds);
+    AScan.Scan(ASource, mTarget, TPascalUses.OwnName(mTargetTree.Tokens), AIds, ABodyIds);
     mEdits := nil;
     AddMissing(mTargetTree, TSyntaxKind.InterfaceSection, AScan.InterfaceUnits, nil, TTextLines.LineBreakOf(mText),
       mEdits);

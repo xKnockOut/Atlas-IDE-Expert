@@ -24,7 +24,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
 {$SCOPEDENUMS ON}
@@ -133,7 +133,8 @@ uses
   System.IOUtils,
   System.Diagnostics,
   System.Generics.Defaults,
-  Atlas.Core.Completion.Matching;
+  Atlas.Core.Completion.Matching,
+  Atlas.Text.Files;
 
 const
   cListed: array[0..7] of string = ('.pas', '.dpr', '.dpk', '.inc', '.dfm', '.fmx', '.rc', '.dproj');
@@ -613,8 +614,14 @@ begin
           end);
       except
         // Ein Fehler beim Lesen der Ordner lässt die bisherige Liste stehen.
-        on Exception do
+        on E: Exception do
+        begin
+          if not TTextFiles.IsFileError(E) then
+          begin
+            raise;
+          end;
           mGeneration := -1;
+        end;
       end;
       Store(mGeneration, mFiles);
     end);

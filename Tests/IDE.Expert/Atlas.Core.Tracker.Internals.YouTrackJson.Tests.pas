@@ -63,7 +63,8 @@ end;
 
 procedure TAtlasYouTrackJsonTests.ShortenToOneLine;
 begin
-  Assert.AreEqual('a  b', TAtlasYouTrackJson.Shorten('  a'#13#10'b ', 10), 'je Zeichen ein Leerzeichen');
+  // ShortLine macht aus #13#10 ein Leerzeichen (ein Umbruch, nicht zwei Zeichen).
+  Assert.AreEqual('a b', TAtlasYouTrackJson.Shorten('  a'#13#10'b ', 10), 'je Umbruch ein Leerzeichen');
   Assert.AreEqual('abcd…', TAtlasYouTrackJson.Shorten('abcdefgh', 5));
   Assert.AreEqual('abcde', TAtlasYouTrackJson.Shorten('abcde', 5), 'genau an der Grenze');
 end;

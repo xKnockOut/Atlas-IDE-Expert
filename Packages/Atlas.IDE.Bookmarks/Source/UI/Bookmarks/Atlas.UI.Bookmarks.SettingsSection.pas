@@ -35,7 +35,7 @@ implementation
 
 uses
   Atlas.Core.Settings.Plugin.Store,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Bookmarks.Strings;
 
 { TAtlasBookmarksEditorSection }

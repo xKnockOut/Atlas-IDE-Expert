@@ -14,7 +14,7 @@ interface
 uses
   Winapi.Windows,
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Editor.LineChanges;
 
 type

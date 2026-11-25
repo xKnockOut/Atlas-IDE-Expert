@@ -112,7 +112,7 @@ uses
   Atlas.Common.Rules.Builtin.Components.Model,
   Atlas.Common.Rules.Builtin.Components.InheritedCalls,
   Atlas.Common.Rules.Builtin.Components.Members,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -183,7 +183,7 @@ end;
 function LacksInherited(AModel: TComponentModel; const AClass: TClassInfo; const AMethod: TMethodImpl;
   out AToken: TPascalToken): Boolean;
 begin
-  Result := SameText(AMethod.ClassName, AClass.Name) and IsIn(AMethod.MethodName, cInheritedMethods) and
+  Result := SameText(AMethod.ClassName, AClass.Name) and MatchText(AMethod.MethodName, cInheritedMethods) and
     AModel.DeclaredWith(AClass, AMethod.MethodName, 'override') and not AModel.HasToken(AMethod.Block,
     ['inherited']);
   Result := Result and AModel.NameToken(AMethod, AToken);
@@ -591,7 +591,7 @@ begin
   begin
     mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  Result := IsIn(mName, cScaleCalls) or StartsText('Scale', mName);
+  Result := MatchText(mName, cScaleCalls) or StartsText('Scale', mName);
 end;
 
 /// <summary>Methoden der Datei, die selbst skalieren: Ihr Rumpf ruft ScaleValue, MulDiv oder einen Scale…-Helfer
@@ -617,7 +617,7 @@ function DirectExclusion(AParent: TSyntaxNode): Boolean;
 begin
   case AParent.Kind of
     TSyntaxKind.BinaryExpr:
-      Result := IsIn(AParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor']);
+      Result := MatchText(AParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor']);
     TSyntaxKind.IndexAccess, TSyntaxKind.CaseItem, TSyntaxKind.ForStatement, TSyntaxKind.SetConstructor:
       Result := True;
   else
@@ -642,12 +642,12 @@ begin
     case mParent.Kind of
       TSyntaxKind.Call:
         begin
-          Result := IsScaleCall(mParent.Name) or IsIn(mParent.Name, AHelpers) or
-            IsIn(mParent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']);
+          Result := IsScaleCall(mParent.Name) or MatchText(mParent.Name, AHelpers) or
+            MatchText(mParent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']);
           mDone := Result;
         end;
       TSyntaxKind.AssignStatement:
-        Result := IsIn(mParent.Name, cNonPixelTargets);
+        Result := MatchText(mParent.Name, cNonPixelTargets);
       TSyntaxKind.Block, TSyntaxKind.RoutineDecl:
         Result := False;
     else
@@ -699,7 +699,7 @@ begin
   try
     for mMethod in mModel.Methods do
     begin
-      if not IsIn(mMethod.MethodName, cPaintMethods) or not mModel.IsComponent(mMethod.ClassName) then
+      if not MatchText(mMethod.MethodName, cPaintMethods) or not mModel.IsComponent(mMethod.ClassName) then
       begin
         Continue;
       end;
@@ -773,7 +773,7 @@ begin
         Exit;
       end;
       // RGB(…) und TColor(…) mit Zahlen; TColor(FColors.Surface) wandelt eine Farbe des Themas um (#1109).
-      if (AVisited.Kind = TSyntaxKind.Call) and IsIn(AVisited.Name, ['RGB', 'TColor']) then
+      if (AVisited.Kind = TSyntaxKind.Call) and MatchText(AVisited.Name, ['RGB', 'TColor']) then
       begin
         if LiteralArguments(AVisited) then
         begin
@@ -854,7 +854,7 @@ var
   mUnit: string;
 begin
   Result := False;
-  for mUnit in TUsesClauses.UsedUnits(AContext.Tree.Tokens) do
+  for mUnit in TPascalUses.UsedUnits(AContext.Tree.Tokens) do
   begin
     if StartsText('Vcl.', mUnit) or SameText(mUnit, 'Controls') or SameText(mUnit, 'Forms') then
     begin
@@ -867,7 +867,7 @@ end;
 function IsEdgeOwner(AOwner: TSyntaxNode): Boolean;
 begin
   Result := (AOwner.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Identifier]) and
-    IsIn(AOwner.Name, ['Margins', 'Padding']);
+    MatchText(AOwner.Name, ['Margins', 'Padding']);
 end;
 
 /// <summary>Setzt die Zuweisung AAssign Größe oder Lage (Width, Left …, bei Margins und Padding auch Right und
@@ -882,12 +882,12 @@ begin
     Exit;
   end;
   mTarget := AAssign.Children[0];
-  if IsIn(AAssign.Name, cBoundsTargets) then
+  if MatchText(AAssign.Name, cBoundsTargets) then
   begin
     Result := (mTarget.Kind <> TSyntaxKind.MemberAccess) or (mTarget.ChildCount = 0) or
-      not IsIn(mTarget.Children[0].Name, cDrawingOwners);
+      not MatchText(mTarget.Children[0].Name, cDrawingOwners);
   end
-  else if IsIn(AAssign.Name, cEdgeTargets) then
+  else if MatchText(AAssign.Name, cEdgeTargets) then
   begin
     Result := (mTarget.Kind = TSyntaxKind.MemberAccess) and (mTarget.ChildCount > 0) and
       IsEdgeOwner(mTarget.Children[0]);
@@ -917,11 +917,11 @@ begin
     // Klammern, Summen und Vorzeichen reichen den Pixelwert durch.
     if mParent.Kind = TSyntaxKind.BinaryExpr then
     begin
-      Result := not IsIn(mParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr']);
+      Result := not MatchText(mParent.Name, ['*', '/', 'div', 'mod', 'shl', 'shr']);
     end
     else if mParent.Kind = TSyntaxKind.Call then
     begin
-      Result := IsIn(mParent.Name, ['Max', 'Min']);
+      Result := MatchText(mParent.Name, ['Max', 'Min']);
     end;
     mParent := mParent.Parent;
   end;
@@ -953,7 +953,7 @@ end;
 /// <summary>Zahl oder Bezeichner einer der Konstanten AConstants?</summary>
 function IsFixedValue(ANode: TSyntaxNode; const AConstants: TArray<string>): Boolean;
 begin
-  Result := IsPixelLiteral(ANode) or ((ANode.Kind = TSyntaxKind.Identifier) and IsIn(ANode.Name, AConstants));
+  Result := IsPixelLiteral(ANode) or ((ANode.Kind = TSyntaxKind.Identifier) and MatchText(ANode.Name, AConstants));
 end;
 
 /// <summary>Feste Pixelwerte im Ausdruck AValue, der zur Anweisung AStatement gehört (Wert einer Zuweisung,
@@ -996,14 +996,14 @@ begin
     Exit('ScaleValue(' + AValue + ')');
   end;
   mOwner := mOwner.Children[0];
-  if (mOwner.Kind = TSyntaxKind.MemberAccess) and (mOwner.ChildCount > 0) and IsIn(mOwner.Name, cControlParts) then
+  if (mOwner.Kind = TSyntaxKind.MemberAccess) and (mOwner.ChildCount > 0) and MatchText(mOwner.Name, cControlParts) then
   begin
     mOwner := mOwner.Children[0];
   end;
   // Ein Aufruf als Ziel (NewLabel(…).Top) würde doppelt ausgeführt, Margins ohne Objekt gehört zu Self: dann über
   // Self.
   if (mOwner.Kind = TSyntaxKind.Call) or ((mOwner.Kind = TSyntaxKind.Identifier) and
-    IsIn(mOwner.Name, cControlParts)) then
+    MatchText(mOwner.Name, cControlParts)) then
   begin
     Exit('ScaleValue(' + AValue + ')');
   end;
@@ -1026,7 +1026,7 @@ begin
   if (mNode <> nil) and (LastDelimiter('.', mNode.Name) > 0) then
   begin
     mName := Copy(mNode.Name, LastDelimiter('.', mNode.Name) + 1, MaxInt);
-    Result := IsIn(mName, cPaintMethods) and
+    Result := MatchText(mName, cPaintMethods) and
       AModel.IsComponent(Copy(mNode.Name, 1, LastDelimiter('.', mNode.Name) - 1));
   end;
 end;

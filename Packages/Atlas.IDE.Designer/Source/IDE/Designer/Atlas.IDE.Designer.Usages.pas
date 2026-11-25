@@ -26,7 +26,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Designer.Usages,
   Atlas.UI.Designer.Bar,
-  Atlas.IDE.Foundation.KeyHook;
+  Atlas.ToolsApi.Keys.Hook;
 
 type
   TAtlasIdeDesignerUsages = class
@@ -73,11 +73,11 @@ uses
   Vcl.Menus,
   DesignIntf,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Lsp.Client,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.Core.Designer.CodeLink,
   Atlas.UI.Results.Items,
   Atlas.UI.Designer.Strings,

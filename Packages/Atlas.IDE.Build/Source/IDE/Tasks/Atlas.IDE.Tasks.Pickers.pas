@@ -30,11 +30,11 @@ uses
   System.Types,
   Vcl.Forms,
   Atlas.Core.Commands.Palette,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.UI.Build.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Tasks.Texts,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Host;
 
 /// <summary>Wahl an APick weitergeben, solange der Läufer lebt (unter dem Schutz des Features).</summary>

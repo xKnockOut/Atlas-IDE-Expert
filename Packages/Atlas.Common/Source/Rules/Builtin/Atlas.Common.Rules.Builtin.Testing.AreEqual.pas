@@ -37,9 +37,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Semantics.ExpressionTypes,
-  Atlas.Common.Semantics.ExpressionTypes.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -74,13 +73,8 @@ type
   TArgumentKind = (Unknown, Integer_, Native);
 
   /// <summary>Eine Prüfung einer Datei.</summary>
-  TAreEqualCheck = class
+  TAreEqualCheck = class(TTypedExpressionRun)
   private
-    FContext: TRuleContext;
-    FReport: IRuleReport;
-    FScope: TTypedScope;
-    FTypes: TExpressionTypes;
-    function TypeNameOf(ANode: TSyntaxNode): string;
     function IsDynamicArray(ANode: TSyntaxNode): Boolean;
     function KindOf(ANode: TSyntaxNode): TArgumentKind;
     /// <summary>Art einer Ganzzahlrechnung: NativeInt, sobald eine Seite es ist und die andere eine Ganzzahl.
@@ -90,8 +84,6 @@ type
     function KindOfType(ANode: TSyntaxNode): TArgumentKind;
     procedure CheckCall(ACall: TSyntaxNode);
   public
-    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
-    destructor Destroy; override;
     procedure Run;
   end;
 
@@ -102,44 +94,6 @@ begin
 end;
 
 { TAreEqualCheck }
-
-constructor TAreEqualCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mOptions: TExpressionTypeOptions;
-begin
-  inherited Create;
-  FContext := AContext;
-  FReport := AReport;
-  FScope := TTypedScope.Create(AContext);
-  mOptions := TExpressionTypeOptions.Default;
-  mOptions.Conversions := False;
-  mOptions.ConstValue := False;
-  FTypes := TExpressionTypes.Create(FScope.Resolver, AContext.Tree, FScope.FileName, AContext.Text, AContext.Index,
-    mOptions);
-end;
-
-destructor TAreEqualCheck.Destroy;
-begin
-  FTypes.Free;
-  FScope.Free;
-  inherited;
-end;
-
-function TAreEqualCheck.TypeNameOf(ANode: TSyntaxNode): string;
-var
-  mInfo: TExpressionTypeInfo;
-begin
-  mInfo := FTypes.Describe(ANode);
-  Result := '';
-  if mInfo.Found then
-  begin
-    Result := mInfo.TypeName;
-    if mInfo.BaseName <> '' then
-    begin
-      Result := mInfo.BaseName;
-    end;
-  end;
-end;
 
 function TAreEqualCheck.IsDynamicArray(ANode: TSyntaxNode): Boolean;
 var
@@ -170,7 +124,7 @@ var
   mNode: TSyntaxNode;
 begin
   Result := TArgumentKind.Unknown;
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.ChildCount = 2) and MatchText(mNode.Name, cIntegerOperators) then
   begin
     Result := KindOfArithmetic(mNode);
@@ -269,28 +223,11 @@ end;
 
 procedure TAreEqualCheck.Run;
 var
-  mPending: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
+  mCall: TSyntaxNode;
 begin
-  // Iterativ, damit tief verschachtelte Ausdrücke den Stapel nicht sprengen.
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(FContext.Tree.Root);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      if mNode.Kind = TSyntaxKind.Call then
-      begin
-        CheckCall(mNode);
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-  finally
-    mPending.Free;
+  for mCall in TSyntaxNodes.OfKind(FContext.Tree.Root, TSyntaxKind.Call) do
+  begin
+    CheckCall(mCall);
   end;
 end;
 

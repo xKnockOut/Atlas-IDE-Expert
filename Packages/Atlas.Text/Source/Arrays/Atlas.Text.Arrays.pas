@@ -21,12 +21,18 @@ type
     class procedure AddText(var AList: TArray<string>; const AValue: string); static;
     /// <summary>Kommt AValue in AValues vor?</summary>
     class function ContainsInteger(const AValues: TArray<Integer>; AValue: Integer): Boolean; static;
+    /// <summary>0, 1, …, ACount - 1; leer für ACount &lt;= 0.</summary>
+    class function Indices(ACount: Integer): TArray<Integer>; static;
+    /// <summary>Enthält AText einen der Teile AParts (ohne Groß-/Kleinschreibung)?</summary>
+    class function ContainsAnyText(const AText: string; const AParts: array of string): Boolean; static;
     /// <summary>Gleich lang und an jeder Stelle gleich ohne Rücksicht auf Groß-/Kleinschreibung?</summary>
     class function SameTexts(const A, B: TArray<string>): Boolean; static;
     /// <summary>Stelle des ersten Elements, dessen Text (ATextOf) ohne Rücksicht auf Groß-/Kleinschreibung AText
     /// ist; -1 ohne.</summary>
     class function IndexOfText<T>(const AItems: TArray<T>; const AText: string;
       const ATextOf: TFunc<T, string>): Integer; static;
+    /// <summary>Text jedes Elements (ATextOf) in der Reihenfolge von AItems.</summary>
+    class function Texts<T>(const AItems: TArray<T>; const ATextOf: TFunc<T, string>): TArray<string>; static;
     /// <summary>Zahl zum Schlüssel AKey aus den parallelen Arrays AKeys und ACounts (ohne Rücksicht auf
     /// Groß-/Kleinschreibung); 0 ohne.</summary>
     class function CountOfText(const AKeys: TArray<string>; const ACounts: TArray<Integer>;
@@ -37,6 +43,9 @@ type
   end;
 
 implementation
+
+uses
+  System.StrUtils;
 
 { TTextArrays }
 
@@ -92,6 +101,36 @@ begin
   Result := False;
 end;
 
+class function TTextArrays.Indices(ACount: Integer): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if ACount <= 0 then
+  begin
+    Exit;
+  end;
+  SetLength(Result, ACount);
+  for mIndex := 0 to ACount - 1 do
+  begin
+    Result[mIndex] := mIndex;
+  end;
+end;
+
+class function TTextArrays.ContainsAnyText(const AText: string; const AParts: array of string): Boolean;
+var
+  mPart: string;
+begin
+  for mPart in AParts do
+  begin
+    if ContainsText(AText, mPart) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function TTextArrays.SameTexts(const A, B: TArray<string>): Boolean;
 var
   mIndex: Integer;
@@ -106,6 +145,18 @@ begin
         Exit(False);
       end;
     end;
+  end;
+end;
+
+class function TTextArrays.Texts<T>(const AItems: TArray<T>; const ATextOf: TFunc<T, string>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AItems));
+  for mIndex := 0 to High(AItems) do
+  begin
+    Result[mIndex] := ATextOf(AItems[mIndex]);
   end;
 end;
 

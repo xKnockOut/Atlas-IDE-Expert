@@ -11,7 +11,7 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Settings.Groups,
   Atlas.Core.Settings.NodeScope,
-  Atlas.UI.Settings.Group,
+  Atlas.Vcl.Options.Group,
   Atlas.UI.Settings.Page.Nodes,
   Atlas.UI.Settings.Page.Search;
 
@@ -37,7 +37,8 @@ type
     function ModuleOfName(const AName: string): string;
     function InScope(AControl: TControl): Boolean;
     procedure ScopeOverviews;
-    // Gewählte Seite und aufgeklappte Bereiche bis zum nächsten Öffnen (ohne verwaltete Typen: Leckmonitor).
+    // Gewählte Seite und aufgeklappte Bereiche bis zum nächsten Öffnen; ohne verwaltete Typen, damit sie keinen
+    // Speicher bis zum Entladen halten.
     class var FLastPage: Integer;
     class var FExpandedAreas: set of Byte;
     class var FStateKnown: Boolean;
@@ -94,7 +95,7 @@ uses
   Vcl.Graphics,
   Vcl.ExtCtrls,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Page.Host,
   Atlas.UI.Settings.Page.General;

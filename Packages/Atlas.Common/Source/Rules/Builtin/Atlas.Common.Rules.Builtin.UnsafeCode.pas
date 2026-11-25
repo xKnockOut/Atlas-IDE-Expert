@@ -48,7 +48,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.WarnSwitches,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -129,7 +130,7 @@ var
     begin
       Exit;
     end;
-    mOperand := Unwrapped(ANode[0]);
+    mOperand := TSyntaxNodes.Unparen(ANode[0]);
     if (mOperand = nil) or (mOperand.Kind <> TSyntaxKind.Identifier) then
     begin
       Exit;
@@ -183,7 +184,7 @@ var
     begin
       Exit;
     end;
-    mArgument := Unwrapped(ANode[1]);
+    mArgument := TSyntaxNodes.Unparen(ANode[1]);
     if not mScope.SureType(mArgument, mSourceSymbol, mSourceType) or mSourceSymbol.IsType or
       not mSourceType.Builtin or not SameText(mSourceType.Name, 'Pointer') then
     begin

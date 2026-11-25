@@ -96,7 +96,7 @@ uses
   System.JSON,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.KeyConflicts,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Commands.ShortcutTips;
 

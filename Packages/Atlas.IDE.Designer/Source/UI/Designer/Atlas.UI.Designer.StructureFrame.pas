@@ -110,10 +110,10 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Graphics,
-  Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Vcl.Theme.Service,
   Atlas.UI.Designer.ViewStrings,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 {$R *.dfm}
 
@@ -134,7 +134,6 @@ const
   cLinkFormat = '%s %s: %s';
   cItemFormat = '%s: %s';
   cUnusedFormat = '%s – %s';
-  cLinkColor = clGrayText;
 
 { Hilfen }
 
@@ -461,7 +460,7 @@ begin
   end
   else if FNodes[mIndex].Kind = TAtlasStructureNodeKind.Link then
   begin
-    Sender.Canvas.Font.Color := cLinkColor;
+    Sender.Canvas.Font.Color := TAtlasUiTheme.SystemColor(Sender, clGrayText);
   end;
 end;
 

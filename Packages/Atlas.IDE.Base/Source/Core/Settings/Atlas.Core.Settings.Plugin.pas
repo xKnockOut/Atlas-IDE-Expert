@@ -106,6 +106,8 @@ type
     cMaxTestsLogMaxLines = Atlas.Core.Settings.Plugin.Build.cMaxTestsLogMaxLines;
     cMinAssistantsContextSelectionMax = Atlas.Core.Settings.Plugin.Build.cMinAssistantsContextSelectionMax;
     cMaxAssistantsContextSelectionMax = Atlas.Core.Settings.Plugin.Build.cMaxAssistantsContextSelectionMax;
+    cMinAssistantsLogMax = Atlas.Core.Settings.Plugin.Build.cMinAssistantsLogMax;
+    cMaxAssistantsLogMax = Atlas.Core.Settings.Plugin.Build.cMaxAssistantsLogMax;
     cMinDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMinDataFlowDepth;
     cMaxDataFlowDepth = Atlas.Core.Settings.Plugin.Editor.cMaxDataFlowDepth;
     cMinStickyLines = Atlas.Core.Settings.Plugin.Editor.cMinStickyLines;
@@ -404,6 +406,19 @@ type
       write FBuild.AssistantsContextSelectionMax;
     property AssistantsInstructionsHint: Boolean read FBuild.AssistantsInstructionsHint
       write FBuild.AssistantsInstructionsHint;
+    property AssistantsLink: Boolean read FBuild.AssistantsLink write FBuild.AssistantsLink;
+    property AssistantsLinkShareSelection: Boolean read FBuild.AssistantsLinkShareSelection
+      write FBuild.AssistantsLinkShareSelection;
+    property AssistantsLinkDiffPreview: Boolean read FBuild.AssistantsLinkDiffPreview
+      write FBuild.AssistantsLinkDiffPreview;
+    property AssistantsLinkMentionKey: Integer read FBuild.AssistantsLinkMentionKey
+      write FBuild.AssistantsLinkMentionKey;
+    property AssistantsEditHoldModified: Boolean read FBuild.AssistantsEditHoldModified
+      write FBuild.AssistantsEditHoldModified;
+    property AssistantsQuestionsInIde: Boolean read FBuild.AssistantsQuestionsInIde
+      write FBuild.AssistantsQuestionsInIde;
+    property AssistantsLog: Boolean read FBuild.AssistantsLog write FBuild.AssistantsLog;
+    property AssistantsLogMax: Integer read FBuild.AssistantsLogMax write FBuild.AssistantsLogMax;
     property BuildOnOpen: Boolean read FBuild.BuildOnOpen write FBuild.BuildOnOpen;
     property BuildOnOpenKind: string read FBuild.BuildOnOpenKind write FBuild.BuildOnOpenKind;
     property BuildStopRunningProgram: string read FBuild.BuildStopRunningProgram
@@ -605,6 +620,7 @@ type
     property DebugVariablesScopedWatches: Boolean read FDebug.DebugVariablesScopedWatches
       write FDebug.DebugVariablesScopedWatches;
     property DebugObjectMarks: Boolean read FDebug.DebugObjectMarks write FDebug.DebugObjectMarks;
+    property DebugParallelWatch: Boolean read FDebug.DebugParallelWatch write FDebug.DebugParallelWatch;
     property DebugPredictConditions: Boolean read FDebug.DebugPredictConditions write FDebug.DebugPredictConditions;
     property DebugPredictDimSkipped: Boolean read FDebug.DebugPredictDimSkipped write FDebug.DebugPredictDimSkipped;
     property DebugPredictLines: Integer read FDebug.DebugPredictLines write FDebug.DebugPredictLines;
@@ -616,6 +632,10 @@ type
     property DebugEventLogColors: string read FDebug.DebugEventLogColors write FDebug.DebugEventLogColors;
     property DebugLogpoints: Boolean read FDebug.DebugLogpoints write FDebug.DebugLogpoints;
     property DebugLogpointPrefix: string read FDebug.DebugLogpointPrefix write FDebug.DebugLogpointPrefix;
+    property DebugLogpointsRecordValues: Boolean read FDebug.DebugLogpointsRecordValues
+      write FDebug.DebugLogpointsRecordValues;
+    property DebugLogpointsRecordLimit: Integer read FDebug.DebugLogpointsRecordLimit
+      write FDebug.DebugLogpointsRecordLimit;
     property DebugNoSourcePage: Boolean read FDebug.DebugNoSourcePage write FDebug.DebugNoSourcePage;
     property DebugNoSourceIgnoredUnits: string read FDebug.DebugNoSourceIgnoredUnits
       write FDebug.DebugNoSourceIgnoredUnits;
@@ -627,6 +647,7 @@ type
     property DebugReattachWaitIntervalMs: Integer read FDebug.DebugReattachWaitIntervalMs
       write FDebug.DebugReattachWaitIntervalMs;
     property DebugLaunchGroups: Boolean read FDebug.DebugLaunchGroups write FDebug.DebugLaunchGroups;
+    property DebugCaptureConsole: Boolean read FDebug.DebugCaptureConsole write FDebug.DebugCaptureConsole;
     property DebugPinnedValues: Boolean read FDebug.DebugPinnedValues write FDebug.DebugPinnedValues;
     property StartProfiles: Boolean read FDebug.StartProfiles write FDebug.StartProfiles;
     property StartProfilesStatusField: Boolean read FDebug.StartProfilesStatusField
@@ -1200,6 +1221,8 @@ type
     property ExpressionTypeKey: Integer read FEditingKeys.ExpressionTypeKey write FEditingKeys.ExpressionTypeKey;
     property MethodPlacement: string read FEditorTyping.MethodPlacement write FEditorTyping.MethodPlacement;
     property RegionFolds: string read FEditorTyping.RegionFolds write FEditorTyping.RegionFolds;
+    property BlockFolds: Boolean read FEditorTyping.BlockFolds write FEditorTyping.BlockFolds;
+    property BlockFoldsMinLines: Integer read FEditorTyping.BlockFoldsMinLines write FEditorTyping.BlockFoldsMinLines;
     property SafeDelete: Boolean read FEditingKeys.SafeDelete write FEditingKeys.SafeDelete;
     property SafeDeleteKey: Integer read FEditingKeys.SafeDeleteKey write FEditingKeys.SafeDeleteKey;
     property NextChangeKey: Integer read FNavigationKeys.NextChangeKey write FNavigationKeys.NextChangeKey;
@@ -1505,6 +1528,13 @@ type
       write FAssistants.AssistantsOpenAiModel;
     property AssistantsOpenAiTimeoutMs: Integer read FAssistants.AssistantsOpenAiTimeoutMs
       write FAssistants.AssistantsOpenAiTimeoutMs;
+    property AssistantsTextSource: string read FAssistants.AssistantsTextSource write FAssistants.AssistantsTextSource;
+    property AssistantsIdeProvider: Boolean read FAssistants.AssistantsIdeProvider
+      write FAssistants.AssistantsIdeProvider;
+    property AssistantsIdeProviderName: string read FAssistants.AssistantsIdeProviderName
+      write FAssistants.AssistantsIdeProviderName;
+    property AssistantsRegisterInIde: Boolean read FAssistants.AssistantsRegisterInIde
+      write FAssistants.AssistantsRegisterInIde;
   end;
 
 implementation

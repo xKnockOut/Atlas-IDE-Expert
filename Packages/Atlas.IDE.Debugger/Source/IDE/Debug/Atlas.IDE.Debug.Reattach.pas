@@ -26,7 +26,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Status.Contract,
+  Atlas.Plugin.Status.Contract,
   Atlas.Core.Debug.DialogCompletion,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract,
@@ -79,7 +79,6 @@ type
     class procedure Say(const AText: string); static;
     class function History: TAtlasExpressionHistory; static;
     class procedure Remember(const APath: string); static;
-    class function CurrentGroup: string; static;
     class function ProjectTarget: string; static;
     class procedure ShowStatus(const AText, ASummary: string; const AAction: TProc); static;
     class procedure HideStatus; static;
@@ -114,9 +113,9 @@ uses
   System.Classes,
   System.UITypes,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Status.Registry,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Files.DataFile,
+  Atlas.Plugin.Status.Registry,
   Atlas.Core.Debug.Reattach,
   Atlas.Core.Debug.ReattachFlow,
   Atlas.IDE.Foundation.Settings,
@@ -126,7 +125,8 @@ uses
   Atlas.UI.Debug.ProcessChoice,
   Atlas.UI.Debug.Session.Strings,
   Atlas.UI.Debug.Settings.Strings,
-  Atlas.Core.Foundation.Calls;
+  Atlas.Plugin.Calls.Optional,
+  Atlas.ToolsApi.Files.Service;
 
 const
   cHistoryWhat = 'debug reattach';
@@ -228,7 +228,7 @@ end;
 
 class procedure TAtlasIdeDebugReattach.Remember(const APath: string);
 begin
-  if (APath = '') or not History.Add(CurrentGroup, APath) then
+  if (APath = '') or not History.Add(TAtlasIdeFiles.GroupFile, APath) then
   begin
     UpdateMenu;
     Exit;
@@ -243,17 +243,6 @@ begin
   except
     on E: Exception do
       TAtlasDataFile.ReportNotWritten(cHistoryWhat, E);
-  end;
-end;
-
-class function TAtlasIdeDebugReattach.CurrentGroup: string;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := '';
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.MainProjectGroup <> nil) then
-  begin
-    Result := mModules.MainProjectGroup.FileName;
   end;
 end;
 
@@ -320,7 +309,7 @@ class procedure TAtlasIdeDebugReattach.CheckGroup;
 var
   mGroup: string;
 begin
-  mGroup := CurrentGroup;
+  mGroup := TAtlasIdeFiles.GroupFile;
   // Projektgruppe gewechselt oder geschlossen: Das Warten gehörte zur alten.
   if TAtlasReattachFlow.GroupLeft(Waiting, mGroup, FWaitGroup) then
   begin
@@ -395,7 +384,7 @@ begin
   begin
     Exit;
   end;
-  FMenuGroup := CurrentGroup;
+  FMenuGroup := TAtlasIdeFiles.GroupFile;
   mTarget := LastTarget;
   if mTarget = '' then
   begin
@@ -460,7 +449,7 @@ end;
 
 class function TAtlasIdeDebugReattach.LastTarget: string;
 begin
-  Result := TAtlasReattachFlow.LastOf(History.Items(CurrentGroup));
+  Result := TAtlasReattachFlow.LastOf(History.Items(TAtlasIdeFiles.GroupFile));
 end;
 
 class procedure TAtlasIdeDebugReattach.Execute;
@@ -525,7 +514,7 @@ begin
     Exit;
   end;
   FWaitTarget := APath;
-  FWaitGroup := CurrentGroup;
+  FWaitGroup := TAtlasIdeFiles.GroupFile;
   mGeneration := FGeneration;
   FWaiter := TAtlasIdeReattachWaiter.Create(APath, TAtlasIdeSettings.Current.DebugReattachWaitIntervalMs,
     procedure(APid: Cardinal)

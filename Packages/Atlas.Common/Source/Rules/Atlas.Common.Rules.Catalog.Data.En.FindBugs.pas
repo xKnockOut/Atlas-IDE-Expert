@@ -531,7 +531,8 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "In Pascal not binds more tightly than in and comparisons: not X in Set means (not X) in Set, not A = B means (not A) = B, and on integers not works bitwise. The rule reports thes' +
-    'e forms when the declared type of the operand shows that this cannot be meant (not Boolean). Quick fix: add parentheses, not (X in Set).",',
+    'e forms when the declared type of the operand shows that this cannot be meant (not Boolean). not E is T means (not E) is T and does not compile in Delphi for any type (E2015, Free Pascal accepts it); ' +
+    'the rule always reports it. Quick fix: add parentheses, not (X in Set).",',
     '      "bad": "if not Zustand in [zsOffen, zsGesperrt] then\n  Bearbeiten;",',
     '      "good": "if not (Zustand in [zsOffen, zsGesperrt]) then\n  Bearbeiten;",',
     '      "safeFix": false',
@@ -1230,8 +1231,9 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "List.DelimitedText := ... after List.Delimiter := ... in the same routine without StrictDelimiter being set: DelimitedText then also splits at spaces, ''Max Muster;Berlin'' becomes' +
-    ' three entries instead of two. For fields, StrictDelimiter anywhere in the unit counts (often in the constructor); StrictDelimiter := False is deliberate and stays silent, as does DelimitedText withou' +
-    't a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.",',
+    ' three entries instead of two. StrictDelimiter also counts in with List do and through a typecast (TStringList(List), List as TStringList), for fields anywhere in the unit (often in the constructor). ' +
+    'For parameters and lists the routine does not create itself (function result) the rule stays silent: the caller or the creating function sets StrictDelimiter there; StrictDelimiter := False is deliber' +
+    'ate and stays silent, as does DelimitedText without a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.",',
     '      "bad": "Teile.Delimiter := '';'';\nTeile.DelimitedText := Zeile;",',
     '      "good": "Teile.Delimiter := '';'';\nTeile.StrictDelimiter := True;\nTeile.DelimitedText := Zeile;",',
     '      "safeFix": false',

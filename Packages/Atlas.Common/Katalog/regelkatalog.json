@@ -219,6 +219,12 @@
           "description": "First name segments of host units without prefix."
         },
         {
+          "name": "hostedFeatures",
+          "type": "string-list",
+          "default": [],
+          "description": "Hosted features of the application: first name segment without prefix; they import only Foundation and platform features, never each other."
+        },
+        {
           "name": "allow",
           "type": "string-list",
           "default": [],
@@ -1269,7 +1275,21 @@
       "category": "code-smell",
       "severity": "warning",
       "group": "exceptions",
-      "description": "A handler for Exception that neither re-raises nor ends the program swallows every error, including programming errors. Off by default; intended for library code.",
+      "description": "A handler for Exception, or an except part without on, that neither re-raises, reports the error through a call from reporters nor ends the program swallows every error, including programming errors. Off by default; intended for library code and for code with its own error reporting.",
+      "options": [
+        {
+          "name": "allowExceptionUse",
+          "type": "boolean",
+          "default": false,
+          "description": "A handler on E: Exception do that reads its exception (E.Message to the caller, E to a routine) passes the error on and counts as handled."
+        },
+        {
+          "name": "reporters",
+          "type": "string-list",
+          "default": [],
+          "description": "Calls that report the exception (patterns with * and ? over the name with its qualifiers, e.g. TAtlasGuard.* or *Logger.Error); a block that contains one counts as handled."
+        }
+      ],
       "bad": "except\n  on E: Exception do\n    Log(E.Message);\nend;",
       "good": "except\n  on E: Exception do\n  begin\n    Log(E.Message);\n    raise;\n  end;\nend;",
       "safeFix": false,
@@ -1783,7 +1803,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "In Pascal not binds more tightly than in and comparisons: not X in Set means (not X) in Set, not A = B means (not A) = B, and on integers not works bitwise. The rule reports these forms when the declared type of the operand shows that this cannot be meant (not Boolean). Quick fix: add parentheses, not (X in Set).",
+      "description": "In Pascal not binds more tightly than in and comparisons: not X in Set means (not X) in Set, not A = B means (not A) = B, and on integers not works bitwise. The rule reports these forms when the declared type of the operand shows that this cannot be meant (not Boolean). not E is T means (not E) is T and does not compile in Delphi for any type (E2015, Free Pascal accepts it); the rule always reports it. Quick fix: add parentheses, not (X in Set).",
       "bad": "if not Zustand in [zsOffen, zsGesperrt] then\n  Bearbeiten;",
       "good": "if not (Zustand in [zsOffen, zsGesperrt]) then\n  Bearbeiten;",
       "safeFix": false
@@ -2376,7 +2396,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "The class has more members than the limit (default 40): field names, methods, properties with their own type and class var, plus every free routine of the same unit that accesses a private or protected member of the class through a parameter or variable of that type (such a routine is a method written outside the class). Properties that only raise visibility (property Align;) and nested types do not count; a nested class is measured on its own. Also shown in the metrics lens above the class. Split the class or move parts into helper classes; Move class to own unit (#103) helps when the unit is crowded too.",
+      "description": "The class has more members than the limit (default 40): field names, methods, properties with their own type and class var, plus every free routine of the same unit that accesses a private or protected member of the class through a parameter or variable of that type (such a routine is a method written outside the class). Properties that only raise visibility (property Align;) and nested types do not count; a nested class is measured on its own. A field of a record type counts as one member even when the record bundles several values: collecting what belongs together in a record (such as the paint state of a control) should not be penalized. A record that only lowers the count does not take a task away from the class, though; split the class instead. Also shown in the metrics lens above the class. Split the class or move parts into helper classes; Move class to own unit (#103) helps when the unit is crowded too.",
       "bad": "type\n  TfrmHaupt = class(TForm)\n    { 87 members }\n  end;",
       "good": "type\n  TfrmHaupt = class(TForm)\n    { 25 members; data access in TKundenDaten }\n  end;",
       "options": [
@@ -2653,12 +2673,23 @@
       "safeFix": false
     },
     {
+      "id": "queue-without-remove",
+      "name": "Thread queues but never removes the entries",
+      "category": "bug",
+      "severity": "warning",
+      "group": "threads",
+      "description": "A descendant of TThread queues into the main thread on its own thread (Queue(…), ForceQueue(…), TThread.Queue(Self, …) or TThread.Queue(CurrentThread, …)), but nobody removes the entries with RemoveQueuedEvents. Whatever is still waiting when the thread stops runs afterwards with freed objects or, after the package is unloaded, in foreign memory. Removing counts in a method of the class or of an ancestor in the unit, as a call with another argument than Self or nil elsewhere in the unit (the owner cleans up when stopping, TThread.RemoveQueuedEvents(FWorker)), and when another project unit names the class and RemoveQueuedEvents (index with index.usages). Synchronize waits and is not reported; Queue(nil, …) is reported by queue-nil-in-package; an own method named Queue does not count. High confidence; low when an ancestor from another unit could remove the entries. Quick fix: add RemoveQueuedEvents(Self) to the destructor before inherited (creates the destructor behind the last constructor if it is missing; not for nested classes).",
+      "bad": "procedure TOrderWorker.Execute;\nbegin\n  Queue(procedure begin FForm.Caption := 'fertig' end);\nend;\n\ndestructor TOrderWorker.Destroy;\nbegin\n  inherited;\nend;",
+      "good": "procedure TOrderWorker.Execute;\nbegin\n  Queue(procedure begin FForm.Caption := 'fertig' end);\nend;\n\ndestructor TOrderWorker.Destroy;\nbegin\n  RemoveQueuedEvents(Self);\n  inherited;\nend;",
+      "safeFix": false
+    },
+    {
       "id": "ota-notifier-not-removed",
       "name": "IDE notifier without RemoveNotifier",
       "category": "bug",
       "severity": "warning",
       "group": "packages",
-      "description": "AddNotifier on IOTAServices, IOTAEditorServices, IOTAModule and so on (or another pair from registerPairs) whose index never reaches RemoveNotifier: the call is a statement without assignment, or the variable it is assigned to is never passed to RemoveNotifier in the unit (in finalization, a destructor or Destroyed). The IDE then calls the notifier after the package is unloaded, in memory that no longer holds the code. Register… calls inside the procedure Register are exempt: the IDE removes those wizards itself. Medium confidence. Quick fix in methods: keep the index in a field (FNotifierIndex in the private section) and add RemoveNotifier to the destructor, which is created if missing; in procedures of the unit: a global variable initialized with -1 and RemoveNotifier in finalization. No quick fix when the receiver is a parameter or local variable.",
+      "description": "AddNotifier on IOTAServices, IOTAEditorServices, IOTAModule and so on (or another pair from registerPairs) whose index never reaches RemoveNotifier: the call is a statement without assignment, or the variable it is assigned to is never passed to RemoveNotifier in the unit (in finalization, a destructor or Destroyed). The IDE then calls the notifier after the package is unloaded, in memory that no longer holds the code. Register… calls inside the procedure Register are exempt: the IDE removes those wizards itself. So is Result := X.AddNotifier(…) inside a method AddNotifier of your own (implementing an interface with its own notifier pair): the caller gets the index and removes it with RemoveNotifier. Medium confidence. Quick fix in methods: keep the index in a field (FNotifierIndex in the private section) and add RemoveNotifier to the destructor, which is created if missing; in procedures of the unit: a global variable initialized with -1 and RemoveNotifier in finalization. No quick fix when the receiver is a parameter or local variable.",
       "bad": "procedure Register;\nbegin\n  (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);\nend;",
       "good": "var\n  NotifierIndex: Integer = -1;\n\nprocedure Register;\nbegin\n  NotifierIndex := (BorlandIDEServices as IOTAServices).AddNotifier(TSpeicherNotifier.Create);\nend;\n\ninitialization\n\nfinalization\n  if NotifierIndex >= 0 then\n    (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);",
       "options": [
@@ -2676,6 +2707,89 @@
             }
           ],
           "description": "Pairs of the Open Tools API as [{\"open\": \"AddNotifier\", \"close\": \"RemoveNotifier\"}]; replaces the default."
+        }
+      ],
+      "safeFix": false
+    },
+    {
+      "id": "ota-entry-without-guard",
+      "name": "IDE entry point lets exceptions through",
+      "category": "bug",
+      "severity": "warning",
+      "group": "packages",
+      "description": "A method that the IDE calls can let an exception through to the IDE, which shows it as an error message or, in the worst case, aborts saving or loading. Entry points are the public and published methods of a class that implements an interface from the interfaces option, also through ancestors (default IOTA*Notifier*, INTA*Notifier*, IOTA*Wizard*, IOTAKeyboardBinding, INTACustomDrawMessage, IOTALocalMenu, IOTAProjectManagerMenu), the methods such a class passes to AddKeyBinding or AddMenuCommand, and in package units that hang menu entries into the IDE (INTAServices, MainMenu, AddActionMenu, the editor or project manager menu) the methods a routine assigns to OnClick or OnExecute when it names TMenuItem or TAction; handlers of an own context menu are caught by the application. Reported when the body contains something that can raise (a call, raise, a cast with as) outside a try … except that catches every exception and outside the call of a guard routine from the guards option; a raise in the handler counts. Built-in and pure RTL routines (Length, Assigned, Supports, Copy, SameText …), type casts (also T…(x) and I…(x) with types the index does not know, such as VCL types), inherited, anonymous methods (they run later) and calls of routines of the unit whose body cannot raise do not count. Bodies that only assign values (fields, Result) stay silent. High confidence. Quick fixes: pass the body as an anonymous method to the first guard routine (with a parenthesis the entry is the beginning of the call, e.g. \"TAtlasGuard.Run(TAtlasFeature.Menu, \"; not when the body uses Result, var or out parameters or inherited), or, with a field of type ILogger, wrap it in try … except and log the message with Error.",
+      "bad": "procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;\n  const FileName: string; var Cancel: Boolean);\nbegin\n  if FileName = '' then\n    raise Exception.Create('leer');\nend;",
+      "good": "procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;\n  const FileName: string; var Cancel: Boolean);\nbegin\n  try\n    Pruefen(FileName);\n  except\n    on E: Exception do\n      FLogger.Error(E.Message);\n  end;\nend;",
+      "options": [
+        {
+          "name": "guards",
+          "type": "string-list",
+          "default": [],
+          "description": "Guard routines that protect the body, e.g. TAtlasGuard.Run; the text before a parenthesis counts. The quick fix uses the first entry, with a parenthesis as the beginning of the call."
+        },
+        {
+          "name": "interfaces",
+          "type": "string-list",
+          "default": [
+            "IOTA*Notifier*",
+            "INTA*Notifier*",
+            "IOTA*Wizard*",
+            "IOTAKeyboardBinding",
+            "INTACustomDrawMessage",
+            "IOTALocalMenu",
+            "IOTAProjectManagerMenu"
+          ],
+          "description": "Interfaces whose methods are entry points (patterns with * and ?)."
+        }
+      ],
+      "safeFix": false
+    },
+    {
+      "id": "register-does-work",
+      "name": "Register starts work instead of only registering",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "packages",
+      "description": "The procedure Register of a package (or another entry routine from the entries option) starts work instead of only registering: a call from workCalls (default Sleep, WaitFor…, CreateProcess, ShellExecute…, Application.CreateForm, ShowModal, ShowMessage, MessageDlg, TTask.Run, TThread.CreateAnonymousThread) or creating a class from workClasses or one of its descendants (default TTimer, TThread, TForm, THTTPClient, TIdHTTP). Register runs while the IDE starts, in no guaranteed order of the packages; work there lengthens the start and may touch packages that are not loaded yet. Routines of the unit that are only reached from the entry routine (free routines of the implementation part, private methods of the same class) are checked too; anonymous methods and routines passed as arguments run later and do not count. Registering stays allowed (RegisterPackageWizard, RegisterComponents, AddNotifier …). An entry with a dot matches the whole routine name (*.RegisterModule), without a dot only free routines. High confidence in the entry routine, medium in a helper. No quick fix: move the start into a wizard, a notifier or the feature table.",
+      "bad": "procedure Register;\nbegin\n  GTimer := TTimer.Create(nil);\n  GTimer.Enabled := True;\n  RegisterPackageWizard(TMyWizard.Create);\nend;",
+      "good": "procedure Register;\nbegin\n  // The wizard starts the timer once the IDE has loaded.\n  RegisterPackageWizard(TMyWizard.Create);\nend;",
+      "options": [
+        {
+          "name": "workCalls",
+          "type": "string-list",
+          "default": [
+            "Sleep",
+            "WaitFor*",
+            "CreateProcess",
+            "ShellExecute*",
+            "Application.CreateForm",
+            "ShowModal",
+            "ShowMessage",
+            "MessageDlg",
+            "TTask.Run",
+            "TThread.CreateAnonymousThread"
+          ],
+          "description": "Calls that count as work; with a dot the whole call (TTask.Run), otherwise the last name part; patterns with * and ?."
+        },
+        {
+          "name": "workClasses",
+          "type": "string-list",
+          "default": [
+            "TTimer",
+            "TThread",
+            "TForm",
+            "THTTPClient",
+            "TIdHTTP"
+          ],
+          "description": "Classes whose creation counts as work, including their descendants."
+        },
+        {
+          "name": "entries",
+          "type": "string-list",
+          "default": [
+            "Register"
+          ],
+          "description": "Entry routines, e.g. also *.RegisterModule; with a dot the whole name, otherwise only free routines."
         }
       ],
       "safeFix": false
@@ -3018,7 +3132,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "List.DelimitedText := ... after List.Delimiter := ... in the same routine without StrictDelimiter being set: DelimitedText then also splits at spaces, 'Max Muster;Berlin' becomes three entries instead of two. For fields, StrictDelimiter anywhere in the unit counts (often in the constructor); StrictDelimiter := False is deliberate and stays silent, as does DelimitedText without a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.",
+      "description": "List.DelimitedText := ... after List.Delimiter := ... in the same routine without StrictDelimiter being set: DelimitedText then also splits at spaces, 'Max Muster;Berlin' becomes three entries instead of two. StrictDelimiter also counts in with List do and through a typecast (TStringList(List), List as TStringList), for fields anywhere in the unit (often in the constructor). For parameters and lists the routine does not create itself (function result) the rule stays silent: the caller or the creating function sets StrictDelimiter there; StrictDelimiter := False is deliberate and stays silent, as does DelimitedText without a Delimiter of its own. High confidence. Quick fix: insert StrictDelimiter := True; before the assignment.",
       "bad": "Teile.Delimiter := ';';\nTeile.DelimitedText := Zeile;",
       "good": "Teile.Delimiter := ';';\nTeile.StrictDelimiter := True;\nTeile.DelimitedText := Zeile;",
       "safeFix": false
@@ -3823,7 +3937,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A unit is named like a unit reserved for the compiler, System or SysInit (like E2272), or {$NOINCLUDE X} names a unit the compiler does not know (like E2242); the latter needs the project's unit search and stays silent when it gives no sure answer. The RTL sources (source/rtl) are not checked. Not reported: E2447, W1051 and X2421 belong to the namespaces of .NET metadata, which dcc32/dcc64 do not create; for E2399 the documentation gives no condition, and a unit Kunden next to Kunden.Daten compiles without error in Delphi (Spring.pas next to Spring.Collections.pas). Quick fix for {$NOINCLUDE}: use a similarly spelled known unit.",
+      "description": "A unit is named like a unit reserved for the compiler, System or SysInit (like E2272), a part of the unit name in the header or in uses/contains is a reserved word such as inline, object or string (like E2029; Free Pascal accepts it, a part prefixed with & stays silent), or {$NOINCLUDE X} names a unit the compiler does not know (like E2242); the latter needs the project's unit search and stays silent when it gives no sure answer. The RTL sources (source/rtl) are not checked. Not reported: E2447, W1051 and X2421 belong to the namespaces of .NET metadata, which dcc32/dcc64 do not create; for E2399 the documentation gives no condition, and a unit Kunden next to Kunden.Daten compiles without error in Delphi (Spring.pas next to Spring.Collections.pas). Quick fix for {$NOINCLUDE}: use a similarly spelled known unit.",
       "bad": "unit System;\n\ninterface",
       "good": "unit Kunden.Systemdienste;\n\ninterface",
       "compilerCodes": [
@@ -5547,7 +5661,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A variable, parameter or field whose type is a reference to a function (TFunc<…>, TPredicate<T> or an own reference to function type) is the only argument of Exit(…) in a function that returns a method reference, or an element of an array literal next to + (FHandlers + [AHandler]) whose other operand is an array of method references. Delphi calls the reference there instead of taking it as a value (E2035 or E2010); Free Pascal takes the value. The type is read from the declaration in the file (parameter, local variable, field of the own class); an own type counts if the file or the symbol index declares it as reference to function. References to procedures (TProc) are taken as values by Delphi and stay silent. Exit(AFunc) in a function with another result type calls on purpose and stays silent. Quick fix for Exit (safe): Result := ARef; Exit;. For the array literal: grow the array with SetLength and assign the element.",
+      "description": "A variable, parameter or field whose type is a reference to a function (TFunc<…>, TPredicate<T> or an own reference to function type) is the only argument of Exit(…) in a function that returns a method reference, or an element of an array literal next to + (FHandlers + [AHandler]) whose other operand is an array of method references. Delphi calls the reference there instead of taking it as a value (E2035 or E2010); Free Pascal takes the value. The type is read from the declaration in the file (parameter, local variable, field of the own class); an own type counts if the file or the symbol index declares it as reference to function. References to procedures (TProc) are taken as values by Delphi and stay silent. Exit(AFunc) in a function with another result type calls on purpose and stays silent. Conversely the rule reports a parameterless function returning a method reference (TTransport.Factory: TFactory) passed without () as an argument where a version of the called routine has a parameter of the result type: Delphi takes the function itself (E2010, E2250 with overloads). Function and called routine come from the symbol index. Quick fix for Exit (safe): Result := ARef; Exit;. For the array literal: grow the array with SetLength and assign the element. For the factory (safe): append ().",
       "bad": "function Wahl(const ALookup: TLookup): TLookup;\nbegin\n  Exit(ALookup);\nend;\n…\n  FHandlers := FHandlers + [AHandler];",
       "good": "function Wahl(const ALookup: TLookup): TLookup;\nbegin\n  Result := ALookup;\n  Exit;\nend;\n…\n  SetLength(FHandlers, Length(FHandlers) + 1);\n  FHandlers[High(FHandlers)] := AHandler;",
       "compilerCodes": [

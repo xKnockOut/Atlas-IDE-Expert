@@ -21,7 +21,6 @@ uses
 
 type
   [TestFixture]
-  [Category('Atlas.IDE.VersionControl')]
   TAtlasVcsIntegrationTests = class
   public
     [Test]
@@ -45,13 +44,13 @@ uses
   System.Classes,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.Switches,
-  Atlas.Core.Diagnostics.BackgroundJobs,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.VersionControl.Composition,
-  Atlas.Core.VersionControl.Providers.ProcessRunner,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.Switches,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.VersionControl.Repository.Composition,
+  Atlas.VersionControl.Repository.Providers.ProcessRunner,
   Atlas.Core.Welcome.Unsaved,
   Atlas.Core.Welcome.Continue;
 

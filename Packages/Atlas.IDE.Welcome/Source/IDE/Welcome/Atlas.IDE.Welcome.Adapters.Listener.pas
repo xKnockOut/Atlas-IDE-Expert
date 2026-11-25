@@ -41,7 +41,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 { TAtlasWelcomeListener }
 

@@ -85,7 +85,12 @@ begin
   Assert.AreEqual(mArgs.Target, mCopy.Target);
   Assert.AreEqual('2.0.0', mCopy.Previous);
   Assert.AreEqual<TUpdateNewModules>(TUpdateNewModules.Install, mCopy.NewModules);
+  Assert.IsFalse(mCopy.AllowSource);
   Assert.IsTrue(mArgs.CommandLine.StartsWith('prepare '));
+  Assert.IsFalse(mArgs.CommandLine.Contains('allow-source'));
+  mArgs.AllowSource := True;
+  Assert.IsTrue(TUpdateArguments.Parse(mArgs.ToArgs).AllowSource);
+  Assert.IsFalse(TUpdateArguments.Parse(TArray<string>.Create('prepare', '--allow-source', 'no')).AllowSource);
 end;
 
 procedure TTextUpdateRunTests.StageRoundTrip;
@@ -98,6 +103,7 @@ begin
   mStage.Version := '2.0.1';
   mStage.FromSource := True;
   mStage.AskSelection := True;
+  mStage.Warning := TUpdateErrors.cManifestUnsigned;
   mStage.Updater := 'C:\Staging\files\AtlasUpdate.exe';
   SetLength(mStage.Candidates, 2);
   mStage.Candidates[0].Name := 'Atlas.IDE.Base';
@@ -111,6 +117,7 @@ begin
   Assert.IsTrue(mCopy.FromSource);
   Assert.IsTrue(mCopy.AskSelection);
   Assert.AreEqual(mStage.Updater, mCopy.Updater);
+  Assert.AreEqual(TUpdateErrors.cManifestUnsigned, mCopy.Warning);
   Assert.AreEqual(2, Integer(Length(mCopy.Candidates)));
   Assert.IsTrue(mCopy.Candidates[1].IsNew);
   Assert.IsFalse(mCopy.Candidates[1].Selected);

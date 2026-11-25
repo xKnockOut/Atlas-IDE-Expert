@@ -14,6 +14,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Common.Mcp.Contract.CompilerFixes,
   Atlas.Common.Mcp.IndexTools;
 
 type
@@ -33,6 +34,8 @@ type
     Json: Boolean;
     /// <summary>Liest den Quelltext zu FileName einer Meldung; nil oder False = ohne Stelle.</summary>
     ReadText: TMcpReadText;
+    /// <summary>Sichere Korrekturen zu einer Meldung; nil = nur die Korrekturen der Fallen.</summary>
+    CompilerFixes: IMcpCompilerFixes;
   end;
 
   TMcpCompilerMessageTools = class
@@ -60,12 +63,12 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.CompilerFixes,
-  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Compiler.MessageTexts,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.CompilerPitfalls,
   Atlas.Common.Rules.CompilerPitfallFixes,
-  Atlas.Common.Rules.MessageCatalog,
+  Atlas.Common.Compiler.MessageCatalog,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Mcp.Server;
 
@@ -156,7 +159,7 @@ function NameOf(const AText: string): string;
 var
   mName: string;
 begin
-  for mName in TCompilerFixes.QuotedNames(AText) do
+  for mName in TCompilerMessageTexts.QuotedNames(AText) do
   begin
     if IsIdentifier(mName) then
     begin
@@ -258,17 +261,24 @@ begin
     TTextLines.SplitLines(TTextChanges.Apply(AText, AEdits)), cDiffContext));
 end;
 
-/// <summary>Bevorzugte Korrektur aus TCompilerFixes; False ohne.</summary>
-function CompilerFixOf(const AMessage: TMcpCompilerMessage; const ASource: TMessageSource; ATree: TSyntaxTree;
-  out AFix: TCompilerFix): Boolean;
+/// <summary>Bevorzugte Korrektur aus AFixes; False ohne.</summary>
+function CompilerFixOf(const AFixes: IMcpCompilerFixes; const AMessage: TMcpCompilerMessage;
+  const ASource: TMessageSource; out AFix: TMcpCompilerFix): Boolean;
 var
-  mFix: TCompilerFix;
-  mFixes: TArray<TCompilerFix>;
+  mMessage: TMcpFixMessage;
+  mFix: TMcpCompilerFix;
 begin
-  AFix := Default(TCompilerFix);
-  mFixes := TCompilerFixes.Fixes(ASource.Text, ATree, TFixMessage.Create(AMessage.Code, ASource.Line,
-    AMessage.Column - 1, AMessage.Text), Default(TCompilerFixContext));
-  for mFix in mFixes do
+  AFix := Default(TMcpCompilerFix);
+  if AFixes = nil then
+  begin
+    Exit(False);
+  end;
+  mMessage := Default(TMcpFixMessage);
+  mMessage.Code := AMessage.Code;
+  mMessage.Line := ASource.Line;
+  mMessage.Column := AMessage.Column - 1;
+  mMessage.Text := AMessage.Text;
+  for mFix in AFixes.Fixes(ASource.Text, mMessage) do
   begin
     if mFix.Preferred or (AFix.Edits = nil) then
     begin
@@ -297,15 +307,16 @@ begin
   Result := False;
 end;
 
-procedure AddSafeFix(var AExplanation: TExplanation; const ASource: TMessageSource);
+procedure AddSafeFix(const AFixes: IMcpCompilerFixes; var AExplanation: TExplanation;
+  const ASource: TMessageSource);
 var
   mTree: TSyntaxTree;
-  mFix: TCompilerFix;
+  mFix: TMcpCompilerFix;
   mEdits: TArray<TTextEdit>;
 begin
   mTree := TSyntaxTreeCache.Parse(ASource.Text);
   try
-    if CompilerFixOf(AExplanation.Message, ASource, mTree, mFix) then
+    if CompilerFixOf(AFixes, AExplanation.Message, ASource, mFix) then
     begin
       AExplanation.FixTitle := mFix.Title;
       mEdits := mFix.Edits;
@@ -351,7 +362,7 @@ begin
   Result.DocWiki := TCompilerMessageCatalog.DocWikiUrl(Result.Message.Code, ARequest.DelphiVersion);
   if mSource.Line >= 0 then
   begin
-    AddSafeFix(Result, mSource);
+    AddSafeFix(ARequest.CompilerFixes, Result, mSource);
   end;
 end;
 

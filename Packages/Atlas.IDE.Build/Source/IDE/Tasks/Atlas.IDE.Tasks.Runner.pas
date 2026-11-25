@@ -164,23 +164,23 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Tasks.Definitions,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tasks.Plan,
   Atlas.Core.Tasks.PreBuild,
   Atlas.Core.Tasks.Reports,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Build.Strings,
   Atlas.UI.Tasks.Texts,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Tasks.Pickers,
-  Atlas.IDE.Foundation.Files;
+  Atlas.ToolsApi.Files.Service;
 
 const
   cRefreshMs = 2000;

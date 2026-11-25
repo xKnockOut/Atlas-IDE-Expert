@@ -7,7 +7,7 @@
 interface
 
 uses
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 type
   TAtlasIdeActiveEditor = class(TInterfacedObject, IAtlasActiveEditor)
@@ -20,8 +20,8 @@ implementation
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Lsp.Session.Json,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.Plugin.Lsp.Session.Json,
+  Atlas.ToolsApi.Editor.Buffer;
 
 { TAtlasIdeActiveEditor }
 

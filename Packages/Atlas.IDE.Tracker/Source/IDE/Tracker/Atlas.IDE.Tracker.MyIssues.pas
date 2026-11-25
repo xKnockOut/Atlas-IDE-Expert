@@ -197,10 +197,10 @@ implementation
 
 uses
   Atlas.UI.Tracker.MyIssues.Text,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.MyIssuesPlan,
   Atlas.Core.Tracker.Templates,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.Workflow,

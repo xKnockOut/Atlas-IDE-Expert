@@ -43,7 +43,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Ownership.MethodReferences,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Tests.RuleAssert;
 
 /// <summary>Unit mit der Routine Lauf (Variablen AVars, Rumpf ABody).</summary>
@@ -130,7 +130,7 @@ begin
     'zurückgesetzt; lebt FQuelle länger, ruft es die Methode eines freigegebenen Objekts auf.|', TRuleAssert.LineMessages(mFound));
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[0].Severity));
   Assert.AreEqual('Im Destruktor FQuelle.OnChange := nil setzen', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Observer('  FQuelle.OnChange := Geaendert;'#10,
     '  if Assigned(FQuelle) then'#10'    FQuelle.OnChange := nil;'#10), mFixed);
   TRuleAssert.Silent(TEventHandlerNotUnhookedRule.Create, mFixed);

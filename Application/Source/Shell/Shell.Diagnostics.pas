@@ -109,7 +109,7 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Logging.Providers.StreamSink,
   Atlas.Common.Logging.Providers.TransformSink,
-  Shell.Platform,
+  Platform.Server,
   Atlas.Text.LogMarks;
 
 threadvar
@@ -388,7 +388,7 @@ begin
   begin
     // Nur Klasse und Aufrufstapel: Die Meldung kann Pfade oder Namen aus dem Projekt enthalten.
     mErrorClass := AError.ClassName;
-    mStack := TShellPlatform.StackTraceOf(AError);
+    mStack := TServerPlatform.StackTraceOf(AError);
   end;
   FLog.LogEnd(AReason, AExitCode, mProcess, mErrorClass, mStack);
   FLogImpl.Flush;

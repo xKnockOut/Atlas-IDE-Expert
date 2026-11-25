@@ -14,7 +14,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Atlas.Core.AiProviders.Contract,
   Atlas.Core.AiProviders.Catalog,
   Atlas.UI.Assistants.SettingsSection;
@@ -41,8 +41,8 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Assistants.AiErrors,
   Atlas.UI.Assistants.Strings;
@@ -138,6 +138,8 @@ begin
       mText: string;
     begin
       mText := TAtlasIdeAiProbe.ProbeText(TAtlasAiProviders.Probe(AProvider), ADelayMs);
+      // Auch ins Protokoll: Geht die Anzeige verloren (Seite neu aufgebaut), bleibt das Ergebnis lesbar.
+      TAtlasGuard.Log('KI-Verbindungstest (' + AProvider.Id + '): ' + TAtlasGuard.MessageText(mText));
       TAtlasMainThread.Queue(TAtlasFeature.Settings,
         procedure
         begin

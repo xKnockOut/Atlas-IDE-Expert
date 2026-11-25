@@ -11,7 +11,7 @@ interface
 {$SCOPEDENUMS ON}
 
 uses
-  Atlas.Core.Files.Contract;
+  Atlas.Plugin.Files.Contract;
 
 type
   /// <summary>Art einer Marke; die Reihenfolge ist zugleich die Zeichenreihenfolge (spätere liegen oben).</summary>

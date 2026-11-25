@@ -22,10 +22,11 @@ interface
 uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Scopes,
+  Atlas.Common.Findings.Scopes,
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Projects.PackageReader;
@@ -63,24 +64,11 @@ type
     Services: TRuleServices;
   end;
 
-  /// <summary>Woher die Symbole einer geprüften Datei kommen (#860).</summary>
-  TCheckSource = record
-    /// <summary>Vollständiger Pfad der Datei; Ausgangspunkt für {$I}.</summary>
-    FileName: string;
-    /// <summary>Symbole des Projekts; leer = Vordefinitionen (Win32, Delphi 13).</summary>
-    Defines: TArray<string>;
-    /// <summary>Sucht {$I}-Dateien; nil = nicht lesen.</summary>
-    ResolveInclude: TIncludeResolver;
-    /// <summary>Ohne Projekt, Datei und Include-Dateien.</summary>
-    class function Default: TCheckSource; static;
-    class function Create(const AFileName: string; const ADefines: TArray<string>;
-      const AResolveInclude: TIncludeResolver): TCheckSource; static;
-    /// <summary>Präprozessor-Optionen wie beim Editor-Baum.</summary>
-    function Options: TPreprocessorOptions;
-  end;
-
+  /// <summary>Woher die Symbole einer geprüften Datei kommen (#860); Optionen über
+  /// TPascalPreprocessor.SourceOptions.</summary>
+  TCheckSource = TPascalSource;
   /// <summary>Quelle der Symbole je Datei, etwa aus dem Projekt des MCP-Servers.</summary>
-  TCheckSourceFunc = reference to function(const AFileName: string): TCheckSource;
+  TCheckSourceFunc = TPascalSourceFunc;
   /// <summary>Projekt und Dienste (Index, #1112) je Datei, etwa aus den Arbeitsbereichen des MCP-Servers.</summary>
   TCheckProjectFunc = reference to function(const AFileName: string): TCheckProject;
 
@@ -108,6 +96,20 @@ type
     /// <summary>Prüft, ob es eine Datei relativ zu AFolder gibt (fehlende Dateien aus {$I} und {$R}, #1379).
     /// </summary>
     class function Exists(const AFolder: string): TRuleFileExists; static;
+  end;
+
+  /// <summary>Grundlage der Anbieter, die mit Regeln, Projekt und Symbolen prüfen, die der Host beim Anlegen
+  /// bindet (IRuleTextChecks, IRuleBulkFix).</summary>
+  TBoundRuleProvider = class(TInterfacedObject)
+  protected
+    FRules: TArray<IRule>;
+    FProject: TCheckProjectFunc;
+    FSource: TCheckSourceFunc;
+  public
+    /// <summary>ARules: die geprüften Regeln; AProject nil = ohne Index, ASource nil = Vordefinitionen (Win32).
+    /// </summary>
+    constructor Create(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
+      const ASource: TCheckSourceFunc);
   end;
 
   TFileChecker = class
@@ -294,24 +296,15 @@ begin
   Result := Make(TFileChecker.ProjectOf(AProject, AFileName), TFileChecker.SourceOf(ASource, AFileName));
 end;
 
-{ TCheckSource }
+{ TBoundRuleProvider }
 
-class function TCheckSource.Default: TCheckSource;
+constructor TBoundRuleProvider.Create(const ARules: TArray<IRule>; const AProject: TCheckProjectFunc;
+  const ASource: TCheckSourceFunc);
 begin
-  Result := Create('', nil, nil);
-end;
-
-class function TCheckSource.Create(const AFileName: string; const ADefines: TArray<string>;
-  const AResolveInclude: TIncludeResolver): TCheckSource;
-begin
-  Result.FileName := AFileName;
-  Result.Defines := ADefines;
-  Result.ResolveInclude := AResolveInclude;
-end;
-
-function TCheckSource.Options: TPreprocessorOptions;
-begin
-  Result := TPascalPreprocessor.EditorOptions(Defines, FileName, ResolveInclude);
+  inherited Create;
+  FRules := ARules;
+  FProject := AProject;
+  FSource := ASource;
 end;
 
 { TFileChecker }
@@ -460,14 +453,7 @@ end;
 
 class function TFileChecker.SourceOf(const ASource: TCheckSourceFunc; const AFileName: string): TCheckSource;
 begin
-  if Assigned(ASource) then
-  begin
-    Result := ASource(AFileName);
-  end
-  else
-  begin
-    Result := TCheckSource.Default;
-  end;
+  Result := TPascalSources.ForFile(ASource, AFileName);
 end;
 
 class function TFileChecker.ProjectOf(const AProject: TCheckProjectFunc; const AFileName: string): TCheckProject;
@@ -500,7 +486,7 @@ begin
   end;
   // Baum nur aus den aktiven Zweigen wie im Editor: Inaktive Zweige erzeugen keine Syntaxfehler und keine
   // Regeltreffer.
-  mTree := TSyntaxTreeCache.ParseActive(AText, AOrigin.Source.Options, nil, mProcessed);
+  mTree := TSyntaxTreeCache.ParseActive(AText, TPascalPreprocessor.SourceOptions(AOrigin.Source), nil, mProcessed);
   try
     AScopes := TFindingScopes.FromTree(mTree);
     // Der Baum enthält nur die aktiven Zweige: Inaktive erzeugen keine Syntaxfehler.

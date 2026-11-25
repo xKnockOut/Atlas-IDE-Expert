@@ -63,9 +63,10 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.TypeComments,
-  Atlas.Common.Editing.MethodOrder;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Common.Pascal.TypeComments,
+  Atlas.Common.Editing.MethodOrder,
+  Atlas.Tests.SourceText;
 
 const
   cKopf =
@@ -139,7 +140,7 @@ begin
   finally
     mTree.Free;
   end;
-  Result := TChangeSignature.ApplyEdits(AText, AResult.Edits);
+  Result := TTextChanges.Apply(AText, AResult.Edits);
 end;
 
 function Placed(const ABefore, AText: string; out AResult: TMethodOrderResult): string;
@@ -152,19 +153,7 @@ begin
   finally
     mTree.Free;
   end;
-  Result := TChangeSignature.ApplyEdits(AText, AResult.Edits);
-end;
-
-function ParsesClean(const AText: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TPascalParser.Parse(AText);
-  try
-    Result := Length(mTree.Diagnostics) = 0;
-  finally
-    mTree.Free;
-  end;
+  Result := TTextChanges.Apply(AText, AResult.Edits);
 end;
 
 function Count(const AText, APart: string): Integer;
@@ -192,7 +181,7 @@ begin
   mDone := Arranged(mText, TMethodPlacement.Declaration, mOrder);
   // Freie Routine und Region bleiben, TKunde vor TAussen vor TAussen.TInnen.
   Assert.AreEqual(cKopf + cSpeichernZahl + cSpeichernText + cHilfe + cNeu + cLaden + cMachen + cLauf + cEnde, mDone);
-  Assert.IsTrue(ParsesClean(mDone), 'Ergebnis parst');
+  Assert.IsTrue(TTestSource.Parses(mDone), 'Ergebnis parst');
   for mPart in TArray<string>.Create(cMachen, cSpeichernText, cHilfe, cNeu, cLaden, cLauf, cSpeichernZahl) do
   begin
     Assert.AreEqual(1, Count(mDone, mPart), 'derselbe Rumpf genau einmal');
@@ -397,7 +386,7 @@ begin
   finally
     mTree.Free;
   end;
-  Result := TChangeSignature.ApplyEdits(AText, mOrder.Edits);
+  Result := TTextChanges.Apply(AText, mOrder.Edits);
 end;
 
 function PlacedWith(const ABefore, AText: string; const AOptions: TMethodOrderOptions): string;
@@ -411,7 +400,7 @@ begin
   finally
     mTree.Free;
   end;
-  Result := TChangeSignature.ApplyEdits(AText, mOrder.Edits);
+  Result := TTextChanges.Apply(AText, mOrder.Edits);
 end;
 
 procedure TMethodOrderTests.GroupsLifecycleAccessorsOverrides;
@@ -452,7 +441,7 @@ begin
   mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
   Assert.AreEqual(cFooKopf + #10'{ TFoo }'#10 + Body('procedure TFoo.A') + #10'{ TBar }'#10 +
     Body('procedure TBar.X') + cEnde, mDone);
-  Assert.IsTrue(ParsesClean(mDone));
+  Assert.IsTrue(TTestSource.Parses(mDone));
 end;
 
 procedure TMethodOrderTests.RegionMovesWithItsType;
@@ -516,7 +505,7 @@ begin
   mText := cFooKopf + Body('procedure TFoo.C') + cEintrag + Body('procedure TFoo.B') + cA + cEnde;
   mDone := ArrangedWith(mText, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
   Assert.AreEqual(cFooKopf + Body('procedure TFoo.B') + cEintrag + cA + Body('procedure TFoo.C') + cEnde, mDone);
-  Assert.IsTrue(ParsesClean(mDone));
+  Assert.IsTrue(TTestSource.Parses(mDone));
   // Ein gleichnamiger Aufzählungswert weiter oben hebt die Schranke der Routine nicht auf.
   mText := cFooKopf + #10'{$SCOPEDENUMS ON}'#10'type'#10'  TArt = (Hilfe, Anders);'#10'{$SCOPEDENUMS OFF}'#10 +
     Body('procedure TFoo.C') + cHilfe + cB + cEnde;

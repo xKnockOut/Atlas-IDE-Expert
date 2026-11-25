@@ -191,6 +191,14 @@
                 "description": "Nur architecture-role-import: erste Namenssegmente der Host-Units ohne Präfix. Vorgabe: Foundation, Core, Shell, Adapters, Platform.",
                 "x-description-en": "Only architecture-role-import: first name segments of host units without prefix. Default: Foundation, Core, Shell, Adapters, Platform."
               },
+              "hostedFeatures": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Nur architecture-role-import und architecture-contract-content: Hosted-Features der Anwendung, erstes Namenssegment ohne Präfix (Feature.Rolle.Sache). Sie importieren nur Foundation und Platform-Features, nie einander. Vorgabe: keine.",
+                "x-description-en": "Only architecture-role-import and architecture-contract-content: hosted features of the application, first name segment without prefix (Feature.Role.Thing). They import only Foundation and platform features, never each other. Default: none."
+              },
               "allow": {
                 "type": "array",
                 "items": {
@@ -457,6 +465,66 @@
                 "default": ["Sleep", "WaitFor", "WaitForSingleObject", "WaitForMultipleObjects", "Wait"],
                 "description": "Nur blocking-call-in-main-thread: Aufrufe, die blockieren. Andere Namen werden unabhängig von ihren Argumenten gemeldet.",
                 "x-description-en": "Only blocking-call-in-main-thread: calls that block. Other names are reported regardless of their arguments."
+              },
+              "guards": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur ota-entry-without-guard (#2751): Schutzroutinen, die den Rumpf eines Einstiegspunkts absichern, z. B. \"TAtlasGuard.Run\"; es zählt der Text vor einer Klammer. Die Korrektur nimmt den ersten Eintrag, mit Klammer als Anfang des Aufrufs, z. B. \"TAtlasGuard.Run(TAtlasFeature.Menu, \".",
+                "x-description-en": "Only ota-entry-without-guard (#2751): guard routines that protect the body of an entry point, e.g. \"TAtlasGuard.Run\"; the text before a parenthesis counts. The quick fix uses the first entry, with a parenthesis as the beginning of the call, e.g. \"TAtlasGuard.Run(TAtlasFeature.Menu, \"."
+              },
+              "allowExceptionUse": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur catch-all-without-raise: Ein Handler on E: Exception do, der seine Ausnahme liest (E.Message an den Aufrufer, E an eine Routine), reicht den Fehler weiter und gilt als behandelt.",
+                "x-description-en": "Only catch-all-without-raise: a handler on E: Exception do that reads its exception (E.Message to the caller, E to a routine) passes the error on and counts as handled."
+              },
+              "reporters": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur catch-all-without-raise: Aufrufe, die eine Ausnahme melden; ein Block, der einen davon enthält, gilt als behandelt. Verglichen wird der Name mit Qualifizierern, * und ? als Platzhalter, z. B. [\"TAtlasGuard.*\", \"*Logger.Error\"].",
+                "x-description-en": "Only catch-all-without-raise: calls that report an exception; a block that contains one of them counts as handled. The name with its qualifiers is compared, * and ? as wildcards, e.g. [\"TAtlasGuard.*\", \"*Logger.Error\"]."
+              },
+              "interfaces": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["IOTA*Notifier*", "INTA*Notifier*", "IOTA*Wizard*", "IOTAKeyboardBinding", "INTACustomDrawMessage", "IOTALocalMenu", "IOTAProjectManagerMenu"],
+                "description": "Nur ota-entry-without-guard (#2751): Interfaces, deren Methoden die IDE aufruft (Einstiegspunkte), Muster mit * und ?.",
+                "x-description-en": "Only ota-entry-without-guard (#2751): interfaces whose methods the IDE calls (entry points), patterns with * and ?."
+              },
+              "workCalls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Sleep", "WaitFor*", "CreateProcess", "ShellExecute*", "Application.CreateForm", "ShowModal", "ShowMessage", "MessageDlg", "TTask.Run", "TThread.CreateAnonymousThread"],
+                "description": "Nur register-does-work (#2752): Aufrufe, die in Register als Arbeit gelten; mit Punkt der ganze Aufruf (TTask.Run), sonst der letzte Namensteil; Muster mit * und ?.",
+                "x-description-en": "Only register-does-work (#2752): calls that count as work in Register; with a dot the whole call (TTask.Run), otherwise the last name part; patterns with * and ?."
+              },
+              "workClasses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["TTimer", "TThread", "TForm", "THTTPClient", "TIdHTTP"],
+                "description": "Nur register-does-work (#2752): Klassen, deren Erzeugen in Register als Arbeit gilt, samt Nachfahren.",
+                "x-description-en": "Only register-does-work (#2752): classes whose creation counts as work in Register, including their descendants."
+              },
+              "entries": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": ["Register"],
+                "description": "Nur register-does-work (#2752): Einstiegsroutinen, z. B. auch \"*.RegisterModule\"; mit Punkt der ganze Name, sonst nur freie Routinen.",
+                "x-description-en": "Only register-does-work (#2752): entry routines, e.g. also \"*.RegisterModule\"; with a dot the whole name, otherwise only free routines."
               },
               "maxSleepMs": {
                 "type": "integer",
@@ -2239,6 +2307,18 @@
           "x-description-en": "/sortuses also removes units unused according to the index. Units with initialization or finalization and those from usesKeep stay.",
           "x-issue": "#297"
         },
+        "sortUsesOrder": {
+          "type": "string",
+          "enum": [
+            "origin",
+            "alphabetic",
+            "namespace"
+          ],
+          "default": "origin",
+          "description": "Reihenfolge von /sortuses: \"origin\" nach Herkunft gegliedert (System, Delphi-Komponenten, VCL/FMX, Bibliothek, Packages der Projektgruppe, Projekt; Darstellung nach usesGroupStyle), \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert.",
+          "x-description-en": "Order of /sortuses: \"origin\" grouped by origin (System, Delphi components, VCL/FMX, library, packages of the project group, project; layout as in usesGroupStyle), \"alphabetic\" alphabetically, \"namespace\" grouped by namespace.",
+          "x-issue": "#2794"
+        },
         "enumHelper": {
           "type": "boolean",
           "default": true,
@@ -2269,15 +2349,30 @@
         true,
         false,
         "alphabetic",
-        "namespace"
+        "namespace",
+        "origin"
       ],
       "default": false,
-      "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units.",
-      "x-description-en": "\"Organize uses\" (source.organizeImports, e.g. on save) sorts the uses: true or \"alphabetic\" alphabetically, \"namespace\" grouped by namespace (System, Vcl, ... and units without namespace last). Caution: the order determines the initialization of the units.",
+      "description": "\"uses aufräumen\" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder \"alphabetic\" alphabetisch, \"namespace\" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt), \"origin\" nach Herkunft gegliedert (System, Delphi-Komponenten, VCL/FMX, Bibliothek, Packages der Projektgruppe, Projekt; Darstellung nach usesGroupStyle). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units.",
+      "x-description-en": "\"Organize uses\" (source.organizeImports, e.g. on save) sorts the uses: true or \"alphabetic\" alphabetically, \"namespace\" grouped by namespace (System, Vcl, ... and units without namespace last), \"origin\" by origin (System, Delphi components, VCL/FMX, library, packages of the project group, project; layout as in usesGroupStyle). Caution: the order determines the initialization of the units.",
       "x-scope": "project",
       "x-page": "Eingabehilfen",
       "x-control": "Auswahl",
-      "x-issue": "#182, #284"
+      "x-issue": "#182, #284, #2794"
+    },
+    "usesGroupStyle": {
+      "type": "string",
+      "enum": [
+        "comments",
+        "lines"
+      ],
+      "default": "comments",
+      "description": "Darstellung, wenn /sortuses oder \"uses aufräumen\" nach Herkunft gliedert: \"comments\" schreibt über jede Gruppe einen Kommentar wie { System }, \"lines\" beginnt jede Gruppe nur in einer neuen Zeile. Bei nur einer Gruppe entfällt der Kommentar.",
+      "x-description-en": "Layout when /sortuses or \"Organize uses\" groups by origin: \"comments\" writes a comment such as { System } above each group, \"lines\" only starts each group on a new line. With a single group there is no comment.",
+      "x-scope": "project",
+      "x-page": "Eingabehilfen",
+      "x-control": "Auswahl",
+      "x-issue": "#2794"
     },
     "usesKeep": {
       "type": "array",
@@ -3352,8 +3447,14 @@
         "folder": {
           "type": "string",
           "default": "",
-          "description": "Ordner für neue Testunits relativ zur Wurzel; leer: Ordner des Testprojekts.",
-          "x-description-en": "Folder for new test units relative to the root; empty: folder of the test project."
+          "description": "Ordner für neue Testunits relativ zur Wurzel; leer: Ordner des Testprojekts. {path} steht für den Ordner der getesteten Unit unter testUnits.sourceRoot, {namespace} für ihren Namensraum als Ordner; z. B. \"Tests/{path}\" spiegelt den Aufbau des Hauptprojekts (Source/Core/Foo.pas → Tests/Core/Foo.Tests.pas).",
+          "x-description-en": "Folder for new test units relative to the root; empty: folder of the test project. {path} stands for the folder of the tested unit below testUnits.sourceRoot, {namespace} for its namespace as folders; e.g. \"Tests/{path}\" mirrors the layout of the main project (Source/Core/Foo.pas → Tests/Core/Foo.Tests.pas)."
+        },
+        "sourceRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Quellordner, von dem aus {path} in testUnits.folder gerechnet wird, relativ zur Wurzel, z. B. \"Source\"; mehrere mit ; getrennt (der längste passende gilt); leer: die Wurzel.",
+          "x-description-en": "Source folder from which {path} in testUnits.folder is computed, relative to the root, e.g. \"Source\"; several separated by ; (the longest matching one applies); empty: the root."
         },
         "project": {
           "type": "string",
@@ -3365,7 +3466,7 @@
       "x-scope": "project",
       "x-page": "Projekt",
       "x-control": "Textfeld, Dateiauswahl",
-      "x-issue": "#274"
+      "x-issue": "#274, #2800"
     },
     "tests": {
       "type": "object",
@@ -3575,6 +3676,29 @@
           "x-page": "MCP",
           "x-control": "Kontrollkästchen",
           "x-issue": "#2603"
+        },
+        "confirm": {
+          "type": "boolean",
+          "default": true,
+          "description": "Schreibende Werkzeuge fragen vor riskanten Schritten nach: rename_symbol, ob auch die erschlossenen Stellen umbenannt werden sollen, fix_findings vor dem Schreiben in fünf oder mehr Dateien. Gefragt wird über den Client, wenn er Rückfragen (elicitation) anbietet, sonst im Fenster „KI-Assistent fragt“ der IDE (assistants.questionsInIde); ohne beides wie bisher ohne Rückfrage. false: nie nachfragen.",
+          "x-description-en": "Writing tools ask before risky steps: rename_symbol whether the inferred places should be renamed too, fix_findings before writing to five or more files. The question goes through the client when it offers questions (elicitation), otherwise to the window “AI assistant asks” in the IDE (assistants.questionsInIde); without either as before without asking. false: never ask.",
+          "x-page": "MCP",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#2620"
+        },
+        "openProjects": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always",
+            "never"
+          ],
+          "default": "ask",
+          "description": "debug_start und build_project mit einem Projekt, das in keiner laufenden IDE offen ist: ask fragt den Menschen (über den Client, wenn er Rückfragen anbietet, sonst im Fenster „KI-Assistent fragt“ der IDE) und öffnet das Projekt nach Zustimmung in der IDE mit dem aktiven Projekt unter dem Arbeitsordner; always öffnet ohne Rückfrage; never lehnt ab wie bisher. Ein offenes Projekt macht das Plugin vorher immer zum aktiven der Projektgruppe.",
+          "x-description-en": "debug_start and build_project with a project that is not open in any running IDE: ask asks the human (through the client when it offers questions, otherwise in the window “AI assistant asks” in the IDE) and after consent opens the project in the IDE whose active project is below the working folder; always opens without asking; never refuses as before. An open project is always made the active project of the group first by the plugin.",
+          "x-page": "MCP",
+          "x-control": "Auswahl",
+          "x-issue": "#2895"
         },
         "promptLanguage": {
           "type": "string",

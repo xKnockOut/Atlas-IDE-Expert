@@ -15,7 +15,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Modules.Contract,
-  Atlas.IDE.Welcome.Commands;
+  Atlas.IDE.Welcome.Commands,
+  Atlas.IDE.Welcome.Composition.Areas;
 
 type
   TAtlasIdeWelcomeStartup = class
@@ -24,15 +25,18 @@ type
     class procedure Stop; static;
     /// <summary>Die laufende Seite; nil vor Start und nach Stop.</summary>
     class function Current: TAtlasIdeWelcome; static;
+    /// <summary>Quellen der Bereiche der laufenden Seite; nil vor Start und nach Stop. Seit #1443 hat die Seite
+    /// selbst nur die abstrakte Sicht.</summary>
+    class function Areas: TAtlasIdeWelcomeSources; static;
   end;
 
 implementation
 
 uses
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Welcome.Sections,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.IDE.Contracts.Tests,
@@ -42,7 +46,6 @@ uses
   Atlas.UI.Welcome.Contract,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Layouts,
-  Atlas.IDE.Welcome.Composition.Areas,
   Atlas.IDE.Welcome.Composition.Sources,
   Atlas.IDE.Welcome.Composition.TileProjects,
   Atlas.IDE.Welcome.Adapters.Layouts,
@@ -253,6 +256,11 @@ end;
 class function TAtlasIdeWelcomeStartup.Current: TAtlasIdeWelcome;
 begin
   Result := GWelcome;
+end;
+
+class function TAtlasIdeWelcomeStartup.Areas: TAtlasIdeWelcomeSources;
+begin
+  Result := CurrentAreas;
 end;
 
 end.

@@ -125,7 +125,8 @@ uses
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Options,
   Atlas.Common.Projects.DprojEditor,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DirectiveNames,
@@ -134,7 +135,8 @@ uses
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Semantics.FreeRoutineMembers,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.Lexer;
 
 {$SCOPEDENUMS ON}
 
@@ -282,7 +284,7 @@ end;
 function NamesCheckable(const AContext: TRuleContext): Boolean;
 begin
   Result := (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) and TUnresolvedNames.Available(AContext.Index);
-  Result := Result and TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
+  Result := Result and TUnresolvedNames.UsesKnown(AContext.Index, TPascalUses.UsedUnits(AContext.Tree.Tokens),
     AContext.Namespaces, AContext.EnsureUnit);
 end;
 
@@ -344,7 +346,7 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
-  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  mUsed := TPascalUses.UsedUnits(AContext.Tree.Tokens);
   mComplete := TUnresolvedNames.Available(AContext.Index) and TUnresolvedNames.UsesKnown(AContext.Index, mUsed,
     AContext.Namespaces, AContext.EnsureUnit);
   mReported := nil;
@@ -393,17 +395,6 @@ function TUsesUnitNotFoundRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('uses-unit-not-found', TRuleSeverity.Error,
     cTexts[TUnresolvedText.UsesTitle].Text);
-end;
-
-/// <summary>Text eines String-Literals ohne Hochkommas ('' → ').</summary>
-function Unquoted(const AText: string): string;
-begin
-  Result := AText;
-  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
-  begin
-    Result := Copy(Result, 2, Length(Result) - 2);
-  end;
-  Result := StringReplace(Result, '''''', '''', [rfReplaceAll]);
 end;
 
 /// <summary>Beginnt der Quelltext mit "package"? contains und requires gibt es nur dort. In einer Unit sind es
@@ -521,13 +512,19 @@ var
   mToken: TPascalToken;
 begin
   mToken := FTokens[AIndex];
-  if mToken.IsKeyword('in') then
+  // Ein reserviertes Wort hinter dem Punkt (Kunden.Inline) gehört zum Namen; unit-name-conflict meldet es.
+  if not FDraft.AfterIn and (mToken.Kind = TPascalTokenKind.Keyword) and EndsStr('.', FDraft.Name) then
+  begin
+    FDraft.Last := AIndex;
+    FDraft.Name := FDraft.Name + mToken.Text;
+  end
+  else if mToken.IsKeyword('in') then
   begin
     FDraft.AfterIn := True;
   end
   else if FDraft.AfterIn and (mToken.Kind = TPascalTokenKind.StringLiteral) then
   begin
-    FDraft.InPath := Unquoted(mToken.Text);
+    FDraft.InPath := TPascalLexer.UnquotedString(mToken.Text);
   end
   else if not FDraft.AfterIn and ((mToken.Kind = TPascalTokenKind.Identifier) or mToken.IsSymbol('.')) then
   begin
@@ -778,7 +775,7 @@ begin
   Result := nil;
   for mUnitName in AUnits do
   begin
-    if TUsesClauses.AddUnit(ATokens, AOffset, mUnitName, ALineBreak, mEdit) then
+    if TPascalUsesEdits.AddUnit(ATokens, AOffset, mUnitName, ALineBreak, mEdit) then
     begin
       Result := Result + [TRuleFix.Create(cTexts[TUnresolvedText.AddUses].Fmt([mUnitName]), [mEdit])];
     end;
@@ -858,22 +855,6 @@ end;
 function InCondition(const ALines: TArray<Boolean>; ALine: Integer): Boolean;
 begin
   Result := (ALine <= High(ALines)) and ALines[ALine];
-end;
-
-/// <summary>Mit Include-Dateien kann ein Name dort deklariert sein: dann nur mittlere Sicherheit.</summary>
-function IncludeConfidence(const ATokens: TArray<TPascalToken>): TRuleConfidence;
-var
-  mToken: TPascalToken;
-begin
-  Result := TRuleConfidence.High;
-  for mToken in ATokens do
-  begin
-    if (mToken.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', mToken.Text) or
-      StartsText('{$INCLUDE ', mToken.Text)) then
-    begin
-      Result := TRuleConfidence.Medium;
-    end;
-  end;
 end;
 
 /// <summary>Kandidaten ohne die, die eine andere Kandidatin im interface einbinden und den Typ weiterreichen
@@ -1102,7 +1083,7 @@ var
 begin
   FEntries := TUsesUnitNotFoundRule.Entries(FContext.Tree.Tokens);
   FLines := ConditionalLines(FContext.Tree.Tokens);
-  FOwn := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  FOwn := TPascalUses.OwnName(FContext.Tree.Tokens);
   ReportSelfUse;
   if FContext.Units = nil then
   begin
@@ -1192,35 +1173,10 @@ begin
   end;
 end;
 
-/// <summary>Offset ab 0 des ersten Tokens an APosition; 0 ohne.</summary>
-function OffsetAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mToken: TPascalToken;
-begin
-  for mToken in ATokens do
-  begin
-    if (mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character = APosition.Character) then
-    begin
-      Exit(mToken.Offset);
-    end;
-  end;
-  Result := 0;
-end;
-
 /// <summary>Kennt der Compiler das Attribut ABare (oder ABareAttribute) selbst?</summary>
 function CompilerAttribute(const ABare: string): Boolean;
 begin
   Result := MatchText(ABare, cCompilerAttributes) or MatchText(ABare + 'Attribute', cCompilerAttributes);
-end;
-
-/// <summary>Knoten mit dem Namen eines Attributs (bei Test(1) der Name vor der Klammer).</summary>
-function AttributeNameNode(AItem: TSyntaxNode): TSyntaxNode;
-begin
-  Result := AItem;
-  if (AItem.Kind = TSyntaxKind.Call) and (AItem.ChildCount > 0) then
-  begin
-    Result := AItem[0];
-  end;
 end;
 
 /// <summary>Units, die das Attribut ABare deklarieren; für DUnitX-Attribute ohne Index DUnitX.TestFramework.
@@ -1356,7 +1312,7 @@ var
   mUnits: TArray<string>;
   mBare: string;
 begin
-  mNameNode := AttributeNameNode(AItem);
+  mNameNode := TAttributes.NameNode(AItem);
   if not (mNameNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
     not TAttributes.At(FContext.Tree, mNameNode.StartPos, mUse) then
   begin
@@ -1369,7 +1325,7 @@ begin
   end;
   mUnits := AttributeUnits(FContext.Index, mBare);
   FReport.Add(mUse.NameRange, AttributeMessage(mUse.Name, mBare, CodeAt(mNameNode.StartOffset), mUnits), FLevel,
-    UsesFixes(FContext.Tree.Tokens, OffsetAt(FContext.Tree.Tokens, mNameNode.StartPos), mUnits, FLineBreak));
+    UsesFixes(FContext.Tree.Tokens, TokenOffsetAt(FContext.Tree.Tokens, mNameNode.StartPos), mUnits, FLineBreak));
 end;
 
 procedure TUnresolvedAttributeCheck.CheckAttribute(ANode: TSyntaxNode);
@@ -1783,8 +1739,8 @@ procedure TUnresolvedTypeCheck.Run;
 begin
   FLines := ConditionalLines(FContext.Tree.Tokens);
   FLineBreak := TTextLines.LineBreakOf(FContext.Text);
-  FOwnUnit := TUsesClauses.OwnName(FContext.Tree.Tokens);
-  FUsed := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  FOwnUnit := TPascalUses.OwnName(FContext.Tree.Tokens);
+  FUsed := TPascalUses.UsedUnits(FContext.Tree.Tokens);
   // Mit Include-Dateien kann der Typ dort deklariert sein.
   FLevel := IncludeConfidence(FContext.Tree.Tokens);
   Collect(FContext.Tree.Root);

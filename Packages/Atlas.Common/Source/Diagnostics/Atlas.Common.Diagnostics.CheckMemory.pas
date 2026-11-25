@@ -91,10 +91,17 @@ end;
 
 procedure TCheckMemoryTrack.TSampler.Execute;
 begin
-  while not FOwner.FStopping do
-  begin
-    FOwner.Sample;
-    FOwner.FWake.WaitFor(TCheckMemoryTrack.cSampleMs);
+  try
+    while not FOwner.FStopping do
+    begin
+      FOwner.Sample;
+      FOwner.FWake.WaitFor(TCheckMemoryTrack.cSampleMs);
+    end;
+  except
+    // Scheitert eine Messung, endet nur das Messen im Hintergrund; der Gipfel bleibt
+    // der bisher gemessene, die festen Zeitpunkte messen weiter selbst.
+    on Exception do
+      Exit;
   end;
 end;
 

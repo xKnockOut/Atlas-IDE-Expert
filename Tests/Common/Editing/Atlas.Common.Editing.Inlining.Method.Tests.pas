@@ -33,8 +33,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.Inlining.Types,
   Atlas.Common.Editing.Inlining.Syntax,
   Atlas.Common.Editing.Inlining.Method;
@@ -72,7 +72,7 @@ begin
       TInlineCallee.Create(mSource, mRoutines[0]), TInlineOptions.Default, mAction, AReason) then
     begin
       ATitle := mAction.Title;
-      Result := TChangeSignature.ApplyEdits(AText, mAction.Edits);
+      Result := TTextChanges.Apply(AText, mAction.Edits);
     end;
   finally
     mTree.Free;

@@ -52,7 +52,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Forms.Changes,
   Atlas.Text.Lines;
 

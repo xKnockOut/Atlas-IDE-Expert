@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Registration.Tests;
 
 // Tests der Anmeldung eingebauter Regeln nach Themen (Atlas.Common.Rules.Builtin.Registration.Declarations,
-// .Statements, .Frameworks und .Ownership):
+// .Statements, .Types, .Compiler, .Frameworks und .Ownership):
 // jede Gruppe meldet Regeln an, keine Regel steht doppelt, und BuiltinRules liefert genau die Regeln aller
 // Gruppen in derselben Reihenfolge.
 
@@ -20,6 +20,8 @@ type
     procedure RuleIdsAreUnique;
     [Test]
     procedure BuiltinRulesKeepsGroupOrder;
+    [Test]
+    procedure RulesStandInTheirTheme;
   end;
 
 implementation
@@ -32,6 +34,8 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Registration.Declarations,
   Atlas.Common.Rules.Builtin.Registration.Statements,
+  Atlas.Common.Rules.Builtin.Registration.Types,
+  Atlas.Common.Rules.Builtin.Registration.Compiler,
   Atlas.Common.Rules.Builtin.Registration.Frameworks,
   Atlas.Common.Rules.Builtin.Registration.Ownership;
 
@@ -74,6 +78,24 @@ begin
     end);
 end;
 
+function TypesGroup: TArray<string>;
+begin
+  Result := GroupIds(
+    procedure(const ARegistry: TRuleRegistry)
+    begin
+      RegisterBuiltinTypeRules(ARegistry);
+    end);
+end;
+
+function CompilerGroup: TArray<string>;
+begin
+  Result := GroupIds(
+    procedure(const ARegistry: TRuleRegistry)
+    begin
+      RegisterBuiltinCompilerRules(ARegistry);
+    end);
+end;
+
 function FrameworksGroup: TArray<string>;
 begin
   Result := GroupIds(
@@ -109,6 +131,8 @@ procedure TBuiltinRegistrationTests.EveryGroupRegistersRules;
 begin
   Assert.IsTrue(Length(DeclarationsGroup) > 0, 'Declarations');
   Assert.IsTrue(Length(StatementsGroup) > 0, 'Statements');
+  Assert.IsTrue(Length(TypesGroup) > 0, 'Types');
+  Assert.IsTrue(Length(CompilerGroup) > 0, 'Compiler');
   Assert.IsTrue(Length(FrameworksGroup) > 0, 'Frameworks');
   Assert.IsTrue(Length(OwnershipGroup) > 0, 'Ownership');
 end;
@@ -134,9 +158,35 @@ procedure TBuiltinRegistrationTests.BuiltinRulesKeepsGroupOrder;
 var
   mExpected, mActual: TArray<string>;
 begin
-  mExpected := DeclarationsGroup + StatementsGroup + FrameworksGroup + OwnershipGroup;
+  mExpected := DeclarationsGroup + StatementsGroup + TypesGroup + CompilerGroup + FrameworksGroup + OwnershipGroup;
   mActual := AllIds;
   Assert.AreEqual(string.Join(',', mExpected), string.Join(',', mActual));
+end;
+
+/// <summary>Steht AId in AIds?</summary>
+function HasId(const AIds: TArray<string>; const AId: string): Boolean;
+var
+  mId: string;
+begin
+  Result := False;
+  for mId in AIds do
+  begin
+    if mId = AId then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure TBuiltinRegistrationTests.RulesStandInTheirTheme;
+begin
+  // Breite von Zahl- und Stringtypen gehört zu den Typen, nicht zu den Konstanten der Deklarationen.
+  Assert.IsTrue(HasId(TypesGroup, 'narrowing-assignment'), 'narrowing-assignment');
+  Assert.IsTrue(HasId(TypesGroup, 'signed-unsigned-mix'), 'signed-unsigned-mix');
+  Assert.IsTrue(HasId(TypesGroup, 'string-length-limit'), 'string-length-limit');
+  Assert.IsFalse(HasId(DeclarationsGroup, 'narrowing-assignment'), 'nicht bei den Deklarationen');
+  Assert.IsTrue(HasId(CompilerGroup, 'bidi-control'), 'Unicode bei Compiler und Quelltext');
+  Assert.IsFalse(HasId(StatementsGroup, 'bidi-control'), 'nicht bei den Anweisungen');
 end;
 
 initialization

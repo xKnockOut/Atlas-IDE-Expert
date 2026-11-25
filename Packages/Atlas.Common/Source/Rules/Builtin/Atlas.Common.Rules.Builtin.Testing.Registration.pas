@@ -42,9 +42,9 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Testing.Classes,
+  Atlas.Common.Testing.Classes,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -635,7 +635,7 @@ var
   mCheck: TRegistrationCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (AContext.Tree.Root.Kind <> TSyntaxKind.UnitFile) or
-    not ContainsText(AContext.Text, 'Test') or not TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
+    not ContainsText(AContext.Text, 'Test') or not TPascalUses.IsTestUnit(AContext.Tree.Tokens) then
   begin
     Exit;
   end;

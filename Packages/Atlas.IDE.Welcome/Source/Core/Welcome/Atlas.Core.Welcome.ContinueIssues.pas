@@ -110,7 +110,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Text.Json,
-  Atlas.Core.Projects.Summary.Json,
+  Atlas.Plugin.Projects.Summary.Json,
   Atlas.Core.Welcome.Continue;
 
 const
@@ -164,20 +164,10 @@ begin
   end;
 end;
 
-/// <summary>AEntry nach Zeit einsortieren, neueste zuerst; bei Gleichstand bleibt die Reihenfolge (stabil).</summary>
-procedure InsertEntry(var AFound: TAtlasIssueWorkEntries; const AEntry: TAtlasIssueWorkEntry);
-var
-  mIndex, mPosition: Integer;
+/// <summary>Arbeitsstand von AEntry für TAtlasWorkOrder.</summary>
+function IssueStateOf(const AEntry: TAtlasIssueWorkEntry): TAtlasWorkState;
 begin
-  mPosition := Length(AFound);
-  for mIndex := High(AFound) downto 0 do
-  begin
-    if AEntry.State.At > AFound[mIndex].State.At then
-    begin
-      mPosition := mIndex;
-    end;
-  end;
-  Insert(AEntry, AFound, mPosition);
+  Result := AEntry.State;
 end;
 
 /// <summary>Einträge aus dem Abschnitt, neueste zuerst; Einträge ohne Kennung oder Objekt fallen weg.</summary>
@@ -207,7 +197,7 @@ begin
     mEntry.Branch := Trim(TJsonRead.Text(TJSONObject(mPair.JsonValue), cBranch));
     if TAtlasWelcomeContinue.FromJson(mPair.JsonValue.ToJSON, mEntry.State) then
     begin
-      InsertEntry(Result, mEntry);
+      TAtlasWorkOrder.InsertNewestFirst<TAtlasIssueWorkEntry>(Result, mEntry, IssueStateOf);
     end;
   end;
 end;

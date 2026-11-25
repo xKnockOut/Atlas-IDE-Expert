@@ -32,8 +32,8 @@ uses
   Atlas.Core.EditorToolbar.ReturnPoint,
   Atlas.UI.EditorToolbar.Strings,
   Atlas.UI.Commands.Palette,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Foundation.Host;

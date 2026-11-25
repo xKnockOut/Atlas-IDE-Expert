@@ -1,5 +1,6 @@
 ﻿package Atlas.Text;
 
+{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -54,6 +55,7 @@ contains
   Atlas.Text.Fuzzy in 'Source\Fuzzy\Atlas.Text.Fuzzy.pas',
   Atlas.Text.Files in 'Source\Files\Atlas.Text.Files.pas',
   Atlas.Text.Locked in 'Source\Locked\Atlas.Text.Locked.pas',
+  Atlas.Text.Reporting in 'Source\Reporting\Atlas.Text.Reporting.pas',
   Atlas.Text.Csv in 'Source\Csv\Atlas.Text.Csv.pas',
   Atlas.Text.IndexCache in 'Source\IndexCache\Atlas.Text.IndexCache.pas',
   Atlas.Text.Names in 'Source\Names\Atlas.Text.Names.pas',
@@ -66,6 +68,7 @@ contains
   Atlas.Text.CommandLine in 'Source\CommandLine\Atlas.Text.CommandLine.pas',
   Atlas.Text.DebugDisplay in 'Source\DebugDisplay\Atlas.Text.DebugDisplay.pas',
   Atlas.Text.DUnitX in 'Source\DUnitX\Atlas.Text.DUnitX.pas',
+  Atlas.Text.DUnitX.CommandLine in 'Source\DUnitX\Atlas.Text.DUnitX.CommandLine.pas',
   Atlas.Text.TestResults in 'Source\TestResults\Atlas.Text.TestResults.pas',
   Atlas.Text.McpStatistics in 'Source\McpStatistics\Atlas.Text.McpStatistics.pas',
   Atlas.Text.TestRunFile in 'Source\TestResults\Atlas.Text.TestRunFile.pas',

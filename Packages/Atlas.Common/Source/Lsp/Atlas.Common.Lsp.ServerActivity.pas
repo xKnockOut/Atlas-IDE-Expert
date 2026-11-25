@@ -14,7 +14,7 @@ uses
   System.JSON,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Common.Lsp.StatusFile;
+  Atlas.Common.Diagnostics.StatusFile;
 
 type
   /// <summary>Ausführlicher Status des LSP-Servers: Wurzeln der Arbeitsbereiche, Status (gehört dem Aufrufer, nil
@@ -90,6 +90,14 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Locked;
+
+const
+  /// <summary>Anfangsgröße der Tabelle laufender Anfragen: je Thread eine, gleichzeitig selten mehr als die Zahl
+  /// der Arbeitsthreads. So wächst sie im üblichen Betrieb nie und belegt je Anfrage nichts.</summary>
+  cRunsCapacity = 32;
+
 var
   /// <summary>Die Aktivität des Prozesses; lebt von der Initialisierung bis zur Finalisierung der Unit.</summary>
   GShared: TServerActivity;
@@ -99,17 +107,11 @@ var
 constructor TServerActivity.Create;
 begin
   inherited Create;
-  FLock := TObject.Create;
-  FDetailsLock := TObject.Create;
-  FRuns := TDictionary<TThreadID, TRun>.Create;
+  FLock := TAtlasSharedLock.New;
+  FDetailsLock := TAtlasSharedLock.New;
+  FRuns := TDictionary<TThreadID, TRun>.Create(cRunsCapacity);
   FStarted := Now;
   FEnabled := True;
-  // TMonitor legt seinen Datensatz beim ersten Enter an und hält ihn bis zur Freigabe: gleich hier anlegen, damit
-  // er bei Shared zur Unit-Initialisierung gehört und nicht der ersten Anfrage (bzw. dem ersten Test) zufällt.
-  System.TMonitor.Enter(FLock);
-  System.TMonitor.Exit(FLock);
-  System.TMonitor.Enter(FDetailsLock);
-  System.TMonitor.Exit(FDetailsLock);
 end;
 
 destructor TServerActivity.Destroy;
@@ -142,11 +144,15 @@ end;
 
 procedure TServerActivity.AddLongestRun(var AEntry: TServerStatusEntry; ANowTicks: UInt64);
 var
+  mPair: TPair<TThreadID, TRun>;
   mRun: TRun;
   mElapsed: Int64;
 begin
-  for mRun in FRuns.Values do
+  // Über die Paare statt über Values: Values legt eine Wertesammlung an, die das Wörterbuch bis zu seiner Freigabe
+  // behält.
+  for mPair in FRuns do
   begin
+    mRun := mPair.Value;
     Inc(AEntry.Running);
     mElapsed := 0;
     if ANowTicks > mRun.StartTicks then
@@ -204,12 +210,6 @@ begin
   System.TMonitor.Enter(FLock);
   try
     FRuns.Remove(TThread.CurrentThread.ThreadID);
-    // Ohne laufende Anfrage die Tabelle ganz leeren: Remove behält die beim ersten Eintrag gewachsene Tabelle,
-    // die bei Shared bis zum Programmende bliebe und als Leck der ersten Anfrage zählte.
-    if FRuns.Count = 0 then
-    begin
-      FRuns.Clear;
-    end;
     if AFailed then
     begin
       Inc(FErrors);

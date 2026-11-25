@@ -27,8 +27,8 @@ uses
   System.SysUtils,
   Vcl.Controls,
   Vcl.Forms,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Timing,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Diagnostics.Timing,
   Atlas.UI.Diagnostics.Strings,
   Atlas.UI.Diagnostics.TimingFrame;
 

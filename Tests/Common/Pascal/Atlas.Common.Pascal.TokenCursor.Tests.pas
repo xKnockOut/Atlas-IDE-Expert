@@ -59,6 +59,20 @@ type
     procedure MatchingParenInText;
     [Test]
     procedure CodeIndexesFindOffsetAndClosingParen;
+    [Test]
+    procedure AfterDotSkipsComments;
+    [Test]
+    procedure BracketDeltaCountsRoundAndSquare;
+    [Test]
+    procedure CodeTextLeavesOutComments;
+    [Test]
+    procedure SectionOffsetsFindBothKeywords;
+    [Test]
+    procedure TokenBeforeAndOffsetAtPosition;
+    [Test]
+    procedure NextUncommentedStopsAtDirectives;
+    [Test]
+    procedure NameUseOffsetsSkipsDeclaration;
   end;
 
 implementation
@@ -301,7 +315,7 @@ var
   mCursor: TTokenCursor;
 begin
   mCursor := TTokenCursor.Create(nil);
-  Assert.AreEqual(0, mCursor.Count);
+  Assert.AreEqual(0, Integer(mCursor.Count));
   Assert.AreEqual('', mCursor.At(0).Text);
   Assert.IsFalse(mCursor.Is_(0, 'begin'));
   Assert.AreEqual(0, mCursor.From(0));
@@ -480,6 +494,93 @@ begin
   Assert.AreEqual(5, CodeClosingParen(mTokens, mCode, 3));
   Assert.AreEqual(9, CodeClosingParen(mTokens, mCode, 7));
   Assert.AreEqual(-1, CodeClosingParen(mTokens, mCode, 8), 'nach b schließt nichts mehr auf');
+end;
+
+procedure TTokenCursorTests.AfterDotSkipsComments;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  mTokens := TPascalLexer.Tokenize('A. {x} B C');
+  Assert.IsTrue(AfterDot(mTokens, IndexOfText(CursorOf('A. {x} B C'), 'B')));
+  Assert.IsFalse(AfterDot(mTokens, IndexOfText(CursorOf('A. {x} B C'), 'C')));
+  Assert.IsFalse(AfterDot(mTokens, 0));
+  mTokens := nil;
+end;
+
+procedure TTokenCursorTests.BracketDeltaCountsRoundAndSquare;
+var
+  mTokens: TArray<TPascalToken>;
+  mDepth, mIndex: Integer;
+begin
+  mTokens := TPascalLexer.Tokenize('F(A[1], (B)) + C');
+  mDepth := 0;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    mDepth := mDepth + BracketDelta(mTokens[mIndex]);
+    Assert.IsTrue(mDepth >= 0);
+  end;
+  Assert.AreEqual(0, mDepth);
+  Assert.AreEqual(1, BracketDelta(mTokens[1]));
+  Assert.AreEqual(0, BracketDelta(mTokens[0]));
+  mTokens := nil;
+end;
+
+procedure TTokenCursorTests.CodeTextLeavesOutComments;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  mTokens := TPascalLexer.Tokenize('TList < {Kommentar} Integer >;');
+  Assert.AreEqual('TList<Integer>', CodeText(mTokens, 0, High(mTokens)));
+  Assert.AreEqual('', CodeText(mTokens, 1, 1));
+  mTokens := nil;
+end;
+
+procedure TTokenCursorTests.SectionOffsetsFindBothKeywords;
+var
+  mInterface, mImplementation: Integer;
+begin
+  SectionOffsets(TPascalLexer.Tokenize('unit U; interface implementation end.'), mInterface, mImplementation);
+  Assert.AreEqual(8, mInterface);
+  Assert.AreEqual(18, mImplementation);
+  SectionOffsets(TPascalLexer.Tokenize('program P; begin end.'), mInterface, mImplementation);
+  Assert.AreEqual(-1, mInterface);
+  Assert.AreEqual(-1, mImplementation);
+end;
+
+procedure TTokenCursorTests.TokenBeforeAndOffsetAtPosition;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  // Offsets: a=0, :==2, b=5, ;=6
+  mTokens := TPascalLexer.Tokenize('a := b;');
+  Assert.AreEqual(1, TokenBeforePosition(mTokens, TTextPosition.Create(0, 5)));
+  Assert.AreEqual(-1, TokenBeforePosition(mTokens, TTextPosition.Create(0, 0)));
+  Assert.AreEqual(5, TokenOffsetAt(mTokens, TTextPosition.Create(0, 5)));
+  Assert.AreEqual(0, TokenOffsetAt(mTokens, TTextPosition.Create(0, 4)));
+  mTokens := nil;
+end;
+
+procedure TTokenCursorTests.NextUncommentedStopsAtDirectives;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  mTokens := TPascalLexer.Tokenize('a {x} {$IFDEF D} b');
+  Assert.AreEqual(2, NextUncommented(mTokens, 1), 'Direktive zählt als Token');
+  Assert.AreEqual(3, NextCode(mTokens, 1));
+  Assert.AreEqual(Integer(Length(mTokens)), NextUncommented(mTokens, Length(mTokens)));
+  mTokens := nil;
+end;
+
+procedure TTokenCursorTests.NameUseOffsetsSkipsDeclaration;
+var
+  mOffsets: TArray<Integer>;
+begin
+  mOffsets := NameUseOffsets(TPascalLexer.Tokenize('function Foo: Integer; begin Result := foo + Bar.Foo; end;'),
+    'Foo');
+  Assert.AreEqual(2, Integer(Length(mOffsets)));
+  Assert.AreEqual(39, mOffsets[0]);
+  Assert.AreEqual(49, mOffsets[1]);
+  mOffsets := nil;
 end;
 
 initialization

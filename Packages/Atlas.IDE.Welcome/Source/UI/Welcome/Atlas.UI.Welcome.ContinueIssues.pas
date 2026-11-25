@@ -57,7 +57,7 @@ type
     cButtonHeight = 22;
     cButtonPadding = 10;
     /// <summary>Rundung der Schaltfläche „Fortsetzen“.</summary>
-    cButtonRadius = 6;
+    cButtonRadius = TAtlasWelcomeRow.cButtonRadius;
     /// <summary>Einzug der zweiten und dritten Zeile (unter dem Titel).</summary>
     cDetailIndent = 32;
   private
@@ -100,9 +100,10 @@ uses
   System.UITypes,
   Vcl.Forms,
   Vcl.Themes,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Welcome.Strings;
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.UI.Welcome.Strings,
+  Atlas.Text.Uris;
 
 const
   cSeparator = ' · ';
@@ -182,7 +183,7 @@ end;
 /// <summary>„TKunde.Laden (Kunde.pas:42)“, ohne Methode „Kunde.pas:42“; '' ohne Datei.</summary>
 function PlaceText(const ATab: TAtlasWorkTab): string;
 begin
-  Result := TAtlasWelcomeContinue.FileNameOf(ATab.FileName);
+  Result := TTextUris.FileNameOf(Trim(ATab.FileName));
   if Result = '' then
   begin
     Exit;

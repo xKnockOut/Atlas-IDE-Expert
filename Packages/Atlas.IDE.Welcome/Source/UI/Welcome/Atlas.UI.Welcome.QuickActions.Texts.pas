@@ -39,8 +39,8 @@ uses
   System.SysUtils,
   System.Classes, // TShortCut
   Vcl.Menus, // ShortCutToText
-  Atlas.Core.VersionControl.Pull,
-  Atlas.UI.Strings, // TAtlasStrings
+  Atlas.VersionControl.Repository.Pull,
+  Atlas.Plugin.Localization.Strings, // TAtlasStrings
   Atlas.UI.Welcome.Strings;
 
 const

@@ -30,7 +30,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExpressionType,
   Atlas.UI.Editor.ExpressionType,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.IDE.Editor.CaretPopup;
 
 type
@@ -89,25 +89,25 @@ type
 implementation
 
 uses
-  Atlas.Core.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.TextChanges,
   System.Math,
   System.JSON,
   Winapi.Windows,
   Vcl.Graphics,
   Vcl.Menus,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Text.Lines,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Lsp.Client,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.PaintedLine,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.ToolsApi.Editor.Caret;
 
 /// <summary>Gedrückte Taste mit Umschalt, Strg und Alt als TShortCut.</summary>
 function PressedShortCut(AKey: Word): TShortCut;

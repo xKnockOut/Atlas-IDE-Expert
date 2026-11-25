@@ -9,7 +9,8 @@
 // gelten, entscheidet die Regel (IRuleNewNames, TRuleEngine.NewNames); hier
 // liegen Wertetyp und Namensbildung, damit Rules und Editing sie teilen.
 // Dazu Wert und Teilwerte einer $IF-Bedingung (#847), die Präprozessor und
-// Ausdrucksauswerter (Pascal.Preprocessor.Expressions) teilen.
+// Ausdrucksauswerter (Pascal.Preprocessor.Expressions) teilen, und der Syntaxbaum
+// als Handle (IPascalSyntaxTree) für Schnittstellen zwischen Features.
 
 interface
 
@@ -61,6 +62,33 @@ type
   /// <summary>Beantwortet Declared(X); True = deklariert, False = nicht gefunden (gilt als unbekannt).</summary>
   TDeclaredFunc = reference to function(const AName: string): Boolean;
 
+  /// <summary>Sucht eine Include-Datei; AFromFile ist die einbindende Datei ('' = Hauptdatei).</summary>
+  TIncludeResolver = reference to function(const AName, AFromFile: string;
+    out AFileName, AText: string): Boolean;
+
+  /// <summary>Woher die Symbole einer Datei kommen (#860): Datei, Symbole des Projekts und Suche nach {$I}-Dateien.
+  /// Die Präprozessor-Optionen dazu liefert TPascalPreprocessor.SourceOptions.</summary>
+  TPascalSource = record
+    /// <summary>Vollständiger Pfad der Datei; Ausgangspunkt für {$I}.</summary>
+    FileName: string;
+    /// <summary>Symbole des Projekts; leer = Vordefinitionen (Win32, Delphi 13).</summary>
+    Defines: TArray<string>;
+    /// <summary>Sucht {$I}-Dateien; nil = nicht lesen.</summary>
+    ResolveInclude: TIncludeResolver;
+    /// <summary>Ohne Projekt, Datei und Include-Dateien.</summary>
+    class function Default: TPascalSource; static;
+    class function Create(const AFileName: string; const ADefines: TArray<string>;
+      const AResolveInclude: TIncludeResolver): TPascalSource; static;
+  end;
+
+  /// <summary>Quelle der Symbole je Datei, etwa aus dem Projekt des MCP-Servers.</summary>
+  TPascalSourceFunc = reference to function(const AFileName: string): TPascalSource;
+
+  TPascalSources = record
+    /// <summary>ASource(AFileName), ohne Quelle TPascalSource.Default.</summary>
+    class function ForFile(const ASource: TPascalSourceFunc; const AFileName: string): TPascalSource; static;
+  end;
+
   /// <summary>Wert einer Bedingung (#847). Unknown: ein Wert ist dem Server nicht bekannt; der Zweig gilt als
   /// aktiv, ein {$ELSE} dazu ebenfalls.</summary>
   TConditionValue = (No, Yes, Unknown);
@@ -98,17 +126,72 @@ type
     function Constant(const AName: string): string;
   end;
 
+  /// <summary>Syntaxbaum einer Unit über Feature-Grenzen: Wer einen Baum hat (etwa eine Prüfregel), reicht ihn so
+  /// an andere Features weiter, ohne dass deren Contract den Baum selbst kennt. Den Baum dahinter liefert nur Pascal
+  /// (TSyntaxTreeHandles.TreeOf); der Handle besitzt ihn nicht und gilt, solange der Baum lebt.</summary>
+  IPascalSyntaxTree = interface
+    ['{7EFE0286-5C2E-4960-8BE5-443766A93893}']
+  end;
+
   /// <summary>Abbruchsignal für lange Läufe, z. B. Parsen großer Dateien.</summary>
   IPascalCancellation = interface
     ['{4A7D2E91-6B3C-4F58-8E1A-C9D05B2F7E36}']
     function IsCancelled: Boolean;
   end;
 
+  // Gruppen der uses nach Herkunft (#2794); Logik in Atlas.Common.Pascal.UsesGroups, die Listen
+  // schreibt Atlas.Common.Pascal.UsesEdits.
+  /// <summary>Gruppe eines uses-Eintrags, in der Reihenfolge der Ausgabe.</summary>
+  TUsesGroup = (RuntimeLibrary, DelphiComponents, Framework, LibraryPath, ProjectGroup, Project);
+
+  /// <summary>Darstellung der Gruppen: Kommentar über jeder Gruppe oder nur eine neue Zeile.</summary>
+  TUsesGroupStyle = (Comments, Lines);
+
+  /// <summary>Wo der Host die Datei der Unit gefunden hat.</summary>
+  TUsesFileOrigin = (Unknown, Installation, LibraryPath, ProjectGroup, OwnProject);
+
+  /// <summary>Fundort einer Unit, vom Host bestimmt.</summary>
+  TUsesUnitFile = record
+    Origin: TUsesFileOrigin;
+    /// <summary>Bei Installation: Pfad der Datei relativ zum Ordner der Installation ($(BDS)), sonst ''.</summary>
+    InstallPath: string;
+  end;
+
+  /// <summary>Gruppe zu einem Unit-Namen.</summary>
+  TUsesGroupFunc = reference to function(const AUnitName: string): TUsesGroup;
+
 implementation
 
 uses
   System.SysUtils,
   System.StrUtils;
+
+{ TPascalSource }
+
+class function TPascalSource.Default: TPascalSource;
+begin
+  Result := Create('', nil, nil);
+end;
+
+class function TPascalSources.ForFile(const ASource: TPascalSourceFunc; const AFileName: string): TPascalSource;
+begin
+  if Assigned(ASource) then
+  begin
+    Result := ASource(AFileName);
+  end
+  else
+  begin
+    Result := TPascalSource.Default;
+  end;
+end;
+
+class function TPascalSource.Create(const AFileName: string; const ADefines: TArray<string>;
+  const AResolveInclude: TIncludeResolver): TPascalSource;
+begin
+  Result.FileName := AFileName;
+  Result.Defines := ADefines;
+  Result.ResolveInclude := AResolveInclude;
+end;
 
 { TPascalToken }
 

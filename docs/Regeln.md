@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|
 | [Fehler finden](#gruppe-find-bugs) | 91 |
 | [Exceptions](#gruppe-exceptions) | 8 |
-| [Threads](#gruppe-threads) | 17 |
+| [Threads](#gruppe-threads) | 18 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 101 |
 | [Robustheit und Muster](#gruppe-robustness) | 15 |
@@ -21,7 +21,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 57 |
-| [Packages und Tests](#gruppe-packages) | 13 |
+| [Packages und Tests](#gruppe-packages) | 15 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
 <a id="gruppe-find-bugs"></a>
@@ -149,6 +149,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`threadvar-managed`](#threadvar-managed) | threadvar mit verwaltetem Typ | Bug | Warnung |
 | [`processmessages-in-loop`](#processmessages-in-loop) | Application.ProcessMessages in Schleifen | Code Smell | Hinweis |
 | [`queue-nil-in-package`](#queue-nil-in-package) | TThread.Queue(nil, …) in einem Package | Bug | Warnung |
+| [`queue-without-remove`](#queue-without-remove) | Thread reiht ein, entfernt die Einträge aber nie | Bug | Warnung |
 | [`blocking-call-in-main-thread`](#blocking-call-in-main-thread) | Blockierender Aufruf im Hauptthread | Code Smell | Warnung |
 | [`thread-loop-without-terminated`](#thread-loop-without-terminated) | Thread-Schleife ohne Terminated | Bug | Warnung |
 | [`anonymous-thread-not-started`](#anonymous-thread-not-started) | Anonymer Thread nie gestartet | Bug | Warnung |
@@ -456,6 +457,8 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`implicit-package-import`](#implicit-package-import) | Implizit eingebundene Unit | Code Smell | Warnung |
 | [`ota-notifier-not-removed`](#ota-notifier-not-removed) | IDE-Notifier ohne RemoveNotifier | Bug | Warnung |
+| [`ota-entry-without-guard`](#ota-entry-without-guard) | Einstiegspunkt der IDE lässt Ausnahmen durch | Bug | Warnung |
+| [`register-does-work`](#register-does-work) | Register startet Arbeit statt nur anzumelden | Code Smell | Warnung |
 | [`dunitx-test-without-assert`](#dunitx-test-without-assert) | DUnitX-Test ohne Assert | Code Smell | Hinweis |
 | [`dunitx-testcase-mismatch`](#dunitx-testcase-mismatch) | TestCase passt nicht zur Methode | Bug | Warnung |
 | [`dunitx-fixture-not-registered`](#dunitx-fixture-not-registered) | DUnitX-Testklasse nie registriert | Bug | Warnung |
@@ -774,6 +777,7 @@ Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rule
 |---|---|---|---|
 | `prefixes` | string-list | `[]` | Präfixe der Ausgabeartefakte, z. B. "Atlas.Common"; ohne Angabe meldet die Regel nichts. |
 | `hostRoles` | string-list | `["Foundation","Core","Shell","Adapters","Platform"]` | Erste Namenssegmente der Host-Units ohne Präfix. |
+| `hostedFeatures` | string-list | `[]` | Hosted-Features der Anwendung: erstes Namenssegment ohne Präfix; sie importieren nur Foundation und Platform-Features, nie einander. |
 | `allow` | string-list | `[]` | Genehmigte Ausnahmen "Quelle -> Ziel" (beide Globs). |
 
 Mit Treffer:
@@ -2661,9 +2665,14 @@ raise ECustomerMissing.Create('Customer missing');
 
 **Exception-Handler ohne erneutes raise** · Code Smell · Warnung · Gruppe Exceptions
 
-Ein Handler für Exception, der weder erneut auslöst noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode.
+Ein Handler für Exception oder ein except-Teil ohne on, der weder erneut auslöst, den Fehler über einen Aufruf aus reporters meldet noch das Programm beendet, verschluckt jeden Fehler, auch Programmierfehler. Standardmäßig aus; gedacht für Bibliothekscode und für Code mit eigener Fehlermeldung.
 
 Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowExceptionUse` | boolean | `false` | Ein Handler on E: Exception do, der seine Ausnahme liest (E.Message an den Aufrufer, E an eine Routine), reicht den Fehler weiter und gilt als behandelt. |
+| `reporters` | string-list | `[]` | Aufrufe, die die Ausnahme melden (Muster mit * und ? über den Namen mit Qualifizierern, z. B. TAtlasGuard.* oder *Logger.Error); ein Block, der einen enthält, gilt als behandelt. |
 
 Mit Treffer:
 
@@ -3528,7 +3537,7 @@ end;
 
 **Vorrang von not übersehen** · Bug · Warnung · Gruppe Fehler finden
 
-In Pascal bindet not stärker als in und Vergleiche: not X in Menge heißt (not X) in Menge, not A = B heißt (not A) = B, bei Ganzzahlen wird not bitweise. Die Regel meldet diese Formen, wenn der deklarierte Typ des Operanden zeigt, dass es nicht gemeint sein kann (kein Boolean). Schnellkorrektur: Klammern setzen, not (X in Menge).
+In Pascal bindet not stärker als in und Vergleiche: not X in Menge heißt (not X) in Menge, not A = B heißt (not A) = B, bei Ganzzahlen wird not bitweise. Die Regel meldet diese Formen, wenn der deklarierte Typ des Operanden zeigt, dass es nicht gemeint sein kann (kein Boolean). not E is T heißt (not E) is T und übersetzt in Delphi bei keinem Typ (E2015, Free Pascal nimmt es an); das meldet die Regel immer. Schnellkorrektur: Klammern setzen, not (X in Menge).
 
 Mit Treffer:
 
@@ -4406,7 +4415,7 @@ Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Ver
 
 **Klasse mit zu vielen Membern** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Die Klasse hat mehr Member als der Grenzwert (Vorgabe 40): Feldnamen, Methoden, Properties mit eigenem Typ und class var, dazu jede freie Routine derselben Unit, die über einen Parameter oder eine Variable dieses Typs auf ein privates oder geschütztes Mitglied der Klasse zugreift (eine solche Routine ist eine Methode außerhalb der Klasse). Properties, die nur die Sichtbarkeit anheben (property Align;), und geschachtelte Typen zählen nicht; eine geschachtelte Klasse wird für sich gemessen. Erscheint auch in der Metrik-Linse über der Klasse. Die Klasse aufteilen oder Teile in Hilfsklassen auslagern; „Klasse in eigene Unit verschieben“ (#103) hilft, wenn auch die Unit voll ist.
+Die Klasse hat mehr Member als der Grenzwert (Vorgabe 40): Feldnamen, Methoden, Properties mit eigenem Typ und class var, dazu jede freie Routine derselben Unit, die über einen Parameter oder eine Variable dieses Typs auf ein privates oder geschütztes Mitglied der Klasse zugreift (eine solche Routine ist eine Methode außerhalb der Klasse). Properties, die nur die Sichtbarkeit anheben (property Align;), und geschachtelte Typen zählen nicht; eine geschachtelte Klasse wird für sich gemessen. Ein Feld vom Typ eines Records zählt als ein Member, auch wenn der Record mehrere Werte bündelt: Was zusammengehört (etwa der Zeichenzustand eines Steuerelements), in einem Record zu sammeln, soll die Regel nicht bestrafen. Ein Record, der nur die Zahl senkt, nimmt der Klasse aber keine Aufgabe ab; dann besser teilen. Erscheint auch in der Metrik-Linse über der Klasse. Die Klasse aufteilen oder Teile in Hilfsklassen auslagern; „Klasse in eigene Unit verschieben“ (#103) hilft, wenn auch die Unit voll ist.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4800,12 +4809,48 @@ TAtlasMainThread.Queue(
   end);
 ```
 
+<a id="queue-without-remove"></a>
+### queue-without-remove
+
+**Thread reiht ein, entfernt die Einträge aber nie** · Bug · Warnung · Gruppe Threads
+
+Ein Nachfahr von TThread reiht am eigenen Thread in den Hauptthread ein (Queue(…), ForceQueue(…), TThread.Queue(Self, …) oder TThread.Queue(CurrentThread, …)), aber niemand entfernt die Einträge mit RemoveQueuedEvents. Was beim Anhalten des Threads noch wartet, läuft danach mit freigegebenen Objekten bzw. nach dem Entladen des Packages in fremdem Speicher. Als Entfernen zählt ein Aufruf in einer Methode der Klasse oder eines Vorfahren der Unit, ein Aufruf mit einem anderen Argument als Self oder nil an anderer Stelle der Unit (der Besitzer räumt beim Anhalten auf, TThread.RemoveQueuedEvents(FWorker)) und eine andere Unit des Projekts, die Klasse und RemoveQueuedEvents nennt (Index mit index.usages). Synchronize wartet und wird nicht gemeldet; Queue(nil, …) meldet queue-nil-in-package; eine eigene Methode namens Queue zählt nicht. Sicherheit hoch; niedrig, wenn ein Vorfahr aus einer anderen Unit die Einträge entfernen könnte. Korrektur: RemoveQueuedEvents(Self) im Destruktor vor inherited ergänzen (legt den Destruktor hinter dem letzten Konstruktor an, wenn er fehlt; nicht bei eingebetteten Klassen).
+
+Mit Treffer:
+
+```pascal
+procedure TOrderWorker.Execute;
+begin
+  Queue(procedure begin FForm.Caption := 'fertig' end);
+end;
+
+destructor TOrderWorker.Destroy;
+begin
+  inherited;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TOrderWorker.Execute;
+begin
+  Queue(procedure begin FForm.Caption := 'fertig' end);
+end;
+
+destructor TOrderWorker.Destroy;
+begin
+  RemoveQueuedEvents(Self);
+  inherited;
+end;
+```
+
 <a id="ota-notifier-not-removed"></a>
 ### ota-notifier-not-removed
 
 **IDE-Notifier ohne RemoveNotifier** · Bug · Warnung · Gruppe Packages und Tests
 
-AddNotifier an IOTAServices, IOTAEditorServices, IOTAModule usw. (oder ein anderes Paar aus registerPairs), dessen Index nie an RemoveNotifier geht: Der Aufruf steht als Anweisung ohne Zuweisung, oder die Variable, der er zugewiesen wird, erhält in der Unit kein RemoveNotifier (in finalization, im Destruktor oder in Destroyed). Die IDE ruft den Notifier dann nach dem Entladen des Packages in fremdem Speicher auf. Register…-Aufrufe in der Prozedur Register sind ausgenommen: Diese Wizards entfernt die IDE selbst. Sicherheit mittel. Korrektur in Methoden: Index in ein Feld legen (FNotifierIndex im private-Abschnitt) und RemoveNotifier im Destruktor ergänzen, der bei Bedarf angelegt wird; in Prozeduren der Unit: globale Variable mit -1 und RemoveNotifier in finalization. Keine Korrektur, wenn der Empfänger ein Parameter oder eine lokale Variable ist.
+AddNotifier an IOTAServices, IOTAEditorServices, IOTAModule usw. (oder ein anderes Paar aus registerPairs), dessen Index nie an RemoveNotifier geht: Der Aufruf steht als Anweisung ohne Zuweisung, oder die Variable, der er zugewiesen wird, erhält in der Unit kein RemoveNotifier (in finalization, im Destruktor oder in Destroyed). Die IDE ruft den Notifier dann nach dem Entladen des Packages in fremdem Speicher auf. Register…-Aufrufe in der Prozedur Register sind ausgenommen: Diese Wizards entfernt die IDE selbst. Ebenso Result := X.AddNotifier(…) in einer eigenen Methode AddNotifier (Umsetzung einer Schnittstelle mit eigenem Notifier-Paar): Den Index bekommt der Aufrufer, er meldet über RemoveNotifier ab. Sicherheit mittel. Korrektur in Methoden: Index in ein Feld legen (FNotifierIndex im private-Abschnitt) und RemoveNotifier im Destruktor ergänzen, der bei Bedarf angelegt wird; in Prozeduren der Unit: globale Variable mit -1 und RemoveNotifier in finalization. Keine Korrektur, wenn der Empfänger ein Parameter oder eine lokale Variable ist.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4836,6 +4881,78 @@ initialization
 finalization
   if NotifierIndex >= 0 then
     (BorlandIDEServices as IOTAServices).RemoveNotifier(NotifierIndex);
+```
+
+<a id="ota-entry-without-guard"></a>
+### ota-entry-without-guard
+
+**Einstiegspunkt der IDE lässt Ausnahmen durch** · Bug · Warnung · Gruppe Packages und Tests
+
+Eine Methode, die die IDE aufruft, kann eine Ausnahme in die IDE durchlassen; die IDE zeigt sie als Fehlermeldung, im schlimmsten Fall bricht sie Speichern oder Laden ab. Einstiegspunkte sind die public- und published-Methoden einer Klasse, die ein Interface aus der Option interfaces implementiert, auch über Vorfahren (Vorgabe IOTA*Notifier*, INTA*Notifier*, IOTA*Wizard*, IOTAKeyboardBinding, INTACustomDrawMessage, IOTALocalMenu, IOTAProjectManagerMenu), die Methoden, die eine solche Klasse an AddKeyBinding oder AddMenuCommand übergibt, und in Units eines Packages, die Menüeinträge in die IDE hängen (INTAServices, MainMenu, AddActionMenu, Editor- oder Projektmenü), die Methoden, die eine Routine OnClick oder OnExecute zuweist, wenn sie TMenuItem oder TAction nennt; Handler eines eigenen Kontextmenüs fängt die Anwendung. Gemeldet wird ein Rumpf mit etwas, das werfen kann (Aufruf, raise, Umwandlung mit as), außerhalb eines try … except, das jede Ausnahme fängt, und außerhalb des Aufrufs einer Schutzroutine aus der Option guards; ein raise im Handler zählt. Nicht als Wurf zählen eingebaute und reine RTL-Routinen (Length, Assigned, Supports, Copy, SameText …), Typumwandlungen (auch T…(x) und I…(x) mit Typen, die der Index nicht kennt, etwa der VCL), inherited, anonyme Methoden (laufen später) und Aufrufe von Routinen der Unit, deren Rumpf nicht werfen kann. Rümpfe, die nur Werte zuweisen (Felder, Result), bleiben still. Sicherheit hoch. Korrekturen: den Rumpf als anonyme Methode an die erste Schutzroutine übergeben (mit Klammer ist der Eintrag der Anfang des Aufrufs, z. B. "TAtlasGuard.Run(TAtlasFeature.Menu, "; nicht, wenn der Rumpf Result, var- oder out-Parameter oder inherited nutzt) oder, mit einem Feld vom Typ ILogger, in try … except legen und die Meldung mit Error protokollieren.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `guards` | string-list | `[]` | Schutzroutinen, die den Rumpf absichern, z. B. TAtlasGuard.Run; es zählt der Text vor einer Klammer. Die Korrektur nimmt den ersten Eintrag, mit Klammer als Anfang des Aufrufs. |
+| `interfaces` | string-list | `["IOTA*Notifier*","INTA*Notifier*","IOTA*Wizard*","IOTAKeyboardBinding","INTACustomDrawMessage","IOTALocalMenu","IOTAProjectManagerMenu"]` | Interfaces, deren Methoden Einstiegspunkte sind (Muster mit * und ?). |
+
+Mit Treffer:
+
+```pascal
+procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;
+  const FileName: string; var Cancel: Boolean);
+begin
+  if FileName = '' then
+    raise Exception.Create('leer');
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TSaveNotifier.FileNotification(NotifyCode: TOTAFileNotification;
+  const FileName: string; var Cancel: Boolean);
+begin
+  try
+    Pruefen(FileName);
+  except
+    on E: Exception do
+      FLogger.Error(E.Message);
+  end;
+end;
+```
+
+<a id="register-does-work"></a>
+### register-does-work
+
+**Register startet Arbeit statt nur anzumelden** · Code Smell · Warnung · Gruppe Packages und Tests
+
+Die Prozedur Register eines Packages (bzw. eine andere Einstiegsroutine aus der Option entries) startet Arbeit, statt nur anzumelden: einen Aufruf aus workCalls (Vorgabe Sleep, WaitFor…, CreateProcess, ShellExecute…, Application.CreateForm, ShowModal, ShowMessage, MessageDlg, TTask.Run, TThread.CreateAnonymousThread) oder das Erzeugen einer Klasse aus workClasses bzw. eines Nachfahren (Vorgabe TTimer, TThread, TForm, THTTPClient, TIdHTTP). Register läuft beim Start der IDE in nicht garantierter Reihenfolge der Packages; Arbeit dort verlängert den Start und greift womöglich auf noch nicht geladene Packages zu. Geprüft werden auch Routinen der Unit, die nur von der Einstiegsroutine aus erreicht werden (freie Routinen des implementation-Teils, private Methoden derselben Klasse); anonyme Methoden und als Argument übergebene Routinen laufen später und zählen nicht. Anmelden bleibt erlaubt (RegisterPackageWizard, RegisterComponents, AddNotifier …). Ein Eintrag mit Punkt passt auf den ganzen Routinennamen (*.RegisterModule), ohne Punkt nur auf freie Routinen. Sicherheit hoch in der Einstiegsroutine, mittel in einer Hilfsroutine. Keine Korrektur: den Start in einen Wizard, einen Notifier oder die Feature-Tabelle verlegen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `workCalls` | string-list | `["Sleep","WaitFor*","CreateProcess","ShellExecute*","Application.CreateForm","ShowModal","ShowMessage","MessageDlg","TTask.Run","TThread.CreateAnonymousThread"]` | Aufrufe, die als Arbeit gelten; mit Punkt der ganze Aufruf (TTask.Run), sonst der letzte Namensteil; Muster mit * und ?. |
+| `workClasses` | string-list | `["TTimer","TThread","TForm","THTTPClient","TIdHTTP"]` | Klassen, deren Erzeugen als Arbeit gilt, samt Nachfahren. |
+| `entries` | string-list | `["Register"]` | Einstiegsroutinen, z. B. auch *.RegisterModule; mit Punkt der ganze Name, sonst nur freie Routinen. |
+
+Mit Treffer:
+
+```pascal
+procedure Register;
+begin
+  GTimer := TTimer.Create(nil);
+  GTimer.Enabled := True;
+  RegisterPackageWizard(TMyWizard.Create);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Register;
+begin
+  // The wizard starts the timer once the IDE has loaded.
+  RegisterPackageWizard(TMyWizard.Create);
+end;
 ```
 
 <a id="dunitx-test-without-assert"></a>
@@ -5541,7 +5658,7 @@ if Pos(';', Zeile) > 0 then
 
 **DelimitedText ohne StrictDelimiter** · Bug · Warnung · Gruppe Fehler finden
 
-Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass StrictDelimiter gesetzt wird: DelimitedText trennt dann auch an Leerzeichen, 'Max Muster;Berlin' ergibt drei statt zwei Einträge. Bei Feldern zählt StrictDelimiter in der ganzen Unit (oft im Konstruktor); StrictDelimiter := False ist bewusst und bleibt still, ebenso DelimitedText ohne eigenen Delimiter. Sicherheit hoch. Korrektur: StrictDelimiter := True; vor der Zuweisung einfügen.
+Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass StrictDelimiter gesetzt wird: DelimitedText trennt dann auch an Leerzeichen, 'Max Muster;Berlin' ergibt drei statt zwei Einträge. StrictDelimiter zählt auch in with Liste do und über eine Typumwandlung (TStringList(Liste), Liste as TStringList), bei Feldern in der ganzen Unit (oft im Konstruktor). Bei Parametern und Listen, die die Routine nicht selbst erzeugt (Funktionsergebnis), bleibt die Regel still: StrictDelimiter setzt dort der Aufrufer bzw. die erzeugende Funktion; StrictDelimiter := False ist bewusst und bleibt still, ebenso DelimitedText ohne eigenen Delimiter. Sicherheit hoch. Korrektur: StrictDelimiter := True; vor der Zuweisung einfügen.
 
 Mit Treffer:
 
@@ -6926,7 +7043,7 @@ exports
 
 **Unit-Name kollidiert** · Bug · Fehler · Gruppe Compiler vorab
 
-Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen der .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen.
+Eine Unit heißt wie eine für den Compiler reservierte Unit, System oder SysInit (wie E2272), ein Teil des Unit-Namens im Kopf oder in uses/contains ist ein reserviertes Wort wie inline, object oder string (wie E2029; Free Pascal nimmt es an, ein Teil mit & davor bleibt still), oder {$NOINCLUDE X} nennt eine Unit, die der Compiler nicht kennt (wie E2242); dafür braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen der .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collections.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen.
 
 Entspricht der Compilermeldung `E2272`, `E2242`.
 
@@ -9516,7 +9633,7 @@ end;
 
 **Methodenreferenz wird aufgerufen statt übergeben** · Bug · Fehler · Gruppe Compiler vorab
 
-Eine Variable, ein Parameter oder ein Feld vom Typ einer Referenz auf eine Funktion (TFunc<…>, TPredicate<T> oder ein eigener reference to function-Typ) steht als einziges Argument in Exit(…) einer Funktion, die eine Methodenreferenz liefert, oder als Element eines Array-Literals neben + (FHandlers + [AHandler]), dessen anderer Operand ein Array von Methodenreferenzen ist. Delphi ruft die Referenz dort auf, statt sie als Wert zu nehmen (E2035 bzw. E2010); Free Pascal nimmt den Wert. Der Typ kommt aus der Deklaration in der Datei (Parameter, lokale Variable, Feld der eigenen Klasse); ein eigener Typ zählt, wenn die Datei oder der Symbolindex ihn als reference to function deklariert. Referenzen auf Prozeduren (TProc) nimmt Delphi als Wert; sie bleiben still. Exit(AFunc) in einer Funktion mit anderem Ergebnistyp ruft gewollt auf und bleibt still. Korrektur bei Exit (sicher): Result := ARef; Exit;. Beim Array-Literal: Länge mit SetLength erhöhen und das Element zuweisen.
+Eine Variable, ein Parameter oder ein Feld vom Typ einer Referenz auf eine Funktion (TFunc<…>, TPredicate<T> oder ein eigener reference to function-Typ) steht als einziges Argument in Exit(…) einer Funktion, die eine Methodenreferenz liefert, oder als Element eines Array-Literals neben + (FHandlers + [AHandler]), dessen anderer Operand ein Array von Methodenreferenzen ist. Delphi ruft die Referenz dort auf, statt sie als Wert zu nehmen (E2035 bzw. E2010); Free Pascal nimmt den Wert. Der Typ kommt aus der Deklaration in der Datei (Parameter, lokale Variable, Feld der eigenen Klasse); ein eigener Typ zählt, wenn die Datei oder der Symbolindex ihn als reference to function deklariert. Referenzen auf Prozeduren (TProc) nimmt Delphi als Wert; sie bleiben still. Exit(AFunc) in einer Funktion mit anderem Ergebnistyp ruft gewollt auf und bleibt still. Umgekehrt meldet die Regel eine parameterlose Funktion, die eine Methodenreferenz liefert (TTransport.Fabrik: TFabrik), wenn sie ohne () als Argument steht und eine Fassung der gerufenen Routine dort einen Parameter vom Ergebnistyp hat: Delphi nimmt die Funktion selbst (E2010, bei Überladungen E2250). Funktion und gerufene Routine kommen aus dem Symbolindex. Korrektur bei Exit (sicher): Result := ARef; Exit;. Beim Array-Literal: Länge mit SetLength erhöhen und das Element zuweisen. Bei der Fabrik (sicher): () anhängen.
 
 Entspricht der Compilermeldung `E2035`, `E2010`.
 

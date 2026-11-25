@@ -11,7 +11,7 @@
 //                     schreibt Delphi in das Feld: still. Korrektur bei Properties
 //                     mit write: über eine lokale Variable zuweisen und
 //                     zurückschreiben (Variable über TRoutineBody.AddVariable, Unit
-//                     des Typs über TUsesClauses.AddUnit).
+//                     des Typs über TPascalUsesEdits.AddUnit).
 //   untyped-pointer-refcount
 //                     Pointer(X) := … mit einem Interface X (#1081, wie W1070):
 //                     die Zuweisung umgeht die Referenzzählung. Typ über
@@ -79,14 +79,15 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.CodeActions,
-  Atlas.Common.Editing.ClassActions,
-  Atlas.Common.Editing.AccessorCreation,
+  Atlas.Common.Pascal.RoutineBody,
+  Atlas.Common.Pascal.UsesEdits,
+  Atlas.Common.Pascal.UsesClauses,
+  Atlas.Common.CodeActions.Contract,
+  Atlas.Common.CodeActions.Contract.Classes,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -154,7 +155,6 @@ type
     FLines: TArray<string>;
     FLineBreak: string;
     function NodeText(ANode: TSyntaxNode): string;
-    function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
     function CopyFix(AStatement, AReceiver: TSyntaxNode; const AType: TResolvedSymbol;
       out AFix: TRuleFix): Boolean;
     function RecordReceiver(ATarget: TSyntaxNode; out AReceiver: TSyntaxNode; out ASymbol,
@@ -184,15 +184,6 @@ begin
   Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
-function TAssignToPropertyMemberScan.EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-  begin
-    Result := Result.Parent;
-  end;
-end;
-
 /// <summary>Über eine lokale Variable zuweisen und zurückschreiben: R := X.P; R.F := W; X.P := R.</summary>
 function TAssignToPropertyMemberScan.CopyFix(AStatement, AReceiver: TSyntaxNode; const AType: TResolvedSymbol;
   out AFix: TRuleFix): Boolean;
@@ -203,7 +194,7 @@ var
   mEdits: TArray<TTextEdit>;
 begin
   Result := False;
-  mRoutine := EnclosingRoutine(AStatement);
+  mRoutine := TSyntaxNodes.Enclosing(AStatement, [TSyntaxKind.RoutineDecl]);
   if (mRoutine = nil) or (AStatement.Parent = nil) or not (AStatement.Parent.Kind in cSequenceParents) or
     (AStatement.StartPos.Line <> AStatement.EndPos.Line) or (AStatement.StartPos.Line > High(FLines)) then
   begin
@@ -225,10 +216,10 @@ begin
     TTextEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.EndPos), mNewText)];
   // Der Typ stammt oft aus einer Unit, die die Datei nicht einbindet (TRect aus System.Types).
   if (AType.UnitName <> '') and not SameText(AType.UnitName, 'System') and
-    not SameText(AType.UnitName, TUsesClauses.OwnName(FTokens)) and
-    not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FTokens), AType.UnitName, FContext.Namespaces) then
+    not SameText(AType.UnitName, TPascalUses.OwnName(FTokens)) and
+    not TPascalUses.IsUsed(TPascalUses.UsedUnits(FTokens), AType.UnitName, FContext.Namespaces) then
   begin
-    if not TUsesClauses.AddUnit(FTokens, AStatement.StartOffset, AType.UnitName, FLineBreak, mUsesEdit) then
+    if not TPascalUsesEdits.AddUnit(FTokens, AStatement.StartOffset, AType.UnitName, FLineBreak, mUsesEdit) then
     begin
       Exit;
     end;
@@ -836,7 +827,7 @@ type
     FLocal: TUnitIndex;
     FSuspects: TDictionary<string, Integer>;
     FLocalProperties: TObjectDictionary<string, TList<string>>;
-    FActions: TClassActionContext;
+    FActions: TClassEditRequest;
     function NodeText(ANode: TSyntaxNode): string;
     function SuspectFlags(const AName: string): Integer;
     function ReadAccessor(const ASignature: string): string;
@@ -978,7 +969,8 @@ begin
   begin
     mPlan.MethodSection := 'protected';
   end;
-  if not TClassActions.CreateAccessor(FContext.Text, mLine, mPlan, FActions, mAction) then
+  if (FContext.Refactorings.Classes = nil) or
+    not FContext.Refactorings.Classes.CreateAccessor(FActions.At(mLine), mPlan, mAction) then
   begin
     Exit;
   end;
@@ -1168,7 +1160,7 @@ begin
   end;
   FFileName := FContext.ResolverFileName;
   FLines := TTextLines.SplitLines(FContext.Text);
-  FActions := TClassActionContext.Default;
+  FActions := TClassEditRequest.Create(FContext.Text, 0);
   FActions.Index := FContext.Index;
   FActions.Namespaces := FContext.Namespaces;
   FActions.DelphiVersion := FContext.DelphiVersion;

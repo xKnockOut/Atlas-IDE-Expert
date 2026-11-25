@@ -58,6 +58,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Tests.LspRules,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Configuration.Contract,
@@ -584,7 +585,7 @@ begin
   mStore := TDocumentStore.Create;
   mDocument := mStore.Open('file:///big.pas', 'objectpascal', 1, GenerateUnit(200));
   mWatch := TStopwatch.StartNew;
-  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument);
+  mParams := TLspSyntaxDiagnostics.BuildParams(mDocument, nil, '', TTestLspRules.PlainDocument);
   mWatch.Stop;
   mParams.Free;
   Assert.IsTrue(mWatch.ElapsedMilliseconds + TLspSyntaxDiagnostics.cDefaultDelayMs < 200,

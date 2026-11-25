@@ -26,7 +26,7 @@
 interface
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tests.Contract,
   Atlas.Core.Tests.MutationResults,
   Atlas.Core.Tests.MutationPlan;
@@ -125,7 +125,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Tests.Mutants;
 
 /// <summary>Rückruf des Builds an AFlow für den Lauf ARun; eigene Routine: fängt nur, was sie braucht.</summary>

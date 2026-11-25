@@ -30,8 +30,6 @@ const
   cVclDialogs: array[0..4] of string = ('ShowMessage', 'ShowMessageFmt', 'ShowMessagePos', 'MessageDlg',
     'InputBox');
 
-function InList(const AItems: array of string; const AText: string): Boolean;
-
 function SourceText(const AText: string; ANode: TSyntaxNode): string;
 
 function NodeText(const AText: string; ANode: TSyntaxNode): string;
@@ -52,9 +50,6 @@ function IsStatementList(ANode: TSyntaxNode): Boolean;
 /// ohne eigene Rekursion prüfen.</summary>
 function StatementLists(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 
-/// <summary>True, wenn ANode oder ein Nachfahre den Bezeichner AName benutzt.</summary>
-function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
-
 /// <summary>Klassenteil eines Routinennamens: "TA" in "TA.Destroy", sonst ''.</summary>
 function ClassPart(const ARoutineName: string): string;
 
@@ -70,6 +65,10 @@ function SharedThreadClasses(const AContext: TRuleContext): TArray<string>;
 /// steht.</summary>
 function StatementRemoval(const AText: string; AStatement: TSyntaxNode): TTextRange;
 
+/// <summary>Fängt der except-Teil des try ATry alle Ausnahmen (except ohne on, on E: Exception, on TObject oder
+/// else)?</summary>
+function CatchesAll(ATry: TSyntaxNode): Boolean;
+
 implementation
 
 uses
@@ -79,20 +78,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Derived;
-
-function InList(const AItems: array of string; const AText: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AItems do
-  begin
-    if SameText(mItem, AText) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
 
 function SourceText(const AText: string; ANode: TSyntaxNode): string;
 begin
@@ -192,23 +177,6 @@ begin
   end;
 end;
 
-function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  mName := AName;
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  Result := ANode.Search(
-    function(AVisited: TSyntaxNode): TSyntaxSearchStep
-    begin
-      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, mName) then
-      begin
-        Exit(TSyntaxSearchStep.Found);
-      end;
-      Result := TSyntaxSearchStep.Descend;
-    end) <> nil;
-end;
-
 function ClassPart(const ARoutineName: string): string;
 var
   mDot: Integer;
@@ -271,9 +239,9 @@ begin
     mChanged := False;
     for mIndex := 0 to High(mNames) do
     begin
-      if not InList(Result, mNames[mIndex]) and
+      if not MatchText(mNames[mIndex], Result) and
         (SameText(mParents[mIndex], 'TThread') or SameText(mParents[mIndex], 'System.Classes.TThread') or
-        InList(Result, mParents[mIndex])) then
+        MatchText(mParents[mIndex], Result)) then
       begin
         Result := Result + [mNames[mIndex]];
         mChanged := True;
@@ -331,6 +299,38 @@ begin
   else
   begin
     Result := NodeRange(AStatement);
+  end;
+end;
+
+function CatchesAll(ATry: TSyntaxNode): Boolean;
+var
+  mExcept, mChild, mType: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  mExcept := ATry.FindChild(TSyntaxKind.ExceptBlock);
+  if mExcept = nil then
+  begin
+    Exit;
+  end;
+  if mExcept.FindChild(TSyntaxKind.ExceptionHandler) = nil then
+  begin
+    Exit(True);
+  end;
+  for mIndex := 0 to mExcept.ChildCount - 1 do
+  begin
+    mChild := mExcept[mIndex];
+    if mChild.Kind <> TSyntaxKind.ExceptionHandler then
+    begin
+      // Anweisungen neben den Handlern: der else-Teil fängt den Rest.
+      Exit(True);
+    end;
+    mType := mChild.FindChild(TSyntaxKind.TypeReference);
+    if (mType <> nil) and MatchText(Copy(mType.Name, LastDelimiter('.', mType.Name) + 1, MaxInt),
+      ['Exception', 'TObject']) then
+    begin
+      Exit(True);
+    end;
   end;
 end;
 

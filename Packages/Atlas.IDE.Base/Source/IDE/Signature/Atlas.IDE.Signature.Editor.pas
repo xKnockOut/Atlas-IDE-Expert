@@ -37,8 +37,8 @@ uses
   Atlas.Core.Signature.Controller,
   Atlas.Core.Signature.EditorPlan,
   Atlas.UI.Signature.Hint,
-  Atlas.Core.Editor.CloseRules,
-  Atlas.IDE.Foundation.KeyHook,
+  Atlas.ToolsApi.Editor.CloseRules,
+  Atlas.ToolsApi.Keys.Hook,
   Atlas.IDE.Signature.FormatMarks;
 
 type
@@ -104,19 +104,19 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Lsp.Client,
   Vcl.Forms,
   DockForm,
   Atlas.Core.Signature.CallScanner,
   Atlas.Core.Signature.Format,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Lsp.Session,
-  Atlas.IDE.Foundation.Caret,
-  Atlas.IDE.Foundation.EditorWindows;
+  Atlas.ToolsApi.Editor.Caret,
+  Atlas.ToolsApi.Editor.Windows;
 
 type
   /// <summary>Cursor eines Editors: Text, Zeile (ab 1), Zeichen in der Zeile und Offset im Text.</summary>

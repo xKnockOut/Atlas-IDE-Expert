@@ -31,6 +31,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Pascal.Signatures,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Lsp.ChangeSignature.Collector;
@@ -147,6 +148,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Documents.TextChanges,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
@@ -155,11 +157,12 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -415,7 +418,7 @@ var
   mToken: Integer;
   mRebuilt: TTextEdit;
 begin
-  mModified := TChangeSignature.ApplyEdits(AText, ToTextEdits(AInner));
+  mModified := TTextChanges.Apply(AText, ToTextEdits(AInner));
   mTokens := TPascalLexer.Tokenize(mModified);
   mToken := IdentifierAt(mTokens, AEdit.NamePos);
   if (mToken >= 0) and TChangeSignature.CallEdit(mModified, mTokens, mToken,
@@ -487,7 +490,7 @@ begin
   Result := nil;
   if AMember.HasBody then
   begin
-    Result := TChangeSignature.Uses_(AUnit.Tokens, AMember.Body.LastToken + 1, AMember.BodyLast, AName);
+    Result := TPascalSignatures.Uses_(AUnit.Tokens, AMember.Body.LastToken + 1, AMember.BodyLast, AName);
   end;
 end;
 
@@ -755,8 +758,8 @@ begin
   for mSymbol in FCollector.Source(FRoot.FileName).Symbols do
   begin
     if (mSymbol.Kind in cSignatureRoutineKinds) and SameText(mSymbol.Container, FRoot.Container) and
-      SameText(mSymbol.Name, FRoot.Name) and SameParamTypes(mSymbol.ParamTypes, mNewTypes) and
-      not SameParamTypes(mSymbol.ParamTypes, FRoot.Decl.ParamTypes) then
+      SameText(mSymbol.Name, FRoot.Name) and TTextNames.SameTypes(mSymbol.ParamTypes, mNewTypes) and
+      not TTextNames.SameTypes(mSymbol.ParamTypes, FRoot.Decl.ParamTypes) then
     begin
       raise SignatureError(cTexts[TLspChangeSignatureText.TheNewSignatureCollidesWith].Fmt([FRoot.Name,
         mSymbol.SelectionRange.StartPos.Line + 1]));
@@ -769,10 +772,10 @@ var
   mText: string;
   mEdit: TFileEdit;
 begin
-  mText := TChangeSignature.ParameterList(TChangeSignature.NewParameters(AMember.Decl.Parameters, FRequest.Changes,
+  mText := TPascalSignatures.ParameterList(TChangeSignature.NewParameters(AMember.Decl.Parameters, FRequest.Changes,
     FRootNames, True), True);
   mEdit := MakeEdit(TEditKind.Header, TChangeSignature.HeaderEdit(AUnit.Tokens, AMember.Decl, mText).Range, mText);
-  if mText <> TChangeSignature.ParameterList(AMember.Decl.Parameters, True) then
+  if mText <> TPascalSignatures.ParameterList(AMember.Decl.Parameters, True) then
   begin
     AddEdit(FEdits, AMember.FileName, mEdit);
   end;
@@ -780,10 +783,10 @@ begin
   begin
     Exit;
   end;
-  mText := TChangeSignature.ParameterList(TChangeSignature.NewParameters(AMember.Decl.Parameters, FRequest.Changes,
+  mText := TPascalSignatures.ParameterList(TChangeSignature.NewParameters(AMember.Decl.Parameters, FRequest.Changes,
     FRootNames, False), False);
   mEdit := MakeEdit(TEditKind.Header, TChangeSignature.HeaderEdit(AUnit.Tokens, AMember.Body, mText).Range, mText);
-  if ((AMember.Body.OpenToken < 0) or (mText <> TChangeSignature.ParameterList(AMember.Body.Parameters, False))) and
+  if ((AMember.Body.OpenToken < 0) or (mText <> TPascalSignatures.ParameterList(AMember.Body.Parameters, False))) and
     ((mText <> '') or (AMember.Body.OpenToken >= 0)) then
   begin
     AddEdit(FEdits, AMember.FileName, mEdit);
@@ -871,8 +874,8 @@ begin
   mText := '';
   if not FRoot.DeclIsBody then
   begin
-    mText := ALineBreak + mIndent + TChangeSignature.HeaderText(FRoot.Decl, FRoot.Name, FRoot.Decl.Parameters, True) +
-      TChangeSignature.OverloadDirectives(FRoot.Decl, mVirtual);
+    mText := ALineBreak + mIndent + TPascalSignatures.HeaderText(FRoot.Decl, FRoot.Name, FRoot.Decl.Parameters, True) +
+      TPascalSignatures.OverloadDirectives(FRoot.Decl, mVirtual);
   end;
   // Ohne weitere Direktiven fallen beide Einfügungen auf dieselbe Stelle: ein Edit, feste Reihenfolge.
   if not FRoot.Decl.HasDirective('overload') then
@@ -897,10 +900,10 @@ var
   mBody: string;
   mRebuilt: TTextEdit;
 begin
-  mBody := TChangeSignature.HeaderText(FRoot.Decl, QualifiedBodyName(FRoot), FRoot.Decl.Parameters, False);
+  mBody := TPascalSignatures.HeaderText(FRoot.Decl, QualifiedBodyName(FRoot), FRoot.Decl.Parameters, False);
   if FRoot.DeclIsBody then
   begin
-    mBody := mBody + TChangeSignature.OverloadDirectives(FRoot.Decl, False);
+    mBody := mBody + TPascalSignatures.OverloadDirectives(FRoot.Decl, False);
   end;
   mBody := mBody + ALineBreak + 'begin' + ALineBreak + '  ' + TChangeSignature.ForwardCall(FRoot.Decl,
     FRoot.Decl.Parameters, FRequest.Changes) + ALineBreak + 'end;';
@@ -1000,7 +1003,7 @@ begin
   begin
     Exit;
   end;
-  mTree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(AUnit.Text, ToTextEdits(AFinal)));
+  mTree := TSyntaxTreeCache.Parse(TTextChanges.Apply(AUnit.Text, ToTextEdits(AFinal)));
   try
     if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
     begin
@@ -1109,7 +1112,7 @@ begin
   end;
   // Kopf einer Routine: ohne Namensauflösung. Den Text braucht ReadHeader nur für die Parameter.
   mText := '';
-  if TChangeSignature.ReadHeader(mText, ATree.Tokens, mToken, mHeader) then
+  if TPascalSignatures.ReadHeader(mText, ATree.Tokens, mToken, mHeader) then
   begin
     Exit(True);
   end;

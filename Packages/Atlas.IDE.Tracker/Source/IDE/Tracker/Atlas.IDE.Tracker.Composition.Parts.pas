@@ -6,7 +6,7 @@
 // Scope und Zugänge (Install) und reicht Teile, Befehle, Menü, Tasten,
 // Einstellungen und Palette ihres Moduls hierher weiter. Die Adapter der Teile
 // (Kacheln, Zuhörer, Palette, Kommentar-Hilfe) legt
-// Atlas.IDE.Tracker.Composition.Adapters an.
+// Atlas.IDE.Tracker.Composition.HostAdapters an.
 // - MyIssues: „Meine Issues“ (#765) mit Vorschau, Beginnen, Board,
 //   Zeiterfassung, Anhängen und „Issue anlegen“ (#1268); die Kacheln „Meine
 //   Issues“ und „Sprint“ (#1277) und IAtlasIssueCreation für Base (#1355);
@@ -52,7 +52,7 @@ implementation
 
 uses
   System.Types,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Ci.Contract,
   Atlas.IDE.Foundation.Host,
@@ -69,10 +69,10 @@ uses
   Atlas.IDE.Tracker.NewIssue,
   Atlas.IDE.Tracker.TestResults,
   Atlas.IDE.Tracker.WelcomeLink,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Commands.Strings,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Tracker.Composition.Adapters;
+  Atlas.IDE.Tracker.Composition.HostAdapters;
 
 const
   // Zusatzfeld der Zeiterfassung im Statusfeld (#1267).

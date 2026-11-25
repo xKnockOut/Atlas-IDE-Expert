@@ -67,10 +67,10 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Tests.SourceText;
 
 const
   cDatenFile = 'C:\P\Daten.pas';
@@ -152,28 +152,6 @@ const
     '  Summe(7, N, Z);'#10 +
     'end;'#10 +
     'end.';
-
-function PositionOf(const AText, AMarker: string): TTextPosition;
-var
-  mIndex, mLine, mLineStart, mScan: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  mLine := 0;
-  mLineStart := 1;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(mLine);
-      mLineStart := mScan + 1;
-    end;
-  end;
-  Result := TTextPosition.Create(mLine, mIndex - mLineStart);
-end;
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
@@ -260,7 +238,7 @@ begin
   mRequest.Resolver := FResolver;
   mRequest.Index := FIndex;
   mRequest.FileName := AFileName;
-  mRequest.Position := PositionOf(mText, AMarker);
+  mRequest.Position := TTestSource.PositionOf(mText, AMarker);
   mRequest.Direction := ADirection;
   mRequest.Options := AOptions;
   mRequest.Files := TArray<string>.Create(cDatenFile, cHauptFile, cPruefFile);

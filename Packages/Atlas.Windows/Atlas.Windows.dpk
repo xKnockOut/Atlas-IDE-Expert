@@ -1,5 +1,6 @@
 ﻿package Atlas.Windows;
 
+{$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
@@ -53,7 +54,7 @@ contains
   Atlas.Windows.Documents.FileWatcher in 'Source\Documents\Atlas.Windows.Documents.FileWatcher.pas',
   Atlas.Windows.Documents.SharedRead in 'Source\Documents\Atlas.Windows.Documents.SharedRead.pas',
   Atlas.Windows.Console.StdStreams in 'Source\Console\Atlas.Windows.Console.StdStreams.pas',
-  Atlas.Windows.Editing.SystemColors in 'Source\Editing\Atlas.Windows.Editing.SystemColors.pas',
+  Atlas.Windows.Pascal.SystemColors in 'Source\Pascal\Atlas.Windows.Pascal.SystemColors.pas',
   Atlas.Windows.Updates.Adapters.Registry in 'Source\Updates\Atlas.Windows.Updates.Adapters.Registry.pas',
   Atlas.Windows.Updates.Adapters.Files in 'Source\Updates\Atlas.Windows.Updates.Adapters.Files.pas',
   Atlas.Windows.Updates.Adapters.Processes in 'Source\Updates\Atlas.Windows.Updates.Adapters.Processes.pas',

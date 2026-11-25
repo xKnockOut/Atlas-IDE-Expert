@@ -30,9 +30,9 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.Graphics,
-  Atlas.UI.Strings,
-  Atlas.Core.Diagnostics.Processes,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Plugin.Localization.Strings,
+  Atlas.Plugin.Diagnostics.Processes,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasProcessesActions = record
@@ -126,7 +126,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Diagnostics.Strings;
+  Atlas.UI.Diagnostics.Strings,
+  Atlas.Vcl.Theme.Service;
 
 const
   // Breite der Knöpfe „Aktualisieren“ und „Schließen“ in der Fußleiste.
@@ -189,7 +190,7 @@ begin
   mName := NewLabel(AOwner, AParent, TAtlasDiagnosticsStrings.Text(ACaption));
   mName.SetBounds(mName.ScaleValue(TAtlasProcessesDialog.cGap), mName.ScaleValue(ATop + cLabelGap),
     mName.ScaleValue(TAtlasProcessesDialog.cLabelWidth), mName.ScaleValue(cLabelHeight));
-  mName.Font.Color := clGrayText;
+  TAtlasUiTheme.UseFontColor(mName, clGrayText);
   Result := NewLabel(AOwner, AParent, '');
   Result.Left := Result.ScaleValue(TAtlasProcessesDialog.cGap + TAtlasProcessesDialog.cLabelWidth +
     TAtlasProcessesDialog.cGap);

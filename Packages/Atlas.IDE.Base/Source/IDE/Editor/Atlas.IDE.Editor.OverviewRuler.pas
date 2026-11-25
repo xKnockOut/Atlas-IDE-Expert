@@ -23,7 +23,7 @@
 //   IDE, Ausblenden bei ausgelöster Sicherung und Abbau übernimmt
 //   TAtlasEditorBarHost (#1248).
 // Minimap der IDE: Die Open Tools API bietet für sie keine Zeichen-Ereignisse,
-// deshalb ein eigener Streifen (docs/Architektur.md). Die Minimap (#873)
+// deshalb ein eigener Streifen (docs/architektur/Plugin-Editor.md). Die Minimap (#873)
 // sammelt ihre Marken über CollectMarks (Atlas.IDE.Editor.OverviewMarks). Nur im Hauptthread.
 
 interface
@@ -57,17 +57,17 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Atlas.Text.Lines,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Editor.SelectionMatches,
   Atlas.UI.Editor.Strings,
-  Atlas.UI.Popup.TitledTip,
+  Atlas.Vcl.Popup.TitledTip,
   Atlas.UI.Editor.OverviewRuler,
-  Atlas.IDE.Foundation.EditorBarHost,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.EditorBars.Host,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.OpenWatch,
+  Atlas.ToolsApi.Files.OpenWatch,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Editor.OverviewMarks;

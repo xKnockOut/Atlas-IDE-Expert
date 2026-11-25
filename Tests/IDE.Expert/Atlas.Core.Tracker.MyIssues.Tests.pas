@@ -81,11 +81,13 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.BranchPlan,
-  Atlas.Core.VersionControl.Internals.SvnLayout,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.BranchPlan,
+  Atlas.VersionControl.Repository.Internals.SvnLayout,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.Tracker.Contract.MyIssues;
+  Atlas.Core.Tracker.Contract.MyIssues,
+  Atlas.Core.Tracker.TestSupport,
+  Atlas.Tests.Lists;
 
 var
   /// <summary>Aufrufe von CountingProgress.</summary>
@@ -154,17 +156,8 @@ begin
 end;
 
 function TFakeBranchingVcs.Has(const AList: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
 begin
-  Result := False;
-  for mName in AList do
-  begin
-    if mName = AName then
-    begin
-      Exit(True);
-    end;
-  end;
+  Result := TTestLists.Contains(AList, AName);
 end;
 
 function TFakeBranchingVcs.Kind: TAtlasVcsKind;
@@ -341,14 +334,6 @@ end;
 function Now0: TDateTime;
 begin
   Result := EncodeDateTime(2026, 10, 16, 9, 0, 0, 0);
-end;
-
-function Issue(const AKey: string; ANumber: Integer; const ATitle: string): TAtlasTrackerIssue;
-begin
-  Result := TAtlasTrackerIssue.Empty;
-  Result.Key := AKey;
-  Result.Number := ANumber;
-  Result.Title := ATitle;
 end;
 
 function GitHub: TAtlasTrackerTarget;

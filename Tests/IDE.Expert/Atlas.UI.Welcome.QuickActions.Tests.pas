@@ -14,7 +14,7 @@ uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Welcome.QuickActions,
   DUnitX.TestFramework,
   Atlas.UI.Welcome.Contract;
@@ -105,7 +105,7 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ExtCtrls,
-  Atlas.Core.VersionControl.Pull,
+  Atlas.VersionControl.Repository.Pull,
   Atlas.UI.Welcome.QuickActions.Texts;
 
 const

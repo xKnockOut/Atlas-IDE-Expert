@@ -13,7 +13,7 @@
 //   „Erst lokale Änderungen sichern“, ohne Arbeitskopie und solange auf dem
 //   Projekt schon eine Aktion läuft. Unbekannter Stand sperrt nicht: Pull
 //   prüft vor dem Holen die ganze Arbeitskopie noch einmal (TAtlasVcsPull in
-//   Atlas.Core.VersionControl.Pull, Base). Bei SVN
+//   Atlas.VersionControl.Repository.Pull, Base). Bei SVN
 //   heißt der Knopf „Aktualisieren“. vcs.externals.update (#1292) wählt bei
 //   SVN mit Externals bzw. ohne (--ignore-externals); „fragen“ gibt dem Knopf
 //   die Auswahl „mit Externals“/„ohne Externals“ (AskExternals).
@@ -39,7 +39,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Text.Lines,
   Atlas.Core.Welcome.Contract;
 
@@ -167,6 +167,7 @@ type
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Text.DUnitX;
 
 const
@@ -507,8 +508,19 @@ end;
 
 class function TAtlasWelcomeQuickActions.ConsoleCommand(const AProgram, AFolder: string; out AFileName,
   AParameters: string): Boolean;
+const
+  // Konsolen in der Reihenfolge von cConsoles.
+  cConsoles: array[0..3] of string = ('wt', 'cmd', 'powershell', 'pwsh');
+  cTerminal = 0;
+  cCmd = 1;
+  cPowerShell = 2;
+  cPwsh = 3;
+  // Befehlszeilen, die in den Ordner wechseln und die Konsole offen lassen.
+  cTerminalArgs = '-d "%s"';
+  cCmdArgs = '/K cd /d "%s"';
+  cPowerShellArgs = '-NoExit -Command Set-Location -LiteralPath ''%s''';
 var
-  mFolder, mQuoted, mBase: string;
+  mFolder, mQuoted: string;
 begin
   AFileName := NormalizedConsole(AProgram);
   AParameters := '';
@@ -524,19 +536,13 @@ begin
   begin
     mQuoted := mQuoted + '.';
   end;
-  mBase := LowerCase(BaseNameOf(AFileName));
-  if mBase = 'wt' then
-  begin
-    AParameters := '-d "' + mQuoted + '"';
-  end
-  else if mBase = 'cmd' then
-  begin
-    AParameters := '/K cd /d "' + mQuoted + '"';
-  end
-  else if (mBase = 'powershell') or (mBase = 'pwsh') then
-  begin
-    AParameters := '-NoExit -Command Set-Location -LiteralPath ''' + StringReplace(mQuoted, '''', '''''',
-      [rfReplaceAll]) + '''';
+  case IndexStr(LowerCase(BaseNameOf(AFileName)), cConsoles) of
+    cTerminal:
+      AParameters := Format(cTerminalArgs, [mQuoted]);
+    cCmd:
+      AParameters := Format(cCmdArgs, [mQuoted]);
+    cPowerShell, cPwsh:
+      AParameters := Format(cPowerShellArgs, [StringReplace(mQuoted, '''', '''''', [rfReplaceAll])]);
   end;
 end;
 

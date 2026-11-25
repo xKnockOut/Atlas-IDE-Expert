@@ -31,18 +31,8 @@ implementation
 uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.Constructors;
-
-/// <summary>Unit mit TImport (Felder FStrom und FZeilen), dem Konstruktor-Rumpf AConstructor und dem
-/// Destruktor-Rumpf ADestructor.</summary>
-function ImportUnit(const AConstructor, ADestructor: string): string;
-begin
-  Result := 'unit U;'#10'interface'#10'type'#10'  TImport = class'#10'  private'#10'    FStrom: TFileStream;'#10 +
-    '    FZeilen: TStringList;'#10'  public'#10'    constructor Create(const Datei: string);'#10 +
-    '    destructor Destroy; override;'#10'  end;'#10'implementation'#10 +
-    'constructor TImport.Create(const Datei: string);'#10'begin'#10 + AConstructor + #10'end;'#10 +
-    'destructor TImport.Destroy;'#10'begin'#10 + ADestructor + #10'end;'#10'end.';
-end;
+  Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.Constructors,
+  Atlas.Common.Rules.Builtin.Flow.DestructorNotNilSafe.TestSupport;
 
 /// <summary>Routinen der Unit (auf oberster Ebene des Implementierungsteils).</summary>
 function Routines(ATree: TSyntaxTree): TArray<TSyntaxNode>;

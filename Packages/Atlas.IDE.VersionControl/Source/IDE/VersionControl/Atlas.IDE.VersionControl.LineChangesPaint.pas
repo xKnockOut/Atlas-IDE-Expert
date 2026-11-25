@@ -10,7 +10,7 @@ interface
 uses
   Winapi.Windows,
   System.Types,
-  Atlas.Core.Style.Color,
+  Atlas.Plugin.Style.Color,
   Atlas.Core.Editor.LineChanges;
 
 type
@@ -26,6 +26,10 @@ type
     /// <summary>Dreieck nach rechts an ALeft: über der Zeile ARect, mit AAtEnd (Dateiende) unter ihr.</summary>
     class procedure PaintDeleted(ADC: HDC; ALeft, ASize: Integer; const ARect: TRect; AAtEnd: Boolean;
       AColor: TAtlasColor); static;
+    /// <summary>Marke AMark rechts in der Rinnenzeile ARect, mit ADeleted das Dreieck einer Löschung (AAtEnd: am
+    /// Dateiende); Farben passend zum Hintergrund ABack. Liefert die bemalte Fläche.</summary>
+    class function PaintMarks(ADC: HDC; const ARect: TRect; ABack: TAtlasColor; AMark: TAtlasLineMark;
+      ADeleted, AAtEnd: Boolean): TRect; static;
     /// <summary>Zeilenhistorie ACaption ab AX, senkrecht in ARect mittig, mit der Schrift AFont in gedämpfter
     /// Farbe über dem Hintergrund ABack; liefert das beschriebene Rechteck.</summary>
     class function PaintCaption(ADC: HDC; const ARect: TRect; AX: Integer; const ACaption: string; AFont: HFONT;
@@ -49,10 +53,11 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Editor.Pairs,
-  Atlas.Core.Style.Palette,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Style.Palette,
+  Atlas.Core.VersionControl.LineChangesPlan,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.Navigation;
 
 { TAtlasLineChangesPaint }
@@ -98,6 +103,39 @@ begin
     SelectObject(ADC, mOldBrush);
     DeleteObject(mPen);
     DeleteObject(mBrush);
+  end;
+end;
+
+class function TAtlasLineChangesPaint.PaintMarks(ADC: HDC; const ARect: TRect; ABack: TAtlasColor;
+  AMark: TAtlasLineMark; ADeleted, AAtEnd: Boolean): TRect;
+var
+  mColors: TAtlasColors;
+  mWidth, mLeft, mSize, mSaved: Integer;
+begin
+  mColors := TAtlasColors.ForBackground(ABack);
+  mWidth := TAtlasLineChangesPlan.BarWidth(ARect.Height);
+  // Rechts in der Rinne, mit einem Pixel Abstand zum Code.
+  mLeft := ARect.Right - mWidth - 2;
+  Result := TRect.Create(mLeft, ARect.Top, mLeft + mWidth, ARect.Bottom);
+  mSaved := SaveDC(ADC);
+  try
+    if AMark = TAtlasLineMark.Added then
+    begin
+      FillBar(ADC, Result, mColors.Add);
+    end
+    else if AMark <> TAtlasLineMark.None then
+    begin
+      FillBar(ADC, Result, mColors.Accent);
+    end;
+    if ADeleted then
+    begin
+      // Über der Zeile, am Dateiende unter der letzten Zeile.
+      mSize := TAtlasLineChangesPlan.DeletedSize(ARect.Height);
+      PaintDeleted(ADC, mLeft, mSize, ARect, AAtEnd, mColors.Error);
+      Result.Right := Max(Result.Right, mLeft + mSize);
+    end;
+  finally
+    RestoreDC(ADC, mSaved);
   end;
 end;
 

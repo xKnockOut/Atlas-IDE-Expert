@@ -32,7 +32,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Rules.Ownership,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   TAtlasIdeOwnershipHints = class
@@ -110,26 +110,26 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Editor.CloseRules,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.ToolsApi.Editor.CloseRules,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Rules.OwnershipPlan,
-  Atlas.Core.Lsp.Session.Json,
+  Atlas.Plugin.Lsp.Session.Json,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.UI.Rules.Strings,
   Atlas.IDE.Editor.Lens,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style;
 
 const
   cTimeoutMs = 20000;
@@ -519,8 +519,13 @@ begin
       TAtlasOwnershipTipStep.Close:
         HideTip;
       TAtlasOwnershipTipStep.Show:
-        FTip.ShowNote(TAtlasOwnershipMarks.TipTitle(FHits[FHover].Marks, FTexts),
-          TAtlasOwnershipMarks.TipText(FHits[FHover].Marks, FTexts), Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+        begin
+          // Farben und Schrift des IDE-Themas, sonst hell im dunklen Editor.
+          TAtlasIdeStyle.Apply(FTip, FHoverScreen);
+          FTip.ShowNote(TAtlasOwnershipMarks.TipTitle(FHits[FHover].Marks, FTexts),
+            TAtlasOwnershipMarks.TipText(FHits[FHover].Marks, FTexts),
+            Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+        end;
     end;
   except
     on E: Exception do

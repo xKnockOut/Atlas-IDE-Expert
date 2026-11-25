@@ -31,13 +31,13 @@ uses
   System.Classes,
   System.Types,
   Vcl.Menus,
-  Vcl.ExtCtrls,
+  Atlas.IDE.Debug.Session,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.EventBreak,
   Atlas.Core.Debug.EventBreakWatch,
   Atlas.UI.Debug.EventBreak,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasEventBreakSessionFunc = reference to function: TLspSession;
@@ -61,7 +61,7 @@ type
   private
     FSession: TAtlasEventBreakSessionFunc;
     FMessage: TAtlasMessageSink;
-    FTimer: TTimer;
+    FPace: TAtlasIdeDebugPace;
     FMenuItem: TMenuItem;
     FBar: TAtlasEventBreakBar;
     FChoice: TAtlasEventChoice;
@@ -69,7 +69,6 @@ type
     FWatch: TAtlasEventWatch;
     FArmed: TArmedState;
     procedure MenuClick(Sender: TObject);
-    procedure Tick(Sender: TObject);
     procedure Execute;
     /// <summary>Server fragen und Auswahl im Dialog; False bei Abbruch oder ohne Prozess.</summary>
     function Choose(out AProcess: IOTAProcess): Boolean;
@@ -112,24 +111,24 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.EventBreakNames,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Settings.VisualizerKinds,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Settings.EventBreakNames,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Settings.VisualizerKinds,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.EventBreak.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Debug.StopBar,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.RunMenu,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Caret;
+  Atlas.Plugin.Diagnostics.Deadline,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Caret;
 
 const
   cMenuItemName = 'AtlasBreakOnNextEventItem';
@@ -188,16 +187,13 @@ begin
   FMessage := TAtlasMessageSink.Create(AMessage);
   FChoice := TAtlasEventChoice.Defaults;
   FWatch.StartLine := -1;
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := Tick;
+  FPace := TAtlasIdeDebugPace.Create(cTickMs, Step);
   InstallMenu;
 end;
 
 destructor TAtlasIdeEventBreak.Destroy;
 begin
-  FreeAndNil(FTimer);
+  FreeAndNil(FPace);
   // Beim Entladen mitten in der Beobachtung: keine Haltepunkte zurücklassen.
   TAtlasIdeBreakpoints.RemoveAll(FArmed.Breaks);
   FreeAndNil(FBar);
@@ -213,15 +209,6 @@ begin
     procedure
     begin
       Run;
-    end);
-end;
-
-procedure TAtlasIdeEventBreak.Tick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Debugger,
-    procedure
-    begin
-      Step;
     end);
 end;
 
@@ -281,12 +268,13 @@ begin
     // Programm läuft: kurz anhalten, im Takt auf den Halt warten, dann Formulare lesen.
     FWatch.Phase := TAtlasEventWatchPhase.Pausing;
     FWatch.PauseStarted := TAtlasTicks.Now;
-    FTimer.Enabled := True;
+    FPace.Timer.Enabled := True;
     try
       AProcess.Pause;
     except
       on E: Exception do
       begin
+        TAtlasGuard.Log('Debugger: Anhalten gescheitert: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
         FWatch.Phase := TAtlasEventWatchPhase.Idle;
         ArmAllForms;
       end;
@@ -323,7 +311,7 @@ begin
       Finish;
       FMessage.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakEnded));
     end;
-    FTimer.Enabled := False;
+    FPace.Timer.Enabled := False;
   end
   else if FWatch.Phase = TAtlasEventWatchPhase.Pausing then
   begin
@@ -350,7 +338,7 @@ begin
   begin
     // Leiste zu, sobald das Programm wieder läuft.
     HideBar;
-    FTimer.Enabled := False;
+    FPace.Timer.Enabled := False;
   end;
 end;
 
@@ -492,7 +480,7 @@ begin
   case TAtlasEventBreakWatch.ArmCount(Length(FArmed.Locations)) of
     TAtlasEventArmCount.Empty:
       begin
-        FTimer.Enabled := False;
+        FPace.Timer.Enabled := False;
         FMessage.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakNoHandlers));
         Exit;
       end;
@@ -532,7 +520,7 @@ begin
       FArmed.Breaks := FArmed.Breaks + [mBreakpoint];
     end;
   end;
-  FTimer.Enabled := True;
+  FPace.Timer.Enabled := True;
   mProcess := TAtlasIdeBreakpoints.CurrentProcess;
   mStopped := TAtlasIdeBreakpoints.IsStopped(mProcess);
   mFileName := '';
@@ -571,7 +559,7 @@ begin
   FMessage.Say(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakStopped, [mCaption]));
   ShowBar(mCaption);
   // Im Takt bleiben, um die Leiste zu schließen, sobald das Programm weiterläuft.
-  FTimer.Enabled := True;
+  FPace.Timer.Enabled := True;
 end;
 
 procedure TAtlasIdeEventBreak.KeepWatching;
@@ -590,7 +578,7 @@ end;
 
 procedure TAtlasIdeEventBreak.Finish;
 begin
-  FTimer.Enabled := False;
+  FPace.Timer.Enabled := False;
   FWatch.Phase := TAtlasEventWatchPhase.Idle;
   TAtlasIdeBreakpoints.RemoveAll(FArmed.Breaks);
 end;

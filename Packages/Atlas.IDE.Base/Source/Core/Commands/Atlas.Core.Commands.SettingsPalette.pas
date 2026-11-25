@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog,
+  Atlas.Plugin.Settings.Catalog,
   Atlas.Core.Settings.Groups,
   Atlas.Core.Settings.Search,
   Atlas.Core.Commands.Contract;
@@ -84,7 +84,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

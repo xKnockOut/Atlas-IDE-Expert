@@ -22,17 +22,21 @@
 // Befunde verfolgt die IDE (TAtlasIdeLineTracker, Kanal Befunde); gezeichnet
 // wird in Editorzeile X, was zur Quellzeile gehört, die jetzt dort steht. Eine
 // gelöschte Zeile trägt keine Marke mehr. Der nächste Stand des Speichers
-// (Tipp-Pause, Serverantwort) meldet die Zeilen neu an, nicht beim Zeichnen:
+// (Tipp-Pause, Serverantwort) meldet die Zeilen neu an, vorsorglich nicht beim
+// Zeichnen (eine von drei Vorkehrungen, siehe Atlas.IDE.Foundation.LineTracker):
 // Das Anmelden ändert die Zeilentabelle des Editors, und das Zeichnen kommt
 // auch mitten aus anderen Vorgängen (WM_PRINTCLIENT beim Hover). Der Zeichner
-// merkt sich die Datei und meldet über einen eigenen Zeitgeber danach an; bis
-// dahin gilt jede Zeile als sie selbst.
+// merkt sich die Dateien (auch aus weiteren Editorfenstern) und meldet über
+// einen eigenen Zeitgeber danach je Datei an; bis dahin gilt jede Zeile als sie
+// selbst. Scheitert das Anmelden, bleibt der Stand ohne Verfolgung, bis der
+// nächste kommt: Derselbe Fehler wiederholt sich nicht bei jedem Zeichnen.
 
 interface
 
 uses
   System.SysUtils,
   System.Types,
+  System.Classes,
   Vcl.Controls,
   Vcl.ExtCtrls,
   Vcl.Graphics,
@@ -41,7 +45,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.LineTracking,
-  Atlas.UI.Foundation.EditorFont;
+  Atlas.Vcl.Theme.EditorFont;
 
 type
   TAtlasProblemsPainter = class
@@ -64,12 +68,14 @@ type
     FTypedAt: UInt64;
     // Zeilenverfolgung nach dem Zeichnen anmelden (#1818).
     FFollowTimer: TTimer;
-    FFollowFile: string;
+    FFollowFiles: TStringList;
     /// <summary>Merkt Tastendrücke in der Cursorzeile; True, solange die Pause nicht um ist.</summary>
     function Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
     procedure TimerTick(Sender: TObject);
-    /// <summary>Zeilen der gemerkten Datei verfolgen, wenn sie im oberen Editor steht.</summary>
+    /// <summary>Zeilen jeder vorgemerkten Datei verfolgen, die noch offen ist.</summary>
     procedure FollowTick(Sender: TObject);
+    /// <summary>Zeilen der Befunde in AFileName verfolgen; nach einem Fehler bis zum nächsten Stand ohne.</summary>
+    procedure FollowFile(const AFileName: string);
     procedure PaintInline(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
       const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
     /// <summary>Text der Zeile aus dem Speicher, wenn er dem Editor entspricht und gezeichnet werden soll; ABusy
@@ -79,8 +85,8 @@ type
     /// <summary>Wellen, Punkte und Durchstreichungen der Probleme AProblems.</summary>
     procedure PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
       const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
-    /// <summary>Verfolgte Zeilen der Befunde im Puffer von AContext (#1818); nil ohne Verfolgung oder solange
-    /// der Stand noch nicht angemeldet ist (dann merkt sie die Datei für FollowTick vor).</summary>
+    /// <summary>Zuordnung der verfolgten Befundzeilen im Puffer von AContext (#1818); nil ohne Verfolgung oder
+    /// solange der Stand noch nicht angemeldet ist (dann merkt sie die Datei für FollowTick vor).</summary>
     function Tracked(const AContext: INTACodeEditorPaintContext): TAtlasTrackedLines;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
@@ -95,24 +101,24 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Winapi.Windows,
   System.Math,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Problems.Colors,
   Atlas.Core.Editor.Pairs,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Problems.Marks,
-  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.ToolsApi.Editor.Refresh,
   Atlas.IDE.Foundation.LineTracker,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasProblemsPainter.TEvents }
 
@@ -147,6 +153,10 @@ begin
   FFollowTimer.Enabled := False;
   FFollowTimer.Interval := 1;
   FFollowTimer.OnTimer := FollowTick;
+  FFollowFiles := TStringList.Create;
+  FFollowFiles.CaseSensitive := False;
+  FFollowFiles.Sorted := True;
+  FFollowFiles.Duplicates := dupIgnore;
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
@@ -166,6 +176,7 @@ begin
   FEventsRef := nil;
   FreeAndNil(FTimer);
   FreeAndNil(FFollowTimer);
+  FreeAndNil(FFollowFiles);
   FreeAndNil(FFont);
   inherited Destroy;
 end;
@@ -204,36 +215,46 @@ end;
 
 procedure TAtlasProblemsPainter.FollowTick(Sender: TObject);
 var
-  mView: IOTAEditView;
-  mStore: TAtlasProblemStore;
+  mFiles: TArray<string>;
   mFileName: string;
 begin
   FFollowTimer.Enabled := False;
-  mFileName := FFollowFile;
-  FFollowFile := '';
-  if TAtlasGuard.Disabled(TAtlasFeature.Problems) or (mFileName = '') then
+  mFiles := FFollowFiles.ToStringArray;
+  FFollowFiles.Clear;
+  if TAtlasGuard.Disabled(TAtlasFeature.Problems) then
   begin
     Exit;
   end;
+  for mFileName in mFiles do
+  begin
+    FollowFile(mFileName);
+  end;
+end;
+
+procedure TAtlasProblemsPainter.FollowFile(const AFileName: string);
+var
+  mStore: TAtlasProblemStore;
+begin
+  mStore := FStore;
   try
-    mView := TAtlasEditorBuffer.TopView;
-    if (mView = nil) or (mView.Buffer = nil) or not SameFileName(mView.Buffer.FileName, mFileName) then
-    begin
-      Exit;
-    end;
-    mStore := FStore;
-    TAtlasIdeLineTracker.Follow(mView, TAtlasLineTracking.cProblems, mStore.Stamp(mFileName),
+    // Auch in einem weiteren Editorfenster; ist die Datei inzwischen geschlossen, geschieht nichts.
+    TAtlasIdeLineTracker.FollowFile(AFileName, TAtlasLineTracking.cProblems, mStore.Stamp(AFileName),
       function: TArray<Integer>
       begin
-        Result := TAtlasProblemMarks.Lines(mStore.ForFile(mFileName));
+        Result := TAtlasProblemMarks.Lines(mStore.ForFile(AFileName));
       end,
       function: string
       begin
-        Result := mStore.TextOf(mFileName);
+        Result := mStore.TextOf(AFileName);
       end);
   except
     on E: Exception do
+    begin
       TAtlasGuard.Report(TAtlasFeature.Problems, E);
+      // Bis zum nächsten Stand ohne Verfolgung (jede Zeile ist sie selbst): Sonst stellte jedes Zeichnen den
+      // Zeitgeber neu, und derselbe Fehler schaltete nach drei Versuchen alle Befund-Marken ab.
+      TAtlasIdeLineTracker.GiveUp(AFileName, TAtlasLineTracking.cProblems, mStore.Stamp(AFileName));
+    end;
   end;
 end;
 
@@ -478,7 +499,8 @@ begin
   end;
 end;
 
-/// <summary>Zeilen, die die Befunde AProblems berühren (je Befund höchstens die ersten 64).</summary>
+/// <summary>Zuordnung der verfolgten Befundzeilen zum aktuellen Stand der Datei von AContext; fehlt sie, merkt
+/// sich der Zeichner die Datei für FollowTick vor und zeichnet bis dahin jede Zeile als sie selbst.</summary>
 function TAtlasProblemsPainter.Tracked(const AContext: INTACodeEditorPaintContext): TAtlasTrackedLines;
 var
   mFileName: string;
@@ -490,10 +512,10 @@ begin
   end;
   mFileName := AContext.FileName;
   Result := TAtlasIdeLineTracker.Current(mFileName, TAtlasLineTracking.cProblems, FStore.Stamp(mFileName));
-  if (Result = nil) and not FFollowTimer.Enabled then
+  if Result = nil then
   begin
-    // Anmelden ändert die Zeilentabelle des Editors: erst nach dem Zeichnen.
-    FFollowFile := mFileName;
+    // Anmelden ändert die Zeilentabelle des Editors: erst nach dem Zeichnen, für jede vorgemerkte Datei.
+    FFollowFiles.Add(mFileName);
     FFollowTimer.Enabled := True;
   end;
 end;

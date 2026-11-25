@@ -15,7 +15,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Build.Events,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 type
   TAtlasIdeCompileEvents = class
@@ -64,7 +64,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cMessageGroup = 'Atlas';

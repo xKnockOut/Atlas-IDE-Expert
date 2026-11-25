@@ -25,8 +25,8 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Lines,
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Lines,
   Atlas.Core.Commands.KeyConflicts,
   Atlas.Core.Setup.Contract;
 
@@ -242,7 +242,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Settings.Choices,
+  Atlas.Plugin.Settings.Choices,
   Atlas.Text.Json;
 
 function Make(ACheck: TAtlasSetupCheck; AFinding: TAtlasSetupFinding; AState: TAtlasStatusState;
@@ -349,12 +349,7 @@ begin
   begin
     Exit;
   end;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    on Exception do
-      mValue := nil;
-  end;
+  mValue := TJsonRead.Parse(AJson);
   try
     if not (mValue is TJSONObject) then
     begin

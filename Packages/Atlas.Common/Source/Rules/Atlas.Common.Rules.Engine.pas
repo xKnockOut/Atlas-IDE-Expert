@@ -137,7 +137,7 @@ uses
   Atlas.Common.Rules.Builtin.SavedQueries,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Findings.Suppressions,
   Atlas.Common.Semantics.Contract,
   Atlas.Common.Semantics.TreeUnits;
 
@@ -493,17 +493,8 @@ begin
 end;
 
 class function TRuleEngine.RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string;
-var
-  mRule: TRuleSetting;
 begin
-  for mRule in ASettings.Rules do
-  begin
-    if SameText(mRule.Id, ARuleId) then
-    begin
-      Exit(mRule.Options);
-    end;
-  end;
-  Result := '';
+  Result := TRuleSetting.OptionsOf(ASettings.Rules, ARuleId);
 end;
 
 class function TRuleEngine.CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity;

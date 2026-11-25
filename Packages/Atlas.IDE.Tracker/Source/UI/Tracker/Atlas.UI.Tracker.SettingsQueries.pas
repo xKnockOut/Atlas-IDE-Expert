@@ -14,7 +14,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Atlas.Core.Tracker.SettingsTables,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Tracker.SettingsRows,
   Atlas.Core.Tracker.Contract.MyIssues;
 
@@ -42,14 +42,10 @@ type
     TemplateFields: TEdit;
   end;
 
-  TAtlasTrackerQueriesPart = class
+  TAtlasTrackerQueriesPart = class(TAtlasTrackerSettingsPart)
   private
-    FRows: TAtlasTrackerSettingsRows;
-    FHooks: TAtlasTrackerSettingsHooks;
-    FTables: TAtlasTrackerSettingsTables;
     FView: TAtlasTrackerQueriesView;
     FAnchor: TWinControl;
-    FFilling: Boolean;
     function Table: TAtlasTrackerQueryTable;
     procedure BuildList;
     procedure BuildFields;
@@ -68,8 +64,6 @@ type
     procedure RemoveClick(Sender: TObject);
     procedure EditClick(Sender: TObject);
   public
-    constructor Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
-      ATables: TAtlasTrackerSettingsTables);
     procedure Build;
     /// <summary>Auswahl der Verbindungen, Tabelle und Felder neu.</summary>
     procedure Refresh;
@@ -80,7 +74,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Settings.Strings,
   Atlas.UI.Tracker.QueryDialog;
 
@@ -100,15 +94,6 @@ type
   TRows = TAtlasTrackerSettingsRows;
 
 { TAtlasTrackerQueriesPart }
-
-constructor TAtlasTrackerQueriesPart.Create(ARows: TAtlasTrackerSettingsRows; AHooks: TAtlasTrackerSettingsHooks;
-  ATables: TAtlasTrackerSettingsTables);
-begin
-  inherited Create;
-  FRows := ARows;
-  FHooks := AHooks;
-  FTables := ATables;
-end;
 
 function TAtlasTrackerQueriesPart.Table: TAtlasTrackerQueryTable;
 begin
@@ -288,12 +273,7 @@ end;
 
 procedure TAtlasTrackerQueriesPart.SelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 begin
-  if FFilling or not Selected or (Item = nil) then
-  begin
-    Exit;
-  end;
-  Table.Select(Item.Index);
-  FillFields;
+  TakeSelection(Item, Selected, Table.Select, FillFields);
 end;
 
 procedure TAtlasTrackerQueriesPart.NameChange(Sender: TObject);
@@ -350,11 +330,7 @@ end;
 
 procedure TAtlasTrackerQueriesPart.RemoveClick(Sender: TObject);
 begin
-  if Table.Editable then
-  begin
-    Table.Remove;
-    Refresh;
-  end;
+  RemoveSelected(Table.Editable, Table.Remove, Refresh);
 end;
 
 procedure TAtlasTrackerQueriesPart.EditClick(Sender: TObject);

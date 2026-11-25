@@ -25,7 +25,7 @@ uses
   Vcl.ComCtrls,
   Atlas.Core.Tracker.Attach,
   Atlas.UI.Tracker.AttachSources,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Was der Dialog anbieten kann; die IDE-Schicht füllt es.</summary>
@@ -118,11 +118,11 @@ uses
   System.UITypes,
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Files,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Attach.Strings,
-  Atlas.UI.Foundation.WrapLabel,
-  Atlas.UI.Foundation.Scaling;
+  Atlas.Vcl.Controls.WrapLabel,
+  Atlas.Vcl.Theme.Scaling;
 
 const
   // Maße bei 96 dpi.

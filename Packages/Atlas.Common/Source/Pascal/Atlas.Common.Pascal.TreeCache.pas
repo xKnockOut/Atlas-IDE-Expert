@@ -122,7 +122,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Pascal.Parser;
+  Atlas.Common.Pascal.Parser,
+  Atlas.Text.Chars;
 
 const
   cTreeKey = 'pascal.syntaxtree';
@@ -170,8 +171,8 @@ type
   end;
 
 var
-  // TCriticalSection statt TMonitor: TMonitor legt Sperrdaten erst beim ersten Zugriff
-  // bzw. Konflikt an und behält sie; der Leck-Monitor meldete das im ersten Test.
+  // TCriticalSection statt TMonitor: Parses aus vielen Threads treffen hier oft gleichzeitig ein, und TMonitor legt
+  // beim ersten Konflikt Warteobjekte an, die bis zur Freigabe der Sperre bleiben.
   RunLock: TCriticalSection;
   // Laufender gemeinsamer Parse je URI und Schlüssel; hält die Läufe über ihre Schnittstelle am Leben.
   Running: TDictionary<string, IPascalCancellation>;
@@ -507,19 +508,6 @@ begin
   Result.Bytes := TInterlocked.CompareExchange(LiveBytes, 0, 0);
 end;
 
-function StringBytes(const AValue: string): Int64;
-begin
-  // Kopf (Referenzzähler, Länge, Codepage) plus UTF-16-Zeichen und Endnull, wie Index.Memory.
-  if AValue = '' then
-  begin
-    Result := 0;
-  end
-  else
-  begin
-    Result := 12 + (Length(AValue) + 1) * SizeOf(Char);
-  end;
-end;
-
 class function TSyntaxTreeCache.EstimatedBytes(ATree: TSyntaxTree): Int64;
 var
   mBytes: Int64;
@@ -533,14 +521,14 @@ begin
   mBytes := TSyntaxTree.InstanceSize + 16 + Int64(Length(ATree.Tokens)) * SizeOf(TPascalToken);
   for mToken in ATree.Tokens do
   begin
-    Inc(mBytes, StringBytes(mToken.Text));
+    Inc(mBytes, TTextChars.StringBytes(mToken.Text));
   end;
   if ATree.Root <> nil then
   begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
-        Inc(mBytes, TSyntaxNode.InstanceSize + StringBytes(ANode.Name));
+        Inc(mBytes, TSyntaxNode.InstanceSize + TTextChars.StringBytes(ANode.Name));
         // Kinderliste: Objekt und Array der Zeiger.
         if ANode.ChildCount > 0 then
         begin
@@ -569,8 +557,8 @@ end;
 
 initialization
   RunLock := TCriticalSection.Create;
-  // Gleich mit Platz anlegen: Wächst das Wörterbuch erst beim ersten Parse, bleibt der
-  // vergrößerte Speicher bis Programmende liegen und gilt im Test als Leck.
+  // Anfangsgröße für die gleichzeitig laufenden Parses (einer je Datei und Schlüssel): So wächst die Tabelle im
+  // Betrieb nicht, und ein Parse belegt nur seinen Eintrag.
   Running := TDictionary<string, IPascalCancellation>.Create(64);
 
 finalization

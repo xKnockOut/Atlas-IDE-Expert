@@ -23,7 +23,7 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.BackgroundRequest,
+  Atlas.Plugin.Lsp.BackgroundRequest,
   Atlas.Core.Editor.SmartIndent;
 
 type
@@ -58,12 +58,12 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Lsp.TextChanges,
-  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Lsp.TextChanges,
+  Atlas.Plugin.Lsp.WorkspaceEdits,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.Core.Editor.EditSurface;

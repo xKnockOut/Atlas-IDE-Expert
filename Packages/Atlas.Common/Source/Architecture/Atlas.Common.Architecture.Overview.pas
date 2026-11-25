@@ -266,6 +266,10 @@ type
     class function NamespaceParts(const AUnitName: string): TArray<string>; static;
     /// <summary>Text der Rolle: "Fundament", "Drehscheibe" oder ''.</summary>
     class function RoleCaption(ARole: TOverviewUnitRole): string; static;
+    /// <summary>Schlüssel der Rolle für JSON und Schnappschüsse: "foundation", "hub" oder ''.</summary>
+    class function RoleKey(ARole: TOverviewUnitRole): string; static;
+    /// <summary>Name des Teilsystems ASubsystem von AOverview; '' außerhalb der Liste.</summary>
+    class function SubsystemName(const AOverview: TArchitectureOverview; ASubsystem: Integer): string; static;
     /// <summary>Nachteilung (#1364): teilt jede Gruppe außer ASkip mit ASplit, ein Teil höchstens ADepth Stufen
     /// tief. Das erste Teil nimmt den Platz der Gruppe ein, die übrigen kommen hinten dazu. AFamilies: je
     /// Ergebnis die Nummer der Ausgangsgruppe.</summary>
@@ -329,18 +333,6 @@ begin
     Exit(AUnit.Direct > AOther.Direct);
   end;
   Result := AIndex < AOtherIndex;
-end;
-
-/// <summary>Die Nummern 0..ACount-1.</summary>
-function AllIndices(ACount: Integer): TArray<Integer>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, ACount);
-  for mIndex := 0 to ACount - 1 do
-  begin
-    Result[mIndex] := mIndex;
-  end;
 end;
 
 /// <summary>AMembers nach Zentralität sortieren: die zentralste Unit zuerst.</summary>
@@ -823,7 +815,7 @@ begin
     end;
     FResult.Units[mIndex] := mItem;
   end;
-  FResult.Central := AllIndices(Length(FResult.Units));
+  FResult.Central := TTextArrays.Indices(Length(FResult.Units));
   SortByCentrality(FResult.Units, FResult.Central);
 end;
 
@@ -1090,7 +1082,7 @@ begin
   SetLength(FPartKey, Length(FResult.Subsystems));
   mParts := UnitParts(FResult.Units);
   mFamilies := FamilyUnits(FResult.Subsystems, FFamily);
-  mGlobal := TSubsystemNaming.PartCounts(mParts, AllIndices(Length(FResult.Units)));
+  mGlobal := TSubsystemNaming.PartCounts(mParts, TTextArrays.Indices(Length(FResult.Units)));
   try
     for mIndex := 0 to High(FResult.Subsystems) do
     begin
@@ -1163,6 +1155,28 @@ begin
   else
   begin
     Result := CentralName(FResult.Units, AMembers);
+  end;
+end;
+
+class function TArchitectureAnalyzer.RoleKey(ARole: TOverviewUnitRole): string;
+begin
+  case ARole of
+    TOverviewUnitRole.Foundation:
+      Result := 'foundation';
+    TOverviewUnitRole.Hub:
+      Result := 'hub';
+  else
+    Result := '';
+  end;
+end;
+
+class function TArchitectureAnalyzer.SubsystemName(const AOverview: TArchitectureOverview;
+  ASubsystem: Integer): string;
+begin
+  Result := '';
+  if (ASubsystem >= 0) and (ASubsystem < Length(AOverview.Subsystems)) then
+  begin
+    Result := AOverview.Subsystems[ASubsystem].Name;
   end;
 end;
 

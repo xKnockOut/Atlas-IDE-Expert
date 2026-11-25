@@ -102,11 +102,13 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.EventAssignments,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused.Shared,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes,
+  Atlas.Text.Names;
 
 {$SCOPEDENUMS ON}
 
@@ -314,32 +316,6 @@ begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
 end;
 
-function BareTypeName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-  begin
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  end;
-  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-end;
-
-function ContainsKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
-var
-  mKind: TSyntaxKind;
-begin
-  mKind := AKind;
-  Result := ANode.Search(
-    function(AVisited: TSyntaxNode): TSyntaxSearchStep
-    begin
-      if AVisited.Kind = mKind then
-      begin
-        Exit(TSyntaxSearchStep.Found);
-      end;
-      Result := TSyntaxSearchStep.Descend;
-    end) <> nil;
-end;
-
 function DeclaresName(ANode: TSyntaxNode; const AName: string): Boolean;
 var
   mName: string;
@@ -360,15 +336,6 @@ begin
   if (ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and SameText(ANode.Name, AName) then
   begin
     Result := True;
-  end;
-end;
-
-function EnclosingScope(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and not (Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
-  begin
-    Result := Result.Parent;
   end;
 end;
 
@@ -502,7 +469,7 @@ begin
     begin
       Continue;
     end;
-    mName := BareTypeName(ABody[mIndex].Name);
+    mName := TTextNames.BareTypeName(ABody[mIndex].Name);
     if (mCount > 0) or (Length(mName) > 1) and (mName[1] = 'I') and IsUpperOrDigit(mName[2]) then
     begin
       Result := Result + [mName];
@@ -536,7 +503,7 @@ begin
     Exit(SameText(ARoutine.Name, AMethod));
   end;
   Result := (Pos('.', ARoutine.Name) > 0) and SameText(ShortName(ARoutine.Name), AMethod) and
-    SameText(BareTypeName(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1)), ATypeName);
+    SameText(TTextNames.BareTypeName(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1)), ATypeName);
 end;
 
 /// <summary>Überladungen: derselbe Parametername an derselben Stelle.</summary>
@@ -582,7 +549,7 @@ begin
     end;
     if mMembers[mIndex].Kind = TSyntaxKind.TypeReference then
     begin
-      APending.Add(BareTypeName(mMembers[mIndex].Name));
+      APending.Add(TTextNames.BareTypeName(mMembers[mIndex].Name));
     end;
   end;
 end;
@@ -627,7 +594,7 @@ begin
     end;
     for mIndex := 0 to High(mLocation.Symbol.Ancestors) do
     begin
-      APending.Add(BareTypeName(mLocation.Symbol.Ancestors[mIndex]));
+      APending.Add(TTextNames.BareTypeName(mLocation.Symbol.Ancestors[mIndex]));
     end;
   end;
 end;
@@ -897,7 +864,7 @@ begin
     begin
       for mHost in cComponentHosts do
       begin
-        if EndsText(mHost, BareTypeName(ABody[mIndex].Name)) then
+        if EndsText(mHost, TTextNames.BareTypeName(ABody[mIndex].Name)) then
         begin
           Exit(True);
         end;
@@ -919,7 +886,7 @@ begin
     if Pos('.', mRoutine.Name) > 0 then
     begin
       mOwner := Copy(mRoutine.Name, 1, LastDelimiter('.', mRoutine.Name) - 1);
-      if SameText(BareTypeName(mOwner), ATypeName) then
+      if SameText(TTextNames.BareTypeName(mOwner), ATypeName) then
       begin
         Result := Result + [mRoutine];
       end;
@@ -937,7 +904,7 @@ begin
   mMethod := AQualified;
   if Pos('.', AQualified) > 0 then
   begin
-    mTypeName := BareTypeName(Copy(AQualified, 1, LastDelimiter('.', AQualified) - 1));
+    mTypeName := TTextNames.BareTypeName(Copy(AQualified, 1, LastDelimiter('.', AQualified) - 1));
     mMethod := ShortName(AQualified);
   end;
   for mRoutine in FRoutineDecls do
@@ -959,7 +926,7 @@ begin
   for mRoutine in FRoutineDecls do
   begin
     if (mRoutine <> ARoutine) and IsForwardOrInterface(mRoutine) and SameText(mRoutine.Name, ARoutine.Name) and
-      (EnclosingScope(mRoutine) = EnclosingScope(ARoutine)) then
+      (TSyntaxNodes.Enclosing(mRoutine, [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) = TSyntaxNodes.Enclosing(ARoutine, [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod])) then
     begin
       Exit(mRoutine);
     end;
@@ -1021,7 +988,7 @@ begin
   begin
     Exit;
   end;
-  mScope := EnclosingScope(ADecl);
+  mScope := TSyntaxNodes.Enclosing(ADecl, [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]);
   if mScope = nil then
   begin
     Exit;
@@ -1037,7 +1004,7 @@ begin
     mStart := mScope.StartOffset;
     mStop := mScope.EndOffset;
   end;
-  mCanFix := not ContainsKind(mScope, TSyntaxKind.WithStatement) and not Redeclares(mScope, ADecl, AName);
+  mCanFix := not TSyntaxNodes.ContainsKind(mScope, TSyntaxKind.WithStatement) and not Redeclares(mScope, ADecl, AName);
   Report(AKind, ADecl, AName, NameTokens(mStart, mStop, AName, []), mCanFix,
     [Point(mScope.StartOffset, mScope.EndOffset)]);
 end;
@@ -1051,8 +1018,8 @@ begin
   begin
     Exit;
   end;
-  mScope := EnclosingScope(AFor);
-  mCanFix := (mScope <> nil) and not ContainsKind(AFor, TSyntaxKind.WithStatement) and
+  mScope := TSyntaxNodes.Enclosing(AFor, [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]);
+  mCanFix := (mScope <> nil) and not TSyntaxNodes.ContainsKind(AFor, TSyntaxKind.WithStatement) and
     not Redeclares(AFor, AFor, AFor.Name);
   if mScope = nil then
   begin
@@ -1083,7 +1050,7 @@ begin
   mEdits := nil;
   if mCanFix then
   begin
-    mCanFix := MemberEdits(ABody, AName, BareTypeName(mTypeDecl.Name), mMethods, mEdits);
+    mCanFix := MemberEdits(ABody, AName, TTextNames.BareTypeName(mTypeDecl.Name), mMethods, mEdits);
   end;
   // Kollisionen in der Klasse und ihren Methoden; ein gleichnamiges Feld einer anderen Klasse stört nicht.
   mScopes := [Point(ABody.StartOffset, ABody.EndOffset)];
@@ -1122,7 +1089,7 @@ begin
   AMethods := MethodsOf(ATypeName);
   for mMethod in AMethods do
   begin
-    if ContainsKind(mMethod, TSyntaxKind.WithStatement) or RedeclaresInBody(mMethod, AName) then
+    if TSyntaxNodes.ContainsKind(mMethod, TSyntaxKind.WithStatement) or RedeclaresInBody(mMethod, AName) then
     begin
       Result := False;
     end;
@@ -1171,7 +1138,7 @@ begin
   // Im interface-Abschnitt sehen andere Units die Konstante; dort keine Korrektur. Verdeckt eine Routine den
   // Namen, wäre das Umbenennen aller Vorkommen falsch.
   mCanFix := ((mSection = nil) or (mSection.Kind = TSyntaxKind.ImplementationSection)) and
-    not ContainsKind(FRoot, TSyntaxKind.WithStatement) and not Redeclares(FRoot, ADecl, ADecl.Name);
+    not TSyntaxNodes.ContainsKind(FRoot, TSyntaxKind.WithStatement) and not Redeclares(FRoot, ADecl, ADecl.Name);
   Report(TRuleNamingKind.Constant, ADecl, ADecl.Name, NameTokens(ADecl.StartOffset, FRoot.EndOffset, ADecl.Name,
     []), mCanFix, nil);
 end;
@@ -1299,7 +1266,7 @@ begin
   if AOwner.Scope <> nil then
   begin
     // Rumpf der Routine bzw. der anonymen Methode (ohne die Parameterliste selbst).
-    mCanFix := not ContainsKind(AOwner.Scope, TSyntaxKind.WithStatement) and
+    mCanFix := not TSyntaxNodes.ContainsKind(AOwner.Scope, TSyntaxKind.WithStatement) and
       not Redeclares(AOwner.Scope, AParam, AName);
     mEdits := mEdits + NameTokens(AParams.EndOffset, AOwner.Scope.EndOffset, AName, []);
     mScopes := mScopes + [Point(AOwner.Scope.StartOffset, AOwner.Scope.EndOffset)];
@@ -1322,12 +1289,12 @@ begin
   mMethod := AOwner.Header.Name;
   if AOwner.Body <> nil then
   begin
-    mMethod := BareTypeName(TypeDeclOf(AOwner.Body).Name) + '.' + AOwner.Header.Name;
+    mMethod := TTextNames.BareTypeName(TypeDeclOf(AOwner.Body).Name) + '.' + AOwner.Header.Name;
   end;
   mImplementation := ImplementationOf(mMethod, ParameterPosition(AParams, AParam, AName), AName);
   if mImplementation <> nil then
   begin
-    Result := not ContainsKind(mImplementation, TSyntaxKind.WithStatement) and
+    Result := not TSyntaxNodes.ContainsKind(mImplementation, TSyntaxKind.WithStatement) and
       not RedeclaresInBody(mImplementation, AName);
     AEdits := AEdits + NameTokens(mImplementation.StartOffset, mImplementation.EndOffset, AName, []);
     AScopes := AScopes + [Point(mImplementation.StartOffset, mImplementation.EndOffset)];

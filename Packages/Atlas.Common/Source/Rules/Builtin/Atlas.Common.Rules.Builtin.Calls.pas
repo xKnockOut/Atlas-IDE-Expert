@@ -105,8 +105,8 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.UnresolvedNames,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Pascal.Signatures,
+  Atlas.Common.Pascal.UsesClauses,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.TokenCursor;
 
@@ -664,7 +664,7 @@ begin
   begin
     Exit;
   end;
-  mParameters := TChangeSignature.ParseParameters(mParameterText);
+  mParameters := TPascalSignatures.ParseParameters(mParameterText);
   // Der Kopf muss zu den Zahlen des Index passen, sonst stimmt die Zuordnung der Namen nicht.
   if Length(mParameters) <> mRoutine.MaxArgs then
   begin
@@ -1079,7 +1079,7 @@ begin
   Result := TArgumentCountMismatchRule.SplitHeader(ASymbol.Signature, ACandidate.ParameterText, mTail);
   if Result then
   begin
-    ACandidate.Parameters := TChangeSignature.ParseParameters(ACandidate.ParameterText);
+    ACandidate.Parameters := TPascalSignatures.ParseParameters(ACandidate.ParameterText);
     Result := Length(ACandidate.Parameters) = ASymbol.MaxArgs;
   end;
 end;
@@ -1501,7 +1501,7 @@ begin
   begin
     Exit;
   end;
-  FUsedUnits := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  FUsedUnits := TPascalUses.UsedUnits(FContext.Tree.Tokens);
   if not TUnresolvedNames.UsesKnown(FContext.Index, FUsedUnits, FContext.Namespaces, FContext.EnsureUnit) then
   begin
     Exit;

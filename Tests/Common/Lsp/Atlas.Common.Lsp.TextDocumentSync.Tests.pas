@@ -48,7 +48,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.TestSupport,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.JsonRpc.Positions;
 
 const
   cUri = 'file:///c%3A/projekt/Main.pas';

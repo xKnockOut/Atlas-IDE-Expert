@@ -2,7 +2,7 @@
 
 // Issues in der Befehlspalette (#1270), Rolle Adapters:
 // TAtlasIssuePaletteSourceAdapter erfüllt IAtlasPaletteSource aus
-// Atlas.Core.Commands.Palette und reicht an TAtlasIdeIssueSearch
+// Atlas.Core.Commands.Contract und reicht an TAtlasIdeIssueSearch
 // (Atlas.IDE.Tracker.PaletteSearch) weiter. Anlegen nur in der Komposition
 // des Moduls. Hauptthread.
 
@@ -10,7 +10,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Commands.Palette,
+  Atlas.Core.Commands.Contract,
   Atlas.IDE.Tracker.PaletteSearch;
 
 type

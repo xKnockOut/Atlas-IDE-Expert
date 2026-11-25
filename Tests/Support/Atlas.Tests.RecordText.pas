@@ -18,6 +18,8 @@ type
     class function Position(ALine, ACharacter: Integer): string; overload; static;
     /// <summary>"(Left,Top)-(Right,Bottom)".</summary>
     class function Rect(const ARect: TRect): string; static;
+    /// <summary>Werte durch Komma getrennt, z. B. "0,1".</summary>
+    class function Ints(const AValues: TArray<Integer>): string; static;
   end;
 
 implementation
@@ -40,6 +42,21 @@ end;
 class function TRecordText.Rect(const ARect: TRect): string;
 begin
   Result := Format('(%d,%d)-(%d,%d)', [ARect.Left, ARect.Top, ARect.Right, ARect.Bottom]);
+end;
+
+class function TRecordText.Ints(const AValues: TArray<Integer>): string;
+var
+  mValue: Integer;
+begin
+  Result := '';
+  for mValue in AValues do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + IntToStr(mValue);
+  end;
 end;
 
 end.

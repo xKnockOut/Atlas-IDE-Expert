@@ -22,7 +22,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.EventBreak,
-  Atlas.UI.Foundation.Dialog,
+  Atlas.Vcl.Forms.Dialog,
   Atlas.UI.Debug.StopBar;
 
 type
@@ -97,9 +97,9 @@ type
 implementation
 
 uses
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.EventBreak.Strings,
-  Atlas.UI.Popup.Accessibility;
+  Atlas.Vcl.Popup.Accessibility;
 
 const
   cDialogGap = 8;
@@ -113,6 +113,11 @@ const
   /// </summary>
   cRadioMark = 24;
   cComboGap = 4;
+  /// <summary>Gruppe der Kategorien: Platz für die Überschrift oben, Abstand des Kästchens „häufig“ und Rand unten,
+  /// logische Pixel.</summary>
+  cGroupTop = 20;
+  cFrequentGap = 4;
+  cGroupBottom = 30;
 
 function CategoryText(ACategory: TAtlasEventCategory): string;
 begin
@@ -145,7 +150,7 @@ begin
   Result.Caption := TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakCategories);
   Result.SetBounds(ADialog.ScaleValue(cDialogGap), ADialog.ScaleValue(cDialogGap),
     ADialog.ClientWidth - 2 * ADialog.ScaleValue(cDialogGap), 0);
-  mTop := ADialog.ScaleValue(20);
+  mTop := ADialog.ScaleValue(cGroupTop);
   for mCategory := Low(TAtlasEventCategory) to High(TAtlasEventCategory) do
   begin
     ADialog.FCategories[mCategory] := ADialog.AddCheck(Result, CategoryText(mCategory));
@@ -154,8 +159,8 @@ begin
   end;
   ADialog.FFrequent := ADialog.AddCheck(Result, TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakFrequent,
     [AExcluded]));
-  ADialog.FFrequent.Top := mTop + ADialog.ScaleValue(4);
-  Result.Height := ADialog.FFrequent.Top + ADialog.ScaleValue(30);
+  ADialog.FFrequent.Top := mTop + ADialog.ScaleValue(cFrequentGap);
+  Result.Height := ADialog.FFrequent.Top + ADialog.ScaleValue(cGroupBottom);
 end;
 
 /// <summary>„Ein Formular“ links, das Auswahlfeld füllt den Rest der Zeile.</summary>

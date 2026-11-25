@@ -20,7 +20,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.BreakpointAnchors,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   /// <summary>Vorschlag übernehmen (ADelete False) bzw. Haltepunkt löschen; True, wenn es gelang.</summary>

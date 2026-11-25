@@ -34,11 +34,11 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Vcl.Menus,
-  Atlas.Core.Status.Contract,
-  Atlas.Core.Status.Registry,
-  Atlas.Core.Status.Lines,
-  Atlas.Core.Status.IndexStore,
-  Atlas.Core.Files.Format;
+  Atlas.Plugin.Status.Contract,
+  Atlas.Plugin.Status.Registry,
+  Atlas.Plugin.Status.Lines,
+  Atlas.Plugin.Status.IndexStore,
+  Atlas.Plugin.Files.Format;
 
 type
   TAtlasIndexingFunc = reference to function(out APercent: Integer): Boolean;
@@ -128,10 +128,10 @@ implementation
 uses
   System.IOUtils,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Files.TextFile,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Files.TextFile,
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 
@@ -342,8 +342,13 @@ begin
       mBytes := TAtlasTextFile.ReadAllBytes(FActiveFile);
       mInfo.HasTarget := not TAtlasFileFormats.Satisfies(mBytes, mInfo.Target);
     except
-      on Exception do
-        ;
+      on E: Exception do
+      begin
+        if not TAtlasTextFile.IsReadError(E) then
+        begin
+          raise;
+        end;
+      end;
     end;
   end;
   FFile.Update(TAtlasStatusLines.FileText(mInfo), TAtlasStatusLines.FileState(mInfo));
@@ -385,8 +390,14 @@ begin
   try
     mCached.Format := TAtlasFileFormats.Detect(TAtlasTextFile.ReadAllBytes(AFileName));
   except
-    on Exception do
+    on E: Exception do
+    begin
+      if not TAtlasTextFile.IsReadError(E) then
+      begin
+        raise;
+      end;
       Exit(False);
+    end;
   end;
   mCached.Stamp := mStamp;
   FCache.AddOrSetValue(Key(AFileName), mCached);

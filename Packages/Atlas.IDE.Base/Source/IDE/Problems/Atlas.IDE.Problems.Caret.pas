@@ -16,7 +16,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Files.Contract,
+  Atlas.Plugin.Files.Contract,
   Atlas.Core.Problems.AtCaret,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Problems.Controller;

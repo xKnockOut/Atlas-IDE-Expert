@@ -24,7 +24,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Plugin.Diagnostics.WorkerSlot,
   Vcl.ExtCtrls,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Build.CompilerSwitches,
@@ -98,11 +98,11 @@ uses
   System.JSON,
   Vcl.Clipbrd,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Editor.SourceFiles,
   Atlas.Core.Settings.Plugin,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Build.SwitchesWindow,
@@ -314,7 +314,14 @@ begin
       Result := TAtlasCompilerSwitchView.FromJson(mResponse, AView);
     except
       // Server langsam oder weg: kein Stand.
-      Result := False;
+      on E: Exception do
+      begin
+        if not (E is ELspClientError) then
+        begin
+          raise;
+        end;
+        Result := False;
+      end;
     end;
   finally
     mResponse.Free;

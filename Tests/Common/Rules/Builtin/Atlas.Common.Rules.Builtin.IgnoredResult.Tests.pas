@@ -42,15 +42,15 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.Builtin.IgnoredResult,
-  Atlas.Common.Editing.ChangeSignature,
-  Atlas.Tests.RuleAssert;
+  Atlas.Common.Documents.TextChanges,
+  Atlas.Tests.RuleAssert,
+  Atlas.Tests.SourceText;
 
 /// <summary>Unit mit der Routine Lauf, deren Rumpf ABody ist; S und Pfad: string, Zahl: Integer.</summary>
 function Source(const ABody: string): string;
@@ -64,19 +64,7 @@ function Fixed(const ASource: string; const AFound: TArray<TRuleFinding>): strin
 begin
   Assert.AreEqual(1, Integer(Length(AFound)));
   Assert.AreEqual(1, Integer(Length(AFound[0].Fixes)));
-  Result := TChangeSignature.ApplyEdits(ASource, AFound[0].Fixes[0].Edits);
-end;
-
-procedure ParsesWithoutErrors(const ASource: string);
-var
-  mTree: TSyntaxTree;
-begin
-  mTree := TSyntaxTreeCache.Parse(ASource);
-  try
-    Assert.AreEqual(0, Integer(Length(mTree.Diagnostics)), ASource);
-  finally
-    mTree.Free;
-  end;
+  Result := TTextChanges.Apply(ASource, AFound[0].Fixes[0].Edits);
 end;
 
 { TIgnoredResultTests }
@@ -94,10 +82,10 @@ begin
   Assert.AreEqual(cIgnoredResultRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
   Assert.AreEqual('Ergebnis zuweisen: S := …', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[1].Fixes[0].Edits);
-  mFixed := TChangeSignature.ApplyEdits(mFixed, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[1].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mFixed, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Source('  S := Trim(S);'#10'  Pfad := IncludeTrailingPathDelimiter(Pfad);'#10), mFixed);
-  ParsesWithoutErrors(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Silent(TIgnoredResultRule.Create, mFixed);
 end;
 
@@ -110,11 +98,11 @@ begin
   mFound := TRuleAssert.Findings(TIgnoredResultRule.Create, mSource);
   Assert.AreEqual(3, Integer(Length(mFound)), TRuleAssert.LineMessages(mFound));
   Assert.Contains(mFound[0].Message, 'S.Replace');
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[2].Fixes[0].Edits);
-  mFixed := TChangeSignature.ApplyEdits(mFixed, mFound[1].Fixes[0].Edits);
-  mFixed := TChangeSignature.ApplyEdits(mFixed, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[2].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mFixed, mFound[1].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mFixed, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Source('  S := S.Replace(''a'', ''b'');'#10'  S := S.Trim;'#10'  S := S.ToUpper();'#10), mFixed);
-  ParsesWithoutErrors(mFixed);
+  TTestSource.AssertParses(mFixed);
   TRuleAssert.Silent(TIgnoredResultRule.Create, mFixed);
 end;
 
@@ -156,10 +144,10 @@ begin
   Assert.AreEqual('Ergebnis zuweisen: var Ergebnis2 := …', mFound[0].Fixes[0].Title);
   mFound := TRuleAssert.Findings(TIgnoredResultRule.Create, mSource);
   Assert.AreEqual('Ergebnis zuweisen: var Ergebnis := …', mFound[0].Fixes[0].Title);
-  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  mFixed := TTextChanges.Apply(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(Source('  var Ergebnis := IntToStr(Zahl);'#10'  Format(''%d'', [Zahl]);'#10 +
     '  S := ''Ergebnis'';'#10), mFixed);
-  ParsesWithoutErrors(mFixed);
+  TTestSource.AssertParses(mFixed);
   // Literal als erstes Argument: nicht zuweisbar, also Inline-Variable.
   mSource := Source('  Trim('' a '');'#10);
   mFixed := Fixed(mSource, TRuleAssert.Findings(TIgnoredResultRule.Create, mSource));

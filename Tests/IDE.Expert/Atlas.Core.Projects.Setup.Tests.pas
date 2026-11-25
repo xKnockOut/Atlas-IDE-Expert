@@ -43,7 +43,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Settings.SchemaData,
+  Atlas.Plugin.Settings.SchemaData,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Setup;
 

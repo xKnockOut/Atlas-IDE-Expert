@@ -27,9 +27,9 @@ implementation
 uses
   System.SysUtils,
   System.Types,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Debug.StepInto,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Debug.StepInto;
 
 function Row(const ACaption: string; AKind: TAtlasStepKind; AAvailable: Boolean): TAtlasStepRow;

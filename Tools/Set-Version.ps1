@@ -4,7 +4,9 @@
 
 .DESCRIPTION
     Schreibt die Version in TAtlasVersion (Atlas.Text.Product.Version, gemeinsam für Server und IDE-Plugin),
-    plugin.json und marketplace.json
+    plugin.json und marketplace.json, setzt die Versionsressource aller ausgelieferten Projekte
+    (Dateiversion, Produktversion, Herausgeber, ProgramID; Update-VersionInfo.ps1, dort auch die Regel
+    für die vierte Stelle der Dateiversion),
     übernimmt die Changelog-Fragmente aus changelog.d/ (Update-Changelog.ps1),
     benennt den Abschnitt "## [Unveröffentlicht]" in CHANGELOG.md in
     "## [<Version>] - <Datum>" um, mit neuem leeren Abschnitt darüber, und
@@ -14,12 +16,23 @@
     Danach committen und das Tag v<Version> pushen; den Rest erledigt
     .github/workflows/release.yml.
 
+    Vor einer stabilen Version (ohne Suffix) prüft Tools/Check-ReleaseCandidate.ps1, dass seit dem
+    letzten Kandidaten nur Korrekturen kamen (docs/Release.md, Abschnitt „Kandidaten“); sonst bricht
+    das Skript ab, bevor es etwas ändert. Mit -Reason geht es weiter, und die Begründung gehört als
+    Zeile „Ohne neuen Kandidaten: <Grund>“ in den Commit-Text; der Release-Workflow prüft das Tag
+    noch einmal und liest sie dort.
+
+.PARAMETER Reason
+    Begründung, warum eine stabile Version ohne neuen Kandidaten erscheint.
+
 .EXAMPLE
     pwsh Tools/Set-Version.ps1 -Version 0.2.0
+    pwsh Tools/Set-Version.ps1 -Version 2.3.0 -Reason 'Umbenennen eines Bezeichners in 40 Units'
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $Version,
+    [string] $Reason = '',
     [string] $Root = (Split-Path -Parent $PSScriptRoot)
 )
 
@@ -28,6 +41,10 @@ $ErrorActionPreference = 'Stop'
 
 if ($Version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
     Write-Error "'$Version' ist keine SemVer-Version"
+}
+if (-not $Version.Contains('-')) {
+    & (Join-Path $PSScriptRoot 'Check-ReleaseCandidate.ps1') -Version $Version -Reason $Reason -Root $Root
+    if ($LASTEXITCODE -ne 0) { Write-Error "Seit dem letzten Kandidaten von $Version kamen nicht nur Korrekturen" }
 }
 $Utf8Bom = New-Object System.Text.UTF8Encoding($true)
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
@@ -44,6 +61,10 @@ foreach ($Json in @('Editors/ClaudeCode/atlas/.claude-plugin/plugin.json', '.cla
     $Text = [IO.File]::ReadAllText($Path) -replace '("version"\s*:\s*")[^"]+(")', "`${1}$Version`${2}"
     [IO.File]::WriteAllText($Path, $Text, $Utf8)
 }
+
+# Versionsressource der Packages und Programme (Dateieigenschaften im Explorer, Absturzberichte).
+& (Join-Path $PSScriptRoot 'Update-VersionInfo.ps1') -Version $Version -Root $Root
+if ($LASTEXITCODE -ne 0) { Write-Error "Versionsressource für $Version nicht geschrieben (Update-VersionInfo.ps1)" }
 
 & (Join-Path $PSScriptRoot 'Update-Changelog.ps1') -Root $Root
 if ($LASTEXITCODE -ne 0) { Write-Error 'Changelog-Fragmente fehlerhaft (pwsh Tools/Update-Changelog.ps1 -Check)' }
@@ -75,3 +96,6 @@ foreach ($Readme in @('README.md', 'README_DE.md')) {
 }
 
 & (Join-Path $PSScriptRoot 'Check-Version.ps1') -Root $Root -Expected $Version
+if ($Reason.Trim()) {
+    Write-Host "In den Commit-Text der Version: Ohne neuen Kandidaten: $($Reason.Trim())"
+}

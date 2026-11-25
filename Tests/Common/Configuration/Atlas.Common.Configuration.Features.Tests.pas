@@ -26,6 +26,9 @@ type
     /// <summary>#2611: mcp.statistics, Vorgabe an.</summary>
     [Test]
     procedure ReadsMcpStatistics;
+    /// <summary>#2895: mcp.openProjects ask (Vorgabe), always, never; anderes gemeldet.</summary>
+    [Test]
+    procedure ReadsMcpOpenProjects;
     /// <summary>#1357: Fehler in eigenen Prompts (Name, Text, include, Platzhalter) werden gemeldet.</summary>
     [Test]
     procedure ChecksMcpCustomPrompts;
@@ -42,6 +45,9 @@ type
     /// <summary>#2603: mcp.reportFindingsAfterEdit, Vorgabe an, je Glied geschichtet.</summary>
     [Test]
     procedure ReadsMcpReportFindingsAfterEdit;
+    /// <summary>#2620: mcp.confirm, Vorgabe an, je Glied geschichtet.</summary>
+    [Test]
+    procedure ReadsMcpConfirm;
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
@@ -243,6 +249,23 @@ begin
   Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Include)));
   Assert.AreEqual('metrics', mSettings.McpCustomPrompts[0].Include[1]);
 end;
+procedure TConfigurationFeatureTests.ReadsMcpOpenProjects;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual('ask', mSettings.McpOpenProjects);
+  mSettings := Parse('{"mcp": {"openProjects": "always"}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('always', mSettings.McpOpenProjects);
+  mSettings := Parse('{"mcp": {"openProjects": "never"}}', mIssues);
+  Assert.AreEqual('never', mSettings.McpOpenProjects);
+  mSettings := Parse('{"mcp": {"openProjects": "sometimes"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'nur ask, always oder never');
+  Assert.AreEqual('ask', mSettings.McpOpenProjects, 'ungültiger Wert lässt die Vorgabe');
+end;
+
 procedure TConfigurationFeatureTests.ChecksMcpCustomPrompts;
 var
   mSettings: TServerSettings;
@@ -342,6 +365,21 @@ begin
   mSettings := TConfigurationParser.ParseLayered('{"mcp": {"reportFindingsAfterEdit": false}}',
     '{"mcp": {"customPrompts": []}}', mIssues);
   Assert.IsFalse(mSettings.McpReportFindingsAfterEdit, 'globale Ebene bleibt');
+end;
+
+procedure TConfigurationFeatureTests.ReadsMcpConfirm;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpConfirm, 'Vorgabe an');
+  mSettings := Parse('{"mcp": {"confirm": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpConfirm);
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"confirm": false}}', '{"mcp": {"prompts": true}}',
+    mIssues);
+  Assert.IsFalse(mSettings.McpConfirm, 'globale Ebene bleibt');
 end;
 procedure TConfigurationFeatureTests.ChecksTasks;
 var
@@ -472,6 +510,12 @@ begin
   Assert.IsFalse(mSettings.SlashSortUsesRemoveUnused);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.IsTrue(Parse('{}', mIssues).SlashSortUsesRemoveUnused);
+  // #2794: Reihenfolge von /sortuses, per Vorgabe nach Herkunft.
+  Assert.AreEqual('origin', Parse('{}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual('namespace', Parse('{"slashCommands": {"sortUsesOrder": "namespace"}}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('origin', Parse('{"slashCommands": {"sortUsesOrder": "zufall"}}', mIssues).SlashSortUsesOrder);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual('', Parse('{}', mIssues).SlashTodoOwner);
   // #875: /helper für Aufzählungen
   Assert.IsTrue(Parse('{}', mIssues).SlashEnumHelper);
@@ -1252,6 +1296,14 @@ begin
   // Muster ohne {unit} und Projekt ohne .dproj/.dpr (Fehler), "x" unbekannt (Warnung).
   Assert.AreEqual(3, Integer(Length(mIssues)));
   Assert.AreEqual('{unit}.Tests', mSettings.TestUnits.Pattern, 'ungültiges Muster bleibt bei der Vorgabe');
+  // #2800: Platzhalter im Ordner und Quellordner.
+  mSettings := Parse('{"testUnits": {"folder": "Tests/{path}", "sourceRoot": "Source;Lib"}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('Tests/{path}', mSettings.TestUnits.Folder);
+  Assert.AreEqual('Source;Lib', mSettings.TestUnits.SourceRoot);
+  mSettings := Parse('{"testUnits": {"folder": "Tests/{pfad}"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'unbekannter Platzhalter');
+  Assert.AreEqual('', mSettings.TestUnits.Folder);
 end;
 procedure TConfigurationFeatureTests.ReadsDfmPropertyRules;
 var

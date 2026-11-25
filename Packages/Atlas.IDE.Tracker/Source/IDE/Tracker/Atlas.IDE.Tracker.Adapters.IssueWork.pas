@@ -51,7 +51,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.IssueWork,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.IDE.Foundation.Files,
+  Atlas.ToolsApi.Files.Service,
   Atlas.IDE.Tracker.IssueLookups,
   Atlas.IDE.Tracker.IssueWorkLink,
   Atlas.IDE.Tracker.Workflow;

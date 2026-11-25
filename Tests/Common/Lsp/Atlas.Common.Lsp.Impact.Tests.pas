@@ -587,7 +587,7 @@ begin
     Assert.AreEqual(-1, (mPlace.GetValue('cause') as TJSONNumber).AsInt);
     Assert.AreEqual('Hilfe', mPlace.GetValue<string>('item.name'));
     mTests := mJson.GetValue('tests') as TJSONArray;
-    Assert.AreEqual(1, mTests.Count);
+    Assert.AreEqual(1, Integer(mTests.Count));
     Assert.IsTrue(mJson.GetValue<Boolean>('limits.depth'));
     Assert.IsFalse(mJson.GetValue<Boolean>('limits.count'));
     Assert.IsFalse(mJson.GetValue<Boolean>('limits.time'));

@@ -9,7 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 type
   [TestFixture]
@@ -178,17 +178,17 @@ begin
     mFrame.Parent := mHost;
     mFrame.HandleNeeded;
     mFrame.SetRows(Rows, True);
-    Assert.AreEqual(2, mFrame.List.Items.Count);
+    Assert.AreEqual(2, Integer(mFrame.List.Items.Count));
     mFrame.Search.Text := 'speich';
-    Assert.AreEqual(1, mFrame.List.Items.Count);
+    Assert.AreEqual(1, Integer(mFrame.List.Items.Count));
     mFrame.Search.Text := '';
     mFrame.SetChip(TAtlasBreakpointFilter.Active, True);
-    Assert.AreEqual(1, mFrame.List.Items.Count, 'nur eingeschaltete');
+    Assert.AreEqual(1, Integer(mFrame.List.Items.Count), 'nur eingeschaltete');
     mFrame.SetChip(TAtlasBreakpointFilter.Active, False);
     mFrame.SetGrouping(TAtlasBreakpointGrouping.ByTag);
     Assert.IsTrue(mFrame.List.GroupView);
-    Assert.AreEqual(3, mFrame.List.Groups.Count, 'Bug 4711, Import, ohne Etikett');
-    Assert.AreEqual(3, mFrame.List.Items.Count, 'Kunde steht in zwei Gruppen');
+    Assert.AreEqual(3, Integer(mFrame.List.Groups.Count), 'Bug 4711, Import, ohne Etikett');
+    Assert.AreEqual(3, Integer(mFrame.List.Items.Count), 'Kunde steht in zwei Gruppen');
     mFrame.SetGrouping(TAtlasBreakpointGrouping.None);
     Assert.IsFalse(mFrame.List.GroupView);
     Assert.AreEqual('2 von 2 Haltepunkten', mFrame.SummaryLabel.Caption);
@@ -249,7 +249,7 @@ begin
     mFrame.Events.OnTag := WatchTag(mLog);
     mFrame.TagBox.Text := ' Import ';
     mFrame.TagSelected(True);
-    Assert.AreEqual(1, mLog.Count);
+    Assert.AreEqual(1, Integer(mLog.Count));
     Assert.AreEqual('Import', mLog.Tag);
     Assert.IsTrue(mLog.Add);
     Assert.AreEqual(2, Integer(Length(mLog.Rows)));

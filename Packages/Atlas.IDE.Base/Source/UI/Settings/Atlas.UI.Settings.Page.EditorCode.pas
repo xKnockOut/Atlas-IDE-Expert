@@ -9,8 +9,8 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Editor.Overview,
-  Atlas.Core.Settings.Reassigned,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Plugin.Settings.Reassigned,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -63,7 +63,7 @@ uses
   System.SysUtils,
   System.Math,
   System.StrUtils,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Editor.RegionFolds,
   Atlas.Core.Settings.Plugin.Store,
@@ -255,6 +255,9 @@ begin
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMethodPlacementOff)]);
   // Regionen beim Öffnen (#1814).
   FRegionFolds := AddChoice(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.Setting), TAtlasRegionFoldsTexts.Choices);
+  // Große Blöcke einklappen (#2795): an/aus und Mindestlänge.
+  BindCheck('BlockFolds', AddCheck(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.BlockSetting)));
+  BindText('BlockFoldsMinLines', AddNumber(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.BlockMinLines)));
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   BindCheck('OverviewRuler', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsOverviewRuler)));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=

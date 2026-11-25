@@ -95,7 +95,7 @@ implementation
 uses
   System.Classes,
   DockForm,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Editor.EnterWatch,
@@ -156,8 +156,6 @@ begin
 end;
 
 procedure TEditorNotifier.EditorViewActivated(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
-var
-  mFailure: string;
 begin
   // Je Funktion mit ihrer eigenen Sicherung: Ein Fehler beim Schließen der einen lässt die übrigen nicht aus.
   TAtlasGuard.Run(TAtlasFeature.EditorCommands,
@@ -201,10 +199,16 @@ begin
       TAtlasIdeUnwrap.Dismiss;
     end);
   // Module (#1455), z. B. „Gezielt hineinspringen“: Listen gehören zur bisherigen Ansicht.
-  for mFailure in TAtlasModuleContributions.EditorViewActivated(AtlasModuleRegistry) do
-  begin
-    TAtlasGuard.Log(cLogModuleViewFailed + mFailure);
-  end;
+  TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+    procedure
+    var
+      mFailure: string;
+    begin
+      for mFailure in TAtlasModuleContributions.EditorViewActivated(AtlasModuleRegistry) do
+      begin
+        TAtlasGuard.Log(cLogModuleViewFailed + mFailure);
+      end;
+    end);
   // Typ des Ausdrucks (#689): Der Tooltip gilt nur in seiner Ansicht.
   TAtlasGuard.Run(TAtlasFeature.ExpressionType,
     procedure

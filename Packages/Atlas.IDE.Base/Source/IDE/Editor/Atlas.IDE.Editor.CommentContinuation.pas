@@ -34,7 +34,7 @@ uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.Text.Lines;

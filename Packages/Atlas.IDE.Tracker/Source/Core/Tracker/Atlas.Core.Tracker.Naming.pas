@@ -9,7 +9,7 @@
 //   {kurztitel}; danach nach den Regeln von git check-ref-format bereinigt,
 //   damit der Name für Git und SVN gültig ist.
 // - Commit-Präfix aus issues.commitPattern ({kennung} mit „#“).
-// - Gültigkeit und Basen eines Branchs: Atlas.Core.VersionControl.BranchNames (Base).
+// - Gültigkeit und Basen eines Branchs: Atlas.VersionControl.Repository.BranchNames (Base).
 // - Kennung aus einem Branch-Namen (Branch → Ticket): GitHub die Nummer als
 //   eigenes Stück („feature/753-x“ → #753), YouTrack „ATL-123“.
 
@@ -53,10 +53,13 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.BranchNames,
-  Atlas.Text.Lines;
+  Atlas.VersionControl.Repository.BranchNames,
+  Atlas.Text.Lines,
+  Atlas.Text.Names;
 
 const
+  /// <summary>Git verbietet Branchnamen mit dieser Endung.</summary>
+  cLockSuffix = '.lock';
   // Paare: Zeichen und Ersatz. Großbuchstaben mit, weil LowerCase nur ASCII kennt.
   cFolding: array[0..63] of string = (
     'ä', 'ae', 'ö', 'oe', 'ü', 'ue', 'ß', 'ss', 'Ä', 'ae', 'Ö', 'oe', 'Ü', 'ue', 'ẞ', 'ss',
@@ -123,45 +126,41 @@ end;
 
 class function TAtlasTrackerNaming.ShortTitle(const ATitle: string): string;
 var
-  mText, mWord: string;
-  mIndex, mCount: Integer;
+  mText: string;
+  mWords: TArray<string>;
+  mIndex, mStart: Integer;
 begin
-  Result := '';
   mText := Fold(WithoutPrefix(ATitle));
-  mCount := 0;
-  mWord := '';
+  mWords := nil;
+  // Anfang des laufenden Worts; 0 zwischen zwei Wörtern.
+  mStart := 0;
   for mIndex := 1 to Length(mText) + 1 do
   begin
     if (mIndex <= Length(mText)) and IsAsciiAlnum(mText[mIndex]) then
     begin
-      mWord := mWord + mText[mIndex];
+      if mStart = 0 then
+      begin
+        mStart := mIndex;
+      end;
       Continue;
     end;
-    if mWord = '' then
+    if mStart = 0 then
     begin
       Continue;
     end;
-    if Result <> '' then
-    begin
-      Result := Result + '-';
-    end;
-    Result := Result + mWord;
-    mWord := '';
-    Inc(mCount);
-    if mCount >= cShortTitleWords then
+    mWords := mWords + [Copy(mText, mStart, mIndex - mStart)];
+    mStart := 0;
+    if Length(mWords) >= cShortTitleWords then
     begin
       Break;
     end;
   end;
+  Result := string.Join('-', mWords);
 end;
 
 class function TAtlasTrackerNaming.BranchKey(const AKey: string): string;
 begin
-  Result := Trim(AKey);
-  while (Result <> '') and (Result[1] = '#') do
-  begin
-    Delete(Result, 1, 1);
-  end;
+  Result := TTextNames.KeyWithoutHash(AKey);
 end;
 
 function Fill(const APattern, AKey: string; const AIssue: TAtlasTrackerIssue): string;
@@ -225,9 +224,9 @@ begin
       Delete(Result, Length(Result), 1);
       mChanged := True;
     end;
-    if SameText(Copy(Result, Length(Result) - 4, 5), '.lock') then
+    if SameText(Copy(Result, Length(Result) - Length(cLockSuffix) + 1, Length(cLockSuffix)), cLockSuffix) then
     begin
-      Delete(Result, Length(Result) - 4, 5);
+      Delete(Result, Length(Result) - Length(cLockSuffix) + 1, Length(cLockSuffix));
       mChanged := True;
     end;
   until not mChanged;

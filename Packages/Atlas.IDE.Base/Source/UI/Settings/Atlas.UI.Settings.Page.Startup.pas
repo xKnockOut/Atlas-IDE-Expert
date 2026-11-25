@@ -8,7 +8,7 @@ interface
 uses
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Settings.ChoiceBox,
+  Atlas.Vcl.Options.ChoiceBox,
   Atlas.UI.Settings.Page.Host;
 
 type
@@ -48,11 +48,11 @@ uses
   Atlas.Core.Diagnostics.SafeMode,
   Atlas.UI.Settings.Bindings,
   Atlas.UI.Settings.Page.Sheets,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Updates.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Updates.Check,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Undo.Names;

@@ -9,7 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.Plugin.Localization.Strings;
 
 type
   [TestFixture]
@@ -43,8 +43,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.WorkingCopies,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.WorkingCopies,
   Atlas.UI.VersionControl.WorkingCopies;
 
 const

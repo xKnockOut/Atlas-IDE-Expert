@@ -23,7 +23,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Debug.RunToColumnFlow,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.Vcl.Popup.TitledTip;
 
 type
   /// <summary>Gezeichnete Zeile der Spalte (Datei, Zeile ab 0, Rechteck in Koordinaten des Editors).</summary>
@@ -95,13 +95,13 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Forms,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Style.Color,
+  Atlas.Plugin.Style.Palette,
   Atlas.Core.Editor.GutterColumn,
-  Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.GutterColumns;
+  Atlas.ToolsApi.Editor.Buffer,
+  Atlas.ToolsApi.Editor.Refresh,
+  Atlas.ToolsApi.Gutter.Columns;
 
 const
   /// <summary>Kleinste Kantenlänge des Pfeils und Abstand zum Rand der Zelle (Pixel).</summary>
@@ -388,23 +388,26 @@ begin
   end;
   mColors := TAtlasColors.ForBackground(mBack);
   mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
   try
     mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    ACanvas.Pen.Width := 1;
-    ACanvas.Pen.Color := TColor(mColors.Accent);
-    if AWarn then
-    begin
-      ACanvas.Pen.Color := TColor(mColors.Warn);
+    mOldPen := TPen.Create;
+    try
+      mOldPen.Assign(ACanvas.Pen);
+      ACanvas.Pen.Width := 1;
+      ACanvas.Pen.Color := TColor(mColors.Accent);
+      if AWarn then
+      begin
+        ACanvas.Pen.Color := TColor(mColors.Warn);
+      end;
+      ACanvas.Brush.Color := ACanvas.Pen.Color;
+      ACanvas.Brush.Style := bsSolid;
+      ACanvas.Polygon(TAtlasRunToColumnFlow.Arrow(ARect, cMinArrow, cArrowPad));
+    finally
+      ACanvas.Pen.Assign(mOldPen);
+      mOldPen.Free;
     end;
-    ACanvas.Brush.Color := ACanvas.Pen.Color;
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Polygon(TAtlasRunToColumnFlow.Arrow(ARect, cMinArrow, cArrowPad));
   finally
     ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
     mOldBrush.Free;
   end;
 end;

@@ -65,32 +65,14 @@ begin
   Result := TRuleAssert.Findings(TDefaultPropertyInvalidRule.Create, ASource, AConfig, APath);
 end;
 
-function Join(const AFound: TArray<TRuleFinding>): string;
-var
-  mFinding: TRuleFinding;
-begin
-  Result := '';
-  for mFinding in AFound do
-  begin
-    Result := Result + ' | ' + mFinding.Message;
-  end;
-end;
-
 function OnlyMessage(const ASource: string): string;
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(1, Integer(Length(mFound)), ASource + Join(mFound));
-  Result := mFound[0].Message;
+  Result := TRuleAssert.OnlyMessage(Findings(ASource), ASource);
 end;
 
 procedure Silent(const ASource: string);
-var
-  mFound: TArray<TRuleFinding>;
 begin
-  mFound := Findings(ASource);
-  Assert.AreEqual(0, Integer(Length(mFound)), ASource + Join(mFound));
+  TRuleAssert.NoFindings(Findings(ASource), ASource);
 end;
 
 { TDefaultPropertyRulesTests }
@@ -101,7 +83,7 @@ var
 begin
   mFound := Findings(Listen('  private'#10'    FName: string;'#10'  public'#10 +
     '    property Name: string read FName; default;'#10, ''));
-  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('default ist nur an Array-Properties erlaubt (wie E2132).', mFound[0].Message);
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFound[0].Confidence));
   Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
@@ -155,7 +137,7 @@ var
 begin
   mFound := Findings(Listen('    FAnzahl: Integer;'#10, 'procedure Zeigen;'#10'var'#10'  L: TListe;'#10 +
     'begin'#10'  L := TListe.Create;'#10'  L[0] := nil;'#10'end;'#10));
-  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('TListe hat keine default-Property; L[…] braucht eine (wie E2149).', mFound[0].Message);
   Assert.AreEqual(12, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
@@ -188,7 +170,7 @@ begin
   mFound := TRuleAssert.IndexFindings(TDefaultPropertyInvalidRule.Create, 'unit Listen;'#10'interface'#10 +
     'uses'#10'  Behaelter;'#10'implementation'#10'procedure Zeigen(S: TSack; B: TBeutel);'#10'begin'#10 +
     '  S[0] := 1;'#10'  B[0] := 1;'#10'end;'#10'end.', mIndex, '', '');
-  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual(1, Integer(Length(mFound)), TRuleAssert.Messages(mFound, ' | '));
   Assert.AreEqual('TSack hat keine default-Property; S[…] braucht eine (wie E2149).', mFound[0].Message);
 end;
 

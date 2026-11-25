@@ -94,8 +94,11 @@ uses
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Rules.CheckContext,
+  Atlas.Tests.LspRules,
   Atlas.Common.Lsp.PullDiagnostics,
-  Atlas.Common.Diagnostics.RequestScope;
+  Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cOpenFile = 'C:\P\Offen.pas';
@@ -129,7 +132,7 @@ begin
   Store := TDocumentStore.Create;
   Store.Open(TDocumentUris.FromPath(cOpenFile), 'objectpascal', 1, cValid);
   mProviders := Default(TSyntaxDiagnosticsProviders);
-  mProviders.Rules := ARules;
+  mProviders.Rules := TTestLspRules.From(ARules);
   Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, mProviders, 0);
   Diagnostics.PullMode := True;
   Pull := TLspPullDiagnostics.Create(Store, Diagnostics, nil,
@@ -807,7 +810,7 @@ var
 begin
   mStore := TDocumentStore.Create;
   mProviders := Default(TSyntaxDiagnosticsProviders);
-  mProviders.Rules := FailingRules();
+  mProviders.Rules := TTestLspRules.From(FailingRules());
   mDiagnostics := nil;
   mLogged := nil;
   mPull := nil;
@@ -936,19 +939,6 @@ begin
   end;
 end;
 
-procedure Notify(ADispatcher: TJsonRpcDispatcher; const AMethod, AParams: string);
-var
-  mMessage: TJSONObject;
-begin
-  mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
-    as TJSONObject;
-  try
-    ADispatcher.DispatchMessage(mMessage).Free;
-  finally
-    mMessage.Free;
-  end;
-end;
-
 procedure TLspPullDiagnosticsTests.ClientPausesRun;
 var
   mFixture: TFixture;
@@ -959,12 +949,12 @@ begin
   mDispatcher := TJsonRpcDispatcher.Create;
   try
     mFixture.Pull.Attach(mDispatcher);
-    Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":true}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":true}');
     mFixture.Pull.WorkspaceReport(nil, Token).Free;
     Sleep(300);
     Assert.AreEqual(0, mFixture.Pull.Computed);
     Assert.AreEqual('debug', mFixture.Pull.Check.Run.Paused);
-    Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":false}');
+    TJsonRpcTestSupport.Notify(mDispatcher, TLspPullDiagnostics.cPauseMethod, '{"reason":"debug","paused":false}');
     Assert.IsTrue(mFixture.Pull.Check.WaitIdle(5000));
     Assert.AreEqual(1, mFixture.Pull.Computed);
   finally
@@ -999,10 +989,9 @@ const
   cWorkspaceBundlescFileCount = 12;
 
 /// <summary>Regeln, bei denen jede Unit etwas Zeit braucht, wie im echten Lauf.</summary>
-function SlowRuleProviders: TSyntaxDiagnosticsProviders;
+function SlowRules: TRuleContextProvider;
 begin
-  Result := Default(TSyntaxDiagnosticsProviders);
-  Result.Rules :=
+  Result :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
       AContext := Default(TRuleCheckContext);
@@ -1015,6 +1004,12 @@ begin
           end)];
       Result := True;
     end;
+end;
+
+function SlowRuleProviders: TSyntaxDiagnosticsProviders;
+begin
+  Result := Default(TSyntaxDiagnosticsProviders);
+  Result.Rules := TTestLspRules.From(SlowRules());
 end;
 
 procedure TLspPullDiagnosticsTests.WorkspaceBundlesReportsDuringRun;

@@ -34,8 +34,10 @@ uses
   Winapi.Windows,
   System.SysUtils,
   System.IOUtils,
+  Atlas.Text.Locked,
   Atlas.Text.MapFile,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Text.Files;
 
 const
   cMaxFrames = 48;
@@ -85,7 +87,14 @@ begin
         end;
       except
         // Eine unlesbare Map darf das Absturzprotokoll nicht verhindern.
-        FreeAndNil(Map);
+        on E: Exception do
+        begin
+          if not (TTextFiles.IsFileError(E) or (E is EFileEncodingError)) then
+          begin
+            raise;
+          end;
+          FreeAndNil(Map);
+        end;
       end;
     end;
     Result := Map;
@@ -218,11 +227,7 @@ begin
 end;
 
 initialization
-  MapLock := TObject.Create;
-  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
-  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
-  TMonitor.Enter(MapLock);
-  TMonitor.Exit(MapLock);
+  MapLock := TAtlasSharedLock.New;
 
 finalization
   Map.Free;

@@ -70,7 +70,7 @@ implementation
 uses
   System.StrUtils,
   System.RegularExpressions,
-  Atlas.Core.Projects.Matching,
+  Atlas.Plugin.Projects.Matching,
   Atlas.Core.Tracker.Projects;
 
 const

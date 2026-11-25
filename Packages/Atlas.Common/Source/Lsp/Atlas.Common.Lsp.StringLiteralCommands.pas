@@ -6,7 +6,7 @@
 //     ihn in die Zwischenablage.
 //   atlas.server.textToLiteral [uri, position, text]: text als Literal mit
 //     der Einrückung der Zeile an der Position; der Client fügt es ein.
-// Die Logik liegt in Atlas.Common.Editing.StringLiterals.
+// Die Logik liegt in Atlas.Common.Pascal.StringLiterals.
 
 interface
 
@@ -32,8 +32,8 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Lsp.Positions,
-  Atlas.Common.Editing.StringLiterals,
+  Atlas.Common.JsonRpc.Positions,
+  Atlas.Common.Pascal.StringLiterals,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 

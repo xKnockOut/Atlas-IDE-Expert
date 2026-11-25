@@ -232,7 +232,7 @@ begin
   Assert.IsFalse(FFlow.Run(Target, Task('LINT')), 'läuft schon');
   Assert.IsTrue(FFlow.Run(TAtlasTaskTarget.Create('C:\p\B.dproj', 'c:\p\b.dproj'), Task('Lint')),
     'anderes Projekt');
-  Assert.AreEqual(2, FFake.Calls.Count);
+  Assert.AreEqual(2, Integer(FFake.Calls.Count));
   FFlow.Finished(1, Ran('Lint', 0));
   Assert.IsTrue(FFlow.Run(Target, Task('Lint')), 'nach dem Ende wieder');
 end;
@@ -252,7 +252,7 @@ begin
   FFlow.RunBatch(Target, Tasks('A', 'B', 'C'), Modes(TAtlasTaskBeforeBuild.Off, 3), False, False);
   Assert.AreEqual('launch:2:A:' + cProject + ':show', FFake.CallText, 'Id 1 gehört der Reihe');
   FFlow.Finished(2, Ran('A', 1));
-  Assert.AreEqual(3, FFake.Calls.Count);
+  Assert.AreEqual(3, Integer(FFake.Calls.Count));
   Assert.AreEqual('launch:3:B:' + cProject + ':show', FFake.Calls[2]);
   FFlow.Finished(3, Ran('B', 0));
   FFlow.Finished(4, Ran('C', 0));
@@ -263,12 +263,12 @@ end;
 procedure TAtlasTaskFlowTests.ParallelBatchStartsAll;
 begin
   FFlow.RunBatch(Target, Tasks('A', 'B', 'C'), Modes(TAtlasTaskBeforeBuild.Off, 3), False, True);
-  Assert.AreEqual(3, FFake.Calls.Count);
+  Assert.AreEqual(3, Integer(FFake.Calls.Count));
   FFlow.Finished(3, Ran('B', 0));
   Assert.IsTrue(FFlow.IsRunning(cKey, 'A'));
   Assert.IsFalse(FFlow.IsRunning(cKey, 'B'));
   Assert.IsTrue(FFlow.IsRunning(cKey, 'C'));
-  Assert.AreEqual(4, FFake.Calls.Count, 'nichts nachgestartet');
+  Assert.AreEqual(4, Integer(FFake.Calls.Count), 'nichts nachgestartet');
 end;
 
 procedure TAtlasTaskFlowTests.RefusedTaskIsSkippedWithReason;
@@ -362,12 +362,12 @@ procedure TAtlasTaskFlowTests.UnknownOrRepeatedEndIsIgnored;
 begin
   FFlow.Finished(99, Ran('X', 0));
   Assert.AreEqual(0, Integer(FNotes.Count));
-  Assert.AreEqual(0, FFake.Calls.Count);
+  Assert.AreEqual(0, Integer(FFake.Calls.Count));
   FFlow.Run(Target, Task('Lint'));
   FFlow.Finished(1, Ran('Lint', 0));
   FFlow.Finished(1, Ran('Lint', 0));
   Assert.AreEqual('Started:Lint,Ended:Lint', NoteText);
-  Assert.AreEqual(2, FFake.Calls.Count, 'einmal freigegeben');
+  Assert.AreEqual(2, Integer(FFake.Calls.Count), 'einmal freigegeben');
 end;
 
 procedure TAtlasTaskFlowTests.BatchStartedFromEndKeepsBothApart;

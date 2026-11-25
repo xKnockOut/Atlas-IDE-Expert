@@ -104,11 +104,13 @@ uses
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Presentation,
   Atlas.Core.Completion.Usage,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Providers.Fixed,
   Atlas.Core.Completion.Providers.Server,
-  Atlas.Core.Style.Palette;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Tests.Wait,
+  Atlas.Core.Completion.TestSupport;
 
 type
   TRecordingView = class(TInterfacedObject, IAtlasCompletionView)
@@ -182,43 +184,6 @@ begin
   Result := Member(AName, AContainer, ADepth, ARank, TAtlasItemKind.Method);
 end;
 
-function Names(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex in AOrder do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ',';
-    end;
-    if TAtlasRanking.IsHeader(mIndex) then
-    begin
-      Result := Result + '#';
-    end
-    else
-    begin
-      Result := Result + AItems[mIndex].Name;
-    end;
-  end;
-end;
-
-function Wait(const ACondition: TFunc<Boolean>): Boolean;
-var
-  mStart: UInt64;
-begin
-  mStart := TThread.GetTickCount64;
-  repeat
-    CheckSynchronize(5);
-    if ACondition() then
-    begin
-      Exit(True);
-    end;
-  until TThread.GetTickCount64 - mStart > 3000;
-  Result := False;
-end;
-
 function Context(const APrefix: string): TAtlasContext;
 begin
   Result := Default(TAtlasContext);
@@ -255,11 +220,11 @@ begin
   mItems := StringsItems;
   mOptions := TAtlasRankOptions.Defaults;
   mOptions.GroupInherited := True;
-  Assert.AreEqual('Sort,#,Add,BeginUpdate,#,Assign', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('Sort,#,Add,BeginUpdate,#,Assign', OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
   Assert.AreEqual(4, TAtlasRanking.ItemCount(TAtlasRanking.Order(mItems, '', mOptions)));
   // Abgeschaltet: flache Liste in der Reihenfolge der Quelle.
   mOptions.GroupInherited := False;
-  Assert.AreEqual('Sort,Add,BeginUpdate,Assign', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('Sort,Add,BeginUpdate,Assign', OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
 end;
 
 procedure TAtlasRankingTests.ScopeOrdersAfterExpectedTypeBeforeBoost;
@@ -291,16 +256,16 @@ begin
         Result := 0;
       end;
     end;
-  Assert.AreEqual('Total,ACustomer,FDiscount,TKasse,Format', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('Total,ACustomer,FDiscount,TKasse,Format', OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
   // Erwarteter Typ vor Bereich: Nur ACustomer passt.
   mItems[1].ExpectedType := 'Integer';
   mItems[1].Fits := True;
   mItems[2].ExpectedType := 'Integer';
   Assert.AreEqual('#,ACustomer,#,Total,FDiscount,TKasse,Format',
-    Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+    OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
   // Mit Präfix: bessere Güte vor Bereich, bei gleicher Güte der nähere Bereich.
   mItems := [Scoped('Totalbetrag', 5), Scoped('Total', 4), Scoped('TotalLokal', 1)];
-  Assert.AreEqual('Total,TotalLokal,Totalbetrag', Names(mItems, TAtlasRanking.Order(mItems, 'Total', mOptions)));
+  Assert.AreEqual('Total,TotalLokal,Totalbetrag', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Total', mOptions)));
 end;
 
 procedure TAtlasRankingTests.PrefixLiftsInheritedMatchWithoutHeaders;
@@ -312,11 +277,11 @@ begin
   mItems := StringsItems + [Member('AssignTo', 'TStringList', 0, 4)];
   mOptions := TAtlasRankOptions.Defaults;
   mOptions.GroupInherited := True;
-  Assert.AreEqual('Assign,AssignTo', Names(mItems, TAtlasRanking.Order(mItems, 'Assign', mOptions)));
+  Assert.AreEqual('Assign,AssignTo', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Assign', mOptions)));
   // Gleiche Güte: der eigene Member vor dem geerbten.
-  Assert.AreEqual('AssignTo,Assign', Names(mItems, TAtlasRanking.Order(mItems, 'Ass', mOptions)));
+  Assert.AreEqual('AssignTo,Assign', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Ass', mOptions)));
   // Ohne eigenen Treffer: das geerbte Assign zuerst, ohne Überschrift.
-  Assert.AreEqual('Assign', Names(StringsItems, TAtlasRanking.Order(StringsItems, 'Ass', mOptions)));
+  Assert.AreEqual('Assign', OrderNames(StringsItems, TAtlasRanking.Order(StringsItems, 'Ass', mOptions)));
 end;
 
 procedure TAtlasRankingTests.BoostReordersButNeverBeatsBetterMatch;
@@ -339,9 +304,9 @@ begin
       end;
     end;
   // Ohne Präfix gewinnt das Gelernte.
-  Assert.AreEqual('AddObject,BeginUpdate,Add', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('AddObject,BeginUpdate,Add', OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
   // Genauer Treffer bleibt vor einem gelernten Präfix-Treffer.
-  Assert.AreEqual('Add,AddObject', Names(mItems, TAtlasRanking.Order(mItems, 'Add', mOptions)));
+  Assert.AreEqual('Add,AddObject', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Add', mOptions)));
 end;
 
 procedure TAtlasRankingTests.ChipsFilterAndCount;
@@ -361,7 +326,7 @@ begin
   Assert.AreEqual(0, mCounts[TAtlasChip.Types]);
   mOptions := TAtlasRankOptions.Defaults;
   mOptions.Chip := TAtlasChip.Properties;
-  Assert.AreEqual('Count,Capacity', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('Count,Capacity', OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
   Assert.AreEqual(1, TAtlasRanking.ChipCounts(mItems, 'cou')[TAtlasChip.Properties]);
 end;
 
@@ -380,8 +345,8 @@ begin
   mItems[2].Fits := True;
   mOptions := TAtlasRankOptions.Defaults;
   mOptions.GroupInherited := True;
-  Assert.AreEqual('#,FormCreate,Klick,Neue Methode btnSaveClick …', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
-  Assert.AreEqual('#,Klick,Neue Methode btnSaveClick …', Names(mItems, TAtlasRanking.Order(mItems, 'Kl', mOptions)));
+  Assert.AreEqual('#,FormCreate,Klick,Neue Methode btnSaveClick …', OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('#,Klick,Neue Methode btnSaveClick …', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Kl', mOptions)));
   // Erwarteter Typ (#417): Passende oben, auch wenn ein übriger Eintrag besser zum Präfix passt.
   mItems := [Member('Count', '', 0, 0), Member('Capacity', '', 0, 1), Member('Clear', '', 0, 2)];
   mItems[0].ExpectedType := 'Integer';
@@ -389,8 +354,8 @@ begin
   mItems[1].Fits := True;
   mItems[2].ExpectedType := 'Integer';
   mItems[2].Fits := True;
-  Assert.AreEqual('#,Capacity,Clear,#,Count', Names(mItems, TAtlasRanking.Order(mItems, 'C', mOptions)));
-  Assert.AreEqual('#,Count', Names(mItems, TAtlasRanking.Order(mItems, 'Cou', mOptions)));
+  Assert.AreEqual('#,Capacity,Clear,#,Count', OrderNames(mItems, TAtlasRanking.Order(mItems, 'C', mOptions)));
+  Assert.AreEqual('#,Count', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Cou', mOptions)));
 end;
 
 procedure TAtlasRankingTests.PostfixAfterMembers;
@@ -402,9 +367,9 @@ begin
     Member('TryFoo', '', 0, 2)];
   mItems[0].Postfix := True;
   mItems[0].FilterText := 'tryf';
-  Assert.AreEqual('tryfNext,TryFoo,tryf', Names(mItems, TAtlasRanking.Order(mItems, 'tryf',
+  Assert.AreEqual('tryfNext,TryFoo,tryf', OrderNames(mItems, TAtlasRanking.Order(mItems, 'tryf',
     TAtlasRankOptions.Defaults)));
-  Assert.AreEqual('tryfNext,TryFoo,tryf', Names(mItems, TAtlasRanking.Order(mItems, '', TAtlasRankOptions.Defaults)));
+  Assert.AreEqual('tryfNext,TryFoo,tryf', OrderNames(mItems, TAtlasRanking.Order(mItems, '', TAtlasRankOptions.Defaults)));
 end;
 
 procedure TAtlasRankingTests.FormComponentsComeFirst;
@@ -426,10 +391,10 @@ begin
   Assert.IsTrue(mItems[1].ByType);
   mItems[2].Form := 'frmMain';
   mOptions := TAtlasRankOptions.Defaults;
-  Assert.AreEqual('#,btnButtonLeiste,btnSave,#,TButton', Names(mItems, TAtlasRanking.Order(mItems, 'button', mOptions)));
+  Assert.AreEqual('#,btnButtonLeiste,btnSave,#,TButton', OrderNames(mItems, TAtlasRanking.Order(mItems, 'button', mOptions)));
   // Ohne Formulareinträge keine Überschrift.
   mItems := Copy(mItems, 0, 1);
-  Assert.AreEqual('TButton', Names(mItems, TAtlasRanking.Order(mItems, 'button', mOptions)));
+  Assert.AreEqual('TButton', OrderNames(mItems, TAtlasRanking.Order(mItems, 'button', mOptions)));
 end;
 
 procedure TAtlasRankingTests.SenderItemsGetHeaderAndTag;
@@ -452,7 +417,7 @@ begin
   Assert.AreEqual('TButton', mItems[0].Sender);
   Assert.AreEqual('btnSave, btnLoad', mItems[0].SenderOf);
   mOptions := TAtlasRankOptions.Defaults;
-  Assert.AreEqual('#,Caption', Names(mItems, TAtlasRanking.Order(mItems, 'Cap', mOptions)));
+  Assert.AreEqual('#,Caption', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Cap', mOptions)));
   mTags := TAtlasItemPresentation.Tags(mItems[0]);
   mFound := False;
   for mTag in mTags do
@@ -465,7 +430,7 @@ begin
   Assert.IsTrue(mFound);
   // Ohne Sender keine Überschrift.
   mItems[0].Sender := '';
-  Assert.AreEqual('Caption', Names(mItems, TAtlasRanking.Order(mItems, 'Cap', mOptions)));
+  Assert.AreEqual('Caption', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Cap', mOptions)));
 end;
 
 procedure TAtlasRankingTests.NarrowedMembersComeFirstWithHeader;
@@ -491,9 +456,9 @@ begin
   mItems[2].NarrowedName := 'mLocation';
   mItems[2].NarrowedLine := 147;
   mOrder := TAtlasRanking.Order(mItems, '', TAtlasRankOptions.Defaults);
-  Assert.AreEqual('#,Count,AddPair,#,Clone', Names(mItems, mOrder));
+  Assert.AreEqual('#,Count,AddPair,#,Clone', OrderNames(mItems, mOrder));
   // Auch mit Präfix stehen sie oben.
-  Assert.AreEqual('#,Count,#,Clone', Names(mItems, TAtlasRanking.Order(mItems, 'c', TAtlasRankOptions.Defaults)));
+  Assert.AreEqual('#,Count,#,Clone', OrderNames(mItems, TAtlasRanking.Order(mItems, 'c', TAtlasRankOptions.Defaults)));
   mFound := False;
   for mTag in TAtlasItemPresentation.Tags(mItems[1]) do
   begin
@@ -512,7 +477,7 @@ begin
   mItems[1].DescendantOf := 'TJSONValue';
   mItems[2].DescendantOf := 'TJSONValue';
   mOrder := TAtlasRanking.Order(mItems, '', TAtlasRankOptions.Defaults);
-  Assert.AreEqual('#,TJSONObject,TJSONArray,#,TAlpha', Names(mItems, mOrder));
+  Assert.AreEqual('#,TJSONObject,TJSONArray,#,TAlpha', OrderNames(mItems, mOrder));
 end;
 
 procedure TAtlasRankingTests.InaccessibleOnlyWhenShown;
@@ -527,16 +492,16 @@ begin
   mItems[0].Inaccessible := 'private';
   mItems[2].Inaccessible := 'strict private';
   mOptions := TAtlasRankOptions.Defaults;
-  Assert.AreEqual('FEnde', Names(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
+  Assert.AreEqual('FEnde', OrderNames(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
   Assert.AreEqual(1, Integer(Length(TAtlasRanking.Inaccessible(mItems, 'FE'))));
   Assert.AreEqual(0, TAtlasRanking.Inaccessible(mItems, 'FE')[0]);
   Assert.AreEqual(0, Integer(Length(TAtlasRanking.Inaccessible(mItems, ''))));
   mOptions.ShowInaccessible := True;
-  Assert.AreEqual('FEnde,#,FEintraege', Names(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
+  Assert.AreEqual('FEnde,#,FEintraege', OrderNames(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
   // Nicht im Rest der Liste (#497) und nicht unter den Chips.
   mOptions.ShowInaccessible := False;
   mOptions.ListMode := TAtlasListMode.All;
-  Assert.AreEqual('FEnde', Names(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
+  Assert.AreEqual('FEnde', OrderNames(mItems, TAtlasRanking.Order(mItems, 'FE', mOptions)));
   Assert.AreEqual(1, TAtlasRanking.ChipCounts(mItems, 'FE')[TAtlasChip.All]);
   mFound := False;
   for mTag in TAtlasItemPresentation.Tags(mItems[0]) do
@@ -558,7 +523,7 @@ begin
   mItems[1].ProjectUses := 3;
   mItems[3].ProjectUses := 214;
   mOptions := TAtlasRankOptions.Defaults;
-  Assert.AreEqual('GetValue,Clear,Add,Delete', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('GetValue,Clear,Add,Delete', OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
   mOptions.Boost :=
     function(AIndex: Integer): Integer
     begin
@@ -569,10 +534,10 @@ begin
         Result := 15;
       end;
     end;
-  Assert.AreEqual('Delete,GetValue,Clear,Add', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('Delete,GetValue,Clear,Add', OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
   mItems := [Member('Clear', '', 0, 0), Member('ClearAll', '', 0, 1)];
   mItems[1].ProjectUses := 50;
-  Assert.AreEqual('Clear,ClearAll', Names(mItems, TAtlasRanking.Order(mItems, 'Clear', TAtlasRankOptions.Defaults)));
+  Assert.AreEqual('Clear,ClearAll', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Clear', TAtlasRankOptions.Defaults)));
   Assert.AreEqual(0, TAtlasRanking.ProjectBoost(0));
   Assert.AreEqual(1, TAtlasRanking.ProjectBoost(1));
   Assert.AreEqual(TAtlasRanking.cMaxProjectBoost, TAtlasRanking.ProjectBoost(1000000));
@@ -655,10 +620,10 @@ begin
   Assert.AreEqual('Double', mItems[3].Lossy);
   mItems[1].Fits := True;
   mOptions := TAtlasRankOptions.Defaults;
-  Assert.AreEqual('#,Count.ToString,Count', Names(mItems, TAtlasRanking.Order(mItems, 'Cou', mOptions)));
-  Assert.AreEqual('#,Text,#,Count.ToString,Count,Preis', Names(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
+  Assert.AreEqual('#,Count.ToString,Count', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Cou', mOptions)));
+  Assert.AreEqual('#,Text,#,Count.ToString,Count,Preis', OrderNames(mItems, TAtlasRanking.Order(mItems, '', mOptions)));
   // Ohne sichtbares Original auch keine Umwandlung; gezählt wird sie nicht.
-  Assert.AreEqual('#,Text', Names(mItems, TAtlasRanking.Order(mItems, 'Tex', mOptions)));
+  Assert.AreEqual('#,Text', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Tex', mOptions)));
   Assert.AreEqual(1, TAtlasRanking.ChipCounts(mItems, 'Cou')[TAtlasChip.All]);
   mFound := False;
   for mTag in TAtlasItemPresentation.Tags(mItems[0]) do
@@ -690,9 +655,9 @@ begin
   Assert.AreEqual('classes', mItems[0].ConstraintHint);
   Assert.AreEqual('records,enums', TAtlasItemPresentation.HiddenKinds(mItems));
   mOptions := TAtlasRankOptions.Defaults;
-  Assert.AreEqual('#,TKunde', Names(mItems, TAtlasRanking.Order(mItems, 'TK', mOptions)));
+  Assert.AreEqual('#,TKunde', OrderNames(mItems, TAtlasRanking.Order(mItems, 'TK', mOptions)));
   mItems[0].TypeParam := '';
-  Assert.AreEqual('TKunde', Names(mItems, TAtlasRanking.Order(mItems, 'TK', mOptions)));
+  Assert.AreEqual('TKunde', OrderNames(mItems, TAtlasRanking.Order(mItems, 'TK', mOptions)));
 end;
 
 procedure TAtlasRankingTests.AttributesGetBadge;
@@ -772,9 +737,9 @@ begin
   end;
   Assert.AreEqual('Generics.Collections', mItems[1].FilterText);
   Assert.AreEqual('#,uGeneratorBeleg,#,System.Generics.Collections,System.Generics.Defaults,#,' +
-    'Spring.Collections.Generic', Names(mItems, TAtlasRanking.Order(mItems, 'Gener', TAtlasRankOptions.Defaults)));
+    'Spring.Collections.Generic', OrderNames(mItems, TAtlasRanking.Order(mItems, 'Gener', TAtlasRankOptions.Defaults)));
   Assert.AreEqual('#,System.Generics.Defaults',
-    Names(mItems, TAtlasRanking.Order(mItems, 'Defau', TAtlasRankOptions.Defaults)));
+    OrderNames(mItems, TAtlasRanking.Order(mItems, 'Defau', TAtlasRankOptions.Defaults)));
   // Zirkelbezug als Marke in Fehlerfarbe, anderer Abschnitt rechts, kein Dateiname.
   mTags := TAtlasItemPresentation.Tags(mItems[3]);
   Assert.AreEqual(1, Integer(Length(mTags)));
@@ -798,7 +763,7 @@ begin
   begin
     mItems[mIndex].UsesGroup := '';
   end;
-  Assert.IsFalse(Names(mItems, TAtlasRanking.Order(mItems, 'Gener', TAtlasRankOptions.Defaults)).Contains('#'));
+  Assert.IsFalse(OrderNames(mItems, TAtlasRanking.Order(mItems, 'Gener', TAtlasRankOptions.Defaults)).Contains('#'));
 end;
 
 procedure TAtlasRankingTests.InheritedCallsFirstWithTags;
@@ -831,7 +796,7 @@ begin
     end;
   end;
   Assert.AreEqual('Create(AOwner),CreateNew(AOwner, Dummy),CreateParented(ParentWindow)',
-    Names(mItems, TAtlasRanking.Order(mItems, 'Cre', TAtlasRankOptions.Defaults)));
+    OrderNames(mItems, TAtlasRanking.Order(mItems, 'Cre', TAtlasRankOptions.Defaults)));
   mTags := TAtlasItemPresentation.Tags(mItems[2]);
   mFound := False;
   for mTag in mTags do
@@ -922,7 +887,7 @@ begin
   // Heutiger Stand (#497, Variante 1): nur Treffer.
   mItems := RestItems;
   mOrder := TAtlasRanking.Order(mItems, 'As', RestOptions(TAtlasListMode.Filter), mRestStart);
-  Assert.AreEqual('Assign', Names(mItems, mOrder));
+  Assert.AreEqual('Assign', OrderNames(mItems, mOrder));
   Assert.AreEqual(-1, mRestStart);
 end;
 
@@ -935,7 +900,7 @@ begin
   // Variante 2: alles sichtbar, Treffer oben, der Rest in Rangfolge ohne Überschrift.
   mItems := RestItems;
   mOrder := TAtlasRanking.Order(mItems, 'As', RestOptions(TAtlasListMode.All), mRestStart);
-  Assert.AreEqual('Assign,Add,BeginUpdate,Clear,Sort', Names(mItems, mOrder));
+  Assert.AreEqual('Assign,Add,BeginUpdate,Clear,Sort', OrderNames(mItems, mOrder));
   Assert.AreEqual(1, mRestStart);
 end;
 
@@ -949,17 +914,17 @@ begin
   // Variante 3: Treffer, darunter abgesetzt „Weitere Einträge“.
   mItems := RestItems;
   mOrder := TAtlasRanking.Order(mItems, 'As', RestOptions(TAtlasListMode.Rest), mRestStart);
-  Assert.AreEqual('Assign,#,Add,BeginUpdate,Clear,Sort', Names(mItems, mOrder));
+  Assert.AreEqual('Assign,#,Add,BeginUpdate,Clear,Sort', OrderNames(mItems, mOrder));
   Assert.AreEqual(TAtlasRanking.cRestHeader, mOrder[1]);
   Assert.AreEqual(2, mRestStart);
   // Der Chip schränkt auch den Rest ein.
   mItems := mItems + [Member('Count', 'TStrings', 0, 5, TAtlasItemKind.Property_)];
   mOrder := TAtlasRanking.Order(mItems, 'As', RestOptions(TAtlasListMode.Rest), mRestStart);
-  Assert.AreEqual('Assign,#,Add,BeginUpdate,Clear,Sort,Count', Names(mItems, mOrder));
+  Assert.AreEqual('Assign,#,Add,BeginUpdate,Clear,Sort,Count', OrderNames(mItems, mOrder));
   mOptions := RestOptions(TAtlasListMode.Rest);
   mOptions.Chip := TAtlasChip.Methods;
   mOrder := TAtlasRanking.Order(mItems, 'Co', mOptions, mRestStart);
-  Assert.AreEqual('#,Add,Assign,BeginUpdate,Clear,Sort', Names(mItems, mOrder));
+  Assert.AreEqual('#,Add,Assign,BeginUpdate,Clear,Sort', OrderNames(mItems, mOrder));
   Assert.AreEqual(1, mRestStart);
   mItems := nil;
   mOrder := nil;
@@ -974,11 +939,11 @@ begin
   mItems := RestItems;
   // Ohne Präfix gibt es keinen Rest: alle Einträge sind Treffer.
   mOrder := TAtlasRanking.Order(mItems, '', RestOptions(TAtlasListMode.Rest), mRestStart);
-  Assert.AreEqual('Add,Assign,BeginUpdate,Clear,Sort', Names(mItems, mOrder));
+  Assert.AreEqual('Add,Assign,BeginUpdate,Clear,Sort', OrderNames(mItems, mOrder));
   Assert.AreEqual(-1, mRestStart);
   // Tippfehler (#485) stehen unter „Meintest du“ und nicht noch einmal im Rest.
   mOrder := TAtlasRanking.Order(mItems, 'Cleer', RestOptions(TAtlasListMode.Rest), mRestStart);
-  Assert.AreEqual('#,Clear,#,Add,Assign,BeginUpdate,Sort', Names(mItems, mOrder));
+  Assert.AreEqual('#,Clear,#,Add,Assign,BeginUpdate,Sort', OrderNames(mItems, mOrder));
   Assert.AreEqual(TAtlasRanking.cTypoHeader, mOrder[0]);
   Assert.AreEqual(TAtlasRanking.cRestHeader, mOrder[2]);
   Assert.AreEqual(3, mRestStart);
@@ -1119,7 +1084,7 @@ begin
       mUsage.Record_(Member('BeginUpdate', 'TStrings', 0, 1));
     end;
     mController.Start(Context(''));
-    Assert.IsTrue(Wait(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -1146,7 +1111,7 @@ begin
   try
     mController.GroupInherited := True;
     mController.Start(Context(''));
-    Assert.IsTrue(Wait(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -1198,7 +1163,7 @@ begin
     IAtlasCompletionProvider, mViewRef);
   try
     mController.Start(Context(''));
-    Assert.IsTrue(Wait(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -1226,7 +1191,7 @@ begin
     mController.ListMode := TAtlasListMode.Rest;
     // Strg+Leer (alle sichtbaren Namen): nur Treffer, solange der Bereich Members ist.
     mController.Start(Context(''));
-    Assert.IsTrue(Wait(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -1236,7 +1201,7 @@ begin
     Assert.AreEqual(-1, mController.RestStart);
     // Nach ".": Treffer, darunter der Rest.
     mController.Start(MemberContext(''));
-    Assert.IsTrue(Wait(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -1253,7 +1218,7 @@ begin
     // Überall: auch ohne ".".
     mController.ListScope := TAtlasListScope.Everywhere;
     mController.Start(Context(''));
-    Assert.IsTrue(Wait(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;
@@ -1279,7 +1244,7 @@ begin
   try
     mController.ListMode := TAtlasListMode.All;
     mController.Start(MemberContext(''));
-    Assert.IsTrue(Wait(
+    Assert.IsTrue(TTestWait.Synchronized(
       function: Boolean
       begin
         Result := not mController.Loading;

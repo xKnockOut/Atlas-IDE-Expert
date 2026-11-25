@@ -20,7 +20,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.EditValue,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasEditValueDialog = class(TAtlasDialog)
@@ -58,7 +58,7 @@ implementation
 
 uses
   Vcl.Dialogs,
-  Atlas.Core.Style.Signal,
+  Atlas.Plugin.Style.Signal,
   Atlas.UI.Debug.Values.Strings;
 
 const

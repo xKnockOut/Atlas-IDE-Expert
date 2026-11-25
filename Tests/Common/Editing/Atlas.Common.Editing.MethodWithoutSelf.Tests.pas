@@ -57,14 +57,14 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Documents.TextChanges,
   Atlas.Common.Editing.MethodWithoutSelf,
-  Atlas.Common.Editing.MethodWithoutSelf.Contract,
+  Atlas.Common.Editing.MethodWithoutSelf.Types,
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
-  Atlas.Common.Editing.MethodWithoutSelf.Texts;
+  Atlas.Common.Editing.MethodWithoutSelf.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   cKunden =
@@ -102,25 +102,6 @@ const
     '    Exit;'#10 +
     'end;'#10 +
     'end.'#10;
-
-/// <summary>Anfänge der Bezeichner AName in AText wie aus der Referenzsuche: ohne gleichnamige Routinen der Unit
-/// (Name direkt hinter function bzw. procedure).</summary>
-function OffsetsOf(ATree: TSyntaxTree; const AName: string): TArray<Integer>;
-var
-  mTokens: TArray<TPascalToken>;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mTokens := ATree.Tokens;
-  for mIndex := 0 to High(mTokens) do
-  begin
-    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) and
-      not ((mIndex > 0) and (mTokens[mIndex - 1].IsKeyword('function') or mTokens[mIndex - 1].IsKeyword('procedure'))) then
-    begin
-      Result := Result + [mTokens[mIndex].Offset];
-    end;
-  end;
-end;
 
 function EditsOf(const AResult: TMethodResult; const AFileName: string): TArray<TTextEdit>;
 var
@@ -183,18 +164,17 @@ begin
     if ACase.Other <> '' then
     begin
       mOtherTree := TPascalParser.Parse(ACase.Other);
-      mOthers := [TMethodSource.Create('C:\P\Aufrufer.pas', ACase.Other, mOtherTree, OffsetsOf(mOtherTree,
-        'IsValidIban'))];
+      mOthers := [TMethodSource.Create('C:\P\Aufrufer.pas', ACase.Other, mOtherTree, NameUseOffsets(mOtherTree.Tokens, 'IsValidIban'))];
     end;
     Result := TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Kunden.pas', ACase.Declaring, mTree,
-      OffsetsOf(mTree, 'IsValidIban')), mOthers, TMethodRequest.Create(TTextPosition.Create(cLine, cCharacter),
+      NameUseOffsets(mTree.Tokens, 'IsValidIban')), mOthers, TMethodRequest.Create(TTextPosition.Create(cLine, cCharacter),
       ACase.Conversion, ACase.Static, mLookup, TFormatStyle.Default), AResult, AReason);
     ANewDeclaring := ACase.Declaring;
     ANewOther := ACase.Other;
     if Result then
     begin
-      ANewDeclaring := TChangeSignature.ApplyEdits(ACase.Declaring, EditsOf(AResult, 'C:\P\Kunden.pas'));
-      ANewOther := TChangeSignature.ApplyEdits(ACase.Other, EditsOf(AResult, 'C:\P\Aufrufer.pas'));
+      ANewDeclaring := TTextChanges.Apply(ACase.Declaring, EditsOf(AResult, 'C:\P\Kunden.pas'));
+      ANewOther := TTextChanges.Apply(ACase.Other, EditsOf(AResult, 'C:\P\Aufrufer.pas'));
     end;
   finally
     mOtherTree.Free;
@@ -582,7 +562,7 @@ begin
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Routine, True, mLookup,
       TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
     Assert.IsTrue(Pos('  Result := N + TA.Max;', mText) > 0, mText);
     Assert.IsTrue(Pos(#10'function Grenze(N: Integer): Integer;'#10, mText) > 0, mText);
     // strict private: nur class-Methode und Helper.
@@ -593,7 +573,7 @@ begin
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(17, 13), TMethodConversion.ClassMethod, True, mLookup,
       TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
     Assert.IsTrue(Pos('    class function Zaehle(N: Integer): Integer; static;', mText) > 0, mText);
   finally
     mTree.Free;
@@ -647,10 +627,9 @@ var
 begin
   mTree := TPascalParser.Parse(cSource);
   try
-    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Haupt.pas', cSource, mTree, OffsetsOf(mTree,
-      'Doppelt')), nil, TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Helper, True,
+    Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\Haupt.pas', cSource, mTree, NameUseOffsets(mTree.Tokens, 'Doppelt')), nil, TMethodRequest.Create(TTextPosition.Create(13, 13), TMethodConversion.Helper, True,
       TMethodLookup.FromTree(mTree), TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
   finally
     mTree.Free;
   end;
@@ -698,13 +677,13 @@ begin
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(16, 16), TMethodConversion.ClassMethod, False,
       TMethodLookup.FromTree(mTree), TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
     Assert.IsTrue(Pos('    class function Doppelt(const A: Integer): Integer; static;', mText) > 0, mText);
     // Vorhandener Helper für Integer bekommt die Methode.
     Assert.IsTrue(TMethodWithoutSelf.Execute(TMethodSource.Create('C:\P\U.pas', cSource, mTree, nil), nil,
       TMethodRequest.Create(TTextPosition.Create(16, 16), TMethodConversion.Helper, False,
       TMethodLookup.FromTree(mTree), TFormatStyle.Default), mConverted, mReason), mReason);
-    mText := TChangeSignature.ApplyEdits(cSource, mConverted.Files[0].Edits);
+    mText := TTextChanges.Apply(cSource, mConverted.Files[0].Edits);
   finally
     mTree.Free;
   end;

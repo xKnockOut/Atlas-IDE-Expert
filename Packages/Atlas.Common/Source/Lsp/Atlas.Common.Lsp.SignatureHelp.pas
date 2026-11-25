@@ -28,7 +28,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Lsp.SignatureFormat,
-  Atlas.Common.Lsp.Hover;
+  Atlas.Common.Lsp.Hover,
+  Atlas.Common.Lsp.Internals.Feature;
 
 type
   TCallSite = record
@@ -92,13 +93,10 @@ type
   /// <summary>Formatroutinen für das Dokument AUri: eingebaute und eigene (#451).</summary>
   TFormatRoutinesFunc = reference to function(const AUri: string): TArray<TFormatRoutine>;
 
-  TLspSignatureHelp = class
+  TLspSignatureHelp = class(TLspIndexFeature)
   public const
     cMethod = 'textDocument/signatureHelp';
   private
-    FStore: IDocumentStore;
-    FIndex: ISymbolIndex;
-    FEnsureUnit: TEnsureUnitFunc;
     FReadText: THoverReadText;
     FNamespaces: TArray<string>;
     FFormatRoutinesFor: TFormatRoutinesFunc;
@@ -147,7 +145,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions,
+  Atlas.Common.JsonRpc.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeCache,
@@ -228,18 +226,6 @@ type
     function Run: TSignatureHelp;
   end;
 
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-  begin
-    Result := A.Line - B.Line;
-  end
-  else
-  begin
-    Result := A.Character - B.Character;
-  end;
-end;
-
 function CollapseSpaces(const AText: string): string;
 var
   mIndex: Integer;
@@ -277,22 +263,6 @@ begin
   while (Result >= 0) and IsSkipped(ATokens[Result]) do
   begin
     Dec(Result);
-  end;
-end;
-
-/// <summary>Letztes Token, das vor APosition beginnt; -1 ohne.</summary>
-function LastTokenBefore(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if ComparePositions(ATokens[mIndex].StartPos, APosition) >= 0 then
-    begin
-      Break;
-    end;
-    Result := mIndex;
   end;
 end;
 
@@ -410,11 +380,8 @@ end;
 constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: THoverReadText; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
+  inherited Create(AStore, AIndex, AEnsureUnit);
   FReadText := AReadText;
-  FEnsureUnit := AEnsureUnit;
 end;
 
 constructor TLspSignatureHelp.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
@@ -695,7 +662,7 @@ begin
   end;
   mScan := Default(TCallScan);
   mScan.Tokens := ATree.Tokens;
-  mScan.Last := LastTokenBefore(mScan.Tokens, APosition);
+  mScan.Last := TokenBeforePosition(mScan.Tokens, APosition);
   // Argumente rückwärts gesammelt (#498).
   mScan.SpanEnd := mScan.Last;
   for mIndex := mScan.Last downto 0 do

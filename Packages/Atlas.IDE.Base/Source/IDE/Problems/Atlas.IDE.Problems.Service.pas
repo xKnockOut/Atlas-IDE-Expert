@@ -45,7 +45,7 @@ uses
   System.JSON,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Settings.ProblemsUpdate;
+  Atlas.Plugin.Settings.ProblemsUpdate;
 
 type
   TAtlasProblemsCommandProc = reference to procedure(const ACommand, AArgumentsJson: string;
@@ -121,10 +121,10 @@ uses
   System.Generics.Collections,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Problems.Strings,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain,
@@ -138,7 +138,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
-  Atlas.Core.Localization.Language;
+  Atlas.Plugin.Localization.Language;
 
 {$SCOPEDENUMS ON}
 

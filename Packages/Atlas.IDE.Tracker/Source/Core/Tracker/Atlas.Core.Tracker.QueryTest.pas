@@ -87,7 +87,8 @@ uses
   System.Math,
   System.Diagnostics,
   Atlas.Core.Tracker.Templates,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Plugin.Diagnostics.Deadline;
 
 { TAtlasTrackerQueryTestResult }
 
@@ -244,16 +245,16 @@ begin
   end;
   Result.HttpStatus := AStatus;
   case AStatus of
-    200:
+    TAtlasHttpStatus.cOk:
       ReadFound(Result, AProvider, AText);
-    400, 422:
+    TAtlasHttpStatus.cBadRequest, TAtlasHttpStatus.cUnprocessable:
       begin
         Result.Outcome := TAtlasTrackerQueryOutcome.QueryRejected;
         Result.TrackerMessage := TrackerMessage(AText);
       end;
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result.Outcome := TAtlasTrackerQueryOutcome.Rejected;
-    404:
+    TAtlasHttpStatus.cNotFound:
       Result.Outcome := TAtlasTrackerQueryOutcome.ProjectUnknown;
   else
     if LooksLikeHtml(AText) then
@@ -264,18 +265,6 @@ begin
     begin
       Result.Outcome := TAtlasTrackerQueryOutcome.ServerError;
     end;
-  end;
-end;
-
-function Remaining(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
-var
-  mRest: Int64;
-begin
-  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
-  Result := 0;
-  if mRest > 0 then
-  begin
-    Result := Integer(mRest);
   end;
 end;
 
@@ -297,8 +286,8 @@ begin
   end;
   mTarget := ATarget;
   mTarget.Query := TAtlasTrackerTemplates.QueryOf(AProvider.Name, ALanguage, TAtlasTrackerTemplateKind.AssignedToMe);
-  if ATransport.Get(AProvider.ListUrl(mTarget, 1), ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) and
-    AProvider.ParseList(mText, 1, mIssues) then
+  if ATransport.Get(AProvider.ListUrl(mTarget, 1), ATimeoutMs, mStatus, mText, mError) and
+    (mStatus = TAtlasHttpStatus.cOk) and AProvider.ParseList(mText, 1, mIssues) then
   begin
     Result := Length(mIssues);
   end;
@@ -323,7 +312,7 @@ begin
     Exit;
   end;
   mWatch := TStopwatch.StartNew;
-  if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) then
+  if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = TAtlasHttpStatus.cOk) then
   begin
     Result := LanguageOfLocale(mText);
   end;
@@ -333,8 +322,10 @@ begin
   end;
   // Ohne Recht auf die globalen Einstellungen: Die Vorlage in der Sprache der Oberfläche findet etwas, die andere
   // nichts (bzw. wird abgelehnt).
-  mGerman := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cGerman, Remaining(mWatch, ATimeoutMs));
-  mEnglish := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cEnglish, Remaining(mWatch, ATimeoutMs));
+  mGerman := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cGerman,
+    TAtlasTicks.LeftOf(mWatch, ATimeoutMs));
+  mEnglish := Probe(AProvider, ATarget, ATransport, TAtlasTrackerTemplates.cEnglish,
+    TAtlasTicks.LeftOf(mWatch, ATimeoutMs));
   if (mGerman > 0) and (mEnglish <= 0) then
   begin
     Result := TAtlasTrackerTemplates.cGerman;
@@ -393,7 +384,7 @@ begin
   Result.Language := ATarget.Language;
   if Result.Language = '' then
   begin
-    Result.Language := DetectLanguage(AProvider, ATarget, ATransport, Remaining(mWatch, cTimeoutMs));
+    Result.Language := DetectLanguage(AProvider, ATarget, ATransport, TAtlasTicks.LeftOf(mWatch, cTimeoutMs));
   end;
   // Gesendet wurde ATarget.Query bzw. ohne sie die Vorgabe zur bisher bekannten Sprache.
   mSent := ATarget.Query;

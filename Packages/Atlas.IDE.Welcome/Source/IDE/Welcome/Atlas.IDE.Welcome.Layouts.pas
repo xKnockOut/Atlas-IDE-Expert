@@ -78,8 +78,8 @@ implementation
 
 uses
   Atlas.Core.Welcome.Layouts,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Strings,
@@ -146,7 +146,8 @@ var
   mAdded: TArray<string>;
   mIds: TArray<string>;
   mAdopted: TAtlasWelcomeLayout;
-  mKeep: IAtlasWelcomeArrangeSource;
+  // Nur Lebensdauer: Die Klasse erfüllt den Vertrag seit #1443 über einen Adapter, nicht selbst (E2010).
+  mKeep: IInterface;
 begin
   mCurrent := TAtlasIdeSettings.Current;
   if not mCurrent.WelcomePageCustomLayout then

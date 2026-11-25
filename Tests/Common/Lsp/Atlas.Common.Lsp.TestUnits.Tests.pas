@@ -31,6 +31,8 @@ type
     [Test]
     procedure CreateEditAddsFileProgramAndProject;
     [Test]
+    procedure FolderMirrorsSourceTree;
+    [Test]
     procedure CodeActionOnClassCreates;
     [Test]
     procedure DraftActionCreatesTestUnitWithDraft;
@@ -53,7 +55,8 @@ uses
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Documents.Providers.DocumentStore;
+  Atlas.Common.Documents.Providers.DocumentStore,
+  Atlas.Common.JsonRpc.TestSupport;
 
 const
   cKundenFile = 'C:\P\Quelle\Kunden.pas';
@@ -222,6 +225,35 @@ begin
   end;
 end;
 
+procedure TLspTestUnitsTests.FolderMirrorsSourceTree;
+const
+  cNested = 'C:\P\Quelle\Verwaltung\Kunden.pas';
+var
+  mContext: TTestUnitContext;
+  mEdit: TJSONObject;
+  mChange: TJSONObject;
+begin
+  // #2800: Tests\{path} legt die Testunit im gespiegelten Ordner an und trägt den Pfad ins Testprojekt ein.
+  mContext := Context;
+  mContext.Settings.Folder := 'Tests\{path}';
+  mContext.Settings.SourceRoot := 'Quelle';
+  Assert.AreEqual('C:\P\Tests\Verwaltung\Kunden.Tests.pas',
+    TLspTestUnits.Resolve(cNested, cKundenText, 3, mContext).NewFile);
+  Assert.AreEqual('C:\P\Tests\Kunden.Tests.pas', TLspTestUnits.Resolve(cKundenFile, cKundenText, 3, mContext).NewFile,
+    'direkt im Quellordner');
+  mEdit := TLspTestUnits.CreateEdit(TLspTestUnits.Resolve(cNested, cKundenText, 3, mContext), mContext);
+  try
+    mChange := Find(mEdit.GetValue<TJSONArray>('documentChanges'), TDocumentUris.FromPath(cTestsDpr));
+    Assert.IsNotNull(mChange, '.dpr');
+    Assert.AreEqual(','#13#10'  Kunden.Tests in ''Verwaltung\Kunden.Tests.pas''', FirstNewText(mChange));
+  finally
+    mEdit.Free;
+  end;
+  mContext.Settings.SourceRoot := '';
+  Assert.AreEqual('C:\P\Tests\Quelle\Verwaltung\Kunden.Tests.pas',
+    TLspTestUnits.Resolve(cNested, cKundenText, 3, mContext).NewFile, 'ohne Quellordner: ab der Wurzel');
+end;
+
 procedure TLspTestUnitsTests.CodeActionOnClassCreates;
 var
   mActions: TArray<TJSONObject>;
@@ -244,16 +276,6 @@ begin
   Assert.AreEqual(0, Integer(Length(mActions)));
 end;
 
-procedure FreeAll(const AActions: TArray<TJSONObject>);
-var
-  mAction: TJSONObject;
-begin
-  for mAction in AActions do
-  begin
-    mAction.Free;
-  end;
-end;
-
 procedure TLspTestUnitsTests.DraftActionCreatesTestUnitWithDraft;
 var
   mActions: TArray<TJSONObject>;
@@ -273,7 +295,7 @@ begin
     Assert.IsTrue(Pos('  FSubject := TKunde.Create;', mText) > 0, mText);
     Assert.AreEqual('DUnitX-Testunit f' + #$FC + 'r TKunde anlegen', mActions[1].GetValue<string>('title'));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 
@@ -316,7 +338,7 @@ begin
     Assert.IsTrue(Pos('Kunden', mText) > 0, 'uses: ' + mText);
     Assert.AreEqual('Zur Testunit Kunden.Tests wechseln', mActions[1].GetValue<string>('title'));
   finally
-    FreeAll(mActions);
+    TJsonRpcTestSupport.FreeAll(mActions);
   end;
 end;
 

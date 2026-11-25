@@ -33,9 +33,9 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.Diagnostics.BackgroundJobs,
+  Atlas.Plugin.Diagnostics.BackgroundJobs,
   Atlas.UI.Tracker.BoardFrame,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.IDE.Tracker.BoardLoad,
   Atlas.IDE.Tracker.BoardMove;
 
@@ -88,13 +88,17 @@ implementation
 
 uses
   Atlas.Core.Tracker.BoardPlan,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.Board.Strings,
-  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.ToolsApi.Theme.Style,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.BoardWindow;
+
+const
+  /// <summary>So lange wartet Stop höchstens auf eine laufende Abfrage.</summary>
+  cStopTimeoutMs = 1000;
 
 { TAtlasIdeBoard }
 
@@ -398,7 +402,7 @@ begin
   FStarted := False;
   FLoad.Stop;
   FMove.Stop;
-  FWorker.Stop(1000);
+  FWorker.Stop(cStopTimeoutMs);
   TAtlasIdeBoardWindow.Release;
   FHooks := Default(TAtlasBoardHooks);
   FMessage.Clear;

@@ -34,10 +34,10 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.Menus,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Style.Signal,
-  Atlas.Core.Notifications.Contract,
-  Atlas.UI.Foundation.Dialog;
+  Atlas.Plugin.Style.Palette,
+  Atlas.Plugin.Style.Signal,
+  Atlas.Plugin.Notifications.Contract,
+  Atlas.Vcl.Forms.Dialog;
 
 type
   TAtlasNotificationModeEvent = reference to procedure(const ASource: string; AMode: TAtlasNotificationMode);
@@ -160,11 +160,11 @@ implementation
 uses
   System.Math,
   System.DateUtils,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Notifications.Sources,
-  Atlas.UI.Popup.Draw,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Notifications.Sources,
+  Atlas.Vcl.Popup.Draw,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Notifications.Strings;
 
 const

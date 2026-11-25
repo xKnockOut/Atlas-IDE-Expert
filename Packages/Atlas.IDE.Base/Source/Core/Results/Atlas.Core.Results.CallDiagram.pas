@@ -26,7 +26,7 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Plugin.Lsp.Contract;
 
 type
 {$SCOPEDENUMS ON}
@@ -166,7 +166,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Results.CallDiagramTemplate,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Entities;
 
 {$SCOPEDENUMS ON}

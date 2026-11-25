@@ -27,7 +27,7 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.Evaluate,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink,
+  Atlas.Plugin.Notifications.MessageSink,
   Atlas.Core.Debug.Phases,
   Atlas.Core.Debug.Contract;
 
@@ -74,14 +74,14 @@ implementation
 
 uses
   Atlas.Core.Debug.InstanceBreakpoint,
-  Atlas.Core.Settings.VisualizerKinds,
-  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.Plugin.Settings.VisualizerKinds,
+  Atlas.ToolsApi.Editor.Buffer,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Debug.Breakpoints.Strings,
   Atlas.UI.Debug.DataBreakpoints.Strings,
   Atlas.UI.Debug.InstanceBreakpoint,
-  Atlas.IDE.Foundation.Debugger;
+  Atlas.ToolsApi.Debugger.Services;
 
 { TAtlasIdeInstanceBreakpoint.TListener }
 

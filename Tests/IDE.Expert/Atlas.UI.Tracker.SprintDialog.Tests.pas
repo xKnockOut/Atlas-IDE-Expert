@@ -32,7 +32,7 @@ uses
   System.DateUtils,
   System.UITypes,
   Atlas.Core.Tracker.Contract,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.SprintDialog;
 
 { TAtlasTrackerSprintDialogTests }

@@ -43,7 +43,8 @@ uses
   System.Types,
   System.SysUtils,
   Atlas.Core.Designer.Layout,
-  Atlas.Core.Designer.Scale;
+  Atlas.Core.Designer.Scale,
+  Atlas.Core.Designer.TestSupport;
 
 const
   cCharWidth = 6;
@@ -85,23 +86,6 @@ begin
       end;
       Result := Length(ALine) * mChar;
     end;
-end;
-
-function Has(const AFindings: TArray<TAtlasLayoutFinding>; ANode: Integer; AProblem: TAtlasLayoutProblem;
-  out AFinding: TAtlasLayoutFinding): Boolean;
-var
-  mFinding: TAtlasLayoutFinding;
-begin
-  for mFinding in AFindings do
-  begin
-    if (mFinding.Node = ANode) and (mFinding.Problem = AProblem) then
-    begin
-      AFinding := mFinding;
-      Exit(True);
-    end;
-  end;
-  AFinding := Default(TAtlasLayoutFinding);
-  Result := False;
 end;
 
 procedure AssertRect(const AExpected, AActual: TRect);

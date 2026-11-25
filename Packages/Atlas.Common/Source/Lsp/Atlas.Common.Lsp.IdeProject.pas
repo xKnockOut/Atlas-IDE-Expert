@@ -34,8 +34,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.FormatRoutines,
-  Atlas.Common.Projects.Contract,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Projects.Contract;
 
 type
   TIdeProjectContext = record
@@ -70,9 +69,6 @@ type
     function Key: string;
     /// <summary>Vergleichsschlüssel der Präfix-Vorgaben und Formatroutinen.</summary>
     function NamingKey: string;
-    /// <summary>Präfix-Vorgaben für die Prüfregeln (#1111): Felder, Parameter, lokale Variablen und Konstanten.
-    /// </summary>
-    function RuleNaming: TRuleNaming;
     /// <summary>Übernimmt Symbole, Suchpfade und Namespaces in AProject ($(Name) mit AVariables,
     /// Pfade ab dem Projektordner, ohne Doppelte).</summary>
     procedure ApplyTo(var AProject: TProjectInfo; const AVariables: TArray<TPair<string, string>>);
@@ -285,29 +281,6 @@ begin
   for mRoutine in FormatFunctions do
   begin
     Result := Result + 'format=' + mRoutine.Name + ':' + IntToStr(mRoutine.FormatIndex) + '|';
-  end;
-end;
-
-function TIdeProjectContext.RuleNaming: TRuleNaming;
-const
-  cKinds: array[TNamingKind] of TRuleNamingKind = (TRuleNamingKind.Field, TRuleNamingKind.Parameter,
-    TRuleNamingKind.Local);
-var
-  mKind: TNamingKind;
-begin
-  Result := Default(TRuleNaming);
-  for mKind := Low(TNamingKind) to High(TNamingKind) do
-  begin
-    if HasNaming[mKind] then
-    begin
-      Result.Known[cKinds[mKind]] := True;
-      Result.Prefixes[cKinds[mKind]] := Naming[mKind];
-    end;
-  end;
-  if HasConstantPrefix then
-  begin
-    Result.Known[TRuleNamingKind.Constant] := True;
-    Result.Prefixes[TRuleNamingKind.Constant] := ConstantPrefix;
   end;
 end;
 

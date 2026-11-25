@@ -94,10 +94,10 @@ uses
   System.Generics.Collections,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Lsp.Client,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Lsp.Client,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
@@ -214,7 +214,7 @@ begin
       Exit(nil);
     end;
     // CompletionList mit isIncomplete: Der Server hat gekürzt und will beim Weitertippen neu gefragt werden.
-    // Ohne GetValue<Boolean>: das lässt über TValue Speicher liegen (Leck-Monitor).
+    // Ohne GetValue<Boolean>: das lässt über TValue Speicher bis zum Entladen liegen.
     AState.Incomplete := (mResponse is TJSONObject) and (TJSONObject(mResponse).GetValue('isIncomplete') is TJSONBool) and
       TJSONBool(TJSONObject(mResponse).GetValue('isIncomplete')).AsBoolean;
     AState.Syntax := SyntaxNoticeOf(mResponse);

@@ -40,16 +40,16 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.VersionControl,
   Atlas.UI.Settings.Page,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
-  Atlas.Core.VersionControl.ToolCheck,
-  Atlas.Core.VersionControl.ServerCheck,
-  Atlas.Core.VersionControl.ServerAccess,
+  Atlas.VersionControl.Repository.Contract,
+  Atlas.VersionControl.Repository.Tools,
+  Atlas.VersionControl.Repository.ToolCheck,
+  Atlas.VersionControl.Repository.ServerCheck,
+  Atlas.VersionControl.Repository.ServerAccess,
   System.Generics.Collections,
   Vcl.Forms,
   Vcl.ComCtrls,
   Atlas.UI.Settings.Marks,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Core.Modules.Contract,
   Atlas.UI.Settings.Contract,
@@ -274,10 +274,11 @@ begin
   Assert.AreEqual('without', ASaved.VcsExternalsUpdate);
   Assert.AreEqual('ask', ASaved.VcsExternalsOnBranch);
   Assert.AreEqual('always', ASaved.VcsExternalsSuggestBranch);
-  Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', ASaved.VcsExternalsRules);
+  // FPC schreibt JSON mit Leerzeichen nach ':' und ',', Delphi ohne: ohne Leerzeichen vergleichen.
+  Assert.AreEqual('[{"source":"^/Packages/Basis","onBranch":"keep"}]', ASaved.VcsExternalsRules.Replace(' ', ''));
   GSection.Branch.VcsExternalsRules.Text := '^/Packages/Basis = keep'#13#10'kaputt';
   APage.SaveTo(ASaved);
-  Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', ASaved.VcsExternalsRules);
+  Assert.AreEqual('[{"source":"^/Packages/Basis","onBranch":"keep"}]', ASaved.VcsExternalsRules.Replace(' ', ''));
   APage.LoadFrom(ASaved);
   Assert.AreEqual('^/Packages/Basis = keep', GSection.Branch.VcsExternalsRules.Text);
   Assert.AreEqual(2, GSection.Branch.VcsExternalsOnBranch.Choice);
@@ -445,7 +446,7 @@ end;
 procedure AssertVcsProjectRows(AList: TListView);
 begin
   // Persönliche Zeile vor der aus der .atlas; die .atlas gewinnt für Kasse.
-  Assert.AreEqual(2, AList.Items.Count);
+  Assert.AreEqual(2, Integer(AList.Items.Count));
   Assert.AreEqual('C:\Projekte', AList.Items[0].Caption);
   Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderSvn), AList.Items[0].SubItems[0]);
   Assert.AreEqual('trunk', AList.Items[0].SubItems[1]);
@@ -562,7 +563,7 @@ end;
 procedure AssertVcsServerRows(AList: TListView);
 begin
   // Aktuelles Projekt und Gruppe teilen den Ordner: eine Zeile; dazu der Paketordner (SVN-Externals).
-  Assert.AreEqual(2, AList.Items.Count);
+  Assert.AreEqual(2, Integer(AList.Items.Count));
   Assert.AreEqual('Kasse.groupproj', AList.Items[0].Caption);
   Assert.AreEqual('–', AList.Items[0].SubItems[0]);
   Assert.AreEqual(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsServerUnknown), AList.Items[0].SubItems[1]);
@@ -686,7 +687,7 @@ begin
     // „prüfen …“ der Willkommensseite für einen Ordner ohne Zeile: Zeile kommt dazu und wird geprüft.
     mProbe.FChecked := nil;
     GSection.Servers.RevealVcsServer('C:\Projekte\Lager\');
-    Assert.AreEqual(3, mList.Items.Count);
+    Assert.AreEqual(3, Integer(mList.Items.Count));
     Assert.AreEqual('Lager', mList.Items[2].Caption);
     Assert.AreEqual(1, Integer(Length(mProbe.FChecked)));
     Assert.AreEqual('C:\Projekte\Lager', mProbe.FChecked[0]);

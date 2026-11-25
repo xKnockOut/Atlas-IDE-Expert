@@ -5,10 +5,10 @@
 
 .DESCRIPTION
     Legt eine Kopie von Packages, Application, atlas.json, Tests-Programm und
-    ADR-Doku in einem temporären Ordner an. Der unveränderte Stand muss die
+    Zuordnung (Tools/UnitAssignment*.tsv) in einem temporären Ordner an. Der unveränderte Stand muss die
     Prüfung bestehen. Danach baut jeder Fall einen Verstoß ein (neue Unit mit
     verbotenem uses, fehlende oder veraltete Zeile der Zuordnung, Abweichung
-    ohne Begründung, behobener bekannter Verstoß) und erwartet, dass das
+    ohne Begründung, unsortierte Zeile, behobener bekannter Verstoß) und erwartet, dass das
     Skript scheitert und den Verstoß nennt. Erlaubte Verweise (Modul -> Base,
     auch auf die Verträge in Base) müssen bestehen. Nach jedem Fall wird die Kopie
     zurückgesetzt.
@@ -25,13 +25,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $Script = Join-Path $PSScriptRoot 'Check-PackageDependencies.ps1'
-$Assignment = 'docs/adr/0017-unit-zuordnung.md'
+$Assignment = 'Tools/UnitAssignment.tsv'
+$Boundaries = 'Tools/UnitAssignment.Boundaries.tsv'
 $Source = 'Packages/Atlas.IDE.Base/Source'
 $Failures = [System.Collections.Generic.List[string]]::new()
 $Touched = @{}
 
 $CopyRoot = Join-Path ([IO.Path]::GetTempPath()) ('atlas-modules-' + [Guid]::NewGuid().ToString('N'))
-foreach ($Item in 'Packages', 'Application', 'Tests/Atlas.Tests.dpr', 'Tests/Data/Architecture', 'Tools/AdapterRoles.known.txt', $Assignment, 'atlas.json') {
+foreach ($Item in 'Packages', 'Application', 'Tests/Atlas.Tests.dpr', 'Tests/Data/Architecture', 'Tools/AdapterRoles.known.txt', $Assignment, 'Tools/UnitAssignment.Folders.tsv', $Boundaries, 'atlas.json') {
     $From = Join-Path $Root $Item
     if (-not (Test-Path $From)) { continue }
     $To = Join-Path $CopyRoot $Item
@@ -70,16 +71,24 @@ function Add-UnitIn([string] $Base, [string] $Folder, [string] $Name, [string[]]
     Set-CopyText "$Base/$Folder/$Name.pas" "unit $Name;`r`n`r`ninterface`r`n`r`n${Clause}implementation`r`n`r`nend.`r`n"
 }
 
-function Add-TableRow([string] $Heading, [string] $Row) {
-    # Fügt eine Zeile direkt unter der Trennzeile der ersten Tabelle nach der Überschrift ein.
+function Add-AssignmentRow([string] $Package, [string] $Name, [string] $File, [string] $Reason, [switch] $Unsorted) {
+    # Fügt eine Zeile der Zuordnung an ihrer sortierten Stelle ein (nach Package und Unit), mit -Unsorted ans Ende.
     $Path = Join-Path $CopyRoot $Assignment
     $Lines = [Collections.Generic.List[string]]::new([IO.File]::ReadAllLines($Path))
-    $Start = $Lines.IndexOf($Heading)
-    if ($Start -lt 0) { throw "Überschrift fehlt in ${Assignment}: $Heading" }
-    $Index = $Start + 1
-    while ($Index -lt $Lines.Count -and $Lines[$Index] -notmatch '^\|\s*-') { $Index++ }
-    $Lines.Insert($Index + 1, $Row)
+    $Key = "$Package`t$Name"
+    $Index = $Lines.Count
+    if (-not $Unsorted) {
+        $Index = 1
+        while ($Index -lt $Lines.Count -and
+            [StringComparer]::OrdinalIgnoreCase.Compare(($Lines[$Index].Split("`t")[0..1] -join "`t"), $Key) -lt 0) { $Index++ }
+    }
+    $Lines.Insert($Index, "$Package`t$Name`t$File`t$Reason")
     Set-CopyText $Assignment (($Lines -join "`n") + "`n")
+}
+
+function Add-BoundaryRow([string] $Kind, [string] $From, [string] $To, [string] $Reason) {
+    $Text = [IO.File]::ReadAllText((Join-Path $CopyRoot $Boundaries))
+    Set-CopyText $Boundaries ($Text + "$Kind`t$From`t$To`t$Reason`n")
 }
 
 function Add-Assigned([string] $Package, [string] $Folder, [string] $Name, [string[]] $Uses) {
@@ -87,7 +96,7 @@ function Add-Assigned([string] $Package, [string] $Folder, [string] $Name, [stri
     $Base = $Source
     if (Test-Path (Join-Path $CopyRoot "Packages/$Package/Source")) { $Base = "Packages/$Package/Source" }
     Add-UnitIn $Base $Folder $Name $Uses
-    Add-TableRow "## $Package" "| ``$Name`` | ``$Folder/$Name.pas`` | Probe für Test-PackageDependencies |"
+    Add-AssignmentRow $Package $Name "$Folder/$Name.pas" 'Probe für Test-PackageDependencies'
 }
 
 function Add-Implementer([string] $Package, [string] $Folder, [string] $Name, [string] $Uses, [string] $Interface) {
@@ -153,12 +162,22 @@ try {
     }
 
     Test-Fails 'Zeile ohne Unit' 'Atlas.Core.Projects.Gone gibt es nicht mehr' {
-        Add-TableRow '## Atlas.IDE.Base' '| `Atlas.Core.Projects.Gone` | `Core/Projects/Atlas.Core.Projects.Gone.pas` | Ordner `Core/Projects` |'
+        Add-AssignmentRow 'Atlas.IDE.Base' 'Atlas.Core.Projects.Gone' 'Core/Projects/Atlas.Core.Projects.Gone.pas' 'Ordner `Core/Projects`'
     }
 
     Test-Fails 'Abweichung von der Ordnertabelle ohne Begründung' 'die Ordnertabelle sagt Atlas.IDE.Base' {
         Add-Unit 'Core/Projects' 'Atlas.Core.Projects.Probe' @()
-        Add-TableRow '## Atlas.IDE.Tracker' '| `Atlas.Core.Projects.Probe` | `Core/Projects/Atlas.Core.Projects.Probe.pas` | Ordner `Core/Projects` |'
+        Add-AssignmentRow 'Atlas.IDE.Tracker' 'Atlas.Core.Projects.Probe' 'Core/Projects/Atlas.Core.Projects.Probe.pas' 'Ordner `Core/Projects`'
+    }
+
+    Test-Fails 'Unsortierte Zeile der Zuordnung' 'Atlas.Core.Projects.Probe steht nicht sortiert' {
+        Add-Unit 'Core/Projects' 'Atlas.Core.Projects.Probe' @()
+        Add-AssignmentRow 'Atlas.IDE.Base' 'Atlas.Core.Projects.Probe' 'Core/Projects/Atlas.Core.Projects.Probe.pas' 'Ordner `Core/Projects`' -Unsorted
+    }
+
+    Test-Fails 'Zeile mit fehlender Spalte' 'erwartet 4 Spalten' {
+        $Text = [IO.File]::ReadAllText((Join-Path $CopyRoot $Assignment))
+        Set-CopyText $Assignment ($Text + "Atlas.IDE.Base`tAtlas.Core.Projects.Probe`n")
     }
 
     Test-Fails 'JSON-Lesehelfer als lokale Kopie' 'TextOf – JSON-Lesehelfer gibt es als TJsonRead' {
@@ -169,7 +188,7 @@ try {
     }
 
     Test-Fails 'Behobener bekannter Verstoß bleibt stehen' 'Atlas.Core.Projects.VersionControl -> Atlas.IDE.Tracker kommt nicht mehr vor' {
-        Add-TableRow '### Bekannte Verstöße' '| `Atlas.Core.Projects.VersionControl` | `Atlas.IDE.Tracker` | Probe |'
+        Add-BoundaryRow 'Verstoß' 'Atlas.Core.Projects.VersionControl' 'Atlas.IDE.Tracker' 'Probe'
     }
     Test-Passes 'Adapter implementiert einen fremden Contract' {
         Add-Implementer 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Adapters.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
@@ -191,6 +210,10 @@ try {
         Add-Implementer 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
     }
 
+    Test-Fails 'Composition implementiert einen fremden Contract' 'gehört in eine Unit Atlas.IDE.Undo.Adapters.*' {
+        Add-Implementer 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Composition.Probe' 'Atlas.Core.Undo.Contract' 'IAtlasUndoTarget'
+    }
+
     Test-Fails 'Unit ohne Rolle implementiert einen fremden Contract über einen Alias' 'gehört in eine Unit Atlas.IDE.Undo.Adapters.*' {
         Add-Assigned 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Probe' @()
         Set-CopyText "$Source/IDE/Undo/Atlas.IDE.Undo.Probe.pas" ("unit Atlas.IDE.Undo.Probe;`r`n`r`ninterface`r`n`r`n" +
@@ -207,6 +230,25 @@ try {
 
     Test-Fails 'Adapter ohne Interface' 'Adapters ohne Interface aus einem fremden Contract' {
         Add-Assigned 'Atlas.IDE.Base' 'IDE/Undo' 'Atlas.IDE.Undo.Adapters.Probe' @()
+    }
+
+    Test-Fails 'Contract bindet ein Framework ein' 'ein Contract bindet kein Framework ein' {
+        Add-Assigned 'Atlas.IDE.Base' 'Core/Projects' 'Atlas.Core.Projects.Probe.Contract' @('Vcl.Controls')
+    }
+
+    Test-Fails 'Vertrag der UI-Schicht verwendet VCL ohne Einzelausnahme' 'ein Contract bindet kein Framework ein' {
+        Add-Assigned 'Atlas.IDE.Base' 'UI/Settings' 'Atlas.UI.Settings.Probe.Contract' @('Vcl.Controls')
+    }
+
+    Test-Fails 'Genehmigte Ausnahme gibt keine Internals frei' 'Rollenmatrix: fremde Internals aus Composition' {
+        Add-Assigned 'Atlas.IDE.Tracker' 'IDE/Tracker' 'Atlas.IDE.Tracker.Composition.Probe' @()
+        Add-Assigned 'Atlas.IDE.Base' 'Core/Projects' 'Atlas.Core.Projects.Internals.Probe' @()
+        $Json = [IO.File]::ReadAllText((Join-Path $CopyRoot 'atlas.json'))
+        Set-CopyText 'atlas.json' ($Json.Replace('"Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*"',
+            '"Atlas.IDE.Tracker.Composition -> Atlas.Core.*.Providers.*", "Atlas.IDE.Tracker.Composition.Probe -> Atlas.Core.*"'))
+        $Base = 'Packages/Atlas.IDE.Tracker/Source/IDE/Tracker'
+        Set-CopyText "$Base/Atlas.IDE.Tracker.Composition.Probe.pas" ("unit Atlas.IDE.Tracker.Composition.Probe;`r`n`r`n" +
+            "interface`r`n`r`nuses`r`n  Atlas.Core.Projects.Internals.Probe;`r`n`r`nimplementation`r`n`r`nend.`r`n")
     }
 
     Test-Fails 'Behobener Altfall der Adapter-Rollen bleibt stehen' 'adapter-name Atlas.IDE.Undo.Gone TGone IAtlasUndoTarget kommt nicht mehr vor' {

@@ -87,7 +87,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Builtin.CompilerTraps,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.SyntaxNodes;
 
 {$SCOPEDENUMS ON}
 
@@ -997,11 +998,11 @@ end;
 /// <summary>ANode ohne Klammern und Typumwandlungen wie UInt64(...) bzw. Cardinal(...).</summary>
 function WithoutCasts(ANode: TSyntaxNode): TSyntaxNode;
 begin
-  Result := Unwrapped(ANode);
+  Result := TSyntaxNodes.Unparen(ANode);
   while (Result.Kind = TSyntaxKind.Call) and (Result.ChildCount = 2) and (Result[0].Kind = TSyntaxKind.Identifier) and
     MatchText(Result[0].Name, ['UInt64', 'Int64', 'Cardinal', 'UInt32', 'Integer', 'NativeUInt', 'LongWord']) do
   begin
-    Result := Unwrapped(Result[1]);
+    Result := TSyntaxNodes.Unparen(Result[1]);
   end;
 end;
 
@@ -1010,7 +1011,7 @@ function IsWidened(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
 begin
-  mNode := Unwrapped(ANode);
+  mNode := TSyntaxNodes.Unparen(ANode);
   Result := (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount = 2) and (mNode[0].Kind = TSyntaxKind.Identifier) and
     MatchText(mNode[0].Name, cWideCasts);
 end;

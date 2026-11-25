@@ -71,17 +71,18 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Queries,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.MyIssues,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.UI.Strings,
+  Atlas.Plugin.Localization.Strings,
   Atlas.UI.Tracker.ProjectPicker,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.MyIssues,
   Atlas.UI.Tracker.MyIssues.Text,
   Atlas.Core.Tracker.Contract.MyIssues,
-  Atlas.UI.Tracker.Contract.MyIssues;
+  Atlas.UI.Tracker.Contract.MyIssues,
+  Atlas.Core.Tracker.TestSupport;
 
 type
   /// <summary>Quelle des Bereichs für die Tests; merkt sich die Aufrufe.</summary>
@@ -112,14 +113,6 @@ type
 function NowUtc0: TDateTime;
 begin
   Result := EncodeDate(2026, 10, 16) + EncodeTime(9, 0, 0, 0);
-end;
-
-function Issue(const AKey: string; ANumber: Integer; const ATitle: string): TAtlasTrackerIssue;
-begin
-  Result := TAtlasTrackerIssue.Empty;
-  Result.Key := AKey;
-  Result.Number := ANumber;
-  Result.Title := ATitle;
 end;
 
 /// <summary>Zwei GitHub-Issues, eines mit Pull Request; Git.</summary>
@@ -544,7 +537,7 @@ end;
 procedure AssertQueryMenu(const AFrame: TAtlasTrackerIssuesView);
 begin
   AFrame.Queries.Fill;
-  Assert.AreEqual(5, AFrame.Queries.QueryMenu.Items.Count);
+  Assert.AreEqual(5, Integer(AFrame.Queries.QueryMenu.Items.Count));
   Assert.AreEqual('Standard (2)', AFrame.Queries.QueryMenu.Items[0].Caption);
   Assert.IsTrue(AFrame.Queries.QueryMenu.Items[0].Checked);
   Assert.IsFalse(AFrame.Queries.QueryMenu.Items[1].Checked);
@@ -677,7 +670,7 @@ procedure CheckProjectMenu(AFake: TFakeIssues; AFrame: TAtlasTrackerIssuesView);
 begin
   // Automatisch (mit Projekt), zwei Tracker-Projekte, Alle, Linie, bearbeiten.
   AFrame.Queries.Projects.Fill;
-  Assert.AreEqual(6, AFrame.Queries.Projects.Menu.Items.Count);
+  Assert.AreEqual(6, Integer(AFrame.Queries.Projects.Menu.Items.Count));
   Assert.AreEqual('Automatisch – nach dem Delphi-Projekt (Kasse)', AFrame.Queries.Projects.Menu.Items[0].Caption);
   Assert.IsTrue(AFrame.Queries.Projects.Menu.Items[0].Checked);
   Assert.AreEqual('Firma · KASSE', AFrame.Queries.Projects.Menu.Items[1].Caption);
@@ -755,7 +748,7 @@ begin
     mFake.FView := mView;
     mFrame.UpdateContent;
     mFrame.Queries.Projects.Fill;
-    Assert.AreEqual(5, mFrame.Queries.Projects.Menu.Items.Count);
+    Assert.AreEqual(5, Integer(mFrame.Queries.Projects.Menu.Items.Count));
     Assert.IsTrue(mFrame.Queries.Projects.Menu.Items[2].Checked);
     // issues.projectPicker aus: keine Klappliste.
     mView.ProjectPicker := False;

@@ -24,10 +24,10 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.UI.Tracker.DevelopmentView,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Plugin.Diagnostics.WorkerSlot;
 
 type
   TAtlasIssueDevelopmentProviderHook = reference to function(const ATarget: TAtlasTrackerTarget):
@@ -111,7 +111,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Types,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.DevelopmentPlan,
   Atlas.Core.Tracker.Preview,
@@ -119,10 +119,10 @@ uses
   System.DateUtils,
   System.UITypes,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Files.TextFile,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Shutdown,
+  Atlas.Plugin.Files.TextFile,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Development.Strings,
   Atlas.UI.Undo.DiffView,

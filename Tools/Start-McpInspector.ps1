@@ -48,6 +48,10 @@
     Objekte gehen als JSON; unter Windows mit Anführungszeichen im Wert besser
     Tools/Test-McpTools.ps1 -Tool … -Arguments … nehmen.
 
+.PARAMETER ArgumentsJson
+    Argumente bei tools/call als JSON-Objekt, z. B. '{"name":"TKundenSuche","depth":2}'. Geht aus jeder
+    Shell (bash, cmd), wo -Arguments als Hashtable nicht ankommt; Listen und Objekte bleiben erhalten.
+
 .PARAMETER Uri
     Ressource bei resources/read, z. B. delphi://conventions oder eine aufgelöste Vorlage wie
     delphi://unit/Ref.Komponenten.Anzeige.
@@ -79,6 +83,9 @@
     pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions
 
 .EXAMPLE
+    pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt -Method tools/call -Tool get_impact -ArgumentsJson '{"name":"TKundenSuche.Suchen","depth":2}'
+
+.EXAMPLE
     pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt -Method prompts/get -Prompt unit_review -Arguments @{ unit = 'Ref.Komponenten.Anzeige' }
 #>
 [CmdletBinding()]
@@ -92,6 +99,7 @@ param(
     [string] $Tool,
     [string] $Prompt,
     [hashtable] $Arguments = @{},
+    [string] $ArgumentsJson,
     [string] $Uri,
     [switch] $Strict,
     [switch] $Restricted,
@@ -107,6 +115,13 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 
 if ($Tui -and $Method) {
     throw '-Tui und -Method schließen sich aus.'
+}
+if ($ArgumentsJson) {
+    if ($Arguments.Count -gt 0) { throw '-Arguments und -ArgumentsJson schließen sich aus.' }
+    $parsed = $ArgumentsJson | ConvertFrom-Json
+    if ($parsed -isnot [Management.Automation.PSCustomObject]) { throw '-ArgumentsJson muss ein JSON-Objekt sein.' }
+    $Arguments = @{}
+    foreach ($property in $parsed.PSObject.Properties) { $Arguments[$property.Name] = $property.Value }
 }
 if (-not $Server) {
     $candidates = @(
@@ -162,7 +177,8 @@ if ($Method) {
                 $value = $Arguments[$key]
                 if ($value -is [bool]) {
                     $value = "$value".ToLowerInvariant()
-                } elseif ($value -is [array] -or $value -is [hashtable]) {
+                } elseif ($value -is [array] -or $value -is [Collections.IDictionary] -or
+                    $value -is [Management.Automation.PSCustomObject]) {
                     $value = ConvertTo-Json -InputObject $value -Compress -Depth 10
                 }
                 $inspectorArgs += @('--tool-arg', "$key=$value")

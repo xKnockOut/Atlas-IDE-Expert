@@ -165,7 +165,15 @@ uses
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Templates,
   Atlas.Core.Tracker.Internals.YouTrackJson,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Plugin.Diagnostics.Deadline;
+
+const
+  /// <summary>Zeichen darunter sind ASCII.</summary>
+  cFirstNonAscii = 128;
+  /// <summary>Mittag des Tages: das Datum bleibt in jeder Zeitzone gleich.</summary>
+  cNoon = 0.5;
+  cMsPerSecond = 1000;
 
 { TAtlasYouTrackApi }
 
@@ -236,11 +244,11 @@ end;
 class function TAtlasYouTrackApi.ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError;
 begin
   case AStatus of
-    401, 403:
+    TAtlasHttpStatus.cUnauthorized, TAtlasHttpStatus.cForbidden:
       Result := TAtlasCiFetchError.Unauthorized;
-    404:
+    TAtlasHttpStatus.cNotFound:
       Result := TAtlasCiFetchError.NotFound;
-    400:
+    TAtlasHttpStatus.cBadRequest:
       Result := TAtlasCiFetchError.Invalid;
   else
     Result := TAtlasCiFetchError.Server;
@@ -314,7 +322,7 @@ begin
   finally
     mValue.Free;
   end;
-  Result := TAtlasYouTrackJson.Shorten(Result, 300);
+  Result := TAtlasYouTrackJson.Shorten(Result, TAtlasTrackerTextLimits.cMessage);
 end;
 
 class function TAtlasYouTrackApi.UsersUrl(const ATarget: TAtlasTrackerTarget; const AText: string;
@@ -451,7 +459,7 @@ end;
 
 class function TAtlasYouTrackApi.TimeTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
 begin
-  Result := (AResult.Status = 400) and (ContainsText(AResult.Message, 'time tracking') or
+  Result := (AResult.Status = TAtlasHttpStatus.cBadRequest) and (ContainsText(AResult.Message, 'time tracking') or
     ContainsText(AResult.Message, 'timetracking') or ContainsText(AResult.Message, 'Zeiterfassung'));
 end;
 
@@ -487,15 +495,8 @@ begin
 end;
 
 class function TAtlasYouTrackApi.Rest(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
-var
-  mRest: Int64;
 begin
-  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
-  Result := 0;
-  if mRest > 0 then
-  begin
-    Result := Integer(mRest);
-  end;
+  Result := TAtlasTicks.LeftOf(AWatch, ATimeoutMs);
 end;
 
 /// <summary>GET mit Fehler aus dem Status; True nur mit 200.</summary>
@@ -516,7 +517,7 @@ begin
   begin
     Exit;
   end;
-  if mStatus <> 200 then
+  if mStatus <> TAtlasHttpStatus.cOk then
   begin
     AError := ErrorOfStatus(mStatus);
     Exit;
@@ -536,15 +537,11 @@ begin
 end;
 
 class function TAtlasYouTrackApi.ScopeQuery(AScope: TAtlasTrackerNotifyScope): string;
+const
+  cQueries: array[TAtlasTrackerNotifyScope] of string = ('for: me', '(for: me or reporter: me)',
+    '(for: me or reporter: me or has: star)');
 begin
-  case AScope of
-    TAtlasTrackerNotifyScope.Assigned:
-      Result := 'for: me';
-    TAtlasTrackerNotifyScope.Watched:
-      Result := '(for: me or reporter: me or has: star)';
-  else
-    Result := '(for: me or reporter: me)';
-  end;
+  Result := cQueries[AScope];
 end;
 
 class function TAtlasYouTrackApi.ChangedIssuesUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime;
@@ -604,7 +601,7 @@ begin
   mPlain := Result <> '';
   for mIndex := 1 to Length(Result) do
   begin
-    if (Ord(Result[mIndex]) < 128) and
+    if (Ord(Result[mIndex]) < cFirstNonAscii) and
       not CharInSet(Result[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_', '.', '@']) then
     begin
       mPlain := False;
@@ -752,7 +749,7 @@ begin
     mDuration := TJSONObject.Create;
     mDuration.AddPair('presentation', TAtlasTimeRounding.Presentation(AItem.Minutes));
     mObject.AddPair('duration', mDuration);
-    mObject.AddPair('date', TJSONNumber.Create(DateTimeToUnix(Trunc(AItem.Date) + 0.5, True) * 1000));
+    mObject.AddPair('date', TJSONNumber.Create(DateTimeToUnix(Trunc(AItem.Date) + cNoon, True) * cMsPerSecond));
     if AItem.WorkType <> '' then
     begin
       mType := TJSONObject.Create;

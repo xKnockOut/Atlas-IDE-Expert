@@ -21,6 +21,8 @@ type
     class function Tokenize(const AText: string): TArray<TPascalToken>; static;
     /// <summary>True für reservierte Wörter (ohne Groß-/Kleinschreibung).</summary>
     class function IsReservedWord(const AWord: string): Boolean; static;
+    /// <summary>Ist AName genau ein Bezeichner, kein reserviertes Wort und ohne &amp;-Escape?</summary>
+    class function IsIdentifierName(const AName: string): Boolean; static;
     /// <summary>Alle reservierten Wörter in Kleinbuchstaben (#187).</summary>
     class function ReservedWordList: TArray<string>; static;
     /// <summary>Name einer Direktive in Großbuchstaben, z. B. IFDEF für {$ifdef X}; '' ohne Direktive.</summary>
@@ -28,6 +30,9 @@ type
     /// <summary>Name ohne das Escape-Zeichen, je Teil eines qualifizierten Namens: &amp;begin → begin,
     /// &amp;&amp;op_Equality → &amp;op_Equality, TFoo.&amp;Type → TFoo.Type (#1137).</summary>
     class function PlainName(const AName: string): string; static;
+    /// <summary>Inhalt eines Stringliterals ('It''s' → It's); verdoppelte Hochkommas werden einfach, auch ohne
+    /// umschließende Hochkommas.</summary>
+    class function UnquotedString(const AText: string): string; static;
     /// <summary>Gegenstück zu PlainName: der Name, wie er im Quelltext stehen muss. Reservierte Wörter und
     /// Namen, die mit &amp; beginnen, bekommen ein &amp; davor (begin → &amp;begin, &amp;op_Equality →
     /// &amp;&amp;op_Equality).</summary>
@@ -587,6 +592,16 @@ begin
   Result := ReservedWordSet.ContainsKey(LowerCase(AWord));
 end;
 
+class function TPascalLexer.IsIdentifierName(const AName: string): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  mTokens := Tokenize(AName);
+  // Reservierte Wörter liefert Tokenize als Keyword.
+  Result := (Length(mTokens) = 1) and (mTokens[0].Kind = TPascalTokenKind.Identifier) and
+    (mTokens[0].Text = AName) and (AName[1] <> '&');
+end;
+
 class function TPascalLexer.ReservedWordList: TArray<string>;
 var
   mIndex: Integer;
@@ -620,6 +635,16 @@ begin
     Inc(mStop);
   end;
   Result := UpperCase(Copy(AText, mStart, mStop - mStart));
+end;
+
+class function TPascalLexer.UnquotedString(const AText: string): string;
+begin
+  Result := AText;
+  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
+    Result := Copy(Result, 2, Length(Result) - 2);
+  end;
+  Result := StringReplace(Result, '''''', '''', [rfReplaceAll]);
 end;
 
 class function TPascalLexer.PlainName(const AName: string): string;

@@ -8,6 +8,8 @@
 //   (ProcessDebugEvents), bis die Antwort da ist, höchstens aber
 //   debug.visualizers.timeoutMs lang. Danach gilt der Wert als nicht
 //   auswertbar; eine späte Antwort landet bei einem abgemeldeten Notifier.
+//   Endet der Thread währenddessen (TAtlasIdeThreadNotifier), endet das Warten,
+//   und abgemeldet wird nicht mehr.
 // - Nebenwirkungen nach TAtlasVisualizerEvaluation: nur Felder (eseNone),
 //   Getter von Eigenschaften (esePropertiesOnly), Aufrufe (eseAll).
 // - Ausgewertet wird im aktuellen Rahmen des angehaltenen Threads.
@@ -21,12 +23,23 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Debug.Visualizers,
-  Atlas.Core.Settings.VisualizerKinds;
+  Atlas.Plugin.Settings.VisualizerKinds,
+  Atlas.IDE.Hover.DebugValue;
 
 type
+  /// <summary>Ort für den Debugger beim Auswerten in einem Thread: Datei und Zeile (1-basiert); '' und 0 ohne.
+  /// </summary>
+  TAtlasIdeEvaluatePlace = record
+    FileName: string;
+    Line: Integer;
+    class function Create(const AFileName: string; ALine: Integer): TAtlasIdeEvaluatePlace; static;
+  end;
+
   TAtlasIdeDebugEvaluator = class
   private type
-    TWaiter = class(TNotifierObject, IOTAThreadNotifier, IOTAThreadNotifier160)
+    TWaiter = class(TAtlasIdeThreadNotifier, IOTAThreadNotifier, IOTAThreadNotifier160)
+    protected
+      procedure ThreadGone; override;
     public
       Done: Boolean;
       ReturnCode: Integer;
@@ -39,7 +52,6 @@ type
       { IOTAThreadNotifier160 }
       procedure EvaluateComplete(const ExprStr, ResultStr: string; CanModify: Boolean;
         ResultAddress: TOTAAddress; ResultSize: LongWord; ReturnCode: Integer); overload;
-      procedure Destroyed; reintroduce;
     end;
   private
     /// <summary>Verzögerte Auswertung (erDeferred, etwa LLDB): wartet höchstens ATimeoutMs auf das Ergebnis.
@@ -54,6 +66,11 @@ type
     /// ATimeoutMs.</summary>
     class function Evaluate(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation; ATimeoutMs: Integer;
       out AText: string): Boolean; static;
+    /// <summary>Wertet AExpression im Thread AThread aus, mit APlace als Ort für den Debugger (#866). False bei
+    /// Fehler oder nach ATimeoutMs; AText ist dann die Meldung des Debuggers ('' ohne).</summary>
+    class function EvaluateIn(const AThread: IOTAThread; const AExpression: string;
+      const APlace: TAtlasIdeEvaluatePlace; AEvaluation: TAtlasVisualizerEvaluation; ATimeoutMs: Integer;
+      out AText: string): Boolean; static;
     /// <summary>ACount Bytes ab AAddress aus dem angehaltenen Prozess.</summary>
     class function ReadMemory(AAddress: UInt64; ACount: Integer; out ABytes: TBytes): Boolean; static;
     /// <summary>Rückrufe für TAtlasVisualizers: Alle Auswertungen zusammen haben ABudgetMs; was danach kommt,
@@ -65,10 +82,18 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.IDE.Hover.DebugValue;
+  Atlas.Plugin.Diagnostics.Guard;
 
 const
   cBufferSize = 4096;
+
+{ TAtlasIdeEvaluatePlace }
+
+class function TAtlasIdeEvaluatePlace.Create(const AFileName: string; ALine: Integer): TAtlasIdeEvaluatePlace;
+begin
+  Result.FileName := AFileName;
+  Result.Line := ALine;
+end;
 
 { TAtlasIdeDebugEvaluator.TWaiter }
 
@@ -102,8 +127,9 @@ begin
   Done := True;
 end;
 
-procedure TAtlasIdeDebugEvaluator.TWaiter.Destroyed;
+procedure TAtlasIdeDebugEvaluator.TWaiter.ThreadGone;
 begin
+  // Der Thread ist abgebaut: keine Antwort mehr.
   Done := True;
   ReturnCode := -1;
 end;
@@ -115,13 +141,12 @@ class function TAtlasIdeDebugEvaluator.WaitDeferred(const AThread: IOTAThread;
 var
   mWaiter: TWaiter;
   mWaiterRef: IOTAThreadNotifier;
-  mIndex: Integer;
   mStartedAt: UInt64;
 begin
   AText := '';
   mWaiter := TWaiter.Create;
   mWaiterRef := mWaiter;
-  mIndex := AThread.AddNotifier(mWaiterRef);
+  mWaiter.Attach(AThread, mWaiterRef);
   try
     mStartedAt := GetTickCount64;
     while not mWaiter.Done and (GetTickCount64 - mStartedAt < UInt64(ATimeoutMs)) do
@@ -129,11 +154,8 @@ begin
       ADebugger.ProcessDebugEvents;
     end;
   finally
-    try
-      AThread.RemoveNotifier(mIndex);
-    except
-      // Thread schon abgebaut.
-    end;
+    // Nach dem Ende des Threads (Destroyed) nicht mehr: RemoveNotifier würfe.
+    mWaiter.Detach;
   end;
   Result := mWaiter.Done and (mWaiter.ReturnCode = 0);
   if Result then
@@ -156,9 +178,20 @@ end;
 
 class function TAtlasIdeDebugEvaluator.Evaluate(const AExpression: string; AEvaluation: TAtlasVisualizerEvaluation;
   ATimeoutMs: Integer; out AText: string): Boolean;
+begin
+  Result := EvaluateIn(TAtlasIdeDebugValues.StoppedThread, AExpression, TAtlasIdeEvaluatePlace.Create('', 0),
+    AEvaluation, ATimeoutMs, AText);
+  if not Result then
+  begin
+    AText := '';
+  end;
+end;
+
+class function TAtlasIdeDebugEvaluator.EvaluateIn(const AThread: IOTAThread; const AExpression: string;
+  const APlace: TAtlasIdeEvaluatePlace; AEvaluation: TAtlasVisualizerEvaluation; ATimeoutMs: Integer;
+  out AText: string): Boolean;
 var
   mDebugger: IOTADebuggerServices;
-  mThread: IOTAThread;
   mBuffer: array[0..cBufferSize - 1] of Char;
   mCanModify: Boolean;
   mResultAddr, mResultSize, mResultVal: LongWord;
@@ -166,18 +199,20 @@ var
 begin
   AText := '';
   Result := False;
-  mThread := TAtlasIdeDebugValues.StoppedThread;
-  if (mThread = nil) or (AExpression = '') or not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
+  if (AThread = nil) or (AExpression = '') or not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
   begin
     Exit;
   end;
   FillChar(mBuffer, SizeOf(mBuffer), 0);
   try
-    mCode := mThread.Evaluate(AExpression, @mBuffer[0], Length(mBuffer), mCanModify, SideEffects(AEvaluation), '',
-      mResultAddr, mResultSize, mResultVal, '', 0);
+    mCode := AThread.Evaluate(AExpression, @mBuffer[0], Length(mBuffer), mCanModify, SideEffects(AEvaluation), '',
+      mResultAddr, mResultSize, mResultVal, APlace.FileName, APlace.Line);
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Auswerten gescheitert: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Exit;
+    end;
   end;
   case mCode of
     erOK:
@@ -186,8 +221,10 @@ begin
         Result := True;
       end;
     erDeferred:
-      Result := WaitDeferred(mThread, mDebugger, ATimeoutMs, AText);
-    erError, erBusy:
+      Result := WaitDeferred(AThread, mDebugger, ATimeoutMs, AText);
+    erError:
+      AText := mBuffer; // Meldung des Debuggers („Undeclared identifier …“); Result bleibt False.
+    erBusy:
       ; // Nichts auszuwerten: Result bleibt False.
   end;
 end;
@@ -226,8 +263,11 @@ begin
       Inc(mOffset, mCount);
     end;
   except
-    on Exception do
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Speicher nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
       Exit;
+    end;
   end;
   Result := True;
 end;

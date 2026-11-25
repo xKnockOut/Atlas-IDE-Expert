@@ -80,6 +80,10 @@ implementation
 uses
   System.IOUtils,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Rules.Contract.Api,
+  Atlas.Common.Rules.CheckContext,
+  Atlas.Common.Rules.Providers.DocumentChecks,
+  Adapters.Lsp.RuleDiagnostics,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Text.LogMarks;
 
@@ -131,6 +135,8 @@ function TShellDiagnosticsArea.Providers: TSyntaxDiagnosticsProviders;
 var
   mCore: TShellDiagnosticsCoreFunc;
   mMessages: TShellDiagnosticsMessagesFunc;
+  mContexts: TRuleContextProvider;
+  mChecks: IRuleDocumentChecks;
 begin
   mCore := FServices.Core;
   mMessages := FServices.CompilerMessages;
@@ -151,11 +157,13 @@ begin
     begin
       Result := mCore().Directives.BuildTarget()(AUri, APlatform, AConfig);
     end;
-  Result.Rules :=
+  mContexts :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
     begin
       Result := mCore().RuleContext.LiveRuleContextFor(AUri, AContext);
     end;
+  mChecks := TRuleDocumentChecks.Create(mContexts);
+  Result.Rules := TLspRuleDiagnosticsAdapter.Wrap(mChecks);
   Result.CompilerMessages :=
     function(const AFileName: string): TArray<TCompilerMessage>
     begin

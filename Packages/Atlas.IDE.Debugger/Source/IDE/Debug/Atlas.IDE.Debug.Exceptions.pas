@@ -167,7 +167,7 @@ implementation
 uses
   System.IOUtils,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Guard,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.ExceptionsWindow,
@@ -206,8 +206,12 @@ begin
     end;
   except
     // Ältere Debugger ohne Zustandstexte.
-    AClass := '';
-    AMessage := '';
+    on E: Exception do
+    begin
+      TAtlasGuard.Log('Debugger: Zustandstext nicht lesbar: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
+      AClass := '';
+      AMessage := '';
+    end;
   end;
   if mSource = 'keinem' then
   begin

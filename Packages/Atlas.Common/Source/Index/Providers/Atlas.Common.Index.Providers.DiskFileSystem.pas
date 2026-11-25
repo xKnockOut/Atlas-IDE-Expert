@@ -7,7 +7,7 @@
 // nie einen halben Cache, auch nicht nach einem Abbruch (#184).
 //
 // Ein Schreiber je Cache: Den Projekt-Cache schreibt nur die
-// Instanz, die seine Sperre hält (TShellWorkspace.LockCache), den gemeinsamen
+// Instanz, die seine Sperre hält (TCoreWorkspace.LockCache), den gemeinsamen
 // Bibliotheks-Cache nur, wer TryLockWrite erhalten hat. WriteBytes muss darum
 // keine Wettläufe zweier Schreiber mehr ausgleichen; scheitert es, meldet es
 // den Grund, statt ihn zu verschlucken.
@@ -181,7 +181,6 @@ begin
     end;
   except
     // Gemeldet, nicht verschluckt: Der Aufrufer schreibt den Grund ins Log.
-    // lsp-ignore: catch-all-without-raise -- Fehler geht als AError an den Aufrufer
     on E: Exception do
       AError := ErrorReason(E);
   end;
@@ -214,7 +213,7 @@ end;
 
 function TDiskIndexFileSystem.TryLockWrite(const AFileName: string): IInterface;
 begin
-  // Dieselbe Sperrdatei wie TIndexCacheDirectory.TryLock (LockExtension), die TShellWorkspace.LockCache hält:
+  // Dieselbe Sperrdatei wie TIndexCacheDirectory.TryLock (LockExtension), die TCoreWorkspace.LockCache hält:
   // Aufräumen und Leeren lassen den Cache dann in Ruhe. Der Test DiskWriteLockIsExclusive prüft, dass beide
   // übereinstimmen; ein Provider importiert den anderen nicht (Rollenmatrix).
   try

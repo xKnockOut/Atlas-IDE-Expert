@@ -102,18 +102,18 @@ type
 implementation
 
 uses
-  Atlas.Core.VersionControl.Contract,
+  Atlas.VersionControl.Repository.Contract,
   Atlas.Core.Tracker.BlameLinks,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Tracker.IssuePreview,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.MainThread,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.IssueLookups,
-  Atlas.UI.Foundation.Menus;
+  Atlas.Vcl.Controls.Menus;
 
 const
   cTipStates: array[TAtlasBlameKeyState] of TAtlasIssueTipState = (TAtlasIssueTipState.Loading,

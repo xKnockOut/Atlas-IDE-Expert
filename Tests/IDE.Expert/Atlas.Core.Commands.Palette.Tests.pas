@@ -50,7 +50,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
-  Atlas.Core.Files.DataFile,
+  Atlas.Plugin.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.Contract;
 
@@ -274,13 +274,13 @@ var
   mIndex: Integer;
 begin
   mRows := TAtlasPaletteRows.Create(3, TAtlasPaletteGroup.None);
-  Assert.AreEqual(3, mRows.Count);
+  Assert.AreEqual(3, Integer(mRows.Count));
   Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Command, mRows.Kind(2, mIndex));
   Assert.AreEqual(2, mIndex);
   Assert.AreEqual(0, mRows.First);
   // Einträge ohne Titel: keine Gruppe.
   mRows := TAtlasPaletteRows.Create(0, TAtlasPaletteGroup.Create('', 'Status', '', [Command('a', 'A', '')]));
-  Assert.AreEqual(0, mRows.Count);
+  Assert.AreEqual(0, Integer(mRows.Count));
   Assert.AreEqual(-1, mRows.First);
   Assert.IsFalse(mRows.Selectable(0));
   Assert.AreEqual(-1, TAtlasPaletteRows.Create(-1, TAtlasPaletteGroup.None).First, 'negative Anzahl wie 0');
@@ -292,7 +292,7 @@ var
   mIndex: Integer;
 begin
   mRows := TAtlasPaletteRows.Create(2, Group('Suche im Tracker …', 2));
-  Assert.AreEqual(6, mRows.Count, '2 Befehle, Überschrift, Status, 2 Einträge');
+  Assert.AreEqual(6, Integer(mRows.Count), '2 Befehle, Überschrift, Status, 2 Einträge');
   Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Command, mRows.Kind(1, mIndex));
   Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Header, mRows.Kind(2, mIndex));
   Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Status, mRows.Kind(3, mIndex));
@@ -306,7 +306,7 @@ begin
   Assert.IsFalse(mRows.Selectable(6));
   // Ohne Status folgen die Einträge direkt der Überschrift.
   mRows := TAtlasPaletteRows.Create(0, Group('', 1));
-  Assert.AreEqual(2, mRows.Count);
+  Assert.AreEqual(2, Integer(mRows.Count));
   Assert.AreEqual<TAtlasPaletteRowKind>(TAtlasPaletteRowKind.Item, mRows.Kind(1, mIndex));
   Assert.AreEqual(1, mRows.First, 'ohne Befehle der erste Eintrag');
   // Nur Status ("Suche im Tracker …"): nichts wählbar.

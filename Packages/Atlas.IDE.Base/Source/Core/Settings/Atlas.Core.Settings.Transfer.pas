@@ -28,7 +28,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Catalog;
+  Atlas.Plugin.Settings.Catalog;
 
 type
   /// <summary>Wert einer Umgebungsvariablen (APPDATA, LOCALAPPDATA, USERPROFILE, USERNAME); '' = unbekannt. Wie
@@ -224,12 +224,12 @@ implementation
 uses
   System.Generics.Defaults,
   Atlas.Text.Checkin,
-  Atlas.Core.Product.Version,
+  Atlas.Plugin.Product.Version,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.JsonText,
+  Atlas.Plugin.Settings.JsonText,
   Atlas.Core.Settings.QueryMigration,
-  Atlas.Core.Settings.ProblemsUpdate,
-  Atlas.Core.Localization.Language,
+  Atlas.Plugin.Settings.ProblemsUpdate,
+  Atlas.Plugin.Localization.Language,
   Atlas.Text.Json,
   Atlas.Core.Settings.Contract;
 

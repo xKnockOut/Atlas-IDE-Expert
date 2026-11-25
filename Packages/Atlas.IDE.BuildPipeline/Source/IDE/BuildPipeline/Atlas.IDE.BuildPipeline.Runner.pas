@@ -102,10 +102,16 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.BuildPipeline.Plan,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Hangs,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Hangs,
   Atlas.IDE.Build.CheckOnSave,
   Atlas.UI.BuildPipeline.Strings;
+
+const
+  // Takt, in dem der Lauf den Fortschritt bestätigt und auf die Meldungen wartet.
+  cTickMs = 250;
+  /// <summary>Tätigkeit für die Hänger-Diagnose (Protokoll).</summary>
+  cActivity = 'Build für KI-Assistent';
 
 function NowMs: Int64;
 begin
@@ -169,7 +175,7 @@ begin
   // Die Ereignisse halten den Wächter; Destroy meldet ihn ab und gibt ihn so frei (Regel 3).
   FEvents.Add(FWatcher);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := 250;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := False;
 end;
@@ -186,8 +192,8 @@ begin
     try
       FOnDone(FReport, TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedShutdown));
     except
-      on Exception do
-        ;
+      on E: Exception do
+        TAtlasGuard.Log('Build-Pipeline: Abschluss beim Beenden: ' + TAtlasGuard.ErrorText(E)); // german-ok Protokoll
     end;
   inherited;
 end;
@@ -410,7 +416,7 @@ begin
   end;
   FRequestedBy := ARequestedBy;
   BeginRequest(ARequest, mProject, AOnDone);
-  mActivity := TAtlasActivity.Scope('Build für KI-Assistent');
+  mActivity := TAtlasActivity.Scope(cActivity);
   mStarted := NowMs;
   try
     mSucceeded := RunBuild(ARequest, mProject, mConfigurations, mPlatforms, ARequestedBy);

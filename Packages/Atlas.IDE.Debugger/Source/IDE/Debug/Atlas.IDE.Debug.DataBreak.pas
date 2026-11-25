@@ -34,7 +34,7 @@ uses
   Atlas.Core.Debug.DataBreak,
   Atlas.Core.Debug.DataBreakWatch,
   Atlas.UI.Debug.DataBreak,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Plugin.Notifications.MessageSink;
 
 type
   TAtlasDataBreakSessionFunc = reference to function: TLspSession;
@@ -100,20 +100,20 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Plugin.Diagnostics.Guard,
+  Atlas.Plugin.Diagnostics.Deadline,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.DataBreakClasses,
-  Atlas.Core.Settings.VisualizerKinds,
-  Atlas.Core.Lsp.Client,
+  Atlas.Plugin.Settings.DataBreakClasses,
+  Atlas.Plugin.Settings.VisualizerKinds,
+  Atlas.Plugin.Lsp.Client,
   Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.DataBreak.Strings,
-  Atlas.UI.Popup.Window,
+  Atlas.Vcl.Popup.Window,
   Atlas.UI.Debug.StopBar,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Files,
-  Atlas.IDE.Foundation.Caret,
+  Atlas.ToolsApi.Theme.Style,
+  Atlas.ToolsApi.Files.Service,
+  Atlas.ToolsApi.Editor.Caret,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.RunMenu;

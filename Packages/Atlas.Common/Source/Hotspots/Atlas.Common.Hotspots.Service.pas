@@ -125,7 +125,8 @@ uses
   Atlas.Common.Metrics.Calculator,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Hotspots.History,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Locked;
 
 {$SCOPEDENUMS ON}
 
@@ -759,12 +760,7 @@ end;
 
 function THotspotService.Computations: Integer;
 begin
-  System.TMonitor.Enter(FLock);
-  try
-    Result := FComputations;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
+  Result := TTextLocked.ReadMonitored<Integer>(FLock, FComputations);
 end;
 
 function THotspotService.HistoryReads: Integer;

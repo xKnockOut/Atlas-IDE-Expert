@@ -11,7 +11,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  Atlas.UI.Editor.Bar;
+  Atlas.Vcl.Controls.EditorBar;
 
 type
   {$SCOPEDENUMS ON}
