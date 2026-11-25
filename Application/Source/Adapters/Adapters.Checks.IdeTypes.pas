@@ -1,18 +1,18 @@
-﻿unit Adapters.Rules.IdeTypes;
+﻿unit Adapters.Checks.IdeTypes;
 
-// Host-Adapter zwischen Lsp und Rules: Die Prüfregeln fragen über IRuleIdeTypes, in welchen Units die laufende
+// Host-Adapter zwischen Lsp und Rules: Die Prüfregeln fragen über ICheckIdeTypes, in welchen Units die laufende
 // IDE einen Typ kennt; der Sprachserver hält diese Typen (atlas/ideTypes) und bietet sie über ILspIdeTypes an.
 // Erzeugt nur in Shell.Composition.*; kennt nur die beiden Contracts.
 
 interface
 
 uses
-  Atlas.Common.Rules.Contract,
-  Atlas.Common.Lsp.Contract;
+  Atlas.Common.Lsp.Contract,
+  Atlas.Common.Checks.Contract;
 
 type
-  /// <summary>IRuleIdeTypes über die Typen der IDE aus dem Sprachserver.</summary>
-  TRuleIdeTypesAdapter = class(TInterfacedObject, IRuleIdeTypes)
+  /// <summary>ICheckIdeTypes über die Typen der IDE aus dem Sprachserver.</summary>
+  TCheckIdeTypesAdapter = class(TInterfacedObject, ICheckIdeTypes)
   private
     FTypes: ILspIdeTypes;
   public
@@ -20,20 +20,20 @@ type
     constructor Create(const ATypes: ILspIdeTypes);
     function UnitsOf(const ATypeName: string): TArray<string>;
     /// <summary>Adapter über ATypes; nil ohne Typen.</summary>
-    class function Wrap(const ATypes: ILspIdeTypes): IRuleIdeTypes; static;
+    class function Wrap(const ATypes: ILspIdeTypes): ICheckIdeTypes; static;
   end;
 
 implementation
 
-{ TRuleIdeTypesAdapter }
+{ TCheckIdeTypesAdapter }
 
-constructor TRuleIdeTypesAdapter.Create(const ATypes: ILspIdeTypes);
+constructor TCheckIdeTypesAdapter.Create(const ATypes: ILspIdeTypes);
 begin
   inherited Create;
   FTypes := ATypes;
 end;
 
-function TRuleIdeTypesAdapter.UnitsOf(const ATypeName: string): TArray<string>;
+function TCheckIdeTypesAdapter.UnitsOf(const ATypeName: string): TArray<string>;
 begin
   Result := nil;
   if FTypes <> nil then
@@ -42,12 +42,12 @@ begin
   end;
 end;
 
-class function TRuleIdeTypesAdapter.Wrap(const ATypes: ILspIdeTypes): IRuleIdeTypes;
+class function TCheckIdeTypesAdapter.Wrap(const ATypes: ILspIdeTypes): ICheckIdeTypes;
 begin
   Result := nil;
   if ATypes <> nil then
   begin
-    Result := TRuleIdeTypesAdapter.Create(ATypes);
+    Result := TCheckIdeTypesAdapter.Create(ATypes);
   end;
 end;
 

@@ -11,8 +11,8 @@
 //                        über die Klasse) ändern auch andere Units und gibt
 //                        es nur als Code-Aktion mit Vorschau.
 //
-// Erkennung und Änderungen liefert Editing über TRuleRefactorings.Methods
-// (Host-Adapter Adapters.Rules.Refactorings), Mitglieder über die
+// Erkennung und Änderungen liefert Editing über TCheckRefactorings.Methods
+// (Host-Adapter Adapters.Checks.Refactorings), Mitglieder über die
 // Namensauflösung. Ohne diesen Eintrag oder mit refactoring.methodKind aus
 // schweigt die Regel.
 
@@ -37,7 +37,7 @@ implementation
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Pascal.TreeHandles,
   Atlas.Common.Localization.Texts;
 
@@ -67,9 +67,9 @@ begin
 end;
 
 /// <summary>Was Editing über die geprüfte Unit wissen muss.</summary>
-function ScanOf(const AContext: TRuleContext): TRuleMethodScan;
+function ScanOf(const AContext: TRuleContext): TCheckMethodScan;
 begin
-  Result := Default(TRuleMethodScan);
+  Result := Default(TCheckMethodScan);
   Result.FileName := AContext.ResolverFileName;
   Result.Text := AContext.Text;
   Result.Tree := TSyntaxTreeHandles.Wrap(AContext.Tree);
@@ -83,7 +83,7 @@ end;
 
 procedure TMethodWithoutSelfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  mMethod: TRuleMethodWithoutSelf;
+  mMethod: TCheckMethodWithoutSelf;
   mFixes: TArray<TRuleFix>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or AContext.NoMethodKind or

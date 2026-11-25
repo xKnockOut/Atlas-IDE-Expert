@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Editing.Contract.MethodWithoutSelf;
 
 // Methoden, die Self nicht brauchen (#686), samt Umwandlung in eine class-Methode, die Editing anderen Features
-// anbietet (API). Abnehmer ist die Prüfregel method-without-self über den Host-Adapter Adapters.Rules.Refactorings;
+// anbietet (API). Abnehmer ist die Prüfregel method-without-self über den Host-Adapter Adapters.Checks.Refactorings;
 // erzeugt in Atlas.Common.Editing.Composition.
 
 interface

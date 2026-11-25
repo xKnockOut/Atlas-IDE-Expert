@@ -19,12 +19,17 @@ type
     procedure KeepsOnlyClassNotMessage;
     [Test]
     procedure AddsForeignFailures;
+    /// <summary>Die Ausnahme eines Schritts geht samt Ort an die Senke von TReporting (Protokoll mit Stacktrace).
+    /// </summary>
+    [Test]
+    procedure ReportsFailureWithStep;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Text.Reporting,
   Atlas.Plugin.Diagnostics.Teardown;
 
 { TTeardownTests }
@@ -97,6 +102,34 @@ begin
       raise EAbort.Create('');
     end);
   Assert.AreEqual('Feature: EAccessViolation, B: EAbort', mTeardown.Summary);
+end;
+
+procedure TTeardownTests.ReportsFailureWithStep;
+var
+  mTeardown: TAtlasTeardown;
+  mOld: TReportingSink;
+  mSeen: string;
+begin
+  mSeen := '';
+  mTeardown := TAtlasTeardown.Create;
+  mOld := TReporting.ReplaceSink(
+    procedure(const AWhere: string; AE: Exception)
+    begin
+      mSeen := mSeen + AWhere + ': ' + AE.ClassName + ';';
+    end);
+  try
+    mTeardown.Step('StatusField',
+      procedure
+      begin
+        raise EAccessViolation.Create('Zugriffsverletzung');
+      end);
+    mTeardown.Step('Options', nil);
+  finally
+    TReporting.ReplaceSink(mOld);
+  end;
+  Assert.AreEqual('Abbau StatusField: EAccessViolation;', mSeen);
+  Assert.AreEqual('StatusField: EAccessViolation', mTeardown.Summary);
+  mSeen := '';
 end;
 
 initialization

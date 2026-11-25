@@ -103,7 +103,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.CodeActions.Contract,
-  Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeHandles,
   Atlas.Text.Lines,
@@ -1412,7 +1412,7 @@ type
     FAllowed: TArray<Double>;
     FSettings: TFormatSettings;
     /// <summary>„Konstante extrahieren“ des Laufs, beim ersten Literal angelegt; nil ohne Refactorings.</summary>
-    FExtractor: IRuleConstantExtraction;
+    FExtractor: ICheckConstantExtraction;
     function Text(ANode: TSyntaxNode): string;
     function NumberValue(const ALiteral: string; out AValue: Double): Boolean;
     function IsAllowed(AValue: Double): Boolean;

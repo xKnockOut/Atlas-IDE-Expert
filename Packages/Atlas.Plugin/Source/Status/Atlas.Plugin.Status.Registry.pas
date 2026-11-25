@@ -11,6 +11,9 @@
 //   IAtlasStatusDetach: Aktion und Schalter gehören dem anmeldenden Modul, die
 //   Zeile aber lebt weiter, solange Statusfeld oder Fenster sie halten, auch
 //   über das Entladen des Moduls hinaus.
+// - ReleaseOwned beim Abmelden eines Moduls (Regel 3): nimmt die Zeilen heraus,
+//   deren Code oder Rückrufe dem Modul gehören, auch wenn es sie selbst nie
+//   abgemeldet hat, löst sie und meldet seine Beobachter ab.
 // - TAtlasStatusSummary: was das Feld zeigt: sichtbare Zeilen (ohne
 //   statusField.hidden), Gesamtzustand (der schlechteste aller Zeilen), Text
 //   „Atlas“ bzw. „Atlas · 2 Fehler“ und Tooltip mit den Zeilen, die nicht grün sind.
@@ -25,6 +28,13 @@ uses
   Atlas.Plugin.Notifications.OrderedItems;
 
 type
+  /// <summary>Zeile, deren Rückrufe einem anderen Modul gehören können als ihr Code (TAtlasStatusLine).</summary>
+  IAtlasStatusOwned = interface
+    ['{6C2B8E57-1F4A-4D93-A7B0-E5D3C9128F46}']
+    /// <summary>Gehört ein Rückruf der Zeile AOwned?</summary>
+    function UsesOwned(const AOwned: TAtlasOwnedCode): Boolean;
+  end;
+
   /// <summary>Zeilen nach Order und Kennung.</summary>
   TAtlasStatusItems = class(TAtlasOrderedItems<IAtlasStatusItem>)
   protected
@@ -37,6 +47,7 @@ type
     FItems: TAtlasStatusItems;
     FListeners: TAtlasNotificationListeners;
     class var FDefault: IAtlasStatusRegistry;
+    class var FDefaultObject: TAtlasStatusRegistry;
   public
     constructor Create;
     destructor Destroy; override;
@@ -48,6 +59,11 @@ type
     function Version: Integer;
     function AddListener(const AListener: TProc): Integer;
     procedure RemoveListener(AHandle: Integer);
+    /// <summary>Zeilen, deren Code oder Rückrufe AOwned gehören (ein Modul meldet sich ab), herausnehmen und lösen,
+    /// dazu seine Beobachter abmelden; Ergebnis: ihre Zahl. Mit einer Änderung meldet die Registry sie.</summary>
+    function ReleaseOwned(const AOwned: TAtlasOwnedCode): Integer;
+    /// <summary>Wie ReleaseOwned an der Registry des Plugins, falls es sie gibt; legt keine an.</summary>
+    class function ReleaseOwnedInDefault(const AOwned: TAtlasOwnedCode): Integer; static;
     /// <summary>Registry des Plugins; andere Funktionen melden hier ihre Zeile an.</summary>
     class function Default: IAtlasStatusRegistry; static;
     /// <summary>Gibt die Registry des Plugins frei (Entladen).</summary>
@@ -56,7 +72,8 @@ type
 
   /// <summary>Zeile mit festen Daten, die der Besitzer über Update setzt. Die Registry hält die Zeile;
   /// die Zeile kennt die Registry nur schwach und muss vor ihr abgemeldet werden.</summary>
-  TAtlasStatusLine = class(TInterfacedObject, IAtlasStatusItem, IAtlasStatusBrief, IAtlasStatusDetach)
+  TAtlasStatusLine = class(TInterfacedObject, IAtlasStatusItem, IAtlasStatusBrief, IAtlasStatusDetach,
+    IAtlasStatusOwned)
   private
     FLock: TCriticalSection;
     FId: string;
@@ -98,6 +115,8 @@ type
     /// <summary>Löst die Verbindung zur Registry und gibt Aktion und Schalter frei; danach meldet Update nichts
     /// mehr und die Zeile ist nicht mehr anklickbar. Die Registry ruft es beim Abgeben selbst.</summary>
     procedure Detach;
+    { IAtlasStatusOwned }
+    function UsesOwned(const AOwned: TAtlasOwnedCode): Boolean;
   end;
 
   TAtlasStatusSummary = class
@@ -244,17 +263,60 @@ begin
   FListeners.Remove(AHandle);
 end;
 
+/// <summary>Gehört AItem selbst oder einer seiner Rückrufe AOwned?</summary>
+function ItemOwned(const AItem: IAtlasStatusItem; const AOwned: TAtlasOwnedCode): Boolean;
+var
+  mOwned: IAtlasStatusOwned;
+begin
+  Result := AOwned(Pointer(AItem)) or (Supports(AItem, IAtlasStatusOwned, mOwned) and mOwned.UsesOwned(AOwned));
+end;
+
+function TAtlasStatusRegistry.ReleaseOwned(const AOwned: TAtlasOwnedCode): Integer;
+var
+  mItem, mTaken: IAtlasStatusItem;
+begin
+  Result := 0;
+  for mItem in FItems.ToArray do
+  begin
+    if ItemOwned(mItem, AOwned) and FItems.Take(mItem.Id, mTaken) then
+    begin
+      DetachItem(mTaken);
+      Inc(Result);
+    end;
+  end;
+  Inc(Result, FListeners.RemoveOwned(AOwned));
+  if Result > 0 then
+  begin
+    FListeners.Changed;
+  end;
+end;
+
+class function TAtlasStatusRegistry.ReleaseOwnedInDefault(const AOwned: TAtlasOwnedCode): Integer;
+var
+  mRegistry: IAtlasStatusRegistry;
+begin
+  Result := 0;
+  // Eigene Referenz: Die Registry bleibt bis zum Ende bestehen, auch wenn ReleaseDefault dazwischenkommt.
+  mRegistry := FDefault;
+  if mRegistry <> nil then
+  begin
+    Result := FDefaultObject.ReleaseOwned(AOwned);
+  end;
+end;
+
 class function TAtlasStatusRegistry.Default: IAtlasStatusRegistry;
 begin
   if FDefault = nil then
   begin
-    FDefault := TAtlasStatusRegistry.Create;
+    FDefaultObject := TAtlasStatusRegistry.Create;
+    FDefault := FDefaultObject;
   end;
   Result := FDefault;
 end;
 
 class procedure TAtlasStatusRegistry.ReleaseDefault;
 begin
+  FDefaultObject := nil;
   FDefault := nil;
 end;
 
@@ -407,6 +469,22 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+function TAtlasStatusLine.UsesOwned(const AOwned: TAtlasOwnedCode): Boolean;
+var
+  mAction: TProc;
+  mEnabled: TFunc<Boolean>;
+begin
+  FLock.Enter;
+  try
+    mAction := FAction;
+    mEnabled := FEnabled;
+  finally
+    FLock.Leave;
+  end;
+  Result := (Assigned(mAction) and AOwned(PPointer(@mAction)^)) or
+    (Assigned(mEnabled) and AOwned(PPointer(@mEnabled)^));
 end;
 
 { TAtlasStatusSummary }

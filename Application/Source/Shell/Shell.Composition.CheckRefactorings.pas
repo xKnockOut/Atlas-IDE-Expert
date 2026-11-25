@@ -1,37 +1,37 @@
-﻿unit Shell.Composition.RuleRefactorings;
+﻿unit Shell.Composition.CheckRefactorings;
 
 // Verdrahtung der Korrekturen aus Refactorings für die Prüfregeln: Editing bietet die Refactorings über seinen
-// Contract an, der Host-Adapter Adapters.Rules.Refactorings übersetzt sie in die SPI von Rules.
+// Contract an, der Host-Adapter Adapters.Checks.Refactorings übersetzt sie in die SPI von Rules.
 
 interface
 
 uses
-  Atlas.Common.Rules.Contract.Refactorings;
+  Atlas.Common.Checks.Contract.Refactorings;
 
 type
-  TShellRuleRefactorings = record
+  TShellCheckRefactorings = record
     /// <summary>Alle Refactorings, die Prüfregeln als Korrektur anbieten.</summary>
-    class function Create: TRuleRefactorings; static;
+    class function Create: TCheckRefactorings; static;
   end;
 
 implementation
 
 uses
   Atlas.Common.Editing.Composition,
-  Adapters.Rules.Refactorings;
+  Adapters.Checks.Refactorings;
 
-class function TShellRuleRefactorings.Create: TRuleRefactorings;
+class function TShellCheckRefactorings.Create: TCheckRefactorings;
 var
-  mSources: TRuleRefactoringSources;
+  mSources: TCheckRefactoringSources;
 begin
-  mSources := Default(TRuleRefactoringSources);
+  mSources := Default(TCheckRefactoringSources);
   mSources.Classes := TEditingComposition.ClassActions;
   mSources.Extract := TEditingComposition.ExtractFixes;
   mSources.Methods := TEditingComposition.MethodsWithoutSelf;
   mSources.Order := TEditingComposition.MethodOrder;
   mSources.Completion := TEditingComposition.ClassCompletion;
   mSources.Commands := TEditingComposition.SlashChecks;
-  Result := TRuleRefactoringsAdapters.Create(mSources);
+  Result := TCheckRefactoringsAdapters.Create(mSources);
 end;
 
 end.

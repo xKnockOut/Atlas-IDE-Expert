@@ -177,7 +177,8 @@
         <DCCReference Include="Source\Index\Atlas.Common.Index.Service.pas"/>
         <DCCReference Include="Source\Findings\Atlas.Common.Findings.Contract.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.pas"/>
-        <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Refactorings.pas"/>
+        <DCCReference Include="Source\Checks\Atlas.Common.Checks.Contract.pas"/>
+        <DCCReference Include="Source\Checks\Atlas.Common.Checks.Contract.Refactorings.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.Api.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.InheritanceDepths.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Providers.BulkFix.pas"/>

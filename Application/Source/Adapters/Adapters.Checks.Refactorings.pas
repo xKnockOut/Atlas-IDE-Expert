@@ -1,7 +1,7 @@
-﻿unit Adapters.Rules.Refactorings;
+﻿unit Adapters.Checks.Refactorings;
 
 // Host-Adapter zwischen Rules und Editing: Prüfregeln bieten Korrekturen aus Refactorings über
-// TRuleRefactorings an (SPI im Rules-Contract), Editing bietet die Refactorings über seinen Contract an (API).
+// TCheckRefactorings an (SPI im Rules-Contract), Editing bietet die Refactorings über seinen Contract an (API).
 // Erzeugt nur in Shell.Composition.*; kennt nur die Contracts.
 
 interface
@@ -13,7 +13,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.CodeActions.Contract,
   Atlas.Common.ClassActions.Contract,
-  Atlas.Common.Rules.Contract.Refactorings,
+  Atlas.Common.Checks.Contract.Refactorings,
   Atlas.Common.Editing.Contract.ClassActions,
   Atlas.Common.Editing.Contract.ClassCompletion,
   Atlas.Common.Editing.Contract.Extract,
@@ -22,8 +22,8 @@ uses
   Atlas.Common.Editing.Contract.SlashCommands;
 
 type
-  /// <summary>IRuleClassRefactorings über die Klassen-Aktionen von Editing.</summary>
-  TRuleClassRefactoringsAdapter = class(TInterfacedObject, IRuleClassRefactorings)
+  /// <summary>ICheckClassRefactorings über die Klassen-Aktionen von Editing.</summary>
+  TCheckClassRefactoringsAdapter = class(TInterfacedObject, ICheckClassRefactorings)
   private
     FActions: IEditingClassActions;
   public
@@ -36,8 +36,8 @@ type
       out AAction: TCodeAction): Boolean;
   end;
 
-  /// <summary>IRuleExtractRefactorings über „Extrahieren“ von Editing.</summary>
-  TRuleExtractRefactoringsAdapter = class(TInterfacedObject, IRuleExtractRefactorings)
+  /// <summary>ICheckExtractRefactorings über „Extrahieren“ von Editing.</summary>
+  TCheckExtractRefactoringsAdapter = class(TInterfacedObject, ICheckExtractRefactorings)
   private
     FExtract: IEditingExtractFixes;
   public
@@ -45,52 +45,52 @@ type
     function ExtractCondition(const AText: string; const ATree: IPascalSyntaxTree; const ARange: TTextRange;
       const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
     function ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
-      const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
+      const ANames: TPascalNamePrefixes): ICheckConstantExtraction;
   end;
 
-  /// <summary>IRuleMethodRefactorings über die Methoden ohne Self von Editing.</summary>
-  TRuleMethodRefactoringsAdapter = class(TInterfacedObject, IRuleMethodRefactorings)
+  /// <summary>ICheckMethodRefactorings über die Methoden ohne Self von Editing.</summary>
+  TCheckMethodRefactoringsAdapter = class(TInterfacedObject, ICheckMethodRefactorings)
   private
     FMethods: IEditingMethodsWithoutSelf;
   public
     constructor Create(const AMethods: IEditingMethodsWithoutSelf);
-    function WithoutSelf(const AScan: TRuleMethodScan): TArray<TRuleMethodWithoutSelf>;
+    function WithoutSelf(const AScan: TCheckMethodScan): TArray<TCheckMethodWithoutSelf>;
   end;
 
-  /// <summary>IRuleMethodOrderRefactorings über die Prüfung der Methodenordnung von Editing.</summary>
-  TRuleMethodOrderRefactoringsAdapter = class(TInterfacedObject, IRuleMethodOrderRefactorings)
+  /// <summary>ICheckMethodOrderRefactorings über die Prüfung der Methodenordnung von Editing.</summary>
+  TCheckMethodOrderRefactoringsAdapter = class(TInterfacedObject, ICheckMethodOrderRefactorings)
   private
     FOrder: IEditingMethodOrderReview;
   public
     constructor Create(const AOrder: IEditingMethodOrderReview);
     function Review(const AText: string; const ATree: IPascalSyntaxTree;
-      const ARequest: TRuleMethodOrderRequest): TRuleMethodOrderReview;
+      const ARequest: TCheckMethodOrderRequest): TCheckMethodOrderReview;
   end;
 
-  /// <summary>IRuleClassCompletionRefactorings über die Klassenvervollständigung von Editing.</summary>
-  TRuleClassCompletionRefactoringsAdapter = class(TInterfacedObject, IRuleClassCompletionRefactorings)
+  /// <summary>ICheckClassCompletionRefactorings über die Klassenvervollständigung von Editing.</summary>
+  TCheckClassCompletionRefactoringsAdapter = class(TInterfacedObject, ICheckClassCompletionRefactorings)
   private
     FCompletion: IEditingClassCompletion;
   public
     constructor Create(const ACompletion: IEditingClassCompletion);
     function Scan(const AText: string; const ATree: IPascalSyntaxTree; const AUnit: TUnitIndex;
-      const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle): IRuleClassCompletionScan;
+      const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle): ICheckClassCompletionScan;
   end;
 
-  /// <summary>IRuleSlashCommands über die Prüfung der Schnellbefehle von Editing.</summary>
-  TRuleSlashCommandsAdapter = class(TInterfacedObject, IRuleSlashCommands)
+  /// <summary>ICheckSlashCommands über die Prüfung der Schnellbefehle von Editing.</summary>
+  TCheckSlashCommandsAdapter = class(TInterfacedObject, ICheckSlashCommands)
   private
     FChecks: IEditingSlashChecks;
   public
     constructor Create(const AChecks: IEditingSlashChecks);
     function Problems(const AText: string; const AIndex: ISymbolIndex;
-      const ADelphiVersion: string): TArray<TRuleSlashProblem>;
+      const ADelphiVersion: string): TArray<TCheckSlashProblem>;
     function IgnoreWithoutHit(const ARuleId: string): string;
   end;
 
   /// <summary>Die APIs von Editing, aus denen die Korrekturen der Prüfregeln entstehen; nil = nicht anbieten.
   /// </summary>
-  TRuleRefactoringSources = record
+  TCheckRefactoringSources = record
     Classes: IEditingClassActions;
     Extract: IEditingExtractFixes;
     Methods: IEditingMethodsWithoutSelf;
@@ -100,9 +100,9 @@ type
   end;
 
   /// <summary>Die Refactorings für die Prüfregeln aus den APIs von Editing.</summary>
-  TRuleRefactoringsAdapters = record
+  TCheckRefactoringsAdapters = record
     /// <summary>Ein nil-Eintrag in ASources: diese Korrekturen nicht anbieten.</summary>
-    class function Create(const ASources: TRuleRefactoringSources): TRuleRefactorings; static;
+    class function Create(const ASources: TCheckRefactoringSources): TCheckRefactorings; static;
   end;
 
 implementation
@@ -110,35 +110,35 @@ implementation
 uses
   Atlas.Common.Editing.Contract;
 
-{ TRuleClassRefactoringsAdapter }
+{ TCheckClassRefactoringsAdapter }
 
-constructor TRuleClassRefactoringsAdapter.Create(const AActions: IEditingClassActions);
+constructor TCheckClassRefactoringsAdapter.Create(const AActions: IEditingClassActions);
 begin
   inherited Create;
   FActions := AActions;
 end;
 
-function TRuleClassRefactoringsAdapter.OverrideMethod(const ARequest: TClassEditRequest; const AName: string;
+function TCheckClassRefactoringsAdapter.OverrideMethod(const ARequest: TClassEditRequest; const AName: string;
   out AAction: TCodeAction): Boolean;
 begin
   Result := FActions.OverrideMethod(ARequest, AName, AAction);
 end;
 
-function TRuleClassRefactoringsAdapter.ImplementInterface(const ARequest: TClassEditRequest;
+function TCheckClassRefactoringsAdapter.ImplementInterface(const ARequest: TClassEditRequest;
   const AInterface: string; out AAction: TCodeAction): Boolean;
 begin
   Result := FActions.ImplementInterface(ARequest, AInterface, AAction);
 end;
 
-function TRuleClassRefactoringsAdapter.CreateAccessor(const ARequest: TClassEditRequest; const APlan: TAccessorPlan;
+function TCheckClassRefactoringsAdapter.CreateAccessor(const ARequest: TClassEditRequest; const APlan: TAccessorPlan;
   out AAction: TCodeAction): Boolean;
 begin
   Result := FActions.CreateAccessor(ARequest, APlan, AAction);
 end;
 
 type
-  /// <summary>IRuleConstantExtraction über die von Editing.</summary>
-  TRuleConstantExtractionAdapter = class(TInterfacedObject, IRuleConstantExtraction)
+  /// <summary>ICheckConstantExtraction über die von Editing.</summary>
+  TCheckConstantExtractionAdapter = class(TInterfacedObject, ICheckConstantExtraction)
   private
     FExtraction: IEditingConstantExtraction;
   public
@@ -146,35 +146,35 @@ type
     function Run(const ARange: TTextRange; out AAction: TCodeAction): Boolean;
   end;
 
-{ TRuleConstantExtractionAdapter }
+{ TCheckConstantExtractionAdapter }
 
-constructor TRuleConstantExtractionAdapter.Create(const AExtraction: IEditingConstantExtraction);
+constructor TCheckConstantExtractionAdapter.Create(const AExtraction: IEditingConstantExtraction);
 begin
   inherited Create;
   FExtraction := AExtraction;
 end;
 
-function TRuleConstantExtractionAdapter.Run(const ARange: TTextRange; out AAction: TCodeAction): Boolean;
+function TCheckConstantExtractionAdapter.Run(const ARange: TTextRange; out AAction: TCodeAction): Boolean;
 begin
   Result := FExtraction.Run(ARange, AAction);
 end;
 
-{ TRuleExtractRefactoringsAdapter }
+{ TCheckExtractRefactoringsAdapter }
 
-constructor TRuleExtractRefactoringsAdapter.Create(const AExtract: IEditingExtractFixes);
+constructor TCheckExtractRefactoringsAdapter.Create(const AExtract: IEditingExtractFixes);
 begin
   inherited Create;
   FExtract := AExtract;
 end;
 
-function TRuleExtractRefactoringsAdapter.ExtractCondition(const AText: string; const ATree: IPascalSyntaxTree;
+function TCheckExtractRefactoringsAdapter.ExtractCondition(const AText: string; const ATree: IPascalSyntaxTree;
   const ARange: TTextRange; const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
 begin
   Result := FExtract.ExtractCondition(AText, ATree, ARange, AStyle, AAction);
 end;
 
-function TRuleExtractRefactoringsAdapter.ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
-  const ANames: TPascalNamePrefixes): IRuleConstantExtraction;
+function TCheckExtractRefactoringsAdapter.ConstantExtraction(const AText: string; const ATree: IPascalSyntaxTree;
+  const ANames: TPascalNamePrefixes): ICheckConstantExtraction;
 var
   mExtraction: IEditingConstantExtraction;
 begin
@@ -182,19 +182,19 @@ begin
   mExtraction := FExtract.ConstantExtraction(AText, ATree, ANames);
   if mExtraction <> nil then
   begin
-    Result := TRuleConstantExtractionAdapter.Create(mExtraction);
+    Result := TCheckConstantExtractionAdapter.Create(mExtraction);
   end;
 end;
 
-{ TRuleMethodRefactoringsAdapter }
+{ TCheckMethodRefactoringsAdapter }
 
-constructor TRuleMethodRefactoringsAdapter.Create(const AMethods: IEditingMethodsWithoutSelf);
+constructor TCheckMethodRefactoringsAdapter.Create(const AMethods: IEditingMethodsWithoutSelf);
 begin
   inherited Create;
   FMethods := AMethods;
 end;
 
-function TRuleMethodRefactoringsAdapter.WithoutSelf(const AScan: TRuleMethodScan): TArray<TRuleMethodWithoutSelf>;
+function TCheckMethodRefactoringsAdapter.WithoutSelf(const AScan: TCheckMethodScan): TArray<TCheckMethodWithoutSelf>;
 var
   mScan: TEditingMethodScan;
   mFound: TArray<TEditingMethodWithoutSelf>;
@@ -223,16 +223,16 @@ begin
   end;
 end;
 
-{ TRuleMethodOrderRefactoringsAdapter }
+{ TCheckMethodOrderRefactoringsAdapter }
 
-constructor TRuleMethodOrderRefactoringsAdapter.Create(const AOrder: IEditingMethodOrderReview);
+constructor TCheckMethodOrderRefactoringsAdapter.Create(const AOrder: IEditingMethodOrderReview);
 begin
   inherited Create;
   FOrder := AOrder;
 end;
 
-function TRuleMethodOrderRefactoringsAdapter.Review(const AText: string; const ATree: IPascalSyntaxTree;
-  const ARequest: TRuleMethodOrderRequest): TRuleMethodOrderReview;
+function TCheckMethodOrderRefactoringsAdapter.Review(const AText: string; const ATree: IPascalSyntaxTree;
+  const ARequest: TCheckMethodOrderRequest): TCheckMethodOrderReview;
 var
   mRequest: TEditingMethodOrderRequest;
   mFound: TEditingMethodOrderReview;
@@ -245,7 +245,7 @@ begin
   mRequest.TypeComment := ARequest.TypeComment;
   mRequest.LineLength := ARequest.LineLength;
   mFound := FOrder.Review(AText, ATree, mRequest);
-  Result := Default(TRuleMethodOrderReview);
+  Result := Default(TCheckMethodOrderReview);
   Result.Placement := mFound.Placement;
   SetLength(Result.Types, Length(mFound.Types));
   for mIndex := 0 to High(mFound.Types) do
@@ -259,7 +259,7 @@ begin
 end;
 
 /// <summary>Methode ohne Gegenstück von Editing für Rules.</summary>
-function RuleMethodOf(const AMethod: TEditingUnmatchedMethod): TRuleUnmatchedMethod;
+function RuleMethodOf(const AMethod: TEditingUnmatchedMethod): TCheckUnmatchedMethod;
 begin
   Result.TypeName := AMethod.TypeName;
   Result.Symbol := AMethod.Symbol;
@@ -268,7 +268,7 @@ begin
 end;
 
 /// <summary>Methode ohne Gegenstück von Rules für Editing.</summary>
-function EditingMethodOf(const AMethod: TRuleUnmatchedMethod): TEditingUnmatchedMethod;
+function EditingMethodOf(const AMethod: TCheckUnmatchedMethod): TEditingUnmatchedMethod;
 begin
   Result.TypeName := AMethod.TypeName;
   Result.Symbol := AMethod.Symbol;
@@ -277,11 +277,11 @@ begin
 end;
 
 /// <summary>Kopf von Editing für Rules.</summary>
-function RuleShapeOf(const AShape: TEditingSignatureShape): TRuleSignatureShape;
+function RuleShapeOf(const AShape: TEditingSignatureShape): TCheckSignatureShape;
 var
   mIndex: Integer;
 begin
-  Result := Default(TRuleSignatureShape);
+  Result := Default(TCheckSignatureShape);
   Result.Kind := AShape.Kind;
   SetLength(Result.Parameters, Length(AShape.Parameters));
   for mIndex := 0 to High(AShape.Parameters) do
@@ -297,7 +297,7 @@ begin
 end;
 
 /// <summary>Kopf von Rules für Editing.</summary>
-function EditingShapeOf(const AShape: TRuleSignatureShape): TEditingSignatureShape;
+function EditingShapeOf(const AShape: TCheckSignatureShape): TEditingSignatureShape;
 var
   mIndex: Integer;
 begin
@@ -317,30 +317,30 @@ begin
 end;
 
 type
-  /// <summary>IRuleClassCompletionScan über die Zuordnung von Editing.</summary>
-  TRuleClassCompletionScanAdapter = class(TInterfacedObject, IRuleClassCompletionScan)
+  /// <summary>ICheckClassCompletionScan über die Zuordnung von Editing.</summary>
+  TCheckClassCompletionScanAdapter = class(TInterfacedObject, ICheckClassCompletionScan)
   private
     FScan: IEditingClassCompletionScan;
   public
     constructor Create(const AScan: IEditingClassCompletionScan);
-    function Unmatched: TArray<TRuleUnmatchedMethod>;
-    function Pairs: TArray<TRuleSignaturePair>;
-    function InPair(const AMethod: TRuleUnmatchedMethod): Boolean;
-    function Shape(const ASymbol: TIndexSymbol; out AShape: TRuleSignatureShape): Boolean;
+    function Unmatched: TArray<TCheckUnmatchedMethod>;
+    function Pairs: TArray<TCheckSignaturePair>;
+    function InPair(const AMethod: TCheckUnmatchedMethod): Boolean;
+    function Shape(const ASymbol: TIndexSymbol; out AShape: TCheckSignatureShape): Boolean;
     function MissingBodies(const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
-    function AddDeclaration(const AMethod: TRuleUnmatchedMethod; out AEdit: TTextEdit): Boolean;
-    function PairFixes(const APair: TRuleSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
+    function AddDeclaration(const AMethod: TCheckUnmatchedMethod; out AEdit: TTextEdit): Boolean;
+    function PairFixes(const APair: TCheckSignaturePair; out AFixes: TArray<TCodeAction>): Boolean;
   end;
 
-{ TRuleClassCompletionScanAdapter }
+{ TCheckClassCompletionScanAdapter }
 
-constructor TRuleClassCompletionScanAdapter.Create(const AScan: IEditingClassCompletionScan);
+constructor TCheckClassCompletionScanAdapter.Create(const AScan: IEditingClassCompletionScan);
 begin
   inherited Create;
   FScan := AScan;
 end;
 
-function TRuleClassCompletionScanAdapter.Unmatched: TArray<TRuleUnmatchedMethod>;
+function TCheckClassCompletionScanAdapter.Unmatched: TArray<TCheckUnmatchedMethod>;
 var
   mFound: TArray<TEditingUnmatchedMethod>;
   mIndex: Integer;
@@ -354,7 +354,7 @@ begin
   end;
 end;
 
-function TRuleClassCompletionScanAdapter.Pairs: TArray<TRuleSignaturePair>;
+function TCheckClassCompletionScanAdapter.Pairs: TArray<TCheckSignaturePair>;
 var
   mFound: TArray<TEditingSignaturePair>;
   mIndex: Integer;
@@ -371,12 +371,12 @@ begin
   end;
 end;
 
-function TRuleClassCompletionScanAdapter.InPair(const AMethod: TRuleUnmatchedMethod): Boolean;
+function TCheckClassCompletionScanAdapter.InPair(const AMethod: TCheckUnmatchedMethod): Boolean;
 begin
   Result := FScan.InPair(EditingMethodOf(AMethod));
 end;
 
-function TRuleClassCompletionScanAdapter.Shape(const ASymbol: TIndexSymbol; out AShape: TRuleSignatureShape): Boolean;
+function TCheckClassCompletionScanAdapter.Shape(const ASymbol: TIndexSymbol; out AShape: TCheckSignatureShape): Boolean;
 var
   mShape: TEditingSignatureShape;
 begin
@@ -384,19 +384,19 @@ begin
   AShape := RuleShapeOf(mShape);
 end;
 
-function TRuleClassCompletionScanAdapter.MissingBodies(const APosition: TTextPosition;
+function TCheckClassCompletionScanAdapter.MissingBodies(const APosition: TTextPosition;
   out AAction: TCodeAction): Boolean;
 begin
   Result := FScan.MissingBodies(APosition, AAction);
 end;
 
-function TRuleClassCompletionScanAdapter.AddDeclaration(const AMethod: TRuleUnmatchedMethod;
+function TCheckClassCompletionScanAdapter.AddDeclaration(const AMethod: TCheckUnmatchedMethod;
   out AEdit: TTextEdit): Boolean;
 begin
   Result := FScan.AddDeclaration(EditingMethodOf(AMethod), AEdit);
 end;
 
-function TRuleClassCompletionScanAdapter.PairFixes(const APair: TRuleSignaturePair;
+function TCheckClassCompletionScanAdapter.PairFixes(const APair: TCheckSignaturePair;
   out AFixes: TArray<TCodeAction>): Boolean;
 var
   mPair: TEditingSignaturePair;
@@ -408,17 +408,17 @@ begin
   Result := FScan.PairFixes(mPair, AFixes);
 end;
 
-{ TRuleClassCompletionRefactoringsAdapter }
+{ TCheckClassCompletionRefactoringsAdapter }
 
-constructor TRuleClassCompletionRefactoringsAdapter.Create(const ACompletion: IEditingClassCompletion);
+constructor TCheckClassCompletionRefactoringsAdapter.Create(const ACompletion: IEditingClassCompletion);
 begin
   inherited Create;
   FCompletion := ACompletion;
 end;
 
-function TRuleClassCompletionRefactoringsAdapter.Scan(const AText: string; const ATree: IPascalSyntaxTree;
+function TCheckClassCompletionRefactoringsAdapter.Scan(const AText: string; const ATree: IPascalSyntaxTree;
   const AUnit: TUnitIndex; const ASettings: TClassCompletionSettings;
-  const AStyle: TFormatStyle): IRuleClassCompletionScan;
+  const AStyle: TFormatStyle): ICheckClassCompletionScan;
 var
   mScan: IEditingClassCompletionScan;
 begin
@@ -426,20 +426,20 @@ begin
   mScan := FCompletion.Scan(AText, ATree, AUnit, ASettings, AStyle);
   if mScan <> nil then
   begin
-    Result := TRuleClassCompletionScanAdapter.Create(mScan);
+    Result := TCheckClassCompletionScanAdapter.Create(mScan);
   end;
 end;
 
-{ TRuleSlashCommandsAdapter }
+{ TCheckSlashCommandsAdapter }
 
-constructor TRuleSlashCommandsAdapter.Create(const AChecks: IEditingSlashChecks);
+constructor TCheckSlashCommandsAdapter.Create(const AChecks: IEditingSlashChecks);
 begin
   inherited Create;
   FChecks := AChecks;
 end;
 
-function TRuleSlashCommandsAdapter.Problems(const AText: string; const AIndex: ISymbolIndex;
-  const ADelphiVersion: string): TArray<TRuleSlashProblem>;
+function TCheckSlashCommandsAdapter.Problems(const AText: string; const AIndex: ISymbolIndex;
+  const ADelphiVersion: string): TArray<TCheckSlashProblem>;
 var
   mFound: TArray<TSlashProblem>;
   mIndex: Integer;
@@ -453,39 +453,39 @@ begin
   end;
 end;
 
-function TRuleSlashCommandsAdapter.IgnoreWithoutHit(const ARuleId: string): string;
+function TCheckSlashCommandsAdapter.IgnoreWithoutHit(const ARuleId: string): string;
 begin
   Result := FChecks.IgnoreWithoutHit(ARuleId);
 end;
 
-{ TRuleRefactoringsAdapters }
+{ TCheckRefactoringsAdapters }
 
-class function TRuleRefactoringsAdapters.Create(const ASources: TRuleRefactoringSources): TRuleRefactorings;
+class function TCheckRefactoringsAdapters.Create(const ASources: TCheckRefactoringSources): TCheckRefactorings;
 begin
-  Result := Default(TRuleRefactorings);
+  Result := Default(TCheckRefactorings);
   if ASources.Classes <> nil then
   begin
-    Result.Classes := TRuleClassRefactoringsAdapter.Create(ASources.Classes);
+    Result.Classes := TCheckClassRefactoringsAdapter.Create(ASources.Classes);
   end;
   if ASources.Extract <> nil then
   begin
-    Result.Extract := TRuleExtractRefactoringsAdapter.Create(ASources.Extract);
+    Result.Extract := TCheckExtractRefactoringsAdapter.Create(ASources.Extract);
   end;
   if ASources.Methods <> nil then
   begin
-    Result.Methods := TRuleMethodRefactoringsAdapter.Create(ASources.Methods);
+    Result.Methods := TCheckMethodRefactoringsAdapter.Create(ASources.Methods);
   end;
   if ASources.Order <> nil then
   begin
-    Result.Order := TRuleMethodOrderRefactoringsAdapter.Create(ASources.Order);
+    Result.Order := TCheckMethodOrderRefactoringsAdapter.Create(ASources.Order);
   end;
   if ASources.Completion <> nil then
   begin
-    Result.Completion := TRuleClassCompletionRefactoringsAdapter.Create(ASources.Completion);
+    Result.Completion := TCheckClassCompletionRefactoringsAdapter.Create(ASources.Completion);
   end;
   if ASources.Commands <> nil then
   begin
-    Result.Commands := TRuleSlashCommandsAdapter.Create(ASources.Commands);
+    Result.Commands := TCheckSlashCommandsAdapter.Create(ASources.Commands);
   end;
 end;
 

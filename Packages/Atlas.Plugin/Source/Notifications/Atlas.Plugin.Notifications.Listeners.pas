@@ -9,6 +9,9 @@
 // - TAtlasNotificationListeners: Beobachter ohne Angabe (TProc).
 // - TAtlasListeners<T>: Beobachter erhalten mit jeder Meldung einen Wert, etwa
 //   die Kennung des geänderten Eintrags (TProc<T>).
+// - RemoveOwned meldet alle Beobachter ab, deren Code einem Modul gehört, das
+//   gerade entladen wird (TAtlasOwnedCode); sonst riefe die nächste Meldung
+//   Code, der nicht mehr im Speicher liegt.
 // Gesperrt wird mit Acquire/Release statt mit den inline-Fassungen Enter/Leave: Generische Rümpfe werden in den
 // Units der Module ausgeprägt, die System.SyncObjs nicht einbinden (H2443).
 
@@ -20,6 +23,12 @@ uses
   System.Generics.Collections;
 
 type
+  /// <summary>Gehört die Methodenreferenz bzw. das Interface an AReference (der Zeiger auf die Schnittstelle) dem
+  /// Modul, das gerade abgemeldet wird? Die Komposition entscheidet über das Modul des Codes; Tests über die
+  /// Instanz. Ein Typ für alle Listen, die Rückrufe von Modulen halten: TFunc der RTL, damit Aufrufer ihn ohne
+  /// diese Unit bilden können (Delphi 12 hält gleich gebaute Methodenreferenztypen auseinander).</summary>
+  TAtlasOwnedCode = TFunc<Pointer, Boolean>;
+
   /// <summary>Anmelden, Abmelden und Version der Beobachter; die Ableitungen rufen sie.</summary>
   TAtlasListenerList<TListener> = class
   private
@@ -37,6 +46,9 @@ type
     function Add(const AListener: TListener): Integer;
     /// <summary>Beobachter mit dem Griff AHandle abmelden; unbekannte Griffe werden übergangen.</summary>
     procedure Remove(AHandle: Integer);
+    /// <summary>Alle Beobachter abmelden, deren Code AOwned gehört; Ergebnis: ihre Zahl. Freigegeben werden sie
+    /// außerhalb der Sperre.</summary>
+    function RemoveOwned(const AOwned: TAtlasOwnedCode): Integer;
     /// <summary>Zahl der Änderungen bisher (steigt mit jeder Meldung).</summary>
     function Version: Integer;
   end;
@@ -95,6 +107,37 @@ begin
   finally
     FLock.Release;
   end;
+end;
+
+function TAtlasListenerList<TListener>.RemoveOwned(const AOwned: TAtlasOwnedCode): Integer;
+var
+  mPair: TPair<Integer, TListener>;
+  mHandles: TArray<Integer>;
+  mDropped: TArray<TListener>;
+  mIndex: Integer;
+begin
+  mHandles := nil;
+  mDropped := nil;
+  FLock.Acquire;
+  try
+    for mPair in FListeners do
+    begin
+      if AOwned(PPointer(@mPair.Value)^) then
+      begin
+        mHandles := mHandles + [mPair.Key];
+      end;
+    end;
+    SetLength(mDropped, Length(mHandles));
+    for mIndex := 0 to High(mHandles) do
+    begin
+      mDropped[mIndex] := FListeners[mHandles[mIndex]];
+      FListeners.Remove(mHandles[mIndex]);
+    end;
+  finally
+    FLock.Release;
+  end;
+  // mDropped wird erst beim Verlassen frei, außerhalb der Sperre.
+  Result := Length(mDropped);
 end;
 
 function TAtlasListenerList<TListener>.Changing: TArray<TListener>;

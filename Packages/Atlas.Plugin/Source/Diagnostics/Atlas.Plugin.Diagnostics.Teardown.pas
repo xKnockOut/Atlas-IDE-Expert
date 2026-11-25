@@ -5,8 +5,10 @@
 // Fehler, etwa wenn die IDE Atlas mitten im Gruppen-Build entlädt, blieben
 // Notifier, Fenster-Hooks und Ereignisse der alten Instanz angemeldet, und die
 // IDE stürzte beim Beenden in fremdem Speicher ab; „Atlas entladen“ fehlte im
-// Protokoll. Festgehalten werden nur Schritt und Ausnahmeklasse, nie der
-// Meldungstext, weil er Pfade enthalten kann (anonymes Protokoll).
+// Protokoll. In der Zusammenfassung stehen nur Schritt und Ausnahmeklasse;
+// die Ausnahme selbst geht mit Stacktrace an TReporting.Failed (die Sicherung
+// schreibt sie gekennzeichnet ins Protokoll): Ohne den Ort blieb etwa eine
+// Zugriffsverletzung beim Abbau nicht zuzuordnen.
 
 interface
 
@@ -20,7 +22,8 @@ type
   public
     /// <summary>Leerer Abbau ohne Fehler.</summary>
     class function Create: TAtlasTeardown; static;
-    /// <summary>AStep ausführen; eine Ausnahme wird als „AName: Klasse“ vermerkt und nicht weitergereicht.</summary>
+    /// <summary>AStep ausführen; eine Ausnahme wird als „AName: Klasse“ vermerkt, mit Stacktrace an
+    /// TReporting.Failed gemeldet und nicht weitergereicht.</summary>
     procedure Step(const AName: string; const AStep: TProc);
     /// <summary>Fehler eines anderen Abbaus (etwa der Feature-Tabelle) übernehmen.</summary>
     procedure AddFailures(const AFailures: TArray<string>);
@@ -31,6 +34,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Text.Reporting;
 
 { TAtlasTeardown }
 
@@ -48,7 +54,10 @@ begin
     end;
   except
     on E: Exception do
+    begin
       FFailures := FFailures + [AName + ': ' + E.ClassName];
+      TReporting.Failed('Abbau ' + AName, E); // german-ok Protokoll
+    end;
   end;
 end;
 
