@@ -112,7 +112,6 @@
         "Atlas.Common.Lsp.Completion.Declarations -> Atlas.Common.Editing.InterfaceStubs",
         "Atlas.Common.Lsp.Completion.Details -> Atlas.Common.Editing.InterfaceStubs",
         "Atlas.Common.Lsp.Completion.Forms -> Atlas.Common.Editing.DataFieldNames",
-        "Atlas.Common.Lsp.Completion.Guard -> Atlas.Common.Editing.GuardFree",
         "Atlas.Common.Lsp.Completion.Hooks -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Lsp.Completion.Hooks -> Atlas.Common.Editing.PostfixTemplates",
         "Atlas.Common.Lsp.Completion.Lists -> Atlas.Common.Editing.ContextSnippets",
@@ -216,8 +215,7 @@
         "Atlas.Common.Rules.Builtin.Declarations.Defaults -> Atlas.Common.Editing.ChangeSignature",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.Contract",
         "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.MaintenanceCommands",
-        "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.SlashCommands",
-        "Atlas.Common.Rules.CodeActions -> Atlas.Common.Editing.CodeActions"
+        "Atlas.Common.Rules.Builtin.SlashCommands -> Atlas.Common.Editing.SlashCommands"
       ]
     },
     "forbidden-symbol": {
