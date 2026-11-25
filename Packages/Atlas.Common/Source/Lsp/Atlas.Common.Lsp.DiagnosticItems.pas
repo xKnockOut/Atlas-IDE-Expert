@@ -18,9 +18,9 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Pascal.InactiveRegions,
   Atlas.Common.Semantics.UsesActions,
-  Atlas.Common.Editing.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.CodeActions.Json;
+  Atlas.Common.CodeActions.Json,
+  Atlas.Common.Semantics.Contract;
 
 type
   TLspDiagnosticItems = class

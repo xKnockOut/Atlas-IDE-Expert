@@ -29,7 +29,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.UsesActions,
-  Atlas.Common.Editing.Contract;
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Ein Projekt der Gruppe mit seinen Dateien.</summary>

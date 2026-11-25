@@ -19,7 +19,8 @@ uses
   Atlas.Common.Semantics.Contract;
 
 type
-  // Ergebnis der Namensauflösung für uses (TUsesUsage); die Typen liegen im Contract von Semantics.
+  // Ergebnis der Namensauflösung für uses (TUsesUsage) und Umgebung der uses-Aktionen; die Typen liegen im
+  // Contract von Semantics.
   TUsesUnitInfo = Atlas.Common.Semantics.Contract.TUsesUnitInfo;
   TUsesUnitInfoFunc = Atlas.Common.Semantics.Contract.TUsesUnitInfoFunc;
   TUsesResolution = Atlas.Common.Semantics.Contract.TUsesResolution;
@@ -28,25 +29,7 @@ type
 
   TUnitsDeclaringFunc = Atlas.Common.Semantics.Contract.TUnitsDeclaringFunc;
 
-  /// <summary>Alles, was die uses-Aktionen für ein Dokument brauchen.</summary>
-  TUsesContext = record
-    Info: TUsesUnitInfoFunc;
-    Declaring: TUnitsDeclaringFunc;
-    /// <summary>Einstellung "usesKeep".</summary>
-    Keep: TArray<string>;
-    /// <summary>Unit-Namespaces des Projekts (System für SysUtils).</summary>
-    Namespaces: TArray<string>;
-    /// <summary>Inaktive Zweige, deren uses bei der Prüfung nicht zählen (#621); nil = keine.</summary>
-    Inactive: TArray<TTextRange>;
-    /// <summary>Namensauflösung für die Datei (#1925); nil = nur Namensvergleich.</summary>
-    Resolve: TUsesResolveFunc;
-    /// <summary>Wie Resolve für einen schon übersetzten Baum; nil = über Resolve mit dem Text.</summary>
-    ResolveTree: TUsesTreeResolveFunc;
-    /// <summary>Gruppe nach Fundort der Unit (#2794); nil = nur nach Namespace.</summary>
-    GroupOf: TUsesGroupFunc;
-    /// <summary>Resolve für AText, sonst eine Nutzung ohne Active.</summary>
-    function Resolution(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
-  end;
+  TUsesContext = Atlas.Common.Semantics.Contract.TUsesContext;
 
   /// <summary>Datei, die ein Befehl neu anlegt oder ganz ersetzt (/unit, #297).</summary>
   TSlashFile = record
@@ -237,20 +220,6 @@ begin
   Result.Summary := ASummary;
   Result.Example := AExample;
   Result.Execute := AExecute;
-end;
-
-{ TUsesContext }
-
-function TUsesContext.Resolution(const AText: string; const AInactive: TArray<TTextRange>): TUsesResolution;
-begin
-  if Assigned(Resolve) then
-  begin
-    Result := Resolve(AText, AInactive);
-  end
-  else
-  begin
-    Result := Default(TUsesResolution);
-  end;
 end;
 
 { TSlashContext }
