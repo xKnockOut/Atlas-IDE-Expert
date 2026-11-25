@@ -42,6 +42,9 @@ type
     procedure FormReferenceKeepsUnit;
     [Test]
     procedure MemberNameDoesNotKeepUnit;
+    /// <summary>Der Editor fragt unter denselben Kennungen wie die Regeln (Findings.Contract).</summary>
+    [Test]
+    procedure FindingIdsMatchRuleIds;
   end;
 
 implementation
@@ -55,6 +58,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Findings.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Checker,
@@ -310,6 +314,12 @@ begin
   mIndex.AddUnit(TIndexExtractor.ExtractText(cListe, 'Liste.pas', nil, nil, True));
   Assert.AreEqual('Aus Liste wird nichts verwendet;', Names(Check(cBericht, TServerSettings.Default, mIndex,
     'Bericht.pas')));
+end;
+
+procedure TUnusedUsesTests.FindingIdsMatchRuleIds;
+begin
+  Assert.AreEqual(cUnusedUsesRuleId, cUnusedUsesFindingId);
+  Assert.AreEqual(cUsesOnlyInImplementationRuleId, cUsesOnlyInImplementationFindingId);
 end;
 
 initialization

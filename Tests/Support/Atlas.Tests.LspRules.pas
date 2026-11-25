@@ -6,6 +6,7 @@
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Rules.CheckContext;
 
@@ -26,6 +27,13 @@ type
     class function Actions(const AProvider: TRuleContextProvider): ILspRuleActions; static;
     /// <summary>Code-Aktionen ohne Umfeld: Syntaxfehler mit Korrektur, keine Regeln.</summary>
     class function PlainActions: ILspRuleActions; static;
+    /// <summary>Regelkatalog wie in der Komposition.</summary>
+    class function Catalog: ILspRuleCatalog; static;
+    /// <summary>Auftrag an KI-Assistenten wie in der Komposition.</summary>
+    class function FindingsPrompt: ILspFindingsPrompt; static;
+    /// <summary>Sammelkorrektur wie in der Komposition: Umfeld aus AContexts, Text aus ARead.</summary>
+    class function BulkFix(const AContexts: TRuleContextProvider; const ARead: TDocumentReadText): ILspBulkFix;
+      static;
   end;
 
 implementation
@@ -34,6 +42,12 @@ uses
   Atlas.Common.Rules.Contract.Api,
   Atlas.Common.Rules.Providers.DocumentChecks,
   Atlas.Common.Rules.Providers.DocumentActions,
+  Atlas.Common.Rules.Providers.CatalogInfo,
+  Atlas.Common.Rules.Providers.FindingPrompts,
+  Atlas.Common.Rules.Providers.BulkFix,
+  Adapters.Lsp.RuleCatalog,
+  Adapters.Lsp.FindingsPrompt,
+  Adapters.Lsp.BulkFix,
   Adapters.Lsp.RuleDiagnostics,
   Adapters.Lsp.RuleActions;
 
@@ -50,8 +64,10 @@ end;
 class function TTestLspRules.From(const AProvider: TRuleContextProvider): ILspRuleDiagnostics;
 var
   mChecks: IRuleDocumentChecks;
+  mCatalog: IRuleCatalogInfo;
 begin
-  mChecks := TRuleDocumentChecks.Create(AProvider);
+  mCatalog := TRuleCatalogInfo.Create;
+  mChecks := TRuleDocumentChecks.Create(AProvider, mCatalog);
   Result := TLspRuleDiagnosticsAdapter.Wrap(mChecks);
 end;
 
@@ -81,6 +97,31 @@ end;
 class function TTestLspRules.PlainActions: ILspRuleActions;
 begin
   Result := Actions(nil);
+end;
+
+class function TTestLspRules.Catalog: ILspRuleCatalog;
+var
+  mCatalog: IRuleCatalogInfo;
+begin
+  mCatalog := TRuleCatalogInfo.Create;
+  Result := TLspRuleCatalogAdapter.Wrap(mCatalog);
+end;
+
+class function TTestLspRules.FindingsPrompt: ILspFindingsPrompt;
+var
+  mPrompts: IRuleFindingPrompts;
+begin
+  mPrompts := TRuleFindingPromptsProvider.Create;
+  Result := TLspFindingsPromptAdapter.Wrap(mPrompts);
+end;
+
+class function TTestLspRules.BulkFix(const AContexts: TRuleContextProvider;
+  const ARead: TDocumentReadText): ILspBulkFix;
+var
+  mBulkFix: IRuleWorkspaceBulkFix;
+begin
+  mBulkFix := TRuleBulkFixProvider.CreateForWorkspace(AContexts, ARead, nil);
+  Result := TLspBulkFixAdapter.Wrap(mBulkFix);
 end;
 
 end.

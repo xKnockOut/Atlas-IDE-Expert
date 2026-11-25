@@ -17,9 +17,10 @@ type
   TRuleDocumentChecks = class(TInterfacedObject, IRuleDocumentChecks)
   private
     FProvider: TRuleContextProvider;
+    FCatalog: IRuleCatalogInfo;
   public
-    /// <summary>AProvider nil = nie ein Umfeld.</summary>
-    constructor Create(const AProvider: TRuleContextProvider);
+    /// <summary>AProvider nil = nie ein Umfeld; ACatalog für die Anzeige der Treffer, nil = ohne.</summary>
+    constructor Create(const AProvider: TRuleContextProvider; const ACatalog: IRuleCatalogInfo);
     function ForDocument(const AUri: string; const ACancelled: TRuleCancelled): IRuleDocumentCheck;
   end;
 
@@ -28,16 +29,18 @@ type
   private
     FContext: TRuleCheckContext;
     FHasContext: Boolean;
+    FCatalog: IRuleCatalogInfo;
     function RuleOn(const ARuleId: string): Boolean;
   public
     /// <summary>AHasContext False: Vorgaben, keine Regeln.</summary>
-    constructor Create(const AContext: TRuleCheckContext; AHasContext: Boolean);
+    constructor Create(const AContext: TRuleCheckContext; AHasContext: Boolean; const ACatalog: IRuleCatalogInfo);
     function SyntaxFindings(const ADocument: ITextDocument; const ADefines: TArray<string>): TArray<TRuleFinding>;
     function LanguageFeatureFindings(const ADocument: ITextDocument; const ADefines: TArray<string>;
       const ADelphiVersion: string; const AInactive: TArray<TTextRange>): TArray<TRuleFinding>;
     function RuleFindings(const ADocument: ITextDocument; const ADefines: TArray<string>): TArray<TRuleFinding>;
     function UnusedUsesShown: Boolean;
     function OnlyImplementationShown: Boolean;
+    function Catalog: IRuleCatalogInfo;
   end;
 
 implementation
@@ -52,10 +55,11 @@ uses
 
 { TRuleDocumentChecks }
 
-constructor TRuleDocumentChecks.Create(const AProvider: TRuleContextProvider);
+constructor TRuleDocumentChecks.Create(const AProvider: TRuleContextProvider; const ACatalog: IRuleCatalogInfo);
 begin
   inherited Create;
   FProvider := AProvider;
+  FCatalog := ACatalog;
 end;
 
 function TRuleDocumentChecks.ForDocument(const AUri: string; const ACancelled: TRuleCancelled): IRuleDocumentCheck;
@@ -65,16 +69,18 @@ var
 begin
   mHasContext := TRuleContexts.Lookup(FProvider, AUri, mContext);
   mContext.Cancelled := ACancelled;
-  Result := TRuleDocumentCheck.Create(mContext, mHasContext);
+  Result := TRuleDocumentCheck.Create(mContext, mHasContext, FCatalog);
 end;
 
 { TRuleDocumentCheck }
 
-constructor TRuleDocumentCheck.Create(const AContext: TRuleCheckContext; AHasContext: Boolean);
+constructor TRuleDocumentCheck.Create(const AContext: TRuleCheckContext; AHasContext: Boolean;
+  const ACatalog: IRuleCatalogInfo);
 begin
   inherited Create;
   FContext := AContext;
   FHasContext := AHasContext;
+  FCatalog := ACatalog;
 end;
 
 function TRuleDocumentCheck.SyntaxFindings(const ADocument: ITextDocument;
@@ -129,6 +135,11 @@ end;
 function TRuleDocumentCheck.OnlyImplementationShown: Boolean;
 begin
   Result := RuleOn(cUsesOnlyInImplementationRuleId);
+end;
+
+function TRuleDocumentCheck.Catalog: IRuleCatalogInfo;
+begin
+  Result := FCatalog;
 end;
 
 end.

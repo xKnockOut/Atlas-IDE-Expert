@@ -23,6 +23,9 @@ type
     procedure LimitFromArguments;
     [Test]
     procedure RefusesMissingFindings;
+    /// <summary>Ohne Anbieter des Auftrags: leerer Text, Anzahl wie sonst.</summary>
+    [Test]
+    procedure WithoutPromptsTextIsEmpty;
   end;
 
 implementation
@@ -35,8 +38,10 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Baseline,
-  Atlas.Common.Lsp.FindingsPrompt;
+  Atlas.Common.Lsp.FindingsPrompt,
+  Atlas.Tests.LspRules;
 
 const
   cUnit = 'unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10'end;'#13#10'end.';
@@ -78,12 +83,12 @@ begin
   Result := SameText(ExtractFileExt(AFileName), '.dfm');
 end;
 
-function Execute(const AArguments: string): TJSONObject;
+function ExecuteWith(const APrompts: ILspFindingsPrompt; const AArguments: string): TJSONObject;
 var
   mPrompt: TLspFindingsPrompt;
   mArguments: TJSONArray;
 begin
-  mPrompt := TLspFindingsPrompt.Create(CheckFor, ReadText);
+  mPrompt := TLspFindingsPrompt.Create(CheckFor, ReadText, APrompts);
   mArguments := TJSONObject.ParseJSONValue(AArguments) as TJSONArray;
   try
     Result := mPrompt.Execute(mArguments) as TJSONObject;
@@ -91,6 +96,11 @@ begin
     mArguments.Free;
     mPrompt.Free;
   end;
+end;
+
+function Execute(const AArguments: string): TJSONObject;
+begin
+  Result := ExecuteWith(TTestLspRules.FindingsPrompt, AArguments);
 end;
 
 { TLspFindingsPromptTests }
@@ -182,6 +192,20 @@ begin
     begin
       Execute('[{"files": ["U.pas"]}]').Free;
     end, EJsonRpcError);
+end;
+
+procedure TLspFindingsPromptTests.WithoutPromptsTextIsEmpty;
+var
+  mAnswer: TJSONObject;
+begin
+  mAnswer := ExecuteWith(nil,
+    '[{"findings": [{"file": "U.pas", "line": 3, "rule": "uses-cycle", "message": "a", "severity": "warning"}]}]');
+  try
+    Assert.AreEqual('', mAnswer.GetValue<string>('text'));
+    Assert.AreEqual(1, mAnswer.GetValue<Integer>('count'));
+  finally
+    mAnswer.Free;
+  end;
 end;
 
 initialization

@@ -41,7 +41,9 @@ type
     RuleId: string;
     FileName: string;
     Text: string;
-    function Markdown(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+    function MarkdownOf(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+    function Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
+    function DefaultLimit: Integer;
   end;
 
 function TFakeConventions.Markdown(const ASettings: TServerSettings): string;
@@ -50,12 +52,22 @@ begin
   Result := '# Konventionen';
 end;
 
-function TFakePrompts.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string): string;
+function TFakePrompts.MarkdownOf(const AFinding: TRuleFinding; const AFileName, AText: string): string;
 begin
   RuleId := AFinding.RuleId;
   FileName := AFileName;
   Text := AText;
   Result := '## Befund';
+end;
+
+function TFakePrompts.Markdown(const AItems: TArray<TFindingPromptItem>; ALimit: Integer): string;
+begin
+  Result := '';
+end;
+
+function TFakePrompts.DefaultLimit: Integer;
+begin
+  Result := 0;
 end;
 
 { TMcpConventionsAdapterTests }

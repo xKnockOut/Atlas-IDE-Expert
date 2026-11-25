@@ -74,6 +74,7 @@ uses
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Deprecated,
   Atlas.Common.Lsp.DiagnosticItems,
+  Atlas.Tests.LspRules,
   Atlas.Tests.RuleAssert;
 
 const
@@ -542,7 +543,7 @@ begin
   mFinding := Default(TRuleFinding);
   mFinding.RuleId := cDeprecatedSymbolRuleId;
   mFinding.Message := 'Alt ist deprecated: Nutze Neu (wie W1000).';
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.AreEqual('[2]', mItem.GetValue('tags').ToJSON);
   finally
@@ -550,7 +551,7 @@ begin
   end;
   // Englische Meldung (#1458): erkannt an der Compilernummer, nicht am Text.
   mFinding.Message := 'Alt is deprecated: use Neu (like W1000).';
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.AreEqual('[2]', mItem.GetValue('tags').ToJSON);
   finally
@@ -558,21 +559,21 @@ begin
   end;
   // platform ist nicht veraltet und wird nicht durchgestrichen.
   mFinding.Message := 'Grenze ist platform (wie W1002).';
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.IsNull(mItem.GetValue('tags'));
   finally
     mItem.Free;
   end;
   mFinding.Message := 'Grenze is platform (like W1002).';
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.IsNull(mItem.GetValue('tags'));
   finally
     mItem.Free;
   end;
   mFinding.RuleId := 'unused-variable';
-  mItem := TLspDiagnosticItems.FindingToJson(mFinding);
+  mItem := TLspDiagnosticItems.FindingToJson(mFinding, TTestLspRules.Catalog);
   try
     Assert.IsNull(mItem.GetValue('tags'));
   finally
