@@ -19,22 +19,15 @@ procedure RegisterHotspotTools(const AContext: TMcpToolContext);
 implementation
 
 uses
-  Atlas.Common.Mcp.Contract.Workspace,
   Atlas.Common.Mcp.Server,
+  Atlas.Common.Mcp.Contract.AffectedTests,
   Atlas.Common.Hotspots.Service,
   System.JSON,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Lsp.References,
-  Atlas.Common.Lsp.AffectedTests.Report,
-  Atlas.Common.Lsp.AffectedTests.Types,
-  Atlas.Common.Semantics.NameResolver,
-  Core.VersionControlChanges,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Report,
   Atlas.Common.Lsp.Hotspots,
-  Core.AffectedTests,
-  Core.Hotspots,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Localization.RequestTexts;
 
@@ -42,7 +35,7 @@ type
 {$SCOPEDENUMS ON}
   TMcpChangeText = (GetAffectedTestsTool, GetAffectedTestsBase, GetAffectedTestsIncludeUncommitted,
     GetAffectedTestsDepth, GetAffectedTestsFormat, GetHotspotsTool, GetHotspotsLevel, GetHotspotsLimit,
-    GetHotspotsMonths, GetHotspotsSection, GetHotspotsFormat, AllNeeded, NoneAffected, LimitInvalid, HotspotsOff,
+    GetHotspotsMonths, GetHotspotsSection, GetHotspotsFormat, LimitInvalid, HotspotsOff,
     NoHotspots);
 {$SCOPEDENUMS OFF}
 
@@ -79,18 +72,17 @@ const
     (De: 'Zeitraum in Monaten; Vorgabe hotspots.months (12)'; En: 'Period in months; default hotspots.months (12)'),
     (De: 'Abschnitt; Vorgabe hotspots'; En: 'Section; default hotspots'),
     (De: 'text (Vorgabe), markdown oder json'; En: 'text (default), markdown or json'),
-    (De: 'Alle Tests nötig: %s'; En: 'All tests needed: %s'),
-    (De: 'Keine betroffenen Tests gegenüber %s.'; En: 'No affected tests compared with %s.'),
     (De: '"limit" ist eine ganze Zahl ab 1'; En: '"limit" is a whole number from 1'),
     (De: 'Hotspots sind ausgeschaltet (hotspots.enabled)'; En: 'Hotspots are turned off (hotspots.enabled)'),
     (De: 'Keine Hotspots: %s. Hotspots brauchen ein Git-Repository oder eine SVN-Arbeitskopie.';
     En: 'No hotspots: %s. Hotspots need a Git repository or an SVN working copy.'));
 
-/// <summary>Basis, includeUncommitted (Vorgabe True) und Tiefe aus den Argumenten von get_affected_tests.</summary>
-function AffectedQueryOf(const ARoot: string; const AArguments: TJSONObject): TCoreAffectedQuery;
+/// <summary>Basis, includeUncommitted (Vorgabe True), Tiefe und Format aus den Argumenten von get_affected_tests.
+/// </summary>
+function AffectedQueryOf(const ARoot: string; const AArguments: TJSONObject): TMcpAffectedQuery;
 begin
-  Result := Default(TCoreAffectedQuery);
-  Result.WorkingDir := ARoot;
+  Result := Default(TMcpAffectedQuery);
+  Result.Root := ARoot;
   Result.Base := TMcpArgs.OptionalString(AArguments, 'base');
   if (AArguments = nil) or not AArguments.TryGetValue<Boolean>('includeUncommitted', Result.IncludeUncommitted) then
   begin
@@ -100,88 +92,16 @@ begin
   begin
     Result.Depth := 0;
   end;
-end;
-
-/// <summary>Dateien und Testprogramme der Gruppe; Treffersicherheit und Zeitlimit wie get_impact.</summary>
-function AffectedRequestOf(const AContext: TMcpToolContext; const ASettings: TServerSettings;
-  const AReadText: TReferenceReadText): TAffectedRequest;
-begin
-  Result := Default(TAffectedRequest);
-  Result.Files := AContext.Workspace.AllFiles;
-  Result.TestPrograms := TCoreAffectedTests.TestPrograms(Result.Files, AReadText);
-  Result.Options := AContext.ImpactOptionsFor('');
-  // Testunits aus allen Testprogrammen der Gruppe.
-  Result.Options.Tests := TCoreAffectedTests.TestScope(ASettings.TestUnits.Pattern, Result.TestPrograms, AReadText);
-end;
-
-/// <summary>Betroffene Tests über den Index der Gruppe; Fehler der Versionsverwaltung als EMcpToolError.</summary>
-function FindAffected(const AAccess: TCoreVcsAccess; const AWorkspace: IMcpWorkspace; const ASettings: TServerSettings;
-  const AQuery: TCoreAffectedQuery; const ARequest: TAffectedRequest; const AReadText: TReferenceReadText):
-  TAffectedResult;
-var
-  mResolver: TNameResolver;
-begin
-  mResolver := TNameResolver.Create(AWorkspace.Index, AWorkspace.UnitLoader());
-  try
-    mResolver.Namespaces := AWorkspace.Namespaces;
-    try
-      Result := TCoreAffectedTests.Run(AAccess, ASettings, AQuery,
-        TCoreAffectedSources.New(mResolver, AWorkspace.Index, AReadText), ARequest, nil);
-    except
-      on E: EVcsChanges do
-        raise EMcpToolError.Create(E.Message);
-    end;
-  finally
-    mResolver.Free;
-  end;
-end;
-
-/// <summary>Format dunitx: nur das --run-Argument; ohne Argument sagt der Text warum.</summary>
-function DUnitXText(const AFound: TAffectedResult): string;
-begin
-  if AFound.All then
-  begin
-    Result := cTexts[TMcpChangeText.AllNeeded].Fmt([AFound.AllReason]);
-  end
-  else if Length(AFound.Tests) = 0 then
-  begin
-    Result := cTexts[TMcpChangeText.NoneAffected].Fmt([AFound.Base]);
-  end
-  else if not TAffectedReport.DUnitXArgument(AFound, Result) then
-  begin
-    Result := cTexts[TMcpChangeText.AllNeeded].Fmt([TCoreAffectedTests.TooManyForRun]);
-  end;
+  Result.Format := TMcpArgs.OptionalString(AArguments, 'format');
 end;
 
 function ToolGetAffectedTests(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 var
-  mSettings: TServerSettings;
-  mFormat: TAffectedFormat;
-  mReadText: TReferenceReadText;
-  mFound: TAffectedResult;
-  mAccess: TCoreVcsAccess;
+  mError: string;
 begin
-  mSettings := AContext.Workspace.Settings;
-  if not mSettings.Tests.Affected then
+  if not AContext.Adapters.AffectedTests.Report(AffectedQueryOf(AContext.Root, AArguments), Result, mError) then
   begin
-    raise EMcpToolError.Create(TCoreAffectedTests.OffMessage);
-  end;
-  if not TAffectedReport.TryParseFormat(TMcpArgs.OptionalString(AArguments, 'format'), mFormat) then
-  begin
-    raise EMcpToolError.Create(TRequestTexts.Choice('format', ['text', 'json', 'dunitx']));
-  end;
-  mReadText := TCoreAffectedTests.FileReader();
-  // Über eine Variable halten: als const-Argument würde der Probelauf nie freigegeben.
-  mAccess := AContext.Adapters.VcsAccess();
-  mFound := FindAffected(mAccess, AContext.Workspace, mSettings, AffectedQueryOf(AContext.Root, AArguments),
-    AffectedRequestOf(AContext, mSettings, mReadText), mReadText);
-  if mFormat = TAffectedFormat.DUnitX then
-  begin
-    Result := DUnitXText(mFound);
-  end
-  else
-  begin
-    Result := TAffectedReport.Render(mFound, mFormat);
+    raise EMcpToolError.Create(mError);
   end;
 end;
 
@@ -300,7 +220,7 @@ begin
   mLimit := HotspotLimitOf(AArguments);
   mRequest := HotspotRequestOf(AContext, mSettings, AArguments);
   // Ohne Versionsverwaltung ein Hinweis statt einer leeren Liste.
-  if not TCoreHotspotVcs.Detect(AContext.Adapters.VcsAccess(), AContext.Root, mSettings, mVcs, mError) then
+  if not AContext.Adapters.Vcs.Hotspots(AContext.Root, mSettings, mVcs, mError) then
   begin
     Exit(cTexts[TMcpChangeText.NoHotspots].Fmt([mError]));
   end;

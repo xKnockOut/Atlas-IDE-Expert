@@ -86,7 +86,10 @@ uses
   Shell.Composition.Platform,
   Core.Bootstrap,
   Shell.Composition.RuleRefactorings,
-  Adapters.Mcp.Workspace;
+  Adapters.Mcp.Workspace,
+  Adapters.Mcp.Process,
+  Adapters.Mcp.Vcs,
+  Adapters.Mcp.AffectedTests;
 
 function NewProcess: ICompilerProcess;
 begin
@@ -320,14 +323,47 @@ begin
     end;
 end;
 
+/// <summary>Schreiben über die IDE, wenn die Datei dort offen ist (#397), sonst auf die Platte.</summary>
+function WriteTextOf(const AIde: TMcpIde): TMcpWriteText;
+begin
+  Result :=
+    procedure(const AFileName, AText: string)
+    begin
+      AIde.WriteSourceText(AFileName, AText);
+    end;
+end;
+
+/// <summary>Im Editor der IDE ungespeichert geänderte Dateien.</summary>
+function DirtyFilesOf(const AIde: TMcpIde): TMcpDirtyFiles;
+begin
+  Result :=
+    function: TArray<string>
+    begin
+      Result := AIde.EditorDirtyFiles;
+    end;
+end;
+
+/// <summary>Änderung an einer ungespeicherten Datei in der IDE zurückhalten (#2605).</summary>
+function HoldTextOf(const AIde: TMcpIde): TMcpHoldText;
+begin
+  Result :=
+    function(const AFileName, AExpected, AText: string; out AReason: string): TMcpHoldResult
+    begin
+      Result := AIde.HoldSourceText(AFileName, AExpected, AText, AReason);
+    end;
+end;
+
 function NewEditTools(const AIndex: ISymbolIndex; AGroup: TCoreWorkspaceGroup; ACode: TMcpCodeTools;
   const ALogger: ILogger): TMcpEditTools;
+var
+  mIde: TMcpIde;
 begin
-  Result := TMcpEditTools.Create(AIndex, ReadSourceText, WriteSourceText, AllFilesOf(AGroup),
+  mIde := TMcpIde.Create(TMcpProcessAdapter.New);
+  Result := TMcpEditTools.Create(AIndex, ReadSourceText, WriteTextOf(mIde), AllFilesOf(AGroup),
     AGroup.UnitLoader());
-  Result.DirtyFiles := EditorDirtyFiles;
+  Result.DirtyFiles := DirtyFilesOf(mIde);
   // Ungespeicherte Dateien hält die IDE zurück, statt abzulehnen (#2605).
-  Result.HoldText := HoldSourceText;
+  Result.HoldText := HoldTextOf(mIde);
   Result.CheckSource := ACode.CheckSource;
   Result.SettingsFor := ACode.SettingsFor;
   Result.Extract := TMcpComposition.Extract;
@@ -414,6 +450,7 @@ begin
   Result.Hotspots := Hotspots;
   Result.ImpactOptionsFor := Code.ImpactOptionsFor;
   Result.Adapters := GroupAdapters(Group);
+  Result.Adapters.AffectedTests := TMcpAffectedTestsAdapter.New(McpWorkspace, VcsAccess, Code.ImpactOptionsFor);
   Result.Started := Now;
 end;
 
@@ -421,7 +458,8 @@ class function TMcpServices.HostAdapters: TMcpHostAdapters;
 begin
   Result := Default(TMcpHostAdapters);
   Result.NewProcess := NewProcess;
-  Result.VcsAccess := VcsAccess;
+  Result.Process := TMcpProcessAdapter.New;
+  Result.Vcs := TMcpVcsAdapter.New(VcsAccess);
   Result.GitDir := GitDirOf;
   Result.CompilerFixes := TMcpComposition.CompilerFixes;
   Result.Conventions := TMcpComposition.Conventions;

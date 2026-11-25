@@ -174,6 +174,9 @@ type
     /// <summary>Wie LoadFromFile, wenn nur gelesen wird (Projekt, Gruppe, Quelltext, Protokoll): erkennt BOM,
     /// UTF-8 und ANSI statt wie TFile.ReadAllText ohne BOM immer ANSI anzunehmen (#1109).</summary>
     class function LoadText(const AFileName: string): string; static;
+    /// <summary>LoadText, wenn AFileName angegeben ist und es die Datei gibt; sonst False und AText leer. Fehler
+    /// beim Lesen einer vorhandenen Datei gehen an den Aufrufer.</summary>
+    class function TryLoadText(const AFileName: string; out AText: string): Boolean; static;
     /// <summary>LoadText in Zeilen; ein Umbruch am Ende ergibt wie bei TFile.ReadAllLines keine leere letzte
     /// Zeile.</summary>
     class function LoadLines(const AFileName: string): TArray<string>; static;
@@ -937,6 +940,16 @@ var
   mFormat: TFileFormat;
 begin
   Result := LoadFromFile(AFileName, mFormat);
+end;
+
+class function TFileEncoding.TryLoadText(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := (AFileName <> '') and FileExists(AFileName);
+  AText := '';
+  if Result then
+  begin
+    AText := LoadText(AFileName);
+  end;
 end;
 
 class function TFileEncoding.LoadLines(const AFileName: string): TArray<string>;
