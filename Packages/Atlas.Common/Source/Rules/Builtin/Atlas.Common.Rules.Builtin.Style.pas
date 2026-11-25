@@ -107,7 +107,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Pascal.TreeHandles,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.Style.Tokens,
   Atlas.Common.Rules.Builtin.Style.LineLength,
   Atlas.Common.Rules.Builtin.Style.Declarations,

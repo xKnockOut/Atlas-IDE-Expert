@@ -123,7 +123,7 @@ uses
   System.Generics.Defaults,
   Atlas.Text.Lines,
   Atlas.Text.Fuzzy,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Projects.DprojEditor,
   Atlas.Common.Pascal.UsesEdits,
   Atlas.Common.Pascal.UsesClauses,

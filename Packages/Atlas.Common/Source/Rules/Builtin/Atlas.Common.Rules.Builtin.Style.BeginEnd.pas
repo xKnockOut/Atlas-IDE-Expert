@@ -32,7 +32,7 @@ uses
   Atlas.Common.Pascal.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.Builtin.Style.Tokens,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Arrays;

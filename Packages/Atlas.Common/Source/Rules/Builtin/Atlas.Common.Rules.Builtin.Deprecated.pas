@@ -65,7 +65,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Configuration.Contract,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Rules.WarnSwitches,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Localization.Texts,

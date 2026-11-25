@@ -79,7 +79,7 @@ uses
   Atlas.Common.Dfm.SqlText,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}

@@ -94,7 +94,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Common.Semantics.Ancestry,
   Atlas.Common.Rules.Builtin.Unused.Shared,
   Atlas.Common.Rules.Builtin.Concurrency.ThreadExecute,

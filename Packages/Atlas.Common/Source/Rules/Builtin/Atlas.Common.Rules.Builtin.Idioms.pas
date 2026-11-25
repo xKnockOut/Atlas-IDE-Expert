@@ -106,7 +106,7 @@ uses
   Atlas.Common.Pascal.StatementText,
   Atlas.Common.Semantics.IfCase,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Options,
+  Atlas.Common.Configuration.RuleOptions,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Pascal.SyntaxNodes,
