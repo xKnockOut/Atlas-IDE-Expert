@@ -13,8 +13,11 @@
 //                            die Klasse selbst (#1109). Korrektur: TryGetValue mit Vorgabewert
 //   delimited-text-without-strict
 //                            Liste.DelimitedText := … nach Liste.Delimiter := … in derselben Routine, ohne dass
-//                            StrictDelimiter gesetzt wird (#952; bei Feldern in der ganzen Unit): DelimitedText
-//                            trennt dann auch an Leerzeichen. Korrektur: StrictDelimiter := True; davor
+//                            StrictDelimiter gesetzt wird (#952): DelimitedText trennt dann auch an Leerzeichen.
+//                            StrictDelimiter zählt in der Routine (bei Feldern in der ganzen Unit), auch über with
+//                            und Typumwandlung. Still bei Parametern und Listen, die die Routine nicht selbst
+//                            erzeugt.
+//                            Korrektur: StrictDelimiter := True; davor
 
 interface
 
@@ -1289,179 +1292,334 @@ begin
     cTexts[TRtlTypePatternsCollectionsText.DelimiterTitle].Text);
 end;
 
+type
+  /// <summary>Sucht in einer Unit die Zuweisungen an Delimiter, StrictDelimiter und DelimitedText einer Liste
+  /// (#952). Eine Liste setzt die Eigenschaft als Liste.X, Self.Liste.X, TStringList(Liste).X,
+  /// (Liste as TStringList).X oder in with Liste do.</summary>
+  TDelimiterScan = class
+  private
+    FContext: TRuleContext;
+    FTokens: TTokens;
+    FCode: TArray<Integer>;
+    function Token(APosition: Integer): TPascalToken;
+    function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+    function IsName(APosition: Integer; const AName: string): Boolean;
+    function IsWord(APosition: Integer; const AWord: string): Boolean;
+    function ListBefore(APosition: Integer): string;
+    function CastBefore(APosition: Integer): string;
+    function FirstAt(AOffset: Integer): Integer;
+    function WithNames(AWith: TSyntaxNode; const AList: string): Boolean;
+    function InWithOf(APosition: Integer; const AList: string): Boolean;
+    function Targets(APosition: Integer; const AList: string): Boolean;
+    function Assigns(AFrom, ATo: Integer; const AList, AProperty: string; out AValue: string): Boolean;
+    function CreatedOnly(ARoutine: TSyntaxNode; const AList: string): Boolean;
+    function StrictRange(ARoutine: TSyntaxNode; const AList: string; out AFrom, ATill: Integer): Boolean;
+    function Fixes(ARoutine: TSyntaxNode; APosition: Integer; const AList: string): TArray<TRuleFix>;
+    procedure CheckAt(APosition: Integer; const AReport: IRuleReport);
+  public
+    constructor Create(const AContext: TRuleContext);
+    procedure Run(const AReport: IRuleReport);
+  end;
+
+/// <summary>Erstes Kind von ANode, das AOffset enthält; nil ohne.</summary>
+function ChildAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if (AOffset >= ANode[mIndex].StartOffset) and (AOffset < ANode[mIndex].EndOffset) then
+    begin
+      Exit(ANode[mIndex]);
+    end;
+  end;
+  Result := nil;
+end;
+
+/// <summary>Innerster Knoten der Art AKind unter ANode, der AOffset enthält; nil ohne.</summary>
+function InnermostAt(ANode: TSyntaxNode; AOffset: Integer; AKind: TSyntaxKind): TSyntaxNode;
+var
+  mNode: TSyntaxNode;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): je Ebene in das Kind, das AOffset enthält.
+  Result := nil;
+  mNode := ChildAt(ANode, AOffset);
+  while mNode <> nil do
+  begin
+    if mNode.Kind = AKind then
+    begin
+      Result := mNode;
+    end;
+    mNode := ChildAt(mNode, AOffset);
+  end;
+end;
+
+{ TDelimiterScan }
+
+constructor TDelimiterScan.Create(const AContext: TRuleContext);
+var
+  mIndex: Integer;
+begin
+  inherited Create;
+  FContext := AContext;
+  FTokens := AContext.Tree.Tokens;
+  FCode := nil;
+  for mIndex := 0 to High(FTokens) do
+  begin
+    if not IsTrivia(FTokens[mIndex]) then
+    begin
+      FCode := FCode + [mIndex];
+    end;
+  end;
+end;
+
+function TDelimiterScan.Token(APosition: Integer): TPascalToken;
+begin
+  Result := FTokens[FCode[APosition]];
+end;
+
+function TDelimiterScan.IsSym(APosition: Integer; const ASymbol: string): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and Token(APosition).IsSymbol(ASymbol);
+end;
+
+function TDelimiterScan.IsName(APosition: Integer; const AName: string): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and
+    (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
+end;
+
+function TDelimiterScan.IsWord(APosition: Integer; const AWord: string): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and
+    (Token(APosition).Kind = TPascalTokenKind.Keyword) and SameText(Token(APosition).Text, AWord);
+end;
+
+// Liste vor ".Eigenschaft" bei APosition (X bzw. Self.X); '' bei anderen Ausdrücken.
+function TDelimiterScan.ListBefore(APosition: Integer): string;
+begin
+  Result := '';
+  if not IsSym(APosition - 1, '.') or (APosition < 2) or
+    (Token(APosition - 2).Kind <> TPascalTokenKind.Identifier) then
+  begin
+    Exit;
+  end;
+  if IsSym(APosition - 3, '.') and not IsName(APosition - 4, 'Self') then
+  begin
+    Exit;
+  end;
+  Result := Token(APosition - 2).Text;
+end;
+
+// Liste in einer Typumwandlung vor ".Eigenschaft": TStringList(X).P oder (X as TStringList).P; sonst ''.
+function TDelimiterScan.CastBefore(APosition: Integer): string;
+begin
+  Result := '';
+  if not IsSym(APosition - 1, '.') or not IsSym(APosition - 2, ')') or (APosition < 6) then
+  begin
+    Exit;
+  end;
+  if (Token(APosition - 3).Kind = TPascalTokenKind.Identifier) and IsSym(APosition - 4, '(') and
+    (Token(APosition - 5).Kind = TPascalTokenKind.Identifier) then
+  begin
+    Result := Token(APosition - 3).Text;
+  end
+  else if (Token(APosition - 3).Kind = TPascalTokenKind.Identifier) and IsWord(APosition - 4, 'as') and
+    (Token(APosition - 5).Kind = TPascalTokenKind.Identifier) and IsSym(APosition - 6, '(') then
+  begin
+    Result := Token(APosition - 5).Text;
+  end;
+end;
+
+// Erste Stelle in FCode ab AOffset; Length(FCode) ohne.
+function TDelimiterScan.FirstAt(AOffset: Integer): Integer;
+begin
+  Result := 0;
+  while (Result <= High(FCode)) and (Token(Result).Offset < AOffset) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+// Nennt der Kopf von AWith (zwischen with und do) die Liste selbst, nicht nur ein Mitglied von ihr?
+function TDelimiterScan.WithNames(AWith: TSyntaxNode; const AList: string): Boolean;
+var
+  mPosition: Integer;
+begin
+  mPosition := FirstAt(AWith.StartOffset) + 1;
+  while (mPosition <= High(FCode)) and not IsWord(mPosition, 'do') do
+  begin
+    if IsName(mPosition, AList) and not IsSym(mPosition - 1, '.') and not IsSym(mPosition + 1, '.') then
+    begin
+      Exit(True);
+    end;
+    Inc(mPosition);
+  end;
+  Result := False;
+end;
+
+// Steht APosition in einem with, dessen Kopf AList nennt?
+function TDelimiterScan.InWithOf(APosition: Integer; const AList: string): Boolean;
+var
+  mNode: TSyntaxNode;
+  mOffset: Integer;
+begin
+  mOffset := Token(APosition).Offset;
+  mNode := ChildAt(FContext.Tree.Root, mOffset);
+  while mNode <> nil do
+  begin
+    if (mNode.Kind = TSyntaxKind.WithStatement) and WithNames(mNode, AList) then
+    begin
+      Exit(True);
+    end;
+    mNode := ChildAt(mNode, mOffset);
+  end;
+  Result := False;
+end;
+
+// Setzt die Eigenschaft bei APosition die Liste AList?
+function TDelimiterScan.Targets(APosition: Integer; const AList: string): Boolean;
+begin
+  if IsSym(APosition - 1, '.') then
+  begin
+    Result := SameText(ListBefore(APosition), AList) or SameText(CastBefore(APosition), AList);
+  end
+  else
+  begin
+    Result := InWithOf(APosition, AList);
+  end;
+end;
+
+// Wird in [AFrom, ATo) die Eigenschaft AProperty der Liste AList gesetzt? AValue liefert das erste Token des
+// Werts.
+function TDelimiterScan.Assigns(AFrom, ATo: Integer; const AList, AProperty: string; out AValue: string): Boolean;
+var
+  mPosition: Integer;
+begin
+  for mPosition := 0 to High(FCode) - 2 do
+  begin
+    if (Token(mPosition).Offset >= AFrom) and (Token(mPosition).Offset < ATo) and
+      IsName(mPosition, AProperty) and IsSym(mPosition + 1, ':=') and Targets(mPosition, AList) then
+    begin
+      AValue := Token(mPosition + 2).Text;
+      Exit(True);
+    end;
+  end;
+  AValue := '';
+  Result := False;
+end;
+
+// Erhält die Variable AList in ARoutine nur neu erzeugte Listen (AList := TStringList.Create)? Dann gilt
+// StrictDelimiter nur aus dieser Routine.
+function TDelimiterScan.CreatedOnly(ARoutine: TSyntaxNode; const AList: string): Boolean;
+var
+  mPosition: Integer;
+begin
+  Result := False;
+  for mPosition := FirstAt(ARoutine.StartOffset) to High(FCode) - 4 do
+  begin
+    if Token(mPosition).Offset >= ARoutine.EndOffset then
+    begin
+      Break;
+    end;
+    if IsName(mPosition, AList) and IsSym(mPosition + 1, ':=') and not IsSym(mPosition - 1, '.') then
+    begin
+      if (Token(mPosition + 2).Kind <> TPascalTokenKind.Identifier) or not IsSym(mPosition + 3, '.') or
+        not IsName(mPosition + 4, 'Create') then
+      begin
+        Exit(False);
+      end;
+      Result := True;
+    end;
+  end;
+end;
+
+// Bereich, in dem StrictDelimiter der Liste zählt: bei lokalen Variablen, die die Routine selbst erzeugt, die
+// Routine, bei Feldern die ganze Unit (der Konstruktor setzt StrictDelimiter oft). False bei Parametern und bei
+// Listen aus anderen Ausdrücken (Funktionsergebnis): Dort setzt der Aufrufer bzw. die erzeugende Funktion
+// StrictDelimiter, die Regel sieht es nicht und bleibt still.
+function TDelimiterScan.StrictRange(ARoutine: TSyntaxNode; const AList: string; out AFrom, ATill: Integer): Boolean;
+begin
+  AFrom := 0;
+  ATill := MaxInt;
+  Result := not RoutineDeclares(ARoutine, AList, [TSyntaxKind.Parameter]);
+  if Result and RoutineDeclares(ARoutine, AList, [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar]) then
+  begin
+    AFrom := ARoutine.StartOffset;
+    ATill := ARoutine.EndOffset;
+    Result := CreatedOnly(ARoutine, AList);
+  end;
+end;
+
+function TDelimiterScan.Fixes(ARoutine: TSyntaxNode; APosition: Integer; const AList: string): TArray<TRuleFix>;
+var
+  mStatement: TSyntaxNode;
+  mPrefix: string;
+begin
+  Result := nil;
+  mStatement := InnermostAt(ARoutine, Token(APosition).Offset, TSyntaxKind.AssignStatement);
+  if (mStatement <> nil) and (mStatement.Parent <> nil) and (mStatement.Parent.Kind in [TSyntaxKind.Block,
+    TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
+  begin
+    mPrefix := '';
+    if IsSym(APosition - 3, '.') then
+    begin
+      mPrefix := 'Self.';
+    end;
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.InsertStrict].Text,
+      [TRoutineBody.InsertBefore(FContext.Text, mStatement, mPrefix + AList + '.StrictDelimiter := True;')])];
+  end;
+end;
+
+procedure TDelimiterScan.CheckAt(APosition: Integer; const AReport: IRuleReport);
+var
+  mList, mValue: string;
+  mRoutine: TSyntaxNode;
+  mFrom, mTill: Integer;
+begin
+  mList := ListBefore(APosition);
+  mRoutine := InnermostAt(FContext.Tree.Root, Token(APosition).Offset, TSyntaxKind.RoutineDecl);
+  if (mList = '') or (mRoutine = nil) or not StrictRange(mRoutine, mList, mFrom, mTill) then
+  begin
+    Exit;
+  end;
+  // Ohne eigenen Delimiter bleibt die Regel still; StrictDelimiter := False ist bewusst. Mit dem Leerzeichen als
+  // Delimiter ist das Trennen an Leerzeichen gewollt.
+  if not Assigns(mRoutine.StartOffset, mRoutine.EndOffset, mList, 'Delimiter', mValue) or
+    (mValue = ''' ''') or SameText(mValue, '#32') or Assigns(mFrom, mTill, mList, 'StrictDelimiter', mValue) then
+  begin
+    Exit;
+  end;
+  AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos),
+    cTexts[TRtlTypePatternsCollectionsText.Delimiter].Text, Fixes(mRoutine, APosition, mList));
+end;
+
+procedure TDelimiterScan.Run(const AReport: IRuleReport);
+var
+  mPosition: Integer;
+begin
+  for mPosition := 0 to High(FCode) - 1 do
+  begin
+    if IsName(mPosition, 'DelimitedText') and IsSym(mPosition + 1, ':=') then
+    begin
+      CheckAt(mPosition, AReport);
+    end;
+  end;
+end;
+
 procedure TDelimitedTextWithoutStrictRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  mTokens: TTokens;
-  mCode: TArray<Integer>;
-
-  function Token(APosition: Integer): TPascalToken;
-  begin
-    Result := mTokens[mCode[APosition]];
-  end;
-
-  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
-  begin
-    Result := (APosition >= 0) and (APosition <= High(mCode)) and Token(APosition).IsSymbol(ASymbol);
-  end;
-
-  function IsName(APosition: Integer; const AName: string): Boolean;
-  begin
-    Result := (APosition >= 0) and (APosition <= High(mCode)) and
-      (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
-  end;
-
-  // Liste vor ".Eigenschaft" bei APosition (X bzw. Self.X); '' bei anderen Ausdrücken.
-  function ListBefore(APosition: Integer): string;
-  begin
-    Result := '';
-    if not IsSym(APosition - 1, '.') or (APosition < 2) or
-      (Token(APosition - 2).Kind <> TPascalTokenKind.Identifier) then
-    begin
-      Exit;
-    end;
-    if IsSym(APosition - 3, '.') and not IsName(APosition - 4, 'Self') then
-    begin
-      Exit;
-    end;
-    Result := Token(APosition - 2).Text;
-  end;
-
-  // Wird in [AFrom, ATo) "Liste.AProperty := …" gesetzt? AValue liefert das erste Token des Werts.
-  function Assigns(AFrom, ATo: Integer; const AList, AProperty: string; out AValue: string): Boolean;
-  var
-    mPosition: Integer;
-  begin
-    for mPosition := 0 to High(mCode) - 2 do
-    begin
-      if (Token(mPosition).Offset >= AFrom) and (Token(mPosition).Offset < ATo) and
-        IsName(mPosition, AProperty) and IsSym(mPosition + 1, ':=') and SameText(ListBefore(mPosition), AList) then
-      begin
-        AValue := Token(mPosition + 2).Text;
-        Exit(True);
-      end;
-    end;
-    AValue := '';
-    Result := False;
-  end;
-
-  // Erstes Kind von ANode, das AOffset enthält; nil ohne.
-  function ChildAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
-  var
-    mIndex: Integer;
-  begin
-    for mIndex := 0 to ANode.ChildCount - 1 do
-    begin
-      if (AOffset >= ANode[mIndex].StartOffset) and (AOffset < ANode[mIndex].EndOffset) then
-      begin
-        Exit(ANode[mIndex]);
-      end;
-    end;
-    Result := nil;
-  end;
-
-  function RoutineAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
-  var
-    mNode: TSyntaxNode;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): je Ebene in das Kind, das AOffset enthält.
-    Result := nil;
-    mNode := ChildAt(ANode, AOffset);
-    while mNode <> nil do
-    begin
-      if mNode.Kind = TSyntaxKind.RoutineDecl then
-      begin
-        Result := mNode;
-      end;
-      mNode := ChildAt(mNode, AOffset);
-    end;
-  end;
-
-  // Innerste Zuweisung unter ANode, die AOffset enthält.
-  function StatementAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
-  var
-    mNode: TSyntaxNode;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht) wie RoutineAt.
-    Result := nil;
-    mNode := ChildAt(ANode, AOffset);
-    while mNode <> nil do
-    begin
-      if mNode.Kind = TSyntaxKind.AssignStatement then
-      begin
-        Result := mNode;
-      end;
-      mNode := ChildAt(mNode, AOffset);
-    end;
-  end;
-
-  procedure CheckAt(APosition: Integer);
-  var
-    mList, mValue, mPrefix: string;
-    mRoutine, mStatement: TSyntaxNode;
-    mFrom, mTill: Integer;
-    mFixes: TArray<TRuleFix>;
-  begin
-    mList := ListBefore(APosition);
-    mRoutine := RoutineAt(AContext.Tree.Root, Token(APosition).Offset);
-    if (mList = '') or (mRoutine = nil) then
-    begin
-      Exit;
-    end;
-    // Lokal: die Routine; Feld: die ganze Unit (StrictDelimiter oft im Konstruktor).
-    mFrom := mRoutine.StartOffset;
-    mTill := mRoutine.EndOffset;
-    if not DeclaredLocally(mRoutine, mList) then
-    begin
-      mFrom := 0;
-      mTill := MaxInt;
-    end;
-    // Ohne eigenen Delimiter bleibt die Regel still; StrictDelimiter := False ist bewusst. Mit dem Leerzeichen als
-    // Delimiter ist das Trennen an Leerzeichen gewollt.
-    if not Assigns(mRoutine.StartOffset, mRoutine.EndOffset, mList, 'Delimiter', mValue) or
-      (mValue = ''' ''') or SameText(mValue, '#32') or Assigns(mFrom, mTill, mList, 'StrictDelimiter', mValue) then
-    begin
-      Exit;
-    end;
-    mFixes := nil;
-    mStatement := StatementAt(mRoutine, Token(APosition).Offset);
-    if (mStatement <> nil) and (mStatement.Parent <> nil) and (mStatement.Parent.Kind in [TSyntaxKind.Block,
-      TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
-    begin
-      mPrefix := '';
-      if IsSym(APosition - 3, '.') then
-      begin
-        mPrefix := 'Self.';
-      end;
-      mFixes := [TRuleFix.Create(cTexts[TRtlTypePatternsCollectionsText.InsertStrict].Text,
-        [TRoutineBody.InsertBefore(AContext.Text, mStatement, mPrefix + mList + '.StrictDelimiter := True;')])];
-    end;
-    AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition).EndPos),
-      cTexts[TRtlTypePatternsCollectionsText.Delimiter].Text,
-      mFixes);
-  end;
-
-var
-  mIndex, mPosition: Integer;
+  mScan: TDelimiterScan;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'DelimitedText') then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mCode := nil;
-  for mIndex := 0 to High(mTokens) do
-  begin
-    if not IsTrivia(mTokens[mIndex]) then
-    begin
-      mCode := mCode + [mIndex];
-    end;
-  end;
-  for mPosition := 0 to High(mCode) - 1 do
-  begin
-    if IsName(mPosition, 'DelimitedText') and IsSym(mPosition + 1, ':=') then
-    begin
-      CheckAt(mPosition);
-    end;
+  mScan := TDelimiterScan.Create(AContext);
+  try
+    mScan.Run(AReport);
+  finally
+    mScan.Free;
   end;
 end;
 
