@@ -14,16 +14,23 @@
 //                         todoCategory
 //   /doc                  XML-Doc-Gerüst für die Routine darunter
 //   /log                  Protokollzeile mit Unit- und Routinennamen (slashCommands.logCall, #304)
+//
+// SortUsesEdits sortiert für das Formatieren (format.sortUses) wie /sortuses, streicht aber nie.
 
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Editing.Contract;
 
 /// <summary>Hinweis, wenn /cleanuses keinen Index hat.</summary>
 function CleanUsesNoIndexHint: string;
 /// <summary>Hinweis, wenn /ignore eine Regel nennt, die in der Zeile darunter nichts meldet.</summary>
 function IgnoreNoHitHint: string;
+
+/// <summary>uses-Listen von AContext.Text sortieren wie /sortuses (Reihenfolge, Gruppen, Kommentar-Abschnitte,
+/// doppelte Einträge), ohne ungenutzte zu streichen. False, wenn nichts zu ändern ist.</summary>
+function SortUsesEdits(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>): Boolean;
 
 /// <summary>Trägt die Pflegebefehle über ARegister ein.</summary>
 procedure RegisterMaintenanceCommands(const ARegister: TSlashRegister);
@@ -33,7 +40,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
@@ -44,6 +50,7 @@ uses
   Atlas.Common.Editing.GitUser,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.CommandSource,
+  Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -191,6 +198,17 @@ begin
     Result := True;
   finally
     mSource.Free;
+  end;
+end;
+
+function SortUsesEdits(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>): Boolean;
+begin
+  AEdits := nil;
+  Result := TPascalUsesEdits.Rewrite(TPascalLexer.Tokenize(AContext.Text), AContext.Text, SortUsesOptions(AContext),
+    TTextLines.LineBreakOf(AContext.Text), AEdits);
+  if not Result then
+  begin
+    AEdits := nil;
   end;
 end;
 

@@ -468,6 +468,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `format.alignAssignments` | Projekt (atlas.json) | boolean | `false` |  | := untereinander stehender Zuweisungen ausrichten. |
 | `format.alignDeclarations` | Projekt (atlas.json) | boolean | `false` |  | Doppelpunkte bzw. = untereinander stehender Deklarationen (var, const, Felder, Parameter) ausrichten. |
 | `format.alignComments` | Projekt (atlas.json) | boolean | `false` |  | Kommentare am Zeilenende untereinander stehender Zeilen ausrichten. |
+| `format.sortUses` | Projekt (atlas.json) | boolean | `false` |  | Beim Formatieren der ganzen Datei im Editor (nicht bei einer Auswahl, nicht --format-check/--format-write) die uses-Listen sortieren wie /sortuses: Reihenfolge nach slashCommands.sortUsesOrder, Gruppen nach usesGroupStyle, Kommentar-Abschnitte bleiben, doppelte Einträge fallen weg. Ungenutzte Units streicht das Formatieren nie; Listen mit {$IFDEF} bleiben unberührt. Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
 
 ## issues
 
