@@ -91,7 +91,8 @@ uses
   System.Diagnostics,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.Impact;
+  Atlas.Common.Lsp.Impact,
+  Atlas.Tests.SourceText;
 
 const
   cBasisFile = 'C:\P\Basis.pas';
@@ -303,26 +304,6 @@ begin
   Result := TArray<string>.Create(cBasisFile, cAndereFile, cFormularFile, cBasisTestFile, cFormularTestFile);
 end;
 
-/// <summary>0-basierte Zeile, in der AMarker zuerst vorkommt.</summary>
-function LineOf(const AText, AMarker: string): Integer;
-var
-  mIndex, mScan: Integer;
-begin
-  mIndex := Pos(AMarker, AText);
-  if mIndex = 0 then
-  begin
-    raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
-  end;
-  Result := 0;
-  for mScan := 1 to mIndex - 1 do
-  begin
-    if AText[mScan] = #10 then
-    begin
-      Inc(Result);
-    end;
-  end;
-end;
-
 function Span(AFirst, ALast: Integer): TChangedLines;
 var
   mSpan: TLineSpan;
@@ -341,7 +322,7 @@ end;
 
 function LinesAt(const AText, AMarker: string): TChangedLines;
 begin
-  Result := Span(LineOf(AText, AMarker), LineOf(AText, AMarker));
+  Result := Span(TTestSource.LineOf(AText, AMarker), TTestSource.LineOf(AText, AMarker));
 end;
 
 function Input(const AFileName: string; const ALines: TChangedLines): TAffectedInput;
@@ -505,8 +486,8 @@ var
   mLines: TChangedLines;
 begin
   // Leerzeile vor der Routine und der Kommentar in ihrem Rumpf.
-  mLines := Span(LineOf(cUnitBasis, 'function TBaseline.Normalize') - 1, LineOf(cUnitBasis, 'function TBaseline.Normalize')
-    - 1);
+  mLines := Span(TTestSource.LineOf(cUnitBasis, 'function TBaseline.Normalize') - 1,
+    TTestSource.LineOf(cUnitBasis, 'function TBaseline.Normalize') - 1);
   mLines.Spans := mLines.Spans + LinesAt(cUnitBasis, '// nur ein Kommentar').Spans;
   Assert.AreEqual(0, Integer(Length(TAffectedTests.MapPascal(cBasisFile, cUnitBasis, mLines))));
 end;
@@ -516,7 +497,7 @@ var
   mChanges: TArray<TAffectedChange>;
 begin
   // Zeilen vor "Result := AText" entfernt: davor und danach steht Normalize.
-  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, Gap(LineOf(cUnitBasis, 'Result := AText')));
+  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, Gap(TTestSource.LineOf(cUnitBasis, 'Result := AText')));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.AreEqual('TBaseline.Normalize', mChanges[0].Text);
 end;
@@ -526,7 +507,8 @@ var
   mChanges: TArray<TAffectedChange>;
 begin
   // Vor "function TBaseline.Match" entfernt (etwa eine ganze Routine): davor Normalize, danach Match.
-  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis, Gap(LineOf(cUnitBasis, 'function TBaseline.Match')));
+  mChanges := TAffectedTests.MapPascal(cBasisFile, cUnitBasis,
+    Gap(TTestSource.LineOf(cUnitBasis, 'function TBaseline.Match')));
   Assert.AreEqual(1, Integer(Length(mChanges)));
   Assert.AreEqual<TAffectedChangeKind>(TAffectedChangeKind.WholeUnit, mChanges[0].Kind);
   Assert.AreEqual('implementation', mChanges[0].Place);
@@ -546,7 +528,7 @@ var
 begin
   mLines := TAffectedTests.IncludeLines(cUnitFormular, cFormularInclude);
   Assert.AreEqual(1, Integer(Length(mLines)));
-  Assert.AreEqual(LineOf(cUnitFormular, '{$I Formular.inc}'), mLines[0]);
+  Assert.AreEqual(TTestSource.LineOf(cUnitFormular, '{$I Formular.inc}'), mLines[0]);
   // Ohne Endung gilt .inc.
   Assert.AreEqual(1, Integer(Length(TAffectedTests.IncludeLines('{$INCLUDE Formular}', cFormularInclude))));
   Assert.AreEqual(0, Integer(Length(TAffectedTests.IncludeLines(cUnitFormular, 'C:\P\Andere.inc'))));
