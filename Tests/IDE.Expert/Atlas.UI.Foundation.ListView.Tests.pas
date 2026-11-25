@@ -4,7 +4,8 @@
 // einem DPI-Wechsel genau einmal skaliert (nicht doppelt), Sonderbreiten
 // unverändert, Berichtsansicht ohne eigene Farben; die füllende Spalte nimmt
 // die übrige Breite und wächst mit der Liste; Spalten nach Inhalt, Sortieren
-// per Spaltenkopf mit Zahlen als Zahlen.
+// per Spaltenkopf mit Zahlen als Zahlen; gepuffertes Zeichnen bleibt an, auch
+// wenn die VCL die erweiterten Stile neu setzt.
 
 interface
 
@@ -47,11 +48,14 @@ type
     procedure ColumnClickSortsAndSecondClickReverses;
     [Test]
     procedure SortTieKeepsDataOrder;
+    [Test]
+    procedure DoubleBufferSurvivesStyleChanges;
   end;
 
 implementation
 
 uses
+  Winapi.CommCtrl,
   System.Classes,
   System.SysUtils,
   Vcl.Graphics,
@@ -80,6 +84,18 @@ begin
   FForm.Free;
   FForm := nil;
   FList := nil;
+end;
+
+procedure TAtlasListViewTests.DoubleBufferSurvivesStyleChanges;
+begin
+  FList.HandleNeeded;
+  Assert.IsTrue((ListView_GetExtendedListViewStyle(FList.Handle) and LVS_EX_DOUBLEBUFFER) <> 0, 'nach dem Anlegen');
+  // RowSelect und Checkboxes setzt die VCL über die erweiterten Stile neu.
+  FList.RowSelect := not FList.RowSelect;
+  FList.Checkboxes := True;
+  Assert.IsTrue((ListView_GetExtendedListViewStyle(FList.Handle) and LVS_EX_DOUBLEBUFFER) <> 0, 'nach RowSelect');
+  Assert.AreEqual(FList.RowSelect, (ListView_GetExtendedListViewStyle(FList.Handle) and LVS_EX_FULLROWSELECT) <> 0,
+    'RowSelect wirkt weiter');
 end;
 
 procedure TAtlasListViewTests.ColumnWidthIsLogical;

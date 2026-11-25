@@ -89,7 +89,7 @@ type
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure PreviousCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
-    procedure DrawRow(ACanvas: TCanvas; AItem: TListItem; AState: TCustomDrawState);
+    procedure DrawRow(ACanvas: TCanvas; AItem: TListItem);
   protected
     procedure CreateWnd; override;
   public
@@ -137,7 +137,7 @@ uses
   System.Types,
   Winapi.Windows,
   Vcl.Clipbrd,
-  Atlas.UI.Debug.ExceptionStack;
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -508,14 +508,14 @@ procedure TAtlasDebugCallStackFrame.ListCustomDrawItem(Sender: TCustomListView; 
   State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
-  DrawRow(Sender.Canvas, Item, State);
+  DrawRow(Sender.Canvas, Item);
 end;
 
 procedure TAtlasDebugCallStackFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
   SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   DefaultDraw := True;
-  DrawRow(Sender.Canvas, Item, State);
+  DrawRow(Sender.Canvas, Item);
 end;
 
 procedure TAtlasDebugCallStackFrame.PreviousCustomDrawItem(Sender: TCustomListView; Item: TListItem;
@@ -526,14 +526,14 @@ begin
   DefaultDraw := True;
   mChanged := FHasPrevious and (Item.Index <= High(FPrev.Entries)) and
     (FPrev.Entries[Item.Index].Changed or FPrev.Entries[Item.Index].ParamsChanged);
-  TAtlasDebugExceptionStack.RowColors(Sender.Canvas, FPrevious, State, not FHasPrevious);
-  if mChanged and not (cdsSelected in State) then
+  TAtlasUiTheme.RowColors(Sender.Canvas, FPrevious, Item.Selected, not FHasPrevious);
+  if mChanged and not Item.Selected then
   begin
     Sender.Canvas.Font.Color := cChangedColor;
   end;
 end;
 
-procedure TAtlasDebugCallStackFrame.DrawRow(ACanvas: TCanvas; AItem: TListItem; AState: TCustomDrawState);
+procedure TAtlasDebugCallStackFrame.DrawRow(ACanvas: TCanvas; AItem: TListItem);
 var
   mIndex: Integer;
   mRow: TAtlasDebugStackRow;
@@ -545,11 +545,11 @@ begin
     Exit;
   end;
   mRow := FRows[mIndex];
-  TAtlasDebugExceptionStack.RowColors(ACanvas, FList, AState, mRow.Faded);
+  TAtlasUiTheme.RowColors(ACanvas, FList, AItem.Selected, mRow.Faded);
   if FStack.Hits(mRow, FBar.Query) > 0 then
   begin
     ACanvas.Font.Style := [fsBold];
-    if not (cdsSelected in AState) then
+    if not AItem.Selected then
     begin
       ACanvas.Font.Color := cHitColor;
     end;
@@ -569,7 +569,7 @@ begin
   begin
     ACanvas.Font.Style := [fsItalic];
   end;
-  if FBar.Comparing and (mEntry.Changed or mEntry.ParamsChanged) and not (cdsSelected in AState) then
+  if FBar.Comparing and (mEntry.Changed or mEntry.ParamsChanged) and not AItem.Selected then
   begin
     ACanvas.Font.Color := cChangedColor;
   end;

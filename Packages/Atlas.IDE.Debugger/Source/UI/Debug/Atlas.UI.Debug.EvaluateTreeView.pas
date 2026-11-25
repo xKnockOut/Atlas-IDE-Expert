@@ -202,7 +202,7 @@ begin
   begin
     mCanvas.Font.Style := [fsBold];
   end;
-  if cdsSelected in State then
+  if Node.Selected then
   begin
     mCanvas.Brush.Color := TreeColor(clHighlight);
     mCanvas.Font.Color := TreeColor(clHighlightText);

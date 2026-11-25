@@ -161,7 +161,8 @@ uses
   Vcl.Themes,
   Atlas.UI.Bookmarks.Strings,
   Atlas.Core.Marks.Ids,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.Theme;
 
 {$R *.dfm}
 
@@ -178,36 +179,6 @@ begin
   Result.Caption := ACaption;
   Result.OnClick := AClick;
   AMenu.Items.Add(Result);
-end;
-
-function ListColor(AList: TListView; AColor: TColor): TColor;
-begin
-  // Stil der Liste, nicht der globale: Die IDE themt ihre Fenster je Formular.
-  Result := ColorToRGB(StyleServices(AList).GetSystemColor(AColor));
-end;
-
-procedure RowColors(AList: TListView; ACanvas: TCanvas; ASelected, AGray: Boolean);
-begin
-  // Farben ausdrücklich aus dem Stil der Liste: Nach einer geänderten Schriftfarbe zeichnet die Liste sonst mit den
-  // Systemfarben, im dunklen Thema also weiße Zellen. ASelected aus Item.Selected: Mit cdsSelected war in der
-  // Prüfliste jede Zeile blau, auch die nicht gewählten.
-  if ASelected then
-  begin
-    ACanvas.Brush.Color := ListColor(AList, clHighlight);
-    ACanvas.Font.Color := ListColor(AList, clHighlightText);
-  end
-  else
-  begin
-    ACanvas.Brush.Color := ListColor(AList, AList.Color);
-    if AGray then
-    begin
-      ACanvas.Font.Color := ListColor(AList, clGrayText);
-    end
-    else
-    begin
-      ACanvas.Font.Color := ListColor(AList, AList.Font.Color);
-    end;
-  end;
 end;
 
 function BuildFilter(AFrame: TAtlasBookmarksFrame; AEvents: TAtlasBookmarksFrame.TEvents): TEdit;
@@ -503,7 +474,7 @@ begin
   DefaultDraw := True;
   mShown := FFrame.FShown;
   // Nicht gefunden: ganze Zeile grau; ohne Namen ist der abgeleitete Name grau (#1104).
-  RowColors(FFrame.FParts.List, Sender.Canvas, (Item <> nil) and Item.Selected,
+  TAtlasUiTheme.RowColors(Sender.Canvas, FFrame.FParts.List, (Item <> nil) and Item.Selected,
     (Item <> nil) and (Item.Index <= High(mShown)) and (mShown[Item.Index].Lost or mShown[Item.Index].Unnamed));
 end;
 
@@ -514,7 +485,7 @@ var
 begin
   DefaultDraw := True;
   mShown := FFrame.FShown;
-  RowColors(FFrame.FParts.List, Sender.Canvas, (Item <> nil) and Item.Selected,
+  TAtlasUiTheme.RowColors(Sender.Canvas, FFrame.FParts.List, (Item <> nil) and Item.Selected,
     (Item <> nil) and (Item.Index <= High(mShown)) and mShown[Item.Index].Lost);
 end;
 

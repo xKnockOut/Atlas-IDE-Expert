@@ -228,7 +228,7 @@ begin
   begin
     Sender.Canvas.Font.Style := [fsBold];
   end;
-  if FRows[mRow].Entry.Known and not (cdsSelected in State) then
+  if FRows[mRow].Entry.Known and not Node.Selected then
   begin
     Sender.Canvas.Font.Color := clGrayText;
   end;

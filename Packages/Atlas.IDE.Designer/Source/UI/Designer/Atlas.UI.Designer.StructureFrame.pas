@@ -464,7 +464,7 @@ var
 begin
   DefaultDraw := True;
   mIndex := NodeOf(Node);
-  if (mIndex < 0) or (cdsSelected in State) then
+  if (mIndex < 0) or Node.Selected then
   begin
     Exit;
   end;

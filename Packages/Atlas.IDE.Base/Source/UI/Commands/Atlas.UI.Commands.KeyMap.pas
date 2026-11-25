@@ -95,7 +95,6 @@ type
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
       var DefaultDraw: Boolean);
     function AddButton(const ACaption: string; AOnClick: TNotifyEvent): TButton;
-    function StyleColor(AColor: TColor): TColor;
     /// <summary>Kopf mit Suchfeld, „Nur Konflikte“ und Anzahl.</summary>
     procedure CreateTop;
     /// <summary>Fuß mit den Knöpfen.</summary>
@@ -132,7 +131,6 @@ type
 implementation
 
 uses
-  Vcl.Themes,
   Winapi.Windows,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
@@ -437,19 +435,11 @@ begin
   begin
     Exit;
   end;
-  // Hintergrund und Schrift in den Farben des Themas, sonst zeichnet die Zeile weiß bzw. schwarz (clWindow,
-  // clWindowText ohne Stil).
-  if cdsSelected in State then
-  begin
-    Sender.Canvas.Font.Color := StyleColor(clHighlightText);
-  end
-  else
-  begin
-    Sender.Canvas.Brush.Color := StyleColor(clWindow);
-    Sender.Canvas.Font.Color := StyleColor(clWindowText);
-  end;
+  // Hintergrund und Schrift in den Farben des Themas; gewählt laut Item.Selected (nicht cdsSelected, das in der IDE
+  // bei jeder Zeile gesetzt ist: helle Schrift auf weißer Fläche).
+  TAtlasUiTheme.RowColors(Sender.Canvas, FList, Item.Selected, False);
   // Doppelt belegte Kürzel in der Fehlerfarbe der Fensterfläche (#520); ausgewählt in der Farbe der Auswahl.
-  if FItems[FShown[Item.Index]].Conflict and not (cdsSelected in State) then
+  if FItems[FShown[Item.Index]].Conflict and not Item.Selected then
   begin
     Sender.Canvas.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
   end;
@@ -461,10 +451,6 @@ begin
   Result.OnClick := AOnClick;
 end;
 
-function TAtlasKeyMapWindow.StyleColor(AColor: TColor): TColor;
-begin
-  Result := StyleServices(FList).GetSystemColor(AColor);
-end;
 
 procedure TAtlasKeyMapWindow.CreateTop;
 begin

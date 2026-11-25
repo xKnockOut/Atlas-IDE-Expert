@@ -71,7 +71,7 @@ type
       var DefaultDraw: Boolean);
     procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem; SubItem: Integer;
       State: TCustomDrawState; var DefaultDraw: Boolean);
-    procedure RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AIndex: Integer);
+    procedure RowColors(ACanvas: TCanvas; ASelected: Boolean; AIndex: Integer);
     procedure ListDblClick(Sender: TObject);
     procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure MenuPopup(Sender: TObject);
@@ -219,7 +219,7 @@ begin
   DefaultDraw := True;
   if Item <> nil then
   begin
-    RowColors(Sender.Canvas, State, Item.Index);
+    RowColors(Sender.Canvas, Item.Selected, Item.Index);
   end;
 end;
 
@@ -229,11 +229,11 @@ begin
   DefaultDraw := True;
   if Item <> nil then
   begin
-    RowColors(Sender.Canvas, State, Item.Index);
+    RowColors(Sender.Canvas, Item.Selected, Item.Index);
   end;
 end;
 
-procedure TAtlasBuildSwitchesFrame.RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AIndex: Integer);
+procedure TAtlasBuildSwitchesFrame.RowColors(ACanvas: TCanvas; ASelected: Boolean; AIndex: Integer);
 var
   mLine: TAtlasSwitchLine;
   mDeviates: Boolean;
@@ -256,8 +256,8 @@ begin
       end;
     end;
   end;
-  // Farben ausdrücklich aus dem Stil der Liste, sonst im dunklen Thema weiße Zellen.
-  if cdsSelected in AState then
+  // Farben ausdrücklich aus dem Stil der Liste, sonst im dunklen Thema weiße Zellen; gewählt laut Item.Selected.
+  if ASelected then
   begin
     ACanvas.Brush.Color := ListColor(FParts.List, clHighlight);
     ACanvas.Font.Color := ListColor(FParts.List, clHighlightText);
